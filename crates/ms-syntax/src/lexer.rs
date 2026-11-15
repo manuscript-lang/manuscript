@@ -1445,6 +1445,17 @@ impl Scanner<'_> {
         {
             return None;
         }
+        // A ':' outside brackets already opened an inline body (`if x: return`), so an indented
+        // line after it is over-indented, not a missing ':'.
+        let mut depth = 0i32;
+        for t in self.tokens.iter().filter(|t| t.pos.line == first.pos.line) {
+            match t.kind {
+                Tok::LParen | Tok::LBracket | Tok::LBrace => depth += 1,
+                Tok::RParen | Tok::RBracket | Tok::RBrace => depth -= 1,
+                Tok::Colon if depth == 0 => return None,
+                _ => {}
+            }
+        }
         let mut d = self.err(
             last.end,
             format!(

@@ -23,3 +23,5 @@ Project import hints must recognize every current exported declaration spelling,
 including `export enum` and generic enums. Keep the header fast path and parsed
 recovery path aligned, with enum-shaped text/comment lookalikes excluded by lexer
 positions; test the machine-applicable import fix as well as name collection.
+
+A `fix` must be tested by applying it. `corpus_fixes_resolve_their_diagnostics_without_breaking_syntax` (ms-cli `check_fix`) runs `ms check --fix` over every corpus fixture that records one and requires the fixed diagnostic gone and no new syntax error. It found `var fn` inserted three bytes before the method name (wrong for `fn Type.name`, so the position is now recorded by the parser) and `:` appended to a header that already had an inline body. Errors that only appear after a fix are usually unmasked, not caused by it; judge only syntax and the fixed diagnostic.

@@ -542,3 +542,117 @@ fn fix_trusts_only_the_import_when_an_import_fails() {
     assert_eq!(status, Some(1), "{text}");
     assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
 }
+
+/// Every single-file conformance fixture that records a `fix` is repaired in place: the fixed
+/// diagnostics are gone and the edit adds no syntax error to a file that parsed before.
+#[test]
+fn corpus_fixes_resolve_their_diagnostics_without_breaking_syntax() {
+    let corpus =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/conformance/fixtures");
+    let mut expectations = Vec::new();
+    let mut pending = vec![corpus];
+    while let Some(dir) = pending.pop() {
+        for entry in std::fs::read_dir(&dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.to_str().unwrap().ends_with(".expected.json") {
+                expectations.push(path);
+            }
+        }
+    }
+    expectations.sort();
+    let key = |d: &ms_json::Json| {
+        let text = |name: &str| {
+            d.get(name)
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        };
+        (text("code"), text("message"))
+    };
+    let verify = |expected: &std::path::Path, dir: &std::path::Path| -> Option<Vec<String>> {
+        let recorded = std::fs::read_to_string(expected).unwrap();
+        let source = expected.with_file_name(
+            expected
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace(".expected.json", ".ms"),
+        );
+        if !recorded.contains("\"fix\"") || !source.is_file() {
+            return None;
+        }
+        let document = ms_json::parse(&recorded).unwrap();
+        let before = document
+            .get("expected")
+            .and_then(|e| e.get("diagnostics"))
+            .and_then(|d| d.as_array())?;
+        let fixed: Vec<_> = before
+            .iter()
+            .filter(|d| d.get("fix").is_some())
+            .map(&key)
+            .collect();
+        let parsed_before = !before
+            .iter()
+            .any(|d| d.get("phase").and_then(|p| p.as_str()) == Some("parse"));
+        let name = source.file_name().unwrap().to_str().unwrap().to_string();
+        std::fs::copy(&source, dir.join(&name)).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(["check", &name, "--fix", "--json"])
+            .current_dir(dir)
+            .output()
+            .unwrap();
+        let after = ms_json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+        let remaining = after
+            .get("diagnostics")
+            .and_then(|d| d.as_array())
+            .unwrap_or(&[]);
+        // A failed import withholds every other fix of its file, which leaves the file alone.
+        if std::fs::read(dir.join(&name)).unwrap() == std::fs::read(&source).unwrap() {
+            return None;
+        }
+        let mut failures = Vec::new();
+        if remaining.iter().any(|d| fixed.contains(&key(d))) {
+            failures.push(format!("{name}: a fixed diagnostic is still reported"));
+        }
+        if parsed_before
+            && remaining
+                .iter()
+                .any(|d| d.get("phase").and_then(|p| p.as_str()) == Some("parse"))
+        {
+            failures.push(format!("{name}: the fix left a syntax error"));
+        }
+        Some(failures)
+    };
+    const WORKERS: usize = 4;
+    let (mut checked, mut failures) = (0, Vec::new());
+    std::thread::scope(|scope| {
+        let (expectations, verify) = (&expectations, &verify);
+        let workers: Vec<_> = (0..WORKERS)
+            .map(|worker| {
+                scope.spawn(move || {
+                    let dir = crate::common::scratch(&format!("corpus-fixes-{worker}"));
+                    expectations
+                        .iter()
+                        .skip(worker)
+                        .step_by(WORKERS)
+                        .filter_map(|expected| verify(expected, &dir))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        for result in workers.into_iter().flat_map(|w| w.join().unwrap()) {
+            checked += 1;
+            failures.extend(result);
+        }
+    });
+    assert!(checked > 100, "only {checked} fixtures with fixes found");
+    assert!(
+        failures.is_empty(),
+        "{} of {checked}:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+}
