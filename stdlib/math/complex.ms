@@ -248,11 +248,25 @@ fn Complex.tanh() Complex:
 fn Complex.asin() Complex:
 	// asin(-z) = -asin(z). In the upper half plane iz and the root have opposite
 	// real parts and cancel for large |im|, so evaluate through the lower half
-	// plane, where they add.
-	sign := if self.im > 0.0: -1.0 else: 1.0
+	// plane, where they add. A +0 imaginary part is on the upper side of the cut,
+	// a -0 part on the lower side.
+	sign := if sign_bit(self.im): 1.0 else: -1.0
 	z := Complex(re: sign * self.re, im: sign * self.im)
-	root := Complex(re: 1.0, im: 0.0).subtract(z.multiply(z)).sqrt()
-	inner := imaginary_unit().multiply(z).add(root).log()
+
+	// Past this magnitude z*z overflows. There the root is -iz to within rounding,
+	// so the logarithm argument is 2iz.
+	if z.re.abs().max(z.im.abs()) > 1e150 and z.re.is_finite() and z.im.is_finite():
+		big := Complex(re: -z.im, im: z.re).log()
+		return Complex(re: sign * big.im, im: -sign * (big.re + 0.6931471805599453))
+
+	square := z.multiply(z)
+
+	// `1 - z^2` negates the imaginary part directly: subtracting from `1+0i` would
+	// turn a -0 part into +0 and pick the wrong side of the root's branch cut.
+	root := Complex(re: 1.0 - square.re, im: -square.im).sqrt()
+
+	// Build `i*z` directly: multiplying by `i` would turn a -0 part into +0.
+	inner := Complex(re: -z.im, im: z.re).add(root).log()
 	return Complex(re: sign * inner.im, im: -sign * inner.re)
 
 // Returns the principal inverse cosine, pi/2 minus the inverse sine.
@@ -262,9 +276,11 @@ fn Complex.acos() Complex:
 
 // Returns the principal inverse tangent, `i/2 * (log(1 - iz) - log(1 + iz))`.
 fn Complex.atan() Complex:
-	iz := imaginary_unit().multiply(self)
-	diff := Complex(re: 1.0, im: 0.0).subtract(iz).log().subtract(
-		Complex(re: 1.0, im: 0.0).add(iz).log()
+	// `1 -/+ iz` is built part by part too: adding to `1+0i` would turn a -0 part into
+	// +0 and pick the wrong side of the logarithm's branch cut.
+	iz := Complex(re: -self.im, im: self.re)
+	diff := Complex(re: 1.0 - iz.re, im: -iz.im).log().subtract(
+		Complex(re: 1.0 + iz.re, im: iz.im).log()
 	)
 	var imaginary = diff.re / 2.0
 	magnitude := self.re.abs().max(self.im.abs())

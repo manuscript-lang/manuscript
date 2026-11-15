@@ -208,3 +208,12 @@ test "nested paths resolve through the loop frames and miss cleanly":
 		render("\{\{ for r in rows \}\}\{\{ r.a.b \}\}\{\{ end \}\}", d).get(),
 		"row",
 	)?
+
+test "truncate counts bytes and never splits a character":
+	d := data("\{\"u\":\"é€😀 x\"\}")
+	expect_equal(render("\{\{ u | truncate(0) \}\}", d).get(), "...")?
+	expect_equal(render("\{\{ u | truncate(1) \}\}", d).get(), "...")?
+	expect_equal(render("\{\{ u | truncate(2) \}\}", d).get(), "é...")?
+	expect_equal(render("\{\{ u | truncate(4) \}\}", d).get(), "é...")?
+	expect_equal(render("\{\{ u | truncate(5) \}\}", d).get(), "é€...")?
+	expect_equal(render("\{\{ u | truncate(11) \}\}", d).get(), "é€😀 x")?

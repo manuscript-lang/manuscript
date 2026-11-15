@@ -84,7 +84,8 @@ export fn set_environment(name: String, value: String?) Unit!:
 	return msstd_process_set_environment(name, value)
 
 // Reads `KEY=value` lines from the file at `path` and sets each variable that is not
-// already present in the environment. Existing variables keep their values. Blank
+// already present in the environment. Existing variables keep their values, and a later
+// duplicate name in the file replaces the earlier one. Blank
 // lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted
 // values spanning lines are accepted. The whole file is validated first, so a malformed
 // or non-UTF-8 file returns EBADMSG and changes nothing. A file larger than `max_bytes`

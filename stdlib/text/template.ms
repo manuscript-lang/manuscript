@@ -21,7 +21,7 @@ Actions sit between `{{` and `}}`:
   error unless `strict: false`, or the value goes through `default`.
 - `{{ name | upper | default("anonymous") }}` pipes a value through filters. Filters bind tighter than
   operators: `{{ if name | length > 3 }}`. Filters: `upper lower trim title length join(sep) json
-  default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`.
+  default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)` (`n` counts bytes; a cut never splits a character).
 - `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
   parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
   in a condition is false. Numbers compare by their exact JSON decimal value, without Float rounding.
@@ -1202,11 +1202,21 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
 			invalid(name.clone(), "needs a count")
 		)
 
-		n := limit.get(0)
-		return ok(text_value(if text.length() > n: "{text.view(0, n)}..." else: text))
+		return ok(text_value(truncated(text, limit.get(0))))
 
 	// `raw` and any other registered name pass through; unknown names fail at compile time.
 	return ok(input.clone())
+
+// Keeps at most `limit` bytes of `text` and adds `...` when it cut anything. The cut
+// backs up to the start of a scalar, so a multi-byte character is dropped whole.
+fn truncated(text: String, limit: Int) String:
+	if text.length() <= limit: return text.clone()
+
+	raw := text.as_bytes()
+	var end = limit
+	while end > 0 and raw.get(end).to_int() >= 128 and raw.get(end).to_int() < 192:
+		end -= 1
+	return "{text.view(0, end)}..."
 
 fn length_of(value: JsonValue) Int:
 	if list := value.as_list(): return list.length()

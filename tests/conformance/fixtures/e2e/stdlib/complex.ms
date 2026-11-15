@@ -354,3 +354,29 @@ test "complex divide keeps a small part beside a part near the Float limit":
 		complex(-1.0e308, 1.0e-100),
 	)?
 	expect_equal(z.divide(complex(2.0, 0.0)), complex(5.0e307, 5.0e-101))?
+
+test "inverse sine and tangent follow the sign of a zero part on their cuts":
+	zero := 0.0
+	negative_zero := -zero
+	half_pi := 1.5707963267948966
+	root := 1.8210170868876918
+	above := complex(3.17, zero).asin()
+	below := complex(3.17, negative_zero).asin()
+	expect_true(near(above, complex(half_pi, root)))?
+	expect_true(near(below, complex(half_pi, -root)))?
+	expect_true(near(complex(-3.17, zero).asin(), complex(-half_pi, root)))?
+	expect_true(near(complex(-3.17, negative_zero).asin(), complex(-half_pi, -root)))?
+	expect_true(near(complex(3.17, zero).acos(), complex(0.0, -root)))?
+	expect_true(near(complex(3.17, negative_zero).acos(), complex(0.0, root)))?
+
+	pole := 0.8472978603872037
+	expect_true(near(complex(zero, 1.45).atan(), complex(half_pi, pole)))?
+	expect_true(near(complex(negative_zero, 1.45).atan(), complex(-half_pi, pole)))?
+	expect_true(near(complex(zero, -1.45).atan(), complex(half_pi, -pole)))?
+	expect_true(near(complex(negative_zero, -1.45).atan(), complex(-half_pi, -pole)))?
+
+test "inverse sine of a huge finite number stays finite":
+	big := complex(1.0e300, 1.0e300).asin()
+	component_close(big.re, 0.7853981633974483)?
+	component_close(big.im, 691.8152486690535)?
+	component_close(complex(0.5, 1.0e300).asin().im, 691.4686750787736)?
