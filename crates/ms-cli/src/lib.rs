@@ -222,6 +222,7 @@ fn run_source_command<L: Lower>(
         Err(status) => return status,
     };
     engine.set_static_libc(inv.static_libc);
+    engine.set_profile_allocs(inv.allocs);
     let result = match inv.command.as_str() {
         "check" | "lint" => {
             let command = if inv.command == "check" {

@@ -4,13 +4,20 @@
 //! # Contract
 //!
 //! ```text
-//! ms profile <file.ms|ms.toml> [--out-dir directory] [--top n] [--json]
+//! ms profile <file.ms|ms.toml> [--out-dir directory] [--top n] [--allocs] [--json]
 //!            [--build-type level] [-- program arguments]
 //! ```
 //!
 //! * `--out-dir <directory>`: the bundle directory (default `./profile`). It
 //!   must not exist; it is created, and removed again if the build fails.
 //! * `--top <n>`: rows in the text report (default 20).
+//! * `--allocs`: also sample allocations of the program's main thread (off by default: a
+//!   sample is a stack walk every 128th allocation, `MS_PROFILE_ALLOC_PERIOD` changes it). The
+//!   runtime writes `allocs.folded` (stacks weighted by allocation count) and
+//!   `allocs.folded.bytes` (weighted by bytes), both scaled by the period, with `# period`,
+//!   `# allocs` and `# bytes` comments. The bundle adds `allocs.txt` with the functions that
+//!   allocate most, and JSON adds `profile.allocs`: `{period, allocations, bytes, top:
+//!   [{function, allocations, bytes}]}`.
 //! * `--build-type <level>`: default `Release` (frame pointers and line
 //!   tables are present at every level; the level only changes optimization).
 //! * `--json`: print one versioned document instead of text. The program's own
@@ -188,6 +195,123 @@ pub fn parse_folded(text: &str) -> Result<FoldedProfile, String> {
         })
         .collect();
     Ok(FoldedProfile { hz, stacks })
+}
+
+/// The allocation profile: the runtime's two folded files, flattened to the function that
+/// allocates.
+pub struct AllocProfile {
+    pub period: u64,
+    pub allocations: u64,
+    pub bytes: u64,
+    top: usize,
+    /// `(function, allocations, bytes)`, most allocations first.
+    pub rows: Vec<(String, u64, u64)>,
+}
+
+/// Reads `<path>` (counts) and `<path>.bytes` as the runtime wrote them.
+pub fn read_allocs(path: &str, top: usize) -> Result<AllocProfile, String> {
+    let read = |p: &str| {
+        std::fs::read_to_string(p).map_err(|_| {
+            format!(
+                "the program wrote no allocation profile to {p}; a program that never allocates on its main thread, a runtime built without profiling support or a program killed before cleanup writes nothing"
+            )
+        })
+    };
+    let counts_text = read(path)?;
+    let bytes_text = read(&format!("{path}.bytes"))?;
+    let comment = |text: &str, key: &str| {
+        text.lines()
+            .find_map(|l| {
+                l.strip_prefix('#')?
+                    .trim()
+                    .strip_prefix(key)?
+                    .trim()
+                    .parse::<u64>()
+                    .ok()
+            })
+            .unwrap_or(0)
+    };
+    let counts = parse_folded(&counts_text).map_err(|e| format!("cannot read {path}: {e}"))?;
+    let bytes = parse_folded(&bytes_text).map_err(|e| format!("cannot read {path}.bytes: {e}"))?;
+    // An allocation belongs to the innermost Manuscript function: the runtime frames above it
+    // (`[runtime]`) are how it got the memory, not who asked.
+    let owner = |stack: &[String]| {
+        stack
+            .iter()
+            .rev()
+            .find(|frame| *frame != "[runtime]")
+            .map_or("[runtime]", String::as_str)
+            .to_string()
+    };
+    let mut rows: BTreeMap<String, (u64, u64)> = BTreeMap::new();
+    for (stack, count) in &counts.stacks {
+        rows.entry(owner(stack)).or_default().0 += count;
+    }
+    for (stack, count) in &bytes.stacks {
+        rows.entry(owner(stack)).or_default().1 += count;
+    }
+    let mut rows: Vec<_> = rows
+        .into_iter()
+        .map(|(function, (allocs, bytes))| (function, allocs, bytes))
+        .collect();
+    rows.sort_by(|a, b| b.1.cmp(&a.1).then(b.2.cmp(&a.2)).then(a.0.cmp(&b.0)));
+    Ok(AllocProfile {
+        period: comment(&counts_text, "period"),
+        allocations: counts.total(),
+        bytes: bytes.total(),
+        top,
+        rows,
+    })
+}
+
+impl AllocProfile {
+    pub fn render(&self) -> String {
+        let shown = self.rows.len().min(self.top);
+        let mut out = format!(
+            "Allocations on the main thread: about {} ({} bytes), sampling every {}th; top {shown} of {} functions\n",
+            self.allocations,
+            self.bytes,
+            self.period,
+            self.rows.len()
+        );
+        out.push_str(&format!(
+            "{:>10} {:>7} {:>12}  {}\n",
+            "allocs", "allocs%", "bytes", "function"
+        ));
+        for (function, allocs, bytes) in self.rows.iter().take(self.top) {
+            let percent = if self.allocations == 0 {
+                0.0
+            } else {
+                *allocs as f64 * 100.0 / self.allocations as f64
+            };
+            out.push_str(&format!(
+                "{allocs:>10} {percent:>6.2}% {bytes:>12}  {function}\n"
+            ));
+        }
+        out
+    }
+
+    pub fn to_json(&self) -> Json {
+        Json::object()
+            .with("period", Json::int(self.period as i64))
+            .with("allocations", Json::int(self.allocations as i64))
+            .with("bytes", Json::int(self.bytes as i64))
+            .with(
+                "top",
+                Json::Arr(
+                    self.rows
+                        .iter()
+                        .take(self.top)
+                        .map(|(function, allocs, bytes)| {
+                            Json::object()
+                                .with("function", Json::str(function))
+                                .with("allocations", Json::int(*allocs as i64))
+                                .with("bytes", Json::int(*bytes as i64))
+                        })
+                        .collect(),
+                ),
+            )
+    }
 }
 
 /// The text report: a summary line and the `top` busiest functions.
@@ -422,6 +546,10 @@ pub fn run_profile(
     }
 
     let mut command = Command::new(&program);
+    let allocs_path = pathops::join(&[&output, "allocs.folded"]);
+    if inv.allocs {
+        command.env("MS_PROFILE_ALLOCS", &allocs_path);
+    }
     command
         .args(&inv.arguments)
         .env("MS_PROFILE", &folded_path)
@@ -620,6 +748,39 @@ pub fn run_profile(
         },
     }
 
+    let mut allocs_text = String::new();
+    let mut allocs_json = Json::Null;
+    if inv.allocs {
+        match read_allocs(&allocs_path, top) {
+            Err(problem) => {
+                diagnostics.push(CommandDiagnostic {
+                    severity: String::new(),
+                    code: "MSN001".into(),
+                    phase: "artifact".into(),
+                    message: problem.clone(),
+                    position: Position::new(&inv.filename, 1, 1),
+                    end: None,
+                    fix: None,
+                });
+                if !structured {
+                    let _ = writeln!(io.stderr, "{problem}");
+                }
+                final_status = final_status.max(1);
+            }
+            Ok(allocs) => {
+                allocs_text = allocs.render();
+                let text_path = pathops::join(&[&output, "allocs.txt"]);
+                if let Err(error) = std::fs::write(&text_path, allocs_text.as_bytes()) {
+                    let _ = writeln!(io.stderr, "cannot write {text_path}: {error}");
+                    final_status = final_status.max(1);
+                }
+                artifacts.push(("allocs", allocs_path.clone(), "written"));
+                artifacts.push(("allocs_bytes", format!("{allocs_path}.bytes"), "written"));
+                artifacts.push(("allocs_top", text_path, "written"));
+                allocs_json = allocs.to_json();
+            }
+        }
+    }
     if structured {
         let mut document = native_document(
             &inv.command,
@@ -633,6 +794,13 @@ pub fn run_profile(
             &stdout_bytes,
             &diagnostics,
         );
+        if allocs_json != Json::Null {
+            profile_json = match profile_json {
+                Json::Null => Json::object(),
+                other => other,
+            }
+            .with("allocs", allocs_json);
+        }
         if profile_json != Json::Null {
             document = document.with("profile", profile_json);
         }
@@ -640,6 +808,9 @@ pub fn run_profile(
     }
     if !report.is_empty() {
         let _ = write!(io.stdout, "{report}");
+        if !allocs_text.is_empty() {
+            let _ = write!(io.stdout, "\n{allocs_text}");
+        }
         let _ = writeln!(io.stdout, "\nProfile bundle: {display_output}");
         for (file, what) in [
             (
@@ -773,7 +944,7 @@ pub(crate) fn base64(data: &[u8]) -> String {
     out
 }
 
-pub const HELP: &str = "Usage: ms profile <file.ms|ms.toml> [--json] [--out-dir directory] [--top n] [--build-type level] [-- program arguments]
+pub const HELP: &str = "Usage: ms profile <file.ms|ms.toml> [--json] [--out-dir directory] [--top n] [--allocs] [--build-type level] [-- program arguments]
 
 Build an application, run it with the sampling profiler enabled, and write a profile bundle.
 The runtime samples the program (MS_PROFILE is set to the folded-stack output path) and ms converts
@@ -788,6 +959,7 @@ Builds link with the linker bundled in ms on every platform; no C compiler or SD
 Options:
   --out-dir <directory>    Bundle directory (default: ./profile)
   --top <n>                Rows in the text report (default 20)
+  --allocs                 Also sample allocations: which functions allocate, in count and bytes
   --json                   Emit one versioned result; capture stdout, keep stderr live
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   Default build type: Release

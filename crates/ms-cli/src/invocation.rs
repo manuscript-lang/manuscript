@@ -92,6 +92,8 @@ pub struct Invocation {
     pub depth: usize,
     /// `ms profile --top`; zero means the default.
     pub top: usize,
+    /// `ms profile --allocs`: also sample allocations.
+    pub allocs: bool,
     /// Forwarded to the program after `--`.
     pub arguments: Vec<String>,
 }
@@ -206,6 +208,7 @@ fn parse_options(
             "--each" => inv.each = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
+            "--allocs" => inv.allocs = true,
             "--build-type" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
                     return Err(usage_error(
@@ -488,6 +491,12 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             format!(
                 "--view, --entity, --depth, and --diff are valid only for ms diagram, not ms {command}; run 'ms help {command}' for its options"
             ),
+        ));
+    }
+    if inv.allocs && command != "profile" {
+        return Err(usage_error(
+            io,
+            format!("--allocs is valid only for ms profile, not ms {command}; {help_hint}"),
         ));
     }
     if inv.top != 0 && command != "profile" {
