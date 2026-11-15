@@ -10,7 +10,7 @@ type Resource:
 	id: Int
 	path: String
 
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
 	append_file(self.path, "{self.id},").wait()?
 	self.path = "closed"
 
@@ -30,7 +30,7 @@ fn checked(value: Resource?) Int!:
 	if value.is_some(): return error(Error("expected failure"))
 	return ok(0)
 
-fn broken(value: Resource?) Unit:
+fn broken(value: Resource?) Void:
 	if value.is_some():
 		_invalid := [1].get(3)
 
@@ -38,14 +38,14 @@ fn log_text(path: String) String!:
 	bytes := read_file(path).wait()?
 	return ok(expect_some(bytes.decode_utf8())?)
 
-fn retained(path: String) Unit!:
+fn retained(path: String) Void!:
 	value := identity(present(path, 7))
 	expect_equal(log_text(path)?, "")?
 	expect_equal(mapped(value), 7)?
 	expect_equal(observed(value), true)?
 	expect_equal(log_text(path)?, "")?
 
-fn error_exit(path: String) Unit!:
+fn error_exit(path: String) Void!:
 	_value := checked(present(path, 8))?
 
 test "borrowed source helpers close intact owned wrapper temporaries once":
@@ -80,10 +80,10 @@ fn pick(first: Resource?, second: Resource?) Resource?:
 	if second.is_some(): return first
 	return first
 
-fn transferred_then_faulted(path: String) Unit:
+fn transferred_then_faulted(path: String) Void:
 	broken(pick(present(path, 10), present(path, 11)))
 
-fn transfer_first(path: String) Unit!:
+fn transfer_first(path: String) Void!:
 	value := pick(present(path, 12), present(path, 13))
 	expect_equal(mapped(value), 12)?
 	expect_equal(log_text(path)?, "13,")?
@@ -114,7 +114,7 @@ fn success(path: String, id: Int) Resource!Int: ok(Resource(id, path.clone()))
 
 fn result_observed(value: Resource!Int) Bool: value.is_ok()
 
-fn branched_transfers(path: String) Unit!:
+fn branched_transfers(path: String) Void!:
 	for i in 0..3:
 		value := if i == 1: identity(identity(present(path, 20 + i))) else: identity(
 			present(path, 20 + i)
@@ -132,13 +132,13 @@ test "nested whole transfers stay path local across branches and loops":
 type ScalarResource:
 	id: Int
 
-fn var ScalarResource.close() Unit!: error(Error("scalar resource closed"))
+fn var ScalarResource.close() Void!: error(Error("scalar resource closed"))
 
 fn scalar_present() ScalarResource?: ScalarResource(1)
 
 fn scalar_observed(value: ScalarResource?) Bool: value.is_some()
 
-fn scalar_observer() Unit:
+fn scalar_observer() Void:
 	_value := scalar_observed(scalar_present())
 
 test "scalar wrapper payloads retain their source-call close obligation":
@@ -155,7 +155,7 @@ test "later successful try preserves source temporary ownership":
 	expect_equal(extra(present(path, 30), number()?), true)?
 	expect_equal(log_text(path)?, "30,")?
 
-fn named_transferred_fault(path: String) Unit:
+fn named_transferred_fault(path: String) Void:
 	held := identity(present(path, 40))
 	broken(held)
 
@@ -170,7 +170,7 @@ test "whole transferred locals retain their fault cleanup":
 fn fresh_owner(value: Resource?) Resource?:
 	return Resource(51, value.get().path.clone())
 
-fn fresh_then_faulted(path: String) Unit:
+fn fresh_then_faulted(path: String) Void:
 	held := fresh_owner(present(path, 50))
 	broken(held)
 
@@ -199,7 +199,7 @@ test "source-reader temporaries finish on each loop condition and short circuit"
 
 fn number_failure() Int!: error(Error("expected operand error"))
 
-fn later_try_fails(path: String) Unit!:
+fn later_try_fails(path: String) Void!:
 	_value := extra(present(path, 70), number_failure()?)
 
 fn pair_observed(first: Resource?, second: Resource?) Bool:
@@ -210,7 +210,7 @@ fn bad_default() Int: [1].get(3)
 fn observes_with_default(value: Resource?, count: Int = bad_default()) Bool:
 	return value.is_some() and count > 0
 
-fn default_fault(path: String) Unit:
+fn default_fault(path: String) Void:
 	_value := observes_with_default(present(path, 82))
 
 test "later argument errors and default faults close acquired wrapper owners":
@@ -235,7 +235,7 @@ test "named borrowed arguments close in reverse acquisition order":
 type FaultyResource:
 	path: String
 
-fn var FaultyResource.close() Unit!:
+fn var FaultyResource.close() Void!:
 	append_file(self.path, "98,").wait()?
 	self.path = "closed"
 	return error(Error("expected close failure"))
@@ -244,7 +244,7 @@ fn faulty_present(path: String) FaultyResource?: FaultyResource(path.clone())
 
 fn faulty_observed(value: FaultyResource?) Bool: value.is_some()
 
-fn close_fault(path: String) Unit:
+fn close_fault(path: String) Void:
 	_outer := Resource(99, path.clone())
 	_observed := faulty_observed(faulty_present(path))
 
@@ -267,7 +267,7 @@ type Observer:
 
 fn Observer.sees(value: Resource?) Bool: value.is_some()
 
-fn borrowed_conversion_calls(path: String) Unit!:
+fn borrowed_conversion_calls(path: String) Void!:
 	named := Resource(120, path.clone())
 	expect_equal(observed(named), true)?
 	expect_equal(mapped(named), 120)?
@@ -289,11 +289,11 @@ test "borrowed payload optional conversions do not acquire close duty":
 
 fn no_resource() Resource?!: error(Error("expected"))
 
-fn borrowed_conversion_error(path: String) Unit!:
+fn borrowed_conversion_error(path: String) Void!:
 	named := Resource(123, path.clone())
 	_used := pair(named, no_resource()?)
 
-fn borrowed_conversion_fault(path: String) Unit:
+fn borrowed_conversion_fault(path: String) Void:
 	named := Resource(124, path.clone())
 	_used := pair(named, present(path, [1].get(3)))
 
@@ -314,17 +314,17 @@ fn with_borrowed_default(value: Resource?, same: Resource? = value) Bool:
 fn with_faulting_default(value: Resource?, tail: Int = [1].get(3)) Bool:
 	return value.is_some() or tail > 0
 
-fn retained_conversion(path: String) Unit!:
+fn retained_conversion(path: String) Void!:
 	named := Resource(130, path.clone())
 	retained := optional_identity(named)
 	expect_equal(observed(retained), true)?
 	expect_equal(log_text(path)?, "")?
 
-fn borrowed_default_fault(path: String) Unit:
+fn borrowed_default_fault(path: String) Void:
 	named := Resource(131, path.clone())
 	_used := with_faulting_default(named)
 
-fn named_default_reads(path: String) Unit!:
+fn named_default_reads(path: String) Void!:
 	named := Resource(132, path.clone())
 	expect_equal(with_borrowed_default(named), true)?
 	expect_equal(with_borrowed_default(named), true)?

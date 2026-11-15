@@ -8,7 +8,7 @@ import (
 
 interface Src:
 	var fn read(max: Int) Int?!Error
-	var fn close() Unit
+	var fn close() Void
 
 type Probe:
 	action: Int
@@ -17,13 +17,13 @@ fn var Probe.read(max: Int) Int?!Error:
 	if self.action == 2: panic("source read failed")
 	return ok(none)
 
-fn var Probe.close() Unit:
+fn var Probe.close() Void:
 	return unit
 
 type Wrapper:
 	input: Src
 
-fn var Wrapper.close() Unit!:
+fn var Wrapper.close() Void!:
 	self.input.close()
 
 fn var Wrapper.read() Int?!Error:

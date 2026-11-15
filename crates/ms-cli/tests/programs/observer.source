@@ -2,7 +2,7 @@ import stdout from "@std/io/io.ms"
 import watch_signals from "@std/os/process.ms"
 import sleep from "@std/time.ms"
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
     _written := stdout().write(text)
 
     // Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.

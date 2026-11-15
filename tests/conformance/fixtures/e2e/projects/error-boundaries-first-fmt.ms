@@ -6,13 +6,13 @@ import DomainFailure, BoxFailure, box_error from "./domain.ms"
 export fn first_error(cause: DomainFailure) Error:
     return Error("first {cause.code}")
 
-fn failure(cause: DomainFailure) Unit!DomainFailure:
+fn failure(cause: DomainFailure) Void!DomainFailure:
     return error(cause)
 
-export fn first_result(cause: DomainFailure) Unit!:
+export fn first_result(cause: DomainFailure) Void!:
     return failure(cause).map_error(first_error)
 
-export fn first_propagated(cause: DomainFailure) Unit!:
+export fn first_propagated(cause: DomainFailure) Void!:
     failure(cause).map_error(first_error)?
 
 fn generic[T](cause: T, convert: fn(T) Error) Error:

@@ -2,7 +2,7 @@ type Box:
     items: List[Int]
     name: String
 
-fn early(var rows: List[List[Int]], c: Bool) Unit:
+fn early(var rows: List[List[Int]], c: Bool) Void:
     var x = rows[0]
     x.append(1)
     if c:
@@ -10,7 +10,7 @@ fn early(var rows: List[List[Int]], c: Bool) Unit:
 
     x.append(2)
 
-fn in_loop(var rows: List[List[Int]]) Unit:
+fn in_loop(var rows: List[List[Int]]) Void:
     for i in [0, 1, 2]:
         var x = rows[i]
         if i == 1:
@@ -29,24 +29,24 @@ fn failing(var rows: List[List[Int]], bad: Bool) Int:
     x.append(8)
     return 1
 
-fn generic[T](var xs: List[List[T]], v: T) Unit:
+fn generic[T](var xs: List[List[T]], v: T) Void:
     var x = xs[0]
     x.append(v)
 
-fn nested(var boxes: List[Box]) Unit:
+fn nested(var boxes: List[Box]) Void:
     var b = boxes[1]
     var it = b.items
     it.append(42)
     b.name = "renamed"
 
-fn moving_index(var rows: List[List[Int]]) Unit:
+fn moving_index(var rows: List[List[Int]]) Void:
     var i = 0
     var x = rows[i]
     i = i + 1
     x.append(55)
     rows.append([i])
 
-fn main() Unit:
+fn main() Void:
     var a = [[0], [0]]
     early(var a, true)
     early(var a, false)

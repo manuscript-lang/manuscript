@@ -7,7 +7,7 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Unit!:
+fn var Door.close() Void!:
     print("closed {self.name}")
 
 interface Labeled:
@@ -32,7 +32,7 @@ fn pair() Pair:
 fn show(l: Labeled) String:
     return l.label()
 
-fn main() Unit:
+fn main() Void:
     present := maybe("optional").is_some()
     print("--list")
 

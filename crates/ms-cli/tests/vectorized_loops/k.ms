@@ -1,12 +1,12 @@
-export fn fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Unit:
+export fn fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Void:
     for i in 0..n:
         out[i] = a[i] * b[i] + 1.5
 
-export fn scale(a: List[Float], var out: List[Float], n: Int) Unit:
+export fn scale(a: List[Float], var out: List[Float], n: Int) Void:
     for i in 0..n:
         out[i] = a[i] * 2.0
 
-fn main() Unit:
+fn main() Void:
     a: List[Float] := [1.0, 2.0, 3.0]
     var o: List[Float] = [0.0, 0.0, 0.0]
     scale(a, var o, 3)

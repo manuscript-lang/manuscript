@@ -4,7 +4,7 @@
 A := 1
 B: Int := A + 1
 
-fn main() Unit:
+fn main() Void:
     var (
         _a = 10
         _b = fn(x: Int) Int:

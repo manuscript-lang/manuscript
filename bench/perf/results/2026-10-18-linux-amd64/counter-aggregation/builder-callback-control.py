@@ -1,11 +1,11 @@
 from pathlib import Path
 import subprocess,os,json,hashlib
 root=Path('/workspace/manuscript');m=json.loads(Path('/tmp/manuscript-aggregate-matched-manifest.json').read_text()); app=Path(m['program']['app']).resolve();runtime=app.parents[1]/'pkg/runtime/string.go';s=runtime.read_text();a=s.index('func StringBuilder_Append(');b=s.index('\nfunc StringBuilder_Freeze',a)
-new='''func StringBuilder_Append(_ *Execution, b *StringBuilder, value string) Unit {return stringBuilderAppend(b,value,stringBuilderSealed)}
-func stringBuilderAppend(b *StringBuilder,value string,sealed func()) Unit {
+new='''func StringBuilder_Append(_ *Execution, b *StringBuilder, value string) Void {return stringBuilderAppend(b,value,stringBuilderSealed)}
+func stringBuilderAppend(b *StringBuilder,value string,sealed func()) Void {
  if b.sealed {sealed()}
  b.text=append(b.text,value...)
- return Unit{}
+ return Void{}
 }
 func stringBuilderSealed(){Raise("builder is sealed")}
 '''

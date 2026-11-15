@@ -3,7 +3,7 @@ import monotonic from "@std/time.ms"
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Unit:
+fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
 	print("{name} {(now - t0) / 1000} {chk}")
 
@@ -131,7 +131,7 @@ fn n_string_set_ops() Int:
 
 	return a.intersection(b).length() + a.union(b).length()
 
-fn main() Unit:
+fn main() Void:
 	t_n_sort_floats := monotonic().tick
 	stop("n_sort_floats", t_n_sort_floats, n_sort_floats())
 

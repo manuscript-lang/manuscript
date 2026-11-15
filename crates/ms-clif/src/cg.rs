@@ -39,7 +39,7 @@ pub enum Glue {
     Drop,
     /// Clones a value (takes and returns the value's leaves).
     Clone,
-    /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::UNIT`) and the key carries the function id.
+    /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::VOID`) and the key carries the function id.
     ClosureDrop(u32),
     /// Like `ClosureDrop` for an object in a stack frame: drops the captures, frees nothing.
     ClosureDropFramed(u32),

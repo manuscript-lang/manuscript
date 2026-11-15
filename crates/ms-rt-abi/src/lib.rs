@@ -420,7 +420,7 @@ pub type ValDesc = *const TypeDesc;
 /// `String` and `Bytes` (`msrt_desc_*`).
 #[repr(C)]
 pub struct TypeDesc {
-    /// Slot size in bytes, a multiple of `align`. Zero is allowed (Unit).
+    /// Slot size in bytes, a multiple of `align`. Zero is allowed (Void).
     pub size: u32,
     /// Slot alignment, 1, 2, 4, 8 or 16.
     pub align: u32,
@@ -557,7 +557,7 @@ pub const NATIVE_OBJECT_PAYLOAD_OFFSET: usize = 32;
 pub const NATIVE_OBJECT_DROP_OFFSET: usize = 16;
 
 /// `ms_kind`: the kind of an `ms_value`.
-pub const VALUE_UNIT: u32 = 0;
+pub const VALUE_VOID: u32 = 0;
 pub const VALUE_BOOL: u32 = 1;
 pub const VALUE_INT: u32 = 2;
 pub const VALUE_UINT: u32 = 3;
@@ -848,7 +848,7 @@ void ms_bytes_new(const uint8_t *data, size_t len, ms_bytes *out);
 typedef struct ms_object ms_object;
 typedef struct ms_list ms_list;
 typedef enum ms_kind {{
-    MS_UNIT = {unit}, MS_BOOL = {bool_}, MS_INT = {int}, MS_UINT = {uint}, MS_FLOAT = {float},
+    MS_VOID = {unit}, MS_BOOL = {bool_}, MS_INT = {int}, MS_UINT = {uint}, MS_FLOAT = {float},
     MS_STRING = {string}, MS_BYTES = {bytes}, MS_OBJECT = {object}, MS_LIST = {list}, MS_FN = {fn_}
 }} ms_kind;
 typedef union ms_value_as {{
@@ -896,7 +896,7 @@ MS_NORETURN void ms_fault(const char *text, size_t len);
 /* ---- 8. Calling Manuscript functions ------------------------------------------------- */
 /* A function argument (`f: fn(Int) Bool`) is a borrowed `ms_fn *`. Its parameters (at most
    {call_max}) are sized numbers, Bool, String, Bytes or extern types; its result one of those
-   but an extern type, or Unit. */
+   but an extern type, or Void. */
 typedef struct ms_fn ms_fn;
 /* Calls f on this thread with `count` arguments lent to it, as every function value is called:
    a string or bytes is copied in for the call, an object is passed as it is and stays the
@@ -934,7 +934,7 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
             str_len_mask = STR_LEN_MASK,
             inline_tag = STR_INLINE >> 62,
             inline_shift = STR_INLINE_LEN_SHIFT,
-            unit = VALUE_UNIT,
+            unit = VALUE_VOID,
             bool_ = VALUE_BOOL,
             int = VALUE_INT,
             uint = VALUE_UINT,

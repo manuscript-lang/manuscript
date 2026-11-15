@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Resource:
     id: Int
 
-fn var Resource.close() Unit!:
+fn var Resource.close() Void!:
     return ok(unit)
 
 fn identity(r: Resource) Resource:

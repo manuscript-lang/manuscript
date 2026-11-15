@@ -2,7 +2,7 @@
 // conform: phase=check
 import BytesBuilder from "@std/bytes.ms"
 
-fn build() Unit:
+fn build() Void:
 	var out = BytesBuilder()
 	out.append(256)
 	out.append(-1)

@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn use() Unit:
+fn use() Void:
     ListEntry := fn() Int: 1
     let value: ListE|

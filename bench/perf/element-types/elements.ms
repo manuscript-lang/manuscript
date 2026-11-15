@@ -268,7 +268,7 @@ fn nested_generics() Int:
 type Stack[T]:
 	items: List[T] = []
 
-fn var Stack[T].push(v: T) Unit:
+fn var Stack[T].push(v: T) Void:
 	self.items.append(v)
 
 fn var Stack[T].pop() T?:
@@ -338,7 +338,7 @@ fn string_chains() Int:
 		t += e.value
 	return t
 
-fn main() Unit:
+fn main() Void:
 	t0 := monotonic().tick
 	a := list_records()
 	t1 := monotonic().tick

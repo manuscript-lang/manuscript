@@ -3,5 +3,5 @@
 import TextError from "@std/errors.ms"
 fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
-fn use() Unit:
+fn use() Void:
     fail()

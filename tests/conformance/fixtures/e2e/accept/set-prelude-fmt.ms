@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/set-prelude.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
-fn insert[T: Hashable](var values: Set[T], value: T) Unit: values.add(value)
+fn insert[T: Hashable](var values: Set[T], value: T) Void: values.add(value)
 
 test "set construction and methods need no import":
     var values: Set[Int] = Set()

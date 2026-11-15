@@ -5,6 +5,6 @@ fn read(state: Queue[Int]) Int:
     return state.length()
 fn named(state: Queue[Int], value: Int = read(state)) Int:
     return value
-fn nested(state: Queue[Int]) Unit:
+fn nested(state: Queue[Int]) Void:
     callback := fn(value: Int = read(state)) Int:
         return value

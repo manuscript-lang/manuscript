@@ -136,7 +136,7 @@ impl Checker {
                 }
             }
             Some(r) => {
-                if fall && !r.is(Builtin::Unit) && !r.is_invalid() {
+                if fall && !r.is(Builtin::Void) && !r.is_invalid() {
                     self.type_error(
                         e.pos,
                         "reachable fallthrough in anonymous function; end every path with a 'return'",

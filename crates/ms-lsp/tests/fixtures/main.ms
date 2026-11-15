@@ -58,7 +58,7 @@ export fn main() Int:
     result := add(1, 2)
     return result
 
-fn say(text: String) Result[Unit, Error]:
+fn say(text: String) Result[Void, Error]:
     stdout().write("{text}\n")?
     return stdout().flush()
 

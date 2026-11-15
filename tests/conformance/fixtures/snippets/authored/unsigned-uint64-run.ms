@@ -10,7 +10,7 @@ type Stamp:
 fn mix(h: UInt64, b: UInt64) UInt64:
     return (h * 31 + b) % 18446744073709551557
 
-fn main() Unit:
+fn main() Void:
     max: UInt64 := 18446744073709551615
     half: UInt64 := 9223372036854775808
     one: UInt64 := 1

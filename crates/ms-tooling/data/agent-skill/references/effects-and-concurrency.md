@@ -11,7 +11,7 @@ import from_list, map, collect from "@std/io/streams.ms"
 
 fn work() Int!: ok(21)
 
-fn main() Unit!:
+fn main() Void!:
 	pending := promise(fn: work())
 	value := pending.wait()?
 	output := from_list([value]) | map(fn x: x * 2) | collect(none)?
@@ -23,4 +23,4 @@ Import PromiseOptions from `"@std/concurrency/promise.ms"`; set `promise(..., op
 
 `from_list`, `lines`, `map`, `collect`: `"@std/io/streams.ms"`. `pipe`: `"@std/io/io.ms"`. `pipe[T](capacity)` coordinates producers/consumers; keep mutable state with one owner.
 
-Stream `.next()` returns T?!: Result of Optional, none at EOF. `for item in stream:` extracts items and propagates errors; use a Result-returning function. Writes return Unit! and wait when full. Transformations pull lazily; closing them closes their input. `collect(none)` is unlimited; bound potentially unbounded inputs.
+Stream `.next()` returns T?!: Result of Optional, none at EOF. `for item in stream:` extracts items and propagates errors; use a Result-returning function. Writes return Void! and wait when full. Transformations pull lazily; closing them closes their input. `collect(none)` is unlimited; bound potentially unbounded inputs.

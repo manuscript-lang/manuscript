@@ -4,13 +4,13 @@
 import pipe, Pipe, ReadStream from "@std/io/io.ms"
 
 type Handlers:
-    items: List[fn(var Int, Int) Unit!]
+    items: List[fn(var Int, Int) Void!]
 
-fn var Handlers.add(f: fn(var Int, Int) Unit!) Unit:
+fn var Handlers.add(f: fn(var Int, Int) Void!) Void:
     self.items.append(f)
 
 fn make(p: Pipe[Int]) Handlers:
-    var h = Handlers(items: List[fn(var Int, Int) Unit!]())
+    var h = Handlers(items: List[fn(var Int, Int) Void!]())
     h.add(fn var total, n:
         var out = p.writer()
         out.write(n)?

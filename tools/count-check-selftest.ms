@@ -34,7 +34,7 @@ fn gate(root: String, compiler: String, fixture: String) Gate:
 
 	return Gate(125, "cannot start the gate\n")
 
-fn expect(var failures: List[String], what: String, held: Bool, shown: Gate) Unit:
+fn expect(var failures: List[String], what: String, held: Bool, shown: Gate) Void:
 	if not held: failures.append("{what}\n{shown.output}")
 
 fn main() Int:

@@ -84,7 +84,7 @@ fn decompress(tokens: List[Int]) List[Int]:
 
 	return out
 
-fn main() Unit:
+fn main() Void:
 	data := make_input(4000000)
 	var checksum = 0
 

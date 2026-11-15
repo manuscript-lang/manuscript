@@ -195,7 +195,7 @@ fn rand_script(var rnd: Random, n: Int, ids: List[String]) String:
 	lines.append("report")
 	return lines.join("\n") + "\n"
 
-export fn gen_c36() Unit:
+export fn gen_c36() Void:
 	var rnd = seeded(36)
 	examples := [
 		mk(

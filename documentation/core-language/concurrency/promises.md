@@ -14,7 +14,7 @@ Save this complete program as `read-config.ms` and run `ms run read-config.ms` i
 import read_file from "@std/os/fs.ms"
 import PromiseOptions from "@std/concurrency/promise.ms"
 
-fn main() Unit!:
+fn main() Void!:
     pending := read_file("config.json").with(
         options: PromiseOptions(timeout: 5.seconds())
     )

@@ -26,7 +26,7 @@ fn g[T: Hashable](xs: List[T]) Set[T]:
 
 fn h[T: Comparable & Clonable](xs: List[T]) List[T]: xs.sorted()
 
-fn main() Unit:
+fn main() Void:
     l := a([Box(1), Box(2)])
     s := g(["a", "b", "a"])
     t := h([3, 1, 2])

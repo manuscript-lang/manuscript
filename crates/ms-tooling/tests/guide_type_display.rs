@@ -54,8 +54,8 @@ fn source_type_compositions_preserve_the_parsed_structure() {
         "Int??",
         "List[Int?]",
         "fn(Int) String?",
-        "fn(var Int) Unit",
-        "fn(var List[Int], fn(var Int) Unit) Unit",
+        "fn(var Int) Void",
+        "fn(var List[Int], fn(var Int) Void) Void",
         "(fn(Int) String)?",
         "Result[Int?, Error]",
     ] {

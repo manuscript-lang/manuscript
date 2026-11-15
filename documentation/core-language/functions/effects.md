@@ -14,7 +14,7 @@ fn total(prices: List[Int]) Int:
     sum := prices.sum()
     return sum
 
-fn main() Unit:
+fn main() Void:
     print(total([2, 3]))
 ```
 
@@ -38,7 +38,7 @@ import Bytes from "@std/bytes.ms"
 fn load(path: String) Bytes!:
     return read_file(path).wait()
 
-fn main() Unit:
+fn main() Void:
     return
 ```
 
@@ -60,13 +60,13 @@ A function that is handed an interface value does not need a permission to use i
 <!-- manuscript-example: {"mode":"run","stdout":"> summing 2 prices\n5\n"} -->
 ```manuscript
 interface Logger:
-    fn info(message: String) Unit
+    fn info(message: String) Void
 
 type ConsoleLogger:
     prefix: String
 
 // ms: allow_effect std.console.write
-fn ConsoleLogger.info(message: String) Unit:
+fn ConsoleLogger.info(message: String) Void:
     print("{self.prefix}{message}")
 
 fn total(log: Logger, prices: List[Int]) Int:
@@ -74,7 +74,7 @@ fn total(log: Logger, prices: List[Int]) Int:
     sum := prices.sum()
     return sum
 
-fn main() Unit:
+fn main() Void:
     print(total(ConsoleLogger("> "), [2, 3]))
 ```
 
@@ -90,17 +90,17 @@ import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
 // ms: allow_effect std.fs.write
-fn save(order: String) Unit!:
+fn save(order: String) Void!:
     return write_file("orders.log", order).wait()
 
 // ms: allow_effect db.*
-fn checkout(total: Int) Unit!:
+fn checkout(total: Int) Void!:
     return save("order {total}")
 
-fn audit(total: Int) Unit!:
+fn audit(total: Int) Void!:
     return save("audit {total}")
 
-fn main() Unit:
+fn main() Void:
     return
 ```
 

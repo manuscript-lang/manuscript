@@ -290,7 +290,7 @@ enum Answer {
     /// A result block taken out of the promise (null when there was none).
     Block(usize, usize),
     Bytes(Vec<u8>),
-    Unit,
+    Void,
 }
 
 /// Runs `job` on the thread that owns promise `id`, in a task there, and returns its answer. Every
@@ -377,7 +377,7 @@ fn unwatch(id: i64, token: u64) -> Answer {
     if let Some(i) = index(&t, id) {
         t.watchers.retain(|&w| w != (i, token));
     }
-    Answer::Unit
+    Answer::Void
 }
 
 fn wait_foreign(id: i64, timeout_ns: i64) -> i64 {
@@ -428,7 +428,7 @@ fn wait_foreign(id: i64, timeout_ns: i64) -> i64 {
         if woke == task::WAIT_TIMEOUT {
             ask(id, move || {
                 request_cancel(id);
-                Answer::Unit
+                Answer::Void
             });
             return TIMEOUT;
         }
@@ -1071,7 +1071,7 @@ pub(crate) fn park_end() -> bool {
 /// Completes `i` with no value (a finished sleep): `wait` answers 0 and nothing is left to take.
 fn complete_unit(t: &mut Table, i: usize) {
     if t.state[i] == State::Pending {
-        // A unit value, so `wait` takes `Unit` (an empty result reads as closed).
+        // A unit value, so `wait` takes `Void` (an empty result reads as closed).
         put_int(t, i, 0);
     }
 }
@@ -1137,7 +1137,7 @@ fn put_int(t: &mut Table, i: usize, value: i64) {
     wake(t, i);
 }
 
-/// Completes `id` with a unit result: a block `wait` can take as `Unit` (an empty result reads as
+/// Completes `id` with a unit result: a block `wait` can take as `Void` (an empty result reads as
 /// closed, so a flush or write promise ends this way).
 pub fn io_done_unit(id: i64) {
     let ptr = alloc::alloc(8);
@@ -1396,7 +1396,7 @@ pub extern "C-unwind" fn msrt_promise_on_cancel(id: i64, cancel: i64) {
     if is_foreign(id) {
         ask(id, move || {
             msrt_promise_on_cancel(id, cancel);
-            Answer::Unit
+            Answer::Void
         });
         return;
     }
@@ -1424,7 +1424,7 @@ pub extern "C-unwind" fn msrt_promise_limit(id: i64, timeout_ns: i64) {
     if is_foreign(id) {
         ask(id, move || {
             msrt_promise_limit(id, timeout_ns);
-            Answer::Unit
+            Answer::Void
         });
         return;
     }
@@ -2155,7 +2155,7 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
     if is_foreign(id) {
         ask(id, move || {
             msrt_promise_drop(id);
-            Answer::Unit
+            Answer::Void
         });
         return;
     }

@@ -20,7 +20,7 @@ enum Shape:
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Unit:
+fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
 	print("{name} {(now - t0) / 1000} {chk}")
 
@@ -196,7 +196,7 @@ fn m_str_build_map() Int:
 		t += e.value.length()
 	return t
 
-fn main() Unit:
+fn main() Void:
 	t_m_struct_values := monotonic().tick
 	stop("m_struct_values", t_m_struct_values, m_struct_values())
 

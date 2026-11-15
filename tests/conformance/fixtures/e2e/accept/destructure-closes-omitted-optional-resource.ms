@@ -5,7 +5,7 @@
 type Handle:
 	id: Int
 
-fn var Handle.close() Unit!:
+fn var Handle.close() Void!:
 	print("close {self.id}")
 
 type Job:
@@ -14,7 +14,7 @@ type Job:
 	spare: Handle?
 	more: List[Handle]
 
-fn keep(job: Job, var out: List[Handle]) Unit:
+fn keep(job: Job, var out: List[Handle]) Void:
 	{input} := job
 	out.append(input)
 	print("keep end")

@@ -15,13 +15,13 @@ fn strip_nl(text: String) String:
 		end -= 1
 	return chars.slice(start, end).get([]).join("")
 
-fn add(var cs: Cases, name: String, prog: String, inp: String? = none) Unit:
+fn add(var cs: Cases, name: String, prog: String, inp: String? = none) Void:
 	var s = strip_nl(prog) + "\n"
 	if text := inp:
 		s += "====\n" + text + "\n"
 	cs.push(name, s)
 
-export fn gen_c57() Unit:
+export fn gen_c57() Void:
 	var cs = Cases(build_oracle("c57-assembler-vm"))
 	add(
 		var cs,

@@ -23,13 +23,13 @@ fn got_line(input: ReadStream) Bool:
 
     return false
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
     _ignored := stdout().write(text)
 
 fn since(started: Instant) Int:
     return monotonic().difference(started).to_nanoseconds()
 
-fn report(name: String, ops: Int, started: Instant) Unit:
+fn report(name: String, ops: Int, started: Instant) Void:
     say("{name} {ops} {since(started)}\n")
 
 fn ident[T](x: T) T:
@@ -71,7 +71,7 @@ fn bench_string() Int:
     report("string_append_50k", 50000, t)
     return built.length()
 
-fn bench_read_line() Unit:
+fn bench_read_line() Void:
     t := monotonic()
     input := stdin()
     var lines = 0
@@ -203,7 +203,7 @@ fn bench_for_list() Int:
     report("for_list", 1000000, t)
     return fs
 
-fn main() Unit:
+fn main() Void:
     built := bench_string()
     bench_read_line()
 

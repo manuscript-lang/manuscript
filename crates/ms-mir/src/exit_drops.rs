@@ -12,7 +12,7 @@ use crate::types::Ty;
 fn is_exit_tail(op: Op) -> bool {
     matches!(
         op,
-        Op::Drop | Op::DropIf | Op::DepthLeave | Op::IConst | Op::BConst | Op::UnitConst
+        Op::Drop | Op::DropIf | Op::DepthLeave | Op::IConst | Op::BConst | Op::VoidConst
     )
 }
 

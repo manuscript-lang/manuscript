@@ -4,5 +4,5 @@
 type List[T]:
     value: T
 
-fn f() Unit:
+fn f() Void:
     xs := [1]

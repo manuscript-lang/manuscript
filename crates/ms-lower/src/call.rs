@@ -566,7 +566,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         if self.dead {
             self.finish_places(&args.places);
-            return Ok(self.dummy(MTy::UNIT));
+            return Ok(self.dummy(MTy::VOID));
         }
         let owned_mask = self.cx.owned_mask(c);
         let fid = if owned_mask.is_some() {
@@ -1066,7 +1066,7 @@ impl<'a> FnLower<'a> {
             .b
             .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(MTy::STR), Some(MTy::PTR))
             .expect("slot");
-        self.call_runtime(sym, &[s, slot], MTy::UNIT)
+        self.call_runtime(sym, &[s, slot], MTy::VOID)
             .expect("trim view");
         let v = self
             .b
@@ -1265,7 +1265,7 @@ impl<'a> FnLower<'a> {
                         return Ok(recv);
                     }
                     self.close_receiver(&kind, recv_expr, recv)?;
-                    // The call is checked as `Unit!`: it succeeds, since a part that fails faults.
+                    // The call is checked as `Void!`: it succeeds, since a part that fails faults.
                     let result = self.mty(&self.cx.session.test_outcome())?;
                     let TyKind::Alt(alt) = self.b.m.types.kind(result).clone() else {
                         return Err(Error::new("a close returns a Result"));

@@ -296,7 +296,7 @@ type Outcome:
 	source: Source
 	failure: Error?
 
-fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
+fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
 	{value, source} := gen.make(s)
 	if source.invalid: return Outcome(source, none)
 
@@ -318,7 +318,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
 
 property_failed := "property returned an error"
 
-fn run_property[T](property: fn(T) Unit!, value: T) Unit:
+fn run_property[T](property: fn(T) Void!, value: T) Void:
 	if property(value).is_error():
 		panic(property_failed)
 
@@ -332,14 +332,14 @@ fn simpler(candidate: List[Int], current: List[Int]) Bool:
 		if candidate[i] != current[i]: return candidate[i] < current[i]
 	return false
 
-fn replay[T](gen: Gen[T], property: fn(T) Unit!, choices: List[Int]) Outcome:
+fn replay[T](gen: Gen[T], property: fn(T) Void!, choices: List[Int]) Outcome:
 	return run_case(gen, property, Source(choices.clone(), 0, 0, false, false))
 
 // Tries `candidate`; returns the used draws when it still fails and is simpler than
 // `current`.
 fn attempt[T](
 	gen: Gen[T],
-	property: fn(T) Unit!,
+	property: fn(T) Void!,
 	candidate: List[Int],
 	current: List[Int]
 ) List[Int]?:
@@ -355,7 +355,7 @@ fn attempt[T](
 // no progress or `budget` replays run.
 fn shrink[T](
 	gen: Gen[T],
-	property: fn(T) Unit!,
+	property: fn(T) Void!,
 	choices: List[Int],
 	budget: Int
 ) List[Int]:
@@ -414,9 +414,9 @@ A fault (`panic`) inside a property counts as a failing case and shrinks like an
 export fn check[T](
 	name: String,
 	gen: Gen[T],
-	property: fn(T) Unit!,
+	property: fn(T) Void!,
 	options: PropertyOptions = PropertyOptions()
-) Unit!:
+) Void!:
 	config := settings(options.runs)
 	var chosen = options.seed
 	if chosen.is_none():
@@ -480,12 +480,12 @@ export fn check[T](
 fn report[T](
 	name: String,
 	gen: Gen[T],
-	property: fn(T) Unit!,
+	property: fn(T) Void!,
 	failing: Source,
 	message: Error,
 	seed: Int,
 	executed: Int
-) Unit!:
+) Void!:
 	used := failing.choices.take(failing.pos)
 	small := shrink(gen, property, used, 2000)
 	final := replay(gen, property, small)

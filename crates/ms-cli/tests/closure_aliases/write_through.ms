@@ -1,6 +1,6 @@
 import stdout from "@std/io/io.ms"
 
-fn invoke(f: fn() Unit) Unit:
+fn invoke(f: fn() Void) Void:
     f()
 
 type Box:
@@ -11,10 +11,10 @@ type Pair:
     left: List[Int]
     right: List[Int]
 
-fn var Box.bump() Unit:
+fn var Box.bump() Void:
     self.count += 1
 
-fn add(var values: List[Int]) Unit:
+fn add(var values: List[Int]) Void:
     values.append(12)
 
 fn next(var count: Int) Int:
@@ -22,7 +22,7 @@ fn next(var count: Int) Int:
     count += 1
     return result
 
-fn branch(var box: Box, take: Bool) Unit:
+fn branch(var box: Box, take: Bool) Void:
     if take:
         // A scalar `var` copies, so the closure changes the copy, not `box.count`.
         var _count = box.count
@@ -30,7 +30,7 @@ fn branch(var box: Box, take: Bool) Unit:
 
     box.count += 1
 
-fn main() Unit:
+fn main() Void:
     var calls = 0
     var rows = [[1], [2]]
     var first = rows[next(var calls)]

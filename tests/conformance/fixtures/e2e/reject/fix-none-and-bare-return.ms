@@ -3,7 +3,7 @@
 fn find() Int?:
 	return none
 
-fn run() Unit!:
+fn run() Void!:
 	if find() != none:
 		return
 	return

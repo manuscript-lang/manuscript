@@ -23,7 +23,7 @@ fn Big.me() Big: return self
 fn first_of(b: Big) Int:
     return b.items[0]
 
-fn main() Unit:
+fn main() Void:
     w := id(mk(3))
     p := pass(mk(4))
     q := id(id(mk(5)))

@@ -19,7 +19,7 @@ fn score(s: String) Int:
         n += 32
     return n
 
-fn main() Unit:
+fn main() Void:
     all := ["a", "", "héllo", "abcdefgh", "abcde", "abcdef", "b", "é", "abcdefghi"]
     for s in all:
         _i := stdout().write("{score(s)} ")

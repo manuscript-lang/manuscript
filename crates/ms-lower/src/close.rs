@@ -385,7 +385,7 @@ fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value, slot: Option<(Value, MTy
         b.emit(Op::Drop, &[left], Imm::None, None);
     }
     let msg = b.str_lit("a resource could not be closed: its close returned an error");
-    let ext = crate::text::runtime_fn(b.m, "msrt_fault_string", &[MTy::STR], MTy::UNIT);
+    let ext = crate::text::runtime_fn(b.m, "msrt_fault_string", &[MTy::STR], MTy::VOID);
     b.call_rt(ext, &[msg]);
     b.unreachable();
     b.switch_to(good);
@@ -395,7 +395,7 @@ fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value, slot: Option<(Value, MTy
 }
 
 /// Calls the close operation on the value of type `ty` stored at `ptr`, in place; the result is
-/// `Unit`, or the `Result` of a close that can fail, which the caller owns. A close that changes
+/// `Void`, or the `Result` of a close that can fail, which the caller owns. A close that changes
 /// `self` takes the address; the others take the value as a borrow.
 fn close_at_result(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MTy) -> Value {
     match kind {
@@ -582,7 +582,7 @@ impl FnLower<'_> {
             ty: MTy::PTR,
             mode: Mode::Borrow,
         }];
-        let mut b = FuncBuilder::new(self.b.m, "close_optional", params, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "close_optional", params, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         let ptr = b.params()[0];
         emit_parts(&mut b, ptr, Shape::Opt(inner, kind));
@@ -851,7 +851,7 @@ impl FnLower<'_> {
         let TyKind::Alt(a) = self.b.m.types.kind(r).clone() else {
             return false;
         };
-        self.b.m.alts[a.index()].cases[Std::OK].fields[0].1 == MTy::UNIT
+        self.b.m.alts[a.index()].cases[Std::OK].fields[0].1 == MTy::VOID
     }
 
     /// Whether the elaborate pass can close the owned binding that lives in memory: nothing
@@ -860,7 +860,7 @@ impl FnLower<'_> {
     fn raw_closable(&mut self, binding: &ct::BindingRef, kind: &CloseKind) -> bool {
         let uid = binding.uid;
         let unit_close = match kind {
-            CloseKind::Func { fid, .. } => self.b.m.funcs[fid.index()].ret == MTy::UNIT,
+            CloseKind::Func { fid, .. } => self.b.m.funcs[fid.index()].ret == MTy::VOID,
             CloseKind::Iface(..) => true,
         };
         if !unit_close && !self.fallible_close_ok(kind, uid) {
@@ -1077,7 +1077,7 @@ impl FnLower<'_> {
             ty: MTy::PTR,
             mode: Mode::Borrow,
         }];
-        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         b.func_mut().slot_close = b.m.needs_drop(ty).then_some(ty);
@@ -1102,7 +1102,7 @@ impl FnLower<'_> {
             ty: MTy::PTR,
             mode: Mode::Borrow,
         }];
-        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         let p = b.params()[0];
@@ -1270,7 +1270,7 @@ impl FnLower<'_> {
                 ty: MTy::PTR,
                 mode: Mode::Borrow,
             }];
-            let mut stub = ms_mir::ir::Func::new("close_parts", ps, MTy::UNIT);
+            let mut stub = ms_mir::ir::Func::new("close_parts", ps, MTy::VOID);
             stub.linkage = Linkage::Internal;
             stub.kind = FuncKind::Normal;
             let fid = self.b.m.add_func(stub);
@@ -1350,7 +1350,7 @@ impl FnLower<'_> {
             ty: MTy::PTR,
             mode: Mode::Borrow,
         }];
-        let mut b = FuncBuilder::new(self.b.m, "close_parts", ps, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "close_parts", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         let p = b.params()[0];
@@ -1417,7 +1417,7 @@ impl FnLower<'_> {
             ty: MTy::PTR,
             mode: Mode::Borrow,
         }];
-        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         let p = b.params()[0];
@@ -1517,7 +1517,7 @@ impl FnLower<'_> {
             ty: if in_slot { MTy::PTR } else { ty },
             mode: Mode::Borrow,
         }];
-        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         let v = b.params()[0];
@@ -1618,13 +1618,13 @@ impl FnLower<'_> {
     /// Closes the owned `v` with `kind`, shielded like any other close; the value after it.
     pub(crate) fn close_discarded_kind(&mut self, kind: &CloseKind, v: Value) -> Value {
         let mt = self.ty_of(v);
-        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
+        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::VOID);
         let v = if kind.writes_back() && self.b.m.needs_drop(mt) {
             self.close_owned_in_owned_slot(kind, v, mt)
         } else {
             close_owned(&mut self.b, kind, v, mt)
         };
-        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::VOID);
         v
     }
 
@@ -1659,7 +1659,7 @@ impl FnLower<'_> {
             ty: MTy::PTR,
             mode: Mode::Borrow,
         }];
-        let mut b = FuncBuilder::new(self.b.m, "drop_slot", ps, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "drop_slot", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         b.func_mut().slot_close = Some(ty);
@@ -1697,7 +1697,7 @@ impl FnLower<'_> {
         let msg = self
             .b
             .str_lit("a resource could not be closed: its close returned an error");
-        let ext = crate::text::runtime_fn(self.b.m, "msrt_fault_string", &[MTy::STR], MTy::UNIT);
+        let ext = crate::text::runtime_fn(self.b.m, "msrt_fault_string", &[MTy::STR], MTy::VOID);
         self.b.call_rt(ext, &[msg]);
         self.b.unreachable();
         self.b.switch_to(good);
@@ -1716,12 +1716,12 @@ impl FnLower<'_> {
 
     /// Closes the value of type `ty` at `ptr` with `kind`, shielded like any other close.
     pub(crate) fn close_at_shielded(&mut self, kind: &CloseKind, ptr: Value, ty: MTy) {
-        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
+        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::VOID);
         if let Some(failed) = self.deferred_close {
             close_at_deferred(&mut self.b, kind, ptr, ty, failed);
         } else {
             close_at(&mut self.b, kind, ptr, ty);
         }
-        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::VOID);
     }
 }

@@ -2,5 +2,5 @@
 // conform: phase=check
 type Map[K, V]:
     value: V
-fn f() Unit:
+fn f() Void:
     xs := {1: 2}

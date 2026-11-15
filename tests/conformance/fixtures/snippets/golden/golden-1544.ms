@@ -5,13 +5,13 @@ import stdout from "@std/io/io.ms"
 type UnusedFixture:
     value: Int
 impl TestHooks for UnusedFixture:
-    fn before_all() Unit:
+    fn before_all() Void:
         written := stdout().write("UNUSED before_all").get()
-    fn before_each() Unit:
+    fn before_each() Void:
         written := stdout().write("UNUSED before_each").get()
-    fn after_each() Unit:
+    fn after_each() Void:
         written := stdout().write("UNUSED after_each").get()
-    fn after_all() Unit:
+    fn after_all() Void:
         written := stdout().write("UNUSED after_all").get()
 test "plain test":
     expect_equal(1 + 1, 2)?

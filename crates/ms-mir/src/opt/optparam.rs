@@ -114,7 +114,7 @@ fn split_all(m: &Module, f: &mut Func) -> bool {
 
 fn apply(m: &Module, slot: &mut Func, splits: &[(usize, usize, Ty)]) {
     // Snapshot constructors; the function is rewritten edge by edge.
-    let mut f = std::mem::replace(slot, crate::ir::Func::new("", Vec::new(), Ty::UNIT));
+    let mut f = std::mem::replace(slot, crate::ir::Func::new("", Vec::new(), Ty::VOID));
     let mut defs: ValueMap<(Op, Vec<Value>)> = ValueMap::new();
     for b in &f.blocks {
         for i in &b.insts {

@@ -205,7 +205,7 @@ Interpolation and direct `to_string()` conversion use the forms below, independe
 | --- | --- |
 | String | Contents unchanged; inserted braces/quotes are ordinary output characters and are not parsed again |
 | Bool | `true` or `false` |
-| Unit | `unit` |
+| Void | `unit` |
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |

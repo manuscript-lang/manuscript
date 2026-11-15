@@ -4,7 +4,7 @@ import filled, flatten from "@std/collections/collections.ms"
 type Token:
     id: Int
 
-fn var Token.close() Unit!:
+fn var Token.close() Void!:
     return ok(unit)
 
 fn Token.equals(other: Token) Bool:
@@ -13,18 +13,18 @@ fn Token.equals(other: Token) Bool:
 type Holder:
     token: Token
 
-fn concrete(values: List[Token], token: Token, nested: List[List[Token]]) Unit:
+fn concrete(values: List[Token], token: Token, nested: List[List[Token]]) Void:
     _distinct := values.distinct()  // error: Clonable
     _repeated := filled(token, 2)  // error: Clonable
     _flattened := flatten(nested)  // error: Clonable
     _nested_distinct := nested.distinct()  // error: Clonable
 
-fn callable_values(values: List[Token]) Unit:
+fn callable_values(values: List[Token]) Void:
     _distinct := values.distinct  // error: Clonable
     _repeat := filled[Token]  // error: Clonable
     _concatenate := flatten[Token]  // error: Clonable
 
-fn held_resource(holder: Holder) Unit:
+fn held_resource(holder: Holder) Void:
     _repeated := filled(holder, 2)  // error: Clonable
     _flattened := flatten([[holder]])  // error: Clonable
 

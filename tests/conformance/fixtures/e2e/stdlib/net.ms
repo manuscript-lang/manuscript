@@ -57,7 +57,7 @@ test "a read cancelled by its timeout leaves the stream closable":
 	expect_true(within(var client.input, 50.milliseconds()).is_error())?
 	client.close()?
 
-fn accept_all(listener: Listener) Unit!:
+fn accept_all(listener: Listener) Void!:
 	while true:
 		_connection := listener.accept().wait()?
 
@@ -152,7 +152,7 @@ test "typed addresses preserve normalization and reject zones":
 	expect_ip_error("fe80::1%eth0")?
 	expect_false((contains_ip(parse_cidr("::ffff:192.0.2.0/120")?, ip)?))?
 
-fn expect_ip_error(input: String) Unit!:
+fn expect_ip_error(input: String) Void!:
 	expect_equal(
 		(expect_error(parse_ip(input))?),
 		Error("network: invalid data", kind: "EBADMSG"),

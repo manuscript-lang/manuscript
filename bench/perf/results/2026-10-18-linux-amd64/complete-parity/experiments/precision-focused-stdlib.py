@@ -26,7 +26,7 @@ import bench_path_url_math from "./pathurl.ms"
 import bench_binary from "./binarybench.ms"
 import bench_list from "./lists.ms"
 import bench_numbers from "./numbers.ms"
-fn main() Unit:
+fn main() Void:
     let name = arguments().get(0, "")
     if name.starts_with("string."): bench_string()
     if name.starts_with("map."): bench_map_set()

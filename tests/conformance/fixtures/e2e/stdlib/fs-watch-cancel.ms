@@ -9,7 +9,7 @@ import (
 
 // Tells the test the watch is registered, reads events until `last` shows up, tells the
 // test again, then waits for more inside the native watcher.
-fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
+fn follow(root: String, last: String, seen: WriteStream[Int]) Void!:
 	var events = watch(root, recursive: true)?
 	var out = seen
 	out.write(0)?

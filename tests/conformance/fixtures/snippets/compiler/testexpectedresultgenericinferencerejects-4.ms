@@ -3,7 +3,7 @@
 // conform: origin=pkg/compiler/contextual_generics_test.go:93 TestExpectedResultGenericInferenceRejects
 fn required(value: Int) Int: value
 
-fn first() Unit:
+fn first() Void:
     var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
     callback = required
     callback()

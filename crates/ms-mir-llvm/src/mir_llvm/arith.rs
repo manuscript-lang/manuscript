@@ -19,7 +19,7 @@ pub(super) const AREA: Area = Area {
 fn ty_ok(k: &TyKind) -> bool {
     matches!(
         k,
-        TyKind::Unit
+        TyKind::Void
             | TyKind::Int
             | TyKind::Float
             | TyKind::Float32
@@ -40,7 +40,7 @@ fn handles(op: Op) -> bool {
         Op::IConst
             | Op::FConst
             | Op::BConst
-            | Op::UnitConst
+            | Op::VoidConst
             | Op::IAdd
             | Op::ISub
             | Op::IMul
@@ -248,7 +248,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .unwrap_or_default();
     if matches!(
         inst.op,
-        Op::IConst | Op::FConst | Op::BConst | Op::UnitConst
+        Op::IConst | Op::FConst | Op::BConst | Op::VoidConst
     ) {
         return;
     }

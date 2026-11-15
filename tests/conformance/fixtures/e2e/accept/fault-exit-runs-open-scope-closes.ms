@@ -6,10 +6,10 @@ import stdout from "@std/io/io.ms"
 type Marker:
 	name: String
 
-fn var Marker.close() Unit!:
+fn var Marker.close() Void!:
 	_ := stdout().write("closed {self.name}\n")
 
-fn main() Unit:
+fn main() Void:
 	_ := stdout().write("start\n")
 	marker := Marker("outer")
 	panic("boom {marker.name}")

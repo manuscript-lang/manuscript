@@ -2,7 +2,7 @@ import (
 	stdout from "@std/io/io.ms",
 )
 
-fn say(text: String) Unit:
+fn say(text: String) Void:
 	_ignored := stdout().write(text)
 
 fn probe(a: String, b: String) Int:
@@ -14,5 +14,5 @@ fn probe(a: String, b: String) Int:
 	n += a.parse_int().get(100)
 	return n
 
-fn main() Unit:
+fn main() Void:
 	say("{probe("hello", "ll")} {probe("12345", "34")} {probe("abcdefg", "zz")}\n")

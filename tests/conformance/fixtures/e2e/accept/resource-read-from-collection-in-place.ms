@@ -5,7 +5,7 @@
 type Handle:
 	id: Int
 
-fn var Handle.close() Unit!:
+fn var Handle.close() Void!:
 	print("close {self.id}")
 
 fn id_of(handle: Handle) Int:

@@ -3,7 +3,7 @@ import base64_encode, base64_decode, hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto/crypto.ms"
 import BytesBuilder from "@std/bytes.ms"
 
-export fn bench_binary() Unit:
+export fn bench_binary() Void:
     blob := words(20000).join(",").to_bytes()
     bench(
         "encoding.base64_encode", blob.length(),

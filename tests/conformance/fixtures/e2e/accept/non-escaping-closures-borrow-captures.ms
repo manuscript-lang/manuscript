@@ -25,10 +25,10 @@ fn nested(m: Matrix, names: List[String]) Int:
 
 	return total(m, outer)
 
-fn push(var out: List[Int], n: Int) Unit:
+fn push(var out: List[Int], n: Int) Void:
 	out.append(n)
 
-fn each(f: fn(Int) Unit) Unit:
+fn each(f: fn(Int) Void) Void:
 	f(1)
 	f(2)
 	f(3)
@@ -84,7 +84,7 @@ fn keep_opt(text: String) Int:
 		t += o.get()()
 	return t
 
-fn store(var fs: List[fn() Int], f: fn() Int) Unit:
+fn store(var fs: List[fn() Int], f: fn() Int) Void:
 	fs.append(f)
 
 fn keep_user(text: String) Int:

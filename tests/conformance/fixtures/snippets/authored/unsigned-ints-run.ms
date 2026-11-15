@@ -14,7 +14,7 @@ fn total(values: List[UInt8]) UInt8:
         sum = sum + v
     return sum
 
-fn main() Unit:
+fn main() Void:
     low: UInt8 := 0
     high: UInt8 := 255
     mid: UInt16 := 65535

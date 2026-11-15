@@ -14,7 +14,7 @@ them show no half-drawn frame.
 import new_screen from "@std/cli/screen.ms"
 import raw_mode from "@std/cli/terminal.ms"
 
-fn main() Unit!:
+fn main() Void!:
     raw := raw_mode()?
     var screen = new_screen()
     screen.draw(raw, ["> hello", "status: ready"], 0, 7)?
@@ -40,7 +40,7 @@ fn var Screen.draw(
 	rows: List[String],
 	cursor_row: Int,
 	cursor_column: Int,
-) Unit!:
+) Void!:
 	return terminal.write(self.render(rows, cursor_row, cursor_column))
 
 // The bytes that turn what was drawn last into `rows`, which also become what was
@@ -96,7 +96,7 @@ fn var Screen.render(rows: List[String], cursor_row: Int, cursor_column: Int) St
 
 // Forgets what was drawn, for use after something wrote to the terminal behind the
 // screen; the next draw starts at the cursor.
-fn var Screen.reset() Unit:
+fn var Screen.reset() Void:
 	self.previous = List[String]()
 	self.cursor_row = 0
 
@@ -104,7 +104,7 @@ fn var Screen.reset() Unit:
 	if size.is_ok(): self.height = size.get(none).rows
 
 // Updates the terminal height after a `Resize` event.
-fn var Screen.resize(rows: Int) Unit:
+fn var Screen.resize(rows: Int) Void:
 	self.height = rows
 
 // A screen that starts drawing at the current cursor row; the height is the terminal's,

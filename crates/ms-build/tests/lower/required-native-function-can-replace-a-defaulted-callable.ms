@@ -3,7 +3,7 @@ import floor from "@std/math/math.ms"
 
 fn original(value: Float = 7.0) Float: value
 
-fn main() Unit:
+fn main() Void:
     var callback = original
     callback = floor
 

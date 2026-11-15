@@ -69,7 +69,7 @@ fn var Scram.respond(server_first: String) Bytes!:
 	return ok("{without_proof},p={base64_encode(proof)}".to_bytes())
 
 // Checks the server-final message proves the server knows the password.
-fn Scram.verify(server_final: String) Unit!:
+fn Scram.verify(server_final: String) Void!:
 	if server_final.starts_with("e="): return error(failed("rejected: {server_final}"))
 	if not server_final.starts_with("v="): return error(
 		failed("server-final message is invalid")

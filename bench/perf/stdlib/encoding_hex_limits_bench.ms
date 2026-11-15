@@ -15,7 +15,7 @@ fn zeros(count: Int) Bytes:
 	for unused in 0..count: out.append(0)
 	return out.build()
 
-fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
+fn decode_case(length: Int, limit: Int?, bad: Int = 0) Void!:
 	var text = "0".repeat(length)?
 	if bad == 1: text = "z" + text.view(1, text.length())
 	if bad == 2: text = text.view(0, length - 1) + "z"
@@ -32,13 +32,13 @@ fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
 	else:
 		expected = ok(zeros(length / 2))
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(hex_decode(text, limit), expected)?
 		return keep(length)
 
 	measure(1, work)?
 
-fn unicode_case(limit: Int) Unit!:
+fn unicode_case(limit: Int) Void!:
 	expected: Bytes! := error(
 		Error(
 			if limit == 0: "encoding: limit exceeded" else: "encoding: invalid data",
@@ -46,13 +46,13 @@ fn unicode_case(limit: Int) Unit!:
 		)
 	)
 
-	fn work() Unit!:
+	fn work() Void!:
 		expect_equal(hex_decode("é", limit), expected)?
 		return keep(2)
 
 	measure(1, work)?
 
-fn neighbor(which: Int) Unit!:
+fn neighbor(which: Int) Void!:
 	data := zeros(if which == 3 or which == 4: 8192 else: 4096)
 	text := "\u{0}".repeat(4096)?
 	expected_text: String! := ok(text.clone())
@@ -60,7 +60,7 @@ fn neighbor(which: Int) Unit!:
 	b64 := ("A".repeat(5462)?) + "=="
 	scalar := "é".to_bytes()
 
-	fn work() Unit!:
+	fn work() Void!:
 		if which == 0: expect_equal(hex_encode(data), hex)?
 		else if which == 1: expect_equal(base64_encode(data, false), b64)?
 		else if which == 2: expect_equal(ascii_decode(data), expected_text)?

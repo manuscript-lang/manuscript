@@ -1,14 +1,14 @@
-fn shout(s: String) Unit:
+fn shout(s: String) Void:
     print(s)
 
-fn report(xs: List[String]) Unit:
+fn report(xs: List[String]) Void:
     xs.for_each(shout)
 
 fn closure(xs: List[String]) List[String]:
     return xs.map(fn(s): s.upper())
 
-fn closure_prints(xs: List[String]) Unit:
+fn closure_prints(xs: List[String]) Void:
     xs.for_each(fn(s): print(s))
 
-fn main() Unit:
+fn main() Void:
     return

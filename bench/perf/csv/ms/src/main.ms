@@ -18,7 +18,7 @@ fn rows_of(shape: String) String:
 
 	return text
 
-fn main() Unit:
+fn main() Void:
 	for shape in ["quoted", "plain"]:
 		text := rows_of(shape)
 		var best = 9223372036854775807

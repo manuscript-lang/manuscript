@@ -3,7 +3,7 @@
 type Handle:
 	id: Int
 
-fn var Handle.close() Unit!:
+fn var Handle.close() Void!:
 	print("close {self.id}")
 
 // The callee owns the handle only on the path that returns it; the other paths close it.

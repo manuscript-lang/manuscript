@@ -531,7 +531,7 @@ impl Verifier<'_> {
                 self.err(Some(bi), "switch value must be int")
             }
             Term::Ret(v) => {
-                let ty = v.map(|v| f.ty(v)).unwrap_or(Ty::UNIT);
+                let ty = v.map(|v| f.ty(v)).unwrap_or(Ty::VOID);
                 if ty != f.ret {
                     self.err(
                         Some(bi),

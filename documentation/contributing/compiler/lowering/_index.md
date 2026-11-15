@@ -27,7 +27,7 @@ Every Manuscript type has one word-level representation: `Int` is `i64`, `Float`
 
 ## Equality and keys
 
-Types whose machine equality is Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Unit`) compare directly. Runtime collections of other element types take an element descriptor with `eq`, `hash`, and `copy` entries emitted by the compiler.
+Types whose machine equality is Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Void`) compare directly. Runtime collections of other element types take an element descriptor with `eq`, `hash`, and `copy` entries emitted by the compiler.
 
 ## Implementation scope
 

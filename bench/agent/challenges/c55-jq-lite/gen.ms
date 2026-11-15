@@ -12,12 +12,12 @@ fn add(
 	prog: String,
 	inputs: String = "null",
 	opts: String = "",
-) Unit:
+) Void:
 	head := if opts.is_empty(): "" else: opts + " "
 	tail := if inputs.ends_with("\n"): "" else: "\n"
 	cs.push(name, head + prog + "\n" + inputs + tail)
 
-export fn gen_c55() Unit:
+export fn gen_c55() Void:
 	var cs = Cases(build_oracle("c55-jq-lite"))
 	add(
 		var cs,

@@ -387,7 +387,7 @@ impl Pass<'_> {
     /// Walks an expression backwards: children in reverse evaluation order.
     fn expr(&mut self, e: &Expr, live: &mut Live) {
         match &e.kind {
-            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit => {}
+            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Void => {}
             ExprKind::Text(parts) => {
                 for part in parts.iter().rev() {
                     if let TextPart::Interp(i) = part {

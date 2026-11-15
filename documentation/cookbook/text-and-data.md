@@ -16,7 +16,7 @@ Save as `number.ms`. `parse_int()` returns an `Int?`.
 import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
-fn show(number: Int) Result[Unit, Error]:
+fn show(number: Int) Result[Void, Error]:
     stdout().write("{number}\n")?
     return stdout().flush()
 
@@ -48,12 +48,12 @@ import arguments from "@std/os/env.ms"
 import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     text := parse[String](arguments().get(0, default: "\"hello\""))?
     stdout().write("{text}\n")?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     return run()
 ```
 
@@ -83,14 +83,14 @@ type Config:
     name: String
     enabled: Bool = true
 
-fn run() Result[Unit, Error]:
+fn run() Result[Void, Error]:
     text := arguments().get(0, default: "\{\"name\":\"Sam\"\}")
     config := parse[Config](text)?
     encoded := stringify(config, StringifyOptions(strict: true))?
     stdout().write("{encoded}\n")?
     return stdout().flush()
 
-fn main() Unit!:
+fn main() Void!:
     return run()
 ```
 

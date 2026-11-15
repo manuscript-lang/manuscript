@@ -25,7 +25,7 @@ fn chunk_checksum(chunk: Int) Int!:
 fn start_chunk(chunk: Int) Promise[Int]:
 	return promise[Int](fn: chunk_checksum(chunk))
 
-fn main() Unit:
+fn main() Void:
 	var ps: List[Promise[Int]] = []
 	for chunk in 0..128:
 		ps.append(start_chunk(chunk))

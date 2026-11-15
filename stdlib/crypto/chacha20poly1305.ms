@@ -180,12 +180,12 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 			)
 	return ok(out.build())
 
-fn pad16(var out: BytesBuilder, length: Int) Unit:
+fn pad16(var out: BytesBuilder, length: Int) Void:
 	for index in length % 16..16:
 		if length % 16 != 0:
 			out.append(0)
 
-fn put_le64(var out: BytesBuilder, value: Int) Unit:
+fn put_le64(var out: BytesBuilder, value: Int) Void:
 	for offset in 0..8:
 		out.append(
 			bit_and(
@@ -264,7 +264,7 @@ fn le32(data: Bytes, at: Int) Int:
 		value = bit_or(value, shift_left(data.get(at + offset).to_int(), 8 * offset))
 	return value
 
-fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Unit:
+fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Void:
 	var va = state[a]
 	var vb = state[b]
 	var vc = state[c]

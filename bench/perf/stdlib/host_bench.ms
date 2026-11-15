@@ -37,7 +37,7 @@ fn var Whole.next() Bytes?!:
 	self.done = true
 	return ok(self.data.clone())
 
-fn var Whole.close() Unit!:
+fn var Whole.close() Void!:
 	return ok(unit)
 
 fn count_events(data: Bytes) Int:
@@ -57,7 +57,7 @@ fn count_events(data: Bytes) Int:
 bench "archive.zip_pack":
 	list := entries(2000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if b := pack(list, ArchiveFormat.Zip): return keep(b.length())
 		return keep(0)
 
@@ -66,7 +66,7 @@ bench "archive.zip_pack":
 bench "archive.tar_pack":
 	list := entries(2000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if b := pack(list, ArchiveFormat.Tar): return keep(b.length())
 		return keep(0)
 
@@ -74,7 +74,7 @@ bench "archive.tar_pack":
 
 bench "archive.zip_unpack":
 	if packed := pack(entries(2000), ArchiveFormat.Zip):
-		fn work() Result[Unit, Error]:
+		fn work() Result[Void, Error]:
 			if e := unpack(packed, ArchiveFormat.Zip): return keep(e.length())
 			return keep(0)
 
@@ -82,12 +82,12 @@ bench "archive.zip_unpack":
 
 bench "sse.feed":
 	data := sse_stream(2000)
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		return keep(count_events(data.clone()))
 	measure(2000, work)?
 
 bench "time.timestamp_to_string":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
 			for i in 0..20000:
@@ -97,7 +97,7 @@ bench "time.timestamp_to_string":
 	measure(20000, work)?
 
 bench "random.uuid_v4":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..20000:
 			if u := uuid_v4():

@@ -2,10 +2,10 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/named-types.md:52
 interface Counter:
-    var fn increment() Unit
+    var fn increment() Void
 
 type Val:
     val: Int
 
-fn var Val.increment() Unit:
+fn var Val.increment() Void:
     self.val = self.val + 1

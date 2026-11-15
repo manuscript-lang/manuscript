@@ -27,12 +27,12 @@ test "JSON exact numbers Unicode and nested roundtrip":
 	expect_equal((parse("\"\\uD83D\\uDE00\"")?), JsonValue.StringValue("😀"))?
 	expect_equal((parse("null")? | stringify(StringifyOptions(max_bytes: 4))?), "null")?
 
-fn expect_syntax_error[T](actual: T!) Unit!:
+fn expect_syntax_error[T](actual: T!) Void!:
 	cause := expect_error(actual)?
 	expect_equal(cause.kind, "EBADMSG")?
 	expect_contains(cause.message, "JSON: invalid data: line ")?
 
-fn expect_invalid_data[T](actual: T!) Unit!:
+fn expect_invalid_data[T](actual: T!) Void!:
 	cause := expect_error(actual)?
 	expect_equal(cause.kind, "EBADMSG")?
 	expect_contains(cause.message, "JSON: invalid data")?
@@ -267,9 +267,9 @@ test "JSON stringify indents like JSON.stringify and clamps at ten":
 	expect_equal(stringify(1, StringifyOptions(indent: -1)), negative)?
 
 type Holder:
-	done: Unit
+	done: Void
 
-test "JSON stringify omits a Unit field and rejects a Unit root":
+test "JSON stringify omits a Void field and rejects a Void root":
 	holder := Holder(unit)
 	expect_equal((encoded(holder)?), "\{\}")?
 
@@ -532,7 +532,7 @@ test "JSON round trips generic records and alternatives":
 	expect_equal((stringify(back)?), t)?
 
 test "JSON parse returns InvalidData for targets that cannot be read":
-	expect_false(parse[Unit]("null").is_ok())?
+	expect_false(parse[Void]("null").is_ok())?
 	expect_false(parse[Int]("-0").is_error())?
 	expect_false(parse[Float]("1e999").is_ok())?
 	expect_false(parse[String]("1").is_ok())?

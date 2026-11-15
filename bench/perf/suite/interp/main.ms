@@ -102,5 +102,5 @@ fn run(code: List[Op]) Int:
 	print("steps {steps}")
 	return vars[0]
 
-fn main() Unit:
+fn main() Void:
 	print("total {run(program(3000, 2000))}")

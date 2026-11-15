@@ -26,13 +26,13 @@ import (
 	within from "./support/conn.ms",
 )
 
-fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
+fn expect_process_error[T](outcome: T!, expected: Error) Void!:
 	match outcome:
 		ok(_): return error(Error("process misuse succeeded"))
 		error(cause):
 			if cause.kind != expected.kind: return error(Error("wrong process error"))
 
-fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
+fn expect_fs_error[T](outcome: T!, expected: Error) Void!:
 	match outcome:
 		ok(_): return error(Error("filesystem misuse succeeded"))
 		error(cause):

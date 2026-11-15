@@ -743,7 +743,7 @@ fn float_and_optional_rule(f: &mut Func, env: &mut Env, inst: &Inst) -> Act {
             // the constructor consumed it, so aliasing it here would revive a move.
             if matches!(
                 f.ty(args[0]),
-                Ty::INT | Ty::BOOL | Ty::FLOAT | Ty::UNIT | Ty::PTR
+                Ty::INT | Ty::BOOL | Ty::FLOAT | Ty::VOID | Ty::PTR
             ) {
                 Act::Alias(args[0])
             } else {

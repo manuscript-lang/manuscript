@@ -10,7 +10,7 @@ type Item:
 	id: Int
 	log: String
 
-fn var Item.close() Unit!:
+fn var Item.close() Void!:
 	append_file(self.log, "{self.id},").wait()?
 
 interface Sink:
@@ -32,13 +32,13 @@ fn events(log: String) String!:
 	bytes := read_file(log).wait()?
 	return ok(bytes.decode_utf8().get(""))
 
-fn borrowed_call(log: String) Unit:
+fn borrowed_call(log: String) Void:
 	_n := keep(Item(2, log.clone()), failing(log))
 
-fn consuming_call(log: String) Unit:
+fn consuming_call(log: String) Void:
 	_kept := pass(Item(3, log.clone()), failing(log))
 
-fn interface_call(log: String) Unit:
+fn interface_call(log: String) Void:
 	sink: Sink := Counter(1)
 	_n := sink.put(Item(4, log.clone()), failing(log))
 

@@ -1,4 +1,4 @@
-fn example() Unit:
+fn example() Void:
 	queue.enqueue(fn: return 7)
 	consume(
 		fn:

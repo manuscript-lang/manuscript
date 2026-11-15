@@ -14,7 +14,7 @@ fn hold(label: String) Int:
 
     return parts.length()
 
-fn main() Unit:
+fn main() Void:
     slow := promise(fn: ok(hold("timed out")))
     timed_out := slow.with(options: PromiseOptions(timeout: milliseconds(20))).wait()
     first := wait_first([promise(fn: ok(hold("loser"))), promise(fn: ok(4))])

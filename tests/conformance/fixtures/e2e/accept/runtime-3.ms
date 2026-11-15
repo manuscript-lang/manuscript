@@ -6,7 +6,7 @@ import expect_equal, expect_true, fail from "@std/test/test.ms"
 fn identity[T](value: T) T:
     return value
 
-fn probe() Unit!:
+fn probe() Void!:
     first := fn() Int!Error:
         return ok(3)
     second := fn:

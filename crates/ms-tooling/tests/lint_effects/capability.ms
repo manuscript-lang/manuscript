@@ -1,10 +1,10 @@
 interface Logger:
-    fn info(msg: String) Unit
+    fn info(msg: String) Void
 
 type ConsoleLogger:
     prefix: String
 
-fn ConsoleLogger.info(msg: String) Unit:
+fn ConsoleLogger.info(msg: String) Void:
     print(msg)
 
 fn price(log: Logger, n: Int) Int:

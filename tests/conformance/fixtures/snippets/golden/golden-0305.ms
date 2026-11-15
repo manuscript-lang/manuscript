@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn broken(value: Missing) Unit: return
+fn broken(value: Missing) Void: return
 fn empty[T]() T?: none
-fn first() Unit:
+fn first() Void:
     value := empty()

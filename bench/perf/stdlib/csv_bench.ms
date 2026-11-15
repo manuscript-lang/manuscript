@@ -8,7 +8,7 @@ bench "csv.stringify":
 	for i in 0..5000:
 		rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if s := stringify(rows): return keep(s.length())
 		return keep(0)
 
@@ -21,7 +21,7 @@ bench "csv.parse":
 
 	csv_text := stringify(rows).get("")
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if r := parse(csv_text): return keep(r.length())
 		return keep(0)
 
@@ -31,7 +31,7 @@ bench "csv.parse escaped quote field":
 	value := "a\"".repeat(8000)?
 	text := "\"{value.replace("\"", "\"\"")}\"\n"
 
-	fn work() Unit!:
+	fn work() Void!:
 		rows := parse(text)?
 		return keep(rows[0][0].length())
 

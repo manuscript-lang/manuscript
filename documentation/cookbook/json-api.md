@@ -29,11 +29,11 @@ type Numbers:
 type Total:
     total: Int
 
-fn greet(var exchange: HttpExchange, params: RouteParams) Unit!:
+fn greet(var exchange: HttpExchange, params: RouteParams) Void!:
     name := params.get_or("name", "world")
     return reply(var exchange, json(200, Greeting(message: "Hello, {name}!"))?)
 
-fn sum(var exchange: HttpExchange, params: RouteParams) Unit!:
+fn sum(var exchange: HttpExchange, params: RouteParams) Void!:
     body := read_body(var exchange)?
     numbers := parse[Numbers](body.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?)
     if numbers.is_error():
@@ -80,13 +80,13 @@ An unknown path answers 404 and a known path with another method answers 405 wit
 
 ## Serve the API
 
-Pass the router to `serve` in a function returning `Unit!`, with `main` handing it an address. `wait()` returns when the server stops; SIGINT and SIGTERM stop it gracefully.
+Pass the router to `serve` in a function returning `Void!`, with `main` handing it an address. `wait()` returns when the server stops; SIGINT and SIGTERM stop it gracefully.
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import serve from "@std/net/net.ms"
 
-fn main() Unit!:
+fn main() Void!:
     server := serve("0.0.0.0:8080", api().handler())?
     server.wait()?
 ```

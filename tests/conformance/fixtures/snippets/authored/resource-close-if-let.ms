@@ -4,13 +4,13 @@
 import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
-fn say(s: String) Unit:
+fn say(s: String) Void:
     stdout().write(s + "\n").get()
 
 type Res:
     name: String
 
-fn var Res.close() Unit!:
+fn var Res.close() Void!:
     say("close {self.name}")
 
 fn maybe(name: String, present: Bool) Res?:
@@ -31,13 +31,13 @@ fn early_return() Int:
 
     return 0
 
-fn local_optional() Unit:
+fn local_optional() Void:
     o := maybe("local", true)
     if r := o:
         say("body {r.name}")
     say("after local")
 
-fn absent() Unit:
+fn absent() Void:
     if r := maybe("absent", false):
         say("body {r.name}")
     else:
@@ -49,16 +49,16 @@ fn moved_on() Res:
 
     return Res("fallback")
 
-fn with_else_err() Unit:
+fn with_else_err() Void:
     if r := make("ok-result"):
         say("body {r.name}")
 
-fn var_payload() Unit:
+fn var_payload() Void:
     if var r = maybe("var", true):
         r = Res("var-reassigned")
         say("body {r.name}")
 
-fn main() Unit:
+fn main() Void:
     early_return()
     local_optional()
     absent()

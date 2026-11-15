@@ -8,7 +8,7 @@ import monotonic, now from "@std/time.ms"
 import random_bytes from "@std/random.ms"
 import system_info from "@std/os/system.ms"
 
-fn check_services() Unit!:
+fn check_services() Void!:
     arguments().length() | expect_equal(0)?
 
     before := monotonic()

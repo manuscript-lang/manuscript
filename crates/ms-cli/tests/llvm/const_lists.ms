@@ -1,7 +1,7 @@
 import stdout from "@std/io/io.ms"
 
 // The test replaces each placeholder list with 100 constants.
-fn main() Unit:
+fn main() Void:
     var o = stdout()
     a: List[Int] := [100]
     b: List[Int8] := [101]

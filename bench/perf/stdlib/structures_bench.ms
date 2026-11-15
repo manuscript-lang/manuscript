@@ -9,7 +9,7 @@ import (
 // Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying
 // flat shows the complexity class.
 bench "queue.enqueue_dequeue_100000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var queue = Queue[Int]()
 		for i in 0..100000:
 			queue.enqueue(i)
@@ -22,7 +22,7 @@ bench "queue.enqueue_dequeue_100000":
 	measure(100000 * 2, work)?
 
 bench "priority_queue.enqueue_dequeue_100000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var queue = PriorityQueue[Int]()
 		for i in 0..100000:
 			queue.enqueue((i * 7919) % 100003)
@@ -35,7 +35,7 @@ bench "priority_queue.enqueue_dequeue_100000":
 	measure(100000 * 2, work)?
 
 bench "deque.push_pop_both_ends_100000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var deque = Deque[Int]()
 
 		for i in 0..100000:
@@ -50,7 +50,7 @@ bench "deque.push_pop_both_ends_100000":
 	measure(100000 * 4, work)?
 
 bench "bitset.add_contains_100000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var set = BitSet()
 		for i in 0..100000:
 			set.add((i * 7919) % 1000003)
@@ -64,7 +64,7 @@ bench "bitset.add_contains_100000":
 	measure(100000 * 2, work)?
 
 bench "sorted_map.add_contains_100000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var map = SortedMap[Int, Int]()
 		var x = 1
 
@@ -84,7 +84,7 @@ bench "sorted_map.add_contains_100000":
 	measure(100000 * 2, work)?
 
 bench "list.insert_remove_middle_100000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var list = 0..100000
 
 		for i in 0..1000:
@@ -96,7 +96,7 @@ bench "list.insert_remove_middle_100000":
 	measure(2000, work)?
 
 bench "queue.enqueue_dequeue_400000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var queue = Queue[Int]()
 		for i in 0..400000:
 			queue.enqueue(i)
@@ -109,7 +109,7 @@ bench "queue.enqueue_dequeue_400000":
 	measure(400000 * 2, work)?
 
 bench "priority_queue.enqueue_dequeue_400000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var queue = PriorityQueue[Int]()
 		for i in 0..400000:
 			queue.enqueue((i * 7919) % 100003)
@@ -122,7 +122,7 @@ bench "priority_queue.enqueue_dequeue_400000":
 	measure(400000 * 2, work)?
 
 bench "deque.push_pop_both_ends_400000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var deque = Deque[Int]()
 
 		for i in 0..400000:
@@ -137,7 +137,7 @@ bench "deque.push_pop_both_ends_400000":
 	measure(400000 * 4, work)?
 
 bench "bitset.add_contains_400000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var set = BitSet()
 		for i in 0..400000:
 			set.add((i * 7919) % 1000003)
@@ -151,7 +151,7 @@ bench "bitset.add_contains_400000":
 	measure(400000 * 2, work)?
 
 bench "sorted_map.add_contains_400000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var map = SortedMap[Int, Int]()
 		var x = 1
 
@@ -171,7 +171,7 @@ bench "sorted_map.add_contains_400000":
 	measure(400000 * 2, work)?
 
 bench "list.insert_remove_middle_400000":
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		var list = 0..400000
 
 		for i in 0..1000:

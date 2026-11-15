@@ -9,7 +9,7 @@ fn var Counter.bump(by: Int) Int:
     self.total += by
     return self.total
 
-fn add(var xs: List[Int], v: Int) Unit:
+fn add(var xs: List[Int], v: Int) Void:
     xs.append(v)
 
 export fn main() Int:

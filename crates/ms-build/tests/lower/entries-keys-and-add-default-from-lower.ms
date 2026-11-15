@@ -3,7 +3,7 @@
 
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Void:
     var m: Map[String, Int] = Map()
     m.add_default_from("a", fn(key: String): 5)
 

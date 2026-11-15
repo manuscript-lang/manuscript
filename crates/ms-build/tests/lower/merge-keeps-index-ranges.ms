@@ -4,7 +4,7 @@
 // `var` lists all keep their ranges, so no access pays the negative-index normalization.
 import arguments from "@std/os/env.ms"
 
-fn main() Unit:
+fn main() Void:
 	n := arguments()[0].parse_int().get()
 	var a: List[Int] = []
 	var random = 1

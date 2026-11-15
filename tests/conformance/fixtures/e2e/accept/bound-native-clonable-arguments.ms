@@ -24,7 +24,7 @@ test "bound list mutators copy named string inputs without consuming callers":
 	expect_equal(next, "new-1")?
 	expect_equal(values, ["new-1", "new-1", "new-1"])?
 
-fn fill[T: Clonable](var target: List[T], item: T) Unit:
+fn fill[T: Clonable](var target: List[T], item: T) Void:
 	append := target.append
 	append(item)
 	append(item)
@@ -49,7 +49,7 @@ test "optional native adapter handles supplied and absent payloads":
 	expect_equal(values[0], text)?
 	expect_equal(text.get(), "next-2")?
 
-fn invalid(value: String, index: Int) Unit:
+fn invalid(value: String, index: Int) Void:
 	var values = ["old"]
 	set := values.set
 	set(index, value)

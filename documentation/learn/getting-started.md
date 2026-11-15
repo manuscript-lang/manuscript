@@ -54,12 +54,12 @@ Open `src/main.ms`:
 ```manuscript {filename="src/main.ms"}
 import arguments from "@std/os/env.ms"
 
-fn main() Unit:
+fn main() Void:
     print("Arguments: {arguments().length()}")
 ```
 
 - `import … from "…"` selects the APIs the file uses.
-- `main` starts the program. It returns `Unit`, `Unit!` (an error prints `error: <message>` and exits 1), `Int?!` (also an exit status), or `Int`; `export` is optional.
+- `main` starts the program. It returns `Void`, `Void!` (an error prints `error: <message>` and exits 1), `Int?!` (also an exit status), or `Int`; `export` is optional.
 - `print` writes a line and needs no import; `{...}` interpolates into strings.
 - One tab (or four spaces) opens a block; statements need no terminator.
 

@@ -14,7 +14,7 @@ import Closeable from "@std/core.ms"
 type Token:
 	id: Int
 
-fn var Token.close() Unit!:
+fn var Token.close() Void!:
 	print("close {self.id}")
 	return error(Error("close failed", kind: "ECLOSE"))
 
@@ -27,7 +27,7 @@ fn borrowed(cause: Error) Int!:
 	_resource := Token(3)
 	return error(cause)
 
-fn main() Unit:
+fn main() Void:
 	first := owned()
 	cause := first.err()
 	print(cause.message)

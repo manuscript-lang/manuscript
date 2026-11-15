@@ -201,7 +201,7 @@ fn solve(s: String) String:
 
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
-export fn gen_c13() Unit:
+export fn gen_c13() Void:
 	var rnd = seeded(13)
 	skus := ["A1", "B-2", "WIDGET", "GADGET-2", "Z9", "KNOB", "BOLT-10", "NUT"]
 	var big = List[String]()

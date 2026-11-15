@@ -9,5 +9,5 @@ fn T.f() Int:
 fn T.f() Int:
 	return 2
 
-fn main() Unit:
+fn main() Void:
 	print(T(1).f())

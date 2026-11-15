@@ -62,7 +62,7 @@ fn route(request: HttpRequest) HttpResponse:
 		),
 	)
 
-fn try_append(var fields: HttpHeaders, name: String, value: String) Unit:
+fn try_append(var fields: HttpHeaders, name: String, value: String) Void:
 	_ignored := fields.append(name, value)
 
 test "fetch returns a buffered text response":

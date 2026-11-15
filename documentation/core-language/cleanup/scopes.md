@@ -48,7 +48,7 @@ _ := file.close()
 slow_work(head)
 ```
 
-`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`output.flush()?`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
+`close` returns `Void!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`output.flush()?`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
 
 ## Close a resource explicitly
 
@@ -62,7 +62,7 @@ Flush before closing when you need the destination to catch up or need to handle
 ```manuscript
 import WriteStream from "@std/io/io.ms"
 
-fn finish(var output: WriteStream[String]) Unit!:
+fn finish(var output: WriteStream[String]) Void!:
     output.flush()?
     return output.close()
 ```
@@ -99,17 +99,17 @@ type Tracked:
     name: String
     closed: Bool = false
 
-fn var Tracked.close() Unit!:
+fn var Tracked.close() Void!:
     if not self.closed:
         self.closed = true
         print("close {self.name}")
 
-fn work() Unit!:
+fn work() Void!:
     _first := Tracked("first")
     _second := Tracked("second")
     print("work")
 
-fn main() Unit!:
+fn main() Void!:
     return work()
 ```
 

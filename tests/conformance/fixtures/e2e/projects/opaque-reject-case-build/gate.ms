@@ -12,7 +12,7 @@ export opaque enum Mode:
 fn Approved.label() String:
 	return "approved:{self.entity}"
 
-fn var Counter.bump() Unit:
+fn var Counter.bump() Void:
 	self.count += 1
 
 fn Counter.value() Int:

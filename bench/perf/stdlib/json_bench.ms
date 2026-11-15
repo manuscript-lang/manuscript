@@ -38,7 +38,7 @@ fn row_weight(tree: JsonValue, index: Int) Int:
 bench "json.parse":
 	doc := json_doc(5000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if parse(doc).is_ok(): return keep(1)
 		return keep(0)
 
@@ -47,7 +47,7 @@ bench "json.parse":
 bench "json.roundtrip":
 	doc := json_doc(5000)
 
-	fn work() Result[Unit, Error]:
+	fn work() Result[Void, Error]:
 		if v := parse(doc): return keep(encoded_length(v))
 		return keep(0)
 
@@ -57,7 +57,7 @@ bench "json.navigate":
 	doc := json_doc(5000)
 
 	if tree := parse(doc):
-		fn work() Result[Unit, Error]:
+		fn work() Result[Void, Error]:
 			var total = 0
 			for i in 0..100000:
 				total += row_weight(tree, i % 5000)

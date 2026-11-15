@@ -4,6 +4,6 @@
 import Partition from "@std/collections/collections.ms"
 import CsvOptions from "@std/data/csv.ms"
 
-fn example() Unit:
+fn example() Void:
     Set[String]()
     CsvOptions(delimiter: ",", line_ending: "\n")

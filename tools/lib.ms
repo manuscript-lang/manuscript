@@ -36,7 +36,7 @@ export fn dist_arch() String:
 	return "amd64"
 
 // Prints `message` and a newline to standard error.
-export fn note(message: String) Unit:
+export fn note(message: String) Void:
 	stderr().write("{message}\n").get()
 
 // The value of environment variable `name`, or `fallback`.

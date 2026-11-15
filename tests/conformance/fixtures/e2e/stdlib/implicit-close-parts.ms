@@ -11,7 +11,7 @@ type Tracked:
 	log: String
 	id: Int
 
-fn var Tracked.close() Unit!:
+fn var Tracked.close() Void!:
 	_ := append_file(self.log, "{self.id},").wait()
 
 fn track(log: String, id: Int) Tracked:
@@ -39,7 +39,7 @@ type Wrapper:
 	log: String
 	inner: Tracked
 
-fn var Wrapper.close() Unit!:
+fn var Wrapper.close() Void!:
 	_ := append_file(self.log, "wrapper,").wait()
 
 fn holds_fields(log: String) Int:

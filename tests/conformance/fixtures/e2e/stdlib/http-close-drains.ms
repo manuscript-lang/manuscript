@@ -13,7 +13,7 @@ import remove, stat, temporary_directory, write_file from "@std/os/fs.ms"
 fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
     return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()
 
-fn send(var conn: Connection, text: String) Unit!:
+fn send(var conn: Connection, text: String) Void!:
     conn.output.write(text.to_bytes())?
     return conn.output.flush()
 

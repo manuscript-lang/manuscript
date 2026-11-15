@@ -178,12 +178,12 @@ test('bare enum variants have declaration scopes and case stays an identifier', 
   assertScopes('enum response[T]:\n    pending\n    found(value: T)\n\nfn case(value: Int) Int: value\n', [
     ['enum', 'k'], ['response', 'nc'], ['pending', 'nc'], ['found', 'nc'], ['case', 'nf'],
   ]);
-  const tokens = tokenize('enum E:\n    case(value: Int)\nfn check() Unit:\n    case := 1\n');
+  const tokens = tokenize('enum E:\n    case(value: Int)\nfn check() Void:\n    case := 1\n');
   assert.ok(!tokens.some(token => token.kind === 'k' && token.text.includes('case')));
 });
 
 test('unindented comments do not end an enum declaration scope', () => {
-  assertScopes('enum E:\n    ready\n// comment\n    pending\n/* comment */\n    finished\n\nfn work() Unit: unit\n', [
+  assertScopes('enum E:\n    ready\n// comment\n    pending\n/* comment */\n    finished\n\nfn work() Void: unit\n', [
     ['enum', 'k'], ['E', 'nc'], ['ready', 'nc'], ['pending', 'nc'], ['finished', 'nc'], ['work', 'nf'],
   ]);
 });
@@ -197,7 +197,7 @@ const {prepareTokenizer} = exportsForTest.exports;
 
 test('prepared grammar preserves tokens without carrying lexical state between fences', () => {
   const prepared = prepareTokenizer(grammar);
-  const inputs = ['"unterminated', 'fn main() Unit:\n    print("{1}")\n', 'é😀\r\n', '', '/* open', 'enum E:\n    item(value: Int)\n', 'x := 1\n'];
+  const inputs = ['"unterminated', 'fn main() Void:\n    print("{1}")\n', 'é😀\r\n', '', '/* open', 'enum E:\n    item(value: Int)\n', 'x := 1\n'];
   for (const input of [...inputs, ...inputs.toReversed()]) {
     const actual = prepared(input);
     assert.deepEqual(actual, tokenize(input));

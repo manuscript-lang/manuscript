@@ -603,9 +603,9 @@ impl FnLower<'_> {
             self.b.m,
             "msrt_bytes_view",
             &[bytes_ty, MTy::INT, MTy::INT, MTy::PTR],
-            MTy::UNIT,
+            MTy::VOID,
         );
-        let mut b = FuncBuilder::new(self.b.m, "bytes_view", params, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "bytes_view", params, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().inline = InlineHint::Always;
         let ps = b.params();
@@ -678,9 +678,9 @@ impl FnLower<'_> {
             self.b.m,
             "msrt_string_view",
             &[MTy::STR, MTy::INT, MTy::INT, MTy::PTR],
-            MTy::UNIT,
+            MTy::VOID,
         );
-        let mut b = FuncBuilder::new(self.b.m, "string_view", params, MTy::UNIT);
+        let mut b = FuncBuilder::new(self.b.m, "string_view", params, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().inline = InlineHint::Always;
         let ps = b.params();

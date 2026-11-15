@@ -549,13 +549,13 @@ impl Scan<'_> {
         );
     }
 
-    /// A final `return ok(unit)` in a `Unit!` function, or `return` in a `Unit` one: the end of the
+    /// A final `return ok(unit)` in a `Void!` function, or `return` in a `Void` one: the end of the
     /// body already returns it.
     fn trailing_return(&mut self, f: &Func) {
         let TypeKind::Named { name, args } = &f.result.kind else {
             return;
         };
-        let unit = |t: &TypeRef| t.name(self.syms) == "Unit";
+        let unit = |t: &TypeRef| t.name(self.syms) == "Void";
         let result = self.syms.str(name) == "Result" && args.len() == 2 && unit(&args[0]);
         if f.body.len() < 2 || !(result || unit(&f.result)) {
             return;
@@ -568,7 +568,7 @@ impl Scan<'_> {
         };
         let redundant = match value {
             None => !result,
-            Some(e) if matches!(e.kind, ExprKind::Unit) => !result,
+            Some(e) if matches!(e.kind, ExprKind::Void) => !result,
             Some(e) => result && self.ok_unit(e),
         };
         if !redundant {
@@ -610,7 +610,7 @@ impl Scan<'_> {
             return false;
         };
         matches!(&callee.kind, ExprKind::Name(n) if self.syms.str(n) == "ok")
-            && matches!(args.as_slice(), [a] if a.name.is_none() && matches!(a.value.kind, ExprKind::Unit))
+            && matches!(args.as_slice(), [a] if a.name.is_none() && matches!(a.value.kind, ExprKind::Void))
     }
 
     /// `let x = e` directly followed by `return x` is `return e`.

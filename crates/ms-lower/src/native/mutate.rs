@@ -45,7 +45,7 @@ impl<'a> FnLower<'a> {
         let mut outgoing = None;
         match name {
             "append" => {
-                self.call_runtime("msrt_list_push", &[list, d, incoming], MTy::UNIT)?;
+                self.call_runtime("msrt_list_push", &[list, d, incoming], MTy::VOID)?;
             }
             "prepend" | "insert" => {
                 let i = if name == "prepend" {
@@ -53,7 +53,7 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.borrow(args[0].val)
                 };
-                self.call_runtime("msrt_list_insert", &[list, d, i, incoming], MTy::UNIT)?;
+                self.call_runtime("msrt_list_insert", &[list, d, i, incoming], MTy::VOID)?;
             }
             "set" | "replace" => {
                 let i = self.borrow(args[0].val);
@@ -86,7 +86,7 @@ impl<'a> FnLower<'a> {
                     .expect("outgoing list element");
                 // Unlike set's descriptor drop, replace cannot invoke a capture closer before
                 // the incoming slot is consumed. The detached old storage is dropped below.
-                self.call_runtime("msrt_list_replace", &[list, d, i, incoming, out], MTy::UNIT)?;
+                self.call_runtime("msrt_list_replace", &[list, d, i, incoming, out], MTy::VOID)?;
                 outgoing = Some(out);
             }
             _ => unreachable!("guarded list mutator"),
@@ -218,9 +218,9 @@ impl<'a> FnLower<'a> {
                 let list = self.put_slot(old);
                 match incoming {
                     Some(incoming) => {
-                        self.call_runtime("msrt_list_insert", &[list, d, idx, incoming], MTy::UNIT)?
+                        self.call_runtime("msrt_list_insert", &[list, d, idx, incoming], MTy::VOID)?
                     }
-                    None => self.call_runtime("msrt_list_remove", &[list, d, idx], MTy::UNIT)?,
+                    None => self.call_runtime("msrt_list_remove", &[list, d, idx], MTy::VOID)?,
                 };
                 Ok((self.take_slot(list, lt), None))
             }

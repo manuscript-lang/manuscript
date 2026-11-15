@@ -80,7 +80,7 @@ fn solve(s: String) String:
 
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
-export fn gen_c03() Unit:
+export fn gen_c03() Void:
 	var rnd = seeded(3)
 	cats := ["food", "Rent", "a,b", "z", "x y", "café"]
 	var lines = List[String]()

@@ -298,7 +298,7 @@ impl DataBlocker {
             ),
             DataReason::Never => (
                 "Never, which has no value".to_string(),
-                "use Unit or a real type".to_string(),
+                "use Void or a real type".to_string(),
             ),
         };
         if self.path.is_empty() {
@@ -792,7 +792,7 @@ impl Checker {
                             id: result_id,
                             pos: d.pos(),
                             kind: TypeKind::Named {
-                                name: n("Unit"),
+                                name: n("Void"),
                                 args: Vec::new(),
                             },
                         },

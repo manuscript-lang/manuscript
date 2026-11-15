@@ -19,7 +19,7 @@ use ms_rt_abi::{
     ELEM_UINT16, ELEM_UINT32, ELEM_UINT64, KIND_POD, KIND_SHARED, ListRef,
     NATIVE_OBJECT_DROP_OFFSET, NATIVE_OBJECT_PAYLOAD_OFFSET, Obj, STOP_HOOKS_MAX, StrVal, TypeDesc,
     VALUE_BOOL, VALUE_BYTES, VALUE_FLOAT, VALUE_INT, VALUE_OBJECT, VALUE_STRING, VALUE_UINT,
-    VALUE_UNIT, Value, ValueAs, ValueBuf, VecVal,
+    VALUE_VOID, Value, ValueAs, ValueBuf, VecVal,
 };
 
 /// `ms_fn` layout: the object header, the closure, the signature word.
@@ -76,7 +76,7 @@ fn elem_name(elem: u64) -> &'static str {
 
 fn kind_name(kind: u32) -> &'static str {
     match kind {
-        VALUE_UNIT => "MS_UNIT",
+        VALUE_VOID => "MS_VOID",
         VALUE_BOOL => "MS_BOOL",
         VALUE_INT => "MS_INT",
         VALUE_UINT => "MS_UINT",
@@ -209,7 +209,7 @@ pub unsafe extern "C-unwind" fn ms_value_free_v1(v: *mut Value) {
         if matches!((*v).kind, VALUE_STRING | VALUE_BYTES) {
             free((*v).as_.buf.data as *mut c_void);
         }
-        (*v).kind = VALUE_UNIT;
+        (*v).kind = VALUE_VOID;
         (*v).as_.u = 0;
     }
 }
@@ -614,7 +614,7 @@ pub unsafe extern "C-unwind" fn ms_call_v1(
         let at = cells[CALL_MAX_PARAMS].as_mut_ptr() as *mut u8;
         let v = if ret == 0 {
             Value {
-                kind: VALUE_UNIT,
+                kind: VALUE_VOID,
                 as_: ValueAs { u: 0 },
             }
         } else {

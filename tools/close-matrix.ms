@@ -28,7 +28,7 @@ type Marker:
     id: Int
     open: Bool
 
-fn var Marker.close() Unit!:
+fn var Marker.close() Void!:
     if self.open:
         self.open = false
         print("closed-\{self.id\}")
@@ -55,11 +55,11 @@ fn mk(id: Int) Marker:
 
 fn flag() Bool: return true
 
-fn fail() Unit!: return error(Error("x"))
+fn fail() Void!: return error(Error("x"))
 
 fn ident[X](x: X) X: return x
 
-fn pass[X](x: X) Unit: return
+fn pass[X](x: X) Void: return
 """
 
 type Shape:
@@ -177,22 +177,22 @@ fn constructs() List[Construct]:
 		),
 		c(
 			"cancel_borrowed",
-			"fn hold(x: @TY@) Unit!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
+			"fn hold(x: @TY@) Void!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
 			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_owned",
-			"fn hold(x: @TY@) Unit!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
+			"fn hold(x: @TY@) Void!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
 			"p := promise(fn: hold(@M1@))\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_local",
-			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
+			"fn hold() Void!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
 			"p := promise(fn: hold())\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_dropped",
-			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
+			"fn hold() Void!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
 			"_ := promise(fn: hold())",
 		),
 		c("fn_value_temporary", "", "f := see\n    f(@M1@)"),
@@ -200,27 +200,27 @@ fn constructs() List[Construct]:
 		c("fn_value_named", "", "f := see\n    x: @TY@ := @M1@\n    f(x)"),
 		c(
 			"method_temporary",
-			"type Sink:\n    n: Int\n\nfn Sink.take(v: @TY@) Unit: return\n\nfn Sink.take_later(v: @TY@, n: Int) Unit: return",
+			"type Sink:\n    n: Int\n\nfn Sink.take(v: @TY@) Void: return\n\nfn Sink.take_later(v: @TY@, n: Int) Void: return",
 			"Sink(0).take(@M1@)",
 		),
 		c(
 			"method_later_try",
-			"type Sink:\n    n: Int\n\nfn Sink.take(v: @TY@) Unit: return\n\nfn Sink.take_later(v: @TY@, n: Int) Unit: return",
+			"type Sink:\n    n: Int\n\nfn Sink.take(v: @TY@) Void: return\n\nfn Sink.take_later(v: @TY@, n: Int) Void: return",
 			"Sink(0).take_later(@M1@, fail_int()?)",
 		),
 		c(
 			"method_bound_later_try",
-			"type Sink:\n    n: Int\n\nfn Sink.take_later(v: @TY@, n: Int) Unit: return",
+			"type Sink:\n    n: Int\n\nfn Sink.take_later(v: @TY@, n: Int) Void: return",
 			"s := Sink(0)\n    f := s.take_later\n    f(@M1@, fail_int()?)",
 		),
 		c(
 			"two_resources_try",
-			"fn both(a: @TY@, b: @TY@, n: Int) Unit: return",
+			"fn both(a: @TY@, b: @TY@, n: Int) Void: return",
 			"both(@M1@, @M2@, fail_int()?)",
 		),
 		c(
 			"generic_later_try",
-			"fn gboth[X](a: X, n: Int) Unit: return",
+			"fn gboth[X](a: X, n: Int) Void: return",
 			"gboth[@TY@](@M1@, fail_int()?)",
 		),
 		c(
@@ -246,19 +246,19 @@ fn constructs() List[Construct]:
 		only(
 			"interface_param",
 			"bare",
-			"fn via(c: Closeable) Unit: return",
+			"fn via(c: Closeable) Void: return",
 			"via(@M1@)",
 		),
 		only(
 			"interface_param_later_try",
 			"bare",
-			"fn via(c: Closeable, n: Int) Unit: return",
+			"fn via(c: Closeable, n: Int) Void: return",
 			"via(@M1@, fail_int()?)",
 		),
 		only(
 			"bounded_generic",
 			"bare",
-			"fn gen[X: Closeable](x: X) Unit: return",
+			"fn gen[X: Closeable](x: X) Void: return",
 			"gen(@M1@)",
 		),
 		only(
@@ -289,7 +289,7 @@ fn constructs() List[Construct]:
 		c("argument_named", "", "x: @TY@ := @M1@\n    see(x)\n    see(x)"),
 		c(
 			"two_arguments_try",
-			"fn two(a: @TY@, n: Int) Unit: return",
+			"fn two(a: @TY@, n: Int) Void: return",
 			"two(@M1@, fail_int()?)",
 		),
 		c(
@@ -323,12 +323,12 @@ fn constructs() List[Construct]:
 		),
 		c(
 			"closure_escape",
-			"fn make() fn() Unit:\n    x: @TY@ := @M1@\n    return fn: see(x)",
+			"fn make() fn() Void:\n    x: @TY@ := @M1@\n    return fn: see(x)",
 			"f := make()\n    f()",
 		),
 		c(
 			"closure_escape_unused",
-			"fn make() fn() Unit:\n    x: @TY@ := @M1@\n    return fn: see(x)",
+			"fn make() fn() Void:\n    x: @TY@ := @M1@\n    return fn: see(x)",
 			"f := make()\n    f()",
 		),
 		c(
@@ -405,10 +405,10 @@ fn constructs() List[Construct]:
 
 // The program for `construct` applied to `shape`.
 fn program(shape: Shape, construct: Construct) String:
-	see := "fn see(x: @TY@) Unit: return\n\nfn see_all(xs: List[@TY@]) Unit: return\n\nfn seeok(x: @TY@) Unit!: return ok(unit)\n\nfn see_marker(m: Marker) Unit: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
+	see := "fn see(x: @TY@) Void: return\n\nfn see_all(xs: List[@TY@]) Void: return\n\nfn seeok(x: @TY@) Void!: return ok(unit)\n\nfn see_marker(m: Marker) Void: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
 	m1 := shape.make.replace("@ID@", "1")
 	m2 := shape.make.replace("@ID@", "2")
-	var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Unit!:\n    {construct.body}\n    return ok(unit)\n\nfn run() Unit:\n    _ := body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
+	var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Void!:\n    {construct.body}\n    return ok(unit)\n\nfn run() Void:\n    _ := body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
 	text = text.replace("@TY@", shape.ty).replace("@M1@", m1).replace("@M2@", m2)
 	return text
 

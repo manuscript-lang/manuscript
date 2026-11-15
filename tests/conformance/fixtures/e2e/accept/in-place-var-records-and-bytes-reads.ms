@@ -25,7 +25,7 @@ fn var Cursor.advance() Int:
 	self.seen.append(at)
 	return self.data[at].to_int()
 
-fn var Cursor.reset(label: String) Unit:
+fn var Cursor.reset(label: String) Void:
 	self.start = 0
 	self.label = label
 	self.seen = []
@@ -39,7 +39,7 @@ fn fill(var c: Cursor, n: Int) Int:
 		sum += v
 	return sum
 
-fn replace_whole(var c: Cursor) Unit:
+fn replace_whole(var c: Cursor) Void:
 	c = Cursor("abc".to_bytes(), 1, 3, "swapped", [], false)
 
 test "bytes reads index, wrap negative and use defaults":

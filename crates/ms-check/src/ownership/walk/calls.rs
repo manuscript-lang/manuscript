@@ -634,7 +634,7 @@ impl Walker<'_> {
         let children: Vec<&Expr> = match &e.kind {
             ExprKind::Number(_)
             | ExprKind::Bool(_)
-            | ExprKind::Unit
+            | ExprKind::Void
             | ExprKind::Name(_)
             | ExprKind::Lambda(_) => Vec::new(),
             ExprKind::Text(parts) => parts
@@ -686,7 +686,7 @@ impl Walker<'_> {
             match &e.kind {
                 ExprKind::Number(_)
                 | ExprKind::Bool(_)
-                | ExprKind::Unit
+                | ExprKind::Void
                 | ExprKind::Name(_)
                 | ExprKind::Lambda(_) => {}
                 ExprKind::Text(parts) => {

@@ -83,7 +83,7 @@ pub fn run(m: &mut Module) -> bool {
                             mode: Mode::Borrow,
                         },
                     ],
-                    ret: Ty::UNIT,
+                    ret: Ty::VOID,
                     noreturn: false,
                     pure_: false,
                     fresh: false,
@@ -346,7 +346,7 @@ fn rewrite_plain(f: &mut Func, bi: usize, ii: usize, ext: crate::ir::ExtId, desc
         res: Some(flag),
         loc: call.loc,
     };
-    let unit = f.new_value(Ty::UNIT);
+    let unit = f.new_value(Ty::VOID);
     let run = Inst {
         op: Op::CallRt,
         args: vec![out, flag],
@@ -384,7 +384,7 @@ fn shadow_externs(
             ty: list,
             mode: Mode::Move,
         }],
-        ret: Ty::UNIT,
+        ret: Ty::VOID,
         noreturn: false,
         pure_: false,
         fresh: false,
@@ -435,7 +435,7 @@ fn rewrite_owned(
     emit(Op::IConst, vec![], Imm::Int(0), Some(zero));
     let env = f.new_value(Ty::PTR);
     emit(Op::Slot, vec![], Imm::Ty(elem), Some(env));
-    let unit = f.new_value(Ty::UNIT);
+    let unit = f.new_value(Ty::VOID);
     emit(
         Op::Call,
         vec![buf, items, zero, len, env],
@@ -444,7 +444,7 @@ fn rewrite_owned(
     );
     emit(Op::Clone, vec![items], Imm::None, Some(out));
     for raw in [items, buf] {
-        let u = f.new_value(Ty::UNIT);
+        let u = f.new_value(Ty::VOID);
         emit(Op::CallRt, vec![raw], Imm::Ext(free), Some(u));
     }
     f.blocks[bi].insts.splice(ii..=ii, insts);
@@ -492,7 +492,7 @@ fn rewrite(f: &mut Func, bi: usize, ii: usize, sort: FuncId, elem: Ty) {
             env_v.expect("env"),
         ],
         Imm::Func(sort),
-        Some(Ty::UNIT),
+        Some(Ty::VOID),
     );
     let (drop_buf, _) = new(f, Op::Drop, vec![buf], Imm::None, None);
     f.blocks[bi]
@@ -512,8 +512,8 @@ fn build_merge(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
     };
     let params = vec![p(list_ty), p(list_ty), p(Ty::INT), p(Ty::INT), p(Ty::PTR)];
     let name = format!("sort.mergesort.{}", m.funcs[g.index()].name);
-    let id = m.add_func(Func::new(&name, params.clone(), Ty::UNIT));
-    let mut b = FuncBuilder::new(m, &name, params, Ty::UNIT);
+    let id = m.add_func(Func::new(&name, params.clone(), Ty::VOID));
+    let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
     b.func_mut().raw_scratch = true;
     let args = b.params();
     // `buf` is the list the merge reads from and `items` the list it writes.
@@ -987,12 +987,12 @@ fn build_drift(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
     let (i, p) = (Ty::INT, Ty::PTR);
     let tag = m.funcs[g.index()].name.clone();
     let mergesort = build_merge(m, g, elem);
-    let (ins, ins_p) = declare(m, &format!("sort.ins.{tag}"), &[list_ty, i, i, p], Ty::UNIT);
+    let (ins, ins_p) = declare(m, &format!("sort.ins.{tag}"), &[list_ty, i, i, p], Ty::VOID);
     let (merge, merge_p) = declare(
         m,
         &format!("sort.run_merge.{tag}"),
         &[list_ty, list_ty, i, i, i, p],
-        Ty::UNIT,
+        Ty::VOID,
     );
     let (part, part_p) = declare(
         m,
@@ -1010,7 +1010,7 @@ fn build_drift(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
         m,
         &format!("sort.quick.{tag}"),
         &[list_ty, list_ty, i, i, i, elem, i, p],
-        Ty::UNIT,
+        Ty::VOID,
     );
     let int_list = m.types.list(Ty::INT);
     let (msort, msort_p) = declare(
@@ -1023,7 +1023,7 @@ fn build_drift(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
         m,
         &format!("sort.drift.{tag}"),
         &[list_ty, list_ty, i, i, p],
-        Ty::UNIT,
+        Ty::VOID,
     );
     let parts = Parts {
         ins,
@@ -1061,7 +1061,7 @@ fn start<'m>(m: &'m mut Module, name: &str, params: Vec<Param>, ret: Ty) -> Func
 
 /// `ins(items, lo, hi, env)`: stable insertion sort of `items[lo..hi]`.
 fn build_ins(m: &mut Module, g: FuncId, elem: Ty, name: &str, params: Vec<Param>) -> Func {
-    let mut fb = start(m, name, params, Ty::UNIT);
+    let mut fb = start(m, name, params, Ty::VOID);
     let a = fb.params();
     let (items, lo, hi, env) = (a[0], a[1], a[2], a[3]);
     let mut e = Em {
@@ -1104,7 +1104,7 @@ fn build_ins(m: &mut Module, g: FuncId, elem: Ty, name: &str, params: Vec<Param>
 /// `run_merge(items, scratch, lo, mid, hi, env)`: merges the sorted `items[lo..mid]` and
 /// `items[mid..hi]` stably, copying the shorter side into `scratch[lo..hi]`.
 fn build_run_merge(m: &mut Module, g: FuncId, elem: Ty, name: &str, params: Vec<Param>) -> Func {
-    let mut fb = start(m, name, params, Ty::UNIT);
+    let mut fb = start(m, name, params, Ty::VOID);
     let a = fb.params();
     let (items, buf, lo, mid, hi, env) = (a[0], a[1], a[2], a[3], a[4], a[5]);
     let mut e = Em {
@@ -1370,7 +1370,7 @@ fn build_quick(
     params: Vec<Param>,
     parts: &Parts,
 ) -> Func {
-    let mut fb = start(m, name, params, Ty::UNIT);
+    let mut fb = start(m, name, params, Ty::VOID);
     let a = fb.params();
     let (items, buf, lo, hi) = (a[0], a[1], a[2], a[3]);
     let (anc_set, anc, limit, env) = (a[4], a[5], a[6], a[7]);
@@ -1558,7 +1558,7 @@ fn build_top(
     params: Vec<Param>,
     parts: &Parts,
 ) -> Func {
-    let mut fb = start(m, name, params, Ty::UNIT);
+    let mut fb = start(m, name, params, Ty::VOID);
     let a = fb.params();
     let (buf, items, n, env) = (a[0], a[1], a[3], a[4]);
     let mut e = Em {
