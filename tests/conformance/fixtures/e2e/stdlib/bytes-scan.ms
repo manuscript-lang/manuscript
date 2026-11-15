@@ -84,9 +84,12 @@ test "view_bytes of short text survives later statements and blocks":
 	var total = 0
 
 	for i in 0..4:
-		other := "x{i}y".view_bytes()
+		other := f"x{i}y".view_bytes()
+		literal := "abc".view_bytes()
 		if other.length() > 2: total += other.length()
 		else: total += 1
+
+		expect_equal(literal.length(), 3)?
 
 		expect_equal(bytes == short.to_bytes(), true)?
 

@@ -364,6 +364,9 @@ impl<'a> FnLower<'a> {
                     .b
                     .emit(Op::Load, &[slot], Imm::Ty(MTy::BYTES), Some(MTy::BYTES))
                     .expect("load");
+                // Like a `String.view`: whatever the receiver is (a literal included), the result
+                // borrows it, so a `let` holds it without a copy.
+                self.views.insert(v);
                 Ok(Val { v, own: false })
             }
             (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
