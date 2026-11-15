@@ -1,7 +1,6 @@
 # Cases of Go's net/url tables the parser does not pass, with the reason.
 # A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
 # `by design:` is a permanent decision, counted separately in the test output; `known gap` names its issue.
-parse#13 known gap (#4016): `format` writes an empty authority for a URL with no host, `mailto:?subject=hi` becomes `mailto://?subject=hi`
 parse#15 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
 parse#16 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
 parse#18 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
@@ -13,9 +12,6 @@ parse#46 by design: an unbracketed IPv6 address is not an RFC 3986 host, so it i
 parse#47 by design: an unbracketed IPv6 address is not an RFC 3986 host, so it is rejected where Go splits off a port
 parse#49 by design: `Url` cannot tell an empty port (`host:`) from no port, so the colon is dropped (the same URL)
 parse#54 by design: `format` refuses host characters that need escaping (`<` `>` `"`), which `parse` accepts as Go does
-parse#55 known gap (#4017): the IPv6 zone identifier is lowercased, and `format` then rejects the host
-parse#56 known gap (#4016): `format` writes an empty authority for a URL with no host, `mailto:?subject=hi` becomes `mailto://?subject=hi`
-parse#57 known gap (#4016): `format` writes an empty authority for a URL with no host, `mailto:?subject=hi` becomes `mailto://?subject=hi`
 parse#6 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
 parse_errors#26 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
 query#10 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)

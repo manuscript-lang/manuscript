@@ -16,7 +16,10 @@ pub fn resolve_import(
 ) -> Result<String, ProjectError> {
     match import_target(project, importer, path)? {
         Target::Generated(module) => Ok(module),
-        Target::Path(target) => source_path(&project.root, &target, overlay),
+        Target::Path(target) => {
+            let root = project.confinement_root(importer, path, &target);
+            source_path(root, &target, overlay)
+        }
     }
 }
 
@@ -40,6 +43,7 @@ pub fn import_target(
         ));
     }
     let target;
+    let scope = project.scope(importer);
     if path.starts_with("./") || path.starts_with("../") {
         let last = path.rsplit('/').next().unwrap_or("");
         if matches!(last, "" | "." | "..") {
@@ -56,7 +60,7 @@ pub fn import_target(
         target = pathops::join(&[&pathops::dir(importer), path]);
     } else if path.starts_with('@') {
         let (alias, remainder) = path.split_once('/').unwrap_or((path, ""));
-        if project.embed.contains_key(alias) {
+        if scope.embed.contains_key(alias) {
             if !remainder.is_empty() {
                 return Err(ProjectError::msg(format!(
                     "embed {alias} names a generated module, so import it as \"{alias}\" alone"
@@ -68,11 +72,16 @@ pub fn import_target(
                 alias,
             )));
         }
-        let base = project.aliases.get(alias).map(String::as_str).unwrap_or("");
+        let base = scope
+            .aliases
+            .get(alias)
+            .or_else(|| scope.deps.get(alias))
+            .map(String::as_str)
+            .unwrap_or("");
         if base.is_empty() {
             return Err(ProjectError::msg(format!(
                 "unknown import alias {alias}{}",
-                alias_hint(&project.aliases)
+                alias_hint(&scope.aliases, &scope.deps)
             )));
         }
         let info = std::fs::metadata(base).map_err(|e| ProjectError::path("stat", base, &e))?;
@@ -213,7 +222,12 @@ pub fn source_path(root: &str, path: &str, overlay: &Overlay) -> Result<String, 
     }
 }
 
-fn alias_hint(aliases: &BTreeMap<String, String>) -> String {
+fn alias_hint(aliases: &BTreeMap<String, String>, deps: &BTreeMap<String, String>) -> String {
+    let aliases: BTreeMap<String, String> = aliases
+        .iter()
+        .chain(deps)
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
     if aliases.is_empty() {
         return "; this project declares none, so add one under [aliases] in ms.toml, e.g. @lib = \"src/lib\" (use @std/... for the standard library)".to_string();
     }

@@ -92,6 +92,25 @@ pub fn workspace_documents(
     Ok(result)
 }
 
+/// The `.ms` documents of the fetched packages a project depends on, for symbol search. Reference
+/// and rename scans leave them out: a package's source is read-only.
+fn package_documents(
+    d: &Document,
+    cancel: Option<CancelCheck>,
+) -> Result<Vec<Document>, ScanError> {
+    let Some(manifest) = ms_driver::project::find_manifest(&d.path()) else {
+        return Ok(Vec::new());
+    };
+    let Ok(project) = ms_driver::project::read_project(&manifest) else {
+        return Ok(Vec::new());
+    };
+    let mut files: BTreeMap<String, Document> = BTreeMap::new();
+    for package in &project.packages {
+        walk(Path::new(&package.project.source), true, &mut files, cancel)?;
+    }
+    Ok(files.into_values().collect())
+}
+
 fn walk(
     dir: &Path,
     nested: bool,
@@ -248,7 +267,9 @@ pub(crate) fn workspace_symbols_matching(
         if !walked.insert((root, nested)) {
             return Ok(Vec::new());
         }
-        workspace_documents(d, docs, recursive, cancel)
+        let mut files = workspace_documents(d, docs, recursive, cancel)?;
+        files.extend(package_documents(d, cancel)?);
+        Ok(files)
     };
     let mut open: Vec<&Document> = docs.values().collect();
     open.sort_by(|a, b| a.uri.cmp(&b.uri));

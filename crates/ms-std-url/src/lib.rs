@@ -24,6 +24,8 @@ pub struct Components {
     pub path: String,
     pub query: String,
     pub fragment: String,
+    /// The URL was written without `//`, as in `mailto:?subject=hi`.
+    pub omit_host: bool,
 }
 
 fn string(b: S) -> Result<String, Fail> {
@@ -57,6 +59,19 @@ fn go_lower(b: &[u8]) -> String {
 fn push_lower(out: &mut String, s: &str) {
     for c in s.chars() {
         out.push(c.to_lowercase().next().unwrap_or(c));
+    }
+}
+
+/// Lowercases a hostname but keeps an IPv6 zone identifier (after the first `%`), which RFC 6874
+/// treats as case-sensitive.
+fn go_lower_host(host: &[u8]) -> String {
+    match host.iter().position(|&b| b == b'%') {
+        None => go_lower(host),
+        Some(i) => {
+            let mut out = go_lower(&host[..i]);
+            out.push_str(&String::from_utf8_lossy(&host[i..]));
+            out
+        }
     }
 }
 
@@ -174,11 +189,12 @@ fn components(u: &Url) -> Result<Components, Fail> {
     }
     Ok(Components {
         scheme: go_lower(&u.scheme),
-        host: go_lower(hostname),
+        host: go_lower_host(hostname),
         port,
         path: string(u.escaped_path())?,
         query: string(u.raw_query.clone())?,
         fragment: string(u.fragment.clone())?,
+        omit_host: u.omit_host,
     })
 }
 
@@ -225,7 +241,9 @@ fn go_url(v: &Components) -> Option<Url> {
     if !core::str::from_utf8(&decoded).is_ok() {
         return None;
     }
-    if !valid_query(v.query.as_bytes()) || host.iter().any(|b| b" <>\"".contains(b)) {
+    // An IPv6 zone identifier may hold any text, which `render` escapes.
+    let address = host.split(|&b| b == b'%').next().unwrap_or(&host);
+    if !valid_query(v.query.as_bytes()) || address.iter().any(|b| b" <>\"".contains(b)) {
         return None;
     }
     let u = Url {
@@ -235,6 +253,7 @@ fn go_url(v: &Components) -> Option<Url> {
         raw_path: raw.to_vec(),
         raw_query: v.query.as_bytes().to_vec(),
         fragment: v.fragment.as_bytes().to_vec(),
+        omit_host: v.omit_host,
         ..Url::default()
     };
     let parsed = parser::parse(&u.render()).ok()?;
@@ -253,15 +272,10 @@ fn go_url(v: &Components) -> Option<Url> {
 pub fn format(v: &Components) -> Result<String, Fail> {
     let u = go_url(v).ok_or(Fail::InvalidInput)?;
     let mut text = u.render();
-    if u.host.is_empty() && u.path.is_empty() {
-        // Go omits the empty authority; keep "//" so the text parses back.
-        let mut with = u.scheme.clone();
-        with.extend_from_slice(b"://");
-        with.extend_from_slice(
-            text.strip_prefix(&[u.scheme.as_slice(), b":"].concat()[..])
-                .unwrap_or(&text),
-        );
-        text = with;
+    // A bare scheme would read as an opaque URL, so an empty hierarchical part keeps `//`
+    // unless the URL was read without one.
+    if u.host.is_empty() && u.path.is_empty() && !u.omit_host {
+        text.splice(u.scheme.len() + 1..u.scheme.len() + 1, *b"//");
     }
     string(text)
 }
@@ -345,7 +359,43 @@ mod tests {
             path: path.into(),
             query: query.into(),
             fragment: fragment.into(),
+            omit_host: false,
         }
+    }
+
+    #[test]
+    fn hostless_urls_round_trip() {
+        for text in [
+            "mailto:?subject=hi",
+            "magnet:?xt=urn:btih:c12f&dn",
+            "mailto:/webmaster@golang.org",
+        ] {
+            let u = parse(text).unwrap();
+            assert_eq!(format(&u).unwrap(), text);
+        }
+        // An explicit empty authority keeps its slashes.
+        let u = parse("file:///x").unwrap();
+        assert!(!u.omit_host);
+        assert!(parse("mailto:/x").unwrap().omit_host);
+        assert_eq!(format(&u).unwrap(), "file:///x");
+        assert_eq!(
+            format(&c("http", "", None, "", "q", "")).unwrap(),
+            "http://?q"
+        );
+    }
+
+    #[test]
+    fn ipv6_zone_keeps_its_case() {
+        let u = parse("tcp://[2020::2020:20:2020:2020%25Windows%20Loves%20Spaces]:2020").unwrap();
+        assert_eq!(u.host, "2020::2020:20:2020:2020%Windows Loves Spaces");
+        assert_eq!(
+            parse("http://[FE80::1%25En0]/").unwrap().host,
+            "fe80::1%En0"
+        );
+        assert_eq!(
+            format(&u).unwrap(),
+            "tcp://[2020::2020:20:2020:2020%25Windows%20Loves%20Spaces]:2020"
+        );
     }
 
     #[test]

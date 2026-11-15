@@ -113,6 +113,7 @@ fn preserves_embedded(metadata: bool, warm: bool) {
         .join(env!("MS_NATIVE_ID"))
         .join("libms_native.a");
     std::fs::create_dir_all(native.parent().unwrap()).unwrap();
+    common::share_downloaded_tools(&cache);
     let inputs = if metadata {
         root.join("inputs")
     } else {

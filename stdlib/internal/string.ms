@@ -4,6 +4,9 @@ export extern fn msrt_string_from_scalars(values: List[Int]) String!
 
 export extern fn msrt_string_fields(text: String) List[String]
 
+// Byte offset of the first scalar of `text` that occurs in `set`, or none.
+export extern fn msrt_string_index_any(text: String, set: String) Int?
+
 // Text without the scalars of `set` at the start and, as selected, the end.
 export extern fn msrt_string_trim_chars(
 	text: String,

@@ -2,79 +2,18 @@
 # A reason starting `by design:` is a permanent decision, counted separately in the test output.
 # A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
 2JQS by design: a repeated mapping key is an error, so two null keys cannot coexist
-2SXE mapping keys must be strings
-2XXW tag handling gap (%TAG handles, tags on unusual nodes)
-35KP tag handling gap (%TAG handles, tags on unusual nodes)
-4FJ6 expected sequence comma
-4MUZ/00 an implicit mapping key must stay on one line
-4MUZ/01 an implicit mapping key must stay on one line
-4MUZ/02 an implicit mapping key must stay on one line
-5MUD an implicit mapping key must stay on one line
-5WE3 explicit mapping keys are unsupported
+4FJ6 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
 6BFJ by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
-6CA3 tabs cannot indent YAML
-6M2F explicit mapping keys are unsupported
-6PBE explicit mapping keys are unsupported
-6XDY value differs from the suite
-7W2P explicit mapping keys are unsupported
-87E4 expected sequence comma
-8UDB unexpected mapping colon
-9C9N accepts invalid input
-9KAX tag handling gap (%TAG handles, tags on unusual nodes)
-9MMW unexpected mapping colon
-9SA2 an implicit mapping key must stay on one line
-A2M4 explicit mapping keys are unsupported
-AB8U unexpected indented collection
-BU8L tag handling gap (%TAG handles, tags on unusual nodes)
-CFD4 unexpected mapping colon
-CN3R unexpected mapping colon
-CT4Q unexpected mapping colon
-DFF7 explicit mapping keys are unsupported
-DK3J unexpected indentation or additional document
-DK95/00 tabs cannot indent YAML
-DK95/01 accepts invalid input
-FP8R unexpected indentation or additional document
-FRK4 explicit mapping keys are unsupported
-GH63 explicit mapping keys are unsupported
-HS5T tabs cannot indent YAML
-JEF9/02 value differs from the suite
-JTV5 explicit mapping keys are unsupported
-K3WX an implicit mapping key must stay on one line
-KK5P explicit mapping keys are unsupported
-L24T/01 value differs from the suite
-L94M explicit mapping keys are unsupported
-L9U5 unexpected mapping colon
-LQZ7 expected sequence comma
+6PBE by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+9MMW by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+KK5P by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
 LX3P by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
-M2N8/00 explicit mapping keys are unsupported
-M2N8/01 explicit mapping keys are unsupported
-M5C3 tag handling gap (%TAG handles, tags on unusual nodes)
-M5DY explicit mapping keys are unsupported
-M7A3 unexpected indentation or additional document
-NJ66 an implicit mapping key must stay on one line
-PW8X mapping keys must be strings
-Q5MG tabs cannot indent YAML
+M2N8/00 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+M2N8/01 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+M5DY by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
 Q9WF by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
-QB6E accepts invalid input
-QF4Y unexpected mapping colon
-RR7F unexpected indentation or additional document
-RZP5 unexpected indentation or additional document
-S9E8 explicit mapping keys are unsupported
+RZP5 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
 SBG9 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
-SKE5 unexpected indentation or additional document
-UT92 an implicit mapping key must stay on one line
-UV7Q tabs cannot indent YAML
-V9D5 explicit mapping keys are unsupported
-VJP3/01 an implicit mapping key must stay on one line
-W4TN unexpected indentation or additional document
+V9D5 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
 X38W by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
-X8DW explicit mapping keys are unsupported
-XW4D unexpected indentation or additional document
-Y79Y/000 accepts invalid input
-Y79Y/003 accepts invalid input
-Y79Y/004 accepts invalid input
-Y79Y/005 accepts invalid input
-ZWK4 unexpected indentation or additional document
-
-
-
+XW4D by design: a collection cannot be a mapping key (keys are scalars, kept as their text)

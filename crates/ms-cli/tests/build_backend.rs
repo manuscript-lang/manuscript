@@ -144,19 +144,6 @@ fn pin(kind: &str) -> String {
         .expect("native target has a pinned tool bundle")
 }
 
-fn cache_root() -> PathBuf {
-    let variable = |name| {
-        std::env::var_os(name)
-            .filter(|value| !value.is_empty())
-            .map(PathBuf::from)
-    };
-    variable("LOCALAPPDATA")
-        .filter(|_| cfg!(windows))
-        .or_else(|| variable("XDG_CACHE_HOME"))
-        .or_else(|| variable("HOME").map(|home| home.join(".cache")))
-        .unwrap_or_else(std::env::temp_dir)
-}
-
 fn discovery_state(root: &Path, available: bool) {
     let cache = root.join("discovery/ms/llvm");
     if cache.is_dir() {
@@ -197,7 +184,7 @@ fn automatic_discovery_changes_preserve_the_cached_artifact_backend() {
         let linker = ms_cli::engine::build_options_from_env()
             .lld
             .unwrap_or_else(|| {
-                cache_root()
+                common::cache_root()
                     .join("ms/lld")
                     .join(pin("lld"))
                     .join(format!("lld{}", std::env::consts::EXE_SUFFIX))

@@ -256,6 +256,9 @@ pub struct Method {
     pub id: NodeId,
     /// Position of the method **name**.
     pub pos: Pos,
+    /// Where `var ` goes to make the method mutating: the receiver name of `fn Type.name`, or the
+    /// `fn` of an interface operation.
+    pub var_at: Pos,
     /// Name, generics, parameters, result and body.
     pub func: Func,
     /// Declared `var fn`: the method may change its receiver.

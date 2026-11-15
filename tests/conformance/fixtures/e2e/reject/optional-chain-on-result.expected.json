@@ -15,6 +15,21 @@
           "line": 7,
           "column": 10,
           "offset": 118
+        },
+        "fix": {
+          "position": {
+            "file": "optional-chain-on-result.ms",
+            "line": 7,
+            "column": 10,
+            "offset": 118
+          },
+          "end": {
+            "file": "optional-chain-on-result.ms",
+            "line": 7,
+            "column": 18,
+            "offset": 126
+          },
+          "replacement": "(load()?)."
         }
       }
     ],

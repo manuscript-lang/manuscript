@@ -1057,9 +1057,73 @@ fn branches(f: &mut Func) -> bool {
         }
         changed |= did;
     }
+    changed |= thread_flag_branches(f);
     let before = f.blocks.len();
     f.compact_blocks();
     changed || f.blocks.len() != before
+}
+
+/// Jump threading through a flag join: an empty block whose only parameter is a `Bool` that its
+/// terminator branches on (the join of `a and b` or `a or b` used as a condition). An edge that
+/// passes a constant goes straight to the target that constant selects, so `if a and b` costs two
+/// compare-and-branches instead of materialising the flag. Values the targets read dominate the
+/// join, hence its predecessors.
+fn thread_flag_branches(f: &mut Func) -> bool {
+    let mut flags: ValueMap<bool> = ValueMap::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::BConst, Imm::Bool(x), Some(r)) = (i.op, i.imm, i.res) {
+                flags.insert(r, x);
+            }
+        }
+    }
+    if flags.is_empty() {
+        return false;
+    }
+    let uses = f.use_counts();
+    let mut changed = false;
+    for j in 1..f.blocks.len() {
+        let blk = &f.blocks[j];
+        let [param] = blk.params.as_slice() else {
+            continue;
+        };
+        let Term::CondBr { cond, then, els } = &blk.term else {
+            continue;
+        };
+        // The flag must feed only this branch: a bypassing edge no longer defines it.
+        if !blk.insts.is_empty()
+            || *cond != param.value
+            || param.mode != Mode::Borrow
+            || uses[param.value.index()] != 1
+        {
+            continue;
+        }
+        if then.block.index() == j
+            || els.block.index() == j
+            || then.args.contains(&param.value)
+            || els.args.contains(&param.value)
+        {
+            continue;
+        }
+        let (then, els) = (then.clone(), els.clone());
+        let jb = Block(j as u32);
+        for pb in 0..f.blocks.len() {
+            if pb == j {
+                continue;
+            }
+            f.blocks[pb].term.for_each_target_mut(|e| {
+                if e.block != jb {
+                    return;
+                }
+                let Some(&flag) = e.args.first().and_then(|a| flags.get(a)) else {
+                    return;
+                };
+                *e = if flag { then.clone() } else { els.clone() };
+                changed = true;
+            });
+        }
+    }
+    changed
 }
 
 // ---- value numbering -------------------------------------------------------

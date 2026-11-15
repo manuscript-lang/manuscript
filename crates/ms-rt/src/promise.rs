@@ -672,10 +672,18 @@ fn apply(event: Event) {
             }
             t.thread[i] = NOT_STARTED;
             if t.state[i] == State::Pending && t.flags[i] & HELD != 0 {
-                t.state[i] = if t.flags[i] & HELD_ERROR != 0 {
-                    State::Error
-                } else {
+                // A promise whose limit passed or that was cancelled while pending reports that,
+                // not the error its work returned on the way out (a wait inside the work that
+                // finds its child cancelled returns `ECANCELED` as a value before the work's own
+                // cancellation is seen, so the outcome would depend on timing).
+                let interrupted = t.flags[i] & (TIMED_OUT | STOPPED) != 0;
+                t.state[i] = if t.flags[i] & HELD_ERROR == 0 {
                     State::Ok
+                } else if interrupted {
+                    release_result(t, i);
+                    State::Cancelled
+                } else {
+                    State::Error
                 };
                 t.flags[i] &= !(HELD | HELD_ERROR);
             } else if t.state[i] == State::Pending {
@@ -2102,6 +2110,31 @@ mod tests {
         for id in ids {
             msrt_promise_drop(id);
         }
+        task::teardown();
+    }
+
+    // The work's limit passes while it runs, then it returns an error (what a wait on a cancelled
+    // child does on the way out): the promise reports the limit, not that error.
+    unsafe extern "C-unwind" fn fails_after_its_limit(_: *mut Closure) {
+        // SAFETY: stores a stack Int the callee takes.
+        unsafe {
+            let id = *ID.ptr();
+            let t = table();
+            let i = index(t, id).expect("live promise");
+            t.flags[i] |= TIMED_OUT;
+            let mut v = 7i64;
+            msrt_promise_put(id, (&raw mut v).cast(), &msrt_desc_int, 1);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn an_error_returned_after_the_limit_passed_reports_the_timeout() {
+        let _g = lock();
+        let id = msrt_promise_new();
+        start(id, fails_after_its_limit);
+        assert_eq!(msrt_promise_wait(id, -1), TIMEOUT);
+        msrt_promise_drop(id);
         task::teardown();
     }
 

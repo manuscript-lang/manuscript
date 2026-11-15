@@ -28,3 +28,22 @@ Returning part of a parameter borrows it without a marker. Clone for an independ
 Mutable parameters require var at declaration and call: `add(var names, user)`. Mutable receiver methods use `fn var Type.name()` but calls remain `value.name()`. Do not mutably capture a collection in its own method's callback.
 
 Closeable closes at scope end unless moved. Declare `fn var Type.close() Unit!` or implement Closeable. Handle explicit close Results; scope-end failures propagate where supported or fault. Cleanup is deterministic, not GC; resource owners are not freely cloneable.
+
+## Borrow errors and their fixes
+
+A loop variable, a parameter and an element read are borrowed, so storing one needs `.clone()`; reading one needs nothing. The error `cannot move x out: it is borrowed` means write `x.clone()`, or use `x` only where it is read.
+
+```manuscript
+fn copy_all(items: List[String]) List[String]:
+	var out = List[String]()
+	for s in items:
+		out.append(s.clone())
+	return out
+
+fn has(items: List[String], want: String) Bool:
+	for s in items:
+		if s == want: return true
+	return false
+```
+
+Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A list parameter changes only if declared `var xs: List[Int]` and called `add(var xs)`; otherwise copy it into a `var` local first.
