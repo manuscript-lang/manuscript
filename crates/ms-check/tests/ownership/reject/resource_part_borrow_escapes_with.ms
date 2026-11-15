@@ -4,7 +4,7 @@ type Res:
     name: String
 
 fn var Res.close() Void!:
-    return ok(void)
+    return ok()
 
 // A value derived from the `with` resource cannot be stored where it outlives the block.
 fn main() Int:

@@ -15,10 +15,10 @@ type Door:
 	unused: Bool = false
 
 fn var Door.put(value: Int) Void!:
-	return ok(void)
+	return ok()
 
 fn var Door.close() Void!:
-	return ok(void)
+	return ok()
 
 type Holder:
 	gate: Gate

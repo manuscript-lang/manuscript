@@ -6,7 +6,7 @@ fn call[T](operation: fn() T) T:
 
 fn get() Int!: return ok(value: 1)
 
-fn note() Void: return void
+fn note() Void: return
 
 fn run() Void:
     call(

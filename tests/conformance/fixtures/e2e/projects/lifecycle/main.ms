@@ -12,10 +12,9 @@ type Resource:
 // Idempotent, as the Closeable contract requires: the block that ends early closes by
 // hand and the scope closes again.
 fn var Resource.close() Void!:
-	if self.done: return ok(void)
+	if self.done: return ok()
 
 	self.done = true
-
 	void self.output.write(value: "close {self.label}\n")
 
 type Pair:
@@ -75,8 +74,8 @@ fn exercise() Int!:
 	var _resource = Resource(label: "normal", output: stdout())
 	_completed := void
 	_resource.close()?
-
 	void stdout().write(value: "after normal\n")
+
 	var count = 0
 
 	while count < 2:
@@ -98,7 +97,6 @@ fn exercise() Int!:
 
 	var early_out = stdout()
 	early(output: var early_out) | expect_equal(5)?
-
 	void stdout().write(value: "finished\n")
 	return ok(0)
 

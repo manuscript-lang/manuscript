@@ -722,13 +722,13 @@ impl Completer<'_> {
 fn keyword_template(word: &str) -> Option<&'static str> {
     Some(match word {
         "interface" => "interface ${1:Name}:\n    ${0:fn operation() Void}",
-        "fn" => "fn ${1:name}(${2}) ${3:Void}:\n    ${0:return void}",
+        "fn" => "fn ${1:name}(${2}) ${3:Void}:\n    ${0:return}",
         "type" => "type ${1:Name}:\n    ${0:field: String}",
         "enum" => "enum ${1:Name}:\n    ${0:Ready}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
-        "test" => "test \"${1:name}\":\n    ${0:return void}",
-        "bench" => "bench \"${1:name}\":\n    ${0:return void}",
+        "test" => "test \"${1:name}\":\n    ${0:return}",
+        "bench" => "bench \"${1:name}\":\n    ${0:return}",
         _ => return None,
     })
 }

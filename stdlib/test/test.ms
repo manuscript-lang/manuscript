@@ -59,13 +59,13 @@ export fn catch_fault(operation: fn() Void) String?:
 // Fails unless actual is True. `site` names the call in the failure and defaults to the
 // caller's position.
 export fn expect_true(actual: Bool, site: String = caller_site()) Void!:
-	if actual: return ok(void)
+	if actual: return ok()
 	return error(failure("expected true, got false", site))
 
 // Fails unless actual is False. `site` names the call in the failure and defaults to
 // the caller's position.
 export fn expect_false(actual: Bool, site: String = caller_site()) Void!:
-	if not actual: return ok(void)
+	if not actual: return ok()
 	return error(failure("expected false, got true", site))
 
 // Compares using ordinary Equal semantics; reports expected and actual values on
@@ -75,7 +75,7 @@ export fn expect_equal[T: Equal](
 	expected: T,
 	site: String = caller_site(),
 ) Void!:
-	if actual == expected: return ok(void)
+	if actual == expected: return ok()
 	return error(failure("expected {repr(expected)}, got {repr(actual)}", site))
 
 // Fails when values are equal under ordinary Equal semantics.
@@ -84,7 +84,7 @@ export fn expect_not_equal[T: Equal](
 	expected: T,
 	site: String = caller_site(),
 ) Void!:
-	if actual != expected: return ok(void)
+	if actual != expected: return ok()
 	return error(failure("expected different values, got {repr(actual)}", site))
 
 // Checks absolute difference against a finite nonnegative tolerance. NaN fails;
@@ -102,12 +102,12 @@ export fn expect_close(
 				site,
 			)
 		)
-	if actual == expected: return ok(void)
+	if actual == expected: return ok()
 
 	var spread = actual - expected
 	if spread < 0.0:
 		spread = 0.0 - spread
-	if spread <= tolerance: return ok(void)
+	if spread <= tolerance: return ok()
 
 	return error(
 		failure(
@@ -122,7 +122,7 @@ export fn expect_contains(
 	expected: String,
 	site: String = caller_site(),
 ) Void!:
-	if actual.contains(expected): return ok(void)
+	if actual.contains(expected): return ok()
 	return error(failure("expected {repr(actual)} to contain {repr(expected)}", site))
 
 // Requires some and returns its original payload; fails on none.

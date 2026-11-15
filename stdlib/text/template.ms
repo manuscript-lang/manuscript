@@ -806,7 +806,7 @@ fn var Run.each(
 		_frame := self.frames.remove(self.frames.length() - 1)
 		if result.is_error(): return result
 
-	return ok(void)
+	return ok()
 
 fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 	key := to_text(self.eval(name, true)?)

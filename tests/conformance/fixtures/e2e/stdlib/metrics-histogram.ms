@@ -49,7 +49,7 @@ test "histogram answers for the highest valid Int bucket":
 	expect_equal(low_edge.percentile(100.0).get(0), 9079256848778919936)?
 
 fn discard_percentile(value: Int?) Void:
-	return void
+	return
 
 test "histogram rejects invalid percentiles whether empty or populated":
 	var h = histogram()

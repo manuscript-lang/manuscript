@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "ok-shorthand.ms::ok() is ok(void)",
+          "name": "ok-shorthand.ms::ok() succeeds with nothing",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN ok-shorthand.ms::ok() is ok(void)\nPASS ok-shorthand.ms::ok() is ok(void)\n1 tests, 0 failed\n",
+      "stdout": "RUN ok-shorthand.ms::ok() succeeds with nothing\nPASS ok-shorthand.ms::ok() succeeds with nothing\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

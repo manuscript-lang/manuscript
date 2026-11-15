@@ -38,7 +38,7 @@ fn var Whole.next() Bytes?!:
 	return ok(self.data.clone())
 
 fn var Whole.close() Void!:
-	return ok(void)
+	return ok()
 
 fn count_events(data: Bytes) Int:
 	var events = sse_events(ReadStream[Bytes](Whole(data, false)))

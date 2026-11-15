@@ -589,7 +589,7 @@ fn project_review_counts_discovered_test_files() {
         "export fn main() Int:\n    return 0\n",
     )
     .unwrap();
-    std::fs::write(dir.join("test.ms"), "test \"t\":\n    return void\n").unwrap();
+    std::fs::write(dir.join("test.ms"), "test \"t\":\n    return\n").unwrap();
     let output = ms(&dir, &["review", "ms.toml"]);
     assert!(output.status.success());
     let text = String::from_utf8_lossy(&output.stdout);

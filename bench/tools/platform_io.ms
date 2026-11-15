@@ -122,7 +122,6 @@ fn round_trips(program: String, n: Int) Void!:
 
 	report("pipe round trip", best, n)
 	child.kill()
-
 	void child.wait()
 
 fn run_all(n: Int) Void!:

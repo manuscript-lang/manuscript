@@ -16,7 +16,7 @@ import (
 fn handler(var exchange: HttpExchange) Void!:
 	if exchange.path() == "/hang":
 		sleep(30.seconds()).wait()?
-		return ok(void)
+		return ok()
 
 	return reply(var exchange, text(200, "ok"))
 

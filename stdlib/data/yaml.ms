@@ -535,7 +535,7 @@ fn merge(
 					entry.key.clone(),
 					entry.value.clone(),
 				)
-			return ok(void)
+			return ok()
 		ArrayValue(values): values
 		_: return error(
 			yaml_invalid(
@@ -561,7 +561,7 @@ fn merge(
 				)
 			)
 
-	return ok(void)
+	return ok()
 
 // A plain scalar continued across lines folds each break into one space; blank lines
 // stay breaks.
@@ -744,7 +744,7 @@ fn flow_entry(
 			target: var entries,
 			value: value,
 		):
-			ok(_): return ok(void)
+			ok(_): return ok()
 			error(cause): cause
 
 		if cause.kind != "EBADMSG": return error(cause)
@@ -766,7 +766,7 @@ fn flow_entry(
 	else:
 		entries.add(name.clone(), value)
 
-	return ok(void)
+	return ok()
 
 // A flow container suspended while its child is read.
 type FlowFrame:
@@ -2137,7 +2137,7 @@ fn sequence_items(
 				)?
 			)
 
-	return ok(void)
+	return ok()
 
 // Whether `text` starts with the indicator `code` followed by a blank or the end.
 fn indicator(text: String, code: Int) Bool:
@@ -2824,7 +2824,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 					out.append(text)
 					out.append("\n")
 
-			return ok(void)
+			return ok()
 		ObjectValue(values):
 			for entry in values.entries():
 				out.append(indent)
@@ -2839,8 +2839,8 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 					out.append(text)
 					out.append("\n")
 
-			return ok(void)
-		_: return ok(void)
+			return ok()
+		_: return ok()
 
 // Serializes a YAML value in block style with double-quoted strings.
 export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:

@@ -10,7 +10,7 @@ fn var Counted.next() Int?:
 	return none
 
 fn var Counted.close() Void!:
-	return ok(void)
+	return ok()
 
 fn drain(s: Source[Int]) Int:
 	return 1

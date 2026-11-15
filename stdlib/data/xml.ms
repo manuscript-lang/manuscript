@@ -280,7 +280,7 @@ fn var Reader.declaration() Void!:
 
 		if self.looking_at("?>"):
 			self.at += 2
-			return ok(void)
+			return ok()
 
 		if self.at == before: return error(self.invalid("expected whitespace or `?>`"))
 
@@ -360,7 +360,7 @@ fn var Reader.internal_subset() Void!:
 
 		if self.looking_at("]"):
 			self.at += 1
-			return ok(void)
+			return ok()
 
 		if self.looking_at("<!--"):
 			_comment := self.comment()?
@@ -450,7 +450,7 @@ fn var Reader.skip_misc(
 		else:
 			break
 
-	return ok(void)
+	return ok()
 
 fn var Reader.element(depth: Int) XmlNode!:
 	if depth > self.max_depth: return error(

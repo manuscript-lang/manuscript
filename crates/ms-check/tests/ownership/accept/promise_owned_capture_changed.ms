@@ -5,7 +5,7 @@ type Door:
     count: Int
 
 fn var Door.close() Void!:
-    return ok(void)
+    return ok()
 
 fn var Door.knock() Void:
     self.count += 1

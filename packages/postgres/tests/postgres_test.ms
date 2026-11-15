@@ -89,14 +89,12 @@ test "transactions commit and roll back":
 	var conn = open(config()?)?
 	void conn.simple("create temp table t (n int)")?
 	conn.begin()?
-
 	void conn.query("insert into t values ($1)", [Value.Int(1)])?
 	conn.rollback()?
 
 	none_left := conn.query("select count(*) from t", [])?
 	expect_equal(none_left.rows[0][0], Value.Int(0))?
 	conn.begin()?
-
 	void conn.query("insert into t values ($1)", [Value.Int(1)])?
 	conn.commit()?
 
@@ -182,11 +180,10 @@ fn impostor(var client: Connection) Void!:
 		]
 	)
 	client.output.write(offer)?
-
 	void client.input.next()?
 	client.output.write(Bytes([82, 0, 0, 0, 8, 0, 0, 0, 0]))?
 	client.close()?
-	return ok(void)
+	return ok()
 
 test "a server that skips the SCRAM proof is rejected":
 	var listener = listen("127.0.0.1:0")?
@@ -201,16 +198,17 @@ test "a server that skips the SCRAM proof is rejected":
 test "transaction commits on success and rolls back on error":
 	var conn = open(config()?)?
 	void conn.simple("create temp table tx (n int)")?
+
 	added := conn.transaction(
 		fn(var c: Conn): c.query("insert into tx values (1)", [])
 	)?
 	expect_equal(added.command, "INSERT 0 1")?
-
 	void expect_error(
 		conn.transaction(
 			fn(var c: Conn): c.query("insert into tx values (1/0)", [])
 		)
 	)?
+
 	count := conn.query("select count(*) from tx", [])?
 	expect_equal(count.rows[0][0], Value.Int(1))?
 	conn.close()?
@@ -239,7 +237,7 @@ fn refuser(var client: Connection) Void!:
 	void client.input.next()?
 	client.output.write(Bytes([78]))?
 	client.close()?
-	return ok(void)
+	return ok()
 
 fn refuser_accept(accepted: Promise[Connection]) Void!:
 	var client = accepted.wait()?

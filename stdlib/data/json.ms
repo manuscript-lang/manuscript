@@ -407,7 +407,7 @@ fn var JsonReading[T].finish(var out: List[T]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	self.finished = true
-	if self.mode == 0: return ok(void)
+	if self.mode == 0: return ok()
 	if self.mode != 3: return self.fail(Error("JSON: invalid data", kind: "EBADMSG"))
 
 	completed := self.complete()

@@ -198,7 +198,7 @@ fn fix_wraps_expressions_to_convert_types() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let source = "fn say(text: String) Void:\n\
-        \x20   return void\n\
+        \x20   return\n\
         \n\
         export fn main() Int:\n\
         \x20   n := 3\n\

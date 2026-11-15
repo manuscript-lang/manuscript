@@ -18,7 +18,7 @@ fn var Count.next() Int?!:
 	return ok(self.n)
 
 fn var Count.close() Void!:
-	return ok(void)
+	return ok()
 
 type Box:
 	label: Int

@@ -33,5 +33,4 @@ fn main() Void:
 		running.append(promise(fn: ok(worker(url.clone(), secs * 1000000000))))
 	for r in wait_all(running).get():
 		total += r
-
 	void stdout().write("req/s {total / secs}\n")

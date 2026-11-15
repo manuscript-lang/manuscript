@@ -4,7 +4,7 @@ type Handle:
     items: List[Int]
 
 fn var Handle.close() Void!:
-    return ok(void)
+    return ok()
 
 fn keep(xs: List[Int]) List[Int]:
     return xs

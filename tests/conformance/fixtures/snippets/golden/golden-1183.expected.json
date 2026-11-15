@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1183.ms:4:5: parse: unexpected source character '$'; this character is not part of Manuscript's syntax outside text\n   |\n 4 |     ${0:return void}\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1183.ms:4:5: parse: unexpected source character '$'; this character is not part of Manuscript's syntax outside text\n   |\n 4 |     ${0:return}\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

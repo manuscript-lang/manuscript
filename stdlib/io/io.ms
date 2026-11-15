@@ -79,7 +79,7 @@ fn var ReadStream[T].next(timeout: Duration? = none) T?!:
 // Closes the source and drops it, so a socket or file it held is released now;
 // later calls do nothing.
 fn var ReadStream[T].close() Void!:
-	if self.closed: return ok(void)
+	if self.closed: return ok()
 
 	self.closed = true
 
@@ -109,7 +109,7 @@ fn var EndedSource[T].next() T?!:
 	return ok(none)
 
 fn var EndedSource[T].close() Void!:
-	return ok(void)
+	return ok()
 
 // Values go out with `write`; `flush` waits for the destination's flush condition. Make
 // one with `WriteStream(sink)`. The stream owns its sink and closes it when its scope
@@ -143,10 +143,10 @@ fn var ClosedSink[T].write(value: T) Void!:
 	return error(Error("I/O: resource is closed", kind: "EBADF"))
 
 fn var ClosedSink[T].flush() Void!:
-	return ok(void)
+	return ok()
 
 fn var ClosedSink[T].close() Void!:
-	return ok(void)
+	return ok()
 
 // ---- Descriptors and standard input --------------------------------------------------------------------------------
 
@@ -180,7 +180,7 @@ fn var DescriptorSource.next() Bytes?!:
 
 // Releases the descriptor without waiting.
 fn var DescriptorSource.close() Void!:
-	if self.closed: return ok(void)
+	if self.closed: return ok()
 
 	self.closed = true
 	msrt_streams_close(self.id)
@@ -218,7 +218,7 @@ fn var DescriptorSink.flush() Void!:
 // it. The descriptor is released even when the wait fails or is cancelled, and that
 // failure is returned.
 fn var DescriptorSink.close() Void!:
-	if self.closed: return ok(void)
+	if self.closed: return ok()
 
 	self.closed = true
 
@@ -232,7 +232,7 @@ fn descriptor_write_result(id: Int) Void!:
 	message := msrt_streams_error(id)
 	if message.length() > 0: return error(Error(message, kind: "EIO"))
 
-	return ok(void)
+	return ok()
 
 fn flush_descriptor(id: Int) Void!:
 	adopt[Void](msrt_streams_flush(id)).wait()?
@@ -263,7 +263,7 @@ fn var StdoutText.flush() Void!:
 	return msstd_io_stdout_status(true)
 
 fn var StdoutText.close() Void!:
-	return ok(void)
+	return ok()
 
 type StdoutBytes:
 	unused: Bool = false
@@ -276,7 +276,7 @@ fn var StdoutBytes.flush() Void!:
 	return msstd_io_stdout_status(true)
 
 fn var StdoutBytes.close() Void!:
-	return ok(void)
+	return ok()
 
 // Standard error, as text or bytes.
 type StderrText:
@@ -286,10 +286,10 @@ fn var StderrText.write(value: String) Void!:
 	msrt_io_write_stderr(value)
 
 fn var StderrText.flush() Void!:
-	return ok(void)
+	return ok()
 
 fn var StderrText.close() Void!:
-	return ok(void)
+	return ok()
 
 type StderrBytes:
 	unused: Bool = false
@@ -298,10 +298,10 @@ fn var StderrBytes.write(value: Bytes) Void!:
 	msrt_io_write_bytes_stderr(value)
 
 fn var StderrBytes.flush() Void!:
-	return ok(void)
+	return ok()
 
 fn var StderrBytes.close() Void!:
-	return ok(void)
+	return ok()
 
 // Standard output as text.
 // ms: effect std.console.write
@@ -450,7 +450,7 @@ fn var Through[A, B].next() B?!:
 		if self.finished: return ok(none)
 
 		step := self.input.next()?
-		var wrote: Void! = ok(void)
+		var wrote: Void! = ok()
 
 		if value := step:
 			wrote = self.transform.step(value, var self.out)

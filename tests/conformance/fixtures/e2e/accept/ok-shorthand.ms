@@ -10,7 +10,7 @@ fn forward(n: Int) Void!:
 	check(n)?
 	return ok()
 
-test "ok() is ok(void)":
+test "ok() succeeds with nothing":
 	expect_equal(check(1).is_ok(), true)?
 	expect_equal(check(-1).is_ok(), true)?
 	expect_equal(forward(2).is_ok(), true)?

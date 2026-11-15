@@ -10,7 +10,7 @@ import (
 
 fn invalid_block_key(source: String) Void!:
 	cause := parse(source) | expect_error?
-	if cause.kind == "EBADMSG": return ok(void)
+	if cause.kind == "EBADMSG": return ok()
 
 	return fail("expected malformed YAML, got {cause}")
 

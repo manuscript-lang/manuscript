@@ -383,7 +383,7 @@ fn HttpServer.wait(timeout: Duration? = none) Void!:
 	set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
 	ended := self.accepting.wait()
-	if self.stopped: return ok(void)
+	if self.stopped: return ok()
 
 	return ended
 

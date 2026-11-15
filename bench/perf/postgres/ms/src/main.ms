@@ -53,7 +53,7 @@ fn setup(cfg: Config) Void!:
 	)?
 	void conn.simple("analyze items")?
 	conn.close()?
-	return ok(void)
+	return ok()
 
 fn main() Void!:
 	args := environment()?
@@ -67,4 +67,4 @@ fn main() Void!:
 	var total = 0
 	for task in tasks: total += task.wait()?
 	print("checksum {total}")
-	return ok(void)
+	return ok()

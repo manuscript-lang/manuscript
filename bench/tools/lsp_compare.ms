@@ -190,7 +190,7 @@ fn compare(
 		)
 
 	write_text(out, rows.join("\n") + "\n")
-	return ok(void)
+	return ok()
 
 fn main() Int:
 	args := arguments()

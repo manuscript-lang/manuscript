@@ -8,7 +8,7 @@ import milliseconds, sleep from "@std/time.ms"
 fn faulting(var exchange: HttpExchange) Void!:
     xs: List[Int] := []
     n := xs[5]
-    if n > 5: return ok(void)
+    if n > 5: return ok()
 
 // The thunk that calls the handler keeps the exchange in a stack slot; a fault in the handler still releases it.
 fn status() Int:

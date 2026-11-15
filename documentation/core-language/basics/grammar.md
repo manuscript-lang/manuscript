@@ -145,7 +145,7 @@ ExternDeclaration = "extern", "fn", Name, "(", [ FunctionParameters ], ")", Resu
                   | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
 FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
-(* A test body behaves as if it returns Result[Void, Error]: completing, bare return, or `return void` succeeds; a postfix `?` or return error(...) fails it. *)
+(* A test body behaves as if it returns Result[Void, Error]: completing, bare return, or `return` succeeds; a postfix `?` or return error(...) fails it. *)
 (* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
 BenchDeclaration = "bench", PlainStringLiteral, [ "per", PositiveInteger ], Suite ;
 (* `bench` is contextual: it starts a declaration only before a string literal. The body is one iteration (`per N` says it performs N operations, and `ms bench` then reports per operation), with a test body's result rules and no `fixture`; `ms bench` repeats and times it. *)

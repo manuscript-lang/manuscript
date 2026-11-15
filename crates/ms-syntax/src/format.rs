@@ -819,6 +819,15 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
                 .is_some_and(|l| l.trim_start().starts_with("//") && indent_of(l) == indent)
         }
     }
+    /// A binding that names something. `void value` is a binding of `_` and reads as a call.
+    fn is_binding(s: &Stmt) -> bool {
+        match &s.kind {
+            StmtKind::Bind { pattern, .. } => {
+                !matches!(&pattern.kind, PatternKind::Name(n) if crate::Names::global().str(*n) == "_")
+            }
+            _ => false,
+        }
+    }
     impl Visitor for P<'_> {
         fn block(&mut self, body: &[Stmt]) {
             for i in 1..body.len() {
@@ -832,8 +841,7 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
                     || (guard_statement(previous)
                         && !guard_statement(current)
                         && !(body.len() == 2 && matches!(current.kind, StmtKind::Return(_))))
-                    || (!matches!(previous.kind, StmtKind::Bind { .. })
-                        && matches!(current.kind, StmtKind::Bind { .. }))
+                    || (!is_binding(previous) && is_binding(current))
                     || self.leading_comment(line)
                 {
                     self.before(line);

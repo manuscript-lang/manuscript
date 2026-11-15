@@ -4,7 +4,7 @@ type Item:
     id: Int
 
 fn var Item.close() Void!:
-    return ok(void)
+    return ok()
 
 fn read(items: List[Item]) Int:
     if value := items.first():

@@ -331,7 +331,7 @@ fn for_snippet_inserts_a_checked_loop() {
             .expect("snippet")
             .replace("${1:item}", "item")
             .replace("${2:items}", "[1, 2]")
-            .replace("$0", "return void")
+            .replace("$0", "return")
             .replace('\n', "\n    ");
         document.text.replace_range(start..end, &insertion);
         let checked = analyze(syms, &support::session(), &document, &Documents::new());

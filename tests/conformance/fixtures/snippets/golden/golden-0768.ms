@@ -3,6 +3,6 @@
 test "bare":
     return
 test "unit":
-    return void
+    return
 test "fall":
     x := 1

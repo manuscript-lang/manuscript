@@ -215,7 +215,7 @@ fn CaptureTransport.write_bytes(data: Bytes) Void!:
 	)
 
 	match append_file(self.path, data).wait():
-		ok(_): return ok(void)
+		ok(_): return ok()
 		error(cause): return error(cause)
 
 fn CaptureTransport.flush() Void!:
@@ -315,13 +315,13 @@ fn Memory.write_bytes(data: Bytes) Void!:
 	return self.write(data.decode_utf8().get(""))
 
 fn Memory.flush() Void!:
-	return ok(void)
+	return ok()
 
 fn Memory.duplicate() Transport!:
 	return ok(Memory(self.path.clone()))
 
 fn Memory.close() Void:
-	return void
+	return
 
 fn recorded(path: String) String:
 	return written(path).get(none).get("")

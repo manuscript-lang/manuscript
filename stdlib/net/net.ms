@@ -98,7 +98,7 @@ fn var ConnectionSink.write(value: Bytes) Void!:
 	return msstd_net_connection_write_bytes(self.native, value, none)
 
 fn var ConnectionSink.flush() Void!:
-	return ok(void)
+	return ok()
 
 // Half-closes the connection so the peer sees the end of the stream; the socket
 // closes once the input is closed too.
@@ -228,7 +228,7 @@ fn var DatagramSink.write(value: Datagram) Void!:
 	return msstd_net_datagram_send_bytes(self.native, value.data, value.address, none)
 
 fn var DatagramSink.flush() Void!:
-	return ok(void)
+	return ok()
 
 fn var DatagramSink.close() Void!:
 	msstd_net_datagram_close_if_last(self.native)
@@ -711,7 +711,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		accepted := msstd_http_serving_accept(listening.serving)
 
 		if accepted.is_error():
-			if accepted.err().kind == "EBADF": return ok(void)
+			if accepted.err().kind == "EBADF": return ok()
 
 			void sleep(50.milliseconds()).wait()
 			continue

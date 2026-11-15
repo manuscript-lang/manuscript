@@ -26,7 +26,7 @@ fn relocked(second_fails: Bool) Void!:
     void g.close()
     g = Gate(0)
     if second_fails:
-        return ok(void)
+        return ok()
 
     void g.close()
 

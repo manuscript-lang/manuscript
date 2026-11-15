@@ -8,5 +8,5 @@ fn f(x: Int?) Void!:
     match x:
         n:
             p()?
-            return ok(void)
-        none: return ok(void)
+            return ok()
+        none: return ok()

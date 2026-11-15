@@ -4,7 +4,7 @@ type Res:
     name: String
 
 fn var Res.close() Void!:
-    return ok(void)
+    return ok()
 
 // A value derived from a resource cannot be used once the resource is closed.
 fn main() Void:

@@ -427,14 +427,14 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 	if existing.is_none():
 		allocate(var reader)?
 		put_array(var reader, parent, key, next)
-		return ok(void)
+		return ok()
 
 	node := existing.get()
 
 	match node:
 		TableArray(slot):
 			reader.arrays[slot].append(next)
-			return ok(void)
+			return ok()
 		_: return error(invalid(reader, "table array conflicts with value"))
 
 fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
@@ -475,7 +475,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
 		invalid(reader, "duplicate or closed key")
 	)
 
-	return ok(void)
+	return ok()
 
 // Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where
 // it was.
@@ -515,7 +515,7 @@ fn seal(var reader: Reader, value: Node) Void:
 	match value:
 		TableNode(id):
 			var state = flags(reader, id).clone()
-			if state.sealed: return void
+			if state.sealed: return
 
 			state.sealed = true
 			store_flags(var reader, id, state)
@@ -525,7 +525,7 @@ fn seal(var reader: Reader, value: Node) Void:
 			)
 		ArrayNode(values):
 			for item in values: seal(var reader, item)
-		_: return void
+		_: return
 
 fn digits(text: String, alphabet: String) Bool:
 	if text == "": return false

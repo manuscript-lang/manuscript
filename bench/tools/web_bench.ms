@@ -147,7 +147,7 @@ fn measure_server(
 	if name == "c":
 		say("{name} threads {threads(pid.clone())} rss_kb {rss_kb(pid.clone())}")
 		void server.close()
-		return ok(void)
+		return ok()
 
 	if name != "rust":
 		for round in 0..2:
@@ -158,6 +158,7 @@ fn measure_server(
 			"{p.w}/mixed",
 		)?
 		void sleep(milliseconds(200)).wait()
+
 		during := if seconds > 1: seconds - 1 else: 1
 		say("{name} health-during-io {load(p, port, ["32", "{during}", "/health"])}")
 		mixed.wait().get(0)
@@ -184,6 +185,7 @@ fn measure_server(
 			"/dev/null",
 		)?
 		void sleep(milliseconds(500)).wait()
+
 		reqs := (
 			load(p, port, ["64", "2", "/health"]).split(" ")[
 				1
@@ -224,7 +226,7 @@ fn measure_server(
 	say("{name} /health-with-10k-idle {load(p, port, ["64", "{seconds}", "/health"])}")
 	void idle.close()
 	void server.close()
-	return ok(void)
+	return ok()
 
 fn prepare_run(here: String, w: String) List[String]!:
 	for dir in ["go", "ms", "load", "c"]:
@@ -320,6 +322,7 @@ fn fetch_all(here: String, seconds: Int) Void!:
 		"/dev/null",
 	)?
 	void sleep(milliseconds(1000)).wait()
+
 	fetches := [
 		["small", "1"],
 		["small", "8"],

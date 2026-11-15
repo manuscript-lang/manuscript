@@ -4,7 +4,7 @@ type Res:
     name: String
 
 fn var Res.close() Void!:
-    return ok(void)
+    return ok()
 
 // The list closes its elements, so a value borrowed from one cannot outlive a change to the list.
 fn main() Void:

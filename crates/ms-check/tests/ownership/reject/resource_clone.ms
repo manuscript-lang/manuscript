@@ -4,7 +4,7 @@ type Res:
     name: String
 
 fn var Res.close() Void!:
-    return ok(void)
+    return ok()
 
 type Holder:
     items: List[Res]

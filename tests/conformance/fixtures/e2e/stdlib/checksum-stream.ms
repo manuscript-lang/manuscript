@@ -26,7 +26,7 @@ fn var Chunks.next() Bytes?!:
 	return ok(piece)
 
 fn var Chunks.close() Void!:
-	return ok(void)
+	return ok()
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))

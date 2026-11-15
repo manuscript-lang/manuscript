@@ -17,7 +17,7 @@ fn faulting(var exchange: HttpExchange) Void!:
 	big := "x".repeat(1000000).get("")
 	xs: List[Int] := []
 	n := xs[big.length()]
-	if big.length() + n > 5: return ok(void)
+	if big.length() + n > 5: return ok()
 
 test "a faulting handler releases the values its frames own":
 	server := serve(address: "127.0.0.1:0", handler: faulting) | expect_ok?

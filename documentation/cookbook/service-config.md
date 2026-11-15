@@ -35,7 +35,7 @@ fn apply_environment(var settings: Settings) Void!:
         settings.port = value.parse_int().ok_or(Error("PORT is not a number", kind: "EINVAL"))?
     if value := env.get("LOG_LEVEL"):
         settings.level = value.clone()
-    return ok(void)
+    return ok()
 
 fn main() Void!:
     var settings = from_file("settings.json")?

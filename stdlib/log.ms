@@ -215,7 +215,7 @@ fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = non
 	if level == LogLevel.Silent: return error(
 		Error("logging: invalid input", kind: "EINVAL")
 	)
-	if not self.enabled(level): return ok(void)
+	if not self.enabled(level): return ok()
 
 	if value := fields:
 		text := encode_fields(value)?

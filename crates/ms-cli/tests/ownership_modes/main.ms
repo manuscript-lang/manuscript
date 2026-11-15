@@ -27,7 +27,7 @@ fn inputs(
     count: Count,
     var changed: Int
 ) Void:
-    return void
+    return
 
 fn item_name(item: Item) String:
     return item.name

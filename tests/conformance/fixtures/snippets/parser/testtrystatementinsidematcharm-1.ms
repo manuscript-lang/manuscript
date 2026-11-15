@@ -5,5 +5,5 @@ fn f(x: Int?) Void!:
     match x:
         n:
             g(n)?
-            return ok(void)
-        none: return ok(void)
+            return ok()
+        none: return ok()

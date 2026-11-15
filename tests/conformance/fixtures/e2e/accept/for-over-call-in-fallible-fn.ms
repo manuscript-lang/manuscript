@@ -15,7 +15,7 @@ fn var Src.next() String?!:
 	return ok("x")
 
 fn var Src.close() Void!:
-	return ok(void)
+	return ok()
 
 fn make() ReadStream[String]:
 	return ReadStream[String](Src(0))

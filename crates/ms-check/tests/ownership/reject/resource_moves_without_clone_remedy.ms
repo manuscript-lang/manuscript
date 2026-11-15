@@ -4,7 +4,7 @@ type Door:
     n: Int
 
 fn var Door.close() Void!:
-    return ok(void)
+    return ok()
 
 type Room:
     door: Door

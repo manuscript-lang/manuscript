@@ -346,7 +346,7 @@ type OwnHolder:
 	resource: Failing
 
 fn var OwnHolder.close() Void!:
-	return ok(void)
+	return ok()
 
 fn own_holder_result[T](log: String, source: T!) T!:
 	_holder := OwnHolder(Failing(log.clone(), 1, fail: false))
@@ -396,7 +396,7 @@ fn handled_result[T](log: String, source: T!) T!:
 fn nested_closure_result[T](log: String, source: T!) T!:
 	_unused := fn:
 		_resource := Failing(log.clone(), 1)
-		return void
+		return
 
 	return source
 

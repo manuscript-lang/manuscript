@@ -29,7 +29,7 @@ fn check_round_trip(seed: Int, original: YamlValue) Result[Void, Error]:
         "seed \{seed\}: changed\n\{rendered\}"
     )
 
-    return ok(void)
+    return ok()
 
 fn check_stable(seed: Int, mutated: String, first: YamlValue) Result[Void, Error]:
     again := stringify(first)?
@@ -37,7 +37,7 @@ fn check_stable(seed: Int, mutated: String, first: YamlValue) Result[Void, Error
         "seed \{seed\}: reparsed value changed\n\{mutated\}\n---\n\{again\}"
     )
 
-    return ok(void)
+    return ok()
 
 test "YAML stringify then parse preserves generated documents":
     for seed in range(1, 301):

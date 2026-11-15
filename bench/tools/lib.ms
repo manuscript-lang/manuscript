@@ -200,7 +200,6 @@ export fn build_rust(source: String, out: String, flags: List[String]) Void!:
 	var args = ["--edition", "2021", "-C", "opt-level=3", "-C", "codegen-units=1"]
 	args = args.concat(flags)
 	args = args.concat(["-o", out.clone(), source.clone()])
-
 	void must("rustc {source}", capture(env("RUSTC", "rustc"), args))?
 
 // Runs `exe` with `input` on standard input and returns its standard output.

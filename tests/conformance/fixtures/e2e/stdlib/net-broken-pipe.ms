@@ -25,7 +25,7 @@ test "writing to a closed connection returns an error":
 		if _sent := written:
 			attempts += 0
 		else:
-			return ok(void)
+			return ok()
 
 		attempts += 1
 

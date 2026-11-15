@@ -16,7 +16,7 @@ fn make(p: Pipe[Int]) Handlers:
         out.write(n)?
         out.close()?
         total += n
-        return ok(void)
+        return ok()
     )
     return h
 

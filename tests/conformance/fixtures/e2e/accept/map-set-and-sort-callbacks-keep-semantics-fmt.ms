@@ -7,7 +7,7 @@ fn byLength(left: String, right: String) Int: left.length() - right.length()
 
 fn record(var into: List[Int], value: Int) Void:
     into.append(value: value)
-    return void
+    return
 
 test "map callbacks":
     m := {"a": 1, "bb": 2, "ccc": 3}

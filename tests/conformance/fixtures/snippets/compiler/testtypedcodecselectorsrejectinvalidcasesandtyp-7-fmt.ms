@@ -5,7 +5,7 @@ import HashAlgorithm from "@std/crypto/crypto.ms"
 import CompressionFormat from "@std/io/archive.ms"
 
 fn choose(algorithm: HashAlgorithm) Void:
-    return void
+    return
 
 fn wrong() Void:
     choose(CompressionFormat.Gzip)

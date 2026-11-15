@@ -4,7 +4,7 @@ type Res:
     name: String
 
 fn var Res.close() Void!:
-    return ok(void)
+    return ok()
 
 // fill, copy_within and merge store copies of what they are given.
 fn main() Int:

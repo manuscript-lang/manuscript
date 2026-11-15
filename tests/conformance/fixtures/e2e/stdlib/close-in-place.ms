@@ -105,7 +105,7 @@ type Maker:
 	made: Int
 
 fn var Maker.close() Void!:
-	return ok(void)
+	return ok()
 
 fn var Maker.make(log: String, id: Int) Latch:
 	self.made += 1

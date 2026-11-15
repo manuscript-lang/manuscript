@@ -650,7 +650,7 @@ fn var TickSource.next() Instant?!:
 	return ok(tick)
 
 fn var TickSource.close() Void!:
-	return ok(void)
+	return ok()
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or
 // less is a programming fault.

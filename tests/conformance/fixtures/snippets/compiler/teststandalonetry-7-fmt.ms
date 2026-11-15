@@ -5,7 +5,7 @@ test "bare":
     return
 
 test "unit":
-    return void
+    return
 
 test "fall":
     _x := 1

@@ -13,10 +13,10 @@ fn var Counted.next() Int?!:
 	return ok(none)
 
 fn var Counted.write(value: Int) Void!:
-	return ok(void)
+	return ok()
 
 fn var Counted.flush() Void!:
-	return ok(void)
+	return ok()
 
 fn var Counted.close() Void!:
 	void append_file(self.log, "x").wait()

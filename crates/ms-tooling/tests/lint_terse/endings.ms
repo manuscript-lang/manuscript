@@ -1,9 +1,9 @@
 fn show(n: Int) Void!:
     print("{n}")
-    return ok(void)
+    return ok()
 
 fn only() Void!:
-    return ok(void)
+    return ok()
 
 fn quiet(n: Int) Void:
     print("{n}")
@@ -11,7 +11,7 @@ fn quiet(n: Int) Void:
 
 fn early(n: Int) Void!:
     if n > 1:
-        return ok(void)
+        return ok()
     print("{n}")
 
 fn count() Int!:

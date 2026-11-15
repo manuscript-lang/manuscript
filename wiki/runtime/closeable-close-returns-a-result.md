@@ -2,7 +2,7 @@
 
 # Closeable.close() returns a Result
 
-Decision (Chinmay): there is one `Closeable` interface and `close()` returns `Void!` (`Result[Void, Error]`), so a failed flush or release is a value. An implicit scope-end close never drops its error: it becomes the function's error, or the close faults when nothing can carry it (non-`Result` function, a holder's part, a replaced or temporary value). Types whose release cannot fail return `ok(void)`. Resource `clone()` is fallible; only plain-data types are `Clonable`.
+Decision (Chinmay): there is one `Closeable` interface and `close()` returns `Void!` (`Result[Void, Error]`), so a failed flush or release is a value. An implicit scope-end close never drops its error: it becomes the function's error, or the close faults when nothing can carry it (non-`Result` function, a holder's part, a replaced or temporary value). Types whose release cannot fail return `ok()`. Resource `clone()` is fallible; only plain-data types are `Clonable`.
 
 
 Apply when: implementing `Closeable`, writing cleanup, or changing scope-end drops.

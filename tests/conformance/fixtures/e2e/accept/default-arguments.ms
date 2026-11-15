@@ -23,7 +23,7 @@ fn ordered(
 	return second * 10 + 5 + third
 
 fn unit_default() Void:
-	return void
+	return
 
 fn unit_value(value: Void = unit_default()) Void:
 	return value

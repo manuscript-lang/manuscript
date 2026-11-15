@@ -113,7 +113,7 @@ fn failing_cleanup(log: String) Void!:
 
 fn wait_for_check(log: String) Void!:
 	for attempt in 0..1000:
-		if events(log).contains("check\n"): return ok(void)
+		if events(log).contains("check\n"): return ok()
 
 		sleep(milliseconds(1)).wait()?
 

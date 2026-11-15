@@ -93,7 +93,7 @@ test "wait_first runs a local deferred input beside a foreign promise":
 		expect_equal(busy >= 0, true)?
 
 		remote := (outer.wait()?).with(options: PromiseOptions(timeout: 1.seconds()))
-		local := deferred[Void](fn id: complete[Void](id, ok(void)))
+		local := deferred[Void](fn id: complete[Void](id, ok()))
 		wait_first([local, remote])?
 
 test "wait_first returns a ready input before foreign deferred work":
@@ -103,7 +103,7 @@ test "wait_first returns a ready input before foreign deferred work":
 		expect_equal(busy >= 0, true)?
 
 		remote := outer.wait()?
-		ready := promise[Void](fn: ok(void))
+		ready := promise[Void](fn: ok())
 		while not ready.done():
 			continue
 		wait_first([remote, ready])?

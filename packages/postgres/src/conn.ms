@@ -84,7 +84,7 @@ fn protocol(what: String) Error:
 // Makes at least `count` unread bytes available, joining chunks once so a large message
 // costs linear time.
 fn var Conn.need(count: Int) Void!:
-	if self.buffer.length() - self.pos >= count: return ok(void)
+	if self.buffer.length() - self.pos >= count: return ok()
 
 	var joined = BytesBuilder()
 	joined.append_bytes(self.buffer.slice(self.pos, self.buffer.length())?)
@@ -106,7 +106,7 @@ fn var Conn.need(count: Int) Void!:
 
 	self.buffer = joined.build()
 	self.pos = 0
-	return ok(void)
+	return ok()
 
 // Reads the next message, skipping notices, parameter changes and ignorable messages. A
 // server error arrives as `ErrorResponse`, since the server keeps the stream in step
@@ -245,11 +245,11 @@ fn var Conn.authenticate(config: Config) Void!:
 				self.secret = secret
 			Backend.ReadyForQuery(status):
 				self.status = status
-				return ok(void)
+				return ok()
 			Backend.ErrorResponse(fields): return error(server_error(fields))
 			_: continue
 
-	return ok(void)
+	return ok()
 
 // Reads messages up to ReadyForQuery, collecting rows. A server error or a value that
 // cannot be decoded is remembered, and the first one is returned once the server has
@@ -315,15 +315,15 @@ fn var Conn.query(sql: String, params: List[Value]) Rows!:
 
 fn var Conn.begin() Void!:
 	void self.simple("BEGIN")?
-	return ok(void)
+	return ok()
 
 fn var Conn.commit() Void!:
 	void self.simple("COMMIT")?
-	return ok(void)
+	return ok()
 
 fn var Conn.rollback() Void!:
 	void self.simple("ROLLBACK")?
-	return ok(void)
+	return ok()
 
 fn var Conn.close() Void!:
 	void self.send(terminate()?)

@@ -475,7 +475,7 @@ export fn check[T](
 				executed,
 			)
 
-	return ok(void)
+	return ok()
 
 fn report[T](
 	name: String,

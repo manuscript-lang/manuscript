@@ -122,7 +122,7 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 
 ## Void and Never
 
-`Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return void`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok(void)`, which can also be written `ok()`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
+`Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok()`, which can also be written `ok()`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
 ```manuscript
 import panic from "@std/core.ms"

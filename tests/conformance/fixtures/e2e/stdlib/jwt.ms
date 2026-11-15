@@ -537,7 +537,7 @@ fn expect_date_order(number: String, at: Int, order: Int) Void!:
 			)?
 		)
 
-	return ok(void)
+	return ok()
 
 test "numeric dates retain consecutive integer and fractional ordering":
 	expect_date_order("9007199254740993", 9007199254740992, 1)?

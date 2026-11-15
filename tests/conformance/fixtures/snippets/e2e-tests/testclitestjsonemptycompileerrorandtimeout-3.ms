@@ -7,4 +7,4 @@ test "timeout":
     void sleep(nanoseconds(1000000000)).wait()
 
 test "after":
-    return void
+    return

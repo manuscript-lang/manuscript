@@ -30,7 +30,7 @@ import (
 fn execute(binary: String, cpu: String) Result[Void, Error]:
 	if cpu == "":
 		void must(binary, capture(binary, []))?
-		return ok(void)
+		return ok()
 
 	void must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))?
 

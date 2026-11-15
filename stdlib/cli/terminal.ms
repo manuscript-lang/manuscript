@@ -504,7 +504,7 @@ fn var TerminalEvents.next() TerminalEvent?!:
 	return ok(none)
 
 fn var TerminalEvents.close() Void!:
-	return ok(void)
+	return ok()
 
 esc := "\u{1b}"
 // Cursor positions beyond this are refused: older terminals cannot take larger numbers.
@@ -574,7 +574,7 @@ fn RawTerminal.move_by(rows: Int, columns: Int) Void!:
 	if rows > 0: out = "{out}{esc}[{rows}B"
 	if columns > 0: out = "{out}{esc}[{columns}C"
 	if columns < 0: out = "{out}{esc}[{0 - columns}D"
-	if out.is_empty(): return ok(void)
+	if out.is_empty(): return ok()
 
 	return self.write(out)
 

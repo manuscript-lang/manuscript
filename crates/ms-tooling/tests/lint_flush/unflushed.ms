@@ -5,10 +5,10 @@ type Journal:
 
 fn var Journal.close() Void!:
     void self.lines
-    return ok(void)
+    return ok()
 
 fn var Journal.flush() Result[Void, Error]:
-    return ok(void)
+    return ok()
 
 export fn forgets() Int:
     journal := Journal(1)

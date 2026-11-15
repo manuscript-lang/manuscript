@@ -163,7 +163,7 @@ fn var ScalarSource.next() String?!:
 
 // Releases nothing; the bytes are owned by the source.
 fn var ScalarSource.close() Void!:
-	return ok(void)
+	return ok()
 
 // Bytes in the scalar a lead byte starts.
 fn scalar_width(lead: Int) Int:

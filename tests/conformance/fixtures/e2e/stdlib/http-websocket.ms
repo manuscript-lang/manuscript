@@ -58,7 +58,7 @@ fn echo(var exchange: HttpExchange) Void!:
 			)?
 		)
 		socket.close().get(none)
-		return ok(void)
+		return ok()
 
 	var chain_1 = Map[String, List[String]]()
 	chain_1.add(key: "X-Test", value: ["manuscript"])

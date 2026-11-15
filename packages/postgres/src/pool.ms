@@ -153,4 +153,4 @@ fn var Pool.close() Void!:
 	for i in 0..self.slots.length():
 		self.slots[i].task.wait()?
 	self.slots = []
-	return ok(void)
+	return ok()

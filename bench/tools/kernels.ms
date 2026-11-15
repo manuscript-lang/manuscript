@@ -24,7 +24,6 @@ import (
 fn build_c(source: String, out: String, flags: List[String]) Result[Void, Error]:
 	var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)
 	args = args.concat([source.clone(), "-o", out.clone()])
-
 	void must("cc {source}", capture(env("CC", "cc"), args))?
 
 fn run(suite: String, n: Int, work: String) Result[String, Error]:

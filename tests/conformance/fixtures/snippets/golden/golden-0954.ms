@@ -4,5 +4,5 @@ fn f(x: Int?) Result[Void, Error]:
     match x:
         n:
             g(n)?
-            return ok(void)
-        none: return ok(void)
+            return ok()
+        none: return ok()

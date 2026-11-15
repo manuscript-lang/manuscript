@@ -4,7 +4,7 @@ type Resource:
     id: Int
 
 fn var Resource.close() Void!:
-    return ok(void)
+    return ok()
 
 fn identity(r: Resource) Resource:
     return r

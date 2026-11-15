@@ -100,7 +100,7 @@ export type RateLimiter:
 fn var RateLimiter.refill() Void:
 	now := monotonic()
 	earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
-	if earned <= 0: return void
+	if earned <= 0: return
 
 	// Compare with remaining room before adding: a valid large burst can overflow
 	// the sum.

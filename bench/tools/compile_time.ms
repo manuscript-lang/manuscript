@@ -358,9 +358,10 @@ fn timed(
 ) Result[Void, Error]:
 	start := now_ns()
 	void must(label, run_in(dir, program, args))?
+
 	seconds := (now_ns() - start).to_float() / 1000000000.0
 	print("{label} {seconds.to_fixed(2)} s")
-	return ok(void)
+	return ok()
 
 fn drop_cache(dir: String) Void:
 	void remove("{dir}/.ms-cache", recursive: true)
