@@ -39,7 +39,7 @@ entry = "./src/main.ms"
 - `name` names the project; `source` is its source directory.
 - `entry` is the executable entry file. Omit it for a library; an empty or invalid entry is an error. There is no default.
 - All manifest paths resolve relative to the directory containing `ms.toml` (the entry is not relative to `source`).
-- Only `[project]`, `[aliases]`, `[embed]`, `[dependencies]` and `[effects]` exist. Unknown or duplicate tables and keys are rejected. `ms.toml` is TOML: strings are quoted, effects are lists of strings (`["std.net.*"]`), and a dependency is a table (`{ url = "...", tag = "v1" }`). Keys that start with `@` are quoted.
+- Only `[project]`, `[workspace]`, `[aliases]`, `[embed]`, `[dependencies]` and `[effects]` exist. Unknown or duplicate tables and keys are rejected. `ms.toml` is TOML: strings are quoted, effects are lists of strings (`["std.net.*"]`), and a dependency is a table (`{ url = "...", tag = "v1" }`, or `{ path = "..." }` for a [workspace](#workspaces) member). Keys that start with `@` are quoted.
 - Application modules are found by following imports from the entry, not listed in the manifest.
 - The compiler supplies the prelude and version-matched `@std` modules. To reuse other Manuscript source, use [packages](#packages).
 
@@ -150,6 +150,32 @@ import Config, open from "@pg/conn.ms"
 - A package declares what it may reach with `effects = ["std.net.*"]` under `[project]`, using the patterns of [`allow_effect`](../../core-language/functions/effects.md). Without the key it is pure. The project must allow each declared effect under `[effects]`, or the package is rejected and the error names the effect. The checker holds the package to its declaration: if any function in it, or in a dependency it calls, reaches an effect it did not declare, `check` and `build` fail. The declaration is the default permit for the package's functions; an `allow_effect` line there can only narrow it. A package cannot give a dependency effects it does not declare itself.
 - Packages hold source only: no `entry`, no `[embed]`, no `extern` declarations (the checker rejects them), no build scripts. Nothing runs when a package is fetched.
 - A dependency is `https://` or, for the project's own dependencies only, `file://`. A package's own dependencies must use `https://`. `ms.lock` is validated as untrusted input: 40-digit commits, 64-digit hashes, and the same URL rules.
+
+## Workspaces
+
+A workspace splits one repository into projects that share code and one lock file. The root `ms.toml` lists the members:
+
+```toml
+[workspace]
+members = ["app", "libs/*"]
+```
+
+```toml
+# app/ms.toml
+[project]
+name = "app"
+source = "src"
+entry = "src/main.ms"
+
+[dependencies]
+"@util" = { path = "../libs/util" }
+```
+
+- Each member is a directory with its own `ms.toml` and a unique `[project] name`. `"libs/*"` means every child directory of `libs` that holds an `ms.toml`. Members stay inside the workspace root; there are no nested workspaces.
+- A `{ path = "..." }` dependency names another member and is imported like a package: `import greet from "@util/greet.ms"`. It is never written to `ms.lock`, a member's own dependency names are private to it, and a cycle between members is an error. A member may declare `extern`, since it is your own code.
+- A member follows the same effect rule as a fetched package: it declares `effects` under `[project]`, and the importing member allows them under `[effects]`.
+- One `ms.lock` beside the root `ms.toml` pins every url dependency of every member. Its keys start with the member name, such as `"app/@pg"`, so two members may use one name for different packages. `ms install` installs every member; `ms add` and `ms remove` act on the member whose directory you are in.
+- Run `ms run`, `ms build` and the other commands from a member, or pass its `ms.toml`. At a root with no `[project]`, `ms check`, `ms lint`, `ms fmt`, `ms verify` and `ms test` run on every member; a command that makes one program asks you to name a member. A root may also hold its own `[project]`, and then it is a member too.
 
 ## Resolving an import
 

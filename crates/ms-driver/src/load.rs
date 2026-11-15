@@ -165,6 +165,7 @@ fn load_entries(
                 prefix: format!("{}/", p.key),
                 spec: p.spec.clone(),
                 effects: p.project.effects.clone(),
+                member: p.member,
             })
             .collect(),
         package_roots: config
