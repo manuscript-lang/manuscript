@@ -40,7 +40,9 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 	)
 
 // Parses CSV into rows of cells, using fresh default options when omitted.
-// `options.max_rows` and `options.max_cells` bound large inputs.
+// `options.max_rows` and `options.max_cells` bound large inputs. A CRLF inside a quoted cell
+// reads as LF, so a cell holds one newline spelling whatever the file's line ending
+// was.
 export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[String]]!:
 	rows_budget := budget(options.max_rows)
 	cells_budget := budget(options.max_cells)

@@ -1,0 +1,6 @@
+[project]
+name = "csv_suite"
+source = "."
+
+[embed]
+"@suite" = "./data"
