@@ -89,6 +89,8 @@ pub enum HelperKey {
     MapProbe(crate::rtinline::Shape, crate::rtinline::Answer),
     /// The inlinable fast path of `String.view`.
     StringView,
+    /// The inlinable fast path of `Bytes.view`, for the `Bytes` type.
+    BytesView(MTy),
     StrFast(crate::rtstr::StrFn),
     /// The inlinable fixed-width `Bytes` read.
     BytesReadWord,
