@@ -33,7 +33,7 @@ type Marker:
 fn var Marker.close() Void!:
     if self.open:
         self.open = false
-        print("closed-{self.id}")
+        print(f"closed-{self.id}")
 
 type Holder:
     m: Marker
@@ -52,7 +52,7 @@ fn mk_map(id: Int) Map[Int, Marker]:
     return m
 
 fn mk(id: Int) Marker:
-    print("made-{id}")
+    print(f"made-{id}")
     return Marker(id, true)
 
 fn flag() Bool: return true

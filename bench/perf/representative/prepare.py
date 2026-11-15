@@ -90,7 +90,7 @@ for n in [100, 200, 400, 1000, 2000, 4000]:
     for i in range(n):
         source += f"    x = rule_{i}(x)\n"
         x = (x % 997) * 3 + i
-    source += '    if stdout().write("{x}\\n").is_error():\n        return 1\n    return 0\n'
+    source += '    if stdout().write(f"{x}\\n").is_error():\n        return 1\n    return 0\n'
     save(f"rules-{n}", source, "17\n", f"{x}\n")
 (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 print(json.dumps(manifest, indent=2))
