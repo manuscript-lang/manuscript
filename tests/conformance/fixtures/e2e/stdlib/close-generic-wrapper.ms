@@ -8,7 +8,7 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 type Wrap[T]:
     value: T
@@ -25,4 +25,4 @@ fn main() Void:
     a := keep(Door("wrapped"))
     b := keep_optional(Door("optional"))
     c := keep(5)
-    print("end {a + b + c}")
+    print(f"end {a + b + c}")

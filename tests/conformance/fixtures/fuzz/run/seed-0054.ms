@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,32 +23,32 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := (-948684)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := (
         "quote\"d".is_empty()
         and ("  padded  ".trim() != ("  padded  " + "héllo"))
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := i1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := "delta"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     f5 := (
         ((0.0 + 170.205) - (389.25 + 106.25))
         + ((67.114 + 373.084) + (366.688 * 0.0))
     )
-    say("f5 = {f5}")
-    say("fib(37) = {fib(37)}")
+    say(f"f5 = {f5}")
+    say(f"fib(37) = {fib(37)}")
 
     f6 := (f5 * ((3.044 - 965.315) * (64.887 - f5)))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := i3
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     if ((627.25 > 770.997) and (b2 and true)):
         say((s4 + "42"))
@@ -56,8 +56,8 @@ export fn main() Int:
         say(("gamma" + s4))
 
     b8 := false
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     s9 := "MiXeD CaSe".replace("x", "quote\"d")
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
     return 0

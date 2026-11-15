@@ -3,7 +3,7 @@
 fn step(n: Int) Void!:
     if n > 2:
         return error(Error("too big"))
-    print("step {n}")
+    print(f"step {n}")
 
 fn main() Void!:
     step(1)?

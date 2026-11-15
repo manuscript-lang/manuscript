@@ -22,7 +22,7 @@ export fn main() Int:
         options: HttpServerOptions(grace: nanoseconds(10000000000))
     ):
         server := acquired
-        print("{server.address()}")
+        print(f"{server.address()}")
 
         _flushed := stdout().flush()
         _ignored := server.wait()

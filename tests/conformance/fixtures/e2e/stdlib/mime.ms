@@ -82,7 +82,7 @@ test "multipart rejects a missing closing delimiter":
 
 test "multipart accepts only transport padding before delimiter line endings":
 	for padding in ["", " ", "\t", " \t \t"]:
-		body := "--b{padding}\r\nX-Label: first\r\n\r\n \tpayload \r\n--b{padding}\r\n\r\n\r\n--b--{padding}\r\nepilogue".to_bytes()
+		body := f"--b{padding}\r\nX-Label: first\r\n\r\n \tpayload \r\n--b{padding}\r\n\r\n\r\n--b--{padding}\r\nepilogue".to_bytes()
 		parts := parse_multipart(body, "b")?
 		expect_equal(parts.length(), 2)?
 		expect_equal(parts[0].headers.get("X-Label"), "first")?
@@ -90,5 +90,5 @@ test "multipart accepts only transport padding before delimiter line endings":
 		expect_equal(parts[1].data, "".to_bytes())?
 
 	for padding in ["x", "\n", "\u{b}", "\u{a0}", "\r"]:
-		body := "--b{padding}\r\n\r\nx\r\n--b--\r\n".to_bytes()
+		body := f"--b{padding}\r\n\r\nx\r\n--b--\r\n".to_bytes()
 		expect_equal(parse_multipart(body, "b").err().kind, "EBADMSG")?

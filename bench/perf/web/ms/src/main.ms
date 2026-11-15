@@ -47,13 +47,13 @@ fn top(k: Int) String:
 	while n < k:
 		best := pick_after(prev_id, prev_score)
 		if n > 0:
-			out = "{out},"
-		out = "{out}\{\"id\":{best},\"score\":{score(best)}\}"
+			out = f"{out},"
+		out = f"{out}\{\"id\":{best},\"score\":{score(best)}\}"
 		prev_id = best
 		prev_score = score(best)
 		n += 1
 
-	return "{out}]\n"
+	return f"{out}]\n"
 
 fn top_reply(query: String) HttpResponse:
 	parts := query.split("=")
@@ -71,16 +71,16 @@ fn user_reply(path: String) HttpResponse:
 		if id >= 0 and id < 1000:
 			return reply(
 				200,
-				"\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n",
+				f"\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n",
 			)
 	return reply(404, "not found\n")
 
 // Resolve localhost, write 1 MiB to the connection's own file, read it back.
 fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
 	if addresses := lookup("localhost"):
-		path := "{dir}/m{slot}.bin"
+		path := f"{dir}/m{slot}.bin"
 		if got := write_and_read(path, payload):
-			return reply(200, "{addresses.length()} {got.length()}\n")
+			return reply(200, f"{addresses.length()} {got.length()}\n")
 
 		return reply(500, "file failed\n")
 
@@ -96,7 +96,7 @@ fn make_handler(dir: String) fn(var HttpExchange) Result[Void, Error]:
 	var i = 0
 
 	while i < 16:
-		text = "{text}{text}"
+		text = f"{text}{text}"
 		i += 1
 
 	payload := text.to_bytes()
@@ -118,7 +118,7 @@ fn serve_here(port: String, dir: String, threads: Int) Int:
 	options := HttpServerOptions(cores: threads)
 
 	if acquired := serve(
-		address: "127.0.0.1:{port}",
+		address: f"127.0.0.1:{port}",
 		handler: make_handler(dir),
 		options: options,
 	):

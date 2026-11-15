@@ -847,25 +847,25 @@ fn describe(re: Regex, text: List[Int], caps: List[Int]) List[String]:
     var lines = List[String]()
 
     for g in 0..re.groups + 1:
-        var label = "{g}"
+        var label = f"{g}"
         nm := re.names[g]
         if nm.length() > 0:
-            label = "{g} ({text_of(nm)})"
+            label = f"{g} ({text_of(nm)})"
 
         if caps[2 * g] >= 0:
             st := caps[2 * g]
             en := caps[2 * g + 1]
-            lines.append("{label}: {st}..{en} {quoted(span_of(text, st, en))}")
+            lines.append(f"{label}: {st}..{en} {quoted(span_of(text, st, en))}")
         else:
-            lines.append("{label}: unset")
+            lines.append(f"{label}: unset")
 
     return lines
 
 fn find_all_lines(text: List[Int], matches: List[List[Int]]) List[String]:
     var lines = List[String]()
     for caps in matches:
-        lines.append("{caps[0]}..{caps[1]} {quoted(span_of(text, caps[0], caps[1]))}")
-    lines.append("({matches.length()} matches)")
+        lines.append(f"{caps[0]}..{caps[1]} {quoted(span_of(text, caps[0], caps[1]))}")
+    lines.append(f"({matches.length()} matches)")
     return lines
 
 fn split_lines(text: List[Int], matches: List[List[Int]]) List[String]:
@@ -881,7 +881,7 @@ fn split_lines(text: List[Int], matches: List[List[Int]]) List[String]:
 
     lines.append(quoted(span_of(text, prev, text.length())))
     count += 1
-    lines.append("({count} pieces)")
+    lines.append(f"({count} pieces)")
     return lines
 
 // Expands $0-$9, $$, ${name} against one match
@@ -1064,7 +1064,7 @@ fn command(line: List[Int]) List[String]:
 
     result := execute(line)
     if result.is_error():
-        return ["error: {result.err().text}"]
+        return [f"error: {result.err().text}"]
 
     return result.get().clone()
 

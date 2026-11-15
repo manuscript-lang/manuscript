@@ -4,7 +4,7 @@ fn total(xs: List[Int]) Int:
 
 fn kept(xs: List[Int]) Int:
     sum := xs.sum()
-    print("{sum}")
+    print(f"{sum}")
     return sum
 
 export fn main() Int:

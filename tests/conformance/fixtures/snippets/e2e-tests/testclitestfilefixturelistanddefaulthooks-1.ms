@@ -5,7 +5,7 @@ import expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 
 fn println(message: String) Void:
-    _written := stdout().write("{message}\n").get()
+    _written := stdout().write(f"{message}\n").get()
 
 type State:
     value: Int

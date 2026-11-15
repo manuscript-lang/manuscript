@@ -18,8 +18,8 @@ fn present(length: Int) Int:
 	return 0
 
 fn span(start: Int, length: Int) String:
-	if length == 1: return "{start}"
-	return "{start},{length}"
+	if length == 1: return f"{start}"
+	return f"{start},{length}"
 
 fn write_all(text: String) Result[Unit, Error]:
 	try stdout().write(text)
@@ -113,8 +113,8 @@ export fn main() Int:
 	if starts.is_empty(): return 0
 
 	var out = List[String]()
-	out.append("--- {name_a}")
-	out.append("+++ {name_b}")
+	out.append(f"--- {name_a}")
+	out.append(f"+++ {name_b}")
 
 	for h in range(0, starts.length()):
 		s := starts.get(h)
@@ -130,7 +130,7 @@ export fn main() Int:
 
 		sa := a_before.get(s) + present(la)
 		sb := b_before.get(s) + present(lb)
-		out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
+		out.append(f"@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
 		for k in range(s, e + 1):
 			if kinds.get(k) == 0:

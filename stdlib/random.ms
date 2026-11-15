@@ -61,7 +61,7 @@ export fn ulid() String!:
 
 		while held >= 5:
 			digit := bit_and(shift_right_unsigned(pending, held - 5), 31)
-			out = "{out}{alphabet[digit]}"
+			out = f"{out}{alphabet[digit]}"
 			held -= 5
 			pending = bit_and(pending, shift_left(1, held) - 1)
 

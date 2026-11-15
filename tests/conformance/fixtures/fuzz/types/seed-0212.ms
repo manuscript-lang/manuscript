@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -18,16 +18,16 @@ export fn main() Int:
     var acc1 = 0
     for i in 0..7:
         acc1 += i * 9
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     s2 := "MiXeD CaSe".lower()
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     var acc3 = 0
     for i in 0..7:
         acc3 += i * 7
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     bad: Bool := 1
-    say("gcd(2021, 3909) = {gcd(2021, 3909)}")
+    say(f"gcd(2021, 3909) = {gcd(2021, 3909)}")
     return 0

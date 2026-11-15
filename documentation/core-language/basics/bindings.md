@@ -15,7 +15,7 @@ fn main() Void:
     count := 3
     var remaining = count
     remaining -= 1
-    print("{remaining} of {count} left")
+    print(f"{remaining} of {count} left")
 ```
 
 ```text

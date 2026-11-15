@@ -45,9 +45,9 @@ fn main() Void:
         total += 1
 
     void stdout().write(
-        "{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
+        f"{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
     )
     void stdout().write(
-        "{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
+        f"{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
     )
-    void stdout().write("{maps[1].length()} {maps[0].length()}\n")
+    void stdout().write(f"{maps[1].length()} {maps[0].length()}\n")

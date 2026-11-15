@@ -51,7 +51,7 @@ fn compare_paths(a: PathStat, b: PathStat) Int:
     return a.path.compare(b.path)
 
 fn report(text: String) Unit:
-    stdout().write("{text}\n").get()
+    stdout().write(f"{text}\n").get()
 
 export fn main() Int:
     text := read_all(stdin()).get().decode_utf8().get()
@@ -90,22 +90,22 @@ export fn main() Int:
         else:
             malformed += 1
 
-    report("valid: {valid}")
-    report("malformed: {malformed}")
+    report(f"valid: {valid}")
+    report(f"malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        report("{level}: {levels.get_or(level, 0)}")
+        report(f"{level}: {levels.get_or(level, 0)}")
     report(
-        "status: 2xx={status_counts[0]} 3xx={status_counts[1]} 4xx={status_counts[2]} 5xx={status_counts[3]} other={status_counts[4]}"
+        f"status: 2xx={status_counts[0]} 3xx={status_counts[1]} 4xx={status_counts[2]} 5xx={status_counts[3]} other={status_counts[4]}"
     )
 
     sorted_latencies := latencies.sorted(fn a, b: a - b)
     n := sorted_latencies.length()
     var p95 = 0
     if n > 0: p95 = sorted_latencies[(95 * n + 99) / 100 - 1]
-    report("p95: {p95}")
+    report(f"p95: {p95}")
     if best := slowest:
         report(
-            "slowest: {best.latency_text} {best.method} {best.path} {best.timestamp}"
+            f"slowest: {best.latency_text} {best.method} {best.path} {best.timestamp}"
         )
     report("top:")
 
@@ -119,6 +119,6 @@ export fn main() Int:
 
     for i in range(0, min(3, paths.length())):
         stat := paths[i]
-        report("{stat.path} {stat.count} avg={stat.total / stat.count}")
+        report(f"{stat.path} {stat.count} avg={stat.total / stat.count}")
 
     return 0

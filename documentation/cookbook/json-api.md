@@ -31,7 +31,7 @@ type Total:
 
 fn greet(var exchange: HttpExchange, params: RouteParams) Void!:
     name := params.get_or("name", "world")
-    return reply(var exchange, json(200, Greeting(message: "Hello, {name}!"))?)
+    return reply(var exchange, json(200, Greeting(message: f"Hello, {name}!"))?)
 
 fn sum(var exchange: HttpExchange, params: RouteParams) Void!:
     body := read_body(var exchange)?
@@ -55,14 +55,14 @@ fn body_of(response: HttpResponse) String:
 test "greet by name":
     response := api().call(request(HttpMethod.Get, "/hello/Ada", ""))?
     expect_equal(response.status, 200)?
-    expect_equal(body_of(response), "\{\"message\":\"Hello, Ada!\"\}")?
+    expect_equal(body_of(response), "{\"message\":\"Hello, Ada!\"}")?
 
 test "sum a list":
-    response := api().call(request(HttpMethod.Post, "/sum", "\{\"values\":[1,2,3]\}"))?
-    expect_equal(body_of(response), "\{\"total\":6\}")?
+    response := api().call(request(HttpMethod.Post, "/sum", "{\"values\":[1,2,3]}"))?
+    expect_equal(body_of(response), "{\"total\":6}")?
 
 test "reject a body of the wrong shape":
-    response := api().call(request(HttpMethod.Post, "/sum", "\{\"values\":\"x\"\}"))?
+    response := api().call(request(HttpMethod.Post, "/sum", "{\"values\":\"x\"}"))?
     expect_equal(response.status, 400)?
 ```
 

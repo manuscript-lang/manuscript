@@ -15,4 +15,4 @@ fn probe(a: String, b: String) Int:
 	return n
 
 fn main() Void:
-	say("{probe("hello", "ll")} {probe("12345", "34")} {probe("abcdefg", "zz")}\n")
+	say(f"{probe("hello", "ll")} {probe("12345", "34")} {probe("abcdefg", "zz")}\n")

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,26 +15,26 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    say("gcd(2485, 3913) = {gcd(2485, 3913)}")
+    say(f"gcd(2485, 3913) = {gcd(2485, 3913)}")
 
     f1 := ((635.084 * (682.735 * 471.360)) * 0.5)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
     say(
-        "{((-30) * (20 / 1))} {(-34)} {(((-30) * (20 / 1)) < (-34))} sum {((-30) * (20 / 1)) + (-34)}"
+        f"{((-30) * (20 / 1))} {(-34)} {(((-30) * (20 / 1)) < (-34))} sum {((-30) * (20 / 1)) + (-34)}"
     )
 
     i2 := 352869
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (((808358 * i2) / (33 + i2)) - i2)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (44 / (i3 * (i2 + 617888)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (-9223372036854775807)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := ((f1 * (690.156 - 637.110)) - ((741.928 + f1) / f1))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     return 0

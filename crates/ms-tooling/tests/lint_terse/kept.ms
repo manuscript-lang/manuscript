@@ -8,7 +8,7 @@ fn keep(xs: List[Int], flag: Bool, n: Int) Int:
         skip += 1
         if skip == 2:
             continue
-        print("{skip}")
+        print(f"{skip}")
 
     var limit = 3
     var run = 0

@@ -6,15 +6,15 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    if (("{((-988709) + 15)}:" + "  padded  ") != "ms".upper()):
+    if ((f"{((-988709) + 15)}:" + "  padded  ") != "ms".upper()):
         say(("gamma" + "naïve"))
     else:
         say(("  padded  " + "hello world"))
 
     bad: Bool := 1
-    b1 := (((-(-46)) >= 20654) and ("ms".trim() != ("brace\{s\}" + "ms")))
-    say("b1 = {b1}")
+    b1 := (((-(-46)) >= 20654) and ("ms".trim() != ("brace{s}" + "ms")))
+    say(f"b1 = {b1}")
     return 0

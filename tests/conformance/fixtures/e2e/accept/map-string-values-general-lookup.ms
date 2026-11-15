@@ -28,7 +28,7 @@ test "string keys with string values find every key":
 test "many int keys with string values":
 	var m = Map[Int, String]()
 	for i in 0..200:
-		m.add(i, "v{i}")
+		m.add(i, f"v{i}")
 
 	var hits = 0
 	for i in 0..200:

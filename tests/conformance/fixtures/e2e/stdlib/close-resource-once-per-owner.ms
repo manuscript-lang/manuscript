@@ -8,13 +8,13 @@ type Door:
     name: String
 
 fn var Door.close() Void!:
-    print("closed {self.name}")
+    print(f"closed {self.name}")
 
 type Pair:
     door: Door
 
 fn say(s: String) Void:
-    print("{s}")
+    print(f"{s}")
 
 fn doors() Map[String, Door]:
     var m: Map[String, Door] = {}
@@ -30,7 +30,7 @@ fn collect() List[Door]!Error:
     found.append(first?)
 
     second := open("try-read")
-    say("read {(second?).name}")
+    say(f"read {(second?).name}")
     return ok(found)
 
 fn main() Void:
@@ -49,4 +49,4 @@ fn main() Void:
 
     var pairs: Map[String, Pair] = {}
     pairs.add("p", Pair(Door("pair")))
-    say("end {count} {opened} {found.length()} {many.length()} {pairs.length()}")
+    say(f"end {count} {opened} {found.length()} {many.length()} {pairs.length()}")

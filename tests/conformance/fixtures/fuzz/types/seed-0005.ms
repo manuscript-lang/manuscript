@@ -6,27 +6,27 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     s2 := (
-        ("brace\{s\}" + "  padded  ").reverse()
-        + (("ms" + "MiXeD CaSe") + ("{(-39)}:" + "beta"))
+        ("brace{s}" + "  padded  ").reverse()
+        + (("ms" + "MiXeD CaSe") + (f"{(-39)}:" + "beta"))
     )
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     l3 := [8, (-25), (-30)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := 16
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     bad := (1 < 2) < 3
     i5 := (l3.length() + (((-6) + 49) + (-17)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     if false:
         say(s2)
@@ -34,5 +34,5 @@ export fn main() Int:
         say((s2 + "line\nbreak"))
 
     i6 := (((i4 + (-83048488943)) * i5) * ((-i4) / (20 + i5)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     return 0

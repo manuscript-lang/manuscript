@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -30,20 +30,20 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     say(
-        "{5} {(11 + (490837 + (-27)))} {(5 < (11 + (490837 + (-27))))} sum {5 + (11 + (490837 + (-27)))}"
+        f"{5} {(11 + (490837 + (-27)))} {(5 < (11 + (490837 + (-27))))} sum {5 + (11 + (490837 + (-27)))}"
     )
 
     s1 := "alpha".reverse()
-    say("s1 = [{s1}]")
-    say("collatz(829) = {collatz(829)}")
+    say(f"s1 = [{s1}]")
+    say(f"collatz(829) = {collatz(829)}")
 
     var acc2 = 0
     for i in 0..0:
         acc2 += i * (-2)
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     s3 := "héllo"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     if (not (true and false)):
         say("héllo")
@@ -51,16 +51,16 @@ export fn main() Int:
         say("日本語")
 
     l4 := [(-3), (-28), 29]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     say(
-        "{(s3.scalar_length() * 23)} {(((-19) + (-4)) + (3 + 14))} {((s3.scalar_length() * 23) < (((-19) + (-4)) + (3 + 14)))} sum {(s3.scalar_length() * 23) + (((-19) + (-4)) + (3 + 14))}"
+        f"{(s3.scalar_length() * 23)} {(((-19) + (-4)) + (3 + 14))} {((s3.scalar_length() * 23) < (((-19) + (-4)) + (3 + 14)))} sum {(s3.scalar_length() * 23) + (((-19) + (-4)) + (3 + 14))}"
     )
     say(
-        "{(l4.get(0) + ((-35) * (-620285)))} {(-287934158770)} {((l4.get(0) + ((-35) * (-620285))) < (-287934158770))} sum {(l4.get(0) + ((-35) * (-620285))) + (-287934158770)}"
+        f"{(l4.get(0) + ((-35) * (-620285)))} {(-287934158770)} {((l4.get(0) + ((-35) * (-620285))) < (-287934158770))} sum {(l4.get(0) + ((-35) * (-620285))) + (-287934158770)}"
     )
 
     i5 := (((30 * (-4)) - (44 + (-8))) % ((7 * 42) + (-33)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     b6 := (
         ((457.593 / 712.148) + (6.117 * 400.994)) < (
@@ -68,27 +68,27 @@ export fn main() Int:
             - (963.25 / 82.030)
         )
     )
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     i7 := (((i5 + 7) * i5) * s3.scalar_length())
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := ((((-31) * 622531) - 37) * (((-33) - (-3)) + (i5 + 17)))
-    say("i8 = {i8}")
-    say("gcd(4136, 2314) = {gcd(4136, 2314)}")
+    say(f"i8 = {i8}")
+    say(f"gcd(4136, 2314) = {gcd(4136, 2314)}")
 
     b9 := (((7.0e-7 * 188.025) == (73.060 - 7.5)) or false)
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     s10 := (s1 + s3).trim().lower()
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
-    s11 := ("{((-12) % i8)}:" + (s1 + s1).reverse())
-    say("s11 = [{s11}]")
+    s11 := (f"{((-12) % i8)}:" + (s1 + s1).reverse())
+    say(f"s11 = [{s11}]")
 
     b12 := true
-    say("b12 = {b12}")
+    say(f"b12 = {b12}")
 
     f13 := 815.999
-    say("f13 = {f13}")
+    say(f"f13 = {f13}")
     return 0

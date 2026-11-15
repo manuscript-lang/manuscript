@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,38 +23,38 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     b1 := (((-13) < ((-46) / (-13))) or (((-183920) != (-36)) and false))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     b2 := b1
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     s3 := ("a" + "line\nbreak").replace("Tab\there", "back\\slash").lower()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
     say(
-        "{(11 % ((-871565193857) / 48))} {48} {((11 % ((-871565193857) / 48)) < 48)} sum {(11 % ((-871565193857) / 48)) + 48}"
+        f"{(11 % ((-871565193857) / 48))} {48} {((11 % ((-871565193857) / 48)) < 48)} sum {(11 % ((-871565193857) / 48)) + 48}"
     )
 
     i4 := 980054112855
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (-9223372036854775807)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := (((257.668 * 0.0) + 513.998) + 140.596)
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     say(
-        "{(((-47) - (-854302)) * 48)} {((i5 - i5) + i5)} {((((-47) - (-854302)) * 48) < ((i5 - i5) + i5))} sum {(((-47) - (-854302)) * 48) + ((i5 - i5) + i5)}"
+        f"{(((-47) - (-854302)) * 48)} {((i5 - i5) + i5)} {((((-47) - (-854302)) * 48) < ((i5 - i5) + i5))} sum {(((-47) - (-854302)) * 48) + ((i5 - i5) + i5)}"
     )
-    say("fib(5) = {fib(5)}")
+    say(f"fib(5) = {fib(5)}")
 
     l7 := [(-5), (-25), (-5), (-29), 17]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     b8 := (not ((f6 / 749.25) < (f6 + 666.860)))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     l9 := l7.map(fn x: x + 1).filter(fn x: x % 2 == 0)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     var acc10 = 0
 
@@ -64,7 +64,7 @@ export fn main() Int:
         else:
             acc10 -= 1
 
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
     if (not (b1 and true)):
         say(("42" + "x"))
@@ -72,17 +72,17 @@ export fn main() Int:
         say(s3.replace("back\\slash", s3))
 
     f11 := (((f6 / f6) - (0.0 + 174.732)) + ((3.5 * 0.0) * (f6 - f6)))
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     s12 := ""
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
     say(
-        "{(7 * (47 - i4))} {(-(8 - i4))} {((7 * (47 - i4)) < (-(8 - i4)))} sum {(7 * (47 - i4)) + (-(8 - i4))}"
+        f"{(7 * (47 - i4))} {(-(8 - i4))} {((7 * (47 - i4)) < (-(8 - i4)))} sum {(7 * (47 - i4)) + (-(8 - i4))}"
     )
 
     l13 := l9.drop(4)
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     s14 := "".reverse()
-    say("s14 = [{s14}]")
+    say(f"s14 = [{s14}]")
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,7 +16,7 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     s1 := "naïve"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     if ((not false) and (856.013 != 3.0e7)):
         say(s1.reverse())
@@ -24,45 +24,45 @@ export fn main() Int:
         say(("ms" + s1))
 
     l2 := [(-14), 21, 23, 17, 18]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
     say(
-        "{(-6)} {(((-32) + (-15)) * s1.scalar_length())} {((-6) < (((-32) + (-15)) * s1.scalar_length()))} sum {(-6) + (((-32) + (-15)) * s1.scalar_length())}"
+        f"{(-6)} {(((-32) + (-15)) * s1.scalar_length())} {((-6) < (((-32) + (-15)) * s1.scalar_length()))} sum {(-6) + (((-32) + (-15)) * s1.scalar_length())}"
     )
 
     s3 := "back\\slash"
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     f4 := 0.0
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     i5 := 43
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := f4
-    say("f6 = {f6}")
-    say("gcd(3895, 1156) = {gcd(3895, 1156)}")
+    say(f"f6 = {f6}")
+    say(f"gcd(3895, 1156) = {gcd(3895, 1156)}")
 
     i7 := (((-39) / 18) + ((i5 * i5) * i5))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := (-i5)
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     i9 := s3.scalar_length()
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     i10 := ((((-872438) - 45) % (i5 + i7)) + (684518 - (i7 + 130014366003)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     b11 := (
         ((true and false) or "naïve".starts_with("  padded  "))
         or (((-984403) - (-39)) > i9)
     )
-    say("b11 = {b11}")
+    say(f"b11 = {b11}")
 
     s12 := "beta"
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     f13 := 873.502
-    say("f13 = {f13}")
+    say(f"f13 = {f13}")
     return 0

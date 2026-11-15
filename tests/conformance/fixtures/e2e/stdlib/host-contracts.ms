@@ -57,7 +57,7 @@ test "every open mode with and without exclusive creation opens":
 
 	for index in 0..modes.length():
 		mode := modes[index]
-		path := "{temporary.path()}/{index}"
+		path := f"{temporary.path()}/{index}"
 		if index < 2:
 			write_file(path, "", replace: false).wait()?
 
@@ -65,14 +65,14 @@ test "every open mode with and without exclusive creation opens":
 		_fileinfo := handle.stat()?
 
 	// Exclusive creation fails on an existing file and succeeds on a new one.
-	existing := "{temporary.path()}/2"
+	existing := f"{temporary.path()}/2"
 	refused := expect_error(
 		open(existing, OpenMode.Write, OpenOptions(exclusive: true))
 	)?
 	expect_equal(refused.kind, "EEXIST")?
 
 	fresh := open(
-		"{temporary.path()}/fresh",
+		f"{temporary.path()}/fresh",
 		OpenMode.AppendRead,
 		OpenOptions(exclusive: true),
 	)?
@@ -80,7 +80,7 @@ test "every open mode with and without exclusive creation opens":
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
 	temporary := temporary("manuscript-write-contract-")?
-	path := "{temporary.path()}/data"
+	path := f"{temporary.path()}/data"
 	data := ("é".repeat(40000)?).to_bytes()
 	var handle = open(path, OpenMode.WriteRead, OpenOptions(permissions: 384))?
 	handle.write(data)?
@@ -114,7 +114,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	expect_equal(handle.read_at(0), closed_read)?
 	reader.close()?
 
-	missing := "{temporary.path()}/missing"
+	missing := f"{temporary.path()}/missing"
 	absent := expect_error(open(missing, OpenMode.Read, OpenOptions(permissions: 384)))?
 	expect_equal(absent.kind, "ENOENT")?
-	expect_equal(absent.message, "filesystem: file or directory not found: {missing}")?
+	expect_equal(absent.message, f"filesystem: file or directory not found: {missing}")?

@@ -224,7 +224,7 @@ fn parse_block(lines: List[String], i: Int) Step:
     if h := heading_of(line):
         return Step(
             block: Html(
-                text: "<h{h.level}>{inline(h.content)}</h{h.level}>\n"
+                text: f"<h{h.level}>{inline(h.content)}</h{h.level}>\n"
             ),
             next: i + 1
         )
@@ -298,7 +298,7 @@ fn fence_block(lines: List[String], i: Int, f: Fence) Step:
 
     if f.info.length() > 0:
         word := f.info.split(" ").get(0)
-        open = "<pre><code class=\"language-{esc(word)}\">"
+        open = f"<pre><code class=\"language-{esc(word)}\">"
 
     return Step(
         block: Html(text: open.concat(body).concat("</code></pre>\n")), next: next
@@ -560,7 +560,7 @@ fn parse_list(lines: List[String], i0: Int, first: Marker) Step:
     if first.ordered:
         open = "<ol>\n"
         if first.num != 1:
-            open = "<ol start=\"{first.num}\">\n"
+            open = f"<ol start=\"{first.num}\">\n"
         close = "</ol>\n"
 
     return Step(block: Html(text: open.concat(body).concat(close)), next: stop)
@@ -646,7 +646,7 @@ fn align_attr(align: String) String:
     if align == "":
         return ""
 
-    return " align=\"{align}\""
+    return f" align=\"{align}\""
 
 fn table_at(lines: List[String], i: Int) Optional[Step]:
     n := lines.length()

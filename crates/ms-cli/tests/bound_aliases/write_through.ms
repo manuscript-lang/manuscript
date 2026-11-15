@@ -17,7 +17,7 @@ fn var Counter.around(action: fn() Void) Void:
 
 fn var Counter.label() String:
     self.count += 1
-    return "count-{self.count}"
+    return f"count-{self.count}"
 
 type Counters:
     left: Counter
@@ -30,7 +30,7 @@ fn next(var calls: Int) Int:
 
 fn key(var calls: Int) String:
     calls += 1
-    return "key-{calls}"
+    return f"key-{calls}"
 
 fn main() Void:
     var calls = 0
@@ -40,7 +40,7 @@ fn main() Void:
     append(9)
     append(10)
 
-    void stdout().write("{calls} {rows}\n")
+    void stdout().write(f"{calls} {rows}\n")
     var lists = Lists(left: [1], right: [2])
     var left = lists.left
     var right = lists.right
@@ -49,21 +49,21 @@ fn main() Void:
     add_right(4)
     add_left(3)
 
-    void stdout().write("{lists}\n")
+    void stdout().write(f"{lists}\n")
     var counts = [Counter(count: 5)]
     var count = counts[0]
     bump := count.bump
     bump()
     bump(3)
 
-    void stdout().write("{counts}\n")
+    void stdout().write(f"{counts}\n")
     var pair = Counters(left: Counter(count: 1), right: Counter(count: 2))
     var first_count = pair.left
     var second_count = pair.right
     around := first_count.around
     around(fn: second_count.count += 10)
 
-    void stdout().write("{pair}\n")
+    void stdout().write(f"{pair}\n")
     var entries = Map[String, List[Int]]()
     entries.add("key-1", [7])
     calls = 0
@@ -73,13 +73,13 @@ fn main() Void:
         add(8)
         add(9)
 
-    void stdout().write("{calls} {entries}\n")
+    void stdout().write(f"{calls} {entries}\n")
     var texts = [["first", "second"]]
     var text = texts[0]
     pop := text.pop
     popped := pop()
-    void stdout().write("{popped} {texts}\n")
+    void stdout().write(f"{popped} {texts}\n")
     var final_count = counts[0]
     label := final_count.label
     labeled := label()
-    void stdout().write("{labeled} {counts}\n")
+    void stdout().write(f"{labeled} {counts}\n")

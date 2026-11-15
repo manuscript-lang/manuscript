@@ -16,13 +16,13 @@ type Failing:
 fn var Failing.close() Void!:
 	if not self.closed:
 		self.closed = true
-		append_file(self.log, "close {self.id}\n").wait()?
+		append_file(self.log, f"close {self.id}\n").wait()?
 		if self.fail:
 			return error(
 				Error(
-					"close {self.id}",
+					f"close {self.id}",
 					kind: "ECLOSE",
-					details: {"id": "{self.id}"},
+					details: {"id": f"{self.id}"},
 				)
 			)
 
@@ -78,7 +78,7 @@ fn infallible(log: String) Int:
 
 test "a pending body error survives all scope close errors":
 	dir := temporary("close-body-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	cause := work(log, true) | expect_error?
 	expect_equal(cause.message, "original body error")?
 	expect_equal(cause.kind, "EBODY")?
@@ -87,7 +87,7 @@ test "a pending body error survives all scope close errors":
 
 test "a successful body returns the first close error":
 	dir := temporary("close-body-success-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	cause := work(log, false) | expect_error?
 	expect_equal(cause.message, "close 2")?
 	expect_equal(cause.kind, "ECLOSE")?
@@ -96,7 +96,7 @@ test "a successful body returns the first close error":
 
 test "a try error survives all scope close errors":
 	dir := temporary("close-try-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	cause := propagated(log) | expect_error?
 	expect_equal(cause.message, "original try error")?
 	expect_equal(cause.kind, "ETRY")?
@@ -105,7 +105,7 @@ test "a try error survives all scope close errors":
 
 test "a pending borrowed error retains the caller's fields":
 	dir := temporary("close-borrowed-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original := Error("caller error", kind: "ECALLER", details: {"id": "caller"})
 	cause := borrowed(log, original) | expect_error?
 	expect_equal(cause.message, "caller error")?
@@ -117,27 +117,27 @@ test "a pending borrowed error retains the caller's fields":
 
 test "an explicitly handled close error is not returned again":
 	dir := temporary("close-explicit-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	expect_equal(handled(log)?, 77)?
 	expect_equal(events(log), "close 1\n")?
 
 test "an error inside a successful payload does not suppress a close error":
 	dir := temporary("close-nested-success-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	cause := nested_success(log) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
 	expect_equal(events(log), "close 1\n")?
 
 test "a scope exited by break still returns its close error":
 	dir := temporary("close-break-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	cause := break_scope(log) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
 	expect_equal(events(log), "close 0\n")?
 
 test "a close error still faults when the function cannot return Error":
 	dir := temporary("close-infallible-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	work := promise(fn: ok(infallible(log)))
 	cause := work.wait() | expect_error?
 	expect_equal(cause.kind, "EIO")?
@@ -192,7 +192,7 @@ fn consumed_parameter(value: Failing, payload: String, take: Bool) String!:
 
 test "a borrowed success survives a successful close through forwarding":
 	dir := temporary("close-borrowed-ok-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original := "borrowed payload"
 	expect_equal(forward_ok(log, original, false)?, original)?
 	expect_equal(original, "borrowed payload")?
@@ -200,7 +200,7 @@ test "a borrowed success survives a successful close through forwarding":
 
 test "a close error replaces borrowed success and leaves its source valid":
 	dir := temporary("close-borrowed-success-failed-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original := "borrowed payload"
 	cause := forward_ok(log, original, true) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
@@ -210,7 +210,7 @@ test "a close error replaces borrowed success and leaves its source valid":
 
 test "a forwarded borrowed error is preserved across a failing close":
 	dir := temporary("close-forwarded-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: Int! := error(
 		Error("forwarded body", kind: "EFORWARD", details: {"id": "source"})
 	)
@@ -225,7 +225,7 @@ test "a forwarded borrowed error is preserved across a failing close":
 
 test "generic errors retain their fields across a failing close":
 	dir := temporary("close-generic-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	cause := generic_error(log, Error("generic body", kind: "EGENERIC")) | expect_error?
 	expect_equal(cause.message, "generic body")?
 	expect_equal(cause.kind, "EGENERIC")?
@@ -233,7 +233,7 @@ test "generic errors retain their fields across a failing close":
 
 test "a pending custom error survives an incompatible close error":
 	dir := temporary("close-custom-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	cause := custom(log, true) | expect_error?
 	expect_equal(cause.code, 73)?
 	expect_equal(cause.label, "custom body")?
@@ -241,7 +241,7 @@ test "a pending custom error survives an incompatible close error":
 
 test "a pending borrowed custom error retains the caller value":
 	dir := temporary("close-custom-borrowed-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original := Domain(74, "borrowed custom")
 	cause := borrowed_custom(log, original) | expect_error?
 	expect_equal(cause.code, 74)?
@@ -251,7 +251,7 @@ test "a pending borrowed custom error retains the caller value":
 
 test "an incompatible close error still faults after pending success":
 	dir := temporary("close-custom-success-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	work := promise(fn: ok(custom(log, false)))
 	cause := work.wait() | expect_error?
 	expect_equal(cause.kind, "EIO")?
@@ -259,7 +259,7 @@ test "an incompatible close error still faults after pending success":
 
 test "an earlier inner close error wins before the body selects its error":
 	dir := temporary("close-inner-first-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original := Error("later body", kind: "ELATER")
 	cause := inner_close(log, original) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
@@ -268,7 +268,7 @@ test "an earlier inner close error wins before the body selects its error":
 
 test "a consumed parameter closes on its retained path before borrowed success":
 	dir := temporary("close-consumed-parameter-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	payload := "still borrowed"
 	cause := consumed_parameter(Failing(log.clone(), 1), payload, false) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
@@ -294,7 +294,7 @@ fn overlapping(log: String, value: String, cause: Error, fail: Bool) String!:
 
 test "whole Result forwarding preserves the body error and caller source":
 	dir := temporary("close-whole-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: Int! := error(
 		Error("whole body", kind: "EWHOLE", details: {"id": "whole"})
 	)
@@ -309,7 +309,7 @@ test "whole Result forwarding preserves the body error and caller source":
 
 test "whole Result forwarding returns the first close error after success":
 	dir := temporary("close-whole-success-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: Int! := ok(73)
 	cause := whole_result(log, original, true) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
@@ -318,7 +318,7 @@ test "whole Result forwarding returns the first close error after success":
 
 test "holder cleanup does not withdraw a generic whole Result borrow":
 	dir := temporary("close-holder-result-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: String! := error(Error("holder body", kind: "EHOLDER"))
 	cause := holder_result(log, original) | expect_error?
 	expect_equal(cause.message, "holder body")?
@@ -330,8 +330,8 @@ test "holder cleanup does not withdraw a generic whole Result borrow":
 
 test "overlapping borrowed errors normalize without copying borrowed success":
 	dir := temporary("close-overlapping-") | expect_ok?
-	first := "{dir.path()}/first"
-	second := "{dir.path()}/second"
+	first := f"{dir.path()}/first"
+	second := f"{dir.path()}/second"
 	value := "borrowed success"
 	original := Error("borrowed overlap", kind: "EOVERLAP")
 	expect_equal(overlapping(first, value, original, false)?, value)?
@@ -358,7 +358,7 @@ fn generic_whole[T](log: String, source: T!) T!:
 
 test "a holder with its own close still preserves a generic Result borrow":
 	dir := temporary("close-own-holder-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: String! := error(Error("own holder body", kind: "EOWNHOLDER"))
 	cause := own_holder_result(log, original) | expect_error?
 	expect_equal(cause.kind, "EOWNHOLDER")?
@@ -369,7 +369,7 @@ test "a holder with its own close still preserves a generic Result borrow":
 
 test "a generic propagating closer consumes its whole Result without a forbidden copy":
 	dir := temporary("close-generic-whole-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	expect_equal(generic_whole[String](log, ok("moved payload"))?, "moved payload")?
 	expect_equal(events(log), "close 1\n")?
 
@@ -379,7 +379,7 @@ fn resource_domain_error(log: String) Bool:
 
 test "a generic resource error stays owned and closes exactly once":
 	dir := temporary("close-resource-error-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	expect_equal(resource_domain_error(log), true)?
 	expect_equal(events(log), "close 1\nclose 2\n")?
 
@@ -402,7 +402,7 @@ fn nested_closure_result[T](log: String, source: T!) T!:
 
 test "a moved resource no longer contributes an outer close error":
 	dir := temporary("close-result-scope-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: String! := error(Error("source", kind: "ESOURCE"))
 	returned := moved_holder_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
@@ -413,7 +413,7 @@ test "a moved resource no longer contributes an outer close error":
 
 test "a handled close does not withdraw a whole Result borrow":
 	dir := temporary("close-result-scope-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: String! := error(Error("source", kind: "ESOURCE"))
 	returned := handled_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
@@ -424,7 +424,7 @@ test "a handled close does not withdraw a whole Result borrow":
 
 test "an uncalled closure cannot contribute an outer close error":
 	dir := temporary("close-result-scope-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: String! := error(Error("source", kind: "ESOURCE"))
 	returned := nested_closure_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
@@ -463,7 +463,7 @@ fn captured_result[T](log: String, source: T!) T!:
 
 test "handled replacement lifetimes preserve whole Result borrowing":
 	dir := temporary("close-result-lifetime-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: String! := error(Error("source", kind: "ESOURCE"))
 	returned := replaced_handled_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
@@ -474,7 +474,7 @@ test "handled replacement lifetimes preserve whole Result borrowing":
 
 test "a captured resource contributes no outer close error":
 	dir := temporary("close-result-lifetime-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: String! := error(Error("source", kind: "ESOURCE"))
 	returned := captured_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
@@ -485,7 +485,7 @@ test "a captured resource contributes no outer close error":
 
 test "an unhandled final replacement still propagates its close error":
 	dir := temporary("close-result-unhandled-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	original: Int! := ok(7)
 	cause := replaced_unhandled_result(log, original) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
@@ -494,7 +494,7 @@ test "an unhandled final replacement still propagates its close error":
 
 test "a try exit before replacement still closes the old resource":
 	dir := temporary("close-result-replacement-exit-") | expect_ok?
-	log := "{dir.path()}/events"
+	log := f"{dir.path()}/events"
 	cause := replacement_exit(log) | expect_error?
 	expect_equal(cause.kind, "EREPLACE")?
 	expect_equal(cause.message, "replacement")?

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,17 +23,17 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     f1 := 8.5
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     s2 := ("".replace("MiXeD CaSe", "MiXeD CaSe").trim() + ("a" + "line\nbreak"))
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     f3 := (593.25 + ((f1 * f1) * (538.691 + f1)))
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     f4 := (((f1 * 3.5) + (f1 / f3)) * ((f1 / f1) * (389.584 * f3)))
-    say("f4 = {f4}")
-    say("fib(51) = {fib(51)}")
+    say(f"f4 = {f4}")
+    say(f"fib(51) = {fib(51)}")
 
     if ((false and true) or ("日本語" == s2)):
         say("x".replace(s2, s2))
@@ -41,5 +41,5 @@ export fn main() Int:
         say(s2)
 
     b5 := ((s2.is_empty() and (939943 < 36)) and ((not true) and (199486 <= 37)))
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,20 +24,20 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     l1 := [7, (-16), 23, 1, (-18)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     s2 := "beta".upper()
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
     say(
-        "{(((-36) * 954458) * 301954)} {s2.scalar_length()} {((((-36) * 954458) * 301954) < s2.scalar_length())} sum {(((-36) * 954458) * 301954) + s2.scalar_length()}"
+        f"{(((-36) * 954458) * 301954)} {s2.scalar_length()} {((((-36) * 954458) * 301954) < s2.scalar_length())} sum {(((-36) * 954458) * 301954) + s2.scalar_length()}"
     )
 
     bad := not 5
-    say("collatz(1206) = {collatz(1206)}")
+    say(f"collatz(1206) = {collatz(1206)}")
 
-    s3 := (("{(-(-305133130927))}:" + s2) + s2)
-    say("s3 = [{s3}]")
+    s3 := ((f"{(-(-305133130927))}:" + s2) + s2)
+    say(f"s3 = [{s3}]")
 
     l4 := l1.drop(0)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
     return 0

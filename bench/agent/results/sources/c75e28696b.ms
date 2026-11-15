@@ -197,7 +197,7 @@ fn dash(s: String) String:
 
 fn pts_text(p: Int) String:
 	if p < 0: return "-"
-	return "{p}"
+	return f"{p}"
 
 fn labels_text(xs: List[String]) String:
 	return xs.join(",")
@@ -356,7 +356,7 @@ fn parse_labels(val: String) Result[List[String], String]:
 
 	for part in val.split(","):
 		l := part.lower()
-		if not valid_label(l): return error("bad label '{l}'")
+		if not valid_label(l): return error(f"bad label '{l}'")
 
 		add_label(var out, l)
 
@@ -392,9 +392,9 @@ fn empty_wf() WF:
 
 fn report(bulk: Bool, id: Int, msg: String) Unit:
 	if bulk:
-		print("#{id} error: {msg}")
+		print(f"#{id} error: {msg}")
 	else:
-		print("error: {msg}")
+		print(f"error: {msg}")
 
 // ---------------------------------------------------------------- token-style arguments
 
@@ -453,10 +453,10 @@ fn tokenize(s: String) Result[List[String], String]:
 // Applies one field=value token to an update. Returns the error text, or "".
 fn token_upd(var up: Upd, tok: String) String:
 	eq := tok.index_of("=")
-	if eq.is_none(): return "expected field=value, got '{tok}'"
+	if eq.is_none(): return f"expected field=value, got '{tok}'"
 
 	k := eq.get(0)
-	if k == 0: return "expected field=value, got '{tok}'"
+	if k == 0: return f"expected field=value, got '{tok}'"
 
 	field := prefix(tok, k)
 	val := after(tok, k + 1)
@@ -471,7 +471,7 @@ fn token_upd(var up: Upd, tok: String) String:
 
 	if field == "priority":
 		r := prio_rank(val)
-		if r < 0: return "bad priority '{val}'"
+		if r < 0: return f"bad priority '{val}'"
 
 		up.has_priority = true
 		up.priority = r
@@ -508,7 +508,7 @@ fn token_upd(var up: Upd, tok: String) String:
 			return ""
 
 		p := rule_int(val)
-		if p < 0: return "bad points '{val}'"
+		if p < 0: return f"bad points '{val}'"
 
 		up.has_points = true
 		up.points = p
@@ -520,7 +520,7 @@ fn token_upd(var up: Upd, tok: String) String:
 			up.due = ""
 			return ""
 
-		if not valid_date(val): return "bad date '{val}'"
+		if not valid_date(val): return f"bad date '{val}'"
 
 		up.has_due = true
 		up.due = val.clone()
@@ -539,7 +539,7 @@ fn token_upd(var up: Upd, tok: String) String:
 		up.labels = pr.get()
 		return ""
 
-	return "unknown field '{field}'"
+	return f"unknown field '{field}'"
 
 // Splits a filter/query value on unquoted '|'; quoted text is kept whole.
 fn parse_alts(raw: String) List[String]:
@@ -677,7 +677,7 @@ fn check_values(app: App, field: String, op: String, alts: List[String]) String:
 
 	if ordered and alts.length() > 1:
 		joined := alts.join("|")
-		return "query: bad value '{joined}' for field '{field}'"
+		return f"query: bad value '{joined}' for field '{field}'"
 
 	for v in alts:
 		var bad = false
@@ -705,7 +705,7 @@ fn check_values(app: App, field: String, op: String, alts: List[String]) String:
 				v
 			)
 
-		if bad: return "query: bad value '{v}' for field '{field}'"
+		if bad: return f"query: bad value '{v}' for field '{field}'"
 
 	return ""
 
@@ -715,13 +715,13 @@ fn make_term(
 	op: String,
 	alts: List[String],
 ) Result[Node, String]:
-	if not known_field(field): return error("query: unknown field '{field}'")
+	if not known_field(field): return error(f"query: unknown field '{field}'")
 	if not op_ok(field, op):
-		return error("query: bad operator '{op}' for field '{field}'")
+		return error(f"query: bad operator '{op}' for field '{field}'")
 
 	if field == "view":
 		name := alts.join("|")
-		if app.find_view(name) < 0: return error("query: unknown view '{name}'")
+		if app.find_view(name) < 0: return error(f"query: unknown view '{name}'")
 
 		var one = List[String]()
 		one.append(name.clone())
@@ -738,7 +738,7 @@ fn parse_term(app: App, w: String) Result[Node, String]:
 	var i = 0
 	while i < n and ((cs[i] >= "a" and cs[i] <= "z") or cs[i] == "_"):
 		i += 1
-	if i == 0: return error("query: unexpected token '{w}'")
+	if i == 0: return error(f"query: unexpected token '{w}'")
 
 	field := prefix(w, i)
 	r := after(w, i)
@@ -759,7 +759,7 @@ fn parse_term(app: App, w: String) Result[Node, String]:
 	else if r.starts_with("~"):
 		op = "~"
 
-	if op.is_empty(): return error("query: unexpected token '{w}'")
+	if op.is_empty(): return error(f"query: unexpected token '{w}'")
 
 	alts := parse_alts(after(r, op.length()))
 	return make_term(app, field, op, alts)
@@ -791,14 +791,14 @@ fn p_primary(app: App, var ps: FParser) Result[Node, String]:
 
 		if ps.toks[ps.pos].kind != 2:
 			bad := ps.toks[ps.pos].text.clone()
-			return error("query: unexpected token '{bad}'")
+			return error(f"query: unexpected token '{bad}'")
 
 		ps.pos += 1
 		return ok(inner)
 
 	ps.pos += 1
 	if text == "AND" or text == "OR" or text == "NOT":
-		return error("query: unexpected token '{text}'")
+		return error(f"query: unexpected token '{text}'")
 
 	return parse_term(app, text)
 
@@ -866,7 +866,7 @@ fn parse_filter(app: App, text: String) Result[Node, String]:
 
 	if ps.pos < ps.toks.length():
 		bad := ps.toks[ps.pos].text.clone()
-		return error("query: unexpected token '{bad}'")
+		return error(f"query: unexpected token '{bad}'")
 
 	return ok(node)
 
@@ -896,7 +896,7 @@ fn split_query(raw: String) Result[QParts, String]:
 			lim = arg.clone()
 			filt = prefix(rest, m + 1).trim_end()
 
-	if has_limit and rule_int(lim) < 0: return error("bad limit '{lim}'")
+	if has_limit and rule_int(lim) < 0: return error(f"bad limit '{lim}'")
 
 	fc := filt.chars()
 	fnn := fc.length()
@@ -952,7 +952,7 @@ fn parse_sort(text: String) Result[List[SortKey], String]:
 				desc = true
 				name = after(piece, 1)
 
-			if not sort_field_ok(name): return error("bad sort field '{name}'")
+			if not sort_field_ok(name): return error(f"bad sort field '{name}'")
 
 			keys.append(SortKey(field: name.clone(), desc: desc))
 
@@ -1199,7 +1199,7 @@ fn sort_indices(app: App, xs: List[Int], keys: List[SortKey]) List[Int]:
 	return out
 
 fn issue_line(it: Issue) String:
-	return "#{it.id} | {it.state} | {prio_name(it.priority)} | {dash(it.assignee)} | {pts_text(it.points)} | {dash(it.due)} | {labels_dash(it.labels)} | {it.title}"
+	return f"#{it.id} | {it.state} | {prio_name(it.priority)} | {dash(it.assignee)} | {pts_text(it.points)} | {dash(it.due)} | {labels_dash(it.labels)} | {it.title}"
 
 fn reaches(app: App, from: String, target: String, depth: Int) Bool:
 	if depth > 64: return false
@@ -1226,8 +1226,8 @@ fn add_state(var wf: WF, name: String) Unit:
 fn wf_line(var wf: WF, l: String) String:
 	if l.starts_with("initial:"):
 		rest := after(l, 8).trim()
-		if split_ws(rest).length() > 1: return "workflow: bad line '{l}'"
-		if not valid_state(rest): return "workflow: bad state name '{rest}'"
+		if split_ws(rest).length() > 1: return f"workflow: bad line '{l}'"
+		if not valid_state(rest): return f"workflow: bad state name '{rest}'"
 		if wf.has_initial: return "workflow: initial state defined twice"
 
 		wf.has_initial = true
@@ -1240,7 +1240,7 @@ fn wf_line(var wf: WF, l: String) String:
 
 		for part in rest.split(","):
 			nm := part.trim()
-			if not valid_state(nm): return "workflow: bad state name '{nm}'"
+			if not valid_state(nm): return f"workflow: bad state name '{nm}'"
 
 			add_state(var wf, nm)
 			if not wf.finals.contains(nm):
@@ -1249,14 +1249,14 @@ fn wf_line(var wf: WF, l: String) String:
 		return ""
 
 	arrow := l.index_of("->")
-	if arrow.is_none(): return "workflow: bad line '{l}'"
+	if arrow.is_none(): return f"workflow: bad line '{l}'"
 
 	k := arrow.get(0)
 	left := prefix(l, k).trim()
 	right := after(l, k + 2)
 	lw := split_ws(left)
-	if lw.length() != 1: return "workflow: bad line '{l}'"
-	if not valid_state(lw[0]): return "workflow: bad state name '{lw[0]}'"
+	if lw.length() != 1: return f"workflow: bad line '{l}'"
+	if not valid_state(lw[0]): return f"workflow: bad state name '{lw[0]}'"
 
 	src := lw[0].clone()
 	add_state(var wf, src)
@@ -1272,12 +1272,12 @@ fn wf_line(var wf: WF, l: String) String:
 			dst = words[0].clone()
 			guards = words[2].split("+")
 		else:
-			return "workflow: bad line '{l}'"
+			return f"workflow: bad line '{l}'"
 
-		if not valid_state(dst): return "workflow: bad state name '{dst}'"
+		if not valid_state(dst): return f"workflow: bad state name '{dst}'"
 
 		for g in guards:
-			if not is_guard(g): return "workflow: bad guard field '{g}'"
+			if not is_guard(g): return f"workflow: bad guard field '{g}'"
 		add_state(var wf, dst)
 		wf.edges.append(Edge(src: src.clone(), dst: dst.clone(), guards: guards))
 		wf.ntrans += 1
@@ -1303,7 +1303,7 @@ fn build_workflow(lines: List[String], start: Int, stop: Int) Result[WF, String]
 
 	for e in wf.edges:
 		if wf.finals.contains(e.src):
-			return error("workflow: '{e.src}' is final and cannot have transitions")
+			return error(f"workflow: '{e.src}' is final and cannot have transitions")
 	return ok(wf)
 
 // ---------------------------------------------------------------- the tracker
@@ -1323,12 +1323,12 @@ impl App:
 		id := parse_id(arg)
 
 		if id == 0:
-			print("error: bad issue id '{arg}'")
+			print(f"error: bad issue id '{arg}'")
 			return -1
 
 		idx := self.find(id)
 		if idx < 0:
-			print("error: no such issue #{id}")
+			print(f"error: no such issue #{id}")
 		return idx
 
 	fn state_pos(name: String) Int:
@@ -1387,35 +1387,35 @@ impl App:
 		var nr = cur.reporter.clone()
 
 		if up.has_title and up.title != cur.title:
-			details.append("title: {cur.title} -> {up.title}")
+			details.append(f"title: {cur.title} -> {up.title}")
 			nt = up.title.clone()
 
 		if up.has_priority and up.priority != cur.priority:
 			details.append(
-				"priority: {prio_name(cur.priority)} -> {prio_name(up.priority)}"
+				f"priority: {prio_name(cur.priority)} -> {prio_name(up.priority)}"
 			)
 			np = up.priority
 
 		if up.has_assignee and up.assignee != cur.assignee:
-			details.append("assignee: {dash(cur.assignee)} -> {dash(up.assignee)}")
+			details.append(f"assignee: {dash(cur.assignee)} -> {dash(up.assignee)}")
 			na = up.assignee.clone()
 
 		if up.has_points and up.points != cur.points:
-			details.append("points: {pts_text(cur.points)} -> {pts_text(up.points)}")
+			details.append(f"points: {pts_text(cur.points)} -> {pts_text(up.points)}")
 			npts = up.points
 
 		if up.has_due and up.due != cur.due:
-			details.append("due: {dash(cur.due)} -> {dash(up.due)}")
+			details.append(f"due: {dash(cur.due)} -> {dash(up.due)}")
 			nd = up.due.clone()
 
 		if up.has_labels and labels_text(up.labels) != labels_text(cur.labels):
 			details.append(
-				"labels: {labels_dash(cur.labels)} -> {labels_dash(up.labels)}"
+				f"labels: {labels_dash(cur.labels)} -> {labels_dash(up.labels)}"
 			)
 			nl = up.labels.clone()
 
 		if up.has_reporter and up.reporter != cur.reporter:
-			details.append("reporter: {dash(cur.reporter)} -> {dash(up.reporter)}")
+			details.append(f"reporter: {dash(cur.reporter)} -> {dash(up.reporter)}")
 			nr = up.reporter.clone()
 
 		if details.is_empty(): return false
@@ -1440,7 +1440,7 @@ impl App:
 		id := self.issues[idx].id
 
 		if self.is_final(self.issues[idx].state):
-			report(bulk, id, "#{id} is in final state '{self.issues[idx].state}'")
+			report(bulk, id, f"#{id} is in final state '{self.issues[idx].state}'")
 			return false
 
 		if toks.is_empty():
@@ -1457,9 +1457,9 @@ impl App:
 				return false
 
 		if self.apply_upd(idx, up):
-			print("updated #{id}")
+			print(f"updated #{id}")
 		else:
-			print("#{id} unchanged")
+			print(f"#{id} unchanged")
 
 		return true
 
@@ -1475,11 +1475,11 @@ impl App:
 			l := name.lower()
 
 			if not valid_label(l):
-				report(bulk, id, "bad label '{l}'")
+				report(bulk, id, f"bad label '{l}'")
 				return false
 
 		if self.is_final(self.issues[idx].state):
-			report(bulk, id, "#{id} is in final state '{self.issues[idx].state}'")
+			report(bulk, id, f"#{id} is in final state '{self.issues[idx].state}'")
 			return false
 
 		// Operations apply left to right.
@@ -1503,9 +1503,9 @@ impl App:
 		up.labels = nl
 
 		if self.apply_upd(idx, up):
-			print("updated #{id}")
+			print(f"updated #{id}")
 		else:
-			print("#{id} unchanged")
+			print(f"#{id} unchanged")
 
 		return true
 
@@ -1514,15 +1514,15 @@ impl App:
 		cur := self.issues[idx].state.clone()
 
 		if self.is_final(cur):
-			report(bulk, id, "#{id} is in final state '{cur}'")
+			report(bulk, id, f"#{id} is in final state '{cur}'")
 			return false
 
 		if self.state_pos(target) < 0:
-			report(bulk, id, "unknown state '{target}'")
+			report(bulk, id, f"unknown state '{target}'")
 			return false
 
 		if cur == target:
-			report(bulk, id, "already in state '{cur}'")
+			report(bulk, id, f"already in state '{cur}'")
 			return false
 
 		var ei = -1
@@ -1538,7 +1538,7 @@ impl App:
 			j += 1
 
 		if ei < 0:
-			report(bulk, id, "transition '{cur} -> {target}' not allowed")
+			report(bulk, id, f"transition '{cur} -> {target}' not allowed")
 			return false
 
 		var missing = List[String]()
@@ -1548,7 +1548,7 @@ impl App:
 
 		if not missing.is_empty():
 			mtxt := missing.join(", ")
-			report(bulk, id, "cannot move #{id} to {target}: missing {mtxt}")
+			report(bulk, id, f"cannot move #{id} to {target}: missing {mtxt}")
 			return false
 
 		self.clock += 1
@@ -1556,7 +1556,7 @@ impl App:
 		t := self.clock
 		self.issues[idx].state = target.clone()
 		self.issues[idx].updated = t
-		self.log_add(id, "state: {cur} -> {target}")
+		self.log_add(id, f"state: {cur} -> {target}")
 
 		if not comment.is_empty():
 			self.issues[idx].comments.append(
@@ -1566,9 +1566,9 @@ impl App:
 					text: comment.clone(),
 				)
 			)
-			self.log_add(id, "comment: {comment}")
+			self.log_add(id, f"comment: {comment}")
 
-		print("moved #{id}: {cur} -> {target}")
+		print(f"moved #{id}: {cur} -> {target}")
 		return true
 
 	// ------------------------------------------------ commands
@@ -1588,14 +1588,14 @@ impl App:
 		res := build_workflow(lines, start, stop)
 
 		if res.is_error():
-			print("error: {res.err()}")
+			print(f"error: {res.err()}")
 			return next
 
 		wf := res.get()
 		ns := wf.states.length()
 		nt := wf.ntrans
 		self.wf = wf
-		print("workflow ok: {ns} states, {nt} transitions")
+		print(f"workflow ok: {ns} states, {nt} transitions")
 		return next
 
 	var fn cmd_actor(args: List[String]) Unit:
@@ -1604,7 +1604,7 @@ impl App:
 			return
 
 		self.actor = args[1].clone()
-		print("actor is {self.actor}")
+		print(f"actor is {self.actor}")
 
 	var fn cmd_today(args: List[String]) Unit:
 		if args.length() != 2:
@@ -1612,11 +1612,11 @@ impl App:
 			return
 
 		if not valid_date(args[1]):
-			print("error: bad date '{args[1]}'")
+			print(f"error: bad date '{args[1]}'")
 			return
 
 		self.today = args[1].clone()
-		print("today is {self.today}")
+		print(f"today is {self.today}")
 
 	var fn cmd_create(line: String) Unit:
 		if not self.wf.has_initial:
@@ -1626,7 +1626,7 @@ impl App:
 		tr := tokenize(rest_after(line, 1))
 
 		if tr.is_error():
-			print("error: {tr.err()}")
+			print(f"error: {tr.err()}")
 			return
 
 		toks := tr.get()
@@ -1648,7 +1648,7 @@ impl App:
 			e := token_upd(var up, toks[k])
 
 			if not e.is_empty():
-				print("error: {e}")
+				print(f"error: {e}")
 				return
 
 			k += 1
@@ -1674,53 +1674,53 @@ impl App:
 			updated: t,
 		)
 		var details = List[String]()
-		details.append("created \"{title}\"")
+		details.append(f"created \"{title}\"")
 
 		if up.has_title:
 			if up.title != title:
-				details.append("title: {title} -> {up.title}")
+				details.append(f"title: {title} -> {up.title}")
 			it.title = up.title.clone()
 
 		if up.has_priority:
 			if up.priority != 1:
-				details.append("priority: medium -> {prio_name(up.priority)}")
+				details.append(f"priority: medium -> {prio_name(up.priority)}")
 			it.priority = up.priority
 
 		if up.has_assignee:
 			if not up.assignee.is_empty():
-				details.append("assignee: - -> {up.assignee}")
+				details.append(f"assignee: - -> {up.assignee}")
 			it.assignee = up.assignee.clone()
 
 		if up.has_points:
 			if up.points >= 0:
-				details.append("points: - -> {up.points}")
+				details.append(f"points: - -> {up.points}")
 			it.points = up.points
 
 		if up.has_due:
 			if not up.due.is_empty():
-				details.append("due: - -> {up.due}")
+				details.append(f"due: - -> {up.due}")
 			it.due = up.due.clone()
 
 		if up.has_labels:
 			if not up.labels.is_empty():
-				details.append("labels: - -> {labels_text(up.labels)}")
+				details.append(f"labels: - -> {labels_text(up.labels)}")
 			it.labels = up.labels.clone()
 
 		if up.has_reporter:
 			if not up.reporter.is_empty():
-				details.append("reporter: - -> {up.reporter}")
+				details.append(f"reporter: - -> {up.reporter}")
 			it.reporter = up.reporter.clone()
 
 		self.issues.append(it)
 		for d in details:
 			self.log_add(id, d.clone())
-		print("created #{id}")
+		print(f"created #{id}")
 
 	var fn cmd_edit(line: String) Unit:
 		tr := tokenize(rest_after(line, 1))
 
 		if tr.is_error():
-			print("error: {tr.err()}")
+			print(f"error: {tr.err()}")
 			return
 
 		toks := tr.get()
@@ -1738,7 +1738,7 @@ impl App:
 		tr := tokenize(rest_after(line, 1))
 
 		if tr.is_error():
-			print("error: {tr.err()}")
+			print(f"error: {tr.err()}")
 			return
 
 		toks := tr.get()
@@ -1750,7 +1750,7 @@ impl App:
 		idx := self.resolve(toks[0])
 		if idx < 0: return
 
-		tok := "assignee={toks[1]}"
+		tok := f"assignee={toks[1]}"
 		var one = List[String]()
 		one.append(tok)
 
@@ -1760,7 +1760,7 @@ impl App:
 		tr := tokenize(rest_after(line, 1))
 
 		if tr.is_error():
-			print("error: {tr.err()}")
+			print(f"error: {tr.err()}")
 			return
 
 		toks := tr.get()
@@ -1802,8 +1802,8 @@ impl App:
 			Comment(t: t, actor: self.actor.clone(), text: text.clone())
 		)
 		self.issues[idx].updated = t
-		self.log_add(id, "comment: {text}")
-		print("commented #{id}")
+		self.log_add(id, f"comment: {text}")
+		print(f"commented #{id}")
 
 	var fn cmd_delete(args: List[String]) Unit:
 		if args.length() != 2:
@@ -1817,7 +1817,7 @@ impl App:
 		self.clock += 1
 		self.log_add(id, "deleted")
 		self.issues.remove(idx)
-		print("deleted #{id}")
+		print(f"deleted #{id}")
 
 	fn cmd_show(args: List[String]) Unit:
 		if args.length() != 2:
@@ -1828,18 +1828,18 @@ impl App:
 		if idx < 0: return
 
 		it := self.issues[idx]
-		print("#{it.id} {it.title}")
-		print("  state: {it.state}")
-		print("  priority: {prio_name(it.priority)}")
-		print("  assignee: {dash(it.assignee)}")
-		print("  points: {pts_text(it.points)}")
-		print("  due: {dash(it.due)}")
-		print("  labels: {labels_sp(it.labels)}")
-		print("  reporter: {dash(it.reporter)}")
-		print("  created: t={it.created}, updated: t={it.updated}")
-		print("  comments: {it.comments.length()}")
+		print(f"#{it.id} {it.title}")
+		print(f"  state: {it.state}")
+		print(f"  priority: {prio_name(it.priority)}")
+		print(f"  assignee: {dash(it.assignee)}")
+		print(f"  points: {pts_text(it.points)}")
+		print(f"  due: {dash(it.due)}")
+		print(f"  labels: {labels_sp(it.labels)}")
+		print(f"  reporter: {dash(it.reporter)}")
+		print(f"  created: t={it.created}, updated: t={it.updated}")
+		print(f"  comments: {it.comments.length()}")
 		for c in it.comments:
-			print("    [t={c.t} {c.actor}] {c.text}")
+			print(f"    [t={c.t} {c.actor}] {c.text}")
 
 	fn run_compiled(c: Compiled) Unit:
 		m := matching(self, c.node)
@@ -1853,13 +1853,13 @@ impl App:
 		if n == 1:
 			print("(1 issue)")
 		else:
-			print("({n} issues)")
+			print(f"({n} issues)")
 
 	fn cmd_list(line: String) Unit:
 		cr := compile_query(self, rest_after(line, 1))
 
 		if cr.is_error():
-			print("error: {cr.err()}")
+			print(f"error: {cr.err()}")
 			return
 
 		self.run_compiled(cr.get())
@@ -1886,14 +1886,14 @@ impl App:
 			name := args[2].clone()
 
 			if not valid_name(name, true):
-				print("error: bad view name '{name}'")
+				print(f"error: bad view name '{name}'")
 				return
 
 			q := rest_after(line, 3).trim()
 			cr := compile_query(self, q)
 
 			if cr.is_error():
-				print("error: {cr.err()}")
+				print(f"error: {cr.err()}")
 				return
 
 			node := cr.get().node
@@ -1902,7 +1902,7 @@ impl App:
 
 			for r in refs:
 				if r == name or reaches(self, r, name, 0):
-					print("error: view '{name}' would reference itself")
+					print(f"error: view '{name}' would reference itself")
 					return
 
 			vi := self.find_view(name)
@@ -1912,7 +1912,7 @@ impl App:
 			else:
 				self.views.append(View(name: name.clone(), query: q.clone()))
 
-			print("saved view {name}")
+			print(f"saved view {name}")
 			return
 
 		if sub == "run":
@@ -1924,25 +1924,25 @@ impl App:
 			vi := self.find_view(name)
 
 			if vi < 0:
-				print("error: unknown view '{name}'")
+				print(f"error: unknown view '{name}'")
 				return
 
 			pr := split_query(rest_after(line, 3))
 
 			if pr.is_error():
-				print("error: {pr.err()}")
+				print(f"error: {pr.err()}")
 				return
 
 			parts := pr.get()
 
 			if not parts.filter.is_empty():
-				print("error: unexpected '{parts.filter}'")
+				print(f"error: unexpected '{parts.filter}'")
 				return
 
 			cr := compile_query(self, self.views[vi].query.clone())
 
 			if cr.is_error():
-				print("error: {cr.err()}")
+				print(f"error: {cr.err()}")
 				return
 
 			var comp = cr.get()
@@ -1951,7 +1951,7 @@ impl App:
 				kr := parse_sort(parts.sort)
 
 				if kr.is_error():
-					print("error: {kr.err()}")
+					print(f"error: {kr.err()}")
 					return
 
 				comp.keys = kr.get()
@@ -1968,7 +1968,7 @@ impl App:
 
 			for nm in names:
 				vi := self.find_view(nm)
-				print("{nm}: {self.views[vi].query}")
+				print(f"{nm}: {self.views[vi].query}")
 
 			return
 
@@ -1980,10 +1980,10 @@ impl App:
 			vi := self.find_view(args[2])
 
 			if vi < 0:
-				print("error: unknown view '{args[2]}'")
+				print(f"error: unknown view '{args[2]}'")
 				return
 
-			print("{args[2]}: {self.views[vi].query}")
+			print(f"{args[2]}: {self.views[vi].query}")
 			return
 
 		if sub == "delete":
@@ -1995,16 +1995,16 @@ impl App:
 			vi := self.find_view(name)
 
 			if vi < 0:
-				print("error: unknown view '{name}'")
+				print(f"error: unknown view '{name}'")
 				return
 
 			for other in self.sorted_view_names():
 				if other != name and reaches(self, other, name, 0):
-					print("error: view '{name}' is used by '{other}'")
+					print(f"error: view '{name}' is used by '{other}'")
 					return
 
 			self.views.remove(vi)
-			print("deleted view {name}")
+			print(f"deleted view {name}")
 			return
 
 		print("error: usage: view save|run|list|show|delete")
@@ -2019,7 +2019,7 @@ impl App:
 		tr := tokenize(sp.before)
 
 		if tr.is_error():
-			print("error: {tr.err()}")
+			print(f"error: {tr.err()}")
 			return
 
 		toks := tr.get()
@@ -2056,13 +2056,13 @@ impl App:
 
 			kind = 4
 		else:
-			print("error: unknown bulk action '{act}'")
+			print(f"error: unknown bulk action '{act}'")
 			return
 
 		nr := parse_filter(self, sp.query)
 
 		if nr.is_error():
-			print("error: {nr.err()}")
+			print(f"error: {nr.err()}")
 			return
 
 		m := matching(self, nr.get())
@@ -2075,7 +2075,7 @@ impl App:
 			if kind == 1:
 				good = self.do_move(idx, toks[1].clone(), "", true)
 			else if kind == 2:
-				tok := "assignee={toks[1]}"
+				tok := f"assignee={toks[1]}"
 				var one = List[String]()
 				one.append(tok)
 				good = self.do_edit(idx, one, true)
@@ -2089,7 +2089,7 @@ impl App:
 			else:
 				bad_n += 1
 
-		print("bulk: {good_n} ok, {bad_n} failed")
+		print(f"bulk: {good_n} ok, {bad_n} failed")
 
 	var fn cmd_log(args: List[String]) Unit:
 		n := args.length()
@@ -2102,11 +2102,11 @@ impl App:
 			id := parse_id(args[1])
 
 			if id == 0:
-				print("error: bad issue id '{args[1]}'")
+				print(f"error: bad issue id '{args[1]}'")
 				return
 
 			if id >= self.next_id:
-				print("error: no such issue #{id}")
+				print(f"error: no such issue #{id}")
 				return
 
 			idf = id
@@ -2120,7 +2120,7 @@ impl App:
 			tailn = rule_int(args[k + 1])
 
 			if tailn < 0:
-				print("error: bad tail '{args[k + 1]}'")
+				print(f"error: bad tail '{args[k + 1]}'")
 				return
 
 			has_tail = true
@@ -2139,7 +2139,7 @@ impl App:
 
 		while j < sel.length():
 			e := self.logs[sel[j]]
-			print("t={e.t} {e.actor} #{e.id} {e.detail}")
+			print(f"t={e.t} {e.actor} #{e.id} {e.detail}")
 			printed += 1
 			j += 1
 
@@ -2163,7 +2163,7 @@ impl App:
 			nr := parse_filter(self, rest_after(line, 2))
 
 			if nr.is_error():
-				print("error: {nr.err()}")
+				print(f"error: {nr.err()}")
 				return
 
 			self.report_labels(nr.get())
@@ -2199,7 +2199,7 @@ impl App:
 				if it.points > 0:
 					openpts += it.points
 
-		print("issues: {total} (open {nopen}, final {nfin})")
+		print(f"issues: {total} (open {nopen}, final {nfin})")
 		print("by state:")
 
 		for s in self.wf.states:
@@ -2207,7 +2207,7 @@ impl App:
 			for it in self.issues:
 				if it.state == s:
 					c += 1
-			print("  {s}: {c}")
+			print(f"  {s}: {c}")
 
 		print("by priority:")
 
@@ -2216,11 +2216,11 @@ impl App:
 			for it in self.issues:
 				if it.priority == r:
 					c += 1
-			print("  {prio_name(r)}: {c}")
+			print(f"  {prio_name(r)}: {c}")
 
-		print("unassigned: {unassigned}")
-		print("overdue: {overdue}")
-		print("open points: {openpts}")
+		print(f"unassigned: {unassigned}")
+		print(f"overdue: {overdue}")
+		print(f"open points: {openpts}")
 
 	fn report_workload() Unit:
 		var groups = List[WG]()
@@ -2279,11 +2279,11 @@ impl App:
 		for oi in order:
 			g := groups[oi]
 			word := if g.count == 1: "issue" else: "issues"
-			print("{g.name}: {g.count} {word}, {g.points} points")
+			print(f"{g.name}: {g.count} {word}, {g.points} points")
 
 		if un_n > 0:
 			uw := if un_n == 1: "issue" else: "issues"
-			print("unassigned: {un_n} {uw}, {un_pts} points")
+			print(f"unassigned: {un_n} {uw}, {un_pts} points")
 
 	fn report_labels(node: Node) Unit:
 		m := matching(self, node)
@@ -2319,7 +2319,7 @@ impl App:
 			gi += 1
 
 		for oi in order:
-			print("{lcs[oi].name}: {lcs[oi].count}")
+			print(f"{lcs[oi].name}: {lcs[oi].count}")
 
 	fn report_timeline(idx: Int) Unit:
 		it := self.issues[idx]
@@ -2329,11 +2329,11 @@ impl App:
 		for e in self.logs:
 			if e.id == it.id and e.detail.starts_with("state: "):
 				ws := split_ws(after(e.detail, 7))
-				print("{cur}: t={from}..{e.t} ({e.t - from})")
+				print(f"{cur}: t={from}..{e.t} ({e.t - from})")
 				cur = ws[2].clone()
 				from = e.t
 
-		print("{cur}: t={from}..{self.clock} ({self.clock - from})")
+		print(f"{cur}: t={from}..{self.clock} ({self.clock - from})")
 
 	var fn exec(line: String, lines: List[String], next: Int) Int:
 		args := split_ws(line)
@@ -2371,7 +2371,7 @@ impl App:
 		else if cmd == "report":
 			self.cmd_report(line, args)
 		else:
-			print("error: unknown command '{cmd}'")
+			print(f"error: unknown command '{cmd}'")
 
 		return next
 
@@ -2440,7 +2440,7 @@ export fn main() Int:
 		st := line.trim_start()
 		if st.is_empty() or st.starts_with("#"): continue
 
-		print("> {line}")
+		print(f"> {line}")
 		i = app.exec(line, lines, i)
 
 	return 0

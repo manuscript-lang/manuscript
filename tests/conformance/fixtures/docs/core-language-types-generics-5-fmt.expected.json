@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "fn choose[T](first: T, second: T) T:\n\treturn first\n\nvalue := choose(1, 2)  // T = Int\n// Rejected: conflicting evidence for T.\nmixed := choose(1, 2.0)\n"

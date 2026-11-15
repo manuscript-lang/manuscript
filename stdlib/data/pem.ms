@@ -61,7 +61,7 @@ export fn parse(text: String) List[PemBlock]!:
 
 		if line.starts_with(END):
 			closing := line.view(END.length(), line.length())
-			if closing != "{label}{DASHES}": return error(
+			if closing != f"{label}{DASHES}": return error(
 				Error("PEM: invalid armor", kind: "EBADMSG")
 			)
 
@@ -93,7 +93,7 @@ export fn parse(text: String) List[PemBlock]!:
 			continue
 
 		in_headers = false
-		body = "{body}{line}"
+		body = f"{body}{line}"
 
 	if open: return error(Error("PEM: invalid armor", kind: "EBADMSG"))
 
@@ -103,11 +103,11 @@ export fn parse(text: String) List[PemBlock]!:
 // ending with a newline.
 export fn encode_block(block: PemBlock) String:
 	var out = StringBuilder()
-	out.append("{BEGIN}{block.label}{DASHES}\n")
+	out.append(f"{BEGIN}{block.label}{DASHES}\n")
 
 	if not block.headers.is_empty():
 		for entry in block.headers.entries():
-			out.append("{entry.key}: {entry.value}\n")
+			out.append(f"{entry.key}: {entry.value}\n")
 		out.append("\n")
 
 	body := base64_encode(block.data)
@@ -116,10 +116,10 @@ export fn encode_block(block: PemBlock) String:
 
 	while at < total:
 		stop := if at + 64 < total: at + 64 else: total
-		out.append("{body.slice(at, stop).get("")}\n")
+		out.append(f"{body.slice(at, stop).get("")}\n")
 		at = stop
 
-	out.append("{END}{block.label}{DASHES}\n")
+	out.append(f"{END}{block.label}{DASHES}\n")
 	return out.build()
 
 // Encodes blocks in order into one PEM text; the result parses back to equal blocks.

@@ -25,9 +25,9 @@ fn label(status: Status) String:
         Open:
             return "waiting to ship"
         Shipped(tracking):
-            return "shipped, tracking {tracking}"
+            return f"shipped, tracking {tracking}"
         Cancelled(reason):
-            return "cancelled: {reason}"
+            return f"cancelled: {reason}"
 
 fn main() Void:
     var orders = [
@@ -43,9 +43,9 @@ fn main() Void:
         customers.add(order.customer.clone())
         total := spent.get_or(order.customer, 0) + order.cents
         spent.add(order.customer.clone(), total)
-        print("#{order.id} {order.customer}: {label(order.status)}")
-    print("{customers.length()} customers")
-    print("Sam spent {spent.get_or("Sam", 0)} cents")
+        print(f"#{order.id} {order.customer}: {label(order.status)}")
+    print(f"{customers.length()} customers")
+    print(f"Sam spent {spent.get_or("Sam", 0)} cents")
 ```
 
 ```text

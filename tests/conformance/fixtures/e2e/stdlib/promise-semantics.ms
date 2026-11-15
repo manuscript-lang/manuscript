@@ -44,7 +44,7 @@ test "promises faulting on several threads each report their own fault":
 		for i in 0..batch.length():
 			reason := batch[i].wait() | expect_error?
 			text := report(reason)
-			expect_true(text.contains("index {round * 1000 + i + 1} out of range"))?
+			expect_true(text.contains(f"index {round * 1000 + i + 1} out of range"))?
 
 test "a timed out wait reports Timeout and cancels the work":
 	slow := promise(

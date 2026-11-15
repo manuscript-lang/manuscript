@@ -32,11 +32,11 @@ fn run(args: List[String]) String!:
 			start := monotonic()
 			ran := capture(
 				args[version],
-				[args[4].clone(), "{n}", "{repeats}", prefix.clone()],
+				[args[4].clone(), f"{n}", f"{repeats}", prefix.clone()],
 			)
 			wall := monotonic().difference(start).to_nanoseconds()
 			if not ran.ok or ran.code != 0 or ran.stderr != "": return invalid(
-				"producer failed: {ran.code} {ran.stderr}"
+				f"producer failed: {ran.code} {ran.stderr}"
 			)
 
 			parts := ran.stdout.trim().split(" ")
@@ -48,12 +48,12 @@ fn run(args: List[String]) String!:
 				"invalid timing or checksum"
 			)
 
-			rows.append("{sample - 1},{version},{elapsed},{wall},{actual}")
+			rows.append(f"{sample - 1},{version},{elapsed},{wall},{actual}")
 
-		write_text("{args[2]}/samples.csv", rows.join("\n") + "\n")
+		write_text(f"{args[2]}/samples.csv", rows.join("\n") + "\n")
 
-	write_text("{args[2]}/complete.txt", "all producers and checksums passed\n")
-	return ok("completed {rows.length() - 1} validated producer runs")
+	write_text(f"{args[2]}/complete.txt", "all producers and checksums passed\n")
+	return ok(f"completed {rows.length() - 1} validated producer runs")
 
 fn main() Int:
 	return finish(run(arguments()))

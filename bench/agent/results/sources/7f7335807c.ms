@@ -39,7 +39,7 @@ fn format_cents(d: List[Int]) String:
 	var k = top
 
 	while k >= 0:
-		s += "{digit_at(d, k)}"
+		s += f"{digit_at(d, k)}"
 		if k == 2:
 			s += "."
 		k -= 1
@@ -134,9 +134,9 @@ export fn main() Int:
 			sum = add_digits(sum, recs[j].cents)
 			j += 1
 
-		stdout().write("{recs[i].cat}: {format_cents(sum)}\n").get()
+		stdout().write(f"{recs[i].cat}: {format_cents(sum)}\n").get()
 		i = j
 
 	if skipped > 0:
-		stdout().write("skipped: {skipped}\n").get()
+		stdout().write(f"skipped: {skipped}\n").get()
 	return 0

@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if (18 != (-4)):
         say(("gamma" + "Tab\there"))
     else:
-        say("brace\{s\}")
+        say("brace{s}")
 
     var acc1 = 0
     for i in 0..7:
         acc1 += i * 3
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     i2 := ((-9) + ((35 * (-796632)) + ((-31) - (-46))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
     return 0

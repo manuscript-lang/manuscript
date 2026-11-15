@@ -186,11 +186,11 @@ impl Cron:
 		return found
 
 fn pad(n: Int) String:
-	if n < 10: return "0{n}"
-	return "{n}"
+	if n < 10: return f"0{n}"
+	return f"{n}"
 
 fn stamp_text(s: Stamp) String:
-	return "{s.year}-{pad(s.month)}-{pad(s.day)} {pad(s.hour)}:{pad(s.minute)}"
+	return f"{s.year}-{pad(s.month)}-{pad(s.day)} {pad(s.hour)}:{pad(s.minute)}"
 
 fn is_blank(line: String) Bool:
 	for i in 0..line.length():
@@ -199,7 +199,7 @@ fn is_blank(line: String) Bool:
 
 // The output for one non-blank input line, without its final newline.
 fn solve(n: Int, raw: String) String:
-	head := "line {n}: "
+	head := f"line {n}: "
 	tok := raw.split(" ")
 	if tok.length() != 7: return head + "error: bad line"
 
@@ -234,7 +234,7 @@ fn solve(n: Int, raw: String) String:
 	runs := cron.runs(start, count)
 	if runs.length() == 0: return head + "never"
 
-	var text = head + "{runs.length()} runs"
+	var text = head + f"{runs.length()} runs"
 	for r in runs:
 		text += "\n" + stamp_text(r)
 	return text

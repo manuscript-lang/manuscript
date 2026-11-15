@@ -31,7 +31,7 @@ N_ALT := 4
 N_REPEAT := 5
 N_LOOK := 6
 N_BREF := 7
-PRINTABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+PRINTABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 HEXD := "0123456789abcdef"
 
 type Pat:
@@ -1038,7 +1038,7 @@ fn quote_char(c: Int) String:
 	if c == 10: return "\\n"
 	if c == 9: return "\\t"
 	if c == 13: return "\\r"
-	if c < 32 or c > 126: return "\\x{HEXD.get(c / 16)}{HEXD.get(c % 16)}"
+	if c < 32 or c > 126: return f"\\x{HEXD.get(c / 16)}{HEXD.get(c % 16)}"
 
 	return PRINTABLE.get(c - 32)
 
@@ -1059,17 +1059,17 @@ fn ascii_str(bytes: List[Int]) String:
 // ms: allow_effect std.console.write
 fn print_groups(p: Pat, subj: List[Int], slots: List[Int]) Unit:
 	for g in 0..p.ngroups + 1:
-		var label = "{g}"
+		var label = f"{g}"
 		if g > 0 and not p.gnames[g].is_empty():
-			label = "{g} ({ascii_str(p.gnames[g])})"
+			label = f"{g} ({ascii_str(p.gnames[g])})"
 
 		s := slots[2 * g]
 
 		if s < 0:
-			print("{label}: unset")
+			print(f"{label}: unset")
 		else:
 			en := slots[2 * g + 1]
-			print("{label}: {s}..{en} {quoted(subj, s, en)}")
+			print(f"{label}: {s}..{en} {quoted(subj, s, en)}")
 
 // ---- replacement ----------------------------------------------------------
 
@@ -1245,7 +1245,7 @@ fn process_line(line: List[Int]) Unit:
 	p := build_pattern(fields[1].clone())
 
 	if not p.err.is_empty():
-		print("error: {p.err}")
+		print(f"error: {p.err}")
 		return
 
 	var slots = new_slots(p)
@@ -1270,8 +1270,8 @@ fn process_line(line: List[Int]) Unit:
 		var mc = List[List[Int]]()
 		collect(p, subj, var slots, var ms, var me, var mc)
 		for k in 0..ms.length():
-			print("{ms[k]}..{me[k]} {quoted(subj, ms[k], me[k])}")
-		print("({ms.length()} matches)")
+			print(f"{ms[k]}..{me[k]} {quoted(subj, ms[k], me[k])}")
+		print(f"({ms.length()} matches)")
 	else if kind == 5:
 		var ms = List[Int]()
 		var me = List[Int]()
@@ -1289,7 +1289,7 @@ fn process_line(line: List[Int]) Unit:
 
 		print(quoted(subj, prev, subj.length()))
 		count += 1
-		print("({count} pieces)")
+		print(f"({count} pieces)")
 	else:
 		var ms = List[Int]()
 		var me = List[Int]()

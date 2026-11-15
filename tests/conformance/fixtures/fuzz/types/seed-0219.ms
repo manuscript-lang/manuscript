@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc1 = 0
     for i in 0..5:
         acc1 += i * (-3)
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
     if 1:
         say("truthy")
 
     l2 := [8, 21, 19, (-17), 23]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     b3 := ((false and (not true)) and ((749833 + (-225012)) == ((-41) + (-229776))))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,54 +24,54 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     l1 := [(-18), 7]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := 39
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     if (i2 >= i2):
         say("hello world")
     else:
-        say(("{l1.length()}:" + "MiXeD CaSe"))
+        say((f"{l1.length()}:" + "MiXeD CaSe"))
 
     l3 := [(-11), (-14), (-4)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     l4 := l3.take(1)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (((i2 / i2) + (i2 - 0)) / (-49))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (i2 + (i5 + (i2 % (-908553))))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     f7 := (((711.25 - 840.545) * 168.208) / (291.806 - (624.319 / 691.074)))
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     i8 := i2
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     f9 := (((241.627 * f7) + (9.0e4 / f7)) * ((700.901 + 161.689) / (815.654 * f7)))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     i10 := (i6 + i8)
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := [(-20), 3, 5]
-    say("l11 = {l11} len {l11.length()}")
-    say("{14} {l3.length()} {(14 < l3.length())} sum {14 + l3.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
+    say(f"{14} {l3.length()} {(14 < l3.length())} sum {14 + l3.length()}")
 
     i12 := (((i5 - 957557) / (i8 + (-21))) * i10)
-    say("i12 = {i12}")
-    say("collatz(1376) = {collatz(1376)}")
+    say(f"i12 = {i12}")
+    say(f"collatz(1376) = {collatz(1376)}")
 
     i13 := i6
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
 
     b14 := not "back\\slash".lower().is_empty()
-    say("b14 = {b14}")
+    say(f"b14 = {b14}")
 
     i15 := 39
-    say("i15 = {i15}")
+    say(f"i15 = {i15}")
     return 0

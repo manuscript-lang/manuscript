@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 3.5
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     s2 := ("alpha" + (("MiXeD CaSe" + "naïve") + "alpha".trim()))
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     if true:
         say("42".reverse())
@@ -21,17 +21,17 @@ export fn main() Int:
         say("emoji 😀".reverse())
 
     l3 := [(-24), (-10), 10, (-28), (-27)]
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     i4 := (33 / (-46))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (-28)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     b6 := (((i4 + i4) - ((-6) % 267480)) <= 2)
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     i7 := ((-(i5 % (-15))) + (-23))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
     return 0

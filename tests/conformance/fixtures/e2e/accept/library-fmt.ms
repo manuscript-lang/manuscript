@@ -44,13 +44,13 @@ fn compare(left: Int, right: Int) Int:
 fn verify_json() Void!:
     limits := JsonOptions(max_bytes: 1024, max_depth: 8, max_values: 32)
     value := parse(
-        text: "\{\"large\":9007199254740993,\"ok\":true\}", limits: limits
+        text: "{\"large\":9007199254740993,\"ok\":true}", limits: limits
     )?
     (
         not (
             stringify(
                 value: value, max_bytes: 1024
-            )? == "\{\"large\":9007199254740993,\"ok\":true\}"
+            )? == "{\"large\":9007199254740993,\"ok\":true}"
         )
     ) | expect_false?
 
@@ -170,7 +170,7 @@ test "malformed and bounded inputs return errors":
     hex_decode(text: "abcd", max_bytes: 1) | expect_equal(failure2)?
 
     limits := JsonOptions(max_bytes: 100, max_depth: 2, max_values: 10)
-    failure3 := parse(text: "\{\"a\":1,\"a\":2\}", limits: limits)
+    failure3 := parse(text: "{\"a\":1,\"a\":2}", limits: limits)
     (
         failure3.err().message | expect_equal(
             "JSON: invalid data: line 1, column 14: duplicate object key"

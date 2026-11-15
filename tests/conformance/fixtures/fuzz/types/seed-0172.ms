@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "ms".trim().reverse().replace("", "a")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     f2 := 538.462
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     fixed := 1
     fixed = 2

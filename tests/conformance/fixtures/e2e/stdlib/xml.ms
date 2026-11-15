@@ -20,7 +20,7 @@ fn expect_error_at(text: String, line: Int, column: Int, reason: String) Void!:
 	expect_equal(cause.details["line"], line.to_string())?
 	expect_equal(cause.details["column"], column.to_string())?
 	expect_equal(cause.details["reason"], reason)?
-	expect_equal(cause.message, "XML {line}:{column}: {reason}")?
+	expect_equal(cause.message, f"XML {line}:{column}: {reason}")?
 
 test "parse reads elements attributes and text":
 	doc := parse(
@@ -62,7 +62,7 @@ test "stringify preserves compact and mixed content formatting":
 	]:
 		doc := parse(source)?
 		expect_equal(stringify(doc), source)?
-		expect_equal(stringify(doc, "  "), "{source}\n")?
+		expect_equal(stringify(doc, "  "), f"{source}\n")?
 
 test "stringify leaves comments and descendant text on indented lines":
 	doc := parse("<a><!--comment--><b>text</b><c/></a>")?
@@ -102,31 +102,31 @@ test "processing instructions require a name and whitespace before data":
 		"<??>", "<? ?>", "<?1bad?>", "<?@?>", "<?p!data?>", "<?p/data?>", "<?p=data?>",
 		"<?p\u{a0}data?>", "<?p", "<?p data"
 	]:
-		expect_malformed(parse("{instruction}<a/>"))?
-		expect_malformed(parse("<a>{instruction}</a>"))?
-		expect_malformed(parse("<a/>{instruction}"))?
+		expect_malformed(parse(f"{instruction}<a/>"))?
+		expect_malformed(parse(f"<a>{instruction}</a>"))?
+		expect_malformed(parse(f"<a/>{instruction}"))?
 
 	for instruction in [
 		"<?p?>", "<?p ?>", "<?p\tdata?>", "<?p\r\ndata?>",
 		"<?xml-stylesheet href='style.xsl'?>", "<?xmlfoo?>", "<?XML:task?>",
 		"<?é:task data &literal; <markup> ? more?>"
 	]:
-		expect_equal(stringify(parse("{instruction}<a/>{instruction}")?), "<a/>")?
-		expect_equal((parse("<a>x{instruction}y</a>")?).text(), "xy")?
+		expect_equal(stringify(parse(f"{instruction}<a/>{instruction}")?), "<a/>")?
+		expect_equal((parse(f"<a>x{instruction}y</a>")?).text(), "xy")?
 
 test "XML declarations occur only at the document start":
 	declaration := "<?xml version='1.0'?>"
 
 	for target in ["xml", "XML", "Xml", "xMl", "xmL", "XMl", "xML", "XmL"]:
-		expect_malformed(parse("<a><?{target} version='1.0'?></a>"))?
-		expect_malformed(parse("<a/><?{target} version='1.0'?>"))?
+		expect_malformed(parse(f"<a><?{target} version='1.0'?></a>"))?
+		expect_malformed(parse(f"<a/><?{target} version='1.0'?>"))?
 		if target != "xml":
-			expect_malformed(parse("<?{target} version='1.0'?><a/>"))?
+			expect_malformed(parse(f"<?{target} version='1.0'?><a/>"))?
 
 	for prefix in [" ", "\n", "<!--c-->", "<?p?>", declaration.clone()]:
-		expect_malformed(parse("{prefix}{declaration}<a/>"))?
-	expect_equal((parse("{declaration}<a/>")?).tag(), "a")?
-	expect_equal((parse("\u{feff}{declaration}<a/>")?).tag(), "a")?
+		expect_malformed(parse(f"{prefix}{declaration}<a/>"))?
+	expect_equal((parse(f"{declaration}<a/>")?).tag(), "a")?
+	expect_equal((parse(f"\u{feff}{declaration}<a/>")?).tag(), "a")?
 
 test "XML declarations validate ordered literal pseudo attributes":
 	for declaration in [
@@ -144,7 +144,7 @@ test "XML declarations validate ordered literal pseudo attributes":
 		"<?xml version='1.0' standalone='yes' standalone='no'?>",
 		"<?xml version='1.0' standalone='yes' encoding='UTF-8'?>"
 	]:
-		expect_malformed(parse("{declaration}<a/>"))?
+		expect_malformed(parse(f"{declaration}<a/>"))?
 	for declaration in [
 		"<?xml version='1.0'?>", "<?xml version = \"1.0\" ?>",
 		"<?xml\tversion\n=\r'1.0'\nencoding = 'UTF-8'\tstandalone='yes' ?>",
@@ -153,7 +153,7 @@ test "XML declarations validate ordered literal pseudo attributes":
 		"<?xml version='1.0' encoding='x-custom_1.2' standalone='no'?>",
 		"<?xml version='1.1'?>", "<?xml version='1.17'?>"
 	]:
-		expect_equal((parse("{declaration}<a/>")?).tag(), "a")?
+		expect_equal((parse(f"{declaration}<a/>")?).tag(), "a")?
 
 test "entity decoding is linear in the text":
 	node := parse("<a>&amp;&lt;&#65;&#x42;tail</a>").get()
@@ -162,25 +162,25 @@ test "entity decoding is linear in the text":
 	expect_true(parse("<a>&nope;</a>").is_error())?
 
 	// A quadratic decoder would take minutes on this many entities.
-	big := parse("<a>{"&amp;".repeat(100000).get()}</a>").get()
+	big := parse(f"<a>{"&amp;".repeat(100000).get()}</a>").get()
 	expect_equal(big.text().scalar_length(), 100000)?
 
 test "malformed comments fail inside before and after the root":
 	for comment in [
 		"<!--a--b-->", "<!--a--->", "<!--a\n--b-->", "<!--a---->", "<!--open"
 	]:
-		expect_malformed(parse("<a>{comment}</a>"))?
-		expect_malformed(parse("{comment}<a/>"))?
-		expect_malformed(parse("<a/>{comment}"))?
+		expect_malformed(parse(f"<a>{comment}</a>"))?
+		expect_malformed(parse(f"{comment}<a/>"))?
+		expect_malformed(parse(f"<a/>{comment}"))?
 
 test "valid comments preserve text and leave other delimited constructs alone":
 	for contents in ["", "a-b", "-a", "a\n-b", "é - 😀", "&amp; &#65;"]:
-		comment := "<!--{contents}-->"
-		inside := "<a>{comment}</a>"
+		comment := f"<!--{contents}-->"
+		inside := f"<a>{comment}</a>"
 		node := parse(inside)?
 		expect_equal(node.children(), [XmlNode.XmlComment(contents.clone())])?
 		expect_equal(stringify(node), inside)?
-		expect_equal(stringify(parse("{comment}<a/>{comment}")?), "<a/>")?
+		expect_equal(stringify(parse(f"{comment}<a/>{comment}")?), "<a/>")?
 
 	node := parse("<a><!----><!--a-b--><![CDATA[x--y]]><?p x--y?></a>")?
 	expect_equal(node.children().length(), 3)?
@@ -191,45 +191,45 @@ test "literal XML characters obey the same ranges as character references":
 		"\u{0}", "\u{1}", "\u{8}", "\u{b}", "\u{c}", "\u{e}", "\u{1f}", "\u{fffe}",
 		"\u{ffff}"
 	]:
-		expect_malformed(parse("<a>{invalid}</a>"))?
-		expect_malformed(parse("<a v='{invalid}'/>"))?
-		expect_malformed(parse("<a><![CDATA[{invalid}]]></a>"))?
-		expect_malformed(parse("<!--{invalid}--><a/>"))?
-		expect_malformed(parse("<a/><?p {invalid}?>"))?
-		expect_malformed(parse("<!DOCTYPE a [<!ENTITY x '{invalid}'>]><a/>"))?
+		expect_malformed(parse(f"<a>{invalid}</a>"))?
+		expect_malformed(parse(f"<a v='{invalid}'/>"))?
+		expect_malformed(parse(f"<a><![CDATA[{invalid}]]></a>"))?
+		expect_malformed(parse(f"<!--{invalid}--><a/>"))?
+		expect_malformed(parse(f"<a/><?p {invalid}?>"))?
+		expect_malformed(parse(f"<!DOCTYPE a [<!ENTITY x '{invalid}'>]><a/>"))?
 
 		code := invalid.scalar_values()[0]
-		expect_malformed(parse("<a>&#{code};</a>"))?
+		expect_malformed(parse(f"<a>&#{code};</a>"))?
 
 	for valid in [
 		"\t", "\n", "\r", " ", "\u{7f}", "\u{85}", "\u{9f}", "\u{d7ff}", "\u{e000}",
 		"\u{fffd}", "\u{10000}", "\u{10ffff}"
 	]:
-		expect_true(parse("<a>{valid}</a>").is_ok())?
-		expect_true(parse("<a v='{valid}'/>").is_ok())?
-		expect_true(parse("<a><![CDATA[{valid}]]></a>").is_ok())?
-		expect_true(parse("<!--{valid}--><a/>").is_ok())?
-		expect_true(parse("<a/><?p {valid}?>").is_ok())?
-		expect_true(parse("<!DOCTYPE a [<!ENTITY x '{valid}'>]><a/>").is_ok())?
+		expect_true(parse(f"<a>{valid}</a>").is_ok())?
+		expect_true(parse(f"<a v='{valid}'/>").is_ok())?
+		expect_true(parse(f"<a><![CDATA[{valid}]]></a>").is_ok())?
+		expect_true(parse(f"<!--{valid}--><a/>").is_ok())?
+		expect_true(parse(f"<a/><?p {valid}?>").is_ok())?
+		expect_true(parse(f"<!DOCTYPE a [<!ENTITY x '{valid}'>]><a/>").is_ok())?
 
 		code := valid.scalar_values()[0]
-		expect_true(parse("<a>&#{code};</a>").is_ok())?
+		expect_true(parse(f"<a>&#{code};</a>").is_ok())?
 
 	expect_true(parse("\u{feff}<a/>").is_ok())?
 
 test "CDATA terminators are forbidden only in literal character data":
 	for text in ["]]>right", "left]]>", "left]]>right", "]]]>", "]]>"]:
-		expect_malformed(parse("<a>{text}</a>"))?
-		expect_malformed(parse("<a><b/>{text}</a>"))?
+		expect_malformed(parse(f"<a>{text}</a>"))?
+		expect_malformed(parse(f"<a><b/>{text}</a>"))?
 
 	for text in ["]]&gt;", "&#93;]>", "]&#93;>", "]]<b/>>", "]<!--c-->]>"]:
-		expect_equal((parse("<a>{text}</a>")?).text(), "]]>")?
+		expect_equal((parse(f"<a>{text}</a>")?).text(), "]]>")?
 
 	attribute := parse("<a v=']]>'/>")?
 	expect_equal(attribute.attribute("v").get(""), "]]>")?
 	expect_equal((parse("<a><![CDATA[]]]]><![CDATA[>]]></a>")?).text(), "]]>")?
 	for text in ["]]", "]>", "]"]:
-		expect_equal((parse("<a>{text}</a>")?).text(), text)?
+		expect_equal((parse(f"<a>{text}</a>")?).text(), text)?
 
 test "XML name starts follow every XML 1.0 range boundary":
 	for code in [
@@ -239,22 +239,22 @@ test "XML name starts follow every XML 1.0 range boundary":
 	]:
 		scalar := from_scalars([code])?
 
-		for name in [scalar.clone(), "a{scalar}"]:
-			element := parse("<{name}></{name}>")?
+		for name in [scalar.clone(), f"a{scalar}"]:
+			element := parse(f"<{name}></{name}>")?
 			expect_equal(element.tag(), name)?
 
-			attribute := parse("<a {name}='value'/>")?
+			attribute := parse(f"<a {name}='value'/>")?
 			expect_equal(attribute.attribute(name).get(""), "value")?
 
 test "XML continuation-only scalars cannot start a name":
 	for code in [0x2d, 0x2e, 0x30, 0x39, 0xb7, 0x300, 0x36f, 0x203f, 0x2040]:
 		scalar := from_scalars([code])?
-		expect_malformed(parse("<{scalar}/>"))?
-		expect_malformed(parse("<a {scalar}='value'/>"))?
+		expect_malformed(parse(f"<{scalar}/>"))?
+		expect_malformed(parse(f"<a {scalar}='value'/>"))?
 
-		name := "a{scalar}"
-		expect_equal((parse("<{name}></{name}>")?).tag(), name)?
-		expect_equal((parse("<a {name}='value'/>")?).attribute(name).get(""), "value")?
+		name := f"a{scalar}"
+		expect_equal((parse(f"<{name}></{name}>")?).tag(), name)?
+		expect_equal((parse(f"<a {name}='value'/>")?).attribute(name).get(""), "value")?
 
 test "XML names reject punctuation and excluded Unicode gaps":
 	for code in [
@@ -265,9 +265,9 @@ test "XML names reject punctuation and excluded Unicode gaps":
 	]:
 		scalar := from_scalars([code])?
 
-		for name in [scalar.clone(), "a{scalar}"]:
-			expect_malformed(parse("<{name}/>"))?
-			expect_malformed(parse("<a {name}='value'/>"))?
+		for name in [scalar.clone(), f"a{scalar}"]:
+			expect_malformed(parse(f"<{name}/>"))?
+			expect_malformed(parse(f"<a {name}='value'/>"))?
 
 test "line ends normalize to newline and attribute whitespace to spaces":
 	doc := parse("<a k=\"x\ny\tz\r\nw\">t\r\nu\rv<![CDATA[c\r\nd]]></a>").get()
@@ -307,17 +307,17 @@ test "DOCTYPE skipping honors quoted spans and prolog placement":
 
 test "DOCTYPE public identifiers accept only XML PubidChar scalars":
 	for quote in ["\"", "'"]:
-		for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "\{", "\}"]:
+		for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "{", "}"]:
 			expect_equal(invalid.scalar_length(), 1)?
 			if invalid == quote: continue
 
-			source := "<!DOCTYPE a PUBLIC {quote}{invalid}{quote} 'unused'><a/>"
+			source := f"<!DOCTYPE a PUBLIC {quote}{invalid}{quote} 'unused'><a/>"
 			expect_malformed(parse(source))?
 
 		for valid in [
 			"", "azAZ09", " \r\n-()+,./:=?;!*#@$_%", "-//W3C//DTD XHTML 1.0 Strict//EN"
 		]:
-			source := "<!DOCTYPE a PUBLIC {quote}{valid}{quote} 'unused'><a/>"
+			source := f"<!DOCTYPE a PUBLIC {quote}{valid}{quote} 'unused'><a/>"
 			expect_equal((parse(source)?).tag(), "a")?
 
 	expect_true(parse("<!DOCTYPE a PUBLIC \"apostrophe's\" 'unused'><a/>").is_ok())?
@@ -329,7 +329,7 @@ test "DOCTYPE public identifiers accept only XML PubidChar scalars":
 test "elements with many attributes keep their order and reject duplicates at any position":
 	var text = "<root"
 	for i in 0..40:
-		text += " a{i}=\"{i}\""
+		text += f" a{i}=\"{i}\""
 
 	doc := parse(text + "/>").get()
 	expect_equal(doc.attribute("a0").get(""), "0")?
@@ -350,10 +350,10 @@ test "delimiter scans preserve empty spans Unicode and partial terminators":
 	expect_equal(parse("<?p?><a k=''/>").get().attribute("k").get(), "")?
 
 	text := "é日]]x?y".repeat(1000).get()
-	doc := parse("<a><![CDATA[{text}]]></a>").get()
+	doc := parse(f"<a><![CDATA[{text}]]></a>").get()
 	expect_equal(doc.text(), text)?
 
-	attribute := parse("<a k='{text}'/>").get()
+	attribute := parse(f"<a k='{text}'/>").get()
 	expect_equal(attribute.attribute("k").get(), text)?
 	for source in ["<a><!--x--", "<a><![CDATA[]]", "<a k='x", "<?p x?"]:
 		expect_equal(parse(source).err().kind, "EBADMSG")?

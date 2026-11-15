@@ -240,13 +240,13 @@ fn find_colon(cs: List[String]) Int:
 	while i < n:
 		c := cs[i]
 
-		if c == "$" and i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "\{"):
+		if c == "$" and i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "{"):
 			depth += 1
 			i += 2
 		else if depth > 0:
-			if c == "(" or c == "\{":
+			if c == "(" or c == "{":
 				depth += 1
-			else if c == ")" or c == "\}":
+			else if c == ")" or c == "}":
 				depth -= 1
 
 			i += 1
@@ -287,9 +287,9 @@ fn parse_ifeq(rest: String) List[String]:
 	while j < n - 1:
 		ch := rc[j]
 
-		if ch == "(" or ch == "\{":
+		if ch == "(" or ch == "{":
 			depth += 1
-		else if ch == ")" or ch == "\}":
+		else if ch == ")" or ch == "}":
 			if depth == 0: return bad
 
 			depth -= 1
@@ -333,9 +333,9 @@ fn split_args(s: String) List[String]:
 	for i in 0..n:
 		c := cs[i]
 
-		if c == "(" or c == "\{":
+		if c == "(" or c == "{":
 			depth += 1
-		else if c == ")" or c == "\}":
+		else if c == ")" or c == "}":
 			depth -= 1
 		else if c == "," and depth == 0:
 			out.append(cjoin(cs, start, i))
@@ -349,11 +349,11 @@ fn emit(var e: Env, s: String) Unit:
 		e.out.append(s)
 
 fn fatal_at(e: Env, msg: String) Fatal:
-	if e.line > 0: return Fatal(text: "Makefile:{e.line}: *** {msg}.  Stop.")
-	return Fatal(text: "make: *** {msg}.  Stop.")
+	if e.line > 0: return Fatal(text: f"Makefile:{e.line}: *** {msg}.  Stop.")
+	return Fatal(text: f"make: *** {msg}.  Stop.")
 
 fn make_fatal(msg: String) Fatal:
-	return Fatal(text: "make: *** {msg}.  Stop.")
+	return Fatal(text: f"make: *** {msg}.  Stop.")
 
 fn circ(stack: List[String], p: String) Fatal:
 	var parts = List[String]()
@@ -385,10 +385,10 @@ fn expand(var e: Env, text: String) String!Fatal:
 		else if cs[i + 1] == "$":
 			res += "$"
 			i += 2
-		else if cs[i + 1] == "(" or cs[i + 1] == "\{":
+		else if cs[i + 1] == "(" or cs[i + 1] == "{":
 			var closer = ")"
-			if cs[i + 1] == "\{":
-				closer = "\}"
+			if cs[i + 1] == "{":
+				closer = "}"
 
 			j := close_index(cs, i + 2, cs[i + 1], closer)
 			if j < 0: return error(fatal_at(e, "unterminated variable reference"))
@@ -414,7 +414,7 @@ fn lookup_name(var e: Env, name: String) String!Fatal:
 		return error(
 			fatal_at(
 				e,
-				"Recursive variable '{name}' references itself (eventually)",
+				f"Recursive variable '{name}' references itself (eventually)",
 			)
 		)
 
@@ -654,7 +654,7 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
 	if f == "words":
 		ws := (try argv(var e, args, 0)).fields()
 		cnt := ws.length()
-		return ok("{cnt}")
+		return ok(f"{cnt}")
 
 	if f == "firstword":
 		ws := (try argv(var e, args, 0)).fields()
@@ -757,7 +757,7 @@ fn close_rule(var e: Env) Unit:
 				if not r.recipe.is_empty():
 					emit(
 						var e,
-						"Makefile:{ln}: warning: overriding recipe for target '{t}'",
+						f"Makefile:{ln}: warning: overriding recipe for target '{t}'",
 					)
 				r.recipe = rl.clone()
 
@@ -1138,7 +1138,7 @@ fn simulate(var e: Env, cmd: String) Int:
 	if w0 == "cp":
 		if args.length() == 2:
 			if not e.files.contains(args[0]):
-				emit(var e, "cp: cannot stat '{args[0]}': No such file or directory")
+				emit(var e, f"cp: cannot stat '{args[0]}': No such file or directory")
 				return 1
 
 			e.clock += 1
@@ -1214,11 +1214,11 @@ fn run_recipe(
 
 		if st != 0:
 			if ign:
-				emit(var e, "make: [Makefile:{rl.line}: {t}] Error {st} (ignored)")
+				emit(var e, f"make: [Makefile:{rl.line}: {t}] Error {st} (ignored)")
 			else:
 				return error(
 					Fatal(
-						text: "make: *** [Makefile:{rl.line}: {t}] Error {st}"
+						text: f"make: *** [Makefile:{rl.line}: {t}] Error {st}"
 					)
 				)
 
@@ -1232,9 +1232,9 @@ fn update_one(var e: Env, t: String, needed: String) Bool!Fatal:
 	if not r.has:
 		if e.files.contains(t): return ok(false)
 		if e.phony.contains(t): return ok(true)
-		if needed == "": return error(make_fatal("No rule to make target '{t}'"))
+		if needed == "": return error(make_fatal(f"No rule to make target '{t}'"))
 
-		return error(make_fatal("No rule to make target '{t}', needed by '{needed}'"))
+		return error(make_fatal(f"No rule to make target '{t}', needed by '{needed}'"))
 
 	in0 := e.files.contains(t)
 	m0 := if in0: e.files[t] else: 0
@@ -1302,9 +1302,9 @@ fn run_goals(var e: Env, tgs: List[String]) Unit!Fatal:
 				(r.has and not r.recipe.is_empty())
 				or (not e.phony.contains(g) and e.files.contains(g))
 			):
-				emit(var e, "make: '{g}' is up to date.")
+				emit(var e, f"make: '{g}' is up to date.")
 			else:
-				emit(var e, "make: Nothing to be done for '{g}'.")
+				emit(var e, f"make: Nothing to be done for '{g}'.")
 
 fn deps_visit(var e: Env, name: String) Unit!Fatal:
 	r := resolve(e, name.clone())
@@ -1377,7 +1377,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
 					emit(var e, x.clone())
 		else:
 			if g := default_goal(e):
-				emit(var e, "default: {g}")
+				emit(var e, f"default: {g}")
 
 			for t in e.order.clone():
 				r := e.explicit[t].clone()
@@ -1412,7 +1412,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
 
 		for k in ks:
 			mt := e.files[k]
-			emit(var e, "{k} {mt}")
+			emit(var e, f"{k} {mt}")
 
 		return ok(unit)
 

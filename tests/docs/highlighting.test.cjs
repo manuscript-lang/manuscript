@@ -125,16 +125,16 @@ test('all current numeric bases, separators, fractions, exponents and Decimal fo
 });
 
 test('shared nested rules scope escapes, interpolation expressions and nested strings', () => {
-  const source = String.raw`text := "Hello \{world\} \u{1F600} {format(value: {"key": "{1 + 2}"})}!"` + '\r\nreturn 0 // Ω 🐈\r\n';
+  const source = String.raw`text := f"Hello \{world\} \u{1F600} {format(value: {"key": f"{1 + 2}"})}!"` + '\r\nreturn 0 // Ω 🐈\r\n';
   assertScopes(source, [
-    ['"Hello ', 's'], [String.raw`\{`, 'se'], [String.raw`\}`, 'se'],
+    ['f"Hello ', 's'], [String.raw`\{`, 'se'], [String.raw`\}`, 'se'],
     [String.raw`\u{1F600}`, 'se'], ['format', 'nf'], ['"key"', 's'], ['2', 'mi'], ['+', 'o'],
     ['return', 'k'], ['// Ω 🐈', 'c1'],
   ]);
   const tokens = tokenize(source);
   assert.equal(tokens.filter(token => token.kind === 'si').map(token => token.text).join(''), '{{}}');
-  assertScopes(String.raw`"// True \{literal\} \" \\ \n \r \t \u{41}"`, [
-    ['// True ', 's'], [String.raw`\"`, 'se'], [String.raw`\\`, 'se'],
+  assertScopes(String.raw`f"// True \{literal\} \" \\ \n \r \t \u{41}"`, [
+    ['f"// True ', 's'], [String.raw`\"`, 'se'], [String.raw`\\`, 'se'],
     [String.raw`\n`, 'se'], [String.raw`\r`, 'se'], [String.raw`\t`, 'se'], [String.raw`\u{41}`, 'se'],
   ]);
 });

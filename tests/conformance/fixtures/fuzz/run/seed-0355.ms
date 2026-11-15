@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (((853.080 + 128.431) * 315.014) * ((7.5 / 6.0e22) * 752.079))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     if true:
         say("x")
     else:
-        say("brace\{s\}")
+        say("brace{s}")
 
     i2 := ((27 * (-(-37))) * ((610474 + 12) - (0 + (-46))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (i2 - i2)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     l4 := [(-18), 8, 18]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     if ("naïve" + "a").is_empty():
         say("日本語".trim())

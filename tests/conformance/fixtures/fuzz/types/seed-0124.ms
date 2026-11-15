@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if (((-31) + (-36)) == (30 * (-14))):
@@ -15,9 +15,9 @@ export fn main() Int:
         say("line\nbreak")
 
     s1 := "hello world"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     bad := missing_function(3)
     i2 := (6 * (s1.scalar_length() - (-11)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
     return 0

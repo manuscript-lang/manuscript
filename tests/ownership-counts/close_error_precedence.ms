@@ -15,7 +15,7 @@ type Token:
 	id: Int
 
 fn var Token.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 	return error(Error("close failed", kind: "ECLOSE"))
 
 fn owned() Int!:

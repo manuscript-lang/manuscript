@@ -49,14 +49,14 @@ impl Ledger:
 		fee := self.fee_for(id, amount)
 		nw := bal - amount - fee
 		if nw < 0 - self.limit.get(id).get(0):
-			return "error: overdraft limit exceeded {id}"
+			return f"error: overdraft limit exceeded {id}"
 
 		return ""
 
 	var fn do_open(id: String, lim: String) String:
 		l := parse_digits(lim)
 		if l < 0: return "error: invalid limit\n"
-		if self.balance.contains(id): return "error: account exists {id}\n"
+		if self.balance.contains(id): return f"error: account exists {id}\n"
 
 		self.balance.add(id.clone(), 0)
 		self.limit.add(id.clone(), l)
@@ -66,13 +66,13 @@ impl Ledger:
 		return "ok\n"
 
 	var fn do_freeze(id: String, f: Bool) String:
-		if not self.balance.contains(id): return "error: unknown account {id}\n"
+		if not self.balance.contains(id): return f"error: unknown account {id}\n"
 
 		self.frozen.add(id.clone(), f)
 		return "ok\n"
 
 	var fn do_deposit(id: String, amt: String) String:
-		if not self.balance.contains(id): return "error: unknown account {id}\n"
+		if not self.balance.contains(id): return f"error: unknown account {id}\n"
 
 		a := parse_digits(amt)
 
@@ -82,15 +82,15 @@ impl Ledger:
 
 		if self.frozen.get(id).get(false):
 			self.blame(id)
-			return "error: account frozen {id}\n"
+			return f"error: account frozen {id}\n"
 
 		nb := self.balance.get(id).get(0) + a
 		self.balance.add(id.clone(), nb)
 		self.bump_ops(id)
-		return "ok {nb}\n"
+		return f"ok {nb}\n"
 
 	var fn do_withdraw(id: String, amt: String) String:
-		if not self.balance.contains(id): return "error: unknown account {id}\n"
+		if not self.balance.contains(id): return f"error: unknown account {id}\n"
 
 		a := parse_digits(amt)
 
@@ -100,26 +100,26 @@ impl Ledger:
 
 		if self.frozen.get(id).get(false):
 			self.blame(id)
-			return "error: account frozen {id}\n"
+			return f"error: account frozen {id}\n"
 
 		err := self.debit_error(id, a)
 
 		if err.length() > 0:
 			self.blame(id)
-			return "{err}\n"
+			return f"{err}\n"
 
 		fee := self.fee_for(id, a)
 		nb := self.balance.get(id).get(0) - a - fee
 		self.balance.add(id.clone(), nb)
 		self.fees += fee
 		self.bump_ops(id)
-		if fee > 0: return "ok {nb} fee={FEE}\n"
+		if fee > 0: return f"ok {nb} fee={FEE}\n"
 
-		return "ok {nb}\n"
+		return f"ok {nb}\n"
 
 	var fn do_transfer(from: String, to: String, amt: String) String:
-		if not self.balance.contains(from): return "error: unknown account {from}\n"
-		if not self.balance.contains(to): return "error: unknown account {to}\n"
+		if not self.balance.contains(from): return f"error: unknown account {from}\n"
+		if not self.balance.contains(to): return f"error: unknown account {to}\n"
 
 		if from == to:
 			self.blame(from)
@@ -133,17 +133,17 @@ impl Ledger:
 
 		if self.frozen.get(from).get(false):
 			self.blame(from)
-			return "error: account frozen {from}\n"
+			return f"error: account frozen {from}\n"
 
 		if self.frozen.get(to).get(false):
 			self.blame(to)
-			return "error: account frozen {to}\n"
+			return f"error: account frozen {to}\n"
 
 		err := self.debit_error(from, a)
 
 		if err.length() > 0:
 			self.blame(from)
-			return "{err}\n"
+			return f"{err}\n"
 
 		fee := self.fee_for(from, a)
 		nf := self.balance.get(from).get(0) - a - fee
@@ -153,9 +153,9 @@ impl Ledger:
 		self.fees += fee
 		self.bump_ops(from)
 		self.bump_ops(to)
-		if fee > 0: return "ok {nf} {nt} fee={FEE}\n"
+		if fee > 0: return f"ok {nf} {nt} fee={FEE}\n"
 
-		return "ok {nf} {nt}\n"
+		return f"ok {nf} {nt}\n"
 
 	fn report() String:
 		var ids = self.balance.keys()
@@ -172,9 +172,9 @@ impl Ledger:
 			o := self.ops.get(id).get(0)
 			r := self.rejected.get(id).get(0)
 			fz := if self.frozen.get(id).get(false): "yes" else: "no"
-			out += "{id} balance={b} limit={l} ops={o} rejected={r} frozen={fz}\n"
+			out += f"{id} balance={b} limit={l} ops={o} rejected={r} frozen={fz}\n"
 
-		out += "total balance={total} fees={self.fees}\n"
+		out += f"total balance={total} fees={self.fees}\n"
 		return out
 
 	var fn exec(t: List[String]) String:

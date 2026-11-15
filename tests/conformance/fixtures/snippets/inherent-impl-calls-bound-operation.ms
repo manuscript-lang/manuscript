@@ -19,4 +19,4 @@ fn Wrap[T].run(x: Int) Int: self.inner.score(x)
 fn via_param[T: Scorer](w: Wrap[T]) Int: w.inner.score(1)
 
 fn main() Void:
-    stdout().write("{Wrap(Dbl(3)).run(2)} {via_param(Wrap(Dbl(1)))}\n").get()
+    stdout().write(f"{Wrap(Dbl(3)).run(2)} {via_param(Wrap(Dbl(1)))}\n").get()

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -16,32 +16,32 @@ fn gcd(a: Int, b: Int) Int:
 
 export fn main() Int:
     i1 := (((-16) / 48) + ((150106 / (-38)) % 2899))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (((606.25 * 1.0e0) + (639.623 * 7.5)) + (293.351 * (8.5 * 7.0e5)))
-    say("f2 = {f2}")
-    say("gcd(1646, 113) = {gcd(1646, 113)}")
+    say(f"f2 = {f2}")
+    say(f"gcd(1646, 113) = {gcd(1646, 113)}")
 
     i3 := (i1 + (31 % ((-23) * 689088136830)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (((i1 * 38) + i3) + (i3 * (i1 - i3)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := ((-387076) * (-(8 - i1)))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     if ((i1 * (-550176)) == (i1 + i5)):
-        say(("{(i3 % 9223372036854775806)}:" + "42"))
+        say((f"{(i3 % 9223372036854775806)}:" + "42"))
     else:
         say(("emoji 😀" + "back\\slash"))
 
     f6 := ((f2 * f2) - ((48.925 * f2) - f2))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := ((i4 * (i1 % i4)) / (-(i3 + i5)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     big8 := 9223372036854775807
-    say("{big8 + 1}")
+    say(f"{big8 + 1}")
     return 0

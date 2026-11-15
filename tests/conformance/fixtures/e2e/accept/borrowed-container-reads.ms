@@ -22,7 +22,7 @@ type Node:
 fn order(id: String, n: Int) Order:
 	var items = List[Item]()
 	for i in 0..n:
-		items.append(Item(sku: "{id}-{i}", qty: i + 1))
+		items.append(Item(sku: f"{id}-{i}", qty: i + 1))
 	return Order(id: id, items: items, status: "placed")
 
 fn by_binding(orders: Map[String, Order], id: String) Int:
@@ -118,7 +118,7 @@ test "get_or reads through the entry":
 	names.add(1, "one")
 
 	one := names.get_or(key: 1, fallback: "none")
-	two := names.get_or(key: 2, fallback: "{1 + 1}")
+	two := names.get_or(key: 2, fallback: f"{1 + 1}")
 	expect_equal(one, "one")?
 	expect_equal(two, "2")?
 	names.add(2, "two")

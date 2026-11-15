@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -19,36 +19,36 @@ export fn main() Int:
         ((697.586 * 342.523) / (0.0 * 890.25))
         * ((0.0 / 0.0) * (544.300 / 714.286))
     )
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     s4 := ("gamma".reverse() + ("42" + "héllo").lower())
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     b5 := (((true and true) and ((-6) == (-990582))) or "ms".is_empty())
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     b6 := "42".contains(s4)
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     b7 := (s4 != "back\\slash")
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     i8 := ((-45) - ((-(-37)) + (17 + (-802116697712))))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     l9 := [18]
-    say("l9 = {l9} len {l9.length()}")
-    say("fact(16) = {fact(16)}")
+    say(f"l9 = {l9} len {l9.length()}")
+    say(f"fact(16) = {fact(16)}")
 
     b10 := true
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
-    b11 := (("{(i8 % i8)}:" + s4).ends_with(s4) and b5)
-    say("b11 = {b11}")
+    b11 := ((f"{(i8 % i8)}:" + s4).ends_with(s4) and b5)
+    say(f"b11 = {b11}")
 
     l12 := l9.sorted(fn a, b: a.compare(b))
-    say("l12 = {l12} len {l12.length()}")
+    say(f"l12 = {l12} len {l12.length()}")
 
     i13 := (-((i8 % (-559552)) * s4.scalar_length()))
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     return 0

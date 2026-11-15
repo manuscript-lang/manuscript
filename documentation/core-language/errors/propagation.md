@@ -12,7 +12,7 @@ The following continues the `discount` and `DiscountError` declarations in [expe
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
     value := discount(price, percent)?
-    return ok("Discounted price: {value}")
+    return ok(f"Discounted price: {value}")
 ```
 
 ## Reading `?` next to `?.`

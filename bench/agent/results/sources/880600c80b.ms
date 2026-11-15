@@ -59,12 +59,12 @@ export fn main() Int:
             malformed += 1
 
     var out = stdout()
-    out.write("valid: {valid.length()}\n").get()
-    out.write("malformed: {malformed}\n").get()
-    out.write("DEBUG: {valid.filter(fn e: e.level == "DEBUG").length()}\n").get()
-    out.write("INFO: {valid.filter(fn e: e.level == "INFO").length()}\n").get()
-    out.write("WARN: {valid.filter(fn e: e.level == "WARN").length()}\n").get()
-    out.write("ERROR: {valid.filter(fn e: e.level == "ERROR").length()}\n").get()
+    out.write(f"valid: {valid.length()}\n").get()
+    out.write(f"malformed: {malformed}\n").get()
+    out.write(f"DEBUG: {valid.filter(fn e: e.level == "DEBUG").length()}\n").get()
+    out.write(f"INFO: {valid.filter(fn e: e.level == "INFO").length()}\n").get()
+    out.write(f"WARN: {valid.filter(fn e: e.level == "WARN").length()}\n").get()
+    out.write(f"ERROR: {valid.filter(fn e: e.level == "ERROR").length()}\n").get()
 
     class2 := valid.filter(fn e: e.status.get(0) == "2").length()
     class3 := valid.filter(fn e: e.status.get(0) == "3").length()
@@ -73,7 +73,7 @@ export fn main() Int:
     (
         out
         .write(
-            "status: 2xx={class2} 3xx={class3} 4xx={class4} 5xx={class5} other={valid.length() - class2 - class3 - class4 - class5}\n"
+            f"status: 2xx={class2} 3xx={class3} 4xx={class4} 5xx={class5} other={valid.length() - class2 - class3 - class4 - class5}\n"
         )
         .get()
     )
@@ -85,14 +85,14 @@ export fn main() Int:
     else:
         sorted_lat := valid.map(fn e: e.latency).sorted()
         rank := (95 * n + 99) / 100
-        out.write("p95: {sorted_lat[rank - 1]}\n").get()
+        out.write(f"p95: {sorted_lat[rank - 1]}\n").get()
 
         var slow = 0
         for i in 0..n:
             if valid[i].latency > valid[slow].latency: slow = i
 
         s := valid[slow]
-        out.write("slowest: {s.latency} {s.method} {s.path} {s.timestamp}\n").get()
+        out.write(f"slowest: {s.latency} {s.method} {s.path} {s.timestamp}\n").get()
 
     out.write("top:\n").get()
 
@@ -114,6 +114,6 @@ export fn main() Int:
         if i == 3: break
 
         s := ranked[i]
-        out.write("{s.path} {s.count} avg={s.total / s.count}\n").get()
+        out.write(f"{s.path} {s.count} avg={s.total / s.count}\n").get()
 
     return 0

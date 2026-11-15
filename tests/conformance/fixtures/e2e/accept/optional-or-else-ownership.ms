@@ -5,9 +5,9 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn text(value: Int) String?: "dynamic optional payload {value}"
+fn text(value: Int) String?: f"dynamic optional payload {value}"
 
-fn texts(value: Int) List[String]?: ["dynamic optional payload {value}"]
+fn texts(value: Int) List[String]?: [f"dynamic optional payload {value}"]
 
 fn unexpected_text() String?: panic("present Optional must not call fallback")
 
@@ -18,7 +18,7 @@ type Fallback:
 
 fn var Fallback.create() String?:
 	self.calls += 1
-	return "fallback {self.calls}"
+	return f"fallback {self.calls}"
 
 test "or_else transfers an owned String Optional call":
 	kept := text(1).or_else(unexpected_text)

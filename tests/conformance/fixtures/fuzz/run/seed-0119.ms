@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -22,23 +22,23 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     i1 := 510713
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (((0.0 * 236.25) - 720.799) + ((0.0 + 0.0) + (294.25 + 9.0e-4)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := (i1 + (i1 - ((-24) * i1)))
-    say("i3 = {i3}")
-    say("gcd(289, 1728) = {gcd(289, 1728)}")
+    say(f"i3 = {i3}")
+    say(f"gcd(289, 1728) = {gcd(289, 1728)}")
     say(
-        "{((-43) + (i1 / (-25)))} {((i1 + i3) - (20 + i3))} {(((-43) + (i1 / (-25))) < ((i1 + i3) - (20 + i3)))} sum {((-43) + (i1 / (-25))) + ((i1 + i3) - (20 + i3))}"
+        f"{((-43) + (i1 / (-25)))} {((i1 + i3) - (20 + i3))} {(((-43) + (i1 / (-25))) < ((i1 + i3) - (20 + i3)))} sum {((-43) + (i1 / (-25))) + ((i1 + i3) - (20 + i3))}"
     )
 
     l4 := [11, 0, (-26)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     l5 := [(-19), (-28), (-30), (-18)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     if ("ms" + "ms").contains("日本語"):
         say("alpha")
@@ -46,27 +46,27 @@ export fn main() Int:
         say("alpha".replace("ms", ""))
 
     i6 := 8
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
-    s7 := ("quote\"d" + ("{(226672597812 + 48)}:" + "42").reverse())
-    say("s7 = [{s7}]")
+    s7 := ("quote\"d" + (f"{(226672597812 + 48)}:" + "42").reverse())
+    say(f"s7 = [{s7}]")
     say(
-        "{(((-46) - (-151328424807)) % l5.get(1))} {(-((-7) + i1))} {((((-46) - (-151328424807)) % l5.get(1)) < (-((-7) + i1)))} sum {(((-46) - (-151328424807)) % l5.get(1)) + (-((-7) + i1))}"
+        f"{(((-46) - (-151328424807)) % l5.get(1))} {(-((-7) + i1))} {((((-46) - (-151328424807)) % l5.get(1)) < (-((-7) + i1)))} sum {(((-46) - (-151328424807)) % l5.get(1)) + (-((-7) + i1))}"
     )
-    say("fact(9) = {fact(9)}")
+    say(f"fact(9) = {fact(9)}")
 
     b8 := (i6 <= ((i6 * i6) + (989404101931 * (-38))))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     l9 := l4.concat(l5)
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     l10 := l9.filter(fn x: x > (-2))
-    say("l10 = {l10} len {l10.length()}")
+    say(f"l10 = {l10} len {l10.length()}")
 
-    s11 := ("{l9.length()}:" + "beta").trim()
-    say("s11 = [{s11}]")
+    s11 := (f"{l9.length()}:" + "beta").trim()
+    say(f"s11 = [{s11}]")
 
     s12 := (s11.trim() + "beta".reverse()).reverse()
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
     return 0

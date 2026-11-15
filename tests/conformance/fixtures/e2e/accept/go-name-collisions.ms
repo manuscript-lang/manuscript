@@ -45,7 +45,7 @@ test "operation names that differ only in underscores stay distinct":
     expect_false(methods.foo_bar() != 1 or methods.fooBar() != 2)?
 
 test "functions named like Go predeclared identifiers still lower":
-    text := "{string(1)}{int(1)}{float64(1)}{nil(1)}"
+    text := f"{string(1)}{int(1)}{float64(1)}{nil(1)}"
     floats := [1.5, 2.5]
     expect_false(text != "2345" or floats.length() != 2)?
 
@@ -101,10 +101,10 @@ interface Reporter:
     fn receiver() String
 
 fn Tally.describe() String:
-    return "describe {self.total}"
+    return f"describe {self.total}"
 
 fn Tally.receiver() String:
-    return "receiver {self.total}"
+    return f"receiver {self.total}"
 
 test "operations named like generated view methods stay callable":
     reporter: Reporter := Tally(3)

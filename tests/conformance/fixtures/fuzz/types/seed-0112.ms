@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "  padded  "
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     bad := 1 + "one"
 
@@ -20,5 +20,5 @@ export fn main() Int:
         say(s1.reverse())
 
     i2 := (-853512)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
     return 0

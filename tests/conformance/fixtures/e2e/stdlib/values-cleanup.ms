@@ -27,8 +27,8 @@ type Resource:
 // Resources own their state, so close records order through the filesystem:
 // resource 1 notes whether resource 2 had already closed.
 fn var Resource.close() Void!:
-	inner_closed := read_file("{self.dir}/2").wait().is_ok()
-	void write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
+	inner_closed := read_file(f"{self.dir}/2").wait().is_ok()
+	void write_file(f"{self.dir}/{self.id}", f"{inner_closed}", true).wait()
 
 fn leave(dir: String) Int:
 	_outer := Resource(dir.clone(), 1)
@@ -75,5 +75,5 @@ test "Closeable cleanup runs in reverse order before return delivery":
 	temporary := temporary("manuscript-cleanup-") | expect_ok?
 	dir := temporary.path()
 	expect_equal(leave(dir.clone()), 42)?
-	expect_equal((read_file("{dir}/1").wait()?), Bytes([116, 114, 117, 101]))?
-	expect_equal((read_file("{dir}/2").wait()?), Bytes([102, 97, 108, 115, 101]))?
+	expect_equal((read_file(f"{dir}/1").wait()?), Bytes([116, 114, 117, 101]))?
+	expect_equal((read_file(f"{dir}/2").wait()?), Bytes([102, 97, 108, 115, 101]))?

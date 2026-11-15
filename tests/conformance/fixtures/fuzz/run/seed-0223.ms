@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -29,49 +29,49 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     s1 := ("ms" + ("ms" + "naïve").lower())
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     b2 := "gamma".is_empty()
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := ((((-42) % 558033) - (702103 * (-13))) + (-((-752680199315) + (-16))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i5 := i3
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := (-40)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     s7 := "  padded  ".reverse()
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     s8 := ("beta" + "Tab\there").lower().replace(s7, s7)
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     s9 := s1
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
     say(
-        "{(i5 - (-(-571705)))} {((-i6) * 13)} {((i5 - (-(-571705))) < ((-i6) * 13))} sum {(i5 - (-(-571705))) + ((-i6) * 13)}"
+        f"{(i5 - (-(-571705)))} {((-i6) * 13)} {((i5 - (-(-571705))) < ((-i6) * 13))} sum {(i5 - (-(-571705))) + ((-i6) * 13)}"
     )
 
     b10 := ((s7 == s9) and "Tab\there".lower().starts_with(s8))
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     i11 := (i6 - (((-45) + i6) + ((-29) * i5)))
-    say("i11 = {i11}")
-    say("gcd(880, 1930) = {gcd(880, 1930)}")
+    say(f"i11 = {i11}")
+    say(f"gcd(880, 1930) = {gcd(880, 1930)}")
 
     f12 := 173.693
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     l13 := [12, (-20), (-18)]
-    say("l13 = {l13} len {l13.length()}")
-    say("gcd(2793, 2645) = {gcd(2793, 2645)}")
+    say(f"l13 = {l13} len {l13.length()}")
+    say(f"gcd(2793, 2645) = {gcd(2793, 2645)}")
     say(
-        "{(170920605811 + (19 + (-13)))} {l13.length()} {((170920605811 + (19 + (-13))) < l13.length())} sum {(170920605811 + (19 + (-13))) + l13.length()}"
+        f"{(170920605811 + (19 + (-13)))} {l13.length()} {((170920605811 + (19 + (-13))) < l13.length())} sum {(170920605811 + (19 + (-13))) + l13.length()}"
     )
-    say("fib(23) = {fib(23)}")
+    say(f"fib(23) = {fib(23)}")
 
     var acc14 = 0
     var stepacc14 = 0
@@ -80,5 +80,5 @@ export fn main() Int:
         stepacc14 += 1
         acc14 += stepacc14 * stepacc14 + 3
 
-    say("acc14 = {acc14}")
+    say(f"acc14 = {acc14}")
     return 0

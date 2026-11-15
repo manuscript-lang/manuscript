@@ -416,18 +416,18 @@ fn classify(text: String) Result[Arg, Failure]:
         cs := text.chars()
         n := cs.length()
         if n < 2 or cs[n - 1] != "]":
-            return error(bad("invalid operand '{text}'"))
+            return error(bad(f"invalid operand '{text}'"))
 
         terms := split_terms(slice_chars(cs, 1, n - 1))
         if terms.is_error():
-            return error(bad("invalid operand '{text}'"))
+            return error(bad(f"invalid operand '{text}'"))
 
         var base = -1
 
         for t in terms.get():
             if t.reg >= 0:
                 if t.neg or base >= 0:
-                    return error(bad("invalid operand '{text}'"))
+                    return error(bad(f"invalid operand '{text}'"))
 
                 base = t.reg
 
@@ -491,13 +491,13 @@ fn symbol_value(name: String, asm: Asm, stack: List[String]) Result[Int, Failure
 
     if text := asm.equs.get(name):
         if stack.contains(name):
-            return error(bad("circular definition of '{name}'"))
+            return error(bad(f"circular definition of '{name}'"))
 
         var inner = stack.clone()
         inner.append(name)
         return eval_expr(text, asm, inner)
 
-    return error(bad("undefined symbol '{name}'"))
+    return error(bad(f"undefined symbol '{name}'"))
 
 fn read_term(
     cs: List[String],
@@ -511,11 +511,11 @@ fn read_term(
     if c == "'":
         len := char_lit_len(cs, i)
         if len == 0:
-            return error(bad("invalid expression '{whole}'"))
+            return error(bad(f"invalid expression '{whole}'"))
 
         v := char_lit_value(cs, i)
         if v < 0:
-            return error(bad("invalid expression '{whole}'"))
+            return error(bad(f"invalid expression '{whole}'"))
 
         return ok(Scan(value: v, next: i + len))
 
@@ -526,7 +526,7 @@ fn read_term(
 
         v := parse_number(slice_chars(cs, i, j))
         if v == -1:
-            return error(bad("invalid expression '{whole}'"))
+            return error(bad(f"invalid expression '{whole}'"))
         if v == -2:
             return error(bad("immediate out of range"))
 
@@ -543,7 +543,7 @@ fn read_term(
 
         return ok(Scan(value: v.get(), next: j))
 
-    return error(bad("invalid expression '{whole}'"))
+    return error(bad(f"invalid expression '{whole}'"))
 
 // Evaluates an expression: optional sign, terms joined by + and -, 32-bit wraparound.
 fn eval_expr(text: String, asm: Asm, stack: List[String]) Result[Int, Failure]:
@@ -579,15 +579,15 @@ fn eval_expr(text: String, asm: Asm, stack: List[String]) Result[Int, Failure]:
             sign = -1
             i = skip_ws(cs, i + 1)
         else:
-            return error(bad("invalid expression '{whole}'"))
+            return error(bad(f"invalid expression '{whole}'"))
 
     return ok(total)
 
 fn define_label(var asm: Asm, name: String) Result[Unit, Failure]:
     if reg_index(name) >= 0:
-        return error(bad("reserved name '{name}'"))
+        return error(bad(f"reserved name '{name}'"))
     if asm.labels.contains(name) or asm.equs.contains(name):
-        return error(bad("duplicate symbol '{name}'"))
+        return error(bad(f"duplicate symbol '{name}'"))
 
     if asm.in_data:
         asm.labels[name.clone()] = asm.data_size
@@ -605,11 +605,11 @@ fn define_equ(var asm: Asm, args: String) Result[Unit, Failure]:
 
     name := ops[0]
     if not is_identifier(name):
-        return error(bad("invalid operand '{name}'"))
+        return error(bad(f"invalid operand '{name}'"))
     if reg_index(name) >= 0:
-        return error(bad("reserved name '{name}'"))
+        return error(bad(f"reserved name '{name}'"))
     if asm.labels.contains(name) or asm.equs.contains(name):
-        return error(bad("duplicate symbol '{name}'"))
+        return error(bad(f"duplicate symbol '{name}'"))
 
     asm.equs[name.clone()] = ops[1].clone()
     return ok(unit)
@@ -662,7 +662,7 @@ fn data_directive(var asm: Asm, word: String, args: String, line: Int) Result[
         if count.is_error():
             return error(count.err().clone())
         if count.get() < 0:
-            return error(bad("invalid operand '{ops[0]}'"))
+            return error(bad(f"invalid operand '{ops[0]}'"))
         if asm.data_size + count.get() > MEM_SIZE:
             return error(bad("data section too large"))
 
@@ -693,7 +693,7 @@ fn data_directive(var asm: Asm, word: String, args: String, line: Int) Result[
             return error(bytes.err().clone())
 
         for b in bytes.get():
-            texts.append("{b}")
+            texts.append(f"{b}")
         if word == ".asciz":
             texts.append("0")
 
@@ -713,7 +713,7 @@ fn data_directive(var asm: Asm, word: String, args: String, line: Int) Result[
 fn directive(var asm: Asm, word: String, args: String, line: Int) Result[Unit, Failure]:
     if word == ".text" or word == ".data":
         if args != "":
-            return error(bad("invalid operand '{args}'"))
+            return error(bad(f"invalid operand '{args}'"))
 
         asm.in_data = (word == ".data")
         return ok(unit)
@@ -724,7 +724,7 @@ fn directive(var asm: Asm, word: String, args: String, line: Int) Result[Unit, F
     if word == ".budget":
         v := parse_decimal(args)
         if v < 1 or v > MAX_BUDGET:
-            return error(bad("invalid operand '{args}'"))
+            return error(bad(f"invalid operand '{args}'"))
 
         asm.budget = v
         return ok(unit)
@@ -735,7 +735,7 @@ fn directive(var asm: Asm, word: String, args: String, line: Int) Result[Unit, F
 
         return data_directive(var asm, word, args, line)
 
-    return error(bad("unknown directive '{word}'"))
+    return error(bad(f"unknown directive '{word}'"))
 
 fn instruction(var asm: Asm, name: String, args: String, line: Int) Result[
     Unit, Failure
@@ -745,7 +745,7 @@ fn instruction(var asm: Asm, name: String, args: String, line: Int) Result[
 
     code := op_code(name)
     if code < 0:
-        return error(bad("unknown mnemonic '{name}'"))
+        return error(bad(f"unknown mnemonic '{name}'"))
 
     ops := split_operands(args)
     var resolved = List[Arg]()
@@ -758,9 +758,9 @@ fn instruction(var asm: Asm, name: String, args: String, line: Int) Result[
         resolved.append(arg.get().clone())
 
     if ops.length() != op_arity(code):
-        return error(bad("wrong number of operands for '{name}'"))
+        return error(bad(f"wrong number of operands for '{name}'"))
     if not shape_ok(code, resolved):
-        return error(bad("invalid operands for '{name}'"))
+        return error(bad(f"invalid operands for '{name}'"))
 
     asm.stmts.append(
         Stmt(
@@ -821,7 +821,7 @@ fn pass1(var asm: Asm, src: List[String]) Result[Unit, Failure]:
     for k in 0..src.length():
         r := pass1_line(var asm, src[k].clone(), k + 1)
         if r.is_error():
-            return error(bad("line {k + 1}: {r.err().msg}"))
+            return error(bad(f"line {k + 1}: {r.err().msg}"))
 
     return ok(unit)
 
@@ -908,7 +908,7 @@ fn assemble(var asm: Asm, src: List[String]) Result[Program, Failure]:
     for st in asm.stmts:
         r := resolve_stmt(var prog, st, asm)
         if r.is_error():
-            return error(bad("line {st.line}: {r.err().msg}"))
+            return error(bad(f"line {st.line}: {r.err().msg}"))
 
     return ok(prog)
 
@@ -977,13 +977,13 @@ fn addr_of(vm: Machine, arg: Arg) Int:
 
 fn mem_read(vm: Machine, addr: Int) Result[Int, Failure]:
     if addr < 0 or addr >= MEM_SIZE:
-        return error(bad("memory access out of range: {addr}"))
+        return error(bad(f"memory access out of range: {addr}"))
 
     return ok(vm.mem[addr])
 
 fn mem_write(var vm: Machine, addr: Int, v: Int) Result[Unit, Failure]:
     if addr < 0 or addr >= MEM_SIZE:
-        return error(bad("memory access out of range: {addr}"))
+        return error(bad(f"memory access out of range: {addr}"))
 
     vm.mem[addr] = v
     return ok(unit)
@@ -1093,7 +1093,7 @@ fn execute(var vm: Machine, ins: Instr) Result[Int, Failure]:
         if v.is_error():
             return error(v.err().clone())
 
-        vm.out.append("{v.get()}\n")
+        vm.out.append(f"{v.get()}\n")
     else if code == OP_OUTC:
         v := read_val(vm, ins.args[0])
         if v.is_error():
@@ -1168,7 +1168,7 @@ export fn main() Int:
     assembled := assemble(var asm, src)
 
     if assembled.is_error():
-        out.write("asm error {assembled.err().msg}\n").get()
+        out.write(f"asm error {assembled.err().msg}\n").get()
         return 0
 
     prog := assembled.get()
@@ -1207,13 +1207,13 @@ export fn main() Int:
     if text != "" and not text.ends_with("\n"):
         text += "\n"
 
-    var summary = "-- halted after {vm.steps} steps\n"
+    var summary = f"-- halted after {vm.steps} steps\n"
 
     if trap != "":
         var line_no = "-"
         if vm.pc >= 0 and vm.pc < prog.instrs.length():
-            line_no = "{prog.instrs[vm.pc].line}"
-        summary = "-- trap: {trap} (pc={vm.pc} line={line_no}) after {vm.steps} steps\n"
+            line_no = f"{prog.instrs[vm.pc].line}"
+        summary = f"-- trap: {trap} (pc={vm.pc} line={line_no}) after {vm.steps} steps\n"
 
     var zf = 0
     if vm.z:
@@ -1224,6 +1224,6 @@ export fn main() Int:
         lf = 1
 
     r := vm.regs
-    regs_line := "regs: r0={r[0]} r1={r[1]} r2={r[2]} r3={r[3]} r4={r[4]} r5={r[5]} r6={r[6]} r7={r[7]} sp={r[8]} bp={r[9]}\n"
-    out.write(text + summary + regs_line + "flags: Z={zf} L={lf}\n").get()
+    regs_line := f"regs: r0={r[0]} r1={r[1]} r2={r[2]} r3={r[3]} r4={r[4]} r5={r[5]} r6={r[6]} r7={r[7]} sp={r[8]} bp={r[9]}\n"
+    out.write(text + summary + regs_line + f"flags: Z={zf} L={lf}\n").get()
     return 0

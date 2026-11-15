@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -28,25 +28,25 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    say("fact(18) = {fact(18)}")
+    say(f"fact(18) = {fact(18)}")
 
     i1 := ((-575426) / (-(-17)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     f2 := (2.0e5 + ((0.0 * 60.240) * (141.538 - 535.25)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
     say(
-        "{(i1 + (-42))} {((i1 % 747839) / (316128 - 34))} {((i1 + (-42)) < ((i1 % 747839) / (316128 - 34)))} sum {(i1 + (-42)) + ((i1 % 747839) / (316128 - 34))}"
+        f"{(i1 + (-42))} {((i1 % 747839) / (316128 - 34))} {((i1 + (-42)) < ((i1 % 747839) / (316128 - 34)))} sum {(i1 + (-42)) + ((i1 % 747839) / (316128 - 34))}"
     )
 
     i3 := i1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := "naïve".upper()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := ((269204 + i3) - ((i1 + i3) % (i1 + i1)))
-    say("i5 = {i5}")
-    say("fib(16) = {fib(16)}")
-    say("fib(10) = {fib(10)}")
+    say(f"i5 = {i5}")
+    say(f"fib(16) = {fib(16)}")
+    say(f"fib(10) = {fib(10)}")
     return 0

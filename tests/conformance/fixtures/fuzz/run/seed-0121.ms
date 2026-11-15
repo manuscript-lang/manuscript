@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,13 +24,13 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     b1 := ((-6) < ((-23) * (17 + (-9))))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := ((((-41) + (-694498176889)) - (938306 + 32)) * 22)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     l4 := [(-23), 21]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     if (not ((-8) <= i2)):
         say("a")
@@ -38,27 +38,27 @@ export fn main() Int:
         say("x")
 
     i5 := i2
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     b6 := (not (not (b1 or b1)))
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
 
     l7 := l4.drop(0)
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     l8 := l4.take(4)
-    say("l8 = {l8} len {l8.length()}")
-    say("{(-(15 * i5))} {i5} {((-(15 * i5)) < i5)} sum {(-(15 * i5)) + i5}")
+    say(f"l8 = {l8} len {l8.length()}")
+    say(f"{(-(15 * i5))} {i5} {((-(15 * i5)) < i5)} sum {(-(15 * i5)) + i5}")
 
     b9 := (
         "ms".replace("  padded  ", "emoji 😀").starts_with("line\nbreak")
         and false
     )
-    say("b9 = {b9}")
+    say(f"b9 = {b9}")
 
     f10 := (((966.356 + 0.0) * (194.499 - 232.834)) + 0.0)
-    say("f10 = {f10}")
-    say("collatz(105) = {collatz(105)}")
+    say(f"f10 = {f10}")
+    say(f"collatz(105) = {collatz(105)}")
 
     var acc11 = 0
 
@@ -68,11 +68,11 @@ export fn main() Int:
         else:
             acc11 -= 1
 
-    say("acc11 = {acc11}")
+    say(f"acc11 = {acc11}")
 
     f12 := (f10 * ((577.005 * 708.012) * (2.0e-3 / 0.5)))
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     i13 := l7.get(1)
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     return 0

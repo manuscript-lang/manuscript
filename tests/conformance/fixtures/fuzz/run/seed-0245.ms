@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    s1 := (("{(-44)}:" + "brace\{s\}".upper()) + "a")
-    say("s1 = [{s1}]")
+    s1 := ((f"{(-44)}:" + "brace{s}".upper()) + "a")
+    say(f"s1 = [{s1}]")
 
     b2 := (
         ((481575242963 - 20) - (-2)) < (
@@ -18,19 +18,19 @@ export fn main() Int:
             * ((-947970) + 27)
         )
     )
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := (-862553538726)
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     var acc4 = 0
     for i in 0..0:
         acc4 += i * 2
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     s5 := ("héllo" + "日本語").replace("emoji 😀", s1).trim()
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     f6 := (((951.375 + 298.467) * 986.023) + ((0.0 + 995.114) * 7.5))
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
     return 0

@@ -33,14 +33,14 @@ test "unit constructors round trip through to_ readers":
 	expect_equal(seconds(90).add(milliseconds(500)).to_milliseconds(), 90500)?
 
 test "durations read as human spans in interpolation and to_string":
-	expect_equal("{seconds(90).add(milliseconds(500))}", "1m30.5s")?
-	expect_equal("{milliseconds(250)}", "250ms")?
-	expect_equal("{microseconds(1500)}", "1.5ms")?
-	expect_equal("{nanoseconds(7)}", "7ns")?
-	expect_equal("{hours(2)}", "2h0m0s")?
-	expect_equal("{seconds(-2)}", "-2s")?
+	expect_equal(f"{seconds(90).add(milliseconds(500))}", "1m30.5s")?
+	expect_equal(f"{milliseconds(250)}", "250ms")?
+	expect_equal(f"{microseconds(1500)}", "1.5ms")?
+	expect_equal(f"{nanoseconds(7)}", "7ns")?
+	expect_equal(f"{hours(2)}", "2h0m0s")?
+	expect_equal(f"{seconds(-2)}", "-2s")?
 	expect_equal(nanoseconds(0).to_string(), "0s")?
-	expect_equal("{hours(1).add(seconds(5))}", "1h0m5s")?
+	expect_equal(f"{hours(1).add(seconds(5))}", "1h0m5s")?
 
 test "extreme durations format, including the minimum":
 	expect_equal(
@@ -51,5 +51,5 @@ test "extreme durations format, including the minimum":
 		nanoseconds(-9223372036854775807 - 1).to_string(),
 		"-2562047h47m16.854775808s",
 	)?
-	expect_equal("{nanoseconds(-1500)}", "-1.5µs")?
-	expect_equal("{nanoseconds(-999999999)}", "-999.999999ms")?
+	expect_equal(f"{nanoseconds(-1500)}", "-1.5µs")?
+	expect_equal(f"{nanoseconds(-999999999)}", "-999.999999ms")?

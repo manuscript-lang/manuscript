@@ -19,9 +19,9 @@ fn var Producer.run(version: String) String!:
 	self.order.append(version.clone())
 
 	mine := version == self.bad
-	if mine and self.mode == "failed": return invalid("{version} exited 42")
+	if mine and self.mode == "failed": return invalid(f"{version} exited 42")
 	if mine and self.mode == "failed_first_trial" and count == 1: return invalid(
-		"{version} exited 42"
+		f"{version} exited 42"
 	)
 	if mine and self.mode == "wrong": return ok("WRONG!!")
 	if mine and self.mode == "wrong_first_trial" and count == 1: return ok("WRONG!!")

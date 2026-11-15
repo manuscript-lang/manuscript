@@ -107,9 +107,9 @@ fn run(line: String) String:
 
     cmd := t[0]
     if cmd == "lcs" and t.length() == 3:
-        return "{lcs(t[1].to_bytes(), t[2].to_bytes())}"
+        return f"{lcs(t[1].to_bytes(), t[2].to_bytes())}"
     if cmd == "edit" and t.length() == 3:
-        return "{edit(t[1].to_bytes(), t[2].to_bytes())}"
+        return f"{edit(t[1].to_bytes(), t[2].to_bytes())}"
 
     if cmd == "knap" and t.length() >= 2:
         cap := value(t[1])
@@ -129,7 +129,7 @@ fn run(line: String) String:
             ws.append(w)
             vs.append(v)
 
-        return "{knap(cap, ws, vs)}"
+        return f"{knap(cap, ws, vs)}"
 
     if cmd == "coins" and t.length() >= 3:
         amount := value(t[1])
@@ -146,7 +146,7 @@ fn run(line: String) String:
         n := coins(amount, cs)
         if n < 0: return "impossible"
 
-        return "{n}"
+        return f"{n}"
 
     return BAD
 
@@ -156,6 +156,6 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         if is_blank(line): continue
 
-        out.write("{run(line)}\n").get()
+        out.write(f"{run(line)}\n").get()
 
     return 0

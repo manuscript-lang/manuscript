@@ -115,7 +115,7 @@ fn methods_constructors_generics_and_nested_delimiters() {
             1,
         ),
         ("combine(\"😀\".length(),| 2)", "combine(", 1),
-        ("combine(\"{combine(1,| 2)}\".length(), 3)", "combine(", 1),
+        ("combine(f\"{combine(1,| 2)}\".length(), 3)", "combine(", 1),
         (
             "combine(\n        1, // ignored ,):\n        |2\n    )",
             "combine(",
@@ -160,7 +160,7 @@ fn signature_labels_exclude_preceding_operators_and_keywords() {
         ("1 + first[Int](1,| 2)", "first[Int]("),
         ("if true: combine(1,| 2) else: 3", "combine("),
         ("1 + (pair).combine(1,| 2)", "(pair).combine("),
-        ("\"{(pair).combine(1,| 2)}\".length()", "(pair).combine("),
+        ("f\"{(pair).combine(1,| 2)}\".length()", "(pair).combine("),
         ("1 + ((pair)).combine(1,| 2)", "((pair)).combine("),
         (
             "( // ignored (\n        pair\n    ).combine(1,| 2)",
@@ -185,7 +185,7 @@ fn signature_labels_follow_the_servers_changed_snapshot() {
         let mut requests = Vec::new();
         for (index, expression) in [
             "1 + combine(1,| 2)",
-            "\"😀 {(pair).combine(1,| 2)}\".length()",
+            "f\"😀 {(pair).combine(1,| 2)}\".length()",
         ]
         .iter()
         .enumerate()
@@ -275,7 +275,7 @@ fn multiline_interpolation_signature_help() {
     let session = ms_check::Session::new();
     for newline in ["\n", "\r\n"] {
         let ws = Workspace::new("multiline-help");
-        let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return \"\"\"\n        😀 {join(1, 2)}\n        \"\"\"\n".replace('\n', newline);
+        let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return f\"\"\"\n        😀 {join(1, 2)}\n        \"\"\"\n".replace('\n', newline);
         let offset = source.find(", 2").unwrap() + 2;
         let d = Document::new(ws.uri("signature.ms"), source.clone());
         let answer = signature_help(
@@ -290,7 +290,7 @@ fn multiline_interpolation_signature_help() {
             answer.get("activeParameter").and_then(|v| v.as_i64()),
             Some(1)
         );
-        let raw = source.replace("return \"\"\"", "return r\"\"\"");
+        let raw = source.replace("return f\"\"\"", "return r\"\"\"");
         let offset = raw.find(", 2").unwrap() + 2;
         let d = Document::new(ws.uri("raw.ms"), raw.clone());
         assert_eq!(
@@ -312,7 +312,7 @@ fn unfinished_multiline_interpolation_signature_help() {
     let syms = ms_syntax::Names::global();
     for newline in ["\n", "\r\n"] {
         let ws = Workspace::new("unfinished-help");
-        let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return \"\"\"\n        😀 {join(1, ".replace('\n', newline);
+        let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return f\"\"\"\n        😀 {join(1, ".replace('\n', newline);
         let d = Document::new(ws.uri("signature.ms"), source.clone());
         let answer = signature_help(
             syms,

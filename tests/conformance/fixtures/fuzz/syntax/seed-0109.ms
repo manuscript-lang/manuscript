@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -16,20 +16,20 @@ fn fact(n: Int) Int:
 
 export fn main() Int:
     b1 := false
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     var acc2 = 0
     for i in 0..8:
         acc2 += i * (-5)
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     b3 := ("a" == "hello world".reverse())
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     l4 := [(-21), (-1), (-27), (-13), (-4)]
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     s5 := "gamma".trim()
-    say("s5 = [{s5}]")
-    say("fact(4) = {fact(4)}")
+    say(f"s5 = [{s5}]")
+    say(f"fact(4) = {fact(4)}")
     return 0

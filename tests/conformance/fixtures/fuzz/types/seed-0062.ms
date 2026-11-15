@@ -6,12 +6,12 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     bad: String := 5
     l2 := [10, 5]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     if (("x" + "héllo") != "back\\slash"):
         say("alpha".lower())
@@ -19,12 +19,12 @@ export fn main() Int:
         say("hello world".lower())
 
     b3 := "line\nbreak".is_empty()
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     l4 := [1, 2, 3].take(0)
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     var l5 = l4.clone()
     l5.append(53)
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
     return 0

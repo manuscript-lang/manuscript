@@ -6,24 +6,24 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 9223372036854775806
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     bad := missing_function(3)
     f2 := (311.940 * ((493.200 * 75.194) / 143.358))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     var acc3 = 0
     for i in 0..5:
         acc3 += i * (-1)
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     i4 := i1
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := 10
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     return 0

@@ -9,8 +9,8 @@ DEL := 1
 INS := 2
 
 fn range_str(start: Int, len: Int) String:
-	if len == 1: return "{start}"
-	return "{start},{len}"
+	if len == 1: return f"{start}"
+	return f"{start},{len}"
 
 // Appends the hunk covering script entries [start, end] to `out`.
 fn emit_hunk(
@@ -38,15 +38,15 @@ fn emit_hunk(
 	var sb = jb[start]
 	if lb > 0:
 		sb += 1
-	out.append("@@ -{range_str(sa, la)} +{range_str(sb, lb)} @@")
+	out.append(f"@@ -{range_str(sa, la)} +{range_str(sb, lb)} @@")
 
 	for k in start..end + 1:
 		if kinds[k] == SAME:
-			out.append(" {texts[k]}")
+			out.append(f" {texts[k]}")
 		else if kinds[k] == DEL:
-			out.append("-{texts[k]}")
+			out.append(f"-{texts[k]}")
 		else:
-			out.append("+{texts[k]}")
+			out.append(f"+{texts[k]}")
 
 export fn main() Int:
 	lines := read_lines(stdin()).get()
@@ -148,8 +148,8 @@ export fn main() Int:
 
 	if out.length() == 0: return 0
 
-	var buf = "--- {name_a}\n+++ {name_b}\n"
+	var buf = f"--- {name_a}\n+++ {name_b}\n"
 	for line in out:
-		buf = "{buf}{line}\n"
+		buf = f"{buf}{line}\n"
 	stdout().write(buf).get()
 	return 0

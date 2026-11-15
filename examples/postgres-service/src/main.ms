@@ -39,9 +39,9 @@ fn visit(request: HttpRequest) HttpResponse:
 	result := record_visit(request.path)
 	if result.is_error(): return text(500, "the database did not answer\n")
 
-	return text(200, "visit {result.get()}\n")
+	return text(200, f"visit {result.get()}\n")
 
 fn main() Void!:
 	server := serve("127.0.0.1:8080", buffered(visit))?
-	print("listening on http://{server.address()}/")
+	print(f"listening on http://{server.address()}/")
 	server.wait()?

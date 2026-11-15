@@ -48,9 +48,9 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 	for name in workloads:
 		for label in ["before", "after"]:
 			cli := clis.get_or(label, "")
-			source := "bench/language/{name}.ms"
+			source := f"bench/language/{name}.ms"
 			_bin := must(
-				"ms build {name}",
+				f"ms build {name}",
 				capture(
 					cli.clone(),
 					[
@@ -59,19 +59,19 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 						"--build-type",
 						"Release",
 						"-o",
-						"{out}/{name}-{label}",
+						f"{out}/{name}-{label}",
 					],
 				),
 			)?
 			_emit := must(
-				"ms emit {name}",
+				f"ms emit {name}",
 				capture(
 					cli.clone(),
 					[
 						"emit",
 						source.clone(),
 						"-o",
-						"{out}/{name}-{label}.go",
+						f"{out}/{name}-{label}.go",
 					],
 				),
 			)?
@@ -85,12 +85,12 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 
 		// One correctness/warm-up execution per binary, excluded from measurements.
 		for label in ["before", "after"]:
-			execute("{out}/{name}-{label}", cpu)?
+			execute(f"{out}/{name}-{label}", cpu)?
 
 		for i in 0..runs:
 			for label in (if i % 2 == 0: ["before", "after"] else: ["after", "before"]):
 				start := now_ns()
-				execute("{out}/{name}-{label}", cpu)?
+				execute(f"{out}/{name}-{label}", cpu)?
 
 				elapsed := (now_ns() - start).to_float() / 1000000000.0
 				var list = samples.get_or(label, [])
@@ -98,7 +98,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 				samples.add(label.clone(), list)
 				(
 					stdout().write(
-						"{name} {label} run {i + 1}: {elapsed.to_fixed(6)}s\n"
+						f"{name} {label} run {i + 1}: {elapsed.to_fixed(6)}s\n"
 					).get()
 				)
 
@@ -135,7 +135,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 	report.add("results", jobject(results))
 
 	text := dump(jobject(report))
-	write_text("{out}/results.json", text)
+	write_text(f"{out}/results.json", text)
 	return ok(text)
 
 fn main() Int:

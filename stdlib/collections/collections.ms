@@ -255,7 +255,7 @@ fn List[T].join(separator: String) String:
 	for i in 0..self.length():
 		if i > 0:
 			out.append(separator)
-		out.append("{self[i]}")
+		out.append(f"{self[i]}")
 
 	return out.build()
 

@@ -61,15 +61,15 @@ test "rows match parse under every chunk size":
 	text := "a,b,c\r\n1,\"x,y\",3\n\n\"multi\nline \"\"q\"\"\",é,😀\n\"\"\nlast,,"
 	expected := parse(text)?
 	for size in 1..text.to_bytes().length() + 1:
-		if (read_rows(text, size)?) != expected: return fail("chunk size {size}")
+		if (read_rows(text, size)?) != expected: return fail(f"chunk size {size}")
 
 test "a final record without a line end is read at the end":
 	expect_equal(read_rows("a,b\nc,d", 3)?, [["a", "b"], ["c", "d"]])?
 
 test "large fragmented records preserve rows and exact record budgets":
 	field := "é\"日\n".repeat(1024)?
-	encoded := "\"{field.replace("\"", "\"\"")}\",tail\r"
-	text := "first,row\n{encoded}\nlast,row"
+	encoded := f"\"{field.replace("\"", "\"\"")}\",tail\r"
+	text := f"first,row\n{encoded}\nlast,row"
 	expected := [["first", "row"], [field, "tail"], ["last", "row"]]
 	limit := encoded.length()
 
@@ -225,7 +225,7 @@ fn csv_outcome(result: List[List[String]]!) String:
 	for row in result.get():
 		text += " ["
 		for cell in row:
-			text += "<{cell}>"
+			text += f"<{cell}>"
 		text += "]"
 
 	return text
@@ -243,7 +243,7 @@ test "rows and parse agree on malformed and odd inputs under every chunk size":
 		for size in 1..text.to_bytes().length() + 2:
 			got := csv_outcome(read_rows(text, size))
 			if got != expected: return fail(
-				"{text.to_bytes().length()} bytes, chunk {size}: parse {expected}, stream {got}"
+				f"{text.to_bytes().length()} bytes, chunk {size}: parse {expected}, stream {got}"
 			)
 
 test "oversized EOF records stay rejected after a failed read":

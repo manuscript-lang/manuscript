@@ -5,7 +5,7 @@ type Res:
 	id: Int
 
 fn var Res.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 
 type Node:
 	val: Res?
@@ -16,5 +16,5 @@ fn leaf(id: Int) Node:
 
 export fn main() Int:
 	root := Node(Res(1), [leaf(2), Node(none, [leaf(3), leaf(4)])])
-	print("kids {root.kids.length()}")
+	print(f"kids {root.kids.length()}")
 	return 0

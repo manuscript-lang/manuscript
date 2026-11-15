@@ -4,7 +4,7 @@ type Handle:
 	id: Int
 
 fn var Handle.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 
 // The callee owns the handle only on the path that returns it; the other paths close it.
 fn keep(h: Handle, flag: Bool) Handle?:

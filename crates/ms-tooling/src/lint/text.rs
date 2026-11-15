@@ -1,4 +1,4 @@
-//! An integer literal interpolated into text (`MSL117`): `"\\d{4}"` reads as a regex quantifier but
+//! An integer literal interpolated into text (`MSL117`): `f"\\d{4}"` reads as a regex quantifier but
 //! interpolates the number 4.
 
 use super::{Finding, finding, module_file};

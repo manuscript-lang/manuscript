@@ -39,7 +39,7 @@ xs.for_each(fn var p: p.n = p.n + 1)
 ```ms
 xs.for_each(fn var p: p.n = p.n + 1)      // xs must be var: accepted
 ys := [P(1)]
-ys.for_each(fn p: print("{p.n}"))         // reader: ys may be let
+ys.for_each(fn p: print(f"{p.n}"))         // reader: ys may be let
 ys.for_each(fn var p: p.n = 0)            // rejected: `ys` is not a `var`
 xs.for_each(fn var p: xs.append(p))       // rejected: overlaps the receiver borrow
 ```

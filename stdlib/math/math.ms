@@ -386,7 +386,7 @@ export fn shift_right_unsigned(value: Int, count: Int) Int:
 
 fn check_shift_count(operation: String, count: Int) Void:
 	if count < 0 or count > 63:
-		panic("{operation}: count must be between 0 and 63, found {count}")
+		panic(f"{operation}: count must be between 0 and 63, found {count}")
 
 // Rotates the 64-bit pattern toward the high end; any `count` is reduced modulo 64.
 export fn rotate_left(value: Int, count: Int) Int:

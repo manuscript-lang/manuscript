@@ -3,5 +3,5 @@
 // conform: origin=documentation/core-language/basics/text-and-bytes.md:39
 name := "Ada"
 count := 3
-greeting := "Welcome, {name}!"
-calculated := "Next: {count + 1}"
+greeting := f"Welcome, {name}!"
+calculated := f"Next: {count + 1}"

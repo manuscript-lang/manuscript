@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-928283)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "gamma"
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     var acc3 = 0
     for i in 0..3:
         acc3 += i * 4
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     f4 := 161.032
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     if "emoji 😀".contains(s2):
         say("hello world")
@@ -29,34 +29,34 @@ export fn main() Int:
         say(s2.reverse())
 
     say(
-        "{i1} {(s2.scalar_length() % s2.scalar_length())} {(i1 < (s2.scalar_length() % s2.scalar_length()))} sum {i1 + (s2.scalar_length() % s2.scalar_length())}"
+        f"{i1} {(s2.scalar_length() % s2.scalar_length())} {(i1 < (s2.scalar_length() % s2.scalar_length()))} sum {i1 + (s2.scalar_length() % s2.scalar_length())}"
     )
 
     f5 := 309.25
-    say("f5 = {f5}")
+    say(f"f5 = {f5}")
 
     f6 := (f5 / 972.397)
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     i7 := ((25 * (i1 - i1)) - ((i1 - i1) % (i1 - 29)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     b8 := (not (s2.is_empty() and (not true)))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     l9 := [(-7), 4, (-4)]
-    say("l9 = {l9} len {l9.length()}")
+    say(f"l9 = {l9} len {l9.length()}")
 
     f10 := 461.821
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     f11 := (5.5 + 141.929)
-    say("f11 = {f11}")
+    say(f"f11 = {f11}")
 
     s12 := "MiXeD CaSe".lower()
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     l13 := l9.concat(l9)
-    say("l13 = {l13} len {l13.length()}")
-    say("{s2.scalar_length()} {i7} {(s2.scalar_length() < i7)} sum {s2.scalar_length() + i7}")
+    say(f"l13 = {l13} len {l13.length()}")
+    say(f"{s2.scalar_length()} {i7} {(s2.scalar_length() < i7)} sum {s2.scalar_length() + i7}")
     return 0

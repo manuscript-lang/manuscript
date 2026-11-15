@@ -6,7 +6,7 @@ import (
 
 fn sample(trial: Int, version: String, elapsed: Int) List[String]:
 	return case_names().map(
-		fn name: "{trial} {version} {name} {elapsed} # {checksum(name)}"
+		fn name: f"{trial} {version} {name} {elapsed} # {checksum(name)}"
 	)
 
 test "minima and reordered samples":

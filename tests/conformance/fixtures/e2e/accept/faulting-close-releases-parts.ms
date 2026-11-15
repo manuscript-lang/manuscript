@@ -69,7 +69,7 @@ fn shelf_close(label: String) Void:
 	void shelf.slot
 
 fn choice_close(label: String) Void:
-	choice := Choice.Held(Holder(label.clone(), true), "{label} and a note")
+	choice := Choice.Held(Holder(label.clone(), true), f"{label} and a note")
 	void choice
 
 fn optional_close_during_fault(label: String) Void:

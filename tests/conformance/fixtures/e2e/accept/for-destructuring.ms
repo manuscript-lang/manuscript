@@ -26,7 +26,7 @@ test "for destructures list and record elements":
 	var firsts = ""
 
 	for [first, _] in [["a", "b"], ["c", "d"]]:
-		firsts = "{firsts}{first}"
+		firsts = f"{firsts}{first}"
 
 	expect_equal(firsts, "ac")?
 

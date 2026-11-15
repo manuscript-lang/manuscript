@@ -20,7 +20,7 @@ fn type_error() SqlError:
     return SqlError(msg: "type error")
 
 fn wrong_args(name: String) SqlError:
-    return SqlError(msg: "wrong number of arguments to {name}")
+    return SqlError(msg: f"wrong number of arguments to {name}")
 
 // ---------------------------------------------------------------- values
 type Value:
@@ -388,7 +388,7 @@ fn display_name(qual: String, name: String) String:
     if qual == "":
         return name
 
-    return "{qual}.{name}"
+    return f"{qual}.{name}"
 
 fn resolve_col(scope: List[ScopeCol], qual: String, name: String) Result[Int, SqlError]:
     var found = -1
@@ -401,9 +401,9 @@ fn resolve_col(scope: List[ScopeCol], qual: String, name: String) Result[Int, Sq
             hits = hits + 1
 
     if hits == 0:
-        return error(sql_error("no such column: {display_name(qual, name)}"))
+        return error(sql_error(f"no such column: {display_name(qual, name)}"))
     if hits > 1 and qual == "":
-        return error(sql_error("ambiguous column: {name}"))
+        return error(sql_error(f"ambiguous column: {name}"))
 
     return ok(found)
 
@@ -626,7 +626,7 @@ fn check_expr(e: Expr, c: Check, in_agg: Bool) Result[Unit, SqlError]:
             if c.aggregated and not in_agg and not c.group_idx.contains(idx):
                 return error(
                     sql_error(
-                        "column {display_name(qual, name)} must appear in GROUP BY"
+                        f"column {display_name(qual, name)} must appear in GROUP BY"
                     )
                 )
 
@@ -677,7 +677,7 @@ fn check_expr(e: Expr, c: Check, in_agg: Bool) Result[Unit, SqlError]:
                 return ok(unit_value())
 
             if not is_scalar(name):
-                return error(sql_error("no such function: {name}"))
+                return error(sql_error(f"no such function: {name}"))
             if star:
                 return error(wrong_args(name))
 
@@ -1737,9 +1737,9 @@ fn run_select(
     for r in range(0, refs.length()):
         ti := find_table(tables, refs[r].name)
         if ti < 0:
-            return error(sql_error("no such table: {refs[r].name}"))
+            return error(sql_error(f"no such table: {refs[r].name}"))
         if alias_used(scope, refs[r].alias):
-            return error(sql_error("duplicate alias: {refs[r].alias}"))
+            return error(sql_error(f"duplicate alias: {refs[r].alias}"))
 
         scope = scope.concat(table_scope(refs[r].alias, tables[ti].cols.clone()))
         ref_tables.append(ti)
@@ -1762,7 +1762,7 @@ fn run_select(
                 outs = outs.concat(star_columns(scope.clone(), ""))
             ItemTableStar(table):
                 if not alias_used(scope, table):
-                    return error(sql_error("no such table: {table}"))
+                    return error(sql_error(f"no such table: {table}"))
 
                 outs = outs.concat(star_columns(scope.clone(), table))
             ItemExpr(e, alias):
@@ -1943,7 +1943,7 @@ fn run_select(
     emit(var out, names.join("|"))
     for k in range(first_id, end_id):
         write_row(var out, vals_list[ids[k]].clone())
-    emit(var out, "({end_id - first_id} rows)")
+    emit(var out, f"({end_id - first_id} rows)")
     return ok(end_id - first_id)
 
 // ---------------------------------------------------------------- DDL and DML
@@ -1953,13 +1953,13 @@ fn exec_create(
     var tables: List[Table]
 ) Result[Unit, SqlError]:
     if find_table(tables, name) >= 0:
-        return error(sql_error("table {name} already exists"))
+        return error(sql_error(f"table {name} already exists"))
 
     var primaries = 0
 
     for k in range(0, cols.length()):
         if column_index(cols.clone(), cols[k].name) != k:
-            return error(sql_error("duplicate column: {cols[k].name}"))
+            return error(sql_error(f"duplicate column: {cols[k].name}"))
 
         if cols[k].primary:
             primaries = primaries + 1
@@ -1973,7 +1973,7 @@ fn exec_create(
 fn exec_drop(name: String, var tables: List[Table]) Result[Unit, SqlError]:
     ti := find_table(tables, name)
     if ti < 0:
-        return error(sql_error("no such table: {name}"))
+        return error(sql_error(f"no such table: {name}"))
 
     tables.remove(ti)
     return ok(unit_value())
@@ -1982,14 +1982,14 @@ fn check_row(row: List[Value], cols: List[ColDef]) Result[Unit, SqlError]:
     for k in range(0, cols.length()):
         v := row[k]
         if (cols[k].notnull or cols[k].primary) and is_null(v):
-            return error(sql_error("NOT NULL constraint failed: {cols[k].name}"))
+            return error(sql_error(f"NOT NULL constraint failed: {cols[k].name}"))
 
         if not is_null(v):
             var fits = text_of(v).is_some()
             if cols[k].kind == "INT":
                 fits = int_of(v).is_some()
             if not fits:
-                return error(sql_error("type mismatch in column {cols[k].name}"))
+                return error(sql_error(f"type mismatch in column {cols[k].name}"))
 
     return ok(unit_value())
 
@@ -2002,7 +2002,7 @@ fn check_primary(rows: List[List[Value]], pk: Int) Result[Unit, SqlError]:
 
     for r in range(0, rows.length()):
         if contains_value(seen, rows[r][pk]):
-            return error(sql_error("duplicate primary key: {value_text(rows[r][pk])}"))
+            return error(sql_error(f"duplicate primary key: {value_text(rows[r][pk])}"))
 
         seen.append(rows[r][pk])
 
@@ -2016,7 +2016,7 @@ fn exec_insert(
 ) Result[Int, SqlError]:
     ti := find_table(tables, table)
     if ti < 0:
-        return error(sql_error("no such table: {table}"))
+        return error(sql_error(f"no such table: {table}"))
 
     cols := tables[ti].cols.clone()
     var targets: List[Int] = []
@@ -2027,9 +2027,9 @@ fn exec_insert(
         for i in range(0, given.length()):
             idx := column_index(cols.clone(), given[i])
             if idx < 0:
-                return error(sql_error("no such column: {given[i]}"))
+                return error(sql_error(f"no such column: {given[i]}"))
             if targets.contains(idx):
-                return error(sql_error("duplicate column: {given[i]}"))
+                return error(sql_error(f"duplicate column: {given[i]}"))
 
             targets.append(idx)
     else:
@@ -2078,7 +2078,7 @@ fn exec_update(
 ) Result[Int, SqlError]:
     ti := find_table(tables, table)
     if ti < 0:
-        return error(sql_error("no such table: {table}"))
+        return error(sql_error(f"no such table: {table}"))
 
     cols := tables[ti].cols.clone()
     scope := table_scope(table, cols.clone())
@@ -2087,7 +2087,7 @@ fn exec_update(
     for n in range(0, names.length()):
         idx := column_index(cols.clone(), names[n])
         if idx < 0:
-            return error(sql_error("no such column: {names[n]}"))
+            return error(sql_error(f"no such column: {names[n]}"))
 
         targets.append(idx)
 
@@ -2145,7 +2145,7 @@ fn exec_delete(
 ) Result[Int, SqlError]:
     ti := find_table(tables, table)
     if ti < 0:
-        return error(sql_error("no such table: {table}"))
+        return error(sql_error(f"no such table: {table}"))
 
     scope := table_scope(table, tables[ti].cols.clone())
 
@@ -2192,17 +2192,17 @@ fn execute(
             return ok(0)
         Insert(table, names, rows):
             n := try exec_insert(table, names.clone(), rows.clone(), var tables)
-            emit(var out, "inserted {n}")
+            emit(var out, f"inserted {n}")
             return ok(0)
         Update(table, names, exprs, cond):
             n := try exec_update(
                 table, names.clone(), exprs.clone(), cond.clone(), var tables
             )
-            emit(var out, "updated {n}")
+            emit(var out, f"updated {n}")
             return ok(0)
         Delete(table, cond):
             n := try exec_delete(table, cond.clone(), var tables)
-            emit(var out, "deleted {n}")
+            emit(var out, f"deleted {n}")
             return ok(0)
         Query(sel):
             return run_select(sel.clone(), tables.clone(), var out)
@@ -2234,7 +2234,7 @@ fn run_script(data: Bytes) Bytes:
     for i in range(0, spans.length()):
         r := run_span(src.clone(), spans[i].clone(), var tables, var out)
         if r.is_error():
-            emit(var out, "error: {r.err().message()}")
+            emit(var out, f"error: {r.err().message()}")
 
     return out.build()
 

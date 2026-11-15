@@ -143,17 +143,17 @@ test "polling and native watchers report a created file and close":
 		recursive: false,
 		options: WatchOptions(interval: milliseconds(20)),
 	)?
-	write_file(path: "{root}/a.txt", data: "x", replace: false).wait()?
+	write_file(path: f"{root}/a.txt", data: "x", replace: false).wait()?
 	expect_true(saw(var polling, join([root.clone(), "a.txt"]), "rename", 8)?)?
 	polling.close()?
 
 	var native = watch(path: root, recursive: false)?
-	write_file(path: "{root}/b.txt", data: "y", replace: false).wait()?
+	write_file(path: f"{root}/b.txt", data: "y", replace: false).wait()?
 	expect_true(saw(var native, join([root.clone(), "b.txt"]), "rename", 8)?)?
 
 test "native watcher max_entries counts the paths under the root":
 	t := temporary("ms-me-") | expect_ok?
-	write_file(path: "{t.path()}/a", data: "x", replace: false).wait()?
+	write_file(path: f"{t.path()}/a", data: "x", replace: false).wait()?
 	expect_fs_error(
 		watch(
 			path: t.path(),
@@ -202,8 +202,8 @@ test "recursive native watch sees a file in a new subdirectory":
 	t := temporary("ms-r2-") | expect_ok?
 	r := t.path()
 	var w = watch(path: r, recursive: true)?
-	create_directory(path: "{r}/d", recursive: false)?
-	write_file(path: "{r}/d/f", data: "1", replace: false).wait()?
+	create_directory(path: f"{r}/d", recursive: false)?
+	write_file(path: f"{r}/d/f", data: "1", replace: false).wait()?
 
 	var seen = false
 	for i in 0..8:

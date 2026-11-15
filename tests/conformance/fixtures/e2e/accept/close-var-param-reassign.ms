@@ -7,7 +7,7 @@ type R:
     name: String
 
 fn var R.close() Void!:
-    print("close {self.name}")
+    print(f"close {self.name}")
 
 fn replace(var r: R) Void:
     r = R("new")

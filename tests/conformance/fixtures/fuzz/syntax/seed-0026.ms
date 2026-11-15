@@ -6,21 +6,21 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := (0.0 != ((722.424 * 864.797) - (9.0e-8 - 1.0e10)))
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     i2 := ((-324141) / ((-29) * ((-41) % (-33))))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
-    s3 := (("{i2}:" + "hello world") + ("{((-43) + i2)}:" + "héllo"))
-    say("s3 = [{s3}]")
+    s3 := ((f"{i2}:" + "hello world") + (f"{((-43) + i2)}:" + "héllo"))
+    say(f"s3 = [{s3}]")
 
     i4 := ((i2 + (i2 % i2)) + ((42 + (-665264)) % (-28)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     b5 := (((9.0e-1 - 0.0) + 6.0e23) != 319.123)
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
     return 0

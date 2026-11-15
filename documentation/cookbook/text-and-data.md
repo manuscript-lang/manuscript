@@ -17,7 +17,7 @@ import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Void, Error]:
-    stdout().write("{number}\n")?
+    stdout().write(f"{number}\n")?
     return stdout().flush()
 
 fn main() Int:
@@ -50,7 +50,7 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
     text := parse[String](arguments().get(0, default: "\"hello\""))?
-    stdout().write("{text}\n")?
+    stdout().write(f"{text}\n")?
     return stdout().flush()
 
 fn main() Void!:
@@ -84,10 +84,10 @@ type Config:
     enabled: Bool = true
 
 fn run() Result[Void, Error]:
-    text := arguments().get(0, default: "\{\"name\":\"Sam\"\}")
+    text := arguments().get(0, default: "{\"name\":\"Sam\"}")
     config := parse[Config](text)?
     encoded := stringify(config, StringifyOptions(strict: true))?
-    stdout().write("{encoded}\n")?
+    stdout().write(f"{encoded}\n")?
     return stdout().flush()
 
 fn main() Void!:

@@ -96,7 +96,9 @@ struct Scanner<'a> {
 
 const BIDI_COMMENT: &str = "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in comments because they can make source display differently from how it is read; remove the character";
 const BIDI_TEXT: &str = "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in text because they can make source display differently from how it is read; write the escape instead, e.g. \\u{202E}";
-pub(crate) const BRACE_HINT: &str = "'{' starts an interpolation; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates";
+const BRACE_HINT: &str = "'{' starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f";
+const UNMATCHED_BRACE: &str = "an unmatched closing brace must be escaped in f\"...\" text; write \\} for a literal brace (and \\{ for the opening brace), or drop the f so braces are plain";
+const PLAIN_BRACE_ESCAPE: &str = "braces are plain characters in \"...\" text, so write { and } without a backslash; only f\"...\" text interpolates and escapes them";
 const MAX_INTERPOLATION_DEPTH: usize = 1000;
 
 /// Lexes `source`. `source` must be valid UTF-8 (use [`lex_bytes`] otherwise).
@@ -107,10 +109,14 @@ pub fn lex<'a>(file: &'a Arc<str>, source: &'a str) -> PResult<Lexed<'a>> {
 /// Ends one quoted text literal, including nested interpolations, without lexing
 /// the surrounding declaration (which may be an incomplete editor snapshot).
 pub(crate) fn quoted_text_end(source: &str) -> Option<usize> {
-    debug_assert!(source.starts_with('"'));
+    debug_assert!(source.starts_with('"') || source.starts_with("f\""));
     let file = Arc::from("<documentation>");
     let mut scanner = Scanner::new(&file, source, 0, 0, Vec::new());
-    scanner.scan_string().ok()?;
+    let formatted = source.starts_with('f');
+    if formatted {
+        scanner.advance();
+    }
+    scanner.scan_string(formatted).ok()?;
     Some(scanner.offset)
 }
 
@@ -217,6 +223,13 @@ pub(crate) fn recovery_continuations(file: &Arc<str>, source: &str, roots: &[boo
                 }
                 scanner.advance();
             }
+        } else if scanner.src[scanner.offset..].starts_with(b"f\"")
+            && !(scanner.offset > 0
+                && (letter(scanner.src[scanner.offset - 1])
+                    || digit(scanner.src[scanner.offset - 1])))
+        {
+            // The prefix of interpolating text; the quote is handled next.
+            scanner.advance();
         } else if scanner.src[scanner.offset..].starts_with(b"r\"")
             && !scanner.src[scanner.offset + 2..].starts_with(b"\"\"")
             && !(scanner.offset > 0
@@ -270,7 +283,12 @@ pub(crate) fn recovery_continuations(file: &Arc<str>, source: &str, roots: &[boo
                 }
             }
         } else if scanner.src[scanner.offset] == b'"' {
-            let _ = scanner.scan_string();
+            let formatted = scanner.offset > 0
+                && scanner.src[scanner.offset - 1] == b'f'
+                && !(scanner.offset > 1
+                    && (letter(scanner.src[scanner.offset - 2])
+                        || digit(scanner.src[scanner.offset - 2])));
+            let _ = scanner.scan_string(formatted);
         } else {
             match scanner.advance() {
                 b'(' | b'[' | b'{' => depth += 1,
@@ -657,10 +675,20 @@ impl Scanner<'_> {
                 if b == b'r' && self.src.get(self.offset + 1) == Some(&b'"') {
                     let start = self.offset;
                     if self.src[self.offset + 1..].starts_with(b"\"\"\"") {
-                        self.scan_multiline(true)?;
+                        self.scan_multiline(true, false)?;
                     } else {
                         self.scan_raw_line()?;
                     }
+                    self.emit(Tok::String, start, self.offset, p);
+                    continue;
+                }
+                if b == b'"' || (b == b'f' && self.src.get(self.offset + 1) == Some(&b'"')) {
+                    let start = self.offset;
+                    let formatted = b == b'f';
+                    if formatted {
+                        self.advance();
+                    }
+                    self.scan_string(formatted)?;
                     self.emit(Tok::String, start, self.offset, p);
                     continue;
                 }
@@ -684,12 +712,6 @@ impl Scanner<'_> {
                 }
                 if digit(b) {
                     self.scan_number(p)?;
-                    continue;
-                }
-                if b == b'"' {
-                    let start = self.offset;
-                    self.scan_string()?;
-                    self.emit(Tok::String, start, self.offset, p);
                     continue;
                 }
                 if b == b'.'
@@ -1132,10 +1154,12 @@ impl Scanner<'_> {
         Ok(())
     }
 
-    fn scan_string(&mut self) -> PResult<()> {
+    /// Scans `"..."` text, or `f"..."` text when `interpolating` (the caller
+    /// has consumed the `f`). Braces are plain characters unless interpolating.
+    fn scan_string(&mut self, interpolating: bool) -> PResult<()> {
         let start = self.offset;
         if self.src[start..].starts_with(b"\"\"\"") {
-            return self.scan_multiline(false);
+            return self.scan_multiline(false, interpolating);
         }
         if let Some(end) = self
             .cached
@@ -1172,11 +1196,11 @@ impl Scanner<'_> {
                 return self.fail_previous_byte(BIDI_TEXT);
             }
             if b == b'\\' {
-                self.scan_escape()?;
-            } else if b == b'{' {
+                self.scan_escape(interpolating)?;
+            } else if interpolating && b == b'{' {
                 self.scan_interpolation()?;
-            } else if b == b'}' {
-                return self.fail("an unmatched closing brace; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates; or open an interpolation with {expression}");
+            } else if interpolating && b == b'}' {
+                return self.fail(UNMATCHED_BRACE);
             }
         }
         self.fail_at(
@@ -1215,7 +1239,7 @@ impl Scanner<'_> {
     /// Scans `"""` text (and `r"""` raw text when `raw`): the opening quotes end
     /// their line, the closing quotes start theirs, and every content line
     /// carries the closing line's indentation.
-    fn scan_multiline(&mut self, raw: bool) -> PResult<()> {
+    fn scan_multiline(&mut self, raw: bool, interpolating: bool) -> PResult<()> {
         let opened = self.pos();
         if !self.interpolations.is_empty() {
             return self.fail("multi-line text cannot appear inside an interpolation; bind it to a name first and interpolate the name");
@@ -1264,11 +1288,11 @@ impl Scanner<'_> {
                 continue;
             }
             if b == b'\\' {
-                self.scan_escape()?;
-            } else if b == b'{' {
+                self.scan_escape(interpolating)?;
+            } else if interpolating && b == b'{' {
                 self.scan_interpolation()?;
-            } else if b == b'}' {
-                return self.fail("an unmatched closing brace; for literal braces write the text raw, r\"...\", or escape them as \\{ and \\} when the text also interpolates; or open an interpolation with {expression}");
+            } else if interpolating && b == b'}' {
+                return self.fail(UNMATCHED_BRACE);
             }
         }
         self.fail_at(
@@ -1278,7 +1302,7 @@ impl Scanner<'_> {
     }
 
     /// Validates the escape after a consumed backslash.
-    fn scan_escape(&mut self) -> PResult<()> {
+    fn scan_escape(&mut self, interpolating: bool) -> PResult<()> {
         let n = self.src.len();
         let mut backslash = self.pos();
         backslash.column -= 1;
@@ -1326,6 +1350,8 @@ impl Scanner<'_> {
                 return self.fail("invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)");
             }
             self.advance();
+        } else if !interpolating && matches!(c, b'{' | b'}') {
+            return self.fail_at(backslash, PLAIN_BRACE_ESCAPE);
         } else if !b"\"\\nrt{}".contains(&c) {
             let escape = if c.is_ascii_graphic() {
                 format!(" \\{}", char::from(c))
@@ -1333,7 +1359,12 @@ impl Scanner<'_> {
                 let full = self.text[self.offset - 1..].chars().next().unwrap();
                 format!(": a backslash followed by {}", quote_rune(full))
             };
-            return self.fail_at(backslash, format!("unknown text escape{escape}; valid escapes are \\n \\t \\r \\\\ \\\" \\{{ \\}} and \\u{{H}}"));
+            let braces = if interpolating {
+                "\\{ \\} (f text only) "
+            } else {
+                ""
+            };
+            return self.fail_at(backslash, format!("unknown text escape{escape}; valid escapes are \\n \\t \\r \\\\ \\\" {braces}and \\u{{H}}"));
         }
         Ok(())
     }
@@ -1376,7 +1407,16 @@ impl Scanner<'_> {
                 );
             }
             if b == b'"' {
-                self.scan_string()?;
+                self.scan_string(false)?;
+                continue;
+            }
+            if b == b'f'
+                && self.src.get(self.offset + 1) == Some(&b'"')
+                && !(self.offset > 0
+                    && (letter(self.src[self.offset - 1]) || digit(self.src[self.offset - 1])))
+            {
+                self.advance();
+                self.scan_string(true)?;
                 continue;
             }
             if b == b'r'

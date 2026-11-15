@@ -15,4 +15,4 @@ test "typed JSON Base64 decodes every byte and preserves strict syntax":
 	expect_equal((parse[List[Bytes]](text)?), expected)?
 	expect_equal((parse[Bytes]("\"+/8=\"")?), Bytes([251, 255]))?
 	for encoded in ["-_8=", "Zh==", "Zm9=", "=AAA", "AA=A", "éAA", "Zg== "]:
-		expect_equal((expect_error(parse[Bytes]("\"{encoded}\""))?).kind, "EBADMSG")?
+		expect_equal((expect_error(parse[Bytes](f"\"{encoded}\""))?).kind, "EBADMSG")?

@@ -93,16 +93,16 @@ fn check_arity(name: String, low: Int, high: Int, got: Int) Result[Unit, Fault]:
     if got >= low and (high < 0 or got <= high):
         return ok(unit)
 
-    var expected = "at least " + "{low}"
+    var expected = "at least " + f"{low}"
 
     if high == low:
-        expected = "{low}"
+        expected = f"{low}"
     else if high >= 0:
-        expected = "{low} to {high}"
+        expected = f"{low} to {high}"
 
     return error(
         rt_fault(
-            "wrong number of arguments to {name}: expected {expected}, got {got}"
+            f"wrong number of arguments to {name}: expected {expected}, got {got}"
         )
     )
 
@@ -157,7 +157,7 @@ fn is_procedure(v: Value) Bool:
 // Text of atoms that have no payload to quote: numbers, booleans, symbols, ().
 fn atom_text(v: Value) String:
     match v:
-        Number(n): return "{n}"
+        Number(n): return f"{n}"
         Boolean(on):
             if on:
                 return "#t"
@@ -1319,7 +1319,7 @@ fn string_builtin(var m: Machine, name: String, args: List[Value]) Result[Value,
 
     if name == "number->string":
         n := try int_of(m, name, args[0])
-        return ok(Value.Text("{n}"))
+        return ok(Value.Text(f"{n}"))
 
     if name == "string->symbol":
         s := try str_of(m, name, args[0])

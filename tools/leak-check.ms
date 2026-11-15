@@ -41,7 +41,7 @@ fn leaking_tests(text: String) List[String]:
 		if line.starts_with("RUN "): current = line.slice(4, line.length()).get("")
 		else if line.starts_with("ms-rt live blocks at exit: "):
 			n := line.slice(27, line.length()).get("").trim().parse_int().get(0)
-			if n != 0: leaks.append("{current}: {n}")
+			if n != 0: leaks.append(f"{current}: {n}")
 
 	return leaks
 
@@ -54,7 +54,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 	var lines = List[String]()
 
 	for f in files:
-		absolute := "{root}/{f}"
+		absolute := f"{root}/{f}"
 		source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
 
 		if has_tests(source):
@@ -66,7 +66,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 				found := leaking_tests(out.stderr.decode_utf8().get(""))
 				lines.append("swept")
 				if not found.is_empty(): lines.append(
-					"leak: {absolute}\n  {found.join("\n  ")}"
+					f"leak: {absolute}\n  {found.join("\n  ")}"
 				)
 
 			continue
@@ -82,7 +82,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 			lines.append("swept")
 
 			total := counts.fold(0, fn(a: Int, b: Int) Int: a + b)
-			if total != 0: lines.append("leak: {absolute} left {total} live blocks")
+			if total != 0: lines.append(f"leak: {absolute} left {total} live blocks")
 
 	return lines
 
@@ -100,7 +100,7 @@ fn main() Int:
 			"tests/conformance/fixtures/examples"
 		]:
 			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
-				path := "{dir}/{f.path}"
+				path := f"{dir}/{f.path}"
 				if read_file(path.clone()).wait().get().decode_utf8().get(
 					""
 				).contains("fn main"): files.append(path.clone())
@@ -110,7 +110,7 @@ fn main() Int:
 			"tests/conformance/fixtures/e2e",
 			GlobOptions(patterns: ["**/*.ms"]),
 		).get([]):
-			path := "tests/conformance/fixtures/e2e/{f.path}"
+			path := f"tests/conformance/fixtures/e2e/{f.path}"
 			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
 				path.clone()
 			)
@@ -148,10 +148,10 @@ fn main() Int:
 			if line == "swept": swept += 1
 			else:
 				leaks += 1
-				print("{line}")
+				print(f"{line}")
 
 	change_directory(root).get()
-	print("swept {swept} programs, {leaks} leaking")
+	print(f"swept {swept} programs, {leaks} leaking")
 
 	if swept == 0:
 		print("no program reported a live block count")

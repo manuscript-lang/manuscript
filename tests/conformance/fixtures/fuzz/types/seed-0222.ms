@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := (-421146026529)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     l2 := [(-17), (-21), (-19)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     bad := "abc".no_such_method()
     var acc3 = 0
@@ -23,8 +23,8 @@ export fn main() Int:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + (-3)
 
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     s4 := "MiXeD CaSe".lower().trim()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
     return 0

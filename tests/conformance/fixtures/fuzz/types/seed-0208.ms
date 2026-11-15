@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := (375.102 * 328.25)
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     if true:
         say(("ms" + "emoji 😀"))
@@ -19,11 +19,11 @@ export fn main() Int:
 
     bad := [1, 2].get("x")
     b2 := (false and ((false or false) or (190.739 == 28.237)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := 38
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (393580 + ((i3 + i3) / 32))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     return 0

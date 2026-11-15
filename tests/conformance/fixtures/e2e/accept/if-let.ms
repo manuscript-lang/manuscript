@@ -33,7 +33,7 @@ test "if let takes else when absent and keeps falsy payloads":
     (check(value: total(items) == 3, message: "total")?)
 
     empty: List[Int] := []
-    if value := empty.first(): return fail(message: "unexpected {value}")
+    if value := empty.first(): return fail(message: f"unexpected {value}")
 
 fn parse(text: String) Int!Error:
     if text == "":
@@ -48,6 +48,6 @@ test "if let unwraps an ok result and takes else on error":
         fail(message: "expected ok")?
 
     if value := parse(""):
-        fail(message: "unexpected {value}")?
+        fail(message: f"unexpected {value}")?
     else:
         (check(value: true, message: "error branch")?)

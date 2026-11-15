@@ -9,7 +9,7 @@ import (
 test "reading string elements while iterating does not change the container":
 	var deque = Deque[String]()
 	for i in 0..5:
-		deque.push_back("item-{i}")
+		deque.push_back(f"item-{i}")
 
 	var total = 0
 	for item in deque:
@@ -21,7 +21,7 @@ test "reading string elements while iterating does not change the container":
 test "an element kept past the loop is an independent copy":
 	var queue = Queue[String](none)
 	for i in 0..3:
-		queue.enqueue("q-{i}")
+		queue.enqueue(f"q-{i}")
 
 	var kept: List[String] = []
 	for item in queue:
@@ -34,7 +34,7 @@ test "an element kept past the loop is an independent copy":
 test "iteration sees each element once after the ring buffer wraps":
 	var deque = Deque[String]()
 	for i in 0..4:
-		deque.push_back("b{i}")
+		deque.push_back(f"b{i}")
 	deque.pop_front()
 	deque.push_front("a")
 	deque.push_back("z")

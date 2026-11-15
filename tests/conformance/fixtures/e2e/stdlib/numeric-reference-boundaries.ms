@@ -352,7 +352,7 @@ test "radix text and parsing round-trip every boundary":
 			expect_equal(from_int(a).to_string_radix(radix), text)?
 			expect_equal(parse_int(text, radix)?, a)?
 
-		expect_equal("{a}".parse_int(), a)?
+		expect_equal(f"{a}".parse_int(), a)?
 
 test "BigInt agrees with Int on operations that cannot overflow":
 	for a in int_boundaries():
@@ -531,7 +531,7 @@ test "to_exponential matches the exact decimal expansion":
 				magnitude := if shown < 0: -shown else: shown
 				expect_equal(
 					x.to_exponential(digits),
-					"{sign}{mantissa}e{exponent_sign}{magnitude}",
+					f"{sign}{mantissa}e{exponent_sign}{magnitude}",
 				)?
 
 test "Decimal arithmetic matches BigInt while the result fits 34 digits":

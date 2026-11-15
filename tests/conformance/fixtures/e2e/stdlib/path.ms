@@ -59,7 +59,7 @@ test "POSIX resolution handles long relative tails and absolute resets":
 	var parts: List[String] = []
 	for unused in 0..512:
 		parts.append("segment")
-	expect_equal((paths.resolve("/base/", parts)?), "/base/{parts.join("/")}")?
+	expect_equal((paths.resolve("/base/", parts)?), f"/base/{parts.join("/")}")?
 	parts.append("/reset/")
 	expect_equal((paths.resolve("/base/", parts)?), "/reset")?
 

@@ -59,21 +59,21 @@ test "which preserves PATH order and rejects directories and nonexecutable files
 	create_directory(blocked, false)?
 	create_directory(first, false)?
 	create_directory(second, false)?
-	create_directory(join([blocked.clone(), "probe{suffix}"]), false)?
+	create_directory(join([blocked.clone(), f"probe{suffix}"]), false)?
 
-	expected := join([first.clone(), "probe{suffix}"])
+	expected := join([first.clone(), f"probe{suffix}"])
 	make_program(expected)?
-	make_program(join([second.clone(), "probe{suffix}"]))?
+	make_program(join([second.clone(), f"probe{suffix}"]))?
 	set_environment(
 		"PATH",
-		"{separator}{blocked}{separator}{first}{separator}{second}{separator}",
+		f"{separator}{blocked}{separator}{first}{separator}{second}{separator}",
 	)?
 	set_environment("PATHEXT", ".EXE;.CMD")?
 	expect_equal(which("probe"), expected)?
 	expect_equal(which("missing-manuscript-program"), none)?
 	expect_equal(which(""), none)?
 
-	mode_path := join([first, "mode{suffix}"])
+	mode_path := join([first, f"mode{suffix}"])
 	write_file(mode_path, "fixture", false).wait()?
 	chmod(mode_path, 384)?
 	expect_equal(which("mode").is_some(), windows)?
@@ -108,7 +108,7 @@ test "which honors PATHEXT defaults and skips empty PATH entries":
 	path_key := if windows: "pAtH" else: "PATH"
 	extension_key := if windows: "pAtHeXt" else: "PATHEXT"
 	selected_suffix := if windows: ".RUN" else: ""
-	selected := join([root.clone(), "selected{selected_suffix}"])
+	selected := join([root.clone(), f"selected{selected_suffix}"])
 	make_program(selected)?
 	make_program(join([root.clone(), "selected.CMD"]))?
 	make_program(join([root.clone(), "ignored.EXE"]))?
@@ -119,7 +119,7 @@ test "which honors PATHEXT defaults and skips empty PATH entries":
 	expect_equal(which("ignored"), none)?
 
 	default_suffix := if windows: ".CMD" else: ""
-	default_path := join([root.clone(), "default{default_suffix}"])
+	default_path := join([root.clone(), f"default{default_suffix}"])
 	make_program(default_path)?
 	set_environment(extension_key, none)?
 	expect_equal(which("default"), default_path)?

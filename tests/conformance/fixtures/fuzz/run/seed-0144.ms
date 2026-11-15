@@ -6,43 +6,43 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := "".upper().ends_with("ms")
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     b2 := b1
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := 38
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := (not ((b2 and b1) and (false or b1)))
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     i5 := (-i3)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := ((-10) + (102785 + i5))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     if ("beta" + "héllo").contains("naïve"):
         say("日本語".reverse())
     else:
-        say("brace\{s\}".lower())
+        say("brace{s}".lower())
 
     var acc7 = 0
     for i in 0..3:
         acc7 += i * (-3)
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     b8 := ((i5 + (i3 + i3)) <= ((i5 + 931355) + (i3 - i3)))
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     s9 := "naïve"
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     i10 := 21
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
     return 0

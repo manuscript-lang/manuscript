@@ -10,7 +10,7 @@ fn say(text: String) Void:
 
 fn report(name: String, n: Int, start: Instant, sum: Int) Void:
 	ns := monotonic().difference(start).to_nanoseconds()
-	say("{name} {ns.to_float() / n.to_float()} {sum}\n")
+	say(f"{name} {ns.to_float() / n.to_float()} {sum}\n")
 
 interface Step:
 	fn apply(x: Int) Int

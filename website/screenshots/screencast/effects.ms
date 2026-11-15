@@ -6,4 +6,4 @@ fn save(order: String) Void!:
 	return write_file("orders.log", order).wait()
 
 fn audit(total: Int) Void!:
-	return save("audit {total}")
+	return save(f"audit {total}")

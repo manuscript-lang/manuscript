@@ -7,7 +7,7 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
     text := parse[String](arguments().get(0, default: "\"hello\""))?
-    stdout().write("{text}\n")?
+    stdout().write(f"{text}\n")?
     return stdout().flush()
 
 fn main() Void!:

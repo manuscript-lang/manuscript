@@ -41,7 +41,7 @@ test "a removed key is gone after an update":
 test "contains then update takes the present and absent paths with string keys":
 	var seen: Map[String, Stat] = {}
 	for i in 0..2000:
-		name := "user-{i % 300}"
+		name := f"user-{i % 300}"
 		if not seen.contains(name): seen[name.clone()] = Stat(0, 0)
 		seen[name].count += 1
 		seen[name].sum += i

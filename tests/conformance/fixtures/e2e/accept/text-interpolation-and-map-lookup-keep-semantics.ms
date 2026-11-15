@@ -16,7 +16,7 @@ fn halve(n: Int) Int?:
 fn describe(key: Point, m: Map[Point, String]) String:
     match m.get(key: key):
         v:
-            return "found {v}"
+            return f"found {v}"
         none:
             return "missing"
 
@@ -25,17 +25,17 @@ test "text interpolation":
     f := 1.5
     ok := true
     s := "hi"
-    expect_true(("n={n} f={f} ok={ok} s={s}" == "n=42 f=1.5 ok=true s=hi"))?
-    expect_true(("{n}" == "42"))?
-    expect_true(("{s}{s}" == "hihi"))?
+    expect_true((f"n={n} f={f} ok={ok} s={s}" == "n=42 f=1.5 ok=true s=hi"))?
+    expect_true((f"{n}" == "42"))?
+    expect_true((f"{s}{s}" == "hihi"))?
     expect_true(("".length() == 0))?
-    expect_true(("héllo {n}".scalar_length() == 8))?
-    expect_true(("{halve(n: 8)}" == "{halve(n: 8)}"))?
+    expect_true((f"héllo {n}".scalar_length() == 8))?
+    expect_true((f"{halve(n: 8)}" == f"{halve(n: 8)}"))?
 
     var items = List[Int]()
     items.append(value: 1)
-    expect_true(("{items}" == "[1]"))?
-    expect_true(("{Point(x: 1, y: 2)}".length() > 0))?
+    expect_true((f"{items}" == "[1]"))?
+    expect_true((f"{Point(x: 1, y: 2)}".length() > 0))?
 
 test "map lookup":
     var m = Map[Int, Int]()
@@ -49,7 +49,7 @@ test "map lookup":
 
     match m.get(key: 2):
         v:
-            return fail("unexpected {v}")
+            return fail(f"unexpected {v}")
         none:
             void
 

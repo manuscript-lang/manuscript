@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     var acc2 = 0
@@ -16,20 +16,20 @@ export fn main() Int:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-1)
 
-    say("acc2 = {acc2}")
+    say(f"acc2 = {acc2}")
 
     var acc3 = 0
     for i in 0..6:
         acc3 += i * 1
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
 
     s4 := "Tab\there"
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
 
     i5 := 23
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     s6 := "x".reverse()
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
     return "not an int"
     return 0

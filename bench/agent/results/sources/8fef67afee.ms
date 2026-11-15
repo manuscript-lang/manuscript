@@ -193,7 +193,7 @@ fn read_quant(pat: Bytes, at: Int) Optional[Quant]:
         return some(Quant(lo: 1, hi: -1, stop: at + 1))
     if c == ch("?"):
         return some(Quant(lo: 0, hi: 1, stop: at + 1))
-    if c != ch("\{"):
+    if c != ch("{"):
         return none
 
     var i = at + 1
@@ -223,7 +223,7 @@ fn read_quant(pat: Bytes, at: Int) Optional[Quant]:
         if i > hi_start:
             hi = h
 
-    if i < pat.length() and pat.get(i) == ch("\}"):
+    if i < pat.length() and pat.get(i) == ch("}"):
         return some(Quant(lo: lo, hi: hi, stop: i + 1))
 
     return none
@@ -255,7 +255,7 @@ fn parse_seq(var ps: Parser) Result[Int, PatError]:
     ):
         q := read_quant(ps.pat, ps.pos)
 
-        if q.is_some() and not (peek(ps, 0) == ch("\{") and items.is_empty()):
+        if q.is_some() and not (peek(ps, 0) == ch("{") and items.is_empty()):
             if not can_repeat:
                 return error(PatError(msg: "nothing to repeat"))
 
@@ -840,12 +840,12 @@ fn put_quoted(var out: BytesBuilder, data: Bytes, s: Int, e: Int) Unit:
 
 // "S..E "quoted"" for a span of the subject.
 fn put_span(var out: BytesBuilder, text: Bytes, s: Int, e: Int) Unit:
-    put(var out, "{s}..{e} ")
+    put(var out, f"{s}..{e} ")
     put_quoted(var out, text, s, e)
 
 fn put_captures(var out: BytesBuilder, re: Regex, text: Bytes, caps: List[Int]) Unit:
     for g in range(0, re.names.length() + 1):
-        put(var out, "{g}")
+        put(var out, f"{g}")
 
         if g > 0 and not re.names.get(g - 1).is_empty():
             put(var out, " (")
@@ -896,9 +896,9 @@ fn expand(
             else if d == ch("$"):
                 out.append(d)
                 i += 2
-            else if d == ch("\{"):
+            else if d == ch("{"):
                 var close = i + 2
-                while close < repl.length() and repl.get(close) != ch("\}"):
+                while close < repl.length() and repl.get(close) != ch("}"):
                     close += 1
                 if close >= repl.length():
                     return error(PatError(msg: "bad replacement"))
@@ -1023,7 +1023,7 @@ fn process(line: Bytes) Result[Bytes, PatError]:
             put_span(var out, c.text.clone(), caps.get(0), caps.get(1))
             put(var out, "\n")
 
-        put(var out, "({all.length()} matches)\n")
+        put(var out, f"({all.length()} matches)\n")
     else:
         var pieces = 1
         var last = 0
@@ -1036,7 +1036,7 @@ fn process(line: Bytes) Result[Bytes, PatError]:
                 pieces += 1
 
         put_quoted(var out, c.text.clone(), last, c.text.length())
-        put(var out, "\n({pieces} pieces)\n")
+        put(var out, f"\n({pieces} pieces)\n")
 
     return ok(out.build())
 
@@ -1049,7 +1049,7 @@ export fn main() Int:
             result := process(line)
 
             if result.is_error():
-                put(var out, "error: {result.err().msg}\n")
+                put(var out, f"error: {result.err().msg}\n")
             else:
                 out.concat(result.get())
 

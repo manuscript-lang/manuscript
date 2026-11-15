@@ -20,7 +20,7 @@ import expect_equal from "@std/test/test.ms"
 test "a new file is reported":
     dir := temporary("watch-")?
     var events = watch(dir.path())?
-    write_file("{dir.path()}/note.txt", "hello").wait()?
+    write_file(f"{dir.path()}/note.txt", "hello").wait()?
     event := events.next(timeout: seconds(10))?
     expect_equal(event.get().path.ends_with("note.txt"), true)?
 ```
@@ -47,7 +47,7 @@ fn main() Void!:
     var events = watch(path)?
     for event in events:
         text := read_file(event.path).wait()?
-        print("{event.path} changed, {text.length()} bytes")
+        print(f"{event.path} changed, {text.length()} bytes")
     return ok()
 ```
 

@@ -10,7 +10,7 @@ type Marker:
 	id: Int
 	log: String
 
-fn var Marker.close() Void!: append_file(self.log, "{self.id},").wait()
+fn var Marker.close() Void!: append_file(self.log, f"{self.id},").wait()
 
 fn optional_cause(log: String) Void:
 	value: Marker? := Marker(1, log)
@@ -61,7 +61,7 @@ fn transformed_then(log: String) Void!:
 
 test "preserved resource payloads transfer exactly once":
 	tmp := temporary("wrapper-preserved-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	optional_cause(log.clone())
 	optional_callback(log.clone())
@@ -90,7 +90,7 @@ fn bound_transform(log: String) Void!:
 
 test "callbacks borrow resource inputs while reusable methods copy only retained data":
 	tmp := temporary("wrapper-callback-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	bound_transform(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "21,22,20,")?
@@ -123,7 +123,7 @@ fn borrowed_error(log: String) Void!:
 
 test "discarded owned errors close while borrowed errors stay alive":
 	tmp := temporary("wrapper-errors-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 
 	absent := error_result(30, log.clone()).to_optional()
@@ -136,7 +136,7 @@ fn specialized_optional[T](value: T?, create: fn() Int) T!Int:
 	return value.ok_or_else[Int](create)
 
 fn specialized_error[T](value: Int!T) String!T:
-	return value.map[String](fn item: "{item}")
+	return value.map[String](fn item: f"{item}")
 
 fn specialized_transfers(log: String) Void:
 	present: Marker? := Marker(60, log.clone())
@@ -146,7 +146,7 @@ fn specialized_transfers(log: String) Void:
 
 test "specialized direct generic methods transfer instead of retaining reusable captures":
 	tmp := temporary("wrapper-specialized-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	specialized_transfers(log.clone())
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "61,60,")?

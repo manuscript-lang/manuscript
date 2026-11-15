@@ -69,6 +69,6 @@ test "fail builds an error with a site":
 
 test "source location constants name their use site":
 	// `fail` on this line reports the same line as `__LINE__`, so the test keeps its meaning when lines move.
-	expect_true(site_of(expect_error(fail("here"))?).contains(":{__LINE__}:"))?
+	expect_true(site_of(expect_error(fail("here"))?).contains(f":{__LINE__}:"))?
 	expect_true(__FILE__.ends_with("test-sites.ms"))?
-	expect_true(site_of(expect_error(fail("here"))?).contains("{__FILE__}:{__LINE__}:"))?
+	expect_true(site_of(expect_error(fail("here"))?).contains(f"{__FILE__}:{__LINE__}:"))?

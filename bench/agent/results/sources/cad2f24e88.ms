@@ -128,16 +128,16 @@ export fn main() Int:
         p95 = sorted_latencies[rank - 1]
 
     var out = ""
-    out += "valid: {records.length()}\n"
-    out += "malformed: {malformed}\n"
-    out += "DEBUG: {debug_count}\n"
-    out += "INFO: {info_count}\n"
-    out += "WARN: {warn_count}\n"
-    out += "ERROR: {error_count}\n"
-    out += "status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={class_other}\n"
-    out += "p95: {p95}\n"
+    out += f"valid: {records.length()}\n"
+    out += f"malformed: {malformed}\n"
+    out += f"DEBUG: {debug_count}\n"
+    out += f"INFO: {info_count}\n"
+    out += f"WARN: {warn_count}\n"
+    out += f"ERROR: {error_count}\n"
+    out += f"status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={class_other}\n"
+    out += f"p95: {p95}\n"
     if worst := slowest:
-        out += "slowest: {worst.latency} {worst.method} {worst.path} {worst.timestamp}\n"
+        out += f"slowest: {worst.latency} {worst.method} {worst.path} {worst.timestamp}\n"
     out += "top:\n"
 
     var stats: List[PathStat] = []
@@ -155,7 +155,7 @@ export fn main() Int:
 
     for i in range(0, shown):
         stat := ranked[i]
-        out += "{stat.path} {stat.count} avg={stat.total / stat.count}\n"
+        out += f"{stat.path} {stat.count} avg={stat.total / stat.count}\n"
 
     stdout().write(out).get()
     return 0

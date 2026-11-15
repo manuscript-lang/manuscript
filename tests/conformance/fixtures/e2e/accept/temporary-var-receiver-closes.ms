@@ -12,7 +12,7 @@ type Door:
 	swings: Int
 
 fn var Door.close() Void!:
-	void append_file(self.log, "{self.id},").wait()
+	void append_file(self.log, f"{self.id},").wait()
 
 fn var Door.swing() Int:
 	self.swings += 1
@@ -34,7 +34,7 @@ fn open_door(id: Int, log: String) Door:
 // statement ends.
 test "a temporary receiver of a var method closes at the end of its statement":
 	tmp := temporary("ms-log-") | expect_ok?
-	log := "{tmp.path()}/log"
+	log := f"{tmp.path()}/log"
 	first := open_door(1, log.clone()).swing()
 	second := open_door(2, log.clone()).peek()
 	expect_equal(first + second, 1)?

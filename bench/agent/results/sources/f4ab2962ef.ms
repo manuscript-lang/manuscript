@@ -33,8 +33,8 @@ fn next_change(ops: List[Op], begin: Int) Int:
 	return p
 
 fn span(start: Int, len: Int) String:
-	if len == 1: return "{start}"
-	return "{start},{len}"
+	if len == 1: return f"{start}"
+	return f"{start},{len}"
 
 export fn main() Int:
 	all := read_all()
@@ -133,10 +133,10 @@ export fn main() Int:
 				sb += 1
 
 			if not printed:
-				sink.write("--- {name_a}\n+++ {name_b}\n").get()
+				sink.write(f"--- {name_a}\n+++ {name_b}\n").get()
 				printed = true
 
-			sink.write("@@ -{span(sa, la)} +{span(sb, lb)} @@\n").get()
+			sink.write(f"@@ -{span(sa, la)} +{span(sb, lb)} @@\n").get()
 
 			for q in s..e + 1:
 				op := ops[q]
@@ -145,7 +145,7 @@ export fn main() Int:
 					prefix = "-"
 				if op.kind == 2:
 					prefix = "+"
-				sink.write("{prefix}{op.text}\n").get()
+				sink.write(f"{prefix}{op.text}\n").get()
 
 			k = e + 1
 

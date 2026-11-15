@@ -14,9 +14,9 @@ export fn bench(name: String, ops: Int, body: fn() Int) Void:
     started := monotonic()
     checksum := body()
     elapsed := monotonic().difference(started).to_nanoseconds()
-    say("{name}\t{ops}\t{elapsed / ops}\n")
-    say("# checksum {name} {checksum}\n")
-    say("# elapsed {name} {elapsed}\n")
+    say(f"{name}\t{ops}\t{elapsed / ops}\n")
+    say(f"# checksum {name} {checksum}\n")
+    say(f"# elapsed {name} {elapsed}\n")
 
 export fn ints(count: Int) List[Int]:
     var out: List[Int] = []
@@ -27,5 +27,5 @@ export fn ints(count: Int) List[Int]:
 export fn words(count: Int) List[String]:
     var out: List[String] = []
     for i in 0..count:
-        out.append("word{i % 977}")
+        out.append(f"word{i % 977}")
     return out

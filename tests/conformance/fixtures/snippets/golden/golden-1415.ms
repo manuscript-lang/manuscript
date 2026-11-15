@@ -12,7 +12,7 @@ export fn main() Int:
     _err := stderr().write(data: "stderr\n")
     var index = 0
     while index < args.length():
-        _arg := stdout().write(data: "arg={args[index]}\n")
+        _arg := stdout().write(data: f"arg={args[index]}\n")
         index = index + 1
     if args.length() > 0 and args[0] == "fail":
         return 23

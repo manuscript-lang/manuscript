@@ -52,7 +52,7 @@ fn clean(path: String) String!:
 
 fn child_path(directory: String, name: String) String:
 	if directory == "": return name.clone()
-	return "{directory}/{name}"
+	return f"{directory}/{name}"
 
 fn parent_of(path: String) String:
 	parts := path.split("/", none)
@@ -179,7 +179,7 @@ fn var MemoryTree.remove(path: String, recursive: Bool = false) Void!:
 		Error("filesystem: file or directory not found", kind: "ENOENT")
 	)
 
-	prefix := "{inside}/"
+	prefix := f"{inside}/"
 	below_files := self.files.keys().filter(fn k: k.starts_with(prefix))
 	below_dirs := self.directories.values().filter(fn k: k.starts_with(prefix))
 	if not recursive and (below_files.length() + below_dirs.length()) > 0: return error(

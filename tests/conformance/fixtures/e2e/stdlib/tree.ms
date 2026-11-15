@@ -13,7 +13,7 @@ import (
 )
 
 fn paths(found: List[WalkEntry]) List[String]:
-	return found.map(fn e: if e.directory: "{e.path}/" else: e.path.clone())
+	return found.map(fn e: if e.directory: f"{e.path}/" else: e.path.clone())
 
 fn total_size(tree: FileTree, names: List[String]) Int!:
 	var total = 0
@@ -116,9 +116,9 @@ test "walk is depth first and sorted":
 
 test "host tree walks the same way":
 	dir := temporary("manuscript-tree-") | expect_ok?
-	create_directory("{dir.path()}/b", true) | expect_ok?
-	write_file(path: "{dir.path()}/b/two.txt", data: "22").wait() | expect_ok?
-	write_file(path: "{dir.path()}/one.txt", data: "1").wait() | expect_ok?
+	create_directory(f"{dir.path()}/b", true) | expect_ok?
+	write_file(path: f"{dir.path()}/b/two.txt", data: "22").wait() | expect_ok?
+	write_file(path: f"{dir.path()}/one.txt", data: "1").wait() | expect_ok?
 
 	tree := host_tree(dir.path())
 	if paths(walk(tree) | expect_ok?) != ["b/", "b/two.txt", "one.txt"]: return panic(
@@ -141,5 +141,5 @@ test "memory tree listing follows writes and removals":
 	tree.remove("a/b", true)?
 
 	names := (tree.children("a", none)?).map(fn e: e.name.clone())
-	if names != ["two.txt"]: return panic("children {names}")
+	if names != ["two.txt"]: return panic(f"children {names}")
 	if (tree.children("", none)?).length() != 1: return panic("root")

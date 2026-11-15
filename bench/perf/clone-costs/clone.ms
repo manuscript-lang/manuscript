@@ -11,18 +11,18 @@ type Q:
 
 fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
-	print("{name} {(now - t0) / 1000} {chk}")
+	print(f"{name} {(now - t0) / 1000} {chk}")
 
 fn main() Void:
 	var li: List[Int] = []
 	for i in 0..1000000: li.append(i)
 
 	var ls: List[String] = []
-	for i in 0..200000: ls.append("a-longer-string-than-inline-{i}")
+	for i in 0..200000: ls.append(f"a-longer-string-than-inline-{i}")
 
 	var lp: List[P] = []
 	for i in 0..200000: lp.append(
-		P(x: i, y: i, name: "a-longer-string-than-inline-{i}")
+		P(x: i, y: i, name: f"a-longer-string-than-inline-{i}")
 	)
 
 	var lq: List[Q] = []
@@ -32,7 +32,7 @@ fn main() Void:
 	for i in 0..200000: mi[i] = i
 
 	var ms: Map[String, Int] = {}
-	for i in 0..200000: ms["key-number-{i}"] = i
+	for i in 0..200000: ms[f"key-number-{i}"] = i
 
 	var big = "x".repeat(1000000).get("")
 	var t0 = monotonic().tick

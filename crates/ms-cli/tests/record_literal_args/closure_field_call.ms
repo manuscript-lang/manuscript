@@ -27,4 +27,4 @@ fn ints_draw(s: Source) Drawn[Int]:
 
 fn main() Void:
     c := ints().make(Source([0, 3, 0, 7], 0))
-    void stdout().write("{c.value} {c.source.choices}\n")
+    void stdout().write(f"{c.value} {c.source.choices}\n")

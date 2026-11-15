@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     l1 := [28]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := (253476 - ((-48) - (-46)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     if "".is_empty():
         say("line\nbreak".replace("42", "naïve"))
     else:
-        say("brace\{s\}")
+        say("brace{s}")
 
     s3 := (
         "gamma".upper().upper()
         + "gamma".replace("emoji 😀", "back\\slash").trim()
     )
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     fixed := 1
     fixed = 2
 
     i4 := (-50)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     return 0

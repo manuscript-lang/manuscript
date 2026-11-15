@@ -13,7 +13,7 @@ fn route(request: HttpRequest) HttpResponse:
 fn run() Bool:
     server := serve("127.0.0.1:0", buffered(route)).get()
     slow := fetch(
-        "http://{server.address()}/slow", FetchOptions(timeout: milliseconds(200))
+        f"http://{server.address()}/slow", FetchOptions(timeout: milliseconds(200))
     ).wait()
     return slow.is_error()
 

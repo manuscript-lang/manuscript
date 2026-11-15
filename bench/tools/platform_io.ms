@@ -23,24 +23,24 @@ import (
 ECHO := "import stdin, stdout_bytes from \"@std/io/io.ms\"\n\nfn main() Void:\n\tvar input = stdin()\n\tvar output = stdout_bytes()\n\twhile true:\n\t\tchunk := input.next().get()\n\t\tif data := chunk:\n\t\t\toutput.write(data).get()\n\t\telse:\n\t\t\treturn\n"
 
 fn report(name: String, best_ns: Int, ops: Int) Void:
-	print("{host()} {name} {best_ns / ops} ns/op ({ops} ops)")
+	print(f"{host()} {name} {best_ns / ops} ns/op ({ops} ops)")
 
 fn write_files(dir: String, n: Int) Void!:
 	for i in 0..n:
-		write_file("{dir}/f{i}.txt", "file {i}\n", true).wait()?
+		write_file(f"{dir}/f{i}.txt", f"file {i}\n", true).wait()?
 
 fn read_files(dir: String, n: Int) Int!:
 	var total = 0
 
 	for i in 0..n:
-		data := read_file("{dir}/f{i}.txt").wait()?
+		data := read_file(f"{dir}/f{i}.txt").wait()?
 		total += data.length()
 
 	return ok(total)
 
 fn rename_files(dir: String, n: Int) Void!:
 	for i in 0..n:
-		rename("{dir}/f{i}.txt", "{dir}/g{i}.txt")?
+		rename(f"{dir}/f{i}.txt", f"{dir}/g{i}.txt")?
 
 fn walk(dir: String) Int!:
 	var found = 0
@@ -48,7 +48,7 @@ fn walk(dir: String) Int!:
 	for entry in list(dir)?:
 		found += 1
 		if entry.directory:
-			found += walk("{dir}/{entry.name}")?
+			found += walk(f"{dir}/{entry.name}")?
 
 	return ok(found)
 
@@ -60,8 +60,8 @@ fn files(n: Int) Void!:
 	var best_walk = best_write
 
 	for round in 0..3:
-		dir := "{root}/r{round}"
-		create_directory("{dir}/sub", true)?
+		dir := f"{root}/r{round}"
+		create_directory(f"{dir}/sub", true)?
 
 		start := now_ns()
 		write_files(dir, n)?
@@ -101,7 +101,7 @@ fn round_trips(program: String, n: Int) Void!:
 	var child = spawn(program, [], SpawnOptions())?
 	var input = child.stdin()
 	var output = child.stdout()
-	print("{host()} pipe round trip: child started")
+	print(f"{host()} pipe round trip: child started")
 
 	var best = 1000000000000
 
@@ -115,7 +115,7 @@ fn round_trips(program: String, n: Int) Void!:
 			_reply := output.next()?
 			if i % 50 == 0:
 				note(
-					"{host()} pipe round trip {round}.{i}: {now_ns() - start} ns elapsed"
+					f"{host()} pipe round trip {round}.{i}: {now_ns() - start} ns elapsed"
 				)
 
 		best = min(best, now_ns() - start)
@@ -129,17 +129,17 @@ fn run_all(n: Int) Void!:
 	spawns(ms_binary(), 30)?
 
 	work := temporary_directory("platform-io-echo")?
-	write_file("{work}/echo.ms", ECHO).wait()?
+	write_file(f"{work}/echo.ms", ECHO).wait()?
 
 	built := capture(
 		ms_binary(),
-		["build", "{work}/echo.ms", "-o", "{work}/echo{exe()}"],
+		["build", f"{work}/echo.ms", "-o", f"{work}/echo{exe()}"],
 	)
 
 	if built.ok and built.code == 0:
-		round_trips("{work}/echo{exe()}", 300)?
+		round_trips(f"{work}/echo{exe()}", 300)?
 	else:
-		print("{host()} pipe round trip skipped: {built.stderr}")
+		print(f"{host()} pipe round trip skipped: {built.stderr}")
 
 	remove(work, true)?
 
@@ -152,6 +152,6 @@ fn main() Int:
 		else: return usage("usage: platform_io.ms [-- files]")
 
 	done := run_all(n)
-	if done.is_error(): return fail("platform_io: {done.err().message}")
+	if done.is_error(): return fail(f"platform_io: {done.err().message}")
 
 	return 0

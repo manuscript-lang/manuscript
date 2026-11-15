@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "check",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 1,
     "format": 1,
@@ -79,7 +79,7 @@
           "file": "golden-1384.ms",
           "line": 8,
           "column": 28,
-          "offset": 264
+          "offset": 265
         }
       },
       {
@@ -90,14 +90,14 @@
           "file": "golden-1384.ms",
           "line": 8,
           "column": 22,
-          "offset": 258
+          "offset": 259
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1384.ms:3:8: resolution: module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"\n   |\n 3 | import arguments from \"@std/os/process.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1384.ms:6:13: resolution: unknown binding arguments; add: import arguments from \"@std/os/env.ms\"\n   |\n 6 |     args := arguments()\n   |             ^\n<DIR>/golden-1384.ms:7:28: type: unknown argument data; parameters of write: value\n   |\n 7 |     _out := stdout().write(data: \"out={args[0]}\\n\")\n   |                            ^\n<DIR>/golden-1384.ms:7:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 7 |     _out := stdout().write(data: \"out={args[0]}\\n\")\n   |                      ^\n<DIR>/golden-1384.ms:8:28: type: unknown argument data; parameters of write: value\n   |\n 8 |     _err := stderr().write(data: \"stderr\\n\")\n   |                            ^\n<DIR>/golden-1384.ms:8:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 8 |     _err := stderr().write(data: \"stderr\\n\")\n   |                      ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1384.ms:3:8: resolution: module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"\n   |\n 3 | import arguments from \"@std/os/process.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1384.ms:6:13: resolution: unknown binding arguments; add: import arguments from \"@std/os/env.ms\"\n   |\n 6 |     args := arguments()\n   |             ^\n<DIR>/golden-1384.ms:7:28: type: unknown argument data; parameters of write: value\n   |\n 7 |     _out := stdout().write(data: f\"out={args[0]}\\n\")\n   |                            ^\n<DIR>/golden-1384.ms:7:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 7 |     _out := stdout().write(data: f\"out={args[0]}\\n\")\n   |                      ^\n<DIR>/golden-1384.ms:8:28: type: unknown argument data; parameters of write: value\n   |\n 8 |     _err := stderr().write(data: \"stderr\\n\")\n   |                            ^\n<DIR>/golden-1384.ms:8:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 8 |     _err := stderr().write(data: \"stderr\\n\")\n   |                      ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

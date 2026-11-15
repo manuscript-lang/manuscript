@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    b1 := ("{((-1) * 45)}:" + "gamma".trim()).is_empty()
-    say("b1 = {b1}")
+    b1 := (f"{((-1) * 45)}:" + "gamma".trim()).is_empty()
+    say(f"b1 = {b1}")
 
     bad := missing_function(3)
     say(
-        "{(-49)} {(612624676886 - 868129)} {((-49) < (612624676886 - 868129))} sum {(-49) + (612624676886 - 868129)}"
+        f"{(-49)} {(612624676886 - 868129)} {((-49) < (612624676886 - 868129))} sum {(-49) + (612624676886 - 868129)}"
     )
     return 0

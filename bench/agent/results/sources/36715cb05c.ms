@@ -262,7 +262,7 @@ fn char_value(body: String, full: String) Result[Int, AsmError]:
 			v := escape_value(ch(inner, 1))
 			if v >= 0: return ok(v)
 
-	return error(AsmError(msg: "invalid expression '{full}'"))
+	return error(AsmError(msg: f"invalid expression '{full}'"))
 
 fn digit_value(c: Int) Int:
 	if c >= 48 and c <= 57: return c - 48
@@ -286,7 +286,7 @@ fn number_value(body: String, full: String) Result[Int, AsmError]:
 	for i in range(start, n):
 		d := digit_value(ch(body, i))
 		if d < 0 or d >= base:
-			return error(AsmError(msg: "invalid expression '{full}'"))
+			return error(AsmError(msg: f"invalid expression '{full}'"))
 
 	var v = 0
 
@@ -302,7 +302,7 @@ fn symbol_value(var a: Asm, name: String) Result[Int, AsmError]:
 
 	if a.equ_text.contains(name):
 		if a.busy.contains(name):
-			return error(AsmError(msg: "circular definition of '{name}'"))
+			return error(AsmError(msg: f"circular definition of '{name}'"))
 
 		a.busy.add(name)
 
@@ -311,7 +311,7 @@ fn symbol_value(var a: Asm, name: String) Result[Int, AsmError]:
 		a.equ_val.add(name, v)
 		return ok(v)
 
-	return error(AsmError(msg: "undefined symbol '{name}'"))
+	return error(AsmError(msg: f"undefined symbol '{name}'"))
 
 fn term_value(var a: Asm, body: String, full: String) Result[Int, AsmError]:
 	c := ch(body, 0)
@@ -319,7 +319,7 @@ fn term_value(var a: Asm, body: String, full: String) Result[Int, AsmError]:
 	if is_digit(c): return number_value(body, full)
 	if is_ident(body): return symbol_value(var a, body)
 
-	return error(AsmError(msg: "invalid expression '{full}'"))
+	return error(AsmError(msg: f"invalid expression '{full}'"))
 
 fn eval_expr(var a: Asm, text: String) Result[Int, AsmError]:
 	full := text.trim()
@@ -328,7 +328,7 @@ fn eval_expr(var a: Asm, text: String) Result[Int, AsmError]:
 	for t in split_terms(full):
 		body := sub(t, 1, t.length())
 		if body.length() == 0:
-			return error(AsmError(msg: "invalid expression '{full}'"))
+			return error(AsmError(msg: f"invalid expression '{full}'"))
 
 		v := try term_value(var a, body, full)
 
@@ -421,10 +421,10 @@ fn parse_operand(arg: String) Result[Operand, AsmError]:
 
 	n := arg.length()
 	if n < 2 or ch(arg, n - 1) != 93:
-		return error(AsmError(msg: "invalid operand '{arg}'"))
+		return error(AsmError(msg: f"invalid operand '{arg}'"))
 
 	content := sub(arg, 1, n - 1).trim()
-	if content.length() == 0: return error(AsmError(msg: "invalid operand '{arg}'"))
+	if content.length() == 0: return error(AsmError(msg: f"invalid operand '{arg}'"))
 
 	var base = -1
 	var exprs = List[String]()
@@ -433,7 +433,7 @@ fn parse_operand(arg: String) Result[Operand, AsmError]:
 		body := sub(t, 1, t.length())
 		idx := reg_index(body)
 		if body.length() == 0 or (idx >= 0 and (ch(t, 0) == 45 or base >= 0)):
-			return error(AsmError(msg: "invalid operand '{arg}'"))
+			return error(AsmError(msg: f"invalid operand '{arg}'"))
 
 		if idx >= 0:
 			base = idx
@@ -485,7 +485,7 @@ fn instruction(var a: Asm, ln: Int, name: String, rest: String) Result[Int, AsmE
 	if a.section == 1: return error(AsmError(msg: "instruction in data section"))
 
 	opc := opcode_of(name)
-	if opc < 0: return error(AsmError(msg: "unknown mnemonic '{name}'"))
+	if opc < 0: return error(AsmError(msg: f"unknown mnemonic '{name}'"))
 
 	args := split_args(rest)
 	var ops = List[Operand]()
@@ -495,9 +495,9 @@ fn instruction(var a: Asm, ln: Int, name: String, rest: String) Result[Int, AsmE
 		ops.append(o)
 
 	if ops.length() != arity(opc):
-		return error(AsmError(msg: "wrong number of operands for '{name}'"))
+		return error(AsmError(msg: f"wrong number of operands for '{name}'"))
 	if not shape_ok(opc, ops):
-		return error(AsmError(msg: "invalid operands for '{name}'"))
+		return error(AsmError(msg: f"invalid operands for '{name}'"))
 
 	a.items.append(
 		Item(
@@ -567,7 +567,7 @@ fn data_space(var a: Asm, ln: Int, rest: String) Result[Int, AsmError]:
 		return error(AsmError(msg: "wrong number of operands for '.space'"))
 
 	count := try eval_expr(var a, args.get(0))
-	if count < 0: return error(AsmError(msg: "invalid operand '{args.get(0)}'"))
+	if count < 0: return error(AsmError(msg: f"invalid operand '{args.get(0)}'"))
 
 	var fill = "0"
 	if args.length() == 2:
@@ -592,7 +592,7 @@ fn data_space(var a: Asm, ln: Int, rest: String) Result[Int, AsmError]:
 
 fn directive(var a: Asm, ln: Int, word: String, rest: String) Result[Int, AsmError]:
 	if word == ".text" or word == ".data":
-		if rest.length() > 0: return error(AsmError(msg: "invalid operand '{rest}'"))
+		if rest.length() > 0: return error(AsmError(msg: f"invalid operand '{rest}'"))
 
 		if word == ".text":
 			a.section = 0
@@ -603,7 +603,7 @@ fn directive(var a: Asm, ln: Int, word: String, rest: String) Result[Int, AsmErr
 
 	if word == ".budget":
 		v := parse_budget(rest)
-		if v < 0: return error(AsmError(msg: "invalid operand '{rest}'"))
+		if v < 0: return error(AsmError(msg: f"invalid operand '{rest}'"))
 
 		a.budget = v
 		return ok(0)
@@ -614,9 +614,9 @@ fn directive(var a: Asm, ln: Int, word: String, rest: String) Result[Int, AsmErr
 			return error(AsmError(msg: "wrong number of operands for '.equ'"))
 
 		nm := args.get(0)
-		if not is_ident(nm): return error(AsmError(msg: "invalid operand '{nm}'"))
-		if reg_index(nm) >= 0: return error(AsmError(msg: "reserved name '{nm}'"))
-		if defined(a, nm): return error(AsmError(msg: "duplicate symbol '{nm}'"))
+		if not is_ident(nm): return error(AsmError(msg: f"invalid operand '{nm}'"))
+		if reg_index(nm) >= 0: return error(AsmError(msg: f"reserved name '{nm}'"))
+		if defined(a, nm): return error(AsmError(msg: f"duplicate symbol '{nm}'"))
 
 		a.seen_equ.add(nm)
 		return ok(0)
@@ -626,7 +626,7 @@ fn directive(var a: Asm, ln: Int, word: String, rest: String) Result[Int, AsmErr
 	if word == ".asciz": return data_string(var a, ln, true, rest)
 	if word == ".space": return data_space(var a, ln, rest)
 
-	return error(AsmError(msg: "unknown directive '{word}'"))
+	return error(AsmError(msg: f"unknown directive '{word}'"))
 
 fn line_pass1(var a: Asm, ln: Int, raw: String) Result[Int, AsmError]:
 	var body = raw.trim()
@@ -634,8 +634,8 @@ fn line_pass1(var a: Asm, ln: Int, raw: String) Result[Int, AsmError]:
 
 	while k > 0:
 		name := sub(body, 0, k)
-		if reg_index(name) >= 0: return error(AsmError(msg: "reserved name '{name}'"))
-		if defined(a, name): return error(AsmError(msg: "duplicate symbol '{name}'"))
+		if reg_index(name) >= 0: return error(AsmError(msg: f"reserved name '{name}'"))
+		if defined(a, name): return error(AsmError(msg: f"duplicate symbol '{name}'"))
 
 		if a.section == 0:
 			a.symbols.add(name, a.ninstr)
@@ -732,12 +732,12 @@ fn alu(opc: Int, x: Int, y: Int) Result[Int, AsmError]:
 
 fn mem_read(var vm: Machine, addr: Int) Result[Int, AsmError]:
 	if addr < 0 or addr >= MEM_WORDS:
-		return error(AsmError(msg: "memory access out of range: {addr}"))
+		return error(AsmError(msg: f"memory access out of range: {addr}"))
 	return ok(vm.mem.get(addr))
 
 fn mem_write(var vm: Machine, addr: Int, value: Int) Result[Int, AsmError]:
 	if addr < 0 or addr >= MEM_WORDS:
-		return error(AsmError(msg: "memory access out of range: {addr}"))
+		return error(AsmError(msg: f"memory access out of range: {addr}"))
 
 	vm.mem.set(addr, value)
 	return ok(0)
@@ -878,19 +878,19 @@ fn step(var vm: Machine) Result[Int, AsmError]:
 fn trap_text(vm: Machine, msg: String) String:
 	var line = "-"
 	if vm.pc >= 0 and vm.pc < vm.n:
-		line = "{vm.code.get(vm.pc * 8 + 1)}"
-	return "-- trap: {msg} (pc={vm.pc} line={line}) after {vm.steps} steps"
+		line = f"{vm.code.get(vm.pc * 8 + 1)}"
+	return f"-- trap: {msg} (pc={vm.pc} line={line}) after {vm.steps} steps"
 
 // Runs until halt or trap and returns the first summary line.
 fn run(var vm: Machine) String:
 	while true:
 		if vm.steps == vm.budget: return trap_text(vm, "budget exceeded")
 		if vm.pc < 0 or vm.pc >= vm.n:
-			return "-- trap: pc out of range (pc={vm.pc} line=-) after {vm.steps} steps"
+			return f"-- trap: pc out of range (pc={vm.pc} line=-) after {vm.steps} steps"
 
 		r := step(var vm)
 		if r.is_error(): return trap_text(vm, r.err().msg)
-		if r.get(0) == 1: return "-- halted after {vm.steps} steps"
+		if r.get(0) == 1: return f"-- halted after {vm.steps} steps"
 
 	return ""
 
@@ -917,7 +917,7 @@ fn prescan_equ(var a: Asm, raw: String) Int:
 	return 0
 
 fn report(ln: Int, msg: String) Int:
-	stdout().write("asm error line {ln}: {msg}\n")
+	stdout().write(f"asm error line {ln}: {msg}\n")
 	stdout().flush()
 	return 0
 
@@ -997,7 +997,7 @@ export fn main() Int:
 	stdout().write_bytes(body)
 
 	rv := vm.regs
-	summary := "{status}\nregs: r0={rv.get(0)} r1={rv.get(1)} r2={rv.get(2)} r3={rv.get(3)} r4={rv.get(4)} r5={rv.get(5)} r6={rv.get(6)} r7={rv.get(7)} sp={rv.get(8)} bp={rv.get(9)}\nflags: Z={vm.z} L={vm.l}\n"
+	summary := f"{status}\nregs: r0={rv.get(0)} r1={rv.get(1)} r2={rv.get(2)} r3={rv.get(3)} r4={rv.get(4)} r5={rv.get(5)} r6={rv.get(6)} r7={rv.get(7)} sp={rv.get(8)} bp={rv.get(9)}\nflags: Z={vm.z} L={vm.l}\n"
 	stdout().write(summary)
 	stdout().flush()
 	return 0

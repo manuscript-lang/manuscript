@@ -168,7 +168,7 @@ fn evaluate(line: String) String:
                 if parsed.zero_division:
                     return "error: division by zero"
 
-                return "{parsed.value}"
+                return f"{parsed.value}"
 
     return "error: syntax"
 
@@ -184,7 +184,7 @@ export fn main() Int:
         output.append(evaluate(line))
 
     if output.length() > 0:
-        stdout().write("{output.join("\n")}\n").get()
+        stdout().write(f"{output.join("\n")}\n").get()
         stdout().flush().get()
 
     return 0

@@ -1,9 +1,9 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn value() String:\n\treturn \"héllo \\u{1F600} {1 + 2} \\{literal\\}\"\n"
+    "fmt": "fn value() String:\n\treturn f\"héllo \\u{1F600} {1 + 2} \\{literal\\}\"\n"
   }
 }

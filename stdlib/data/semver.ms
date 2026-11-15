@@ -40,9 +40,9 @@ fn Version.compare(other: Version) Int:
 
 // Formats a version as `major.minor.patch[-prerelease][+build]`.
 fn Version.format() String:
-	var text = "{self.major}.{self.minor}.{self.patch}"
-	if not self.prerelease.is_empty(): text = "{text}-{self.prerelease.join(".")}"
-	if not self.build.is_empty(): text = "{text}+{self.build.join(".")}"
+	var text = f"{self.major}.{self.minor}.{self.patch}"
+	if not self.prerelease.is_empty(): text = f"{text}-{self.prerelease.join(".")}"
+	if not self.build.is_empty(): text = f"{text}+{self.build.join(".")}"
 	return text
 
 // Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are

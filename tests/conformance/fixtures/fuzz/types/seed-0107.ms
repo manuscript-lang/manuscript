@@ -6,21 +6,21 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 14
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     b2 := (false and ((false and false) and (not false)))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     bad := 1.5 + 2
     i3 := (i1 % (32 + (-i1)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (i3 * i3)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     var acc5 = 0
     var stepacc5 = 0
@@ -29,5 +29,5 @@ export fn main() Int:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 4
 
-    say("acc5 = {acc5}")
+    say(f"acc5 = {acc5}")
     return 0

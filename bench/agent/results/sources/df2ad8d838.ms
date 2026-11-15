@@ -89,6 +89,6 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         if all_scalars(line.scalar_values(), is_space): continue
 
-        stdout().write("{run_line(line)}\n").get()
+        stdout().write(f"{run_line(line)}\n").get()
 
     return 0

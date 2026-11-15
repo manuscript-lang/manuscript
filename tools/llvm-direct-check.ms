@@ -28,7 +28,7 @@ import (
 )
 
 fn ms_path() String:
-	return env("MS", "target/debug/ms{exe()}")
+	return env("MS", f"target/debug/ms{exe()}")
 
 // One release build: what it took, what it emitted and what the program printed.
 type Built:
@@ -53,8 +53,8 @@ fn kept_ir(dir: String) String:
 	var part = 0
 
 	while part < 256:
-		name := if part == 0: "ms-keep.ll" else: "ms-keep-{part}.ll"
-		path := "{dir}/{name}"
+		name := if part == 0: "ms-keep.ll" else: f"ms-keep-{part}.ll"
+		path := f"{dir}/{name}"
 
 		if access(path, 0).is_error():
 			if part > 0: break
@@ -92,14 +92,14 @@ fn build(source: String, dir: String, cranelift: Bool, verify: Bool) Built!:
 	started := monotonic()
 	ran := run(
 		ms,
-		["build", path, "-o", "{dir}/prog{exe()}"],
+		["build", path, "-o", f"{dir}/prog{exe()}"],
 		RunOptions(cwd: dir.clone(), env: build_env(cranelift, verify)),
 	).wait()?
 	seconds := monotonic().difference(started).to_nanoseconds().to_float() / 1.0e9
 	if ran.exit_code != 0:
 		return error(
 			Error(
-				"ms build {source} failed:\n{ran.stderr.decode_utf8().get("")}"
+				f"ms build {source} failed:\n{ran.stderr.decode_utf8().get("")}"
 			)
 		)
 
@@ -111,7 +111,7 @@ fn build(source: String, dir: String, cranelift: Bool, verify: Bool) Built!:
 			ir.split("\n").length(),
 			counts[0],
 			counts[1],
-			"{dir}/prog{exe()}",
+			f"{dir}/prog{exe()}",
 		)
 	)
 
@@ -124,7 +124,7 @@ fn output(exe_path: String) String!:
 	if ran.exit_code != 0:
 		return error(
 			Error(
-				"{exe_path} exited {ran.exit_code}: {ran.stderr.decode_utf8().get("")}"
+				f"{exe_path} exited {ran.exit_code}: {ran.stderr.decode_utf8().get("")}"
 			)
 		)
 
@@ -143,11 +143,11 @@ fn parse_kernels(text: String) List[List[String]]:
 	return rows
 
 fn checksums(rows: List[List[String]]) String:
-	return rows.map(fn r: "{r[0]} {r[2]}").join("\n")
+	return rows.map(fn r: f"{r[0]} {r[2]}").join("\n")
 
 fn row(name: String, old: Built, new: Built) String:
 	share := if new.functions == 0: 0.0 else: new.direct.to_float() * 100.0 / new.functions.to_float()
-	return "| {name} | {old.seconds.to_fixed(2)} s | {new.seconds.to_fixed(2)} s | {new.lines} | {new.direct} of {new.functions} ({share.to_fixed(1)}%) |"
+	return f"| {name} | {old.seconds.to_fixed(2)} s | {new.seconds.to_fixed(2)} s | {new.lines} | {new.direct} of {new.functions} ({share.to_fixed(1)}%) |"
 
 fn runs_wanted() Int:
 	return env("RUNS", "5").parse_int().get(5)
@@ -176,8 +176,8 @@ fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
 		names.map(
 			fn k: [
 				k.clone(),
-				"{best_old.get(k).get(0)}",
-				"{best_new.get(k).get(0)}",
+				f"{best_old.get(k).get(0)}",
+				f"{best_new.get(k).get(0)}",
 			]
 		)
 	)
@@ -191,15 +191,15 @@ fn report_program(
 	var slow: List[String],
 ) Bool!:
 	root := temporary_directory("ms-llvm-direct-")?
-	create_directory("{root}/old")?
-	create_directory("{root}/new")?
-	create_directory("{root}/verify")?
+	create_directory(f"{root}/old")?
+	create_directory(f"{root}/new")?
+	create_directory(f"{root}/verify")?
 
-	old := build(source, "{root}/old", true, false)?
-	new := build(source, "{root}/new", false, false)?
+	old := build(source, f"{root}/old", true, false)?
+	new := build(source, f"{root}/new", false, false)?
 
 	// Fails the program when LLVM's verifier rejects any pass's output.
-	_verified := build(source, "{root}/verify", false, true)?
+	_verified := build(source, f"{root}/verify", false, true)?
 	lines.append(row(source, old, new))
 
 	var same = true
@@ -214,8 +214,8 @@ fn report_program(
 			n := k[2].parse_int().get(0)
 			ratio := if o == 0: 1.0 else: n.to_float() / o.to_float()
 			mark := if ratio > 1.15: " **slower**" else: ""
-			if ratio > 1.15: slow.append("{source} {k[0]}")
-			note("  {k[0]}: {o} us -> {n} us ({ratio.to_fixed(2)}x){mark}")
+			if ratio > 1.15: slow.append(f"{source} {k[0]}")
+			note(f"  {k[0]}: {o} us -> {n} us ({ratio.to_fixed(2)}x){mark}")
 	else:
 		same = output(old.exe)? == output(new.exe)?
 
@@ -235,10 +235,10 @@ fn report(programs: List[String]) Int:
 		result := report_program(source, kernels, var lines, var slow)
 
 		if result.is_error():
-			note("{source}: {result.error().map(fn e: e.message).get("failed")}")
+			note(f"{source}: {result.error().map(fn e: e.message).get("failed")}")
 			failed = true
 		else if not result.get(true):
-			note("{source}: the output differs between the LLVM and Cranelift builds")
+			note(f"{source}: the output differs between the LLVM and Cranelift builds")
 			failed = true
 
 	print(lines.join("\n"))
@@ -255,7 +255,7 @@ fn main() Int:
 		return 2
 
 	if args[0] != "report":
-		note("unknown mode {args[0]}")
+		note(f"unknown mode {args[0]}")
 		return 2
 
 	var programs = args.slice(1, args.length()).get(List[String]())

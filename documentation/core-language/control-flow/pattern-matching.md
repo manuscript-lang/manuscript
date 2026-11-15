@@ -19,11 +19,11 @@ enum Payment:
 fn describe(payment: Payment) String:
     match payment:
         Paid(receipt):
-            return "Paid: {receipt}"
+            return f"Paid: {receipt}"
         Declined(reason):
-            return "Declined: {reason}"
+            return f"Declined: {reason}"
         Pending(reference):
-            return "Pending: {reference}"
+            return f"Pending: {reference}"
 
 fn main() Void:
     print(describe(Payment.Paid("receipt-42")))
@@ -141,9 +141,9 @@ fn Square.area() Int: return self.side * self.side
 
 fn describe(shape: Shape) String:
     match shape:
-        Square(square): return "square {square.side}"
+        Square(square): return f"square {square.side}"
         _:
-            return "area {shape.area()}"
+            return f"area {shape.area()}"
 ```
 
 - The type is a local or imported nominal type or alternative with an explicit implementation of the scrutinee's exact contract.

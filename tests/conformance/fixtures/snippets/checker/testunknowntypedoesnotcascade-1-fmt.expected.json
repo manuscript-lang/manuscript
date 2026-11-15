@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "fn peek() Missing:\n\treturn 0\n\nfn f() Int:\n\tmatch peek():\n\t\tx:\n\t\t\treturn x\n\t\tnone:\n\t\t\treturn 0\n"

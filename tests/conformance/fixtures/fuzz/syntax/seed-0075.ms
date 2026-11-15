@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     if true:
-        say("brace\{s\}")
+        say("brace{s}")
     else:
-        say(("{(16 + 49)}:" + "a"))
+        say((f"{(16 + 49)}:" + "a"))
 
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
     return 0

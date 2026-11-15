@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,23 +23,23 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     l1 := [(-6), (-11), (-23), (-19)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     b2 := (((1.0e19 * 508.25) / (953.524 * 36.799)) > ((0.0 * 315.447) + 793.417))
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     i3 := (38 / ((11 % 10) + (490460 * (-46))))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     s4 := (("MiXeD CaSe".trim() + "a".lower()) + "back\\slash")
-    say("s4 = [{s4}]")
-    say("fib(7) = {fib(7)}")
+    say(f"s4 = [{s4}]")
+    say(f"fib(7) = {fib(7)}")
 
     b5 := ((not s4.contains("quote\"d")) or false)
-    say("b5 = {b5}")
+    say(f"b5 = {b5}")
 
     i6 := (((-10) - (17 + 2)) + (-(16 + 33)))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     if s4.ends_with("日本語"):
         say(s4.reverse())
@@ -47,31 +47,31 @@ export fn main() Int:
         say((s4 + s4))
 
     i7 := ((-(i3 * i6)) + ((i6 + (-39)) - (i6 / 36)))
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     f8 := (((384.232 + 8.5) * (3.5 + 949.527)) * (2.5 * (8.0e20 + 956.700)))
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
     say(
-        "{((34 + i6) - 29)} {((i3 - 34) - (i3 % 25))} {(((34 + i6) - 29) < ((i3 - 34) - (i3 % 25)))} sum {((34 + i6) - 29) + ((i3 - 34) - (i3 % 25))}"
+        f"{((34 + i6) - 29)} {((i3 - 34) - (i3 % 25))} {(((34 + i6) - 29) < ((i3 - 34) - (i3 % 25)))} sum {((34 + i6) - 29) + ((i3 - 34) - (i3 % 25))}"
     )
 
     var acc9 = 0
     for i in 0..7:
         acc9 += i * 9
-    say("acc9 = {acc9}")
+    say(f"acc9 = {acc9}")
 
     s10 := s4
-    say("s10 = [{s10}]")
+    say(f"s10 = [{s10}]")
 
-    b11 := "naïve".contains("brace\{s\}")
-    say("b11 = {b11}")
+    b11 := "naïve".contains("brace{s}")
+    say(f"b11 = {b11}")
 
     f12 := f8
-    say("f12 = {f12}")
+    say(f"f12 = {f12}")
 
     l13 := l1.filter(fn x: x > (-3))
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     b14 := b2
-    say("b14 = {b14}")
+    say(f"b14 = {b14}")
     return 0

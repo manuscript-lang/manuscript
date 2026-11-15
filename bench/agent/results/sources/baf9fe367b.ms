@@ -55,10 +55,10 @@ fn fail[T](msg: String) Result[T, Fail]:
 	return error(Fail(msg: msg))
 
 fn say(text: String) Unit:
-	stdout().write("{text}\n").get()
+	stdout().write(f"{text}\n").get()
 
 fn report(cause: Fail) Unit:
-	say("error: {cause.msg}")
+	say(f"error: {cause.msg}")
 
 fn fnv(text: String) Int:
 	var h = FNV_OFFSET
@@ -109,13 +109,13 @@ fn same_tree(left: Map[String, String], right: Map[String, String]) Bool:
 fn tree_hash(tree: Map[String, String]) String:
 	var text = ""
 	for name in sorted_keys(tree):
-		text += "{name} {hex16(fnv(tree.get_or(name, "")))}\n"
+		text += f"{name} {hex16(fnv(tree.get_or(name, "")))}\n"
 	return hex16(fnv(text))
 
 fn commit_id(tree: Map[String, String], parents: List[String], message: String) String:
-	var text = "tree {tree_hash(tree)}\n"
+	var text = f"tree {tree_hash(tree)}\n"
 	for parent in parents:
-		text += "parent {parent}\n"
+		text += f"parent {parent}\n"
 	return hex16(fnv(text + "\n" + message + "\n"))
 
 fn new_repo() Repo:
@@ -229,10 +229,10 @@ fn valid_name(name: String) Bool:
 
 fn resolve_prefix(repo: Repo, base: String, text: String) Result[String, Fail]:
 	chars := base.chars()
-	if chars.length() < 4: return fail("unknown revision '{text}'")
+	if chars.length() < 4: return fail(f"unknown revision '{text}'")
 
 	for c in chars:
-		if not HEX.contains(c): return fail("unknown revision '{text}'")
+		if not HEX.contains(c): return fail(f"unknown revision '{text}'")
 
 	var found = ""
 	var count = 0
@@ -242,14 +242,14 @@ fn resolve_prefix(repo: Repo, base: String, text: String) Result[String, Fail]:
 			found = id
 			count += 1
 
-	if count == 0: return fail("unknown revision '{text}'")
-	if count > 1: return fail("ambiguous revision '{text}'")
+	if count == 0: return fail(f"unknown revision '{text}'")
+	if count > 1: return fail(f"ambiguous revision '{text}'")
 
 	return ok(found)
 
 fn resolve(repo: Repo, text: String) Result[String, Fail]:
 	parts := text.split("~")
-	if parts.length() > 2: return fail("unknown revision '{text}'")
+	if parts.length() > 2: return fail(f"unknown revision '{text}'")
 
 	var base = text
 	var steps = 0
@@ -257,7 +257,7 @@ fn resolve(repo: Repo, text: String) Result[String, Fail]:
 	if parts.length() == 2:
 		base = parts.get(0)
 		steps = parse_count(parts.get(1))
-		if steps < 0: return fail("unknown revision '{text}'")
+		if steps < 0: return fail(f"unknown revision '{text}'")
 
 	var id = ""
 
@@ -269,11 +269,11 @@ fn resolve(repo: Repo, text: String) Result[String, Fail]:
 			id = repo.tags.get_or(base, "")
 		if id == "": return resolve_prefix(repo, base, text)
 
-	if id == "": return fail("unknown revision '{text}'")
+	if id == "": return fail(f"unknown revision '{text}'")
 
 	for k in range(0, steps):
 		parents := repo.commits.get(id).get().parents
-		if parents.length() == 0: return fail("unknown revision '{text}'")
+		if parents.length() == 0: return fail(f"unknown revision '{text}'")
 
 		id = parents.get(0)
 
@@ -293,7 +293,7 @@ fn is_dirty(repo: Repo) Bool:
 fn untracked_check(repo: Repo, names: List[String]) Result[Unit, Fail]:
 	for name in names.sorted(compare_text):
 		if repo.files.contains(name) and not repo.index.contains(name):
-			return fail("untracked file would be overwritten: {name}")
+			return fail(f"untracked file would be overwritten: {name}")
 	return ok(nop())
 
 fn check_switch(repo: Repo, target: Map[String, String]) Result[Unit, Fail]:
@@ -597,7 +597,7 @@ fn cmd_rm(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 	if args.length() == 0: return fail("usage: rm FILE...")
 
 	for name in args:
-		if not repo.files.contains(name): return fail("no such file: {name}")
+		if not repo.files.contains(name): return fail(f"no such file: {name}")
 
 		repo.files.remove(name)
 
@@ -608,7 +608,7 @@ fn cmd_mv(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 
 	old_name := args.get(0)
 	new_name := args.get(1)
-	if not repo.files.contains(old_name): return fail("no such file: {old_name}")
+	if not repo.files.contains(old_name): return fail(f"no such file: {old_name}")
 
 	content := repo.files.get_or(old_name, "")
 	repo.files.remove(old_name)
@@ -619,7 +619,7 @@ fn cmd_cat(repo: Repo, args: List[String]) Result[Unit, Fail]:
 	if args.length() != 1: return fail("usage: cat FILE")
 
 	name := args.get(0)
-	if not repo.files.contains(name): return fail("no such file: {name}")
+	if not repo.files.contains(name): return fail(f"no such file: {name}")
 
 	for line in lines_of(repo.files.get_or(name, "")):
 		say(line)
@@ -661,7 +661,7 @@ fn cmd_add(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 					if repo.conflicts.contains(path):
 						repo.conflicts.remove(path)
 					else:
-						return fail("pathspec '{path}' did not match any files")
+						return fail(f"pathspec '{path}' did not match any files")
 
 	return ok(nop())
 
@@ -674,12 +674,12 @@ fn print_section(title: String, items: List[String]) Unit:
 
 fn cmd_status(repo: Repo) Result[Unit, Fail]:
 	if repo.head_branch == "":
-		say("HEAD detached at {short(repo.detached)}")
+		say(f"HEAD detached at {short(repo.detached)}")
 	else:
-		say("On branch {repo.head_branch}")
+		say(f"On branch {repo.head_branch}")
 
 	if repo.merging:
-		say("merging: {repo.merge_branch}")
+		say(f"merging: {repo.merge_branch}")
 
 	head := head_tree(repo)
 	var names = Set[String]()
@@ -696,27 +696,27 @@ fn cmd_status(repo: Repo) Result[Unit, Fail]:
 			in_head := head.contains(name)
 
 			if in_index and not in_head:
-				staged.append("new file: {name}")
+				staged.append(f"new file: {name}")
 			else:
 				if in_head and not in_index:
-					staged.append("deleted: {name}")
+					staged.append(f"deleted: {name}")
 				else:
 					if repo.index.get_or(name, "") != head.get_or(name, ""):
-						staged.append("modified: {name}")
+						staged.append(f"modified: {name}")
 
 	var unstaged: List[String] = []
 
 	for name in sorted_keys(repo.index):
 		if not repo.conflicts.contains(name):
 			if not repo.files.contains(name):
-				unstaged.append("deleted: {name}")
+				unstaged.append(f"deleted: {name}")
 			else:
 				if repo.files.get_or(name, "") != repo.index.get_or(name, ""):
-					unstaged.append("modified: {name}")
+					unstaged.append(f"modified: {name}")
 
 	var conflicted: List[String] = []
 	for name in repo.conflicts.values().sorted(compare_text):
-		conflicted.append("unmerged: {name}")
+		conflicted.append(f"unmerged: {name}")
 
 	var untracked: List[String] = []
 	for name in sorted_keys(repo.files):
@@ -791,7 +791,7 @@ fn cmd_commit(var repo: Repo, message: String) Result[Unit, Fail]:
 		repo.merge_other = ""
 		repo.merge_branch = ""
 
-	say("[{label(repo)}{root_note} {short(id)}] {message}")
+	say(f"[{label(repo)}{root_note} {short(id)}] {message}")
 	return ok(nop())
 
 fn if_root(parent_count: Int) String:
@@ -825,11 +825,11 @@ fn cmd_log(repo: Repo, args: List[String]) Result[Unit, Fail]:
 	for c in listed.sorted(by_number_desc):
 		if limit >= 0 and shown >= limit: break
 
-		var line = "{short(c.id)} {c.message}"
+		var line = f"{short(c.id)} {c.message}"
 		if c.parents.length() == 2:
 			line = (
 				line
-				+ " (merge {short(c.parents.get(0))} {short(c.parents.get(1))})"
+				+ f" (merge {short(c.parents.get(0))} {short(c.parents.get(1))})"
 			)
 		say(line)
 		shown += 1
@@ -866,7 +866,7 @@ fn cmd_diff(repo: Repo, args: List[String]) Result[Unit, Fail]:
 
 		if in_left != in_right or left_text != right_text:
 			any = true
-			say("diff {name}")
+			say(f"diff {name}")
 			if not in_left:
 				say("new file")
 			if not in_right:
@@ -879,8 +879,8 @@ fn cmd_diff(repo: Repo, args: List[String]) Result[Unit, Fail]:
 	return ok(nop())
 
 fn create_branch(var repo: Repo, name: String) Result[Unit, Fail]:
-	if not valid_name(name): return fail("invalid branch name '{name}'")
-	if repo.branches.contains(name): return fail("branch '{name}' already exists")
+	if not valid_name(name): return fail(f"invalid branch name '{name}'")
+	if repo.branches.contains(name): return fail(f"branch '{name}' already exists")
 
 	head := head_commit(repo)
 	if head == "": return fail("no commits yet")
@@ -891,32 +891,32 @@ fn create_branch(var repo: Repo, name: String) Result[Unit, Fail]:
 fn cmd_branch(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 	if args.length() == 0:
 		if repo.head_branch == "":
-			say("* (HEAD detached at {short(repo.detached)})")
+			say(f"* (HEAD detached at {short(repo.detached)})")
 
 		for name in sorted_keys(repo.branches):
 			if name == repo.head_branch:
-				say("* {name}")
+				say(f"* {name}")
 			else:
-				say("  {name}")
+				say(f"  {name}")
 
 		return ok(nop())
 
 	if args.length() == 2 and args.get(0) == "-d":
 		name := args.get(1)
-		if not repo.branches.contains(name): return fail("branch '{name}' not found")
+		if not repo.branches.contains(name): return fail(f"branch '{name}' not found")
 		if repo.head_branch == name:
-			return fail("cannot delete the current branch '{name}'")
+			return fail(f"cannot delete the current branch '{name}'")
 
 		target := repo.branches.get_or(name, "")
 		if target != "" and not is_ancestor(repo, target, head_commit(repo)):
-			return fail("branch '{name}' is not fully merged")
+			return fail(f"branch '{name}' is not fully merged")
 
 		repo.branches.remove(name)
 
 		if target == "":
-			say("Deleted branch {name} (was unborn).")
+			say(f"Deleted branch {name} (was unborn).")
 		else:
-			say("Deleted branch {name} (was {short(target)}).")
+			say(f"Deleted branch {name} (was {short(target)}).")
 
 		return ok(nop())
 
@@ -933,8 +933,8 @@ fn cmd_tag(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 	if args.length() > 2: return fail("usage: tag [NAME [REF]]")
 
 	name := args.get(0)
-	if not valid_name(name): return fail("invalid tag name '{name}'")
-	if repo.tags.contains(name): return fail("tag '{name}' already exists")
+	if not valid_name(name): return fail(f"invalid tag name '{name}'")
+	if repo.tags.contains(name): return fail(f"tag '{name}' already exists")
 
 	var target_ref = "HEAD"
 	if args.length() == 2:
@@ -950,14 +950,14 @@ fn cmd_show(repo: Repo, args: List[String]) Result[Unit, Fail]:
 
 	id := try resolve(repo, args.get(0))
 	c := repo.commits.get(id).get()
-	say("commit {id}")
-	say("tree {tree_hash(c.tree)}")
+	say(f"commit {id}")
+	say(f"tree {tree_hash(c.tree)}")
 	for parent in c.parents:
-		say("parent {parent}")
-	say("message: {c.message}")
+		say(f"parent {parent}")
+	say(f"message: {c.message}")
 	say("files:")
 	for name in sorted_keys(c.tree):
-		say("  {name} {short(hex16(fnv(c.tree.get_or(name, ""))))}")
+		say(f"  {name} {short(hex16(fnv(c.tree.get_or(name, ""))))}")
 	return ok(nop())
 
 fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
@@ -967,7 +967,7 @@ fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 		try check_switch(repo, head_tree(repo))
 		repo.head_branch = name
 		repo.detached = ""
-		say("Switched to a new branch '{name}'")
+		say(f"Switched to a new branch '{name}'")
 		return ok(nop())
 
 	if args.length() != 1: return fail("usage: checkout REF | checkout -b NAME")
@@ -977,7 +977,7 @@ fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 
 	if repo.branches.contains(target):
 		if repo.head_branch == target:
-			say("Already on '{target}'")
+			say(f"Already on '{target}'")
 			return ok(nop())
 
 		target_tree := tree_of(repo, repo.branches.get_or(target, ""))
@@ -987,7 +987,7 @@ fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 		apply_state(var repo, target_tree, target_tree.clone(), old_head)
 		repo.head_branch = target
 		repo.detached = ""
-		say("Switched to branch '{target}'")
+		say(f"Switched to branch '{target}'")
 		return ok(nop())
 
 	id := try resolve(repo, target)
@@ -998,7 +998,7 @@ fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 	apply_state(var repo, target_tree, target_tree.clone(), old_head)
 	repo.head_branch = ""
 	repo.detached = id
-	say("HEAD is now at {short(id)} {message_of(repo, id)}")
+	say(f"HEAD is now at {short(id)} {message_of(repo, id)}")
 	return ok(nop())
 
 fn cmd_reset(var repo: Repo, args: List[String]) Result[Unit, Fail]:
@@ -1011,7 +1011,7 @@ fn cmd_reset(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 	if id == "": return fail("no commits yet")
 
 	reset_hard(var repo, id)
-	say("HEAD is now at {short(id)} {message_of(repo, id)}")
+	say(f"HEAD is now at {short(id)} {message_of(repo, id)}")
 	return ok(nop())
 
 fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
@@ -1030,7 +1030,7 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 
 	name := args.get(0)
 	if not repo.branches.contains(name) or repo.branches.get_or(name, "") == "":
-		return fail("unknown branch '{name}'")
+		return fail(f"unknown branch '{name}'")
 
 	other := repo.branches.get_or(name, "")
 	if is_dirty(repo): return fail("local changes would be overwritten")
@@ -1062,11 +1062,11 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 			var repo,
 			plan.index.clone(),
 			[head, other],
-			"Merge branch '{name}'",
+			f"Merge branch '{name}'",
 		)
 		move_head(var repo, id)
 		say("Merge made by the 'three-way' strategy.")
-		say("[{label(repo)} {short(id)}] Merge branch '{name}'")
+		say(f"[{label(repo)} {short(id)}] Merge branch '{name}'")
 		return ok(nop())
 
 	repo.merging = true
@@ -1080,9 +1080,9 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 		kind := plan.kinds.get_or(path, "")
 
 		if kind == "modify/delete":
-			say("CONFLICT (modify/delete): {path}")
+			say(f"CONFLICT (modify/delete): {path}")
 		else:
-			say("CONFLICT ({kind}): Merge conflict in {path}")
+			say(f"CONFLICT ({kind}): Merge conflict in {path}")
 
 	say("Automatic merge failed; fix conflicts and then commit the result.")
 	return ok(nop())
@@ -1111,7 +1111,7 @@ fn run_command(var repo: Repo, words: List[String], raw: String, block: List[Str
 	if command == "reset": return cmd_reset(var repo, args)
 	if command == "merge": return cmd_merge(var repo, args)
 
-	return fail("unknown command '{command}'")
+	return fail(f"unknown command '{command}'")
 
 fn read_all_lines() List[String]:
 	var lines: List[String] = []
@@ -1140,7 +1140,7 @@ export fn main() Int:
 
 		if text != "" and not text.starts_with("#"):
 			words := split_words(raw)
-			say("> {raw.trim_end()}")
+			say(f"> {raw.trim_end()}")
 
 			var block: List[String] = []
 

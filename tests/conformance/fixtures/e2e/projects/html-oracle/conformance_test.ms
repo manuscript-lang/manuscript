@@ -36,23 +36,23 @@ fn dump(node: HtmlNode, var out: StringBuilder) Void:
 			for child in children: dump(child, var out)
 			out.append("]")
 		Element(tag, namespace, attributes, children):
-			out.append("E{hx(tag)},{hx(namespace)}\{")
+			out.append(f"E{hx(tag)},{hx(namespace)}\{")
 			for a in attributes: out.append(
-				"{hx(a.name)},{hx(a.namespace)},{hx(a.value)};"
+				f"{hx(a.name)},{hx(a.namespace)},{hx(a.value)};"
 			)
-			out.append("\}[")
+			out.append("}[")
 			for child in children: dump(child, var out)
 			out.append("]")
-		Text(text): out.append("T{hx(text)};")
-		Comment(text): out.append("C{hx(text)};")
+		Text(text): out.append(f"T{hx(text)};")
+		Comment(text): out.append(f"C{hx(text)};")
 		Doctype(name, public_id, system_id):
-			out.append("Y{hx(name)},{hx(public_id)},{hx(system_id)};")
+			out.append(f"Y{hx(name)},{hx(public_id)},{hx(system_id)};")
 
 fn render(result: HtmlNode!) String:
 	if value := result:
 		var sb = StringBuilder()
 		dump(value, var sb)
-		return "ok {sb.build()}"
+		return f"ok {sb.build()}"
 
 	if result.err().kind == "EOVERFLOW": return "err LimitExceeded"
 
@@ -77,7 +77,7 @@ test "parse matches the recorded Go html trees":
 		)
 		got := render(parse(unhex(f[1]), options))
 		if got != f[f.length() - 1]: return fail(
-			"case {cases}: {line.view(0, line.length().min(160))}\n  want {f[f.length() - 1].view(0, f[f.length() - 1].length().min(300))}\n  got  {got.view(0, got.length().min(300))}"
+			f"case {cases}: {line.view(0, line.length().min(160))}\n  want {f[f.length() - 1].view(0, f[f.length() - 1].length().min(300))}\n  got  {got.view(0, got.length().min(300))}"
 		)
 
 		cases += 1
@@ -94,11 +94,11 @@ test "parse trees keep their size and checksum for the recorded large documents"
 
 		got := render(parse(unhex(f[1])))
 		body := got.cut_prefix("ok ")
-		if body.is_none(): return fail("parse failed: {got}")
+		if body.is_none(): return fail(f"parse failed: {got}")
 
 		tree := body.get("")
-		summary := "ok {tree.length()} {checksum_hex(tree)}"
-		if summary != f[f.length() - 1]: return fail("{summary} != {f[f.length() - 1]}")
+		summary := f"ok {tree.length()} {checksum_hex(tree)}"
+		if summary != f[f.length() - 1]: return fail(f"{summary} != {f[f.length() - 1]}")
 
 		cases += 1
 

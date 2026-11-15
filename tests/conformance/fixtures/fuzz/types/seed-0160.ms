@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((-(147626 / (-918503102730))) + (((-297048) + 8) + (-29)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     s2 := "ms".upper()
-    say("s2 = [{s2}]")
+    say(f"s2 = [{s2}]")
 
     f3 := (
         ((4.5 + 963.25) + (494.218 * 411.568))
         + ((0.0 + 0.5) - (719.039 + 964.668))
     )
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     bad := not 5
     b4 := false
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
     return 0

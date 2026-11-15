@@ -21,7 +21,7 @@ type Marker:
 	id: Int
 
 fn var Marker.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 
 fn present(id: Int) Marker?: Marker(id)
 
@@ -61,7 +61,7 @@ fn bound_map() Void:
 	transform: fn(fn(Marker) Int) Int!Int := value.map[Int]
 	first := transform(fn item: item.id)
 	second := transform(fn item: item.id)
-	print("bound map {first.get()} {second.get()}")
+	print(f"bound map {first.get()} {second.get()}")
 
 	_still_present := value.is_ok()
 
@@ -70,7 +70,7 @@ fn bound_error() Void:
 	transform: fn(fn(Marker) Int) Int!Int := value.map_error[Int]
 	first := transform(fn item: item.id)
 	second := transform(fn item: item.id)
-	print("bound error {first.err()} {second.err()}")
+	print(f"bound error {first.err()} {second.err()}")
 
 	_still_present := value.is_error()
 
@@ -79,7 +79,7 @@ fn bound_then() Void:
 	transform: fn(fn(Marker) Int!Int) Int!Int := value.and_then[Int]
 	first := transform(fn item: ok(item.id))
 	second := transform(fn item: ok(item.id))
-	print("bound then {first.get()} {second.get()}")
+	print(f"bound then {first.get()} {second.get()}")
 
 	_still_present := value.is_ok()
 

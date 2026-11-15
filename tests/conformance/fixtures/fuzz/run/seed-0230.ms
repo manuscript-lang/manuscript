@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -30,53 +30,53 @@ export fn main() Int:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 3
 
-    say("acc1 = {acc1}")
+    say(f"acc1 = {acc1}")
 
     i2 := (((-36) * (9 % (-893547759988))) * ((1 * 945632) + (-25)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := (-(-29))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
     say(
-        "{((25 * 16) % (5 + i3))} {((i3 + i3) * (i3 - i2))} {(((25 * 16) % (5 + i3)) < ((i3 + i3) * (i3 - i2)))} sum {((25 * 16) % (5 + i3)) + ((i3 + i3) * (i3 - i2))}"
+        f"{((25 * 16) % (5 + i3))} {((i3 + i3) * (i3 - i2))} {(((25 * 16) % (5 + i3)) < ((i3 + i3) * (i3 - i2)))} sum {((25 * 16) % (5 + i3)) + ((i3 + i3) * (i3 - i2))}"
     )
 
     i4 := 25
-    say("i4 = {i4}")
-    say("collatz(781) = {collatz(781)}")
+    say(f"i4 = {i4}")
+    say(f"collatz(781) = {collatz(781)}")
 
     i5 := ((((-38) + i4) + ((-5) * i3)) - (-18))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := ((-24) * (i5 - (i2 - (-24))))
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     l7 := [29]
-    say("l7 = {l7} len {l7.length()}")
+    say(f"l7 = {l7} len {l7.length()}")
 
     var acc8 = 0
     for i in 0..4:
         acc8 += i * (-5)
-    say("acc8 = {acc8}")
+    say(f"acc8 = {acc8}")
 
     i9 := (((423302 - 16) + (i2 % i4)) + ((i6 / i4) + (-4)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     f10 := (((0.0 * 9.5) * (506.030 / 4.0e4)) * (118.119 - 0.0))
-    say("f10 = {f10}")
+    say(f"f10 = {f10}")
 
     i11 := (((i9 * (-685804)) / i6) - (i4 - (47 + (-42))))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     s12 := "delta".reverse().trim()
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     s13 := "héllo"
-    say("s13 = [{s13}]")
+    say(f"s13 = [{s13}]")
 
     i14 := (s13.scalar_length() - 15)
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     b15 := (not false)
-    say("b15 = {b15}")
+    say(f"b15 = {b15}")
     return 0

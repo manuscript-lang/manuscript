@@ -79,10 +79,10 @@ export fn main() Int:
 
         padded := if frac.length() < 2: "0".concat(frac) else: frac
 
-        out.append("{category}: {(total / hundred).to_string_radix(10)}.{padded}")
+        out.append(f"{category}: {(total / hundred).to_string_radix(10)}.{padded}")
 
     if skipped > 0:
-        out.append("skipped: {skipped}")
+        out.append(f"skipped: {skipped}")
     if out.length() > 0:
         stdout().write(out.join("\n").concat("\n")).get()
     return 0

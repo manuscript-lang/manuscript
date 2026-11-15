@@ -64,7 +64,7 @@ fn validate(report: Report) Result[Void, Error]:
         else if entry.status == "skipped":
             skipped = skipped + 1
         else:
-            return fail("{entry.name}: incomplete or failed test ({entry.status})")
+            return fail(f"{entry.name}: incomplete or failed test ({entry.status})")
 
     passed | expect_equal(expected: report.summary.passed)?
     skipped | expect_equal(expected: report.summary.skipped)?
@@ -77,14 +77,14 @@ fn inventory(suite: String) Result[List[String], Error]:
             "tests/e2e/testdata/accept", GlobOptions(patterns: ["*.ms"])
         )?
         core.is_empty() | expect_false?
-        for file in core: files.append("tests/e2e/testdata/accept/{file.path}")
+        for file in core: files.append(f"tests/e2e/testdata/accept/{file.path}")
 
         projects := glob(
             "tests/e2e/testdata/projects",
             GlobOptions(patterns: ["*/conformance_test.ms"])
         )?
         projects.is_empty() | expect_false?
-        for file in projects: files.append("tests/e2e/testdata/projects/{file.path}")
+        for file in projects: files.append(f"tests/e2e/testdata/projects/{file.path}")
         for file in [
             "examples/hello/test.ms", "examples/tooling-demo/src/math.ms",
             "pkg/tooling/format/testdata/compact.input.ms",
@@ -97,7 +97,7 @@ fn inventory(suite: String) Result[List[String], Error]:
             "tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"])
         )?
         library.is_empty() | expect_false?
-        for file in library: files.append("tests/e2e/testdata/stdlib/{file.path}")
+        for file in library: files.append(f"tests/e2e/testdata/stdlib/{file.path}")
 
     files.is_empty() | expect_false?
     return ok(files.sorted(fn left, right: left.compare(right)))
@@ -127,19 +127,19 @@ fn run_conformance(args: List[String]) Result[Void, Error]:
     for file in files:
         if selected(index, shard, count):
             ran = ran + 1
-            emit("TEST {file}")?
+            emit(f"TEST {file}")?
 
             result := run_file(ms, file.clone())
 
             match result:
-                ok(_): emit("PASS {file}")?
+                ok(_): emit(f"PASS {file}")?
                 error(cause):
-                    emit("FAIL {file}: {cause.message}")?
+                    emit(f"FAIL {file}: {cause.message}")?
                     failed = failed + 1
 
         index = index + 1
 
-    emit("{ran} files, {failed} failed")?
+    emit(f"{ran} files, {failed} failed")?
     failed | expect_equal(expected: 0)?
 
 fn run_file(ms: String, file: String) Result[Void, Error]:
@@ -154,7 +154,7 @@ fn run_file(ms: String, file: String) Result[Void, Error]:
     match check_output(output.exit_code, text):
         ok(_): return ok()
         error(cause):
-            emit("{text}\n{stderr}")?
+            emit(f"{text}\n{stderr}")?
             return error(cause)
 
 fn check_output(status: Int, text: String) Result[Void, Error]:
@@ -167,7 +167,7 @@ export fn main() Int:
     match run_conformance(arguments()):
         ok(_): return 0
         error(cause):
-            _written := stdout().write("{cause.message}\n")
+            _written := stdout().write(f"{cause.message}\n")
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":
@@ -185,7 +185,7 @@ test "reports require complete nonempty executions and count explicit skips":
     report.tests = [Case("pass", "failed"), Case("skip", "skipped")]
     validate(report).is_error() | expect_true?
     validate(Report(1, true, 0, [], Summary(0, 0, 0, 0, 0, 0))).is_error() | expect_true?
-    check_output(1, "\{\}").is_error() | expect_true?
+    check_output(1, "{}").is_error() | expect_true?
     check_output(0, "not JSON").is_error() | expect_true?
 
 test "shards cover every inventory entry exactly once":
@@ -204,7 +204,7 @@ test "shards cover every inventory entry exactly once":
             index = index + 1
 
 fn emit(text: String) Result[Void, Error]:
-    stdout().write("{text}\n")?
+    stdout().write(f"{text}\n")?
 
 test "invalid suite and shard arguments fail before running children":
     run_conformance([]).is_error() | expect_true?

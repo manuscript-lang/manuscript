@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn add(a: Int, b: Int) Int:\n\treturn a + b\n\ntest \"addition\":\n\texpect_equal(add(1, 2), 3)?\n\ntest \"zero is unchanged\":\n\texpect_equal(add(0, 7), 7)?\n"

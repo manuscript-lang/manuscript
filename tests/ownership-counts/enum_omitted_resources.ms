@@ -31,14 +31,14 @@ type Token:
 	id: Int
 
 fn var Token.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 
 type NamedToken:
 	id: Int
 	name: String
 
 fn var NamedToken.close() Void!:
-	print("close {self.id}")
+	print(f"close {self.id}")
 
 enum Choice:
 	Full(first: Token, second: Token, third: Token, code: Int)
@@ -59,7 +59,7 @@ fn scalar_omitted() Void:
 		Full(_, _, _, code): code
 		Empty: 0
 
-	print("code {code}")
+	print(f"code {code}")
 
 fn heap_omitted() Void:
 	value := NamedFull(
@@ -73,14 +73,14 @@ fn heap_omitted() Void:
 		NamedFull(_, _, _, code): code
 		NamedEmpty: 0
 
-	print("code {code}")
+	print(f"code {code}")
 
 fn mixed() Void:
 	value := Full(Token(7), Token(8), Token(9), 0)
 
 	void match value:
 		Full(first, _, third, _):
-			print("kept {first.id} {third.id}")
+			print(f"kept {first.id} {third.id}")
 		Empty: void
 
 fn borrowed() Void:
@@ -94,7 +94,7 @@ fn borrowed() Void:
 		Full(_, _, _, saved): saved
 		Empty: 0
 
-	print("borrowed {code - original} {original}")
+	print(f"borrowed {code - original} {original}")
 
 	void match value:
 		Full(first, _, _, _): first.id
@@ -106,7 +106,7 @@ fn wildcard() Void:
 	code := match value:
 		_: 0
 
-	print("wildcard {code}")
+	print(f"wildcard {code}")
 
 fn generic() Void:
 	value := GenericFull(Token(16), Token(17), 11)
@@ -115,7 +115,7 @@ fn generic() Void:
 		GenericFull(_, _, code): code
 		GenericEmpty: 0
 
-	print("generic {code}")
+	print(f"generic {code}")
 
 fn empty() Void:
 	value: Choice := Empty
@@ -124,7 +124,7 @@ fn empty() Void:
 		Full(_, _, _, code): code
 		Empty: 0
 
-	print("empty {code}")
+	print(f"empty {code}")
 
 fn main() Void:
 	scalar_omitted()

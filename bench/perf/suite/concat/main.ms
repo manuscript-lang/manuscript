@@ -7,7 +7,7 @@ fn main() Void:
 
 	var b = ""
 	for i in 0..50000:
-		b += "item-{i},"
+		b += f"item-{i},"
 
 	var c = ""
 	for i in 0..50000:
@@ -15,7 +15,7 @@ fn main() Void:
 
 	var parts: List[String] = []
 	for i in 0..50000:
-		parts.append("p{i}")
+		parts.append(f"p{i}")
 
 	d := parts.join(",")
-	print("{a.length()} {b.length()} {c.length()} {d.length()}")
+	print(f"{a.length()} {b.length()} {c.length()} {d.length()}")

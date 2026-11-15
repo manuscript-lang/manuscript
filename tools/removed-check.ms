@@ -21,7 +21,7 @@ import (
 
 // The text after `// <key>: ` on a header line, or empty.
 fn header(source: String, key: String) String:
-	prefix := "// {key}: "
+	prefix := f"// {key}: "
 	for line in source.lines():
 		if line.starts_with(prefix): return line.slice(
 			prefix.length(),
@@ -51,7 +51,7 @@ fn main() Int:
 	var seen = 0
 
 	for f in glob("tests/removed", GlobOptions(patterns: ["*.ms"])).get([]):
-		path := "{root}/tests/removed/{f.path}"
+		path := f"{root}/tests/removed/{f.path}"
 		source := read_file(path.clone()).wait().get().decode_utf8().get("")
 		old := header(source, "removed")
 		want := header(source, "use")
@@ -59,7 +59,9 @@ fn main() Int:
 		seen += 1
 
 		if old == "" or want == "" or fixed == "":
-			print("{f.path}: needs '// removed:', '// use:' and '// fix:' header lines")
+			print(
+				f"{f.path}: needs '// removed:', '// use:' and '// fix:' header lines"
+			)
 			failing += 1
 			continue
 
@@ -67,20 +69,20 @@ fn main() Int:
 		text := out.stderr.decode_utf8().get("")
 
 		if out.exit_code == 0:
-			print("{f.path}: '{old}' is accepted; a removed spelling must be an error")
+			print(f"{f.path}: '{old}' is accepted; a removed spelling must be an error")
 			failing += 1
 		else if (
 			fixed.starts_with("none:")
 			and fixed.slice(5, fixed.length()).get("").trim() == ""
 		):
-			print("{f.path}: 'fix: none:' needs a reason")
+			print(f"{f.path}: 'fix: none:' needs a reason")
 			failing += 1
 		else if not text.contains(want):
-			print("{f.path}: the error for '{old}' does not name '{want}'")
+			print(f"{f.path}: the error for '{old}' does not name '{want}'")
 			failing += 1
 		else if not fixed.starts_with("none:"):
 			scratch := temporary("ms-removed-").get()
-			copy := "{scratch.path()}/snippet.ms"
+			copy := f"{scratch.path()}/snippet.ms"
 			write_file(copy.clone(), body(source), replace: true).wait().get()
 
 			applied := run(
@@ -92,11 +94,11 @@ fn main() Int:
 
 			if applied.exit_code != 0 or not result.contains(fixed):
 				print(
-					"{f.path}: 'ms check --fix' does not rewrite '{old}' to '{fixed}'"
+					f"{f.path}: 'ms check --fix' does not rewrite '{old}' to '{fixed}'"
 				)
 				failing += 1
 
-	print("checked {seen} removed spellings, {failing} failing")
+	print(f"checked {seen} removed spellings, {failing} failing")
 	if seen == 0 or failing != 0: return 1
 
 	return 0

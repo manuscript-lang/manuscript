@@ -156,7 +156,7 @@ fn opt_show(o: Optional[String]) String:
 
 fn points_text(o: Optional[Int]) String:
     if p := o:
-        return "{p}"
+        return f"{p}"
 
     return ""
 
@@ -336,7 +336,7 @@ fn parse_id(arg: String) Result[String, Fail]:
 
     digits := cs.drop(k).join("")
     if not digits_only or digits == "":
-        return error(Fail(msg: "bad issue id '{arg}'"))
+        return error(Fail(msg: f"bad issue id '{arg}'"))
 
     return ok(digits)
 
@@ -350,7 +350,7 @@ fn lookup(app: App, arg: String) Result[Int, Fail]:
     d := try parse_id(arg)
     idx := find_index(app, id_value(d))
     if idx.is_none():
-        return error(Fail(msg: "no such issue #{d}"))
+        return error(Fail(msg: f"no such issue #{d}"))
 
     return ok(idx.get())
 
@@ -390,7 +390,7 @@ fn normalize(field: String, value: String) Result[String, Fail]:
 
     if field == "priority":
         if not is_priority(value):
-            return error(Fail(msg: "bad priority '{value}'"))
+            return error(Fail(msg: f"bad priority '{value}'"))
 
         return ok(value)
 
@@ -398,7 +398,7 @@ fn normalize(field: String, value: String) Result[String, Fail]:
         if value == "none":
             return ok("")
         if value.trim() == "":
-            return error(Fail(msg: "empty {field}"))
+            return error(Fail(msg: f"empty {field}"))
 
         return ok(value)
 
@@ -408,15 +408,15 @@ fn normalize(field: String, value: String) Result[String, Fail]:
 
         p := parse_uint(value)
         if p.is_none():
-            return error(Fail(msg: "bad points '{value}'"))
+            return error(Fail(msg: f"bad points '{value}'"))
 
-        return ok("{p.get()}")
+        return ok(f"{p.get()}")
 
     if field == "due":
         if value == "none":
             return ok("")
         if not valid_date(value):
-            return error(Fail(msg: "bad date '{value}'"))
+            return error(Fail(msg: f"bad date '{value}'"))
 
         return ok(value)
 
@@ -428,7 +428,7 @@ fn normalize(field: String, value: String) Result[String, Fail]:
     for item in value.split(","):
         l := item.lower()
         if not is_label(l):
-            return error(Fail(msg: "bad label '{l}'"))
+            return error(Fail(msg: f"bad label '{l}'"))
 
         labs.append(l)
 
@@ -437,14 +437,14 @@ fn normalize(field: String, value: String) Result[String, Fail]:
 fn parse_update(tok: String) Result[Update, Fail]:
     parts := tok.split("=")
     if parts.length() < 2 or parts.get(0) == "":
-        return error(Fail(msg: "expected field=value, got '{tok}'"))
+        return error(Fail(msg: f"expected field=value, got '{tok}'"))
 
     field := parts.get(0)
     value := parts.drop(1).join("=")
     if field == "state":
         return error(Fail(msg: "use move to change state"))
     if not is_field(field):
-        return error(Fail(msg: "unknown field '{field}'"))
+        return error(Fail(msg: f"unknown field '{field}'"))
 
     norm := try normalize(field, value)
     return ok(Update(field: field, norm: norm))
@@ -516,23 +516,23 @@ fn commit(var app: App, idx: Int, updates: List[Update]) Result[List[String], Fa
         before := field_norm(old, f)
         after := field_norm(nw, f)
         if before != after:
-            changes.append("{f}: {dash(before)} -> {dash(after)}")
+            changes.append(f"{f}: {dash(before)} -> {dash(after)}")
 
     if changes.length() == 0:
-        return ok(["#{old.id} unchanged"])
+        return ok([f"#{old.id} unchanged"])
 
     app.t += 1
     nw.updated = app.t
     app.issues.set(idx, nw)
     for c in changes:
         log_add(var app, old.id, c)
-    return ok(["updated #{old.id}"])
+    return ok([f"updated #{old.id}"])
 
 fn edit_core(var app: App, id: Int, fields: List[String]) Result[List[String], Fail]:
     idx := find_index(app, id).get()
     it := app.issues.get(idx).clone()
     if is_final(app, it.state):
-        return error(Fail(msg: "#{id} is in final state '{it.state}'"))
+        return error(Fail(msg: f"#{id} is in final state '{it.state}'"))
     if fields.length() == 0:
         return error(Fail(msg: "usage: edit ID field=value..."))
 
@@ -563,7 +563,7 @@ fn label_core(var app: App, id: Int, toks: List[String]) Result[List[String], Fa
     idx := find_index(app, id).get()
     it := app.issues.get(idx).clone()
     if is_final(app, it.state):
-        return error(Fail(msg: "#{id} is in final state '{it.state}'"))
+        return error(Fail(msg: f"#{id} is in final state '{it.state}'"))
 
     var labs = it.labels.clone()
 
@@ -571,7 +571,7 @@ fn label_core(var app: App, id: Int, toks: List[String]) Result[List[String], Fa
         w := sign_split(tok)
         l := w.rest.lower()
         if not is_label(l):
-            return error(Fail(msg: "bad label '{l}'"))
+            return error(Fail(msg: f"bad label '{l}'"))
 
         if w.head == "-":
             labs = labs.filter(fn(x: String) Bool: return x != l)
@@ -623,15 +623,15 @@ fn cmd_create(var app: App, rest: String) Result[List[String], Fail]:
     it.updated = app.t
     app.next_id += 1
     app.issues.append(it.clone())
-    log_add(var app, it.id, "created \"{title}\"")
+    log_add(var app, it.id, f"created \"{title}\"")
 
     for f in field_order():
         before := field_norm(base, f)
         after := field_norm(it, f)
         if before != after:
-            log_add(var app, it.id, "{f}: {dash(before)} -> {dash(after)}")
+            log_add(var app, it.id, f"{f}: {dash(before)} -> {dash(after)}")
 
-    return ok(["created #{it.id}"])
+    return ok([f"created #{it.id}"])
 
 fn guard_met(it: Issue, g: String) Bool:
     if g == "assignee":
@@ -658,15 +658,15 @@ fn move_core(var app: App, id: Int, to: String, comment: String) Result[
     it := app.issues.get(idx).clone()
     from := it.state
     if is_final(app, from):
-        return error(Fail(msg: "#{id} is in final state '{from}'"))
+        return error(Fail(msg: f"#{id} is in final state '{from}'"))
     if not app.states.contains(to):
-        return error(Fail(msg: "unknown state '{to}'"))
+        return error(Fail(msg: f"unknown state '{to}'"))
     if from == to:
-        return error(Fail(msg: "already in state '{to}'"))
+        return error(Fail(msg: f"already in state '{to}'"))
 
     guards := trans_guards(app, from, to)
     if guards.is_none():
-        return error(Fail(msg: "transition '{from} -> {to}' not allowed"))
+        return error(Fail(msg: f"transition '{from} -> {to}' not allowed"))
 
     var missing: List[String] = []
     for g in guards.get():
@@ -675,7 +675,7 @@ fn move_core(var app: App, id: Int, to: String, comment: String) Result[
     if missing.length() > 0:
         return error(
             Fail(
-                msg: "cannot move #{id} to {to}: missing {missing.join(", ")}"
+                msg: f"cannot move #{id} to {to}: missing {missing.join(", ")}"
             )
         )
 
@@ -687,10 +687,10 @@ fn move_core(var app: App, id: Int, to: String, comment: String) Result[
     if comment != "":
         nw.comments.append(Comment(t: app.t, actor: app.actor, text: comment))
     app.issues.set(idx, nw)
-    log_add(var app, id, "state: {from} -> {to}")
+    log_add(var app, id, f"state: {from} -> {to}")
     if comment != "":
-        log_add(var app, id, "comment: {comment}")
-    return ok(["moved #{id}: {from} -> {to}"])
+        log_add(var app, id, f"comment: {comment}")
+    return ok([f"moved #{id}: {from} -> {to}"])
 
 fn cmd_move(var app: App, rest: String) Result[List[String], Fail]:
     w1 := cut_word(rest)
@@ -713,8 +713,8 @@ fn cmd_comment(var app: App, rest: String) Result[List[String], Fail]:
     nw.comments.append(Comment(t: app.t, actor: app.actor, text: w.rest))
     nw.updated = app.t
     app.issues.set(idx, nw.clone())
-    log_add(var app, nw.id, "comment: {w.rest}")
-    return ok(["commented #{nw.id}"])
+    log_add(var app, nw.id, f"comment: {w.rest}")
+    return ok([f"commented #{nw.id}"])
 
 fn cmd_delete(var app: App, rest: String) Result[List[String], Fail]:
     ws := words(rest)
@@ -727,7 +727,7 @@ fn cmd_delete(var app: App, rest: String) Result[List[String], Fail]:
     id := app.issues.get(idx).id
     app.issues.remove(idx)
     log_add(var app, id, "deleted")
-    return ok(["deleted #{id}"])
+    return ok([f"deleted #{id}"])
 
 fn cmd_show(app: App, rest: String) Result[List[String], Fail]:
     ws := words(rest)
@@ -737,18 +737,18 @@ fn cmd_show(app: App, rest: String) Result[List[String], Fail]:
     idx := try lookup(app, ws.get(0))
     it := app.issues.get(idx)
     var out: List[String] = []
-    out.append("#{it.id} {it.title}")
-    out.append("  state: {it.state}")
-    out.append("  priority: {it.priority}")
-    out.append("  assignee: {opt_show(it.assignee)}")
-    out.append("  points: {dash(points_text(it.points))}")
-    out.append("  due: {dash(opt_text(it.due))}")
-    out.append("  labels: {dash(it.labels.join(", "))}")
-    out.append("  reporter: {opt_show(it.reporter)}")
-    out.append("  created: t={it.created}, updated: t={it.updated}")
-    out.append("  comments: {it.comments.length()}")
+    out.append(f"#{it.id} {it.title}")
+    out.append(f"  state: {it.state}")
+    out.append(f"  priority: {it.priority}")
+    out.append(f"  assignee: {opt_show(it.assignee)}")
+    out.append(f"  points: {dash(points_text(it.points))}")
+    out.append(f"  due: {dash(opt_text(it.due))}")
+    out.append(f"  labels: {dash(it.labels.join(", "))}")
+    out.append(f"  reporter: {opt_show(it.reporter)}")
+    out.append(f"  created: t={it.created}, updated: t={it.updated}")
+    out.append(f"  comments: {it.comments.length()}")
     for c in it.comments:
-        out.append("    [t={c.t} {c.actor}] {c.text}")
+        out.append(f"    [t={c.t} {c.actor}] {c.text}")
     return ok(out)
 
 fn cmd_actor(var app: App, rest: String) Result[List[String], Fail]:
@@ -757,17 +757,17 @@ fn cmd_actor(var app: App, rest: String) Result[List[String], Fail]:
         return error(Fail(msg: "usage: actor NAME"))
 
     app.actor = ws.get(0)
-    return ok(["actor is {app.actor}"])
+    return ok([f"actor is {app.actor}"])
 
 fn cmd_today(var app: App, rest: String) Result[List[String], Fail]:
     ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: today DATE"))
     if not valid_date(ws.get(0)):
-        return error(Fail(msg: "bad date '{ws.get(0)}'"))
+        return error(Fail(msg: f"bad date '{ws.get(0)}'"))
 
     app.today = ws.get(0)
-    return ok(["today is {app.today}"])
+    return ok([f"today is {app.today}"])
 
 fn register(var states: List[String], name: String) Unit:
     if not states.contains(name):
@@ -796,7 +796,7 @@ fn define_workflow(var app: App, body: List[String]) Result[List[String], Fail]:
         if colon.length() == 2 and colon.get(0) == "initial":
             name := colon.get(1).trim()
             if not is_state_name(name):
-                return error(Fail(msg: "workflow: bad state name '{name}'"))
+                return error(Fail(msg: f"workflow: bad state name '{name}'"))
             if has_initial:
                 return error(Fail(msg: "workflow: initial state defined twice"))
 
@@ -807,7 +807,7 @@ fn define_workflow(var app: App, body: List[String]) Result[List[String], Fail]:
             for part in colon.get(1).split(","):
                 name := part.trim()
                 if not is_state_name(name):
-                    return error(Fail(msg: "workflow: bad state name '{name}'"))
+                    return error(Fail(msg: f"workflow: bad state name '{name}'"))
 
                 register(var states, name)
                 finals.append(name)
@@ -815,7 +815,7 @@ fn define_workflow(var app: App, body: List[String]) Result[List[String], Fail]:
             arrow := line.split("->")
             src := arrow.get(0).trim()
             if not is_state_name(src):
-                return error(Fail(msg: "workflow: bad state name '{src}'"))
+                return error(Fail(msg: f"workflow: bad state name '{src}'"))
 
             register(var states, src)
 
@@ -828,23 +828,23 @@ fn define_workflow(var app: App, body: List[String]) Result[List[String], Fail]:
 
                 target := ws.get(0)
                 if not is_state_name(target):
-                    return error(Fail(msg: "workflow: bad state name '{target}'"))
+                    return error(Fail(msg: f"workflow: bad state name '{target}'"))
 
                 var guards: List[String] = []
 
                 if ws.length() == 3 and ws.get(1) == "requires":
                     for g in ws.get(2).split("+"):
                         if not guard_field(g):
-                            return error(Fail(msg: "workflow: bad guard field '{g}'"))
+                            return error(Fail(msg: f"workflow: bad guard field '{g}'"))
 
                         guards.append(g)
                 else if ws.length() != 1:
-                    return error(Fail(msg: "workflow: bad line '{line}'"))
+                    return error(Fail(msg: f"workflow: bad line '{line}'"))
 
                 register(var states, target)
                 trans.append(Trans(src: src, dst: target, guards: guards))
         else:
-            return error(Fail(msg: "workflow: bad line '{line}'"))
+            return error(Fail(msg: f"workflow: bad line '{line}'"))
 
     if not has_initial:
         return error(Fail(msg: "workflow: initial state missing"))
@@ -853,7 +853,7 @@ fn define_workflow(var app: App, body: List[String]) Result[List[String], Fail]:
         if finals.contains(tr.src):
             return error(
                 Fail(
-                    msg: "workflow: '{tr.src}' is final and cannot have transitions"
+                    msg: f"workflow: '{tr.src}' is final and cannot have transitions"
                 )
             )
     app.has_workflow = true
@@ -861,7 +861,7 @@ fn define_workflow(var app: App, body: List[String]) Result[List[String], Fail]:
     app.states = states.clone()
     app.finals = finals.clone()
     app.trans = trans.clone()
-    return ok(["workflow ok: {states.length()} states, {trans.length()} transitions"])
+    return ok([f"workflow ok: {states.length()} states, {trans.length()} transitions"])
 
 fn is_term_stop(c: String) Bool:
     return (
@@ -1064,9 +1064,9 @@ fn check_term(app: App, t: Tok) Result[Expr, Fail]:
     if field == "label":
         canon = "labels"
     if not known_field(field):
-        return error(Fail(msg: "query: unknown field '{field}'"))
+        return error(Fail(msg: f"query: unknown field '{field}'"))
     if not ops_for(canon).contains(op):
-        return error(Fail(msg: "query: bad operator '{op}' for field '{field}'"))
+        return error(Fail(msg: f"query: bad operator '{op}' for field '{field}'"))
 
     var alts: List[String] = []
 
@@ -1085,9 +1085,9 @@ fn check_term(app: App, t: Tok) Result[Expr, Fail]:
     for a in alts:
         if canon == "view":
             if not app.views.contains(a):
-                return error(Fail(msg: "query: unknown view '{a}'"))
+                return error(Fail(msg: f"query: unknown view '{a}'"))
         else if not value_ok(app, canon, op, a):
-            return error(Fail(msg: "query: bad value '{a}' for field '{field}'"))
+            return error(Fail(msg: f"query: bad value '{a}' for field '{field}'"))
 
     return ok(Term(field: canon, op: op, alts: alts))
 
@@ -1147,7 +1147,7 @@ fn parse_primary(var ps: Parser, app: App) Result[Expr, Fail]:
         if ps.toks.get(ps.pos).kind != ")":
             return error(
                 Fail(
-                    msg: "query: unexpected token '{ps.toks.get(ps.pos).value}'"
+                    msg: f"query: unexpected token '{ps.toks.get(ps.pos).value}'"
                 )
             )
 
@@ -1158,7 +1158,7 @@ fn parse_primary(var ps: Parser, app: App) Result[Expr, Fail]:
         ps.pos += 1
         return check_term(app, t)
 
-    return error(Fail(msg: "query: unexpected token '{t.value}'"))
+    return error(Fail(msg: f"query: unexpected token '{t.value}'"))
 
 fn parse_filter(app: App, text: String) Result[Expr, Fail]:
     if text.trim() == "":
@@ -1168,7 +1168,7 @@ fn parse_filter(app: App, text: String) Result[Expr, Fail]:
     var ps = Parser(toks: toks, pos: 0)
     e := try parse_or(var ps, app)
     if ps.pos < ps.toks.length():
-        return error(Fail(msg: "query: unexpected token '{ps.toks.get(ps.pos).value}'"))
+        return error(Fail(msg: f"query: unexpected token '{ps.toks.get(ps.pos).value}'"))
 
     return ok(e)
 
@@ -1229,7 +1229,7 @@ fn parse_sort_keys(text: String) Result[List[SortKey], Fail]:
             name = s.rest
 
         if not sort_field(name):
-            return error(Fail(msg: "bad sort field '{name}'"))
+            return error(Fail(msg: f"bad sort field '{name}'"))
 
         out.append(SortKey(name: name, desc: desc))
 
@@ -1242,7 +1242,7 @@ fn parse_spec(app: App, text: String) Result[Spec, Fail]:
     if lim.found:
         v := parse_uint(lim.tail)
         if v.is_none():
-            return error(Fail(msg: "bad limit '{lim.tail}'"))
+            return error(Fail(msg: f"bad limit '{lim.tail}'"))
 
         limit = v.get()
 
@@ -1503,13 +1503,13 @@ fn sort_issues(states: List[String], keys: List[SortKey], xs: List[Issue]) List[
     return out
 
 fn issue_line(it: Issue) String:
-    return "#{it.id} | {it.state} | {it.priority} | {opt_show(it.assignee)} | {dash(points_text(it.points))} | {dash(opt_text(it.due))} | {dash(it.labels.join(","))} | {it.title}"
+    return f"#{it.id} | {it.state} | {it.priority} | {opt_show(it.assignee)} | {dash(points_text(it.points))} | {dash(opt_text(it.due))} | {dash(it.labels.join(","))} | {it.title}"
 
 fn count_line(n: Int) String:
     if n == 1:
         return "(1 issue)"
 
-    return "({n} issues)"
+    return f"({n} issues)"
 
 fn query_lines(app: App, spec: Spec) List[String]:
     var hits: List[Issue] = []
@@ -1537,22 +1537,22 @@ fn view_save(var app: App, rest: String) Result[List[String], Fail]:
     if w.head == "":
         return error(Fail(msg: "usage: view save NAME QUERY"))
     if not is_view_name(w.head):
-        return error(Fail(msg: "bad view name '{w.head}'"))
+        return error(Fail(msg: f"bad view name '{w.head}'"))
 
     text := w.rest.trim()
     checked := try parse_spec(app, text)
     if reaches(app, text, w.head):
-        return error(Fail(msg: "view '{w.head}' would reference itself"))
+        return error(Fail(msg: f"view '{w.head}' would reference itself"))
 
     app.views.add(w.head, text)
-    return ok(["saved view {w.head}"])
+    return ok([f"saved view {w.head}"])
 
 fn view_run(app: App, rest: String) Result[List[String], Fail]:
     w := cut_word(rest)
     if w.head == "":
         return error(Fail(msg: "usage: view run NAME [sort FIELDS] [limit N]"))
     if not app.views.contains(w.head):
-        return error(Fail(msg: "unknown view '{w.head}'"))
+        return error(Fail(msg: f"unknown view '{w.head}'"))
 
     var spec = try parse_spec(app, app.views.get(w.head).get())
     lim := split_limit(w.rest.trim())
@@ -1560,14 +1560,14 @@ fn view_run(app: App, rest: String) Result[List[String], Fail]:
     if lim.found:
         v := parse_uint(lim.tail)
         if v.is_none():
-            return error(Fail(msg: "bad limit '{lim.tail}'"))
+            return error(Fail(msg: f"bad limit '{lim.tail}'"))
 
         spec.has_limit = true
         spec.limit = v.get()
 
     srt := split_sort(lim.head)
     if srt.head.trim() != "":
-        return error(Fail(msg: "unexpected '{srt.head.trim()}'"))
+        return error(Fail(msg: f"unexpected '{srt.head.trim()}'"))
 
     if srt.found:
         spec.sort = try parse_sort_keys(srt.tail)
@@ -1580,7 +1580,7 @@ fn view_list(app: App) Result[List[String], Fail]:
 
     var out: List[String] = []
     for n in names:
-        out.append("{n}: {app.views.get(n).get()}")
+        out.append(f"{n}: {app.views.get(n).get()}")
     return ok(out)
 
 fn view_show(app: App, rest: String) Result[List[String], Fail]:
@@ -1590,9 +1590,9 @@ fn view_show(app: App, rest: String) Result[List[String], Fail]:
 
     name := ws.get(0)
     if not app.views.contains(name):
-        return error(Fail(msg: "unknown view '{name}'"))
+        return error(Fail(msg: f"unknown view '{name}'"))
 
-    return ok(["{name}: {app.views.get(name).get()}"])
+    return ok([f"{name}: {app.views.get(name).get()}"])
 
 fn view_delete(var app: App, rest: String) Result[List[String], Fail]:
     ws := words(rest)
@@ -1601,13 +1601,13 @@ fn view_delete(var app: App, rest: String) Result[List[String], Fail]:
 
     name := ws.get(0)
     if not app.views.contains(name):
-        return error(Fail(msg: "unknown view '{name}'"))
+        return error(Fail(msg: f"unknown view '{name}'"))
 
     for other in sorted_text(app.views.keys()):
         if other != name and reaches(app, app.views.get(other).get(), name):
-            return error(Fail(msg: "view '{name}' is used by '{other}'"))
+            return error(Fail(msg: f"view '{name}' is used by '{other}'"))
     app.views.remove(name)
-    return ok(["deleted view {name}"])
+    return ok([f"deleted view {name}"])
 
 fn cmd_view(var app: App, rest: String) Result[List[String], Fail]:
     w := cut_word(rest)
@@ -1676,7 +1676,7 @@ fn cmd_bulk(var app: App, rest: String) Result[List[String], Fail]:
         if args.length() == 0:
             return error(Fail(msg: "usage: bulk set field=value... where QUERY"))
     else:
-        return error(Fail(msg: "unknown bulk action '{verb}'"))
+        return error(Fail(msg: f"unknown bulk action '{verb}'"))
 
     filt := try parse_filter(app, query)
     var ids: List[Int] = []
@@ -1692,14 +1692,14 @@ fn cmd_bulk(var app: App, rest: String) Result[List[String], Fail]:
         r := bulk_one(var app, verb, args.clone(), id)
 
         if r.is_error():
-            out.append("#{id} error: {r.err().message()}")
+            out.append(f"#{id} error: {r.err().message()}")
             failed += 1
         else:
             for line in r.get():
                 out.append(line)
             okn += 1
 
-    out.append("bulk: {okn} ok, {failed} failed")
+    out.append(f"bulk: {okn} ok, {failed} failed")
     return ok(out)
 
 fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
@@ -1720,7 +1720,7 @@ fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
     if n == 1 or n == 3:
         d := try parse_id(ws.get(0))
         if id_value(d) >= app.next_id:
-            return error(Fail(msg: "no such issue #{d}"))
+            return error(Fail(msg: f"no such issue #{d}"))
 
         wanted = id_value(d)
 
@@ -1729,7 +1729,7 @@ fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
     if n == 2 or n == 3:
         t := parse_uint(ws.get(n - 1))
         if t.is_none():
-            return error(Fail(msg: "bad tail '{ws.get(n - 1)}'"))
+            return error(Fail(msg: f"bad tail '{ws.get(n - 1)}'"))
 
         limit_n = t.get()
 
@@ -1744,7 +1744,7 @@ fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
 
     var out: List[String] = []
     for e in sel:
-        out.append("t={e.t} {e.actor} #{e.id} {e.detail}")
+        out.append(f"t={e.t} {e.actor} #{e.id} {e.detail}")
     return ok(out)
 
 fn count_state(app: App, s: String) Int:
@@ -1780,16 +1780,16 @@ fn report_summary(app: App) List[String]:
     total := app.issues.length()
     final_n := total - open_n
     var out: List[String] = []
-    out.append("issues: {total} (open {open_n}, final {final_n})")
+    out.append(f"issues: {total} (open {open_n}, final {final_n})")
     out.append("by state:")
     for s in app.states:
-        out.append("  {s}: {count_state(app, s)}")
+        out.append(f"  {s}: {count_state(app, s)}")
     out.append("by priority:")
     for p in ["critical", "high", "medium", "low"]:
-        out.append("  {p}: {count_priority(app, p)}")
-    out.append("unassigned: {unassigned}")
-    out.append("overdue: {overdue}")
-    out.append("open points: {open_points}")
+        out.append(f"  {p}: {count_priority(app, p)}")
+    out.append(f"unassigned: {unassigned}")
+    out.append(f"overdue: {overdue}")
+    out.append(f"open points: {open_points}")
     return out
 
 fn cmp_group(a: Group, b: Group) Int:
@@ -1850,10 +1850,10 @@ fn report_workload(app: App) List[String]:
 
     var out: List[String] = []
     for g in groups.sorted(fn(a: Group, b: Group) Int: return cmp_group(a, b)):
-        out.append("{g.name}: {g.count} {issue_word(g.count)}, {g.points} points")
+        out.append(f"{g.name}: {g.count} {issue_word(g.count)}, {g.points} points")
     if unassigned_n > 0:
         out.append(
-            "unassigned: {unassigned_n} {issue_word(unassigned_n)}, {unassigned_pts} points"
+            f"unassigned: {unassigned_n} {issue_word(unassigned_n)}, {unassigned_pts} points"
         )
     return out
 
@@ -1882,12 +1882,12 @@ fn report_labels(app: App, text: String) Result[List[String], Fail]:
     )
     var out: List[String] = []
     for r in sorted_rows:
-        out.append("{r.name}: {r.count}")
+        out.append(f"{r.name}: {r.count}")
     return ok(out)
 
 fn period(state: String, from: Int, to: Int) String:
     dur := to - from
-    return "{state}: t={from}..{to} ({dur})"
+    return f"{state}: t={from}..{to} ({dur})"
 
 fn report_timeline(app: App, rest: String) Result[List[String], Fail]:
     w := cut_word(rest)
@@ -1955,7 +1955,7 @@ fn dispatch(var app: App, cmd: String, rest: String) Result[List[String], Fail]:
     if cmd == "today":
         return cmd_today(var app, rest)
 
-    return error(Fail(msg: "unknown command '{cmd}'"))
+    return error(Fail(msg: f"unknown command '{cmd}'"))
 
 fn read_all() List[String]:
     var out: List[String] = []
@@ -1972,10 +1972,10 @@ fn read_all() List[String]:
 
 fn show(r: Result[List[String], Fail]) Unit:
     if r.is_error():
-        emit("error: {r.err().message()}\n")
+        emit(f"error: {r.err().message()}\n")
     else:
         for line in r.get():
-            emit("{line}\n")
+            emit(f"{line}\n")
 
 export fn main() Int:
     var app = App(
@@ -1994,7 +1994,7 @@ export fn main() Int:
         if body == "" or body.starts_with("#"):
             continue
 
-        emit("> {line}\n")
+        emit(f"> {line}\n")
 
         w := cut_word(body)
 

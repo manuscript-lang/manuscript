@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 46
     i2 := (((i1 % i1) * ((-22) - i1)) - (18 % i1))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
     return 0

@@ -29,7 +29,7 @@ fn var ApiFixture.after_all() Void!:
 test "first request":
     response := expect_ok(
         request(
-            method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
+            method: HttpMethod.Get, url: f"http://{fixture.server.address()}/",
             options: RequestOptions(headers: headers())
         )
     )?
@@ -38,7 +38,7 @@ test "first request":
 test "second request uses same server":
     response := expect_ok(
         request(
-            method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
+            method: HttpMethod.Get, url: f"http://{fixture.server.address()}/",
             options: RequestOptions(headers: headers())
         )
     )?

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,31 +23,31 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     i1 := 31
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (i1 * (((-12) + 11) * (i1 - i1)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := i1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := i2
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     s5 := "  padded  "
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     i6 := ((-859211) - ((780673 + (-977562815624)) + (-(-237876))))
-    say("i6 = {i6}")
-    say("fib(19) = {fib(19)}")
+    say(f"i6 = {i6}")
+    say(f"fib(19) = {fib(19)}")
 
     i7 := s5.scalar_length()
-    say("i7 = {i7}")
-    say("fib(43) = {fib(43)}")
+    say(f"i7 = {i7}")
+    say(f"fib(43) = {fib(43)}")
 
     f8 := 0.0
-    say("f8 = {f8}")
-    say("{(-(-i1))} {i6} {((-(-i1)) < i6)} sum {(-(-i1)) + i6}")
+    say(f"f8 = {f8}")
+    say(f"{(-(-i1))} {i6} {((-(-i1)) < i6)} sum {(-(-i1)) + i6}")
 
     if true:
         say(s5.upper())
@@ -55,14 +55,14 @@ export fn main() Int:
         say((s5 + "beta"))
 
     s9 := s5
-    say("s9 = [{s9}]")
+    say(f"s9 = [{s9}]")
 
     b10 := (465.25 < ((557.303 + 314.25) / f8))
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     i11 := (9 - (i1 - i6))
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     s12 := "back\\slash"
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
     return 0

@@ -6,30 +6,30 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "MiXeD CaSe"
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     i2 := (((-(-48)) - 39) % ((93439 % 20) + ((-37) % 45)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := s1
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
     say(
-        "{((41 % (-49)) / (-i2))} {(i2 * (i2 + 850591))} {(((41 % (-49)) / (-i2)) < (i2 * (i2 + 850591)))} sum {((41 % (-49)) / (-i2)) + (i2 * (i2 + 850591))}"
+        f"{((41 % (-49)) / (-i2))} {(i2 * (i2 + 850591))} {(((41 % (-49)) / (-i2)) < (i2 * (i2 + 850591)))} sum {((41 % (-49)) / (-i2)) + (i2 * (i2 + 850591))}"
     )
 
     f4 := (
         (145.567 - (0.731 - 489.476))
         * ((334.415 * 860.25) * (449.101 * 745.353))
     )
-    say("f4 = {f4}")
+    say(f"f4 = {f4}")
 
     l5 := [(-24), (-28), (-6)]
-    say("l5 = {l5} len {l5.length()}")
+    say(f"l5 = {l5} len {l5.length()}")
 
     b6 := false
-    say("b6 = {b6}")
+    say(f"b6 = {b6}")
     return 0

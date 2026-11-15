@@ -11,7 +11,7 @@ export enum Align:
 	Center  // Splits unused space, putting an odd extra space after the cell.
 
 fn table_invalid(message: String) Error:
-	return Error("table: {message}", kind: "EBADMSG")
+	return Error(f"table: {message}", kind: "EBADMSG")
 
 /*
 Aligned text columns for terminal output. `columns` gives one alignment per column; `padding` is the
@@ -53,7 +53,7 @@ export type Table:
 fn var Table.add(row: List[String]) Void!:
 	count := self.columns.length()
 	if row.length() != count:
-		return error(table_invalid("row has {row.length()} cells, expected {count}"))
+		return error(table_invalid(f"row has {row.length()} cells, expected {count}"))
 
 	var measured = List[Int]()
 	for cell in row:

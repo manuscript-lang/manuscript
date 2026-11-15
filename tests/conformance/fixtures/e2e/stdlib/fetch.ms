@@ -57,7 +57,7 @@ fn route(request: HttpRequest) HttpResponse:
 	return HttpResponse(
 		status: 200,
 		headers: headers(),
-		body: "{request.method.text()}|{label}|".to_bytes().concat(
+		body: f"{request.method.text()}|{label}|".to_bytes().concat(
 			request.body.clone()
 		),
 	)
@@ -67,13 +67,13 @@ fn try_append(var fields: HttpHeaders, name: String, value: String) Void:
 
 test "fetch returns a buffered text response":
 	server := serve("127.0.0.1:0", buffered(route))?
-	response := fetch("http://{server.address()}/echo").wait()?
+	response := fetch(f"http://{server.address()}/echo").wait()?
 	expect_equal(response.ok(), true)?
 	expect_equal(response.text()?, "GET||")?
 
 test "fetch posts text and JSON bodies with default content types":
 	server := serve("127.0.0.1:0", buffered(route))?
-	url := "http://{server.address()}/echo"
+	url := f"http://{server.address()}/echo"
 	text := fetch(
 		url,
 		FetchOptions(method: HttpMethod.Post, body: FetchBody.Text("hi")),
@@ -82,11 +82,11 @@ test "fetch posts text and JSON bodies with default content types":
 
 	body := json_body(Greeting(name: "ada"))?
 	sent := fetch(url, FetchOptions(method: HttpMethod.Post, body: body)).wait()?
-	expect_equal(sent.text()?, "POST|application/json|" + "\{\"name\":\"ada\"\}")?
+	expect_equal(sent.text()?, "POST|application/json|" + "{\"name\":\"ada\"}")?
 
 test "fetch decodes JSON":
 	server := serve("127.0.0.1:0", buffered(json_route))?
-	response := fetch("http://{server.address()}/").wait()?
+	response := fetch(f"http://{server.address()}/").wait()?
 	greeting := response.json[Greeting]()?
 	expect_equal(greeting.name, "ada")?
 
@@ -94,12 +94,12 @@ fn json_route(request: HttpRequest) HttpResponse:
 	return HttpResponse(
 		status: 200,
 		headers: headers(),
-		body: "\{\"name\":\"ada\"\}".to_bytes(),
+		body: "{\"name\":\"ada\"}".to_bytes(),
 	)
 
 test "fetch follows redirects unless max_redirects is 0":
 	server := serve("127.0.0.1:0", buffered(route))?
-	url := "http://{server.address()}/old"
+	url := f"http://{server.address()}/old"
 	followed := fetch(url).wait()?
 	expect_equal(followed.head.status, 200)?
 
@@ -110,7 +110,7 @@ test "fetch follows redirects unless max_redirects is 0":
 test "fetch does not restore Content-Type after a redirect drops its body":
 	server := serve("127.0.0.1:0", buffered(route))?
 	response := fetch(
-		"http://{server.address()}/chain",
+		f"http://{server.address()}/chain",
 		FetchOptions(method: HttpMethod.Post, body: FetchBody.Text("hello")),
 	).wait()?
 	expect_equal(response.head.status, 200)?
@@ -118,13 +118,13 @@ test "fetch does not restore Content-Type after a redirect drops its body":
 
 test "error statuses are ordinary responses and check_status rejects them":
 	server := serve("127.0.0.1:0", buffered(route))?
-	response := fetch("http://{server.address()}/missing").wait()?
+	response := fetch(f"http://{server.address()}/missing").wait()?
 	expect_equal(response.ok(), false)?
 	expect_equal(response.check_status().is_error(), true)?
 
 test "fetch enforces max_response_bytes":
 	server := serve("127.0.0.1:0", buffered(route))?
-	url := "http://{server.address()}/big"
+	url := f"http://{server.address()}/big"
 	small := fetch(url, FetchOptions(max_response_bytes: 4)).wait()
 	expect_equal(small.is_error(), true)?
 	expect_equal(small.err().kind, "EOVERFLOW")?
@@ -134,7 +134,7 @@ test "fetch enforces max_response_bytes":
 
 test "fetch times out a slow response":
 	server := serve("127.0.0.1:0", buffered(route))?
-	url := "http://{server.address()}/slow"
+	url := f"http://{server.address()}/slow"
 	slow := fetch(url, FetchOptions(timeout: milliseconds(200))).wait()
 	expect_equal(slow.is_error(), true)?
 	expect_equal(slow.err().message, "HTTP: operation timed out")?
@@ -142,7 +142,7 @@ test "fetch times out a slow response":
 test "Fetcher.stream returns the body incrementally and reuses the client":
 	server := serve("127.0.0.1:0", buffered(route))?
 	client := fetcher()?
-	url := "http://{server.address()}/big"
+	url := f"http://{server.address()}/big"
 	var response = client.stream(url)?
 	expect_equal(read_to_end(var response.body)?, "0123456789".to_bytes())?
 	expect_equal(response.metadata.status, 200)?
@@ -156,5 +156,5 @@ test "a closed Fetcher returns Closed":
 	var client = fetcher()?
 	client.close()?
 
-	sent := client.fetch("http://{server.address()}/big")
+	sent := client.fetch(f"http://{server.address()}/big")
 	expect_equal(sent.wait().err().message, "HTTP: resource is closed")?

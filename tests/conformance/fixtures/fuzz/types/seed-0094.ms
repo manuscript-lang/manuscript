@@ -6,23 +6,23 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((19 / (33 + 28)) * ((12 + 29) - ((-877019) / 305282)))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := (274712 - (-(-15)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     b3 := (false and ((true or true) and false))
-    say("b3 = {b3}")
+    say(f"b3 = {b3}")
 
     s4 := "MiXeD CaSe".reverse()
-    say("s4 = [{s4}]")
+    say(f"s4 = [{s4}]")
     if 1:
         say("truthy")
 
     i5 := (s4.scalar_length() + ((i2 / 183121) - 12))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     return 0

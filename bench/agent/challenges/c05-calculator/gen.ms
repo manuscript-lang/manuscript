@@ -113,7 +113,7 @@ fn evaluate(line: String) String:
 	if p.bad: return "error: syntax"
 	if p.div: return "error: division by zero"
 
-	return "{v}"
+	return f"{v}"
 
 fn solve(s: String) String:
 	return s.split("\n").filter(fn l: not l.trim().is_empty()).map(
@@ -123,7 +123,7 @@ fn solve(s: String) String:
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
 fn rexpr(var rnd: Random, d: Int) String:
-	if d == 0 or rnd.random() < 0.25: return "{rnd.randint(0, 99)}"
+	if d == 0 or rnd.random() < 0.25: return f"{rnd.randint(0, 99)}"
 
 	r := rnd.random()
 	if r < 0.15: return "-" + rexpr(var rnd, d - 1)

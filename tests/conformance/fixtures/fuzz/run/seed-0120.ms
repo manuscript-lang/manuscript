@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     f1 := 693.704
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := (-42)
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := ""
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     var acc4 = 0
     for i in 0..8:
         acc4 += i * 6
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     s5 := s3
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
-    b6 := "brace\{s\}".is_empty()
-    say("b6 = {b6}")
+    b6 := "brace{s}".is_empty()
+    say(f"b6 = {b6}")
 
     big8 := -9223372036854775808
-    say("{big8 - 3}")
+    say(f"{big8 - 3}")
     return 0

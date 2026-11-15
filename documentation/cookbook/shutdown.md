@@ -19,7 +19,7 @@ type Worker:
     name: String
 
 fn var Worker.close() Void!:
-    print("{self.name} stopped")
+    print(f"{self.name} stopped")
     return ok()
 
 fn main() Void!:

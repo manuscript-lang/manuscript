@@ -13,10 +13,10 @@ import (
 fn run(work: String, n: Int) Result[String, Error]:
 	copy(
 		"bench/perf/listloops/ms",
-		"{work}/ms",
+		f"{work}/ms",
 		CopyOptions(recursive: true, replace: true),
 	)?
-	build_ms("{work}/ms", "{work}/ms/bench")?
+	build_ms(f"{work}/ms", f"{work}/ms/bench")?
 
 	cc := env("CC", "cc")
 	source := "bench/perf/listloops/c/kernels.c"
@@ -29,7 +29,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 				"-ffp-contract=off",
 				source.clone(),
 				"-o",
-				"{work}/c-sse2",
+				f"{work}/c-sse2",
 			],
 		),
 	)?
@@ -38,7 +38,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 		capture(
 			cc,
 			[
-				"-O3", "-mavx2", "-ffp-contract=off", source, "-o", "{work}/c-avx2"
+				"-O3", "-mavx2", "-ffp-contract=off", source, "-o", f"{work}/c-avx2"
 			],
 		),
 	)?
@@ -46,20 +46,20 @@ fn run(work: String, n: Int) Result[String, Error]:
 
 	for _i in 0..n:
 		for v in ["ms", "c-sse2", "c-avx2"]:
-			exe := if v == "ms": "{work}/ms/bench" else: "{work}/{v}"
+			exe := if v == "ms": f"{work}/ms/bench" else: f"{work}/{v}"
 
 			for line in (sample(exe, [])?).split("\n"):
 				f := line.split(" ").filter(fn p: p != "")
 				if f.length() < 2 or f[0] == "check": continue
 
-				key := "{f[0]} {v}"
+				key := f"{f[0]} {v}"
 				value := f[1].parse_float().get(0.0)
 				if value > best.get_or(key, 0.0) or not best.contains(key): best.add(
 					key.clone(),
 					value,
 				)
 
-	var rows = best.keys().sorted().map(fn k: "{k} {best.get_or(k, 0.0).to_fixed(2)}")
+	var rows = best.keys().sorted().map(fn k: f"{k} {best.get_or(k, 0.0).to_fixed(2)}")
 	return ok(rows.join("\n"))
 
 fn main() Int:

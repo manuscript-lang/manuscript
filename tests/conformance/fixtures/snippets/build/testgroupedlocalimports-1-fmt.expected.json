@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "export type Value:\n\tvalue: Int\n\nexport fn read(value: Value) Int:\n\treturn value.value\n\nfn hidden() Int:\n\treturn 1\n"

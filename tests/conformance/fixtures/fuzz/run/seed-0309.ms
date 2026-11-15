@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -24,28 +24,28 @@ fn collatz(start: Int) Int:
 
 export fn main() Int:
     i1 := ((-(0 + (-35))) - (-46742))
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
-    if ("".replace("brace\{s\}", "back\\slash") != ("brace\{s\}" + "日本語")):
+    if ("".replace("brace{s}", "back\\slash") != ("brace{s}" + "日本語")):
         say(("quote\"d" + "naïve"))
     else:
         say("hello world".reverse())
 
     i2 := i1
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := ((i2 + (-31)) - ((316008139205 - (-29)) - i1))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     b4 := (not ((false and true) or true))
-    say("b4 = {b4}")
-    say("collatz(675) = {collatz(675)}")
+    say(f"b4 = {b4}")
+    say(f"collatz(675) = {collatz(675)}")
 
     i5 := 559999
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     f6 := 651.379
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     var acc7 = 0
     var stepacc7 = 0
@@ -54,20 +54,20 @@ export fn main() Int:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + 8
 
-    say("acc7 = {acc7}")
+    say(f"acc7 = {acc7}")
 
     s8 := ("line\nbreak" + "line\nbreak".reverse())
-    say("s8 = [{s8}]")
+    say(f"s8 = [{s8}]")
 
     f9 := ((f6 + 2.0e11) * ((275.978 + 33.794) / f6))
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     i10 := (43 * ((-44) - (i1 + i3)))
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     l11 := [(-4), 17]
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     i12 := (-(-(39 - i2)))
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
     return 0

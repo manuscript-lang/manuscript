@@ -22,7 +22,7 @@ fn lcg(x: Int) Int:
 
 fn stop(name: String, t0: Int, chk: Int) Void:
 	now := monotonic().tick
-	print("{name} {(now - t0) / 1000} {chk}")
+	print(f"{name} {(now - t0) / 1000} {chk}")
 
 fn m_struct_values() Int:
 	var m: Map[String, Acc] = {}
@@ -31,7 +31,7 @@ fn m_struct_values() Int:
 	for i in 0..1000000:
 		x = lcg(x)
 
-		k := "acct{x % 10000}"
+		k := f"acct{x % 10000}"
 		if not m.contains(k): m[k.clone()] = Acc(k.clone(), 0, [])
 		m[k].balance += i % 100
 		if m[k].history.length() < 8: m[k].history.append(i)
@@ -154,7 +154,7 @@ fn m_fold_sum() Int:
 fn m_list_of_strings() Int:
 	var xs: List[String] = []
 	for i in 0..500000:
-		xs.append("line {i} of text")
+		xs.append(f"line {i} of text")
 
 	var t = 0
 	for s in xs:
@@ -189,7 +189,7 @@ fn m_nested_maps() Int:
 fn m_str_build_map() Int:
 	var m: Map[String, String] = {}
 	for i in 0..200000:
-		m["k{i}"] = "value-{i}-{i * 2}"
+		m[f"k{i}"] = f"value-{i}-{i * 2}"
 
 	var t = 0
 	for e in m.entries():

@@ -19,14 +19,14 @@ fn main() Void:
     var i = -3
 
     while i < 4:
-        b.append("{i * 1000003},")
-        b.append("<{i}>")
+        b.append(f"{i * 1000003},")
+        b.append(f"<{i}>")
         i += 1
 
-    b.append("{9223372036854775807}|{-9223372036854775807}|")
+    b.append(f"{9223372036854775807}|{-9223372036854775807}|")
 
     joined := b.build()
-    say("{joined}\n")
+    say(f"{joined}\n")
 
     var total = 0
 
@@ -36,13 +36,13 @@ fn main() Void:
         else:
             total += 1
 
-    say("{total}\n")
+    say(f"{total}\n")
 
     var hits = 0
     for c in "hello wörld, ünï".chars():
         if c == "l":
             hits += 1
-    say("{hits} {"naïve".chars().length()} {"".chars().length()}\n")
+    say(f"{hits} {"naïve".chars().length()} {"".chars().length()}\n")
 
     var xs: List[Int] = []
     var k = 0
@@ -52,7 +52,7 @@ fn main() Void:
         k += 1
 
     sorted := xs.sorted(compare)
-    say("{sorted.get(0)} {sorted.get(100)} {sorted.get(199)}\n")
+    say(f"{sorted.get(0)} {sorted.get(100)} {sorted.get(199)}\n")
 
     var ordered = true
     var j = 1
@@ -62,4 +62,4 @@ fn main() Void:
             ordered = false
         j += 1
 
-    say("{ordered}\n")
+    say(f"{ordered}\n")

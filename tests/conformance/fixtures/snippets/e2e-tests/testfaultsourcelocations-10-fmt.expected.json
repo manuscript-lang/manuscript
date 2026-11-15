@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
     "fmt": "\nexport fn main() Int:\n\tvalue: Int!Error := ok(0)\n\textract := value.err\n\treturn extract().text.scalar_length()\n"

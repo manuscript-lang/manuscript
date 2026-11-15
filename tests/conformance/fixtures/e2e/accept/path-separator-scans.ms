@@ -8,20 +8,20 @@ import (
 test "path suffix scans preserve Unicode component boundaries":
 	paths := posix()
 	slashes := "/".repeat(8192).get("")
-	expect_equal(paths.basename("é.txt{slashes}"), "é.txt")?
-	expect_equal(paths.basename_without("é.txt{slashes}", ".txt"), "é")?
-	expect_equal(paths.extension("目录/é.txt{slashes}"), ".txt")?
-	expect_equal(paths.dirname("/目录/é.txt{slashes}"), "/目录")?
+	expect_equal(paths.basename(f"é.txt{slashes}"), "é.txt")?
+	expect_equal(paths.basename_without(f"é.txt{slashes}", ".txt"), "é")?
+	expect_equal(paths.extension(f"目录/é.txt{slashes}"), ".txt")?
+	expect_equal(paths.dirname(f"/目录/é.txt{slashes}"), "/目录")?
 	expect_equal(paths.basename(slashes), "")?
 	expect_equal(paths.dirname(slashes), "/")?
 
 test "UNC scans retain root spelling and Unicode server and share names":
 	paths := win32()
 	slashes := "/".repeat(8192).get("")
-	root := "//{slashes}服务器/{slashes}共享/"
-	spelling := "{root}a/../文件.txt"
+	root := f"//{slashes}服务器/{slashes}共享/"
+	spelling := f"{root}a/../文件.txt"
 	expect_equal(paths.parse(spelling).root, root)?
-	expect_equal(paths.normalize(spelling), "{root.replace("/", "\\")}文件.txt")?
+	expect_equal(paths.normalize(spelling), f"{root.replace("/", "\\")}文件.txt")?
 	expect_equal(paths.join([slashes.clone(), "服务器/共享"]), "\\服务器\\共享")?
 
 test "short path scans keep empty root and incomplete UNC rules":

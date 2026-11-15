@@ -31,7 +31,9 @@ export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!
 
 	for v in ["ms", "rs"]:
 		got := run(v)?
-		if got != expected: return invalid("{name}: {v} warm-up output differs from Go")
+		if got != expected: return invalid(
+			f"{name}: {v} warm-up output differs from Go"
+		)
 
 	var samples = List[Sample]()
 
@@ -40,9 +42,9 @@ export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!
 			start := now_ns()
 			got := run(v)?
 			elapsed := now_ns() - start
-			if elapsed <= 0: return invalid("{name}: nonpositive elapsed time")
+			if elapsed <= 0: return invalid(f"{name}: nonpositive elapsed time")
 			if got != expected: return invalid(
-				"{name}: {v} trial {trial + 1} output differs from Go"
+				f"{name}: {v} trial {trial + 1} output differs from Go"
 			)
 
 			samples.append(Sample(trial, v.clone(), elapsed))

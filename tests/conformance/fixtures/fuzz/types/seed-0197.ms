@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,11 +23,11 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     l1 := [1, 2, 3].take(0)
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     i2 := ((((-34) * (-838221)) * (652801 + 35)) + (-539361979686))
-    say("i2 = {i2}")
-    say("fib(18) = {fib(18)}")
+    say(f"i2 = {i2}")
+    say(f"fib(18) = {fib(18)}")
 
     bad := not 5
     return 0

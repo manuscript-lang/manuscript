@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     b1 := true
-    say("b1 = {b1}")
+    say(f"b1 = {b1}")
 
     f2 := 372.247
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     i3 := 1
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     bad := not 5
     b4 := ("emoji 😀".lower() + "ms").starts_with("x")
-    say("b4 = {b4}")
+    say(f"b4 = {b4}")
 
     s5 := "héllo".trim()
-    say("s5 = [{s5}]")
+    say(f"s5 = [{s5}]")
 
     s6 := "delta".reverse()
-    say("s6 = [{s6}]")
+    say(f"s6 = [{s6}]")
     return 0

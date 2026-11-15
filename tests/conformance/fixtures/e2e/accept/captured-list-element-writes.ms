@@ -18,7 +18,7 @@ test "a negative index counts from the end":
 
 test "droppable elements are replaced and the old ones released":
 	var names: List[String] = ["a", "b", "c"]
-	each(3, fn r: names[r] = "n{r}-{names[r]}")
+	each(3, fn r: names[r] = f"n{r}-{names[r]}")
 	names | expect_equal(["n0-a", "n1-b", "n2-c"])?
 
 test "elements of a captured list of lists":

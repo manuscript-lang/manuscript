@@ -37,7 +37,7 @@ export fn gen_c59() Void:
 
 	var gets = ""
 	for i in 1..15:
-		gets += "get A{i}\n"
+		gets += f"get A{i}\n"
 	add(
 		var cs,
 		"number-formatting",

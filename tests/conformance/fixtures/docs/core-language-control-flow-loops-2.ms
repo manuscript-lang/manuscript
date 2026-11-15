@@ -8,4 +8,4 @@ test "sum indexes":
     for index in 0..5:
         total += index
     if total != 10:
-        return panic("Expected 10, got {total}")
+        return panic(f"Expected 10, got {total}")

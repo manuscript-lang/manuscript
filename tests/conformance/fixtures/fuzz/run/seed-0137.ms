@@ -6,50 +6,50 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     s1 := "hello world".reverse().upper().trim()
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     l2 := [16, (-10), 16, 7, (-17)]
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     l3 := l2.reversed()
-    say("l3 = {l3} len {l3.length()}")
+    say(f"l3 = {l3} len {l3.length()}")
 
     l4 := l2.sorted(fn a, b: a.compare(b))
-    say("l4 = {l4} len {l4.length()}")
+    say(f"l4 = {l4} len {l4.length()}")
 
     i5 := ((((-1) + 20) * ((-671578) % 36)) * 20)
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := l2.get(2)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     i7 := l4.get(0)
-    say("i7 = {i7}")
+    say(f"i7 = {i7}")
 
     i8 := (l4.get(3) + ((-i6) + (i6 % 12)))
-    say("i8 = {i8}")
+    say(f"i8 = {i8}")
 
     f9 := (
         ((0.0 / 98.25) + (206.948 * 9.0e9))
         / ((414.564 * 6.5) + (734.25 - 474.312))
     )
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     var acc10 = 0
     for i in 0..4:
         acc10 += i * 3
-    say("acc10 = {acc10}")
+    say(f"acc10 = {acc10}")
 
     i11 := i7
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     i12 := 163549
-    say("i12 = {i12}")
+    say(f"i12 = {i12}")
 
     i13 := ((-837906) * i5)
-    say("i13 = {i13}")
+    say(f"i13 = {i13}")
     return 0

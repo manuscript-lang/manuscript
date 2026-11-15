@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,19 +15,19 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    s1 := "alpha".replace("alpha", "brace\{s\}").trim()
-    say("s1 = [{s1}]")
-    say("gcd(480, 2739) = {gcd(480, 2739)}")
+    s1 := "alpha".replace("alpha", "brace{s}").trim()
+    say(f"s1 = [{s1}]")
+    say(f"gcd(480, 2739) = {gcd(480, 2739)}")
     say(
-        "{((-828869) * (-978092))} {((7 - 318891032719) - 35)} {(((-828869) * (-978092)) < ((7 - 318891032719) - 35))} sum {((-828869) * (-978092)) + ((7 - 318891032719) - 35)}"
+        f"{((-828869) * (-978092))} {((7 - 318891032719) - 35)} {(((-828869) * (-978092)) < ((7 - 318891032719) - 35))} sum {((-828869) * (-978092)) + ((7 - 318891032719) - 35)}"
     )
 
     i2 := (-(936225 - (-197262)))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     s3 := (("Tab\there" + "naïve") + "".lower()).replace(s1, "x")
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     i4 := (((157119 + i2) + (19 * i2)) - i2)
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
     return 0

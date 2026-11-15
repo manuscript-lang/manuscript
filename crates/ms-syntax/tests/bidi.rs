@@ -19,7 +19,7 @@ fn bidi_controls_are_rejected_in_comments_and_text() {
         let text = format!("fn f() String:\n    return \"a{c}b\"\n");
         let message = parse(&text).unwrap_err();
         assert!(message.contains("\\u{202E}"), "{message}");
-        let nested = format!("fn f() String:\n    return \"{{\"a{c}\"}}\"\n");
+        let nested = format!("fn f() String:\n    return f\"{{\"a{c}\"}}\"\n");
         assert!(parse(&nested).unwrap_err().contains("bidirectional"));
     }
 }

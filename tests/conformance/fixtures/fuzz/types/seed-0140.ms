@@ -6,21 +6,21 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    say("{((-29) + 33)} {(-43)} {(((-29) + 33) < (-43))} sum {((-29) + 33) + (-43)}")
+    say(f"{((-29) + 33)} {(-43)} {(((-29) + 33) < (-43))} sum {((-29) + 33) + (-43)}")
 
     l1 := [(-3), (-19), 1]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
     say(
-        "{(l1.get(0) % (26 * 846487))} {(((-41) + (-48)) * ((-98712) * (-18)))} {((l1.get(0) % (26 * 846487)) < (((-41) + (-48)) * ((-98712) * (-18))))} sum {(l1.get(0) % (26 * 846487)) + (((-41) + (-48)) * ((-98712) * (-18)))}"
+        f"{(l1.get(0) % (26 * 846487))} {(((-41) + (-48)) * ((-98712) * (-18)))} {((l1.get(0) % (26 * 846487)) < (((-41) + (-48)) * ((-98712) * (-18))))} sum {(l1.get(0) % (26 * 846487)) + (((-41) + (-48)) * ((-98712) * (-18)))}"
     )
 
     l2 := l1.map(fn x: x + 4).filter(fn x: x % 2 == 0)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     bad := missing_function(3)
     s3 := "emoji 😀".reverse().replace("back\\slash", "héllo")
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
     return 0

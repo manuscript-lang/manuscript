@@ -6,35 +6,35 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := 6
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     i2 := i1
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
     i3 := ((i1 * (-18)) * (((-28) * 44) + (i1 / i2)))
-    say("i3 = {i3}")
+    say(f"i3 = {i3}")
 
     i4 := (((-20) * i2) % ((-i3) + (3 % i1)))
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
-    s5 := ("{(650615 - i2)}:" + "line\nbreak".upper()).trim()
-    say("s5 = [{s5}]")
+    s5 := (f"{(650615 - i2)}:" + "line\nbreak".upper()).trim()
+    say(f"s5 = [{s5}]")
 
     i6 := (i1 + 42)
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
 
     b7 := (s5.trim() + (s5 + "x")).ends_with(s5)
-    say("b7 = {b7}")
+    say(f"b7 = {b7}")
 
     l8 := [1, 2, 3].take(0)
-    say("l8 = {l8} len {l8.length()}")
+    say(f"l8 = {l8} len {l8.length()}")
 
     f9 := (((0.0 / 735.565) / (388.601 + 0.0)) + 995.238)
-    say("f9 = {f9}")
+    say(f"f9 = {f9}")
 
     if ((b7 and true) and (false or true)):
         say(s5.replace(s5, s5))
@@ -42,13 +42,13 @@ export fn main() Int:
         say(s5.replace("emoji 😀", "alpha"))
 
     b10 := ((-27) == 10)
-    say("b10 = {b10}")
+    say(f"b10 = {b10}")
 
     l11 := l8.map(fn x: x * 3)
-    say("l11 = {l11} len {l11.length()}")
+    say(f"l11 = {l11} len {l11.length()}")
 
     s12 := ("alpha".replace(s5, "emoji 😀") + s5).upper()
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     if s5.starts_with(s12):
         say("beta")

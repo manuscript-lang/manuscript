@@ -15,7 +15,7 @@ type Bracketer:
 	open: String
 
 fn Bracketer.visit(n: Int) String:
-	return "{self.open}{n}>"
+	return f"{self.open}{n}>"
 
 fn run[R](v: Visitor[R], n: Int) R:
 	return v.visit(n)

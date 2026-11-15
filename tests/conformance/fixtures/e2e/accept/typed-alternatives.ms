@@ -39,7 +39,7 @@ fn word(n: Int) String!Error:
     if n == 0:
         return error(Error("zero"))
 
-    return ok("w{n}")
+    return ok(f"w{n}")
 
 fn ratio(n: Int) Float!Error:
     return ok(1.5)
@@ -84,7 +84,7 @@ test "result matching":
 
 test "chains?":
     v := deeper(1).get()
-    if not (v == 4 + 10): return fail("deeper {v}")
+    if not (v == 4 + 10): return fail(f"deeper {v}")
 
     deeper_failure := deeper(-5)
     expect_false(not deeper_failure.is_error())?
@@ -95,10 +95,10 @@ test "chains?":
     expect_false(not expression_try(-4).is_error())?
 
     total := sum_all(5).get()
-    if not (total == 15): return fail("sum {total}")
+    if not (total == 15): return fail(f"sum {total}")
 
 test "boxed consumers":
-    expect_equal("{checked(2)}", "{passthrough(2)}")?
+    expect_equal(f"{checked(2)}", f"{passthrough(2)}")?
     expect_equal(checked(2), through_local(2))?
     expect_equal(checked(-2), passthrough(-2))?
 

@@ -12,7 +12,7 @@ fn upper(chunk: Bytes) Bytes:
 
 test "flows compose stream transforms":
 	temporary := temporary("manuscript-streams-") | expect_ok?
-	path := "{temporary.path()}/pipeline.bin"
+	path := f"{temporary.path()}/pipeline.bin"
 	var output = open(path, OpenMode.Write, OpenOptions(permissions: 420)) | expect_ok?
 	source := from_bytes("hello world".to_bytes(), 4)
 	copied := copy(map(source, upper), output.writer()?)?

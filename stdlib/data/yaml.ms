@@ -188,7 +188,7 @@ fn source_column(context: Context, row: Int, column: Int) Int:
 // A malformed-input error at a one-based source position.
 fn yaml_invalid(line: Int, column: Int, reason: String) Error:
 	return Error(
-		"YAML {line}:{column}: {reason}",
+		f"YAML {line}:{column}: {reason}",
 		kind: "EBADMSG",
 		details: {
 			"line": line.to_string(),
@@ -200,7 +200,7 @@ fn yaml_invalid(line: Int, column: Int, reason: String) Error:
 // An error for syntax this configuration parser does not support.
 fn yaml_unsupported(line: Int, reason: String) Error:
 	return Error(
-		"YAML {line}: {reason}",
+		f"YAML {line}: {reason}",
 		kind: "ENOTSUP",
 		details: {"line": line.to_string(), "reason": reason.clone()},
 	)
@@ -454,7 +454,7 @@ fn plain(text: String) YamlValue:
 
 fn anchor_name(var flow: Flow) String!:
 	var name = ""
-	while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
+	while peek(flow) != "" and not " \t\n,[]{}".contains(peek(flow)):
 		name = name.concat(advance(var flow))
 	if name == "": return error(flow_invalid(flow, "empty anchor name"))
 
@@ -485,7 +485,7 @@ fn tag_token(var flow: Flow) String!:
 		return ok(uri)
 
 	var name = ""
-	while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
+	while peek(flow) != "" and not " \t\n,[]{}".contains(peek(flow)):
 		name = name.concat(advance(var flow))
 
 	handles := flow.context.tag_handles
@@ -494,18 +494,18 @@ fn tag_token(var flow: Flow) String!:
 	if name.starts_with("!"):
 		var prefix = "tag:yaml.org,2002:"
 		if declared := handles.get("!!"): prefix = declared.clone()
-		return ok("{prefix}{name.slice(1, name.length()).get("")}")
+		return ok(f"{prefix}{name.slice(1, name.length()).get("")}")
 
 	if bang := name.index_of("!"):
-		handle := "!{name.slice(0, bang + 1).get("")}"
+		handle := f"!{name.slice(0, bang + 1).get("")}"
 		if prefix := handles.get(handle):
-			return ok("{prefix}{name.slice(bang + 1, name.length()).get("")}")
+			return ok(f"{prefix}{name.slice(bang + 1, name.length()).get("")}")
 
 		return error(flow_invalid(flow, "undeclared tag handle"))
 
 	if name != "":
-		if prefix := handles.get("!"): return ok("{prefix}{name}")
-	return ok("!{name}")
+		if prefix := handles.get("!"): return ok(f"{prefix}{name}")
+	return ok(f"!{name}")
 
 // The mapping key a scalar node stands for: its text. A collection cannot be a key.
 fn key_text(value: YamlValue) String?:
@@ -1134,7 +1134,7 @@ fn quoted_or_nested(text: String) Bool:
 		text.contains("\"")
 		or text.contains("'")
 		or text.contains("[")
-		or text.contains("\{")
+		or text.contains("{")
 	)
 
 // Whether the colon at scalar `at` ends an anchor or alias name, which runs to a blank.
@@ -1522,7 +1522,7 @@ fn inline_value(
 	var joined = text.clone()
 	structured := (
 		text.starts_with("[")
-		or text.starts_with("\{")
+		or text.starts_with("{")
 		or text.starts_with("\"")
 		or text.starts_with("'")
 		or text.starts_with("&")
@@ -1596,7 +1596,7 @@ fn inline_value(
 		stops: stops,
 		force_string: as_string and not (
 			text.starts_with("[")
-			or text.starts_with("\{")
+			or text.starts_with("{")
 		),
 	)
 	result := flow_value(var flow, depth, key: false)?
@@ -2797,7 +2797,7 @@ fn scalar_text(value: YamlValue) String!:
 			if values.is_empty(): return ok("[]")
 			return ok("")
 		ObjectValue(values):
-			if values.is_empty(): return ok("\{\}")
+			if values.is_empty(): return ok("{}")
 			return ok("")
 
 fn is_block(value: YamlValue) Bool:

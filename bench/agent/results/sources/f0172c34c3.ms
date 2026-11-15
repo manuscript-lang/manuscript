@@ -113,7 +113,7 @@ export fn main() Int:
             if is_blank(line):
                 continue
 
-            out.write("{run(line)}\n").get()
+            out.write(f"{run(line)}\n").get()
         else:
             break
 

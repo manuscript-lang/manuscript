@@ -17,12 +17,12 @@ fn make(n: Int) Pair:
     var r = List[String]()
 
     for i in 0..n:
-        l.append("l{i}")
-        r.append("r{i}")
+        l.append(f"l{i}")
+        r.append(f"r{i}")
 
-    return Pair(l, r, "t{n}")
+    return Pair(l, r, f"t{n}")
 
 fn main() Void:
     l := left_of(make(3))
     t := tag_of(make(2))
-    stdout().write("{l.join(",")} {t}\n").get()
+    stdout().write(f"{l.join(",")} {t}\n").get()

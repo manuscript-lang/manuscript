@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -23,48 +23,48 @@ fn fib(n: Int) Int:
 
 export fn main() Int:
     f1 := (3.101 + (0.0 / (0.0 / 2.0e15)))
-    say("f1 = {f1}")
+    say(f"f1 = {f1}")
 
     i2 := (-(-43))
-    say("i2 = {i2}")
+    say(f"i2 = {i2}")
 
-    s3 := ("{(i2 + 31)}:" + "quote\"d")
-    say("s3 = [{s3}]")
+    s3 := (f"{(i2 + 31)}:" + "quote\"d")
+    say(f"s3 = [{s3}]")
 
     i4 := 991511
-    say("i4 = {i4}")
+    say(f"i4 = {i4}")
 
     i5 := (i4 - (((-45) / i2) + 46))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
 
     i6 := 955725274668
-    say("i6 = {i6}")
+    say(f"i6 = {i6}")
     say(
-        "{((-862442) % (48 % i5))} {i5} {(((-862442) % (48 % i5)) < i5)} sum {((-862442) % (48 % i5)) + i5}"
+        f"{((-862442) % (48 % i5))} {i5} {(((-862442) % (48 % i5)) < i5)} sum {((-862442) % (48 % i5)) + i5}"
     )
 
     f7 := 600.258
-    say("f7 = {f7}")
+    say(f"f7 = {f7}")
 
     if ((i5 + (-41)) > (34 + (-201925))):
         say(s3)
     else:
-        say(("brace\{s\}" + s3))
+        say(("brace{s}" + s3))
 
-    say("{576587} {(-22)} {(576587 < (-22))} sum {576587 + (-22)}")
+    say(f"{576587} {(-22)} {(576587 < (-22))} sum {576587 + (-22)}")
 
     f8 := f7
-    say("f8 = {f8}")
+    say(f"f8 = {f8}")
 
     i9 := ((((-203362917912) * i4) + (39 % 10)) - (i5 % (i6 - i4)))
-    say("i9 = {i9}")
+    say(f"i9 = {i9}")
 
     l10 := [26]
-    say("l10 = {l10} len {l10.length()}")
-    say("fib(18) = {fib(18)}")
+    say(f"l10 = {l10} len {l10.length()}")
+    say(f"fib(18) = {fib(18)}")
 
     i11 := 50
-    say("i11 = {i11}")
+    say(f"i11 = {i11}")
 
     var acc12 = 0
 
@@ -74,14 +74,14 @@ export fn main() Int:
         else:
             acc12 -= 1
 
-    say("acc12 = {acc12}")
+    say(f"acc12 = {acc12}")
 
     f13 := (((791.633 + f1) - (0.5 - f1)) * ((f1 * 143.894) * (f1 - f1)))
-    say("f13 = {f13}")
+    say(f"f13 = {f13}")
 
     s14 := ("naïve".upper() + s3.trim().upper())
-    say("s14 = [{s14}]")
+    say(f"s14 = [{s14}]")
 
     b15 := (i5 == (l10.length() * l10.length()))
-    say("b15 = {b15}")
+    say(f"b15 = {b15}")
     return 0

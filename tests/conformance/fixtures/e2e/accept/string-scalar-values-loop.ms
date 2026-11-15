@@ -34,7 +34,7 @@ test "a scalar walk reads the text as it was when the loop began":
 	var total = 0
 
 	for c in s.clone().scalar_values():
-		s = "{s}é"
+		s = f"{s}é"
 		total += c
 
 	expect_equal(total, 195)?

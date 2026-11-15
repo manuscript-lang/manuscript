@@ -6,23 +6,23 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    written := stdout().write("{text}\n")
+    written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     i1 := ((-((-46) % (-5))) + 47)
-    say("i1 = {i1}")
+    say(f"i1 = {i1}")
 
     if ((not false) and false):
-        say("brace\{s\}")
+        say("brace{s}")
     else:
         say("  padded  ")
 
     f2 := ((805.192 + (161.901 / 304.045)) * (55.427 - (0.0 + 28.580)))
-    say("f2 = {f2}")
+    say(f"f2 = {f2}")
 
     bad := Map[Int, Int]().get(1, 2, 3)
     var acc3 = 0
     for i in 0..7:
         acc3 += i * 7
-    say("acc3 = {acc3}")
+    say(f"acc3 = {acc3}")
     return 0

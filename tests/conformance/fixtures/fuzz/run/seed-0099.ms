@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -28,16 +28,16 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    say("fact(5) = {fact(5)}")
+    say(f"fact(5) = {fact(5)}")
 
     s1 := (("  padded  " + "emoji 😀") + "".lower()).replace("naïve", "naïve")
-    say("s1 = [{s1}]")
+    say(f"s1 = [{s1}]")
 
     b2 := s1.upper().is_empty()
-    say("b2 = {b2}")
+    say(f"b2 = {b2}")
 
     s3 := "emoji 😀".lower()
-    say("s3 = [{s3}]")
+    say(f"s3 = [{s3}]")
 
     var acc4 = 0
     var stepacc4 = 0
@@ -46,44 +46,44 @@ export fn main() Int:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + (-2)
 
-    say("acc4 = {acc4}")
+    say(f"acc4 = {acc4}")
 
     i5 := ((14 + ((-26) * (-153485))) / (-4))
-    say("i5 = {i5}")
+    say(f"i5 = {i5}")
     say(
-        "{(415965145301 + i5)} {i5} {((415965145301 + i5) < i5)} sum {(415965145301 + i5) + i5}"
+        f"{(415965145301 + i5)} {i5} {((415965145301 + i5) < i5)} sum {(415965145301 + i5) + i5}"
     )
 
     f6 := 9.0e19
-    say("f6 = {f6}")
+    say(f"f6 = {f6}")
 
     s7 := s3
-    say("s7 = [{s7}]")
+    say(f"s7 = [{s7}]")
 
     b8 := true
-    say("b8 = {b8}")
+    say(f"b8 = {b8}")
 
     i9 := (((i5 + i5) - i5) - (-(i5 + (-28))))
-    say("i9 = {i9}")
-    say("fib(38) = {fib(38)}")
+    say(f"i9 = {i9}")
+    say(f"fib(38) = {fib(38)}")
 
     i10 := ((-(43 * 43)) * 5)
-    say("i10 = {i10}")
+    say(f"i10 = {i10}")
 
     var acc11 = 0
     for i in 0..2:
         acc11 += i * (-4)
-    say("acc11 = {acc11}")
+    say(f"acc11 = {acc11}")
 
     s12 := ("gamma" + "  padded  ").upper()
-    say("s12 = [{s12}]")
+    say(f"s12 = [{s12}]")
 
     l13 := [(-24), 9, 21]
-    say("l13 = {l13} len {l13.length()}")
+    say(f"l13 = {l13} len {l13.length()}")
 
     i14 := i10
-    say("i14 = {i14}")
+    say(f"i14 = {i14}")
 
     s15 := s12
-    say("s15 = [{s15}]")
+    say(f"s15 = [{s15}]")
     return 0

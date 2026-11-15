@@ -132,6 +132,6 @@ fn components(n: Int, m: Int) Int:
 fn main() Void:
 	n := 200000
 	adj := build(n, 800000)
-	print("bfs {bfs(adj, 0)}")
-	print("dijkstra {dijkstra(adj, 0)}")
-	print("components {components(n, 150000)}")
+	print(f"bfs {bfs(adj, 0)}")
+	print(f"dijkstra {dijkstra(adj, 0)}")
+	print(f"components {components(n, 150000)}")

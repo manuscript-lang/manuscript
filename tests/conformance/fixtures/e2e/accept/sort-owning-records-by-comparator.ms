@@ -18,8 +18,8 @@ fn entries(count: Int) List[Entry]:
 			Entry(
 				key: x % 10,
 				id: i,
-				name: "entry-name-longer-than-inline-{i}",
-				tags: ["t{i}", "u"],
+				name: f"entry-name-longer-than-inline-{i}",
+				tags: [f"t{i}", "u"],
 			)
 		)
 

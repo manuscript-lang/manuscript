@@ -85,7 +85,7 @@ test "distinct preserves owned strings, empty and small lists":
 
 	var source: List[String] = []
 	for i in 0..40:
-		source.append("heap-backed-distinct-key-{i % 3}")
+		source.append(f"heap-backed-distinct-key-{i % 3}")
 	expect_equal(
 		source.distinct(),
 		[

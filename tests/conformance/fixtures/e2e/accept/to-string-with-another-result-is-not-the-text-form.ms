@@ -9,6 +9,6 @@ fn P.to_string() Int:
 fn main() Void:
     p := P(n: 7)
     print(p.to_string())
-    print("{p}")
+    print(f"{p}")
     print(p)
     print([p.clone()])

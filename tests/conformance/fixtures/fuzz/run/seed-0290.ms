@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _written := stdout().write("{text}\n")
+    _written := stdout().write(f"{text}\n")
 
 export fn main() Int:
     say(
-        "{(-32)} {(-158288384435)} {((-32) < (-158288384435))} sum {(-32) + (-158288384435)}"
+        f"{(-32)} {(-158288384435)} {((-32) < (-158288384435))} sum {(-32) + (-158288384435)}"
     )
 
     l1 := [(-12)]
-    say("l1 = {l1} len {l1.length()}")
+    say(f"l1 = {l1} len {l1.length()}")
 
     l2 := l1.filter(fn x: x > 4)
-    say("l2 = {l2} len {l2.length()}")
+    say(f"l2 = {l2} len {l2.length()}")
 
     f3 := 6.5
-    say("f3 = {f3}")
+    say(f"f3 = {f3}")
 
     i4 := (-31)
-    say("i4 = {i4}")
-    say("{29} {i4} {(29 < i4)} sum {29 + i4}")
+    say(f"i4 = {i4}")
+    say(f"{29} {i4} {(29 < i4)} sum {29 + i4}")
 
     big5 := (-i4) - (-i4)
-    say("{(-i4) / big5}")
+    say(f"{(-i4) / big5}")
     return 0

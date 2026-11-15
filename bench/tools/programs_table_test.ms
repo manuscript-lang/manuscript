@@ -5,8 +5,8 @@ import (
 )
 
 fn sample(version: String) List[String]:
-	var lines = ops().map(fn op: "{version} {op.name} {op.count} {op.count * 2}")
-	lines.append("{version} # sink " + SINK.map(fn n: "{n}").join(" "))
+	var lines = ops().map(fn op: f"{version} {op.name} {op.count} {op.count * 2}")
+	lines.append(f"{version} # sink " + SINK.map(fn n: f"{n}").join(" "))
 	return lines
 
 fn both() List[String]:

@@ -32,7 +32,7 @@ AS_EOLM := 3
 AS_WORDB := 4
 AS_NWORDB := 5
 INF := -1
-ASCII := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+ASCII := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 HEX := "0123456789abcdef"
 
 type Instr:
@@ -1019,15 +1019,15 @@ fn group_lines(p: Parser, subj: List[Int], c: List[Int]) List[String]:
 	var out = List[String]()
 
 	for g in 0..(p.ngroups + 1):
-		var label = "{g}"
+		var label = f"{g}"
 		if g > 0 and p.group_names[g] != "":
-			label = "{g} (" + p.group_names[g] + ")"
+			label = f"{g} (" + p.group_names[g] + ")"
 
 		s := c[2 * g]
 		e := c[2 * g + 1]
 
 		if s >= 0 and e >= 0:
-			out.append(label + ": {s}..{e} " + quote_range(subj, s, e))
+			out.append(label + f": {s}..{e} " + quote_range(subj, s, e))
 		else:
 			out.append(label + ": unset")
 
@@ -1228,8 +1228,8 @@ fn handle(line: List[Int]) List[String]:
 	else if eq_str(name, "find-all"):
 		ms := all_matches(p, subj)
 		for c in ms:
-			out.append("{c[0]}..{c[1]} " + quote_range(subj, c[0], c[1]))
-		out.append("({ms.length()} matches)")
+			out.append(f"{c[0]}..{c[1]} " + quote_range(subj, c[0], c[1]))
+		out.append(f"({ms.length()} matches)")
 	else if eq_str(name, "split"):
 		ms := all_matches(p, subj)
 		var pieces = List[String]()
@@ -1243,7 +1243,7 @@ fn handle(line: List[Int]) List[String]:
 		pieces.append(quote_range(subj, prev, subj.length()))
 		for piece in pieces:
 			out.append(piece.clone())
-		out.append("({pieces.length()} pieces)")
+		out.append(f"({pieces.length()} pieces)")
 	else:
 		ms := all_matches(p, subj)
 		var res = List[Int]()

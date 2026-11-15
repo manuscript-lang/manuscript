@@ -31,7 +31,7 @@ fn count(program: String, out_file: String) Int:
 		"valgrind",
 		[
 			"--tool=callgrind",
-			"--callgrind-out-file={out_file}",
+			f"--callgrind-out-file={out_file}",
 			program.clone(),
 		],
 		RunOptions(timeout: seconds(600)),
@@ -61,15 +61,15 @@ fn main() Int:
 	ms := tool_ms(root.clone())
 	bound := env("PERF_COUNTS_BOUND", "3").parse_int().get(3)
 	update := arguments().contains("--update")
-	path := "{root}/{COUNTS}"
+	path := f"{root}/{COUNTS}"
 	known := committed(path.clone())
 	scratch := temporary("ms-perf-counts-").get()
 	var failures = 0
 	var report = "# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.\n"
 
 	for name in PROGRAMS:
-		binary := "{scratch.path()}/{name}"
-		source := "{root}/bench/perf/suite/{name}/main.ms"
+		binary := f"{scratch.path()}/{name}"
+		source := f"{root}/bench/perf/suite/{name}/main.ms"
 		built := run(
 			ms.clone(),
 			["build", source, "-o", binary.clone()],
@@ -77,40 +77,40 @@ fn main() Int:
 		).wait()
 
 		if built.is_error():
-			say("fail: {name} did not build\n")
+			say(f"fail: {name} did not build\n")
 			failures += 1
 			continue
 
-		now := count(binary.clone(), "{scratch.path()}/{name}.out")
+		now := count(binary.clone(), f"{scratch.path()}/{name}.out")
 
 		if now < 0:
-			say("fail: {name} did not run under valgrind\n")
+			say(f"fail: {name} did not run under valgrind\n")
 			failures += 1
 			continue
 
-		report += "{name} {now}\n"
+		report += f"{name} {now}\n"
 
 		before := known.get(name).get(0)
 
 		if before == 0:
-			say("{name}: {now} (no committed count)\n")
+			say(f"{name}: {now} (no committed count)\n")
 			if not update: failures += 1
 			continue
 
 		tenths := (now - before) * 1000 / before
-		say("{name}: {now} against {before} ({tenths / 10}.{tenths.abs() % 10}%)\n")
+		say(f"{name}: {now} against {before} ({tenths / 10}.{tenths.abs() % 10}%)\n")
 
 		if tenths > bound * 10:
 			failures += 1
 			say(
-				"fail: {name} executes more than {bound}% more instructions than the committed count; find the change that made it slower, or refresh {COUNTS} when the cost is deliberate\n"
+				f"fail: {name} executes more than {bound}% more instructions than the committed count; find the change that made it slower, or refresh {COUNTS} when the cost is deliberate\n"
 			)
 		else if tenths < -bound * 10:
-			say("note: {name} got faster; refresh {COUNTS} with --update\n")
+			say(f"note: {name} got faster; refresh {COUNTS} with --update\n")
 
 	if update:
 		write_file(path, report, true).wait().get()
-		say("wrote {COUNTS}\n")
+		say(f"wrote {COUNTS}\n")
 		return 0
 
 	if failures > 0: return 1
