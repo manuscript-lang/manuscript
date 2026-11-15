@@ -1,2 +1,2 @@
 export fn greet(name: String) String:
-    return "hello {name}"
+    return f"hello {name}"
