@@ -244,6 +244,10 @@ impl Checker {
                     }
                     let fix = if suggestions::promise_wait_fits(self.syms, &actual, exp) {
                         suggestions::append_call(&self.m().source, e, "wait()")
+                    } else if !crate::hints::uncalled_function_hint(self.syms, &actual, exp)
+                        .is_empty()
+                    {
+                        suggestions::append_parens(&self.m().source, e)
                     } else {
                         suggestions::conversion_fix(
                             &self.m().source,
@@ -1099,7 +1103,7 @@ impl Checker {
             }
             self.type_error(
                 e.pos,
-                format!("'?' requires a Result, found {result_t}; apply '?' only to a call returning Result[T, E], and use '?.', 'if value := x', or '.get(default)' for an Optional", result_t = result.display(self.syms)),
+                format!("'?' requires a Result, found {result_t}; apply '?' only to a call returning Result[T, E]{optional}", result_t = result.display(self.syms), optional = if result.is(Builtin::Optional) { ". '?' does not unwrap an Optional `x`: write `if v := x:` to use the value when present, `x.get(default)` for a fallback, or `x.get()` to fault when absent" } else { "" }),
             );
             return;
         }
@@ -1138,12 +1142,20 @@ impl Checker {
         if matches!(op, BinaryOp::Eq | BinaryOp::Ne)
             && (self.names_none(left) || self.names_none(right))
         {
-            let other = if self.names_none(left) { right } else { left };
-            let other = self.expression(other, None);
+            let other_expr = if self.names_none(left) { right } else { left };
+            let other = self.expression(other_expr, None);
             if !invalid_ty(&other.t()) {
-                self.type_error(
+                let fix = suggestions::none_test(
+                    &self.m().source,
+                    e,
+                    other_expr,
+                    matches!(op, BinaryOp::Ne),
+                );
+                self.type_error_with_fix(
                     e.pos,
-                    "none has no type of its own here; test absence with is_none() or is_some(), or compare with the plain value, e.g. x == 3",
+                    Cause::Other,
+                    "none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != none` is `x.is_some()`), or compare with the plain value, e.g. x == 3".to_string(),
+                    fix,
                 );
             }
             i.ty = Some(bool_());
@@ -1242,11 +1254,24 @@ impl Checker {
             }
             let source = self.m().source.clone();
             let compound = suggestions::is_compound_operator(&source, e.pos, op.as_str());
-            let fix = match (self.syms.str(at.id), self.syms.str(bt.id)) {
+            let uncalled = |f: &Ty, other: &Ty| {
+                !crate::hints::uncalled_function_hint(self.syms, f, other).is_empty()
+            };
+            let fix = if uncalled(&at, &bt) {
+                suggestions::append_parens(&source, left)
+            } else if uncalled(&bt, &at) {
+                suggestions::append_parens(&source, right)
+            } else {
+                None
+            };
+            if uncalled(&at, &bt) || uncalled(&bt, &at) {
+                hint = "this is a method, not a property; call it with parentheses, as in `xs.length()`".to_string();
+            }
+            let fix = fix.or_else(|| match (self.syms.str(at.id), self.syms.str(bt.id)) {
                 ("Int", "Float") if !compound => suggestions::to_float(&source, left),
                 ("Float", "Int") => suggestions::to_float(&source, right),
                 _ => None,
-            };
+            });
             self.type_error_with_fix(
                 e.pos,
                 Cause::Other,

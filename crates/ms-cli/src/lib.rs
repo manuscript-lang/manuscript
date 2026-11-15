@@ -14,6 +14,7 @@ pub mod diagnostic;
 mod duration;
 pub mod engine;
 pub mod fault;
+pub mod fetch;
 pub mod fmt;
 pub mod help;
 mod help_text;
@@ -68,6 +69,7 @@ pub fn run<L: Lower>(
     match args[0].as_str() {
         "help" => commands::run_help(&args[1..], io),
         "init" => init::run_init(&args[1..], io),
+        "fetch" => fetch::run_fetch(&args[1..], io),
         "skill" => skill::run_skill(&args[1..], io),
         "verify" => verify::run_verify(syms, &args[1..], engine, io),
         "fmt" => fmt::run_format(syms, &args[1..], io),
@@ -222,6 +224,7 @@ fn run_source_command<L: Lower>(
         Err(status) => return status,
     };
     engine.set_static_libc(inv.static_libc);
+    engine.set_profile_allocs(inv.allocs);
     let result = match inv.command.as_str() {
         "check" | "lint" => {
             let command = if inv.command == "check" {

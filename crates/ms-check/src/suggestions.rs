@@ -176,6 +176,36 @@ pub(crate) fn append_call(source: &str, e: &Expr, call: &str) -> Option<Diagnost
     })
 }
 
+/// `value()` for a no-argument method named without its parentheses.
+pub(crate) fn append_parens(source: &str, e: &Expr) -> Option<DiagnosticFix> {
+    rewrite_expr(source, e, |text, atomic| {
+        atomic.then(|| format!("{text}()"))
+    })
+}
+
+/// `value.is_none()` or `value.is_some()` for `value == none` / `value != none`.
+pub(crate) fn none_test(
+    source: &str,
+    whole: &Expr,
+    other: &Expr,
+    present: bool,
+) -> Option<DiagnosticFix> {
+    let (pos, end, _) = expr_range(source, whole)?;
+    let inner = rewrite_expr(source, other, |text, atomic| {
+        let call = if present { "is_some()" } else { "is_none()" };
+        Some(if atomic {
+            format!("{text}.{call}")
+        } else {
+            format!("({text}).{call}")
+        })
+    })?;
+    Some(DiagnosticFix {
+        pos,
+        end,
+        replacement: inner.replacement,
+    })
+}
+
 /// `f"{value}"` for the expression `e`, unless its text would not nest.
 pub(crate) fn interpolate(source: &str, e: &Expr) -> Option<DiagnosticFix> {
     // A plain integer literal is its own text; `"{3}"` would read as a regex quantifier.

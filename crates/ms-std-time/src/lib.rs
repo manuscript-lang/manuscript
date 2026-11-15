@@ -252,11 +252,6 @@ native! {
 
     // ---- Timestamp ----
 
-    /// `time.timestamp(seconds, nanoseconds)`.
-    fn msstd_time_timestamp(seconds: i64, nanoseconds: i64) -> Result<Timestamp, StatusCode> {
-        code(logic::new_timestamp(seconds, nanoseconds)).map(stamp)
-    }
-
     /// `time.parse_timestamp(text)`.
     fn msstd_time_parse_timestamp(text: &str) -> Result<Timestamp, StatusCode> {
         code(logic::parse_timestamp(text.as_bytes())).map(stamp)
@@ -264,21 +259,6 @@ native! {
 
     fn msstd_time_timestamp_to_string(value: &Timestamp) -> String {
         logic::to_string(ts(value))
-    }
-
-    fn msstd_time_timestamp_shift(value: &Timestamp, duration: i64) -> Result<Timestamp, StatusCode> {
-        code(logic::shift(ts(value), duration)).map(stamp)
-    }
-
-    fn msstd_time_timestamp_difference(
-        left: &Timestamp,
-        other: &Timestamp,
-    ) -> Result<i64, StatusCode> {
-        code(logic::difference(ts(left), ts(other)))
-    }
-
-    fn msstd_time_timestamp_compare(left: &Timestamp, other: &Timestamp) -> i64 {
-        logic::compare(ts(left), ts(other))
     }
 
     fn msstd_time_timestamp_calendar(

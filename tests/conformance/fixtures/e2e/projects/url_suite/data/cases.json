@@ -1,0 +1,1381 @@
+{
+ "parse": [
+  {
+   "in": "http://www.google.com",
+   "roundtrip": "http://www.google.com",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/",
+   "roundtrip": "http://www.google.com/",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/file%20one%26two",
+   "roundtrip": "http://www.google.com/file%20one%26two",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/#file%20one%26two",
+   "roundtrip": "http://www.google.com/#file%20one%26two",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "ftp://webmaster@www.google.com/",
+   "roundtrip": "ftp://webmaster@www.google.com/",
+   "scheme": "ftp",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": true,
+   "opaque": false
+  },
+  {
+   "in": "ftp://john%20doe@www.google.com/",
+   "roundtrip": "ftp://john%20doe@www.google.com/",
+   "scheme": "ftp",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": true,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/?",
+   "roundtrip": "http://www.google.com/?",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/?foo=bar?",
+   "roundtrip": "http://www.google.com/?foo=bar?",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/?q=go+language",
+   "roundtrip": "http://www.google.com/?q=go+language",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/?q=go%20language",
+   "roundtrip": "http://www.google.com/?q=go%20language",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/a%20b?q=c+d",
+   "roundtrip": "http://www.google.com/a%20b?q=c+d",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http:www.google.com/?q=go+language",
+   "roundtrip": "http:www.google.com/?q=go+language",
+   "scheme": "http",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": true
+  },
+  {
+   "in": "http:%2f%2fwww.google.com/?q=go+language",
+   "roundtrip": "http:%2f%2fwww.google.com/?q=go+language",
+   "scheme": "http",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": true
+  },
+  {
+   "in": "mailto:/webmaster@golang.org",
+   "roundtrip": "mailto:/webmaster@golang.org",
+   "scheme": "mailto",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "mailto:webmaster@golang.org",
+   "roundtrip": "mailto:webmaster@golang.org",
+   "scheme": "mailto",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": true
+  },
+  {
+   "in": "/foo?query=http://bad",
+   "roundtrip": "/foo?query=http://bad",
+   "scheme": "",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "//foo",
+   "roundtrip": "//foo",
+   "scheme": "",
+   "host": "foo",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "//user@foo/path?a=b",
+   "roundtrip": "//user@foo/path?a=b",
+   "scheme": "",
+   "host": "foo",
+   "port": "",
+   "has_user": true,
+   "opaque": false
+  },
+  {
+   "in": "///threeslashes",
+   "roundtrip": "///threeslashes",
+   "scheme": "",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://user:password@google.com",
+   "roundtrip": "http://user:password@google.com",
+   "scheme": "http",
+   "host": "google.com",
+   "port": "",
+   "has_user": true,
+   "opaque": false
+  },
+  {
+   "in": "http://j@ne:password@google.com",
+   "roundtrip": "http://j%40ne:password@google.com",
+   "scheme": "http",
+   "host": "google.com",
+   "port": "",
+   "has_user": true,
+   "opaque": false
+  },
+  {
+   "in": "http://jane:p@ssword@google.com",
+   "roundtrip": "http://jane:p%40ssword@google.com",
+   "scheme": "http",
+   "host": "google.com",
+   "port": "",
+   "has_user": true,
+   "opaque": false
+  },
+  {
+   "in": "http://j@ne:password@google.com/p@th?q=@go",
+   "roundtrip": "http://j%40ne:password@google.com/p@th?q=@go",
+   "scheme": "http",
+   "host": "google.com",
+   "port": "",
+   "has_user": true,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/?q=go+language#foo",
+   "roundtrip": "http://www.google.com/?q=go+language#foo",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/?q=go+language#foo&bar",
+   "roundtrip": "http://www.google.com/?q=go+language#foo&bar",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://www.google.com/?q=go+language#foo%26bar",
+   "roundtrip": "http://www.google.com/?q=go+language#foo%26bar",
+   "scheme": "http",
+   "host": "www.google.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "file:///home/adg/rabbits",
+   "roundtrip": "file:///home/adg/rabbits",
+   "scheme": "file",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "file:///C:/FooBar/Baz.txt",
+   "roundtrip": "file:///C:/FooBar/Baz.txt",
+   "scheme": "file",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "MaIlTo:webmaster@golang.org",
+   "roundtrip": "mailto:webmaster@golang.org",
+   "scheme": "mailto",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": true
+  },
+  {
+   "in": "a/b/c",
+   "roundtrip": "a/b/c",
+   "scheme": "",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://%3Fam:pa%3Fsword@google.com",
+   "roundtrip": "http://%3Fam:pa%3Fsword@google.com",
+   "scheme": "http",
+   "host": "google.com",
+   "port": "",
+   "has_user": true,
+   "opaque": false
+  },
+  {
+   "in": "http://192.168.0.1/",
+   "roundtrip": "http://192.168.0.1/",
+   "scheme": "http",
+   "host": "192.168.0.1",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://192.168.0.1:8080/",
+   "roundtrip": "http://192.168.0.1:8080/",
+   "scheme": "http",
+   "host": "192.168.0.1",
+   "port": "8080",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://[fe80::1]/",
+   "roundtrip": "http://[fe80::1]/",
+   "scheme": "http",
+   "host": "fe80::1",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://[fe80::1]:8080/",
+   "roundtrip": "http://[fe80::1]:8080/",
+   "scheme": "http",
+   "host": "fe80::1",
+   "port": "8080",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://[fe80::1%25en0]/",
+   "roundtrip": "http://[fe80::1%25en0]/",
+   "scheme": "http",
+   "host": "fe80::1%en0",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://[fe80::1%25en0]:8080/",
+   "roundtrip": "http://[fe80::1%25en0]:8080/",
+   "scheme": "http",
+   "host": "fe80::1%en0",
+   "port": "8080",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://[fe80::1%25%65%6e%301-._~]/",
+   "roundtrip": "http://[fe80::1%25en01-._~]/",
+   "scheme": "http",
+   "host": "fe80::1%en01-._~",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://[fe80::1%25%65%6e%301-._~]:8080/",
+   "roundtrip": "http://[fe80::1%25en01-._~]:8080/",
+   "scheme": "http",
+   "host": "fe80::1%en01-._~",
+   "port": "8080",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://rest.rsc.io/foo%2fbar/baz%2Fquux?alt=media",
+   "roundtrip": "http://rest.rsc.io/foo%2fbar/baz%2Fquux?alt=media",
+   "scheme": "http",
+   "host": "rest.rsc.io",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "mysql://a,b,c/bar",
+   "roundtrip": "mysql://a,b,c/bar",
+   "scheme": "mysql",
+   "host": "a,b,c",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "scheme://!$&'()*+,;=hello!:1/path",
+   "roundtrip": "scheme://!$&'()*+,;=hello!:1/path",
+   "scheme": "scheme",
+   "host": "!$&'()*+,;=hello!",
+   "port": "1",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://host/!$&'()*+,;=:@[hello]",
+   "roundtrip": "http://host/!$&'()*+,;=:@[hello]",
+   "scheme": "http",
+   "host": "host",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://example.com/oid/[order_id]",
+   "roundtrip": "http://example.com/oid/[order_id]",
+   "scheme": "http",
+   "host": "example.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://192.168.0.2:8080/foo",
+   "roundtrip": "http://192.168.0.2:8080/foo",
+   "scheme": "http",
+   "host": "192.168.0.2",
+   "port": "8080",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://192.168.0.2:/foo",
+   "roundtrip": "http://192.168.0.2:/foo",
+   "scheme": "http",
+   "host": "192.168.0.2",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://2b01:e34:ef40:7730:8e70:5aff:fefe:edac:8080/foo",
+   "roundtrip": "http://2b01:e34:ef40:7730:8e70:5aff:fefe:edac:8080/foo",
+   "scheme": "http",
+   "host": "2b01:e34:ef40:7730:8e70:5aff:fefe:edac",
+   "port": "8080",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://2b01:e34:ef40:7730:8e70:5aff:fefe:edac:/foo",
+   "roundtrip": "http://2b01:e34:ef40:7730:8e70:5aff:fefe:edac:/foo",
+   "scheme": "http",
+   "host": "2b01:e34:ef40:7730:8e70:5aff:fefe:edac",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://[2b01:e34:ef40:7730:8e70:5aff:fefe:edac]:8080/foo",
+   "roundtrip": "http://[2b01:e34:ef40:7730:8e70:5aff:fefe:edac]:8080/foo",
+   "scheme": "http",
+   "host": "2b01:e34:ef40:7730:8e70:5aff:fefe:edac",
+   "port": "8080",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://[2b01:e34:ef40:7730:8e70:5aff:fefe:edac]:/foo",
+   "roundtrip": "http://[2b01:e34:ef40:7730:8e70:5aff:fefe:edac]:/foo",
+   "scheme": "http",
+   "host": "2b01:e34:ef40:7730:8e70:5aff:fefe:edac",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://hello.世界.com/foo",
+   "roundtrip": "http://hello.%E4%B8%96%E7%95%8C.com/foo",
+   "scheme": "http",
+   "host": "hello.世界.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://hello.%e4%b8%96%e7%95%8c.com/foo",
+   "roundtrip": "http://hello.%E4%B8%96%E7%95%8C.com/foo",
+   "scheme": "http",
+   "host": "hello.世界.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://hello.%E4%B8%96%E7%95%8C.com/foo",
+   "roundtrip": "http://hello.%E4%B8%96%E7%95%8C.com/foo",
+   "scheme": "http",
+   "host": "hello.世界.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "http://example.com//foo",
+   "roundtrip": "http://example.com//foo",
+   "scheme": "http",
+   "host": "example.com",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "myscheme://authority<\"hi\">/foo",
+   "roundtrip": "myscheme://authority<\"hi\">/foo",
+   "scheme": "myscheme",
+   "host": "authority<\"hi\">",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "tcp://[2020::2020:20:2020:2020%25Windows%20Loves%20Spaces]:2020",
+   "roundtrip": "tcp://[2020::2020:20:2020:2020%25Windows%20Loves%20Spaces]:2020",
+   "scheme": "tcp",
+   "host": "2020::2020:20:2020:2020%Windows Loves Spaces",
+   "port": "2020",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "magnet:?xt=urn:btih:c12fe1c06bba254a9dc9f519b335aa7c1367a88a&dn",
+   "roundtrip": "magnet:?xt=urn:btih:c12fe1c06bba254a9dc9f519b335aa7c1367a88a&dn",
+   "scheme": "magnet",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  },
+  {
+   "in": "mailto:?subject=hi",
+   "roundtrip": "mailto:?subject=hi",
+   "scheme": "mailto",
+   "host": "",
+   "port": "",
+   "has_user": false,
+   "opaque": false
+  }
+ ],
+ "resolve": [
+  {
+   "base": "http://foo.com?a=b",
+   "rel": "https://bar.com/",
+   "expected": "https://bar.com/"
+  },
+  {
+   "base": "http://foo.com/",
+   "rel": "https://bar.com/?a=b",
+   "expected": "https://bar.com/?a=b"
+  },
+  {
+   "base": "http://foo.com/",
+   "rel": "https://bar.com/?",
+   "expected": "https://bar.com/?"
+  },
+  {
+   "base": "http://foo.com/bar",
+   "rel": "mailto:foo@example.com",
+   "expected": "mailto:foo@example.com"
+  },
+  {
+   "base": "http://foo.com/bar",
+   "rel": "/baz",
+   "expected": "http://foo.com/baz"
+  },
+  {
+   "base": "http://foo.com/bar?a=b#f",
+   "rel": "/baz",
+   "expected": "http://foo.com/baz"
+  },
+  {
+   "base": "http://foo.com/bar?a=b",
+   "rel": "/baz?",
+   "expected": "http://foo.com/baz?"
+  },
+  {
+   "base": "http://foo.com/bar?a=b",
+   "rel": "/baz?c=d",
+   "expected": "http://foo.com/baz?c=d"
+  },
+  {
+   "base": "http://foo.com/bar",
+   "rel": "http://foo.com//baz",
+   "expected": "http://foo.com//baz"
+  },
+  {
+   "base": "http://foo.com/bar",
+   "rel": "http://foo.com///baz/quux",
+   "expected": "http://foo.com///baz/quux"
+  },
+  {
+   "base": "https://foo.com/bar?a=b",
+   "rel": "//bar.com/quux",
+   "expected": "https://bar.com/quux"
+  },
+  {
+   "base": "http://foo.com",
+   "rel": ".",
+   "expected": "http://foo.com/"
+  },
+  {
+   "base": "http://foo.com/bar",
+   "rel": ".",
+   "expected": "http://foo.com/"
+  },
+  {
+   "base": "http://foo.com/bar/",
+   "rel": ".",
+   "expected": "http://foo.com/bar/"
+  },
+  {
+   "base": "http://foo.com",
+   "rel": "bar",
+   "expected": "http://foo.com/bar"
+  },
+  {
+   "base": "http://foo.com/",
+   "rel": "bar",
+   "expected": "http://foo.com/bar"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux",
+   "expected": "http://foo.com/bar/quux"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "../quux",
+   "expected": "http://foo.com/quux"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "../../../../../quux",
+   "expected": "http://foo.com/quux"
+  },
+  {
+   "base": "http://foo.com/bar",
+   "rel": "..",
+   "expected": "http://foo.com/"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "./..",
+   "expected": "http://foo.com/"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux/dotdot/../tail",
+   "expected": "http://foo.com/bar/quux/tail"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux/./dotdot/../tail",
+   "expected": "http://foo.com/bar/quux/tail"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux/./dotdot/.././tail",
+   "expected": "http://foo.com/bar/quux/tail"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux/./dotdot/./../tail",
+   "expected": "http://foo.com/bar/quux/tail"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux/./dotdot/dotdot/././../../tail",
+   "expected": "http://foo.com/bar/quux/tail"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux/./dotdot/dotdot/./.././../tail",
+   "expected": "http://foo.com/bar/quux/tail"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux/./dotdot/dotdot/dotdot/./../../.././././tail",
+   "expected": "http://foo.com/bar/quux/tail"
+  },
+  {
+   "base": "http://foo.com/bar/baz",
+   "rel": "quux/./dotdot/../dotdot/../dot/./tail/..",
+   "expected": "http://foo.com/bar/quux/dot/"
+  },
+  {
+   "base": "http://foo.com/dot/./dotdot/../foo/bar",
+   "rel": "../baz",
+   "expected": "http://foo.com/dot/baz"
+  },
+  {
+   "base": "http://foo.com/bar",
+   "rel": "...",
+   "expected": "http://foo.com/..."
+  },
+  {
+   "base": "http://foo.com/bar",
+   "rel": ".#frag",
+   "expected": "http://foo.com/#frag"
+  },
+  {
+   "base": "http://example.org/",
+   "rel": "#!$&%27()*+,;=",
+   "expected": "http://example.org/#!$&%27()*+,;="
+  },
+  {
+   "base": "http://foo.com/foo%2fbar/",
+   "rel": "../baz",
+   "expected": "http://foo.com/baz"
+  },
+  {
+   "base": "http://foo.com/1/2%2f/3%2f4/5",
+   "rel": "../../a/b/c",
+   "expected": "http://foo.com/1/a/b/c"
+  },
+  {
+   "base": "http://foo.com/1/2/3",
+   "rel": "./a%2f../../b/..%2fc",
+   "expected": "http://foo.com/1/2/b/..%2fc"
+  },
+  {
+   "base": "http://foo.com/1/2%2f/3%2f4/5",
+   "rel": "./a%2f../b/../c",
+   "expected": "http://foo.com/1/2%2f/3%2f4/a%2f../c"
+  },
+  {
+   "base": "http://foo.com/foo%20bar/",
+   "rel": "../baz",
+   "expected": "http://foo.com/baz"
+  },
+  {
+   "base": "http://foo.com/foo",
+   "rel": "../bar%2fbaz",
+   "expected": "http://foo.com/bar%2fbaz"
+  },
+  {
+   "base": "http://foo.com/foo%2dbar/",
+   "rel": "./baz-quux",
+   "expected": "http://foo.com/foo%2dbar/baz-quux"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g:h",
+   "expected": "g:h"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g",
+   "expected": "http://a/b/c/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "./g",
+   "expected": "http://a/b/c/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g/",
+   "expected": "http://a/b/c/g/"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "/g",
+   "expected": "http://a/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "//g",
+   "expected": "http://g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "?y",
+   "expected": "http://a/b/c/d;p?y"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g?y",
+   "expected": "http://a/b/c/g?y"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "#s",
+   "expected": "http://a/b/c/d;p?q#s"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g#s",
+   "expected": "http://a/b/c/g#s"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g?y#s",
+   "expected": "http://a/b/c/g?y#s"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": ";x",
+   "expected": "http://a/b/c/;x"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g;x",
+   "expected": "http://a/b/c/g;x"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g;x?y#s",
+   "expected": "http://a/b/c/g;x?y#s"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "",
+   "expected": "http://a/b/c/d;p?q"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": ".",
+   "expected": "http://a/b/c/"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "./",
+   "expected": "http://a/b/c/"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "..",
+   "expected": "http://a/b/"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "../",
+   "expected": "http://a/b/"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "../g",
+   "expected": "http://a/b/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "../..",
+   "expected": "http://a/"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "../../",
+   "expected": "http://a/"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "../../g",
+   "expected": "http://a/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "../../../g",
+   "expected": "http://a/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "../../../../g",
+   "expected": "http://a/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "/./g",
+   "expected": "http://a/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "/../g",
+   "expected": "http://a/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g.",
+   "expected": "http://a/b/c/g."
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": ".g",
+   "expected": "http://a/b/c/.g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g..",
+   "expected": "http://a/b/c/g.."
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "..g",
+   "expected": "http://a/b/c/..g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "./../g",
+   "expected": "http://a/b/g"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "./g/.",
+   "expected": "http://a/b/c/g/"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g/./h",
+   "expected": "http://a/b/c/g/h"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g/../h",
+   "expected": "http://a/b/c/h"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g;x=1/./y",
+   "expected": "http://a/b/c/g;x=1/y"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g;x=1/../y",
+   "expected": "http://a/b/c/y"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g?y/./x",
+   "expected": "http://a/b/c/g?y/./x"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g?y/../x",
+   "expected": "http://a/b/c/g?y/../x"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g#s/./x",
+   "expected": "http://a/b/c/g#s/./x"
+  },
+  {
+   "base": "http://a/b/c/d;p?q",
+   "rel": "g#s/../x",
+   "expected": "http://a/b/c/g#s/../x"
+  },
+  {
+   "base": "https://a/b/c/d;p?q",
+   "rel": "//g?q",
+   "expected": "https://g?q"
+  },
+  {
+   "base": "https://a/b/c/d;p?q",
+   "rel": "//g#s",
+   "expected": "https://g#s"
+  },
+  {
+   "base": "https://a/b/c/d;p?q",
+   "rel": "//g/d/e/f?y#s",
+   "expected": "https://g/d/e/f?y#s"
+  },
+  {
+   "base": "https://a/b/c/d;p#s",
+   "rel": "?y",
+   "expected": "https://a/b/c/d;p?y"
+  },
+  {
+   "base": "https://a/b/c/d;p?q#s",
+   "rel": "?y",
+   "expected": "https://a/b/c/d;p?y"
+  },
+  {
+   "base": "https://a/b/c/d;p?q#s",
+   "rel": "?",
+   "expected": "https://a/b/c/d;p?"
+  },
+  {
+   "base": "https://foo.com/bar?a=b",
+   "rel": "http:opaque",
+   "expected": "http:opaque"
+  },
+  {
+   "base": "http:opaque?x=y#zzz",
+   "rel": "https:/foo?a=b#frag",
+   "expected": "https:/foo?a=b#frag"
+  },
+  {
+   "base": "http:opaque?x=y#zzz",
+   "rel": "https:foo:bar",
+   "expected": "https:foo:bar"
+  },
+  {
+   "base": "http:opaque?x=y#zzz",
+   "rel": "https:bar/baz?a=b#frag",
+   "expected": "https:bar/baz?a=b#frag"
+  },
+  {
+   "base": "http:opaque?x=y#zzz",
+   "rel": "https://user@host:1234?a=b#frag",
+   "expected": "https://user@host:1234?a=b#frag"
+  },
+  {
+   "base": "http:opaque?x=y#zzz",
+   "rel": "?a=b#frag",
+   "expected": "http:opaque?a=b#frag"
+  }
+ ],
+ "unescape": [
+  {
+   "in": "",
+   "out": "",
+   "err": false
+  },
+  {
+   "in": "abc",
+   "out": "abc",
+   "err": false
+  },
+  {
+   "in": "1%41",
+   "out": "1A",
+   "err": false
+  },
+  {
+   "in": "1%41%42%43",
+   "out": "1ABC",
+   "err": false
+  },
+  {
+   "in": "%4a",
+   "out": "J",
+   "err": false
+  },
+  {
+   "in": "%6F",
+   "out": "o",
+   "err": false
+  },
+  {
+   "in": "%",
+   "out": "",
+   "err": true
+  },
+  {
+   "in": "%a",
+   "out": "",
+   "err": true
+  },
+  {
+   "in": "%1",
+   "out": "",
+   "err": true
+  },
+  {
+   "in": "123%45%6",
+   "out": "",
+   "err": true
+  },
+  {
+   "in": "%zzzzz",
+   "out": "",
+   "err": true
+  },
+  {
+   "in": "a+b",
+   "out": "a b",
+   "err": false
+  },
+  {
+   "in": "a%20b",
+   "out": "a b",
+   "err": false
+  }
+ ],
+ "query_escape": [
+  {
+   "in": "",
+   "out": "",
+   "err": false
+  },
+  {
+   "in": "abc",
+   "out": "abc",
+   "err": false
+  },
+  {
+   "in": "one two",
+   "out": "one+two",
+   "err": false
+  },
+  {
+   "in": "10%",
+   "out": "10%25",
+   "err": false
+  },
+  {
+   "in": " ?&=#+%!<>#\"{}|\\^[]`☺\t:/@$'()*,;",
+   "out": "+%3F%26%3D%23%2B%25%21%3C%3E%23%22%7B%7D%7C%5C%5E%5B%5D%60%E2%98%BA%09%3A%2F%40%24%27%28%29%2A%2C%3B",
+   "err": false
+  }
+ ],
+ "path_escape": [
+  {
+   "in": "",
+   "out": "",
+   "err": false
+  },
+  {
+   "in": "abc",
+   "out": "abc",
+   "err": false
+  },
+  {
+   "in": "abc+def",
+   "out": "abc+def",
+   "err": false
+  },
+  {
+   "in": "a/b",
+   "out": "a%2Fb",
+   "err": false
+  },
+  {
+   "in": "one two",
+   "out": "one%20two",
+   "err": false
+  },
+  {
+   "in": "10%",
+   "out": "10%25",
+   "err": false
+  },
+  {
+   "in": " ?&=#+%!<>#\"{}|\\^[]`☺\t:/@$'()*,;",
+   "out": "%20%3F&=%23+%25%21%3C%3E%23%22%7B%7D%7C%5C%5E%5B%5D%60%E2%98%BA%09:%2F@$%27%28%29%2A%2C%3B",
+   "err": false
+  }
+ ],
+ "query": [
+  {
+   "query": "a=1",
+   "out": {
+    "a": [
+     "1"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "query": "a=1&b=2",
+   "out": {
+    "a": [
+     "1"
+    ],
+    "b": [
+     "2"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "query": "a=1&a=2&a=banana",
+   "out": {
+    "a": [
+     "1",
+     "2",
+     "banana"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "query": "ascii=%3Ckey%3A+0x90%3E",
+   "out": {
+    "ascii": [
+     "<key: 0x90>"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "query": "a=1;b=2",
+   "out": {},
+   "ok": false
+  },
+  {
+   "query": "a;b=1",
+   "out": {},
+   "ok": false
+  },
+  {
+   "query": "a=%3B",
+   "out": {
+    "a": [
+     ";"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "query": "a%3Bb=1",
+   "out": {
+    "a;b": [
+     "1"
+    ]
+   },
+   "ok": true
+  },
+  {
+   "query": "a=1&a=2;a=banana",
+   "out": {
+    "a": [
+     "1"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "query": "a;b&c=1",
+   "out": {
+    "c": [
+     "1"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "query": "a=1&b=2;a=3&c=4",
+   "out": {
+    "a": [
+     "1"
+    ],
+    "c": [
+     "4"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "query": "a=1&b=2;c=3",
+   "out": {
+    "a": [
+     "1"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "query": ";",
+   "out": {},
+   "ok": false
+  },
+  {
+   "query": "a=1;",
+   "out": {},
+   "ok": false
+  },
+  {
+   "query": "a=1&;",
+   "out": {
+    "a": [
+     "1"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "query": ";a=1&b=2",
+   "out": {
+    "b": [
+     "2"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "query": "a=1&b=2;",
+   "out": {
+    "a": [
+     "1"
+    ]
+   },
+   "ok": false
+  }
+ ],
+ "parse_errors": [
+  {
+   "in": "http://[::1]",
+   "err": false
+  },
+  {
+   "in": "http://[::1]:80",
+   "err": false
+  },
+  {
+   "in": "http://[::1]:namedport",
+   "err": true
+  },
+  {
+   "in": "http://x:namedport",
+   "err": true
+  },
+  {
+   "in": "http://[::1]/",
+   "err": false
+  },
+  {
+   "in": "http://[::1]a",
+   "err": true
+  },
+  {
+   "in": "http://[::1]%23",
+   "err": true
+  },
+  {
+   "in": "http://[::1%25en0]",
+   "err": false
+  },
+  {
+   "in": "http://[::1]:",
+   "err": false
+  },
+  {
+   "in": "http://x:",
+   "err": false
+  },
+  {
+   "in": "http://[::1]:%38%30",
+   "err": true
+  },
+  {
+   "in": "http://[::1%25%41]",
+   "err": false
+  },
+  {
+   "in": "http://[%10::1]",
+   "err": true
+  },
+  {
+   "in": "http://[::1]/%48",
+   "err": false
+  },
+  {
+   "in": "http://%41:8080/",
+   "err": true
+  },
+  {
+   "in": "mysql://x@y(z:123)/foo",
+   "err": true
+  },
+  {
+   "in": "mysql://x@y(1.2.3.4:123)/foo",
+   "err": true
+  },
+  {
+   "in": " http://foo.com",
+   "err": true
+  },
+  {
+   "in": "ht tp://foo.com",
+   "err": true
+  },
+  {
+   "in": "ahttp://foo.com",
+   "err": false
+  },
+  {
+   "in": "1http://foo.com",
+   "err": true
+  },
+  {
+   "in": "http://[]%20%48%54%54%50%2f%31%2e%31%0a%4d%79%48%65%61%64%65%72%3a%20%31%32%33%0a%0a/",
+   "err": true
+  },
+  {
+   "in": "http://a b.com/",
+   "err": true
+  },
+  {
+   "in": "cache_object://foo",
+   "err": true
+  },
+  {
+   "in": "cache_object:foo",
+   "err": true
+  },
+  {
+   "in": "cache_object:foo/bar",
+   "err": true
+  },
+  {
+   "in": "cache_object/:foo/bar",
+   "err": false
+  }
+ ]
+}

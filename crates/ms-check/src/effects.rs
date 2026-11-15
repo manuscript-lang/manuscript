@@ -327,6 +327,8 @@ pub struct EffectScan {
     effects: HashMap<Name, Vec<&'static str>>,
     /// Declared effects (`// ms: effect`) callers see, by callable id, for the scanned callables.
     declared: HashMap<Name, Vec<String>>,
+    /// Fetched packages: what each may reach.
+    packages: Vec<crate::checker::PackageScope>,
 }
 
 struct State {
@@ -520,16 +522,24 @@ impl EffectScan {
                 }
                 _ => name.to_string(),
             };
+            let cap = self
+                .packages
+                .iter()
+                .filter(|p| file.starts_with(&p.prefix))
+                .max_by_key(|p| p.prefix.len())
+                .map(|p| p.effects.clone());
+            let header = lines.header().allow;
             reach.push(ReachNode {
                 id: *id,
                 file: module.file,
                 label,
                 pos: func.pos(),
                 project: !crate::stdlib::is_bundled_source(file),
-                entry: name == "main" && func.method().is_none(),
+                entry: name == "main" && func.method().is_none() && cap.is_none(),
                 declared: at.declared,
                 allow_fn: at.allow,
-                allow_file: lines.header().allow,
+                allow_file: header.or_else(|| cap.clone()),
+                cap,
                 edges: node.edge_pos.clone(),
             });
         }
@@ -593,10 +603,29 @@ impl Checker {
                 .copied()
                 .collect()
         };
+        scan.packages = self.packages.clone();
         scan.scan(project);
         let (resolved, permits) = scan.publish();
         self.p.effect_permits = permits;
-        self.p.effect_violations = resolved.violations;
+        // A package that reaches an effect it did not declare is an error, not a lint finding.
+        let (package, project): (Vec<_>, Vec<_>) = resolved
+            .violations
+            .into_iter()
+            .partition(|v| self.package_of(self.syms.str(v.file)).is_some());
+        self.p.effect_violations = project;
+        for v in package {
+            let file = self.syms.str(v.file);
+            let name = self
+                .package_of(file)
+                .map(|p| p.prefix.trim_end_matches('/').to_string())
+                .unwrap_or_default();
+            let message = format!(
+                "package {name} reaches {} through {}, which its ms.toml does not declare; add it to effects under [project], or stop calling it",
+                v.effect,
+                v.path.join(" -> ")
+            );
+            self.error_in(v.file, v.pos, ms_syntax::Phase::Type, message);
+        }
         *self.p.effect_scan.borrow_mut() = scan;
     }
 }

@@ -439,13 +439,18 @@ type WatchSource:
 	watcher: RawWatcher
 	pending: List[FileEvent]
 
-// Waits for the next change. A closed watcher is `EBADF`; a native watcher that
+// Waits for the next change. none once the watched path itself has been removed (its
+// removal event comes first). A closed watcher is `EBADF`; a native watcher that
 // overflowed with policy `error` is `EOVERFLOW`.
 fn var WatchSource.next() FileEvent?!:
 	while true:
 		if event := self.pending.pop(): return ok(event)
 
-		var batch = msstd_fs_watch_next(self.watcher.native)?
+		next := msstd_fs_watch_next(self.watcher.native)?
+		if next.is_none(): return ok(none)
+
+		// An empty batch only means nothing changed yet; only none ends the stream.
+		var batch = next.get(List[FileEvent]())
 		batch.reverse()
 		self.pending = batch
 
@@ -741,8 +746,10 @@ export fn stat(path: String, follow_links: Bool = true) FileInfo!:
 export fn temporary_root() String!:
 	return ok(msstd_fs_temporary_root())
 
-// Creates a new directory under the host temp root; the caller must remove it.
-// Prefix must be nonempty and contain no slash, backslash, or NUL.
+// Creates a new directory under the host temp root; the caller must remove it. Prefix
+// must be nonempty and contain no slash, backslash, or NUL. The name is the prefix
+// followed by random digits; the last `*` in the prefix marks where the digits go
+// instead, so `"build-*.tmp"` makes `build-4123.tmp`.
 // ms: effect std.fs.write
 export fn temporary_directory(prefix: String) String!:
 	return msstd_fs_temporary_directory(prefix)
@@ -1010,6 +1017,8 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
 
 /*
 Watches `path` for changes and returns the changes as a stream, one event per item. Dropping the stream stops the watcher.
+When `path` itself is removed or moved away, the stream delivers that event and then ends (`next` returns none).
+With `recursive`, a directory that appears is watched at once and its existing entries are reported as `rename` events.
 Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
 With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
 `max_events` and `overflow` apply only to native events and return EINVAL together with an interval.

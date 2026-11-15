@@ -1,0 +1,6 @@
+[project]
+name = "json_suite"
+source = "."
+
+[embed]
+"@suite" = "./data"

@@ -5,6 +5,8 @@ name: Nightly safety
 #   miri          runtime memory safety under Miri (needs nightly; see documentation/contributing/rust-toolchain.md)
 #   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
 #   drift-check   runs the corpus under LLVM and Cranelift and fails on any difference
+#   stress-sched  runs the stdlib sweep under the scheduler stress mode
+#   perf-counts   instructions of four suite programs under callgrind against bench/perf/counts.txt; opens an issue when one is over 3% higher
 
 on:
   schedule:
@@ -14,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -40,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check]
+        check: [cancel-sweep, drift-check, stress-sched]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env
@@ -48,3 +51,43 @@ jobs:
           os: linux
           arch: amd64
       - run: make ${{ matrix.check }}
+
+  perf-counts:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/rust-env
+        with:
+          os: linux
+          arch: amd64
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends valgrind
+      - name: Count instructions
+        id: counts
+        run: |
+          set -o pipefail
+          make build
+          make perf-counts | tee perf-counts.txt
+      - name: Open an issue naming the commit range
+        if: failure() && steps.counts.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The counts were last refreshed by the commit that last changed the file; every
+          # commit after it could have moved them.
+          base=$(git log -1 --format=%H -- bench/perf/counts.txt)
+          {
+            echo "A suite program executes more than 3% more instructions than bench/perf/counts.txt records."
+            echo
+            echo "Commits since the counts were last refreshed: https://github.com/${{ github.repository }}/compare/${base}...${{ github.sha }}"
+            echo
+            echo '```'
+            cat perf-counts.txt
+            echo '```'
+            echo
+            echo "Bisect that range with \`make perf-counts\` (instruction counts are deterministic), fix the cause or revert, and refresh the file only when the cost is deliberate."
+          } > body.md
+          gh issue create --title "Nightly perf counts regressed on $(git rev-parse --short HEAD)" --label performance --body-file body.md || gh issue create --title "Nightly perf counts regressed on $(git rev-parse --short HEAD)" --body-file body.md

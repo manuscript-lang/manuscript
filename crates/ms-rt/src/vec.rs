@@ -1052,53 +1052,27 @@ unsafe fn extend_copy(v: &mut VecVal, d: &TypeDesc, other: &VecVal) {
         if other.len == 0 {
             return;
         }
-        reserve(v, d, other.len);
+        // Capacity already reserved (the common case after `reserve:`) skips the growth path.
+        if other.len > v.cap.wrapping_sub(v.len) {
+            reserve(v, d, other.len);
+        }
         let size = d.size as usize;
         copy_range(d, other.ptr, v.ptr.add(v.len * size), other.len);
         v.len += other.len;
     }
 }
 
-/// Appends the elements of `other` (consumed: its buffer is freed, elements moved).
+/// `List.extend`: appends copies of the elements of `other`, which stays unchanged. The checker
+/// rejects the receiver as the argument.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_extend(v: *mut VecVal, d: ElemDesc, other: *mut VecVal) {
-    // SAFETY: caller contract.
-    unsafe {
-        let (v, d, o) = (&mut *v, &*d, &mut *other);
-        reserve(v, d, o.len);
-        if o.len > 0 {
-            core::ptr::copy_nonoverlapping(o.ptr, elem(v, d, v.len), o.len * d.size as usize);
-            v.len += o.len;
-        }
-        if !o.ptr.is_null() {
-            alloc::free(o.ptr);
-        }
-        *o = EMPTY;
-    }
-}
-
-/// `Collections.flatten`: `lists` is a list of `List[T]`, `d` describes `T`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_flatten(
-    lists: *const VecVal,
+pub unsafe extern "C-unwind" fn msrt_list_extend(
+    v: *mut VecVal,
     d: ElemDesc,
-    out: *mut VecVal,
+    other: *const VecVal,
 ) {
     // SAFETY: caller contract.
-    unsafe {
-        let ls = &*lists;
-        let mut res = EMPTY;
-        let total: usize = (0..ls.len)
-            .map(|i| (*(ls.ptr as *const VecVal).add(i)).len)
-            .sum();
-        reserve(&mut res, &*d, total);
-        for i in 0..ls.len {
-            extend_copy(&mut res, &*d, &*(ls.ptr as *const VecVal).add(i));
-        }
-        *out = res;
-    }
+    unsafe { extend_copy(&mut *v, &*d, &*other) }
 }
 
 /// `distinct`: keeps the first of equal elements. The private result and set are released when an
@@ -2201,7 +2175,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut
         if v.len > STR_INLINE_MAX && v.len <= string::MAX_BYTES {
             let mut ptr = v.ptr;
             if v.cap == v.len || v.cap > v.len + (v.len >> 2) + 1 {
-                ptr = alloc::realloc(ptr, v.len + 1);
+                ptr = alloc::trim(ptr, v.len + 1);
             }
             *ptr.add(v.len) = 0;
             // One vector scan flags an ASCII text, so `length`, `get` and `slice` on it do not
@@ -2442,14 +2416,9 @@ mod tests {
                     msrt_list_concat(&input, &input, &d, &mut cat);
                     let expected = [data.as_slice(), data.as_slice()].concat();
                     assert_eq!(list_data(&cat, size), expected);
-                    let mut parts = [EMPTY, input, EMPTY, input, EMPTY];
-                    let lists = VecVal {
-                        ptr: parts.as_mut_ptr().cast(),
-                        len: parts.len(),
-                        cap: parts.len(),
-                    };
                     let mut flat = EMPTY;
-                    msrt_list_flatten(&lists, &d, &mut flat);
+                    msrt_list_extend(&mut flat, &d, &input);
+                    msrt_list_extend(&mut flat, &d, &input);
                     assert_eq!(list_data(&flat, size), expected);
                     drop_list(&mut cat, &d);
                     drop_list(&mut flat, &d);
@@ -2516,14 +2485,9 @@ mod tests {
                 copy_list(&input, &d, &mut copied);
                 let mut cat = EMPTY;
                 msrt_list_concat(&input, &input, &d, &mut cat);
-                let mut parts = [EMPTY, input, EMPTY, input];
-                let lists = VecVal {
-                    ptr: parts.as_mut_ptr().cast(),
-                    len: parts.len(),
-                    cap: parts.len(),
-                };
                 let mut flat = EMPTY;
-                msrt_list_flatten(&lists, &d, &mut flat);
+                msrt_list_extend(&mut flat, &d, &input);
+                msrt_list_extend(&mut flat, &d, &input);
                 msrt_list_copy_within(&mut copied, &d, 1, 0, 2);
                 assert_eq!((copied.len, cat.len, flat.len), (3, 6, 6));
                 assert_eq!(*ZERO_COPIES.ptr(), if custom { 17 } else { 0 });
@@ -2777,7 +2741,9 @@ mod tests {
             msrt_list_copy_within(&mut cat, &inner, 1, 0, 1);
             assert_ne!((*first).ptr, (*first.add(1)).ptr);
             let mut flat = EMPTY;
-            msrt_list_flatten(&cat, &msrt_desc_string, &mut flat);
+            for i in 0..cat.len {
+                msrt_list_extend(&mut flat, &msrt_desc_string, first.add(i));
+            }
             drop_list(&mut cat, &inner);
             assert_eq!(flat.len, 2);
             for i in 0..flat.len {

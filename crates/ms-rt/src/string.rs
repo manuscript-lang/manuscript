@@ -2442,6 +2442,76 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_chars(
     }
 }
 
+/// `String.index_any`: the byte offset of the first scalar of `s` that occurs in `set`.
+/// A set of at most eight ASCII bytes is scanned eight bytes per step (a non-ASCII byte of the
+/// text is never a member); any other set tests each scalar against a bit mask and decodes
+/// only non-ASCII ones.
+#[unsafe(no_mangle)]
+// ms: leaf pure domain=string
+pub unsafe extern "C-unwind" fn msrt_string_index_any(
+    s: *const StrVal,
+    set: *const StrVal,
+    out: *mut i64,
+) -> u8 {
+    const LO: u64 = 0x0101_0101_0101_0101;
+    const HI: u64 = 0x8080_8080_8080_8080;
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe {
+        let (text, members) = (bytes(s), bytes(set));
+        let found = if members.len() <= 8 && members.is_ascii() {
+            let mut pats = [0u64; 8];
+            for (p, &b) in pats.iter_mut().zip(members) {
+                *p = LO * u64::from(b);
+            }
+            let pats = &pats[..members.len()];
+            let (chunks, rest) = text.as_chunks::<8>();
+            let mut at = None;
+            for (k, w) in chunks.iter().enumerate() {
+                let x = u64::from_le_bytes(*w);
+                let hit = pats.iter().fold(0, |hit, &p| {
+                    let y = x ^ p;
+                    hit | (y.wrapping_sub(LO) & !y & HI)
+                });
+                if hit != 0 {
+                    // A lane above a true match can be flagged falsely, never below it.
+                    at = Some(k * 8 + hit.trailing_zeros() as usize / 8);
+                    break;
+                }
+            }
+            at.or_else(|| {
+                let done = chunks.len() * 8;
+                rest.iter()
+                    .position(|b| members.contains(b))
+                    .map(|i| done + i)
+            })
+        } else {
+            let set = ScalarSet::new(members);
+            let mut i = 0;
+            let mut at = None;
+            while i < text.len() {
+                let (c, w) = if text[i] < 0x80 {
+                    (u32::from(text[i]), 1)
+                } else {
+                    utf8::decode(&text[i..])
+                };
+                if set.contains(c) {
+                    at = Some(i);
+                    break;
+                }
+                i += w;
+            }
+            at
+        };
+        match found {
+            Some(i) => {
+                *out = i as i64;
+                1
+            }
+            None => 0,
+        }
+    }
+}
+
 /// How `fields` treats a byte: 0 an ordinary ASCII byte, 1 ASCII White_Space, 2 the start of a
 /// multibyte scalar, which is decoded.
 const FIELD_CLASS: [u8; 256] = {

@@ -4,7 +4,7 @@
 //! `ucontext`, walks the frame-pointer chain inside the stack bounds recorded at
 //! start and stores the pcs in a preallocated ring (no allocation, async-signal-safe).
 //! At exit the pcs are resolved through the function table and aggregated.
-#[cfg(unix)]
+#[cfg(any(unix, feature = "alloc-profile"))]
 use crate::fault::segment_state;
 use crate::fault::{TABLES, find_func, segment_of};
 use crate::global::Process;
@@ -25,6 +25,17 @@ static BUFFER: Process<*mut usize> = Process::new(core::ptr::null_mut());
 static COUNT: AtomicUsize = AtomicUsize::new(0);
 static DROPPED: AtomicUsize = AtomicUsize::new(0);
 static PATH: Process<&'static [u8]> = Process::new(b"");
+
+// Allocation profile (`MS_PROFILE_ALLOCS=<path>`): every `ALLOC_PERIOD`th allocation of the
+// runtime thread stores its stack and size. A slot is `ALLOC_WORDS` words: a sample
+// (see `walk`) followed by the requested size.
+const ALLOC_WORDS: usize = SAMPLE_WORDS + 1;
+const DEFAULT_ALLOC_PERIOD: i64 = 128;
+static ALLOC_BUFFER: Process<*mut usize> = Process::new(core::ptr::null_mut());
+static ALLOC_COUNT: AtomicUsize = AtomicUsize::new(0);
+static ALLOC_DROPPED: AtomicUsize = AtomicUsize::new(0);
+static ALLOC_PERIOD: AtomicUsize = AtomicUsize::new(0);
+static ALLOC_PATH: Process<&'static [u8]> = Process::new(b"");
 
 #[cfg(unix)]
 mod regs {
@@ -60,18 +71,15 @@ mod regs {
     }
 }
 
-/// Stores one sample: the program counter and the frame-pointer chain from `fp`, which lies on
-/// the sampled thread's running segment `seg` (its `segment_state`).
-fn record(pc: usize, mut fp: usize, mut seg: (usize, usize, usize)) {
-    let n = COUNT.load(Ordering::Relaxed);
-    if n >= MAX_SAMPLES {
-        DROPPED.fetch_add(1, Ordering::Relaxed);
-        return;
-    }
-    // SAFETY: the buffer holds MAX_SAMPLES slots; frame reads stay inside the recorded stack
-    // bounds.
+/// Writes one sample at `base`: the frame count, then the pcs, innermost first. The pcs are
+/// `pc` and the frame-pointer chain from `fp`, which lies on the running segment `seg` (the
+/// sampled thread's `segment_state`).
+///
+/// # Safety
+/// `base` has room for `SAMPLE_WORDS` words; frame reads stay inside the recorded stack bounds.
+unsafe fn walk(base: *mut usize, pc: usize, mut fp: usize, mut seg: (usize, usize, usize)) {
+    // SAFETY: as documented.
     unsafe {
-        let base = (*BUFFER.ptr()).add(n * SAMPLE_WORDS);
         let mut k = 0;
         *base.add(1) = pc;
         k += 1;
@@ -98,6 +106,17 @@ fn record(pc: usize, mut fp: usize, mut seg: (usize, usize, usize)) {
         }
         *base = k;
     }
+}
+
+/// Stores one sample.
+fn record(pc: usize, fp: usize, seg: (usize, usize, usize)) {
+    let n = COUNT.load(Ordering::Relaxed);
+    if n >= MAX_SAMPLES {
+        DROPPED.fetch_add(1, Ordering::Relaxed);
+        return;
+    }
+    // SAFETY: the buffer holds MAX_SAMPLES slots.
+    unsafe { walk((*BUFFER.ptr()).add(n * SAMPLE_WORDS), pc, fp, seg) };
     COUNT.store(n + 1, Ordering::Relaxed);
 }
 
@@ -246,8 +265,32 @@ unsafe fn disarm_timer() {
     unsafe { sampler::stop_sampling() };
 }
 
+/// Prepares the allocation profile when `MS_PROFILE_ALLOCS` names an output file;
+/// `MS_PROFILE_ALLOC_PERIOD` (default 128) is the number of allocations per sample.
+fn start_allocs() {
+    let Some(path) = sys::env_var(b"MS_PROFILE_ALLOCS\0").filter(|p| !p.is_empty()) else {
+        return;
+    };
+    let period = sys::env_var(b"MS_PROFILE_ALLOC_PERIOD\0")
+        .and_then(num::parse_int_decimal)
+        .filter(|n| *n >= 1)
+        .unwrap_or(DEFAULT_ALLOC_PERIOD);
+    // SAFETY: one-time setup before the runtime thread allocates under sampling.
+    unsafe {
+        let bytes = MAX_SAMPLES * ALLOC_WORDS * core::mem::size_of::<usize>();
+        let p = sys::map_anon(bytes);
+        if p.is_null() || !sys::commit(p, bytes) {
+            return;
+        }
+        *ALLOC_BUFFER.ptr() = p as *mut usize;
+        *ALLOC_PATH.ptr() = path;
+    }
+    ALLOC_PERIOD.store(period as usize, Ordering::Relaxed);
+}
+
 /// Starts sampling when `MS_PROFILE` names an output file; also writes the perf map on request.
 pub fn start() {
+    start_allocs();
     let Some(path) = sys::env_var(b"MS_PROFILE\0") else {
         return;
     };
@@ -330,24 +373,24 @@ fn write_file(path_nul: &[u8], data: &[u8]) {
     }
 }
 
-/// Stops sampling and writes the folded profile (no-op when profiling is off).
-pub fn finish() {
-    if ENABLED.swap(0, Ordering::Relaxed) == 0 {
-        return;
-    }
-    // SAFETY: `ENABLED` was just cleared.
-    unsafe { disarm_timer() };
-    let n = COUNT.load(Ordering::Relaxed).min(MAX_SAMPLES);
-    // SAFETY: table and buffer were installed at start.
-    let (t, base) = unsafe { (*TABLES.ptr(), *BUFFER.ptr()) };
-    // SAFETY: the tables pointer, when set, outlives the process (static data).
-    let t = unsafe { t.as_ref() };
+/// Folds `n` samples of `stride` words at `base` into `stack -> total weight`. `weight` reads one
+/// sample's weight; names come from `t` (hex pcs without tables), outermost frame first.
+///
+/// # Safety
+/// `base` holds `n` fully written samples of `stride` words.
+unsafe fn fold(
+    t: Option<&Tables>,
+    base: *const usize,
+    n: usize,
+    stride: usize,
+    weight: impl Fn(*const usize) -> u64,
+) -> BTreeMap<Vec<u8>, u64> {
     let mut folded: BTreeMap<Vec<u8>, u64> = BTreeMap::new();
     for s in 0..n {
-        // SAFETY: sample `s < COUNT` was fully written before COUNT advanced.
-        let (len, frames) = unsafe {
-            let p = base.add(s * SAMPLE_WORDS);
-            (*p, core::slice::from_raw_parts(p.add(1), *p))
+        // SAFETY: as documented.
+        let (sample, frames) = unsafe {
+            let p = base.add(s * stride);
+            (p, core::slice::from_raw_parts(p.add(1), *p))
         };
         let mut names: Vec<Vec<u8>> = Vec::new();
         for (i, &pc) in frames.iter().enumerate() {
@@ -374,7 +417,6 @@ pub fn finish() {
             }
             names.push(label);
         }
-        let _ = len;
         names.reverse();
         let mut key = Vec::new();
         for (i, nme) in names.iter().enumerate() {
@@ -386,22 +428,142 @@ pub fn finish() {
         if key.is_empty() {
             continue;
         }
-        *folded.entry(key).or_insert(0) += 1;
+        *folded.entry(key).or_insert(0) += weight(sample);
     }
+    folded
+}
+
+/// Writes `folded` as `stack weight` lines followed by `# <trailer> <value>` comments.
+fn write_folded(path: &[u8], folded: &BTreeMap<Vec<u8>, u64>, trailer: &[(&[u8], u64)]) {
     let mut out = Vec::new();
-    for (stack, count) in &folded {
+    for (stack, count) in folded {
         out.extend_from_slice(stack);
         out.push(b' ');
         crate::num::push_i64(&mut out, *count as i64);
         out.push(b'\n');
     }
-    out.extend_from_slice(b"# dropped ");
-    crate::num::push_i64(&mut out, DROPPED.load(Ordering::Relaxed) as i64);
-    out.push(b'\n');
-    // SAFETY: path recorded at start; make a NUL-terminated copy.
-    let path = unsafe { *PATH.ptr() };
+    for (name, value) in trailer {
+        out.extend_from_slice(b"# ");
+        out.extend_from_slice(name);
+        out.push(b' ');
+        crate::num::push_i64(&mut out, *value as i64);
+        out.push(b'\n');
+    }
+    // Make a NUL-terminated copy of the path.
     let mut p = Vec::new();
     p.extend_from_slice(path);
     p.push(0);
     write_file(p.as_slice(), out.as_slice());
+}
+
+/// The allocation profiler's sample for an allocation of `size` bytes on the runtime thread
+/// (`alloc::sample_alloc`): stores the stack and size, and returns the allocations until the next.
+#[cfg(feature = "alloc-profile")]
+pub fn alloc_sample(size: usize) -> i64 {
+    let period = ALLOC_PERIOD.load(Ordering::Relaxed);
+    if period == 0 {
+        return i64::MAX;
+    }
+    let n = ALLOC_COUNT.load(Ordering::Relaxed);
+    if n >= MAX_SAMPLES {
+        ALLOC_DROPPED.fetch_add(1, Ordering::Relaxed);
+        return period as i64;
+    }
+    let fp = frame_pointer();
+    // SAFETY: `fp` is this function's frame (the runtime keeps frame pointers): its saved caller
+    // frame and return address are the stack above it. The buffer holds MAX_SAMPLES slots.
+    unsafe {
+        let (caller_fp, ret) = (*(fp as *const usize), *((fp + 8) as *const usize));
+        let base = (*ALLOC_BUFFER.ptr()).add(n * ALLOC_WORDS);
+        walk(base, ret, caller_fp, segment_state());
+        *base.add(ALLOC_WORDS - 1) = size;
+    }
+    ALLOC_COUNT.store(n + 1, Ordering::Relaxed);
+    period as i64
+}
+
+/// The frame pointer of the calling function.
+#[cfg(feature = "alloc-profile")]
+#[inline(always)]
+fn frame_pointer() -> usize {
+    let fp: usize;
+    // SAFETY: reads a register.
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        core::arch::asm!("mov {}, rbp", out(reg) fp, options(nomem, nostack, preserves_flags));
+    }
+    // SAFETY: reads a register.
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        core::arch::asm!("mov {}, x29", out(reg) fp, options(nomem, nostack, preserves_flags));
+    }
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    {
+        fp = 0;
+    }
+    fp
+}
+
+/// Starts allocation sampling on the runtime thread when `start` enabled it.
+pub fn attach_alloc_sampling() {
+    let period = ALLOC_PERIOD.load(Ordering::Relaxed);
+    if period != 0 {
+        crate::alloc::sample_every(period as i64);
+    }
+}
+
+/// Writes the allocation profile: `<path>` weights stacks by allocation count and
+/// `<path>.bytes` by bytes, both scaled by the sampling period, with the totals as comments.
+fn finish_allocs(t: Option<&Tables>) {
+    let period = ALLOC_PERIOD.swap(0, Ordering::Relaxed) as u64;
+    if period == 0 {
+        return;
+    }
+    let n = ALLOC_COUNT.load(Ordering::Relaxed).min(MAX_SAMPLES);
+    // SAFETY: the buffer was installed at start; `n` samples were fully written.
+    let base = unsafe { *ALLOC_BUFFER.ptr() };
+    // SAFETY: `p` is a fully written slot of `ALLOC_WORDS` words.
+    let size = |p: *const usize| unsafe { *p.add(ALLOC_WORDS - 1) } as u64;
+    // SAFETY: as above.
+    let (counts, bytes) = unsafe {
+        (
+            fold(t, base, n, ALLOC_WORDS, |_| period),
+            fold(t, base, n, ALLOC_WORDS, |p| size(p) * period),
+        )
+    };
+    let total = |m: &BTreeMap<Vec<u8>, u64>| m.values().sum::<u64>();
+    let trailer: [(&[u8], u64); 3] = [
+        (b"period", period),
+        (b"allocs", total(&counts)),
+        (b"dropped", ALLOC_DROPPED.load(Ordering::Relaxed) as u64),
+    ];
+    // SAFETY: path recorded at start.
+    let path = unsafe { *ALLOC_PATH.ptr() };
+    write_folded(path, &counts, &trailer);
+    let mut bytes_path = path.to_vec();
+    bytes_path.extend_from_slice(b".bytes");
+    let trailer = [(&b"period"[..], period), (b"bytes", total(&bytes))];
+    write_folded(&bytes_path, &bytes, &trailer);
+}
+
+/// Stops sampling and writes the folded profiles (no-op when profiling is off).
+pub fn finish() {
+    // SAFETY: the tables pointer, when set, outlives the process (static data).
+    let t = unsafe { (*TABLES.ptr()).as_ref() };
+    finish_allocs(t);
+    if ENABLED.swap(0, Ordering::Relaxed) == 0 {
+        return;
+    }
+    // SAFETY: `ENABLED` was just cleared.
+    unsafe { disarm_timer() };
+    let n = COUNT.load(Ordering::Relaxed).min(MAX_SAMPLES);
+    // SAFETY: the buffer was installed at start and `n` samples were fully written.
+    let folded = unsafe { fold(t, *BUFFER.ptr(), n, SAMPLE_WORDS, |_| 1) };
+    // SAFETY: path recorded at start.
+    let path = unsafe { *PATH.ptr() };
+    write_folded(
+        path,
+        &folded,
+        &[(b"dropped", DROPPED.load(Ordering::Relaxed) as u64)],
+    );
 }

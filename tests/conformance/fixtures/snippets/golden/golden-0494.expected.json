@@ -19,15 +19,30 @@
         "end": {
           "file": "golden-0494.ms",
           "line": 5,
-          "column": 13,
-          "offset": 96
+          "column": 15,
+          "offset": 98
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0494.ms",
+            "line": 5,
+            "column": 10,
+            "offset": 93
+          },
+          "end": {
+            "file": "golden-0494.ms",
+            "line": 5,
+            "column": 15,
+            "offset": 98
+          },
+          "replacement": "3?"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0494.ms:5:10: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 5 |     x += try 3\n   |          ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0494.ms:5:10: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 5 |     x += try 3\n   |          ^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

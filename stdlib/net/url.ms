@@ -8,6 +8,13 @@ import (
 	msstd_url_resolve
 ) from "@std/internal/net.ms"
 
+// URLs follow RFC 3986 as Go's `net/url` reads it, not the WHATWG URL Standard that
+// browsers
+// implement: there is no IDNA, IPv4 canonicalization or default-port removal. A parsed `Url`
+// is an absolute hierarchical URL with a scheme; user information and opaque URLs
+// (`mailto:x`) are rejected. A semicolon in a query is ordinary text, never a
+// separator.
+
 // One decoded key and value in a URL query string.
 export type QueryEntry:
 	// Decoded query key; duplicate keys retain separate entries in input order.
@@ -20,8 +27,8 @@ export type Url:
 	// URL scheme, lowercased during parsing; native parse rejects missing schemes and
 	// opaque URLs.
 	scheme: String
-	// Lowercased hostname, excluding the port and IPv6 brackets; user information is
-	// rejected.
+	// Lowercased hostname, excluding the port and IPv6 brackets; an IPv6 zone
+	// identifier keeps its case. User information is rejected.
 	host: String
 	// Explicit numeric port in 0..65535, or none when the input has no port.
 	port: Int?
@@ -33,6 +40,9 @@ export type Url:
 	query: String
 	// Decoded fragment contents without the leading hash mark.
 	fragment: String
+	// True when the URL was written without `//`, as in `mailto:?subject=hi`; format
+	// then omits the empty authority, so the text round-trips.
+	omit_host: Bool = false
 
 // Decodes one percent-encoded URL component. `+` is not treated as a space.
 export fn decode_component(text: String) String!:

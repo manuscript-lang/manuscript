@@ -16,6 +16,12 @@ static MUSL_ARCHIVE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_nat
 #[cfg(target_os = "linux")]
 const MUSL_ARCHIVE_LEN: u64 = length(env!("MS_NATIVE_MUSL_LEN"));
 
+/// The runtime with allocation sampling for `ms profile --allocs`; empty unless the build of `ms`
+/// found `libms_native_allocs.a` (`cargo xtask runtime --alloc-profile`).
+static ALLOCS_ARCHIVE: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/libms_native_allocs.a.gz"));
+const ALLOCS_ARCHIVE_LEN: u64 = length(env!("MS_NATIVE_ALLOCS_LEN"));
+
 const fn length(text: &str) -> u64 {
     match u64::from_str_radix(text, 10) {
         Ok(len) => len,
@@ -38,6 +44,19 @@ pub fn embedded(musl: bool) -> Result<PathBuf, String> {
     #[cfg(not(target_os = "linux"))]
     let _ = musl;
     extract(ARCHIVE, ARCHIVE_LEN, env!("MS_NATIVE_ID"), "libms_native.a")
+}
+
+/// Path of the extracted allocation-sampling runtime, or why this `ms` has none.
+pub fn embedded_allocs() -> Result<PathBuf, String> {
+    if ALLOCS_ARCHIVE_LEN == 0 {
+        return Err("this ms was built without the allocation-profiling runtime; use a release build of ms, or build it with `cargo xtask runtime --alloc-profile`".into());
+    }
+    extract(
+        ALLOCS_ARCHIVE,
+        ALLOCS_ARCHIVE_LEN,
+        env!("MS_NATIVE_ALLOCS_ID"),
+        "libms_native_allocs.a",
+    )
 }
 
 fn extract(archive: &[u8], len: u64, id: &str, name: &str) -> Result<PathBuf, String> {
@@ -89,15 +108,28 @@ fn extract_at(
     })();
     // Windows publication and cleanup require the owned handle to be closed on every path.
     drop(file);
-    if let Err(error) = written.and_then(|()| std::fs::rename(&staged, &path)) {
-        let _ = std::fs::remove_file(&staged);
-        // Windows refuses to replace a library another thread is publishing or loading right now.
-        // Every publisher writes the same bytes, so a complete library already in place is a success.
+    let published = written.and_then(|()| publish(&staged, &path, len));
+    let _ = std::fs::remove_file(&staged);
+    if let Err(error) = published {
+        // Another thread may have published the same bytes while this one failed.
         if !std::fs::metadata(&path).is_ok_and(|m| m.len() == len) {
             return Err(failed("write", error));
         }
     }
     Ok(path)
+}
+
+/// Puts the complete `staged` file at `path` without replacing a complete file already there:
+/// Windows refuses to replace a file another thread is reading or loading, and fails that
+/// reader instead, so a library that is in place stays untouched. A missing or wrong-sized file is
+/// replaced by rename, and a filesystem without hard links falls back to rename as well.
+fn publish(staged: &Path, path: &Path, len: u64) -> std::io::Result<()> {
+    match std::fs::hard_link(staged, path) {
+        Ok(()) => return Ok(()),
+        Err(_) if std::fs::metadata(path).is_ok_and(|m| m.len() == len) => return Ok(()),
+        Err(_) => {}
+    }
+    std::fs::rename(staged, path)
 }
 
 /// `$XDG_CACHE_HOME`, else `$HOME/.cache`, else the temporary directory.

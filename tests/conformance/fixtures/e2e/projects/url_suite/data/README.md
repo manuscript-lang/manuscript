@@ -1,0 +1,1 @@
+cases.json holds the test tables of Go 1.24 `net/url` (`src/net/url/url_test.go`: `urltests`, `resolveReferenceTests`, `unescapeTests`, `queryEscapeTests`, `pathEscapeTests`, `parseTests`, and the `TestParseErrors` list) with the values the Go tests assert, written out by a throwaway Go test inside the package. LICENSE is the Go license (BSD-3-Clause).

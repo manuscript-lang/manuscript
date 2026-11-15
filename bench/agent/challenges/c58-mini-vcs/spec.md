@@ -8,7 +8,7 @@ All hashes are specified exactly, so commit ids must match the expected output b
 
 Each line of stdin is a command. Blank lines and lines whose first non-blank character is `#` are ignored. For each command, first print `> ` followed by the command line with trailing whitespace removed, then run it. The command word is the first whitespace-separated token and the arguments are the remaining tokens. File names, branch names and refs contain no spaces.
 
-`write FILE` and `append FILE` (with exactly one argument) are followed by a *content block*: the raw lines after the command, up to and not including a line that is exactly `.` (or up to the end of input). Those lines are consumed (not interpreted as commands, not echoed; they may be blank or start with `#`). If the arguments are wrong, an error is printed and nothing is consumed.
+`write FILE` and `append FILE` (with exactly one argument) are followed by a *content block*: the raw lines after the command, up to and not including a line that is exactly `.` (or up to the end of input). Those lines are consumed (not interpreted as commands, not echoed; they may be blank or start with `#`). If the arguments are wrong, `usage: write FILE` or `usage: append FILE` (the command's own name) is printed as the error and nothing is consumed.
 
 ## Repository model
 
@@ -30,7 +30,7 @@ If a commit with the computed id already exists (same tree, parents, message), t
 
 ### Refs
 
-Wherever a command takes a REF, it may be `BASE` or `BASE~N` (N a non-negative integer, meaning N first-parent steps back; a malformed N, or stepping past a root commit, is an error). BASE is, tried in this order: `HEAD` (the commit HEAD points to; unborn is an error); a branch name that points at a commit; a tag name; a commit id given by a prefix of at least 4 lowercase hex digits (an ambiguous prefix is `ambiguous revision 'REF'`). If nothing matches: `unknown revision 'REF'` (REF as written).
+Wherever a command takes a REF, it may be `BASE` or `BASE~N` (N a non-negative integer, meaning N first-parent steps back; a malformed N, or stepping past a root commit, is `unknown revision 'REF'`). BASE is, tried in this order: `HEAD` (the commit HEAD points to; when HEAD is unborn this is `unknown revision 'REF'` and the remaining options are not tried); a branch name that points at a commit; a tag name; a commit id given by a prefix of at least 4 lowercase hex digits (an ambiguous prefix is `ambiguous revision 'REF'`). If nothing matches: `unknown revision 'REF'` (REF as written).
 
 ## Commands
 

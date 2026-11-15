@@ -1,0 +1,5 @@
+# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.
+interp 2983578935
+strings 1757283400
+lz 618317961
+graph 635215535

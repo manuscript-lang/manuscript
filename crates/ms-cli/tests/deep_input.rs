@@ -128,14 +128,11 @@ fn a_match_over_thousands_of_cases_builds_in_linear_time() {
     );
 }
 
-#[test]
-fn many_interface_implementations_lower_in_linear_time() {
-    let dir = std::env::temp_dir().join(format!("ms-cli-ifaces-{}", std::process::id()));
+/// Lowers a program of `types` types that each implement one interface; returns the time.
+fn lower_time_for_types(types: usize) -> std::time::Duration {
+    let dir = std::env::temp_dir().join(format!("ms-cli-ifaces-{}-{types}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    // Building the table of each implementing type used to scan every method of the program
-    // and copy each name: 8000 types took 3.7 s to lower and 16 000 about 15 s.
-    let types = 16_000;
     let mut source = String::from(include_str!("shapes/interface.ms"));
     for i in 0..types {
         source.push_str(&include_str!("shapes/impl.ms").replace("{i}", &i.to_string()));
@@ -148,11 +145,22 @@ fn many_interface_implementations_lower_in_linear_time() {
     std::fs::write(dir.join("shapes.ms"), source).unwrap();
     let started = std::time::Instant::now();
     let (status, text) = run_ms(&["emit", "shapes.ms", "-o", "shapes.mir"], &dir);
+    let elapsed = started.elapsed();
     assert_eq!(status, Some(0), "{text}");
-    assert!(
-        started.elapsed() < std::time::Duration::from_secs(8),
-        "took {:?}",
-        started.elapsed()
-    );
     let _ = std::fs::remove_dir_all(&dir);
+    elapsed
+}
+
+/// Building the table of each implementing type used to scan every method of the program and copy
+/// each name: 8000 types took 3.7 s to lower and 16 000 about 15 s. Compare two sizes instead of a
+/// wall-clock limit (13 s against a limit of 8 s failed on a slow macOS runner): 4x the types is
+/// about 4x the time when linear and about 16x when quadratic.
+#[test]
+fn many_interface_implementations_lower_in_linear_time() {
+    let small = (0..2).map(|_| lower_time_for_types(2_000)).min().unwrap();
+    let large = (0..2).map(|_| lower_time_for_types(8_000)).min().unwrap();
+    assert!(
+        large < small * 10,
+        "4x the types took {large:?} against {small:?}"
+    );
 }

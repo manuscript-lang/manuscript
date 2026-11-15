@@ -36,6 +36,8 @@ ms-std-url = { path = "../ms-std-url" }
 [features]
 # The glibc process entry (`_start`); only the archive `ms` links enables it, since a test binary has crt1's.
 entry = []
+# The runtime with allocation sampling, for `ms profile --allocs` (`cargo xtask runtime --alloc-profile`).
+alloc-profile = ["ms-rt/alloc-profile"]
 
 [dev-dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }

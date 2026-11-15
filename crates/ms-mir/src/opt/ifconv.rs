@@ -250,6 +250,15 @@ fn convert_all(m: &Module, f: &mut Func, positive: &ValueSet) -> bool {
                 continue;
             }
             let params = f.blocks[j].params.clone();
+            // `a and b` as an `if` condition: the join only branches on the flag, so jump
+            // threading turns the arms into direct branches, cheaper than evaluating both
+            // sides into a select.
+            if params.len() == 1
+                && f.blocks[j].insts.is_empty()
+                && matches!(&f.blocks[j].term, Term::CondBr { cond, .. } if *cond == params[0].value)
+            {
+                continue;
+            }
             if ta.args.len() != params.len() || ea.args.len() != params.len() {
                 continue;
             }

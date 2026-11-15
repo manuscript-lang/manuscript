@@ -78,6 +78,17 @@ pub struct CheckOptions {
     pub scope_marker: Option<String>,
     /// The bundled standard source module being checked for the shared cache.
     pub bundled: Option<Name>,
+    /// Fetched packages: the effects each may reach, and no native declarations.
+    pub packages: Vec<PackageScope>,
+}
+
+/// A fetched package the checker holds to its manifest.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PackageScope {
+    /// The module-name prefix of its files, such as `@pg/`.
+    pub prefix: String,
+    /// The package's declared effect patterns; empty means pure.
+    pub effects: Vec<String>,
 }
 
 /// The concrete fixture injected into tests of a module.
@@ -188,6 +199,7 @@ pub struct Checker {
     /// Where the next checked expression is used, e.g. "argument 'a' of f".
     pub(crate) mismatch_context: Option<String>,
     pub(crate) scope_marker: Option<String>,
+    pub(crate) packages: Vec<PackageScope>,
     pub(crate) standard_declarations: bool,
     pub(crate) deferred_type_defaults: Vec<DeferredTypeDefault>,
     pub(crate) id_scope: String,
@@ -253,6 +265,36 @@ pub struct Checker {
 use crate::stdlib::PRIMITIVE_NAMES;
 
 impl Checker {
+    /// The package holding `file`, by the longest matching prefix.
+    pub(crate) fn package_of(&self, file: &str) -> Option<&PackageScope> {
+        self.packages
+            .iter()
+            .filter(|p| file.starts_with(&p.prefix))
+            .max_by_key(|p| p.prefix.len())
+    }
+
+    /// A package holds source only: its native declarations are errors.
+    fn reject_package_natives(&mut self, module: &ModRef) {
+        let file = self.syms.str(module.file);
+        let Some(package) = self.package_of(file) else {
+            return;
+        };
+        let name = package.prefix.trim_end_matches('/').to_string();
+        for d in &module.decls {
+            let external = match &d.decl().kind {
+                DeclKind::Fn(f) => f.external,
+                DeclKind::Type(t) => t.external,
+                _ => false,
+            };
+            if external {
+                self.type_error(
+                    d.pos(),
+                    format!("package {name} declares native `{}`; packages hold Manuscript source only, so call the standard library instead", self.syms.str(d.name())),
+                );
+            }
+        }
+    }
+
     /// A fresh checker.
     pub fn new(session: &Rc<Session>, options: &CheckOptions) -> Checker {
         Checker {
@@ -260,6 +302,7 @@ impl Checker {
             session: session.clone(),
             mismatch_context: None,
             scope_marker: options.scope_marker.clone(),
+            packages: options.packages.clone(),
             standard_declarations: false,
             deferred_type_defaults: Vec::new(),
             id_scope: String::new(),
@@ -1414,6 +1457,7 @@ impl Checker {
     }
 
     fn check_bodies(&mut self, module: &ModRef) {
+        self.reject_package_natives(module);
         for d in &module.decls {
             match &d.decl().kind {
                 DeclKind::Fn(f) if f.external => {

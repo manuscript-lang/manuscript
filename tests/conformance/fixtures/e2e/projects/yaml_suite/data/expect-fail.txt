@@ -1,0 +1,19 @@
+# Cases of the official yaml-test-suite the parser does not pass yet, with the reason.
+# A reason starting `by design:` is a permanent decision, counted separately in the test output.
+# A listed case must still fail, so fixing one means deleting its line; the list only shrinks.
+2JQS by design: a repeated mapping key is an error, so two null keys cannot coexist
+4FJ6 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+6BFJ by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+6PBE by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+9MMW by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+KK5P by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+LX3P by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+M2N8/00 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+M2N8/01 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+M5DY by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+Q9WF by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+RZP5 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+SBG9 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+V9D5 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+X38W by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
+XW4D by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
