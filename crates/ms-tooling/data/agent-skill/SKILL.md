@@ -35,7 +35,7 @@ fn main() Void!:
 | --- | --- |
 | `!x`, `a ?? b`, `try f()` | `not x`, `a.get(b)`, `f()?` |
 | `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
-| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `unit` |
+| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
 | `out: var T`, `"\"{x}\""` | `var out: T`, plain quotes inside `{}` |
 
