@@ -552,6 +552,9 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 		)
 	)
 	if c == 34 or c == 39: return ok(YamlValue.StringValue(quoted(var flow)?))
+	if c == 35: return error(
+		flow_invalid(flow, "a comment needs whitespace before its hash")
+	)
 
 	start := flow.pos
 	while (flow.next_stop < flow.stops.length() and flow.stops[flow.next_stop] <= start): flow.next_stop += 1
@@ -707,6 +710,9 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				is_key = false
 
 			c := cur(flow)
+			if c == 42 and not written.is_empty(): return error(
+				flow_invalid(flow, "an alias cannot have an anchor")
+			)
 
 			if c == 91 or c == 123:
 				flow.delimited = true
@@ -1477,6 +1483,13 @@ fn block_value(
 		)
 		origin += previous_length - remainder.scalar_length()
 		lead = remainder.scalar_at(0, default: 0)
+		if lead == 42: return error(
+			yaml_invalid(
+				line: start_line,
+				column: origin,
+				reason: "an alias cannot have an anchor",
+			)
+		)
 
 	var result = YamlValue.Null
 

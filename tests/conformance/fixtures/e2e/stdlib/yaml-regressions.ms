@@ -547,6 +547,19 @@ test "YAML anchor properties preserve quoted comment markers":
 			"a: &message \"hash # kept\"\nb: *message"
 		) | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?
 	)
+	for source in ["a: &x 1\nb: &y *x", "[&x 1, &y *x]"]:
+		invalid_block_key(source)?
+	invalid_block_key("[a, b,#c\n]")?
+	invalid_block_key("\{a: 1,#c\n\}")?
+	(
+		parse("[a, b, #c\n]")
+		| expect_ok?
+		| expect_equal(
+			YamlValue.ArrayValue(
+				[YamlValue.StringValue("a"), YamlValue.StringValue("b")]
+			)
+		)?
+	)
 
 test "YAML comment contents do not open quotes or containers":
 	var values = Map[String, YamlValue]()
