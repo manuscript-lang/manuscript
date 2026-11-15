@@ -1449,6 +1449,7 @@ unsafe fn map_case_in_place(text: &str, upper: bool) -> Option<StrVal> {
     for c in text.chars() {
         if c.is_ascii() {
             if at == len {
+                // SAFETY: `r` is owned and unused after this.
                 unsafe { free_owned(r.ptr_word) };
                 return None;
             }

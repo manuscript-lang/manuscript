@@ -19,6 +19,7 @@ pub(crate) enum StrFn {
     ParseInt,
     ContainsByte,
     ScalarAt,
+    ScalarStep,
     StartsWith,
     EndsWith,
 }
@@ -106,6 +107,11 @@ impl FnLower<'_> {
                 vec![param(MTy::STR), param(MTy::STR)],
                 MTy::BOOL,
             ),
+            StrFn::ScalarStep => (
+                "scalar_step",
+                vec![param(MTy::STR), param(MTy::INT)],
+                MTy::INT,
+            ),
             StrFn::ScalarAt => (
                 "scalar_at",
                 vec![
@@ -124,6 +130,7 @@ impl FnLower<'_> {
             StrFn::ParseInt => parse_int(&mut b),
             StrFn::ContainsByte => contains_byte(&mut b),
             StrFn::ScalarAt => scalar_at(&mut b),
+            StrFn::ScalarStep => scalar_step(&mut b),
             StrFn::StartsWith => affix(&mut b, false),
             StrFn::EndsWith => affix(&mut b, true),
         }
@@ -156,6 +163,10 @@ impl FnLower<'_> {
             }
             "msrt_string_ends_with" => {
                 let f = self.str_fn(StrFn::EndsWith);
+                Some(self.b.call(f, args))
+            }
+            "msrt_string_scalar_step" => {
+                let f = self.str_fn(StrFn::ScalarStep);
                 Some(self.b.call(f, args))
             }
             "msrt_string_scalar_at" => {
@@ -328,60 +339,36 @@ fn contains_byte(b: &mut FuncBuilder<'_>) {
     b.ret(Some(r));
 }
 
-/// `String.scalar_at(offset, default)`: an offset inside the text decodes in place. A string is
-/// valid UTF-8, so the lead byte gives the sequence length and every continuation byte is in
-/// bounds; a continuation byte at the offset, or an offset outside the text, calls the runtime
-/// for the default or the fault.
-fn scalar_at(b: &mut FuncBuilder<'_>) {
-    let ps = b.params();
-    let (text, offset, has, default) = (ps[0], ps[1], ps[2], ps[3]);
-    let ext = runtime_fn(
-        b.m,
-        "msrt_string_scalar_at",
-        &[MTy::STR, MTy::INT, MTy::BOOL, MTy::INT],
-        MTy::INT,
-    );
-    let (slow, read, ascii, multi, two, wide, three, four) = (
-        b.new_block(),
-        b.new_block(),
-        b.new_block(),
+/// Emits the decode of the multi-byte scalar whose lead byte `b0` (at least 0x80) is at `offset`
+/// of `text`, and ends each path with `finish(scalar, width)`. A string is valid UTF-8, so the
+/// lead byte fixes the width and every continuation byte is in bounds; a continuation byte in
+/// the lead position goes to `slow`.
+fn decode_multibyte(
+    b: &mut FuncBuilder<'_>,
+    text: Value,
+    offset: Value,
+    b0: Value,
+    slow: ms_mir::ir::Block,
+    finish: &dyn Fn(&mut FuncBuilder<'_>, Value, i64),
+) {
+    let (lead_ok, two, wide, three, four) = (
         b.new_block(),
         b.new_block(),
         b.new_block(),
         b.new_block(),
         b.new_block(),
     );
-    let n = b.str_bytes(text);
-    let zero = b.iconst(0);
-    let ge0 = b.icmp(Cc::Ge, offset, zero);
-    let lt = b.icmp(Cc::Lt, offset, n);
-    let no = b.bconst(false);
-    let inside = b.select(ge0, lt, no);
-    b.br_if(inside, read, &[], slow, &[]);
-    b.seal_block(read);
-    b.switch_to(read);
     let byte_at = |b: &mut FuncBuilder<'_>, k: i64| {
         let at = int(b, Op::IAdd, offset, k);
         b.emit(Op::StrByte, &[text, at], Imm::None, Some(MTy::INT))
             .expect("byte")
     };
-    let b0 = byte_at(b, 0);
-    let limit = b.iconst(128);
-    let is_ascii = b.icmp(Cc::Lt, b0, limit);
-    b.br_if(is_ascii, ascii, &[], multi, &[]);
-    b.seal_block(ascii);
-    b.switch_to(ascii);
-    b.ret(Some(b0));
-    b.seal_block(multi);
-    b.switch_to(multi);
     // 0x80..0xBF is a continuation byte: the offset is inside a scalar.
     let c0 = b.iconst(0xC0);
     let lead = b.icmp(Cc::Ge, b0, c0);
-    let two_or_more = b.new_block();
-    b.br_if(lead, two_or_more, &[], slow, &[]);
-    b.seal_block(two_or_more);
-    b.seal_block(slow);
-    b.switch_to(two_or_more);
+    b.br_if(lead, lead_ok, &[], slow, &[]);
+    b.seal_block(lead_ok);
+    b.switch_to(lead_ok);
     let e0 = b.iconst(0xE0);
     let is_two = b.icmp(Cc::Lt, b0, e0);
     b.br_if(is_two, two, &[], wide, &[]);
@@ -393,7 +380,7 @@ fn scalar_at(b: &mut FuncBuilder<'_>) {
     let hi = int(b, Op::Shl, hi, 6);
     let lo = int(b, Op::And, b1, 0x3F);
     let r = b.binop(Op::Or, hi, lo);
-    b.ret(Some(r));
+    finish(b, r, 2);
     b.switch_to(wide);
     let f0 = b.iconst(0xF0);
     let is_three = b.icmp(Cc::Lt, b0, f0);
@@ -410,7 +397,7 @@ fn scalar_at(b: &mut FuncBuilder<'_>) {
     let z = int(b, Op::And, b2, 0x3F);
     let r = b.binop(Op::Or, x, y);
     let r = b.binop(Op::Or, r, z);
-    b.ret(Some(r));
+    finish(b, r, 3);
     b.switch_to(four);
     let b1 = byte_at(b, 1);
     let b2 = byte_at(b, 2);
@@ -425,9 +412,84 @@ fn scalar_at(b: &mut FuncBuilder<'_>) {
     let r = b.binop(Op::Or, w, x);
     let r = b.binop(Op::Or, r, y);
     let r = b.binop(Op::Or, r, z);
-    b.ret(Some(r));
+    finish(b, r, 4);
+}
+
+/// `String.scalar_at(offset, default)`: an offset inside the text decodes in place (see
+/// [`decode_multibyte`]); an offset outside the text, or a continuation byte, calls the runtime
+/// for the default or the fault.
+fn scalar_at(b: &mut FuncBuilder<'_>) {
+    let ps = b.params();
+    let (text, offset, has, default) = (ps[0], ps[1], ps[2], ps[3]);
+    let ext = runtime_fn(
+        b.m,
+        "msrt_string_scalar_at",
+        &[MTy::STR, MTy::INT, MTy::BOOL, MTy::INT],
+        MTy::INT,
+    );
+    let (slow, read, ascii, multi) = (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+    let n = b.str_bytes(text);
+    let zero = b.iconst(0);
+    let ge0 = b.icmp(Cc::Ge, offset, zero);
+    let lt = b.icmp(Cc::Lt, offset, n);
+    let no = b.bconst(false);
+    let inside = b.select(ge0, lt, no);
+    b.br_if(inside, read, &[], slow, &[]);
+    b.seal_block(read);
+    b.switch_to(read);
+    let b0 = b
+        .emit(Op::StrByte, &[text, offset], Imm::None, Some(MTy::INT))
+        .expect("byte");
+    let limit = b.iconst(128);
+    let is_ascii = b.icmp(Cc::Lt, b0, limit);
+    b.br_if(is_ascii, ascii, &[], multi, &[]);
+    b.seal_block(ascii);
+    b.seal_block(multi);
+    b.switch_to(ascii);
+    b.ret(Some(b0));
+    b.switch_to(multi);
+    decode_multibyte(b, text, offset, b0, slow, &|b, scalar, _| {
+        b.ret(Some(scalar))
+    });
+    b.seal_block(slow);
     b.switch_to(slow);
     let r = b.call_rt(ext, &[text, offset, has, default]);
+    b.ret(Some(r));
+}
+
+/// The scalar at byte `offset` (inside the text, on a scalar boundary) and its width as
+/// `scalar << 3 | width`: one step of a scalar walk, with no runtime call.
+fn scalar_step(b: &mut FuncBuilder<'_>) {
+    let ps = b.params();
+    let (text, offset) = (ps[0], ps[1]);
+    let ext = runtime_fn(
+        b.m,
+        "msrt_string_scalar_step",
+        &[MTy::STR, MTy::INT],
+        MTy::INT,
+    );
+    let (slow, ascii, multi) = (b.new_block(), b.new_block(), b.new_block());
+    let b0 = b
+        .emit(Op::StrByte, &[text, offset], Imm::None, Some(MTy::INT))
+        .expect("byte");
+    let limit = b.iconst(128);
+    let is_ascii = b.icmp(Cc::Lt, b0, limit);
+    b.br_if(is_ascii, ascii, &[], multi, &[]);
+    b.seal_block(ascii);
+    b.seal_block(multi);
+    b.switch_to(ascii);
+    let r = int(b, Op::Shl, b0, 3);
+    let r = int(b, Op::Or, r, 1);
+    b.ret(Some(r));
+    b.switch_to(multi);
+    decode_multibyte(b, text, offset, b0, slow, &|b, scalar, width| {
+        let r = int(b, Op::Shl, scalar, 3);
+        let r = int(b, Op::Or, r, width);
+        b.ret(Some(r));
+    });
+    b.seal_block(slow);
+    b.switch_to(slow);
+    let r = b.call_rt(ext, &[text, offset]);
     b.ret(Some(r));
 }
 

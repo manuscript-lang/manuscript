@@ -58,3 +58,15 @@ Positions in `String` are byte offsets (`proposals/byte-offset-strings.md`). Sam
 | operation | before | after | rust | change |
 |---|---:|---:|---:|---|
 | `utf8_offset_walk` | 19 | 12 | 11 | no runtime call per non-ASCII scalar |
+
+## 2026-11-15: non-ASCII case mapping, reverse and scalar walks
+
+Same VM and method, min of 5, milliseconds, 11.7 MB of text with 2-byte scalars.
+
+| operation | before | after | rust | change |
+|---|---:|---:|---:|---|
+| `reverse()` | 50 | 20 | 34 | each scalar's bytes move whole; no decode and encode |
+| `upper()` | 71 | 50 | 53 | scalars map straight into the result; no `String`, UTF-8 check or copy. Text that grows (`ß`), or lowercase text with a final-sigma context, takes the `str` path |
+| `lower()` | 74 | 50 | 60 | as `upper()` |
+| `chars_scan_utf8` | 14 | 10 | 8 | the scalar step of `for c in text.chars()` and `scalar_values()` decodes inline instead of calling the runtime |
+| `utf8_case_reverse` | 133 | 75 | 81 | the two above |
