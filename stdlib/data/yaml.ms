@@ -79,6 +79,11 @@ type Context:
 	// Diagnostic projection for virtual lines; parsing continues to use the same bases.
 	// Prefixes declared by %TAG directives, keyed by handle (`!`, `!!`, `!name!`).
 	tag_handles: Map[String, String] = Map[String, String]()
+	// Whether the document just read ended with an explicit `...` marker.
+	explicit_end: Bool = false
+	// Whether the document just read had no `---` marker and no content: no document at
+	// all.
+	absent_document: Bool = false
 	split_line: Int = -1
 	shift_row: Int = -1
 	shift_column: Int = 0
@@ -2206,9 +2211,7 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
 			for entry in values: validate(var context, entry.value, (depth + 1))?
 		_: unit
 
-// Parses a YAML document. Unsupported YAML features and invalid input include source
-// locations.
-export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
+fn open_stream(text: String, options: YamlOptions) Context!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
 		if value := limit:
 			if value < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
@@ -2263,6 +2266,19 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 	if normalized.ends_with("\n"): context.lines.remove(context.lines.length() - 1)
 	classify(var context, normalized.to_bytes())
 	skip(var context)
+	return ok(context)
+
+// Reads one document, from its directives and `---` marker to its body and optional
+// `...` marker. Anchors, tag handles and the value budget belong to a single document.
+fn document(var context: Context, options: YamlOptions) YamlValue!:
+	context.anchors = Map[String, YamlValue]()
+	context.sizes = Map[String, Int]()
+	context.tag_handles = Map[String, String]()
+	context.values = 0
+	context.explicit_end = false
+	context.absent_document = false
+
+	var marked = false
 
 	if (
 		context.index < context.lines.length()
@@ -2295,31 +2311,35 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 		and uncomment((context.lines[context.index])) == "---"
 	):
 		context.index += 1
+		marked = true
 		skip(var context)
 
 	var result = YamlValue.Null
+	var has_body = false
+
 	if (
 		context.index < context.lines.length()
 		and uncomment((context.lines[context.index])) != "..."
 	):
+		has_body = true
 		result = block(
 			var context,
 			indentation(context, (context.lines[context.index]))?,
 			1,
 			scalar_base: 0,
 		)?
+
 	skip(var context)
+	context.absent_document = not marked and not has_body
 
 	if (
 		context.index < context.lines.length()
 		and uncomment((context.lines[context.index])) == "..."
 	):
 		context.index += 1
+		context.explicit_end = true
 		skip(var context)
 
-	if context.index != context.lines.length(): return error(
-		invalid(context, "unexpected indentation or additional document")
-	)
 	if options.max_depth.is_none() and options.max_values.is_none(): return ok(result)
 
 	// Without aliases, parsing already counted every container and leaf at its depth.
@@ -2328,6 +2348,45 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 	context.values = 0
 	validate(var context, result, 1)?
 	return ok(result)
+
+// Parses a single YAML document; a stream of several is an error, so use `parse_all`
+// for it. Unsupported YAML features and invalid input include source locations.
+export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
+	var context = open_stream(text, options)?
+	result := document(var context, options)?
+	if context.index != context.lines.length(): return error(
+		invalid(context, "unexpected indentation or additional document")
+	)
+
+	return ok(result)
+
+// Parses a stream of YAML documents separated by `---` or ended by `...`, returning one
+// value per document in order. A document with no content is null; input with no
+// document at all is an empty list. Anchors, tag handles and limits apply to each
+// document on its own.
+export fn parse_all(text: String, options: YamlOptions = YamlOptions()) List[YamlValue]!:
+	var context = open_stream(text, options)?
+	var documents: List[YamlValue] = []
+
+	while context.index < context.lines.length():
+		value := document(var context, options)?
+		if not context.absent_document: documents.append(value)
+		if context.index >= context.lines.length(): break
+
+		line := uncomment(context.lines[context.index])
+		starts := (
+			context.explicit_end
+			or line == "---"
+			or inline_start(context.lines[context.index])
+		)
+		if not starts: return error(
+			invalid(
+				context,
+				"unexpected indentation or additional document",
+			)
+		)
+
+	return ok(documents)
 
 fn format_key(key: String) String:
 	var plain = key != ""

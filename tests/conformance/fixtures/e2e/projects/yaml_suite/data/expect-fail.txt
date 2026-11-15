@@ -10,25 +10,19 @@
 4MUZ/01 an implicit mapping key must stay on one line
 4MUZ/02 an implicit mapping key must stay on one line
 5MUD an implicit mapping key must stay on one line
-5TYM only the YAML 1.2 directive is supported
 5WE3 explicit mapping keys are unsupported
 6BFJ by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
 6CA3 tabs cannot indent YAML
 6M2F explicit mapping keys are unsupported
 6PBE explicit mapping keys are unsupported
-6WLZ tag handling gap (%TAG handles, tags on unusual nodes)
 6XDY value differs from the suite
-6ZKB unexpected indentation or additional document
 7W2P explicit mapping keys are unsupported
-7Z25 unexpected indentation or additional document
 87E4 expected sequence comma
 8UDB unexpected mapping colon
 9C9N accepts invalid input
-9DXL unexpected indentation or additional document
 9KAX tag handling gap (%TAG handles, tags on unusual nodes)
 9MMW unexpected mapping colon
 9SA2 an implicit mapping key must stay on one line
-9WXW tag handling gap (%TAG handles, tags on unusual nodes)
 A2M4 explicit mapping keys are unsupported
 AB8U unexpected indented collection
 BU8L tag handling gap (%TAG handles, tags on unusual nodes)
@@ -44,13 +38,10 @@ FRK4 explicit mapping keys are unsupported
 GH63 explicit mapping keys are unsupported
 HS5T tabs cannot indent YAML
 JEF9/02 value differs from the suite
-JHB9 unexpected indentation or additional document
 JTV5 explicit mapping keys are unsupported
 K3WX an implicit mapping key must stay on one line
 KK5P explicit mapping keys are unsupported
-KSS4 unexpected indentation or additional document
 L24T/01 value differs from the suite
-L383 unexpected indentation or additional document
 L94M explicit mapping keys are unsupported
 L9U5 unexpected mapping colon
 LQZ7 expected sequence comma
@@ -61,8 +52,6 @@ M5C3 tag handling gap (%TAG handles, tags on unusual nodes)
 M5DY explicit mapping keys are unsupported
 M7A3 unexpected indentation or additional document
 NJ66 an implicit mapping key must stay on one line
-NKF9 mapping keys must be strings
-PUW8 unexpected indentation or additional document
 PW8X mapping keys must be strings
 Q5MG tabs cannot indent YAML
 Q9WF by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
@@ -70,11 +59,9 @@ QB6E accepts invalid input
 QF4Y unexpected mapping colon
 RR7F unexpected indentation or additional document
 RZP5 unexpected indentation or additional document
-RZT7 unexpected indentation or additional document
 S9E8 explicit mapping keys are unsupported
 SBG9 by design: a collection cannot be a mapping key (keys are scalars, kept as their text)
 SKE5 unexpected indentation or additional document
-U9NS unexpected indentation or additional document
 UT92 an implicit mapping key must stay on one line
 UV7Q tabs cannot indent YAML
 V9D5 explicit mapping keys are unsupported
@@ -88,5 +75,6 @@ Y79Y/003 accepts invalid input
 Y79Y/004 accepts invalid input
 Y79Y/005 accepts invalid input
 ZWK4 unexpected indentation or additional document
+
 
 

@@ -1,10 +1,10 @@
 import (
-	YamlValue, parse from "@std/data/yaml.ms",
+	YamlValue, parse_all from "@std/data/yaml.ms",
 	parse_int from "@std/math/math.ms",
 	FileTree, walk from "@std/os/tree.ms",
 	expect_equal from "@std/test/test.ms",
 
-	canon_json from "./json_side.ms",
+	canon_json_stream from "./json_side.ms",
 	files from "@suite",
 )
 
@@ -47,16 +47,19 @@ fn exists(tree: FileTree, path: String) Bool:
 // Whether the parser agrees with the suite on one case directory.
 fn passes(tree: FileTree, id: String) Bool:
 	text := tree.read("{id}/in.yaml", none).get("".to_bytes()).decode_utf8().get("")
-	parsed := parse(text)
+	parsed := parse_all(text)
 	if exists(tree, "{id}/error"): return parsed.is_error()
 	if parsed.is_error(): return false
 	if not exists(tree, "{id}/in.json"): return true
 
 	json := tree.read("{id}/in.json", none).get("".to_bytes()).decode_utf8().get("")
-	want := canon_json(json)
+	want := canon_json_stream(json)
 	if want.is_error(): return false
 
-	return canon(parsed.get(YamlValue.Null)) == want.get("")
+	var got: List[String] = []
+	for document in parsed.get([]):
+		got.append(canon(document))
+	return got == want.get([])
 
 test "the official YAML suite agrees with the parser except for the listed cases":
 	tree := files()

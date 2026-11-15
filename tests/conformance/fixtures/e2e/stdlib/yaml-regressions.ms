@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	YamlValue, parse from "@std/data/yaml.ms",
+	YamlValue, parse, parse_all from "@std/data/yaml.ms",
 	StringBuilder from "@std/string_builder.ms",
 	expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms",
 )
@@ -889,3 +889,23 @@ test "YAML scalar keys become their text and collection keys are rejected":
 	unsupported_at("[a]: 1", 1)?
 	unsupported_at("\{[a]: 1\}", 1)?
 	unsupported_at("a: 1\n\{b: c\}: d", 2)?
+
+fn count(text: String, want: Int) Unit!:
+	docs := parse_all(text)?
+	expect_equal(docs.length(), want)?
+
+test "YAML streams read one value per document":
+	docs := parse_all("a: 1\n---\n- x\n...\n--- word\n---\n...\n%YAML 1.2\n---\nlast\n")?
+	expect_equal(docs.length(), 5)?
+	expect_equal(docs[3], YamlValue.Null)?
+	expect_equal(docs[4], YamlValue.StringValue("last"))?
+	count("", 0)?
+	count("# only a comment\n", 0)?
+	count("...\n", 0)?
+	count("one\n...\ntwo\n", 2)?
+
+	// Anchors end with their document, and a directive needs the previous document
+	// closed.
+	_ := parse_all("---\n&a x\n---\n*a\n") | expect_error?
+	_ := parse_all("a: 1\n%YAML 1.2\n---\nb: 2\n") | expect_error?
+	_ := parse("one\n---\ntwo\n") | expect_error?
