@@ -1,4 +1,4 @@
-// conform: tags=calls,tier-core
+// conform: tags=try-result,tier-core
 // conform: phase=run
 
 // A parameter or local named ok is an ordinary callee; only the prelude constructor
