@@ -41,8 +41,8 @@ Every row is a shape agents wrote that fails; the right column compiles.
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
 | `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |
 | `fn f(out: var T)`, `x: T = e` | `fn f(var out: T)`, `x: T := e` |
-| `c == "{"`, JSON or a template in `"..."` | `c == r"{"`; JSON and templates in `r"..."` or `r"""`. A string with literal braces and nothing to interpolate is written raw; use `\{` and `\}` only when the same string also interpolates |
 | `"total {n}"` (plain text never interpolates) | `f"total {n}"` |
+| `"""text"""` on one line | `"""` ends its line; the text starts on the next line and the closing `"""` stands alone (`r"""` the same, braces literal) |
 | `for _ in xs` | `for _i in xs`; a bare `_` is not a name |
 | `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
 | `f(x)?` as a statement on a non-Void result | `_done := f(x)?` (a leading `_` marks it unused) |
@@ -67,7 +67,7 @@ Every row is a shape agents wrote that fails; the right column compiles.
 
 - `T?` is Optional: values convert, `none` is absent. Extract with `if x := optional:` or `.get(default)`. `a?.field` chains absence; postfix `?` is for Results only.
 - `T!` is Result[T, Error]. Return `ok(value)`/`error(Error("message"))`; `r?` extracts success or returns the error from a compatible Result-returning function. Otherwise `if x := r:` handles success; in else, `r.err()` yields the error directly (`.message` reads its text). Never call it on success or accidentally drop a Result.
-- Int/Float/Bool copy. Owned values can be borrowed by reads and moved into storage. Clone only for an independent owner, e.g. `names.append(user.name.clone())`. `fn add(var xs: List[Int]) Void` is called `add(var xs)`; return parts of parameters by borrow without a marker. A binding made from part of `xs` (`it := xs.get(0, d)`, `for x in xs`) borrows `xs`: do not change `xs` while it lives, or end the initializer with `.clone()`. A function returns a part of its argument by borrow; otherwise build a new value with `.clone()`. Closeable cleans up at scope end unless moved; no GC.
+- Int/Float/Bool copy. Reads and ordinary arguments borrow. Storing a String, List or record (`m.add(k, v)`, `xs.append(x)`, `m[k] = v`, `Node(name: x)`) moves it, so a name used again after the store is stored as `x.clone()`: `price.add(sku.clone(), 0)` then `stock.add(sku, n)`. `fn add(var xs: List[Int]) Void` is called `add(var xs)`; return parts of parameters by borrow without a marker. A binding made from part of `xs` (`it := xs.get(0, d)`, `for x in xs`) borrows `xs`: do not change `xs` while it lives, or end the initializer with `.clone()`. Closeable cleans up at scope end unless moved; no GC.
 - `p.wait()` on Promise[T] returns T! once; no async/await keywords. Keep mutable state with one owner. Effects use narrow directives above functions, as shown; directives do not execute effects.
 
 ### Standard calls
