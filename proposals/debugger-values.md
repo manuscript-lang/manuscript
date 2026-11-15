@@ -8,7 +8,7 @@
 
 ## Status
 
-Stage 1 implemented 2026-11-15. Stage 2 slice 1 (Cranelift parameters: `Func.names`, value labels, `DW_TAG_formal_parameter` with location lists) implemented 2026-11-15; locals and LLVM variables remain. Stage 3 is done.
+Stage 1 implemented 2026-11-15. Stage 2 slice 1 (parameters on both backends: `Func.names`; Cranelift value labels with `DW_TAG_formal_parameter` location lists; LLVM `dbg.value` fragments with full debug info, and the type nodes repeated in each unit that has variables) implemented 2026-11-15; locals remain. Stage 3 is done.
 
 ## Problem
 

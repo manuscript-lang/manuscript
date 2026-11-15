@@ -118,7 +118,8 @@ impl<'m> Gen<'m> {
             .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
         let mut llvm = LlvmModule::new(files, cwd);
         llvm.heap_facts = opts.heap_facts;
-        llvm.debug_types = ms_mir::debug_types::debug_types(m);
+        let (types, of_ty) = ms_mir::debug_types::debug_types_by_ty(m);
+        llvm.set_debug_types(types, of_ty);
         let syms = m
             .funcs
             .iter()
