@@ -1,0 +1,50 @@
+name: Nightly safety
+
+# Slow safety checks that do not fit the pull request budget. They run on main only, once a night, and on demand.
+# A failure here is a real bug: file an issue and fix the cause, never skip the check.
+#   miri          runtime memory safety under Miri (needs nightly; see documentation/contributing/rust-toolchain.md)
+#   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
+#   drift-check   runs the corpus under LLVM and Cranelift and fails on any difference
+
+on:
+  schedule:
+    # Not at minute 0: GitHub delays and drops scheduled runs at the start of the hour.
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  miri:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install nightly Rust with Miri
+        run: rustup toolchain install nightly --profile minimal -c miri
+      - name: Miri on the runtime
+        env:
+          MIRIFLAGS: -Zmiri-ignore-leaks
+        run: cargo +nightly miri test -p ms-rt --lib
+
+  sweeps:
+    if: github.ref == 'refs/heads/main'
+    name: ${{ matrix.check }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [cancel-sweep, drift-check]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-env
+        with:
+          os: linux
+          arch: amd64
+      - run: make ${{ matrix.check }}
