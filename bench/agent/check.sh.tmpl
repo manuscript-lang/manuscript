@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
 # Builds the solution and runs every example in examples/. Use this to check your work.
 cd "$(dirname "$0")"
-log() { printf '{"t":%s,"phase":"%s","ok":%s,"codes":"%s"}\n' "$(date +%s)" "$1" "$2" "$3" >> .bench/log.jsonl; }
+log() { printf '{"t":%s,"phase":"%s","ok":%s,"codes":"%s","msg":"%s","fixed":"%s"}\n' "$(date +%s)" "$1" "$2" "$3" "$4" "$5" >> .bench/log.jsonl; }
 mkdir -p .bench
 # Diagnostic codes of a failed build, from the language's `codes` command, for failure statistics.
 if ! ( {build} ) > .bench/build.out 2>&1; then
   cat .bench/build.out
-  log build false "$( ( {codes} ) 2>/dev/null | sort -u | head -8 | tr '\n' ' ' | sed 's/ $//')"
+  # The first diagnostic line, quotes and backslashes removed so it stays valid JSON.
+  msg="$(grep -m1 -E ':[0-9]+:[0-9]+: |error' .bench/build.out | cut -c1-200 | tr -d '"\\' | tr -c '[:print:]' ' ')"
+  # Would the build pass after the language's machine fixes? Tried on a copy so the agent's files stay as written.
+  fixed=""
+  if [ -n "{fix}" ]; then
+    tmp="$(mktemp -d)"; cp -r . "$tmp" 2>/dev/null
+    if ( cd "$tmp" && ( {fix} ) >/dev/null 2>&1; ( {build} ) >/dev/null 2>&1 ); then fixed=true; else fixed=false; fi
+    rm -rf "$tmp"
+  fi
+  log build false "$( ( {codes} ) 2>/dev/null | sort -u | head -8 | tr '\n' ' ' | sed 's/ $//')" "$msg" "$fixed"
   echo "BUILD FAILED"; exit 1
 fi
 cat .bench/build.out
-log build true ""
+log build true "" "" ""
 fail=0
 for inp in examples/*.in; do
   name="${inp%.in}"
@@ -21,5 +30,5 @@ for inp in examples/*.in; do
     echo "FAIL $name (see $name.diff, $name.err)"; fail=1
   fi
 done
-log check $([ $fail = 0 ] && echo true || echo false) ""
+log check $([ $fail = 0 ] && echo true || echo false) "" "" ""
 exit $fail
