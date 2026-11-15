@@ -282,3 +282,56 @@ fn unknown_or_invalid_source_paths_do_not_invent_lines() {
         assert!(!output("llvm-dwarfdump", &["--debug-line"], &d).contains("Line table prologue"));
     }
 }
+
+/// Every Manuscript type is a DWARF structure a debugger can print: strings, lists, optionals,
+/// records and enums, with member offsets from the machine layout. `llvm-dwarfdump --verify`
+/// checks the entries are well formed.
+#[test]
+fn dwarf_describes_values_for_a_debugger() {
+    let d: PathBuf = std::env::temp_dir().join(format!("ms-dwarf-types-{}", std::process::id()));
+    std::fs::create_dir_all(&d).unwrap();
+    let source = d.join("types.ms");
+    std::fs::write(&source, "# types fixture\n").unwrap();
+    let src = format!(
+        r#"module "types"
+file 0 {:?}
+type Point {{ x: int, y: float, name: str }}
+type Inner {{ ok: bool, n: int }}
+type Outer {{ flag: bool, inner: Inner }}
+alt Shape {{ Circle(r: float), Rect(w: int, h: int), Empty }}
+entry @main
+fn @show(%p: Point, %s: Shape, %l: list<str>, %o: opt<int>, %q: Outer) -> int export inline(never) !0:1:1 {{
+b0:
+  %z: int = iconst 0 !0:2:3
+  ret %z !0:2:3
+}}
+fn @main() -> int !0:3:1 {{
+b0:
+  %z: int = iconst 0 !0:4:3
+  ret %z !0:4:3
+}}
+"#,
+        source.to_str().unwrap()
+    );
+    let m = parse_module(&src).unwrap();
+    verify_module(&m).unwrap();
+    let obj = d.join("types.o");
+    std::fs::write(&obj, compile(&m, &Options::default()).unwrap()).unwrap();
+    output("llvm-dwarfdump", &["--verify"], &obj);
+    let info = output("llvm-dwarfdump", &["--debug-info"], &obj);
+    for expected in [
+        "DW_AT_name\t(\"Point\")",
+        "DW_AT_name\t(\"String\")",
+        "DW_AT_name\t(\"List[String]\")",
+        "DW_AT_name\t(\"Int?\")",
+        "DW_AT_name\t(\"Shape payload\")",
+        "DW_AT_name\t(\"Shape.Rect\")",
+        "DW_AT_name\t(\"tagged\")",
+        // `Inner` sits after a flag byte inside `Outer`, so its `n` is not where `Inner` puts it.
+        "DW_AT_name\t(\"inner.1\")",
+        "DW_AT_data_member_location\t(16)",
+    ] {
+        assert!(info.contains(expected), "missing {expected}:\n{info}");
+    }
+    std::fs::remove_dir_all(d).unwrap();
+}

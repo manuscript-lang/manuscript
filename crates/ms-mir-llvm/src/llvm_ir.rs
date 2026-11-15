@@ -49,6 +49,9 @@ const READS_ONLY: &str = " nounwind willreturn nofree nosync memory(read)";
 /// An LLVM module under construction.
 pub struct LlvmModule {
     di: DebugInfo,
+    /// The module's types as a debugger shows them (`ms_mir::debug_types`); written once, in the
+    /// first unit, since every unit's debug info would otherwise repeat them.
+    pub debug_types: Vec<ms_mir::debug_types::DebugType>,
     /// Fault call sites numbered so far (unique across the module).
     sites: u32,
     /// Function definitions in emission order.
@@ -312,6 +315,9 @@ impl DebugInfo {
     }
 }
 
+/// Placeholder in the compile unit's node for `retainedTypes`, which only the first unit has.
+const RETAINED_TYPES: &str = "@@RETAINED@@";
+
 /// Metadata ids fixed by [`LlvmModule::finish`]: compile unit, two module flags, the empty
 /// type list and the subroutine type; file `i` is `FIRST_FILE + i`.
 const FIRST_FILE: usize = 5;
@@ -384,6 +390,7 @@ impl LlvmModule {
         }
         let nfiles = files.len();
         let mut m = LlvmModule {
+            debug_types: Vec::new(),
             sites: 0,
             di: DebugInfo {
                 meta: Vec::new(),
@@ -726,7 +733,7 @@ impl LlvmModule {
         tail.push_str("!llvm.dbg.cu = !{!0}\n!llvm.module.flags = !{!1, !2}\n");
         let _ = writeln!(
             tail,
-            "!0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !{}, producer: \"Manuscript\", isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly)",
+            "!0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !{}, producer: \"Manuscript\", isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly{RETAINED_TYPES})",
             FIRST_FILE + first_file
         );
         tail.push_str("!1 = !{i32 2, !\"Debug Info Version\", i32 3}\n");
@@ -863,13 +870,103 @@ impl LlvmModule {
                     s.push('\n');
                 }
             }
-            s.push_str(&tail);
+            let retained = if gi == 0 && !self.debug_types.is_empty() {
+                let (nodes, list) = self.type_metadata(self.di.meta.len());
+                s.push_str(&nodes);
+                format!(", retainedTypes: !{list}")
+            } else {
+                String::new()
+            };
+            s.push_str(&tail.replace(RETAINED_TYPES, &retained));
             out.push(Unit {
                 ir: s,
                 unoptimized: *unoptimized,
             });
         }
         out
+    }
+
+    /// The metadata nodes describing `debug_types`, numbered from `base`, and the id of the list
+    /// of them that the compile unit retains (a type no variable names is dropped otherwise).
+    fn type_metadata(&self, base: usize) -> (String, usize) {
+        use ms_mir::debug_types::{DebugKind, Encoding};
+        let types = &self.debug_types;
+        let mut next = base + types.len();
+        let mut out = String::new();
+        let bits = |bytes: u32| u64::from(bytes) * 8;
+        let members = |out: &mut String,
+                       next: &mut usize,
+                       owner: usize,
+                       list: &[ms_mir::debug_types::Member]| {
+            if list.is_empty() {
+                return 3;
+            }
+            let ids: Vec<usize> = list
+                .iter()
+                .map(|member| {
+                    let id = *next;
+                    *next += 1;
+                    let _ = writeln!(
+                        out,
+                        "!{id} = !DIDerivedType(tag: DW_TAG_member, name: \"{}\", scope: !{owner}, baseType: !{}, size: {}, offset: {})",
+                        metadata_string(&member.name),
+                        base + member.ty,
+                        bits(types[member.ty].size),
+                        bits(member.offset)
+                    );
+                    id
+                })
+                .collect();
+            let elements = *next;
+            *next += 1;
+            let refs: Vec<String> = ids.iter().map(|i| format!("!{i}")).collect();
+            let _ = writeln!(out, "!{elements} = !{{{}}}", refs.join(", "));
+            elements
+        };
+        for (i, t) in types.iter().enumerate() {
+            let id = base + i;
+            let name = metadata_string(&t.name);
+            let size = bits(t.size);
+            match &t.kind {
+                DebugKind::Base(e) => {
+                    let enc = match e {
+                        Encoding::Bool => "DW_ATE_boolean",
+                        Encoding::Signed => "DW_ATE_signed",
+                        Encoding::Unsigned => "DW_ATE_unsigned",
+                        Encoding::Float => "DW_ATE_float",
+                    };
+                    let _ = writeln!(
+                        out,
+                        "!{id} = !DIBasicType(name: \"{name}\", size: {size}, encoding: {enc})"
+                    );
+                }
+                DebugKind::Pointer(target) => {
+                    let target = target.map_or(", baseType: null".to_string(), |t| {
+                        format!(", baseType: !{}", base + t)
+                    });
+                    let _ = writeln!(
+                        out,
+                        "!{id} = !DIDerivedType(tag: DW_TAG_pointer_type, name: \"{name}\"{target}, size: 64)"
+                    );
+                }
+                DebugKind::Struct(list) | DebugKind::Union(list) => {
+                    let tag = if matches!(t.kind, DebugKind::Struct(_)) {
+                        "DW_TAG_structure_type"
+                    } else {
+                        "DW_TAG_union_type"
+                    };
+                    let elements = members(&mut out, &mut next, id, list);
+                    let _ = writeln!(
+                        out,
+                        "!{id} = distinct !DICompositeType(tag: {tag}, name: \"{name}\", size: {size}, elements: !{elements})"
+                    );
+                }
+            }
+        }
+        let refs: Vec<String> = (0..types.len()).map(|i| format!("!{}", base + i)).collect();
+        let list = next;
+        let _ = writeln!(out, "!{list} = !{{{}}}", refs.join(", "));
+        (out, list)
     }
 
     /// Writes `available_externally` copies of the small functions other units define that this

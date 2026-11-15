@@ -526,3 +526,47 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(String::from_utf8_lossy(&out.stdout), "3000007\n");
 }
+
+/// Both backends describe Manuscript types to a debugger, once per program: with several LLVM
+/// units only the first carries them.
+#[test]
+fn both_backends_describe_value_types_once() {
+    let source = format!("{}/tests/llvm/value_types.ms", env!("CARGO_MANIFEST_DIR"));
+    let dir = std::env::temp_dir().join(format!("ms-types-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let dwarfdump = std::env::var("LLVM_DWARFDUMP").unwrap_or_else(|_| "llvm-dwarfdump".into());
+    let llvm = ms_build::llvm_available(&ms_cli::engine::build_options_from_env());
+    let mut runs = vec![("cranelift", "1")];
+    if cfg!(any(target_os = "linux", target_os = "macos")) && llvm {
+        runs.extend([("llvm", "1"), ("llvm", "4")]);
+    }
+    for (backend, units) in runs {
+        let out = dir.join(format!("{backend}-{units}"));
+        let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .env("MS_BACKEND", backend)
+            .env("MS_LLVM_UNITS", units)
+            .args(["build", &source, "-o"])
+            .arg(&out)
+            .output()
+            .unwrap();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        let info = Command::new(&dwarfdump)
+            .arg("--debug-info")
+            .arg(&out)
+            .output()
+            .unwrap();
+        let info = String::from_utf8_lossy(&info.stdout);
+        for name in ["Point", "Shape payload", "List[String]", "Int?"] {
+            let found = info.matches(&format!("DW_AT_name\t(\"{name}\")")).count();
+            assert_eq!(
+                found, 1,
+                "{backend} units={units}: {name} appears {found} times"
+            );
+        }
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

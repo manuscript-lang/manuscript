@@ -1,4 +1,6 @@
-//! Minimal DWARF4 source attribution. No variables, types, or inline frame DIEs.
+//! Minimal DWARF4: source attribution, and a DIE for every Manuscript type (`debug_types`) so a
+//! debugger can print a `String`, list, map, record, enum or optional at an address. No variables
+//! or inline frame DIEs.
 //! The runtime's independent fault/profile tables remain unchanged.
 
 use crate::Error;
@@ -32,6 +34,72 @@ impl RelocateWriter for Section {
     }
     fn relocate(&mut self, r: DwarfRelocation) {
         self.relocations.push(r);
+    }
+}
+
+/// One DIE per [`ms_mir::debug_types::DebugType`], referring to each other as the list does.
+fn emit_types(dwarf: &mut DwarfUnit, root: gimli::write::UnitEntryId, m: &Module) {
+    use ms_mir::debug_types::{DebugKind, Encoding as Enc, debug_types};
+    let types = debug_types(m);
+    let tags = |t: &ms_mir::debug_types::DebugType| match &t.kind {
+        DebugKind::Base(_) => gimli::DW_TAG_base_type,
+        DebugKind::Struct(_) => gimli::DW_TAG_structure_type,
+        DebugKind::Union(_) => gimli::DW_TAG_union_type,
+        DebugKind::Pointer(_) => gimli::DW_TAG_pointer_type,
+    };
+    let ids: Vec<_> = types
+        .iter()
+        .map(|t| dwarf.unit.add(root, tags(t)))
+        .collect();
+    for (t, &id) in types.iter().zip(&ids) {
+        let entry = dwarf.unit.get_mut(id);
+        entry.set(
+            gimli::DW_AT_byte_size,
+            AttributeValue::Udata(u64::from(t.size)),
+        );
+        match &t.kind {
+            DebugKind::Base(e) => {
+                entry.set(
+                    gimli::DW_AT_name,
+                    AttributeValue::String(t.name.clone().into_bytes()),
+                );
+                let enc = match e {
+                    Enc::Bool => gimli::DW_ATE_boolean,
+                    Enc::Signed => gimli::DW_ATE_signed,
+                    Enc::Unsigned => gimli::DW_ATE_unsigned,
+                    Enc::Float => gimli::DW_ATE_float,
+                };
+                entry.set(gimli::DW_AT_encoding, AttributeValue::Encoding(enc));
+            }
+            DebugKind::Pointer(target) => {
+                entry.set(
+                    gimli::DW_AT_name,
+                    AttributeValue::String(t.name.clone().into_bytes()),
+                );
+                if let Some(target) = target {
+                    entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(ids[*target]));
+                }
+            }
+            DebugKind::Struct(members) | DebugKind::Union(members) => {
+                entry.set(
+                    gimli::DW_AT_name,
+                    AttributeValue::String(t.name.clone().into_bytes()),
+                );
+                for member in members {
+                    let child = dwarf.unit.add(id, gimli::DW_TAG_member);
+                    let child = dwarf.unit.get_mut(child);
+                    child.set(
+                        gimli::DW_AT_name,
+                        AttributeValue::String(member.name.clone().into_bytes()),
+                    );
+                    child.set(gimli::DW_AT_type, AttributeValue::UnitRef(ids[member.ty]));
+                    child.set(
+                        gimli::DW_AT_data_member_location,
+                        AttributeValue::Udata(u64::from(member.offset)),
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -96,6 +164,7 @@ pub fn emit(
         gimli::DW_AT_producer,
         AttributeValue::String(b"Manuscript Cranelift".to_vec()),
     );
+    emit_types(&mut dwarf, root, m);
     for f in funcs {
         if f.dwarf_ranges.is_empty() {
             continue;
