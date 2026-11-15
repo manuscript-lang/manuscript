@@ -591,18 +591,6 @@ pub fn native_method_argument_modes(syms: ms_syntax::Names, method: &MethodRef) 
     .arguments
 }
 
-/// Whether the declaration bounds a type parameter by `Clonable` (or `Data`, `Hashable`): the
-/// method copies elements instead of taking them.
-fn copies_elements(syms: ms_syntax::Names, method: &MethodRef) -> bool {
-    let Some(DeclKind::Impl(i)) = method.decl.as_ref().map(|d| &d.decl.decl().kind) else {
-        return false;
-    };
-    i.bounds.iter().flat_map(|p| &p.bounds).any(|b| {
-        matches!(&b.kind, TypeKind::Named { name, .. }
-            if matches!(syms.str(*name), "Clonable" | "Data" | "Hashable"))
-    })
-}
-
 fn native_method_modes(
     syms: ms_syntax::Names,
     method: &MethodRef,
@@ -628,9 +616,10 @@ fn native_method_modes(
                 _ => &p.ty,
             };
             // A collection of the receiver's own type is stored whole (`splice`'s replacement)
-            // unless the method needs `Clonable` elements: those methods copy from it
-            // (`extend`, `merge`) and the caller keeps the argument.
-            let copies = copies_elements(syms, method);
+            // unless the receiver's elements are bounded `Clonable`: those methods copy from it
+            // (`extend`, `merge`) and the caller keeps the argument. This is an inference from
+            // the bound, not a declared fact; `native_modes.txt` pins every decision.
+            let copies = method.copies_elements;
             let stored = p.ty.kind == Kind::Variable
                 || (!copies && same(&p.ty, receiver))
                 || receiver.args.iter().any(|a| same(a, &p.ty));
@@ -664,5 +653,118 @@ fn native_method_modes(
         callbacks_borrowed,
         retained,
         consumed_by: Vec::new(),
+    }
+}
+
+#[cfg(test)]
+mod native_mode_tests {
+    use super::*;
+    use crate::contracts::native_method;
+
+    /// The take or borrow decision for every parameter of every bundled native method, as the
+    /// rules above make it. A change to a rule, or a new native method, shows up as a diff of
+    /// `native_modes.txt` and is reviewed there: a wrong mode is a double free or a leak.
+    /// `UPDATE_NATIVE_MODES=1` rewrites the file.
+    #[test]
+    fn native_modes_match_the_committed_listing() {
+        let syms = ms_syntax::Names::global();
+        let session = crate::Session::new();
+        session.ensure_standard();
+        let mut lines: Vec<String> = Vec::new();
+        let receivers = [
+            "List",
+            "Map",
+            "Set",
+            "Bytes",
+            "Optional",
+            "Result",
+            "BytesBuilder",
+            "String",
+            "Int",
+            "Float",
+            "Bool",
+        ];
+        for name in receivers {
+            let base = if crate::types::Builtin::primitive(name).is_some() {
+                primitive(name)
+            } else {
+                session.standard(name, Vec::new())
+            };
+            let variables = base.def.as_ref().map_or(0, |d| d.variables.borrow().len());
+            let t = with_args(&base, vec![primitive("Int"); variables]);
+            let mut operations: Vec<Name> = Vec::new();
+            if let Some(def) = &base.def {
+                operations.extend(def.operations.borrow().iter().map(|o| o.name));
+            }
+            for interface in session.intrinsic_operations(base.id) {
+                if let Some(def) = &interface.def {
+                    operations.extend(def.operations.borrow().iter().map(|o| o.name));
+                }
+            }
+            operations.sort_by_key(|o| syms.str(*o).to_string());
+            operations.dedup();
+            for op in operations {
+                let Some(method) = native_method(syms, &session, &t, op).map(std::rc::Rc::new)
+                else {
+                    continue;
+                };
+                let modes = native_method_modes(syms, &method, method.ty.params.len(), |i| {
+                    Some(method.ty.params[i].name)
+                });
+                let args: Vec<String> = modes
+                    .arguments
+                    .iter()
+                    .enumerate()
+                    .map(|(i, m)| format!("{}={m:?}", syms.str(method.ty.params[i].name)))
+                    .collect();
+                lines.push(format!(
+                    "{name}.{} receiver={:?} copies={} ({})",
+                    syms.str(op),
+                    modes.receiver,
+                    method.copies_elements,
+                    args.join(", ")
+                ));
+            }
+        }
+        // Natives declared as inherent receiver methods (`fn var List[T: Clonable].extend`).
+        let mut declared: Vec<String> = Vec::new();
+        for method in session.standard_implementations() {
+            let Some(func) = method.decl.as_ref().and_then(|d| d.func()) else {
+                continue;
+            };
+            if !func.body.is_empty() {
+                continue;
+            }
+            let modes = native_method_modes(syms, &method, method.ty.params.len(), |i| {
+                Some(method.ty.params[i].name)
+            });
+            let args: Vec<String> = modes
+                .arguments
+                .iter()
+                .enumerate()
+                .map(|(i, m)| format!("{}={m:?}", syms.str(method.ty.params[i].name)))
+                .collect();
+            declared.push(format!(
+                "{}.{} receiver={:?} copies={} ({})",
+                method.receiver.display(syms),
+                syms.str(func.name),
+                modes.receiver,
+                method.copies_elements,
+                args.join(", ")
+            ));
+        }
+        declared.sort();
+        lines.extend(declared);
+        let text = lines.join("\n") + "\n";
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/native_modes.txt");
+        if std::env::var("UPDATE_NATIVE_MODES").is_ok() {
+            std::fs::write(&path, &text).expect("write listing");
+            return;
+        }
+        let want = std::fs::read_to_string(&path).expect("tests/native_modes.txt");
+        assert_eq!(
+            want, text,
+            "native parameter modes changed; review the diff and run with UPDATE_NATIVE_MODES=1"
+        );
     }
 }

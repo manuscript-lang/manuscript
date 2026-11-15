@@ -443,6 +443,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
                             } else {
                                 ms_check::api::types::Native::Source
                             },
+                            copies_elements: false,
                         };
                         let at = b.header(
                             m.file,

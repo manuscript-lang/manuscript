@@ -862,6 +862,10 @@ pub struct Method {
     pub decl: Option<FuncRef>,
     /// What the method binds to.
     pub native: Native,
+    /// A native method whose receiver's elements are bounded `Clonable` (or by a bound that
+    /// implies it): it can only copy elements out of an argument, so it borrows the argument.
+    /// Read from the resolved bounds recorded when the standard library loads.
+    pub copies_elements: bool,
 }
 
 /// A shared method.
@@ -956,6 +960,7 @@ impl Clone for Method {
             variables: self.variables.clone(),
             decl: self.decl.clone(),
             native: self.native,
+            copies_elements: self.copies_elements,
         }
     }
 }
