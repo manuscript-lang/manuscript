@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # Builds the solution and runs every example in examples/. Use this to check your work.
 cd "$(dirname "$0")"
-log() { printf '{"t":%s,"phase":"%s","ok":%s}\n' "$(date +%s)" "$1" "$2" >> .bench/log.jsonl; }
+log() { printf '{"t":%s,"phase":"%s","ok":%s,"codes":"%s"}\n' "$(date +%s)" "$1" "$2" "$3" >> .bench/log.jsonl; }
 mkdir -p .bench
-if ! ( {build} ) ; then log build false; echo "BUILD FAILED"; exit 1; fi
-log build true
+# Diagnostic codes of a failed build, from the language's `codes` command, for failure statistics.
+if ! ( {build} ) > .bench/build.out 2>&1; then
+  cat .bench/build.out
+  log build false "$( ( {codes} ) 2>/dev/null | sort -u | head -8 | tr '\n' ' ' | sed 's/ $//')"
+  echo "BUILD FAILED"; exit 1
+fi
+cat .bench/build.out
+log build true ""
 fail=0
 for inp in examples/*.in; do
   name="${inp%.in}"
@@ -15,5 +21,5 @@ for inp in examples/*.in; do
     echo "FAIL $name (see $name.diff, $name.err)"; fail=1
   fi
 done
-log check $([ $fail = 0 ] && echo true || echo false)
+log check $([ $fail = 0 ] && echo true || echo false) ""
 exit $fail
