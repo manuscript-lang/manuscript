@@ -710,6 +710,7 @@ msstd_process_environment_map(out: *mut MapVal, err: ErrSlot) -> u8 @domain=proc
 msstd_process_groups(out: *mut VecVal, err: ErrSlot) -> u8 @domain=process
 msstd_process_info(out: *mut ProcessInfoOut, err: ErrSlot) -> u8 @domain=process
 msstd_process_initialize_groups(username: *const StrVal, gid: i64, err: ErrSlot) -> u8 @domain=process
+msstd_process_load_environment(path: *const StrVal, has_max: HasRaw, max: i64, err: ErrSlot) -> u8 @domain=process
 msstd_process_memory_usage(out: *mut MemoryOut, err: ErrSlot) -> u8 @domain=process
 msstd_process_replace(program: *const StrVal, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, err: ErrSlot) -> u8 @domain=process
 msstd_process_resource_usage(out: *mut ResourceOut, err: ErrSlot) -> u8 @domain=process

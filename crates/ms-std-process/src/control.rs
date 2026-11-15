@@ -1,10 +1,11 @@
 //! Process-wide controls.
+use crate::envfile;
 #[cfg(unix)]
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_NOT_FOUND, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_NOT_FOUND, STATUS_UNSUPPORTED};
 use ms_std_fs::err::{Fail, Res};
-use ms_std_fs::ops::read_bounded;
+use ms_std_fs::ops::{self, read_bounded};
 use ms_std_fs::sys::{self, CPath};
 
 /// The group id type `getgrouplist` takes: `int` on macOS, `gid_t` elsewhere.
@@ -274,6 +275,27 @@ fn os_str_value(bytes: &[u8]) -> Option<std::ffi::OsString> {
         return Some(std::ffi::OsString::new());
     }
     os_str(bytes)
+}
+
+pub fn load_environment(path: &[u8], max: i64) -> Res<()> {
+    // The shared file read keeps the filesystem's error kinds (a directory is invalid input, not
+    // malformed data) and does not block the process on a named pipe.
+    let data = ops::read_file(path, max)?;
+    let text = core::str::from_utf8(&data).map_err(|_| Fail::status(STATUS_INVALID_DATA))?;
+    let entries = envfile::parse(text).ok_or_else(|| Fail::status(STATUS_INVALID_DATA))?;
+    // A later duplicate name replaces the earlier one (as `parse_dotenv` does), so walk the
+    // entries backwards and apply each name once.
+    let mut seen = alloc::collections::BTreeSet::new();
+    for (key, value) in entries.into_iter().rev() {
+        if !seen.insert(key.clone()) {
+            continue;
+        }
+        let k = os_str(key.as_bytes()).ok_or_else(Fail::invalid)?;
+        if std::env::var_os(&k).is_none() {
+            set_environment(key.as_bytes(), Some(value.as_bytes()))?;
+        }
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -553,6 +575,63 @@ mod tests {
         );
         assert!(set_environment(b"", Some(b"x")).is_err());
         assert!(set_environment(b"A=B", None).is_err());
+    }
+
+    #[test]
+    fn load_environment_takes_the_last_duplicate() {
+        let _guard = crate::environment_guard();
+        let path = alloc::format!("/tmp/msproc-env-dup-{}", info().unwrap().pid);
+        ms_std_fs::ops::write_file(path.as_bytes(), b"MS_LOAD_D=1\nMS_LOAD_D='2'\n", true).unwrap();
+        set_environment(b"MS_LOAD_D", None).unwrap();
+        load_environment(path.as_bytes(), i64::MAX).unwrap();
+        let env = environment().unwrap();
+        assert!(env.contains(&(b"MS_LOAD_D".to_vec(), b"2".to_vec())));
+        set_environment(b"MS_LOAD_D", None).unwrap();
+    }
+
+    #[test]
+    fn load_environment_keeps_existing_values() {
+        let _guard = crate::environment_guard();
+        let path = alloc::format!("/tmp/msproc-env-{}", info().unwrap().pid);
+        ms_std_fs::ops::write_file(path.as_bytes(), b"MS_LOAD_A=1\nMS_LOAD_B='two'\n", true)
+            .unwrap();
+        set_environment(b"MS_LOAD_A", Some(b"kept")).unwrap();
+        set_environment(b"MS_LOAD_B", None).unwrap();
+        load_environment(path.as_bytes(), i64::MAX).unwrap();
+        let env = environment().unwrap();
+        assert!(env.contains(&(b"MS_LOAD_A".to_vec(), b"kept".to_vec())));
+        assert!(env.contains(&(b"MS_LOAD_B".to_vec(), b"two".to_vec())));
+        assert_eq!(
+            load_environment(path.as_bytes(), 3).unwrap_err().status,
+            ms_rt_abi::STATUS_LIMIT_EXCEEDED
+        );
+        // A directory is invalid input, as for `read_file`, not malformed data.
+        assert_eq!(
+            load_environment(b"/", i64::MAX).unwrap_err().status,
+            ms_rt_abi::STATUS_INVALID_INPUT
+        );
+        ms_std_fs::ops::write_file(path.as_bytes(), b"bad line", true).unwrap();
+        assert_eq!(
+            load_environment(path.as_bytes(), i64::MAX)
+                .unwrap_err()
+                .status,
+            STATUS_INVALID_DATA
+        );
+        set_environment(b"MS_LOAD_C", None).unwrap();
+        ms_std_fs::ops::write_file(path.as_bytes(), b"MS_LOAD_C=1\nexport  =bad\n", true).unwrap();
+        assert_eq!(
+            load_environment(path.as_bytes(), i64::MAX)
+                .unwrap_err()
+                .status,
+            STATUS_INVALID_DATA
+        );
+        assert!(
+            !environment()
+                .unwrap()
+                .iter()
+                .any(|(k, _)| k == b"MS_LOAD_C")
+        );
+        let _ = ms_std_fs::ops::remove(path.as_bytes(), false);
     }
 
     #[test]
