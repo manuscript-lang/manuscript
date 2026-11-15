@@ -183,6 +183,18 @@ fn root_of(windows: Bool, text: String) String:
 			if count > 2 and text.scalar_at(2, -1) == 47: return text.view(0, 3).clone()
 			return text.view(0, 2).clone()
 
+		if is_device(text):
+			// `//?/` and `//./` are namespace prefixes: the first segment after them
+			// belongs to the root, but `.`, `..` and nothing leave the prefix alone.
+			rest := text.view(4, text.length())
+			if (
+				rest.is_empty()
+				or rest.starts_with("./")
+				or rest == "."
+				or rest.starts_with("../")
+				or rest == ".."
+			): return (text.view(0, 4).clone())
+
 		if text.starts_with("//"):
 			unc := unc_root(text)
 			if unc != "": return unc
@@ -190,6 +202,11 @@ fn root_of(windows: Bool, text: String) String:
 	if text.starts_with("/"): return "/"
 
 	return ""
+
+// Whether a slash-normalized Windows path starts with a `//?/` or `//./` namespace
+// prefix.
+fn is_device(text: String) Bool:
+	return text.starts_with("//?/") or text.starts_with("//./")
 
 // The `//server/share` root of a slash-normalized UNC path, or empty when the text is
 // not one.
@@ -238,7 +255,15 @@ fn span_is_parent(data: Bytes, packed: Int) Bool:
 	)
 
 fn normalize_in(windows: Bool, raw: String) String:
-	if windows: return normalize_core(true, slash(true, raw))
+	if windows:
+		text := slash(true, raw)
+		if is_device(text) and text.view(4, text.length()).starts_with("/"): return normalize_core(
+			true,
+			"{text.view(0, 4)}{trim_start_slashes(text.view(4, text.length()))}",
+		)
+
+		return normalize_core(true, text)
+
 	return normalize_core(false, raw)
 
 // A POSIX path that normalizing would leave unchanged: no empty, `.` or `..` segment
@@ -276,7 +301,12 @@ fn normalize_core(windows: Bool, text: String) String:
 	root_bytes := root.length()
 
 	// A UNC root without a trailing separator gets one in the result.
-	unc_open := windows and root.starts_with("//") and not root.ends_with("/")
+	unc_open := (
+		windows
+		and root.starts_with("//")
+		and not root.ends_with("/")
+		and not is_device(root)
+	)
 	root_ends_slash := unc_open or root.ends_with("/")
 
 	// One pass over the bytes after the root: segments are spans into `data`, never
