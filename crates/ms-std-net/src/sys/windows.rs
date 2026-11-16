@@ -461,6 +461,11 @@ impl Poller {
     pub fn park(&self, timeout_ns: i64) -> u32 {
         // The caller's deadline is the earliest timeout it must sweep; with none the park lasts
         // until the wake socket is signalled (a signal sent earlier leaves it readable).
+        // A signal sent before the park leaves the socket readable, and the readiness mio reports
+        // when the runtime registers it for the wait is not relied on for that: ask the system.
+        if poll_one(self.wake.sock(), false, Duration::ZERO) {
+            return 1;
+        }
         rt::wait_fd(self.wake.sock(), 1, timeout_ns)
     }
 }
