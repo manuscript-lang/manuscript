@@ -566,9 +566,9 @@ impl Reactor {
                         if st.deadline.is_some_and(|d| d > now) {
                             note(st.deadline);
                         }
-                        if matches!(st.phase, Phase::H2) {
-                            // HTTP/2 streams keep their own clocks; look at them often.
-                            note(Some(now + Duration::from_millis(50)));
+                        if let Some(h2) = &st.h2 {
+                            // HTTP/2 streams keep their own deadlines.
+                            note(h2.next_deadline());
                         }
                     }
                 }
@@ -1134,7 +1134,6 @@ impl Server {
                 }
                 st.deadline = None;
                 if h2 {
-                    reactor.note_deadline(Some(Instant::now() + Duration::from_millis(50)));
                     st.phase = Phase::H2;
                     st.h2 = Some(Box::new(h2serve::H2Conn::new(&self.limits)));
                 } else {
