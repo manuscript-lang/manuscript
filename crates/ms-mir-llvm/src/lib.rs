@@ -21,8 +21,6 @@ pub use tables::{TableFn, tables_unit};
 /// The name prefix of generated glue functions, followed by a serial and the kind.
 pub const GLUE_PREFIX: &str = "ms.glue.";
 
-/// Offset of the first capture in a closure object.
-pub(crate) const CLOSURE_CAPTURES: u32 = ms_rt_abi::CLOSURE_CAPTURES_OFFSET as u32;
 /// Offset of `code` in a closure object.
 pub(crate) const CLOSURE_CODE: i32 = ms_rt_abi::CLOSURE_CODE_OFFSET as i32;
 
@@ -85,6 +83,8 @@ pub struct Options {
     pub checks: bool,
     /// Declare the heap functions as an allocation family so LLVM can reason about them.
     pub heap_facts: bool,
+    /// Fill each block-confined stack slot with a pattern where its lifetime ends.
+    pub poison_slots: bool,
     /// How many modules to write; `None` picks one per core, by the size of the code.
     pub units: Option<usize>,
     /// The LLVM target triple.

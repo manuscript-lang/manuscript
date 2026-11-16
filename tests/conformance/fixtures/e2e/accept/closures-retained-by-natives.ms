@@ -14,10 +14,10 @@ fn churn(n: Int) Int:
 
 	return t
 
-fn dflt(o: (fn() String)?, s: String) fn() String:
+fn dflt(s: String, o: (fn() String)?) fn() String:
 	return o.get(fn: s + "d")
 
-fn mk(o: (fn() String)?, s: String) Box:
+fn mk(s: String, o: (fn() String)?) Box:
 	h := o.get(fn: s + "x")
 	return Box(f: h)
 
@@ -38,9 +38,9 @@ fn build(r: fn(Int) Int) List[fn(Int) Int]:
 	return out
 
 test "closures kept by natives own their captures":
-	expect_equal(dflt(none, "a")(), "ad")?
+	expect_equal(dflt("a", none)(), "ad")?
 
-	b := mk(none, "hello" + "world")
+	b := mk("hello" + "world", none)
 	c := churn(100)
 	m := Map[Int, fn() String]()
 	l := mk2(m, "abc" + "def")

@@ -20,8 +20,10 @@ pub const TICK: Duration = Duration::from_micros(100);
 const SLOW: u64 = 20;
 /// Ticks it keeps looking often after a hook last asked for it (a tenth of a second).
 const OFTEN_FOR: u64 = 1_000;
-/// Looks with every thread resting after which it sleeps until a thread stirs.
-const QUIET_LOOKS: u32 = 100;
+/// Looks with every thread resting after which it sleeps until a thread stirs: long enough that
+/// steady traffic does not wake it (a wake is a system call on the thread that leaves its rest),
+/// short enough that a quiet server wakes nothing for long (40 ms).
+const QUIET_LOOKS: u32 = 20;
 
 /// The watcher's clock at one look, in ticks: `now`, and `last` at the look before. A thread
 /// that copies [`epoch`] at each turn of a loop has not turned since before the last look when

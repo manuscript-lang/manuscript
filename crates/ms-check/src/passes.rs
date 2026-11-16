@@ -215,7 +215,7 @@ const BUILTIN_SCALARS: [&str; 13] = [
 /// (`type Ordered = Int | Float`, `fn Ordered.min(...)`) with one `impl` per member, so a
 /// method written once over a set exists on every member. Each copy has fresh node ids.
 /// Removed once blanket generic methods land (#3604).
-fn expand_set_receivers(decls: &[Decl], next_id: &mut u32) -> Vec<Decl> {
+fn expand_set_receivers<'a>(decls: &'a [Decl], next_id: &mut u32) -> std::borrow::Cow<'a, [Decl]> {
     let sets: HashMap<Name, &[TypeRef]> = decls
         .iter()
         .filter_map(|d| match &d.kind {
@@ -225,6 +225,10 @@ fn expand_set_receivers(decls: &[Decl], next_id: &mut u32) -> Vec<Decl> {
             _ => None,
         })
         .collect();
+    // Most modules declare no set alias: borrow the declarations instead of copying them.
+    if sets.is_empty() {
+        return std::borrow::Cow::Borrowed(decls);
+    }
     let mut out = Vec::with_capacity(decls.len());
     for d in decls {
         let members = match &d.kind {
@@ -253,7 +257,7 @@ fn expand_set_receivers(decls: &[Decl], next_id: &mut u32) -> Vec<Decl> {
             out.push(copy);
         }
     }
-    out
+    std::borrow::Cow::Owned(out)
 }
 
 pub fn desugar_inherent_impls(
@@ -278,7 +282,7 @@ pub fn desugar_inherent_impls(
     let mut first: HashMap<(Name, String), usize> = HashMap::default();
     let mut out: Vec<Decl> = Vec::new();
     let expanded = expand_set_receivers(&module.decls, &mut next_id);
-    for d in &expanded {
+    for d in expanded.iter() {
         let DeclKind::Impl(imp) = &d.kind else {
             out.push(d.clone());
             out.extend(marker_decls(module, d, &mut next_id));

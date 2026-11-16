@@ -7,7 +7,7 @@ export type Oracle:
 
 fn Oracle.name() String: "oracle"
 
-fn Oracle.command(prompt: String, model: String?, workspace: String) List[String]: [
+fn Oracle.command(prompt: String, workspace: String, model: String?) List[String]: [
 	"true"
 ]
 

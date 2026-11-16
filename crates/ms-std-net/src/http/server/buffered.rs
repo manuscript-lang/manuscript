@@ -47,7 +47,7 @@ impl<T: Handle> Dispatch for Buffered<T> {
             method: exchange.method(),
             path: exchange.path(),
             query: exchange.query(),
-            headers: exchange.headers().borrow().clone(),
+            headers: exchange.headers(),
             body,
             protocol: exchange.protocol(),
         };

@@ -201,6 +201,8 @@ pub struct Reactor {
     next_sweep: Cell<Option<Instant>>,
     /// Connections whose timeout started since the last clock read (by token).
     pending: Cell<Vec<u64>>,
+    /// The event list, kept between turns so each turn allocates none.
+    events: Cell<Vec<(u64, Ev)>>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
 }
@@ -239,6 +241,7 @@ impl Reactor {
                 wall_secs: Cell::new(wall_secs()),
                 next_sweep: Cell::new(None),
                 pending: Cell::new(Vec::new()),
+                events: Cell::new(Vec::new()),
                 beat,
             });
             *slot = Some(reactor.clone());
@@ -256,6 +259,24 @@ impl Reactor {
             let mut tokens = self.pending.take();
             tokens.push(token);
             self.pending.set(tokens);
+        }
+    }
+
+    /// Settles the timeouts a task other than the reactor started (a request task that finished,
+    /// the accept loop adopting a connection) before it ends, on the same thread: the reactor is
+    /// parked, and a sweep it must run earlier than the one it waits for wakes it.
+    fn settle_pending(&self) {
+        let tokens = self.pending.take();
+        let any = !tokens.is_empty();
+        self.pending.set(tokens);
+        if !any {
+            return;
+        }
+        let before = self.next_sweep.get();
+        self.settle_timeouts();
+        let after = self.next_sweep.get();
+        if after.is_some() && (before.is_none() || after < before) {
+            self.poller.kick();
         }
     }
 
@@ -486,6 +507,7 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     if shield {
         rt::stop_unshield();
     }
+    Reactor::get().settle_pending();
     if !ended {
         // Nothing is left to answer on the connection; closing it also cancels no one else.
         conn.st.borrow_mut().task = 0;
@@ -571,7 +593,7 @@ impl Reactor {
 
     /// Handles whatever is ready without blocking.
     fn service(&self) {
-        let mut events = Vec::new();
+        let mut events = self.events.take();
         loop {
             if self.beat.turn() {
                 self.serve_others();
@@ -613,6 +635,8 @@ impl Reactor {
             // same reason as in the loop over the events.
             rt::yield_now();
         }
+        events.clear();
+        self.events.set(events);
     }
 }
 
@@ -862,7 +886,9 @@ impl Server {
             return;
         }
         let _ = sock.set_tcp_nodelay(true);
-        self.add_conn(sock, &Reactor::get());
+        let reactor = Reactor::get();
+        self.add_conn(sock, &reactor);
+        reactor.settle_pending();
     }
 
     /// Drains and closes the server as the cleanup of the task that serves it: an idle connection
@@ -1718,40 +1744,29 @@ impl Server {
         head: RequestHead,
     ) -> Result<Box<Pending>, (u16, &'static str)> {
         let _ = (conn, reactor);
-        let hosts = head
-            .fields
-            .iter()
-            .filter(|(n, _)| n.eq_ignore_ascii_case("Host"))
-            .count();
-        if head.minor == 1 && hosts == 0 {
+        let scan = h1::RequestScan::of(&head.fields);
+        if head.minor == 1 && scan.hosts == 0 {
             return Err((400, "missing required Host header"));
         }
-        if hosts > 1 {
+        if scan.hosts > 1 {
             return Err((400, "too many Host headers"));
         }
-        let host_valid = head
-            .fields
-            .iter()
-            .filter(|(n, _)| n.eq_ignore_ascii_case("Host"))
-            .all(|(_, v)| std::str::from_utf8(v).is_ok_and(target::valid_authority));
+        let host_valid = scan
+            .host
+            .is_none_or(|v| std::str::from_utf8(v).is_ok_and(target::valid_authority));
         if !host_valid {
             return Err((400, "invalid Host header"));
         }
-        let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
+        let framing = h1::request_framing(&head, &scan).map_err(|b| (b.status, b.reason))?;
         let target = target::parse(&head.target).map_err(|e| (400, e.0))?;
         if target.path == "*" && head.method != "OPTIONS" {
             return Err((400, "asterisk-form target needs OPTIONS"));
         }
-        // Names come from httparse as `&str`, so only the values can be invalid UTF-8.
-        if !head
-            .fields
-            .iter()
-            .all(|(_, v)| std::str::from_utf8(v).is_ok())
-        {
+        if !scan.text {
             return Err((400, "invalid UTF-8 request"));
         }
-        let expect = h1::has_token(&head.fields, "Expect", "100-continue");
-        let keep_alive = h1::keep_alive(head.minor, &head.fields);
+        let expect = scan.expect_continue;
+        let keep_alive = scan.keep_alive(head.minor);
         if let Framing::Length(n) = framing
             && n > self.limits.body as u64
         {
@@ -1969,17 +1984,16 @@ pub(super) fn body_allowed(status: i64) -> bool {
 
 /// Appends handler headers with canonical names, sorted.
 pub(super) fn append_handler_headers(out: &mut Vec<u8>, headers: &Headers) -> (bool, bool) {
-    let mut sorted: Vec<(String, &[Vec<u8>])> = headers
+    let mut sorted: Vec<(String, headers::Values<'_>)> = headers
         .entries()
-        .iter()
-        .map(|e| (headers::canonical(&e.name), &*e.values))
+        .map(|e| (headers::canonical(e.name), e.values))
         .collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
     let (mut has_type, mut has_date) = (false, false);
     for (name, values) in &sorted {
         has_type |= name == "Content-Type";
         has_date |= name == "Date";
-        for v in *values {
+        for v in values.iter() {
             h1::header_line(out, name, v);
         }
     }

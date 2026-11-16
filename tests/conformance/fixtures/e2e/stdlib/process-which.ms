@@ -14,9 +14,9 @@ import (
 )
 
 type SearchEnvironment:
+	directory: String
 	path: String?
 	extensions: String?
-	directory: String
 
 fn var SearchEnvironment.close() Void!:
 	set_environment("PATH", self.path.clone())?
@@ -36,9 +36,9 @@ fn save_search_environment() SearchEnvironment!:
 	values := environment()?
 	return ok(
 		SearchEnvironment(
-			saved_variable(values, "PATH"),
-			saved_variable(values, "PATHEXT"),
-			working_directory()?,
+			path: saved_variable(values, "PATH"),
+			extensions: saved_variable(values, "PATHEXT"),
+			directory: working_directory()?,
 		)
 	)
 

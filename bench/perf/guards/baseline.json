@@ -1,0 +1,140 @@
+{
+  "repeat": 1,
+  "format": 1,
+  "source_root": "/home/user/manuscript/bench/perf/guards",
+  "benches": [
+    {
+      "index": 0,
+      "duration_ns": 24357996,
+      "name": "bench.ms::signatures",
+      "status": "passed",
+      "stats": {
+        "iterations": 1,
+        "operations": 1,
+        "samples": 1,
+        "min_ns": 7939551,
+        "median_ns": 7939551,
+        "mean_ns": 7939551,
+        "max_ns": 7939551,
+        "stddev_ns": 0,
+        "cpu_ns": 3285000,
+        "allocations": 57,
+        "allocated_bytes": 3419,
+        "list_copies": 0,
+        "list_copy_bytes": 0,
+        "string_clones": 0,
+        "string_clone_bytes": 0,
+        "mir_ops": 402
+      }
+    },
+    {
+      "index": 1,
+      "duration_ns": 7710794,
+      "name": "bench.ms::regex find_all",
+      "status": "passed",
+      "stats": {
+        "iterations": 1,
+        "operations": 1,
+        "samples": 1,
+        "min_ns": 654558,
+        "median_ns": 654558,
+        "mean_ns": 654558,
+        "max_ns": 654558,
+        "stddev_ns": 0,
+        "cpu_ns": 658000,
+        "allocations": 7051,
+        "allocated_bytes": 1165380,
+        "list_copies": 0,
+        "list_copy_bytes": 0,
+        "string_clones": 0,
+        "string_clone_bytes": 0,
+        "mir_ops": 22078
+      }
+    },
+    {
+      "index": 2,
+      "duration_ns": 136411798,
+      "name": "bench.ms::image codecs",
+      "status": "passed",
+      "stats": {
+        "iterations": 1,
+        "operations": 1,
+        "samples": 1,
+        "min_ns": 39162947,
+        "median_ns": 39162947,
+        "mean_ns": 39162947,
+        "max_ns": 39162947,
+        "stddev_ns": 0,
+        "cpu_ns": 37077000,
+        "allocations": 11034,
+        "allocated_bytes": 3061449,
+        "list_copies": 0,
+        "list_copy_bytes": 0,
+        "string_clones": 0,
+        "string_clone_bytes": 0,
+        "mir_ops": 23272441
+      }
+    },
+    {
+      "index": 3,
+      "duration_ns": 4364679,
+      "name": "bench.ms::fused chains",
+      "status": "passed",
+      "stats": {
+        "iterations": 1,
+        "operations": 1,
+        "samples": 1,
+        "min_ns": 439351,
+        "median_ns": 439351,
+        "mean_ns": 439351,
+        "max_ns": 439351,
+        "stddev_ns": 0,
+        "cpu_ns": 452000,
+        "allocations": 29,
+        "allocated_bytes": 239753,
+        "list_copies": 0,
+        "list_copy_bytes": 0,
+        "string_clones": 0,
+        "string_clone_bytes": 0,
+        "mir_ops": 149560
+      }
+    },
+    {
+      "index": 4,
+      "duration_ns": 7358207,
+      "name": "bench.ms::map probes and predicates",
+      "status": "passed",
+      "stats": {
+        "iterations": 1,
+        "operations": 1,
+        "samples": 1,
+        "min_ns": 1477509,
+        "median_ns": 1477509,
+        "mean_ns": 1477509,
+        "max_ns": 1477509,
+        "stddev_ns": 0,
+        "cpu_ns": 1490000,
+        "allocations": 19,
+        "allocated_bytes": 276401,
+        "list_copies": 0,
+        "list_copy_bytes": 0,
+        "string_clones": 0,
+        "string_clone_bytes": 0,
+        "mir_ops": 1162017
+      }
+    }
+  ],
+  "summary": {
+    "available": 5,
+    "selected": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "not_run": 0,
+    "duration_ns": 180429869
+  },
+  "completed": true,
+  "exit_code": 0,
+  "stdout": "RUN bench.ms::signatures\nBENCH bench.ms::signatures: 7.940 ms/op median (min 7.940 ms, mean 7.940 ms, max 7.940 ms, stddev 0.000 ns; 1 iterations x 1 samples; cpu 3.285 ms/op; 402 MIR ops; 57 allocs, 3419 bytes, 0 list copies, 0 string clones per op)\nRUN bench.ms::regex find_all\nBENCH bench.ms::regex find_all: 654.558 µs/op median (min 654.558 µs, mean 654.558 µs, max 654.558 µs, stddev 0.000 ns; 1 iterations x 1 samples; cpu 658.000 µs/op; 22078 MIR ops; 7051 allocs, 1165380 bytes, 0 list copies, 0 string clones per op)\nRUN bench.ms::image codecs\nBENCH bench.ms::image codecs: 39.163 ms/op median (min 39.163 ms, mean 39.163 ms, max 39.163 ms, stddev 0.000 ns; 1 iterations x 1 samples; cpu 37.077 ms/op; 23272441 MIR ops; 11034 allocs, 3061449 bytes, 0 list copies, 0 string clones per op)\nRUN bench.ms::fused chains\nBENCH bench.ms::fused chains: 439.351 µs/op median (min 439.351 µs, mean 439.351 µs, max 439.351 µs, stddev 0.000 ns; 1 iterations x 1 samples; cpu 452.000 µs/op; 149560 MIR ops; 29 allocs, 239753 bytes, 0 list copies, 0 string clones per op)\nRUN bench.ms::map probes and predicates\nBENCH bench.ms::map probes and predicates: 1.478 ms/op median (min 1.478 ms, mean 1.478 ms, max 1.478 ms, stddev 0.000 ns; 1 iterations x 1 samples; cpu 1.490 ms/op; 1162017 MIR ops; 19 allocs, 276401 bytes, 0 list copies, 0 string clones per op)\n5 benches, 0 failed\n",
+  "diagnostics": []
+}

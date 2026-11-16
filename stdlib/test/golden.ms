@@ -1,3 +1,7 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 import (
 	Bytes from "@std/bytes.ms",
 	environment from "@std/os/env.ms",
@@ -51,14 +55,15 @@ export fn expect_golden(path: String, actual: String) Void!:
 			f"golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"
 		)
 
-	expected := stored.get().decode_utf8()
-	if expected.is_none():
-		return fail(f"golden file {path} is not UTF-8; use expect_golden_bytes")
-	if expected.get() == actual: return ok()
+	text := stored.get().decode_utf8()
 
-	return fail(
-		f"{path} differs from the output at {first_difference(expected.get(), actual)}\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
-	)
+	if expected := text:
+		if expected == actual: return ok()
+		return fail(
+			f"{path} differs from the output at {first_difference(expected, actual)}\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
+		)
+
+	return fail(f"golden file {path} is not UTF-8; use expect_golden_bytes")
 
 // Byte-for-byte version of `expect_golden`; the failure names the first differing
 // offset.

@@ -176,7 +176,9 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         | Op::ListSet
         | Op::ListSetNn
         | Op::ListSetU
-        | Op::ListFill => all(Mode::Move),
+        | Op::ListFill
+        | Op::ListFillU
+        | Op::ListPushU => all(Mode::Move),
         Op::OptSome
         | Op::IfaceNew
         | Op::Drop
@@ -186,7 +188,8 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         | Op::AltUnbox
         | Op::AltRelease
         | Op::TypeRelease
-        | Op::OptUnbox => one(0),
+        | Op::OptUnbox
+        | Op::ListGrow => one(0),
         Op::Put => one(1),
         Op::DropIf => one(1),
         Op::Call => match inst.imm {

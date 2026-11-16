@@ -137,6 +137,27 @@ pub fn mem_layout(leaves: &[Leaf]) -> MemLayout {
     }
 }
 
+/// One capture of a closure object: its type, byte offset from the object start, and leaves.
+#[derive(Clone, Debug)]
+pub struct CaptureSlot {
+    /// The captured value's type.
+    pub ty: Ty,
+    /// Offset of the capture from the start of the object.
+    pub offset: u32,
+    /// The capture's register leaves.
+    pub leaves: Vec<Leaf>,
+}
+
+/// The memory layout of a closure object: the header, then each capture naturally aligned.
+/// Both backends, the glue and the runtime read the object through this one description.
+#[derive(Clone, Debug)]
+pub struct ClosureLayout {
+    /// The captures in declaration order.
+    pub captures: Vec<CaptureSlot>,
+    /// Allocation size, rounded up to a whole number of words.
+    pub size: u32,
+}
+
 /// Layout oracle for one module.
 pub struct Layouts<'m> {
     /// The module whose types are described.
@@ -262,6 +283,31 @@ impl<'m> Layouts<'m> {
         match &self.shape(ty).alt {
             Some(AltRepr::Boxed { block, .. }) => Some(mem_layout(block).size as usize),
             _ => None,
+        }
+    }
+
+    /// The object layout of closure function `f` (header only when `f` is not a closure).
+    pub fn closure(&self, f: &crate::ir::Func) -> ClosureLayout {
+        let caps: &[Ty] = match &f.kind {
+            crate::ir::FuncKind::Closure { captures } => captures,
+            _ => &[],
+        };
+        let mut off = ms_rt_abi::CLOSURE_CAPTURES_OFFSET as u32;
+        let mut captures = Vec::with_capacity(caps.len());
+        for &ty in caps {
+            let leaves = self.leaves(ty);
+            let mem = mem_layout(&leaves);
+            off = off.div_ceil(mem.align) * mem.align;
+            captures.push(CaptureSlot {
+                ty,
+                offset: off,
+                leaves,
+            });
+            off += mem.size;
+        }
+        ClosureLayout {
+            captures,
+            size: off.div_ceil(8) * 8,
         }
     }
 
@@ -442,6 +488,23 @@ impl<'m> Layouts<'m> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn closure_captures_follow_the_header_and_align_naturally() {
+        let m = Module::new("t");
+        let mut f = crate::ir::Func::new("c", Vec::new(), Ty::VOID);
+        f.kind = crate::ir::FuncKind::Closure {
+            captures: vec![Ty::BOOL, Ty::INT, Ty::BOOL],
+        };
+        let lay = Layouts::new(&m);
+        let c = lay.closure(&f);
+        let head = ms_rt_abi::CLOSURE_CAPTURES_OFFSET as u32;
+        let offsets: Vec<u32> = c.captures.iter().map(|c| c.offset).collect();
+        assert_eq!(offsets, [head, head + 8, head + 16]);
+        assert_eq!(c.size, head + 24);
+        let plain = crate::ir::Func::new("p", Vec::new(), Ty::VOID);
+        assert_eq!(lay.closure(&plain).size, head);
+    }
 
     #[test]
     fn optional_string_is_as_wide_as_a_string() {

@@ -1,3 +1,5 @@
+// ms: allow_effect std.console.write
+
 /*
 Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
 
@@ -298,9 +300,9 @@ fn decode[T: Data](matches: Matches) T!:
 fn literal(kind: FlagKind, text: String) String:
 	match kind:
 		Bool: return text.clone()
-		Int: return f"{text.parse_int().get()}"
-		Float: return f"{text.parse_float().get()}"
-		_: return stringify(text.clone()).get()
+		Int: return f"{text.parse_int().get(0)}"
+		Float: return f"{text.parse_float().get(0.0)}"
+		_: return stringify(text.clone()).get("\"\"")
 
 // Collects the JSON literal of every supplied flag and argument for `command`.
 fn collect_fields(
@@ -540,34 +542,24 @@ fn walk_from(
 			if long and flag.is_none() and key.starts_with("no-"):
 				positive := find_flag(flags, key.view(3, key.length()), true)
 
-				if positive.is_some() and is_bool(positive.get().kind):
-					flag = positive
-					negated = true
+				if found := positive:
+					if is_bool(found.kind):
+						flag = positive
+						negated = true
 
-			if flag.is_none(): return error(cli_unknown_flag(token))
-
-			chosen := flag.get()
+			chosen := flag.ok_or(cli_unknown_flag(token))?
 
 			if is_bool(chosen.kind):
 				if negated: values[chosen.name.clone()] = ["false"]
 				else:
-					store(
-						var values,
-						chosen,
-						if cut.is_some(): body.view(
-							cut.get() + 1,
-							body.length(),
-						).clone() else: "true",
-					)?
+					var supplied = "true"
+					if at := cut: supplied = body.view(at + 1, body.length()).clone()
+					store(var values, chosen, supplied)?
 
 				continue
 
-			if cut.is_some():
-				store(
-					var values,
-					chosen,
-					body.view(cut.get() + 1, body.length()).clone(),
-				)?
+			if at := cut:
+				store(var values, chosen, body.view(at + 1, body.length()).clone())?
 				continue
 
 			if index >= argv.length(): return error(cli_missing_value(token))

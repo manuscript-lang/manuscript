@@ -35,6 +35,7 @@ pub fn compile(
         &ms_mir_llvm::Options {
             checks,
             heap_facts: build.heap_facts,
+            poison_slots: build.poison_slots,
             units: build.llvm_units,
             triple: triple.clone(),
             // Mach-O links with `-dead_strip` and one atom per function, so offsets within the

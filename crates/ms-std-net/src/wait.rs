@@ -194,17 +194,12 @@ pub fn try_wait_token(token: &rt::Token, deadline: Deadline) -> Result<Wait, rt:
     })
 }
 
-/// The runtime's timeout for `deadline`: nanoseconds left, or -1 for none.
-/// Longest a polling wait sleeps before it re-checks the cancel flag.
-const SLICE: Duration = Duration::from_millis(50);
-
+/// The wait of a thread the runtime's scheduler does not run (a unit-test thread): one blocking
+/// poll of the descriptor until it is ready or the deadline passes. No cancellation can reach
+/// such a thread, so nothing needs to be re-checked.
 fn wait_poll(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     loop {
-        if rt::check_cancel() {
-            return Wait::TimedOut;
-        }
-        let slice = deadline.remaining().map_or(SLICE, |left| left.min(SLICE));
-        if sys::poll_one(fd, interest == Interest::Write, slice) {
+        if sys::poll_one(fd, interest == Interest::Write, deadline.remaining()) {
             return Wait::Ready;
         }
         if deadline.expired() {
@@ -265,5 +260,48 @@ mod tests {
         let start = Instant::now();
         sleep(Duration::from_millis(30));
         assert!(start.elapsed() >= Duration::from_millis(30));
+    }
+
+    /// A wait with no deadline returns on the event and not before it: the descriptor becomes
+    /// readable only after the flag is set, and nothing here sleeps or times.
+    #[test]
+    fn an_unbounded_wait_returns_on_the_event_only() {
+        use crate::sys::AsSock;
+        use std::io::Write;
+        use std::net::{TcpListener, TcpStream};
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        let (go_tx, go_rx) = std::sync::mpsc::channel::<()>();
+        let written = AtomicBool::new(false);
+        let written_ref = &written;
+        std::thread::scope(|scope| {
+            scope.spawn(move || {
+                go_rx.recv().unwrap();
+                written_ref.store(true, Ordering::SeqCst);
+                client.write_all(b"x").unwrap();
+            });
+            go_tx.send(()).unwrap();
+            let got = wait_fd(server.as_sock(), Interest::Read, Deadline::none());
+            assert_eq!(got, Wait::Ready);
+            assert!(written.load(Ordering::SeqCst));
+        });
+    }
+
+    #[test]
+    fn a_wait_with_a_deadline_and_no_event_times_out() {
+        use crate::sys::AsSock;
+        use std::net::{TcpListener, TcpStream};
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let _client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        let got = wait_fd(
+            server.as_sock(),
+            Interest::Read,
+            Deadline::after(Duration::from_millis(20)),
+        );
+        // A real deadline: time has to pass for it.
+        assert_eq!(got, Wait::TimedOut);
     }
 }

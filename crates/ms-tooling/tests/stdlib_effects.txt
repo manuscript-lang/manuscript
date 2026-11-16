@@ -94,6 +94,7 @@
 @std/os/system.ms network_interfaces: std.system.read
 @std/os/system.ms os_release: std.system.read
 @std/os/system.ms os_version: std.system.read
+@std/os/system.ms runtime_counts: std.system.read
 @std/os/system.ms system_info: std.system.read
 @std/os/system.ms uptime: std.system.read
 @std/os/system.ms user_info: std.system.read

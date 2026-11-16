@@ -8,7 +8,9 @@ use std::process::Command;
 
 /// Compiles `src` with LLVM (direct emission on), links it with the test runtime and runs it.
 fn run_llvm(src: &str, opts: &BuildOptions, tag: &str) -> Outcome {
-    let m = module(src);
+    let mut m = module(src);
+    ms_mir::expand::run(&mut m, true);
+    ms_mir::expand_owned::run(&mut m);
     let mut objects =
         ms_build::llvm::compile(&m, true, "3", opts).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();
@@ -299,19 +301,19 @@ b0:
 }
 
 fn string_literals() {
-    // A literal is a private constant of the LLVM module, not data of the Cranelift object.
+    // A literal too long to be inline is a private constant of the LLVM module, not data of the Cranelift object.
     let src = r#"module "d"
 entry @main
 file 0 "d.ms"
 fn @pick(%i: int) -> int !0:1:1 {
 b0:
-  %s: str = str "hello, \"world\"" !0:2:1
+  %s: str = str "hello, \"world\" and more" !0:2:1
   %x: int = str.byte %s, %i !0:3:1
   ret %x
 }
 fn @other(%i: int) -> int !0:4:1 {
 b0:
-  %s: str = str "hello, \"world\"" !0:5:1
+  %s: str = str "hello, \"world\" and more" !0:5:1
   %t: str = str "xyz" !0:5:1
   %x: int = str.byte %s, %i !0:6:1
   %one: int = iconst 1 !0:6:1
@@ -333,7 +335,7 @@ b0:
     let ir = std::fs::read_to_string("ms-keep.ll").unwrap();
     assert!(
         ir.contains(
-            "private unnamed_addr constant [15 x i8] c\"hello, \\22world\\22\\00\", align 16"
+            "private unnamed_addr constant [24 x i8] c\"hello, \\22world\\22 and more\\00\", align 16"
         ),
         "no LLVM constant for the literal"
     );

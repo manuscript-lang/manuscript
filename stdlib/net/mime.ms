@@ -1,6 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	ReadStream, Transform, through from "@std/io/io.ms",
+	ReadStream, through from "@std/io/io.ms",
 	StringBuilder from "@std/string_builder.ms",
 )
 
@@ -353,12 +355,12 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 // `in_part` is false until the first delimiter has passed; `done` after the closing delimiter.
 type MultipartParts:
 	delimiter: Bytes
-	max_part_bytes: Int?
 	buffer: Bytes
 	pending: BytesBuilder
 	pending_size: Int
 	in_part: Bool
 	done: Bool
+	max_part_bytes: Int?
 
 fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
 	if self.done: return ok()
@@ -406,7 +408,7 @@ fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
 
 			break
 
-		end := at.get()
+		end := at.get(0)
 
 		if self.in_part:
 			if limit := self.max_part_bytes:

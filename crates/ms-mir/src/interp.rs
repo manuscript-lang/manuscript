@@ -255,6 +255,17 @@ pub struct Interp<'m> {
 impl<'m> Interp<'m> {
     /// An interpreter for `m` with the built-in runtime functions registered.
     pub fn new(m: &'m Module) -> Interp<'m> {
+        // The interpreter runs primitives only: the release shorthands are expanded first, as the
+        // backends get them. The copy lives for the process: this is a test oracle.
+        let m: &'m Module = if crate::expand_owned::needed(m) {
+            let mut expanded = m.clone();
+            // `opt.unwrap` is expanded unchecked: its none fault is explicit MIR first.
+            crate::expand::run(&mut expanded, true);
+            crate::expand_owned::run(&mut expanded);
+            Box::leak(Box::new(expanded))
+        } else {
+            m
+        };
         let mut it = Interp {
             m,
             strings: m.strings.iter().map(|s| Rc::from(s.as_str())).collect(),
@@ -598,14 +609,10 @@ impl<'m> Interp<'m> {
             | Op::TypeFill
             | Op::AltNew
             | Op::AltView
-            | Op::AltOwn
             | Op::AltPlain
             | Op::AltTag
             | Op::AltGet
-            | Op::AltTake
-            | Op::TypeRelease
-            | Op::AltRelease
-            | Op::AltUnbox => self.types_and_alternatives(f, regs, inst),
+            | Op::AltTake => self.types_and_alternatives(f, regs, inst),
             Op::ListNew
             | Op::ListLit
             | Op::ListConst
@@ -621,6 +628,10 @@ impl<'m> Interp<'m> {
             | Op::ListSetU
             | Op::ListFill
             | Op::ListPush
+            | Op::ListCap
+            | Op::ListGrow
+            | Op::ListFillU
+            | Op::ListPushU
             | Op::ListDropLast => self.lists(f, regs, inst),
             Op::OptSome
             | Op::OptView
@@ -629,8 +640,6 @@ impl<'m> Interp<'m> {
             | Op::OptNoneOwned
             | Op::OptIsSome
             | Op::OptGet
-            | Op::OptUnwrap
-            | Op::OptUnbox
             | Op::OptAddr
             | Op::StrLen
             | Op::StrByte
@@ -651,6 +660,7 @@ impl<'m> Interp<'m> {
             | Op::MoveOut
             | Op::Drop
             | Op::Forget
+            | Op::Free
             | Op::DropIf
             | Op::Slot
             | Op::PtrIsNull
@@ -677,6 +687,15 @@ impl<'m> Interp<'m> {
             | Op::CleanupRun
             | Op::GlobalGet
             | Op::GlobalSet => self.calls_and_runtime(f, regs, inst),
+            // Rewritten into reads, drops and frees by `expand_owned` before the run.
+            Op::AltOwn
+            | Op::AltUnbox
+            | Op::AltRelease
+            | Op::TypeRelease
+            | Op::OptUnbox
+            | Op::OptUnwrap => {
+                unreachable!("{} survived expand_owned", inst.op.info().name)
+            }
             // Raw-phase markers do nothing at run time; `elaborate` replaces them with the cleanup.
             Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown | Op::ScopeMark => {
                 Ok(Flow::Next)

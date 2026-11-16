@@ -48,24 +48,10 @@ test "URL format rejects queries that would not round trip":
 	invalid: String! := error(Error("URL: invalid input", kind: "EINVAL"))
 
 	for query in ["a#b", "a b", "%zz", "a%2"]:
-		bad := Url(
-			base.scheme.clone(),
-			base.host.clone(),
-			base.port,
-			base.path.clone(),
-			query.clone(),
-			"",
-		)
+		bad := Url(base.scheme.clone(), base.host.clone(), base.path.clone(), query.clone(), "", base.port, )
 		if format(bad) != invalid: return fail(f"query {query}")
 
-	good := Url(
-		base.scheme.clone(),
-		base.host.clone(),
-		base.port,
-		base.path.clone(),
-		"a=%41&b",
-		"",
-	)
+	good := Url(base.scheme.clone(), base.host.clone(), base.path.clone(), "a=%41&b", "", base.port, )
 	expect_equal((format(good)?), "http://h/p?a=%41&b")?
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
@@ -84,12 +70,12 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
 	for scheme in [
 		"", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
 	]:
-		bad := Url(scheme.clone(), "host", none, "/path", "", "")
+		bad := Url(scheme.clone(), "host", "/path", "", "", none)
 		if format(bad) != invalid_text: return fail(f"invalid scheme accepted: {scheme}")
 
 		expect_equal(resolve(bad, "/next"), invalid_url)?
 
-	relative := Url("custom", "", none, "relative", "", "")
+	relative := Url("custom", "", "relative", "", "", none)
 	expect_equal(format(relative), invalid_text)?
 	expect_equal(resolve(relative, "/next"), invalid_url)?
 
@@ -99,7 +85,7 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
 			f"hierarchical URL round trip: {text}"
 		)
 
-	uppercase := Url("HTTP", "host", none, "/path", "", "")
+	uppercase := Url("HTTP", "host", "/path", "", "", none)
 	expect_equal((uppercase | format? | parse?).scheme, "http")?
 	expect_equal((resolve(uppercase, "/next")?).scheme, "http")?
 

@@ -114,9 +114,9 @@ test "JSON parse bounds nesting even without a depth limit":
 type Request:
 	model: String
 	stream: Bool
-	user: String?
 	temperature: Float
 	tags: List[String]
+	user: String?
 
 enum Shape:
 	Circle(radius: Int)
@@ -140,12 +140,12 @@ fn encoded[T: Data](item: T) String!:
 	return stringify(item)
 
 test "JSON stringify encodes records in declaration order and omits none fields":
-	var request = Request("m", stream: true, none, 0.5, ["a", "b"])
+	var request = Request(model: "m", stream: true, user: none, temperature: 0.5, tags: ["a", "b"])
 	expected := "{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]}"
 	expect_equal((encoded(request)?), expected)?
 	request.user = "u"
 
-	named := "{\"model\":\"m\",\"stream\":true,\"user\":\"u\",\"temperature\":0.5,\"tags\":[\"a\",\"b\"]}"
+	named := "{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"],\"user\":\"u\"}"
 	expect_equal((encoded(request)?), named)?
 	expect_equal((encoded(Box[Int](1, none))?), "{\"first\":1}")?
 	expect_equal((encoded(Box[Int](1, 2))?), "{\"first\":1,\"second\":2}")?
@@ -229,7 +229,7 @@ test "JSON stringify omits none fields and keeps nested optionals":
 
 test "JSON stringify encodes standard-library values":
 	at := timestamp(1700000000, 500000000)?
-	link := Url("https", "example.com", 8080, "/a", "x=1", "")
+	link := Url("https", "example.com", "/a", "x=1", "", 8080)
 	item := Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
 	expected := "{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"}"
 	expect_equal((encoded(item)?), expected)?
@@ -251,7 +251,7 @@ test "JSON stringify honors JsonEncode wherever the value appears":
 	expect_equal((encoded(Money(7))?), "\"usd:7\"")?
 
 test "JSON stringify indents like JSON.stringify and clamps at ten":
-	request := Request("m", stream: true, none, 0.5, ["a"])
+	request := Request(model: "m", stream: true, user: none, temperature: 0.5, tags: ["a"])
 	pretty := stringify(request, StringifyOptions(indent: 2))?
 	expected := "{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n}"
 	expect_equal(pretty, expected)?
@@ -459,7 +459,7 @@ test "JSON parse takes its type from an explicit argument, the expected result o
 
 test "JSON parse reads what stringify writes for standard values and scalar map keys":
 	at := timestamp(1700000000, 500000000)?
-	link := Url("https", "example.com", 8080, "/a", "x=1", "")
+	link := Url("https", "example.com", "/a", "x=1", "", 8080)
 	item := Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
 	text := stringify(item)?
 	back: Stamped := parse[Stamped](text)?
@@ -481,8 +481,8 @@ test "JSON parse reads standard alternatives and rejects keys that collide":
 	expect_equal(kind, "EOVERFLOW")?
 
 type Link:
-	next: Link?
 	n: Int
+	next: Link?
 
 type Defaults:
 	a: Int = 1
@@ -508,9 +508,9 @@ type Wrap:
 	pairs: List[Pair[Int, Op]]
 
 test "JSON stringify fails on nesting deeper than parse accepts":
-	var head = Link(none, 0)
+	var head = Link(n: 0, next: none)
 	for i in 1..300000:
-		head = Link(head, i)
+		head = Link(n: i, next: head)
 
 	r := stringify(head)
 	expect_false(r.is_ok())?

@@ -10,8 +10,7 @@
 //! a shared static block that is never freed. Payloads that are types in memory stay on the
 //! translation. Fields a release leaves behind are dropped through the drop glue.
 
-use super::{Area, Cx, Vals, glue, held_leaves, mem_leaves, narrow_leaves, types};
-use crate::glue_llvm::{OwnKind, own_kind};
+use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves, types};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
@@ -22,7 +21,7 @@ pub(super) const AREA: Area = Area {
     ty_ok,
     inst_ok,
     splits,
-    pure_op: |op| handles(op) && op != Op::OptUnwrap,
+    pure_op: handles,
     pre,
     emit,
 };
@@ -43,17 +42,13 @@ fn handles(op: Op) -> bool {
             | Op::OptNoneOwned
             | Op::OptIsSome
             | Op::OptGet
-            | Op::OptUnwrap
             | Op::OptAddr
-            | Op::OptUnbox
             | Op::AltNew
             | Op::AltView
             | Op::AltPlain
             | Op::AltTag
             | Op::AltGet
             | Op::AltTake
-            | Op::AltRelease
-            | Op::AltUnbox
     )
 }
 
@@ -259,35 +254,12 @@ fn inst_ok(_: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
         };
         return block_ok(&block_of(lay, subject)) && fields_leafy(lay, subject, a, case);
     }
-    // Dropping a type in memory would need its address, which no slot holds.
     plain(lay, subject)
-        && released(lay, inst)
-            .iter()
-            .all(|(t, _)| !types::is_mem(lay, *t))
 }
 
-/// The payload type of the optional `inst` unwraps.
-fn payload_ty(lay: &Layouts, f: &Func, inst: &Inst) -> Ty {
-    match lay.m.types.kind(f.ty(inst.args[0])) {
-        TyKind::Opt(inner) => *inner,
-        _ => unreachable!("an optional operand"),
-    }
-}
-
-/// Whether `inst` writes a check before it, and then the clone of a payload that needs one:
-/// each is a block split.
-fn splits(lay: &Layouts, f: &Func, inst: &Inst, checks: bool) -> usize {
-    if matches!(inst.op, Op::AltRelease | Op::AltUnbox) {
-        return released(lay, inst)
-            .iter()
-            .filter(|(fty, ..)| own_kind(lay, *fty) == OwnKind::Str)
-            .count();
-    }
-    if inst.op != Op::OptUnwrap {
-        return 0;
-    }
-    let clone = own_kind(lay, payload_ty(lay, f, inst)) == OwnKind::Str;
-    usize::from(checks) + usize::from(clone)
+/// No enum or optional op splits its block.
+fn splits(_: &Layouts, _: &Func, _: &Inst, _: bool) -> usize {
+    0
 }
 
 /// The leaves a payload read or write moves between a field and the enum's slots: for each
@@ -312,7 +284,7 @@ fn sources(lay: &Layouts, inst: &Inst, vals: &Vals) -> Vec<(usize, Val, Option<b
             }
             out
         }
-        (Op::AltGet | Op::AltTake | Op::AltUnbox, Imm::AltField(a, c, i)) => {
+        (Op::AltGet | Op::AltTake, Imm::AltField(a, c, i)) => {
             let (t, idx) = &lay.alt_fields(a)[c as usize][i as usize];
             if types::is_mem(lay, *t) {
                 return Vec::new();
@@ -342,19 +314,14 @@ fn pre(
     // A boxed enum's ops read or write its block; only the pointer itself is free. A payload that
     // is a type in memory comes out as a new slot, which `emit` fills.
     if (inst.op != Op::AltPlain && boxed_alt(lay, subject(f, inst)).is_some())
-        || (matches!(inst.op, Op::AltGet | Op::AltTake | Op::AltUnbox)
+        || (matches!(inst.op, Op::AltGet | Op::AltTake)
             && inst.res.is_some_and(|r| types::is_mem(lay, f.ty(r))))
-        || (matches!(inst.op, Op::OptGet | Op::OptUnbox)
-            && mem_opt(lay, f.ty(inst.args[0])).is_some())
+        || (matches!(inst.op, Op::OptGet) && mem_opt(lay, f.ty(inst.args[0])).is_some())
     {
         return None;
     }
     // A boxed optional's payload is in its block; none and the presence test are the pointer.
-    if matches!(
-        inst.op,
-        Op::OptSome | Op::OptGet | Op::OptUnwrap | Op::OptUnbox
-    ) && boxed_opt(lay, subject(f, inst)).is_some()
-    {
+    if matches!(inst.op, Op::OptSome | Op::OptGet) && boxed_opt(lay, subject(f, inst)).is_some() {
         return None;
     }
     if matches!(inst.op, Op::OptSome | Op::OptView) && mem_opt(lay, res_ty()).is_some() {
@@ -381,10 +348,7 @@ fn pre(
             vec![arg(0)[0].clone()]
         }
         (Op::OptAddr | Op::OptViewAt, _) => arg(0).clone(),
-        (Op::OptUnwrap, _) if own_kind(lay, payload_ty(lay, f, inst)) != OwnKind::Identity => {
-            return None;
-        }
-        (Op::OptGet | Op::OptUnwrap | Op::OptUnbox, _) => match opt_repr(lay, f.ty(inst.args[0])) {
+        (Op::OptGet, _) => match opt_repr(lay, f.ty(inst.args[0])) {
             OptRepr::Tagged => arg(0)[1..].to_vec(),
             _ => arg(0).clone(),
         },
@@ -395,14 +359,13 @@ fn pre(
         }
         (Op::AltPlain, _) => arg(0).clone(),
         (Op::AltTag, _) => vec![arg(0)[0].clone()],
-        (Op::AltGet | Op::AltTake | Op::AltUnbox, Imm::AltField(a, c, i)) => {
+        (Op::AltGet | Op::AltTake, Imm::AltField(a, c, i)) => {
             let (fty, _) = lay.alt_fields(a)[c as usize][i as usize];
             held_leaves(lay, fty)
                 .into_iter()
                 .map(|t| zero(&t))
                 .collect()
         }
-        (Op::AltRelease, _) => return Some(vec![]),
         _ => return None,
     };
     // Payload leaves: the source itself when its type matches, else a name `emit` defines.
@@ -437,21 +400,13 @@ fn pre(
 /// presence of a niche optional, which is present unless its first leaf is null (a string also
 /// has the static tag: an inline string may have a zero first word, but never that tag).
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    if inst.op == Op::AltRelease || inst.op == Op::AltUnbox {
-        release(cx, inst, vals, b);
-        return;
-    }
     let Some(res) = inst.res else { return };
     let out = &vals[&res.index()];
-    if inst.op == Op::OptUnwrap {
-        unwrap(cx, inst, vals, out, b);
-        return;
-    }
     if boxed_alt(cx.lay, subject(cx.f, inst)).is_some() && inst.op != Op::AltPlain {
         boxed(cx, inst, vals, out, b);
         return;
     }
-    if matches!(inst.op, Op::OptSome | Op::OptGet | Op::OptUnbox)
+    if matches!(inst.op, Op::OptSome | Op::OptGet)
         && boxed_opt(cx.lay, subject(cx.f, inst)).is_some()
     {
         boxed_optional(cx, inst, vals, out, b);
@@ -489,7 +444,7 @@ fn memory_payloads(cx: &Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBui
                 }
             }
         }
-        (Op::AltGet | Op::AltTake | Op::AltUnbox, Imm::AltField(a, c, i)) => {
+        (Op::AltGet | Op::AltTake, Imm::AltField(a, c, i)) => {
             let (t, idx) = &lay.alt_fields(a)[c as usize][i as usize];
             if types::is_mem(lay, *t) {
                 let slots = &vals[&inst.args[0].index()];
@@ -503,7 +458,7 @@ fn memory_payloads(cx: &Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBui
                 types::load_into_leaves(b, lay, inner, at, &out[1..]);
             }
         }
-        (Op::OptGet | Op::OptUnbox, _) => {
+        (Op::OptGet, _) => {
             if let Some(inner) = mem_opt(lay, cx.f.ty(inst.args[0])) {
                 let leaves = &vals[&inst.args[0].index()][1..];
                 types::store_into_slot(b, lay, inner, &out[0], leaves);
@@ -513,30 +468,13 @@ fn memory_payloads(cx: &Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBui
     }
 }
 
-/// The fields `inst` (an `alt.release` or `alt.unbox`) drops: those not moved out that own
-/// something, as `(type, field index)`.
-pub(super) fn released(lay: &Layouts, inst: &Inst) -> Vec<(Ty, usize)> {
-    let (a, c, keep, mask) = match inst.imm {
-        Imm::AltMask(a, c, mask) => (a, c, None, mask),
-        Imm::AltField(a, c, i) => (a, c, Some(i as usize), 0),
-        _ => return Vec::new(),
-    };
-    lay.alt_fields(a)[c as usize]
-        .iter()
-        .enumerate()
-        .filter(|(k, (t, _))| mask >> k & 1 == 0 && keep != Some(*k) && lay.m.needs_drop(*t))
-        .map(|(k, (t, _))| (*t, k))
-        .collect()
-}
-
-/// Whether `inst` reads or writes memory: any op on a boxed enum, and a release or unbox that
-/// drops a field. Every other enum op chooses leaves.
+/// Whether `inst` reads or writes memory: any op on a boxed enum. Every other enum op chooses
+/// leaves.
 pub(super) fn touches_memory(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     handles(inst.op)
         && (boxed_alt(lay, subject(f, inst)).is_some()
             || (!matches!(inst.op, Op::OptAddr | Op::OptViewAt)
-                && boxed_opt(lay, subject(f, inst)).is_some())
-            || !released(lay, inst).is_empty())
+                && boxed_opt(lay, subject(f, inst)).is_some()))
 }
 
 /// The LLVM type of a payload slot.
@@ -672,15 +610,6 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
     }
 }
 
-/// Whether the niche or tagged optional `v` of type `ty` is present, as an `i1`.
-fn present(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
-    if opt_repr(lay, ty) == OptRepr::Tagged {
-        return v[0].clone();
-    }
-    let any = niche_any(b, lay, ty, v);
-    b.icmp("ne", &any, &zero(&any.ty))
-}
-
 /// The word of a niche optional that is zero exactly when it is none (a string also has the static
 /// tag: an inline string may have a zero first word, but never that tag).
 fn niche_any(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
@@ -694,54 +623,14 @@ fn niche_any(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
     }
 }
 
-/// `opt.unwrap`: faults on none when checks are on, then yields an owned payload: the leaves
-/// themselves when they own nothing (`pre` chose them), else a clone.
-fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
-    let ty = cx.f.ty(inst.args[0]);
-    let v = &vals[&inst.args[0].index()];
-    if cx.checks {
-        let some = present(b, cx.lay, ty, v);
-        let none = b.icmp("eq", &some, &Val::bool(false));
-        super::faults::fault_if(cx, b, &none, "msrt_fault_unwrap_none", &[]);
-    }
-    let inner = payload_ty(cx.lay, cx.f, inst);
-    let owns = own_kind(cx.lay, inner) != OwnKind::Identity;
-    if boxed_opt(cx.lay, ty).is_some() {
-        // The payload is read from the block: named for the result when nothing is cloned.
-        if owns {
-            let tmp = types::reserve(b, cx.lay, inner);
-            read_payload(b, cx.lay, inner, &v[0], &tmp);
-            glue::clone_leaves(cx, inner, &tmp, out, b);
-        } else {
-            read_payload(b, cx.lay, inner, &v[0], out);
-        }
-        return;
-    }
-    if !owns {
-        return;
-    }
-    let payload = match opt_repr(cx.lay, ty) {
-        OptRepr::Tagged => &v[1..],
-        _ => &v[..],
-    };
-    if types::is_mem(cx.lay, inner) {
-        // The clone glue reads a record in memory from its address: spill the leaves first.
-        let at = b.reserve(LTy::Ptr);
-        types::store_into_slot(b, cx.lay, inner, &at, payload);
-        glue::clone_leaves(cx, inner, &[at], out, b);
-        return;
-    }
-    glue::clone_leaves(cx, inner, payload, out, b);
-}
-
 /// Defines `out` from the payload of type `inner` in the block `p` of a boxed optional: a record
 /// in memory is copied into a fresh slot, anything else loaded leaf by leaf.
 fn read_payload(b: &mut FnBuilder, lay: &Layouts, inner: Ty, p: &Val, out: &[Val]) {
     types::load_value(b, lay, inner, p, out);
 }
 
-/// `opt.some`, `opt.get` and `opt.unbox` of a boxed optional: a build allocates the block and
-/// stores the payload, a read loads it, and an unbox then frees the block.
+/// `opt.some` and `opt.get` of a boxed optional: a build allocates the block and stores the
+/// payload, a read loads it.
 fn boxed_optional(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
     let lay = cx.lay;
     let ty = subject(cx.f, inst);
@@ -757,57 +646,4 @@ fn boxed_optional(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut Fn
     }
     let p = &vals[&inst.args[0].index()][0];
     read_payload(b, lay, inner, p, out);
-    if inst.op == Op::OptUnbox {
-        b.call(&LTy::Void, "", "msrt_free", &[(p.clone(), "")]);
-    }
-}
-
-/// `alt.release` and `alt.unbox`: drops the fields of the case that were not moved out, reading
-/// them from the block when the enum is boxed, and frees the block. The result of an unbox is the
-/// field kept.
-fn release(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    let lay = cx.lay;
-    let ty = cx.f.ty(inst.args[0]);
-    let own = &vals[&inst.args[0].index()];
-    let (Imm::AltMask(a, c, _) | Imm::AltField(a, c, _)) = inst.imm else {
-        return;
-    };
-    let boxed = boxed_alt(lay, ty).is_some();
-    let kept = match (inst.op, inst.imm) {
-        (Op::AltUnbox, Imm::AltField(_, _, i)) => Some(i as usize),
-        _ => None,
-    };
-    // The kept field is read before anything is dropped or freed.
-    let result = inst.res.map(|r| &vals[&r.index()]);
-    if let (true, Some(i), Some(out)) = (boxed, kept, result) {
-        block_field(b, lay, ty, (a, c, i), &own[0], Some(out));
-    }
-    for (fty, k) in released(lay, inst) {
-        let leaves = if boxed {
-            block_field(b, lay, ty, (a, c, k), &own[0], None)
-        } else {
-            let (_, idx) = &lay.alt_fields(a)[c as usize][k];
-            let held = held_leaves(lay, fty);
-            let signs = narrow_leaves(lay, fty);
-            idx.iter()
-                .enumerate()
-                .map(|(j, slot)| convert(b, &own[*slot], &held[j], signs[j]))
-                .collect()
-        };
-        glue::drop_held(cx, fty, leaves, b);
-    }
-    if boxed && !lay.alt_fields(a)[c as usize].is_empty() {
-        types::declare_heap(cx);
-        b.call(&LTy::Void, "", "msrt_free", &[(own[0].clone(), "")]);
-    }
-    // An inline unbox: the result leaves are the field's, converted out of their slots.
-    if !boxed && let Some(out) = result {
-        for (i, src, signed) in sources(lay, inst, vals) {
-            if out[i] != src {
-                b.name_next(&out[i]);
-                convert(b, &src, &out[i].ty, signed);
-            }
-        }
-        memory_payloads(cx, inst, vals, out, b);
-    }
 }

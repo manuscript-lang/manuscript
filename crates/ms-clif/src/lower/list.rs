@@ -10,31 +10,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         (e, leaves, size)
     }
 
-    /// Normalizes `i` (negative counts from the end) and bounds-checks it; returns the element address.
-    pub(super) fn elem_addr(
-        &mut self,
-        ptr: Value,
-        len: Value,
-        i: Value,
-        size: i64,
-        mode: Op,
-    ) -> Value {
-        let idx = match mode {
-            Op::ListGet | Op::ListSet | Op::ListFill => {
-                let neg = self.b.ins().icmp_imm_s(IntCC::SignedLessThan, i, 0);
-                let wrapped = self.b.ins().iadd(i, len);
-                self.b.ins().select(neg, wrapped, i)
-            }
-            _ => i,
-        };
-        if self.g.opts.checks && !matches!(mode, Op::ListGetU | Op::ListSetU) {
-            let oob = self
-                .b
-                .ins()
-                .icmp(IntCC::UnsignedGreaterThanOrEqual, idx, len);
-            self.fault_if(oob, "msrt_index_fault", vec![i, len]);
-        }
-        let off = self.b.ins().imul_imm_s(idx, size);
+    /// The address of element `i` of a list block. The index is in range: `ms_mir::expand`
+    /// wrapped a negative one and branched to the fault.
+    pub(super) fn elem_addr(&mut self, ptr: Value, i: Value, size: i64) -> Value {
+        let off = self.b.ins().imul_imm_s(i, size);
         self.b.ins().iadd(ptr, off)
     }
 
@@ -108,22 +87,22 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![ptr, len, cap]
             }
             Op::ListLen => vec![self.a(inst, 0)[1]],
-            Op::ListGet | Op::ListGetNn | Op::ListGetU => {
+            Op::ListGetU => {
                 let lt = f.ty(inst.args[0]);
                 let (_, leaves, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
                 let i = self.a(inst, 1)[0];
-                let at = self.elem_addr(l[0], l[1], i, size, inst.op);
+                let at = self.elem_addr(l[0], i, size);
                 self.load_leaves(at, 0, &leaves)
             }
-            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
+            Op::ListSetU | Op::ListFillU => {
                 let lt = f.ty(inst.args[0]);
                 let (e, leaves, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
                 let i = self.a(inst, 1)[0];
                 let v = self.a(inst, 2);
-                let at = self.elem_addr(l[0], l[1], i, size, inst.op);
-                if inst.op != Op::ListFill && self.g.m.needs_drop(e) {
+                let at = self.elem_addr(l[0], i, size);
+                if inst.op != Op::ListFillU && self.g.m.needs_drop(e) {
                     let old = self.load_leaves(at, 0, &leaves);
                     self.drop_value(e, &old);
                 }
@@ -144,31 +123,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 vec![l[0], nl, l[2]]
             }
-            Op::ListPush => {
+            Op::ListCap => vec![self.a(inst, 0)[2]],
+            // The list has room for `ncap` elements: a fresh block for an empty list, the old
+            // block resized otherwise. `ms_mir::expand` chose the capacity.
+            Op::ListGrow => {
                 let lt = f.ty(inst.args[0]);
-                let (_, leaves, size) = self.elem_info(lt);
+                let (_, _, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
-                let v = self.a(inst, 1);
-                let (ptr, len, cap) = (l[0], l[1], l[2]);
-                let full = self.b.ins().icmp(IntCC::Equal, len, cap);
-                let ready = self.b.create_block();
-                self.b.append_block_param(ready, types::I64);
-                self.b.append_block_param(ready, types::I64);
-                let grow = self.b.create_block();
-                self.b.set_cold_block(grow);
-                self.b.ins().brif(
-                    full,
-                    grow,
-                    &[],
-                    ready,
-                    &[BlockArg::Value(ptr), BlockArg::Value(cap)],
-                );
-                self.b.switch_to_block(grow);
-                let empty = self.b.ins().icmp_imm_s(IntCC::Equal, cap, 0);
-                let four = self.iconst(4);
-                let doubled = self.b.ins().ishl_imm_s(cap, 1);
-                let ncap = self.b.ins().select(empty, four, doubled);
+                let ncap = self.a(inst, 1)[0];
                 let bytes = self.b.ins().imul_imm_s(ncap, size.max(1));
+                let empty = self.b.ins().icmp_imm_s(IntCC::Equal, l[2], 0);
                 let first = self.b.create_block();
                 let again = self.b.create_block();
                 let joined = self.b.create_block();
@@ -178,20 +142,21 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let np = self.rt_call("msrt_alloc", &[bytes])[0];
                 self.b.ins().jump(joined, &[BlockArg::Value(np)]);
                 self.b.switch_to_block(again);
-                let rp = self.rt_call("msrt_realloc", &[ptr, bytes])[0];
+                let rp = self.rt_call("msrt_realloc", &[l[0], bytes])[0];
                 self.b.ins().jump(joined, &[BlockArg::Value(rp)]);
                 self.b.switch_to_block(joined);
-                let np = self.b.block_params(joined)[0];
-                self.b
-                    .ins()
-                    .jump(ready, &[BlockArg::Value(np), BlockArg::Value(ncap)]);
-                self.b.switch_to_block(ready);
-                let (p, c) = (self.b.block_params(ready)[0], self.b.block_params(ready)[1]);
-                let off = self.b.ins().imul_imm_s(len, size);
-                let at = self.b.ins().iadd(p, off);
+                let p = self.b.block_params(joined)[0];
+                vec![p, l[1], ncap]
+            }
+            Op::ListPushU => {
+                let lt = f.ty(inst.args[0]);
+                let (_, leaves, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let v = self.a(inst, 1);
+                let at = self.elem_addr(l[0], l[1], size);
                 self.store_leaves(at, 0, &leaves, &v);
-                let nl = self.b.ins().iadd_imm_s(len, 1);
-                vec![p, nl, c]
+                let nl = self.b.ins().iadd_imm_s(l[1], 1);
+                vec![l[0], nl, l[2]]
             }
             _ => unreachable!(),
         }

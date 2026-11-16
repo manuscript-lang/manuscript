@@ -92,6 +92,10 @@ impl Interp<'_> {
             }
             // Ownership ends without a drop: the value's frees are held elsewhere.
             Op::Forget => {}
+            // The block behind a value goes; the interpreter has no blocks, the owner is consumed.
+            Op::Free => {
+                arg(f, ops.regs, inst.args[0], true, m);
+            }
             Op::DropIf => {
                 if ops.boolean(0)? {
                     self.drops += 1;

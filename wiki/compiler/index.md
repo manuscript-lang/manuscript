@@ -6,6 +6,7 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 
 - [Callback adapters do not change generic type identity](callback-adapters-do-not-change-generic-type-identity.md): reader conversion applies at a callable value boundary; implementation overlap and receiver matching preserve nested callback modes.
 
+- [Checker state must scale with the function, not the program](checker-state-must-scale-with-the-function-not-the-program.md): uid-indexed arrays, scans over all methods and `Info` clones were half of `ms check` on a large project.
 - [Checked Int arithmetic is language behavior](checked-int-arithmetic-is-language-behavior.md): `Int` arithmetic faults on overflow ([design contract](../../crates/DESIGN.md)).
 - [Compiler passes use the right algorithm and data structure for their input size](compiler-passes-use-the-right-algorithm-and-data-structure-f.md): the user wants parsing, checking, and lowering to stay linear (or n log n) in source size, with no ad-hoc special cases.
 - [The LLVM backend is its own crate and needs only MIR](the-llvm-backend-is-its-own-crate-and-needs-only-mir.md): `ms-mir-llvm` emits its own symbols and data and depends on no Cranelift code.
@@ -32,3 +33,5 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Unwind leaves slot values to an active scope close](unwind-leaves-slot-values-to-an-active-scope-close.md): a value taken from a scope-closed slot must not get its own unwind drop, which would free the receiver before the slot's close runs.
 - [A list updated in place in a loop is registered once](a-list-updated-in-place-in-a-loop-is-registered-once.md): a task loop that set list elements pushed and discarded a cleanup every iteration, 1.5x slower than the same loop called directly.
 - [Unwind cost grows with the values live to scope end](unwind-cost-grows-with-values-live-to-scope-end.md): in task programs a long Debug function registered cleanups for every live value at every fault point, so code and frame grew with the square of its length and overflowed a 512 KiB task slot.
+- [A call not declared fresh pins its argument slots](a-call-not-declared-fresh-pins-its-argument-slots.md): a view of an inline text points into the slot its argument was passed in, so pinning is the default unless the call is `fresh`.
+- [Checks and list growth are MIR; the backends only lower](checks-and-list-growth-are-mir-the-backends-only-lower.md)

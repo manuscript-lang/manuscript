@@ -15,6 +15,7 @@ mod stages;
 mod stdlib_modules;
 mod stream_names;
 mod thread_affinity;
+mod timed_waits;
 mod unsafe_boundary;
 
 use ms_syntax::parser::parse;
@@ -75,9 +76,10 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(stages::check(&files));
     issues.extend(thread_affinity::check(&files));
     issues.extend(cancel_jumps::check(&files));
+    issues.extend(timed_waits::check(&files));
     if issues.is_empty() {
         println!(
-            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, and cancel by return agree."
+            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, cancel by return, and timed waits agree."
         );
         return ExitCode::SUCCESS;
     }

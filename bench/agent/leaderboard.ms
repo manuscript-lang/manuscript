@@ -32,15 +32,8 @@ type Trial:
 	category: String
 	tier: Int
 	language: String
-	agent: String?
-	model: String?
 	pass: Bool
 	errored: Bool
-	cases_passed: Int?
-	cases_total: Int?
-	first_build_ok: Bool?
-	code_tokens: Int?
-	builds: Int?
 	tokens_in: Int
 	tokens_cached: Int
 	tokens_out: Int
@@ -49,6 +42,13 @@ type Trial:
 	wall_s: Float
 	input_by_source: JsonValue
 	started: String
+	agent: String?
+	model: String?
+	cases_passed: Int?
+	cases_total: Int?
+	first_build_ok: Bool?
+	code_tokens: Int?
+	builds: Int?
 
 fn lang_name(id: String) String:
 	if id == "ts": return "TypeScript"
@@ -195,28 +195,34 @@ fn read_trial(dir: String) Trial?:
 	score := reward.get(JsonValue.Null).as_float()
 	passed := score.get(0.0) == 1.0
 	return Trial(
-		text_at(r, "trial_name"),
-		cid.clone(),
-		text_at(meta, "category"),
-		meta.get("tier").get(JsonValue.Null).as_int().get(0),
-		lang.clone(),
-		agent_cfg.get("name").get(JsonValue.Null).as_string(),
-		agent_cfg.get("model_name").get(JsonValue.Null).as_string(),
-		passed,
-		score.is_none(),
-		detail.get("passed").get(JsonValue.Null).as_int(),
-		detail.get("total").get(JsonValue.Null).as_int(),
-		detail.get("first_build_ok").get(JsonValue.Null).as_bool(),
-		detail.get("code_tokens").get(JsonValue.Null).as_int(),
-		detail.get("builds").get(JsonValue.Null).as_int(),
-		ar.get("n_input_tokens").get(JsonValue.Null).as_int().get(0),
-		ar.get("n_cache_tokens").get(JsonValue.Null).as_int().get(0),
-		ar.get("n_output_tokens").get(JsonValue.Null).as_int().get(0),
-		ar.get("cost_usd").get(JsonValue.Null).as_float().get(0.0),
-		turns,
-		round(wall * 10.0) / 10.0,
-		JsonValue.ObjectValue(sources),
-		r.get("started_at").get(JsonValue.Null).as_string().get(""),
+		trial: text_at(r, "trial_name"),
+		challenge: cid.clone(),
+		category: text_at(meta, "category"),
+		tier: meta.get("tier").get(JsonValue.Null).as_int().get(0),
+		language: lang.clone(),
+		agent: agent_cfg.get("name").get(JsonValue.Null).as_string(),
+		model: agent_cfg.get("model_name").get(JsonValue.Null).as_string(),
+		pass: passed,
+		errored: score.is_none(),
+		cases_passed: detail.get("passed").get(JsonValue.Null).as_int(),
+		cases_total: detail.get("total").get(JsonValue.Null).as_int(),
+		first_build_ok: detail.get("first_build_ok").get(
+			JsonValue.Null
+		).as_bool(),
+		code_tokens: detail.get("code_tokens").get(JsonValue.Null).as_int(),
+		builds: detail.get("builds").get(JsonValue.Null).as_int(),
+		tokens_in: ar.get("n_input_tokens").get(JsonValue.Null).as_int().get(0),
+		tokens_cached: ar.get("n_cache_tokens").get(
+			JsonValue.Null
+		).as_int().get(0),
+		tokens_out: ar.get("n_output_tokens").get(JsonValue.Null).as_int().get(
+			0
+		),
+		cost_usd: ar.get("cost_usd").get(JsonValue.Null).as_float().get(0.0),
+		turns: turns,
+		wall_s: round(wall * 10.0) / 10.0,
+		input_by_source: JsonValue.ObjectValue(sources),
+		started: r.get("started_at").get(JsonValue.Null).as_string().get(""),
 	)
 
 fn read_trials(path: String) List[Trial]:
@@ -295,7 +301,7 @@ fn agg(rs: List[Trial]) Agg:
 		mean_of(coded.map(fn r: (r.code_tokens.get(0).to_float()))),
 	)
 
-fn fmt(v: Float?, kind: String) String:
+fn fmt(kind: String, v: Float?) String:
 	if v.is_none(): return if kind == "n0": "n/a" else: "-"
 
 	x := v.get(0.0)
@@ -328,7 +334,7 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 		a := rows[i].stats
 		prov := if a.n < MIN_RUNS * 5: " (provisional)" else: ""
 		lines.append(
-			f"| {i + 1} | {rows[i].key}{prov} | {a.n} | {fmt(a.pass, "pct")} | {fmt(a.fb, "pct")} | {fmt(a.tokens, "tok")} | {fmt(a.code, "n0")} | {fmt(a.turns, "n")} | {fmt(a.wall, "n")} | {fmt(a.cost, "usd")} |"
+			f"| {i + 1} | {rows[i].key}{prov} | {a.n} | {fmt("pct", a.pass)} | {fmt("pct", a.fb)} | {fmt("tok", a.tokens)} | {fmt("n0", a.code)} | {fmt("n", a.turns)} | {fmt("n", a.wall)} | {fmt("usd", a.cost)} |"
 		)
 
 	return lines.join("\n") + "\n"

@@ -10,14 +10,14 @@ use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, Has, OptInt, Str, TypeList, abi_type, native};
 
 abi_type! {
-    /// `Url` record: `scheme, host, port: Int?, path, query, fragment, omit_host`.
+    /// `Url` record: `scheme, host, path, query, fragment, port: Int?, omit_host`.
     pub struct UrlType {
         pub scheme: Str,
         pub host: Str,
-        pub port: OptInt,
         pub path: Str,
         pub query: Str,
         pub fragment: Str,
+        pub port: OptInt,
         pub omit_host: u8,
     }
 }

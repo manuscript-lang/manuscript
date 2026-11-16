@@ -11,7 +11,7 @@ use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::ptr::NonNull;
-use std::sync::atomic::{AtomicU64, Ordering as Atomic};
+use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicU64, Ordering as Atomic};
 use std::sync::{Mutex, OnceLock};
 
 /// An interned string: an index into one [`Interner`], meaningful only with the [`Names`] that
@@ -97,15 +97,27 @@ impl Names {
 }
 
 /// A string table that owns its names. Id 0 is the empty string.
+///
+/// Reading a name takes no lock: the texts sit in append-only segments that never move, so a
+/// symbol resolves with one atomic load and one index. Only interning takes the mutex.
 pub struct Interner {
     generation: u64,
+    /// Count of published texts, including the empty string. A text is written before this grows
+    /// past its id, so every id below it can be read.
+    len: AtomicU32,
+    /// Segment `k` holds `FIRST << k` texts and is allocated once, on first use, never freed
+    /// before the interner drops.
+    segments: [AtomicPtr<Text>; SEGMENTS],
     state: Mutex<State>,
 }
 
+/// Texts in segment 0.
+const FIRST: usize = 1024;
+/// Enough segments to hold every `u32` id.
+const SEGMENTS: usize = 22;
+
 struct State {
-    /// Owned allocations from `Box::leak`, freed by `Interner::drop`. Index 0 is a placeholder.
-    texts: Vec<Text>,
-    /// Open-addressed ids, 0 for empty; the length is a power of two and at least twice `texts`.
+    /// Open-addressed ids, 0 for empty; the length is a power of two and at least twice the texts.
     slots: Vec<u32>,
     /// Total length of the texts.
     bytes: usize,
@@ -116,6 +128,15 @@ struct Text(NonNull<str>);
 
 // SAFETY: a `Text` owns an immutable heap string that only `Interner::drop` frees.
 unsafe impl Send for Text {}
+// SAFETY: the same immutable string, read from many threads.
+unsafe impl Sync for Text {}
+
+/// The segment holding `id` and its offset in it.
+fn locate(id: usize) -> (usize, usize) {
+    let block = id / FIRST + 1;
+    let segment = (usize::BITS - 1 - block.leading_zeros()) as usize;
+    (segment, id - FIRST * ((1 << segment) - 1))
+}
 
 fn hash_text(text: &str) -> u32 {
     // FNV-1a, folded to 32 bits.
@@ -136,23 +157,42 @@ impl Interner {
     /// An interner holding only the empty string.
     pub fn new() -> Interner {
         static NEXT: AtomicU64 = AtomicU64::new(0);
-        Interner {
+        let interner = Interner {
             generation: NEXT.fetch_add(1, Atomic::Relaxed),
+            len: AtomicU32::new(0),
+            segments: std::array::from_fn(|_| AtomicPtr::new(std::ptr::null_mut())),
             state: Mutex::new(State {
-                texts: vec![Text(NonNull::from(""))],
                 slots: vec![0; 4096],
                 bytes: 0,
             }),
-        }
+        };
+        interner.push(Text(NonNull::from("")));
+        interner
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    /// Appends a text and publishes it. Called with the state lock held (or before sharing).
+    fn push(&self, text: Text) -> u32 {
+        let id = self.len.load(Atomic::Relaxed);
+        let (segment, offset) = locate(id as usize);
+        let mut base = self.segments[segment].load(Atomic::Acquire);
+        if base.is_null() {
+            let block: Box<[Text]> = vec![Text(NonNull::from("")); FIRST << segment].into();
+            base = Box::into_raw(block).cast::<Text>();
+            self.segments[segment].store(base, Atomic::Release);
+        }
+        // SAFETY: `offset` is inside the segment, and no reader looks at it before `len` passes it.
+        unsafe { base.add(offset).write(text) };
+        self.len.store(id + 1, Atomic::Release);
+        id
+    }
+
     /// The number of interned strings, counting the empty string.
     pub fn len(&self) -> usize {
-        self.lock().texts.len()
+        self.len.load(Atomic::Acquire) as usize
     }
 
     /// Always false: the empty string is interned from the start.
@@ -165,12 +205,21 @@ impl Interner {
         self.lock().bytes
     }
 
+    fn text(&self, id: u32) -> Text {
+        let (segment, offset) = locate(id as usize);
+        let base = self.segments[segment].load(Atomic::Acquire);
+        // SAFETY: the caller checked `id < len`, so the segment exists and the text is written.
+        unsafe { *base.add(offset) }
+    }
+
     fn get<'a>(&self, id: u32) -> Option<&'a str> {
-        let text = *self.lock().texts.get(id as usize)?;
+        if id >= self.len.load(Atomic::Acquire) {
+            return None;
+        }
         // SAFETY: the allocation is never moved or mutated, and is freed only when the interner is
         // dropped (`Interner::drop`) or released (`Session::release`), which require that no text
         // borrowed from it is still in use. The lifetime is chosen by the caller for that reason.
-        Some(unsafe { &*text.0.as_ptr() })
+        Some(unsafe { &*self.text(id).0.as_ptr() })
     }
 
     /// Interns `text`.
@@ -187,47 +236,53 @@ impl Interner {
                 break;
             }
             // SAFETY: every `Text` points at a live allocation owned by this interner.
-            if unsafe { state.texts[id as usize].0.as_ref() } == text {
+            if unsafe { self.text(id).0.as_ref() } == text {
                 return Symbol(id);
             }
             at = (at + 1) & mask;
         }
-        let id = state.texts.len() as u32;
         let leaked: &'static mut str = Box::leak(text.to_owned().into_boxed_str());
         state.bytes += text.len();
-        state.texts.push(Text(NonNull::from(leaked)));
+        let id = self.push(Text(NonNull::from(leaked)));
         state.slots[at] = id;
-        if state.texts.len() * 2 > state.slots.len() {
-            state.grow();
+        if self.len() * 2 > state.slots.len() {
+            self.grow(&mut state);
         }
         Symbol(id)
     }
-}
 
-impl State {
-    fn grow(&mut self) {
-        let mut slots = vec![0u32; self.slots.len() * 2];
+    fn grow(&self, state: &mut State) {
+        let mut slots = vec![0u32; state.slots.len() * 2];
         let mask = slots.len() - 1;
-        for id in 1..self.texts.len() as u32 {
+        for id in 1..self.len() as u32 {
             // SAFETY: every `Text` points at a live allocation owned by this interner.
-            let text = unsafe { self.texts[id as usize].0.as_ref() };
+            let text = unsafe { self.text(id).0.as_ref() };
             let mut at = hash_text(text) as usize & mask;
             while slots[at] != 0 {
                 at = (at + 1) & mask;
             }
             slots[at] = id;
         }
-        self.slots = slots;
+        state.slots = slots;
     }
 }
 
 impl Drop for Interner {
     fn drop(&mut self) {
-        let state = self.state.get_mut().unwrap_or_else(|e| e.into_inner());
-        for text in state.texts.drain(1..) {
+        let len = *self.len.get_mut() as usize;
+        for id in 1..len {
             // SAFETY: allocated by `Box::leak` in `intern`, freed once here, and `&mut self`
             // means no `get` borrow is alive.
-            drop(unsafe { Box::from_raw(text.0.as_ptr()) });
+            drop(unsafe { Box::from_raw(self.text(id as u32).0.as_ptr()) });
+        }
+        for (segment, base) in self.segments.iter_mut().enumerate() {
+            let base = *base.get_mut();
+            if !base.is_null() {
+                // SAFETY: allocated in `push` as a boxed slice of this length, freed once here.
+                drop(unsafe {
+                    Box::from_raw(std::ptr::slice_from_raw_parts_mut(base, FIRST << segment))
+                });
+            }
         }
     }
 }
@@ -312,6 +367,23 @@ mod interner_tests {
         assert_ne!(names.generation(), Names::global().generation());
         // SAFETY: nothing borrowed from the session is used afterward.
         unsafe { t.release() };
+    }
+
+    #[test]
+    fn threads_read_while_others_intern() {
+        let names = Names(Box::leak(Box::new(Interner::new())));
+        std::thread::scope(|scope| {
+            for thread in 0..4 {
+                scope.spawn(move || {
+                    for k in 0..5000 {
+                        let text = format!("t{thread}-{k}");
+                        let id = names.intern(&text);
+                        assert_eq!(names.str(id), text);
+                    }
+                });
+            }
+        });
+        assert_eq!(names.0.len(), 20001);
     }
 
     #[test]

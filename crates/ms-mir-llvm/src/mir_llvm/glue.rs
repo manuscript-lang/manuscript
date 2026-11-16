@@ -27,7 +27,6 @@ fn handles(op: Op) -> bool {
     matches!(
         op,
         Op::Clone
-            | Op::AltOwn
             | Op::Drop
             | Op::Forget
             | Op::DropIf
@@ -58,21 +57,12 @@ fn unwind_only(m: &Module, i: &Inst) -> bool {
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
     let split = match i.op {
         Op::CleanupPush => unwind_only(lay.m, i),
-        Op::Clone | Op::AltOwn => own_kind(lay, cloned_ty(f, i)) == OwnKind::Str,
+        Op::Clone => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::DropIf => own_kind(lay, f.ty(i.args[1])) != OwnKind::Identity,
         _ => false,
     };
     usize::from(split)
-}
-
-/// The type a `Clone` or `AltOwn` copies: `alt.own` copies a borrowing alternative as the ordinary
-/// one it produces, which has the same leaves.
-pub(crate) fn cloned_ty(f: &Func, i: &Inst) -> Ty {
-    match i.op {
-        Op::AltOwn => f.ty(i.res.expect("alt.own result")),
-        _ => f.ty(i.args[0]),
-    }
 }
 
 /// Cloning plain data and moving a value out are the value itself.
@@ -86,7 +76,7 @@ fn pre(
 ) -> Option<Vec<Val>> {
     let same = match inst.op {
         Op::MoveOut => true,
-        Op::Clone | Op::AltOwn => own_kind(lay, cloned_ty(f, inst)) == OwnKind::Identity,
+        Op::Clone => own_kind(lay, f.ty(inst.args[0])) == OwnKind::Identity,
         _ => false,
     };
     same.then(|| vals[&inst.args[0].index()].clone())
@@ -116,8 +106,8 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         }
         // The moved value is the operand itself: nothing to write.
         Op::MoveOut | Op::Forget => {}
-        Op::Clone | Op::AltOwn => {
-            let ty = cloned_ty(cx.f, inst);
+        Op::Clone => {
+            let ty = cx.f.ty(inst.args[0]);
             clone_leaves(cx, ty, &vals[&inst.args[0].index()], &out, b);
         }
         Op::CleanupPush => cleanup_push(cx, inst, vals, &out, b),
