@@ -9,6 +9,7 @@
 
 pub mod buffered;
 mod h2serve;
+mod steal;
 
 use super::exchange::Exchange;
 use super::h1::{self, BodyDecoder, Framing, Parsed, RequestHead};
@@ -82,6 +83,8 @@ pub struct Options {
     /// The admission count shared by every connection of one `serve` call.
     pub admitted: Arc<AtomicUsize>,
     pub tls: Option<Arc<rustls::ServerConfig>>,
+    /// The servers of one `serve` call, which take each other's waiting connections.
+    pub group: Arc<steal::Group>,
 }
 
 // ---------------------------------------------------------------- connections
@@ -131,7 +134,13 @@ pub(super) struct ConnSt {
     pub h2: Option<Box<h2serve::H2Conn>>,
     /// The task running this connection's HTTP/1 request (`0`: none).
     pub task: u64,
+    /// The connection's place in its server's list of waiting connections ([`steal::Member`]),
+    /// or `NOT_WAITING`.
+    pub waiting: u32,
 }
+
+/// [`ConnSt::waiting`] of a connection that is not listed.
+const NOT_WAITING: u32 = u32::MAX;
 
 pub struct Conn {
     pub(super) token: u64,
@@ -184,6 +193,8 @@ pub struct Reactor {
     date: RefCell<(i64, String)>,
     /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
     next_sweep: Cell<Option<Instant>>,
+    /// What the connection watcher reads of this thread.
+    beat: Arc<steal::Beat>,
 }
 
 thread_local! {
@@ -198,8 +209,10 @@ impl Reactor {
             if let Some(r) = &*slot {
                 return r.clone();
             }
+            let poller = Poller::new();
+            let beat = steal::Beat::new(poller.waker());
             let reactor = Rc::new(Reactor {
-                poller: Poller::new(),
+                poller,
                 next: Cell::new(1),
                 targets: RefCell::new(IdMap::default()),
                 ready: RefCell::new(VecDeque::new()),
@@ -209,6 +222,7 @@ impl Reactor {
                 scratch: RefCell::new(vec![0; 64 * 1024]),
                 date: RefCell::new((0, String::new())),
                 next_sweep: Cell::new(None),
+                beat,
             });
             *slot = Some(reactor.clone());
             reactor
@@ -494,9 +508,22 @@ impl Reactor {
     fn service(&self) {
         let mut events = Vec::new();
         loop {
+            if self.beat.turn() {
+                self.serve_others();
+            }
             let raw = self.poller.poll(&mut events, 64);
-            for &(token, flags) in &events {
+            let mut yielded = false;
+            for (at, &(token, flags)) in events.iter().enumerate() {
                 self.handle_event(token, flags);
+                // Run a request before reading the next connection: while its handler
+                // computes, the connections not yet read can still be taken by another thread.
+                // After the last event the park below runs it, as it runs every task.
+                if at + 1 < events.len() && !self.ready.borrow().is_empty() {
+                    self.run_handlers();
+                    rt::yield_now();
+                    self.beat.turn();
+                    yielded = true;
+                }
             }
             loop {
                 let retry: Vec<Rc<Conn>> = self.retry.borrow_mut().drain(..).collect();
@@ -510,9 +537,14 @@ impl Reactor {
                 }
             }
             self.run_handlers();
-            if raw < 64 {
+            // Tasks that ran during a yield may have queued work for this loop while it was
+            // not parked, so nothing woke it: look once more.
+            if raw < 64 && !yielded {
                 break;
             }
+            // Let the requests started above run before more connections are read, for the
+            // same reason as in the loop over the events.
+            rt::yield_now();
         }
         if self.next_sweep.get().is_some_and(|at| at <= Instant::now()) {
             self.sweep_timeouts();
@@ -521,6 +553,16 @@ impl Reactor {
 }
 
 impl Reactor {
+    /// Takes the connections the watcher assigned to this thread's servers, and drops the ones
+    /// other threads took from them.
+    fn serve_others(&self) {
+        let servers: Vec<_> =
+            SERVERS.with(|s| s.borrow().values().filter_map(Weak::upgrade).collect());
+        for server in servers {
+            server.serve_others(self);
+        }
+    }
+
     /// Closes connections whose read or write deadline passed.
     fn sweep_timeouts(&self) {
         let now = Instant::now();
@@ -596,6 +638,9 @@ thread_local! {
 
 impl Drop for Server {
     fn drop(&mut self) {
+        if let Some(member) = &self.member {
+            self.group.leave(member);
+        }
         if self.limits.grace.is_some_and(|g| !g.is_zero()) {
             GRACED.with(|g| g.set(g.get() - 1));
         }
@@ -620,6 +665,10 @@ pub struct Server {
     handlers: RefCell<Handlers>,
     /// Tasks of the requests running now, to tell a handler's own calls from others.
     tasks: RefCell<IdMap<u64, ()>>,
+    /// This server's waiting connections, which the other servers of its `serve` call may
+    /// take; none for a TLS server or off the scheduler's threads.
+    member: Option<Arc<steal::Member>>,
+    group: Arc<steal::Group>,
 }
 
 struct ServerSt {
@@ -682,6 +731,8 @@ impl Server {
         if options.limits.grace.is_some_and(|g| !g.is_zero()) {
             GRACED.with(|g| g.set(g.get() + 1));
         }
+        let shares = options.tls.is_none() && ms_rt::sched::thread() < ms_rt::sched::MAX_THREADS;
+        let member = shares.then(|| options.group.join(&reactor.beat));
         let server = Rc::new_cyclic(|me| Server {
             id,
             me: me.clone(),
@@ -701,6 +752,8 @@ impl Server {
             token,
             handlers: RefCell::new(Handlers::default()),
             tasks: RefCell::new(IdMap::default()),
+            member,
+            group: options.group,
         });
         reactor
             .targets
@@ -923,6 +976,15 @@ impl Server {
     }
 
     fn add_conn(&self, sock: socket2::Socket, reactor: &Reactor) {
+        self.add_conn_until(
+            sock,
+            reactor,
+            self.limits.timeout.map(|t| Instant::now() + t),
+        );
+    }
+
+    /// Serves `sock`, whose wait for its first request ends at `deadline`.
+    fn add_conn_until(&self, sock: socket2::Socket, reactor: &Reactor, deadline: Option<Instant>) {
         let token = reactor.token();
         let (io, tls_pending, phase) = match &self.tls {
             None => (
@@ -958,12 +1020,13 @@ impl Server {
                 drain_after: false,
                 flush_pending: false,
                 eof: false,
-                deadline: self.limits.timeout.map(|t| Instant::now() + t),
+                deadline,
                 idle_deadline: false,
                 interest: Ev::IN,
                 registered: false,
                 h2: None,
                 task: 0,
+                waiting: NOT_WAITING,
             }),
         });
         {
@@ -984,8 +1047,106 @@ impl Server {
             .borrow_mut()
             .insert(token, Target::Conn(Rc::downgrade(&conn)));
         self.st.borrow_mut().conns.insert(token, conn.clone());
+        if let Some(member) = &self.member {
+            member.count(1);
+        }
         if self.tls.is_some() {
             self.drive_handshake(&conn, reactor);
+        } else {
+            self.list_waiting(&conn);
+        }
+    }
+
+    /// Takes a connection out of the server's table.
+    fn uncount(&self, conn: &Conn) {
+        let removed = self.st.borrow_mut().conns.remove(&conn.token).is_some();
+        if removed && let Some(member) = &self.member {
+            member.count(-1);
+        }
+    }
+
+    /// Lists a connection that waits for its next request with nothing buffered, so another
+    /// thread can take it while this one is held up.
+    fn list_waiting(&self, conn: &Conn) {
+        let Some(member) = &self.member else {
+            return;
+        };
+        if self.st.borrow().closing {
+            return;
+        }
+        let mut st = conn.st.borrow_mut();
+        let waits = st.waiting == NOT_WAITING
+            && matches!(st.phase, Phase::Head)
+            && st.unread().is_empty()
+            && !st.eof
+            && !st.close_after
+            && st.registered
+            && st.io.is_some();
+        if waits {
+            st.waiting = member.park(conn.token, crate::sys::raw(st.fd()), st.deadline);
+        }
+    }
+
+    /// Takes a connection off the list of waiting ones before this thread uses it. Answers
+    /// false when another thread took the connection: it is gone from this server then.
+    fn unlist_waiting(&self, conn: &Conn, reactor: &Reactor) -> bool {
+        let place = std::mem::replace(&mut conn.st.borrow_mut().waiting, NOT_WAITING);
+        let Some(member) = &self.member else {
+            return true;
+        };
+        if place == NOT_WAITING {
+            return true;
+        }
+        let (taken, moved) = member.unpark(place, conn.token);
+        if let Some(moved) = moved
+            && let Some(other) = self.st.borrow().conns.get(&moved)
+        {
+            other.st.borrow_mut().waiting = place;
+        }
+        if taken {
+            self.forget_conn(conn, reactor);
+        }
+        !taken
+    }
+
+    /// Drops a connection another thread took: this server's handle closes, and the connection
+    /// itself stays open for its new owner.
+    fn forget_conn(&self, conn: &Conn, reactor: &Reactor) {
+        {
+            let mut st = conn.st.borrow_mut();
+            if st.registered {
+                reactor.delete(st.fd());
+                st.registered = false;
+            }
+            st.io = None;
+            st.phase = Phase::Closed;
+            st.inbuf = Vec::new();
+            st.outbuf = Vec::new();
+        }
+        reactor.targets.borrow_mut().remove(&conn.token);
+        self.uncount(conn);
+        self.note_drain_progress();
+    }
+
+    /// Serves the connections the watcher told this server to take from held-up servers of its
+    /// `serve` call, and drops the ones others took from it.
+    fn serve_others(&self, reactor: &Reactor) {
+        let Some(member) = &self.member else {
+            return;
+        };
+        for token in member.take_dropped() {
+            let conn = self.st.borrow().conns.get(&token).cloned();
+            if let Some(conn) = conn {
+                self.unlist_waiting(&conn, reactor);
+            }
+        }
+        for order in member.take_orders() {
+            if self.st.borrow().closing {
+                return;
+            }
+            for taken in order.from.take(order.limit, order.ready_only) {
+                self.add_conn_until(taken.sock, reactor, taken.deadline);
+            }
         }
     }
 
@@ -1080,12 +1241,15 @@ impl Server {
         };
         reactor.targets.borrow_mut().remove(&conn.token);
         reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
-        self.st.borrow_mut().conns.remove(&conn.token);
+        self.uncount(conn);
         self.note_drain_progress();
         Some((io, leftover))
     }
 
     pub(super) fn close_conn(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        if !self.unlist_waiting(conn, reactor) {
+            return;
+        }
         // Handlers parked on an HTTP/2 connection wake to find their stream gone.
         h2serve::wake_waiters(conn);
         let (queued, running) = {
@@ -1123,11 +1287,14 @@ impl Server {
         }
         reactor.targets.borrow_mut().remove(&conn.token);
         reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
-        self.st.borrow_mut().conns.remove(&conn.token);
+        self.uncount(conn);
         self.note_drain_progress();
     }
 
     fn on_ready(&self, conn: &Rc<Conn>, flags: Ev, reactor: &Reactor) {
+        if !self.unlist_waiting(conn, reactor) {
+            return;
+        }
         if matches!(conn.st.borrow().phase, Phase::Draining) {
             self.drain_rejected_input(conn, reactor);
             return;
@@ -1229,12 +1396,15 @@ impl Server {
             return;
         }
         if idle_head && !eof {
-            let mut st = conn.st.borrow_mut();
-            if st.deadline.is_none() {
-                st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
-                reactor.note_deadline(st.deadline);
-                st.idle_deadline = st.deadline.is_some();
+            {
+                let mut st = conn.st.borrow_mut();
+                if st.deadline.is_none() {
+                    st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                    reactor.note_deadline(st.deadline);
+                    st.idle_deadline = st.deadline.is_some();
+                }
             }
+            self.list_waiting(conn);
         }
         if eof {
             // The peer is gone: finish a pending response, otherwise close.
@@ -1805,6 +1975,7 @@ pub(crate) mod tests {
             limits,
             admitted: Default::default(),
             tls: None,
+            group: Default::default(),
         }
     }
 

@@ -12,6 +12,7 @@ use rustix::time::Timespec;
 use std::cell::{Cell, RefCell};
 use std::mem::ManuallyDrop;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
+use std::sync::Arc;
 use std::time::Duration;
 
 /// A borrowed socket handle.
@@ -47,6 +48,37 @@ pub fn poll_one(sock: Borrowed<'_>, write: bool, slice: Duration) -> bool {
         Err(io::Errno::INTR) => false,
         Err(_) => true,
     }
+}
+
+/// Which of `socks` have input waiting (or hung up, or failed), without blocking. A socket the
+/// call cannot ask about reads as not ready.
+pub fn readable(socks: &[Raw]) -> Vec<bool> {
+    // SAFETY: the caller keeps every descriptor open for the call (it holds the lock under which
+    // their owner closes them).
+    let borrowed: Vec<Borrowed<'_>> = socks
+        .iter()
+        .map(|&fd| unsafe { BorrowedFd::borrow_raw(fd) })
+        .collect();
+    let mut fds: Vec<PollFd<'_>> = borrowed
+        .iter()
+        .map(|fd| PollFd::new(fd, PollFlags::IN))
+        .collect();
+    let zero = Timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    if event::poll(&mut fds, Some(&zero)).is_err() {
+        return vec![false; socks.len()];
+    }
+    fds.iter().map(|fd| !fd.revents().is_empty()).collect()
+}
+
+/// A second handle on the open socket `sock`, for another owner: both name one connection, and
+/// it closes when both are closed.
+pub fn duplicate(sock: Raw) -> Option<socket2::Socket> {
+    // SAFETY: as for `readable`, the descriptor is open for the call.
+    let fd = unsafe { BorrowedFd::borrow_raw(sock) };
+    fd.try_clone_to_owned().ok().map(socket2::Socket::from)
 }
 
 /// A handle another thread can signal to make a socket readable.
@@ -126,7 +158,7 @@ pub struct Poller {
     pending: RefCell<Vec<u64>>,
     /// Registered in `poll` under `WAKE_TOKEN`: wakes a parked reactor when work appears
     /// that the kernel does not report (pending tokens, an earlier deadline, queued handlers).
-    wake: Wake,
+    wake: Arc<Wake>,
     parked: Cell<bool>,
 }
 
@@ -144,7 +176,7 @@ impl Poller {
     pub fn new() -> Poller {
         let poll = mio::Poll::new().expect("poller");
         let registry = poll.registry().try_clone().expect("poller registry");
-        let wake = Wake::new().expect("poller wake-up");
+        let wake = Arc::new(Wake::new().expect("poller wake-up"));
         let wake_fd = wake.sock().as_raw_fd();
         registry
             .register(
@@ -171,6 +203,11 @@ impl Poller {
         if self.parked.replace(false) {
             self.wake.notify();
         }
+    }
+
+    /// The handle that wakes this poller's parked task; another thread may signal it.
+    pub fn waker(&self) -> Arc<Wake> {
+        self.wake.clone()
     }
 
     pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {

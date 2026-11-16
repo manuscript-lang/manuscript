@@ -228,6 +228,10 @@ static SLOTS: [Slot; MAX_THREADS] = [const { Slot::new() }; MAX_THREADS];
 static STARTED: AtomicUsize = AtomicUsize::new(1);
 /// Bit `i` is set while thread `i` blocks in its poller with nothing to run.
 static IDLE: AtomicU64 = AtomicU64::new(0);
+/// Bit `i` is set while thread `i` has no task to run, whether or not promises live on it: it
+/// spins for work or blocks in its poller. Unlike `IDLE` it is set for a thread whose promise
+/// tasks all wait, such as one that serves connections.
+static RESTING: AtomicU64 = AtomicU64::new(0);
 /// The most threads to start; 0 until the first promise is placed.
 static LIMIT: AtomicUsize = AtomicUsize::new(0);
 /// Set when the program ends: scheduler threads leave their loop.
@@ -763,12 +767,29 @@ pub(crate) fn set_idle(idle: bool) {
         return;
     }
     if idle {
+        RESTING.fetch_or(1 << me, Ordering::AcqRel);
         if SLOTS[me].live.load(Ordering::SeqCst) == 0 {
             IDLE.fetch_or(1 << me, Ordering::AcqRel);
         }
     } else {
+        // Sequentially consistent with the watcher falling asleep (`watch::run`): either it sees
+        // this thread busy, or `stir` sees it asleep.
+        RESTING.fetch_and(!(1 << me), Ordering::SeqCst);
         IDLE.fetch_and(!(1 << me), Ordering::AcqRel);
+        crate::watch::stir(me);
     }
+}
+
+/// The calling thread's scheduler index, or `NONE` for a thread that is not a scheduler thread.
+pub fn thread() -> usize {
+    current()
+}
+
+/// Bit `i` is set while scheduler thread `i` has no task to run. A thread that runs one task for
+/// a long time reads as not resting for all of it, which is how the watcher tells that the tasks
+/// waiting there are held up.
+pub fn resting_mask() -> u64 {
+    RESTING.load(Ordering::SeqCst)
 }
 
 fn root(_: *mut u8) {
