@@ -255,6 +255,9 @@ pub fn build_executable(
     if unwound && cfg!(debug_assertions) {
         verify_after(module, "unwind")?;
     }
+    if ms_mir::cancel_edges::enabled() && ms_mir::cancel_edges::run(module) {
+        verify_after(module, "cancel edges")?;
+    }
     phase("mir optimize");
     let compiled = match llvm {
         Some(level) => crate::llvm::compile(module, options.checks, level, build),
