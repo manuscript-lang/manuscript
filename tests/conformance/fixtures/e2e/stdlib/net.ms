@@ -23,8 +23,8 @@ import (
 )
 
 test "IP parsing CIDR normalization and containment":
-	expect_equal((parse_ip("2001:0db8::1")?).text(), "2001:db8::1")?
-	expect_equal((parse_cidr("192.0.2.3/24")?).text(), "192.0.2.0/24")?
+	expect_equal((parse_ip("2001:0db8::1")?).to_string(), "2001:db8::1")?
+	expect_equal((parse_cidr("192.0.2.3/24")?).to_string(), "192.0.2.0/24")?
 	expect_false(
 		not (
 			contains_ip(
@@ -147,7 +147,7 @@ test "network restriction denies admission and close rejects acquisitions":
 
 test "typed addresses preserve normalization and reject zones":
 	ip := parse_ip("::ffff:192.0.2.1")?
-	expect_false(ip.text() != "192.0.2.1" or ip.family() != IpFamily.IPv4)?
+	expect_false(ip.to_string() != "192.0.2.1" or ip.family() != IpFamily.IPv4)?
 	expect_equal((parse_ip("2001:db8::1")?).family(), IpFamily.IPv6)?
 	expect_ip_error("fe80::1%eth0")?
 	expect_false((contains_ip(parse_cidr("::ffff:192.0.2.0/120")?, ip)?))?
