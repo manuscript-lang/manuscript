@@ -3,6 +3,7 @@
 //! Everything here works on byte buffers and never touches a socket.
 
 use super::headers::Headers;
+use std::borrow::Cow;
 use std::io::Write as _;
 
 /// Longest request or status line plus headers when no limit is configured.
@@ -24,7 +25,7 @@ impl BadMessage {
 /// A parsed request head.
 #[derive(Clone, Debug)]
 pub struct RequestHead {
-    pub method: String,
+    pub method: Cow<'static, str>,
     pub target: String,
     /// Minor HTTP version (0 or 1).
     pub minor: u8,
@@ -170,7 +171,7 @@ fn parse_request_in<'a>(
                 return Parsed::Bad(BadMessage::new(400, "Bad Request"));
             }
             Parsed::Complete(RequestHead {
-                method: req.method.unwrap_or_default().to_string(),
+                method: method_text(req.method.unwrap_or_default()),
                 target: req.path.unwrap_or_default().to_string(),
                 minor: req.version.unwrap_or(1),
                 fields: Headers::from_parsed(buf, req.headers),
@@ -251,6 +252,17 @@ pub enum Framing {
     Chunked,
     /// Responses only: the body ends when the connection closes.
     UntilClose,
+}
+
+/// A method as text; the usual ones are static, so a request allocates nothing for it.
+pub fn method_text(method: &str) -> Cow<'static, str> {
+    const COMMON: [&str; 9] = [
+        "GET", "POST", "HEAD", "PUT", "DELETE", "OPTIONS", "PATCH", "CONNECT", "TRACE",
+    ];
+    match COMMON.iter().find(|m| **m == method) {
+        Some(m) => Cow::Borrowed(m),
+        None => Cow::Owned(method.to_string()),
+    }
 }
 
 /// A list of header fields, as (name, value) pairs.
