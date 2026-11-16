@@ -19,7 +19,7 @@ use crate::eq::string_eq;
 use crate::func::FnLower;
 use crate::text::runtime_fn;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{Block, Cc, FuncId, Imm, InlineHint, Linkage, Mode, Op, Param, Value};
+use ms_mir::ir::{Block, Cc, FuncId, Imm, Mode, Op, Param, Value};
 use ms_mir::types::Ty as MTy;
 
 const SLOTS: i64 = 0;
@@ -380,6 +380,30 @@ fn find(b: &mut FuncBuilder<'_>, shape: Shape, m: Value, key: Value) -> Value {
     b.use_var(out)
 }
 
+/// The one way a generated fast path is made: an internal function marked `inline(always)` that
+/// does the common case itself and calls the runtime for the rest, built once per `HelperKey`.
+/// Every inlinable runtime call (`inline_probe`, `inline_str`) goes through these three steps.
+impl<'a> FnLower<'a> {
+    pub(crate) fn fast_path_cached(&self, key: &HelperKey) -> Option<FuncId> {
+        self.cx.helpers.get(key).copied()
+    }
+
+    pub(crate) fn fast_path_builder(
+        &mut self,
+        name: &str,
+        params: Vec<Param>,
+        ret: MTy,
+    ) -> FuncBuilder<'_> {
+        FuncBuilder::fast_path(self.b.m, name, params, ret)
+    }
+
+    pub(crate) fn fast_path_add(&mut self, key: HelperKey, func: ms_mir::ir::Func) -> FuncId {
+        let fid = self.b.m.add_func(func);
+        self.cx.helpers.insert(key, fid);
+        fid
+    }
+}
+
 impl FnLower<'_> {
     /// Calls the generated probe for the runtime symbol `sym` when it has one: `args` are the map,
     /// the key and value descriptors (unused), the address of the key, and for a `get` the
@@ -397,8 +421,9 @@ impl FnLower<'_> {
             }
             return Some(self.b.call(f, &args));
         }
-        if let Some(v) = self.inline_str(sym, args) {
-            return Some(v);
+        if let Some(which) = self.str_fast(sym, args) {
+            let f = self.str_fn(which);
+            return Some(self.b.call(f, args));
         }
         // A literal needle of two or more bytes skips the dispatch on the needle's length.
         if sym == "msrt_string_contains"
@@ -448,8 +473,8 @@ impl FnLower<'_> {
 
     fn probe_fn(&mut self, shape: Shape, result: Answer) -> FuncId {
         let key = HelperKey::MapProbe(shape, result);
-        if let Some(f) = self.cx.helpers.get(&key) {
-            return *f;
+        if let Some(f) = self.fast_path_cached(&key) {
+            return f;
         }
         let ptr = || Param {
             ty: MTy::PTR,
@@ -463,9 +488,7 @@ impl FnLower<'_> {
             Answer::Address => MTy::PTR,
             _ => MTy::BOOL,
         };
-        let mut b = FuncBuilder::new(self.b.m, "map_probe", params, ret);
-        b.func_mut().linkage = Linkage::Internal;
-        b.func_mut().inline = InlineHint::Always;
+        let mut b = self.fast_path_builder("map_probe", params, ret);
         let ps = b.params();
         let p = find(&mut b, shape, ps[0], ps[1]);
         let out = match result {
@@ -499,9 +522,7 @@ impl FnLower<'_> {
         };
         b.ret(Some(out));
         let func = b.into_func();
-        let fid = self.b.m.add_func(func);
-        self.cx.helpers.insert(key, fid);
-        fid
+        self.fast_path_add(key, func)
     }
 }
 
@@ -594,8 +615,8 @@ impl FnLower<'_> {
     /// bound or a fault continues in the runtime.
     fn bytes_view_fn(&mut self, bytes_ty: MTy) -> FuncId {
         let key = HelperKey::BytesView(bytes_ty);
-        if let Some(f) = self.cx.helpers.get(&key) {
-            return *f;
+        if let Some(f) = self.fast_path_cached(&key) {
+            return f;
         }
         let param = |ty| Param {
             ty,
@@ -613,9 +634,7 @@ impl FnLower<'_> {
             &[bytes_ty, MTy::INT, MTy::INT, MTy::PTR],
             MTy::VOID,
         );
-        let mut b = FuncBuilder::new(self.b.m, "bytes_view", params, MTy::VOID);
-        b.func_mut().linkage = Linkage::Internal;
-        b.func_mut().inline = InlineHint::Always;
+        let mut b = self.fast_path_builder("bytes_view", params, MTy::VOID);
         let ps = b.params();
         let (bytes, start, end, out) = (ps[0], ps[1], ps[2], ps[3]);
         let (fast, slow, join) = (b.new_block(), b.new_block(), b.new_block());
@@ -662,15 +681,13 @@ impl FnLower<'_> {
         let unit = b.unit();
         b.ret(Some(unit));
         let func = b.into_func();
-        let fid = self.b.m.add_func(func);
-        self.cx.helpers.insert(key, fid);
-        fid
+        self.fast_path_add(key, func)
     }
 
     fn view_fn(&mut self) -> FuncId {
         let key = HelperKey::StringView;
-        if let Some(f) = self.cx.helpers.get(&key) {
-            return *f;
+        if let Some(f) = self.fast_path_cached(&key) {
+            return f;
         }
         let param = |ty| Param {
             ty,
@@ -688,9 +705,7 @@ impl FnLower<'_> {
             &[MTy::STR, MTy::INT, MTy::INT, MTy::PTR],
             MTy::VOID,
         );
-        let mut b = FuncBuilder::new(self.b.m, "string_view", params, MTy::VOID);
-        b.func_mut().linkage = Linkage::Internal;
-        b.func_mut().inline = InlineHint::Always;
+        let mut b = self.fast_path_builder("string_view", params, MTy::VOID);
         let ps = b.params();
         let (text, start, end, out) = (ps[0], ps[1], ps[2], ps[3]);
         let (slow, join, flat_block, inl) =
@@ -757,9 +772,7 @@ impl FnLower<'_> {
         let unit = b.unit();
         b.ret(Some(unit));
         let func = b.into_func();
-        let fid = self.b.m.add_func(func);
-        self.cx.helpers.insert(key, fid);
-        fid
+        self.fast_path_add(key, func)
     }
 }
 
@@ -855,8 +868,8 @@ impl FnLower<'_> {
     /// big-endian reads and a bad width call the runtime.
     fn read_word_fn(&mut self) -> FuncId {
         let key = HelperKey::BytesReadWord;
-        if let Some(f) = self.cx.helpers.get(&key) {
-            return *f;
+        if let Some(f) = self.fast_path_cached(&key) {
+            return f;
         }
         let param = |ty| Param {
             ty,
@@ -864,14 +877,11 @@ impl FnLower<'_> {
         };
         let tys = [MTy::BYTES, MTy::INT, MTy::INT, MTy::BOOL, MTy::PTR];
         let ext = runtime_fn(self.b.m, "msrt_bytes_read_word", &tys, MTy::INT);
-        let mut b = FuncBuilder::new(
-            self.b.m,
+        let mut b = self.fast_path_builder(
             "bytes_read_word",
             tys.iter().map(|t| param(*t)).collect(),
             MTy::INT,
         );
-        b.func_mut().linkage = Linkage::Internal;
-        b.func_mut().inline = InlineHint::Always;
         let ps = b.params();
         let (bytes, at, width, little, out) = (ps[0], ps[1], ps[2], ps[3], ps[4]);
         let (check, fast, slow, fail, store) = (
@@ -935,9 +945,7 @@ impl FnLower<'_> {
         let oor = b.iconst(2);
         b.ret(Some(oor));
         let func = b.into_func();
-        let fid = self.b.m.add_func(func);
-        self.cx.helpers.insert(key, fid);
-        fid
+        self.fast_path_add(key, func)
     }
 
     /// The generated `Bytes.index_of_byte` (`msrt_bytes_index_of_byte`): the next sixteen bytes
@@ -947,8 +955,8 @@ impl FnLower<'_> {
     /// from where the window ended.
     fn index_of_byte_fn(&mut self) -> FuncId {
         let key = HelperKey::BytesIndexOfByte;
-        if let Some(f) = self.cx.helpers.get(&key) {
-            return *f;
+        if let Some(f) = self.fast_path_cached(&key) {
+            return f;
         }
         let param = |ty| Param {
             ty,
@@ -956,14 +964,11 @@ impl FnLower<'_> {
         };
         let tys = [MTy::BYTES, MTy::INT, MTy::INT, MTy::PTR];
         let ext = runtime_fn(self.b.m, "msrt_bytes_index_of_byte", &tys, MTy::BOOL);
-        let mut b = FuncBuilder::new(
-            self.b.m,
+        let mut b = self.fast_path_builder(
             "bytes_index_of_byte",
             tys.iter().map(|t| param(*t)).collect(),
             MTy::BOOL,
         );
-        b.func_mut().linkage = Linkage::Internal;
-        b.func_mut().inline = InlineHint::Always;
         let ps = b.params();
         let (bytes, value, start, out) = (ps[0], ps[1], ps[2], ps[3]);
         let (window, second, slow, found) =
@@ -1033,8 +1038,6 @@ impl FnLower<'_> {
         let status = b.call_rt(ext, &[bytes, value, resume, out]);
         b.ret(Some(status));
         let func = b.into_func();
-        let fid = self.b.m.add_func(func);
-        self.cx.helpers.insert(key, fid);
-        fid
+        self.fast_path_add(key, func)
     }
 }
