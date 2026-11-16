@@ -1027,7 +1027,9 @@ fn a_listed_connection_serves_its_next_request() {
             first.ends_with("|HTTP/1.1") || first.ends_with("|HTTP/2.0"),
             "{first}"
         );
-        assert_eq!(first, second);
+        // The `Date` header changes when a second passes between the two: compare the bodies.
+        let body = |text: &str| text.rsplit("\r\n\r\n").next().unwrap_or("").to_string();
+        assert_eq!(body(&first), body(&second));
     }
 }
 
