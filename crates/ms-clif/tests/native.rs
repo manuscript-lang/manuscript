@@ -1125,6 +1125,8 @@ b0:
   %v2: void = call.rt @msrt_print_int(%s3)
   %i: int = call @zi()
   %v3: void = call.rt @msrt_print_int(%i)
+  %fw: Wide = undef
+  forget %fw
   %o: opt<int> = call @zo()
   %some: bool = opt.is_some %o
   %somen: int = b2i %some

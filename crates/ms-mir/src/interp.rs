@@ -650,6 +650,7 @@ impl<'m> Interp<'m> {
             Op::Clone
             | Op::MoveOut
             | Op::Drop
+            | Op::Forget
             | Op::DropIf
             | Op::Slot
             | Op::PtrIsNull
