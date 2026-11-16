@@ -74,17 +74,62 @@ impl Default for Headers {
     }
 }
 
+/// The class of each byte: `TOKEN` for a byte of an RFC 9110 token (letters, digits and
+/// ``!#$%&'*+-.^_`|~``), plus `UPPER` or `LOWER` for a letter, so one load answers each question
+/// the canonical-name scan asks.
+const TOKEN: u8 = 1;
+const UPPER: u8 = 2;
+const LOWER: u8 = 4;
+const CLASS: [u8; 256] = {
+    let mut table = [0; 256];
+    let mut b = 0;
+    while b < 256 {
+        let c = b as u8;
+        if c.is_ascii_alphanumeric()
+            || matches!(
+                c,
+                b'!' | b'#'
+                    | b'$'
+                    | b'%'
+                    | b'&'
+                    | b'\''
+                    | b'*'
+                    | b'+'
+                    | b'-'
+                    | b'.'
+                    | b'^'
+                    | b'_'
+                    | b'`'
+                    | b'|'
+                    | b'~'
+            )
+        {
+            table[b] = TOKEN;
+        }
+        if c.is_ascii_uppercase() {
+            table[b] |= UPPER;
+        }
+        if c.is_ascii_lowercase() {
+            table[b] |= LOWER;
+        }
+        b += 1;
+    }
+    table
+};
+
 /// Token characters of RFC 9110.
 pub fn valid_name(name: &str) -> bool {
-    !name.is_empty()
-        && name
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
+    !name.is_empty() && name.bytes().all(|b| CLASS[b as usize] & TOKEN != 0)
+}
+
+/// Whether `bytes` is UTF-8: ASCII, which most values are, is checked a word at a time.
+pub fn is_utf8(bytes: &[u8]) -> bool {
+    bytes.is_ascii() || std::str::from_utf8(bytes).is_ok()
 }
 
 /// Outgoing values are UTF-8 text with no control bytes besides tab, and no DEL.
 pub fn valid_value(value: &[u8]) -> bool {
-    std::str::from_utf8(value).is_ok() && value.iter().all(|&b| (b >= 32 || b == b'\t') && b != 127)
+    is_utf8(value) && value.iter().all(|&b| (b >= 32 || b == b'\t') && b != 127)
 }
 
 /// `textproto.CanonicalMIMEHeaderKey`: keys with a space or non-token byte are
@@ -93,27 +138,36 @@ pub fn canonical(name: &str) -> String {
     canonical_owned(name.to_string())
 }
 
-/// `canonical` over an owned name, edited in place.
+/// `canonical` over an owned name: one pass finds whether the name is a token and already
+/// canonical (nearly every name a client sends is), and only a name that is not is rebuilt.
 pub fn canonical_owned(name: String) -> String {
-    if !name
-        .bytes()
-        .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
-        || name.is_empty()
-    {
+    // The letter case a canonical byte must not have: lower after the first byte and after a
+    // hyphen, upper elsewhere; any byte of that case, or a byte outside the token, ends the scan.
+    let mut wrong = LOWER;
+    let (mut canonical, mut all_token) = (true, true);
+    for b in name.bytes() {
+        let class = CLASS[b as usize];
+        all_token &= class & TOKEN != 0;
+        canonical &= class & wrong == 0;
+        wrong = if b == b'-' { LOWER } else { UPPER };
+    }
+    if !all_token || name.is_empty() {
         return name;
     }
-    let mut upper = true;
-    let mut bytes = name.into_bytes();
-    for b in &mut bytes {
-        let was = *b;
-        if upper {
-            b.make_ascii_uppercase();
-        } else {
-            b.make_ascii_lowercase();
-        }
-        upper = was == b'-';
+    if canonical || name.is_empty() {
+        return name;
     }
-    String::from_utf8(bytes).unwrap_or_default()
+    let mut out = String::with_capacity(name.len());
+    let mut upper = true;
+    for b in name.bytes() {
+        out.push(if upper {
+            b.to_ascii_uppercase()
+        } else {
+            b.to_ascii_lowercase()
+        } as char);
+        upper = b == b'-';
+    }
+    out
 }
 
 impl Headers {
@@ -223,7 +277,7 @@ impl Headers {
     pub fn is_text(&self) -> bool {
         self.entries
             .iter()
-            .all(|e| e.values.iter().all(|v| std::str::from_utf8(v).is_ok()))
+            .all(|e| e.values.iter().all(|v| is_utf8(v)))
     }
 }
 
@@ -262,6 +316,82 @@ mod tests {
         assert_eq!(h.values("x-b").unwrap(), &[b"1".to_vec(), b"2".to_vec()]);
         assert_eq!(canonical("content-type"), "Content-Type");
         assert_eq!(canonical("a b"), "a b");
+    }
+
+    /// The per-byte definition `canonical_owned` replaces.
+    fn canonical_by_bytes(name: &str) -> String {
+        if name.is_empty()
+            || !name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
+        {
+            return name.to_string();
+        }
+        let mut upper = true;
+        name.bytes()
+            .map(|b| {
+                let c = if upper {
+                    b.to_ascii_uppercase()
+                } else {
+                    b.to_ascii_lowercase()
+                };
+                upper = b == b'-';
+                c as char
+            })
+            .collect()
+    }
+
+    #[test]
+    fn canonical_names_match_the_byte_by_byte_rule() {
+        for name in [
+            "",
+            "a",
+            "A",
+            "host",
+            "Host",
+            "HOST",
+            "content-type",
+            "Content-Type",
+            "X-FORWARDED-for",
+            "x--y",
+            "-a",
+            "a-",
+            "a b",
+            "a:b",
+            "é",
+            "Ünï",
+            "x_y-Z",
+            "0-9",
+            "ETag",
+            "WWW-Authenticate",
+        ] {
+            assert_eq!(canonical(name), canonical_by_bytes(name), "{name:?}");
+        }
+        // Every pair of bytes, so each class of byte meets each state.
+        for a in 0..=127u8 {
+            for b in 0..=127u8 {
+                let name = String::from_utf8(vec![a, b'-', b]).unwrap();
+                assert_eq!(canonical(&name), canonical_by_bytes(&name), "{name:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn utf8_check_agrees_with_the_standard_one() {
+        for bytes in [
+            &b""[..],
+            b"ascii only here",
+            "ünï".as_bytes(),
+            &[0xff],
+            &[b'a', 0xc3],
+            &[0xc3, 0xa9],
+        ] {
+            assert_eq!(
+                is_utf8(bytes),
+                std::str::from_utf8(bytes).is_ok(),
+                "{bytes:?}"
+            );
+        }
     }
 
     #[test]
