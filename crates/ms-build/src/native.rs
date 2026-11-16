@@ -258,12 +258,12 @@ pub fn build_executable(
     if unwound && cfg!(debug_assertions) {
         verify_after(module, "unwind")?;
     }
-    if ms_mir::cancel_edges::enabled() && ms_mir::cancel_edges::run(module) {
-        verify_after(module, "cancel edges")?;
-    }
     // After `unwind`, which looks for the check as the first instruction of a function.
     if ms_mir::depth::lower(module) && cfg!(debug_assertions) {
         verify_after(module, "depth")?;
+    }
+    if ms_mir::cancel_edges::enabled() && ms_mir::cancel_edges::run(module) {
+        verify_after(module, "cancel edges")?;
     }
     // The checks and list growth the backends lower are explicit MIR from here on.
     ms_mir::expand::run(module, options.checks);
