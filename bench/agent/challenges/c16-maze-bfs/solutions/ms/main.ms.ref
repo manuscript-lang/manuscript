@@ -31,4 +31,4 @@ fn solve(rows: List[List[String]]) String:
 fn main() Void:
     if var rows = stdin() | lines | collect(none):
         while rows.last().get("x") == "": rows.pop()
-        print(solve(rows.map(fn l: l.chars())))
+        print(solve(rows.map(fn l: l.chars().clone())))

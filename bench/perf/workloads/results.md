@@ -127,3 +127,22 @@ Revision `0d723018` plus this change, Release LLVM build, min of 5, shared 4 vCP
 Remaining gaps, in order: `c16` (the Manuscript reference holds the grid as `List[List[String]]` of one-character strings, 16 bytes a cell and a `chars()` allocation per line, against Rust's `Vec<char>`; the rest of `contains` is about 40 instructions of inline-string decoding), `c03` (`split` and `find`), `c13`, `c36`, `c14`. `c44` is 3 ms in the 2026-11-07 table and 18 ms now; unexplained, to investigate.
 
 Also in this change: scalar slicing of an inline (at most 16 byte) ASCII string took the walking path because only heap strings carry the ASCII flag; `known_ascii` now tests an inline string's bits. `c03` under callgrind (3 MB input): 1,074.8M to 1,045.8M instructions (-2.7%); wall time is inside the noise. The rest of `c03` is spread over `scalar_values().all(...)` list allocations, `split`, `replace` and map inserts; callgrind sends every allocation to glibc `malloc` (see the profiling note above), so allocator rows in these profiles are not the release costs.
+
+## 2026-11-16, suite rebuilt on current main
+
+Revision `3b2ef968`, Release LLVM build, min of 5, shared 4 vCPU Xeon @ 2.10GHz, Go 1.24, rustc stable. `c16-maze-bfs` stopped building (`chars` borrows the closure parameter, which the checker now rejects): the reference clones the list it builds.
+
+| program | ms ms | go ms | rust ms | ms/go | ms/rust |
+|---|---:|---:|---:|---:|---:|
+| c03-csv-group-sum | 52.4 | 45.2 | 30.0 | 1.16x | 1.75x |
+| c05-calculator | 44.5 | 59.9 | 126.6 | 0.74x | 0.35x |
+| c09-ciphers | 50.0 | 57.6 | 38.3 | 0.87x | 1.31x |
+| c13-inventory-orders | 274.9 | 310.7 | 150.8 | 0.88x | 1.82x |
+| c14-dp-suite | 520.6 | 1594.4 | 453.1 | 0.33x | 1.15x |
+| c16-maze-bfs | 82.8 | 35.0 | 33.3 | 2.36x | 2.49x |
+| c18-cron-next-runs | 861.3 | 1144.3 | 822.7 | 0.75x | 1.05x |
+| c25-log-analyzer | 23.1 | 55.1 | 21.6 | 0.42x | 1.07x |
+| c36-bank-ledger | 76.1 | 129.7 | 64.3 | 0.59x | 1.18x |
+| c44-unified-diff | 15.4 | 100.4 | 15.2 | 0.15x | 1.02x |
+
+Against the 2026-11-12 table: c03 2.62x to 1.75x, c14 1.63x to 1.15x, c36 1.79x to 1.18x, c44 1.31x to 1.02x. Remaining gaps against Rust: c16 (grid held as `List[List[String]]`), c13 (map call counts), c03, c09.
