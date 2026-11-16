@@ -255,7 +255,7 @@ fn make_closure_drop(m: &mut Module, c: FuncId, framed: bool) -> FuncId {
 }
 
 /// `fn(obj)` registered while the close of capture `k` of a closure runs: when a guarded task
-/// unwinds out of it, it drops the later captures (the close owns capture `k`) and frees the
+/// unwinds out of it, it drops capture `k` (without closing it again) and the later captures, and frees the
 /// object. It does nothing otherwise.
 fn make_closure_drop_from(m: &mut Module, c: FuncId, k: usize) -> FuncId {
     let (caps, _) = captures_of(m, c);
@@ -274,7 +274,7 @@ fn make_closure_drop_from(m: &mut Module, c: FuncId, k: usize) -> FuncId {
     b.br_if(on, body, &[], done, &[]);
     b.switch_to(body);
     for (j, (ty, off)) in caps.iter().enumerate() {
-        if j > k && needs[j] {
+        if j >= k && needs[j] {
             let at = ptr_at(&mut b, obj, *off);
             let v = b
                 .emit(Op::Take, &[at], Imm::Ty(*ty), Some(*ty))
