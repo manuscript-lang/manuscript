@@ -29,7 +29,15 @@ pub(super) unsafe fn switch_away() {
             deliver_remote_posts();
         }
         if !s.kills.is_empty() || !s.timers.is_empty() || crate::promise::has_timers() {
-            expire_timers(clock_ns());
+            // Timers are checked once per round: a pass over the tasks that were ready when the
+            // last check ran. A due timer therefore waits at most one round, as a task at the
+            // back of the queue does; a lone task yielding to itself is a round of one and checks
+            // on every switch. A round never outlasts the queue, so tasks that block end it early.
+            s.timer_round = s.timer_round.min(s.ready.len()).saturating_sub(1);
+            if s.timer_round == 0 {
+                expire_timers(clock_ns());
+                s.timer_round = s.ready.len();
+            }
         }
         // A poll is a system call, so a busy queue polls once per POLL_EVERY switches (a server
         // handling a batch of requests would otherwise poll once per request); an empty queue
@@ -267,6 +275,14 @@ pub unsafe extern "C-unwind" fn msrt_task_yield() {
 /// it becomes ready for what that task asked, and the one that gets the resource proceeds.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
+    // SAFETY: forwards to the park path.
+    unsafe { msrt_task_wait_fd_at(fd, events, after_ns(timeout_ns)) }
+}
+
+/// [`msrt_task_wait_fd`] with an absolute deadline on the monotonic clock (`sys::monotonic_ns`),
+/// negative for none: a caller that already holds the time to wait until reads no clock here.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_task_wait_fd_at(fd: i32, events: u32, at_ns: i64) -> u32 {
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
@@ -298,7 +314,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             (*cur).wait_fd = fd;
         }
         (*cur).wait_events = events;
-        set_deadline(cur, timeout_ns);
+        set_deadline(cur, at_ns);
         (*cur).state = State::Waiting;
         switch_away();
         (*cur).wait_result
@@ -376,26 +392,28 @@ pub(super) unsafe fn rearm(fd: i32) {
     }
 }
 
-/// Arms the timer of a park that times out after `timeout_ns` (negative: never).
-pub(super) unsafe fn set_deadline(cur: *mut Task, timeout_ns: i64) {
+/// The monotonic time `timeout_ns` from now (negative: `NO_DEADLINE`, no clock read).
+pub(super) fn after_ns(timeout_ns: i64) -> i64 {
+    if timeout_ns < 0 {
+        NO_DEADLINE
+    } else {
+        clock_ns().saturating_add(timeout_ns)
+    }
+}
+
+/// Arms the timer of a park that times out at `at` on the monotonic clock (`NO_DEADLINE`: never).
+/// It reads no clock; the scheduler compares it with the time when it checks its timers.
+pub(super) unsafe fn set_deadline(cur: *mut Task, at: i64) {
     let mut s = sched();
     // SAFETY: `cur` is the running task; slots hold live records or null.
     unsafe {
         (*cur).deadline = NO_DEADLINE;
-        let mut timeout_ns = timeout_ns;
-        if (*cur).read_limit != NO_DEADLINE {
-            // A bounded read: no park outlasts the limit, so the caller sees a timeout.
-            let left = ((*cur).read_limit - clock_ns()).max(0);
-            timeout_ns = if timeout_ns < 0 {
-                left
-            } else {
-                timeout_ns.min(left)
-            };
-        }
-        if timeout_ns < 0 {
+        // A bounded read: no park outlasts the limit, so the caller sees a timeout.
+        let at = if at < 0 { NO_DEADLINE } else { at }.min((*cur).read_limit);
+        if at == NO_DEADLINE {
             return;
         }
-        let deadline = clock_ns().saturating_add(timeout_ns);
+        let deadline = at;
         (*cur).deadline = deadline;
         s.timers.push(Reverse((deadline, (*cur).handle)));
         if s.timers.len() > s.timer_limit {
@@ -638,15 +656,34 @@ pub fn limit_current(limit_ns: i64) {
     }
 }
 
+/// Cancels the running task at `at_ns` on the monotonic clock (`sys::monotonic_ns`), or never
+/// when negative: the same as `limit_current` for a caller that already knows the time, so it
+/// reads no clock. Replaces any earlier limit.
+pub fn limit_current_at(at_ns: i64) {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe {
+        let t = ensure_init();
+        (*t).kill_at = NO_DEADLINE;
+        if at_ns >= 0 {
+            arm_kill_at((*t).handle, at_ns);
+        }
+    }
+}
+
 /// Cancels task `h` once it has run `limit_ns` nanoseconds; a negative limit means never.
 pub(super) unsafe fn arm_kill(h: u64, limit_ns: i64) {
+    if limit_ns < 0 {
+        return;
+    }
+    // SAFETY: single threaded scheduler; `h` is a live task.
+    unsafe { arm_kill_at(h, clock_ns().saturating_add(limit_ns)) }
+}
+
+/// Cancels task `h` at `at` on the monotonic clock.
+pub(super) unsafe fn arm_kill_at(h: u64, at: i64) {
     // SAFETY: single threaded scheduler; `h` is a live task.
     unsafe {
-        if limit_ns < 0 {
-            return;
-        }
         let t = lookup(h);
-        let at = clock_ns().saturating_add(limit_ns);
         (*t).kill_at = at;
         let mut s = sched();
         s.kills.push(Reverse((at, h)));

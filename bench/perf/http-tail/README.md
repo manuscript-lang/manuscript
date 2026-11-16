@@ -87,6 +87,19 @@ Counted with callgrind (method: [wiki](../../wiki/benchmarks-and-performance/cou
 
 Where the rest goes is in [the proposal](../../proposals/http-request-path-instructions.md).
 
+## Results, 2026-11-16, clock reads per request
+
+Counted with an `LD_PRELOAD` shim on `clock_gettime(CLOCK_MONOTONIC)`: one scheduler thread (`MS_THREADS=1`), `server.ms` with a 30 s `HttpServerOptions.timeout`, 64 connections, `load -warm 0` so the request count covers the same window as the reads. Release build, shared VM; read counts repeat, throughput does not.
+
+| Load | `main` at cb7f3a7a | #4229 |
+| --- | --- | --- |
+| 2000 req/s | 15.7 | 8.7 |
+| closed loop | 11.4 | 4.2 |
+
+Closed-loop throughput over 3 runs each: 40.7k to 51.3k req/s before, 44.2k to 50.7k after (no change within the noise). Without a timeout the closed loop reads about 0.
+
+The 4.2 left, one each: the arrival stamp at parse; `late` after the handler (a handler that never switches is never killed, so only a read shows it ran past its deadline); the scheduler's per-round check while the handler's kill timer is armed; `settle_timeouts` before the reactor parks (a read after the deadlines it creates). Each is about 20 ns, under 3 percent of a request. Sharing one read per turn needs a non-blocking poll per turn, a 300 ns syscall to save 20 ns reads, so it was not built. A request count taken over a window shorter than the read count (the load tool's default 3 s warm-up) overstates reads per request by about 1.6.
+
 ## Results, 2026-11-16, text built piece by piece, same 4 vCPU Linux VM
 
 "Before" is `main` at 9f09fd55. "Now": `out += f"..."` writes the pieces straight onto `out` (`msrt_string_append_fmtN`) instead of building the text and appending it.
