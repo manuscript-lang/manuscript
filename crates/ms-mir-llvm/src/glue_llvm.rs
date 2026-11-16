@@ -189,7 +189,9 @@ pub fn native(sym: &str) -> String {
 /// The symbol a direct caller calls for glue `sym` of `kind` over `ty`: the native entry when it
 /// is emitted directly, else the leaf symbol of the Cranelift lowering.
 pub fn target(g: &Gen, kind: Glue, ty: Ty, sym: String) -> String {
-    if supports(g, kind, ty) {
+    // The module's own drop function has the leaf convention only.
+    let own = kind == Glue::Drop && g.m.drop_glue.contains_key(&ty.unscoped());
+    if !own && supports(g, kind, ty) {
         native(&sym)
     } else {
         sym

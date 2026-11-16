@@ -242,7 +242,16 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
         if let Some(list) = t.strip_prefix("// ms:") {
             let list: Vec<String> = list.split_whitespace().map(str::to_string).collect();
             if let Some(bad) = list.iter().find(|f| {
-                !["leaf", "pure", "fresh", "borrows", "spawns", "takes_self"].contains(&f.as_str())
+                ![
+                    "leaf",
+                    "pure",
+                    "fresh",
+                    "borrows",
+                    "spawns",
+                    "takes_self",
+                    "retains",
+                ]
+                .contains(&f.as_str())
                     && !f.starts_with("keeps:")
                     && !f.starts_with("takes:")
                     && !f.starts_with("op=")

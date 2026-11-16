@@ -26,8 +26,9 @@ use core::cell::Cell;
 use ms_rt::ffi::{ErrOut, Failure, Global, ObjRef, Object, Out, StatusCode, abi_handle, native};
 use ms_rt::glue::poll_cancel;
 
-/// The status of `f`, raising a pending cancel first: operations that parked return a failure
-/// instead of jumping, so their frames have returned and dropped what they held.
+/// The status of `f`, delivering a pending cancel first: operations that parked return a failure
+/// instead of jumping, so their frames have returned and dropped what they held. The status is
+/// returned either way; a delivered cancel makes the caller's exit ignore it.
 fn fail(err: &ErrOut, f: Failure) -> StatusCode {
     poll_cancel();
     err.fail(f)
@@ -142,7 +143,9 @@ native! {
     }
 
     fn msstd_terminal_raw_terminal_size_status(h: ObjRef<RawH>) -> u8 {
-        poll_cancel();
+        if poll_cancel() {
+            return STATUS_OK;
+        }
         h.size().err().unwrap_or(STATUS_OK)
     }
 
@@ -156,7 +159,9 @@ native! {
 
     /// Writes text or control sequences to the terminal, after flushing buffered output.
     fn msstd_terminal_raw_terminal_write(h: ObjRef<RawH>, text: &str; err: ErrOut) -> Result<(), StatusCode> {
-        poll_cancel();
+        if poll_cancel() {
+            return Ok(());
+        }
         h.command(text.as_bytes()).map_err(|f| fail(&err, f))
     }
 
@@ -168,11 +173,15 @@ native! {
     /// Waits for input: `STATUS_OK` with the text in `msstd_terminal_input_text`,
     /// `STATUS_NONE` when nothing came in 40 ms (`quick`) or 50 ms, `STATUS_CLOSED` once closed.
     fn msstd_terminal_raw_terminal_read(h: ObjRef<RawH>, quick: bool) -> u8 {
-        poll_cancel();
+        if poll_cancel() {
+            return STATUS_OK;
+        }
         let mut text = alloc::string::String::new();
         let status = h.read(quick, &mut text);
-        // The wait returned instead of jumping, so its frames are gone; raise a cancel now.
-        poll_cancel();
+        // The wait returned instead of jumping, so its frames are gone; deliver a cancel now.
+        if poll_cancel() {
+            return STATUS_OK;
+        }
         if status == STATUS_OK {
             INPUT.get().set(text);
         }

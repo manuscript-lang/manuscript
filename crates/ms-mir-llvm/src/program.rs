@@ -92,6 +92,10 @@ fn native_functions(g: &Gen) -> HashSet<usize> {
         clear(a.index());
         clear(b.index());
     }
+    // Callers name a drop function by one symbol and read its convention from the name.
+    for f in m.drop_glue.values() {
+        clear(f.index());
+    }
     for f in m.funcs.iter() {
         f.capture_closers.iter().for_each(|(_, c)| clear(c.index()));
         let others = [
@@ -158,6 +162,9 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) {
             mir_llvm::emit(g.m, &g.lay, place, f, &plan, env, &symbol_of)
         },
     );
+    if g.m.drop_glue.values().any(|d| d.index() == i) {
+        llvm.mark_glue();
+    }
     g.llvm = Some(llvm);
     g.funcs.push(FuncInfo {
         symbol: sym,

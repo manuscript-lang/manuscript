@@ -62,7 +62,13 @@ pub fn verify_module_with(m: &Module, opts: VerifyOptions) -> Result<(), Vec<Ver
     let mut errs = Vec::new();
     verify_decls(m, &mut errs);
     let drops = drop_table(m);
-    for f in &m.funcs {
+    // A drop function is written for the backends after ownership elaboration, as one release per
+    // case: its paths do not all consume the value in the way the ownership rules ask.
+    let glue: std::collections::HashSet<usize> = m.drop_glue.values().map(|f| f.index()).collect();
+    for (i, f) in m.funcs.iter().enumerate() {
+        if glue.contains(&i) {
+            continue;
+        }
         if let Err(e) = verify_func_in(m, f, opts, &drops) {
             errs.extend(e);
         }
@@ -182,6 +188,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         Op::OptSome
         | Op::IfaceNew
         | Op::Drop
+        | Op::Forget
         | Op::ListRelease
         | Op::GlobalSet
         | Op::AltUnbox
@@ -293,7 +300,7 @@ impl Verifier<'_> {
                         && matches!(inst.imm, Imm::Func(g) if self.m.funcs[g.index()].keeps_scoped);
                     let keeps = match inst.op {
                         _ if promise_entry => false,
-                        Op::Drop | Op::DropIf | Op::Clone | Op::CallInd => false,
+                        Op::Drop | Op::Forget | Op::DropIf | Op::Clone | Op::CallInd => false,
                         // A stack slot of this frame cannot outlive it: a closure that reads
                         // another one through a borrowed capture stores it there.
                         Op::Store => i == 1 && !frame_slots.contains(&inst.args[0]),

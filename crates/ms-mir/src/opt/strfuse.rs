@@ -116,6 +116,7 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
             noreturn: false,
             pure_: false,
             fresh: true,
+            retains: false,
             role: if appends {
                 ExternRole::StringAppend
             } else {
