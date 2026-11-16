@@ -114,8 +114,8 @@ impl Walker<'_> {
         let ExprKind::Call { .. } = &e.kind else {
             return None;
         };
-        // `r.get(default)` on an Optional or Result hands back the payload it holds, still a
-        // reference into whatever `r` borrows (`ys := xs.slice(0, 2).get([])`).
+        // `r.get(default)` and its kin hand back the payload they hold, still a reference into
+        // whatever `r` borrows (`ys := xs.slice(0, 2).get([])`).
         if let Some(recv) = self.payload_or_default_receiver(e) {
             return if self.is_place(recv) {
                 // An owned `r` copies its payload out; only a borrowing `r` passes the borrow on.
@@ -159,7 +159,8 @@ impl Walker<'_> {
         Some(out)
     }
 
-    /// The receiver of `r.get(default)` where `r` is an Optional or Result and the call is native.
+    /// The receiver of a native Optional or Result call that hands back the payload it holds
+    /// (`r.get(default)`, `r.or_else(..)`).
     fn payload_or_default_receiver<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return None;
@@ -172,9 +173,8 @@ impl Walker<'_> {
         };
         let t = self.cx.m.ty(left);
         (method.native != Native::Source
-            && args.len() == 1
-            && self.syms.str(name) == "get"
-            && (t.is(Builtin::Optional) || t.is(Builtin::Result)))
+            && (t.is(Builtin::Optional) || t.is(Builtin::Result))
+            && payload_passthrough(self.syms.str(name), args.len()))
         .then_some(&**left)
     }
 
@@ -876,5 +876,15 @@ impl Walker<'_> {
             .partial_moves
             .insert(e.id, info.resolved[0].clone());
         true
+    }
+}
+
+/// Whether the native Optional/Result method `name` with `args` arguments can return the payload
+/// it holds (or a replacement of the same type) instead of building a new value.
+pub(super) fn payload_passthrough(name: &str, args: usize) -> bool {
+    match name {
+        "get" => args == 1,
+        "get_or_else" | "or_else" | "to_optional" | "ok_or" | "ok_or_else" => true,
+        _ => false,
     }
 }

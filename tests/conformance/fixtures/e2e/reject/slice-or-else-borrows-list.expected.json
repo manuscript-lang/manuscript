@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...), e.g. return ok(value)",
+        "position": {
+          "file": "slice-or-else-borrows-list.ms",
+          "line": 8,
+          "column": 18,
+          "offset": 276
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/slice-or-else-borrows-list.ms:8:18: type: expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...), e.g. return ok(value)\n   |\n 8 |     return (ys?).length()\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
