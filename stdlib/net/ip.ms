@@ -48,7 +48,7 @@ fn IpFamily.to_string() String:
 export extern type IpAddress
 
 // Returns canonical text; mapped IPv6 input is normalized to IPv4.
-fn IpAddress.text() String:
+fn IpAddress.to_string() String:
 	return msstd_net_ip_address_text(self)
 
 // Returns the normalized address family.
@@ -61,7 +61,7 @@ fn IpAddress.family() IpFamily:
 export extern type Cidr
 
 // Returns the canonical masked prefix without reparsing.
-fn Cidr.text() String:
+fn Cidr.to_string() String:
 	return msstd_net_cidr_text(self)
 
 // DNS record data returned by a typed lookup.

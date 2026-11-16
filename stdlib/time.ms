@@ -20,7 +20,6 @@ import (
 	msstd_time_instant_compare,
 	msstd_time_instant_difference,
 	msstd_time_instant_shift,
-	msstd_time_instant_unshift,
 	msstd_time_local_zone,
 	msstd_time_parse_timestamp,
 	msstd_time_timestamp_calendar,
@@ -147,10 +146,6 @@ export type Instant:
 // Shifts this monotonic instant by a duration.
 fn Instant.shift(duration: Duration) Instant:
 	return msstd_time_instant_shift(self, duration.nanos)
-
-// Shifts this monotonic instant back by a duration.
-fn Instant.unshift(duration: Duration) Instant:
-	return msstd_time_instant_unshift(self, duration.nanos)
 
 // Returns the elapsed duration from `right` to this instant.
 fn Instant.difference(other: Instant) Duration:
