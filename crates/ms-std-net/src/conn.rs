@@ -57,6 +57,13 @@ pub trait Io {
     fn tls_details(&self) -> Option<TlsDetails> {
         None
     }
+    /// Takes the session of an idle server TLS stream, so another thread can continue it on a
+    /// duplicate of the socket. The stream is unusable until `restore_session`. Streams that
+    /// are not established server TLS, or have records in flight, return none.
+    fn take_session(&self) -> Option<tls::Session> {
+        None
+    }
+    fn restore_session(&self, _session: tls::Session) {}
     /// Hands the descriptor of an unencrypted stream to a new owner, leaving this one empty.
     /// Streams that are encrypted or already emptied return none.
     fn take_plain(&self) -> Option<Socket> {

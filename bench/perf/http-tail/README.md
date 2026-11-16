@@ -86,3 +86,20 @@ Counted with callgrind (method: [wiki](../../wiki/benchmarks-and-performance/cou
 | Manuscript, and detached request tasks | 15.9k |
 
 Where the rest goes is in [the proposal](../../proposals/http-request-path-instructions.md).
+
+## Results, 2026-11-16, TLS and HTTP/2 connection stealing, same 4 vCPU Linux VM
+
+"Before" is `3d8676894` (plain HTTP/1 stealing only); "now" adds idle TLS and HTTP/2 connections. Run with `HTTP_TAIL_TLS=<dir with cert.pem and key.pem> ./server` and `load -tls` (HTTP/1.1 over TLS) or `load -h2` (one HTTP/2 connection each, certificate not verified). 64 connections, 10 s after a 2 s warm-up; one run each for the slow mix, three for the fast mix. CPU is the server process's user plus system ticks over the run (100 per second).
+
+| Scenario | Server | p50 | p99 | p99.9 | CPU ticks |
+| --- | --- | --- | --- | --- | --- |
+| TLS, 5% of requests burn 5 ms, 2000 req/s | before | 0.74 ms | 5.3 ms | 8.8 ms | 820 |
+| | now | 0.64 ms | **3.6 ms** | 6.3 ms | 1045 |
+| HTTP/2, same mix | before | 0.79 ms | 5.9 ms | 9.1 ms | 872 |
+| | now | 0.68 ms | **3.4 ms** | 5.9 ms | 1077 |
+| TLS, fast handlers, 4000 req/s | before | 0.66 to 0.68 ms | 1.6 to 8.8 ms | 3.3 to 36 ms | 267 to 288 |
+| | now | 0.67 ms | 1.7 to 2.3 ms | 3.7 to 6.2 ms | 293 to 309 |
+| HTTP/2, fast handlers, 4000 req/s | before | 0.54 to 0.57 ms | 1.8 to 1.9 ms | 3.5 to 3.7 ms | 389 to 400 |
+| | now | 0.56 to 0.57 ms | 1.9 ms | 4.4 to 8.2 ms | 390 to 396 |
+
+Findings: with a computing handler in the mix the p99 falls to about 3.5 ms for both, as for plain HTTP/1. The cost is CPU: the watcher now also looks while a TLS or HTTP/2 server computes (about 25% more with the slow mix, about 8% for TLS with fast handlers; HTTP/2 shows none). Fast-handler tails are the same within the noise of this machine; single runs of main and of the change each showed a 40 to 100 ms outlier.

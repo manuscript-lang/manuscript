@@ -16,7 +16,7 @@ use rustls::sign::CertifiedKey;
 use rustls::{
     ClientConfig, DigitallySignedStruct, DistinguishedName, ServerConfig, SignatureScheme,
 };
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::io::{self, Read, Write};
 use std::sync::{Arc, OnceLock};
 use x509_parser::prelude::*;
@@ -742,10 +742,17 @@ pub fn verify_certificates(
 
 // ------------------------------------------------------------------ Connection
 
+/// The state of an established server session, apart from its socket.
+pub struct Session {
+    conn: rustls::Connection,
+    verified: bool,
+}
+
 /// A TLS stream over a nonblocking socket.
 pub struct TlsIo {
     sock: OwnedSock,
-    state: RefCell<rustls::Connection>,
+    /// Empty only while a server connection waits in another thread's reach (see `take_session`).
+    state: RefCell<Option<rustls::Connection>>,
     verified: bool,
 }
 
@@ -785,7 +792,7 @@ impl TlsIo {
     pub fn new(sock: socket2::Socket, conn: rustls::Connection, verified: bool) -> TlsIo {
         TlsIo {
             sock: OwnedSock::new(sock),
-            state: RefCell::new(conn),
+            state: RefCell::new(Some(conn)),
             verified,
         }
     }
@@ -794,9 +801,54 @@ impl TlsIo {
         &self.sock
     }
 
+    fn session(&self) -> Ref<'_, rustls::Connection> {
+        Ref::map(self.state.borrow(), |s| {
+            s.as_ref().expect("TLS session parked")
+        })
+    }
+
+    fn session_mut(&self) -> RefMut<'_, rustls::Connection> {
+        RefMut::map(self.state.borrow_mut(), |s| {
+            s.as_mut().expect("TLS session parked")
+        })
+    }
+
+    /// Builds a stream on `sock` that continues `session`, taken from another stream.
+    pub fn resume(sock: socket2::Socket, session: Session) -> TlsIo {
+        TlsIo {
+            sock: OwnedSock::new(sock),
+            state: RefCell::new(Some(session.conn)),
+            verified: session.verified,
+        }
+    }
+
+    /// Takes the session out of an established stream with nothing in flight, leaving the
+    /// stream unusable until [`TlsIo::restore_session`]. Another thread may continue the
+    /// session on a duplicate of the socket (see `Io::take_session`).
+    pub fn take_session(&self) -> Option<Session> {
+        let mut slot = self.state.borrow_mut();
+        let c = slot.as_mut()?;
+        if c.is_handshaking() || c.wants_write() {
+            return None;
+        }
+        // Plaintext decrypted but not read yet stays with the stream.
+        match c.process_new_packets() {
+            Ok(io) if io.plaintext_bytes_to_read() == 0 && !io.peer_has_closed() => {}
+            _ => return None,
+        }
+        slot.take().map(|conn| Session {
+            conn,
+            verified: self.verified,
+        })
+    }
+
+    pub fn restore_session(&self, session: Session) {
+        *self.state.borrow_mut() = Some(session.conn);
+    }
+
     /// Whether a server session received a client certificate.
     pub fn has_peer_certificates(&self) -> bool {
-        self.state.borrow().peer_certificates().is_some()
+        self.session().peer_certificates().is_some()
     }
 
     pub fn set_verified(&mut self, verified: bool) {
@@ -807,7 +859,7 @@ impl TlsIo {
     pub fn drive_handshake(&self) -> Handshake {
         loop {
             let (handshaking, wants_write) = {
-                let c = self.state.borrow();
+                let c = self.session();
                 (c.is_handshaking(), c.wants_write())
             };
             if wants_write {
@@ -863,7 +915,7 @@ impl TlsIo {
 
     /// Writes buffered records; `Ok(false)` when the socket is full.
     fn write_pending(&self) -> io::Result<bool> {
-        let mut c = self.state.borrow_mut();
+        let mut c = self.session_mut();
         while c.wants_write() {
             match c.write_tls(&mut &*self.sock) {
                 Ok(_) => {}
@@ -877,7 +929,7 @@ impl TlsIo {
 
     /// Reads and processes records; `Ok(false)` when nothing is available.
     fn read_records(&self) -> Result<bool, HandshakeFail> {
-        let mut c = self.state.borrow_mut();
+        let mut c = self.session_mut();
         match c.read_tls(&mut &*self.sock) {
             Ok(0) => {
                 return Err(HandshakeFail::Io(io::Error::from(
@@ -906,7 +958,7 @@ impl Io for TlsIo {
 
     fn read(&self, buf: &mut [u8]) -> Step {
         loop {
-            let got = self.state.borrow_mut().reader().read(buf);
+            let got = self.session_mut().reader().read(buf);
             match got {
                 Ok(0) if !buf.is_empty() => return Step::Eof,
                 Ok(n) => return Step::Done(n),
@@ -936,7 +988,7 @@ impl Io for TlsIo {
 
     fn write(&self, data: &[u8]) -> Step {
         loop {
-            let n = match self.state.borrow_mut().writer().write(data) {
+            let n = match self.session_mut().writer().write(data) {
                 Ok(n) => n,
                 Err(e) => return Step::Err(e),
             };
@@ -964,7 +1016,7 @@ impl Io for TlsIo {
     }
 
     fn shutdown_write(&self) -> Result<(), NetErr> {
-        self.state.borrow_mut().send_close_notify();
+        self.session_mut().send_close_notify();
         let _ = self.write_pending();
         self.sock
             .shutdown(std::net::Shutdown::Write)
@@ -972,7 +1024,7 @@ impl Io for TlsIo {
     }
 
     fn shutdown_both(&self) {
-        self.state.borrow_mut().send_close_notify();
+        self.session_mut().send_close_notify();
         let _ = self.write_pending();
         let _ = self.sock.shutdown(std::net::Shutdown::Both);
     }
@@ -981,8 +1033,16 @@ impl Io for TlsIo {
         self.sock.release();
     }
 
+    fn take_session(&self) -> Option<Session> {
+        TlsIo::take_session(self)
+    }
+
+    fn restore_session(&self, session: Session) {
+        TlsIo::restore_session(self, session);
+    }
+
     fn tls_details(&self) -> Option<TlsDetails> {
-        let c = self.state.borrow();
+        let c = self.session();
         let version = c.protocol_version().map(u16::from).unwrap_or(0);
         let suite = c
             .negotiated_cipher_suite()
@@ -1036,7 +1096,7 @@ pub fn accept(
         .map_err(|e| NetErr::Failed(handshake_error_text(&e)))?;
     let io = TlsIo::handshake(sock, rustls::Connection::Server(conn), deadline, false)?;
     // A server verified the client when one presented a certificate.
-    let verified = verified_clients && io.state.borrow().peer_certificates().is_some();
+    let verified = verified_clients && io.session().peer_certificates().is_some();
     let io = TlsIo { verified, ..io };
     Ok(Box::new(io))
 }
@@ -1375,5 +1435,102 @@ mod tests {
             net.listen_tls("127.0.0.1:0", &options(), Some(-1)).err(),
             Some(NetErr::InvalidInput)
         );
+    }
+
+    /// Serves one request to completion on `io`, spinning on a nonblocking socket.
+    fn answer(io: &TlsIo, expect: &[u8], reply: &[u8]) {
+        let mut got = Vec::new();
+        let mut buf = [0u8; 64];
+        while got.len() < expect.len() {
+            match io.read(&mut buf) {
+                Step::Done(n) => got.extend_from_slice(&buf[..n]),
+                Step::WantRead | Step::WantWrite => std::thread::yield_now(),
+                _ => panic!("stream ended early"),
+            }
+        }
+        assert_eq!(got, expect);
+        let mut sent = 0;
+        while sent < reply.len() {
+            match io.write(&reply[sent..]) {
+                Step::Done(n) => sent += n,
+                _ => std::thread::yield_now(),
+            }
+        }
+        while !matches!(io.flush(), Step::Done(_)) {
+            std::thread::yield_now();
+        }
+    }
+
+    #[test]
+    fn a_session_continues_on_a_duplicate_of_its_socket() {
+        use crate::sys;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let config = server_config(&TlsOptions {
+            certificate_pem: CERT.into(),
+            private_key_pem: KEY.into(),
+            ..TlsOptions::default()
+        })
+        .unwrap();
+        let client = std::thread::spawn(move || {
+            let tls = client_config(
+                &TlsOptions {
+                    server_name: "stdlib.test".into(),
+                    roots_pem: CERT.into(),
+                    ..TlsOptions::default()
+                },
+                true,
+            )
+            .unwrap();
+            let name = ServerName::try_from("stdlib.test").unwrap();
+            let conn = rustls::ClientConnection::new(tls, name).unwrap();
+            let mut stream =
+                rustls::StreamOwned::new(conn, std::net::TcpStream::connect(addr).unwrap());
+            let mut byte = [0u8; 1];
+            stream.write_all(b"one").unwrap();
+            stream.read_exact(&mut byte).unwrap();
+            assert_eq!(&byte, b"1");
+            stream.write_all(b"two").unwrap();
+            stream.read_exact(&mut byte).unwrap();
+            assert_eq!(&byte, b"2");
+        });
+        let (sock, _) = listener.accept().unwrap();
+        let sock = socket2::Socket::from(sock);
+        sock.set_nonblocking(true).unwrap();
+        let conn = rustls::ServerConnection::new(config).unwrap();
+        let first = TlsIo::new(sock, rustls::Connection::Server(conn), false);
+        while !matches!(first.drive_handshake(), Handshake::Done) {
+            std::thread::yield_now();
+        }
+        answer(&first, b"one", b"1");
+        // The owner is idle: another thread continues the session on a duplicate socket.
+        let session = first.take_session().expect("idle session");
+        let dup = sys::duplicate(sys::raw(first.fd())).expect("duplicate");
+        drop(first);
+        std::thread::spawn(move || answer(&TlsIo::resume(dup, session), b"two", b"2"))
+            .join()
+            .unwrap();
+        client.join().unwrap();
+    }
+
+    #[test]
+    fn a_session_with_records_in_flight_is_not_taken() {
+        let config = server_config(&TlsOptions {
+            certificate_pem: CERT.into(),
+            private_key_pem: KEY.into(),
+            ..TlsOptions::default()
+        })
+        .unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let _client = std::net::TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (sock, _) = listener.accept().unwrap();
+        let conn = rustls::ServerConnection::new(config).unwrap();
+        let io = TlsIo::new(
+            socket2::Socket::from(sock),
+            rustls::Connection::Server(conn),
+            false,
+        );
+        // Still handshaking.
+        assert!(io.take_session().is_none());
     }
 }

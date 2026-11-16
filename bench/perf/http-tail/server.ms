@@ -1,6 +1,9 @@
 import (
-	HttpRequest, HttpResponse, buffered, text from "@std/net/http.ms",
+	HttpRequest, HttpResponse, HttpServerOptions, buffered, text from "@std/net/http.ms",
 	serve from "@std/net/net.ms",
+	TlsOptions from "@std/net/tls.ms",
+	environment from "@std/os/env.ms",
+	read_file from "@std/os/fs.ms",
 )
 
 fn handle(request: HttpRequest) HttpResponse:
@@ -23,6 +26,19 @@ fn handle(request: HttpRequest) HttpResponse:
 	out += "]}"
 	return text(200, out)
 
+// HTTP_TAIL_TLS names a directory holding cert.pem and key.pem: serve HTTPS, offering HTTP/2
+// and HTTP/1.1 through ALPN. Unset, the server speaks plain HTTP/1.1.
 fn main() Void!:
-	server := serve(address: "127.0.0.1:8081", handler: buffered(handle))?
+	var options = HttpServerOptions()
+	env := environment()?
+	if directory := env.get("HTTP_TAIL_TLS"):
+		certificate := (read_file(f"{directory}/cert.pem").wait()?).decode_utf8().get("")
+		key := (read_file(f"{directory}/key.pem").wait()?).decode_utf8().get("")
+		options = HttpServerOptions(tls: TlsOptions(
+			certificate_pem: certificate,
+			private_key_pem: key,
+			alpn: ["h2", "http/1.1"],
+		))
+
+	server := serve(address: "127.0.0.1:8081", handler: buffered(handle), options: options)?
 	server.wait()?

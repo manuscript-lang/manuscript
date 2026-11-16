@@ -115,7 +115,7 @@ impl H2Stream {
     }
 }
 
-pub(in crate::http) struct H2Conn {
+pub struct H2Conn {
     core: h2::Connection,
     streams: HashMap<u32, H2Stream>,
     queue: VecDeque<u32>,
@@ -153,6 +153,12 @@ impl H2Conn {
     /// The tasks running handlers of streams.
     pub(in crate::http) fn running(&self) -> Vec<u64> {
         self.streams.values().map(|s| s.task).collect()
+    }
+
+    /// Whether another thread could continue this connection: no streams, nothing to send, and
+    /// not winding down.
+    pub(super) fn can_move(&self) -> bool {
+        self.is_idle() && !self.goaway
     }
 
     fn is_idle(&self) -> bool {
@@ -416,6 +422,7 @@ impl Server {
             Drain::Empty => {
                 self.set_interest(conn, reactor, Ev::IN);
                 self.h2_settle(conn, reactor);
+                self.list_waiting(conn);
             }
         }
     }
