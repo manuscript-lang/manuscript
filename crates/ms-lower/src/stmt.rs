@@ -2,6 +2,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, LoopCtx, Val};
+use crate::rtcall::Twin;
 use ms_check::api::ast::*;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
@@ -15,9 +16,9 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 break;
             }
-            if let Some((gap, split, loop_body)) = self.split_then_loop(&body[i..]) {
+            if let Some((gap, split, loop_body)) = self.view_then_loop(&body[i..]) {
                 // `let parts = text.split(..)` read only by a later `for`; what lies between
-                // them cannot affect the split.
+                // them cannot affect the call.
                 for s in &body[i + 1..i + 1 + gap] {
                     self.stmt(s)?;
                 }
@@ -26,9 +27,9 @@ impl<'a> FnLower<'a> {
                 i += gap + 2;
                 continue;
             }
-            self.split_view_for = self.split_read_in_place(&body[i], &body[i + 1..]);
+            self.view_for = self.view_read_in_place(&body[i], &body[i + 1..]);
             let r = self.stmt(&body[i]);
-            self.split_view_for = None;
+            self.view_for = None;
             r?;
             i += 1;
         }
@@ -36,8 +37,9 @@ impl<'a> FnLower<'a> {
     }
 
     /// `let name = <text>.split(..)` where the rest of the block only reads `name` in place
-    /// (indexing, length, a `for`): the split call, whose pieces may then borrow `text`.
-    fn split_read_in_place(&self, s: &Stmt, rest: &[Stmt]) -> Option<*const Expr> {
+    /// (indexing, length, a `for`) and the call has a borrowing twin: the call, whose elements
+    /// may then borrow its receiver.
+    fn view_read_in_place(&mut self, s: &Stmt, rest: &[Stmt]) -> Option<*const Expr> {
         let StmtKind::Bind {
             mutable: false,
             pattern,
@@ -47,15 +49,7 @@ impl<'a> FnLower<'a> {
         else {
             return None;
         };
-        let ExprKind::Call { callee, .. } = &value.kind else {
-            return None;
-        };
-        let ExprKind::Member { name, .. } = &callee.kind else {
-            return None;
-        };
-        if self.syms.str(name) != "split" {
-            return None;
-        }
+        self.call_twin(value, Twin::View)?;
         let b = self.hir.pattern_binding(pattern)?;
         crate::mutation::only_read_in_place(self.syms, &self.hir, rest, b.uid)
             .then_some(value as *const Expr)
@@ -64,7 +58,7 @@ impl<'a> FnLower<'a> {
     /// `let name = <call>.split(..)`, then plain `let`s of literals, then `for x in name:` with
     /// nothing else naming `name`: the number of statements between, the split call and the
     /// loop body.
-    fn split_then_loop<'s>(&self, rest: &'s [Stmt]) -> Option<(usize, &'s Expr, &'s [Stmt])> {
+    fn view_then_loop<'s>(&mut self, rest: &'s [Stmt]) -> Option<(usize, &'s Expr, &'s [Stmt])> {
         let (first, after) = rest.split_first()?;
         let StmtKind::Bind {
             mutable: false,
@@ -76,15 +70,7 @@ impl<'a> FnLower<'a> {
         else {
             return None;
         };
-        let ExprKind::Call { callee, .. } = &value.kind else {
-            return None;
-        };
-        let ExprKind::Member { name, .. } = &callee.kind else {
-            return None;
-        };
-        if self.syms.str(name) != "split" {
-            return None;
-        }
+        self.call_twin(value, Twin::Iter)?;
         let binding = self.hir.pattern_binding(pattern)?;
         let gap = after.iter().take_while(|s| is_literal_bind(s)).count();
         let (second, tail) = after[gap..].split_first()?;
@@ -1727,11 +1713,11 @@ impl<'a> FnLower<'a> {
                 // A loop variable the body moves on (an escaping closure, a store) owns its piece:
                 // the split streams borrowed slices of its buffer, so it iterates the owned list.
                 if !self.cx.ownership.moves.contains_key(&loop_var.uid) {
-                    self.split_iter_for = Some(iter as *const Expr);
+                    self.iter_for = Some(iter as *const Expr);
                 }
                 self.chars_iter_for = Some(iter as *const Expr);
                 if borrowed {
-                    self.keys_view_for = Some(iter as *const Expr);
+                    self.view_for = Some(iter as *const Expr);
                 }
                 let hoisted = self.hoisted.get(&iter.id).copied().filter(|_| borrowed);
                 let it = match hoisted {
@@ -1741,9 +1727,9 @@ impl<'a> FnLower<'a> {
                     }),
                     None => self.expr(iter),
                 };
-                self.split_iter_for = None;
+                self.iter_for = None;
                 self.chars_iter_for = None;
-                self.keys_view_for = None;
+                self.view_for = None;
                 self.map_walk_for = None;
                 let walk = self.map_walk.take();
                 let it = it?;

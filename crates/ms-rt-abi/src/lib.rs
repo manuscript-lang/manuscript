@@ -414,6 +414,13 @@ pub type SlotEqFn = unsafe extern "C" fn(a: *const u8, b: *const u8) -> u8;
 /// Hash of a slot. Equal values must hash equally.
 pub type SlotHashFn = unsafe extern "C" fn(slot: *const u8) -> i64;
 
+/// Room in the caller's frame for `N` values of `T` that a runtime function fills and the caller
+/// then only reads in place. A parameter typed `*mut FrameBuf<T, N>` is passed a frame slot by
+/// lowering (`crates/ms-lower/src/rtcall.rs`); the callee falls back to the heap when the result
+/// does not fit.
+#[repr(C)]
+pub struct FrameBuf<T, const N: usize>(pub [T; N]);
+
 /// The presence byte that precedes the value of a flattened optional (`has_x: HasRaw, x: T`). It is
 /// the C byte `u8`; the distinct type is the declaration lowering reads the role from.
 #[repr(transparent)]

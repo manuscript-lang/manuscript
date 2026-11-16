@@ -94,83 +94,65 @@ impl<'a> FnLower<'a> {
             self.map_walk = Some(walk);
             return Ok(recv);
         }
-        if self.keys_view_for == Some(e as *const Expr)
-            && let Some(sym) = self.keys_view_symbol(m, recv_expr, recv.v)
-        {
-            // `for k in p.m.keys()` over a map in a parameter the body only reads: the list
-            // borrows the map's strings instead of copying them.
-            self.keys_view_for = None;
-            let result = self.emty(e)?;
-            return self.rt_method(sym, recv, &[], &[], result);
-        }
         let lent = self.cx.fact(
             self.hir.data.file,
             e.id,
             ms_check::api::ownership::Fact::BorrowedRead,
         );
-        if lent && !recv.own {
-            // The checker lends the result (used in place while the receiver stays unchanged):
-            // string keys and values, and the elements of a slice, are views of the receiver.
-            let rty = self.ty_of(recv.v);
-            let name = native.rsplit('/').next().unwrap_or(native);
-            match (self.b.m.types.kind(rty), name) {
-                (TyKind::Obj(Native::Map, _), "keys" | "values") => {
-                    let sym = if name == "keys" {
-                        "msrt_map_keys_view"
-                    } else {
-                        "msrt_map_values_view"
-                    };
-                    let result = self.emty(e)?;
-                    return self.rt_method(sym, recv, &[], &[], result);
-                }
-                (TyKind::List(elem), "slice") if !self.b.m.needs_drop(*elem) => {
-                    let result = self.emty(e)?;
-                    // The list is a `cap == 0` view: dropping it frees and drops nothing.
-                    return self.rt_method(
-                        "msrt_list_slice_view",
-                        recv,
-                        &m.ty.params,
-                        &args,
-                        result,
-                    );
-                }
-                _ => {}
+        // A call the checker lends, or whose result a statement above reads only in place, may use
+        // the borrowing twin its runtime function declares (`crate::rtcall::Twin`).
+        let rty = self.ty_of(recv.v);
+        let base = self.twin_base(rty, native);
+        let in_place = self.view_for == Some(e as *const Expr) && self.stable_place(recv_expr);
+        if lent
+            && self.first_for == Some(e as *const Expr)
+            && let Some(base) = &base
+            && let Some(sym) = rt_twin(base, Twin::First)
+        {
+            let list = self.emty(e)?;
+            let TyKind::List(elem) = self.b.m.types.kind(list).clone() else {
+                return Err(Error::new(
+                    "a first-element twin of a call that is not a list",
+                ));
+            };
+            // `xs.m(..)[0]` of a lent result: the first element, with no list.
+            self.first_for = None;
+            return self.rt_method(sym, recv, &m.ty.params, &args, elem);
+        }
+        let view = base.as_deref().and_then(|b| rt_twin(b, Twin::View));
+        let shared = base.as_deref().and_then(|b| rt_twin(b, Twin::SharedView));
+        if lent
+            && !recv.own
+            && let Some(sym) = view.or(shared)
+        {
+            let result = self.emty(e)?;
+            // A list that shares its receiver's elements must not own anything to drop.
+            let owns = matches!(self.b.m.types.kind(result), TyKind::List(elem)
+                if self.b.m.needs_drop(*elem));
+            if view.is_some() || !owns {
+                self.view_for = None;
+                return self.rt_method(sym, recv, &m.ty.params, &args, result);
             }
         }
-        if str_recv && native == "split" && lent && self.split_first_for == Some(e as *const Expr) {
-            // `text.split(..)[0]` of a lent split: the first piece is a view, with no list.
-            self.split_first_for = None;
-            return self.rt_method(
-                "msrt_string_split_first",
-                recv,
-                &m.ty.params,
-                &args,
-                MTy::STR,
-            );
-        }
-        if str_recv
-            && native == "split"
-            && (lent
-                || (self.split_view_for == Some(e as *const Expr) && self.stable_place(recv_expr)))
+        if self.iter_for == Some(e as *const Expr)
+            && let Some(base) = &base
+            && let Some(sym) = rt_twin(base, Twin::Iter)
         {
-            // A `split` the checker lends (its result is used in place while the receiver
-            // stays unchanged), or `let parts = text.split(..)` read only in place over a
-            // parameter the body only reads: the pieces are views of `text`.
-            self.split_view_for = None;
-            let result = self.emty(e)?;
-            return self.rt_method(
-                "msrt_string_split_view_into",
-                recv,
-                &m.ty.params,
-                &args,
-                result,
-            );
+            // `for piece in text.split(..)`: elements are produced one at a time.
+            self.iter_for = None;
+            let ret = crate::rtcall::rt_sig(sym)
+                .map(|s| s.ret)
+                .unwrap_or_default();
+            let name = ret.trim_start_matches("*mut ");
+            let iter = self.b.m.types.obj(name, Vec::new());
+            return self.rt_method(sym, recv, &m.ty.params, &args, iter);
         }
-        if str_recv && native == "split" && self.split_iter_for == Some(e as *const Expr) {
-            // `for piece in text.split(..)`: pieces are produced one at a time.
-            self.split_iter_for = None;
-            let iter = self.b.m.types.obj("SplitIter", Vec::new());
-            return self.rt_method("msrt_string_split_iter", recv, &m.ty.params, &args, iter);
+        if in_place && let Some(sym) = view {
+            // `for k in p.m.keys()` over a map in a parameter the body only reads, or
+            // `parts := text.split(..)` read only in place: the elements borrow the receiver.
+            self.view_for = None;
+            let result = self.emty(e)?;
+            return self.rt_method(sym, recv, &m.ty.params, &args, result);
         }
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS
             .iter()
