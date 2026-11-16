@@ -911,7 +911,7 @@ fn analyze(
                     }
                 }
             }
-            open = hole_step(open, inst.op);
+            open = hole_step(open, inst.op, blk.insts.get(k + 1).map(|i| i.op));
             if inst.op == Op::Put
                 && inst
                     .args
@@ -2055,8 +2055,9 @@ fn hole_states(f: &Func) -> Vec<u32> {
         changed = false;
         for b in f.rpo() {
             let mut open = at[b.index()];
-            for inst in &f.blocks[b.index()].insts {
-                open = hole_step(open, inst.op);
+            let insts = &f.blocks[b.index()].insts;
+            for (k, inst) in insts.iter().enumerate() {
+                open = hole_step(open, inst.op, insts.get(k + 1).map(|i| i.op));
             }
             let mut targets = Vec::new();
             f.blocks[b.index()]
@@ -2073,8 +2074,11 @@ fn hole_states(f: &Func) -> Vec<u32> {
     at
 }
 
-fn hole_step(open: u32, op: Op) -> u32 {
+/// `next` is the op that follows: a move-out the owner's field release follows at once (the
+/// rest of a temporary is released, so nothing is left to drop twice) opens no window.
+fn hole_step(open: u32, op: Op, next: Option<Op>) -> u32 {
     match op {
+        Op::MoveOut if next == Some(Op::TypeRelease) => open,
         Op::MoveOut => (open + 1).min(8),
         Op::TypeFill | Op::ListFill => open.saturating_sub(1),
         _ => open,
