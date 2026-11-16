@@ -294,6 +294,8 @@ pub fn teardown() {
         if !s.tokens.is_empty() {
             isolate::save_token_generations(s.tokens.iter().map(|token| token.gen_).collect());
         }
+        // Buffers kept for the next spawn; this thread has no next spawn.
+        s.spares = Vec::new();
         s.tokens = Vec::new();
         s.free_tokens = Vec::new();
         s.remote_tokens = 0;
