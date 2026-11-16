@@ -774,24 +774,40 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 		)
 	)
 
-	for y in 0..height:
-		for x in 0..width:
-			var s = [0, 0, 0, 0]
+	// What each component's samples need, read once instead of per pixel.
+	var strides = List[Int]()
+	var h_ratios = List[Int]()
+	var v_ratios = List[Int]()
+	var exacts = List[Bool]()
 
+	for c in comps:
+		strides.append(c.blocks_wide * 8)
+		h_ratios.append(hmax / c.h)
+		v_ratios.append(vmax / c.v)
+		exacts.append(hmax % c.h == 0 and vmax % c.v == 0)
+
+	var s = [0, 0, 0, 0]
+	var rows = List[List[Int]]()
+	for c in comps:
+		rows.append([0].repeated(width))
+
+	for y in 0..height:
+		for c in 0..zi:
+			jpeg_fill_row(
+				planes[c],
+				strides[c],
+				spans[c],
+				y,
+				width,
+				h_ratios[c],
+				v_ratios[c],
+				exacts[c],
+				var rows[c],
+			)
+
+		for x in 0..width:
 			for c in 0..zi:
-				stride := comps[c].blocks_wide * 8
-				s[c] = jpeg_sample(
-					planes[c],
-					stride,
-					spans[c],
-					y,
-					x,
-					hmax / comps[c].h,
-					vmax / comps[c].v,
-					hmax % comps[c].h == 0 and vmax % comps[
-						c
-					].v == 0,
-				)
+				s[c] = rows[c][x]
 
 			out := (y * width + x) * m
 
@@ -802,10 +818,9 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 				pixels[out + 1] = byte(s[1])
 				pixels[out + 2] = byte(s[2])
 			else if zi == 3:
-				rgb := ycc_to_rgb(s[0], s[1], s[2])
-				pixels[out] = byte(rgb[0])
-				pixels[out + 1] = byte(rgb[1])
-				pixels[out + 2] = byte(rgb[2])
+				pixels[out] = byte(ycc_red(s[0], s[2]))
+				pixels[out + 1] = byte(ycc_green(s[0], s[1], s[2]))
+				pixels[out + 2] = byte(ycc_blue(s[0], s[1]))
 			else:
 				// Four components: Adobe CMYK/YCCK store inverted ink, so a stored
 				// value acts as its own transmittance.
@@ -815,10 +830,9 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 				var tk = s[3]
 
 				if adobe == 2:
-					rgb := ycc_to_rgb(s[0], s[1], s[2])
-					t0 = 255 - rgb[0]
-					t1 = 255 - rgb[1]
-					t2 = 255 - rgb[2]
+					t0 = 255 - ycc_red(s[0], s[2])
+					t1 = 255 - ycc_green(s[0], s[1], s[2])
+					t2 = 255 - ycc_blue(s[0], s[1])
 
 				if adobe < 0:
 					t0 = 255 - t0
@@ -849,6 +863,46 @@ fn scan_end(data: Bytes, from: Int) Int:
 		at += 1
 
 	return data.length()
+
+// Fills `row` with component samples of row `y` of the full-resolution grid.
+fn jpeg_fill_row(
+	plane: List[UInt8],
+	stride: Int,
+	span: List[Int],
+	y: Int,
+	width: Int,
+	hr: Int,
+	vr: Int,
+	exact: Bool,
+	var row: List[Int],
+) Void:
+	if hr == 1 and vr == 1:
+		base := y * stride
+		for x in 0..width:
+			row[x] = plane[base + x].to_int()
+		return
+
+	if exact and hr == 2 and vr == 2:
+		last_x := span[0] - 1
+		last_y := span[1] - 1
+		py := min_of(y / 2, last_y)
+		odd_y := y % 2
+		ny := jpeg_clamp(py + 2 * odd_y - 1, last_y)
+		base := py * stride
+		near_base := ny * stride
+
+		for x in 0..width:
+			px := min_of(x / 2, last_x)
+			odd_x := x % 2
+			nx := jpeg_clamp(px + 2 * odd_x - 1, last_x)
+			here := 3 * plane[base + px].to_int() + plane[near_base + px].to_int()
+			near := 3 * plane[base + nx].to_int() + plane[near_base + nx].to_int()
+			row[x] = (3 * here + near + 8 - odd_x) / 16
+
+		return
+
+	for x in 0..width:
+		row[x] = jpeg_sample(plane, stride, span, y, x, hr, vr, exact)
 
 // Reads component sample (x, y) of the full-resolution grid. A 2:1 ratio uses libjpeg's
 // triangle filter ("fancy" upsampling) so output matches libjpeg; other ratios
@@ -893,11 +947,11 @@ fn jpeg_sample(
 	near := 3 * plane[py * stride + nx].to_int() + plane[ny * stride + nx].to_int()
 	return (3 * here + near + (if x % 2 == 0: 8 else: 7)) / 16
 
-fn ycc_to_rgb(y: Int, cb: Int, cr: Int) List[Int]:
-	u := cb - 128
-	v := cr - 128
-	return [
-		y + shift_right(91881 * v + 32768, 16),
-		y - shift_right(22554 * u + 46802 * v + 32768, 16),
-		y + shift_right(116130 * u + 32768, 16),
-	]
+fn ycc_red(y: Int, cr: Int) Int:
+	return y + shift_right(91881 * (cr - 128) + 32768, 16)
+
+fn ycc_green(y: Int, cb: Int, cr: Int) Int:
+	return y - shift_right(22554 * (cb - 128) + 46802 * (cr - 128) + 32768, 16)
+
+fn ycc_blue(y: Int, cb: Int) Int:
+	return y + shift_right(116130 * (cb - 128) + 32768, 16)
