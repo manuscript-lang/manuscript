@@ -127,7 +127,10 @@ impl Walker<'_> {
                 let own = Place::local(b.uid);
                 (self.resolve(&own) != [own]).then_some(places)
             } else {
-                self.pure_origins(recv)
+                // Only a lent slice is a view; any other borrowed payload (`map.get(k)`) is copied out.
+                self.lent_view(recv)
+                    .then(|| self.pure_origins(recv))
+                    .flatten()
             };
         }
         let operands = match self.native_borrow_receiver(e) {
@@ -157,6 +160,15 @@ impl Walker<'_> {
             }
         }
         Some(out)
+    }
+
+    /// Whether `e` is a lent slice, or an Optional or Result call that passes one through.
+    fn lent_view(&self, e: &Expr) -> bool {
+        if matches!(self.native_borrow_of(e), Some((NativeBorrow::Derived, _))) {
+            return true;
+        }
+        self.payload_or_default_receiver(e)
+            .is_some_and(|r| self.lent_view(r))
     }
 
     /// The receiver of a native Optional or Result call that hands back the payload it holds
