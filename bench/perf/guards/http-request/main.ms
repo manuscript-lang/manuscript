@@ -1,70 +1,15 @@
-// Guard: a keep-alive HTTP request to a trivial handler costs a fixed number of
-// instructions. The program serves one connection of 10000 requests with one server
-// worker and counts the server alone: the client is this same program started as a
-// child (valgrind does not follow it), so reading the replies is not in the count.
-// `make perf-counts` passes the program's own path as the argument; run by hand as
-// `main <own path>`.
+// Guard: a keep-alive HTTP request with the six headers a browser or curl sends costs a
+// fixed number of instructions; with the argument `small` the request has only a Host
+// header (`guard-http-request-small`). The shared body is in guard.ms.
 import (
-	Bytes from "@std/bytes.ms",
-	HttpRequest,
-	HttpResponse,
-	HttpServerOptions,
-	buffered,
-	headers from "@std/net/http.ms",
-	connect, serve from "@std/net/net.ms",
 	arguments from "@std/os/env.ms",
-	RunOptions, run from "@std/os/process.ms",
-	seconds from "@std/time.ms",
+
+	guard from "./guard.ms",
 )
 
-REQUESTS := 10000
+REQUEST := "GET /x?c=1 HTTP/1.1\r\nHost: b\r\nUser-Agent: curl/8.5.0\r\nAccept: */*\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: en-US,en;q=0.9\r\nConnection: keep-alive\r\n\r\n"
+SMALL := "GET /x?c=1 HTTP/1.1\r\nHost: b\r\n\r\n"
 
-fn handle(request: HttpRequest) HttpResponse:
-	return HttpResponse(
-		status: 200,
-		headers: headers(),
-		body: "{\"ok\":true,\"items\":[1,2,3,4,5,6,7,8,9,10]}".to_bytes(),
-	)
-
-fn client(address: String) Int!:
-	var connection = connect(address, timeout: seconds(5)).wait()?
-	var answered = 0
-
-	for i in 0..REQUESTS:
-		connection.output.write("GET /x?c=1 HTTP/1.1\r\nHost: b\r\n\r\n".to_bytes())?
-		connection.output.flush()?
-
-		reply := connection.input.next()?
-		if reply.get(Bytes([])).length() > 0: answered += 1
-
-	return ok(answered)
-
-fn drive(own_path: String) Int!:
-	server := serve(
-		address: "127.0.0.1:0",
-		handler: buffered(handle),
-		options: HttpServerOptions(cores: 1),
-	)?
-	out := run(
-		own_path,
-		["client", server.address()],
-		RunOptions(timeout: seconds(600)),
-	).wait()?
-	return ok(out.stdout.decode_utf8().get("").trim().parse_int().get(0))
-
+// `main <own path> [small]`: the request with one header when `small` is given.
 fn main() Int:
-	args := arguments()
-
-	if args.length() == 2 and args[0] == "client":
-		print(client(args[1].clone()).get(0))
-		return 0
-
-	if args.length() != 1:
-		print("usage: main <own path>")
-		return 1
-
-	answered := drive(args[0].clone()).get(0)
-	print(answered)
-	if answered != REQUESTS: return 1
-
-	return 0
+	return guard(if arguments().contains("small"): SMALL else: REQUEST)
