@@ -83,7 +83,7 @@ fn example() Int:
 
 `usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`.
 
-- Defaults may precede required parameters; skip one by labeling a later argument. `fn choose(first: Int = 1, second: Int) Int: second` accepts `choose(second: 2)`, while `choose(2)` supplies `first` and misses `second`.
+- Optional parameters come last: a parameter with a default, or of type `T?`, may not precede a required one, and the checker rejects `fn choose(first: Int = 1, second: Int) Int`. Constructor fields follow the same rule. Write `fn choose(second: Int, first: Int = 1) Int` and skip `first` by omitting it; to skip an earlier optional, label a later argument.
 - A default is checked against its parameter type in the function's scope. It may use imports, module declarations, earlier parameters, and `self`; current and later parameters are not in scope. Anonymous functions may use captures.
 - Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `none`, `void`, `false`, and zero are supplied values.
 - A failing default stops later defaults and the body. `?` in a default propagates under the function's result type.

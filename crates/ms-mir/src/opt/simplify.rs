@@ -58,6 +58,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         c |= known_lists(m, f);
         c |= phis(m, f);
         c |= roundtrips(f);
+        c |= shields(m, f);
         c |= put_takes(f);
         c |= branches(f);
         c |= cse(m, f);
@@ -1642,6 +1643,51 @@ fn roundtrips(f: &mut Func) -> bool {
                 !removed[k - 1]
             });
             changed = true;
+        }
+    }
+    changed
+}
+
+/// A shield pair around code that cannot reach a cancellation point shields nothing: the
+/// instructions between `shield_enter` and the next `shield_exit` of a block are plain
+/// operations and leaf runtime calls, so no stop request can arrive inside. Both calls go.
+/// An implicit close of a value whose close was inlined to nothing leaves exactly this pair.
+fn shields(m: &Module, f: &mut Func) -> bool {
+    let role = |inst: &Inst| match (inst.op, inst.imm) {
+        (Op::CallRt, Imm::Ext(e)) => m.externs[e.index()].role,
+        _ => ExternRole::None,
+    };
+    let quiet = |inst: &Inst| match (inst.op, inst.imm) {
+        (Op::Poll | Op::CallInd | Op::CallMethod | Op::Call, _) => false,
+        (Op::CallRt, Imm::Ext(e)) => {
+            let d = &m.externs[e.index()];
+            d.leaf || d.noreturn
+        }
+        _ => true,
+    };
+    let mut changed = false;
+    for b in &mut f.blocks {
+        let mut removed = vec![false; b.insts.len()];
+        let mut open: Option<usize> = None;
+        for i in 0..b.insts.len() {
+            match (role(&b.insts[i]), open) {
+                (ExternRole::ShieldEnter, _) => open = Some(i),
+                (ExternRole::ShieldExit, Some(at)) => {
+                    removed[at] = true;
+                    removed[i] = true;
+                    open = None;
+                    changed = true;
+                }
+                _ if open.is_some() && !quiet(&b.insts[i]) => open = None,
+                _ => {}
+            }
+        }
+        if removed.contains(&true) {
+            let mut k = 0;
+            b.insts.retain(|_| {
+                k += 1;
+                !removed[k - 1]
+            });
         }
     }
     changed

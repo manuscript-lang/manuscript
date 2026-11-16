@@ -1076,6 +1076,21 @@ mod argument_tests {
     }
 
     #[test]
+    fn required_parameters_and_fields_may_not_follow_an_explicit_default() {
+        let syms = ms_syntax::Names::global();
+        let source = "type Pair:\n    first: Int = 1\n    second: Int\nfn pick(first: Int = 1, second: Int) Int:\n    return second\nfn lenient(first: Int = 1, second: Int?) Int:\n    return first\n";
+        let p = check(syms, source);
+        let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(messages.len(), 2, "{messages:?}");
+        assert!(
+            messages
+                .iter()
+                .all(|m| m.starts_with("required second follows optional first")),
+            "{messages:?}"
+        );
+    }
+
+    #[test]
     fn generic_source_method_value_needs_type_arguments() {
         let syms = ms_syntax::Names::global();
         let source = "type Out:\n    n: Int\nfn Out.put[F](value: F) Int:\n    return 1\nfn bare(o: Out) Void:\n    g := o.put\nfn fixed(o: Out) Void:\n    g := o.put[Int]\n    n := o.put(1)\n";

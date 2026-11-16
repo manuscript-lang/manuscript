@@ -425,48 +425,57 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
         "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
         _ => None,
     };
-    let archive = build_archive(
-        &root,
-        &out,
-        &target,
-        triple.as_deref(),
-        "libms_native.a",
-        "entry",
-    )?;
+    // The archives are independent builds in their own target directories (cargo locks a target
+    // directory, so a shared one serialises them), so they build side by side: the gnu, musl,
+    // allocation-profiling and stress runtimes finish in about the time of the slowest.
+    let mut jobs: Vec<(PathBuf, Option<String>, &str, &str)> =
+        vec![(target.clone(), triple.clone(), "libms_native.a", "entry")];
     if alloc_profile {
-        // Its own target directory: the feature changes the runtime, and sharing one would rebuild it
-        // every time the two archives alternate.
-        build_archive(
-            &root,
-            &out,
-            &out.join("build-allocs"),
-            triple.as_deref(),
+        // The feature changes the runtime, so sharing a directory would rebuild it whenever the
+        // two archives alternate.
+        jobs.push((
+            out.join("build-allocs"),
+            triple.clone(),
             "libms_native_allocs.a",
             "entry,alloc-profile",
-        )?;
+        ));
     }
     if sched_stress {
         // The scheduler stress mode, for `make stress-sched`; never part of a shipped `ms`.
-        build_archive(
-            &root,
-            &out,
-            &out.join("build-stress"),
-            triple.as_deref(),
+        jobs.push((
+            out.join("build-stress"),
+            triple.clone(),
             "libms_native_stress.a",
             "entry,sched-stress",
-        )?;
+        ));
     }
     if std::env::consts::OS == "linux" {
-        let musl = format!("{arch}-unknown-linux-musl");
-        build_archive(
-            &root,
-            &out,
-            &target,
-            Some(&musl),
+        jobs.push((
+            out.join("build-musl"),
+            Some(format!("{arch}-unknown-linux-musl")),
             "libms_native_musl.a",
             "entry",
-        )?;
+        ));
     }
+    let mut built = std::thread::scope(|scope| {
+        let handles: Vec<_> = jobs
+            .iter()
+            .map(|(dir, triple, name, features)| {
+                let (root, out) = (&root, &out);
+                scope
+                    .spawn(move || build_archive(root, out, dir, triple.as_deref(), name, features))
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| {
+                h.join()
+                    .unwrap_or_else(|_| Err("archive build panicked".into()))
+            })
+            .collect::<Vec<_>>()
+    });
+    let archive = built.remove(0)?;
+    built.into_iter().collect::<Result<Vec<_>, _>>()?;
     Ok(archive)
 }
 

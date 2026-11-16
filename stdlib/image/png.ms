@@ -345,6 +345,78 @@ fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Void:
 	out.append_bytes(body)
 	put_be32(var out, crc32(tag.concat(body)).to_int())
 
+// The cost of a residual in the filter choice: its distance from zero modulo 256.
+fn residual_cost(residual: Int) Int:
+	return if residual < 128: residual else: 256 - residual
+
+// Appends the row filtered with type `filter` to `out` and returns the sum of its
+// residuals' costs. Each type has its own loops: the first `step` bytes have no left
+// neighbour.
+fn filter_with(
+	row: List[Int],
+	prev: List[Int],
+	step: Int,
+	filter: Int,
+	var out: List[Int],
+) Int:
+	n := row.length()
+	first := if step < n: step else: n
+	var cost = 0
+
+	if filter == 0:
+		for i in 0..n:
+			r := row[i]
+			out.append(r)
+			cost += residual_cost(r)
+
+		return cost
+
+	if filter == 1:
+		for i in 0..first:
+			r := row[i]
+			out.append(r)
+			cost += residual_cost(r)
+
+		for i in first..n:
+			r := (row[i] - row[i - step] + 256) % 256
+			out.append(r)
+			cost += residual_cost(r)
+
+		return cost
+
+	if filter == 2:
+		for i in 0..n:
+			r := (row[i] - prev[i] + 256) % 256
+			out.append(r)
+			cost += residual_cost(r)
+
+		return cost
+
+	if filter == 3:
+		for i in 0..first:
+			r := (row[i] - prev[i] / 2 + 256) % 256
+			out.append(r)
+			cost += residual_cost(r)
+
+		for i in first..n:
+			r := (row[i] - (row[i - step] + prev[i]) / 2 + 256) % 256
+			out.append(r)
+			cost += residual_cost(r)
+
+		return cost
+
+	for i in 0..first:
+		r := (row[i] - prev[i] + 256) % 256
+		out.append(r)
+		cost += residual_cost(r)
+
+	for i in first..n:
+		r := (row[i] - paeth(row[i - step], prev[i], prev[i - step]) + 256) % 256
+		out.append(r)
+		cost += residual_cost(r)
+
+	return cost
+
 // Filters one row with the type whose residuals have the smallest absolute sum (the
 // usual heuristic).
 fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
@@ -355,22 +427,7 @@ fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
 		var out = List[Int](reserve: row.length() + 1)
 		out.append(filter)
 
-		var cost = 0
-
-		for i in 0..row.length():
-			a := if i >= step: row[i - step] else: 0
-			b := prev[i]
-			c := if i >= step: prev[i - step] else: 0
-			var predicted = 0
-
-			if filter == 1: predicted = a
-			else if filter == 2: predicted = b
-			else if filter == 3: predicted = (a + b) / 2
-			else if filter == 4: predicted = paeth(a, b, c)
-
-			residual := (row[i] - predicted + 256) % 256
-			out.append(residual)
-			cost += if residual < 128: residual else: 256 - residual
+		cost := filter_with(row, prev, step, filter, var out)
 
 		if best_cost < 0 or cost < best_cost:
 			best = out

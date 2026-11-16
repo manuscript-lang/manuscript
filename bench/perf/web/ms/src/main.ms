@@ -18,7 +18,7 @@ fn score(id: Int) Int:
 	return id * 7919 % 1000
 
 fn reply(status: Int, text: String) HttpResponse:
-	return HttpResponse(status, headers(), text.to_bytes())
+	return HttpResponse(status, text.to_bytes())
 
 // Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
 fn pick_after(prev_id: Int, prev_score: Int) Int:
