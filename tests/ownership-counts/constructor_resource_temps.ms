@@ -1,6 +1,6 @@
 // expect-stdout: body 42
-// expect-stdout: close 2
 // expect-stdout: close 1
+// expect-stdout: close 2
 // expect-stdout: false
 // expect-stdout: close 2
 // expect-stdout: close 1
