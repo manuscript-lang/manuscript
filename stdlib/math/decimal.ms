@@ -71,18 +71,22 @@ fn Decimal.truncate_to_int() Int?:
 /*
 Rounds exactly to a multiple of `10^-places`, without converting to Float.
 Places range from -6144 through 6176; negative places round tens, hundreds, etc.
-Invalid places return EINVAL; an unrepresentable result returns ERANGE.
+Places outside that range are a programming fault; an unrepresentable result returns ERANGE.
 Omitted or `none` mode selects HalfEven. This does not preserve trailing zeros or change arithmetic.
 */
 fn Decimal.round(places: Int, mode: RoundingMode?) Decimal!:
+	if places < -6144 or places > 6176:
+		panic("Decimal.round: places must be from -6144 through 6176")
 	return msstd_decimal_round(self, places, mode)
 
 /*
 Rounds exactly and prints plain decimal notation with exactly `digits` fractional digits.
-Digits range from 0 through 6176; invalid digits return EINVAL.
+Digits range from 0 through 6176; other digits are a programming fault.
 HalfEven is the default; rounded zero has no minus sign. Trailing zeros are retained.
 */
 fn Decimal.to_fixed(digits: Int, mode: RoundingMode?) String!:
+	if digits < 0 or digits > 6176:
+		panic("Decimal.to_fixed: digits must be from 0 through 6176")
 	return msstd_decimal_to_fixed(self, digits, mode)
 
 /*

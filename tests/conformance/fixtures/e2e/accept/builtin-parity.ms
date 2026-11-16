@@ -488,8 +488,8 @@ fn verify_bigint_and_regex() Void!:
 	a.add(other: b).to_string_radix(radix: 10) | expect_equal("17")?
 	a.subtract(other: b).to_string_radix(radix: 10) | expect_equal("7")?
 	a.multiply(other: b).to_string_radix(radix: 10) | expect_equal("60")?
-	(common_result(result: a.divide(other: b))?).to_int() | expect_equal(2)?
-	(common_result(result: a.remainder(other: b))?).to_int() | expect_equal(2)?
+	a.divide(other: b).to_int() | expect_equal(2)?
+	a.remainder(other: b).to_int() | expect_equal(2)?
 	a.compare(other: b) | expect_equal(1)?
 	a.bit_and(other: b).to_int() | expect_equal(4)?
 	a.bit_or(other: b).to_int() | expect_equal(13)?

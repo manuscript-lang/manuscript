@@ -9,7 +9,7 @@ test "big integer powers enforce the exact result bit limit":
 	limit := 16777216
 	limited: BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
 	largest_power := from_int(2).pow(limit - 1)?
-	expect_equal((largest_power.shift_right(limit - 1)?).to_int(), 1)?
+	expect_equal((largest_power.shift_right(limit - 1)).to_int(), 1)?
 	expect_equal(from_int(2).pow(limit), limited)?
 	expect_equal(from_int(-2).pow(limit), limited)?
 

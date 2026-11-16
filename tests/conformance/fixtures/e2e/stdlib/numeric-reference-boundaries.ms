@@ -52,13 +52,17 @@ import (
 	finite_float_boundaries,
 	float_boundaries,
 	int_boundaries from "@std/test/boundary.ms",
-	expect_equal, expect_error, expect_true, fail from "@std/test/test.ms",
+	expect_equal,
+	expect_error,
+	expect_fault,
+	expect_true,
+	fail from "@std/test/test.ms",
 )
 
 // The two's-complement 64-bit wrap of an exact integer.
 fn wrap64(value: BigInt) BigInt!:
 	modulus := from_int(1).shift_left(64)?
-	var reduced = value.remainder(modulus)?
+	var reduced = value.remainder(modulus)
 	if reduced.sign() < 0:
 		reduced += modulus
 
@@ -118,7 +122,7 @@ test "rounding functions agree with exact rationals":
 		)?
 
 		// `round` sends ties toward positive infinity, unlike `BigRat.round`, which sends them away from zero.
-		half := rat(from_int(1), from_int(2))?
+		half := rat(from_int(1), from_int(2))
 		expect_equal(
 			rat_of_float(round(x)).get(rat_of_int(7)).numerator(),
 			exact.add(half).floor(),
@@ -179,7 +183,7 @@ test "to_fixed matches the exact decimal expansion":
 			exact := rat_of_float(x).get(rat_of_int(0))
 
 			for digits in [0, 1, 2, 5, 20]:
-				expected := exact.to_fixed(digits)?
+				expected := exact.to_fixed(digits)
 				actual := x.to_fixed(digits)
 
 				// A negative value that rounds to zero prints as `-0`, as in C; compare
@@ -208,9 +212,9 @@ test "fma and sqrt are correctly rounded":
 	for x in finite_float_boundaries():
 		if x >= 0.0:
 			if reference := big_float_of_float(x, 200):
-				if root := reference.sqrt():
-					rounded := big_float_of_rat(root.to_rat(), 53).to_float()
-					expect_equal(sqrt(x), rounded.get(0.0))?
+				root := reference.sqrt()
+				rounded := big_float_of_rat(root.to_rat(), 53).to_float()
+				expect_equal(sqrt(x), rounded.get(0.0))?
 
 	for a in [1.0, 0.1, 1e308, -1e308, 1e-308, 5e-324]:
 		for b in [1.0, 3.0, 1e10, -0.1, 1e-10]:
@@ -268,14 +272,26 @@ test "divide_wide and remainder_wide match exact division":
 				numerator := ((big_of_word(high).shift_left(64)?) + big_of_word(low))
 
 				if divisor == 0:
-					_failure := expect_error(divide_wide(high, low, divisor))?
-					_failure2 := expect_error(remainder_wide(high, low, divisor))?
+					_failure := expect_fault(
+						fn: discard(
+							divide_wide(high, low, divisor)
+						)
+					)?
+					_failure2 := expect_fault(
+						fn: discard(
+							remainder_wide(
+								high,
+								low,
+								divisor,
+							)
+						)
+					)?
 				else:
 					divisor_big := big_of_word(divisor)
-					remainder := remainder_wide(high, low, divisor)?
+					remainder := remainder_wide(high, low, divisor)
 					expect_equal(
 						big_of_word(remainder),
-						numerator.remainder(divisor_big)?,
+						numerator.remainder(divisor_big),
 					)?
 
 					if high >= divisor:
@@ -284,13 +300,11 @@ test "divide_wide and remainder_wide match exact division":
 						result := divide_wide(high, low, divisor)?
 						expect_equal(
 							big_of_word(result.quotient),
-							numerator.divide(divisor_big)?,
+							numerator.divide(divisor_big),
 						)?
 						expect_equal(
 							big_of_word(result.remainder),
-							numerator.remainder(
-								divisor_big
-							)?,
+							numerator.remainder(divisor_big),
 						)?
 
 test "bit operations match BigInt two's complement":
@@ -309,14 +323,14 @@ test "shifts and rotations agree with exact arithmetic at every count":
 			expect_equal(from_int(shift_left(a, count)), shifted)?
 			expect_equal(
 				from_int(shift_right(a, count)),
-				from_int(a).shift_right(count)?,
+				from_int(a).shift_right(count),
 			)?
 
 			rotated := rotate_left(rotate_right(a, count), count)
 			expect_equal(rotated, a)?
 
 			word := if a < 0: from_int(a) + two_pow(64) else: from_int(a)
-			logical := word.shift_right(count)?
+			logical := word.shift_right(count)
 			expect_equal(from_int(shift_right_unsigned(a, count)), wrap64(logical)?)?
 
 test "bit counts match the binary expansion":
@@ -361,7 +375,7 @@ test "BigInt agrees with Int on operations that cannot overflow":
 
 			// Int division faults on min_int / -1; BigInt has the exact quotient.
 			if b != 0 and not (a == min_int and b == -1):
-				expect_equal(from_int(a).divide(from_int(b))?, from_int(a / b))?
+				expect_equal(from_int(a).divide(from_int(b)), from_int(a / b))?
 
 test "Float text round-trips exactly":
 	for x in float_boundaries():
@@ -408,7 +422,7 @@ test "BigRat and BigFloat arithmetic is exact or correctly rounded on Float boun
 			expect_equal(a.add(b).subtract(b), a)?
 			expect_equal(a.multiply(b).compare(b.multiply(a)), 0)?
 			if y != 0.0:
-				expect_equal((a.divide(b)?).multiply(b), a)?
+				expect_equal((a.divide(b)).multiply(b), a)?
 
 			sum := x + y
 			if sum.is_finite():
@@ -436,15 +450,15 @@ test "ieee_remainder and remainder follow their definitions":
 			if y != 0.0 and x.abs() < 1e300 and y.abs() > 1e-300:
 				a := rat_of_float(x).get(rat_of_int(0))
 				b := rat_of_float(y).get(rat_of_int(0))
-				quotient := a.divide(b)?
+				quotient := a.divide(b)
 				r := ieee_remainder(x, y)
 				exact := rat_of_float(r).get(rat_of_int(7))
 
 				// r = x - n*y for an integer n, with |r| <= |y|/2.
-				n := a.subtract(exact).divide(b)?
+				n := a.subtract(exact).divide(b)
 				expect_true(n.is_integer())?
 
-				half := rat(from_int(1), from_int(2))?
+				half := rat(from_int(1), from_int(2))
 				expect_true(exact.abs().compare(b.abs().multiply(half)) <= 0)?
 
 				t := rat_of_float(remainder(x, y)).get(rat_of_int(7))
@@ -475,11 +489,10 @@ test "BigInt shifts powers and bounds at the limits":
 
 	for count in [0, 1, 63, 64, 65, 1000]:
 		shifted := one.shift_left(count)?
-		expect_equal(shifted.shift_right(count)?, one.clone())?
-		expect_equal(from_int(-1).shift_right(count)?, from_int(-1))?
+		expect_equal(shifted.shift_right(count), one.clone())?
+		expect_equal(from_int(-1).shift_right(count), from_int(-1))?
 
-	negative_shift := one.shift_left(-1)
-	_e := expect_error(negative_shift)?
+	_negative := expect_fault(fn: discard(one.shift_left(-1)))?
 	too_big := one.shift_left(16777217)
 	_e2 := expect_error(too_big)?
 	min := from_int(min_int)
@@ -504,7 +517,7 @@ fn ten_pow(exponent: Int) BigRat:
 		power = power.multiply(rat_of_int(10))
 		step += 1
 
-	if exponent < 0: return power.invert().get(rat_of_int(1))
+	if exponent < 0: return power.invert()
 
 	return power
 
@@ -519,12 +532,12 @@ test "to_exponential matches the exact decimal expansion":
 				exponent -= 1
 
 			for digits in [0, 3, 16, 17, 20]:
-				var mantissa = exact.multiply(ten_pow(-exponent)).to_fixed(digits)?
+				var mantissa = exact.multiply(ten_pow(-exponent)).to_fixed(digits)
 				var shown = exponent
 
 				if mantissa.starts_with("10"):
 					shown = exponent + 1
-					mantissa = exact.multiply(ten_pow(-shown)).to_fixed(digits)?
+					mantissa = exact.multiply(ten_pow(-shown)).to_fixed(digits)
 
 				sign := if x < 0.0: "-" else: ""
 				exponent_sign := if shown < 0: "-" else: "+"
@@ -559,3 +572,6 @@ test "Decimal arithmetic matches BigInt while the result fits 34 digits":
 					(x * y).to_fixed(0),
 					Result.ok(product.to_string_radix(10)),
 				)?
+
+fn discard[T](value: T) Void:
+	return
