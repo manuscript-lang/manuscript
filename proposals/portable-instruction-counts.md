@@ -16,10 +16,12 @@ Stage 1 and the baseline gate implemented, 2026-11-15. The first draft counted o
 - `msrt_counts` reads six words: allocations, bytes, list copies, list copy bytes, string clones, string clone bytes. `@std/os/system` exposes them as `runtime_counts()`.
 - `run_bench_block` runs the body once more after the timed samples and subtracts the counters: exact per operation, and independent of the time-based calibration.
 - `ms bench --baseline file.json --fail-over 3` compares each counter of each bench with an earlier `--json` result and exits 1 naming every counter over the bound. A counter that was zero may rise by one.
+- `ms bench --ops` adds MIR operation counts for the program's own code, the part a user project owns: after the optimizer, a `count_ops` pass puts a leaf call at the head of every block that adds the block's instruction count to a process total (`msrt_ops_add`). The count is the same under LLVM and Cranelift (verified on a list-building bench: 5039 operations either way) and on every platform, and needs no valgrind. The counter slows the program, so an `--ops` run executes each bench once and its times are not meaningful.
 - Same numbers on Linux, macOS and Windows: they are counts of runtime events, not CPU events, and need no valgrind or privileges.
 
 ## Limits
 
+- MIR operations count compiled blocks in the code the optimizer leaves, equal weight per instruction: a loop that gets slower inside a runtime call is not seen (allocations and bytes show part of it).
 - Allocations cover the calling thread and finished threads; copies cover the calling isolate. A thread still running is not in the total.
 - Work inside the Rust crates (crypto, regex, image decoding) shows only as allocations and bytes. A pure slowdown there, such as the SIMD prefilter, is invisible; `perf-counts` stays for those on Linux.
 
@@ -30,7 +32,8 @@ Stage 1 and the baseline gate implemented, 2026-11-15. The first draft counted o
 | `ms-rt` | always-on counters, `msrt_counts` | `ms-rt` unit tests |
 | `ms-std-process`, `stdlib/os/system.ms` | `runtime_counts()` | `e2e/stdlib/runtime-counts.ms` |
 | `stdlib/test/bench.ms` | counted run, new JSON fields | `bench_baseline_gates_on_work_counters` |
-| `ms-cli` | `--baseline`, `--fail-over` | same test |
+| `ms-cli` | `--baseline`, `--fail-over`, `--ops` | same test, `bench_ops_counts_the_programs_own_operations` |
+| `ms-mir`, `ms-build` | `count_ops` pass, `BuildOptions.count_ops` | same test |
 
 ## Alternatives
 

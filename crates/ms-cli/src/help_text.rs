@@ -185,7 +185,7 @@ Examples:
   ms test ms.toml --filter "nick collisions" --timeout 10s
 "#;
 
-pub const HELP_BENCH: &str = r#"Usage: ms bench <file.ms|ms.toml> [--json] [--filter text] [--time duration] [--samples count] [--iterations count] [--baseline file --fail-over percent] [--timeout duration] [--build-type level] [-- program arguments]
+pub const HELP_BENCH: &str = r#"Usage: ms bench <file.ms|ms.toml> [--json] [--filter text] [--time duration] [--samples count] [--iterations count] [--ops] [--baseline file --fail-over percent] [--timeout duration] [--build-type level] [-- program arguments]
 
 Build and run bench blocks in the module and its imported modules. A project also loads bench.ms and *_bench.ms files.
 A bench body is one iteration: the @std/test/bench.ms driver repeats it until a sample takes --time (this calibration is the warmup),
@@ -201,6 +201,8 @@ Options:
   --time <duration>    Target duration of one sample (default 100ms; at least 1ms)
   --samples <count>    Timed samples per bench (default 10)
   --iterations <count> Fixed iterations per sample; skips calibration
+  --ops                Build with a counter of the MIR operations the program executes and run each bench once; the same on
+                       every platform and backend, and it counts your code, not the runtime. Times of an --ops run are not meaningful
   --baseline <file>    An earlier `--json` result; the run fails when a work count rose more than --fail-over (times are never compared)
   --fail-over <percent> Rise over the baseline a work count may have (default 3)
   --filter <text>      Run only benches whose module::name contains text

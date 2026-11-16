@@ -64,6 +64,9 @@ export type RuntimeCounts:
 	string_clones: Int
 	// Bytes those string clones moved.
 	string_clone_bytes: Int
+	// MIR operations the program executed: its own code, not the runtime beneath it.
+	// Counted only in a build made for it (`ms bench --ops`); zero otherwise.
+	operations: Int
 
 // Operating system and processor architecture for the current host.
 export type SystemInfo:

@@ -156,9 +156,9 @@ agent-bench-check: build
 	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
 	"$(RELEASE_MS)" test bench/agent/core_test.ms
 
-# Runs bench/perf/guards as `ms bench` and fails when a work count (allocations, bytes allocated, copies) rose more than 3% over baseline.json. Counts do not depend on machine load or host, so unlike times they can gate; callgrind (`perf-counts`) stays for the Rust crates.
+# Runs bench/perf/guards as `ms bench --ops` and fails when a work count (MIR operations, allocations, bytes allocated, copies) rose more than 3% over baseline.json. Counts do not depend on machine load or host, so unlike times they can gate; callgrind (`perf-counts`) stays for the Rust crates.
 bench-gate: build
-	$(RELEASE_MS) bench bench/perf/guards/ms.toml --iterations 2 --samples 1 --baseline bench/perf/guards/baseline.json --fail-over 3
+	$(RELEASE_MS) bench bench/perf/guards/ms.toml --ops --baseline bench/perf/guards/baseline.json --fail-over 3
 
 # Type-checks every benchmark project and standalone bench source so the suites cannot rot unnoticed.
 bench-check: build

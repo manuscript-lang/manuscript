@@ -3,6 +3,7 @@
 
 pub mod builder;
 pub mod copies;
+pub mod count_ops;
 pub mod debug_types;
 pub mod elaborate;
 pub mod exit_drops;

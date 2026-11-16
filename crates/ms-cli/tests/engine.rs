@@ -852,6 +852,50 @@ fn bench_baseline_gates_on_work_counters() {
     std::fs::remove_file(&baseline).ok();
 }
 
+/// `ms bench --ops` builds with an operation counter: the count is zero without it, grows with the
+/// work of the program, and is reported per operation.
+#[test]
+fn bench_ops_counts_the_programs_own_operations() {
+    let backend = Engine::new(Native);
+    let counts = include_str!("engine/counts-bench.ms");
+    let ops = |dir: &str, size: usize, flag: &[&str]| -> f64 {
+        let dir = scratch(dir);
+        let source = write(
+            &dir,
+            "counts_bench.ms",
+            &counts.replace("SIZE", &size.to_string()),
+        );
+        let args = [
+            &[
+                "bench",
+                &source,
+                "--json",
+                "--iterations",
+                "2",
+                "--samples",
+                "1",
+            ][..],
+            flag,
+        ]
+        .concat();
+        let (status, json, err) = ms(&backend, &args);
+        assert_eq!(status, 0, "{err}{json}");
+        let at = json.find("\"mir_ops\": ").expect("mir_ops in the stats") + "\"mir_ops\": ".len();
+        let end = json[at..]
+            .find(|c: char| !c.is_ascii_digit() && c != '.')
+            .unwrap();
+        json[at..at + end].parse().unwrap()
+    };
+    assert_eq!(ops("bench-ops-off", 1000, &[]), 0.0);
+    let small = ops("bench-ops-small", 1000, &["--ops"]);
+    let large = ops("bench-ops-large", 2000, &["--ops"]);
+    assert!(small > 1000.0, "{small}");
+    assert!(
+        (1.8..2.2).contains(&(large / small)),
+        "twice the work should be about twice the operations: {small} then {large}"
+    );
+}
+
 /// A project loads `bench.ms` and `*_bench.ms` for `ms bench`.
 #[test]
 fn project_benches_are_discovered() {

@@ -80,6 +80,9 @@ struct Options {
     bench_samples: Option<u64>,
     /// Fixed iterations per sample (`--iterations`); calibrated when unset.
     bench_iterations: Option<u64>,
+    /// Count MIR operations (`--ops`): the build carries a counter, so one iteration and one
+    /// sample run and the times are not meaningful.
+    ops: bool,
     /// An earlier `ms bench --json` result to compare the work counters against (`--baseline`).
     baseline: Option<String>,
     /// Percent a work counter may rise over the baseline before the run fails (`--fail-over`).
@@ -104,6 +107,7 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
             }
             "--list" => options.list = true,
             "--fail-fast" => options.fail_fast = true,
+            "--ops" => options.ops = true,
             _ => {
                 let Some((name, value)) = arg.split_once('=') else {
                     break;
@@ -314,6 +318,12 @@ fn run<L: Lower>(
         }
     };
     options.bench = bench;
+    if bench && options.ops {
+        // The counter slows the program, so run once: the count does not need more.
+        options.bench_iterations.get_or_insert(1);
+        options.bench_samples.get_or_insert(1);
+        backend.set_count_ops(true);
+    }
     if bench && !options.timeout_set {
         options.timeout = Some(DEFAULT_BENCH_TIMEOUT);
     }
@@ -1118,7 +1128,8 @@ fn format_ns(nanos: f64) -> String {
 
 /// The work counters of a bench's statistics: the numbers that do not depend on machine load, so
 /// a baseline comparison on them does not flake. Times are never compared.
-const WORK_COUNTERS: [&str; 6] = [
+const WORK_COUNTERS: [&str; 7] = [
+    "mir_ops",
     "allocations",
     "allocated_bytes",
     "list_copies",
@@ -1199,9 +1210,13 @@ fn describe_stats(stats: &Json) -> String {
         _ => f64::NAN,
     };
     let count = |key: &str| stats.get(key).and_then(Json::as_i64).unwrap_or(0);
+    let ops = match number("mir_ops") {
+        n if n > 0.0 => format!("; {} MIR ops", round_count(n)),
+        _ => String::new(),
+    };
     let work = if stats.get("allocations").is_some() {
         format!(
-            "; {} allocs, {} bytes, {} list copies, {} string clones per op",
+            "{ops}; {} allocs, {} bytes, {} list copies, {} string clones per op",
             round_count(number("allocations")),
             round_count(number("allocated_bytes")),
             round_count(number("list_copies")),
