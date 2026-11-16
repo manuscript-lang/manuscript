@@ -183,16 +183,6 @@ pub fn stop_unshield() {
     ms_rt::fault::stop_shield_exit()
 }
 
-/// Cancels the running task at `deadline` (none: never), replacing any earlier limit.
-pub fn limit_current_until(deadline: Option<std::time::Instant>) {
-    let ns = deadline.map_or(-1, |at| {
-        at.saturating_duration_since(std::time::Instant::now())
-            .as_nanos()
-            .min(i64::MAX as u128) as i64
-    });
-    ms_rt::task::limit_current(ns)
-}
-
 /// The monotonic clock in nanoseconds, the time base of [`limit_current_at`].
 pub fn monotonic_ns() -> i64 {
     ms_rt::sys::monotonic_ns()
