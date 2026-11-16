@@ -1,6 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, BytesBuilder, join from "@std/bytes.ms",
-	ReadStream, Source, WriteStream from "@std/io/io.ms",
+	ReadStream, WriteStream from "@std/io/io.ms",
 )
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A
@@ -98,8 +100,6 @@ fn var Lines.next() String?!:
 		else:
 			self.ended = true
 
-	return ok(none)
-
 fn var Lines.close() Void!:
 	return self.input.close()
 
@@ -182,8 +182,6 @@ fn var Filtered[T].next() T?!:
 			if self.keep(value): return ok(value)
 		else:
 			return ok(none)
-
-	return ok(none)
 
 fn var Filtered[T].close() Void!:
 	return self.input.close()

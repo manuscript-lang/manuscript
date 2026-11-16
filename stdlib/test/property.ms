@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.random.read
+
 import (
 	Pair from "@std/collections/collections.ms",
 	panic from "@std/core.ms",
