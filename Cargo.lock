@@ -383,7 +383,7 @@ dependencies = [
  "cranelift-module",
  "gimli 0.33.0",
  "log",
- "object 0.40.0",
+ "object",
  "target-lexicon",
 ]
 
@@ -948,7 +948,7 @@ dependencies = [
  "ms-mir-llvm",
  "ms-rt",
  "ms-syntax",
- "object 0.41.0",
+ "object",
 ]
 
 [[package]]
@@ -975,7 +975,7 @@ dependencies = [
  "ms-rt-abi",
  "ms-syntax",
  "ms-tooling",
- "object 0.41.0",
+ "object",
  "regex",
 ]
 
@@ -994,8 +994,7 @@ dependencies = [
  "ms-build",
  "ms-mir",
  "ms-rt-abi",
- "object 0.40.0",
- "object 0.41.0",
+ "object",
  "rustls",
  "rustls-native-certs",
  "sha2",
@@ -1402,18 +1401,6 @@ name = "object"
 version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd229a0361b9d0d4396176e02d65897f487eebeab7caa6d443855ee152ca0b9c"
-dependencies = [
- "crc32fast",
- "hashbrown 0.17.1",
- "indexmap",
- "memchr",
-]
-
-[[package]]
-name = "object"
-version = "0.41.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11dbdb66876026054e4ffc8d757d862bdf5df5aebd5c0b95a41f17832a94f7d2"
 dependencies = [
  "crc32fast",
  "hashbrown 0.17.1",
