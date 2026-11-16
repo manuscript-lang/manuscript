@@ -5,7 +5,6 @@ use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{FaultKind, Func, Imm, Inst, Module, Op, Term};
 use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::STR_STATIC;
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -122,18 +121,22 @@ fn pre(
             let l = &vals[&inst.args[0].index()];
             Some(vec![l[0].clone(), b.reserve(LTy::I64), l[2].clone()])
         }
-        // The literal's bytes are a module constant: the pointer word is a constant expression
-        // and the length carries the static tag.
+        // A short literal is constant words; any other keeps its bytes in a module constant, the
+        // pointer word a constant expression and the length carrying the static tag.
         Op::StrLit => {
             let Imm::Str(id) = inst.imm else { return None };
-            let len = m.strings[id.0 as usize].len();
-            Some(vec![
-                Val::new(
-                    format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),
-                    LTy::I64,
-                ),
-                Val::int((len | STR_STATIC) as i64),
-            ])
+            Some(match ms_mir::statics::str_lit(&m.strings[id.0 as usize]) {
+                ms_mir::statics::StrLit::Inline { lo, hi } => {
+                    vec![Val::int(lo as i64), Val::int(hi as i64)]
+                }
+                ms_mir::statics::StrLit::Static { tagged } => vec![
+                    Val::new(
+                        format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),
+                        LTy::I64,
+                    ),
+                    Val::int(tagged as i64),
+                ],
+            })
         }
         Op::BytesLit => {
             let Imm::Int(i) = inst.imm else { return None };
@@ -837,7 +840,12 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
             }
             continue;
         }
-        if let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm) {
+        if let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm)
+            && matches!(
+                ms_mir::statics::str_lit(&m.strings[id.0 as usize]),
+                ms_mir::statics::StrLit::Static { .. }
+            )
+        {
             str_const(m, id.0, &mut out);
         }
     }
@@ -856,8 +864,8 @@ fn str_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
         return;
     }
     let mut text = String::new();
-    let bytes = m.strings[id as usize].as_bytes();
-    for &b in bytes.iter().chain(&[0u8]) {
+    let bytes = ms_mir::statics::str_data(&m.strings[id as usize]);
+    for &b in &bytes {
         if (0x20..0x7f).contains(&b) && b != b'"' && b != b'\\' {
             text.push(b as char);
         } else {
@@ -866,7 +874,7 @@ fn str_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
     }
     let def = format!(
         "@\"{name}\" = private unnamed_addr constant [{} x i8] c\"{text}\", align 16",
-        bytes.len() + 1
+        bytes.len()
     );
     out.push((name, def));
 }

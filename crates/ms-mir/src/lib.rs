@@ -19,6 +19,7 @@ pub mod opt;
 pub mod parse;
 pub mod persist;
 pub mod print;
+pub mod statics;
 pub mod types;
 pub mod unwind;
 pub mod verify;
