@@ -293,20 +293,33 @@ static STATE: State = State::new();
 /// The process's reservation: small-block pages, their table, and the growth chunks.
 /// Until it is mapped they sit at an address no pointer reaches, so no block is ever inside them.
 const UNMAPPED: usize = 1 << (usize::BITS - 1);
-static BASE: AtomicUsize = AtomicUsize::new(UNMAPPED);
-/// One `u32` per page: owner heap and class.
-static TABLE: AtomicPtr<u32> = AtomicPtr::new(null_mut());
-static GROW_BASE: AtomicUsize = AtomicUsize::new(UNMAPPED);
+/// What every free and ownership test reads, in one object so they cost one address load (a
+/// static in the runtime archive is reached through the GOT, two instructions each).
+#[repr(C)]
+struct Hot {
+    base: AtomicUsize,
+    /// One `u32` per page: owner heap and class.
+    table: AtomicPtr<u32>,
+    grow_base: AtomicUsize,
+    /// Bytes of address space the page reservation actually got (halved from [`PAGES_SIZE`] until
+    /// the system accepted it).
+    pages_len: AtomicUsize,
+    /// log2 of the size of one growth chunk, halved along with the pages.
+    grow_bits: AtomicUsize,
+}
+
+static HOT: Hot = Hot {
+    base: AtomicUsize::new(UNMAPPED),
+    table: AtomicPtr::new(null_mut()),
+    grow_base: AtomicUsize::new(UNMAPPED),
+    pages_len: AtomicUsize::new(PAGES_SIZE),
+    grow_bits: AtomicUsize::new(GROW_SIZE.trailing_zeros() as usize),
+};
 static REGION: Once = Once::new();
-/// Bytes of address space the page reservation actually got (halved from [`PAGES_SIZE`] until
-/// the system accepted it).
-static PAGES_LEN: AtomicUsize = AtomicUsize::new(PAGES_SIZE);
-/// log2 of the size of one growth chunk, halved along with the pages.
-static GROW_BITS: AtomicUsize = AtomicUsize::new(GROW_SIZE.trailing_zeros() as usize);
 
 #[inline(always)]
 fn pages_len() -> usize {
-    PAGES_LEN.load(Ordering::Relaxed)
+    HOT.pages_len.load(Ordering::Relaxed)
 }
 
 #[inline(always)]
@@ -316,7 +329,7 @@ fn num_pages() -> usize {
 
 #[inline(always)]
 fn grow_size() -> usize {
-    1 << GROW_BITS.load(Ordering::Relaxed)
+    1 << HOT.grow_bits.load(Ordering::Relaxed)
 }
 /// Next page not handed to any heap.
 static NEXT_PAGE: AtomicUsize = AtomicUsize::new(0);
@@ -359,14 +372,14 @@ fn ensure_region() -> bool {
                 region.grow_len - HUGE_AFTER,
             );
         }
-        PAGES_LEN.store(region.pages_len, Ordering::Relaxed);
-        GROW_BITS.store(region.grow_bits, Ordering::Relaxed);
-        TABLE.store(region.table.cast(), Ordering::Relaxed);
-        GROW_BASE.store(region.grow as usize, Ordering::Relaxed);
+        HOT.pages_len.store(region.pages_len, Ordering::Relaxed);
+        HOT.grow_bits.store(region.grow_bits, Ordering::Relaxed);
+        HOT.table.store(region.table.cast(), Ordering::Relaxed);
+        HOT.grow_base.store(region.grow as usize, Ordering::Relaxed);
         // Published last: a reader that sees `BASE` sees the rest.
-        BASE.store(region.pages as usize, Ordering::Release);
+        HOT.base.store(region.pages as usize, Ordering::Release);
     });
-    BASE.load(Ordering::Acquire) != UNMAPPED
+    HOT.base.load(Ordering::Acquire) != UNMAPPED
 }
 
 /// The address space reserved for the heap.
@@ -472,25 +485,25 @@ pub fn has_heap() -> bool {
 /// Page-table word of the small-block page holding `p`, or `None` when `p` is not in the pages.
 #[inline(always)]
 fn page_word(p: *mut u8) -> Option<u32> {
-    let off = (p as usize).wrapping_sub(BASE.load(Ordering::Relaxed));
+    let off = (p as usize).wrapping_sub(HOT.base.load(Ordering::Relaxed));
     if off >= pages_len() {
         return None;
     }
     // SAFETY: the table has one word per page of the reservation, and a block of the pages implies
     // the table was published.
-    Some(unsafe { *TABLE.load(Ordering::Relaxed).add(off >> PAGE_SHIFT) })
+    Some(unsafe { *HOT.table.load(Ordering::Relaxed).add(off >> PAGE_SHIFT) })
 }
 
 /// The growth chunk holding `p`, if any.
 #[inline(always)]
 fn grow_chunk_of(p: *mut u8) -> Option<usize> {
-    let off = (p as usize).wrapping_sub(GROW_BASE.load(Ordering::Relaxed));
-    let chunk = off >> GROW_BITS.load(Ordering::Relaxed);
+    let off = (p as usize).wrapping_sub(HOT.grow_base.load(Ordering::Relaxed));
+    let chunk = off >> HOT.grow_bits.load(Ordering::Relaxed);
     (chunk < GROW_CHUNKS).then_some(chunk)
 }
 
 fn grow_base(chunk: usize) -> usize {
-    GROW_BASE.load(Ordering::Relaxed) + chunk * grow_size()
+    HOT.grow_base.load(Ordering::Relaxed) + chunk * grow_size()
 }
 
 /// Whether `p` lies in this heap's reservation (small pages or a growth chunk).
@@ -539,7 +552,7 @@ fn refill(s: &mut State, class: usize) -> *mut u8 {
         NEXT_PAGE.store(num_pages(), Ordering::Relaxed);
         return null_mut();
     }
-    let base = BASE.load(Ordering::Relaxed);
+    let base = HOT.base.load(Ordering::Relaxed);
     let used = (page + 1) * PAGE_SIZE;
     if used > COMMITTED.load(Ordering::Acquire) {
         let _g = COMMIT_LOCK.lock();
@@ -556,7 +569,7 @@ fn refill(s: &mut State, class: usize) -> *mut u8 {
     }
     // SAFETY: `page` indexes the table, which has one word per page.
     unsafe {
-        *TABLE.load(Ordering::Relaxed).add(page) = (s.heap << OWNER_SHIFT) | class as u32;
+        *HOT.table.load(Ordering::Relaxed).add(page) = (s.heap << OWNER_SHIFT) | class as u32;
     }
     let start = (base + page * PAGE_SIZE) as *mut u8;
     let size = CLASS_SIZES[class] as usize;
@@ -1065,7 +1078,7 @@ pub fn heap_stats() -> [i64; 2] {
     if s.heap == NO_HEAP {
         return [0; 2];
     }
-    let table = TABLE.load(Ordering::Relaxed);
+    let table = HOT.table.load(Ordering::Relaxed);
     let mut carved = 0usize;
     let mut pages = 0usize;
     for page in 0..NEXT_PAGE.load(Ordering::Relaxed).min(num_pages()) {
@@ -1188,7 +1201,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "reserves address space with the real mapper")]
     fn a_refused_reservation_is_halved_until_it_fits() {
         for shrink in [0, 3, MAX_SHRINK] {
-            let limit = GROW_SIZE * GROW_CHUNKS >> shrink;
+            let limit = (GROW_SIZE * GROW_CHUNKS) >> shrink;
             let live = RefCell::new(Vec::<(usize, usize)>::new());
             let map = |len: usize| {
                 if len > limit {
@@ -1241,7 +1254,6 @@ mod tests {
         assert!(status.success(), "child failed: {status}");
     }
 
-    use super::*;
     use crate::testutil::lock;
 
     #[cfg(feature = "stats")]
