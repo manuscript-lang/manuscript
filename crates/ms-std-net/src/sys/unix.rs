@@ -161,7 +161,7 @@ pub struct Poller {
     wake: Arc<Wake>,
     parked: Cell<bool>,
     /// Timers of other threads that fired, for [`Poller::fired`].
-    fired: RefCell<Vec<u64>>,
+    fired: std::sync::Mutex<Vec<u64>>,
 }
 
 const WAKE_TOKEN: u64 = u64::MAX;
@@ -329,7 +329,7 @@ impl Poller {
             pending: RefCell::new(Vec::new()),
             wake,
             parked: Cell::new(false),
-            fired: RefCell::new(Vec::new()),
+            fired: std::sync::Mutex::new(Vec::new()),
         }
     }
 
@@ -353,7 +353,7 @@ impl Poller {
 
     /// The tokens of timers that fired since the last call.
     pub fn fired(&self) -> Vec<u64> {
-        std::mem::take(&mut *self.fired.borrow_mut())
+        std::mem::take(&mut *self.fired.lock().unwrap_or_else(|e| e.into_inner()))
     }
 
     pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
@@ -448,7 +448,10 @@ impl Poller {
                 continue;
             }
             if e.token().0 as u64 >= TIMER_TOKEN {
-                self.fired.borrow_mut().push(e.token().0 as u64);
+                self.fired
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .push(e.token().0 as u64);
                 continue;
             }
             let r = Raised::from(e);

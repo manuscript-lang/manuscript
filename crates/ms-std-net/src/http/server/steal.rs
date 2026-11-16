@@ -33,10 +33,11 @@ use super::h2serve::H2Conn;
 use crate::sys::{self, Raw, TIMER_TOKEN, Wake};
 use crate::tls::Session;
 use ms_rt::sched;
-use std::cell::RefCell;
+use std::cell::Cell;
 use std::collections::HashMap;
+use std::sync::Weak;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use std::time::Instant;
 
 /// How long a thread may stay out of rest before another thread looks at it (100 microseconds):
@@ -58,7 +59,7 @@ fn beats() -> &'static Mutex<HashMap<u64, Weak<Beat>>> {
 
 thread_local! {
     /// The share of the calling thread, for the rest hooks.
-    static MINE: RefCell<Option<Arc<Beat>>> = const { RefCell::new(None) };
+    static MINE: Cell<Option<Arc<Beat>>> = const { Cell::new(None) };
 }
 
 /// How many threads have an unarmed timer because nobody rested to hear it.
@@ -132,7 +133,7 @@ impl Beat {
 
     /// Makes the rest hooks of the calling thread (the reactor's) arm and disarm timers.
     pub fn install(self: &Arc<Beat>) {
-        MINE.with(|m| *m.borrow_mut() = Some(self.clone()));
+        MINE.with(|m| m.set(Some(self.clone())));
     }
 
     fn alert(&self) {
@@ -237,9 +238,11 @@ impl Beat {
 /// Arms the calling thread's timer: it has left its rest.
 fn leave_rest() {
     let _ = MINE.try_with(|m| {
-        if let Some(beat) = m.borrow().as_ref() {
+        let mine = m.take();
+        if let Some(beat) = mine.as_ref() {
             beat.leave_rest();
         }
+        m.set(mine);
     });
 }
 
@@ -247,28 +250,32 @@ fn leave_rest() {
 /// timers of threads that stayed out of rest with nobody to look at them.
 fn begin_rest() {
     let _ = MINE.try_with(|m| {
-        let borrow = m.borrow();
-        let Some(me) = borrow.as_ref() else {
-            return;
-        };
-        me.disarm();
-        if DORMANT.load(Ordering::Relaxed) == 0 {
-            return;
+        let mine = m.take();
+        if let Some(me) = mine.as_ref() {
+            rest_of(me);
         }
-        let resting = sched::resting_mask();
-        let peers = me.peers.load(Ordering::Relaxed) & !(1 << me.thread);
-        for held in lock(beats()).values().filter_map(Weak::upgrade) {
-            if peers & (1 << held.thread) != 0
-                && held.dormant.load(Ordering::Relaxed)
-                && held.dormant.swap(false, Ordering::AcqRel)
-            {
-                DORMANT.fetch_sub(1, Ordering::Relaxed);
-                if !held.rests(resting) {
-                    held.arm_for(me.thread);
-                }
+        m.set(mine);
+    });
+}
+
+fn rest_of(me: &Beat) {
+    me.disarm();
+    if DORMANT.load(Ordering::Relaxed) == 0 {
+        return;
+    }
+    let resting = sched::resting_mask();
+    let peers = me.peers.load(Ordering::Relaxed) & !(1 << me.thread);
+    for held in lock(beats()).values().filter_map(Weak::upgrade) {
+        if peers & (1 << held.thread) != 0
+            && held.dormant.load(Ordering::Relaxed)
+            && held.dormant.swap(false, Ordering::AcqRel)
+        {
+            DORMANT.fetch_sub(1, Ordering::Relaxed);
+            if !held.rests(resting) {
+                held.arm_for(me.thread);
             }
         }
-    });
+    }
 }
 
 /// A reactor heard timers (`tokens`, from its poller) of other threads fire. Answers whether it

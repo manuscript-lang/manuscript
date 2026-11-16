@@ -118,3 +118,17 @@ Fast handlers (4000 req/s, 64 connections, 8 s after a 2 s warm-up), runs of `ma
 | HTTP/2, 4 threads, now | 10 | 0.583 ms | 2.09 ms | 4.52 ms | 6.8 ms | 324 |
 
 Instructions per TLS request with one thread (`valgrind --tool=callgrind` on the server, closed loop over one connection, slope between runs of 3 s and 14 s counted by handler calls): 101.9k before, 102.7k now (+0.8%). So of the +7% CPU with four threads, about 3% is parking (the one-thread rows, +0.8% of it in instructions) and about 4% is the watcher and the steals. An earlier three-run reading of +4.4 ms p99.9 for HTTP/2 was noise: ten interleaved runs give 4.41 and 4.52 ms (single-run ranges 3.5 to 12.2 and 3.4 to 18.9 ms).
+
+## 2026-11-16: kernel timers instead of the watcher thread
+
+4 vCPU shared VM, alternated runs against `main` at 9f09fd55 (before connection stealing's TLS and HTTP/2 stage). Full method and dead ends: [proposal](../../../proposals/event-driven-waits.md).
+
+| Scenario | Base | Kernel timers, T = 250 µs |
+| --- | --- | --- |
+| Slow mix 2000 req/s, p50 / p99 | 0.64 ms / 3.3 to 3.5 ms | 0.66 ms / 2.8 to 2.9 ms |
+| Slow mix CPU for the run | 9.9 s | 9.0 s |
+| Fast mix 4000 req/s CPU (40k requests) | 2.9 to 3.0 s | 3.1 to 3.4 s |
+| Closed loop, 64 conns | 79k to 89k req/s | 86k to 96k req/s |
+| Fixture `http-long-handler-does-not-hold-others` | 30 of 30 | 20 of 20 |
+
+The fast-mix CPU cost (8 to 13%) is the two timer calls per wake-up plus fires on threads that were only busy; it grows as 1/T. Not measured here: the comparison with the watcher of the TLS/HTTP/2 PR (about 25% more CPU than `main`).

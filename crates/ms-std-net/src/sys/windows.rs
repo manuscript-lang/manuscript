@@ -156,7 +156,7 @@ pub struct Poller {
     shared: Arc<Shared>,
     waker: mio::Waker,
     /// Timers of other threads that fired, for [`Poller::fired`].
-    fired: RefCell<Vec<u64>>,
+    fired: std::sync::Mutex<Vec<u64>>,
 }
 
 struct Shared {
@@ -294,7 +294,7 @@ impl Poller {
             wake,
             shared,
             waker,
-            fired: RefCell::new(Vec::new()),
+            fired: std::sync::Mutex::new(Vec::new()),
         }
     }
 
@@ -357,7 +357,7 @@ impl Poller {
 
     /// The tokens of timers that fired since the last call.
     pub fn fired(&self) -> Vec<u64> {
-        std::mem::take(&mut *self.fired.borrow_mut())
+        std::mem::take(&mut *self.fired.lock().unwrap_or_else(|e| e.into_inner()))
     }
 
     /// Wakes the parked reactor task.
@@ -386,7 +386,10 @@ impl Poller {
         raised.retain(|r| {
             let timer = r.token >= TIMER_TOKEN;
             if timer {
-                self.fired.borrow_mut().push(r.token);
+                self.fired
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .push(r.token);
             }
             !timer
         });
