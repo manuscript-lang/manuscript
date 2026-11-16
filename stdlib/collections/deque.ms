@@ -142,8 +142,10 @@ fn Deque[T: Clonable].to_list() List[T]:
 fn Deque[T].length() Int:
 	return self.size
 
-// Returns the value at `index` counted from the front, or `none` when out of range.
-// Negative indexes are out of range.
-fn Deque[T].at(index: Int) T?:
-	if index < 0 or index >= self.size: return none
-	return self.slots.get(self.slot_of(index))
+// Returns the value at `index` counted from the front, or `none` when out of range;
+// negative indexes count from the back, as `List.get` does.
+fn Deque[T].get(index: Int) T?:
+	at := if index < 0: index + self.size else: index
+	if at < 0 or at >= self.size: return none
+
+	return self.slots.get(self.slot_of(at))

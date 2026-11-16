@@ -20,7 +20,6 @@ import expect_equal from "@std/test/test.ms"
 - `@std/collections/bitset.ms`: BitSet
 - `@std/collections/collections.ms`: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, map_from_entries, range_by
 - `@std/collections/deque.ms`: Deque
-- `@std/collections/iterable.ms`: Iterable
 - `@std/collections/itertools.ms`: Run, accumulate, combinations, cycle, group_runs, pairwise, permutations, product, zip_longest
 - `@std/collections/queue.ms`: HeapEntry, PriorityQueue, Queue
 - `@std/collections/sorted.ms`: SortedEntry, SortedMap, SortedSet

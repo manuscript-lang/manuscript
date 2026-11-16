@@ -40,9 +40,9 @@ test "rotation preserves order across ring positions and signed boundaries":
 				if size > 0:
 					shift := (count % size + size + advance % size) % size
 					for i in 0..size:
-						expect_equal(q.at(i).get(-1), (i + shift) % size)?
-					expect_equal(q.front(), q.at(0))?
-					expect_equal(q.back(), q.at(size - 1))?
+						expect_equal(q.get(i).get(-1), (i + shift) % size)?
+					expect_equal(q.front(), q.get(0))?
+					expect_equal(q.back(), q.get(size - 1))?
 
 test "negative rotation keeps optional values and nested contents":
 	var q = Deque[List[Int]?]()
@@ -68,7 +68,7 @@ test "positive near-whole rotations preserve full and partial rings":
 			q.rotate(size - 1)
 		expect_equal(q.length(), size)?
 		for i in 0..size:
-			expect_equal(q.at(i).get(-1), (i + size - 100) % size)?
+			expect_equal(q.get(i).get(-1), (i + size - 100) % size)?
 		q.push_back(size)
 		expect_equal(q.pop_back(), size)?
 		q.rotate(100)

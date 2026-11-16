@@ -24,10 +24,11 @@ test "indexed reads follow the front":
     for name in ["b", "c", "d"]:
         d.push_back(name)
     d.push_front("a")
-    expect_equal(d.at(0), "a")?
-    expect_equal(d.at(3), "d")?
-    expect_equal(d.at(4), none)?
-    expect_equal(d.at(-1), none)?
+    expect_equal(d.get(0), "a")?
+    expect_equal(d.get(3), "d")?
+    expect_equal(d.get(4), none)?
+    expect_equal(d.get(-1), "d")?
+    expect_equal(d.get(-5), none)?
 
 test "wraps around and grows past the first buffer":
     var d = Deque[Int]()

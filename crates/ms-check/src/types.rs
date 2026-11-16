@@ -187,8 +187,6 @@ pub enum Builtin {
     Clonable,
     /// `Iterator`.
     Iterator,
-    /// `Iterable`.
-    Iterable,
     /// `BytesBuilder`.
     BytesBuilder,
     /// `Regex`.
@@ -337,7 +335,6 @@ impl Builtin {
             "Data" => Some(Builtin::Data),
             "Clonable" => Some(Builtin::Clonable),
             "Iterator" => Some(Builtin::Iterator),
-            "Iterable" => Some(Builtin::Iterable),
             "BytesBuilder" => Some(Builtin::BytesBuilder),
             "Regex" => Some(Builtin::Regex),
             _ => None,
