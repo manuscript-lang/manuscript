@@ -18,7 +18,7 @@
 use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves};
 use crate::glue_llvm::{OwnKind, own_kind};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
-use ms_mir::ir::{ExternRole, Func, Imm, Inst, Mode, Module, Op, Target, Value};
+use ms_mir::ir::{Func, Imm, Inst, Mode, Op, Target, Value};
 use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 
@@ -718,14 +718,6 @@ fn slot_alias(f: &Func, lay: &Layouts, slot: Value) -> Option<Value> {
     (writes.next().is_none() && owned && is_map_or_set(lay, f.ty(v))).then_some(v)
 }
 
-/// Whether `slot` is an argument of a call whose result may point into its arguments.
-fn feeds_view_result(m: &Module, f: &Func, slot: Value) -> bool {
-    f.blocks.iter().flat_map(|bl| &bl.insts).any(|i| {
-        matches!((i.op, i.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::ViewResult)
-            && i.args.contains(&slot)
-    })
-}
-
 /// Whether the result of `inst` is bound by [`bind_early`]: a type held as leaves is built, read
 /// and replaced by moving leaves around, and a stack slot is an `alloca`.
 fn is_early(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
@@ -747,7 +739,6 @@ fn is_early(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
 /// `alloca` goes to the entry block anyway). `None` for any other instruction.
 pub(super) fn bind_early(
     b: &mut FnBuilder,
-    m: &Module,
     lay: &Layouts,
     f: &Func,
     vals: &Vals,
@@ -765,14 +756,9 @@ pub(super) fn bind_early(
             }
             // The runtime may write a whole word to a slot of a smaller type.
             let words = lay.mem(t).size.max(8).div_ceil(8);
-            let ty = LTy::Array(Box::new(LTy::I64), u64::from(words));
-            // A view result may point into the slot, so the slot keeps its place for the whole
-            // function instead of getting block-confined lifetime markers.
-            Some(vec![if feeds_view_result(m, f, inst.res?) {
-                b.alloca_pinned(&ty)
-            } else {
-                b.alloca(&ty)
-            }])
+            Some(vec![
+                b.alloca(&LTy::Array(Box::new(LTy::I64), u64::from(words))),
+            ])
         }
         Op::TypeNew => Some(
             inst.args

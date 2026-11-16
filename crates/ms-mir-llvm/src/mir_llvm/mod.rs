@@ -691,7 +691,7 @@ pub fn emit(
         for inst in &bd.insts {
             let Some(res) = inst.res else { continue };
             let pre = area_of(inst.op).and_then(|a| (a.pre)(m, lay, f, inst, &vals, &mut b));
-            let own = match pre.or_else(|| types::bind_early(&mut b, m, lay, f, &vals, inst)) {
+            let own = match pre.or_else(|| types::bind_early(&mut b, lay, f, &vals, inst)) {
                 Some(own) => own,
                 None => types::reserve(&mut b, lay, f.ty(res)),
             };
