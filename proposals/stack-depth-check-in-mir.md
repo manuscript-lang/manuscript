@@ -8,7 +8,7 @@
 
 - New op `stack.low`: true when the stack pointer is below the running segment's limit. Both backends lower it to the one load beside the stack region's end.
 - New pass `ms_mir::depth`, run last (after `unwind`, which looks for `depth.enter`). It replaces the first instruction of the entry block with `stack.low` and a branch to an out-of-line block that allocates the block, stores the parameters, calls `msrt_task_grow(shim, block)`, takes the result, frees the block and returns it. The shim is a MIR function `<fn>.grow(block)` that loads the parameters, calls the function and stores the result.
-- `ExternRole::GrowStack` marks that call: the backends place its block out of line (Cranelift cold block plus branch swap, LLVM `cold`). Nothing is matched by name.
+- The grow block is in `Func::cold`, so the backends place it out of line like a fault block.
 - The new instructions carry no source location, so the overflow trace is unchanged.
 
 ## Evidence

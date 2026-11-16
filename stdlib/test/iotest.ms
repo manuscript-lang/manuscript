@@ -1,6 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes from "@std/bytes.ms",
-	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
+	ReadStream, WriteStream from "@std/io/io.ms",
 	read_all from "@std/io/streams.ms",
 	fail from "@std/test/test.ms",
 )
@@ -21,9 +23,9 @@ fn var OneByte.next() Bytes?!:
 		data = held.clone()
 	else:
 		fresh := self.input.next()?
-		if fresh.is_none(): return ok(none)
 
-		data = fresh.get().clone()
+		if next := fresh: data = next.clone()
+		else: return ok(none)
 
 	if data.length() <= 1:
 		self.held = none
@@ -131,10 +133,8 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
 		chunk := again.next()
 		if chunk.is_error(): return fail("check_reader: a read failed")
 
-		piece := chunk.get()
-		if piece.is_none(): break
-
-		total += piece.get().length()
+		if piece := chunk.get(): total += piece.length()
+		else: break
 
 	after_end := again.next()
 	if after_end.is_error() or after_end.get().is_some():

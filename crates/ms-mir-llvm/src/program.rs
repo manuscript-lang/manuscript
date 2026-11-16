@@ -184,22 +184,10 @@ fn direct_plan(g: &mut Gen, f: &Func) -> Plan {
     for bd in &f.blocks {
         for i in &bd.insts {
             match (i.op, i.imm) {
-                (Op::Clone | Op::AltOwn | Op::OptUnwrap, _) => {
-                    // `opt.unwrap` clones the payload of its operand.
-                    let ty = match i.op {
-                        Op::OptUnwrap => g.m.opt_inner(f.ty(i.args[0])).expect("an optional"),
-                        _ => mir_llvm::cloned_ty(f, i),
-                    };
-                    plan_clone(g, &mut plan, ty);
-                }
+                (Op::Clone, _) => plan_clone(g, &mut plan, f.ty(i.args[0])),
                 (Op::Drop | Op::DropIf, _) => {
                     let ty = f.ty(i.args[usize::from(i.op == Op::DropIf)]);
                     plan_drop(g, &mut plan, ty);
-                }
-                (Op::AltRelease | Op::AltUnbox | Op::TypeRelease, _) => {
-                    for ty in mir_llvm::released_types(&g.lay, f, i) {
-                        plan_drop(g, &mut plan, ty);
-                    }
                 }
                 (
                     Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListDropLast | Op::ListRelease,

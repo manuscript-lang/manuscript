@@ -1,6 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, join from "@std/bytes.ms",
-	ReadStream, Sink, Transform, WriteStream, through from "@std/io/io.ms",
+	ReadStream, WriteStream, through from "@std/io/io.ms",
 	StringBuilder from "@std/string_builder.ms",
 )
 

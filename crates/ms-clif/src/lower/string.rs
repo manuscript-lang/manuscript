@@ -11,57 +11,42 @@ impl<'a, 'm> Lower<'a, 'm> {
             unreachable!("str.eq_lit carries a literal")
         };
         let other = self.a(inst, 0);
-        let bytes = self.g.m.strings[lit.0 as usize].as_bytes().to_vec();
+        let plan = ms_mir::statics::eq_lit(self.g.m.strings[lit.0 as usize].as_bytes());
         let unaligned = MemFlagsData::new().with_notrap();
         // The literal as an inline string: equal words. Another kind of string compares its
         // masked length (never the literal's for an inline string) and then its bytes.
-        let mut word = [0u8; 8];
-        word[..bytes.len()].copy_from_slice(&bytes);
-        let inline_tag = (STR_INLINE | (bytes.len() << STR_INLINE_LEN_SHIFT)) as i64;
-        let same_tag = self.b.ins().icmp_imm_s(IntCC::Equal, other[1], inline_tag);
+        let same_tag = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, other[1], plan.inline_tag);
         let same_word = self
             .b
             .ins()
-            .icmp_imm_s(IntCC::Equal, other[0], i64::from_le_bytes(word));
+            .icmp_imm_s(IntCC::Equal, other[0], plan.inline_word);
         let inline_eq = self.b.ins().band(same_tag, same_word);
         let len = self.b.ins().band_imm_s(other[1], STR_LEN_MASK as i64);
-        let same_len = self
-            .b
-            .ins()
-            .icmp_imm_s(IntCC::Equal, len, bytes.len() as i64);
+        let same_len = self.b.ins().icmp_imm_s(IntCC::Equal, len, plan.len);
         let check = self.b.create_block();
         let join = self.b.create_block();
         self.b.append_block_param(join, types::I8);
-        let no = self.b.ins().iconst(types::I8, 0);
         self.b
             .ins()
             .brif(same_len, check, &[], join, &[BlockArg::Value(inline_eq)]);
-        let _ = no;
         self.b.switch_to_block(check);
         let mut all = None;
-        let mut at = 0;
-        while at < bytes.len() {
-            let n = [8, 4, 2, 1]
-                .into_iter()
-                .find(|n| bytes.len() - at >= *n)
-                .unwrap();
-            let ty = match n {
+        for c in &plan.chunks {
+            let ty = match c.width {
                 8 => types::I64,
                 4 => types::I32,
                 2 => types::I16,
                 _ => types::I8,
             };
-            let mut word = [0u8; 8];
-            word[..n].copy_from_slice(&bytes[at..at + n]);
-            let shift = 64 - 8 * n as u32;
-            let want = (i64::from_le_bytes(word) << shift) >> shift;
-            let got = self.b.ins().load(ty, unaligned, other[0], at as i32);
-            let eq = self.b.ins().icmp_imm_s(IntCC::Equal, got, want);
+            let got = self.b.ins().load(ty, unaligned, other[0], c.at as i32);
+            let eq = self.b.ins().icmp_imm_s(IntCC::Equal, got, c.want);
             all = Some(match all {
                 Some(a) => self.b.ins().band(a, eq),
                 None => eq,
             });
-            at += n;
         }
         self.b
             .ins()
@@ -80,7 +65,14 @@ impl<'a, 'm> Lower<'a, 'm> {
         // differ: different lengths, or for inline strings different bytes. Either way unequal.
         // The ASCII flag may differ between equal strings, so it is masked out.
         let x = self.b.ins().bxor(a[1], b[1]);
-        let x = self.b.ins().band_imm_s(x, !(STR_ASCII as i64));
+        // An owned string also records its spare room, which equal strings need not share; an
+        // inline string keeps its bytes in the same bits, so those stay.
+        let tag = self.b.ins().ushr_imm_u(a[1], 62);
+        let inline = self.b.ins().icmp_imm_u(IntCC::Equal, tag, 1);
+        let keep_spare = self.iconst(!(STR_ASCII as i64));
+        let drop_spare = self.iconst(!((STR_ASCII | STR_SPARE_MASK) as i64));
+        let mask = self.b.ins().select(inline, keep_spare, drop_spare);
+        let x = self.b.ins().band(x, mask);
         let below = self.b.ins().iadd_imm_s(x, -1);
         let differ =
             self.b

@@ -728,6 +728,20 @@ pub(crate) fn steal_wait_ns() -> i64 {
     wait
 }
 
+/// `None` when the calling thread has a promise it could start now, else how long until one can
+/// be taken (see [`steal_wait_ns`]). One look at the queues for a caller that wants both.
+pub(crate) fn work_or_wait() -> Option<i64> {
+    let me = current();
+    if me == NONE {
+        return Some(-1);
+    }
+    if SLOTS[me].pending.load(Ordering::SeqCst) != 0 && own_ready(me, crate::sys::monotonic_ns()) {
+        return None;
+    }
+    let wait = steal_wait_ns();
+    (wait != 0).then_some(wait)
+}
+
 /// Whether the calling thread has a promise it could start now.
 pub(crate) fn work_available() -> bool {
     let me = current();

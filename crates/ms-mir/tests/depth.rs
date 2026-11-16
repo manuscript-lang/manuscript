@@ -1,5 +1,5 @@
 use ms_mir::depth;
-use ms_mir::ir::{ExternRole, Imm, Module, Op, Term};
+use ms_mir::ir::{Imm, Module, Op, Term};
 use ms_mir::parse::parse_module;
 use ms_mir::verify::verify_module;
 
@@ -33,13 +33,7 @@ fn the_check_becomes_stack_low_and_a_branch_to_an_out_of_line_grow_path() {
     let Term::CondBr { then, els, .. } = &f.blocks[0].term else {
         panic!("the entry block branches on the check");
     };
-    let grows = |b: usize| {
-        f.blocks[b].insts.iter().any(|i| {
-            matches!((i.op, i.imm), (Op::CallRt, Imm::Ext(e))
-                if m.externs[e.index()].role == ExternRole::GrowStack)
-        })
-    };
-    assert!(grows(then.block.index()) && !grows(els.block.index()));
+    assert!(f.cold.contains(&then.block) && !f.cold.contains(&els.block));
 }
 
 #[test]
@@ -63,10 +57,7 @@ fn void_results_and_droppable_parameters_lower_and_round_trip_through_text() {
          fn @walk(%0: move str, %1: int) -> void {\nb0:\n  depth.enter\n  drop %0\n  %2: void = void\n  ret %2\n}\n",
     );
     let text = ms_mir::print::print_module(&m);
-    assert!(
-        text.contains("stack.low") && text.contains("grow_stack"),
-        "{text}"
-    );
+    assert!(text.contains("stack.low"), "{text}");
     let again = parse_module(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     verify_module(&again).unwrap_or_else(|e| panic!("{e:?}"));
     assert!(m.func_by_name("main.grow").is_some() && m.func_by_name("walk.grow").is_some());

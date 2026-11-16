@@ -1,5 +1,3 @@
-import Bytes from "@std/bytes.ms"
-
 /*
 Shared pieces of the image codecs: the decoded raster the codecs exchange with `@std/image/image.ms`,
 error constructors, and size checks. Use `@std/image/image.ms`; this module is its implementation detail.

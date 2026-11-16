@@ -64,7 +64,7 @@ pub fn lower(m: &mut Module) -> bool {
             "msrt_task_grow",
             &[Ty::PTR, Ty::PTR],
             Ty::VOID,
-            ExternRole::GrowStack,
+            ExternRole::None,
             false,
         ),
     };
@@ -233,6 +233,8 @@ fn expand(m: &mut Module, fi: usize, rt: &Runtime) {
         els: Target::to(crate::ir::Block(cont as u32)),
     };
     e.f.blocks[0].term_loc = loc;
+    // The rare path: the backends lay it out of line.
+    e.f.cold.insert(crate::ir::Block(grow as u32));
     e.block = grow;
     let size = e.int(cells.size.max(8));
     let blk = e.call(rt.alloc, &[size], Ty::PTR);

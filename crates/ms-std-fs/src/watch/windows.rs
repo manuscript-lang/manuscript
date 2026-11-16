@@ -1,7 +1,7 @@
 //! The native watcher on Windows: one overlapped `ReadDirectoryChangesW` request on the watched
 //! directory handle. `next` checks the request without blocking between short sleeps, so a
 //! pending call stays cancellable, and the request is cancelled before its buffer is freed.
-use super::{Event, sleep_slice, valid_native};
+use super::{Event, Gate, sleep_slice, valid_native};
 use crate::err::{Fail, Res};
 use crate::ops::poll_cancel;
 use crate::path;
@@ -72,6 +72,9 @@ pub struct Native {
 }
 
 impl Native {
+    /// Nothing to wake: this wait looks on a slice until it is made an event.
+    pub fn interrupt(&self) {}
+
     /// `overflow` is `error` or `ignore`; `max` bounds the paths under the root at start and
     /// `events` the queued events.
     pub fn new(
@@ -206,7 +209,7 @@ impl Native {
         }
     }
 
-    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
+    pub fn wait(&mut self, gate: &Gate) -> Res<Vec<Event>> {
         loop {
             if let Some(f) = self.terminal.take() {
                 return Err(f);
@@ -218,7 +221,7 @@ impl Native {
                 return Err(Fail::status(STATUS_NONE));
             }
             poll_cancel()?;
-            if closed.load(Ordering::Relaxed) {
+            if gate.is_closed() {
                 return Err(Fail::status(STATUS_CLOSED));
             }
             let mut got = 0u32;

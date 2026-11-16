@@ -6,7 +6,6 @@ use crate::lower::Lower;
 use crate::{Error, Options};
 use cranelift_codegen::Context;
 use cranelift_codegen::ir::{self, AbiParam, Signature, UserFuncName, types};
-use ms_mir::types::Native;
 
 /// A parameter or return of type `ty`. Bytes are zero-extended to a full register: the
 /// runtime is compiled by rustc, which assumes `u8` and `bool` arguments arrive extended.
@@ -21,7 +20,7 @@ use cranelift_module::{
 };
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use ms_mir::ir::{ExtId, Func, Module};
-use ms_mir::types::{Ty, TyKind};
+use ms_mir::types::Ty;
 use std::collections::HashMap;
 
 /// Offset of `code` in a closure object.
@@ -473,32 +472,20 @@ impl<'m> Gen<'m> {
 
     /// The static `TypeDesc` for slots of type `ty` (`crates/ms-rt/ABI.md`, section 5).
     pub fn typedesc(&mut self, ty: Ty) -> DataId {
-        use ms_rt_abi::{
-            DESC_DROP_OFFSET, KIND_CUSTOM, KIND_LIST, KIND_MAP, KIND_POD, KIND_SET, KIND_SHARED,
-        };
+        use ms_rt_abi::{DESC_DROP_OFFSET, DESC_EQ_OFFSET, DESC_HASH_OFFSET};
         if let Some(id) = self.desc_ids.get(&ty) {
             return *id;
         }
-        let m = self.m;
-        // A scoped key names the same layout with the glue of one module's local implementations.
-        let (key, scope) = (ty, ty.scope());
-        let ty = ty.unscoped();
-        let builtin = match m.types.kind(ty) {
-            // `Int8`..`Int32` and `UInt8`..`UInt64` are plain bits of their width and take the `POD` path below.
-            TyKind::Int => Some("msrt_desc_int"),
-            TyKind::Float => Some("msrt_desc_float"),
-            TyKind::Float32 => Some("msrt_desc_float32"),
-            TyKind::Bool => Some("msrt_desc_bool"),
-            TyKind::Str => Some("msrt_desc_string"),
-            TyKind::Bytes => Some("msrt_desc_bytes"),
-            _ => None,
+        let key = ty;
+        let table = match ms_mir::statics::descriptor(self.m, &self.lay, key) {
+            ms_mir::statics::DescPlan::Runtime(name) => {
+                let id = self.rt_data(name);
+                self.desc_ids.insert(key, id);
+                return id;
+            }
+            ms_mir::statics::DescPlan::Table(t) => t,
         };
-        if let Some(name) = builtin {
-            let id = self.rt_data(name);
-            self.desc_ids.insert(key, id);
-            return id;
-        }
-        let sig = ms_mir::print::ty_str(m, key);
+        let sig = ms_mir::print::ty_str(self.m, key);
         let name = self
             .names
             .unique(&format!("ms.desc.{:016x}", name_hash(&sig)));
@@ -507,45 +494,21 @@ impl<'m> Gen<'m> {
             .declare_data(&name, self.private(), false, false)
             .expect("declare descriptor");
         self.desc_ids.insert(key, id);
-        let mem = self.lay.mem(ty);
-        let mut inner: [Option<Ty>; 2] = [None, None];
-        let mut with_glue = false;
-        let kind = match m.types.kind(ty) {
-            TyKind::List(e) => {
-                inner[0] = Some(*e);
-                KIND_LIST
-            }
-            TyKind::Obj(Native::Map, args) => {
-                inner = [args.first().copied(), args.get(1).copied()];
-                KIND_MAP
-            }
-            TyKind::Obj(Native::Set, args) => {
-                inner[0] = args.first().copied();
-                KIND_SET
-            }
-            TyKind::Obj(..) | TyKind::Fn(..) => KIND_SHARED,
-            TyKind::Opt(i) if self.lay.opt_is_nullable(*i) => KIND_SHARED,
-            _ if !m.needs_drop(ty) => KIND_POD,
-            _ => {
-                with_glue = true;
-                KIND_CUSTOM
-            }
-        };
         let mut bytes = vec![0u8; ms_rt_abi::DESC_SIZE];
-        bytes[0..4].copy_from_slice(&mem.size.to_le_bytes());
-        bytes[4..8].copy_from_slice(&mem.align.to_le_bytes());
-        bytes[8..12].copy_from_slice(&kind.to_le_bytes());
+        bytes[0..4].copy_from_slice(&table.size.to_le_bytes());
+        bytes[4..8].copy_from_slice(&table.align.to_le_bytes());
+        bytes[8..12].copy_from_slice(&table.kind.to_le_bytes());
         let mut d = DataDescription::new();
         d.define(bytes.into_boxed_slice());
         d.set_align(8);
-        for (k, t) in inner.into_iter().enumerate() {
+        for (k, t) in table.inner.into_iter().enumerate() {
             if let Some(t) = t {
-                let did = self.typedesc(t.scoped(scope));
+                let did = self.typedesc(t);
                 let gv = self.module.declare_data_in_data(did, &mut d);
                 d.write_data_addr(16 + 8 * k as u32, gv, 0);
             }
         }
-        if with_glue {
+        if let Some(ty) = table.slot_glue {
             let drop = self.glue(Glue::SlotDrop, ty);
             let copy = self.glue(Glue::SlotCopy, ty);
             for (off, f) in [
@@ -556,17 +519,8 @@ impl<'m> Gen<'m> {
                 d.write_function_addr(off, fr);
             }
         }
-        // The scope's own glue, else the unscoped one.
-        let glue = m
-            .desc_glue
-            .iter()
-            .find(|(t, _, _)| *t == key)
-            .or_else(|| m.desc_glue.iter().find(|(t, _, _)| *t == ty));
-        if let Some(&(_, eq, hash)) = glue {
-            for (off, f) in [
-                (ms_rt_abi::DESC_EQ_OFFSET as u32, eq),
-                (ms_rt_abi::DESC_HASH_OFFSET as u32, hash),
-            ] {
+        if let Some((eq, hash)) = table.eq_hash {
+            for (off, f) in [(DESC_EQ_OFFSET as u32, eq), (DESC_HASH_OFFSET as u32, hash)] {
                 let fr = self.func_in_data(self.funcs[f.index()], &mut d);
                 d.write_function_addr(off, fr);
             }
@@ -575,8 +529,7 @@ impl<'m> Gen<'m> {
         id
     }
 
-    /// The shared block of payloadless case `case` of a boxed alternative: `size` zero bytes with
-    /// the tag stored first. Such values never allocate, and dropping them frees nothing.
+    /// The shared block of payloadless case `case` of a boxed alternative.
     pub fn unit_block(&mut self, alt: ms_mir::types::AltId, case: usize, size: usize) -> DataId {
         if let Some(id) = self.unit_blocks.get(&(alt, case)) {
             return *id;
@@ -590,17 +543,14 @@ impl<'m> Gen<'m> {
                 false,
             )
             .expect("declare unit block");
-        let mut bytes = vec![0u8; size.max(8)];
-        bytes[0..8].copy_from_slice(&(case as u64).to_le_bytes());
         let mut d = DataDescription::new();
-        d.define(bytes.into_boxed_slice());
+        d.define(ms_mir::statics::unit_block(case, size).into_boxed_slice());
         d.set_align(8);
         self.module.define_data(id, &d).expect("define unit block");
         self.unit_blocks.insert((alt, case), id);
         id
     }
 
-    /// A static `String` block for literal `i`: the bytes then a NUL.
     /// The static data of constant list `i` (`list.const`), laid out as its elements are in memory.
     pub fn list_const(&mut self, i: usize, elem: Ty) -> DataId {
         if let Some(id) = self.list_consts.get(&i) {
@@ -646,8 +596,7 @@ impl<'m> Gen<'m> {
             return *id;
         }
         let s = &self.m.strings[i as usize];
-        let mut bytes = s.as_bytes().to_vec();
-        bytes.push(0);
+        let bytes = ms_mir::statics::str_data(s);
         let name = self.names.unique(&format!("ms.str.{:016x}", name_hash(s)));
         let id = self
             .module
@@ -1393,6 +1342,8 @@ mod target_tests {
                 ms_mir::verify::verify_module(&m).unwrap();
                 ms_mir::opt::optimize(&mut m, level, true);
                 ms_mir::depth::lower(&mut m);
+                ms_mir::expand::run(&mut m, true);
+                ms_mir::expand_owned::run(&mut m);
                 let opts = Options {
                     opt_level: if level == ms_mir::opt::Level::None {
                         "none"

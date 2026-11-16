@@ -171,89 +171,6 @@ fn field_boxed(lay: &Layouts, r: ms_mir::types::TypeId, i: u32) -> bool {
         && lay.type_field_boxed(lay.m.type_defs[r.index()].fields[i as usize].1)
 }
 
-/// The fields of the type `ty` that `type.release` drops: those the mask does not move out and
-/// that own something, each with its type and leaf index and count.
-pub(super) fn released(
-    lay: &Layouts,
-    ty: Ty,
-    mask: u32,
-) -> impl Iterator<Item = (Ty, usize, usize)> {
-    let r = named_type(lay, ty).expect("a type that is not indirect");
-    let mut at = 0;
-    lay.m.type_defs[r.index()]
-        .fields
-        .iter()
-        .enumerate()
-        .filter_map(move |(k, f)| {
-            let w = lay.width(f.1);
-            at += w;
-            (mask >> k & 1 == 0 && lay.m.needs_drop(f.1)).then_some((f.1, at - w, w))
-        })
-}
-
-/// The fields of the indirect type `r` that `type.release` visits: a boxed collection always (its
-/// header block is freed), any other when the mask does not move it out and it owns something;
-/// each with its field index, so that `block_spans` locates it, and whether it is boxed.
-fn block_released(lay: &Layouts, r: ms_mir::types::TypeId, mask: u32) -> Vec<(Ty, usize, bool)> {
-    let spans = block_spans(lay, r);
-    lay.m.type_defs[r.index()]
-        .fields
-        .iter()
-        .enumerate()
-        .filter(|(k, f)| spans[*k].2 || (mask >> k & 1 == 0 && lay.m.needs_drop(f.1)))
-        .map(|(k, f)| (f.1, k, spans[k].2))
-        .collect()
-}
-
-/// The types of the fields `type.release` of a type of type `ty` drops through glue.
-pub(super) fn release_types(lay: &Layouts, ty: Ty, mask: u32) -> Vec<Ty> {
-    match indirect(lay, ty) {
-        Some(r) => block_released(lay, r, mask)
-            .into_iter()
-            .filter(|(fty, k, _)| mask >> k & 1 == 0 && lay.m.needs_drop(*fty))
-            .map(|(fty, ..)| fty)
-            .collect(),
-        None => released(lay, ty, mask).map(|(t, ..)| t).collect(),
-    }
-}
-
-/// `type.release` of an indirect type: drops the fields the mask keeps, frees the header block of
-/// each collection field and then the type's block.
-fn release_block(cx: &mut Cx, b: &mut FnBuilder, r: ms_mir::types::TypeId, mask: u32, p: &Val) {
-    let lay = cx.lay;
-    let s = block_shape(b.types(), lay, r);
-    let spans = block_spans(lay, r);
-    declare_heap(cx);
-    for (fty, k, boxed) in block_released(lay, r, mask) {
-        let (at, n, _) = spans[k];
-        let kept = mask >> k & 1 == 0 && lay.m.needs_drop(fty);
-        if !boxed {
-            let leaves = load_leaves(b, &s, p, at, n, &[]);
-            super::glue::drop_held(cx, fty, leaves, b);
-            continue;
-        }
-        let slot = b.field_ptr(&s.st, p, at);
-        let bp = b.load(&LTy::Ptr, &slot, 8);
-        let some = b.icmp("ne", &bp, &NULL());
-        let (_, then, join) = next_split(cx, "r");
-        b.cond_br(&some, &then, &join);
-        b.label(&then);
-        if kept {
-            let words = (0..lay.width(fty))
-                .map(|w| {
-                    let at = b.elem_ptr(&LTy::I64, &bp, &Val::int(w as i64));
-                    b.load(&LTy::I64, &at, 8)
-                })
-                .collect();
-            super::glue::drop_held(cx, fty, words, b);
-        }
-        b.call(&LTy::Void, "", "msrt_free", &[(bp, "")]);
-        b.br(&join);
-        b.label(&join);
-    }
-    b.call(&LTy::Void, "", "msrt_free", &[(p.clone(), "")]);
-}
-
 /// How many times `inst` splits its block: reading, creating or addressing a boxed collection
 /// field branches on the null header.
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
@@ -274,16 +191,8 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
                 usize::from(drops)
             }
         }
-        (Op::TypeRelease, Imm::TypeMask(_, mask)) => match indirect(lay, f.ty(i.args[0])) {
-            // Each boxed collection field is tested for its header; a string field is a check.
-            Some(r) => block_released(lay, r, mask)
-                .iter()
-                .map(|(fty, _, boxed)| usize::from(*boxed || own_kind(lay, *fty) == OwnKind::Str))
-                .sum(),
-            None => released(lay, f.ty(i.args[0]), mask)
-                .filter(|(fty, ..)| own_kind(lay, *fty) == OwnKind::Str)
-                .count(),
-        },
+        // The nullable box of a collection field is freed behind a null test.
+        (Op::Free, Imm::Field(..)) => 1,
         _ => 0,
     }
 }
@@ -324,7 +233,7 @@ pub(super) fn handles(op: Op) -> bool {
             | Op::TypeGet
             | Op::TypeSet
             | Op::TypeFill
-            | Op::TypeRelease
+            | Op::Free
             | Op::Slot
             | Op::Load
             | Op::Take
@@ -889,25 +798,29 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.copy_bytes(&out[0], &src, s.size as u64, s.align as u64);
             write_field(b, lay, f, vals, &s, &out[0], at, inst.args[1]);
         }
-        Op::TypeRelease => {
-            let Imm::TypeMask(_, mask) = inst.imm else {
-                return;
-            };
-            let rty = f.ty(inst.args[0]);
-            if let Some(r) = indirect(lay, rty) {
-                release_block(cx, b, r, mask, &arg(0)[0]);
-                return;
-            }
-            let own = arg(0).clone();
-            let s = is_mem(lay, rty).then(|| shape(b.types(), lay, rty).expect("is_mem checked"));
-            for (fty, at, n) in released(lay, rty, mask) {
-                let leaves = match &s {
-                    // A field that is itself a type in memory is its address in the parent.
-                    Some(s) if is_mem(lay, fty) => vec![b.leaf_ptr(&s.st, &own[0], at)],
-                    Some(s) => load_leaves(b, s, &own[0], at, n, &[]),
-                    None => own[at..at + n].to_vec(),
-                };
-                super::glue::drop_held(cx, fty, leaves, b);
+        Op::Free => {
+            declare_heap(cx);
+            let held = &arg(0)[0];
+            match inst.imm {
+                // The heap block behind the value.
+                Imm::None => {
+                    b.call(&LTy::Void, "", "msrt_free", &[(held.clone(), "")]);
+                }
+                // The nullable box of a collection field inside an indirect type's block.
+                Imm::Field(r, k) => {
+                    let s = block_shape(b.types(), lay, r);
+                    let (at, ..) = block_spans(lay, r)[k as usize];
+                    let slot = b.field_ptr(&s.st, held, at);
+                    let bp = b.load(&LTy::Ptr, &slot, 8);
+                    let some = b.icmp("ne", &bp, &NULL());
+                    let (_, then, join) = next_split(cx, "r");
+                    b.cond_br(&some, &then, &join);
+                    b.label(&then);
+                    b.call(&LTy::Void, "", "msrt_free", &[(bp, "")]);
+                    b.br(&join);
+                    b.label(&join);
+                }
+                _ => unreachable!("free takes no other immediate"),
             }
         }
         _ => unreachable!("handles lists the ops"),

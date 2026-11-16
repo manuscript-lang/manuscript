@@ -26,23 +26,8 @@ use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
-pub(crate) use glue::cloned_ty;
 use ms_mir::layout::{Layouts, Leaf};
 
-/// The types of the fields a release (`alt.release`, `alt.unbox`, `type.release`) drops through
-/// glue: the driver declares their drop glue.
-pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
-    match (inst.op, inst.imm) {
-        (Op::AltRelease | Op::AltUnbox, _) => enums::released(lay, inst)
-            .into_iter()
-            .map(|(t, _)| t)
-            .collect(),
-        (Op::TypeRelease, Imm::TypeMask(_, mask)) => {
-            types::release_types(lay, f.ty(inst.args[0]), mask)
-        }
-        _ => Vec::new(),
-    }
-}
 use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
@@ -757,7 +742,16 @@ pub fn emit(
                 let c = vals[&cond.index()][0].clone();
                 let from = exit_label(lay, f, checks, bb.index());
                 let to = edge_labels(lay, f, &bd.term, &from);
-                b.cond_br(&c, &to[0], &to[1]);
+                // A branch into a cold block (a check's fault, the growth of a full list) is
+                // unlikely.
+                let Term::CondBr { then, els, .. } = &bd.term else {
+                    unreachable!()
+                };
+                match (f.cold.contains(&then.block), f.cold.contains(&els.block)) {
+                    (true, false) => b.cond_br_likely(&c, &to[0], &to[1], false),
+                    (false, true) => b.cond_br_likely(&c, &to[0], &to[1], true),
+                    _ => b.cond_br(&c, &to[0], &to[1]),
+                }
                 edge_blocks(&mut b, lay, f, &vals, &bd.term, &to);
             }
             Term::Switch { value, cases, .. } => {
@@ -825,9 +819,16 @@ fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 mod coverage {
     use super::*;
 
-    /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
-    /// markers are not here because `elaborate` removes them before code generation.
-    const UNLOWERED: &[Op] = &[];
+    /// The ops no area lowers. `expand_owned` rewrites these into primitives before code
+    /// generation; the scope markers are not here because `elaborate` removes them.
+    const UNLOWERED: &[Op] = &[
+        Op::AltOwn,
+        Op::AltUnbox,
+        Op::AltRelease,
+        Op::TypeRelease,
+        Op::OptUnbox,
+        Op::OptUnwrap,
+    ];
 
     const MARKERS: &[Op] = &[
         Op::ScopeBegin,
@@ -837,12 +838,23 @@ mod coverage {
         Op::ScopeMark,
     ];
 
+    /// The ops `ms_mir::expand` rewrites into others before code generation.
+    const EXPANDED: &[Op] = &[
+        Op::ListGet,
+        Op::ListGetNn,
+        Op::ListSet,
+        Op::ListSetNn,
+        Op::ListFill,
+        Op::ListPush,
+        Op::ListAddr,
+    ];
+
     #[test]
     fn every_op_is_lowered_or_listed() {
         for &op in Op::ALL {
             let lowered = area_of(op).is_some();
             let listed = UNLOWERED.contains(&op);
-            let marker = MARKERS.contains(&op);
+            let marker = MARKERS.contains(&op) || EXPANDED.contains(&op);
             assert!(
                 marker || lowered != listed,
                 "{op:?}: {}",

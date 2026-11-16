@@ -47,6 +47,8 @@ pub(crate) struct RtFlags {
     /// Has a `<name>_take` twin that reuses the first argument when it dies at the call
     /// (`// ms: takes_self`).
     pub takes_self: bool,
+    /// Never returns (declared `-> !`): a fault or an exit.
+    pub noreturn: bool,
     /// The MIR instruction (`// ms: op=<mnemonic>`) the function is on its arguments.
     pub op: Option<&'static str>,
     /// How its failures name their domain (`//! ms: domain` of its file, or `domain=`).
@@ -58,8 +60,9 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
     let Ok(at) = SYMBOLS.binary_search_by_key(&sym, |s| s.0) else {
         return RtFlags::default();
     };
-    let (_, _, _, bits, op, domain) = SYMBOLS[at];
+    let (_, _, ret, bits, op, domain) = SYMBOLS[at];
     RtFlags {
+        noreturn: ret == "!",
         leaf: bits & 1 != 0,
         reads: bits & 2 != 0,
         fresh: bits & 4 != 0,
