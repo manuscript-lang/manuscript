@@ -3,9 +3,9 @@
 // conform: timeout=30
 // A server on four threads with idle keep-alive connections does nothing while nobody sends
 // a request: over a second it uses almost no CPU and its threads are woken a few times. The
-// watcher looks every millisecond only while a thread is busy and for 20 looks after the last
+// watcher looks every 2 ms only while a thread is busy and for 20 looks after the last
 // one rests, and the sleep that ends the rest wakes it once, so the window holds one such run
-// (about 20 wakes); a watcher that looked all the time would show 1000 (the counters are the
+// (about 20 wakes); a watcher that looked all the time would show 500 (the counters are the
 // process's own, so any thread waking on a clock shows).
 import (
 	stdout from "@std/io/io.ms",
