@@ -8,7 +8,6 @@ use crate::text::{self, Position, Range};
 use crate::uri;
 use crate::workspace;
 use ms_check::api::syntax::ModRef;
-use ms_driver::project::pathops;
 use ms_syntax::token::Tok;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -110,14 +109,14 @@ fn project_exports(
         return Vec::new();
     };
     let here = d.path();
-    let dir = pathops::dir(&here);
+    let importer = ms_driver::imports::Importer::new(&here);
     let mut found = Vec::new();
     for file in files {
         let path = file.path();
         if path == here {
             continue;
         }
-        let Some(import) = ms_driver::imports::import_path(&dir, &path) else {
+        let Some(import) = importer.path(&path) else {
             continue;
         };
         for export in ms_driver::imports::exported_declarations(syms, &file.text) {
