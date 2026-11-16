@@ -157,7 +157,6 @@ pub struct Poller {
     views: RefCell<HashMap<Raw, TcpStream>>,
     wake: Arc<Wake>,
     shared: Arc<Shared>,
-    waker: mio::Waker,
     /// Timers of other threads that fired, for [`Poller::fired`].
     fired: std::sync::Mutex<Vec<u64>>,
 }
@@ -165,24 +164,33 @@ pub struct Poller {
 struct Shared {
     raised: Mutex<Vec<Raised>>,
     stop: AtomicBool,
+    /// The poll's only waker (mio allows one per poll): ends the helper's wait for a stop or a timer.
+    waker: mio::Waker,
+    /// Timers of other threads that fired and are not yet queued by the helper.
+    timers: Mutex<Vec<u64>>,
 }
 
 /// A handle on a poller that other threads may keep and use from any thread: what
 /// [`Timer::between`] needs to have the poller report a timer.
 #[derive(Clone)]
-pub struct PollRef(Arc<mio::Registry>);
+pub struct PollRef(Arc<Shared>);
 
 /// Tokens from here up in a poller's events are timers of other threads (see [`Timer::between`]).
 pub const TIMER_TOKEN: u64 = 1 << 62;
 
 /// A one-shot high-resolution waitable timer (about half a millisecond; an ordinary timer only
 /// ticks at the system's 1 to 15.6 ms) that a thread-pool wait turns into a wake of the helper's
-/// `mio` poll under a token (the callback wakes a [`mio::Waker`] registered under it). Arming and
+/// `mio` poll under a token (the callback queues the token and wakes the poll's waker). Arming and
 /// disarming are system calls and wake nobody.
 pub struct Timer {
     timer: HANDLE,
     wait: PTP_WAIT,
-    waker: *mut mio::Waker,
+    ctx: *mut TimerCtx,
+}
+
+struct TimerCtx {
+    shared: Arc<Shared>,
+    token: u64,
 }
 
 // SAFETY: a waitable timer and a thread-pool wait are made to be set from any thread, and the
@@ -192,19 +200,27 @@ unsafe impl Sync for Timer {}
 
 unsafe extern "system" fn timer_fired(
     _: PTP_CALLBACK_INSTANCE,
-    waker: *mut c_void,
+    ctx: *mut c_void,
     _: PTP_WAIT,
     _: u32,
 ) {
-    // SAFETY: the waker outlives every callback (see `Drop`).
-    let _ = unsafe { &*(waker as *const mio::Waker) }.wake();
+    // SAFETY: the context outlives every callback (see `Drop`).
+    let ctx = unsafe { &*(ctx as *const TimerCtx) };
+    ctx.shared
+        .timers
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(ctx.token);
+    let _ = ctx.shared.waker.wake();
 }
 
 impl Timer {
     /// A timer that `helper` reports under `token` (at least [`TIMER_TOKEN`]) when it fires.
     pub fn between(helper: PollRef, token: u64) -> Option<Timer> {
-        let waker = mio::Waker::new(&helper.0, mio::Token(token as usize)).ok()?;
-        let waker = Box::into_raw(Box::new(waker));
+        let ctx = Box::into_raw(Box::new(TimerCtx {
+            shared: helper.0,
+            token,
+        }));
         // SAFETY: plain creation calls; the context outlives the callback (see `Drop`).
         let (timer, wait) = unsafe {
             let timer = CreateWaitableTimerExW(
@@ -213,7 +229,7 @@ impl Timer {
                 CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
                 TIMER_ALL_ACCESS,
             );
-            let wait = CreateThreadpoolWait(Some(timer_fired), waker.cast(), std::ptr::null());
+            let wait = CreateThreadpoolWait(Some(timer_fired), ctx.cast(), std::ptr::null());
             (timer, wait)
         };
         if timer.is_null() || wait == 0 {
@@ -225,11 +241,11 @@ impl Timer {
                 if wait != 0 {
                     CloseThreadpoolWait(wait);
                 }
-                drop(Box::from_raw(waker));
+                drop(Box::from_raw(ctx));
             }
             return None;
         }
-        Some(Timer { timer, wait, waker })
+        Some(Timer { timer, wait, ctx })
     }
 
     /// Makes the timer fire in `ns` nanoseconds, replacing an earlier arming.
@@ -256,14 +272,14 @@ impl Timer {
 
 impl Drop for Timer {
     fn drop(&mut self) {
-        // SAFETY: cancelled, waited for, then closed; only then is the waker freed.
+        // SAFETY: cancelled, waited for, then closed; only then is the context freed.
         unsafe {
             CancelWaitableTimer(self.timer);
             SetThreadpoolWait(self.wait, std::ptr::null_mut(), std::ptr::null());
             WaitForThreadpoolWaitCallbacks(self.wait, 1);
             CloseThreadpoolWait(self.wait);
             CloseHandle(self.timer);
-            drop(Box::from_raw(self.waker));
+            drop(Box::from_raw(self.ctx));
         }
     }
 }
@@ -287,6 +303,8 @@ impl Poller {
         let shared = Arc::new(Shared {
             raised: Mutex::new(Vec::new()),
             stop: AtomicBool::new(false),
+            waker,
+            timers: Mutex::new(Vec::new()),
         });
         let (helper_wake, helper_shared) = (wake.clone(), shared.clone());
         std::thread::Builder::new()
@@ -297,10 +315,22 @@ impl Poller {
                     if poll.poll(&mut events, None).is_err() {
                         break;
                     }
+                    let timers = std::mem::take(
+                        &mut *helper_shared
+                            .timers
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner()),
+                    );
                     let raised = events
                         .iter()
                         .filter(|e| e.token() != STOP_TOKEN)
-                        .map(Raised::from);
+                        .map(Raised::from)
+                        .chain(timers.into_iter().map(|token| Raised {
+                            token,
+                            read: true,
+                            write: false,
+                            hup: false,
+                        }));
                     let mut queue = helper_shared
                         .raised
                         .lock()
@@ -321,7 +351,6 @@ impl Poller {
             views: RefCell::new(HashMap::new()),
             wake,
             shared,
-            waker,
             fired: std::sync::Mutex::new(Vec::new()),
         }
     }
@@ -380,7 +409,7 @@ impl Poller {
 
     /// A handle other threads may use to have this poller report their timers.
     pub fn poll_ref(&self) -> PollRef {
-        PollRef(self.registry.clone())
+        PollRef(self.shared.clone())
     }
 
     /// The tokens of timers that fired since the last call.
@@ -444,7 +473,7 @@ impl Poller {
 impl Drop for Poller {
     fn drop(&mut self) {
         self.shared.stop.store(true, Ordering::Release);
-        let _ = self.waker.wake();
+        let _ = self.shared.waker.wake();
     }
 }
 
