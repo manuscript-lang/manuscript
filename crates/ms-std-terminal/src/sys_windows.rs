@@ -5,13 +5,15 @@
 //! carries one character of the escape sequence the shared decoder understands.
 #![allow(unsafe_code)] // the Win32 console calls below
 
-use crate::{NS_PER_MS, pause};
+use crate::NS_PER_MS;
 use alloc::vec::Vec;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use ms_rt::ffi::Failure;
 use ms_rt::glue::pool::Cancelled;
+use ms_rt::glue::pool::Lane;
 use ms_rt_abi::STATUS_NOT_TERMINAL;
 use std::ffi::OsString;
-use windows_sys::Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE, WAIT_OBJECT_0};
+use windows_sys::Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE};
 use windows_sys::Win32::Storage::FileSystem::WriteFile;
 use windows_sys::Win32::System::Console::{
     CONSOLE_MODE, CONSOLE_SCREEN_BUFFER_INFO, ENABLE_ECHO_INPUT, ENABLE_LINE_INPUT,
@@ -21,11 +23,44 @@ use windows_sys::Win32::System::Console::{
     INPUT_RECORD, KEY_EVENT, ReadConsoleInputW, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, SetConsoleCP,
     SetConsoleMode, SetConsoleOutputCP,
 };
-use windows_sys::Win32::System::Threading::WaitForSingleObject;
+use windows_sys::Win32::System::Threading::{
+    CreateEventW, INFINITE, SetEvent, WaitForMultipleObjects,
+};
 
 const UTF8: u32 = 65001;
-/// The longest the task sleeps between checks for input.
-const SLICE_NS: i64 = 10 * NS_PER_MS;
+
+/// An event that ends a wait for input: set when the terminal closes or a wait is abandoned.
+/// One event serves the process for good, since an abandoned wait may still hold it.
+static WAKE: AtomicUsize = AtomicUsize::new(0);
+
+fn wake_event() -> Result<HANDLE, Failure> {
+    if WAKE.load(Ordering::Acquire) == 0 {
+        // SAFETY: an unnamed auto-reset event, initially clear.
+        let event = unsafe { CreateEventW(core::ptr::null(), 0, 0, core::ptr::null()) };
+        if event.is_null() {
+            return Err(Failure::failed("cannot make the terminal wake event"));
+        }
+        // The runtime thread opens terminals one at a time, so no other thread races this store.
+        WAKE.store(event as usize, Ordering::Release);
+    }
+    Ok(WAKE.load(Ordering::Acquire) as HANDLE)
+}
+
+fn wake() {
+    let event = WAKE.load(Ordering::Acquire);
+    if event != 0 {
+        // SAFETY: the event is never closed.
+        unsafe { SetEvent(event as HANDLE) };
+    }
+}
+
+/// Blocks until the console input is signalled (a key, a resize or another record), the wake
+/// event is set, or `ms` passes (`INFINITE` for no limit). Runs on a pool thread.
+fn wait_input_or_wake(job: &(usize, usize, u32)) {
+    let handles = [job.0 as HANDLE, job.1 as HANDLE];
+    // SAFETY: both handles outlive every wait: standard input, and the never-closed wake event.
+    unsafe { WaitForMultipleObjects(2, handles.as_ptr(), 0, job.2) };
+}
 
 /// The console handles and the settings to put back.
 pub struct Term {
@@ -35,6 +70,7 @@ pub struct Term {
     output_mode: CONSOLE_MODE,
     input_cp: u32,
     output_cp: u32,
+    wake: HANDLE,
     /// A high surrogate waiting for its low half.
     high: core::cell::Cell<Option<u16>>,
 }
@@ -112,6 +148,7 @@ impl Term {
             output_mode,
             input_cp,
             output_cp,
+            wake: wake_event()?,
             high: core::cell::Cell::new(None),
         };
         let raw_input = (input_mode
@@ -144,6 +181,8 @@ impl Term {
             SetConsoleCP(self.input_cp);
             SetConsoleOutputCP(self.output_cp);
         }
+        // A task waiting for input sees the terminal closed.
+        wake();
     }
 
     pub fn size(&self) -> Option<(i64, i64)> {
@@ -159,21 +198,29 @@ impl Term {
         n
     }
 
-    /// Sleeps in short slices until input records are ready or `timeout_ns` passes.
-    pub fn wait_readable(&self, timeout_ns: i64) -> Result<bool, Cancelled> {
-        let mut left = timeout_ns.max(0);
-        loop {
-            // SAFETY: a zero-timeout poll of the input handle.
-            let signalled = unsafe { WaitForSingleObject(self.input, 0) } == WAIT_OBJECT_0;
-            if signalled && self.pending_records() > 0 {
-                return Ok(true);
+    /// Blocks the task until input records are ready. `timeout_ns` is a protocol delay (the wait
+    /// for the rest of an escape sequence); `None` waits for a record (a key or a resize) or a
+    /// wake with no limit. `Ok(false)` on the timeout or a wake.
+    pub fn wait_readable(&self, timeout_ns: Option<i64>) -> Result<bool, Cancelled> {
+        if self.pending_records() > 0 {
+            return Ok(true);
+        }
+        let ms = match timeout_ns {
+            None => INFINITE,
+            Some(ns) if ns <= 0 => return Ok(false),
+            Some(ns) => ((ns + NS_PER_MS - 1) / NS_PER_MS).min(i64::from(INFINITE - 1)) as u32,
+        };
+        let job = (self.input as usize, self.wake as usize, ms);
+        // The wait runs on a pool thread: nothing on the console's side can be waited on by the
+        // scheduler's poller.
+        match ms_rt::glue::pool::try_run(Lane::General, job, wait_input_or_wake, -1) {
+            Ok(Some(())) => Ok(self.pending_records() > 0),
+            // A stop request or a task limit ended the wait; the abandoned wait holds a pool
+            // thread until the event is set.
+            outcome => {
+                wake();
+                outcome.map(|_| false)
             }
-            if left <= 0 {
-                return Ok(false);
-            }
-            let step = left.min(SLICE_NS);
-            pause(step)?;
-            left -= step;
         }
     }
 

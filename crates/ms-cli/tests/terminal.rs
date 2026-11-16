@@ -5,6 +5,7 @@
 
 use std::fs::File;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+use std::os::unix::process::CommandExt;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -89,12 +90,22 @@ fn raw_terminal_reads_keys_resizes_and_restores_the_terminal() {
         t.c_lflag & libc::ICANON != 0
     };
     assert!(canonical(slave.as_raw_fd()));
-    let mut child = Command::new(&program)
+    let mut command = Command::new(&program);
+    command
         .stdin(Stdio::from(slave.try_clone().unwrap()))
         .stdout(Stdio::from(slave.try_clone().unwrap()))
-        .stderr(Stdio::from(slave.try_clone().unwrap()))
-        .spawn()
-        .unwrap();
+        .stderr(Stdio::from(slave.try_clone().unwrap()));
+    // A real program owns its terminal, so a resize reaches it as SIGWINCH.
+    // SAFETY: `setsid` and `ioctl` are async-signal-safe and touch only the child.
+    unsafe {
+        command.pre_exec(|| {
+            libc::setsid();
+            #[allow(clippy::useless_conversion)]
+            libc::ioctl(0, libc::TIOCSCTTY.into(), 0);
+            Ok(())
+        });
+    }
+    let mut child = command.spawn().unwrap();
 
     let mut log = String::new();
     wait_for(&master, &mut log, "size 80x24");
