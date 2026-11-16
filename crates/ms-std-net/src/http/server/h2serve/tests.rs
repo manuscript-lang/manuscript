@@ -985,17 +985,6 @@ impl Idle {
     }
 }
 
-/// Waits until `member` lists `n` connections.
-fn wait_listed(member: &steal::Member, n: usize) {
-    for _ in 0..5000 {
-        if member.waiting_count() == n {
-            return;
-        }
-        std::thread::sleep(Duration::from_millis(1));
-    }
-    panic!("{} connections listed, wanted {n}", member.waiting_count());
-}
-
 fn member_of(server: &Server) -> Arc<steal::Member> {
     server.member.clone().expect("server shares connections")
 }
@@ -1013,9 +1002,9 @@ fn an_idle_tls_connection_times_out_while_listed() {
     let (addr, member) = (server.address().to_string(), member_of(&server));
     let closed = with_client(move || {
         let mut idle = Idle::open(&addr, Kind::Http1OverTls);
-        wait_listed(&member, 1);
+        member.wait_listed(1);
         let closed = idle.closed();
-        wait_listed(&member, 0);
+        member.wait_listed(0);
         closed
     });
     assert!(closed);
@@ -1028,19 +1017,17 @@ fn a_listed_connection_serves_its_next_request() {
         let (addr, member) = (server.address().to_string(), member_of(&server));
         let (first, second) = with_client(move || {
             let mut idle = Idle::open(&addr, kind);
-            wait_listed(&member, 1);
+            member.wait_listed(1);
             let first = idle.request();
-            wait_listed(&member, 1);
-            // Past the request timeout: HTTP/2 has no idle timeout and stays open.
-            std::thread::sleep(Duration::from_millis(500));
-            let second = matches!(kind, Kind::Http2).then(|| idle.request());
-            (first, second)
+            // Listed again after the request, and still serving.
+            member.wait_listed(1);
+            (first, idle.request())
         });
         assert!(
             first.ends_with("|HTTP/1.1") || first.ends_with("|HTTP/2.0"),
             "{first}"
         );
-        assert!(second.is_none_or(|s| s.ends_with("|HTTP/2.0")));
+        assert_eq!(first, second);
     }
 }
 
@@ -1051,9 +1038,9 @@ fn a_listed_connection_the_peer_closes_leaves_the_list() {
         let (addr, member) = (server.address().to_string(), member_of(&server));
         with_client(move || {
             let idle = Idle::open(&addr, kind);
-            wait_listed(&member, 1);
+            member.wait_listed(1);
             drop(idle);
-            wait_listed(&member, 0);
+            member.wait_listed(0);
         });
     }
 }
@@ -1063,27 +1050,16 @@ fn stopping_the_server_closes_listed_connections() {
     for kind in [Kind::Http1OverTls, Kind::Http2] {
         let (net, server) = start_listing(Box::new(Buffered(App)), limits(), true);
         let (addr, member) = (server.address().to_string(), member_of(&server));
-        let (listed, stop) = (
-            Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        );
-        let (listed_c, stop_c) = (listed.clone(), stop.clone());
-        let handle = std::thread::spawn(move || {
-            let mut idle = Idle::open(&addr, kind);
-            wait_listed(&member, 1);
-            listed_c.store(true, std::sync::atomic::Ordering::SeqCst);
-            let closed = idle.closed();
-            stop_c.store(true, std::sync::atomic::Ordering::SeqCst);
-            closed
+        let idle = with_client(move || {
+            let idle = Idle::open(&addr, kind);
+            member.wait_listed(1);
+            idle
         });
-        while !listed.load(std::sync::atomic::Ordering::SeqCst) {
-            crate::wait::sleep(Duration::from_millis(2));
-        }
         server.close().unwrap();
-        while !stop.load(std::sync::atomic::Ordering::SeqCst) {
-            crate::wait::sleep(Duration::from_millis(2));
-        }
-        assert!(handle.join().unwrap());
+        assert!(with_client(move || {
+            let mut idle = idle;
+            idle.closed()
+        }));
         net.close();
     }
 }

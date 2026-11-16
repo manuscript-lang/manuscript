@@ -155,6 +155,9 @@ pub struct Member {
     orders: Mutex<Vec<Order>>,
     /// Whether `idle` holds taken entries the owner has not dropped yet.
     dropped: AtomicBool,
+    /// Lets a test wait for `waiting` to change instead of polling it.
+    #[cfg(test)]
+    changed: (Mutex<()>, std::sync::Condvar),
 }
 
 impl Member {
@@ -180,6 +183,7 @@ impl Member {
             taken: false,
         });
         self.waiting.fetch_add(1, Ordering::Relaxed);
+        self.listed_changed();
         (idle.len() - 1) as u32
     }
 
@@ -196,6 +200,7 @@ impl Member {
         let entry = idle.swap_remove(at);
         if !entry.taken {
             self.waiting.fetch_sub(1, Ordering::Relaxed);
+            self.listed_changed();
         }
         let back = if entry.taken {
             Back::Taken
@@ -218,10 +223,34 @@ impl Member {
             .collect()
     }
 
-    /// How many connections are listed and not taken.
+    /// Wakes the test waiting in [`Member::wait_listed`].
+    #[inline]
+    fn listed_changed(&self) {
+        #[cfg(test)]
+        {
+            drop(lock(&self.changed.0));
+            self.changed.1.notify_all();
+        }
+    }
+
+    /// Blocks until exactly `n` connections are listed and not taken. The long timeout only
+    /// turns a hang into a failure; the wait ends on the change itself.
     #[cfg(test)]
-    pub fn waiting_count(&self) -> usize {
-        self.waiting.load(Ordering::Relaxed)
+    pub fn wait_listed(&self, n: usize) {
+        let mut guard = lock(&self.changed.0);
+        while self.waiting.load(Ordering::Relaxed) != n {
+            let (next, result) = self
+                .changed
+                .1
+                .wait_timeout(guard, Duration::from_secs(30))
+                .unwrap_or_else(|e| e.into_inner());
+            guard = next;
+            assert!(
+                !result.timed_out(),
+                "{} connections listed, wanted {n}",
+                self.waiting.load(Ordering::Relaxed)
+            );
+        }
     }
 
     /// Counts a connection the server gained (`+1`) or lost (`-1`).
@@ -273,6 +302,7 @@ impl Member {
         }
         if !out.is_empty() {
             self.waiting.fetch_sub(out.len(), Ordering::Relaxed);
+            self.listed_changed();
             self.dropped.store(true, Ordering::Release);
             self.beat.alert();
         }
@@ -296,6 +326,8 @@ impl Group {
             conns: AtomicUsize::new(0),
             orders: Mutex::new(Vec::new()),
             dropped: AtomicBool::new(false),
+            #[cfg(test)]
+            changed: Default::default(),
         });
         let mut members = lock(&self.members);
         members.push(member.clone());
@@ -449,15 +481,11 @@ mod tests {
         m.park(1, sys::raw(quiet.as_sock()), None, None);
         m.park(2, sys::raw(busy.as_sock()), None, None);
         busy_client.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
-        // Loopback delivery is not instant on every platform.
-        let mut taken = Vec::new();
-        for _ in 0..1000 {
-            taken = m.take(usize::MAX, true);
-            if !taken.is_empty() {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(1));
-        }
+        // Loopback delivery is not instant on every platform: a blocking peek returns when the
+        // bytes are there, so the take below sees the connection readable.
+        let mut first = [std::mem::MaybeUninit::uninit(); 1];
+        assert_eq!(busy.peek(&mut first).unwrap(), 1);
+        let taken = m.take(usize::MAX, true);
         assert_eq!(taken.len(), 1);
         assert_eq!(taken[0].sock.peer_addr().ok(), busy.peer_addr().ok());
         // The owner learns of it, finds the entry taken, and keeps the quiet one.
