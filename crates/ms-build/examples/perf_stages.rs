@@ -52,6 +52,7 @@ fn main() {
             ms_mir::opt::optimize(&mut module, ms_mir::opt::Level::Speed, false);
         }
     });
+    ms_mir::expand::run(&mut module, true);
     let build = ms_clif::BuildOptions {
         llvm_units: Some(1),
         ..Default::default()

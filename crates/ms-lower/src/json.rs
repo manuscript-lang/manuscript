@@ -1763,7 +1763,7 @@ impl FnLower<'_> {
                 name: sym.to_string(),
                 params,
                 ret: MTy::VOID,
-                noreturn: false,
+                noreturn: crate::rtcall::rt_flags(sym).noreturn,
                 pure_: false,
                 fresh: crate::rtcall::fresh_result(sym),
                 role: crate::rtcall::extern_role(sym),

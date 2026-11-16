@@ -34,3 +34,4 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [A list updated in place in a loop is registered once](a-list-updated-in-place-in-a-loop-is-registered-once.md): a task loop that set list elements pushed and discarded a cleanup every iteration, 1.5x slower than the same loop called directly.
 - [Unwind cost grows with the values live to scope end](unwind-cost-grows-with-values-live-to-scope-end.md): in task programs a long Debug function registered cleanups for every live value at every fault point, so code and frame grew with the square of its length and overflowed a 512 KiB task slot.
 - [A call not declared fresh pins its argument slots](a-call-not-declared-fresh-pins-its-argument-slots.md): a view of an inline text points into the slot its argument was passed in, so pinning is the default unless the call is `fresh`.
+- [Checks and list growth are MIR; the backends only lower](checks-and-list-growth-are-mir-the-backends-only-lower.md)

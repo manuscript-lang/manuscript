@@ -1400,6 +1400,7 @@ mod target_tests {
                 let mut m = ms_mir::parse::parse_module(&source).unwrap();
                 ms_mir::verify::verify_module(&m).unwrap();
                 ms_mir::opt::optimize(&mut m, level, true);
+                ms_mir::expand::run(&mut m, true);
                 let opts = Options {
                     opt_level: if level == ms_mir::opt::Level::None {
                         "none"

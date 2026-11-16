@@ -258,6 +258,11 @@ pub fn build_executable(
     if unwound && cfg!(debug_assertions) {
         verify_after(module, "unwind")?;
     }
+    // The checks and list growth the backends lower are explicit MIR from here on.
+    ms_mir::expand::run(module, options.checks);
+    if cfg!(debug_assertions) {
+        verify_after(module, "expand")?;
+    }
     phase("mir optimize");
     let compiled = match llvm {
         Some(level) => crate::llvm::compile(module, options.checks, level, build),

@@ -8,7 +8,8 @@ use std::process::Command;
 
 /// Compiles `src` with LLVM (direct emission on), links it with the test runtime and runs it.
 fn run_llvm(src: &str, opts: &BuildOptions, tag: &str) -> Outcome {
-    let m = module(src);
+    let mut m = module(src);
+    ms_mir::expand::run(&mut m, true);
     let mut objects =
         ms_build::llvm::compile(&m, true, "3", opts).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();

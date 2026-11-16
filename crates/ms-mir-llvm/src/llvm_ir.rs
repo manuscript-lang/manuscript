@@ -32,10 +32,11 @@ pub(crate) fn returns_fresh_block(symbol: &str) -> bool {
     matches!(symbol, "msrt_alloc" | "msrt_alloc_zeroed" | "msrt_realloc")
 }
 
-/// The function attributes of the declaration of runtime function `name`: a fault never returns
-/// and is cold, a function that only reads memory says so. None unwinds.
-pub(crate) fn runtime_attrs(name: &str, reads_only: bool) -> &'static str {
-    if fault_function(name) {
+/// The function attributes of the declaration of a runtime function: one that never returns (a
+/// fault, declared `-> !` in the runtime) is cold, one that only reads memory says so. None
+/// unwinds.
+pub(crate) fn runtime_attrs(noreturn: bool, reads_only: bool) -> &'static str {
+    if noreturn {
         " cold noreturn nounwind"
     } else if reads_only {
         READS_ONLY
@@ -421,27 +422,6 @@ impl LlvmModule {
         m.di.meta.resize(FIRST_FILE + nfiles, String::new());
         m
     }
-}
-
-/// These runtime entry points terminate or unwind; none returns to its caller.
-fn fault_function(name: &str) -> bool {
-    matches!(
-        name,
-        "msrt_fault"
-            | "msrt_fault_string"
-            | "msrt_fault_depth"
-            | "msrt_fault_unwrap_none"
-            | "msrt_fault_result_get"
-            | "msrt_fault_result_err"
-            | "msrt_fault_int_overflow"
-            | "msrt_fault_int_range"
-            | "msrt_fault_div_zero"
-            | "msrt_fault_rem_zero"
-            | "msrt_fault_div_overflow"
-            | "msrt_index_fault"
-            | "msrt_list_index_fault"
-            | "msrt_cancelled"
-    )
 }
 
 impl LlvmModule {

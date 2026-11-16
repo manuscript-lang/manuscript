@@ -208,21 +208,19 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListConst
             | Op::ListConstView
             | Op::ListLen
-            | Op::ListGet
-            | Op::ListGetNn
             | Op::ListGetU
-            | Op::ListSet
-            | Op::ListSetNn
             | Op::ListSetU
-            | Op::ListFill
-            | Op::ListPush
+            | Op::ListFillU
+            | Op::ListCap
+            | Op::ListGrow
+            | Op::ListPushU
             | Op::ListDropLast => self.lower_list(f, inst),
             Op::ListTake => {
                 let lt = f.ty(inst.args[0]);
                 let (_, leaves, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
                 let i = self.a(inst, 1)[0];
-                let at = self.elem_addr(l[0], l[1], i, size, Op::ListGetU);
+                let at = self.elem_addr(l[0], i, size);
                 self.load_leaves(at, 0, &leaves)
             }
             Op::ListRelease => {
@@ -240,7 +238,6 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// Optionals.
     pub(super) fn optionals(&mut self, f: &Func, inst: &Inst) -> Vs {
-        let checks = self.g.opts.checks;
         let res_ty = inst.res.map(|r| f.ty(r));
         match inst.op {
             Op::OptSome | Op::OptView => {
@@ -284,17 +281,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
                 let nullable = self.opt_niche(ty);
-                if inst.op == Op::OptUnwrap && checks {
-                    // Every layout keeps the presence word (null pointer or tag) first; an
-                    // optional string also needs its tag.
-                    let none = if self.g.lay.is_str_like(ty) {
-                        let some = self.opt_present(ty, &v);
-                        self.b.ins().icmp_imm_s(IntCC::Equal, some, 0)
-                    } else {
-                        self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0)
-                    };
-                    self.fault_if(none, "msrt_fault_unwrap_none", vec![]);
-                }
                 let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
                     unreachable!()
                 };

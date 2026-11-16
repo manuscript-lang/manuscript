@@ -170,7 +170,7 @@ impl Interp<'_> {
                 let _ = ops.int(1)?;
                 arg(f, ops.regs, inst.args[0], true, m);
             }
-            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
+            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill | Op::ListFillU => {
                 let i = ops.int(1)?;
                 let v = arg(f, ops.regs, inst.args[2], true, m);
                 let Val::List(mut l) = arg(f, ops.regs, inst.args[0], true, m) else {
@@ -180,7 +180,15 @@ impl Interp<'_> {
                 Rc::make_mut(&mut l)[k] = v;
                 ops.set(Val::List(l));
             }
-            Op::ListPush => {
+            // An interpreted list has no capacity: `list.cap` is unbounded, so an expanded push
+            // never grows, and `list.grow` hands the list back.
+            Op::ListCap => ops.set(Val::Int(i64::MAX)),
+            Op::ListGrow => {
+                let _ = ops.int(1)?;
+                let l = arg(f, ops.regs, inst.args[0], true, m);
+                ops.set(l);
+            }
+            Op::ListPush | Op::ListPushU => {
                 let v = arg(f, ops.regs, inst.args[1], true, m);
                 let Val::List(mut l) = arg(f, ops.regs, inst.args[0], true, m) else {
                     return Err(Raw::internal("list.push on &inst.args non-list"));

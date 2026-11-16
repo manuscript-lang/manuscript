@@ -618,6 +618,10 @@ impl<'m> Interp<'m> {
             | Op::ListSetU
             | Op::ListFill
             | Op::ListPush
+            | Op::ListCap
+            | Op::ListGrow
+            | Op::ListFillU
+            | Op::ListPushU
             | Op::ListDropLast => self.lists(f, regs, inst),
             Op::OptSome
             | Op::OptView
