@@ -615,6 +615,60 @@ fn compare(b: &mut FuncBuilder<'_>) {
     );
     let (minus, plus) = (b.iconst(-1), b.iconst(1));
     let (sx, sy) = (slot_of(b, x), slot_of(b, y));
+    // Both inline (up to 15 bytes, zero past the length): the bytes are the words themselves, so
+    // the first differing byte comes from at most two word compares with no length decode.
+    let (inl, inl2, general, wdiff) = (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+    let (dx, dy, dd) = (
+        b.add_block_param(wdiff, MTy::INT, Mode::Borrow),
+        b.add_block_param(wdiff, MTy::INT, Mode::Borrow),
+        b.add_block_param(wdiff, MTy::INT, Mode::Borrow),
+    );
+    let (x0, x1) = (load(b, sx, 0, MTy::INT), load(b, sx, 8, MTy::INT));
+    let (y0, y1) = (load(b, sy, 0, MTy::INT), load(b, sy, 8, MTy::INT));
+    let (tx, ty) = (int(b, Op::Ushr, x1, 62), int(b, Op::Ushr, y1, 62));
+    let (nx, ny) = (int(b, Op::Xor, tx, 1), int(b, Op::Xor, ty, 1));
+    let not_inline = b.binop(Op::Or, nx, ny);
+    let zero_t = b.iconst(0);
+    let both = b.icmp(Cc::Eq, not_inline, zero_t);
+    b.br_if(both, inl, &[], general, &[]);
+    b.seal_block(inl);
+    b.seal_block(general);
+    b.switch_to(inl);
+    let first = b.binop(Op::Xor, x0, y0);
+    let zero_f = b.iconst(0);
+    let first_same = b.icmp(Cc::Eq, first, zero_f);
+    b.br_if(first_same, inl2, &[], wdiff, &[x0, y0, first]);
+    b.seal_block(inl2);
+    b.switch_to(inl2);
+    // The second word holds seven bytes (bits 0 to 55), then the length and the tag.
+    let (m1, m2) = (
+        int(b, Op::And, x1, (1 << 56) - 1),
+        int(b, Op::And, y1, (1 << 56) - 1),
+    );
+    let second = b.binop(Op::Xor, m1, m2);
+    let zero_s = b.iconst(0);
+    let second_same = b.icmp(Cc::Eq, second, zero_s);
+    let lens = b.new_block();
+    b.br_if(second_same, lens, &[], wdiff, &[m1, m2, second]);
+    b.seal_block(lens);
+    b.switch_to(lens);
+    let (lx, ly) = (int(b, Op::Ushr, x1, 56), int(b, Op::Ushr, y1, 56));
+    let (lx, ly) = (int(b, Op::And, lx, 15), int(b, Op::And, ly, 15));
+    let lx_less = b.icmp(Cc::Lt, lx, ly);
+    let lx_more = b.icmp(Cc::Gt, lx, ly);
+    let zero_l = b.iconst(0);
+    let more_or_same = b.select(lx_more, plus, zero_l);
+    let r = b.select(lx_less, minus, more_or_same);
+    b.ret(Some(r));
+    b.switch_to(wdiff);
+    let low = b.unop(Op::Ctz, dd);
+    let shift = int(b, Op::And, low, -8);
+    let (xs, ys) = (b.binop(Op::Ushr, dx, shift), b.binop(Op::Ushr, dy, shift));
+    let (xb, yb) = (int(b, Op::And, xs, 255), int(b, Op::And, ys, 255));
+    let less = b.icmp(Cc::Lt, xb, yb);
+    let r = b.select(less, minus, plus);
+    b.ret(Some(r));
+    b.switch_to(general);
     let (xd, xn) = bytes_of(b, sx);
     let (yd, yn) = bytes_of(b, sy);
     let shorter = b.icmp(Cc::Lt, xn, yn);
@@ -630,7 +684,7 @@ fn compare(b: &mut FuncBuilder<'_>) {
     b.switch_to(scan);
     // Eight bytes at a time while a whole word remains in both strings; the first differing word
     // is decided by its lowest differing byte (little endian). The rest goes byte by byte.
-    let (whead, wbody, wdiff, wstep) = (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+    let (whead, wbody, wstep) = (b.new_block(), b.new_block(), b.new_block());
     let w = b.add_block_param(whead, MTy::INT, Mode::Borrow);
     let i = b.add_block_param(head, MTy::INT, Mode::Borrow);
     let zero = b.iconst(0);
@@ -652,17 +706,9 @@ fn compare(b: &mut FuncBuilder<'_>) {
     let diff = b.binop(Op::Xor, xw, yw);
     let zero_w = b.iconst(0);
     let alike = b.icmp(Cc::Eq, diff, zero_w);
-    b.br_if(alike, wstep, &[], wdiff, &[]);
+    b.br_if(alike, wstep, &[], wdiff, &[xw, yw, diff]);
     b.seal_block(wstep);
     b.seal_block(wdiff);
-    b.switch_to(wdiff);
-    let low = b.unop(Op::Ctz, diff);
-    let shift = int(b, Op::And, low, -8);
-    let (xs, ys) = (b.binop(Op::Ushr, xw, shift), b.binop(Op::Ushr, yw, shift));
-    let (xb, yb) = (int(b, Op::And, xs, 255), int(b, Op::And, ys, 255));
-    let less = b.icmp(Cc::Lt, xb, yb);
-    let r = b.select(less, minus, plus);
-    b.ret(Some(r));
     b.switch_to(wstep);
     b.br(whead, &[end]);
     b.seal_block(whead);
