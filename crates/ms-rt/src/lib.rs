@@ -71,3 +71,5 @@ mod model_tests;
 
 #[cfg(test)]
 mod testutil;
+
+// CI timing probe: touches the runtime sources; not for merge.
