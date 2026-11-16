@@ -119,11 +119,20 @@ pub fn run(
     // starting it cost about 250 ms per fixture (most of the Windows corpus time).
     #[cfg(unix)]
     kill_group(pid);
-    if let Some(writer) = writer {
-        let _ = writer.join();
-    }
-    let stdout = out_thread.join().unwrap_or_default();
-    let stderr = err_thread.join().unwrap_or_default();
+    // A child that outlived its kill still holds its pipes: joining the readers would hang the
+    // run, so they are left to end with the process and the run reports no output.
+    let reaped = status.is_some() || !timed_out;
+    let (stdout, stderr) = if reaped {
+        if let Some(writer) = writer {
+            let _ = writer.join();
+        }
+        (
+            out_thread.join().unwrap_or_default(),
+            err_thread.join().unwrap_or_default(),
+        )
+    } else {
+        (Vec::new(), Vec::new())
+    };
     let code = match status {
         Some(s) => exit_code(s),
         None => 127,
