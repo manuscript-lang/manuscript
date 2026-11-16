@@ -1,5 +1,5 @@
-// Guard: a scope that closes a resource costs a cleanup registration and nothing else, so a
-// close that inlines to nothing adds no cancellation shield.
+// Guard: a scope that closes a resource costs a cleanup registration and nothing else,
+// so a close that inlines to nothing adds no cancellation shield.
 import Closeable from "@std/core.ms"
 
 type Res:
@@ -11,6 +11,7 @@ fn var Res.close() Void!:
 fn use(i: Int) Int!:
 	r := Res(i)
 	if i < 0: return error(Error("negative", kind: "EINVAL"))
+
 	return ok(r.id + 1)
 
 fn main() Void!:
