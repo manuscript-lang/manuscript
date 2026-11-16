@@ -1184,7 +1184,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::IfaceData
             | Op::IfaceIs => self.closures_and_interfaces(f, inst),
             Op::Call | Op::CallInd | Op::CallMethod | Op::CallRt => self.calls(f, inst),
-            Op::MoveOut | Op::Clone | Op::Drop | Op::Forget | Op::DropIf | Op::Free => self.ownership(f, inst),
+            Op::MoveOut | Op::Clone | Op::Drop | Op::Forget | Op::DropIf | Op::Free => {
+                self.ownership(f, inst)
+            }
             Op::Slot
             | Op::ListAddrU
             | Op::PtrIsNull

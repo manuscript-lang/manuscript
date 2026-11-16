@@ -4,7 +4,7 @@ use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
 use ms_mir::verify::verify_module;
 
-const HEAD: &str = "module \"t\"\nentry @main\nextern @msrt_promise_start(int) -> int spawns_task\nextern @msrt_task_sleep(int) -> int\n";
+const HEAD: &str = "module \"t\"\nentry @main\nextern @msrt_promise_start(int) -> int spawns_task\nextern @msrt_task_pause(int) -> int\n";
 
 fn rewrite(body: &str) -> (Module, bool) {
     let mut m = parse_module(&format!("{HEAD}{body}")).unwrap_or_else(|e| panic!("{e}"));
@@ -40,7 +40,7 @@ b0:
   %s: str = str "held"
   %s2: str = clone %s
   %n: int = iconst 5
-  %r: int = call.rt @msrt_task_sleep (%n)
+  %r: int = call.rt @msrt_task_pause (%n)
   drop %s2
   ret %r
 }
@@ -60,7 +60,7 @@ fn tests_the_flag_after_a_parking_call_and_forgets_what_is_held() {
 fn leaves_a_program_that_starts_no_task_alone() {
     let src = HOLDS_STRING;
     let mut m = parse_module(&format!(
-        "module \"t\"\nentry @main\nextern @msrt_task_sleep(int) -> int\n{src}"
+        "module \"t\"\nentry @main\nextern @msrt_task_pause(int) -> int\n{src}"
     ))
     .unwrap_or_else(|e| panic!("{e}"));
     assert!(!cancel_edges::run(&mut m));
