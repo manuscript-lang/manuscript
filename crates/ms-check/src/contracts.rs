@@ -1,6 +1,6 @@
 //! Implementations, contracts and their evidence.
 
-use crate::checker::{Checker, PropertyMethods, Scope};
+use crate::checker::{Checker, Scope};
 use crate::fxmap::{HashMap, HashSet};
 use crate::hints::{list, signature_text};
 use crate::stdlib;
@@ -25,13 +25,12 @@ pub(crate) fn has_generic_operation(contract: &Ty) -> bool {
     })
 }
 
-fn property_slot(b: Builtin) -> Option<usize> {
-    match b {
-        Builtin::Equal => Some(0),
-        Builtin::Hashable => Some(1),
-        Builtin::Comparable => Some(2),
-        _ => None,
-    }
+/// Whether `t` mentions a type variable anywhere.
+fn has_variable(t: &Ty) -> bool {
+    t.kind == Kind::Variable
+        || t.args.iter().any(has_variable)
+        || t.params.iter().any(|p| has_variable(&p.ty))
+        || t.result.as_ref().is_some_and(has_variable)
 }
 
 /// A structural property the language derives from a type's shape.
@@ -390,6 +389,7 @@ impl Checker {
                     .push(at);
             }
         }
+        self.property_methods.add(at, &method, self.syms);
         self.p.methods.push(method);
     }
 
@@ -1322,31 +1322,6 @@ impl Checker {
         result
     }
 
-    /// The methods that decide `b`: implementations of its contract and inherent shape overrides.
-    fn deciding_methods(&self, b: Builtin) -> Rc<Vec<u32>> {
-        let Some(slot) = property_slot(b) else {
-            let all = (0..self.p.methods.len() as u32).collect();
-            return Rc::new(all);
-        };
-        let mut index = self.property_methods.borrow_mut();
-        if index.seen > self.p.methods.len() {
-            *index = PropertyMethods::default();
-        }
-        for at in index.seen..self.p.methods.len() {
-            let m = &self.p.methods[at];
-            for (slot, b) in [Builtin::Equal, Builtin::Hashable, Builtin::Comparable]
-                .into_iter()
-                .enumerate()
-            {
-                if m.contract.as_ref().is_some_and(|c| c.is(b)) || m.overrides(self.syms, b) {
-                    Rc::make_mut(&mut index.lists[slot]).push(at as u32);
-                }
-            }
-        }
-        index.seen = self.p.methods.len();
-        index.lists[slot].clone()
-    }
-
     fn property_compute(&self, t: &Ty, property: Property, state: &mut PropertyState) -> bool {
         if property == Property::Clonable {
             return self.clonable(t, state);
@@ -1357,7 +1332,7 @@ impl Checker {
             });
         }
         // Explicit implementations take precedence over structural data semantics.
-        for &at in self.deciding_methods(property.builtin()).iter() {
+        for &at in self.property_methods.deciding(property.builtin()) {
             let m = &self.p.methods[at as usize];
             if !self.method_visible(m) {
                 continue;
@@ -1373,7 +1348,7 @@ impl Checker {
             }
         }
         if property == Property::Hashable {
-            for &at in self.deciding_methods(Builtin::Equal).iter() {
+            for &at in self.property_methods.deciding(Builtin::Equal) {
                 let m = &self.p.methods[at as usize];
                 if !self.method_visible(m) {
                     continue;
@@ -1559,6 +1534,11 @@ impl Checker {
                 .methods(t, n("close"))
                 .iter()
                 .any(|m| m.ty.params.is_empty() && is_close_result(self.syms, &m.ty.result_ty()));
+        }
+        // A type variable's bounds are filled in after it is created and are not part of the shape,
+        // so only a type without variables has an answer that depends on the key alone.
+        if has_variable(t) {
+            return self.implements(t, &self.session.standard("Closeable", vec![]));
         }
         let key = (self.current_file(), self.p.methods.len(), self.shape(t));
         if let Some(&known) = self.closeable_cache.borrow().get(&key) {
