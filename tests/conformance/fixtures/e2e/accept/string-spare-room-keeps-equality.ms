@@ -1,3 +1,5 @@
+// conform: tags=strings,tier-core
+// conform: phase=run
 // A string grown by `+=` records spare room after its text. Equal strings compare, hash and
 // look up the same whether or not they carry it.
 fn grown(n: Int) String:
