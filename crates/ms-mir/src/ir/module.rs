@@ -241,7 +241,20 @@ impl Module {
     /// only a runtime function declared `fresh` (the result borrows nothing) or one whose result
     /// holds no pointer (a number, a flag) lets its argument slots share storage.
     pub fn pins_argument_slots(&self, def: &ExternDef) -> bool {
-        def.role == ExternRole::BorrowsArgument || (!def.fresh && self.needs_drop(def.ret))
+        def.retains
+            || def.role == ExternRole::BorrowsArgument
+            || (!def.fresh && self.needs_drop(def.ret))
+    }
+
+    /// Whether a stack slot passed to `def` as a pointer must keep its place for the whole
+    /// function: the result may point into it (a view), or the runtime keeps the pointer after
+    /// the call returns (`retains`).
+    pub fn pins_slot_argument(&self, def: &ExternDef) -> bool {
+        def.retains
+            || matches!(
+                def.role,
+                ExternRole::BorrowsArgument | ExternRole::ViewResult
+            )
     }
 
     /// Whether values of `ty` own resources that must be dropped (strings, lists,
@@ -536,6 +549,7 @@ mod pin_tests {
             noreturn: false,
             pure_: false,
             fresh,
+            retains: false,
             leaf: true,
             reads: false,
             role,
@@ -552,5 +566,16 @@ mod pin_tests {
         assert!(!m.pins_argument_slots(&def(Ty::STR, true, ExternRole::None)));
         assert!(!m.pins_argument_slots(&def(Ty::INT, false, ExternRole::None)));
         assert!(!m.pins_argument_slots(&def(Ty::VOID, false, ExternRole::None)));
+    }
+
+    #[test]
+    fn a_slot_passed_by_pointer_is_kept_for_a_view_or_a_retained_pointer() {
+        let m = Module::new("t");
+        let mut keeps = def(Ty::VOID, true, ExternRole::None);
+        assert!(!m.pins_slot_argument(&keeps));
+        keeps.retains = true;
+        assert!(m.pins_slot_argument(&keeps) && m.pins_argument_slots(&keeps));
+        assert!(m.pins_slot_argument(&def(Ty::STR, true, ExternRole::ViewResult)));
+        assert!(m.pins_slot_argument(&def(Ty::STR, true, ExternRole::BorrowsArgument)));
     }
 }

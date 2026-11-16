@@ -1094,6 +1094,7 @@ impl<'a> FnLower<'a> {
             noreturn: crate::rtcall::rt_flags(sym).noreturn,
             pure_: false,
             fresh: crate::rtcall::fresh_result(sym),
+            retains: crate::rtcall::rt_flags(sym).retains,
             role: crate::rtcall::extern_role(sym),
             leaf: crate::rtcall::rt_flags(sym).leaf,
             reads: crate::rtcall::rt_flags(sym).reads,

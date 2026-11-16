@@ -513,7 +513,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     Ty::VOID
                 };
                 let (mut noreturn, mut pure_, mut fresh) = (false, false, false);
-                let (mut leaf, mut reads) = (false, false);
+                let (mut leaf, mut reads, mut retains) = (false, false, false);
                 let mut role = ExternRole::None;
                 while !c.done() {
                     match c.ident()?.as_str() {
@@ -522,6 +522,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         "fresh" => fresh = true,
                         "leaf" => leaf = true,
                         "reads" => reads = true,
+                        "retains" => retains = true,
                         o => match ExternRole::from_name(o) {
                             Some(r) => role = r,
                             None => return c.err(format!("unknown extern attribute {o}")),
@@ -538,6 +539,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     role,
                     leaf,
                     reads,
+                    retains,
                 });
             }
             "global" => {

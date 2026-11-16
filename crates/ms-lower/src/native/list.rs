@@ -987,6 +987,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            retains: false,
             role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags("msrt_list_index_fault").leaf,
             reads: crate::rtcall::rt_flags("msrt_list_index_fault").reads,
