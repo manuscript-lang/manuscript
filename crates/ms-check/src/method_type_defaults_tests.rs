@@ -32,7 +32,7 @@ fn Source.convert(cause: Error?) Result[Int, Error]: ok(if cause.is_none(): self
 fn Source.ok_or(cause: Error? = none) Result[Int, Error]: ok(if cause.is_none(): self.value else: 8)
 fn generic[T](value: T?) Void:
     _generic_native := value.ok_or[Error]
-fn sample(value: Int?, flag: Bool) Void:
+fn sample(flag: Bool, value: Int?) Void:
     _native := value.ok_or[Error]
     _alias := _native
     _nested := fn: _alias()

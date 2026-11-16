@@ -33,7 +33,6 @@ type RunRecord:
 	tier: Int
 	language: String
 	harness: String
-	model: String?
 	usage: Usage
 	wall_s: Float
 	exit_code: Int
@@ -48,6 +47,7 @@ type RunRecord:
 	suspect_peek: Bool
 	grade: Grade
 	pass: Bool
+	model: String?
 
 type Options:
 	harness: String = "oracle"
@@ -92,11 +92,11 @@ fn run_one(
 	ch: Challenge,
 	lang: Lang,
 	h: Harness,
-	model: String?,
 	timeout_s: Int,
 	keep: Bool,
 	out_file: String,
 	tag: String,
+	model: String?,
 ) RunRecord:
 	run_id := uuid_v4().get("").replace("-", "").view(0, 10).clone()
 	base := temporary_directory("agent-bench-").get()
@@ -122,7 +122,7 @@ fn run_one(
 		).get()
 	else:
 		limit := if ch.agent_timeout_s > timeout_s: ch.agent_timeout_s else: timeout_s
-		agent = run_agent(h, prompt, model, ws, limit, transcript)
+		agent = run_agent(h, prompt, ws, limit, transcript, model)
 
 	log := read_log(ws)
 
@@ -143,29 +143,29 @@ fn run_one(
 		g.llm_tokens = llm_tokens(sol)
 
 	rec := RunRecord(
-		run_id.clone(),
-		now().unix_seconds(),
-		tag.clone(),
-		ch.id.clone(),
-		ch.category.clone(),
-		ch.tier,
-		lang.id.clone(),
-		h.name(),
-		model.clone(),
-		agent.usage.clone(),
-		agent.wall_s,
-		agent.exit_code,
-		agent.timed_out,
-		log.builds,
-		log.first_build_ok,
-		log.first_build_fixed_ok,
-		log.checks,
-		log.examples_pass,
-		log.build_codes.clone(),
-		log.build_errors.clone(),
-		peeked,
-		g.clone(),
-		g.pass,
+		run_id: run_id.clone(),
+		ts: now().unix_seconds(),
+		tag: tag.clone(),
+		challenge: ch.id.clone(),
+		category: ch.category.clone(),
+		tier: ch.tier,
+		language: lang.id.clone(),
+		harness: h.name(),
+		model: model.clone(),
+		usage: agent.usage.clone(),
+		wall_s: agent.wall_s,
+		exit_code: agent.exit_code,
+		timed_out: agent.timed_out,
+		builds: log.builds,
+		first_build_ok: log.first_build_ok,
+		first_build_fixed_ok: log.first_build_fixed_ok,
+		checks: log.checks,
+		examples_pass: log.examples_pass,
+		build_codes: log.build_codes.clone(),
+		build_errors: log.build_errors.clone(),
+		suspect_peek: peeked,
+		grade: g.clone(),
+		pass: g.pass,
 	)
 	append_file(out_file, dumps_data(rec, 0) + "\n").wait().get()
 
@@ -211,11 +211,11 @@ fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
 			item.challenge,
 			item.language,
 			h,
-			o.model,
 			o.timeout,
 			o.keep,
 			o.out,
 			tag,
+			o.model,
 		)
 		verdict := if rec.pass: "PASS" else: "FAIL"
 		(

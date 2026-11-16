@@ -54,12 +54,12 @@ fn labeled(log: String, action: Int) Void!:
 	append_file(log, f"body {value.code}\n").wait()?
 
 type Wrapped:
-	first: Token?
 	second: Token!
 	code: Int
+	first: Token?
 
 fn wrapped(log: String, action: Int) Void!:
-	value := Wrapped(token(log, 1), ok(token(log, 2)), check(log, action)?)
+	value := Wrapped(first: token(log, 1), second: ok(token(log, 2)), code: check(log, action)?)
 	append_file(log, f"body {value.code}\n").wait()?
 
 fn default_code(log: String, action: Int) Int:

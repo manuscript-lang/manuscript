@@ -51,9 +51,9 @@ fn serve_command() Command:
 
 type AddOptions:
 	name: String
-	url: String?
 	extra: List[String]
 	dry_run: Bool
+	url: String?
 
 fn remote_group() Command:
 	add := command[AddOptions](

@@ -704,17 +704,17 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 		else if entity.starts_with("#x"):
 			out.append(
 				scalar(
-					digits(entity.view(2, entity.length()), 16),
 					chars,
 					here,
+					digits(entity.view(2, entity.length()), 16),
 				)?
 			)
 		else if entity.starts_with("#"):
 			out.append(
 				scalar(
-					digits(entity.view(1, entity.length()), 10),
 					chars,
 					here,
+					digits(entity.view(1, entity.length()), 10),
 				)?
 			)
 		else:
@@ -744,7 +744,7 @@ fn is_xml_char(code: Int) Bool:
 		or (code >= 65536 and code <= 1114111)
 	)
 
-fn scalar(value: Int?, chars: List[String], at: Int) String!:
+fn scalar(chars: List[String], at: Int, value: Int?) String!:
 	if value.is_none() or not is_xml_char(value.get(0)): return error(
 		invalid_at(chars, at, "invalid character reference")
 	)

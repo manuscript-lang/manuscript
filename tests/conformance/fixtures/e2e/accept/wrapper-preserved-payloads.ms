@@ -131,7 +131,7 @@ test "discarded owned errors close, named ones too once to_optional moves them":
 	named_error(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,31,")?
 
-fn specialized_optional[T](value: T?, create: fn() Int) T!Int:
+fn specialized_optional[T](create: fn() Int, value: T?) T!Int:
 	return value.ok_or_else[Int](create)
 
 fn specialized_error[T](value: Int!T) String!T:
@@ -139,7 +139,7 @@ fn specialized_error[T](value: Int!T) String!T:
 
 fn specialized_transfers(log: String) Void:
 	present: Marker? := Marker(60, log.clone())
-	_first := specialized_optional(present, fn: 0)
+	_first := specialized_optional(fn: 0, present)
 	failed: Int!Marker := error(Marker(61, log))
 	_second := specialized_error(failed)
 
