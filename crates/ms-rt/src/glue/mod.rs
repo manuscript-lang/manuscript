@@ -9,7 +9,7 @@ use core::fmt::{self, Write};
 use core::sync::atomic::Ordering;
 use ms_rt_abi::StrVal;
 
-use crate::fault::{cancel_flag, msrt_cancelled, msrt_fault};
+use crate::fault::{cancel_flag, msrt_fault};
 use crate::string::msrt_string_from_bytes;
 pub use ms_rt_abi::record::FaultKind;
 
@@ -65,12 +65,7 @@ pub fn cancel_pending() -> bool {
 
 /// Delivers a cancel by return: marks the task unwinding. The caller returns a zero result and
 /// the frames above take their cancel exits. Only valid where the module has cancel edges.
-pub use crate::fault::{deliver_cancel, unwinding};
-
-/// Unwinds the program after a stop request; never returns.
-pub fn cancelled() -> ! {
-    msrt_cancelled()
-}
+pub use crate::fault::{cancel_return, deliver_cancel, unwinding};
 
 use crate::obj::{msrt_alloc, msrt_free};
 
@@ -86,17 +81,9 @@ pub const WAIT_TIMEOUT: u32 = 8;
 
 /// Parks the running task until `fd` is ready for `events` (`WAIT_READ`, `WAIT_WRITE`) or the
 /// timeout (nanoseconds, negative for none) passes, so other tasks keep running. Returns the
-/// ready bits or `WAIT_TIMEOUT`; unwinds the program when a stop request ends the wait.
-#[cfg(unix)]
-pub fn task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
-    match try_task_wait_fd(fd, events, timeout_ns) {
-        Ok(got) => got,
-        Err(_) => cancelled(),
-    }
-}
-
-/// [`task_wait_fd`] that returns `Err(Cancelled)` when a stop request ends the wait, so the
-/// caller's frames return and drop what they hold; raise the cancel afterwards.
+/// ready bits or `WAIT_TIMEOUT`, or `Err(Cancelled)` when a stop request ends the wait, so the
+/// caller's frames return and drop what they hold; deliver the cancel afterwards with
+/// [`cancel_return`].
 #[cfg(unix)]
 pub fn try_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> Result<u32, pool::Cancelled> {
     /// The runtime's `WAIT_CANCELLED` bit.
@@ -216,26 +203,15 @@ pub mod pipe {
 /// pool, so a task parks until the object is signalled instead of checking it in slices.
 #[cfg(windows)]
 pub mod object {
-    use super::{WAIT_READ, WAIT_TIMEOUT, cancelled};
+    use super::{WAIT_READ, WAIT_TIMEOUT};
     use crate::task::{WAIT_CANCELLED, msrt_task_wait_fd};
 
     /// Parks until `handle` is signalled or `timeout_ns` passes (negative: no limit). Returns
-    /// `WAIT_READ`, `WAIT_TIMEOUT`, or `None` when the object cannot be watched.
+    /// `WAIT_READ`, `WAIT_TIMEOUT`, `None` when the object cannot be watched, or
+    /// `Err(Cancelled)` when a stop request ends the wait.
     ///
     /// # Safety
     /// `handle` is an open waitable handle that stays open until [`forget`].
-    pub unsafe fn wait(handle: isize, timeout_ns: i64) -> Option<u32> {
-        // SAFETY: forwarded from the caller.
-        match unsafe { try_wait(handle, timeout_ns) } {
-            Ok(got) => got,
-            Err(_) => cancelled(),
-        }
-    }
-
-    /// [`wait`] that returns `Err(Cancelled)` when a stop request ends the wait.
-    ///
-    /// # Safety
-    /// As for [`wait`].
     pub unsafe fn try_wait(
         handle: isize,
         timeout_ns: i64,
@@ -253,21 +229,14 @@ pub mod object {
         Ok(Some(got & (WAIT_READ | WAIT_TIMEOUT)))
     }
 
-    /// Ends the watch [`wait`] started; call before closing `handle`.
+    /// Ends the watch [`try_wait`] started; call before closing `handle`.
     pub fn forget(handle: isize) {
         crate::poller::object_drop(handle as usize);
     }
 }
 
-/// Parks the running task for `ns` nanoseconds so other tasks keep running, and unwinds the
-/// program when a stop request (or task cancellation) ends the wait early.
-pub fn task_sleep(ns: i64) {
-    if try_task_sleep(ns).is_err() {
-        cancelled();
-    }
-}
-
-/// [`task_sleep`] that returns `Err(Cancelled)` when a stop request ends the sleep.
+/// Parks the running task for `ns` nanoseconds so other tasks keep running. `Err(Cancelled)`
+/// when a stop request (or task cancellation) ends the sleep early.
 pub fn try_task_sleep(ns: i64) -> Result<(), pool::Cancelled> {
     /// The runtime's `WAIT_CANCELLED` bit.
     const WAIT_CANCELLED: u32 = 16;
@@ -278,11 +247,15 @@ pub fn try_task_sleep(ns: i64) -> Result<(), pool::Cancelled> {
     Ok(())
 }
 
-/// Aborts the program when a stop request is pending (call between blocking steps of long operations).
-pub fn poll_cancel() {
+/// Delivers a pending stop request by return (see [`cancel_return`]) and answers `true`: the
+/// caller returns a zero result at once. Call it between blocking steps of an operation that
+/// can park; never in a `// ms: leaf` native, whose callers take no cancel edge.
+pub fn poll_cancel() -> bool {
     if cancel_pending() {
-        cancelled();
+        crate::fault::cancel_return();
+        return true;
     }
+    false
 }
 
 /// The bytes of a `Bytes` value.

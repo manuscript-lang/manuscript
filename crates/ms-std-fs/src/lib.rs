@@ -33,13 +33,13 @@ use ms_rt::ffi::{
 use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE};
 use stream::Stream;
 
-/// Raises a pending cancel once the failing operation's frames have returned and dropped what
-/// they held. Runs only at the FFI boundary, never on a pool thread.
-/// The failure's text is dropped first: the jump skips destructors.
+/// Delivers a pending cancel once the failing operation's frames have returned and dropped what
+/// they held. Runs only at the FFI boundary, never on a pool thread; the native then returns its
+/// status as usual. The failure's text is dropped first while a cancel can still jump.
 fn raise_cancel(message: &mut Option<Vec<u8>>) {
     if !ms_rt::glue::pool::on_pool_thread() && ms_rt::glue::cancel_pending() {
         drop(message.take());
-        ms_rt::glue::cancelled();
+        ms_rt::glue::cancel_return();
     }
 }
 
@@ -225,10 +225,13 @@ native! {
     /// Takes an admission permit for copying `bytes` for a pool job, parking while the pool is
     /// full; true when one is held and `msstd_fs_release` must follow.
     safe fn msstd_fs_admit(bytes: i64) -> bool {
-        // Nothing is held here, so the cancel is raised at once.
+        // Nothing is held here, so the cancel is delivered at once; no permit is held.
         match ms_rt::glue::pool::admit(usize::try_from(bytes).unwrap_or(0)) {
             Ok(held) => held,
-            Err(_) => ms_rt::glue::cancelled(),
+            Err(_) => {
+                ms_rt::glue::cancel_return();
+                false
+            }
         }
     }
 
