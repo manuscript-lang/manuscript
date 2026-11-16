@@ -30,7 +30,7 @@ type Item:
 	qty: Int
 
 fn solve(s: String) String:
-	var lines = s.split("\n")
+	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 
 	var stock = Map[String, Int]()
