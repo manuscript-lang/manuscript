@@ -286,20 +286,25 @@ impl Reactor {
                 _ => None,
             };
             let Some(conn) = conn else { continue };
-            let Some(timeout) = conn.server.upgrade().and_then(|s| s.limits.timeout) else {
+            let Some(server) = conn.server.upgrade() else {
                 continue;
             };
-            let mut st = conn.st.borrow_mut();
-            if !st.pending {
-                continue;
+            {
+                let mut st = conn.st.borrow_mut();
+                if let Some(timeout) = server.limits.timeout
+                    && st.pending
+                {
+                    st.pending = false;
+                    let at = now + timeout;
+                    st.deadline = Some(at);
+                    // The caller parks next and computes its wait from `next_sweep`: no kick.
+                    if self.next_sweep.get().is_none_or(|n| at < n) {
+                        self.next_sweep.set(Some(at));
+                    }
+                }
             }
-            st.pending = false;
-            let at = now + timeout;
-            st.deadline = Some(at);
-            // The caller parks next and computes its wait from `next_sweep`: no kick.
-            if self.next_sweep.get().is_none_or(|n| at < n) {
-                self.next_sweep.set(Some(at));
-            }
+            // An idle connection now has a deadline to hand to another thread.
+            server.list_waiting(&conn);
         }
     }
 
@@ -1127,12 +1132,10 @@ impl Server {
             && st.registered
             && st.io.is_some();
         if waits {
-            // The hand-off to another thread carries a real deadline, so the timeout that
-            // started without a time gets it now (one clock read, only with a timeout).
+            // The hand-off to another thread carries a real deadline: a timeout that started
+            // without a time is listed once the reactor has set it (`resolve_pending`).
             if st.pending {
-                st.pending = false;
-                st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
-                Reactor::get().note_deadline(st.deadline);
+                return;
             }
             st.waiting = member.park(conn.token, crate::sys::raw(st.fd()), st.deadline);
         }
