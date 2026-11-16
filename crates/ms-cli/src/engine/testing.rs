@@ -768,10 +768,14 @@ impl Runner<'_> {
             .args(&self.options.program)
             .current_dir(self.working);
         // The harness rings this pipe after each record, so the wait below wakes on records.
-        let bell = Doorbell::new().ok();
-        if let Some(bell) = &bell {
-            command.env("MS_TEST_WAKE", bell.rings_as());
-        }
+        let bell = match Doorbell::new() {
+            Ok(bell) => bell,
+            Err(error) => {
+                run.ended = format!("cannot create the wake pipe: {error}");
+                return run;
+            }
+        };
+        command.env("MS_TEST_WAKE", bell.rings_as());
         if let Some(timeout) = self.options.timeout {
             command.env("MS_TEST_TIMEOUT_NS", timeout.as_nanos().to_string());
         }
@@ -797,9 +801,7 @@ impl Runner<'_> {
             }
         };
         let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
-        if let Some(bell) = bell {
-            bell.listen(stops.wake());
-        }
+        bell.listen(stops.wake());
         let mut printed: Vec<u8> = Vec::new();
         let limit = self.options.timeout.map(|t| t + Duration::from_secs(1));
         let mut reader = RecordReader::default();
@@ -822,10 +824,12 @@ impl Runner<'_> {
             run.timed_out.extend(&late);
             Drained {
                 kill: !late.is_empty(),
+                // Tests already stopped are past due; only the others set the next look.
                 next: reader
                     .running
-                    .values()
-                    .map(|(_, began)| *began + limit)
+                    .iter()
+                    .filter(|(index, _)| !run.timed_out.contains(index))
+                    .map(|(_, (_, began))| *began + limit)
                     .min(),
             }
         });
