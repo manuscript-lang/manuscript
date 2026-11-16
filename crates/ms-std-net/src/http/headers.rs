@@ -1,7 +1,7 @@
 //! `HttpHeaders`: an ordered multimap of names to byte values.
 
 use crate::error::HttpErr;
-use std::cell::{Cell, OnceCell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -55,23 +55,10 @@ impl<'a> IntoIterator for &'a Values {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Headers {
-    /// This handle's table, shared until written, so handing the received headers to a handler
-    /// copies nothing. Unset while the handle still reads the received fields' table.
-    entries: OnceCell<Arc<Vec<Entry>>>,
-    /// The received fields and the table built from them, shared by every handle copied from
-    /// this one: the table is built when any of them first looks, so a request whose handler
-    /// never looks at its headers never builds it.
-    received: Option<Rc<Received>>,
-}
-
-/// A received field: its name as sent and its value.
-type Field = (String, Vec<u8>);
-
-struct Received {
-    fields: Cell<Option<Vec<Field>>>,
-    empty: bool,
-    table: OnceCell<Arc<Vec<Entry>>>,
+    /// Shared until written, so handing the received headers to a handler copies nothing.
+    entries: Arc<Vec<Entry>>,
 }
 
 thread_local! {
@@ -82,34 +69,8 @@ thread_local! {
 impl Default for Headers {
     fn default() -> Headers {
         Headers {
-            entries: OnceCell::from(EMPTY.with(Arc::clone)),
-            received: None,
+            entries: EMPTY.with(Arc::clone),
         }
-    }
-}
-
-impl Clone for Headers {
-    fn clone(&self) -> Headers {
-        Headers {
-            entries: self.entries.clone(),
-            received: self.received.clone(),
-        }
-    }
-}
-
-impl PartialEq for Headers {
-    fn eq(&self, other: &Headers) -> bool {
-        self.table() == other.table()
-    }
-}
-
-impl Eq for Headers {}
-
-impl std::fmt::Debug for Headers {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Headers")
-            .field("entries", self.table())
-            .finish()
     }
 }
 
@@ -160,40 +121,16 @@ impl Headers {
         Headers::default()
     }
 
-    /// The entries, built from the received fields on first use.
-    fn table(&self) -> &Arc<Vec<Entry>> {
-        self.entries.get_or_init(|| match &self.received {
-            Some(received) => received
-                .table
-                .get_or_init(|| {
-                    let fields = received.fields.take().unwrap_or_default();
-                    Arc::new(Headers::build(fields))
-                })
-                .clone(),
-            None => EMPTY.with(Arc::clone),
-        })
-    }
-
-    /// The entries to change; a pending table is built first.
-    fn table_mut(&mut self) -> &mut Arc<Vec<Entry>> {
-        self.table();
-        self.entries.get_mut().expect("table built above")
-    }
-
     pub fn entries(&self) -> &[Entry] {
-        self.table()
+        &self.entries
     }
 
     pub fn is_empty(&self) -> bool {
-        match (self.entries.get(), &self.received) {
-            (Some(entries), _) => entries.is_empty(),
-            (None, Some(received)) => received.empty,
-            (None, None) => true,
-        }
+        self.entries.is_empty()
     }
 
     fn position(&self, name: &str) -> Option<usize> {
-        self.table()
+        self.entries
             .iter()
             .position(|e| e.name.eq_ignore_ascii_case(name))
     }
@@ -201,8 +138,8 @@ impl Headers {
     /// Adds a value under `name` without validating it.
     pub fn add(&mut self, name: &str, value: Vec<u8>) {
         match self.position(name) {
-            Some(i) => Arc::make_mut(self.table_mut())[i].values.push(value),
-            None => Arc::make_mut(self.table_mut()).push(Entry {
+            Some(i) => Arc::make_mut(&mut self.entries)[i].values.push(value),
+            None => Arc::make_mut(&mut self.entries).push(Entry {
                 name: name.to_string(),
                 values: Values::One(value),
             }),
@@ -219,7 +156,7 @@ impl Headers {
     }
 
     pub fn values(&self, name: &str) -> Option<&[Vec<u8>]> {
-        self.position(name).map(|i| &*self.table()[i].values)
+        self.position(name).map(|i| &*self.entries[i].values)
     }
 
     /// The first value of `name`, if any.
@@ -240,13 +177,13 @@ impl Headers {
     }
 
     pub fn names(&self) -> Vec<&str> {
-        self.table().iter().map(|e| e.name.as_str()).collect()
+        self.entries.iter().map(|e| e.name.as_str()).collect()
     }
 
     pub fn remove(&mut self, name: &str) -> bool {
         match self.position(name) {
             Some(i) => {
-                Arc::make_mut(self.table_mut()).remove(i);
+                Arc::make_mut(&mut self.entries).remove(i);
                 true
             }
             None => false,
@@ -256,7 +193,7 @@ impl Headers {
     /// Replaces every value of `name` with `value`.
     pub fn set(&mut self, name: &str, value: Vec<u8>) {
         match self.position(name) {
-            Some(i) => Arc::make_mut(self.table_mut())[i].values = Values::One(value),
+            Some(i) => Arc::make_mut(&mut self.entries)[i].values = Values::One(value),
             None => self.add(name, value),
         }
     }
@@ -264,25 +201,6 @@ impl Headers {
     /// Received headers as handlers see them: canonical names, sorted
     /// by name, values in arrival order.
     pub fn from_received(fields: impl IntoIterator<Item = (String, Vec<u8>)>) -> Headers {
-        Headers {
-            entries: OnceCell::from(Arc::new(Headers::build(fields))),
-            received: None,
-        }
-    }
-
-    /// Like [`Headers::from_received`], but the table is built when first looked at.
-    pub fn received_later(fields: Vec<(String, Vec<u8>)>) -> Headers {
-        Headers {
-            entries: OnceCell::new(),
-            received: Some(Rc::new(Received {
-                empty: fields.is_empty(),
-                fields: Cell::new(Some(fields)),
-                table: OnceCell::new(),
-            })),
-        }
-    }
-
-    fn build(fields: impl IntoIterator<Item = (String, Vec<u8>)>) -> Vec<Entry> {
         let fields = fields.into_iter();
         let mut entries: Vec<Entry> = Vec::with_capacity(fields.size_hint().0);
         for (name, value) in fields {
@@ -296,12 +214,14 @@ impl Headers {
             }
         }
         entries.sort_by(|a, b| a.name.cmp(&b.name));
-        entries
+        Headers {
+            entries: Arc::new(entries),
+        }
     }
 
     /// Whether every name and value is UTF-8.
     pub fn is_text(&self) -> bool {
-        self.table()
+        self.entries
             .iter()
             .all(|e| e.values.iter().all(|v| std::str::from_utf8(v).is_ok()))
     }
@@ -342,34 +262,6 @@ mod tests {
         assert_eq!(h.values("x-b").unwrap(), &[b"1".to_vec(), b"2".to_vec()]);
         assert_eq!(canonical("content-type"), "Content-Type");
         assert_eq!(canonical("a b"), "a b");
-    }
-
-    #[test]
-    fn a_lazily_received_table_matches_the_eager_one_and_copies_stay_apart() {
-        let fields = || {
-            vec![
-                ("x-b".to_string(), b"1".to_vec()),
-                ("ACCEPT".to_string(), b"a".to_vec()),
-                ("X-B".to_string(), b"2".to_vec()),
-            ]
-        };
-        let eager = Headers::from_received(fields());
-        let lazy = Headers::received_later(fields());
-        assert!(!lazy.is_empty());
-        assert!(Headers::received_later(Vec::new()).is_empty());
-        let mut copy = lazy.clone();
-        assert_eq!(copy, eager);
-        copy.append("New", b"v").unwrap();
-        copy.remove("accept");
-        assert_eq!(lazy, eager);
-        assert_eq!(lazy.names(), vec!["Accept", "X-B"]);
-        assert_eq!(copy.names(), vec!["X-B", "New"]);
-        // A copy taken before anything looked still sees the received fields.
-        let second = lazy.clone();
-        assert_eq!(
-            second.values("x-b").unwrap(),
-            &[b"1".to_vec(), b"2".to_vec()]
-        );
     }
 
     #[test]

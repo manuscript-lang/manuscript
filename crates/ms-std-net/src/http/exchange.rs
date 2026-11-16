@@ -96,7 +96,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             } else {
                 "HTTP/1.0"
             },
-            headers: Rc::new(RefCell::new(Headers::received_later(fields))),
+            headers: Rc::new(RefCell::new(Headers::from_received(fields))),
             decoder,
             decoded: Vec::new(),
             remaining_read: server.limits.body,
