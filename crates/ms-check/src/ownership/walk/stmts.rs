@@ -703,6 +703,19 @@ impl Walker<'_> {
             );
         }
         if let Some((m, _)) = self.method_value_parts(e)
+            && self.is_place(recv)
+            && receiver_mode(self.syms, self.cx.summaries, &m) == Some(ParamMode::Move)
+        {
+            // A source method that moves its receiver does so on every call of the value, so
+            // the value needs a copy of the receiver per call; a resource has none, and a
+            // local value would otherwise leave both the variable and the result to close it.
+            self.require_clonable(
+                e,
+                &self.cx.m.ty(recv),
+                "this method value keeps its receiver for repeated calls, so it",
+            );
+        }
+        if let Some((m, _)) = self.method_value_parts(e)
             && let Some(element) = element_handed_out(self.syms, &m, &self.cx.m.ty(recv))
         {
             // The call borrows the entry; a method value returns an owned value, so it copies it.
