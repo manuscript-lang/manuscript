@@ -6,7 +6,7 @@ publish.workspace = true
 description = "Native implementation of @std/regex.ms (regex crate syntax)"
 
 [dependencies]
-regex = { version = "1", default-features = false, features = ["unicode-case", "unicode-gencat", "unicode-script", "unicode-perl", "unicode-bool", "unicode-age", "unicode-segment", "perf-inline", "perf-literal", "perf-onepass", "perf-backtrack", "perf-dfa"] }
+regex = { version = "1", default-features = false, features = ["std", "perf-cache", "unicode-case", "unicode-gencat", "unicode-script", "unicode-perl", "unicode-bool", "unicode-age", "unicode-segment", "perf-inline", "perf-literal", "perf-onepass", "perf-backtrack", "perf-dfa"] }
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
 
