@@ -1027,6 +1027,14 @@ impl<'a> FnLower<'a> {
         if ms_check::api::ownership::is_text_builder(self.syms, &m.receiver) && method == "build" {
             return self.text_builder_build(e, recv_expr);
         }
+        if method == "append"
+            && ms_check::api::ownership::is_text_builder(self.syms, &m.receiver)
+            && self.is_place(recv_expr)
+            && let [arg] = view.arguments.as_slice()
+            && self.is_text_expr(arg.expr)
+        {
+            return self.text_builder_append(e, recv_expr, arg.expr);
+        }
         if ms_check::api::ownership::collection_mutation(self.syms, m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }

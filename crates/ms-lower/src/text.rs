@@ -708,6 +708,17 @@ impl<'a> FnLower<'a> {
     /// `a + b + c` over strings: the operands are evaluated left to right and joined by one
     /// runtime call, like the pieces of an interpolation.
     pub(crate) fn text_sum(&mut self, e: &Expr) -> Result<Val, Error> {
+        let pieces = self.sum_pieces(e)?;
+        if self.dead {
+            return Ok(self.dummy(MTy::STR));
+        }
+        self.at(e.pos);
+        self.join_pieces(pieces)
+    }
+
+    /// The operands of `a + b + c` over strings, evaluated left to right; empty when evaluation
+    /// left the function (`self.dead`).
+    pub(crate) fn sum_pieces(&mut self, e: &Expr) -> Result<Vec<Piece>, Error> {
         let mut leaves: Vec<&Expr> = Vec::new();
         let mut cur = e;
         while let ExprKind::Binary {
@@ -729,7 +740,7 @@ impl<'a> FnLower<'a> {
         for leaf in leaves {
             let x = self.expr(leaf)?;
             if self.dead {
-                return Ok(x);
+                return Ok(Vec::new());
             }
             // The text of a plain `Int` that was just rendered joins as the integer itself, so
             // `"n=" + n.to_string()` builds no temporary string.
@@ -743,13 +754,38 @@ impl<'a> FnLower<'a> {
                 None => Piece::Str(self.hold_temp(x)),
             });
         }
-        self.at(e.pos);
-        self.join_pieces(pieces)
+        Ok(pieces)
     }
 
     /// A text literal with interpolations: its pieces are evaluated left to right and joined by
     /// one runtime call, with a plain `Int` piece written in decimal by the join itself.
     pub fn text(&mut self, parts: &[TextPart]) -> Result<Val, Error> {
+        let pieces = self.text_pieces(parts)?;
+        if self.dead {
+            return Ok(self.dummy(MTy::STR));
+        }
+        match pieces.as_slice() {
+            [] => {
+                let v = self.b.str_lit("");
+                Ok(Val { v, own: false })
+            }
+            // A lone `"{s}"` is a new string, but reading it borrows `s` until an owning
+            // position needs a value: that copy is the interpolation's, not a lowering gap.
+            [Piece::Str(a)] => {
+                let a = *a;
+                if !a.own {
+                    self.boundary_reads.insert(a.v);
+                }
+                Ok(a)
+            }
+            [Piece::Int(v)] => self.format_value(Val { v: *v, own: false }),
+            _ => self.join_pieces(pieces),
+        }
+    }
+
+    /// The pieces of a text literal, evaluated left to right; empty when evaluation left the
+    /// function (`self.dead`).
+    pub(crate) fn text_pieces(&mut self, parts: &[TextPart]) -> Result<Vec<Piece>, Error> {
         let mut pieces: Vec<Piece> = Vec::with_capacity(parts.len());
         for p in parts {
             let piece = match p {
@@ -760,7 +796,7 @@ impl<'a> FnLower<'a> {
                 TextPart::Interp(e) => {
                     let x = self.expr(e)?;
                     if self.dead {
-                        return Ok(x);
+                        return Ok(Vec::new());
                     }
                     let t = self.ety(e);
                     if self.ty_of(x.v) == MTy::INT && !t.is(ms_check::api::types::Builtin::Duration)
@@ -784,23 +820,7 @@ impl<'a> FnLower<'a> {
                 int => int,
             });
         }
-        match pieces.as_slice() {
-            [] => {
-                let v = self.b.str_lit("");
-                Ok(Val { v, own: false })
-            }
-            // A lone `"{s}"` is a new string, but reading it borrows `s` until an owning
-            // position needs a value: that copy is the interpolation's, not a lowering gap.
-            [Piece::Str(a)] => {
-                let a = *a;
-                if !a.own {
-                    self.boundary_reads.insert(a.v);
-                }
-                Ok(a)
-            }
-            [Piece::Int(v)] => self.format_value(Val { v: *v, own: false }),
-            _ => self.join_pieces(pieces),
-        }
+        Ok(pieces)
     }
 
     /// Joins pieces with `msrt_string_concatN` or, when one is an integer, `msrt_string_fmtN`,
