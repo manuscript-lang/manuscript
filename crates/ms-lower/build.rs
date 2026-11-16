@@ -15,6 +15,7 @@ type Entry = (
     Vec<String>,
     String,
     String,
+    String,
 );
 
 /// Splits `list` at its top-level commas (a function-pointer type holds commas).
@@ -149,6 +150,15 @@ fn main() {
             .find_map(|f| f.strip_prefix("domain="))
             .unwrap_or("")
             .to_string();
+        // `@view_of=<sym>` and its siblings: `kind:<sym>` with the flag's own name as the kind.
+        let twin = flags
+            .iter()
+            .find_map(|f| {
+                ["view_of", "shared_view_of", "first_of", "iter_of"]
+                    .iter()
+                    .find_map(|k| f.strip_prefix(&format!("{k}=")).map(|b| format!("{k}:{b}")))
+            })
+            .unwrap_or_default();
         let named: Vec<&str> = flags
             .iter()
             .filter_map(|f| {
@@ -209,12 +219,13 @@ fn main() {
             kept,
             op,
             domain,
+            twin,
         ));
     }
     table.sort_by(|a, b| a.0.cmp(&b.0));
     table.dedup_by(|later, first| later.0 == first.0);
     let mut out = String::from("&[\n");
-    for (name, params, ret, flags, kept, op, domain) in &table {
+    for (name, params, ret, flags, kept, op, domain, twin) in &table {
         let params: Vec<String> = params
             .iter()
             .map(|(n, t)| {
@@ -229,7 +240,7 @@ fn main() {
             .collect();
         writeln!(
             out,
-            "    ({name:?}, &[{}], {ret:?}, {flags}, {op:?}, {domain:?}),",
+            "    ({name:?}, &[{}], {ret:?}, {flags}, {op:?}, {domain:?}, {twin:?}),",
             params.join(", ")
         )
         .unwrap();

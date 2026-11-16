@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the thread "Move language logic out of the backends into MIR". Clone functions follow in stage 2 (same pass, `Module::clone_glue`: clone every field, rebuild with `type.new` or `alt.new`). Optionals, lists, interfaces, and types that contain themselves stay in the backends for now.
+Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the thread "Move language logic out of the backends into MIR". Clone functions follow in stage 2 (same pass, `Module::clone_glue`: clone every field, rebuild with `type.new` or `alt.new`). Stage 3 adds flag-and-payload optionals and lists (a drop loop over `list.get_u`, a clone loop with `list.push_u`; lists of plain elements keep the backends' block copy) and makes only the functions a program drops or clones, so the pass adds no compile time. Interfaces, closures, strings, maps and types that contain themselves stay in the backends for now.
 
 ## Problem
 
@@ -39,3 +39,7 @@ Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the th
 ## Measurement
 
 Against `e0fab5d0` on a generated 1,000-module project (a record and an enum per module): release build 19.1 s to 15.0 s (median of 5), check 0.23 s to 0.29 s median with equal minimum (0.21 s and 0.19 s), debug build 1.87 s to 1.81 s. Ten suite programs run at equal speed within noise (for example `interp`, 11 alternating runs: median 0.228 s base, 0.223 s new).
+
+## Stage 4: slot and block glue
+
+The functions that descriptors and interface vtables point at are made in MIR too: slot drop (`take`, `drop`), slot copy (`load`, `clone`, `put`) and the interface payload block drop and clone (the clone allocates with `msrt_alloc`). They are keyed in `Module::addr_glue`. The pass finds the descriptor types by walking `typedesc` ops and each descriptor's inner types, using the same `statics::descriptor` plan the backends use, so the set matches. Generated debug build of the 1,000-module project: 15.2 to 15.9 s against 15.2 to 16.9 s on main (three runs each); the corpus passes 1460 of 1460 on both backends.

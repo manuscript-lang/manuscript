@@ -823,7 +823,7 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
 /// borrows the elements in place (`cap == 0`, never freed or dropped), so nothing is copied.
 /// Status protocol and bounds as `msrt_list_slice`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf shared_view_of=msrt_list_slice
 pub unsafe extern "C-unwind" fn msrt_list_slice_view(
     v: *const VecVal,
     d: ElemDesc,
