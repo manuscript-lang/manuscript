@@ -19,7 +19,7 @@ use crate::sys;
 use core::cell::UnsafeCell;
 use core::ptr::null_mut;
 use core::sync::atomic::AtomicBool;
-use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicPtr, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Once;
 
 pub const MAX_SMALL: usize = 2048;
@@ -251,8 +251,8 @@ struct State {
     /// Allocations left before the allocation profiler takes its next sample.
     #[cfg(feature = "alloc-profile")]
     sample_left: i64,
-    /// Allocations requested and bytes asked for since start (`stats` builds).
-    #[cfg(feature = "stats")]
+    /// Allocations requested and bytes asked for since start or since the last merge into
+    /// [`RELEASED`].
     requested: [u64; 2],
 }
 
@@ -272,7 +272,6 @@ impl State {
             sample_left: i64::MAX,
             #[cfg(any(test, feature = "stats"))]
             live: 0,
-            #[cfg(feature = "stats")]
             requested: [0; 2],
         }
     }
@@ -381,6 +380,9 @@ pub fn release_heap() {
     }
     s.large_count = [0; NUM_LARGE];
     s.large_cached = 0;
+    RELEASED[0].fetch_add(s.requested[0], Ordering::Relaxed);
+    RELEASED[1].fetch_add(s.requested[1], Ordering::Relaxed);
+    s.requested = [0; 2];
     #[cfg(any(test, feature = "stats"))]
     {
         s.live = 0;
@@ -506,11 +508,8 @@ fn class_of(size: usize) -> usize {
 pub fn alloc(size: usize) -> *mut u8 {
     // SAFETY: this thread's allocator state.
     let s = unsafe { &mut *STATE.ptr() };
-    #[cfg(feature = "stats")]
-    {
-        s.requested[0] += 1;
-        s.requested[1] += size as u64;
-    }
+    s.requested[0] += 1;
+    s.requested[1] += size as u64;
     #[cfg(feature = "alloc-profile")]
     {
         s.sample_left -= 1;
@@ -667,11 +666,8 @@ pub fn alloc_zeroed_cached(size: usize) -> *mut u8 {
     if head.is_null() {
         return head;
     }
-    #[cfg(feature = "stats")]
-    {
-        s.requested[0] += 1;
-        s.requested[1] += size as u64;
-    }
+    s.requested[0] += 1;
+    s.requested[1] += size as u64;
     // SAFETY: cached blocks store the next pointer in their first word and have at least
     // `large_size(class)` usable bytes, so `size` bytes are writable.
     unsafe {
@@ -1032,12 +1028,20 @@ pub fn heap_stats() -> [i64; 2] {
     ]
 }
 
-/// `[allocations, bytes]` requested since start (the `stats` feature).
-#[cfg(feature = "stats")]
+/// `[allocations, bytes]` requested by the calling thread and by every thread that has finished
+/// (released its heap). Threads still running are not included.
 pub fn requested() -> [u64; 2] {
     // SAFETY: this thread's allocator state.
-    unsafe { (*STATE.ptr()).requested }
+    let own = unsafe { (*STATE.ptr()).requested };
+    [
+        own[0] + RELEASED[0].load(Ordering::Relaxed),
+        own[1] + RELEASED[1].load(Ordering::Relaxed),
+    ]
 }
+
+/// Requests of threads that have released their heap, so that work done on a worker thread
+/// stays in [`requested`].
+static RELEASED: [AtomicU64; 2] = [AtomicU64::new(0), AtomicU64::new(0)];
 
 /// Starts the `requested` counters over: called as the program's `main` begins, so that the
 /// counts a gate reads cover the program and not the runtime's own start-up records (the main
@@ -1046,6 +1050,8 @@ pub fn requested() -> [u64; 2] {
 pub fn reset_requested() {
     // SAFETY: this thread's allocator state.
     unsafe { (*STATE.ptr()).requested = [0; 2] };
+    RELEASED[0].store(0, Ordering::Relaxed);
+    RELEASED[1].store(0, Ordering::Relaxed);
 }
 
 /// Live allocation count (tests and the `stats` feature). Counting builds count the whole

@@ -7,6 +7,7 @@ import (
 	msstd_process_constrained_memory,
 	msstd_process_elapsed,
 	msstd_process_memory_usage,
+	msstd_process_runtime_counts,
 	msstd_system_constants,
 	msstd_system_cpus,
 	msstd_system_dev_null,
@@ -45,6 +46,24 @@ export type MemoryUsage:
 	// Bytes of physical memory the operating system reports as resident for the
 	// process.
 	resident: Int
+
+// Work the runtime has done since the program started. Counts only grow, so a benchmark
+// reads them before and after a run and subtracts. They do not depend on machine load
+// or on the host, so a change in them is a real change in the work a program does.
+export type RuntimeCounts:
+	// Allocations the runtime made. Covers the calling thread and every thread that has
+	// finished; a thread still running is not included.
+	allocations: Int
+	// Bytes those allocations asked for.
+	allocated_bytes: Int
+	// Lists copied element by element, from the calling isolate.
+	list_copies: Int
+	// Bytes those list copies moved.
+	list_copy_bytes: Int
+	// Strings cloned, from the calling isolate.
+	string_clones: Int
+	// Bytes those string clones moved.
+	string_clone_bytes: Int
 
 // Operating system and processor architecture for the current host.
 export type SystemInfo:
@@ -182,6 +201,11 @@ export fn available_memory() Int!:
 // ms: effect std.system.read
 export fn memory_usage() MemoryUsage!:
 	return msstd_process_memory_usage()
+
+// Returns the runtime's work counters: allocations, bytes allocated, and copies.
+// ms: effect std.system.read
+export fn runtime_counts() RuntimeCounts!:
+	return msstd_process_runtime_counts()
 
 // Returns elapsed Duration since runtime initialization, rather than host boot.
 // ms: effect std.system.read

@@ -62,6 +62,7 @@ msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf
 msrt_cleanup_remove(handle: usize) @leaf
 msrt_cleanup_run(handle: usize) @leaf
+msrt_counts(out: *mut u64)
 msrt_drop_defer(run: RunDrop, block: *mut u8) @leaf
 msrt_drop_enter() -> u64 @leaf
 msrt_drop_leave()
@@ -720,6 +721,7 @@ msstd_process_initialize_groups(username: *const StrVal, gid: i64, err: ErrSlot)
 msstd_process_memory_usage(out: *mut MemoryOut, err: ErrSlot) -> u8 @domain=process
 msstd_process_replace(program: *const StrVal, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, err: ErrSlot) -> u8 @domain=process
 msstd_process_resource_usage(out: *mut ResourceOut, err: ErrSlot) -> u8 @domain=process
+msstd_process_runtime_counts(out: *mut CountsOut) -> u8 @domain=process
 msstd_process_send_signal(pid: i64, signal: i64, err: ErrSlot) -> u8 @domain=process
 msstd_process_set_environment(name: *const StrVal, has_value: HasRaw, value: *const StrVal, err: ErrSlot) -> u8 @domain=process
 msstd_process_set_groups(groups: *const VecVal, err: ErrSlot) -> u8 @domain=process
