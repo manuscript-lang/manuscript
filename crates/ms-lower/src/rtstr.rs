@@ -653,12 +653,7 @@ fn compare(b: &mut FuncBuilder<'_>) {
     b.switch_to(scan);
     // Eight bytes at a time while a whole word remains in both strings; the first differing word
     // is decided by its lowest differing byte (little endian). The rest goes byte by byte.
-    let (whead, wbody, wdiff, wstep) = (
-        b.new_block(),
-        b.new_block(),
-        b.new_block(),
-        b.new_block(),
-    );
+    let (whead, wbody, wdiff, wstep) = (b.new_block(), b.new_block(), b.new_block(), b.new_block());
     let w = b.add_block_param(whead, MTy::INT, Mode::Borrow);
     let i = b.add_block_param(head, MTy::INT, Mode::Borrow);
     let zero = b.iconst(0);
