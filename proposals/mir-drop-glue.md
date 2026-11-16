@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the thread "Move language logic out of the backends into MIR". Clone functions follow in stage 2 (same pass, `Module::clone_glue`: clone every field, rebuild with `type.new` or `alt.new`). Optionals, lists, interfaces, and types that contain themselves stay in the backends for now.
+Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the thread "Move language logic out of the backends into MIR". Clone functions follow in stage 2 (same pass, `Module::clone_glue`: clone every field, rebuild with `type.new` or `alt.new`). Stage 3 adds flag-and-payload optionals and lists (a drop loop over `list.get_u`, a clone loop with `list.push_u`; lists of plain elements keep the backends' block copy) and makes only the functions a program drops or clones, so the pass adds no compile time. Interfaces, closures, strings, maps and types that contain themselves stay in the backends for now.
 
 ## Problem
 
