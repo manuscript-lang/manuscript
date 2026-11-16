@@ -511,6 +511,9 @@ mod tests {
             })
         };
         let (full, empty) = (group.join(&beat(0)), group.join(&beat(1)));
+        // Joining registered the group with the watcher, which balances every few milliseconds and
+        // would add its own order between the counts below and the balance this test calls.
+        lock(&GROUPS).retain(|g| !Arc::ptr_eq(g, &group));
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let socks: Vec<_> = (0..8).map(|_| pair(&listener)).collect();
         for (i, (_, s)) in socks.iter().enumerate() {
