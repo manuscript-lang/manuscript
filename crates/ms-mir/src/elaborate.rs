@@ -32,6 +32,7 @@
 //! moved `Close` owner, and a flagged owner returned directly; each is an error.
 
 use crate::ir::*;
+use crate::persist::PosMap;
 use crate::types::{AltId, Std, Ty, TyKind};
 use crate::verify::{arg_modes, is_raw};
 use std::collections::{HashMap, HashSet};
@@ -135,76 +136,64 @@ enum St {
 
 /// The owners in scope, in definition order. Untagged values are tracked while live only.
 ///
-/// The tables are shared between copies until one is changed, so a block that changes no owner
-/// hands its state on without copying it, and a join of two such copies finds them the same
-/// by pointer: a function of N blocks and N owners does not copy N owners per block.
+/// Both tables are persistent (`PosMap`): a copy shares everything with the original and an update
+/// copies one path, so a function of N blocks and N owners does not copy N owners per block, and a
+/// join of two untouched copies finds them the same by pointer.
 #[derive(Clone, Default)]
-struct State(std::rc::Rc<Owners>);
-
-#[derive(Clone, Default)]
-struct Owners {
-    seq: std::collections::BTreeMap<u32, (Value, St)>,
-    at: HashMap<Value, u32>,
+struct State {
+    /// The owners by definition position.
+    seq: PosMap<(Value, St)>,
+    /// The definition position of each owner.
+    at: PosMap<u32>,
     next: u32,
 }
 
 impl PartialEq for State {
     fn eq(&self, other: &State) -> bool {
-        std::rc::Rc::ptr_eq(&self.0, &other.0)
-            || (self.0.seq.len() == other.0.seq.len() && self.iter().eq(other.iter()))
+        (self.seq.same_tree(&other.seq) && self.at.same_tree(&other.at))
+            || (self.seq.len() == other.seq.len() && self.iter().eq(other.iter()))
     }
 }
 
 impl State {
     fn push(&mut self, v: Value, s: St) {
-        let o = std::rc::Rc::make_mut(&mut self.0);
-        o.at.insert(v, o.next);
-        o.seq.insert(o.next, (v, s));
-        o.next += 1;
+        self.at.insert(v.0, self.next);
+        self.seq.insert(self.next, (v, s));
+        self.next += 1;
     }
 
     fn get(&self, v: Value) -> Option<St> {
-        self.0.at.get(&v).map(|n| self.0.seq[n].1)
+        let n = *self.at.get(v.0)?;
+        self.seq.get(n).map(|e| e.1)
     }
 
     fn set(&mut self, v: Value, s: St) {
-        if self.0.at.contains_key(&v) && self.get(v) != Some(s) {
-            let o = std::rc::Rc::make_mut(&mut self.0);
-            let n = o.at[&v];
-            o.seq.get_mut(&n).expect("owner").1 = s;
+        if let Some(&n) = self.at.get(v.0)
+            && self.get(v) != Some(s)
+        {
+            self.seq.insert(n, (v, s));
         }
     }
 
     fn remove(&mut self, v: Value) {
-        if self.0.at.contains_key(&v) {
-            let o = std::rc::Rc::make_mut(&mut self.0);
-            if let Some(n) = o.at.remove(&v) {
-                o.seq.remove(&n);
-            }
-        }
-    }
-
-    fn retain(&mut self, mut keep: impl FnMut(&(Value, St)) -> bool) {
-        let gone: Vec<Value> = self
-            .0
-            .seq
-            .values()
-            .filter(|e| !keep(e))
-            .map(|e| e.0)
-            .collect();
-        for v in gone {
-            self.remove(v);
+        if let Some(&n) = self.at.get(v.0) {
+            self.at.remove(v.0);
+            self.seq.remove(n);
         }
     }
 
     /// Definition order.
     fn iter(&self) -> impl DoubleEndedIterator<Item = &(Value, St)> {
-        self.0.seq.values()
+        self.seq.values()
+    }
+
+    fn position_of(&self, v: Value) -> Option<u32> {
+        self.at.get(v.0).copied()
     }
 
     /// Where the owner `v` was defined among the owners.
     fn position(&self, v: Value) -> u32 {
-        self.0.at[&v]
+        *self.at.get(v.0).expect("an owner")
     }
 }
 
@@ -384,7 +373,10 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
     }
     if marker_of(inst) == Some(Marker::End) {
         let scope = scope_of(inst);
-        st.retain(|(v, _)| cx.tags.get(v).is_none_or(|t| t.0 != scope));
+        // The scope's own owners leave; the scope's list is every value tagged with it.
+        for v in cx.owners.get(&scope).into_iter().flatten() {
+            st.remove(*v);
+        }
         return Ok(());
     }
     // Lowering releases what an `alt.take` left behind itself: that finishes the owner.
@@ -631,9 +623,24 @@ fn function(
     }
     // The flag parameters of every block: one per flagged owner that is live on entry.
     let mut fparams: Vec<Vec<(Value, Value)>> = vec![Vec::new(); f.blocks.len()];
+    // Only an owner with a flag, a closed flag or a handle key has a parameter, so a block looks
+    // at those instead of every owner live on entry.
+    let candidates: Vec<Value> = flagged
+        .iter()
+        .chain(ckeys.keys())
+        .chain(hkeys.keys())
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
     for b in &order {
         let Some(e) = &entry[b.index()] else { continue };
-        for (v, t) in e.iter() {
+        let mut live: Vec<(u32, Value, St)> = candidates
+            .iter()
+            .filter_map(|v| Some((e.position_of(*v)?, *v, e.get(*v)?)))
+            .collect();
+        live.sort_by_key(|(pos, _, _)| *pos);
+        for (_, v, t) in &live {
             let mut keys = Vec::new();
             if flagged.contains(v) {
                 keys.push((*v, Ty::BOOL));

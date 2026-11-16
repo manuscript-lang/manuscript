@@ -8,7 +8,7 @@ use crate::backend::Io;
 const MAIN: &str = "import arguments from \"@std/os/env.ms\"\n\nfn main() Void:\n\tprint(f\"Arguments: {arguments().length()}\")\n";
 const TEST: &str = "import panic from \"@std/core.ms\"\n\ntest \"arithmetic\":\n\tif not (2 + 3 == 5): return panic(message: \"arithmetic failed\")\n";
 const LIB: &str = "export fn greeting(name: String) String: f\"Hello, {name}\"\n";
-const LIB_TEST: &str = "import expect_equal from \"@std/test/test.ms\"\nimport greeting from \"./src/lib.ms\"\n\ntest \"greeting\":\n\texpect_equal(greeting(\"ms\"), \"Hello, ms\")?\n";
+const LIB_TEST: &str = include_str!("init/lib_test.ms");
 const WORKSPACE_MAIN: &str = include_str!("init/workspace_main.ms");
 const IGNORE: &str = ".ms-cache/\n";
 

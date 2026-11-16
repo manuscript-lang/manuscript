@@ -4,11 +4,11 @@
 
 - Compile time is quadratic in the owners live at once in one function (#4020): `ms build` of a function with N live list locals, each captured by a closure and followed by a branch, takes about 4x per doubling of N.
 - Stage 1 (landed with this file) stops `elaborate::merge` rebuilding equal states: 4.27G to 2.79G instructions at N = 960. The remaining quadratic cost is state copied between blocks, mostly in the verifier.
-- Decision requested: build a persistent, order-free set for the verifier's live owners next; leave `elaborate`'s ordered state alone unless a later profile shows it matters.
+- Stages 2 to 4 built: a persistent set for the verifier's live owners, and a persistent position map for `elaborate`'s ordered state once the profile showed it matters. Decision requested: none.
 
 ## Status
 
-Proposal, 2026-11-15, main at 4580c1dfa. Stages 1 to 3 implemented. Skeptical review: build a smaller version (the first draft's trie for `elaborate` was dropped: `elaborate` needs definition order, and per-path positions are not comparable across paths).
+Proposal, 2026-11-15, main at 4580c1dfa. Stages 1 to 4 implemented. Skeptical review: build a smaller version (the first draft's trie for `elaborate` was dropped: `elaborate` needs definition order, and per-path positions are not comparable across paths).
 
 ## Problem
 
@@ -20,7 +20,9 @@ Shape (generated; N repetitions of the first three lines in `fn main`): `xs{i}: 
 | 1920 | 2.38 s | 1.68 s | 1.30 s |
 | 3840 | 8.27 s | 4.83 s | 3.68 s |
 
-After stage 3, N = 960 is 2.36G instructions (2.79G after stage 1, 4.27G before); `verify_module_with` fell from 17.6% to 1.7% of the run. Doubling still costs 2.0x then 2.8x: the rest is in `elaborate`, `unwind` and `opt`.
+After stage 3, N = 960 is 2.36G instructions (2.79G after stage 1, 4.27G before); `verify_module_with` fell from 17.6% to 1.7% of the run. After stage 4, 2.18G.
+
+Per phase, inclusive instructions from N = 480 to 960 after stage 4 (a linear phase is 2.0x): `opt::optimize` 2.05x, `llvm::compile` 2.04x, `verify_module_with` 2.2x, `elaborate::run` 3.0x (86M to 262M, 12% of the run). `unwind::run` is not visible in the profile for this shape. Wall time is noisy on the shared machine (3840 owners: 2.8 to 3.7 s over runs); use instruction counts.
 
 `valgrind --tool=callgrind`, release `ms build`, N = 960 against 480, inclusive Ir after stage 1 (4.0x or more is quadratic):
 
@@ -35,23 +37,23 @@ After stage 3, N = 960 is 2.36G instructions (2.79G after stage 1, 4.27G before)
 Rule: the verifier's live set is a persistent set, so an edge costs its changes, not its size.
 
 - The verifier keys owners by `Value` (a dense index), never reads them in order, and requires exact equality at joins (`verify.rs`, the check after `entry_state`). A persistent set (32-way radix trie of bitmap words, `Rc` nodes, path copying) fits: `insert`, `remove`, `contains` in O(log32 N), clone is one `Rc` clone, equality skips `Rc`-equal subtrees.
-- `elaborate::Owners` keeps its ordered `BTreeMap` (definition order drives drop order and flag parameters). It stops copying on push by not keeping a second `Rc` of the working state in the block entry table: move it in when the block has one successor, clone it otherwise.
+- `elaborate::State` keeps definition order (it drives drop order and flag parameters) as a persistent map keyed by position, which only grows, plus a persistent value-to-position map; no `Rc<Owners>` copy on the first change in a block.
 - No change to the elaboration rules, the `St` lattice or the facts the checker records.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-mir/src/persist.rs` (new) | persistent set | unit tests against a `BTreeSet` model with random operations |
+| `crates/ms-mir/src/persist.rs` (new) | `OwnerSet`, `PosMap` | unit tests against `BTreeSet` and `BTreeMap` models with random operations |
 | `crates/ms-mir/src/verify.rs` | `check_ownership` live sets | existing verifier tests; N-doubling table |
-| `crates/ms-mir/src/elaborate.rs` | `merge` equality (done); entry-table ownership | ownership conformance |
+| `crates/ms-mir/src/elaborate.rs` | `merge` equality; `State` on `PosMap`; scope-end removal; flag-parameter candidates | ownership conformance, e2e corpus with leak counting |
 | `tools/scaling` shapes `test_owners`, `test_branches` | three sizes, once the ratio is under 2.5x; the added time is stated in that PR against the 10-minute budget | the gate |
 
 ## Alternatives
 
 - Do nothing: only generated code with thousands of live owners is slow (400 compile in 0.4 s), but each doubling costs about 3x even after stage 1. Valid if no real program hits it; the issue's trigger is machine-generated.
 - Stage 1 plus avoiding the `push` copy only: about 4% more, still quadratic. Fallback if the persistent set is rejected.
-- A persistent map for `elaborate` too: rejected, since it needs definition order and positions that agree across paths.
+- A persistent map for `elaborate` too: first rejected for needing definition order and positions that agree across paths. Built after the profile showed it matters: positions only grow, iteration is by position, and joins compare by tree identity, falling back to the owner sequence.
 - `im` or `rpds`: a new dependency, which needs the owner's approval.
 
 ## Stages
@@ -59,8 +61,8 @@ Rule: the verifier's live set is a persistent set, so an edge costs its changes,
 1. `merge` returns the old state when the new one is equal (landed with this file).
 2. `persist.rs` (`OwnerSet`) with its model tests (landed). Check: `cargo test -p ms-mir`.
 3. The verifier on `OwnerSet` (landed). Check: N-doubling table and a profile with no `BTreeSet` clones.
-4. Avoid the `push` copy in `elaborate`. Check: same table.
-5. Profile `unwind` and `opt` at N = 960 and 1920; extend this file with what is quadratic there, then raise the gate shapes.
+4. `elaborate`'s `State` on two `PosMap`s (position to owner, value to position), a scope end removing its own owners, and block flag parameters looking only at owners that can have one (landed, replacing "avoid the push copy": the copy was the symptom). Check: same table, e2e corpus with leak counting (661/661).
+5. Profile `unwind` and `opt` (done above: both linear for this shape). The rest of `elaborate::run` (3.0x) is the remaining quadratic part; raise the gate shapes `test_owners` and `test_branches` to three sizes once it is under 2.5x.
 
 ## Open questions
 
