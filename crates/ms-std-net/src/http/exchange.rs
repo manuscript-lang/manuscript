@@ -116,14 +116,14 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             upgraded: false,
             rejected: false,
             websocket: None,
-            deadline: timeout.map(|t| started + t),
+            deadline: timeout.zip(started).map(|(t, at)| at + t),
             h2: None,
         }),
     });
-    crate::rt::limit_current_until(timeout.map(|t| started + t));
+    crate::rt::limit_current_until(timeout.zip(started).map(|(t, at)| at + t));
     let outcome = server.dispatch.streaming(exchange.clone());
     crate::rt::limit_current_until(None);
-    let late = timeout.is_some_and(|t| started.elapsed() > t);
+    let late = timeout.zip(started).is_some_and(|(t, at)| at.elapsed() > t);
     exchange.finish(outcome, late);
 }
 
