@@ -29,6 +29,7 @@ impl Module {
             funcs: Vec::new(),
             entry: None,
             desc_glue: Vec::new(),
+            drop_glue: Default::default(),
             c_externs: std::collections::BTreeSet::new(),
         }
     }
@@ -316,7 +317,7 @@ impl Module {
     }
 
     /// The types whose values a drop of `ty` drops.
-    fn drop_children(&self, ty: Ty) -> Vec<Ty> {
+    pub(crate) fn drop_children(&self, ty: Ty) -> Vec<Ty> {
         use crate::types::Native;
         match self.types.kind(ty) {
             TyKind::Opt(inner) | TyKind::List(inner) => vec![*inner],
