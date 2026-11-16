@@ -767,21 +767,24 @@ pub(crate) fn set_idle(idle: bool) {
         return;
     }
     if idle {
-        // Sequentially consistent with `watch_rests`: either the hook's owner sees this thread
-        // rest, or this thread sees the hook armed.
         RESTING.fetch_or(1 << me, Ordering::SeqCst);
         if SLOTS[me].live.load(Ordering::SeqCst) == 0 {
             IDLE.fetch_or(1 << me, Ordering::AcqRel);
         }
         count_rest(me);
-        if REST_WATCH.load(Ordering::SeqCst)
-            && let Some(hook) = REST_HOOK.get()
+        if HOOKS_ON.load(Ordering::Relaxed)
+            && let Some((rest, _)) = HOOKS.get()
         {
-            hook();
+            rest();
         }
     } else {
         RESTING.fetch_and(!(1 << me), Ordering::SeqCst);
         IDLE.fetch_and(!(1 << me), Ordering::AcqRel);
+        if HOOKS_ON.load(Ordering::Relaxed)
+            && let Some((_, leave)) = HOOKS.get()
+        {
+            leave();
+        }
     }
 }
 
@@ -800,19 +803,20 @@ pub fn rests(thread: usize) -> u64 {
     RESTS[thread].load(Ordering::Acquire)
 }
 
-static REST_WATCH: AtomicBool = AtomicBool::new(false);
-static REST_HOOK: OnceLock<fn()> = OnceLock::new();
+static HOOKS_ON: AtomicBool = AtomicBool::new(false);
+/// The functions run as a thread begins to rest and as it leaves its rest.
+type RestHooks = (fn(), fn());
+static HOOKS: OnceLock<RestHooks> = OnceLock::new();
 
-/// Sets the function called, while [`watch_rests`] is on, each time a scheduler thread starts to
-/// rest. The first call wins; the function must not block.
-pub fn set_rest_hook(hook: fn()) {
-    let _ = REST_HOOK.set(hook);
+/// Sets the functions the calling thread runs as it begins to rest and as it leaves its rest,
+/// while [`enable_hooks`] is on. The first call wins; they must not block.
+pub fn set_rest_hooks(rest: fn(), leave: fn()) {
+    let _ = HOOKS.set((rest, leave));
 }
 
-/// Turns the rest hook on or off. After turning it on, look at [`resting_mask`] once: a thread
-/// that rested earlier does not call the hook.
-pub fn watch_rests(on: bool) {
-    REST_WATCH.store(on, Ordering::SeqCst);
+/// Turns the rest hooks on (they stay on).
+pub fn enable_hooks() {
+    HOOKS_ON.store(true, Ordering::SeqCst);
 }
 
 /// The calling thread's scheduler index, or `NONE` for a thread that is not a scheduler thread.

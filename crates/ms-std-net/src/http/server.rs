@@ -211,6 +211,7 @@ impl Reactor {
             }
             let poller = Poller::new();
             let beat = steal::Beat::new(&poller);
+            beat.install();
             let reactor = Rc::new(Reactor {
                 poller,
                 next: Cell::new(1),
@@ -512,19 +513,17 @@ impl Reactor {
                 self.serve_others();
             }
             let raw = self.poller.poll(&mut events, 64);
+            let fired = self.poller.fired();
+            if !fired.is_empty() && steal::heard(&self.beat, &fired) {
+                self.serve_others();
+            }
             let mut yielded = false;
-            let mut announced = false;
             for (at, &(token, flags)) in events.iter().enumerate() {
                 self.handle_event(token, flags);
                 // Run a request before reading the next connection: while its handler
                 // computes, the connections not yet read can still be taken by another thread.
                 // After the last event the park below runs it, as it runs every task.
                 if at + 1 < events.len() && !self.ready.borrow().is_empty() {
-                    // The kernel reports nothing more for the connections after this one.
-                    if !announced {
-                        announced = true;
-                        self.beat.stranded();
-                    }
                     self.run_handlers();
                     rt::yield_now();
                     self.beat.turn();

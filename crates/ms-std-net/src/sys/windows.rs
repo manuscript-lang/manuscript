@@ -5,12 +5,13 @@ use crate::rt;
 use mio::net::TcpStream;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ffi::c_void;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, UdpSocket};
 use std::os::windows::io::{AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use windows_sys::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, NO_ERROR};
+use windows_sys::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, FILETIME, NO_ERROR};
 use windows_sys::Win32::NetworkManagement::IpHelper::{
     GAA_FLAG_SKIP_ANYCAST, GAA_FLAG_SKIP_FRIENDLY_NAME, GAA_FLAG_SKIP_MULTICAST,
     GAA_FLAG_SKIP_UNICAST, GetAdaptersAddresses, IP_ADAPTER_ADDRESSES_LH,
@@ -19,6 +20,10 @@ use windows_sys::Win32::NetworkManagement::Ndis::IfOperStatusUp;
 use windows_sys::Win32::Networking::WinSock::{
     AF_INET, AF_INET6, AF_UNSPEC, POLLRDNORM, POLLWRNORM, SIO_UDP_CONNRESET, SO_EXCLUSIVEADDRUSE,
     SOCKET_ERROR, SOL_SOCKET, WSAIoctl, WSAPOLLFD, WSAPoll, setsockopt,
+};
+use windows_sys::Win32::System::Threading::{
+    CloseThreadpoolTimer, CreateThreadpoolTimer, PTP_CALLBACK_INSTANCE, PTP_TIMER,
+    SetThreadpoolTimer, WaitForThreadpoolTimerCallbacks,
 };
 
 /// A borrowed socket handle.
@@ -144,34 +149,93 @@ impl Wake {
 /// thread blocks in `mio::Poll::poll`, queues what it sees and signals a [`Wake`] socket
 /// the reactor task parks on. The helper never touches the runtime.
 pub struct Poller {
-    registry: mio::Registry,
+    registry: Arc<mio::Registry>,
     sockets: RefCell<Sockets<Raw>>,
     views: RefCell<HashMap<Raw, TcpStream>>,
     wake: Arc<Wake>,
     shared: Arc<Shared>,
     waker: mio::Waker,
+    /// Timers of other threads that fired, for [`Poller::fired`].
+    fired: RefCell<Vec<u64>>,
 }
 
 struct Shared {
     raised: Mutex<Vec<Raised>>,
     stop: AtomicBool,
-    /// Wakes another thread's `mio` poll when the queue gains events (see [`Lender`]).
-    lent: Mutex<Option<mio::Waker>>,
 }
 
-/// A poller's readiness, for another thread to watch: the helper thread wakes the watcher's
-/// poll each time it queues events.
-pub struct Lender(Arc<Shared>);
+/// A handle on a poller that other threads may keep and use from any thread: what
+/// [`Timer::between`] needs to have the poller report a timer.
+#[derive(Clone)]
+pub struct PollRef(Arc<mio::Registry>);
 
-impl Lender {
-    /// Has the poller wake `registry`'s poll under `token` each time it gains readiness.
-    pub fn register(&self, registry: &mio::Registry, token: u64) -> bool {
-        match mio::Waker::new(registry, mio::Token(token as usize)) {
-            Ok(waker) => {
-                *self.0.lent.lock().unwrap_or_else(|e| e.into_inner()) = Some(waker);
-                true
-            }
-            Err(_) => false,
+/// Tokens from here up in a poller's events are timers of other threads (see [`Timer::between`]).
+pub const TIMER_TOKEN: u64 = 1 << 62;
+
+/// A one-shot timer of the thread pool whose expiry the helper's `mio` poll reports as an event
+/// under a token (the callback wakes a [`mio::Waker`] registered under it). Arming and
+/// disarming are one system call each and wake nobody.
+pub struct Timer {
+    timer: PTP_TIMER,
+    waker: *mut mio::Waker,
+}
+
+// SAFETY: a thread-pool timer is made to be set from any thread, and the waker is only used by
+// the callback and freed after it can no longer run.
+unsafe impl Send for Timer {}
+unsafe impl Sync for Timer {}
+
+unsafe extern "system" fn timer_fired(_: PTP_CALLBACK_INSTANCE, waker: *mut c_void, _: PTP_TIMER) {
+    // SAFETY: the waker outlives every callback (see `Drop`).
+    let _ = unsafe { &*(waker as *const mio::Waker) }.wake();
+}
+
+impl Timer {
+    /// A timer that `helper` reports under `token` (at least [`TIMER_TOKEN`]) when it fires.
+    pub fn between(helper: PollRef, token: u64) -> Option<Timer> {
+        let waker = mio::Waker::new(&helper.0, mio::Token(token as usize)).ok()?;
+        let waker = Box::into_raw(Box::new(waker));
+        // SAFETY: the callback matches the signature and the context outlives it.
+        let timer =
+            unsafe { CreateThreadpoolTimer(Some(timer_fired), waker.cast(), std::ptr::null()) };
+        if timer.is_null() {
+            // SAFETY: made above and not shared.
+            drop(unsafe { Box::from_raw(waker) });
+            return None;
+        }
+        Some(Timer { timer, waker })
+    }
+
+    /// Makes the timer fire in `ns` nanoseconds, replacing an earlier arming.
+    pub fn arm(&self, ns: i64) {
+        // A negative due time is relative, in units of 100 ns.
+        let ticks = -(ns.max(100) / 100);
+        let due = FILETIME {
+            dwLowDateTime: ticks as u32,
+            dwHighDateTime: (ticks >> 32) as u32,
+        };
+        // SAFETY: `self.timer` is live until `Drop`.
+        unsafe { SetThreadpoolTimer(self.timer, &due, 0, 0) };
+    }
+
+    /// Cancels the timer.
+    pub fn disarm(&self) {
+        // SAFETY: as above; no due time cancels the timer.
+        unsafe { SetThreadpoolTimer(self.timer, std::ptr::null(), 0, 0) };
+    }
+
+    /// The expiry is the event itself: nothing to read out.
+    pub fn consume(&self) {}
+}
+
+impl Drop for Timer {
+    fn drop(&mut self) {
+        // SAFETY: cancelled, waited for, then closed; only then is the waker freed.
+        unsafe {
+            SetThreadpoolTimer(self.timer, std::ptr::null(), 0, 0);
+            WaitForThreadpoolTimerCallbacks(self.timer, 1);
+            CloseThreadpoolTimer(self.timer);
+            drop(Box::from_raw(self.waker));
         }
     }
 }
@@ -189,13 +253,12 @@ const STOP_TOKEN: mio::Token = mio::Token(usize::MAX);
 impl Poller {
     pub fn new() -> Poller {
         let mut poll = mio::Poll::new().expect("poller");
-        let registry = poll.registry().try_clone().expect("poller registry");
+        let registry = Arc::new(poll.registry().try_clone().expect("poller registry"));
         let waker = mio::Waker::new(poll.registry(), STOP_TOKEN).expect("poller waker");
         let wake = Arc::new(Wake::new().expect("poller wake socket"));
         let shared = Arc::new(Shared {
             raised: Mutex::new(Vec::new()),
             stop: AtomicBool::new(false),
-            lent: Mutex::new(None),
         });
         let (helper_wake, helper_shared) = (wake.clone(), shared.clone());
         std::thread::Builder::new()
@@ -220,10 +283,6 @@ impl Poller {
                     drop(queue);
                     if any {
                         helper_wake.notify();
-                        let lent = helper_shared.lent.lock().unwrap_or_else(|e| e.into_inner());
-                        if let Some(waker) = lent.as_ref() {
-                            let _ = waker.wake();
-                        }
                     }
                 }
             })
@@ -235,6 +294,7 @@ impl Poller {
             wake,
             shared,
             waker,
+            fired: RefCell::new(Vec::new()),
         }
     }
 
@@ -290,10 +350,14 @@ impl Poller {
         self.wake.clone()
     }
 
-    /// What lets another thread's `mio` poll learn that this poller holds readiness its task
-    /// has not taken yet.
-    pub fn lender(&self) -> Lender {
-        Lender(self.shared.clone())
+    /// A handle other threads may use to have this poller report their timers.
+    pub fn poll_ref(&self) -> PollRef {
+        PollRef(self.registry.clone())
+    }
+
+    /// The tokens of timers that fired since the last call.
+    pub fn fired(&self) -> Vec<u64> {
+        std::mem::take(&mut *self.fired.borrow_mut())
     }
 
     /// Wakes the parked reactor task.
@@ -313,12 +377,19 @@ impl Poller {
         self.wake.drain();
         // Take at most `max`: the rest stay queued for the next call, which the caller makes
         // when this one returns `max`.
-        let raised: Vec<Raised> = {
+        let mut raised: Vec<Raised> = {
             let mut queue = self.shared.raised.lock().unwrap_or_else(|e| e.into_inner());
             let count = queue.len().min(max);
             queue.drain(..count).collect()
         };
         let count = raised.len();
+        raised.retain(|r| {
+            let timer = r.token >= TIMER_TOKEN;
+            if timer {
+                self.fired.borrow_mut().push(r.token);
+            }
+            !timer
+        });
         self.sockets
             .borrow()
             .report(raised.into_iter(), max, out, |sock, token, ev| {
