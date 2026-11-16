@@ -512,6 +512,10 @@ fn check_effects(
     asker: &str,
     package: &Project,
 ) -> Result<(), ProjectError> {
+    let label = id.strip_prefix("workspace/").map_or_else(
+        || format!("package {id}"),
+        |name| format!("workspace member {name}"),
+    );
     if let Some(missing) = uncovered(
         scope
             .allowed_effects
@@ -521,11 +525,11 @@ fn check_effects(
     ) {
         return Err(ProjectError::msg(if asker.is_empty() {
             format!(
-                "package {id} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
+                "{label} may use {missing}, which this project does not allow; add `{alias} = [\"{missing}\"]` under [effects] in ms.toml if you trust it"
             )
         } else {
             format!(
-                "package {id} may use {missing}, which {asker} does not allow for {alias}; {asker} would have to allow it under [effects], so ask its author, or require a version of {id} that does not use {missing}"
+                "{label} may use {missing}, which {asker} does not allow for {alias}; {asker} would have to allow it under [effects], so ask its author, or require a version of {id} that does not use {missing}"
             )
         }));
     }
@@ -533,7 +537,7 @@ fn check_effects(
         && let Some(missing) = uncovered(&scope.effects, &package.effects)
     {
         return Err(ProjectError::msg(format!(
-            "package {id} may use {missing}, but {asker} declares only {:?}; a package cannot hand a dependency effects it does not have itself",
+            "{label} may use {missing}, but {asker} declares only {:?}; a package cannot hand a dependency effects it does not have itself",
             scope.effects
         )));
     }
