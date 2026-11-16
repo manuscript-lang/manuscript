@@ -71,8 +71,9 @@ thread_local! {
 
 /// Every 256th transfer on a thread passes a scheduler point and a cancellation check, so a task
 /// that always finds work still sees timers, time limits and cancellation. Call it where the
-/// operation holds nothing, because a cancel unwinds from here.
-fn cancellation_point() {
+/// operation holds nothing: a cancel is delivered from here, and `true` means the caller returns
+/// its zero result now (without cancel edges the cancel jumps and this does not return).
+fn cancellation_point() -> bool {
     let n = OPS.with(|c| {
         c.set(c.get().wrapping_add(1));
         c.get()
@@ -81,9 +82,11 @@ fn cancellation_point() {
         // SAFETY: called from a task of this thread's scheduler.
         unsafe { crate::task::msrt_task_yield() };
         if crate::fault::cancel_flag().load(core::sync::atomic::Ordering::Relaxed) != 0 {
-            crate::fault::msrt_cancelled();
+            crate::fault::cancel_return();
+            return true;
         }
     }
+    false
 }
 
 /// A lock held for a few pointer moves, so a waiter spins instead of sleeping: a contended
@@ -641,7 +644,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_write(
         }
         // SAFETY: the sole writer owns `seen_consumed`.
         let over = unsafe { cell.lane_over() };
-        cancellation_point();
+        let _ = cancellation_point();
         return if over { FULL } else { WRITTEN };
     }
     let reader = match locked(pipe) {
@@ -666,7 +669,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_write(
                         WRITTEN
                     };
                     drop(p);
-                    cancellation_point();
+                    let _ = cancellation_point();
                     return status;
                 }
             }
@@ -782,7 +785,9 @@ pub unsafe extern "C-unwind" fn msrt_pipe_try(
     d: ms_rt_abi::ValueDesc,
     out: *mut u8,
 ) -> u8 {
-    cancellation_point();
+    if cancellation_point() {
+        return 0;
+    }
     let Some(cell) = cell_for(pipe) else {
         return 0;
     };

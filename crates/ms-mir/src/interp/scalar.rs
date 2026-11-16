@@ -35,6 +35,10 @@ impl Interp<'_> {
             Op::FConst => ops.set(Val::Float(inst.imm.float())),
             Op::BConst => ops.set(Val::Bool(matches!(inst.imm, Imm::Bool(true)))),
             Op::VoidConst => ops.set(Val::Void),
+            Op::Undef => {
+                let ty = f.ty(inst.res.expect("undef has a result"));
+                ops.set(self.default_val(ty))
+            }
             Op::StrLit => {
                 let Imm::Str(s) = inst.imm else {
                     return Err(Raw::internal("str without literal"));

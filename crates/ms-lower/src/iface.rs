@@ -616,6 +616,7 @@ fn build_builtin_compare(
             noreturn: crate::rtcall::rt_flags(sym).noreturn,
             pure_: false,
             fresh: false,
+            retains: crate::rtcall::rt_flags(sym).retains,
             role: crate::rtcall::extern_role(sym),
             leaf: crate::rtcall::rt_flags(sym).leaf,
             reads: crate::rtcall::rt_flags(sym).reads,

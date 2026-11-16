@@ -6,7 +6,7 @@ and callables, so the rules can be tested without a debugger (`test_values.py`).
 """
 
 STR_BORROWED = 1 << 63
-LEN_MASK = (1 << 61) - 1
+LEN_MASK = (1 << 31) - 1
 MAX_SHOWN = 200
 MAX_BYTES = 1 << 20
 

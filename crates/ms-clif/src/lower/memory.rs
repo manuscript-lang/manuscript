@@ -20,6 +20,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.drop_value(ty, &v);
                 vec![]
             }
+            Op::Forget => vec![],
             Op::DropIf => {
                 let ty = f.ty(inst.args[1]);
                 let flag = self.a(inst, 0)[0];
@@ -100,6 +101,23 @@ impl<'a, 'm> Lower<'a, 'm> {
                 } else {
                     self.b.ins().uextend(types::I64, x)
                 }]
+            }
+            Op::PtrStoreU => {
+                let Imm::Int(w) = inst.imm else {
+                    unreachable!()
+                };
+                let (p, v) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                let (v, ty) = match w {
+                    1 => (self.b.ins().ireduce(types::I8, v), types::I8),
+                    2 => (self.b.ins().ireduce(types::I16, v), types::I16),
+                    4 => (self.b.ins().ireduce(types::I32, v), types::I32),
+                    _ => (v, types::I64),
+                };
+                let _ = ty;
+                self.b
+                    .ins()
+                    .store(MemFlagsData::new().with_notrap(), v, p, 0);
+                vec![]
             }
             Op::PtrNull => vec![self.b.ins().iconst(types::I64, 0)],
             Op::PtrAdd => {

@@ -279,6 +279,8 @@ pub enum FaultKind {
 pub enum Op {
     // Constants.
     IConst, FConst, BConst, VoidConst, StrLit, BytesLit,
+    // An owned value of the result type with every leaf zero: the result a cancel exit returns.
+    Undef,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
     IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, UAddChk, USubChk, UMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
@@ -306,9 +308,9 @@ pub enum Op {
     // Closures and interface views.
     ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
     // Ownership.
-    Clone, Drop, DropIf, MoveOut,
+    Clone, Drop, DropIf, MoveOut, Forget,
     // Raw memory: stack slots, interior pointers into lists and types.
-    Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd, PtrNull, PtrLoadU,
+    Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd, PtrNull, PtrLoadU, PtrStoreU,
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
@@ -933,6 +935,10 @@ pub struct ExternDef {
     /// Whether the call only reads memory, cannot fault and cannot run user code (declared `pure`
     /// on the runtime function), so the backend may assume it does not clobber the caller's memory.
     pub reads: bool,
+    /// Whether the call keeps a pointer argument after it returns (declared `retains` on the
+    /// runtime function: a cleanup entry, a task's argument), so the slot that pointer names must
+    /// outlive the statement.
+    pub retains: bool,
     /// What the optimizer and code generator know this runtime function by.
     pub role: ExternRole,
 }
@@ -996,6 +1002,9 @@ pub enum ExternRole {
     ShieldEnter,
     /// Ends one [`ExternRole::ShieldEnter`].
     ShieldExit,
+    /// `msrt_unwinding()`: whether the running task unwinds a delivered cancel, the byte of its
+    /// header block that code generation loads in place.
+    Unwinding,
 }
 
 impl ExternRole {
@@ -1024,6 +1033,7 @@ impl ExternRole {
         (ExternRole::SpawnsTask, "spawns_task"),
         (ExternRole::ShieldEnter, "shield_enter"),
         (ExternRole::ShieldExit, "shield_exit"),
+        (ExternRole::Unwinding, "unwinding"),
     ];
 
     /// The textual attribute of this role.
@@ -1105,6 +1115,9 @@ pub struct Module {
     /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
     /// descriptor of an aggregate type points to.
     pub desc_glue: Vec<(Ty, FuncId, FuncId)>,
+    /// The drop function of a type, made by [`crate::glue::run`] for the types whose drop is a
+    /// plain walk of their fields: a backend calls it where it would otherwise write its own.
+    pub drop_glue: HashMap<Ty, FuncId>,
     /// Externs that are user `extern fn` shims (`ms_abi.h`): their sized numbers cross as the
     /// same-width C types, extended per the platform ABI, instead of the runtime's 64-bit words.
     pub c_externs: std::collections::BTreeSet<String>,
