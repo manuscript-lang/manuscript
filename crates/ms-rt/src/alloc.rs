@@ -395,9 +395,11 @@ struct Region {
 /// Reserves the pages, their table and the growth chunks with `map`. A process with an
 /// address-space limit (`ulimit -v`, a container, valgrind) cannot map the full size: the
 /// reservation is halved until `map` accepts it, rather than serving every allocation from the
-/// system allocator. `None` when even the smallest is refused.
+/// system allocator. The first size that fits would take nearly all the space left and starve what
+/// comes later (thread and task stacks, the system allocator's maps), so after a refusal the heap
+/// keeps a quarter of what fit. `None` when even the smallest is refused.
 fn reserve(map: &dyn Fn(usize) -> *mut u8, unmap: &dyn Fn(*mut u8, usize)) -> Option<Region> {
-    for shrink in 0..=MAX_SHRINK {
+    let try_shrink = |shrink: u32| {
         let pages_len = PAGES_SIZE >> shrink;
         let grow_size = GROW_SIZE >> shrink;
         let grow_len = grow_size * GROW_CHUNKS;
@@ -419,8 +421,23 @@ fn reserve(map: &dyn Fn(usize) -> *mut u8, unmap: &dyn Fn(*mut u8, usize)) -> Op
                 unmap(p, len);
             }
         }
+        None
+    };
+    let fit = (0..=MAX_SHRINK).find_map(|shrink| try_shrink(shrink).map(|r| (shrink, r)))?;
+    let (shrink, region) = fit;
+    if shrink == 0 {
+        return Some(region);
     }
-    None
+    // Hand the first fit back and map a quarter of it (which the space just freed always holds).
+    let smaller = (shrink + 2).min(MAX_SHRINK);
+    for (p, len) in [
+        (region.pages, region.pages_len),
+        (region.table, (region.pages_len >> PAGE_SHIFT) * 4),
+        (region.grow, region.grow_len),
+    ] {
+        unmap(p, len);
+    }
+    (smaller..=MAX_SHRINK).find_map(try_shrink)
 }
 
 /// Gives the calling thread a heap: an idle one when there is one, else a new one. Threads that
@@ -1196,7 +1213,7 @@ mod tests {
     use std::cell::RefCell;
 
     /// A reservation the system refuses above `limit` bytes per mapping: it is halved until the
-    /// sizes fit, every refused attempt gives back what it mapped, and the smallest still works.
+    /// sizes fit and then quartered again to leave room, every refused attempt gives back what it mapped, and the smallest still works.
     #[test]
     #[cfg_attr(miri, ignore = "reserves address space with the real mapper")]
     fn a_refused_reservation_is_halved_until_it_fits() {
@@ -1217,8 +1234,13 @@ mod tests {
                 live.borrow_mut().retain(|&(q, _)| q != p as usize);
             };
             let region = reserve(&map, &unmap).expect("a reservation that fits");
-            assert_eq!(region.pages_len, PAGES_SIZE >> shrink);
-            assert_eq!(1usize << region.grow_bits, GROW_SIZE >> shrink);
+            let kept = if shrink == 0 {
+                0
+            } else {
+                (shrink + 2).min(MAX_SHRINK)
+            };
+            assert_eq!(region.pages_len, PAGES_SIZE >> kept);
+            assert_eq!(1usize << region.grow_bits, GROW_SIZE >> kept);
             assert_eq!(live.borrow().len(), 3, "only the accepted mappings stay");
             for (p, len) in live.borrow().iter() {
                 // SAFETY: the mappings made above.
