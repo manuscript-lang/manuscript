@@ -731,3 +731,12 @@ b0:
     );
     assert_eq!(observe(&m).0, Ok(2));
 }
+
+#[test]
+fn shield_pair_with_nothing_to_cancel_goes() {
+    let m = opt_fixture("shield_pairs.mir");
+    let empty = func_text(&m, "empty");
+    assert_eq!(count(&empty, "msrt_shield"), 0, "{empty}");
+    let parks = func_text(&m, "parks");
+    assert_eq!(count(&parks, "msrt_shield"), 2, "{parks}");
+}

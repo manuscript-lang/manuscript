@@ -169,6 +169,8 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_string_eq" => R::StringEq,
         "msrt_cleanup_discard" | "msrt_cleanup_remove" => R::CleanupDiscard,
         "msrt_bytes_append" => R::BytesAppend,
+        "msrt_shield_enter" => R::ShieldEnter,
+        "msrt_shield_exit" => R::ShieldExit,
         "msrt_string_split_view"
         | "msrt_map_keys_view"
         | "msrt_map_values_view"
