@@ -8,6 +8,14 @@ use ms_syntax::{Diagnostic, Phase, Pos};
 
 use crate::load::Graph;
 
+/// Whether a module name belongs to a package or workspace member, whose files are named
+/// logically (`@pg@v1.2.0/lib.ms`) rather than by a path below the project.
+pub fn is_package_module(package_roots: &[(String, String)], file: &str) -> bool {
+    package_roots
+        .iter()
+        .any(|(prefix, _)| file.starts_with(prefix.as_str()))
+}
+
 /// A checked program and the diagnostics that stop it from being lowered.
 pub struct Checked {
     pub source_root: String,

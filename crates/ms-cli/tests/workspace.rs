@@ -369,3 +369,27 @@ fn a_manifest_error_names_the_manifest_once_when_run_from_another_directory() {
     assert!(text.contains("app/ms.toml:1:1"), "{text}");
     assert!(!text.contains("app/app/ms.toml"), "{text}");
 }
+
+#[test]
+fn a_member_diagnostic_keeps_the_logical_module_name_in_the_terminal_report() {
+    let root = scratch("workspace-member-diagnostic");
+    let cache = root.join("cache");
+    workspace(&root, "\"@util\" = { path = \"../libs/util\" }\n");
+    file(
+        &root,
+        "libs/util/src/greet.ms",
+        "export fn greet() Int:\n    return \"x\"\n",
+    );
+    let check = ms(&root.join("app"), &cache, &["check", "ms.toml"]);
+    let text = err(&check);
+    assert!(text.contains("@workspace/util/src/greet.ms:2:12"), "{text}");
+    assert!(!text.contains("app/@workspace"), "{text}");
+
+    // From the root, `check` covers every member and places positions by collection.
+    let json = ms(&root, &cache, &["check", "--json"]);
+    let text = out(&json);
+    assert!(
+        text.contains("\"file\": \"@workspace/util/src/greet.ms\""),
+        "{text}"
+    );
+}
