@@ -619,10 +619,17 @@ impl<'a> FnLower<'a> {
             (_, "to_string") if m.receiver.is(Builtin::Duration) => self.duration_text(recv),
             (_, "to_string") => {
                 let receiver = ms_check::api::types::sub(&m.receiver, &self.subst);
-                match self.own_to_string(&receiver, recv)? {
-                    Some(text) => Ok(text),
-                    None => self.format_value(recv),
+                if let Some(text) = self.own_to_string(&receiver, recv)? {
+                    return Ok(text);
                 }
+                let text = self.format_value(recv)?;
+                // The call's result is an owned `String`; a `String` receiver is its own text,
+                // and a borrowed one (a loop element) is copied here.
+                if text.own {
+                    return Ok(text);
+                }
+                let v = self.clone_value(text.v);
+                Ok(Val { v, own: true })
             }
             (_, "clone") => {
                 let v = self.clone_value(recv.v);
