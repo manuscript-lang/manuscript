@@ -37,7 +37,7 @@ use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::fault::{Fault, RecordFile, is_fault_status};
 use crate::json::Json;
-use crate::process::{Stops, wait_supervised};
+use crate::process::{Stops, Wake, wait_supervised};
 use crate::profile::base64;
 use crate::util::emit_json;
 use ms_rt_abi::record::FaultKind;
@@ -791,11 +791,13 @@ impl Runner<'_> {
                 return run;
             }
         };
-        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
+        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
         let mut printed: Vec<u8> = Vec::new();
         let limit = self.options.timeout.map(|t| t + Duration::from_secs(1));
         let mut reader = RecordReader::default();
-        let waited = wait_supervised(&mut child, &stops, None, &mut || {
+        // The records file has no wake, so this wait looks at it on a tick (the one poll left:
+        // the records would need a pipe the runtime writes).
+        let waited = wait_supervised(&mut child, &stops, None, Some(RECORDS_TICK), &mut || {
             while let Ok(chunk) = stdout.try_recv() {
                 printed.extend_from_slice(&chunk);
             }
@@ -865,11 +867,11 @@ impl Runner<'_> {
             Ok(child) => child,
             Err(error) => return Ran::Failed(error.to_string()),
         };
-        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
-        let stderr = pipe_reader(child.stderr.take().expect("piped stderr"));
+        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
+        let stderr = pipe_reader(child.stderr.take().expect("piped stderr"), stops.wake());
         let mut errors: Vec<u8> = Vec::new();
         let bench = self.options.bench;
-        let waited = wait_supervised(&mut child, &stops, self.options.timeout, &mut || {
+        let waited = wait_supervised(&mut child, &stops, self.options.timeout, None, &mut || {
             while let Ok(chunk) = stdout.try_recv() {
                 if bench {
                     printed.extend_from_slice(&chunk);
@@ -1238,9 +1240,15 @@ fn describe_stats(stats: &Json) -> String {
     )
 }
 
+/// How often a test run looks at its records file while the child runs.
+const RECORDS_TICK: Duration = Duration::from_millis(10);
+
 /// Streams a child's pipe through a channel. The thread is detached: a
 /// grandchild that inherits the pipe must not hold the run up.
-pub(super) fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receiver<Vec<u8>> {
+pub(super) fn pipe_reader(
+    mut pipe: impl Read + Send + 'static,
+    wake: Wake,
+) -> mpsc::Receiver<Vec<u8>> {
     let (sender, receiver) = mpsc::channel::<Vec<u8>>();
     std::thread::spawn(move || {
         let mut buffer = [0u8; 8192];
@@ -1248,6 +1256,7 @@ pub(super) fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receive
             if n == 0 || sender.send(buffer[..n].to_vec()).is_err() {
                 break;
             }
+            wake.output();
         }
     });
     receiver

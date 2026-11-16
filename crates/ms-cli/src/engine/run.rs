@@ -155,10 +155,10 @@ fn run_structured(
             ));
         }
     };
-    let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
-    let stderr = pipe_reader(child.stderr.take().expect("piped stderr"));
+    let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
+    let stderr = pipe_reader(child.stderr.take().expect("piped stderr"), stops.wake());
     let (mut out, mut err): (Vec<u8>, Vec<u8>) = (Vec::new(), Vec::new());
-    let waited = wait_supervised(&mut child, &stops, None, &mut || {
+    let waited = wait_supervised(&mut child, &stops, None, None, &mut || {
         while let Ok(chunk) = stdout.try_recv() {
             out.extend_from_slice(&chunk);
         }
