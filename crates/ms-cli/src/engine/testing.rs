@@ -1211,7 +1211,7 @@ fn describe_stats(stats: &Json) -> String {
         String::new()
     };
     format!(
-        "{}/op median (min {}, mean {}, max {}, stddev {}; {} iterations x {} samples{work})",
+        "{}/op median (min {}, mean {}, max {}, stddev {}; {} iterations x {} samples; cpu {}/op{work})",
         format_ns(number("median_ns")),
         format_ns(number("min_ns")),
         format_ns(number("mean_ns")),
@@ -1219,6 +1219,7 @@ fn describe_stats(stats: &Json) -> String {
         format_ns(number("stddev_ns")),
         count("iterations"),
         count("samples"),
+        format_ns(number("cpu_ns")),
     )
 }
 
