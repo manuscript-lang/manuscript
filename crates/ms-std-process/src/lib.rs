@@ -87,7 +87,7 @@ abi_type! {
 }
 
 abi_type! {
-    /// `runtime_counts`: allocations and bytes, list copies and bytes, string clones and bytes.
+    /// `runtime_counts`: allocations and bytes, list copies and bytes, string clones and bytes, MIR operations.
     pub struct CountsOut {
         pub allocations: i64,
         pub allocated_bytes: i64,
@@ -95,6 +95,7 @@ abi_type! {
         pub list_copy_bytes: i64,
         pub string_clones: i64,
         pub string_clone_bytes: i64,
+        pub operations: i64,
     }
 }
 
@@ -351,10 +352,10 @@ native! {
 
     /// `runtime_counts()` as `Result[RuntimeCounts, ControlError]`: the runtime's work counters.
     fn msstd_process_runtime_counts() -> Result<CountsOut, StatusCode> {
-        let mut c = [0u64; 6];
-        // SAFETY: `c` holds the six words the runtime writes.
+        let mut c = [0u64; 7];
+        // SAFETY: `c` holds the seven words the runtime writes.
         unsafe { ms_rt::obj::msrt_counts(c.as_mut_ptr()) };
-        let [a, b, d, e, f, g] = c.map(|v| v as i64);
+        let [a, b, d, e, f, g, h] = c.map(|v| v as i64);
         Ok(CountsOut {
             allocations: a,
             allocated_bytes: b,
@@ -362,6 +363,7 @@ native! {
             list_copy_bytes: e,
             string_clones: f,
             string_clone_bytes: g,
+            operations: h,
         })
     }
 

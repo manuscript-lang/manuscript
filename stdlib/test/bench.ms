@@ -96,7 +96,8 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 		(after.string_clone_bytes - before.string_clone_bytes).to_float()
 		/ ops
 	)
-	line := f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)},\"cpu_ns\":{cpu_ns},\"allocations\":{allocations},\"allocated_bytes\":{allocated},\"list_copies\":{list_copies},\"list_copy_bytes\":{list_copied},\"string_clones\":{string_clones},\"string_clone_bytes\":{string_cloned}\}\n"
+	mir_ops := (after.operations - before.operations).to_float() / ops
+	line := f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)},\"cpu_ns\":{cpu_ns},\"allocations\":{allocations},\"allocated_bytes\":{allocated},\"list_copies\":{list_copies},\"list_copy_bytes\":{list_copied},\"string_clones\":{string_clones},\"string_clone_bytes\":{string_cloned},\"mir_ops\":{mir_ops}\}\n"
 	stdout().write(line).get()
 	set_environment(measured_flag, "1").get()
 

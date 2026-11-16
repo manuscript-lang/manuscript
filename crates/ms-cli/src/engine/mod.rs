@@ -49,6 +49,8 @@ pub struct Engine<L: Lower> {
     static_libc: std::cell::Cell<bool>,
     /// `ms profile --allocs` of the current command: link the allocation-sampling runtime.
     profile_allocs: std::cell::Cell<bool>,
+    /// `ms bench --ops` of the current command: count MIR operations.
+    count_ops: std::cell::Cell<bool>,
 }
 
 impl<L: Lower> Engine<L> {
@@ -59,6 +61,7 @@ impl<L: Lower> Engine<L> {
             build: options::from_env(),
             static_libc: std::cell::Cell::new(false),
             profile_allocs: std::cell::Cell::new(false),
+            count_ops: std::cell::Cell::new(false),
         }
     }
 
@@ -72,10 +75,16 @@ impl<L: Lower> Engine<L> {
         self.profile_allocs.set(on);
     }
 
+    /// Count MIR operations in the programs the following commands build (`ms bench --ops`).
+    pub fn set_count_ops(&self, on: bool) {
+        self.count_ops.set(on);
+    }
+
     /// The build settings of the current command.
     pub(crate) fn build_options(&self) -> ms_build::BuildOptions {
         ms_build::BuildOptions {
             static_musl: self.static_libc.get(),
+            count_ops: self.build.count_ops || self.count_ops.get(),
             ..self.build.clone()
         }
     }

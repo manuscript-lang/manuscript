@@ -226,7 +226,7 @@ fn parse_options(
                 }
                 inv.build_type_name = value.to_string();
             }
-            "--list" | "--fail-fast" => inv.test_options.push(flag.to_string()),
+            "--list" | "--fail-fast" | "--ops" => inv.test_options.push(flag.to_string()),
             "--test" | "--match" | "--exclude" | "--repeat" | "--shuffle" | "--runs" | "--seed"
             | "--fuzz" | "--time" | "--samples" | "--iterations" | "--bench" | "--baseline"
             | "--fail-over" => {
@@ -601,6 +601,7 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             "--iterations",
             "--baseline",
             "--fail-over",
+            "--ops",
         ])
     {
         return Err(usage_error(

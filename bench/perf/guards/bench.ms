@@ -2,7 +2,7 @@
 // blocks whose allocation and copy counts are compared with baseline.json. Counts do
 // not depend on machine load or host, so the gate does not flake; refresh the baseline
 // with
-// `ms bench bench/perf/guards/ms.toml --json --iterations 2 --samples 1 > bench/perf/guards/baseline.json`
+// `ms bench bench/perf/guards/ms.toml --ops --json > bench/perf/guards/baseline.json`
 // when a change deliberately moves them.
 import (
 	Curve,
