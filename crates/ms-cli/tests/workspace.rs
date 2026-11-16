@@ -436,6 +436,9 @@ fn init_workspace_creates_members_that_check_test_and_run() {
     );
     let test = ms(&team, &cache, &["test"]);
     assert!(test.status.success(), "{}", err(&test));
+    // A fresh workspace passes the whole gate, formatting included.
+    let verify = ms(&team, &cache, &["verify"]);
+    assert!(verify.status.success(), "{}{}", out(&verify), err(&verify));
     let run = ms(&team, &cache, &["run", "app/ms.toml"]);
     assert_eq!(out(&run).trim(), "Hello, ms", "{}", err(&run));
     let again = ms(&team, &cache, &["init", "--workspace"]);
