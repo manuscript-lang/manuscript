@@ -279,6 +279,8 @@ pub enum FaultKind {
 pub enum Op {
     // Constants.
     IConst, FConst, BConst, VoidConst, StrLit, BytesLit,
+    // An owned value of the result type with every leaf zero: the result a cancel exit returns.
+    Undef,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
     IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, UAddChk, USubChk, UMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
@@ -306,7 +308,7 @@ pub enum Op {
     // Closures and interface views.
     ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
     // Ownership.
-    Clone, Drop, DropIf, MoveOut,
+    Clone, Drop, DropIf, MoveOut, Forget,
     // Raw memory: stack slots, interior pointers into lists and types.
     Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd, PtrNull, PtrLoadU,
     // Calls.
@@ -996,6 +998,9 @@ pub enum ExternRole {
     ShieldEnter,
     /// Ends one [`ExternRole::ShieldEnter`].
     ShieldExit,
+    /// `msrt_unwinding()`: whether the running task unwinds a delivered cancel, the byte of its
+    /// header block that code generation loads in place.
+    Unwinding,
 }
 
 impl ExternRole {
@@ -1024,6 +1029,7 @@ impl ExternRole {
         (ExternRole::SpawnsTask, "spawns_task"),
         (ExternRole::ShieldEnter, "shield_enter"),
         (ExternRole::ShieldExit, "shield_exit"),
+        (ExternRole::Unwinding, "unwinding"),
     ];
 
     /// The textual attribute of this role.
