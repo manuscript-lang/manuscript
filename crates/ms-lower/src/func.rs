@@ -178,8 +178,9 @@ pub(crate) struct FnLower<'a> {
     pub stmt_pos: Option<Pos>,
     /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
     pub err_slot: Option<Value>,
-    /// The `for` iterable whose `String.split` call may become a piece iterator (see `for_stmt`).
-    pub split_iter_for: Option<*const ms_check::api::ast::Expr>,
+    /// The `for` iterable whose call may become an iterator object over its receiver (the
+    /// runtime function's `iter_of` twin; see `for_stmt`).
+    pub iter_for: Option<*const ms_check::api::ast::Expr>,
     /// The `for` iterable whose `String.chars` call becomes a byte scan (see `chars_loop`).
     pub chars_iter_for: Option<*const ms_check::api::ast::Expr>,
     /// The expression being lowered before its conversion to an interface: its own type, not the
@@ -225,8 +226,9 @@ pub(crate) struct FnLower<'a> {
     /// Values read in place out of a borrowed parameter (`p.m.get(k).get()`): an immutable `let`
     /// may hold one without a copy.
     pub stable_reads: HashSet<Value>,
-    /// The iterable of the `for` being lowered when it may yield views of a map's keys.
-    pub keys_view_for: Option<*const ms_check::api::ast::Expr>,
+    /// The call whose result borrows its receiver (the `view_of` twin) because the code that
+    /// follows only reads it in place: a `for` iterable, or the value of a `let`.
+    pub view_for: Option<*const ms_check::api::ast::Expr>,
     /// The iterable of the `for` being lowered when it may walk a map or set in place: the
     /// `entries()`, `values()` or `keys()` call that would otherwise build a list.
     pub map_walk_for: Option<*const ms_check::api::ast::Expr>,
@@ -234,10 +236,8 @@ pub(crate) struct FnLower<'a> {
     pub hoisted: HashMap<ms_check::api::NodeId, ms_mir::builder::Var>,
     /// Which part of each entry the in-place walk yields, set when `map_walk_for` was taken.
     pub map_walk: Option<crate::stmt::Walk>,
-    /// The `split` call of a `let` whose list the rest of the block only reads in place.
-    pub split_view_for: Option<*const ms_check::api::ast::Expr>,
-    /// The `text.split(..)` in `text.split(..)[0]`: only its first piece is read.
-    pub split_first_for: Option<*const ms_check::api::ast::Expr>,
+    /// The call in `xs.m(..)[0]`: only its first element is read (the `first_of` twin).
+    pub first_for: Option<*const ms_check::api::ast::Expr>,
     /// The module whose local implementations the expression being lowered uses, when it
     /// is the evidence of an enclosing generic instance's caller rather than this module.
     pub scope_override: Option<ct::Name>,
@@ -792,17 +792,16 @@ impl<'a> FnLower<'a> {
             views: HashSet::default(),
             borrowed_params: HashSet::default(),
             stable_reads: HashSet::default(),
-            keys_view_for: None,
+            view_for: None,
             map_walk_for: None,
             hoisted: HashMap::default(),
             map_walk: None,
-            split_view_for: None,
-            split_first_for: None,
+            first_for: None,
             discard: None,
             stmt_pos: None,
             source_scope: 0,
             err_slot: None,
-            split_iter_for: None,
+            iter_for: None,
             chars_iter_for: None,
             converting: None,
             scalars_scan: false,

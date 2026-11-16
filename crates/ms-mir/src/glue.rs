@@ -53,7 +53,7 @@ impl Glue {
 }
 
 use crate::builder::FuncBuilder;
-use crate::ir::{FuncId, Imm, Mode, Module, Op, Param};
+use crate::ir::{Cc, ExternDef, ExternRole, FuncId, Imm, Mode, Module, Op, Param};
 use crate::layout::Layouts;
 use crate::types::{Ty, TyKind};
 use std::collections::HashSet;
@@ -63,45 +63,225 @@ use std::collections::HashSet;
 /// call these functions instead of writing a drop body of their own, so they cannot disagree on
 /// which cases and fields a drop releases. Returns whether anything was made.
 pub fn run(m: &mut Module) -> bool {
-    let wanted = wanted_types(m);
-    let lay_tys: Vec<Ty> = wanted
+    let (drops, clones) = wanted_types(m);
+    let lay = Layouts::new(m);
+    let eligible = |t: &Ty| match m.types.kind(*t) {
+        TyKind::Type(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Bytes => true,
+        // A present flag and the payload's leaves; the other layouts are one pointer.
+        TyKind::Opt(inner) => {
+            !lay.opt_is_nullable(*inner) && !lay.opt_is_boxed(*inner) && !lay.is_str_like(*t)
+        }
+        _ => false,
+    };
+    let eligible = |t: &Ty| eligible(t) && m.needs_drop(*t) && !m.drop_recurses(*t);
+    let mut drop_tys: Vec<Ty> = drops.into_iter().filter(eligible).collect();
+    // A list of plain elements is copied by the backends in one block copy.
+    let mut clone_tys: Vec<Ty> = clones
         .into_iter()
-        .filter(|t| matches!(m.types.kind(*t), TyKind::Type(_) | TyKind::Alt(_)))
-        .filter(|t| m.needs_drop(*t) && !m.drop_recurses(*t))
+        .filter(eligible)
+        .filter(|t| match m.types.kind(*t) {
+            TyKind::List(e) => m.needs_drop(*e),
+            TyKind::Bytes => false,
+            _ => true,
+        })
         .collect();
-    let mut made = false;
-    for ty in lay_tys {
+    let (slots, blocks) = addr_types(m, &lay);
+    drop(lay);
+    // The same order every run.
+    drop_tys.sort_by_key(|t| t.0);
+    clone_tys.sort_by_key(|t| t.0);
+    let made =
+        !drop_tys.is_empty() || !clone_tys.is_empty() || !slots.is_empty() || !blocks.is_empty();
+    for ty in drop_tys {
         let id = make_drop(m, ty);
         m.drop_glue.insert(ty, id);
+    }
+    for ty in clone_tys {
         let id = make_clone(m, ty);
         m.clone_glue.insert(ty, id);
-        made = true;
+    }
+    for ty in slots {
+        let id = make_slot_drop(m, ty);
+        m.addr_glue.insert((Glue::SlotDrop, ty), id);
+        let id = make_slot_copy(m, ty);
+        m.addr_glue.insert((Glue::SlotCopy, ty), id);
+    }
+    for ty in blocks {
+        let id = make_block_drop(m, ty);
+        m.addr_glue.insert((Glue::BlockDrop, ty), id);
+        let id = make_block_clone(m, ty);
+        m.addr_glue.insert((Glue::BlockClone, ty), id);
     }
     made
 }
 
-/// Every type a backend can be asked to drop: the type of any value, and what dropping those
-/// types drops in turn.
-fn wanted_types(m: &Module) -> Vec<Ty> {
-    let mut seen: HashSet<Ty> = HashSet::new();
-    let mut todo: Vec<Ty> = Vec::new();
+/// The types whose descriptors point at slot drop and copy functions, and the data types of the
+/// interface vtables (whose payload blocks get drop and clone functions).
+fn addr_types(m: &Module, lay: &Layouts) -> (Vec<Ty>, Vec<Ty>) {
+    let mut keys: Vec<Ty> = Vec::new();
     for f in &m.funcs {
-        todo.extend(f.values.iter().copied());
         for inst in f.blocks.iter().flat_map(|b| &b.insts) {
-            if let Imm::Ty(t) = inst.imm {
-                todo.push(t);
+            if let (Op::TypeDesc, Imm::Ty(t)) = (inst.op, inst.imm) {
+                keys.push(t);
             }
         }
     }
-    let mut out = Vec::new();
-    while let Some(t) = todo.pop() {
-        if !seen.insert(t.unscoped()) {
+    let mut seen: HashSet<Ty> = HashSet::new();
+    let mut slots: Vec<Ty> = Vec::new();
+    while let Some(key) = keys.pop() {
+        if !seen.insert(key) {
             continue;
         }
-        out.push(t.unscoped());
-        todo.extend(m.drop_children(t.unscoped()));
+        let crate::statics::DescPlan::Table(t) = crate::statics::descriptor(m, lay, key) else {
+            continue;
+        };
+        keys.extend(t.inner.into_iter().flatten());
+        slots.extend(t.slot_glue);
     }
-    out
+    let mut blocks: Vec<Ty> = m.vtables.iter().map(|v| v.data_ty.unscoped()).collect();
+    for v in [&mut slots, &mut blocks] {
+        v.sort_by_key(|t| t.0);
+        v.dedup();
+    }
+    (slots, blocks)
+}
+
+/// `fn(slot)`: drops the value stored at `slot`.
+fn make_slot_drop(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.slot_drop", m.addr_glue.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+    let p = b.params()[0];
+    let v = b
+        .emit(Op::Take, &[p], Imm::Ty(ty), Some(ty))
+        .expect("value");
+    b.emit(Op::Drop, &[v], Imm::None, None);
+    b.ret(None);
+    b.finish()
+}
+
+/// `fn(src, dst)`: clones the value at `src` into uninitialised `dst`.
+fn make_slot_copy(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.slot_copy", m.addr_glue.len());
+    let ptr = Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    };
+    let mut b = FuncBuilder::new(m, &name, vec![ptr, ptr], Ty::VOID);
+    let (src, dst) = (b.params()[0], b.params()[1]);
+    let v = b
+        .emit(Op::Load, &[src], Imm::Ty(ty), Some(ty))
+        .expect("value");
+    let c = b.clone_value(v);
+    b.emit(Op::Put, &[dst, c], Imm::None, None);
+    b.ret(None);
+    b.finish()
+}
+
+/// `fn(block)`: drops the `ty` value the heap block holds and frees the block.
+fn make_block_drop(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.block_drop", m.addr_glue.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let needs = m.needs_drop(ty);
+    let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+    let p = b.params()[0];
+    if needs {
+        let v = b
+            .emit(Op::Take, &[p], Imm::Ty(ty), Some(ty))
+            .expect("value");
+        b.emit(Op::Drop, &[v], Imm::None, None);
+    }
+    b.emit(Op::Free, &[p], Imm::None, None);
+    b.ret(None);
+    b.finish()
+}
+
+/// `fn(block) -> block`: a new heap block holding a clone of the `ty` value in `block`.
+fn make_block_clone(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.block_clone", m.addr_glue.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let size = i64::from(Layouts::new(m).mem(ty).size);
+    let alloc = m.add_extern(ExternDef {
+        name: "msrt_alloc".into(),
+        params: vec![Param {
+            ty: Ty::INT,
+            mode: Mode::Borrow,
+        }],
+        ret: Ty::PTR,
+        noreturn: false,
+        pure_: false,
+        fresh: true,
+        leaf: false,
+        reads: false,
+        retains: false,
+        role: ExternRole::None,
+    });
+    let mut b = FuncBuilder::new(m, &name, params, Ty::PTR);
+    let p = b.params()[0];
+    let v = b
+        .emit(Op::Load, &[p], Imm::Ty(ty), Some(ty))
+        .expect("value");
+    let c = b.clone_value(v);
+    let n = b.iconst(size.max(1));
+    let blk = b.call_rt(alloc, &[n]);
+    b.emit(Op::Put, &[blk, c], Imm::None, None);
+    b.ret(Some(blk));
+    b.finish()
+}
+
+/// The types a function of the program drops and the types it clones, with what dropping or
+/// cloning those drops or clones in turn. A type missing here only keeps the backend's own
+/// function, so this may under-count but never changes a result.
+fn wanted_types(m: &Module) -> (HashSet<Ty>, HashSet<Ty>) {
+    let mut drops: Vec<Ty> = Vec::new();
+    let mut clones: Vec<Ty> = Vec::new();
+    for f in &m.funcs {
+        for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+            let arg = |k: usize| inst.args.get(k).map(|v| f.ty(*v));
+            match inst.op {
+                Op::Drop => drops.extend(arg(0)),
+                Op::DropIf => drops.extend(arg(1)),
+                Op::Clone => clones.extend(arg(0)),
+                Op::OptUnwrap => clones.extend(arg(0).and_then(|t| m.opt_inner(t))),
+                Op::AltOwn => clones.extend(inst.res.map(|r| f.ty(r))),
+                Op::AltRelease | Op::AltUnbox | Op::AltTake | Op::TypeRelease | Op::OptUnbox => {
+                    drops.extend(arg(0))
+                }
+                Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListDropLast | Op::ListRelease => {
+                    drops.extend(arg(0).and_then(|t| m.seq_elem(t)))
+                }
+                Op::TypeDesc => {
+                    if let Imm::Ty(t) = inst.imm {
+                        drops.push(t);
+                        clones.push(t);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    (close(m, drops), close(m, clones))
+}
+
+/// `seed` and the types dropped (or cloned) when a value of one of them is.
+fn close(m: &Module, seed: Vec<Ty>) -> HashSet<Ty> {
+    let mut seen: HashSet<Ty> = HashSet::new();
+    let mut todo = seed;
+    while let Some(t) = todo.pop() {
+        if seen.insert(t.unscoped()) {
+            todo.extend(m.drop_children(t.unscoped()));
+        }
+    }
+    seen
 }
 
 fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
@@ -171,7 +351,59 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             b.ret(None);
             b.finish()
         }
-        _ => unreachable!("drop glue is made for records and alternatives"),
+        TyKind::Opt(_) => {
+            let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+            let p = b.params()[0];
+            let (some, done) = (b.new_block(), b.new_block());
+            let present = b.opt_is_some(p);
+            b.br_if(present, some, &[], done, &[]);
+            b.switch_to(some);
+            let payload = b.opt_get(p);
+            b.emit(Op::Drop, &[payload], Imm::None, None);
+            b.br(done, &[]);
+            b.switch_to(done);
+            b.ret(None);
+            b.finish()
+        }
+        TyKind::List(_) | TyKind::Bytes => {
+            let elem = m.list_elem(ty).filter(|e| m.needs_drop(*e));
+            let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+            let p = b.params()[0];
+            let (owned, done) = (b.new_block(), b.new_block());
+            // A view (capacity 0) borrows its elements: nothing to drop or free.
+            let cap = b
+                .emit(Op::ListCap, &[p], Imm::None, Some(Ty::INT))
+                .expect("cap");
+            let zero = b.iconst(0);
+            let is_owned = b.icmp(Cc::Ne, cap, zero);
+            b.br_if(is_owned, owned, &[], done, &[]);
+            b.switch_to(owned);
+            if elem.is_some() {
+                let len = b.list_len(p);
+                let (head, body, free) = (b.new_block(), b.new_block(), b.new_block());
+                let i = b.add_block_param(head, Ty::INT, Mode::Borrow);
+                let start = b.iconst(0);
+                b.br(head, &[start]);
+                b.switch_to(head);
+                let more = b.icmp(Cc::Lt, i, len);
+                b.br_if(more, body, &[], free, &[]);
+                b.switch_to(body);
+                let x = b
+                    .emit(Op::ListGetU, &[p, i], Imm::None, elem)
+                    .expect("element");
+                b.emit(Op::Drop, &[x], Imm::None, None);
+                let one = b.iconst(1);
+                let next = b.binop(Op::IAdd, i, one);
+                b.br(head, &[next]);
+                b.switch_to(free);
+            }
+            b.emit(Op::Free, &[p], Imm::None, None);
+            b.br(done, &[]);
+            b.switch_to(done);
+            b.ret(None);
+            b.finish()
+        }
+        _ => unreachable!("drop glue is made for records, alternatives, optionals and lists"),
     }
 }
 
@@ -230,6 +462,50 @@ fn make_clone(m: &mut Module, ty: Ty) -> FuncId {
             b.unreachable();
             b.finish()
         }
-        _ => unreachable!("clone glue is made for records and alternatives"),
+        TyKind::Opt(_) => {
+            let mut b = FuncBuilder::new(m, &name, params, ty);
+            let p = b.params()[0];
+            let (some, none) = (b.new_block(), b.new_block());
+            let present = b.opt_is_some(p);
+            b.br_if(present, some, &[], none, &[]);
+            b.switch_to(some);
+            let payload = b.opt_get(p);
+            let copy = b.clone_value(payload);
+            let out = b.opt_some(copy);
+            b.ret(Some(out));
+            b.switch_to(none);
+            let out = b.opt_none(ty);
+            b.ret(Some(out));
+            b.finish()
+        }
+        TyKind::List(elem) => {
+            let mut b = FuncBuilder::new(m, &name, params, ty);
+            let p = b.params()[0];
+            let len = b.list_len(p);
+            let fresh = b.list_new(elem, len);
+            let (head, body, exit) = (b.new_block(), b.new_block(), b.new_block());
+            let i = b.add_block_param(head, Ty::INT, Mode::Borrow);
+            let acc = b.add_block_param(head, ty, Mode::Move);
+            let start = b.iconst(0);
+            b.br(head, &[start, fresh]);
+            b.switch_to(head);
+            let more = b.icmp(Cc::Lt, i, len);
+            b.br_if(more, body, &[], exit, &[]);
+            b.switch_to(body);
+            let x = b
+                .emit(Op::ListGetU, &[p, i], Imm::None, Some(elem))
+                .expect("element");
+            let c = b.clone_value(x);
+            let grown = b
+                .emit(Op::ListPushU, &[acc, c], Imm::None, Some(ty))
+                .expect("list");
+            let one = b.iconst(1);
+            let next = b.binop(Op::IAdd, i, one);
+            b.br(head, &[next, grown]);
+            b.switch_to(exit);
+            b.ret(Some(acc));
+            b.finish()
+        }
+        _ => unreachable!("clone glue is made for records, alternatives, optionals and lists"),
     }
 }
