@@ -73,3 +73,35 @@ fn ownership_extended_later_equals_the_whole_program_analysis() {
     assert_eq!(added.moves.len(), whole.tables.moves.len());
     assert_eq!(added.close_moves.len(), whole.tables.close_moves.len());
 }
+
+/// Directive comments are read once per callable and cached; a new check of edited source starts from
+/// a fresh scan, so the edit shows.
+#[test]
+fn an_edited_directive_shows_in_the_next_check() {
+    let declared = |effect: &str| {
+        let syms = ms_syntax::Names::global();
+        let file: Arc<str> = Arc::from("d.ms");
+        let source = format!("// ms: effect {effect}\nexport fn exec() Void:\n    return\n");
+        let module = ms_syntax::parser::parse(&file, &source).expect("parses");
+        let program = ms_check::check_in(
+            syms,
+            &Session::new(),
+            vec![ms_check::load_module(syms, &module)],
+            ImportMap::default(),
+            CheckOptions::default(),
+        );
+        let id = program.symbols[&syms.intern("d.ms")]
+            .borrow()
+            .get(&syms.intern("exec"))
+            .expect("exec")
+            .id;
+        // Twice: the second answer comes from the cache.
+        assert_eq!(
+            program.declared_effects_of(id),
+            program.declared_effects_of(id)
+        );
+        program.declared_effects_of(id)
+    };
+    assert_eq!(declared("db.write"), ["db.write"]);
+    assert_eq!(declared("db.read"), ["db.read"]);
+}

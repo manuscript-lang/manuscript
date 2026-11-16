@@ -5,7 +5,7 @@ import stdout from "@std/io/io.ms"
 fn handle(request: HttpRequest) HttpResponse:
     xs: List[Int] := []
     i := request.path.length()
-    return HttpResponse(200, headers(), f"{xs[i]}".to_bytes())
+    return HttpResponse(200, f"{xs[i]}".to_bytes())
 
 export fn main() Int:
     if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):

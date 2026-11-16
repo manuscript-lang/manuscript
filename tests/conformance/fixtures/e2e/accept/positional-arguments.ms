@@ -50,7 +50,7 @@ fn apply(callback: fn(Int, Int) Int, input: Int) Int: callback(input, 2)
 
 fn optional(value: Int?, fallback: Int = 0) Int: value.get(fallback)
 
-fn default_before_required(first: Int = 9, second: Int) Int: first - second
+fn required_before_default(second: Int, first: Int = 9) Int: first - second
 
 test "positional labeled mixed and identifier calls":
 	amount := 10
@@ -69,8 +69,8 @@ test "positional labeled mixed and identifier calls":
 	)?
 	expect_false(
 		(
-			default_before_required(second: 2) != 7
-			or default_before_required(second: 2, 5) != 3
+			required_before_default(second: 2) != 7
+			or required_before_default(second: 2, 5) != 3
 		)
 	)?
 

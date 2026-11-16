@@ -23,7 +23,7 @@ fn handle(request: HttpRequest) HttpResponse:
         _announced := write_file(f"{dir}/started", "started".to_bytes()).wait()
 
     void sleep(nanoseconds(300000000)).wait()
-    return HttpResponse(200, headers(), "done\n".to_bytes())
+    return HttpResponse(200, "done\n".to_bytes())
 
 export fn main() Int:
     if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):

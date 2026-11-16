@@ -8,7 +8,7 @@ type Cell:
 fn increment(value: Int = 3) Int:
 	return value + 1
 
-fn combine(first: Int = 2, second: Int, third: Int = first + second) Int:
+fn combine(second: Int, first: Int = 2, third: Int = first + second) Int:
 	return first + second + third
 
 fn identity[T](value: T, fallback: T = value) T:

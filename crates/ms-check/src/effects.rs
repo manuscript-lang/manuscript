@@ -1,7 +1,7 @@
 //! Conservative potential effects of callables.
 
 use crate::checker::Checker;
-use crate::effect_directives::Lines;
+use crate::effect_directives::{Directives, Lines};
 use crate::effect_reach::{ReachNode, resolve};
 use crate::fxmap::{HashMap, HashSet};
 use crate::std_ops::{collection_mutation, is_text_builder};
@@ -329,6 +329,9 @@ pub struct EffectScan {
     declared: HashMap<Name, Vec<String>>,
     /// Fetched packages: what each may reach.
     packages: Vec<crate::types::PackageScope>,
+    /// The directives above each callable and in its file header, by callable id. The source never
+    /// changes, and every query republishes, so each callable's comment block is read once.
+    directives: std::cell::RefCell<HashMap<Name, (Directives, Directives)>>,
 }
 
 struct State {
@@ -499,20 +502,23 @@ impl EffectScan {
     fn declared_effects(&self) -> (crate::effect_reach::Reach, HashMap<Name, Vec<String>>) {
         let st = self.state.as_ref().expect("scan state");
         let mut lines: HashMap<Name, Lines> = HashMap::default();
+        let mut cache = self.directives.borrow_mut();
         let mut reach: Vec<ReachNode> = Vec::with_capacity(st.scanned.len());
         for id in st.order.iter().filter(|id| st.scanned.contains(id)) {
             let node = &st.nodes[id];
             let Some(module) = &node.module else {
                 continue;
             };
-            let lines = lines
-                .entry(module.file)
-                .or_insert_with(|| Lines::new(&module.source));
             let func = match &node.target {
                 Target::Decl(d) => FuncRef::of_decl(d.clone()),
                 Target::Method(f) => f.clone(),
             };
-            let at = lines.above(func.pos().line);
+            let (at, header) = cache.entry(*id).or_insert_with(|| {
+                let lines = lines
+                    .entry(module.file)
+                    .or_insert_with(|| Lines::new(&module.source));
+                (lines.above(func.pos().line), lines.header())
+            });
             let syms = ms_syntax::Names::global();
             let file = syms.str(module.file);
             let name = syms.str(func.name());
@@ -523,7 +529,7 @@ impl EffectScan {
                 _ => name.to_string(),
             };
             let cap = package_holding(&self.packages, file).map(|p| p.effects.clone());
-            let header = lines.header().allow;
+            let header = header.allow.clone();
             reach.push(ReachNode {
                 id: *id,
                 file: module.file,
@@ -531,8 +537,8 @@ impl EffectScan {
                 pos: func.pos(),
                 project: !crate::stdlib::is_bundled_source(file),
                 entry: name == "main" && func.method().is_none() && cap.is_none(),
-                declared: at.declared,
-                allow_fn: at.allow,
+                declared: at.declared.clone(),
+                allow_fn: at.allow.clone(),
                 allow_file: header.or_else(|| cap.clone()),
                 cap,
                 edges: node.edge_pos.clone(),
