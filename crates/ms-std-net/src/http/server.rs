@@ -254,12 +254,15 @@ impl Reactor {
         st.pending = timeout.is_some();
         if st.pending {
             let mut tokens = self.pending.take();
+            let first = tokens.is_empty();
             tokens.push(token);
             self.pending.set(tokens);
             // A task other than the reactor (the accept loop adopting a connection, a request
-            // task that finished) may start it while the reactor is parked with no deadline at
-            // all: it would not read the clock until something else woke it.
-            if self.next_sweep.get().is_none() && rt::current_task() != self.task.get() {
+            // task that finished) may start it while the reactor is parked, with no deadline or
+            // with a later sweep than this one will need: it would not read the clock, nor list
+            // the connection as waiting, until something else woke it. The first pending start
+            // wakes it; later ones are covered by that wake.
+            if first && rt::current_task() != self.task.get() {
                 self.poller.kick();
             }
         }
