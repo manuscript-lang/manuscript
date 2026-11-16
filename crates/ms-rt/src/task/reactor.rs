@@ -251,7 +251,7 @@ pub(super) unsafe fn reactor_wait() {
             // Nothing queued with a time: no clock read, no expiry, no deadline to wait for. A
             // thread that rests after every request would pay for them on each one.
             let timed =
-                !s.timers.is_empty() || !s.kills.is_empty() || crate::promise::has_deadlines();
+                !s.timers.is_empty() || !s.kills.is_empty() || crate::promise::has_timers();
             let now = if timed { clock_ns() } else { 0 };
             if timed {
                 expire_timers(now);
