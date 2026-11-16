@@ -158,7 +158,13 @@ impl<'a> FnLower<'a> {
             // parameter the body only reads: the pieces are views of `text`.
             self.split_view_for = None;
             let result = self.emty(e)?;
-            return self.rt_method("msrt_string_split_view", recv, &m.ty.params, &args, result);
+            return self.rt_method(
+                "msrt_string_split_view_into",
+                recv,
+                &m.ty.params,
+                &args,
+                result,
+            );
         }
         if str_recv && native == "split" && self.split_iter_for == Some(e as *const Expr) {
             // `for piece in text.split(..)`: pieces are produced one at a time.

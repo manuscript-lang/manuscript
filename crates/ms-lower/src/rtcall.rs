@@ -172,6 +172,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_shield_enter" => R::ShieldEnter,
         "msrt_shield_exit" => R::ShieldExit,
         "msrt_string_split_view"
+        | "msrt_string_split_view_into"
         | "msrt_string_split_first"
         | "msrt_map_keys_view"
         | "msrt_map_values_view"
@@ -265,6 +266,15 @@ impl FnLower<'_> {
                 .filter(|f| matches!(t.types.kind(*f), TyKind::List(_))),
             _ => None,
         }
+    }
+
+    /// The type of the frame buffer `msrt_string_split_view_into` fills: eight strings.
+    fn split_buf_ty(&mut self) -> MTy {
+        if let Some(i) = self.b.m.type_defs.iter().position(|d| d.name == "SplitBuf") {
+            return self.b.m.types.named(ms_mir::types::TypeId(i as u32));
+        }
+        let fields = (0..8).map(|i| (format!("p{i}"), MTy::STR)).collect();
+        self.b.m.add_type("SplitBuf", fields).1
     }
 
     /// Calls the runtime function `sym` for a method call.
@@ -456,6 +466,15 @@ impl FnLower<'_> {
                     vals.push(has);
                     vals.push(value);
                     i += 1;
+                }
+                "buf" if p.ty == "*mut SplitBuf" => {
+                    // Room in the frame for the pieces of a split read in place.
+                    let t = self.split_buf_ty();
+                    let slot = self
+                        .b
+                        .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+                        .expect("slot");
+                    vals.push(slot);
                 }
                 "env" => {
                     // The handler of a server: the closure the runtime calls per request.
