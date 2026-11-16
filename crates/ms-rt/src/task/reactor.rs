@@ -149,13 +149,16 @@ pub(super) unsafe fn cancel_all_waiters() -> bool {
 /// waits for an event).
 pub(super) unsafe fn poll_ready(timeout_ns: i64) {
     let mut s = sched();
-    let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
+    // Filled by the poller up to the count it returns; nothing is initialised first.
+    let mut ready = [core::mem::MaybeUninit::<crate::poller::Ready>::uninit(); 64];
     // SAFETY: the poller owns its registrations; handles are checked before waking tasks.
     unsafe {
         let Some(n) = crate::poller::wait(poller_fd(), timeout_ns, &mut ready) else {
             return;
         };
-        for ev in ready.iter().take(n) {
+        for slot in &ready[..n] {
+            // SAFETY: the poller wrote the first `n` entries.
+            let ev = slot.assume_init_ref();
             if ev.fd >= s.fd_waiters.len() {
                 continue;
             }
