@@ -177,10 +177,6 @@ fn Result[T, E].get(default: T?) T: ...
 // raises a fault.
 fn Result[T, E].err() E: ...
 
-// Returns some with the error payload, or none for a success, so a function that
-// cannot return a Result can handle a failure: `if bad := r.error():`.
-fn Result[T, E].error() E?: ...
-
 // Returns the successful payload, or calls create once with the original error and
 // returns its value.
 fn Result[T, E].get_or_else(create: fn(E) T) T:
