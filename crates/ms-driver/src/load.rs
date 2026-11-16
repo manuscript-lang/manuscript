@@ -236,10 +236,10 @@ fn load_entries(
     // Spike: `// ms: mock "@std/os/env.ms" "./fake_env.ms"` in the header of the entry or an extra
     // entry file redirects that import, in every other module of the program, to the replacement.
     let mut headers = extra_files.clone();
-    if !config.entry.is_empty() {
-        if let Ok(entry) = crate::project::source_path(&config.root, &config.entry, &overlay) {
-            headers.push(entry);
-        }
+    if !config.entry.is_empty()
+        && let Ok(entry) = crate::project::source_path(&config.root, &config.entry, &overlay)
+    {
+        headers.push(entry);
     }
     for header in &headers {
         loader.scan_mocks(header);
@@ -650,9 +650,7 @@ impl Loader<'_> {
                 continue;
             }
             let outcome = match mocked {
-                Some(target) if item.path.starts_with("@std/") => {
-                    self.visit(syms, &target).map_err(|failure| failure)
-                }
+                Some(target) if item.path.starts_with("@std/") => self.visit(syms, &target),
                 _ => self.import_module(syms, canonical, file, item),
             };
             match outcome {
@@ -763,6 +761,7 @@ mod tests {
             failed: HashMap::new(),
             resolved: HashMap::new(),
             seen_inputs: HashSet::new(),
+            mocks: HashMap::new(),
         };
         test(&mut loader, &root);
         std::fs::remove_dir_all(dir).unwrap();
