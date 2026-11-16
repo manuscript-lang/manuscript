@@ -513,7 +513,7 @@ pub fn emit(
                     if product.object.format() == BinaryFormat::MachO
                         && id.name() == ".debug_loc" =>
                 {
-                    return Ok(());
+                    continue;
                 }
                 RelocationTarget::Section(id) => {
                     let target = ids
