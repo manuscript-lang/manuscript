@@ -1444,6 +1444,12 @@ pub extern "C-unwind" fn msrt_promise_limit(id: i64, timeout_ns: i64) {
 }
 
 /// The earliest deadline of a live timer or limit, dropping stale entries on the way.
+/// Whether any promise has a deadline or time limit queued (some may be stale).
+pub(crate) fn has_deadlines() -> bool {
+    let t = table();
+    !t.limits.is_empty() || !t.timers.is_empty()
+}
+
 pub(crate) fn next_deadline() -> Option<i64> {
     let mut t = table();
     while let Some(&Reverse((limit, id))) = t.limits.peek() {
