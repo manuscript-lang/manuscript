@@ -24,6 +24,8 @@ A move-out hole no longer hides the other values: while an owner has a field mov
 
 A run the injected cancel makes fail keeps its failure report on the Rust heap until exit (about 14 blocks, `log.ms`), so the sweep judges such a run (a `FAIL` line) only by live `ms-rt` blocks, not by the Rust heap count.
 
+A native that raises a cancel (`ms_rt::glue::cancelled()`) jumps, so it must drop every Rust value its frame owns first, parameters included: `msstd_process_command_run` kept its argument and environment `Vec<&str>`, leaking 32 bytes whenever `run` was cancelled (`host.ms`).
+
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
 Found by the first sweep (baseline, not cancellation): `http-hardening.ms` "close cancels a handler parked on a request body" ends with one 16 B block even with no cancellation (a client read after the server closed the connection triggers it); the sweep compares against that baseline, and `make leak-check` owned the fix (#3083, covered by the MIR unwind pass).
