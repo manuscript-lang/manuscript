@@ -14,6 +14,10 @@ A thread's promise table owns the closures of deferred promises nobody waited on
 
 A close that fails at a scope end faults, and the cover for the slot (`cover_shielded_slots`) must still free the collection: the cover skipped a slot whose scope entry was discarded just before the shield, did not see a close inlined as a call on a field address, and the optional-element close left a stale payload in its place while it closed (it now puts `none` there). A cancel in a child task's park (the file write behind `append_file`) makes such a close fail, which is how the sweep found it (`failed-close-at-scope-end-frees-collection.ms`).
 
+The unwind pass skips every call after a `move.out` that is not filled back (a hole in the owner), so a field read of a temporary (`(f()?).kind`: `move.out` then `type.release` of the rest) made it skip the rest of the function and leak what the frame held when a later park was cancelled (`random-weight-ranges.ms`); a move-out the release follows at once opens no hole.
+
+A cover pushed for a slot in one branch (the early-return exits of a `?` each get one) does not cover another exit's close: `cover_shielded_slots` counts an entry only when it dominates the window (`deque-resource-growth.ms`).
+
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
 Found by the first sweep (baseline, not cancellation): `http-hardening.ms` "close cancels a handler parked on a request body" ends with one 16 B block even with no cancellation (a client read after the server closed the connection triggers it); the sweep compares against that baseline, and `make leak-check` owned the fix (#3083, covered by the MIR unwind pass).

@@ -521,6 +521,27 @@ fn takes_from_slot(m: &Module, callee: FuncId, memo: &mut HashMap<FuncId, bool>)
     found
 }
 
+/// Whether every path from the entry to block `to` passes through block `d`.
+fn dominates(f: &Func, d: usize, to: usize) -> bool {
+    if d == to {
+        return true;
+    }
+    let mut seen = vec![false; f.blocks.len()];
+    let mut stack = vec![0usize];
+    while let Some(b) = stack.pop() {
+        if b == d || std::mem::replace(&mut seen[b], true) {
+            continue;
+        }
+        if b == to {
+            return false;
+        }
+        f.blocks[b]
+            .term
+            .for_each_target(|t| stack.push(t.block.index()));
+    }
+    true
+}
+
 /// Covers a slot-held value while a shielded close works on it in place. A fault inside the
 /// close never returns to its caller, and the entry the scope registered for the value is gone
 /// by then, so a drop is registered around the close call.
@@ -612,6 +633,10 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                         // path from its push on, one pushed before the path (a scope's entry,
                         // discarded just ahead of the shield) from the path's start.
                         let from = path[..=at].iter().position(|&x| x == b);
+                        // A push in another branch (another window's cover) is not this path's.
+                        if from.is_none() && !dominates(f, b, path[0]) {
+                            return false;
+                        }
                         !path[from.unwrap_or(0)..=at]
                             .iter()
                             .enumerate()
@@ -911,7 +936,7 @@ fn analyze(
                     }
                 }
             }
-            open = hole_step(open, inst.op);
+            open = hole_step(open, inst.op, blk.insts.get(k + 1).map(|i| i.op));
             if inst.op == Op::Put
                 && inst
                     .args
@@ -2055,8 +2080,9 @@ fn hole_states(f: &Func) -> Vec<u32> {
         changed = false;
         for b in f.rpo() {
             let mut open = at[b.index()];
-            for inst in &f.blocks[b.index()].insts {
-                open = hole_step(open, inst.op);
+            let insts = &f.blocks[b.index()].insts;
+            for (k, inst) in insts.iter().enumerate() {
+                open = hole_step(open, inst.op, insts.get(k + 1).map(|i| i.op));
             }
             let mut targets = Vec::new();
             f.blocks[b.index()]
@@ -2073,8 +2099,11 @@ fn hole_states(f: &Func) -> Vec<u32> {
     at
 }
 
-fn hole_step(open: u32, op: Op) -> u32 {
+/// `next` is the op that follows: a move-out the owner's field release follows at once (the
+/// rest of a temporary is released, so nothing is left to drop twice) opens no window.
+fn hole_step(open: u32, op: Op, next: Option<Op>) -> u32 {
     match op {
+        Op::MoveOut if next == Some(Op::TypeRelease) => open,
         Op::MoveOut => (open + 1).min(8),
         Op::TypeFill | Op::ListFill => open.saturating_sub(1),
         _ => open,
