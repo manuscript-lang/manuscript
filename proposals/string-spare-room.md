@@ -4,7 +4,7 @@ Status: approved by Chinmay on 2026-11-16 ("ptr, len, cap style? do it"); implem
 
 ## Problem
 
-`s += piece` costs 111 instructions per append in a Release build (200k appends of `"ab"`: 32.0M instructions; the same loop in C with `realloc` doubling: 2.4M). Appending needs the room left in the block, and a string has no capacity: the runtime asks the allocator (`usable_size`, a page-table lookup) on every call, decodes the two-word tagged layout, and calls `memcpy` and `is_ascii`. Because the answer lives in the allocator, generated code cannot check it inline the way `StringBuilder.append` does, so every append is a runtime call.
+`s += piece` costs 111 instructions per append in a Release build (200k appends of `"ab"`: 32.0M instructions; the same loop in checked C with `realloc` doubling: 2.4M). Appending needs the room left in the block, and a string has no capacity: the runtime asks the allocator (`usable_size`, a page-table lookup) on every call, decodes the two-word tagged layout, and calls `memcpy` and `is_ascii`. Because the answer lives in the allocator, generated code cannot check it inline the way `StringBuilder.append` does, so every append is a runtime call.
 
 ## Design
 
@@ -13,11 +13,11 @@ The second word of an owned string holds the length in bits 0..30, since a strin
 - A recorded spare room is a lower bound. Zero means unknown, and the allocator stays the truth; every producer that builds a string with `StrVal::owned` records none, so nothing else changes.
 - `msrt_string_append` uses the recorded room when it covers the piece and otherwise asks the allocator once, writing the answer back for the next append.
 - Length reads mask 31 bits (`STR_LEN_MASK`); equality of two strings ignores the ASCII flag and, for non-inline strings, the spare room. Inline strings keep their bytes in the same bits, so the mask depends on the tag (`eq_differ`, `string_eq_call`).
-- Stage two: a shared MIR fast path for `string_append`, written like the map probes in `rtinline.rs`, so both backends inline it: owned receiver, flat piece, room recorded, piece does not alias the receiver, short ASCII piece. Anything else calls the runtime.
+- Stage two (`opt/appendfast.rs`, new op `ptr.storeu`): a shared MIR fast path for `string_append`, written like the map probes in `rtinline.rs`, so both backends inline it: owned receiver, flat piece, room recorded, piece does not alias the receiver, short ASCII piece. Anything else calls the runtime. ASCII literals now carry the ASCII flag in both backends, so appending a literal keeps a flagged string flagged without a scan.
 
 ## Evidence
 
-Stage one alone: 36.4M to 31.8M on the 200k-append probe. The guard `bench/perf/guards/append` records the count for the nightly gate.
+Stage one alone: 40.3M to 35.1M on `bench/perf/guards/append` (200k appends of `"ab"` and 20k of `"xyz,"`). With the inline path (stage two): 3.6M after the 2026-11-16 main merge (5.6M when measured), 11x fewer instructions; the 200k-append probe alone went from 32.0M to 5.0M against 2.4M for C with `realloc` doubling. The guard records the count for the nightly gate.
 
 ## Alternatives
 

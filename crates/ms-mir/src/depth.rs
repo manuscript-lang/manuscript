@@ -46,6 +46,7 @@ pub fn lower(m: &mut Module) -> bool {
             fresh,
             leaf: false,
             reads: false,
+            retains: false,
             role,
         })
     };

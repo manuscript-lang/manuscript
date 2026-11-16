@@ -44,6 +44,8 @@ pub(crate) struct RtFlags {
     pub borrows: bool,
     /// Starts a task that runs code of the program (`// ms: spawns`).
     pub spawns: bool,
+    /// Keeps a pointer argument after it returns (`// ms: retains`).
+    pub retains: bool,
     /// Has a `<name>_take` twin that reuses the first argument when it dies at the call
     /// (`// ms: takes_self`).
     pub takes_self: bool,
@@ -68,6 +70,7 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
         fresh: bits & 4 != 0,
         borrows: bits & 64 != 0,
         spawns: bits & 16 != 0,
+        retains: bits & 128 != 0,
         takes_self: bits & 32 != 0,
         op: (!op.is_empty()).then_some(op),
         domain: (!domain.is_empty()).then_some(domain),
@@ -174,6 +177,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_bytes_append" => R::BytesAppend,
         "msrt_shield_enter" => R::ShieldEnter,
         "msrt_shield_exit" => R::ShieldExit,
+        "msrt_unwinding" => R::Unwinding,
         "msrt_string_split_view"
         | "msrt_string_split_view_into"
         | "msrt_string_split_first"

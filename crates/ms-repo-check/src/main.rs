@@ -1,6 +1,7 @@
 //! `repo-check`: repository invariants that no compiler or test run enforces.
 //! Run from the repository root; exits nonzero listing every violation.
 
+mod cancel_jumps;
 mod impl_adjacency;
 mod inline_source;
 mod internal_externs;
@@ -74,10 +75,11 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(layering::check(&files));
     issues.extend(stages::check(&files));
     issues.extend(thread_affinity::check(&files));
+    issues.extend(cancel_jumps::check(&files));
     issues.extend(timed_waits::check(&files));
     if issues.is_empty() {
         println!(
-            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, and timed waits agree."
+            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, cancel by return, and timed waits agree."
         );
         return ExitCode::SUCCESS;
     }

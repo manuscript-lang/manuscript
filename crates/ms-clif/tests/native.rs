@@ -1088,3 +1088,89 @@ b0:
     };
     assert_eq!(name(&before), name(&after));
 }
+
+/// `undef` yields zero leaves of any type, in registers or in memory, and `msrt_unwinding` reads
+/// the header's `unwinding` byte in place. The interpreter has no header, so this runs natively.
+pub const UNDEF_PROGRAM: &str = r#"module "u"
+type Wide { a: int8, b: uint16, c: int32, d: int, e: int, f: int, g: int, h: int, i: int }
+type Pair { x: int, y: float, ok: bool }
+entry @main
+extern @msrt_print_int(int)
+extern @msrt_test_set_unwinding(int)
+extern @msrt_unwinding() -> uint8 leaf unwinding
+fn @zw() -> Wide inline(never) {
+b0:
+  %w: Wide = undef
+  ret %w
+}
+fn @zp() -> Pair inline(never) {
+b0:
+  %p: Pair = undef
+  ret %p
+}
+fn @zi() -> int inline(never) {
+b0:
+  %i: int = undef
+  ret %i
+}
+fn @zo() -> opt<int> inline(never) {
+b0:
+  %o: opt<int> = undef
+  ret %o
+}
+fn @flag() -> int inline(never) {
+b0:
+  %u: uint8 = call.rt @msrt_unwinding()
+  %z: uint8 = iconst 0
+  %same: bool = icmp.eq %u, %z
+  %one: int = iconst 1
+  %zero: int = iconst 0
+  %r: int = select %same, %zero, %one
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %w: Wide = call @zw()
+  %wa: int8 = type.get Wide.a %w
+  %wd: int = type.get Wide.d %w
+  %wi: int = type.get Wide.i %w
+  %n8: int = conv %wa
+  %s1: int = iadd %n8, %wd
+  %s2: int = iadd %s1, %wi
+  %v1: void = call.rt @msrt_print_int(%s2)
+  %p: Pair = call @zp()
+  %px: int = type.get Pair.x %p
+  %ok: bool = type.get Pair.ok %p
+  %okn: int = b2i %ok
+  %s3: int = iadd %px, %okn
+  %v2: void = call.rt @msrt_print_int(%s3)
+  %i: int = call @zi()
+  %v3: void = call.rt @msrt_print_int(%i)
+  %fw: Wide = undef
+  forget %fw
+  %o: opt<int> = call @zo()
+  %some: bool = opt.is_some %o
+  %somen: int = b2i %some
+  %v4: void = call.rt @msrt_print_int(%somen)
+  %f0: int = call @flag()
+  %v5: void = call.rt @msrt_print_int(%f0)
+  %one: int = iconst 1
+  %v6: void = call.rt @msrt_test_set_unwinding(%one)
+  %f1: int = call @flag()
+  %v7: void = call.rt @msrt_print_int(%f1)
+  %zero: int = iconst 0
+  %v8: void = call.rt @msrt_test_set_unwinding(%zero)
+  %f2: int = call @flag()
+  %v9: void = call.rt @msrt_print_int(%f2)
+  ret %zero
+}
+"#;
+
+#[test]
+fn undef_and_the_unwinding_byte() {
+    for tag in ["undef", "undef.opt"] {
+        let o = run_native(UNDEF_PROGRAM, tag);
+        assert_eq!(o.stdout, "0\n0\n0\n0\n0\n1\n0\n", "{tag}");
+        assert_eq!(o.code, 0, "{tag}");
+    }
+}

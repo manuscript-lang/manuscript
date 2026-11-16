@@ -2,6 +2,7 @@
 //! typed program and the native backend.
 
 pub mod builder;
+pub mod cancel_edges;
 pub mod copies;
 pub mod count_ops;
 pub mod debug_files;
@@ -13,6 +14,7 @@ pub mod expand;
 pub mod expand_owned;
 pub mod fault_tables;
 pub mod frames;
+pub mod glue;
 /// The reference interpreter, used by tests as an oracle; compiled only for them.
 #[cfg(feature = "test-support")]
 pub mod interp;

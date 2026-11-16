@@ -20,6 +20,7 @@ pub fn run(m: &mut Module) {
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         leaf: true,
         reads: false,
         role: ExternRole::None,

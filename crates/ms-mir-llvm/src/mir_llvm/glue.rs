@@ -2,7 +2,9 @@
 //! inline, objects go through the runtime, and the rest call the type's glue.
 
 use super::calls::{Callee, finish_call};
-use super::types::{Abi, abi_leaves_of, is_mem, load_result, result_slot, spill, spill_of};
+use super::types::{
+    Abi, abi_leaves_of, is_mem, load_result, result_slot, spill, spill_of, spill_pinned,
+};
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
@@ -28,6 +30,7 @@ fn handles(op: Op) -> bool {
         op,
         Op::Clone
             | Op::Drop
+            | Op::Forget
             | Op::DropIf
             | Op::MoveOut
             | Op::TypeDesc
@@ -104,7 +107,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.elem_ptr(&LTy::I8, &addr, &Val::int(0));
         }
         // The moved value is the operand itself: nothing to write.
-        Op::MoveOut => {}
+        Op::MoveOut | Op::Forget => {}
         Op::Clone => {
             let ty = cx.f.ty(inst.args[0]);
             clone_leaves(cx, ty, &vals[&inst.args[0].index()], &out, b);
@@ -144,7 +147,7 @@ fn cleanup_push(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBu
     let slot = if is_mem(cx.lay, ty) {
         // The runtime keeps the address, so it is a copy the type's own slot cannot change.
         let s = super::types::shape(b.types(), cx.lay, ty).expect("a type has a shape");
-        let copy = b.alloca(&s.st);
+        let copy = b.alloca_pinned(&s.st);
         b.copy_bytes(
             &copy,
             &vals[&inst.args[0].index()][0],
@@ -153,7 +156,7 @@ fn cleanup_push(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBu
         );
         copy
     } else {
-        spill(b, cx.lay, ty, vals, inst.args[0])
+        spill_pinned(b, cx.lay, ty, vals, inst.args[0])
     };
     let slot = b.ptr_to_int(&slot);
     let thunk = Val::new(format!("@\"{}\"", cx.plan.cleanup[&c.index()]), LTy::Ptr);
