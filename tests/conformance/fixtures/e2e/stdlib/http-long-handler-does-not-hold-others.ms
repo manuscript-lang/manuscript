@@ -24,7 +24,7 @@ fn handle(request: HttpRequest) HttpResponse:
 		while monotonic().difference(started).to_milliseconds() < 400:
 			continue
 
-	return HttpResponse(200, headers(), f"ok {request.path} done\n".to_bytes())
+	return HttpResponse(200, f"ok {request.path} done\n".to_bytes())
 
 fn ask(var conn: Connection, path: String) Void!:
 	return send(var conn, f"GET {path} HTTP/1.1\r\nHost: t\r\n\r\n")

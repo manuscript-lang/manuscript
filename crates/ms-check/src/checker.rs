@@ -1922,6 +1922,7 @@ impl Checker {
                 Some(f) => &f.params,
                 None => &[],
             };
+            self.check_optionals_last(params);
             self.check_parameters(d, params, &t.params);
             let body: &[Stmt] = match (d.func(), &d.decl.decl().kind) {
                 (Some(f), _) => &f.body,
@@ -1978,11 +1979,38 @@ impl Checker {
             .fields
             .borrow()
             .clone();
+        self.check_optionals_last(fields);
         self.check_parameters(&FuncRef::of_decl(d.clone()), fields, &def_fields);
         self.scope = old_scope;
         self.result = old_result;
         self.function = old_function;
         self.loops = old_loops;
+    }
+
+    /// Reports each required parameter or field that follows one with an explicit default.
+    fn check_optionals_last(&mut self, params: &[ms_syntax::ast::Param]) {
+        // A `T?` parameter defaults to `none` without being written; it does not count as an
+        // optional argument that must trail, only an explicit default does.
+        let explicit = |c: &Self, p: &ms_syntax::ast::Param| {
+            p.default.is_some()
+                && !matches!(
+                    p.ty.as_ref().map(|t| &t.kind),
+                    Some(TypeKind::Named { name, args }) if args.len() == 1 && c.syms.str(*name) == "Optional"
+                )
+        };
+        let Some(first) = params.iter().position(|p| explicit(self, p)) else {
+            return;
+        };
+        let optional = self.syms.str(params[first].name).to_string();
+        for p in params[first..].iter().filter(|p| p.default.is_none()) {
+            self.type_error(
+                p.pos,
+                format!(
+                    "required {} follows optional {optional}; put optional parameters and fields last",
+                    self.syms.str(p.name)
+                ),
+            );
+        }
     }
 
     pub(crate) fn check_parameters(

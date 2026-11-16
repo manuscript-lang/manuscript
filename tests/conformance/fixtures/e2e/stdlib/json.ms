@@ -319,9 +319,9 @@ test "JSON stringify keeps cases with identical labels distinct by default":
 
 type Profile:
 	name: String
+	scores: List[Float]
 	age: Int = 18
 	nickname: String?
-	scores: List[Float]
 
 type Wrapper[T]:
 	first: T
@@ -431,7 +431,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
 	expect_false(list.get(1).is_some())?
 
 test "JSON parse inverts stringify and works in generic code":
-	profile := Profile("Ada", 20, "a", [0.5])
+	profile := Profile("Ada", [0.5], 20, "a")
 	text := stringify(profile)?
 	again: Profile := decoded[Profile](text)?
 	expect_equal((stringify(again)?), text)?

@@ -22,6 +22,8 @@ A `var` local with no scope entry that is passed to a callee which parks and rew
 
 A move-out hole no longer hides the other values: while an owner has a field moved out (`hole_owners` names it), a call still registers every live value except that owner, so a slice held across the parking write in `FailingSink.write` is freed (`iotest-golden.ms`). A hole whose owner has no name (not a `type.get`/`alt.get` projection) still skips everything.
 
+A run the injected cancel makes fail keeps its failure report on the Rust heap until exit (about 14 blocks, `log.ms`), so the sweep judges such a run (a `FAIL` line) only by live `ms-rt` blocks, not by the Rust heap count.
+
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
 Found by the first sweep (baseline, not cancellation): `http-hardening.ms` "close cancels a handler parked on a request body" ends with one 16 B block even with no cancellation (a client read after the server closed the connection triggers it); the sweep compares against that baseline, and `make leak-check` owned the fix (#3083, covered by the MIR unwind pass).

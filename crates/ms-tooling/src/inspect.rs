@@ -208,6 +208,9 @@ pub fn collect(syms: ms_syntax::Names, program: &Program) -> Inspection {
         );
     }
 
+    // Every module's entities ask for their effects, standard library included: scan them together and
+    // publish once instead of once per callable (the lazy path is quadratic in the library's size).
+    program.scan_all_effects();
     for (module, ends) in &modules {
         result.sources.push(Source {
             file: syms.str(module.file).to_string(),

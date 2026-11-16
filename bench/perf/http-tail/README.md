@@ -99,3 +99,14 @@ Counted with an `LD_PRELOAD` shim on `clock_gettime(CLOCK_MONOTONIC)`: one sched
 Closed-loop throughput over 3 runs each: 40.7k to 51.3k req/s before, 44.2k to 50.7k after (no change within the noise). Without a timeout the closed loop reads about 0.
 
 The 4.2 left, one each: the arrival stamp at parse; `late` after the handler (a handler that never switches is never killed, so only a read shows it ran past its deadline); the scheduler's per-round check while the handler's kill timer is armed; `settle_timeouts` before the reactor parks (a read after the deadlines it creates). Each is about 20 ns, under 3 percent of a request. Sharing one read per turn needs a non-blocking poll per turn, a 300 ns syscall to save 20 ns reads, so it was not built. A request count taken over a window shorter than the read count (the load tool's default 3 s warm-up) overstates reads per request by about 1.6.
+
+## Results, 2026-11-16, text built piece by piece, same 4 vCPU Linux VM
+
+"Before" is `main` at 9f09fd55. "Now": `out += f"..."` writes the pieces straight onto `out` (`msrt_string_append_fmtN`) instead of building the text and appending it.
+
+| | C | Manuscript before | Manuscript now |
+| --- | --- | --- | --- |
+| User CPU for 40,000 fast requests at 4000 req/s, three alternated runs | 0.22 s | 1.33, 1.62, 1.50 s | 1.16, 1.38, 1.29 s |
+| Instructions per item of the handler loop alone (callgrind, 200,000 items) | about 50 | 1,018 | 575 |
+
+Findings: user time falls about 14%. What is left per item is one call for the `","`, one for the item, two integer renderings and a capacity lookup per call.

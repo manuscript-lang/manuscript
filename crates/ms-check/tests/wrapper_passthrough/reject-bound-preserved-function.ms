@@ -1,2 +1,2 @@
-fn bad(value: (fn() Int)!Int) Void:
-    operation := value.to_optional
+fn bad(value: (fn() Int)?) Void:
+    operation := value.ok_or[Int]
