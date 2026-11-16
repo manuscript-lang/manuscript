@@ -142,6 +142,7 @@ impl InstCheck<'_, '_> {
             | Op::ListDropLast => self.lists(),
             Op::OptSome
             | Op::OptView
+            | Op::OptViewAt
             | Op::OptNone
             | Op::OptIsSome
             | Op::OptGet
@@ -766,6 +767,16 @@ impl InstCheck<'_, '_> {
                 self.want(
                     self.inst.op == Op::OptSome || !self.m.opt_is_boxed(self.t(0)),
                     "opt.view cannot borrow a boxed optional",
+                )
+            }
+            Op::OptViewAt => {
+                self.arity(1)?;
+                self.want(self.t(0) == Ty::PTR, "opt.view_at takes an address")?;
+                self.want(
+                    self.res
+                        .and_then(|r| self.m.opt_inner(r))
+                        .is_some_and(|inner| self.m.opt_is_boxed(inner)),
+                    "opt.view_at yields a boxed optional",
                 )
             }
             Op::OptNone => {

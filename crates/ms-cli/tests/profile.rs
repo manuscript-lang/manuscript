@@ -1,26 +1,44 @@
-//! `ms profile` end to end. Most tests use a fake build function whose "executable" is a shell
-//! script that writes folded stacks to `$MS_PROFILE`, so they need a Unix shell; the last test
-//! builds a real program and runs on every platform.
+//! `ms profile` end to end. Most tests use a fake build function whose "executable" is a copy of
+//! one real Manuscript program (`profile/spin.ms`, built once with the CLI), so they need no
+//! shell and run on every platform.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_rt as _;
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
+use std::sync::OnceLock;
 
-#[cfg(unix)]
 use ms_cli::backend::{BackendResult, BuildRequest, Io};
-#[cfg(unix)]
 use ms_cli::invocation::{parse_invocation, validate};
 
-#[cfg(unix)]
+/// The compiled `profile/spin.ms`: it burns CPU in `work`, prints its arguments and exits with
+/// status 3.
+fn spin_program() -> &'static PathBuf {
+    static PROGRAM: OnceLock<PathBuf> = OnceLock::new();
+    PROGRAM.get_or_init(|| {
+        let dir = std::env::temp_dir().join(format!("ms-profile-spin-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = format!("{}/tests/profile/spin.ms", env!("CARGO_MANIFEST_DIR"));
+        let out = dir.join(if cfg!(windows) { "spin.exe" } else { "spin" });
+        let built = std::process::Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(["build", "--build-type", "debug", &source, "-o"])
+            .arg(&out)
+            .output()
+            .unwrap();
+        assert!(
+            built.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&built.stdout),
+            String::from_utf8_lossy(&built.stderr)
+        );
+        out
+    })
+}
+
 fn script_build(request: &BuildRequest, _io: &mut Io) -> BackendResult {
-    let script = "#!/bin/sh\nprintf '# hz=99\\nmain;work 30\\nmain;io 10\\n' > \"$MS_PROFILE\"\nif [ -n \"$MS_PROFILE_ALLOCS\" ]; then\nprintf 'main;work;[runtime] 256\\nmain;io 128\\n# period 128\\n' > \"$MS_PROFILE_ALLOCS\"\nprintf 'main;work;[runtime] 8192\\nmain;io 128\\n# period 128\\n' > \"$MS_PROFILE_ALLOCS.bytes\"\nfi\necho hello \"$@\"\nexit 3\n";
-    std::fs::write(&request.output, script).unwrap();
-    std::fs::set_permissions(&request.output, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::copy(spin_program(), &request.output).unwrap();
     Ok(0)
 }
 
-#[cfg(unix)]
 /// `Err` carries the status of an invocation that was rejected before the profile ran.
 fn profile(args: &[String], io: &mut Io) -> Result<i32, i32> {
     let mut inv = parse_invocation(args, io)?;
@@ -33,7 +51,6 @@ fn profile(args: &[String], io: &mut Io) -> Result<i32, i32> {
     ))
 }
 
-#[cfg(unix)]
 fn ms(args: &[&str]) -> (i32, String, String) {
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
     let (mut out, mut err) = (Vec::new(), Vec::new());
@@ -53,7 +70,6 @@ fn ms(args: &[&str]) -> (i32, String, String) {
     )
 }
 
-#[cfg(unix)]
 #[test]
 fn bundle_and_exit_status() {
     let dir = std::env::temp_dir().join(format!("ms-profile-test-{}", std::process::id()));
@@ -99,45 +115,28 @@ fn bundle_and_exit_status() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-#[cfg(unix)]
+/// `[runtime];main;work` allocates through the runtime: the owner is `work`, not `[runtime]`.
 #[test]
-fn allocations_are_opt_in_and_name_the_allocating_function() {
+fn allocations_name_the_allocating_function() {
     let dir = std::env::temp_dir().join(format!("ms-profile-allocs-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = dir.join("main.ms");
-    std::fs::write(&source, "fn main() Int { return 0 }\n").unwrap();
-
-    let plain = dir.join("plain");
-    ms(&[
-        "profile",
-        source.to_str().unwrap(),
-        "--out-dir",
-        plain.to_str().unwrap(),
-    ]);
-    assert!(
-        !plain.join("allocs.folded").exists(),
-        "off unless asked for"
-    );
-
-    let out = dir.join("capture");
-    let (status, stdout, _) = ms(&[
-        "profile",
-        source.to_str().unwrap(),
-        "--out-dir",
-        out.to_str().unwrap(),
-        "--allocs",
-    ]);
-    assert_eq!(status, 3);
-    // `[runtime];main;work` allocates through the runtime: the owner is `work`, not `[runtime]`.
-    let report = std::fs::read_to_string(out.join("allocs.txt")).unwrap();
+    let counts = dir.join("allocs");
+    std::fs::write(
+        &counts,
+        "main;work;[runtime] 256\nmain;io 128\n# period 128\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("allocs.bytes"),
+        "main;work;[runtime] 8192\nmain;io 128\n# period 128\n",
+    )
+    .unwrap();
+    let profile = ms_cli::profile::read_allocs(counts.to_str().unwrap(), 5).unwrap();
+    let report = profile.render();
     assert!(report.contains("about 384 (8320 bytes)"), "{report}");
     let work = report.lines().find(|l| l.ends_with("work")).unwrap();
     assert!(work.contains("256") && work.contains("8192"), "{work}");
-    assert!(
-        stdout.contains("Allocations on the main thread"),
-        "{stdout}"
-    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

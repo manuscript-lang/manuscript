@@ -64,6 +64,7 @@ pub mod task;
 pub mod tree;
 pub mod utf8;
 pub mod vec;
+pub mod watch;
 
 #[cfg(test)]
 mod model_tests;

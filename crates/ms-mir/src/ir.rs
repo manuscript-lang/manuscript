@@ -296,7 +296,7 @@ pub enum Op {
     // Lists.
     ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
-    OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
+    OptSome, OptView, OptViewAt, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
     // Strings.
     StrLen, StrByte, StrAscii, StrAsciiLen, StrEqLit, StrBytes,
     // Byte builders.
@@ -948,6 +948,9 @@ pub enum ExternRole {
     StrBuilderAppendInt,
     /// `string.concat(a, b)` (the fixed-arity and `fmt` joins share it).
     StringConcat,
+    /// `string.join(parts..)`: the fixed-arity concatenation of strings, or, when the first
+    /// operand is an integer mask, the format join whose masked parts are integers.
+    StringJoin,
     /// In-place `string.append(s, piece)`.
     StringAppend,
     /// `int.to_string(n)`.
@@ -991,6 +994,7 @@ impl ExternRole {
         (ExternRole::StrBuilderAppend, "strbuilder_append"),
         (ExternRole::StrBuilderAppendInt, "strbuilder_append_int"),
         (ExternRole::StringConcat, "string_concat"),
+        (ExternRole::StringJoin, "string_join"),
         (ExternRole::StringAppend, "string_append"),
         (ExternRole::IntToString, "int_to_string"),
         (ExternRole::ListSorted, "list_sorted"),

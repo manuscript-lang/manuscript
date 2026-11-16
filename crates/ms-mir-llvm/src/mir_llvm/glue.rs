@@ -236,7 +236,7 @@ pub(super) fn clone_leaves(cx: &mut Cx, ty: Ty, args: &[Val], out: &[Val], b: &m
         }
         OwnKind::Glue => {
             let target = cx.plan.clone[&ty].clone();
-            match clone_callee(cx.lay, ty, &target, &mut cx.decls) {
+            match clone_callee(b.types(), cx.lay, ty, &target, &mut cx.decls) {
                 GlueCall::Memory(n) => {
                     let src = spill_of(b, cx.lay, ty, args);
                     let dst = result_slot(b, cx.lay, ty, out);
@@ -361,7 +361,7 @@ fn drop_core(
         }
         _ => {
             let target = cx.plan.drop[&ty].clone();
-            match drop_callee(cx.lay, ty, &target, &mut cx.decls) {
+            match drop_callee(b.types(), cx.lay, ty, &target, &mut cx.decls) {
                 GlueCall::Memory(n) => {
                     let p = spill(b, cx.lay, ty, vals, v);
                     b.call(&LTy::Void, "", &n, &[(p, "")]);

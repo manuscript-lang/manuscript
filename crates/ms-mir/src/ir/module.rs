@@ -398,6 +398,7 @@ impl Module {
             | Op::BytesLit
             | Op::StrAscii
             | Op::OptView
+            | Op::OptViewAt
             | Op::AltPlain
             | Op::OptNone => Mode::Borrow,
             // A borrowing variant is owned and drops only the cases it owns: `alt.view` fills a

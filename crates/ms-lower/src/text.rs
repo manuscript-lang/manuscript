@@ -7,10 +7,21 @@ use crate::func::{FnLower, Val};
 use ms_check::api::ast::*;
 use ms_check::api::types::Kind;
 use ms_mir::builder::{FuncBuilder, Var};
-use ms_mir::ir::{Cc, ExternDef, FuncId, Imm, Mode, Module, Op, Param, Value, VtableId};
+use ms_mir::ir::{
+    Cc, ExternDef, ExternRole, FuncId, Imm, Mode, Module, Op, Param, Value, VtableId,
+};
 use ms_mir::print::ty_str;
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
+
+/// One part of an interpolation, ready to join.
+pub(crate) enum Piece {
+    Str(Val),
+    Int(Value),
+}
+
+/// Most pieces one joined call takes (`msrt_string_concatN` and `msrt_string_fmtN` stop at six).
+const MAX_JOIN: usize = 6;
 
 /// A readable name of a MIR type for diagnostics.
 pub(crate) fn ty_name(m: &Module, t: MTy) -> String {
@@ -694,63 +705,164 @@ impl<'a> FnLower<'a> {
         Ok(self.b.type_new(rid, &[nanos]))
     }
 
-    /// A text literal with interpolations.
-    pub fn text(&mut self, parts: &[TextPart]) -> Result<Val, Error> {
-        let mut acc: Option<Val> = None;
-        // Scanning the later parts at each part would be quadratic in a long interpolation.
-        let last_try = parts
-            .iter()
-            .rposition(|l| matches!(l, TextPart::Interp(e) if crate::mutation::has_try(e)));
-        for (n, p) in parts.iter().enumerate() {
-            let piece = match p {
-                TextPart::Lit(s) => {
-                    let v = self.b.str_lit(s);
-                    Val { v, own: false }
-                }
-                TextPart::Interp(e) => {
-                    let x = self.expr(e)?;
-                    if self.dead {
-                        return Ok(x);
-                    }
-                    let _ = Kind::Type;
-                    let t = self.ety(e);
-                    if t.is(ms_check::api::types::Builtin::Duration) {
-                        self.duration_text(x)?
-                    } else if let Some(text) = self.own_to_string(&t, x)? {
-                        text
-                    } else {
-                        self.format_value(x)?
-                    }
-                }
-            };
-            acc = Some(match acc {
-                None => piece,
-                Some(a) => {
-                    let av = self.borrow(a);
-                    let pv = self.borrow(piece);
-                    let r = self.call_runtime("msrt_string_concat", &[av, pv], MTy::STR)?;
-                    Val { v: r, own: true }
-                }
-            });
-            // A later part may return early (`try`): the text built so far is a temporary.
-            let later_try = last_try.is_some_and(|t| t > n);
-            if later_try && let Some(a) = acc {
-                acc = Some(self.hold_temp(a));
-            }
+    /// `a + b + c` over strings: the operands are evaluated left to right and joined by one
+    /// runtime call, like the pieces of an interpolation.
+    pub(crate) fn text_sum(&mut self, e: &Expr) -> Result<Val, Error> {
+        let pieces = self.sum_pieces(e)?;
+        if self.dead {
+            return Ok(self.dummy(MTy::STR));
         }
-        match acc {
-            Some(a) => {
-                // A lone `"{s}"` is a new string, but reading it borrows `s` until an owning
-                // position needs a value: that copy is the interpolation's, not a lowering gap.
-                if parts.len() == 1 && !a.own {
+        self.at(e.pos);
+        self.join_pieces(pieces)
+    }
+
+    /// The operands of `a + b + c` over strings, evaluated left to right; empty when evaluation
+    /// left the function (`self.dead`).
+    pub(crate) fn sum_pieces(&mut self, e: &Expr) -> Result<Vec<Piece>, Error> {
+        let mut leaves: Vec<&Expr> = Vec::new();
+        let mut cur = e;
+        while let ExprKind::Binary {
+            op: BinaryOp::Add,
+            left,
+            right,
+        } = &cur.kind
+        {
+            leaves.push(right);
+            cur = left;
+        }
+        leaves.push(cur);
+        leaves.reverse();
+        // `s = s + n.to_string()` stays a concatenation of `s`: the runtime grows `s` in place,
+        // which a join of `s` and the integer would copy.
+        let accumulates = leaves.len() == 2
+            && matches!((&leaves[0].kind, self.assigning), (ExprKind::Name(n), Some(a)) if *n == a);
+        let mut pieces = Vec::with_capacity(leaves.len());
+        for leaf in leaves {
+            let x = self.expr(leaf)?;
+            if self.dead {
+                return Ok(Vec::new());
+            }
+            // The text of a plain `Int` that was just rendered joins as the integer itself, so
+            // `"n=" + n.to_string()` builds no temporary string.
+            let int = if x.own && !accumulates {
+                self.b.retract_call(x.v, ExternRole::IntToString, MTy::INT)
+            } else {
+                None
+            };
+            pieces.push(match int {
+                Some(args) => Piece::Int(args[0]),
+                None => Piece::Str(self.hold_temp(x)),
+            });
+        }
+        Ok(pieces)
+    }
+
+    /// A text literal with interpolations: its pieces are evaluated left to right and joined by
+    /// one runtime call, with a plain `Int` piece written in decimal by the join itself.
+    pub fn text(&mut self, parts: &[TextPart]) -> Result<Val, Error> {
+        let pieces = self.text_pieces(parts)?;
+        if self.dead {
+            return Ok(self.dummy(MTy::STR));
+        }
+        match pieces.as_slice() {
+            [] => {
+                let v = self.b.str_lit("");
+                Ok(Val { v, own: false })
+            }
+            // A lone `"{s}"` is a new string, but reading it borrows `s` until an owning
+            // position needs a value: that copy is the interpolation's, not a lowering gap.
+            [Piece::Str(a)] => {
+                let a = *a;
+                if !a.own {
                     self.boundary_reads.insert(a.v);
                 }
                 Ok(a)
             }
-            None => {
-                let v = self.b.str_lit("");
-                Ok(Val { v, own: false })
+            [Piece::Int(v)] => self.format_value(Val { v: *v, own: false }),
+            _ => self.join_pieces(pieces),
+        }
+    }
+
+    /// The pieces of a text literal, evaluated left to right; empty when evaluation left the
+    /// function (`self.dead`).
+    pub(crate) fn text_pieces(&mut self, parts: &[TextPart]) -> Result<Vec<Piece>, Error> {
+        let mut pieces: Vec<Piece> = Vec::with_capacity(parts.len());
+        for p in parts {
+            let piece = match p {
+                TextPart::Lit(s) => {
+                    let v = self.b.str_lit(s);
+                    Piece::Str(Val { v, own: false })
+                }
+                TextPart::Interp(e) => {
+                    let x = self.expr(e)?;
+                    if self.dead {
+                        return Ok(Vec::new());
+                    }
+                    let t = self.ety(e);
+                    if self.ty_of(x.v) == MTy::INT && !t.is(ms_check::api::types::Builtin::Duration)
+                    {
+                        Piece::Int(x.v)
+                    } else if t.is(ms_check::api::types::Builtin::Duration) {
+                        Piece::Str(self.duration_text(x)?)
+                    } else if let Some(text) = self.own_to_string(&t, x)? {
+                        Piece::Str(text)
+                    } else {
+                        Piece::Str(self.format_value(x)?)
+                    }
+                }
+            };
+            // A later piece may return early (`try`) or fault: what is built so far is a
+            // temporary the statement drops, so every owned piece is registered when it exists.
+            // A borrowed piece stays valid across later pieces because the checker rejects a
+            // text whose operand changes or moves another operand.
+            pieces.push(match piece {
+                Piece::Str(v) => Piece::Str(self.hold_temp(v)),
+                int => int,
+            });
+        }
+        Ok(pieces)
+    }
+
+    /// Joins pieces with `msrt_string_concatN` or, when one is an integer, `msrt_string_fmtN`,
+    /// at most `MAX_JOIN` per call; a longer text joins the first group, then that result and
+    /// the next pieces.
+    pub(crate) fn join_pieces(&mut self, pieces: Vec<Piece>) -> Result<Val, Error> {
+        let mut rest = pieces.into_iter();
+        let mut group: Vec<Piece> = rest.by_ref().take(MAX_JOIN).collect();
+        loop {
+            let joined = self.join_group(&group)?;
+            let more: Vec<Piece> = rest.by_ref().take(MAX_JOIN - 1).collect();
+            if more.is_empty() {
+                return Ok(joined);
+            }
+            let held = self.hold_temp(joined);
+            group = std::iter::once(Piece::Str(held)).chain(more).collect();
+        }
+    }
+
+    fn join_group(&mut self, group: &[Piece]) -> Result<Val, Error> {
+        let ints = group.iter().any(|p| matches!(p, Piece::Int(_)));
+        let mut args = Vec::with_capacity(group.len() + 1);
+        let mut mask = 0i64;
+        for (k, p) in group.iter().enumerate() {
+            match p {
+                Piece::Int(v) => {
+                    mask |= 1 << k;
+                    args.push(*v);
+                }
+                Piece::Str(v) => args.push(self.borrow(*v)),
             }
         }
+        let sym = match (ints, group.len()) {
+            (false, 2) => "msrt_string_concat".to_string(),
+            (false, n) => format!("msrt_string_concat{n}"),
+            (true, n) => format!("msrt_string_fmt{n}"),
+        };
+        if ints {
+            let m = self.b.iconst(mask);
+            args.insert(0, m);
+        }
+        let r = self.call_runtime(&sym, &args, MTy::STR)?;
+        Ok(Val { v: r, own: true })
     }
 }

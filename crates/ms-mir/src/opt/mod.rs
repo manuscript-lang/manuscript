@@ -110,7 +110,7 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
         // value from itself, or unwrapping a nested `try` result, quadratic in the depth.
         inline::run_small(m);
         simplify::run_phis(m);
-        strfuse::run_append(m);
+        strfuse::run(m);
         copyelim::run(m);
         // Owned values otherwise live to scope end, and register allocation grows with the number
         // that are live at once, so only a long function pays for the earlier drops.

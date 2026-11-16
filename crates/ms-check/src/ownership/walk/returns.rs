@@ -968,7 +968,8 @@ impl Walker<'_> {
         }
         let kind = native_borrow(&self.cx.m.ty(left), self.syms.str(name), args.len())?;
         // `get()` on the last use of an owned local hands its payload over instead of borrowing it.
-        let takes_payload = kind == NativeBorrow::PayloadGet && self.owned_local_at_last_use(left);
+        let takes_payload = kind == NativeBorrow::PayloadGet
+            && (self.owned_local_at_last_use(left) || self.param_payload_take(e, left));
         (!takes_payload).then_some((kind, &**left))
     }
 

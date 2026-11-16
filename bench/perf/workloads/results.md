@@ -131,3 +131,22 @@ Also in this change: scalar slicing of an inline (at most 16 byte) ASCII string 
 ## 2026-11-16, filter/map/sum chains over records fuse
 
 `fuse.rs` fused `filter`/`map`/`sum` chains only over lists of numbers, so `orders.filter(fn o: o.status == "placed").map(fn o: o.total).sum()` over a `List[Order]` built a list of deep-cloned orders first. A stage now reads its element in place (a `filter` passes the borrowed element on, a `map` must produce a number), the chain must end in numbers, and a text literal without interpolation counts as a reading expression. Microbenchmark (2000 orders, 2000 chains, callgrind): 5.33G to 2.33G instructions. `c13-inventory-orders` min of 5, same machine and method as the section above: 274.9 to 243.7 ms (1.82x to 1.57x Rust). Other rows are within noise of the 2026-11-16 table. The rest of c13's gap is `orders.count(..)` over a freshly cloned `values()` where the checker does not lend, and the `get(..).clone()` round trip in `ship`/`cancel`.
+
+## 2026-11-16, suite rebuilt on current main
+
+Revision `3b2ef968`, Release LLVM build, min of 5, shared 4 vCPU Xeon @ 2.10GHz, Go 1.24, rustc stable. `c16-maze-bfs` stopped building (`chars` borrows the closure parameter, which the checker now rejects): the reference clones the list it builds.
+
+| program | ms ms | go ms | rust ms | ms/go | ms/rust |
+|---|---:|---:|---:|---:|---:|
+| c03-csv-group-sum | 52.4 | 45.2 | 30.0 | 1.16x | 1.75x |
+| c05-calculator | 44.5 | 59.9 | 126.6 | 0.74x | 0.35x |
+| c09-ciphers | 50.0 | 57.6 | 38.3 | 0.87x | 1.31x |
+| c13-inventory-orders | 274.9 | 310.7 | 150.8 | 0.88x | 1.82x |
+| c14-dp-suite | 520.6 | 1594.4 | 453.1 | 0.33x | 1.15x |
+| c16-maze-bfs | 82.8 | 35.0 | 33.3 | 2.36x | 2.49x |
+| c18-cron-next-runs | 861.3 | 1144.3 | 822.7 | 0.75x | 1.05x |
+| c25-log-analyzer | 23.1 | 55.1 | 21.6 | 0.42x | 1.07x |
+| c36-bank-ledger | 76.1 | 129.7 | 64.3 | 0.59x | 1.18x |
+| c44-unified-diff | 15.4 | 100.4 | 15.2 | 0.15x | 1.02x |
+
+Against the 2026-11-12 table: c03 2.62x to 1.75x, c14 1.63x to 1.15x, c36 1.79x to 1.18x, c44 1.31x to 1.02x. Remaining gaps against Rust: c16 (grid held as `List[List[String]]`), c13 (map call counts), c03, c09.

@@ -73,6 +73,13 @@ impl Drop for BuildStage {
     }
 }
 
+/// The executable's name inside a build stage: `.exe` only where the platform uses it.
+pub const STAGED_EXECUTABLE: &str = if cfg!(windows) {
+    "program.exe"
+} else {
+    "program"
+};
+
 /// The native build levels, in the CMake spelling.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Profile {
@@ -302,7 +309,7 @@ pub fn build_executable_pinned(
     let llvm_paths: Vec<PathBuf> = (0..objects.len())
         .map(|k| stage.path().join(format!("program.llvm{k}.o")))
         .collect();
-    let staged = stage.path().join("program.exe");
+    let staged = stage.path().join(STAGED_EXECUTABLE);
     let cleanup = || {
         let _ = std::fs::remove_file(&object_path);
         for path in &llvm_paths {
@@ -706,7 +713,7 @@ mod stage_tests {
         let root = scratch("recovery");
         let stage = BuildStage::create(&root.0).unwrap();
         let path = stage.path().to_owned();
-        let backup = path.join("program.exe.previous.dSYM");
+        let backup = path.join(format!("{STAGED_EXECUTABLE}.previous.dSYM"));
         std::fs::create_dir(&backup).unwrap();
         std::fs::write(backup.join("resource"), b"previous debug resource").unwrap();
         drop(stage);

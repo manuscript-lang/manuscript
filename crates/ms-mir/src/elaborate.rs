@@ -32,6 +32,7 @@
 //! moved `Close` owner, and a flagged owner returned directly; each is an error.
 
 use crate::ir::*;
+use crate::persist::{OwnerSet, PosMap};
 use crate::types::{AltId, Std, Ty, TyKind};
 use crate::verify::{arg_modes, is_raw};
 use std::collections::{HashMap, HashSet};
@@ -135,76 +136,93 @@ enum St {
 
 /// The owners in scope, in definition order. Untagged values are tracked while live only.
 ///
-/// The tables are shared between copies until one is changed, so a block that changes no owner
-/// hands its state on without copying it, and a join of two such copies finds them the same
-/// by pointer: a function of N blocks and N owners does not copy N owners per block.
+/// Both tables are persistent (`PosMap`): a copy shares everything with the original and an update
+/// copies one path, so a function of N blocks and N owners does not copy N owners per block, and a
+/// join of two untouched copies finds them the same by pointer.
 #[derive(Clone, Default)]
-struct State(std::rc::Rc<Owners>);
-
-#[derive(Clone, Default)]
-struct Owners {
-    seq: std::collections::BTreeMap<u32, (Value, St)>,
-    at: HashMap<Value, u32>,
+struct State {
+    /// The owners by definition position.
+    seq: PosMap<(Value, St)>,
+    /// The definition position of each owner.
+    at: PosMap<u32>,
+    /// The owners in a state a join produces (`Maybe`, `MaybeClosed`, `ClosedOrMoved`), so the
+    /// passes that look for flagged owners read these instead of every owner.
+    odd: OwnerSet,
     next: u32,
+}
+
+/// Whether a join produced `s`: the owner may need a flag.
+fn is_odd(s: St) -> bool {
+    matches!(s, St::Maybe | St::MaybeClosed | St::ClosedOrMoved)
 }
 
 impl PartialEq for State {
     fn eq(&self, other: &State) -> bool {
-        std::rc::Rc::ptr_eq(&self.0, &other.0)
-            || (self.0.seq.len() == other.0.seq.len() && self.iter().eq(other.iter()))
+        (self.seq.same_entries(&other.seq) && self.at.same_entries(&other.at))
+            || (self.seq.len() == other.seq.len() && self.iter().eq(other.iter()))
     }
 }
 
 impl State {
     fn push(&mut self, v: Value, s: St) {
-        let o = std::rc::Rc::make_mut(&mut self.0);
-        o.at.insert(v, o.next);
-        o.seq.insert(o.next, (v, s));
-        o.next += 1;
-    }
-
-    fn get(&self, v: Value) -> Option<St> {
-        self.0.at.get(&v).map(|n| self.0.seq[n].1)
-    }
-
-    fn set(&mut self, v: Value, s: St) {
-        if self.0.at.contains_key(&v) && self.get(v) != Some(s) {
-            let o = std::rc::Rc::make_mut(&mut self.0);
-            let n = o.at[&v];
-            o.seq.get_mut(&n).expect("owner").1 = s;
+        self.at.insert(v.0, self.next);
+        self.seq.insert(self.next, (v, s));
+        self.next += 1;
+        if is_odd(s) {
+            self.odd.insert(v.0);
         }
     }
 
-    fn remove(&mut self, v: Value) {
-        if self.0.at.contains_key(&v) {
-            let o = std::rc::Rc::make_mut(&mut self.0);
-            if let Some(n) = o.at.remove(&v) {
-                o.seq.remove(&n);
+    fn get(&self, v: Value) -> Option<St> {
+        let n = *self.at.get(v.0)?;
+        self.seq.get(n).map(|e| e.1)
+    }
+
+    fn set(&mut self, v: Value, s: St) {
+        if let Some(&n) = self.at.get(v.0)
+            && self.get(v) != Some(s)
+        {
+            self.seq.insert(n, (v, s));
+            if is_odd(s) {
+                self.odd.insert(v.0);
+            } else {
+                self.odd.remove(v.0);
             }
         }
     }
 
-    fn retain(&mut self, mut keep: impl FnMut(&(Value, St)) -> bool) {
-        let gone: Vec<Value> = self
-            .0
-            .seq
-            .values()
-            .filter(|e| !keep(e))
-            .map(|e| e.0)
-            .collect();
-        for v in gone {
-            self.remove(v);
+    fn remove(&mut self, v: Value) {
+        if let Some(&n) = self.at.get(v.0) {
+            self.at.remove(v.0);
+            self.seq.remove(n);
+            self.odd.remove(v.0);
         }
+    }
+
+    /// The owners a join left in an uncertain state, with that state, in definition order.
+    fn odd(&self) -> impl Iterator<Item = (Value, St)> + '_ {
+        let mut owners: Vec<(u32, Value, St)> = self
+            .odd
+            .to_vec()
+            .into_iter()
+            .filter_map(|v| Some((self.position_of(Value(v))?, Value(v), self.get(Value(v))?)))
+            .collect();
+        owners.sort_by_key(|(pos, _, _)| *pos);
+        owners.into_iter().map(|(_, v, t)| (v, t))
     }
 
     /// Definition order.
     fn iter(&self) -> impl DoubleEndedIterator<Item = &(Value, St)> {
-        self.0.seq.values()
+        self.seq.values()
+    }
+
+    fn position_of(&self, v: Value) -> Option<u32> {
+        self.at.get(v.0).copied()
     }
 
     /// Where the owner `v` was defined among the owners.
     fn position(&self, v: Value) -> u32 {
-        self.0.at[&v]
+        *self.at.get(v.0).expect("an owner")
     }
 }
 
@@ -384,7 +402,10 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
     }
     if marker_of(inst) == Some(Marker::End) {
         let scope = scope_of(inst);
-        st.retain(|(v, _)| cx.tags.get(v).is_none_or(|t| t.0 != scope));
+        // The scope's own owners leave; the scope's list is every value tagged with it.
+        for v in cx.owners.get(&scope).into_iter().flatten() {
+            st.remove(*v);
+        }
         return Ok(());
     }
     // Lowering releases what an `alt.take` left behind itself: that finishes the owner.
@@ -571,11 +592,9 @@ fn function(
         entry
             .iter()
             .flatten()
-            .flat_map(|s| {
-                s.iter()
-                    .filter(|(_, t)| matches!(t, St::Maybe | St::ClosedOrMoved))
-                    .map(|(v, _)| *v)
-            })
+            .flat_map(|s| s.odd())
+            .filter(|(_, t)| matches!(t, St::Maybe | St::ClosedOrMoved))
+            .map(|(v, _)| v)
             .collect()
     };
     // A flagged owner that is disowned before the op consuming it needs the moved state, so
@@ -595,10 +614,10 @@ fn function(
     // An owner closed by hand on some paths carries a flag too, kept under a key of its own.
     let mut ckeys: HashMap<Value, Value> = HashMap::new();
     for s in entry.iter().flatten() {
-        for (v, t) in s.iter() {
-            if matches!(t, St::MaybeClosed | St::ClosedOrMoved) && !ckeys.contains_key(v) {
+        for (v, t) in s.odd() {
+            if matches!(t, St::MaybeClosed | St::ClosedOrMoved) && !ckeys.contains_key(&v) {
                 let key = f.new_value(Ty::BOOL);
-                ckeys.insert(*v, key);
+                ckeys.insert(v, key);
             }
         }
     }
@@ -631,9 +650,24 @@ fn function(
     }
     // The flag parameters of every block: one per flagged owner that is live on entry.
     let mut fparams: Vec<Vec<(Value, Value)>> = vec![Vec::new(); f.blocks.len()];
+    // Only an owner with a flag, a closed flag or a handle key has a parameter, so a block looks
+    // at those instead of every owner live on entry.
+    let candidates: Vec<Value> = flagged
+        .iter()
+        .chain(ckeys.keys())
+        .chain(hkeys.keys())
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
     for b in &order {
         let Some(e) = &entry[b.index()] else { continue };
-        for (v, t) in e.iter() {
+        let mut live: Vec<(u32, Value, St)> = candidates
+            .iter()
+            .filter_map(|v| Some((e.position_of(*v)?, *v, e.get(*v)?)))
+            .collect();
+        live.sort_by_key(|(pos, _, _)| *pos);
+        for (_, v, t) in &live {
             let mut keys = Vec::new();
             if flagged.contains(v) {
                 keys.push((*v, Ty::BOOL));
@@ -683,9 +717,16 @@ fn function(
 fn analyze(m: &Module, f: &Func, cx: &Ctx, order: &[Block]) -> Result<Vec<Option<State>>, String> {
     let mut entry: Vec<Option<State>> = vec![None; f.blocks.len()];
     entry[0] = Some(State::default());
+    // A block's outgoing states depend only on its entry state, so a pass revisits just the
+    // blocks whose entry changed since they were last walked.
+    let mut dirty = vec![false; f.blocks.len()];
+    dirty[0] = true;
     for _ in 0..=(4 * f.blocks.len() + 4) {
         let mut changed = false;
         for b in order {
+            if !std::mem::take(&mut dirty[b.index()]) {
+                continue;
+            }
             let Some(mut st) = entry[b.index()].clone() else {
                 continue;
             };
@@ -717,6 +758,7 @@ fn analyze(m: &Module, f: &Func, cx: &Ctx, order: &[Block]) -> Result<Vec<Option
                 };
                 if slot.as_ref() != Some(&merged) {
                     *slot = Some(merged);
+                    dirty[t.block.index()] = true;
                     changed = true;
                 }
             });

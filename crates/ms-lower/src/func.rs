@@ -196,6 +196,9 @@ pub(crate) struct FnLower<'a> {
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
+    /// The name an assignment is rewriting while its value is lowered: `s = s + piece` keeps a
+    /// plain concatenation of `s`, which the runtime grows in place.
+    pub assigning: Option<ct::Name>,
     /// This instance is the borrowed-signature adapter of a function that moves a parameter.
     pub adapter: bool,
     /// The scrutinee `hold` just evaluated is a declared read (see `boundary_reads`).
@@ -204,6 +207,9 @@ pub(crate) struct FnLower<'a> {
     /// `err()`) borrows, which these types copy by rule, and a payload of a last-use scrutinee the
     /// checker moves out (`owned` does not report it).
     pub boundary_reads: ms_check::fxmap::HashSet<Value>,
+    /// The list and index a borrowed element was read from, so a boxed optional can view the
+    /// element in place (`opt.view_at`) instead of owning a copy.
+    pub elem_origin: ms_check::fxmap::HashMap<Value, (Value, Value)>,
     /// Exclusive borrows in scope: the place each names.
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
@@ -407,15 +413,12 @@ impl Cx {
         if fixture_param {
             f.noalias.push((params_len - 1) as u32);
         }
-        // The checker found every result a reference into the arguments. An optional that holds
-        // its payload in a heap block cannot be a view (`opt.view` of a boxed optional), so that
-        // instance returns a copy the caller owns; the checker still treats the call as a borrow,
-        // which a copy of an unchanged value cannot be told apart from.
+        // The checker found every result a reference into the arguments.
         f.ret_borrowed = self.fact(
             c.module.file,
             c.id(),
             ms_check::api::ownership::Fact::ReturnsBorrow,
-        ) && !m.opt_inner(ret).is_some_and(|inner| m.opt_is_boxed(inner));
+        );
         // The checker found the result an interface view of the arguments: owned, dropped by
         // the caller, held as a borrow of the arguments while it lives.
         f.ret_view = self.fact(
@@ -807,9 +810,11 @@ impl<'a> FnLower<'a> {
             scalar_locals: HashMap::default(),
             entry_locals: HashMap::default(),
             in_thunk: false,
+            assigning: None,
             adapter: false,
             hold_declared: false,
             boundary_reads: Default::default(),
+            elem_origin: Default::default(),
             aliases: HashMap::default(),
             scope_override: None,
         }

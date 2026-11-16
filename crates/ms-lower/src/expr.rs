@@ -128,17 +128,30 @@ impl<'a> FnLower<'a> {
             Some(_)
                 if !self.dead
                     && !x.own
-                    && !self.b.m.opt_is_boxed(self.ty_of(x.v))
                     && self.cx.fact(
                         self.hir.data.file,
                         e.id,
                         ms_check::api::ownership::Fact::ViewWrap,
                     ) =>
             {
-                Val {
-                    v: self.b.opt_view(x.v),
-                    own: false,
-                }
+                let inner = self.ty_of(x.v);
+                let v = if self.b.m.opt_is_boxed(inner) {
+                    // A boxed optional is a pointer to its payload: the element's own address (a negative
+                    // index counts from the end, as `get` does).
+                    let (l, i) = *self.elem_origin.get(&x.v).ok_or_else(|| {
+                        Error::new(
+                            "a recursive value can be borrowed into an `Optional` only where it lies in a list or a map; wrap `.clone()` of it instead, because the compiler does not copy it for you",
+                        )
+                    })?;
+                    let at = self
+                        .b
+                        .emit(Op::ListAddr, &[l, i], ms_mir::ir::Imm::None, Some(MTy::PTR))
+                        .expect("list.addr");
+                    self.b.opt_view_at(at, inner)
+                } else {
+                    self.b.opt_view(x.v)
+                };
+                Val { v, own: false }
             }
             Some(_) if !self.dead => {
                 // The checker's conversion into an `Optional`: the type's boundary copy.
@@ -676,6 +689,7 @@ impl<'a> FnLower<'a> {
                         own: self.holds(self.ty_of(o)),
                     });
                 }
+                self.elem_origin.insert(got, (l.v, i.v));
                 Ok(Val { v: got, own: false })
             }
             TyKind::Bytes => {
@@ -739,6 +753,9 @@ impl<'a> FnLower<'a> {
         match op {
             BinaryOp::And | BinaryOp::Or => return self.short_circuit(op, left, right),
             _ => {}
+        }
+        if op == BinaryOp::Add && self.emty(e)? == MTy::STR {
+            return self.text_sum(e);
         }
         if let Some(v) = self.scalar_compare(e)? {
             return Ok(v);

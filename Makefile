@@ -83,7 +83,7 @@ count-check: build
 	$(MS) run tools/count-check.ms
 	MS=$(MS) $(MS) run tools/count-check-selftest.ms
 
-# Instructions executed by four suite programs under callgrind against bench/perf/counts.txt; fails when one is over 3% higher.
+# Instructions executed by the suite and guard programs under callgrind against bench/perf/counts.txt; fails when one is over 3% higher.
 perf-counts: build
 	$(MS) run tools/perf-counts.ms
 

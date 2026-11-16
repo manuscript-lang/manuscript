@@ -199,13 +199,76 @@ impl OwnerSet {
         }
     }
 
-    /// The values in exactly one of the two sets, ascending (for an error message).
+    /// The values in exactly one of the two sets, ascending.
     pub fn symmetric_difference(&self, other: &Self) -> Vec<u32> {
-        let (a, b) = (self.to_vec(), other.to_vec());
-        let mut out: Vec<u32> = a.iter().filter(|v| !other.contains(**v)).copied().collect();
-        out.extend(b.iter().filter(|v| !self.contains(**v)));
+        let (mine, theirs) = self.diff(other);
+        let mut out = mine;
+        out.extend(theirs);
         out.sort_unstable();
         out
+    }
+
+    /// The values only in `self` and the values only in `other`, each ascending. Subtrees the
+    /// two sets share are skipped, so the cost follows the difference, not the size.
+    pub fn diff(&self, other: &Self) -> (Vec<u32>, Vec<u32>) {
+        let height = self.height.max(other.height);
+        let (a, b) = (self.lifted(height), other.lifted(height));
+        let (mut mine, mut theirs) = (Vec::new(), Vec::new());
+        diff_in(a.as_ref(), b.as_ref(), height, 0, &mut mine, &mut theirs);
+        (mine, theirs)
+    }
+
+    /// The root as a tree of `height`, which is at least this set's own.
+    fn lifted(&self, height: u32) -> Option<Rc<Node>> {
+        let mut root = self.root.clone();
+        let mut h = self.height;
+        while h < height {
+            let Some(old) = root.take() else { break };
+            let mut kids: Box<[Option<Rc<Node>>; FAN]> = Box::new(std::array::from_fn(|_| None));
+            kids[0] = Some(old);
+            root = Some(Rc::new(Node::Branch(kids)));
+            h += 1;
+        }
+        root
+    }
+}
+
+/// Collects what only `a` and only `b` hold, below a node of `height` whose values start at
+/// `base`; a subtree both share is skipped.
+fn diff_in(
+    a: Option<&Rc<Node>>,
+    b: Option<&Rc<Node>>,
+    height: u32,
+    base: u64,
+    mine: &mut Vec<u32>,
+    theirs: &mut Vec<u32>,
+) {
+    match (a, b) {
+        (None, None) => {}
+        (Some(x), Some(y)) if Rc::ptr_eq(x, y) => {}
+        (Some(x), None) => collect(x, height, base, mine),
+        (None, Some(y)) => collect(y, height, base, theirs),
+        (Some(x), Some(y)) => match (&**x, &**y) {
+            (Node::Leaf(p), Node::Leaf(q)) => {
+                push_bits(p & !q, base, mine);
+                push_bits(q & !p, base, theirs);
+            }
+            (Node::Branch(p), Node::Branch(q)) => {
+                let span = capacity(height - 1);
+                for (i, (c, d)) in p.iter().zip(q.iter()).enumerate() {
+                    let at = base + i as u64 * span;
+                    diff_in(c.as_ref(), d.as_ref(), height - 1, at, mine, theirs);
+                }
+            }
+            _ => unreachable!("two subtrees of one height have one shape"),
+        },
+    }
+}
+
+fn push_bits(mut bits: u64, base: u64, out: &mut Vec<u32>) {
+    while bits != 0 {
+        out.push((base + u64::from(bits.trailing_zeros())) as u32);
+        bits &= bits - 1;
     }
 }
 
@@ -231,3 +294,241 @@ impl PartialEq for OwnerSet {
 }
 
 impl Eq for OwnerSet {}
+
+/// Bits of a key a [`PosMap`] leaf or branch consumes; both hold `MAP_FAN` entries.
+const MAP_BITS: u32 = 4;
+const MAP_FAN: usize = 1 << MAP_BITS;
+
+#[derive(Debug)]
+enum MapNode<T> {
+    Leaf(Box<[Option<T>; MAP_FAN]>),
+    Branch(Box<[Option<Rc<MapNode<T>>>; MAP_FAN]>),
+}
+
+/// A persistent map from dense `u32` keys to values, iterated in key order: the same sharing as
+/// [`OwnerSet`]. `elaborate`'s owner state keys it by definition position, which only grows, so
+/// the tree stays compact.
+#[derive(Debug)]
+pub struct PosMap<T> {
+    root: Option<Rc<MapNode<T>>>,
+    /// 0: the root is a leaf covering `0..16`; each level multiplies the range by 16.
+    height: u32,
+    len: usize,
+}
+
+impl<T> Clone for PosMap<T> {
+    fn clone(&self) -> Self {
+        PosMap {
+            root: self.root.clone(),
+            height: self.height,
+            len: self.len,
+        }
+    }
+}
+
+impl<T> Default for PosMap<T> {
+    fn default() -> Self {
+        PosMap {
+            root: None,
+            height: 0,
+            len: 0,
+        }
+    }
+}
+
+fn map_slot(k: u32, height: u32) -> usize {
+    ((k >> (MAP_BITS * height)) as usize) & (MAP_FAN - 1)
+}
+
+fn map_capacity(height: u32) -> u64 {
+    1u64 << (MAP_BITS * (height + 1))
+}
+
+fn empty_slots<U>() -> Box<[Option<U>; MAP_FAN]> {
+    Box::new(std::array::from_fn(|_| None))
+}
+
+fn map_insert<T: Clone>(
+    node: Option<&Rc<MapNode<T>>>,
+    height: u32,
+    k: u32,
+    v: T,
+    grew: &mut bool,
+) -> Rc<MapNode<T>> {
+    if height == 0 {
+        let mut slots = match node.map(|n| &**n) {
+            Some(MapNode::Leaf(s)) => s.clone(),
+            _ => empty_slots(),
+        };
+        let i = map_slot(k, 0);
+        *grew = slots[i].is_none();
+        slots[i] = Some(v);
+        return Rc::new(MapNode::Leaf(slots));
+    }
+    let mut kids = match node.map(|n| &**n) {
+        Some(MapNode::Branch(s)) => s.clone(),
+        _ => empty_slots(),
+    };
+    let i = map_slot(k, height);
+    kids[i] = Some(map_insert(kids[i].as_ref(), height - 1, k, v, grew));
+    Rc::new(MapNode::Branch(kids))
+}
+
+fn map_remove<T: Clone>(
+    node: &Rc<MapNode<T>>,
+    height: u32,
+    k: u32,
+    gone: &mut bool,
+) -> Option<Rc<MapNode<T>>> {
+    match &**node {
+        MapNode::Leaf(slots) => {
+            let i = map_slot(k, 0);
+            if slots[i].is_none() {
+                return Some(node.clone());
+            }
+            *gone = true;
+            let mut slots = slots.clone();
+            slots[i] = None;
+            slots
+                .iter()
+                .any(Option::is_some)
+                .then(|| Rc::new(MapNode::Leaf(slots)))
+        }
+        MapNode::Branch(kids) => {
+            let i = map_slot(k, height);
+            let Some(child) = &kids[i] else {
+                return Some(node.clone());
+            };
+            let next = map_remove(child, height - 1, k, gone);
+            if !*gone {
+                return Some(node.clone());
+            }
+            let mut kids = kids.clone();
+            kids[i] = next;
+            kids.iter()
+                .any(Option::is_some)
+                .then(|| Rc::new(MapNode::Branch(kids)))
+        }
+    }
+}
+
+fn map_walk<'a, T>(node: &'a MapNode<T>, out: &mut Vec<&'a T>) {
+    match node {
+        MapNode::Leaf(slots) => out.extend(slots.iter().flatten()),
+        MapNode::Branch(kids) => {
+            for k in kids.iter().flatten() {
+                map_walk(k, out);
+            }
+        }
+    }
+}
+
+fn map_same<T: PartialEq>(a: &Rc<MapNode<T>>, b: &Rc<MapNode<T>>) -> bool {
+    if Rc::ptr_eq(a, b) {
+        return true;
+    }
+    match (&**a, &**b) {
+        (MapNode::Leaf(p), MapNode::Leaf(q)) => p == q,
+        (MapNode::Branch(p), MapNode::Branch(q)) => {
+            p.iter().zip(q.iter()).all(|(c, d)| match (c, d) {
+                (None, None) => true,
+                (Some(c), Some(d)) => map_same(c, d),
+                _ => false,
+            })
+        }
+        _ => false,
+    }
+}
+
+impl<T: Clone> PosMap<T> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    pub fn get(&self, k: u32) -> Option<&T> {
+        if u64::from(k) >= map_capacity(self.height) {
+            return None;
+        }
+        let mut node = self.root.as_ref()?;
+        let mut height = self.height;
+        loop {
+            match &**node {
+                MapNode::Leaf(slots) => return slots[map_slot(k, 0)].as_ref(),
+                MapNode::Branch(kids) => {
+                    node = kids[map_slot(k, height)].as_ref()?;
+                    height -= 1;
+                }
+            }
+        }
+    }
+
+    /// Sets the value of `k`.
+    pub fn insert(&mut self, k: u32, v: T) {
+        while u64::from(k) >= map_capacity(self.height) {
+            if let Some(old) = self.root.take() {
+                let mut kids = empty_slots();
+                kids[0] = Some(old);
+                self.root = Some(Rc::new(MapNode::Branch(kids)));
+            }
+            self.height += 1;
+        }
+        let mut grew = false;
+        self.root = Some(map_insert(self.root.as_ref(), self.height, k, v, &mut grew));
+        self.len += usize::from(grew);
+    }
+
+    /// Removes `k`; whether it was present.
+    pub fn remove(&mut self, k: u32) -> bool {
+        let Some(root) = self.root.as_ref() else {
+            return false;
+        };
+        if u64::from(k) >= map_capacity(self.height) {
+            return false;
+        }
+        let mut gone = false;
+        let next = map_remove(root, self.height, k, &mut gone);
+        if gone {
+            self.root = next;
+            self.len -= 1;
+        }
+        gone
+    }
+
+    /// The values in key order.
+    pub fn values(&self) -> std::vec::IntoIter<&T> {
+        let mut out = Vec::with_capacity(self.len);
+        if let Some(r) = &self.root {
+            map_walk(r, &mut out);
+        }
+        out.into_iter()
+    }
+
+    /// Whether both maps hold the same keys and values, skipping shared subtrees; no allocation.
+    pub fn same_entries(&self, other: &Self) -> bool
+    where
+        T: PartialEq,
+    {
+        match (&self.root, &other.root) {
+            (None, None) => true,
+            (Some(a), Some(b)) => self.height == other.height && map_same(a, b),
+            _ => false,
+        }
+    }
+
+    /// Whether both maps are the same tree (sharing everything), a quick equality.
+    pub fn same_tree(&self, other: &Self) -> bool {
+        match (&self.root, &other.root) {
+            (None, None) => true,
+            (Some(a), Some(b)) => Rc::ptr_eq(a, b) && self.height == other.height,
+            _ => false,
+        }
+    }
+}

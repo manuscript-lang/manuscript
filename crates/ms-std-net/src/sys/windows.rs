@@ -77,6 +77,36 @@ pub fn poll_one(sock: Borrowed<'_>, write: bool, slice: Duration) -> bool {
     }
 }
 
+/// Which of `socks` have input waiting (or hung up, or failed), without blocking. A socket the
+/// call cannot ask about reads as not ready.
+pub fn readable(socks: &[Raw]) -> Vec<bool> {
+    let mut fds: Vec<WSAPOLLFD> = socks
+        .iter()
+        .map(|&sock| WSAPOLLFD {
+            fd: sock as usize,
+            events: poll_flags(Ev::IN),
+            revents: 0,
+        })
+        .collect();
+    if fds.is_empty() || wsa_poll(&mut fds, 0).is_none() {
+        return vec![false; socks.len()];
+    }
+    fds.iter().map(|fd| fd.revents != 0).collect()
+}
+
+/// A second handle on the open socket `sock`, for another owner: both name one connection, and
+/// it closes when both are closed.
+pub fn duplicate(sock: Raw) -> Option<socket2::Socket> {
+    use std::os::windows::io::BorrowedSocket;
+    // SAFETY: the caller keeps the socket open for the call (it holds the lock under which its
+    // owner closes it).
+    let borrowed = unsafe { BorrowedSocket::borrow_raw(sock) };
+    borrowed
+        .try_clone_to_owned()
+        .ok()
+        .map(socket2::Socket::from)
+}
+
 /// A handle another thread can signal to make a socket readable: a datagram socket
 /// on the loopback interface connected to itself.
 pub struct Wake(UdpSocket);
@@ -229,6 +259,11 @@ impl Poller {
             let _ = view.into_raw_socket();
         }
         self.sockets.borrow_mut().remove(sock);
+    }
+
+    /// The handle that wakes this poller's parked task; another thread may signal it.
+    pub fn waker(&self) -> Arc<Wake> {
+        self.wake.clone()
     }
 
     /// Wakes the parked reactor task.

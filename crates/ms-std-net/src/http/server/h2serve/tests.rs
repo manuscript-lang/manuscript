@@ -150,6 +150,7 @@ fn start(dispatch: Box<dyn Dispatch>, limits: Limits) -> (Arc<Network>, Started)
         limits,
         admitted: Default::default(),
         tls: Some(server_tls()),
+        group: Default::default(),
     };
     start_with(dispatch, options)
 }

@@ -38,6 +38,7 @@ fn handles(op: Op) -> bool {
         op,
         Op::OptSome
             | Op::OptView
+            | Op::OptViewAt
             | Op::OptNone
             | Op::OptIsSome
             | Op::OptGet
@@ -243,6 +244,9 @@ fn inst_ok(_: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     if inst.op == Op::OptAddr {
         return opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Nullable;
     }
+    if inst.op == Op::OptViewAt {
+        return opt_repr(lay, f.ty(inst.res.expect("a result"))) == OptRepr::Nullable;
+    }
     let subject = subject(f, inst);
     if let Some(inner) = boxed_opt(lay, subject) {
         return types::shape_ok(lay, inner);
@@ -375,7 +379,7 @@ fn pre(
         (Op::OptIsSome, _) if opt_repr(lay, f.ty(inst.args[0])) == OptRepr::Tagged => {
             vec![arg(0)[0].clone()]
         }
-        (Op::OptAddr, _) => arg(0).clone(),
+        (Op::OptAddr | Op::OptViewAt, _) => arg(0).clone(),
         (Op::OptUnwrap, _) if own_kind(lay, payload_ty(lay, f, inst)) != OwnKind::Identity => {
             return None;
         }
@@ -529,7 +533,8 @@ pub(super) fn released(lay: &Layouts, inst: &Inst) -> Vec<(Ty, usize)> {
 pub(super) fn touches_memory(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
     handles(inst.op)
         && (boxed_alt(lay, subject(f, inst)).is_some()
-            || (inst.op != Op::OptAddr && boxed_opt(lay, subject(f, inst)).is_some())
+            || (!matches!(inst.op, Op::OptAddr | Op::OptViewAt)
+                && boxed_opt(lay, subject(f, inst)).is_some())
             || !released(lay, inst).is_empty())
 }
 

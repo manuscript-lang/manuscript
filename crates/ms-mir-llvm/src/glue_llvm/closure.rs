@@ -199,8 +199,8 @@ pub fn emit(g: &mut Gen, kind: Glue, types: &Types, loc: usize) -> Emitted {
     }
     let (decls, data, body) = (e.decls, e.data, e.b.finish());
     Emitted {
-        ret: sig.ret_text(),
-        params: sig.formals(true),
+        ret: sig.ret_text(types),
+        params: sig.formals(types, true),
         attrs: " nounwind".into(),
         decls,
         data,
