@@ -137,6 +137,17 @@ impl<'a> FnLower<'a> {
                 _ => {}
             }
         }
+        if str_recv && native == "split" && lent && self.split_first_for == Some(e as *const Expr) {
+            // `text.split(..)[0]` of a lent split: the first piece is a view, with no list.
+            self.split_first_for = None;
+            return self.rt_method(
+                "msrt_string_split_first",
+                recv,
+                &m.ty.params,
+                &args,
+                MTy::STR,
+            );
+        }
         if str_recv
             && native == "split"
             && (lent

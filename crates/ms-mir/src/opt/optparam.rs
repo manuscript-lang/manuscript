@@ -97,10 +97,12 @@ fn split_all(m: &Module, f: &mut Func) -> bool {
             if other_uses.contains(&p.value) {
                 continue;
             }
-            if edges
-                .iter()
-                .all(|args| matches!(defs.get(&args[k]), Some(Op::OptNone | Op::OptSome)))
-            {
+            if edges.iter().all(|args| {
+                matches!(
+                    defs.get(&args[k]),
+                    Some(Op::OptNone | Op::OptNoneOwned | Op::OptSome)
+                )
+            }) {
                 splits.push((bi, k, inner));
             }
         }

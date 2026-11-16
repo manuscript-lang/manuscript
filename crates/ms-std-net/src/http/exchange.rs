@@ -14,7 +14,6 @@ use crate::ws::socket::{Config, Role, Socket};
 use ms_rt::ffi::Str;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Instant;
 
 const CHUNK: usize = 65536;
 
@@ -49,7 +48,8 @@ pub(super) struct ExSt {
     pub upgraded: bool,
     pub rejected: bool,
     pub websocket: Option<Rc<Socket>>,
-    pub deadline: Option<Instant>,
+    /// When the request runs out of time, on `rt::monotonic_ns`.
+    pub deadline: Option<i64>,
     /// The HTTP/2 stream this exchange answers; `None` on HTTP/1.
     pub h2: Option<u32>,
 }
@@ -82,6 +82,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
         fields.push(("Host".into(), host.clone().into_bytes()));
     }
     let timeout = server.limits.timeout;
+    let deadline = timeout.zip(started).map(|(t, at)| deadline_at(at, t));
     let exchange = Rc::new(Exchange {
         server: server_rc,
         conn: conn.clone(),
@@ -116,23 +117,28 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             upgraded: false,
             rejected: false,
             websocket: None,
-            deadline: timeout.zip(started).map(|(t, at)| at + t),
+            deadline,
             h2: None,
         }),
     });
-    crate::rt::limit_current_until(timeout.zip(started).map(|(t, at)| at + t));
+    crate::rt::limit_current_at(deadline);
     let outcome = server.dispatch.streaming(exchange.clone());
-    crate::rt::limit_current_until(None);
-    let late = timeout.zip(started).is_some_and(|(t, at)| at.elapsed() > t);
+    crate::rt::limit_current_at(None);
+    let late = deadline.is_some_and(|at| crate::rt::monotonic_ns() > at);
     exchange.finish(outcome, late);
+}
+
+/// The time `timeout` after `started`, both on `rt::monotonic_ns`.
+pub(super) fn deadline_at(started: i64, timeout: std::time::Duration) -> i64 {
+    started.saturating_add(timeout.as_nanos().min(i64::MAX as u128) as i64)
 }
 
 impl Exchange {
     pub(super) fn deadline(&self) -> Deadline {
-        match self.st.borrow().deadline {
-            Some(at) => Deadline::after(at.saturating_duration_since(Instant::now())),
-            None => Deadline::none(),
-        }
+        self.st
+            .borrow()
+            .deadline
+            .map_or(Deadline::none(), Deadline::at_ns)
     }
 
     pub fn method(&self) -> String {
@@ -585,7 +591,7 @@ impl Exchange {
                 let config = Config::new(max, accepted.compress, accepted.subprotocol);
                 let socket = Rc::new(Socket::new(conn, leftover, Role::Server, config));
                 // A WebSocket outlives the request timeout.
-                crate::rt::limit_current_until(None);
+                crate::rt::limit_current_at(None);
                 let mut st = self.st.borrow_mut();
                 st.upgraded = true;
                 st.websocket = Some(socket.clone());

@@ -428,8 +428,13 @@ native! {
                 let env = valid_environment(cwd, &env_names, &env_values)?;
                 command::run(program, &args, input, limit, t, cwd, &env)
             });
-        // `run` returns early when cancelled, its child already reaped by its frame's drop.
+        // `run` returns early when cancelled, its child already reaped by its frame's drop. The
+        // jump skips destructors, so what this frame owns is dropped first.
         if ms_rt::glue::cancel_pending() {
+            drop(ran);
+            drop(arguments);
+            drop(env_names);
+            drop(env_values);
             ms_rt::glue::cancelled();
         }
         command_status(program, cwd, ran, &err).map(|o| CommandOut {

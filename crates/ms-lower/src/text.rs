@@ -732,19 +732,26 @@ impl<'a> FnLower<'a> {
         }
         leaves.push(cur);
         leaves.reverse();
-        // `s = s + n.to_string()` stays a concatenation of `s`: the runtime grows `s` in place,
-        // which a join of `s` and the integer would copy.
-        let accumulates = leaves.len() == 2
-            && matches!((&leaves[0].kind, self.assigning), (ExprKind::Name(n), Some(a)) if *n == a);
         let mut pieces = Vec::with_capacity(leaves.len());
         for leaf in leaves {
+            // An interpolation among the operands gives its own pieces, so `s + f"{k}={n}"` is
+            // one join and no text is built for the right side alone.
+            if let ExprKind::Text(parts) = &leaf.kind
+                && parts.len() > 1
+            {
+                pieces.extend(self.text_pieces(parts)?);
+                if self.dead {
+                    return Ok(Vec::new());
+                }
+                continue;
+            }
             let x = self.expr(leaf)?;
             if self.dead {
                 return Ok(Vec::new());
             }
             // The text of a plain `Int` that was just rendered joins as the integer itself, so
             // `"n=" + n.to_string()` builds no temporary string.
-            let int = if x.own && !accumulates {
+            let int = if x.own {
                 self.b.retract_call(x.v, ExternRole::IntToString, MTy::INT)
             } else {
                 None

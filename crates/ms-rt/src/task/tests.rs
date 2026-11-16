@@ -1,6 +1,7 @@
 use super::*;
 use crate::global::Process;
 use crate::testutil::lock;
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64};
 
 static LOG: Process<[u8; 16]> = Process::new([0; 16]);
 static LOG_N: Process<usize> = Process::new(0);
@@ -67,6 +68,182 @@ fn tasks_interleave_sleep_and_join() {
         assert_eq!(msrt_task_join(fast, null_mut()), 0);
         assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[5, 20]);
         assert_eq!(msrt_task_count(), 1);
+    }
+    teardown();
+}
+
+unsafe extern "C-unwind" fn yielder(arg: *mut u8) {
+    for _ in 0..arg as usize {
+        // SAFETY: called from a running task.
+        unsafe { msrt_task_yield() };
+    }
+}
+
+/// With a timer pending, the scheduler reads the clock once per round: once per pass over the
+/// tasks that are ready, so `n` yielding tasks read about once per `n` switches.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn timers_are_checked_once_per_round() {
+    let _g = lock();
+    for tasks in [1usize, 2, 64] {
+        teardown();
+        // SAFETY: tests hold the global lock; every handle is joined or cancelled once.
+        unsafe {
+            let timer = msrt_task_spawn(sleeper, core::ptr::without_provenance_mut(60_000), 0, 0);
+            msrt_task_yield();
+            let each = 40_000 / tasks;
+            CLOCK_READS.store(0, Ordering::Relaxed);
+            let handles: Vec<u64> = (0..tasks)
+                .map(|_| msrt_task_spawn(yielder, core::ptr::without_provenance_mut(each), 0, 0))
+                .collect();
+            for h in handles {
+                assert_eq!(msrt_task_join(h, null_mut()), 0);
+            }
+            let reads = CLOCK_READS.load(Ordering::Relaxed) as usize;
+            msrt_task_cancel(timer);
+            let switches = each * tasks;
+            // One read per round, plus the start and the end of the run.
+            assert!(
+                reads <= switches / tasks + 3 * tasks + 16,
+                "{reads} clock reads for {switches} switches of {tasks} tasks"
+            );
+        }
+        teardown();
+    }
+}
+
+static YIELDS: AtomicU64 = AtomicU64::new(0);
+static PAST: AtomicU64 = AtomicU64::new(0);
+static DONE: AtomicBool = AtomicBool::new(false);
+static DUE: AtomicI64 = AtomicI64::new(0);
+static LATE_BY: AtomicU64 = AtomicU64::new(0);
+
+/// Yields until `DONE`; the task with a nonzero argument also notes when `DUE` has passed.
+unsafe extern "C-unwind" fn spinner(arg: *mut u8) {
+    while !DONE.load(Ordering::Relaxed) {
+        YIELDS.fetch_add(1, Ordering::Relaxed);
+        if arg as usize != 0
+            && PAST.load(Ordering::Relaxed) == 0
+            && clock_ns() >= DUE.load(Ordering::Relaxed)
+        {
+            PAST.store(YIELDS.load(Ordering::Relaxed), Ordering::Relaxed);
+        }
+        // SAFETY: called from a running task.
+        unsafe { msrt_task_yield() };
+    }
+}
+
+/// Yields once, then parks for a minute (until cancelled).
+unsafe extern "C-unwind" fn yield_then_park(_: *mut u8) {
+    // SAFETY: called from a running task.
+    unsafe {
+        msrt_task_yield();
+        msrt_task_sleep(60_000_000_000);
+    }
+}
+
+/// Waits until `DUE` on its absolute deadline, then records how many yields happened since
+/// `PAST` and ends the spinners.
+unsafe extern "C-unwind" fn timer_waiter(_: *mut u8) {
+    // SAFETY: called from a running task.
+    let r = unsafe { msrt_task_wait_fd_at(-1, 0, DUE.load(Ordering::Relaxed)) };
+    assert_eq!(r, WAIT_TIMEOUT);
+    LATE_BY.store(
+        YIELDS.load(Ordering::Relaxed) - PAST.load(Ordering::Relaxed),
+        Ordering::Relaxed,
+    );
+    DONE.store(true, Ordering::Relaxed);
+}
+
+/// Runs `spinners` yielding tasks (the first notes when the timer is due) and a waiter whose
+/// timer is due 2 ms from now, after `park` further tasks have yielded once and parked.
+/// Returns the yields between the timer coming due and its waiter running.
+unsafe fn late_by_yields(spinners: usize, park: usize, stale_round: usize) -> u64 {
+    // SAFETY: callers hold the global lock; every handle is joined or cancelled once.
+    unsafe {
+        YIELDS.store(0, Ordering::Relaxed);
+        PAST.store(0, Ordering::Relaxed);
+        DONE.store(false, Ordering::Relaxed);
+        DUE.store(clock_ns() + 2_000_000, Ordering::Relaxed);
+        sched().timer_round = stale_round;
+        let parked: Vec<u64> = (0..park)
+            .map(|_| msrt_task_spawn(yield_then_park, null_mut(), 0, 0))
+            .collect();
+        let spin: Vec<u64> = (0..spinners)
+            .map(|i| {
+                msrt_task_spawn(
+                    spinner,
+                    core::ptr::without_provenance_mut(1 - i.min(1)),
+                    0,
+                    0,
+                )
+            })
+            .collect();
+        let waiter = msrt_task_spawn(timer_waiter, null_mut(), 0, 0);
+        assert_eq!(msrt_task_join(waiter, null_mut()), 0);
+        for h in spin {
+            assert_eq!(msrt_task_join(h, null_mut()), 0);
+        }
+        for h in parked {
+            msrt_task_cancel(h);
+        }
+        LATE_BY.load(Ordering::Relaxed)
+    }
+}
+
+/// 64 tasks that keep yielding cannot starve a due timer: it runs within about one round.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn a_due_timer_fires_within_a_round_of_busy_tasks() {
+    let _g = lock();
+    teardown();
+    // SAFETY: tests hold the global lock.
+    let late = unsafe { late_by_yields(64, 0, 0) };
+    teardown();
+    assert!(late <= 3 * 64, "{late} yields after the timer was due");
+}
+
+/// A round never outlasts the queue: a count left over from a long queue (here a million tasks
+/// at the last check) does not delay a timer once only two tasks are ready.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn a_round_ends_early_when_tasks_block() {
+    let _g = lock();
+    teardown();
+    // SAFETY: tests hold the global lock.
+    let late = unsafe { late_by_yields(2, 62, 1_000_000) };
+    teardown();
+    assert!(late <= 10, "{late} yields after the timer was due");
+}
+
+/// A deadline already in the past times out at once.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn a_wait_until_a_past_time_times_out_at_once() {
+    let _g = lock();
+    teardown();
+    // SAFETY: tests hold the global lock.
+    unsafe {
+        let began = std::time::Instant::now();
+        assert_eq!(msrt_task_wait_fd_at(-1, 0, 1), WAIT_TIMEOUT);
+        assert!(began.elapsed() < std::time::Duration::from_millis(500));
+    }
+    teardown();
+}
+
+/// A read limit still ends a wait that has no deadline of its own.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn a_read_limit_caps_a_wait_without_a_deadline() {
+    let _g = lock();
+    teardown();
+    // SAFETY: tests hold the global lock.
+    unsafe {
+        let previous = msrt_task_read_limit(5_000_000);
+        let began = std::time::Instant::now();
+        assert_eq!(msrt_task_wait_fd_at(-1, 0, -1), WAIT_TIMEOUT);
+        assert!(began.elapsed() < std::time::Duration::from_secs(5));
+        msrt_task_read_limit_restore(previous);
     }
     teardown();
 }

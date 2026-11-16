@@ -132,7 +132,9 @@ fn Optional[T].map[U](transform: fn(T) U) U?: ...
 fn Optional[T].and_then[U](transform: fn(T) U?) U?: ...
 
 // Returns the payload, or calls create once and returns its value only when absent.
-fn Optional[T].get_or_else(create: fn() T) T: ...
+fn Optional[T].get_or_else(create: fn() T) T:
+	if self.is_none(): return create()
+	return self.get()
 
 // Calls create once only when absent, returning its Optional unchanged.
 fn Optional[T].or_else(create: fn() T?) T?: ...
@@ -143,7 +145,9 @@ fn Optional[T].or_else(create: fn() T?) T?: ...
 fn Optional[T].ok_or[E = Error](cause: E?) T!E: ...
 
 // Constructs an error once only for none; present payloads remain unchanged.
-fn Optional[T].ok_or_else[E](create: fn() E) T!E: ...
+fn Optional[T].ok_or_else[E](create: fn() E) T!E:
+	if self.is_none(): return error(create())
+	return ok(self.get())
 
 // Holds either a successful value (`ok`) or an expected failure (`error`).
 export enum Result[T, E]:
@@ -179,7 +183,9 @@ fn Result[T, E].error() E?: ...
 
 // Returns the successful payload, or calls create once with the original error and
 // returns its value.
-fn Result[T, E].get_or_else(create: fn(E) T) T: ...
+fn Result[T, E].get_or_else(create: fn(E) T) T:
+	if self.is_error(): return create(self.err())
+	return self.get()
 
 // Calls create once with the original error only when this is an error, returning
 // its Result.
@@ -195,7 +201,9 @@ fn Result[T, E].map[U](transform: fn(T) U) U!E: ...
 fn Result[T, E].and_then[U](transform: fn(T) U!E) U!E: ...
 
 // Returns some with the original success payload, or none for an error.
-fn Result[T, E].to_optional() T?: ...
+fn Result[T, E].to_optional() T?:
+	if self.is_error(): return none
+	return self.get()
 
 // Equality and hashing are ordinary operation interfaces. Built-in data retains
 // its value semantics; an explicit implementation selects domain identity.

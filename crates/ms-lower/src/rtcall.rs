@@ -172,6 +172,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_shield_enter" => R::ShieldEnter,
         "msrt_shield_exit" => R::ShieldExit,
         "msrt_string_split_view"
+        | "msrt_string_split_first"
         | "msrt_map_keys_view"
         | "msrt_map_values_view"
         | "msrt_list_slice_view" => R::ViewResult,
