@@ -22,4 +22,7 @@ test "string order agrees across inline, static and heap forms":
 	expect_true("xa" < pad(40))?
 	expect_false(pad(40) < "xa")?
 	expect_true("é" > "z")?
-	expect_equal(["pear", "fig", "apple", pad(18), "fi"].sorted(), ["apple", "fi", "fig", "pear", pad(18)])?
+	expect_equal(
+		["pear", "fig", "apple", pad(18), "fi"].sorted(),
+		["apple", "fi", "fig", "pear", pad(18)],
+	)?
