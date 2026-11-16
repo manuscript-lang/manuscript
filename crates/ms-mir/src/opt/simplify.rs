@@ -104,11 +104,17 @@ fn apply_subst(f: &mut Func, subst: &ValueMap<Value>) {
 /// An `opt.some` whose only use is its drop never needed the box: drop the payload instead.
 fn dropped_somes(f: &mut Func) -> bool {
     let mut uses: ValueMap<u32> = ValueMap::new();
+    let mut dropped = ValueSet::new();
     for b in &f.blocks {
         for i in &b.insts {
             for a in &i.args {
                 let n = uses.get(a).copied().unwrap_or(0);
                 uses.insert(*a, n + 1);
+            }
+            if i.op == Op::Drop
+                && let Some(a) = i.args.first()
+            {
+                dropped.insert(*a);
             }
         }
         b.term.for_each_use(|v| {
@@ -116,11 +122,13 @@ fn dropped_somes(f: &mut Func) -> bool {
             uses.insert(v, n + 2);
         });
     }
+    // Boxes used once, by a drop, with the payload they hold.
     let mut payload: ValueMap<Value> = ValueMap::new();
     for b in &f.blocks {
         for i in &b.insts {
             if let (Op::OptSome, Some(r), [p]) = (i.op, i.res, i.args.as_slice())
                 && uses.get(&r).copied() == Some(1)
+                && dropped.contains(&r)
             {
                 payload.insert(r, *p);
             }
@@ -129,18 +137,19 @@ fn dropped_somes(f: &mut Func) -> bool {
     if payload.is_empty() {
         return false;
     }
-    let mut changed = false;
     for b in &mut f.blocks {
         for i in &mut b.insts {
             if i.op == Op::Drop
                 && let Some(p) = i.args.first().and_then(|a| payload.get(a)).copied()
             {
                 i.args[0] = p;
-                changed = true;
             }
         }
+        // The box is gone: its payload is dropped where the box was.
+        b.insts
+            .retain(|i| !(i.op == Op::OptSome && i.res.is_some_and(|r| payload.contains_key(&r))));
     }
-    changed
+    true
 }
 
 /// A clone of an `opt.none` that is only dropped owns nothing: the clone and its drops are
