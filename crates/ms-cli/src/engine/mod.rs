@@ -416,6 +416,7 @@ pub(crate) fn compile_target<L: Lower>(
             .lower(program, &entry)
             .map(|module| (module, Vec::new()))
     };
+    let roots = checked.module_roots();
     match lowered {
         Ok((module, names)) => Ok(Compiled {
             module,
@@ -427,7 +428,7 @@ pub(crate) fn compile_target<L: Lower>(
             sources: program
                 .modules
                 .iter()
-                .map(|m| Path::new(&checked.source_root).join(syms.str(m.file)))
+                .map(|m| std::path::PathBuf::from(roots.path(syms.str(m.file))))
                 .filter(|p| p.is_file())
                 .chain(
                     checked

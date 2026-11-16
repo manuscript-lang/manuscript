@@ -16,6 +16,35 @@ pub fn is_package_module(package_roots: &[(String, String)], file: &str) -> bool
         .any(|(prefix, _)| file.starts_with(prefix.as_str()))
 }
 
+/// Resolves a logical module name to its file: a package or path-dependency module
+/// (`@util/greet.ms`) to the directory it lives in, anything else below the project root.
+#[derive(Clone, Debug, Default)]
+pub struct ModuleRoots {
+    root: String,
+    packages: Vec<(String, String)>,
+}
+
+impl ModuleRoots {
+    pub fn new(root: String, packages: Vec<(String, String)>) -> ModuleRoots {
+        ModuleRoots { root, packages }
+    }
+
+    pub fn path(&self, file: &str) -> String {
+        if crate::project::pathops::is_abs(file) {
+            return file.to_string();
+        }
+        if let Some((prefix, root)) = self
+            .packages
+            .iter()
+            .filter(|(prefix, _)| file.starts_with(prefix.as_str()))
+            .max_by_key(|(prefix, _)| prefix.len())
+        {
+            return crate::project::pathops::join(&[root, &file[prefix.len()..]]);
+        }
+        crate::project::pathops::join(&[&self.root, file])
+    }
+}
+
 /// A checked program and the diagnostics that stop it from being lowered.
 pub struct Checked {
     pub source_root: String,
@@ -29,6 +58,13 @@ pub struct Checked {
     pub diagnostics: Vec<Diagnostic>,
     /// Links and embedded files the load depended on; watch mode follows them.
     pub inputs: Vec<String>,
+}
+
+impl Checked {
+    /// Where this program's logical module names live on disk.
+    pub fn module_roots(&self) -> ModuleRoots {
+        ModuleRoots::new(self.source_root.clone(), self.package_roots.clone())
+    }
 }
 
 impl Checked {

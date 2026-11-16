@@ -16,7 +16,8 @@ pub mod project;
 pub mod sha256;
 
 pub use compile::{
-    CheckRequest, Checked, check_graph, check_graph_at, check_graph_in, is_package_module,
+    CheckRequest, Checked, ModuleRoots, check_graph, check_graph_at, check_graph_in,
+    is_package_module,
 };
 pub use load::{EditorOptions, Graph, LoadOptions, load_editor_file, load_file, load_files};
 

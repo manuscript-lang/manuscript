@@ -97,30 +97,7 @@ pub struct Analysis {
     pub(crate) lints: OnceCell<Vec<LintFinding>>,
 }
 
-/// Resolves a logical module name to its file: a package or path-dependency module
-/// (`@util/greet.ms`) to the directory it lives in, anything else below the project root.
-#[derive(Clone, Debug, Default)]
-pub struct ModuleRoots {
-    root: String,
-    packages: Vec<(String, String)>,
-}
-
-impl ModuleRoots {
-    pub fn path(&self, file: &str) -> String {
-        if ms_driver::project::pathops::is_abs(file) {
-            return file.to_string();
-        }
-        if let Some((prefix, root)) = self
-            .packages
-            .iter()
-            .filter(|(prefix, _)| file.starts_with(prefix.as_str()))
-            .max_by_key(|(prefix, _)| prefix.len())
-        {
-            return ms_driver::project::pathops::join(&[root, &file[prefix.len()..]]);
-        }
-        ms_driver::project::pathops::join(&[&self.root, file])
-    }
-}
+pub use ms_driver::ModuleRoots;
 
 impl Analysis {
     /// The occurrence index, built once per analysis; empty without a program.
@@ -179,10 +156,7 @@ impl Analysis {
 
     /// Where logical module names resolve on disk: the project directory and each package's.
     pub fn module_roots(&self) -> ModuleRoots {
-        ModuleRoots {
-            root: self.root().to_string(),
-            packages: self.package_roots.clone(),
-        }
+        ModuleRoots::new(self.root().to_string(), self.package_roots.clone())
     }
 
     /// The URI of a module's source.

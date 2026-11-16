@@ -393,3 +393,29 @@ fn a_member_diagnostic_keeps_the_logical_module_name_in_the_terminal_report() {
         "{text}"
     );
 }
+
+#[test]
+fn a_rebuild_notices_an_edit_in_a_path_dependency_member() {
+    let root = scratch("workspace-rebuild");
+    let cache = root.join("cache");
+    workspace(&root, "\"@util\" = { path = \"../libs/util\" }\n");
+    let app = root.join("app");
+    let program = app.join(format!("program{}", std::env::consts::EXE_SUFFIX));
+    let build = |expected: &str| {
+        let built = ms(
+            &app,
+            &cache,
+            &["build", "ms.toml", "-o", program.to_str().unwrap()],
+        );
+        assert!(built.status.success(), "{}", err(&built));
+        let ran = Command::new(&program).output().unwrap();
+        assert_eq!(out(&ran).trim(), expected);
+    };
+    build("hello workspace");
+    file(
+        &root,
+        "libs/util/src/greet.ms",
+        "export fn greet(name: String) String:\n    return f\"goodbye {name}\"\n",
+    );
+    build("goodbye workspace");
+}
