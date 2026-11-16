@@ -1,5 +1,7 @@
 # Replace periodic looks with kernel timers
 
+**Status: not adopted** (PR 4238 closed unmerged, 2026-11-16; Chinmay kept the periodic look). Kept as the record of what was measured; see the wiki page on connection stealing, "Rejected, do not retry".
+
 ## Summary
 
 - Problem: the HTTP server moves connections off a held-up thread by a watcher that wakes every 100 µs to 2 ms to look, and every 10 ms to rebalance. The owner dislikes timed looks: they burn CPU when nothing happens (about 6% of a core under load), miss what happens between looks, and make the runtime hard to reason about.
