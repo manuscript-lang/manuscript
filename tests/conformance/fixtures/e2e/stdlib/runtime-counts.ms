@@ -1,4 +1,4 @@
-// conform: tags=stdlib,system,tier-stdlib
+// conform: tags=stdlib,testing,tier-stdlib
 // conform: phase=test
 import (
 	runtime_counts from "@std/os/system.ms",
