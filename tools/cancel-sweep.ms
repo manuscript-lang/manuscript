@@ -17,7 +17,7 @@ import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",
 	arguments, change_directory, working_directory from "@std/os/env.ms",
-	GlobOptions, glob, read_file, temporary from "@std/os/fs.ms",
+	GlobOptions, glob, read_file, temporary, write_file from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
 	system_info from "@std/os/system.ms",
 	seconds from "@std/time.ms",
@@ -31,6 +31,7 @@ type Counted:
 	parks: Int
 	heap: Int
 	live: Int
+	failed: Bool
 
 // The tests of one `ms test` run with the parks they made and the blocks left live:
 // each test prints RUN before it starts, then the runtime prints both counts as it
@@ -40,12 +41,15 @@ fn counted(text: String) List[Counted]:
 	var name = ""
 	var parks = 0
 	var heap = 0
+	var failed = false
 
 	for line in text.split("\n"):
 		if line.starts_with("RUN "):
 			name = line.slice(4, line.length()).get("")
 			parks = 0
 			heap = 0
+			failed = false
+		else if line.starts_with("FAIL "): failed = true
 		else if line.starts_with("ms-rt parks: "):
 			parks = line.slice(13, line.length()).get("").trim().parse_int().get(0)
 		else if line.starts_with("ms-rt rust heap at exit: blocks="):
@@ -61,6 +65,7 @@ fn counted(text: String) List[Counted]:
 					parks: parks,
 					heap: heap,
 					live: live,
+					failed: failed,
 				)
 			)
 
@@ -100,7 +105,13 @@ fn test_names(ms: String, file: String) List[String]:
 
 // Sweeps `files`: one line per cancelled run (`swept`), then one `leak:` report per run
 // that left live blocks.
-fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
+fn sweep(
+	ms: String,
+	root: String,
+	files: List[String],
+	most: Int,
+	report: Int,
+) List[String]:
 	var lines = List[String]()
 
 	for f in files:
@@ -139,7 +150,10 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 					var live = hit.live
 					var heap = hit.heap
 					var bad_live = not normal_live.contains(live)
-					var bad_heap = heap > ceiling
+
+					// A run the cancel made fail also holds the `report` blocks a fault
+					// leaves (measured once); that is the only allowance.
+					var bad_heap = heap > ceiling + (if hit.failed: report else: 0)
 					var tries = 0
 
 					while (bad_live or bad_heap) and tries < 2:
@@ -158,7 +172,7 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 							if not normal_live.contains(r.live): live = r.live
 							else: bad_live = false
 
-							if r.heap <= ceiling: bad_heap = false
+							if r.heap <= ceiling + (if r.failed: report else: 0): bad_heap = false
 							else if r.heap < heap: heap = r.heap
 
 						if not ran: break
@@ -201,6 +215,22 @@ fn main() Int:
 	var most = 64
 	if n := env("SWEEP_MAX_PARKS", "").parse_int(): most = n
 
+	// The Rust heap blocks a fault leaves at exit: a failing test ends with that many
+	// more than one that passes.
+	pass_file := f"{scratch.path()}/pass.ms"
+	fault_file := f"{scratch.path()}/fault.ms"
+	write_file(pass_file.clone(), "test \"p\":\n\tprint(\"ok\")\n", true).wait().get()
+	write_file(
+		fault_file.clone(),
+		"fn nothing() Int?:\n\treturn none\n\ntest \"f\":\n\tprint(f\"{nothing().get()}\")\n",
+		true,
+	).wait().get()
+
+	var report = 0
+	for a in test_run(ms.clone(), fault_file.clone(), "", 0):
+		for b in test_run(ms.clone(), pass_file.clone(), "", 0):
+			if a.heap > b.heap: report = a.heap - b.heap
+
 	var chunks = List[List[String]]()
 
 	for worker in 0..jobs:
@@ -219,6 +249,7 @@ fn main() Int:
 						root.clone(),
 						chunks[worker],
 						most,
+						report,
 					)
 				)
 			)

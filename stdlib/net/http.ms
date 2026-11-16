@@ -339,12 +339,12 @@ export type HttpResponse:
 	// The HTTP status code, which must be 200 through 599; other values are answered
 	// with a 500 error.
 	status: Int
-	// The response headers to send, empty by default; `Content-Length`,
-	// `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
-	headers: HttpHeaders = headers()
 	// The response body bytes, which must not exceed `max_response_bytes`; the server
 	// sets the content length.
 	body: Bytes
+	// The response headers to send, empty by default; `Content-Length`,
+	// `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
+	headers: HttpHeaders = headers()
 
 // The listener, handler, limits, TLS settings and admission count that every connection
 // of one `serve` call shares.

@@ -20,6 +20,12 @@ A cover pushed for a slot in one branch (the early-return exits of a `?` each ge
 
 A `var` local with no scope entry that is passed to a callee which parks and rewrites it (take, park, put back) was freed by nobody on a cancel: the callee treated the taken value as the caller's. `slot_owned_params` in the unwind pass now finds a slot parameter every caller fills from a local slot nothing else covers, and the callee covers what it takes (`tree.ms`).
 
+A move-out hole no longer hides the other values: while an owner has a field moved out (`hole_owners` names it), a call still registers every live value except that owner, so a slice held across the parking write in `FailingSink.write` is freed (`iotest-golden.ms`). A hole whose owner has no name (not a `type.get`/`alt.get` projection) still skips everything.
+
+A fault ends a task by a jump that skips Rust destructors, and `fault_vec` never returns, so its locals were never dropped: a run the cancel made fail ended with 12 to 14 extra Rust blocks (the frame list, the last fault record, the guard and cleanup buffers). `fault_vec` now drops the frames and the counting build releases the fault state at exit (`release_fault_state`), leaving one block; the sweep allows that measured difference (a probe test that faults against one that passes, `report` in `tools/cancel-sweep.ms`) for a run that fails, and nothing more.
+
+A native that raises a cancel (`ms_rt::glue::cancelled()`) jumps, so it must drop every Rust value its frame owns first, parameters included: `msstd_process_command_run` kept its argument and environment `Vec<&str>`, leaking 32 bytes whenever `run` was cancelled (`host.ms`).
+
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
 Found by the first sweep (baseline, not cancellation): `http-hardening.ms` "close cancels a handler parked on a request body" ends with one 16 B block even with no cancellation (a client read after the server closed the connection triggers it); the sweep compares against that baseline, and `make leak-check` owned the fix (#3083, covered by the MIR unwind pass).

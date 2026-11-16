@@ -93,8 +93,8 @@ pub fn run(m: &mut Module) -> Result<(), String> {
     let cancel = closes.then(|| runtime(m, CANCEL, &[Ty::INT], ExternRole::None));
     let shield = closes.then(|| {
         (
-            runtime(m, SHIELD_ENTER, &[], ExternRole::None),
-            runtime(m, SHIELD_EXIT, &[], ExternRole::None),
+            runtime(m, SHIELD_ENTER, &[], ExternRole::ShieldEnter),
+            runtime(m, SHIELD_EXIT, &[], ExternRole::ShieldExit),
         )
     });
     for fi in 0..m.funcs.len() {

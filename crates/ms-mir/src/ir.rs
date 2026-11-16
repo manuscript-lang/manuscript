@@ -294,7 +294,7 @@ pub enum Op {
     // Types and alternatives.
     TypeNew, TypeGet, TypeSet, TypeFill, AltNew, AltView, AltPlain, AltOwn, AltTag, AltGet, AltUnbox, AltTake, AltRelease, TypeRelease,
     // Lists.
-    ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
+    ListNew, ListLit, ListConst, ListConstView, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
     OptSome, OptView, OptViewAt, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
     // Strings.
@@ -986,6 +986,10 @@ pub enum ExternRole {
     TakesDying,
     /// Starts a task that can be cancelled.
     SpawnsTask,
+    /// Holds cancellation back until the matching [`ExternRole::ShieldExit`].
+    ShieldEnter,
+    /// Ends one [`ExternRole::ShieldEnter`].
+    ShieldExit,
 }
 
 impl ExternRole {
@@ -1012,6 +1016,8 @@ impl ExternRole {
         (ExternRole::TakesDying, "takes_dying"),
         (ExternRole::ViewResult, "view_result"),
         (ExternRole::SpawnsTask, "spawns_task"),
+        (ExternRole::ShieldEnter, "shield_enter"),
+        (ExternRole::ShieldExit, "shield_exit"),
     ];
 
     /// The textual attribute of this role.

@@ -270,6 +270,8 @@ struct Sched {
     fd_waiting: usize,
     /// Task switches since the last non-blocking descriptor poll.
     switches_since_poll: u32,
+    /// Switches left in the round that began at the last timer check (see `switch_away`).
+    timer_round: usize,
     epfd: i32,
     /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length.
     pool: Vec<(usize, usize)>,
@@ -332,6 +334,7 @@ crate::isolate_static! {
     fd_waiters: Vec::new(),
     fd_waiting: 0,
     switches_since_poll: 0,
+    timer_round: 0,
     epfd: -1,
     pool: Vec::new(),
     pool_clean: 0,

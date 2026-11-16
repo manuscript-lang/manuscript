@@ -1,10 +1,10 @@
-//! `filter` and `map` chains over lists of numbers run as one loop.
+//! `filter` and `map` chains that end in numbers run as one loop.
 //!
 //! `xs.filter(f).map(g).sum()` built a list for each stage: an allocation, a push per element
 //! and a second pass to read it back. When every callback is a lambda whose body only reads
-//! (operators, names, fields, indexing; no call, so no effect other than a possible fault) and
-//! every element in the chain is a number or a `Bool`, the stages instead run per element in one
-//! loop and only the last result is built. Callbacks run per element rather than per stage; with
+//! (operators, names, fields, indexing; no call, so no effect other than a possible fault),
+//! every stage reads its element in place and the chain ends in numbers, the stages instead run
+//! per element in one loop and only the last result is built. Callbacks run per element rather than per stage; with
 //! no effects the only visible difference is which fault is reported when two stages would
 //! both fault.
 
@@ -48,6 +48,7 @@ fn simple_lambda(l: &Lambda) -> bool {
 fn reading(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Name(_) => true,
+        ExprKind::Text(parts) => parts.iter().all(|p| matches!(p, TextPart::Lit(_))),
         ExprKind::Member { left, .. } => reading(left),
         ExprKind::Index { left, index } => reading(left) && reading(index),
         ExprKind::Unary { op, operand } => *op != UnaryOp::Try && reading(operand),
@@ -70,8 +71,7 @@ impl FnLower<'_> {
         }
     }
 
-    /// `e` as a `map` or `filter` stage: a lambda that only reads, over a list of numbers,
-    /// producing one.
+    /// `e` as a `map` or `filter` stage: a lambda that only reads the element in place.
     fn stage_of<'e>(&mut self, e: &'e Expr) -> Result<Option<Stage<'e>>, Error> {
         let Some(view) = self.hir.call(e) else {
             return Ok(None);
@@ -103,7 +103,14 @@ impl FnLower<'_> {
         let (Some(from), Some(to)) = (self.list_elem(rt), self.list_elem(ot)) else {
             return Ok(None);
         };
-        if !self.scalar(from) || !self.scalar(to) {
+        // A stage reads its element in place, so the source may hold records and strings: a
+        // `filter` passes the borrowed element on, a `map` must end in a number. Only the chain's
+        // last stage builds anything, and it builds numbers (checked in `fused_chain`).
+        let reads_in_place = match kind {
+            Kind::Filter => from == to,
+            Kind::Map => self.scalar(to),
+        };
+        if !reads_in_place {
             return Ok(None);
         }
         Ok(Some(Stage {
@@ -326,6 +333,9 @@ impl FnLower<'_> {
         let last = stages.last().expect("a stage");
         let out = self.emty(last.call)?;
         let elem = self.list_elem(out).expect("list result");
+        if !self.scalar(elem) {
+            return Ok(None);
+        }
         if sum && elem != MTy::INT && elem != MTy::FLOAT {
             return Ok(None);
         }

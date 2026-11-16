@@ -396,6 +396,7 @@ impl Module {
             | Op::Load
             | Op::StrLit
             | Op::BytesLit
+            | Op::ListConstView
             | Op::StrAscii
             | Op::OptView
             | Op::OptViewAt

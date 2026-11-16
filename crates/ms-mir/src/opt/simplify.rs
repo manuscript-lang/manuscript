@@ -54,10 +54,13 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         let mut c = false;
         c |= fold(f);
         c |= known_alts(m, f);
+        c |= dead_none_clones(f);
+        c |= dropped_somes(f);
         c |= known_ifaces(m, f);
         c |= known_lists(m, f);
         c |= phis(m, f);
         c |= roundtrips(f);
+        c |= shields(m, f);
         c |= put_takes(f);
         c |= branches(f);
         c |= cse(m, f);
@@ -96,6 +99,113 @@ fn apply_subst(f: &mut Func, subst: &ValueMap<Value>) {
     for n in &mut f.names {
         n.value = resolve(subst, n.value);
     }
+}
+
+/// An `opt.some` whose only use is its drop never needed the box: drop the payload instead.
+fn dropped_somes(f: &mut Func) -> bool {
+    let mut uses: ValueMap<u32> = ValueMap::new();
+    let mut dropped = ValueSet::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            for a in &i.args {
+                let n = uses.get(a).copied().unwrap_or(0);
+                uses.insert(*a, n + 1);
+            }
+            if i.op == Op::Drop
+                && let Some(a) = i.args.first()
+            {
+                dropped.insert(*a);
+            }
+        }
+        b.term.for_each_use(|v| {
+            let n = uses.get(&v).copied().unwrap_or(0);
+            uses.insert(v, n + 2);
+        });
+    }
+    // Boxes used once, by a drop, with the payload they hold.
+    let mut payload: ValueMap<Value> = ValueMap::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::OptSome, Some(r), [p]) = (i.op, i.res, i.args.as_slice())
+                && uses.get(&r).copied() == Some(1)
+                && dropped.contains(&r)
+            {
+                payload.insert(r, *p);
+            }
+        }
+    }
+    if payload.is_empty() {
+        return false;
+    }
+    for b in &mut f.blocks {
+        for i in &mut b.insts {
+            if i.op == Op::Drop
+                && let Some(p) = i.args.first().and_then(|a| payload.get(a)).copied()
+            {
+                i.args[0] = p;
+            }
+        }
+        // The box is gone: its payload is dropped where the box was.
+        b.insts
+            .retain(|i| !(i.op == Op::OptSome && i.res.is_some_and(|r| payload.contains_key(&r))));
+    }
+    true
+}
+
+/// A clone of an `opt.none` that is only dropped owns nothing: the clone and its drops are
+/// deleted. An emptied local holds `none` until it is stored to again, and the owned copy
+/// lowering takes of it and the scope-end drop otherwise call the optional's glue per pass.
+fn dead_none_clones(f: &mut Func) -> bool {
+    let mut none = ValueSet::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::OptNone, Some(r)) = (i.op, i.res) {
+                none.insert(r);
+            }
+        }
+    }
+    if none.is_empty() {
+        return false;
+    }
+    // Clones of `none` and whether every use of each is a drop.
+    let mut clones: ValueMap<bool> = ValueMap::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::Clone, Some(r), Some(a)) = (i.op, i.res, i.args.first())
+                && none.contains(a)
+            {
+                clones.insert(r, true);
+            }
+        }
+    }
+    if clones.is_empty() {
+        return false;
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            for (k, a) in i.args.iter().enumerate() {
+                if clones.contains_key(a) && !(i.op == Op::Drop && k == 0) {
+                    clones.insert(*a, false);
+                }
+            }
+        }
+        b.term.for_each_use(|v| {
+            if clones.contains_key(&v) {
+                clones.insert(v, false);
+            }
+        });
+    }
+    let mut changed = false;
+    for b in &mut f.blocks {
+        let before = b.insts.len();
+        b.insts.retain(|i| match (i.op, i.res, i.args.first()) {
+            (Op::Clone, Some(r), _) => clones.get(&r) != Some(&true),
+            (Op::Drop, _, Some(a)) => clones.get(a) != Some(&true),
+            _ => true,
+        });
+        changed |= b.insts.len() != before;
+    }
+    changed
 }
 
 /// Folds operations on an alternative built in the same function by `alt.new` with a case
@@ -1642,6 +1752,51 @@ fn roundtrips(f: &mut Func) -> bool {
                 !removed[k - 1]
             });
             changed = true;
+        }
+    }
+    changed
+}
+
+/// A shield pair around code that cannot reach a cancellation point shields nothing: the
+/// instructions between `shield_enter` and the next `shield_exit` of a block are plain
+/// operations and leaf runtime calls, so no stop request can arrive inside. Both calls go.
+/// An implicit close of a value whose close was inlined to nothing leaves exactly this pair.
+fn shields(m: &Module, f: &mut Func) -> bool {
+    let role = |inst: &Inst| match (inst.op, inst.imm) {
+        (Op::CallRt, Imm::Ext(e)) => m.externs[e.index()].role,
+        _ => ExternRole::None,
+    };
+    let quiet = |inst: &Inst| match (inst.op, inst.imm) {
+        (Op::Poll | Op::CallInd | Op::CallMethod | Op::Call, _) => false,
+        (Op::CallRt, Imm::Ext(e)) => {
+            let d = &m.externs[e.index()];
+            d.leaf || d.noreturn
+        }
+        _ => true,
+    };
+    let mut changed = false;
+    for b in &mut f.blocks {
+        let mut removed = vec![false; b.insts.len()];
+        let mut open: Option<usize> = None;
+        for i in 0..b.insts.len() {
+            match (role(&b.insts[i]), open) {
+                (ExternRole::ShieldEnter, _) => open = Some(i),
+                (ExternRole::ShieldExit, Some(at)) => {
+                    removed[at] = true;
+                    removed[i] = true;
+                    open = None;
+                    changed = true;
+                }
+                _ if open.is_some() && !quiet(&b.insts[i]) => open = None,
+                _ => {}
+            }
+        }
+        if removed.contains(&true) {
+            let mut k = 0;
+            b.insts.retain(|_| {
+                k += 1;
+                !removed[k - 1]
+            });
         }
     }
     changed
