@@ -663,6 +663,7 @@ impl<'m> Interp<'m> {
             | Op::PtrAdd
             | Op::PtrNull
             | Op::PtrLoadU
+            | Op::PtrStoreU
             | Op::ListAddr
             | Op::ListAddrU
             | Op::PtrField

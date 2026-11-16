@@ -6,7 +6,7 @@ use crate::ir::{FuncId, Module};
 use crate::layout::Layouts;
 use crate::types::{Native, Ty, TyKind};
 use ms_rt_abi::{
-    KIND_CUSTOM, KIND_LIST, KIND_MAP, KIND_POD, KIND_SET, KIND_SHARED, STR_INLINE,
+    KIND_CUSTOM, KIND_LIST, KIND_MAP, KIND_POD, KIND_SET, KIND_SHARED, STR_ASCII, STR_INLINE,
     STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_STATIC,
 };
 
@@ -113,8 +113,10 @@ pub enum StrLit {
 pub fn str_lit(s: &str) -> StrLit {
     let bytes = s.as_bytes();
     if bytes.len() > STR_INLINE_MAX {
+        // An ASCII literal carries the flag, so appending it keeps a flagged string flagged.
+        let ascii = if s.is_ascii() { STR_ASCII } else { 0 };
         return StrLit::Static {
-            tagged: (bytes.len() | STR_STATIC) as u64,
+            tagged: (bytes.len() | STR_STATIC | ascii) as u64,
         };
     }
     let bits = bytes
