@@ -456,7 +456,7 @@ impl Decoder {
         }
         if length > i64::MAX as u64 {
             return Err(DecodeError::Limit {
-                reply_close: false,
+                reply_close: true,
                 body: self.in_body,
             });
         }
@@ -545,7 +545,7 @@ impl Decoder {
             .checked_add(length)
             .filter(|w| *w <= i64::MAX as u64)
             .ok_or(DecodeError::Limit {
-                reply_close: false,
+                reply_close: true,
                 body: self.in_body,
             })?;
         if wire > self.limit {
@@ -1023,13 +1023,13 @@ mod tests {
                 body: true
             }
         );
-        // A 64-bit length with the top bit set is "read limit exceeded" without a close frame.
+        // A 64-bit length with the top bit set is "read limit exceeded", and the peer is sent close 1009.
         let mut d = Decoder::new(false, false, u64::MAX);
         d.push(&[0x82, 127, 0x80, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(
             d.poll().unwrap_err(),
             DecodeError::Limit {
-                reply_close: false,
+                reply_close: true,
                 body: false
             }
         );

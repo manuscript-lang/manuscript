@@ -344,8 +344,15 @@ pub fn accept(req: &Request<'_>, options: &ServerOptions<'_>) -> Result<Accepted
         return Err(Rejected::new(405, "websocket: upgrade method is not GET"));
     }
     if !token_list_contains(fields, "Sec-WebSocket-Version", "13") {
+        // RFC 6455 section 4.4: a version the server lacks is answered 426 with the versions it
+        // speaks (the rejection already carries `Sec-Websocket-Version: 13`); a missing header is 400.
+        let status = if values(fields, "Sec-WebSocket-Version").next().is_some() {
+            426
+        } else {
+            400
+        };
         return Err(Rejected::new(
-            400,
+            status,
             "websocket: 'Sec-WebSocket-Version' header must include 13",
         ));
     }
@@ -765,6 +772,13 @@ mod tests {
             r.message,
             "websocket: 'Sec-WebSocket-Version' header must include 13"
         );
+        let mut f = upgrade_fields(&[]);
+        for (n, v) in f.iter_mut() {
+            if n == "Sec-WebSocket-Version" {
+                *v = b"8".to_vec();
+            }
+        }
+        assert_eq!(reject(&f, "GET").status, 426);
         let f = upgrade_fields(&[("Origin", "http://evil")]);
         let r = reject(&f, "GET");
         assert_eq!(r.status, 403);
