@@ -300,32 +300,19 @@ unsafe fn take<I, O>(job: *mut Job<I, O>) -> Option<O> {
     job.output.take()
 }
 
-/// Runs `f(&input)` on a pool thread and parks the task until it finishes or `timeout_ns`
-/// passes (negative: no limit). `None` on timeout; a running job is then
-/// abandoned and its result dropped later. A stop request abandons the job and unwinds.
-///
-/// `f` must not call into the runtime, must not panic (shipped programs abort on a panic), and
-/// must not grow or free anything `input` owns through interior mutability, since `input` was
-/// allocated on the runtime thread. `input` is dropped on the calling thread.
-pub fn run<I: Send + Sync + 'static, O: Send + 'static>(
-    lane: Lane,
-    input: I,
-    f: fn(&I) -> O,
-    timeout_ns: i64,
-) -> Option<O> {
-    match try_run(lane, input, f, timeout_ns) {
-        Ok(output) => output,
-        Err(Cancelled) => crate::glue::cancelled(),
-    }
-}
-
 /// The task was cancelled while it waited.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Cancelled;
 
-/// Like [`run`], but a stop request returns `Err(Cancelled)` instead of unwinding, so the
-/// caller's frames return and drop their values; it must then end the call with the runtime's
-/// cancellation.
+/// Runs `f(&input)` on a pool thread and parks the task until it finishes or `timeout_ns`
+/// passes (negative: no limit). `Ok(None)` on timeout; a running job is then abandoned and its
+/// result dropped later. A stop request abandons the job and returns `Err(Cancelled)`, so the
+/// caller's frames return and drop their values; it must then end the call with
+/// `fault::cancel_return`.
+///
+/// `f` must not call into the runtime, must not panic (shipped programs abort on a panic), and
+/// must not grow or free anything `input` owns through interior mutability, since `input` was
+/// allocated on the runtime thread. `input` is dropped on the calling thread.
 pub fn try_run<I: Send + Sync + 'static, O: Send + 'static>(
     lane: Lane,
     input: I,
@@ -649,6 +636,15 @@ mod tests {
     }
 
     /// One test: the scheduler runs on one thread, and parks happen on the test thread.
+    fn run<I: Send + Sync + 'static, O: Send + 'static>(
+        lane: Lane,
+        input: I,
+        f: fn(&I) -> O,
+        timeout_ns: i64,
+    ) -> Option<O> {
+        try_run(lane, input, f, timeout_ns).expect("not cancelled")
+    }
+
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn the_pool_runs_caps_abandons_and_reaps() {
