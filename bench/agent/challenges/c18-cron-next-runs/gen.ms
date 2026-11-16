@@ -114,7 +114,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 	return out
 
 fn solve(s: String) String:
-	var lines = s.split("\n")
+	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 
 	var out = List[String]()
