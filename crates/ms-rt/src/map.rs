@@ -1557,7 +1557,7 @@ pub unsafe extern "C-unwind" fn msrt_map_values(
 /// `for k in m.keys()` over a map that outlives the loop unchanged: string keys come back as
 /// views of the map's own strings, so nothing is copied. Other keys are copied as by `keys`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf view_of=msrt_map_keys
 pub unsafe extern "C-unwind" fn msrt_map_keys_view(
     m: *const MapVal,
     kd: KeyDesc,
@@ -1571,7 +1571,7 @@ pub unsafe extern "C-unwind" fn msrt_map_keys_view(
 
 /// `for v in m.values()` over a map that outlives the loop unchanged (see [`msrt_map_keys_view`]).
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf view_of=msrt_map_values
 pub unsafe extern "C-unwind" fn msrt_map_values_view(
     m: *const MapVal,
     kd: KeyDesc,
