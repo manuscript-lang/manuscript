@@ -158,18 +158,16 @@ The 4.2 left, one each: the arrival stamp at parse; `late` after the handler (a 
 
 Findings: user time falls about 14%. What is left per item is one call for the `","`, one for the item, two integer renderings and a capacity lookup per call.
 
-## Results, 2026-11-16, watcher look interval, same 4 vCPU Linux VM
+## Results, 2026-11-16, watcher look interval
 
-"Before" is the watcher of `main` at ba092da9 (a look every 2 ms, every 100 µs for 0.1 s after a thread was held up 1 ms). "Now" is one look every millisecond. Alternated runs of 12 s after a 2 s warm-up, three rounds, ranges shown. CPU is the server's user plus system time in 10 ms ticks per run, so compare rows of one table only. Fixed intervals were swept first (100 µs, 250 µs, 500 µs, 1 ms; table in the [wiki](../../wiki/runtime/a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md)).
+The watcher looks every 2 ms and every 100 µs for 0.1 s after a thread was held up 1 ms; it sleeps after 20 looks with every thread resting (it was 100). Fixed intervals were swept against it (alternated runs of 12 s after a 2 s warm-up, three rounds, ranges; CPU is the server's user plus system time in 10 ms ticks per run, so compare rows of one table only; full table in the [wiki](../../wiki/runtime/a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md)):
 
-| Scenario | | CPU ticks | p50 | p90 | p99 | p99.9 |
-| --- | --- | --- | --- | --- | --- | --- |
-| Fast, 4000 req/s | before | 253 to 277 | 0.66 ms | 1.22 to 1.23 ms | 1.6 to 2.3 ms | 4.3 to 25 ms |
-| | now | 260 to 271 | 0.66 ms | 1.21 to 1.23 ms | 1.6 to 2.1 ms | 5.4 to 23 ms |
-| 5% burn 5 ms, 2000 req/s | before | 1103 to 1126 | 0.62 to 0.64 ms | 1.18 to 1.20 ms | 3.4 to 3.5 ms | 5.3 to 16 ms |
-| | now | 933 to 965 | 0.69 to 0.71 ms | 1.34 to 1.47 ms | 3.4 to 3.5 ms | 5.3 to 6.4 ms |
-| TLS, 4000 req/s | before | 299 to 313 | 0.66 ms | 1.23 to 1.26 ms | 1.6 to 1.9 ms | 4.0 to 7.8 ms |
-| | now | 300 to 313 | 0.66 to 0.67 ms | 1.23 to 1.25 ms | 1.7 to 2.1 ms | 6.3 to 21 ms |
-| Closed loop, 64 conns (earlier sweep) | before / now | 2967 to 3001 / 3005 to 3034 | | | | 131k to 143k / 145k to 153k req/s |
+| Look interval | Fast mix CPU | TLS CPU | Slow mix p50 / p90 / p99 |
+| --- | --- | --- | --- |
+| Two modes (kept) | 253 to 277 | 299 to 313 | 0.62 to 0.64 / 1.18 to 1.20 / 3.4 to 3.5 ms |
+| 100 µs | 373 to 385 | 407 to 445 | 0.61 / 1.18 / 1.7 to 3.6 ms |
+| 250 µs | 304 to 327 | 363 to 375 | 0.65 to 0.69 / 1.2 to 1.35 / 2.2 to 6.2 ms |
+| 500 µs | 280 to 292 | 313 to 326 | 0.65 to 0.67 / 1.23 to 1.25 / 2.5 to 3.3 ms |
+| 1 ms | 260 to 271 | 300 to 327 | 0.69 to 0.72 / 1.34 to 1.47 / 3.4 to 3.7 ms |
 
-Findings: the single interval costs what the slow mode cost and removes the +4% TLS CPU of the fast mode (373 to 445 ticks at 100 µs). Slow-mix CPU falls 14%, p99 and p99.9 hold, and p50 and p90 rise by about 0.07 and 0.15 ms because a ready request waits up to one look longer behind a held-up thread. Idle: a 4-thread server with six idle connections used 0.4 to 0.7 ms CPU and 22 voluntary switches in one second (one run of 20 looks after the sleep that ended the rest), against 102 switches and 2.5 to 2.9 ms before.
+Findings: a single interval cannot keep the slow-mix p50 and p90 and the CPU at once, so the two modes stay (Chinmay: keep the previous latencies). The idle burst is what changed: a sleep that ended a rest left 100 looks (102 voluntary switches in an idle second, 2.5 to 2.9 ms CPU); now 20 looks (about 22 switches, 0.4 to 0.7 ms).

@@ -19,17 +19,17 @@ Timer length, one alternated sweep: 100 µs costs more CPU (fast 3.3 to 3.5 s, s
 
 Found while doing it, true of the watcher design too: a connection timeout started by a task other than the reactor (the accept loop adopting a connection, a finished request) while the reactor is parked with no sweep scheduled was not seen until something else woke the reactor; Windows' 50 ms park cap hid it. `Reactor::start_timeout` kicks the reactor in that case.
 
-The watcher has one look interval, 1 ms, and sleeps after 20 looks with every thread resting (2026-11-16, three alternated rounds of 12 s, CPU in 10 ms ticks per run, earlier design = 100 µs for 0.1 s after a thread was held up, else 2 ms):
+The watcher keeps two modes (a look every 2 ms, every 100 µs for 0.1 s after a thread was held up 1 ms) and sleeps after 20 looks with every thread resting. Chinmay, 2026-11-16: keep the previous latencies, so one fixed interval is rejected. Sweep, three alternated rounds of 12 s, CPU in 10 ms ticks per run:
 
 | Interval | Fast mix CPU | TLS CPU | Slow mix p50 / p90 / p99 | Closed loop |
 | --- | --- | --- | --- | --- |
-| Earlier fast and slow modes | 253 to 277 | 299 to 313 | 0.62 to 0.64 / 1.18 to 1.20 / 3.4 to 3.5 ms | 131k to 143k |
+| Two modes (kept) | 253 to 277 | 299 to 313 | 0.62 to 0.64 / 1.18 to 1.20 / 3.4 to 3.5 ms | 131k to 143k |
 | 100 µs | 373 to 385 | 407 to 445 | 0.61 / 1.18 / 1.7 to 3.6 ms | 130k to 140k |
 | 250 µs | 304 to 327 | 363 to 375 | 0.65 to 0.69 / 1.2 to 1.35 / 2.2 to 6.2 ms | 135k to 143k |
 | 500 µs | 280 to 292 | 313 to 326 | 0.65 to 0.67 / 1.23 to 1.25 / 2.5 to 3.3 ms | not run |
-| 1 ms (chosen) | 260 to 271 | 300 to 327 | 0.69 to 0.72 / 1.34 to 1.47 / 3.4 to 3.7 ms | 145k to 153k |
+| 1 ms (rejected: p50 and p90) | 260 to 271 | 300 to 327 | 0.69 to 0.72 / 1.34 to 1.47 / 3.4 to 3.7 ms | 145k to 153k |
 
-CPU scales with the look count, so 1 ms costs what the old slow mode cost; its price is a slow-mix p50 about 0.07 ms and p90 about 0.15 ms above the fast mode, because a ready request waits up to a look longer behind a held-up thread. The p99 and p99.9 are the same. A thread that rests and wakes again between looks must not count as held up: judge "held up" from a thread awake for a whole interval (`watch::stirred`), since a thread that only just woke also has an old turn. Each wake of a sleeping watcher is a system call on the thread that leaves its rest, which is why it sleeps only after a run of quiet looks.
+CPU scales with the look count; 1 ms costs what the two modes cost, but its slow-mix p50 is about 0.07 ms and p90 about 0.15 ms above the two modes (a ready request waits up to a look longer behind a held-up thread), with p99 and p99.9 the same, and the fixed 100 µs and 250 µs forms cost 20 to 45% more CPU. A thread awake for a whole interval is the test for "held up" (`watch::stirred`): a thread that only just woke also has an old turn. Each wake of a sleeping watcher is a system call on the thread that leaves its rest, which is why it sleeps only after a run of quiet looks (20 looks, 40 ms; 100 looks left a 200 ms burst of 100 wakes after every sleep that ended a rest).
 
 Apply when: changing the HTTP reactor loop, connection ownership, or the scheduler's idle states.
 Evidence: [steal.rs](../../crates/ms-std-net/src/http/server/steal.rs), [watch.rs](../../crates/ms-rt/src/watch.rs), [proposal](../../proposals/http-connection-stealing.md), [results](../../bench/perf/http-tail/README.md).

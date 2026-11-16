@@ -1,12 +1,12 @@
 // conform: tags=stdlib-http,stdlib-net,tier-io
 // conform: phase=run
 // conform: timeout=30
-// A server on four threads with idle keep-alive connections does nothing while nobody sends
-// a request: over a second it uses almost no CPU and its threads are woken a few times. The
-// watcher looks every millisecond only while a thread is busy and for 20 looks after the last
-// one rests, and the sleep that ends the rest wakes it once, so the window holds one such run
-// (about 20 wakes); a watcher that looked all the time would show 1000 (the counters are the
-// process's own, so any thread waking on a clock shows).
+// A server on four threads with idle keep-alive connections does nothing while nobody
+// sends a request: over a second it uses almost no CPU and its threads are woken a few
+// times. The watcher looks every 2 ms only while a thread is busy and for 20 looks
+// after the last one rests, and the sleep that ends the rest wakes it once, so the
+// window holds one such run (about 20 wakes); a watcher that looked all the time would
+// show 500 (the counters are the process's own, so any thread waking on a clock shows).
 import (
 	stdout from "@std/io/io.ms",
 	HttpRequest,
@@ -16,7 +16,7 @@ import (
 	headers from "@std/net/http.ms",
 	Connection, connect, serve from "@std/net/net.ms",
 	resource_usage from "@std/os/process.ms",
-	seconds, sleep, nanoseconds from "@std/time.ms",
+	nanoseconds, seconds, sleep from "@std/time.ms",
 
 	recv, send from "./support/conn.ms",
 )
@@ -26,6 +26,7 @@ fn handle(request: HttpRequest) HttpResponse:
 
 fn warm(var conn: Connection) Bool!:
 	send(var conn, "GET /warm HTTP/1.1\r\nHost: t\r\n\r\n")?
+
 	var text = ""
 
 	while not text.ends_with("done\n"):
@@ -38,8 +39,8 @@ fn warm(var conn: Connection) Bool!:
 
 	return ok(text.starts_with("HTTP/1.1 200 OK"))
 
-// Context switches are not counted on every platform (they read zero there), so the bound on
-// them can only be met; the CPU bound is the same everywhere.
+// Context switches are not counted on every platform (they read zero there), so the
+// bound on them can only be met; the CPU bound is the same everywhere.
 fn run() Bool!:
 	var server = serve(
 		address: "127.0.0.1:0",
@@ -60,14 +61,19 @@ fn run() Bool!:
 		and warm(var e)?
 		and warm(var f)?
 	)
+
 	// Let the threads come to rest after the last answer.
 	sleep(seconds(1)).wait()?
+
 	before := resource_usage()?
 	sleep(seconds(1)).wait()?
+
 	after := resource_usage()?
 	cpu := (
-		after.user_microseconds - before.user_microseconds
-		+ after.system_microseconds - before.system_microseconds
+		after.user_microseconds
+		- before.user_microseconds
+		+ after.system_microseconds
+		- before.system_microseconds
 	)
 	switches := after.voluntary_switches - before.voluntary_switches
 	a.close().get(none)
@@ -77,7 +83,11 @@ fn run() Bool!:
 	e.close().get(none)
 	f.close().get(none)
 	server.close().get(none)
-	return ok(warmed and cpu < 3000 and switches < 40)
+
+	asleep := warmed and cpu < 3000 and switches < 40
+	if not asleep:
+		_out := stdout().write(f"warmed {warmed}, cpu {cpu} us, switches {switches}\n")
+	return ok(asleep)
 
 export fn main() Int:
 	asleep := run().get(false)

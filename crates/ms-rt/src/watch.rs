@@ -1,31 +1,31 @@
 //! The watcher: one thread that looks at the scheduler threads from outside.
 //!
 //! A task is not interrupted, so a thread that runs one task for a long time does none of its
-//! other duties meanwhile. The watcher looks at [`INTERVAL`] and runs the hooks other crates
-//! register ([`add_hook`]), which do for a held-up thread what cannot wait: the HTTP server's
-//! hook sends a resting thread to take the waiting connections of a held-up one. It reads
-//! atomics only and never touches a task.
+//! other duties meanwhile. The watcher ticks while any thread is busy and runs the hooks other
+//! crates register ([`add_hook`]), which do for a held-up thread what cannot wait: the HTTP
+//! server's hook sends a resting thread to take the waiting connections of a held-up one.
 //!
-//! One interval, because a handler that computes for five milliseconds is found within a
-//! millisecond, and each halving of the interval adds about as much CPU again (measured: 4 threads
-//! at 4000 requests per second use 5% more CPU at 500 µs and 25% more at 250 µs than at 1 ms,
-//! `bench/perf/http-tail`). It sleeps when every thread has rested for [`QUIET_LOOKS`] looks, so
-//! a server nobody is sending to wakes nothing; a thread that leaves its rest wakes it
-//! ([`stir`]).
+//! It looks every two milliseconds, or every [`TICK`] for a tenth of a second after a hook asked
+//! for that, and sleeps when every thread has rested for [`QUIET_LOOKS`] looks; a thread that
+//! leaves its rest wakes it ([`stir`]). It reads atomics only and never touches a task.
 
 use crate::sched::{self, MAX_THREADS};
 use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
-/// Time between looks.
-pub const INTERVAL: Duration = Duration::from_millis(1);
-/// Looks with every thread resting after which the watcher sleeps until a thread stirs: long
-/// enough that a server with steady traffic does not wake it (a wake is a system call on the
-/// thread that leaves its rest), short enough that a quiet one wakes nothing for long.
+/// How often the watcher looks while a hook wants it to look often, and the unit of its clock.
+pub const TICK: Duration = Duration::from_micros(100);
+/// Ticks between looks otherwise (two milliseconds).
+const SLOW: u64 = 20;
+/// Ticks it keeps looking often after a hook last asked for it (a tenth of a second).
+const OFTEN_FOR: u64 = 1_000;
+/// Looks with every thread resting after which it sleeps until a thread stirs: long enough that
+/// steady traffic does not wake it (a wake is a system call on the thread that leaves its rest),
+/// short enough that a quiet server wakes nothing for long (40 ms).
 const QUIET_LOOKS: u32 = 20;
 
-/// The watcher's clock at one look, counted in looks: `now`, and `last` at the look before. A thread
+/// The watcher's clock at one look, in ticks: `now`, and `last` at the look before. A thread
 /// that copies [`epoch`] at each turn of a loop has not turned since before the last look when
 /// its copy is below `last`, so for a whole interval between looks.
 #[derive(Clone, Copy)]
@@ -35,17 +35,17 @@ pub struct Look {
 }
 
 /// Called at every look with the clock and the resting threads (bit `i` for scheduler thread
-/// `i`, see `sched::resting_mask`).
-pub type Hook = fn(Look, u64);
+/// `i`, see `sched::resting_mask`). Answers whether the watcher should look often for a while.
+pub type Hook = fn(Look, u64) -> bool;
 
 static EPOCH: AtomicU64 = AtomicU64::new(0);
 static ASLEEP: AtomicBool = AtomicBool::new(false);
-/// For each scheduler thread, the look at which it last left its rest.
+/// For each scheduler thread, the tick at which it last left its rest.
 static STIRRED: [AtomicU64; MAX_THREADS] = [const { AtomicU64::new(0) }; MAX_THREADS];
 static HOOKS: Mutex<Vec<Hook>> = Mutex::new(Vec::new());
 static WATCHER: OnceLock<std::thread::Thread> = OnceLock::new();
 
-/// The watcher's clock as of its last look, in looks (see [`Look`]).
+/// The watcher's clock as of its last look, in ticks (see [`Look`]).
 #[inline]
 pub fn epoch() -> u64 {
     EPOCH.load(Ordering::Relaxed)
@@ -103,23 +103,26 @@ fn wake() {
 }
 
 fn run() {
-    let mut quiet = 0u32;
+    let (mut quiet, mut often_until) = (0u32, 0u64);
     loop {
         if ASLEEP.load(Ordering::Acquire) {
             std::thread::park();
             continue;
         }
         let last = epoch();
-        std::thread::sleep(INTERVAL);
+        let step = if last < often_until { 1 } else { SLOW };
+        std::thread::sleep(TICK * step as u32);
         let look = Look {
-            now: last + 1,
+            now: last + step,
             last,
         };
         EPOCH.store(look.now, Ordering::Relaxed);
         let resting = sched::resting_mask();
         // Hooks only read and post; none registers a hook, so the lock is not re-entered.
         for hook in HOOKS.lock().unwrap_or_else(|e| e.into_inner()).iter() {
-            hook(look, resting);
+            if hook(look, resting) {
+                often_until = look.now + OFTEN_FOR;
+            }
         }
         quiet = if all_rest(resting) { quiet + 1 } else { 0 };
         if quiet >= QUIET_LOOKS {
@@ -147,8 +150,9 @@ mod tests {
 
     static CALLS: AtomicU32 = AtomicU32::new(0);
 
-    fn count(_: Look, _: u64) {
+    fn count(_: Look, _: u64) -> bool {
         CALLS.fetch_add(1, Ordering::Relaxed);
+        false
     }
 
     #[test]
