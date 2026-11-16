@@ -6,21 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 // Recursive, so that no function is folded into another before code generation.
-const PROGRAM: &str = "fn a(x: Int) Int:
-    if x <= 0: return 1
-    return a(x - 1) + 2
-
-fn b(x: Int) Int:
-    if x <= 0: return 0
-    return b(x - 1) + x % 3
-
-fn c(x: Int) Int:
-    if x <= 0: return 3
-    return c(x - 1) + a(x) + b(x)
-
-export fn main() Int:
-    return c(10) % 100
-";
+const PROGRAM: &str = include_str!("code_cache/main.ms");
 
 fn build(root: &Path, cache: bool) -> (String, Vec<u8>) {
     // The whole-program cache of other versions lives beside the code cache; start from nothing.
