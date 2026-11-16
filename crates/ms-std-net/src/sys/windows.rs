@@ -290,8 +290,6 @@ impl Default for Poller {
     }
 }
 
-/// Longest the reactor task parks before it looks again (timeouts are swept then).
-const PARK_NS: i64 = 50_000_000;
 const STOP_TOKEN: mio::Token = mio::Token(usize::MAX);
 
 impl Poller {
@@ -458,15 +456,12 @@ impl Poller {
         count
     }
 
-    /// Parks the running task until something may be ready (or 50 ms pass); returns
+    /// Parks the running task until something may be ready or `timeout_ns` passes (negative: no limit); returns
     /// the runtime's ready bits.
     pub fn park(&self, timeout_ns: i64) -> u32 {
-        let timeout = if timeout_ns < 0 {
-            PARK_NS
-        } else {
-            timeout_ns.min(PARK_NS)
-        };
-        rt::wait_fd(self.wake.sock(), 1, timeout)
+        // The caller's deadline is the earliest timeout it must sweep; with none the park lasts
+        // until the wake socket is signalled (a signal sent earlier leaves it readable).
+        rt::wait_fd(self.wake.sock(), 1, timeout_ns)
     }
 }
 
