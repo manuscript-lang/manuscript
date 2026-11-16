@@ -37,7 +37,7 @@ use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::fault::{Fault, RecordFile, is_fault_status};
 use crate::json::Json;
-use crate::process::{Stops, wait_supervised};
+use crate::process::{Doorbell, Drained, Stops, Wake, wait_supervised};
 use crate::profile::base64;
 use crate::util::emit_json;
 use ms_rt_abi::record::FaultKind;
@@ -767,6 +767,15 @@ impl Runner<'_> {
             .env("MS_TEST_RESULTS", &records_path)
             .args(&self.options.program)
             .current_dir(self.working);
+        // The harness rings this pipe after each record, so the wait below wakes on records.
+        let bell = match Doorbell::new() {
+            Ok(bell) => bell,
+            Err(error) => {
+                run.ended = format!("cannot create the wake pipe: {error}");
+                return run;
+            }
+        };
+        command.env("MS_TEST_WAKE", bell.rings_as());
         if let Some(timeout) = self.options.timeout {
             command.env("MS_TEST_TIMEOUT_NS", timeout.as_nanos().to_string());
         }
@@ -791,16 +800,21 @@ impl Runner<'_> {
                 return run;
             }
         };
-        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
+        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
+        bell.listen(stops.wake());
         let mut printed: Vec<u8> = Vec::new();
         let limit = self.options.timeout.map(|t| t + Duration::from_secs(1));
         let mut reader = RecordReader::default();
+        // A record wakes the wait (the doorbell), and the next look is due when the oldest
+        // running test reaches its limit.
         let waited = wait_supervised(&mut child, &stops, None, &mut || {
             while let Ok(chunk) = stdout.try_recv() {
                 printed.extend_from_slice(&chunk);
             }
             reader.read(&records_path, &mut run);
-            let Some(limit) = limit else { return false };
+            let Some(limit) = limit else {
+                return Drained::default();
+            };
             let late: Vec<usize> = reader
                 .running
                 .iter()
@@ -808,7 +822,16 @@ impl Runner<'_> {
                 .map(|(index, _)| *index)
                 .collect();
             run.timed_out.extend(&late);
-            !late.is_empty()
+            Drained {
+                kill: !late.is_empty(),
+                // Tests already stopped are past due; only the others set the next look.
+                next: reader
+                    .running
+                    .iter()
+                    .filter(|(index, _)| !run.timed_out.contains(index))
+                    .map(|(_, (_, began))| *began + limit)
+                    .min(),
+            }
         });
         run.ended = match &waited {
             Ok(_) if !run.timed_out.is_empty() => {
@@ -865,8 +888,8 @@ impl Runner<'_> {
             Ok(child) => child,
             Err(error) => return Ran::Failed(error.to_string()),
         };
-        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
-        let stderr = pipe_reader(child.stderr.take().expect("piped stderr"));
+        let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
+        let stderr = pipe_reader(child.stderr.take().expect("piped stderr"), stops.wake());
         let mut errors: Vec<u8> = Vec::new();
         let bench = self.options.bench;
         let waited = wait_supervised(&mut child, &stops, self.options.timeout, &mut || {
@@ -880,7 +903,7 @@ impl Runner<'_> {
             while let Ok(chunk) = stderr.try_recv() {
                 errors.extend_from_slice(&chunk);
             }
-            false
+            Drained::default()
         });
         // Output written just before exit; a silent pipe held open elsewhere ends the wait.
         while let Ok(chunk) = stdout.recv_timeout(Duration::from_millis(100)) {
@@ -1240,7 +1263,10 @@ fn describe_stats(stats: &Json) -> String {
 
 /// Streams a child's pipe through a channel. The thread is detached: a
 /// grandchild that inherits the pipe must not hold the run up.
-pub(super) fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receiver<Vec<u8>> {
+pub(super) fn pipe_reader(
+    mut pipe: impl Read + Send + 'static,
+    wake: Wake,
+) -> mpsc::Receiver<Vec<u8>> {
     let (sender, receiver) = mpsc::channel::<Vec<u8>>();
     std::thread::spawn(move || {
         let mut buffer = [0u8; 8192];
@@ -1248,6 +1274,7 @@ pub(super) fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receive
             if n == 0 || sender.send(buffer[..n].to_vec()).is_err() {
                 break;
             }
+            wake.output();
         }
     });
     receiver
@@ -1563,7 +1590,8 @@ mod tests {
     #[cfg(unix)]
     const NAMES: [&str; 4] = ["a::pass", "b::fail", "c::crash", "d::hang"];
 
-    /// A shell script that speaks the test harness's record protocol; each test is its own file.
+    /// A shell script that speaks the test harness's record protocol (a record, then a ring on the
+    /// doorbell, as the harness does); each test is its own file.
     #[cfg(unix)]
     fn script(dir: &std::path::Path) -> std::path::PathBuf {
         use std::os::unix::fs::PermissionsExt;
@@ -1573,13 +1601,14 @@ r="$MS_TEST_RESULTS"
 IFS=,
 for i in $MS_TEST_SELECT; do
   printf '\001MSSTART %s %s\n' "$i" "$i" >> "$r"
+  echo > /dev/fd/$MS_TEST_WAKE
   case $i in
   0) printf '\001MSOUT 0 16\nhello from pass\n\n' >> "$r"; echo note >&2
-     printf '\001MSTEST 0 pass 1000\001\001\n' >> "$r";;
-  1) printf '\001MSTEST 1 fail 1000\001boom\001src/a.ms:3:4\n' >> "$r";;
+     printf '\001MSTEST 0 pass 1000\001\001\n' >> "$r"; echo > /dev/fd/$MS_TEST_WAKE;;
+  1) printf '\001MSTEST 1 fail 1000\001boom\001src/a.ms:3:4\n' >> "$r"; echo > /dev/fd/$MS_TEST_WAKE;;
   2) ulimit -c 0; kill -SEGV $$;;
   3) sleep 30;;
-  4) printf '\001MSTEST 4 skip 1000\001not today\001\n' >> "$r";;
+  4) printf '\001MSTEST 4 skip 1000\001not today\001\n' >> "$r"; echo > /dev/fd/$MS_TEST_WAKE;;
   esac
 done
 "#;

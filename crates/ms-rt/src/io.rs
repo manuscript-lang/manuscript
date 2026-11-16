@@ -210,7 +210,34 @@ pub unsafe extern "C-unwind" fn msrt_test_record(path: *const StrVal, text: *con
         .open(path)
     {
         let _ = file.write_all(text);
+        ring_test_bell();
     }
+}
+
+/// Tells the process that supervises this test run that a record was appended: one byte to the
+/// pipe `MS_TEST_WAKE` names (a descriptor on Unix, a handle on Windows). Without the variable
+/// nothing is sent. Called with the record lock held.
+fn ring_test_bell() {
+    use std::io::Write;
+    use std::mem::ManuallyDrop;
+    static BELL: std::sync::OnceLock<Option<usize>> = std::sync::OnceLock::new();
+    let Some(raw) = *BELL.get_or_init(|| std::env::var("MS_TEST_WAKE").ok()?.parse().ok()) else {
+        return;
+    };
+    #[cfg(unix)]
+    // SAFETY: the supervisor passed this descriptor to us for ringing and keeps it open; the
+    // file is never dropped, so it is not closed here.
+    let mut bell = ManuallyDrop::new(unsafe {
+        <std::fs::File as std::os::fd::FromRawFd>::from_raw_fd(raw as i32)
+    });
+    #[cfg(windows)]
+    // SAFETY: as above, a handle.
+    let mut bell = ManuallyDrop::new(unsafe {
+        <std::fs::File as std::os::windows::io::FromRawHandle>::from_raw_handle(
+            raw as *mut core::ffi::c_void,
+        )
+    });
+    let _ = bell.write_all(&[1]);
 }
 
 /// Keeps the encoded record of a fault that ended a task under capture `id`, for
