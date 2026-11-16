@@ -189,6 +189,23 @@ pub fn acknowledge_cancel() {
     ms_rt::fault::acknowledge_cancel()
 }
 
+/// Runs `call` as an isolated request: a fault or stop request inside it runs the cleanups
+/// registered since entry and returns `false` instead of ending the process.
+pub fn guarded(mut call: impl FnMut()) -> bool {
+    unsafe extern "C-unwind" fn run(data: *mut u8) {
+        // SAFETY: `data` is the `&mut dyn FnMut()` below, live for the guard call.
+        unsafe { (*data.cast::<&mut dyn FnMut()>())() };
+    }
+    let mut dynamic: &mut dyn FnMut() = &mut call;
+    let mut message = ms_rt_abi::StrVal::literal(std::ptr::null_mut(), 0);
+    // SAFETY: `run` and its data outlive the call; `message` is written only on a fault.
+    let status =
+        unsafe { ms_rt::fault::msrt_guard_call(run, (&raw mut dynamic).cast(), &raw mut message) };
+    // SAFETY: the guard hands over an owned message on a fault, released once.
+    unsafe { ms_rt::string::release_opt(&message) };
+    status == 0
+}
+
 /// A runtime park token (`msrt_token_*`) posted from the runtime thread; freed on drop.
 pub struct Token(u64);
 

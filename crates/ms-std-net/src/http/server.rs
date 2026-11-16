@@ -386,6 +386,11 @@ struct Job {
 
 /// Body of a request task: serves the one request that became ready on a connection. While the
 /// server drains on a stop it is shielded, so the request finishes within the grace period.
+///
+/// The whole request runs under a guard, as a promise's task did: a fault or a stop request
+/// anywhere in it (a response dropped on the way out, a write that waits) ends only this request
+/// and closes its connection, never the process. What the abandoned frames owned is released by
+/// their cleanups; the `Rc`s this frame holds are released here.
 unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     // SAFETY: `arg` is the `Box<Job>` leaked by `run_handlers`.
     let Job { conn } = *unsafe { Box::from_raw(arg.cast::<Job>()) };
@@ -397,10 +402,15 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     if shield {
         rt::stop_shield();
     }
-    server.dispatch_conn(&conn, &Reactor::get());
+    let ended = rt::guarded(|| server.dispatch_conn(&conn, &Reactor::get()));
     server.tasks.borrow_mut().remove(&task);
     if shield {
         rt::stop_unshield();
+    }
+    if !ended {
+        // Nothing is left to answer on the connection; closing it also cancels no one else.
+        conn.st.borrow_mut().task = 0;
+        server.close_conn(&conn, &Reactor::get());
     }
     server.st.borrow_mut().running -= 1;
     server.note_drain_progress();
@@ -895,7 +905,13 @@ impl Server {
             }
             let token = rt::Token::new();
             self.st.borrow_mut().draining = Some(token.id());
-            while self.st.borrow().running > 0 && token.park(-1) & 16 == 0 {}
+            // Shielded: the tasks are cancelled and their connections closed, so this ends soon,
+            // and a stop request must not leave handlers running against a closed server.
+            rt::stop_shield();
+            while self.st.borrow().running > 0 {
+                token.park(-1);
+            }
+            rt::stop_unshield();
             self.st.borrow_mut().draining = None;
         }
         if cancelled {
