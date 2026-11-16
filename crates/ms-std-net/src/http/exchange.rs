@@ -12,7 +12,7 @@ use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
 use crate::ws::handshake::{self, Rejected};
 use crate::ws::socket::{Config, Role, Socket};
 use ms_rt::ffi::Str;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 const CHUNK: usize = 65536;
@@ -135,7 +135,7 @@ pub(super) fn deadline_at(started: i64, timeout: std::time::Duration) -> i64 {
 
 thread_local! {
     /// The buffer a response head is built in, kept between responses so none allocates one.
-    static HEAD_BUFFER: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+    static HEAD_BUFFER: Cell<Vec<u8>> = const { Cell::new(Vec::new()) };
 }
 
 /// Largest head buffer kept for reuse; a response that began with a large body chunk frees it.
@@ -144,7 +144,7 @@ const KEPT_HEAD_BUFFER: usize = 16 << 10;
 /// An empty buffer for a response head: the kept one, or a new one when another task on this
 /// thread holds it while its write waits.
 fn take_head_buffer(body: usize) -> Vec<u8> {
-    let mut out = HEAD_BUFFER.with(|b| std::mem::take(&mut *b.borrow_mut()));
+    let mut out = HEAD_BUFFER.with(Cell::take);
     out.clear();
     out.reserve(256 + body);
     out
@@ -152,7 +152,7 @@ fn take_head_buffer(body: usize) -> Vec<u8> {
 
 fn return_head_buffer(out: Vec<u8>) {
     if out.capacity() <= KEPT_HEAD_BUFFER {
-        HEAD_BUFFER.with(|b| *b.borrow_mut() = out);
+        HEAD_BUFFER.with(|b| b.set(out));
     }
 }
 
