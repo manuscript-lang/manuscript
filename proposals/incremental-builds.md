@@ -2,90 +2,66 @@
 
 ## Summary
 
-- A second `ms build` with nothing changed redoes all work (8.0 s Debug, 40 packages, 122k lines); Go rebuilds after a one-file touch in 0.23 s.
-- Of a Debug build, 4.5 s is Cranelift `define_function` over 12,006 functions; the front end plus lowering is about 3 s; link is 0.13 s (measured below).
-- Stages: timings, a whole-build short cut keyed by the final MIR and every codegen input, parallel Cranelift, then (only if numbers justify it) a content-addressed per-function cache.
-- Release builds are not helped by this: 97% of a 293 s Release build is one LLVM `opt` + `llc` over one module. A partitioned, cached LLVM stage is Stage 3 and is a separate decision.
-- Decision requested: build Stages 0 to 2 now; Stage 3 after Stage 0/2 numbers.
+- After a one-line edit, `ms build` redoes everything: 5.6 s Debug and 37 s Release on a 122k-line, 1,000-file project (Go: 0.23 s).
+- Change: cache backend output by a hash of the exact input the backend consumes. Stage 2 caches Cranelift `define_function` (Debug, 52% of wall); Stage 3 caches LLVM units (Release, 91% of wall) and only starts after a measured gate, because LLVM unit text is not stable today.
+- The cache is sound because the key is the whole input; stale output needs a missing key input, which `MS_CACHE=verify` and CI check.
+- Decision requested: build Stages 0 to 2 now; Stage 3 is decided from Stage 0 numbers. The 2.3 s front end stays uncached.
 
 ## Status
 
-Proposal; Stages 0 to 2 implemented, Stage 3 dropped, 2026-10-31, checked against `f57bac39`. Direction (Chinmay, project chat): "incremental builds are the first priority we can do others later"; later: "lets not do per function cache, lets keep the cache simple based on mtime instead of hash, hash is expensive". Review outcome: see Review at the end.
+Proposal, 2026-11-16, checked against `9f09fd55`. Supersedes the earlier mtime whole-build cache (removed in #4200: it helped only an unchanged rebuild) and the dropped per-function cache. Direction (Chinmay): "we should do it properly with incremental cache, only then its useful". Reverses the earlier "no hash" choice, which was made for a whole-build key; here the hash covers backend text (measured below). Independent skeptical review done 2026-11-16; its findings (unit count cap, per-unit metadata, Cranelift key and side effects, name collisions, gates) are applied below.
 
 ## Problem
 
-Measured on 4 cores with `bench/compile-time/gen.py 40 25 10` (PR #2103), `ms` release build of `f57bac39`:
+Measured on 4 cores, `bench/tools/compile_time.ms` workload (40 packages, 1,000 files, 12k functions), release `ms` of `9f09fd55`, `MS_TIMINGS=1`, second run:
 
-| Step | Time |
-| --- | --- |
-| `ms check` | 1.8 s |
-| `ms emit` (+ lower to MIR) | 2.4 s |
-| `ms build --build-type Debug`, first and second run (identical) | 11.1 s, 8.0 s |
-| of which MIR optimize + unwind | 0.2 s |
-| of which Cranelift lowering to CLIF (`Lower::lower_func`) | 0.5 s |
-| of which Cranelift `define_function` + tables | 4.5 s |
-| of which write object + link | 0.13 s |
-| `ms build`, Cranelift release | 10.2 s |
-| `ms build`, LLVM release | 293 s (in PR #2103) |
+| Phase | Debug | Release |
+| --- | --- | --- |
+| Check + lower to MIR | 2.3 s | 2.4 s |
+| MIR optimize | 0.2 s | 0.8 s |
+| Backend (Cranelift on 4 threads / `opt` + `llc` in 4 units) | 2.9 s (6.5 s CPU) | 33.8 s (about 100 s CPU) |
+| Link | 0.1 s | 0.1 s |
+| Total | 5.6 s | 37.2 s |
 
-- `.ms-cache` holds nothing at object level, so every build is cold.
-- Non-goals: parallel Cranelift or LLVM (a separate stage, independent of caching); caching the front end (1.8 s check; revisit after Stage 2); changing generated code.
+- The backend is 52% (Debug) and 91% (Release) of wall time, so caching it removes most of an edit's cost. An earlier spike (`proposals/workspaces.md`) measured 20% on a smaller project; here codegen is the larger share and the spike did not cover Release.
+- The inputs are unstable. Editing one constant in `pkg20/f10.ms` changed 1 of 4 LLVM units (2 lines); adding a statement and a function changed all four (170k to 590k diff lines each). Causes: `state.rs` names private functions `name#<index>`; `finish_units` cuts by cumulative weight in call order; every unit carries whole-program debug metadata (`!N` ids in emission order), the struct table and, in unit 0, all data (`llvm_ir.rs:690-890`).
+- LLVM unit count is capped at the core count (`program.rs:25`), so one recompiled unit costs about 100 s CPU / 4 = 25 s. Release only gets fast with many more units, which costs inlining (`program.rs:15`: 15% slower at four units on a small program).
+- Cranelift names private functions `name#<identity_hash>` (32 bits, `.k` suffix on a collision in call order; `cg.rs:170-210`), so names are mostly stable.
 
 ## Design
 
-One rule: **a function's machine code is a pure function of its normalized Cranelift IR, the ISA flags and the compiler version; cache it by that hash.**
+One rule: **backend output is a pure function of the input the backend consumes, the target and the tool; cache it by a hash of exactly that.**
 
-```text
-MIR fn -> Lower -> CLIF fn --normalize--> key
-                                         |
-                    hit:  bytes + relocs by symbol name + line/scope rows -> define_function_bytes
-                    miss: define_function -> store the same triple
-```
-
-- **Key.** SHA-256 over: `ms` version and git revision of the cranelift fork (`vendor/cranelift-codegen`), ISA triple and flags (`opt_level`, `is_pic`, `regalloc_algorithm`, probestack, frame pointers), `Options::checks` and `poll`, and the CLIF text of the function with every `u0:N` function reference, global value and data reference replaced by the declared symbol name.
-- **Value.** Machine code bytes, alignment, relocations as (offset, kind, symbol name, addend), source-location rows as (code offset, file, line, scope-relative scope id). Written to `.ms-cache/obj/<2-hex>/<hash>` by atomic rename; a corrupt entry is a miss.
-- **Stable symbol names are the prerequisite.** Today `cg.rs` names non-exported functions `name#{index}`, strings `ms.str.{i}`, and glue and descriptors by queue order, so inserting one function renames the callers' references and every key changes. Names become content-derived: function `name#<hash of module path, name, signature>`, strings by content hash, glue and descriptors by a structural type hash. This also makes Cranelift object output deterministic across edits.
-- **Source locations and scopes.** `Lower` interns locations and scopes into global tables (`g.locs`, `g.scopes`, `scope_base`). The cached rows hold file, line and function-relative scope ids; on a hit they are re-interned into the current tables with the new `scope_base`.
-- **Whole-build short cut.** After MIR optimize and unwind, hash the module (MIR text plus options plus link inputs). If `.ms-cache/exe/<hash>` exists, copy it to the output. This makes a no-change rebuild skip codegen and link without needing the per-function cache.
-- **Eviction.** Entries unused for 30 days are deleted on the next miss-writing build; `ms clean` removes `.ms-cache`. Concurrent builds are safe because writes rename into place.
-- **Observability.** `MS_TIMINGS=1` prints phase times and cache hits/misses on stderr (none exists today).
-- **Platform parity.** The key includes the target triple; the cache is used on Linux, macOS and Windows. Windows ARM64 COFF keeps its non-PIC rewrite before hashing, so the key sees the final CLIF.
-- No source syntax, diagnostics or CLI flags change.
+- **Key.** 128-bit hash (two independent 64-bit lanes, in-house, no dependency; a local cache, so accidental collisions only, not an adversary) over: `ms` version, target triple, the full `BuildOptions` debug text (covers the `MS_*` codegen variables), ISA flags, Cranelift fork revision or LLVM tool identity, then the input.
+- **Cranelift (Stage 2).** Lowering to CLIF still runs, so strings, data, glue and tables are produced as today. Only `define_function` is skipped. Input: the function's CLIF text with every function, global and data reference replaced by its symbol name and source locations made function-relative. Value: code bytes, alignment, relocations by symbol name, line rows; a hit re-interns rows into `g.locs`/`g.scopes` (shifting scope parents by `scope_base`) and calls `define_function_bytes`. Name instability only causes a miss.
+- **LLVM (Stage 3, gated).** Input: the unit's IR text; value: the object. Needs, each measured first: per-unit metadata and type tables with local ids; hash-based private names; unit boundaries that survive an edit (content-defined cuts or hash buckets by module, compared); a unit count above the core count, with its runtime cost on `bench/perf`. Small-callee copies (`write_small_copies`) are in the text, so they are in the key and fan an edit out to the units that copy it.
+- **Storage.** `.ms-cache/obj/<2 hex>/<key>`, atomic rename; an unreadable or truncated entry is a miss. Bounded to 256 MiB; a build that stores entries evicts least recently used down to the bound; a hit touches its file and ignores a touch failure. A read-only cache directory turns the cache off for that build. `ms clean` removes it. Windows and macOS use the same code (no hardlinks or locks); a rename that finds the entry present counts as stored.
+- **Controls.** `MS_CACHE=off`; `MS_CACHE=verify` compiles anyway and fails on a byte difference; `MS_TIMINGS=1` adds hits and misses. CI runs the conformance corpus once warm under `verify` (nightly, not on pull requests, for the time budget).
+- No language, diagnostic or flag changes.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-clif/src/cg.rs`, `lower.rs` | Content-derived symbol names; normalized CLIF hash; hit path through `define_function_bytes`; rows re-interned | Unit: same function hashes equal after unrelated insertions; hit and miss objects link and run identically |
-| `crates/ms-clif/src/dwarf.rs`, `llvm_tables.rs` | Unchanged for Cranelift; LLVM path untouched until Stage 3 | Debug line tables and fault traces equal with a warm cache (e2e fault fixture) |
-| `crates/ms-build/src/native.rs` | Whole-build key, cache directory, `MS_TIMINGS` | Unit: key changes with options and compiler version |
-| `crates/ms-driver`, `ms-cli` | Cache location from the project root; `ms clean` removes it | CLI test |
-| `ms-check`, `ms-lower`, `ms-mir`, `ms-rt`, `stdlib/` | Unchanged | none |
-| `documentation/contributing`, `wiki/` | Cache layout, key inputs, `MS_TIMINGS` | `make docs-check` |
+| `ms-clif` (`cg.rs`, `lower.rs`) | CLIF key with symbolic references, hit path, relative line rows | Hit and miss link to a byte-identical executable; fault trace and line table equal; every `Gen` table `define_function` touches is restored on a hit |
+| `ms-build` (new `cache.rs`, `native.rs`) | Hash, store, evict, read-only fallback, `MS_CACHE`, timings | Unit: key changes with each input; eviction bound; corrupt entry; read-only directory |
+| `ms-mir-llvm`, `ms-build/llvm` | Stage 3 only: per-unit metadata, names, cuts, unit cache | Stage 3 gates |
+| `ms-cli`, `ms-driver` | Cache location, `ms clean` | CLI test |
+| `bench/compile-time/`, `crates/DESIGN.md`, `documentation/contributing/`, `wiki/` | Edit-scenario benchmark; cache layout and key inputs | `make docs-check` |
 
 ## Alternatives
 
-- **Do nothing.** Debug builds stay at 8 s per edit on this workload; the comparison is a 0.23 s rebuild in Go. Rejected by the stated priority.
-- **Whole-build cache only.** Cheap and safe, but any one-line edit still pays 4.5 s of codegen. Kept as the first step inside this design, not the end state.
-- **Per-source-module object files.** Needs cross-object symbol visibility for glue, descriptors and the program tables built from the whole module (`emit_tables`), a larger rewrite of `cg.rs`; per-function granularity reuses the existing single-object structure.
-- **Parallel Cranelift.** Independent functions compile in parallel: about 4x on 4 cores for the 4.5 s. Complementary, does not help a one-core CI machine, and can be added later around the same miss path.
-- **Cache MIR instead of CLIF.** The key would depend on MIR names and ids that shift on edits; CLIF text after normalization is what the compiler actually consumes.
-- Drawbacks: a cache-correctness bug produces a wrong binary silently. Mitigations: key includes the vendored cranelift fork revision; `MS_CACHE=off` disables; CI runs the conformance corpus with a warm cache.
+- **Do nothing.** Every edit pays 5.6 s Debug. The cache costs a hash pass, a store and an eviction policy; the Debug backend is 2.9 s of that, so the most it can save is about 45% of an edit.
+- **Cheaper first: raise parallelism or parallelize the front end.** Cranelift already uses all cores; one-core CI and the front end (2.3 s) do not benefit, and neither removes work.
+- **Whole-build mtime cache.** Removed in #4200; one edit invalidates it.
+- **Cache MIR or the checker.** Larger win but whole-program passes cross modules; Stage 4.
+- **Per-function Cranelift cache keyed on MIR.** Needs layout facts and callee identities in the key; CLIF text is what Cranelift actually consumes.
+- Risk: a key that omits an input gives a wrong binary silently; see Controls.
 
-## Staging and verification
+## Stages
 
-1. **Stage 0:** `MS_TIMINGS=1` prints per-phase times (front end, MIR, CLIF lowering, `define_function`, tables/DWARF, link) and, in Stage 2, CLIF-stability across a one-function edit. Gate: `make verify`.
-2. **Stage 1 (revised: mtime, not hashes):** an entry is keyed by the cheap facts of the build (profile, paths, working directory, codegen environment variables, size and mtime of the `ms` executable, runtime override and `--link` files) and holds a manifest of every source file with its size and mtime. Valid while all match; a hit runs before the front end, so nothing is parsed, checked or lowered. First version (hash of the final MIR, #2110) measured 3.0 s on a no-change rebuild, 0.4 s of it hashing; this version measures 0.02 s. Known gap: a new file that would shadow an imported one is not noticed until a listed file changes. `MS_CACHE=off|verify`.
-3. **Stage 2:** parallel Cranelift: lower serially (it mutates shared tables), then `define_function` across cores and `define_function_bytes` in order. No correctness risk from keys. Measured (Debug, 4 cores, same workload): 8.6 s -> 6.1 s, executable byte-identical to the serial build. Lowering (0.5 s), glue, tables and DWARF stay serial, which bounds the gain.
-4. **Stage 3 (dropped, 2026-10-31):** per-function cache. Chinmay chose to keep the cache simple; the review's list of what it would need (relative source locations, content-derived names for globals, vtables, unit blocks and glue, a binary-hash key) stays here if it is ever reopened.
-5. **Stage 4 (not decided here):** partition the LLVM IR by module, `opt` + `llc` in parallel, cache each; costs cross-partition inlining and a rewrite of the single-section text anchor in `llvm_tables.rs`. Needs its own runtime-regression measurement on `bench/perf`.
-
-Release builds get nothing from Stages 0 to 3 beyond the no-change short cut; the 293 s LLVM stage is Stage 4.
-
-## Review
-
-Skeptical review, 2026-10-31: build with changes. Adopted: Stage 1 key inputs (binary hash, runtime archive, env vars, cwd, companion), parallel Cranelift ahead of the function cache, per-function cache gated on measurement and corrected for srcloc and scope handling, stable-name inventory, floor-based gate. The earlier 3.5 s gate was unreachable and is withdrawn. The 11.1 s vs 8.0 s first and second runs are one cold-file-cache effect or noise; Stage 0 reports repeated runs.
-
-## Open questions
-
-None that change the language or user-visible behavior; cache location defaults to `.ms-cache` beside `ms.toml`, which already exists.
+0. **Measure.** `bench/compile-time/incremental.ms`: cold, no change, edit a body, add a statement, add a function, edit a widely imported module, on the generated workload and on a real project (the repository's `.ms` tools); several runs; per-phase time, Cranelift keys changed, LLVM units changed and how much of the diff is metadata, names or boundaries. Dated results page.
+1. **Cranelift key stability.** 64-bit identity hash and deterministic collision suffix; test that an unrelated edit leaves other functions' keys unchanged. Gate: scenarios change only the edited function's key.
+2. **Cranelift function cache** with eviction. Gate: one-edit Debug at most 3.5 s here (floor: front end 2.3 s, MIR 0.2 s, lowering about 0.5 s, plus the edited function); executable byte-identical with cache on, off and `verify`; cold Debug within 3%.
+3. **LLVM unit cache.** Starts only if Stage 0 shows the prerequisites above reach a one-edit Release rebuild at most 10 s with `bench/perf` runtime within 2% and cold Release within 3%; otherwise record the numbers and stop here.
+4. **Front end reuse** (per-module check results), from the remaining 2.3 s; decided after Stage 2.
