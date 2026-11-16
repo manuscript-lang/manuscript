@@ -407,7 +407,9 @@ export type HttpServerOptions:
 	max_header_bytes: Int?
 	// Per-request time budget covering reading the request, running the handler, and
 	// writing the response; an idle plain-HTTP connection waiting for its next request
-	// is also closed after it. A handler still running at the deadline is cancelled
+	// is also closed after it, not before the timeout and up to an eighth later (a 30 s
+	// timeout closes an idle connection at 30 to 33.75 s). A handler still running at the
+	// deadline, which is exact, is cancelled
 	// (its waits end and resource cleanup runs) and the request is answered 504; a
 	// WebSocket it opened is not limited. Must be positive; none sets no deadline.
 	timeout: Duration?

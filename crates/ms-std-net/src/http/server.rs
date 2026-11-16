@@ -36,6 +36,9 @@ const INPUT_HOLD: usize = 256 * 1024;
 /// Request bodies the server skips to reuse a connection.
 pub const DRAIN_LIMIT: usize = 256 * 1024;
 /// Time to receive the peer's FIN after half-closing an HTTP/1 rejection response.
+/// Ticks the shortest timeout is divided into.
+const TICKS_PER_TIMEOUT: u32 = 8;
+
 const REJECTION_DRAIN: Duration = Duration::from_millis(500);
 
 /// Server limits; `UNLIMITED` means none.
@@ -110,7 +113,8 @@ pub(super) struct Pending {
     pub decoder: BodyDecoder,
     pub keep_alive: bool,
     pub expect_continue: bool,
-    pub started: Instant,
+    /// When the request arrived; read only when the server has a request timeout.
+    pub started: Option<Instant>,
 }
 
 pub(super) struct ConnSt {
@@ -126,8 +130,11 @@ pub(super) struct ConnSt {
     pub drain_after: bool,
     pub flush_pending: bool,
     pub eof: bool,
+    /// A fixed time the connection is closed at (only the drain of a rejected request).
     pub deadline: Option<Instant>,
-    /// The deadline bounds an idle wait for the next request, not a request in progress.
+    /// The sweep generation the connection's timeout runs from, see [`Reactor::stamp`].
+    pub stamp: Option<u32>,
+    /// The stamp bounds an idle wait for the next request, not a request in progress.
     pub idle_deadline: bool,
     pub interest: Ev,
     pub registered: bool,
@@ -191,17 +198,32 @@ pub struct Reactor {
     task: Cell<u64>,
     scratch: RefCell<Vec<u8>>,
     date: RefCell<(i64, String)>,
+    /// Seconds since the epoch, read once per turn for `Date`.
+    wall_secs: Cell<i64>,
     /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
     next_sweep: Cell<Option<Instant>>,
-    /// The time of the current turn, read once after the poller returns; a request or deadline
-    /// stamped within the turn reuses it instead of reading the clock again.
-    now: Cell<Instant>,
-    /// Whether tasks ran since `now` was read.
-    stale: Cell<bool>,
-    /// Whether `service` is running: only its code knows no task ran since the last read.
-    in_turn: Cell<bool>,
+    /// Counts sweep ticks; a connection's timeout is a number of ticks since its stamp.
+    generation: Cell<u32>,
+    /// The time between ticks (an eighth of the shortest timeout that armed them).
+    tick_every: Cell<Option<Duration>>,
+    /// When the next tick is due; none while no connection has a timeout.
+    next_tick: Cell<Option<Instant>>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
+}
+
+/// A fixed instant standing for "this connection has a timeout" where the connection hand-off
+/// (`steal::Member::park`) carries an `Option<Instant>`; its value is never read.
+fn timed_marker() -> Instant {
+    static MARK: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    *MARK.get_or_init(Instant::now)
+}
+
+/// The wall clock in whole seconds since the epoch.
+fn wall_secs() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64)
 }
 
 thread_local! {
@@ -228,10 +250,11 @@ impl Reactor {
                 task: Cell::new(0),
                 scratch: RefCell::new(vec![0; 64 * 1024]),
                 date: RefCell::new((0, String::new())),
+                wall_secs: Cell::new(wall_secs()),
                 next_sweep: Cell::new(None),
-                now: Cell::new(Instant::now()),
-                stale: Cell::new(false),
-                in_turn: Cell::new(false),
+                generation: Cell::new(0),
+                tick_every: Cell::new(None),
+                next_tick: Cell::new(None),
                 beat,
             });
             *slot = Some(reactor.clone());
@@ -239,30 +262,59 @@ impl Reactor {
         })
     }
 
-    /// The time of the current turn (see [`Reactor::tick`]).
+    /// What a connection stores when its timeout starts: the current generation, or none when the
+    /// server has no timeout. The tick clock starts here if it is not running (one clock read
+    /// per start of the clock, not per request); later stamps read none.
     ///
-    /// Code that runs in a task (an acceptor, a handler, a finished request) cannot know how long
-    /// other tasks ran since, so outside `service` this reads the clock.
-    fn now(&self) -> Instant {
-        if !self.in_turn.get() {
-            return Instant::now();
+    /// A timeout of `t` closes the connection after `t.div_ceil(tick) + 1` ticks: never before
+    /// `t`, and at most one tick and a tick of sweep delay after it. With the tick at an eighth
+    /// of `t` that is within 12.5 percent. A server whose timeout is shorter than the running
+    /// tick still waits at least `t`, rounded up to a tick.
+    fn stamp(&self, timeout: Option<Duration>) -> Option<u32> {
+        let timeout = timeout?;
+        if self.next_tick.get().is_none() {
+            let every = (timeout / TICKS_PER_TIMEOUT).max(Duration::from_millis(1));
+            self.tick_every.set(Some(every));
+            self.next_tick.set(Some(Instant::now() + every));
+            // A parked reactor computed its timeout without the tick.
+            self.poller.kick();
         }
-        if self.stale.get() {
-            self.tick();
-        }
-        self.now.get()
+        Some(self.generation.get())
     }
 
-    /// Marks the turn's time old: tasks ran since it was read, and one may have computed for a
-    /// long while. The next `now` reads the clock again.
-    fn mark_stale(&self) {
-        self.stale.set(true);
+    /// Whether a connection stamped by `stamp` under `timeout` has waited it out.
+    fn expired(&self, stamp: Option<u32>, timeout: Option<Duration>) -> bool {
+        let (Some(stamp), Some(timeout), Some(every)) = (stamp, timeout, self.tick_every.get())
+        else {
+            return false;
+        };
+        let ticks = timeout.as_nanos().div_ceil(every.as_nanos().max(1)) as u32 + 1;
+        self.generation.get().wrapping_sub(stamp) >= ticks
     }
 
-    /// Reads the clock once for the turn that starts now.
-    fn tick(&self) {
-        self.now.set(Instant::now());
-        self.stale.set(false);
+    /// Advances the generation for every tick that has passed and sweeps; the tick clock stops
+    /// when no connection is left.
+    fn tick(&self, now: Instant) {
+        let (Some(at), Some(every)) = (self.next_tick.get(), self.tick_every.get()) else {
+            return;
+        };
+        if now < at {
+            return;
+        }
+        let passed = 1 + (now - at).as_nanos() / every.as_nanos().max(1);
+        self.generation
+            .set(self.generation.get().wrapping_add(passed as u32));
+        self.next_tick.set(Some(at + every * passed as u32));
+        self.sweep_timeouts();
+        let any = self
+            .targets
+            .borrow()
+            .values()
+            .any(|t| matches!(t, Target::Conn(_)));
+        if !any {
+            self.next_tick.set(None);
+            self.tick_every.set(None);
+        }
     }
 
     /// Makes sure the sweep runs by `at`.
@@ -294,11 +346,11 @@ impl Reactor {
         self.poller.delete(sock);
     }
 
-    /// Runs `f` on the value of the `Date` header, refreshed once per second.
+    /// Runs `f` on the value of the `Date` header, formatted once per second from the wall clock
+    /// read at the start of the turn (see [`Reactor::service`]). So `Date` is the time the turn
+    /// began: a response written after a handler that ran for 10 s carries a `Date` 10 s old.
     fn with_date<R>(&self, f: impl FnOnce(&str) -> R) -> R {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs() as i64);
+        let now = self.wall_secs.get();
         let mut cached = self.date.borrow_mut();
         if cached.0 != now || cached.1.is_empty() {
             *cached = (now, h1::http_date(now));
@@ -483,9 +535,20 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
             return;
         }
         drain.set(reactor.drains());
-        let timeout = reactor.next_sweep.get().map_or(-1, |at| {
-            at.saturating_duration_since(reactor.now()).as_nanos() as i64
-        });
+        // One clock read per turn, and only while a timeout is running.
+        let now = (reactor.next_tick.get().is_some() || reactor.next_sweep.get().is_some())
+            .then(Instant::now);
+        if let Some(now) = now {
+            reactor.tick(now);
+        }
+        let timeout = [reactor.next_sweep.get(), reactor.next_tick.get()]
+            .into_iter()
+            .flatten()
+            .min()
+            .zip(now)
+            .map_or(-1, |(at, now)| {
+                at.saturating_duration_since(now).as_nanos() as i64
+            });
         let got = reactor.poller.park(timeout);
         if got & 16 != 0 {
             return;
@@ -543,16 +606,12 @@ impl Reactor {
     /// Handles whatever is ready without blocking.
     fn service(&self) {
         let mut events = Vec::new();
-        self.in_turn.set(true);
         loop {
             if self.beat.turn() {
                 self.serve_others();
             }
             let raw = self.poller.poll(&mut events, 64);
-            self.tick();
-            if self.next_sweep.get().is_some_and(|at| at <= self.now.get()) {
-                self.sweep_timeouts();
-            }
+            self.wall_secs.set(wall_secs());
             let mut yielded = false;
             for (at, &(token, flags)) in events.iter().enumerate() {
                 self.handle_event(token, flags);
@@ -562,7 +621,6 @@ impl Reactor {
                 if at + 1 < events.len() && !self.ready.borrow().is_empty() {
                     self.run_handlers();
                     rt::yield_now();
-                    self.mark_stale();
                     self.beat.turn();
                     yielded = true;
                 }
@@ -587,9 +645,10 @@ impl Reactor {
             // Let the requests started above run before more connections are read, for the
             // same reason as in the loop over the events.
             rt::yield_now();
-            self.mark_stale();
         }
-        self.in_turn.set(false);
+        if self.next_sweep.get().is_some_and(|at| at <= Instant::now()) {
+            self.sweep_timeouts();
+        }
     }
 }
 
@@ -643,7 +702,11 @@ impl Reactor {
             })
             .filter(|c| {
                 let st = c.st.borrow();
-                !matches!(st.phase, Phase::Busy) && st.deadline.is_some_and(|d| d <= now)
+                if matches!(st.phase, Phase::Busy) {
+                    return false;
+                }
+                let timeout = c.server.upgrade().and_then(|s| s.limits.timeout);
+                st.deadline.is_some_and(|d| d <= now) || self.expired(st.stamp, timeout)
             })
             .collect();
         for conn in expired {
@@ -1017,15 +1080,11 @@ impl Server {
     }
 
     fn add_conn(&self, sock: socket2::Socket, reactor: &Reactor) {
-        self.add_conn_until(
-            sock,
-            reactor,
-            self.limits.timeout.map(|t| reactor.now() + t),
-        );
+        self.add_conn_until(sock, reactor, self.limits.timeout.is_some());
     }
 
-    /// Serves `sock`, whose wait for its first request ends at `deadline`.
-    fn add_conn_until(&self, sock: socket2::Socket, reactor: &Reactor, deadline: Option<Instant>) {
+    /// Serves `sock`, whose wait for its first request is bounded by the timeout if `timed`.
+    fn add_conn_until(&self, sock: socket2::Socket, reactor: &Reactor, timed: bool) {
         let token = reactor.token();
         let (io, tls_pending, phase) = match &self.tls {
             None => (
@@ -1061,7 +1120,8 @@ impl Server {
                 drain_after: false,
                 flush_pending: false,
                 eof: false,
-                deadline,
+                deadline: None,
+                stamp: timed.then(|| reactor.stamp(self.limits.timeout)).flatten(),
                 idle_deadline: false,
                 interest: Ev::IN,
                 registered: false,
@@ -1075,13 +1135,12 @@ impl Server {
             // A fresh plain connection is idle until its first byte; the timeout bounds that
             // wait too, so silent connections cannot pin file descriptors.
             if self.tls.is_none() {
-                st.idle_deadline = st.deadline.is_some();
+                st.idle_deadline = st.stamp.is_some();
             }
             if !reactor.add(st.fd(), token, Ev::IN) {
                 return;
             }
             st.registered = true;
-            reactor.note_deadline(st.deadline);
         }
         reactor
             .targets
@@ -1124,7 +1183,11 @@ impl Server {
             && st.registered
             && st.io.is_some();
         if waits {
-            st.waiting = member.park(conn.token, crate::sys::raw(st.fd()), st.deadline);
+            st.waiting = member.park(
+                conn.token,
+                crate::sys::raw(st.fd()),
+                st.stamp.map(|_| timed_marker()),
+            );
         }
     }
 
@@ -1186,7 +1249,7 @@ impl Server {
                 return;
             }
             for taken in order.from.take(order.limit, order.ready_only) {
-                self.add_conn_until(taken.sock, reactor, taken.deadline);
+                self.add_conn_until(taken.sock, reactor, taken.deadline.is_some());
             }
         }
     }
@@ -1211,6 +1274,7 @@ impl Server {
                     st.io = Some(Rc::new(tls));
                 }
                 st.deadline = None;
+                st.stamp = None;
                 if h2 {
                     reactor.note_deadline(Some(Instant::now() + Duration::from_millis(50)));
                     st.phase = Phase::H2;
@@ -1439,10 +1503,9 @@ impl Server {
         if idle_head && !eof {
             {
                 let mut st = conn.st.borrow_mut();
-                if st.deadline.is_none() {
-                    st.deadline = self.limits.timeout.map(|t| reactor.now() + t);
-                    reactor.note_deadline(st.deadline);
-                    st.idle_deadline = st.deadline.is_some();
+                if st.deadline.is_none() && st.stamp.is_none() {
+                    st.stamp = reactor.stamp(self.limits.timeout);
+                    st.idle_deadline = st.stamp.is_some();
                 }
             }
             self.list_waiting(conn);
@@ -1523,7 +1586,8 @@ impl Server {
                 st.inbuf = Vec::new();
                 st.pos = 0;
                 st.phase = Phase::Draining;
-                st.deadline = Some(reactor.now() + REJECTION_DRAIN);
+                st.stamp = None;
+                st.deadline = Some(Instant::now() + REJECTION_DRAIN);
                 reactor.note_deadline(st.deadline);
                 true
             }
@@ -1544,7 +1608,7 @@ impl Server {
             let Some(io) = &st.io else { return };
             let mut total = 0;
             loop {
-                if st.deadline.is_some_and(|at| at <= reactor.now()) {
+                if st.deadline.is_some_and(|at| at <= Instant::now()) {
                     break true;
                 }
                 match io.read(&mut scratch) {
@@ -1577,9 +1641,8 @@ impl Server {
             }
             match h1::parse_request(st.unread(), self.limits.header.min(1 << 30)) {
                 Parsed::Partial => {
-                    if st.deadline.is_none() || st.idle_deadline {
-                        st.deadline = self.limits.timeout.map(|t| reactor.now() + t);
-                        reactor.note_deadline(st.deadline);
+                    if (st.deadline.is_none() && st.stamp.is_none()) || st.idle_deadline {
+                        st.stamp = reactor.stamp(self.limits.timeout);
                         st.idle_deadline = false;
                     }
                     return false;
@@ -1587,6 +1650,7 @@ impl Server {
                 Parsed::Complete(head) => {
                     st.consume(head.length);
                     st.deadline = None;
+                    st.stamp = None;
                     st.idle_deadline = false;
                     Ok(head)
                 }
@@ -1665,7 +1729,7 @@ impl Server {
             target,
             keep_alive,
             expect_continue: expect,
-            started: reactor.now(),
+            started: self.limits.timeout.map(|_| Instant::now()),
         }))
     }
 
@@ -1695,6 +1759,7 @@ impl Server {
         {
             let mut st = conn.st.borrow_mut();
             st.deadline = None;
+            st.stamp = None;
             st.phase = Phase::Queued(pending);
         }
         // Stop reading while the request waits; the handler owns the stream next.
@@ -1727,6 +1792,7 @@ impl Server {
             st.phase = Phase::Writing;
             st.close_after = st.close_after || close;
             st.deadline = None;
+            st.stamp = None;
         }
         self.write_out(conn, reactor);
     }
@@ -2025,29 +2091,6 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn turn_time_is_read_again_after_tasks_ran() {
-        let reactor = Reactor::get();
-        reactor.in_turn.set(true);
-        reactor.tick();
-        let read = reactor.now();
-        std::thread::sleep(Duration::from_millis(30));
-        assert_eq!(reactor.now(), read, "no read without tasks having run");
-        reactor.mark_stale();
-        let fresh = reactor.now();
-        assert!(
-            fresh.duration_since(read) >= Duration::from_millis(30),
-            "a stamp after a long handler must not be measured from the old turn"
-        );
-        assert_eq!(reactor.now(), fresh, "one read serves the rest of the turn");
-        reactor.in_turn.set(false);
-        std::thread::sleep(Duration::from_millis(5));
-        assert!(
-            reactor.now() > fresh,
-            "outside the turn, a task cannot know how long others ran"
-        );
-    }
-
-    #[test]
     fn serves_buffered_requests() {
         let (_net, server) = start(opts(Limits::default()));
         let addr = server.address().to_string();
@@ -2211,6 +2254,59 @@ pub(crate) mod tests {
             run(b"GET /badstatus HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
                 .starts_with("HTTP/1.1 500")
         );
+    }
+
+    /// An idle connection closes after the timeout and not much later: the tick is an eighth of
+    /// it, so nominally within 12.5 percent; the upper bound leaves room for a busy machine.
+    #[test]
+    fn idle_timeout_closes_between_the_timeout_and_a_quarter_after() {
+        let timeout = Duration::from_millis(800);
+        let (_net, server) = start(opts(Limits {
+            timeout: Some(timeout),
+            ..Limits::default()
+        }));
+        let addr = server.address().to_string();
+        let waited = with_client(move || {
+            let mut client = TcpStream::connect(addr).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let began = Instant::now();
+            let mut byte = [0u8; 1];
+            assert_eq!(
+                client.read(&mut byte).unwrap_or(0),
+                0,
+                "closed with no data"
+            );
+            began.elapsed()
+        });
+        assert!(waited >= timeout, "closed early: {waited:?}");
+        assert!(waited <= timeout * 2, "closed late: {waited:?}");
+    }
+
+    /// A request whose head arrives in pieces, each within the timeout of the last first byte,
+    /// is answered, not closed by a tick that fell between the pieces.
+    #[test]
+    fn partial_head_finished_in_time_is_not_closed_early() {
+        let timeout = Duration::from_millis(800);
+        let (_net, server) = start(opts(Limits {
+            timeout: Some(timeout),
+            ..Limits::default()
+        }));
+        let addr = server.address().to_string();
+        let text = with_client(move || {
+            let mut client = TcpStream::connect(addr).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            client.write_all(b"GET /a HTTP/1.1\r\nHost: t\r\n").unwrap();
+            std::thread::sleep(timeout * 3 / 4);
+            client.write_all(b"Connection: close\r\n\r\n").unwrap();
+            let mut out = String::new();
+            client.read_to_string(&mut out).unwrap();
+            out
+        });
+        assert!(text.starts_with("HTTP/1.1 200 OK"), "{text}");
     }
 
     #[test]
