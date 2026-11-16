@@ -1,4 +1,4 @@
-// expect-debug: allocs=24 alloc_bytes=82379
+// expect-debug: allocs=24 alloc_bytes=82401
 // expect-release: allocs=24 alloc_bytes=82401
 // Compact output skips the text-classification copy; mixed content stops inspecting
 // later siblings.

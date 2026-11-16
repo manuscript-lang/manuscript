@@ -14,9 +14,7 @@
 //! `s = s.concat(piece)` lowers to a concat and a drop of the old `s`. When the drop follows
 //! with no use of `s` in between, `string_append` moving_params `s` and grows it in place.
 
-use crate::ir::{
-    Block, ExternDef, ExternRole, Func, Imm, Inst, Loc, Mode, Module, Op, Param, Value,
-};
+use crate::ir::{Block, ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Param, Value};
 use crate::types::Ty;
 use std::collections::{HashMap, HashSet};
 
@@ -35,9 +33,6 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
         while fuse_one(m, fi) {
-            changed = true;
-        }
-        while fuse_concat(m, fi) {
             changed = true;
         }
         changed |= append_in_place(m, fi);
@@ -169,13 +164,12 @@ fn collect(
         let inst = &f.blocks[db].insts[di];
         let role = ext_role(m, inst)?;
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
-        (single && fusable(f, inst, role) && straight_line(f, info, db, at)).then_some((
-            db,
-            di,
-            role == ExternRole::StringConcat,
-        ))
+        (single
+            && (role == ExternRole::StringJoin || fusable(f, inst, role))
+            && straight_line(f, info, db, at))
+        .then_some((db, di, role))
     });
-    let Some((db, di, concat)) = fused else {
+    let Some((db, di, role)) = fused else {
         if top {
             return false;
         }
@@ -184,15 +178,59 @@ fn collect(
         return true;
     };
     let inst = &f.blocks[db].insts[di];
+    // A format join starts with its integer mask, which must be a constant to read the pieces.
+    let mask = match role {
+        ExternRole::StringJoin if f.ty(inst.args[0]) == Ty::INT => {
+            match info.defs[inst.args[0].index()] {
+                Some((mb, mi)) => match f.blocks[mb].insts[mi] {
+                    Inst {
+                        op: Op::IConst,
+                        imm: Imm::Int(mask),
+                        ..
+                    } => Some(mask),
+                    _ => return top_leaf(plan, v, top),
+                },
+                None => return top_leaf(plan, v, top),
+            }
+        }
+        _ => None,
+    };
     plan.remove.insert((db, di));
     plan.remove.insert(info.drops[v.index()][0]);
-    if concat {
-        collect(m, f, info, inst.args[0], at, false, plan)
-            && collect(m, f, info, inst.args[1], at, false, plan)
-    } else {
-        plan.pieces.push(Piece::Int(inst.args[0]));
-        true
+    match role {
+        ExternRole::StringConcat => {
+            collect(m, f, info, inst.args[0], at, false, plan)
+                && collect(m, f, info, inst.args[1], at, false, plan)
+        }
+        ExternRole::StringJoin => {
+            let (mask, parts) = match mask {
+                Some(mask) => (mask, &inst.args[1..]),
+                None => (0, &inst.args[..]),
+            };
+            parts.iter().enumerate().all(|(k, &a)| {
+                if (mask >> k) & 1 == 1 {
+                    plan.pieces.push(Piece::Int(a));
+                    true
+                } else {
+                    collect(m, f, info, a, at, false, plan)
+                }
+            })
+        }
+        _ => {
+            plan.pieces.push(Piece::Int(inst.args[0]));
+            true
+        }
     }
+}
+
+/// A piece that cannot be taken apart stays a leaf string; the append itself is never one.
+fn top_leaf(plan: &mut Plan, v: Value, top: bool) -> bool {
+    if top {
+        return false;
+    }
+    plan.pieces.push(Piece::Str(v));
+    plan.leaves.push(v);
+    true
 }
 
 /// Fuses every builder append that can be fused independently of the others in one scan. Each
@@ -306,269 +344,13 @@ fn apply(m: &mut Module, fi: usize, plans: Vec<(usize, usize, Plan)>) {
     }
 }
 
-/// Most pieces one `string_concatN` or `string_fmtN` joins.
-const MAX_JOIN: usize = 6;
-
-fn concat_name(n: usize) -> String {
-    format!("msrt_string_concat{n}")
-}
-
-/// `msrt_string_fmtN(mask, parts...)`: part `k` is an integer written in decimal when bit `k` of
-/// `mask` is set, otherwise a string.
-fn fmt_name(n: usize) -> String {
-    format!("msrt_string_fmt{n}")
-}
-
-/// Whether a call with this role can join a fused chain: a concatenation, or the text of a plain
-/// `Int` (a sized integer is declared with its own width, which `string_fmtN` does not take).
+/// Whether a call with this role can join a fused append: a concatenation, or the text of a plain
+/// `Int` (a sized integer is declared with its own width, which `append_int` does not take).
 fn fusable(f: &Func, inst: &Inst, role: ExternRole) -> bool {
     match role {
         ExternRole::StringConcat => true,
         ExternRole::IntToString => inst.args.first().is_some_and(|a| f.ty(*a) == Ty::INT),
         _ => false,
-    }
-}
-
-/// What `chain` has gathered for one root: the leaves, the inner links and drops it absorbs, and
-/// how many concats (the root included) the join spans.
-struct Gather {
-    leaves: Vec<Piece>,
-    remove: HashSet<(usize, usize)>,
-    links: usize,
-}
-
-/// Gathers the leaves of the concat chain rooted at `v` into `leaves` and the chain's inner
-/// links into `remove`. A leaf that is a single-use `int_to_string` becomes the integer itself.
-fn chain(m: &Module, f: &Func, info: &Info, v: Value, at: (usize, usize), g: &mut Gather) {
-    // A join takes at most MAX_JOIN leaves, so descend into at most MAX_JOIN - 1 links and keep a
-    // deeper concat as a leaf: it is a root of its own, fused in the same scan. Rejecting the whole
-    // chain instead fuses one group per scan, which is quadratic in the length of a long
-    // interpolation. The value must stay a leaf, not vanish: the join is built from `leaves`.
-    let capped = g.links >= MAX_JOIN - 1;
-    let inner = info.defs[v.index()].and_then(|(db, di)| {
-        let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
-        let (dbi, ddi) = info.drops[v.index()].first().copied()?;
-        let inst = &f.blocks[db].insts[di];
-        let role = ext_role(m, inst)?;
-        let ok = fusable(f, inst, role)
-            && single
-            && straight_line(f, info, db, at.0)
-            && (dbi != at.0 || ddi > at.1 || db != at.0 || di < at.1);
-        ok.then_some((db, di, role == ExternRole::StringConcat))
-    });
-    // At the cap a deeper concat stays a leaf, but an integer's text still becomes the integer.
-    let Some((db, di, concat)) = inner.filter(|&(_, _, concat)| !(capped && concat)) else {
-        g.leaves.push(Piece::Str(v));
-        return;
-    };
-    g.remove.insert((db, di));
-    g.remove.insert(info.drops[v.index()][0]);
-    let args = f.blocks[db].insts[di].args.clone();
-    if !concat {
-        g.leaves.push(Piece::Int(args[0]));
-        return;
-    }
-    g.links += 1;
-    chain(m, f, info, args[0], at, g);
-    chain(m, f, info, args[1], at, g);
-}
-
-/// One fused root: the concat at `at` becomes a join of `leaves`, and `remove` holds the links
-/// and drops it absorbs.
-struct Fusion {
-    at: (usize, usize),
-    leaves: Vec<Piece>,
-    remove: HashSet<(usize, usize)>,
-}
-
-/// Whether `root` is `s = s + piece` on a loop-carried owned `s` that dies right after: a fused
-/// join would copy the whole prefix every iteration, so the root is left for `append_in_place`
-/// (which grows `s` in place) and only `piece` fuses, as a root of its own.
-fn accumulator_append(f: &Func, root: &Inst, at: (usize, usize)) -> bool {
-    let (Some(&a), Some(&b)) = (root.args.first(), root.args.get(1)) else {
-        return false;
-    };
-    let carried = f.blocks[1..]
-        .iter()
-        .flat_map(|blk| &blk.params)
-        .any(|p| p.value == a && p.mode == Mode::Move);
-    if !carried || b == a {
-        return false;
-    }
-    // The first use of `a` after the root is a drop in the same block.
-    let rest = &f.blocks[at.0].insts[at.1 + 1..];
-    rest.iter()
-        .find(|i| i.args.contains(&a))
-        .is_some_and(|i| i.op == Op::Drop)
-}
-
-/// Fuses every chain that can be fused independently of the others in one scan. Each fusion
-/// would otherwise cost a rescan of the function, and a function with many interpolated
-/// strings would be quadratic.
-fn fuse_concat(m: &mut Module, fi: usize) -> bool {
-    let f = &m.funcs[fi];
-    let info = info(f);
-    let mut claimed: HashSet<(usize, usize)> = HashSet::new();
-    let mut fusions = Vec::new();
-    for (bi, b) in f.blocks.iter().enumerate() {
-        for (ii, inst) in b.insts.iter().enumerate().rev() {
-            if ext_role(m, inst) != Some(ExternRole::StringConcat) || claimed.contains(&(bi, ii)) {
-                continue;
-            }
-            if accumulator_append(f, inst, (bi, ii)) {
-                continue;
-            }
-            let mut g = Gather {
-                leaves: Vec::new(),
-                remove: HashSet::new(),
-                links: 1,
-            };
-            for &a in &inst.args {
-                chain(m, f, &info, a, (bi, ii), &mut g);
-            }
-            let Gather { leaves, remove, .. } = g;
-            let ints = leaves.iter().any(|p| matches!(p, Piece::Int(_)));
-            // Two strings are what `concat` already does; two parts with an integer save the
-            // temporary string.
-            if remove.is_empty() || (leaves.len() < 3 && !ints) || leaves.len() > MAX_JOIN {
-                continue;
-            }
-            // A leaf dropped before the join would be used after its drop.
-            let early = leaves.iter().any(|l| match l {
-                Piece::Str(l) => info.dropped_before(*l, (bi, ii)),
-                Piece::Int(_) => false,
-            });
-            if early || remove.iter().any(|r| claimed.contains(r)) {
-                continue;
-            }
-            claimed.insert((bi, ii));
-            claimed.extend(remove.iter().copied());
-            fusions.push(Fusion {
-                at: (bi, ii),
-                leaves,
-                remove,
-            });
-        }
-    }
-    if fusions.is_empty() {
-        return false;
-    }
-    apply_concats(m, fi, fusions);
-    true
-}
-
-fn apply_concats(m: &mut Module, fi: usize, fusions: Vec<Fusion>) {
-    // Rewrite every root first, remembering where each mask constant goes.
-    let mut masks: Vec<((usize, usize), Value, i64, Loc)> = Vec::new();
-    let mut removed: HashSet<(usize, usize)> = HashSet::new();
-    for fusion in fusions {
-        let Fusion {
-            at: (bi, ii),
-            leaves,
-            remove,
-        } = fusion;
-        let ints = leaves.iter().any(|p| matches!(p, Piece::Int(_)));
-        let piece_params = leaves.iter().map(|p| Param {
-            ty: match p {
-                Piece::Int(_) => Ty::INT,
-                Piece::Str(_) => Ty::STR,
-            },
-            mode: Mode::Borrow,
-        });
-        let mut params = Vec::new();
-        if ints {
-            params.push(Param {
-                ty: Ty::INT,
-                mode: Mode::Borrow,
-            });
-        }
-        params.extend(piece_params);
-        let ext = m.add_extern(ExternDef {
-            name: if ints {
-                fmt_name(leaves.len())
-            } else {
-                concat_name(leaves.len())
-            },
-            params,
-            ret: Ty::STR,
-            noreturn: false,
-            pure_: false,
-            fresh: true,
-            role: ExternRole::None,
-            leaf: true,
-            reads: false,
-        });
-        let f = &mut m.funcs[fi];
-        let mut mask = 0i64;
-        let mut args = Vec::new();
-        for (k, p) in leaves.iter().enumerate() {
-            match p {
-                Piece::Int(v) => {
-                    mask |= 1 << k;
-                    args.push(*v);
-                }
-                Piece::Str(v) => args.push(*v),
-            }
-        }
-        let loc = f.blocks[bi].insts[ii].loc;
-        if ints {
-            let mv = f.new_value(Ty::INT);
-            args.insert(0, mv);
-            masks.push(((bi, ii), mv, mask, loc));
-        }
-        let root = &mut f.blocks[bi].insts[ii];
-        root.args = args;
-        root.imm = Imm::Ext(ext);
-        removed.extend(remove);
-    }
-    // The mask constant goes right before its root: positions shift by the removals before it.
-    let f = &mut m.funcs[fi];
-    masks.sort_by_key(|&(at, ..)| std::cmp::Reverse(at));
-    let mut gone: Vec<Vec<bool>> = f
-        .blocks
-        .iter()
-        .map(|b| vec![false; b.insts.len()])
-        .collect();
-    for &(b, k) in &removed {
-        gone[b][k] = true;
-    }
-    // `before[b][k]`: removals in block `b` ahead of position `k`.
-    let before: Vec<Vec<u32>> = gone
-        .iter()
-        .map(|g| {
-            let mut n = 0;
-            g.iter()
-                .map(|&x| {
-                    let at = n;
-                    n += x as u32;
-                    at
-                })
-                .collect()
-        })
-        .collect();
-    let shifts: Vec<usize> = masks
-        .iter()
-        .map(|&((bi, ii), ..)| before[bi][ii] as usize)
-        .collect();
-    for (b, blk) in f.blocks.iter_mut().enumerate() {
-        let mut k = 0usize;
-        blk.insts.retain(|_| {
-            let keep = !gone[b][k];
-            k += 1;
-            keep
-        });
-    }
-    for (&((bi, ii), mv, mask, loc), shift) in masks.iter().zip(shifts) {
-        f.blocks[bi].insts.insert(
-            ii - shift,
-            Inst {
-                op: Op::IConst,
-                args: Vec::new(),
-                imm: Imm::Int(mask),
-                res: Some(mv),
-                loc,
-            },
-        );
     }
 }
 
