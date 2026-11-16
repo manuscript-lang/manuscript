@@ -514,11 +514,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.if_then(owned, |s| s.drop_list_from(ty, vs[0], vs[1], None));
             }
             TyKind::Obj(..) => {
-                // Map and Set are owned `MapVal`s the runtime knows how to drop.
-                let leaves = self.g.lay.leaves(ty);
-                let slot = self.spill_temp(vs, &leaves);
-                let d = self.typedesc_addr(ty);
-                self.rt_call("msrt_slot_drop", &[d, slot]);
+                // Map and Set are owned `MapVal`s the runtime knows how to drop. One that was never
+                // filled has no slots (word 0): nothing to release, no call.
+                let filled = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[0], 0);
+                self.if_then(filled, |s| {
+                    let leaves = s.g.lay.leaves(ty);
+                    let slot = s.spill_temp(vs, &leaves);
+                    let d = s.typedesc_addr(ty);
+                    s.rt_call("msrt_slot_drop", &[d, slot]);
+                });
             }
             TyKind::Type(_) if self.type_block(ty).is_some() => self.type_release(ty, vs[0], 0),
             TyKind::Type(_) => {

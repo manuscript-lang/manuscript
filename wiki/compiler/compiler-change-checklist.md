@@ -42,3 +42,7 @@ Use for `crates/ms-syntax`, `ms-check`, `ms-mir`, `ms-lower`, `ms-clif`, `ms-dri
 - Every source function-value thunk has an owned-result callable ABI, including plain free functions as well as bound/defaulted methods. Adapt inferred borrowed Clonable results at that boundary; never return a borrowed MIR value as owned or copy a resource result (#3112).
 
 - Public-signature closure also needs generic defaults: inspect both declaration variables and interface-operation variables, including parameters unused in the signature. Default well-formedness and bounds checking does not establish visibility. Preserve private defaults on private declarations.
+
+## Run `make perf-counts` after a change to generated glue or inlined helpers
+
+(2026-11-16.) Two merges moved counts that nobody saw until the baselines were rerun: #4305 (MIR drop functions) dropped an `Error`'s empty `details` map through `msrt_slot_drop` on every error (`guard-resultvar` 5.30M to 8.66M), and #4303 (inline `String` order) raised the `strings` suite program 17% because its byte loop was slower than `memcmp` on the sort's keys while its own guard improved 57%. Fixes: a map with no slots is not dropped through the runtime, and the compare reads eight bytes at a time. Judge an inlined helper on a program that sorts strings, not only on its guard.
