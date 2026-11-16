@@ -634,12 +634,13 @@ fn cranelift_dwarf(fixture: &str, build_args: &[&str]) -> String {
         .nth(1)
         .unwrap_or_default()
         .to_owned();
+    let info = run("--debug-info");
     assert!(
         ours.contains(fixture) && !ours.contains("error:"),
-        "{}",
-        verified.chars().take(6000).collect::<String>()
+        "{}\n{}",
+        verified.chars().take(6000).collect::<String>(),
+        info.chars().take(14000).collect::<String>()
     );
-    let info = run("--debug-info");
     let _ = std::fs::remove_dir_all(&dir);
     info
 }
