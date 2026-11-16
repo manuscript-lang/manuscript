@@ -393,8 +393,8 @@ fn response_headers_are_canonical() {
     assert_eq!(body.status, 201);
     let headers = body.headers.borrow();
     assert_eq!(
-        headers.values("X-Out").unwrap(),
-        &[b"a".to_vec(), b"b".to_vec()]
+        headers.values("X-Out").unwrap().to_vec(),
+        [b"a".to_vec(), b"b".to_vec()]
     );
     assert!(headers.values("Content-Type").is_some());
     drop(headers);
@@ -552,8 +552,8 @@ fn stacked_content_encodings_keep_the_body_and_metadata() {
             vec![b"gzip".to_vec(), b"gzip".to_vec()]
         };
         assert_eq!(
-            headers.values("Content-Encoding"),
-            Some(expected.as_slice())
+            headers.values("Content-Encoding").map(|v| v.to_vec()),
+            Some(expected.clone())
         );
     }
 }

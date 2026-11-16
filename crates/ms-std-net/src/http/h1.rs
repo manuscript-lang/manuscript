@@ -2,6 +2,7 @@
 //!
 //! Everything here works on byte buffers and never touches a socket.
 
+use super::headers::Headers;
 use std::io::Write as _;
 
 /// Longest request or status line plus headers when no limit is configured.
@@ -27,7 +28,8 @@ pub struct RequestHead {
     pub target: String,
     /// Minor HTTP version (0 or 1).
     pub minor: u8,
-    pub fields: Vec<(String, Vec<u8>)>,
+    /// Canonical names sorted, as handlers see them.
+    pub fields: Headers,
     /// Bytes of the head, including the blank line.
     pub length: usize,
 }
@@ -126,7 +128,7 @@ fn parse_request_in<'a>(
                 method: req.method.unwrap_or_default().to_string(),
                 target: req.path.unwrap_or_default().to_string(),
                 minor: req.version.unwrap_or(1),
-                fields: collect(req.headers),
+                fields: Headers::from_parsed(buf, req.headers),
                 length,
             })
         }
@@ -206,19 +208,54 @@ pub enum Framing {
     UntilClose,
 }
 
-fn field<'a>(fields: &'a [(String, Vec<u8>)], name: &str) -> impl Iterator<Item = &'a [u8]> {
+/// A list of header fields, as (name, value) pairs.
+pub trait FieldList {
+    fn pairs(&self) -> impl Iterator<Item = (&str, &[u8])>;
+
+    /// Whether every value is UTF-8.
+    fn is_text(&self) -> bool {
+        self.pairs().all(|(_, v)| super::headers::is_utf8(v))
+    }
+}
+
+impl FieldList for [(String, Vec<u8>)] {
+    fn pairs(&self) -> impl Iterator<Item = (&str, &[u8])> {
+        self.iter().map(|(n, v)| (n.as_str(), v.as_slice()))
+    }
+}
+
+impl FieldList for Vec<(String, Vec<u8>)> {
+    fn pairs(&self) -> impl Iterator<Item = (&str, &[u8])> {
+        self.as_slice().pairs()
+    }
+}
+
+impl FieldList for Headers {
+    fn pairs(&self) -> impl Iterator<Item = (&str, &[u8])> {
+        self.raw_pairs()
+    }
+
+    fn is_text(&self) -> bool {
+        Headers::is_text(self)
+    }
+}
+
+fn field<'a, F: FieldList + ?Sized>(
+    fields: &'a F,
+    name: &'a str,
+) -> impl Iterator<Item = &'a [u8]> {
     fields
-        .iter()
+        .pairs()
         .filter(move |(n, _)| n.eq_ignore_ascii_case(name))
-        .map(|(_, v)| v.as_slice())
+        .map(|(_, v)| v)
 }
 
 /// Whether a comma-separated field holds `token` (case-insensitive).
-pub fn has_token(fields: &[(String, Vec<u8>)], name: &str, token: &str) -> bool {
+pub fn has_token<F: FieldList + ?Sized>(fields: &F, name: &str, token: &str) -> bool {
     field(fields, name).any(|v| value_has_token(v, token))
 }
 
-fn content_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
+fn content_length<F: FieldList + ?Sized>(fields: &F) -> Result<Option<u64>, ()> {
     let mut found: Option<u64> = None;
     for value in field(fields, "Content-Length") {
         for part in value.split(|&c| c == b',') {
@@ -255,7 +292,7 @@ pub struct RequestScan<'a> {
 }
 
 impl<'a> RequestScan<'a> {
-    pub fn of(fields: &'a [(String, Vec<u8>)]) -> RequestScan<'a> {
+    pub fn of<F: FieldList + ?Sized>(fields: &'a F) -> RequestScan<'a> {
         let mut scan = RequestScan {
             hosts: 0,
             host: None,
@@ -266,7 +303,8 @@ impl<'a> RequestScan<'a> {
             transfer_encoding: false,
             text: true,
         };
-        for (name, value) in fields {
+        scan.text = fields.is_text();
+        for (name, value) in fields.pairs() {
             let is = |known: &str| name.eq_ignore_ascii_case(known);
             match name.len() {
                 4 if is("Host") => {
@@ -282,7 +320,6 @@ impl<'a> RequestScan<'a> {
                 17 if is("Transfer-Encoding") => scan.transfer_encoding = true,
                 _ => {}
             }
-            scan.text &= super::headers::is_utf8(value);
         }
         scan
     }
@@ -365,13 +402,13 @@ pub fn response_framing(head: &ResponseHead, method: &str) -> Result<Framing, &'
 /// Whether a response claims both chunked coding and a length. The two framings disagree about
 /// where the body ends whenever an intermediary or the server itself reads the other one, so
 /// the connection must not carry a later exchange (RFC 9112 section 6.1).
-pub fn conflicting_framing(fields: &[(String, Vec<u8>)]) -> bool {
+pub fn conflicting_framing<F: FieldList + ?Sized>(fields: &F) -> bool {
     field(fields, "Transfer-Encoding").next().is_some()
         && field(fields, "Content-Length").next().is_some()
 }
 
 /// Whether the connection stays open after this message.
-pub fn keep_alive(minor: u8, fields: &[(String, Vec<u8>)]) -> bool {
+pub fn keep_alive<F: FieldList + ?Sized>(minor: u8, fields: &F) -> bool {
     if has_token(fields, "Connection", "close") {
         return false;
     }
@@ -798,7 +835,7 @@ mod tests {
         assert_eq!(h.method, "GET");
         assert_eq!(h.target, "/a?b=1");
         assert_eq!(h.minor, 1);
-        assert_eq!(h.fields.len(), 2);
+        assert_eq!(h.fields.pairs().count(), 2);
         assert_eq!(
             h.length,
             "GET /a?b=1 HTTP/1.1\r\nHost: x\r\nX-A: 1\r\n\r\n".len()
@@ -849,7 +886,7 @@ mod tests {
                 field(f, "Transfer-Encoding").next().is_some()
             );
         }
-        assert!(!RequestScan::of(&[("X".into(), vec![0xff])]).text);
+        assert!(!RequestScan::of(&vec![("X".to_string(), vec![0xff])]).text);
     }
 
     #[test]
