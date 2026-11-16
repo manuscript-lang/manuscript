@@ -17,7 +17,7 @@ The second word of an owned string holds the length in bits 0..30, since a strin
 
 ## Evidence
 
-Stage one alone: 40.3M to 35.1M on `bench/perf/guards/append` (200k appends of `"ab"` and 20k of `"xyz,"`). With the inline path (stage two): 5.6M, 7.2x fewer instructions; the 200k-append probe alone went from 32.0M to 5.0M against 2.4M for C with `realloc` doubling. The guard records the count for the nightly gate.
+Stage one alone: 40.3M to 35.1M on `bench/perf/guards/append` (200k appends of `"ab"` and 20k of `"xyz,"`). With the inline path (stage two): 3.6M after the 2026-11-16 main merge (5.6M when measured), 11x fewer instructions; the 200k-append probe alone went from 32.0M to 5.0M against 2.4M for C with `realloc` doubling. The guard records the count for the nightly gate.
 
 ## Alternatives
 
