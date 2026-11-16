@@ -1,86 +1,93 @@
-# Module swaps: mocks for tests and limits for agents
+# Module swaps
 
 ## Summary
 
-- Problem: tests cannot replace the clock, the environment, the network or a user module without passing every one as a parameter, and there is no way to run a program with less access than the machine gives it.
-- Change: one mechanism. A *swap* makes every import of a module (or of single functions in it) resolve to a replacement file, chosen at build time and checked against the original signature. Tests declare swaps in a header comment; a run or build gets them from `ms.toml` or a flag, so the code under test cannot remove them.
-- Decision requested: approve the mechanism, the header and manifest spellings, and the stages. No new keyword or grammar.
+- Problem: tests cannot fake the clock, files, network, environment or a project module without threading a parameter through every caller, and there is no way to run a program with less reach than the machine gives it.
+- Change: one idea. A *swap* is an ordinary module whose header says which module it stands in for. When a swap is part of a program, every other import of that module gets the swap instead. Tests turn a swap on by importing it; an agent runner turns one on with `--swap`. Same file, same rule, same check.
+- Decision requested: approve the directive, the two ways to turn a swap on, and the one rule (same signature, never more reach).
 
 ## Status
 
-Proposal, 2026-11-16, checked against `main` at the commit of this branch. The spike proves the redirect for `ms test` and `ms run`; signature checking, `ms.toml`, partial swaps and the effects rules are not built. Direction (Chinmay): module mocks over capability values because they are simpler; fit with effects; ergonomics like `vi.mock` but checked at compile time; two uses, restricting agent access and mocking for tests; mock more than std modules.
+Proposal, 2026-11-16. The spike on this branch builds the redirect for standard and project modules, one-function swaps, `--swap` on `ms run` and `ms test`, and the signature check for standard modules. Not built: the reach rule, the signature check for project modules, tooling. Direction (Chinmay): module mocks over capability values because they are simpler; fit with effects; `vi.mock` ergonomics but checked when compiling; two uses, limiting agents and mocking in tests; more than standard modules.
 
 ## Design
 
-A swap is `import path -> replacement file`. It is applied while the module graph loads (`ms-driver` `load.rs`), so the checker, lowering and both backends see ordinary imports of an ordinary module. There is no runtime hook and no cost when no swap is set.
-
-**Tests** (spike, works today). A comment at the top of a test file:
+**A swap says what it replaces.** One header line, in the same `// ms:` family as `effect` and `allow_effect`:
 
 ```manuscript
-// ms: mock "@std/time.ms" "./fake_clock.ms"
-// ms: mock "@std/os/env.ms" "./fake_env.ms"
+// ms: swap "@std/time.ms"
 
-import expect_equal from "@std/test/test.ms"
-import banner from "./greeting.ms"
-
-test "banner uses the fake clock and environment":
-    expect_equal(banner()?, "hello test-user, it is 1970-01-02T00:00:00Z")?
-```
-
-```manuscript
-// fake_clock.ms: same name and signature as the original
 import Timestamp from "@std/time.ms"
 
+export NOW_TEXT := "1970-01-02T00:00:00Z"
+
 export fn now() Timestamp:
-    return Timestamp(seconds: 86400, nanos: 0)
+	return Timestamp(seconds: 86400, nanos: 0)
 ```
 
-Measured: `ms test examples/mock-demo/greeting_test.ms` passes with `greeting.ms` unchanged. The same header in an entry file also swaps under `ms run`.
+**A swap is on when it is in the program.** Nothing else turns it on.
 
-**Agent limits** (not built). The same swaps come from `ms.toml` (`[swaps]`, next to `[aliases]` and `[effects]`) or `ms run --swap FROM=TO`, and apply to every build of the program. A limit is a replacement that fails or narrows: a `net` swap whose calls return `EPERM`, or an `fs` swap that only reads under one directory. Swaps in a header comment only count under `ms test`.
+- A test imports it. It almost always wants something from it anyway, here the expected time:
+
+```manuscript
+import (
+	expect_equal from "@std/test/test.ms",
+
+	NOW_TEXT from "./fake_clock.ms",
+	NAME from "./fake_store.ms",
+	banner from "./greeting.ms",
+)
+
+test "banner uses the fake clock and store":
+	expect_equal(banner()?, f"hello {NAME}, it is {NOW_TEXT}")?
+```
+
+- A runner names it: `ms run main.ms --swap limits/no_files.ms`. The code being run cannot see or remove it, which is what limiting an agent needs.
+
+Measured on this branch (`examples/mock-demo`): the test passes with `greeting.ms` unchanged and no `name.txt`; `ms run run_main.ms` reads the real file; with `--swap limits/no_files.ms` the same program gets `EACCES` from every file read.
+
+**One rule for what a swap may be.**
+
+- Names it exports replace the original's names, with the identical signature, and it uses the original's types (imports them, never redeclares them). Measured: a fake `now() Int` is now rejected: `the swap for @std/time.ms declares now as fn() Int, but the original declares fn() Timestamp`.
+- Names it does not export keep the original. Swapping one function is a module with one function (`limits/no_files.ms` replaces only `read_file`; `greeting.ms` still gets the real `seconds`).
+- Its body may not reach any effect the original does not declare. So a swap can change answers and take away reach, never add reach: a fake clock cannot open a socket, and a limit cannot widen what an agent may do.
+
+**Effects stay the same story.** `ms lint` checks the program without swaps, so `MSL116` reads the same with and without them, and callers are charged the original's effects. `ms review` lists the swaps in a build next to the effects it reaches.
 
 **Scope.**
-- A swap covers the whole program that is built, not one file. Test files with different swaps build as separate programs; files without swaps still share one.
-- Only user modules are redirected. Standard-library code that calls the original inside the standard library is not, so a swap of `fs` does not change what `@std/data/config.ms` reads. The proposal lists this as a known limit.
-- The replacement file's own imports are not redirected, so it can import the original for its types.
 
-**What can be swapped.** Any module a user module imports: `@std/*` and project files. A replacement may export only some names. A name it does not export keeps the original (this is how one function is swapped). Methods are not swapped one by one; swap the module, or use an interface, which already works.
+- A swap covers the whole program, since the redirect happens once while modules load, before checking. Test files that import different swaps build as separate programs; the rest still share one.
+- The swap's own imports of the original are not redirected. Standard-library code is not redirected either, so swapping `fs` does not change what another standard module reads inside the standard library.
+- Methods are not swapped one by one. Swap the module, or take an interface, which already works.
 
-**Checking (required before merge, not in the spike).** The spike let a replacement `now() Int` through and the test printed `5`. Every exported name of a replacement must have the identical signature of the original, and types must be the original type, imported not redeclared. A mismatch is a compile error naming both signatures. This is the one place we beat `vi.mock`.
+**State.** Modules have no mutable state, so a swap answers from its arguments and constants: a fixed clock, a canned reply per input, a refusal. A fake that must remember (an in-memory disk with writes) still takes a capability value such as `FileTree`.
 
-**Effects.** Lint runs on the real graph with swaps off, so `MSL116` output is the same with and without swaps. The replacement body is checked on its own `allow_effect` lines and may not reach an effect the original does not declare, so a fake clock cannot quietly open a socket. Callers are charged the original's effects.
+**Cost.** None when no swap is in the program. With swaps the loader reads the graph twice (swaps are only known once their file is read) and calls are ordinary direct calls, so there is no runtime cost. One extra build per distinct set of swaps in `ms test`.
 
-**State.** Modules have no mutable state, so a swapped function answers from its arguments and constants: fixed clock, fixed environment, failing network, canned responses chosen by input. A fake that remembers (an in-memory disk with writes) still uses a capability value such as `FileTree`; that stays the answer for stateful fakes.
-
-**Not a security boundary.** `extern fn`, `--link` code and starting a process bypass any swap. For agents it is a guard rail beside `[effects]`, not a sandbox.
+**Not a sandbox.** `extern fn`, `--link` and starting a process bypass any swap. For agents it is a guard rail beside `[effects]`.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-driver` `load.rs`, `project` | read swaps, redirect imports, resolve replacement paths | driver unit tests; conformance fixture |
-| `crates/ms-check` `checker.rs` | follow the redirect for `@std/` imports; signature and type match; fall-through for unexported names | reject cases with exact diagnostics |
-| `crates/ms-cli` | `--swap`, partition test files by swap set | e2e fixture with two files |
-| `crates/ms-tooling` lint, `ms-lsp` | show active swaps; hover on a swapped import | lint and LSP tests |
-| `ms.toml` parser | `[swaps]` table | manifest tests |
+| `crates/ms-driver` `load.rs` | read `swap` headers, redirect imports, reload once with swaps known | driver unit tests; conformance fixture |
+| `crates/ms-check` `checker.rs` | follow redirects for `@std/`, fall through unexported names, signature check, reach rule | reject cases with exact diagnostics |
+| `crates/ms-cli` | `--swap` for `run`, `build`, `test`; one build per swap set | e2e fixture |
+| `crates/ms-tooling`, `ms-lsp` | `ms review` lists swaps; hover on a swapped import | tooling tests |
 | unchanged: `ms-lower`, backends | they see ordinary imports | |
 
 ## Alternatives
 
-- Do nothing: capability parameters work today (`FileTree`, `Logger`) but cost a parameter on every function between `main` and the call; Chinmay prefers swaps.
-- Runtime patching like `vi.mock`: needs a table lookup per call, defeats inlining and checks nothing. Lost on cost and safety.
-- Link-time symbol override: only natives, no type check, no user modules.
-- A `mock fn` block inside a test: new grammar and per-test scope, which a static build cannot give. Lost on cost.
-- A header comment only, no manifest: cannot serve agent limits, since the agent edits the file.
+- Do nothing: capability parameters work today (`FileTree`, `Logger`) but add a parameter to every function between `main` and the call.
+- Mapping tables (in a test header or `ms.toml`, "replace X with Y"): the first spike. Two places describe one fake, and the fake file does not say what it is. Lost on cohesion.
+- Runtime patching like `vi.mock`: a lookup on every call, no inlining, nothing checked.
+- Link-time symbol override: natives only, no type check, no project modules.
 
 ## Stages
 
-1. Redirect plus signature checking, header form, `ms test`; conformance fixtures. Gate: `make conform`.
-2. `[swaps]` and `--swap` for `run` and `build`; separate programs per swap set in `ms test`.
-3. Tooling: lint, LSP, `ms review` lists swaps like effects. Bundled deny swaps if wanted.
+1. Swap header, import and `--swap` turn-on, signature check for every module, reach rule; conformance fixtures. Gate: `make conform`.
+2. One build per swap set in `ms test`; `ms review` and editor support.
 
 ## Open questions
 
-- Header comment or `[swaps]` only for tests? Recommendation: both; the header keeps a test next to its fakes.
-- Should unexported names fall through to the original? Recommendation: yes, so a one-function mock is one function.
-- Per-test mutable state for fakes: a small runtime slot table, or keep capability values? Recommendation: keep capability values for now.
+- Should `ms.toml` be able to name swaps that are always on for a run (`[swaps] agent = [...]`)? Recommendation: not now; the runner's `--swap` covers agents and keeps one way.

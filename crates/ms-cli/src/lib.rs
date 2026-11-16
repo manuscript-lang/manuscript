@@ -371,13 +371,20 @@ fn run_source_command<L: Lower>(
                 watch: inv.watch,
                 json: inv.structured,
                 arguments: inv.arguments.clone(),
+                swaps: inv.swaps.clone(),
             },
             io,
         ),
         "test" => {
             let request = TestRequest {
                 filename: inv.filename.clone(),
-                extra: inv.targets.iter().skip(1).cloned().collect(),
+                extra: inv
+                    .targets
+                    .iter()
+                    .skip(1)
+                    .chain(inv.swaps.iter())
+                    .cloned()
+                    .collect(),
                 build_type: plan.build_type,
                 link: inv.link.clone(),
                 json: inv.structured,
