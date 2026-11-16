@@ -35,7 +35,10 @@ fn twin(m: &Module, f: &Func, inst: &Inst) -> Option<(usize, String)> {
         ExternRole::StringJoin => {
             let masked = f.ty(inst.args[0]) == Ty::INT;
             let at = masked as usize;
-            Some((at, format!("msrt_string_append_fmt{}", inst.args.len() - at - 1)))
+            Some((
+                at,
+                format!("msrt_string_append_fmt{}", inst.args.len() - at - 1),
+            ))
         }
         _ => None,
     }

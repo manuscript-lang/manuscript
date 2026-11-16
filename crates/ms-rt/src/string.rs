@@ -3635,6 +3635,55 @@ mod tests {
     }
 
     #[test]
+    fn append_parts_grows_an_owned_string_and_joins_onto_any_other() {
+        let _g = crate::testutil::lock();
+        let part = |s: &StrVal| s as *const StrVal as usize;
+        // SAFETY: every string is live until it is given up or released.
+        unsafe {
+            let eq = from_bytes(b"=");
+            // An owned string grows where it is once its block has room.
+            let mut s = from_bytes(b"a long enough string to be owned");
+            assert!(s.owns() && s.flagged_ascii());
+            let mut last = core::ptr::null_mut();
+            for n in 0..200i64 {
+                let old = core::ptr::read(&s);
+                msrt_string_append_fmt3(&old, 0b0100, part(&eq), n as usize, part(&eq), &mut s);
+                assert!(s.owns() && s.flagged_ascii());
+                last = s.ptr_word;
+            }
+            assert!(bytes(&s).ends_with(b"=198==199="));
+            assert_eq!(s.len(), 32 + 2 * 200 + 10 + 180 + 300);
+            let old = core::ptr::read(&s);
+            msrt_string_append_fmt1(&old, 0b10, -5i64 as usize, &mut s);
+            assert_eq!(s.ptr_word, last, "one more short part fits the slack");
+            // A part that views the string's own bytes is read before they move.
+            let tail = StrVal::view(s.ptr_word.add(s.len() - 2), 2);
+            let old = core::ptr::read(&s);
+            msrt_string_append_fmt2(&old, 0, part(&tail), part(&tail), &mut s);
+            assert!(bytes(&s).ends_with(b"=-5-5-5"));
+            // A part that is not ASCII clears the flag.
+            let wide = from_bytes("é".as_bytes());
+            let old = core::ptr::read(&s);
+            msrt_string_append_fmt1(&old, 0, part(&wide), &mut s);
+            assert!(!s.flagged_ascii());
+            release(&s);
+            // An inline or empty string has nothing to grow: the result is a fresh join.
+            let short = from_bytes(b"ab");
+            let mut r = empty();
+            msrt_string_append_fmt2(&short, 0b100, part(&eq), 7usize, &mut r);
+            assert_eq!(bytes(&r), b"ab=7");
+            assert!(r.is_inline());
+            let none = empty();
+            let long = from_bytes(b"abcdefghijklmnop");
+            let mut r = empty();
+            msrt_string_append_fmt2(&none, 0b100, part(&long), 12usize, &mut r);
+            assert_eq!(bytes(&r), b"abcdefghijklmnop12");
+            release(&r);
+            release(&long);
+        }
+    }
+
+    #[test]
     fn format_parts_writes_integers_in_place_of_strings() {
         let _g = crate::testutil::lock();
         // SAFETY: the strings are live for the whole test.
