@@ -114,14 +114,13 @@ test "empty and transformed branches do not manufacture retained payloads":
 	expect_equal(success.map(fn item: item + 1).get(), 6)?
 	expect_equal(success.and_then(fn item: ok(item + 2)).get(), 7)?
 
-fn borrowed_error(log: String) Void!:
+fn named_error(log: String) Void!:
 	value := error_result(31, log.clone())
 	absent := value.to_optional()
 	expect_equal(absent.is_none(), true)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,")?
-	expect_equal(value.is_error(), true)?
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,31,")?
 
-test "discarded owned errors close while borrowed errors stay alive":
+test "discarded owned errors close, named ones too once to_optional moves them":
 	tmp := temporary("wrapper-errors-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
@@ -129,7 +128,7 @@ test "discarded owned errors close while borrowed errors stay alive":
 	absent := error_result(30, log.clone()).to_optional()
 	expect_equal(absent.is_none(), true)?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,")?
-	borrowed_error(log.clone())?
+	named_error(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,31,")?
 
 fn specialized_optional[T](value: T?, create: fn() Int) T!Int:

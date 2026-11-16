@@ -278,7 +278,7 @@ impl Walker<'_> {
     pub(super) fn is_consumable_param(&self, b: &BindingRef) -> bool {
         self.meta
             .get(&b.uid)
-            .is_some_and(|m| m.perm == Perm::Immutable && m.parameter.is_some())
+            .is_some_and(|m| m.perm == Perm::Immutable && (m.parameter.is_some() || m.is_receiver))
     }
 
     /// Registers the resources an owning pattern binds for the scope-end close.
