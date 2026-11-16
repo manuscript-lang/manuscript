@@ -2,6 +2,8 @@ import (
 	stdout from "@std/io/io.ms",
 	max, min, sqrt from "@std/math/math.ms",
 	environment, set_environment from "@std/os/env.ms",
+	cpu_usage from "@std/os/process.ms",
+	runtime_counts from "@std/os/system.ms",
 	fail from "@std/test/test.ms",
 	monotonic from "@std/time.ms",
 )
@@ -14,7 +16,7 @@ with `measure`.
 Settings come from environment variables that `ms bench` fills from its flags: MS_BENCH_TIME_MS (target time per sample,
 default 100), MS_BENCH_SAMPLES (default 10), and MS_BENCH_ITERATIONS (a fixed iteration count; 0 calibrates).
 A block written `bench "name" per N:` performs N operations per iteration, and every statistic is per operation.
-The result is one line on standard output: `MSBENCH ` followed by a JSON object of nanoseconds per operation (one operation per iteration by default).
+The result is one line on standard output: `MSBENCH ` followed by a JSON object of nanoseconds per operation (one operation per iteration by default), the process CPU time per operation (`cpu_ns`, user plus kernel, which ignores time spent waiting for a CPU), and the runtime's work counters per operation (allocations, bytes allocated, list copies and string clones with their bytes) from one extra counted run.
 Run settings.
 */
 type Settings:
@@ -51,11 +53,24 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 			count = next_count(count, elapsed, config.target_nanoseconds)
 
 	var times = List[Float](reserve: config.samples)
+	cpu_before := cpu_usage()?
 
 	for unused in 0..config.samples:
 		elapsed := time_batch(body, count)?
 		times.append(elapsed.to_float() / (count * operations).to_float())
 
+	cpu_after := cpu_usage()?
+	cpu_micros := (
+		cpu_after.user_microseconds
+		+ cpu_after.system_microseconds
+		- cpu_before.user_microseconds
+		- cpu_before.system_microseconds
+	)
+	cpu_ns := (
+		cpu_micros.to_float()
+		* 1000.0
+		/ (count * config.samples * operations).to_float()
+	)
 	sorted := times.sorted(fn a, b: (if a < b: -1 else: (if a > b: 1 else: 0)))
 	n := sorted.length().to_float()
 	mean := sorted.fold(0.0, fn total, t: total + t) / n
@@ -63,7 +78,26 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 	variance := deviations.fold(0.0, fn total, d: total + d) / n
 	last := sorted.length() - 1
 	median := (sorted[last / 2] + sorted[(last + 1) / 2]) / 2.0
-	line := f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
+
+	// One more run, counted: the runtime's work counters do not depend on machine load,
+	// so the per-operation figures are exact and a change in them is a change in the
+	// work done.
+	before := runtime_counts()?
+	body()?
+
+	after := runtime_counts()?
+	ops := operations.to_float()
+	allocations := (after.allocations - before.allocations).to_float() / ops
+	allocated := (after.allocated_bytes - before.allocated_bytes).to_float() / ops
+	list_copies := (after.list_copies - before.list_copies).to_float() / ops
+	list_copied := (after.list_copy_bytes - before.list_copy_bytes).to_float() / ops
+	string_clones := (after.string_clones - before.string_clones).to_float() / ops
+	string_cloned := (
+		(after.string_clone_bytes - before.string_clone_bytes).to_float()
+		/ ops
+	)
+	mir_ops := (after.operations - before.operations).to_float() / ops
+	line := f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)},\"cpu_ns\":{cpu_ns},\"allocations\":{allocations},\"allocated_bytes\":{allocated},\"list_copies\":{list_copies},\"list_copy_bytes\":{list_copied},\"string_clones\":{string_clones},\"string_clone_bytes\":{string_cloned},\"mir_ops\":{mir_ops}\}\n"
 	stdout().write(line).get()
 	set_environment(measured_flag, "1").get()
 
