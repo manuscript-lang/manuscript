@@ -357,12 +357,12 @@ fn shape_text(segment: Segment) String:
 
 // What the routes say about one request path.
 type Lookup:
-	// The matching route for the method, if any.
-	found: Int?
 	// Captures of that route.
 	params: RouteParams
 	// Methods that have a route for the path, for `Allow`.
 	allow: List[String]
+	// The matching route for the method, if any.
+	found: Int?
 
 fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
 	var found: Int? = none
@@ -725,11 +725,11 @@ fn var Tap.read(max_bytes: Int?) Bytes?!:
 
 fn var Tap.send_headers(status: Int, headers: HttpHeaders) Void!:
 	self.inner.send_headers(status, with_extra(headers, self.extra))?
-	counted(self.state, status, 0)
+	counted(status, 0, self.state)
 
 fn var Tap.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:
 	self.inner.send(status, with_extra(headers, self.extra), body)?
-	counted(self.state, status, self.sent_length(status, body.length()))
+	counted(status, self.sent_length(status, body.length()), self.state)
 
 fn var Tap.upgrade(
 	allowed_origins: List[String],
@@ -740,11 +740,11 @@ fn var Tap.upgrade(
 
 fn var Tap.write(data: String) Void!:
 	self.inner.write(data)?
-	counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
+	counted(0, self.sent_length(self.status_so_far(), data.length()), self.state)
 
 fn var Tap.write_bytes(data: Bytes) Void!:
 	self.inner.write_bytes(data)?
-	counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
+	counted(0, self.sent_length(self.status_so_far(), data.length()), self.state)
 
 // `state` is a slot counting what is sent, which the caller made and reads afterwards.
 fn new_tap(
@@ -761,7 +761,7 @@ fn new_tap(
 export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders) Void:
 	exchange = new_tap(exchange, headers(), request)
 
-fn counted(slot: Int?, status: Int, bytes: Int) Void:
+fn counted(status: Int, bytes: Int, slot: Int?) Void:
 	if state := slot:
 		var guard = hold[TapState](state)
 		if status != 0: guard.items[0].status = status

@@ -8,9 +8,9 @@ import (
 
 export type Stats:
 	operations: Int
+	median_ns: Float
 	iterations: Int?
 	samples: Int?
-	median_ns: Float
 	min_ns: Float?
 	max_ns: Float?
 	mean_ns: Float?
@@ -57,7 +57,18 @@ export fn read_cases(output: String) List[Bench]!:
 			f"{bench.name}: {bench.status}: {bench.failure.get("")}"
 		)
 
-		stats := bench.stats.get(Stats(0, none, none, -1.0, none, none, none, none))
+		stats := bench.stats.get(
+			Stats(
+				operations: 0,
+				iterations: none,
+				samples: none,
+				median_ns: -1.0,
+				min_ns: none,
+				max_ns: none,
+				mean_ns: none,
+				stddev_ns: none,
+			)
+		)
 		if stats.operations <= 0: return invalid(f"invalid operations: {bench.name}")
 		if (stats.iterations.get(1) <= 0) or (stats.samples.get(1) <= 0):
 			return invalid(f"invalid iterations or samples: {bench.name}")

@@ -22,7 +22,7 @@ fn map_result[T, E, U](value: T!E, transform: fn(T) U) U!E:
 fn chain_result[T, E, U](value: T!E, transform: fn(T) U!E) U!E:
 	return value.and_then(transform)
 
-fn map_optional[T, U](value: T?, transform: fn(T) U) U?:
+fn map_optional[T, U](transform: fn(T) U, value: T?) U?:
 	return value.map(transform)
 
 fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(T) U) Set[U]:
@@ -148,7 +148,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	transform := fn(value: Counter) Counter:
 		return Counter(value.calls + 1)
 	unexpected := fn(value: Counter) Counter: panic("map must not run for none")
-	expect_false(not (map_optional(missing.clone(), unexpected).is_none()))?
+	expect_false(not (map_optional(unexpected, missing.clone()).is_none()))?
 
 	mapped := present.clone().map(transform)
 	expect_equal(mapped.get().calls, 1)?

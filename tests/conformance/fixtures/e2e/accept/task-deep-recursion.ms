@@ -10,13 +10,13 @@ import stringify from "@std/data/json.ms"
 // formatting, copies) recurse once per level, like any recursive function. A promise task
 // starts on a 512 KiB stack, so each must grow it the way a written function does.
 type Link:
-	next: Link?
 	value: Int
+	next: Link?
 
 fn chain(n: Int) Link:
-	var head = Link(none, 0)
+	var head = Link(next: none, value: 0)
 	for i in 1..n:
-		head = Link(head, i)
+		head = Link(next: head, value: i)
 	return head
 
 fn stringify_chain() Int!:

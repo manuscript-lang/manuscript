@@ -271,16 +271,16 @@ export fn pairs[A: Clonable, B: Clonable](first: Gen[A], second: Gen[B]) Gen[Pai
 export type Settings:
 	// Cases to run when not fuzzing.
 	runs: Int
-	// First case seed, or none for a random one that failures report.
-	seed: Int?
 	// Time budget in milliseconds; above 0, cases run until it expires instead of
 	// stopping at `runs`.
 	fuzz_milliseconds: Int
+	// First case seed, or none for a random one that failures report.
+	seed: Int?
 
 // Returns defaults with `ms test` flag overrides (`MS_TEST_RUNS`, `MS_TEST_SEED`,
 // `MS_TEST_FUZZ_MS`) applied.
 export fn settings(runs: Int = 100) Settings:
-	var found = Settings(runs, none, 0)
+	var found = Settings(runs, 0, none)
 	environment := environment().get(Map[String, String]())
 	if text := environment.get("MS_TEST_RUNS"):
 		found.runs = text.parse_int().get(runs)

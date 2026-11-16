@@ -1726,40 +1726,29 @@ impl Server {
         head: RequestHead,
     ) -> Result<Box<Pending>, (u16, &'static str)> {
         let _ = (conn, reactor);
-        let hosts = head
-            .fields
-            .iter()
-            .filter(|(n, _)| n.eq_ignore_ascii_case("Host"))
-            .count();
-        if head.minor == 1 && hosts == 0 {
+        let scan = h1::RequestScan::of(&head.fields);
+        if head.minor == 1 && scan.hosts == 0 {
             return Err((400, "missing required Host header"));
         }
-        if hosts > 1 {
+        if scan.hosts > 1 {
             return Err((400, "too many Host headers"));
         }
-        let host_valid = head
-            .fields
-            .iter()
-            .filter(|(n, _)| n.eq_ignore_ascii_case("Host"))
-            .all(|(_, v)| std::str::from_utf8(v).is_ok_and(target::valid_authority));
+        let host_valid = scan
+            .host
+            .is_none_or(|v| std::str::from_utf8(v).is_ok_and(target::valid_authority));
         if !host_valid {
             return Err((400, "invalid Host header"));
         }
-        let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
+        let framing = h1::request_framing(&head, &scan).map_err(|b| (b.status, b.reason))?;
         let target = target::parse(&head.target).map_err(|e| (400, e.0))?;
         if target.path == "*" && head.method != "OPTIONS" {
             return Err((400, "asterisk-form target needs OPTIONS"));
         }
-        // Names come from httparse as `&str`, so only the values can be invalid UTF-8.
-        if !head
-            .fields
-            .iter()
-            .all(|(_, v)| std::str::from_utf8(v).is_ok())
-        {
+        if !scan.text {
             return Err((400, "invalid UTF-8 request"));
         }
-        let expect = h1::has_token(&head.fields, "Expect", "100-continue");
-        let keep_alive = h1::keep_alive(head.minor, &head.fields);
+        let expect = scan.expect_continue;
+        let keep_alive = scan.keep_alive(head.minor);
         if let Framing::Length(n) = framing
             && n > self.limits.body as u64
         {

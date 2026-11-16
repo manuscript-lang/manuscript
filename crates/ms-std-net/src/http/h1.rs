@@ -62,11 +62,37 @@ fn collect(headers: &[httparse::Header<'_>]) -> Vec<(String, Vec<u8>)> {
 /// Whether every CR and LF of a head is part of a CRLF pair; a bare one lets two parsers split
 /// the message differently.
 fn strict_line_endings(head: &[u8]) -> bool {
-    head.iter().enumerate().all(|(i, &c)| match c {
-        b'\n' => i > 0 && head[i - 1] == b'\r',
-        b'\r' => head.get(i + 1) == Some(&b'\n'),
-        _ => true,
-    })
+    let mut at = 0;
+    while let Some(eol) = next_eol(head, at) {
+        if head[eol] != b'\r' || head.get(eol + 1) != Some(&b'\n') {
+            return false;
+        }
+        at = eol + 2;
+    }
+    true
+}
+
+/// The offset of the first CR or LF of `bytes` at or after `from`, a word at a time.
+fn next_eol(bytes: &[u8], from: usize) -> Option<usize> {
+    const LOW: u64 = 0x0101_0101_0101_0101;
+    const HIGH: u64 = 0x8080_8080_8080_8080;
+    let rest = bytes.get(from..)?;
+    let (words, tail) = rest.as_chunks::<8>();
+    for (i, word) in words.iter().enumerate() {
+        let x = u64::from_le_bytes(*word);
+        let (cr, lf) = (x ^ (LOW * 0x0d), x ^ (LOW * 0x0a));
+        let hit = (cr.wrapping_sub(LOW) & !cr | lf.wrapping_sub(LOW) & !lf) & HIGH;
+        if hit != 0 {
+            return word
+                .iter()
+                .position(|&c| c == b'\r' || c == b'\n')
+                .map(|at| from + i * 8 + at);
+        }
+    }
+    let skipped = words.len() * 8;
+    tail.iter()
+        .position(|&c| c == b'\r' || c == b'\n')
+        .map(|at| from + skipped + at)
 }
 
 /// Parses a request head from the front of `buf`.
@@ -189,10 +215,7 @@ fn field<'a>(fields: &'a [(String, Vec<u8>)], name: &str) -> impl Iterator<Item 
 
 /// Whether a comma-separated field holds `token` (case-insensitive).
 pub fn has_token(fields: &[(String, Vec<u8>)], name: &str, token: &str) -> bool {
-    field(fields, name).any(|v| {
-        v.split(|&c| c == b',')
-            .any(|t| t.trim_ascii().eq_ignore_ascii_case(token.as_bytes()))
-    })
+    field(fields, name).any(|v| value_has_token(v, token))
 }
 
 fn content_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
@@ -216,10 +239,73 @@ fn content_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
     Ok(found)
 }
 
+/// What the server asks of a request head's fields, found in one pass over them instead of one
+/// scan per question.
+pub struct RequestScan<'a> {
+    /// How many `Host` fields there are, and the last one.
+    pub hosts: usize,
+    pub host: Option<&'a [u8]>,
+    pub expect_continue: bool,
+    pub connection_close: bool,
+    pub connection_keep_alive: bool,
+    pub content_length: bool,
+    pub transfer_encoding: bool,
+    /// Every value is UTF-8 (names come from httparse as `&str`).
+    pub text: bool,
+}
+
+impl<'a> RequestScan<'a> {
+    pub fn of(fields: &'a [(String, Vec<u8>)]) -> RequestScan<'a> {
+        let mut scan = RequestScan {
+            hosts: 0,
+            host: None,
+            expect_continue: false,
+            connection_close: false,
+            connection_keep_alive: false,
+            content_length: false,
+            transfer_encoding: false,
+            text: true,
+        };
+        for (name, value) in fields {
+            let is = |known: &str| name.eq_ignore_ascii_case(known);
+            match name.len() {
+                4 if is("Host") => {
+                    scan.hosts += 1;
+                    scan.host = Some(value);
+                }
+                6 if is("Expect") => scan.expect_continue |= value_has_token(value, "100-continue"),
+                10 if is("Connection") => {
+                    scan.connection_close |= value_has_token(value, "close");
+                    scan.connection_keep_alive |= value_has_token(value, "keep-alive");
+                }
+                14 if is("Content-Length") => scan.content_length = true,
+                17 if is("Transfer-Encoding") => scan.transfer_encoding = true,
+                _ => {}
+            }
+            scan.text &= super::headers::is_utf8(value);
+        }
+        scan
+    }
+
+    /// Whether the connection stays open after this request.
+    pub fn keep_alive(&self, minor: u8) -> bool {
+        !self.connection_close && (minor >= 1 || self.connection_keep_alive)
+    }
+}
+
+fn value_has_token(value: &[u8], token: &str) -> bool {
+    value
+        .split(|&c| c == b',')
+        .any(|t| t.trim_ascii().eq_ignore_ascii_case(token.as_bytes()))
+}
+
 /// Request body framing as the server reads it; a message with both `Transfer-Encoding` and
 /// `Content-Length` is refused.
-pub fn request_framing(head: &RequestHead) -> Result<Framing, BadMessage> {
+pub fn request_framing(head: &RequestHead, scan: &RequestScan) -> Result<Framing, BadMessage> {
     let bad_length = BadMessage::new(400, "Bad Request");
+    if !scan.transfer_encoding && !scan.content_length {
+        return Ok(Framing::None);
+    }
     let encodings: Vec<&[u8]> = field(&head.fields, "Transfer-Encoding").collect();
     if !encodings.is_empty() {
         let list: Vec<&[u8]> = encodings
@@ -668,6 +754,34 @@ pub fn http_date(unix_seconds: i64) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn line_endings_must_be_crlf_pairs_at_every_offset() {
+        fn by_bytes(head: &[u8]) -> bool {
+            head.iter().enumerate().all(|(i, &c)| match c {
+                b'\n' => i > 0 && head[i - 1] == b'\r',
+                b'\r' => head.get(i + 1) == Some(&b'\n'),
+                _ => true,
+            })
+        }
+        for len in 0..40usize {
+            for at in 0..len {
+                for ends in [&b"\r\n"[..], b"\n", b"\r", b"\r\r", b"\n\r", b"\r\n\r\n"] {
+                    let mut head = vec![b'a'; len];
+                    for (n, &c) in ends.iter().enumerate() {
+                        if at + n < len {
+                            head[at + n] = c;
+                        }
+                    }
+                    assert_eq!(
+                        super::strict_line_endings(&head),
+                        by_bytes(&head),
+                        "{head:?}"
+                    );
+                }
+            }
+        }
+    }
+
     use super::*;
 
     fn request(text: &str) -> RequestHead {
@@ -701,8 +815,49 @@ mod tests {
     }
 
     #[test]
+    fn the_request_scan_answers_what_the_separate_scans_do() {
+        for text in [
+            "GET / HTTP/1.1\r\nHost: a\r\n\r\n",
+            "GET / HTTP/1.1\r\nhost: a\r\nHOST: b\r\n\r\n",
+            "GET / HTTP/1.1\r\nExpect: 100-Continue\r\nHost: a\r\n\r\n",
+            "GET / HTTP/1.1\r\nConnection: Keep-Alive, Close\r\nHost: a\r\n\r\n",
+            "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n",
+            "GET / HTTP/1.0\r\n\r\n",
+            "POST / HTTP/1.1\r\nContent-Length: 3\r\nTransfer-Encoding: chunked\r\n\r\n",
+            "POST / HTTP/1.1\r\ncontent-length: 3\r\nX-Other: 1\r\nConnection: upgrade\r\n\r\n",
+        ] {
+            let head = request(text);
+            let scan = RequestScan::of(&head.fields);
+            let f = &head.fields;
+            assert_eq!(scan.hosts, field(f, "Host").count(), "{text:?}");
+            assert_eq!(
+                scan.expect_continue,
+                has_token(f, "Expect", "100-continue"),
+                "{text:?}"
+            );
+            assert_eq!(
+                scan.keep_alive(head.minor),
+                keep_alive(head.minor, f),
+                "{text:?}"
+            );
+            assert_eq!(
+                scan.content_length,
+                field(f, "Content-Length").next().is_some()
+            );
+            assert_eq!(
+                scan.transfer_encoding,
+                field(f, "Transfer-Encoding").next().is_some()
+            );
+        }
+        assert!(!RequestScan::of(&[("X".into(), vec![0xff])]).text);
+    }
+
+    #[test]
     fn request_framing_rules() {
-        let f = |t: &str| request_framing(&request(t));
+        let f = |t: &str| {
+            let head = request(t);
+            request_framing(&head, &RequestScan::of(&head.fields))
+        };
         assert_eq!(
             f("POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\n"),
             Ok(Framing::Length(5))
@@ -718,6 +873,27 @@ mod tests {
             Ok(Framing::Chunked)
         );
         assert_eq!(f("GET / HTTP/1.1\r\n\r\n"), Ok(Framing::None));
+        // With neither framing field there is no body, whatever the method or version.
+        assert_eq!(f("POST / HTTP/1.1\r\nHost: a\r\n\r\n"), Ok(Framing::None));
+        assert_eq!(f("POST / HTTP/1.0\r\n\r\n"), Ok(Framing::None));
+        // Names differing only by case are the same field, as before the one-pass scan.
+        assert!(f("POST / HTTP/1.1\r\ncontent-length: 1\r\nCONTENT-LENGTH: 2\r\n\r\n").is_err());
+        assert_eq!(
+            f("POST / HTTP/1.1\r\ncontent-length: 2\r\nContent-Length: 2\r\n\r\n"),
+            Ok(Framing::Length(2))
+        );
+        assert_eq!(
+            f("POST / HTTP/1.1\r\ntransfer-encoding: chunked\r\nCONTENT-length: 5\r\n\r\n")
+                .unwrap_err()
+                .status,
+            400
+        );
+        assert_eq!(
+            f("POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n")
+                .unwrap_err()
+                .status,
+            400
+        );
         assert!(f("POST / HTTP/1.1\r\nContent-Length: x\r\n\r\n").is_err());
         assert!(f("POST / HTTP/1.1\r\nContent-Length: 1\r\nContent-Length: 2\r\n\r\n").is_err());
         assert_eq!(

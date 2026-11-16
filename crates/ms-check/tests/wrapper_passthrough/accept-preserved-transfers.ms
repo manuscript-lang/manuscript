@@ -76,7 +76,7 @@ fn collection_get_still_borrows() Int:
     values := [Marker(1)]
     return values.first().get().id
 
-fn direct_specialized_optional[T, E](value: T?, create: fn() E) T!E:
+fn direct_specialized_optional[T, E](create: fn() E, value: T?) T!E:
     return value.ok_or_else[E](create)
 
 fn direct_specialized_result[T, E, U](value: T!E, transform: fn(T) U) U!E:

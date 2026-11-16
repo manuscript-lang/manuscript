@@ -35,7 +35,18 @@ export fn stdlib_table(output: String) String!:
 	]
 
 	for c in cases:
-		s := c.stats.get(Stats(0, none, none, 0.0, none, none, none, none))
+		s := c.stats.get(
+			Stats(
+				operations: 0,
+				iterations: none,
+				samples: none,
+				median_ns: 0.0,
+				min_ns: none,
+				max_ns: none,
+				mean_ns: none,
+				stddev_ns: none,
+			)
+		)
 		rows.append(
 			left(labels.get_or(c.name, ""), width) + "  " + right(
 				s.median_ns.to_fixed(2),
