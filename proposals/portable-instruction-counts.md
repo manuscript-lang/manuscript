@@ -1,54 +1,49 @@
-# Portable instruction counts for `ms bench`
+# Runtime work counters for `ms bench`
 
 ## Summary
 
-- Problem: `ms bench` reports wall-clock time, which is too noisy to fail a build. The only stable gate (`make perf-counts`) needs callgrind, so it is Linux-only and not available to a user's own Manuscript project.
-- Change: `ms bench --count` builds the program with a block counter and reports deterministic executed-operation counts per bench, comparable against a saved baseline.
-- Decision requested: approve counting in the compiler backends (option B below) as the first stage.
+- Problem: `ms bench` times are too noisy to fail a build, and the only stable gate (`make perf-counts`) needs callgrind, so it is Linux-only and unusable from another project (for example a driver such as ms-pg).
+- Change: `ms bench` reports the runtime's own work counters per operation (allocations, bytes allocated, list copies, string clones and their bytes) and `--baseline` / `--fail-over` gates on them. Times are reported and never gate.
+- Decision: replaces the earlier "count compiled blocks" design, which the owner narrowed and a skeptical review and a measurement rejected.
 
 ## Status
 
-Proposal, 2026-11-15, checked against `main` at 276158dd. Direction from the owner: bench should gate Manuscript programs without callgrind and without a MIR interpreter. Not yet reviewed by a skeptical reviewer.
-
-## Problem
-
-- `stdlib/test/bench.ms` measures with `monotonic()`; runs on a shared runner differ by far more than a real 3% regression.
-- `tools/perf-counts.ms` runs nine programs under valgrind. valgrind does not exist on macOS or Windows, so parity fails, and a user project cannot reuse it.
-- Measured on Linux: the five guards in `bench/perf/guards` count between 4.5M and 322M instructions, stable to under 0.1% across runs, which is what a gate needs.
+Stage 1 and the baseline gate implemented, 2026-11-15. The first draft counted operations in compiled blocks; callgrind on the five `bench/perf/guards` programs showed compiled Manuscript code is 0% (crypto), 0.8% (regex), 17.7% (image), 22% (chains) and 47% (maps) of instructions, so that count would miss most regressions. The review also found the cost model needed invented weights and raced across threads.
 
 ## Design
 
-- `ms bench --count` compiles the program with counting on. Each MIR basic block gets an index in a flat `u64` array. The backend emits one add per block, adding the block's operation count (a constant known at compile time). No hash, no pointers.
-- The array lives in the runtime. `run_bench_block` reads the total before and after each iteration and adds `instructions` (per operation) to the `MSBENCH` JSON line next to the time fields.
-- Runtime primitives called from a block (`call.rt`) add a fixed cost from a table in `ms-rt-abi`, plus the byte or element count where the call has one. This is a model, not a hardware count.
-- `ms bench --json` output with `instructions` can be saved and compared: `--baseline file.json --fail-over 3%` exits non-zero when a case rises past the bound. Time stays reported but never fails.
-- Same output on Linux, macOS and Windows, because the number comes from compiled-in constants, not the CPU.
-- Only code built through MIR is counted. Rust crates behind runtime calls (crypto, regex, image) count as their table cost, so a slowdown inside them is invisible. `perf-counts` stays for those on Linux.
+- The allocator already counted requests in the `stats` runtime build only. They now always count, in per-thread state (no atomics on the hot path), merged into a process total when a thread releases its heap. Cost measured with `make perf-counts`: +0.9% instructions on the allocation-heavy `strings` program, under 0.1% on the others.
+- `msrt_counts` reads six words: allocations, bytes, list copies, list copy bytes, string clones, string clone bytes. `@std/os/system` exposes them as `runtime_counts()`.
+- `run_bench_block` runs the body once more after the timed samples and subtracts the counters: exact per operation, and independent of the time-based calibration.
+- `ms bench --baseline file.json --fail-over 3` compares each counter of each bench with an earlier `--json` result and exits 1 naming every counter over the bound. A counter that was zero may rise by one.
+- `ms bench --ops` adds MIR operation counts for the program's own code, the part a user project owns: after the optimizer, a `count_ops` pass puts a leaf call at the head of every block that adds the block's instruction count to a process total (`msrt_ops_add`). The count is the same under LLVM and Cranelift (verified on a list-building bench: 5039 operations either way) and on every platform, and needs no valgrind. The counter slows the program, so an `--ops` run executes each bench once and its times are not meaningful.
+- Same numbers on Linux, macOS and Windows: they are counts of runtime events, not CPU events, and need no valgrind or privileges.
+
+## Limits
+
+- MIR operations count compiled blocks in the code the optimizer leaves, equal weight per instruction: a loop that gets slower inside a runtime call is not seen (allocations and bytes show part of it).
+- Allocations cover the calling thread and finished threads; copies cover the calling isolate. A thread still running is not in the total.
+- Work inside the Rust crates (crypto, regex, image decoding) shows only as allocations and bytes. A pure slowdown there, such as the SIMD prefilter, is invisible; `perf-counts` stays for those on Linux.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `ms-mir` | per-block operation weight | unit test on a known function |
-| `ms-clif`, `ms-mir-llvm` | emit the add when counting is on | conformance: same count under both backends |
-| `ms-rt`, `ms-rt-abi` | counter array, call cost table | runtime test |
-| `stdlib/test/bench.ms` | report `instructions` | bench JSON test |
-| `ms-cli` | `--count`, `--baseline`, `--fail-over` | CLI invocation test |
+| `ms-rt` | always-on counters, `msrt_counts` | `ms-rt` unit tests |
+| `ms-std-process`, `stdlib/os/system.ms` | `runtime_counts()` | `e2e/stdlib/runtime-counts.ms` |
+| `stdlib/test/bench.ms` | counted run, new JSON fields | `bench_baseline_gates_on_work_counters` |
+| `ms-cli` | `--baseline`, `--fail-over`, `--ops` | same test, `bench_ops_counts_the_programs_own_operations` |
+| `ms-mir`, `ms-build` | `count_ops` pass, `BuildOptions.count_ops` | same test |
 
 ## Alternatives
 
-- Do nothing: regressions in Manuscript programs are found by hand.
-- Hardware counters (`perf_event_open`, macOS `kperf`, Windows): need privileges the CI VMs and containers often lack, and have no common API; fails parity.
-- MIR interpreter count: portable, but runs slowly, may not support every runtime call, and ignores the real backends. Rejected by the owner.
-- Callgrind everywhere: not available outside Linux.
+- Do nothing: regressions in a user's Manuscript program are found by hand.
+- Operation counts of compiled blocks: rejected by measurement above.
+- Hardware counters: no common API, privileges missing on CI VMs; fails parity.
+- Best-of-N CPU time against a baseline: still noisy on shared runners; kept as an idea for the cost the counters cannot see.
 
 ## Stages
 
-1. Counting in the Cranelift backend and `--count` output; one guard moves over as a bench block.
-2. LLVM backend parity check (counts must match the Cranelift counts within the model).
-3. `--baseline` and `--fail-over`; move the guards from `perf-counts` into bench blocks.
-
-## Open questions
-
-- Should the operation count weight memory operations and calls more than arithmetic? Recommendation: no; equal weight, with the runtime table carrying the cost of heavy calls.
-- Is a model-based count acceptable as a gate when runtime Rust code is only table-costed? Recommendation: yes for Manuscript code, and keep callgrind on Linux for runtime crates.
+1. Done: counters, `runtime_counts()`, bench report, baseline gate.
+2. Done: `cpu_ns` (process user plus kernel time per operation) in `ms bench`; `bench/perf/guards/bench.ms` gated by `make bench-gate` in the nightly run, against `baseline.json`, with callgrind kept for the Rust crates.
+3. Not done: counting runtime calls by name and syscalls has no single choke point (lowered code calls `msrt_*` directly and the std crates call the OS themselves), so it needs compiler or per-crate instrumentation; threads still running are not in the allocation total; instruction counts stay callgrind-only because no portable source exists.

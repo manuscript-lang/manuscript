@@ -53,6 +53,8 @@ pub struct BuildOptions {
     pub dump_clif: bool,
     /// Report or reject copies of object values in the lowered code.
     pub copy_probe: CopyProbe,
+    /// Count the MIR operations the program executes (`ms bench --ops`, `MS_COUNT_OPS`).
+    pub count_ops: bool,
 }
 
 impl Default for BuildOptions {
@@ -72,6 +74,7 @@ impl Default for BuildOptions {
             dump_clif: false,
             clif_verify: cfg!(debug_assertions),
             copy_probe: CopyProbe::Off,
+            count_ops: false,
         }
     }
 }
