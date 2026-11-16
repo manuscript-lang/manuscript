@@ -101,13 +101,14 @@ pub fn current_task() -> u64 {
     unsafe { msrt_task_current() }
 }
 
-/// Starts a detached task running `entry(arg)`; it first runs when the caller parks.
+/// Starts a detached task running `entry(arg)` and returns its handle; it first runs when the
+/// caller parks.
 ///
 /// # Safety
 /// `arg` must be valid for `entry`, which owns it.
-pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) {
+pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> u64 {
     // SAFETY: `entry` and `arg` follow the task ABI; ownership of `arg` moves to the task.
-    unsafe { msrt_task_spawn(entry, arg, 1, 0) };
+    unsafe { msrt_task_spawn(entry, arg, 1, 0) }
 }
 
 /// Request bit for [`wait_fd`]: keep the registration between waits (the runtime's `WAIT_KEEP`).
@@ -186,26 +187,6 @@ pub fn cancel_task(handle: u64) {
 /// Forgets a cancel aimed at the running task, which caught it and goes on.
 pub fn acknowledge_cancel() {
     ms_rt::fault::acknowledge_cancel()
-}
-
-/// Starts `entry(arg)` as a promise task on this thread and returns its id. `entry` owns `arg`.
-/// A fault or cancellation in it ends only that promise; [`promise_drop`] releases it.
-///
-/// # Safety
-/// `arg` must be valid for `entry`, which owns it.
-pub unsafe fn promise_start(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> i64 {
-    // SAFETY: forwarded contract.
-    unsafe { ms_rt::promise::start_native(entry, arg) }
-}
-
-/// Asks the promise `id` to stop at its next wait.
-pub fn promise_cancel(id: i64) {
-    ms_rt::promise::cancel(id)
-}
-
-/// Cancels the promise `id` if unfinished, joins its task, and frees it.
-pub fn promise_drop(id: i64) {
-    ms_rt::promise::msrt_promise_drop(id)
 }
 
 /// A runtime park token (`msrt_token_*`) posted from the runtime thread; freed on drop.
