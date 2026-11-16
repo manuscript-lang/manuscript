@@ -11,7 +11,6 @@ use ms_rt_abi::STATUS_NOT_TERMINAL;
 use rustix::event::{PollFd, PollFlags, poll};
 use rustix::fd::BorrowedFd;
 use rustix::io::{Errno, read, write};
-use rustix::pipe::{PipeFlags, pipe_with};
 use rustix::termios::{
     ControlModes, InputModes, LocalModes, OptionalActions, SpecialCodeIndex, Termios, isatty,
     tcgetattr, tcgetwinsize, tcsetattr,
@@ -60,11 +59,25 @@ use libc::__error as errno_location;
 fn wake_read() -> Result<i32, Failure> {
     static MAKE: std::sync::Once = std::sync::Once::new();
     MAKE.call_once(|| {
-        if let Ok((r, w)) = pipe_with(PipeFlags::CLOEXEC | PipeFlags::NONBLOCK) {
-            // Both ends stay open for the life of the process.
-            WAKE_READ.store(rustix::fd::IntoRawFd::into_raw_fd(r), Ordering::Release);
-            WAKE_WRITE.store(rustix::fd::IntoRawFd::into_raw_fd(w), Ordering::Release);
+        let mut ends = [-1i32; 2];
+        // SAFETY: `ends` holds the two descriptors `pipe` writes; `fcntl` acts on them.
+        unsafe {
+            // `pipe2` does not exist on macOS, so set the flags after the call.
+            if libc::pipe(ends.as_mut_ptr()) != 0 {
+                return;
+            }
+            for fd in ends {
+                libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC);
+                libc::fcntl(
+                    fd,
+                    libc::F_SETFL,
+                    libc::fcntl(fd, libc::F_GETFL) | libc::O_NONBLOCK,
+                );
+            }
         }
+        // Both ends stay open for the life of the process.
+        WAKE_READ.store(ends[0], Ordering::Release);
+        WAKE_WRITE.store(ends[1], Ordering::Release);
     });
     match WAKE_READ.load(Ordering::Acquire) {
         -1 => Err(Failure::failed("cannot make the terminal wake pipe")),
