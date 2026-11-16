@@ -30,8 +30,6 @@ export type Url:
 	// Lowercased hostname, excluding the port and IPv6 brackets; an IPv6 zone
 	// identifier keeps its case. User information is rejected.
 	host: String
-	// Explicit numeric port in 0..65535, or none when the input has no port.
-	port: Int?
 	// Escaped path text, retaining escaped separators; format validates its percent
 	// escapes and UTF-8.
 	path: String
@@ -40,6 +38,8 @@ export type Url:
 	query: String
 	// Decoded fragment contents without the leading hash mark.
 	fragment: String
+	// Explicit numeric port in 0..65535, or none when the input has no port.
+	port: Int?
 	// True when the URL was written without `//`, as in `mailto:?subject=hi`; format
 	// then omits the empty authority, so the text round-trips.
 	omit_host: Bool = false

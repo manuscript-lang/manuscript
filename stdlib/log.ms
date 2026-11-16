@@ -79,7 +79,7 @@ fn encode_fields[F: Data](fields: F) String!:
 // The context of a child: the parent's object members with the child's added, or the
 // child's text alone when either side is not an object. This runs once per child, never
 // per record.
-fn merge_context(parent: String?, child: String) String!:
+fn merge_context(child: String, parent: String?) String!:
 	base := parent.get("")
 	if base == "": return ok(child)
 
@@ -176,14 +176,14 @@ export type Logger:
 	threshold: Int
 	// Internal state: whether records carry a `time` field.
 	timestamp: Bool
+	// Internal state: the transport this logger writes to; each child owns a duplicate.
+	transport: Transport
 	// Internal state: the largest record in bytes including the newline; none is
 	// unlimited.
 	max_bytes: Int?
 	// Internal state: JSON text of the fields bound by `child`, written as `context`;
 	// none if unbound.
 	context: String?
-	// Internal state: the transport this logger writes to; each child owns a duplicate.
-	transport: Transport
 
 // Internal: writes one record at a level number. `data` is JSON text attached as
 // is.
@@ -260,9 +260,9 @@ that cannot be encoded returns `EBADMSG`.
 */
 fn Logger.child[F: Data](fields: F) Logger!:
 	text := encode_fields(fields)?
-	context := merge_context(self.context, text)?
+	context := merge_context(text, self.context)?
 	own := self.transport.duplicate()?
-	return ok(Logger(self.threshold, self.timestamp, self.max_bytes, context, own))
+	return ok(Logger(self.threshold, self.timestamp, own, self.max_bytes, context))
 
 // Tests the current filtering threshold; Silent is never enabled as a record level.
 fn Logger.enabled(level: LogLevel) Bool:
@@ -306,9 +306,9 @@ export fn create(transport: Transport, options: LoggerOptions = LoggerOptions())
 		Logger(
 			level_value(options.level),
 			options.timestamp,
+			transport,
 			options.max_bytes,
 			none,
-			transport,
 		)
 	)
 

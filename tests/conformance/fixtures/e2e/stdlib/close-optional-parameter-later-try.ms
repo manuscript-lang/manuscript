@@ -14,11 +14,11 @@ fn var Door.close() Void!:
 fn fails() Int!:
     return error(Error("later argument"))
 
-fn take(door: Door?, n: Int) Void:
+fn take(n: Int, door: Door?) Void:
     return
 
 fn attempt() Void!:
-    take(Door("temp"), fails()?)
+    take(door: Door("temp"), n: fails()?)
 
 fn main() Void:
     void attempt()

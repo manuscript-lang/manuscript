@@ -61,8 +61,6 @@ type Context:
 	lines: List[String]
 	final_break: Bool
 	index: Int
-	max_depth: Int?
-	max_values: Int?
 	values: Int
 	anchors: Map[String, YamlValue]
 	sizes: Map[String, Int]
@@ -76,6 +74,8 @@ type Context:
 	dash: List[Bool]
 	ind: List[Int]
 	col: List[Int]
+	max_depth: Int?
+	max_values: Int?
 	// Diagnostic projection for virtual lines; parsing continues to use the same bases.
 	// Prefixes declared by %TAG directives, keyed by handle (`!`, `!!`, `!name!`).
 	tag_handles: Map[String, String] = Map[String, String]()

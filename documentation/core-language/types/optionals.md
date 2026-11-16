@@ -87,7 +87,7 @@ fn display_name(name: String?) String:
 `get(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
 
 ```manuscript
-fn display_name(name: String?, create: fn() String) String:
+fn display_name(create: fn() String, name: String?) String:
     return name.get_or_else(create)
 ```
 

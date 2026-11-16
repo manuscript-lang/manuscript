@@ -854,9 +854,9 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 
 // Counts the values of the finished document against the limits.
 type Budget:
+	values: Int
 	max_depth: Int?
 	max_values: Int?
-	values: Int
 
 fn materialize(
 	tables: List[Map[String, Node]],

@@ -30,10 +30,6 @@ export type SseLimits:
 type Decoder:
 	// Limits fixed when the decoder was created.
 	limits: SseLimits
-	// The latest valid `retry:` value in milliseconds, or none if the stream sent none.
-	retry_ms: Int?
-	// Internal: the last event ID, which persists across events.
-	last_id: String?
 	// Internal: bytes of the line being assembled.
 	line: BytesBuilder
 	// Internal: length of the line being assembled.
@@ -52,10 +48,14 @@ type Decoder:
 	event_type: String
 	// Internal: the pending `data:` lines.
 	data: List[String]
-	// Internal: the first failure, repeated by later calls.
-	failure: Error?
 	// Internal: True after `finish`.
 	closed: Bool
+	// The latest valid `retry:` value in milliseconds, or none if the stream sent none.
+	retry_ms: Int?
+	// Internal: the last event ID, which persists across events.
+	last_id: String?
+	// Internal: the first failure, repeated by later calls.
+	failure: Error?
 
 fn var Decoder.step(value: Bytes, var out: List[SseEvent]) Void!:
 	var events = List[SseEvent]()

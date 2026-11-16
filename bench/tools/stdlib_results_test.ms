@@ -67,7 +67,16 @@ test "huge exponents and non-finite constants are rejected, finite zero is not":
 	)?
 	expect_equal(
 		cases[0].stats.get(
-			Stats(0, none, none, -1.0, none, none, none, none)
+			Stats(
+				operations: 0,
+				iterations: none,
+				samples: none,
+				median_ns: -1.0,
+				min_ns: none,
+				max_ns: none,
+				mean_ns: none,
+				stddev_ns: none,
+			)
 		).median_ns,
 		0.0,
 	)?

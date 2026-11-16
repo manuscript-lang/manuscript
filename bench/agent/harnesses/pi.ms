@@ -11,7 +11,7 @@ export type Pi:
 
 fn Pi.name() String: "pi"
 
-fn Pi.command(prompt: String, model: String?, workspace: String) List[String]:
+fn Pi.command(prompt: String, workspace: String, model: String?) List[String]:
 	var cmd = ["pi", "--mode", "json", "-p", prompt.clone()]
 	if m := model: cmd = cmd.concat(["--model", m.clone()])
 	return cmd

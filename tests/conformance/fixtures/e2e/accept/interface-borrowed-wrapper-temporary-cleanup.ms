@@ -20,7 +20,7 @@ interface Observer:
 	fn observe(first: Resource?, second: Resource?, tail: Int? = none) Bool
 	fn reject(value: Resource?) Void!
 	fn broken(value: Resource?) Void
-	fn create(value: Resource?, path: String) Resource
+	fn create(path: String, value: Resource?) Resource
 	fn change(var value: Resource) Void
 	fn fault_with_var(var value: Resource) Void
 	fn result(value: Result[Resource, String]) Bool
@@ -37,7 +37,7 @@ fn Reader.reject(value: Resource?) Void!:
 fn Reader.broken(value: Resource?) Void:
 	if value.is_some(): _bad := [1].get(3)
 
-fn Reader.create(value: Resource?, path: String) Resource:
+fn Reader.create(path: String, value: Resource?) Resource:
 	if value.is_some(): return Resource(50, path.clone())
 	return Resource(51, path.clone())
 
@@ -71,7 +71,7 @@ fn later_fault(reader: Observer, path: String) Void:
 	_used := reader.observe(present(path, 14), present(path, 15), faulted())
 
 fn new_owner_fault(reader: Observer, path: String) Void:
-	owner := reader.create(present(path, 49), path)
+	owner := reader.create(path, present(path, 49))
 	_used := owner.id + faulted()
 
 fn failed_close(reader: Observer, path: String) Void:
