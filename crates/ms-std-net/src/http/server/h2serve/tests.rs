@@ -1013,7 +1013,7 @@ fn an_idle_tls_connection_times_out_while_listed() {
 #[test]
 fn a_listed_connection_serves_its_next_request() {
     for kind in [Kind::Http1OverTls, Kind::Http2] {
-        let (_net, server) = start_listing(Box::new(Buffered(App)), timed(300), true);
+        let (_net, server) = start_listing(Box::new(Buffered(App)), limits(), true);
         let (addr, member) = (server.address().to_string(), member_of(&server));
         let (first, second) = with_client(move || {
             let mut idle = Idle::open(&addr, kind);
