@@ -245,10 +245,10 @@ fn store_stage(dir: &Path, key: &str) -> std::io::Result<PathBuf> {
 }
 
 /// Entries kept per cache directory; the least recently used are removed when a build stores another.
-const KEEP: usize = 8;
+const KEEP: usize = 3;
 
 /// Total bytes kept per cache directory. Older entries go first; the newest entry always stays.
-const MAX_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_BYTES: u64 = 128 * 1024 * 1024;
 
 fn tree_size(path: &Path) -> u64 {
     let Ok(meta) = std::fs::symlink_metadata(path) else {
