@@ -38,3 +38,6 @@
 ## Testing
 
 `cargo test -p ms-std-net` (includes `a_control_byte_is_found_at_every_offset_of_a_long_buffer`), the conformance corpus, and the instruction counts in the bench README.
+
+- Allocator under a limited address space: the heap retries smaller reservations when the 256 GiB map fails, so valgrind and `ulimit -v` run the real allocator. The fast path costs +92 instructions per request (+0.75%), sizes being runtime values.
+- Guard: `bench/perf/guards/http-request` counts the server side of 10000 requests (client is a child process, not followed by valgrind) in the nightly `make perf-counts`, held to 1% (about 151.3M, 15.1k per request).
