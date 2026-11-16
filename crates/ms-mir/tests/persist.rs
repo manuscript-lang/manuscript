@@ -141,3 +141,20 @@ fn a_position_map_shares_what_it_does_not_change() {
     assert_eq!(b.get(7), Some(&7));
     assert_eq!(a.get(7), Some(&70));
 }
+
+#[test]
+fn a_position_map_compares_entries_without_sharing() {
+    use ms_mir::persist::PosMap;
+    let (mut a, mut b): (PosMap<u32>, PosMap<u32>) = (PosMap::new(), PosMap::new());
+    for k in 0..300 {
+        a.insert(k, k * 2);
+        b.insert(k, k * 2);
+    }
+    assert!(!a.same_tree(&b));
+    assert!(a.same_entries(&b));
+    b.insert(299, 1);
+    assert!(!a.same_entries(&b));
+    b.insert(299, 598);
+    b.remove(0);
+    assert!(!a.same_entries(&b));
+}

@@ -360,6 +360,23 @@ fn map_walk<'a, T>(node: &'a MapNode<T>, out: &mut Vec<&'a T>) {
     }
 }
 
+fn map_same<T: PartialEq>(a: &Rc<MapNode<T>>, b: &Rc<MapNode<T>>) -> bool {
+    if Rc::ptr_eq(a, b) {
+        return true;
+    }
+    match (&**a, &**b) {
+        (MapNode::Leaf(p), MapNode::Leaf(q)) => p == q,
+        (MapNode::Branch(p), MapNode::Branch(q)) => {
+            p.iter().zip(q.iter()).all(|(c, d)| match (c, d) {
+                (None, None) => true,
+                (Some(c), Some(d)) => map_same(c, d),
+                _ => false,
+            })
+        }
+        _ => false,
+    }
+}
+
 impl<T: Clone> PosMap<T> {
     pub fn new() -> Self {
         Self::default()
@@ -429,6 +446,18 @@ impl<T: Clone> PosMap<T> {
             map_walk(r, &mut out);
         }
         out.into_iter()
+    }
+
+    /// Whether both maps hold the same keys and values, skipping shared subtrees; no allocation.
+    pub fn same_entries(&self, other: &Self) -> bool
+    where
+        T: PartialEq,
+    {
+        match (&self.root, &other.root) {
+            (None, None) => true,
+            (Some(a), Some(b)) => self.height == other.height && map_same(a, b),
+            _ => false,
+        }
     }
 
     /// Whether both maps are the same tree (sharing everything), a quick equality.
