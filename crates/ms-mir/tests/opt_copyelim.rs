@@ -215,6 +215,12 @@ fn unwrapping_an_owned_option_moves_the_payload_out() {
     assert_eq!(count(&m, "build", Op::Clone), 1);
     assert_eq!(count(&m, "build", Op::OptUnbox), 1);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
+    // The shorthand becomes a read of the payload.
+    let gets = count(&m, "build", Op::OptGet);
+    assert!(ms_mir::expand_owned::run(&mut m));
+    assert_eq!(count(&m, "build", Op::OptUnbox), 0);
+    assert_eq!(count(&m, "build", Op::OptGet), gets + 1);
+    assert!(!ms_mir::expand_owned::needed(&m));
 }
 
 const CLOSURE_LOOP: &str = r#"module "t"
@@ -586,4 +592,10 @@ fn a_field_cloned_out_of_a_dying_type_is_moved_not_copied() {
     assert_eq!(count(&m, "main", Op::TypeRelease), 1);
     assert_eq!(count(&m, "main", Op::Drop), 1);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
+    // The release becomes a drop of each field that stays.
+    let drops = count(&m, "main", Op::Drop);
+    assert!(ms_mir::expand_owned::run(&mut m));
+    assert_eq!(count(&m, "main", Op::TypeRelease), 0);
+    assert!(count(&m, "main", Op::Drop) >= drops);
+    assert!(!ms_mir::expand_owned::needed(&m));
 }

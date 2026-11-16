@@ -54,17 +54,10 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// Alternatives.
     pub(super) fn alternatives(&mut self, f: &Func, inst: &Inst) -> Vs {
-        let m = self.g.m;
         let res_ty = inst.res.map(|r| f.ty(r));
         match inst.op {
             Op::AltNew | Op::AltView => self.alt_new(inst, res_ty.expect("alt.new result")),
             Op::AltPlain => self.a(inst, 0),
-            Op::AltOwn => {
-                // Every case copied: the result is the ordinary alternative.
-                let ty = res_ty.expect("alt.own result");
-                let v = self.a(inst, 0);
-                self.clone_value(ty, &v)
-            }
             Op::AltTag => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
@@ -98,103 +91,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
-            }
-            Op::TypeRelease => {
-                let Imm::TypeMask(_, mask) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let held = self.a(inst, 0);
-                if self.type_block(ty).is_some() {
-                    self.type_release(ty, held[0], mask as u64);
-                    return vec![];
-                }
-                for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {
-                    if mask >> k & 1 == 0 {
-                        self.drop_value(fty, &held[at..at + w]);
-                    }
-                }
-                vec![]
-            }
-            Op::AltRelease => {
-                let Imm::AltMask(a, c, mask) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let case = self.alt_fields(a)[c as usize].clone();
-                let v = self.a(inst, 0);
-                let boxed = match &self.g.lay.shape(ty).alt {
-                    Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
-                    _ => None,
-                };
-                // Drop the payload fields that were not moved out, then free the block.
-                for (k, (fty, idx)) in case.iter().enumerate() {
-                    if mask >> k & 1 == 1 || !m.needs_drop(*fty) {
-                        continue;
-                    }
-                    let fv: Vs = match &boxed {
-                        Some(block) => {
-                            let lay = mem_layout(block);
-                            idx.iter()
-                                .map(|j| {
-                                    self.b.ins().load(
-                                        leaf_type(block[*j]),
-                                        flags(),
-                                        v[0],
-                                        lay.offsets[*j] as i32,
-                                    )
-                                })
-                                .collect()
-                        }
-                        None => idx.iter().map(|j| v[*j]).collect(),
-                    };
-                    self.drop_value(*fty, &fv);
-                }
-                if boxed.is_some() {
-                    self.free(v[0]);
-                }
-                vec![]
-            }
-            Op::AltUnbox => {
-                let Imm::AltField(a, c, i) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let case = self.alt_fields(a)[c as usize].clone();
-                let v = self.a(inst, 0);
-                let boxed = match &self.g.lay.shape(ty).alt {
-                    Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
-                    _ => None,
-                };
-                // Read every payload leaf of the case, drop all fields but `i`, free the block.
-                let fields: Vec<Vs> = case
-                    .iter()
-                    .map(|(_, idx)| match &boxed {
-                        Some(block) => {
-                            let lay = mem_layout(block);
-                            idx.iter()
-                                .map(|k| {
-                                    self.b.ins().load(
-                                        leaf_type(block[*k]),
-                                        flags(),
-                                        v[0],
-                                        lay.offsets[*k] as i32,
-                                    )
-                                })
-                                .collect()
-                        }
-                        None => idx.iter().map(|k| v[*k]).collect(),
-                    })
-                    .collect();
-                for (k, ((fty, _), fv)) in case.iter().zip(&fields).enumerate() {
-                    if k != i as usize {
-                        self.drop_value(*fty, fv);
-                    }
-                }
-                if boxed.is_some() {
-                    self.free(v[0]);
-                }
-                fields[i as usize].clone()
             }
             _ => unreachable!("alternatives is only called for its own ops"),
         }
@@ -277,26 +173,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                     vec![v[0]]
                 }
             }
-            Op::OptGet | Op::OptUnwrap => {
+            Op::OptGet => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
                 let nullable = self.opt_niche(ty);
                 let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
                     unreachable!()
                 };
-                let payload = if self.opt_boxed(ty) {
+                if self.opt_boxed(ty) {
                     let leaves = self.g.lay.leaves(inner);
                     self.load_leaves(v[0], 0, &leaves)
                 } else if nullable {
                     v
                 } else {
                     v[1..].to_vec()
-                };
-                // `unwrap` returns an owned value; `get` borrows.
-                if inst.op == Op::OptUnwrap {
-                    self.clone_value(inner, &payload)
-                } else {
-                    payload
                 }
             }
             Op::OptViewAt => {
@@ -314,24 +204,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                     "opt.addr of an optional that is not boxed"
                 );
                 self.a(inst, 0)
-            }
-            Op::OptUnbox => {
-                // Moves the payload out of a some: the box (if any) is freed, the payload lives on.
-                let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
-                    unreachable!()
-                };
-                if self.opt_boxed(ty) {
-                    let leaves = self.g.lay.leaves(inner);
-                    let payload = self.load_leaves(v[0], 0, &leaves);
-                    self.free(v[0]);
-                    payload
-                } else if self.opt_niche(ty) {
-                    v
-                } else {
-                    v[1..].to_vec()
-                }
             }
             _ => unreachable!("optionals is only called for its own ops"),
         }

@@ -53,6 +53,7 @@ fn main() {
         }
     });
     ms_mir::expand::run(&mut module, true);
+    ms_mir::expand_owned::run(&mut module);
     let build = ms_clif::BuildOptions {
         llvm_units: Some(1),
         ..Default::default()

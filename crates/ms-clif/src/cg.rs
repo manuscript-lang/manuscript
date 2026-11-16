@@ -1348,6 +1348,7 @@ mod target_tests {
                 ms_mir::verify::verify_module(&m).unwrap();
                 ms_mir::opt::optimize(&mut m, level, true);
                 ms_mir::expand::run(&mut m, true);
+                ms_mir::expand_owned::run(&mut m);
                 let opts = Options {
                     opt_level: if level == ms_mir::opt::Level::None {
                         "none"

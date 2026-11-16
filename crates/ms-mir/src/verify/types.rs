@@ -172,6 +172,7 @@ impl InstCheck<'_, '_> {
             | Op::IfaceData => self.closures_and_interfaces(),
             Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod => self.calls(),
             Op::Clone | Op::AltOwn | Op::MoveOut | Op::Drop | Op::DropIf => self.ownership(),
+            Op::Free => self.arity(1),
             Op::Slot
             | Op::ListAddr
             | Op::ListAddrU

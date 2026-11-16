@@ -1138,16 +1138,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::F2IOpt
             | Op::B2I => self.float_ops(f, inst),
             Op::TypeNew | Op::TypeGet | Op::TypeSet | Op::TypeFill => self.type_op(f, inst),
-            Op::AltNew
-            | Op::AltView
-            | Op::AltPlain
-            | Op::AltOwn
-            | Op::AltTag
-            | Op::AltGet
-            | Op::AltTake
-            | Op::TypeRelease
-            | Op::AltRelease
-            | Op::AltUnbox => self.alternatives(f, inst),
+            Op::AltNew | Op::AltView | Op::AltPlain | Op::AltTag | Op::AltGet | Op::AltTake => {
+                self.alternatives(f, inst)
+            }
             Op::ListNew
             | Op::ListLit
             | Op::ListConst
@@ -1169,8 +1162,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::OptNoneOwned
             | Op::OptIsSome
             | Op::OptGet
-            | Op::OptUnwrap
-            | Op::OptUnbox
             | Op::OptAddr => self.optionals(f, inst),
             Op::StrByte
             | Op::StrAscii
@@ -1188,7 +1179,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::IfaceData
             | Op::IfaceIs => self.closures_and_interfaces(f, inst),
             Op::Call | Op::CallInd | Op::CallMethod | Op::CallRt => self.calls(f, inst),
-            Op::MoveOut | Op::Clone | Op::Drop | Op::DropIf => self.ownership(f, inst),
+            Op::MoveOut | Op::Clone | Op::Drop | Op::DropIf | Op::Free => self.ownership(f, inst),
             Op::Slot
             | Op::ListAddrU
             | Op::PtrIsNull
@@ -1209,6 +1200,15 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::CleanupRun
             | Op::GlobalGet
             | Op::GlobalSet => self.runtime_services(f, inst),
+            // `expand_owned` rewrites these into reads, drops and frees before code generation.
+            Op::AltOwn
+            | Op::AltUnbox
+            | Op::AltRelease
+            | Op::TypeRelease
+            | Op::OptUnbox
+            | Op::OptUnwrap => {
+                unreachable!("{} survived expand_owned", inst.op.info().name)
+            }
             Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown | Op::ScopeMark => {
                 unreachable!("scope markers are removed by elaborate before codegen")
             }

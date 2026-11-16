@@ -1,7 +1,7 @@
 //! Differential tests: MIR text is run by the reference interpreter and, compiled
 //! natively with the test runtime, must produce the same output and exit status.
 
-use ms_clif::{Options, compile, link::link_all};
+use ms_clif::{Options, link::link_all};
 use ms_mir::interp::Interp;
 use ms_mir::parse::parse_module;
 use ms_mir::verify::verify_module;
@@ -11,6 +11,13 @@ use std::sync::OnceLock;
 
 use crate::support;
 use support::cc;
+
+/// Compiles `m` as `build_executable` does: the release shorthands are expanded first.
+pub fn compile(m: &ms_mir::ir::Module, opts: &Options) -> Result<Vec<u8>, ms_clif::Error> {
+    let mut m = m.clone();
+    ms_mir::expand_owned::run(&mut m);
+    ms_clif::compile(&m, opts)
+}
 
 pub fn dir() -> PathBuf {
     let d = std::env::temp_dir().join(format!("ms-clif-tests-{}", std::process::id()));
