@@ -29,3 +29,9 @@ A native that raises a cancel (`ms_rt::glue::cancelled()`) jumps, so it must dro
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
 Found by the first sweep (baseline, not cancellation): `http-hardening.ms` "close cancels a handler parked on a request body" ends with one 16 B block even with no cancellation (a client read after the server closed the connection triggers it); the sweep compares against that baseline, and `make leak-check` owned the fix (#3083, covered by the MIR unwind pass).
+
+## Rust heap counts vary with worker threads, not leaks
+
+- A scheduler thread's isolate statics have no destructor, so a buffer a thread keeps for later is counted as live Rust heap at exit unless `task::teardown` resets it. `Sched.spares` (cleanup and guard buffers for the next spawn) was never reset: about 7 blocks per started worker, and how many workers start depends on timing. That made the heap ceiling noisy (fs-write-backpressure: 24 to 47 blocks for one test); with `spares` reset it is 4 to 8. When the heap count varies between identical runs, look for per-thread state `teardown` skips before widening any ceiling.
+- A pool job whose waiter was cancelled is reaped only at the next submit; the stats build reaps it at exit (`pool::reap_at_exit`).
+- Still noisy: http-fault-leak (uncancelled runs 69 to 91 blocks, in steps of 9 blocks and 64 KiB). Not yet attributed.

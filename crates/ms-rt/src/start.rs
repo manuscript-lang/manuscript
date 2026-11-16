@@ -124,6 +124,7 @@ unsafe fn run_main() {
 #[cfg(feature = "stats")]
 fn report_leaks() {
     fault::release_fault_state();
+    crate::glue::pool::reap_at_exit();
     {
         if std::env::var_os("MS_PARK_COUNT").is_some() {
             eprintln!("ms-rt parks: {}", crate::task::sweep::parks());
