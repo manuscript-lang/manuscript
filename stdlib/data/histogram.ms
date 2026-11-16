@@ -69,12 +69,12 @@ fn Histogram.count() Int:
 	return self.total
 
 // Smallest observation, or none when empty.
-fn Histogram.minimum() Int?:
+fn Histogram.min() Int?:
 	if self.total == 0: return none
 	return self.low
 
 // Largest observation, or none when empty.
-fn Histogram.maximum() Int?:
+fn Histogram.max() Int?:
 	if self.total == 0: return none
 	return self.high
 

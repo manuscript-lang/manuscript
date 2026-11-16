@@ -66,11 +66,14 @@ pub fn run(m: &mut Module) -> bool {
     let (drops, clones) = wanted_types(m);
     let lay = Layouts::new(m);
     let eligible = |t: &Ty| match m.types.kind(*t) {
-        TyKind::Type(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Bytes => true,
-        // A present flag and the payload's leaves; the other layouts are one pointer.
-        TyKind::Opt(inner) => {
-            !lay.opt_is_nullable(*inner) && !lay.opt_is_boxed(*inner) && !lay.is_str_like(*t)
+        TyKind::Type(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Bytes | TyKind::Iface(_) => {
+            true
         }
+        // A present flag and the payload's leaves, or a box; the other layouts are one pointer.
+        TyKind::Opt(inner) => {
+            (lay.opt_is_boxed(*inner) || !lay.opt_is_nullable(*inner)) && !lay.is_str_like(*t)
+        }
+        TyKind::Obj(n, _) => n.is_map_or_set(),
         _ => false,
     };
     let eligible = |t: &Ty| eligible(t) && m.needs_drop(*t) && !m.drop_recurses(*t);
@@ -81,12 +84,13 @@ pub fn run(m: &mut Module) -> bool {
         .filter(eligible)
         .filter(|t| match m.types.kind(*t) {
             TyKind::List(e) => m.needs_drop(*e),
-            TyKind::Bytes => false,
+            TyKind::Bytes | TyKind::Iface(_) => false,
             _ => true,
         })
         .collect();
     let (slots, blocks) = addr_types(m, &lay);
     drop(lay);
+    let (closure_drops, closure_clones) = closure_demand(m);
     // The same order every run.
     drop_tys.sort_by_key(|t| t.0);
     clone_tys.sort_by_key(|t| t.0);
@@ -112,7 +116,219 @@ pub fn run(m: &mut Module) -> bool {
         let id = make_block_clone(m, ty);
         m.addr_glue.insert((Glue::BlockClone, ty), id);
     }
+    let mut dropped: HashSet<u32> = HashSet::new();
+    for (c, framed) in closure_drops {
+        let kind = if framed {
+            Glue::ClosureDropFramed(c.0)
+        } else {
+            Glue::ClosureDrop(c.0)
+        };
+        let id = make_closure_drop(m, c, framed);
+        m.addr_glue.insert((kind, Ty::VOID), id);
+        if !framed {
+            dropped.insert(c.0);
+        }
+    }
+    for c in closure_clones {
+        if !dropped.contains(&c.0) {
+            let id = make_closure_drop(m, c, false);
+            m.addr_glue.insert((Glue::ClosureDrop(c.0), Ty::VOID), id);
+        }
+        let id = make_closure_clone(m, c);
+        m.addr_glue.insert((Glue::ClosureClone(c.0), Ty::VOID), id);
+    }
     made
+}
+
+/// The closure functions whose objects the program makes, with whether the object lives in a
+/// stack frame (and so is not freed), and those whose objects get a clone entry.
+fn closure_demand(m: &Module) -> (Vec<(FuncId, bool)>, Vec<FuncId>) {
+    let mut drops: Vec<(FuncId, bool)> = Vec::new();
+    let mut clones: Vec<FuncId> = Vec::new();
+    for f in &m.funcs {
+        let framed = crate::frames::framed_closure_objects(m, f);
+        for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+            if let (Op::ClosureNew, Imm::Func(c), Some(r)) = (inst.op, inst.imm, inst.res) {
+                drops.push((c, framed.contains(&r.index())));
+                clones.push(c);
+            }
+        }
+    }
+    drops.sort_by_key(|(c, framed)| (c.0, *framed));
+    drops.dedup();
+    clones.sort_by_key(|c| c.0);
+    clones.dedup();
+    (drops, clones)
+}
+
+fn ptr_at(b: &mut FuncBuilder, base: crate::ir::Value, off: i64) -> crate::ir::Value {
+    if off == 0 {
+        return base;
+    }
+    let n = b.iconst(off);
+    b.emit(Op::PtrAdd, &[base, n], Imm::None, Some(Ty::PTR))
+        .expect("address")
+}
+
+fn rt_extern(m: &mut Module, name: &str, params: &[Ty], ret: Ty, fresh: bool) -> crate::ir::ExtId {
+    m.add_extern(ExternDef {
+        name: name.into(),
+        params: params
+            .iter()
+            .map(|&ty| Param {
+                ty,
+                mode: Mode::Borrow,
+            })
+            .collect(),
+        ret,
+        noreturn: false,
+        pure_: false,
+        fresh,
+        leaf: false,
+        reads: false,
+        retains: false,
+        role: ExternRole::None,
+    })
+}
+
+/// The capture types of closure function `c` with their offsets in the object.
+fn captures_of(m: &Module, c: FuncId) -> (Vec<(Ty, i64)>, i64) {
+    let layout = Layouts::new(m).closure(&m.funcs[c.index()]);
+    let caps = (layout.captures.iter())
+        .map(|k| (k.ty, i64::from(k.offset)))
+        .collect();
+    (caps, i64::from(layout.size))
+}
+
+/// `fn(obj)` that drops the captures of a closure object and frees it (a framed object lives in
+/// a stack slot and is not freed). A capture with a closer is closed in place first, with a
+/// cleanup registered that releases the rest of the object if the close faults.
+fn make_closure_drop(m: &mut Module, c: FuncId, framed: bool) -> FuncId {
+    let (caps, _) = captures_of(m, c);
+    let closers = m.funcs[c.index()].capture_closers.clone();
+    let needs: Vec<bool> = caps.iter().map(|(t, _)| m.needs_drop(*t)).collect();
+    let tails: Vec<Option<FuncId>> = (0..caps.len())
+        .map(|k| {
+            (closers.iter().any(|(i, _)| *i as usize == k)).then(|| make_closure_drop_from(m, c, k))
+        })
+        .collect();
+    let discard = rt_extern(m, "msrt_cleanup_discard", &[Ty::INT], Ty::VOID, false);
+    let name = format!("{GLUE_PREFIX}mir.{}.closure_drop", m.funcs.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+    let obj = b.params()[0];
+    for (k, (ty, off)) in caps.iter().enumerate() {
+        let at = ptr_at(&mut b, obj, *off);
+        if let (Some((_, close)), Some(tail)) =
+            (closers.iter().find(|(i, _)| *i as usize == k), tails[k])
+        {
+            let h = b
+                .emit(Op::CleanupPush, &[obj], Imm::Func(tail), Some(Ty::INT))
+                .expect("handle");
+            b.emit(Op::Call, &[at], Imm::Func(*close), None);
+            b.call_rt(discard, &[h]);
+        }
+        if needs[k] {
+            let v = b
+                .emit(Op::Take, &[at], Imm::Ty(*ty), Some(*ty))
+                .expect("capture");
+            b.emit(Op::Drop, &[v], Imm::None, None);
+        }
+    }
+    if !framed {
+        b.emit(Op::Free, &[obj], Imm::None, None);
+    }
+    b.ret(None);
+    b.finish()
+}
+
+/// `fn(obj)` registered while the close of capture `k` of a closure runs: when a guarded task
+/// unwinds out of it, it drops the later captures (the close owns capture `k`) and frees the
+/// object. It does nothing otherwise.
+fn make_closure_drop_from(m: &mut Module, c: FuncId, k: usize) -> FuncId {
+    let (caps, _) = captures_of(m, c);
+    let needs: Vec<bool> = caps.iter().map(|(t, _)| m.needs_drop(*t)).collect();
+    let on_ext = rt_extern(m, "msrt_unwind_drops", &[], Ty::BOOL, false);
+    let name = format!("{GLUE_PREFIX}mir.{}.closure_drop_from", m.funcs.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+    b.func_mut().unwind_only = true;
+    let obj = b.params()[0];
+    let (body, done) = (b.new_block(), b.new_block());
+    let on = b.call_rt(on_ext, &[]);
+    b.br_if(on, body, &[], done, &[]);
+    b.switch_to(body);
+    for (j, (ty, off)) in caps.iter().enumerate() {
+        if j > k && needs[j] {
+            let at = ptr_at(&mut b, obj, *off);
+            let v = b
+                .emit(Op::Take, &[at], Imm::Ty(*ty), Some(*ty))
+                .expect("capture");
+            b.emit(Op::Drop, &[v], Imm::None, None);
+        }
+    }
+    b.emit(Op::Free, &[obj], Imm::None, None);
+    b.br(done, &[]);
+    b.switch_to(done);
+    b.ret(None);
+    let id = b.finish();
+    m.addr_glue
+        .insert((Glue::ClosureDropFrom(c.0, k as u32), Ty::VOID), id);
+    id
+}
+
+/// `fn(obj) -> obj`: a new closure object with the same clone and code entries, the heap drop
+/// entry, and a clone of every capture.
+fn make_closure_clone(m: &mut Module, c: FuncId) -> FuncId {
+    let (caps, size) = captures_of(m, c);
+    let drop = m.addr_glue[&(Glue::ClosureDrop(c.0), Ty::VOID)];
+    let alloc = rt_extern(m, "msrt_alloc", &[Ty::INT], Ty::PTR, true);
+    let name = format!("{GLUE_PREFIX}mir.{}.closure_clone", m.funcs.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let mut b = FuncBuilder::new(m, &name, params, Ty::PTR);
+    let src = b.params()[0];
+    let copies: Vec<_> = caps
+        .iter()
+        .map(|(ty, off)| {
+            let at = ptr_at(&mut b, src, *off);
+            let v = b
+                .emit(Op::Load, &[at], Imm::Ty(*ty), Some(*ty))
+                .expect("capture");
+            b.clone_value(v)
+        })
+        .collect();
+    let n = b.iconst(size);
+    let obj = b.call_rt(alloc, &[n]);
+    // The clone and code entries carry over; the drop entry is the heap one even when `src` lives
+    // in a frame.
+    for at in [0, ms_rt_abi::CLOSURE_CODE_OFFSET as i64] {
+        let from = ptr_at(&mut b, src, at);
+        let word = b
+            .emit(Op::Load, &[from], Imm::Ty(Ty::PTR), Some(Ty::PTR))
+            .expect("word");
+        let to = ptr_at(&mut b, obj, at);
+        b.emit(Op::Put, &[to, word], Imm::None, None);
+    }
+    let da = b
+        .emit(Op::FuncAddr, &[], Imm::Func(drop), Some(Ty::PTR))
+        .expect("address");
+    let to = ptr_at(&mut b, obj, 8);
+    b.emit(Op::Put, &[to, da], Imm::None, None);
+    for ((_, off), v) in caps.iter().zip(copies) {
+        let to = ptr_at(&mut b, obj, *off);
+        b.emit(Op::Put, &[to, v], Imm::None, None);
+    }
+    b.ret(Some(obj));
+    b.finish()
 }
 
 /// The types whose descriptors point at slot drop and copy functions, and the data types of the
@@ -148,7 +364,7 @@ fn addr_types(m: &Module, lay: &Layouts) -> (Vec<Ty>, Vec<Ty>) {
 
 /// `fn(slot)`: drops the value stored at `slot`.
 fn make_slot_drop(m: &mut Module, ty: Ty) -> FuncId {
-    let name = format!("{GLUE_PREFIX}mir.{}.slot_drop", m.addr_glue.len());
+    let name = format!("{GLUE_PREFIX}mir.{}.slot_drop", m.funcs.len());
     let params = vec![Param {
         ty: Ty::PTR,
         mode: Mode::Borrow,
@@ -165,7 +381,7 @@ fn make_slot_drop(m: &mut Module, ty: Ty) -> FuncId {
 
 /// `fn(src, dst)`: clones the value at `src` into uninitialised `dst`.
 fn make_slot_copy(m: &mut Module, ty: Ty) -> FuncId {
-    let name = format!("{GLUE_PREFIX}mir.{}.slot_copy", m.addr_glue.len());
+    let name = format!("{GLUE_PREFIX}mir.{}.slot_copy", m.funcs.len());
     let ptr = Param {
         ty: Ty::PTR,
         mode: Mode::Borrow,
@@ -183,7 +399,7 @@ fn make_slot_copy(m: &mut Module, ty: Ty) -> FuncId {
 
 /// `fn(block)`: drops the `ty` value the heap block holds and frees the block.
 fn make_block_drop(m: &mut Module, ty: Ty) -> FuncId {
-    let name = format!("{GLUE_PREFIX}mir.{}.block_drop", m.addr_glue.len());
+    let name = format!("{GLUE_PREFIX}mir.{}.block_drop", m.funcs.len());
     let params = vec![Param {
         ty: Ty::PTR,
         mode: Mode::Borrow,
@@ -204,7 +420,7 @@ fn make_block_drop(m: &mut Module, ty: Ty) -> FuncId {
 
 /// `fn(block) -> block`: a new heap block holding a clone of the `ty` value in `block`.
 fn make_block_clone(m: &mut Module, ty: Ty) -> FuncId {
-    let name = format!("{GLUE_PREFIX}mir.{}.block_clone", m.addr_glue.len());
+    let name = format!("{GLUE_PREFIX}mir.{}.block_clone", m.funcs.len());
     let params = vec![Param {
         ty: Ty::PTR,
         mode: Mode::Borrow,
@@ -351,14 +567,16 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             b.ret(None);
             b.finish()
         }
-        TyKind::Opt(_) => {
+        TyKind::Opt(inner) => {
+            let boxed = Layouts::new(m).opt_is_boxed(inner);
             let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
             let p = b.params()[0];
             let (some, done) = (b.new_block(), b.new_block());
             let present = b.opt_is_some(p);
             b.br_if(present, some, &[], done, &[]);
             b.switch_to(some);
-            let payload = b.opt_get(p);
+            // A boxed payload is moved out of its box, which is freed.
+            let payload = if boxed { b.opt_unbox(p) } else { b.opt_get(p) };
             b.emit(Op::Drop, &[payload], Imm::None, None);
             b.br(done, &[]);
             b.switch_to(done);
@@ -403,7 +621,55 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             b.ret(None);
             b.finish()
         }
-        _ => unreachable!("drop glue is made for records, alternatives, optionals and lists"),
+        TyKind::Obj(..) => {
+            // The runtime drops a map or set it finds in memory, through its descriptor.
+            let drop = rt_extern(m, "msrt_slot_drop", &[Ty::PTR, Ty::PTR], Ty::VOID, false);
+            let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+            let p = b.params()[0];
+            let slot = b
+                .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("slot");
+            b.emit(Op::Put, &[slot, p], Imm::None, None);
+            let d = b
+                .emit(Op::TypeDesc, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("descriptor");
+            b.call_rt(drop, &[d, slot]);
+            b.ret(None);
+            b.finish()
+        }
+        TyKind::Iface(_) => {
+            // The vtable word's tag says what the value owns: 0 the box and its payload, 1 only
+            // the box (`iface.borrow`), 2 nothing (`iface.view`).
+            let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+            let p = b.params()[0];
+            let (owned, rest, boxed, done) =
+                (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+            let tag = b
+                .emit(Op::IfaceTag, &[p], Imm::None, Some(Ty::INT))
+                .expect("tag");
+            let zero = b.iconst(0);
+            let is_owned = b.icmp(Cc::Eq, tag, zero);
+            b.br_if(is_owned, owned, &[], rest, &[]);
+            b.switch_to(owned);
+            b.emit(Op::IfaceDestroy, &[p], Imm::None, None);
+            b.br(done, &[]);
+            b.switch_to(rest);
+            let one = b.iconst(1);
+            let is_box = b.icmp(Cc::Eq, tag, one);
+            b.br_if(is_box, boxed, &[], done, &[]);
+            b.switch_to(boxed);
+            let data = b
+                .emit(Op::IfaceData, &[p], Imm::None, Some(Ty::PTR))
+                .expect("data");
+            b.emit(Op::Free, &[data], Imm::None, None);
+            b.br(done, &[]);
+            b.switch_to(done);
+            b.ret(None);
+            b.finish()
+        }
+        _ => unreachable!(
+            "drop glue is made for records, alternatives, optionals, lists and interfaces"
+        ),
     }
 }
 
@@ -506,6 +772,35 @@ fn make_clone(m: &mut Module, ty: Ty) -> FuncId {
             b.ret(Some(acc));
             b.finish()
         }
-        _ => unreachable!("clone glue is made for records, alternatives, optionals and lists"),
+        TyKind::Obj(..) => {
+            let copy = rt_extern(
+                m,
+                "msrt_slot_copy",
+                &[Ty::PTR, Ty::PTR, Ty::PTR],
+                Ty::VOID,
+                false,
+            );
+            let mut b = FuncBuilder::new(m, &name, params, ty);
+            let p = b.params()[0];
+            let src = b
+                .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("slot");
+            b.emit(Op::Store, &[src, p], Imm::None, None);
+            let dst = b
+                .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("slot");
+            let d = b
+                .emit(Op::TypeDesc, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("descriptor");
+            b.call_rt(copy, &[d, src, dst]);
+            let out = b
+                .emit(Op::Take, &[dst], Imm::Ty(ty), Some(ty))
+                .expect("copy");
+            b.ret(Some(out));
+            b.finish()
+        }
+        _ => {
+            unreachable!("clone glue is made for records, alternatives, optionals, lists and maps")
+        }
     }
 }

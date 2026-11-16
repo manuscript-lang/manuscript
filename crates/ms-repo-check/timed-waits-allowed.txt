@@ -29,8 +29,7 @@ crates/ms-rt/src/task/api.rs 1 the task sleep API
 crates/ms-rt/src/task/tests.rs 12 test: tasks that sleep on purpose
 crates/ms-rt/src/watch.rs 2 the watcher thread, removed by the event-driven waits change
 crates/ms-std-fs/src/sys/mod.rs 1 test: `sleep_ms` stand-in for a task sleep on a test thread
-crates/ms-std-fs/src/sys/windows.rs 2 Windows pipes and consoles cannot be waited on: pause between checks (event replacement pending)
-crates/ms-std-fs/src/watch.rs 7 the polling watcher interval (gate sleep, a deadline the user chose), macOS and Windows slices (replacement pending), tests with channel deadlines
+crates/ms-std-fs/src/watch.rs 6 the polling watcher interval (gate sleep, a deadline the user chose), tests with channel deadlines
 crates/ms-std-net/src/http/client.rs 10 test: lets time pass for a server or a deadline
 crates/ms-std-net/src/http/client_h2_tests.rs 5 test: lets time pass for a server or a deadline
 crates/ms-std-net/src/http/server.rs 9 test: lets time pass for a server or a deadline

@@ -7,7 +7,7 @@ use crate::layout::Layouts;
 use crate::types::{Native, Ty, TyKind};
 use ms_rt_abi::{
     KIND_CUSTOM, KIND_LIST, KIND_MAP, KIND_POD, KIND_SET, KIND_SHARED, STR_ASCII, STR_INLINE,
-    STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_STATIC,
+    STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_STATIC, symbols,
 };
 
 /// How a backend materializes the descriptor of one type key.
@@ -40,12 +40,12 @@ pub fn descriptor(m: &Module, lay: &Layouts, key: Ty) -> DescPlan {
     let runtime = match m.types.kind(ty) {
         // `Int8`..`Int32` and `UInt8`..`UInt64` are plain bits of their width and take the plain
         // path below.
-        TyKind::Int => Some("msrt_desc_int"),
-        TyKind::Float => Some("msrt_desc_float"),
-        TyKind::Float32 => Some("msrt_desc_float32"),
-        TyKind::Bool => Some("msrt_desc_bool"),
-        TyKind::Str => Some("msrt_desc_string"),
-        TyKind::Bytes => Some("msrt_desc_bytes"),
+        TyKind::Int => Some(symbols::DESC_INT),
+        TyKind::Float => Some(symbols::DESC_FLOAT),
+        TyKind::Float32 => Some(symbols::DESC_FLOAT32),
+        TyKind::Bool => Some(symbols::DESC_BOOL),
+        TyKind::Str => Some(symbols::DESC_STRING),
+        TyKind::Bytes => Some(symbols::DESC_BYTES),
         _ => None,
     };
     if let Some(name) = runtime {

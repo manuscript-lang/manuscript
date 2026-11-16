@@ -104,16 +104,16 @@ fn var Deque[T].clear() Void:
 
 // Ring behaviour: a Deque is also a ring buffer that can be turned.
 /*
-Moves `count` values from the front to the back, one at a time, so the value `count` places in becomes the front;
-a negative `count` moves values from the back to the front. Any magnitude is reduced modulo the length, and an empty deque is unchanged.
+Moves `by` values from the front to the back, one at a time, so the value `by` places in becomes the front;
+a negative `by` moves values from the back to the front. Any magnitude is reduced modulo the length, and an empty deque is unchanged.
 Example: with 1, 2, 3, 4 queued, `rotate(1)` leaves 2, 3, 4, 1.
 */
-fn var Deque[T].rotate(count: Int) Void:
+fn var Deque[T].rotate(by: Int) Void:
 	if self.size < 2: return
 
-	var steps = count % self.size
+	var steps = by % self.size
 
-	// Choose the shorter direction after reducing the signed count.
+	// Choose the shorter direction after reducing the signed `by`.
 	// Half-turn ties keep their original direction; Int.min is never negated.
 	if steps > self.size / 2:
 		steps -= self.size

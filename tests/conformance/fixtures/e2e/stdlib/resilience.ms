@@ -71,7 +71,7 @@ test "rate limiter allows a burst then waits":
 
 test "rate limiter refills a full maximum burst without overflowing":
 	var limiter = rate_limiter(1, burst: 9223372036854775807)
-	limiter.stamp = limiter.stamp.unshift(Duration(nanos: 1000000000))
+	limiter.stamp -= Duration(nanos: 1000000000)
 	expect_true(limiter.try_acquire())?
 	expect_equal(limiter.tokens, 9223372036854775807 - 1)?
 
@@ -80,7 +80,7 @@ test "rate limiter clamps an almost full maximum burst":
 		burst: 9223372036854775807,
 		tokens: 9223372036854775807 - 1,
 		interval: Duration(nanos: 1),
-		stamp: monotonic().unshift(Duration(nanos: 1000)),
+		stamp: monotonic() - Duration(nanos: 1000),
 	)
 	expect_true(limiter.try_acquire())?
 	expect_equal(limiter.tokens, 9223372036854775807 - 1)?
@@ -90,7 +90,7 @@ test "rate limiter refills an empty bucket only up to its burst":
 		burst: 3,
 		tokens: 0,
 		interval: Duration(nanos: 1),
-		stamp: monotonic().unshift(Duration(nanos: 1000)),
+		stamp: monotonic() - Duration(nanos: 1000),
 	)
 	expect_true(limiter.try_acquire())?
 	expect_equal(limiter.tokens, 2)?
@@ -107,8 +107,8 @@ test "circuit opens after threshold and recovers after cooldown":
 	_second := expect_error(breaker.call(boom))?
 	third := expect_error(breaker.call(fine))?
 	expect_equal(third, CircuitError[String].Open)?
-
 	void sleep(milliseconds(30)).wait()
+
 	value := expect_ok(breaker.call(fine))?
 	expect_equal(value, 1)?
 
@@ -123,7 +123,6 @@ test "throttle allows one action per interval":
 	var spacing = Throttle(interval: milliseconds(20))
 	expect_true(spacing.allow())?
 	expect_true(not spacing.allow())?
-
 	void sleep(milliseconds(30)).wait()
 	expect_true(spacing.allow())?
 

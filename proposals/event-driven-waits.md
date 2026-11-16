@@ -73,7 +73,6 @@ Reading: the slow-mix tail is the same as the watcher's and CPU is 3 to 7% lower
 | Periodic look | `ms-rt/src/watch.rs` | 100 µs while a hook asks, 2 ms otherwise, sleeps after 20 quiet looks | Kept: not adopted, see the wiki decision page |
 | Periodic look | `http/server/steal.rs` `BALANCE_EVERY` | 10 ms | Remove: balance on count change |
 | Periodic look | `http/server.rs` H2 sweep | 50 ms while any HTTP/2 connection lives | Follow-up PR (HTTP/2 stealing): per-stream deadlines |
-| Periodic look | `sys/windows.rs` `PARK_NS` | reactor parks at most 50 ms | Follow-up: needs Windows CI to prove no lost wake-up |
 | Spin before sleep | `task/reactor.rs` `SPIN_NS` | 20 µs, with credit | Keep: bounded, adaptive, measured; not a wait for a condition |
 | One-shot deadline from an event | `sched.rs` `BEAT_NS`, `OWN_HOLD_NS`, steal pause | 20 µs, 1 ms, 50 µs to 2 ms | Keep: a start waits out its age once, then the thread wakes at that instant; no polling |
 | One-shot deadline from an event | `poller.rs` short timers, `start.rs` cleanup grace | | Keep |

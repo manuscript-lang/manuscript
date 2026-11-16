@@ -12,7 +12,7 @@
 
 use super::calls::{Callee, declare_leaf, leaf_call};
 use super::{Area, Cx, Vals, aggregate, types};
-use crate::llvm_build::{FnBuilder, Meta, Ty as LTy, Types, Val};
+use crate::llvm_build::{Bin, FnBuilder, Meta, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, FuncKind, Imm, Inst, Module, Op};
 use ms_mir::layout::{Layouts, mem_layout};
 use ms_mir::types::{Ty, TyKind};
@@ -42,6 +42,8 @@ fn handles(op: Op) -> bool {
             | Op::IfaceView
             | Op::IfaceData
             | Op::IfaceIs
+            | Op::IfaceTag
+            | Op::IfaceDestroy
             | Op::CallMethod
     )
 }
@@ -65,7 +67,7 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, inst: &Inst) -> bool {
         },
         (Op::IfaceNew | Op::IfaceBorrow, Imm::Vtable(_)) => storable(lay, f.ty(inst.args[0])),
         (Op::CallMethod, Imm::Method(..)) | (Op::CallInd | Op::FuncAddr, _) => true,
-        (Op::IfaceView | Op::IfaceData | Op::IfaceIs, _) => true,
+        (Op::IfaceView | Op::IfaceData | Op::IfaceIs | Op::IfaceTag | Op::IfaceDestroy, _) => true,
         _ => false,
     }
 }
@@ -89,6 +91,19 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         (Op::IfaceData, _) => {
             b.name_next(&out[0]);
             b.byte_ptr(&vals[&inst.args[0].index()][0], 0);
+        }
+        (Op::IfaceTag, _) => {
+            let word = b.ptr_to_int(&vals[&inst.args[0].index()][1]);
+            b.name_next(&out[0]);
+            b.bin(Bin::And, &word, &Val::int(ms_rt_abi::IFACE_TAG_MASK));
+        }
+        (Op::IfaceDestroy, _) => {
+            // Slot 0 of the vtable is the payload destructor.
+            let v = &vals[&inst.args[0].index()];
+            let table = b.ptrmask(&v[1], UNTAG);
+            let code = b.load(&LTy::Ptr, &table, 8);
+            let data = b.ptr_to_int(&v[0]);
+            b.call_ptr(&LTy::Void, "", &code, &[(data, "")]);
         }
         (Op::CallInd, _) => call_closure(cx, inst, vals, &out, b),
         (Op::IfaceNew | Op::IfaceBorrow, Imm::Vtable(vt)) => {

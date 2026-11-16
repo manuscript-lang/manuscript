@@ -54,7 +54,7 @@ fn Headers.get_all(name: String) List[String]:
 	return values
 
 // Writes the block as `Name: value` lines with CRLF endings.
-fn Headers.to_text() String:
+fn Headers.to_string() String:
 	var out = StringBuilder()
 	for field in self.fields:
 		out.append(f"{field.name}: {field.value}\r\n")
@@ -473,7 +473,7 @@ export fn encode_multipart(parts: List[Part], boundary: String) Bytes:
 	var out = BytesBuilder()
 
 	for part in parts:
-		out.append_bytes(f"--{boundary}\r\n{part.headers.to_text()}\r\n".to_bytes())
+		out.append_bytes(f"--{boundary}\r\n{part.headers.to_string()}\r\n".to_bytes())
 		out.append_bytes(part.data)
 		out.append_bytes("\r\n".to_bytes())
 
