@@ -12,11 +12,13 @@ An implicit close is always shielded, including the close of a discarded stateme
 
 A thread's promise table owns the closures of deferred promises nobody waited on; `promise::teardown` drops them (a cancelled `promise-cross-thread.ms` run leaked two blocks at every park until it did).
 
-A close that fails at a scope end faults, and the cover for the slot (`cover_shielded_slots`) must still free the collection: the cover skipped a slot whose scope entry was discarded just before the shield, did not see a close inlined as a call on a field address, and the optional-element close left a stale payload in its place while it closed (it now puts `none` there). A cancel in a child task's park (the file write behind `append_file`) makes such a close fail, which is how the sweep found it (`failed-close-at-scope-end-frees-collection.ms`).
+A close that fails at a scope end faults, and the cover for the slot (`cover_shielded_slots`) must still free the collection: the cover skipped a slot whose scope entry was discarded just before the shield, did not see a close inlined as a call on a field address. Do not put `none` in an optional's place while its payload closes: a nested optional (`opt<opt<T>>`, made by a function-value adapter) closes its payload in a temporary slot with no cover, so a fault frees nothing and one block leaks (#4211). A cancel in a child task's park (the file write behind `append_file`) makes such a close fail, which is how the sweep found it (`failed-close-at-scope-end-frees-collection.ms`).
 
 The unwind pass skips every call after a `move.out` that is not filled back (a hole in the owner), so a field read of a temporary (`(f()?).kind`: `move.out` then `type.release` of the rest) made it skip the rest of the function and leak what the frame held when a later park was cancelled (`random-weight-ranges.ms`); a move-out the release follows at once opens no hole.
 
 A cover pushed for a slot in one branch (the early-return exits of a `?` each get one) does not cover another exit's close: `cover_shielded_slots` counts an entry only when it dominates the window (`deque-resource-growth.ms`).
+
+A `var` local with no scope entry that is passed to a callee which parks and rewrites it (take, park, put back) was freed by nobody on a cancel: the callee treated the taken value as the caller's. `slot_owned_params` in the unwind pass now finds a slot parameter every caller fills from a local slot nothing else covers, and the callee covers what it takes (`tree.ms`).
 
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 

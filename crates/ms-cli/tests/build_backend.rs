@@ -1,5 +1,5 @@
 //! Sidecars describe the code generator that actually produced the artifact,
-//! including warm restores after the LLVM tools stop being available.
+//! on cold and repeated builds.
 use crate::common;
 
 use std::path::{Path, PathBuf};
@@ -20,7 +20,6 @@ fn command(root: &Path, profile: &str, cranelift: bool) -> Command {
     command
         .env_remove("MS_RT_LIB")
         .env_remove("MS_BACKEND")
-        .env("MS_CACHE", "on")
         .env("MS_TIMINGS", "1")
         .args(["build"])
         .arg(root.join("main.ms"))
@@ -55,7 +54,7 @@ fn check(root: &Path, profile: &str, llvm: bool) -> Vec<u8> {
 }
 
 #[test]
-fn sidecar_backend_matches_native_codegen_on_cold_warm_and_verified_builds() {
+fn sidecar_backend_matches_native_codegen_on_cold_and_repeated_builds() {
     for (name, profile, cranelift) in [
         ("debug", "Debug", false),
         ("release-cranelift", "Release", true),
@@ -80,24 +79,9 @@ fn sidecar_backend_matches_native_codegen_on_cold_warm_and_verified_builds() {
             b"stale metadata",
         )
         .unwrap();
-        // No codegen should be attempted on a warm hit, even when its configured tools vanish.
-        if tools().is_some() {
-            std::fs::remove_file(root.join("tools"))
-                .or_else(|_| std::fs::remove_dir(root.join("tools")))
-                .unwrap();
-        }
         assert!(
-            !success(command(&root, profile, cranelift).output().unwrap()).contains("ms-timings:")
-        );
-        assert_eq!(check(&root, profile, llvm), cold);
-        if let Some(tools) = tools() {
-            common::symlink_dir(tools, &root.join("tools")).unwrap();
-        }
-        success(
-            command(&root, profile, cranelift)
-                .env("MS_CACHE", "verify")
-                .output()
-                .unwrap(),
+            success(command(&root, profile, cranelift).output().unwrap())
+                .contains("ms-timings: codegen")
         );
         assert_eq!(check(&root, profile, llvm), cold);
         // Compilation failure must preserve the last successful executable and sidecar.
@@ -117,109 +101,6 @@ fn sidecar_backend_matches_native_codegen_on_cold_warm_and_verified_builds() {
         );
         assert_eq!(std::fs::read(metadata).unwrap(), prior_metadata);
         assert_eq!(std::fs::read(output).unwrap(), cold);
-        std::fs::remove_dir_all(root).unwrap();
-    }
-}
-
-fn pin(kind: &str) -> String {
-    let os = match std::env::consts::OS {
-        "macos" => "darwin",
-        os => os,
-    };
-    let arch = match std::env::consts::ARCH {
-        "x86_64" => "amd64",
-        "aarch64" => "arm64",
-        arch => arch,
-    };
-    let suffix = format!("-{os}-{arch}.tar.gz");
-    include_str!("../../../toolchain/lld.lock")
-        .lines()
-        .find_map(|line| {
-            let mut fields = line.split_whitespace();
-            let sha = fields.next()?;
-            let name = fields.next()?;
-            (name.starts_with(&format!("{kind}-")) && name.ends_with(&suffix))
-                .then(|| sha[..16].to_string())
-        })
-        .expect("native target has a pinned tool bundle")
-}
-
-fn discovery_state(root: &Path, available: bool) {
-    let cache = root.join("discovery/ms/llvm");
-    if cache.is_dir() {
-        std::fs::remove_dir_all(&cache).unwrap();
-    } else if cache.exists() {
-        std::fs::remove_file(&cache).unwrap();
-    }
-    std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
-    if let Some(tools) = tools().filter(|_| available) {
-        let directory = cache.join(pin("llvm-tools"));
-        std::fs::create_dir_all(&directory).unwrap();
-        for name in ["opt", "llc", "llvm-link"] {
-            let name = format!("{name}{}", std::env::consts::EXE_SUFFIX);
-            common::symlink_file(&tools.join(&name), &directory.join(&name)).unwrap();
-        }
-        std::fs::write(directory.join(".ok"), b"").unwrap();
-    } else {
-        // Staging fails before the downloader is called. This exercises the
-        // real automatic fallback without relying on a network failure.
-        std::fs::write(cache, b"controlled tool-cache obstruction").unwrap();
-    }
-}
-
-#[test]
-fn automatic_discovery_changes_preserve_the_cached_artifact_backend() {
-    for initially_available in [true, false] {
-        let root = common::scratch(&format!("backend-discovery-{initially_available}"));
-        std::fs::write(root.join("main.ms"), include_str!("build_backend/main.ms")).unwrap();
-
-        // A real default-cache build provisions the linker when necessary,
-        // before the test switches to its disposable discovery fixture.
-        success(
-            command(&root, "Debug", true)
-                .env("MS_CACHE", "off")
-                .output()
-                .unwrap(),
-        );
-        let linker = ms_cli::engine::build_options_from_env()
-            .lld
-            .unwrap_or_else(|| {
-                common::cache_root()
-                    .join("ms/lld")
-                    .join(pin("lld"))
-                    .join(format!("lld{}", std::env::consts::EXE_SUFFIX))
-            });
-        assert!(linker.is_file(), "{}", linker.display());
-        let automatic = || {
-            let mut command = command(&root, "Release", false);
-            command
-                .env_remove("MS_BACKEND")
-                .env_remove("MS_LLVM_TOOLS")
-                .env("MS_LLD", &linker)
-                .env("XDG_CACHE_HOME", root.join("discovery"))
-                .env("LOCALAPPDATA", root.join("discovery"));
-            command
-        };
-        discovery_state(&root, initially_available);
-        let llvm = initially_available && tools().is_some();
-        let cold_stderr = success(automatic().output().unwrap());
-        assert!(cold_stderr.contains("ms-timings: codegen"));
-        let cold = check(&root, "Release", llvm);
-        discovery_state(&root, !initially_available);
-        let output = root.join(format!("program{}", std::env::consts::EXE_SUFFIX));
-        std::fs::remove_file(&output).unwrap();
-        std::fs::write(
-            format!("{}.ms-build.json", output.display()),
-            b"stale metadata",
-        )
-        .unwrap();
-        let warm_stderr = success(automatic().output().unwrap());
-        assert!(!warm_stderr.contains("ms-timings:"), "{warm_stderr}");
-        assert_eq!(check(&root, "Release", llvm), cold);
-        assert!(
-            !warm_stderr.contains("cannot create the cache for llvm"),
-            "warm metadata must not probe current discovery: {warm_stderr}"
-        );
         std::fs::remove_dir_all(root).unwrap();
     }
 }

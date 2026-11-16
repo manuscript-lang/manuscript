@@ -14,7 +14,7 @@ crates/ms-std-net/src/http/client_h2_tests.rs 8
 crates/ms-std-net/src/http/exchange.rs 15
 crates/ms-std-net/src/http/h2client.rs 15
 crates/ms-std-net/src/http/headers.rs 3
-crates/ms-std-net/src/http/server.rs 73
+crates/ms-std-net/src/http/server.rs 71
 crates/ms-std-net/src/http/server/buffered.rs 2
 crates/ms-std-net/src/http/server/h2serve.rs 19
 crates/ms-std-net/src/http/server/h2serve/tests.rs 1
