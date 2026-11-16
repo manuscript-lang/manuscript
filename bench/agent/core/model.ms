@@ -19,9 +19,9 @@ export fn repo() String: env("MSBENCH_REPO", if root() == ".": "../.." else: "."
 
 // One input and the exact output expected for it.
 export type Case:
-	name: String = "?"
 	stdin: String
 	stdout: String
+	name: String = "?"
 
 type Meta:
 	title: String
