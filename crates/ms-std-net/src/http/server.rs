@@ -257,6 +257,22 @@ impl Reactor {
         }
     }
 
+    /// Reads the clock, only while a timeout runs or has just started, sets the deadlines of the
+    /// timeouts that started since the last read and sweeps if one is due. Runs before every
+    /// sleep and in every pass of `service`, so a reactor that never idles (the poller always has
+    /// events) still arms and enforces them.
+    fn settle_timeouts(&self) -> Option<Instant> {
+        if self.pending.borrow().is_empty() && self.next_sweep.get().is_none() {
+            return None;
+        }
+        let now = Instant::now();
+        self.resolve_pending(now);
+        if self.next_sweep.get().is_some_and(|at| at <= now) {
+            self.sweep_timeouts(now);
+        }
+        Some(now)
+    }
+
     /// Sets the deadline of every connection whose timeout started since the last read.
     fn resolve_pending(&self, now: Instant) {
         let tokens = std::mem::take(&mut *self.pending.borrow_mut());
@@ -501,16 +517,8 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
             return;
         }
         drain.set(reactor.drains());
-        // The turn's only monotonic read, and only while a timeout runs or has just started:
-        // before the sleep, so every started timeout is armed first.
-        let now = (!reactor.pending.borrow().is_empty() || reactor.next_sweep.get().is_some())
-            .then(Instant::now);
-        if let Some(now) = now {
-            reactor.resolve_pending(now);
-            if reactor.next_sweep.get().is_some_and(|at| at <= now) {
-                reactor.sweep_timeouts(now);
-            }
-        }
+        // Before the sleep, so every started timeout is armed first.
+        let now = reactor.settle_timeouts();
         let timeout = reactor.next_sweep.get().zip(now).map_or(-1, |(at, now)| {
             at.saturating_duration_since(now).as_nanos() as i64
         });
@@ -577,6 +585,7 @@ impl Reactor {
             }
             let raw = self.poller.poll(&mut events, 64);
             self.wall_secs.set(wall_secs());
+            self.settle_timeouts();
             let mut yielded = false;
             for (at, &(token, flags)) in events.iter().enumerate() {
                 self.handle_event(token, flags);
