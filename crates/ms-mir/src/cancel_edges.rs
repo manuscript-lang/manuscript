@@ -53,6 +53,7 @@ fn extern_of(
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         role,
         leaf,
         reads: false,
