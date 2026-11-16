@@ -124,3 +124,72 @@ fn appending_a_call_result_in_a_loop_grows_the_accumulator_in_place() {
         "{text}"
     );
 }
+
+/// A loop that rebuilds its accumulator from a join: `s = s + f"{i};"` and `s = s + a + b`.
+const LOOP_JOIN: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_string_fmt3(int, str, int, str) -> str fresh leaf string_join
+extern @msrt_string_concat3(str, str, str) -> str fresh leaf string_join
+extern @msrt_string_empty() -> str
+entry @main
+
+fn @main() -> int export {
+b0:
+  %0: str = call.rt @msrt_string_empty ()
+  %1: int = iconst 0
+  %2: int = iconst 10
+  %3: int = iconst 1
+  %sep: str = str ";"
+  br b1(%1, %0)
+b1(%4: int, %5: move str):
+  %6: bool = icmp.lt %4, %2
+  br_if %6, b2(), b3()
+b2():
+  %mask: int = iconst 2
+  %7: str = call.rt @msrt_string_fmt3 (%mask, %5, %4, %sep)
+  drop %5
+  %8: str = call.rt @msrt_string_concat3 (%7, %sep, %sep)
+  drop %7
+  %twice: str = call.rt @msrt_string_concat3 (%8, %sep, %8)
+  drop %8
+  %9: int = iadd %4, %3
+  br b1(%9, %twice)
+b3():
+  drop %5
+  %10: int = iconst 0
+  ret %10
+}
+"#;
+
+/// A join whose first part is a string that dies right after grows that string in place: the
+/// format join keeps its mask, a join of strings takes a zero. A join that reads the string
+/// twice stays a join.
+#[test]
+fn a_join_onto_a_dying_string_grows_it_in_place() {
+    for level in [opt::Level::None, opt::Level::Speed] {
+        let mut m = parse_module(LOOP_JOIN).expect("parse");
+        verify_module(&m).expect("verify");
+        opt::optimize(&mut m, level, true);
+        verify_module(&m).expect("verify after");
+        let text = print_module(&m);
+        assert_eq!(
+            text.matches("call.rt @msrt_string_append_fmt2 (").count(),
+            2,
+            "{text}"
+        );
+        assert_eq!(
+            text.matches("call.rt @msrt_string_fmt3").count(),
+            0,
+            "{text}"
+        );
+        assert_eq!(
+            text.matches("call.rt @msrt_string_concat3").count(),
+            1,
+            "{text}"
+        );
+        assert!(
+            text.contains("extern @msrt_string_append_fmt2(move str, int, int, str)"),
+            "{text}"
+        );
+    }
+}
