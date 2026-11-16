@@ -7,7 +7,6 @@ description = "Native glob matcher for @std/os/path.ms and @std/os/fs.ms"
 autotests = false
 
 [dependencies]
-ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
 
 
