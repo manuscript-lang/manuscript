@@ -332,7 +332,8 @@ pub fn map_anon(len: usize) -> *mut u8 {
 }
 
 /// Windows has no usable huge-page advice for the heap reservation (`MEM_LARGE_PAGES` needs
-/// `SeLockMemoryPrivilege` and cannot be demand-committed); see `sys::prefer_huge_pages` and #3710.
+/// `SeLockMemoryPrivilege` and cannot be demand-committed; a `windows-2025` runner, an administrator,
+/// still failed with error 1314); see `sys::prefer_huge_pages`, #3710 and #3646.
 pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
 
 /// The window of address space stack regions are placed in: 64 TiB starting at 32 TiB, far above
