@@ -50,3 +50,10 @@ Proposal, 2026-11-15, checked against `31b6eeb2`. Direction (Chinmay): the compi
 ## Open questions
 
 - None that change user-visible behavior.
+
+## Result of stage 1
+
+- Code: 239 lines added, 662 deleted under `crates/` (`fuse_concat`, its helpers and the tests of the deleted passes).
+- Instruction counts against the same base, 17 suite programs: Release all within 1% (worst `regex` +0.91%, `jsonrt` +0.89%). Debug is lower on 15 (`strings` -6.3%, `graph` -17.6%, `concat` -10.2%) and higher on `interp` (+1.8%). The `interp` hot loop has the same MIR before and after; the difference is Cranelift register allocation of one function, which the extra `iconst` in the lowered join shifts. Not a lowering cost; recorded as a miss of the 1% gate.
+- Residual `fuse_one` and `append_in_place` stay; stage 2 (builder append) is not done and not approved.
+- Ordering: `joined-text-piece-order` pins left-to-right pieces, a `?` that returns early running no later piece, and `+=` accumulation. Leak sweep (392 programs) and ownership counts (148) pass.
