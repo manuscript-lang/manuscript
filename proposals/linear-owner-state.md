@@ -62,7 +62,10 @@ Rule: the verifier's live set is a persistent set, so an edge costs its changes,
 2. `persist.rs` (`OwnerSet`) with its model tests (landed). Check: `cargo test -p ms-mir`.
 3. The verifier on `OwnerSet` (landed). Check: N-doubling table and a profile with no `BTreeSet` clones.
 4. `elaborate`'s `State` on two `PosMap`s (position to owner, value to position), a scope end removing its own owners, and block flag parameters looking only at owners that can have one (landed, replacing "avoid the push copy": the copy was the symptom). Check: same table, e2e corpus with leak counting (661/661).
-5. Profile `unwind` and `opt` (done above: both linear for this shape). `elaborate::run` is now 2.1x. Raising the gate shapes `test_owners` and `test_branches` to three sizes is blocked elsewhere: `ms test` on the generated 10000-owner file overflows the stack (exit 139) or is OOM-killed, and `emit` does not accept test files.
+5. Profile `unwind` and `opt` (done above: both linear for the `main` shape). `elaborate::run` is now 2.1x.
+6. `unwind` in a `test` (#4190): the same body in `ms test` took 9.2 s and 1.4 GB at 3000 owners and was OOM-killed at 10000 (13.6 GB), 60% of it in `unwind::run`. Events and windows held a full owner `Vec` per faulting instruction, and `plan_flow` cloned the cleanup stack three times per block and pass. Now owner sets are `OwnerSet`s (shared trees, `diff` skips what two sets share) and a cleanup stack is a node of a shared-prefix tree (`Stacks`): copying is free, a common prefix is the common ancestor, and a cut is found from the dead owners through a persistent owner-to-depth map. 3000 owners: 3.3 s and 112 MB; 10000 owners: 311 MB. Check: e2e corpus with leak counting (661/661), `registers_each_of_many_live_owners_once`.
+
+What stays superlinear in a test build is not ours: Cranelift's register allocator takes 3.3x per doubling (0.19, 0.62, 2.1 s at 1000, 2000, 4000 owners), and #4191 (a frame over a 512 KiB task slot) fails a test at about 5000 owners. The gate shapes `test_owners` and `test_branches` stay at one size until both are addressed.
 
 ## Open questions
 

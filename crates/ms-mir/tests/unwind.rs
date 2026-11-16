@@ -926,3 +926,35 @@ b2():
         print_module(&m)
     );
 }
+
+/// `owners` strings held to the end, each born before a parking call, with a branch after each
+/// when `branches`: every owner is registered once, however many are live (#4190).
+fn many_owners(owners: usize, branches: bool) -> String {
+    let mut body = String::from("fn @main() -> int {\nb0:\n  %n: int = iconst 5\n");
+    for i in 0..owners {
+        body += &format!("  %l{i}: str = str \"held\"\n  %s{i}: str = clone %l{i}\n");
+        body += &format!("  %r{i}: int = call.rt @msrt_task_sleep (%n)\n");
+        if branches {
+            body += &format!(
+                "  %c{i}: bool = icmp.lt %r{i}, %n\n  br_if %c{i}, t{i}(), j{i}()\nt{i}:\n  br j{i}()\nj{i}:\n"
+            );
+        }
+    }
+    for i in 0..owners {
+        body += &format!("  drop %s{i}\n");
+    }
+    body + "  ret %n\n}\n"
+}
+
+#[test]
+fn registers_each_of_many_live_owners_once() {
+    for branches in [false, true] {
+        let (m, changed) = rewrite(&many_owners(3000, branches), true);
+        assert!(changed);
+        assert_eq!(
+            count(&m, "main", Op::CleanupPush),
+            3000,
+            "branches {branches}"
+        );
+    }
+}
