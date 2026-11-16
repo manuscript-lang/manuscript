@@ -1,12 +1,12 @@
 # HTTP tail latency
 
-Compares p50 to max latency of the same HTTP server written in Manuscript, Node and Go.
+Compares p50 to max latency of the same HTTP server written in Manuscript, C, Go and Node. The C server is one `epoll` loop per core with its own listening socket (Linux only); it parses only the request line and sends no `Date` header, so it is a floor, not an equal.
 
-- `server.ms`, `server.js`, `server.go`: build a JSON body of 64 items (4096 for `/big`) and reply. `/slow` first burns about 5 ms of CPU.
+- `server.ms`, `server.js`, `server.go`, `server.c`: build a JSON body of 64 items (4096 for `/big`) and reply. `/slow` first burns about 5 ms of CPU.
 - `load.go`: open loop load generator. It sends on a fixed schedule over keep-alive connections and measures from the scheduled send time, so a stall is charged to every request it delayed. Requests to `/slow` and `/big` are left out of the numbers.
 
 ```
-go build -o /tmp/load load.go && go build -o /tmp/goserver server.go
+go build -o /tmp/load load.go && go build -o /tmp/goserver server.go && cc -O2 -pthread -o /tmp/cserver server.c
 ms build server.ms -o /tmp/msserver
 /tmp/msserver &  node server.js 8082 &  /tmp/goserver 8083 &
 /tmp/load -addr 127.0.0.1:8081 -rate 2000 -conns 64 -slow 20 -dur 15s
@@ -58,3 +58,18 @@ Findings: with fast handlers Manuscript matches Go and Node. A request that burn
 | Node | 6.0 s | 69 MB | 24k req/s |
 
 Findings: with a computing handler in the mix the p99 falls from the handler time to Go's level, and the p50 falls below Go's. Fast-handler latency, CPU and memory are unchanged within the noise of this machine. Closed loop on a machine the load generator shares is 2 to 6% lower (repeated fresh starts: 117k to 132k against 131k to 134k): a thread the operating system sets aside for a millisecond looks like a computing handler, so the watcher looks often (about 6% of one core) and idle threads take connections that needed no help.
+
+## Results, 2026-11-16, C floor and idle spin, same 4 vCPU Linux VM
+
+"Before" is `main` at d9dfcfad. "Now" adds two changes: a scheduler thread spins before it sleeps only while its waits are shorter than the spin (`spin_for_work` in `crates/ms-rt/src/task/reactor.rs`), and the content-type check of a response reads its 512 bytes without a branch per byte. Alternated runs, 15 s each, ranges over two or three rounds.
+
+| | C | Manuscript before | Manuscript now | Go |
+| --- | --- | --- | --- | --- |
+| CPU for 60,000 fast requests at 4000 req/s | 1.6 to 1.9 s | 4.3 to 4.4 s | 3.5 to 3.6 s | 7.1 to 7.5 s |
+| of which user / system, per 40,000 requests | 0.2 / 0.8 s | 1.9 / 1.0 s | 1.2 / 1.0 s | 2.6 / 1.7 s |
+| Peak memory | 2.2 MB | 6.4 MB | 6.5 MB | 14.5 MB |
+| Fast handlers: p50 / p99 | 0.66 / 1.6 to 2.3 ms | 0.67 / 1.6 to 1.7 ms | 0.67 / 1.5 to 1.8 ms | 0.66 / 1.7 ms |
+| 5% slow requests: p50 / p99 / p99.9 | 0.76 / 6.0 / 9 to 14 ms | 0.63 / 3.1 to 3.7 / 5.3 to 5.8 ms | 0.64 / 3.4 to 3.6 / 5.5 to 7.5 ms | 0.65 / 2.6 to 3.1 / 5.2 ms |
+| Closed loop, 64 conns | 176k to 191k req/s | 115k to 129k | 115k to 126k | 59k |
+
+Findings: system time already equals C's. The user time left is the handler: `out = out + f"..."` costs about 1,000 instructions per item (a temporary string, an append, a free) against about 50 in C; callgrind attributes two thirds of the 100,000 instructions per request to it. Controls for the spin change (4 threads, median of 9, before / now): `promise-tree tree 36 10` 78 / 79 ms, `mailbox 100000 5` 148 / 146 ms.
