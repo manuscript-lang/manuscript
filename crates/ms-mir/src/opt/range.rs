@@ -454,6 +454,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                     | Op::Clone
                     | Op::OptSome
                     | Op::OptView
+                    | Op::OptViewAt
                     | Op::OptGet
                     | Op::OptUnwrap
                     | Op::OptUnbox

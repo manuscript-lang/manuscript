@@ -1155,6 +1155,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListRelease => self.lists(f, inst),
             Op::OptSome
             | Op::OptView
+            | Op::OptViewAt
             | Op::OptNone
             | Op::OptIsSome
             | Op::OptGet

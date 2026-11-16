@@ -245,6 +245,7 @@ impl<'a> FnLower<'a> {
         let idx = self.borrow(index.val);
         let Some(default) = default else {
             let x = self.b.list_get(l, idx);
+            self.elem_origin.insert(x, (l, idx));
             return Ok(Val { v: x, own: false });
         };
         let n = self.b.list_len(l);
