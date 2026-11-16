@@ -251,7 +251,7 @@ impl Timer {
         );
         // SAFETY: a poller's descriptor is never closed; the timer's lives as long as the pair.
         let poll = unsafe { BorrowedFd::borrow_raw(helper.0) };
-        let mut none = Vec::new();
+        let mut none: Vec<Event> = Vec::new();
         unsafe { kevent(poll, &[watch], &mut none, Some(Duration::ZERO)) }.ok()?;
         Some(Timer(timer))
     }
