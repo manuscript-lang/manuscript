@@ -1177,6 +1177,22 @@ crate::isolate_static! {
 /// side channel instead of parsing the text on standard error.
 static LAST_RECORD: std::sync::Mutex<Option<Record>> = std::sync::Mutex::new(None);
 
+/// Releases what a fault leaves in the process state: the record of the last fault, which
+/// nothing took, and the buffers of the cleanup, secondary-fault and guard stacks. A counting
+/// build calls it as the process ends so none of them counts as a leak.
+#[cfg(feature = "stats")]
+pub fn release_fault_state() {
+    if let Ok(mut last) = LAST_RECORD.lock() {
+        *last = None;
+    }
+    // SAFETY: the isolate's main task has ended; nothing runs a cleanup or a guard any more.
+    unsafe {
+        *CLEANUPS.ptr() = Vec::new();
+        *SECONDARY.ptr() = Vec::new();
+        *GUARDS.ptr() = Vec::new();
+    }
+}
+
 /// Writes `record` to the file named by `MS_FAULT_RECORD`, when there is one.
 pub fn write_record(record: &Record) {
     if let Some(path) = std::env::var_os(record::RECORD_ENV) {
@@ -1235,6 +1251,8 @@ pub fn fault_vec(mut report: Vec<u8>) -> ! {
     record.frames.clone_from(&frames.list);
     record.truncated = frames.truncated;
     frames.render(&mut report);
+    // This function never returns, so a local is never dropped: release the frames here.
+    drop(frames);
     if let Ok(mut last) = LAST_RECORD.lock() {
         *last = Some(record);
     }
