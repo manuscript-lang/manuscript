@@ -18,5 +18,6 @@ mod opt_reserve;
 mod opt_simplify;
 mod opt_strfuse;
 mod outline;
+mod persist;
 mod text;
 mod unwind;
