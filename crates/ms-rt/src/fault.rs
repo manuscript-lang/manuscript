@@ -1525,10 +1525,8 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
     // SAFETY: single threaded access to the cleanup stack.
     unsafe {
         let stack = &mut *CLEANUPS.ptr();
-        while stack.len() >= handle && handle > 0 {
-            if stack.pop().is_none() {
-                break;
-            }
+        if handle > 0 && stack.len() >= handle {
+            stack.truncate(handle - 1);
         }
         prune_removed_cleanups(stack);
     }

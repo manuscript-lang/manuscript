@@ -12,7 +12,12 @@ pub(super) const AREA: Area = Area {
     ty_ok,
     inst_ok,
     splits,
-    pure_op: |op| matches!(op, Op::ListLen | Op::StrLit | Op::BytesLit),
+    pure_op: |op| {
+        matches!(
+            op,
+            Op::ListLen | Op::StrLit | Op::BytesLit | Op::ListConstView
+        )
+    },
     pre,
     emit,
 };
@@ -40,6 +45,7 @@ fn handles(op: Op) -> bool {
                 | Op::ListRelease
                 | Op::BytesLit
                 | Op::ListConst
+                | Op::ListConstView
                 | Op::ListAddr
                 | Op::ListAddrU
         )
@@ -76,7 +82,7 @@ fn splits(lay: &Layouts, f: &Func, i: &Inst, checks: bool) -> usize {
 }
 
 fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
-    if i.op == Op::ListConst {
+    if matches!(i.op, Op::ListConst | Op::ListConstView) {
         return i
             .res
             .is_some_and(|r| m.seq_elem(f.ty(r)).is_some_and(|e| plain_elem(lay, e)));
@@ -147,6 +153,16 @@ fn pre(
             }
             Some(vec![b.reserve(LTy::Ptr), Val::int(n), Val::int(n)])
         }
+        // The elements are a module constant: a view (`cap == 0`) of the static data.
+        Op::ListConstView => {
+            let Imm::Int(i) = inst.imm else { return None };
+            let n = m.list_consts[i as usize].len() as i64;
+            Some(vec![
+                Val::new(format!("@\"ms.direct.list.{i}\""), LTy::Ptr),
+                Val::int(n),
+                Val::int(0),
+            ])
+        }
         Op::ListLit if inst.args.is_empty() => {
             Some(vec![Val::new("null", LTy::Ptr), Val::int(0), Val::int(0)])
         }
@@ -188,7 +204,7 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
 
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     match inst.op {
-        Op::ListLen | Op::StrLit | Op::BytesLit => {}
+        Op::ListLen | Op::StrLit | Op::BytesLit | Op::ListConstView => {}
         Op::StrByte => str_byte(cx, inst, vals, b),
         Op::ListNew | Op::ListLit | Op::ListPush => list_build(cx, inst, vals, b),
         Op::ListDropLast => {
@@ -798,7 +814,8 @@ fn str_eq_lit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = Vec::new();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
-        if let (Op::BytesLit | Op::ListConst, Imm::Int(i)) = (inst.op, inst.imm) {
+        if let (Op::BytesLit | Op::ListConst | Op::ListConstView, Imm::Int(i)) = (inst.op, inst.imm)
+        {
             let (name, bytes) = if inst.op == Op::BytesLit {
                 (format!("ms.direct.blob.{i}"), m.blobs[i as usize].clone())
             } else {

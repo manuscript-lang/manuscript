@@ -421,6 +421,13 @@ impl<'m> FuncBuilder<'m> {
         let id = self.m.add_list_const(data);
         self.val(Op::ListConst, &[], Imm::Int(id), t)
     }
+    /// `list.const.view`: a borrowed view (`cap == 0`) of the static data of a list of scalars.
+    /// It is never dropped or written; a use that needs ownership clones it.
+    pub fn list_const_view(&mut self, elem: Ty, data: Vec<i64>) -> Value {
+        let t = self.m.types.list(elem);
+        let id = self.m.add_list_const(data);
+        self.val(Op::ListConstView, &[], Imm::Int(id), t)
+    }
     /// `list.len`.
     pub fn list_len(&mut self, l: Value) -> Value {
         self.val(Op::ListLen, &[l], Imm::None, Ty::INT)

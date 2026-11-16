@@ -61,14 +61,14 @@ fn Headers.to_text() String:
 // One multipart part: its headers, the decoded `name` and `filename` from
 // Content-Disposition, and body bytes.
 export type Part:
+	// Part body without the delimiter line breaks.
+	data: Bytes
 	// Part header fields; `Content-Disposition` and `Content-Type` live here.
 	headers: Headers = Headers()
 	// Form field name from `Content-Disposition`, or empty text.
 	name: String = ""
 	// Uploaded file name from `Content-Disposition`, or empty text.
 	filename: String = ""
-	// Part body without the delimiter line breaks.
-	data: Bytes
 
 // Extension table behind `media_type_for_extension`.
 TYPES := {

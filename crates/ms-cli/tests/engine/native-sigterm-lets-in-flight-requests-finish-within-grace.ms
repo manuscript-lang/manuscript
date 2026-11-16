@@ -14,7 +14,7 @@ fn handle(request: HttpRequest) HttpResponse:
 
     _flushed := stdout().flush()
     void sleep(nanoseconds(600000000)).wait()
-    return HttpResponse(200, headers(), "done".to_bytes())
+    return HttpResponse(200, "done".to_bytes())
 
 export fn main() Int:
     if acquired := serve(

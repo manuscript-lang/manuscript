@@ -288,7 +288,7 @@ fn windows_arguments(
     command
         .args(["-flavor", "gnu", "-m", machine, "--gc-sections"])
         .args(["--subsystem", "console"])
-        // Identical inputs must link to identical bytes (`MS_CACHE=verify` compares them).
+        // Identical inputs must link to identical bytes.
         .arg("--no-insert-timestamp")
         .arg("-o")
         .arg(out);

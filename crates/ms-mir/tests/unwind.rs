@@ -646,6 +646,46 @@ b0:
     );
 }
 
+#[test]
+fn covers_a_separate_value_while_an_owner_has_a_hole() {
+    // The owner `%s` has a field moved out across the parking call, so it is not covered; the
+    // unrelated string `%h2` and the moved-out list `%m` the call holds are.
+    let body = r#"
+type Src { items: list<int>, label: str }
+
+fn @main() -> int {
+b0:
+  %e: list<int> = list.lit
+  %l0: str = str "label"
+  %l: str = clone %l0
+  %s: Src = type.new Src %e, %l
+  %h: str = str "held"
+  %h2: str = clone %h
+  %f: list<int> = type.get Src.items %s
+  %m: list<int> = move.out %f
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  %s2: Src = type.fill Src.items %s, %m
+  drop %h2
+  drop %s2
+  ret %r
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(changed, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        2,
+        "{}",
+        print_module(&m)
+    );
+    assert!(
+        !print_module(&m).contains("cleanup.push @unwind.drop %3"),
+        "{}",
+        print_module(&m)
+    );
+}
+
 const PANICS_WITH_TEMPS: &str = r#"
 extern @msrt_int_to_string(int) -> str leaf int_to_string
 extern @msrt_string_concat(str, str) -> str fresh leaf string_concat

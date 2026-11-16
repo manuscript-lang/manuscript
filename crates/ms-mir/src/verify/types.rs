@@ -128,6 +128,7 @@ impl InstCheck<'_, '_> {
             Op::ListNew
             | Op::ListLit
             | Op::ListConst
+            | Op::ListConstView
             | Op::ListLen
             | Op::ListGet
             | Op::ListGetNn
@@ -667,7 +668,7 @@ impl InstCheck<'_, '_> {
                 }
                 Ok(())
             }
-            Op::ListConst => {
+            Op::ListConst | Op::ListConstView => {
                 self.arity(0)?;
                 let elem = self
                     .res

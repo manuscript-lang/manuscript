@@ -312,7 +312,6 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
         }
         let started = std::time::Instant::now();
         let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-            .env("MS_CACHE", "off")
             .env("MS_BACKEND", backend)
             .current_dir(&dir)
             .args(["build", "k.ms", "-o", "k"])
