@@ -6,7 +6,30 @@ Verified: a task is never interrupted and a started task never moves, so a handl
 
 Rejected, do not retry: running handlers on other threads from the stdlib (+75% CPU, slower p50, lower throughput), one poller shared by all threads (connection state and tasks are thread-bound; no Windows equivalent), and firing a running task's time limit from the watcher (every cancellation point that matters already enters the scheduler, which fires it; Chinmay, 2026-11-15: leave pure loops alone, as Go does).
 
-A watcher judges "held up" from a thread that was awake for a whole tick (`watch::stirred`); a thread that only just woke also has an old turn, and counting it kept the watcher ticking fast forever (+40% CPU at steady load).
+Rejected, do not retry: replacing the watcher's periodic look with a kernel timer per scheduler thread (PR 4238, 2026-11-16; Chinmay kept the periodic look). It worked and removed the watcher thread and its idle wakeups, but cost more than it saved on the hot path. Measured on the 4 vCPU shared VM against `main` and PR 4227's watcher, alternated runs:
+
+| Design | Result | Why it lost |
+| --- | --- | --- |
+| A wake per request (the owner announces every handler start; or a rescuer thread fed by kernel readiness) | one wake and about 14 µs of CPU per request; 20% of closed-loop throughput | pays on every request to help the rare stuck one |
+| One shared one-shot poller that every thread waits on | 0 to 20% throughput loss in an epoll microbenchmark | contention on the one set; connection state is thread-bound anyway |
+| A nested exclusive wake (`EPOLLEXCLUSIVE` on an epoll descriptor) | `EINVAL`: the kernel refuses it | not available |
+| A kernel timer per thread, armed on leaving rest and disarmed on resting, T = 250 µs | slow mix CPU 8.8 to 9.1 s vs 9.4 to 9.8 s, p99 equal; fast mix CPU 2.99 to 3.02 s vs 2.67 to 2.89 s (+8 to 10%); closed loop 122k to 128k vs 133k to 140k req/s (3 to 7% lower); idle 91 µs CPU, 1 switch | an arm plus disarm is 5.2 µs here (a VM exit programming the hrtimer), paid per rest cycle (1.8 per request): the whole fast-mix and closed-loop cost, with no cheaper form that keeps the guarantee (dropping the disarm lets a stale fire wake a peer on most rests; skipping the arm misses the first long handler) |
+
+Timer length, one alternated sweep: 100 µs costs more CPU (fast 3.3 to 3.5 s, slow 10.0 to 10.3 s) because it fires on merely busy threads; 1 ms leaves a ready request waiting (slow p50 0.74 to 0.83 ms, p99 up to 5.7 ms); 250 µs sat near both floors. A "turn counter unchanged" test alone is wrong (the event that reports a request also wakes its owner); "has not rested since arming" is the test. Platform forms that worked: `timerfd` (Linux), a `libc` kqueue timer with `NOTE_NSECONDS | NOTE_CRITICAL` (macOS; `rustix` 1.1.5 encodes a sub-millisecond timer as zero), a high-resolution waitable timer plus thread-pool wait (Windows; one mio `Waker` per `Poll`, so timers share the poll's waker). Full record: [proposal](../../proposals/event-driven-waits.md).
+
+Found while doing it, true of the watcher design too: a connection timeout started by a task other than the reactor (the accept loop adopting a connection, a finished request) while the reactor is parked with no sweep scheduled was not seen until something else woke the reactor; Windows' 50 ms park cap hid it. `Reactor::start_timeout` kicks the reactor in that case.
+
+The watcher has one look interval, 1 ms, and sleeps after 20 looks with every thread resting (2026-11-16, three alternated rounds of 12 s, CPU in 10 ms ticks per run, earlier design = 100 µs for 0.1 s after a thread was held up, else 2 ms):
+
+| Interval | Fast mix CPU | TLS CPU | Slow mix p50 / p90 / p99 | Closed loop |
+| --- | --- | --- | --- | --- |
+| Earlier fast and slow modes | 253 to 277 | 299 to 313 | 0.62 to 0.64 / 1.18 to 1.20 / 3.4 to 3.5 ms | 131k to 143k |
+| 100 µs | 373 to 385 | 407 to 445 | 0.61 / 1.18 / 1.7 to 3.6 ms | 130k to 140k |
+| 250 µs | 304 to 327 | 363 to 375 | 0.65 to 0.69 / 1.2 to 1.35 / 2.2 to 6.2 ms | 135k to 143k |
+| 500 µs | 280 to 292 | 313 to 326 | 0.65 to 0.67 / 1.23 to 1.25 / 2.5 to 3.3 ms | not run |
+| 1 ms (chosen) | 260 to 271 | 300 to 327 | 0.69 to 0.72 / 1.34 to 1.47 / 3.4 to 3.7 ms | 145k to 153k |
+
+CPU scales with the look count, so 1 ms costs what the old slow mode cost; its price is a slow-mix p50 about 0.07 ms and p90 about 0.15 ms above the fast mode, because a ready request waits up to a look longer behind a held-up thread. The p99 and p99.9 are the same. A thread that rests and wakes again between looks must not count as held up: judge "held up" from a thread awake for a whole interval (`watch::stirred`), since a thread that only just woke also has an old turn. Each wake of a sleeping watcher is a system call on the thread that leaves its rest, which is why it sleeps only after a run of quiet looks.
 
 Apply when: changing the HTTP reactor loop, connection ownership, or the scheduler's idle states.
 Evidence: [steal.rs](../../crates/ms-std-net/src/http/server/steal.rs), [watch.rs](../../crates/ms-rt/src/watch.rs), [proposal](../../proposals/http-connection-stealing.md), [results](../../bench/perf/http-tail/README.md).

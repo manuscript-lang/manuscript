@@ -157,3 +157,19 @@ The 4.2 left, one each: the arrival stamp at parse; `late` after the handler (a 
 | Instructions per item of the handler loop alone (callgrind, 200,000 items) | about 50 | 1,018 | 575 |
 
 Findings: user time falls about 14%. What is left per item is one call for the `","`, one for the item, two integer renderings and a capacity lookup per call.
+
+## Results, 2026-11-16, watcher look interval, same 4 vCPU Linux VM
+
+"Before" is the watcher of `main` at ba092da9 (a look every 2 ms, every 100 µs for 0.1 s after a thread was held up 1 ms). "Now" is one look every millisecond. Alternated runs of 12 s after a 2 s warm-up, three rounds, ranges shown. CPU is the server's user plus system time in 10 ms ticks per run, so compare rows of one table only. Fixed intervals were swept first (100 µs, 250 µs, 500 µs, 1 ms; table in the [wiki](../../wiki/runtime/a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md)).
+
+| Scenario | | CPU ticks | p50 | p90 | p99 | p99.9 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Fast, 4000 req/s | before | 253 to 277 | 0.66 ms | 1.22 to 1.23 ms | 1.6 to 2.3 ms | 4.3 to 25 ms |
+| | now | 260 to 271 | 0.66 ms | 1.21 to 1.23 ms | 1.6 to 2.1 ms | 5.4 to 23 ms |
+| 5% burn 5 ms, 2000 req/s | before | 1103 to 1126 | 0.62 to 0.64 ms | 1.18 to 1.20 ms | 3.4 to 3.5 ms | 5.3 to 16 ms |
+| | now | 933 to 965 | 0.69 to 0.71 ms | 1.34 to 1.47 ms | 3.4 to 3.5 ms | 5.3 to 6.4 ms |
+| TLS, 4000 req/s | before | 299 to 313 | 0.66 ms | 1.23 to 1.26 ms | 1.6 to 1.9 ms | 4.0 to 7.8 ms |
+| | now | 300 to 313 | 0.66 to 0.67 ms | 1.23 to 1.25 ms | 1.7 to 2.1 ms | 6.3 to 21 ms |
+| Closed loop, 64 conns (earlier sweep) | before / now | 2967 to 3001 / 3005 to 3034 | | | | 131k to 143k / 145k to 153k req/s |
+
+Findings: the single interval costs what the slow mode cost and removes the +4% TLS CPU of the fast mode (373 to 445 ticks at 100 µs). Slow-mix CPU falls 14%, p99 and p99.9 hold, and p50 and p90 rise by about 0.07 and 0.15 ms because a ready request waits up to one look longer behind a held-up thread. Idle: a 4-thread server with six idle connections used 0.4 to 0.7 ms CPU and 22 voluntary switches in one second (one run of 20 looks after the sleep that ended the rest), against 102 switches and 2.5 to 2.9 ms before.
