@@ -160,7 +160,11 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             for ((c, drops, n), blk) in arms.into_iter().zip(blocks) {
                 b.switch_to(blk);
                 // Every field marked moved: the release only frees the block.
-                let mask = if drops { 0 } else { (1u32 << n.min(31)) - 1 };
+                let mask = match (drops, n) {
+                    (true, _) => 0,
+                    (false, 32..) => u32::MAX,
+                    (false, _) => (1u32 << n) - 1,
+                };
                 b.alt_release(a, c as u32, mask, p);
                 b.br(done, &[]);
             }
