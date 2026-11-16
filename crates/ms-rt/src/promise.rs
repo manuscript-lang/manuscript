@@ -431,7 +431,8 @@ fn wait_foreign(id: i64, timeout_ns: i64) -> i64 {
         unsafe { task::msrt_token_free(token) };
         if woke == task::WAIT_CANCELLED {
             msrt_promise_drop(id);
-            fault::msrt_cancelled();
+            fault::cancel_return();
+            return CLOSED;
         }
         if woke == task::WAIT_TIMEOUT {
             ask(id, move || {
@@ -1572,7 +1573,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
 ///
 /// # Safety
 /// `work` is a live closure object.
-// ms: keeps:work
+// ms: keeps:work retains
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi::Closure) {
     let i = find(id);
@@ -1743,7 +1744,8 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
             // cancel its work and wait for it to end now, so what it holds (a listener, a file) is
             // released before the unwinding task goes on.
             msrt_promise_drop(id);
-            fault::msrt_cancelled();
+            fault::cancel_return();
+            return CLOSED;
         }
         let t = table();
         let Some(i) = index(&t, id) else {
@@ -1823,7 +1825,8 @@ pub extern "C-unwind" fn msrt_group_next(group: i64) -> i64 {
             woke
         };
         if woke == task::WAIT_CANCELLED {
-            fault::msrt_cancelled();
+            fault::cancel_return();
+            return -1;
         }
     }
 }
@@ -1926,7 +1929,8 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
             }
             task::msrt_token_free(token);
             if woke == task::WAIT_CANCELLED {
-                fault::msrt_cancelled();
+                fault::cancel_return();
+                return -1;
             }
             if let Some(at) = first_done(&list) {
                 return at as i64;
@@ -2038,7 +2042,10 @@ fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
         // SAFETY: no owner holds a registration of it any more.
         unsafe { task::msrt_token_free(token) };
         match finished {
-            Some(usize::MAX) => fault::msrt_cancelled(),
+            Some(usize::MAX) => {
+                fault::cancel_return();
+                return -1;
+            }
             Some(at) => return at as i64,
             None if timed_out => return -1,
             None => {}
@@ -2901,7 +2908,8 @@ mod tests {
 
     /// Hands a blocking job to the pool and answers its result, from whichever thread runs it.
     unsafe extern "C-unwind" fn pool_job(closure: *mut Closure) {
-        let got = crate::glue::pool::run(crate::glue::pool::Lane::General, 40u64, slow_job, -1);
+        let got = crate::glue::pool::try_run(crate::glue::pool::Lane::General, 40u64, slow_job, -1)
+            .unwrap();
         // SAFETY: called from a running task with the closure `start_with_id` made.
         unsafe {
             let mut v = got.unwrap_or(0) as i64;

@@ -21,12 +21,13 @@ import (
 // the runtime or the strings library would move.
 PROGRAMS := ["interp", "strings", "lz", "graph"]
 // Small programs of bench/perf/guards, one per recent speed fix (signature tables,
-// regex prefilter, image codecs, fused chains, map probes, scope-end close). Each is
-// counted as
+// regex prefilter, image codecs, fused chains, map probes, scope-end close, string
+// append). Each is counted as
 // `guard-<name>`.
 GUARDS := [
 	"crypto", "regex", "image", "chains", "maps", "cleanup", "resultvar", "csvcells",
-	"mapinsert", "http-request", "splitfirst", "splitbuf", "findshort", "strcmp"
+	"mapinsert", "http-request", "splitfirst", "splitbuf", "findshort", "append",
+	"strcmp"
 ]
 // Guards that take their own path as the argument (they start themselves as a child,
 // which valgrind does not follow, so only the part under test is counted).

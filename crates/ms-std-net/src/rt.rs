@@ -6,7 +6,7 @@
 use crate::sys::{self, Borrowed};
 use std::sync::atomic::Ordering;
 
-use ms_rt::fault::{cancel_flag, msrt_cancelled, msrt_shield_enter, msrt_shield_exit};
+use ms_rt::fault::{cancel_flag, cancel_return, msrt_shield_enter, msrt_shield_exit};
 #[cfg(unix)]
 use ms_rt::task::msrt_task_forget_fd;
 use ms_rt::task::{
@@ -21,16 +21,21 @@ pub fn cancel_requested() -> bool {
     cancel_flag().load(Ordering::Relaxed) != 0
 }
 
-/// Unwinds the program through the runtime's cancellation path when a stop was requested.
-pub fn check_cancel() {
+/// Delivers a pending stop request (see [`cancelled`]) and answers `true`; the caller then
+/// returns a zero result at once.
+pub fn check_cancel() -> bool {
     if cancel_requested() {
-        msrt_cancelled()
+        cancelled();
+        return true;
     }
+    false
 }
 
-/// Runs the runtime's cancellation path (cleanups, then exit).
-pub fn cancelled() -> ! {
-    msrt_cancelled()
+/// Delivers the cancel: the task is marked unwinding and the caller returns a zero result at
+/// once, to be left by its caller's cancel exit. Until a module has cancel edges it jumps
+/// through the runtime's cancellation path instead (cleanups, then exit).
+pub fn cancelled() {
+    cancel_return()
 }
 
 /// A park that ended because the task was cancelled. Code that parks returns it as an error, so

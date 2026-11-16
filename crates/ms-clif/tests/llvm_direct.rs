@@ -234,12 +234,12 @@ fn string_bytes() {
         117,
         &["get"],
     );
-    // `str.ascii_len` answers -1 (exit code 67) for a long literal, which is neither inline nor
-    // flagged; the inline cases are covered by a built program in the conformance corpus.
+    // `str.ascii_len` answers the length for a long ASCII literal, which both backends flag; the
+    // inline cases are covered by a built program in the conformance corpus.
     check(
         "direct_ascii_len_heap",
         &ascii_len_program(long),
-        67,
+        21,
         &["get"],
     );
 }

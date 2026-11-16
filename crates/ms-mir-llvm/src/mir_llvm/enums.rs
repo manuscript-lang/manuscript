@@ -195,7 +195,7 @@ fn block_ok(block: &[Leaf]) -> bool {
 }
 
 /// The constant zero of a held type.
-fn zero(t: &LTy) -> Val {
+pub(super) fn zero(t: &LTy) -> Val {
     match t {
         LTy::I1 => Val::bool(false),
         LTy::I8 => Val::byte(0),

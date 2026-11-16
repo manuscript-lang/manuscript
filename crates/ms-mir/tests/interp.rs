@@ -422,3 +422,26 @@ b0:
 "#;
     assert_eq!(run(src), 101);
 }
+
+#[test]
+fn undef_is_the_zero_value_of_its_type() {
+    let src = r#"module "u"
+type Pair { x: int, y: float, ok: bool }
+entry @main
+fn @zp() -> Pair inline(never) {
+b0:
+  %p: Pair = undef
+  ret %p
+}
+fn @main() -> int {
+b0:
+  %p: Pair = call @zp()
+  %x: int = type.get Pair.x %p
+  %ok: bool = type.get Pair.ok %p
+  %okn: int = b2i %ok
+  %r: int = iadd %x, %okn
+  ret %r
+}
+"#;
+    assert_eq!(run(src), 0);
+}

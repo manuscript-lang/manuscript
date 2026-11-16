@@ -946,15 +946,22 @@ pub unsafe extern "C-unwind" fn msrt_string_append(
         let ascii = sa.flagged_ascii() && is_ascii(&*b);
         // Room left in the block is used as is; otherwise the string moves to a block with
         // slack, so a run of appends reallocates a logarithmic number of times.
+        // The recorded spare room answers without asking the allocator; the answer is kept for
+        // the next append.
         let need = la + lb + 1;
-        let p = if alloc::usable_size(sa.ptr_word) >= need {
-            sa.ptr_word
+        let (p, spare) = if sa.spare() >= lb {
+            (sa.ptr_word, sa.spare() - lb)
         } else {
-            alloc::realloc(sa.ptr_word, need + need / 2)
+            let room = alloc::usable_size(sa.ptr_word);
+            if room >= need {
+                (sa.ptr_word, room - need)
+            } else {
+                (alloc::realloc(sa.ptr_word, need + need / 2), need / 2)
+            }
         };
         core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), p.add(la), lb);
         *p.add(la + lb) = 0;
-        let r = StrVal::owned(p, la + lb);
+        let r = StrVal::owned(p, la + lb).with_spare(spare);
         (if ascii { r.with_ascii() } else { r }).write_to(out)
     }
 }
@@ -1511,21 +1518,21 @@ unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) 
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, true, true, out) }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, true, false, out) }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, false, true, out) }
@@ -2359,7 +2366,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 /// A flagged-ASCII text with bounds inside it is decided inline by the compiler (`view_guard`);
 /// everything else, including an inline text, comes here.
 #[unsafe(no_mangle)]
-// ms: leaf pure domain=string
+// ms: leaf pure borrows domain=string
 pub unsafe extern "C-unwind" fn msrt_string_view(
     s: *const StrVal,
     start: i64,

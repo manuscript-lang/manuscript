@@ -165,7 +165,8 @@ fn main() {
             | bit("handle") << 3
             | bit("spawns") << 4
             | bit("takes_self") << 5
-            | bit("borrows") << 6;
+            | bit("borrows") << 6
+            | bit("retains") << 7;
         let Some((name, rest)) = line.split_once('(') else {
             panic!("rt_symbols.txt:{}: not a function entry: {line}", n + 1);
         };

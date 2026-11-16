@@ -128,7 +128,7 @@ fn string_hash(b: &mut FuncBuilder<'_>, key: Value, k: Value) -> Value {
         let hi = b.binop(Op::UMulHi, x, m);
         b.binop(Op::Xor, lo, hi)
     };
-    let size = int(b, Op::And, w1, (1 << 61) - 1);
+    let size = int(b, Op::And, w1, ms_rt_abi::STR_LEN_MASK as i64);
     let c16 = b.iconst(16);
     let wide = b.icmp(Cc::Ge, size, c16);
     let (fold_in, call, header, body, tail) = (
@@ -298,7 +298,7 @@ fn find(b: &mut FuncBuilder<'_>, shape: Shape, m: Value, key: Value) -> Value {
         b.switch_to(compare);
         // Two blocks of 16 to 32 bytes: four overlapping word compares cover every byte.
         let (s1, k1) = (load(b, slot, 16, MTy::INT), load(b, key, 8, MTy::INT));
-        let mask = (1 << 61) - 1;
+        let mask = ms_rt_abi::STR_LEN_MASK as i64;
         let (sn, kn) = (int(b, Op::And, s1, mask), int(b, Op::And, k1, mask));
         let (st, kt) = (int(b, Op::Ushr, s1, 62), int(b, Op::Ushr, k1, 62));
         let one = b.iconst(1);
@@ -547,7 +547,7 @@ fn view_guard(b: &mut FuncBuilder<'_>, s: Value, start: Value, end: Value, slow:
     let ascii = int(b, Op::And, w1, 1 << 61);
     let zero = b.iconst(0);
     let flagged = b.icmp(Cc::Ne, ascii, zero);
-    let len = int(b, Op::And, w1, (1 << 61) - 1);
+    let len = int(b, Op::And, w1, ms_rt_abi::STR_LEN_MASK as i64);
     let (a, c, d) = (
         b.icmp(Cc::Ge, start, zero),
         b.icmp(Cc::Le, start, end),

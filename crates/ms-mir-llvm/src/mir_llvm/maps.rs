@@ -10,7 +10,12 @@ use ms_mir::ir::{Imm, Inst, Op};
 use ms_mir::types::TyKind;
 
 pub(super) const AREA: Area = Area {
-    handles: |op| matches!(op, Op::PtrIsNull | Op::PtrAdd | Op::PtrNull | Op::PtrLoadU),
+    handles: |op| {
+        matches!(
+            op,
+            Op::PtrIsNull | Op::PtrAdd | Op::PtrNull | Op::PtrLoadU | Op::PtrStoreU
+        )
+    },
     ty_ok: |k| matches!(k, TyKind::Obj(..)),
     emit,
     ..Area::NONE
@@ -35,6 +40,20 @@ fn emit(_: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.name_next(&out[0]);
             b.zext(&x, LTy::I64);
         }
+        return;
+    }
+    if inst.op == Op::PtrStoreU {
+        let Imm::Int(w) = inst.imm else { return };
+        let p = &vals[&inst.args[0].index()][0];
+        let v = &vals[&inst.args[1].index()][0];
+        let ty = match w {
+            1 => LTy::I8,
+            2 => LTy::I16,
+            4 => LTy::I32,
+            _ => LTy::I64,
+        };
+        let v = if w == 8 { v.clone() } else { b.trunc(v, ty) };
+        b.store(&v, p, 1);
         return;
     }
     if inst.op == Op::PtrNull {

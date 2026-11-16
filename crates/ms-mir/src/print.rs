@@ -198,6 +198,9 @@ pub fn print_module(m: &Module) -> String {
         if e.reads {
             line.push_str(" reads");
         }
+        if e.retains {
+            line.push_str(" retains");
+        }
         if let Some(role) = e.role.name() {
             line.push(' ');
             line.push_str(role);

@@ -49,6 +49,7 @@ pub fn run(m: &mut Module) -> bool {
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         role: ExternRole::CleanupDiscard,
         leaf: true,
         reads: false,
@@ -128,7 +129,7 @@ fn leaf_extern(m: &Module, e: ExtId) -> bool {
 
 /// Which functions can reach a cancellation point: a poll, an indirect call or a runtime call
 /// that is not a known leaf, directly or through a callee.
-fn parking_funcs(m: &Module) -> Vec<bool> {
+pub(crate) fn parking_funcs(m: &Module) -> Vec<bool> {
     let n = m.funcs.len();
     let mut parks = vec![false; n];
     let mut callees: Vec<Vec<usize>> = vec![Vec::new(); n];
@@ -239,6 +240,7 @@ fn raw_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         role: ExternRole::RawFree,
         leaf: true,
         reads: false,
@@ -276,6 +278,7 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         role: ExternRole::None,
         leaf: true,
         reads: false,
@@ -331,6 +334,7 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         role: ExternRole::None,
         leaf: true,
         reads: false,
@@ -376,6 +380,7 @@ fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Optio
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         role: ExternRole::None,
         leaf: true,
         reads: false,
@@ -443,6 +448,7 @@ fn slot_dropper(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         role: ExternRole::None,
         leaf: true,
         reads: false,
