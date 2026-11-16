@@ -11,10 +11,39 @@ pub type Shared = Rc<RefCell<Headers>>;
 /// One name and where its bytes sit in a [`Table`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Slot {
-    name: usize,
-    name_len: usize,
-    value: usize,
-    value_len: usize,
+    name: u32,
+    name_len: u32,
+    value: u32,
+    value_len: u32,
+}
+
+/// The most bytes a table holds; offsets and lengths are `u32` to keep a slot at 16 bytes. A
+/// received head is bounded by the server's header limit, far below this.
+const MAX_BYTES: usize = u32::MAX as usize;
+
+impl Slot {
+    /// A slot for spans that fit [`MAX_BYTES`], which `Table::room` checked.
+    fn new(name: usize, name_len: usize, value: usize, value_len: usize) -> Slot {
+        debug_assert!(
+            [name + name_len, value + value_len]
+                .iter()
+                .all(|&end| end <= MAX_BYTES)
+        );
+        Slot {
+            name: name as u32,
+            name_len: name_len as u32,
+            value: value as u32,
+            value_len: value_len as u32,
+        }
+    }
+
+    fn name_span(&self) -> std::ops::Range<usize> {
+        self.name as usize..(self.name + self.name_len) as usize
+    }
+
+    fn value_span(&self) -> std::ops::Range<usize> {
+        self.value as usize..(self.value + self.value_len) as usize
+    }
 }
 
 /// Every name and value of a collection in one buffer, with one slot per value.
@@ -34,14 +63,17 @@ struct Table {
 
 impl Table {
     fn name(&self, slot: &Slot) -> &str {
-        let bytes = &self.buf[slot.name..slot.name + slot.name_len];
-        // SAFETY: a name's bytes are always a copy of a `&str`, changed only by ASCII case
-        // folding (`canonicalize`), which keeps them valid UTF-8.
+        let bytes = &self.buf[slot.name_span()];
+        debug_assert!(std::str::from_utf8(bytes).is_ok());
+        // SAFETY: every writer of name bytes copies a whole `&str` (`add_bytes`,
+        // `from_received`, and `from_parsed`, whose names are httparse `&str`s and whose copy
+        // keeps each name's bytes together), and `canonicalize` changes only ASCII letters to the
+        // other case, so a name's span is always valid UTF-8.
         unsafe { std::str::from_utf8_unchecked(bytes) }
     }
 
     fn value(&self, slot: &Slot) -> &[u8] {
-        &self.buf[slot.value..slot.value + slot.value_len]
+        &self.buf[slot.value_span()]
     }
 
     fn named(&self, slot: &Slot, name: &str) -> bool {
@@ -64,7 +96,7 @@ impl Table {
             view: OnceLock::new(),
         };
         for slot in &table.slots {
-            canonicalize(&mut table.buf[slot.name..slot.name + slot.name_len]);
+            canonicalize(&mut table.buf[slot.name_span()]);
         }
         table.grouped(false)
     }
@@ -92,6 +124,14 @@ impl Table {
         None
     }
 
+    /// Whether `extra` more bytes keep every offset within [`MAX_BYTES`].
+    fn room(&self, extra: usize) -> bool {
+        self.buf
+            .len()
+            .checked_add(extra)
+            .is_some_and(|n| n <= MAX_BYTES)
+    }
+
     fn push_bytes(&mut self, bytes: &[u8]) -> usize {
         let at = self.buf.len();
         self.buf.extend_from_slice(bytes);
@@ -101,7 +141,7 @@ impl Table {
     /// The slots sorted by name, equal names merged into one group in arrival order.
     fn grouped(mut self, fold: bool) -> Table {
         let buf = std::mem::take(&mut self.buf);
-        let name_of = |s: &Slot| &buf[s.name..s.name + s.name_len];
+        let name_of = |s: &Slot| &buf[s.name_span()];
         // A stable sort by name keeps arrival order within a name; the slots of a name then share
         // the bytes of the first one's spelling.
         if fold {
@@ -149,12 +189,12 @@ impl<'a> Values<'a> {
         self.first().is_none()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &'a [u8]> + use<'a> {
-        let (table, name) = (self.table, self.name);
-        self.slots
-            .iter()
-            .filter(move |s| name.is_none_or(|n| table.named(s, n)))
-            .map(move |s| table.value(s))
+    pub fn iter(&self) -> ValueIter<'a> {
+        ValueIter {
+            table: self.table,
+            slots: self.slots.iter(),
+            name: self.name,
+        }
     }
 
     pub fn first(&self) -> Option<&'a [u8]> {
@@ -166,12 +206,30 @@ impl<'a> Values<'a> {
     }
 }
 
+/// The values of one name, in arrival order.
+pub struct ValueIter<'a> {
+    table: &'a Table,
+    slots: std::slice::Iter<'a, Slot>,
+    name: Option<&'a str>,
+}
+
+impl<'a> Iterator for ValueIter<'a> {
+    type Item = &'a [u8];
+
+    fn next(&mut self) -> Option<&'a [u8]> {
+        let (table, name) = (self.table, self.name);
+        self.slots
+            .find(|s| name.is_none_or(|n| table.named(s, n)))
+            .map(|s| table.value(s))
+    }
+}
+
 impl<'a> IntoIterator for Values<'a> {
     type Item = &'a [u8];
-    type IntoIter = std::vec::IntoIter<&'a [u8]>;
+    type IntoIter = ValueIter<'a>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter().collect::<Vec<_>>().into_iter()
+    fn into_iter(self) -> ValueIter<'a> {
+        self.iter()
     }
 }
 
@@ -381,34 +439,34 @@ impl Headers {
 
     /// Adds a value under `name` without validating it.
     pub fn add(&mut self, name: &str, value: Vec<u8>) {
-        self.add_bytes(name, &value);
+        let _ = self.add_bytes(name, &value);
     }
 
-    fn add_bytes(&mut self, name: &str, value: &[u8]) {
+    fn add_bytes(&mut self, name: &str, value: &[u8]) -> Result<(), HttpErr> {
         let table = self.own();
+        if !table.room(name.len().saturating_add(value.len())) {
+            return Err(HttpErr::LimitExceeded);
+        }
         let value_at = table.push_bytes(value);
         match table.find_group(name) {
             Some((first, end)) => {
                 let head = table.slots[first];
-                table.slots.insert(
-                    end,
-                    Slot {
-                        value: value_at,
-                        value_len: value.len(),
-                        ..head
-                    },
+                let slot = Slot::new(
+                    head.name as usize,
+                    head.name_len as usize,
+                    value_at,
+                    value.len(),
                 );
+                table.slots.insert(end, slot);
             }
             None => {
                 let name_at = table.push_bytes(name.as_bytes());
-                table.slots.push(Slot {
-                    name: name_at,
-                    name_len: name.len(),
-                    value: value_at,
-                    value_len: value.len(),
-                });
+                table
+                    .slots
+                    .push(Slot::new(name_at, name.len(), value_at, value.len()));
             }
         }
+        Ok(())
     }
 
     /// `HttpHeaders.append`: the name must be a token.
@@ -416,8 +474,7 @@ impl Headers {
         if !valid_name(name) {
             return Err(HttpErr::InvalidInput);
         }
-        self.add_bytes(name, value);
-        Ok(())
+        self.add_bytes(name, value)
     }
 
     pub fn values<'a>(&'a self, name: &'a str) -> Option<Values<'a>> {
@@ -474,9 +531,12 @@ impl Headers {
         let Some((first, end)) = table.find_group(name) else {
             return;
         };
+        if !table.room(value.len()) {
+            return;
+        }
         let value_at = table.push_bytes(&value);
-        table.slots[first].value = value_at;
-        table.slots[first].value_len = value.len();
+        table.slots[first].value = value_at as u32;
+        table.slots[first].value_len = value.len() as u32;
         table.slots.drain(first + 1..end);
     }
 
@@ -493,14 +553,14 @@ impl Headers {
         };
         for (name, value) in fields {
             let (name, value) = (name.as_ref(), value.as_ref());
+            if !table.room(name.len().saturating_add(value.len())) {
+                break;
+            }
             let name_at = table.push_bytes(name.as_bytes());
             let value_at = table.push_bytes(value);
-            table.slots.push(Slot {
-                name: name_at,
-                name_len: name.len(),
-                value: value_at,
-                value_len: value.len(),
-            });
+            table
+                .slots
+                .push(Slot::new(name_at, name.len(), value_at, value.len()));
         }
         Headers {
             table: Arc::new(table),
@@ -517,27 +577,30 @@ impl Headers {
         let base = buf.as_ptr() as usize;
         let offset = |part: &[u8]| (part.as_ptr() as usize).wrapping_sub(base);
         let start = offset(first.name.as_bytes());
-        let end = offset(last.value) + last.value.len();
-        let inside = |part: &[u8]| {
-            let at = offset(part);
-            at >= start && at + part.len() <= end
-        };
-        if end > buf.len()
-            || !headers
-                .iter()
-                .all(|h| inside(h.name.as_bytes()) && inside(h.value))
-        {
+        let end = offset(last.value).saturating_add(last.value.len());
+        if start > end || end > buf.len() || end - start > MAX_BYTES {
             return Headers::from_received(headers.iter().map(|h| (h.name, h.value)));
         }
-        let slots = headers
-            .iter()
-            .map(|h| Slot {
-                name: offset(h.name.as_bytes()) - start,
-                name_len: h.name.len(),
-                value: offset(h.value) - start,
-                value_len: h.value.len(),
-            })
-            .collect();
+        let mut slots = Vec::with_capacity(headers.len());
+        for h in headers {
+            let (name, value) = (offset(h.name.as_bytes()), offset(h.value));
+            // Both spans must lie inside the region copied below.
+            let inside = name >= start
+                && name <= end
+                && h.name.len() <= end - name
+                && value >= start
+                && value <= end
+                && h.value.len() <= end - value;
+            if !inside {
+                return Headers::from_received(headers.iter().map(|h| (h.name, h.value)));
+            }
+            slots.push(Slot::new(
+                name - start,
+                h.name.len(),
+                value - start,
+                h.value.len(),
+            ));
+        }
         Headers {
             table: Arc::new(Table {
                 buf: buf[start..end].to_vec(),
@@ -754,6 +817,240 @@ mod tests {
         assert_eq!(a.first("a"), Some(&b"1"[..]));
         assert_eq!(b.first("a"), Some(&b"9"[..]));
         assert!(!b.remove("B"));
+    }
+
+    #[test]
+    fn spans_outside_the_buffer_fall_back_instead_of_being_misread() {
+        let elsewhere = b"X-Other: v\r\n";
+        let buf = b"GET / HTTP/1.1\r\nA: 1\r\n\r\n";
+        let headers = [
+            httparse::Header {
+                name: "X-Other",
+                value: &elsewhere[9..10],
+            },
+            httparse::Header {
+                name: "A",
+                value: &buf[19..20],
+            },
+        ];
+        let parsed = Headers::from_parsed(buf, &headers);
+        assert_eq!(parsed.first("x-other"), Some(&b"v"[..]));
+        assert_eq!(parsed.first("a"), Some(&b"1"[..]));
+    }
+
+    #[test]
+    fn an_empty_name_or_value_at_the_end_of_the_buffer_is_kept() {
+        let buf = b"Name:";
+        let headers = [httparse::Header {
+            name: "Name",
+            value: &buf[5..5],
+        }];
+        let h = Headers::from_parsed(buf, &headers);
+        assert_eq!(h.first("name"), Some(&b""[..]));
+        assert_eq!(h.names(), ["Name"]);
+        let buf = b"a: 1\r\nb:";
+        let headers = [
+            httparse::Header {
+                name: "a",
+                value: &buf[3..4],
+            },
+            httparse::Header {
+                name: "b",
+                value: &buf[8..8],
+            },
+        ];
+        let h = Headers::from_parsed(buf, &headers);
+        assert_eq!(h.names(), ["A", "B"]);
+        assert_eq!(h.first("b"), Some(&b""[..]));
+        assert!(Headers::from_parsed(buf, &[]).is_empty());
+    }
+
+    /// A plain model of a collection: groups of (name, values) in the order the type promises.
+    #[derive(Clone, Default)]
+    struct Model {
+        groups: Vec<(String, Vec<Vec<u8>>)>,
+    }
+
+    impl Model {
+        fn received(fields: &[(String, Vec<u8>)]) -> Model {
+            let mut model = Model::default();
+            for (name, value) in fields {
+                model.add(&canonical(name), value.clone());
+            }
+            model.groups.sort_by(|a, b| a.0.cmp(&b.0));
+            model
+        }
+
+        fn group(&mut self, name: &str) -> Option<&mut (String, Vec<Vec<u8>>)> {
+            self.groups
+                .iter_mut()
+                .find(|g| g.0.eq_ignore_ascii_case(name))
+        }
+
+        fn add(&mut self, name: &str, value: Vec<u8>) {
+            match self.group(name) {
+                Some(g) => g.1.push(value),
+                None => self.groups.push((name.to_string(), vec![value])),
+            }
+        }
+
+        fn set(&mut self, name: &str, value: Vec<u8>) {
+            match self.group(name) {
+                Some(g) => g.1 = vec![value],
+                None => self.add(name, value),
+            }
+        }
+
+        fn remove(&mut self, name: &str) -> bool {
+            let before = self.groups.len();
+            self.groups.retain(|g| !g.0.eq_ignore_ascii_case(name));
+            before != self.groups.len()
+        }
+    }
+
+    fn assert_same(h: &Headers, m: &Model, what: &str) {
+        let entries: Vec<(String, Vec<Vec<u8>>)> = h
+            .entries()
+            .map(|e| (e.name.to_string(), e.values.to_vec()))
+            .collect();
+        assert_eq!(entries, m.groups, "entries {what}");
+        assert_eq!(
+            h.names(),
+            m.groups.iter().map(|g| g.0.as_str()).collect::<Vec<_>>(),
+            "names {what}"
+        );
+        for name in NAMES {
+            let want = m
+                .groups
+                .iter()
+                .find(|g| g.0.eq_ignore_ascii_case(name))
+                .map(|g| &g.1);
+            assert_eq!(
+                h.values(name).map(|v| v.to_vec()).as_ref(),
+                want,
+                "{name} {what}"
+            );
+            assert_eq!(
+                h.first(name),
+                want.and_then(|v| v.first()).map(Vec::as_slice),
+                "first {name} {what}"
+            );
+            assert_eq!(h.values(name).map(|v| v.len()), want.map(Vec::len));
+        }
+    }
+
+    const NAMES: [&str; 8] = [
+        "a",
+        "A",
+        "b",
+        "X-Y",
+        "x-y",
+        "content-type",
+        "Content-Type",
+        "Z",
+    ];
+
+    /// A small deterministic generator.
+    struct Lcg(u64);
+
+    impl Lcg {
+        fn next(&mut self, n: usize) -> usize {
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (self.0 >> 33) as usize % n
+        }
+
+        fn value(&mut self) -> Vec<u8> {
+            let len = self.next(4);
+            (0..len).map(|_| b"xyz1 "[self.next(5)]).collect()
+        }
+    }
+
+    fn apply(rng: &mut Lcg, h: &mut Headers, m: &mut Model) {
+        let name = NAMES[rng.next(NAMES.len())];
+        match rng.next(3) {
+            0 => {
+                let v = rng.value();
+                h.add(name, v.clone());
+                m.add(name, v);
+            }
+            1 => {
+                let v = rng.value();
+                h.set(name, v.clone());
+                m.set(name, v);
+            }
+            _ => assert_eq!(h.remove(name), m.remove(name)),
+        }
+    }
+
+    #[test]
+    fn a_table_matches_a_plain_model_through_random_writes_and_clones() {
+        for seed in 0..300u64 {
+            let mut rng = Lcg(seed);
+            let fields: Vec<(String, Vec<u8>)> = (0..rng.next(7))
+                .map(|_| (NAMES[rng.next(NAMES.len())].to_string(), rng.value()))
+                .collect();
+            // A received table (raw) and a built one start the same random walk.
+            let mut tables = [
+                (
+                    Headers::from_received(fields.clone()),
+                    Model::received(&fields),
+                ),
+                (Headers::new(), Model::default()),
+            ];
+            for (h, m) in &mut tables {
+                assert_same(h, m, &format!("start {seed}"));
+                for step in 0..12 {
+                    let (mut other_h, mut other_m) = (h.clone(), m.clone());
+                    // Reading before and after a write; the clone must not see the write.
+                    if rng.next(2) == 0 {
+                        assert_same(h, m, &format!("pre-read {seed}/{step}"));
+                    }
+                    apply(&mut rng, h, m);
+                    assert_same(h, m, &format!("{seed}/{step}"));
+                    assert_same(&other_h, &other_m, &format!("clone {seed}/{step}"));
+                    apply(&mut rng, &mut other_h, &mut other_m);
+                    assert_same(&other_h, &other_m, &format!("clone write {seed}/{step}"));
+                    assert_same(h, m, &format!("original after clone write {seed}/{step}"));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn received_headers_are_what_handlers_saw_before_the_table() {
+        // The reference: canonical names, sorted by name, values in arrival order.
+        let heads: [&[u8]; 3] = [
+            b"POST /p HTTP/1.1\r\nhost: h\r\nX-B: 1\r\ncontent-LENGTH: 3\r\nx-b: 2\r\nAccept: */*\r\n\r\nabc",
+            b"GET / HTTP/1.0\r\n\r\n",
+            b"GET / HTTP/1.1\r\nUSER-AGENT: a\r\nuser-agent: b\r\nE: \r\n\r\n",
+        ];
+        for head in heads {
+            let fields = parse(head);
+            let mut reference: Vec<(String, Vec<Vec<u8>>)> = Vec::new();
+            for (name, value) in &fields {
+                let name = canonical(name);
+                match reference.iter_mut().find(|g| g.0 == name) {
+                    Some(g) => g.1.push(value.clone()),
+                    None => reference.push((name, vec![value.clone()])),
+                }
+            }
+            reference.sort_by(|a, b| a.0.cmp(&b.0));
+            let via_parser = match crate::http::h1::parse_request(head, 1 << 16) {
+                crate::http::h1::Parsed::Complete(h) => h.fields,
+                _ => panic!("not a request"),
+            };
+            // HTTP/2 and the client build from the received fields directly.
+            for table in [via_parser, Headers::from_received(fields.clone())] {
+                let seen: Vec<(String, Vec<Vec<u8>>)> = table
+                    .entries()
+                    .map(|e| (e.name.to_string(), e.values.to_vec()))
+                    .collect();
+                assert_eq!(seen, reference, "{}", String::from_utf8_lossy(head));
+            }
+        }
     }
 
     #[test]
