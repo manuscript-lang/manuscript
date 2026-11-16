@@ -707,12 +707,11 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		accepted := msstd_http_serving_accept(listening.serving)
 
 		if accepted.is_error():
-			kind := accepted.err().kind.get("")
-			if kind == "EBADF": return ok()
-			if is_per_connection_error(kind): continue
+			if accepted.err().kind == "EBADF": return ok()
 
-			// Out of descriptors or memory: wait for something to close, longer each
-			// time.
+			// The runtime already retried the errors of a single connection. What is
+			// left (out of descriptors or memory) waits for something to close, longer
+			// each time.
 			void sleep(nanoseconds(pause)).wait()
 			pause = if pause < 500000000: pause * 2 else: 1000000000
 			continue
@@ -720,16 +719,6 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 		pause = 5000000
 		void accepting.deals[next].write(accepted.get())
 		next = (next + 1) % count
-
-// Whether an accept error belongs to one connection that went away before it was taken:
-// the next attempt succeeds at once, so there is nothing to wait for.
-fn is_per_connection_error(kind: String) Bool:
-	return (
-		kind == "ECONNABORTED"
-		or kind == "EINTR"
-		or kind == "EPROTO"
-		or kind == "ECONNRESET"
-	)
 
 // Starts one worker on the least loaded thread. A returned promise owns what it
 // captures, so the share of the serving and the pipe belong to the worker for as long
