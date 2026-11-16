@@ -24,6 +24,12 @@ Measured with callgrind on the server process of `bench/perf/guards/http-request
 
 Self cost per request: `__rust_dealloc` 828, `__rust_alloc` 630, `msrt_free` 165, `msrt_alloc` 104, 1.73k together, about 79 per allocation and free. A request with 8 headers adds 14 more allocations (name and value per header). The 0-header and 8-header guard runs are part of stage 1's evidence.
 
+## Measured: a header costs 1.7k, not 100
+
+The guard now sends the six headers a browser or curl sends (`guard-http-request`) beside the one-header request (`guard-http-request-small`). Per request: Manuscript 23.97k and 15.38k; bare C (`server.c`, same requests, one connection, callgrind) 2.47k and 1.86k. Each extra header cost Manuscript about 1.7k and C about 120. Of the 8.6k that five headers added, 2.3k was `canonical_owned` (a per-byte loop that tested every byte against a 15-byte string and validated the finished name as UTF-8 again), 1.2k the per-byte CR/LF check, 0.9k `from_utf8` of values, 0.8k alloc and free, 0.4k sorting entries, 0.7k repeated scans for `Host`, `Expect`, `Connection`, `Content-Length` and `Transfer-Encoding`.
+
+Stage 0 (this PR, no design change): table-driven canonical names, word-at-a-time CR/LF scan, ASCII fast path for UTF-8 checks, one pass over the fields for the questions the server asks. Six-header request 23.97k to 20.68k (-3.3k), one-header 15.38k to 14.96k (-0.4k). The allocation stages below start from there; their per-header share (2 allocations per header, sorting, the entries copy) is what remains of the 1.7k.
+
 ## Design
 
 A per-thread pool of `RequestBuf`, each `{ head: Vec<u8>, slots: Vec<Slot> }`, cleared and not freed when returned:
