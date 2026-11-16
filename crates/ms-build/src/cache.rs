@@ -245,7 +245,25 @@ fn store_stage(dir: &Path, key: &str) -> std::io::Result<PathBuf> {
 }
 
 /// Entries kept per cache directory; the least recently used are removed when a build stores another.
-const KEEP: usize = 8;
+const KEEP: usize = 3;
+
+/// Total bytes kept per cache directory. Older entries go first; the newest entry always stays.
+const MAX_BYTES: u64 = 128 * 1024 * 1024;
+
+fn tree_size(path: &Path) -> u64 {
+    let Ok(meta) = std::fs::symlink_metadata(path) else {
+        return 0;
+    };
+    if !meta.is_dir() {
+        return meta.len();
+    }
+    std::fs::read_dir(path)
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .map(|e| tree_size(&e.path()))
+        .sum()
+}
 
 /// When an entry was last stored or hit: the modification time of its manifest.
 fn used(entry: &Path) -> Option<std::time::SystemTime> {
@@ -267,10 +285,10 @@ fn touch(entry: &Path) {
 const STALE_STAGE: std::time::Duration = std::time::Duration::from_secs(24 * 60 * 60);
 
 fn prune(dir: &Path, keep: usize) {
-    prune_stages(dir, keep, STALE_STAGE);
+    prune_stages(dir, keep, MAX_BYTES, STALE_STAGE);
 }
 
-fn prune_stages(dir: &Path, keep: usize, stale: std::time::Duration) {
+fn prune_stages(dir: &Path, keep: usize, max_bytes: u64, stale: std::time::Duration) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
@@ -296,7 +314,14 @@ fn prune_stages(dir: &Path, keep: usize, stale: std::time::Duration) {
         .collect();
     entries.sort();
     let excess = entries.len().saturating_sub(keep);
-    for (_, path) in entries.into_iter().take(excess) {
+    let mut kept = entries.split_off(excess);
+    for (_, path) in entries {
+        let _ = std::fs::remove_dir_all(path);
+    }
+    let mut total: u64 = kept.iter().map(|(_, p)| tree_size(p)).sum();
+    while kept.len() > 1 && total > max_bytes {
+        let (_, path) = kept.remove(0);
+        total = total.saturating_sub(tree_size(&path));
         let _ = std::fs::remove_dir_all(path);
     }
 }
@@ -633,10 +658,10 @@ mod tests {
         let dir = scratch("prune-stage");
         let stage = dir.join(".k.1-0");
         std::fs::create_dir_all(&stage).unwrap();
-        prune_stages(&dir, 8, std::time::Duration::from_secs(3600));
+        prune_stages(&dir, 8, u64::MAX, std::time::Duration::from_secs(3600));
         assert!(stage.exists(), "a recent stage may belong to a live build");
         std::thread::sleep(std::time::Duration::from_millis(20));
-        prune_stages(&dir, 8, std::time::Duration::from_millis(1));
+        prune_stages(&dir, 8, u64::MAX, std::time::Duration::from_millis(1));
         assert!(!stage.exists(), "an abandoned stage is reclaimed");
         std::fs::remove_dir_all(dir).unwrap();
     }
@@ -765,6 +790,23 @@ mod tests {
             );
         }
         assert_eq!(std::fs::read_dir(&cache).unwrap().count(), KEEP);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn total_size_bound_drops_oldest_but_keeps_newest() {
+        let dir = scratch("prune-bytes");
+        let cache = dir.join("build");
+        for i in 0..3 {
+            let entry = cache.join(format!("e{i}"));
+            std::fs::create_dir_all(&entry).unwrap();
+            std::fs::write(entry.join("exe-x"), vec![0u8; 100]).unwrap();
+            std::fs::write(entry.join("manifest"), b"m").unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        prune_stages(&cache, KEEP, 1, STALE_STAGE);
+        assert!(!cache.join("e0").exists() && !cache.join("e1").exists());
+        assert!(cache.join("e2").exists());
         let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -254,7 +254,10 @@ fn dropping_pin_preserves_unrelated_recovery_files() {
     let fixture = Fixture::new("recovery");
     let pin = ArtifactPin::create(&fixture.output()).unwrap();
     let stage = pin.path().parent().unwrap().to_path_buf();
-    let recovery = stage.join("program.exe.previous.dSYM");
+    let recovery = stage.join(format!(
+        "{}.previous.dSYM",
+        ms_build::native::STAGED_EXECUTABLE
+    ));
     std::fs::create_dir(&recovery).unwrap();
     std::fs::write(recovery.join("retained"), b"old debug").unwrap();
     std::fs::write(pin.path(), b"candidate").unwrap();
@@ -262,12 +265,12 @@ fn dropping_pin_preserves_unrelated_recovery_files() {
         std::fs::create_dir(companion).unwrap();
     }
     drop(pin);
-    assert!(!stage.join("program.exe").exists());
+    assert!(!stage.join(ms_build::native::STAGED_EXECUTABLE).exists());
     assert_eq!(
         std::fs::read(recovery.join("retained")).unwrap(),
         b"old debug"
     );
-    if let Some(companion) = ms_clif_companion(&stage.join("program.exe")) {
+    if let Some(companion) = ms_clif_companion(&stage.join(ms_build::native::STAGED_EXECUTABLE)) {
         assert!(!companion.exists());
     }
 }

@@ -507,7 +507,7 @@ impl Hit {
     fn restore_to(&self, output: &str) -> Result<(), String> {
         let output = Path::new(output);
         let stage = ms_build::native::BuildStage::for_output(output).map_err(|e| e.to_string())?;
-        let staged = stage.path().join("program.exe");
+        let staged = stage.path().join(ms_build::native::STAGED_EXECUTABLE);
         let companion = ms_clif_companion(&staged);
         let published = if self.0.restore(&staged, companion.as_deref()) {
             ms_build::publish(&staged, output).map_err(|e| e.to_string())
@@ -533,7 +533,7 @@ struct ArtifactPin {
 impl ArtifactPin {
     fn create(output: &Path) -> std::io::Result<Self> {
         let stage = ms_build::native::BuildStage::for_output(output)?;
-        let executable = stage.path().join("program.exe");
+        let executable = stage.path().join(ms_build::native::STAGED_EXECUTABLE);
         Ok(Self {
             _stage: stage,
             executable,
@@ -669,7 +669,11 @@ mod tests {
         std::fs::create_dir(&directory).unwrap();
         let victim = directory.join("victim");
         std::fs::write(&victim, b"retained contents").unwrap();
-        let stale = directory.join(format!(".ms-build-{}.exe", std::process::id()));
+        let stale = directory.join(format!(
+            ".ms-build-{}{}",
+            std::process::id(),
+            if cfg!(windows) { ".exe" } else { "" }
+        ));
         std::fs::hard_link(&victim, &stale).unwrap();
         let output = directory.join("program");
         for _ in 0..2 {
