@@ -1,9 +1,9 @@
 //! Host inventories behind `System.network_interfaces`, `cpus` and `metrics`.
 //!
 //! Each call takes a snapshot that `lib.rs` hands out as one record, or a list of them.
-//! Network interfaces work on every unix host; CPU figures come from `/proc`, so `cpus`
-//! answers `Unsupported` off Linux. `metrics` reads `sysinfo` on Linux, the Mach host
-//! statistics on macOS and `GlobalMemoryStatusEx` on Windows.
+//! Network interfaces work on every unix host. `cpus` reads `/proc` on Linux, the Mach
+//! host on macOS and `NtQuerySystemInformation` on Windows; `metrics` reads `sysinfo` on
+//! Linux, the Mach host statistics on macOS and `GlobalMemoryStatusEx` on Windows.
 #![allow(unsafe_code)] // libc `getifaddrs` and friends
 
 use alloc::vec::Vec;
@@ -279,9 +279,232 @@ fn parallelism() -> i64 {
     }
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
+/// One CPU per logical processor from the Mach host: the cumulative ticks of each state,
+/// the brand string, and the clock in MHz where the kernel reports it (Apple silicon does
+/// not, so it reads 0). The kernel keeps no interrupt time, so `irq` is 0.
+#[cfg(target_os = "macos")]
+pub fn cpus() -> Result<Vec<Cpu>, Failure> {
+    let mut count: libc::natural_t = 0;
+    let mut info: libc::processor_info_array_t = core::ptr::null_mut();
+    let mut info_len: libc::mach_msg_type_number_t = 0;
+    // SAFETY: the three out parameters are writable and the host port is the caller's own.
+    let rc = unsafe {
+        libc::host_processor_info(
+            libc::mach_host_self(),
+            libc::PROCESSOR_CPU_LOAD_INFO,
+            &mut count,
+            &mut info,
+            &mut info_len,
+        )
+    };
+    if rc != libc::KERN_SUCCESS || info.is_null() {
+        return Err(Failure::failed("cannot read host statistics"));
+    }
+    // SAFETY: plain system call.
+    let hz = unsafe { libc::sysconf(libc::_SC_CLK_TCK) }.max(1);
+    let ms = |ticks: libc::c_int| i64::from(ticks as u32).saturating_mul(1000) / hz;
+    let model = sysctl_bytes(c"machdep.cpu.brand_string").unwrap_or_default();
+    let speed_mhz = sysctl_u64(c"hw.cpufrequency")
+        .map_or(0, |hz| i64::try_from(hz / 1_000_000).unwrap_or(i64::MAX));
+    // SAFETY: on success the kernel returned `count` records of `cpu_ticks` integers.
+    let loads = unsafe {
+        core::slice::from_raw_parts(info.cast::<libc::processor_cpu_load_info>(), count as usize)
+    };
+    let all = loads
+        .iter()
+        .map(|load| {
+            let ticks = |state: libc::c_int| ms(load.cpu_ticks[state as usize] as libc::c_int);
+            Cpu {
+                model: model.clone(),
+                speed_mhz,
+                user: ticks(libc::CPU_STATE_USER),
+                nice: ticks(libc::CPU_STATE_NICE),
+                system: ticks(libc::CPU_STATE_SYSTEM),
+                idle: ticks(libc::CPU_STATE_IDLE),
+                irq: 0,
+            }
+        })
+        .collect();
+    // SAFETY: the kernel allocated `info` in this task for the call above; it is released once.
+    unsafe {
+        libc::vm_deallocate(
+            libc::mach_task_self(),
+            info as libc::vm_address_t,
+            info_len as libc::vm_size_t * core::mem::size_of::<libc::c_int>(),
+        );
+    }
+    Ok(all)
+}
+
+/// One CPU per logical processor from `NtQuerySystemInformation`, whose counters are in
+/// 100 ns units; kernel time includes idle time, so system time is the difference. The
+/// model and clock come from the registry's processor keys. Only the current processor
+/// group is reported.
+#[cfg(windows)]
+pub fn cpus() -> Result<Vec<Cpu>, Failure> {
+    /// `SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION`.
+    #[repr(C)]
+    #[derive(Default, Clone, Copy)]
+    struct Performance {
+        idle: i64,
+        kernel: i64,
+        user: i64,
+        dpc: i64,
+        interrupt: i64,
+        interrupt_count: u32,
+    }
+    #[link(name = "ntdll", kind = "raw-dylib")]
+    unsafe extern "system" {
+        fn NtQuerySystemInformation(
+            class: u32,
+            buffer: *mut core::ffi::c_void,
+            length: u32,
+            returned: *mut u32,
+        ) -> i32;
+    }
+    #[link(name = "advapi32", kind = "raw-dylib")]
+    unsafe extern "system" {
+        fn RegGetValueA(
+            key: isize,
+            sub_key: *const u8,
+            value: *const u8,
+            flags: u32,
+            kind: *mut u32,
+            data: *mut core::ffi::c_void,
+            size: *mut u32,
+        ) -> i32;
+    }
+    #[link(name = "kernel32", kind = "raw-dylib")]
+    unsafe extern "system" {
+        fn GetActiveProcessorCount(group: u16) -> u32;
+    }
+    const SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION: u32 = 8;
+    const HKEY_LOCAL_MACHINE: isize = 0x8000_0002_u32 as i32 as isize;
+    const RRF_RT_REG_SZ: u32 = 0x2;
+    const RRF_RT_REG_DWORD: u32 = 0x10;
+    // The current group is all the call reports; ask for room for every group's processors.
+    // SAFETY: a kernel32 call that only reads its argument.
+    let room = unsafe { GetActiveProcessorCount(0xFFFF) }.max(1) as usize;
+    let mut rows = alloc::vec![Performance::default(); room];
+    let mut returned = 0u32;
+    let bytes = u32::try_from(rows.len() * core::mem::size_of::<Performance>()).unwrap_or(u32::MAX);
+    // SAFETY: `rows` is writable for `bytes` bytes and `returned` is writable.
+    let status = unsafe {
+        NtQuerySystemInformation(
+            SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION,
+            rows.as_mut_ptr().cast(),
+            bytes,
+            &mut returned,
+        )
+    };
+    if status < 0 {
+        return Err(Failure::failed("cannot read host statistics"));
+    }
+    rows.truncate(returned as usize / core::mem::size_of::<Performance>());
+    let ms = |units: i64| units.max(0) / 10_000;
+    let all = rows
+        .iter()
+        .enumerate()
+        .map(|(index, row)| {
+            let key = alloc::format!("HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\{index}\0");
+            let mut name = [0u8; 256];
+            let mut size = name.len() as u32;
+            // SAFETY: the key and value names are NUL-terminated and `name` is writable for `size` bytes.
+            let named = unsafe {
+                RegGetValueA(
+                    HKEY_LOCAL_MACHINE,
+                    key.as_ptr(),
+                    c"ProcessorNameString".as_ptr().cast(),
+                    RRF_RT_REG_SZ,
+                    core::ptr::null_mut(),
+                    name.as_mut_ptr().cast(),
+                    &mut size,
+                )
+            };
+            let model = if named == 0 {
+                let text = &name[..(size as usize).min(name.len())];
+                text.split(|&b| b == 0)
+                    .next()
+                    .unwrap_or_default()
+                    .trim_ascii()
+                    .to_vec()
+            } else {
+                Vec::new()
+            };
+            let mut mhz = 0u32;
+            let mut size = core::mem::size_of::<u32>() as u32;
+            // SAFETY: `mhz` is writable for `size` bytes.
+            let read = unsafe {
+                RegGetValueA(
+                    HKEY_LOCAL_MACHINE,
+                    key.as_ptr(),
+                    c"~MHz".as_ptr().cast(),
+                    RRF_RT_REG_DWORD,
+                    core::ptr::null_mut(),
+                    (&raw mut mhz).cast(),
+                    &mut size,
+                )
+            };
+            Cpu {
+                model,
+                speed_mhz: if read == 0 { i64::from(mhz) } else { 0 },
+                user: ms(row.user),
+                nice: 0,
+                system: ms(row.kernel - row.idle),
+                idle: ms(row.idle),
+                irq: ms(row.interrupt),
+            }
+        })
+        .collect();
+    Ok(all)
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "macos",
+    windows
+)))]
 pub fn cpus() -> Result<Vec<Cpu>, Failure> {
     Err(STATUS_UNSUPPORTED.into())
+}
+
+/// A string sysctl value by name, without its trailing NUL.
+#[cfg(target_os = "macos")]
+fn sysctl_bytes(name: &core::ffi::CStr) -> Result<Vec<u8>, Failure> {
+    let mut len = 0usize;
+    // SAFETY: a null buffer asks for the size only.
+    let rc = unsafe {
+        libc::sysctlbyname(
+            name.as_ptr(),
+            core::ptr::null_mut(),
+            &mut len,
+            core::ptr::null_mut(),
+            0,
+        )
+    };
+    if rc != 0 {
+        return Err(Failure::failed("cannot read host statistics"));
+    }
+    let mut buffer = alloc::vec![0u8; len];
+    // SAFETY: `buffer` is writable for `len` bytes and `name` is NUL-terminated.
+    let rc = unsafe {
+        libc::sysctlbyname(
+            name.as_ptr(),
+            buffer.as_mut_ptr().cast(),
+            &mut len,
+            core::ptr::null_mut(),
+            0,
+        )
+    };
+    if rc != 0 {
+        return Err(Failure::failed("cannot read host statistics"));
+    }
+    buffer.truncate(len);
+    while buffer.last() == Some(&0) {
+        buffer.pop();
+    }
+    Ok(buffer)
 }
 
 /// A `u64` sysctl value by name.

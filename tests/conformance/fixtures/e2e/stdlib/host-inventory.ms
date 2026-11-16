@@ -24,15 +24,13 @@ test "network interfaces describe each address and include a loopback":
         expect_true(loopback)?
 
 test "cpus report non-negative cumulative times":
-    found := cpus()
+    found := cpus()?
+    expect_false(found.is_empty())?
 
-    if cpus := found:
-        expect_false(cpus.is_empty())?
-
-        for cpu in cpus:
-            expect_true(cpu.speed_mhz >= 0)?
-            expect_true(cpu.user >= 0 and cpu.nice >= 0)?
-            expect_true(cpu.system >= 0 and cpu.idle >= 0 and cpu.irq >= 0)?
+    for cpu in found:
+        expect_true(cpu.speed_mhz >= 0)?
+        expect_true(cpu.user >= 0 and cpu.nice >= 0)?
+        expect_true(cpu.system >= 0 and cpu.idle >= 0 and cpu.irq >= 0)?
 
 test "metrics report memory, uptime, load averages and parallelism":
     m := metrics()?

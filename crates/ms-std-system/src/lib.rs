@@ -460,11 +460,15 @@ mod tests {
         assert!(all[0].scope_id >= 1);
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos", windows))]
     #[test]
-    fn cpus_and_metrics_read_proc() {
+    fn cpus_and_metrics_read_the_host() {
         let cpus = inventory::cpus().expect("cpus");
-        assert!(!cpus.is_empty() && cpus[0].idle >= 0);
+        assert!(!cpus.is_empty());
+        assert!(
+            cpus.iter()
+                .all(|c| c.idle >= 0 && c.user >= 0 && c.system >= 0)
+        );
         let m = inventory::metrics().expect("metrics");
         assert!(m.total_memory > 0 && m.available_memory <= m.total_memory);
         assert!(m.uptime_ns > 0 && m.parallelism >= 1 && m.load[0] >= 0.0);
