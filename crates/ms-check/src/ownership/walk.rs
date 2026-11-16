@@ -241,6 +241,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         consumed_at: HashMap::default(),
         move_note: None,
         callees: HashSet::default(),
+        projected: HashSet::default(),
         escaped: cx.escaped.clone(),
         positions: HashMap::default(),
         mutated: Vec::new(),
@@ -366,6 +367,8 @@ struct Walker<'a> {
     move_note: Option<super::modes::Consumed>,
     /// Callee expressions of direct calls, which call a named function without making a value.
     callees: HashSet<NodeId>,
+    /// Values a field or element is read from: only that part is taken, not the whole.
+    projected: HashSet<NodeId>,
     escaped: HashSet<NodeId>,
     /// Source positions of the callable's statements and expressions.
     positions: HashMap<NodeId, Pos>,

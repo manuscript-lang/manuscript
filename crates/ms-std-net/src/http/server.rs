@@ -322,13 +322,11 @@ impl Reactor {
             let Some(server) = conn.server.upgrade() else {
                 continue;
             };
-            server.sweep_handlers();
-            let slot = server.handlers.borrow_mut().reserve();
-            let job = Box::into_raw(Box::new(Job { conn, slot }));
+            let job = Box::into_raw(Box::new(Job { conn }));
             server.st.borrow_mut().running += 1;
             // SAFETY: `request_task` takes back the boxed job leaked above.
-            let promise = unsafe { rt::promise_start(request_task, job.cast()) };
-            server.handlers.borrow_mut().ids[slot as usize] = promise;
+            let task = unsafe { rt::spawn_detached(request_task, job.cast()) };
+            server.tasks.borrow_mut().insert(task, ());
         }
     }
 
@@ -384,35 +382,19 @@ pub(crate) fn serialize_tests() {
 /// A request that became ready, on its way to its task.
 struct Job {
     conn: Rc<Conn>,
-    /// Where the task's promise is kept in the server's [`Handlers`].
-    slot: u32,
-}
-
-/// The promises of the request tasks started and not yet collected, in slots a finished task
-/// reports by number, so collecting costs the number of tasks that finished, not the number
-/// running. A slot holds 0 while empty or while its task is still being started.
-#[derive(Default)]
-struct Handlers {
-    ids: Vec<i64>,
-    free: Vec<u32>,
-    /// Slots whose tasks have ended and whose promises are not yet dropped.
-    done: Vec<u32>,
-}
-
-impl Handlers {
-    fn reserve(&mut self) -> u32 {
-        self.free.pop().unwrap_or_else(|| {
-            self.ids.push(0);
-            (self.ids.len() - 1) as u32
-        })
-    }
 }
 
 /// Body of a request task: serves the one request that became ready on a connection. While the
 /// server drains on a stop it is shielded, so the request finishes within the grace period.
+///
+/// The whole request runs under a guard, as a promise's task did: a fault or a stop request
+/// anywhere in it (a response dropped on the way out, a write that waits) ends only this request
+/// and closes its connection, never the process. What the abandoned frames owned is released by
+/// their cleanups; the `Rc`s this frame holds are released here.
 unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     // SAFETY: `arg` is the `Box<Job>` leaked by `run_handlers`.
-    let Job { conn, slot } = *unsafe { Box::from_raw(arg.cast::<Job>()) };
+    let Job { conn } = *unsafe { Box::from_raw(arg.cast::<Job>()) };
+    let task = rt::current_task();
     let Some(server) = conn.server.upgrade() else {
         return;
     };
@@ -420,15 +402,17 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     if shield {
         rt::stop_shield();
     }
-    let task = rt::current_task();
-    server.tasks.borrow_mut().insert(task, ());
-    server.dispatch_conn(&conn, &Reactor::get());
+    let ended = rt::guarded(|| server.dispatch_conn(&conn, &Reactor::get()));
     server.tasks.borrow_mut().remove(&task);
     if shield {
         rt::stop_unshield();
     }
+    if !ended {
+        // Nothing is left to answer on the connection; closing it also cancels no one else.
+        conn.st.borrow_mut().task = 0;
+        server.close_conn(&conn, &Reactor::get());
+    }
     server.st.borrow_mut().running -= 1;
-    server.handlers.borrow_mut().done.push(slot);
     server.note_drain_progress();
 }
 
@@ -662,7 +646,6 @@ pub struct Server {
     token: u64,
     /// The promises of the request tasks started and not yet collected; closing the server
     /// cancels the ones still running.
-    handlers: RefCell<Handlers>,
     /// Tasks of the requests running now, to tell a handler's own calls from others.
     tasks: RefCell<IdMap<u64, ()>>,
     /// This server's waiting connections, which the other servers of its `serve` call may
@@ -750,7 +733,6 @@ impl Server {
                 draining: None,
             }),
             token,
-            handlers: RefCell::new(Handlers::default()),
             tasks: RefCell::new(IdMap::default()),
             member,
             group: options.group,
@@ -916,45 +898,26 @@ impl Server {
         SERVERS.with(|s| s.borrow_mut().remove(&self.id));
         if !self.tasks.borrow().contains_key(&rt::current_task()) {
             // What outlived the grace period is cancelled; its connections are closed already.
-            let handlers = std::mem::take(&mut *self.handlers.borrow_mut());
-            let live = handlers.ids.iter().copied().filter(|&id| id != 0);
-            for promise in live.clone() {
-                rt::promise_cancel(promise);
+            // Wait for those tasks to end, as the connections they hold go with them.
+            let live: Vec<u64> = self.tasks.borrow().keys().copied().collect();
+            for task in live {
+                rt::cancel_task(task);
             }
-            for promise in live {
-                rt::promise_drop(promise);
+            let token = rt::Token::new();
+            self.st.borrow_mut().draining = Some(token.id());
+            // Shielded: the tasks are cancelled and their connections closed, so this ends soon,
+            // and a stop request must not leave handlers running against a closed server.
+            rt::stop_shield();
+            while self.st.borrow().running > 0 {
+                token.park(-1);
             }
+            rt::stop_unshield();
+            self.st.borrow_mut().draining = None;
         }
         if cancelled {
             Err(rt::Cancelled)
         } else {
             Ok(())
-        }
-    }
-
-    /// Collects the request promises whose tasks are over.
-    fn sweep_handlers(&self) {
-        let mut finished = Vec::new();
-        {
-            let mut handlers = self.handlers.borrow_mut();
-            let mut at = 0;
-            while at < handlers.done.len() {
-                let slot = handlers.done[at] as usize;
-                let id = handlers.ids[slot];
-                // A task that ended before its start returned has no promise recorded yet.
-                if id == 0 {
-                    at += 1;
-                    continue;
-                }
-                handlers.done.swap_remove(at);
-                handlers.ids[slot] = 0;
-                handlers.free.push(slot as u32);
-                finished.push(id);
-            }
-        }
-        // Dropping joins the task, which may let others run and finish, so the borrow is released.
-        for id in finished {
-            rt::promise_drop(id);
         }
     }
 

@@ -74,6 +74,19 @@ Findings: with a computing handler in the mix the p99 falls from the handler tim
 
 Findings: system time already equals C's. The user time left is the handler: `out = out + f"..."` costs about 1,000 instructions per item (a temporary string, an append, a free) against about 50 in C; callgrind attributes two thirds of the 100,000 instructions per request to it. Controls for the spin change (4 threads, median of 9, before / now): `promise-tree tree 36 10` 78 / 79 ms, `mailbox 100000 5` 148 / 146 ms.
 
+## Results, 2026-11-16, instructions per request
+
+Counted with callgrind (method: [wiki](../../wiki/benchmarks-and-performance/count-a-request-in-instructions-with-a-heap-that-maps-under-valgrind.md)): one scheduler thread, 8 keep-alive connections, closed loop, a handler that returns a 45-byte constant, `GET /x?c=N` with only a `Host` header. Instruction counts repeat to about 0.3%; wall clock on the shared VM does not.
+
+| Server | Instructions per request |
+| --- | --- |
+| C (`server.c` with the body cut to nothing for `/x`) | 2.5k |
+| Manuscript, `main` at 9f09fd55 | 19.3k |
+| Manuscript, content-type check by 8-byte words | 18.4k |
+| Manuscript, and detached request tasks | 15.9k |
+
+Where the rest goes is in [the proposal](../../proposals/http-request-path-instructions.md).
+
 ## Results, 2026-11-16, text built piece by piece, same 4 vCPU Linux VM
 
 "Before" is `main` at 9f09fd55. "Now": `out += f"..."` writes the pieces straight onto `out` (`msrt_string_append_fmtN`) instead of building the text and appending it.

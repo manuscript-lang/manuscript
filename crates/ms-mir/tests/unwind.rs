@@ -198,6 +198,44 @@ b0:
     assert_eq!(count(&m, "hold", Op::CleanupPush), 0);
 }
 
+#[test]
+fn owns_a_value_taken_from_a_local_slot_that_nothing_else_covers() {
+    // A callee that rewrites its caller's local slot and parks: the slot holds a stale copy while
+    // the callee runs and has no cleanup entry, so the callee drops what it took on unwind.
+    let body = r#"
+fn @hold(%slot: ptr) -> int {
+b0:
+  %s: str = take str %slot
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  %c: str = clone %s
+  drop %s
+  put %slot, %c
+  ret %r
+}
+
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = clone %s
+  %slot: ptr = slot str
+  put %slot, %t
+  %r: int = call @hold (%slot)
+  %back: str = take str %slot
+  drop %back
+  ret %r
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(changed, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "hold", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+}
+
 const SLOT_CALLER: &str = r#"
 fn @main() -> int {
 b0:
@@ -572,6 +610,40 @@ b0:
     let (m, changed) = rewrite(body, true);
     assert!(!changed, "{}", print_module(&m));
     assert_eq!(count(&m, "next", Op::CleanupPush), 0);
+}
+
+#[test]
+fn covers_a_value_after_the_rest_of_a_temporary_is_released() {
+    // `(make()).items` moves a field out of a temporary and releases the rest of it at once: no
+    // hole stays open, so a parking call after it still registers the owned value it holds.
+    let body = r#"
+type Src { items: list<int>, label: str }
+
+fn @main() -> int {
+b0:
+  %e: list<int> = list.lit
+  %l0: str = str "label"
+  %l: str = clone %l0
+  %s: Src = type.new Src %e, %l
+  %f: list<int> = type.get Src.items %s
+  %m: list<int> = move.out %f
+  type.release Src.items %s
+  %h: str = str "held"
+  %h2: str = clone %h
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  drop %h2
+  drop %m
+  ret %r
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(changed, "{}", print_module(&m));
+    assert!(
+        count(&m, "main", Op::CleanupPush) >= 1,
+        "{}",
+        print_module(&m)
+    );
 }
 
 const PANICS_WITH_TEMPS: &str = r#"
