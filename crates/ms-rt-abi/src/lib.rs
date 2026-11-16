@@ -501,6 +501,15 @@ pub struct FatPtr {
     pub vtable: *const u8,
 }
 pub const FATPTR_SIZE: usize = 16;
+/// The low two bits of an interface value's vtable word say what the value owns. Dispatch,
+/// `iface.is` and the copier mask them off ([`IFACE_TAG_MASK`]).
+pub const IFACE_TAG_MASK: i64 = 3;
+/// The box and its payload (drop calls `vtable[0]`).
+pub const IFACE_TAG_OWNED: i64 = 0;
+/// Only the box (`iface.borrow`; drop frees the box).
+pub const IFACE_TAG_BOX: i64 = 1;
+/// Nothing (`iface.view`, or a borrow whose leaves stay in the creating frame).
+pub const IFACE_TAG_VIEW: i64 = 2;
 
 // ---------------------------------------------------------------------------
 // Status codes of fallible natives

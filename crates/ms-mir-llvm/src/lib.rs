@@ -21,8 +21,6 @@ pub use tables::{TableFn, tables_unit};
 /// The name prefix of generated glue functions, followed by a serial and the kind.
 pub const GLUE_PREFIX: &str = "ms.glue.";
 
-/// Offset of the first capture in a closure object.
-pub(crate) const CLOSURE_CAPTURES: u32 = ms_rt_abi::CLOSURE_CAPTURES_OFFSET as u32;
 /// Offset of `code` in a closure object.
 pub(crate) const CLOSURE_CODE: i32 = ms_rt_abi::CLOSURE_CODE_OFFSET as i32;
 

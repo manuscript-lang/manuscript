@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, LocalVar, leaf_type, mem_type};
+use crate::cg::{CLOSURE_CODE, Gen, Glue, LocalVar, leaf_type, mem_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{CondCode, FloatCC, IntCC};
 use cranelift_codegen::ir::{
@@ -16,8 +16,9 @@ use ms_rt_abi::symbols::{
     DEEP_DROP_HEADROOM, ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION,
 };
 use ms_rt_abi::{
-    ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_LEN_MASK,
-    STR_LEN_OFFSET, STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
+    ASCII_CHAR_STRIDE, IFACE_TAG_BOX, IFACE_TAG_MASK, IFACE_TAG_OWNED, IFACE_TAG_VIEW, STR_ASCII,
+    STR_INLINE, STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_LEN_MASK, STR_LEN_OFFSET, STR_PTR_OFFSET,
+    STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
 use std::collections::{HashMap, HashSet};
 
