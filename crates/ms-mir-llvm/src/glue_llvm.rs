@@ -10,8 +10,8 @@ use crate::mir_llvm::Emitted;
 use crate::state::Gen;
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::STR_INLINE;
 use ms_rt_abi::symbols::{DEEP_DROP_HEADROOM, STACK_LIMIT_CELL, STACK_REGION};
+use ms_rt_abi::{IFACE_TAG_BOX, IFACE_TAG_MASK, IFACE_TAG_OWNED, STR_INLINE};
 
 pub mod closure;
 
@@ -1038,15 +1038,15 @@ impl E<'_, '_, '_> {
     /// is the payload destructor), 1 only the box (`iface.borrow`), 2 nothing (`iface.view`).
     fn drop_iface(&mut self, vs: &[Val]) {
         let (data, vt) = (&vs[0], &vs[1]);
-        let tag = self.b.bin(Bin::And, vt, &Val::int(3));
-        let owned = self.b.icmp("eq", &tag, &Val::int(0));
+        let tag = self.b.bin(Bin::And, vt, &Val::int(IFACE_TAG_MASK));
+        let owned = self.b.icmp("eq", &tag, &Val::int(IFACE_TAG_OWNED));
         self.if_then(&owned, |s| {
             let at = s.ptr_of(vt);
             let f = s.b.load(&LTy::I64, &at, 8);
             let f = s.b.inttoptr(&f);
             s.b.call_ptr(&LTy::Void, "", &f, &[(data.clone(), "")]);
         });
-        let borrowed = self.b.icmp("eq", &tag, &Val::int(1));
+        let borrowed = self.b.icmp("eq", &tag, &Val::int(IFACE_TAG_BOX));
         self.if_then(&borrowed, |s| s.free(data));
     }
 
@@ -1576,7 +1576,7 @@ impl E<'_, '_, '_> {
             TyKind::Iface(i) => {
                 // The payload copier sits after the methods in the vtable. The copy owns its
                 // payload whatever the source owned, so the tag bits come off.
-                let vt = self.b.bin(Bin::And, &vs[1], &Val::int(!3));
+                let vt = self.b.bin(Bin::And, &vs[1], &Val::int(!IFACE_TAG_MASK));
                 let slot = 8 * (1 + m.ifaces[i.index()].methods.len()) as i64;
                 let at = self.b.bin(Bin::Add, &vt, &Val::int(slot));
                 let at = self.ptr_of(&at);

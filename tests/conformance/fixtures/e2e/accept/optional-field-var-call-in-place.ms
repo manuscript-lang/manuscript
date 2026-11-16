@@ -31,13 +31,13 @@ fn count(node: Node?) Int:
 	n := node.get()
 	return 1 + count(n.left) + count(n.right)
 
-fn keys(node: Node?, var out: List[Int]) Void:
+fn keys(var out: List[Int], node: Node?) Void:
 	if node.is_none(): return
 
 	n := node.get()
-	keys(n.left, var out)
+	keys(var out, n.left)
 	out.append(n.key)
-	keys(n.right, var out)
+	keys(var out, n.right)
 
 type Tag:
 	label: String
@@ -52,7 +52,7 @@ test "inserts through boxed optional fields":
 		root.insert(k)
 
 	var out: List[Int] = []
-	keys(root, var out)
+	keys(var out, root)
 	expect_equal(out, [20, 30, 35, 40, 45, 50, 60, 70, 80])?
 	expect_equal(count(root), 9)?
 

@@ -2,6 +2,8 @@
 //!
 //! Everything here works on byte buffers and never touches a socket.
 
+use super::headers::Headers;
+use std::borrow::Cow;
 use std::io::Write as _;
 
 /// Longest request or status line plus headers when no limit is configured.
@@ -23,11 +25,12 @@ impl BadMessage {
 /// A parsed request head.
 #[derive(Clone, Debug)]
 pub struct RequestHead {
-    pub method: String,
+    pub method: Cow<'static, str>,
     pub target: String,
     /// Minor HTTP version (0 or 1).
     pub minor: u8,
-    pub fields: Vec<(String, Vec<u8>)>,
+    /// Canonical names sorted, as handlers see them.
+    pub fields: Headers,
     /// Bytes of the head, including the blank line.
     pub length: usize,
 }
@@ -62,11 +65,82 @@ fn collect(headers: &[httparse::Header<'_>]) -> Vec<(String, Vec<u8>)> {
 /// Whether every CR and LF of a head is part of a CRLF pair; a bare one lets two parsers split
 /// the message differently.
 fn strict_line_endings(head: &[u8]) -> bool {
-    head.iter().enumerate().all(|(i, &c)| match c {
-        b'\n' => i > 0 && head[i - 1] == b'\r',
-        b'\r' => head.get(i + 1) == Some(&b'\n'),
-        _ => true,
-    })
+    let mut at = 0;
+    while let Some(eol) = next_eol(head, at) {
+        if head[eol] != b'\r' || head.get(eol + 1) != Some(&b'\n') {
+            return false;
+        }
+        at = eol + 2;
+    }
+    true
+}
+
+/// Whether every line of a parsed request head ends in CRLF, found from where the parser put its
+/// tokens instead of by scanning the bytes. The parser rejects a CR or LF inside a method,
+/// target, version, name or value, so they can only be line ends, and a line end is what follows a
+/// value (after trailing blanks), what precedes the first name or the blank line, and what fills
+/// the space before the method. This is [`strict_line_endings`] for a head `req` parsed from
+/// `buf[..length]`, in time proportional to the field count.
+///
+/// This leans on how httparse places and trims tokens, and it guards against request smuggling:
+/// `line_ends_found_from_the_parse_agree_with_the_byte_scan` must pass before the `httparse`
+/// dependency is bumped.
+fn crlf_terminators(buf: &[u8], req: &httparse::Request<'_, '_>, length: usize) -> bool {
+    let base = buf.as_ptr() as usize;
+    let at = |part: &[u8]| (part.as_ptr() as usize).wrapping_sub(base);
+    let crlf = |i: usize| buf.get(i..i.saturating_add(2)) == Some(b"\r\n");
+    let Some(method) = req.method else {
+        return false;
+    };
+    // Empty lines before the request line.
+    let start = at(method.as_bytes());
+    if start % 2 != 0 || !(0..start).step_by(2).all(crlf) {
+        return false;
+    }
+    let blank = length.saturating_sub(2);
+    // The request line ends where the first name starts, or at the blank line.
+    let first_line_end = req.headers.first().map_or(blank, |h| at(h.name.as_bytes()));
+    if first_line_end < 2 || !crlf(first_line_end - 2) {
+        return false;
+    }
+    for (i, h) in req.headers.iter().enumerate() {
+        let mut end = at(h.value) + h.value.len();
+        // The parser trims blanks that precede the line end from the value.
+        while matches!(buf.get(end), Some(b' ' | b'\t')) {
+            end += 1;
+        }
+        let following = match req.headers.get(i + 1) {
+            Some(h) => at(h.name.as_bytes()),
+            None => blank,
+        };
+        if !crlf(end) || end + 2 != following {
+            return false;
+        }
+    }
+    crlf(blank)
+}
+
+/// The offset of the first CR or LF of `bytes` at or after `from`, a word at a time.
+fn next_eol(bytes: &[u8], from: usize) -> Option<usize> {
+    const LOW: u64 = 0x0101_0101_0101_0101;
+    const HIGH: u64 = 0x8080_8080_8080_8080;
+    let rest = bytes.get(from..)?;
+    let (words, tail) = rest.as_chunks::<8>();
+    for (i, word) in words.iter().enumerate() {
+        let x = u64::from_le_bytes(*word);
+        let (cr, lf) = (x ^ (LOW * 0x0d), x ^ (LOW * 0x0a));
+        let hit = (cr.wrapping_sub(LOW) & !cr | lf.wrapping_sub(LOW) & !lf) & HIGH;
+        if hit != 0 {
+            return word
+                .iter()
+                .position(|&c| c == b'\r' || c == b'\n')
+                .map(|at| from + i * 8 + at);
+        }
+    }
+    let skipped = words.len() * 8;
+    tail.iter()
+        .position(|&c| c == b'\r' || c == b'\n')
+        .map(|at| from + skipped + at)
 }
 
 /// Parses a request head from the front of `buf`.
@@ -93,14 +167,14 @@ fn parse_request_in<'a>(
             if length > limit {
                 return Parsed::Bad(BadMessage::new(431, "Request Header Fields Too Large"));
             }
-            if !strict_line_endings(&buf[..length]) {
+            if !crlf_terminators(buf, &req, length) {
                 return Parsed::Bad(BadMessage::new(400, "Bad Request"));
             }
             Parsed::Complete(RequestHead {
-                method: req.method.unwrap_or_default().to_string(),
+                method: method_text(req.method.unwrap_or_default()),
                 target: req.path.unwrap_or_default().to_string(),
                 minor: req.version.unwrap_or(1),
-                fields: collect(req.headers),
+                fields: Headers::from_parsed(buf, req.headers),
                 length,
             })
         }
@@ -180,22 +254,65 @@ pub enum Framing {
     UntilClose,
 }
 
-fn field<'a>(fields: &'a [(String, Vec<u8>)], name: &str) -> impl Iterator<Item = &'a [u8]> {
+/// A method as text; the usual ones are static, so a request allocates nothing for it.
+pub fn method_text(method: &str) -> Cow<'static, str> {
+    const COMMON: [&str; 9] = [
+        "GET", "POST", "HEAD", "PUT", "DELETE", "OPTIONS", "PATCH", "CONNECT", "TRACE",
+    ];
+    match COMMON.iter().find(|m| **m == method) {
+        Some(m) => Cow::Borrowed(m),
+        None => Cow::Owned(method.to_string()),
+    }
+}
+
+/// A list of header fields, as (name, value) pairs.
+pub trait FieldList {
+    fn pairs(&self) -> impl Iterator<Item = (&str, &[u8])>;
+
+    /// Whether every value is UTF-8.
+    fn is_text(&self) -> bool {
+        self.pairs().all(|(_, v)| super::headers::is_utf8(v))
+    }
+}
+
+impl FieldList for [(String, Vec<u8>)] {
+    fn pairs(&self) -> impl Iterator<Item = (&str, &[u8])> {
+        self.iter().map(|(n, v)| (n.as_str(), v.as_slice()))
+    }
+}
+
+impl FieldList for Vec<(String, Vec<u8>)> {
+    fn pairs(&self) -> impl Iterator<Item = (&str, &[u8])> {
+        self.as_slice().pairs()
+    }
+}
+
+impl FieldList for Headers {
+    fn pairs(&self) -> impl Iterator<Item = (&str, &[u8])> {
+        self.raw_pairs()
+    }
+
+    fn is_text(&self) -> bool {
+        Headers::is_text(self)
+    }
+}
+
+fn field<'a, F: FieldList + ?Sized>(
+    fields: &'a F,
+    name: &'a str,
+) -> impl Iterator<Item = &'a [u8]> {
     fields
-        .iter()
+        .pairs()
         .filter(move |(n, _)| n.eq_ignore_ascii_case(name))
-        .map(|(_, v)| v.as_slice())
+        .map(|(_, v)| v)
 }
 
 /// Whether a comma-separated field holds `token` (case-insensitive).
-pub fn has_token(fields: &[(String, Vec<u8>)], name: &str, token: &str) -> bool {
-    field(fields, name).any(|v| {
-        v.split(|&c| c == b',')
-            .any(|t| t.trim_ascii().eq_ignore_ascii_case(token.as_bytes()))
-    })
+pub fn has_token<F: FieldList + ?Sized>(fields: &F, name: &str, token: &str) -> bool {
+    field(fields, name).any(|v| value_has_token(v, token))
 }
 
-fn content_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
+fn content_length<F: FieldList + ?Sized>(fields: &F) -> Result<Option<u64>, ()> {
     let mut found: Option<u64> = None;
     for value in field(fields, "Content-Length") {
         for part in value.split(|&c| c == b',') {
@@ -216,10 +333,76 @@ fn content_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
     Ok(found)
 }
 
+/// What the server asks of a request head's fields, found in one pass over them instead of one
+/// scan per question.
+pub struct RequestScan<'a> {
+    /// How many `Host` fields there are, and the last one.
+    pub hosts: usize,
+    pub host: Option<&'a [u8]>,
+    pub expect_continue: bool,
+    pub connection_close: bool,
+    pub connection_keep_alive: bool,
+    pub content_length: bool,
+    pub transfer_encoding: bool,
+    /// Every value is UTF-8 (names come from httparse as `&str`).
+    pub text: bool,
+}
+
+impl<'a> RequestScan<'a> {
+    pub fn of<F: FieldList + ?Sized>(fields: &'a F) -> RequestScan<'a> {
+        let mut scan = RequestScan {
+            hosts: 0,
+            host: None,
+            expect_continue: false,
+            connection_close: false,
+            connection_keep_alive: false,
+            content_length: false,
+            transfer_encoding: false,
+            text: true,
+        };
+        scan.text = fields.is_text();
+        for (name, value) in fields.pairs() {
+            let is = |known: &str| name.eq_ignore_ascii_case(known);
+            match name.len() {
+                4 if is("Host") => {
+                    scan.hosts += 1;
+                    scan.host = Some(value);
+                }
+                6 if is("Expect") => scan.expect_continue |= value_has_token(value, "100-continue"),
+                10 if is("Connection") => {
+                    for token in value.split(|&c| c == b',') {
+                        let token = token.trim_ascii();
+                        scan.connection_close |= token.eq_ignore_ascii_case(b"close");
+                        scan.connection_keep_alive |= token.eq_ignore_ascii_case(b"keep-alive");
+                    }
+                }
+                14 if is("Content-Length") => scan.content_length = true,
+                17 if is("Transfer-Encoding") => scan.transfer_encoding = true,
+                _ => {}
+            }
+        }
+        scan
+    }
+
+    /// Whether the connection stays open after this request.
+    pub fn keep_alive(&self, minor: u8) -> bool {
+        !self.connection_close && (minor >= 1 || self.connection_keep_alive)
+    }
+}
+
+fn value_has_token(value: &[u8], token: &str) -> bool {
+    value
+        .split(|&c| c == b',')
+        .any(|t| t.trim_ascii().eq_ignore_ascii_case(token.as_bytes()))
+}
+
 /// Request body framing as the server reads it; a message with both `Transfer-Encoding` and
 /// `Content-Length` is refused.
-pub fn request_framing(head: &RequestHead) -> Result<Framing, BadMessage> {
+pub fn request_framing(head: &RequestHead, scan: &RequestScan) -> Result<Framing, BadMessage> {
     let bad_length = BadMessage::new(400, "Bad Request");
+    if !scan.transfer_encoding && !scan.content_length {
+        return Ok(Framing::None);
+    }
     let encodings: Vec<&[u8]> = field(&head.fields, "Transfer-Encoding").collect();
     if !encodings.is_empty() {
         let list: Vec<&[u8]> = encodings
@@ -279,13 +462,13 @@ pub fn response_framing(head: &ResponseHead, method: &str) -> Result<Framing, &'
 /// Whether a response claims both chunked coding and a length. The two framings disagree about
 /// where the body ends whenever an intermediary or the server itself reads the other one, so
 /// the connection must not carry a later exchange (RFC 9112 section 6.1).
-pub fn conflicting_framing(fields: &[(String, Vec<u8>)]) -> bool {
+pub fn conflicting_framing<F: FieldList + ?Sized>(fields: &F) -> bool {
     field(fields, "Transfer-Encoding").next().is_some()
         && field(fields, "Content-Length").next().is_some()
 }
 
 /// Whether the connection stays open after this message.
-pub fn keep_alive(minor: u8, fields: &[(String, Vec<u8>)]) -> bool {
+pub fn keep_alive<F: FieldList + ?Sized>(minor: u8, fields: &F) -> bool {
     if has_token(fields, "Connection", "close") {
         return false;
     }
@@ -668,6 +851,133 @@ pub fn http_date(unix_seconds: i64) -> String {
 
 #[cfg(test)]
 mod tests {
+    /// The old rule: parse, then every CR and LF of the head must be a CRLF pair.
+    fn parses_with_a_scan(head: &[u8]) -> bool {
+        let mut storage = [httparse::EMPTY_HEADER; MAX_FIELDS];
+        let mut req = httparse::Request::new(&mut storage);
+        matches!(req.parse(head), Ok(httparse::Status::Complete(n)) if strict_line_endings(&head[..n]))
+    }
+
+    #[test]
+    fn line_ends_found_from_the_parse_agree_with_the_byte_scan() {
+        const PIECES: [&[u8]; 28] = [
+            b"GET / HTTP/1.1",
+            b"POST /a?b=c HTTP/1.0",
+            b"\r\n",
+            b"\n",
+            b"\r",
+            b"Host: a",
+            b"x:",
+            b"X-Y:  v  ",
+            b" ",
+            b"\t",
+            b":",
+            b"a",
+            b"\x80",
+            b"A: b\r",
+            b"\r\n\r\n",
+            b"\r\n \r\n",
+            b"Z:\t",
+            b"\0",
+            b"Host : a",
+            b"GET  /  HTTP/1.1",
+            b"X: a\tb",
+            b"Y:  \t ",
+            b"\r\n x",
+            b"\r\n\tx",
+            b"A: b\rc",
+            b"B: c\r",
+            b"\r\r\n",
+            b"\n\n",
+        ];
+        let mut state = 0x2545_f491_4f6c_dd1du64;
+        let mut next = move |n: usize| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            (state % n as u64) as usize
+        };
+        let (mut accepted, mut refused_by_rule) = (0, 0);
+        for round in 0..300_000 {
+            let mut head = Vec::new();
+            // Mostly a plausible head with one or two perturbations, sometimes pure noise.
+            if round % 4 != 0 {
+                head.extend_from_slice(b"GET / HTTP/1.1");
+                head.extend_from_slice(PIECES[2 + next(2)]);
+                for _ in 0..next(4) {
+                    head.extend_from_slice(
+                        [&b"Host: a"[..], b"X-Y:  v  ", b"x:", b"Z:\t"][next(4)],
+                    );
+                    head.extend_from_slice(PIECES[2 + next(4)]);
+                }
+                head.extend_from_slice(PIECES[2 + next(4)]);
+                if next(3) == 0 {
+                    head.extend_from_slice(PIECES[next(PIECES.len())]);
+                }
+            } else {
+                for _ in 0..1 + next(8) {
+                    head.extend_from_slice(PIECES[next(PIECES.len())]);
+                }
+            }
+            if next(8) == 0 {
+                let mut lead = PIECES[2 + next(3)].to_vec();
+                lead.extend_from_slice(&head);
+                head = lead;
+            }
+            // Bytes after the head are not part of it, bare LF or not.
+            if next(4) == 0 {
+                head.extend_from_slice([&b"x\ny"[..], b"\n", b"\r", b"body\n\n"][next(4)]);
+            }
+            let expected = parses_with_a_scan(&head);
+            let got = matches!(parse_request(&head, 1 << 16), Parsed::Complete(_));
+            // `parse_request` also refuses heads the scan rule alone accepts only when httparse
+            // does, so the two must agree.
+            assert_eq!(got, expected, "{:?}", String::from_utf8_lossy(&head));
+            accepted += usize::from(got);
+            // Heads the parser takes but the rule refuses: the cases the check exists for.
+            let mut storage = [httparse::EMPTY_HEADER; MAX_FIELDS];
+            let mut req = httparse::Request::new(&mut storage);
+            refused_by_rule +=
+                usize::from(matches!(req.parse(&head), Ok(httparse::Status::Complete(_))) && !got);
+        }
+        assert!(
+            refused_by_rule > 1000,
+            "the mix never reaches the rule: {refused_by_rule}"
+        );
+        assert!(
+            accepted > 1000,
+            "too few accepted heads to mean anything: {accepted}"
+        );
+    }
+
+    #[test]
+    fn line_endings_must_be_crlf_pairs_at_every_offset() {
+        fn by_bytes(head: &[u8]) -> bool {
+            head.iter().enumerate().all(|(i, &c)| match c {
+                b'\n' => i > 0 && head[i - 1] == b'\r',
+                b'\r' => head.get(i + 1) == Some(&b'\n'),
+                _ => true,
+            })
+        }
+        for len in 0..40usize {
+            for at in 0..len {
+                for ends in [&b"\r\n"[..], b"\n", b"\r", b"\r\r", b"\n\r", b"\r\n\r\n"] {
+                    let mut head = vec![b'a'; len];
+                    for (n, &c) in ends.iter().enumerate() {
+                        if at + n < len {
+                            head[at + n] = c;
+                        }
+                    }
+                    assert_eq!(
+                        super::strict_line_endings(&head),
+                        by_bytes(&head),
+                        "{head:?}"
+                    );
+                }
+            }
+        }
+    }
+
     use super::*;
 
     fn request(text: &str) -> RequestHead {
@@ -684,7 +994,7 @@ mod tests {
         assert_eq!(h.method, "GET");
         assert_eq!(h.target, "/a?b=1");
         assert_eq!(h.minor, 1);
-        assert_eq!(h.fields.len(), 2);
+        assert_eq!(h.fields.pairs().count(), 2);
         assert_eq!(
             h.length,
             "GET /a?b=1 HTTP/1.1\r\nHost: x\r\nX-A: 1\r\n\r\n".len()
@@ -701,8 +1011,49 @@ mod tests {
     }
 
     #[test]
+    fn the_request_scan_answers_what_the_separate_scans_do() {
+        for text in [
+            "GET / HTTP/1.1\r\nHost: a\r\n\r\n",
+            "GET / HTTP/1.1\r\nhost: a\r\nHOST: b\r\n\r\n",
+            "GET / HTTP/1.1\r\nExpect: 100-Continue\r\nHost: a\r\n\r\n",
+            "GET / HTTP/1.1\r\nConnection: Keep-Alive, Close\r\nHost: a\r\n\r\n",
+            "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n",
+            "GET / HTTP/1.0\r\n\r\n",
+            "POST / HTTP/1.1\r\nContent-Length: 3\r\nTransfer-Encoding: chunked\r\n\r\n",
+            "POST / HTTP/1.1\r\ncontent-length: 3\r\nX-Other: 1\r\nConnection: upgrade\r\n\r\n",
+        ] {
+            let head = request(text);
+            let scan = RequestScan::of(&head.fields);
+            let f = &head.fields;
+            assert_eq!(scan.hosts, field(f, "Host").count(), "{text:?}");
+            assert_eq!(
+                scan.expect_continue,
+                has_token(f, "Expect", "100-continue"),
+                "{text:?}"
+            );
+            assert_eq!(
+                scan.keep_alive(head.minor),
+                keep_alive(head.minor, f),
+                "{text:?}"
+            );
+            assert_eq!(
+                scan.content_length,
+                field(f, "Content-Length").next().is_some()
+            );
+            assert_eq!(
+                scan.transfer_encoding,
+                field(f, "Transfer-Encoding").next().is_some()
+            );
+        }
+        assert!(!RequestScan::of(&vec![("X".to_string(), vec![0xff])]).text);
+    }
+
+    #[test]
     fn request_framing_rules() {
-        let f = |t: &str| request_framing(&request(t));
+        let f = |t: &str| {
+            let head = request(t);
+            request_framing(&head, &RequestScan::of(&head.fields))
+        };
         assert_eq!(
             f("POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\n"),
             Ok(Framing::Length(5))
@@ -718,6 +1069,27 @@ mod tests {
             Ok(Framing::Chunked)
         );
         assert_eq!(f("GET / HTTP/1.1\r\n\r\n"), Ok(Framing::None));
+        // With neither framing field there is no body, whatever the method or version.
+        assert_eq!(f("POST / HTTP/1.1\r\nHost: a\r\n\r\n"), Ok(Framing::None));
+        assert_eq!(f("POST / HTTP/1.0\r\n\r\n"), Ok(Framing::None));
+        // Names differing only by case are the same field, as before the one-pass scan.
+        assert!(f("POST / HTTP/1.1\r\ncontent-length: 1\r\nCONTENT-LENGTH: 2\r\n\r\n").is_err());
+        assert_eq!(
+            f("POST / HTTP/1.1\r\ncontent-length: 2\r\nContent-Length: 2\r\n\r\n"),
+            Ok(Framing::Length(2))
+        );
+        assert_eq!(
+            f("POST / HTTP/1.1\r\ntransfer-encoding: chunked\r\nCONTENT-length: 5\r\n\r\n")
+                .unwrap_err()
+                .status,
+            400
+        );
+        assert_eq!(
+            f("POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n")
+                .unwrap_err()
+                .status,
+            400
+        );
         assert!(f("POST / HTTP/1.1\r\nContent-Length: x\r\n\r\n").is_err());
         assert!(f("POST / HTTP/1.1\r\nContent-Length: 1\r\nContent-Length: 2\r\n\r\n").is_err());
         assert_eq!(

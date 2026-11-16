@@ -140,6 +140,10 @@ impl InstCheck<'_, '_> {
             | Op::ListSetU
             | Op::ListFill
             | Op::ListPush
+            | Op::ListCap
+            | Op::ListGrow
+            | Op::ListFillU
+            | Op::ListPushU
             | Op::ListDropLast => self.lists(),
             Op::OptSome
             | Op::OptView
@@ -168,6 +172,7 @@ impl InstCheck<'_, '_> {
             | Op::IfaceData => self.closures_and_interfaces(),
             Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod => self.calls(),
             Op::Clone | Op::AltOwn | Op::MoveOut | Op::Drop | Op::DropIf => self.ownership(),
+            Op::Free => self.arity(1),
             Op::Slot
             | Op::ListAddr
             | Op::ListAddrU
@@ -724,7 +729,7 @@ impl InstCheck<'_, '_> {
                     "the first kept index must be int; no result",
                 )
             }
-            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
+            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill | Op::ListFillU => {
                 self.arity(3)?;
                 let elem = self
                     .m
@@ -735,7 +740,24 @@ impl InstCheck<'_, '_> {
                     "index must be int; value must be the element type; yields the updated list",
                 )
             }
-            Op::ListPush => {
+            Op::ListCap => {
+                self.arity(1)?;
+                self.m
+                    .list_elem(self.t(0))
+                    .ok_or("operand 0 must be a list")?;
+                self.want(self.res == Some(Ty::INT), "list.cap yields int")
+            }
+            Op::ListGrow => {
+                self.arity(2)?;
+                self.m
+                    .list_elem(self.t(0))
+                    .ok_or("operand 0 must be a list")?;
+                self.want(
+                    self.t(1) == Ty::INT && self.res == Some(self.t(0)),
+                    "the new capacity must be int; yields the list with room for it",
+                )
+            }
+            Op::ListPush | Op::ListPushU => {
                 self.arity(2)?;
                 let elem = self
                     .m

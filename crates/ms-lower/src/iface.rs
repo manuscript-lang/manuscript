@@ -613,7 +613,7 @@ fn build_builtin_compare(
             name: sym.to_string(),
             params,
             ret: MTy::INT,
-            noreturn: false,
+            noreturn: crate::rtcall::rt_flags(sym).noreturn,
             pure_: false,
             fresh: false,
             role: crate::rtcall::extern_role(sym),

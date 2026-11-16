@@ -1,7 +1,8 @@
 //! `FileWatcher`: a polling watcher (snapshot comparison) and a native one (inotify on Linux,
 //! kqueue on macOS, `ReadDirectoryChangesW` on Windows).
-//! The polling, kqueue and Windows watchers are driven from `next`, which waits in short slices
-//! and polls for cancellation between them, so they need no worker thread. Only inotify has one:
+//! The polling, kqueue and Windows watchers are driven from `next`, so they need no worker
+//! thread; the polling one sleeps its interval in one wait that `close` wakes, the other two
+//! still wait in short slices and poll for cancellation between them. Only inotify has one:
 //! it reports a new directory without watching it, so a reader thread (using no runtime calls,
 //! waking `next` through an eventfd) must register it at once or changes inside it are lost.
 //! kqueue registers new paths in the same snapshot diff that reports them, and
@@ -19,6 +20,8 @@ use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NONE, STATUS_UNSUPP
 #[cfg(target_os = "linux")]
 use std::sync::{Arc, Mutex};
 
+/// How long the macOS and Windows watchers park between looks (their waits are not events yet).
+#[cfg(any(target_os = "macos", windows))]
 const SLICE_MS: i32 = 50;
 
 /// One event: the affected path and whether it appeared/disappeared/moved (`rename`) or changed.
@@ -67,16 +70,16 @@ fn visit(
     Ok(())
 }
 
-/// Waits for inotify events: the task parks, so other tasks keep running.
+/// Waits for inotify events: the task parks until the reader queues one or `close` signals the
+/// same descriptor, so other tasks keep running and nothing looks on a period.
 #[cfg(target_os = "linux")]
 fn wait_events(fd: sys::Fd) {
     #[cfg(not(test))]
     // A stop request ends the wait early; the caller's next `poll_cancel()?` returns it.
-    let _ =
-        ms_rt::glue::try_task_wait_fd(fd, ms_rt::glue::WAIT_READ, i64::from(SLICE_MS) * 1_000_000);
+    let _ = ms_rt::glue::try_task_wait_fd(fd, ms_rt::glue::WAIT_READ, -1);
     // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
-    sys::wait_ready(fd, sys::Interest::Read, SLICE_MS);
+    sys::wait_ready(fd, sys::Interest::Read, -1);
 }
 
 /// What differs between two snapshots, sorted by path: `rename` for an entry that appeared or
@@ -123,12 +126,101 @@ fn valid_native(root: &[u8], recursive: bool, max: i64, events: i64, overflow: &
     snapshot(root, recursive, max).map(drop)
 }
 
+#[cfg(any(target_os = "macos", windows))]
 fn sleep_slice() {
     #[cfg(not(test))]
     // A stop request ends the sleep early; the caller's next `poll_cancel()?` returns it.
     let _ = ms_rt::glue::try_task_sleep(i64::from(SLICE_MS) * 1_000_000);
     #[cfg(test)]
     sys::sleep_ms(SLICE_MS);
+}
+
+/// What a watcher's wait ends on besides its own event: `close`. The waiting task parks on a
+/// wake-up that `close` signals from wherever it runs, so the wait neither looks on a period nor
+/// misses a close that lands between its check and its park.
+pub struct Gate {
+    closed: AtomicBool,
+    /// The wake-up of the wait in progress, or 0.
+    #[cfg(not(test))]
+    parked: core::sync::atomic::AtomicU64,
+    /// Tests run on threads the scheduler does not run: a condition variable plays the wake-up.
+    #[cfg(test)]
+    wake: (std::sync::Mutex<()>, std::sync::Condvar),
+}
+
+impl Gate {
+    fn new() -> Gate {
+        Gate {
+            closed: AtomicBool::new(false),
+            #[cfg(not(test))]
+            parked: core::sync::atomic::AtomicU64::new(0),
+            #[cfg(test)]
+            wake: (std::sync::Mutex::new(()), std::sync::Condvar::new()),
+        }
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::SeqCst)
+    }
+
+    /// Ends the wait in progress, and every later one, with `Closed`.
+    pub fn close(&self) {
+        self.closed.store(true, Ordering::SeqCst);
+        #[cfg(not(test))]
+        {
+            let id = self.parked.load(Ordering::SeqCst);
+            if id != 0 {
+                ms_rt::glue::signal_wakeup(id);
+            }
+        }
+        #[cfg(test)]
+        {
+            let _held = self.wake.0.lock().unwrap_or_else(|e| e.into_inner());
+            self.wake.1.notify_all();
+        }
+    }
+
+    /// Parks the task for `ns` nanoseconds (negative: until closed). Answers whether the gate
+    /// is closed; a stop request is an `Err`.
+    fn sleep(&self, ns: i64) -> Res<bool> {
+        #[cfg(not(test))]
+        {
+            let wake = ms_rt::glue::Wakeup::new();
+            self.parked.store(wake.id(), Ordering::SeqCst);
+            // `close` stores before it reads `parked`, so one of the two sees the other.
+            let parked = if self.is_closed() {
+                Ok(true)
+            } else {
+                wake.park(ns)
+            };
+            self.parked.store(0, Ordering::SeqCst);
+            parked.map_err(|_| Fail::failed("cancelled"))?;
+        }
+        #[cfg(test)]
+        {
+            let held = self.wake.0.lock().unwrap_or_else(|e| e.into_inner());
+            let wait = |held: std::sync::MutexGuard<'_, ()>| {
+                let until = std::time::Duration::from_nanos(ns.max(0) as u64);
+                if ns < 0 {
+                    drop(
+                        self.wake
+                            .1
+                            .wait_while(held, |_| !self.is_closed())
+                            .unwrap_or_else(|e| e.into_inner()),
+                    );
+                } else {
+                    drop(
+                        self.wake
+                            .1
+                            .wait_timeout_while(held, until, |_| !self.is_closed())
+                            .unwrap_or_else(|e| e.into_inner()),
+                    );
+                }
+            };
+            wait(held);
+        }
+        Ok(self.is_closed())
+    }
 }
 
 pub struct Poll {
@@ -158,19 +250,14 @@ impl Poll {
     }
 
     /// Every difference seen after one interval, sorted by path; waits until there is one.
-    fn next(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
+    fn next(&mut self, gate: &Gate) -> Res<Vec<Event>> {
         if self.gone {
             return Err(Fail::status(STATUS_NONE));
         }
         loop {
-            let mut waited = 0i64;
-            while waited < self.interval_ns {
-                poll_cancel()?;
-                if closed.load(Ordering::Relaxed) {
-                    return Err(Fail::status(STATUS_CLOSED));
-                }
-                sleep_slice();
-                waited += i64::from(SLICE_MS) * 1_000_000;
+            poll_cancel()?;
+            if gate.sleep(self.interval_ns)? {
+                return Err(Fail::status(STATUS_CLOSED));
             }
             let now = match snapshot(&self.root, self.recursive, self.max) {
                 Ok(s) => s,
@@ -325,9 +412,14 @@ impl Native {
         Ok(native)
     }
 
-    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
+    /// Wakes a `wait` parked on the reader's descriptor, for `close`.
+    pub fn interrupt(&self) {
+        signal(self.wake);
+    }
+
+    pub fn wait(&mut self, gate: &Gate) -> Res<Vec<Event>> {
         loop {
-            if closed.load(Ordering::Relaxed) {
+            if gate.is_closed() {
                 return Err(Fail::status(STATUS_CLOSED));
             }
             {
@@ -594,9 +686,11 @@ mod native_host {
             Err(Fail::status(STATUS_UNSUPPORTED))
         }
 
-        pub fn wait(&mut self, _: &AtomicBool) -> Res<Vec<Event>> {
+        pub fn wait(&mut self, _: &Gate) -> Res<Vec<Event>> {
             Err(Fail::status(STATUS_UNSUPPORTED))
         }
+
+        pub fn interrupt(&self) {}
     }
 }
 #[cfg(not(target_os = "linux"))]
@@ -612,37 +706,40 @@ ms_rt::ffi::abi_handle!(Watcher);
 /// A `FileWatcher`.
 pub struct Watcher {
     kind: Kind,
-    closed: AtomicBool,
+    gate: Gate,
 }
 
 impl Watcher {
     pub fn poll(p: Poll) -> Watcher {
         Watcher {
             kind: Kind::Poll(p),
-            closed: AtomicBool::new(false),
+            gate: Gate::new(),
         }
     }
 
     pub fn native(n: Native) -> Watcher {
         Watcher {
             kind: Kind::Native(n),
-            closed: AtomicBool::new(false),
+            gate: Gate::new(),
         }
     }
 
     /// Waits for activity; `Closed` after `close`.
     pub fn wait(&mut self) -> Res<Vec<Event>> {
-        if self.closed.load(Ordering::Relaxed) {
+        if self.gate.is_closed() {
             return Err(Fail::status(STATUS_CLOSED));
         }
         match &mut self.kind {
-            Kind::Poll(p) => p.next(&self.closed),
-            Kind::Native(n) => n.wait(&self.closed),
+            Kind::Poll(p) => p.next(&self.gate),
+            Kind::Native(n) => n.wait(&self.gate),
         }
     }
 
     pub fn close(&mut self) {
-        self.closed.store(true, Ordering::Relaxed);
+        self.gate.close();
+        if let Kind::Native(n) = &self.kind {
+            n.interrupt();
+        }
     }
 }
 
@@ -784,5 +881,53 @@ mod tests {
         }
         assert!(seen_root);
         assert_eq!(w.wait().err().map(|f| f.status), Some(STATUS_NONE));
+    }
+
+    /// Closing ends a wait that has no other way to end (an hour-long interval), whether the
+    /// close lands before the wait parks or after: nothing here waits for time to pass.
+    #[test]
+    fn close_ends_a_polling_wait() {
+        let root = ops::temporary_directory(b"msfs-close-").unwrap();
+        let gate = std::sync::Arc::new(Gate::new());
+        let mut poll = Poll::new(&root, true, 3_600_000_000_000, 100).unwrap();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let waiter = {
+            let gate = gate.clone();
+            std::thread::spawn(move || done_tx.send(poll.next(&gate).err().map(|f| f.status)))
+        };
+        gate.close();
+        assert_eq!(
+            done_rx
+                .recv_timeout(std::time::Duration::from_secs(30))
+                .unwrap(),
+            Some(STATUS_CLOSED)
+        );
+        waiter.join().unwrap().unwrap();
+        ops::remove(&root, true).unwrap();
+    }
+
+    /// The same for the inotify wait: closing signals the descriptor the wait is parked on.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn close_ends_a_native_wait() {
+        let root = ops::temporary_directory(b"msfs-closen-").unwrap();
+        let mut native = Native::new(&root, true, 100, 100, b"error").unwrap();
+        let wake = native.wake;
+        let gate = std::sync::Arc::new(Gate::new());
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let waiter = {
+            let gate = gate.clone();
+            std::thread::spawn(move || done_tx.send(native.wait(&gate).err().map(|f| f.status)))
+        };
+        gate.close();
+        signal(wake);
+        assert_eq!(
+            done_rx
+                .recv_timeout(std::time::Duration::from_secs(30))
+                .unwrap(),
+            Some(STATUS_CLOSED)
+        );
+        waiter.join().unwrap().unwrap();
+        ops::remove(&root, true).unwrap();
     }
 }

@@ -106,9 +106,9 @@ export enum EraseRegion:
 type Parsed:
 	// 0 incomplete, 1 decoded, 2 dropped, 3 overlong, 4 paste start.
 	kind: Int
-	event: TerminalEvent?
 	// Scalars consumed.
 	used: Int
+	event: TerminalEvent?
 
 fn key(name: String, ctrl: Bool, alt: Bool, shift: Bool) TerminalEvent:
 	return TerminalEvent.Key(name, ctrl, alt, shift)
@@ -462,7 +462,7 @@ fn read_size(handle: NativeRawTerminal) TerminalSize?:
 		rows: msstd_terminal_raw_terminal_size_rows(handle),
 	)
 
-fn resized(before: TerminalSize?, now: TerminalSize) Bool:
+fn resized(now: TerminalSize, before: TerminalSize?) Bool:
 	if last := before: return last.columns != now.columns or last.rows != now.rows
 	return false
 
@@ -484,7 +484,7 @@ fn var TerminalEvents.next() TerminalEvent?!:
 		now := read_size(self.handle.native)
 
 		if current := now:
-			if resized(self.size, current):
+			if resized(current, self.size):
 				self.size = current.clone()
 				return ok(TerminalEvent.Resize(current.columns, current.rows))
 

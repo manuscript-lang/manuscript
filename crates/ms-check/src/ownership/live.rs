@@ -14,6 +14,7 @@ use crate::fxmap::HashMap;
 use crate::hir::*;
 use crate::types::*;
 use ms_syntax::ast::*;
+use std::rc::Rc;
 
 /// Liveness of one use.
 #[derive(Copy, Clone, Debug)]
@@ -42,17 +43,41 @@ pub struct Liveness {
 /// the uses of the binding itself.
 const STORED: usize = 1 << 62;
 
-/// A live place: a binding identity and the fields below it.
-type Key = (usize, Vec<Name>);
+/// The fields below a binding; `None` is the binding itself, so the common place needs no
+/// allocation and copying a path is a count, not a copy.
+type Path = Option<Rc<[Name]>>;
 
-/// Places live after a point, each with its earliest later use, grouped by binding so a query or a
-/// kill touches only the places of one binding, however many others are live (a function with N
-/// bindings used after their definitions otherwise paid N per query, N^2 in all).
+fn path_of(fields: Vec<Name>) -> Path {
+    (!fields.is_empty()).then(|| fields.into())
+}
+
+fn fields(path: &Path) -> &[Name] {
+    path.as_deref().unwrap_or(&[])
+}
+
+struct Entry {
+    uid: usize,
+    path: Path,
+    node: NodeId,
+}
+
+/// Places live after a point, each with its earliest later use, in one array sorted by binding so
+/// a query or a kill touches only the places of one binding, however many others are live (a
+/// function with N bindings used after their definitions otherwise paid N per query, N^2 in all),
+/// and copying the set (at every branch, loop pass and `return`) is one allocation.
 #[derive(Clone, Default)]
 struct Live {
-    by_binding: HashMap<usize, Vec<(Vec<Name>, NodeId)>>,
-    /// Places in all, so the loop fixpoint can tell whether a join added any.
-    len: usize,
+    entries: Vec<Entry>,
+}
+
+impl Clone for Entry {
+    fn clone(&self) -> Entry {
+        Entry {
+            uid: self.uid,
+            path: self.path.clone(),
+            node: self.node,
+        }
+    }
 }
 
 impl Live {
@@ -60,71 +85,79 @@ impl Live {
         Live::default()
     }
 
+    /// Places in all, so the loop fixpoint can tell whether a join added any.
     fn len(&self) -> usize {
-        self.len
+        self.entries.len()
     }
 
-    fn get(&self, key: &Key) -> Option<&NodeId> {
-        self.by_binding
-            .get(&key.0)?
+    /// The entries of `uid`.
+    fn group(&self, uid: usize) -> std::ops::Range<usize> {
+        let start = self.entries.partition_point(|e| e.uid < uid);
+        let len = self.entries[start..].partition_point(|e| e.uid == uid);
+        start..start + len
+    }
+
+    fn get(&self, uid: usize, path: &[Name]) -> Option<NodeId> {
+        self.entries[self.group(uid)]
             .iter()
-            .find(|(p, _)| *p == key.1)
-            .map(|(_, n)| n)
+            .find(|e| fields(&e.path) == path)
+            .map(|e| e.node)
     }
 
     /// Records the place with `node`, replacing its earlier use.
-    fn insert(&mut self, key: Key, node: NodeId) {
-        let places = self.by_binding.entry(key.0).or_default();
-        match places.iter_mut().find(|(p, _)| *p == key.1) {
-            Some(known) => known.1 = node,
-            None => {
-                places.push((key.1, node));
-                self.len += 1;
-            }
+    fn insert(&mut self, uid: usize, path: Path, node: NodeId) {
+        let group = self.group(uid);
+        match self.entries[group.clone()]
+            .iter_mut()
+            .find(|e| fields(&e.path) == fields(&path))
+        {
+            Some(known) => known.node = node,
+            None => self.entries.insert(group.end, Entry { uid, path, node }),
         }
     }
 
     /// Keeps the earlier of two uses of a place.
-    fn merge(&mut self, key: &Key, node: NodeId) {
-        let places = self.by_binding.entry(key.0).or_default();
-        match places.iter_mut().find(|(p, _)| *p == key.1) {
+    fn merge(&mut self, uid: usize, path: &Path, node: NodeId) {
+        let group = self.group(uid);
+        match self.entries[group.clone()]
+            .iter_mut()
+            .find(|e| fields(&e.path) == fields(path))
+        {
             Some(known) => {
-                if node.0 < known.1.0 {
-                    known.1 = node;
+                if node.0 < known.node.0 {
+                    known.node = node;
                 }
             }
-            None => {
-                places.push((key.1.clone(), node));
-                self.len += 1;
-            }
+            None => self.entries.insert(
+                group.end,
+                Entry {
+                    uid,
+                    path: path.clone(),
+                    node,
+                },
+            ),
         }
     }
 
     /// Drops every place of `uid` that `drop` accepts.
     fn remove_where(&mut self, uid: usize, drop: impl Fn(&[Name]) -> bool) {
-        let Some(places) = self.by_binding.get_mut(&uid) else {
-            return;
-        };
-        let before = places.len();
-        places.retain(|(p, _)| !drop(p));
-        self.len -= before - places.len();
-        if places.is_empty() {
-            self.by_binding.remove(&uid);
+        let group = self.group(uid);
+        let mut keep = group.start;
+        for at in group.clone() {
+            if !drop(fields(&self.entries[at].path)) {
+                self.entries.swap(keep, at);
+                keep += 1;
+            }
         }
-    }
-
-    fn iter(&self) -> impl Iterator<Item = (Key, NodeId)> + '_ {
-        self.by_binding
-            .iter()
-            .flat_map(|(u, places)| places.iter().map(|(p, n)| ((*u, p.clone()), *n)))
+        self.entries.drain(keep..group.end);
     }
 }
 
-impl FromIterator<(Key, NodeId)> for Live {
-    fn from_iter<I: IntoIterator<Item = (Key, NodeId)>>(iter: I) -> Live {
+impl FromIterator<(usize, Vec<Name>, NodeId)> for Live {
+    fn from_iter<I: IntoIterator<Item = (usize, Vec<Name>, NodeId)>>(iter: I) -> Live {
         let mut out = Live::new();
-        for (k, n) in iter {
-            out.insert(k, n);
+        for (uid, path, node) in iter {
+            out.insert(uid, path_of(path), node);
         }
         out
     }
@@ -145,11 +178,13 @@ fn store_step() -> Name {
 /// `b.f` does not read the `b.f` an earlier move took.
 fn next_use(live: &Live, uid: usize, path: &[Name]) -> Option<NodeId> {
     let store = store_step();
-    live.by_binding
-        .get(&uid)?
+    live.entries[live.group(uid)]
         .iter()
-        .filter(|(p, _)| related(p, path) && (path.is_empty() || p.last() != Some(&store)))
-        .map(|(_, n)| *n)
+        .filter(|e| {
+            let p = fields(&e.path);
+            related(p, path) && (path.is_empty() || p.last() != Some(&store))
+        })
+        .map(|e| e.node)
         .min()
 }
 
@@ -189,8 +224,12 @@ fn is_place(e: &Expr) -> bool {
 }
 
 fn join(into: &mut Live, from: &Live) {
-    for (key, node) in from.iter() {
-        into.merge(&key, node);
+    if into.entries.is_empty() {
+        into.entries.clone_from(&from.entries);
+        return;
+    }
+    for e in &from.entries {
+        into.merge(e.uid, &e.path, e.node);
     }
 }
 
@@ -253,7 +292,7 @@ impl Pass<'_> {
                 next: near,
             },
         );
-        live.insert((b.uid, path), node);
+        live.insert(b.uid, path_of(path), node);
     }
 
     /// The store to `uid` ends the life of the old value of the whole binding. Its "assigned
@@ -267,7 +306,7 @@ impl Pass<'_> {
 
     /// Marks `uid` as assigned at `node`, for closures created before it.
     fn mark_stored(live: &mut Live, uid: usize, node: NodeId) {
-        live.insert((uid | STORED, Vec::new()), node);
+        live.insert(uid | STORED, None, node);
     }
 
     fn block(&mut self, body: &[Stmt], mut live: Live) -> Live {
@@ -487,10 +526,7 @@ impl Pass<'_> {
     fn lambda(&mut self, e: &Expr, l: &Lambda, live: &mut Live) {
         let captures = self.m.captures(e);
         // The closure may run again, so its captured variables never die in its body.
-        let captured: Live = captures
-            .iter()
-            .map(|b| ((b.uid, Vec::new()), e.id))
-            .collect();
+        let captured: Live = captures.iter().map(|b| (b.uid, Vec::new(), e.id)).collect();
         let saved = (
             std::mem::replace(&mut self.exit, captured.clone()),
             std::mem::take(&mut self.breaks),
@@ -500,8 +536,8 @@ impl Pass<'_> {
         (self.exit, self.breaks, self.continues) = saved;
         for b in &captures {
             self.record(e.id, b, live);
-            if let Some(at) = live.get(&(b.uid | STORED, Vec::new())) {
-                self.out.assigned_after.insert((e.id, b.uid), *at);
+            if let Some(at) = live.get(b.uid | STORED, &[]) {
+                self.out.assigned_after.insert((e.id, b.uid), at);
             }
         }
     }

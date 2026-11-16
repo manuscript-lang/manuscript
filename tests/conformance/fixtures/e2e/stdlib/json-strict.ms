@@ -10,8 +10,8 @@ type Handler:
 
 type Plain:
     name: String
-    note: String?
     tags: List[Int?]
+    note: String?
 
 type Holder:
     items: List[Void]
@@ -31,7 +31,7 @@ test "JSON strict stringify rejects no-form list elements":
     expect_equal(stringify(holder, StringifyOptions(strict: true)), invalid)?
 
 test "JSON strict stringify accepts none and nulls that are values":
-    plain := Plain("p", none, [1, none])
+    plain := Plain("p", [1, none], none)
     expected := "{\"name\":\"p\",\"tags\":[1,null]}"
     expect_equal(
         stringify(plain, StringifyOptions(strict: true)), ok(expected.clone())

@@ -27,6 +27,28 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.if_then(flag, |s| s.drop_value(ty, &v));
                 vec![]
             }
+            Op::Free => {
+                let held = self.a(inst, 0)[0];
+                match inst.imm {
+                    // The heap block behind the value: a boxed alternative or optional, or an
+                    // indirect type. A present optional's box is never null.
+                    Imm::None => self.free(held),
+                    // The nullable box of a map or set field inside an indirect type's block.
+                    Imm::Field(_, k) => {
+                        let ty = f.ty(inst.args[0]);
+                        let block = self
+                            .type_block(ty)
+                            .expect("free of a field of an indirect type");
+                        let lay = mem_layout(&block);
+                        let (bk, _) = self.type_block_fields(ty)[k as usize];
+                        let bp = self.load_leaf(Leaf::I64, held, lay.offsets[bk] as i32);
+                        let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, bp, 0);
+                        self.if_then(nn, |s| s.free(bp));
+                    }
+                    _ => unreachable!("free takes no other immediate"),
+                }
+                vec![]
+            }
             _ => unreachable!("ownership is only called for its own ops"),
         }
     }
@@ -51,17 +73,12 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 vec![self.b.ins().stack_addr(types::I64, slot, 0)]
             }
-            Op::ListAddr | Op::ListAddrU => {
+            Op::ListAddrU => {
                 let lt = f.ty(inst.args[0]);
                 let (_, _, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
                 let i = self.a(inst, 1)[0];
-                let mode = if inst.op == Op::ListAddr {
-                    Op::ListGet
-                } else {
-                    Op::ListGetU
-                };
-                vec![self.elem_addr(l[0], l[1], i, size, mode)]
+                vec![self.elem_addr(l[0], i, size)]
             }
             Op::PtrLoadU => {
                 let Imm::Int(w) = inst.imm else {

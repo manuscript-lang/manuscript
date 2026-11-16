@@ -26,28 +26,32 @@ PROGRAMS := ["interp", "strings", "lz", "graph"]
 // `guard-<name>`.
 GUARDS := [
 	"crypto", "regex", "image", "chains", "maps", "cleanup", "resultvar", "csvcells",
-	"mapinsert", "http-request", "splitfirst", "append"
+	"mapinsert", "http-request", "splitfirst", "splitbuf", "findshort", "append"
 ]
 // Guards that take their own path as the argument (they start themselves as a child,
 // which valgrind does not follow, so only the part under test is counted).
-SELF_PATH := ["guard-http-request"]
+SELF_PATH := ["guard-http-request", "guard-http-request-small"]
+// Guards that are another shape of a guard above: name, source directory, argument
+// naming the shape.
+SHAPES := [["http-request-small", "http-request", "small"]]
 // Counts held to 1 percent instead of the default: most of their instructions are the
 // per-request path itself, which a few hundred more instructions per request would
 // otherwise hide.
-TIGHT := ["guard-http-request"]
+TIGHT := ["guard-http-request", "guard-http-request-small"]
 COUNTS := "bench/perf/counts.txt"
 
 fn say(text: String) Void:
 	stdout().write(text).get()
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.
-fn count(program: String, out_file: String, own_path: Bool) Int:
+fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:
 	var command = [
 		"--tool=callgrind",
 		f"--callgrind-out-file={out_file}",
 		program.clone(),
 	]
 	if own_path: command.append(program.clone())
+	if shape != "": command.append(shape.clone())
 
 	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait():
 		for line in out.stderr.decode_utf8().get("").split("\n"):
@@ -82,15 +86,23 @@ fn main() Int:
 	var report = "# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.\n"
 	var targets: List[List[String]] = []
 	for name in PROGRAMS: targets.append(
-		[name.clone(), f"{root}/bench/perf/suite/{name}/main.ms"]
+		[name.clone(), f"{root}/bench/perf/suite/{name}/main.ms", ""]
 	)
 	for name in GUARDS: targets.append(
-		[f"guard-{name}", f"{root}/bench/perf/guards/{name}/main.ms"]
+		[f"guard-{name}", f"{root}/bench/perf/guards/{name}/main.ms", ""]
+	)
+	for shape in SHAPES: targets.append(
+		[
+			f"guard-{shape[0]}",
+			f"{root}/bench/perf/guards/{shape[1]}/main.ms",
+			shape[2].clone(),
+		]
 	)
 
 	for target in targets:
 		name := target[0].clone()
 		source := target[1].clone()
+		shape := target[2].clone()
 		binary := f"{scratch.path()}/{name}"
 		built := run(
 			ms.clone(),
@@ -107,6 +119,7 @@ fn main() Int:
 			binary.clone(),
 			f"{scratch.path()}/{name}.out",
 			SELF_PATH.contains(name),
+			shape.clone(),
 		)
 
 		if now < 0:

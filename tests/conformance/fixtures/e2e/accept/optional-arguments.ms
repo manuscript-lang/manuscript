@@ -17,7 +17,7 @@ fn flag(value: Bool?) Bool: value.get()
 fn success(value: Int!Error?) Int:
     return value.get().get(-1)
 
-fn context[T](value: T?, fallback: T) T:
+fn context[T](fallback: T, value: T?) T:
     if inner := value:
         return inner
 

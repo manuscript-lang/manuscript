@@ -12,7 +12,7 @@ fn fallback(var counter: Counter) Int:
 	counter.calls += 1
 	return 42
 
-fn value_or[T](value: T?, fallback: T) T:
+fn value_or[T](fallback: T, value: T?) T:
 	if inner := value: return inner
 	return fallback
 
@@ -29,8 +29,8 @@ test "Optional presence and extraction preserve false and zero":
 
 	flag: Bool? := false
 	expect_false(flag.get())?
-	expect_equal(value_or(missing, 7), 7)?
-	expect_equal(value_or(present, 7), 0)?
+	expect_equal(value_or(7, missing), 7)?
+	expect_equal(value_or(7, present), 0)?
 	expect_false(missing.is_some())?
 
 test "Optional fallbacks distinguish eager and lazy evaluation":

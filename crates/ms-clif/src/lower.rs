@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, LocalVar, leaf_type, mem_type};
+use crate::cg::{CLOSURE_CODE, Gen, Glue, LocalVar, leaf_type, mem_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{CondCode, FloatCC, IntCC};
 use cranelift_codegen::ir::{
@@ -16,9 +16,9 @@ use ms_rt_abi::symbols::{
     DEEP_DROP_HEADROOM, ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION,
 };
 use ms_rt_abi::{
-    ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_LEN_MASK,
-    STR_LEN_OFFSET, STR_PTR_OFFSET, STR_SPARE_MASK, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET,
-    VEC_PTR_OFFSET,
+    ASCII_CHAR_STRIDE, IFACE_TAG_BOX, IFACE_TAG_MASK, IFACE_TAG_OWNED, IFACE_TAG_VIEW, STR_ASCII,
+    STR_INLINE, STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_LEN_MASK, STR_LEN_OFFSET, STR_PTR_OFFSET,
+    STR_SPARE_MASK, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -786,6 +786,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         for b in &rpo {
             let cb = self.b.create_block();
             self.blocks[b.index()] = Some(cb);
+            if f.cold.contains(b) {
+                self.b.set_cold_block(cb);
+            }
             if b.index() == 0 {
                 self.b.append_block_params_for_function_params(cb);
             } else {
@@ -931,7 +934,13 @@ impl<'a, 'm> Lower<'a, 'm> {
                 // Cranelift lays out the second successor first, so a loop test puts the
                 // exit there only if the body is the second one: swap to keep the body
                 // as the fall-through and the loop to one taken branch per iteration.
-                let swap = continues_loop(f, self.cur, then.block.index(), els.block.index());
+                // A check's fault goes second, so the code after it follows the branch: a fault
+                // block placed after the rest of the function keeps every value it reads live
+                // across it, and allocation is quadratic in a long function.
+                let faults = |t: &Target| f.cold.contains(&t.block);
+                let swap = !faults(then)
+                    && !faults(els)
+                    && continues_loop(f, self.cur, then.block.index(), els.block.index());
                 let (then, els) = if swap {
                     c = self.negate(c);
                     (els, then)
@@ -1129,29 +1138,20 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::F2IOpt
             | Op::B2I => self.float_ops(f, inst),
             Op::TypeNew | Op::TypeGet | Op::TypeSet | Op::TypeFill => self.type_op(f, inst),
-            Op::AltNew
-            | Op::AltView
-            | Op::AltPlain
-            | Op::AltOwn
-            | Op::AltTag
-            | Op::AltGet
-            | Op::AltTake
-            | Op::TypeRelease
-            | Op::AltRelease
-            | Op::AltUnbox => self.alternatives(f, inst),
+            Op::AltNew | Op::AltView | Op::AltPlain | Op::AltTag | Op::AltGet | Op::AltTake => {
+                self.alternatives(f, inst)
+            }
             Op::ListNew
             | Op::ListLit
             | Op::ListConst
             | Op::ListConstView
             | Op::ListLen
-            | Op::ListGet
-            | Op::ListGetNn
             | Op::ListGetU
-            | Op::ListSet
-            | Op::ListSetNn
             | Op::ListSetU
-            | Op::ListFill
-            | Op::ListPush
+            | Op::ListFillU
+            | Op::ListCap
+            | Op::ListGrow
+            | Op::ListPushU
             | Op::ListDropLast
             | Op::ListTake
             | Op::ListRelease => self.lists(f, inst),
@@ -1162,8 +1162,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::OptNoneOwned
             | Op::OptIsSome
             | Op::OptGet
-            | Op::OptUnwrap
-            | Op::OptUnbox
             | Op::OptAddr => self.optionals(f, inst),
             Op::StrByte
             | Op::StrAscii
@@ -1181,9 +1179,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::IfaceData
             | Op::IfaceIs => self.closures_and_interfaces(f, inst),
             Op::Call | Op::CallInd | Op::CallMethod | Op::CallRt => self.calls(f, inst),
-            Op::MoveOut | Op::Clone | Op::Drop | Op::DropIf => self.ownership(f, inst),
+            Op::MoveOut | Op::Clone | Op::Drop | Op::DropIf | Op::Free => self.ownership(f, inst),
             Op::Slot
-            | Op::ListAddr
             | Op::ListAddrU
             | Op::PtrIsNull
             | Op::PtrAdd
@@ -1204,8 +1201,29 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::CleanupRun
             | Op::GlobalGet
             | Op::GlobalSet => self.runtime_services(f, inst),
+            // `expand_owned` rewrites these into reads, drops and frees before code generation.
+            Op::AltOwn
+            | Op::AltUnbox
+            | Op::AltRelease
+            | Op::TypeRelease
+            | Op::OptUnbox
+            | Op::OptUnwrap => {
+                unreachable!("{} survived expand_owned", inst.op.info().name)
+            }
             Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown | Op::ScopeMark => {
                 unreachable!("scope markers are removed by elaborate before codegen")
+            }
+            Op::ListGet
+            | Op::ListGetNn
+            | Op::ListSet
+            | Op::ListSetNn
+            | Op::ListFill
+            | Op::ListPush
+            | Op::ListAddr => {
+                unreachable!(
+                    "`ms_mir::expand` rewrites {} before codegen",
+                    inst.op.info().name
+                )
             }
         };
         let out = match res_ty {

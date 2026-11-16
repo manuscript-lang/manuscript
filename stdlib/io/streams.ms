@@ -1,6 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, BytesBuilder, join from "@std/bytes.ms",
-	ReadStream, Source, WriteStream from "@std/io/io.ms",
+	ReadStream, WriteStream from "@std/io/io.ms",
 )
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A
@@ -12,13 +14,13 @@ import (
 // `data` is the current chunk and `start` the first unread byte; `pending` owns earlier unfinished fragments.
 type Lines:
 	input: ReadStream[Bytes]
-	max_bytes: Int?
 	data: Bytes
 	start: Int
 	ended: Bool
 	pending: List[Bytes]
 	pending_size: Int
 	pending_cr: Bool
+	max_bytes: Int?
 
 // Fails with `EOVERFLOW` when a line of `size` bytes is longer than the limit.
 fn Lines.check(size: Int) Void!:
@@ -98,8 +100,6 @@ fn var Lines.next() String?!:
 		else:
 			self.ended = true
 
-	return ok(none)
-
 fn var Lines.close() Void!:
 	return self.input.close()
 
@@ -107,7 +107,7 @@ fn var Lines.close() Void!:
 // removing a trailing `\r`; a line longer than `max_bytes` is an error.
 export fn lines(input: ReadStream[Bytes], max_bytes: Int? = none) ReadStream[String]:
 	return ReadStream[String](
-		Lines(input, max_bytes, "".to_bytes(), 0, false, [], 0, false)
+		Lines(input, "".to_bytes(), 0, false, [], 0, false, max_bytes)
 	)
 
 // Items of a list, in order. The list is the stream's own, held last item first so
@@ -182,8 +182,6 @@ fn var Filtered[T].next() T?!:
 			if self.keep(value): return ok(value)
 		else:
 			return ok(none)
-
-	return ok(none)
 
 fn var Filtered[T].close() Void!:
 	return self.input.close()

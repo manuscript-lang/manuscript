@@ -510,19 +510,36 @@ unsafe fn short_ascii(s: *const StrVal) -> bool {
 }
 
 /// `find` for a short haystack and a non-empty needle.
+///
+/// The scan is for one of the needle's less common bytes (see [`rare_offset`]), so a log line full
+/// of spaces and slashes does not stop at each of them; only a position where that byte matches is compared
+/// whole.
 #[inline]
 pub(super) fn find_short(hay: &[u8], needle: &[u8]) -> Option<usize> {
-    let (&first, rest) = needle.split_first()?;
     let last = hay.len().checked_sub(needle.len())?;
+    let k = rare_offset(needle)?;
+    let pivot = needle[k];
     let mut i = 0;
     while i <= last {
-        i += memchr_short(first, &hay[i..=last])?;
-        if hay[i + 1..i + needle.len()] == *rest {
+        // `hay[i + k]` is the pivot byte of the candidate start `i`.
+        i += memchr_short(pivot, &hay[i + k..=last + k])?;
+        if hay[i..i + needle.len()] == *needle {
             return Some(i);
         }
         i += 1;
     }
     None
+}
+
+/// The offset of the byte to scan for: the last one that is not a space or common punctuation,
+/// which text is full of (a needle written between spaces would otherwise stop at every word),
+/// or the last byte when it is all of those. None for an empty needle.
+#[inline]
+fn rare_offset(needle: &[u8]) -> Option<usize> {
+    needle
+        .iter()
+        .rposition(|b| !matches!(b, b' ' | b'/' | b'.' | b',' | b'-' | b':' | b'_'))
+        .or(needle.len().checked_sub(1))
 }
 
 /// `memchr` for a short haystack: eight bytes per step, testing each word for a byte equal to
@@ -2781,6 +2798,58 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view(
     }
 }
 
+/// Room for the pieces of a split that is read in place: the list borrows it.
+#[repr(C)]
+pub struct SplitBuf([StrVal; SPLIT_BUF]);
+const SPLIT_BUF: usize = 8;
+
+/// `msrt_string_split_view` for a result the frame keeps: a split of at most eight pieces at a
+/// one-byte separator is written into `buf` and the list is a `cap == 0` view of it, so it
+/// allocates and frees nothing. Anything else is the heap list of `msrt_string_split_view`.
+///
+/// # Safety
+/// As `msrt_string_split_view`; `buf` outlives the list and its pieces.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
+    s: *const StrVal,
+    sep: *const StrVal,
+    has_max: HasRaw,
+    max: i64,
+    buf: *mut SplitBuf,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller passes live strings, a frame buffer and a writable out.
+    unsafe {
+        let (text, sepb) = (bytes(s), bytes(sep));
+        let limit = if has_max.is_set() && max >= 0 {
+            max as usize
+        } else {
+            usize::MAX
+        };
+        if let [c] = *sepb
+            && limit > 0
+            && text.len() <= ONE_PASS_SPLIT
+        {
+            let mut v = VecVal {
+                ptr: buf.cast(),
+                len: 0,
+                cap: SPLIT_BUF,
+            };
+            let piece = |b: &[u8]| match b {
+                [] | [0..=0x7f] => from_bytes(b),
+                _ => view_of(b.as_ptr(), b.len()),
+            };
+            if split_bytes_once::<true>(text, c, limit, &mut v, piece) {
+                v.cap = 0;
+                *out = v;
+                return;
+            }
+        }
+        msrt_string_split_view(s, sep, has_max, max, out)
+    }
+}
+
 /// `text.split(separator, max)[0]` where `text` outlives the piece: the first piece, a view of
 /// `text`, found without building the list. Faults like an index of an empty list when `max`
 /// is zero.
@@ -2874,7 +2943,7 @@ unsafe fn split_into(
         if let [sep] = *sepb
             && text.len() <= ONE_PASS_SPLIT
         {
-            split_bytes_once(text, sep, limit, &mut v, piece);
+            split_bytes_once::<false>(text, sep, limit, &mut v, piece);
             *out = v;
             return;
         }
@@ -2907,13 +2976,13 @@ const ONE_PASS_SPLIT: usize = 128;
 /// # Safety
 /// `v` holds a list of `StrVal`s with room for its first piece.
 #[inline(always)]
-unsafe fn split_bytes_once(
+unsafe fn split_bytes_once<const STACK: bool>(
     text: &[u8],
     sep: u8,
     limit: usize,
     v: &mut VecVal,
     piece: impl Fn(&[u8]) -> StrVal,
-) {
+) -> bool {
     const LOW: u64 = 0x7f7f_7f7f_7f7f_7f7f;
     const HIGH: u64 = 0x8080_8080_8080_8080;
     let pat = 0x0101_0101_0101_0101 * sep as u64;
@@ -2927,10 +2996,12 @@ unsafe fn split_bytes_once(
         while mask != 0 {
             let at = i * 8 + mask.trailing_zeros() as usize / 8;
             // SAFETY: the caller's list has room, and `push_str` grows it.
-            unsafe { push_str(v, piece(&text[start..at])) };
+            if !unsafe { put::<STACK>(v, piece(&text[start..at])) } {
+                return false;
+            }
             start = at + 1;
             if v.len >= limit {
-                return;
+                return true;
             }
             mask &= mask - 1;
         }
@@ -2939,15 +3010,28 @@ unsafe fn split_bytes_once(
     for (j, &b) in tail.iter().enumerate() {
         if b == sep {
             // SAFETY: as above.
-            unsafe { push_str(v, piece(&text[start..base + j])) };
+            if !unsafe { put::<STACK>(v, piece(&text[start..base + j])) } {
+                return false;
+            }
             start = base + j + 1;
             if v.len >= limit {
-                return;
+                return true;
             }
         }
     }
     // SAFETY: as above; the list is not full, or the loops returned.
-    unsafe { push_str(v, piece(&text[start..])) };
+    unsafe { put::<STACK>(v, piece(&text[start..])) }
+}
+
+/// `push_str`, or with `STACK` (the list is a caller's fixed buffer) `false` when it is full.
+#[inline(always)]
+unsafe fn put<const STACK: bool>(v: &mut VecVal, p: StrVal) -> bool {
+    if STACK && v.len == v.cap {
+        return false;
+    }
+    // SAFETY: the list has room, or grows when it is not a fixed buffer.
+    unsafe { push_str(v, p) };
+    true
 }
 
 /// The state of `for piece in text.split(separator)` that does not build the list.
@@ -3503,6 +3587,51 @@ pub fn count_copy(kind: usize, bytes: usize) {
 mod tests {
     const NO_ERR: ms_rt_abi::ErrSlot = ms_rt_abi::ErrSlot(core::ptr::null_mut());
     use super::*;
+
+    #[test]
+    fn find_short_agrees_with_a_naive_search() {
+        let naive = |hay: &[u8], needle: &[u8]| {
+            (needle.len() <= hay.len())
+                .then(|| {
+                    (0..=hay.len() - needle.len()).find(|&i| hay[i..i + needle.len()] == *needle)
+                })
+                .flatten()
+        };
+        let alphabet = *b" /.a7P-";
+        // Every text up to five bytes and a set of needles over a small alphabet, plus longer
+        // texts built from a seed, so each pivot choice meets matches at every offset.
+        let mut texts: Vec<Vec<u8>> = vec![vec![]];
+        for len in 1..=5 {
+            let mut next = Vec::new();
+            for t in texts.iter().filter(|t| t.len() == len - 1) {
+                for &c in &alphabet {
+                    let mut u = t.clone();
+                    u.push(c);
+                    next.push(u);
+                }
+            }
+            texts.extend(next);
+        }
+        let mut seed = 7u32;
+        for _ in 0..2000 {
+            let len = 20 + (seed % 90) as usize;
+            let mut t = Vec::new();
+            for _ in 0..len {
+                seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
+                t.push(alphabet[(seed >> 16) as usize % alphabet.len()]);
+            }
+            texts.push(t);
+        }
+        let needles: Vec<&[u8]> = vec![
+            b" ", b"a", b"7", b"  ", b" a", b"a ", b" 7 ", b"/.", b"./a7", b" P-a", b"aaaa",
+            b" /.- ", b"7P-a7 /",
+        ];
+        for t in &texts {
+            for n in &needles {
+                assert_eq!(find_short(t, n), naive(t, n), "{t:?} {n:?}");
+            }
+        }
+    }
 
     #[test]
     fn from_scalars_covers_ascii_unicode_and_invalid_input() {

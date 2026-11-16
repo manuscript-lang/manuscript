@@ -1,6 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, join from "@std/bytes.ms",
-	ReadStream, Sink, Transform, WriteStream, through from "@std/io/io.ms",
+	ReadStream, WriteStream, through from "@std/io/io.ms",
 	StringBuilder from "@std/string_builder.ms",
 )
 
@@ -335,13 +337,13 @@ fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 // or EOF.
 type CsvRows:
 	options: CsvOptions
-	max_record_bytes: Int?
 	pending: List[Bytes]
 	pending_size: Int
 	quoted: Bool
 	// The longest complete record the last `boundary` call passed, without its line
 	// feed.
 	longest: Int
+	max_record_bytes: Int?
 
 // Offset just past the last line end outside quotes in `data`, or 0 when the block
 // holds none.

@@ -61,8 +61,6 @@ type Context:
 	lines: List[String]
 	final_break: Bool
 	index: Int
-	max_depth: Int?
-	max_values: Int?
 	values: Int
 	anchors: Map[String, YamlValue]
 	sizes: Map[String, Int]
@@ -76,6 +74,8 @@ type Context:
 	dash: List[Bool]
 	ind: List[Int]
 	col: List[Int]
+	max_depth: Int?
+	max_values: Int?
 	// Diagnostic projection for virtual lines; parsing continues to use the same bases.
 	// Prefixes declared by %TAG directives, keyed by handle (`!`, `!!`, `!name!`).
 	tag_handles: Map[String, String] = Map[String, String]()
@@ -827,7 +827,8 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 					count(var flow.context, child_depth)?
 
 				if cur(flow) == 33:
-					as_string = as_string or string_tag(tag_token(var flow)?)
+					tag := tag_token(var flow)?
+					as_string = as_string or string_tag(tag)
 					flow.context.values -= 1
 					continue
 
@@ -1471,6 +1472,11 @@ fn sequence(text: String) Bool:
 	if text.scalar_at(0, default: 0) != 45: return false
 	return (text == "-" or text.starts_with("- ") or text.starts_with("-\t"))
 
+// Whether `text` opens an explicit mapping key: `?` alone or followed by a blank.
+fn explicit_key(text: String) Bool:
+	if text.scalar_at(0, default: 0) != 63: return false
+	return (text == "?" or text.starts_with("? ") or text.starts_with("?\t"))
+
 // A flow collection or quoted scalar can continue across physical lines.
 fn complete(text: String) Bool:
 	if not quoted_or_nested(text): return true
@@ -1849,7 +1855,8 @@ fn block_value(
 			advance(var flow)
 			anchor = anchor_name(var flow)?
 		else:
-			as_string = as_string or string_tag(tag_token(var flow)?)
+			tag := tag_token(var flow)?
+			as_string = as_string or string_tag(tag)
 			tagged = true
 
 		previous_length := remainder.scalar_length()
@@ -2003,7 +2010,11 @@ fn sequence_items(
 
 			line = context.lines[context.index].clone()
 			item = blank_trim_start(line.slice(line_indent + 1, line.length()).get(""))
-			compact = context.col[context.index] >= 0 or sequence(item)
+			compact = (
+				context.col[context.index] >= 0
+				or sequence(item)
+				or explicit_key(item)
+			)
 		else:
 			line = uncomment(context.lines[context.index])
 			line_indent = indentation(context, line)?
@@ -2016,7 +2027,11 @@ fn sequence_items(
 					(blank_trim_start(line).length()),
 				).get("")
 			)
-			compact = sequence(item) or boundary(item, colon: true) >= 0
+			compact = (
+				sequence(item)
+				or explicit_key(item)
+				or boundary(item, colon: true) >= 0
+			)
 
 			// A tab cannot indent a nested sequence: `-<tab>- x` is invalid.
 			after := blank_trim_start(line).slice(
