@@ -101,13 +101,14 @@ pub fn current_task() -> u64 {
     unsafe { msrt_task_current() }
 }
 
-/// Starts a detached task running `entry(arg)`; it first runs when the caller parks.
+/// Starts a detached task running `entry(arg)` and returns its handle; it first runs when the
+/// caller parks.
 ///
 /// # Safety
 /// `arg` must be valid for `entry`, which owns it.
-pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) {
+pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> u64 {
     // SAFETY: `entry` and `arg` follow the task ABI; ownership of `arg` moves to the task.
-    unsafe { msrt_task_spawn(entry, arg, 1, 0) };
+    unsafe { msrt_task_spawn(entry, arg, 1, 0) }
 }
 
 /// Request bit for [`wait_fd`]: keep the registration between waits (the runtime's `WAIT_KEEP`).
@@ -188,24 +189,21 @@ pub fn acknowledge_cancel() {
     ms_rt::fault::acknowledge_cancel()
 }
 
-/// Starts `entry(arg)` as a promise task on this thread and returns its id. `entry` owns `arg`.
-/// A fault or cancellation in it ends only that promise; [`promise_drop`] releases it.
-///
-/// # Safety
-/// `arg` must be valid for `entry`, which owns it.
-pub unsafe fn promise_start(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> i64 {
-    // SAFETY: forwarded contract.
-    unsafe { ms_rt::promise::start_native(entry, arg) }
-}
-
-/// Asks the promise `id` to stop at its next wait.
-pub fn promise_cancel(id: i64) {
-    ms_rt::promise::cancel(id)
-}
-
-/// Cancels the promise `id` if unfinished, joins its task, and frees it.
-pub fn promise_drop(id: i64) {
-    ms_rt::promise::msrt_promise_drop(id)
+/// Runs `call` as an isolated request: a fault or stop request inside it runs the cleanups
+/// registered since entry and returns `false` instead of ending the process.
+pub fn guarded(mut call: impl FnMut()) -> bool {
+    unsafe extern "C-unwind" fn run(data: *mut u8) {
+        // SAFETY: `data` is the `&mut dyn FnMut()` below, live for the guard call.
+        unsafe { (*data.cast::<&mut dyn FnMut()>())() };
+    }
+    let mut dynamic: &mut dyn FnMut() = &mut call;
+    let mut message = ms_rt_abi::StrVal::literal(std::ptr::null_mut(), 0);
+    // SAFETY: `run` and its data outlive the call; `message` is written only on a fault.
+    let status =
+        unsafe { ms_rt::fault::msrt_guard_call(run, (&raw mut dynamic).cast(), &raw mut message) };
+    // SAFETY: the guard hands over an owned message on a fault, released once.
+    unsafe { ms_rt::string::release_opt(&message) };
+    status == 0
 }
 
 /// A runtime park token (`msrt_token_*`) posted from the runtime thread; freed on drop.
