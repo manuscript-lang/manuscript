@@ -171,3 +171,26 @@ The watcher looks every 2 ms and every 100 µs for 0.1 s after a thread was held
 | 1 ms | 260 to 271 | 300 to 327 | 0.69 to 0.72 / 1.34 to 1.47 / 3.4 to 3.7 ms |
 
 Findings: a single interval cannot keep the slow-mix p50 and p90 and the CPU at once, so the two modes stay (Chinmay: keep the previous latencies). The idle burst is what changed: a sleep that ended a rest left 100 looks (102 voluntary switches in an idle second, 2.5 to 2.9 ms CPU); now 20 looks (about 22 switches, 0.4 to 0.7 ms).
+
+## Results, 2026-11-16, all four servers after the day's changes, same 4 vCPU Linux VM
+
+`main` at 14a2a830. Servers alternated, three rounds, ranges shown; load generator on the same machine. Earlier sections were measured in other sessions, so compare rows of this table only with each other.
+
+| Scenario | Manuscript | Go | Node | C |
+| --- | --- | --- | --- | --- |
+| 5% of requests burn 5 ms, 2000 req/s: p50 | 0.62 to 0.64 ms | 0.70 to 0.73 ms | 1.9 to 2.0 ms | 0.72 to 0.77 ms |
+| same: p99 | 2.7 to 3.5 ms | 3.0 to 3.6 ms | 9.7 to 10.6 ms | 5.3 to 5.7 ms |
+| same: p99.9 | 4.7 to 6.8 ms | 5.2 to 5.9 ms | 15 to 18 ms | 8.0 to 9.0 ms |
+| Fast handlers, 4000 req/s, 64 conns: p50 | 0.69 ms | 0.67 to 0.69 ms | 0.71 to 0.72 ms | 0.67 to 0.69 ms |
+| same: p99 | 2.4 to 2.8 ms | 2.0 to 2.8 ms | 2.8 to 3.3 ms | 2.1 to 2.8 ms |
+| same: p99.9 | 4.5 to 8.6 ms | 4.3 to 6.0 ms | 6.2 to 8.0 ms | 4.4 to 8.3 ms |
+| 1 in 20 responses is 120 KB, 2000 req/s: p99 | 1.9 to 2.7 ms | 2.3 to 2.6 ms | 3.0 to 3.3 ms | 1.9 to 2.6 ms |
+| same: p99.9 | 4.4 to 5.5 ms | 5.6 to 10.0 ms | 5.7 to 6.5 ms | 4.5 to 7.3 ms |
+| 1000 conns, 6000 req/s: p50 | 0.63 to 0.64 ms | 0.49 to 0.53 ms | 0.65 to 0.67 ms | 0.65 to 0.66 ms |
+| same: p99 | 2.0 to 2.4 ms | 2.3 to 2.9 ms | 2.7 to 3.4 ms | 2.0 to 2.6 ms |
+| same: p99.9 | 3.4 to 4.6 ms | 4.3 to 25 ms | 6.0 to 10.3 ms | 3.8 to 5.2 ms |
+| CPU for 88,000 fast requests | 4.9 s | 10.3 to 10.9 s | 6.4 to 6.6 s | 2.4 to 2.6 s |
+| Peak memory | 6.8 MB | 14.5 MB | 68 MB | 2.2 MB |
+| Closed loop, 64 conns | 132k to 139k req/s | 46k to 50k | 19k to 26k | 170k to 180k |
+
+Findings: Manuscript is at or ahead of Go and Node on every row except the 1000-connection p50, where Go is lower (not explained). The C floor (which parses only the request line and sends no `Date`) still uses about half the CPU and a third of the memory and serves about 30% more requests per second. A first pass earlier the same day on a14f74a7 (before the header and poll path changes) gave 4.5 s CPU and 113k to 126k closed loop for Manuscript, with C at 2.2 to 2.4 s and 162k to 183k, so the CPU figure moves by about 10% between sessions on this machine; the per-request instruction counts in `bench/perf/counts.txt` are the stable measure (six-header request 23,965 to 15,824; C about 2,474).
