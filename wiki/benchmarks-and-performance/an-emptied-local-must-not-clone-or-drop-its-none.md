@@ -10,3 +10,9 @@ Method for finding gaps like this: write the same program in C or C++, count ins
 ## CSV by cell: `each_cell`
 
 `String.view(start, end)` takes byte offsets (with a character-boundary check), so a byte-offset reader can hand out views. A function cannot return a view ("cannot return a view of `self`"), and a `List[String]` cannot hold one, so `parse` has to copy; `csv.each_cell(text, f)` instead passes each cell to `f(row, col, cell)` as a view argument. `csvgroup` on the suite input went from 1.83G to 1.15G instructions (checked C 0.53G). What is left: three runtime `index_of_byte` calls per cell (20%) and the callback body. Borrowed returns from a receiver (`proposals/borrowed-results.md`) would make `rows[i][3]` possible without copies; that is Chinmay's language decision.
+
+## A borrowed-key insert appends once
+
+`update`, `add` and `add_default` with a borrowed key (`m.update(k.clone(), ...)` read in place) used to copy the key to a temporary, then call `upsert_k`, which hashed and probed again before appending. The miss path now appends directly (`append_entry`): one hash, one probe, the key copied once into its slot. `dedupe` (999,874 distinct lines) went from 1.75G to 0.84G instructions together with reading the first field as `line.index_of(" ")` and a `view`, which is what the C port does (checked C 0.65G); guard `mapinsert` 138.2M to 102.8M. `line.split(" ", 2)[0].clone()` still builds a list per line: lending `split` is the track-2 language decision in `proposals/c-parity-structure.md`.
+
+Profiling `@std` code: callgrind reports its sources as `<cwd>/@std/...`. Run `ln -s stdlib @std` in the repository root (do not commit it) and `callgrind_annotate --auto=yes` shows per-line costs for stdlib functions.
