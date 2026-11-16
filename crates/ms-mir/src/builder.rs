@@ -319,6 +319,11 @@ impl<'m> FuncBuilder<'m> {
 
     // Types and alternatives.
 
+    /// `clone` of a borrowed value: an owned copy.
+    pub fn clone_value(&mut self, v: Value) -> Value {
+        let t = self.ty(v);
+        self.val(Op::Clone, &[v], Imm::None, t)
+    }
     /// `type.new`.
     pub fn type_new(&mut self, r: TypeId, fields: &[Value]) -> Value {
         let t = self.m.types.named(r);

@@ -30,6 +30,7 @@ impl Module {
             entry: None,
             desc_glue: Vec::new(),
             drop_glue: Default::default(),
+            clone_glue: Default::default(),
             c_externs: std::collections::BTreeSet::new(),
         }
     }
@@ -317,6 +318,16 @@ impl Module {
     }
 
     /// The types whose values a drop of `ty` drops.
+    /// The function the module made for glue `kind` of `ty`, when it did (see [`crate::glue::run`]).
+    pub fn made_glue(&self, kind: crate::glue::Glue, ty: Ty) -> Option<FuncId> {
+        let table = match kind {
+            crate::glue::Glue::Drop => &self.drop_glue,
+            crate::glue::Glue::Clone => &self.clone_glue,
+            _ => return None,
+        };
+        table.get(&ty.unscoped()).copied()
+    }
+
     pub(crate) fn drop_children(&self, ty: Ty) -> Vec<Ty> {
         use crate::types::Native;
         match self.types.kind(ty) {
