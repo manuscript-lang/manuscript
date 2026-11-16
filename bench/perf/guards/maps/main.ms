@@ -1,4 +1,5 @@
-// Guard: map lookups reuse one probe, and contains, any and all fuse over strings and records.
+// Guard: map lookups reuse one probe, and contains, any and all fuse over strings and
+// records.
 type Row:
 	id: Int
 	name: String
@@ -12,7 +13,6 @@ fn main() Void:
 		rows.append(Row(i, f"name{i % 311}"))
 
 	var hits = 0
-
 	for i in 0..20000:
 		if counts.contains(i): hits += 1
 

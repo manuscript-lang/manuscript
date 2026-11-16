@@ -1,4 +1,5 @@
-// Guard: Ed25519 and P-256 sign, verify and key agreement keep their precomputed tables (#4178).
+// Guard: Ed25519 and P-256 sign, verify and key agreement keep their precomputed tables
+// (#4178).
 import (
 	Curve,
 	HashAlgorithm,
@@ -9,8 +10,8 @@ import (
 	public_key,
 	public_key_der,
 	sign,
-	verify from "@std/crypto/crypto.ms"
-)
+	verify
+) from "@std/crypto/crypto.ms"
 
 fn main() Void!:
 	seed := "0123456789abcdef0123456789abcdef".to_bytes()

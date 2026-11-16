@@ -8,4 +8,6 @@ fn main() Void!:
 
 	re := compile("func\\s+\\w+\\(")?
 	word := compile("[A-Za-z_]+[0-9]+")?
-	print(f"{(re.find_all(text, none)?).length()} {(word.find_all(text, none)?).length()} {(re.replace_all(text, "fn(", none)?).length()}")
+	print(
+		f"{(re.find_all(text, none)?).length()} {(word.find_all(text, none)?).length()} {(re.replace_all(text, "fn(", none)?).length()}"
+	)

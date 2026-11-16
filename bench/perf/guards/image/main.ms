@@ -5,8 +5,8 @@ import (
 	decode_image,
 	encode_image,
 	encode_jpeg,
-	new_image from "@std/image/image.ms"
-)
+	new_image
+) from "@std/image/image.ms"
 
 fn main() Void!:
 	w := 128
@@ -22,4 +22,6 @@ fn main() Void!:
 
 	png := encode_image(img, ImageFormat.Png)?
 	jpg := encode_jpeg(img)?
-	print(f"{png.length()} {jpg.length()} {(decode_image(png)?).width} {(decode_image(jpg)?).width}")
+	print(
+		f"{png.length()} {jpg.length()} {(decode_image(png)?).width} {(decode_image(jpg)?).width}"
+	)
