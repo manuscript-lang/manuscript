@@ -16,12 +16,20 @@ use ms_cli::engine::Engine;
 /// Stack pages are committed on use, so a large reservation is cheap.
 const COMPILER_STACK: usize = 512 << 20;
 
+/// The compiler allocates many small short-lived blocks; the runtime's size-class allocator serves
+/// them faster than libc's. Only the compiler thread claims a heap; others use the system's.
+#[global_allocator]
+static HEAP: ms_rt::alloc::StdHeap = ms_rt::alloc::StdHeap;
+
 fn main() {
     let syms = ms_syntax::Names::global();
     let worker = std::thread::Builder::new()
         .name("ms".into())
         .stack_size(COMPILER_STACK)
-        .spawn(move || real_main(syms));
+        .spawn(move || {
+            ms_rt::alloc::claim_heap();
+            real_main(syms)
+        });
     let status = match worker {
         Ok(handle) => handle.join().unwrap_or(70),
         Err(_) => real_main(syms),
