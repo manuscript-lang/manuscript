@@ -628,9 +628,44 @@ fn compare(b: &mut FuncBuilder<'_>) {
     let r = b.call_rt(ext, &[x, y]);
     b.ret(Some(r));
     b.switch_to(scan);
+    // Eight bytes at a time while a whole word remains in both strings; the first differing word
+    // is decided by its lowest differing byte (little endian). The rest goes byte by byte.
+    let (whead, wbody, wdiff, wstep) = (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+    let w = b.add_block_param(whead, MTy::INT, Mode::Borrow);
     let i = b.add_block_param(head, MTy::INT, Mode::Borrow);
     let zero = b.iconst(0);
-    b.br(head, &[zero]);
+    b.br(whead, &[zero]);
+    b.switch_to(whead);
+    let end = int(b, Op::IAdd, w, 8);
+    let room = b.icmp(Cc::Le, end, n);
+    b.br_if(room, wbody, &[], head, &[w]);
+    b.seal_block(wbody);
+    b.switch_to(wbody);
+    let word = |b: &mut FuncBuilder<'_>, p: Value| {
+        let at = b
+            .emit(Op::PtrAdd, &[p, w], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        b.emit(Op::PtrLoadU, &[at], Imm::Int(8), Some(MTy::INT))
+            .expect("ptr.loadu")
+    };
+    let (xw, yw) = (word(b, xd), word(b, yd));
+    let diff = b.binop(Op::Xor, xw, yw);
+    let zero_w = b.iconst(0);
+    let alike = b.icmp(Cc::Eq, diff, zero_w);
+    b.br_if(alike, wstep, &[], wdiff, &[]);
+    b.seal_block(wstep);
+    b.seal_block(wdiff);
+    b.switch_to(wdiff);
+    let low = b.unop(Op::Ctz, diff);
+    let shift = int(b, Op::And, low, -8);
+    let (xs, ys) = (b.binop(Op::Ushr, xw, shift), b.binop(Op::Ushr, yw, shift));
+    let (xb, yb) = (int(b, Op::And, xs, 255), int(b, Op::And, ys, 255));
+    let less = b.icmp(Cc::Lt, xb, yb);
+    let r = b.select(less, minus, plus);
+    b.ret(Some(r));
+    b.switch_to(wstep);
+    b.br(whead, &[end]);
+    b.seal_block(whead);
     b.switch_to(head);
     let more = b.icmp(Cc::Lt, i, n);
     b.br_if(more, body, &[], tail, &[]);
