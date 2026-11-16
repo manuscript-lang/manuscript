@@ -491,7 +491,10 @@ fn takes_from_slot(m: &Module, callee: FuncId, memo: &mut HashMap<FuncId, bool>)
     let mut nones: BTreeSet<u32> = BTreeSet::new();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
         let copy = inst.op == Op::Clone && inst.args.first().is_some_and(|a| nones.contains(&a.0));
-        if let Some(r) = inst.res.filter(|_| inst.op == Op::OptNone || copy) {
+        if let Some(r) = inst
+            .res
+            .filter(|_| matches!(inst.op, Op::OptNone | Op::OptNoneOwned) || copy)
+        {
             nones.insert(r.0);
         }
     }

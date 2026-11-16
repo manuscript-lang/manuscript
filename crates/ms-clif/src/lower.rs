@@ -1158,6 +1158,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::OptView
             | Op::OptViewAt
             | Op::OptNone
+            | Op::OptNoneOwned
             | Op::OptIsSome
             | Op::OptGet
             | Op::OptUnwrap

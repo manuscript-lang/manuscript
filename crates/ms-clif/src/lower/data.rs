@@ -267,7 +267,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     out
                 }
             }
-            Op::OptNone => {
+            Op::OptNone | Op::OptNoneOwned => {
                 let ty = res_ty.expect("opt.none result");
                 self.zeros(ty)
             }
