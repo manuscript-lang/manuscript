@@ -70,6 +70,9 @@ impl Interp<'_> {
                 ops.set((**d).clone());
             }
 
+            Op::IfaceTag | Op::IfaceDestroy => {
+                return Err(Raw::internal("iface.tag and iface.destroy are native only"));
+            }
             _ => unreachable!("closures_and_interfaces is only called for its own ops"),
         }
         Ok(Flow::Next)

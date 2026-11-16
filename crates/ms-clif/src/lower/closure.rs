@@ -71,6 +71,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![v[0], self.b.ins().bor_imm_s(vt, IFACE_TAG_VIEW)]
             }
             Op::IfaceData => vec![self.a(inst, 0)[0]],
+            Op::IfaceTag => {
+                let vt = self.a(inst, 0)[1];
+                vec![self.b.ins().band_imm_s(vt, IFACE_TAG_MASK)]
+            }
+            Op::IfaceDestroy => {
+                // The payload destructor is slot 0 of the vtable the word points at.
+                let v = self.a(inst, 0);
+                let f = self.b.ins().load(types::I64, flags(), v[1], 0);
+                let mut sig = self.g.module.make_signature();
+                sig.params.push(ir::AbiParam::new(types::I64));
+                let sr = self.b.import_signature(sig);
+                self.b.ins().call_indirect(sr, f, &[v[0]]);
+                vec![]
+            }
             Op::IfaceIs => {
                 let Imm::Vtable(vt) = inst.imm else {
                     unreachable!()

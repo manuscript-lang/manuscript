@@ -8,7 +8,7 @@
 
 ## Status
 
-Stage 1 implemented, `6e26a40c`: conformance 4036 pass, guard counts equal to main (`guard-splitbuf` 78.05M vs 78.05M, `guard-splitfirst` 39.15M vs 39.15M). Stage 2 is a plan.
+Stages 1 and 2 implemented, `6e26a40c`: conformance 4036 pass, guard counts equal to main (`guard-splitbuf` 78.05M vs 78.05M, `guard-splitfirst` 39.15M vs 39.15M). Stage 2 is a plan.
 
 ## Problem
 
@@ -42,10 +42,11 @@ Stage 1 implemented, `6e26a40c`: conformance 4036 pass, guard counts equal to ma
 ## Stages
 
 1. This PR: twins declared and read, name checks deleted; guard counts equal or better.
-2. Group the per-call fast paths (below), after this lands.
+2. Group the per-call fast paths (below); counts identical.
 
-## Per-call fast paths (stage 2 plan)
+## Per-call fast paths (stage 2, implemented in the stacked PR)
 
-- Today four places hand-pick a generated MIR fast path by name or role: `inline_probe` (`rtinline.rs`: `read_word`, `index_of_byte`, `view`, `bytes_view`, map probes), `inline_str` (`rtstr.rs`: `parse_int`, `contains`, `compare`, `starts_with`, `ends_with`, `scalar_at`, `scalar_step`), `opt/appendfast.rs` (role `StringAppend`) and `eq_lit` (`eq.rs`).
-- Each builds one `inline(always)` helper with a runtime fallback and caches it. They differ only in who looks it up.
-- Plan: one table from runtime symbol to generator, consulted in one place (`call_runtime`), with `appendfast` joining it; the cache key and fallback convention are shared. Not done in this PR: moving the helpers is a mechanical but large diff, and it must not change generated code (guard counts identical).
+- Review of the group: `inline_probe` (`rtinline.rs`: `read_word`, `index_of_byte`, `view`, `bytes_view`, map probes), `inline_str` (`rtstr.rs`: `parse_int`, `contains`, `compare`, `starts_with`, `ends_with`, `scalar_at`, `scalar_step`) and `opt/appendfast.rs` each repeated the same lines: build an internal `inline(always)` function, look it up by `HelperKey`, cache it. `eq_lit` is a MIR operation planned once in MIR (#4296), not a generated function, so it stays.
+- Change: `FuncBuilder::fast_path` (`ms-mir`) is the one constructor, used by all seven helpers and by `appendfast`; `fast_path_cached`/`fast_path_add` are the one cache; `str_fast` is the table for string symbols and `inline_probe` the only dispatch (the second `inline_str` match is gone).
+- Evidence: generated code is unchanged (`guard-strcmp`, `guard-append`, `guard-findshort`, `guard-splitbuf` and `strings` counts identical before and after); about 60 lines fewer.
+- Not done: moving the probes into the MIR pipeline as a pass. The lowering decides by symbol and operand shape (a literal needle, an operand count), which the MIR already has, but the move changes where those decisions run and needs its own measurement.

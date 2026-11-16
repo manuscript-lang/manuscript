@@ -43,3 +43,7 @@ Against `e0fab5d0` on a generated 1,000-module project (a record and an enum per
 ## Stage 4: slot and block glue
 
 The functions that descriptors and interface vtables point at are made in MIR too: slot drop (`take`, `drop`), slot copy (`load`, `clone`, `put`) and the interface payload block drop and clone (the clone allocates with `msrt_alloc`). They are keyed in `Module::addr_glue`. The pass finds the descriptor types by walking `typedesc` ops and each descriptor's inner types, using the same `statics::descriptor` plan the backends use, so the set matches. Generated debug build of the 1,000-module project: 15.2 to 15.9 s against 15.2 to 16.9 s on main (three runs each); the corpus passes 1460 of 1460 on both backends.
+
+## Stage 5: interface drop
+
+Two small ops, `iface.tag` (the ownership tag of the vtable word: 0 owns box and payload, 1 only the box, 2 nothing) and `iface.destroy` (runs the payload destructor in vtable slot 0), let the interface drop be written in MIR: destroy when the tag is 0, free the box when it is 1. Both backends lower the two ops; the interpreter reports them as native only. Corpus 1460 of 1460 on both backends.
