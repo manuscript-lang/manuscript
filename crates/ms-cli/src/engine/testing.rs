@@ -1590,7 +1590,8 @@ mod tests {
     #[cfg(unix)]
     const NAMES: [&str; 4] = ["a::pass", "b::fail", "c::crash", "d::hang"];
 
-    /// A shell script that speaks the test harness's record protocol; each test is its own file.
+    /// A shell script that speaks the test harness's record protocol (a record, then a ring on the
+    /// doorbell, as the harness does); each test is its own file.
     #[cfg(unix)]
     fn script(dir: &std::path::Path) -> std::path::PathBuf {
         use std::os::unix::fs::PermissionsExt;
@@ -1600,13 +1601,14 @@ r="$MS_TEST_RESULTS"
 IFS=,
 for i in $MS_TEST_SELECT; do
   printf '\001MSSTART %s %s\n' "$i" "$i" >> "$r"
+  echo > /dev/fd/$MS_TEST_WAKE
   case $i in
   0) printf '\001MSOUT 0 16\nhello from pass\n\n' >> "$r"; echo note >&2
-     printf '\001MSTEST 0 pass 1000\001\001\n' >> "$r";;
-  1) printf '\001MSTEST 1 fail 1000\001boom\001src/a.ms:3:4\n' >> "$r";;
+     printf '\001MSTEST 0 pass 1000\001\001\n' >> "$r"; echo > /dev/fd/$MS_TEST_WAKE;;
+  1) printf '\001MSTEST 1 fail 1000\001boom\001src/a.ms:3:4\n' >> "$r"; echo > /dev/fd/$MS_TEST_WAKE;;
   2) ulimit -c 0; kill -SEGV $$;;
   3) sleep 30;;
-  4) printf '\001MSTEST 4 skip 1000\001not today\001\n' >> "$r";;
+  4) printf '\001MSTEST 4 skip 1000\001not today\001\n' >> "$r"; echo > /dev/fd/$MS_TEST_WAKE;;
   esac
 done
 "#;
