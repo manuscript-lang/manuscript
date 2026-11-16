@@ -36,9 +36,6 @@ const INPUT_HOLD: usize = 256 * 1024;
 /// Request bodies the server skips to reuse a connection.
 pub const DRAIN_LIMIT: usize = 256 * 1024;
 /// Time to receive the peer's FIN after half-closing an HTTP/1 rejection response.
-/// Ticks the shortest timeout is divided into.
-const TICKS_PER_TIMEOUT: u32 = 8;
-
 const REJECTION_DRAIN: Duration = Duration::from_millis(500);
 
 /// Server limits; `UNLIMITED` means none.
@@ -130,11 +127,11 @@ pub(super) struct ConnSt {
     pub drain_after: bool,
     pub flush_pending: bool,
     pub eof: bool,
-    /// A fixed time the connection is closed at (only the drain of a rejected request).
     pub deadline: Option<Instant>,
-    /// The sweep generation the connection's timeout runs from, see [`Reactor::stamp`].
-    pub stamp: Option<u32>,
-    /// The stamp bounds an idle wait for the next request, not a request in progress.
+    /// The connection's timeout has started but has no time yet: the reactor sets `deadline` at its
+    /// next clock read, see [`Reactor::start_timeout`].
+    pub pending: bool,
+    /// The deadline bounds an idle wait for the next request, not a request in progress.
     pub idle_deadline: bool,
     pub interest: Ev,
     pub registered: bool,
@@ -202,21 +199,10 @@ pub struct Reactor {
     wall_secs: Cell<i64>,
     /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
     next_sweep: Cell<Option<Instant>>,
-    /// Counts sweep ticks; a connection's timeout is a number of ticks since its stamp.
-    generation: Cell<u32>,
-    /// The time between ticks (an eighth of the shortest timeout that armed them).
-    tick_every: Cell<Option<Duration>>,
-    /// When the next tick is due; none while no connection has a timeout.
-    next_tick: Cell<Option<Instant>>,
+    /// Connections whose timeout started since the last clock read (by token).
+    pending: RefCell<Vec<u64>>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
-}
-
-/// A fixed instant standing for "this connection has a timeout" where the connection hand-off
-/// (`steal::Member::park`) carries an `Option<Instant>`; its value is never read.
-fn timed_marker() -> Instant {
-    static MARK: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
-    *MARK.get_or_init(Instant::now)
 }
 
 /// The wall clock in whole seconds since the epoch.
@@ -252,9 +238,7 @@ impl Reactor {
                 date: RefCell::new((0, String::new())),
                 wall_secs: Cell::new(wall_secs()),
                 next_sweep: Cell::new(None),
-                generation: Cell::new(0),
-                tick_every: Cell::new(None),
-                next_tick: Cell::new(None),
+                pending: RefCell::new(Vec::new()),
                 beat,
             });
             *slot = Some(reactor.clone());
@@ -262,58 +246,40 @@ impl Reactor {
         })
     }
 
-    /// What a connection stores when its timeout starts: the current generation, or none when the
-    /// server has no timeout. The tick clock starts here if it is not running (one clock read
-    /// per start of the clock, not per request); later stamps read none.
-    ///
-    /// A timeout of `t` closes the connection after `t.div_ceil(tick) + 1` ticks: never before
-    /// `t`, and at most one tick and a tick of sweep delay after it. With the tick at an eighth
-    /// of `t` that is within 12.5 percent. A server whose timeout is shorter than the running
-    /// tick still waits at least `t`, rounded up to a tick.
-    fn stamp(&self, timeout: Option<Duration>) -> Option<u32> {
-        let timeout = timeout?;
-        if self.next_tick.get().is_none() {
-            let every = (timeout / TICKS_PER_TIMEOUT).max(Duration::from_millis(1));
-            self.tick_every.set(Some(every));
-            self.next_tick.set(Some(Instant::now() + every));
-            // A parked reactor computed its timeout without the tick.
-            self.poller.kick();
+    /// Starts the timeout of a connection without reading the clock: the connection is marked and
+    /// the reactor sets its deadline at its next clock read, which is after this call, so the
+    /// deadline is never early; it is late by at most the time to that read.
+    fn start_timeout(&self, st: &mut ConnSt, token: u64, timeout: Option<Duration>) {
+        st.deadline = None;
+        st.pending = timeout.is_some();
+        if st.pending {
+            self.pending.borrow_mut().push(token);
         }
-        Some(self.generation.get())
     }
 
-    /// Whether a connection stamped by `stamp` under `timeout` has waited it out.
-    fn expired(&self, stamp: Option<u32>, timeout: Option<Duration>) -> bool {
-        let (Some(stamp), Some(timeout), Some(every)) = (stamp, timeout, self.tick_every.get())
-        else {
-            return false;
-        };
-        let ticks = timeout.as_nanos().div_ceil(every.as_nanos().max(1)) as u32 + 1;
-        self.generation.get().wrapping_sub(stamp) >= ticks
-    }
-
-    /// Advances the generation for every tick that has passed and sweeps; the tick clock stops
-    /// when no connection is left.
-    fn tick(&self, now: Instant) {
-        let (Some(at), Some(every)) = (self.next_tick.get(), self.tick_every.get()) else {
-            return;
-        };
-        if now < at {
-            return;
-        }
-        let passed = 1 + (now - at).as_nanos() / every.as_nanos().max(1);
-        self.generation
-            .set(self.generation.get().wrapping_add(passed as u32));
-        self.next_tick.set(Some(at + every * passed as u32));
-        self.sweep_timeouts();
-        let any = self
-            .targets
-            .borrow()
-            .values()
-            .any(|t| matches!(t, Target::Conn(_)));
-        if !any {
-            self.next_tick.set(None);
-            self.tick_every.set(None);
+    /// Sets the deadline of every connection whose timeout started since the last read.
+    fn resolve_pending(&self, now: Instant) {
+        let tokens = std::mem::take(&mut *self.pending.borrow_mut());
+        for token in tokens {
+            let conn = match self.targets.borrow().get(&token) {
+                Some(Target::Conn(c)) => c.upgrade(),
+                _ => None,
+            };
+            let Some(conn) = conn else { continue };
+            let Some(timeout) = conn.server.upgrade().and_then(|s| s.limits.timeout) else {
+                continue;
+            };
+            let mut st = conn.st.borrow_mut();
+            if !st.pending {
+                continue;
+            }
+            st.pending = false;
+            let at = now + timeout;
+            st.deadline = Some(at);
+            // The caller parks next and computes its wait from `next_sweep`: no kick.
+            if self.next_sweep.get().is_none_or(|n| at < n) {
+                self.next_sweep.set(Some(at));
+            }
         }
     }
 
@@ -535,20 +501,19 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
             return;
         }
         drain.set(reactor.drains());
-        // One clock read per turn, and only while a timeout is running.
-        let now = (reactor.next_tick.get().is_some() || reactor.next_sweep.get().is_some())
+        // The turn's only monotonic read, and only while a timeout runs or has just started:
+        // before the sleep, so every started timeout is armed first.
+        let now = (!reactor.pending.borrow().is_empty() || reactor.next_sweep.get().is_some())
             .then(Instant::now);
         if let Some(now) = now {
-            reactor.tick(now);
+            reactor.resolve_pending(now);
+            if reactor.next_sweep.get().is_some_and(|at| at <= now) {
+                reactor.sweep_timeouts(now);
+            }
         }
-        let timeout = [reactor.next_sweep.get(), reactor.next_tick.get()]
-            .into_iter()
-            .flatten()
-            .min()
-            .zip(now)
-            .map_or(-1, |(at, now)| {
-                at.saturating_duration_since(now).as_nanos() as i64
-            });
+        let timeout = reactor.next_sweep.get().zip(now).map_or(-1, |(at, now)| {
+            at.saturating_duration_since(now).as_nanos() as i64
+        });
         let got = reactor.poller.park(timeout);
         if got & 16 != 0 {
             return;
@@ -646,9 +611,6 @@ impl Reactor {
             // same reason as in the loop over the events.
             rt::yield_now();
         }
-        if self.next_sweep.get().is_some_and(|at| at <= Instant::now()) {
-            self.sweep_timeouts();
-        }
     }
 }
 
@@ -664,8 +626,7 @@ impl Reactor {
     }
 
     /// Closes connections whose read or write deadline passed.
-    fn sweep_timeouts(&self) {
-        let now = Instant::now();
+    fn sweep_timeouts(&self, now: Instant) {
         let mut next: Option<Instant> = None;
         let mut note = |at: Option<Instant>| {
             if let Some(at) = at
@@ -702,11 +663,7 @@ impl Reactor {
             })
             .filter(|c| {
                 let st = c.st.borrow();
-                if matches!(st.phase, Phase::Busy) {
-                    return false;
-                }
-                let timeout = c.server.upgrade().and_then(|s| s.limits.timeout);
-                st.deadline.is_some_and(|d| d <= now) || self.expired(st.stamp, timeout)
+                !matches!(st.phase, Phase::Busy) && st.deadline.is_some_and(|d| d <= now)
             })
             .collect();
         for conn in expired {
@@ -1080,11 +1037,18 @@ impl Server {
     }
 
     fn add_conn(&self, sock: socket2::Socket, reactor: &Reactor) {
-        self.add_conn_until(sock, reactor, self.limits.timeout.is_some());
+        self.add_conn_until(sock, reactor, None, self.limits.timeout.is_some());
     }
 
-    /// Serves `sock`, whose wait for its first request is bounded by the timeout if `timed`.
-    fn add_conn_until(&self, sock: socket2::Socket, reactor: &Reactor, timed: bool) {
+    /// Serves `sock`, whose wait for its first request ends at `deadline`, or after the timeout
+    /// from the reactor's next clock read if `timed`.
+    fn add_conn_until(
+        &self,
+        sock: socket2::Socket,
+        reactor: &Reactor,
+        deadline: Option<Instant>,
+        timed: bool,
+    ) {
         let token = reactor.token();
         let (io, tls_pending, phase) = match &self.tls {
             None => (
@@ -1120,8 +1084,8 @@ impl Server {
                 drain_after: false,
                 flush_pending: false,
                 eof: false,
-                deadline: None,
-                stamp: timed.then(|| reactor.stamp(self.limits.timeout)).flatten(),
+                deadline,
+                pending: false,
                 idle_deadline: false,
                 interest: Ev::IN,
                 registered: false,
@@ -1135,18 +1099,22 @@ impl Server {
             // A fresh plain connection is idle until its first byte; the timeout bounds that
             // wait too, so silent connections cannot pin file descriptors.
             if self.tls.is_none() {
-                st.idle_deadline = st.stamp.is_some();
+                st.idle_deadline = timed || st.deadline.is_some();
             }
             if !reactor.add(st.fd(), token, Ev::IN) {
                 return;
             }
             st.registered = true;
+            reactor.note_deadline(st.deadline);
         }
         reactor
             .targets
             .borrow_mut()
             .insert(token, Target::Conn(Rc::downgrade(&conn)));
         self.st.borrow_mut().conns.insert(token, conn.clone());
+        if timed {
+            reactor.start_timeout(&mut conn.st.borrow_mut(), token, self.limits.timeout);
+        }
         if let Some(member) = &self.member {
             member.count(1);
         }
@@ -1183,11 +1151,14 @@ impl Server {
             && st.registered
             && st.io.is_some();
         if waits {
-            st.waiting = member.park(
-                conn.token,
-                crate::sys::raw(st.fd()),
-                st.stamp.map(|_| timed_marker()),
-            );
+            // The hand-off to another thread carries a real deadline, so the timeout that
+            // started without a time gets it now (one clock read, only with a timeout).
+            if st.pending {
+                st.pending = false;
+                st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                Reactor::get().note_deadline(st.deadline);
+            }
+            st.waiting = member.park(conn.token, crate::sys::raw(st.fd()), st.deadline);
         }
     }
 
@@ -1249,7 +1220,7 @@ impl Server {
                 return;
             }
             for taken in order.from.take(order.limit, order.ready_only) {
-                self.add_conn_until(taken.sock, reactor, taken.deadline.is_some());
+                self.add_conn_until(taken.sock, reactor, taken.deadline, false);
             }
         }
     }
@@ -1274,7 +1245,7 @@ impl Server {
                     st.io = Some(Rc::new(tls));
                 }
                 st.deadline = None;
-                st.stamp = None;
+                st.pending = false;
                 if h2 {
                     reactor.note_deadline(Some(Instant::now() + Duration::from_millis(50)));
                     st.phase = Phase::H2;
@@ -1503,9 +1474,9 @@ impl Server {
         if idle_head && !eof {
             {
                 let mut st = conn.st.borrow_mut();
-                if st.deadline.is_none() && st.stamp.is_none() {
-                    st.stamp = reactor.stamp(self.limits.timeout);
-                    st.idle_deadline = st.stamp.is_some();
+                if st.deadline.is_none() && !st.pending {
+                    reactor.start_timeout(&mut st, conn.token, self.limits.timeout);
+                    st.idle_deadline = st.pending;
                 }
             }
             self.list_waiting(conn);
@@ -1586,7 +1557,7 @@ impl Server {
                 st.inbuf = Vec::new();
                 st.pos = 0;
                 st.phase = Phase::Draining;
-                st.stamp = None;
+                st.pending = false;
                 st.deadline = Some(Instant::now() + REJECTION_DRAIN);
                 reactor.note_deadline(st.deadline);
                 true
@@ -1641,8 +1612,8 @@ impl Server {
             }
             match h1::parse_request(st.unread(), self.limits.header.min(1 << 30)) {
                 Parsed::Partial => {
-                    if (st.deadline.is_none() && st.stamp.is_none()) || st.idle_deadline {
-                        st.stamp = reactor.stamp(self.limits.timeout);
+                    if (st.deadline.is_none() && !st.pending) || st.idle_deadline {
+                        reactor.start_timeout(&mut st, conn.token, self.limits.timeout);
                         st.idle_deadline = false;
                     }
                     return false;
@@ -1650,7 +1621,7 @@ impl Server {
                 Parsed::Complete(head) => {
                     st.consume(head.length);
                     st.deadline = None;
-                    st.stamp = None;
+                    st.pending = false;
                     st.idle_deadline = false;
                     Ok(head)
                 }
@@ -1759,7 +1730,7 @@ impl Server {
         {
             let mut st = conn.st.borrow_mut();
             st.deadline = None;
-            st.stamp = None;
+            st.pending = false;
             st.phase = Phase::Queued(pending);
         }
         // Stop reading while the request waits; the handler owns the stream next.
@@ -1792,7 +1763,7 @@ impl Server {
             st.phase = Phase::Writing;
             st.close_after = st.close_after || close;
             st.deadline = None;
-            st.stamp = None;
+            st.pending = false;
         }
         self.write_out(conn, reactor);
     }
@@ -2256,10 +2227,10 @@ pub(crate) mod tests {
         );
     }
 
-    /// An idle connection closes after the timeout and not much later: the tick is an eighth of
-    /// it, so nominally within 12.5 percent; the upper bound leaves room for a busy machine.
+    /// An idle connection closes after the timeout, and soon after it: the deadline is set at the
+    /// reactor's next clock read, so it is late only by that read; the margin is for a busy machine.
     #[test]
-    fn idle_timeout_closes_between_the_timeout_and_a_quarter_after() {
+    fn idle_timeout_closes_at_the_timeout() {
         let timeout = Duration::from_millis(800);
         let (_net, server) = start(opts(Limits {
             timeout: Some(timeout),
@@ -2281,7 +2252,10 @@ pub(crate) mod tests {
             began.elapsed()
         });
         assert!(waited >= timeout, "closed early: {waited:?}");
-        assert!(waited <= timeout * 2, "closed late: {waited:?}");
+        assert!(
+            waited <= timeout + Duration::from_millis(400),
+            "closed late: {waited:?}"
+        );
     }
 
     /// A request whose head arrives in pieces, each within the timeout of the last first byte,
