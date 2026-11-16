@@ -5,7 +5,7 @@ import (
 )
 
 fn handle(request: HttpRequest) HttpResponse:
-	return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
+	return HttpResponse(200, "hello {request.path}".to_bytes())
 
 export fn main() Int:
 	serve := network().serve

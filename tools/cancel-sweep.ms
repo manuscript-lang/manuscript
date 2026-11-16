@@ -31,6 +31,7 @@ type Counted:
 	parks: Int
 	heap: Int
 	live: Int
+	failed: Bool
 
 // The tests of one `ms test` run with the parks they made and the blocks left live:
 // each test prints RUN before it starts, then the runtime prints both counts as it
@@ -40,12 +41,15 @@ fn counted(text: String) List[Counted]:
 	var name = ""
 	var parks = 0
 	var heap = 0
+	var failed = false
 
 	for line in text.split("\n"):
 		if line.starts_with("RUN "):
 			name = line.slice(4, line.length()).get("")
 			parks = 0
 			heap = 0
+			failed = false
+		else if line.starts_with("FAIL "): failed = true
 		else if line.starts_with("ms-rt parks: "):
 			parks = line.slice(13, line.length()).get("").trim().parse_int().get(0)
 		else if line.starts_with("ms-rt rust heap at exit: blocks="):
@@ -61,6 +65,7 @@ fn counted(text: String) List[Counted]:
 					parks: parks,
 					heap: heap,
 					live: live,
+					failed: failed,
 				)
 			)
 
@@ -139,7 +144,11 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 					var live = hit.live
 					var heap = hit.heap
 					var bad_live = not normal_live.contains(live)
-					var bad_heap = heap > ceiling
+
+					// A run the cancel made fail keeps its failure report on the Rust
+					// heap until exit (a dozen blocks), so only `live` judges such a
+					// run.
+					var bad_heap = heap > ceiling and not hit.failed
 					var tries = 0
 
 					while (bad_live or bad_heap) and tries < 2:
@@ -158,7 +167,7 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 							if not normal_live.contains(r.live): live = r.live
 							else: bad_live = false
 
-							if r.heap <= ceiling: bad_heap = false
+							if r.heap <= ceiling or r.failed: bad_heap = false
 							else if r.heap < heap: heap = r.heap
 
 						if not ran: break

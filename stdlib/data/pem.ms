@@ -20,10 +20,10 @@ Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a
 export type PemBlock:
 	// Text between `BEGIN ` and the closing dashes, such as `CERTIFICATE`.
 	label: String
-	// Header fields written before the body, in order; empty for modern PEM.
-	headers: Map[String, String] = Map[String, String]()
 	// Decoded body bytes; empty for a block with no body lines.
 	data: Bytes
+	// Header fields written before the body, in order; empty for modern PEM.
+	headers: Map[String, String] = Map[String, String]()
 
 BEGIN := "-----BEGIN "
 END := "-----END "

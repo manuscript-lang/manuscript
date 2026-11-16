@@ -9,11 +9,11 @@ fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/line":
         var input = lines(stdin())
         if step := input.next():
-            return HttpResponse(200, headers(), f"{step.get("eof")}\n".to_bytes())
+            return HttpResponse(200, f"{step.get("eof")}\n".to_bytes())
 
-        return HttpResponse(500, headers(), "read failed\n".to_bytes())
+        return HttpResponse(500, "read failed\n".to_bytes())
 
-    return HttpResponse(200, headers(), "ok\n".to_bytes())
+    return HttpResponse(200, "ok\n".to_bytes())
 
 export fn main() Int:
     if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):

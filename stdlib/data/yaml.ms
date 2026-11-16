@@ -97,9 +97,9 @@ type Flow:
 	codes: List[Int]
 	pos: Int
 	line: Int
-	column: Int = 1
 	context: Context
 	delimited: Bool
+	column: Int = 1
 	// Scalar offsets where stripped comments terminate an already-started plain leaf.
 	stops: List[Int] = []
 	next_stop: Int = 0

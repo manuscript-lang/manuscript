@@ -244,6 +244,15 @@ impl H2Conn {
         alive.then(|| self.core.send_data(id, data, false))
     }
 
+    /// The earliest deadline of a stream still collecting its request.
+    pub(super) fn next_deadline(&self) -> Option<Instant> {
+        self.streams
+            .values()
+            .filter(|s| s.stage == Stage::Collecting)
+            .filter_map(|s| s.deadline)
+            .min()
+    }
+
     /// Resets the streams that waited too long for the rest of their request.
     fn expire(&mut self, now: Instant) -> bool {
         let late: Vec<u32> = self
@@ -489,9 +498,15 @@ impl Server {
             return;
         }
         let timeout = self.limits.timeout;
-        with_h2(conn, |h| {
-            h.streams.insert(id, H2Stream::new(end_stream, timeout));
-        });
+        let deadline = with_h2(conn, |h| {
+            let stream = H2Stream::new(end_stream, timeout);
+            let deadline = stream.deadline;
+            h.streams.insert(id, stream);
+            deadline
+        })
+        .flatten();
+        // The stream's own deadline wakes the reactor; no periodic look is needed.
+        reactor.note_deadline(deadline);
         let head = match self.h2_head(headers) {
             Ok(head) => head,
             Err((status, message)) => {

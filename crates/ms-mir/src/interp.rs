@@ -280,6 +280,8 @@ impl<'m> Interp<'m> {
         it.register("msrt_print_str", print);
         // The oracle frees at exit, so a leak shows as a drop count that differs.
         it.register("msrt_exit_frees", |_, _| Ok(Val::Bool(true)));
+        it.register("msrt_shield_enter", |_, _| Ok(Val::Void));
+        it.register("msrt_shield_exit", |_, _| Ok(Val::Void));
         it
     }
 
@@ -604,6 +606,7 @@ impl<'m> Interp<'m> {
             Op::ListNew
             | Op::ListLit
             | Op::ListConst
+            | Op::ListConstView
             | Op::ListLen
             | Op::ListGet
             | Op::ListGetNn

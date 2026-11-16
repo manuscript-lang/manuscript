@@ -827,6 +827,8 @@ fn analyze(
     hoisted: &[BTreeSet<u32>],
 ) -> Walk {
     let plain = plain_blocks(f, cx, holes);
+    let hole_in = hole_owners(f);
+    let defs = field_defs(f);
     let mut entry: Vec<Option<OwnerSet>> = vec![None; f.blocks.len()];
     // Per block: the instruction run `first..=last` to cover and the values to register for it.
     let mut plans: Vec<Vec<Window>> = vec![Vec::new(); f.blocks.len()];
@@ -862,6 +864,11 @@ fn analyze(
         // window's own registrations sit above the ones it removes, so the window stays as it
         // is.
         let mut opened_by_discard = false;
+        // The owners with a field moved out and not yet filled back: they are half empty, so
+        // no registration covers them, while the other live values stay covered.
+        let mut holed: Vec<u32> = hole_in[bi].0.iter().copied().collect();
+        // Whether a moved-out owner is not known by name.
+        let mut unnamed = hole_in[bi].1;
         for (k, inst) in blk.insts.iter().enumerate() {
             let discards =
                 matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if e == cx.discard);
@@ -904,11 +911,20 @@ fn analyze(
                     events[bi].push((k, target));
                 }
             }
-            if open > 0 || matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
+            let mut under = live.clone();
+            if open > 0 {
+                if unnamed {
+                    under = OwnerSet::new();
+                }
+                for h in &holed {
+                    under.remove(*h);
+                }
+            }
+            if matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
                 // A window across a hole would drop a half-emptied owner, and one across a
                 // scope open or close would discard an entry that is not its own.
                 reach = None;
-            } else if (!live.is_empty() || reach.is_some())
+            } else if (!under.is_empty() || reach.is_some())
                 && (exits_at(m, cx, inst)
                     // Dropping a closure, interface value or handle can run a close that faults.
                     || (inst.op == Op::Drop
@@ -917,7 +933,7 @@ fn analyze(
                         && k + 1 == blk.insts.len()
                         && matches!(blk.term, Term::Unreachable)))
             {
-                let drops = cover(&live);
+                let drops = cover(&under);
                 match (&mut reach, plans[bi].last_mut()) {
                     (Some(set), Some(w)) if *set == drops => w.last = k,
                     // The live owners changed: the window follows them, so a value that died is
@@ -943,7 +959,21 @@ fn analyze(
                     }
                 }
             }
+            let before = open;
             open = hole_step(open, inst.op, blk.insts.get(k + 1).map(|i| i.op));
+            if open > before {
+                // The owner behind the moved-out projection.
+                let base = hole_base(&defs, inst);
+                match base {
+                    Some(b) => holed.push(b),
+                    None => unnamed = true,
+                }
+                reach = None;
+            }
+            if open == 0 {
+                holed.clear();
+                unnamed = false;
+            }
             if inst.op == Op::Put
                 && inst
                     .args
@@ -2477,4 +2507,73 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
         }
     }
     true
+}
+
+/// The owner each projection value (`type.get`, `alt.get`) was read from.
+fn field_defs(f: &Func) -> BTreeMap<u32, u32> {
+    let mut defs = BTreeMap::new();
+    for blk in &f.blocks {
+        for inst in &blk.insts {
+            if let (Op::TypeGet | Op::AltGet, Some(r), Some(a)) =
+                (inst.op, inst.res, inst.args.first())
+            {
+                defs.insert(r.0, a.0);
+            }
+        }
+    }
+    defs
+}
+
+/// The owner a move-out empties, when it is a projection of one.
+fn hole_base(defs: &BTreeMap<u32, u32>, inst: &Inst) -> Option<u32> {
+    inst.args.first().and_then(|a| defs.get(&a.0).copied())
+}
+
+/// At the start of each block: the owners named by the moves-out still open, and whether some
+/// open one is not named (so no live value may be covered).
+fn hole_owners(f: &Func) -> Vec<(BTreeSet<u32>, bool, u32)> {
+    let defs = field_defs(f);
+    let mut at: Vec<(BTreeSet<u32>, bool, u32)> = vec![(BTreeSet::new(), false, 0); f.blocks.len()];
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for b in f.rpo() {
+            let (mut named, mut unnamed, _) = at[b.index()].clone();
+            let mut open = at[b.index()].2;
+            let insts = &f.blocks[b.index()].insts;
+            for (k, inst) in insts.iter().enumerate() {
+                let before = open;
+                open = hole_step(open, inst.op, insts.get(k + 1).map(|i| i.op));
+                if open > before {
+                    match hole_base(&defs, inst) {
+                        Some(base) => {
+                            named.insert(base);
+                        }
+                        None => unnamed = true,
+                    }
+                }
+                if open == 0 {
+                    named.clear();
+                    unnamed = false;
+                }
+            }
+            let mut targets = Vec::new();
+            f.blocks[b.index()]
+                .term
+                .for_each_target(|t| targets.push(t.block));
+            for t in targets {
+                let slot = &mut at[t.index()];
+                let grew = named.iter().any(|n| !slot.0.contains(n))
+                    || (unnamed && !slot.1)
+                    || open > slot.2;
+                if grew {
+                    slot.0.extend(named.iter().copied());
+                    slot.1 |= unnamed;
+                    slot.2 = slot.2.max(open);
+                    changed = true;
+                }
+            }
+        }
+    }
+    at
 }

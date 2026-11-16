@@ -1642,53 +1642,6 @@ fn run_deferred(id: i64, deadline: Option<i64>) -> bool {
     true
 }
 
-/// A closure that calls a native entry with the argument it owns.
-#[repr(C)]
-struct Native {
-    closure: ms_rt_abi::Closure,
-    entry: unsafe extern "C-unwind" fn(*mut u8),
-    arg: *mut u8,
-}
-
-/// Whether `closure` is the work of [`start_native`]: a runtime task, started from runtime frames
-/// that name no source line, so a fault report gains nothing from walking its starter's stack.
-pub(crate) fn is_native_work(closure: *const ms_rt_abi::Closure) -> bool {
-    // SAFETY: a live closure object.
-    unsafe { (*closure).code == native_code as *const u8 }
-}
-
-unsafe extern "C-unwind" fn native_code(closure: *mut ms_rt_abi::Closure) {
-    // SAFETY: the task runs the `Native` that `start_native` built, which stays live meanwhile.
-    unsafe {
-        let n = closure.cast::<Native>();
-        ((*n).entry)((*n).arg);
-    }
-}
-
-unsafe extern "C" fn native_drop(obj: *mut ms_rt_abi::Obj) {
-    // SAFETY: the object owns its allocation; the entry took the argument.
-    unsafe { alloc::free(obj.cast()) };
-}
-
-/// Starts `entry(arg)` as a promise task on this thread (never placed elsewhere) and returns the
-/// promise. `entry` owns `arg` and completes nothing: the promise just ends when it returns. A
-/// fault or cancellation ends only this promise. Release it with `msrt_promise_drop` once done.
-///
-/// # Safety
-/// `arg` must be valid for `entry`, which owns it.
-pub unsafe fn start_native(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> i64 {
-    let id = msrt_promise_new();
-    // SAFETY: a fresh object with no captures to drop, handed over to the promise for the task.
-    unsafe {
-        let n = crate::obj::new_obj(size_of::<Native>(), None, native_drop).cast::<Native>();
-        (*n).closure.code = native_code as *const u8;
-        (*n).entry = entry;
-        (*n).arg = arg;
-        start_on(id, n.cast(), Mode::Here);
-    }
-    id
-}
-
 /// Whether the work of promise `id` is over, so [`msrt_promise_drop`] returns at once. Unlike
 /// `msrt_promise_done` it never lets other tasks run. An id that no longer exists reads as over.
 pub fn work_over(id: i64) -> bool {
@@ -2396,6 +2349,44 @@ mod tests {
         }
         msrt_promise_drop(id);
         task::teardown();
+    }
+
+    /// A closure that calls a native entry with the argument it owns.
+    #[repr(C)]
+    struct Native {
+        closure: ms_rt_abi::Closure,
+        entry: unsafe extern "C-unwind" fn(*mut u8),
+        arg: *mut u8,
+    }
+
+    unsafe extern "C-unwind" fn native_code(closure: *mut ms_rt_abi::Closure) {
+        // SAFETY: the task runs the `Native` that `start_native` built, which stays live meanwhile.
+        unsafe {
+            let n = closure.cast::<Native>();
+            ((*n).entry)((*n).arg);
+        }
+    }
+
+    unsafe extern "C" fn native_drop(obj: *mut ms_rt_abi::Obj) {
+        // SAFETY: the object owns its allocation; the entry took the argument.
+        unsafe { alloc::free(obj.cast()) };
+    }
+
+    /// Starts `entry(arg)` as a promise task on this thread: the promise ends when it returns.
+    ///
+    /// # Safety
+    /// `arg` must be valid for `entry`, which owns it.
+    unsafe fn start_native(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> i64 {
+        let id = msrt_promise_new();
+        // SAFETY: a fresh object with no captures to drop, handed over to the promise for the task.
+        unsafe {
+            let n = crate::obj::new_obj(size_of::<Native>(), None, native_drop).cast::<Native>();
+            (*n).closure.code = native_code as *const u8;
+            (*n).entry = entry;
+            (*n).arg = arg;
+            start_on(id, n.cast(), Mode::Here);
+        }
+        id
     }
 
     unsafe extern "C-unwind" fn nap(arg: *mut u8) {

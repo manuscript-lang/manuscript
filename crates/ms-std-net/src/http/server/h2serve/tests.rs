@@ -862,3 +862,32 @@ fn a_reset_stream_cancels_its_running_handler() {
     assert!(HANG_CANCELLED.load(std::sync::atomic::Ordering::SeqCst));
     assert_eq!(after.status, "200");
 }
+
+#[test]
+fn a_stream_that_never_finishes_its_request_is_answered_at_the_timeout() {
+    let short = Limits {
+        timeout: Some(Duration::from_millis(300)),
+        ..limits()
+    };
+    let (_net, server) = start(Box::new(Buffered(App)), short);
+    let addr = server.address().to_string();
+    let (outcome, elapsed) = with_client(move || {
+        let mut c = Client::connect(&addr, big_window());
+        // The headers arrive, the body never ends, and nothing else keeps the server awake.
+        let id = c
+            .core
+            .open_stream(request("POST", "/hello", &[]), false)
+            .unwrap();
+        let started = Instant::now();
+        (c.outcome(id), started.elapsed())
+    });
+    let answered = match outcome {
+        Ok(r) => r.status == "504" || r.status == "408",
+        Err(code) => code == error_code::CANCEL,
+    };
+    assert!(answered, "unexpected outcome");
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "answered after {elapsed:?}"
+    );
+}

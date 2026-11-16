@@ -196,9 +196,6 @@ pub(crate) struct FnLower<'a> {
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
-    /// The name an assignment is rewriting while its value is lowered: `s = s + piece` keeps a
-    /// plain concatenation of `s`, which the runtime grows in place.
-    pub assigning: Option<ct::Name>,
     /// This instance is the borrowed-signature adapter of a function that moves a parameter.
     pub adapter: bool,
     /// The scrutinee `hold` just evaluated is a declared read (see `boundary_reads`).
@@ -810,7 +807,6 @@ impl<'a> FnLower<'a> {
             scalar_locals: HashMap::default(),
             entry_locals: HashMap::default(),
             in_thunk: false,
-            assigning: None,
             adapter: false,
             hold_declared: false,
             boundary_reads: Default::default(),
@@ -907,7 +903,7 @@ impl<'a> FnLower<'a> {
             && !self.views.contains(&x.v)
             && !matches!(
                 self.b.defining_op_anywhere(x.v),
-                Some(Op::StrLit | Op::BytesLit | Op::OptNone)
+                Some(Op::StrLit | Op::BytesLit | Op::ListConstView | Op::OptNone)
             )
         {
             let at = std::panic::Location::caller();

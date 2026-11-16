@@ -360,6 +360,12 @@ impl<'a> FnLower<'a> {
     /// The raw register value of a constant scalar element (an integer, float, or boolean
     /// literal, optionally negated), or `None` when `e` is anything else.
     pub(crate) fn const_scalar(&self, e: &Expr) -> Option<i64> {
+        self.const_scalar_as(e, &self.ety(e))
+    }
+
+    /// `const_scalar` for an element whose type is `t`, which is not `e`'s type in this module
+    /// when `e` is an item of another module's constant.
+    fn const_scalar_as(&self, e: &Expr, t: &ct::Ty) -> Option<i64> {
         let (text, negate) = match &e.kind {
             ExprKind::Bool(b) => return Some(i64::from(*b)),
             ExprKind::Number(text) => (self.syms.str(text), false),
@@ -372,7 +378,6 @@ impl<'a> FnLower<'a> {
             },
             _ => return None,
         };
-        let t = self.ety(e);
         match self.syms.str(t.id) {
             "Int" | "Int8" | "Int16" | "Int32" | "Int64" | "UInt8" | "UInt16" | "UInt32" => {
                 let n = parse_int(text)?;
@@ -380,7 +385,7 @@ impl<'a> FnLower<'a> {
             }
             "UInt64" => Some(u64::try_from(parse_int(text)?).ok()? as i64),
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = if ct::float_bits(&t) == Some(32) {
+                let f: f64 = if ct::float_bits(t) == Some(32) {
                     ms_check::api::number::float32(text)?
                 } else {
                     ms_check::api::number::canonical(text).parse().ok()?
@@ -390,6 +395,38 @@ impl<'a> FnLower<'a> {
             }
             _ => None,
         }
+    }
+
+    /// A reference to a constant list of scalars, borrowed from static data. Each use of a
+    /// constant evaluates its initializer afresh, which for a list is an allocation and a copy
+    /// that a read (`table[i]`, `len`, `for`) never needed. The view is not owned, so a use that
+    /// keeps or changes the list clones it, as for any borrowed value, and a fresh list is what
+    /// that use sees.
+    fn constant_view(&mut self, e: &Expr, sym: &ct::SymRef) -> Result<Option<Val>, Error> {
+        let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
+        let Some(d) = c.func.decl.constant() else {
+            return Ok(None);
+        };
+        let ExprKind::List(items) = &d.value.kind else {
+            return Ok(None);
+        };
+        let t = self.ety(e);
+        if items.is_empty() || !t.is(Builtin::List) {
+            return Ok(None);
+        }
+        let Some(data) = items
+            .iter()
+            .map(|it| self.const_scalar_as(it, &t.args[0]))
+            .collect::<Option<Vec<i64>>>()
+        else {
+            return Ok(None);
+        };
+        let lt = self.emty(e)?;
+        let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
+            return Ok(None);
+        };
+        let v = self.b.list_const_view(elem, data);
+        Ok(Some(Val { v, own: false }))
     }
 
     /// A long literal of constants is static data copied into a fresh list. Building it element
@@ -476,7 +513,10 @@ impl<'a> FnLower<'a> {
                 self.moved_closer(b.uid, e);
                 self.fit_function_value(e, x)
             }
-            Resolution::Constant(_) => self.call_expr(e),
+            Resolution::Constant(sym) => match self.constant_view(e, &sym)? {
+                Some(v) => Ok(v),
+                None => self.call_expr(e),
+            },
             Resolution::Constructor { ty, case } => self.construct_unit(e, &ty, case),
             Resolution::Function(sym) if sym.native == ct::Native::Source => {
                 self.function_value(e, &sym)

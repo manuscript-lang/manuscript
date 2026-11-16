@@ -136,7 +136,7 @@ impl Interp<'_> {
                 let v = Val::List(Rc::new(self.take_args(f, ops.regs, &inst.args)));
                 ops.set(v)
             }
-            Op::ListConst => {
+            Op::ListConst | Op::ListConstView => {
                 let elem = inst.res.and_then(|r| self.m.list_elem(f.ty(r)));
                 let kind = elem.map(|e| self.m.types.kind(e).clone());
                 let items = self.m.list_consts[imm_int(inst.imm) as usize]

@@ -4,6 +4,7 @@
 
 Perf and agent benchmarks, profiling.
 
+- [A cloned `none` that is only dropped is deleted](an-emptied-local-must-not-clone-or-drop-its-none.md): a stored-to `Result` variable cloned and dropped its emptied slot every pass (48.2M to 5.3M instructions).
 - [Runtime string results are built in place, not through a `Vec`](runtime-string-results-are-built-in-place-not-through-a-vec.md): inline `starts_with`/`ends_with`, one-allocation `lower`/`upper`/`reverse`, an exact `parse_float` fast path, Schubfach float digits, exact `to_fixed`, byte-loop `fields` (lower 40 to 22 ms, reverse 66 to 14, `to_string` 167 to 61 per million).
 - [Sorting records that own data uses the generated sort over bitwise scratch](sorting-owning-records-uses-bitwise-scratch.md): inlined comparator for `String`-holding records, 225M to 102M instructions, then 82M with the driftsort; scratch owns nothing so a comparator fault is safe.
 - [User `hash()` values are mixed before they index a table](user-hash-values-are-mixed-before-indexing.md): identity-like hashes of small-int records clustered under linear probing (562 to 103 ms for 1M `Set[Pt]` operations).
@@ -36,12 +37,13 @@ Perf and agent benchmarks, profiling.
 - [The general suite covers many kinds of program, against Rust, Go and Node](the-general-suite-covers-programs-not-one-engineering-set.md): `bench/perf/suite/` replaces `engineering/`; first run found gaps in string `+=`, small promises, linked-list cursors and directory walks, not in compute.
 - [Callgrind needs a smaller allocator reservation](callgrind-needs-a-smaller-allocator-reservation.md): the 256 GiB reservation fails under valgrind, so profiles show glibc `malloc` costs the real run never pays.
 - [A crypto dependency needs its fast feature checked with callgrind](a-crypto-dependency-needs-its-fast-feature-checked-with-callgrind.md): `ed25519-dalek` without `fast` ran variable-base multiplies; enabling it took Ed25519 to Go's speed (525 to 290 ms); P-256 tables 1050 to 650 ms, still 3.5x Go; regex without `std` lost its SIMD prefilter (180 to 105 ms).
+- [A close that inlines to nothing needs no cancellation shield](a-close-that-inlines-to-nothing-needs-no-shield.md): `simplify` drops an empty `shield_enter`/`shield_exit` pair; a scope-end close fell from 152 to 66 instructions.
 - [A promise that runs here wakes its waiter locally](a-promise-that-runs-here-wakes-its-waiter-locally.md): `Placement.Here` waiters use a local token, so a lone task's file reads stay inline (treegrep 90 to 33 ms).
 - [A split of a short record scans words once and sizes its list once](split-of-a-short-record-scans-words-once.md): list for up to eight pieces, one-pass word scan up to 128 bytes (pargroup 940M to 780M instructions, then 873M to 803M on current main).
 - [A temporary `stdout()` stream must not flush on close](a-temporary-stdout-stream-must-not-flush-on-close.md): per-write flush cost one syscall per output line and halved program speed through a pipe.
 - [A returned `Map.get` is a borrow, not a copy](a-returned-map-get-is-a-borrow-not-a-copy.md): `JsonValue.get` stops deep-copying; callers that mutate the map need `.clone()`.
 - [A read-modify-write is one API, not a syntactic pattern](a-read-modify-write-is-one-api-not-a-syntactic-pattern.md): `Map.update` is one lookup via the inlined word probe; the `get(k).get(d)` matcher was deleted (7.6 vs 10.1 vs 13.9 ms).
-- [An accumulator append must not fuse into the join](an-accumulator-append-must-not-fuse-into-the-join.md): `s += f"item-{i},"` fused `s` into one `string_fmtN` and copied the prefix every iteration; leave it to `append_in_place`, 14 s to 8 ms.
+- [A join onto a dying string grows it in place](a-join-onto-a-dying-string-grows-it-in-place.md): `s += f"item-{i},"` joins `s` with the pieces at lowering; `append_in_place` picks the growing twin, so nothing is copied or built twice.
 - [String fusion must not treat other-block drops as early](string-fusion-must-not-treat-other-block-drops-as-early.md): a leaf dropped on a sibling path is not dropped before the join; `Info::dropped_before` uses reachability, c36 -6.8% instructions.
 
 - [URL parent resolution truncates existing prefixes](url-parent-resolution-truncates-existing-prefixes.md): avoid quadratic prefix copies while preserving root and slash semantics; measure ordinary relative-reference controls.
@@ -55,3 +57,4 @@ Perf and agent benchmarks, profiling.
 - [Cranelift branches that pick a value need selects](cranelift-branches-that-pick-a-value-need-selects.md): emit `select` when both edges join one block; Cranelift never if-converts.
 - [A Manuscript HTML parser matches Rust with Int tables and a flat tree](a-ms-html-parser-matches-rust-with-int-tables-and-a-flat-tree.md): atoms, Int `match` tables and a flat tree keep a Manuscript parser at Rust speed.
 - [Generic list search and the priority queue lose on instructions per element](generic-list-search-and-heap-gaps-are-per-element-instruction-counts.md): `List[String].index_of` 54 instructions per element against Rust's 17, `PriorityQueue` 2x `BinaryHeap` instructions; the cheap tweaks gained under 10% and a real fix is an inline compare or a move primitive.
+- [Count a request in instructions, with a heap that maps under valgrind](count-a-request-in-instructions-with-a-heap-that-maps-under-valgrind.md): shrink the allocator reservation locally, use one thread, divide by requests; flat profile means layering cost.

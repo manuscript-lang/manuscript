@@ -683,9 +683,7 @@ pub(crate) unsafe fn spawn_promise_task(
         (*t).promise = promise;
         (*t).capture = capture;
         (*t).stolen_at = stolen_at;
-        if !crate::promise::is_native_work(closure) {
-            (*t).started_by = fault::capture_frames();
-        }
+        (*t).started_by = fault::capture_frames();
         h
     }
 }

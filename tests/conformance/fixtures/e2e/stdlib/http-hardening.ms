@@ -122,12 +122,12 @@ test "serve answers requests while handlers read and write files":
 	fn io_route(request: HttpRequest) HttpResponse:
 		path := f"{root}/slot{request.query}.bin"
 		wrote := write_file(path, payload.clone(), replace: true).wait()
-		if wrote.is_error(): return HttpResponse(500, headers(), "write".to_bytes())
+		if wrote.is_error(): return HttpResponse(500, "write".to_bytes())
 
 		read := read_file(path).wait()
-		if read.is_error(): return HttpResponse(500, headers(), "read".to_bytes())
+		if read.is_error(): return HttpResponse(500, "read".to_bytes())
 
-		return HttpResponse(200, headers(), f"{read.get().length()}".to_bytes())
+		return HttpResponse(200, f"{read.get().length()}".to_bytes())
 
 	var server = serve(address: "127.0.0.1:0", handler: buffered(io_route)) | expect_ok?
 	var a = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
