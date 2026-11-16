@@ -272,10 +272,11 @@ runs:
       run: |
         set -euo pipefail
         # The same checks as `make bench-check` and the type-check half of `make agent-bench-check`
-        # (the oracle needs agent tooling), on the debug binary built above.
+        # (the oracle needs agent tooling), on the debug binary built above. Every top-level agent
+        # program is checked: the challenge generators are reached through `gen.ms`.
         ms="$PWD/target/debug/ms"
         for t in $(find bench/perf -name ms.toml | sort); do (cd "$(dirname "$t")" && "$ms" check ms.toml); done
-        for t in bench/tools/*.ms bench/agent/run.ms; do "$ms" check "$t"; done
+        for t in bench/tools/*.ms bench/agent/*.ms; do "$ms" check "$t"; done
         for t in bench/tools/*_test.ms bench/agent/core_test.ms; do "$ms" test "$t"; done
     - name: Package and run the distribution on a hello project
       if: env.GATES == 'true'
