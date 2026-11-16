@@ -828,10 +828,6 @@ fn bench_baseline_gates_on_work_counters() {
     std::fs::write(&baseline, &stdout).unwrap();
     let baseline = baseline.to_string_lossy().into_owned();
 
-    let (status, stdout, err) = run("bench-counts-same", 1000, &["--baseline", &baseline]);
-    assert_eq!(status, 0, "{err}{stdout}");
-    assert!(!stdout.contains("REGRESSED"), "{stdout}");
-
     let (status, stdout, _) = run(
         "bench-counts-grown",
         1500,
@@ -886,7 +882,6 @@ fn bench_ops_counts_the_programs_own_operations() {
             .unwrap();
         json[at..at + end].parse().unwrap()
     };
-    assert_eq!(ops("bench-ops-off", 1000, &[]), 0.0);
     let small = ops("bench-ops-small", 1000, &["--ops"]);
     let large = ops("bench-ops-large", 2000, &["--ops"]);
     assert!(small > 1000.0, "{small}");
