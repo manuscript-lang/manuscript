@@ -79,7 +79,8 @@ struct H2Stream {
     reset: bool,
     stage: Stage,
     out: Option<Outgoing>,
-    started: Instant,
+    /// When the stream began, on `rt::monotonic_ns`.
+    started: i64,
     deadline: Option<Instant>,
     /// The task running the stream's handler (`0`: none).
     task: u64,
@@ -91,7 +92,7 @@ struct H2Stream {
 
 impl H2Stream {
     fn new(remote_done: bool, timeout: Option<Duration>) -> H2Stream {
-        let started = Instant::now();
+        let now = Instant::now();
         H2Stream {
             head: None,
             body: Vec::new(),
@@ -99,8 +100,8 @@ impl H2Stream {
             reset: false,
             stage: Stage::Collecting,
             out: None,
-            started,
-            deadline: timeout.map(|t| started + t),
+            started: crate::rt::monotonic_ns(),
+            deadline: timeout.map(|t| now + t),
             task: 0,
             declared: None,
             received: 0,
@@ -171,7 +172,7 @@ impl H2Conn {
         self.streams.is_empty() && self.core.open_streams() == 0
     }
 
-    fn take_next(&mut self) -> Option<(u32, Head, Instant)> {
+    fn take_next(&mut self) -> Option<(u32, Head, i64)> {
         while let Some(id) = self.queue.pop_front() {
             let Some(s) = self.streams.get_mut(&id) else {
                 continue;
@@ -773,14 +774,17 @@ fn response_head(
 // ----------------------------------------------------------------- exchanges
 
 /// Runs the streaming handler for a queued stream.
-fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started: Instant) {
+fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started: i64) {
     let Some(server_rc) = server.rc() else { return };
     with_h2(conn, |h| {
         if let Some(s) = h.streams.get_mut(&id) {
             s.task = crate::rt::current_task();
         }
     });
-    let timeout = server.limits.timeout;
+    let deadline = server
+        .limits
+        .timeout
+        .map(|t| super::super::exchange::deadline_at(started, t));
     let exchange = Rc::new(Exchange {
         server: server_rc,
         conn: conn.clone(),
@@ -811,14 +815,14 @@ fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started:
             upgraded: false,
             rejected: false,
             websocket: None,
-            deadline: timeout.map(|t| started + t),
+            deadline,
             h2: Some(id),
         }),
     });
-    crate::rt::limit_current_until(timeout.map(|t| started + t));
+    crate::rt::limit_current_at(deadline);
     let outcome = server.dispatch.streaming(exchange.clone());
-    crate::rt::limit_current_until(None);
-    let late = timeout.is_some_and(|t| started.elapsed() > t);
+    crate::rt::limit_current_at(None);
+    let late = deadline.is_some_and(|at| crate::rt::monotonic_ns() > at);
     exchange.finish(outcome, late);
 }
 

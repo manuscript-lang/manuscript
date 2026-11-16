@@ -25,7 +25,8 @@ PROGRAMS := ["interp", "strings", "lz", "graph"]
 // counted as
 // `guard-<name>`.
 GUARDS := [
-	"crypto", "regex", "image", "chains", "maps", "cleanup", "resultvar", "csvcells"
+	"crypto", "regex", "image", "chains", "maps", "cleanup", "resultvar", "csvcells",
+	"mapinsert"
 ]
 COUNTS := "bench/perf/counts.txt"
 
