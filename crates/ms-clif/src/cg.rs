@@ -391,10 +391,8 @@ impl<'m> Gen<'m> {
         if let Some(id) = self.glue.get(&(kind, ty)) {
             return *id;
         }
-        // The module made this type's drop function itself.
-        if kind == Glue::Drop
-            && let Some(f) = self.m.drop_glue.get(&ty.unscoped())
-        {
+        // The module made this function itself.
+        if let Some(f) = self.m.made_glue(kind, ty) {
             return self.funcs[f.index()];
         }
         let leaves = self.lay.leaves(ty);

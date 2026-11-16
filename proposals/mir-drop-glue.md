@@ -1,4 +1,4 @@
-# Drop functions for records and enums are written in MIR
+# Drop and clone functions for records and enums are written in MIR
 
 ## Summary
 
@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the thread "Move language logic out of the backends into MIR". Clone functions, optionals, lists, interfaces, and types that contain themselves stay in the backends for now.
+Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the thread "Move language logic out of the backends into MIR". Clone functions follow in stage 2 (same pass, `Module::clone_glue`: clone every field, rebuild with `type.new` or `alt.new`). Optionals, lists, interfaces, and types that contain themselves stay in the backends for now.
 
 ## Problem
 

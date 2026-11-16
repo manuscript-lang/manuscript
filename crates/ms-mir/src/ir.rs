@@ -1118,6 +1118,8 @@ pub struct Module {
     /// The drop function of a type, made by [`crate::glue::run`] for the types whose drop is a
     /// plain walk of their fields: a backend calls it where it would otherwise write its own.
     pub drop_glue: HashMap<Ty, FuncId>,
+    /// The clone function of a type (`fn(&T) -> T`), made like [`Module::drop_glue`].
+    pub clone_glue: HashMap<Ty, FuncId>,
     /// Externs that are user `extern fn` shims (`ms_abi.h`): their sized numbers cross as the
     /// same-width C types, extended per the platform ABI, instead of the runtime's 64-bit words.
     pub c_externs: std::collections::BTreeSet<String>,

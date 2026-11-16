@@ -77,6 +77,8 @@ pub fn run(m: &mut Module) -> bool {
     for ty in lay_tys {
         let id = make_drop(m, ty);
         m.drop_glue.insert(ty, id);
+        let id = make_clone(m, ty);
+        m.clone_glue.insert(ty, id);
         made = true;
     }
     made
@@ -174,5 +176,64 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             b.finish()
         }
         _ => unreachable!("drop glue is made for records and alternatives"),
+    }
+}
+
+/// `fn(&T) -> T` for a record or an enum: every field is cloned and the value rebuilt, so a
+/// borrowing variant comes out as an ordinary owned value.
+fn make_clone(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.clone", m.clone_glue.len());
+    let params = vec![Param {
+        ty,
+        mode: Mode::Borrow,
+    }];
+    match m.types.kind(ty).clone() {
+        TyKind::Type(r) => {
+            let n = m.type_defs[r.index()].fields.len() as u32;
+            let mut b = FuncBuilder::new(m, &name, params, ty);
+            let p = b.params()[0];
+            let fields: Vec<_> = (0..n)
+                .map(|k| {
+                    let v = b.type_get(r, k, p);
+                    b.clone_value(v)
+                })
+                .collect();
+            let out = b.type_new(r, &fields);
+            b.ret(Some(out));
+            b.finish()
+        }
+        TyKind::Alt(a) => {
+            let cases: Vec<usize> = m.alts[a.index()]
+                .cases
+                .iter()
+                .map(|c| c.fields.len())
+                .collect();
+            let mut b = FuncBuilder::new(m, &name, params, ty);
+            let p = b.params()[0];
+            let tag = b.alt_tag(p);
+            let blocks: Vec<_> = cases.iter().map(|_| b.new_block()).collect();
+            let default = b.new_block();
+            let sw: Vec<(i64, _)> = blocks
+                .iter()
+                .enumerate()
+                .map(|(c, k)| (c as i64, *k))
+                .collect();
+            b.switch(tag, &sw, default);
+            for (c, (n, blk)) in cases.into_iter().zip(blocks).enumerate() {
+                b.switch_to(blk);
+                let fields: Vec<_> = (0..n as u32)
+                    .map(|k| {
+                        let v = b.alt_get(a, c as u32, k, p);
+                        b.clone_value(v)
+                    })
+                    .collect();
+                let out = b.alt_new(a, c as u32, &fields);
+                b.ret(Some(out));
+            }
+            b.switch_to(default);
+            b.unreachable();
+            b.finish()
+        }
+        _ => unreachable!("clone glue is made for records and alternatives"),
     }
 }

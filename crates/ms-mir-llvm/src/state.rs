@@ -172,10 +172,8 @@ impl<'m> Gen<'m> {
         if let Some(s) = self.glue.get(&(kind, ty)) {
             return s.clone();
         }
-        // The module made this type's drop function itself.
-        if kind == Glue::Drop
-            && let Some(f) = self.m.drop_glue.get(&ty.unscoped())
-        {
+        // The module made this function itself.
+        if let Some(f) = self.m.made_glue(kind, ty) {
             return self.syms[f.index()].clone();
         }
         let name = format!(
