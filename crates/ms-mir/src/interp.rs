@@ -655,6 +655,8 @@ impl<'m> Interp<'m> {
             | Op::IfaceBorrow
             | Op::IfaceView
             | Op::IfaceIs
+            | Op::IfaceTag
+            | Op::IfaceDestroy
             | Op::IfaceData => self.closures_and_interfaces(f, regs, inst),
             Op::Clone
             | Op::MoveOut

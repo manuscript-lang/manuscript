@@ -306,7 +306,7 @@ pub enum Op {
     // Byte builders.
     BytesPush,
     // Closures and interface views.
-    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
+    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs, IfaceTag, IfaceDestroy,
     // Ownership.
     Clone, Drop, DropIf, MoveOut, Forget,
     // Raw memory: stack slots, interior pointers into lists and types.
