@@ -33,8 +33,8 @@ Same project and machine; one run per cell. The whole-build mtime cache was stil
 
 | Cores | Cache off (everything compiled) | Cold (compile and store) | Warm (all functions reused) |
 | --- | --- | --- | --- |
-| 1 | 17.0 s | 10.7 s | 5.5 s |
+| 1 | 10.4 s, 11.4 s | 11.4 s, 11.9 s | 5.5 s |
 | 2 | 7.6 s | 8.3 s | 6.0 s |
 | 4 | 7.0 s | 6.8 s | 5.7 s |
 
-The cache pays most where Cranelift cannot use other cores: on one core a warm build is 3.1x faster than an uncached one; on four cores 1.2x, because uncached compilation already runs in parallel and the serial front end (about 2.4 s) and lowering stay. The 1-core cold row is faster than the off row by more than the cache could explain; treat the 1-core off and cold cells as unreliable (the first cell ran with a cold file cache).
+The cache pays most where Cranelift cannot use other cores: on one core a warm build is about 2x faster than an uncached one (the first one-core off and cold cells, 17.0 s and 10.7 s, ran with a cold file cache and were rerun twice); on four cores 1.2x, because uncached compilation already runs in parallel and the serial front end (about 2.4 s) and lowering stay. Cold costs about 0 to 1 s more than off (hashing and storing).
