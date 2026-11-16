@@ -28,3 +28,13 @@ Same project and machine; one run per cell. The whole-build mtime cache was stil
 | Edit a shared module | 5.88 s | 5.09 s |
 
 `MS_TIMINGS=1` reports `code cache N hits, M compiled`: a statement added to one function compiled 11 of 12,011 functions (the edited one and the rest of its file, whose line numbers moved); with nothing changed, 0. A fully cached build is 4.7 s: check and lowering to MIR about 2.4 s, lowering to Cranelift IR 0.6 s, keys 0.3 s, glue, tables and object writing about 0.7 s. Release builds use LLVM and are unchanged.
+
+### Cores (Debug, whole project, `taskset`, one run per cell, so differences under about 1 s are noise)
+
+| Cores | Cache off (everything compiled) | Cold (compile and store) | Warm (all functions reused) |
+| --- | --- | --- | --- |
+| 1 | 17.0 s | 10.7 s | 5.5 s |
+| 2 | 7.6 s | 8.3 s | 6.0 s |
+| 4 | 7.0 s | 6.8 s | 5.7 s |
+
+The cache pays most where Cranelift cannot use other cores: on one core a warm build is 3.1x faster than an uncached one; on four cores 1.2x, because uncached compilation already runs in parallel and the serial front end (about 2.4 s) and lowering stay. The 1-core cold row is faster than the off row by more than the cache could explain; treat the 1-core off and cold cells as unreliable (the first cell ran with a cold file cache).

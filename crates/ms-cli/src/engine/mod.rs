@@ -380,7 +380,18 @@ pub(crate) fn compile_target<L: Lower>(
     target: Target,
 ) -> Result<Compiled, Failure> {
     let tests = target != Target::Program;
+    let started = std::time::Instant::now();
+    let timings = backend.build_options().timings;
+    let phase = |name: &str| {
+        if timings {
+            eprintln!(
+                "ms-timings: front end {name} done at {:.3}s",
+                started.elapsed().as_secs_f64()
+            );
+        }
+    };
     let graph = load_files(syms, filename, extra, LoadOptions { tests });
+    phase("load");
     let library = graph.library;
     let project = !graph.project_root.is_empty();
     if project && library && !tests {
@@ -396,6 +407,7 @@ pub(crate) fn compile_target<L: Lower>(
             ..CheckRequest::default()
         },
     );
+    phase("check");
     let failure = |checked: ms_driver::Checked| Failure {
         source_root: checked.source_root,
         package_roots: checked.package_roots,
@@ -417,6 +429,7 @@ pub(crate) fn compile_target<L: Lower>(
             .lower(program, &entry)
             .map(|module| (module, Vec::new()))
     };
+    phase("lower");
     let roots = checked.module_roots();
     match lowered {
         Ok((module, names)) => Ok(Compiled {
