@@ -1,14 +1,13 @@
 //! The native watcher on macOS: a kqueue holds one `EVFILT_VNODE` registration per tracked path,
 //! and a wake-up is turned into events by comparing snapshots, as the polling watcher does.
-//! `kevent` is polled without blocking between short sleeps, so a pending `next` stays
-//! cancellable.
-use super::{Event, Gate, Stamp, diff, sleep_slice, snapshot, valid_native};
+//! A pending `next` parks on the kqueue descriptor itself, which is readable while an event is
+//! queued; `close` queues an `EVFILT_USER` event to end the wait.
+use super::{Event, Gate, Stamp, diff, snapshot, valid_native, wait_events};
 use crate::err::{Fail, Res};
 use crate::ops::poll_cancel;
 use crate::sys::{self, CPath};
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
-use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NONE, STATUS_NOT_FOUND};
 
 const FFLAGS: u32 = (libc::NOTE_WRITE
@@ -18,6 +17,9 @@ const FFLAGS: u32 = (libc::NOTE_WRITE
     | libc::NOTE_RENAME
     | libc::NOTE_LINK
     | libc::NOTE_REVOKE) as u32;
+
+/// The identifier of the `EVFILT_USER` event `close` triggers.
+const USER_IDENT: usize = 0;
 
 pub struct Native {
     kq: i32,
@@ -34,8 +36,28 @@ pub struct Native {
 }
 
 impl Native {
-    /// Nothing to wake: this wait looks on a slice until it is made an event.
-    pub fn interrupt(&self) {}
+    /// Wakes a `wait` parked on the kqueue, for `close`.
+    pub fn interrupt(&self) {
+        let trigger = libc::kevent {
+            ident: USER_IDENT,
+            filter: libc::EVFILT_USER,
+            flags: 0,
+            fflags: libc::NOTE_TRIGGER,
+            data: 0,
+            udata: core::ptr::null_mut(),
+        };
+        // SAFETY: `trigger` is one valid change record and no events are requested.
+        unsafe {
+            libc::kevent(
+                self.kq,
+                &trigger,
+                1,
+                core::ptr::null_mut(),
+                0,
+                core::ptr::null(),
+            )
+        };
+    }
 
     /// `overflow` is `error` or `ignore`; `max` bounds the paths under the root at start, `events` queued events.
     pub fn new(
@@ -64,6 +86,20 @@ impl Native {
             queue: VecDeque::new(),
             ended: false,
         };
+        let user = libc::kevent {
+            ident: USER_IDENT,
+            filter: libc::EVFILT_USER,
+            flags: libc::EV_ADD | libc::EV_CLEAR,
+            fflags: 0,
+            data: 0,
+            udata: core::ptr::null_mut(),
+        };
+        // SAFETY: `user` is one valid change record and no events are requested.
+        let added =
+            unsafe { libc::kevent(kq, &user, 1, core::ptr::null_mut(), 0, core::ptr::null()) };
+        if added < 0 {
+            return Err(Fail::raw(sys::errno()));
+        }
         n.before = snapshot(root, recursive, i64::MAX)?;
         n.register()?;
         Ok(n)
@@ -130,7 +166,8 @@ impl Native {
         Ok(())
     }
 
-    /// Whether a registered path changed since the last call; moving_params what is pending.
+    /// Whether a registered path changed since the last call; takes everything pending, so the
+    /// kqueue is not readable afterwards.
     fn woken(&mut self) -> bool {
         let none = libc::timespec {
             tv_sec: 0,
@@ -145,7 +182,7 @@ impl Native {
             if got <= 0 {
                 return woke;
             }
-            woke = true;
+            woke |= event.filter == libc::EVFILT_VNODE;
         }
     }
 
@@ -199,7 +236,7 @@ impl Native {
             if self.woken() {
                 self.refresh()?;
             } else {
-                sleep_slice();
+                wait_events(self.kq);
             }
         }
     }

@@ -1,7 +1,8 @@
 //! The native watcher on Windows: one overlapped `ReadDirectoryChangesW` request on the watched
-//! directory handle. `next` checks the request without blocking between short sleeps, so a
-//! pending call stays cancellable, and the request is cancelled before its buffer is freed.
-use super::{Event, Gate, sleep_slice, valid_native};
+//! directory handle. The request completes an event, and `close` sets the same event, so a
+//! pending `next` parks until a change or a close; the request is cancelled before its buffer
+//! is freed.
+use super::{Event, Gate, valid_native, wait_object};
 use crate::err::{Fail, Res};
 use crate::ops::poll_cancel;
 use crate::path;
@@ -9,14 +10,13 @@ use crate::sys::{self, CPath};
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
-use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NONE, STATUS_UNSUPPORTED};
 use std::fs::OpenOptions;
 use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::AsRawHandle;
 use windows_sys::Win32::Foundation::{
-    ERROR_ACCESS_DENIED, ERROR_DELETE_PENDING, ERROR_FILE_NOT_FOUND, ERROR_IO_INCOMPLETE,
-    ERROR_PATH_NOT_FOUND, GetLastError, HANDLE,
+    CloseHandle, ERROR_ACCESS_DENIED, ERROR_DELETE_PENDING, ERROR_FILE_NOT_FOUND,
+    ERROR_IO_INCOMPLETE, ERROR_PATH_NOT_FOUND, GetLastError, HANDLE,
 };
 use windows_sys::Win32::Storage::FileSystem::{
     FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED, FILE_LIST_DIRECTORY,
@@ -25,6 +25,7 @@ use windows_sys::Win32::Storage::FileSystem::{
     ReadDirectoryChangesW,
 };
 use windows_sys::Win32::System::IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED};
+use windows_sys::Win32::System::Threading::{CreateEventW, ResetEvent, SetEvent};
 
 const WATCH: u32 = FILE_NOTIFY_CHANGE_FILE_NAME
     | FILE_NOTIFY_CHANGE_DIR_NAME
@@ -64,6 +65,8 @@ pub struct Native {
     capacity: usize,
     buffer: Box<[u32; WORDS]>,
     overlapped: Box<OVERLAPPED>,
+    /// A manual-reset event the request completes and `close` sets.
+    event: HANDLE,
     pending: bool,
     queue: VecDeque<Event>,
     terminal: Option<Fail>,
@@ -72,8 +75,11 @@ pub struct Native {
 }
 
 impl Native {
-    /// Nothing to wake: this wait looks on a slice until it is made an event.
-    pub fn interrupt(&self) {}
+    /// Wakes a `wait` parked on the event, for `close`.
+    pub fn interrupt(&self) {
+        // SAFETY: the event is open until `Drop`.
+        unsafe { SetEvent(self.event) };
+    }
 
     /// `overflow` is `error` or `ignore`; `max` bounds the paths under the root at start and
     /// `events` the queued events.
@@ -101,7 +107,13 @@ impl Native {
             .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED)
             .open(dir_text)
             .map_err(|e| Fail::errno(sys::code(&e), "open", &watched))?;
+        // SAFETY: plain call; a manual-reset event, not signalled.
+        let event = unsafe { CreateEventW(core::ptr::null(), 1, 0, core::ptr::null()) };
+        if event.is_null() {
+            return Err(Fail::raw(sys::errno()));
+        }
         let mut n = Native {
+            event,
             dir: Some(dir),
             root: watched,
             only,
@@ -138,6 +150,7 @@ impl Native {
     fn issue(&mut self) -> Res<()> {
         // SAFETY: a zeroed `OVERLAPPED` is the documented initial state.
         *self.overlapped = unsafe { core::mem::zeroed() };
+        self.overlapped.hEvent = self.event;
         // SAFETY: the buffer and `OVERLAPPED` live in boxes that outlast the request, which `Drop`
         // cancels and waits for.
         let started = unsafe {
@@ -224,6 +237,12 @@ impl Native {
             if gate.is_closed() {
                 return Err(Fail::status(STATUS_CLOSED));
             }
+            // Reset before looking, so a completion or a close after the look sets it again.
+            // SAFETY: the event is open until `Drop`.
+            unsafe { ResetEvent(self.event) };
+            if gate.is_closed() {
+                return Err(Fail::status(STATUS_CLOSED));
+            }
             let mut got = 0u32;
             // SAFETY: the request is ours and `got` is writable; the call does not wait.
             let done =
@@ -232,7 +251,9 @@ impl Native {
                 // SAFETY: plain query.
                 let code = unsafe { GetLastError() };
                 if code == ERROR_IO_INCOMPLETE {
-                    sleep_slice();
+                    if !wait_object(self.event as isize) {
+                        return Err(Fail::failed("watch"));
+                    }
                     continue;
                 }
                 self.pending = false;
@@ -289,5 +310,7 @@ impl Drop for Native {
                 GetOverlappedResult(self.handle(), &*self.overlapped, &mut got, 1);
             }
         }
+        // SAFETY: the event is ours and the request that used it is finished.
+        unsafe { CloseHandle(self.event) };
     }
 }
