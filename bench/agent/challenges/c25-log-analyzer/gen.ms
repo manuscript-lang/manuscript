@@ -110,7 +110,7 @@ fn good(var rnd: Random, i: Int) String:
 	return f"2024-05-01T10:{f"{i / 60 % 60}".pad_start(2, "0")}:{f"{i % 60}".pad_start(2, "0")} {level} {method} {path} {statuses[pick]} {lat}"
 
 fn mangle(var rnd: Random, l: String) String:
-	var f = l.split(" ")
+	var f = l.split(" ").clone()
 	k := rnd.randrange(0, 9)
 
 	if k == 0:

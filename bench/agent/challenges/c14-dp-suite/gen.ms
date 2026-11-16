@@ -113,7 +113,7 @@ fn solve_line(line: String) String:
 	return bad
 
 fn solve(s: String) String:
-	var lines = s.split("\n")
+	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 	return lines.filter(fn l: l.replace(" ", "") != "").map(
 		fn l: solve_line(l) + "\n"

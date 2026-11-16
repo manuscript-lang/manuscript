@@ -20,7 +20,7 @@ fn mk(makefile: String, files: List[String], reqs: List[String]) String:
 	return mf + "====\n" + file_lines + "====\n" + reqs.join("\n") + "\n"
 
 fn strip_nl(text: String) String:
-	var chars = text.chars()
+	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
 	while start < end and chars[start] == "\n":
