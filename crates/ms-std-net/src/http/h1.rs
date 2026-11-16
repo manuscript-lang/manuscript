@@ -80,6 +80,10 @@ fn strict_line_endings(head: &[u8]) -> bool {
 /// value (after trailing blanks), what precedes the first name or the blank line, and what fills
 /// the space before the method. This is [`strict_line_endings`] for a head `req` parsed from
 /// `buf[..length]`, in time proportional to the field count.
+///
+/// This leans on how httparse places and trims tokens, and it guards against request smuggling:
+/// `line_ends_found_from_the_parse_agree_with_the_byte_scan` must pass before the `httparse`
+/// dependency is bumped.
 fn crlf_terminators(buf: &[u8], req: &httparse::Request<'_, '_>, length: usize) -> bool {
     let base = buf.as_ptr() as usize;
     let at = |part: &[u8]| (part.as_ptr() as usize).wrapping_sub(base);
@@ -834,14 +838,14 @@ pub fn http_date(unix_seconds: i64) -> String {
 mod tests {
     /// The old rule: parse, then every CR and LF of the head must be a CRLF pair.
     fn parses_with_a_scan(head: &[u8]) -> bool {
-        let mut storage = [httparse::EMPTY_HEADER; 16];
+        let mut storage = [httparse::EMPTY_HEADER; MAX_FIELDS];
         let mut req = httparse::Request::new(&mut storage);
         matches!(req.parse(head), Ok(httparse::Status::Complete(n)) if strict_line_endings(&head[..n]))
     }
 
     #[test]
     fn line_ends_found_from_the_parse_agree_with_the_byte_scan() {
-        const PIECES: [&[u8]; 18] = [
+        const PIECES: [&[u8]; 28] = [
             b"GET / HTTP/1.1",
             b"POST /a?b=c HTTP/1.0",
             b"\r\n",
@@ -860,6 +864,16 @@ mod tests {
             b"\r\n \r\n",
             b"Z:\t",
             b"\0",
+            b"Host : a",
+            b"GET  /  HTTP/1.1",
+            b"X: a\tb",
+            b"Y:  \t ",
+            b"\r\n x",
+            b"\r\n\tx",
+            b"A: b\rc",
+            b"B: c\r",
+            b"\r\r\n",
+            b"\n\n",
         ];
         let mut state = 0x2545_f491_4f6c_dd1du64;
         let mut next = move |n: usize| {
@@ -868,7 +882,7 @@ mod tests {
             state ^= state << 17;
             (state % n as u64) as usize
         };
-        let mut accepted = 0;
+        let (mut accepted, mut refused_by_rule) = (0, 0);
         for round in 0..300_000 {
             let mut head = Vec::new();
             // Mostly a plausible head with one or two perturbations, sometimes pure noise.
@@ -895,13 +909,26 @@ mod tests {
                 lead.extend_from_slice(&head);
                 head = lead;
             }
+            // Bytes after the head are not part of it, bare LF or not.
+            if next(4) == 0 {
+                head.extend_from_slice([&b"x\ny"[..], b"\n", b"\r", b"body\n\n"][next(4)]);
+            }
             let expected = parses_with_a_scan(&head);
             let got = matches!(parse_request(&head, 1 << 16), Parsed::Complete(_));
             // `parse_request` also refuses heads the scan rule alone accepts only when httparse
             // does, so the two must agree.
             assert_eq!(got, expected, "{:?}", String::from_utf8_lossy(&head));
             accepted += usize::from(got);
+            // Heads the parser takes but the rule refuses: the cases the check exists for.
+            let mut storage = [httparse::EMPTY_HEADER; MAX_FIELDS];
+            let mut req = httparse::Request::new(&mut storage);
+            refused_by_rule +=
+                usize::from(matches!(req.parse(&head), Ok(httparse::Status::Complete(_))) && !got);
         }
+        assert!(
+            refused_by_rule > 1000,
+            "the mix never reaches the rule: {refused_by_rule}"
+        );
         assert!(
             accepted > 1000,
             "too few accepted heads to mean anything: {accepted}"
