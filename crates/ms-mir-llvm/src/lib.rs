@@ -47,9 +47,6 @@ pub enum Glue {
     BlockClone,
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
-    /// `fn(block)` that calls the function in the key with the parameters stored at `block` and
-    /// stores its results after them: the body `msrt_task_grow` runs on a new stack segment.
-    GrowShim(u32),
     /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
     SlotDrop,
     /// `fn(src, dst)` that copies the value at `src` into uninitialised `dst` (descriptor `copy`).
@@ -69,7 +66,6 @@ impl Glue {
             Glue::BlockDrop => "block_drop",
             Glue::BlockClone => "block_clone",
             Glue::CleanupThunk(_) => "cleanup_thunk",
-            Glue::GrowShim(_) => "grow_shim",
             Glue::SlotDrop => "slot_drop",
             Glue::SlotCopy => "slot_copy",
         }

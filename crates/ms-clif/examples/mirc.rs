@@ -40,6 +40,7 @@ fn main() {
     }
     if optimize {
         ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
+        ms_mir::depth::lower(&mut m);
     }
     let object = compile(&m, &opts).unwrap_or_else(|e| panic!("{e}"));
     let objp = out.with_extension("o");

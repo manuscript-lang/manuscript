@@ -48,11 +48,10 @@ use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
 use types::Abi;
 
-/// Where the function sits in the module: its index, its grow shim when it has a stack-depth
-/// check, and the set of functions in the native calling convention.
+/// Where the function sits in the module: its index and the set of functions in the native
+/// calling convention.
 pub struct Place<'a> {
     pub idx: usize,
-    pub grow_shim: Option<String>,
     pub native: &'a HashSet<usize>,
 }
 
@@ -592,12 +591,6 @@ struct Cx<'a> {
     /// MIR block being written and the splits it has made so far.
     block: usize,
     split: usize,
-    /// The entry parameters as they arrive, one per leaf, and the result leaves: what the
-    /// stack-depth check passes to a new stack segment and returns.
-    entry_abi: Vec<Val>,
-    ret_abi: Vec<LTy>,
-    /// Symbol of the function's grow shim, when it has a stack-depth check.
-    grow_shim: Option<String>,
     /// The functions in the native calling convention (`abi_llvm`); every other function takes
     /// and returns leaves.
     native: &'a HashSet<usize>,
@@ -624,17 +617,12 @@ fn block_label(bb: usize, split: usize) -> String {
 /// The values of one MIR value: one per register leaf.
 type Vals = HashMap<usize, Vec<Val>>;
 
-/// Emits `f`, which `supports` accepted. The function has MIR index `idx` and, when it is
-/// recursive, the grow shim `grow_shim`. `symbol_of` names the function with MIR index `i`;
+/// Emits `f`, which `supports` accepted. The function has MIR index `idx`. `symbol_of` names the function with MIR index `i`;
 /// `loc` is the `DILocation` node every instruction carries.
 pub fn emit(
     m: &Module,
     lay: &Layouts,
-    Place {
-        idx,
-        grow_shim,
-        native,
-    }: Place,
+    Place { idx, native }: Place,
     f: &Func,
     plan: &Plan,
     env: &mut DirectEnv,
@@ -649,7 +637,6 @@ pub fn emit(
     let mut vals: Vals = HashMap::new();
     let mut params = Vec::new();
     let mut entry = Vec::new();
-    let mut entry_abi = Vec::new();
     let sig = native
         .contains(&idx)
         .then(|| Signature::of(types, lay, &f.params, &f.noalias, f.ret));
@@ -657,11 +644,9 @@ pub fn emit(
         .as_ref()
         .is_some_and(|s| matches!(s.result, Ret::Sret(_)))
         .then(|| Val::new("%sret", LTy::Ptr));
-    entry_abi.extend(sret.iter().cloned());
     for (i, p) in f.params.iter().enumerate() {
         if let Some(Pass::Indirect(..)) = sig.as_ref().map(|s| &s.passes[i]) {
             let ptr = Val::new(format!("%a{i}"), LTy::Ptr);
-            entry_abi.push(ptr.clone());
             let own = types::bind_indirect(&mut b, lay, p.ty, ptr, &mut entry);
             vals.insert(f.blocks[0].params[i].value.index(), own);
             continue;
@@ -676,7 +661,6 @@ pub fn emit(
             let t = regs.map_or(t, |r| reg_ty(r[j]));
             abi.push(Val::new(format!("%a{i}_{j}"), t));
         }
-        entry_abi.extend(abi.iter().cloned());
         let own = types::bind_param(&mut b, lay, p.ty, abi, &mut entry);
         vals.insert(f.blocks[0].params[i].value.index(), own);
     }
@@ -732,13 +716,6 @@ pub fn emit(
         data: Vec::new(),
         block: 0,
         split: 0,
-        entry_abi,
-        ret_abi: if sret.is_some() {
-            Vec::new()
-        } else {
-            depth::ret_abi(lay, f.ret, sig.is_some())
-        },
-        grow_shim,
         native,
     };
     for bb in &rpo {
@@ -842,16 +819,6 @@ pub fn emit(
 fn inst_text(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let area = area_of(inst.op).expect("supports rejects other ops");
     (area.emit)(cx, inst, vals, b);
-}
-
-/// The grow shim of the native function `f` called `sym` (see [`depth::shim`]).
-pub fn grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
-    depth::shim(types, lay, f, sym, dbg)
-}
-
-/// The grow shim of the leaf-convention function `f` called `sym`.
-pub fn leaf_grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: usize) -> Emitted {
-    depth::leaf_shim(types, lay, f, sym, dbg)
 }
 
 #[cfg(test)]

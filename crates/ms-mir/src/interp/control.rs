@@ -234,6 +234,8 @@ impl Interp<'_> {
                 }
             }
             Op::DepthLeave => self.depth -= 1,
+            // The interpreter has one stack and counts depth in `depth.enter`: never low.
+            Op::StackLow => ops.set(Val::Bool(false)),
             Op::CleanupPush => {
                 let Imm::Func(g) = inst.imm else {
                     return Err(Raw::internal("cleanup.push without closer"));

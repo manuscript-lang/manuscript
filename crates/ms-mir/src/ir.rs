@@ -310,7 +310,7 @@ pub enum Op {
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
-    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
+    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, StackLow, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
     // Raw-phase scope markers, consumed by `elaborate`.
     ScopeBegin, ScopeOwn, ScopeEnd, ScopeDisown, ScopeMark,
 }
@@ -990,6 +990,9 @@ pub enum ExternRole {
     ShieldEnter,
     /// Ends one [`ExternRole::ShieldEnter`].
     ShieldExit,
+    /// `task.grow(shim, block)`: runs the shim on a new stack segment. The block that calls it
+    /// is the rare path of a stack-depth check, so the backends place it out of line.
+    GrowStack,
 }
 
 impl ExternRole {
@@ -1018,6 +1021,7 @@ impl ExternRole {
         (ExternRole::SpawnsTask, "spawns_task"),
         (ExternRole::ShieldEnter, "shield_enter"),
         (ExternRole::ShieldExit, "shield_exit"),
+        (ExternRole::GrowStack, "grow_stack"),
     ];
 
     /// The textual attribute of this role.

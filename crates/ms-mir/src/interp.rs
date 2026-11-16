@@ -669,6 +669,7 @@ impl<'m> Interp<'m> {
             | Op::Poll
             | Op::DepthEnter
             | Op::DepthLeave
+            | Op::StackLow
             | Op::CleanupPush
             | Op::CleanupRun
             | Op::GlobalGet

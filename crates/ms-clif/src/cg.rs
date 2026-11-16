@@ -53,9 +53,6 @@ pub enum Glue {
     BlockClone,
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
-    /// `fn(block)` that calls the function in the key with the parameters stored at `block` and
-    /// stores its results after them: the body `msrt_task_grow` runs on a new stack segment.
-    GrowShim(u32),
     /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
     SlotDrop,
     /// `fn(src, dst)` that copies the value at `src` into uninitialised `dst` (descriptor `copy`).
@@ -435,7 +432,6 @@ impl<'m> Gen<'m> {
             | Glue::ClosureDropFrom(..)
             | Glue::BlockDrop
             | Glue::CleanupThunk(_)
-            | Glue::GrowShim(_)
             | Glue::SlotDrop => self.sig(&[Leaf::I64], &[]),
             Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
@@ -444,8 +440,7 @@ impl<'m> Gen<'m> {
             Glue::ClosureDrop(f)
             | Glue::ClosureDropFramed(f)
             | Glue::ClosureClone(f)
-            | Glue::CleanupThunk(f)
-            | Glue::GrowShim(f) => func_sym(f),
+            | Glue::CleanupThunk(f) => func_sym(f),
             Glue::ClosureDropFrom(f, k) => format!("{}.{k}", func_sym(f)),
             _ => format!("{:016x}", name_hash(&ms_mir::print::ty_str(self.m, ty))),
         };
@@ -461,7 +456,6 @@ impl<'m> Gen<'m> {
                 Glue::BlockDrop => "block_drop",
                 Glue::BlockClone => "block_clone",
                 Glue::CleanupThunk(_) => "cleanup_thunk",
-                Glue::GrowShim(_) => "grow_shim",
                 Glue::SlotDrop => "slot_drop",
                 Glue::SlotCopy => "slot_copy",
             }
@@ -1398,6 +1392,7 @@ mod target_tests {
                 let mut m = ms_mir::parse::parse_module(&source).unwrap();
                 ms_mir::verify::verify_module(&m).unwrap();
                 ms_mir::opt::optimize(&mut m, level, true);
+                ms_mir::depth::lower(&mut m);
                 let opts = Options {
                     opt_level: if level == ms_mir::opt::Level::None {
                         "none"

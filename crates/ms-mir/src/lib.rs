@@ -6,6 +6,7 @@ pub mod copies;
 pub mod count_ops;
 pub mod debug_files;
 pub mod debug_types;
+pub mod depth;
 pub mod elaborate;
 pub mod exit_drops;
 pub mod fault_tables;

@@ -51,6 +51,7 @@ fn optimized(path: &Path) -> String {
     )
     .expect("lower");
     ms_mir::opt::optimize(&mut module, ms_mir::opt::Level::Speed, true);
+    ms_mir::depth::lower(&mut module);
     ms_mir::print::print_module(&module)
 }
 

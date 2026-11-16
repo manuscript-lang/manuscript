@@ -439,63 +439,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.switch_to_block(cont);
     }
 
-    /// The recursion check of a cyclic function: when the stack pointer is below the task's
-    /// limit, the function runs again on a new stack segment (`msrt_task_grow` calls the
-    /// function's grow shim there with the entry parameters, stored in a block on this frame)
-    /// and returns that run's results. The check is the first thing the function does, so the
-    /// parameters are still the caller's values (`ms_mir::verify`).
-    fn depth_enter(&mut self) {
-        // The limit sits in the region beside the block's address: one load from the masked
-        // stack pointer.
-        let sp = self.b.ins().get_stack_pointer(types::I64);
-        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
-        let limit = self.b.ins().load(
-            types::I64,
-            flags(),
-            base,
-            (STACK_REGION - STACK_LIMIT_CELL) as i32,
-        );
-        let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
-        let grow = self.b.create_block();
-        let cont = self.b.create_block();
-        self.b.set_cold_block(grow);
-        let ok = self.negate(over);
-        self.b.ins().brif(ok, cont, &[], grow, &[]);
-        self.b.switch_to_block(grow);
-        let entry = self.blocks[0].expect("entry block");
-        let params = self.b.block_params(entry).to_vec();
-        let returns: Vec<ir::Type> = self
-            .b
-            .func
-            .signature
-            .returns
-            .iter()
-            .map(|p| p.value_type)
-            .collect();
-        // The block is a heap allocation, not a frame slot: a slot would widen the frame of
-        // every recursive function for a path taken once per segment.
-        let block = self.alloc(((params.len() + returns.len()) * 8) as i64);
-        for (i, p) in params.iter().enumerate() {
-            self.b.ins().store(flags(), *p, block, (i * 8) as i32);
-        }
-        let shim = self.g.glue(Glue::GrowShim(self.fid), Ty::VOID);
-        let r = self.fref(shim);
-        let fa = self.b.ins().func_addr(types::I64, r);
-        self.rt_call("msrt_task_grow", &[fa, block]);
-        let results: Vec<Value> = returns
-            .iter()
-            .enumerate()
-            .map(|(j, t)| {
-                self.b
-                    .ins()
-                    .load(*t, flags(), block, ((params.len() + j) * 8) as i32)
-            })
-            .collect();
-        self.free(block);
-        self.b.ins().return_(&results);
-        self.b.switch_to_block(cont);
-    }
-
     fn alloc(&mut self, size: i64) -> Value {
         let n = self.iconst(size.max(1));
         self.rt_call("msrt_alloc", &[n])[0]
@@ -786,6 +729,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         for b in &rpo {
             let cb = self.b.create_block();
             self.blocks[b.index()] = Some(cb);
+            // The rare path of a stack-depth check goes out of line.
+            if self.grows_stack(f, b.index()) {
+                self.b.set_cold_block(cb);
+            }
             if b.index() == 0 {
                 self.b.append_block_params_for_function_params(cb);
             } else {
@@ -881,6 +828,15 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.ins().return_(&[r32]);
     }
 
+    /// Whether block `b` of `f` runs the function on a new stack segment (`task.grow`): the rare
+    /// path of a depth check, placed out of line.
+    fn grows_stack(&self, f: &Func, b: usize) -> bool {
+        f.blocks[b].insts.iter().any(|i| {
+            matches!((i.op, i.imm), (Op::CallRt, Imm::Ext(e))
+                if self.g.m.externs[e.index()].role == ms_mir::ir::ExternRole::GrowStack)
+        })
+    }
+
     /// The negation of the boolean `c`, folding into the comparison that produced it.
     fn negate(&mut self, c: Value) -> Value {
         if let ValueDef::Result(i, _) = self.b.func.dfg.value_def(c)
@@ -931,7 +887,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 // Cranelift lays out the second successor first, so a loop test puts the
                 // exit there only if the body is the second one: swap to keep the body
                 // as the fall-through and the loop to one taken branch per iteration.
-                let swap = continues_loop(f, self.cur, then.block.index(), els.block.index());
+                // The same goes for the rare path of a stack-depth check.
+                let swap = continues_loop(f, self.cur, then.block.index(), els.block.index())
+                    || (self.grows_stack(f, then.block.index())
+                        && !self.grows_stack(f, els.block.index()));
                 let (then, els) = if swap {
                     c = self.negate(c);
                     (els, then)
@@ -1199,6 +1158,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::Poll
             | Op::DepthEnter
             | Op::DepthLeave
+            | Op::StackLow
             | Op::CleanupPush
             | Op::CleanupRun
             | Op::GlobalGet

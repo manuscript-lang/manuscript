@@ -434,7 +434,12 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     if let Some(slot) = &slot {
         args.push((slot.clone(), OUT));
     }
-    let attrs = crate::llvm_ir::runtime_attrs(&def.name, def.reads);
+    // Growing the stack is the rare path of a depth check: `cold` places its block out of line.
+    let attrs = if def.role == ExternRole::GrowStack {
+        " cold nounwind"
+    } else {
+        crate::llvm_ir::runtime_attrs(&def.name, def.reads)
+    };
     let types = b.types();
     let formals: Vec<String> = args
         .iter()

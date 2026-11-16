@@ -747,7 +747,7 @@ pub mod symbols {
     /// the task's current stack segment (0 = no limit); the region holds a copy at
     /// [`STACK_LIMIT_CELL`]. On entry to a recursive function compare
     /// the stack pointer against the copy and, when below, call `msrt_task_grow(shim, block)` with the
-    /// function's parameters stored at `block` (one 8-byte cell each, then room for its results)
+    /// function's parameters stored at `block` (each at its natural alignment, then room for its result)
     /// and return the results it leaves there. The runtime runs `shim(block)` on the task's next
     /// segment, a guarded slot that keeps the frame-pointer chain continuous, and faults with the
     /// stack overflow report when the task holds a region's worth of segments.
