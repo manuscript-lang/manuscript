@@ -22,7 +22,9 @@ A `var` local with no scope entry that is passed to a callee which parks and rew
 
 A move-out hole no longer hides the other values: while an owner has a field moved out (`hole_owners` names it), a call still registers every live value except that owner, so a slice held across the parking write in `FailingSink.write` is freed (`iotest-golden.ms`). A hole whose owner has no name (not a `type.get`/`alt.get` projection) still skips everything.
 
-A run the injected cancel makes fail keeps its failure report on the Rust heap until exit (about 14 blocks, `log.ms`), so the sweep judges such a run (a `FAIL` line) only by live `ms-rt` blocks, not by the Rust heap count.
+A fault ends a task by a jump that skips Rust destructors, and `fault_vec` never returns, so its locals were never dropped: a run the cancel made fail ended with 12 to 14 extra Rust blocks (the frame list, the last fault record, the guard and cleanup buffers). `fault_vec` now drops the frames and the counting build releases the fault state at exit (`release_fault_state`), leaving one block; the sweep allows that measured difference (a probe test that faults against one that passes, `report` in `tools/cancel-sweep.ms`) for a run that fails, and nothing more.
+
+A native that raises a cancel (`ms_rt::glue::cancelled()`) jumps, so it must drop every Rust value its frame owns first, parameters included: `msstd_process_command_run` kept its argument and environment `Vec<&str>`, leaking 32 bytes whenever `run` was cancelled (`host.ms`).
 
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 

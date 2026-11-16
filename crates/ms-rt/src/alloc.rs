@@ -31,9 +31,12 @@ const HUGE_PAGE: usize = 2 << 20;
 /// first touch of a huge page clears all of it, so a short program would pay for memory it never
 /// uses. Two huge pages keep the first allocations small and the advice aligned.
 const HUGE_AFTER: usize = 2 * HUGE_PAGE;
-/// Address space reserved for the small-block pages of the whole process.
+/// Address space reserved for the small-block pages of the whole process, at most; a process that
+/// cannot map that much halves it (see [`ensure_region`]), so code reads [`pages_len`].
 const PAGES_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 256 << 30 };
-const NUM_PAGES: usize = PAGES_SIZE >> PAGE_SHIFT;
+/// How many times the reservation is halved before the allocator gives up and uses the system's:
+/// 1.25 GiB is left at the floor (256 MiB of pages, 1 MiB growth chunks).
+const MAX_SHRINK: u32 = 10;
 /// Heaps that can exist at once (the owner field of the page table is 16 bits); a thread that
 /// finds none left uses the system allocator.
 const MAX_HEAPS: usize = 1 << 16;
@@ -55,6 +58,8 @@ const REMAP_MIN: usize = 128 << 10;
 /// reservation next to the pages, so a block is recognised by address. A heap that finds none
 /// left grows its big buffers through the system allocator.
 const GROW_SIZE: usize = if cfg!(miri) { 16 << 20 } else { 1 << 30 };
+// Both sizes are powers of two, so a chunk is found by a shift.
+const _: () = assert!(GROW_SIZE.is_power_of_two() && PAGES_SIZE.is_power_of_two());
 const GROW_CHUNKS: usize = if cfg!(miri) { 4 } else { 1024 };
 /// A block grows in the growth region once it reaches this size.
 const GROW_MIN: usize = 32 << 10;
@@ -288,11 +293,44 @@ static STATE: State = State::new();
 /// The process's reservation: small-block pages, their table, and the growth chunks.
 /// Until it is mapped they sit at an address no pointer reaches, so no block is ever inside them.
 const UNMAPPED: usize = 1 << (usize::BITS - 1);
-static BASE: AtomicUsize = AtomicUsize::new(UNMAPPED);
-/// One `u32` per page: owner heap and class.
-static TABLE: AtomicPtr<u32> = AtomicPtr::new(null_mut());
-static GROW_BASE: AtomicUsize = AtomicUsize::new(UNMAPPED);
+/// What every free and ownership test reads, in one object so they cost one address load (a
+/// static in the runtime archive is reached through the GOT, two instructions each).
+#[repr(C)]
+struct Hot {
+    base: AtomicUsize,
+    /// One `u32` per page: owner heap and class.
+    table: AtomicPtr<u32>,
+    grow_base: AtomicUsize,
+    /// Bytes of address space the page reservation actually got (halved from [`PAGES_SIZE`] until
+    /// the system accepted it).
+    pages_len: AtomicUsize,
+    /// log2 of the size of one growth chunk, halved along with the pages.
+    grow_bits: AtomicUsize,
+}
+
+static HOT: Hot = Hot {
+    base: AtomicUsize::new(UNMAPPED),
+    table: AtomicPtr::new(null_mut()),
+    grow_base: AtomicUsize::new(UNMAPPED),
+    pages_len: AtomicUsize::new(PAGES_SIZE),
+    grow_bits: AtomicUsize::new(GROW_SIZE.trailing_zeros() as usize),
+};
 static REGION: Once = Once::new();
+
+#[inline(always)]
+fn pages_len() -> usize {
+    HOT.pages_len.load(Ordering::Relaxed)
+}
+
+#[inline(always)]
+fn num_pages() -> usize {
+    pages_len() >> PAGE_SHIFT
+}
+
+#[inline(always)]
+fn grow_size() -> usize {
+    1 << HOT.grow_bits.load(Ordering::Relaxed)
+}
 /// Next page not handed to any heap.
 static NEXT_PAGE: AtomicUsize = AtomicUsize::new(0);
 /// Bytes of the page reservation made usable (everything on Unix, grown in steps on Windows).
@@ -314,28 +352,92 @@ static IDLE: Lock<Vec<State>> = Lock::new(Vec::new());
 #[cold]
 fn ensure_region() -> bool {
     REGION.call_once(|| {
-        let pages = sys::map_anon(PAGES_SIZE);
-        let table = sys::map_anon(NUM_PAGES * 4);
-        let grow = sys::map_anon(GROW_SIZE * GROW_CHUNKS);
-        if pages.is_null() || table.is_null() || grow.is_null() {
+        let Some(region) = reserve(&sys::map_anon, &|p, len| {
+            // SAFETY: a mapping made by `reserve` that nothing has used.
+            unsafe { sys::unmap(p, len) }
+        }) else {
             return;
-        }
-        if !sys::commit(table, NUM_PAGES * 4) {
-            return;
-        }
+        };
         // Huge pages only past the first few MiB: the kernel clears a whole 2 MiB page on the first
         // touch, which costs a short program about 0.35 ms at startup for memory it never uses.
-        sys::prefer_huge_pages(pages.wrapping_add(HUGE_AFTER), PAGES_SIZE - HUGE_AFTER);
-        sys::prefer_huge_pages(
-            grow.wrapping_add(HUGE_AFTER),
-            GROW_SIZE * GROW_CHUNKS - HUGE_AFTER,
-        );
-        TABLE.store(table.cast(), Ordering::Relaxed);
-        GROW_BASE.store(grow as usize, Ordering::Relaxed);
+        if region.pages_len > HUGE_AFTER {
+            sys::prefer_huge_pages(
+                region.pages.wrapping_add(HUGE_AFTER),
+                region.pages_len - HUGE_AFTER,
+            );
+        }
+        if region.grow_len > HUGE_AFTER {
+            sys::prefer_huge_pages(
+                region.grow.wrapping_add(HUGE_AFTER),
+                region.grow_len - HUGE_AFTER,
+            );
+        }
+        HOT.pages_len.store(region.pages_len, Ordering::Relaxed);
+        HOT.grow_bits.store(region.grow_bits, Ordering::Relaxed);
+        HOT.table.store(region.table.cast(), Ordering::Relaxed);
+        HOT.grow_base.store(region.grow as usize, Ordering::Relaxed);
         // Published last: a reader that sees `BASE` sees the rest.
-        BASE.store(pages as usize, Ordering::Release);
+        HOT.base.store(region.pages as usize, Ordering::Release);
     });
-    BASE.load(Ordering::Acquire) != UNMAPPED
+    HOT.base.load(Ordering::Acquire) != UNMAPPED
+}
+
+/// The address space reserved for the heap.
+struct Region {
+    pages: *mut u8,
+    pages_len: usize,
+    table: *mut u8,
+    grow: *mut u8,
+    grow_len: usize,
+    grow_bits: usize,
+}
+
+/// Reserves the pages, their table and the growth chunks with `map`. A process with an
+/// address-space limit (`ulimit -v`, a container, valgrind) cannot map the full size: the
+/// reservation is halved until `map` accepts it, rather than serving every allocation from the
+/// system allocator. The first size that fits would take nearly all the space left and starve what
+/// comes later (thread and task stacks, the system allocator's maps), so after a refusal the heap
+/// keeps a quarter of what fit. `None` when even the smallest is refused.
+fn reserve(map: &dyn Fn(usize) -> *mut u8, unmap: &dyn Fn(*mut u8, usize)) -> Option<Region> {
+    let try_shrink = |shrink: u32| {
+        let pages_len = PAGES_SIZE >> shrink;
+        let grow_size = GROW_SIZE >> shrink;
+        let grow_len = grow_size * GROW_CHUNKS;
+        let table_len = (pages_len >> PAGE_SHIFT) * 4;
+        let (pages, table, grow) = (map(pages_len), map(table_len), map(grow_len));
+        if !pages.is_null() && !table.is_null() && !grow.is_null() && sys::commit(table, table_len)
+        {
+            return Some(Region {
+                pages,
+                pages_len,
+                table,
+                grow,
+                grow_len,
+                grow_bits: grow_size.trailing_zeros() as usize,
+            });
+        }
+        for (p, len) in [(pages, pages_len), (table, table_len), (grow, grow_len)] {
+            if !p.is_null() {
+                unmap(p, len);
+            }
+        }
+        None
+    };
+    let fit = (0..=MAX_SHRINK).find_map(|shrink| try_shrink(shrink).map(|r| (shrink, r)))?;
+    let (shrink, region) = fit;
+    if shrink == 0 {
+        return Some(region);
+    }
+    // Hand the first fit back and map a quarter of it (which the space just freed always holds).
+    let smaller = (shrink + 2).min(MAX_SHRINK);
+    for (p, len) in [
+        (region.pages, region.pages_len),
+        (region.table, (region.pages_len >> PAGE_SHIFT) * 4),
+        (region.grow, region.grow_len),
+    ] {
+        unmap(p, len);
+    }
+    (smaller..=MAX_SHRINK).find_map(try_shrink)
 }
 
 /// Gives the calling thread a heap: an idle one when there is one, else a new one. Threads that
@@ -400,24 +502,25 @@ pub fn has_heap() -> bool {
 /// Page-table word of the small-block page holding `p`, or `None` when `p` is not in the pages.
 #[inline(always)]
 fn page_word(p: *mut u8) -> Option<u32> {
-    let off = (p as usize).wrapping_sub(BASE.load(Ordering::Relaxed));
-    if off >= PAGES_SIZE {
+    let off = (p as usize).wrapping_sub(HOT.base.load(Ordering::Relaxed));
+    if off >= pages_len() {
         return None;
     }
     // SAFETY: the table has one word per page of the reservation, and a block of the pages implies
     // the table was published.
-    Some(unsafe { *TABLE.load(Ordering::Relaxed).add(off >> PAGE_SHIFT) })
+    Some(unsafe { *HOT.table.load(Ordering::Relaxed).add(off >> PAGE_SHIFT) })
 }
 
 /// The growth chunk holding `p`, if any.
 #[inline(always)]
 fn grow_chunk_of(p: *mut u8) -> Option<usize> {
-    let off = (p as usize).wrapping_sub(GROW_BASE.load(Ordering::Relaxed));
-    (off < GROW_SIZE * GROW_CHUNKS).then_some(off / GROW_SIZE)
+    let off = (p as usize).wrapping_sub(HOT.grow_base.load(Ordering::Relaxed));
+    let chunk = off >> HOT.grow_bits.load(Ordering::Relaxed);
+    (chunk < GROW_CHUNKS).then_some(chunk)
 }
 
 fn grow_base(chunk: usize) -> usize {
-    GROW_BASE.load(Ordering::Relaxed) + chunk * GROW_SIZE
+    HOT.grow_base.load(Ordering::Relaxed) + chunk * grow_size()
 }
 
 /// Whether `p` lies in this heap's reservation (small pages or a growth chunk).
@@ -462,11 +565,11 @@ fn drain_remote(s: &mut State) {
 #[cold]
 fn refill(s: &mut State, class: usize) -> *mut u8 {
     let page = NEXT_PAGE.fetch_add(1, Ordering::Relaxed);
-    if page >= NUM_PAGES {
-        NEXT_PAGE.store(NUM_PAGES, Ordering::Relaxed);
+    if page >= num_pages() {
+        NEXT_PAGE.store(num_pages(), Ordering::Relaxed);
         return null_mut();
     }
-    let base = BASE.load(Ordering::Relaxed);
+    let base = HOT.base.load(Ordering::Relaxed);
     let used = (page + 1) * PAGE_SIZE;
     if used > COMMITTED.load(Ordering::Acquire) {
         let _g = COMMIT_LOCK.lock();
@@ -474,7 +577,7 @@ fn refill(s: &mut State, class: usize) -> *mut u8 {
         if used > committed {
             let chunk = COMMIT_STEP
                 .max(used - committed)
-                .min(PAGES_SIZE - committed);
+                .min(pages_len() - committed);
             if !sys::commit((base + committed) as *mut u8, chunk) {
                 return null_mut();
             }
@@ -483,7 +586,7 @@ fn refill(s: &mut State, class: usize) -> *mut u8 {
     }
     // SAFETY: `page` indexes the table, which has one word per page.
     unsafe {
-        *TABLE.load(Ordering::Relaxed).add(page) = (s.heap << OWNER_SHIFT) | class as u32;
+        *HOT.table.load(Ordering::Relaxed).add(page) = (s.heap << OWNER_SHIFT) | class as u32;
     }
     let start = (base + page * PAGE_SIZE) as *mut u8;
     let size = CLASS_SIZES[class] as usize;
@@ -914,7 +1017,7 @@ fn grow_map(s: &mut State) -> bool {
 /// Makes the first `len` bytes of the growth chunk usable; false when the system refuses.
 fn grow_commit(s: &mut State, len: usize) -> bool {
     if len > s.grow_committed {
-        let to = len.next_multiple_of(COMMIT_STEP).min(GROW_SIZE);
+        let to = len.next_multiple_of(COMMIT_STEP).min(grow_size());
         if !sys::commit(
             (grow_base(s.grow_chunk) + s.grow_committed) as *mut u8,
             to - s.grow_committed,
@@ -929,7 +1032,7 @@ fn grow_commit(s: &mut State, len: usize) -> bool {
 /// A block of `size` bytes at the start of this heap's growth chunk, or none when it is taken or
 /// too small.
 fn grow_take(s: &mut State, size: usize) -> Option<*mut u8> {
-    if (s.grow_chunk == usize::MAX && !grow_map(s)) || size > GROW_SIZE {
+    if (s.grow_chunk == usize::MAX && !grow_map(s)) || size > grow_size() {
         return None;
     }
     if GROW_LEN[s.grow_chunk].load(Ordering::Acquire) != 0 || !grow_commit(s, size) {
@@ -962,7 +1065,7 @@ fn grow_resize(p: *mut u8, new_size: usize) -> *mut u8 {
     let chunk = {
         // SAFETY: this thread's allocator state.
         let s = unsafe { &mut *STATE.ptr() };
-        if (GROW_MIN..=GROW_SIZE).contains(&new_size) && grow_commit(s, new_size) {
+        if (GROW_MIN..=grow_size()).contains(&new_size) && grow_commit(s, new_size) {
             GROW_LEN[s.grow_chunk].store(new_size, Ordering::Release);
             return p;
         }
@@ -992,10 +1095,10 @@ pub fn heap_stats() -> [i64; 2] {
     if s.heap == NO_HEAP {
         return [0; 2];
     }
-    let table = TABLE.load(Ordering::Relaxed);
+    let table = HOT.table.load(Ordering::Relaxed);
     let mut carved = 0usize;
     let mut pages = 0usize;
-    for page in 0..NEXT_PAGE.load(Ordering::Relaxed).min(NUM_PAGES) {
+    for page in 0..NEXT_PAGE.load(Ordering::Relaxed).min(num_pages()) {
         // SAFETY: `page` is below the pages handed out, which the table covers.
         let word = unsafe { *table.add(page) };
         if word >> OWNER_SHIFT == s.heap {
@@ -1107,6 +1210,72 @@ fn live_add(s: &mut State, delta: isize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
+
+    /// A reservation the system refuses above `limit` bytes per mapping: it is halved until the
+    /// sizes fit and then quartered again to leave room, every refused attempt gives back what it mapped, and the smallest still works.
+    #[test]
+    #[cfg_attr(miri, ignore = "reserves address space with the real mapper")]
+    fn a_refused_reservation_is_halved_until_it_fits() {
+        for shrink in [0, 3, MAX_SHRINK] {
+            let limit = (GROW_SIZE * GROW_CHUNKS) >> shrink;
+            let live = RefCell::new(Vec::<(usize, usize)>::new());
+            let map = |len: usize| {
+                if len > limit {
+                    return core::ptr::null_mut();
+                }
+                let p = sys::map_anon(len);
+                live.borrow_mut().push((p as usize, len));
+                p
+            };
+            let unmap = |p: *mut u8, len: usize| {
+                // SAFETY: a mapping `map` made and `reserve` has not used.
+                unsafe { sys::unmap(p, len) };
+                live.borrow_mut().retain(|&(q, _)| q != p as usize);
+            };
+            let region = reserve(&map, &unmap).expect("a reservation that fits");
+            let kept = if shrink == 0 {
+                0
+            } else {
+                (shrink + 2).min(MAX_SHRINK)
+            };
+            assert_eq!(region.pages_len, PAGES_SIZE >> kept);
+            assert_eq!(1usize << region.grow_bits, GROW_SIZE >> kept);
+            assert_eq!(live.borrow().len(), 3, "only the accepted mappings stay");
+            for (p, len) in live.borrow().iter() {
+                // SAFETY: the mappings made above.
+                unsafe { sys::unmap(*p as *mut u8, *len) };
+            }
+        }
+        let refuse = |_: usize| core::ptr::null_mut();
+        assert!(reserve(&refuse, &|_, _| unreachable!()).is_none());
+    }
+
+    /// Under a real address-space limit the custom allocator still serves small blocks.
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[cfg_attr(miri, ignore = "spawns a process")]
+    fn the_heap_is_used_under_an_address_space_limit() {
+        if std::env::var_os("MS_ALLOC_LIMIT_CHILD").is_some() {
+            claim_heap();
+            let p = alloc(64);
+            assert!(owns(p), "the block came from the system allocator");
+            assert!(pages_len() < PAGES_SIZE, "the reservation was not reduced");
+            // SAFETY: a block just allocated.
+            unsafe { free(p) };
+            return;
+        }
+        let exe = std::env::current_exe().expect("test binary");
+        let status = std::process::Command::new("sh")
+            .arg("-c")
+            .arg("ulimit -v 3000000 && exec \"$0\" --exact alloc::tests::the_heap_is_used_under_an_address_space_limit --nocapture")
+            .arg(exe)
+            .env("MS_ALLOC_LIMIT_CHILD", "1")
+            .status()
+            .expect("run the child");
+        assert!(status.success(), "child failed: {status}");
+    }
+
     use crate::testutil::lock;
 
     #[cfg(feature = "stats")]
