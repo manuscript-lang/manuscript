@@ -4,8 +4,8 @@
 //! (15). One process-wide handler (installed with the first observer and removed with the last)
 //! counts each event for every observer of that signal, then returns `FALSE` so the handler that
 //! was installed before (the runtime's cancellation) still runs.
-use core::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
-use ms_rt::glue::cancel_pending;
+use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use ms_rt::glue::{Wakeup, cancel_pending};
 use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::sys;
@@ -16,13 +16,14 @@ const MAX_SIGNAL: i64 = 64;
 const MAX_CAPACITY: i64 = 1_048_576;
 const DEFAULT_CAPACITY: i64 = 128;
 const SIGKILL: i64 = 9;
-const SLICE_MS: i32 = 50;
 
 /// Per observer slot, the signals it watches as a bit mask (`0` when the slot is free).
-static MASK: [core::sync::atomic::AtomicU64; SLOTS] =
-    [const { core::sync::atomic::AtomicU64::new(0) }; SLOTS];
+static MASK: [AtomicU64; SLOTS] = [const { AtomicU64::new(0) }; SLOTS];
 /// Per observer slot and signal, how many events wait to be read.
 static PENDING: [[AtomicU32; 16]; SLOTS] = [const { [const { AtomicU32::new(0) }; 16] }; SLOTS];
+/// Per observer slot, the wake-up id of the task parked in `wait` (`0` when none): the handler
+/// and `close` signal it so the task wakes on the event instead of looking on a period.
+static PARKED: [AtomicU64; SLOTS] = [const { AtomicU64::new(0) }; SLOTS];
 static OBSERVERS: AtomicUsize = AtomicUsize::new(0);
 
 /// Only `SIGINT` and `SIGTERM` can arrive on Windows; they index `PENDING` as 0 and 1.
@@ -45,9 +46,18 @@ unsafe extern "system" fn on_event(kind: u32) -> i32 {
     for slot in 0..SLOTS {
         if MASK[slot].load(Ordering::Acquire) & bit != 0 {
             PENDING[slot][at].fetch_add(1, Ordering::AcqRel);
+            wake(slot);
         }
     }
     0
+}
+
+/// Wakes the task parked on `slot`, if any; callable from the handler's thread.
+fn wake(slot: usize) {
+    let id = PARKED[slot].load(Ordering::SeqCst);
+    if id != 0 {
+        ms_rt::glue::signal_wakeup(id);
+    }
 }
 
 ms_rt::ffi::abi_handle!(Watcher);
@@ -145,12 +155,25 @@ impl Watcher {
             if let Some(sig) = self.take() {
                 return Ok(sig);
             }
-            if cancel_pending()
-                || ms_rt::glue::try_task_sleep(i64::from(SLICE_MS) * 1_000_000).is_err()
-            {
+            if cancel_pending() {
                 return Err(Fail::failed("cancelled"));
             }
+            let parked = Wakeup::new();
+            PARKED[self.slot].store(parked.id(), Ordering::SeqCst);
+            // The handler counts before it reads `PARKED` and this stores before it re-reads
+            // the counts, so one of the two sees the other.
+            let waiting = !self.closed && !self.has_pending();
+            let result = if waiting { parked.park(-1) } else { Ok(true) };
+            PARKED[self.slot].store(0, Ordering::SeqCst);
+            result.map_err(|_| Fail::failed("cancelled"))?;
         }
+    }
+
+    fn has_pending(&self) -> bool {
+        [2usize, 15]
+            .iter()
+            .filter_map(|&sig| index(sig as i64))
+            .any(|at| PENDING[self.slot][at].load(Ordering::SeqCst) > 0)
     }
 
     pub fn close(&mut self) {
@@ -159,6 +182,7 @@ impl Watcher {
         }
         self.closed = true;
         MASK[self.slot].store(0, Ordering::Release);
+        wake(self.slot);
         if OBSERVERS.fetch_sub(1, Ordering::AcqRel) == 1 {
             // SAFETY: removes the handler installed with the first observer.
             unsafe { SetConsoleCtrlHandler(Some(on_event), 0) };
