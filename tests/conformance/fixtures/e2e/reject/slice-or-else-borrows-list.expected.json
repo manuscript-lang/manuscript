@@ -7,21 +7,21 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3001",
+        "code": "MS3000",
         "phase": "type",
-        "message": "expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...), e.g. return ok(value)",
+        "message": "cannot change `xs` while `ys` borrows it (binding of a part of it, at 6:5); finish using `ys` before this, or give `ys` its own value by ending its initializer with `.clone()`",
         "position": {
           "file": "slice-or-else-borrows-list.ms",
-          "line": 8,
-          "column": 18,
-          "offset": 276
+          "line": 7,
+          "column": 5,
+          "offset": 250
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/slice-or-else-borrows-list.ms:8:18: type: expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...), e.g. return ok(value)\n   |\n 8 |     return (ys?).length()\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/slice-or-else-borrows-list.ms:7:5: type: cannot change `xs` while `ys` borrows it (binding of a part of it, at 6:5); finish using `ys` before this, or give `ys` its own value by ending its initializer with `.clone()`\n   |\n 7 |     xs.append(5)\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
