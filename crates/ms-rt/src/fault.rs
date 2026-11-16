@@ -1663,6 +1663,29 @@ pub fn cancel_return() {
     }
 }
 
+/// The cleanup-stack height: a function that keeps registrations (a hybrid, still covered by the
+/// cleanup stack) takes it at entry and passes it to [`msrt_cleanup_unwind_to`] on its cancel exit.
+#[unsafe(no_mangle)]
+// ms: leaf domain=unwind
+pub extern "C" fn msrt_cleanup_base() -> usize {
+    // SAFETY: single threaded access to the cleanup stack.
+    unsafe { (*CLEANUPS.ptr()).len() }
+}
+
+/// Runs the cleanups registered above `base`, innermost first, as a jump would (the same shield
+/// and `msrt_unwind_drops` rules as [`msrt_cancelled`]), then returns. The cancel exit goes on
+/// returning with `unwinding` still set; the task boundary ends it.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cleanup_unwind_to(base: usize) {
+    #[cfg(not(test))]
+    // SAFETY: single threaded access.
+    unsafe {
+        *UNWIND_DROPS.ptr() = guard_active();
+    }
+    // SAFETY: single threaded access to the cleanup stack.
+    while unsafe { (*CLEANUPS.ptr()).len() } > base && run_one_cleanup() {}
+}
+
 /// Marks the running task as unwinding for a delivered cancel. The caller then returns a zero
 /// result to its own caller, which tests the byte (`br.cancel`) and leaves by its cancel exit.
 pub fn deliver_cancel() {
@@ -2039,12 +2062,17 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
         {
             let r = msrt_guard_enter(core::ptr::addr_of_mut!(slot), code, data);
             if r == 0 {
-                guards_pop();
                 // A cancel delivered by return ends the call like one delivered by jump: the
-                // frames above have taken their cancel exits and returned.
+                // frames above have taken their cancel exits and returned. Cleanups still
+                // registered since entry belong to hold-outs that did not unwind them.
                 if take_unwinding() {
+                    *UNWIND_DROPS.ptr() = guard_active();
+                    while run_one_cleanup() {}
+                    *UNWIND_DROPS.ptr() = false;
+                    guards_pop();
                     return GUARD_CANCELLED;
                 }
+                guards_pop();
                 return GUARD_OK;
             }
             if !msg_out.is_null() {
@@ -2375,6 +2403,24 @@ mod tests {
 
     unsafe extern "C-unwind" fn returns_cancelled(_: *mut u8) {
         deliver_cancel();
+    }
+
+    #[test]
+    fn unwind_to_runs_only_the_cleanups_above_the_base() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock and pass valid pointers.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
+            let base = msrt_cleanup_base();
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(3));
+            msrt_cleanup_unwind_to(base);
+            assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[3, 2]);
+            assert_eq!(msrt_cleanup_base(), base);
+            reset_for_tests();
+        }
     }
 
     #[test]
