@@ -23,43 +23,10 @@ use ms_mir::ir::{ExtId, Func, Module};
 use ms_mir::types::Ty;
 use std::collections::HashMap;
 
+pub(crate) use ms_mir::glue::{GLUE_PREFIX, Glue};
+
 /// Offset of `code` in a closure object.
-/// The name prefix of generated glue functions, followed by a serial and the kind.
-pub(crate) const GLUE_PREFIX: &str = "ms.glue.";
-
 pub const CLOSURE_CODE: i32 = ms_rt_abi::CLOSURE_CODE_OFFSET as i32;
-
-/// Kinds of generated helper functions.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Glue {
-    /// Drops a value (takes the value's leaves).
-    Drop,
-    /// Clones a value (takes and returns the value's leaves).
-    Clone,
-    /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::VOID`) and the key carries the function id.
-    ClosureDrop(u32),
-    /// Like `ClosureDrop` for an object in a stack frame: drops the captures, frees nothing.
-    ClosureDropFramed(u32),
-    /// `fn(obj)` that releases a closure object after capture `k` while a fault unwinds out of the
-    /// close of that capture (whose value that close owns): it drops the later captures without
-    /// closing them and frees the object.
-    ClosureDropFrom(u32, u32),
-    /// Closure object clone entry `fn(obj) -> obj`, cloning the captures; keyed like `ClosureDrop`.
-    ClosureClone(u32),
-    /// Heap block destructor of an interface payload `fn(block)`.
-    BlockDrop,
-    /// Clone of an interface payload block `fn(block) -> block`.
-    BlockClone,
-    /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
-    CleanupThunk(u32),
-    /// `fn(block)` that calls the function in the key with the parameters stored at `block` and
-    /// stores its results after them: the body `msrt_task_grow` runs on a new stack segment.
-    GrowShim(u32),
-    /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
-    SlotDrop,
-    /// `fn(src, dst)` that copies the value at `src` into uninitialised `dst` (descriptor `copy`).
-    SlotCopy,
-}
 
 /// Runtime functions the generated code may call: `(name, params, returns)` with
 /// `i` = i64, `b` = i8.
@@ -424,6 +391,12 @@ impl<'m> Gen<'m> {
         if let Some(id) = self.glue.get(&(kind, ty)) {
             return *id;
         }
+        // The module made this type's drop function itself.
+        if kind == Glue::Drop
+            && let Some(f) = self.m.drop_glue.get(&ty.unscoped())
+        {
+            return self.funcs[f.index()];
+        }
         let leaves = self.lay.leaves(ty);
         let sig = match kind {
             Glue::Drop => self.sig(&leaves, &[]),
@@ -448,23 +421,7 @@ impl<'m> Gen<'m> {
             Glue::ClosureDropFrom(f, k) => format!("{}.{k}", func_sym(f)),
             _ => format!("{:016x}", name_hash(&ms_mir::print::ty_str(self.m, ty))),
         };
-        let base = format!(
-            "{GLUE_PREFIX}{}.{owner}",
-            match kind {
-                Glue::Drop => "drop",
-                Glue::Clone => "clone",
-                Glue::ClosureDrop(_) => "closure_drop",
-                Glue::ClosureDropFramed(_) => "closure_drop_framed",
-                Glue::ClosureDropFrom(..) => "closure_drop_from",
-                Glue::ClosureClone(_) => "closure_clone",
-                Glue::BlockDrop => "block_drop",
-                Glue::BlockClone => "block_clone",
-                Glue::CleanupThunk(_) => "cleanup_thunk",
-                Glue::GrowShim(_) => "grow_shim",
-                Glue::SlotDrop => "slot_drop",
-                Glue::SlotCopy => "slot_copy",
-            }
-        );
+        let base = format!("{GLUE_PREFIX}{}.{owner}", kind.suffix());
         let name = self.names.unique(&base);
         let id = self
             .module

@@ -62,7 +62,13 @@ pub fn verify_module_with(m: &Module, opts: VerifyOptions) -> Result<(), Vec<Ver
     let mut errs = Vec::new();
     verify_decls(m, &mut errs);
     let drops = drop_table(m);
-    for f in &m.funcs {
+    // A drop function is written for the backends after ownership elaboration, as one release per
+    // case: its paths do not all consume the value in the way the ownership rules ask.
+    let glue: std::collections::HashSet<usize> = m.drop_glue.values().map(|f| f.index()).collect();
+    for (i, f) in m.funcs.iter().enumerate() {
+        if glue.contains(&i) {
+            continue;
+        }
         if let Err(e) = verify_func_in(m, f, opts, &drops) {
             errs.extend(e);
         }

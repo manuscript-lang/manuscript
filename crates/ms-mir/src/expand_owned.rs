@@ -113,7 +113,15 @@ fn expand_inst(lay: &Layouts, f: &mut Func, i: Inst, out: &mut Vec<Inst>) {
         (Op::AltUnbox, Imm::AltField(a, c, k)) => {
             let res = i.res.expect("alt.unbox result");
             out.push(inst(Op::AltGet, &[v], i.imm, Some(res), loc));
-            release_alt_fields(lay, f, v, (a, c), 1 << k, loc, out);
+            release_alt_fields(
+                lay,
+                f,
+                v,
+                (a, c),
+                1u32.checked_shl(k).unwrap_or(0),
+                loc,
+                out,
+            );
         }
         (Op::AltRelease, Imm::AltMask(a, c, mask)) => {
             release_alt_fields(lay, f, v, (a, c), mask, loc, out);
@@ -124,7 +132,7 @@ fn expand_inst(lay: &Layouts, f: &mut Func, i: Inst, out: &mut Vec<Inst>) {
             let indirect = lay.m.type_defs[r.index()].indirect;
             let fields = lay.m.type_defs[r.index()].fields.clone();
             for (k, (_, fty)) in fields.iter().enumerate() {
-                if mask >> k & 1 == 0 && lay.m.needs_drop(*fty) {
+                if mask.checked_shr(k as u32).unwrap_or(0) & 1 == 0 && lay.m.needs_drop(*fty) {
                     let x = f.new_value(*fty);
                     out.push(inst(
                         Op::TypeGet,
@@ -160,7 +168,7 @@ fn release_alt_fields(
 ) {
     let fields = lay.m.alts[a.index()].cases[c as usize].fields.clone();
     for (k, (_, fty)) in fields.iter().enumerate() {
-        if skip >> k & 1 == 1 || !lay.m.needs_drop(*fty) {
+        if skip.checked_shr(k as u32).unwrap_or(0) & 1 == 1 || !lay.m.needs_drop(*fty) {
             continue;
         }
         let x = f.new_value(*fty);
