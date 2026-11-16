@@ -256,46 +256,48 @@ impl Timer {
         Some(Timer(timer))
     }
 
-    /// Makes the timer fire in `ns` nanoseconds (at least a millisecond: the units of the
-    /// timer filter cannot say less), replacing an earlier arming.
+    /// Changes the timer: `flags` add or delete it. The timer filter is given in nanoseconds;
+    /// on Apple systems `NOTE_CRITICAL` keeps the kernel from coalescing a short deadline into a
+    /// later one.
+    fn change(&self, flags: u16, ns: i64) {
+        #[cfg(target_vendor = "apple")]
+        let fflags = libc::NOTE_NSECONDS | libc::NOTE_CRITICAL;
+        #[cfg(not(target_vendor = "apple"))]
+        let fflags = libc::NOTE_NSECONDS;
+        // SAFETY: a zeroed `kevent` is a valid empty change, and the call reads one of them.
+        let mut ev: libc::kevent = unsafe { std::mem::zeroed() };
+        ev.ident = 1;
+        ev.filter = libc::EVFILT_TIMER;
+        ev.flags = flags;
+        ev.fflags = fflags;
+        ev.data = ns as _;
+        let none = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        // SAFETY: the queue is owned by `self`; no event is asked for, so no buffer is written.
+        unsafe { libc::kevent(self.0.as_raw_fd(), &ev, 1, std::ptr::null_mut(), 0, &none) };
+    }
+
+    /// Makes the timer fire in `ns` nanoseconds, replacing an earlier arming.
     pub fn arm(&self, ns: i64) {
-        use rustix::event::kqueue::{Event, EventFilter, EventFlags, kevent};
-        let at = Duration::from_nanos(ns.max(1_000_000) as u64);
-        let event = Event::new(
-            EventFilter::Timer {
-                ident: 1,
-                timer: Some(at),
-            },
-            EventFlags::ADD | EventFlags::ONESHOT,
-            std::ptr::null_mut(),
-        );
-        let mut none = Vec::new();
-        // SAFETY: the change names no descriptor.
-        let _ = unsafe { kevent(&self.0, &[event], &mut none, Some(Duration::ZERO)) };
+        self.change(libc::EV_ADD | libc::EV_ONESHOT, ns.max(1));
     }
 
     /// Cancels the timer.
     pub fn disarm(&self) {
-        use rustix::event::kqueue::{Event, EventFilter, EventFlags, kevent};
-        let event = Event::new(
-            EventFilter::Timer {
-                ident: 1,
-                timer: None,
-            },
-            EventFlags::DELETE,
-            std::ptr::null_mut(),
-        );
-        let mut none = Vec::new();
-        // SAFETY: the change names no descriptor.
-        let _ = unsafe { kevent(&self.0, &[event], &mut none, Some(Duration::ZERO)) };
+        self.change(libc::EV_DELETE, 0);
     }
 
     /// Takes the expiry out so the timer is quiet until armed again.
     pub fn consume(&self) {
-        use rustix::event::kqueue::{Event, kevent};
-        let mut out: Vec<Event> = Vec::with_capacity(4);
-        // SAFETY: no change is made.
-        let _ = unsafe { kevent(&self.0, &[], &mut out, Some(Duration::ZERO)) };
+        // SAFETY: the buffer holds one event and is zeroed, which is a valid `kevent`.
+        let mut out: libc::kevent = unsafe { std::mem::zeroed() };
+        let none = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        unsafe { libc::kevent(self.0.as_raw_fd(), std::ptr::null(), 0, &mut out, 1, &none) };
     }
 }
 

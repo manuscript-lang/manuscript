@@ -172,20 +172,27 @@ pub struct PollRef(Arc<mio::Registry>);
 /// Tokens from here up in a poller's events are timers of other threads (see [`Timer::between`]).
 pub const TIMER_TOKEN: u64 = 1 << 62;
 
-/// A one-shot timer of the thread pool whose expiry the helper's `mio` poll reports as an event
-/// under a token (the callback wakes a [`mio::Waker`] registered under it). Arming and
-/// disarming are one system call each and wake nobody.
+/// A one-shot high-resolution waitable timer (about half a millisecond; an ordinary timer only
+/// ticks at the system's 1 to 15.6 ms) that a thread-pool wait turns into a wake of the helper's
+/// `mio` poll under a token (the callback wakes a [`mio::Waker`] registered under it). Arming and
+/// disarming are system calls and wake nobody.
 pub struct Timer {
-    timer: PTP_TIMER,
+    timer: HANDLE,
+    wait: PTP_WAIT,
     waker: *mut mio::Waker,
 }
 
-// SAFETY: a thread-pool timer is made to be set from any thread, and the waker is only used by
-// the callback and freed after it can no longer run.
+// SAFETY: a waitable timer and a thread-pool wait are made to be set from any thread, and the
+// waker is only used by the callback and freed after it can no longer run.
 unsafe impl Send for Timer {}
 unsafe impl Sync for Timer {}
 
-unsafe extern "system" fn timer_fired(_: PTP_CALLBACK_INSTANCE, waker: *mut c_void, _: PTP_TIMER) {
+unsafe extern "system" fn timer_fired(
+    _: PTP_CALLBACK_INSTANCE,
+    waker: *mut c_void,
+    _: PTP_WAIT,
+    _: u32,
+) {
     // SAFETY: the waker outlives every callback (see `Drop`).
     let _ = unsafe { &*(waker as *const mio::Waker) }.wake();
 }
@@ -195,33 +202,49 @@ impl Timer {
     pub fn between(helper: PollRef, token: u64) -> Option<Timer> {
         let waker = mio::Waker::new(&helper.0, mio::Token(token as usize)).ok()?;
         let waker = Box::into_raw(Box::new(waker));
-        // SAFETY: the callback matches the signature and the context outlives it.
-        let timer =
-            unsafe { CreateThreadpoolTimer(Some(timer_fired), waker.cast(), std::ptr::null()) };
-        if timer.is_null() {
-            // SAFETY: made above and not shared.
-            drop(unsafe { Box::from_raw(waker) });
+        // SAFETY: plain creation calls; the context outlives the callback (see `Drop`).
+        let (timer, wait) = unsafe {
+            let timer = CreateWaitableTimerExW(
+                std::ptr::null(),
+                std::ptr::null(),
+                CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
+                TIMER_ALL_ACCESS,
+            );
+            let wait = CreateThreadpoolWait(Some(timer_fired), waker.cast(), std::ptr::null());
+            (timer, wait)
+        };
+        if timer.is_null() || wait == 0 {
+            // SAFETY: each is closed only if made, and nothing else holds them.
+            unsafe {
+                if !timer.is_null() {
+                    CloseHandle(timer);
+                }
+                if wait != 0 {
+                    CloseThreadpoolWait(wait);
+                }
+                drop(Box::from_raw(waker));
+            }
             return None;
         }
-        Some(Timer { timer, waker })
+        Some(Timer { timer, wait, waker })
     }
 
     /// Makes the timer fire in `ns` nanoseconds, replacing an earlier arming.
     pub fn arm(&self, ns: i64) {
         // A negative due time is relative, in units of 100 ns.
-        let ticks = -(ns.max(100) / 100);
-        let due = FILETIME {
-            dwLowDateTime: ticks as u32,
-            dwHighDateTime: (ticks >> 32) as u32,
-        };
-        // SAFETY: `self.timer` is live until `Drop`.
-        unsafe { SetThreadpoolTimer(self.timer, &due, 0, 0) };
+        let due = -(ns.max(100) / 100);
+        // SAFETY: both handles live until `Drop`. Setting the timer clears an earlier signal, so
+        // the wait registered after it only sees this arming.
+        unsafe {
+            SetWaitableTimer(self.timer, &due, 0, None, std::ptr::null(), 0);
+            SetThreadpoolWait(self.wait, self.timer, std::ptr::null());
+        }
     }
 
     /// Cancels the timer.
     pub fn disarm(&self) {
-        // SAFETY: as above; no due time cancels the timer.
-        unsafe { SetThreadpoolTimer(self.timer, std::ptr::null(), 0, 0) };
+        // SAFETY: as above.
+        unsafe { CancelWaitableTimer(self.timer) };
     }
 
     /// The expiry is the event itself: nothing to read out.
@@ -232,9 +255,11 @@ impl Drop for Timer {
     fn drop(&mut self) {
         // SAFETY: cancelled, waited for, then closed; only then is the waker freed.
         unsafe {
-            SetThreadpoolTimer(self.timer, std::ptr::null(), 0, 0);
-            WaitForThreadpoolTimerCallbacks(self.timer, 1);
-            CloseThreadpoolTimer(self.timer);
+            CancelWaitableTimer(self.timer);
+            SetThreadpoolWait(self.wait, std::ptr::null_mut(), std::ptr::null());
+            WaitForThreadpoolWaitCallbacks(self.wait, 1);
+            CloseThreadpoolWait(self.wait);
+            CloseHandle(self.timer);
             drop(Box::from_raw(self.waker));
         }
     }

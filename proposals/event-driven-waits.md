@@ -14,25 +14,55 @@
 - With no peer resting nothing is armed; a resting thread arms the timers of such threads for itself as it begins to rest. With every thread at rest nothing is armed and nothing wakes.
 - `ms_rt::watch` is deleted. Windows and the 50 ms HTTP/2 sweep are unchanged (see the inventory).
 
-## Measurements (2026-11-16, 4 vCPU VM, alternated runs; base is `main` at 9f09fd55, no TLS/H2 stealing)
+## Measurements (2026-11-16, 4 vCPU shared VM, alternated runs; three binaries: `main` at 9f09fd55, PR 4227's watcher, this design)
 
-| Scenario | Base | Timer design, T = 250 µs |
-| --- | --- | --- |
-| Fixture `http-long-handler-does-not-hold-others` | 30 of 30 | 20 of 20 |
-| Slow mix 2000 req/s: p50 / p99, CPU | 0.64 ms / 3.3 to 3.5 ms, 9.9 s | 0.66 ms / 2.8 to 2.9 ms, 9.0 s |
-| Fast mix 4000 req/s, CPU (40k requests) | 2.9 to 3.0 s | 3.1 to 3.4 s (+8 to 13%) |
-| Fast mix p50 / p99 | 0.67 ms / 2.1 to 2.6 ms | 0.66 ms / 2.1 ms |
-| Saturated closed loop, 64 conns | 79k to 89k req/s | 86k to 96k req/s (equal within noise) |
+Each cell is the range over 3 runs (2 for TLS and HTTP/2); CPU is process user plus system seconds for the run.
 
-Dead ends measured on the way:
+| Scenario | `main` | 4227 watcher | Kernel timers, T = 250 µs |
+| --- | --- | --- | --- |
+| Fixture `http-long-handler-does-not-hold-others` | 30 of 30 | 30 of 30 | 20 of 20 |
+| Fast mix 4000 req/s (40k requests): CPU | 2.67 to 2.89 s | 2.67 to 2.85 s | 2.99 to 3.02 s |
+| Fast mix p50 / p99 | 0.66 ms / 1.7 to 2.2 ms | 0.66 ms / 1.9 to 2.5 ms | 0.67 ms / 2.1 to 2.2 ms |
+| Slow mix 2000 req/s: CPU | 9.4 to 9.8 s | 9.5 to 9.6 s | 8.8 to 9.1 s |
+| Slow mix p50 / p99 | 0.61 to 0.65 ms / 2.4 to 3.3 ms | 0.61 to 0.63 ms / 2.4 to 2.9 ms | 0.65 ms / 2.7 to 3.0 ms |
+| TLS slow mix: CPU / p50 / p99 | | 9.9 s / 0.63 ms / 3.4 ms | 9.3 s / 0.67 to 0.69 ms / 3.3 to 3.7 ms |
+| HTTP/2 slow mix: CPU / p50 / p99 | | 10.5 s / 0.71 to 0.73 ms / 3.7 to 3.9 ms | 10.0 to 10.1 s / 0.78 ms / 3.7 to 3.9 ms |
+| Closed loop, 64 conns, req/s | 128k to 137k | 133k to 140k | 122k to 128k |
+| Idle, 4 threads, 6 keep-alive connections, 1 s | | | 91 µs CPU, 1 context switch (fixture `http-idle-server-stays-asleep`) |
+
+Reading: the slow-mix tail is the same as the watcher's and CPU is 3 to 7% lower, with TLS and HTTP/2 covered. Two costs remain, both small: fast-mix CPU is 8 to 10% above both (about 11 µs per request), and the closed loop is 3 to 7% below the watcher (within the machine's spread, but consistently lower in three of three pairs). The p50 is 20 to 60 µs higher at the slow mix.
+
+### Where the fast-mix CPU goes
+
+- `strace -c` at the fast mix: 3.6 `timerfd_settime` calls per request (an arm when a thread leaves rest and a disarm when it rests: 1.8 rest cycles per request), 0.17 timer reads per request under `strace` and fewer than 500 fires in 40,000 requests without it. Fires on merely busy threads are negligible.
+- A variant with every hook and counter in place but the two timer calls removed costs nothing (2.4 to 2.6 s). So the whole difference is the timer calls.
+- A C loop of `timerfd_settime` arm plus disarm on this VM takes 5.2 µs per pair (5.7 µs with the timer registered in an epoll set): programming a one-shot hrtimer is a VM exit here. On hardware without that exit it is far cheaper; it was not measured because no such machine is at hand.
+- Cut already: no arm while the thread lists no waiting connection (a connection listed later in the stretch starts the clock then).
+- Not possible without breaking the guarantee: dropping the disarm lets a rest longer than T end in a stale fire that wakes a peer, which at this load is most rests; skipping the arm on a guess about run length misses the first long handler after a run of short ones.
+- What remains is two system calls per rest cycle and nothing else.
+
+### Choice of T
+
+| T | Fast mix CPU | Slow mix CPU | Slow mix p99 | Slow mix p50 |
+| --- | --- | --- | --- | --- |
+| 100 µs | 3.3 to 3.5 s | 10.0 to 10.3 s | 4.0 to 4.7 ms | 0.66 to 0.70 ms |
+| 250 µs | 3.0 to 3.3 s | 9.1 to 9.5 s | 3.8 to 4.0 ms | 0.67 to 0.71 ms |
+| 1 ms | 2.8 to 3.3 s | 8.5 s | 3.9 to 5.7 ms | 0.74 to 0.83 ms |
+
+(One alternated sweep, 3 fast and 4 slow runs each, on a busier machine than the table above, so compare within it.) A shorter T fires on more threads that are only busy and costs CPU as 1/T; a longer one leaves a ready request waiting that much longer behind a held-up thread (p50 and p99 rise). 250 µs is where both are near their floor. It is also about 10 times a request's service time (about 25 µs), so a handler that finishes in the usual time never fires its timer.
+
+### Dead ends measured on the way
 
 - A, one shared one-shot poller that every thread waits on: 0 to 20% throughput loss (microbenchmark of epoll, owned vs shared).
 - A2, `EPOLLEXCLUSIVE` on a nested epoll descriptor: `EINVAL`.
 - B, kernel readiness lent to one rescuer thread (the first implementation): one wake per request, about 14 µs of CPU each, 20% of closed-loop throughput.
-- T: CPU of the fast mix grows as 1/T (timers that fire on a thread that is only busy). 100 µs cost +15%, 1 ms lost the slow-mix tail; 250 µs is the compromise.
 - A "turn counter unchanged" test alone is wrong: the event that reports a request also wakes its owner. "Has not rested since arming" is the test.
 
-Known cost: the macOS timer filter has a 1 ms floor in this code (`Timer::arm`), so a held-up thread there is found after 1 ms; Windows and macOS are verified by CI only.
+### Platform notes
+
+- Linux: `timerfd`, nanosecond resolution.
+- macOS: a `kqueue` of its own per timer, registered in the helper's `kqueue`, with `EVFILT_TIMER` in nanoseconds (`NOTE_NSECONDS`) and `NOTE_CRITICAL` so the kernel does not coalesce a short deadline. Written with `libc` directly because `rustix` 1.1.5 encodes a sub-millisecond timer as zero seconds. `libc` is already a dependency of five sibling crates. Verified by CI only.
+- Windows: a high-resolution waitable timer (`CREATE_WAITABLE_TIMER_HIGH_RESOLUTION`, about 0.5 ms; an ordinary timer ticks at 1 to 15.6 ms) with a thread-pool wait that wakes the helper's `mio` poll. So on Windows the effective T is the timer's resolution, a latency of up to about 0.5 ms more than Linux. Verified by CI only.
 
 ## Inventory (2026-11-16, `main` at 9f09fd55)
 

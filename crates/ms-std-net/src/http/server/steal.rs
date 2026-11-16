@@ -81,6 +81,9 @@ pub struct Beat {
     armed_for: AtomicUsize,
     /// The thread has been out of rest with no thread resting to look at it.
     dormant: AtomicBool,
+    /// Connections listed as waiting, over all servers of this thread: with none there is
+    /// nothing to take from it, so its timer stays unarmed.
+    listed: AtomicUsize,
     /// Set when a server of this thread has connections to take or to drop.
     attention: AtomicBool,
     wake: Arc<Wake>,
@@ -110,6 +113,7 @@ impl Beat {
             armed: AtomicU64::new(0),
             armed_for: AtomicUsize::new(NONE),
             dormant: AtomicBool::new(false),
+            listed: AtomicUsize::new(0),
             attention: AtomicBool::new(false),
             wake: poller.waker(),
             timers: (0..=sched::MAX_THREADS).map(|_| OnceLock::new()).collect(),
@@ -171,6 +175,9 @@ impl Beat {
     /// The thread left its rest: starts the clock on how long it may stay out of it, for a
     /// thread that rests now and will hear it. With none, it waits for one (see [`begin_rest`]).
     fn leave_rest(&self) {
+        if self.listed.load(Ordering::Relaxed) == 0 {
+            return;
+        }
         let helpers = sched::resting_mask() & self.peers.load(Ordering::Relaxed);
         if helpers == 0 {
             self.make_dormant();
@@ -385,6 +392,11 @@ impl Member {
             taken: false,
         });
         self.waiting.fetch_add(1, Ordering::Relaxed);
+        // The first connection listed while the thread is out of rest starts its clock: the
+        // thread left rest with nothing to take, so nothing was armed.
+        if self.beat.listed.fetch_add(1, Ordering::Relaxed) == 0 {
+            self.beat.leave_rest();
+        }
         (idle.len() - 1) as u32
     }
 
@@ -401,6 +413,7 @@ impl Member {
         let entry = idle.swap_remove(at);
         if !entry.taken {
             self.waiting.fetch_sub(1, Ordering::Relaxed);
+            self.beat.listed.fetch_sub(1, Ordering::Relaxed);
         }
         let back = if entry.taken {
             Back::Taken
@@ -483,6 +496,7 @@ impl Member {
         }
         if !out.is_empty() {
             self.waiting.fetch_sub(out.len(), Ordering::Relaxed);
+            self.beat.listed.fetch_sub(out.len(), Ordering::Relaxed);
             // Counted away now, not when the owner drops its handle, so that balancing sees
             // where the connections are.
             self.conns.fetch_sub(out.len(), Ordering::Relaxed);

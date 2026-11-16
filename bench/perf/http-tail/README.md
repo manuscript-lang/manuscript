@@ -121,14 +121,4 @@ Instructions per TLS request with one thread (`valgrind --tool=callgrind` on the
 
 ## 2026-11-16: kernel timers instead of the watcher thread
 
-4 vCPU shared VM, alternated runs against `main` at 9f09fd55 (before connection stealing's TLS and HTTP/2 stage). Full method and dead ends: [proposal](../../../proposals/event-driven-waits.md).
-
-| Scenario | Base | Kernel timers, T = 250 µs |
-| --- | --- | --- |
-| Slow mix 2000 req/s, p50 / p99 | 0.64 ms / 3.3 to 3.5 ms | 0.66 ms / 2.8 to 2.9 ms |
-| Slow mix CPU for the run | 9.9 s | 9.0 s |
-| Fast mix 4000 req/s CPU (40k requests) | 2.9 to 3.0 s | 3.1 to 3.4 s |
-| Closed loop, 64 conns | 79k to 89k req/s | 86k to 96k req/s |
-| Fixture `http-long-handler-does-not-hold-others` | 30 of 30 | 20 of 20 |
-
-The fast-mix CPU cost (8 to 13%) is the two timer calls per wake-up plus fires on threads that were only busy; it grows as 1/T. Not measured here: the comparison with the watcher of the TLS/HTTP/2 PR (about 25% more CPU than `main`).
+Three binaries on the same 4 vCPU shared VM, alternated runs: `main` at 9f09fd55, PR 4227's watcher, and kernel timers with T = 250 µs. The table, the cost split of the fast-mix CPU, and the choice of T are in the [proposal](../../../proposals/event-driven-waits.md#measurements-2026-11-16-4-vcpu-shared-vm-alternated-runs-three-binaries-main-at-9f09fd55-pr-4227s-watcher-this-design). Summary: slow-mix tail equal to the watcher's with 3 to 7% less CPU (plain, TLS and HTTP/2); fast-mix CPU 8 to 10% higher (two timer system calls per rest cycle, 5.2 µs per pair on this VM); closed loop 3 to 7% lower; idle server 91 µs of CPU and one context switch in a second.
