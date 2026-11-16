@@ -26,3 +26,14 @@ the only field or element place among the `var` arguments and the others are dif
 
 What is left in JPEG is per-element work in `jpeg_plane` and `jpeg_forward` (about a million
 `msrt_free` calls each in the 256 by 256 profile), a separate change.
+
+## 2026-11-16, constant lists read from static data (#4199)
+
+A reference to a constant list of scalars is a borrowed view of static data (`list.const.view`,
+`proposals/constant-list-view.md`) instead of a call that allocates, copies and frees a list on
+every read. Best of 3, same machine, `main` 2b8a689e against this change:
+
+| Step (2048 by 2048) | Before | After | Go 1.24.7 |
+| --- | --- | --- | --- |
+| JPEG decode | 1784 ms | 441 ms | 96 ms |
+| JPEG encode | 2302 ms | 326 ms | 183 ms |

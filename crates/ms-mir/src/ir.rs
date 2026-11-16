@@ -294,7 +294,7 @@ pub enum Op {
     // Types and alternatives.
     TypeNew, TypeGet, TypeSet, TypeFill, AltNew, AltView, AltPlain, AltOwn, AltTag, AltGet, AltUnbox, AltTake, AltRelease, TypeRelease,
     // Lists.
-    ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
+    ListNew, ListLit, ListConst, ListConstView, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
     OptSome, OptView, OptViewAt, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
     // Strings.

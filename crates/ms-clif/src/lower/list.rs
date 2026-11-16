@@ -95,6 +95,18 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let nn = self.iconst(n);
                 vec![p, nn, nn]
             }
+            Op::ListConstView => {
+                let Imm::Int(i) = inst.imm else {
+                    unreachable!()
+                };
+                let (e, _, _) = self.elem_info(res_ty);
+                let n = self.g.m.list_consts[i as usize].len() as i64;
+                let data = self.g.list_const(i as usize, e);
+                let ptr = self.data_addr(data);
+                // Capacity zero marks the elements as borrowed: nothing frees them.
+                let (len, cap) = (self.iconst(n), self.iconst(0));
+                vec![ptr, len, cap]
+            }
             Op::ListLen => vec![self.a(inst, 0)[1]],
             Op::ListGet | Op::ListGetNn | Op::ListGetU => {
                 let lt = f.ty(inst.args[0]);

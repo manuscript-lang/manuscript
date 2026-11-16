@@ -964,7 +964,7 @@ impl<'a> Fa<'a> {
         let d = self.def_inst(self.lengths[v.index()])?;
         match d.op {
             Op::ListLit => i64::try_from(d.args.len()).ok(),
-            Op::ListConst => match d.imm {
+            Op::ListConst | Op::ListConstView => match d.imm {
                 Imm::Int(i) => i64::try_from(self.m.list_consts[i as usize].len()).ok(),
                 _ => None,
             },
