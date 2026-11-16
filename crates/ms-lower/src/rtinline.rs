@@ -389,6 +389,14 @@ impl FnLower<'_> {
             let f = self.read_word_fn();
             return Some(self.b.call(f, args));
         }
+        if sym == "msrt_bytes_index_of_byte" && args.len() == 4 {
+            let f = self.index_of_byte_fn();
+            let mut args = args.to_vec();
+            if self.ty_of(args[1]) != MTy::INT {
+                args[1] = self.b.conv(args[1], MTy::INT);
+            }
+            return Some(self.b.call(f, &args));
+        }
         if let Some(v) = self.inline_str(sym, args) {
             return Some(v);
         }
@@ -926,6 +934,104 @@ impl FnLower<'_> {
         b.switch_to(fail);
         let oor = b.iconst(2);
         b.ret(Some(oor));
+        let func = b.into_func();
+        let fid = self.b.m.add_func(func);
+        self.cx.helpers.insert(key, fid);
+        fid
+    }
+
+    /// The generated `Bytes.index_of_byte` (`msrt_bytes_index_of_byte`): the next sixteen bytes
+    /// are searched two words at a time (the zero-byte trick on the XOR with the byte repeated),
+    /// so a field or line end a few bytes away is found without a call. Less than sixteen bytes
+    /// left, a byte outside 0..=255 and a miss in the window go to the runtime, which continues
+    /// from where the window ended.
+    fn index_of_byte_fn(&mut self) -> FuncId {
+        let key = HelperKey::BytesIndexOfByte;
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let param = |ty| Param {
+            ty,
+            mode: Mode::Borrow,
+        };
+        let tys = [MTy::BYTES, MTy::INT, MTy::INT, MTy::PTR];
+        let ext = runtime_fn(self.b.m, "msrt_bytes_index_of_byte", &tys, MTy::BOOL);
+        let mut b = FuncBuilder::new(
+            self.b.m,
+            "bytes_index_of_byte",
+            tys.iter().map(|t| param(*t)).collect(),
+            MTy::BOOL,
+        );
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().inline = InlineHint::Always;
+        let ps = b.params();
+        let (bytes, value, start, out) = (ps[0], ps[1], ps[2], ps[3]);
+        let (window, second, slow, found) =
+            (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+        let at = b.add_block_param(found, MTy::INT, Mode::Borrow);
+        let resume = b.add_block_param(slow, MTy::INT, Mode::Borrow);
+        let vec = b
+            .emit(Op::Slot, &[], Imm::Ty(MTy::BYTES), Some(MTy::PTR))
+            .expect("slot");
+        b.emit(Op::Store, &[vec, bytes], Imm::None, None);
+        let len = load(&mut b, vec, 8, MTy::INT);
+        let zero = b.iconst(0);
+        let negative = b.icmp(Cc::Lt, start, zero);
+        let from = b.select(negative, zero, start);
+        let rest = b.binop(Op::ISub, len, from);
+        let c16 = b.iconst(16);
+        let room = b.icmp(Cc::Ge, rest, c16);
+        let c255 = b.iconst(255);
+        let low = b.icmp(Cc::Ge, value, zero);
+        let high = b.icmp(Cc::Le, value, c255);
+        let byte = b.binop(Op::And, low, high);
+        let ok = b.binop(Op::And, room, byte);
+        b.br_if(ok, window, &[], slow, &[start]);
+        b.seal_block(window);
+        b.switch_to(window);
+        let data = load(&mut b, vec, 0, MTy::PTR);
+        let p = b
+            .emit(Op::PtrAdd, &[data, from], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        let repeated = int(&mut b, Op::IMul, value, 0x0101_0101_0101_0101);
+        // The offset of the first byte of the word at `p + off` equal to the value, or a miss.
+        let probe =
+            |b: &mut FuncBuilder<'_>, off: i64, hit: Block, miss: Block, miss_args: &[Value]| {
+                let q = add(b, p, off);
+                let w = b
+                    .emit(Op::PtrLoadU, &[q], Imm::Int(8), Some(MTy::INT))
+                    .expect("ptr.loadu");
+                let x = b.binop(Op::Xor, w, repeated);
+                // The high bit of each byte of `y` is set unless that byte of `x` is zero.
+                let low7 = int(b, Op::And, x, 0x7f7f_7f7f_7f7f_7f7f);
+                let y = int(b, Op::IAdd, low7, 0x7f7f_7f7f_7f7f_7f7f);
+                let y = b.binop(Op::Or, y, x);
+                let y = int(b, Op::And, y, 0x8080_8080_8080_8080_u64 as i64);
+                let t = int(b, Op::Xor, y, 0x8080_8080_8080_8080_u64 as i64);
+                let none = b.icmp(Cc::Eq, t, zero);
+                let tz = b
+                    .emit(Op::Ctz, &[t], Imm::None, Some(MTy::INT))
+                    .expect("ctz");
+                let idx = int(b, Op::Ushr, tz, 3);
+                let idx = int(b, Op::IAdd, idx, off);
+                let found_at = b.binop(Op::IAdd, from, idx);
+                b.br_if(none, miss, miss_args, hit, &[found_at]);
+            };
+        let after = b.binop(Op::IAdd, from, c16);
+        probe(&mut b, 0, found, second, &[]);
+        b.seal_block(second);
+        b.switch_to(second);
+        probe(&mut b, 8, found, slow, &[after]);
+        b.seal_block(found);
+        b.switch_to(found);
+        b.emit(Op::Store, &[out, at], Imm::None, None);
+        let yes = b.bconst(true);
+        b.ret(Some(yes));
+        // The runtime takes over from the end of the window, or from `from` when there was none.
+        b.seal_block(slow);
+        b.switch_to(slow);
+        let status = b.call_rt(ext, &[bytes, value, resume, out]);
+        b.ret(Some(status));
         let func = b.into_func();
         let fid = self.b.m.add_func(func);
         self.cx.helpers.insert(key, fid);
