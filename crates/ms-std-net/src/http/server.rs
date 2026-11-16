@@ -256,12 +256,24 @@ impl Reactor {
             let mut tokens = self.pending.take();
             tokens.push(token);
             self.pending.set(tokens);
-            // A task other than the reactor (the accept loop adopting a connection, a request
-            // task that finished) may start it while the reactor is parked with no deadline at
-            // all: it would not read the clock until something else woke it.
-            if self.next_sweep.get().is_none() && rt::current_task() != self.task.get() {
-                self.poller.kick();
-            }
+        }
+    }
+
+    /// Settles the timeouts a task other than the reactor started (a request task that finished,
+    /// the accept loop adopting a connection) before it ends, on the same thread: the reactor is
+    /// parked, and a sweep it must run earlier than the one it waits for wakes it.
+    fn settle_pending(&self) {
+        let tokens = self.pending.take();
+        let any = !tokens.is_empty();
+        self.pending.set(tokens);
+        if !any {
+            return;
+        }
+        let before = self.next_sweep.get();
+        self.settle_timeouts();
+        let after = self.next_sweep.get();
+        if after.is_some() && (before.is_none() || after < before) {
+            self.poller.kick();
         }
     }
 
@@ -492,6 +504,7 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     if shield {
         rt::stop_unshield();
     }
+    Reactor::get().settle_pending();
     if !ended {
         // Nothing is left to answer on the connection; closing it also cancels no one else.
         conn.st.borrow_mut().task = 0;
@@ -868,7 +881,9 @@ impl Server {
             return;
         }
         let _ = sock.set_tcp_nodelay(true);
-        self.add_conn(sock, &Reactor::get());
+        let reactor = Reactor::get();
+        self.add_conn(sock, &reactor);
+        reactor.settle_pending();
     }
 
     /// Drains and closes the server as the cleanup of the task that serves it: an idle connection
@@ -1964,17 +1979,16 @@ pub(super) fn body_allowed(status: i64) -> bool {
 
 /// Appends handler headers with canonical names, sorted.
 pub(super) fn append_handler_headers(out: &mut Vec<u8>, headers: &Headers) -> (bool, bool) {
-    let mut sorted: Vec<(String, &[Vec<u8>])> = headers
+    let mut sorted: Vec<(String, headers::Values<'_>)> = headers
         .entries()
-        .iter()
-        .map(|e| (headers::canonical(&e.name), &*e.values))
+        .map(|e| (headers::canonical(e.name), e.values))
         .collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
     let (mut has_type, mut has_date) = (false, false);
     for (name, values) in &sorted {
         has_type |= name == "Content-Type";
         has_date |= name == "Date";
-        for v in *values {
+        for v in values.iter() {
             h1::header_line(out, name, v);
         }
     }

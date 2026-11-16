@@ -843,11 +843,16 @@ mod tests {
             panic!("not a request");
         };
         assert_eq!(head.length, bytes.len());
+        let fields = head
+            .fields
+            .pairs()
+            .map(|(n, v)| (n.to_string(), v.to_vec()))
+            .collect::<Vec<_>>();
         let req = Request {
             method: &head.method,
             host: "h:80",
             tls: false,
-            fields: &head.fields,
+            fields: &fields,
         };
         let protocols = vec!["echo".to_string()];
         let options = ServerOptions {

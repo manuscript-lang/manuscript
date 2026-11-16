@@ -25,6 +25,14 @@ pub(crate) fn has_generic_operation(contract: &Ty) -> bool {
     })
 }
 
+/// Whether `t` mentions a type variable anywhere.
+fn has_variable(t: &Ty) -> bool {
+    t.kind == Kind::Variable
+        || t.args.iter().any(has_variable)
+        || t.params.iter().any(|p| has_variable(&p.ty))
+        || t.result.as_ref().is_some_and(has_variable)
+}
+
 /// A structural property the language derives from a type's shape.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum Property {
@@ -381,6 +389,7 @@ impl Checker {
                     .push(at);
             }
         }
+        self.property_methods.add(at, &method, self.syms);
         self.p.methods.push(method);
     }
 
@@ -1323,14 +1332,9 @@ impl Checker {
             });
         }
         // Explicit implementations take precedence over structural data semantics.
-        for m in &self.p.methods {
-            if !self.method_visible(m)
-                || !(m
-                    .contract
-                    .as_ref()
-                    .is_some_and(|c| c.is(property.builtin()))
-                    || m.overrides(self.syms, property.builtin()))
-            {
+        for &at in self.property_methods.deciding(property.builtin()) {
+            let m = &self.p.methods[at as usize];
+            if !self.method_visible(m) {
                 continue;
             }
             let mut s = Subst::default();
@@ -1344,11 +1348,9 @@ impl Checker {
             }
         }
         if property == Property::Hashable {
-            for m in &self.p.methods {
-                if !self.method_visible(m)
-                    || !(m.contract.as_ref().is_some_and(|c| c.is(Builtin::Equal))
-                        || m.overrides(self.syms, Builtin::Equal))
-                {
+            for &at in self.property_methods.deciding(Builtin::Equal) {
+                let m = &self.p.methods[at as usize];
+                if !self.method_visible(m) {
                     continue;
                 }
                 let mut s = Subst::default();
@@ -1533,7 +1535,18 @@ impl Checker {
                 .iter()
                 .any(|m| m.ty.params.is_empty() && is_close_result(self.syms, &m.ty.result_ty()));
         }
-        self.implements(t, &self.session.standard("Closeable", vec![]))
+        // A type variable's bounds are filled in after it is created and are not part of the shape,
+        // so only a type without variables has an answer that depends on the key alone.
+        if has_variable(t) {
+            return self.implements(t, &self.session.standard("Closeable", vec![]));
+        }
+        let key = (self.current_file(), self.p.methods.len(), self.shape(t));
+        if let Some(&known) = self.closeable_cache.borrow().get(&key) {
+            return known;
+        }
+        let closeable = self.implements(t, &self.session.standard("Closeable", vec![]));
+        self.closeable_cache.borrow_mut().insert(key, closeable);
+        closeable
     }
 
     /// Checks every bound reachable from `t`. `seen` is keyed by pointer: a
