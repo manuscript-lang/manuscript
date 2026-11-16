@@ -306,7 +306,7 @@ pub enum Op {
     // Byte builders.
     BytesPush,
     // Closures and interface views.
-    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
+    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs, IfaceTag, IfaceDestroy,
     // Ownership.
     Clone, Drop, DropIf, MoveOut, Forget,
     // Raw memory: stack slots, interior pointers into lists and types.
@@ -1120,6 +1120,9 @@ pub struct Module {
     pub drop_glue: HashMap<Ty, FuncId>,
     /// The clone function of a type (`fn(&T) -> T`), made like [`Module::drop_glue`].
     pub clone_glue: HashMap<Ty, FuncId>,
+    /// The functions made for the glue kinds that work on memory (slot and block drop and copy), keyed by
+    /// kind and the type they hold.
+    pub addr_glue: HashMap<(crate::glue::Glue, Ty), FuncId>,
     /// Externs that are user `extern fn` shims (`ms_abi.h`): their sized numbers cross as the
     /// same-width C types, extended per the platform ABI, instead of the runtime's 64-bit words.
     pub c_externs: std::collections::BTreeSet<String>,

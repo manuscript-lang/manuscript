@@ -153,9 +153,7 @@ fn build(m: &mut Module, slow: ExtId) -> FuncId {
             mode: Mode::Borrow,
         },
     ];
-    let mut b = FuncBuilder::new(m, "string_append_fast", params, Ty::STR);
-    b.func_mut().linkage = Linkage::Internal;
-    b.func_mut().inline = InlineHint::Always;
+    let mut b = FuncBuilder::fast_path(m, "string_append_fast", params, Ty::STR);
     let ps = b.params();
     let (a, piece) = (ps[0], ps[1]);
     let (fast, slow_block) = (b.new_block(), b.new_block());

@@ -57,7 +57,7 @@ fn route(request: HttpRequest) HttpResponse:
 	return HttpResponse(
 		status: 200,
 		headers: headers(),
-		body: f"{request.method.text()}|{label}|".to_bytes().concat(
+		body: f"{request.method.to_string()}|{label}|".to_bytes().concat(
 			request.body.clone()
 		),
 	)

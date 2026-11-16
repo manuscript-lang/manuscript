@@ -23,8 +23,8 @@ test "complex arithmetic":
 	expect_equal(imaginary_unit().multiply(imaginary_unit()), complex(-1.0, 0.0))?
 	expect_equal(a.conjugate(), complex(1.0, -2.0))?
 	expect_equal(complex(3.0, 4.0).abs(), 5.0)?
-	expect_equal(a.format(), "1+2i")?
-	expect_equal(b.format(), "3-1i")?
+	expect_equal(a.to_string(), "1+2i")?
+	expect_equal(b.to_string(), "3-1i")?
 
 test "complex polar form and elementary functions":
 	z := complex_polar(2.0, 0.5)

@@ -28,6 +28,7 @@ type RtEntry = (
     u8,
     &'static str,
     &'static str,
+    &'static str,
 );
 
 /// The ABI facts a runtime function declares with a `// ms:` comment in its source
@@ -62,7 +63,7 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
     let Ok(at) = SYMBOLS.binary_search_by_key(&sym, |s| s.0) else {
         return RtFlags::default();
     };
-    let (_, _, ret, bits, op, domain) = SYMBOLS[at];
+    let (_, _, ret, bits, op, domain, _) = SYMBOLS[at];
     RtFlags {
         noreturn: ret == "!",
         leaf: bits & 1 != 0,
@@ -125,7 +126,7 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
 
 pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     let at = SYMBOLS.binary_search_by_key(&sym, |s| s.0).ok()?;
-    let (_, params, ret, bits, _, _) = SYMBOLS[at];
+    let (_, params, ret, bits, _, _, _) = SYMBOLS[at];
     Some(RtSig {
         params: params
             .iter()
@@ -147,6 +148,52 @@ pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
 /// assumed to possibly borrow from an argument.
 pub(crate) fn fresh_result(sym: &str) -> bool {
     rt_flags(sym).fresh
+}
+
+/// How a runtime function relates to the one it is the twin of, as its source declares
+/// (`// ms: view_of=<sym>`). Lowering calls a twin instead of the base function when the call
+/// is only read in place; no name of a language method appears in lowering.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Twin {
+    /// The result borrows the receiver: the list elements (strings) are views of it.
+    View,
+    /// Like `View`, but the list shares the receiver's element storage, so it is only a twin
+    /// when the elements own nothing.
+    SharedView,
+    /// Only element 0 of the result, as a single value, found without building the list.
+    First,
+    /// The result one element at a time: an iterator object over the receiver.
+    Iter,
+}
+
+impl Twin {
+    const ALL: [(Twin, &'static str); 4] = [
+        (Twin::View, "view_of"),
+        (Twin::SharedView, "shared_view_of"),
+        (Twin::First, "first_of"),
+        (Twin::Iter, "iter_of"),
+    ];
+}
+
+/// The twin function of `base` of this kind.
+pub(crate) fn rt_twin(base: &str, kind: Twin) -> Option<&'static str> {
+    let flag = Twin::ALL.iter().find(|(k, _)| *k == kind)?.1;
+    SYMBOLS
+        .iter()
+        .find(|s| {
+            s.6.strip_prefix(flag)
+                .and_then(|r| r.strip_prefix(':'))
+                .is_some_and(|b| b == base)
+        })
+        .map(|s| s.0)
+}
+
+/// The kind and base function when `sym` is declared a twin of another.
+fn rt_twin_of(sym: &str) -> Option<(Twin, &'static str)> {
+    let at = SYMBOLS.binary_search_by_key(&sym, |s| s.0).ok()?;
+    let (kind, base) = SYMBOLS[at].6.split_once(':')?;
+    let kind = Twin::ALL.iter().find(|(_, n)| *n == kind)?.0;
+    Some((kind, base))
 }
 
 /// The role of the runtime function `sym` for passes and code generation. This table is the one
@@ -178,17 +225,19 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_shield_enter" => R::ShieldEnter,
         "msrt_shield_exit" => R::ShieldExit,
         "msrt_unwinding" => R::Unwinding,
-        "msrt_string_split_view"
-        | "msrt_string_split_view_into"
-        | "msrt_string_split_first"
-        | "msrt_map_keys_view"
-        | "msrt_map_values_view"
-        | "msrt_list_slice_view" => R::ViewResult,
+        s if rt_twin_of(s).is_some_and(|(k, _)| k != Twin::Iter) => R::ViewResult,
         s if rt_flags(s).borrows => R::BorrowsArgument,
         s if rt_flags(s).spawns => R::SpawnsTask,
         s if rt_flags(s).takes_self => R::TakesDying,
         _ => R::None,
     }
+}
+
+/// The element type and length of a `*mut FrameBuf<elem, n>` parameter.
+fn frame_buf(ty: &str) -> Option<(&str, usize)> {
+    let inner = ty.strip_prefix("*mut FrameBuf<")?.strip_suffix('>')?;
+    let (elem, n) = inner.split_once(',')?;
+    Some((elem.trim(), n.trim().parse().ok()?))
 }
 
 /// A language-level argument of the call being marshalled.
@@ -275,13 +324,19 @@ impl FnLower<'_> {
         }
     }
 
-    /// The type of the frame buffer `msrt_string_split_view_into` fills: eight strings.
-    fn split_buf_ty(&mut self) -> MTy {
-        if let Some(i) = self.b.m.type_defs.iter().position(|d| d.name == "SplitBuf") {
-            return self.b.m.types.named(ms_mir::types::TypeId(i as u32));
+    /// The type of a frame buffer (`FrameBuf<elem, n>`): `n` words of `elem`, one field each.
+    fn frame_buf_ty(&mut self, elem: &str, n: usize) -> Option<MTy> {
+        let elem_ty = match elem {
+            "StrVal" => MTy::STR,
+            "i64" => MTy::INT,
+            _ => return None,
+        };
+        let name = format!("FrameBuf_{elem}_{n}");
+        if let Some(i) = self.b.m.type_defs.iter().position(|d| d.name == name) {
+            return Some(self.b.m.types.named(ms_mir::types::TypeId(i as u32)));
         }
-        let fields = (0..8).map(|i| (format!("p{i}"), MTy::STR)).collect();
-        self.b.m.add_type("SplitBuf", fields).1
+        let fields = (0..n).map(|i| (format!("p{i}"), elem_ty)).collect();
+        Some(self.b.m.add_type(&name, fields).1)
     }
 
     /// Calls the runtime function `sym` for a method call.
@@ -474,9 +529,13 @@ impl FnLower<'_> {
                     vals.push(value);
                     i += 1;
                 }
-                "buf" if p.ty == "*mut SplitBuf" => {
-                    // Room in the frame for the pieces of a split read in place.
-                    let t = self.split_buf_ty();
+                _ if frame_buf(&p.ty).is_some() => {
+                    // Room in the frame for a result the callee fills and the caller only reads
+                    // in place (`*mut FrameBuf<elem, n>`).
+                    let (elem, n) = frame_buf(&p.ty).expect("guarded");
+                    let t = self
+                        .frame_buf_ty(elem, n)
+                        .ok_or_else(|| Error::new(format!("{sym}: no frame buffer of {elem}")))?;
                     let slot = self
                         .b
                         .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
@@ -1409,7 +1468,7 @@ mod tests {
     /// Every `// ms: op=<mnemonic>` names a MIR instruction.
     #[test]
     fn declared_ops_are_instructions() {
-        for (sym, .., op, _) in SYMBOLS {
+        for (sym, .., op, _, _) in SYMBOLS {
             if !op.is_empty() {
                 assert!(
                     Op::from_name(op).is_some(),

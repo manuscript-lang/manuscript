@@ -26,3 +26,16 @@ test "string order agrees across inline, static and heap forms":
 		["pear", "fig", "apple", pad(18), "fi"].sorted(),
 		["apple", "fi", "fig", "pear", pad(18)],
 	)?
+
+test "inline strings of up to fifteen bytes order by their words":
+	a := pad(9) + "b"
+	expect_true(a < pad(9) + "c")?
+	expect_false(pad(9) + "c" < a)?
+	expect_true(pad(14) + "a" < pad(14) + "b")?
+	expect_true(pad(14) < pad(15))?
+	expect_false(pad(15) < pad(14))?
+	expect_false(pad(15) < pad(15))?
+	expect_true(pad(7) + "a" + pad(6) < pad(7) + "b")?
+	expect_true(pad(8) + "é" > pad(8) + "z")?
+	expect_true(pad(12) + "\u{1}" < pad(12) + "\u{2}" + "x")?
+	expect_true(pad(12) + "\u{0}" < pad(12) + "\u{0}\u{0}")?

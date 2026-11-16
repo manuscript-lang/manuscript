@@ -310,7 +310,7 @@ fn Complex.atan() Complex:
 	return Complex(re: -diff.im / 2.0, im: imaginary)
 
 // Formats as `a+bi` or `a-bi` using the Float text of each part, e.g. `1.5-2i`.
-fn Complex.format() String:
+fn Complex.to_string() String:
 	if sign_bit(self.im): return f"{self.re}-{(-self.im)}i"
 	return f"{self.re}+{self.im}i"
 

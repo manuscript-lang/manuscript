@@ -23,8 +23,8 @@ import (
 )
 
 test "IP parsing CIDR normalization and containment":
-	expect_equal((parse_ip("2001:0db8::1")?).text(), "2001:db8::1")?
-	expect_equal((parse_cidr("192.0.2.3/24")?).text(), "192.0.2.0/24")?
+	expect_equal((parse_ip("2001:0db8::1")?).to_string(), "2001:db8::1")?
+	expect_equal((parse_cidr("192.0.2.3/24")?).to_string(), "192.0.2.0/24")?
 	expect_false(
 		not (
 			contains_ip(
@@ -147,7 +147,7 @@ test "network restriction denies admission and close rejects acquisitions":
 
 test "typed addresses preserve normalization and reject zones":
 	ip := parse_ip("::ffff:192.0.2.1")?
-	expect_false(ip.text() != "192.0.2.1" or ip.family() != IpFamily.IPv4)?
+	expect_false(ip.to_string() != "192.0.2.1" or ip.family() != IpFamily.IPv4)?
 	expect_equal((parse_ip("2001:db8::1")?).family(), IpFamily.IPv6)?
 	expect_ip_error("fe80::1%eth0")?
 	expect_false((contains_ip(parse_cidr("::ffff:192.0.2.0/120")?, ip)?))?
@@ -222,7 +222,7 @@ test "resolve returns typed DNS records from the configured resolver":
 	one := resolve_dns("127.0.0.1", DnsKind.A, DnsOptions(timeout: 2.seconds()))?
 	expect_equal(one.length(), 1)?
 	expect_equal(one[0].value, "127.0.0.1")?
-	expect_equal(one[0].kind.text(), "A")?
+	expect_equal(one[0].kind.to_string(), "A")?
 
 	server := bind_datagram("127.0.0.1:0")?
 	derived := with_resolver(server.address.clone())?
@@ -237,7 +237,7 @@ test "resolve returns typed DNS records from the configured resolver":
 	answered := answer_mx(var answering)?
 	mx := asking.wait()?
 	expect_equal(mx.length(), 1)?
-	expect_equal(mx[0].kind.text(), "MX")?
+	expect_equal(mx[0].kind.to_string(), "MX")?
 	expect_equal(mx[0].priority, 10)?
 	expect_equal(mx[0].value, "mail.example.test.")?
 	expect_equal(answered, 1)?
