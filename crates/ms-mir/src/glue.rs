@@ -53,7 +53,7 @@ impl Glue {
 }
 
 use crate::builder::FuncBuilder;
-use crate::ir::{Cc, FuncId, Imm, Mode, Module, Op, Param};
+use crate::ir::{Cc, ExternDef, ExternRole, FuncId, Imm, Mode, Module, Op, Param};
 use crate::layout::Layouts;
 use crate::types::{Ty, TyKind};
 use std::collections::HashSet;
@@ -85,11 +85,13 @@ pub fn run(m: &mut Module) -> bool {
             _ => true,
         })
         .collect();
+    let (slots, blocks) = addr_types(m, &lay);
     drop(lay);
     // The same order every run.
     drop_tys.sort_by_key(|t| t.0);
     clone_tys.sort_by_key(|t| t.0);
-    let made = !drop_tys.is_empty() || !clone_tys.is_empty();
+    let made =
+        !drop_tys.is_empty() || !clone_tys.is_empty() || !slots.is_empty() || !blocks.is_empty();
     for ty in drop_tys {
         let id = make_drop(m, ty);
         m.drop_glue.insert(ty, id);
@@ -98,7 +100,142 @@ pub fn run(m: &mut Module) -> bool {
         let id = make_clone(m, ty);
         m.clone_glue.insert(ty, id);
     }
+    for ty in slots {
+        let id = make_slot_drop(m, ty);
+        m.addr_glue.insert((Glue::SlotDrop, ty), id);
+        let id = make_slot_copy(m, ty);
+        m.addr_glue.insert((Glue::SlotCopy, ty), id);
+    }
+    for ty in blocks {
+        let id = make_block_drop(m, ty);
+        m.addr_glue.insert((Glue::BlockDrop, ty), id);
+        let id = make_block_clone(m, ty);
+        m.addr_glue.insert((Glue::BlockClone, ty), id);
+    }
     made
+}
+
+/// The types whose descriptors point at slot drop and copy functions, and the data types of the
+/// interface vtables (whose payload blocks get drop and clone functions).
+fn addr_types(m: &Module, lay: &Layouts) -> (Vec<Ty>, Vec<Ty>) {
+    let mut keys: Vec<Ty> = Vec::new();
+    for f in &m.funcs {
+        for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+            if let (Op::TypeDesc, Imm::Ty(t)) = (inst.op, inst.imm) {
+                keys.push(t);
+            }
+        }
+    }
+    let mut seen: HashSet<Ty> = HashSet::new();
+    let mut slots: Vec<Ty> = Vec::new();
+    while let Some(key) = keys.pop() {
+        if !seen.insert(key) {
+            continue;
+        }
+        let crate::statics::DescPlan::Table(t) = crate::statics::descriptor(m, lay, key) else {
+            continue;
+        };
+        keys.extend(t.inner.into_iter().flatten());
+        slots.extend(t.slot_glue);
+    }
+    let mut blocks: Vec<Ty> = m.vtables.iter().map(|v| v.data_ty.unscoped()).collect();
+    for v in [&mut slots, &mut blocks] {
+        v.sort_by_key(|t| t.0);
+        v.dedup();
+    }
+    (slots, blocks)
+}
+
+/// `fn(slot)`: drops the value stored at `slot`.
+fn make_slot_drop(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.slot_drop", m.addr_glue.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+    let p = b.params()[0];
+    let v = b
+        .emit(Op::Take, &[p], Imm::Ty(ty), Some(ty))
+        .expect("value");
+    b.emit(Op::Drop, &[v], Imm::None, None);
+    b.ret(None);
+    b.finish()
+}
+
+/// `fn(src, dst)`: clones the value at `src` into uninitialised `dst`.
+fn make_slot_copy(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.slot_copy", m.addr_glue.len());
+    let ptr = Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    };
+    let mut b = FuncBuilder::new(m, &name, vec![ptr, ptr], Ty::VOID);
+    let (src, dst) = (b.params()[0], b.params()[1]);
+    let v = b
+        .emit(Op::Load, &[src], Imm::Ty(ty), Some(ty))
+        .expect("value");
+    let c = b.clone_value(v);
+    b.emit(Op::Put, &[dst, c], Imm::None, None);
+    b.ret(None);
+    b.finish()
+}
+
+/// `fn(block)`: drops the `ty` value the heap block holds and frees the block.
+fn make_block_drop(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.block_drop", m.addr_glue.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let needs = m.needs_drop(ty);
+    let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+    let p = b.params()[0];
+    if needs {
+        let v = b
+            .emit(Op::Take, &[p], Imm::Ty(ty), Some(ty))
+            .expect("value");
+        b.emit(Op::Drop, &[v], Imm::None, None);
+    }
+    b.emit(Op::Free, &[p], Imm::None, None);
+    b.ret(None);
+    b.finish()
+}
+
+/// `fn(block) -> block`: a new heap block holding a clone of the `ty` value in `block`.
+fn make_block_clone(m: &mut Module, ty: Ty) -> FuncId {
+    let name = format!("{GLUE_PREFIX}mir.{}.block_clone", m.addr_glue.len());
+    let params = vec![Param {
+        ty: Ty::PTR,
+        mode: Mode::Borrow,
+    }];
+    let size = i64::from(Layouts::new(m).mem(ty).size);
+    let alloc = m.add_extern(ExternDef {
+        name: "msrt_alloc".into(),
+        params: vec![Param {
+            ty: Ty::INT,
+            mode: Mode::Borrow,
+        }],
+        ret: Ty::PTR,
+        noreturn: false,
+        pure_: false,
+        fresh: true,
+        leaf: false,
+        reads: false,
+        retains: false,
+        role: ExternRole::None,
+    });
+    let mut b = FuncBuilder::new(m, &name, params, Ty::PTR);
+    let p = b.params()[0];
+    let v = b
+        .emit(Op::Load, &[p], Imm::Ty(ty), Some(ty))
+        .expect("value");
+    let c = b.clone_value(v);
+    let n = b.iconst(size.max(1));
+    let blk = b.call_rt(alloc, &[n]);
+    b.emit(Op::Put, &[blk, c], Imm::None, None);
+    b.ret(Some(blk));
+    b.finish()
 }
 
 /// The types a function of the program drops and the types it clones, with what dropping or
