@@ -90,10 +90,8 @@ pub fn run(m: &mut Module) -> bool {
     // The same order every run.
     drop_tys.sort_by_key(|t| t.0);
     clone_tys.sort_by_key(|t| t.0);
-    let made = !drop_tys.is_empty()
-        || !clone_tys.is_empty()
-        || !slots.is_empty()
-        || !blocks.is_empty();
+    let made =
+        !drop_tys.is_empty() || !clone_tys.is_empty() || !slots.is_empty() || !blocks.is_empty();
     for ty in drop_tys {
         let id = make_drop(m, ty);
         m.drop_glue.insert(ty, id);
@@ -157,7 +155,9 @@ fn make_slot_drop(m: &mut Module, ty: Ty) -> FuncId {
     }];
     let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
     let p = b.params()[0];
-    let v = b.emit(Op::Take, &[p], Imm::Ty(ty), Some(ty)).expect("value");
+    let v = b
+        .emit(Op::Take, &[p], Imm::Ty(ty), Some(ty))
+        .expect("value");
     b.emit(Op::Drop, &[v], Imm::None, None);
     b.ret(None);
     b.finish()
@@ -170,9 +170,11 @@ fn make_slot_copy(m: &mut Module, ty: Ty) -> FuncId {
         ty: Ty::PTR,
         mode: Mode::Borrow,
     };
-    let mut b = FuncBuilder::new(m, &name, vec![ptr.clone(), ptr], Ty::VOID);
+    let mut b = FuncBuilder::new(m, &name, vec![ptr, ptr], Ty::VOID);
     let (src, dst) = (b.params()[0], b.params()[1]);
-    let v = b.emit(Op::Load, &[src], Imm::Ty(ty), Some(ty)).expect("value");
+    let v = b
+        .emit(Op::Load, &[src], Imm::Ty(ty), Some(ty))
+        .expect("value");
     let c = b.clone_value(v);
     b.emit(Op::Put, &[dst, c], Imm::None, None);
     b.ret(None);
@@ -190,7 +192,9 @@ fn make_block_drop(m: &mut Module, ty: Ty) -> FuncId {
     let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
     let p = b.params()[0];
     if needs {
-        let v = b.emit(Op::Take, &[p], Imm::Ty(ty), Some(ty)).expect("value");
+        let v = b
+            .emit(Op::Take, &[p], Imm::Ty(ty), Some(ty))
+            .expect("value");
         b.emit(Op::Drop, &[v], Imm::None, None);
     }
     b.emit(Op::Free, &[p], Imm::None, None);
@@ -223,7 +227,9 @@ fn make_block_clone(m: &mut Module, ty: Ty) -> FuncId {
     });
     let mut b = FuncBuilder::new(m, &name, params, Ty::PTR);
     let p = b.params()[0];
-    let v = b.emit(Op::Load, &[p], Imm::Ty(ty), Some(ty)).expect("value");
+    let v = b
+        .emit(Op::Load, &[p], Imm::Ty(ty), Some(ty))
+        .expect("value");
     let c = b.clone_value(v);
     let n = b.iconst(size.max(1));
     let blk = b.call_rt(alloc, &[n]);
