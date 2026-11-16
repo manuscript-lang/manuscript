@@ -116,7 +116,7 @@ fn two_members(ws: &Workspace) {
     );
     write(
         "team/app/src/main.ms",
-        "import greet from \"@util/greet.ms\"\n\nfn main() Int:\n    print(greet(\"x\"))\n    return 0\n",
+        include_str!("search_symbol/member_main.ms"),
     );
     write(
         "team/libs/util/ms.toml",
@@ -124,7 +124,7 @@ fn two_members(ws: &Workspace) {
     );
     write(
         "team/libs/util/src/greet.ms",
-        "export fn greet(name: String) String:\n    return \"hi \" + name\n",
+        include_str!("search_symbol/member_greet.ms"),
     );
 }
 
