@@ -1003,3 +1003,60 @@ test "YAML empty documents and commented explicit keys":
 			YamlValue.ObjectValue(commented)
 		)?
 	)
+
+test "YAML a second tag after a string tag is read, not looped on":
+	// `!` and `!!str` make the node a string; the tag after them used to be left unread
+	// and the parser never returned.
+	(
+		parse("! !int 5")
+		| expect_ok?
+		| expect_equal(YamlValue.StringValue("5"))?
+	)
+	(parse("!!str !int 5\n") | expect_ok? | expect_equal(YamlValue.StringValue("5"))?)
+	(parse("!\t!int 5") | expect_ok? | expect_equal(YamlValue.StringValue("5"))?)
+	(
+		parse("[! !int 5, !!str !float 1.5]") | expect_ok? | expect_equal(
+			YamlValue.ArrayValue(
+				[
+					YamlValue.StringValue("5"),
+					YamlValue.StringValue("1.5"),
+				]
+			)
+		)?
+	)
+
+fn k_is_v() YamlValue:
+	var pair = Map[String, YamlValue]()
+	pair.add("k", YamlValue.StringValue("v"))
+	return YamlValue.ObjectValue(pair)
+
+test "YAML an explicit key opens a mapping inside a sequence entry":
+	// `- ? k` was rejected; it is a one-entry mapping like `- a: b`.
+	(
+		parse("- ? k\n  : v\n")
+		| expect_ok?
+		| expect_equal(YamlValue.ArrayValue([k_is_v()]))?
+	)
+	(
+		parse("a:\n- ? k\n  : v\n") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue({"a": YamlValue.ArrayValue([k_is_v()])})
+		)?
+	)
+	(
+		parse("- - ? k\n    : v\n") | expect_ok? | expect_equal(
+			YamlValue.ArrayValue([YamlValue.ArrayValue([k_is_v()])])
+		)?
+	)
+	(
+		parse("- ?x\n") | expect_ok? | expect_equal(
+			YamlValue.ArrayValue([YamlValue.StringValue("?x")])
+		)?
+	)
+
+	var bare = Map[String, YamlValue]()
+	bare.add("k", YamlValue.Null)
+	(
+		parse("- ? k\n") | expect_ok? | expect_equal(
+			YamlValue.ArrayValue([YamlValue.ObjectValue(bare)])
+		)?
+	)

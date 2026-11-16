@@ -201,6 +201,8 @@ pub struct Reactor {
     next_sweep: Cell<Option<Instant>>,
     /// Connections whose timeout started since the last clock read (by token).
     pending: Cell<Vec<u64>>,
+    /// The event list, kept between turns so each turn allocates none.
+    events: Cell<Vec<(u64, Ev)>>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
 }
@@ -239,6 +241,7 @@ impl Reactor {
                 wall_secs: Cell::new(wall_secs()),
                 next_sweep: Cell::new(None),
                 pending: Cell::new(Vec::new()),
+                events: Cell::new(Vec::new()),
                 beat,
             });
             *slot = Some(reactor.clone());
@@ -590,7 +593,7 @@ impl Reactor {
 
     /// Handles whatever is ready without blocking.
     fn service(&self) {
-        let mut events = Vec::new();
+        let mut events = self.events.take();
         loop {
             if self.beat.turn() {
                 self.serve_others();
@@ -632,6 +635,8 @@ impl Reactor {
             // same reason as in the loop over the events.
             rt::yield_now();
         }
+        events.clear();
+        self.events.set(events);
     }
 }
 
