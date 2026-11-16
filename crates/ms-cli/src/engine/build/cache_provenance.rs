@@ -254,7 +254,10 @@ fn dropping_pin_preserves_unrelated_recovery_files() {
     let fixture = Fixture::new("recovery");
     let pin = ArtifactPin::create(&fixture.output()).unwrap();
     let stage = pin.path().parent().unwrap().to_path_buf();
-    let recovery = stage.join(format!("{}.previous.dSYM", ms_build::native::STAGED_EXECUTABLE));
+    let recovery = stage.join(format!(
+        "{}.previous.dSYM",
+        ms_build::native::STAGED_EXECUTABLE
+    ));
     std::fs::create_dir(&recovery).unwrap();
     std::fs::write(recovery.join("retained"), b"old debug").unwrap();
     std::fs::write(pin.path(), b"candidate").unwrap();

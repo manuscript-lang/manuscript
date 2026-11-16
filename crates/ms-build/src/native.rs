@@ -74,7 +74,11 @@ impl Drop for BuildStage {
 }
 
 /// The executable's name inside a build stage: `.exe` only where the platform uses it.
-pub const STAGED_EXECUTABLE: &str = if cfg!(windows) { "program.exe" } else { "program" };
+pub const STAGED_EXECUTABLE: &str = if cfg!(windows) {
+    "program.exe"
+} else {
+    "program"
+};
 
 /// The native build levels, in the CMake spelling.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

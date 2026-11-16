@@ -669,7 +669,11 @@ mod tests {
         std::fs::create_dir(&directory).unwrap();
         let victim = directory.join("victim");
         std::fs::write(&victim, b"retained contents").unwrap();
-        let stale = directory.join(format!(".ms-build-{}{}", std::process::id(), if cfg!(windows) { ".exe" } else { "" }));
+        let stale = directory.join(format!(
+            ".ms-build-{}{}",
+            std::process::id(),
+            if cfg!(windows) { ".exe" } else { "" }
+        ));
         std::fs::hard_link(&victim, &stale).unwrap();
         let output = directory.join("program");
         for _ in 0..2 {
