@@ -1,3 +1,7 @@
+// conform: tags=strings,interpolation,tier-core
+// conform: phase=run
+// `s = s + pieces` in a loop grows `s` in place: the text stays right when a piece is an
+// integer, a wide character, `s` itself, or more pieces than one join takes.
 fn rows(n: Int) String:
 	var out = "["
 	for i in 0..n:
