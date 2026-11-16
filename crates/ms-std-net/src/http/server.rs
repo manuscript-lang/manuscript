@@ -191,8 +191,13 @@ pub struct Reactor {
     task: Cell<u64>,
     scratch: RefCell<Vec<u8>>,
     date: RefCell<(i64, String)>,
+    /// A monotonic time and the wall time (ns since the epoch) read together for `Date`.
+    wall_anchor: Cell<Option<(Instant, i64)>>,
     /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
     next_sweep: Cell<Option<Instant>>,
+    /// The time of the current turn, read once after the poller returns; a request or deadline
+    /// stamped within the turn reuses it instead of reading the clock again.
+    now: Cell<Instant>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
 }
@@ -221,12 +226,24 @@ impl Reactor {
                 task: Cell::new(0),
                 scratch: RefCell::new(vec![0; 64 * 1024]),
                 date: RefCell::new((0, String::new())),
+                wall_anchor: Cell::new(None),
                 next_sweep: Cell::new(None),
+                now: Cell::new(Instant::now()),
                 beat,
             });
             *slot = Some(reactor.clone());
             reactor
         })
+    }
+
+    /// The time of the current turn (see [`Reactor::tick`]).
+    fn now(&self) -> Instant {
+        self.now.get()
+    }
+
+    /// Reads the clock once for the turn that starts now.
+    fn tick(&self) {
+        self.now.set(Instant::now());
     }
 
     /// Makes sure the sweep runs by `at`.
@@ -258,14 +275,25 @@ impl Reactor {
         self.poller.delete(sock);
     }
 
-    /// Runs `f` on the value of the `Date` header, refreshed once per second.
+    /// Runs `f` on the value of the `Date` header. The wall clock is read at most once a second:
+    /// between reads the turn's monotonic time advances it, and the text is formatted once per
+    /// second.
     fn with_date<R>(&self, f: impl FnOnce(&str) -> R) -> R {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs() as i64);
+        let now = self.now();
+        let mut anchor = self.wall_anchor.get();
+        if anchor.is_none_or(|(at, _)| now.saturating_duration_since(at) >= Duration::from_secs(1))
+        {
+            let wall = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_nanos() as i64);
+            anchor = Some((now, wall));
+            self.wall_anchor.set(anchor);
+        }
+        let (at, wall) = anchor.unwrap_or((now, 0));
+        let secs = (wall + now.saturating_duration_since(at).as_nanos() as i64) / 1_000_000_000;
         let mut cached = self.date.borrow_mut();
-        if cached.0 != now || cached.1.is_empty() {
-            *cached = (now, h1::http_date(now));
+        if cached.0 != secs || cached.1.is_empty() {
+            *cached = (secs, h1::http_date(secs));
         }
         f(&cached.1)
     }
@@ -448,7 +476,7 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
         }
         drain.set(reactor.drains());
         let timeout = reactor.next_sweep.get().map_or(-1, |at| {
-            at.saturating_duration_since(Instant::now()).as_nanos() as i64
+            at.saturating_duration_since(reactor.now()).as_nanos() as i64
         });
         let got = reactor.poller.park(timeout);
         if got & 16 != 0 {
@@ -512,6 +540,7 @@ impl Reactor {
                 self.serve_others();
             }
             let raw = self.poller.poll(&mut events, 64);
+            self.tick();
             let mut yielded = false;
             for (at, &(token, flags)) in events.iter().enumerate() {
                 self.handle_event(token, flags);
@@ -546,7 +575,7 @@ impl Reactor {
             // same reason as in the loop over the events.
             rt::yield_now();
         }
-        if self.next_sweep.get().is_some_and(|at| at <= Instant::now()) {
+        if self.next_sweep.get().is_some_and(|at| at <= self.now()) {
             self.sweep_timeouts();
         }
     }
@@ -979,7 +1008,7 @@ impl Server {
         self.add_conn_until(
             sock,
             reactor,
-            self.limits.timeout.map(|t| Instant::now() + t),
+            self.limits.timeout.map(|t| reactor.now() + t),
         );
     }
 
@@ -1399,7 +1428,7 @@ impl Server {
             {
                 let mut st = conn.st.borrow_mut();
                 if st.deadline.is_none() {
-                    st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                    st.deadline = self.limits.timeout.map(|t| reactor.now() + t);
                     reactor.note_deadline(st.deadline);
                     st.idle_deadline = st.deadline.is_some();
                 }
@@ -1482,7 +1511,7 @@ impl Server {
                 st.inbuf = Vec::new();
                 st.pos = 0;
                 st.phase = Phase::Draining;
-                st.deadline = Some(Instant::now() + REJECTION_DRAIN);
+                st.deadline = Some(reactor.now() + REJECTION_DRAIN);
                 reactor.note_deadline(st.deadline);
                 true
             }
@@ -1503,7 +1532,7 @@ impl Server {
             let Some(io) = &st.io else { return };
             let mut total = 0;
             loop {
-                if st.deadline.is_some_and(|at| at <= Instant::now()) {
+                if st.deadline.is_some_and(|at| at <= reactor.now()) {
                     break true;
                 }
                 match io.read(&mut scratch) {
@@ -1537,7 +1566,7 @@ impl Server {
             match h1::parse_request(st.unread(), self.limits.header.min(1 << 30)) {
                 Parsed::Partial => {
                     if st.deadline.is_none() || st.idle_deadline {
-                        st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                        st.deadline = self.limits.timeout.map(|t| reactor.now() + t);
                         reactor.note_deadline(st.deadline);
                         st.idle_deadline = false;
                     }
@@ -1624,7 +1653,7 @@ impl Server {
             target,
             keep_alive,
             expect_continue: expect,
-            started: Instant::now(),
+            started: reactor.now(),
         }))
     }
 
