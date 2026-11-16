@@ -8,6 +8,7 @@ import (
 	arguments, set_environment from "@std/os/env.ms",
 	create_directory, remove, temporary from "@std/os/fs.ms",
 
+	generate from "./compile_time_project.ms",
 	absolute,
 	env,
 	fail,
@@ -18,7 +19,6 @@ import (
 	usage,
 	write_text from "./lib.ms",
 )
-import generate from "./compile_time_project.ms"
 
 fn timed(
 	label: String,

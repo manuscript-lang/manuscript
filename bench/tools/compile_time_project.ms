@@ -1,8 +1,9 @@
-// Generates the same program in Manuscript, Go and Rust for the compile-time benchmarks. `q` writes
-// braces as ‹ and › so the generator reads as source.
+// Generates the same program in Manuscript, Go and Rust for the compile-time
+// benchmarks. `q` writes braces as ‹ and › so the generator reads as source.
 import (
 	create_directory from "@std/os/fs.ms",
 	SeededRandom, seeded from "@std/random.ms",
+
 	write_text from "./lib.ms",
 )
 
@@ -334,5 +335,4 @@ export fn generate(out: String, packages: Int, files: Int, fns: Int) Void:
 		f"{out}/rs/Cargo.toml",
 		"[package]\nname = \"big\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
 	)
-
 // Runs a build and prints its label with the elapsed seconds.
