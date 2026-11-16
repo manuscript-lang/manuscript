@@ -14,7 +14,7 @@ extern crate alloc;
 
 use alloc::string::String;
 use ms_rt::ffi::{Has, ObjRef, Object, Out, Status, abi_handle, native};
-use ms_rt::glue::{FaultKind, fault_fmt, fault_fmt_kind, poll_cancel};
+use ms_rt::glue::{FaultKind, fault_fmt, fault_fmt_kind};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use num_bigint::{BigInt, Sign};
 use num_traits::{One, Signed, ToPrimitive, Zero};
@@ -164,13 +164,11 @@ native! {
 
     // ms: leaf
     fn msstd_bigint_gcd(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
-        poll_cancel();
         make(gcd(n(&a), n(&other)))
     }
 
     // ms: leaf
     fn msstd_bigint_lcm(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
-        poll_cancel();
         make(lcm(n(&a), n(&other)))
     }
 
@@ -179,7 +177,6 @@ native! {
         if n(&a).is_negative() {
             return Err(Code(STATUS_INVALID_INPUT));
         }
-        poll_cancel();
         Ok(make(n(&a).sqrt()))
     }
 
@@ -192,7 +189,6 @@ native! {
         if n(&exponent).is_negative() || !n(&modulus).is_positive() {
             return Err(Code(STATUS_INVALID_INPUT));
         }
-        poll_cancel();
         Ok(make(n(&a).modpow(n(&exponent), n(&modulus))))
     }
 
@@ -201,7 +197,6 @@ native! {
         if !n(&modulus).is_positive() {
             return false;
         }
-        poll_cancel();
         // The only residue modulo one is zero, including for negative receivers.
         if n(&modulus).is_one() {
             out.write(make(BigInt::zero()));
@@ -313,7 +308,6 @@ native! {
         {
             return Err(Code(STATUS_LIMIT_EXCEEDED));
         }
-        poll_cancel();
         let result = num_traits::pow::Pow::pow(n(&a), exponent as u64);
         if result.bits() > MAX_BITS as u64 {
             return Err(Code(STATUS_LIMIT_EXCEEDED));

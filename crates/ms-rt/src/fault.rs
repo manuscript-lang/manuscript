@@ -30,6 +30,12 @@ pub struct Hdr {
     /// Nesting depth of the task's cancellation shields. A signal handler on any thread reads it
     /// for the main isolate's running task, so it lives here and not in a thread-local.
     pub shield: core::sync::atomic::AtomicU32,
+    /// Non-zero once a park delivered a cancel to the task and returned to its caller instead of
+    /// jumping: every frame above then takes its cancel exit (`br.cancel`) and returns. Unlike
+    /// `cancel` it is not a request: a signal handler never sets it and a shield never clears
+    /// it. The task boundary clears it when the cancel exit completes. Set through
+    /// [`deliver_cancel`].
+    pub unwinding: AtomicU8,
 }
 
 impl Hdr {
@@ -40,6 +46,7 @@ impl Hdr {
             guarded: AtomicU8::new(0),
             shield: core::sync::atomic::AtomicU32::new(0),
             stop_shield: core::sync::atomic::AtomicU16::new(0),
+            unwinding: AtomicU8::new(0),
         }
     }
 }
@@ -1633,6 +1640,56 @@ pub fn with_cleanup<R>(cleanup: &mut dyn FnMut(), body: impl FnOnce() -> R) -> R
     r
 }
 
+/// Whether the program's modules branch on [`unwinding`] after a call that can park. Off until a
+/// module that carries `cancel_edges` turns it on (`msrt_cancel_edges`); while off, every
+/// delivery jumps through [`msrt_cancelled`], so a native converted to return is safe either way.
+static CANCEL_EDGES: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
+/// Called once at start by a module compiled with cancel edges.
+#[unsafe(no_mangle)]
+// ms: leaf domain=unwind
+pub extern "C" fn msrt_cancel_edges() {
+    CANCEL_EDGES.store(true, Ordering::Relaxed);
+}
+
+/// How a native ends a call that a cancel interrupted. With cancel edges it marks the task
+/// unwinding and returns, and the native returns a zero result to its caller at once; without
+/// them it jumps as [`msrt_cancelled`] does. Never run more of the native after it returns.
+pub fn cancel_return() {
+    if CANCEL_EDGES.load(Ordering::Relaxed) {
+        deliver_cancel();
+    } else {
+        msrt_cancelled()
+    }
+}
+
+/// Marks the running task as unwinding for a delivered cancel. The caller then returns a zero
+/// result to its own caller, which tests the byte (`br.cancel`) and leaves by its cancel exit.
+pub fn deliver_cancel() {
+    // SAFETY: the current task's header stays live for this call.
+    unsafe { (*msrt_isolate_hdr()).unwinding.store(1, Ordering::Relaxed) };
+}
+
+/// Whether the running task is unwinding for a delivered cancel.
+pub fn unwinding() -> bool {
+    msrt_unwinding() != 0
+}
+
+/// Clears the `unwinding` byte and answers whether it was set: a task or guard boundary ends the
+/// cancel exit there.
+pub(crate) fn take_unwinding() -> bool {
+    // SAFETY: the current task's header stays live for this call.
+    unsafe { (*msrt_isolate_hdr()).unwinding.swap(0, Ordering::Relaxed) != 0 }
+}
+
+/// The `unwinding` byte, for code that cannot load it from the header directly.
+#[unsafe(no_mangle)]
+// ms: leaf domain=unwind
+pub extern "C" fn msrt_unwinding() -> u8 {
+    // SAFETY: the current task's header stays live for this call.
+    unsafe { (*msrt_isolate_hdr()).unwinding.load(Ordering::Relaxed) }
+}
+
 /// Unwinds on a stop request: runs cleanups and exits 130/143.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cancelled() -> ! {
@@ -1983,6 +2040,11 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             let r = msrt_guard_enter(core::ptr::addr_of_mut!(slot), code, data);
             if r == 0 {
                 guards_pop();
+                // A cancel delivered by return ends the call like one delivered by jump: the
+                // frames above have taken their cancel exits and returned.
+                if take_unwinding() {
+                    return GUARD_CANCELLED;
+                }
                 return GUARD_OK;
             }
             if !msg_out.is_null() {
@@ -2000,6 +2062,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| code(data)));
             guards_pop();
             match r {
+                Ok(()) if take_unwinding() => GUARD_CANCELLED,
                 Ok(()) => GUARD_OK,
                 Err(e) => {
                     let Ok(p) = e.downcast::<crate::testutil::FaultPayload>() else {
@@ -2125,7 +2188,11 @@ mod tests {
             core::mem::offset_of!(Hdr, guarded),
             ms_rt_abi::symbols::ISOLATE_HDR_GUARDED as usize,
         );
-        assert_eq!(core::mem::size_of::<Hdr>(), 16);
+        assert_eq!(
+            core::mem::offset_of!(Hdr, unwinding),
+            ms_rt_abi::symbols::ISOLATE_HDR_UNWINDING as usize,
+        );
+        assert_eq!(core::mem::size_of::<Hdr>(), 24);
         // The region's last 16 bytes: the block's address, then the limit (`STACK_LIMIT_CELL`).
         assert_eq!(ms_rt_abi::symbols::STACK_LIMIT_CELL, 8);
     }
@@ -2303,6 +2370,29 @@ mod tests {
                 fault(b"handler failed");
             }
             *data += 10;
+        }
+    }
+
+    unsafe extern "C-unwind" fn returns_cancelled(_: *mut u8) {
+        deliver_cancel();
+    }
+
+    #[test]
+    fn a_guard_ends_a_cancel_delivered_by_return_as_cancelled() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock and pass valid pointers.
+        unsafe {
+            assert!(!unwinding());
+            let status = msrt_guard_call(
+                returns_cancelled,
+                core::ptr::null_mut(),
+                core::ptr::null_mut(),
+            );
+            assert_eq!(status, 2);
+            // The boundary ended the cancel exit: the byte is clear for the next call.
+            assert!(!unwinding());
+            assert_eq!(msrt_guard_call(request, &mut 0u8, core::ptr::null_mut()), 0);
         }
     }
 

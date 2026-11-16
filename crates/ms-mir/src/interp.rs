@@ -282,6 +282,8 @@ impl<'m> Interp<'m> {
         it.register("msrt_exit_frees", |_, _| Ok(Val::Bool(true)));
         it.register("msrt_shield_enter", |_, _| Ok(Val::Void));
         it.register("msrt_shield_exit", |_, _| Ok(Val::Void));
+        // The oracle never delivers a cancel.
+        it.register("msrt_unwinding", |_, _| Ok(Val::Int(0)));
         it
     }
 
@@ -535,6 +537,7 @@ impl<'m> Interp<'m> {
             | Op::FConst
             | Op::BConst
             | Op::VoidConst
+            | Op::Undef
             | Op::StrLit
             | Op::BytesLit
             | Op::IAdd

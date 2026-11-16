@@ -13,7 +13,9 @@
 typedef struct Obj { struct Obj *(*clone)(struct Obj *); void (*drop)(struct Obj *); } Obj;
 
 /* The isolate header block: word 0 is the stack limit, byte 8 the cancel flag. */
-static struct { uintptr_t limit; uint8_t cancel; } isolate_hdr;
+static struct { uintptr_t limit; uint8_t cancel; uint8_t guarded; uint16_t stop_shield; uint32_t shield; uint8_t unwinding; } isolate_hdr;
+/* The test sets the `unwinding` byte at offset 16 that generated code loads in place. */
+void msrt_test_set_unwinding(int64_t v) { isolate_hdr.unwinding = (uint8_t)v; }
 void *msrt_isolate_hdr(void) { return &isolate_hdr; }
 /* Generated code finds its header block through the last 16 bytes of the 256 MiB-aligned region
    its stack lies in (`ms_rt_abi::symbols::STACK_REGION`), so `main` has to run on a stack inside

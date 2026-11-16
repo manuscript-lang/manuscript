@@ -279,6 +279,8 @@ pub enum FaultKind {
 pub enum Op {
     // Constants.
     IConst, FConst, BConst, VoidConst, StrLit, BytesLit,
+    // An owned value of the result type with every leaf zero: the result a cancel exit returns.
+    Undef,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
     IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, UAddChk, USubChk, UMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
@@ -990,6 +992,9 @@ pub enum ExternRole {
     ShieldEnter,
     /// Ends one [`ExternRole::ShieldEnter`].
     ShieldExit,
+    /// `msrt_unwinding()`: whether the running task unwinds a delivered cancel, the byte of its
+    /// header block that code generation loads in place.
+    Unwinding,
 }
 
 impl ExternRole {
@@ -1018,6 +1023,7 @@ impl ExternRole {
         (ExternRole::SpawnsTask, "spawns_task"),
         (ExternRole::ShieldEnter, "shield_enter"),
         (ExternRole::ShieldExit, "shield_exit"),
+        (ExternRole::Unwinding, "unwinding"),
     ];
 
     /// The textual attribute of this role.

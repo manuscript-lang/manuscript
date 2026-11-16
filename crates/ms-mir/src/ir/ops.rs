@@ -6,7 +6,7 @@ impl Op {
     /// Every opcode, for tables and the text parser.
     #[rustfmt::skip]
     pub const ALL: &'static [Op] = &[
-        Op::IConst, Op::FConst, Op::BConst, Op::VoidConst, Op::StrLit, Op::BytesLit,
+        Op::IConst, Op::FConst, Op::BConst, Op::VoidConst, Op::StrLit, Op::BytesLit, Op::Undef,
         Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::UAddChk, Op::USubChk, Op::UMulChk, Op::INegChk,
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Ushr, Op::Rotl, Op::Rotr, Op::UMulHi, Op::Clz, Op::Ctz, Op::Popcnt, Op::Not,
@@ -34,6 +34,7 @@ impl Op {
             Op::FConst => ("fconst", K::Float, true, effects!()),
             Op::BConst => ("bconst", K::Bool, true, effects!()),
             Op::VoidConst => ("void", K::None, true, effects!()),
+            Op::Undef => ("undef", K::None, true, effects!()),
             Op::StrLit => ("str", K::Str, true, effects!()),
             Op::BytesLit => ("bytes", K::Int, true, effects!()),
             Op::IAdd => ("iadd", K::None, true, effects!()),
