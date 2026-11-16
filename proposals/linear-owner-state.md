@@ -20,9 +20,9 @@ Shape (generated; N repetitions of the first three lines in `fn main`): `xs{i}: 
 | 1920 | 2.38 s | 1.68 s | 1.30 s |
 | 3840 | 8.27 s | 4.83 s | 3.68 s |
 
-After stage 3, N = 960 is 2.36G instructions (2.79G after stage 1, 4.27G before); `verify_module_with` fell from 17.6% to 1.7% of the run. After stage 4, 2.18G.
+After stage 3, N = 960 is 2.36G instructions (2.79G after stage 1, 4.27G before); `verify_module_with` fell from 17.6% to 1.7% of the run. After stage 4, 2.18G. After dirty-block `analyze`, entry equality by `same_entries` and an index of owners in a maybe state, 1.99G; wall time at 960 / 1920 / 3840 owners fell from 0.97 / 2.38 / 8.27 s to 0.62 / 1.27 / 2.61 s.
 
-Per phase, inclusive instructions from N = 480 to 960 after stage 4 (a linear phase is 2.0x): `opt::optimize` 2.05x, `llvm::compile` 2.04x, `verify_module_with` 2.2x, `elaborate::run` 3.0x (86M to 262M, 12% of the run). `unwind::run` is not visible in the profile for this shape. Wall time is noisy on the shared machine (3840 owners: 2.8 to 3.7 s over runs); use instruction counts.
+Per phase, inclusive instructions from N = 480 to 960 after stage 4 (a linear phase is 2.0x): `opt::optimize` 2.05x, `llvm::compile` 2.04x, `verify_module_with` 2.2x, `elaborate::run` 2.1x. `unwind::run` is not visible in the profile for this shape. Wall time is noisy on the shared machine (3840 owners: 2.8 to 3.7 s over runs); use instruction counts.
 
 `valgrind --tool=callgrind`, release `ms build`, N = 960 against 480, inclusive Ir after stage 1 (4.0x or more is quadratic):
 
@@ -62,7 +62,7 @@ Rule: the verifier's live set is a persistent set, so an edge costs its changes,
 2. `persist.rs` (`OwnerSet`) with its model tests (landed). Check: `cargo test -p ms-mir`.
 3. The verifier on `OwnerSet` (landed). Check: N-doubling table and a profile with no `BTreeSet` clones.
 4. `elaborate`'s `State` on two `PosMap`s (position to owner, value to position), a scope end removing its own owners, and block flag parameters looking only at owners that can have one (landed, replacing "avoid the push copy": the copy was the symptom). Check: same table, e2e corpus with leak counting (661/661).
-5. Profile `unwind` and `opt` (done above: both linear for this shape). The rest of `elaborate::run` (3.0x) is the remaining quadratic part; raise the gate shapes `test_owners` and `test_branches` to three sizes once it is under 2.5x.
+5. Profile `unwind` and `opt` (done above: both linear for this shape). `elaborate::run` is now 2.1x. Raising the gate shapes `test_owners` and `test_branches` to three sizes is blocked elsewhere: `ms test` on the generated 10000-owner file overflows the stack (exit 139) or is OOM-killed, and `emit` does not accept test files.
 
 ## Open questions
 
