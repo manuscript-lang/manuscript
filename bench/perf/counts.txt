@@ -10,3 +10,4 @@ guard-chains 4480713
 guard-maps 7895570
 guard-cleanup 13557848
 guard-append 5575170
+guard-strcmp 34786798

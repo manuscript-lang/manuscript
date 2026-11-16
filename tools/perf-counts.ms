@@ -24,7 +24,7 @@ PROGRAMS := ["interp", "strings", "lz", "graph"]
 // regex prefilter, image codecs, fused chains, map probes, scope-end close, string
 // append). Each is counted as
 // `guard-<name>`.
-GUARDS := ["crypto", "regex", "image", "chains", "maps", "cleanup", "append"]
+GUARDS := ["crypto", "regex", "image", "chains", "maps", "cleanup", "append", "strcmp"]
 COUNTS := "bench/perf/counts.txt"
 
 fn say(text: String) Void:
