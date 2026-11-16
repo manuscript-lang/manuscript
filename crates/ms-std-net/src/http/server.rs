@@ -200,7 +200,7 @@ pub struct Reactor {
     /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
     next_sweep: Cell<Option<Instant>>,
     /// Connections whose timeout started since the last clock read (by token).
-    pending: RefCell<Vec<u64>>,
+    pending: Cell<Vec<u64>>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
 }
@@ -238,7 +238,7 @@ impl Reactor {
                 date: RefCell::new((0, String::new())),
                 wall_secs: Cell::new(wall_secs()),
                 next_sweep: Cell::new(None),
-                pending: RefCell::new(Vec::new()),
+                pending: Cell::new(Vec::new()),
                 beat,
             });
             *slot = Some(reactor.clone());
@@ -253,7 +253,9 @@ impl Reactor {
         st.deadline = None;
         st.pending = timeout.is_some();
         if st.pending {
-            self.pending.borrow_mut().push(token);
+            let mut tokens = self.pending.take();
+            tokens.push(token);
+            self.pending.set(tokens);
         }
     }
 
@@ -262,7 +264,10 @@ impl Reactor {
     /// sleep and in every pass of `service`, so a reactor that never idles (the poller always has
     /// events) still arms and enforces them.
     fn settle_timeouts(&self) -> Option<Instant> {
-        if self.pending.borrow().is_empty() && self.next_sweep.get().is_none() {
+        let tokens = self.pending.take();
+        let idle = tokens.is_empty();
+        self.pending.set(tokens);
+        if idle && self.next_sweep.get().is_none() {
             return None;
         }
         let now = Instant::now();
@@ -275,8 +280,7 @@ impl Reactor {
 
     /// Sets the deadline of every connection whose timeout started since the last read.
     fn resolve_pending(&self, now: Instant) {
-        let tokens = std::mem::take(&mut *self.pending.borrow_mut());
-        for token in tokens {
+        for token in self.pending.take() {
             let conn = match self.targets.borrow().get(&token) {
                 Some(Target::Conn(c)) => c.upgrade(),
                 _ => None,
