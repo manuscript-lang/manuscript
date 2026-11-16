@@ -74,6 +74,47 @@ fn strict_line_endings(head: &[u8]) -> bool {
     true
 }
 
+/// Whether every line of a parsed request head ends in CRLF, found from where the parser put its
+/// tokens instead of by scanning the bytes. The parser rejects a CR or LF inside a method,
+/// target, version, name or value, so they can only be line ends, and a line end is what follows a
+/// value (after trailing blanks), what precedes the first name or the blank line, and what fills
+/// the space before the method. This is [`strict_line_endings`] for a head `req` parsed from
+/// `buf[..length]`, in time proportional to the field count.
+fn crlf_terminators(buf: &[u8], req: &httparse::Request<'_, '_>, length: usize) -> bool {
+    let base = buf.as_ptr() as usize;
+    let at = |part: &[u8]| (part.as_ptr() as usize).wrapping_sub(base);
+    let crlf = |i: usize| buf.get(i..i.saturating_add(2)) == Some(b"\r\n");
+    let Some(method) = req.method else {
+        return false;
+    };
+    // Empty lines before the request line.
+    let start = at(method.as_bytes());
+    if start % 2 != 0 || !(0..start).step_by(2).all(crlf) {
+        return false;
+    }
+    let blank = length.saturating_sub(2);
+    // The request line ends where the first name starts, or at the blank line.
+    let first_line_end = req.headers.first().map_or(blank, |h| at(h.name.as_bytes()));
+    if first_line_end < 2 || !crlf(first_line_end - 2) {
+        return false;
+    }
+    for (i, h) in req.headers.iter().enumerate() {
+        let mut end = at(h.value) + h.value.len();
+        // The parser trims blanks that precede the line end from the value.
+        while matches!(buf.get(end), Some(b' ' | b'\t')) {
+            end += 1;
+        }
+        let following = match req.headers.get(i + 1) {
+            Some(h) => at(h.name.as_bytes()),
+            None => blank,
+        };
+        if !crlf(end) || end + 2 != following {
+            return false;
+        }
+    }
+    crlf(blank)
+}
+
 /// The offset of the first CR or LF of `bytes` at or after `from`, a word at a time.
 fn next_eol(bytes: &[u8], from: usize) -> Option<usize> {
     const LOW: u64 = 0x0101_0101_0101_0101;
@@ -121,7 +162,7 @@ fn parse_request_in<'a>(
             if length > limit {
                 return Parsed::Bad(BadMessage::new(431, "Request Header Fields Too Large"));
             }
-            if !strict_line_endings(&buf[..length]) {
+            if !crlf_terminators(buf, &req, length) {
                 return Parsed::Bad(BadMessage::new(400, "Bad Request"));
             }
             Parsed::Complete(RequestHead {
@@ -791,6 +832,82 @@ pub fn http_date(unix_seconds: i64) -> String {
 
 #[cfg(test)]
 mod tests {
+    /// The old rule: parse, then every CR and LF of the head must be a CRLF pair.
+    fn parses_with_a_scan(head: &[u8]) -> bool {
+        let mut storage = [httparse::EMPTY_HEADER; 16];
+        let mut req = httparse::Request::new(&mut storage);
+        matches!(req.parse(head), Ok(httparse::Status::Complete(n)) if strict_line_endings(&head[..n]))
+    }
+
+    #[test]
+    fn line_ends_found_from_the_parse_agree_with_the_byte_scan() {
+        const PIECES: [&[u8]; 18] = [
+            b"GET / HTTP/1.1",
+            b"POST /a?b=c HTTP/1.0",
+            b"\r\n",
+            b"\n",
+            b"\r",
+            b"Host: a",
+            b"x:",
+            b"X-Y:  v  ",
+            b" ",
+            b"\t",
+            b":",
+            b"a",
+            b"\x80",
+            b"A: b\r",
+            b"\r\n\r\n",
+            b"\r\n \r\n",
+            b"Z:\t",
+            b"\0",
+        ];
+        let mut state = 0x2545_f491_4f6c_dd1du64;
+        let mut next = move |n: usize| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            (state % n as u64) as usize
+        };
+        let mut accepted = 0;
+        for round in 0..300_000 {
+            let mut head = Vec::new();
+            // Mostly a plausible head with one or two perturbations, sometimes pure noise.
+            if round % 4 != 0 {
+                head.extend_from_slice(b"GET / HTTP/1.1");
+                head.extend_from_slice(PIECES[2 + next(2)]);
+                for _ in 0..next(4) {
+                    head.extend_from_slice(
+                        [&b"Host: a"[..], b"X-Y:  v  ", b"x:", b"Z:\t"][next(4)],
+                    );
+                    head.extend_from_slice(PIECES[2 + next(4)]);
+                }
+                head.extend_from_slice(PIECES[2 + next(4)]);
+                if next(3) == 0 {
+                    head.extend_from_slice(PIECES[next(PIECES.len())]);
+                }
+            } else {
+                for _ in 0..1 + next(8) {
+                    head.extend_from_slice(PIECES[next(PIECES.len())]);
+                }
+            }
+            if next(8) == 0 {
+                let mut lead = PIECES[2 + next(3)].to_vec();
+                lead.extend_from_slice(&head);
+                head = lead;
+            }
+            let expected = parses_with_a_scan(&head);
+            let got = matches!(parse_request(&head, 1 << 16), Parsed::Complete(_));
+            // `parse_request` also refuses heads the scan rule alone accepts only when httparse
+            // does, so the two must agree.
+            assert_eq!(got, expected, "{:?}", String::from_utf8_lossy(&head));
+            accepted += usize::from(got);
+        }
+        assert!(
+            accepted > 1000,
+            "too few accepted heads to mean anything: {accepted}"
+        );
+    }
+
     #[test]
     fn line_endings_must_be_crlf_pairs_at_every_offset() {
         fn by_bytes(head: &[u8]) -> bool {
