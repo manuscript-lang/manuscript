@@ -26,23 +26,8 @@ use crate::abi_llvm::{Pass, Reg, Ret, Signature};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::llvm_ir::DirectEnv;
 use attrs::pure_attrs;
-pub(crate) use glue::cloned_ty;
 use ms_mir::layout::{Layouts, Leaf};
 
-/// The types of the fields a release (`alt.release`, `alt.unbox`, `type.release`) drops through
-/// glue: the driver declares their drop glue.
-pub(crate) fn released_types(lay: &Layouts, f: &Func, inst: &Inst) -> Vec<Ty> {
-    match (inst.op, inst.imm) {
-        (Op::AltRelease | Op::AltUnbox, _) => enums::released(lay, inst)
-            .into_iter()
-            .map(|(t, _)| t)
-            .collect(),
-        (Op::TypeRelease, Imm::TypeMask(_, mask)) => {
-            types::release_types(lay, f.ty(inst.args[0]), mask)
-        }
-        _ => Vec::new(),
-    }
-}
 use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
@@ -867,9 +852,16 @@ pub fn leaf_grow_shim(types: &Types, lay: &Layouts, f: &Func, sym: &str, dbg: us
 mod coverage {
     use super::*;
 
-    /// The ops no area lowers yet. An op leaves this list when an area handles it; the scope
-    /// markers are not here because `elaborate` removes them before code generation.
-    const UNLOWERED: &[Op] = &[];
+    /// The ops no area lowers. `expand_owned` rewrites these into primitives before code
+    /// generation; the scope markers are not here because `elaborate` removes them.
+    const UNLOWERED: &[Op] = &[
+        Op::AltOwn,
+        Op::AltUnbox,
+        Op::AltRelease,
+        Op::TypeRelease,
+        Op::OptUnbox,
+        Op::OptUnwrap,
+    ];
 
     const MARKERS: &[Op] = &[
         Op::ScopeBegin,

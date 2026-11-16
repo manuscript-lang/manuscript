@@ -292,7 +292,7 @@ pub enum Op {
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Types and alternatives.
-    TypeNew, TypeGet, TypeSet, TypeFill, AltNew, AltView, AltPlain, AltOwn, AltTag, AltGet, AltUnbox, AltTake, AltRelease, TypeRelease,
+    TypeNew, TypeGet, TypeSet, TypeFill, AltNew, AltView, AltPlain, AltOwn, AltTag, AltGet, AltUnbox, AltTake, AltRelease, TypeRelease, Free,
     // Lists.
     ListNew, ListLit, ListConst, ListConstView, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Lists after `expand`: the capacity, growth to a given capacity, and the unchecked fill and push.

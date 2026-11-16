@@ -10,6 +10,7 @@ use std::process::Command;
 fn run_llvm(src: &str, opts: &BuildOptions, tag: &str) -> Outcome {
     let mut m = module(src);
     ms_mir::expand::run(&mut m, true);
+    ms_mir::expand_owned::run(&mut m);
     let mut objects =
         ms_build::llvm::compile(&m, true, "3", opts).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();

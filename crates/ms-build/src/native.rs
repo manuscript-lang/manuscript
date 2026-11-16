@@ -263,6 +263,8 @@ pub fn build_executable(
     if cfg!(debug_assertions) {
         verify_after(module, "expand")?;
     }
+    // The backends lower only primitives: the release shorthands become loads, drops and frees.
+    ms_mir::expand_owned::run(module);
     phase("mir optimize");
     let compiled = match llvm {
         Some(level) => crate::llvm::compile(module, options.checks, level, build),
