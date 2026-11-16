@@ -530,58 +530,86 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                 ii += 1;
                 continue;
             }
-            let Some(exit) = (ii + 1..f.blocks[bi].insts.len())
-                .find(|&j| ext(m, &f.blocks[bi].insts[j], "msrt_shield_exit"))
-            else {
+            // The window runs from the enter along unconditional branches (the optimizer can split
+            // the block of an elaborated close) to the matching exit, never through a block twice;
+            // the calls inside it that close a slot in place are covered.
+            let mut calls: Vec<(usize, usize, Value, Ty)> = Vec::new();
+            let (mut cur, mut start, mut hops, mut closed) = (bi, ii + 1, 0, false);
+            let mut path = vec![bi];
+            loop {
+                let insts = &f.blocks[cur].insts;
+                let end = (start..insts.len())
+                    .find(|&j| ext(m, &insts[j], "msrt_shield_exit"))
+                    .unwrap_or(insts.len());
+                for (k, inst) in insts.iter().enumerate().take(end).skip(start) {
+                    if inst.op != Op::Call {
+                        continue;
+                    }
+                    if let Some(slot) = inst.args.first()
+                        && let Some(ty) = slots.get(&slot.0)
+                        && let Imm::Func(g) = inst.imm
+                        && !takes_from_slot(m, g, &mut memo)
+                    {
+                        calls.push((cur, k, *slot, *ty));
+                    }
+                }
+                if end < insts.len() {
+                    closed = true;
+                    break;
+                }
+                let Term::Br(t) = &f.blocks[cur].term else {
+                    break;
+                };
+                hops += 1;
+                if hops > 8 || path.contains(&t.block.index()) {
+                    break;
+                }
+                (cur, start) = (t.block.index(), 0);
+                path.push(cur);
+            }
+            if !closed {
                 ii += 1;
                 continue;
-            };
-            // The calls inside the window that close a slot in place.
-            let mut calls: Vec<(usize, Value, Ty)> = Vec::new();
-            for (k, inst) in f.blocks[bi]
-                .insts
-                .iter()
-                .enumerate()
-                .take(exit)
-                .skip(ii + 1)
-            {
-                if inst.op != Op::Call {
-                    continue;
-                }
-                if let Some(slot) = inst.args.first()
-                    && let Some(ty) = slots.get(&slot.0)
-                    && let Imm::Func(g) = inst.imm
-                    && !takes_from_slot(m, g, &mut memo)
-                {
-                    calls.push((k, *slot, *ty));
-                }
             }
             // A slot with an entry still registered here is covered by that entry.
-            let registered = |slot: Value, upto: usize, f: &Func| {
+            let registered = |slot: Value, blk: usize, upto: usize, f: &Func| {
+                let at = path.iter().position(|&x| x == blk).unwrap_or(0);
                 f.blocks
                     .iter()
                     .enumerate()
                     .flat_map(|(b, blk)| blk.insts.iter().enumerate().map(move |(k, i)| (b, k, i)))
                     .filter(|(_, _, i)| i.op == Op::CleanupPush && i.args.first() == Some(&slot))
                     .any(|(b, k, push)| {
-                        !(b == bi
-                            && k < upto
-                            && f.blocks[bi].insts[k + 1..upto]
+                        // An entry pushed off the window's path covers the slot; one pushed on it
+                        // does until its discard, between the push and the call.
+                        let Some(from) = path[..=at].iter().position(|&x| x == b) else {
+                            return true;
+                        };
+                        !path[from..=at].iter().enumerate().any(|(n, &pb)| {
+                            let hi = if pb == blk {
+                                upto
+                            } else {
+                                f.blocks[pb].insts.len()
+                            };
+                            let lo = if n == 0 { (k + 1).min(hi) } else { 0 };
+                            f.blocks[pb].insts[lo..hi]
                                 .iter()
-                                .any(|i| i.op == Op::CallRt && i.args.first() == push.res.as_ref()))
+                                .any(|i| i.op == Op::CallRt && i.args.first() == push.res.as_ref())
+                        })
                     })
             };
-            let mut shift = 0;
-            for (k, slot, ty) in calls {
-                let k = k + shift;
-                if registered(slot, k, f) {
+            let mut shifts: HashMap<usize, usize> = HashMap::new();
+            for (blk, k, slot, ty) in calls {
+                let shift = shifts.entry(blk).or_default();
+                let k = k + *shift;
+                if registered(slot, blk, k, f) {
                     continue;
                 }
-                let loc = f.blocks[bi].insts[k].loc;
+                let loc = f.blocks[blk].insts[k].loc;
                 let dropper = slot_dropper(m, cx, ty);
                 let handle = f.new_value(Ty::INT);
                 let unit = f.new_value(Ty::VOID);
-                f.blocks[bi].insts.insert(
+                f.blocks[blk].insts.insert(
                     k + 1,
                     Inst {
                         op: Op::CallRt,
@@ -591,7 +619,7 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                         loc,
                     },
                 );
-                f.blocks[bi].insts.insert(
+                f.blocks[blk].insts.insert(
                     k,
                     Inst {
                         op: Op::CleanupPush,
@@ -601,10 +629,10 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                         loc,
                     },
                 );
-                shift += 2;
+                *shifts.entry(blk).or_default() += 2;
                 changed = true;
             }
-            ii = exit + shift + 1;
+            ii += 1;
         }
     }
     changed
