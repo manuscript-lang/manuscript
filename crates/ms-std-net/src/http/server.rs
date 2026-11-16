@@ -256,6 +256,12 @@ impl Reactor {
             let mut tokens = self.pending.take();
             tokens.push(token);
             self.pending.set(tokens);
+            // A task other than the reactor (the accept loop adopting a connection, a request
+            // task that finished) may start it while the reactor is parked with no deadline at
+            // all: it would not read the clock until something else woke it.
+            if self.next_sweep.get().is_none() && rt::current_task() != self.task.get() {
+                self.poller.kick();
+            }
         }
     }
 
