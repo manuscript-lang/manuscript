@@ -86,3 +86,14 @@ Counted with callgrind (method: [wiki](../../wiki/benchmarks-and-performance/cou
 | Manuscript, and detached request tasks | 15.9k |
 
 Where the rest goes is in [the proposal](../../proposals/http-request-path-instructions.md).
+
+## Results, 2026-11-16, text built piece by piece, same 4 vCPU Linux VM
+
+"Before" is `main` at 9f09fd55. "Now": `out += f"..."` writes the pieces straight onto `out` (`msrt_string_append_fmtN`) instead of building the text and appending it.
+
+| | C | Manuscript before | Manuscript now |
+| --- | --- | --- | --- |
+| User CPU for 40,000 fast requests at 4000 req/s, three alternated runs | 0.22 s | 1.33, 1.62, 1.50 s | 1.16, 1.38, 1.29 s |
+| Instructions per item of the handler loop alone (callgrind, 200,000 items) | about 50 | 1,018 | 575 |
+
+Findings: user time falls about 14%. What is left per item is one call for the `","`, one for the item, two integer renderings and a capacity lookup per call.
