@@ -71,17 +71,6 @@ fn Crc64Polynomial.reflected() Int:
 		Ecma: return -3932672073523589310
 		Iso: return -2882303761517117440
 
-/*
-A 64-bit CRC built from ordered chunks, retaining no input bytes. Initial register and final XOR are all ones.
-`var sum = Crc64(Crc64Polynomial.Ecma)` then `sum.update("123456789".to_bytes())` gives `sum.value()` = 11051210869376104954.
-Reading the value does not reset it. It detects accidental corruption; it does not authenticate data.
-*/
-export type Crc64:
-	// The polynomial this checksum uses.
-	polynomial: Crc64Polynomial
-	// Register state, stored complemented so the empty checksum is zero.
-	state: Int = 0
-
 // Slicing tables for a reflected CRC-64: `tables[k * 256 + b]` is the register after
 // byte `b` followed by `k` zero bytes. Building one table costs about as much as
 // hashing 256 bytes bit by bit, so `count` is 1 for mid-size inputs.
@@ -108,6 +97,17 @@ fn crc64_tables(poly: Int, count: Int) List[Int]:
 			)
 
 	return tables
+
+/*
+A 64-bit CRC built from ordered chunks, retaining no input bytes. Initial register and final XOR are all ones.
+`var sum = Crc64(Crc64Polynomial.Ecma)` then `sum.update("123456789".to_bytes())` gives `sum.value()` = 11051210869376104954.
+Reading the value does not reset it. It detects accidental corruption; it does not authenticate data.
+*/
+export type Crc64:
+	// The polynomial this checksum uses.
+	polynomial: Crc64Polynomial
+	// Register state, stored complemented so the empty checksum is zero.
+	state: Int = 0
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
 fn var Crc64.update(data: Bytes) Void:
