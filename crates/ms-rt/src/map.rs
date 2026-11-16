@@ -795,15 +795,36 @@ unsafe fn upsert_k<K: KeyOps>(
             }
             return (p.add(l.voff), false);
         }
+        let at = append_entry(m, &l, h, |k, v| {
+            copy_slot(key, k, l.ksize);
+            if vd.is_some() {
+                copy_slot(val, v, l.vsize);
+            }
+        });
+        (at, true)
+    }
+}
+
+/// Appends an entry known to be absent, with hash `h`: `fill` writes the key and the value into
+/// their slots. Returns the value slot.
+///
+/// # Safety
+/// `l` is the layout of `m`, and no entry equal to the new key exists.
+#[inline(always)]
+unsafe fn append_entry(
+    m: &mut MapVal,
+    l: &Layout,
+    h: u64,
+    fill: impl FnOnce(*mut u8, *mut u8),
+) -> *mut u8 {
+    // SAFETY: caller contract.
+    unsafe {
         if m.used == m.cap {
-            grow(m, &l);
+            grow(m, l);
         }
-        let p = slot(m, &l, m.used);
+        let p = slot(m, l, m.used);
         *(p as *mut u64) = h;
-        copy_slot(key, p.add(l.koff), l.ksize);
-        if vd.is_some() {
-            copy_slot(val, p.add(l.voff), l.vsize);
-        }
+        fill(p.add(l.koff), p.add(l.voff));
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
             let e = *index_of(m).add(pos);
@@ -815,7 +836,7 @@ unsafe fn upsert_k<K: KeyOps>(
         *index_of(m).add(pos) = entry(h, m.used);
         m.used += 1;
         m.len += 1;
-        (p.add(l.voff), true)
+        p.add(l.voff)
     }
 }
 
@@ -1294,12 +1315,11 @@ pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
                 }
                 return slot(m, &l, i).add(l.voff);
             }
-            // Absent: own a copy of the key and insert it.
-            let owned = alloc::alloc((kd.size as usize).max(8));
-            slot_copy(kd, key, owned);
-            let at = upsert_k::<K>(m, kd, Some(vd), owned, default, false).0;
-            alloc::free(owned);
-            at
+            // Absent: the entry owns a copy of the key.
+            append_entry(m, &l, h, |k, v| {
+                slot_copy(kd, key, k);
+                copy_slot(default, v, l.vsize);
+            })
         })
     }
 }
@@ -1330,10 +1350,10 @@ pub unsafe extern "C-unwind" fn msrt_map_add_lent(
                 copy_slot(val, p, l.vsize);
                 return;
             }
-            let owned = alloc::alloc((kd.size as usize).max(8));
-            slot_copy(kd, key, owned);
-            upsert_k::<K>(m, kd, Some(vd), owned, val, true);
-            alloc::free(owned);
+            append_entry(m, &l, h, |k, v| {
+                slot_copy(kd, key, k);
+                copy_slot(val, v, l.vsize);
+            });
         })
     }
 }
@@ -1362,10 +1382,10 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
                 }
                 return;
             }
-            let owned = alloc::alloc((kd.size as usize).max(8));
-            slot_copy(kd, key, owned);
-            upsert_k::<K>(m, kd, Some(vd), owned, val, true);
-            alloc::free(owned);
+            append_entry(m, &l, h, |k, v| {
+                slot_copy(kd, key, k);
+                copy_slot(val, v, l.vsize);
+            });
         })
     }
 }

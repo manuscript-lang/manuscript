@@ -255,7 +255,7 @@ native! {
 
     /// `HttpExchange.headers()`.
     fn msstd_http_exchange_headers(x: ObjRef<ExchH>) -> Object<HeadersH> {
-        Object(HeadersH(Bound::new(Rc::new(RefCell::new(x.headers().borrow().clone())))))
+        Object(HeadersH(Bound::new(Rc::new(RefCell::new(x.headers())))))
     }
 
     /// `HttpExchange.method()`.

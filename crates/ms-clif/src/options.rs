@@ -31,6 +31,10 @@ pub struct BuildOptions {
     /// deletes blocks nothing reads and pairs frees with allocations. The ownership-count gate
     /// turns it off so every block the compiler asks for is counted.
     pub heap_facts: bool,
+    /// Fill each stack slot that holds a statement-scoped temporary with a pattern where its
+    /// use ends (`MS_POISON_SLOTS=1`), so a pointer that outlives the slot reads garbage in
+    /// every build instead of depending on what the code generator reuses the slot for.
+    pub poison_slots: bool,
     /// Run LLVM's verifier after every optimizer pass (`opt -verify-each`).
     pub llvm_verify: bool,
     /// Copy the LLVM IR of a release build to `ms-keep.ll`.
@@ -53,6 +57,8 @@ pub struct BuildOptions {
     pub dump_clif: bool,
     /// Report or reject copies of object values in the lowered code.
     pub copy_probe: CopyProbe,
+    /// Count the MIR operations the program executes (`ms bench --ops`, `MS_COUNT_OPS`).
+    pub count_ops: bool,
 }
 
 impl Default for BuildOptions {
@@ -62,6 +68,7 @@ impl Default for BuildOptions {
             llvm_units: None,
             vectorize: true,
             heap_facts: true,
+            poison_slots: false,
             llvm_verify: false,
             keep_ll: false,
             llvm_tools: None,
@@ -72,6 +79,7 @@ impl Default for BuildOptions {
             dump_clif: false,
             clif_verify: cfg!(debug_assertions),
             copy_probe: CopyProbe::Off,
+            count_ops: false,
         }
     }
 }

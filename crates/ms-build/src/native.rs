@@ -250,11 +250,21 @@ pub fn build_executable(
         Backend::Cranelift
     };
     optimize(module, level, cfg!(debug_assertions));
+    if build.count_ops {
+        ms_mir::count_ops::run(module);
+    }
     // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
     let unwound = ms_mir::unwind::run(module);
     if unwound && cfg!(debug_assertions) {
         verify_after(module, "unwind")?;
     }
+    // The checks and list growth the backends lower are explicit MIR from here on.
+    ms_mir::expand::run(module, options.checks);
+    if cfg!(debug_assertions) {
+        verify_after(module, "expand")?;
+    }
+    // The backends lower only primitives: the release shorthands become loads, drops and frees.
+    ms_mir::expand_owned::run(module);
     phase("mir optimize");
     let compiled = match llvm {
         Some(level) => crate::llvm::compile(module, options.checks, level, build),

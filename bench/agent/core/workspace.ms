@@ -14,9 +14,9 @@ export type Grade:
 	passed: Int
 	total: Int
 	pass: Bool
+	code_tokens: Int
 	error: String?
 	failed: List[String]?
-	code_tokens: Int
 	llm_tokens: Int?
 
 // Build counts the agent's own `./check.sh` runs left in `.bench/log.jsonl`.
@@ -144,7 +144,16 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 			if built.err.length() > 500: built.err.length() - 500 else: 0,
 			built.err.length(),
 		).get("")
-		return Grade(false, 0, cases.length(), false, tail, none, tokens, none)
+		return Grade(
+			built: false,
+			passed: 0,
+			total: cases.length(),
+			pass: false,
+			error: tail,
+			failed: none,
+			code_tokens: tokens,
+			llm_tokens: none,
+		)
 
 	var passed = 0
 	var failed = List[String]()
@@ -158,12 +167,12 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 			failed.append(c.name.clone())
 
 	return Grade(
-		true,
-		passed,
-		cases.length(),
-		passed == cases.length(),
-		none,
-		failed.take(10),
-		tokens,
-		none,
+		built: true,
+		passed: passed,
+		total: cases.length(),
+		pass: passed == cases.length(),
+		error: none,
+		failed: failed.take(10),
+		code_tokens: tokens,
+		llm_tokens: none,
 	)

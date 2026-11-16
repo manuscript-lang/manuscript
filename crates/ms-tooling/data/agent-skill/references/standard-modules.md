@@ -33,7 +33,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/crypto/hash.ms`: Crc64, Crc64Polynomial, MapHash, crc64, crc64_of, fnv1_32, fnv1_64, fnv1a32, fnv1a64, random_seed
 - `@std/data/checksum.ms`: Adler32, Crc32, adler32, adler32_of, crc32, crc32_of
 - `@std/data/config.ms`: parse_dotenv, parse_ini
-- `@std/data/csv.ms`: CsvOptions, csv_rows, csv_writer, parse, stringify
+- `@std/data/csv.ms`: CsvOptions, csv_rows, csv_writer, each_cell, parse, stringify
 - `@std/data/diff.ms`: CloseMatchesOptions, UnifiedDiffOptions, close_matches, edit_distance, similarity_ratio, unified_diff
 - `@std/data/encoding.ms`: Base32Options, ascii85_decode, ascii85_encode, ascii_decode, ascii_encode, base32_decode, base32_encode, base64_decode, base64_encode, hex_decode, hex_encode, latin1_decode, latin1_encode, utf16_decode, utf16_encode
 - `@std/data/encoding_stream.ms`: base64_decoded, base64_encoded, hex_decoded, hex_encoded
@@ -81,7 +81,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/os/fs.ms`: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, OpenMode, OpenOptions, PathEntry, RawWatcher, Seek, TemporaryDirectory, WatchOptions, access, append_file, canonicalize, chmod, chown, copy, create_directory, create_hard_link, create_symlink, glob, list, move, open, open_directory, read_file, read_symlink, remove, rename, set_times, stat, stat_filesystem, temporary, temporary_directory, temporary_root, truncate, watch, write_atomic, write_file
 - `@std/os/path.ms`: PathOperations, PathParts, basename, basename_without, delimiter, dirname, extension, format, is_absolute, join, matches_glob, normalize, parse, posix, relative, resolve, separator, to_namespaced_path, win32
 - `@std/os/process.ms`: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, get_priority, groups, initialize_groups, process_info, replace, resource_usage, run, send_signal, set_groups, set_identity, set_priority, set_title, spawn, title, umask, watch_signals
-- `@std/os/system.ms`: CpuInfo, Endianness, MemoryUsage, NetworkInterface, Os, SystemInfo, SystemMetrics, UserInfo, available_memory, constants, constrained_memory, cpus, dev_null, end_of_line, endianness, hostname, machine, memory_usage, metrics, network_interfaces, os, os_release, os_version, system_info, uptime, user_info
+- `@std/os/system.ms`: CpuInfo, Endianness, MemoryUsage, NetworkInterface, Os, RuntimeCounts, SystemInfo, SystemMetrics, UserInfo, available_memory, constants, constrained_memory, cpus, dev_null, end_of_line, endianness, hostname, machine, memory_usage, metrics, network_interfaces, os, os_release, os_version, runtime_counts, system_info, uptime, user_info
 - `@std/os/tree.ms`: EmbeddedTree, FileTree, HostTree, MemoryTree, WalkEntry, embedded_tree, host_tree, memory_tree, msstd_embed_bytes, walk
 - `@std/random.ms`: SeededRandom, choice, float, random_bytes, sample, secure_int, seeded, shuffle, token, ulid, weighted_choice
 - `@std/regex.ms`: Regex, RegexSpan, compile

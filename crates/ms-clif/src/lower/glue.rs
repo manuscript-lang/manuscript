@@ -5,20 +5,10 @@ use super::*;
 impl<'a, 'm> Lower<'a, 'm> {
     /// The capture types of closure function `f` with the offset and leaves each has in the object.
     fn closure_captures(&mut self, f: u32) -> Vec<(Ty, i64, Vec<Leaf>)> {
-        let caps = match &self.g.m.funcs[f as usize].kind {
-            ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
-            _ => Vec::new(),
-        };
-        let mut off = CLOSURE_CAPTURES as i64;
-        let mut out = Vec::new();
-        for c in caps {
-            let leaves = self.g.lay.leaves(c);
-            let lay = mem_layout(&leaves);
-            off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
-            out.push((c, off, leaves));
-            off += lay.size as i64;
-        }
-        out
+        let layout = self.g.lay.closure(&self.g.m.funcs[f as usize]);
+        (layout.captures.into_iter())
+            .map(|c| (c.ty, i64::from(c.offset), c.leaves))
+            .collect()
     }
 
     /// Registers the release of closure object `obj` from capture `k` on while a guarded task
@@ -141,24 +131,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             Glue::ClosureClone(f) => {
                 // A new closure object with the same header and code over copies of the captures.
                 let src = params[0];
-                let caps = match &self.g.m.funcs[f as usize].kind {
-                    ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
-                    _ => Vec::new(),
-                };
-                let mut layouts = Vec::new();
-                let mut off = CLOSURE_CAPTURES as i64;
-                for cty in &caps {
-                    let leaves = self.g.lay.leaves(*cty);
-                    let lay = mem_layout(&leaves);
-                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
-                    layouts.push((off, leaves));
-                    off += lay.size as i64;
-                }
-                let total = (off + 7) / 8 * 8;
+                let layout = self.g.lay.closure(&self.g.m.funcs[f as usize]);
+                let total = i64::from(layout.size);
                 let mut copies = Vec::new();
-                for (cty, (off, leaves)) in caps.iter().zip(&layouts) {
-                    let vs = self.load_leaves(src, *off, leaves);
-                    copies.push(self.clone_value(*cty, &vs));
+                for cap in &layout.captures {
+                    let vs = self.load_leaves(src, i64::from(cap.offset), &cap.leaves);
+                    copies.push(self.clone_value(cap.ty, &vs));
                 }
                 let obj = self.alloc(total);
                 // The drop entry is the heap one even when `src` lives in a frame.
@@ -170,8 +148,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let dr = self.fref(drop);
                 let da = self.b.ins().func_addr(types::I64, dr);
                 self.b.ins().store(flags(), da, obj, 8);
-                for ((off, leaves), vs) in layouts.iter().zip(&copies) {
-                    self.store_leaves(obj, *off, leaves, vs);
+                for (cap, vs) in layout.captures.iter().zip(&copies) {
+                    self.store_leaves(obj, i64::from(cap.offset), &cap.leaves, vs);
                 }
                 self.b.ins().return_(&[obj]);
             }
@@ -600,8 +578,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 // (vtable[0] is the payload destructor), 1 only the box (`iface.borrow`), 2
                 // nothing (`iface.view`).
                 let (data, vt) = (vs[0], vs[1]);
-                let tag = self.b.ins().band_imm_s(vt, 3);
-                let owned = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 0);
+                let tag = self.b.ins().band_imm_s(vt, IFACE_TAG_MASK);
+                let owned = self.b.ins().icmp_imm_s(IntCC::Equal, tag, IFACE_TAG_OWNED);
                 self.if_then(owned, |s| {
                     let f = s.b.ins().load(types::I64, flags(), vt, 0);
                     let mut sig = s.g.module.make_signature();
@@ -609,7 +587,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let sr = s.b.import_signature(sig);
                     s.b.ins().call_indirect(sr, f, &[data]);
                 });
-                let borrowed = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 1);
+                let borrowed = self.b.ins().icmp_imm_s(IntCC::Equal, tag, IFACE_TAG_BOX);
                 self.if_then(borrowed, |s| s.free(data));
             }
             _ => {}

@@ -441,7 +441,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                 _ => {}
             }
             // `none` holds no list, so no length to share.
-            if !is_list(r) || i.op == Op::OptNone {
+            if !is_list(r) || matches!(i.op, Op::OptNone | Op::OptNoneOwned) {
                 continue;
             }
             if matches!(

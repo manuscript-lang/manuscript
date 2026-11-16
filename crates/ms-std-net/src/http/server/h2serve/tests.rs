@@ -146,6 +146,18 @@ impl Dispatch for Streamer {
 }
 
 fn start(dispatch: Box<dyn Dispatch>, limits: Limits) -> (Arc<Network>, Started) {
+    start_listing(dispatch, limits, true)
+}
+
+/// Like `start`; with `listing`, the server lists its idle connections as on a scheduler thread.
+fn start_listing(
+    dispatch: Box<dyn Dispatch>,
+    limits: Limits,
+    listing: bool,
+) -> (Arc<Network>, Started) {
+    if listing {
+        test_sharing::enable();
+    }
     let options = Options {
         limits,
         admitted: Default::default(),
@@ -890,4 +902,172 @@ fn a_stream_that_never_finishes_its_request_is_answered_at_the_timeout() {
         elapsed < Duration::from_secs(5),
         "answered after {elapsed:?}"
     );
+}
+
+// ------------------------------------------------------------ parked connections
+
+/// The two kinds of connection that wait in the list of takeable ones with state of their own.
+#[derive(Clone, Copy)]
+enum Kind {
+    Http1OverTls,
+    Http2,
+}
+
+/// A client connection that has finished one request and now sits idle.
+enum Idle {
+    Tls(Box<Tls>),
+    H2(Box<Client>),
+}
+
+impl Idle {
+    fn open(addr: &str, kind: Kind) -> Idle {
+        match kind {
+            Kind::Http1OverTls => {
+                let mut idle = Idle::Tls(Box::new(tls_connect(addr, &["http/1.1"])));
+                idle.request();
+                idle
+            }
+            Kind::Http2 => {
+                let mut c = Client::connect(addr, big_window());
+                let id = c.get("/hello");
+                c.response(id);
+                Idle::H2(Box::new(c))
+            }
+        }
+    }
+
+    /// Sends one more request and returns its body.
+    fn request(&mut self) -> String {
+        match self {
+            Idle::Tls(tls) => {
+                tls.write_all(b"GET /hello HTTP/1.1\r\nHost: t\r\n\r\n")
+                    .unwrap();
+                let mut seen = Vec::new();
+                let mut buf = [0u8; 512];
+                while !seen.ends_with(b"|HTTP/1.1") {
+                    let n = tls.read(&mut buf).expect("response");
+                    assert!(n > 0, "closed before the response");
+                    seen.extend_from_slice(&buf[..n]);
+                }
+                String::from_utf8_lossy(&seen).into_owned()
+            }
+            Idle::H2(c) => {
+                let id = c.get("/hello");
+                c.response(id).text()
+            }
+        }
+    }
+
+    /// Waits for the server to close the connection; `false` if it is still open when the
+    /// client's read timeout passes.
+    fn closed(&mut self) -> bool {
+        match self {
+            Idle::Tls(tls) => {
+                let mut buf = [0u8; 64];
+                loop {
+                    match tls.read(&mut buf) {
+                        Ok(0) => return true,
+                        Ok(_) => {}
+                        Err(e) => {
+                            return !matches!(
+                                e.kind(),
+                                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                            );
+                        }
+                    }
+                }
+            }
+            Idle::H2(c) => {
+                while c.pull() {}
+                true
+            }
+        }
+    }
+}
+
+fn member_of(server: &Server) -> Arc<steal::Member> {
+    server.member.clone().expect("server shares connections")
+}
+
+fn timed(ms: u64) -> Limits {
+    Limits {
+        timeout: Some(Duration::from_millis(ms)),
+        ..limits()
+    }
+}
+
+#[test]
+fn an_idle_tls_connection_times_out_while_listed() {
+    let (_net, server) = start_listing(Box::new(Buffered(App)), timed(300), true);
+    let (addr, member) = (server.address().to_string(), member_of(&server));
+    let closed = with_client(move || {
+        let mut idle = Idle::open(&addr, Kind::Http1OverTls);
+        member.wait_listed(1);
+        let closed = idle.closed();
+        member.wait_listed(0);
+        closed
+    });
+    assert!(closed);
+}
+
+#[test]
+fn a_listed_connection_serves_its_next_request() {
+    for kind in [Kind::Http1OverTls, Kind::Http2] {
+        let (_net, server) = start_listing(Box::new(Buffered(App)), limits(), true);
+        let (addr, member) = (server.address().to_string(), member_of(&server));
+        let (first, second) = with_client(move || {
+            let mut idle = Idle::open(&addr, kind);
+            member.wait_listed(1);
+            let first = idle.request();
+            // Listed again after the request, and still serving.
+            member.wait_listed(1);
+            (first, idle.request())
+        });
+        assert!(
+            first.ends_with("|HTTP/1.1") || first.ends_with("|HTTP/2.0"),
+            "{first}"
+        );
+        // The Date header differs when the two requests cross a second boundary.
+        let undated = |reply: &str| {
+            reply
+                .split("\r\n")
+                .filter(|line| !line.starts_with("Date: "))
+                .collect::<Vec<_>>()
+                .join("\r\n")
+        };
+        assert_eq!(undated(&first), undated(&second));
+    }
+}
+
+#[test]
+fn a_listed_connection_the_peer_closes_leaves_the_list() {
+    for kind in [Kind::Http1OverTls, Kind::Http2] {
+        let (_net, server) = start_listing(Box::new(Buffered(App)), limits(), true);
+        let (addr, member) = (server.address().to_string(), member_of(&server));
+        with_client(move || {
+            let idle = Idle::open(&addr, kind);
+            member.wait_listed(1);
+            drop(idle);
+            member.wait_listed(0);
+        });
+    }
+}
+
+#[test]
+fn stopping_the_server_closes_listed_connections() {
+    for kind in [Kind::Http1OverTls, Kind::Http2] {
+        let (net, server) = start_listing(Box::new(Buffered(App)), limits(), true);
+        let (addr, member) = (server.address().to_string(), member_of(&server));
+        let idle = with_client(move || {
+            let idle = Idle::open(&addr, kind);
+            member.wait_listed(1);
+            idle
+        });
+        server.close().unwrap();
+        assert!(with_client(move || {
+            let mut idle = idle;
+            idle.closed()
+        }));
+        net.close();
+    }
 }

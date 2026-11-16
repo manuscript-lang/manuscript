@@ -172,7 +172,7 @@ fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchRespon
 		.read_all()
 		.map_error(fn cause: read_failure(cause, options, started))?
 	)
-	if limit_exceeded(options.max_response_bytes, whole.length()):
+	if limit_exceeded(whole.length(), options.max_response_bytes):
 		return error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
 	return ok(FetchResponse(head: metadata, body: whole))
@@ -180,7 +180,7 @@ fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchRespon
 // Maps a body read failure to a fetch error, reporting ETIMEDOUT once the deadline has
 // passed.
 fn read_failure(cause: Error, options: FetchOptions, started: Instant) Error:
-	if expired(options.timeout, started):
+	if expired(started, options.timeout):
 		return Error("HTTP: operation timed out", kind: "ETIMEDOUT")
 	return cause.clone()
 
@@ -188,11 +188,11 @@ type Outgoing:
 	headers: HttpHeaders
 	body: Bytes
 
-fn limit_exceeded(limit: Int?, total: Int) Bool:
+fn limit_exceeded(total: Int, limit: Int?) Bool:
 	if max := limit: return total > max
 	return false
 
-fn expired(timeout: Duration?, started: Instant) Bool:
+fn expired(started: Instant, timeout: Duration?) Bool:
 	if limit := timeout: return monotonic().difference(started).compare(limit) >= 0
 	return false
 

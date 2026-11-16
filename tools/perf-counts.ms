@@ -24,23 +24,36 @@ PROGRAMS := ["interp", "strings", "lz", "graph"]
 // regex prefilter, image codecs, fused chains, map probes, scope-end close, string
 // append). Each is counted as
 // `guard-<name>`.
-GUARDS := ["crypto", "regex", "image", "chains", "maps", "cleanup", "append", "strcmp"]
+GUARDS := [
+	"crypto", "regex", "image", "chains", "maps", "cleanup", "resultvar", "csvcells",
+	"mapinsert", "http-request", "splitfirst", "splitbuf", "findshort", "append", "strcmp"
+]
+// Guards that take their own path as the argument (they start themselves as a child,
+// which valgrind does not follow, so only the part under test is counted).
+SELF_PATH := ["guard-http-request", "guard-http-request-small"]
+// Guards that are another shape of a guard above: name, source directory, argument
+// naming the shape.
+SHAPES := [["http-request-small", "http-request", "small"]]
+// Counts held to 1 percent instead of the default: most of their instructions are the
+// per-request path itself, which a few hundred more instructions per request would
+// otherwise hide.
+TIGHT := ["guard-http-request", "guard-http-request-small"]
 COUNTS := "bench/perf/counts.txt"
 
 fn say(text: String) Void:
 	stdout().write(text).get()
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.
-fn count(program: String, out_file: String) Int:
-	if out := run(
-		"valgrind",
-		[
-			"--tool=callgrind",
-			f"--callgrind-out-file={out_file}",
-			program.clone(),
-		],
-		RunOptions(timeout: seconds(600)),
-	).wait():
+fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:
+	var command = [
+		"--tool=callgrind",
+		f"--callgrind-out-file={out_file}",
+		program.clone(),
+	]
+	if own_path: command.append(program.clone())
+	if shape != "": command.append(shape.clone())
+
+	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait():
 		for line in out.stderr.decode_utf8().get("").split("\n"):
 			if at := line.index_of("Collected : "):
 				digits := line.slice(at + 12, line.length()).get("").trim()
@@ -73,15 +86,23 @@ fn main() Int:
 	var report = "# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.\n"
 	var targets: List[List[String]] = []
 	for name in PROGRAMS: targets.append(
-		[name.clone(), f"{root}/bench/perf/suite/{name}/main.ms"]
+		[name.clone(), f"{root}/bench/perf/suite/{name}/main.ms", ""]
 	)
 	for name in GUARDS: targets.append(
-		[f"guard-{name}", f"{root}/bench/perf/guards/{name}/main.ms"]
+		[f"guard-{name}", f"{root}/bench/perf/guards/{name}/main.ms", ""]
+	)
+	for shape in SHAPES: targets.append(
+		[
+			f"guard-{shape[0]}",
+			f"{root}/bench/perf/guards/{shape[1]}/main.ms",
+			shape[2].clone(),
+		]
 	)
 
 	for target in targets:
 		name := target[0].clone()
 		source := target[1].clone()
+		shape := target[2].clone()
 		binary := f"{scratch.path()}/{name}"
 		built := run(
 			ms.clone(),
@@ -94,7 +115,12 @@ fn main() Int:
 			failures += 1
 			continue
 
-		now := count(binary.clone(), f"{scratch.path()}/{name}.out")
+		now := count(
+			binary.clone(),
+			f"{scratch.path()}/{name}.out",
+			SELF_PATH.contains(name),
+			shape.clone(),
+		)
 
 		if now < 0:
 			say(f"fail: {name} did not run under valgrind\n")
@@ -110,15 +136,16 @@ fn main() Int:
 			if not update: failures += 1
 			continue
 
+		limit := if TIGHT.contains(name): 1 else: bound
 		tenths := (now - before) * 1000 / before
 		say(f"{name}: {now} against {before} ({tenths / 10}.{tenths.abs() % 10}%)\n")
 
-		if tenths > bound * 10:
+		if tenths > limit * 10:
 			failures += 1
 			say(
-				f"fail: {name} executes more than {bound}% more instructions than the committed count; find the change that made it slower, or refresh {COUNTS} when the cost is deliberate\n"
+				f"fail: {name} executes more than {limit}% more instructions than the committed count; find the change that made it slower, or refresh {COUNTS} when the cost is deliberate\n"
 			)
-		else if tenths < -bound * 10:
+		else if tenths < -limit * 10:
 			say(f"note: {name} got faster; refresh {COUNTS} with --update\n")
 
 	if update:

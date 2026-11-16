@@ -137,6 +137,17 @@ impl<'a> FnLower<'a> {
                 _ => {}
             }
         }
+        if str_recv && native == "split" && lent && self.split_first_for == Some(e as *const Expr) {
+            // `text.split(..)[0]` of a lent split: the first piece is a view, with no list.
+            self.split_first_for = None;
+            return self.rt_method(
+                "msrt_string_split_first",
+                recv,
+                &m.ty.params,
+                &args,
+                MTy::STR,
+            );
+        }
         if str_recv
             && native == "split"
             && (lent
@@ -147,7 +158,13 @@ impl<'a> FnLower<'a> {
             // parameter the body only reads: the pieces are views of `text`.
             self.split_view_for = None;
             let result = self.emty(e)?;
-            return self.rt_method("msrt_string_split_view", recv, &m.ty.params, &args, result);
+            return self.rt_method(
+                "msrt_string_split_view_into",
+                recv,
+                &m.ty.params,
+                &args,
+                result,
+            );
         }
         if str_recv && native == "split" && self.split_iter_for == Some(e as *const Expr) {
             // `for piece in text.split(..)`: pieces are produced one at a time.
@@ -602,10 +619,17 @@ impl<'a> FnLower<'a> {
             (_, "to_string") if m.receiver.is(Builtin::Duration) => self.duration_text(recv),
             (_, "to_string") => {
                 let receiver = ms_check::api::types::sub(&m.receiver, &self.subst);
-                match self.own_to_string(&receiver, recv)? {
-                    Some(text) => Ok(text),
-                    None => self.format_value(recv),
+                if let Some(text) = self.own_to_string(&receiver, recv)? {
+                    return Ok(text);
                 }
+                let text = self.format_value(recv)?;
+                // The call's result is an owned `String`; a `String` receiver is its own text,
+                // and a borrowed one (a loop element) is copied here.
+                if text.own {
+                    return Ok(text);
+                }
+                let v = self.clone_value(text.v);
+                Ok(Val { v, own: true })
             }
             (_, "clone") => {
                 let v = self.clone_value(recv.v);

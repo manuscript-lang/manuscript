@@ -87,6 +87,19 @@ abi_type! {
 }
 
 abi_type! {
+    /// `runtime_counts`: allocations and bytes, list copies and bytes, string clones and bytes, MIR operations.
+    pub struct CountsOut {
+        pub allocations: i64,
+        pub allocated_bytes: i64,
+        pub list_copies: i64,
+        pub list_copy_bytes: i64,
+        pub string_clones: i64,
+        pub string_clone_bytes: i64,
+        pub operations: i64,
+    }
+}
+
+abi_type! {
     /// `memory_usage`: `heap_used`, `heap_total`, `heap_system`, `external`, `resident` in bytes.
     /// Linux, macOS and Windows; other hosts report `STATUS_UNSUPPORTED`.
     pub struct MemoryOut {
@@ -337,6 +350,23 @@ native! {
         })
     }
 
+    /// `runtime_counts()` as `Result[RuntimeCounts, ControlError]`: the runtime's work counters.
+    fn msstd_process_runtime_counts() -> Result<CountsOut, StatusCode> {
+        let mut c = [0u64; 7];
+        // SAFETY: `c` holds the seven words the runtime writes.
+        unsafe { ms_rt::obj::msrt_counts(c.as_mut_ptr()) };
+        let [a, b, d, e, f, g, h] = c.map(|v| v as i64);
+        Ok(CountsOut {
+            allocations: a,
+            allocated_bytes: b,
+            list_copies: d,
+            list_copy_bytes: e,
+            string_clones: f,
+            string_clone_bytes: g,
+            operations: h,
+        })
+    }
+
     fn msstd_process_memory_usage(; err: ErrOut) -> Result<MemoryOut, StatusCode> {
         fs_status(control::memory_usage(), &err).map(|m| MemoryOut {
             heap_used: m[0],
@@ -398,8 +428,13 @@ native! {
                 let env = valid_environment(cwd, &env_names, &env_values)?;
                 command::run(program, &args, input, limit, t, cwd, &env)
             });
-        // `run` returns early when cancelled, its child already reaped by its frame's drop.
+        // `run` returns early when cancelled, its child already reaped by its frame's drop. The
+        // jump skips destructors, so what this frame owns is dropped first.
         if ms_rt::glue::cancel_pending() {
+            drop(ran);
+            drop(arguments);
+            drop(env_names);
+            drop(env_values);
             ms_rt::glue::cancelled();
         }
         command_status(program, cwd, ran, &err).map(|o| CommandOut {

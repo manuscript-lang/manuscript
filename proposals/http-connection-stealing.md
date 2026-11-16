@@ -28,14 +28,14 @@ Implemented, 2026-11-16, on `claude/project-thread-cuchaa`. Owner direction (202
 One rule: between requests a plain HTTP/1 connection is only a socket and a deadline, so it can change threads; nothing else moves.
 
 - `steal::Member` (one per server, `crates/ms-std-net/src/http/server/steal.rs`): a locked flat list of `(token, socket, deadline, taken)` for connections in `Phase::Head` with nothing buffered. Listing and unlisting are one uncontended lock each per request.
-- `ms_rt::watch` (`crates/ms-rt/src/watch.rs`): one thread that looks every 2 ms, every 100 µs for 0.1 s after a hook asks, and sleeps when every scheduler thread rests. It reads atomics only and calls registered hooks.
+- `ms_rt::watch` (`crates/ms-rt/src/watch.rs`): one thread that looks every 2 ms, every 100 µs for 0.1 s after a hook asks, and sleeps when every scheduler thread has rested for 20 looks. It reads atomics only and calls registered hooks.
 - Held up: the thread is not resting, and both its reactor's last turn and its last wake-up are older than the watcher's previous look (`Beat::held_up`). The wake-up stamp matters: without it a thread that just woke looks held up and the watcher never slows down (measured: +40% CPU at 4000 req/s).
 - The HTTP hook asks for frequent looks only after it helped a thread held up for 1 ms or more. Shorter stalls (a thread the OS set aside) are helped at the slow rate; chasing them cost 7% throughput at full load (measured).
 - Taking: the HTTP hook orders a resting server of the same `serve` call to take from the held-up one. The taker polls the listed sockets with a zero timeout, duplicates the ready ones under the list's lock, marks them taken, and serves them as new connections with the old deadline.
 - Dropping: the owner finds its entry marked taken the next time it touches the connection or turns, and closes its handle without a shutdown. The lock orders "owner uses" against "taker duplicates", so exactly one thread reads a request.
 - The reactor runs a started request before it reads the next ready connection, so connections behind a long handler are still unread and can be taken.
 - Balance: every 10 ms the server with the fewest connections takes half its difference to the one with the most (a take moves every ready connection, which can pile them on one thread; measured throughput 93k without, 117k with, 117k before).
-- Not listed: TLS, HTTP/2 and WebSocket connections, and connections with a request in progress. Their state is bound to the thread; they behave as before.
+- Not listed: WebSocket connections, HTTP/2 connections with an open stream, and connections with a request in progress. Idle TLS and HTTP/2 connections are listed with their session and stream table, which the taker continues (added after the first version).
 - Platforms: `poll`/`dup` on Unix, `WSAPoll`/`WSADuplicateSocket` on Windows (`sys::readable`, `sys::duplicate`); same behavior on all three.
 
 ## Components touched
@@ -60,7 +60,7 @@ Same machine, alternated runs (measured, 7d462817 plus this change; full table i
 | Peak memory | 7.5 MB | 6.4 MB | 14.5 MB |
 | Closed loop | 118k to 121k req/s | 112k to 113k req/s | 53k to 56k req/s |
 
-- Known cost: closed loop is 2 to 6% lower on a machine the load generator shares. An OS-descheduled thread looks held up, so the watcher looks often (about 6% of one core) and connections move that needed no help.
+- Known cost: an OS-descheduled thread looks held up, so connections may move that needed no help. A single 1 ms interval was measured and rejected for its slow-mix p50 and p90 (wiki, 2026-11-16).
 
 ## Alternatives
 

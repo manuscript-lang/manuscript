@@ -2,7 +2,7 @@
 //! and a wake-up is turned into events by comparing snapshots, as the polling watcher does.
 //! `kevent` is polled without blocking between short sleeps, so a pending `next` stays
 //! cancellable.
-use super::{Event, Stamp, diff, sleep_slice, snapshot, valid_native};
+use super::{Event, Gate, Stamp, diff, sleep_slice, snapshot, valid_native};
 use crate::err::{Fail, Res};
 use crate::ops::poll_cancel;
 use crate::sys::{self, CPath};
@@ -34,6 +34,9 @@ pub struct Native {
 }
 
 impl Native {
+    /// Nothing to wake: this wait looks on a slice until it is made an event.
+    pub fn interrupt(&self) {}
+
     /// `overflow` is `error` or `ignore`; `max` bounds the paths under the root at start, `events` queued events.
     pub fn new(
         root: &[u8],
@@ -181,7 +184,7 @@ impl Native {
         Ok(())
     }
 
-    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
+    pub fn wait(&mut self, gate: &Gate) -> Res<Vec<Event>> {
         loop {
             if let Some(e) = self.queue.pop_front() {
                 return Ok(alloc::vec![e]);
@@ -190,7 +193,7 @@ impl Native {
                 return Err(Fail::status(STATUS_NONE));
             }
             poll_cancel()?;
-            if closed.load(Ordering::Relaxed) {
+            if gate.is_closed() {
                 return Err(Fail::status(STATUS_CLOSED));
             }
             if self.woken() {

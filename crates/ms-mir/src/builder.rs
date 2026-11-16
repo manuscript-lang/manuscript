@@ -524,6 +524,11 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.opt(inner);
         self.val(Op::OptViewAt, &[addr], Imm::None, t)
     }
+    /// `opt.none_owned`: a `none` that is an owned value, for a variable that holds an optional
+    /// it owns and a path left empty.
+    pub fn opt_none_owned(&mut self, opt_ty: Ty) -> Value {
+        self.val(Op::OptNoneOwned, &[], Imm::None, opt_ty)
+    }
     /// `opt.none` of the given optional type.
     pub fn opt_none(&mut self, opt_ty: Ty) -> Value {
         self.val(Op::OptNone, &[], Imm::None, opt_ty)

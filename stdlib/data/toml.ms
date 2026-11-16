@@ -391,32 +391,40 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 
 	existing := lookup(reader, parent, key).clone()
 
-	if existing.is_none():
-		allocate(var reader)?
+	if node := existing:
+		match node:
+			TableNode(value):
+				var state = flags(reader, value).clone()
+				if state.sealed: return error(invalid(reader, "inline table is closed"))
+				if dotted and state.explicit: return error(
+					invalid(
+						reader,
+						"dotted key extends an explicit table",
+					)
+				)
 
-		created := new_table(var reader, explicit: false, dotted)
-		put(var reader, parent, key, Node.TableNode(created))
-		return ok(created)
+				if dotted and not state.dotted:
+					state.dotted = true
+					store_flags(var reader, value, state)
 
-	node := existing.get()
+				return ok(value)
+			TableArray(slot):
+				if dotted: return error(
+					invalid(
+						reader,
+						"dotted key extends a table array",
+					)
+				)
+				if last := reader.arrays[slot].last(): return ok(last)
 
-	match node:
-		TableNode(value):
-			var state = flags(reader, value).clone()
-			if state.sealed: return error(invalid(reader, "inline table is closed"))
-			if dotted and state.explicit: return error(
-				invalid(reader, "dotted key extends an explicit table")
-			)
+				return error(invalid(reader, "table array is empty"))
+			_: return error(invalid(reader, "key is already a value"))
 
-			if dotted and not state.dotted:
-				state.dotted = true
-				store_flags(var reader, value, state)
+	allocate(var reader)?
 
-			return ok(value)
-		TableArray(slot):
-			if dotted: return error(invalid(reader, "dotted key extends a table array"))
-			return ok(reader.arrays[slot].last().get())
-		_: return error(invalid(reader, "key is already a value"))
+	created := new_table(var reader, explicit: false, dotted)
+	put(var reader, parent, key, Node.TableNode(created))
+	return ok(created)
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 	Void,
@@ -424,18 +432,16 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 ]:
 	existing := lookup(reader, parent, key).clone()
 
-	if existing.is_none():
-		allocate(var reader)?
-		put_array(var reader, parent, key, next)
-		return ok()
+	if node := existing:
+		match node:
+			TableArray(slot):
+				reader.arrays[slot].append(next)
+				return ok()
+			_: return error(invalid(reader, "table array conflicts with value"))
 
-	node := existing.get()
-
-	match node:
-		TableArray(slot):
-			reader.arrays[slot].append(next)
-			return ok()
-		_: return error(invalid(reader, "table array conflicts with value"))
+	allocate(var reader)?
+	put_array(var reader, parent, key, next)
+	return ok()
 
 fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
 	Void,
@@ -456,7 +462,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 	return assign_one(
 		reader: var reader,
 		parent: current,
-		key: keys.last().get(),
+		key: keys.last().get(""),
 		value: value,
 	)
 
@@ -572,14 +578,14 @@ fn date_valid(text: String) Bool:
 	day := text.slice(8, 10).get("")
 	if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return false
 
-	m := month.parse_int().get()
+	m := month.parse_int().get(0)
 	var maximum = 31
 	if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
 	if m == 2:
 		maximum = 28
 
-		y := year.parse_int().get()
+		y := year.parse_int().get(0)
 		if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): maximum = 29
 
 	return date_number(day, 1, maximum)
@@ -697,8 +703,8 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 					invalid_at(reader, at, "invalid exponent")
 				)
 
-			fraction := parts.first().get().split(".")
-			if fraction.length() > 2 or not decimal_part(fraction.first().get()): return error(
+			fraction := parts.first().get("").split(".")
+			if fraction.length() > 2 or not decimal_part(fraction.first().get("")): return error(
 				invalid_at(reader, at, "invalid float")
 			)
 			if fraction.length() == 2 and not decimal_digits(fraction[1]): return error(
@@ -854,9 +860,9 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 
 // Counts the values of the finished document against the limits.
 type Budget:
+	values: Int
 	max_depth: Int?
 	max_values: Int?
-	values: Int
 
 fn materialize(
 	tables: List[Map[String, Node]],
@@ -987,7 +993,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 				)?
 				index += 1
 
-			key := keys.last().get()
+			key := keys.last().get("")
 			if flags(reader, parent).sealed: return error(
 				invalid(reader, "inline table is closed")
 			)

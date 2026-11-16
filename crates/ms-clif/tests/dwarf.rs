@@ -245,6 +245,8 @@ b0:
             opt_level: if optimized { "speed" } else { "none" },
             ..Options::default()
         };
+        ms_mir::expand::run(&mut m, opts.checks);
+        ms_mir::expand_owned::run(&mut m);
         let bytes = compile(&m, &opts).unwrap();
         assert_eq!(bytes, compile(&m, &opts).unwrap(), "deterministic DWARF");
         let obj = d.join(format!("lines-{optimized}.o"));
@@ -275,6 +277,8 @@ fn unknown_or_invalid_source_paths_do_not_invent_lines() {
         vec!["known.ms".into()],
     ] {
         m.files = files;
+        ms_mir::expand::run(&mut m, true);
+        ms_mir::expand_owned::run(&mut m);
         let bytes = compile(&m, &Options::default()).unwrap();
         let d = std::env::temp_dir().join(format!("ms-dwarf-unknown-{}.o", std::process::id()));
         std::fs::write(&d, bytes).unwrap();
@@ -312,9 +316,11 @@ b0:
 "#,
         source.to_str().unwrap()
     );
-    let m = parse_module(&src).unwrap();
+    let mut m = parse_module(&src).unwrap();
     verify_module(&m).unwrap();
     let obj = d.join("types.o");
+    ms_mir::expand::run(&mut m, true);
+    ms_mir::expand_owned::run(&mut m);
     std::fs::write(&obj, compile(&m, &Options::default()).unwrap()).unwrap();
     output("llvm-dwarfdump", &["--verify"], &obj);
     let info = output("llvm-dwarfdump", &["--debug-info"], &obj);

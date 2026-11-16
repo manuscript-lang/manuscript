@@ -111,7 +111,7 @@ pub(super) struct Pending {
     pub keep_alive: bool,
     pub expect_continue: bool,
     /// When the request arrived; read only when the server has a request timeout.
-    pub started: Option<Instant>,
+    pub started: Option<i64>,
 }
 
 pub(super) struct ConnSt {
@@ -201,6 +201,8 @@ pub struct Reactor {
     next_sweep: Cell<Option<Instant>>,
     /// Connections whose timeout started since the last clock read (by token).
     pending: Cell<Vec<u64>>,
+    /// The event list, kept between turns so each turn allocates none.
+    events: Cell<Vec<(u64, Ev)>>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
 }
@@ -239,6 +241,7 @@ impl Reactor {
                 wall_secs: Cell::new(wall_secs()),
                 next_sweep: Cell::new(None),
                 pending: Cell::new(Vec::new()),
+                events: Cell::new(Vec::new()),
                 beat,
             });
             *slot = Some(reactor.clone());
@@ -256,6 +259,24 @@ impl Reactor {
             let mut tokens = self.pending.take();
             tokens.push(token);
             self.pending.set(tokens);
+        }
+    }
+
+    /// Settles the timeouts a task other than the reactor started (a request task that finished,
+    /// the accept loop adopting a connection) before it ends, on the same thread: the reactor is
+    /// parked, and a sweep it must run earlier than the one it waits for wakes it.
+    fn settle_pending(&self) {
+        let tokens = self.pending.take();
+        let any = !tokens.is_empty();
+        self.pending.set(tokens);
+        if !any {
+            return;
+        }
+        let before = self.next_sweep.get();
+        self.settle_timeouts();
+        let after = self.next_sweep.get();
+        if after.is_some() && (before.is_none() || after < before) {
+            self.poller.kick();
         }
     }
 
@@ -286,20 +307,25 @@ impl Reactor {
                 _ => None,
             };
             let Some(conn) = conn else { continue };
-            let Some(timeout) = conn.server.upgrade().and_then(|s| s.limits.timeout) else {
+            let Some(server) = conn.server.upgrade() else {
                 continue;
             };
-            let mut st = conn.st.borrow_mut();
-            if !st.pending {
-                continue;
+            {
+                let mut st = conn.st.borrow_mut();
+                if let Some(timeout) = server.limits.timeout
+                    && st.pending
+                {
+                    st.pending = false;
+                    let at = now + timeout;
+                    st.deadline = Some(at);
+                    // The caller parks next and computes its wait from `next_sweep`: no kick.
+                    if self.next_sweep.get().is_none_or(|n| at < n) {
+                        self.next_sweep.set(Some(at));
+                    }
+                }
             }
-            st.pending = false;
-            let at = now + timeout;
-            st.deadline = Some(at);
-            // The caller parks next and computes its wait from `next_sweep`: no kick.
-            if self.next_sweep.get().is_none_or(|n| at < n) {
-                self.next_sweep.set(Some(at));
-            }
+            // An idle connection now has a deadline to hand to another thread.
+            server.list_waiting(&conn);
         }
     }
 
@@ -481,6 +507,7 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     if shield {
         rt::stop_unshield();
     }
+    Reactor::get().settle_pending();
     if !ended {
         // Nothing is left to answer on the connection; closing it also cancels no one else.
         conn.st.borrow_mut().task = 0;
@@ -566,7 +593,7 @@ impl Reactor {
 
     /// Handles whatever is ready without blocking.
     fn service(&self) {
-        let mut events = Vec::new();
+        let mut events = self.events.take();
         loop {
             if self.beat.turn() {
                 self.serve_others();
@@ -608,6 +635,8 @@ impl Reactor {
             // same reason as in the loop over the events.
             rt::yield_now();
         }
+        events.clear();
+        self.events.set(events);
     }
 }
 
@@ -683,6 +712,33 @@ impl Reactor {
                 server.h2_sweep(&conn, self, now);
             }
         }
+    }
+}
+
+/// Whether a server created on this thread lists its idle connections for other threads: only a
+/// scheduler thread has others to share with.
+fn may_share() -> bool {
+    ms_rt::sched::thread() < ms_rt::sched::MAX_THREADS || test_sharing::on()
+}
+
+/// Lets a test thread, which is not a scheduler thread, list connections too, so the tests can
+/// see them wait.
+#[cfg(test)]
+pub(super) mod test_sharing {
+    use std::cell::Cell;
+    thread_local!(static ON: Cell<bool> = const { Cell::new(false) });
+    pub fn on() -> bool {
+        ON.with(Cell::get)
+    }
+    pub fn enable() {
+        ON.with(|o| o.set(true));
+    }
+}
+
+#[cfg(not(test))]
+mod test_sharing {
+    pub fn on() -> bool {
+        false
     }
 }
 
@@ -788,7 +844,7 @@ impl Server {
         if options.limits.grace.is_some_and(|g| !g.is_zero()) {
             GRACED.with(|g| g.set(g.get() + 1));
         }
-        let shares = options.tls.is_none() && ms_rt::sched::thread() < ms_rt::sched::MAX_THREADS;
+        let shares = may_share();
         let member = shares.then(|| options.group.join(&reactor.beat));
         let server = Rc::new_cyclic(|me| Server {
             id,
@@ -830,7 +886,9 @@ impl Server {
             return;
         }
         let _ = sock.set_tcp_nodelay(true);
-        self.add_conn(sock, &Reactor::get());
+        let reactor = Reactor::get();
+        self.add_conn(sock, &reactor);
+        reactor.settle_pending();
     }
 
     /// Drains and closes the server as the cleanup of the task that serves it: an idle connection
@@ -924,6 +982,9 @@ impl Server {
         // Idle connections close now; the others after their current response.
         let conns: Vec<Rc<Conn>> = self.st.borrow().conns.values().cloned().collect();
         for conn in &conns {
+            if !self.unlist_waiting(conn, &reactor) {
+                continue;
+            }
             let (idle, h2) = {
                 let mut st = conn.st.borrow_mut();
                 let idle =
@@ -1025,24 +1086,52 @@ impl Server {
         deadline: Option<Instant>,
         timed: bool,
     ) {
+        self.add_taken(sock, reactor, deadline, timed, None);
+    }
+
+    /// Serves `sock`, which another thread of this `serve` call served until it was idle: the
+    /// connection continues from `parked`, if the owner left its state.
+    fn add_taken(
+        &self,
+        sock: socket2::Socket,
+        reactor: &Reactor,
+        deadline: Option<Instant>,
+        timed: bool,
+        parked: Option<steal::Parked>,
+    ) {
         let token = reactor.token();
-        let (io, tls_pending, phase) = match &self.tls {
-            None => (
-                Some(Rc::new(Plain::new(sock)) as Rc<dyn Io>),
-                None,
-                Phase::Head,
-            ),
-            Some(config) => match rustls::ServerConnection::new(config.clone()) {
-                Ok(c) => (
+        let mut h2 = None;
+        let (io, tls_pending, phase) = match (parked, &self.tls) {
+            (Some(parked), Some(_)) => {
+                let Some(session) = parked.session else {
+                    return;
+                };
+                h2 = parked.h2;
+                let phase = if h2.is_some() { Phase::H2 } else { Phase::Head };
+                (
+                    Some(Box::new(TlsIo::resume(sock, session)) as Box<dyn Io>),
                     None,
-                    Some(Box::new(TlsIo::new(
-                        sock,
-                        rustls::Connection::Server(c),
-                        false,
-                    ))),
-                    Phase::Handshake,
+                    phase,
+                )
+            }
+            (_, tls) => match tls {
+                None => (
+                    Some(Box::new(Plain::new(sock)) as Box<dyn Io>),
+                    None,
+                    Phase::Head,
                 ),
-                Err(_) => return,
+                Some(config) => match rustls::ServerConnection::new(config.clone()) {
+                    Ok(c) => (
+                        None,
+                        Some(Box::new(TlsIo::new(
+                            sock,
+                            rustls::Connection::Server(c),
+                            false,
+                        ))),
+                        Phase::Handshake,
+                    ),
+                    Err(_) => return,
+                },
             },
         };
         let conn = Rc::new(Conn {
@@ -1050,7 +1139,7 @@ impl Server {
             server: self.me.clone(),
             st: RefCell::new(ConnSt {
                 tls_pending,
-                io,
+                io: io.map(Rc::from),
                 inbuf: Vec::new(),
                 pos: 0,
                 outbuf: Vec::new(),
@@ -1065,7 +1154,7 @@ impl Server {
                 idle_deadline: false,
                 interest: Ev::IN,
                 registered: false,
-                h2: None,
+                h2,
                 task: 0,
                 waiting: NOT_WAITING,
             }),
@@ -1074,7 +1163,7 @@ impl Server {
             let mut st = conn.st.borrow_mut();
             // A fresh plain connection is idle until its first byte; the timeout bounds that
             // wait too, so silent connections cannot pin file descriptors.
-            if self.tls.is_none() {
+            if self.tls.is_none() || matches!(st.phase, Phase::Head | Phase::H2) {
                 st.idle_deadline = timed || st.deadline.is_some();
             }
             if !reactor.add(st.fd(), token, Ev::IN) {
@@ -1094,7 +1183,7 @@ impl Server {
         if let Some(member) = &self.member {
             member.count(1);
         }
-        if self.tls.is_some() {
+        if matches!(conn.st.borrow().phase, Phase::Handshake) {
             self.drive_handshake(&conn, reactor);
         } else {
             self.list_waiting(&conn);
@@ -1118,24 +1207,37 @@ impl Server {
         if self.st.borrow().closing {
             return;
         }
-        let mut st = conn.st.borrow_mut();
-        let waits = st.waiting == NOT_WAITING
-            && matches!(st.phase, Phase::Head)
-            && st.unread().is_empty()
-            && !st.eof
-            && !st.close_after
-            && st.registered
-            && st.io.is_some();
-        if waits {
-            // The hand-off to another thread carries a real deadline, so the timeout that
-            // started without a time gets it now (one clock read, only with a timeout).
-            if st.pending {
-                st.pending = false;
-                st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
-                Reactor::get().note_deadline(st.deadline);
-            }
-            st.waiting = member.park(conn.token, crate::sys::raw(st.fd()), st.deadline);
+        let mut guard = conn.st.borrow_mut();
+        let st = &mut *guard;
+        let idle = st.waiting == NOT_WAITING && st.registered && !st.eof && !st.close_after;
+        let http1 = matches!(st.phase, Phase::Head) && st.unread().is_empty();
+        let http2 = matches!(st.phase, Phase::H2)
+            && st.h2.as_mut().is_some_and(|h| h.can_move())
+            && st.outbuf.is_empty();
+        let Some(io) = st.io.clone() else {
+            return;
+        };
+        // The hand-off carries a real deadline: a timeout that started without a time is listed
+        // once the reactor has set it (`resolve_pending`).
+        if !idle || !(http1 || http2) || st.pending {
+            return;
         }
+        // A connection with state of its own leaves it in the list for a taker to continue.
+        let parked = if self.tls.is_some() {
+            let Some(session) = io.take_session() else {
+                return;
+            };
+            Some(steal::Parked {
+                session: Some(session),
+                h2: st.h2.take(),
+            })
+        } else if http2 {
+            // Plain HTTP/2 is not served.
+            return;
+        } else {
+            None
+        };
+        st.waiting = member.park(conn.token, crate::sys::raw(io.fd()), st.deadline, parked);
     }
 
     /// Takes a connection off the list of waiting ones before this thread uses it. Answers
@@ -1148,16 +1250,28 @@ impl Server {
         if place == NOT_WAITING {
             return true;
         }
-        let (taken, moved) = member.unpark(place, conn.token);
+        let (back, moved) = member.unpark(place, conn.token);
         if let Some(moved) = moved
             && let Some(other) = self.st.borrow().conns.get(&moved)
         {
             other.st.borrow_mut().waiting = place;
         }
-        if taken {
-            self.forget_conn(conn, reactor);
+        match back {
+            steal::Back::Taken => {
+                self.forget_conn(conn, reactor);
+                false
+            }
+            steal::Back::Mine(parked) => {
+                if let Some(parked) = parked {
+                    let mut st = conn.st.borrow_mut();
+                    if let (Some(session), Some(io)) = (parked.session, &st.io) {
+                        io.restore_session(session);
+                    }
+                    st.h2 = parked.h2;
+                }
+                true
+            }
         }
-        !taken
     }
 
     /// Drops a connection another thread took: this server's handle closes, and the connection
@@ -1196,7 +1310,7 @@ impl Server {
                 return;
             }
             for taken in order.from.take(order.limit, order.ready_only) {
-                self.add_conn_until(taken.sock, reactor, taken.deadline, false);
+                self.add_taken(taken.sock, reactor, taken.deadline, false, taken.parked);
             }
         }
     }
@@ -1630,40 +1744,29 @@ impl Server {
         head: RequestHead,
     ) -> Result<Box<Pending>, (u16, &'static str)> {
         let _ = (conn, reactor);
-        let hosts = head
-            .fields
-            .iter()
-            .filter(|(n, _)| n.eq_ignore_ascii_case("Host"))
-            .count();
-        if head.minor == 1 && hosts == 0 {
+        let scan = h1::RequestScan::of(&head.fields);
+        if head.minor == 1 && scan.hosts == 0 {
             return Err((400, "missing required Host header"));
         }
-        if hosts > 1 {
+        if scan.hosts > 1 {
             return Err((400, "too many Host headers"));
         }
-        let host_valid = head
-            .fields
-            .iter()
-            .filter(|(n, _)| n.eq_ignore_ascii_case("Host"))
-            .all(|(_, v)| std::str::from_utf8(v).is_ok_and(target::valid_authority));
+        let host_valid = scan
+            .host
+            .is_none_or(|v| std::str::from_utf8(v).is_ok_and(target::valid_authority));
         if !host_valid {
             return Err((400, "invalid Host header"));
         }
-        let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
+        let framing = h1::request_framing(&head, &scan).map_err(|b| (b.status, b.reason))?;
         let target = target::parse(&head.target).map_err(|e| (400, e.0))?;
         if target.path == "*" && head.method != "OPTIONS" {
             return Err((400, "asterisk-form target needs OPTIONS"));
         }
-        // Names come from httparse as `&str`, so only the values can be invalid UTF-8.
-        if !head
-            .fields
-            .iter()
-            .all(|(_, v)| std::str::from_utf8(v).is_ok())
-        {
+        if !scan.text {
             return Err((400, "invalid UTF-8 request"));
         }
-        let expect = h1::has_token(&head.fields, "Expect", "100-continue");
-        let keep_alive = h1::keep_alive(head.minor, &head.fields);
+        let expect = scan.expect_continue;
+        let keep_alive = scan.keep_alive(head.minor);
         if let Framing::Length(n) = framing
             && n > self.limits.body as u64
         {
@@ -1675,7 +1778,7 @@ impl Server {
             target,
             keep_alive,
             expect_continue: expect,
-            started: self.limits.timeout.map(|_| Instant::now()),
+            started: self.limits.timeout.map(|_| rt::monotonic_ns()),
         }))
     }
 
@@ -1881,17 +1984,16 @@ pub(super) fn body_allowed(status: i64) -> bool {
 
 /// Appends handler headers with canonical names, sorted.
 pub(super) fn append_handler_headers(out: &mut Vec<u8>, headers: &Headers) -> (bool, bool) {
-    let mut sorted: Vec<(String, &[Vec<u8>])> = headers
+    let mut sorted: Vec<(String, headers::Values<'_>)> = headers
         .entries()
-        .iter()
-        .map(|e| (headers::canonical(&e.name), &*e.values))
+        .map(|e| (headers::canonical(e.name), e.values))
         .collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
     let (mut has_type, mut has_date) = (false, false);
     for (name, values) in &sorted {
         has_type |= name == "Content-Type";
         has_date |= name == "Date";
-        for v in *values {
+        for v in values.iter() {
             h1::header_line(out, name, v);
         }
     }

@@ -196,9 +196,6 @@ pub(crate) struct FnLower<'a> {
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
-    /// The name an assignment is rewriting while its value is lowered: `s = s + piece` keeps a
-    /// plain concatenation of `s`, which the runtime grows in place.
-    pub assigning: Option<ct::Name>,
     /// This instance is the borrowed-signature adapter of a function that moves a parameter.
     pub adapter: bool,
     /// The scrutinee `hold` just evaluated is a declared read (see `boundary_reads`).
@@ -239,6 +236,8 @@ pub(crate) struct FnLower<'a> {
     pub map_walk: Option<crate::stmt::Walk>,
     /// The `split` call of a `let` whose list the rest of the block only reads in place.
     pub split_view_for: Option<*const ms_check::api::ast::Expr>,
+    /// The `text.split(..)` in `text.split(..)[0]`: only its first piece is read.
+    pub split_first_for: Option<*const ms_check::api::ast::Expr>,
     /// The module whose local implementations the expression being lowered uses, when it
     /// is the evidence of an enclosing generic instance's caller rather than this module.
     pub scope_override: Option<ct::Name>,
@@ -798,6 +797,7 @@ impl<'a> FnLower<'a> {
             hoisted: HashMap::default(),
             map_walk: None,
             split_view_for: None,
+            split_first_for: None,
             discard: None,
             stmt_pos: None,
             source_scope: 0,
@@ -810,7 +810,6 @@ impl<'a> FnLower<'a> {
             scalar_locals: HashMap::default(),
             entry_locals: HashMap::default(),
             in_thunk: false,
-            assigning: None,
             adapter: false,
             hold_declared: false,
             boundary_reads: Default::default(),
@@ -1030,6 +1029,10 @@ impl<'a> FnLower<'a> {
         if !self.needs_drop(t) {
             return v;
         }
+        if self.b.defining_op_anywhere(v) == Some(Op::OptNone) {
+            // A copy of `none` owns nothing: an owned `none`.
+            return self.b.opt_none_owned(t);
+        }
         self.b
             .emit(Op::Clone, &[v], ms_mir::ir::Imm::Int(1), Some(t))
             .expect("copy result")
@@ -1038,8 +1041,7 @@ impl<'a> FnLower<'a> {
     /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow; its copy owns
     /// nothing, so the copy costs a null check and never touches an object).
     pub fn none_owned(&mut self, t: MTy) -> Value {
-        let n = self.b.opt_none(t);
-        self.owned(Val { v: n, own: false })
+        self.b.opt_none_owned(t)
     }
 
     /// The operand for a borrowing use; owned temporaries are dropped by `flush_temps`.

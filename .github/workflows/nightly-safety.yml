@@ -5,7 +5,9 @@ name: Nightly safety
 #   miri          runtime memory safety under Miri (needs nightly; see documentation/contributing/rust-toolchain.md)
 #   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
 #   drift-check   runs the corpus under LLVM and Cranelift and fails on any difference
+#   poison-check  runs the corpus under both backends with dead stack slots filled with a pattern
 #   stress-sched  runs the stdlib sweep under the scheduler stress mode
+#   bench-gate    `ms bench` on bench/perf/guards; fails when an allocation or copy count rose more than 3% over baseline.json
 #   perf-counts   instructions of the suite and guard programs under callgrind against bench/perf/counts.txt; opens an issue when one is over 3% higher
 
 on:
@@ -43,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check, stress-sched]
+        check: [cancel-sweep, drift-check, poison-check, stress-sched, bench-gate]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env

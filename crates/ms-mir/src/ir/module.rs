@@ -234,6 +234,15 @@ impl Module {
         Boxing::default().opt(self, inner)
     }
 
+    /// Whether the backends must keep the stack slots of `def`'s by-value arguments for the
+    /// whole function, because the result may point into one: an inline `String` lives in its
+    /// value, so a view of it points into whatever slot the value was passed in. Safe by default:
+    /// only a runtime function declared `fresh` (the result borrows nothing) or one whose result
+    /// holds no pointer (a number, a flag) lets its argument slots share storage.
+    pub fn pins_argument_slots(&self, def: &ExternDef) -> bool {
+        def.role == ExternRole::BorrowsArgument || (!def.fresh && self.needs_drop(def.ret))
+    }
+
     /// Whether values of `ty` own resources that must be dropped (strings, lists,
     /// maps, closures, interfaces, boxed or recursive alternatives, and types,
     /// alternatives and optionals containing them). Plain data is copied freely.
@@ -402,6 +411,8 @@ impl Module {
             | Op::OptViewAt
             | Op::AltPlain
             | Op::OptNone => Mode::Borrow,
+            // An owned `none` owns nothing, but keeps ownership linear without a copy.
+            Op::OptNoneOwned => Mode::Move,
             // A borrowing variant is owned and drops only the cases it owns: `alt.view` fills a
             // borrowed case and is a borrow in an ordinary alternative.
             Op::AltView => match self.types.kind(f.ty(res)) {
@@ -509,5 +520,36 @@ impl Boxing {
             }
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod pin_tests {
+    use super::*;
+
+    fn def(ret: Ty, fresh: bool, role: ExternRole) -> ExternDef {
+        ExternDef {
+            name: "msrt_test".to_string(),
+            params: Vec::new(),
+            ret,
+            noreturn: false,
+            pure_: false,
+            fresh,
+            leaf: true,
+            reads: false,
+            role,
+        }
+    }
+
+    #[test]
+    fn a_call_keeps_its_argument_slots_unless_the_result_is_fresh_or_holds_no_pointer() {
+        let m = Module::new("t");
+        // An owned-text result that is not declared fresh may be a view of its argument.
+        assert!(m.pins_argument_slots(&def(Ty::STR, false, ExternRole::None)));
+        assert!(m.pins_argument_slots(&def(Ty::STR, true, ExternRole::BorrowsArgument)));
+        // Declared fresh, or a number: nothing to point into the argument.
+        assert!(!m.pins_argument_slots(&def(Ty::STR, true, ExternRole::None)));
+        assert!(!m.pins_argument_slots(&def(Ty::INT, false, ExternRole::None)));
+        assert!(!m.pins_argument_slots(&def(Ty::VOID, false, ExternRole::None)));
     }
 }

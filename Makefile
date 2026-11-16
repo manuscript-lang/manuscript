@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -77,6 +77,13 @@ llvm-report: build
 drift-check: build
 	cargo build --release --locked -q -p ms-conform
 	target/release/ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
+
+# The corpus under both backends with every dead statement stack slot filled with a pattern (MS_POISON_SLOTS=1), so a
+# pointer that outlives its slot fails in every build, not only where the backend happens to reuse the slot.
+poison-check: build
+	cargo build --locked -p ms-cli
+	MS_POISON_SLOTS=1 $(MS) run tools/conform.ms
+	CONFORM_FAST=1 MS_BACKEND=cranelift MS_POISON_SLOTS=1 $(MS) run tools/conform.ms
 
 # Runs corpus programs against a runtime that counts live heap blocks and fails on any block left at exit.
 count-check: build
@@ -155,6 +162,10 @@ dist-check: dist
 agent-bench-check: build
 	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
 	"$(RELEASE_MS)" test bench/agent/core_test.ms
+
+# Runs bench/perf/guards as `ms bench --ops` and fails when a work count (MIR operations, allocations, bytes allocated, copies) rose more than 3% over baseline.json. Counts do not depend on machine load or host, so unlike times they can gate; callgrind (`perf-counts`) stays for the Rust crates.
+bench-gate: build
+	$(RELEASE_MS) bench bench/perf/guards/ms.toml --ops --baseline bench/perf/guards/baseline.json --fail-over 3
 
 # Type-checks every benchmark project and standalone bench source so the suites cannot rot unnoticed.
 bench-check: build

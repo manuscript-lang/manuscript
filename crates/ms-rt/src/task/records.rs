@@ -4,7 +4,13 @@ use super::*;
 
 // ---- records and handles ----
 
+/// Clock reads of the scheduler since the last reset, for tests of how often it reads.
+#[cfg(test)]
+pub(super) static CLOCK_READS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 pub(super) fn clock_ns() -> i64 {
+    #[cfg(test)]
+    CLOCK_READS.fetch_add(1, Ordering::Relaxed);
     sys::monotonic_ns()
 }
 

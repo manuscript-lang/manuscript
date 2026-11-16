@@ -33,29 +33,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                 if let Some(r) = inst.res {
                     self.str_lits.insert(r.index(), s.0);
                 }
-                let bytes = self.g.m.strings[s.0 as usize].as_bytes();
-                if bytes.len() <= STR_INLINE_MAX {
-                    // A short literal is an inline string: constant words, no data symbol, and
-                    // comparisons with other short strings decide from the second word.
-                    let bits = bytes
-                        .iter()
-                        .enumerate()
-                        .fold(0u128, |acc, (i, b)| acc | (*b as u128) << (8 * i));
-                    let lo = bits as u64 as i64;
-                    let hi = ((bits >> 64) as u64 as usize
-                        | STR_INLINE
-                        | (bytes.len() << STR_INLINE_LEN_SHIFT))
-                        as i64;
-                    return vec![self.iconst(lo), self.iconst(hi)];
+                match ms_mir::statics::str_lit(&self.g.m.strings[s.0 as usize]) {
+                    ms_mir::statics::StrLit::Inline { lo, hi } => {
+                        vec![self.iconst(lo as i64), self.iconst(hi as i64)]
+                    }
+                    ms_mir::statics::StrLit::Static { tagged } => {
+                        let d = self.g.str_lit(s.0);
+                        let ptr = self.data_addr(d);
+                        vec![ptr, self.iconst(tagged as i64)]
+                    }
                 }
-                let d = self.g.str_lit(s.0);
-                let base = self.data_addr(d);
-                let ptr = base;
-                // An ASCII literal carries the flag, so appending it keeps a flagged string flagged.
-                let ascii = if bytes.is_ascii() { STR_ASCII } else { 0 };
-                let len = (bytes.len() | ascii) as i64;
-                let tagged = self.iconst(len | STR_STATIC as i64);
-                vec![ptr, tagged]
             }
             Op::BytesLit => {
                 let Imm::Int(i) = inst.imm else {

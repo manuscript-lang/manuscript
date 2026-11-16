@@ -1,7 +1,4 @@
-import (
-	Iterable from "@std/collections/iterable.ms",
-	panic from "@std/core.ms",
-)
+import panic from "@std/core.ms"
 
 // A mutable first-in, first-out queue. Assigning it transfers ownership; `.clone()`
 // makes an independent queue when its elements are Clonable. Omitted or none capacity

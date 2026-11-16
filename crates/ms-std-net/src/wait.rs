@@ -13,15 +13,16 @@ use crate::sys::{self, Borrowed};
 pub use ms_rt::glue::pool::Lane;
 #[cfg(test)]
 use std::cell::Cell;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// A supplied timeout below zero.
 #[derive(Clone, Copy, Debug)]
 pub struct NegativeTimeout;
 
-/// An optional absolute time limit.
+/// An optional absolute time limit, in nanoseconds on the runtime's monotonic clock
+/// ([`rt::monotonic_ns`]), so a wait hands it to the scheduler as it is and reads no clock.
 #[derive(Clone, Copy, Debug)]
-pub struct Deadline(Option<Instant>);
+pub struct Deadline(Option<i64>);
 
 impl Deadline {
     pub const fn none() -> Deadline {
@@ -29,7 +30,14 @@ impl Deadline {
     }
 
     pub fn after(d: Duration) -> Deadline {
-        Deadline(Instant::now().checked_add(d))
+        Deadline(Some(
+            rt::monotonic_ns().saturating_add(d.as_nanos().min(i64::MAX as u128) as i64),
+        ))
+    }
+
+    /// The deadline at `at_ns` on [`rt::monotonic_ns`].
+    pub const fn at_ns(at_ns: i64) -> Deadline {
+        Deadline(Some(at_ns))
     }
 
     /// From an optional timeout in nanoseconds. A negative value is invalid.
@@ -43,11 +51,12 @@ impl Deadline {
 
     /// Time left, or `None` without a limit.
     pub fn remaining(&self) -> Option<Duration> {
-        self.0.map(|t| t.saturating_duration_since(Instant::now()))
+        self.0
+            .map(|t| Duration::from_nanos((t - rt::monotonic_ns()).max(0) as u64))
     }
 
     pub fn expired(&self) -> bool {
-        self.0.is_some_and(|t| Instant::now() >= t)
+        self.0.is_some_and(|t| rt::monotonic_ns() >= t)
     }
 
     pub fn is_none(&self) -> bool {
@@ -120,7 +129,7 @@ pub fn try_wait_fd(
         Interest::Read => 1,
         Interest::Write => 2,
     };
-    let got = rt::wait_fd(fd, events, timeout_ns(deadline));
+    let got = rt::wait_fd_at(fd, events, deadline.0);
     if got & 16 != 0 {
         return Err(rt::Cancelled);
     }
@@ -137,7 +146,7 @@ fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
         Interest::Read => 1,
         Interest::Write => 2,
     };
-    let got = rt::wait_fd(fd, events, timeout_ns(deadline));
+    let got = rt::wait_fd_at(fd, events, deadline.0);
     if got & 16 != 0 {
         rt::cancelled();
     }
@@ -152,7 +161,7 @@ fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
 /// cancellation when a stop was requested.
 pub fn wait_token(token: &rt::Token, deadline: Deadline) -> Wait {
     rt::check_cancel();
-    let got = token.park(timeout_ns(deadline));
+    let got = token.park_at(deadline.0);
     if got & 16 != 0 {
         rt::cancelled();
     }
@@ -168,7 +177,7 @@ pub fn try_wait_token(token: &rt::Token, deadline: Deadline) -> Result<Wait, rt:
     if rt::cancel_pending() {
         return Err(rt::Cancelled);
     }
-    let got = token.park(timeout_ns(deadline));
+    let got = token.park_at(deadline.0);
     if got & 16 != 0 {
         return Err(rt::Cancelled);
     }
@@ -179,21 +188,12 @@ pub fn try_wait_token(token: &rt::Token, deadline: Deadline) -> Result<Wait, rt:
     })
 }
 
-/// The runtime's timeout for `deadline`: nanoseconds left, or -1 for none.
-fn timeout_ns(deadline: Deadline) -> i64 {
-    deadline
-        .remaining()
-        .map_or(-1, |d| d.as_nanos().min(i64::MAX as u128) as i64)
-}
-
-/// Longest a polling wait sleeps before it re-checks the cancel flag.
-const SLICE: Duration = Duration::from_millis(50);
-
+/// The wait of a thread the runtime's scheduler does not run (a unit-test thread): one blocking
+/// poll of the descriptor until it is ready or the deadline passes. No cancellation can reach
+/// such a thread, so nothing needs to be re-checked.
 fn wait_poll(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     loop {
-        rt::check_cancel();
-        let slice = deadline.remaining().map_or(SLICE, |left| left.min(SLICE));
-        if sys::poll_one(fd, interest == Interest::Write, slice) {
+        if sys::poll_one(fd, interest == Interest::Write, deadline.remaining()) {
             return Wait::Ready;
         }
         if deadline.expired() {
@@ -237,6 +237,7 @@ pub fn blocking<I: Send + Sync + 'static, O: Send + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
 
     #[test]
     fn deadlines() {
@@ -251,5 +252,48 @@ mod tests {
         let start = Instant::now();
         sleep(Duration::from_millis(30));
         assert!(start.elapsed() >= Duration::from_millis(30));
+    }
+
+    /// A wait with no deadline returns on the event and not before it: the descriptor becomes
+    /// readable only after the flag is set, and nothing here sleeps or times.
+    #[test]
+    fn an_unbounded_wait_returns_on_the_event_only() {
+        use crate::sys::AsSock;
+        use std::io::Write;
+        use std::net::{TcpListener, TcpStream};
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        let (go_tx, go_rx) = std::sync::mpsc::channel::<()>();
+        let written = AtomicBool::new(false);
+        let written_ref = &written;
+        std::thread::scope(|scope| {
+            scope.spawn(move || {
+                go_rx.recv().unwrap();
+                written_ref.store(true, Ordering::SeqCst);
+                client.write_all(b"x").unwrap();
+            });
+            go_tx.send(()).unwrap();
+            let got = wait_fd(server.as_sock(), Interest::Read, Deadline::none());
+            assert_eq!(got, Wait::Ready);
+            assert!(written.load(Ordering::SeqCst));
+        });
+    }
+
+    #[test]
+    fn a_wait_with_a_deadline_and_no_event_times_out() {
+        use crate::sys::AsSock;
+        use std::net::{TcpListener, TcpStream};
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let _client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        let got = wait_fd(
+            server.as_sock(),
+            Interest::Read,
+            Deadline::after(Duration::from_millis(20)),
+        );
+        // A real deadline: time has to pass for it.
+        assert_eq!(got, Wait::TimedOut);
     }
 }

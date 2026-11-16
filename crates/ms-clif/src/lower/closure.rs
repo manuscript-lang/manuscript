@@ -9,47 +9,17 @@ impl<'a, 'm> Lower<'a, 'm> {
     pub(super) fn closures_and_interfaces(&mut self, f: &Func, inst: &Inst) -> Vs {
         match inst.op {
             Op::ClosureNew => self.closure_new(inst),
-            Op::ClosureCap => {
+            Op::ClosureCap | Op::ClosureCapAddr => {
                 let Imm::Idx(i) = inst.imm else {
                     unreachable!()
                 };
-                let ms_mir::ir::FuncKind::Closure { captures } = &f.kind else {
-                    unreachable!()
-                };
-                let mut off = CLOSURE_CAPTURES as i64;
-                let mut found = (0, Vec::new());
-                for (k, c) in captures.iter().enumerate() {
-                    let leaves = self.g.lay.leaves(*c);
-                    let lay = mem_layout(&leaves);
-                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
-                    if k == i as usize {
-                        found = (off, leaves);
-                    }
-                    off += lay.size as i64;
-                }
+                let cap = self.g.lay.closure(f).captures.swap_remove(i as usize);
                 let env = self.a(inst, 0)[0];
-                self.load_leaves(env, found.0, &found.1)
-            }
-            Op::ClosureCapAddr => {
-                let Imm::Idx(i) = inst.imm else {
-                    unreachable!()
-                };
-                let ms_mir::ir::FuncKind::Closure { captures } = &f.kind else {
-                    unreachable!()
-                };
-                let mut off = CLOSURE_CAPTURES as i64;
-                let mut found = 0;
-                for (k, c) in captures.iter().enumerate() {
-                    let leaves = self.g.lay.leaves(*c);
-                    let lay = mem_layout(&leaves);
-                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
-                    if k == i as usize {
-                        found = off;
-                    }
-                    off += lay.size as i64;
+                if inst.op == Op::ClosureCap {
+                    self.load_leaves(env, i64::from(cap.offset), &cap.leaves)
+                } else {
+                    vec![self.b.ins().iadd_imm_s(env, i64::from(cap.offset))]
                 }
-                let env = self.a(inst, 0)[0];
-                vec![self.b.ins().iadd_imm_s(env, found)]
             }
             Op::IfaceNew => {
                 let Imm::Vtable(vt) = inst.imm else {
@@ -85,9 +55,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                         size.max(8) as u32,
                         3,
                     ));
-                    (self.b.ins().stack_addr(types::I64, slot, 0), 2)
+                    (self.b.ins().stack_addr(types::I64, slot, 0), IFACE_TAG_VIEW)
                 } else {
-                    (self.alloc(size), 1)
+                    (self.alloc(size), IFACE_TAG_BOX)
                 };
                 let v = self.a(inst, 0);
                 self.store_leaves(blk, 0, &leaves, &v);
@@ -97,8 +67,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::IfaceView => {
                 let v = self.a(inst, 0);
-                let vt = self.b.ins().band_imm_s(v[1], !3);
-                vec![v[0], self.b.ins().bor_imm_s(vt, 2)]
+                let vt = self.b.ins().band_imm_s(v[1], !IFACE_TAG_MASK);
+                vec![v[0], self.b.ins().bor_imm_s(vt, IFACE_TAG_VIEW)]
             }
             Op::IfaceData => vec![self.a(inst, 0)[0]],
             Op::IfaceIs => {
@@ -106,7 +76,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     unreachable!()
                 };
                 let have = self.a(inst, 0)[1];
-                let have = self.b.ins().band_imm_s(have, !3);
+                let have = self.b.ins().band_imm_s(have, !IFACE_TAG_MASK);
                 let id = self.g.vtables[vt.index()];
                 let want = self.data_addr(id);
                 vec![self.b.ins().icmp(IntCC::Equal, have, want)]

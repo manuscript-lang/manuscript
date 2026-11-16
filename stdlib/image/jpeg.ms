@@ -300,33 +300,56 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
 	stride := comp.blocks_wide * 8
 	var plane = zeroed(stride * comp.blocks_high * 8)
 	var tmp = [0].repeated(64)
+	var c = [0].repeated(8)
 
 	for by in 0..comp.blocks_high:
 		for bx in 0..comp.blocks_wide:
 			base := (by * comp.blocks_wide + bx) * 64
 
-			// Rows: tmp[y][x] = sum_u M[x][u] * F[y][u], kept at scale 64.
+			// Rows: tmp[y][x] = sum_u M[x][u] * F[y][u], kept at scale 64. The matrix
+			// is symmetric (row 7 - x is row x with odd columns negated), so outputs x
+			// and 7 - x are an even part plus or minus an odd part: half the
+			// multiplications.
 			for y in 0..8:
-				for x in 0..8:
-					var sum = 0
+				for u in 0..8:
+					c[u] = comp.coef[base + y * 8 + u] * comp.quant[y * 8 + u]
 
-					for u in 0..8:
-						f := comp.coef[base + y * 8 + u]
-						if f != 0: sum += (
-							jpeg_dct_matrix[x * 8 + u]
-							* f
-							* comp.quant[y * 8 + u]
-						)
+				for x in 0..4:
+					var even = 0
+					var odd = 0
 
-					tmp[y * 8 + x] = shift_right(sum + 32, 6)
+					for k in 0..4:
+						even += jpeg_dct_matrix[x * 8 + 2 * k] * c[2 * k]
+						odd += jpeg_dct_matrix[x * 8 + 2 * k + 1] * c[2 * k + 1]
+
+					tmp[y * 8 + x] = shift_right(even + odd + 32, 6)
+					tmp[y * 8 + 7 - x] = shift_right(even - odd + 32, 6)
 
 			for x in 0..8:
-				for y in 0..8:
-					var sum = 0
-					for v in 0..8:
-						sum += jpeg_dct_matrix[y * 8 + v] * tmp[v * 8 + x]
+				for y in 0..4:
+					var even = 0
+					var odd = 0
+
+					for k in 0..4:
+						even += jpeg_dct_matrix[y * 8 + 2 * k] * tmp[2 * k * 8 + x]
+						odd += (
+							jpeg_dct_matrix[
+								y * 8 + 2 * k + 1
+							]
+							* tmp[(2 * k + 1) * 8 + x]
+						)
+
 					plane[(by * 8 + y) * stride + bx * 8 + x] = byte(
-						shift_right(sum + 131072, 18) + 128
+						shift_right(
+							even + odd + 131072,
+							18,
+						) + 128
+					)
+					plane[(by * 8 + 7 - y) * stride + bx * 8 + x] = byte(
+						shift_right(
+							even - odd + 131072,
+							18,
+						) + 128
 					)
 
 	return plane

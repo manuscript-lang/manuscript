@@ -361,8 +361,10 @@ pub fn emit(
         .files
         .iter()
         .map(|p| {
-            valid_path(p)
-                .then(|| lines.add_file(LineString::String(p.as_bytes().to_vec()), dir, None))
+            valid_path(p).then(|| {
+                let name = ms_mir::debug_files::debug_file_name(p);
+                lines.add_file(LineString::String(name.as_bytes().to_vec()), dir, None)
+            })
         })
         .collect();
     let mut symbols = Vec::new();
