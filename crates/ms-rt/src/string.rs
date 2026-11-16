@@ -2798,10 +2798,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_first(
             fault::msrt_index_fault(0, 0);
         }
         let (text, sepb) = (bytes(s), bytes(sep));
-        let end = if has_max.is_set() && max == 1 {
-            // One piece: the whole text.
-            text.len()
-        } else if sepb.is_empty() {
+        let end = if sepb.is_empty() {
             // Split after each scalar: the first piece is the first scalar.
             if text.is_empty() {
                 fault::msrt_index_fault(0, 0);
