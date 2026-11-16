@@ -192,7 +192,6 @@ pub unsafe fn cloned(s: &StrVal) -> StrVal {
 #[unsafe(no_mangle)]
 // ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut StrVal) {
-    #[cfg(feature = "stats")]
     // SAFETY: caller passes a live string.
     count_copy(1, unsafe { bytes(&*s) }.len());
     // SAFETY: caller passes a live string and a writable `out`.
@@ -3480,11 +3479,10 @@ unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
 }
 
 crate::isolate_static! {
-/// Deep copies the runtime performed, `[list copies, list bytes, string clones, string bytes]` (the `stats` runtime).
+/// Deep copies the runtime performed, `[list copies, list bytes, string clones, string bytes]` (counted by every runtime).
     pub static COPY_COUNTS: [u64; 4] = [0; 4];
 }
 /// Records one deep copy of `kind` (0 list, 1 string) moving `bytes` bytes.
-#[cfg(feature = "stats")]
 pub fn count_copy(kind: usize, bytes: usize) {
     // SAFETY: single threaded access to the counters.
     unsafe {

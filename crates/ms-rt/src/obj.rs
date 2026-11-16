@@ -120,6 +120,31 @@ pub unsafe extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
     }
 }
 
+/// Writes the work counters to `out[0..6]`: allocations and their bytes (the calling thread and
+/// every finished thread), then list copies, list copy bytes, string clones and string clone
+/// bytes (the calling isolate). Counts only grow; a bench reads them before and after a run.
+///
+/// # Safety
+/// `out` must point to six writable `u64`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_counts(out: *mut u64) {
+    let [allocations, bytes] = alloc::requested();
+    // SAFETY: the counters belong to this isolate.
+    let copies = unsafe { *crate::string::COPY_COUNTS.ptr() };
+    let all = [
+        allocations,
+        bytes,
+        copies[0],
+        copies[1],
+        copies[2],
+        copies[3],
+    ];
+    for (i, v) in all.into_iter().enumerate() {
+        // SAFETY: the caller passes six writable words.
+        unsafe { out.add(i).write(v) };
+    }
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_alloc(size: usize) -> *mut u8 {
