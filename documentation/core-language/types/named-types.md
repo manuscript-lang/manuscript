@@ -238,7 +238,7 @@ n := approve("u2").nonce                  # error: field nonce is hidden
 {entity} := approve("u2")                 # error: its fields cannot be destructured here
 ```
 
-Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no new methods in another module. Its text form, in interpolation, `to_string()`, and test output, is only the type name: `"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and typed JSON stream codecs reject it at compile time. Promises and pipes do not require `Data`.
+Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no new methods in another module. Its text form, in interpolation, `to_string()`, and test output, is only the type name: `f"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and typed JSON stream codecs reject it at compile time. Promises and pipes do not require `Data`.
 
 Opaque controls visibility: an opaque value can still be cloned when its fields permit it, so it proves where a value was built, not that it is spent once. Hold a resource or a non-clonable field for single use.
 

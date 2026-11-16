@@ -146,7 +146,13 @@ fn load_entries(
     let (mut config, manifest) = match source_project(filename, &mut seen) {
         Ok(found) => found,
         Err((root, error, inputs)) => {
-            let file: Arc<str> = Arc::from(filename);
+            // Diagnostics name files relative to the root, so a manifest given as
+            // `app/ms.toml` from another directory must not be joined to the root twice.
+            let relative = pathops::abs(filename)
+                .and_then(|path| pathops::rel(&root, &path))
+                .ok()
+                .filter(|rel| !pathops::escapes(rel));
+            let file: Arc<str> = Arc::from(relative.as_deref().unwrap_or(filename));
             return Graph {
                 source_root: root,
                 inputs,
@@ -165,6 +171,7 @@ fn load_entries(
                 prefix: format!("{}/", p.key),
                 spec: p.spec.clone(),
                 effects: p.project.effects.clone(),
+                member: p.member,
             })
             .collect(),
         package_roots: config
@@ -191,7 +198,20 @@ fn load_entries(
         }
     };
     graph.source_root = config.root.clone();
-    let overlay = match crate::project::canonical_overlay(&config.root, &editor.overlay) {
+    // A workspace member imported by path is the user's own code, so its unsaved edits are
+    // visible too; a fetched package is read-only and never takes an overlay.
+    let members = config
+        .packages
+        .iter()
+        .filter(|p| p.member)
+        .map(|p| p.root.as_str());
+    let overlay = match std::iter::once(config.root.as_str())
+        .chain(members)
+        .map(|root| crate::project::canonical_overlay(root, &editor.overlay))
+        .try_fold(crate::project::Overlay::new(), |mut all, part| {
+            all.extend(part?);
+            Ok(all)
+        }) {
         Ok(overlay) => overlay,
         Err(error) => {
             graph.diagnostics = vec![from_error(&Arc::from(filename), &error)];

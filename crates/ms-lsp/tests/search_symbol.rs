@@ -98,3 +98,133 @@ fn workspace_search_keeps_declarations_from_imported_subdirectories() {
         "{symbol:?}"
     );
 }
+
+/// A workspace root with a `util` library member and an `app` member that imports it.
+fn two_members(ws: &Workspace) {
+    let write = |path: &str, text: &str| {
+        let full = ws.root.join(path);
+        std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+        std::fs::write(full, text).unwrap();
+    };
+    write(
+        "team/ms.toml",
+        "[workspace]\nmembers = [\"app\", \"libs/*\"]\n",
+    );
+    write(
+        "team/app/ms.toml",
+        "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n\n[dependencies]\n\"@util\" = { path = \"../libs/util\" }\n",
+    );
+    write(
+        "team/app/src/main.ms",
+        include_str!("search_symbol/member_main.ms"),
+    );
+    write(
+        "team/libs/util/ms.toml",
+        "[project]\nname = \"util\"\nsource = \"src\"\n",
+    );
+    write(
+        "team/libs/util/src/greet.ms",
+        include_str!("search_symbol/member_greet.ms"),
+    );
+}
+
+#[test]
+fn a_workspace_member_symbol_lists_uses_in_sibling_members() {
+    let syms = ms_syntax::Names::global();
+    let ws = Workspace::new("search-members");
+    two_members(&ws);
+    let util = ws.path("team/libs/util");
+    let (found, _) = search_symbols(syms, &util, "greet", 5).unwrap();
+    let symbol = found.iter().find(|s| s.name == "greet").expect("greet");
+    assert!(
+        symbol
+            .references
+            .iter()
+            .any(|r| r.ends_with("main.ms:4:11")),
+        "{symbol:?}"
+    );
+}
+
+#[test]
+fn renaming_a_member_function_edits_the_importing_member() {
+    let syms = ms_syntax::Names::global();
+    let ws = Workspace::new("rename-members");
+    two_members(&ws);
+    let source = ws.read("team/libs/util/src/greet.ms");
+    let d = Document::new(ws.uri("team/libs/util/src/greet.ms"), source.clone());
+    let docs = Documents::from([(d.uri.clone(), d.clone())]);
+    let checked = ms_lsp::analysis::analyze(syms, &support::session(), &d, &docs);
+    assert!(checked.success(), "{:?}", checked.diagnostics);
+    let at = ms_lsp::text::position(&source, source.find("greet").unwrap());
+    let edit = ms_lsp::rename::rename(
+        syms,
+        &checked,
+        checked.occurrence_index(syms),
+        &d,
+        at,
+        "welcome",
+        None,
+        Some(&docs),
+    )
+    .expect("rename");
+    let edits = edit.compact(ms_json::Escape::Plain);
+    assert!(edits.contains("app/src/main.ms"), "{edits}");
+    assert!(edits.contains("util/src/greet.ms"), "{edits}");
+}
+
+#[test]
+fn auto_import_names_a_member_through_its_dependency_and_skips_unreachable_files() {
+    let syms = ms_syntax::Names::global();
+    let ws = Workspace::new("import-members");
+    two_members(&ws);
+    // A member that `app` does not depend on cannot be imported at all.
+    for (path, text) in [
+        (
+            "team/libs/other/ms.toml",
+            "[project]\nname = \"other\"\nsource = \"src\"\n",
+        ),
+        (
+            "team/libs/other/src/o.ms",
+            "export fn greet_other() Int:\n    return 1\n",
+        ),
+    ] {
+        let full = ws.root.join(path);
+        std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+        std::fs::write(full, text).unwrap();
+    }
+    std::fs::write(
+        ws.root.join("team/ms.toml"),
+        "[workspace]\nmembers = [\"app\", \"libs/*\"]\n",
+    )
+    .unwrap();
+    let source = "fn main() Int:\n    gree\n    return 0\n";
+    let d = Document::new(ws.uri("team/app/src/main.ms"), source);
+    let docs = Documents::from([(d.uri.clone(), d.clone())]);
+    let items: Vec<_> = ms_lsp::completion::completion_at(
+        syms,
+        &support::session(),
+        &d,
+        &docs,
+        ms_lsp::text::Position {
+            line: 1,
+            character: 8,
+        },
+        false,
+    )
+    .expect("completion")
+    .into_iter()
+    .map(|item| item.json())
+    .collect();
+    let edit = |label: &str| {
+        items
+            .iter()
+            .find(|i| i.get("label").and_then(|j| j.as_str()) == Some(label))
+            .and_then(|i| i.get("additionalTextEdits")?.as_array()?.first().cloned())
+            .and_then(|e| e.get("newText")?.as_str().map(str::to_string))
+    };
+    assert_eq!(
+        edit("greet").as_deref(),
+        Some("import greet from \"@util/greet.ms\"\n")
+    );
+    assert_eq!(edit("greet_other"), None);
+}

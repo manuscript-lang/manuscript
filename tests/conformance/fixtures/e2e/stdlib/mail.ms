@@ -81,3 +81,15 @@ test "the first blank line ends the headers whatever its line ending":
 
 	crlf := parse_message("Subject: hi\r\n\r\nline1\n\nline2").get()
 	expect_equal(crlf.body, "line1\n\nline2")?
+
+test "a blank line with a different ending from the line before it still ends the headers":
+	mixed := parse_message("Subject: hi\n\r\nbody").get()
+	expect_equal(mixed.headers.get("Subject").get(""), "hi")?
+	expect_equal(mixed.body, "body")?
+
+	lone := parse_message("\r\nbody").get()
+	expect_equal(lone.headers.fields.length(), 0)?
+	expect_equal(lone.body, "body")?
+
+	bare := parse_message("\nbody").get()
+	expect_equal(bare.body, "body")?

@@ -7,9 +7,24 @@ description: Write, check, test, and revise idiomatic Manuscript programs. Use f
 
 Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in beta: what the stability page lists is frozen; everything else may change.
 
-## Core language
+Manuscript is small, explicit and value-oriented: records and enums hold data, functions hold behavior, errors and absence are values, and every value has one owner. Read [Idioms](references/idioms.md) before writing: it holds thirteen complete programs to copy. Use exact names from [Standard calls](references/standard-calls.md).
 
-Use tabs for indentation. A trailing `:` opens a body; dedent ends it. A module contains imports and declarations; `main` is its entry point. Fields belong inside `type`; methods sit beside it with implicit `self`. `fn var` permits receiver mutation.
+## Write it this way
+
+- **Data:** a `type` for facts, an `enum` for states, `match` covering every case. Defaults and named arguments instead of builder code.
+- **Transformation:** a pipeline (`xs | .filter(f) | .map(g) | .sum()`) to derive values; a `for` loop to build a Map or change a `var`. A named function beats a one-use closure.
+- **Ownership:** reading borrows; changing needs `var` at the declaration and at the call; storing moves, so keep the original with `.clone()`.
+- **Failure:** `T!` for what can fail, `?` to propagate, `.ok_or(Error("what and which input", kind: "EINVAL"))` to turn absence into an error. `T?` when absence is normal; unwrap with `if v := o:` or `.get(default)`.
+- **Waiting:** no `async`. A waiting call returns a Promise already running; start several, `wait_all` them. Streams are read with `for line in stream | lines`. Share state through one owner and a pipe.
+- **Tests:** `test "name":` blocks beside the code, run by `ms test`.
+
+## Changing existing code
+
+Read the file, its tests and `ms.toml` first, and match the style around you. Add an enum case, then let `ms check` list every `match` that must handle it. Change a signature, then fix each call the checker reports. Keep the change small, run `ms check --fix`, `ms test`, then `ms verify`. Add a `test` for the behavior you changed.
+
+## Syntax card
+
+Use tabs for indentation. A trailing `:` opens a body; dedent ends it. A module contains imports and declarations; `main` is its entry point. Fields belong inside `type`; methods sit beside it with implicit `self`; `fn var` permits receiver mutation.
 
 <!-- complete: skill-core.ms -->
 ```manuscript
@@ -29,43 +44,31 @@ fn main() Void!:
 	print(counter.value())
 ```
 
-### Not Manuscript
+- Bindings: `x := e` (immutable, `x: T := e`), `var x = e` (mutable). Types: Int, Float, Bool, String, Void; literals `true`, `false`, `void`.
+- Functions: `fn f(x: Int, n: Int = 1) Int:`, called `f(2, n: 3)`. An inline body is an expression; a multiline body uses `return`. Closure: `fn x: x + 1`. Generics: `fn id[T](x: T) T: x`.
+- Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`, `and or not`. Early exits: `if c: return x`. Expression form: `if c: a else: b`.
+- Collections need no import: `[1, 2]`, `Map[String, Int]()`, `Set[Int]()`. `m.get(k)` is Optional; `m.get_or(k, d)` has a fallback.
+- Imports: `import name from "./other.ms"` and `import sqrt from "@std/math/math.ms"`; `export` shares a declaration; `ms search_symbol <name>` prints a name's import line.
+- `enum Choice:` with cases `Empty` and `Value(n: Int)`, built `Choice.Value(2)`, matched with arms `Empty:`, `Value(n):`, `_:`. Keep `match` flat.
+- Text: `"plain"` never interpolates (braces are literal), `f"total {n}"` interpolates, `r"\d+"` is raw, `"""` and `r"""` open multi-line text on the next line.
+- Effects: narrow directives above functions, as in the example; they do not run effects. Closeable values clean up at scope end; there is no GC.
 
-| Not | Write |
-| --- | --- |
-| `!x`, `a ?? b`, `try f()` | `not x`, `a.get(b)`, `f()?` |
-| `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
-| `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
-| `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
+## Compiler rules
 
-### Syntax and data
+Four rules cover most compiler errors; an error that names one is that rule.
 
-- Immutable: `x := e`, or `x: T := e`. Mutable: `var x = e`; assignment and content mutation require var. Basic types: Int, Float, Bool, String, Void; literals: `true`, `false`, `void`. `f"hello {name}"` interpolates; plain `"{"` keeps braces.
-- Functions declare parameter/return types: `fn f(x: Int, n: Int = 1) Int:`. Call `f(2, n: 3)`. Inline bodies return expressions; multiline bodies use `return`. Void/Void! may fall through. Main returns Void, Int status, or Void!.
-- Generics: `fn identity[T](x: T) T: x`. Callback: `fn(Int) Int`; closure: `fn x: x + 1`.
-- Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`; `and or not`. Prefer early exits: `if c: return x`. Expression: `if c: a else: b`.
-- Import `name` with `import name from "./other.ms"`; `export` shares declarations. Standard paths start `@std/`. Construct records `Counter()` or `Counter(n: 2)`. Receiver methods satisfy matching interfaces; no impl blocks.
-- `enum Choice:` declares cases `Empty` and `Value(n: Int)`. Construct `Choice.Value(2)`. `match choice:` uses arms `Empty:`, `Value(n):`, or `_:`; match exhaustively and keep it flat.
-- Prelude collections: `[1, 2]`, `Map[String, Int]()`, `Set[Int]()`. List pipeline: `xs | .filter(fn x: x > 0) | .map(fn x: x * 2) | .sum()`. `x | f(a)` passes x first; `x | .m()` calls a method. Map `.get(k)` returns Optional; `.get_or(k, default)` supplies a fallback.
+1. **One owner.** `price.add(sku.clone(), 0)` then `stock.add(sku, n)`. "Moved here but used again" means clone at the store. While a binding borrows from `xs` (`it := xs.get(0, d)`, `for x in xs`), do not change `xs`.
+2. **`?` is for Results.** `s.parse_int()` is `Int?`: `s.parse_int().ok_or(Error("bad number"))?`. A Result is never dropped; `_done := f(x)?` when its value is unused. `(r?).abs()`, not `r?.abs()`.
+3. **Names are exact.** Never translate: `xs.append(x)` not `push`, `contains` not `contains_key`, `pop` not `remove_last`, `is_error` not `is_err`, `x.length()` not `x.len`, `x.is_none()` not `x == none`. An Optional needs no wrapper: `return value`, never `some(value)` (absent is `none`).
+4. **Shapes are fixed.** A body goes on indented lines after a `:` header. `for _i in xs` (a bare `_` is no name). Records, not tuples; `List[Int]`, not `List<Int>`; `not x`, not `!x`. Reserved words (`type`, `test`, `fn`, `var` ...) are never names.
 
-### Absence, errors and ownership
+## References by task
 
-- `T?` is Optional: values convert, `none` is absent. Extract with `if x := optional:` or `.get(default)`. `a?.field` chains absence; postfix `?` is for Results only.
-- `T!` is Result[T, Error]. Return `ok(value)`/`error(Error("message"))`; `r?` extracts success or returns the error from a compatible Result-returning function. Otherwise `if x := r:` handles success; in else, `r.err()` yields the error directly (`.message` reads its text). Never call it on success or accidentally drop a Result.
-- Int/Float/Bool copy. Owned values can be borrowed by reads and moved into storage. Clone only for an independent owner, e.g. `names.append(user.name.clone())`. `fn add(var xs: List[Int]) Void` is called `add(var xs)`; return parts of parameters by borrow without a marker. Closeable cleans up at scope end unless moved; no GC.
-- `p.wait()` on Promise[T] returns T! once; no async/await keywords. Keep mutable state with one owner. Effects use narrow directives above functions, as shown; directives do not execute effects.
-
-## Deep dives
-
-- [Program structure](references/program-structure.md): modules, imports, main, types, receiver methods.
-- [Values and control](references/values-and-control.md): bindings, literals, branches, loops, ranges.
-- [Types and functions](references/types-and-functions.md): signatures, generics, callbacks, enums, interfaces.
-- [Errors and optionals](references/errors-and-optionals.md): absence versus failure, propagation, nested results.
-- [Ownership and cleanup](references/ownership-and-cleanup.md): borrows, moves, clones, mutation, cleanup, borrow errors.
-- [Collections and pipelines](references/collections-and-pipelines.md): construction, lookup, mutation, method and function pipelines.
-- [Effects and concurrency](references/effects-and-concurrency.md): effects, promises, streams, capture.
-- [Servers and state](references/servers-and-state.md): `serve` handlers cannot share mutable state; one owner promise and a pipe.
-- [Validation](references/validation.md): checks, tests, diagnostics, habits from other languages.
+- Start here: [Idioms](references/idioms.md) (thirteen complete programs), [Standard calls](references/standard-calls.md) (every prelude call, exact), [Standard modules](references/standard-modules.md) (which `@std` module exports which names, for imports).
+- Language: [Program structure](references/program-structure.md), [Projects, ms.toml and packages](references/projects-and-packages.md), [Values and control](references/values-and-control.md), [Types and functions](references/types-and-functions.md).
+- Data and failure: [Collections and pipelines](references/collections-and-pipelines.md), [Errors and optionals](references/errors-and-optionals.md), [Ownership and cleanup](references/ownership-and-cleanup.md).
+- Concurrency and services: [Effects and concurrency](references/effects-and-concurrency.md), [Servers and state](references/servers-and-state.md).
+- Checking: [Validation](references/validation.md) (tests, diagnostics, a wrong/right table of habits from other languages).
 
 ## Verify
 

@@ -334,7 +334,7 @@ Examples:
   ms review ms.toml --diff change.patch --explain 1 --json
 "#;
 
-pub const HELP_INIT: &str = r#"Usage: ms init [--lib] [directory]
+pub const HELP_INIT: &str = r#"Usage: ms init [--lib | --workspace] [directory]
 
 Create a runnable project in the directory (default: the current directory).
 Writes ms.toml, src/main.ms (a hello program), test.ms, and a .gitignore that
@@ -344,15 +344,21 @@ command fails before writing anything when ms.toml, src/main.ms, or test.ms exis
 --lib creates a library, which a package must be: its ms.toml has no entry, and
 src/lib.ms holds a function and a test in place of main.
 
+--workspace creates a workspace: a root ms.toml listing the members, an app that
+imports a greeter library through a path dependency, and one shared ms.lock location
+at the root. Run `ms test` at the root to test every member.
+
 Keep .ms-cache/ out of version control.
 
 Options:
-  --lib       Create a library with no entry, for sharing as a package
+  --lib        Create a library with no entry, for sharing as a package
+  --workspace  Create a workspace with an app member and a library member
   -h, --help  Show this help without creating files
 
 Examples:
   ms init
   ms init --lib greeter
+  ms init --workspace team
   ms init hello
   cd hello && ms run ms.toml -- first second
 "#;

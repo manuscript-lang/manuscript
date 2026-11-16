@@ -84,7 +84,7 @@ test "string conversion":
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
 
-A type or enum may declare its own `fn T.to_string() String`. It replaces the built-in text form of a value of that type wherever the conversion happens: `value.to_string()`, a bound `value.to_string`, `"{value}"`, and `print(value)`. A value of that type nested in a list, map, set, optional, record field or payload shows the same text, so a list prints as its items do. A type without its own method, and every other kind of value, uses the built-in method, which wins over any field or interface operation named `to_string`. The built-in conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
+A type or enum may declare its own `fn T.to_string() String`. It replaces the built-in text form of a value of that type wherever the conversion happens: `value.to_string()`, a bound `value.to_string`, `f"{value}"`, and `print(value)`. A value of that type nested in a list, map, set, optional, record field or payload shows the same text, so a list prints as its items do. A type without its own method, and every other kind of value, uses the built-in method, which wins over any field or interface operation named `to_string`. The built-in conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
 
 ```manuscript
 type Money:
@@ -228,7 +228,7 @@ Interpolation and direct `to_string()` conversion use the forms below, independe
 | Regex | Pattern text |
 | Other opaque native values, authorities, and resources | `[object]`; internal state and addresses are not inspected |
 
-Type and enum names omit modules and type arguments. Nested Strings are unquoted. Empty values keep their delimiters: `[]`, `Map()`, `Type()`. These forms are for display, not serialization. At nesting depth 64 conversion emits `...`; the outer value is depth 0, and each field, payload, item, key/value, or interface receiver adds one.
+Type and enum names omit modules and type arguments. Nested Strings are unquoted, except an empty String, which shows as `""` so `[""]` is not read as `[]`. Empty values keep their delimiters: `[]`, `Map()`, `Type()`. These forms are for display, not serialization. At nesting depth 64 conversion emits `...`; the outer value is depth 0, and each field, payload, item, key/value, or interface receiver adds one.
 
 **Float.** Choose the shortest decimal that converts back to the same binary64 (nearest, ties to even); among equal lengths take the closest to the exact value, then the even final digit. Strip trailing zeros. Zero is `0`, negative zero `-0`.
 

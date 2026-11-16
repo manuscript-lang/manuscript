@@ -8,6 +8,7 @@ import (
 	NativeResponseBody,
 	NativeServing,
 	NativeWorker,
+	NativeWorkerSpec,
 	RawResponse from "@std/net/http.ms",
 	Duration from "@std/time.ms",
 )
@@ -33,7 +34,8 @@ export extern fn msstd_http_serving_new(
 ) NativeServing!
 
 // Another handle on the same serving, for a connection promise to own.
-export extern fn msstd_http_serving_share(serving: NativeServing) NativeServing
+// What one worker needs from the serving, as plain data a worker promise owns.
+export extern fn msstd_http_serving_spec(serving: NativeServing) NativeWorkerSpec
 
 export extern fn msstd_http_serving_address(serving: NativeServing) String
 
@@ -41,7 +43,7 @@ export extern fn msstd_http_serving_accept(serving: NativeServing) Int!
 
 // A worker engine on the calling thread; it adopts connections and serves them from the
 // poller.
-export extern fn msstd_http_serving_worker(serving: NativeServing) NativeWorker!
+export extern fn msstd_http_serving_worker(spec: NativeWorkerSpec) NativeWorker!
 
 export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) Void
 

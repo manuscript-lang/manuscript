@@ -96,6 +96,7 @@ fn accepted(
     }
     Err(Failure {
         source_root: checked.source_root,
+        package_roots: checked.package_roots,
         diagnostics: checked.diagnostics,
     })
 }
@@ -247,8 +248,8 @@ fn analysis_once(
             "ms: applied {} {} in {} {}",
             applied.fixes,
             plural(applied.fixes, "fix", "fixes"),
-            applied.files,
-            plural(applied.files, "file", "files")
+            applied.files.len(),
+            plural(applied.files.len(), "file", "files")
         );
     }
     result
@@ -258,7 +259,8 @@ fn analysis_once(
 #[derive(Default)]
 struct FixTotals {
     fixes: usize,
-    files: usize,
+    /// Distinct files edited; a file fixed in several rounds counts once.
+    files: std::collections::BTreeSet<String>,
 }
 
 fn analysis_pass(
@@ -284,6 +286,7 @@ fn analysis_pass(
     let mut findings = Vec::new();
     let mut summaries = Vec::new();
     let mut root = String::new();
+    let mut package_roots: Vec<(String, String)> = Vec::new();
     // The terminal output, written at the end or, with `--json --with-text`, carried in the document.
     let text = !request.json || request.with_text;
     let mut text_out: Vec<u8> = Vec::new();
@@ -304,10 +307,16 @@ fn analysis_pass(
         }
         files.extend(watched_files(syms, &input.path, &checked));
         for issue in &checked.diagnostics {
-            diagnostics.push(placed(&selection, &checked.source_root, issue));
+            diagnostics.push(placed(
+                &selection,
+                &checked.source_root,
+                &checked.package_roots,
+                issue,
+            ));
         }
         if selection.inputs.len() == 1 && !selection.collection {
             root.clone_from(&checked.source_root);
+            package_roots.clone_from(&checked.package_roots);
         }
         let Some(program) = checked.program.as_ref().filter(|_| checked.success()) else {
             continue;
@@ -340,11 +349,12 @@ fn analysis_pass(
                 code: finding.code.to_string(),
                 severity: finding.severity.name().to_string(),
                 message: finding.message,
-                position: selection.position(&checked.source_root, &at),
+                position: selection.position(&checked.source_root, &checked.package_roots, &at),
                 fix: finding.fix.as_ref().map(|fix| {
                     let place = |pos: ms_driver::Pos| {
                         selection.position(
                             &checked.source_root,
+                            &checked.package_roots,
                             &Position {
                                 file: finding.file.to_string(),
                                 line: pos.line as usize,
@@ -363,7 +373,7 @@ fn analysis_pass(
         let (applied, edited) = apply_fixes(fixes, fix_errors);
         if applied > 0 {
             applied_total.fixes += applied;
-            applied_total.files += edited;
+            applied_total.files.extend(edited);
             // A fix that overlapped an applied one, or a diagnostic the checker only
             // reaches once an earlier one is gone, is found again on the rerun.
             let rerun = AnalysisRequest {
@@ -382,7 +392,7 @@ fn analysis_pass(
         }
     }
     diagnostics.extend(fix_errors.values().cloned().map(|mut issue| {
-        issue.position = selection.position("", &issue.position);
+        issue.position = selection.position("", &[], &issue.position);
         issue
     }));
     // Keep compiler diagnostics ahead of lint findings and defer output until
@@ -404,7 +414,10 @@ fn analysis_pass(
         let mut sources = crate::snippet::Sources::default();
         for issue in &diagnostics {
             let mut position = issue.position.clone();
-            if !root.is_empty() && !pathops::is_abs(&position.file) {
+            if !root.is_empty()
+                && !pathops::is_abs(&position.file)
+                && !ms_driver::is_package_module(&package_roots, &position.file)
+            {
                 position.file = pathops::join(&[&root, &position.file]);
             }
             let label = if !issue.phase.is_empty() {
@@ -495,16 +508,16 @@ fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
 /// Applies the fixes in place, last edit first so offsets stay valid. A fix
 /// that is repeated or overlaps an earlier one waits for the next run.
 /// Retain I/O failures across passes and do not retry those paths in this invocation.
-/// Returns the fixes applied and the files changed.
+/// Returns the fixes applied and the paths changed.
 fn apply_fixes(
     fixes: Vec<(String, ms_driver::DiagnosticFix)>,
     errors: &mut BTreeMap<String, CommandDiagnostic>,
-) -> (usize, usize) {
+) -> (usize, Vec<String>) {
     let mut by_file: BTreeMap<String, Vec<ms_driver::DiagnosticFix>> = BTreeMap::new();
     for (path, fix) in fixes {
         by_file.entry(path).or_default().push(fix);
     }
-    let (mut applied, mut edited) = (0, 0);
+    let (mut applied, mut edited) = (0, Vec::new());
     for (path, mut file_fixes) in by_file {
         if errors.contains_key(&path) {
             continue;
@@ -562,7 +575,7 @@ fn apply_fixes(
             continue;
         }
         applied += chosen.len();
-        edited += 1;
+        edited.push(path);
     }
     (applied, edited)
 }
@@ -684,9 +697,12 @@ pub(super) fn state_after(path: &str, started: SystemTime) -> Option<FileState> 
 fn placed(
     selection: &AnalysisSelection,
     root: &str,
+    package_roots: &[(String, String)],
     issue: &ms_driver::Diagnostic,
 ) -> CommandDiagnostic {
-    super::placed_command_diagnostic(issue, &|position| selection.position(root, &position))
+    super::placed_command_diagnostic(issue, &|position| {
+        selection.position(root, package_roots, &position)
+    })
 }
 
 /// Drop repeats, then order by position, code and message.
@@ -1167,7 +1183,7 @@ mod fix_tests {
                 ],
                 &mut errors
             ),
-            (1, 1)
+            (1, vec![writable.clone()])
         );
         assert_eq!(std::fs::read_to_string(&writable).unwrap(), "x");
         assert_eq!(errors.len(), 1);
@@ -1181,7 +1197,7 @@ mod fix_tests {
         std::fs::write(&missing, "").unwrap();
         assert_eq!(
             apply_fixes(vec![(missing.clone(), fix)], &mut errors),
-            (0, 0)
+            (0, Vec::new())
         );
         assert_eq!(std::fs::read_to_string(missing).unwrap(), "");
         assert_eq!(errors.len(), 1);

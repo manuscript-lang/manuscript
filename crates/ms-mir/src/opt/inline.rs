@@ -10,7 +10,7 @@
 
 use crate::ir::{
     Block, BlockData, BlockParam, Func, FuncId, FuncKind, Imm, InlineHint, Inst, Linkage, Loc,
-    Mode, Module, Op, Param, Scope, SortThunk, Target, Term, Value,
+    Mode, Module, NamedValue, Op, Param, Scope, SortThunk, Target, Term, Value,
 };
 use crate::types::{Ty, TyKind, TypeId};
 use crate::vmap::{ValueMap, ValueSet};
@@ -509,6 +509,25 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
     };
 
     let vmap: Vec<Value> = callee.values.iter().map(|t| f.new_value(*t)).collect();
+    // The callee's names follow its values, in the frame that scope shows. A parameter has no
+    // value of its own once the body is inlined: the argument it receives carries the name, and
+    // the debugger shows it only inside the callee's frame. A name some earlier inlining moved
+    // onto a parameter of this callee moves on the same way.
+    let entry = &callee.blocks[0].params;
+    let named: Vec<NamedValue> = callee
+        .names
+        .iter()
+        .map(|n| {
+            let arg = entry.iter().position(|p| p.value == n.value);
+            NamedValue {
+                value: arg.map_or_else(|| vmap[n.value.index()], |j| call.args[j]),
+                name: n.name.clone(),
+                param: n.param,
+                scope: base + 1 + n.scope,
+            }
+        })
+        .collect();
+    f.names.extend(named);
     let bmap: Vec<Block> = callee.blocks.iter().map(|_| f.new_block()).collect();
     let mv = |v: Value| vmap[v.index()];
     let mt = |t: &Target| Target {

@@ -763,3 +763,166 @@ fn registrations_cross_branches_instead_of_repeating_per_block() {
         count(&m, "main", Op::CleanupPush)
     );
 }
+
+#[test]
+fn covers_a_shielded_close_whose_window_spans_blocks() {
+    // The elaborated scope-end close enters the shield, calls and exits in three blocks; a fault
+    // inside the close still has the slot's value to release, so the call is covered.
+    let body = r#"
+extern @msrt_print_int(int) -> void
+extern @msrt_shield_enter()
+extern @msrt_shield_exit()
+fn @close(%slot: ptr) -> void {
+b0:
+  %n: int = iconst 1
+  %u: void = call.rt @msrt_print_int (%n)
+  ret %u
+}
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = clone %s
+  %slot: ptr = slot str
+  put %slot, %t
+  %e: void = call.rt @msrt_shield_enter ()
+  br b1()
+b1:
+  %c: void = call @close (%slot)
+  br b2()
+b2:
+  %x: void = call.rt @msrt_shield_exit ()
+  %back: str = take str %slot
+  drop %back
+  %r: int = iconst 0
+  ret %r
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(changed, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+}
+
+const WINDOW_HEAD: &str = r#"
+extern @msrt_print_int(int) -> void
+extern @msrt_shield_enter()
+extern @msrt_shield_exit()
+fn @close(%slot: ptr) -> void {
+b0:
+  %n: int = iconst 1
+  %u: void = call.rt @msrt_print_int (%n)
+  ret %u
+}
+fn @takes(%slot: ptr) -> void {
+b0:
+  %s: str = take str %slot
+  drop %s
+  %n: int = iconst 1
+  %u: void = call.rt @msrt_print_int (%n)
+  ret %u
+}
+"#;
+
+#[test]
+fn leaves_a_window_that_branches_on_a_condition_alone() {
+    let body = format!(
+        r#"{WINDOW_HEAD}
+fn @main() -> int {{
+b0:
+  %s: str = str "held"
+  %t: str = clone %s
+  %slot: ptr = slot str
+  put %slot, %t
+  %e: void = call.rt @msrt_shield_enter ()
+  %c: bool = bconst true
+  br_if %c, b1(), b2()
+b1():
+  %k: void = call @close (%slot)
+  br b2()
+b2():
+  %x: void = call.rt @msrt_shield_exit ()
+  %back: str = take str %slot
+  drop %back
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+    );
+    let (m, _) = rewrite(&body, true);
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        0,
+        "{}",
+        print_module(&m)
+    );
+}
+
+#[test]
+fn leaves_a_cross_block_window_whose_callee_takes_from_the_slot() {
+    let body = format!(
+        r#"{WINDOW_HEAD}
+fn @main() -> int {{
+b0:
+  %s: str = str "held"
+  %t: str = clone %s
+  %slot: ptr = slot str
+  put %slot, %t
+  %e: void = call.rt @msrt_shield_enter ()
+  br b1()
+b1():
+  %k: void = call @takes (%slot)
+  br b2()
+b2():
+  %x: void = call.rt @msrt_shield_exit ()
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+    );
+    let (m, _) = rewrite(&body, true);
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        0,
+        "{}",
+        print_module(&m)
+    );
+}
+
+#[test]
+fn covers_each_close_of_a_cross_block_window_once() {
+    let body = format!(
+        r#"{WINDOW_HEAD}
+fn @main() -> int {{
+b0:
+  %s: str = str "held"
+  %t: str = clone %s
+  %slot: ptr = slot str
+  put %slot, %t
+  %e: void = call.rt @msrt_shield_enter ()
+  %k: void = call @close (%slot)
+  br b1()
+b1():
+  %j: void = call @close (%slot)
+  br b2()
+b2():
+  %x: void = call.rt @msrt_shield_exit ()
+  %back: str = take str %slot
+  drop %back
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+    );
+    let (m, changed) = rewrite(&body, true);
+    assert!(changed, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        2,
+        "{}",
+        print_module(&m)
+    );
+}

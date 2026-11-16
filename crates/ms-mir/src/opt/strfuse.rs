@@ -1,6 +1,6 @@
 //! The `strfuse` pass: appends a built-up string to a `StringBuilder` piece by piece.
 //!
-//! `b.append("{n},")` lowers to `int_to_string`, `string_concat`, `strbuilder.append` and two
+//! `b.append(f"{n},")` lowers to `int_to_string`, `string_concat`, `strbuilder.append` and two
 //! drops: two heap strings that live for one call. When the temporaries have no other use, the
 //! pieces are appended directly (`strbuilder.append_int` for integers), so the loop allocates
 //! nothing. Only runtime string constructors with no effects and no faults are removed, and the

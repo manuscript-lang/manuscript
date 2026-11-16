@@ -2911,10 +2911,20 @@ impl<'a> Parser<'a> {
                     (Tok::Comma, _) => "remove the extra comma or add the missing value before it",
                     _ => "write a value, name, call, or literal here",
                 };
-                let msg = format!(
-                    "expected an expression, found {}; {hint}",
-                    describe(self.src, t)
-                );
+                let word = &self.src[t.lo as usize..t.hi as usize];
+                // Words that read as names (`type`, `test`) are the ones written as variables.
+                let reserved = matches!(t.kind, Tok::Test | Tok::Type | Tok::Fixture);
+                let msg = if reserved {
+                    format!(
+                        "expected an expression, found {}; '{word}' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter",
+                        describe(self.src, t)
+                    )
+                } else {
+                    format!(
+                        "expected an expression, found {}; {hint}",
+                        describe(self.src, t)
+                    )
+                };
                 return self.fail(t, msg);
             }
         };
@@ -2962,20 +2972,7 @@ impl<'a> Parser<'a> {
             } else if self.take(Tok::LParen) {
                 self.link(&mut links)?;
                 let pos = e.pos;
-                let mut args = self.call_arguments()?;
-                // `ok()` is `ok(void)`: success with nothing to carry. The argument sits at the
-                // callee's position, where no source text of its own exists.
-                if args.is_empty()
-                    && matches!(&e.kind, ExprKind::Name(n) if self.names.str(*n) == "ok")
-                {
-                    let value = self.mk(pos, ExprKind::Void);
-                    args.push(Argument {
-                        pos,
-                        name: None,
-                        value,
-                        mutable: false,
-                    });
-                }
+                let args = self.call_arguments()?;
                 e = self.mk(
                     pos,
                     ExprKind::Call {

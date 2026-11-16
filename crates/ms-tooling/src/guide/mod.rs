@@ -12,6 +12,7 @@ pub mod pages;
 pub mod render;
 pub mod search;
 pub mod skill;
+pub mod skill_calls;
 pub mod source;
 
 pub use api::{ApiDeclaration, ApiMember, ApiModule, module_documentation, standard_library};

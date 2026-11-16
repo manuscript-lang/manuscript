@@ -33,6 +33,11 @@ pub struct Project {
     pub embed: BTreeMap<String, String>,
     /// `[dependencies]`: package names mapped to where each comes from.
     pub dependencies: BTreeMap<String, Dependency>,
+    /// `[dependencies]` written `{ path = "../util" }`: names mapped to the canonical directory
+    /// of another workspace member. Never locked.
+    pub path_dependencies: BTreeMap<String, String>,
+    /// `[workspace] members`, as written; `Some` only in a workspace root.
+    pub members: Option<Vec<String>>,
     /// `[project] version`: the version a package declares, if it does.
     pub version: Option<Version>,
     /// `[effects]`: for each dependency, the effects this project allows it.
@@ -199,17 +204,22 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             "embed" => "embed",
             "dependencies" => "dependencies",
             "effects" => "effects",
+            "workspace" => "workspace",
             _ => {
                 let advice = if name == "package" {
                     "rename it to [project] with name, source, and entry"
                 } else {
                     "ms.toml has no other tables"
                 };
-                return Err(fail.at(&location, format!("unsupported manifest table [{name}]; ms.toml supports only [project], [aliases], [embed], [dependencies] and [effects]: {advice}")));
+                return Err(fail.at(&location, format!("unsupported manifest table [{name}]; ms.toml supports only [project], [workspace], [aliases], [embed], [dependencies] and [effects]: {advice}")));
             }
         };
         if section == "project" {
             p.location = location.clone();
+        }
+        if section == "workspace" {
+            // A bare [workspace] is a root with no members yet, reported as such.
+            p.members.get_or_insert_with(Vec::new);
         }
         for (key, value) in table.iter() {
             let (key_span, value_span) = table.get_key_value(key).map_or((0..0, 0..0), |(k, v)| {
@@ -228,19 +238,46 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             );
             match section {
                 "effects" => {
-                    let list = string_list(value)
+                    let list = string_list(value, &EFFECT_LIST)
                         .map_err(|e| fail.at(&location, format!("{key}: {e}")))?;
                     check_package_name(&fail, &key, &key_location)?;
                     p.allowed_effects.insert(key, list);
                 }
+                "workspace" => {
+                    if key != "members" {
+                        return Err(fail.at(
+                            &key_location,
+                            format!("unknown workspace key {key}; [workspace] accepts members"),
+                        ));
+                    }
+                    let list = string_list(value, &MEMBER_LIST)
+                        .map_err(|e| fail.at(&location, format!("members: {e}")))?;
+                    p.members = Some(list);
+                }
                 "dependencies" => {
                     check_package_name(&fail, &key, &key_location)?;
-                    let found = dependency(value)
-                        .map_err(|e| fail.at(&location, format!("dependency {key}: {e}")))?;
-                    p.dependencies.insert(key, found);
+                    match dependency(value)
+                        .map_err(|e| fail.at(&location, format!("dependency {key}: {e}")))?
+                    {
+                        Declared::Git(found) => {
+                            p.dependencies.insert(key, found);
+                        }
+                        Declared::Path(path) => {
+                            let target = pathops::join(&[&root, &path]);
+                            let target = pathops::eval_symlinks(&target).map_err(|e| {
+                                fail.at(
+                                    &location,
+                                    format!(
+                                        "dependency {key}: path {path:?} cannot be resolved: {e}"
+                                    ),
+                                )
+                            })?;
+                            p.path_dependencies.insert(key, target);
+                        }
+                    }
                 }
                 "project" if key == "effects" => {
-                    p.effects = string_list(value)
+                    p.effects = string_list(value, &EFFECT_LIST)
                         .map_err(|e| fail.at(&location, format!("effects: {e}")))?;
                 }
                 _ => {
@@ -293,6 +330,17 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
         }
     }
     location = p.location.clone();
+    // A root that only lists members has no source of its own.
+    if p.members.is_some() && !p.assignments.keys().any(|k| k.starts_with("project.")) {
+        if let Some(extra) = p.assignments.keys().find(|k| !k.starts_with("workspace.")) {
+            let table = extra.split('.').next().unwrap_or(extra);
+            return Err(fail.at(
+                &p.assignments[extra].key.clone(),
+                format!("a workspace root without [project] holds only [workspace]; move [{table}] into a member or add a [project] table"),
+            ));
+        }
+        return Ok(());
+    }
     if p.name.is_empty() || p.source.is_empty() {
         let mut missing = Vec::new();
         if p.name.is_empty() {
@@ -360,7 +408,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             }
         }
     }
-    for key in p.dependencies.keys() {
+    for key in p.dependencies.keys().chain(p.path_dependencies.keys()) {
         if p.aliases.contains_key(key) || p.embed.contains_key(key) {
             return Err(fail.at(
                 &p.assignments[&format!("dependencies.{key}")].key.clone(),
@@ -368,8 +416,16 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             ));
         }
     }
+    for key in p.path_dependencies.keys() {
+        if p.dependencies.contains_key(key) {
+            return Err(fail.at(
+                &p.assignments[&format!("dependencies.{key}")].key.clone(),
+                format!("{key} is declared twice in [dependencies]; keep one"),
+            ));
+        }
+    }
     for key in p.allowed_effects.keys() {
-        if !p.dependencies.contains_key(key) {
+        if !p.dependencies.contains_key(key) && !p.path_dependencies.contains_key(key) {
             return Err(fail.at(
                 &p.assignments[&format!("effects.{key}")].key.clone(),
                 format!("[effects] names {key}, which is not under [dependencies]; remove it or add the dependency"),
@@ -463,20 +519,51 @@ fn text_value(
     Ok(value.to_string())
 }
 
+/// What a manifest string list holds, for its errors and what it may contain.
+struct ListKind {
+    noun: &'static str,
+    plural: &'static str,
+    example: &'static str,
+    /// Directory names may hold spaces; effect patterns may not.
+    spaces: bool,
+}
+
+const EFFECT_LIST: ListKind = ListKind {
+    noun: "effect",
+    plural: "effects",
+    example: "[\"std.net.*\", \"std.fs.read\"]",
+    spaces: false,
+};
+
+const MEMBER_LIST: ListKind = ListKind {
+    noun: "member",
+    plural: "members",
+    example: "[\"app\", \"libs/*\"]",
+    spaces: true,
+};
+
 /// An array of strings, such as the effects `["std.net.*", "std.fs.read"]`.
-fn string_list(item: &toml_edit::Item) -> Result<Vec<String>, String> {
-    let shape = "effects are a list of strings: [\"std.net.*\", \"std.fs.read\"]";
-    let array = item.as_array().ok_or_else(|| shape.to_string())?;
+fn string_list(item: &toml_edit::Item, kind: &ListKind) -> Result<Vec<String>, String> {
+    let shape = format!("{} are a list of strings: {}", kind.plural, kind.example);
+    let array = item.as_array().ok_or_else(|| shape.clone())?;
     let mut list = Vec::new();
     for entry in array {
-        let text = entry.as_str().ok_or_else(|| shape.to_string())?;
-        if text.is_empty() || text.chars().any(|c| c.is_whitespace() || c.is_control()) {
+        let text = entry.as_str().ok_or_else(|| shape.clone())?;
+        let bad_char = |c: char| c.is_control() || (!kind.spaces && c.is_whitespace());
+        if text.is_empty() || text.chars().any(bad_char) {
             return Err(format!(
-                "invalid effect {text:?}; write one pattern per string, such as \"std.net.*\""
+                "invalid {} {text:?}; write one {} per string, such as {}",
+                kind.noun,
+                if kind.spaces { "directory" } else { "pattern" },
+                kind.example
+                    .trim_matches(['[', ']'])
+                    .split(", ")
+                    .next()
+                    .unwrap_or("")
             ));
         }
         if list.iter().any(|seen| seen == text) {
-            return Err(format!("effect {text} is listed twice; remove one"));
+            return Err(format!("{} {text} is listed twice; remove one", kind.noun));
         }
         list.push(text.to_string());
     }
@@ -527,13 +614,21 @@ impl Dependency {
     }
 }
 
-/// A dependency is a table with `url` and exactly one of `tag`, `sha` and `version`.
-fn dependency(item: &toml_edit::Item) -> Result<Dependency, String> {
+/// A dependency read from `[dependencies]`.
+enum Declared {
+    Git(Dependency),
+    /// A path to another workspace member, as written.
+    Path(String),
+}
+
+/// A dependency is a table with `url` and exactly one of `tag`, `sha` and `version`, or only
+/// `path` (another workspace member).
+fn dependency(item: &toml_edit::Item) -> Result<Declared, String> {
     let shape = "write { url = \"https://github.com/acme/pg.git\", version = \"1.0\" }, or tag = \"v1.0.0\" or sha = \"<40-digit commit>\" in place of version";
     let table = item
         .as_table_like()
         .ok_or_else(|| format!("a dependency is a table; {shape}"))?;
-    let (mut url, mut tag, mut sha, mut version) = (None, None, None, None);
+    let (mut url, mut tag, mut sha, mut version, mut path) = (None, None, None, None, None);
     for (field, value) in table.iter() {
         let text = value
             .as_str()
@@ -543,12 +638,19 @@ fn dependency(item: &toml_edit::Item) -> Result<Dependency, String> {
             "tag" => tag = Some(text),
             "sha" => sha = Some(text),
             "version" => version = Some(text),
+            "path" => path = Some(text),
             _ => {
                 return Err(format!(
-                    "unknown field {field}; a dependency has url and one of version, tag or sha"
+                    "unknown field {field}; a dependency has url and one of version, tag or sha, or only path"
                 ));
             }
         }
+    }
+    if let Some(path) = path {
+        if url.is_some() || tag.is_some() || sha.is_some() || version.is_some() || path.is_empty() {
+            return Err("a path dependency has only path = \"../member\"".to_string());
+        }
+        return Ok(Declared::Path(path.to_string()));
     }
     let url = url.ok_or_else(|| format!("url is missing; {shape}"))?;
     let source = match (version, tag, sha) {
@@ -574,5 +676,5 @@ fn dependency(item: &toml_edit::Item) -> Result<Dependency, String> {
         Source::Version(_) => "v0.0.0".to_string(),
     };
     crate::project::packages::check_spec(&format!("{url}#{reference}"))?;
-    Ok(found)
+    Ok(Declared::Git(found))
 }

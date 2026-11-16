@@ -6,7 +6,9 @@ impl Walker<'_> {
     /// Evaluates a value handed back to the caller.
     pub(super) fn returned(&mut self, e: &Expr) {
         if !self.captured.is_empty() {
-            // A lambda never returns_borrow: an escaping closure owns its captures.
+            // A lambda never returns_borrow: an escaping closure owns its captures, and so does a
+            // promise it starts and returns, outer values included (`.clone()` keeps one).
+            self.returned_promises_own_captures(e);
             self.expr(e, Demand::Move);
             return;
         }

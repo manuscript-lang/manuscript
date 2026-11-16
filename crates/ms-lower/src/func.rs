@@ -9,7 +9,7 @@ use ms_check::api::types::Builtin;
 use ms_check::api::types::{self as ct, BindingRef, Subst};
 use ms_check::fxmap::{HashMap, HashSet};
 use ms_mir::builder::{FuncBuilder, Var};
-use ms_mir::ir::{Block, FuncId, Linkage, Loc, Mode, Module, Op, Param, Value};
+use ms_mir::ir::{Block, FuncId, Linkage, Loc, Mode, Module, NamedValue, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use std::rc::Rc;
 
@@ -1241,6 +1241,17 @@ impl<'a> FnLower<'a> {
         };
         let v = self.owned(x);
         self.b.def_var(var, v);
+        // A reassigned local holds several values, so a debugger name for the first would show
+        // a stale one after the assignment; only a binding with one definition is named.
+        if !binding.mutable && !self.redefined.contains(&binding.uid) {
+            let name = self.syms.str(binding.name).to_string();
+            self.b.func_mut().names.push(NamedValue {
+                value: v,
+                name,
+                param: false,
+                scope: 0,
+            });
+        }
         self.own_local(binding.uid, var, ty);
     }
 
@@ -2034,6 +2045,20 @@ impl<'a> FnLower<'a> {
         // that moves a parameter is the copying adapter for the borrowed signature: its copies
         // are the declared adaptation, not hidden ones.
         self.adapter = !self.variant.owned && self.cx.owned_mask(c).is_some();
+        // A `var` parameter is the address of the caller's slot, not the value, so it has no name here.
+        let names = bindings
+            .iter()
+            .zip(&params)
+            .enumerate()
+            .filter(|(i, _)| !vars.contains(i))
+            .map(|(_, (b, v))| NamedValue {
+                value: *v,
+                name: self.syms.str(b.name).to_string(),
+                param: true,
+                scope: 0,
+            })
+            .collect();
+        self.b.func_mut().names = names;
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
             if vars.contains(&i) {
                 self.bind_var_parameter(b, v)?;

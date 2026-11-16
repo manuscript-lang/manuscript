@@ -312,6 +312,7 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
         }
         let started = std::time::Instant::now();
         let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .env("MS_CACHE", "off")
             .env("MS_BACKEND", backend)
             .current_dir(&dir)
             .args(["build", "k.ms", "-o", "k"])
@@ -525,4 +526,168 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     let out = Command::new(dir.join("prog")).output().unwrap();
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(String::from_utf8_lossy(&out.stdout), "3000007\n");
+}
+
+/// The file holding a linked program's DWARF: the dSYM image on macOS, the program elsewhere.
+fn debug_image(program: &std::path::Path) -> std::path::PathBuf {
+    let Some(bundle) = ms_clif::link::debug_companion_path(program).filter(|p| p.exists()) else {
+        return program.to_owned();
+    };
+    let mut images = std::fs::read_dir(bundle.join("Contents/Resources/DWARF"))
+        .unwrap()
+        .map(|e| e.unwrap().path());
+    images.next().expect("a linked DWARF image")
+}
+
+/// Both backends describe Manuscript types to a debugger, once per program: with several LLVM
+/// units only the first carries them.
+#[test]
+fn both_backends_describe_value_types_once() {
+    let source = format!("{}/tests/llvm/value_types.ms", env!("CARGO_MANIFEST_DIR"));
+    let dir = std::env::temp_dir().join(format!("ms-types-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let dwarfdump = std::env::var("LLVM_DWARFDUMP").unwrap_or_else(|_| "llvm-dwarfdump".into());
+    let llvm = ms_build::llvm_available(&ms_cli::engine::build_options_from_env());
+    let mut runs = vec![("cranelift", "1")];
+    if cfg!(any(target_os = "linux", target_os = "macos")) && llvm {
+        runs.extend([("llvm", "1"), ("llvm", "4")]);
+    }
+    for (backend, units) in runs {
+        let out = dir.join(format!("{backend}-{units}"));
+        let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .env("MS_BACKEND", backend)
+            .env("MS_LLVM_UNITS", units)
+            .args(["build", &source, "-o"])
+            .arg(&out)
+            .output()
+            .unwrap();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        let info = Command::new(&dwarfdump)
+            .arg("--debug-info")
+            .arg(debug_image(&out))
+            .output()
+            .unwrap();
+        let info = String::from_utf8_lossy(&info.stdout);
+        for name in ["Point", "Shape payload", "List[String]", "Int?"] {
+            // Type entries only: the `ms.debug_types` union lists each type again as a member.
+            let wanted = format!("DW_AT_name\t(\"{name}\")");
+            let found = info
+                .split("\n\n")
+                .filter(|die| {
+                    let mut lines = die.trim_start().lines();
+                    lines.next().is_some_and(|tag| tag.contains("_type"))
+                        && lines.any(|l| l.trim() == wanted)
+                })
+                .count();
+            assert_eq!(
+                found,
+                1,
+                "{backend} units={units}: {name} appears {found} times in {}:\n{}",
+                debug_image(&out).display(),
+                info.chars().take(6000).collect::<String>()
+            );
+        }
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Builds `tests/llvm/<fixture>` with Cranelift and returns `llvm-dwarfdump --debug-info` of it,
+/// after checking that `--verify` accepts the program's own unit.
+fn cranelift_dwarf(fixture: &str, build_args: &[&str]) -> String {
+    let source = format!("{}/tests/llvm/{fixture}", env!("CARGO_MANIFEST_DIR"));
+    let dir = std::env::temp_dir().join(format!("ms-dwarf-test-{}-{fixture}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("prog");
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .env("MS_BACKEND", "cranelift")
+        .args(["build", &source])
+        .args(build_args)
+        .arg("-o")
+        .arg(&out)
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}: {}{}",
+        built.status,
+        String::from_utf8_lossy(&built.stdout),
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let dwarfdump = std::env::var("LLVM_DWARFDUMP").unwrap_or_else(|_| "llvm-dwarfdump".into());
+    let run = |flag: &str| {
+        let o = Command::new(&dwarfdump)
+            .arg(flag)
+            .arg(debug_image(&out))
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&o.stdout).into_owned()
+    };
+    // The program's own unit is the first; the Rust runtime linked into the image carries units
+    // of its own that rustc describes with ranges `--verify` rejects on Windows.
+    let verified = run("--verify");
+    let ours = verified
+        .split("Verifying unit:")
+        .nth(1)
+        .unwrap_or_default()
+        .to_owned();
+    let info = run("--debug-info");
+    assert!(
+        ours.contains(fixture) && !ours.contains("error:"),
+        "{}\n{}",
+        verified.chars().take(6000).collect::<String>(),
+        info.chars().take(14000).collect::<String>()
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+    info
+}
+
+/// The text of the first DIE with `tag` named `name`.
+fn die<'a>(info: &'a str, tag: &str, name: &str) -> &'a str {
+    let wanted = format!("DW_AT_name\t(\"{name}\")");
+    let found = info.split("\n0x").find(|entry| {
+        let mut lines = entry.lines();
+        lines.next().is_some_and(|first| first.contains(tag))
+            && lines.next().is_some_and(|l| l.trim() == wanted)
+    });
+    found.unwrap_or_else(|| {
+        panic!(
+            "no {tag} {name} in:\n{}",
+            info.chars().take(8000).collect::<String>()
+        )
+    })
+}
+
+/// Cranelift names each parameter for a debugger and says where its parts live, in a list that
+/// `llvm-dwarfdump --verify` accepts.
+#[test]
+fn cranelift_locates_parameters_for_a_debugger() {
+    let info = cranelift_dwarf("value_types.ms", &[]);
+    for name in ["s", "p", "items", "maybe"] {
+        let entry = die(&info, "DW_TAG_formal_parameter", name);
+        assert!(entry.contains("DW_AT_location"), "{name} has no location");
+    }
+}
+
+/// A debug build describes the locals a function declares and each inlined callee as a frame of
+/// its own, holding that callee's parameters and locals.
+#[test]
+fn cranelift_describes_locals_and_inlined_frames() {
+    let info = cranelift_dwarf("frames.ms", &["--build-type", "debug"]);
+    // `twice` and both calls of `add` are frames of their own, with their parameters and locals.
+    let frames = info.matches("DW_TAG_inlined_subroutine").count();
+    assert!(frames >= 3, "{frames} inlined frames in:\n{info}");
+    assert!(info.contains("DW_AT_call_line"), "{info}");
+    for name in ["a", "sum", "y", "n"] {
+        assert!(
+            info.contains(&format!("\"{name}\")")),
+            "no {name} in:\n{}",
+            info.chars().take(8000).collect::<String>()
+        );
+    }
+    let sum = die(&info, "DW_TAG_variable", "sum");
+    assert!(sum.contains("DW_AT_location"), "sum has no location");
 }

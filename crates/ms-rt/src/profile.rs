@@ -367,7 +367,15 @@ fn write_file(path_nul: &[u8], data: &[u8]) {
             0o644,
         );
         if fd >= 0 {
-            sys::write_all(fd, data);
+            // `sys::write_all` writes a standard stream on Windows, not a file descriptor.
+            let mut rest = data;
+            while !rest.is_empty() {
+                let n = sys::write(fd, rest.as_ptr().cast(), rest.len());
+                if n <= 0 {
+                    break;
+                }
+                rest = &rest[n as usize..];
+            }
             sys::close(fd);
         }
     }
@@ -469,39 +477,23 @@ pub fn alloc_sample(size: usize) -> i64 {
         ALLOC_DROPPED.fetch_add(1, Ordering::Relaxed);
         return period as i64;
     }
-    let fp = frame_pointer();
-    // SAFETY: `fp` is this function's frame (the runtime keeps frame pointers): its saved caller
-    // frame and return address are the stack above it. The buffer holds MAX_SAMPLES slots.
+    // SAFETY: the buffer holds MAX_SAMPLES slots of ALLOC_WORDS words; at most MAX_FRAMES pcs are
+    // written between the count and the size in the last word.
     unsafe {
-        let (caller_fp, ret) = (*(fp as *const usize), *((fp + 8) as *const usize));
         let base = (*ALLOC_BUFFER.ptr()).add(n * ALLOC_WORDS);
-        walk(base, ret, caller_fp, segment_state());
+        let mut k = 0;
+        // Windows frames cannot be followed by frame pointer alone: the fault reporter's walker
+        // knows how to recover the generated frames there.
+        crate::fault::visit_frames(|ret| {
+            *base.add(1 + k) = ret;
+            k += 1;
+            k < MAX_FRAMES
+        });
+        *base = k;
         *base.add(ALLOC_WORDS - 1) = size;
     }
     ALLOC_COUNT.store(n + 1, Ordering::Relaxed);
     period as i64
-}
-
-/// The frame pointer of the calling function.
-#[cfg(feature = "alloc-profile")]
-#[inline(always)]
-fn frame_pointer() -> usize {
-    let fp: usize;
-    // SAFETY: reads a register.
-    #[cfg(target_arch = "x86_64")]
-    unsafe {
-        core::arch::asm!("mov {}, rbp", out(reg) fp, options(nomem, nostack, preserves_flags));
-    }
-    // SAFETY: reads a register.
-    #[cfg(target_arch = "aarch64")]
-    unsafe {
-        core::arch::asm!("mov {}, x29", out(reg) fp, options(nomem, nostack, preserves_flags));
-    }
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    {
-        fp = 0;
-    }
-    fp
 }
 
 /// Starts allocation sampling on the runtime thread when `start` enabled it.

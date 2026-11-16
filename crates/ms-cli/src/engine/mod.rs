@@ -236,6 +236,8 @@ const LSP_WORKER: &str = "MS_LSP_WORKER";
 /// A command's source failed to load, check or lower.
 pub(crate) struct Failure {
     pub source_root: String,
+    /// Package and member module prefixes, whose files are not paths below `source_root`.
+    pub package_roots: Vec<(String, String)>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -246,6 +248,7 @@ impl Failure {
         for issue in self.in_source_order() {
             let mut issue = issue.clone();
             if !self.source_root.is_empty()
+                && !ms_driver::is_package_module(&self.package_roots, &issue.file)
                 && !issue.file.starts_with('/')
                 && !std::path::Path::new(&*issue.file).is_absolute()
             {
@@ -392,15 +395,16 @@ pub(crate) fn compile_target<L: Lower>(
             ..CheckRequest::default()
         },
     );
-    let failure = |diagnostics: Vec<Diagnostic>, source_root: &str| Failure {
-        source_root: source_root.to_string(),
-        diagnostics,
+    let failure = |checked: ms_driver::Checked| Failure {
+        source_root: checked.source_root,
+        package_roots: checked.package_roots,
+        diagnostics: checked.diagnostics,
     };
     if !checked.success() {
-        return Err(failure(checked.diagnostics, &checked.source_root));
+        return Err(failure(checked));
     }
     let Some(program) = &checked.program else {
-        return Err(failure(checked.diagnostics, &checked.source_root));
+        return Err(failure(checked));
     };
     let lowered = if target == Target::Benches {
         backend.lowering.lower_benches(program, &entry)
@@ -412,6 +416,7 @@ pub(crate) fn compile_target<L: Lower>(
             .lower(program, &entry)
             .map(|module| (module, Vec::new()))
     };
+    let roots = checked.module_roots();
     match lowered {
         Ok((module, names)) => Ok(Compiled {
             module,
@@ -423,7 +428,7 @@ pub(crate) fn compile_target<L: Lower>(
             sources: program
                 .modules
                 .iter()
-                .map(|m| Path::new(&checked.source_root).join(syms.str(m.file)))
+                .map(|m| std::path::PathBuf::from(roots.path(syms.str(m.file))))
                 .filter(|p| p.is_file())
                 .chain(
                     checked
@@ -436,19 +441,20 @@ pub(crate) fn compile_target<L: Lower>(
         }),
         Err(message) => {
             let file = if entry.is_empty() { filename } else { &entry };
-            Err(failure(
-                vec![Diagnostic {
-                    cause: Default::default(),
-                    opener_line: 0,
-                    file: file.into(),
-                    pos: Pos::new(0, 1, 1),
-                    phase: Phase::Lowering,
-                    message,
-                    end: None,
-                    fix: None,
-                }],
-                &checked.source_root,
-            ))
+            let diagnostics = vec![Diagnostic {
+                cause: Default::default(),
+                opener_line: 0,
+                file: file.into(),
+                pos: Pos::new(0, 1, 1),
+                phase: Phase::Lowering,
+                message,
+                end: None,
+                fix: None,
+            }];
+            Err(failure(ms_driver::Checked {
+                diagnostics,
+                ..checked
+            }))
         }
     }
 }
@@ -460,6 +466,7 @@ fn library_failure(graph: &Graph) -> Failure {
         .unwrap_or_else(|| (String::new(), Pos::new(0, 1, 1)));
     Failure {
         source_root: graph.source_root.clone(),
+        package_roots: Vec::new(),
         diagnostics: vec![Diagnostic {
             cause: Default::default(),
             opener_line: 0,

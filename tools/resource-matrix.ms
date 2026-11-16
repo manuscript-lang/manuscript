@@ -26,16 +26,16 @@ type Marker:
     id: Int
 
 fn var Marker.close() Void!:
-    print("closed-{self.id}")
+    print(f"closed-{self.id}")
 
 fn saw(m: Marker) Void:
-    print("saw-{m.id}")
+    print(f"saw-{m.id}")
 
 fn saw_opt(m: Marker?) Void:
-    print("saw-{m.is_some()}")
+    print(f"saw-{m.is_some()}")
 
 fn mk(id: Int) Marker:
-    print("made-{id}")
+    print(f"made-{id}")
     return Marker(id)
 
 fn run() Void:
@@ -112,7 +112,7 @@ fn operations() List[Operation]:
 			"map",
 			"fn m: m.id",
 			"r := ",
-			"print(\"{r.is_ok()}\")",
+			"print(f\"{r.is_ok()}\")",
 		),
 		op("map_add", map_setup(), "items", "add", "1, @V@", "", ""),
 		op(
@@ -122,7 +122,7 @@ fn operations() List[Operation]:
 			"get",
 			"1",
 			"r := ",
-			"print(\"{r.is_some()}\")",
+			"print(f\"{r.is_some()}\")",
 		),
 		op(
 			"optional_or_else",
@@ -194,7 +194,7 @@ fn operations() List[Operation]:
 			"error",
 			"",
 			"r := ",
-			"print(\"{r.is_some()}\")",
+			"print(f\"{r.is_some()}\")",
 		),
 		op(
 			"result_error_failed",
@@ -203,7 +203,7 @@ fn operations() List[Operation]:
 			"error",
 			"",
 			"r := ",
-			"print(\"{r.is_some()}\")",
+			"print(f\"{r.is_some()}\")",
 		),
 	]
 
