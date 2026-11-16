@@ -867,7 +867,12 @@ impl Checker {
         let mut broken: Option<String> = None;
         for item in &module.imports {
             let path = item.path.as_ref();
-            let found: Option<SymRef> = if path.starts_with("@std/") {
+            let redirected = if path.starts_with("@std/") {
+                self.imports.get(module.file, item.id)
+            } else {
+                None
+            };
+            let found: Option<SymRef> = if path.starts_with("@std/") && redirected.is_none() {
                 let pn = n(path);
                 if self.session.standard_source_module(pn).is_some() {
                     let f = self

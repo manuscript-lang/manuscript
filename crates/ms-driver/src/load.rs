@@ -230,8 +230,20 @@ fn load_entries(
         failed: HashMap::new(),
         resolved: HashMap::new(),
         seen_inputs,
+        mocks: HashMap::new(),
     };
     let file: Arc<str> = Arc::from(filename);
+    // Spike: `// ms: mock "@std/os/env.ms" "./fake_env.ms"` in the header of the entry or an extra
+    // entry file redirects that import, in every other module of the program, to the replacement.
+    let mut headers = extra_files.clone();
+    if !config.entry.is_empty() {
+        if let Ok(entry) = crate::project::source_path(&config.root, &config.entry, &overlay) {
+            headers.push(entry);
+        }
+    }
+    for header in &headers {
+        loader.scan_mocks(header);
+    }
     if !config.entry.is_empty() {
         let entry = match crate::project::source_path(&config.root, &config.entry, &overlay) {
             Ok(entry) => entry,
@@ -498,9 +510,33 @@ struct Loader<'a> {
     resolved: HashMap<(String, Box<str>), String>,
     // Keep first-seen input order without scanning every earlier path per module or asset.
     seen_inputs: HashSet<String>,
+    // Spike: import path (`@std/...`) to the canonical path of its test replacement.
+    mocks: HashMap<String, String>,
 }
 
 impl Loader<'_> {
+    /// Reads `// ms: mock "FROM" "TO"` lines from the header comment of `canonical`.
+    fn scan_mocks(&mut self, canonical: &str) {
+        let Ok(source) = std::fs::read_to_string(canonical) else {
+            return;
+        };
+        for line in source
+            .lines()
+            .take_while(|l| l.trim_start().starts_with("//"))
+        {
+            let Some(rest) = line.trim().strip_prefix("// ms: mock ") else {
+                continue;
+            };
+            let parts: Vec<&str> = rest.split('"').collect();
+            if parts.len() < 4 {
+                continue;
+            }
+            if let Ok(target) = self.resolve(canonical, parts[3]) {
+                self.mocks.insert(parts[1].to_string(), target);
+            }
+        }
+    }
+
     fn add_discovered(&mut self, syms: ms_syntax::Names, files: &[String]) {
         for file in files {
             let result = crate::project::source_path(&self.config.root, file, self.overlay)
@@ -609,10 +645,17 @@ impl Loader<'_> {
         let key = n(file);
         let mut resolved: Vec<(ms_syntax::NodeId, Name)> = Vec::new();
         for item in &module.imports {
-            if item.path.starts_with("@std/") {
+            let mocked = self.mocks.get(item.path.as_ref()).cloned();
+            if item.path.starts_with("@std/") && mocked.as_deref().is_none_or(|m| m == canonical) {
                 continue;
             }
-            match self.import_module(syms, canonical, file, item) {
+            let outcome = match mocked {
+                Some(target) if item.path.starts_with("@std/") => {
+                    self.visit(syms, &target).map_err(|failure| failure)
+                }
+                _ => self.import_module(syms, canonical, file, item),
+            };
+            match outcome {
                 Ok(target) => resolved.push((item.id, target)),
                 Err(failure) if self.recover => {
                     self.graph
