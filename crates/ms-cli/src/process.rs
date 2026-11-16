@@ -30,20 +30,43 @@ unsafe extern "C" {
     #[cfg(unix)]
     fn write(fd: i32, buf: *const core::ffi::c_void, len: usize) -> isize;
     #[cfg(unix)]
-    fn close(fd: i32) -> i32;
+    fn fcntl(fd: i32, cmd: i32, arg: i32) -> i32;
+    #[cfg(unix)]
+    fn waitid(idtype: i32, id: u32, info: *mut core::ffi::c_void, options: i32) -> i32;
 }
 
 #[cfg(windows)]
 unsafe extern "system" {
     fn TerminateProcess(process: isize, code: u32) -> i32;
+    fn WaitForSingleObject(handle: isize, millis: u32) -> u32;
 }
+
+#[cfg(unix)]
+const F_SETFD: i32 = 2;
+#[cfg(unix)]
+const F_SETFL: i32 = 4;
+#[cfg(unix)]
+const FD_CLOEXEC: i32 = 1;
+#[cfg(all(unix, target_os = "linux"))]
+const O_NONBLOCK: i32 = 0o4000;
+#[cfg(all(unix, not(target_os = "linux")))]
+const O_NONBLOCK: i32 = 0x4;
+/// `waitid`: wait for a process id, for its exit, leaving the exit status to be reaped later.
+#[cfg(unix)]
+const P_PID: i32 = 1;
+#[cfg(unix)]
+const WEXITED: i32 = 4;
+#[cfg(all(unix, target_os = "linux"))]
+const WNOWAIT: i32 = 0x0100_0000;
+#[cfg(all(unix, not(target_os = "linux")))]
+const WNOWAIT: i32 = 0x20;
 
 /// What a supervised wait wakes for.
 enum Event {
-    /// The child ended.
-    Exited(std::io::Result<ExitStatus>),
-    /// SIGINT or SIGTERM arrived.
-    Signal,
+    /// The child ended (and is not yet reaped).
+    Exited,
+    /// SIGINT or SIGTERM arrived (its number).
+    Signal(i32),
     /// A reader thread has output waiting.
     Output,
 }
@@ -61,15 +84,16 @@ impl Wake {
 /// Every live `Stops` listens here: a signal reaches each of their waits.
 static HUB: Mutex<Vec<(usize, Sender<Event>)>> = Mutex::new(Vec::new());
 /// The write end of the pipe the Unix signal handler writes to (-1 when none is open).
+#[cfg(unix)]
 static SIGNAL_PIPE: AtomicI32 = AtomicI32::new(-1);
 
 fn hub() -> MutexGuard<'static, Vec<(usize, Sender<Event>)>> {
     HUB.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn broadcast() {
+fn broadcast(signum: i32) {
     for (_, sender) in hub().iter() {
-        let _ = sender.send(Event::Signal);
+        let _ = sender.send(Event::Signal(signum));
     }
 }
 
@@ -79,8 +103,8 @@ fn send_signal(pid: u32, handle: isize, signum: i32) {
     #[cfg(unix)]
     {
         let _ = handle;
-        // SAFETY: the pid belongs to a child of this process that has not been reaped (its waiter
-        // reports the exit only after this loop stops sending).
+        // SAFETY: the pid belongs to a child of this process that has not been reaped: only the
+        // supervising thread reaps it, after it has stopped sending.
         unsafe { kill(pid as i32, signum) };
     }
     #[cfg(windows)]
@@ -117,7 +141,7 @@ extern "C" fn record(signum: i32) {
     }
     // On Windows the handler runs on a thread of its own, where locking is allowed.
     #[cfg(not(unix))]
-    broadcast();
+    broadcast(signum);
 }
 
 /// How a supervised child ended.
@@ -150,9 +174,7 @@ impl Stops {
         {
             let mut listeners = hub();
             #[cfg(unix)]
-            if listeners.is_empty() {
-                open_signal_pipe();
-            }
+            open_signal_pipe();
             listeners.push((id, wake.clone()));
         }
         // SAFETY: `record` is async-signal-safe (an atomic store and a pipe write) and has the C
@@ -179,25 +201,44 @@ impl Stops {
     }
 }
 
-/// Opens the pipe the handler writes to and the thread that turns its bytes into wakes; the
-/// thread ends, closing the read end, when the last `Stops` drops and the write end closes.
+/// Opens, once for the process, the pipe the handler writes to and the thread that turns its
+/// bytes into wakes. Both live as long as the process, so a handler never meets a closed
+/// descriptor; both ends close on exec so a child does not hold them.
 #[cfg(unix)]
 fn open_signal_pipe() {
-    let mut fds = [-1i32; 2];
-    // SAFETY: `fds` holds the two descriptors `pipe` writes.
-    if unsafe { pipe(fds.as_mut_ptr()) } != 0 {
-        return;
-    }
-    SIGNAL_PIPE.store(fds[1], Ordering::SeqCst);
-    let reader = fds[0];
-    std::thread::spawn(move || {
-        let mut byte = 0u8;
-        // SAFETY: `byte` is writable for one byte; the descriptor is this thread's own.
-        while unsafe { read(reader, (&raw mut byte).cast(), 1) } > 0 {
-            broadcast();
+    static OPENED: std::sync::Once = std::sync::Once::new();
+    OPENED.call_once(|| {
+        let mut fds = [-1i32; 2];
+        // SAFETY: `fds` holds the two descriptors `pipe` writes.
+        if unsafe { pipe(fds.as_mut_ptr()) } != 0 {
+            return;
         }
-        // SAFETY: the read end belongs to this thread.
-        unsafe { close(reader) };
+        for fd in fds {
+            // SAFETY: plain `fcntl` on the descriptors just created; the write end must not
+            // block a signal handler.
+            unsafe {
+                fcntl(fd, F_SETFD, FD_CLOEXEC);
+            }
+        }
+        // SAFETY: as above.
+        unsafe { fcntl(fds[1], F_SETFL, O_NONBLOCK) };
+        SIGNAL_PIPE.store(fds[1], Ordering::SeqCst);
+        let reader = fds[0];
+        std::thread::spawn(move || {
+            let mut byte = 0u8;
+            loop {
+                // SAFETY: `byte` is writable for one byte; the descriptor stays open for the
+                // process.
+                let n = unsafe { read(reader, (&raw mut byte).cast(), 1) };
+                if n > 0 {
+                    broadcast(i32::from(byte));
+                } else if n == 0
+                    || std::io::Error::last_os_error().kind() != std::io::ErrorKind::Interrupted
+                {
+                    break;
+                }
+            }
+        });
     });
 }
 
@@ -209,16 +250,7 @@ impl Drop for Stops {
             signal(SIGINT, restore(self.old_int));
             signal(SIGTERM, restore(self.old_term));
         }
-        let mut listeners = hub();
-        listeners.retain(|(id, _)| *id != self.id);
-        #[cfg(unix)]
-        if listeners.is_empty() {
-            let fd = SIGNAL_PIPE.swap(-1, Ordering::SeqCst);
-            if fd >= 0 {
-                // SAFETY: the write end was opened by `open_signal_pipe` and no handler uses it now.
-                unsafe { close(fd) };
-            }
-        }
+        hub().retain(|(id, _)| *id != self.id);
     }
 }
 
@@ -245,69 +277,103 @@ pub fn wait_supervised(
     let mut last = None;
     let pid = child.id();
     let handle = child_handle(child);
+    // The thread only learns that the child ended; this one reaps it, so until then the process
+    // id is the child's and a signal sent to it cannot reach another process.
     let sender = stops.wake.clone();
-    let result = std::thread::scope(|scope| {
-        scope.spawn(move || {
-            let _ = sender.send(Event::Exited(child.wait()));
-        });
-        let mut next_poll = poll_every.map(|every| Instant::now() + every);
-        loop {
-            let deadline = [
-                timeout.filter(|_| !timed_out).map(|limit| started + limit),
-                next_poll,
-            ]
-            .into_iter()
-            .flatten()
-            .min();
-            let event = match deadline {
-                Some(at) => stops
-                    .events
-                    .recv_timeout(at.saturating_duration_since(Instant::now())),
-                None => stops
-                    .events
-                    .recv()
-                    .map_err(|_| RecvTimeoutError::Disconnected),
-            };
-            match event {
-                Ok(Event::Exited(Ok(status))) => {
+    std::thread::spawn(move || {
+        wait_for_exit(pid, handle);
+        let _ = sender.send(Event::Exited);
+    });
+    let mut next_poll = poll_every.map(|every| Instant::now() + every);
+    let result = loop {
+        let deadline = [
+            timeout.filter(|_| !timed_out).map(|limit| started + limit),
+            next_poll,
+        ]
+        .into_iter()
+        .flatten()
+        .min();
+        let event = match deadline {
+            Some(at) => stops
+                .events
+                .recv_timeout(at.saturating_duration_since(Instant::now())),
+            None => stops
+                .events
+                .recv()
+                .map_err(|_| RecvTimeoutError::Disconnected),
+        };
+        match event {
+            Ok(Event::Exited) => {
+                break child.wait().map(|status| Waited {
+                    status,
+                    timed_out,
+                    interrupted,
+                });
+            }
+            Ok(Event::Signal(signum)) => {
+                // The event carries the number: the process-wide pending slot may be taken by
+                // another waiter, and each wait must forward what it was woken for.
+                stops.take();
+                interrupted = true;
+                last = Some(signum);
+                send_signal(pid, handle, signum);
+            }
+            Ok(Event::Output) | Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => {
+                break Err(std::io::Error::other("supervision ended"));
+            }
+        }
+        if next_poll.is_some_and(|at| Instant::now() >= at) {
+            next_poll = poll_every.map(|every| Instant::now() + every);
+        }
+        let late = !timed_out && timeout.is_some_and(|limit| started.elapsed() >= limit);
+        // Draining goes on after a kill, so the last output is taken as it arrives.
+        let asked = drain();
+        if late || (asked && !timed_out) {
+            // A child that ended first keeps its own status.
+            match child.try_wait() {
+                Ok(Some(status)) => {
                     break Ok(Waited {
                         status,
                         timed_out,
                         interrupted,
                     });
                 }
-                Ok(Event::Exited(Err(error))) => break Err(error),
-                Ok(Event::Signal) => {
-                    if let Some(pending) = stops.take() {
-                        interrupted = true;
-                        last = Some(pending);
-                        send_signal(pid, handle, pending);
-                    }
-                }
-                Ok(Event::Output) | Err(RecvTimeoutError::Timeout) => {}
-                Err(RecvTimeoutError::Disconnected) => {
-                    break Err(std::io::Error::other("supervision ended"));
-                }
+                Ok(None) => {}
+                Err(error) => break Err(error),
             }
-            if !timed_out && timeout.is_some_and(|limit| started.elapsed() >= limit) {
-                timed_out = true;
-                send_signal(pid, handle, SIGKILL);
-            }
-            let polled = next_poll.is_some_and(|at| Instant::now() >= at);
-            if polled {
-                next_poll = poll_every.map(|every| Instant::now() + every);
-            }
-            if drain() && !timed_out {
-                timed_out = true;
-                send_signal(pid, handle, SIGKILL);
-            }
+            timed_out = true;
+            send_signal(pid, handle, SIGKILL);
         }
-    });
+    };
     // Hand the signal back to the caller's `Stops` (and a surrounding one in the watch loops).
     if let Some(pending) = last {
         PENDING.store(pending, Ordering::SeqCst);
     }
     result
+}
+
+/// Blocks until the process ends, without reaping it.
+#[cfg(unix)]
+fn wait_for_exit(pid: u32, _handle: isize) {
+    // `waitid` fills a `siginfo_t` (128 bytes at most on the platforms here); its contents
+    // are not read.
+    let mut info = [0u64; 32];
+    loop {
+        // SAFETY: `info` is writable and larger than a `siginfo_t`; waiting on a child's pid
+        // with `WNOWAIT` leaves it to be reaped by its parent.
+        let done = unsafe { waitid(P_PID, pid, info.as_mut_ptr().cast(), WEXITED | WNOWAIT) };
+        if done == 0 || std::io::Error::last_os_error().kind() != std::io::ErrorKind::Interrupted {
+            return;
+        }
+    }
+}
+
+/// Blocks until the process ends.
+#[cfg(windows)]
+fn wait_for_exit(_pid: u32, handle: isize) {
+    // SAFETY: the handle belongs to a `Child` that its supervisor keeps until the exit is seen.
+    unsafe { WaitForSingleObject(handle, u32::MAX) };
 }
 
 /// Ask `child` to stop the way Ctrl-C does, so it can cancel and clean up.
@@ -433,13 +499,18 @@ mod tests {
     fn a_signal_to_the_launcher_reaches_the_child() {
         let _turn = serial();
         let stops = Stops::catch();
-        let mut child = sh("trap 'exit 7' INT; while :; do sleep 0.05; done");
-        let pid = std::process::id() as i32;
-        std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(300));
-            // SAFETY: sends SIGINT to this process, whose disposition `Stops` replaced.
-            unsafe { kill(pid, SIGINT) };
-        });
+        let mut child = sh("trap 'exit 7' INT; echo ready; while :; do sleep 0.05; done");
+        // The shell is ready for the signal once it has printed: a signal sent earlier would
+        // find its default disposition and end it.
+        let mut ready = [0u8; 6];
+        child
+            .stdout
+            .as_mut()
+            .unwrap()
+            .read_exact(&mut ready)
+            .unwrap();
+        // SAFETY: sends SIGINT to this process, whose disposition `Stops` replaced.
+        unsafe { kill(std::process::id() as i32, SIGINT) };
         let waited = wait_supervised(&mut child, &stops, None, None, &mut || false).unwrap();
         assert!(waited.interrupted);
         assert_eq!(waited.status.code(), Some(7));
