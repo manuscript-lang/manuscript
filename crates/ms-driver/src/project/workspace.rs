@@ -108,6 +108,10 @@ pub fn read(root_project: &Project) -> Result<Workspace, ProjectError> {
         for entry in entries {
             let entry = entry.map_err(|e| ProjectError::path("read directory", &parent, &e))?;
             let path = entry.path();
+            // A hidden directory (.git, .cache) is never a member.
+            if entry.file_name().to_string_lossy().starts_with('.') {
+                continue;
+            }
             if path.join("ms.toml").is_file() {
                 let canonical = pathops::eval_symlinks(&path.to_string_lossy())?;
                 if within(&root, &canonical) {
@@ -134,6 +138,13 @@ pub fn read(root_project: &Project) -> Result<Workspace, ProjectError> {
         crate::project::manifest::read_manifest(&manifest, &mut project).map_err(|e| {
             ProjectError::msg(format!("workspace member {}: {e}", rel_or(&root, &dir)))
         })?;
+        if dir != root && std::path::Path::new(&dir).join("ms.lock").is_file() {
+            return Err(ProjectError::msg(format!(
+                "workspace member {} has its own ms.lock, which is never read; the workspace keeps one ms.lock at {}, so delete the member's",
+                rel_or(&root, &dir),
+                root
+            )));
+        }
         if project.name.is_empty() {
             return Err(ProjectError::msg(format!(
                 "workspace member {} has no [project]; a member is a project with a name and source",
