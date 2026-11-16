@@ -768,7 +768,10 @@ pub(crate) fn set_idle(idle: bool) {
     }
     if idle {
         RESTING.fetch_or(1 << me, Ordering::AcqRel);
-        if SLOTS[me].live.load(Ordering::SeqCst) == 0 {
+        // A thread that was woken for a start that is not old enough to take yet is committed to
+        // it: advertising itself again would send the next start's wake-up to this thread, and
+        // the threads that sleep on would never be woken for theirs.
+        if SLOTS[me].live.load(Ordering::SeqCst) == 0 && steal_wait_ns() < 0 {
             IDLE.fetch_or(1 << me, Ordering::AcqRel);
         }
     } else {
