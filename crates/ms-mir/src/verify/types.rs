@@ -171,7 +171,9 @@ impl InstCheck<'_, '_> {
             | Op::IfaceIs
             | Op::IfaceData => self.closures_and_interfaces(),
             Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod => self.calls(),
-            Op::Clone | Op::AltOwn | Op::MoveOut | Op::Drop | Op::DropIf => self.ownership(),
+            Op::Clone | Op::AltOwn | Op::MoveOut | Op::Drop | Op::Forget | Op::DropIf => {
+                self.ownership()
+            }
             Op::Slot
             | Op::ListAddr
             | Op::ListAddrU
@@ -1145,6 +1147,7 @@ impl InstCheck<'_, '_> {
                 self.arity(1)?;
                 self.want(self.v.needs_drop(self.t(0)), "drop takes a droppable value")
             }
+            Op::Forget => self.arity(1),
             Op::DropIf => {
                 self.arity(2)?;
                 self.want(

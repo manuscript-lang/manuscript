@@ -29,6 +29,7 @@ fn handles(op: Op) -> bool {
         Op::Clone
             | Op::AltOwn
             | Op::Drop
+            | Op::Forget
             | Op::DropIf
             | Op::MoveOut
             | Op::TypeDesc
@@ -114,7 +115,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.elem_ptr(&LTy::I8, &addr, &Val::int(0));
         }
         // The moved value is the operand itself: nothing to write.
-        Op::MoveOut => {}
+        Op::MoveOut | Op::Forget => {}
         Op::Clone | Op::AltOwn => {
             let ty = cloned_ty(cx.f, inst);
             clone_leaves(cx, ty, &vals[&inst.args[0].index()], &out, b);

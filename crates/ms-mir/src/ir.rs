@@ -306,7 +306,7 @@ pub enum Op {
     // Closures and interface views.
     ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
     // Ownership.
-    Clone, Drop, DropIf, MoveOut,
+    Clone, Drop, DropIf, MoveOut, Forget,
     // Raw memory: stack slots, interior pointers into lists and types.
     Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd, PtrNull, PtrLoadU,
     // Calls.
