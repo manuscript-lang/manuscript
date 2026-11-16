@@ -111,7 +111,7 @@ pub(super) struct Pending {
     pub keep_alive: bool,
     pub expect_continue: bool,
     /// When the request arrived; read only when the server has a request timeout.
-    pub started: Option<Instant>,
+    pub started: Option<i64>,
 }
 
 pub(super) struct ConnSt {
@@ -1675,7 +1675,7 @@ impl Server {
             target,
             keep_alive,
             expect_continue: expect,
-            started: self.limits.timeout.map(|_| Instant::now()),
+            started: self.limits.timeout.map(|_| rt::monotonic_ns()),
         }))
     }
 

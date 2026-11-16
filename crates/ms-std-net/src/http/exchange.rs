@@ -50,6 +50,8 @@ pub(super) struct ExSt {
     pub rejected: bool,
     pub websocket: Option<Rc<Socket>>,
     pub deadline: Option<Instant>,
+    /// The deadline of an HTTP/1 request on `rt::monotonic_ns`, which `deadline` has not.
+    pub deadline_ns: Option<i64>,
     /// The HTTP/2 stream this exchange answers; `None` on HTTP/1.
     pub h2: Option<u32>,
 }
@@ -82,6 +84,9 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
         fields.push(("Host".into(), host.clone().into_bytes()));
     }
     let timeout = server.limits.timeout;
+    let deadline_ns = timeout
+        .zip(started)
+        .map(|(t, at)| at.saturating_add(t.as_nanos().min(i64::MAX as u128) as i64));
     let exchange = Rc::new(Exchange {
         server: server_rc,
         conn: conn.clone(),
@@ -116,20 +121,25 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             upgraded: false,
             rejected: false,
             websocket: None,
-            deadline: timeout.zip(started).map(|(t, at)| at + t),
+            deadline: None,
+            deadline_ns,
             h2: None,
         }),
     });
-    crate::rt::limit_current_until(timeout.zip(started).map(|(t, at)| at + t));
+    crate::rt::limit_current_at(deadline_ns);
     let outcome = server.dispatch.streaming(exchange.clone());
-    crate::rt::limit_current_until(None);
-    let late = timeout.zip(started).is_some_and(|(t, at)| at.elapsed() > t);
+    crate::rt::limit_current_at(None);
+    let late = deadline_ns.is_some_and(|at| crate::rt::monotonic_ns() > at);
     exchange.finish(outcome, late);
 }
 
 impl Exchange {
     pub(super) fn deadline(&self) -> Deadline {
-        match self.st.borrow().deadline {
+        let st = self.st.borrow();
+        if let Some(at) = st.deadline_ns {
+            return Deadline::at_ns(at);
+        }
+        match st.deadline {
             Some(at) => Deadline::after(at.saturating_duration_since(Instant::now())),
             None => Deadline::none(),
         }

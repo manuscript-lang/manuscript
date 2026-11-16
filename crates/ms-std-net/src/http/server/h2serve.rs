@@ -799,6 +799,7 @@ fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started:
             rejected: false,
             websocket: None,
             deadline: timeout.map(|t| started + t),
+            deadline_ns: None,
             h2: Some(id),
         }),
     });

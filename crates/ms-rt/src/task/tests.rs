@@ -71,6 +71,46 @@ fn tasks_interleave_sleep_and_join() {
     teardown();
 }
 
+unsafe extern "C-unwind" fn yielder(arg: *mut u8) {
+    for _ in 0..arg as usize {
+        // SAFETY: called from a running task.
+        unsafe { msrt_task_yield() };
+    }
+}
+
+/// With a timer pending, the scheduler reads the clock once per round: once per pass over the
+/// tasks that are ready, so `n` yielding tasks read about once per `n` switches.
+#[test]
+#[cfg_attr(miri, ignore = "context switches use inline assembly")]
+fn timers_are_checked_once_per_round() {
+    let _g = lock();
+    for tasks in [1usize, 2, 64] {
+        teardown();
+        // SAFETY: tests hold the global lock; every handle is joined or cancelled once.
+        unsafe {
+            let timer = msrt_task_spawn(sleeper, core::ptr::without_provenance_mut(60_000), 0, 0);
+            msrt_task_yield();
+            let each = 40_000 / tasks;
+            CLOCK_READS.store(0, Ordering::Relaxed);
+            let handles: Vec<u64> = (0..tasks)
+                .map(|_| msrt_task_spawn(yielder, core::ptr::without_provenance_mut(each), 0, 0))
+                .collect();
+            for h in handles {
+                assert_eq!(msrt_task_join(h, null_mut()), 0);
+            }
+            let reads = CLOCK_READS.load(Ordering::Relaxed) as usize;
+            msrt_task_cancel(timer);
+            let switches = each * tasks;
+            // One read per round, plus the start and the end of the run.
+            assert!(
+                reads <= switches / tasks + 3 * tasks + 16,
+                "{reads} clock reads for {switches} switches of {tasks} tasks"
+            );
+        }
+        teardown();
+    }
+}
+
 unsafe extern "C-unwind" fn deadlocked_token(arg: *mut u8) {
     // SAFETY: the test owns the live token and deliberately supplies no completion.
     unsafe { msrt_token_park(arg as u64, -1, null_mut()) };
