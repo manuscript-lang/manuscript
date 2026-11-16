@@ -170,7 +170,8 @@ fn a_member_holds_the_same_effect_rule_as_a_package() {
     let denied = ms(&root.join("app"), &cache, &["check", "ms.toml"]);
     assert!(!denied.status.success());
     assert!(
-        err(&denied).contains("std.net.*") && err(&denied).contains("does not allow"),
+        err(&denied).contains("workspace member util may use std.net.*")
+            && err(&denied).contains("does not allow"),
         "{}",
         err(&denied)
     );
@@ -442,4 +443,28 @@ fn init_workspace_creates_members_that_check_test_and_run() {
     assert!(!again.status.success());
     let both = ms(&root, &cache, &["init", "--lib", "--workspace", "x"]);
     assert_eq!(both.status.code(), Some(2));
+}
+
+#[test]
+fn a_wildcard_skips_hidden_directories_and_a_member_lock_is_an_error() {
+    let root = scratch("workspace-hidden-and-lock");
+    let cache = root.join("cache");
+    workspace(&root, "\"@util\" = { path = \"../libs/util\" }\n");
+    // A hidden directory holding a manifest is not a member, even under `libs/*`.
+    file(
+        &root,
+        "libs/.cache/ms.toml",
+        "[project]\nname = \"util\"\nsource = \"src\"\n",
+    );
+    let ok = ms(&root.join("app"), &cache, &["check", "ms.toml"]);
+    assert!(ok.status.success(), "{}", err(&ok));
+
+    file(&root, "libs/util/ms.lock", "");
+    let locked = ms(&root.join("app"), &cache, &["check", "ms.toml"]);
+    assert!(!locked.status.success());
+    assert!(
+        err(&locked).contains("workspace member libs/util has its own ms.lock"),
+        "{}",
+        err(&locked)
+    );
 }
