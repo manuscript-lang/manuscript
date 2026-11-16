@@ -133,6 +133,29 @@ pub(super) fn deadline_at(started: i64, timeout: std::time::Duration) -> i64 {
     started.saturating_add(timeout.as_nanos().min(i64::MAX as u128) as i64)
 }
 
+thread_local! {
+    /// The buffer a response head is built in, kept between responses so none allocates one.
+    static HEAD_BUFFER: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Largest head buffer kept for reuse; a response that began with a large body chunk frees it.
+const KEPT_HEAD_BUFFER: usize = 16 << 10;
+
+/// An empty buffer for a response head: the kept one, or a new one when another task on this
+/// thread holds it while its write waits.
+fn take_head_buffer(body: usize) -> Vec<u8> {
+    let mut out = HEAD_BUFFER.with(|b| std::mem::take(&mut *b.borrow_mut()));
+    out.clear();
+    out.reserve(256 + body);
+    out
+}
+
+fn return_head_buffer(out: Vec<u8>) {
+    if out.capacity() <= KEPT_HEAD_BUFFER {
+        HEAD_BUFFER.with(|b| *b.borrow_mut() = out);
+    }
+}
+
 impl Exchange {
     pub(super) fn deadline(&self) -> Deadline {
         self.st
@@ -420,7 +443,7 @@ impl Exchange {
         content_length: Option<usize>,
         deadline: Deadline,
     ) -> Result<(), IoErr> {
-        let mut out = Vec::with_capacity(256 + first.len());
+        let mut out = take_head_buffer(first.len());
         {
             let mut st = self.st.borrow_mut();
             h1::status_line(&mut out, st.status as u16);
@@ -456,7 +479,9 @@ impl Exchange {
                 out.extend_from_slice(first);
             }
         }
-        self.send(&out, deadline)
+        let sent = self.send(&out, deadline);
+        return_head_buffer(out);
+        sent
     }
 
     /// `HttpExchange.write_bytes(data)`.
