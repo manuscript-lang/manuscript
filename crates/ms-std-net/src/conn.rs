@@ -676,7 +676,15 @@ impl Listener {
                         });
                     }
                 }
-                Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
+                // A signal, or a connection that went away before it was taken: the next
+                // attempt succeeds at once, so there is nothing to report or wait for.
+                Err(e)
+                    if matches!(
+                        e.kind(),
+                        io::ErrorKind::Interrupted
+                            | io::ErrorKind::ConnectionAborted
+                            | io::ErrorKind::ConnectionReset
+                    ) => {}
                 Err(e) => {
                     return Err(if self.closed.get() {
                         NetErr::Closed

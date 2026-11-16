@@ -26,7 +26,7 @@ import (
 	WebSocketOptions,
 	WebSocketWire,
 	web_socket_from from "@std/net/websocket.ms",
-	Duration, Timestamp, sleep from "@std/time.ms",
+	Duration, Timestamp, nanoseconds, sleep from "@std/time.ms",
 
 	msrt_runtime_limit,
 	msrt_runtime_set_threads,
@@ -699,15 +699,24 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 
 	var next = 0
 
+	// The back-off, in nanoseconds, between accept attempts that failed for a reason no
+	// retry fixes (EMFILE, ENFILE, ENOBUFS, ENOMEM): 5 ms, doubling up to 1 s.
+	var pause = 5000000
+
 	while true:
 		accepted := msstd_http_serving_accept(listening.serving)
 
 		if accepted.is_error():
 			if accepted.err().kind == "EBADF": return ok()
 
-			void sleep(50.milliseconds()).wait()
+			// The runtime already retried the errors of a single connection. What is
+			// left (out of descriptors or memory) waits for something to close, longer
+			// each time.
+			void sleep(nanoseconds(pause)).wait()
+			pause = if pause < 500000000: pause * 2 else: 1000000000
 			continue
 
+		pause = 5000000
 		void accepting.deals[next].write(accepted.get())
 		next = (next + 1) % count
 
