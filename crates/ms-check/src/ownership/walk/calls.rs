@@ -126,6 +126,22 @@ impl Walker<'_> {
                 .for_each(|m| *m = ParamMode::Borrow);
         }
         self.facts.calls.insert(e.id, modes.clone());
+        // A native read lent in place (`s.value.get()`) is not the receiver's to hand over: an owning
+        // position would copy it, and a value with no `clone` has no copy, so the caller's owner and the new
+        // owner would both close it.
+        if d == Demand::Move
+            && self.class_of(e) != Class::Copy
+            && !self.cx.classes.clonable(self.syms, &self.cx.m.ty(e))
+            && !self.projected.contains(&e.id)
+            && let Some((NativeBorrow::PayloadGet, recv)) = self.native_borrow_of(e)
+            && self.is_place(recv)
+        {
+            let (text, from) = (self.expr_text(e), self.expr_text(recv));
+            self.error(
+                e.pos,
+                format!("cannot move `{text}` out: it is read in place from `{from}`, which keeps it; it has one owner and no `clone`, so use it in place (`if value := {from}:`) or move `{from}` itself"),
+            );
+        }
         let name = self.call_name(callee);
         let member = method_callee(self.syms, self.cx.m, callee);
         let receiver_expr = match (&member.kind, cx.m.resolution(e)) {
@@ -250,7 +266,7 @@ impl Walker<'_> {
             // cursor walk (`n := cur.get()`, `cur = n.next`) clone the rest of the list per step.
             let takes_last_use = args.is_empty()
                 && native_borrow(&self.cx.m.ty(r), &name, 0) == Some(NativeBorrow::PayloadGet)
-                && self.owned_local_at_last_use(r);
+                && (self.owned_local_at_last_use(r) || self.param_payload_take(e, r));
             if mode == ParamMode::Borrow
                 && (takes_payload || takes_preserved || takes_last_use)
                 && self.native_borrow_receiver(e).is_none()
