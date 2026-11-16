@@ -259,6 +259,24 @@ impl Reactor {
         }
     }
 
+    /// Settles the timeouts a task other than the reactor started (a request task that finished,
+    /// the accept loop adopting a connection) before it ends, on the same thread: the reactor is
+    /// parked, and a sweep it must run earlier than the one it waits for wakes it.
+    fn settle_pending(&self) {
+        let tokens = self.pending.take();
+        let any = !tokens.is_empty();
+        self.pending.set(tokens);
+        if !any {
+            return;
+        }
+        let before = self.next_sweep.get();
+        self.settle_timeouts();
+        let after = self.next_sweep.get();
+        if after.is_some() && (before.is_none() || after < before) {
+            self.poller.kick();
+        }
+    }
+
     /// Reads the clock, only while a timeout runs or has just started, sets the deadlines of the
     /// timeouts that started since the last read and sweeps if one is due. Runs before every
     /// sleep and in every pass of `service`, so a reactor that never idles (the poller always has
