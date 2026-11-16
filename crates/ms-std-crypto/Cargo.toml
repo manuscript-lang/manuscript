@@ -21,9 +21,9 @@ sha3 = { version = "0.12", default-features = false }
 subtle = { version = "2", default-features = false }
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
-p256 = { version = "0.14", default-features = false, features = ["alloc", "arithmetic", "ecdh", "ecdsa", "pkcs8"] }
-p384 = { version = "0.14", default-features = false, features = ["alloc", "arithmetic", "ecdh", "ecdsa", "pkcs8"] }
-p521 = { version = "0.14", default-features = false, features = ["alloc", "arithmetic", "ecdh", "ecdsa", "pkcs8"] }
+p256 = { version = "0.14", default-features = false, features = ["alloc", "arithmetic", "ecdh", "ecdsa", "pkcs8", "precomputed-tables", "std"] }
+p384 = { version = "0.14", default-features = false, features = ["alloc", "arithmetic", "ecdh", "ecdsa", "pkcs8", "precomputed-tables", "std"] }
+p521 = { version = "0.14", default-features = false, features = ["alloc", "arithmetic", "ecdh", "ecdsa", "pkcs8", "precomputed-tables", "std"] }
 rsa = { version = "0.10.0-rc.19", default-features = false, features = ["encoding", "sha2"] }
 getrandom = { version = "0.4", default-features = false, features = ["sys_rng"] }
 rand_core = { version = "0.10", default-features = false }
