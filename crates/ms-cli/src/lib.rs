@@ -240,6 +240,63 @@ fn expand_workspace(inv: &mut invocation::Invocation, io: &mut Io) -> Result<(),
     Ok(())
 }
 
+fn is_manifest(target: &str) -> bool {
+    ms_driver::project::pathops::base(target) == "ms.toml"
+}
+
+/// `ms test` at a workspace root: each member is its own program with its own tests, so the
+/// members run one after another and the worst status wins. `--json` holds one document per
+/// member, as `check --each` does.
+fn test_members<L: Lower>(
+    syms: ms_syntax::Names,
+    engine: &Engine<L>,
+    manifests: &[String],
+    request: &TestRequest,
+    io: &mut Io,
+) -> i32 {
+    let mut status = 0;
+    let mut results = Vec::new();
+    for manifest in manifests {
+        let member = TestRequest {
+            filename: manifest.clone(),
+            extra: Vec::new(),
+            ..request.clone()
+        };
+        if !request.json {
+            let _ = writeln!(io.stderr, "ms: testing {manifest}");
+            status = status.max(engine.test(syms, &member, io).unwrap_or(1));
+            continue;
+        }
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let code = {
+            let mut sub = Io {
+                stdin: &mut *io.stdin,
+                stdout: &mut out,
+                stderr: &mut err,
+            };
+            engine.test(syms, &member, &mut sub).unwrap_or(1)
+        };
+        status = status.max(code);
+        let document =
+            json::parse(String::from_utf8_lossy(&out).as_ref()).unwrap_or(json::Json::Null);
+        results.push(
+            json::Json::object()
+                .with("target", json::Json::str(manifest.clone()))
+                .with("exit_code", json::Json::int(i64::from(code)))
+                .with("document", document)
+                .with(
+                    "stderr",
+                    json::Json::str(String::from_utf8_lossy(&err).into_owned()),
+                ),
+        );
+    }
+    if request.json {
+        let document = json::Json::object().with("results", json::Json::Arr(results));
+        return util::emit_json(io, &document, status);
+    }
+    status
+}
+
 /// A command that takes a source file or project: parse and validate its
 /// options, then hand the request to the engine.
 fn run_source_command<L: Lower>(
@@ -317,9 +374,8 @@ fn run_source_command<L: Lower>(
             },
             io,
         ),
-        "test" => engine.test(
-            syms,
-            &TestRequest {
+        "test" => {
+            let request = TestRequest {
                 filename: inv.filename.clone(),
                 extra: inv.targets.iter().skip(1).cloned().collect(),
                 build_type: plan.build_type,
@@ -327,9 +383,12 @@ fn run_source_command<L: Lower>(
                 json: inv.structured,
                 watch: inv.watch,
                 arguments: inv.arguments.clone(),
-            },
-            io,
-        ),
+            };
+            if inv.targets.len() > 1 && inv.targets.iter().all(|t| is_manifest(t)) {
+                return test_members(syms, engine, &inv.targets, &request, io);
+            }
+            engine.test(syms, &request, io)
+        }
         "bench" => engine.bench(
             syms,
             &TestRequest {

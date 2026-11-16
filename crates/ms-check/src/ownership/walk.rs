@@ -910,7 +910,7 @@ impl Walker<'_> {
             } else {
                 self.error(
                     e.pos,
-                    format!("this closure outlives the statement but captures `{name_t}`, which is borrowed, not owned; capture `{name_t}.{CLONE}()` instead", name_t = self.syms.str(name)),
+                    format!("this closure outlives the statement but captures `{name_t}`, which is borrowed, not owned; bind `own := {name_t}.{CLONE}()` before the closure and capture `own` instead", name_t = self.syms.str(name)),
                 );
             }
         } else if !self.is_last(e.id, b) {

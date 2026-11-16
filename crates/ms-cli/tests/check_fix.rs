@@ -682,3 +682,18 @@ fn corpus_fixes_resolve_their_diagnostics_without_breaking_syntax() {
         failures.join("\n")
     );
 }
+
+#[test]
+fn fix_counts_a_file_once_across_rounds() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fix-rounds-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // The `var` fix and the `append` fix land in different rounds of one file.
+    let source = "fn main() Void:\n\tx := [1, 2]\n\tx.push(3)\n";
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert!(text.contains("in 1 file"), "{text}");
+    assert!(!text.contains("2 files"), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
