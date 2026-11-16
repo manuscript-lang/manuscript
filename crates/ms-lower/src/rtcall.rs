@@ -174,6 +174,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_bytes_append" => R::BytesAppend,
         "msrt_shield_enter" => R::ShieldEnter,
         "msrt_shield_exit" => R::ShieldExit,
+        "msrt_unwinding" => R::Unwinding,
         "msrt_string_split_view"
         | "msrt_string_split_view_into"
         | "msrt_string_split_first"

@@ -2,6 +2,7 @@
 //! typed program and the native backend.
 
 pub mod builder;
+pub mod cancel_edges;
 pub mod copies;
 pub mod count_ops;
 pub mod debug_files;

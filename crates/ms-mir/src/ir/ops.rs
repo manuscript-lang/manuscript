@@ -6,7 +6,7 @@ impl Op {
     /// Every opcode, for tables and the text parser.
     #[rustfmt::skip]
     pub const ALL: &'static [Op] = &[
-        Op::IConst, Op::FConst, Op::BConst, Op::VoidConst, Op::StrLit, Op::BytesLit,
+        Op::IConst, Op::FConst, Op::BConst, Op::VoidConst, Op::StrLit, Op::BytesLit, Op::Undef,
         Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::UAddChk, Op::USubChk, Op::UMulChk, Op::INegChk,
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Ushr, Op::Rotl, Op::Rotr, Op::UMulHi, Op::Clz, Op::Ctz, Op::Popcnt, Op::Not,
@@ -19,7 +19,7 @@ impl Op {
         Op::OptSome, Op::OptView, Op::OptViewAt, Op::OptNone, Op::OptNoneOwned, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox, Op::OptAddr,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::StrAsciiLen, Op::StrEqLit, Op::StrBytes, Op::BytesPush,
         Op::ClosureNew, Op::ClosureCap, Op::ClosureCapAddr, Op::IfaceNew, Op::IfaceBorrow, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
-        Op::Clone, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull, Op::PtrAdd, Op::PtrNull, Op::PtrLoadU, Op::PtrStoreU,
+        Op::Clone, Op::Drop, Op::DropIf, Op::MoveOut, Op::Forget, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull, Op::PtrAdd, Op::PtrNull, Op::PtrLoadU, Op::PtrStoreU,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
         Op::GlobalGet, Op::GlobalSet, Op::ScopeBegin, Op::ScopeOwn, Op::ScopeEnd, Op::ScopeDisown, Op::ScopeMark,
@@ -35,6 +35,7 @@ impl Op {
             Op::FConst => ("fconst", K::Float, true, effects!()),
             Op::BConst => ("bconst", K::Bool, true, effects!()),
             Op::VoidConst => ("void", K::None, true, effects!()),
+            Op::Undef => ("undef", K::None, true, effects!()),
             Op::StrLit => ("str", K::Str, true, effects!()),
             Op::BytesLit => ("bytes", K::Int, true, effects!()),
             Op::IAdd => ("iadd", K::None, true, effects!()),
@@ -153,6 +154,7 @@ impl Op {
             Op::Clone => ("clone", K::None, true, effects!(reads, alloc, ownership)),
             Op::Drop => ("drop", K::None, false, effects!(writes, ownership)),
             Op::MoveOut => ("move.out", K::None, true, effects!(writes)),
+            Op::Forget => ("forget", K::None, false, effects!(writes, ownership)),
             Op::DropIf => ("drop.if", K::None, false, effects!(writes, ownership)),
             Op::Slot => ("slot", K::Ty, true, effects!()),
             Op::Load => ("load", K::Ty, true, effects!(reads)),
