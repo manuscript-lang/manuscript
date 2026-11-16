@@ -1058,7 +1058,16 @@ impl Checker {
                                 list(&names, 12)
                             , binding_t = self.syms.str(binding)),
                         );
-                    } else if arm.bindings.is_empty() && !self.syms.str(name).is_empty() && !upper {
+                    } else if self.syms.str(name).is_empty() {
+                        self.res_error(
+                            arm.pos,
+                            format!(
+                                "a literal pattern cannot match {}; literals match only Int, String or Bool, so match one of the cases: {}",
+                                self.syms.str(t.name),
+                                list(&names, 12)
+                            ),
+                        );
+                    } else if arm.bindings.is_empty() && !upper {
                         self.res_error(
                             arm.pos,
                             format!(
