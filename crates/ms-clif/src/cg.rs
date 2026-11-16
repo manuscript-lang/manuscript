@@ -29,8 +29,6 @@ use std::collections::HashMap;
 pub(crate) const GLUE_PREFIX: &str = "ms.glue.";
 
 pub const CLOSURE_CODE: i32 = ms_rt_abi::CLOSURE_CODE_OFFSET as i32;
-/// Offset of the first capture in a closure object.
-pub const CLOSURE_CAPTURES: u32 = ms_rt_abi::CLOSURE_CAPTURES_OFFSET as u32;
 
 /// Kinds of generated helper functions.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
