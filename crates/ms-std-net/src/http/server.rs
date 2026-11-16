@@ -198,6 +198,8 @@ pub struct Reactor {
     /// The time of the current turn, read once after the poller returns; a request or deadline
     /// stamped within the turn reuses it instead of reading the clock again.
     now: Cell<Instant>,
+    /// Whether tasks ran since `now` was read.
+    stale: Cell<bool>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
 }
@@ -229,6 +231,7 @@ impl Reactor {
                 wall_anchor: Cell::new(None),
                 next_sweep: Cell::new(None),
                 now: Cell::new(Instant::now()),
+                stale: Cell::new(false),
                 beat,
             });
             *slot = Some(reactor.clone());
@@ -238,12 +241,22 @@ impl Reactor {
 
     /// The time of the current turn (see [`Reactor::tick`]).
     fn now(&self) -> Instant {
+        if self.stale.get() {
+            self.tick();
+        }
         self.now.get()
+    }
+
+    /// Marks the turn's time old: tasks ran since it was read, and one may have computed for a
+    /// long while. The next `now` reads the clock again.
+    fn mark_stale(&self) {
+        self.stale.set(true);
     }
 
     /// Reads the clock once for the turn that starts now.
     fn tick(&self) {
         self.now.set(Instant::now());
+        self.stale.set(false);
     }
 
     /// Makes sure the sweep runs by `at`.
@@ -541,6 +554,9 @@ impl Reactor {
             }
             let raw = self.poller.poll(&mut events, 64);
             self.tick();
+            if self.next_sweep.get().is_some_and(|at| at <= self.now.get()) {
+                self.sweep_timeouts();
+            }
             let mut yielded = false;
             for (at, &(token, flags)) in events.iter().enumerate() {
                 self.handle_event(token, flags);
@@ -550,6 +566,7 @@ impl Reactor {
                 if at + 1 < events.len() && !self.ready.borrow().is_empty() {
                     self.run_handlers();
                     rt::yield_now();
+                    self.mark_stale();
                     self.beat.turn();
                     yielded = true;
                 }
@@ -574,9 +591,7 @@ impl Reactor {
             // Let the requests started above run before more connections are read, for the
             // same reason as in the loop over the events.
             rt::yield_now();
-        }
-        if self.next_sweep.get().is_some_and(|at| at <= self.now()) {
-            self.sweep_timeouts();
+            self.mark_stale();
         }
     }
 }
@@ -2010,6 +2025,22 @@ pub(crate) mod tests {
 
     fn get(path: &str) -> Vec<u8> {
         format!("GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n").into_bytes()
+    }
+
+    #[test]
+    fn turn_time_is_read_again_after_tasks_ran() {
+        let reactor = Reactor::get();
+        reactor.tick();
+        let read = reactor.now();
+        std::thread::sleep(Duration::from_millis(30));
+        assert_eq!(reactor.now(), read, "no read without tasks having run");
+        reactor.mark_stale();
+        let fresh = reactor.now();
+        assert!(
+            fresh.duration_since(read) >= Duration::from_millis(30),
+            "a stamp after a long handler must not be measured from the old turn"
+        );
+        assert_eq!(reactor.now(), fresh, "one read serves the rest of the turn");
     }
 
     #[test]
