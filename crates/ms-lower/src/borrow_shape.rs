@@ -36,7 +36,7 @@ impl Entry {
 impl<'a> FnLower<'a> {
     /// Whether `e` is a container read whose result can be borrowed: `m.get(k)` on a `Map` with a key
     /// of the map's key type, in a function the
-    /// ownership checker vetted, with a payload `opt.view` can hold (not a boxed optional).
+    /// ownership checker vetted, with an optional result (a boxed one views the entry by its address, `opt.view_at`).
     /// Emits nothing.
     pub(crate) fn borrowed_shape(&mut self, e: &Expr) -> Result<Option<Shape>, Error> {
         let ExprKind::Call { callee, args } = &e.kind else {
@@ -63,10 +63,7 @@ impl<'a> FnLower<'a> {
             _ => return Ok(None),
         };
         let result = self.emty(e)?;
-        let Some(inner) = self.b.m.opt_inner(result) else {
-            return Ok(None);
-        };
-        if self.b.m.opt_is_boxed(inner) {
+        if self.b.m.opt_inner(result).is_none() {
             return Ok(None);
         }
         Ok(Some(shape))
@@ -139,6 +136,10 @@ impl<'a> FnLower<'a> {
             opt_ty,
             Mode::Borrow,
             &mut |s| {
+                // A boxed optional is a pointer to its payload: the entry's own address.
+                if let (Entry::Map { ptr, .. }, true) = (entry, s.b.m.opt_is_boxed(ty)) {
+                    return Ok(Some(s.b.opt_view_at(*ptr, ty)));
+                }
                 let p = s.borrowed_payload(entry);
                 Ok(Some(if borrowed {
                     s.b.opt_view(p)

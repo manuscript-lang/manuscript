@@ -312,6 +312,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                     payload
                 }
             }
+            Op::OptViewAt => {
+                // A boxed optional is a nullable pointer to its payload: the element's own address.
+                assert!(
+                    self.opt_boxed(res_ty.expect("opt.view_at result")),
+                    "opt.view_at of an optional that is not boxed"
+                );
+                self.a(inst, 0)
+            }
             Op::OptAddr => {
                 // The payload of a boxed optional lies at the box; no other layout has an address.
                 assert!(

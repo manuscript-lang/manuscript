@@ -494,6 +494,12 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.opt(self.ty(v));
         self.val(Op::OptView, &[v], Imm::None, t)
     }
+    /// `opt.view_at`: a boxed optional borrowing the payload that lies at `addr` (an element of a
+    /// list or a map entry): the box is the element itself, neither cloned nor dropped.
+    pub fn opt_view_at(&mut self, addr: Value, inner: Ty) -> Value {
+        let t = self.m.types.opt(inner);
+        self.val(Op::OptViewAt, &[addr], Imm::None, t)
+    }
     /// `opt.none` of the given optional type.
     pub fn opt_none(&mut self, opt_ty: Ty) -> Value {
         self.val(Op::OptNone, &[], Imm::None, opt_ty)

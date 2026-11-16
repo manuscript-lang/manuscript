@@ -618,6 +618,7 @@ impl<'m> Interp<'m> {
             | Op::ListDropLast => self.lists(f, regs, inst),
             Op::OptSome
             | Op::OptView
+            | Op::OptViewAt
             | Op::OptNone
             | Op::OptIsSome
             | Op::OptGet

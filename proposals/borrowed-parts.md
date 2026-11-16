@@ -8,7 +8,7 @@
 
 ## Status
 
-Stage 1 implemented (one table, checker and lowering), 2026-11-12; stages 2 and 3 pending. Proposal v2, 2026-11-12, against `main` at `2903b18`. Direction (Chinmay): borrow consistently for every type; "write fast code without a whole lot of copies but not prohibit them"; no implicit copies (`views.md`). Builds on `views.md` and `origin-flow-borrows.md`; replaces the special cases listed under Problem.
+Stages 1 (one table, #3750) and 2 (`first`/`last` bodies, #3749) merged; stage 3 (pointer view, `opt.view_at`) implemented 2026-11-16. Proposal v2, 2026-11-12, against `main` at `2903b18`. Direction (Chinmay): borrow consistently for every type; "write fast code without a whole lot of copies but not prohibit them"; no implicit copies (`views.md`). Builds on `views.md` and `origin-flow-borrows.md`; replaces the special cases listed under Problem.
 
 ## Problem
 
@@ -58,6 +58,8 @@ Before and after: a user `fn Deque.back() T?` and the built-in `List.last()` beh
 - Written marker on borrowing methods: contradicts "no marker" and adds syntax.
 - Copy whenever a pointer is hard (today's boxed-optional fallback): hides cost, breaks no implicit copies.
 
-## Open questions
+## Stage 3: the pointer view (implemented)
 
-- Boxed payloads: how a view of an element held in a list buffer is represented for a self-containing type. Needs a look at the boxed-optional layout before building.
+- New MIR op `opt.view_at(addr)`: a boxed optional is a nullable pointer to its payload, so a view of an element is the element's own address. Verifier: operand `ptr`, result a boxed optional. Cranelift and LLVM lower it as the identity, like `opt.addr`.
+- Lowering: a borrowed list element remembers its list and index (`elem_origin`); wrapping it in an `Optional` emits `list.addr` and `opt.view_at`. A map entry view does the same from its entry pointer (`borrow_shape.rs`). The copy fallbacks for boxed optionals are gone.
+- A recursive value borrowed from anywhere else (a parameter, a local) cannot be wrapped as a view. It is a compile error that says to wrap `.clone()`, instead of a hidden copy.
