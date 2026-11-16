@@ -1,5 +1,3 @@
-import Iterable from "@std/collections/iterable.ms"
-
 /*
 A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
 Use `.clone()` for an independent deque when its elements are Clonable; assigning a deque transfers ownership.

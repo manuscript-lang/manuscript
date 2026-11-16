@@ -1,3 +1,10 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.env.write
+// ms: allow_effect std.process.read
+// ms: allow_effect std.system.read
+
 import (
 	stdout from "@std/io/io.ms",
 	max, min, sqrt from "@std/math/math.ms",

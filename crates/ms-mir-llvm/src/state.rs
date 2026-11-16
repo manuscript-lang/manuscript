@@ -6,7 +6,7 @@ use crate::llvm_ir::{LlvmModule, Symbols};
 use crate::{FuncInfo, Glue, Options};
 use ms_mir::ir::{Func, Module, Scope};
 use ms_mir::layout::{Layouts, Leaf};
-use ms_mir::types::{AltId, Native, Ty, TyKind};
+use ms_mir::types::{AltId, Ty};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
 
@@ -118,6 +118,7 @@ impl<'m> Gen<'m> {
             .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
         let mut llvm = LlvmModule::new(files, cwd);
         llvm.heap_facts = opts.heap_facts;
+        llvm.set_poison_slots(opts.poison_slots);
         llvm.debug_types = ms_mir::debug_types::debug_types(m);
         let syms = m
             .funcs
@@ -214,16 +215,13 @@ impl<'m> Gen<'m> {
         }
     }
 
-    /// The symbol of the shared block of payloadless case `case` of boxed alternative `alt`: `size`
-    /// zero bytes with the tag stored first. Such values never allocate, and dropping them frees
-    /// nothing.
+    /// The symbol of the shared block of payloadless case `case` of boxed alternative `alt`.
     pub fn unit_block_symbol(&mut self, alt: AltId, case: usize, size: usize) -> String {
         if let Some(s) = self.unit_blocks.get(&(alt, case)) {
             return s.clone();
         }
         let name = format!("ms.unit.{}", self.unit_blocks.len());
-        let mut bytes = vec![0u8; size.max(8)];
-        bytes[0..8].copy_from_slice(&(case as u64).to_le_bytes());
+        let bytes = ms_mir::statics::unit_block(case, size);
         self.define(
             &name,
             format!(
@@ -241,83 +239,41 @@ impl<'m> Gen<'m> {
     pub fn typedesc_symbol(&mut self, ty: Ty) -> String {
         use ms_rt_abi::{
             DESC_COPY_OFFSET, DESC_DROP_OFFSET, DESC_EQ_OFFSET, DESC_HASH_OFFSET,
-            DESC_INNER0_OFFSET, DESC_INNER1_OFFSET, DESC_SIZE, KIND_CUSTOM, KIND_LIST, KIND_MAP,
-            KIND_POD, KIND_SET, KIND_SHARED,
+            DESC_INNER0_OFFSET, DESC_INNER1_OFFSET, DESC_SIZE,
         };
         if let Some(s) = self.desc.get(&ty) {
             return s.clone();
         }
-        let m = self.m;
-        // A scoped key names the same layout with the glue of one module's local implementations.
-        let (key, scope) = (ty, ty.scope());
-        let ty = ty.unscoped();
-        let builtin = match m.types.kind(ty) {
-            // `Int8`..`Int32` and `UInt8`..`UInt64` are plain bits of their width and take the
-            // `POD` path below.
-            TyKind::Int => Some("msrt_desc_int"),
-            TyKind::Float => Some("msrt_desc_float"),
-            TyKind::Float32 => Some("msrt_desc_float32"),
-            TyKind::Bool => Some("msrt_desc_bool"),
-            TyKind::Str => Some("msrt_desc_string"),
-            TyKind::Bytes => Some("msrt_desc_bytes"),
-            _ => None,
+        let key = ty;
+        let table = match ms_mir::statics::descriptor(self.m, &self.lay, key) {
+            ms_mir::statics::DescPlan::Runtime(name) => {
+                self.desc.insert(key, name.to_string());
+                return name.to_string();
+            }
+            ms_mir::statics::DescPlan::Table(t) => t,
         };
-        if let Some(name) = builtin {
-            self.desc.insert(key, name.to_string());
-            return name.to_string();
-        }
         let name = format!("ms.desc.{}", self.desc.len());
         self.desc.insert(key, name.clone());
-        let mem = self.lay.mem(ty);
-        let mut inner: [Option<Ty>; 2] = [None, None];
-        let mut with_glue = false;
-        let kind = match m.types.kind(ty) {
-            TyKind::List(e) => {
-                inner[0] = Some(*e);
-                KIND_LIST
-            }
-            TyKind::Obj(Native::Map, args) => {
-                inner = [args.first().copied(), args.get(1).copied()];
-                KIND_MAP
-            }
-            TyKind::Obj(Native::Set, args) => {
-                inner[0] = args.first().copied();
-                KIND_SET
-            }
-            TyKind::Obj(..) | TyKind::Fn(..) => KIND_SHARED,
-            TyKind::Opt(i) if self.lay.opt_is_nullable(*i) => KIND_SHARED,
-            _ if !m.needs_drop(ty) => KIND_POD,
-            _ => {
-                with_glue = true;
-                KIND_CUSTOM
-            }
-        };
         // The descriptor is words: size and alignment, the kind, then addresses.
         let mut words = vec![String::from("i64 0"); DESC_SIZE / 8];
-        let head = u64::from(mem.size) | u64::from(mem.align) << 32;
+        let head = u64::from(table.size) | u64::from(table.align) << 32;
         words[0] = format!("i64 {}", head as i64);
-        words[1] = format!("i64 {kind}");
+        words[1] = format!("i64 {}", table.kind);
         let addr = |sym: &str| format!("i64 ptrtoint (ptr @\"{sym}\" to i64)");
-        for (k, t) in inner.into_iter().enumerate() {
+        for (k, t) in table.inner.into_iter().enumerate() {
             if let Some(t) = t {
-                let sym = self.typedesc_symbol(t.scoped(scope));
+                let sym = self.typedesc_symbol(t);
                 self.data_refs.push(sym.clone());
                 words[[DESC_INNER0_OFFSET, DESC_INNER1_OFFSET][k] / 8] = addr(&sym);
             }
         }
-        if with_glue {
+        if let Some(ty) = table.slot_glue {
             let drop = self.glue_symbol(Glue::SlotDrop, ty);
             let copy = self.glue_symbol(Glue::SlotCopy, ty);
             words[DESC_DROP_OFFSET / 8] = addr(&drop);
             words[DESC_COPY_OFFSET / 8] = addr(&copy);
         }
-        // The scope's own glue, else the unscoped one.
-        let glue = m
-            .desc_glue
-            .iter()
-            .find(|(t, _, _)| *t == key)
-            .or_else(|| m.desc_glue.iter().find(|(t, _, _)| *t == ty));
-        if let Some(&(_, eq, hash)) = glue {
+        if let Some((eq, hash)) = table.eq_hash {
             words[DESC_EQ_OFFSET / 8] = addr(&self.func_symbol(eq.index()));
             words[DESC_HASH_OFFSET / 8] = addr(&self.func_symbol(hash.index()));
         }

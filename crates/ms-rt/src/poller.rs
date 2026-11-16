@@ -8,6 +8,7 @@ use crate::sys;
 #[cfg(unix)]
 use crate::task::WAIT_KEEP;
 use crate::task::{WAIT_HUP, WAIT_READ, WAIT_WRITE};
+use core::mem::MaybeUninit;
 #[cfg(unix)]
 use core::sync::atomic::AtomicI32;
 #[cfg(unix)]
@@ -224,7 +225,11 @@ mod imp {
         unsafe { libc::ppoll(&mut fd, 1, &ts, core::ptr::null()) };
     }
 
-    pub unsafe fn wait(_: i32, timeout_ns: i64, out: &mut [Ready; 64]) -> Option<usize> {
+    pub unsafe fn wait(
+        _: i32,
+        timeout_ns: i64,
+        out: &mut [MaybeUninit<Ready>; 64],
+    ) -> Option<usize> {
         let s = state();
         #[cfg(any(target_os = "linux", target_os = "android"))]
         let timeout = if timeout_ns > 0 {
@@ -249,10 +254,10 @@ mod imp {
                 while matches!(s.wake_rx.read(&mut drain), Ok(n) if n == drain.len()) {}
                 continue;
             }
-            out[count] = Ready {
+            out[count].write(Ready {
                 fd: ev.token().0,
                 bits: bits(ev),
-            };
+            });
             count += 1;
         }
         Some(count)
@@ -616,7 +621,11 @@ mod imp {
         }
     }
 
-    pub unsafe fn wait(_: i32, timeout_ns: i64, out: &mut [Ready; 64]) -> Option<usize> {
+    pub unsafe fn wait(
+        _: i32,
+        timeout_ns: i64,
+        out: &mut [MaybeUninit<Ready>; 64],
+    ) -> Option<usize> {
         let s = state();
         // The completion port waits in whole milliseconds, rounded up, and on the system tick
         // unless the process raised its resolution. A high-resolution timer wakes the wait at
@@ -651,27 +660,27 @@ mod imp {
                 continue;
             }
             if let Some(&key) = s.groups.get(&fd) {
-                out[count] = Ready {
+                out[count].write(Ready {
                     fd: key,
                     bits: WAIT_READ,
-                };
+                });
                 count += 1;
                 continue;
             }
             // A pipe stays registered: wake its reader and its writer separately.
             if bits & (WAIT_READ | WAIT_HUP) != 0 {
-                out[count] = Ready { fd, bits };
+                out[count].write(Ready { fd, bits });
                 count += 1;
             }
             if bits & (WAIT_WRITE | WAIT_HUP) != 0 {
-                out[count] = Ready { fd: fd + 1, bits };
+                out[count].write(Ready { fd: fd + 1, bits });
                 count += 1;
             }
         }
         for (sock, bits) in ready {
             // One-shot: the task registers again when it waits again.
             release(s, sock);
-            out[count] = Ready { fd: sock, bits };
+            out[count].write(Ready { fd: sock, bits });
             count += 1;
         }
         let signals = s.signals.clone();
@@ -679,10 +688,10 @@ mod imp {
         while count < out.len() {
             let Some(handle) = objects.pop() else { break };
             if s.objects.contains_key(&handle) {
-                out[count] = Ready {
+                out[count].write(Ready {
                     fd: handle,
                     bits: WAIT_READ,
-                };
+                });
                 count += 1;
             }
         }

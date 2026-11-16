@@ -59,10 +59,6 @@ impl Interp<'_> {
                     .collect();
                 ops.set(Val::Alt(c, Rc::new(fields)));
             }
-            Op::AltOwn => {
-                let v = ops.regs[inst.args[0].index()].clone();
-                ops.set(v);
-            }
             Op::AltPlain => {
                 let v = ops.regs[inst.args[0].index()].clone();
                 ops.set(v);
@@ -96,26 +92,6 @@ impl Interp<'_> {
                     return Err(Raw::internal(format!("alt.take of case {c} on case {t}")));
                 }
                 ops.set(p[i as usize].clone());
-            }
-            Op::TypeRelease => {
-                arg(f, ops.regs, inst.args[0], true, m);
-            }
-            Op::AltRelease => {
-                arg(f, ops.regs, inst.args[0], true, m);
-            }
-            Op::AltUnbox => {
-                let Imm::AltField(_, c, i) = inst.imm else {
-                    return Err(Raw::internal("alt.unbox without field"));
-                };
-                let Val::Alt(t, p) = &ops.regs[inst.args[0].index()] else {
-                    return Err(Raw::internal("alt.unbox on &inst.args non-alternative"));
-                };
-                if *t != c {
-                    return Err(Raw::internal(format!("alt.unbox of case {c} on case {t}")));
-                }
-                let field = p[i as usize].clone();
-                arg(f, ops.regs, inst.args[0], true, m);
-                ops.set(field);
             }
 
             _ => unreachable!("types_and_alternatives is only called for its own ops"),
@@ -170,7 +146,7 @@ impl Interp<'_> {
                 let _ = ops.int(1)?;
                 arg(f, ops.regs, inst.args[0], true, m);
             }
-            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
+            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill | Op::ListFillU => {
                 let i = ops.int(1)?;
                 let v = arg(f, ops.regs, inst.args[2], true, m);
                 let Val::List(mut l) = arg(f, ops.regs, inst.args[0], true, m) else {
@@ -180,7 +156,15 @@ impl Interp<'_> {
                 Rc::make_mut(&mut l)[k] = v;
                 ops.set(Val::List(l));
             }
-            Op::ListPush => {
+            // An interpreted list has no capacity: `list.cap` is unbounded, so an expanded push
+            // never grows, and `list.grow` hands the list back.
+            Op::ListCap => ops.set(Val::Int(i64::MAX)),
+            Op::ListGrow => {
+                let _ = ops.int(1)?;
+                let l = arg(f, ops.regs, inst.args[0], true, m);
+                ops.set(l);
+            }
+            Op::ListPush | Op::ListPushU => {
                 let v = arg(f, ops.regs, inst.args[1], true, m);
                 let Val::List(mut l) = arg(f, ops.regs, inst.args[0], true, m) else {
                     return Err(Raw::internal("list.push on &inst.args non-list"));
@@ -226,15 +210,12 @@ impl Interp<'_> {
                 };
                 ops.set(Val::Bool(o.is_some()));
             }
-            Op::OptGet | Op::OptUnwrap => {
+            Op::OptGet => {
                 let Val::Opt(o) = &ops.regs[inst.args[0].index()] else {
                     return Err(Raw::internal("opt.get on &inst.args non-optional"));
                 };
                 match o {
                     Some(v) => ops.set((**v).clone()),
-                    None if inst.op == Op::OptUnwrap => {
-                        return Err(Raw::new(FaultKind::NoneUnwrap, "unwrap of none"));
-                    }
                     None => return Err(Raw::internal("opt.get on none")),
                 }
             }
@@ -242,14 +223,6 @@ impl Interp<'_> {
                 return Err(Raw::internal(
                     "interior pointers are not supported by the interpreter",
                 ));
-            }
-            Op::OptUnbox => {
-                let Val::Opt(Some(v)) = &ops.regs[inst.args[0].index()] else {
-                    return Err(Raw::internal("opt.unbox of none"));
-                };
-                let payload = (**v).clone();
-                arg(f, ops.regs, inst.args[0], true, m);
-                ops.set(payload);
             }
             Op::StrLen => {
                 let Val::Str(s) = &ops.regs[inst.args[0].index()] else {

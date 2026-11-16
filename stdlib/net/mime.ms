@@ -1,6 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	ReadStream, Transform, through from "@std/io/io.ms",
+	ReadStream, through from "@std/io/io.ms",
 	StringBuilder from "@std/string_builder.ms",
 )
 
@@ -406,7 +408,7 @@ fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
 
 			break
 
-		end := at.get()
+		end := at.get(0)
 
 		if self.in_part:
 			if limit := self.max_part_bytes:

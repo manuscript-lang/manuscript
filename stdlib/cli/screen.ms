@@ -1,3 +1,5 @@
+// ms: allow_effect std.console.read
+
 /*
 Diffed redraw of a block of terminal rows.
 

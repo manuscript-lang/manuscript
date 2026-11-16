@@ -14,8 +14,9 @@ use super::calls::{Callee, declare_leaf, leaf_call};
 use super::{Area, Cx, Vals, aggregate, types};
 use crate::llvm_build::{FnBuilder, Meta, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, FuncKind, Imm, Inst, Module, Op};
-use ms_mir::layout::{Layouts, Leaf, mem_layout};
+use ms_mir::layout::{Layouts, mem_layout};
 use ms_mir::types::{Ty, TyKind};
+use ms_rt_abi::{IFACE_TAG_BOX, IFACE_TAG_OWNED, IFACE_TAG_VIEW};
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -26,7 +27,7 @@ pub(super) const AREA: Area = Area {
 };
 
 /// Mask that clears the two tag bits of a vtable word.
-const UNTAG: i64 = !3;
+const UNTAG: i64 = !ms_rt_abi::IFACE_TAG_MASK;
 
 fn handles(op: Op) -> bool {
     matches!(
@@ -100,7 +101,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.byte_ptr(&v[0], 0);
             let bare = b.ptrmask(&v[1], UNTAG);
             b.name_next(&out[1]);
-            b.byte_ptr(&bare, 2);
+            b.byte_ptr(&bare, IFACE_TAG_VIEW as u64);
         }
         (Op::IfaceIs, Imm::Vtable(vt)) => {
             let have = b.ptrmask(&vals[&inst.args[0].index()][1], UNTAG);
@@ -168,12 +169,12 @@ fn iface_new(cx: &mut Cx, inst: &Inst, vals: &Vals, vt: usize, out: &[Val], b: &
         .res
         .is_some_and(|r| cx.plan.framed_ifaces.contains(&r.index()));
     let (block, tag) = if inst.op == Op::IfaceNew {
-        (alloc(cx, size, b), 0)
+        (alloc(cx, size, b), IFACE_TAG_OWNED as u64)
     } else if framed {
         let slot = b.alloca(&aggregate(b.types(), cx.lay, ty));
-        (slot, 2)
+        (slot, IFACE_TAG_VIEW as u64)
     } else {
-        (alloc(cx, size, b), 1)
+        (alloc(cx, size, b), IFACE_TAG_BOX as u64)
     };
     if cx.lay.width(ty) > 0 {
         types::store_value(b, cx.lay, ty, vals, inst.args[0], &block);
@@ -193,28 +194,23 @@ struct Env {
     offsets: Vec<u64>,
 }
 
-fn env(types: &Types, lay: &Layouts, code: &str, captures: &[Ty]) -> Env {
+fn env(types: &Types, lay: &Layouts, f: &Func) -> Env {
     let header = types.named("ms.closure", vec![LTy::Ptr; 3]);
     let mut fields_of = vec![header];
     let mut fields = Vec::new();
     let mut offsets = Vec::new();
-    let mut off = u64::from(crate::CLOSURE_CAPTURES);
-    for c in captures {
-        let leaves: Vec<Leaf> = lay.leaves(*c);
-        let mem = mem_layout(&leaves);
-        let align = u64::from(mem.align);
-        off = off.div_ceil(align) * align;
-        offsets.push(off);
-        off += u64::from(mem.size);
-        if leaves.is_empty() {
+    let layout = lay.closure(f);
+    for cap in &layout.captures {
+        offsets.push(u64::from(cap.offset));
+        if cap.leaves.is_empty() {
             fields.push(None);
         } else {
             fields.push(Some(fields_of.len()));
-            fields_of.push(aggregate(types, lay, *c));
+            fields_of.push(aggregate(types, lay, cap.ty));
         }
     }
-    let ty = types.named(&format!("ms.env.{code}"), fields_of);
-    debug_assert_eq!(types.size_align(&ty).0, off.div_ceil(8) * 8);
+    let ty = types.named(&format!("ms.env.{}", f.name), fields_of);
+    debug_assert_eq!(types.size_align(&ty).0, u64::from(layout.size));
     debug_assert!(
         fields
             .iter()
@@ -234,7 +230,7 @@ fn closure_new(cx: &mut Cx, inst: &Inst, vals: &Vals, c: usize, out: &[Val], b: 
     let FuncKind::Closure { captures } = &callee.kind else {
         unreachable!("inst_ok checked the kind")
     };
-    let env = env(b.types(), lay, &callee.name, captures);
+    let env = env(b.types(), lay, callee);
     let framed = inst
         .res
         .is_some_and(|r| cx.plan.framed_closures.contains(&r.index()));
@@ -279,7 +275,7 @@ fn capture(cx: &mut Cx, inst: &Inst, vals: &Vals, i: u32, out: &[Val], b: &mut F
         unreachable!("inst_ok checked the kind")
     };
     let i = i as usize;
-    let env = env(b.types(), cx.lay, &cx.f.name, captures);
+    let env = env(b.types(), cx.lay, cx.f);
     let base = &vals[&inst.args[0].index()][0];
     let at = |b: &mut FnBuilder| match env.fields[i] {
         Some(field) => b.field_ptr(&env.ty, base, field),

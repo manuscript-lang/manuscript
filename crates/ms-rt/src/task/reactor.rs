@@ -149,20 +149,34 @@ pub(super) unsafe fn cancel_all_waiters() -> bool {
 /// waits for an event).
 pub(super) unsafe fn poll_ready(timeout_ns: i64) {
     let mut s = sched();
-    let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
+    // Filled by the poller up to the count it returns; nothing is initialised first.
+    let mut ready = [core::mem::MaybeUninit::<crate::poller::Ready>::uninit(); 64];
     // SAFETY: the poller owns its registrations; handles are checked before waking tasks.
     unsafe {
         let Some(n) = crate::poller::wait(poller_fd(), timeout_ns, &mut ready) else {
             return;
         };
-        for ev in ready.iter().take(n) {
+        for slot in &ready[..n] {
+            // SAFETY: the poller wrote the first `n` entries.
+            let ev = slot.assume_init_ref();
             if ev.fd >= s.fd_waiters.len() {
                 continue;
             }
             // Every waiter the event concerns wakes; the one that gets the resource proceeds
             // and the others wait again. `wake` re-arms for those that stay.
-            let queue = s.fd_waiters[ev.fd].clone();
-            for h in queue {
+            // A copy, since waking changes the queue; nearly always one or two waiters, which
+            // fit on the stack.
+            let mut inline = [0u64; 4];
+            let spilled;
+            let waiters = &s.fd_waiters[ev.fd];
+            let queue: &[u64] = if waiters.len() <= inline.len() {
+                inline[..waiters.len()].copy_from_slice(waiters);
+                &inline[..waiters.len()]
+            } else {
+                spilled = waiters.clone();
+                &spilled
+            };
+            for &h in queue {
                 if h & PROMISE_TAG != 0 {
                     let id = (h & !PROMISE_TAG) as i64;
                     if crate::promise::fd_ready(id, ev.bits) {
@@ -234,13 +248,21 @@ pub(super) unsafe fn reactor_wait() {
                 return;
             }
             deliver_remote_posts();
-            let now = clock_ns();
-            expire_timers(now);
-            if !s.ready.is_empty() || crate::sched::work_available() {
+            // Nothing queued with a time: no clock read, no expiry, no deadline to wait for. A
+            // thread that rests after every request would pay for them on each one.
+            let timed = !s.timers.is_empty() || !s.kills.is_empty() || crate::promise::has_timers();
+            let now = if timed { clock_ns() } else { 0 };
+            if timed {
+                expire_timers(now);
+            }
+            if !s.ready.is_empty() {
                 return;
             }
+            let Some(steal) = crate::sched::work_or_wait() else {
+                return;
+            };
             let mut timeout_ns = -1;
-            while let Some(&Reverse((deadline, h))) = s.timers.peek() {
+            while timed && let Some(&Reverse((deadline, h))) = s.timers.peek() {
                 let t = lookup(h);
                 if t.is_null() || (*t).state != State::Waiting || (*t).deadline != deadline {
                     s.timers.pop();
@@ -249,7 +271,7 @@ pub(super) unsafe fn reactor_wait() {
                 timeout_ns = (deadline - now).max(0);
                 break;
             }
-            while let Some(&Reverse((deadline, h))) = s.kills.peek() {
+            while timed && let Some(&Reverse((deadline, h))) = s.kills.peek() {
                 let t = lookup(h);
                 if t.is_null() || (*t).state == State::Done || (*t).kill_at != deadline {
                     s.kills.pop();
@@ -263,7 +285,6 @@ pub(super) unsafe fn reactor_wait() {
                 };
                 break;
             }
-            let steal = crate::sched::steal_wait_ns();
             if steal >= 0 {
                 timeout_ns = if timeout_ns < 0 {
                     steal
@@ -271,7 +292,7 @@ pub(super) unsafe fn reactor_wait() {
                     timeout_ns.min(steal)
                 };
             }
-            if let Some(deadline) = crate::promise::next_deadline() {
+            if timed && let Some(deadline) = crate::promise::next_deadline() {
                 let ns = (deadline - now).max(0);
                 timeout_ns = if timeout_ns < 0 {
                     ns
@@ -301,7 +322,8 @@ pub(super) unsafe fn reactor_wait() {
             // Posters interrupt the poller only while this says it may block, so look for work
             // once more after saying so.
             crate::isolate::set_sleeping(true);
-            if crate::sched::work_available()
+            let steal = crate::sched::work_or_wait();
+            if steal.is_none()
                 || crate::sched::signalled()
                 || crate::isolate::has_posts()
                 || crate::isolate::pending_cancel() != 0
@@ -314,12 +336,19 @@ pub(super) unsafe fn reactor_wait() {
             // A start queued before the flag above was set did not kick this thread, and one that
             // is not old enough to take yet does not count as work: bound the sleep by the time
             // until it can be taken, as the timeout computed earlier did not know of it.
-            let steal = crate::sched::steal_wait_ns();
-            if steal >= 0 && (timeout_ns < 0 || steal < timeout_ns) {
+            if let Some(steal) = steal
+                && steal >= 0
+                && (timeout_ns < 0 || steal < timeout_ns)
+            {
                 timeout_ns = steal;
             }
             trim_idle_stacks();
-            hibernate_idle();
+            // A thread whose waits are short is busy: its parked tasks run again within
+            // microseconds, and freezing one copies a stack for nothing (and walks every slot
+            // on each request). Hibernate once a wait has run long.
+            if *SPIN_CREDIT.ptr() < SPIN_CREDIT_MAX {
+                hibernate_idle();
+            }
             // Output buffered for a pipe or file must be visible before the program blocks.
             crate::io::flush_stdout();
             poll_ready(timeout_ns);

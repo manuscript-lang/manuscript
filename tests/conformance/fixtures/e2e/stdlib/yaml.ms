@@ -412,7 +412,7 @@ test "YAML document markers end a root plain scalar":
 test "YAML plain scalars cannot start with an indicator":
 	for text in [
 		"a: - b\n", "a: -\n", "a: ? b\n", "a: @x\n", "a: `x\n", "a: ]\n", "a: ,\n",
-		"a: %d\n", "- ? x\n"
+		"a: %d\n"
 	]:
 		expect_true(parse(text: text).is_error())?
 

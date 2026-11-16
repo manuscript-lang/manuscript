@@ -5,7 +5,6 @@ use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{FaultKind, Func, Imm, Inst, Module, Op, Term};
 use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::STR_STATIC;
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -15,7 +14,7 @@ pub(super) const AREA: Area = Area {
     pure_op: |op| {
         matches!(
             op,
-            Op::ListLen | Op::StrLit | Op::BytesLit | Op::ListConstView
+            Op::ListLen | Op::ListCap | Op::StrLit | Op::BytesLit | Op::ListConstView
         )
     },
     pre,
@@ -40,7 +39,9 @@ fn handles(op: Op) -> bool {
                 | Op::StrLen
                 | Op::ListNew
                 | Op::ListLit
-                | Op::ListPush
+                | Op::ListCap
+                | Op::ListGrow
+                | Op::ListPushU
                 | Op::ListDropLast
                 | Op::ListRelease
                 | Op::BytesLit
@@ -51,31 +52,21 @@ fn handles(op: Op) -> bool {
         )
 }
 
-/// Whether `op` is a list access that branches to a fault when checks are on.
-fn checked(op: Op) -> bool {
-    matches!(
-        op,
-        Op::ListGet | Op::ListGetNn | Op::ListSet | Op::ListSetNn | Op::ListFill | Op::ListAddr
-    )
-}
-
-/// How many times `op` splits its block: a bounds check or a string read that joins branches
+/// How many times `op` splits its block: a string read or an allocation that joins branches
 /// starts a new block, and a successor's phis name the label the block ends in.
-fn splits(lay: &Layouts, f: &Func, i: &Inst, checks: bool) -> usize {
-    let op = i.op;
+fn splits(lay: &Layouts, f: &Func, i: &Inst, _checks: bool) -> usize {
     let drops = || {
         let e = lay.m.seq_elem(f.ty(i.args[0]));
         e.map_or(0, |e| super::glue::drop_splits(lay, e))
     };
-    match op {
-        Op::ListSet | Op::ListSetNn | Op::ListSetU => usize::from(checks && checked(op)) + drops(),
-        _ if checked(op) => usize::from(checks),
+    match i.op {
+        Op::ListSetU => drops(),
         Op::ListDropLast if i.imm != Imm::Int(1) => drops(),
         Op::StrByte
         | Op::StrEqLit
         | Op::StrAsciiLen
         | Op::ListNew
-        | Op::ListPush
+        | Op::ListGrow
         | Op::ListRelease => 1,
         _ => 0,
     }
@@ -87,12 +78,15 @@ fn inst_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
             .res
             .is_some_and(|r| m.seq_elem(f.ty(r)).is_some_and(|e| plain_elem(lay, e)));
     }
-    if matches!(i.op, Op::ListAddr | Op::ListAddrU) {
+    if i.op == Op::ListAddrU {
         return m
             .seq_elem(f.ty(i.args[0]))
             .is_some_and(|e| plain_elem(lay, e));
     }
-    if matches!(i.op, Op::ListNew | Op::ListLit | Op::ListPush) {
+    if matches!(
+        i.op,
+        Op::ListNew | Op::ListLit | Op::ListGrow | Op::ListPushU
+    ) {
         return build_ok(m, lay, f, i);
     }
     if matches!(i.op, Op::ListDropLast | Op::ListRelease) {
@@ -122,18 +116,22 @@ fn pre(
             let l = &vals[&inst.args[0].index()];
             Some(vec![l[0].clone(), b.reserve(LTy::I64), l[2].clone()])
         }
-        // The literal's bytes are a module constant: the pointer word is a constant expression
-        // and the length carries the static tag.
+        // A short literal is constant words; any other keeps its bytes in a module constant, the
+        // pointer word a constant expression and the length carrying the static tag.
         Op::StrLit => {
             let Imm::Str(id) = inst.imm else { return None };
-            let len = m.strings[id.0 as usize].len();
-            Some(vec![
-                Val::new(
-                    format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),
-                    LTy::I64,
-                ),
-                Val::int((len | STR_STATIC) as i64),
-            ])
+            Some(match ms_mir::statics::str_lit(&m.strings[id.0 as usize]) {
+                ms_mir::statics::StrLit::Inline { lo, hi } => {
+                    vec![Val::int(lo as i64), Val::int(hi as i64)]
+                }
+                ms_mir::statics::StrLit::Static { tagged } => vec![
+                    Val::new(
+                        format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),
+                        LTy::I64,
+                    ),
+                    Val::int(tagged as i64),
+                ],
+            })
         }
         Op::BytesLit => {
             let Imm::Int(i) = inst.imm else { return None };
@@ -171,8 +169,18 @@ fn pre(
             Some(vec![b.reserve(LTy::Ptr), n.clone(), n])
         }
         Op::ListLen => Some(vec![vals[&inst.args[0].index()][1].clone()]),
-        Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
-            Some(vals[&inst.args[0].index()].clone())
+        Op::ListCap => Some(vec![vals[&inst.args[0].index()][2].clone()]),
+        Op::ListSetU | Op::ListFillU => Some(vals[&inst.args[0].index()].clone()),
+        // The block is resized; the length stays and the capacity is the one asked for.
+        Op::ListGrow => Some(vec![
+            b.reserve(LTy::Ptr),
+            vals[&inst.args[0].index()][1].clone(),
+            vals[&inst.args[1].index()][0].clone(),
+        ]),
+        // The block and capacity stay; the new length is computed.
+        Op::ListPushU => {
+            let l = &vals[&inst.args[0].index()];
+            Some(vec![l[0].clone(), b.reserve(LTy::I64), l[2].clone()])
         }
         _ => None,
     }
@@ -181,8 +189,8 @@ fn pre(
 /// The operand that is the list for the list reads and writes, `None` for other ops.
 fn list_arg(op: Op) -> Option<usize> {
     match op {
-        Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake => Some(0),
-        Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => Some(0),
+        Op::ListGetU | Op::ListTake => Some(0),
+        Op::ListSetU | Op::ListFillU => Some(0),
         _ => None,
     }
 }
@@ -193,10 +201,7 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
     let Some(e) = m.seq_elem(f.ty(i.args[list])) else {
         return false;
     };
-    let writes = !matches!(
-        i.op,
-        Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake
-    );
+    let writes = !matches!(i.op, Op::ListGetU | Op::ListTake);
     (!writes || i.args.len() == 3 && f.ty(i.args[2]) == e)
         && (writes || i.res.is_some_and(|r| f.ty(r) == e))
         && plain_elem(lay, e)
@@ -204,9 +209,9 @@ fn elem_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst, list: usize) -> bool {
 
 fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     match inst.op {
-        Op::ListLen | Op::StrLit | Op::BytesLit | Op::ListConstView => {}
+        Op::ListLen | Op::ListCap | Op::StrLit | Op::BytesLit | Op::ListConstView => {}
         Op::StrByte => str_byte(cx, inst, vals, b),
-        Op::ListNew | Op::ListLit | Op::ListPush => list_build(cx, inst, vals, b),
+        Op::ListNew | Op::ListLit | Op::ListGrow | Op::ListPushU => list_build(cx, inst, vals, b),
         Op::ListDropLast => {
             let out = &vals[&inst.res.expect("list result").index()];
             let len = vals[&inst.args[0].index()][1].clone();
@@ -232,48 +237,30 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     }
 }
 
-/// A list element access: normalize a negative index, branch to the fault when it is out of
-/// range, then load or store each leaf of the element. The element type is an LLVM type, so the
-/// address is a typed `getelementptr` and LLVM sees a strided access it can vectorize.
+/// A list element access at an index `ms_mir::expand` checked and made non-negative: load or
+/// store each leaf of the element. The element type is an LLVM type, so the address is a typed
+/// `getelementptr` and LLVM sees a strided access it can vectorize.
 fn list_access(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
     let l = &vals[&inst.args[0].index()];
-    let i = vals[&inst.args[1].index()][0].clone();
+    let idx = vals[&inst.args[1].index()][0].clone();
     let elem = cx.m.seq_elem(cx.f.ty(inst.args[0])).expect("a list");
-    let (ptr, len) = (l[0].clone(), l[1].clone());
-    let wraps = matches!(
-        inst.op,
-        Op::ListGet | Op::ListSet | Op::ListFill | Op::ListAddr
-    );
-    let idx = if wraps {
-        let neg = b.icmp("slt", &i, &Val::int(0));
-        let wrapped = b.bin(Bin::Add, &i, &len);
-        b.select(&neg, &wrapped, &i)
-    } else {
-        i.clone()
-    };
-    if cx.checks && checked(inst.op) {
-        let oob = b.icmp("uge", &idx, &len);
-        super::faults::fault_if(cx, b, &oob, "msrt_index_fault", &[i.clone(), len]);
-    }
+    let ptr = l[0].clone();
     let whole = elem_whole(b.types(), cx.lay, elem);
     debug_assert_eq!(
         b.types().size_align(&whole).0,
         u64::from(mem_layout(&cx.lay.leaves(elem)).size)
     );
-    if matches!(inst.op, Op::ListAddr | Op::ListAddrU) {
+    if inst.op == Op::ListAddrU {
         let out = &vals[&inst.res.expect("address result").index()][0];
         b.name_next(out);
         b.elem_ptr(&whole, &ptr, &idx);
         return;
     }
     let at = b.elem_ptr(&whole, &ptr, &idx);
-    if matches!(inst.op, Op::ListSet | Op::ListSetNn | Op::ListSetU) && cx.m.needs_drop(elem) {
+    if inst.op == Op::ListSetU && cx.m.needs_drop(elem) {
         drop_elem(cx, b, elem, &ptr, &idx);
     }
-    if matches!(
-        inst.op,
-        Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake
-    ) {
+    if matches!(inst.op, Op::ListGetU | Op::ListTake) {
         let out = &vals[&inst.res.expect("list read result").index()];
         load_at(cx, b, elem, &whole, &at, Some(out));
     } else {
@@ -453,7 +440,7 @@ fn str_byte(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
 /// Whether the elements a list is built from are plain `i64`, `double` and `i8` leaves (a
 /// `ListNew` stores none, so any element will do).
 fn build_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
-    let list = if i.op == Op::ListPush {
+    let list = if matches!(i.op, Op::ListGrow | Op::ListPushU) {
         f.ty(i.args[0])
     } else {
         match i.res {
@@ -467,6 +454,7 @@ fn build_ok(m: &Module, lay: &Layouts, f: &Func, i: &Inst) -> bool {
     let args_ok = match i.op {
         Op::ListNew => i.args.len() == 1,
         Op::ListLit => i.args.iter().all(|a| f.ty(*a) == e),
+        Op::ListGrow => i.args.len() == 2 && f.ty(i.args[1]) == Ty::INT,
         _ => i.args.len() == 2 && f.ty(i.args[1]) == e,
     };
     args_ok && plain_elem(lay, e)
@@ -527,41 +515,32 @@ fn list_build(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             b.label(&join);
             b.phi(&out[0], &[(Val::new("null", LTy::Ptr), head), (p, some)]);
         }
-        _ => {
+        Op::ListGrow => {
+            // The block is resized to the capacity `ms_mir::expand` chose: fresh for an empty
+            // list, the old one resized otherwise.
             let l = &vals[&inst.args[0].index()];
-            let (ptr0, len, cap) = (l[0].clone(), l[1].clone(), l[2].clone());
-            let (grow, first, again, joined) = (
-                format!("g{bb}_{split}"),
-                format!("p{bb}_{split}"),
-                format!("r{bb}_{split}"),
-                format!("j{bb}_{split}"),
-            );
-            let ready = block_label(bb, split + 1);
+            let ncap = vals[&inst.args[1].index()][0].clone();
+            let (first, again) = (format!("p{bb}_{split}"), format!("r{bb}_{split}"));
+            let join = block_label(bb, split + 1);
             cx.split += 1;
-            let full = b.icmp("eq", &len, &cap);
-            b.cond_br_likely(&full, &grow, &ready, false);
-            b.label(&grow);
-            let empty = b.icmp("eq", &cap, &Val::int(0));
-            let doubled = b.bin(Bin::Shl, &cap, &Val::int(1));
-            let ncap = b.select(&empty, &Val::int(4), &doubled);
             let bytes = b.bin(Bin::Mul, &ncap, &Val::int(size));
+            let empty = b.icmp("eq", &l[2], &Val::int(0));
             b.cond_br(&empty, &first, &again);
             b.label(&first);
             let fresh = rt_alloc(cx, b, "msrt_alloc", std::slice::from_ref(&bytes), None);
-            b.br(&joined);
+            b.br(&join);
             b.label(&again);
-            let moved = rt_alloc(cx, b, "msrt_realloc", &[ptr0.clone(), bytes], None);
-            b.br(&joined);
-            b.label(&joined);
-            let np = b.reserve(LTy::Ptr);
-            b.phi(&np, &[(fresh, first), (moved, again)]);
-            b.br(&ready);
-            b.label(&ready);
-            b.phi(&out[0], &[(ptr0, head.clone()), (np, joined.clone())]);
-            b.phi(&out[2], &[(cap, head), (ncap, joined)]);
-            store_elem(cx, b, list, &out[0], &len, &vals[&inst.args[1].index()]);
+            let moved = rt_alloc(cx, b, "msrt_realloc", &[l[0].clone(), bytes], None);
+            b.br(&join);
+            b.label(&join);
+            b.phi(&out[0], &[(fresh, first), (moved, again)]);
+        }
+        _ => {
+            // Append after the last element: the list has room (`ms_mir::expand` grew it).
+            let l = &vals[&inst.args[0].index()];
+            store_elem(cx, b, list, &out[0], &l[1], &vals[&inst.args[1].index()]);
             b.name_next(&out[1]);
-            b.bin(Bin::Add, &len, &Val::int(1));
+            b.bin(Bin::Add, &l[1], &Val::int(1));
         }
     }
 }
@@ -755,53 +734,40 @@ pub(super) fn eq_kinds_same_len(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> Val 
 /// equals it when both words match; any other string when its length matches and its bytes do,
 /// read in power-of-two chunks only after the length matched.
 fn str_eq_lit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    use ms_rt_abi::{STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK};
+    use ms_rt_abi::STR_LEN_MASK;
     let Imm::Str(id) = inst.imm else {
         unreachable!("str.eq_lit carries a literal")
     };
-    let bytes = cx.m.strings[id.0 as usize].as_bytes().to_vec();
+    let plan = ms_mir::statics::eq_lit(cx.m.strings[id.0 as usize].as_bytes());
     let s = &vals[&inst.args[0].index()];
     let out = vals[&inst.res.expect("equality result").index()][0].clone();
     let (bb, split) = (cx.block, cx.split);
     let (check, join) = (format!("q{bb}_{split}"), block_label(bb, split + 1));
     let head = block_label(bb, split);
     cx.split += 1;
-    let mut word = [0u8; 8];
-    word[..bytes.len()].copy_from_slice(&bytes);
-    let inline_tag = (STR_INLINE | (bytes.len() << STR_INLINE_LEN_SHIFT)) as i64;
-    let same_tag = b.icmp("eq", &s[1], &Val::int(inline_tag));
-    let same_word = b.icmp("eq", &s[0], &Val::int(i64::from_le_bytes(word)));
+    let same_tag = b.icmp("eq", &s[1], &Val::int(plan.inline_tag));
+    let same_word = b.icmp("eq", &s[0], &Val::int(plan.inline_word));
     let inline_eq = b.bin(Bin::And, &same_tag, &same_word);
     let len = b.bin(Bin::And, &s[1], &Val::int(STR_LEN_MASK as i64));
-    let same_len = b.icmp("eq", &len, &Val::int(bytes.len() as i64));
+    let same_len = b.icmp("eq", &len, &Val::int(plan.len));
     b.cond_br(&same_len, &check, &join);
     b.label(&check);
     let ptr = b.int_to_ptr(&s[0]);
     let mut all: Option<Val> = None;
-    let mut at = 0;
-    while at < bytes.len() {
-        let n = [8, 4, 2, 1]
-            .into_iter()
-            .find(|n| bytes.len() - at >= *n)
-            .expect("a chunk fits");
-        let ty = match n {
+    for c in &plan.chunks {
+        let ty = match c.width {
             8 => LTy::I64,
             4 => LTy::I32,
             2 => LTy::I16,
             _ => LTy::I8,
         };
-        let mut chunk = [0u8; 8];
-        chunk[..n].copy_from_slice(&bytes[at..at + n]);
-        let shift = 64 - 8 * n as u32;
-        let want = (i64::from_le_bytes(chunk) << shift) >> shift;
-        let p = b.elem_ptr(&LTy::I8, &ptr, &Val::int(at as i64));
+        let p = b.elem_ptr(&LTy::I8, &ptr, &Val::int(c.at as i64));
         let got = b.load(&ty, &p, 1);
-        let eq = b.icmp("eq", &got, &Val::new(want.to_string(), ty));
+        let eq = b.icmp("eq", &got, &Val::new(c.want.to_string(), ty));
         all = Some(match all {
             Some(a) => b.bin(Bin::And, &a, &eq),
             None => eq,
         });
-        at += n;
     }
     let all = all.expect("a non-empty literal");
     b.br(&join);
@@ -837,7 +803,12 @@ pub(super) fn consts(m: &Module, lay: &Layouts, f: &Func) -> Vec<(String, String
             }
             continue;
         }
-        if let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm) {
+        if let (Op::StrLit, Imm::Str(id)) = (inst.op, inst.imm)
+            && matches!(
+                ms_mir::statics::str_lit(&m.strings[id.0 as usize]),
+                ms_mir::statics::StrLit::Static { .. }
+            )
+        {
             str_const(m, id.0, &mut out);
         }
     }
@@ -856,8 +827,8 @@ fn str_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
         return;
     }
     let mut text = String::new();
-    let bytes = m.strings[id as usize].as_bytes();
-    for &b in bytes.iter().chain(&[0u8]) {
+    let bytes = ms_mir::statics::str_data(&m.strings[id as usize]);
+    for &b in &bytes {
         if (0x20..0x7f).contains(&b) && b != b'"' && b != b'\\' {
             text.push(b as char);
         } else {
@@ -866,7 +837,7 @@ fn str_const(m: &Module, id: u32, out: &mut Vec<(String, String)>) {
     }
     let def = format!(
         "@\"{name}\" = private unnamed_addr constant [{} x i8] c\"{text}\", align 16",
-        bytes.len() + 1
+        bytes.len()
     );
     out.push((name, def));
 }

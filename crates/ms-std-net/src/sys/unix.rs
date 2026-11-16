@@ -35,15 +35,15 @@ pub fn raw(sock: Borrowed<'_>) -> Raw {
     sock.as_raw_fd()
 }
 
-/// Waits up to `slice` for one socket; `true` when it is ready, hung up or failed.
-pub fn poll_one(sock: Borrowed<'_>, write: bool, slice: Duration) -> bool {
+/// Waits up to `limit` (without one, until the socket is ready) for one socket; `true` when it is ready, hung up or failed.
+pub fn poll_one(sock: Borrowed<'_>, write: bool, limit: Option<Duration>) -> bool {
     let flags = if write { PollFlags::OUT } else { PollFlags::IN };
-    let timeout = Timespec {
-        tv_sec: slice.as_secs() as _,
-        tv_nsec: slice.subsec_nanos() as _,
-    };
+    let timeout = limit.map(|d| Timespec {
+        tv_sec: d.as_secs() as _,
+        tv_nsec: d.subsec_nanos() as _,
+    });
     let mut fds = [PollFd::new(&sock, flags)];
-    match event::poll(&mut fds, Some(&timeout)) {
+    match event::poll(&mut fds, timeout.as_ref()) {
         Ok(_) => !fds[0].revents().is_empty(),
         Err(io::Errno::INTR) => false,
         Err(_) => true,

@@ -1,3 +1,5 @@
+// ms: allow_effect std.console.read
+
 /*
 Terminal text styling and measuring: colors, attributes, and width-aware helpers for strings that carry escape sequences.
 
