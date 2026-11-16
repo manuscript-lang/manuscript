@@ -120,6 +120,43 @@ pub unsafe extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
     }
 }
 
+/// MIR operations executed, added by the counting calls of an `ms bench --ops` build.
+static OPS: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+
+/// Adds `n` executed MIR operations (a block's instruction count) to the total.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub extern "C" fn msrt_ops_add(n: i64) {
+    OPS.fetch_add(n as u64, core::sync::atomic::Ordering::Relaxed);
+}
+
+/// Writes the work counters to `out[0..7]`: allocations and their bytes (the calling thread and
+/// every finished thread), then list copies, list copy bytes, string clones and string clone
+/// bytes (the calling isolate), then the MIR operations executed (an `--ops` build; 0 otherwise).
+/// Counts only grow; a bench reads them before and after a run.
+///
+/// # Safety
+/// `out` must point to seven writable `u64`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_counts(out: *mut u64) {
+    let [allocations, bytes] = alloc::requested();
+    // SAFETY: the counters belong to this isolate.
+    let copies = unsafe { *crate::string::COPY_COUNTS.ptr() };
+    let all = [
+        allocations,
+        bytes,
+        copies[0],
+        copies[1],
+        copies[2],
+        copies[3],
+        OPS.load(core::sync::atomic::Ordering::Relaxed),
+    ];
+    for (i, v) in all.into_iter().enumerate() {
+        // SAFETY: the caller passes seven writable words.
+        unsafe { out.add(i).write(v) };
+    }
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_alloc(size: usize) -> *mut u8 {

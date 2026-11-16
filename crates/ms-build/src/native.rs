@@ -250,6 +250,9 @@ pub fn build_executable(
         Backend::Cranelift
     };
     optimize(module, level, cfg!(debug_assertions));
+    if build.count_ops {
+        ms_mir::count_ops::run(module);
+    }
     // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
     let unwound = ms_mir::unwind::run(module);
     if unwound && cfg!(debug_assertions) {

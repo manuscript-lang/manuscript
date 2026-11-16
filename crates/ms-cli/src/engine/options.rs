@@ -28,5 +28,6 @@ pub fn from_env() -> BuildOptions {
             Some(v) if v != "0" => CopyProbe::Report,
             _ => CopyProbe::Off,
         },
+        count_ops: var("MS_COUNT_OPS").is_some_and(|v| v != "0"),
     }
 }
