@@ -254,8 +254,10 @@ impl Stream {
     }
 
     /// One read from a pipe that cannot be waited on: a blocking read on a pool thread, which a
-    /// stop request fails with `CancelIoEx`. The job checks the flag before it reads, so the
-    /// request is missed only when it lands between that check and the read itself.
+    /// stop request fails with `CancelIoEx`. `CancelIoEx` does nothing before the read is
+    /// issued, so the request repeats until the job is done once it has started (a job that has
+    /// not started sees the flag and returns without reading); the repeat lasts only the few
+    /// instructions between the job's start and its read.
     #[cfg(windows)]
     fn read_pipe(&self, buf: &mut [u8]) -> IoRes<usize> {
         #[cfg(test)]
@@ -266,27 +268,40 @@ impl Stream {
         }
         #[cfg(not(test))]
         {
-            use core::sync::atomic::{AtomicBool, Ordering};
-            let stopped = alloc::sync::Arc::new(AtomicBool::new(false));
-            let job = (self.fd, buf.len(), stopped.clone());
+            use core::sync::atomic::{AtomicBool, Ordering::SeqCst};
+            #[derive(Default)]
+            struct Flags {
+                stopped: AtomicBool,
+                started: AtomicBool,
+                done: AtomicBool,
+            }
+            let flags = alloc::sync::Arc::new(Flags::default());
+            let job = (self.fd, buf.len(), flags.clone());
             let ran = ms_rt::glue::pool::try_run(
                 ms_rt::glue::pool::Lane::General,
                 job,
-                |(fd, len, stopped)| {
-                    if stopped.load(Ordering::Acquire) {
-                        return Err(sys::EIO);
-                    }
-                    let mut data = alloc::vec![0u8; *len];
-                    sys::read(*fd, &mut data).map(|n| {
-                        data.truncate(n);
-                        data
-                    })
+                |(fd, len, flags)| {
+                    flags.started.store(true, SeqCst);
+                    let out = if flags.stopped.load(SeqCst) {
+                        Err(sys::EIO)
+                    } else {
+                        let mut data = alloc::vec![0u8; *len];
+                        sys::read(*fd, &mut data).map(|n| {
+                            data.truncate(n);
+                            data
+                        })
+                    };
+                    flags.done.store(true, SeqCst);
+                    out
                 },
                 -1,
             );
             let Ok(Some(read)) = ran else {
-                stopped.store(true, Ordering::Release);
-                sys::cancel_io(self.fd);
+                flags.stopped.store(true, SeqCst);
+                while flags.started.load(SeqCst) && !flags.done.load(SeqCst) {
+                    sys::cancel_io(self.fd);
+                    std::thread::yield_now();
+                }
                 return Err(IoFail::cancelled());
             };
             let data = read.map_err(|e| IoFail::os("read", &self.name, e))?;
