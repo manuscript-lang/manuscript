@@ -1698,7 +1698,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_slice(
 /// (`cap == 0` marks a view, which is never freed). Bounds as in `slice`; a bound outside the
 /// receiver faults.
 #[unsafe(no_mangle)]
-// ms: leaf domain=binary
+// ms: leaf borrows domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_view(
     b: *const VecVal,
     start: i64,

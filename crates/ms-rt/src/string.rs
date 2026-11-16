@@ -1511,21 +1511,21 @@ unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) 
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, true, true, out) }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, true, false, out) }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, false, true, out) }
@@ -2359,7 +2359,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 /// A flagged-ASCII text with bounds inside it is decided inline by the compiler (`view_guard`);
 /// everything else, including an inline text, comes here.
 #[unsafe(no_mangle)]
-// ms: leaf pure domain=string
+// ms: leaf pure borrows domain=string
 pub unsafe extern "C-unwind" fn msrt_string_view(
     s: *const StrVal,
     start: i64,

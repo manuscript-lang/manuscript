@@ -1507,7 +1507,7 @@ pub extern "C-unwind" fn msrt_fault_div_overflow(a: i64, b: i64) -> ! {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf retains
 pub unsafe extern "C-unwind" fn msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize {
     // SAFETY: single threaded access to the cleanup stack.
     unsafe {
@@ -1959,6 +1959,7 @@ aarch64_guard!(
 /// cleanups registered since entry and returns 1 (fault, with the report in `*msg_out`) or 2
 /// (cancelled, `*msg_out` null) instead of ending the process. Returns 0 when `code` returns.
 #[unsafe(no_mangle)]
+// ms: retains
 pub unsafe extern "C-unwind" fn msrt_guard_call(
     code: unsafe extern "C-unwind" fn(*mut u8),
     data: *mut u8,

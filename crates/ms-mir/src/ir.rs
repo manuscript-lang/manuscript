@@ -933,6 +933,10 @@ pub struct ExternDef {
     /// Whether the call only reads memory, cannot fault and cannot run user code (declared `pure`
     /// on the runtime function), so the backend may assume it does not clobber the caller's memory.
     pub reads: bool,
+    /// Whether the call keeps a pointer argument after it returns (declared `retains` on the
+    /// runtime function: a cleanup entry, a task's argument), so the slot that pointer names must
+    /// outlive the statement.
+    pub retains: bool,
     /// What the optimizer and code generator know this runtime function by.
     pub role: ExternRole,
 }

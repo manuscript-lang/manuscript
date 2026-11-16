@@ -1572,7 +1572,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
 ///
 /// # Safety
 /// `work` is a live closure object.
-// ms: keeps:work
+// ms: keeps:work retains
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi::Closure) {
     let i = find(id);

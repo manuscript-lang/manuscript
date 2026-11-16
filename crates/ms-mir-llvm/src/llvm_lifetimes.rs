@@ -20,14 +20,6 @@ pub const DECLARES: &str = "declare void @llvm.lifetime.start.p0(ptr captures(no
 /// the same pattern the counting runtime writes over freed heap blocks. As a signed `i8`.
 const POISON: i8 = -35;
 
-/// Runtime calls that keep a pointer argument after they return, so its slot outlives the block.
-const RETAINS: [&str; 4] = [
-    "msrt_cleanup_push",
-    "msrt_task_spawn",
-    "msrt_promise_defer",
-    "msrt_guard_call",
-];
-
 /// Operations whose result is an address derived from an operand address.
 const DERIVES: [&str; 5] = ["getelementptr", "ptrtoint", "inttoptr", "add", "sub"];
 
@@ -181,10 +173,7 @@ fn classify(line: &str, name: &str) -> Use {
     let Some(at) = args.iter().position(|a| has(a)) else {
         return Use::Escape;
     };
-    if callee.contains("@llvm.lifetime")
-        || callee.contains("@llvm.ptrmask")
-        || RETAINS.iter().any(|name| callee.contains(name))
-    {
+    if callee.contains("@llvm.lifetime") || callee.contains("@llvm.ptrmask") {
         Use::Escape
     } else if callee.contains("@llvm.memcpy") || callee.contains("@llvm.memmove") {
         if at == 0 { Use::Write } else { Use::Read }
@@ -344,12 +333,6 @@ mod tests {
         assert!(!mark(ALLOCAS, &HashSet::new(), escape, false).contains("(ptr %v1)"));
         let phi = "  br label %b1\nb1:\n  %v3 = phi ptr [ %v1, %b0 ]\n  ret void\n";
         assert!(!mark(ALLOCAS, &HashSet::new(), phi, false).contains("lifetime"));
-    }
-
-    #[test]
-    fn a_slot_the_runtime_keeps_a_pointer_to_gets_no_marker() {
-        let body = "  store i64 1, ptr %v1, align 8\n  %v3 = ptrtoint ptr %v1 to i64\n  %v4 = call i64 @\"msrt_cleanup_push\"(i64 7, i64 %v3)\n  ret void\n";
-        assert!(!mark(ALLOCAS, &HashSet::new(), body, false).contains("(ptr %v1)"));
     }
 
     #[test]
