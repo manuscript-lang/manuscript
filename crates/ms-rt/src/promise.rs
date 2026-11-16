@@ -209,6 +209,14 @@ pub(crate) fn teardown() {
             crate::cancel::unregister(t.cancel[i], id);
         }
     }
+    for i in 0..t.flags.len() {
+        if t.flags[i] & DEFERRED != 0 {
+            t.flags[i] &= !DEFERRED;
+            let closure = core::mem::take(&mut t.retry_state[i]);
+            // SAFETY: the closure handed over to `msrt_promise_defer`, never run.
+            unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
+        }
+    }
     for r in core::mem::take(&mut t.result) {
         if !r.ptr.is_null() {
             drop_block(r.ptr as usize, r.desc as usize);
@@ -2646,6 +2654,19 @@ mod tests {
         task::teardown();
         assert_eq!(winner, 1);
         assert_eq!(calls, 0);
+        assert_eq!(DEFERRED_DROPS.load(SeqCst), 1);
+    }
+
+    #[test]
+    fn teardown_drops_deferred_work_that_never_ran() {
+        let _g = lock();
+        use std::sync::atomic::Ordering::SeqCst;
+        DEFERRED_CALLS.store(0, SeqCst);
+        DEFERRED_DROPS.store(0, SeqCst);
+        // Another thread's handle may still name this promise when its thread ends.
+        let _pending = deferred_probe();
+        task::teardown();
+        assert_eq!(DEFERRED_CALLS.load(SeqCst), 0);
         assert_eq!(DEFERRED_DROPS.load(SeqCst), 1);
     }
 
