@@ -102,7 +102,9 @@ fn preserved_payloads_cannot_be_duplicated() {
 fn preserved_bound_payloads_require_clonable() {
     for body in [
         include_str!("wrapper_passthrough/reject-ok-or-bound-resource.ms"),
+        include_str!("wrapper_passthrough/reject-ok-or-else-bound-resource.ms"),
         include_str!("wrapper_passthrough/reject-map-error-bound-resource.ms"),
+        include_str!("wrapper_passthrough/reject-to-optional-bound-resource.ms"),
         include_str!("wrapper_passthrough/reject-map-bound-resource.ms"),
         include_str!("wrapper_passthrough/reject-and-then-bound-resource.ms"),
         include_str!("wrapper_passthrough/reject-bound-preserved-generic.ms"),
