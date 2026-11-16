@@ -28,19 +28,19 @@ type Usage:
 type Run:
 	challenge: String
 	harness: String
-	model: String = ""
 	language: String
 	category: String
 	tier: Int
 	usage: Usage
 	wall_s: Float
+	first_build_ok: Bool
+	pass: Bool
+	model: String = ""
 	timed_out: Bool = false
 	builds: Int = 0
-	first_build_ok: Bool
 	first_build_fixed_ok: Bool = false
 	build_codes: List[String] = []
 	build_errors: List[String] = []
-	pass: Bool
 
 type CodeStat:
 	code: String

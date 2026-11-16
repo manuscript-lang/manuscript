@@ -4,6 +4,7 @@
 
 Perf and agent benchmarks, profiling.
 
+- [A cloned `none` that is only dropped is deleted](an-emptied-local-must-not-clone-or-drop-its-none.md): a stored-to `Result` variable cloned and dropped its emptied slot every pass (48.2M to 5.3M instructions).
 - [Runtime string results are built in place, not through a `Vec`](runtime-string-results-are-built-in-place-not-through-a-vec.md): inline `starts_with`/`ends_with`, one-allocation `lower`/`upper`/`reverse`, an exact `parse_float` fast path, Schubfach float digits, exact `to_fixed`, byte-loop `fields` (lower 40 to 22 ms, reverse 66 to 14, `to_string` 167 to 61 per million).
 - [Sorting records that own data uses the generated sort over bitwise scratch](sorting-owning-records-uses-bitwise-scratch.md): inlined comparator for `String`-holding records, 225M to 102M instructions, then 82M with the driftsort; scratch owns nothing so a comparator fault is safe.
 - [User `hash()` values are mixed before they index a table](user-hash-values-are-mixed-before-indexing.md): identity-like hashes of small-int records clustered under linear probing (562 to 103 ms for 1M `Set[Pt]` operations).
@@ -42,7 +43,7 @@ Perf and agent benchmarks, profiling.
 - [A temporary `stdout()` stream must not flush on close](a-temporary-stdout-stream-must-not-flush-on-close.md): per-write flush cost one syscall per output line and halved program speed through a pipe.
 - [A returned `Map.get` is a borrow, not a copy](a-returned-map-get-is-a-borrow-not-a-copy.md): `JsonValue.get` stops deep-copying; callers that mutate the map need `.clone()`.
 - [A read-modify-write is one API, not a syntactic pattern](a-read-modify-write-is-one-api-not-a-syntactic-pattern.md): `Map.update` is one lookup via the inlined word probe; the `get(k).get(d)` matcher was deleted (7.6 vs 10.1 vs 13.9 ms).
-- [An accumulator append must not fuse into the join](an-accumulator-append-must-not-fuse-into-the-join.md): `s += f"item-{i},"` fused `s` into one `string_fmtN` and copied the prefix every iteration; leave it to `append_in_place`, 14 s to 8 ms.
+- [A join onto a dying string grows it in place](a-join-onto-a-dying-string-grows-it-in-place.md): `s += f"item-{i},"` joins `s` with the pieces at lowering; `append_in_place` picks the growing twin, so nothing is copied or built twice.
 - [String fusion must not treat other-block drops as early](string-fusion-must-not-treat-other-block-drops-as-early.md): a leaf dropped on a sibling path is not dropped before the join; `Info::dropped_before` uses reachability, c36 -6.8% instructions.
 
 - [URL parent resolution truncates existing prefixes](url-parent-resolution-truncates-existing-prefixes.md): avoid quadratic prefix copies while preserving root and slash semantics; measure ordinary relative-reference controls.

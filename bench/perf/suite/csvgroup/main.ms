@@ -1,5 +1,5 @@
 import (
-	parse from "@std/data/csv.ms",
+	each_cell from "@std/data/csv.ms",
 	stdin from "@std/io/io.ms",
 	read_all from "@std/io/streams.ms",
 )
@@ -10,20 +10,33 @@ type Total:
 
 fn main() Void:
 	data := read_all(stdin(), none).get().decode_utf8().get("")
-	rows := parse(data).get()
 	var regions = Map[String, Total]()
 	var products = Map[String, Int]()
 	var quoted = 0
+	var rows = 0
+	var region = ""
+	var product = ""
+	var qty = 0
+	var price = 0
 
-	for i in 1..rows.length():
-		r := rows[i]
-		cents := r[3].parse_int().get(0) * r[4].parse_int().get(0)
-		old := regions.get_or(r[1], Total(0, 0))
-		regions[r[1].clone()] = Total(old.rows + 1, old.cents + cents)
-		products[r[2].clone()] = products.get_or(r[2], 0) + cents
-		if r[5].contains(","): quoted += 1
+	// Cells arrive as views of `data`; only the two keys are copied out.
+	visit := fn(row: Int, col: Int, cell: String) Void:
+		if row == 0: return
 
-	print(f"rows: {rows.length() - 1}")
+		if col == 1: region = cell.clone()
+		else if col == 2: product = cell.clone()
+		else if col == 3: qty = cell.parse_int().get(0)
+		else if col == 4: price = cell.parse_int().get(0)
+		else if col == 5:
+			cents := qty * price
+			old := regions.get_or(region, Total(0, 0))
+			regions[region.clone()] = Total(old.rows + 1, old.cents + cents)
+			products[product.clone()] = products.get_or(product, 0) + cents
+			if cell.contains(","): quoted += 1
+			rows += 1
+
+	each_cell(data, visit).get()
+	print(f"rows: {rows}")
 	print(f"quoted: {quoted}")
 	for e in regions.entries().sorted(fn a, b: a.key.compare(b.key)):
 		print(f"{e.key} {e.value.rows} {e.value.cents}")
