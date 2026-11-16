@@ -370,8 +370,11 @@ impl<'a> RequestScan<'a> {
                 }
                 6 if is("Expect") => scan.expect_continue |= value_has_token(value, "100-continue"),
                 10 if is("Connection") => {
-                    scan.connection_close |= value_has_token(value, "close");
-                    scan.connection_keep_alive |= value_has_token(value, "keep-alive");
+                    for token in value.split(|&c| c == b',') {
+                        let token = token.trim_ascii();
+                        scan.connection_close |= token.eq_ignore_ascii_case(b"close");
+                        scan.connection_keep_alive |= token.eq_ignore_ascii_case(b"keep-alive");
+                    }
                 }
                 14 if is("Content-Length") => scan.content_length = true,
                 17 if is("Transfer-Encoding") => scan.transfer_encoding = true,

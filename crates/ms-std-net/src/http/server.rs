@@ -590,7 +590,11 @@ impl Reactor {
 
     /// Handles whatever is ready without blocking.
     fn service(&self) {
-        let mut events = Vec::new();
+        thread_local! {
+            /// The event list, kept between turns so each turn allocates none.
+            static EVENTS: Cell<Vec<(u64, Ev)>> = const { Cell::new(Vec::new()) };
+        }
+        let mut events = EVENTS.with(Cell::take);
         loop {
             if self.beat.turn() {
                 self.serve_others();
@@ -632,6 +636,8 @@ impl Reactor {
             // same reason as in the loop over the events.
             rt::yield_now();
         }
+        events.clear();
+        EVENTS.with(|e| e.set(events));
     }
 }
 
