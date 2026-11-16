@@ -407,11 +407,6 @@ fn push_input(inputs: &mut Vec<String>, path: String) {
     }
 }
 
-/// The nearest `ms.toml` in `dir` or an ancestor.
-pub fn enclosing_manifest(dir: &str) -> Option<String> {
-    enclosing_manifest_with(dir, |_| {})
-}
-
 /// Record negative lookups too: creating a nearer manifest changes resolution.
 fn enclosing_manifest_with(dir: &str, mut record: impl FnMut(&str)) -> Option<String> {
     let mut current = dir.to_string();

@@ -282,10 +282,6 @@ impl<'m> FuncBuilder<'m> {
     pub fn narrow_chk(&mut self, a: Value, to: Ty) -> Value {
         self.val(Op::NarrowChk, &[a], Imm::None, to)
     }
-    /// `f32.round`: rounds a `Float32` to the nearest binary32 value.
-    pub fn f32_round(&mut self, a: Value) -> Value {
-        self.unop(Op::F32Round, a)
-    }
     /// `conv`: the same number as another type of its kind. A `Float32` target rounds.
     pub fn conv(&mut self, a: Value, to: Ty) -> Value {
         self.val(Op::Conv, &[a], Imm::None, to)
