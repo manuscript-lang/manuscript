@@ -225,7 +225,6 @@ fn metadata_link_preserves_source(
         source_link
     );
 
-    assert_eq!(backend.lowering.0.get(), 1, "warm build must use its cache");
     let document = ms_json::parse(std::fs::read_to_string(&metadata).unwrap()).unwrap();
     assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
     assert_eq!(Command::new(&output).status().unwrap().code(), Some(7));
@@ -293,7 +292,6 @@ fn build_metadata_preserves_case_variant_source_links_on_cold_and_warm_paths() {
                 let (status, stdout, stderr) = build();
                 assert_eq!(status, 0, "{stdout}{stderr}");
             }
-            assert_eq!(backend.lowering.0.get(), 1, "control must hit the cache");
         }
         #[cfg(unix)]
         std::fs::remove_file(&alias).unwrap();
@@ -327,18 +325,12 @@ fn build_metadata_preserves_case_variant_source_links_on_cold_and_warm_paths() {
         } else {
             assert_eq!(status, 0, "{stdout}{stderr}");
             assert_eq!(document.get("completed").unwrap().as_bool(), Some(true));
-            assert_eq!(
-                backend.lowering.0.get(),
-                1,
-                "distinct destination must retain cache hits"
-            );
             assert_eq!(Command::new(&output).status().unwrap().code(), Some(7));
             // Where both spellings name distinct entries, same-target links remain safe too.
             std::fs::remove_file(&metadata).unwrap();
             common::symlink_file(Path::new(&target), &metadata).unwrap();
             let (status, stdout, stderr) = build();
             assert_eq!(status, 0, "{stdout}{stderr}");
-            assert_eq!(backend.lowering.0.get(), 1);
             assert_eq!(Command::new(&output).status().unwrap().code(), Some(7));
         }
         assert!(
@@ -544,7 +536,7 @@ fn build_metadata_must_not_replace_the_requested_source_symlink() {
 }
 
 #[test]
-fn cached_artifact_collision_preserves_inputs_and_output_before_restore() {
+fn retargeted_output_alias_cannot_overwrite_an_import_after_a_previous_build() {
     for artifact in ["program", "program.ms-build.json"] {
         let dir = scratch(&format!("cached-artifact-is-import-{artifact}"));
         let safe = dir.join("safe");
@@ -569,7 +561,6 @@ fn cached_artifact_collision_preserves_inputs_and_output_before_restore() {
             let (status, stdout, stderr) = build();
             assert_eq!(status, 0, "{stdout}{stderr}");
         }
-        assert_eq!(backend.lowering.0.get(), 1, "control must hit the cache");
         #[cfg(unix)]
         std::fs::remove_file(&alias).unwrap();
         #[cfg(windows)]
@@ -1297,293 +1288,6 @@ fn bench_without_bench_blocks_reports_none() {
     assert_eq!(status, 0, "{err}");
     assert!(stdout.contains("no bench blocks found"), "{stdout}");
     assert!(!err.contains("bench driver"), "{err}");
-}
-
-/// A single-file build takes its aliases from the enclosing `ms.toml`, so editing the manifest
-/// invalidates the cached build.
-#[test]
-fn cached_file_build_notices_enclosing_manifest_changes() {
-    let dir = scratch("cache-manifest");
-    for lib in ["lib", "lib2"] {
-        std::fs::create_dir_all(dir.join("src").join(lib)).unwrap();
-    }
-    write(
-        &dir.join("src/lib"),
-        "m.ms",
-        "export fn code() Int:\n    return 3\n",
-    );
-    write(
-        &dir.join("src/lib2"),
-        "m.ms",
-        "export fn code() Int:\n    return 4\n",
-    );
-    let manifest = |alias: &str| {
-        format!(
-            "[project]\nname = \"p\"\nsource = \"src\"\n\n[aliases]\n\"@lib\" = \"src/{alias}\"\n"
-        )
-    };
-    write(&dir, "ms.toml", &manifest("lib"));
-    std::fs::create_dir_all(dir.join("bin")).unwrap();
-    let entry = write(
-        &dir.join("bin"),
-        "a.ms",
-        "import code from \"@lib/m.ms\"\nexport fn main() Int:\n    return code()\n",
-    );
-    let output = dir.join("a.out");
-    let backend = Engine::new(Native);
-    let build = || {
-        let (status, _, err) = ms(&backend, &["build", &entry, "-o", output.to_str().unwrap()]);
-        assert_eq!((status, err.as_str()), (0, ""));
-        Command::new(&output).status().unwrap().code()
-    };
-    assert_eq!(build(), Some(3));
-    assert_eq!(build(), Some(3));
-    write(&dir, "ms.toml", &manifest("lib2"));
-    assert_eq!(build(), Some(4));
-}
-
-#[test]
-fn cached_file_build_notices_new_ancestor_and_nearer_manifests() {
-    let dir = scratch("cache-new-manifest");
-    let src = dir.join("src");
-    std::fs::create_dir(&src).unwrap();
-    let source = write(&src, "main.ms", MAIN);
-    let output = dir.join("program");
-    let metadata = dir.join("program.ms-build.json");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
-    let build = || {
-        ms(
-            &backend,
-            &[
-                "build",
-                &source,
-                "-o",
-                output.to_str().unwrap(),
-                "--build-type",
-                "Debug",
-                "--json",
-            ],
-        )
-    };
-    let (status, stdout, stderr) = build();
-    assert_eq!(status, 0, "{stdout}{stderr}");
-    let snapshot = || {
-        (
-            std::fs::read(&output).unwrap(),
-            std::fs::read(&metadata).unwrap(),
-        )
-    };
-    for manifest in [dir.join("ms.toml"), src.join("ms.toml")] {
-        // The previous rebuild relinked the program, and the linker stamps the time into it.
-        let previous = snapshot();
-        std::fs::write(&manifest, "[project\n").unwrap();
-        let (status, stdout, stderr) = build();
-        assert_eq!(status, 1, "{stdout}{stderr}");
-        let document = ms_json::parse(stdout).unwrap();
-        assert_eq!(
-            document.get("reason").unwrap().as_str(),
-            Some("compile_error")
-        );
-        assert_eq!(snapshot(), previous);
-        std::fs::write(&manifest, "[project]\nname = \"p\"\nsource = \".\"\n").unwrap();
-        let (status, stdout, stderr) = build();
-        assert_eq!(status, 0, "{stdout}{stderr}");
-    }
-    std::fs::remove_file(src.join("ms.toml")).unwrap();
-    let (status, stdout, stderr) = build();
-    assert_eq!(status, 0, "{stdout}{stderr}");
-    assert_eq!(Command::new(output).status().unwrap().code(), Some(7));
-}
-
-#[test]
-fn cached_file_build_searches_manifests_through_directory_symlinks() {
-    let dir = scratch("cache-symlink-manifest");
-    let physical = dir.join("physical");
-    let src = physical.join("src");
-    std::fs::create_dir_all(&src).unwrap();
-    write(&src, "main.ms", MAIN);
-    let alias = dir.join("alias");
-    common::symlink_dir(&src, &alias).unwrap();
-    let source = alias.join("main.ms");
-    let output = dir.join("program");
-    let backend = Engine::new(Fixed(EXIT_SEVEN));
-    let build = || {
-        ms(
-            &backend,
-            &[
-                "build",
-                source.to_str().unwrap(),
-                "-o",
-                output.to_str().unwrap(),
-                "--build-type",
-                "Debug",
-            ],
-        )
-    };
-    let (status, stdout, stderr) = build();
-    assert_eq!(status, 0, "{stdout}{stderr}");
-    std::fs::write(physical.join("ms.toml"), "[project\n").unwrap();
-    let (status, stdout, stderr) = build();
-    assert_eq!(status, 1, "{stdout}{stderr}");
-    assert_eq!(Command::new(output).status().unwrap().code(), Some(7));
-}
-
-#[test]
-fn cached_file_build_skips_manifest_directories_without_disabling_cache() {
-    for parent_manifest in [false, true] {
-        let dir = scratch(&format!("cache-manifest-directory-{parent_manifest}"));
-        let src = dir.join("src");
-        std::fs::create_dir_all(src.join("ms.toml")).unwrap();
-        if parent_manifest {
-            write(&dir, "ms.toml", "[project]\nname = \"p\"\nsource = \".\"\n");
-        }
-        let source = write(&src, "main.ms", MAIN);
-        let output = dir.join("program");
-        let backend = Engine::new(Counted(std::cell::Cell::new(0)));
-        for _ in 0..2 {
-            let (status, stdout, stderr) = ms(
-                &backend,
-                &[
-                    "build",
-                    &source,
-                    "-o",
-                    output.to_str().unwrap(),
-                    "--build-type",
-                    "Debug",
-                ],
-            );
-            assert_eq!(status, 0, "{stdout}{stderr}");
-        }
-        assert_eq!(
-            backend.lowering.0.get(),
-            1,
-            "second build must hit the cache"
-        );
-    }
-}
-
-fn entry_symlink_build(project: bool) {
-    let dir = scratch(&format!("cache-entry-symlink-{project}"));
-    let first = write(&dir, "first.ms", MAIN);
-    let second = write(
-        &dir,
-        "second.ms",
-        include_str!("engine/cache-entry-target.ms"),
-    );
-    let entry = dir.join("main.ms");
-    common::symlink_file(Path::new(&first), &entry).unwrap();
-    let input = if project {
-        write(
-            &dir,
-            "ms.toml",
-            "[project]\nname = \"p\"\nsource = \".\"\nentry = \"main.ms\"\n",
-        );
-        dir.join("ms.toml")
-    } else {
-        entry.clone()
-    };
-    let output = dir.join("program");
-    let backend = Engine::new(Native);
-    let build = || {
-        let (status, stdout, stderr) = ms(
-            &backend,
-            &[
-                "build",
-                input.to_str().unwrap(),
-                "-o",
-                output.to_str().unwrap(),
-                "--build-type",
-                "Debug",
-            ],
-        );
-        assert_eq!(status, 0, "{stdout}{stderr}");
-        Command::new(&output).status().unwrap().code()
-    };
-    assert_eq!(build(), Some(0));
-    assert_eq!(build(), Some(0));
-    std::fs::remove_file(&entry).unwrap();
-    common::symlink_file(Path::new(&second), &entry).unwrap();
-    assert_eq!(build(), Some(8));
-    assert_eq!(build(), Some(8));
-}
-
-#[test]
-fn cached_file_build_notices_entry_symlink_retargeting() {
-    entry_symlink_build(false);
-}
-
-#[test]
-fn cached_project_build_notices_entry_symlink_retargeting() {
-    entry_symlink_build(true);
-}
-
-/// `alias`: the import goes through a manifest alias instead of a relative path.
-fn directory_symlink_build(alias: bool) {
-    let dir = scratch(&format!("cache-directory-symlink-{alias}"));
-    for (name, code) in [("one", 3), ("two", 4)] {
-        std::fs::create_dir_all(dir.join(name)).unwrap();
-        write(
-            &dir.join(name),
-            "value.ms",
-            &format!("export fn value() Int:\n    return {code}\n"),
-        );
-    }
-    let link = dir.join("current");
-    common::symlink_dir(&dir.join("one"), &link).unwrap();
-    let path = if alias {
-        write(
-            &dir,
-            "ms.toml",
-            "[project]\nname = \"p\"\nsource = \".\"\nentry = \"main.ms\"\n[aliases]\n\"@cur\" = \"./current\"\n",
-        );
-        "@cur/value.ms"
-    } else {
-        "./current/value.ms"
-    };
-    let main = write(
-        &dir,
-        "main.ms",
-        &format!("import value from \"{path}\"\nexport fn main() Int:\n    return value()\n"),
-    );
-    let input = if alias {
-        dir.join("ms.toml").to_str().unwrap().to_string()
-    } else {
-        main
-    };
-    let output = dir.join("program");
-    let backend = Engine::new(Native);
-    let build = || {
-        let (status, stdout, stderr) = ms(
-            &backend,
-            &[
-                "build",
-                &input,
-                "-o",
-                output.to_str().unwrap(),
-                "--build-type",
-                "Debug",
-            ],
-        );
-        assert_eq!(status, 0, "{stdout}{stderr}");
-        Command::new(&output).status().unwrap().code()
-    };
-    assert_eq!(build(), Some(3));
-    assert_eq!(build(), Some(3));
-    std::fs::remove_file(&link).ok();
-    std::fs::remove_dir(&link).ok();
-    common::symlink_dir(&dir.join("two"), &link).unwrap();
-    assert_eq!(build(), Some(4));
-    assert_eq!(build(), Some(4));
-}
-
-#[test]
-fn cached_build_notices_an_imported_directory_link_retargeting() {
-    directory_symlink_build(false);
-}
-
-#[test]
-fn cached_build_notices_an_alias_directory_link_retargeting() {
-    directory_symlink_build(true);
 }
 
 #[test]

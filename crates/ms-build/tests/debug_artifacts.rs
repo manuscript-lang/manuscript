@@ -72,7 +72,7 @@ b0:
         let mut module = parse_module(&text).unwrap();
         build_executable(&mut module, &output, profile, &runtime, &[], &build).unwrap();
         let first = std::fs::read(&output).unwrap();
-        // MS_CACHE=verify compares full executable bytes. Rebuilding unchanged
+        // Rebuilding unchanged
         // inputs must not expose the new private stage through N_OSO or UUIDs.
         let mut module = parse_module(&text).unwrap();
         build_executable(&mut module, &output, profile, &runtime, &[], &build).unwrap();
