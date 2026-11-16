@@ -26,7 +26,7 @@ import (
 	WebSocketOptions,
 	WebSocketWire,
 	web_socket_from from "@std/net/websocket.ms",
-	Duration, Timestamp, sleep from "@std/time.ms",
+	Duration, Timestamp, nanoseconds, sleep from "@std/time.ms",
 
 	msrt_runtime_limit,
 	msrt_runtime_set_threads,
@@ -699,17 +699,37 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 
 	var next = 0
 
+	// The back-off, in nanoseconds, between accept attempts that failed for a reason no
+	// retry fixes (EMFILE, ENFILE, ENOBUFS, ENOMEM): 5 ms, doubling up to 1 s.
+	var pause = 5000000
+
 	while true:
 		accepted := msstd_http_serving_accept(listening.serving)
 
 		if accepted.is_error():
-			if accepted.err().kind == "EBADF": return ok()
+			kind := accepted.err().kind.get("")
+			if kind == "EBADF": return ok()
+			if is_per_connection_error(kind): continue
 
-			void sleep(50.milliseconds()).wait()
+			// Out of descriptors or memory: wait for something to close, longer each
+			// time.
+			void sleep(nanoseconds(pause)).wait()
+			pause = if pause < 500000000: pause * 2 else: 1000000000
 			continue
 
+		pause = 5000000
 		void accepting.deals[next].write(accepted.get())
 		next = (next + 1) % count
+
+// Whether an accept error belongs to one connection that went away before it was taken:
+// the next attempt succeeds at once, so there is nothing to wait for.
+fn is_per_connection_error(kind: String) Bool:
+	return (
+		kind == "ECONNABORTED"
+		or kind == "EINTR"
+		or kind == "EPROTO"
+		or kind == "ECONNRESET"
+	)
 
 // Starts one worker on the least loaded thread. A returned promise owns what it
 // captures, so the share of the serving and the pipe belong to the worker for as long

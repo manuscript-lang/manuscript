@@ -39,6 +39,29 @@ fn client_tls(alpn: &[&str]) -> Arc<rustls::ClientConfig> {
 
 static HANG_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
+/// What the `/hang` handler has reached: 0 not started, 1 parked, 2 woken. The test waits on it
+/// instead of sleeping, so a loaded runner changes how long it takes and not what it checks.
+static HANG_STAGE: (std::sync::Mutex<u8>, std::sync::Condvar) =
+    (std::sync::Mutex::new(0), std::sync::Condvar::new());
+
+fn set_hang_stage(stage: u8) {
+    *HANG_STAGE.0.lock().unwrap() = stage;
+    HANG_STAGE.1.notify_all();
+}
+
+/// Blocks until the handler has reached `stage`; fails the test after a generous deadline.
+fn await_hang_stage(stage: u8) {
+    let guard = HANG_STAGE.0.lock().unwrap();
+    let (guard, timeout) = HANG_STAGE
+        .1
+        .wait_timeout_while(guard, Duration::from_secs(30), |s| *s < stage)
+        .unwrap();
+    assert!(
+        !timeout.timed_out() && *guard >= stage,
+        "/hang handler never reached stage {stage}"
+    );
+}
+
 /// Buffered handler.
 struct App;
 
@@ -51,8 +74,10 @@ impl Handle for App {
             "/hang" => {
                 // Parks until the stream is reset, which cancels this task and ends the park.
                 let token = crate::rt::Token::new();
+                set_hang_stage(1);
                 let got = token.park(-1);
                 HANG_CANCELLED.store(got & 16 != 0, std::sync::atomic::Ordering::SeqCst);
+                set_hang_stage(2);
                 return Outcome::Cancelled;
             }
             "/size" => format!("{}", r.body.len()).into_bytes(),
@@ -858,16 +883,17 @@ fn a_reset_stream_cancels_its_running_handler() {
     let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     HANG_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
+    set_hang_stage(0);
     let after = with_client(move || {
         let mut c = Client::connect(&addr, big_window());
         let id = c.get("/hang");
         c.flush();
-        // Let the handler start waiting, then reset its stream.
-        std::thread::sleep(Duration::from_millis(200));
+        // Once the handler is waiting, reset its stream.
+        await_hang_stage(1);
         c.core.send_rst(id, error_code::CANCEL);
         c.flush();
         // The wait ends at once, not after the request timeout.
-        std::thread::sleep(Duration::from_millis(300));
+        await_hang_stage(2);
         let other = c.get("/ok");
         c.response(other)
     });
