@@ -59,10 +59,16 @@ fn mp4(data: &[u8]) -> bool {
     false
 }
 
+/// Bit `b` is set for each control byte `b` that text does not hold (all below 0x20 except tab,
+/// line feed, form feed, carriage return and escape).
+const BINARY: u32 = 0xf7ffc9ff;
+
 fn is_text(data: &[u8]) -> bool {
-    !data
-        .iter()
-        .any(|&b| matches!(b, 0x00..=0x08 | 0x0b | 0x0e..=0x1a | 0x1c..=0x1f))
+    // No early exit: at most 512 bytes, and a loop without one compiles to a few wide compares
+    // instead of a branch per byte (this runs for every response that sets no content type).
+    !data.iter().fold(false, |binary, &b| {
+        binary | (b < 0x20 && BINARY >> b & 1 != 0)
+    })
 }
 
 /// The detected media type of `data` (at most its first 512 bytes matter).
@@ -271,5 +277,14 @@ mod tests {
         let mut long = vec![b'a'; 600];
         long.push(0);
         assert_eq!(detect(&long), "text/plain; charset=utf-8");
+    }
+
+    #[test]
+    fn only_the_listed_control_bytes_make_data_binary() {
+        for b in 0..=255u8 {
+            let binary = matches!(b, 0x00..=0x08 | 0x0b | 0x0e..=0x1a | 0x1c..=0x1f);
+            assert_eq!(super::is_text(&[b'a', b, b'z']), !binary, "byte {b:#x}");
+        }
+        assert!(super::is_text(b""));
     }
 }

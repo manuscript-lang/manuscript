@@ -794,6 +794,9 @@ impl<'a> FnLower<'a> {
             BinaryOp::And | BinaryOp::Or => return self.short_circuit(op, left, right),
             _ => {}
         }
+        if op == BinaryOp::Add && self.emty(e)? == MTy::STR {
+            return self.text_sum(e);
+        }
         if let Some(v) = self.scalar_compare(e)? {
             return Ok(v);
         }

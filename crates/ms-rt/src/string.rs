@@ -1104,7 +1104,7 @@ unsafe fn format_parts<const N: usize>(mask: i64, parts: [usize; N]) -> StrVal {
 
 /// `f"{a}{b}"` where a part may be an integer: see [`format_parts`].
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) {
     // SAFETY: caller passes live strings and a writable `out`.
     unsafe { format_parts(mask, [a, b]).write_to(out) }
@@ -1112,7 +1112,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, 
 
 /// Three parts, any of them integers: see [`format_parts`].
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt3(
     mask: i64,
     a: usize,
@@ -1126,7 +1126,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt3(
 
 /// Four parts, any of them integers: see [`format_parts`].
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt4(
     mask: i64,
     a: usize,
@@ -1141,7 +1141,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt4(
 
 /// Five parts, any of them integers: see [`format_parts`].
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt5(
     mask: i64,
     a: usize,
@@ -1157,7 +1157,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt5(
 
 /// Six parts, any of them integers: see [`format_parts`].
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_fmt6(
     mask: i64,
     a: usize,

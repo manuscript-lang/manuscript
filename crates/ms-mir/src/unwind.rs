@@ -480,29 +480,66 @@ fn takes_from_slot(m: &Module, callee: FuncId, memo: &mut HashMap<FuncId, bool>)
         .map(|(_, v)| v.0)
         .collect();
     let mut found = false;
+    // `opt.none` values and the owned copies of them.
+    let mut nones: BTreeSet<u32> = BTreeSet::new();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
-        let from_slot = inst.args.iter().any(|a| derived.contains(&a.0));
-        match inst.op {
-            Op::Take if from_slot => found = true,
-            Op::Call if from_slot => match inst.imm {
-                Imm::Func(g) => {
-                    let touches_slot = inst.args.iter().any(|a| derived.contains(&a.0));
-                    found |= touches_slot && takes_from_slot(m, g, memo);
-                }
-                _ => found = true,
-            },
-            Op::CallInd | Op::CallMethod if from_slot => found = true,
-            _ => {}
+        let copy = inst.op == Op::Clone && inst.args.first().is_some_and(|a| nones.contains(&a.0));
+        if let Some(r) = inst.res.filter(|_| inst.op == Op::OptNone || copy) {
+            nones.insert(r.0);
         }
-        if let Some(r) = inst.res
-            && inst.args.first().is_some_and(|a| derived.contains(&a.0))
-            && f.ty(r) == Ty::PTR
-        {
-            derived.insert(r.0);
+    }
+    for blk in &f.blocks {
+        for (n, inst) in blk.insts.iter().enumerate() {
+            let from_slot = inst.args.iter().any(|a| derived.contains(&a.0));
+            // A take that puts `none` in its place at once leaves no hole.
+            let refilled = blk.insts.get(n + 1).is_some_and(|next| {
+                next.op == Op::Put
+                    && next.args.first() == inst.args.first()
+                    && next.args.get(1).is_some_and(|v| nones.contains(&v.0))
+            });
+            match inst.op {
+                Op::Take if from_slot && !refilled => found = true,
+                Op::Call if from_slot => match inst.imm {
+                    Imm::Func(g) => {
+                        let touches_slot = inst.args.iter().any(|a| derived.contains(&a.0));
+                        found |= touches_slot && takes_from_slot(m, g, memo);
+                    }
+                    _ => found = true,
+                },
+                Op::CallInd | Op::CallMethod if from_slot => found = true,
+                _ => {}
+            }
+            if let Some(r) = inst.res
+                && inst.args.first().is_some_and(|a| derived.contains(&a.0))
+                && f.ty(r) == Ty::PTR
+            {
+                derived.insert(r.0);
+            }
         }
     }
     memo.insert(callee, found);
     found
+}
+
+/// Whether every path from the entry to block `to` passes through block `d`.
+fn dominates(f: &Func, d: usize, to: usize) -> bool {
+    if d == to {
+        return true;
+    }
+    let mut seen = vec![false; f.blocks.len()];
+    let mut stack = vec![0usize];
+    while let Some(b) = stack.pop() {
+        if b == d || std::mem::replace(&mut seen[b], true) {
+            continue;
+        }
+        if b == to {
+            return false;
+        }
+        f.blocks[b]
+            .term
+            .for_each_target(|t| stack.push(t.block.index()));
+    }
+    true
 }
 
 /// Covers a slot-held value while a shielded close works on it in place. A fault inside the
@@ -520,6 +557,17 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         .collect();
     if slots.is_empty() {
         return false;
+    }
+    // A part of a slot's value (an inlined close hands its helpers the address of a field) names
+    // the slot it lies in.
+    let mut roots: HashMap<u32, u32> = slots.keys().map(|&s| (s, s)).collect();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if inst.op == Op::PtrField
+            && let Some(r) = inst.res
+            && let Some(&root) = inst.args.first().and_then(|a| roots.get(&a.0))
+        {
+            roots.insert(r.0, root);
+        }
     }
     let ext = |m: &Module, inst: &Inst, name: &str| matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].name == name);
     let mut memo = HashMap::new();
@@ -546,12 +594,12 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                     if inst.op != Op::Call {
                         continue;
                     }
-                    if let Some(slot) = inst.args.first()
-                        && let Some(ty) = slots.get(&slot.0)
+                    if let Some(root) = inst.args.first().and_then(|a| roots.get(&a.0))
+                        && let Some(ty) = slots.get(root)
                         && let Imm::Func(g) = inst.imm
                         && !takes_from_slot(m, g, &mut memo)
                     {
-                        calls.push((cur, k, *slot, *ty));
+                        calls.push((cur, k, Value(*root), *ty));
                     }
                 }
                 if end < insts.len() {
@@ -581,22 +629,32 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                     .flat_map(|(b, blk)| blk.insts.iter().enumerate().map(move |(k, i)| (b, k, i)))
                     .filter(|(_, _, i)| i.op == Op::CleanupPush && i.args.first() == Some(&slot))
                     .any(|(b, k, push)| {
-                        // An entry pushed off the window's path covers the slot; one pushed on it
-                        // does until its discard, between the push and the call.
-                        let Some(from) = path[..=at].iter().position(|&x| x == b) else {
-                            return true;
-                        };
-                        !path[from..=at].iter().enumerate().any(|(n, &pb)| {
-                            let hi = if pb == blk {
-                                upto
-                            } else {
-                                f.blocks[pb].insts.len()
-                            };
-                            let lo = if n == 0 { (k + 1).min(hi) } else { 0 };
-                            f.blocks[pb].insts[lo..hi]
-                                .iter()
-                                .any(|i| i.op == Op::CallRt && i.args.first() == push.res.as_ref())
-                        })
+                        // An entry covers the slot until its discard: one pushed on the window's
+                        // path from its push on, one pushed before the path (a scope's entry,
+                        // discarded just ahead of the shield) from the path's start.
+                        let from = path[..=at].iter().position(|&x| x == b);
+                        // A push in another branch (another window's cover) is not this path's.
+                        if from.is_none() && !dominates(f, b, path[0]) {
+                            return false;
+                        }
+                        !path[from.unwrap_or(0)..=at]
+                            .iter()
+                            .enumerate()
+                            .any(|(n, &pb)| {
+                                let hi = if pb == blk {
+                                    upto
+                                } else {
+                                    f.blocks[pb].insts.len()
+                                };
+                                let lo = if n == 0 && from.is_some() {
+                                    (k + 1).min(hi)
+                                } else {
+                                    0
+                                };
+                                f.blocks[pb].insts[lo..hi].iter().any(|i| {
+                                    i.op == Op::CallRt && i.args.first() == push.res.as_ref()
+                                })
+                            })
                     })
             };
             let mut shifts: HashMap<usize, usize> = HashMap::new();
@@ -878,7 +936,7 @@ fn analyze(
                     }
                 }
             }
-            open = hole_step(open, inst.op);
+            open = hole_step(open, inst.op, blk.insts.get(k + 1).map(|i| i.op));
             if inst.op == Op::Put
                 && inst
                     .args
@@ -2022,8 +2080,9 @@ fn hole_states(f: &Func) -> Vec<u32> {
         changed = false;
         for b in f.rpo() {
             let mut open = at[b.index()];
-            for inst in &f.blocks[b.index()].insts {
-                open = hole_step(open, inst.op);
+            let insts = &f.blocks[b.index()].insts;
+            for (k, inst) in insts.iter().enumerate() {
+                open = hole_step(open, inst.op, insts.get(k + 1).map(|i| i.op));
             }
             let mut targets = Vec::new();
             f.blocks[b.index()]
@@ -2040,8 +2099,11 @@ fn hole_states(f: &Func) -> Vec<u32> {
     at
 }
 
-fn hole_step(open: u32, op: Op) -> u32 {
+/// `next` is the op that follows: a move-out the owner's field release follows at once (the
+/// rest of a temporary is released, so nothing is left to drop twice) opens no window.
+fn hole_step(open: u32, op: Op, next: Option<Op>) -> u32 {
     match op {
+        Op::MoveOut if next == Some(Op::TypeRelease) => open,
         Op::MoveOut => (open + 1).min(8),
         Op::TypeFill | Op::ListFill => open.saturating_sub(1),
         _ => open,

@@ -296,6 +296,7 @@ pub(super) unsafe fn reactor_wait() {
                 continue;
             }
             crate::sched::set_idle(true);
+            let idle_since = clock_ns();
             spin_for_work();
             // Posters interrupt the poller only while this says it may block, so look for work
             // once more after saying so.
@@ -307,6 +308,7 @@ pub(super) unsafe fn reactor_wait() {
             {
                 crate::isolate::set_sleeping(false);
                 crate::sched::set_idle(false);
+                spin_feedback(idle_since);
                 continue;
             }
             // A start queued before the flag above was set did not kick this thread, and one that
@@ -323,6 +325,7 @@ pub(super) unsafe fn reactor_wait() {
             poll_ready(timeout_ns);
             crate::isolate::set_sleeping(false);
             crate::sched::set_idle(false);
+            spin_feedback(idle_since);
             if parked && crate::isolate::leave_idle() {
                 abandon_wait();
                 fault::fault_kind(FaultKind::Deadlock, CROSS_ISOLATE_DEADLOCK);
@@ -337,10 +340,25 @@ pub(super) unsafe fn reactor_wait() {
 /// within this window finds its thread awake.
 pub(super) const SPIN_NS: i64 = 20_000;
 
+crate::isolate_static! {
+    /// How many more idle waits this thread spins before; see [`spin_for_work`].
+    static SPIN_CREDIT: u32 = SPIN_CREDIT_MAX;
+}
+
+/// Long waits in a row after which the thread stops spinning.
+const SPIN_CREDIT_MAX: u32 = 4;
+
 /// Spins briefly for work before the thread sleeps. Only a program with several scheduler threads
 /// has anyone to send mail, so a single-threaded program never spins.
+///
+/// Spinning pays when the wait is shorter than the spin: mail is caught awake, and a socket that
+/// became ready meanwhile is found by a poll that does not block. A thread whose work comes
+/// further apart (a server at moderate load) would burn the whole window before every sleep, 20 us
+/// of CPU for a request that takes 10. So each wait is timed ([`spin_feedback`]): a short one
+/// restores the credit, a long one spends one, and a thread out of credit sleeps at once.
 pub(super) unsafe fn spin_for_work() {
-    if crate::sched::started() <= 1 {
+    // SAFETY: this isolate's state.
+    if crate::sched::started() <= 1 || unsafe { *SPIN_CREDIT.ptr() } == 0 {
         return;
     }
     let end = clock_ns() + SPIN_NS;
@@ -354,5 +372,38 @@ pub(super) unsafe fn spin_for_work() {
             return;
         }
         std::hint::spin_loop();
+    }
+}
+
+/// Notes that an idle wait which began at `since` has ended.
+unsafe fn spin_feedback(since: i64) {
+    // SAFETY: this isolate's state.
+    let credit = unsafe { &mut *SPIN_CREDIT.ptr() };
+    *credit = if clock_ns() - since < 2 * SPIN_NS {
+        SPIN_CREDIT_MAX
+    } else {
+        credit.saturating_sub(1)
+    };
+}
+
+#[cfg(test)]
+mod spin_tests {
+    use super::*;
+
+    #[test]
+    fn long_idle_waits_stop_the_spin_and_a_short_one_restores_it() {
+        // SAFETY: this test thread's own isolate state.
+        unsafe {
+            let credit = || *SPIN_CREDIT.ptr();
+            let long_ago = clock_ns() - 10 * SPIN_NS;
+            for left in (0..SPIN_CREDIT_MAX).rev() {
+                spin_feedback(long_ago);
+                assert_eq!(credit(), left);
+            }
+            spin_feedback(long_ago);
+            assert_eq!(credit(), 0);
+            spin_feedback(clock_ns());
+            assert_eq!(credit(), SPIN_CREDIT_MAX);
+        }
     }
 }

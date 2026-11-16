@@ -456,7 +456,13 @@ impl<'a> FnLower<'a> {
     }
 
     fn assign(&mut self, target: &AssignTarget, value: &Expr) -> Result<(), Error> {
-        let x = self.expr(value)?;
+        self.assigning = match target {
+            AssignTarget::Name(name) => Some(*name),
+            AssignTarget::Member(_) => None,
+        };
+        let x = self.expr(value);
+        self.assigning = None;
+        let x = x?;
         if self.dead {
             return Ok(());
         }
