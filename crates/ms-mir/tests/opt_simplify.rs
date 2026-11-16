@@ -740,3 +740,24 @@ fn shield_pair_with_nothing_to_cancel_goes() {
     let parks = func_text(&m, "parks");
     assert_eq!(count(&parks, "msrt_shield"), 2, "{parks}");
 }
+
+#[test]
+fn an_owned_none_that_is_only_dropped_is_deleted() {
+    let mut m = load(
+        "module \"owned_none\"
+entry @main
+fn @main() -> int {
+b0:
+  %none: opt<str> = opt.none_owned
+  drop %none
+  %r: int = iconst 3
+  ret %r
+}",
+    );
+    simplify::run(&mut m);
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let text = print_module(&m);
+    assert!(!text.contains("opt.none_owned"), "{text}");
+    assert!(!text.contains("drop"), "{text}");
+    assert_eq!(observe(&m).0, Ok(3));
+}

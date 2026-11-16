@@ -97,7 +97,7 @@ fn none_values(f: &Func) -> HashSet<Value> {
     f.blocks
         .iter()
         .flat_map(|b| b.insts.iter())
-        .filter(|i| i.op == Op::OptNone)
+        .filter(|i| matches!(i.op, Op::OptNone | Op::OptNoneOwned))
         .filter_map(|i| i.res)
         .collect()
 }
