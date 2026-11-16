@@ -18,6 +18,8 @@ The unwind pass skips every call after a `move.out` that is not filled back (a h
 
 A cover pushed for a slot in one branch (the early-return exits of a `?` each get one) does not cover another exit's close: `cover_shielded_slots` counts an entry only when it dominates the window (`deque-resource-growth.ms`).
 
+A `var` local with no scope entry that is passed to a callee which parks and rewrites it (take, park, put back) was freed by nobody on a cancel: the callee treated the taken value as the caller's. `slot_owned_params` in the unwind pass now finds a slot parameter every caller fills from a local slot nothing else covers, and the callee covers what it takes (`tree.ms`).
+
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
 Found by the first sweep (baseline, not cancellation): `http-hardening.ms` "close cancels a handler parked on a request body" ends with one 16 B block even with no cancellation (a client read after the server closed the connection triggers it); the sweep compares against that baseline, and `make leak-check` owned the fix (#3083, covered by the MIR unwind pass).

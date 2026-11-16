@@ -53,10 +53,13 @@ pub fn run(m: &mut Module) -> bool {
         leaf: true,
         reads: false,
     });
+    let safe = slot_safe_params(m);
+    let owns = slot_owned_params(m, &safe);
     let mut cx = Cx {
         parks,
         faults,
-        safe: slot_safe_params(m),
+        safe,
+        owns,
         pointer_params: m
             .funcs
             .iter()
@@ -77,7 +80,7 @@ pub fn run(m: &mut Module) -> bool {
         // it consumes.
         let stand_in = m.funcs[fi].signature_stand_in();
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
-        changed |= function(m, &mut cx, &mut f);
+        changed |= function(m, &mut cx, &mut f, fi);
         m.funcs[fi] = f;
     }
     changed
@@ -90,6 +93,10 @@ struct Cx {
     /// Per function and parameter: whether the parameter is a slot pointer whose contents the
     /// function only borrows while it runs, so the caller may keep covering them.
     safe: Vec<Vec<bool>>,
+    /// Per function and parameter: whether the parameter is a slot pointer that no one else
+    /// covers, so the function owns the value it takes out of it while it runs (see
+    /// [`slot_owned_params`]).
+    owns: Vec<Vec<bool>>,
     /// Per function and parameter: whether it is a pointer. Taken before any function is
     /// swapped out for rewriting, since the one being rewritten has no parameters meanwhile.
     pointer_params: Vec<Vec<bool>>,
@@ -1281,7 +1288,7 @@ fn consumed_inside(m: &Module, f: &Func, owned_def: &[bool], body: &[usize]) -> 
     used
 }
 
-fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
+fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
     if f.blocks.is_empty() {
         return false;
     }
@@ -1296,6 +1303,15 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             slot_params.insert(r.0);
         }
     }
+    // A slot parameter no caller covers: what this function takes out of it is its own while it
+    // runs, and an unwind inside drops it.
+    let owned_params: BTreeSet<u32> = f.blocks[0]
+        .params
+        .iter()
+        .enumerate()
+        .filter(|(k, _)| param_flag(&cx.owns, fi, *k))
+        .map(|(_, p)| p.value.0)
+        .collect();
     let covered_takes = covered_slot_takes(m, f);
     let mut owned_def = vec![false; f.values.len()];
     let mut from_slot: BTreeSet<u32> = BTreeSet::new();
@@ -1307,9 +1323,11 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             // A value taken out of a slot the caller passed in stays the caller's: the slot still
             // holds it while the call runs, and the caller (or its owner) drops it. Dropping it
             // here too would drop it twice.
-            let from_caller_slot = i.op == Op::Take
-                && (i.args.first().is_some_and(|a| slot_params.contains(&a.0))
-                    || i.res.is_some_and(|r| covered_takes.contains(&r.0)));
+            let from_caller_slot =
+                i.op == Op::Take
+                    && (i.args.first().is_some_and(|a| {
+                        slot_params.contains(&a.0) && !owned_params.contains(&a.0)
+                    }) || i.res.is_some_and(|r| covered_takes.contains(&r.0)));
             if let (Some(r), Some(Mode::Move)) = (i.res, m.result_mode(f, i)) {
                 owned_def[r.index()] = !from_caller_slot;
                 if from_caller_slot {
@@ -2163,6 +2181,79 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
     }
     slots.retain(|s, _| !bad.contains(s));
     slots
+}
+
+fn param_flag(table: &[Vec<bool>], f: usize, k: usize) -> bool {
+    table
+        .get(f)
+        .and_then(|p| p.get(k))
+        .copied()
+        .unwrap_or(false)
+}
+
+/// Per function and parameter, whether the parameter is a pointer at a local slot that nothing
+/// else covers while the function runs: every call passes the address of a slot of its own that
+/// holds a value of the parameter's type and has no cleanup entry, and the function does not
+/// only borrow the slot's value (those are the caller's to cover). Such a function owns what it
+/// takes out of the slot: a `var` list handed to a callee that parks would leak when the park is
+/// cancelled, since the slot holds only a stale copy by then.
+fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
+    let mut owns: Vec<Vec<bool>> = m
+        .funcs
+        .iter()
+        .enumerate()
+        .map(|(fi, f)| {
+            (0..f.params.len())
+                .map(|k| f.params[k].ty == Ty::PTR && !param_flag(safe, fi, k))
+                .collect()
+        })
+        .collect();
+    let mut used = vec![false; m.funcs.len()];
+    for caller in &m.funcs {
+        let slots: HashMap<u32, Ty> = caller
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .filter_map(|i| match (i.op, i.imm, i.res) {
+                (Op::Slot, Imm::Ty(ty), Some(r)) => Some((r.0, ty)),
+                _ => None,
+            })
+            .collect();
+        let entries: BTreeSet<u32> = caller
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .filter(|i| i.op == Op::CleanupPush)
+            .filter_map(|i| i.args.first().map(|a| a.0))
+            .collect();
+        for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
+            let Imm::Func(g) = inst.imm else { continue };
+            used[g.index()] = true;
+            let direct = inst.op == Op::Call;
+            for (k, flag) in owns[g.index()].iter_mut().enumerate() {
+                if !*flag {
+                    continue;
+                }
+                // The slot is the caller's own, holds the type the callee's parameter names,
+                // and no entry covers it.
+                let ok = direct
+                    && inst.args.get(k).is_some_and(|a| {
+                        slots.get(&a.0).is_some_and(|ty| m.needs_drop(*ty))
+                            && !entries.contains(&a.0)
+                    });
+                if !ok {
+                    *flag = false;
+                }
+            }
+        }
+    }
+    // A function nothing calls directly is reached some other way: leave it to its callers.
+    for (fi, flags) in owns.iter_mut().enumerate() {
+        if !used[fi] {
+            flags.iter_mut().for_each(|f| *f = false);
+        }
+    }
+    owns
 }
 
 /// The functions that `closure.new` instructions make callable.
