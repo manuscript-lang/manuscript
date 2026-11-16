@@ -815,11 +815,7 @@ impl TlsIo {
 
     /// Builds a stream on `sock` that continues `session`, taken from another stream.
     pub fn resume(sock: socket2::Socket, session: Session) -> TlsIo {
-        TlsIo {
-            sock: OwnedSock::new(sock),
-            state: RefCell::new(Some(session.conn)),
-            verified: session.verified,
-        }
+        TlsIo::new(sock, session.conn, session.verified)
     }
 
     /// Takes the session out of an established stream with nothing in flight, leaving the

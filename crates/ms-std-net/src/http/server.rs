@@ -1051,14 +1051,14 @@ impl Server {
                 h2 = parked.h2;
                 let phase = if h2.is_some() { Phase::H2 } else { Phase::Head };
                 (
-                    Some(Rc::new(TlsIo::resume(sock, session)) as Rc<dyn Io>),
+                    Some(Box::new(TlsIo::resume(sock, session)) as Box<dyn Io>),
                     None,
                     phase,
                 )
             }
             (_, tls) => match tls {
                 None => (
-                    Some(Rc::new(Plain::new(sock)) as Rc<dyn Io>),
+                    Some(Box::new(Plain::new(sock)) as Box<dyn Io>),
                     None,
                     Phase::Head,
                 ),
@@ -1081,7 +1081,7 @@ impl Server {
             server: self.me.clone(),
             st: RefCell::new(ConnSt {
                 tls_pending,
-                io,
+                io: io.map(Rc::from),
                 inbuf: Vec::new(),
                 pos: 0,
                 outbuf: Vec::new(),
