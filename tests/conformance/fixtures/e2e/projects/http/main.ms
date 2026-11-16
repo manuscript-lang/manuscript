@@ -9,7 +9,7 @@ import (
 )
 
 fn handle(request: HttpRequest) HttpResponse:
-	return HttpResponse(200, headers(), f"hello {request.path}".to_bytes())
+	return HttpResponse(200, f"hello {request.path}".to_bytes())
 
 export fn main() Int:
 	options := HttpServerOptions(
