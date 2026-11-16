@@ -11,7 +11,9 @@ use std::os::windows::io::{AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket,
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use windows_sys::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, FILETIME, NO_ERROR};
+use windows_sys::Win32::Foundation::{
+    CloseHandle, ERROR_BUFFER_OVERFLOW, FILETIME, HANDLE, NO_ERROR,
+};
 use windows_sys::Win32::NetworkManagement::IpHelper::{
     GAA_FLAG_SKIP_ANYCAST, GAA_FLAG_SKIP_FRIENDLY_NAME, GAA_FLAG_SKIP_MULTICAST,
     GAA_FLAG_SKIP_UNICAST, GetAdaptersAddresses, IP_ADAPTER_ADDRESSES_LH,
@@ -22,8 +24,9 @@ use windows_sys::Win32::Networking::WinSock::{
     SOCKET_ERROR, SOL_SOCKET, WSAIoctl, WSAPOLLFD, WSAPoll, setsockopt,
 };
 use windows_sys::Win32::System::Threading::{
-    CloseThreadpoolTimer, CreateThreadpoolTimer, PTP_CALLBACK_INSTANCE, PTP_TIMER,
-    SetThreadpoolTimer, WaitForThreadpoolTimerCallbacks,
+    CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, CancelWaitableTimer, CloseThreadpoolWait,
+    CreateThreadpoolWait, CreateWaitableTimerExW, PTP_CALLBACK_INSTANCE, PTP_WAIT,
+    SetThreadpoolWait, SetWaitableTimer, TIMER_ALL_ACCESS, WaitForThreadpoolWaitCallbacks,
 };
 
 /// A borrowed socket handle.
