@@ -51,3 +51,7 @@ Two small ops, `iface.tag` (the ownership tag of the vtable word: 0 owns box and
 ## Stage 6: closures
 
 The closure drop (heap and framed), the drop-from tail registered while a capture closer runs, and the clone entry are made in MIR from `ptr.add`, `take`, `load`, `put`, `cleanup.push` and `func.addr`, with capture offsets from `Layouts::closure`. They are keyed in `Module::addr_glue` by the closure function. Demand is every `closure.new`, with the framed variant read from `frames::framed_closure_objects`. Corpus 1460 of 1460 on both backends. Suite `dispatch` (closures and interfaces), nine alternating runs: median 0.287 s base, 0.296 s new (noise); the binary grows 280 bytes. Debug build of the 1,000-module project: 20.8 to 21.5 s base, 20.5 to 21.4 s new.
+
+## Stage 7: boxed optionals, maps and sets
+
+A boxed optional is dropped with `opt.unbox` (the payload moves out of the box, which is freed) and cloned like any optional. A map or set is dropped and cloned in MIR through a stack slot and the runtime's `msrt_slot_drop` and `msrt_slot_copy` with its descriptor, as the backends did. Corpus 1460 of 1460 on both backends.

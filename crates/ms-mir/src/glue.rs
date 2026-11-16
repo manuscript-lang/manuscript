@@ -69,10 +69,11 @@ pub fn run(m: &mut Module) -> bool {
         TyKind::Type(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Bytes | TyKind::Iface(_) => {
             true
         }
-        // A present flag and the payload's leaves; the other layouts are one pointer.
+        // A present flag and the payload's leaves, or a box; the other layouts are one pointer.
         TyKind::Opt(inner) => {
-            !lay.opt_is_nullable(*inner) && !lay.opt_is_boxed(*inner) && !lay.is_str_like(*t)
+            (lay.opt_is_boxed(*inner) || !lay.opt_is_nullable(*inner)) && !lay.is_str_like(*t)
         }
+        TyKind::Obj(n, _) => n.is_map_or_set(),
         _ => false,
     };
     let eligible = |t: &Ty| eligible(t) && m.needs_drop(*t) && !m.drop_recurses(*t);
@@ -566,14 +567,16 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             b.ret(None);
             b.finish()
         }
-        TyKind::Opt(_) => {
+        TyKind::Opt(inner) => {
+            let boxed = Layouts::new(m).opt_is_boxed(inner);
             let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
             let p = b.params()[0];
             let (some, done) = (b.new_block(), b.new_block());
             let present = b.opt_is_some(p);
             b.br_if(present, some, &[], done, &[]);
             b.switch_to(some);
-            let payload = b.opt_get(p);
+            // A boxed payload is moved out of its box, which is freed.
+            let payload = if boxed { b.opt_unbox(p) } else { b.opt_get(p) };
             b.emit(Op::Drop, &[payload], Imm::None, None);
             b.br(done, &[]);
             b.switch_to(done);
@@ -615,6 +618,22 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             b.emit(Op::Free, &[p], Imm::None, None);
             b.br(done, &[]);
             b.switch_to(done);
+            b.ret(None);
+            b.finish()
+        }
+        TyKind::Obj(..) => {
+            // The runtime drops a map or set it finds in memory, through its descriptor.
+            let drop = rt_extern(m, "msrt_slot_drop", &[Ty::PTR, Ty::PTR], Ty::VOID, false);
+            let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+            let p = b.params()[0];
+            let slot = b
+                .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("slot");
+            b.emit(Op::Put, &[slot, p], Imm::None, None);
+            let d = b
+                .emit(Op::TypeDesc, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("descriptor");
+            b.call_rt(drop, &[d, slot]);
             b.ret(None);
             b.finish()
         }
@@ -753,6 +772,35 @@ fn make_clone(m: &mut Module, ty: Ty) -> FuncId {
             b.ret(Some(acc));
             b.finish()
         }
-        _ => unreachable!("clone glue is made for records, alternatives, optionals and lists"),
+        TyKind::Obj(..) => {
+            let copy = rt_extern(
+                m,
+                "msrt_slot_copy",
+                &[Ty::PTR, Ty::PTR, Ty::PTR],
+                Ty::VOID,
+                false,
+            );
+            let mut b = FuncBuilder::new(m, &name, params, ty);
+            let p = b.params()[0];
+            let src = b
+                .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("slot");
+            b.emit(Op::Store, &[src, p], Imm::None, None);
+            let dst = b
+                .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("slot");
+            let d = b
+                .emit(Op::TypeDesc, &[], Imm::Ty(ty), Some(Ty::PTR))
+                .expect("descriptor");
+            b.call_rt(copy, &[d, src, dst]);
+            let out = b
+                .emit(Op::Take, &[dst], Imm::Ty(ty), Some(ty))
+                .expect("copy");
+            b.ret(Some(out));
+            b.finish()
+        }
+        _ => {
+            unreachable!("clone glue is made for records, alternatives, optionals, lists and maps")
+        }
     }
 }
