@@ -22,9 +22,9 @@ test "big rational malformed exponents stay data errors even after many digits":
 		expect_equal(parse_rat(f"1e{exponent}").err().kind, "EBADMSG")?
 		expect_equal(parse_big_float(f"1e{exponent}", 53).err().kind, "EBADMSG")?
 
-	expect_equal((parse_rat("1e+0002")?).format(), "100")?
-	expect_equal((parse_rat("1e-0002")?).format(), "1/100")?
+	expect_equal((parse_rat("1e+0002")?).to_string(), "100")?
+	expect_equal((parse_rat("1e-0002")?).to_string(), "1/100")?
 
 test "big rational exponent limits remain inclusive":
-	expect_equal((parse_rat("0e100000")?).format(), "0")?
-	expect_equal((parse_rat("0e-100000")?).format(), "0")?
+	expect_equal((parse_rat("0e100000")?).to_string(), "0")?
+	expect_equal((parse_rat("0e-100000")?).to_string(), "0")?

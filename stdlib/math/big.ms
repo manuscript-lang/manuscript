@@ -7,7 +7,7 @@ import (
 An exact fraction of two arbitrary-precision integers, always in lowest terms with a positive denominator,
 so two equal values compare equal with `==`. Arithmetic uses named methods and never rounds.
 Build values with `rat`, `rat_of_int`, `rat_of_big_int`, `rat_of_float` or `parse_rat`.
-Example: `(parse_rat("1/3")?).add(parse_rat("1/6")?).format()` is `"1/2"`.
+Example: `(parse_rat("1/3")?).add(parse_rat("1/6")?).to_string()` is `"1/2"`.
 */
 export opaque type BigRat:
 	// The signed numerator in lowest terms.
@@ -148,7 +148,7 @@ fn BigRat.to_fixed(digits: Int) String!:
 	return ok(text)
 
 // Formats as `a/b`, or just `a` for an integer; `parse_rat` reads the result back.
-fn BigRat.format() String:
+fn BigRat.to_string() String:
 	if self.is_integer(): return self.num.to_string_radix(10)
 	return f"{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
