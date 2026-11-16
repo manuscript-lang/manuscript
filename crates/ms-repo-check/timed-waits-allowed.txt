@@ -17,7 +17,7 @@ crates/ms-cli/tests/watch.rs 3 test: lets the watcher run
 crates/ms-clif/src/link/lld/glibc_stubs/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-clif/src/link/lld/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-clif/tests/native.rs 1 test: lets time pass
-crates/ms-conform/src/exec.rs 1 follow-up: child poll every 5 ms
+crates/ms-conform/src/exec.rs 2 deadlines: the run timeout and the grace for a killed child to be reaped
 crates/ms-lsp/tests/supervise.rs 1 test: lets time pass
 crates/ms-mir/tests/unwind.rs 1 test: lets time pass
 crates/ms-rt/src/fault.rs 1 test: proves a publication stays blocked while a reader is inside
