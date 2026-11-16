@@ -10,7 +10,7 @@ use crate::cx::HelperKey;
 use crate::func::FnLower;
 use crate::text::runtime_fn;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{Cc, FuncId, Imm, InlineHint, Linkage, Mode, Op, Param, Value};
+use ms_mir::ir::{Cc, FuncId, Imm, Mode, Op, Param, Value};
 use ms_mir::types::Ty as MTy;
 
 /// The kinds of string helper.
@@ -84,8 +84,8 @@ impl FnLower<'_> {
     /// The generated helper for `which`, built on first use.
     pub(crate) fn str_fn(&mut self, which: StrFn) -> FuncId {
         let key = HelperKey::StrFast(which);
-        if let Some(f) = self.cx.helpers.get(&key) {
-            return *f;
+        if let Some(f) = self.fast_path_cached(&key) {
+            return f;
         }
         let (name, params, ret) = match which {
             StrFn::ParseInt => (
@@ -129,9 +129,7 @@ impl FnLower<'_> {
                 MTy::INT,
             ),
         };
-        let mut b = FuncBuilder::new(self.b.m, name, params, ret);
-        b.func_mut().linkage = Linkage::Internal;
-        b.func_mut().inline = InlineHint::Always;
+        let mut b = self.fast_path_builder(name, params, ret);
         match which {
             StrFn::ParseInt => parse_int(&mut b),
             StrFn::ContainsByte => contains_byte(&mut b),
@@ -142,50 +140,29 @@ impl FnLower<'_> {
             StrFn::Compare => compare(&mut b),
         }
         let func = b.into_func();
-        let fid = self.b.m.add_func(func);
-        self.cx.helpers.insert(key, fid);
-        fid
+        self.fast_path_add(key, func)
     }
 
-    /// The inline form of a runtime string call, when one applies.
-    pub(crate) fn inline_str(&mut self, sym: &str, args: &[Value]) -> Option<Value> {
-        match sym {
-            "msrt_string_parse_int" => {
-                let f = self.str_fn(StrFn::ParseInt);
-                Some(self.b.call(f, args))
+    /// The generated fast path that stands for the runtime string call `sym`, when there is one.
+    pub(crate) fn str_fast(&self, sym: &str, args: &[Value]) -> Option<StrFn> {
+        Some(match sym {
+            "msrt_string_parse_int" => StrFn::ParseInt,
+            // A literal needle of two or more bytes skips the one-byte dispatch.
+            "msrt_string_contains"
+                if self
+                    .b
+                    .str_lit_of(args[1])
+                    .is_none_or(|id| self.b.m.strings[id.0 as usize].len() < 2) =>
+            {
+                StrFn::ContainsByte
             }
-            "msrt_string_contains" => {
-                // A literal needle of two or more bytes skips the one-byte dispatch.
-                if let Some(id) = self.b.str_lit_of(args[1])
-                    && self.b.m.strings[id.0 as usize].len() >= 2
-                {
-                    return None;
-                }
-                let f = self.str_fn(StrFn::ContainsByte);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_compare" => {
-                let f = self.str_fn(StrFn::Compare);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_starts_with" => {
-                let f = self.str_fn(StrFn::StartsWith);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_ends_with" => {
-                let f = self.str_fn(StrFn::EndsWith);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_scalar_step" => {
-                let f = self.str_fn(StrFn::ScalarStep);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_scalar_at" => {
-                let f = self.str_fn(StrFn::ScalarAt);
-                Some(self.b.call(f, args))
-            }
-            _ => None,
-        }
+            "msrt_string_compare" => StrFn::Compare,
+            "msrt_string_starts_with" => StrFn::StartsWith,
+            "msrt_string_ends_with" => StrFn::EndsWith,
+            "msrt_string_scalar_step" => StrFn::ScalarStep,
+            "msrt_string_scalar_at" => StrFn::ScalarAt,
+            _ => return None,
+        })
     }
 }
 

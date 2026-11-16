@@ -7,7 +7,6 @@ description = "Terminal display width for String.display_width"
 
 [dependencies]
 ms-rt = { path = "../ms-rt" }
-ms-rt-abi = { path = "../ms-rt-abi" }
 unicode-width = { version = "0.2.3", default-features = false }
 
 [lints]

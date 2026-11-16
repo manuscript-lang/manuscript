@@ -403,7 +403,7 @@ fn Network.request(
 ) ClientResponse!:
 	return msstd_net_network_request_bytes(
 		self.native,
-		method.text(),
+		method.to_string(),
 		url,
 		options.headers,
 		body.as_bytes(),

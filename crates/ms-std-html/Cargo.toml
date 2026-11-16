@@ -7,7 +7,6 @@ description = "Native implementation of @std/data/html.ms (port of golang.org/x/
 autotests = false
 
 [dependencies]
-ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
 
 

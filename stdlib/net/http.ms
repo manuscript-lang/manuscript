@@ -129,7 +129,7 @@ export enum HttpMethod:
 	)
 
 // Returns the method token; outgoing requests reject malformed Custom tokens.
-fn HttpMethod.text() String:
+fn HttpMethod.to_string() String:
 	match self:
 		Get: return "GET"
 		Head: return "HEAD"
@@ -188,7 +188,7 @@ fn HttpClient.request_raw(
 ) RawResponse!:
 	return msstd_http_client_request_bytes(
 		self.native,
-		method.text(),
+		method.to_string(),
 		url,
 		headers,
 		body,

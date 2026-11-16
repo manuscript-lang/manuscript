@@ -57,6 +57,16 @@ pub struct FuncBuilder<'m> {
 }
 
 impl<'m> FuncBuilder<'m> {
+    /// Starts a generated fast path: an internal function marked `inline(always)` that does the
+    /// common case itself and calls the runtime for the rest. The one way both the lowering
+    /// (`ms-lower`, `inline_probe`) and the optimizer (`opt::appendfast`) make one.
+    pub fn fast_path(m: &'m mut Module, name: &str, params: Vec<Param>, ret: Ty) -> Self {
+        let mut b = Self::new(m, name, params, ret);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().inline = InlineHint::Always;
+        b
+    }
+
     /// Starts a function; the entry block is current and sealed.
     pub fn new(m: &'m mut Module, name: &str, params: Vec<Param>, ret: Ty) -> Self {
         let f = Func::new(name, params, ret);
@@ -281,10 +291,6 @@ impl<'m> FuncBuilder<'m> {
     /// within the type's range.
     pub fn narrow_chk(&mut self, a: Value, to: Ty) -> Value {
         self.val(Op::NarrowChk, &[a], Imm::None, to)
-    }
-    /// `f32.round`: rounds a `Float32` to the nearest binary32 value.
-    pub fn f32_round(&mut self, a: Value) -> Value {
-        self.unop(Op::F32Round, a)
     }
     /// `conv`: the same number as another type of its kind. A `Float32` target rounds.
     pub fn conv(&mut self, a: Value, to: Ty) -> Value {

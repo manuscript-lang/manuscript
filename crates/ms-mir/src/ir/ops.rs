@@ -18,7 +18,7 @@ impl Op {
         Op::ListCap, Op::ListGrow, Op::ListFillU, Op::ListPushU,
         Op::OptSome, Op::OptView, Op::OptViewAt, Op::OptNone, Op::OptNoneOwned, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox, Op::OptAddr,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::StrAsciiLen, Op::StrEqLit, Op::StrBytes, Op::BytesPush,
-        Op::ClosureNew, Op::ClosureCap, Op::ClosureCapAddr, Op::IfaceNew, Op::IfaceBorrow, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
+        Op::ClosureNew, Op::ClosureCap, Op::ClosureCapAddr, Op::IfaceNew, Op::IfaceBorrow, Op::IfaceView, Op::IfaceData, Op::IfaceIs, Op::IfaceTag, Op::IfaceDestroy,
         Op::Clone, Op::Drop, Op::DropIf, Op::MoveOut, Op::Forget, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull, Op::PtrAdd, Op::PtrNull, Op::PtrLoadU, Op::PtrStoreU,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::StackLow, Op::CleanupPush, Op::CleanupRun,
@@ -149,6 +149,8 @@ impl Op {
             Op::IfaceBorrow => ("iface.borrow", K::Vtable, true, effects!(alloc)),
             Op::IfaceView => ("iface.view", K::None, true, effects!()),
             Op::IfaceData => ("iface.data", K::None, true, effects!()),
+            Op::IfaceTag => ("iface.tag", K::None, true, effects!()),
+            Op::IfaceDestroy => ("iface.destroy", K::None, false, effects!(reads, writes, ownership)),
             Op::IfaceIs => ("iface.is", K::Vtable, true, effects!()),
             // `clone 1` is the copy a written `.clone()` lowers to; a bare `clone` is implicit.
             Op::Clone => ("clone", K::None, true, effects!(reads, alloc, ownership)),

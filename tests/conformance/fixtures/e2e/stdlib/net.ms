@@ -222,7 +222,7 @@ test "resolve returns typed DNS records from the configured resolver":
 	one := resolve_dns("127.0.0.1", DnsKind.A, DnsOptions(timeout: 2.seconds()))?
 	expect_equal(one.length(), 1)?
 	expect_equal(one[0].value, "127.0.0.1")?
-	expect_equal(one[0].kind.text(), "A")?
+	expect_equal(one[0].kind.to_string(), "A")?
 
 	server := bind_datagram("127.0.0.1:0")?
 	derived := with_resolver(server.address.clone())?
@@ -237,7 +237,7 @@ test "resolve returns typed DNS records from the configured resolver":
 	answered := answer_mx(var answering)?
 	mx := asking.wait()?
 	expect_equal(mx.length(), 1)?
-	expect_equal(mx[0].kind.text(), "MX")?
+	expect_equal(mx[0].kind.to_string(), "MX")?
 	expect_equal(mx[0].priority, 10)?
 	expect_equal(mx[0].value, "mail.example.test.")?
 	expect_equal(answered, 1)?
