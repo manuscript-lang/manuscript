@@ -103,3 +103,18 @@ Where the rest goes is in [the proposal](../../proposals/http-request-path-instr
 | | now | 0.56 to 0.57 ms | 1.9 ms | 4.4 to 8.2 ms | 390 to 396 |
 
 Findings: with a computing handler in the mix the p99 falls to about 3.5 ms for both, as for plain HTTP/1. The cost is CPU: the watcher now also looks while a TLS or HTTP/2 server computes (about 25% more with the slow mix, about 8% for TLS with fast handlers; HTTP/2 shows none). Fast-handler tails are the same within the noise of this machine; single runs of main and of the change each showed a 40 to 100 ms outlier.
+
+### Review follow-up: the cost of listing connections, same day
+
+Fast handlers (4000 req/s, 64 connections, 8 s after a 2 s warm-up), runs of `main` at `cb7f3a7a9` and the change interleaved; medians. `HTTP_TAIL_CORES=1` serves with one thread, so no thread has anything to take and the watcher does not run: what remains is the cost of parking an idle connection.
+
+| Server | Runs | p50 | p99 | p99.9 | p99.99 | CPU ticks |
+| --- | --- | --- | --- | --- | --- | --- |
+| TLS, 4 threads, main | 16 | 0.679 ms | 2.38 ms | 5.21 ms | 7.4 ms | 236 |
+| TLS, 4 threads, now | 16 | 0.676 ms | 2.32 ms | 5.41 ms | 7.5 ms | 253 |
+| TLS, 1 thread, main | 6 | 0.692 ms | 2.52 ms | 5.84 ms | 8.0 ms | 152 |
+| TLS, 1 thread, now | 6 | 0.693 ms | 2.61 ms | 5.66 ms | 9.5 ms | 157 |
+| HTTP/2, 4 threads, main | 10 | 0.585 ms | 2.07 ms | 4.41 ms | 6.6 ms | 314 |
+| HTTP/2, 4 threads, now | 10 | 0.583 ms | 2.09 ms | 4.52 ms | 6.8 ms | 324 |
+
+Instructions per TLS request with one thread (`valgrind --tool=callgrind` on the server, closed loop over one connection, slope between runs of 3 s and 14 s counted by handler calls): 101.9k before, 102.7k now (+0.8%). So of the +7% CPU with four threads, about 3% is parking (the one-thread rows, +0.8% of it in instructions) and about 4% is the watcher and the steals. An earlier three-run reading of +4.4 ms p99.9 for HTTP/2 was noise: ten interleaved runs give 4.41 and 4.52 ms (single-run ranges 3.5 to 12.2 and 3.4 to 18.9 ms).

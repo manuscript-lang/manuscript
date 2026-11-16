@@ -30,6 +30,7 @@ fn handle(request: HttpRequest) HttpResponse:
 	out += "]}"
 	return text(200, out)
 
+// HTTP_TAIL_CORES limits the threads that serve (one has no connections to take).
 // HTTP_TAIL_TLS names a directory holding cert.pem and key.pem: serve HTTPS, offering
 // HTTP/2 and HTTP/1.1 through ALPN. Unset, the server speaks plain HTTP/1.1.
 fn main() Void!:
@@ -48,6 +49,8 @@ fn main() Void!:
 				alpn: ["h2", "http/1.1"],
 			)
 		)
+
+	if cores := env.get("HTTP_TAIL_CORES"): options.cores = cores.parse_int()
 
 	server := serve(
 		address: "127.0.0.1:8081",
