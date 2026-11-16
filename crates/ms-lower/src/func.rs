@@ -903,7 +903,7 @@ impl<'a> FnLower<'a> {
             && !self.views.contains(&x.v)
             && !matches!(
                 self.b.defining_op_anywhere(x.v),
-                Some(Op::StrLit | Op::BytesLit | Op::OptNone)
+                Some(Op::StrLit | Op::BytesLit | Op::ListConstView | Op::OptNone)
             )
         {
             let at = std::panic::Location::caller();

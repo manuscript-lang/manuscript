@@ -1141,6 +1141,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::ListNew
             | Op::ListLit
             | Op::ListConst
+            | Op::ListConstView
             | Op::ListLen
             | Op::ListGet
             | Op::ListGetNn

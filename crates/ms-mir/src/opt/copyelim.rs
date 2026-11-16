@@ -677,7 +677,7 @@ fn borrow_str_phis(m: &Module, f: &mut Func) -> bool {
                 };
                 let def = &f.blocks[db].insts[di];
                 match def.op {
-                    Op::StrLit | Op::BytesLit => continue,
+                    Op::StrLit | Op::BytesLit | Op::ListConstView => continue,
                     Op::ListGet | Op::ListGetU | Op::ListGetNn => {}
                     _ => continue 'param,
                 }

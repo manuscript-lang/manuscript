@@ -604,6 +604,7 @@ impl<'m> Interp<'m> {
             Op::ListNew
             | Op::ListLit
             | Op::ListConst
+            | Op::ListConstView
             | Op::ListLen
             | Op::ListGet
             | Op::ListGetNn
