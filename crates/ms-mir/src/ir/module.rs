@@ -32,6 +32,7 @@ impl Module {
             drop_glue: Default::default(),
             clone_glue: Default::default(),
             addr_glue: Default::default(),
+            glue_bodies: Vec::new(),
             c_externs: std::collections::BTreeSet::new(),
         }
     }
@@ -347,6 +348,7 @@ impl Module {
         (self.drop_glue.values())
             .chain(self.clone_glue.values())
             .chain(self.addr_glue.values())
+            .chain(&self.glue_bodies)
             .copied()
     }
 

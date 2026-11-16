@@ -200,6 +200,7 @@ impl InstCheck<'_, '_> {
             | Op::DepthEnter
             | Op::DepthLeave
             | Op::StackLow
+            | Op::StackNear
             | Op::CleanupRun
             | Op::CleanupPush
             | Op::GlobalGet
@@ -1353,6 +1354,13 @@ impl InstCheck<'_, '_> {
                 self.want(
                     self.res == Some(Ty::BOOL),
                     "stack.low yields whether the stack pointer is below the stack segment's limit",
+                )
+            }
+            Op::StackNear => {
+                self.arity(0)?;
+                self.want(
+                    matches!(self.inst.imm, Imm::Int(h) if h >= 0) && self.res == Some(Ty::BOOL),
+                    "stack.near N yields whether the stack pointer is within N bytes of the stack segment's limit",
                 )
             }
             Op::CleanupRun => {
