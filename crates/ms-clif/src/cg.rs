@@ -275,13 +275,17 @@ impl Gen<'_> {
 /// A named value of a function and the Cranelift labels of its register leaves.
 pub struct LocalVar {
     pub name: String,
+    /// A parameter of the function, not a local it declares.
+    pub param: bool,
+    /// The module-wide inlined-callee scope whose frame holds it, 0 for the function itself.
+    pub scope: u32,
     pub ty: ms_mir::types::Ty,
     /// `(byte offset in the value, size, label)` per leaf.
     pub pieces: Vec<(u32, u32, cranelift_codegen::ir::ValueLabel)>,
 }
 
 /// Where a leaf lives over a range of code offsets.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum VarLoc {
     /// A register, by DWARF number.
     Reg(u16),
@@ -301,6 +305,8 @@ pub struct VarPiece {
 /// A named value with the places each of its leaves lives in.
 pub struct VarDbg {
     pub name: String,
+    pub param: bool,
+    pub scope: u32,
     pub ty: ms_mir::types::Ty,
     pub pieces: Vec<VarPiece>,
 }
@@ -314,8 +320,8 @@ pub struct FuncDbg {
     pub size: u32,
     /// `(code offset, file, line, scope)` ranges, sorted by offset.
     pub ranges: Vec<(u32, u32, u32, u32)>,
-    /// Exact known source spans `(start, end, file, line)`; gaps stay unmapped in DWARF.
-    pub dwarf_ranges: Vec<(u32, u32, u32, u32)>,
+    /// Exact known source spans `(start, end, file, line, scope)`; gaps stay unmapped in DWARF.
+    pub dwarf_ranges: Vec<(u32, u32, u32, u32, u32)>,
     /// Parameters and locals a debugger can show.
     pub vars: Vec<VarDbg>,
 }
@@ -901,7 +907,7 @@ fn compile_with_isa(
     if let Some(t) = tables {
         relocate_tables(&mut product, &g.dbg, &t);
     }
-    crate::dwarf::emit(&mut product, m, &g.dbg, endian)?;
+    crate::dwarf::emit(&mut product, m, &g.dbg, &g.scopes, endian)?;
     product.emit().map_err(|e| Error(e.to_string()))
 }
 
@@ -1175,7 +1181,7 @@ fn finish(
                 continue;
             };
             if source.is_some() && r.start < r.end {
-                dwarf_ranges.push((r.start, r.end, file, line));
+                dwarf_ranges.push((r.start, r.end, file, line, scope));
             }
             if ranges
                 .last()
@@ -1204,7 +1210,7 @@ fn finish(
             && !f.loc.is_none()
             && first > 0
         {
-            dwarf_ranges.insert(0, (0, first, f.loc.file, f.loc.line));
+            dwarf_ranges.insert(0, (0, first, f.loc.file, f.loc.line, 0));
         }
         if source.is_none() && ranges.is_empty() {
             g.module.clear_context(ctx);
@@ -1251,6 +1257,19 @@ fn var_dbg(g: &Gen, cc: &cranelift_codegen::CompiledCode, v: &LocalVar) -> VarDb
                         .collect()
                 })
                 .unwrap_or_default();
+            let mut ranges: Vec<(u32, u32, VarLoc)> = ranges;
+            ranges.sort_by_key(|r| r.0);
+            // Cranelift splits a range at every block, though the leaf stays where it is.
+            let ranges =
+                ranges
+                    .into_iter()
+                    .fold(Vec::<(u32, u32, VarLoc)>::new(), |mut merged, r| {
+                        match merged.last_mut() {
+                            Some(last) if last.1 == r.0 && last.2 == r.2 => last.1 = r.1,
+                            _ => merged.push(r),
+                        }
+                        merged
+                    });
             VarPiece {
                 offset,
                 size,
@@ -1260,6 +1279,8 @@ fn var_dbg(g: &Gen, cc: &cranelift_codegen::CompiledCode, v: &LocalVar) -> VarDb
         .collect();
     VarDbg {
         name: v.name.clone(),
+        param: v.param,
+        scope: v.scope,
         ty: v.ty,
         pieces,
     }

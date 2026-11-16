@@ -54,3 +54,15 @@ Reproduce: build each program as above and compare `callgrind` totals; the per-p
 | workers | +0.51% | +0.00001% |
 | strings | +0.00% | +0.00000% |
 | concat | +0.12% | +0.00003% |
+
+## Cranelift debug builds: locals and inlined frames (2026-11-15)
+
+Callgrind instructions of `ms build --build-type debug` (`MS_CACHE=off`) with parameters only (main at `b4258a5a`) against parameters, locals and inlined frames. Same machine as above.
+
+| Program | Before | After | Change |
+| --- | --- | --- | --- |
+| `bench/perf/suite/interp` | 203,564,706 | 204,313,207 | +0.37% |
+| `bench/perf/suite/graph` | 264,451,064 | 266,660,644 | +0.83% |
+| `bench/agent/run.ms` (356 lines, pulls in much of the standard library) | 4,051,698,669 | 4,163,301,986 | +2.75% |
+
+The executable of `run.ms` grows from 4,840,944 to 5,173,840 bytes (+6.9%). Most of the added work is writing the larger DWARF (`gimli` location lists and DIEs) and Cranelift's value-label ranges, in proportion to the number of named values and inlined frames, so a program that inlines more standard-library code pays more. Not describing the locals of standard-library functions saved only 0.8 points of the 2.75, so it is not worth a rule. Release (LLVM) builds are unchanged.
