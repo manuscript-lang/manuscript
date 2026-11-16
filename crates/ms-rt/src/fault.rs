@@ -1682,8 +1682,28 @@ pub extern "C-unwind" fn msrt_cleanup_unwind_to(base: usize) {
     unsafe {
         *UNWIND_DROPS.ptr() = guard_active();
     }
+    // A cleanup that closes through a park must not see the flag of the cancel it serves.
+    let was = take_unwinding();
     // SAFETY: single threaded access to the cleanup stack.
     while unsafe { (*CLEANUPS.ptr()).len() } > base && run_one_cleanup() {}
+    if was {
+        deliver_cancel();
+    }
+}
+
+/// Clears `unwinding` while explicit exit code (a close that may park) runs; pair it with
+/// [`msrt_unwinding_resume`] before the exit returns.
+#[unsafe(no_mangle)]
+// ms: leaf domain=unwind
+pub extern "C" fn msrt_unwinding_pause() {
+    take_unwinding();
+}
+
+/// Sets `unwinding` again after [`msrt_unwinding_pause`].
+#[unsafe(no_mangle)]
+// ms: leaf domain=unwind
+pub extern "C" fn msrt_unwinding_resume() {
+    deliver_cancel();
 }
 
 /// Marks the running task as unwinding for a delivered cancel. The caller then returns a zero
@@ -2419,6 +2439,15 @@ mod tests {
             msrt_cleanup_unwind_to(base);
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[3, 2]);
             assert_eq!(msrt_cleanup_base(), base);
+            // The flag is clear while cleanups run and set again after.
+            deliver_cancel();
+            msrt_cleanup_unwind_to(base);
+            assert!(unwinding());
+            msrt_unwinding_pause();
+            assert!(!unwinding());
+            msrt_unwinding_resume();
+            assert!(unwinding());
+            take_unwinding();
             reset_for_tests();
         }
     }
