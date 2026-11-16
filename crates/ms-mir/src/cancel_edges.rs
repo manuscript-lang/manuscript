@@ -88,6 +88,40 @@ pub fn run(m: &mut Module) -> bool {
         unwind_to,
     };
     let mut changed = false;
+    // The runtime's natives return with the flag set instead of jumping only once the program
+    // says every function checks it.
+    let on = extern_of(
+        m,
+        "msrt_cancel_edges",
+        &[],
+        Ty::VOID,
+        true,
+        ExternRole::None,
+    );
+    if let Some(entry) = m.entry {
+        let f = &mut m.funcs[entry.index()];
+        if !f.blocks.is_empty() {
+            let at = usize::from(
+                f.blocks[0]
+                    .insts
+                    .first()
+                    .is_some_and(|i| i.op == Op::DepthEnter),
+            );
+            let res = f.new_value(Ty::VOID);
+            let loc = f.loc;
+            f.blocks[0].insts.insert(
+                at,
+                Inst {
+                    op: Op::CallRt,
+                    args: vec![],
+                    imm: Imm::Ext(on),
+                    res: Some(res),
+                    loc,
+                },
+            );
+            changed = true;
+        }
+    }
     for fi in 0..m.funcs.len() {
         if m.funcs[fi].blocks.is_empty() || m.funcs[fi].unwind_only {
             continue;
