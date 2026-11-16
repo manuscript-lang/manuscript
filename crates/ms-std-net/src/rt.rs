@@ -10,8 +10,8 @@ use ms_rt::fault::{cancel_flag, msrt_cancelled, msrt_shield_enter, msrt_shield_e
 #[cfg(unix)]
 use ms_rt::task::msrt_task_forget_fd;
 use ms_rt::task::{
-    msrt_task_current, msrt_task_sleep, msrt_task_spawn, msrt_task_wait_fd, msrt_token_free,
-    msrt_token_new, msrt_token_park, msrt_token_post,
+    msrt_task_current, msrt_task_sleep, msrt_task_spawn, msrt_task_wait_fd, msrt_task_wait_fd_at,
+    msrt_token_free, msrt_token_new, msrt_token_park, msrt_token_park_at, msrt_token_post,
 };
 
 /// Whether SIGINT/SIGTERM asked the program to stop.
@@ -129,6 +129,24 @@ pub fn wait_fd(sock: Borrowed<'_>, events: u32, timeout_ns: i64) -> u32 {
     unsafe { msrt_task_wait_fd(sys::raw(sock) as _, events, within_waiter(timeout_ns)) }
 }
 
+/// [`wait_fd`] until `at` on [`monotonic_ns`] (none: no limit), narrowed to the deadline of the
+/// wait or promise limit whose deferred work runs on this task (see [`within_waiter`]).
+pub fn wait_fd_at(sock: Borrowed<'_>, events: u32, at: Option<i64>) -> u32 {
+    // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
+    unsafe { msrt_task_wait_fd_at(sys::raw(sock) as _, events, within_waiter_at(at)) }
+}
+
+/// The earlier of `at` (none: no limit) and the deadline of the deferred work on this task, as
+/// the runtime's absolute time (negative: none).
+pub fn within_waiter_at(at: Option<i64>) -> i64 {
+    let limit = ms_rt::task::defer_deadline();
+    match at {
+        None if limit == i64::MAX => -1,
+        None => limit,
+        Some(at) => at.min(limit),
+    }
+}
+
 /// Narrows `timeout_ns` (negative: none) to the deadline of the wait (or promise limit) whose deferred
 /// work is running on this task, as `msrt_promise_wait` does for its own waits. Without it a
 /// `stream.read().with(options: PromiseOptions(timeout: d)).wait()` on a silent socket blocks past `d`, because a deferred read
@@ -165,14 +183,15 @@ pub fn stop_unshield() {
     ms_rt::fault::stop_shield_exit()
 }
 
-/// Cancels the running task at `deadline` (none: never), replacing any earlier limit.
-pub fn limit_current_until(deadline: Option<std::time::Instant>) {
-    let ns = deadline.map_or(-1, |at| {
-        at.saturating_duration_since(std::time::Instant::now())
-            .as_nanos()
-            .min(i64::MAX as u128) as i64
-    });
-    ms_rt::task::limit_current(ns)
+/// The monotonic clock in nanoseconds, the time base of [`limit_current_at`].
+pub fn monotonic_ns() -> i64 {
+    ms_rt::sys::monotonic_ns()
+}
+
+/// Cancels the running task at `at_ns` on [`monotonic_ns`] (none: never), replacing any earlier
+/// limit; it reads no clock.
+pub fn limit_current_at(at_ns: Option<i64>) {
+    ms_rt::task::limit_current_at(at_ns.unwrap_or(-1))
 }
 
 /// Cancels task `handle` (a handle that no longer exists is ignored). The running task is not
@@ -225,6 +244,14 @@ impl Token {
         // SAFETY: parks the current task on a live token; no Rust borrow is held across the
         // call by contract.
         unsafe { msrt_token_park(self.0, within_waiter(timeout_ns), core::ptr::null_mut()) }
+    }
+}
+
+impl Token {
+    /// [`Token::park`] until `at` on [`monotonic_ns`] (none: no limit).
+    pub fn park_at(&self, at: Option<i64>) -> u32 {
+        // SAFETY: as `park`.
+        unsafe { msrt_token_park_at(self.0, within_waiter_at(at), core::ptr::null_mut()) }
     }
 }
 

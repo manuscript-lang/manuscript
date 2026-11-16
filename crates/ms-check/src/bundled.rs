@@ -4,7 +4,8 @@
 use ms_syntax::ast::{Decl, DeclKind, Module};
 
 /// Bundled source modules whose methods extend native standard types in every program.
-pub const EXTENSION_MODULES: [&str; 5] = [
+pub const EXTENSION_MODULES: [&str; 6] = [
+    "@std/core.ms+source",
     "@std/collections/collections.ms+source",
     "@std/bytes.ms+source",
     "@std/collections/ordering.ms",

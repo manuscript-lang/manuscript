@@ -39,6 +39,29 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 		},
 	)
 
+// A reader over `text`, or the error of invalid options.
+fn open_reader(text: String, options: CsvOptions) Reader!:
+	valid := check_options(options)
+	if valid.is_error(): return error(valid.err())
+
+	bytes := text.to_bytes()
+	total := bytes.length()
+	return ok(
+		Reader(
+			text: text.clone(),
+			bytes: bytes,
+			total: total,
+			delimiter: options.delimiter.scalar_values()[0].to_uint8().get(
+				0
+			),
+			delimiter_text: options.delimiter.clone(),
+			at: 0,
+			quote: -1,
+			delimiter_at: -1,
+			line_at: -1,
+		)
+	)
+
 // Parses CSV into rows of cells, using fresh default options when omitted.
 // `options.max_rows` and `options.max_cells` bound large inputs. A CRLF inside a quoted cell
 // reads as LF, so a cell holds one newline spelling whatever the file's line ending
@@ -50,32 +73,24 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 		Error("CSV: invalid input", kind: "EINVAL")
 	)
 
-	valid := check_options(options)
-	if valid.is_error(): return error(valid.err())
-
-	bytes := text.to_bytes()
-	total := bytes.length()
-	var reader = Reader(
-		bytes: bytes,
-		total: total,
-		delimiter: options.delimiter.scalar_values()[0].to_uint8().get(0),
-		delimiter_text: options.delimiter.clone(),
-		at: 0,
-		quote: -1,
-		delimiter_at: -1,
-		line_at: -1,
-	)
+	var reader = open_reader(text, options)?
 	var rows = List[List[String]]()
 	var cells = 0
+	var row = List[String]()
 
 	while true:
-		record := reader.read_record()
+		row = []
+
+		record := reader.read_record(
+			rows.length(),
+			fn r,
+			c,
+			cell: row.append(cell.clone())
+		)
 		if record.is_error(): return error(record.err())
 
 		found := record.get()
 		if found.is_none(): break
-
-		row := found.get()
 		if rows.length() >= rows_budget or row.length() > cells_budget - cells: return error(
 			Error("CSV: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -84,6 +99,44 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 		rows.append(row.clone())
 
 	return ok(rows)
+
+// Calls `f(row, column, cell)` for every cell of `text`, in order, without building
+// rows. A cell is a view of `text` that is valid during the call (clone it to keep it),
+// except that a quoted cell holding escapes is a fresh text. Rows count from zero and
+// columns from zero;
+// `options` and errors are as for `parse`, and a malformed input fails after the cells
+// before it were visited.
+export fn each_cell(
+	text: String,
+	f: fn(Int, Int, String) Void,
+	options: CsvOptions = CsvOptions()
+) Void!:
+	rows_budget := budget(options.max_rows)
+	cells_budget := budget(options.max_cells)
+	if rows_budget < 0 or cells_budget < 0: return error(
+		Error("CSV: invalid input", kind: "EINVAL")
+	)
+
+	var reader = open_reader(text, options)?
+	var rows = 0
+	var cells = 0
+
+	while true:
+		record := reader.read_record(rows, f)
+		if record.is_error(): return error(record.err())
+
+		found := record.get()
+		if found.is_none(): break
+
+		count := found.get(0)
+		if rows >= rows_budget or count > cells_budget - cells: return error(
+			Error("CSV: limit exceeded", kind: "EOVERFLOW")
+		)
+
+		cells += count
+		rows += 1
+
+	return ok()
 
 // The budget as a count, with no budget as a very large one and a negative budget as
 // -1.
@@ -112,6 +165,7 @@ fn check_options(options: CsvOptions) Void!:
 // and LF at or after the cursor, or total when there is none; they are searched again
 // only once passed.
 type Reader:
+	text: String
 	bytes: Bytes
 	total: Int
 	delimiter: UInt8
@@ -140,10 +194,6 @@ fn var Reader.next_line(from: Int) Int:
 	)
 	return self.line_at
 
-fn Reader.text_between(start: Int, end: Int) String:
-	if text := self.bytes.decode_utf8_range(start, end): return text
-	return ""
-
 // The offset just past the line ending at the cursor, or the cursor when the cursor
 // is not at one.
 fn Reader.line_end_after(at: Int) Int:
@@ -156,8 +206,10 @@ fn Reader.line_end_after(at: Int) Int:
 
 	return at
 
-// Reads the next record, skipping empty lines; none at end of input.
-fn var Reader.read_record() List[String]?!:
+// Reads the next record, skipping empty lines, and hands each cell to `f` as (row,
+// column, cell): a view of the input where the cell is plain, an owned text where
+// quotes were unescaped. Returns the cell count, or none at end of input.
+fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 	while true:
 		skipped := self.line_end_after(self.at)
 		if skipped == self.at: break
@@ -165,6 +217,8 @@ fn var Reader.read_record() List[String]?!:
 		self.at = skipped
 
 	if self.at >= self.total: return ok(none)
+
+	var col = 0
 
 	// A line without quotes is one record whose cells are the delimiter-separated
 	// pieces.
@@ -174,15 +228,25 @@ fn var Reader.read_record() List[String]?!:
 		var last = line
 		if last > self.at and self.bytes[last - 1] == 13: last -= 1
 
-		text := self.text_between(self.at, last)
+		var start = self.at
+
+		while true:
+			stop := self.next_delimiter(start)
+
+			if stop >= last:
+				f(row, col, self.text.view(start, last))
+				col += 1
+				break
+
+			f(row, col, self.text.view(start, stop))
+			col += 1
+			start = stop + 1
+
 		self.at = line
 		if line < self.total: self.at = line + 1
-		return ok(text.split(self.delimiter_text).clone())
-
-	var row = List[String]()
+		return ok(col)
 
 	while true:
-		var cell = ""
 		var at = self.at.to_int()
 
 		if at < self.total and self.bytes[at] == 34:
@@ -213,22 +277,22 @@ fn var Reader.read_record() List[String]?!:
 
 				break
 
+			var cell = self.text.view(start, at - 1).clone()
+
 			if first_escape >= 0 and not multiple_escapes:
-				prefix := self.text_between(start, first_escape)
-				suffix := self.text_between(first_escape + 2, at - 1)
+				prefix := self.text.view(start, first_escape)
+				suffix := self.text.view(first_escape + 2, at - 1)
 				cell = f"{prefix}\"{suffix}"
-			else:
-				cell = self.text_between(start, at - 1)
-				if multiple_escapes: cell = cell.replace("\"\"", "\"")
+			else if multiple_escapes: cell = cell.replace("\"\"", "\"")
 
 			if cell.contains("\r\n"): cell = cell.replace("\r\n", "\n")
 
 			ended := self.line_end_after(at)
 
 			if at >= self.total or ended > at:
-				row.append(cell)
+				f(row, col, cell)
 				self.at = ended
-				return ok(row)
+				return ok(col + 1)
 
 			if self.bytes[at] != self.delimiter: return error(
 				invalid_at(
@@ -238,7 +302,8 @@ fn var Reader.read_record() List[String]?!:
 				)
 			)
 
-			row.append(cell)
+			f(row, col, cell)
+			col += 1
 			self.at = at + 1
 			continue
 
@@ -254,12 +319,13 @@ fn var Reader.read_record() List[String]?!:
 			// The cell closes the record; drop the CR of a CRLF ending.
 			var last = end
 			if last > at and self.bytes[last - 1] == 13: last -= 1
-			row.append(self.text_between(at, last))
+			f(row, col, self.text.view(at, last))
 			self.at = end
 			if end < self.total: self.at = end + 1
-			return ok(row)
+			return ok(col + 1)
 
-		row.append(self.text_between(at, end))
+		f(row, col, self.text.view(at, end))
+		col += 1
 		self.at = end + 1
 
 // Cuts a byte stream at the line ends outside quotes and parses each complete block of

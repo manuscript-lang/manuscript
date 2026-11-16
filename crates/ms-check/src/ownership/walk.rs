@@ -603,12 +603,13 @@ impl Walker<'_> {
         }
     }
 
-    /// Closes at scope end a resource parameter the callee keeps on some path: the caller
+    /// Closes at scope end a resource parameter or receiver the callee keeps on some path: the caller
     /// handed it over, so the paths that do not move it on close it.
     fn consumed_param_resources(&mut self) {
-        for b in self.cx.c.parameters.iter() {
+        let receiver = self.cx.c.self_binding.iter();
+        for b in self.cx.c.parameters.iter().chain(receiver) {
             let tracked = self.consumed.contains(&b.uid)
-                && self.cx.classes.class(self.syms, &b.ty) == Class::Resource
+                && self.may_close(&b.ty)
                 && matches!(b.ty.kind, Kind::Type | Kind::Alternative | Kind::Native);
             if !tracked {
                 continue;

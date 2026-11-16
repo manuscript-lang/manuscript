@@ -5,21 +5,27 @@
 //! another thread of the same `serve` call serve them instead.
 //!
 //! Each server keeps the connections that wait for their next request in a shared list
-//! ([`Member::idle`]): only a handle and a deadline, since such a connection has no other state.
+//! ([`Member::idle`]): a handle and a deadline, and for a connection with state of its own (a
+//! TLS session, HTTP/2 streams) that state too ([`Parked`]), which the owner leaves there while
+//! the connection waits.
 //! The watcher thread (`ms_rt::watch`) looks at the threads from outside. When a server's thread
 //! has run one task since before the watcher's last look (its reactor did not turn and the
 //! thread is not resting) and it has waiting connections, the watcher tells a resting thread of
 //! the same `serve` call to take the ones with a request waiting. The taker duplicates each
-//! handle under the list's lock and serves the connection as its own; the owner finds its entry
-//! marked taken at its next turn and drops its handle without shutting the connection down.
+//! handle under the list's lock, takes the parked state, and serves the connection as its own;
+//! the owner finds its entry marked taken at its next turn and drops its handle without
+//! shutting the connection down. An owner that finds its entry not taken puts the state back.
 //!
 //! While handlers compute for a millisecond or more the watcher looks every 100 microseconds,
 //! so a request waits behind one for about two looks at most. A server whose handlers are
-//! short pays two uncontended lock operations per request and nothing else. Only unencrypted
-//! HTTP/1 connections between requests are listed: a TLS session or an HTTP/2 connection has
-//! state that stays with its thread.
+//! short pays two uncontended lock operations per request and nothing else. Listed are
+//! connections between requests: plain HTTP/1, TLS with HTTP/1, and HTTP/2 with no open
+//! stream. A TLS session is continued on the taker's duplicate of the socket, so it needs no
+//! locking while it is served.
 
+use super::h2serve::H2Conn;
 use crate::sys::{self, Raw, Wake};
+use crate::tls::Session;
 use ms_rt::watch::{self, Look};
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -93,12 +99,29 @@ impl Beat {
     }
 }
 
+/// What an idle connection with a state of its own (TLS session, HTTP/2 streams) leaves in the
+/// list while waiting, so a taker can continue it. The owner puts it back when it finds the
+/// connection not taken.
+pub struct Parked {
+    pub session: Option<Session>,
+    pub h2: Option<Box<H2Conn>>,
+}
+
+/// What the owner finds when it unlists a connection.
+pub enum Back {
+    /// Another thread took it.
+    Taken,
+    /// Still the owner's, with what it parked.
+    Mine(Option<Parked>),
+}
+
 /// A connection waiting for its next request.
 struct Entry {
     /// The connection's token in its owner's reactor.
     token: u64,
     sock: Raw,
     deadline: Option<Instant>,
+    parked: Option<Parked>,
     /// Another thread serves it now; the owner drops its handle when it next looks.
     taken: bool,
 }
@@ -107,6 +130,7 @@ struct Entry {
 pub struct Taken {
     pub sock: socket2::Socket,
     pub deadline: Option<Instant>,
+    pub parked: Option<Parked>,
 }
 
 /// A request to take connections from another member.
@@ -131,6 +155,9 @@ pub struct Member {
     orders: Mutex<Vec<Order>>,
     /// Whether `idle` holds taken entries the owner has not dropped yet.
     dropped: AtomicBool,
+    /// Lets a test wait for `waiting` to change instead of polling it.
+    #[cfg(test)]
+    changed: (Mutex<()>, std::sync::Condvar),
 }
 
 impl Member {
@@ -140,33 +167,47 @@ impl Member {
     }
 
     /// Lists a connection as waiting and answers its place in the list.
-    pub fn park(&self, token: u64, sock: Raw, deadline: Option<Instant>) -> u32 {
+    pub fn park(
+        &self,
+        token: u64,
+        sock: Raw,
+        deadline: Option<Instant>,
+        parked: Option<Parked>,
+    ) -> u32 {
         let mut idle = lock(&self.idle);
         idle.push(Entry {
             token,
             sock,
             deadline,
+            parked,
             taken: false,
         });
         self.waiting.fetch_add(1, Ordering::Relaxed);
+        self.listed_changed();
         (idle.len() - 1) as u32
     }
 
     /// Removes the entry at `place`, which the owner listed for `token`. Answers whether another
-    /// thread took the connection, and the token of the entry that moved into `place`, whose
-    /// connection the owner must tell.
-    pub fn unpark(&self, place: u32, token: u64) -> (bool, Option<u64>) {
+    /// thread took the connection (or what the owner parked), and the token of the entry that
+    /// moved into `place`, whose connection the owner must tell.
+    pub fn unpark(&self, place: u32, token: u64) -> (Back, Option<u64>) {
         let mut idle = lock(&self.idle);
         let at = place as usize;
         debug_assert!(idle.get(at).is_some_and(|e| e.token == token));
         if idle.get(at).is_none_or(|e| e.token != token) {
-            return (false, None);
+            return (Back::Mine(None), None);
         }
         let entry = idle.swap_remove(at);
         if !entry.taken {
             self.waiting.fetch_sub(1, Ordering::Relaxed);
+            self.listed_changed();
         }
-        (entry.taken, idle.get(at).map(|e| e.token))
+        let back = if entry.taken {
+            Back::Taken
+        } else {
+            Back::Mine(entry.parked)
+        };
+        (back, idle.get(at).map(|e| e.token))
     }
 
     /// The tokens of the owner's connections that another thread took, if any were since the
@@ -180,6 +221,36 @@ impl Member {
             .filter(|e| e.taken)
             .map(|e| e.token)
             .collect()
+    }
+
+    /// Wakes the test waiting in [`Member::wait_listed`].
+    #[inline]
+    fn listed_changed(&self) {
+        #[cfg(test)]
+        {
+            drop(lock(&self.changed.0));
+            self.changed.1.notify_all();
+        }
+    }
+
+    /// Blocks until exactly `n` connections are listed and not taken. The long timeout only
+    /// turns a hang into a failure; the wait ends on the change itself.
+    #[cfg(test)]
+    pub fn wait_listed(&self, n: usize) {
+        let mut guard = lock(&self.changed.0);
+        while self.waiting.load(Ordering::Relaxed) != n {
+            let (next, result) = self
+                .changed
+                .1
+                .wait_timeout(guard, Duration::from_secs(30))
+                .unwrap_or_else(|e| e.into_inner());
+            guard = next;
+            assert!(
+                !result.timed_out(),
+                "{} connections listed, wanted {n}",
+                self.waiting.load(Ordering::Relaxed)
+            );
+        }
     }
 
     /// Counts a connection the server gained (`+1`) or lost (`-1`).
@@ -225,11 +296,13 @@ impl Member {
                 out.push(Taken {
                     sock,
                     deadline: idle[i].deadline,
+                    parked: idle[i].parked.take(),
                 });
             }
         }
         if !out.is_empty() {
             self.waiting.fetch_sub(out.len(), Ordering::Relaxed);
+            self.listed_changed();
             self.dropped.store(true, Ordering::Release);
             self.beat.alert();
         }
@@ -253,6 +326,8 @@ impl Group {
             conns: AtomicUsize::new(0),
             orders: Mutex::new(Vec::new()),
             dropped: AtomicBool::new(false),
+            #[cfg(test)]
+            changed: Default::default(),
         });
         let mut members = lock(&self.members);
         members.push(member.clone());
@@ -343,6 +418,13 @@ fn tick(look: Look, resting: u64) -> bool {
     often
 }
 
+/// What an idle connection leaves in the list crosses threads: a compile-time check that it is
+/// `Send` without an `unsafe impl`.
+const _: fn() = || {
+    fn send<T: Send>() {}
+    send::<Parked>();
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -360,6 +442,12 @@ mod tests {
         Arc::new(Group::default()).join(&beat)
     }
 
+    /// `unpark`, with whether the connection was taken.
+    fn unparked(m: &Member, place: u32, token: u64) -> (bool, Option<u64>) {
+        let (back, moved) = m.unpark(place, token);
+        (matches!(back, Back::Taken), moved)
+    }
+
     /// A connected pair: the client's end and the server's.
     fn pair(listener: &TcpListener) -> (TcpStream, socket2::Socket) {
         let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
@@ -375,12 +463,12 @@ mod tests {
         let places: Vec<u32> = socks
             .iter()
             .enumerate()
-            .map(|(i, (_, s))| m.park(10 + i as u64, sys::raw(s.as_sock()), None))
+            .map(|(i, (_, s))| m.park(10 + i as u64, sys::raw(s.as_sock()), None, None))
             .collect();
         assert_eq!(places, [0, 1, 2]);
-        assert_eq!(m.unpark(0, 10), (false, Some(12)));
-        assert_eq!(m.unpark(0, 12), (false, Some(11)));
-        assert_eq!(m.unpark(0, 11), (false, None));
+        assert_eq!(unparked(&m, 0, 10), (false, Some(12)));
+        assert_eq!(unparked(&m, 0, 12), (false, Some(11)));
+        assert_eq!(unparked(&m, 0, 11), (false, None));
         assert_eq!(m.waiting.load(Ordering::Relaxed), 0);
     }
 
@@ -390,25 +478,21 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let (mut busy_client, busy) = pair(&listener);
         let (_quiet_client, quiet) = pair(&listener);
-        m.park(1, sys::raw(quiet.as_sock()), None);
-        m.park(2, sys::raw(busy.as_sock()), None);
+        m.park(1, sys::raw(quiet.as_sock()), None, None);
+        m.park(2, sys::raw(busy.as_sock()), None, None);
         busy_client.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
-        // Loopback delivery is not instant on every platform.
-        let mut taken = Vec::new();
-        for _ in 0..1000 {
-            taken = m.take(usize::MAX, true);
-            if !taken.is_empty() {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(1));
-        }
+        // Loopback delivery is not instant on every platform: a blocking peek returns when the
+        // bytes are there, so the take below sees the connection readable.
+        let mut first = [std::mem::MaybeUninit::uninit(); 1];
+        assert_eq!(busy.peek(&mut first).unwrap(), 1);
+        let taken = m.take(usize::MAX, true);
         assert_eq!(taken.len(), 1);
         assert_eq!(taken[0].sock.peer_addr().ok(), busy.peer_addr().ok());
         // The owner learns of it, finds the entry taken, and keeps the quiet one.
         assert!(m.beat.turn());
         assert_eq!(m.take_dropped(), [2]);
-        assert_eq!(m.unpark(1, 2), (true, None));
-        assert_eq!(m.unpark(0, 1), (false, None));
+        assert_eq!(unparked(&m, 1, 2), (true, None));
+        assert_eq!(unparked(&m, 0, 1), (false, None));
         // The taker's handle outlives the owner's.
         drop(busy);
         let mut buf = [std::mem::MaybeUninit::uninit(); 32];
@@ -427,10 +511,13 @@ mod tests {
             })
         };
         let (full, empty) = (group.join(&beat(0)), group.join(&beat(1)));
+        // Joining registered the group with the watcher, which balances every few milliseconds and
+        // would add its own order between the counts below and the balance this test calls.
+        lock(&GROUPS).retain(|g| !Arc::ptr_eq(g, &group));
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let socks: Vec<_> = (0..8).map(|_| pair(&listener)).collect();
         for (i, (_, s)) in socks.iter().enumerate() {
-            full.park(i as u64, sys::raw(s.as_sock()), None);
+            full.park(i as u64, sys::raw(s.as_sock()), None, None);
             full.count(1);
         }
         group.balance();
@@ -440,5 +527,29 @@ mod tests {
         let taken = orders[0].from.take(orders[0].limit, orders[0].ready_only);
         assert_eq!(taken.len(), 4);
         assert_eq!(full.waiting.load(Ordering::Relaxed), 4);
+    }
+
+    #[test]
+    fn parked_state_goes_to_the_taker_or_back_to_the_owner() {
+        let m = member();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let parked = || {
+            Some(Parked {
+                session: None,
+                h2: None,
+            })
+        };
+        let (_kept_client, kept) = pair(&listener);
+        let (_taken_client, taken) = pair(&listener);
+        m.park(1, sys::raw(kept.as_sock()), None, parked());
+        m.park(2, sys::raw(taken.as_sock()), None, parked());
+        // Not ready, so the owner finds its entry untouched and gets the state back.
+        assert!(m.take(1, true).is_empty());
+        assert!(matches!(m.unpark(0, 1).0, Back::Mine(Some(_))));
+        // Taking without a request waiting moves the state with the connection.
+        let took = m.take(1, false);
+        assert_eq!(took.len(), 1);
+        assert!(took[0].parked.is_some());
+        assert!(matches!(m.unpark(0, 2).0, Back::Taken));
     }
 }

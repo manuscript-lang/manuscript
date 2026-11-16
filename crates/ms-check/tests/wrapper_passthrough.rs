@@ -36,7 +36,8 @@ fn unique_receiver_cannot_be_kept_beside_passthrough_result() {
         assert!(
             got.iter().any(|d| d.contains("cannot")
                 || d.contains("would take")
-                || d.contains("would keep")),
+                || d.contains("would keep")
+                || d.contains("would own it too")),
             "{got:?}"
         );
     }
@@ -90,7 +91,8 @@ fn preserved_payloads_cannot_be_duplicated() {
         assert!(
             got.iter().any(|d| d.contains("cannot")
                 || d.contains("would take")
-                || d.contains("would keep")),
+                || d.contains("would keep")
+                || d.contains("would own it too")),
             "{body}: {got:?}"
         );
     }

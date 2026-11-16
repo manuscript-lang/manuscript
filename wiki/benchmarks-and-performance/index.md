@@ -4,6 +4,7 @@
 
 Perf and agent benchmarks, profiling.
 
+- [A cloned `none` that is only dropped is deleted](an-emptied-local-must-not-clone-or-drop-its-none.md): a stored-to `Result` variable cloned and dropped its emptied slot every pass (48.2M to 5.3M instructions).
 - [Runtime string results are built in place, not through a `Vec`](runtime-string-results-are-built-in-place-not-through-a-vec.md): inline `starts_with`/`ends_with`, one-allocation `lower`/`upper`/`reverse`, an exact `parse_float` fast path, Schubfach float digits, exact `to_fixed`, byte-loop `fields` (lower 40 to 22 ms, reverse 66 to 14, `to_string` 167 to 61 per million).
 - [Sorting records that own data uses the generated sort over bitwise scratch](sorting-owning-records-uses-bitwise-scratch.md): inlined comparator for `String`-holding records, 225M to 102M instructions, then 82M with the driftsort; scratch owns nothing so a comparator fault is safe.
 - [User `hash()` values are mixed before they index a table](user-hash-values-are-mixed-before-indexing.md): identity-like hashes of small-int records clustered under linear probing (562 to 103 ms for 1M `Set[Pt]` operations).

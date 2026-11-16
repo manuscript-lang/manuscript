@@ -2782,6 +2782,48 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view(
     }
 }
 
+/// `text.split(separator, max)[0]` where `text` outlives the piece: the first piece, a view of
+/// `text`, found without building the list. Faults like an index of an empty list when `max`
+/// is zero.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_split_first(
+    s: *const StrVal,
+    sep: *const StrVal,
+    has_max: HasRaw,
+    max: i64,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable out; the piece borrows `s`.
+    unsafe {
+        if has_max.is_set() && max < 0 {
+            fault::fault_fmt(format_args!(
+                "split: max_parts must be nonnegative, found {max}"
+            ));
+        }
+        if has_max.is_set() && max == 0 {
+            fault::msrt_index_fault(0, 0);
+        }
+        let (text, sepb) = (bytes(s), bytes(sep));
+        let end = if sepb.is_empty() {
+            // Split after each scalar: the first piece is the first scalar.
+            if text.is_empty() {
+                fault::msrt_index_fault(0, 0);
+            }
+            utf8::decode(text).1
+        } else {
+            Needle::for_text(sepb, text.len())
+                .find(text)
+                .unwrap_or(text.len())
+        };
+        let b = &text[..end];
+        *out = match b {
+            [] | [0..=0x7f] => from_bytes(b),
+            _ => view_of(b.as_ptr(), b.len()),
+        };
+    }
+}
+
 #[inline(always)]
 unsafe fn split_into(
     s: *const StrVal,

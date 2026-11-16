@@ -54,6 +54,8 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         let mut c = false;
         c |= fold(f);
         c |= known_alts(m, f);
+        c |= dropped_somes(f);
+        c |= dropped_nones(f);
         c |= known_ifaces(m, f);
         c |= known_lists(m, f);
         c |= phis(m, f);
@@ -97,6 +99,96 @@ fn apply_subst(f: &mut Func, subst: &ValueMap<Value>) {
     for n in &mut f.names {
         n.value = resolve(subst, n.value);
     }
+}
+
+/// An `opt.none_owned` whose every use is a drop owns nothing: the `none` and its drops go.
+fn dropped_nones(f: &mut Func) -> bool {
+    // Each owned `none` and whether every use of it is a drop.
+    let mut nones: ValueMap<bool> = ValueMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::OptNoneOwned, Some(r)) = (i.op, i.res) {
+            nones.insert(r, true);
+        }
+    }
+    if nones.is_empty() {
+        return false;
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            for (k, a) in i.args.iter().enumerate() {
+                if nones.contains_key(a) && !(i.op == Op::Drop && k == 0) {
+                    nones.insert(*a, false);
+                }
+            }
+        }
+        b.term.for_each_use(|v| {
+            if nones.contains_key(&v) {
+                nones.insert(v, false);
+            }
+        });
+    }
+    let mut changed = false;
+    for b in &mut f.blocks {
+        let before = b.insts.len();
+        b.insts.retain(|i| match (i.op, i.res, i.args.first()) {
+            (Op::OptNoneOwned, Some(r), _) => nones.get(&r) != Some(&true),
+            (Op::Drop, _, Some(a)) => nones.get(a) != Some(&true),
+            _ => true,
+        });
+        changed |= b.insts.len() != before;
+    }
+    changed
+}
+
+/// An `opt.some` whose only use is its drop never needed the box: drop the payload instead.
+fn dropped_somes(f: &mut Func) -> bool {
+    let mut uses: ValueMap<u32> = ValueMap::new();
+    let mut dropped = ValueSet::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            for a in &i.args {
+                let n = uses.get(a).copied().unwrap_or(0);
+                uses.insert(*a, n + 1);
+            }
+            if i.op == Op::Drop
+                && let Some(a) = i.args.first()
+            {
+                dropped.insert(*a);
+            }
+        }
+        b.term.for_each_use(|v| {
+            let n = uses.get(&v).copied().unwrap_or(0);
+            uses.insert(v, n + 2);
+        });
+    }
+    // Boxes used once, by a drop, with the payload they hold.
+    let mut payload: ValueMap<Value> = ValueMap::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::OptSome, Some(r), [p]) = (i.op, i.res, i.args.as_slice())
+                && uses.get(&r).copied() == Some(1)
+                && dropped.contains(&r)
+            {
+                payload.insert(r, *p);
+            }
+        }
+    }
+    if payload.is_empty() {
+        return false;
+    }
+    for b in &mut f.blocks {
+        for i in &mut b.insts {
+            if i.op == Op::Drop
+                && let Some(p) = i.args.first().and_then(|a| payload.get(a)).copied()
+            {
+                i.args[0] = p;
+            }
+        }
+        // The box is gone: its payload is dropped where the box was.
+        b.insts
+            .retain(|i| !(i.op == Op::OptSome && i.res.is_some_and(|r| payload.contains_key(&r))));
+    }
+    true
 }
 
 /// Folds operations on an alternative built in the same function by `alt.new` with a case
@@ -732,7 +824,7 @@ fn float_and_optional_rule(f: &mut Func, env: &mut Env, inst: &Inst) -> Act {
         Op::B2I => env.ci(a(0)).map_or(Act::Keep, |p| Act::Const(K::I(p))),
         Op::OptIsSome => match env.defs.get(&a(0)) {
             Some((Op::OptSome | Op::OptView, _, _)) => Act::Const(K::B(true)),
-            Some((Op::OptNone, _, _)) => Act::Const(K::B(false)),
+            Some((Op::OptNone | Op::OptNoneOwned, _, _)) => Act::Const(K::B(false)),
             _ => Act::Keep,
         },
         Op::OptGet | Op::OptUnwrap => {

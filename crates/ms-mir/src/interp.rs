@@ -623,6 +623,7 @@ impl<'m> Interp<'m> {
             | Op::OptView
             | Op::OptViewAt
             | Op::OptNone
+            | Op::OptNoneOwned
             | Op::OptIsSome
             | Op::OptGet
             | Op::OptUnwrap
