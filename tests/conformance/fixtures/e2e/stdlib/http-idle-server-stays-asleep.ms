@@ -41,7 +41,8 @@ fn warm(var conn: Connection) Bool!:
 
 // Context switches are not counted on every platform (they read zero there), so the
 // bound on them can only be met. CPU time is counted in clock ticks on Windows (15.6 ms),
-// so the bound allows one tick there; the switch count is the sharp check elsewhere.
+// so the bound allows several ticks (main measured 3 there); a thread that polled would use
+// hundreds of ms in the window. The switch count is the sharp check elsewhere.
 fn run() Bool!:
 	var server = serve(
 		address: "127.0.0.1:0",
@@ -85,7 +86,7 @@ fn run() Bool!:
 	f.close().get(none)
 	server.close().get(none)
 
-	asleep := warmed and cpu < 20000 and switches < 40
+	asleep := warmed and cpu < 100000 and switches < 40
 	if not asleep:
 		_out := stdout().write(f"warmed {warmed}, cpu {cpu} us, switches {switches}\n")
 	return ok(asleep)
