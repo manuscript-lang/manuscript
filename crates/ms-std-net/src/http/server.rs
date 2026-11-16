@@ -519,7 +519,10 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
         let t0 = std::time::Instant::now();
         let got = reactor.poller.park(timeout);
         #[cfg(test)]
-        eprintln!("DBG park timeout={timeout} got={got} after={:?}", t0.elapsed());
+        eprintln!(
+            "DBG park timeout={timeout} got={got} after={:?}",
+            t0.elapsed()
+        );
         if got & 16 != 0 {
             return;
         }
