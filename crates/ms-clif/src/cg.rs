@@ -6,6 +6,7 @@ use crate::lower::Lower;
 use crate::{Error, Options};
 use cranelift_codegen::Context;
 use cranelift_codegen::ir::{self, AbiParam, Signature, UserFuncName, types};
+use ms_rt_abi::symbols;
 
 /// A parameter or return of type `ty`. Bytes are zero-extended to a full register: the
 /// runtime is compiled by rustc, which assumes `u8` and `bool` arguments arrive extended.
@@ -67,12 +68,12 @@ const RT: &[(&str, &str, &str)] = &[
 /// Runtime data symbols: `(name, is_writable)`.
 const RT_DATA: &[(&str, bool)] = &[
     ("msrt_ascii_chars", false),
-    ("msrt_desc_int", false),
-    ("msrt_desc_float32", false),
-    ("msrt_desc_float", false),
-    ("msrt_desc_bool", false),
-    ("msrt_desc_string", false),
-    ("msrt_desc_bytes", false),
+    (symbols::DESC_INT, false),
+    (symbols::DESC_FLOAT32, false),
+    (symbols::DESC_FLOAT, false),
+    (symbols::DESC_BOOL, false),
+    (symbols::DESC_STRING, false),
+    (symbols::DESC_BYTES, false),
 ];
 
 fn clif_type(c: char) -> ir::Type {

@@ -63,7 +63,6 @@ pub const SA_RESTART: c_int = 0x2;
 pub const SA_SIGINFO: c_int = 4;
 #[cfg(not(target_os = "macos"))]
 pub const SA_RESTART: c_int = 0x1000_0000;
-pub const ITIMER_REAL: c_int = 0;
 pub const ITIMER_PROF: c_int = 2;
 
 /// glibc's `struct sigaction`.
@@ -169,11 +168,6 @@ unsafe extern "C" {
         start: extern "C" fn(*mut c_void) -> *mut c_void,
         arg: *mut c_void,
     ) -> c_int;
-    pub fn pthread_attr_setstack(
-        attr: *mut pthread_attr_buf,
-        addr: *mut c_void,
-        size: size_t,
-    ) -> c_int;
     pub fn mprotect(addr: *mut c_void, len: size_t, prot: c_int) -> c_int;
     pub fn alarm(seconds: u32) -> u32;
     pub fn pthread_join(thread: usize, ret: *mut *mut c_void) -> c_int;
@@ -183,7 +177,6 @@ unsafe extern "C" {
     pub fn fork() -> c_int;
     pub fn pipe(fds: *mut c_int) -> c_int;
     pub fn dup2(from: c_int, to: c_int) -> c_int;
-    pub fn waitpid(pid: c_int, status: *mut c_int, options: c_int) -> c_int;
     pub fn memcmp(a: *const c_void, b: *const c_void, n: size_t) -> c_int;
 }
 
