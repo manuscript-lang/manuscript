@@ -9,7 +9,6 @@
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 #[cfg(test)]
 use ms_rt as _;
-pub mod cache;
 pub mod llvm;
 pub use llvm::available as llvm_available;
 pub mod lower;
@@ -20,6 +19,5 @@ pub use ms_clif::link::debug_companion_path;
 pub use ms_clif::{BuildOptions, CopyProbe};
 pub use ms_mir::ir::Module;
 pub use native::{
-    Backend, Profile, backend_name, build_executable, build_executable_pinned, native_inputs,
-    publish, runtime_override,
+    Backend, Profile, backend_name, build_executable, native_inputs, publish, runtime_override,
 };

@@ -128,6 +128,10 @@ Remaining gaps, in order: `c16` (the Manuscript reference holds the grid as `Lis
 
 Also in this change: scalar slicing of an inline (at most 16 byte) ASCII string took the walking path because only heap strings carry the ASCII flag; `known_ascii` now tests an inline string's bits. `c03` under callgrind (3 MB input): 1,074.8M to 1,045.8M instructions (-2.7%); wall time is inside the noise. The rest of `c03` is spread over `scalar_values().all(...)` list allocations, `split`, `replace` and map inserts; callgrind sends every allocation to glibc `malloc` (see the profiling note above), so allocator rows in these profiles are not the release costs.
 
+## 2026-11-16, filter/map/sum chains over records fuse
+
+`fuse.rs` fused `filter`/`map`/`sum` chains only over lists of numbers, so `orders.filter(fn o: o.status == "placed").map(fn o: o.total).sum()` over a `List[Order]` built a list of deep-cloned orders first. A stage now reads its element in place (a `filter` passes the borrowed element on, a `map` must produce a number), the chain must end in numbers, and a text literal without interpolation counts as a reading expression. Microbenchmark (2000 orders, 2000 chains, callgrind): 5.33G to 2.33G instructions. `c13-inventory-orders` min of 5, same machine and method as the section above: 274.9 to 243.7 ms (1.82x to 1.57x Rust). Other rows are within noise of the 2026-11-16 table. The rest of c13's gap is `orders.count(..)` over a freshly cloned `values()` where the checker does not lend, and the `get(..).clone()` round trip in `ship`/`cancel`.
+
 ## 2026-11-16, suite rebuilt on current main
 
 Revision `3b2ef968`, Release LLVM build, min of 5, shared 4 vCPU Xeon @ 2.10GHz, Go 1.24, rustc stable. `c16-maze-bfs` stopped building (`chars` borrows the closure parameter, which the checker now rejects): the reference clones the list it builds.
