@@ -3,15 +3,15 @@
 import expect_equal from "@std/test/test.ms"
 
 fn describe(r: Int!) String:
-	if bad := r.error(): return f"failed: {bad.message}"
+	if r.is_error(): return f"failed: {r.err().message}"
 	return "ok"
 
-test "error is some for a failure and none for a success":
+test "err reads the cause of a failure and is_error tells it from a success":
 	failed: Int! := error(Error("boom"))
 	fine: Int! := ok(3)
 	expect_equal(describe(failed), "failed: boom")?
 	expect_equal(describe(fine), "ok")?
-	expect_equal(fine.error().is_none(), true)?
+	expect_equal(fine.is_error(), false)?
 
 test "print takes an end string":
 	print("a", end: "")
