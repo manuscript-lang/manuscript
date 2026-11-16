@@ -98,3 +98,46 @@ fn removing_an_absent_value_changes_nothing() {
     assert!(!a.remove(1_000_000));
     assert_eq!(a.to_vec(), vec![9]);
 }
+
+#[test]
+fn a_position_map_follows_a_model() {
+    use ms_mir::persist::PosMap;
+    use std::collections::BTreeMap;
+    for (seed, range) in [(5, 30u64), (6, 900), (7, 60_000)] {
+        let mut rng = Rng(seed);
+        let (mut map, mut model): (PosMap<u64>, BTreeMap<u32, u64>) =
+            (PosMap::new(), BTreeMap::new());
+        let keep = map.clone();
+        for step in 0..3000u64 {
+            let k = (rng.next() % range) as u32;
+            if rng.next().is_multiple_of(3) {
+                assert_eq!(map.remove(k), model.remove(&k).is_some(), "remove {k}");
+            } else {
+                map.insert(k, step);
+                model.insert(k, step);
+            }
+            assert_eq!(map.get(k), model.get(&k));
+            assert_eq!(map.len(), model.len());
+        }
+        assert_eq!(
+            map.values().copied().collect::<Vec<_>>(),
+            model.values().copied().collect::<Vec<_>>()
+        );
+        assert!(keep.is_empty(), "a clone is unaffected by later updates");
+    }
+}
+
+#[test]
+fn a_position_map_shares_what_it_does_not_change() {
+    use ms_mir::persist::PosMap;
+    let mut a: PosMap<u32> = PosMap::new();
+    for k in 0..500 {
+        a.insert(k, k);
+    }
+    let b = a.clone();
+    assert!(a.same_tree(&b));
+    a.insert(7, 70);
+    assert!(!a.same_tree(&b));
+    assert_eq!(b.get(7), Some(&7));
+    assert_eq!(a.get(7), Some(&70));
+}
