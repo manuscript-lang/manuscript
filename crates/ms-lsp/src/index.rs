@@ -2,7 +2,7 @@
 //! modules, keyed so that references, rename and highlights group by identity
 //! across files .
 
-use crate::analysis::Analysis;
+use crate::analysis::{Analysis, ModuleRoots};
 use ms_check::api::syntax::{DeclRef, FuncRef, Info, ModRef};
 use ms_check::api::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields};
 use ms_check::fxmap::{HashMap, HashSet};
@@ -125,11 +125,11 @@ pub struct Occurrence {
 /// A module's identity across analyses with different source roots. Bundled
 /// declarations keep their virtual identity; project paths are already canonical
 /// in the loader and must not be compared as graph-relative names.
-fn source_key(syms: ms_syntax::Names, root: &str, file: Name) -> String {
+fn source_key(syms: ms_syntax::Names, root: &ModuleRoots, file: Name) -> String {
     if syms.str(file).starts_with("@std/") {
         syms.str(file).to_string()
     } else {
-        ms_driver::project::pathops::join(&[root, syms.str(file)])
+        root.path(syms.str(file))
     }
 }
 
@@ -144,7 +144,7 @@ fn written_name(source: &str, offset: usize, name: &str) -> bool {
 }
 
 /// The key of a module symbol.
-pub fn symbol_key(syms: ms_syntax::Names, root: &str, s: Option<&SymRef>) -> String {
+pub fn symbol_key(syms: ms_syntax::Names, root: &ModuleRoots, s: Option<&SymRef>) -> String {
     match s {
         None => String::new(),
         Some(s) => match &s.decl {
@@ -160,7 +160,12 @@ pub fn symbol_key(syms: ms_syntax::Names, root: &str, s: Option<&SymRef>) -> Str
 
 /// The identity of a method: contract operations group a contract and all its
 /// implementations; other methods are keyed by declaration.
-pub fn method_key(syms: ms_syntax::Names, root: &str, files: &DeclFiles, m: &Method) -> String {
+pub fn method_key(
+    syms: ms_syntax::Names,
+    root: &ModuleRoots,
+    files: &DeclFiles,
+    m: &Method,
+) -> String {
     if let (Some(decl), Some(contract)) = (&m.decl, &m.contract)
         && let Some(symbol) = contract.symbol()
         && let Some(contract_decl) = &symbol.decl
@@ -228,7 +233,7 @@ pub fn expr_text(syms: ms_syntax::Names, e: &Expr) -> Option<&'static str> {
 }
 
 struct Builder {
-    root: String,
+    root: ModuleRoots,
     files: DeclFiles,
     by_file: HashMap<Name, ModRef>,
     binding_keys: HashMap<usize, String>,
@@ -302,7 +307,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
         analysis.project_modules(syms)
     };
     let mut b = Builder {
-        root: analysis.module_path(""),
+        root: analysis.module_roots(),
         files: DeclFiles::new(&modules),
         by_file: modules.iter().map(|m| (m.file, m.clone())).collect(),
         binding_keys: HashMap::default(),

@@ -98,3 +98,76 @@ fn workspace_search_keeps_declarations_from_imported_subdirectories() {
         "{symbol:?}"
     );
 }
+
+/// A workspace root with a `util` library member and an `app` member that imports it.
+fn two_members(ws: &Workspace) {
+    let write = |path: &str, text: &str| {
+        let full = ws.root.join(path);
+        std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+        std::fs::write(full, text).unwrap();
+    };
+    write(
+        "team/ms.toml",
+        "[workspace]\nmembers = [\"app\", \"libs/*\"]\n",
+    );
+    write(
+        "team/app/ms.toml",
+        "[project]\nname = \"app\"\nsource = \"src\"\nentry = \"src/main.ms\"\n\n[dependencies]\n\"@util\" = { path = \"../libs/util\" }\n",
+    );
+    write(
+        "team/app/src/main.ms",
+        "import greet from \"@util/greet.ms\"\n\nfn main() Int:\n    print(greet(\"x\"))\n    return 0\n",
+    );
+    write(
+        "team/libs/util/ms.toml",
+        "[project]\nname = \"util\"\nsource = \"src\"\n",
+    );
+    write(
+        "team/libs/util/src/greet.ms",
+        "export fn greet(name: String) String:\n    return \"hi \" + name\n",
+    );
+}
+
+#[test]
+fn a_workspace_member_symbol_lists_uses_in_sibling_members() {
+    let syms = ms_syntax::Names::global();
+    let ws = Workspace::new("search-members");
+    two_members(&ws);
+    let util = ws.path("team/libs/util");
+    let (found, _) = search_symbols(syms, &util, "greet", 5).unwrap();
+    let symbol = found.iter().find(|s| s.name == "greet").expect("greet");
+    assert!(
+        symbol
+            .references
+            .iter()
+            .any(|r| r.ends_with("main.ms:4:11")),
+        "{symbol:?}"
+    );
+}
+
+#[test]
+fn renaming_a_member_function_edits_the_importing_member() {
+    let syms = ms_syntax::Names::global();
+    let ws = Workspace::new("rename-members");
+    two_members(&ws);
+    let source = ws.read("team/libs/util/src/greet.ms");
+    let d = Document::new(ws.uri("team/libs/util/src/greet.ms"), source.clone());
+    let docs = Documents::from([(d.uri.clone(), d.clone())]);
+    let checked = ms_lsp::analysis::analyze(syms, &support::session(), &d, &docs);
+    assert!(checked.success(), "{:?}", checked.diagnostics);
+    let at = ms_lsp::text::position(&source, source.find("greet").unwrap());
+    let edit = ms_lsp::rename::rename(
+        syms,
+        &checked,
+        checked.occurrence_index(syms),
+        &d,
+        at,
+        "welcome",
+        None,
+        Some(&docs),
+    )
+    .expect("rename");
+    let edits = edit.compact(ms_json::Escape::Plain);
+    assert!(edits.contains("app/src/main.ms"), "{edits}");
+    assert!(edits.contains("util/src/greet.ms"), "{edits}");
+}

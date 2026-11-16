@@ -192,7 +192,20 @@ fn load_entries(
         }
     };
     graph.source_root = config.root.clone();
-    let overlay = match crate::project::canonical_overlay(&config.root, &editor.overlay) {
+    // A workspace member imported by path is the user's own code, so its unsaved edits are
+    // visible too; a fetched package is read-only and never takes an overlay.
+    let members = config
+        .packages
+        .iter()
+        .filter(|p| p.member)
+        .map(|p| p.root.as_str());
+    let overlay = match std::iter::once(config.root.as_str())
+        .chain(members)
+        .map(|root| crate::project::canonical_overlay(root, &editor.overlay))
+        .try_fold(crate::project::Overlay::new(), |mut all, part| {
+            all.extend(part?);
+            Ok(all)
+        }) {
         Ok(overlay) => overlay,
         Err(error) => {
             graph.diagnostics = vec![from_error(&Arc::from(filename), &error)];
