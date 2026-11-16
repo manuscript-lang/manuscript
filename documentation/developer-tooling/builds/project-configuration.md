@@ -155,6 +155,8 @@ import Config, open from "@pg/conn.ms"
 
 A workspace splits one repository into projects that share code and one lock file. The root `ms.toml` lists the members:
 
+`ms init --workspace team` creates one: a root `ms.toml`, an `app` member that imports a `greeter` library member through a path dependency, and a test in each. Or write the root by hand:
+
 ```toml
 [workspace]
 members = ["app", "libs/*"]
