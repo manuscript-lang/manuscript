@@ -30,10 +30,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![]
             }
             Op::DepthEnter => {
-                self.depth_enter();
-                vec![]
+                unreachable!("ms_mir::depth lowers depth.enter before code generation")
             }
             Op::DepthLeave => vec![],
+            Op::StackLow => vec![self.stack_below(0)],
             Op::CleanupPush => {
                 let Imm::Func(c) = inst.imm else {
                     unreachable!()

@@ -40,6 +40,7 @@ fn main() {
     }
     if optimize {
         ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
+        ms_mir::depth::lower(&mut m);
     }
     ms_mir::expand::run(&mut m, opts.checks);
     ms_mir::expand_owned::run(&mut m);

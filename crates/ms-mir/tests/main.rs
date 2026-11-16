@@ -3,6 +3,7 @@
 
 mod cancel_edges;
 mod copies;
+mod depth;
 mod elaborate;
 mod exit_drops;
 mod intern;

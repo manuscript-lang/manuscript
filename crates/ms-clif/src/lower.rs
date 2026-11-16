@@ -440,63 +440,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.switch_to_block(cont);
     }
 
-    /// The recursion check of a cyclic function: when the stack pointer is below the task's
-    /// limit, the function runs again on a new stack segment (`msrt_task_grow` calls the
-    /// function's grow shim there with the entry parameters, stored in a block on this frame)
-    /// and returns that run's results. The check is the first thing the function does, so the
-    /// parameters are still the caller's values (`ms_mir::verify`).
-    fn depth_enter(&mut self) {
-        // The limit sits in the region beside the block's address: one load from the masked
-        // stack pointer.
-        let sp = self.b.ins().get_stack_pointer(types::I64);
-        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
-        let limit = self.b.ins().load(
-            types::I64,
-            flags(),
-            base,
-            (STACK_REGION - STACK_LIMIT_CELL) as i32,
-        );
-        let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
-        let grow = self.b.create_block();
-        let cont = self.b.create_block();
-        self.b.set_cold_block(grow);
-        let ok = self.negate(over);
-        self.b.ins().brif(ok, cont, &[], grow, &[]);
-        self.b.switch_to_block(grow);
-        let entry = self.blocks[0].expect("entry block");
-        let params = self.b.block_params(entry).to_vec();
-        let returns: Vec<ir::Type> = self
-            .b
-            .func
-            .signature
-            .returns
-            .iter()
-            .map(|p| p.value_type)
-            .collect();
-        // The block is a heap allocation, not a frame slot: a slot would widen the frame of
-        // every recursive function for a path taken once per segment.
-        let block = self.alloc(((params.len() + returns.len()) * 8) as i64);
-        for (i, p) in params.iter().enumerate() {
-            self.b.ins().store(flags(), *p, block, (i * 8) as i32);
-        }
-        let shim = self.g.glue(Glue::GrowShim(self.fid), Ty::VOID);
-        let r = self.fref(shim);
-        let fa = self.b.ins().func_addr(types::I64, r);
-        self.rt_call("msrt_task_grow", &[fa, block]);
-        let results: Vec<Value> = returns
-            .iter()
-            .enumerate()
-            .map(|(j, t)| {
-                self.b
-                    .ins()
-                    .load(*t, flags(), block, ((params.len() + j) * 8) as i32)
-            })
-            .collect();
-        self.free(block);
-        self.b.ins().return_(&results);
-        self.b.switch_to_block(cont);
-    }
-
     fn alloc(&mut self, size: i64) -> Value {
         let n = self.iconst(size.max(1));
         self.rt_call("msrt_alloc", &[n])[0]
@@ -939,9 +882,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                 // block placed after the rest of the function keeps every value it reads live
                 // across it, and allocation is quadratic in a long function.
                 let faults = |t: &Target| f.cold.contains(&t.block);
-                let swap = !faults(then)
-                    && !faults(els)
-                    && continues_loop(f, self.cur, then.block.index(), els.block.index());
+                let swap = if faults(then) || faults(els) {
+                    faults(then) && !faults(els)
+                } else {
+                    continues_loop(f, self.cur, then.block.index(), els.block.index())
+                };
                 let (then, els) = if swap {
                     c = self.negate(c);
                     (els, then)
@@ -1204,6 +1149,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::Poll
             | Op::DepthEnter
             | Op::DepthLeave
+            | Op::StackLow
             | Op::CleanupPush
             | Op::CleanupRun
             | Op::GlobalGet

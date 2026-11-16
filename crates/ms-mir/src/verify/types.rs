@@ -197,6 +197,7 @@ impl InstCheck<'_, '_> {
             Op::Poll
             | Op::DepthEnter
             | Op::DepthLeave
+            | Op::StackLow
             | Op::CleanupRun
             | Op::CleanupPush
             | Op::GlobalGet
@@ -1330,6 +1331,13 @@ impl InstCheck<'_, '_> {
     fn runtime_services(&self) -> Result<(), String> {
         match self.inst.op {
             Op::Poll | Op::DepthEnter | Op::DepthLeave => self.arity(0),
+            Op::StackLow => {
+                self.arity(0)?;
+                self.want(
+                    self.res == Some(Ty::BOOL),
+                    "stack.low yields whether the stack pointer is below the stack segment's limit",
+                )
+            }
             Op::CleanupRun => {
                 self.arity(1)?;
                 self.want(

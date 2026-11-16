@@ -197,46 +197,30 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.call_id(fid, &vs);
                 self.b.ins().return_(&[]);
             }
-            Glue::GrowShim(f) => {
-                // `block` holds the function's parameters, one 8-byte cell each, followed by room
-                // for its results (see `depth_enter`).
-                let fid = self.g.funcs[f as usize];
-                let r = self.fref(fid);
-                let sig = self.b.func.dfg.ext_funcs[r].signature;
-                let want: Vec<ir::Type> = self.b.func.dfg.signatures[sig]
-                    .params
-                    .iter()
-                    .map(|p| p.value_type)
-                    .collect();
-                let block = params[0];
-                let args: Vec<Value> = want
-                    .iter()
-                    .enumerate()
-                    .map(|(i, t)| self.b.ins().load(*t, flags(), block, (i * 8) as i32))
-                    .collect();
-                let results = self.call_id(fid, &args);
-                for (j, v) in results.iter().enumerate() {
-                    self.b
-                        .ins()
-                        .store(flags(), *v, block, ((want.len() + j) * 8) as i32);
-                }
-                self.b.ins().return_(&[]);
-            }
         }
     }
 
     /// Whether the stack pointer is within `DEEP_DROP_HEADROOM` of the running segment's limit:
     /// the drop glue of recursive data counts its nesting only then.
     fn stack_within_headroom(&mut self) -> Value {
+        self.stack_below(DEEP_DROP_HEADROOM)
+    }
+
+    /// Whether the stack pointer is below the running segment's limit plus `headroom` bytes:
+    /// the limit sits in the stack region beside the block's address, one load from the masked
+    /// stack pointer. `stack.low` is the headroom-free case.
+    pub(super) fn stack_below(&mut self, headroom: i64) -> Value {
         let sp = self.b.ins().get_stack_pointer(types::I64);
         let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
-        let limit = self.b.ins().load(
+        let mut limit = self.b.ins().load(
             types::I64,
             flags(),
             base,
             (STACK_REGION - STACK_LIMIT_CELL) as i32,
         );
-        let limit = self.b.ins().iadd_imm_s(limit, DEEP_DROP_HEADROOM);
+        if headroom != 0 {
+            limit = self.b.ins().iadd_imm_s(limit, headroom);
+        }
         self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit)
     }
 
@@ -244,15 +228,7 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// the copy runs on a new segment through the slot copy glue and the glue returns its result
     /// (`msrt_slot_copy_grown`); otherwise it carries on.
     fn clone_on_new_segment(&mut self, ty: Ty, params: &[Value]) {
-        let sp = self.b.ins().get_stack_pointer(types::I64);
-        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
-        let limit = self.b.ins().load(
-            types::I64,
-            flags(),
-            base,
-            (STACK_REGION - STACK_LIMIT_CELL) as i32,
-        );
-        let low = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
+        let low = self.stack_below(0);
         let grow = self.b.create_block();
         let cont = self.b.create_block();
         self.b.set_cold_block(grow);

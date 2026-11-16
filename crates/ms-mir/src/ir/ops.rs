@@ -21,7 +21,7 @@ impl Op {
         Op::ClosureNew, Op::ClosureCap, Op::ClosureCapAddr, Op::IfaceNew, Op::IfaceBorrow, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
         Op::Clone, Op::Drop, Op::DropIf, Op::MoveOut, Op::Forget, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull, Op::PtrAdd, Op::PtrNull, Op::PtrLoadU, Op::PtrStoreU,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
-        Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
+        Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::StackLow, Op::CleanupPush, Op::CleanupRun,
         Op::GlobalGet, Op::GlobalSet, Op::ScopeBegin, Op::ScopeOwn, Op::ScopeEnd, Op::ScopeDisown, Op::ScopeMark,
     ];
 
@@ -178,6 +178,7 @@ impl Op {
             Op::Poll => ("poll", K::None, false, effects!(faults, io)),
             Op::DepthEnter => ("depth.enter", K::None, false, effects!(faults, io)),
             Op::DepthLeave => ("depth.leave", K::None, false, effects!(io)),
+            Op::StackLow => ("stack.low", K::None, true, effects!(io)),
             Op::CleanupPush => ("cleanup.push", K::Func, true, effects!(io)),
             Op::CleanupRun => ("cleanup.run", K::None, false, effects!(io)),
             Op::GlobalGet => ("global.get", K::Global, true, effects!(reads)),

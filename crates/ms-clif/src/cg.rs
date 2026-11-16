@@ -405,7 +405,6 @@ impl<'m> Gen<'m> {
             | Glue::ClosureDropFrom(..)
             | Glue::BlockDrop
             | Glue::CleanupThunk(_)
-            | Glue::GrowShim(_)
             | Glue::SlotDrop => self.sig(&[Leaf::I64], &[]),
             Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
@@ -414,8 +413,7 @@ impl<'m> Gen<'m> {
             Glue::ClosureDrop(f)
             | Glue::ClosureDropFramed(f)
             | Glue::ClosureClone(f)
-            | Glue::CleanupThunk(f)
-            | Glue::GrowShim(f) => func_sym(f),
+            | Glue::CleanupThunk(f) => func_sym(f),
             Glue::ClosureDropFrom(f, k) => format!("{}.{k}", func_sym(f)),
             _ => format!("{:016x}", name_hash(&ms_mir::print::ty_str(self.m, ty))),
         };
@@ -1302,6 +1300,7 @@ mod target_tests {
                 let mut m = ms_mir::parse::parse_module(&source).unwrap();
                 ms_mir::verify::verify_module(&m).unwrap();
                 ms_mir::opt::optimize(&mut m, level, true);
+                ms_mir::depth::lower(&mut m);
                 ms_mir::expand::run(&mut m, true);
                 ms_mir::expand_owned::run(&mut m);
                 let opts = Options {

@@ -314,7 +314,7 @@ pub enum Op {
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
-    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
+    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, StackLow, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
     // Raw-phase scope markers, consumed by `elaborate`.
     ScopeBegin, ScopeOwn, ScopeEnd, ScopeDisown, ScopeMark,
 }

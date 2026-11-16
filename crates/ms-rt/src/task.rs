@@ -871,7 +871,7 @@ unsafe fn segment_bounds(t: *mut Task, k: usize) -> (usize, usize, usize) {
 
 /// Runs `shim(block)` on the task's next stack segment: the recursion check of a cyclic function
 /// found the stack pointer below the limit of the current one, so the function runs again
-/// there with the parameters stored at `block` (`ms_clif::lower::depth_enter`). The segment is
+/// there with the parameters stored at `block` (`ms_mir::depth`). The segment is
 /// a guarded slot like the home one, kept by the task until it ends; after 511 of them, or when
 /// no slot is left, the task faults with the stack overflow report.
 ///

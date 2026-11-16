@@ -70,8 +70,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Program, Error> {
 /// (`abi_llvm`): aggregates by pointer, large results through a hidden pointer. Such a function
 /// has no leaf entry, so every reference to it must be a call from a directly emitted function:
 /// the rest of the program (the runtime, closures, vtables, cleanups, exports and the entry) only
-/// knows the leaf convention. Its stack-growth shim is written for the native convention too (see
-/// [`direct_shim`]).
+/// knows the leaf convention.
 fn native_functions(g: &Gen) -> HashSet<usize> {
     let m = g.m;
     let n = m.funcs.len();
@@ -127,13 +126,6 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) {
     if let Some(why) = mir_llvm::unsupported(g.m, &g.lay, f) {
         return note_unsupported(g, &f.name, &why);
     }
-    // A recursive function's stack-depth check runs it again through its grow shim.
-    let grow_shim = f
-        .blocks
-        .iter()
-        .flat_map(|b| &b.insts)
-        .any(|inst| inst.op == Op::DepthEnter)
-        .then(|| g.glue_symbol(Glue::GrowShim(i as u32), Ty::VOID));
     g.locs.add_scopes(f);
     let mut bits = HashMap::new();
     let locs = f
@@ -165,7 +157,6 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) {
         |env| {
             let place = Place {
                 idx: i,
-                grow_shim,
                 native: &g.native,
             };
             mir_llvm::emit(g.m, &g.lay, place, f, &plan, env, &symbol_of)
@@ -286,30 +277,6 @@ fn plan_drop(g: &mut Gen, plan: &mut Plan, ty: Ty) {
     }
 }
 
-/// Emits the stack-growth shim of the directly emitted function `f`, in its calling convention.
-fn direct_shim(g: &mut Gen, kind: Glue, ty: Ty, f: usize, native: bool) {
-    let sym = g.existing_glue(kind, ty);
-    let callee = g.func_symbol(f);
-    let mut llvm = g.llvm.take().expect("the module is set between functions");
-    let no_bits = HashMap::new();
-    let locs = DirectLocs {
-        syms: &NoSymbols,
-        bits: &no_bits,
-    };
-    let (m, lay) = (g.m, &g.lay);
-    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        let shim = if native {
-            mir_llvm::grow_shim
-        } else {
-            mir_llvm::leaf_grow_shim
-        };
-        shim(env.types, lay, &m.funcs[f], &callee, env.loc)
-    });
-    llvm.mark_glue();
-    g.llvm = Some(llvm);
-    g.funcs.push(glue_info(sym));
-}
-
 /// A glue function as the caller's tables list it.
 fn glue_info(symbol: String) -> FuncInfo {
     FuncInfo {
@@ -339,13 +306,6 @@ fn direct_closure_glue(g: &mut Gen, kind: Glue, sym: String) {
 
 /// Emits the glue `kind` for `ty` straight to LLVM IR, or records it in `Gen::unsupported`.
 fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) {
-    if let Glue::GrowShim(f) = kind {
-        let f = f as usize;
-        let native = g.native.contains(&f);
-        if native || mir_llvm::supports(g.m, &g.lay, &g.m.funcs[f]) {
-            return direct_shim(g, kind, ty, f, native);
-        }
-    }
     if !glue_llvm::supports(g, kind, ty) {
         let ty_kind = format!("{:?}", g.m.types.kind(ty));
         let end = ty_kind.find(['(', ' ', '{']).unwrap_or(ty_kind.len());
