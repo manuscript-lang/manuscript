@@ -22,6 +22,7 @@ pub(crate) enum StrFn {
     ScalarStep,
     StartsWith,
     EndsWith,
+    Compare,
 }
 
 fn int(b: &mut FuncBuilder<'_>, op: Op, x: Value, y: i64) -> Value {
@@ -107,6 +108,11 @@ impl FnLower<'_> {
                 vec![param(MTy::STR), param(MTy::STR)],
                 MTy::BOOL,
             ),
+            StrFn::Compare => (
+                "string_compare",
+                vec![param(MTy::STR), param(MTy::STR)],
+                MTy::INT,
+            ),
             StrFn::ScalarStep => (
                 "scalar_step",
                 vec![param(MTy::STR), param(MTy::INT)],
@@ -133,6 +139,7 @@ impl FnLower<'_> {
             StrFn::ScalarStep => scalar_step(&mut b),
             StrFn::StartsWith => affix(&mut b, false),
             StrFn::EndsWith => affix(&mut b, true),
+            StrFn::Compare => compare(&mut b),
         }
         let func = b.into_func();
         let fid = self.b.m.add_func(func);
@@ -155,6 +162,10 @@ impl FnLower<'_> {
                     return None;
                 }
                 let f = self.str_fn(StrFn::ContainsByte);
+                Some(self.b.call(f, args))
+            }
+            "msrt_string_compare" => {
+                let f = self.str_fn(StrFn::Compare);
                 Some(self.b.call(f, args))
             }
             "msrt_string_starts_with" => {
@@ -607,5 +618,68 @@ fn affix(b: &mut FuncBuilder<'_>, end: bool) {
     b.ret(Some(f));
     b.switch_to(slow);
     let r = b.call_rt(ext, &[text, part]);
+    b.ret(Some(r));
+}
+
+/// `String` order as -1, 0 or 1: the first differing byte of the common prefix decides, then the
+/// lengths. A prefix of up to sixteen bytes is compared byte by byte from either string form
+/// (inline, static or heap); a longer one calls the runtime's `memcmp`.
+fn compare(b: &mut FuncBuilder<'_>) {
+    let ps = b.params();
+    let (x, y) = (ps[0], ps[1]);
+    let ext = runtime_fn(b.m, "msrt_string_compare", &[MTy::STR, MTy::STR], MTy::INT);
+    let (scan, slow, head, body, step, tail) = (
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+    );
+    let (minus, plus) = (b.iconst(-1), b.iconst(1));
+    let (sx, sy) = (slot_of(b, x), slot_of(b, y));
+    let (xd, xn) = bytes_of(b, sx);
+    let (yd, yn) = bytes_of(b, sy);
+    let shorter = b.icmp(Cc::Lt, xn, yn);
+    let n = b.select(shorter, xn, yn);
+    let c16 = b.iconst(16);
+    let big = b.icmp(Cc::Gt, n, c16);
+    b.br_if(big, slow, &[], scan, &[]);
+    b.seal_block(slow);
+    b.seal_block(scan);
+    b.switch_to(slow);
+    let r = b.call_rt(ext, &[x, y]);
+    b.ret(Some(r));
+    b.switch_to(scan);
+    let i = b.add_block_param(head, MTy::INT, Mode::Borrow);
+    let zero = b.iconst(0);
+    b.br(head, &[zero]);
+    b.switch_to(head);
+    let more = b.icmp(Cc::Lt, i, n);
+    b.br_if(more, body, &[], tail, &[]);
+    b.seal_block(body);
+    b.seal_block(tail);
+    b.switch_to(body);
+    let (xb, yb) = (byte_at(b, xd, i), byte_at(b, yd, i));
+    let same = b.icmp(Cc::Eq, xb, yb);
+    let differ = b.new_block();
+    b.br_if(same, step, &[], differ, &[]);
+    b.seal_block(step);
+    b.seal_block(differ);
+    b.switch_to(differ);
+    let less = b.icmp(Cc::Lt, xb, yb);
+    let r = b.select(less, minus, plus);
+    b.ret(Some(r));
+    b.switch_to(step);
+    let one = b.iconst(1);
+    let next = b.binop(Op::IAdd, i, one);
+    b.br(head, &[next]);
+    b.seal_block(head);
+    // Equal prefixes: the shorter string is smaller.
+    b.switch_to(tail);
+    let longer = b.icmp(Cc::Gt, xn, yn);
+    let zero = b.iconst(0);
+    let tail_cmp = b.select(longer, plus, zero);
+    let r = b.select(shorter, minus, tail_cmp);
     b.ret(Some(r));
 }
