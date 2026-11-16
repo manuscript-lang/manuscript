@@ -138,25 +138,33 @@ export fn parse_message(raw: String) Message!:
 
 	var head = ""
 	var body = ""
-	crlf := raw.index_of("\r\n\r\n")
-	lf := raw.index_of("\n\n")
 
-	// The first blank line ends the headers, whichever line ending it uses.
+	// The first blank line ends the headers, whatever line ending each line uses, so a
+	// body is never taken for header text after a mix of `\n` and `\r\n`.
+	data := raw.as_bytes()
+	size := data.length()
+	var line = 0
 	var at = -1
-	var skip = 0
+	var next = size
 
-	if found := crlf:
-		at = found
-		skip = 4
+	while line < size:
+		var stop = line
+		while stop < size and data.get(stop).to_int() != 10:
+			stop += 1
 
-	if found := lf:
-		if at < 0 or found < at:
-			at = found
-			skip = 2
+		var text_end = stop
+		if text_end > line and data.get(text_end - 1).to_int() == 13: text_end -= 1
+
+		if text_end == line:
+			at = line
+			next = if stop < size: stop + 1 else: size
+			break
+
+		line = stop + 1
 
 	if at >= 0:
 		head = raw.view(0, at).clone()
-		body = raw.view(at + skip, raw.length()).clone()
+		body = raw.view(next, size).clone()
 	else:
 		head = raw.clone()
 
