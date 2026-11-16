@@ -242,9 +242,12 @@ pub(super) unsafe fn reactor_wait() {
             if timed {
                 expire_timers(now);
             }
-            if !s.ready.is_empty() || crate::sched::work_available() {
+            if !s.ready.is_empty() {
                 return;
             }
+            let Some(steal) = crate::sched::work_or_wait() else {
+                return;
+            };
             let mut timeout_ns = -1;
             while timed && let Some(&Reverse((deadline, h))) = s.timers.peek() {
                 let t = lookup(h);
@@ -269,7 +272,6 @@ pub(super) unsafe fn reactor_wait() {
                 };
                 break;
             }
-            let steal = crate::sched::steal_wait_ns();
             if steal >= 0 {
                 timeout_ns = if timeout_ns < 0 {
                     steal
@@ -307,7 +309,8 @@ pub(super) unsafe fn reactor_wait() {
             // Posters interrupt the poller only while this says it may block, so look for work
             // once more after saying so.
             crate::isolate::set_sleeping(true);
-            if crate::sched::work_available()
+            let steal = crate::sched::work_or_wait();
+            if steal.is_none()
                 || crate::sched::signalled()
                 || crate::isolate::has_posts()
                 || crate::isolate::pending_cancel() != 0
@@ -320,8 +323,10 @@ pub(super) unsafe fn reactor_wait() {
             // A start queued before the flag above was set did not kick this thread, and one that
             // is not old enough to take yet does not count as work: bound the sleep by the time
             // until it can be taken, as the timeout computed earlier did not know of it.
-            let steal = crate::sched::steal_wait_ns();
-            if steal >= 0 && (timeout_ns < 0 || steal < timeout_ns) {
+            if let Some(steal) = steal
+                && steal >= 0
+                && (timeout_ns < 0 || steal < timeout_ns)
+            {
                 timeout_ns = steal;
             }
             trim_idle_stacks();
