@@ -12,6 +12,8 @@ Rules:
 - A native that calls generated code (sort comparators, filters) lets the callee run on: a callee that sees `unwinding` returns at its next park. Loops around callbacks keep their `poll_cancel()` checks.
 - `make repo-check` (`cancel_jumps`) fails a `msrt_cancelled` call outside `fault.rs` and `start.rs`.
 
+- `unwinding` reads 0 while any cleanup or explicit exit code runs, so a shielded close that parks does not see the flag of the cancel it serves: `msrt_cleanup_unwind_to` clears it for the duration and sets it again before returning, and exits that run code use `msrt_unwinding_pause()` and `msrt_unwinding_resume()`. `deliver_cancel` is idempotent, so a park entered while the flag is set never delivers a second cancel.
+
 Apply when: adding or changing a native that parks, waits, or polls for cancellation.
 Evidence: `crates/ms-rt/src/fault.rs` (`cancel_return`, `take_unwinding`), `crates/ms-repo-check/src/cancel_jumps.rs`.
 Verify: `cargo test -p ms-rt --lib guard`; `cargo run -p ms-repo-check`.
