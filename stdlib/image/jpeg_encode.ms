@@ -116,17 +116,37 @@ fn jpeg_forward(
 	y0: Int,
 	quant: List[Int],
 ) List[Int]:
+	// The matrix is symmetric: row 7 - k is row k with the sign of odd columns flipped.
+	// So a column's sum over eight inputs is a sum over four sums (even columns) or
+	// four differences (odd columns) of mirrored inputs, half the multiplications.
 	var tmp = jpeg_zeros(64)
+	var mirror = jpeg_zeros(8)
 
 	for y in 0..8:
+		row := (y0 + y) * stride + x0
+
+		for k in 0..4:
+			a := plane[row + k] - 128
+			b := plane[row + 7 - k] - 128
+			mirror[k] = a + b
+			mirror[4 + k] = a - b
+
 		for u in 0..8:
+			off := (u % 2) * 4
 			var sum = 0
-			for x in 0..8:
-				sum += (
-					jpeg_dct_matrix[x * 8 + u]
-					* (plane[(y0 + y) * stride + x0 + x] - 128)
-				)
+			for k in 0..4:
+				sum += jpeg_dct_matrix[k * 8 + u] * mirror[off + k]
 			tmp[y * 8 + u] = sum
+
+	// Sums (indices 0..31) and differences (32..63) of rows k and 7 - k, per column.
+	var folded = jpeg_zeros(64)
+
+	for k in 0..4:
+		for u in 0..8:
+			a := tmp[k * 8 + u]
+			b := tmp[(7 - k) * 8 + u]
+			folded[k * 8 + u] = a + b
+			folded[32 + k * 8 + u] = a - b
 
 	var levels = jpeg_zeros(64)
 
@@ -134,9 +154,10 @@ fn jpeg_forward(
 		at := jpeg_zigzag[zi]
 		v := at / 8
 		u := at % 8
+		off := (v % 2) * 32
 		var sum = 0
-		for y in 0..8:
-			sum += jpeg_dct_matrix[y * 8 + v] * tmp[y * 8 + u]
+		for k in 0..4:
+			sum += jpeg_dct_matrix[k * 8 + v] * folded[off + k * 8 + u]
 
 		q := quant[zi]
 		half := q * 8388608

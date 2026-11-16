@@ -59,3 +59,25 @@ at 2048 by 2048 on a shared, noisy VM, so read them as a rough guide.
 JPEG encode (`jpeg_forward`, 117 M) and the IDCT (`jpeg_plane`, 75 M) are unchanged: the 8 by 8
 transform is a scalar matrix product on checked `Int` arithmetic. Skipping zero rows saved
 nothing here because this image is noise, so it was not kept.
+
+## 2026-11-16, 8 by 8 transforms use the matrix symmetry
+
+`jpeg_dct_matrix` is exactly symmetric: row 7 - k is row k with the odd columns negated. A
+sum over eight inputs is therefore a sum over four sums (even columns) or four differences (odd
+columns) of mirrored inputs, and the decoder gets outputs k and 7 - k from one even and one odd
+part. Half the multiplications, the same integers: the encoded size and the decoded checksum of
+odd-sized images in both chroma modes are unchanged, and `image.ms` and `image-fuzz.ms` pass.
+
+Callgrind, 512 by 512, after #4223:
+
+| Function | Before | After |
+| --- | --- | --- |
+| `jpeg_plane` (inverse transform) | 75 M | 42 M |
+| `jpeg_forward` (forward transform and quantization) | 117 M | 78 M |
+| Whole program | 774 M | 696 M |
+
+Wall time at 2048 by 2048 is noisy on this VM; the median of 5 went from 344 to about 285 ms for
+JPEG encode and from 303 to about 270 ms for decode (Go 183 and 96 ms). What is left per block is
+checked `Int` arithmetic and bounds checks on 64-element lists. A trial that computed the PNG
+filter costs first and wrote only the winner was slower (231 M against 168 M for `filter_with`:
+six passes instead of five plus the `emit` branch) and was dropped.
