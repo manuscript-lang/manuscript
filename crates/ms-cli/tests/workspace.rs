@@ -308,3 +308,64 @@ fn fmt_and_test_at_the_root_run_on_every_member() {
     let failed = ms(&root, &cache, &["test", "ms.toml"]);
     assert!(!failed.status.success(), "{}", out(&failed));
 }
+
+#[test]
+fn a_member_list_errors_name_members_and_allow_spaces_in_directories() {
+    let root = scratch("workspace-member-list");
+    let cache = root.join("cache");
+    let check = |manifest: &str| {
+        file(&root, "ms.toml", manifest);
+        ms(&root, &cache, &["check"])
+    };
+    file(
+        &root,
+        "my app/ms.toml",
+        "[project]\nname = \"my-app\"\nsource = \"src\"\n",
+    );
+    file(&root, "my app/src/x.ms", include_str!("workspace/one.ms"));
+    let spaced = check("[workspace]\nmembers = [\"my app\"]\n");
+    assert!(spaced.status.success(), "{}", err(&spaced));
+
+    let twice = check("[workspace]\nmembers = [\"a\", \"a\"]\n");
+    assert!(
+        err(&twice).contains("member a is listed twice"),
+        "{}",
+        err(&twice)
+    );
+    let text = check("[workspace]\nmembers = \"a\"\n");
+    assert!(
+        err(&text).contains("members are a list of strings: [\"app\", \"libs/*\"]"),
+        "{}",
+        err(&text)
+    );
+    for manifest in [
+        "[workspace]\nmembers = []\n",
+        "[workspace]\n",
+        "[workspace]\nmembers = [\"libs/*\"]\n",
+    ] {
+        std::fs::create_dir_all(root.join("libs")).unwrap();
+        let none = check(manifest);
+        assert!(!none.status.success(), "{manifest}");
+        assert!(
+            err(&none).contains("workspace lists no members"),
+            "{manifest}: {}",
+            err(&none)
+        );
+    }
+}
+
+#[test]
+fn a_manifest_error_names_the_manifest_once_when_run_from_another_directory() {
+    let root = scratch("workspace-error-path");
+    let cache = root.join("cache");
+    workspace(
+        &root,
+        "\"@wire\" = { url = \"https://example.invalid/acme/wire.git\", version = \"1\" }\n",
+    );
+    let check = ms(&root, &cache, &["check", "app/ms.toml"]);
+    assert!(!check.status.success());
+    let text = err(&check);
+    assert!(text.contains("ms.lock has no copy"), "{text}");
+    assert!(text.contains("app/ms.toml:1:1"), "{text}");
+    assert!(!text.contains("app/app/ms.toml"), "{text}");
+}

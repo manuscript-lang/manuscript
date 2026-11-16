@@ -118,6 +118,11 @@ pub fn read(root_project: &Project) -> Result<Workspace, ProjectError> {
         children.sort();
         dirs.extend(children);
     }
+    if dirs.is_empty() {
+        return Err(ProjectError::msg(
+            "workspace lists no members; name each member directory under [workspace], such as members = [\"app\", \"libs/*\"]",
+        ));
+    }
     let mut members: Vec<Member> = Vec::new();
     let mut seen: BTreeMap<String, String> = BTreeMap::new();
     for dir in dirs {

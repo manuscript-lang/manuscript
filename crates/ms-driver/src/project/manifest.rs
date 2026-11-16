@@ -217,6 +217,10 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
         if section == "project" {
             p.location = location.clone();
         }
+        if section == "workspace" {
+            // A bare [workspace] is a root with no members yet, reported as such.
+            p.members.get_or_insert_with(Vec::new);
+        }
         for (key, value) in table.iter() {
             let (key_span, value_span) = table.get_key_value(key).map_or((0..0, 0..0), |(k, v)| {
                 (k.span().unwrap_or(0..0), v.span().unwrap_or(0..0))
@@ -234,7 +238,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             );
             match section {
                 "effects" => {
-                    let list = string_list(value)
+                    let list = string_list(value, &EFFECT_LIST)
                         .map_err(|e| fail.at(&location, format!("{key}: {e}")))?;
                     check_package_name(&fail, &key, &key_location)?;
                     p.allowed_effects.insert(key, list);
@@ -246,7 +250,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                             format!("unknown workspace key {key}; [workspace] accepts members"),
                         ));
                     }
-                    let list = string_list(value)
+                    let list = string_list(value, &MEMBER_LIST)
                         .map_err(|e| fail.at(&location, format!("members: {e}")))?;
                     p.members = Some(list);
                 }
@@ -273,7 +277,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                     }
                 }
                 "project" if key == "effects" => {
-                    p.effects = string_list(value)
+                    p.effects = string_list(value, &EFFECT_LIST)
                         .map_err(|e| fail.at(&location, format!("effects: {e}")))?;
                 }
                 _ => {
@@ -515,20 +519,51 @@ fn text_value(
     Ok(value.to_string())
 }
 
+/// What a manifest string list holds, for its errors and what it may contain.
+struct ListKind {
+    noun: &'static str,
+    plural: &'static str,
+    example: &'static str,
+    /// Directory names may hold spaces; effect patterns may not.
+    spaces: bool,
+}
+
+const EFFECT_LIST: ListKind = ListKind {
+    noun: "effect",
+    plural: "effects",
+    example: "[\"std.net.*\", \"std.fs.read\"]",
+    spaces: false,
+};
+
+const MEMBER_LIST: ListKind = ListKind {
+    noun: "member",
+    plural: "members",
+    example: "[\"app\", \"libs/*\"]",
+    spaces: true,
+};
+
 /// An array of strings, such as the effects `["std.net.*", "std.fs.read"]`.
-fn string_list(item: &toml_edit::Item) -> Result<Vec<String>, String> {
-    let shape = "effects are a list of strings: [\"std.net.*\", \"std.fs.read\"]";
-    let array = item.as_array().ok_or_else(|| shape.to_string())?;
+fn string_list(item: &toml_edit::Item, kind: &ListKind) -> Result<Vec<String>, String> {
+    let shape = format!("{} are a list of strings: {}", kind.plural, kind.example);
+    let array = item.as_array().ok_or_else(|| shape.clone())?;
     let mut list = Vec::new();
     for entry in array {
-        let text = entry.as_str().ok_or_else(|| shape.to_string())?;
-        if text.is_empty() || text.chars().any(|c| c.is_whitespace() || c.is_control()) {
+        let text = entry.as_str().ok_or_else(|| shape.clone())?;
+        let bad_char = |c: char| c.is_control() || (!kind.spaces && c.is_whitespace());
+        if text.is_empty() || text.chars().any(bad_char) {
             return Err(format!(
-                "invalid effect {text:?}; write one pattern per string, such as \"std.net.*\""
+                "invalid {} {text:?}; write one {} per string, such as {}",
+                kind.noun,
+                if kind.spaces { "directory" } else { "pattern" },
+                kind.example
+                    .trim_matches(['[', ']'])
+                    .split(", ")
+                    .next()
+                    .unwrap_or("")
             ));
         }
         if list.iter().any(|seen| seen == text) {
-            return Err(format!("effect {text} is listed twice; remove one"));
+            return Err(format!("{} {text} is listed twice; remove one", kind.noun));
         }
         list.push(text.to_string());
     }
