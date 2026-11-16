@@ -161,8 +161,19 @@ pub(super) unsafe fn poll_ready(timeout_ns: i64) {
             }
             // Every waiter the event concerns wakes; the one that gets the resource proceeds
             // and the others wait again. `wake` re-arms for those that stay.
-            let queue = s.fd_waiters[ev.fd].clone();
-            for h in queue {
+            // A copy, since waking changes the queue; nearly always one or two waiters, which
+            // fit on the stack.
+            let mut inline = [0u64; 4];
+            let spilled;
+            let waiters = &s.fd_waiters[ev.fd];
+            let queue: &[u64] = if waiters.len() <= inline.len() {
+                inline[..waiters.len()].copy_from_slice(waiters);
+                &inline[..waiters.len()]
+            } else {
+                spilled = waiters.clone();
+                &spilled
+            };
+            for &h in queue {
                 if h & PROMISE_TAG != 0 {
                     let id = (h & !PROMISE_TAG) as i64;
                     if crate::promise::fd_ready(id, ev.bits) {
