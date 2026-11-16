@@ -308,3 +308,114 @@ fn fmt_and_test_at_the_root_run_on_every_member() {
     let failed = ms(&root, &cache, &["test", "ms.toml"]);
     assert!(!failed.status.success(), "{}", out(&failed));
 }
+
+#[test]
+fn a_member_list_errors_name_members_and_allow_spaces_in_directories() {
+    let root = scratch("workspace-member-list");
+    let cache = root.join("cache");
+    let check = |manifest: &str| {
+        file(&root, "ms.toml", manifest);
+        ms(&root, &cache, &["check"])
+    };
+    file(
+        &root,
+        "my app/ms.toml",
+        "[project]\nname = \"my-app\"\nsource = \"src\"\n",
+    );
+    file(&root, "my app/src/x.ms", include_str!("workspace/one.ms"));
+    let spaced = check("[workspace]\nmembers = [\"my app\"]\n");
+    assert!(spaced.status.success(), "{}", err(&spaced));
+
+    let twice = check("[workspace]\nmembers = [\"a\", \"a\"]\n");
+    assert!(
+        err(&twice).contains("member a is listed twice"),
+        "{}",
+        err(&twice)
+    );
+    let text = check("[workspace]\nmembers = \"a\"\n");
+    assert!(
+        err(&text).contains("members are a list of strings: [\"app\", \"libs/*\"]"),
+        "{}",
+        err(&text)
+    );
+    for manifest in [
+        "[workspace]\nmembers = []\n",
+        "[workspace]\n",
+        "[workspace]\nmembers = [\"libs/*\"]\n",
+    ] {
+        std::fs::create_dir_all(root.join("libs")).unwrap();
+        let none = check(manifest);
+        assert!(!none.status.success(), "{manifest}");
+        assert!(
+            err(&none).contains("workspace lists no members"),
+            "{manifest}: {}",
+            err(&none)
+        );
+    }
+}
+
+#[test]
+fn a_manifest_error_names_the_manifest_once_when_run_from_another_directory() {
+    let root = scratch("workspace-error-path");
+    let cache = root.join("cache");
+    workspace(
+        &root,
+        "\"@wire\" = { url = \"https://example.invalid/acme/wire.git\", version = \"1\" }\n",
+    );
+    let check = ms(&root, &cache, &["check", "app/ms.toml"]);
+    assert!(!check.status.success());
+    let text = err(&check);
+    assert!(text.contains("ms.lock has no copy"), "{text}");
+    assert!(text.contains("app/ms.toml:1:1"), "{text}");
+    assert!(!text.contains("app/app/ms.toml"), "{text}");
+}
+
+#[test]
+fn a_member_diagnostic_keeps_the_logical_module_name_in_the_terminal_report() {
+    let root = scratch("workspace-member-diagnostic");
+    let cache = root.join("cache");
+    workspace(&root, "\"@util\" = { path = \"../libs/util\" }\n");
+    file(
+        &root,
+        "libs/util/src/greet.ms",
+        "export fn greet() Int:\n    return \"x\"\n",
+    );
+    let check = ms(&root.join("app"), &cache, &["check", "ms.toml"]);
+    let text = err(&check);
+    assert!(text.contains("@workspace/util/src/greet.ms:2:12"), "{text}");
+    assert!(!text.contains("app/@workspace"), "{text}");
+
+    // From the root, `check` covers every member and places positions by collection.
+    let json = ms(&root, &cache, &["check", "--json"]);
+    let text = out(&json);
+    assert!(
+        text.contains("\"file\": \"@workspace/util/src/greet.ms\""),
+        "{text}"
+    );
+}
+
+#[test]
+fn a_rebuild_notices_an_edit_in_a_path_dependency_member() {
+    let root = scratch("workspace-rebuild");
+    let cache = root.join("cache");
+    workspace(&root, "\"@util\" = { path = \"../libs/util\" }\n");
+    let app = root.join("app");
+    let program = app.join(format!("program{}", std::env::consts::EXE_SUFFIX));
+    let build = |expected: &str| {
+        let built = ms(
+            &app,
+            &cache,
+            &["build", "ms.toml", "-o", program.to_str().unwrap()],
+        );
+        assert!(built.status.success(), "{}", err(&built));
+        let ran = Command::new(&program).output().unwrap();
+        assert_eq!(out(&ran).trim(), expected);
+    };
+    build("hello workspace");
+    file(
+        &root,
+        "libs/util/src/greet.ms",
+        "export fn greet(name: String) String:\n    return f\"goodbye {name}\"\n",
+    );
+    build("goodbye workspace");
+}

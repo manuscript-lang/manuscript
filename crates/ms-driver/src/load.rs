@@ -146,7 +146,13 @@ fn load_entries(
     let (mut config, manifest) = match source_project(filename, &mut seen) {
         Ok(found) => found,
         Err((root, error, inputs)) => {
-            let file: Arc<str> = Arc::from(filename);
+            // Diagnostics name files relative to the root, so a manifest given as
+            // `app/ms.toml` from another directory must not be joined to the root twice.
+            let relative = pathops::abs(filename)
+                .and_then(|path| pathops::rel(&root, &path))
+                .ok()
+                .filter(|rel| !pathops::escapes(rel));
+            let file: Arc<str> = Arc::from(relative.as_deref().unwrap_or(filename));
             return Graph {
                 source_root: root,
                 inputs,

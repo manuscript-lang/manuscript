@@ -96,6 +96,7 @@ fn accepted(
     }
     Err(Failure {
         source_root: checked.source_root,
+        package_roots: checked.package_roots,
         diagnostics: checked.diagnostics,
     })
 }
@@ -285,6 +286,7 @@ fn analysis_pass(
     let mut findings = Vec::new();
     let mut summaries = Vec::new();
     let mut root = String::new();
+    let mut package_roots: Vec<(String, String)> = Vec::new();
     // The terminal output, written at the end or, with `--json --with-text`, carried in the document.
     let text = !request.json || request.with_text;
     let mut text_out: Vec<u8> = Vec::new();
@@ -305,10 +307,16 @@ fn analysis_pass(
         }
         files.extend(watched_files(syms, &input.path, &checked));
         for issue in &checked.diagnostics {
-            diagnostics.push(placed(&selection, &checked.source_root, issue));
+            diagnostics.push(placed(
+                &selection,
+                &checked.source_root,
+                &checked.package_roots,
+                issue,
+            ));
         }
         if selection.inputs.len() == 1 && !selection.collection {
             root.clone_from(&checked.source_root);
+            package_roots.clone_from(&checked.package_roots);
         }
         let Some(program) = checked.program.as_ref().filter(|_| checked.success()) else {
             continue;
@@ -341,11 +349,12 @@ fn analysis_pass(
                 code: finding.code.to_string(),
                 severity: finding.severity.name().to_string(),
                 message: finding.message,
-                position: selection.position(&checked.source_root, &at),
+                position: selection.position(&checked.source_root, &checked.package_roots, &at),
                 fix: finding.fix.as_ref().map(|fix| {
                     let place = |pos: ms_driver::Pos| {
                         selection.position(
                             &checked.source_root,
+                            &checked.package_roots,
                             &Position {
                                 file: finding.file.to_string(),
                                 line: pos.line as usize,
@@ -383,7 +392,7 @@ fn analysis_pass(
         }
     }
     diagnostics.extend(fix_errors.values().cloned().map(|mut issue| {
-        issue.position = selection.position("", &issue.position);
+        issue.position = selection.position("", &[], &issue.position);
         issue
     }));
     // Keep compiler diagnostics ahead of lint findings and defer output until
@@ -405,7 +414,10 @@ fn analysis_pass(
         let mut sources = crate::snippet::Sources::default();
         for issue in &diagnostics {
             let mut position = issue.position.clone();
-            if !root.is_empty() && !pathops::is_abs(&position.file) {
+            if !root.is_empty()
+                && !pathops::is_abs(&position.file)
+                && !ms_driver::is_package_module(&package_roots, &position.file)
+            {
                 position.file = pathops::join(&[&root, &position.file]);
             }
             let label = if !issue.phase.is_empty() {
@@ -685,9 +697,12 @@ pub(super) fn state_after(path: &str, started: SystemTime) -> Option<FileState> 
 fn placed(
     selection: &AnalysisSelection,
     root: &str,
+    package_roots: &[(String, String)],
     issue: &ms_driver::Diagnostic,
 ) -> CommandDiagnostic {
-    super::placed_command_diagnostic(issue, &|position| selection.position(root, &position))
+    super::placed_command_diagnostic(issue, &|position| {
+        selection.position(root, package_roots, &position)
+    })
 }
 
 /// Drop repeats, then order by position, code and message.

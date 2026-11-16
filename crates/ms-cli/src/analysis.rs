@@ -191,8 +191,16 @@ fn walk(
 
 impl AnalysisSelection {
     /// Map a diagnostic position to the display form for a collection.
-    pub fn position(&self, root: &str, position: &Position) -> Position {
-        if !self.collection || position.file.starts_with("@std/") {
+    pub fn position(
+        &self,
+        root: &str,
+        package_roots: &[(String, String)],
+        position: &Position,
+    ) -> Position {
+        if !self.collection
+            || position.file.starts_with("@std/")
+            || ms_driver::is_package_module(package_roots, &position.file)
+        {
             return position.clone();
         }
         let mut position = position.clone();
