@@ -53,10 +53,13 @@ pub fn run(m: &mut Module) -> bool {
         leaf: true,
         reads: false,
     });
+    let safe = slot_safe_params(m);
+    let owns = slot_owned_params(m, &safe);
     let mut cx = Cx {
         parks,
         faults,
-        safe: slot_safe_params(m),
+        safe,
+        owns,
         pointer_params: m
             .funcs
             .iter()
@@ -77,7 +80,7 @@ pub fn run(m: &mut Module) -> bool {
         // it consumes.
         let stand_in = m.funcs[fi].signature_stand_in();
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
-        changed |= function(m, &mut cx, &mut f);
+        changed |= function(m, &mut cx, &mut f, fi);
         m.funcs[fi] = f;
     }
     changed
@@ -90,6 +93,10 @@ struct Cx {
     /// Per function and parameter: whether the parameter is a slot pointer whose contents the
     /// function only borrows while it runs, so the caller may keep covering them.
     safe: Vec<Vec<bool>>,
+    /// Per function and parameter: whether the parameter is a slot pointer that no one else
+    /// covers, so the function owns the value it takes out of it while it runs (see
+    /// [`slot_owned_params`]).
+    owns: Vec<Vec<bool>>,
     /// Per function and parameter: whether it is a pointer. Taken before any function is
     /// swapped out for rewriting, since the one being rewritten has no parameters meanwhile.
     pointer_params: Vec<Vec<bool>>,
@@ -521,6 +528,27 @@ fn takes_from_slot(m: &Module, callee: FuncId, memo: &mut HashMap<FuncId, bool>)
     found
 }
 
+/// Whether every path from the entry to block `to` passes through block `d`.
+fn dominates(f: &Func, d: usize, to: usize) -> bool {
+    if d == to {
+        return true;
+    }
+    let mut seen = vec![false; f.blocks.len()];
+    let mut stack = vec![0usize];
+    while let Some(b) = stack.pop() {
+        if b == d || std::mem::replace(&mut seen[b], true) {
+            continue;
+        }
+        if b == to {
+            return false;
+        }
+        f.blocks[b]
+            .term
+            .for_each_target(|t| stack.push(t.block.index()));
+    }
+    true
+}
+
 /// Covers a slot-held value while a shielded close works on it in place. A fault inside the
 /// close never returns to its caller, and the entry the scope registered for the value is gone
 /// by then, so a drop is registered around the close call.
@@ -612,6 +640,10 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                         // path from its push on, one pushed before the path (a scope's entry,
                         // discarded just ahead of the shield) from the path's start.
                         let from = path[..=at].iter().position(|&x| x == b);
+                        // A push in another branch (another window's cover) is not this path's.
+                        if from.is_none() && !dominates(f, b, path[0]) {
+                            return false;
+                        }
                         !path[from.unwrap_or(0)..=at]
                             .iter()
                             .enumerate()
@@ -795,6 +827,8 @@ fn analyze(
     hoisted: &[BTreeSet<u32>],
 ) -> Walk {
     let plain = plain_blocks(f, cx, holes);
+    let hole_in = hole_owners(f);
+    let defs = field_defs(f);
     let mut entry: Vec<Option<OwnerSet>> = vec![None; f.blocks.len()];
     // Per block: the instruction run `first..=last` to cover and the values to register for it.
     let mut plans: Vec<Vec<Window>> = vec![Vec::new(); f.blocks.len()];
@@ -830,6 +864,11 @@ fn analyze(
         // window's own registrations sit above the ones it removes, so the window stays as it
         // is.
         let mut opened_by_discard = false;
+        // The owners with a field moved out and not yet filled back: they are half empty, so
+        // no registration covers them, while the other live values stay covered.
+        let mut holed: Vec<u32> = hole_in[bi].0.iter().copied().collect();
+        // Whether a moved-out owner is not known by name.
+        let mut unnamed = hole_in[bi].1;
         for (k, inst) in blk.insts.iter().enumerate() {
             let discards =
                 matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if e == cx.discard);
@@ -872,11 +911,20 @@ fn analyze(
                     events[bi].push((k, target));
                 }
             }
-            if open > 0 || matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
+            let mut under = live.clone();
+            if open > 0 {
+                if unnamed {
+                    under = OwnerSet::new();
+                }
+                for h in &holed {
+                    under.remove(*h);
+                }
+            }
+            if matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
                 // A window across a hole would drop a half-emptied owner, and one across a
                 // scope open or close would discard an entry that is not its own.
                 reach = None;
-            } else if (!live.is_empty() || reach.is_some())
+            } else if (!under.is_empty() || reach.is_some())
                 && (exits_at(m, cx, inst)
                     // Dropping a closure, interface value or handle can run a close that faults.
                     || (inst.op == Op::Drop
@@ -885,7 +933,7 @@ fn analyze(
                         && k + 1 == blk.insts.len()
                         && matches!(blk.term, Term::Unreachable)))
             {
-                let drops = cover(&live);
+                let drops = cover(&under);
                 match (&mut reach, plans[bi].last_mut()) {
                     (Some(set), Some(w)) if *set == drops => w.last = k,
                     // The live owners changed: the window follows them, so a value that died is
@@ -911,7 +959,21 @@ fn analyze(
                     }
                 }
             }
-            open = hole_step(open, inst.op);
+            let before = open;
+            open = hole_step(open, inst.op, blk.insts.get(k + 1).map(|i| i.op));
+            if open > before {
+                // The owner behind the moved-out projection.
+                let base = hole_base(&defs, inst);
+                match base {
+                    Some(b) => holed.push(b),
+                    None => unnamed = true,
+                }
+                reach = None;
+            }
+            if open == 0 {
+                holed.clear();
+                unnamed = false;
+            }
             if inst.op == Op::Put
                 && inst
                     .args
@@ -1256,7 +1318,7 @@ fn consumed_inside(m: &Module, f: &Func, owned_def: &[bool], body: &[usize]) -> 
     used
 }
 
-fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
+fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
     if f.blocks.is_empty() {
         return false;
     }
@@ -1271,6 +1333,15 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             slot_params.insert(r.0);
         }
     }
+    // A slot parameter no caller covers: what this function takes out of it is its own while it
+    // runs, and an unwind inside drops it.
+    let owned_params: BTreeSet<u32> = f.blocks[0]
+        .params
+        .iter()
+        .enumerate()
+        .filter(|(k, _)| param_flag(&cx.owns, fi, *k))
+        .map(|(_, p)| p.value.0)
+        .collect();
     let covered_takes = covered_slot_takes(m, f);
     let mut owned_def = vec![false; f.values.len()];
     let mut from_slot: BTreeSet<u32> = BTreeSet::new();
@@ -1282,9 +1353,11 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             // A value taken out of a slot the caller passed in stays the caller's: the slot still
             // holds it while the call runs, and the caller (or its owner) drops it. Dropping it
             // here too would drop it twice.
-            let from_caller_slot = i.op == Op::Take
-                && (i.args.first().is_some_and(|a| slot_params.contains(&a.0))
-                    || i.res.is_some_and(|r| covered_takes.contains(&r.0)));
+            let from_caller_slot =
+                i.op == Op::Take
+                    && (i.args.first().is_some_and(|a| {
+                        slot_params.contains(&a.0) && !owned_params.contains(&a.0)
+                    }) || i.res.is_some_and(|r| covered_takes.contains(&r.0)));
             if let (Some(r), Some(Mode::Move)) = (i.res, m.result_mode(f, i)) {
                 owned_def[r.index()] = !from_caller_slot;
                 if from_caller_slot {
@@ -2055,8 +2128,9 @@ fn hole_states(f: &Func) -> Vec<u32> {
         changed = false;
         for b in f.rpo() {
             let mut open = at[b.index()];
-            for inst in &f.blocks[b.index()].insts {
-                open = hole_step(open, inst.op);
+            let insts = &f.blocks[b.index()].insts;
+            for (k, inst) in insts.iter().enumerate() {
+                open = hole_step(open, inst.op, insts.get(k + 1).map(|i| i.op));
             }
             let mut targets = Vec::new();
             f.blocks[b.index()]
@@ -2073,8 +2147,11 @@ fn hole_states(f: &Func) -> Vec<u32> {
     at
 }
 
-fn hole_step(open: u32, op: Op) -> u32 {
+/// `next` is the op that follows: a move-out the owner's field release follows at once (the
+/// rest of a temporary is released, so nothing is left to drop twice) opens no window.
+fn hole_step(open: u32, op: Op, next: Option<Op>) -> u32 {
     match op {
+        Op::MoveOut if next == Some(Op::TypeRelease) => open,
         Op::MoveOut => (open + 1).min(8),
         Op::TypeFill | Op::ListFill => open.saturating_sub(1),
         _ => open,
@@ -2134,6 +2211,79 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
     }
     slots.retain(|s, _| !bad.contains(s));
     slots
+}
+
+fn param_flag(table: &[Vec<bool>], f: usize, k: usize) -> bool {
+    table
+        .get(f)
+        .and_then(|p| p.get(k))
+        .copied()
+        .unwrap_or(false)
+}
+
+/// Per function and parameter, whether the parameter is a pointer at a local slot that nothing
+/// else covers while the function runs: every call passes the address of a slot of its own that
+/// holds a value of the parameter's type and has no cleanup entry, and the function does not
+/// only borrow the slot's value (those are the caller's to cover). Such a function owns what it
+/// takes out of the slot: a `var` list handed to a callee that parks would leak when the park is
+/// cancelled, since the slot holds only a stale copy by then.
+fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
+    let mut owns: Vec<Vec<bool>> = m
+        .funcs
+        .iter()
+        .enumerate()
+        .map(|(fi, f)| {
+            (0..f.params.len())
+                .map(|k| f.params[k].ty == Ty::PTR && !param_flag(safe, fi, k))
+                .collect()
+        })
+        .collect();
+    let mut used = vec![false; m.funcs.len()];
+    for caller in &m.funcs {
+        let slots: HashMap<u32, Ty> = caller
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .filter_map(|i| match (i.op, i.imm, i.res) {
+                (Op::Slot, Imm::Ty(ty), Some(r)) => Some((r.0, ty)),
+                _ => None,
+            })
+            .collect();
+        let entries: BTreeSet<u32> = caller
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .filter(|i| i.op == Op::CleanupPush)
+            .filter_map(|i| i.args.first().map(|a| a.0))
+            .collect();
+        for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
+            let Imm::Func(g) = inst.imm else { continue };
+            used[g.index()] = true;
+            let direct = inst.op == Op::Call;
+            for (k, flag) in owns[g.index()].iter_mut().enumerate() {
+                if !*flag {
+                    continue;
+                }
+                // The slot is the caller's own, holds the type the callee's parameter names,
+                // and no entry covers it.
+                let ok = direct
+                    && inst.args.get(k).is_some_and(|a| {
+                        slots.get(&a.0).is_some_and(|ty| m.needs_drop(*ty))
+                            && !entries.contains(&a.0)
+                    });
+                if !ok {
+                    *flag = false;
+                }
+            }
+        }
+    }
+    // A function nothing calls directly is reached some other way: leave it to its callers.
+    for (fi, flags) in owns.iter_mut().enumerate() {
+        if !used[fi] {
+            flags.iter_mut().for_each(|f| *f = false);
+        }
+    }
+    owns
 }
 
 /// The functions that `closure.new` instructions make callable.
@@ -2357,4 +2507,73 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
         }
     }
     true
+}
+
+/// The owner each projection value (`type.get`, `alt.get`) was read from.
+fn field_defs(f: &Func) -> BTreeMap<u32, u32> {
+    let mut defs = BTreeMap::new();
+    for blk in &f.blocks {
+        for inst in &blk.insts {
+            if let (Op::TypeGet | Op::AltGet, Some(r), Some(a)) =
+                (inst.op, inst.res, inst.args.first())
+            {
+                defs.insert(r.0, a.0);
+            }
+        }
+    }
+    defs
+}
+
+/// The owner a move-out empties, when it is a projection of one.
+fn hole_base(defs: &BTreeMap<u32, u32>, inst: &Inst) -> Option<u32> {
+    inst.args.first().and_then(|a| defs.get(&a.0).copied())
+}
+
+/// At the start of each block: the owners named by the moves-out still open, and whether some
+/// open one is not named (so no live value may be covered).
+fn hole_owners(f: &Func) -> Vec<(BTreeSet<u32>, bool, u32)> {
+    let defs = field_defs(f);
+    let mut at: Vec<(BTreeSet<u32>, bool, u32)> = vec![(BTreeSet::new(), false, 0); f.blocks.len()];
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for b in f.rpo() {
+            let (mut named, mut unnamed, _) = at[b.index()].clone();
+            let mut open = at[b.index()].2;
+            let insts = &f.blocks[b.index()].insts;
+            for (k, inst) in insts.iter().enumerate() {
+                let before = open;
+                open = hole_step(open, inst.op, insts.get(k + 1).map(|i| i.op));
+                if open > before {
+                    match hole_base(&defs, inst) {
+                        Some(base) => {
+                            named.insert(base);
+                        }
+                        None => unnamed = true,
+                    }
+                }
+                if open == 0 {
+                    named.clear();
+                    unnamed = false;
+                }
+            }
+            let mut targets = Vec::new();
+            f.blocks[b.index()]
+                .term
+                .for_each_target(|t| targets.push(t.block));
+            for t in targets {
+                let slot = &mut at[t.index()];
+                let grew = named.iter().any(|n| !slot.0.contains(n))
+                    || (unnamed && !slot.1)
+                    || open > slot.2;
+                if grew {
+                    slot.0.extend(named.iter().copied());
+                    slot.1 |= unnamed;
+                    slot.2 = slot.2.max(open);
+                    changed = true;
+                }
+            }
+        }
+    }
+    at
 }

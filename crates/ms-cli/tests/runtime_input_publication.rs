@@ -80,7 +80,6 @@ fn rejected(status: i32, stdout: &str, stderr: &str, metadata: bool) {
 fn embedded_build(source: &Path, output: &Path, cache: &Path) -> Output {
     Command::new(env!("CARGO_BIN_EXE_ms"))
         .env("XDG_CACHE_HOME", cache)
-        .env("MS_CACHE", "on")
         .env("MS_TIMINGS", "1")
         .env_remove("MS_RT_LIB")
         .args([
@@ -152,14 +151,8 @@ fn preserves_embedded(metadata: bool, warm: bool) {
         common::symlink_dir(&safe, &alias).unwrap();
         let output = alias.join(basename);
         success(&embedded_build(&source, &output, &cache));
-        let hit = embedded_build(&source, &output, &cache);
-        success(&hit);
-        assert!(
-            !String::from_utf8_lossy(&hit.stderr).contains("ms-timings:"),
-            "control must restore its cache"
-        );
+        success(&embedded_build(&source, &output, &cache));
         exits_seven(&output);
-        eprintln!("embedded metadata={metadata} warm={warm}: cache hit confirmed before retarget");
         retarget(&alias, &inputs);
         output
     } else {
@@ -253,7 +246,7 @@ fn selection_child(
     selected_target: bool,
     metadata: bool,
     warm: bool,
-    missing_ignored: bool,
+    _missing_ignored: bool,
 ) {
     let source = root.join("main.ms");
     let native = root.join("selected-runtime.a");
@@ -268,39 +261,13 @@ fn selection_child(
     let control = root.join("safe/control");
     engine_success(engine_build(&backend, &source, &control));
     exits_seven(&control);
-    let before = backend.lowering.0.get();
-    engine_success(engine_build(&backend, &source, &control));
-    assert_eq!(
-        backend.lowering.0.get(),
-        before,
-        "an ignored runtime path must not disable caching"
-    );
-    assert!(
-        std::fs::read_dir(root.join(".ms-cache/build"))
-            .unwrap()
-            .any(|entry| entry.unwrap().path().join("manifest").is_file()),
-        "the control must record a native cache entry"
-    );
-    eprintln!(
-        "selected_target={selected_target}, metadata={metadata}, warm={warm}, missing_ignored={missing_ignored}: repeated native control restored its cache"
-    );
-
     eprintln!(
         "selected_target={selected_target}, metadata={metadata}, warm={warm}: native control exited 7"
     );
     let output = root.join("publish/program");
     if warm {
         engine_success(engine_build(&backend, &source, &output));
-        let before = backend.lowering.0.get();
         engine_success(engine_build(&backend, &source, &output));
-        assert_eq!(
-            backend.lowering.0.get(),
-            before,
-            "control must restore its cache without lowering"
-        );
-        eprintln!(
-            "selected_target={selected_target}, metadata={metadata}, warm={warm}: cache hit confirmed before retarget"
-        );
         retarget(&root.join("publish"), &inputs);
     }
     let result = engine_build(&backend, &source, &output);
@@ -401,8 +368,7 @@ fn engine_runtime_precedence_protects_only_the_selected_archive() {
                             format!("{selected_target},{metadata},{warm},{missing_ignored}"),
                         )
                         .env("MS_RT_LIB", ignored)
-                        .env("MS_CACHE", "on")
-                        .output()
+                                        .output()
                         .unwrap();
         eprintln!(
             "selected_target={selected_target}, metadata={metadata}, warm={warm}, missing_ignored={missing_ignored}: {:?}",

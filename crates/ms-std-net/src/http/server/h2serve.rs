@@ -115,7 +115,7 @@ impl H2Stream {
     }
 }
 
-pub(in crate::http) struct H2Conn {
+pub struct H2Conn {
     core: h2::Connection,
     streams: HashMap<u32, H2Stream>,
     queue: VecDeque<u32>,
@@ -153,6 +153,18 @@ impl H2Conn {
     /// The tasks running handlers of streams.
     pub(in crate::http) fn running(&self) -> Vec<u64> {
         self.streams.values().map(|s| s.task).collect()
+    }
+
+    /// Whether another thread could continue this connection: no streams, nothing to send, no
+    /// handler waiting on it, and not winding down. Nothing of this thread's is left in such a
+    /// connection: with no streams, the queue holds only ids of streams that are gone, which
+    /// this drops.
+    pub(super) fn can_move(&mut self) -> bool {
+        if !self.is_idle() || self.goaway || !self.waiters.is_empty() {
+            return false;
+        }
+        self.queue.clear();
+        true
     }
 
     fn is_idle(&self) -> bool {
@@ -242,6 +254,15 @@ impl H2Conn {
     fn send_body(&mut self, id: u32, data: &[u8]) -> Option<usize> {
         let alive = self.streams.get(&id).is_some_and(|s| !s.reset);
         alive.then(|| self.core.send_data(id, data, false))
+    }
+
+    /// The earliest deadline of a stream still collecting its request.
+    pub(super) fn next_deadline(&self) -> Option<Instant> {
+        self.streams
+            .values()
+            .filter(|s| s.stage == Stage::Collecting)
+            .filter_map(|s| s.deadline)
+            .min()
     }
 
     /// Resets the streams that waited too long for the rest of their request.
@@ -407,6 +428,7 @@ impl Server {
             Drain::Empty => {
                 self.set_interest(conn, reactor, Ev::IN);
                 self.h2_settle(conn, reactor);
+                self.list_waiting(conn);
             }
         }
     }
@@ -489,9 +511,15 @@ impl Server {
             return;
         }
         let timeout = self.limits.timeout;
-        with_h2(conn, |h| {
-            h.streams.insert(id, H2Stream::new(end_stream, timeout));
-        });
+        let deadline = with_h2(conn, |h| {
+            let stream = H2Stream::new(end_stream, timeout);
+            let deadline = stream.deadline;
+            h.streams.insert(id, stream);
+            deadline
+        })
+        .flatten();
+        // The stream's own deadline wakes the reactor; no periodic look is needed.
+        reactor.note_deadline(deadline);
         let head = match self.h2_head(headers) {
             Ok(head) => head,
             Err((status, message)) => {

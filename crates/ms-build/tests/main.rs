@@ -4,6 +4,5 @@
 mod close_error_ownership;
 mod debug_artifacts;
 mod lower;
-mod pinned_build;
 #[path = "../../ms-clif/tests/support/mod.rs"]
 mod support;

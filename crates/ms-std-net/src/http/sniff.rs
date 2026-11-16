@@ -64,11 +64,24 @@ fn mp4(data: &[u8]) -> bool {
 const BINARY: u32 = 0xf7ffc9ff;
 
 fn is_text(data: &[u8]) -> bool {
-    // No early exit: at most 512 bytes, and a loop without one compiles to a few wide compares
-    // instead of a branch per byte (this runs for every response that sets no content type).
-    !data.iter().fold(false, |binary, &b| {
-        binary | (b < 0x20 && BINARY >> b & 1 != 0)
-    })
+    const LOW: u64 = 0x0101_0101_0101_0101;
+    let (words, rest) = data.as_chunks::<8>();
+    for word in words {
+        let x = u64::from_le_bytes(*word);
+        // Nonzero when some byte is below 0x20 (the carry of the subtraction marks it, and the
+        // high bit of the byte itself rules out bytes from 0x80 up): most text has none, so a
+        // word is rejected or accepted with a few operations and only a word with a control byte
+        // looks at its bytes.
+        let low = x.wrapping_sub(LOW * 0x20) & !x & (LOW * 0x80);
+        if low != 0 && !word.iter().all(|&b| is_text_byte(b)) {
+            return false;
+        }
+    }
+    rest.iter().all(|&b| is_text_byte(b))
+}
+
+fn is_text_byte(b: u8) -> bool {
+    !(b < 0x20 && BINARY >> b & 1 != 0)
 }
 
 /// The detected media type of `data` (at most its first 512 bytes matter).
@@ -286,5 +299,23 @@ mod tests {
             assert_eq!(super::is_text(&[b'a', b, b'z']), !binary, "byte {b:#x}");
         }
         assert!(super::is_text(b""));
+    }
+
+    #[test]
+    fn a_control_byte_is_found_at_every_offset_of_a_long_buffer() {
+        for len in [7, 8, 9, 16, 23] {
+            for at in 0..len {
+                for b in 0..=255u8 {
+                    let mut data = vec![b'a'; len];
+                    data[at] = b;
+                    let binary = matches!(b, 0x00..=0x08 | 0x0b | 0x0e..=0x1a | 0x1c..=0x1f);
+                    assert_eq!(
+                        super::is_text(&data),
+                        !binary,
+                        "len {len} at {at} byte {b:#x}"
+                    );
+                }
+            }
+        }
     }
 }

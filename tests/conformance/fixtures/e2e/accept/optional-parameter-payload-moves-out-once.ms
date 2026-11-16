@@ -1,0 +1,24 @@
+// conform: tags=scope-cleanup,optional,tier-core
+// conform: phase=run
+// `get` at the last use of an `Optional` parameter whose payload has no copy takes the payload out:
+// the parameter's one owner hands it over, so the resource closes once, in the caller.
+type Handle:
+	id: Int
+	note: String
+
+fn var Handle.close() Void!:
+	print(f"close {self.id}")
+
+fn take(o: Handle?) Handle:
+	return o.get()
+
+fn first[T](value: T?) T:
+	return value.get()
+
+fn main() Void:
+	h := take(Handle(1, "a"))
+	print(f"got {h.id}")
+
+	g := first[Handle](Handle(2, "b"))
+	print(f"got {g.id}")
+	print(first[Int](3))

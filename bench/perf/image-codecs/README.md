@@ -26,3 +26,36 @@ the only field or element place among the `var` arguments and the others are dif
 
 What is left in JPEG is per-element work in `jpeg_plane` and `jpeg_forward` (about a million
 `msrt_free` calls each in the 256 by 256 profile), a separate change.
+
+## 2026-11-16, constant lists read from static data (#4199)
+
+A reference to a constant list of scalars is a borrowed view of static data (`list.const.view`,
+`proposals/constant-list-view.md`) instead of a call that allocates, copies and frees a list on
+every read. Best of 3, same machine, `main` 2b8a689e against this change:
+
+| Step (2048 by 2048) | Before | After | Go 1.24.7 |
+| --- | --- | --- | --- |
+| JPEG decode | 1784 ms | 441 ms | 96 ms |
+| JPEG encode | 2302 ms | 326 ms | 183 ms |
+
+## 2026-11-16, per-pixel lists and per-element branches out of the codecs
+
+`main` 2b8a689e plus #4202 against this change. Instruction counts are callgrind on a 512 by 512
+image (`/tmp` copy of `main.ms` with `w` and `h` set to 512); wall times are the median of 6 runs
+at 2048 by 2048 on a shared, noisy VM, so read them as a rough guide.
+
+- JPEG decode built a four-element list and a three-element list for every pixel and called a
+  general sampler with eight arguments per component. It now fills one row per component
+  (`jpeg_fill_row`: a copy for full-resolution components, a specialised 2:1 triangle filter for
+  4:2:0, the old sampler for other ratios) and converts with scalar helpers.
+- PNG encode tested the filter type inside the per-byte loop. `filter_with` has one loop per type.
+
+| Step | Instructions before | After | Wall before | Wall after | Go 1.24.7 |
+| --- | --- | --- | --- | --- | --- |
+| Whole program, 512 by 512 | 1061 M | 774 M | | | |
+| JPEG decode (sampling and color) | 183 M | 62 M | 673 ms | 343 ms | 96 ms |
+| PNG encode (`filter_row`) | 248 M | 168 M | 675 ms | 490 ms | 355 ms |
+
+JPEG encode (`jpeg_forward`, 117 M) and the IDCT (`jpeg_plane`, 75 M) are unchanged: the 8 by 8
+transform is a scalar matrix product on checked `Int` arithmetic. Skipping zero rows saved
+nothing here because this image is noise, so it was not kept.

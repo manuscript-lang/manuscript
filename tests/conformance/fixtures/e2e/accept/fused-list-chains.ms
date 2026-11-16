@@ -36,3 +36,21 @@ test "a lambda that calls a function runs the stages one at a time":
 	xs := [1, 2, 3, 4, 5]
 	expect_equal(xs.filter(fn x: x.min(3) == 3).map(fn x: x * 2).sum(), 24)?
 	expect_equal(xs.map(fn x: x * 2).filter(fn x: x.max(4) == x), [4, 6, 8, 10])?
+
+type Order:
+	status: String
+	total: Int
+	tags: List[String]
+
+test "chains over records and strings read each element in place":
+	orders := [Order("placed", 5, ["a"]), Order("shipped", 7, []), Order("placed", 11, ["b", "c"])]
+	wanted := "placed"
+	expect_equal(orders.filter(fn o: o.status == "placed").map(fn o: o.total).sum(), 16)?
+	expect_equal(orders.filter(fn o: o.status == wanted).map(fn o: o.total), [5, 11])?
+	expect_equal(orders.map(fn o: o.total).filter(fn t: t > 5).sum(), 18)?
+	words := ["x", "yy", "zzz"]
+	expect_equal(words.filter(fn w: w != "yy").map(fn w: w.length()).sum(), 4)?
+	expect_equal(words.map(fn w: w.length()).filter(fn n: n > 1), [2, 3])?
+	expect_equal(orders.filter(fn o: o.status == "none").map(fn o: o.total).sum(), 0)?
+	expect_equal(orders.filter(fn o: o.status == "placed").length(), 2)?
+	expect_equal(orders.filter(fn o: o.status == "placed").filter(fn o: o.total > 6).map(fn o: o.total), [11])?

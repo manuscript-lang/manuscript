@@ -5,6 +5,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -23,6 +24,8 @@ func main() {
 	conns := flag.Int("conns", 64, "connections")
 	dur := flag.Duration("dur", 20*time.Second, "")
 	warm := flag.Duration("warm", 3*time.Second, "")
+	useTLS := flag.Bool("tls", false, "HTTP/1.1 over TLS (certificate not verified)")
+	useH2 := flag.Bool("h2", false, "HTTP/2 over TLS: one connection each, certificate not verified")
 	flag.Parse()
 
 	per := time.Duration(0)
@@ -42,15 +45,33 @@ func main() {
 		wg.Add(1)
 		go func(c int) {
 			defer wg.Done()
-			conn, err := net.Dial("tcp", *addr)
+			var conn net.Conn
+			var err error
+			var h2 *http.Client
+			switch {
+			case *useH2:
+				// One transport per connection: HTTP/2 multiplexes, so this keeps `conns` sockets.
+				h2 = &http.Client{Transport: &http.Transport{
+					TLSClientConfig:   &tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h2"}},
+					ForceAttemptHTTP2: true,
+					MaxConnsPerHost:   1,
+				}}
+			case *useTLS:
+				conn, err = tls.Dial("tcp", *addr, &tls.Config{InsecureSkipVerify: true, NextProtos: []string{"http/1.1"}})
+			default:
+				conn, err = net.Dial("tcp", *addr)
+			}
 			if err != nil {
 				mu.Lock()
 				errs++
 				mu.Unlock()
 				return
 			}
-			defer conn.Close()
-			br := bufio.NewReader(conn)
+			var br *bufio.Reader
+			if conn != nil {
+				defer conn.Close()
+				br = bufio.NewReader(conn)
+			}
 			next := start.Add(per * time.Duration(c) / time.Duration(*conns))
 			var local []time.Duration
 			n := 0
@@ -68,13 +89,26 @@ func main() {
 				if *bigEvery > 0 && (n+c)%*bigEvery == 1 {
 					path, isSlow = "/big", true
 				}
-				_, err := fmt.Fprintf(conn, "GET %s?c=%d HTTP/1.1\r\nHost: b\r\n\r\n", path, c)
-				if err == nil {
+				var err error
+				if h2 != nil {
 					var resp *http.Response
-					resp, err = http.ReadResponse(br, nil)
+					resp, err = h2.Get(fmt.Sprintf("https://%s%s?c=%d", *addr, path, c))
 					if err == nil {
 						_, err = io.Copy(io.Discard, resp.Body)
 						resp.Body.Close()
+						if resp.ProtoMajor != 2 {
+							err = fmt.Errorf("answered over HTTP/%d", resp.ProtoMajor)
+						}
+					}
+				} else {
+					_, err = fmt.Fprintf(conn, "GET %s?c=%d HTTP/1.1\r\nHost: b\r\n\r\n", path, c)
+					if err == nil {
+						var resp *http.Response
+						resp, err = http.ReadResponse(br, nil)
+						if err == nil {
+							_, err = io.Copy(io.Discard, resp.Body)
+							resp.Body.Close()
+						}
 					}
 				}
 				if err != nil {

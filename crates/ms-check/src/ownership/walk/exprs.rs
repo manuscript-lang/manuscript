@@ -34,6 +34,24 @@ impl Walker<'_> {
             })
     }
 
+    /// Whether the payload `get()` `call` of the parameter `recv` takes the payload out: the last
+    /// use of a parameter the callee may consume (not `var`), with a payload that has no copy, so
+    /// the parameter is the payload's one owner and hands it over.
+    pub(super) fn param_payload_take(&self, call: &Expr, recv: &Expr) -> bool {
+        if !matches!(recv.kind, ExprKind::Name(_)) {
+            return false;
+        }
+        let Resolution::Local(b) = self.cx.m.resolution(recv) else {
+            return false;
+        };
+        let result = self.cx.m.ty(call);
+        !self.projected.contains(&call.id)
+            && self.is_last(recv.id, &b)
+            && self.is_consumable_param(&b)
+            && self.class_of(call) != Class::Copy
+            && !self.cx.classes.clonable(self.syms, &result)
+    }
+
     /// The places a conditional's value is a reference into, when every arm yields one.
     pub(super) fn arm_origins(&self, arms: &[Arm]) -> Option<Vec<Place>> {
         let mut out: Vec<Place> = Vec::new();
@@ -656,10 +674,12 @@ impl Walker<'_> {
             }
             match &e.kind {
                 ExprKind::Member { left, .. } => {
+                    self.projected.insert(left.id);
                     self.expr(left, if take { Demand::Move } else { Demand::Read })
                 }
                 ExprKind::Index { left, index } => {
                     self.parts_overlap(e.pos, "this index", &[left, index]);
+                    self.projected.insert(left.id);
                     self.expr(left, if take { Demand::Move } else { Demand::Read });
                     self.expr(index, Demand::Read);
                 }

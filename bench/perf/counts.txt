@@ -3,3 +3,9 @@ interp 2983578935
 strings 1757283400
 lz 618317961
 graph 635215535
+guard-crypto 160760892
+guard-regex 27432662
+guard-image 322055605
+guard-chains 4480713
+guard-maps 7895570
+guard-cleanup 13557848

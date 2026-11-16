@@ -73,3 +73,48 @@ Findings: with a computing handler in the mix the p99 falls from the handler tim
 | Closed loop, 64 conns | 176k to 191k req/s | 115k to 129k | 115k to 126k | 59k |
 
 Findings: system time already equals C's. The user time left is the handler: `out = out + f"..."` costs about 1,000 instructions per item (a temporary string, an append, a free) against about 50 in C; callgrind attributes two thirds of the 100,000 instructions per request to it. Controls for the spin change (4 threads, median of 9, before / now): `promise-tree tree 36 10` 78 / 79 ms, `mailbox 100000 5` 148 / 146 ms.
+
+## Results, 2026-11-16, instructions per request
+
+Counted with callgrind (method: [wiki](../../wiki/benchmarks-and-performance/count-a-request-in-instructions-with-a-heap-that-maps-under-valgrind.md)): one scheduler thread, 8 keep-alive connections, closed loop, a handler that returns a 45-byte constant, `GET /x?c=N` with only a `Host` header. Instruction counts repeat to about 0.3%; wall clock on the shared VM does not.
+
+| Server | Instructions per request |
+| --- | --- |
+| C (`server.c` with the body cut to nothing for `/x`) | 2.5k |
+| Manuscript, `main` at 9f09fd55 | 19.3k |
+| Manuscript, content-type check by 8-byte words | 18.4k |
+| Manuscript, and detached request tasks | 15.9k |
+
+Where the rest goes is in [the proposal](../../proposals/http-request-path-instructions.md).
+
+## Results, 2026-11-16, TLS and HTTP/2 connection stealing, same 4 vCPU Linux VM
+
+"Before" is `3d8676894` (plain HTTP/1 stealing only); "now" adds idle TLS and HTTP/2 connections. Run with `HTTP_TAIL_TLS=<dir with cert.pem and key.pem> ./server` and `load -tls` (HTTP/1.1 over TLS) or `load -h2` (one HTTP/2 connection each, certificate not verified). 64 connections, 10 s after a 2 s warm-up; one run each for the slow mix, three for the fast mix. CPU is the server process's user plus system ticks over the run (100 per second).
+
+| Scenario | Server | p50 | p99 | p99.9 | CPU ticks |
+| --- | --- | --- | --- | --- | --- |
+| TLS, 5% of requests burn 5 ms, 2000 req/s | before | 0.74 ms | 5.3 ms | 8.8 ms | 820 |
+| | now | 0.64 ms | **3.6 ms** | 6.3 ms | 1045 |
+| HTTP/2, same mix | before | 0.79 ms | 5.9 ms | 9.1 ms | 872 |
+| | now | 0.68 ms | **3.4 ms** | 5.9 ms | 1077 |
+| TLS, fast handlers, 4000 req/s | before | 0.66 to 0.68 ms | 1.6 to 8.8 ms | 3.3 to 36 ms | 267 to 288 |
+| | now | 0.67 ms | 1.7 to 2.3 ms | 3.7 to 6.2 ms | 293 to 309 |
+| HTTP/2, fast handlers, 4000 req/s | before | 0.54 to 0.57 ms | 1.8 to 1.9 ms | 3.5 to 3.7 ms | 389 to 400 |
+| | now | 0.56 to 0.57 ms | 1.9 ms | 4.4 to 8.2 ms | 390 to 396 |
+
+Findings: with a computing handler in the mix the p99 falls to about 3.5 ms for both, as for plain HTTP/1. The cost is CPU: the watcher now also looks while a TLS or HTTP/2 server computes (about 25% more with the slow mix, about 8% for TLS with fast handlers; HTTP/2 shows none). Fast-handler tails are the same within the noise of this machine; single runs of main and of the change each showed a 40 to 100 ms outlier.
+
+### Review follow-up: the cost of listing connections, same day
+
+Fast handlers (4000 req/s, 64 connections, 8 s after a 2 s warm-up), runs of `main` at `cb7f3a7a9` and the change interleaved; medians. `HTTP_TAIL_CORES=1` serves with one thread, so no thread has anything to take and the watcher does not run: what remains is the cost of parking an idle connection.
+
+| Server | Runs | p50 | p99 | p99.9 | p99.99 | CPU ticks |
+| --- | --- | --- | --- | --- | --- | --- |
+| TLS, 4 threads, main | 16 | 0.679 ms | 2.38 ms | 5.21 ms | 7.4 ms | 236 |
+| TLS, 4 threads, now | 16 | 0.676 ms | 2.32 ms | 5.41 ms | 7.5 ms | 253 |
+| TLS, 1 thread, main | 6 | 0.692 ms | 2.52 ms | 5.84 ms | 8.0 ms | 152 |
+| TLS, 1 thread, now | 6 | 0.693 ms | 2.61 ms | 5.66 ms | 9.5 ms | 157 |
+| HTTP/2, 4 threads, main | 10 | 0.585 ms | 2.07 ms | 4.41 ms | 6.6 ms | 314 |
+| HTTP/2, 4 threads, now | 10 | 0.583 ms | 2.09 ms | 4.52 ms | 6.8 ms | 324 |
+
+Instructions per TLS request with one thread (`valgrind --tool=callgrind` on the server, closed loop over one connection, slope between runs of 3 s and 14 s counted by handler calls): 101.9k before, 102.7k now (+0.8%). So of the +7% CPU with four threads, about 3% is parking (the one-thread rows, +0.8% of it in instructions) and about 4% is the watcher and the steals. An earlier three-run reading of +4.4 ms p99.9 for HTTP/2 was noise: ten interleaved runs give 4.41 and 4.52 ms (single-run ranges 3.5 to 12.2 and 3.4 to 18.9 ms).
