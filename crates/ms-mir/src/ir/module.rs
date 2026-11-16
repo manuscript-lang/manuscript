@@ -402,6 +402,8 @@ impl Module {
             | Op::OptViewAt
             | Op::AltPlain
             | Op::OptNone => Mode::Borrow,
+            // An owned `none` owns nothing, but keeps ownership linear without a copy.
+            Op::OptNoneOwned => Mode::Move,
             // A borrowing variant is owned and drops only the cases it owns: `alt.view` fills a
             // borrowed case and is a borrow in an ordinary alternative.
             Op::AltView => match self.types.kind(f.ty(res)) {

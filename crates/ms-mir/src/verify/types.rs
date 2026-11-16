@@ -145,6 +145,7 @@ impl InstCheck<'_, '_> {
             | Op::OptView
             | Op::OptViewAt
             | Op::OptNone
+            | Op::OptNoneOwned
             | Op::OptIsSome
             | Op::OptGet
             | Op::OptUnwrap
@@ -780,7 +781,7 @@ impl InstCheck<'_, '_> {
                     "opt.view_at yields a boxed optional",
                 )
             }
-            Op::OptNone => {
+            Op::OptNone | Op::OptNoneOwned => {
                 self.arity(0)?;
                 self.want(
                     self.res.and_then(|r| self.m.opt_inner(r)).is_some(),

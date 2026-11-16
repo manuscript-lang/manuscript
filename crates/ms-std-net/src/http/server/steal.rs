@@ -8,136 +8,75 @@
 //! ([`Member::idle`]): a handle and a deadline, and for a connection with state of its own (a
 //! TLS session, HTTP/2 streams) that state too ([`Parked`]), which the owner leaves there while
 //! the connection waits.
+//! The watcher thread (`ms_rt::watch`) looks at the threads from outside. When a server's thread
+//! has run one task since before the watcher's last look (its reactor did not turn and the
+//! thread is not resting) and it has waiting connections, the watcher tells a resting thread of
+//! the same `serve` call to take the ones with a request waiting. The taker duplicates each
+//! handle under the list's lock, takes the parked state, and serves the connection as its own;
+//! the owner finds its entry marked taken at its next turn and drops its handle without
+//! shutting the connection down. An owner that finds its entry not taken puts the state back.
 //!
-//! Nothing looks at the threads on a clock and no thread exists to do it. Each thread owns a
-//! kernel timer that every other thread of its `serve` call waits on. A thread arms its timer
-//! for [`HELP_AFTER_NS`] when it leaves its rest and disarms it when it rests again: two system
-//! calls per wake-up, no thread woken. The timer fires only for a thread that has stayed out of
-//! rest for that long, and wakes the resting threads. If the thread's reactor has not turned
-//! since the timer was armed, it is held up: the woken thread takes the listed connections with
-//! a request waiting (the duplicate of each handle is made under the list's lock, and the parked
-//! state is taken; the owner finds its entry marked taken at its next turn and drops its handle
-//! without shutting the connection down, or puts the state back if it was not taken) and arms the
-//! timer again, so a connection that becomes ready later in the same stall is found within the
-//! same bound. A thread whose reactor turned is busy but healthy: its timer is armed again and
-//! nobody is told.
-//!
-//! When every thread rests nothing is armed and nothing wakes. A server whose handlers are short
-//! pays two uncontended lock operations per request and the two timer calls per wake-up.
-//! Connection counts are evened out when one changes ([`Group::rebalance`]). Listed are
-//! connections between requests: plain HTTP/1, TLS with HTTP/1, and HTTP/2 with no open stream.
-//! A TLS session is continued on the taker's duplicate of the socket, so it needs no locking
-//! while it is served.
+//! While handlers compute for a millisecond or more the watcher looks every 100 microseconds,
+//! so a request waits behind one for about two looks at most. A server whose handlers are
+//! short pays two uncontended lock operations per request and nothing else. Listed are
+//! connections between requests: plain HTTP/1, TLS with HTTP/1, and HTTP/2 with no open
+//! stream. A TLS session is continued on the taker's duplicate of the socket, so it needs no
+//! locking while it is served.
 
 use super::h2serve::H2Conn;
-use crate::sys::{self, Raw, TIMER_TOKEN, Wake};
+use crate::sys::{self, Raw, Wake};
 use crate::tls::Session;
-use ms_rt::sched;
-use std::cell::Cell;
-use std::collections::HashMap;
-use std::sync::Weak;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
-use std::time::Instant;
+use ms_rt::watch::{self, Look};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::{Duration, Instant};
 
-/// How long a thread may stay out of rest before another thread looks at it (100 microseconds):
-/// the longest a ready request waits for a held-up thread. A short handler finishes well inside
-/// it, so its timer is disarmed before it fires; it is a latency allowance, not a period.
-const HELP_AFTER_NS: i64 = 250_000;
+/// How often the watcher compares how many connections each server of a group has. Taking
+/// from a held-up thread moves every connection with a request waiting, which can leave one
+/// thread with most of them; the server with the fewest then takes half the difference back.
+const BALANCE_EVERY: Duration = Duration::from_millis(10);
+/// Ticks a thread is held up before the watcher looks often (a millisecond): a handler that
+/// computes this long is worth finding within a tick next time, while a thread the operating
+/// system set aside for a moment is not worth the watcher's own time.
+const LONG: u64 = 10;
 /// The smallest difference in connections worth evening out.
 const BALANCE_MIN: usize = 4;
+/// When the watcher last compared connection counts (monotonic ns).
+static BALANCED: AtomicI64 = AtomicI64::new(0);
+/// The groups with at least two servers: the ones the watcher looks at.
+static GROUPS: Mutex<Vec<Arc<Group>>> = Mutex::new(Vec::new());
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// Every thread's share, by id, for the thread that finds a timer fired.
-fn beats() -> &'static Mutex<HashMap<u64, Weak<Beat>>> {
-    static BEATS: OnceLock<Mutex<HashMap<u64, Weak<Beat>>>> = OnceLock::new();
-    BEATS.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-thread_local! {
-    /// The share of the calling thread, for the rest hooks.
-    static MINE: Cell<Option<Arc<Beat>>> = const { Cell::new(None) };
-}
-
-/// How many threads have an unarmed timer because nobody rested to hear it.
-static DORMANT: AtomicUsize = AtomicUsize::new(0);
-const NONE: usize = usize::MAX;
-
-/// What a reactor shares with the other threads: one per thread.
+/// What a reactor shares with the watcher: one per thread.
 pub struct Beat {
-    id: u64,
     /// The scheduler index of the reactor's thread.
     thread: usize,
-    /// How many times the reactor turned.
-    turns: AtomicU64,
-    /// The reactor's turns when the timer was armed or last found fired.
+    /// The epoch at the reactor's last turn.
     seen: AtomicU64,
-    /// The thread's rest count when the timer was armed.
-    armed: AtomicU64,
-    /// The thread whose poller hears the armed timer, if one is armed.
-    armed_for: AtomicUsize,
-    /// The thread has been out of rest with no thread resting to look at it.
-    dormant: AtomicBool,
-    /// Connections listed as waiting, over all servers of this thread: with none there is
-    /// nothing to take from it, so its timer stays unarmed.
-    listed: AtomicUsize,
     /// Set when a server of this thread has connections to take or to drop.
     attention: AtomicBool,
     wake: Arc<Wake>,
-    /// The timer this thread arms for each peer: only that peer's poller waits on it, so a fire
-    /// wakes one thread, not all.
-    timers: Vec<OnceLock<sys::Timer>>,
-    /// The threads that share connections with this one, as a mask.
-    peers: AtomicU64,
-    /// The descriptor of the reactor's poller.
-    poll: sys::PollRef,
-    /// The servers of this thread that share connections.
-    members: Mutex<Vec<Weak<Member>>>,
 }
 
 impl Beat {
-    pub fn new(poller: &sys::Poller) -> Arc<Beat> {
-        Beat::on(poller, sched::thread())
-    }
-
-    fn on(poller: &sys::Poller, thread: usize) -> Arc<Beat> {
-        static IDS: AtomicU64 = AtomicU64::new(1);
-        let beat = Arc::new(Beat {
-            id: IDS.fetch_add(1, Ordering::Relaxed),
-            thread,
-            turns: AtomicU64::new(0),
-            seen: AtomicU64::new(0),
-            armed: AtomicU64::new(0),
-            armed_for: AtomicUsize::new(NONE),
-            dormant: AtomicBool::new(false),
-            listed: AtomicUsize::new(0),
+    pub fn new(wake: Arc<Wake>) -> Arc<Beat> {
+        Arc::new(Beat {
+            thread: ms_rt::sched::thread(),
+            seen: AtomicU64::new(watch::epoch()),
             attention: AtomicBool::new(false),
-            wake: poller.waker(),
-            timers: (0..=sched::MAX_THREADS).map(|_| OnceLock::new()).collect(),
-            peers: AtomicU64::new(0),
-            poll: poller.poll_ref(),
-            members: Mutex::new(Vec::new()),
-        });
-        lock(beats()).insert(beat.id, Arc::downgrade(&beat));
-        beat
+            wake,
+        })
     }
 
     /// Notes that the reactor turned. Answers whether a server of this thread has work from
     /// another thread (see [`Member::take_orders`] and [`Member::take_dropped`]).
     #[inline]
     pub fn turn(&self) -> bool {
-        // Only this thread writes it.
-        self.turns
-            .store(self.turns.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
+        self.seen.store(watch::epoch(), Ordering::Relaxed);
         self.attention.load(Ordering::Relaxed) && self.attention.swap(false, Ordering::AcqRel)
-    }
-
-    /// Makes the rest hooks of the calling thread (the reactor's) arm and disarm timers.
-    pub fn install(self: &Arc<Beat>) {
-        MINE.with(|m| m.set(Some(self.clone())));
     }
 
     fn alert(&self) {
@@ -149,159 +88,15 @@ impl Beat {
         resting & (1 << self.thread) != 0
     }
 
-    /// How many times the thread began to rest.
-    fn rests_count(&self) -> u64 {
-        sched::rests(self.thread)
+    /// How many ticks the thread has run one task, if it has since before the watcher's last
+    /// look. A thread that just woke has an old turn too, so it must also have been awake since.
+    fn held_up(&self, look: Look, resting: u64) -> Option<u64> {
+        let since = self
+            .seen
+            .load(Ordering::Relaxed)
+            .max(watch::stirred(self.thread));
+        (!self.rests(resting) && since < look.last).then(|| look.now - since)
     }
-
-    /// The live servers of this thread.
-    fn servers(&self) -> Vec<Arc<Member>> {
-        let mut members = lock(&self.members);
-        members.retain(|m| m.strong_count() > 0);
-        members.iter().filter_map(Weak::upgrade).collect()
-    }
-
-    /// Arms the timer this thread has for `helper`, whose poller hears it.
-    fn arm_for(&self, helper: usize) {
-        if let Some(timer) = self.timers[helper].get() {
-            self.armed.store(self.rests_count(), Ordering::Relaxed);
-            self.seen
-                .store(self.turns.load(Ordering::Relaxed), Ordering::Relaxed);
-            self.armed_for.store(helper, Ordering::Relaxed);
-            timer.arm(HELP_AFTER_NS);
-        }
-    }
-
-    /// The thread left its rest: starts the clock on how long it may stay out of it, for a
-    /// thread that rests now and will hear it. With none, it waits for one (see [`begin_rest`]).
-    fn leave_rest(&self) {
-        if self.listed.load(Ordering::Relaxed) == 0 {
-            return;
-        }
-        let helpers = sched::resting_mask() & self.peers.load(Ordering::Relaxed);
-        if helpers == 0 {
-            self.make_dormant();
-        } else {
-            self.arm_for(helpers.trailing_zeros() as usize);
-        }
-    }
-
-    fn make_dormant(&self) {
-        if !self.dormant.swap(true, Ordering::AcqRel) {
-            DORMANT.fetch_add(1, Ordering::Relaxed);
-        }
-    }
-
-    fn disarm(&self) {
-        let helper = self.armed_for.swap(NONE, Ordering::Relaxed);
-        if helper != NONE
-            && let Some(timer) = self.timers[helper].get()
-        {
-            timer.disarm();
-        }
-    }
-
-    /// The timer of `held` fired and the calling thread (`me`) heard it. Answers whether `me`
-    /// was sent to take connections from it.
-    fn fired(me: &Beat, held: &Beat, timer: &sys::Timer, resting: u64) -> bool {
-        timer.consume();
-        // It was armed for another thread, rested since, or rests: the fire is stale.
-        if held.armed_for.load(Ordering::Relaxed) != me.thread
-            || held.rests_count() != held.armed.load(Ordering::Relaxed)
-            || held.rests(resting)
-        {
-            return false;
-        }
-        held.armed_for.store(NONE, Ordering::Relaxed);
-        // Whatever happens, the next look is armed by a rest: this thread's, once it is done.
-        held.make_dormant();
-        let turns = held.turns.load(Ordering::Relaxed);
-        if turns != held.seen.swap(turns, Ordering::Relaxed) {
-            // The reactor turned: busy but healthy.
-            return false;
-        }
-        let mut sent = false;
-        for server in held.servers() {
-            if server.waiting.load(Ordering::Relaxed) == 0 {
-                continue;
-            }
-            let Some(group) = server.group.upgrade() else {
-                continue;
-            };
-            let Some(mine) = group.member_of(me) else {
-                continue;
-            };
-            mine.order_here(Order {
-                from: server,
-                limit: usize::MAX,
-                ready_only: true,
-            });
-            sent = true;
-        }
-        sent
-    }
-}
-
-/// Arms the calling thread's timer: it has left its rest.
-fn leave_rest() {
-    let _ = MINE.try_with(|m| {
-        let mine = m.take();
-        if let Some(beat) = mine.as_ref() {
-            beat.leave_rest();
-        }
-        m.set(mine);
-    });
-}
-
-/// The calling thread begins to rest: disarms its own timer, and arms, for itself to hear, the
-/// timers of threads that stayed out of rest with nobody to look at them.
-fn begin_rest() {
-    let _ = MINE.try_with(|m| {
-        let mine = m.take();
-        if let Some(me) = mine.as_ref() {
-            rest_of(me);
-        }
-        m.set(mine);
-    });
-}
-
-fn rest_of(me: &Beat) {
-    me.disarm();
-    if DORMANT.load(Ordering::Relaxed) == 0 {
-        return;
-    }
-    let resting = sched::resting_mask();
-    let peers = me.peers.load(Ordering::Relaxed) & !(1 << me.thread);
-    for held in lock(beats()).values().filter_map(Weak::upgrade) {
-        if peers & (1 << held.thread) != 0
-            && held.dormant.load(Ordering::Relaxed)
-            && held.dormant.swap(false, Ordering::AcqRel)
-        {
-            DORMANT.fetch_sub(1, Ordering::Relaxed);
-            if !held.rests(resting) {
-                held.arm_for(me.thread);
-            }
-        }
-    }
-}
-
-/// A reactor heard timers (`tokens`, from its poller) of other threads fire. Answers whether it
-/// was sent to take connections.
-pub fn heard(me: &Beat, tokens: &[u64]) -> bool {
-    let resting = sched::resting_mask();
-    let mut sent = false;
-    for token in tokens {
-        let held = lock(beats())
-            .get(&(token & !TIMER_TOKEN))
-            .and_then(Weak::upgrade);
-        if let Some(held) = held
-            && held.id != me.id
-            && let Some(timer) = held.timers[me.thread].get()
-        {
-            sent |= Beat::fired(me, &held, timer, resting);
-        }
-    }
-    sent
 }
 
 /// What an idle connection with a state of its own (TLS session, HTTP/2 streams) leaves in the
@@ -351,13 +146,12 @@ pub struct Order {
 /// One server's share of a [`Group`].
 pub struct Member {
     beat: Arc<Beat>,
-    group: Weak<Group>,
     idle: Mutex<Vec<Entry>>,
     /// Entries of `idle` not taken, readable without the lock.
     waiting: AtomicUsize,
     /// Every connection of the server, waiting or not.
     conns: AtomicUsize,
-    /// What another thread asked this member to take.
+    /// What the watcher asked this member to take.
     orders: Mutex<Vec<Order>>,
     /// Whether `idle` holds taken entries the owner has not dropped yet.
     dropped: AtomicBool,
@@ -370,12 +164,6 @@ impl Member {
     fn order(&self, order: Order) {
         lock(&self.orders).push(order);
         self.beat.alert();
-    }
-
-    /// Queues an order for the calling thread's own reactor, which is awake.
-    fn order_here(&self, order: Order) {
-        lock(&self.orders).push(order);
-        self.beat.attention.store(true, Ordering::Release);
     }
 
     /// Lists a connection as waiting and answers its place in the list.
@@ -395,11 +183,6 @@ impl Member {
             taken: false,
         });
         self.waiting.fetch_add(1, Ordering::Relaxed);
-        // The first connection listed while the thread is out of rest starts its clock: the
-        // thread left rest with nothing to take, so nothing was armed.
-        if self.beat.listed.fetch_add(1, Ordering::Relaxed) == 0 {
-            self.beat.leave_rest();
-        }
         self.listed_changed();
         (idle.len() - 1) as u32
     }
@@ -417,7 +200,6 @@ impl Member {
         let entry = idle.swap_remove(at);
         if !entry.taken {
             self.waiting.fetch_sub(1, Ordering::Relaxed);
-            self.beat.listed.fetch_sub(1, Ordering::Relaxed);
             self.listed_changed();
         }
         let back = if entry.taken {
@@ -460,7 +242,7 @@ impl Member {
             let (next, result) = self
                 .changed
                 .1
-                .wait_timeout(guard, std::time::Duration::from_secs(30))
+                .wait_timeout(guard, Duration::from_secs(30))
                 .unwrap_or_else(|e| e.into_inner());
             guard = next;
             assert!(
@@ -471,21 +253,16 @@ impl Member {
         }
     }
 
-    /// Counts a connection the server gained (`+1`) or lost (`-1`), and evens out the group when
-    /// that left it lopsided. A connection another thread took is already counted away (see
-    /// [`Member::take`]).
+    /// Counts a connection the server gained (`+1`) or lost (`-1`).
     pub fn count(&self, change: isize) {
         if change > 0 {
             self.conns.fetch_add(1, Ordering::Relaxed);
         } else {
             self.conns.fetch_sub(1, Ordering::Relaxed);
         }
-        if let Some(group) = self.group.upgrade() {
-            group.rebalance();
-        }
     }
 
-    /// What another thread asked this member to take.
+    /// What the watcher asked this member to take.
     pub fn take_orders(&self) -> Vec<Order> {
         std::mem::take(&mut *lock(&self.orders))
     }
@@ -525,10 +302,6 @@ impl Member {
         }
         if !out.is_empty() {
             self.waiting.fetch_sub(out.len(), Ordering::Relaxed);
-            self.beat.listed.fetch_sub(out.len(), Ordering::Relaxed);
-            // Counted away now, not when the owner drops its handle, so that balancing sees
-            // where the connections are.
-            self.conns.fetch_sub(out.len(), Ordering::Relaxed);
             self.listed_changed();
             self.dropped.store(true, Ordering::Release);
             self.beat.alert();
@@ -548,7 +321,6 @@ impl Group {
     pub fn join(self: &Arc<Group>, beat: &Arc<Beat>) -> Arc<Member> {
         let member = Arc::new(Member {
             beat: beat.clone(),
-            group: Arc::downgrade(self),
             idle: Mutex::new(Vec::new()),
             waiting: AtomicUsize::new(0),
             conns: AtomicUsize::new(0),
@@ -557,37 +329,59 @@ impl Group {
             #[cfg(test)]
             changed: Default::default(),
         });
-        lock(&beat.members).push(Arc::downgrade(&member));
         let mut members = lock(&self.members);
-        for other in members.iter() {
-            if !Arc::ptr_eq(&other.beat, beat) {
-                watch_each_other(&other.beat, beat);
-            }
-        }
         members.push(member.clone());
-        if members.len() > 1 {
-            sched::set_rest_hooks(begin_rest, leave_rest);
-            sched::enable_hooks();
+        if members.len() == 2 {
+            // The first group with someone to take from: it needs the watcher.
+            drop(members);
+            let mut groups = lock(&GROUPS);
+            if !groups.iter().any(|g| Arc::ptr_eq(g, self)) {
+                groups.push(self.clone());
+            }
+            drop(groups);
+            watch::add_hook(tick);
         }
         member
     }
 
     /// Removes a server that closed.
     pub fn leave(self: &Arc<Group>, member: &Arc<Member>) {
-        lock(&self.members).retain(|m| !Arc::ptr_eq(m, member));
+        let mut members = lock(&self.members);
+        members.retain(|m| !Arc::ptr_eq(m, member));
+        if members.is_empty() {
+            drop(members);
+            lock(&GROUPS).retain(|g| !Arc::ptr_eq(g, self));
+        }
     }
 
-    /// The member of the thread whose share is `beat`.
-    fn member_of(&self, beat: &Beat) -> Option<Arc<Member>> {
-        lock(&self.members)
-            .iter()
-            .find(|m| m.beat.id == beat.id)
-            .cloned()
+    /// Sends a resting member to each member that is held up with connections waiting.
+    /// Answers whether one of them was held up for [`LONG`]: the watcher then looks often, to
+    /// find the next one sooner.
+    fn watch(&self, look: Look, resting: u64) -> bool {
+        let members = lock(&self.members);
+        let mut long = false;
+        for held in members.iter() {
+            let Some(ticks) = held.beat.held_up(look, resting) else {
+                continue;
+            };
+            if held.waiting.load(Ordering::Relaxed) == 0 {
+                continue;
+            }
+            if let Some(helper) = members.iter().find(|m| m.beat.rests(resting)) {
+                helper.order(Order {
+                    from: held.clone(),
+                    limit: usize::MAX,
+                    ready_only: true,
+                });
+                long |= ticks >= LONG;
+            }
+        }
+        long
     }
 
     /// Has the member with the fewest connections take half its difference to the one with the
-    /// most, when that is worth moving and the fewest has not been asked already.
-    fn rebalance(&self) {
+    /// most.
+    fn balance(&self) {
         let members = lock(&self.members);
         let count = |m: &&Arc<Member>| m.conns.load(Ordering::Relaxed);
         let (Some(most), Some(fewest)) = (
@@ -596,8 +390,8 @@ impl Group {
         ) else {
             return;
         };
-        let difference = count(&most).saturating_sub(count(&fewest));
-        if difference >= BALANCE_MIN.max(count(&most) / 4) && lock(&fewest.orders).is_empty() {
+        let difference = count(&most) - count(&fewest);
+        if difference >= BALANCE_MIN.max(count(&most) / 4) {
             fewest.order(Order {
                 from: most.clone(),
                 limit: difference / 2,
@@ -607,15 +401,21 @@ impl Group {
     }
 }
 
-/// Has each of two threads' pollers report the timer the other arms for it.
-fn watch_each_other(a: &Beat, b: &Beat) {
-    a.peers.fetch_or(1 << b.thread, Ordering::Relaxed);
-    b.peers.fetch_or(1 << a.thread, Ordering::Relaxed);
-    for (held, helper) in [(a, b), (b, a)] {
-        held.timers[helper.thread].get_or_init(|| {
-            sys::Timer::between(helper.poll.clone(), TIMER_TOKEN | held.id).expect("timer")
-        });
+/// The watcher's hook: looks at every group, and answers whether to look often for a while.
+fn tick(look: Look, resting: u64) -> bool {
+    let now = ms_rt::sys::monotonic_ns();
+    let balance = now - BALANCED.load(Ordering::Relaxed) >= BALANCE_EVERY.as_nanos() as i64;
+    if balance {
+        BALANCED.store(now, Ordering::Relaxed);
     }
+    let mut often = false;
+    for group in lock(&GROUPS).iter() {
+        often |= group.watch(look, resting);
+        if balance {
+            group.balance();
+        }
+    }
+    often
 }
 
 /// What an idle connection leaves in the list crosses threads: a compile-time check that it is
@@ -631,15 +431,15 @@ mod tests {
     use crate::sys::AsSock;
     use std::io::Write;
     use std::net::{TcpListener, TcpStream};
-    use std::time::Duration;
-
-    /// A reactor's share on a made-up scheduler thread.
-    fn beat(thread: usize) -> Arc<Beat> {
-        Beat::on(&sys::Poller::new(), thread)
-    }
 
     fn member() -> Arc<Member> {
-        Arc::new(Group::default()).join(&beat(0))
+        let beat = Arc::new(Beat {
+            thread: 0,
+            seen: AtomicU64::new(0),
+            attention: AtomicBool::new(false),
+            wake: Arc::new(Wake::new().expect("wake")),
+        });
+        Arc::new(Group::default()).join(&beat)
     }
 
     /// `unpark`, with whether the connection was taken.
@@ -699,116 +499,34 @@ mod tests {
         assert_eq!(taken[0].sock.recv(&mut buf).unwrap(), 18);
     }
 
-    type Lopsided = (
-        Arc<Group>,
-        Arc<Member>,
-        Arc<Member>,
-        Vec<(TcpStream, socket2::Socket)>,
-    );
-
-    /// A group of two servers on made-up threads 61 and 62, the first listing `n` connections.
-    fn lopsided(n: usize) -> Lopsided {
-        let group = Arc::new(Group::default());
-        let (full, empty) = (group.join(&beat(61)), group.join(&beat(62)));
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let socks: Vec<_> = (0..n).map(|_| pair(&listener)).collect();
-        for (i, (_, s)) in socks.iter().enumerate() {
-            full.park(i as u64, sys::raw(s.as_sock()), None, None);
-            full.conns.fetch_add(1, Ordering::Relaxed);
-        }
-        (group, full, empty, socks)
-    }
-
     #[test]
     fn balancing_moves_half_the_difference() {
-        let (group, full, empty, _socks) = lopsided(8);
-        group.rebalance();
+        let group = Arc::new(Group::default());
+        let beat = |thread| {
+            Arc::new(Beat {
+                thread,
+                seen: AtomicU64::new(0),
+                attention: AtomicBool::new(false),
+                wake: Arc::new(Wake::new().expect("wake")),
+            })
+        };
+        let (full, empty) = (group.join(&beat(0)), group.join(&beat(1)));
+        // Joining registered the group with the watcher, which balances every few milliseconds and
+        // would add its own order between the counts below and the balance this test calls.
+        lock(&GROUPS).retain(|g| !Arc::ptr_eq(g, &group));
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let socks: Vec<_> = (0..8).map(|_| pair(&listener)).collect();
+        for (i, (_, s)) in socks.iter().enumerate() {
+            full.park(i as u64, sys::raw(s.as_sock()), None, None);
+            full.count(1);
+        }
+        group.balance();
         assert!(empty.beat.turn());
         let orders = empty.take_orders();
         assert_eq!(orders.len(), 1);
         let taken = orders[0].from.take(orders[0].limit, orders[0].ready_only);
         assert_eq!(taken.len(), 4);
         assert_eq!(full.waiting.load(Ordering::Relaxed), 4);
-        // Counted away at the take and onto the taker as it serves them: the group is even.
-        assert_eq!(full.conns.load(Ordering::Relaxed), 4);
-        for _ in &taken {
-            empty.count(1);
-        }
-        group.rebalance();
-        assert!(empty.take_orders().is_empty());
-    }
-
-    #[test]
-    fn a_change_in_the_count_asks_for_balance_once() {
-        let (_group, full, empty, _socks) = lopsided(8);
-        full.count(1);
-        full.count(1);
-        assert_eq!(empty.take_orders().len(), 1);
-    }
-
-    #[test]
-    fn a_timer_that_fires_on_a_held_up_thread_sends_the_hearer_and_a_turning_thread_is_left() {
-        let (_group, full, empty, _socks) = lopsided(2);
-        let (held, me) = (&full.beat, &empty.beat);
-        let timer = held.timers[me.thread].get().expect("timer of the pair");
-        let resting = 0;
-        // The held-up thread armed its timer for the hearer and did not turn: it is sent.
-        held.arm_for(me.thread);
-        assert!(Beat::fired(me, held, timer, resting));
-        assert_eq!(empty.take_orders().len(), 1);
-        // The reactor turned since: busy but healthy, nobody is sent.
-        held.arm_for(me.thread);
-        held.turn();
-        assert!(!Beat::fired(me, held, timer, resting));
-        assert!(empty.take_orders().is_empty());
-        // The thread rested since the timer was armed: the fire is stale.
-        held.arm_for(me.thread);
-        sched::count_rest(61);
-        assert!(!Beat::fired(me, held, timer, resting));
-        // A thread that rests now is not held up; one armed for another thread is left alone.
-        held.arm_for(me.thread);
-        assert!(!Beat::fired(me, held, timer, 1 << 61));
-        held.armed_for.store(60, Ordering::Relaxed);
-        assert!(!Beat::fired(me, held, timer, resting));
-        assert!(empty.take_orders().is_empty());
-    }
-
-    /// The tokens of timers the poller has reported by the time `until` is among them.
-    fn heard_until(poller: &sys::Poller, until: u64) -> Vec<u64> {
-        let (mut heard, mut out) = (Vec::new(), Vec::new());
-        let start = std::time::Instant::now();
-        while !heard.contains(&until) {
-            assert!(
-                start.elapsed() < Duration::from_secs(10),
-                "timer never fired"
-            );
-            poller.poll(&mut out, 16);
-            heard.extend(poller.fired());
-            std::thread::yield_now();
-        }
-        heard
-    }
-
-    #[test]
-    fn an_armed_timer_is_reported_by_the_poller_it_was_made_for() {
-        let poller = sys::Poller::new();
-        let timer = sys::Timer::between(poller.poll_ref(), TIMER_TOKEN | 7).unwrap();
-        timer.arm(HELP_AFTER_NS);
-        assert_eq!(heard_until(&poller, TIMER_TOKEN | 7), [TIMER_TOKEN | 7]);
-        timer.consume();
-    }
-
-    #[test]
-    fn a_disarmed_timer_reports_nothing() {
-        let poller = sys::Poller::new();
-        let (gone, kept) = (TIMER_TOKEN | 1, TIMER_TOKEN | 2);
-        let a = sys::Timer::between(poller.poll_ref(), gone).unwrap();
-        let b = sys::Timer::between(poller.poll_ref(), kept).unwrap();
-        // A fires first if it is armed; the later one reports once it has had the time.
-        a.arm(HELP_AFTER_NS);
-        a.disarm();
-        b.arm(30_000_000);
-        assert_eq!(heard_until(&poller, kept), [kept]);
     }
 
     #[test]

@@ -119,7 +119,20 @@ Fast handlers (4000 req/s, 64 connections, 8 s after a 2 s warm-up), runs of `ma
 
 Instructions per TLS request with one thread (`valgrind --tool=callgrind` on the server, closed loop over one connection, slope between runs of 3 s and 14 s counted by handler calls): 101.9k before, 102.7k now (+0.8%). So of the +7% CPU with four threads, about 3% is parking (the one-thread rows, +0.8% of it in instructions) and about 4% is the watcher and the steals. An earlier three-run reading of +4.4 ms p99.9 for HTTP/2 was noise: ten interleaved runs give 4.41 and 4.52 ms (single-run ranges 3.5 to 12.2 and 3.4 to 18.9 ms).
 
-Open item: the +3% CPU for parking (one thread) is far above the +0.8% in instructions, so most of it is not instructions. Hypothesis: the lock and the entry list of the shared waiting list, touched twice per request, cost cache and memory traffic that a retired-instruction count does not show; measure with `perf stat` (cache misses, cycles) on one thread against `main`, and try keeping the entry and the lock on the owner's cache line until a watcher asks.
+Closed item: the +3% CPU for parking was noise. Twelve interleaved one-thread TLS runs (4000 req/s, 64 connections, 8 s after a 2 s warm-up) of `main` before #4227 (`d2a4c5092`) and after it (`7df6fdce0`) gave 143.2 and 145.3 ticks on average (standard deviation 4.1 and 4.8), a difference of 1.5% with a standard error of about 1.4 ticks: not distinguishable from zero, and in line with the +0.8% in instructions. The earlier six runs per side could not resolve a 3% difference at this spread. Nothing to fix in the parking path.
+
+Same day, `main` before and after #4227, medians of 5 interleaved runs (10 for the after rows of TLS and HTTP/2), 4 threads: fast handlers at 4000 req/s p99 / p99.9 / CPU ticks, and the slow mix (every 20th request burns 5 ms, 2000 req/s) p99 / CPU ticks.
+
+| Server | Fast p99 | Fast p99.9 | Fast CPU | Slow p99 | Slow CPU |
+| --- | --- | --- | --- | --- | --- |
+| plain, before | 2.43 ms | 6.6 ms | 206 | 3.61 ms | 826 |
+| plain, after | 2.72 ms | 5.1 ms | 208 | 3.42 ms | 829 |
+| TLS, before | 2.55 ms | 7.4 ms | 235 | 6.25 ms | 686 |
+| TLS, after | 2.29 ms | 4.5 ms | 249 | 3.54 ms | 856 |
+| HTTP/2, before | 2.51 ms | 5.2 ms | 326 | 6.28 ms | 730 |
+| HTTP/2, after | 2.33 ms | 5.9 ms | 340 | 3.89 ms | 894 |
+
+No fast-handler regression; the slow-mix CPU rise (about 25%) is the watcher.
 
 ## Results, 2026-11-16, clock reads per request
 
@@ -133,10 +146,6 @@ Counted with an `LD_PRELOAD` shim on `clock_gettime(CLOCK_MONOTONIC)`: one sched
 Closed-loop throughput over 3 runs each: 40.7k to 51.3k req/s before, 44.2k to 50.7k after (no change within the noise). Without a timeout the closed loop reads about 0.
 
 The 4.2 left, one each: the arrival stamp at parse; `late` after the handler (a handler that never switches is never killed, so only a read shows it ran past its deadline); the scheduler's per-round check while the handler's kill timer is armed; `settle_timeouts` before the reactor parks (a read after the deadlines it creates). Each is about 20 ns, under 3 percent of a request. Sharing one read per turn needs a non-blocking poll per turn, a 300 ns syscall to save 20 ns reads, so it was not built. A request count taken over a window shorter than the read count (the load tool's default 3 s warm-up) overstates reads per request by about 1.6.
-
-## 2026-11-16: kernel timers instead of the watcher thread
-
-Three binaries on the same 4 vCPU shared VM, alternated runs: `main` at 9f09fd55, PR 4227's watcher, and kernel timers with T = 250 µs. The table, the cost split of the fast-mix CPU, and the choice of T are in the [proposal](../../../proposals/event-driven-waits.md#measurements-2026-11-16-4-vcpu-shared-vm-alternated-runs-three-binaries-main-at-9f09fd55-pr-4227s-watcher-this-design). Summary: slow-mix tail equal to the watcher's with 3 to 7% less CPU (plain, TLS and HTTP/2); fast-mix CPU 8 to 10% higher (two timer system calls per rest cycle, 5.2 µs per pair on this VM); closed loop 3 to 7% lower; idle server 91 µs of CPU and one context switch in a second.
 
 ## Results, 2026-11-16, text built piece by piece, same 4 vCPU Linux VM
 

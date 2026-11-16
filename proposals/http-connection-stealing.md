@@ -8,8 +8,6 @@
 
 ## Status
 
-Superseded in part (2026-11-16): the watcher thread described below was replaced by event-driven rescue, see [event-driven-waits](event-driven-waits.md).
-
 Implemented, 2026-11-16, on `claude/project-thread-cuchaa`. Owner direction (2026-11-15): "no marker, this is an internal detail"; "it needs to be better across the board"; "elegant, simple and highly efficient". Two earlier designs were rejected by skeptical review and by measurement (see Alternatives); the owner then asked for no further subagent review, so this design stands on the measurements below.
 
 ## Problem

@@ -162,6 +162,19 @@ fn lock() -> MutexGuard<'static, Pool> {
     POOL.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+/// Counting builds: reaps what the pool still holds as the program ends. A job whose waiter
+/// was cancelled keeps running and is reaped only at the next submit, so one that finishes after
+/// the last submit would show as a Rust heap block, which timing decides. Waits a moment for
+/// abandoned jobs to finish (a job stuck for good stays) and reaps them.
+#[cfg(feature = "stats")]
+pub fn reap_at_exit() {
+    let end = std::time::Instant::now() + core::time::Duration::from_millis(500);
+    while !lock().abandoned.is_empty() && std::time::Instant::now() < end {
+        std::thread::sleep(core::time::Duration::from_millis(1));
+    }
+    reap();
+}
+
 /// `MS_POOL_THREADS`, read once.
 pub fn threads() -> usize {
     static N: std::sync::OnceLock<usize> = std::sync::OnceLock::new();

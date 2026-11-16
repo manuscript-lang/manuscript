@@ -160,146 +160,9 @@ pub struct Poller {
     /// that the kernel does not report (pending tokens, an earlier deadline, queued handlers).
     wake: Arc<Wake>,
     parked: Cell<bool>,
-    /// Timers of other threads that fired, for [`Poller::fired`].
-    fired: std::sync::Mutex<Vec<u64>>,
 }
 
 const WAKE_TOKEN: u64 = u64::MAX;
-
-/// Tokens from here up in a poller's events are timers of other threads (see [`Timer::between`]).
-pub const TIMER_TOKEN: u64 = 1 << 62;
-
-/// A handle on a poller that other threads may keep and use from any thread: what
-/// [`Timer::between`] needs to have the poller report a timer.
-#[derive(Clone)]
-pub struct PollRef(Raw);
-
-/// A one-shot kernel timer whose expiry one poller reports (as an event under a token) even
-/// when another thread armed it. Arming and disarming are one system call each and wake nobody.
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub struct Timer(OwnedFd);
-
-#[cfg(any(target_os = "linux", target_os = "android"))]
-impl Timer {
-    /// A timer that `helper` reports under `token` (at least [`TIMER_TOKEN`]) when it fires.
-    pub fn between(helper: PollRef, token: u64) -> Option<Timer> {
-        use rustix::event::epoll;
-        use rustix::time::{TimerfdClockId, TimerfdFlags, timerfd_create};
-        let timer = timerfd_create(
-            TimerfdClockId::Monotonic,
-            TimerfdFlags::CLOEXEC | TimerfdFlags::NONBLOCK,
-        )
-        .ok()?;
-        // SAFETY: a poller's descriptor is never closed.
-        let poll = unsafe { BorrowedFd::borrow_raw(helper.0) };
-        epoll::add(
-            poll,
-            &timer,
-            epoll::EventData::new_u64(token),
-            epoll::EventFlags::IN,
-        )
-        .ok()?;
-        Some(Timer(timer))
-    }
-
-    fn set(&self, ns: i64) {
-        use rustix::time::{Itimerspec, TimerfdTimerFlags, timerfd_settime};
-        let spec = Itimerspec {
-            it_interval: Timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-            it_value: Timespec {
-                tv_sec: ns / 1_000_000_000,
-                tv_nsec: ns % 1_000_000_000,
-            },
-        };
-        let _ = timerfd_settime(&self.0, TimerfdTimerFlags::empty(), &spec);
-    }
-
-    /// Makes the timer fire in `ns` nanoseconds, replacing an earlier arming.
-    pub fn arm(&self, ns: i64) {
-        self.set(ns.max(1));
-    }
-
-    /// Cancels the timer.
-    pub fn disarm(&self) {
-        self.set(0);
-    }
-
-    /// Reads the expiry out so the timer is quiet until armed again.
-    pub fn consume(&self) {
-        let mut buf = [0u8; 8];
-        let _ = io::read(&self.0, &mut buf);
-    }
-}
-
-/// A `kqueue` of its own that holds one timer; it is readable while the timer is pending, so the
-/// helper's `kqueue` reports it.
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
-pub struct Timer(OwnedFd);
-
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
-impl Timer {
-    pub fn between(helper: PollRef, token: u64) -> Option<Timer> {
-        use rustix::event::kqueue::{Event, EventFilter, EventFlags, kevent, kqueue};
-        let timer = kqueue().ok()?;
-        let watch = Event::new(
-            EventFilter::Read(timer.as_raw_fd()),
-            EventFlags::ADD | EventFlags::CLEAR,
-            token as usize as *mut _,
-        );
-        // SAFETY: a poller's descriptor is never closed; the timer's lives as long as the pair.
-        let poll = unsafe { BorrowedFd::borrow_raw(helper.0) };
-        let mut none: Vec<Event> = Vec::new();
-        unsafe { kevent(poll, &[watch], &mut none, Some(Duration::ZERO)) }.ok()?;
-        Some(Timer(timer))
-    }
-
-    /// Changes the timer: `flags` add or delete it. The timer filter is given in nanoseconds;
-    /// on Apple systems `NOTE_CRITICAL` keeps the kernel from coalescing a short deadline into a
-    /// later one.
-    fn change(&self, flags: u16, ns: i64) {
-        #[cfg(target_vendor = "apple")]
-        let fflags = libc::NOTE_NSECONDS | libc::NOTE_CRITICAL;
-        #[cfg(not(target_vendor = "apple"))]
-        let fflags = libc::NOTE_NSECONDS;
-        // SAFETY: a zeroed `kevent` is a valid empty change, and the call reads one of them.
-        let mut ev: libc::kevent = unsafe { std::mem::zeroed() };
-        ev.ident = 1;
-        ev.filter = libc::EVFILT_TIMER;
-        ev.flags = flags;
-        ev.fflags = fflags;
-        ev.data = ns as _;
-        let none = libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        // SAFETY: the queue is owned by `self`; no event is asked for, so no buffer is written.
-        unsafe { libc::kevent(self.0.as_raw_fd(), &ev, 1, std::ptr::null_mut(), 0, &none) };
-    }
-
-    /// Makes the timer fire in `ns` nanoseconds, replacing an earlier arming.
-    pub fn arm(&self, ns: i64) {
-        self.change(libc::EV_ADD | libc::EV_ONESHOT, ns.max(1));
-    }
-
-    /// Cancels the timer.
-    pub fn disarm(&self) {
-        self.change(libc::EV_DELETE, 0);
-    }
-
-    /// Takes the expiry out so the timer is quiet until armed again.
-    pub fn consume(&self) {
-        // SAFETY: the buffer holds one event and is zeroed, which is a valid `kevent`.
-        let mut out: libc::kevent = unsafe { std::mem::zeroed() };
-        let none = libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        unsafe { libc::kevent(self.0.as_raw_fd(), std::ptr::null(), 0, &mut out, 1, &none) };
-    }
-}
 
 struct Watched {
     token: u64,
@@ -331,7 +194,6 @@ impl Poller {
             pending: RefCell::new(Vec::new()),
             wake,
             parked: Cell::new(false),
-            fired: std::sync::Mutex::new(Vec::new()),
         }
     }
 
@@ -346,16 +208,6 @@ impl Poller {
     /// The handle that wakes this poller's parked task; another thread may signal it.
     pub fn waker(&self) -> Arc<Wake> {
         self.wake.clone()
-    }
-
-    /// A handle other threads may use to have this poller report their timers.
-    pub fn poll_ref(&self) -> PollRef {
-        PollRef(self.poll.borrow().as_raw_fd())
-    }
-
-    /// The tokens of timers that fired since the last call.
-    pub fn fired(&self) -> Vec<u64> {
-        std::mem::take(&mut *self.fired.lock().unwrap_or_else(|e| e.into_inner()))
     }
 
     pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
@@ -447,13 +299,6 @@ impl Poller {
             if e.token().0 == WAKE_TOKEN as usize {
                 let mut buf = [0u8; 8];
                 while io::read(self.wake.sock(), &mut buf).is_ok() {}
-                continue;
-            }
-            if e.token().0 as u64 >= TIMER_TOKEN {
-                self.fired
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .push(e.token().0 as u64);
                 continue;
             }
             let r = Raised::from(e);

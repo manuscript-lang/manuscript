@@ -1027,9 +1027,15 @@ fn a_listed_connection_serves_its_next_request() {
             first.ends_with("|HTTP/1.1") || first.ends_with("|HTTP/2.0"),
             "{first}"
         );
-        // The `Date` header changes when a second passes between the two: compare the bodies.
-        let body = |text: &str| text.rsplit("\r\n\r\n").next().unwrap_or("").to_string();
-        assert_eq!(body(&first), body(&second));
+        // The Date header differs when the two requests cross a second boundary.
+        let undated = |reply: &str| {
+            reply
+                .split("\r\n")
+                .filter(|line| !line.starts_with("Date: "))
+                .collect::<Vec<_>>()
+                .join("\r\n")
+        };
+        assert_eq!(undated(&first), undated(&second));
     }
 }
 

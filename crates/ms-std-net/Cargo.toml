@@ -28,7 +28,6 @@ ring = "0.17"
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1", default-features = false, features = ["std", "event", "net", "fs", "time", "pipe"] }
-libc = { version = "0.2", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
@@ -37,8 +36,6 @@ windows-sys = { version = "0.61", features = [
     "Win32_NetworkManagement_Ndis",
     "Win32_Networking_WinSock",
     "Win32_System_IO",
-    "Win32_Security",
-    "Win32_System_Threading",
 ] }
 
 

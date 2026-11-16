@@ -5,15 +5,12 @@ use crate::rt;
 use mio::net::TcpStream;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ffi::c_void;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, UdpSocket};
 use std::os::windows::io::{AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_BUFFER_OVERFLOW, FILETIME, HANDLE, NO_ERROR,
-};
+use windows_sys::Win32::Foundation::{ERROR_BUFFER_OVERFLOW, NO_ERROR};
 use windows_sys::Win32::NetworkManagement::IpHelper::{
     GAA_FLAG_SKIP_ANYCAST, GAA_FLAG_SKIP_FRIENDLY_NAME, GAA_FLAG_SKIP_MULTICAST,
     GAA_FLAG_SKIP_UNICAST, GetAdaptersAddresses, IP_ADAPTER_ADDRESSES_LH,
@@ -22,11 +19,6 @@ use windows_sys::Win32::NetworkManagement::Ndis::IfOperStatusUp;
 use windows_sys::Win32::Networking::WinSock::{
     AF_INET, AF_INET6, AF_UNSPEC, POLLRDNORM, POLLWRNORM, SIO_UDP_CONNRESET, SO_EXCLUSIVEADDRUSE,
     SOCKET_ERROR, SOL_SOCKET, WSAIoctl, WSAPOLLFD, WSAPoll, setsockopt,
-};
-use windows_sys::Win32::System::Threading::{
-    CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, CancelWaitableTimer, CloseThreadpoolWait,
-    CreateThreadpoolWait, CreateWaitableTimerExW, PTP_CALLBACK_INSTANCE, PTP_WAIT,
-    SetThreadpoolWait, SetWaitableTimer, TIMER_ALL_ACCESS, WaitForThreadpoolWaitCallbacks,
 };
 
 /// A borrowed socket handle.
@@ -152,136 +144,17 @@ impl Wake {
 /// thread blocks in `mio::Poll::poll`, queues what it sees and signals a [`Wake`] socket
 /// the reactor task parks on. The helper never touches the runtime.
 pub struct Poller {
-    registry: Arc<mio::Registry>,
+    registry: mio::Registry,
     sockets: RefCell<Sockets<Raw>>,
     views: RefCell<HashMap<Raw, TcpStream>>,
     wake: Arc<Wake>,
     shared: Arc<Shared>,
-    /// Timers of other threads that fired, for [`Poller::fired`].
-    fired: std::sync::Mutex<Vec<u64>>,
+    waker: mio::Waker,
 }
 
 struct Shared {
     raised: Mutex<Vec<Raised>>,
     stop: AtomicBool,
-    /// The poll's only waker (mio allows one per poll): ends the helper's wait for a stop or a timer.
-    waker: mio::Waker,
-    /// Timers of other threads that fired and are not yet queued by the helper.
-    timers: Mutex<Vec<u64>>,
-}
-
-/// A handle on a poller that other threads may keep and use from any thread: what
-/// [`Timer::between`] needs to have the poller report a timer.
-#[derive(Clone)]
-pub struct PollRef(Arc<Shared>);
-
-/// Tokens from here up in a poller's events are timers of other threads (see [`Timer::between`]).
-pub const TIMER_TOKEN: u64 = 1 << 62;
-
-/// A one-shot high-resolution waitable timer (about half a millisecond; an ordinary timer only
-/// ticks at the system's 1 to 15.6 ms) that a thread-pool wait turns into a wake of the helper's
-/// `mio` poll under a token (the callback queues the token and wakes the poll's waker). Arming and
-/// disarming are system calls and wake nobody.
-pub struct Timer {
-    timer: HANDLE,
-    wait: PTP_WAIT,
-    ctx: *mut TimerCtx,
-}
-
-struct TimerCtx {
-    shared: Arc<Shared>,
-    token: u64,
-}
-
-// SAFETY: a waitable timer and a thread-pool wait are made to be set from any thread, and the
-// waker is only used by the callback and freed after it can no longer run.
-unsafe impl Send for Timer {}
-unsafe impl Sync for Timer {}
-
-unsafe extern "system" fn timer_fired(
-    _: PTP_CALLBACK_INSTANCE,
-    ctx: *mut c_void,
-    _: PTP_WAIT,
-    _: u32,
-) {
-    // SAFETY: the context outlives every callback (see `Drop`).
-    let ctx = unsafe { &*(ctx as *const TimerCtx) };
-    ctx.shared
-        .timers
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .push(ctx.token);
-    let _ = ctx.shared.waker.wake();
-}
-
-impl Timer {
-    /// A timer that `helper` reports under `token` (at least [`TIMER_TOKEN`]) when it fires.
-    pub fn between(helper: PollRef, token: u64) -> Option<Timer> {
-        let ctx = Box::into_raw(Box::new(TimerCtx {
-            shared: helper.0,
-            token,
-        }));
-        // SAFETY: plain creation calls; the context outlives the callback (see `Drop`).
-        let (timer, wait) = unsafe {
-            let timer = CreateWaitableTimerExW(
-                std::ptr::null(),
-                std::ptr::null(),
-                CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
-                TIMER_ALL_ACCESS,
-            );
-            let wait = CreateThreadpoolWait(Some(timer_fired), ctx.cast(), std::ptr::null());
-            (timer, wait)
-        };
-        if timer.is_null() || wait == 0 {
-            // SAFETY: each is closed only if made, and nothing else holds them.
-            unsafe {
-                if !timer.is_null() {
-                    CloseHandle(timer);
-                }
-                if wait != 0 {
-                    CloseThreadpoolWait(wait);
-                }
-                drop(Box::from_raw(ctx));
-            }
-            return None;
-        }
-        Some(Timer { timer, wait, ctx })
-    }
-
-    /// Makes the timer fire in `ns` nanoseconds, replacing an earlier arming.
-    pub fn arm(&self, ns: i64) {
-        // A negative due time is relative, in units of 100 ns.
-        let due = -(ns.max(100) / 100);
-        // SAFETY: both handles live until `Drop`. Setting the timer clears an earlier signal, so
-        // the wait registered after it only sees this arming.
-        unsafe {
-            SetWaitableTimer(self.timer, &due, 0, None, std::ptr::null(), 0);
-            SetThreadpoolWait(self.wait, self.timer, std::ptr::null());
-        }
-    }
-
-    /// Cancels the timer.
-    pub fn disarm(&self) {
-        // SAFETY: as above.
-        unsafe { CancelWaitableTimer(self.timer) };
-    }
-
-    /// The expiry is the event itself: nothing to read out.
-    pub fn consume(&self) {}
-}
-
-impl Drop for Timer {
-    fn drop(&mut self) {
-        // SAFETY: cancelled, waited for, then closed; only then is the context freed.
-        unsafe {
-            CancelWaitableTimer(self.timer);
-            SetThreadpoolWait(self.wait, std::ptr::null_mut(), std::ptr::null());
-            WaitForThreadpoolWaitCallbacks(self.wait, 1);
-            CloseThreadpoolWait(self.wait);
-            CloseHandle(self.timer);
-            drop(Box::from_raw(self.ctx));
-        }
-    }
 }
 
 impl Default for Poller {
@@ -290,19 +163,19 @@ impl Default for Poller {
     }
 }
 
+/// Longest the reactor task parks before it looks again (timeouts are swept then).
+const PARK_NS: i64 = 50_000_000;
 const STOP_TOKEN: mio::Token = mio::Token(usize::MAX);
 
 impl Poller {
     pub fn new() -> Poller {
         let mut poll = mio::Poll::new().expect("poller");
-        let registry = Arc::new(poll.registry().try_clone().expect("poller registry"));
+        let registry = poll.registry().try_clone().expect("poller registry");
         let waker = mio::Waker::new(poll.registry(), STOP_TOKEN).expect("poller waker");
         let wake = Arc::new(Wake::new().expect("poller wake socket"));
         let shared = Arc::new(Shared {
             raised: Mutex::new(Vec::new()),
             stop: AtomicBool::new(false),
-            waker,
-            timers: Mutex::new(Vec::new()),
         });
         let (helper_wake, helper_shared) = (wake.clone(), shared.clone());
         std::thread::Builder::new()
@@ -313,22 +186,10 @@ impl Poller {
                     if poll.poll(&mut events, None).is_err() {
                         break;
                     }
-                    let timers = std::mem::take(
-                        &mut *helper_shared
-                            .timers
-                            .lock()
-                            .unwrap_or_else(|e| e.into_inner()),
-                    );
                     let raised = events
                         .iter()
                         .filter(|e| e.token() != STOP_TOKEN)
-                        .map(Raised::from)
-                        .chain(timers.into_iter().map(|token| Raised {
-                            token,
-                            read: true,
-                            write: false,
-                            hup: false,
-                        }));
+                        .map(Raised::from);
                     let mut queue = helper_shared
                         .raised
                         .lock()
@@ -349,7 +210,7 @@ impl Poller {
             views: RefCell::new(HashMap::new()),
             wake,
             shared,
-            fired: std::sync::Mutex::new(Vec::new()),
+            waker,
         }
     }
 
@@ -405,16 +266,6 @@ impl Poller {
         self.wake.clone()
     }
 
-    /// A handle other threads may use to have this poller report their timers.
-    pub fn poll_ref(&self) -> PollRef {
-        PollRef(self.shared.clone())
-    }
-
-    /// The tokens of timers that fired since the last call.
-    pub fn fired(&self) -> Vec<u64> {
-        std::mem::take(&mut *self.fired.lock().unwrap_or_else(|e| e.into_inner()))
-    }
-
     /// Wakes the parked reactor task.
     pub fn kick(&self) {
         self.wake.notify();
@@ -432,22 +283,12 @@ impl Poller {
         self.wake.drain();
         // Take at most `max`: the rest stay queued for the next call, which the caller makes
         // when this one returns `max`.
-        let mut raised: Vec<Raised> = {
+        let raised: Vec<Raised> = {
             let mut queue = self.shared.raised.lock().unwrap_or_else(|e| e.into_inner());
             let count = queue.len().min(max);
             queue.drain(..count).collect()
         };
         let count = raised.len();
-        raised.retain(|r| {
-            let timer = r.token >= TIMER_TOKEN;
-            if timer {
-                self.fired
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .push(r.token);
-            }
-            !timer
-        });
         self.sockets
             .borrow()
             .report(raised.into_iter(), max, out, |sock, token, ev| {
@@ -456,24 +297,22 @@ impl Poller {
         count
     }
 
-    /// Parks the running task until something may be ready or `timeout_ns` passes (negative: no limit); returns
+    /// Parks the running task until something may be ready (or 50 ms pass); returns
     /// the runtime's ready bits.
     pub fn park(&self, timeout_ns: i64) -> u32 {
-        // The caller's deadline is the earliest timeout it must sweep; with none the park lasts
-        // until the wake socket is signalled (a signal sent earlier leaves it readable).
-        // A signal sent before the park leaves the socket readable, and the readiness mio reports
-        // when the runtime registers it for the wait is not relied on for that: ask the system.
-        if poll_one(self.wake.sock(), false, Duration::ZERO) {
-            return 1;
-        }
-        rt::wait_fd(self.wake.sock(), 1, timeout_ns)
+        let timeout = if timeout_ns < 0 {
+            PARK_NS
+        } else {
+            timeout_ns.min(PARK_NS)
+        };
+        rt::wait_fd(self.wake.sock(), 1, timeout)
     }
 }
 
 impl Drop for Poller {
     fn drop(&mut self) {
         self.shared.stop.store(true, Ordering::Release);
-        let _ = self.shared.waker.wake();
+        let _ = self.waker.wake();
     }
 }
 

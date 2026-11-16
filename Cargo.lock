@@ -1276,7 +1276,6 @@ dependencies = [
  "crc32fast",
  "flate2",
  "httparse",
- "libc",
  "mio",
  "ms-inflate",
  "ms-rt",
