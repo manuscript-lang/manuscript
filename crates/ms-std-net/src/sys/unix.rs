@@ -164,6 +164,25 @@ pub struct Poller {
 
 const WAKE_TOKEN: u64 = u64::MAX;
 
+/// A poller's readiness, for another thread to watch: the poller's own descriptor (an epoll or
+/// kqueue descriptor is readable while it holds events nobody has taken). The poller never
+/// closes it, so the descriptor stays valid for the process.
+pub struct Lender(i32);
+
+impl Lender {
+    /// Registers the poller in `registry` under `token`: it reports an event, edge-triggered,
+    /// each time the poller gains readiness.
+    pub fn register(&self, registry: &mio::Registry, token: u64) -> bool {
+        registry
+            .register(
+                &mut SourceFd(&self.0),
+                mio::Token(token as usize),
+                mio::Interest::READABLE,
+            )
+            .is_ok()
+    }
+}
+
 struct Watched {
     token: u64,
     want: Ev,
@@ -208,6 +227,12 @@ impl Poller {
     /// The handle that wakes this poller's parked task; another thread may signal it.
     pub fn waker(&self) -> Arc<Wake> {
         self.wake.clone()
+    }
+
+    /// What lets another thread's `mio` poll learn that this poller holds readiness its task
+    /// has not taken yet.
+    pub fn lender(&self) -> Lender {
+        Lender(self.poll.borrow().as_raw_fd())
     }
 
     pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {

@@ -155,6 +155,25 @@ pub struct Poller {
 struct Shared {
     raised: Mutex<Vec<Raised>>,
     stop: AtomicBool,
+    /// Wakes another thread's `mio` poll when the queue gains events (see [`Lender`]).
+    lent: Mutex<Option<mio::Waker>>,
+}
+
+/// A poller's readiness, for another thread to watch: the helper thread wakes the watcher's
+/// poll each time it queues events.
+pub struct Lender(Arc<Shared>);
+
+impl Lender {
+    /// Has the poller wake `registry`'s poll under `token` each time it gains readiness.
+    pub fn register(&self, registry: &mio::Registry, token: u64) -> bool {
+        match mio::Waker::new(registry, mio::Token(token as usize)) {
+            Ok(waker) => {
+                *self.0.lent.lock().unwrap_or_else(|e| e.into_inner()) = Some(waker);
+                true
+            }
+            Err(_) => false,
+        }
+    }
 }
 
 impl Default for Poller {
@@ -176,6 +195,7 @@ impl Poller {
         let shared = Arc::new(Shared {
             raised: Mutex::new(Vec::new()),
             stop: AtomicBool::new(false),
+            lent: Mutex::new(None),
         });
         let (helper_wake, helper_shared) = (wake.clone(), shared.clone());
         std::thread::Builder::new()
@@ -200,6 +220,10 @@ impl Poller {
                     drop(queue);
                     if any {
                         helper_wake.notify();
+                        let lent = helper_shared.lent.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Some(waker) = lent.as_ref() {
+                            let _ = waker.wake();
+                        }
                     }
                 }
             })
@@ -264,6 +288,12 @@ impl Poller {
     /// The handle that wakes this poller's parked task; another thread may signal it.
     pub fn waker(&self) -> Arc<Wake> {
         self.wake.clone()
+    }
+
+    /// What lets another thread's `mio` poll learn that this poller holds readiness its task
+    /// has not taken yet.
+    pub fn lender(&self) -> Lender {
+        Lender(self.shared.clone())
     }
 
     /// Wakes the parked reactor task.

@@ -17,8 +17,8 @@
 //! and is woken for them like for any remote post.
 use crate::isolate;
 use std::collections::VecDeque;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Mutex, OnceLock};
 
 /// Most scheduler threads. The thread index lives in six bits of a promise id.
 pub const MAX_THREADS: usize = 63;
@@ -767,17 +767,52 @@ pub(crate) fn set_idle(idle: bool) {
         return;
     }
     if idle {
-        RESTING.fetch_or(1 << me, Ordering::AcqRel);
+        // Sequentially consistent with `watch_rests`: either the hook's owner sees this thread
+        // rest, or this thread sees the hook armed.
+        RESTING.fetch_or(1 << me, Ordering::SeqCst);
         if SLOTS[me].live.load(Ordering::SeqCst) == 0 {
             IDLE.fetch_or(1 << me, Ordering::AcqRel);
         }
+        count_rest(me);
+        if REST_WATCH.load(Ordering::SeqCst)
+            && let Some(hook) = REST_HOOK.get()
+        {
+            hook();
+        }
     } else {
-        // Sequentially consistent with the watcher falling asleep (`watch::run`): either it sees
-        // this thread busy, or `stir` sees it asleep.
         RESTING.fetch_and(!(1 << me), Ordering::SeqCst);
         IDLE.fetch_and(!(1 << me), Ordering::AcqRel);
-        crate::watch::stir(me);
     }
+}
+
+/// For each scheduler thread, how many times it began to rest.
+static RESTS: [AtomicU64; MAX_THREADS] = [const { AtomicU64::new(0) }; MAX_THREADS];
+
+/// Counts a rest of `thread`; only that thread calls it (tests call it for a made-up one).
+#[doc(hidden)]
+pub fn count_rest(thread: usize) {
+    RESTS[thread].store(RESTS[thread].load(Ordering::Relaxed) + 1, Ordering::Release);
+}
+
+/// How many times scheduler thread `thread` began to rest. A thread that is not resting and
+/// whose count did not change since an event has run for that whole time.
+pub fn rests(thread: usize) -> u64 {
+    RESTS[thread].load(Ordering::Acquire)
+}
+
+static REST_WATCH: AtomicBool = AtomicBool::new(false);
+static REST_HOOK: OnceLock<fn()> = OnceLock::new();
+
+/// Sets the function called, while [`watch_rests`] is on, each time a scheduler thread starts to
+/// rest. The first call wins; the function must not block.
+pub fn set_rest_hook(hook: fn()) {
+    let _ = REST_HOOK.set(hook);
+}
+
+/// Turns the rest hook on or off. After turning it on, look at [`resting_mask`] once: a thread
+/// that rested earlier does not call the hook.
+pub fn watch_rests(on: bool) {
+    REST_WATCH.store(on, Ordering::SeqCst);
 }
 
 /// The calling thread's scheduler index, or `NONE` for a thread that is not a scheduler thread.

@@ -193,7 +193,7 @@ pub struct Reactor {
     date: RefCell<(i64, String)>,
     /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
     next_sweep: Cell<Option<Instant>>,
-    /// What the connection watcher reads of this thread.
+    /// What the connection rescuer reads of this thread.
     beat: Arc<steal::Beat>,
 }
 
@@ -210,7 +210,7 @@ impl Reactor {
                 return r.clone();
             }
             let poller = Poller::new();
-            let beat = steal::Beat::new(poller.waker());
+            let beat = steal::Beat::new(&poller);
             let reactor = Rc::new(Reactor {
                 poller,
                 next: Cell::new(1),
@@ -513,12 +513,18 @@ impl Reactor {
             }
             let raw = self.poller.poll(&mut events, 64);
             let mut yielded = false;
+            let mut announced = false;
             for (at, &(token, flags)) in events.iter().enumerate() {
                 self.handle_event(token, flags);
                 // Run a request before reading the next connection: while its handler
                 // computes, the connections not yet read can still be taken by another thread.
                 // After the last event the park below runs it, as it runs every task.
                 if at + 1 < events.len() && !self.ready.borrow().is_empty() {
+                    // The kernel reports nothing more for the connections after this one.
+                    if !announced {
+                        announced = true;
+                        self.beat.stranded();
+                    }
                     self.run_handlers();
                     rt::yield_now();
                     self.beat.turn();
@@ -553,7 +559,7 @@ impl Reactor {
 }
 
 impl Reactor {
-    /// Takes the connections the watcher assigned to this thread's servers, and drops the ones
+    /// Takes the connections the rescuer assigned to this thread's servers, and drops the ones
     /// other threads took from them.
     fn serve_others(&self) {
         let servers: Vec<_> =
@@ -1124,11 +1130,12 @@ impl Server {
             st.outbuf = Vec::new();
         }
         reactor.targets.borrow_mut().remove(&conn.token);
-        self.uncount(conn);
+        // The taker counted it away already.
+        self.st.borrow_mut().conns.remove(&conn.token);
         self.note_drain_progress();
     }
 
-    /// Serves the connections the watcher told this server to take from held-up servers of its
+    /// Serves the connections the rescuer told this server to take from held-up servers of its
     /// `serve` call, and drops the ones others took from it.
     fn serve_others(&self, reactor: &Reactor) {
         let Some(member) = &self.member else {
