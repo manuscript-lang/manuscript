@@ -419,3 +419,27 @@ fn a_rebuild_notices_an_edit_in_a_path_dependency_member() {
     );
     build("goodbye workspace");
 }
+
+#[test]
+fn init_workspace_creates_members_that_check_test_and_run() {
+    let root = scratch("workspace-init");
+    let cache = root.join("cache");
+    let init = ms(&root, &cache, &["init", "--workspace", "team"]);
+    assert!(init.status.success(), "{}", err(&init));
+    let team = root.join("team");
+    let check = ms(&team, &cache, &["check"]);
+    assert!(check.status.success(), "{}", err(&check));
+    let text = out(&check);
+    assert!(
+        text.contains("app/ms.toml") && text.contains("libs/greeter/ms.toml"),
+        "{text}"
+    );
+    let test = ms(&team, &cache, &["test"]);
+    assert!(test.status.success(), "{}", err(&test));
+    let run = ms(&team, &cache, &["run", "app/ms.toml"]);
+    assert_eq!(out(&run).trim(), "Hello, ms", "{}", err(&run));
+    let again = ms(&team, &cache, &["init", "--workspace"]);
+    assert!(!again.status.success());
+    let both = ms(&root, &cache, &["init", "--lib", "--workspace", "x"]);
+    assert_eq!(both.status.code(), Some(2));
+}

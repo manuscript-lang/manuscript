@@ -1,4 +1,4 @@
-//! `ms init [--lib] [directory]`: create a runnable project. Fully implemented here;
+//! `ms init [--lib | --workspace] [directory]`: create a runnable project or a workspace. Fully implemented here;
 //! it needs no engine.
 
 use ms_driver::project::pathops;
@@ -9,21 +9,27 @@ const MAIN: &str = "import arguments from \"@std/os/env.ms\"\n\nfn main() Void:\
 const TEST: &str = "import panic from \"@std/core.ms\"\n\ntest \"arithmetic\":\n\tif not (2 + 3 == 5): return panic(message: \"arithmetic failed\")\n";
 const LIB: &str = "export fn greeting(name: String) String: f\"Hello, {name}\"\n";
 const LIB_TEST: &str = "import expect_equal from \"@std/test/test.ms\"\nimport greeting from \"./src/lib.ms\"\n\ntest \"greeting\":\n\texpect_equal(greeting(\"ms\"), \"Hello, ms\")?\n";
+const WORKSPACE_MAIN: &str = include_str!("init/workspace_main.ms");
 const IGNORE: &str = ".ms-cache/\n";
 
 pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     let mut directory = ".".to_string();
     let mut given = false;
     let mut library = false;
+    let mut workspace = false;
     for arg in args {
-        if arg == "--lib" && !library {
+        if arg == "--lib" && !library && !workspace {
             library = true;
+            continue;
+        }
+        if arg == "--workspace" && !workspace && !library {
+            workspace = true;
             continue;
         }
         if arg.starts_with('-') || given {
             let _ = writeln!(
                 io.stderr,
-                "unexpected init argument: {arg}; ms init takes --lib and at most one directory, e.g. ms init --lib greeter"
+                "unexpected init argument: {arg}; ms init takes --lib or --workspace (not both) and at most one directory, e.g. ms init --lib greeter"
             );
             return 2;
         }
@@ -41,20 +47,49 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         Ok(path) => path,
         Err(error) => return fail_plain(io, &error.to_string()),
     };
-    let (entry, source_name, source, test) = if library {
-        ("", "lib.ms", LIB, LIB_TEST)
-    } else {
-        ("entry = \"./src/main.ms\"\n", "main.ms", MAIN, TEST)
+    let manifest = |name: &str, source: &str, entry: &str, extra: &str| {
+        format!(
+            "[project]\nname = {}\nsource = \"{source}\"\n{entry}{extra}",
+            ms_driver::project::quoting::quote(name)
+        )
     };
-    let manifest = format!(
-        "[project]\nname = {}\nsource = \"./src\"\n{entry}",
-        ms_driver::project::quoting::quote(&project_name(&absolute))
-    );
-    let files = [
-        ("ms.toml".to_string(), manifest),
-        (pathops::join(&["src", source_name]), source.to_string()),
-        ("test.ms".to_string(), test.to_string()),
-    ];
+    let files: Vec<(String, String)> = if workspace {
+        let app = manifest(
+            "app",
+            "./src",
+            "entry = \"./src/main.ms\"\n",
+            "\n[dependencies]\n\"@greeter\" = { path = \"../libs/greeter\" }\n",
+        );
+        vec![
+            (
+                "ms.toml".to_string(),
+                "[workspace]\nmembers = [\"app\", \"libs/*\"]\n".to_string(),
+            ),
+            ("app/ms.toml".to_string(), app),
+            ("app/src/main.ms".to_string(), WORKSPACE_MAIN.to_string()),
+            ("app/test.ms".to_string(), TEST.to_string()),
+            (
+                "libs/greeter/ms.toml".to_string(),
+                manifest("greeter", "./src", "", ""),
+            ),
+            ("libs/greeter/src/lib.ms".to_string(), LIB.to_string()),
+            ("libs/greeter/test.ms".to_string(), LIB_TEST.to_string()),
+        ]
+    } else {
+        let (entry, source_name, source, test) = if library {
+            ("", "lib.ms", LIB, LIB_TEST)
+        } else {
+            ("entry = \"./src/main.ms\"\n", "main.ms", MAIN, TEST)
+        };
+        vec![
+            (
+                "ms.toml".to_string(),
+                manifest(&project_name(&absolute), "./src", entry, ""),
+            ),
+            (pathops::join(&["src", source_name]), source.to_string()),
+            ("test.ms".to_string(), test.to_string()),
+        ]
+    };
     for (name, _) in &files {
         if std::fs::symlink_metadata(pathops::join(&[&absolute, name])).is_ok() {
             let _ = writeln!(
@@ -66,9 +101,10 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         }
     }
     let create = || -> std::io::Result<()> {
-        std::fs::create_dir_all(pathops::join(&[&absolute, "src"]))?;
         for (name, content) in &files {
-            std::fs::write(pathops::join(&[&absolute, name]), content)?;
+            let path = pathops::join(&[&absolute, name]);
+            std::fs::create_dir_all(pathops::dir(&path))?;
+            std::fs::write(path, content)?;
         }
         ignore_build_cache(&pathops::join(&[&absolute, ".gitignore"]))
     };
@@ -82,7 +118,10 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     }
     let _ = writeln!(io.stdout, "Created project in {directory}");
     let manifest = shell_quote(&operand(&pathops::join(&[&directory, "ms.toml"])));
-    let next = if library {
+    let next = if workspace {
+        let app = shell_quote(&operand(&pathops::join(&[&directory, "app/ms.toml"])));
+        format!("ms run {app}; ms test runs every member from {directory}")
+    } else if library {
         format!("ms test {manifest}")
     } else {
         format!("ms run {manifest} -- first second")
