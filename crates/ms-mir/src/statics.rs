@@ -134,3 +134,50 @@ pub fn str_data(s: &str) -> Vec<u8> {
     bytes.push(0);
     bytes
 }
+
+/// How `str.eq_lit` compares a string with a literal of one to eight bytes without a NUL.
+pub struct EqLit {
+    /// An inline string equals the literal when its tag word is `inline_tag` and its first word
+    /// is `inline_word`.
+    pub inline_tag: i64,
+    pub inline_word: i64,
+    /// Any other string must have this masked length, and then these chunks, read only after the
+    /// length matched so no load passes the object's NUL terminator.
+    pub len: i64,
+    pub chunks: Vec<EqChunk>,
+}
+
+/// One power-of-two read of `width` bytes at offset `at`, sign-extended to `want`.
+pub struct EqChunk {
+    pub at: usize,
+    pub width: usize,
+    pub want: i64,
+}
+
+pub fn eq_lit(bytes: &[u8]) -> EqLit {
+    let mut word = [0u8; 8];
+    word[..bytes.len()].copy_from_slice(bytes);
+    let mut chunks = Vec::new();
+    let mut at = 0;
+    while at < bytes.len() {
+        let width = [8, 4, 2, 1]
+            .into_iter()
+            .find(|n| bytes.len() - at >= *n)
+            .expect("a chunk fits");
+        let mut chunk = [0u8; 8];
+        chunk[..width].copy_from_slice(&bytes[at..at + width]);
+        let shift = 64 - 8 * width as u32;
+        chunks.push(EqChunk {
+            at,
+            width,
+            want: (i64::from_le_bytes(chunk) << shift) >> shift,
+        });
+        at += width;
+    }
+    EqLit {
+        inline_tag: (STR_INLINE | (bytes.len() << STR_INLINE_LEN_SHIFT)) as i64,
+        inline_word: i64::from_le_bytes(word),
+        len: bytes.len() as i64,
+        chunks,
+    }
+}

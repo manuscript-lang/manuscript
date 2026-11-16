@@ -734,53 +734,40 @@ pub(super) fn eq_kinds_same_len(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> Val 
 /// equals it when both words match; any other string when its length matches and its bytes do,
 /// read in power-of-two chunks only after the length matched.
 fn str_eq_lit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
-    use ms_rt_abi::{STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK};
+    use ms_rt_abi::STR_LEN_MASK;
     let Imm::Str(id) = inst.imm else {
         unreachable!("str.eq_lit carries a literal")
     };
-    let bytes = cx.m.strings[id.0 as usize].as_bytes().to_vec();
+    let plan = ms_mir::statics::eq_lit(cx.m.strings[id.0 as usize].as_bytes());
     let s = &vals[&inst.args[0].index()];
     let out = vals[&inst.res.expect("equality result").index()][0].clone();
     let (bb, split) = (cx.block, cx.split);
     let (check, join) = (format!("q{bb}_{split}"), block_label(bb, split + 1));
     let head = block_label(bb, split);
     cx.split += 1;
-    let mut word = [0u8; 8];
-    word[..bytes.len()].copy_from_slice(&bytes);
-    let inline_tag = (STR_INLINE | (bytes.len() << STR_INLINE_LEN_SHIFT)) as i64;
-    let same_tag = b.icmp("eq", &s[1], &Val::int(inline_tag));
-    let same_word = b.icmp("eq", &s[0], &Val::int(i64::from_le_bytes(word)));
+    let same_tag = b.icmp("eq", &s[1], &Val::int(plan.inline_tag));
+    let same_word = b.icmp("eq", &s[0], &Val::int(plan.inline_word));
     let inline_eq = b.bin(Bin::And, &same_tag, &same_word);
     let len = b.bin(Bin::And, &s[1], &Val::int(STR_LEN_MASK as i64));
-    let same_len = b.icmp("eq", &len, &Val::int(bytes.len() as i64));
+    let same_len = b.icmp("eq", &len, &Val::int(plan.len));
     b.cond_br(&same_len, &check, &join);
     b.label(&check);
     let ptr = b.int_to_ptr(&s[0]);
     let mut all: Option<Val> = None;
-    let mut at = 0;
-    while at < bytes.len() {
-        let n = [8, 4, 2, 1]
-            .into_iter()
-            .find(|n| bytes.len() - at >= *n)
-            .expect("a chunk fits");
-        let ty = match n {
+    for c in &plan.chunks {
+        let ty = match c.width {
             8 => LTy::I64,
             4 => LTy::I32,
             2 => LTy::I16,
             _ => LTy::I8,
         };
-        let mut chunk = [0u8; 8];
-        chunk[..n].copy_from_slice(&bytes[at..at + n]);
-        let shift = 64 - 8 * n as u32;
-        let want = (i64::from_le_bytes(chunk) << shift) >> shift;
-        let p = b.elem_ptr(&LTy::I8, &ptr, &Val::int(at as i64));
+        let p = b.elem_ptr(&LTy::I8, &ptr, &Val::int(c.at as i64));
         let got = b.load(&ty, &p, 1);
-        let eq = b.icmp("eq", &got, &Val::new(want.to_string(), ty));
+        let eq = b.icmp("eq", &got, &Val::new(c.want.to_string(), ty));
         all = Some(match all {
             Some(a) => b.bin(Bin::And, &a, &eq),
             None => eq,
         });
-        at += n;
     }
     let all = all.expect("a non-empty literal");
     b.br(&join);
