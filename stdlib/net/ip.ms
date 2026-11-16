@@ -21,7 +21,7 @@ export enum DnsKind:
 	SRV  // Service location records with priority, weight and port.
 
 // Returns the uppercase wire category.
-fn DnsKind.text() String:
+fn DnsKind.to_string() String:
 	match self:
 		A: return "A"
 		AAAA: return "AAAA"
@@ -38,7 +38,7 @@ export enum IpFamily:
 	IPv6  // A sixteen-byte numeric address.
 
 // Returns IPv4 or IPv6.
-fn IpFamily.text() String:
+fn IpFamily.to_string() String:
 	match self:
 		IPv4: return "IPv4"
 		IPv6: return "IPv6"

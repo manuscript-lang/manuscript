@@ -19,16 +19,16 @@ import (
 test "rationals stay in lowest terms and compare with ==":
 	half := parse_rat("1/2")?
 	third := parse_rat("1/3")?
-	expect_equal(half.add(third).format(), "5/6")?
-	expect_equal(half.subtract(third).format(), "1/6")?
-	expect_equal(half.multiply(third).format(), "1/6")?
-	expect_equal((half.divide(third)?).format(), "3/2")?
+	expect_equal(half.add(third).to_string(), "5/6")?
+	expect_equal(half.subtract(third).to_string(), "1/6")?
+	expect_equal(half.multiply(third).to_string(), "1/6")?
+	expect_equal((half.divide(third)?).to_string(), "3/2")?
 	expect_equal(parse_rat("2/4")?, half)?
 	expect_equal(parse_rat("-3/-6")?, half)?
-	expect_equal((parse_rat("3/-6")?).format(), "-1/2")?
+	expect_equal((parse_rat("3/-6")?).to_string(), "-1/2")?
 	expect_equal(half.compare(third), 1)?
 	expect_true(rat_of_int(4).is_integer())?
-	expect_equal(rat_of_int(4).format(), "4")?
+	expect_equal(rat_of_int(4).to_string(), "4")?
 
 test "rational errors and decimal parsing":
 	zero: BigRat! := error(Error("bigrat: invalid input", kind: "EINVAL"))
@@ -42,10 +42,10 @@ test "rational errors and decimal parsing":
 
 	big: BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse_rat("1e100001"), big)?
-	expect_equal((parse_rat("1.25")?).format(), "5/4")?
-	expect_equal((parse_rat("-.5")?).format(), "-1/2")?
-	expect_equal((parse_rat("6.02e3")?).format(), "6020")?
-	expect_equal((parse_rat("5E-3")?).format(), "1/200")?
+	expect_equal((parse_rat("1.25")?).to_string(), "5/4")?
+	expect_equal((parse_rat("-.5")?).to_string(), "-1/2")?
+	expect_equal((parse_rat("6.02e3")?).to_string(), "6020")?
+	expect_equal((parse_rat("5E-3")?).to_string(), "1/200")?
 
 test "rational rounding power and formatting":
 	value := parse_rat("-7/2")?
@@ -56,8 +56,8 @@ test "rational rounding power and formatting":
 	expect_equal((parse_rat("5/2")?).round().to_int(), 3)?
 
 	two_thirds := parse_rat("2/3")?
-	expect_equal((two_thirds.pow(3)?).format(), "8/27")?
-	expect_equal((two_thirds.pow(-2)?).format(), "9/4")?
+	expect_equal((two_thirds.pow(3)?).to_string(), "8/27")?
+	expect_equal((two_thirds.pow(-2)?).to_string(), "9/4")?
 	expect_equal(two_thirds.to_fixed(4)?, "0.6667")?
 	expect_equal((parse_rat("1/8")?).to_fixed(2)?, "0.12")?
 	expect_equal((parse_rat("3/8")?).to_fixed(2)?, "0.38")?
@@ -67,10 +67,10 @@ test "rational rounding power and formatting":
 
 test "rationals convert exactly from and to floats":
 	tenth := rat_of_float(0.1).get(rat_of_int(0))
-	expect_equal(tenth.format(), "3602879701896397/36028797018963968")?
+	expect_equal(tenth.to_string(), "3602879701896397/36028797018963968")?
 	expect_equal(tenth.to_float(), 0.1)?
 	expect_true(rat_of_float(1.0 / 0.0).is_none())?
-	expect_equal(rat_of_float(-2.5).get(rat_of_int(0)).format(), "-5/2")?
+	expect_equal(rat_of_float(-2.5).get(rat_of_int(0)).to_string(), "-5/2")?
 	expect_equal((parse_rat("1/3")?).to_float(), 1.0 / 3.0)?
 	expect_equal(rat_of_float(1e300).get(rat_of_int(0)).to_float(), 1e300)?
 
@@ -131,10 +131,10 @@ test "decimal text rejects a sign anywhere but the front of the digits and the e
 		expect_equal(parse_rat(text), bad)?
 		expect_true(parse_big_float(text, 64).is_error())?
 
-	expect_equal((parse_rat("1e+2")?).format(), "100")?
-	expect_equal((parse_rat("1e-2")?).format(), "1/100")?
-	expect_equal((parse_rat("-.5")?).format(), "-1/2")?
-	expect_equal((parse_rat("+1.5e+1")?).format(), "15")?
+	expect_equal((parse_rat("1e+2")?).to_string(), "100")?
+	expect_equal((parse_rat("1e-2")?).to_string(), "1/100")?
+	expect_equal((parse_rat("-.5")?).to_string(), "-1/2")?
+	expect_equal((parse_rat("+1.5e+1")?).to_string(), "15")?
 
 test "big floats compare across a huge exponent gap":
 	var far = big_float_of_int(2, 1)

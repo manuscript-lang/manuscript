@@ -27,7 +27,7 @@ export type Address:
 
 // Formats as `Name <addr>` (quoting the name when it has specials) or the bare
 // address when unnamed.
-fn Address.to_text() String:
+fn Address.to_string() String:
 	if self.name.is_empty(): return self.address.clone()
 
 	specials := self.name.contains_any("()<>[]:;@\\,.\"")

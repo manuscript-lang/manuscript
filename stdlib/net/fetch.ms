@@ -268,7 +268,7 @@ fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchRespo
 	outbound := outgoing(options.clone())
 	body := msstd_http_client_request_bytes(
 		native,
-		options.method.text(),
+		options.method.to_string(),
 		url,
 		outbound.headers,
 		outbound.body,
