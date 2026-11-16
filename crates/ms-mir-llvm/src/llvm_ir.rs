@@ -758,11 +758,12 @@ impl LlvmModule {
         }
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");
+            let name = ms_mir::debug_files::debug_file_name(name);
             let _ = writeln!(
                 tail,
                 "!{} = !DIFile(filename: \"{}\", directory: \"{}\")",
                 FIRST_FILE + i,
-                metadata_string(name),
+                metadata_string(&name),
                 metadata_string(&self.di.cwd)
             );
         }
