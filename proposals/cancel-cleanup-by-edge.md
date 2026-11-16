@@ -77,10 +77,11 @@ The leaks come from facts a registered bitwise copy cannot carry:
 - Infer more in `unwind.rs`: no end, the failure that started this.
 - Rust panics for cancel: no unwind tables in generated code, ABI change in every crate (`cancel-by-return.md`).
 
-## Stages
+## Stages (revised: hybrid first, so conversion is per function)
 
-0. *Probes, before any code lands.* (d) Split the pushes by park-only and fault windows. (e) Count functions whose parking-live owners are all Raw. (f) Cost of the delivered-cancel byte and check on both backends. (a) Count, per fixture, live owners at parking call sites to bound branch-argument cost. (b) For each type that can sit in a hole of a slot parameter, name its empty value; list the types with none. (c) List native frames that call generated code. Kill criterion: if (b) finds a hole type with no empty value that real code reaches, or (c) exceeds what a stage can convert, stop and keep the stack for slots.
-1. Edge for SSA owners and `?` exits in `elaborate`; unwind skips functions marked converted. Gate: sweep, conformance, instruction count equal or lower.
-2. Field-path owners (holes), slot contract, resources and `var` locals moved into `elaborate`. This includes resource locals with no storage (a `Promise` is one Int): the exit closes them like any scope owner, which fixes #4222 (a cancelled task's `outer` promise is never closed, so the runtime drops its untaken result through a plain descriptor). Gate: sweep clean on `iotest-golden`, `tree`, `deque-resource-growth`, `router`.
-3. Natives return with the flag; callbacks check it. Gate: sweep, Windows and macOS dispatch.
-4. Faults: a fault block in a guarded task becomes a branch into the same exit, free on the hot path. Native faults (`-> !`) keep the stack until they return a status. Delete `unwind.rs` when the last hold-out is gone.
+A converted caller of a function that returns with the flag set must check it, so checks go everywhere at once; what a function does on the exit can differ.
+
+1. *Flag and hybrid exits, behavior-neutral.* Every function of a task program checks `msrt_unwinding` after each call that can park. Its exit runs the cleanups the function itself registered (`msrt_cleanup_unwind_to(base)`, the height taken at entry; new runtime entry) and returns `undef` with the flag still set. Natives return with the flag; the task boundary clears it and runs what is left. Nothing is freed differently from today. Gate: conformance, sweep unchanged, check cost measured on `bench/perf`.
+2. *Explicit exits for functions whose parking-live owners are all pass owners or SSA temporaries* (the `scope.end` plus liveness exit; no park registration in those functions). Gate: sweep, instruction count lower than stage 1, runtime lower.
+3. *Holes, slots, resource locals without storage* handled in the pass (field-path move state, slot contract). Gate: `iotest-golden`, `tree`, `deque-resource-growth`, `router`, #4222.
+4. *Faults*: a fault block in a guarded task branches into the same exit. Delete `unwind.rs` when no function is hybrid.
