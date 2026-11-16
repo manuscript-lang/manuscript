@@ -4,7 +4,7 @@ Status: approved by Chinmay on 2026-11-16 ("ptr, len, cap style? do it"); implem
 
 ## Problem
 
-`s += piece` costs 111 instructions per append in a Release build (200k appends of `"ab"`: 32.0M instructions; the same loop in C with `realloc` doubling: 2.4M). Appending needs the room left in the block, and a string has no capacity: the runtime asks the allocator (`usable_size`, a page-table lookup) on every call, decodes the two-word tagged layout, and calls `memcpy` and `is_ascii`. Because the answer lives in the allocator, generated code cannot check it inline the way `StringBuilder.append` does, so every append is a runtime call.
+`s += piece` costs 111 instructions per append in a Release build (200k appends of `"ab"`: 32.0M instructions; the same loop in checked C with `realloc` doubling: 2.4M). Appending needs the room left in the block, and a string has no capacity: the runtime asks the allocator (`usable_size`, a page-table lookup) on every call, decodes the two-word tagged layout, and calls `memcpy` and `is_ascii`. Because the answer lives in the allocator, generated code cannot check it inline the way `StringBuilder.append` does, so every append is a runtime call.
 
 ## Design
 
