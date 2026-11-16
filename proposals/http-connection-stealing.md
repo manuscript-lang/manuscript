@@ -12,13 +12,13 @@ Implemented, 2026-11-16, on `claude/project-thread-cuchaa`. Owner direction (202
 
 ## Problem
 
-`bench/perf/http-tail`, 4 vCPU VM, open loop, 64 connections, 2000 req/s, every 20th request burns 5 ms (measured, RESULTS_REV):
+`bench/perf/http-tail`, 4 vCPU VM, open loop, 64 connections, 2000 req/s, every 20th request burns 5 ms (measured, `main` at 688af5b7):
 
 | Server | p50 | p99 | p99.9 |
 | --- | --- | --- | --- |
-| Manuscript before | SLOW_BASE |
-| Go | SLOW_GO |
-| Node | SLOW_NODE |
+| Manuscript before | 0.75 to 0.84 ms | 5.8 to 6.2 ms | 9.1 to 18.7 ms |
+| Go | 0.65 ms | 2.9 to 3.2 ms | 5.7 ms |
+| Node | 2.5 ms | 10.8 to 15.9 ms | 16.7 to 28.4 ms |
 
 - A task is never interrupted and a started task never moves (`crates/ms-rt/src/sched.rs`), so the wait cannot be fixed by moving the handler.
 - Fast handlers already matched Go, so the fast path must not pay: CPU, memory, p50 and throughput stay at or better than before.
@@ -50,9 +50,17 @@ One rule: between requests a plain HTTP/1 connection is only a socket and a dead
 
 ## Results
 
-Same machine, alternated runs (measured, RESULTS_REV; full table in `bench/perf/http-tail/README.md`):
+Same machine, alternated runs (measured, 7d462817 plus this change; full table in `bench/perf/http-tail/README.md`):
 
-RESULTS_TABLE
+| | Before | Now | Go |
+| --- | --- | --- | --- |
+| 5% slow requests: p50 / p99 / p99.9 | 0.8 / 6.0 / 9 to 19 ms | 0.63 / 3.2 / 5.6 ms | 0.65 / 3.0 / 5.7 ms |
+| Fast handlers: p50 / p99 | 0.67 / 1.8 ms | 0.67 / 1.5 to 1.9 ms | 0.66 / 1.8 ms |
+| CPU for 88,000 fast requests | 5.2 to 5.8 s | 5.4 to 6.0 s | 9.6 to 10.1 s |
+| Peak memory | 7.5 MB | 6.4 MB | 14.5 MB |
+| Closed loop | 118k to 121k req/s | 112k to 113k req/s | 53k to 56k req/s |
+
+- Known cost: closed loop is 2 to 6% lower on a machine the load generator shares. An OS-descheduled thread looks held up, so the watcher looks often (about 6% of one core) and connections move that needed no help.
 
 ## Alternatives
 
