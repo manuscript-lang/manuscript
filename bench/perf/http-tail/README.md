@@ -118,3 +118,5 @@ Fast handlers (4000 req/s, 64 connections, 8 s after a 2 s warm-up), runs of `ma
 | HTTP/2, 4 threads, now | 10 | 0.583 ms | 2.09 ms | 4.52 ms | 6.8 ms | 324 |
 
 Instructions per TLS request with one thread (`valgrind --tool=callgrind` on the server, closed loop over one connection, slope between runs of 3 s and 14 s counted by handler calls): 101.9k before, 102.7k now (+0.8%). So of the +7% CPU with four threads, about 3% is parking (the one-thread rows, +0.8% of it in instructions) and about 4% is the watcher and the steals. An earlier three-run reading of +4.4 ms p99.9 for HTTP/2 was noise: ten interleaved runs give 4.41 and 4.52 ms (single-run ranges 3.5 to 12.2 and 3.4 to 18.9 ms).
+
+Open item: the +3% CPU for parking (one thread) is far above the +0.8% in instructions, so most of it is not instructions. Hypothesis: the lock and the entry list of the shared waiting list, touched twice per request, cost cache and memory traffic that a retired-instruction count does not show; measure with `perf stat` (cache misses, cycles) on one thread against `main`, and try keeping the entry and the lock on the owner's cache line until a watcher asks.
