@@ -104,6 +104,7 @@ fn server_options(opts: &HttpServerOptionsWire) -> Result<Options, HttpErr> {
         limits,
         admitted: Default::default(),
         tls,
+        group: Default::default(),
     })
 }
 

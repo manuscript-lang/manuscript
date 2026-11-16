@@ -89,6 +89,12 @@ pub fn unshield() {
     msrt_shield_exit()
 }
 
+/// Lets the other ready tasks of this thread run, then returns.
+pub fn yield_now() {
+    // SAFETY: called from a task of the runtime thread, like every function here.
+    unsafe { ms_rt::task::msrt_task_yield() }
+}
+
 /// Id of the running task.
 pub fn current_task() -> u64 {
     // SAFETY: plain query of the runtime thread's scheduler.
