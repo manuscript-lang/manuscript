@@ -1,10 +1,17 @@
+// ms: allow_effect std.random.read
+
 // Non-cryptographic hashes and checksums (FNV, CRC-64, a seeded table hash). They
 // spread keys and detect accidental damage; for SHA-2, HMAC and other secure digests,
 // see `@std/crypto/crypto.ms`.
 import (
 	Bytes from "@std/bytes.ms",
 	ReadStream from "@std/io/io.ms",
-	bit_and, bit_xor, shift_right_unsigned, wrapping_multiply from "@std/math/math.ms",
+	bit_and,
+	bit_or,
+	bit_xor,
+	shift_left,
+	shift_right_unsigned,
+	wrapping_multiply from "@std/math/math.ms",
 	secure_int from "@std/random.ms",
 )
 
@@ -66,6 +73,33 @@ fn Crc64Polynomial.reflected() Int:
 		Ecma: return -3932672073523589310
 		Iso: return -2882303761517117440
 
+// Slicing tables for a reflected CRC-64: `tables[k * 256 + b]` is the register after
+// byte `b` followed by `k` zero bytes. Building one table costs about as much as
+// hashing 256 bytes bit by bit, so `count` is 1 for mid-size inputs.
+fn crc64_tables(poly: Int, count: Int) List[Int]:
+	var tables = [0].repeated(count * 256)
+
+	for b in 0..256:
+		var crc = b
+
+		for bit in 0..8:
+			low := bit_and(crc, 1)
+			crc = shift_right_unsigned(crc, 1)
+			if low == 1:
+				crc = bit_xor(crc, poly)
+
+		tables[b] = crc
+
+	for k in 1..count:
+		for b in 0..256:
+			prev := tables[(k - 1) * 256 + b]
+			tables[k * 256 + b] = bit_xor(
+				tables[bit_and(prev, 255)],
+				shift_right_unsigned(prev, 8),
+			)
+
+	return tables
+
 /*
 A 64-bit CRC built from ordered chunks, retaining no input bytes. Initial register and final XOR are all ones.
 `var sum = Crc64(Crc64Polynomial.Ecma)` then `sum.update("123456789".to_bytes())` gives `sum.value()` = 11051210869376104954.
@@ -80,16 +114,65 @@ export type Crc64:
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
 fn var Crc64.update(data: Bytes) Void:
 	poly := self.polynomial.reflected()
+	length := data.length()
 	var crc = bit_xor(self.state, -1)
+	var index = 0
 
-	for index in 0..data.length():
-		crc = bit_xor(crc, data.get(index).to_int())
+	if length >= 256:
+		wide := length >= 4096
+		var count = 1
+		if wide:
+			count = 8
 
-		for bit in 0..8:
-			low := bit_and(crc, 1)
-			crc = shift_right_unsigned(crc, 1)
-			if low == 1:
-				crc = bit_xor(crc, poly)
+		tables := crc64_tables(poly, count)
+
+		while wide and index + 8 <= length:
+			// Eight bytes per step: the register absorbs eight bytes, then each byte's
+			// table advances it through the bytes that follow in the block.
+			var word = 0
+			for k in 0..8:
+				word = bit_or(word, shift_left(data.get(index + k).to_int(), 8 * k))
+			crc = bit_xor(crc, word)
+
+			var next = 0
+			for k in 0..8:
+				next = bit_xor(
+					next,
+					tables[
+						(7 - k) * 256 + bit_and(
+							shift_right_unsigned(
+								crc,
+								8 * k,
+							),
+							255,
+						)
+					],
+				)
+			crc = next
+			index += 8
+
+		while index < length:
+			crc = bit_xor(
+				tables[
+					bit_and(
+						bit_xor(crc, data.get(index).to_int()),
+						255,
+					)
+				],
+				shift_right_unsigned(crc, 8),
+			)
+			index += 1
+	else:
+		while index < length:
+			crc = bit_xor(crc, data.get(index).to_int())
+
+			for bit in 0..8:
+				low := bit_and(crc, 1)
+				crc = shift_right_unsigned(crc, 1)
+				if low == 1:
+					crc = bit_xor(crc, poly)
+
+			index += 1
 
 	self.state = bit_xor(crc, -1)
 

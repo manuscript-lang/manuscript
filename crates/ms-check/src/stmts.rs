@@ -78,6 +78,11 @@ impl Checker {
         self.m().facts().info(e.id).cloned()
     }
 
+    /// Reads the stored fact of an expression in place, without cloning it.
+    pub(crate) fn with_info<R>(&self, e: &Expr, f: impl FnOnce(&Info) -> R) -> Option<R> {
+        self.m().facts().info(e.id).map(f)
+    }
+
     pub(crate) fn set_info(&self, e: &Expr, info: Info) {
         self.m().facts_mut().set_info(e.id, info);
     }
@@ -1058,7 +1063,16 @@ impl Checker {
                                 list(&names, 12)
                             , binding_t = self.syms.str(binding)),
                         );
-                    } else if arm.bindings.is_empty() && !self.syms.str(name).is_empty() && !upper {
+                    } else if self.syms.str(name).is_empty() {
+                        self.res_error(
+                            arm.pos,
+                            format!(
+                                "a literal pattern cannot match {}; literals match only Int, String or Bool, so match one of the cases: {}",
+                                self.syms.str(t.name),
+                                list(&names, 12)
+                            ),
+                        );
+                    } else if arm.bindings.is_empty() && !upper {
                         self.res_error(
                             arm.pos,
                             format!(
@@ -1631,7 +1645,7 @@ impl Checker {
             }
         };
         let mut info = self.expression(target, None);
-        let receiver = self.info_of(left).and_then(|i| i.ty);
+        let receiver = self.with_info(left, |i| i.ty.clone()).flatten();
         let entries = receiver.is_some_and(|r| {
             (r.is(Builtin::List) && r.args.len() == 1) || (r.is(Builtin::Map) && r.args.len() == 2)
         });

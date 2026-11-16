@@ -8,6 +8,8 @@ pub mod debug_files;
 pub mod debug_types;
 pub mod elaborate;
 pub mod exit_drops;
+pub mod expand;
+pub mod expand_owned;
 pub mod fault_tables;
 pub mod frames;
 /// The reference interpreter, used by tests as an oracle; compiled only for them.
@@ -19,6 +21,7 @@ pub mod opt;
 pub mod parse;
 pub mod persist;
 pub mod print;
+pub mod statics;
 pub mod types;
 pub mod unwind;
 pub mod verify;

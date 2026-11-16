@@ -33,7 +33,7 @@ export interface Harness:
 	fn name() String
 	// The argv that runs the agent non-interactively in `workspace` and exits when
 	// done.
-	fn command(prompt: String, model: String?, workspace: String) List[String]
+	fn command(prompt: String, workspace: String, model: String?) List[String]
 	// Extracts usage from the harness's raw standard output.
 	fn parse(transcript: String) Usage
 
@@ -53,12 +53,12 @@ export fn int_at(doc: JsonValue, key: String) Int:
 export fn run_agent(
 	h: Harness,
 	prompt: String,
-	model: String?,
 	workspace: String,
 	timeout_s: Int,
 	transcript: String,
+	model: String?,
 ) AgentRun:
-	argv := h.command(prompt, model, workspace)
+	argv := h.command(prompt, workspace, model)
 	wrapper := ["-c", "cd \"$0\" && exec \"$@\"", workspace.clone()].concat(argv)
 	ran := run_in("bash", wrapper, timeout_s, "")
 	write_file(transcript, ran.out, replace: true).wait().get()

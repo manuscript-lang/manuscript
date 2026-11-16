@@ -1,7 +1,7 @@
 //! Differential tests: MIR text is run by the reference interpreter and, compiled
 //! natively with the test runtime, must produce the same output and exit status.
 
-use ms_clif::{Options, compile, link::link_all};
+use ms_clif::{Options, link::link_all};
 use ms_mir::interp::Interp;
 use ms_mir::parse::parse_module;
 use ms_mir::verify::verify_module;
@@ -11,6 +11,13 @@ use std::sync::OnceLock;
 
 use crate::support;
 use support::cc;
+
+/// Compiles `m` as `build_executable` does: the release shorthands are expanded first.
+pub fn compile(m: &ms_mir::ir::Module, opts: &Options) -> Result<Vec<u8>, ms_clif::Error> {
+    let mut m = m.clone();
+    ms_mir::expand_owned::run(&mut m);
+    ms_clif::compile(&m, opts)
+}
 
 pub fn dir() -> PathBuf {
     let d = std::env::temp_dir().join(format!("ms-clif-tests-{}", std::process::id()));
@@ -71,6 +78,7 @@ pub fn run_native_full(src: &str, opts: &Options, tag: &str) -> (Outcome, String
     if tag.ends_with(".opt") {
         ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
     }
+    ms_mir::expand::run(&mut m, opts.checks);
     let obj = compile(&m, opts).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();
     let objp = d.join(format!("{tag}.o"));
@@ -374,6 +382,7 @@ fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
     if opt {
         ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
     }
+    ms_mir::expand::run(&mut m, true);
     let obj = compile(&m, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();
     let objp = d.join(format!("{tag}.o"));
@@ -442,7 +451,8 @@ b0:
   ret %r
 }
 "#;
-    let m = module(src);
+    let mut m = module(src);
+    ms_mir::expand::run(&mut m, true);
     let obj = compile(&m, &Options::default()).unwrap();
     let d = dir();
     let objp = d.join("real_trace.o");
@@ -493,6 +503,7 @@ b0:
     let mut m = module(src);
     ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
     assert_eq!(m.funcs.len(), 1, "limit and probe inline into main");
+    ms_mir::expand::run(&mut m, true);
     let obj = compile(&m, &Options::default()).unwrap();
     let d = dir();
     let objp = d.join("inl_trace.o");
@@ -910,6 +921,7 @@ b0:
     assert_eq!(m.funcs.len(), 1);
     let d = dir();
     let objp = d.join("inline-flags.o");
+    ms_mir::expand::run(&mut m, true);
     std::fs::write(&objp, compile(&m, &Options::default()).unwrap()).unwrap();
     let exe = d.join("inline-flags");
     link_all(&objp, &[real_runtime().path()], &exe).unwrap();
@@ -958,9 +970,10 @@ b0:
         if cfg!(windows) {
             assert!(!err.contains("main callback.ms:"), "{err}");
         }
-        let m = module(src);
+        let mut m = module(src);
         let d = dir();
         let obj = d.join(format!("real-callback-{opt_level}.o"));
+        ms_mir::expand::run(&mut m, options.checks);
         std::fs::write(&obj, compile(&m, &options).unwrap()).unwrap();
         let shim = d.join(format!("callback-shim-{opt_level}.o"));
         let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
@@ -1053,7 +1066,8 @@ b0:
 "#;
     let extra = body.replace("@sum", "@other");
     let build = |src: String| {
-        let m = module(&src);
+        let mut m = module(&src);
+        ms_mir::expand::run(&mut m, true);
         compile(&m, &Options::default()).expect("compile")
     };
     let has = |object: &[u8], name: &str| object.windows(name.len()).any(|w| w == name.as_bytes());

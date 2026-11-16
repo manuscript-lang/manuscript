@@ -48,3 +48,27 @@ test "seeded hash is deterministic per seed and differs between seeds":
 	)?
 	expect_true(left.hash_string("key") != right.hash_string("key"))?
 	expect_true(left.hash_string("key") != left.hash_string("kez"))?
+
+test "CRC64 table paths equal the bitwise path":
+	for polynomial in [Crc64Polynomial.Ecma, Crc64Polynomial.Iso]:
+		for length in [255, 256, 257, 4095, 4096, 4103, 9001]:
+			var raw: List[UInt8] = []
+			for index in 0..length:
+				raw.append(((index * 73 + index / 7) % 256).to_uint8().get())
+
+			data := Bytes(raw.clone())
+			var chunked = Crc64(polynomial: polynomial)
+			var chunk: List[UInt8] = []
+
+			for byte in raw:
+				chunk.append(byte)
+
+				if chunk.length() == 100:
+					chunked.update(Bytes(chunk))
+					chunk = []
+
+			chunked.update(Bytes(chunk))
+			expect_equal(
+				crc64(polynomial, data).to_string_radix(10),
+				chunked.value().to_string_radix(10),
+			)?

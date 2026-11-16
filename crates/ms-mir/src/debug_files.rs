@@ -19,6 +19,14 @@ fn stdlib_dir() -> Option<PathBuf> {
         .and_then(|d| d.canonicalize().ok())
 }
 
+/// `path` spelled the way DWARF consumers split and rejoin it: forward slashes and no Windows
+/// verbatim prefix (`\\?\C:\dir` becomes `C:/dir`). The LLVM tables rebuild a file's name from
+/// its directory and base name joined by `/`, so a name with backslashes would never match.
+fn portable(path: &str) -> String {
+    let path = path.strip_prefix(r"\\?\").unwrap_or(path);
+    path.replace('\\', "/")
+}
+
 /// `path` as debug info should name it: a logical `@std/` path becomes the file under the
 /// standard-library sources when they are on disk.
 pub fn debug_file_name(path: &str) -> Cow<'_, str> {
@@ -27,7 +35,7 @@ pub fn debug_file_name(path: &str) -> Cow<'_, str> {
     };
     match stdlib_dir() {
         Some(dir) if dir.join(rest).is_file() => {
-            Cow::Owned(dir.join(rest).to_string_lossy().into_owned())
+            Cow::Owned(portable(&dir.join(rest).to_string_lossy()))
         }
         _ => Cow::Borrowed(path),
     }
@@ -35,7 +43,16 @@ pub fn debug_file_name(path: &str) -> Cow<'_, str> {
 
 #[cfg(test)]
 mod tests {
-    use super::debug_file_name;
+    use super::{debug_file_name, portable};
+
+    #[test]
+    fn a_windows_path_loses_its_verbatim_prefix_and_backslashes() {
+        assert_eq!(
+            portable(r"\\?\C:\repo\stdlib\bytes.ms"),
+            "C:/repo/stdlib/bytes.ms"
+        );
+        assert_eq!(portable("/repo/stdlib/bytes.ms"), "/repo/stdlib/bytes.ms");
+    }
 
     #[test]
     fn a_standard_library_path_names_its_source_file() {

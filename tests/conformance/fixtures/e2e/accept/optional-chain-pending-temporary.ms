@@ -3,11 +3,11 @@
 import expect_equal from "@std/test/test.ms"
 
 type Link:
-	next: Link?
 	value: Int
+	next: Link?
 
 fn make() Link:
-	return Link(Link(Link(none, 3), 2), 1)
+	return Link(next: Link(next: Link(next: none, value: 3), value: 2), value: 1)
 
 test "two chains through record payloads share one interpolation":
 	head := make()

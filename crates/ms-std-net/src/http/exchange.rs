@@ -12,17 +12,18 @@ use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
 use crate::ws::handshake::{self, Rejected};
 use crate::ws::socket::{Config, Role, Socket};
 use ms_rt::ffi::Str;
-use std::cell::RefCell;
+use std::borrow::Cow;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 const CHUNK: usize = 65536;
 
 pub(super) struct ExSt {
-    pub method: String,
+    pub method: Cow<'static, str>,
     pub path: String,
     pub query: String,
     pub protocol: &'static str,
-    pub headers: headers::Shared,
+    pub headers: Headers,
     pub decoder: BodyDecoder,
     /// Decoded body bytes not yet handed to the handler.
     pub decoded: Vec<u8>,
@@ -76,10 +77,10 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
         ..
     } = *pending;
     let mut fields = head.fields;
-    fields.retain(|(n, _)| !n.eq_ignore_ascii_case("Transfer-Encoding"));
+    fields.remove("Transfer-Encoding");
     if let Some(host) = &target.host {
-        fields.retain(|(n, _)| !n.eq_ignore_ascii_case("Host"));
-        fields.push(("Host".into(), host.clone().into_bytes()));
+        fields.set("Host", host.clone().into_bytes());
+        fields.sort();
     }
     let timeout = server.limits.timeout;
     let deadline = timeout.zip(started).map(|(t, at)| deadline_at(at, t));
@@ -97,7 +98,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             } else {
                 "HTTP/1.0"
             },
-            headers: Rc::new(RefCell::new(Headers::from_received(fields))),
+            headers: fields,
             decoder,
             decoded: Vec::new(),
             remaining_read: server.limits.body,
@@ -133,6 +134,29 @@ pub(super) fn deadline_at(started: i64, timeout: std::time::Duration) -> i64 {
     started.saturating_add(timeout.as_nanos().min(i64::MAX as u128) as i64)
 }
 
+thread_local! {
+    /// The buffer a response head is built in, kept between responses so none allocates one.
+    static HEAD_BUFFER: Cell<Vec<u8>> = const { Cell::new(Vec::new()) };
+}
+
+/// Largest head buffer kept for reuse; a response that began with a large body chunk frees it.
+const KEPT_HEAD_BUFFER: usize = 16 << 10;
+
+/// An empty buffer for a response head: the kept one, or a new one when another task on this
+/// thread holds it while its write waits.
+fn take_head_buffer(body: usize) -> Vec<u8> {
+    let mut out = HEAD_BUFFER.with(Cell::take);
+    out.clear();
+    out.reserve(256 + body);
+    out
+}
+
+fn return_head_buffer(out: Vec<u8>) {
+    if out.capacity() <= KEPT_HEAD_BUFFER {
+        HEAD_BUFFER.with(|b| b.set(out));
+    }
+}
+
 impl Exchange {
     pub(super) fn deadline(&self) -> Deadline {
         self.st
@@ -142,7 +166,7 @@ impl Exchange {
     }
 
     pub fn method(&self) -> String {
-        self.st.borrow().method.clone()
+        self.st.borrow().method.to_string()
     }
 
     pub fn path(&self) -> String {
@@ -171,7 +195,7 @@ impl Exchange {
         self.st.borrow().protocol
     }
 
-    pub fn headers(&self) -> headers::Shared {
+    pub fn headers(&self) -> Headers {
         self.st.borrow().headers.clone()
     }
 
@@ -332,7 +356,7 @@ impl Exchange {
         let limit = self.server.limits.header;
         let mut bytes = 0usize;
         for entry in headers.entries() {
-            let name = entry.name.as_str();
+            let name = entry.name;
             if !headers::valid_name(name)
                 || name.eq_ignore_ascii_case("Content-Length")
                 || name.eq_ignore_ascii_case("Transfer-Encoding")
@@ -340,7 +364,7 @@ impl Exchange {
             {
                 return Err(HttpErr::InvalidInput);
             }
-            for v in &entry.values {
+            for v in entry.values.iter() {
                 bytes = bytes.saturating_add(name.len() + v.len() + 4);
                 if bytes > limit {
                     return Err(HttpErr::LimitExceeded);
@@ -420,7 +444,7 @@ impl Exchange {
         content_length: Option<usize>,
         deadline: Deadline,
     ) -> Result<(), IoErr> {
-        let mut out = Vec::with_capacity(256 + first.len());
+        let mut out = take_head_buffer(first.len());
         {
             let mut st = self.st.borrow_mut();
             h1::status_line(&mut out, st.status as u16);
@@ -456,7 +480,9 @@ impl Exchange {
                 out.extend_from_slice(first);
             }
         }
-        self.send(&out, deadline)
+        let sent = self.send(&out, deadline);
+        return_head_buffer(out);
+        sent
     }
 
     /// `HttpExchange.write_bytes(data)`.
@@ -537,17 +563,18 @@ impl Exchange {
         }
         let fields: Vec<(String, Vec<u8>)> = {
             let st = self.st.borrow();
-            let headers = st.headers.borrow();
-            headers
+            st.headers
                 .entries()
-                .iter()
-                .flat_map(|e| e.values.iter().map(|v| (e.name.clone(), v.clone())))
+                .flat_map(|e| {
+                    e.values
+                        .iter()
+                        .map(move |v| (e.name.to_string(), v.to_vec()))
+                })
                 .collect()
         };
         let host = {
             let st = self.st.borrow();
-            let headers = st.headers.borrow();
-            headers
+            st.headers
                 .first("Host")
                 .map(|h| String::from_utf8_lossy(h).into_owned())
                 .unwrap_or_default()
@@ -712,12 +739,12 @@ impl Exchange {
     /// exchange for good, so everything it owns would otherwise stay allocated with it.
     fn release_request_state(&self) {
         let mut st = self.st.borrow_mut();
-        st.method = String::new();
+        st.method = Cow::Borrowed("");
         st.path = String::new();
         st.query = String::new();
         st.decoded = Vec::new();
         st.staged = Headers::new();
-        *st.headers.borrow_mut() = Headers::new();
+        st.headers = Headers::new();
     }
 
     /// Skips what is left of the request body that is already buffered.
@@ -827,10 +854,7 @@ mod tests {
                     }
                     "/err" => return Err(HttpErr::Failed("nope".into())),
                     "/headers" => {
-                        assert_eq!(
-                            ex.headers().borrow().text("host").unwrap().unwrap(),
-                            vec!["t"]
-                        );
+                        assert_eq!(ex.headers().text("host").unwrap().unwrap(), vec!["t"]);
                         assert_eq!(ex.method(), "POST");
                         assert_eq!(ex.query(), "q=1");
                         assert_eq!(ex.protocol(), "HTTP/1.1");

@@ -40,7 +40,7 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
             })
             .collect(),
         ret,
-        noreturn: false,
+        noreturn: crate::rtcall::rt_flags(sym).noreturn,
         pure_: false,
         fresh: crate::rtcall::fresh_result(sym),
         role: crate::rtcall::extern_role(sym),

@@ -266,9 +266,7 @@ impl Checker {
         if !matches!(e.kind, ExprKind::Lambda(_)) {
             let mut breaks = i.breaks;
             let mut child = |c: &Checker, value: &Expr| {
-                if let Some(info) = c.info_of(value) {
-                    breaks = breaks || info.breaks;
-                }
+                breaks = breaks || c.with_info(value, |info| info.breaks).unwrap_or(false);
             };
             match &e.kind {
                 ExprKind::Member { left, .. } => child(self, left),

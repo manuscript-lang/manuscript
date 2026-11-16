@@ -1,3 +1,5 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	Data from "@std/core.ms",

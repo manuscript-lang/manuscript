@@ -26,10 +26,10 @@ type Detail:
 	passed: Int
 	total: Int
 	failed: List[String]
-	code_tokens: Int?
 	builds: Int
 	first_build_ok: Bool
 	checks: Int
+	code_tokens: Int?
 	error: String?
 
 fn main() Void:
@@ -55,15 +55,15 @@ fn main() Void:
 	if first := builds.first(): first_ok = first.ok
 
 	var detail = Detail(
-		false,
-		0,
-		cases.length(),
-		[],
-		tokens,
-		builds.length(),
-		first_ok,
-		rows.count(fn r: (r.phase == "check")),
-		none,
+		built: false,
+		passed: 0,
+		total: cases.length(),
+		failed: [],
+		code_tokens: tokens,
+		builds: builds.length(),
+		first_build_ok: first_ok,
+		checks: rows.count(fn r: (r.phase == "check")),
+		error: none,
 	)
 	built := bash(build, app, 600, "")
 

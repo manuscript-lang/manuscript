@@ -3,12 +3,11 @@
 //! and the closure header call them through a pointer, so they keep the leaf signature
 //! (`fn(obj)`, `fn(obj) -> obj`) and have no native twin.
 
-use super::{E, P, Sig, call_func, load_leaves, mem_layout, store_leaves};
+use super::{E, P, Sig, call_func, load_leaves, store_leaves};
 use crate::llvm_build::{FnBuilder, Ty as LTy, Types, Val};
 use crate::mir_llvm::Emitted;
 use crate::state::Gen;
-use crate::{CLOSURE_CAPTURES, CLOSURE_CODE, Glue};
-use ms_mir::ir::FuncKind;
+use crate::{CLOSURE_CODE, Glue};
 use ms_mir::layout::Leaf;
 use ms_mir::types::Ty;
 use ms_rt_abi::symbols::ISOLATE_HDR_GUARDED;
@@ -24,22 +23,15 @@ pub fn is_closure(kind: Glue) -> bool {
     )
 }
 
-/// The capture types of closure function `f` with the offset and leaves each has in the object.
+/// The capture types of closure function `f` with the offset and leaves each has in the object,
+/// and the object's size.
 fn captures(g: &Gen, f: u32) -> (Vec<(Ty, u64, Vec<Leaf>)>, u64) {
-    let FuncKind::Closure { captures } = &g.m.funcs[f as usize].kind else {
-        return (Vec::new(), u64::from(CLOSURE_CAPTURES));
-    };
-    let mut off = u64::from(CLOSURE_CAPTURES);
-    let mut out = Vec::new();
-    for c in captures {
-        let leaves = g.lay.leaves(*c);
-        let lay = mem_layout(&leaves);
-        let align = u64::from(lay.align);
-        off = off.div_ceil(align) * align;
-        out.push((*c, off, leaves));
-        off += u64::from(lay.size);
-    }
-    (out, off)
+    let layout = g.lay.closure(&g.m.funcs[f as usize]);
+    let size = u64::from(layout.size);
+    let caps = (layout.captures.into_iter())
+        .map(|c| (c.ty, u64::from(c.offset), c.leaves))
+        .collect();
+    (caps, size)
 }
 
 impl E<'_, '_, '_> {

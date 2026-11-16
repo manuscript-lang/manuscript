@@ -7,20 +7,8 @@ impl<'a, 'm> Lower<'a, 'm> {
         let Imm::Func(c) = inst.imm else {
             unreachable!()
         };
-        let caps = match &self.g.m.funcs[c.index()].kind {
-            ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
-            _ => Vec::new(),
-        };
-        let mut layouts = Vec::new();
-        let mut off = CLOSURE_CAPTURES as i64;
-        for cty in &caps {
-            let leaves = self.g.lay.leaves(*cty);
-            let lay = mem_layout(&leaves);
-            off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
-            layouts.push((off, leaves));
-            off += lay.size as i64;
-        }
-        let total = (off + 7) / 8 * 8;
+        let layout = self.g.lay.closure(&self.g.m.funcs[c.index()]);
+        let total = i64::from(layout.size);
         // Only calls borrow it, so the object lives in this frame and nothing is freed.
         let framed = inst
             .res
@@ -54,9 +42,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         let cr = self.fref(code);
         let ca = self.b.ins().func_addr(types::I64, cr);
         self.b.ins().store(flags(), ca, obj, CLOSURE_CODE);
-        for (i, (off, leaves)) in layouts.iter().enumerate() {
+        for (i, cap) in layout.captures.iter().enumerate() {
             let v = self.a(inst, i);
-            self.store_leaves(obj, *off, leaves, &v);
+            self.store_leaves(obj, i64::from(cap.offset), &cap.leaves, &v);
         }
         vec![obj]
     }
@@ -95,7 +83,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         let rets = self.g.lay.leaves(sig.ret);
         let csig = self.g.sig(&params, &rets);
         let sr = self.b.import_signature(csig);
-        let vt = self.b.ins().band_imm_s(recv[1], !3);
+        let vt = self.b.ins().band_imm_s(recv[1], !IFACE_TAG_MASK);
         let code = self
             .b
             .ins()
@@ -198,7 +186,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             } else {
                 let leaves = self.g.lay.leaves(p.ty);
                 // A result that points into the argument needs the slot after the call too.
-                args.push(if def.role == ExternRole::BorrowsArgument {
+                args.push(if self.g.m.pins_argument_slots(&def) {
                     self.spill(&v, &leaves)
                 } else {
                     self.spill_temp(&v, &leaves)

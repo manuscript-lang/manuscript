@@ -1,6 +1,12 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 import (
 	Bytes from "@std/bytes.ms",
-	Closeable, Data from "@std/core.ms",
+	Data from "@std/core.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	stdout, stdout_bytes from "@std/io/io.ms",
 	FileHandle, OpenMode, OpenOptions, open, remove, rename, stat from "@std/os/fs.ms",
@@ -79,7 +85,7 @@ fn encode_fields[F: Data](fields: F) String!:
 // The context of a child: the parent's object members with the child's added, or the
 // child's text alone when either side is not an object. This runs once per child, never
 // per record.
-fn merge_context(parent: String?, child: String) String!:
+fn merge_context(child: String, parent: String?) String!:
 	base := parent.get("")
 	if base == "": return ok(child)
 
@@ -176,14 +182,14 @@ export type Logger:
 	threshold: Int
 	// Internal state: whether records carry a `time` field.
 	timestamp: Bool
+	// Internal state: the transport this logger writes to; each child owns a duplicate.
+	transport: Transport
 	// Internal state: the largest record in bytes including the newline; none is
 	// unlimited.
 	max_bytes: Int?
 	// Internal state: JSON text of the fields bound by `child`, written as `context`;
 	// none if unbound.
 	context: String?
-	// Internal state: the transport this logger writes to; each child owns a duplicate.
-	transport: Transport
 
 // Internal: writes one record at a level number. `data` is JSON text attached as
 // is.
@@ -260,9 +266,9 @@ that cannot be encoded returns `EBADMSG`.
 */
 fn Logger.child[F: Data](fields: F) Logger!:
 	text := encode_fields(fields)?
-	context := merge_context(self.context, text)?
+	context := merge_context(text, self.context)?
 	own := self.transport.duplicate()?
-	return ok(Logger(self.threshold, self.timestamp, self.max_bytes, context, own))
+	return ok(Logger(self.threshold, self.timestamp, own, self.max_bytes, context))
 
 // Tests the current filtering threshold; Silent is never enabled as a record level.
 fn Logger.enabled(level: LogLevel) Bool:
@@ -306,9 +312,9 @@ export fn create(transport: Transport, options: LoggerOptions = LoggerOptions())
 		Logger(
 			level_value(options.level),
 			options.timestamp,
+			transport,
 			options.max_bytes,
 			none,
-			transport,
 		)
 	)
 
@@ -325,9 +331,8 @@ export fn handle_transport(file: FileHandle) Transport:
 // Appends log records to a file at `path`.
 // ms: effect std.fs.write
 export fn file_transport(path: String) Transport!:
-	match open(path, OpenMode.Append, OpenOptions(permissions: 420)):
-		ok(file): return ok(handle_transport(file))
-		error(cause): return error(cause)
+	file := open(path, OpenMode.Append, OpenOptions(permissions: 420))?
+	return ok(handle_transport(file))
 
 // Appends to a file and moves it aside once it would exceed a size, as `file_transport`
 // does otherwise. It opens the file for each record, so a rotation by one logger is
@@ -397,19 +402,16 @@ export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Trans
 		Error("logging: invalid input", kind: "EINVAL")
 	)
 
-	match open(path, OpenMode.Append, OpenOptions(permissions: 420)):
-		ok(file):
-			var probe = file
-			probe.close().get(none)
-			return ok(
-				RotatingTransport(
-					path: path.clone(),
-					max_bytes: max_bytes,
-					keep: keep,
-					closed: false,
-				)
-			)
-		error(cause): return error(cause)
+	var probe = open(path, OpenMode.Append, OpenOptions(permissions: 420))?
+	probe.close().get(none)
+	return ok(
+		RotatingTransport(
+			path: path.clone(),
+			max_bytes: max_bytes,
+			keep: keep,
+			closed: false,
+		)
+	)
 
 fn log_closed() Error:
 	return Error("logging: resource is closed", kind: "EBADF")
