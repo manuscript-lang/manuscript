@@ -540,12 +540,17 @@ mod tests {
             _ => None,
         });
         let server_protocols = vec!["echo".to_string()];
+        let fields = head
+            .fields
+            .pairs()
+            .map(|(n, v)| (n.to_string(), v.to_vec()))
+            .collect::<Vec<_>>();
         let accepted = handshake::accept(
             &Request {
                 method: &head.method,
                 host: listener.address(),
                 tls: false,
-                fields: &head.fields,
+                fields: &fields,
             },
             &ServerOptions {
                 subprotocols: &server_protocols,

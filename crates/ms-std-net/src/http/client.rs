@@ -70,17 +70,17 @@ pub struct Request {
 pub fn outgoing_headers(source: &Headers, managed: &[&str]) -> Option<Vec<(String, Vec<u8>)>> {
     let mut out = Vec::new();
     for entry in source.entries() {
-        if !headers::valid_name(&entry.name)
+        if !headers::valid_name(entry.name)
             || managed.iter().any(|m| entry.name.eq_ignore_ascii_case(m))
         {
             return None;
         }
-        let name = headers::canonical(&entry.name);
-        for value in &entry.values {
+        let name = headers::canonical(entry.name);
+        for value in entry.values.iter() {
             if !headers::valid_value(value) {
                 return None;
             }
-            out.push((name.clone(), value.clone()));
+            out.push((name.clone(), value.to_vec()));
         }
     }
     Some(out)
@@ -2602,8 +2602,8 @@ mod tests {
                 vec![b"gzip".to_vec(), b"gzip".to_vec()]
             };
             assert_eq!(
-                headers.values("Content-Encoding"),
-                Some(expected.as_slice())
+                headers.values("Content-Encoding").map(|v| v.to_vec()),
+                Some(expected.clone())
             );
         }
     }

@@ -40,7 +40,7 @@ fn handshake_headers(h: &Headers) -> Option<Vec<(String, Vec<u8>)>> {
     let mut out = Vec::new();
     for entry in h.entries() {
         let lower = entry.name.to_ascii_lowercase();
-        if !crate::http::headers::valid_name(&entry.name)
+        if !crate::http::headers::valid_name(entry.name)
             || lower.starts_with("sec-websocket-")
             || lower == "upgrade"
             || lower == "connection"
@@ -48,13 +48,13 @@ fn handshake_headers(h: &Headers) -> Option<Vec<(String, Vec<u8>)>> {
         {
             return None;
         }
-        let name = crate::http::headers::canonical(&entry.name);
-        for v in &entry.values {
+        let name = crate::http::headers::canonical(entry.name);
+        for v in entry.values.iter() {
             if std::str::from_utf8(v).is_err() || v.iter().any(|&b| matches!(b, b'\r' | b'\n' | 0))
             {
                 return None;
             }
-            out.push((name.clone(), v.clone()));
+            out.push((name.clone(), v.to_vec()));
         }
     }
     Some(out)

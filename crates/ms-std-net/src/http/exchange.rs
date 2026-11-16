@@ -76,10 +76,10 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
         ..
     } = *pending;
     let mut fields = head.fields;
-    fields.retain(|(n, _)| !n.eq_ignore_ascii_case("Transfer-Encoding"));
+    fields.remove("Transfer-Encoding");
     if let Some(host) = &target.host {
-        fields.retain(|(n, _)| !n.eq_ignore_ascii_case("Host"));
-        fields.push(("Host".into(), host.clone().into_bytes()));
+        fields.set("Host", host.clone().into_bytes());
+        fields.sort();
     }
     let timeout = server.limits.timeout;
     let deadline = timeout.zip(started).map(|(t, at)| deadline_at(at, t));
@@ -97,7 +97,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             } else {
                 "HTTP/1.0"
             },
-            headers: Rc::new(RefCell::new(Headers::from_received(fields))),
+            headers: Rc::new(RefCell::new(fields)),
             decoder,
             decoded: Vec::new(),
             remaining_read: server.limits.body,
@@ -332,7 +332,7 @@ impl Exchange {
         let limit = self.server.limits.header;
         let mut bytes = 0usize;
         for entry in headers.entries() {
-            let name = entry.name.as_str();
+            let name = entry.name;
             if !headers::valid_name(name)
                 || name.eq_ignore_ascii_case("Content-Length")
                 || name.eq_ignore_ascii_case("Transfer-Encoding")
@@ -340,7 +340,7 @@ impl Exchange {
             {
                 return Err(HttpErr::InvalidInput);
             }
-            for v in &entry.values {
+            for v in entry.values.iter() {
                 bytes = bytes.saturating_add(name.len() + v.len() + 4);
                 if bytes > limit {
                     return Err(HttpErr::LimitExceeded);
@@ -540,8 +540,11 @@ impl Exchange {
             let headers = st.headers.borrow();
             headers
                 .entries()
-                .iter()
-                .flat_map(|e| e.values.iter().map(|v| (e.name.clone(), v.clone())))
+                .flat_map(|e| {
+                    e.values
+                        .iter()
+                        .map(move |v| (e.name.to_string(), v.to_vec()))
+                })
                 .collect()
         };
         let host = {
