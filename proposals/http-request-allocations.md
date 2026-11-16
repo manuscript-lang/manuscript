@@ -74,3 +74,22 @@ Estimate, to be replaced by guard numbers: 18 of 22 allocations removed at 79 in
 3. Remaining sites: `run_handlers`, `after_read`, `poll_ready`, `finish_grow`, handler glue.
 
 Each stage: the `guard-http-request` count before and after in the PR, and `ms-std-net` tests for 0, 1 and 8 headers read and HTTP/1 and HTTP/2.
+
+## Status (2026-11-16) and open items
+
+Merged: #4218 (allocator), #4260, #4264, #4269 (flat lazy header table, spans from the parse, request buffer reuse), #4277 (reactor poll, Connection scan, event list). Guard `http-request`, server only, 10k requests, callgrind, instructions per request:
+
+| shape | start | now (main 94799fc) | C server |
+| --- | --- | --- | --- |
+| six headers | 23,965 | 15,824 | ~2,474 |
+| one header | 15,378 | 13,740 | ~1,856 |
+
+Self cost per request at the same revision (six headers), ranked; items for a later thread, by owner:
+
+- Parser (kept, httparse): `parse_headers_iter_uninit` 1,160, `match_header_value_vectored` 242, `parse_with_config…` 152. The oracle test `line_ends_found_from_the_parse_agree_with_the_byte_scan` must pass before httparse is bumped.
+- Library, open: `RequestScan::of` 543 (one pass per field, six fields), `parse_request_in` 392, `after_read` 389, `from_parsed` 320, `exchange::run` 213, `reactor_task` 248, `write_head` 161, `header_line` 130, `sniff::detect` 122, `target::parse` 175, `read_in` 145. Allocation: `__rust_alloc` 451 and `__rust_dealloc` 506 remain (about 14 sites per request: `target::parse` strings, Pending, `run_handlers`, `after_read`, `request_task`, handle objects). Not done: write the response head straight into the output buffer, and make `finish`/`queue_output`/`write_out` one pass (about 0.6k, 0.5k, 0.44k inclusive).
+- Scheduler and reactor, other owners: `swap_ctx` 496, `hibernate_idle` 241, `reactor_wait` 233, `switch_away` 352, `steal_wait_ns` 169, `Poller::poll` 175, `expire_timers` 128, `msrt_task_spawn` 160.
+- Generated glue, other owner: `msrt_cleanup_push` 324 and `msrt_cleanup_discard` 187 (registrations for scopes that cannot park need not exist), `serve_buffered` 295, `msrt_string_from_bytes` 145, `from_utf8` 130, `isolate::current` 141, handle objects about 2.1k together.
+- Checked and dropped: reordering `list_waiting` checks saves about 5 instructions per request; its 158 is the real work.
+
+Honest floor: library work alone reaches about 13k for six headers; under 10k also needs the glue and scheduler items above.
