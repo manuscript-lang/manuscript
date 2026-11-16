@@ -33,7 +33,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/crypto/hash.ms`: Crc64, Crc64Polynomial, MapHash, crc64, crc64_of, fnv1_32, fnv1_64, fnv1a32, fnv1a64, random_seed
 - `@std/data/checksum.ms`: Adler32, Crc32, adler32, adler32_of, crc32, crc32_of
 - `@std/data/config.ms`: parse_dotenv, parse_ini
-- `@std/data/csv.ms`: CsvOptions, csv_rows, csv_writer, parse, stringify
+- `@std/data/csv.ms`: CsvOptions, csv_rows, csv_writer, each_cell, parse, stringify
 - `@std/data/diff.ms`: CloseMatchesOptions, UnifiedDiffOptions, close_matches, edit_distance, similarity_ratio, unified_diff
 - `@std/data/encoding.ms`: Base32Options, ascii85_decode, ascii85_encode, ascii_decode, ascii_encode, base32_decode, base32_encode, base64_decode, base64_encode, hex_decode, hex_encode, latin1_decode, latin1_encode, utf16_decode, utf16_encode
 - `@std/data/encoding_stream.ms`: base64_decoded, base64_encoded, hex_decoded, hex_encoded
