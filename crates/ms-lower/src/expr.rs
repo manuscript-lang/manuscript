@@ -684,11 +684,35 @@ impl<'a> FnLower<'a> {
         Some((b.uid, names.clone()))
     }
 
+    /// `<call>.split(..)[0]`: only the first piece of the split is read.
+    fn first_of_split(&self, left: &Expr, index: &Expr) -> bool {
+        let ExprKind::Number(text) = &index.kind else {
+            return false;
+        };
+        let ExprKind::Call { callee, .. } = &left.kind else {
+            return false;
+        };
+        let ExprKind::Member { name, .. } = &callee.kind else {
+            return false;
+        };
+        self.syms.str(text) == "0" && self.syms.str(name) == "split"
+    }
+
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
         if self.ety(left).is(Builtin::Map) {
             return self.map_index(e, left, index);
         }
+        let first = self.first_of_split(left, index);
+        if first {
+            self.split_first_for = Some(left as *const Expr);
+        }
         let l = self.expr(left)?;
+        if first {
+            self.split_first_for = None;
+            if matches!(self.b.m.types.kind(self.ty_of(l.v)), TyKind::Str) {
+                return Ok(l);
+            }
+        }
         if self.dead {
             return Ok(l);
         }

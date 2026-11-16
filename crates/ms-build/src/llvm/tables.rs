@@ -270,8 +270,13 @@ pub fn read(
         Ok(EndianSlice::new(data, endian))
     };
     let dwarf = gimli::Dwarf::load(load).map_err(|e| err("sections", e))?;
+    // The DWARF names a standard-library file by its real path; the tables by its logical one.
+    let on_disk: Vec<_> = files
+        .iter()
+        .map(|f| ms_mir::debug_files::debug_file_name(f))
+        .collect();
     let file_index = |path: &str| -> u32 {
-        files
+        on_disk
             .iter()
             .position(|f| f == path)
             .map_or(u32::MAX, |i| i as u32)

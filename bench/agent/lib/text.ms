@@ -71,7 +71,7 @@ export fn run_in(
 		RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s)),
 	).wait()
 	elapsed := monotonic().difference(start).nanos.to_float() / 1000000000.0
-	if done := result.to_optional():
+	if done := result.clone().to_optional():
 		return Ran(
 			done.exit_code,
 			done.stdout.decode_utf8().get(""),

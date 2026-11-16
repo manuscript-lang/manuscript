@@ -219,7 +219,7 @@ impl Interp<'_> {
                 let v = Val::Opt(Some(Rc::new(arg(f, ops.regs, inst.args[0], false, m))));
                 ops.set(v)
             }
-            Op::OptNone => ops.set(Val::Opt(None)),
+            Op::OptNone | Op::OptNoneOwned => ops.set(Val::Opt(None)),
             Op::OptIsSome => {
                 let Val::Opt(o) = &ops.regs[inst.args[0].index()] else {
                     return Err(Raw::internal("opt.is_some on &inst.args non-optional"));

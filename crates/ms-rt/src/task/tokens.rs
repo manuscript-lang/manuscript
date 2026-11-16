@@ -128,6 +128,17 @@ pub unsafe extern "C-unwind" fn msrt_token_park(
     timeout_ns: i64,
     value_out: *mut u64,
 ) -> u32 {
+    // SAFETY: forwards to the park path.
+    unsafe { msrt_token_park_at(id, after_ns(timeout_ns), value_out) }
+}
+
+/// [`msrt_token_park`] with an absolute deadline on the monotonic clock, negative for none.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_token_park_at(
+    id: u64,
+    at_ns: i64,
+    value_out: *mut u64,
+) -> u32 {
     // SAFETY: single threaded scheduler; `value_out` is null or writable.
     unsafe {
         let cur = ensure_init();
@@ -166,7 +177,7 @@ pub unsafe extern "C-unwind" fn msrt_token_park(
         k.waiter = (*cur).handle;
         (*cur).wait_token = id;
         (*cur).wait_events = 0;
-        set_deadline(cur, timeout_ns);
+        set_deadline(cur, at_ns);
         (*cur).state = State::Waiting;
         switch_away();
         let result = (*cur).wait_result;
@@ -283,6 +294,8 @@ pub fn teardown() {
         if !s.tokens.is_empty() {
             isolate::save_token_generations(s.tokens.iter().map(|token| token.gen_).collect());
         }
+        // Buffers kept for the next spawn; this thread has no next spawn.
+        s.spares = Vec::new();
         s.tokens = Vec::new();
         s.free_tokens = Vec::new();
         s.remote_tokens = 0;

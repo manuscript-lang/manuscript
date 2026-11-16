@@ -40,6 +40,7 @@ fn handles(op: Op) -> bool {
             | Op::OptView
             | Op::OptViewAt
             | Op::OptNone
+            | Op::OptNoneOwned
             | Op::OptIsSome
             | Op::OptGet
             | Op::OptUnwrap
@@ -232,7 +233,7 @@ fn convert(b: &mut FnBuilder, v: &Val, to: &LTy, signed: Option<bool>) -> Val {
 /// The optional or enum operand or result the op works on.
 fn subject(f: &Func, inst: &Inst) -> Ty {
     match inst.op {
-        Op::OptSome | Op::OptView | Op::OptNone | Op::AltNew | Op::AltView => {
+        Op::OptSome | Op::OptView | Op::OptNone | Op::OptNoneOwned | Op::AltNew | Op::AltView => {
             f.ty(inst.res.expect("a result"))
         }
         _ => f.ty(inst.args[0]),
@@ -372,7 +373,7 @@ fn pre(
                 .collect(),
             _ => arg(0).clone(),
         },
-        (Op::OptNone, _) => match opt_repr(lay, res_ty()) {
+        (Op::OptNone | Op::OptNoneOwned, _) => match opt_repr(lay, res_ty()) {
             OptRepr::Str => vec![Val::int(0), Val::int(ms_rt_abi::STR_STATIC as i64)],
             _ => held_leaves(lay, res_ty()).iter().map(zero).collect(),
         },

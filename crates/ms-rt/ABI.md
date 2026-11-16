@@ -338,6 +338,7 @@ behave per task.
 msrt_task_spawn(entry: extern "C-unwind" fn(*mut u8), arg, flags: u32, stack_bytes: usize) -> u64
 msrt_task_yield()
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
+msrt_task_wait_fd_at(fd: i32, events: u32, at_ns: i64) -> u32
 msrt_task_sleep(ns: i64) -> u32
 msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8
 msrt_task_cancel(handle: u64)
@@ -356,7 +357,9 @@ default.
 `wait_fd` parks the task until `fd` is ready for `events` (`1` read, `2` write), the timeout
 (negative: none) expires, or the task is cancelled. It returns the ready bits (`1`, `2`, plus `4`
 for error/hangup), `8` for timeout or `16` for cancelled. A cancelled wait means the caller
-should unwind with `msrt_cancelled()` (or return an error). Rules for natives:
+should unwind with `msrt_cancelled()` (or return an error). `wait_fd_at` is the same with an absolute
+deadline on the monotonic clock (negative: none), for a caller that already holds the time to wait until.
+Rules for natives:
 - Use non-blocking descriptors and retry after `EAGAIN`; a blocking syscall stalls every task.
 - One task may wait on a given descriptor at a time (a second waiter faults).
 - Regular files cannot be polled and report ready at once.
