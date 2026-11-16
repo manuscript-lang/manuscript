@@ -12,10 +12,10 @@ fn counted(var counter: Counter) Counter:
 	counter.calls += 1
 	return counter
 
-fn require_value[T, E](value: T?, cause: E) T!E:
+fn require_value[T, E](cause: E, value: T?) T!E:
 	return value.ok_or(cause)
 
-fn require_lazy[T, E](value: T?, create: fn() E) T!E:
+fn require_lazy[T, E](create: fn() E, value: T?) T!E:
 	return value.ok_or_else[E](create)
 
 fn success_only[T, E](value: T!E) T?:
@@ -65,19 +65,19 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	missing: Int? := none
 	(
 		(
-			require_value(present, counted(var counter)).get() != 0
+			require_value(counted(var counter), present).get() != 0
 			or counter.calls != 1
 		) | expect_false?
 	)
 
-	var cause = require_value(missing, counter.clone()).err().clone()
+	var cause = require_value(counter.clone(), missing).err().clone()
 	cause.calls = 2
 	counter.calls | expect_equal(1)?
 
 	create := fn() Counter: Counter(10)
-	(require_lazy(present, create).get() != 0 or counter.calls != 1) | expect_false?
+	(require_lazy(create, present).get() != 0 or counter.calls != 1) | expect_false?
 
-	error_result := require_lazy(missing, create)
+	error_result := require_lazy(create, missing)
 	error_result.err().calls | expect_equal(10)?
 
 	var lazy_cause = error_result.err().clone()

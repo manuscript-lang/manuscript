@@ -167,8 +167,6 @@ export type FileInfo:
 	mode: Int
 	// Only the permission, setuid, setgid, and sticky bits of `mode`, 0 through 4095.
 	permissions: Int
-	// Birth time of the file, or none when the host or filesystem does not record it.
-	created: Timestamp?
 	// Preferred I/O block size in bytes; unavailable fields are zero.
 	block_size: Int
 	// Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero.
@@ -191,6 +189,8 @@ export type FileInfo:
 	uid: Int
 	// Numeric id of the owning group; 0 where unavailable.
 	gid: Int
+	// Birth time of the file, or none when the host or filesystem does not record it.
+	created: Timestamp?
 
 // True for an ordinary file.
 fn FileInfo.is_file() Bool:

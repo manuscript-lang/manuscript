@@ -1987,18 +1987,9 @@ impl Checker {
         self.loops = old_loops;
     }
 
-    /// Reports each required parameter or field that follows one with an explicit default.
+    /// Reports each required parameter or field that follows one with a default; a `T?` parameter or field defaults to `none`.
     fn check_optionals_last(&mut self, params: &[ms_syntax::ast::Param]) {
-        // A `T?` parameter defaults to `none` without being written; it does not count as an
-        // optional argument that must trail, only an explicit default does.
-        let explicit = |c: &Self, p: &ms_syntax::ast::Param| {
-            p.default.is_some()
-                && !matches!(
-                    p.ty.as_ref().map(|t| &t.kind),
-                    Some(TypeKind::Named { name, args }) if args.len() == 1 && c.syms.str(*name) == "Optional"
-                )
-        };
-        let Some(first) = params.iter().position(|p| explicit(self, p)) else {
+        let Some(first) = params.iter().position(|p| p.default.is_some()) else {
             return;
         };
         let optional = self.syms.str(params[first].name).to_string();

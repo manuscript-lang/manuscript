@@ -35,10 +35,6 @@ use std::time::{Duration, Instant};
 /// from a held-up thread moves every connection with a request waiting, which can leave one
 /// thread with most of them; the server with the fewest then takes half the difference back.
 const BALANCE_EVERY: Duration = Duration::from_millis(10);
-/// Ticks a thread is held up before the watcher looks often (a millisecond): a handler that
-/// computes this long is worth finding within a tick next time, while a thread the operating
-/// system set aside for a moment is not worth the watcher's own time.
-const LONG: u64 = 10;
 /// The smallest difference in connections worth evening out.
 const BALANCE_MIN: usize = 4;
 /// When the watcher last compared connection counts (monotonic ns).
@@ -88,14 +84,14 @@ impl Beat {
         resting & (1 << self.thread) != 0
     }
 
-    /// How many ticks the thread has run one task, if it has since before the watcher's last
-    /// look. A thread that just woke has an old turn too, so it must also have been awake since.
-    fn held_up(&self, look: Look, resting: u64) -> Option<u64> {
+    /// Whether the thread has run one task since before the watcher's last look. A thread that
+    /// just woke has an old turn too, so it must also have been awake since.
+    fn held_up(&self, look: Look, resting: u64) -> bool {
         let since = self
             .seen
             .load(Ordering::Relaxed)
             .max(watch::stirred(self.thread));
-        (!self.rests(resting) && since < look.last).then(|| look.now - since)
+        !self.rests(resting) && since < look.last
     }
 }
 
@@ -355,15 +351,12 @@ impl Group {
     }
 
     /// Sends a resting member to each member that is held up with connections waiting.
-    /// Answers whether one of them was held up for [`LONG`]: the watcher then looks often, to
-    /// find the next one sooner.
-    fn watch(&self, look: Look, resting: u64) -> bool {
+    fn watch(&self, look: Look, resting: u64) {
         let members = lock(&self.members);
-        let mut long = false;
         for held in members.iter() {
-            let Some(ticks) = held.beat.held_up(look, resting) else {
+            if !held.beat.held_up(look, resting) {
                 continue;
-            };
+            }
             if held.waiting.load(Ordering::Relaxed) == 0 {
                 continue;
             }
@@ -373,10 +366,8 @@ impl Group {
                     limit: usize::MAX,
                     ready_only: true,
                 });
-                long |= ticks >= LONG;
             }
         }
-        long
     }
 
     /// Has the member with the fewest connections take half its difference to the one with the
@@ -401,21 +392,19 @@ impl Group {
     }
 }
 
-/// The watcher's hook: looks at every group, and answers whether to look often for a while.
-fn tick(look: Look, resting: u64) -> bool {
+/// The watcher's hook: looks at every group.
+fn tick(look: Look, resting: u64) {
     let now = ms_rt::sys::monotonic_ns();
     let balance = now - BALANCED.load(Ordering::Relaxed) >= BALANCE_EVERY.as_nanos() as i64;
     if balance {
         BALANCED.store(now, Ordering::Relaxed);
     }
-    let mut often = false;
     for group in lock(&GROUPS).iter() {
-        often |= group.watch(look, resting);
+        group.watch(look, resting);
         if balance {
             group.balance();
         }
     }
-    often
 }
 
 /// What an idle connection leaves in the list crosses threads: a compile-time check that it is

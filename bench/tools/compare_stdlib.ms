@@ -35,7 +35,18 @@ export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
 	var medians = Map[String, Float]()
 
 	for c in cases:
-		stats := c.stats.get(Stats(0, none, none, 0.0, none, none, none, none))
+		stats := c.stats.get(
+			Stats(
+				operations: 0,
+				iterations: none,
+				samples: none,
+				median_ns: 0.0,
+				min_ns: none,
+				max_ns: none,
+				mean_ns: none,
+				stddev_ns: none,
+			)
+		)
 		operations.add(c.name.clone(), stats.operations)
 		medians.add(c.name.clone(), stats.median_ns)
 

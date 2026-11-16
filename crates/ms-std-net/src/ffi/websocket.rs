@@ -15,8 +15,6 @@ use ms_rt_abi::STATUS_NONE;
 abi_type! {
     /// `WebSocketOptions` as the compiler lays it out for natives.
     pub struct WebSocketOptionsWire {
-        pub max_message_bytes: OptInt,
-        pub timeout: OptInt,
         // `tls` inline, then `compression` right behind it (see `tls_options`).
         pub tls_server_name: Str,
         pub tls_roots_pem: Str,
@@ -25,6 +23,8 @@ abi_type! {
         pub tls_alpn: StringList,
         pub tls_require_client_certificate: u8,
         pub compression: u8,
+        pub max_message_bytes: OptInt,
+        pub timeout: OptInt,
     }
 }
 
@@ -183,16 +183,16 @@ mod tests {
     use super::*;
     use core::mem::offset_of;
 
-    /// The compiler packs a record's leaves with no padding after a nested record: after two
-    /// `Int?` (16 bytes each), four strings, the ALPN list (24 bytes) and one byte for
+    /// The compiler packs a record's leaves with no padding after a nested record: after four
+    /// strings (64 bytes), the ALPN list (24 bytes) and one byte for
     /// `require_client_certificate`, `compression` is the next byte.
     #[test]
     fn compression_follows_the_inline_tls_options_byte() {
-        assert_eq!(offset_of!(WebSocketOptionsWire, tls_server_name), 32);
+        assert_eq!(offset_of!(WebSocketOptionsWire, tls_server_name), 0);
         assert_eq!(
             offset_of!(WebSocketOptionsWire, tls_require_client_certificate),
-            120
+            88
         );
-        assert_eq!(offset_of!(WebSocketOptionsWire, compression), 121);
+        assert_eq!(offset_of!(WebSocketOptionsWire, compression), 89);
     }
 }

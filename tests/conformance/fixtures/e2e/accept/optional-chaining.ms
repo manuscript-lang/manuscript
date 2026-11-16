@@ -7,8 +7,8 @@ type Inner:
 	tag: String?
 
 type Outer:
-	inner: Inner?
 	name: String
+	inner: Inner?
 
 type Counter:
 	calls: Int

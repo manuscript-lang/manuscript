@@ -20,9 +20,9 @@ fn observed(value: Resource?) Bool: value.is_some()
 
 fn mapped(value: Resource?) Int?: value.map(fn item: item.id)
 
-fn generic_map[T, U](value: T?, transform: fn(T) U) U?: value.map(transform)
+fn generic_map[T, U](transform: fn(T) U, value: T?) U?: value.map(transform)
 
-fn generic_then[T, U](value: T?, transform: fn(T) U?) U?: value.and_then(transform)
+fn generic_then[T, U](transform: fn(T) U?, value: T?) U?: value.and_then(transform)
 
 fn identity[T](value: T) T: value
 
@@ -54,8 +54,8 @@ test "borrowed source helpers close intact owned wrapper temporaries once":
 	write_file(path, "").wait()?
 	expect_equal(observed(present(path, 1)), true)?
 	expect_equal(mapped(present(path, 2)), 2)?
-	expect_equal(generic_map(present(path, 3), fn item: item.id), 3)?
-	expect_equal(generic_then(present(path, 4), fn(item: Resource) Int?: item.id), 4)?
+	expect_equal(generic_map(fn item: item.id, present(path, 3)), 3)?
+	expect_equal(generic_then(fn(item: Resource) Int?: item.id, present(path, 4)), 4)?
 	expect_equal(present(path, 5).map(fn item: item.id), 5)?
 	expect_equal(observed(none), false)?
 	expect_equal(log_text(path)?, "1,2,3,4,5,")?
@@ -144,7 +144,7 @@ fn scalar_observer() Void:
 test "scalar wrapper payloads retain their source-call close obligation":
 	_fault := expect_fault(scalar_observer)?
 
-fn extra(value: Resource?, other: Int) Bool: value.is_some() and other == 1
+fn extra(other: Int, value: Resource?) Bool: value.is_some() and other == 1
 
 fn number() Int!: ok(1)
 
@@ -152,7 +152,7 @@ test "later successful try preserves source temporary ownership":
 	directory := temporary("source-wrapper-")?
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
-	expect_equal(extra(present(path, 30), number()?), true)?
+	expect_equal(extra(value: present(path, 30), other: number()?), true)?
 	expect_equal(log_text(path)?, "30,")?
 
 fn named_transferred_fault(path: String) Void:
@@ -200,7 +200,7 @@ test "source-reader temporaries finish on each loop condition and short circuit"
 fn number_failure() Int!: error(Error("expected operand error"))
 
 fn later_try_fails(path: String) Void!:
-	_value := extra(present(path, 70), number_failure()?)
+	_value := extra(value: present(path, 70), other: number_failure()?)
 
 fn pair_observed(first: Resource?, second: Resource?) Bool:
 	return first.is_some() and second.is_some()

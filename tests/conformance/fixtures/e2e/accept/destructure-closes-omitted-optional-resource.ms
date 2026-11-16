@@ -11,8 +11,8 @@ fn var Handle.close() Void!:
 type Job:
 	label: String
 	input: Handle
-	spare: Handle?
 	more: List[Handle]
+	spare: Handle?
 
 fn keep(job: Job, var out: List[Handle]) Void:
 	{input} := job
@@ -26,16 +26,16 @@ fn take(job: Job) Handle:
 export fn main() Int:
 	var out = List[Handle]()
 	print("local")
-	local := Job("a", Handle(1), Handle(2), [Handle(3)])
+	local := Job(label: "a", input: Handle(1), spare: Handle(2), more: [Handle(3)])
 	{input} := local
 	out.append(input)
 	print("none")
-	empty := Job("b", Handle(4), none, [])
+	empty := Job(label: "b", input: Handle(4), spare: none, more: [])
 	{input: kept} := empty
 	out.append(kept)
 	print("param")
-	keep(Job("c", Handle(5), Handle(6), [Handle(7)]), var out)
+	keep(Job(label: "c", input: Handle(5), spare: Handle(6), more: [Handle(7)]), var out)
 	print("return")
-	moved := take(Job("d", Handle(8), Handle(9), []))
+	moved := take(Job(label: "d", input: Handle(8), spare: Handle(9), more: []))
 	print(f"end {out.length()} {moved.id}")
 	return 0
