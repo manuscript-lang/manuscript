@@ -10,6 +10,8 @@ A park inside a shield (a scope close, a promise's task-end drop) is not cancell
 
 An implicit close is always shielded, including the close of a discarded statement result (`xs.pop()` as a statement, `drop_unused`) and of a pending temporary (`close_temp`): they were the two that were not, so a cancel arriving during such a close made it fail and then fault (`implicit-close-shielded.ms`).
 
+A thread's promise table owns the closures of deferred promises nobody waited on; `promise::teardown` drops them (a cancelled `promise-cross-thread.ms` run leaked two blocks at every park until it did).
+
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
 Found by the first sweep (baseline, not cancellation): `http-hardening.ms` "close cancels a handler parked on a request body" ends with one 16 B block even with no cancellation (a client read after the server closed the connection triggers it); the sweep compares against that baseline, and `make leak-check` owned the fix (#3083, covered by the MIR unwind pass).
