@@ -124,7 +124,8 @@ impl<L: Lower> Engine<L> {
         link: &[String],
         pin: Option<&Path>,
     ) -> Result<ms_build::Backend, String> {
-        let build = self.build_options();
+        let mut build = self.build_options();
+        build.code_cache = code_cache_dir(compiled);
         let runtime = self.runtime_path()?;
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
         let backend = ms_build::build_executable_pinned(
@@ -575,6 +576,20 @@ impl Drop for TempDir {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
     }
+}
+
+/// Where compiled functions are kept between builds: `.ms-cache/code` in the project (beside the
+/// entry file for a single file). `MS_CACHE=off` turns the cache off.
+fn code_cache_dir(compiled: &Compiled) -> Option<PathBuf> {
+    if std::env::var("MS_CACHE").is_ok_and(|v| v == "off" || v == "0") {
+        return None;
+    }
+    let root = if compiled.project_root.is_empty() {
+        &compiled.source_root
+    } else {
+        &compiled.project_root
+    };
+    (!root.is_empty()).then(|| Path::new(root).join(".ms-cache").join("code"))
 }
 
 #[cfg(test)]

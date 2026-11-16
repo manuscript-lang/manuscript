@@ -1,6 +1,7 @@
 //! Module-level code generation state: function declarations, runtime imports,
 //! static data, and the glue functions (drop, copy) generated on demand.
 
+use crate::codecache::{self, Cached, CachedReloc, LabelRange, Labels, Row, Target};
 use crate::layout::{Layouts, Leaf};
 use crate::lower::Lower;
 use crate::{Error, Options};
@@ -249,6 +250,8 @@ pub struct Gen<'m> {
     unit_blocks: HashMap<(ms_mir::types::AltId, usize), DataId>,
     /// The `ms.tables` blob, once emitted.
     pub tables: Option<DataId>,
+    /// Compiled functions kept between builds, and the hash of what every key shares.
+    pub cache: Option<(crate::codecache::Store, crate::codecache::Hasher)>,
 }
 
 impl Gen<'_> {
@@ -773,7 +776,9 @@ fn compile_with_isa(
         tables: None,
         desc_ids: HashMap::new(),
         unit_blocks: HashMap::new(),
+        cache: None,
     };
+    g.cache = open_cache(&g);
     let mut ctx = Context::new();
     let mut fctx = FunctionBuilderContext::new();
     {
@@ -869,10 +874,32 @@ fn compile_with_isa(
                     crate::slotshare::share(&mut ctx.func, &temps);
                     let fid = g.funcs[i];
                     prepare(&g, &mut ctx);
-                    pipe.submit(&mut g, std::mem::replace(&mut ctx, Context::new()), fid, i)?;
+                    let key = g
+                        .vars
+                        .get(&i)
+                        .and_then(|vars| function_key(&g, &mut ctx.func, f, vars, g.scope_base));
+                    let meta = Meta {
+                        key,
+                        scope_base: g.scope_base,
+                    };
+                    let done = std::mem::replace(&mut ctx, Context::new());
+                    let hit = key.and_then(|k| g.cache.as_mut()?.0.get(k));
+                    match hit.filter(|hit| hit_fits(hit, &done.func)) {
+                        Some(hit) => pipe.submit_hit(&mut g, done, hit, fid, i, meta)?,
+                        None => pipe.submit(&mut g, done, fid, i, meta)?,
+                    }
                 }
                 pipe.finish(&mut g)
             })?;
+            if let Some((store, _)) = g.cache.take() {
+                if g.opts.build.timings {
+                    eprintln!(
+                        "ms-timings: code cache {} hits, {} compiled",
+                        store.hits, store.misses
+                    );
+                }
+                store.save();
+            }
             while let Some((kind, ty)) = g.queue.pop() {
                 let temps;
                 let id = g.glue[&(kind, ty)];
@@ -1010,20 +1037,38 @@ fn define_with(
     g.module
         .define_function(id, ctx)
         .map_err(|e| Error(format!("{name}: {e:?}")))?;
-    finish(g, ctx, id, name, source, Vec::new())
+    finish(g, ctx, id, name, source, Vec::new(), 0);
+    Ok(())
 }
 
 /// Lowered functions in flight at once; bounds the contexts held.
 const IN_FLIGHT: usize = 512;
 
-/// A function compiled by a worker: its position in the order, its MIR index and symbol, and the
-/// context (or the error) that Cranelift returned.
-type Done = (usize, FuncId, usize, Result<Context, String>);
+/// What a lowered function carries to its definition besides its context: the cache key (when
+/// the cache is on) and the scope base its locations were interned with.
+#[derive(Clone, Copy)]
+struct Meta {
+    key: Option<u128>,
+    scope_base: u32,
+}
+
+/// A function's machine code: compiled by a worker (its context, or the error Cranelift returned)
+/// or found in the cache (the context it was lowered into and the stored code).
+enum Product {
+    Compiled(Result<Context, String>),
+    Hit(Context, Box<Cached>),
+}
+
+/// A function's position in the order, its symbol, its MIR index, its metadata and its code.
+type Done = (usize, FuncId, usize, Meta, Product);
+
+/// A lowered function handed to a worker: position, symbol, MIR index, metadata, context.
+type Job = (usize, FuncId, usize, Meta, Context);
 
 /// Cranelift compilation on worker threads. Functions are submitted as they are lowered and defined
 /// in submission order as their results arrive, so the object is the same as a serial build's.
 struct Pipeline {
-    jobs: Option<std::sync::mpsc::Sender<(usize, FuncId, usize, Context)>>,
+    jobs: Option<std::sync::mpsc::Sender<Job>>,
     done: std::sync::mpsc::Receiver<Done>,
     /// Results that arrived ahead of an earlier function's.
     early: HashMap<usize, Done>,
@@ -1037,7 +1082,7 @@ impl Pipeline {
         isa: &'s cranelift_codegen::isa::OwnedTargetIsa,
     ) -> Pipeline {
         use std::sync::{Mutex, mpsc};
-        let (jobs, queue) = mpsc::channel::<(usize, FuncId, usize, Context)>();
+        let (jobs, queue) = mpsc::channel::<Job>();
         let (sender, done) = mpsc::channel::<Done>();
         let queue = std::sync::Arc::new(Mutex::new(queue));
         let threads = std::thread::available_parallelism().map_or(1, usize::from);
@@ -1047,14 +1092,17 @@ impl Pipeline {
                 let mut plane = cranelift_codegen::control::ControlPlane::default();
                 loop {
                     let job = queue.lock().unwrap().recv();
-                    let Ok((seq, id, i, mut ctx)) = job else {
+                    let Ok((seq, id, i, meta, mut ctx)) = job else {
                         return;
                     };
                     let result = match ctx.compile(&**isa, &mut plane) {
                         Ok(_) => Ok(ctx),
                         Err(e) => Err(format!("{e:?}")),
                     };
-                    if sender.send((seq, id, i, result)).is_err() {
+                    if sender
+                        .send((seq, id, i, meta, Product::Compiled(result)))
+                        .is_err()
+                    {
                         return;
                     }
                 }
@@ -1069,14 +1117,38 @@ impl Pipeline {
         }
     }
 
-    fn submit(&mut self, g: &mut Gen, ctx: Context, id: FuncId, i: usize) -> Result<(), Error> {
+    fn submit(
+        &mut self,
+        g: &mut Gen,
+        ctx: Context,
+        id: FuncId,
+        i: usize,
+        meta: Meta,
+    ) -> Result<(), Error> {
         let seq = self.submitted;
         self.submitted += 1;
         self.jobs
             .as_ref()
             .expect("pipeline open")
-            .send((seq, id, i, ctx))
+            .send((seq, id, i, meta, ctx))
             .map_err(|_| Error("Cranelift worker stopped".into()))?;
+        self.drain(g, self.submitted - self.defined > IN_FLIGHT)
+    }
+
+    /// Like [`Pipeline::submit`] for a function whose code the cache already holds.
+    fn submit_hit(
+        &mut self,
+        g: &mut Gen,
+        ctx: Context,
+        hit: Cached,
+        id: FuncId,
+        i: usize,
+        meta: Meta,
+    ) -> Result<(), Error> {
+        let seq = self.submitted;
+        self.submitted += 1;
+        self.early
+            .insert(seq, (seq, id, i, meta, Product::Hit(ctx, Box::new(hit))));
         self.drain(g, self.submitted - self.defined > IN_FLIGHT)
     }
 
@@ -1111,23 +1183,216 @@ impl Pipeline {
         Ok(())
     }
 
-    fn define(&mut self, g: &mut Gen, (_, id, i, result): Done) -> Result<(), Error> {
+    fn define(&mut self, g: &mut Gen, (_, id, i, meta, product): Done) -> Result<(), Error> {
         let f = &g.m.funcs[i];
-        let mut ctx = result.map_err(|e| Error(format!("{}: {e}", f.name)))?;
-        let cc = ctx.compiled_code().expect("function compiled");
-        let relocs: Vec<_> = cc
-            .buffer
-            .relocs()
-            .iter()
-            .map(|r| cranelift_module::ModuleReloc::from_mach_reloc(r, &ctx.func, id))
-            .collect();
-        let alignment = cc.buffer.alignment as u64;
-        g.module
-            .define_function_bytes(id, alignment, cc.buffer.data(), &relocs)
-            .map_err(|e| Error(format!("{}: {e:?}", f.name)))?;
         let vars = g.vars.remove(&i).unwrap_or_default();
-        finish(g, &mut ctx, id, &f.name, Some(f), vars)
+        match product {
+            Product::Compiled(result) => {
+                let mut ctx = result.map_err(|e| Error(format!("{}: {e}", f.name)))?;
+                let cc = ctx.compiled_code().expect("function compiled");
+                let relocs: Vec<_> = cc
+                    .buffer
+                    .relocs()
+                    .iter()
+                    .map(|r| cranelift_module::ModuleReloc::from_mach_reloc(r, &ctx.func, id))
+                    .collect();
+                let alignment = cc.buffer.alignment as u64;
+                g.module
+                    .define_function_bytes(id, alignment, cc.buffer.data(), &relocs)
+                    .map_err(|e| Error(format!("{}: {e:?}", f.name)))?;
+                let stored = meta.key.and_then(|key| {
+                    let (alignment, code) = (cc.buffer.alignment, cc.buffer.data().to_vec());
+                    Some((key, cached_relocs(cc)?, alignment, code))
+                });
+                let facts = finish(g, &mut ctx, id, &f.name, Some(f), vars, meta.scope_base);
+                if let (
+                    Some((key, relocs, alignment, code)),
+                    Some((rows, labels)),
+                    Some((store, _)),
+                ) = (stored, facts, g.cache.as_mut())
+                {
+                    store.insert(
+                        key,
+                        &Cached {
+                            alignment,
+                            code,
+                            relocs,
+                            rows,
+                            labels,
+                        },
+                    );
+                }
+                Ok(())
+            }
+            Product::Hit(mut ctx, hit) => {
+                let names = ctx.func.params.user_named_funcs();
+                let relocs: Vec<_> = hit
+                    .relocs
+                    .iter()
+                    .map(|r| {
+                        let name = match &r.target {
+                            Target::User(n) => {
+                                let u = &names[ir::UserExternalNameRef::from_u32(*n)];
+                                cranelift_module::ModuleRelocTarget::user(u.namespace, u.index)
+                            }
+                            Target::LibCall(l) => cranelift_module::ModuleRelocTarget::LibCall(
+                                l.parse().expect("checked when the hit was found"),
+                            ),
+                        };
+                        cranelift_module::ModuleReloc {
+                            offset: r.offset,
+                            kind: r.kind,
+                            name,
+                            addend: r.addend,
+                        }
+                    })
+                    .collect();
+                g.module
+                    .define_function_bytes(id, u64::from(hit.alignment), &hit.code, &relocs)
+                    .map_err(|e| Error(format!("{}: {e:?}", f.name)))?;
+                let abs: Vec<_> = hit
+                    .rows
+                    .iter()
+                    .map(|&(start, end, file, line, rel)| {
+                        let scope = if rel == 0 { 0 } else { rel + meta.scope_base };
+                        (start, end, file, line, scope)
+                    })
+                    .collect();
+                record(
+                    g,
+                    Defined {
+                        id,
+                        name: &f.name,
+                        source: Some(f),
+                        vars: &vars,
+                        rows: &abs,
+                        size: hit.code.len() as u32,
+                        labels: &hit.labels,
+                    },
+                );
+                g.module.clear_context(&mut ctx);
+                Ok(())
+            }
+        }
     }
+}
+
+/// The relocations of a compiled function in the form the cache keeps, or `None` when one
+/// points at something the cache cannot name.
+fn cached_relocs(cc: &cranelift_codegen::CompiledCode) -> Option<Vec<CachedReloc>> {
+    use cranelift_codegen::FinalizedRelocTarget;
+    cc.buffer
+        .relocs()
+        .iter()
+        .map(|r| {
+            codecache::kind_code(r.kind)?;
+            let target = match &r.target {
+                FinalizedRelocTarget::ExternalName(ir::ExternalName::User(n)) => {
+                    Target::User(n.as_u32())
+                }
+                FinalizedRelocTarget::ExternalName(ir::ExternalName::LibCall(l)) => {
+                    Target::LibCall(l.to_string())
+                }
+                _ => return None,
+            };
+            Some(CachedReloc {
+                offset: r.offset,
+                kind: r.kind,
+                target,
+                addend: r.addend,
+            })
+        })
+        .collect()
+}
+
+/// The cache for this build and the hash of everything its keys share: the compiler, the target
+/// and the code generation settings. `None` when the build does not use the cache.
+fn open_cache(g: &Gen) -> Option<(codecache::Store, codecache::Hasher)> {
+    let dir = g.opts.build.code_cache.as_ref()?;
+    let isa = g.module.isa();
+    let exe = std::env::current_exe().ok()?;
+    let stamp = std::fs::metadata(&exe).ok()?;
+    let mut h = codecache::Hasher::default();
+    h.text("ms-clif-code-cache-1");
+    h.text(&exe.to_string_lossy());
+    h.number(stamp.len());
+    let modified = stamp
+        .modified()
+        .ok()?
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?;
+    h.number(modified.as_nanos() as u64);
+    h.text(&isa.triple().to_string());
+    h.text(&isa.flags().to_string());
+    for flag in isa.isa_flags() {
+        h.text(&flag.to_string());
+    }
+    h.text(g.opts.opt_level);
+    h.number(u64::from(g.opts.checks) | u64::from(g.opts.poll) << 1);
+    let name = format!("{:032x}", h.digest());
+    let store = codecache::Store::open(dir, &name)?;
+    Some((store, h))
+}
+
+/// The cache key of a lowered function: the part of the Cranelift function the compiler reads
+/// (its stencil, as Cranelift's own incremental cache hashes it), the names behind its symbol
+/// references and the resolved source rows of its instructions, none of which may depend on the
+/// order in which this build happened to declare symbols or intern locations.
+fn function_key(
+    g: &Gen,
+    func: &mut ir::Function,
+    source: &Func,
+    vars: &[LocalVar],
+    scope_base: u32,
+) -> Option<u128> {
+    use std::hash::Hash as _;
+    let (_, seed) = g.cache.as_ref()?;
+    let mut h = seed.clone();
+    let decls = g.module.declarations();
+    for u in func.params.user_named_funcs().values() {
+        let symbol = match u.namespace {
+            0 => decls
+                .get_function_decl(FuncId::from_u32(u.index))
+                .name
+                .clone(),
+            1 => decls.get_data_decl(DataId::from_u32(u.index)).name.clone(),
+            _ => None,
+        }?;
+        h.number(u64::from(u.namespace));
+        h.text(&symbol);
+    }
+    for block in func.layout.blocks() {
+        for inst in func.layout.block_insts(block) {
+            let bits = func.srcloc(inst).bits();
+            match g.locs.get(bits as usize) {
+                Some(&(file, line, scope)) => {
+                    let rel = if scope == 0 {
+                        0
+                    } else {
+                        scope.checked_sub(scope_base).filter(|r| *r > 0)?
+                    };
+                    h.number(u64::from(file) << 32 | u64::from(line));
+                    h.number(u64::from(rel));
+                }
+                None => h.number(u64::MAX),
+            }
+        }
+    }
+    // The stencil holds the raw location ids, which the rows above already stand for.
+    let locs = std::mem::take(&mut func.stencil.srclocs);
+    func.stencil.hash(&mut h);
+    func.stencil.srclocs = locs;
+    h.text(&source.name);
+    h.number(u64::from(source.loc.file) << 32 | u64::from(source.loc.line));
+    for v in vars {
+        h.text(&v.name);
+        h.number(u64::from(v.param) | u64::from(v.scope.saturating_sub(scope_base)) << 1);
+        for &(offset, size, label) in &v.pieces {
+            h.number(u64::from(offset) << 32 | u64::from(size));
+            h.number(u64::from(label.as_u32()));
+        }
+    }
+    Some(h.digest())
 }
 
 /// Runs the passes that precede Cranelift's own compilation.
@@ -1162,7 +1427,9 @@ fn prepare(g: &Gen, ctx: &mut Context) {
     }
 }
 
-/// Types the line and fault tables of a function that Cranelift has compiled and defined.
+/// Types the line and fault tables of a function that Cranelift has compiled and defined, and
+/// returns what the cache keeps of it: source rows (scopes relative to `scope_base`) and the
+/// code ranges of its value labels.
 fn finish(
     g: &mut Gen,
     ctx: &mut Context,
@@ -1170,94 +1437,173 @@ fn finish(
     name: &str,
     source: Option<&Func>,
     vars: Vec<LocalVar>,
-) -> Result<(), Error> {
-    {
-        let cc = ctx.compiled_code().expect("function compiled");
-        let mut ranges: Vec<(u32, u32, u32, u32)> = Vec::new();
-        let mut dwarf_ranges = Vec::new();
-        for r in cc.buffer.get_srclocs_sorted() {
-            let bits = r.loc.bits();
-            let Some((file, line, scope)) = g.locs.get(bits as usize).copied() else {
-                continue;
-            };
-            if source.is_some() && r.start < r.end {
-                dwarf_ranges.push((r.start, r.end, file, line, scope));
-            }
-            if ranges
-                .last()
-                .is_none_or(|l| (l.1, l.2, l.3) != (file, line, scope))
-            {
-                ranges.push((r.start, file, line, scope));
-            }
-        }
-        // Frames of inlined callees return to the physical function's file, so a function
-        // without a position of its own borrows the first file its lines name.
-        // Glue has no source of its own, but a cleanup thunk can hold an inlined callee, whose
-        // frame a fault trace must still name.
-        let (file, line) = match source {
-            Some(f) if !f.loc.is_none() => (f.loc.file, f.loc.line),
-            _ => {
-                let own = ranges.iter().find(|r| r.3 == 0 && r.1 != u32::MAX);
-                let first = own
-                    .map(|r| r.1)
-                    .or_else(|| ranges.iter().map(|r| r.1).find(|f| *f != u32::MAX));
-                (first.unwrap_or(u32::MAX), 0)
-            }
-        };
-        // The prologue belongs to the declaration, so a debugger's breakpoint on the function
-        // lands after the parameters are in place: at the first row of the body.
-        if let (Some(f), Some(&(first, ..))) = (source, dwarf_ranges.first())
-            && !f.loc.is_none()
-            && first > 0
-        {
-            dwarf_ranges.insert(0, (0, first, f.loc.file, f.loc.line, 0));
-        }
-        if source.is_none() && ranges.is_empty() {
-            g.module.clear_context(ctx);
-            return Ok(());
-        }
-        let vars = vars.iter().map(|v| var_dbg(g, cc, v)).collect::<Vec<_>>();
-        g.dbg.push(FuncDbg {
+    scope_base: u32,
+) -> Option<(Vec<Row>, Labels)> {
+    let cc = ctx.compiled_code().expect("function compiled");
+    let abs: Vec<(u32, u32, u32, u32, u32)> = cc
+        .buffer
+        .get_srclocs_sorted()
+        .iter()
+        .filter_map(|r| {
+            let (file, line, scope) = g.locs.get(r.loc.bits() as usize).copied()?;
+            Some((r.start, r.end, file, line, scope))
+        })
+        .collect();
+    let labels = raw_labels(g, cc, &vars);
+    let size = cc.code_buffer().len() as u32;
+    record(
+        g,
+        Defined {
             id,
-            name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
-            file,
-            line,
-            size: cc.code_buffer().len() as u32,
-            ranges,
-            dwarf_ranges,
-            vars,
-        });
-    }
+            name,
+            source,
+            vars: &vars,
+            rows: &abs,
+            size,
+            labels: &labels,
+        },
+    );
     g.module.clear_context(ctx);
-    Ok(())
+    // A scope of another function would make the rows depend on more than this function.
+    let rows = abs
+        .iter()
+        .map(|&(start, end, file, line, scope)| {
+            let rel = if scope == 0 {
+                Some(0)
+            } else {
+                scope.checked_sub(scope_base).filter(|r| *r > 0)
+            };
+            rel.map(|rel| (start, end, file, line, rel))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some((rows, labels))
 }
 
-/// Where the leaves of `v` live, from the ranges Cranelift tracked for their labels.
-fn var_dbg(g: &Gen, cc: &cranelift_codegen::CompiledCode, v: &LocalVar) -> VarDbg {
+/// What [`record`] needs to know about a defined function: `rows` are `(start, end, file, line,
+/// scope)` code ranges with module-wide scopes, `size` is its code size and `labels` the code
+/// ranges of the value labels its named values use.
+struct Defined<'a> {
+    id: FuncId,
+    name: &'a str,
+    source: Option<&'a Func>,
+    vars: &'a [LocalVar],
+    rows: &'a [(u32, u32, u32, u32, u32)],
+    size: u32,
+    labels: &'a [(u32, Vec<LabelRange>)],
+}
+
+/// Records the debug facts of a defined function: `rows` are `(start, end, file, line, scope)`
+/// code ranges with module-wide scopes, `size` its code size and `labels` the code ranges of
+/// the value labels its named values use.
+fn record(g: &mut Gen, def: Defined) {
+    let Defined {
+        id,
+        name,
+        source,
+        vars,
+        rows,
+        size,
+        labels,
+    } = def;
+    let mut ranges: Vec<(u32, u32, u32, u32)> = Vec::new();
+    let mut dwarf_ranges = Vec::new();
+    for &(start, end, file, line, scope) in rows {
+        if source.is_some() && start < end {
+            dwarf_ranges.push((start, end, file, line, scope));
+        }
+        if ranges
+            .last()
+            .is_none_or(|l| (l.1, l.2, l.3) != (file, line, scope))
+        {
+            ranges.push((start, file, line, scope));
+        }
+    }
+    // Frames of inlined callees return to the physical function's file, so a function
+    // without a position of its own borrows the first file its lines name.
+    // Glue has no source of its own, but a cleanup thunk can hold an inlined callee, whose
+    // frame a fault trace must still name.
+    let (file, line) = match source {
+        Some(f) if !f.loc.is_none() => (f.loc.file, f.loc.line),
+        _ => {
+            let own = ranges.iter().find(|r| r.3 == 0 && r.1 != u32::MAX);
+            let first = own
+                .map(|r| r.1)
+                .or_else(|| ranges.iter().map(|r| r.1).find(|f| *f != u32::MAX));
+            (first.unwrap_or(u32::MAX), 0)
+        }
+    };
+    // The prologue belongs to the declaration, so a debugger's breakpoint on the function
+    // lands after the parameters are in place: at the first row of the body.
+    if let (Some(f), Some(&(first, ..))) = (source, dwarf_ranges.first())
+        && !f.loc.is_none()
+        && first > 0
+    {
+        dwarf_ranges.insert(0, (0, first, f.loc.file, f.loc.line, 0));
+    }
+    if source.is_none() && ranges.is_empty() {
+        return;
+    }
+    let vars = vars.iter().map(|v| var_dbg(v, labels)).collect::<Vec<_>>();
+    g.dbg.push(FuncDbg {
+        id,
+        name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
+        file,
+        line,
+        size,
+        ranges,
+        dwarf_ranges,
+        vars,
+    });
+}
+
+/// The code ranges Cranelift tracked for the labels of `vars`, as the cache keeps them.
+fn raw_labels(g: &Gen, cc: &cranelift_codegen::CompiledCode, vars: &[LocalVar]) -> Labels {
     use cranelift_codegen::ValueLocRange;
     let isa = g.module.isa();
+    let mut out: Labels = Vec::new();
+    for label in vars.iter().flat_map(|v| v.pieces.iter().map(|p| p.2)) {
+        if out.iter().any(|(l, _)| *l == label.as_u32()) {
+            continue;
+        }
+        let ranges = cc
+            .value_labels_ranges
+            .get(&label)
+            .map(|rs| {
+                rs.iter()
+                    .filter_map(|r: &ValueLocRange| match r.loc {
+                        cranelift_codegen::LabelValueLoc::Reg(reg) => {
+                            let dwarf = isa.map_regalloc_reg_to_dwarf(reg).ok()?;
+                            Some((r.start, r.end, Some(dwarf), 0))
+                        }
+                        cranelift_codegen::LabelValueLoc::CFAOffset(o) => {
+                            Some((r.start, r.end, None, o))
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        out.push((label.as_u32(), ranges));
+    }
+    out
+}
+
+/// Where the leaves of `v` live, from the code ranges of their labels.
+fn var_dbg(v: &LocalVar, labels: &[(u32, Vec<LabelRange>)]) -> VarDbg {
     let pieces = v
         .pieces
         .iter()
         .map(|&(offset, size, label)| {
-            let ranges = cc
-                .value_labels_ranges
-                .get(&label)
-                .map(|rs| {
+            let mut ranges: Vec<(u32, u32, VarLoc)> = labels
+                .iter()
+                .find(|(l, _)| *l == label.as_u32())
+                .map(|(_, rs)| {
                     rs.iter()
-                        .filter_map(|r: &ValueLocRange| {
-                            let loc = match r.loc {
-                                cranelift_codegen::LabelValueLoc::Reg(reg) => {
-                                    VarLoc::Reg(isa.map_regalloc_reg_to_dwarf(reg).ok()?)
-                                }
-                                cranelift_codegen::LabelValueLoc::CFAOffset(o) => VarLoc::Cfa(o),
-                            };
-                            Some((r.start, r.end, loc))
+                        .map(|&(start, end, reg, o)| {
+                            (start, end, reg.map_or(VarLoc::Cfa(o), VarLoc::Reg))
                         })
                         .collect()
                 })
                 .unwrap_or_default();
-            let mut ranges: Vec<(u32, u32, VarLoc)> = ranges;
             ranges.sort_by_key(|r| r.0);
             // Cranelift splits a range at every block, though the leaf stays where it is.
             let ranges =
@@ -1315,6 +1661,15 @@ fn emit_main(
     }
     crate::slotshare::share(&mut ctx.func, &temps);
     define(g, ctx, id, "main")
+}
+
+/// Whether a cached function's relocations all name something `func` declares.
+fn hit_fits(hit: &Cached, func: &ir::Function) -> bool {
+    let names = func.params.user_named_funcs().len() as u32;
+    hit.relocs.iter().all(|r| match &r.target {
+        Target::User(n) => *n < names,
+        Target::LibCall(l) => l.parse::<ir::LibCall>().is_ok(),
+    })
 }
 
 #[cfg(test)]

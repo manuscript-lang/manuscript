@@ -9,7 +9,7 @@
 
 ## Status
 
-Proposal, 2026-11-16, checked against `9f09fd55`. Supersedes the earlier mtime whole-build cache (removed in #4200: it helped only an unchanged rebuild) and the dropped per-function cache. Direction (Chinmay): "we should do it properly with incremental cache, only then its useful". Reverses the earlier "no hash" choice, which was made for a whole-build key; here the hash covers backend text (measured below). Independent skeptical review done 2026-11-16; its findings (unit count cap, per-unit metadata, Cranelift key and side effects, name collisions, gates) are applied below.
+Proposal, 2026-11-16, checked against `9f09fd55`. Supersedes the earlier mtime whole-build cache (removed in #4200: it helped only an unchanged rebuild) and the dropped per-function cache. Direction (Chinmay): "we should do it properly with incremental cache, only then its useful". Reverses the earlier "no hash" choice, which was made for a whole-build key; here the hash covers backend text (measured below). Stages 1 and 2 implemented 2026-11-16 (Debug function cache; see Result). Independent skeptical review done 2026-11-16; its findings (unit count cap, per-unit metadata, Cranelift key and side effects, name collisions, gates) are applied below.
 
 ## Problem
 
@@ -65,3 +65,7 @@ One rule: **backend output is a pure function of the input the backend consumes,
 2. **Cranelift function cache** with eviction. Gate: one-edit Debug at most 3.5 s here (floor: front end 2.3 s, MIR 0.2 s, lowering about 0.5 s, plus the edited function); executable byte-identical with cache on, off and `verify`; cold Debug within 3%.
 3. **LLVM unit cache.** Starts only if Stage 0 shows the prerequisites above reach a one-edit Release rebuild at most 10 s with `bench/perf` runtime within 2% and cold Release within 3%; otherwise record the numbers and stop here.
 4. **Front end reuse** (per-module check results), from the remaining 2.3 s; decided after Stage 2.
+
+## Result (Stage 2, 2026-11-16)
+
+Debug, same project and machine, `bench/tools/compile_time_incremental.ms`, one run per cell: cold 6.3 s; change a constant 4.6 s; add a statement 5.2 s (11 functions recompiled: the edited one and the rest of its file, whose line numbers moved); add a function 4.6 s; edit a shared module 5.1 s. The 3.5 s gate was missed: with every function reused the build is still 4.7 s, of which check and lowering to MIR is about 2.4 s, lowering to Cranelift IR 0.6 s, the key 0.3 s and glue, tables and object writing about 0.7 s. Next: the front end (Stage 4), then caching glue.

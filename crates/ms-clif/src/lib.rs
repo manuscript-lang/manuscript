@@ -11,6 +11,7 @@ pub use ms_mir::layout;
 pub mod link;
 
 mod cg;
+mod codecache;
 mod dwarf;
 mod options;
 pub use options::{BuildOptions, CopyProbe};

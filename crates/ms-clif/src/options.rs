@@ -53,6 +53,9 @@ pub struct BuildOptions {
     pub dump_clif: bool,
     /// Report or reject copies of object values in the lowered code.
     pub copy_probe: CopyProbe,
+    /// A directory that keeps compiled Cranelift functions between builds (`.ms-cache/code`
+    /// beside the project); `None` compiles everything. `MS_CACHE=off` leaves it `None`.
+    pub code_cache: Option<PathBuf>,
 }
 
 impl Default for BuildOptions {
@@ -72,6 +75,7 @@ impl Default for BuildOptions {
             dump_clif: false,
             clif_verify: cfg!(debug_assertions),
             copy_probe: CopyProbe::Off,
+            code_cache: None,
         }
     }
 }

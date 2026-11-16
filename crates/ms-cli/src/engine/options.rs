@@ -28,5 +28,6 @@ pub fn from_env() -> BuildOptions {
             Some(v) if v != "0" => CopyProbe::Report,
             _ => CopyProbe::Off,
         },
+        code_cache: None,
     }
 }

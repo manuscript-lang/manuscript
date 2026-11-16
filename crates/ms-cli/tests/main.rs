@@ -10,6 +10,7 @@ mod build_backend;
 mod check_fix;
 mod cli_errors;
 mod closure_aliases;
+mod code_cache;
 mod common;
 mod debugger_helpers;
 mod deep_input;

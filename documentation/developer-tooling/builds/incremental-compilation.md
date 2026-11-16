@@ -17,3 +17,7 @@ The runtime and native standard library are already compiled into a static archi
 - `MANUSCRIPT_CACHE_DIR` does not override the native runtime cache or temporary build directories.
 
 See [project configuration](project-configuration.md), [build levels](build-levels.md), and [build and share a program](../how-it-works.md).
+
+## Compiled functions
+
+Cranelift builds (Debug, and Release when LLVM is not used) keep each compiled function in `.ms-cache/code` beside the project (or beside the input file). A rebuild reuses every function whose Cranelift IR, target and compiler are unchanged and compiles only the rest, so editing one function recompiles about one function. The cache is one file per target setting, holds the newest builds first and stays within 128 MiB. The executable is identical to an uncached build. `MS_CACHE=off` skips it, `MS_TIMINGS=1` prints how many functions were reused, and `.ms-cache` can be deleted at any time. Release builds with LLVM do not use it yet.
