@@ -159,6 +159,7 @@ fn expand(m: &mut Module, fi: usize, rt: &Runtime) {
     // The new instructions carry no location: the check is not source code, and a position on its
     // call would add a frame to the stack trace of an overflow.
     let loc = Loc::NONE;
+    let ret_borrowed = m.funcs[fi].ret_borrowed;
     let (cells, params, ret, name, floc) = {
         let lay = Layouts::new(m);
         let f = &m.funcs[fi];
@@ -202,7 +203,9 @@ fn expand(m: &mut Module, fi: usize, rt: &Runtime) {
     let result = e.op(Op::Call, &args, Imm::Func(FuncId(fi as u32)), Some(ret));
     if ret != Ty::VOID {
         let at = e.at(block, cells.result);
-        e.op(Op::Put, &[at, result], Imm::None, None);
+        // A borrowed result stays a borrow on both sides of the block.
+        let op = if ret_borrowed { Op::Store } else { Op::Put };
+        e.op(op, &[at, result], Imm::None, None);
     }
     let done = e.op(Op::VoidConst, &[], Imm::None, Some(Ty::VOID));
     shim.blocks[0].term = Term::Ret(Some(done));
@@ -253,7 +256,8 @@ fn expand(m: &mut Module, fi: usize, rt: &Runtime) {
         e.op(Op::VoidConst, &[], Imm::None, Some(Ty::VOID))
     } else {
         let at = e.at(blk, cells.result);
-        e.op(Op::Take, &[at], Imm::Ty(ret), Some(ret))
+        let op = if ret_borrowed { Op::Load } else { Op::Take };
+        e.op(op, &[at], Imm::Ty(ret), Some(ret))
     };
     e.call(rt.free, &[blk], Ty::VOID);
     e.f.blocks[grow].term = Term::Ret(Some(out));
