@@ -24,11 +24,12 @@ PROGRAMS := ["interp", "strings", "lz", "graph"]
 // regex prefilter, image codecs, fused chains, map probes). Each is counted as
 // `guard-<name>`.
 GUARDS := ["crypto", "regex", "image", "chains", "maps", "http-request"]
-// Guards that take their own path as the argument (they start themselves as a child, which valgrind
-// does not follow, so only the part under test is counted).
+// Guards that take their own path as the argument (they start themselves as a child,
+// which valgrind does not follow, so only the part under test is counted).
 SELF_PATH := ["guard-http-request"]
-// Counts held to 1 percent instead of the default: most of their instructions are the per-request
-// path itself, which a few hundred more instructions per request would otherwise hide.
+// Counts held to 1 percent instead of the default: most of their instructions are the
+// per-request path itself, which a few hundred more instructions per request would
+// otherwise hide.
 TIGHT := ["guard-http-request"]
 COUNTS := "bench/perf/counts.txt"
 
@@ -37,14 +38,14 @@ fn say(text: String) Void:
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.
 fn count(program: String, out_file: String, own_path: Bool) Int:
-	var command = ["--tool=callgrind", f"--callgrind-out-file={out_file}", program.clone()]
+	var command = [
+		"--tool=callgrind",
+		f"--callgrind-out-file={out_file}",
+		program.clone(),
+	]
 	if own_path: command.append(program.clone())
 
-	if out := run(
-		"valgrind",
-		command,
-		RunOptions(timeout: seconds(600)),
-	).wait():
+	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait():
 		for line in out.stderr.decode_utf8().get("").split("\n"):
 			if at := line.index_of("Collected : "):
 				digits := line.slice(at + 12, line.length()).get("").trim()
@@ -98,7 +99,11 @@ fn main() Int:
 			failures += 1
 			continue
 
-		now := count(binary.clone(), f"{scratch.path()}/{name}.out", SELF_PATH.contains(name))
+		now := count(
+			binary.clone(),
+			f"{scratch.path()}/{name}.out",
+			SELF_PATH.contains(name),
+		)
 
 		if now < 0:
 			say(f"fail: {name} did not run under valgrind\n")
