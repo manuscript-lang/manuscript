@@ -34,6 +34,11 @@ pub fn workspace_scope(d: &Document, recursive: bool) -> (String, bool) {
     if let Some(manifest) = ms_driver::project::find_manifest(&path) {
         root = pathops::dir(&manifest);
         recursive = true;
+        // A member is imported by its siblings, so references and renames scan the whole
+        // workspace; a broken workspace falls back to the member alone.
+        if let Ok(Some(workspace)) = ms_driver::project::workspace::find(&manifest) {
+            root = workspace.root;
+        }
     }
     (root, recursive)
 }
