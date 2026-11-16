@@ -16,16 +16,16 @@ fn var Token.close() Void!:
 	print(f"close {self.id}")
 
 type Wrapped:
-	first: Token?
 	second: Token!
 	code: Int
+	first: Token?
 
 fn check(fail: Bool) Int!:
 	if fail: return error(Error("field failed"))
 	return ok(42)
 
 fn build(fail: Bool) Void!:
-	value := Wrapped(Token(1), ok(Token(2)), check(fail)?)
+	value := Wrapped(first: Token(1), second: ok(Token(2)), code: check(fail)?)
 	print(f"body {value.code}")
 
 fn main() Void:
