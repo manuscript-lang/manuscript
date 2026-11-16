@@ -26,6 +26,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![self.b.ins().iconst(types::I8, v as i64)]
             }
             Op::VoidConst => vec![],
+            Op::Undef => self.zeros(res_ty.expect("undef has a result")),
             Op::StrLit => {
                 let Imm::Str(s) = inst.imm else {
                     unreachable!()

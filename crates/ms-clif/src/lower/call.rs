@@ -120,6 +120,19 @@ impl<'a, 'm> Lower<'a, 'm> {
             let zero = self.iconst(0);
             return vec![zero; ms_rt_abi::MAP_SIZE / 8];
         }
+        if self.g.m.externs[e.index()].role == ExternRole::Unwinding {
+            // The byte `msrt_unwinding` reads, loaded from the task's header block.
+            let hdr = self.task_hdr();
+            let at = self.add_imm(hdr, ISOLATE_HDR_UNWINDING);
+            let byte = self.b.ins().atomic_load(types::I8, flags(), at);
+            // A `uint8` is an `i64` register, a `bool` stays a byte.
+            let leaf = self.g.lay.leaves(self.g.m.externs[e.index()].ret)[0];
+            return vec![if leaf == Leaf::I8 {
+                byte
+            } else {
+                self.b.ins().uextend(types::I64, byte)
+            }];
+        }
         if self.g.m.externs[e.index()].role == ExternRole::CleanupDiscard {
             // Handle 0 is a registration skipped for lack of a guard.
             let h = self.a(inst, 0)[0];

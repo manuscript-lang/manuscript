@@ -13,7 +13,8 @@ use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_mir::vmap::ValueMap;
 use ms_rt_abi::symbols::{
-    DEEP_DROP_HEADROOM, ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION,
+    DEEP_DROP_HEADROOM, ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, ISOLATE_HDR_UNWINDING,
+    STACK_LIMIT_CELL, STACK_REGION,
 };
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_LEN_MASK,
@@ -1076,9 +1077,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         let previous_overflow = self.overflow_result.take();
         let res_ty = inst.res.map(|r| f.ty(r));
         let out: Vs = match inst.op {
-            Op::IConst | Op::FConst | Op::BConst | Op::VoidConst | Op::StrLit | Op::BytesLit => {
-                self.constants(f, inst)
-            }
+            Op::IConst
+            | Op::FConst
+            | Op::BConst
+            | Op::VoidConst
+            | Op::Undef
+            | Op::StrLit
+            | Op::BytesLit => self.constants(f, inst),
             Op::IAdd | Op::ISub | Op::IMul | Op::INeg | Op::F32Round | Op::SDiv | Op::SRem => {
                 self.integer_ops(inst, previous_overflow)
             }

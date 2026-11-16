@@ -8,6 +8,7 @@ use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
 use ms_mir::layout::Layouts;
 use ms_mir::types::{Ty, TyKind};
+use ms_rt_abi::symbols::ISOLATE_HDR_UNWINDING;
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -50,6 +51,10 @@ fn is_discard(m: &Module, inst: &Inst) -> bool {
 /// a runtime test), so it is constants and no call.
 fn is_map_new(m: &Module, inst: &Inst) -> bool {
     matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::MapNew)
+}
+
+fn is_unwinding(m: &Module, inst: &Inst) -> bool {
+    matches!((inst.op, inst.imm), (Op::CallRt, Imm::Ext(e)) if m.externs[e.index()].role == ExternRole::Unwinding)
 }
 
 fn pre(
@@ -115,6 +120,14 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         .res
         .map(|r| vals[&r.index()].clone())
         .unwrap_or_default();
+    if is_unwinding(m, inst) {
+        // The header byte `msrt_unwinding` reads, loaded where the result is named.
+        let hdr = super::depth::task_hdr(b);
+        let at = b.gep_bytes(&hdr, ISOLATE_HDR_UNWINDING as u64);
+        b.name_next(&out[0]);
+        b.load_flag(&at);
+        return;
+    }
     if is_map_new(m, inst) {
         // A map lives in a slot: the empty one is seven zero words.
         if let Some(res) = inst.res.filter(|r| types::is_mem(lay, cx.f.ty(*r))) {

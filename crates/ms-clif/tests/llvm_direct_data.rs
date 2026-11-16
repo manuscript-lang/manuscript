@@ -1327,3 +1327,17 @@ pub fn nested_type_is_a_struct_of_structs() {
     let got = run_llvm(NESTED_TYPE, &opts, "direct_nested_type");
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
 }
+
+/// `undef` and the inlined `msrt_unwinding` load agree with Cranelift.
+#[test]
+pub fn undef_and_the_unwinding_byte_match_cranelift() {
+    let Some(opts) = direct() else { return };
+    // No kept IR: other tests share `ms-keep.ll`.
+    let opts = BuildOptions {
+        keep_ll: false,
+        ..opts
+    };
+    let got = run_llvm(crate::native::UNDEF_PROGRAM, &opts, "direct_undef");
+    assert_eq!(got.stdout, "0\n0\n0\n0\n0\n1\n0\n");
+    assert_eq!(got.code, 0);
+}
