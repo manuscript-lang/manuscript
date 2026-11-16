@@ -151,6 +151,15 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_strbuilder_append" => R::StrBuilderAppend,
         "msrt_strbuilder_append_int" => R::StrBuilderAppendInt,
         "msrt_string_concat" => R::StringConcat,
+        "msrt_string_concat3"
+        | "msrt_string_concat4"
+        | "msrt_string_concat5"
+        | "msrt_string_concat6"
+        | "msrt_string_fmt2"
+        | "msrt_string_fmt3"
+        | "msrt_string_fmt4"
+        | "msrt_string_fmt5"
+        | "msrt_string_fmt6" => R::StringJoin,
         "msrt_string_append" => R::StringAppend,
         "msrt_int_to_string" => R::IntToString,
         "msrt_list_sorted" => R::ListSorted,

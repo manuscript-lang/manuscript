@@ -177,6 +177,23 @@ impl<'m> FuncBuilder<'m> {
         self.cur
     }
 
+    /// Removes the runtime call of the given role that produced `res` when it is the last
+    /// instruction of the current block and its first argument has type `arg`, and returns its arguments: the caller uses them
+    /// directly, so the call and its result never exist.
+    pub fn retract_call(&mut self, res: Value, role: ExternRole, arg: Ty) -> Option<Vec<Value>> {
+        let insts = &self.f.blocks[self.cur.index()].insts;
+        let last = insts.last()?;
+        let Imm::Ext(e) = last.imm else { return None };
+        if last.op != Op::CallRt
+            || last.res != Some(res)
+            || self.m.externs[e.index()].role != role
+            || last.args.first().is_none_or(|a| self.f.ty(*a) != arg)
+        {
+            return None;
+        }
+        self.f.blocks[self.cur.index()].insts.pop().map(|i| i.args)
+    }
+
     /// Creates a block. It starts unsealed.
     pub fn new_block(&mut self) -> Block {
         self.preds.push(Vec::new());
