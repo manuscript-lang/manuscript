@@ -236,6 +236,8 @@ pub(crate) struct FnLower<'a> {
     pub map_walk: Option<crate::stmt::Walk>,
     /// The `split` call of a `let` whose list the rest of the block only reads in place.
     pub split_view_for: Option<*const ms_check::api::ast::Expr>,
+    /// The `text.split(..)` in `text.split(..)[0]`: only its first piece is read.
+    pub split_first_for: Option<*const ms_check::api::ast::Expr>,
     /// The module whose local implementations the expression being lowered uses, when it
     /// is the evidence of an enclosing generic instance's caller rather than this module.
     pub scope_override: Option<ct::Name>,
@@ -795,6 +797,7 @@ impl<'a> FnLower<'a> {
             hoisted: HashMap::default(),
             map_walk: None,
             split_view_for: None,
+            split_first_for: None,
             discard: None,
             stmt_pos: None,
             source_scope: 0,
