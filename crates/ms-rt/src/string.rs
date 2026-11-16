@@ -1054,6 +1054,52 @@ pub unsafe extern "C-unwind" fn msrt_string_concat6(
 /// Most parts one `msrt_string_fmtN` joins.
 const MAX_FMT: usize = 6;
 
+/// One digit buffer per part of a join; only the integer parts' are written.
+type Digits<const N: usize> = [core::mem::MaybeUninit<[u8; 20]>; N];
+
+/// The bytes of each part and their total length: part `k` is an `i64` written in decimal into
+/// `digits[k]` when bit `k` of `mask` is set, otherwise a `*const StrVal`.
+///
+/// # Safety
+/// Every part whose mask bit is clear is a live string.
+#[inline(always)]
+unsafe fn part_slices<const N: usize>(
+    mask: i64,
+    parts: [usize; N],
+    digits: &mut Digits<N>,
+) -> ([(*const u8, usize); N], usize) {
+    const { assert!(N <= MAX_FMT) };
+    let mut slices: [(*const u8, usize); N] = [(core::ptr::null(), 0); N];
+    let mut total = 0usize;
+    for (k, p) in parts.into_iter().enumerate() {
+        slices[k] = if (mask >> k) & 1 == 1 {
+            let d = crate::num::format_i64(p as i64, digits[k].write([0u8; 20]));
+            (d.as_ptr(), d.len())
+        } else {
+            // SAFETY: caller contract.
+            let s = unsafe { &*(p as *const StrVal) };
+            (s.data(), s.len())
+        };
+        total += slices[k].1;
+    }
+    (slices, total)
+}
+
+/// Copies each slice to `dst` in order.
+///
+/// # Safety
+/// `dst` has room for every slice, and none overlaps it.
+#[inline(always)]
+unsafe fn copy_slices(slices: &[(*const u8, usize)], mut dst: *mut u8) {
+    for &(ptr, len) in slices {
+        // SAFETY: caller contract.
+        unsafe {
+            core::ptr::copy_nonoverlapping(ptr, dst, len);
+            dst = dst.add(len);
+        }
+    }
+}
+
 /// Joins `parts` with one allocation: part `k` is an `i64` written in decimal when bit `k` of
 /// `mask` is set, otherwise a `*const StrVal`. `f"{name}={n}"` builds its text here without a
 /// temporary string for `n`.
@@ -1062,23 +1108,20 @@ const MAX_FMT: usize = 6;
 /// Every part whose mask bit is clear is a live string.
 #[inline(always)]
 unsafe fn format_parts<const N: usize>(mask: i64, parts: [usize; N]) -> StrVal {
-    const { assert!(N <= MAX_FMT) };
-    // Digit buffers are initialised only for the integer parts.
-    let mut digits: [core::mem::MaybeUninit<[u8; 20]>; N] = [core::mem::MaybeUninit::uninit(); N];
-    let mut slices: [(*const u8, usize); N] = [(core::ptr::null(), 0); N];
-    let mut total = 0usize;
-    for (k, p) in parts.into_iter().enumerate() {
-        let (ptr, len) = if (mask >> k) & 1 == 1 {
-            let d = crate::num::format_i64(p as i64, digits[k].write([0u8; 20]));
-            (d.as_ptr(), d.len())
-        } else {
-            // SAFETY: caller contract.
-            let s = unsafe { &*(p as *const StrVal) };
-            (s.data(), s.len())
-        };
-        slices[k] = (ptr, len);
-        total += len;
+    let mut digits: Digits<N> = [core::mem::MaybeUninit::uninit(); N];
+    // SAFETY: caller contract; a fresh string has room for `total` bytes.
+    unsafe {
+        let (slices, total) = part_slices(mask, parts, &mut digits);
+        joined(&[], &slices, total)
     }
+}
+
+/// One new string holding `head` and then `slices`, `total` bytes in all.
+///
+/// # Safety
+/// Every slice is readable and `total` is their length with `head`'s.
+#[inline(always)]
+unsafe fn joined(head: &[u8], slices: &[(*const u8, usize)], total: usize) -> StrVal {
     let mut buf = [0u8; 16];
     let s = if total <= STR_INLINE_MAX {
         None
@@ -1089,16 +1132,60 @@ unsafe fn format_parts<const N: usize>(mask: i64, parts: [usize; N]) -> StrVal {
         Some(s) => s.ptr_word,
         None => buf.as_mut_ptr(),
     };
-    let mut at = 0usize;
-    for &(ptr, len) in &slices {
-        // SAFETY: `dst` has room for `total` bytes and every slice is readable.
-        unsafe { core::ptr::copy_nonoverlapping(ptr, dst.add(at), len) };
-        at += len;
+    // SAFETY: `dst` has room for `total` bytes and every slice is readable.
+    unsafe {
+        core::ptr::copy_nonoverlapping(head.as_ptr(), dst, head.len());
+        copy_slices(slices, dst.add(head.len()));
     }
     match s {
         Some(s) => s,
         // `buf` is zero past `total`.
         None => StrVal::from_bits(u128::from_le_bytes(buf), total),
+    }
+}
+
+/// The join of `a` and `parts` that takes `a`: the parts are written straight onto an owned `a`,
+/// which grows as [`msrt_string_append`] grows it, so `s += f"{k}={n};"` in a loop builds no
+/// temporary string. `mask` is the mask of the join this replaces, with `a` as its part 0: bit
+/// `k + 1` set makes `parts[k]` an integer.
+///
+/// # Safety
+/// `a` is owned by the caller and dead after the call; every part whose mask bit is clear is a
+/// live string.
+#[inline(always)]
+unsafe fn append_parts<const N: usize>(a: *const StrVal, mask: i64, parts: [usize; N]) -> StrVal {
+    let mut digits: Digits<N> = [core::mem::MaybeUninit::uninit(); N];
+    // SAFETY: caller contract.
+    unsafe {
+        let (sa, la, mask) = (core::ptr::read(a), (*a).len(), mask >> 1);
+        let (slices, total) = part_slices(mask, parts, &mut digits);
+        let end = sa.ptr_word.wrapping_add(la).cast_const();
+        // A part that views `a`'s bytes would be read after they move.
+        let within = |&(p, _): &(*const u8, usize)| p >= sa.ptr_word.cast_const() && p <= end;
+        if !sa.owns() || la == 0 || slices.iter().any(within) {
+            let s = joined(bytes(a), &slices, la + total);
+            release(&sa);
+            return s;
+        }
+        if la + total > MAX_BYTES {
+            fault::fault(b"string: limit exceeded");
+        }
+        // Only a flagged `a` stays flagged, and only when every string part is ASCII.
+        let strings = (0..N).filter(|k| (mask >> k) & 1 == 0);
+        let ascii = sa.flagged_ascii()
+            && strings
+                .into_iter()
+                .all(|k| is_ascii(&*(parts[k] as *const StrVal)));
+        let need = la + total + 1;
+        let p = if alloc::usable_size(sa.ptr_word) >= need {
+            sa.ptr_word
+        } else {
+            alloc::realloc(sa.ptr_word, need + need / 2)
+        };
+        copy_slices(&slices, p.add(la));
+        *p.add(la + total) = 0;
+        let r = StrVal::owned(p, la + total);
+        if ascii { r.with_ascii() } else { r }
     }
 }
 
@@ -1170,6 +1257,81 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt6(
 ) {
     // SAFETY: caller passes live strings and a writable `out`.
     unsafe { format_parts(mask, [a, b, c, d, e, f]).write_to(out) }
+}
+
+/// The join of an owned `s` and one part, growing `s`: see [`append_parts`].
+#[unsafe(no_mangle)]
+// ms: leaf fresh
+pub unsafe extern "C-unwind" fn msrt_string_append_fmt1(
+    s: *const StrVal,
+    mask: i64,
+    a: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
+    unsafe { append_parts(s, mask, [a]).write_to(out) }
+}
+
+/// The join of an owned `s` and two parts, growing `s`: see [`append_parts`].
+#[unsafe(no_mangle)]
+// ms: leaf fresh
+pub unsafe extern "C-unwind" fn msrt_string_append_fmt2(
+    s: *const StrVal,
+    mask: i64,
+    a: usize,
+    b: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
+    unsafe { append_parts(s, mask, [a, b]).write_to(out) }
+}
+
+/// The join of an owned `s` and three parts, growing `s`: see [`append_parts`].
+#[unsafe(no_mangle)]
+// ms: leaf fresh
+pub unsafe extern "C-unwind" fn msrt_string_append_fmt3(
+    s: *const StrVal,
+    mask: i64,
+    a: usize,
+    b: usize,
+    c: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
+    unsafe { append_parts(s, mask, [a, b, c]).write_to(out) }
+}
+
+/// The join of an owned `s` and four parts, growing `s`: see [`append_parts`].
+#[unsafe(no_mangle)]
+// ms: leaf fresh
+pub unsafe extern "C-unwind" fn msrt_string_append_fmt4(
+    s: *const StrVal,
+    mask: i64,
+    a: usize,
+    b: usize,
+    c: usize,
+    d: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
+    unsafe { append_parts(s, mask, [a, b, c, d]).write_to(out) }
+}
+
+/// The join of an owned `s` and five parts, growing `s`: see [`append_parts`].
+#[unsafe(no_mangle)]
+// ms: leaf fresh
+pub unsafe extern "C-unwind" fn msrt_string_append_fmt5(
+    s: *const StrVal,
+    mask: i64,
+    a: usize,
+    b: usize,
+    c: usize,
+    d: usize,
+    e: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
+    unsafe { append_parts(s, mask, [a, b, c, d, e]).write_to(out) }
 }
 
 /// A growable byte buffer the text formatters append to, so building a long text is linear.
