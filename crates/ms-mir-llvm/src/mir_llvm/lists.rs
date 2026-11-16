@@ -5,7 +5,7 @@ use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Tbaa, Ty as LTy, Val};
 use ms_mir::ir::{FaultKind, Func, Imm, Inst, Module, Op, Term};
 use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::STR_STATIC;
+use ms_rt_abi::{STR_ASCII, STR_STATIC};
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -126,7 +126,10 @@ fn pre(
         // and the length carries the static tag.
         Op::StrLit => {
             let Imm::Str(id) = inst.imm else { return None };
-            let len = m.strings[id.0 as usize].len();
+            let text = &m.strings[id.0 as usize];
+            // An ASCII literal carries the flag, so appending it keeps a flagged string flagged.
+            let ascii = if text.is_ascii() { STR_ASCII } else { 0 };
+            let len = text.len() | ascii;
             Some(vec![
                 Val::new(
                     format!("ptrtoint (ptr @\"ms.lit.{}\" to i64)", id.0),

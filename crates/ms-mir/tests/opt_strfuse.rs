@@ -58,6 +58,8 @@ fn concat_onto_a_dying_string_appends_in_place() {
         "{text}"
     );
     assert_eq!(text.matches("drop").count(), 2, "{text}");
+    // The in-place append is a fast path in the caller; the runtime call is its slow case.
+    assert!(text.contains("ptr.storeu"), "{text}");
 }
 
 /// An unoptimized build also appends in place, so a loop that grows a string stays linear.

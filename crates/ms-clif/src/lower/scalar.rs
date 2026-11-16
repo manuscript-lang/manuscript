@@ -51,7 +51,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let d = self.g.str_lit(s.0);
                 let base = self.data_addr(d);
                 let ptr = base;
-                let len = self.g.m.strings[s.0 as usize].len() as i64;
+                // An ASCII literal carries the flag, so appending it keeps a flagged string flagged.
+                let ascii = if bytes.is_ascii() { STR_ASCII } else { 0 };
+                let len = (bytes.len() | ascii) as i64;
                 let tagged = self.iconst(len | STR_STATIC as i64);
                 vec![ptr, tagged]
             }
