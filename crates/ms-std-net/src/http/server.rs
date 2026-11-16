@@ -111,7 +111,7 @@ pub(super) struct Pending {
     pub keep_alive: bool,
     pub expect_continue: bool,
     /// When the request arrived; read only when the server has a request timeout.
-    pub started: Option<Instant>,
+    pub started: Option<i64>,
 }
 
 pub(super) struct ConnSt {
@@ -286,20 +286,25 @@ impl Reactor {
                 _ => None,
             };
             let Some(conn) = conn else { continue };
-            let Some(timeout) = conn.server.upgrade().and_then(|s| s.limits.timeout) else {
+            let Some(server) = conn.server.upgrade() else {
                 continue;
             };
-            let mut st = conn.st.borrow_mut();
-            if !st.pending {
-                continue;
+            {
+                let mut st = conn.st.borrow_mut();
+                if let Some(timeout) = server.limits.timeout
+                    && st.pending
+                {
+                    st.pending = false;
+                    let at = now + timeout;
+                    st.deadline = Some(at);
+                    // The caller parks next and computes its wait from `next_sweep`: no kick.
+                    if self.next_sweep.get().is_none_or(|n| at < n) {
+                        self.next_sweep.set(Some(at));
+                    }
+                }
             }
-            st.pending = false;
-            let at = now + timeout;
-            st.deadline = Some(at);
-            // The caller parks next and computes its wait from `next_sweep`: no kick.
-            if self.next_sweep.get().is_none_or(|n| at < n) {
-                self.next_sweep.set(Some(at));
-            }
+            // An idle connection now has a deadline to hand to another thread.
+            server.list_waiting(&conn);
         }
     }
 
@@ -1186,7 +1191,9 @@ impl Server {
         let Some(io) = st.io.clone() else {
             return;
         };
-        if !idle || !(http1 || http2) {
+        // The hand-off carries a real deadline: a timeout that started without a time is listed
+        // once the reactor has set it (`resolve_pending`).
+        if !idle || !(http1 || http2) || st.pending {
             return;
         }
         // A connection with state of its own leaves it in the list for a taker to continue.
@@ -1204,13 +1211,6 @@ impl Server {
         } else {
             None
         };
-        // The hand-off to another thread carries a real deadline, so the timeout that started
-        // without a time gets it now (one clock read, only with a timeout).
-        if st.pending {
-            st.pending = false;
-            st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
-            Reactor::get().note_deadline(st.deadline);
-        }
         st.waiting = member.park(conn.token, crate::sys::raw(io.fd()), st.deadline, parked);
     }
 
@@ -1763,7 +1763,7 @@ impl Server {
             target,
             keep_alive,
             expect_continue: expect,
-            started: self.limits.timeout.map(|_| Instant::now()),
+            started: self.limits.timeout.map(|_| rt::monotonic_ns()),
         }))
     }
 
