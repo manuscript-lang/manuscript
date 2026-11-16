@@ -491,6 +491,9 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
         let timeout = reactor.next_sweep.get().map_or(-1, |at| {
             at.saturating_duration_since(reactor.now()).as_nanos() as i64
         });
+        // Tasks run while this one is parked (the acceptor stamps new connections), so the time
+        // read before is old by then.
+        reactor.mark_stale();
         let got = reactor.poller.park(timeout);
         if got & 16 != 0 {
             return;
