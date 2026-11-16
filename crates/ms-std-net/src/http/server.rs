@@ -191,8 +191,6 @@ pub struct Reactor {
     task: Cell<u64>,
     scratch: RefCell<Vec<u8>>,
     date: RefCell<(i64, String)>,
-    /// A monotonic time and the wall time (ns since the epoch) read together for `Date`.
-    wall_anchor: Cell<Option<(Instant, i64)>>,
     /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
     next_sweep: Cell<Option<Instant>>,
     /// The time of the current turn, read once after the poller returns; a request or deadline
@@ -200,6 +198,8 @@ pub struct Reactor {
     now: Cell<Instant>,
     /// Whether tasks ran since `now` was read.
     stale: Cell<bool>,
+    /// Whether `service` is running: only its code knows no task ran since the last read.
+    in_turn: Cell<bool>,
     /// What the connection watcher reads of this thread.
     beat: Arc<steal::Beat>,
 }
@@ -228,10 +228,10 @@ impl Reactor {
                 task: Cell::new(0),
                 scratch: RefCell::new(vec![0; 64 * 1024]),
                 date: RefCell::new((0, String::new())),
-                wall_anchor: Cell::new(None),
                 next_sweep: Cell::new(None),
                 now: Cell::new(Instant::now()),
                 stale: Cell::new(false),
+                in_turn: Cell::new(false),
                 beat,
             });
             *slot = Some(reactor.clone());
@@ -240,7 +240,13 @@ impl Reactor {
     }
 
     /// The time of the current turn (see [`Reactor::tick`]).
+    ///
+    /// Code that runs in a task (an acceptor, a handler, a finished request) cannot know how long
+    /// other tasks ran since, so outside `service` this reads the clock.
     fn now(&self) -> Instant {
+        if !self.in_turn.get() {
+            return Instant::now();
+        }
         if self.stale.get() {
             self.tick();
         }
@@ -288,25 +294,14 @@ impl Reactor {
         self.poller.delete(sock);
     }
 
-    /// Runs `f` on the value of the `Date` header. The wall clock is read at most once a second:
-    /// between reads the turn's monotonic time advances it, and the text is formatted once per
-    /// second.
+    /// Runs `f` on the value of the `Date` header, refreshed once per second.
     fn with_date<R>(&self, f: impl FnOnce(&str) -> R) -> R {
-        let now = self.now();
-        let mut anchor = self.wall_anchor.get();
-        if anchor.is_none_or(|(at, _)| now.saturating_duration_since(at) >= Duration::from_secs(1))
-        {
-            let wall = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_nanos() as i64);
-            anchor = Some((now, wall));
-            self.wall_anchor.set(anchor);
-        }
-        let (at, wall) = anchor.unwrap_or((now, 0));
-        let secs = (wall + now.saturating_duration_since(at).as_nanos() as i64) / 1_000_000_000;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs() as i64);
         let mut cached = self.date.borrow_mut();
-        if cached.0 != secs || cached.1.is_empty() {
-            *cached = (secs, h1::http_date(secs));
+        if cached.0 != now || cached.1.is_empty() {
+            *cached = (now, h1::http_date(now));
         }
         f(&cached.1)
     }
@@ -491,9 +486,6 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
         let timeout = reactor.next_sweep.get().map_or(-1, |at| {
             at.saturating_duration_since(reactor.now()).as_nanos() as i64
         });
-        // Tasks run while this one is parked (the acceptor stamps new connections), so the time
-        // read before is old by then.
-        reactor.mark_stale();
         let got = reactor.poller.park(timeout);
         if got & 16 != 0 {
             return;
@@ -551,6 +543,7 @@ impl Reactor {
     /// Handles whatever is ready without blocking.
     fn service(&self) {
         let mut events = Vec::new();
+        self.in_turn.set(true);
         loop {
             if self.beat.turn() {
                 self.serve_others();
@@ -596,6 +589,7 @@ impl Reactor {
             rt::yield_now();
             self.mark_stale();
         }
+        self.in_turn.set(false);
     }
 }
 
@@ -2033,6 +2027,7 @@ pub(crate) mod tests {
     #[test]
     fn turn_time_is_read_again_after_tasks_ran() {
         let reactor = Reactor::get();
+        reactor.in_turn.set(true);
         reactor.tick();
         let read = reactor.now();
         std::thread::sleep(Duration::from_millis(30));
@@ -2044,6 +2039,12 @@ pub(crate) mod tests {
             "a stamp after a long handler must not be measured from the old turn"
         );
         assert_eq!(reactor.now(), fresh, "one read serves the rest of the turn");
+        reactor.in_turn.set(false);
+        std::thread::sleep(Duration::from_millis(5));
+        assert!(
+            reactor.now() > fresh,
+            "outside the turn, a task cannot know how long others ran"
+        );
     }
 
     #[test]
