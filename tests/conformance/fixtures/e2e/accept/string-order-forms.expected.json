@@ -13,19 +13,24 @@
           "index": 0,
           "name": "string-order-forms.ms::string order agrees across inline, static and heap forms",
           "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "string-order-forms.ms::inline strings of up to fifteen bytes order by their words",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 1,
-        "selected": 1,
-        "passed": 1,
+        "available": 2,
+        "selected": 2,
+        "passed": 2,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN string-order-forms.ms::string order agrees across inline, static and heap forms\nPASS string-order-forms.ms::string order agrees across inline, static and heap forms\n1 tests, 0 failed\n",
+      "stdout": "RUN string-order-forms.ms::string order agrees across inline, static and heap forms\nPASS string-order-forms.ms::string order agrees across inline, static and heap forms\nRUN string-order-forms.ms::inline strings of up to fifteen bytes order by their words\nPASS string-order-forms.ms::inline strings of up to fifteen bytes order by their words\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
