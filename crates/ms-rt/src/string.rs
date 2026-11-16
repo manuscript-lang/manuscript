@@ -2774,6 +2774,58 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view(
     }
 }
 
+/// Room for the pieces of a split that is read in place: the list borrows it.
+#[repr(C)]
+pub struct SplitBuf([StrVal; SPLIT_BUF]);
+const SPLIT_BUF: usize = 8;
+
+/// `msrt_string_split_view` for a result the frame keeps: a split of at most eight pieces at a
+/// one-byte separator is written into `buf` and the list is a `cap == 0` view of it, so it
+/// allocates and frees nothing. Anything else is the heap list of `msrt_string_split_view`.
+///
+/// # Safety
+/// As `msrt_string_split_view`; `buf` outlives the list and its pieces.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
+    s: *const StrVal,
+    sep: *const StrVal,
+    has_max: HasRaw,
+    max: i64,
+    buf: *mut SplitBuf,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller passes live strings, a frame buffer and a writable out.
+    unsafe {
+        let (text, sepb) = (bytes(s), bytes(sep));
+        let limit = if has_max.is_set() && max >= 0 {
+            max as usize
+        } else {
+            usize::MAX
+        };
+        if let [c] = *sepb
+            && limit > 0
+            && text.len() <= ONE_PASS_SPLIT
+        {
+            let mut v = VecVal {
+                ptr: buf.cast(),
+                len: 0,
+                cap: SPLIT_BUF,
+            };
+            let piece = |b: &[u8]| match b {
+                [] | [0..=0x7f] => from_bytes(b),
+                _ => view_of(b.as_ptr(), b.len()),
+            };
+            if split_bytes_once::<true>(text, c, limit, &mut v, piece) {
+                v.cap = 0;
+                *out = v;
+                return;
+            }
+        }
+        msrt_string_split_view(s, sep, has_max, max, out)
+    }
+}
+
 /// `text.split(separator, max)[0]` where `text` outlives the piece: the first piece, a view of
 /// `text`, found without building the list. Faults like an index of an empty list when `max`
 /// is zero.
@@ -2867,7 +2919,7 @@ unsafe fn split_into(
         if let [sep] = *sepb
             && text.len() <= ONE_PASS_SPLIT
         {
-            split_bytes_once(text, sep, limit, &mut v, piece);
+            split_bytes_once::<false>(text, sep, limit, &mut v, piece);
             *out = v;
             return;
         }
@@ -2900,13 +2952,13 @@ const ONE_PASS_SPLIT: usize = 128;
 /// # Safety
 /// `v` holds a list of `StrVal`s with room for its first piece.
 #[inline(always)]
-unsafe fn split_bytes_once(
+unsafe fn split_bytes_once<const STACK: bool>(
     text: &[u8],
     sep: u8,
     limit: usize,
     v: &mut VecVal,
     piece: impl Fn(&[u8]) -> StrVal,
-) {
+) -> bool {
     const LOW: u64 = 0x7f7f_7f7f_7f7f_7f7f;
     const HIGH: u64 = 0x8080_8080_8080_8080;
     let pat = 0x0101_0101_0101_0101 * sep as u64;
@@ -2920,10 +2972,12 @@ unsafe fn split_bytes_once(
         while mask != 0 {
             let at = i * 8 + mask.trailing_zeros() as usize / 8;
             // SAFETY: the caller's list has room, and `push_str` grows it.
-            unsafe { push_str(v, piece(&text[start..at])) };
+            if !unsafe { put::<STACK>(v, piece(&text[start..at])) } {
+                return false;
+            }
             start = at + 1;
             if v.len >= limit {
-                return;
+                return true;
             }
             mask &= mask - 1;
         }
@@ -2932,15 +2986,28 @@ unsafe fn split_bytes_once(
     for (j, &b) in tail.iter().enumerate() {
         if b == sep {
             // SAFETY: as above.
-            unsafe { push_str(v, piece(&text[start..base + j])) };
+            if !unsafe { put::<STACK>(v, piece(&text[start..base + j])) } {
+                return false;
+            }
             start = base + j + 1;
             if v.len >= limit {
-                return;
+                return true;
             }
         }
     }
     // SAFETY: as above; the list is not full, or the loops returned.
-    unsafe { push_str(v, piece(&text[start..])) };
+    unsafe { put::<STACK>(v, piece(&text[start..])) }
+}
+
+/// `push_str`, or with `STACK` (the list is a caller's fixed buffer) `false` when it is full.
+#[inline(always)]
+unsafe fn put<const STACK: bool>(v: &mut VecVal, p: StrVal) -> bool {
+    if STACK && v.len == v.cap {
+        return false;
+    }
+    // SAFETY: the list has room, or grows when it is not a fixed buffer.
+    unsafe { push_str(v, p) };
+    true
 }
 
 /// The state of `for piece in text.split(separator)` that does not build the list.
