@@ -63,6 +63,10 @@ pub fn cancel_pending() -> bool {
     cancel_flag().load(Ordering::Relaxed) != 0
 }
 
+/// Delivers a cancel by return: marks the task unwinding. The caller returns a zero result and
+/// the frames above take their cancel exits. Only valid where the module has cancel edges.
+pub use crate::fault::{deliver_cancel, unwinding};
+
 /// Unwinds the program after a stop request; never returns.
 pub fn cancelled() -> ! {
     msrt_cancelled()

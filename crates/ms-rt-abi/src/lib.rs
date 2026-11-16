@@ -760,6 +760,9 @@ pub mod symbols {
     pub const ISOLATE_HDR_CANCEL: i64 = 8;
     /// `u8` at this offset of the block: non-zero while a guard is open on the task.
     pub const ISOLATE_HDR_GUARDED: i64 = 9;
+    /// `u8` at this offset of the block: non-zero once a park delivered a cancel and returned
+    /// (the block is 24 bytes). Tested by `br.cancel` after a call that can park.
+    pub const ISOLATE_HDR_UNWINDING: i64 = 16;
     pub const DESC_INT: &str = "msrt_desc_int";
     pub const DESC_FLOAT: &str = "msrt_desc_float";
     pub const DESC_FLOAT32: &str = "msrt_desc_float32";

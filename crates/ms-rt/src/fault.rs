@@ -30,6 +30,12 @@ pub struct Hdr {
     /// Nesting depth of the task's cancellation shields. A signal handler on any thread reads it
     /// for the main isolate's running task, so it lives here and not in a thread-local.
     pub shield: core::sync::atomic::AtomicU32,
+    /// Non-zero once a park delivered a cancel to the task and returned to its caller instead of
+    /// jumping: every frame above then takes its cancel exit (`br.cancel`) and returns. Unlike
+    /// `cancel` it is not a request: a signal handler never sets it and a shield never clears
+    /// it. The task boundary clears it when the cancel exit completes. Set through
+    /// [`deliver_cancel`].
+    pub unwinding: AtomicU8,
 }
 
 impl Hdr {
@@ -40,6 +46,7 @@ impl Hdr {
             guarded: AtomicU8::new(0),
             shield: core::sync::atomic::AtomicU32::new(0),
             stop_shield: core::sync::atomic::AtomicU16::new(0),
+            unwinding: AtomicU8::new(0),
         }
     }
 }
@@ -1633,6 +1640,26 @@ pub fn with_cleanup<R>(cleanup: &mut dyn FnMut(), body: impl FnOnce() -> R) -> R
     r
 }
 
+/// Marks the running task as unwinding for a delivered cancel. The caller then returns a zero
+/// result to its own caller, which tests the byte (`br.cancel`) and leaves by its cancel exit.
+pub fn deliver_cancel() {
+    // SAFETY: the current task's header stays live for this call.
+    unsafe { (*msrt_isolate_hdr()).unwinding.store(1, Ordering::Relaxed) };
+}
+
+/// Whether the running task is unwinding for a delivered cancel.
+pub fn unwinding() -> bool {
+    msrt_unwinding() != 0
+}
+
+/// The `unwinding` byte, for code that cannot load it from the header directly.
+#[unsafe(no_mangle)]
+// ms: leaf domain=unwind
+pub extern "C" fn msrt_unwinding() -> u8 {
+    // SAFETY: the current task's header stays live for this call.
+    unsafe { (*msrt_isolate_hdr()).unwinding.load(Ordering::Relaxed) }
+}
+
 /// Unwinds on a stop request: runs cleanups and exits 130/143.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cancelled() -> ! {
@@ -2125,7 +2152,11 @@ mod tests {
             core::mem::offset_of!(Hdr, guarded),
             ms_rt_abi::symbols::ISOLATE_HDR_GUARDED as usize,
         );
-        assert_eq!(core::mem::size_of::<Hdr>(), 16);
+        assert_eq!(
+            core::mem::offset_of!(Hdr, unwinding),
+            ms_rt_abi::symbols::ISOLATE_HDR_UNWINDING as usize,
+        );
+        assert_eq!(core::mem::size_of::<Hdr>(), 24);
         // The region's last 16 bytes: the block's address, then the limit (`STACK_LIMIT_CELL`).
         assert_eq!(ms_rt_abi::symbols::STACK_LIMIT_CELL, 8);
     }
