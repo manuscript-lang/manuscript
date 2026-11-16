@@ -822,6 +822,9 @@ impl Walker<'_> {
                     return;
                 };
                 self.check_store(s.pos, &b, *name);
+                // The value is fully evaluated before the store: a borrow whose last use was in
+                // it is already dead (`state = State.Name(s + "!")` inside `match state`).
+                self.release_pending();
                 let places = vec![Place::local(b.uid)];
                 self.check_change(s.pos, &places, "reassign", self.syms.str(b.name), None);
                 self.mark_mutated(b.uid);

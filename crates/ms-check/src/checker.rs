@@ -100,6 +100,9 @@ pub struct TestFixture {
 pub(crate) struct PropertyMethods {
     equal: Vec<u32>,
     hashable: Vec<u32>,
+    /// Methods that release their receiver, so asking whether a type holds a resource does not
+    /// test every method of the program.
+    closing: Vec<u32>,
 }
 
 impl PropertyMethods {
@@ -113,6 +116,14 @@ impl PropertyMethods {
         if decides(Builtin::Hashable) {
             self.hashable.push(at as u32);
         }
+        if method.closes(syms) {
+            self.closing.push(at as u32);
+        }
+    }
+
+    /// The methods that close their receiver.
+    pub(crate) fn closing(&self) -> &[u32] {
+        &self.closing
     }
 
     /// The deciding methods of an `Equal` or `Hashable` property.

@@ -1104,9 +1104,9 @@ impl Checker {
             return false;
         }
         seen.push(key);
-        let closeable = self.p.methods.iter().any(|m| {
+        let closeable = self.property_methods.closing().iter().any(|&at| {
+            let m = &self.p.methods[at as usize];
             self.method_visible(m)
-                && m.closes(self.syms)
                 && unify(
                     &m.receiver,
                     t,

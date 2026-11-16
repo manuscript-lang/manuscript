@@ -59,7 +59,7 @@ enum Stage {
 
 /// The request line and fields of a stream.
 pub(in crate::http) struct Head {
-    pub method: String,
+    pub method: std::borrow::Cow<'static, str>,
     pub path: String,
     pub query: String,
     pub fields: Vec<(String, Vec<u8>)>,
@@ -592,7 +592,7 @@ impl Server {
         }
         let expect_continue = h1::has_token(&fields, "expect", "100-continue");
         Ok(Head {
-            method,
+            method: h1::method_text(&method),
             path: target.path,
             query: target.query,
             fields,
@@ -794,7 +794,7 @@ fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started:
             path: head.path,
             query: head.query,
             protocol: "HTTP/2.0",
-            headers: Rc::new(RefCell::new(Headers::from_received(head.fields))),
+            headers: Headers::from_received(head.fields),
             decoder: h1::BodyDecoder::new(h1::Framing::None),
             decoded: Vec::new(),
             remaining_read: server.limits.body,
