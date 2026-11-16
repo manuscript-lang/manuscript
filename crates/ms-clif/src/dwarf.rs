@@ -121,15 +121,34 @@ fn emit_inlined(
     files: &[Option<gimli::write::FileId>],
     origins: &mut HashMap<String, gimli::write::UnitEntryId>,
 ) -> HashMap<u32, gimli::write::UnitEntryId> {
-    // A span of a scope is also a span of every scope that called it.
+    // Every address belongs to one scope, the innermost whose lines cover it, so sibling frames
+    // never overlap even when two line ranges do. A span of a scope is also a span of every
+    // scope that called it.
     let mut spans: BTreeMap<u32, Vec<(u32, u32)>> = BTreeMap::new();
-    for &(start, stop, _, _, scope) in &f.dwarf_ranges {
+    let mut cuts: Vec<u32> = f.dwarf_ranges.iter().flat_map(|r| [r.0, r.1]).collect();
+    cuts.sort_unstable();
+    cuts.dedup();
+    let mut covering: Vec<(u32, u32, u32)> = Vec::new();
+    let mut next = 0;
+    for w in cuts.windows(2) {
+        let (begin, end) = (w[0], w[1]);
+        while let Some(r) = f.dwarf_ranges.get(next)
+            && r.0 <= begin
+        {
+            covering.push((r.0, r.1, r.4));
+            next += 1;
+        }
+        covering.retain(|c| c.1 > begin);
+        // The latest-starting range is the innermost.
+        let Some(&(_, _, scope)) = covering.last() else {
+            continue;
+        };
         let mut s = scope;
         while s != 0 {
             let list = spans.entry(s).or_default();
             match list.last_mut() {
-                Some(last) if last.1 == start => last.1 = stop,
-                _ => list.push((start, stop)),
+                Some(last) if last.1 == begin => last.1 = end,
+                _ => list.push((begin, end)),
             }
             s = scopes[s as usize - 1].parent;
         }
