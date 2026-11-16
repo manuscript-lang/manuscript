@@ -173,6 +173,8 @@ impl InstCheck<'_, '_> {
             | Op::IfaceBorrow
             | Op::IfaceView
             | Op::IfaceIs
+            | Op::IfaceTag
+            | Op::IfaceDestroy
             | Op::IfaceData => self.closures_and_interfaces(),
             Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod => self.calls(),
             Op::Clone | Op::AltOwn | Op::MoveOut | Op::Drop | Op::Forget | Op::DropIf => {
@@ -1009,6 +1011,21 @@ impl InstCheck<'_, '_> {
                     matches!(self.m.types.kind(self.t(0)), TyKind::Iface(_))
                         && self.res == Some(Ty::PTR),
                     "iface.data takes an interface and yields ptr",
+                )
+            }
+            Op::IfaceTag => {
+                self.arity(1)?;
+                self.want(
+                    matches!(self.m.types.kind(self.t(0)), TyKind::Iface(_))
+                        && self.res == Some(Ty::INT),
+                    "iface.tag takes an interface and yields int: 0 owns the box and payload, 1 only the box, 2 nothing",
+                )
+            }
+            Op::IfaceDestroy => {
+                self.arity(1)?;
+                self.want(
+                    matches!(self.m.types.kind(self.t(0)), TyKind::Iface(_)) && self.res.is_none(),
+                    "iface.destroy takes an interface and runs its payload destructor",
                 )
             }
             _ => unreachable!("closures_and_interfaces is only called for its own ops"),

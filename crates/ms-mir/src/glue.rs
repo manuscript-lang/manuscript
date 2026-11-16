@@ -66,7 +66,9 @@ pub fn run(m: &mut Module) -> bool {
     let (drops, clones) = wanted_types(m);
     let lay = Layouts::new(m);
     let eligible = |t: &Ty| match m.types.kind(*t) {
-        TyKind::Type(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Bytes => true,
+        TyKind::Type(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Bytes | TyKind::Iface(_) => {
+            true
+        }
         // A present flag and the payload's leaves; the other layouts are one pointer.
         TyKind::Opt(inner) => {
             !lay.opt_is_nullable(*inner) && !lay.opt_is_boxed(*inner) && !lay.is_str_like(*t)
@@ -81,7 +83,7 @@ pub fn run(m: &mut Module) -> bool {
         .filter(eligible)
         .filter(|t| match m.types.kind(*t) {
             TyKind::List(e) => m.needs_drop(*e),
-            TyKind::Bytes => false,
+            TyKind::Bytes | TyKind::Iface(_) => false,
             _ => true,
         })
         .collect();
@@ -403,7 +405,39 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             b.ret(None);
             b.finish()
         }
-        _ => unreachable!("drop glue is made for records, alternatives, optionals and lists"),
+        TyKind::Iface(_) => {
+            // The vtable word's tag says what the value owns: 0 the box and its payload, 1 only
+            // the box (`iface.borrow`), 2 nothing (`iface.view`).
+            let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+            let p = b.params()[0];
+            let (owned, rest, boxed, done) =
+                (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+            let tag = b
+                .emit(Op::IfaceTag, &[p], Imm::None, Some(Ty::INT))
+                .expect("tag");
+            let zero = b.iconst(0);
+            let is_owned = b.icmp(Cc::Eq, tag, zero);
+            b.br_if(is_owned, owned, &[], rest, &[]);
+            b.switch_to(owned);
+            b.emit(Op::IfaceDestroy, &[p], Imm::None, None);
+            b.br(done, &[]);
+            b.switch_to(rest);
+            let one = b.iconst(1);
+            let is_box = b.icmp(Cc::Eq, tag, one);
+            b.br_if(is_box, boxed, &[], done, &[]);
+            b.switch_to(boxed);
+            let data = b
+                .emit(Op::IfaceData, &[p], Imm::None, Some(Ty::PTR))
+                .expect("data");
+            b.emit(Op::Free, &[data], Imm::None, None);
+            b.br(done, &[]);
+            b.switch_to(done);
+            b.ret(None);
+            b.finish()
+        }
+        _ => unreachable!(
+            "drop glue is made for records, alternatives, optionals, lists and interfaces"
+        ),
     }
 }
 
