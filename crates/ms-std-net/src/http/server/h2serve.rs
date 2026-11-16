@@ -116,7 +116,7 @@ impl H2Stream {
     }
 }
 
-pub(in crate::http) struct H2Conn {
+pub struct H2Conn {
     core: h2::Connection,
     streams: HashMap<u32, H2Stream>,
     queue: VecDeque<u32>,
@@ -154,6 +154,18 @@ impl H2Conn {
     /// The tasks running handlers of streams.
     pub(in crate::http) fn running(&self) -> Vec<u64> {
         self.streams.values().map(|s| s.task).collect()
+    }
+
+    /// Whether another thread could continue this connection: no streams, nothing to send, no
+    /// handler waiting on it, and not winding down. Nothing of this thread's is left in such a
+    /// connection: with no streams, the queue holds only ids of streams that are gone, which
+    /// this drops.
+    pub(super) fn can_move(&mut self) -> bool {
+        if !self.is_idle() || self.goaway || !self.waiters.is_empty() {
+            return false;
+        }
+        self.queue.clear();
+        true
     }
 
     fn is_idle(&self) -> bool {
@@ -417,6 +429,7 @@ impl Server {
             Drain::Empty => {
                 self.set_interest(conn, reactor, Ev::IN);
                 self.h2_settle(conn, reactor);
+                self.list_waiting(conn);
             }
         }
     }
