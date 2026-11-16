@@ -274,6 +274,57 @@ pub fn try_task_sleep(ns: i64) -> Result<(), pool::Cancelled> {
     Ok(())
 }
 
+/// A wake-up a task parks on and any thread may signal: the event a wait ends on when its
+/// state changes elsewhere (a close, a post), in place of waking on a period to look. Made by
+/// the task that parks on it and freed on drop; while it exists the runtime counts it as a
+/// wake-up that may still come, so make it for the span of one wait.
+pub struct Wakeup(u64);
+
+impl Wakeup {
+    pub fn new() -> Wakeup {
+        // SAFETY: plain scheduler call on the task's thread.
+        Wakeup(unsafe { crate::task::msrt_token_new(1) })
+    }
+
+    /// What `signal_id` takes: stored where another thread can find it.
+    pub fn id(&self) -> u64 {
+        self.0
+    }
+
+    /// Parks the running task until signalled or the timeout (nanoseconds, negative for none)
+    /// passes: `Ok(true)` when signalled (also when it was signalled before the call),
+    /// `Ok(false)` on the timeout, `Err(Cancelled)` when a stop request ends the wait.
+    pub fn park(&self, timeout_ns: i64) -> Result<bool, pool::Cancelled> {
+        let mut value = 0u64;
+        // SAFETY: parks the current task on a live token no other task waits on.
+        let got = unsafe { crate::task::msrt_token_park(self.0, timeout_ns, &mut value) };
+        match got {
+            0 => Ok(true),
+            g if g & 16 != 0 => Err(pool::Cancelled),
+            _ => Ok(false),
+        }
+    }
+}
+
+impl Default for Wakeup {
+    fn default() -> Wakeup {
+        Wakeup::new()
+    }
+}
+
+impl Drop for Wakeup {
+    fn drop(&mut self) {
+        // SAFETY: the token is live and its task is the one dropping it.
+        unsafe { crate::task::msrt_token_free(self.0) };
+    }
+}
+
+/// Signals the wake-up with id `id` from any thread; one that was freed ignores it, and one
+/// signalled twice before it is taken keeps one signal.
+pub fn signal_wakeup(id: u64) {
+    crate::task::msrt_token_post_remote(id, 1);
+}
+
 /// Aborts the program when a stop request is pending (call between blocking steps of long operations).
 pub fn poll_cancel() {
     if cancel_pending() {

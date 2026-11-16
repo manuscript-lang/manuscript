@@ -64,14 +64,14 @@ fn wsa_poll(fds: &mut [WSAPOLLFD], timeout_ms: i32) -> Option<usize> {
     (n != SOCKET_ERROR).then_some(n as usize)
 }
 
-/// Waits up to `slice` for one socket; `true` when it is ready, hung up or failed.
-pub fn poll_one(sock: Borrowed<'_>, write: bool, slice: Duration) -> bool {
+/// Waits up to `limit` (without one, until the socket is ready) for one socket; `true` when it is ready, hung up or failed.
+pub fn poll_one(sock: Borrowed<'_>, write: bool, limit: Option<Duration>) -> bool {
     let mut fds = [WSAPOLLFD {
         fd: raw(sock) as usize,
         events: poll_flags(if write { Ev::OUT } else { Ev::IN }),
         revents: 0,
     }];
-    match wsa_poll(&mut fds, millis(slice)) {
+    match wsa_poll(&mut fds, limit.map_or(-1, millis)) {
         Some(n) => n > 0 && fds[0].revents != 0,
         None => true,
     }
