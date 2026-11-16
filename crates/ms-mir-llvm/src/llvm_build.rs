@@ -127,6 +127,9 @@ pub struct StructDef {
 #[derive(Default, Debug)]
 pub struct Types {
     structs: RefCell<Vec<StructDef>>,
+    /// Fill every block-confined stack slot with a pattern where its lifetime ends
+    /// (`BuildOptions::poison_slots`).
+    pub poison_slots: std::cell::Cell<bool>,
 }
 
 impl Types {
@@ -1048,7 +1051,12 @@ impl<'t> FnBuilder<'t> {
             .out
             .split_once('\n')
             .expect("a body starts with a label");
-        let rest = crate::llvm_lifetimes::mark(&self.allocas, &self.pinned, rest);
+        let rest = crate::llvm_lifetimes::mark(
+            &self.allocas,
+            &self.pinned,
+            rest,
+            self.types.poison_slots.get(),
+        );
         format!("{first}\n{}{}{rest}}}\n\n", self.allocas, self.prologue)
     }
 }

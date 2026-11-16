@@ -866,7 +866,7 @@ fn compile_with_isa(
                         temps = l.finish();
                         g.vars.insert(i, vars);
                     }
-                    crate::slotshare::share(&mut ctx.func, &temps);
+                    crate::slotshare::share(&mut ctx.func, &temps, g.opts.build.poison_slots);
                     let fid = g.funcs[i];
                     prepare(&g, &mut ctx);
                     pipe.submit(&mut g, std::mem::replace(&mut ctx, Context::new()), fid, i)?;
@@ -891,7 +891,7 @@ fn compile_with_isa(
                     l.lower_glue(kind, ty);
                     temps = l.finish();
                 }
-                crate::slotshare::share(&mut ctx.func, &temps);
+                crate::slotshare::share(&mut ctx.func, &temps, g.opts.build.poison_slots);
                 define(&mut g, &mut ctx, id, "glue")?;
             }
         }
@@ -1313,7 +1313,7 @@ fn emit_main(
         l.lower_main(entry_id);
         temps = l.finish();
     }
-    crate::slotshare::share(&mut ctx.func, &temps);
+    crate::slotshare::share(&mut ctx.func, &temps, g.opts.build.poison_slots);
     define(g, ctx, id, "main")
 }
 

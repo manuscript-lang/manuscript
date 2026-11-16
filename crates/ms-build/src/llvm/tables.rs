@@ -661,6 +661,7 @@ mod sweep_tests {
             &ms_mir_llvm::Options {
                 checks: true,
                 heap_facts: true,
+                poison_slots: false,
                 units: Some(1),
                 triple,
                 anchor: false,

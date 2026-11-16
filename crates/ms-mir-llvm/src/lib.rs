@@ -85,6 +85,8 @@ pub struct Options {
     pub checks: bool,
     /// Declare the heap functions as an allocation family so LLVM can reason about them.
     pub heap_facts: bool,
+    /// Fill each block-confined stack slot with a pattern where its lifetime ends.
+    pub poison_slots: bool,
     /// How many modules to write; `None` picks one per core, by the size of the code.
     pub units: Option<usize>,
     /// The LLVM target triple.
