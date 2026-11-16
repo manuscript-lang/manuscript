@@ -37,7 +37,7 @@ use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::fault::{Fault, RecordFile, is_fault_status};
 use crate::json::Json;
-use crate::process::{Stops, Wake, wait_supervised};
+use crate::process::{Doorbell, Drained, Stops, Wake, wait_supervised};
 use crate::profile::base64;
 use crate::util::emit_json;
 use ms_rt_abi::record::FaultKind;
@@ -767,6 +767,11 @@ impl Runner<'_> {
             .env("MS_TEST_RESULTS", &records_path)
             .args(&self.options.program)
             .current_dir(self.working);
+        // The harness rings this pipe after each record, so the wait below wakes on records.
+        let bell = Doorbell::new().ok();
+        if let Some(bell) = &bell {
+            command.env("MS_TEST_WAKE", bell.rings_as());
+        }
         if let Some(timeout) = self.options.timeout {
             command.env("MS_TEST_TIMEOUT_NS", timeout.as_nanos().to_string());
         }
@@ -792,17 +797,22 @@ impl Runner<'_> {
             }
         };
         let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
+        if let Some(bell) = bell {
+            bell.listen(stops.wake());
+        }
         let mut printed: Vec<u8> = Vec::new();
         let limit = self.options.timeout.map(|t| t + Duration::from_secs(1));
         let mut reader = RecordReader::default();
-        // The records file has no wake, so this wait looks at it on a tick (the one poll left:
-        // the records would need a pipe the runtime writes).
-        let waited = wait_supervised(&mut child, &stops, None, Some(RECORDS_TICK), &mut || {
+        // A record wakes the wait (the doorbell), and the next look is due when the oldest
+        // running test reaches its limit.
+        let waited = wait_supervised(&mut child, &stops, None, &mut || {
             while let Ok(chunk) = stdout.try_recv() {
                 printed.extend_from_slice(&chunk);
             }
             reader.read(&records_path, &mut run);
-            let Some(limit) = limit else { return false };
+            let Some(limit) = limit else {
+                return Drained::default();
+            };
             let late: Vec<usize> = reader
                 .running
                 .iter()
@@ -810,7 +820,14 @@ impl Runner<'_> {
                 .map(|(index, _)| *index)
                 .collect();
             run.timed_out.extend(&late);
-            !late.is_empty()
+            Drained {
+                kill: !late.is_empty(),
+                next: reader
+                    .running
+                    .values()
+                    .map(|(_, began)| *began + limit)
+                    .min(),
+            }
         });
         run.ended = match &waited {
             Ok(_) if !run.timed_out.is_empty() => {
@@ -871,7 +888,7 @@ impl Runner<'_> {
         let stderr = pipe_reader(child.stderr.take().expect("piped stderr"), stops.wake());
         let mut errors: Vec<u8> = Vec::new();
         let bench = self.options.bench;
-        let waited = wait_supervised(&mut child, &stops, self.options.timeout, None, &mut || {
+        let waited = wait_supervised(&mut child, &stops, self.options.timeout, &mut || {
             while let Ok(chunk) = stdout.try_recv() {
                 if bench {
                     printed.extend_from_slice(&chunk);
@@ -882,7 +899,7 @@ impl Runner<'_> {
             while let Ok(chunk) = stderr.try_recv() {
                 errors.extend_from_slice(&chunk);
             }
-            false
+            Drained::default()
         });
         // Output written just before exit; a silent pipe held open elsewhere ends the wait.
         while let Ok(chunk) = stdout.recv_timeout(Duration::from_millis(100)) {
@@ -1239,9 +1256,6 @@ fn describe_stats(stats: &Json) -> String {
         format_ns(number("cpu_ns")),
     )
 }
-
-/// How often a test run looks at its records file while the child runs.
-const RECORDS_TICK: Duration = Duration::from_millis(10);
 
 /// Streams a child's pipe through a channel. The thread is detached: a
 /// grandchild that inherits the pipe must not hold the run up.

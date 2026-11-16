@@ -254,23 +254,138 @@ impl Drop for Stops {
     }
 }
 
+/// What a drain pass found: whether the child must be killed as timed out, and when the next
+/// pass is due (a deadline the caller computed from what it saw, such as a test's time limit).
+#[derive(Default)]
+pub struct Drained {
+    pub kill: bool,
+    pub next: Option<Instant>,
+}
+
+/// A pipe whose write end a child inherits and rings after each record it writes elsewhere (the
+/// test harness's records file), so the supervising wait wakes when there is something to read.
+/// The data stays in the file, which keeps records whole and in order; the pipe carries only
+/// the wake.
+pub struct Doorbell {
+    reader: std::fs::File,
+    writer: std::fs::File,
+}
+
+impl Doorbell {
+    /// Opens the pipe. The read end is not inherited; the write end is, and `rings_as` names it.
+    pub fn new() -> std::io::Result<Doorbell> {
+        Doorbell::open()
+    }
+
+    /// The value for `MS_TEST_WAKE`: the write end's descriptor (Unix) or handle (Windows).
+    pub fn rings_as(&self) -> String {
+        #[cfg(unix)]
+        {
+            use std::os::fd::AsRawFd;
+            self.writer.as_raw_fd().to_string()
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::io::AsRawHandle;
+            (self.writer.as_raw_handle() as usize).to_string()
+        }
+    }
+
+    /// Call after spawning the child: closes this process's copy of the write end (so the pipe
+    /// ends with the child) and wakes `wake` on every ring, from a thread that ends with it.
+    pub fn listen(self, wake: Wake) {
+        use std::io::Read;
+        let Doorbell { mut reader, writer } = self;
+        drop(writer);
+        std::thread::spawn(move || {
+            let mut buffer = [0u8; 256];
+            while let Ok(n) = reader.read(&mut buffer) {
+                if n == 0 {
+                    break;
+                }
+                wake.output();
+            }
+        });
+    }
+
+    #[cfg(unix)]
+    fn open() -> std::io::Result<Doorbell> {
+        use std::os::fd::FromRawFd;
+        let mut fds = [-1i32; 2];
+        // SAFETY: `fds` holds the two descriptors `pipe` writes.
+        if unsafe { pipe(fds.as_mut_ptr()) } != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        // SAFETY: the read end must not leak into other children; plain `fcntl`.
+        unsafe { fcntl(fds[0], F_SETFD, FD_CLOEXEC) };
+        // SAFETY: both descriptors were just created and belong to these files alone.
+        let (reader, writer) = unsafe {
+            (
+                std::fs::File::from_raw_fd(fds[0]),
+                std::fs::File::from_raw_fd(fds[1]),
+            )
+        };
+        Ok(Doorbell { reader, writer })
+    }
+
+    #[cfg(windows)]
+    fn open() -> std::io::Result<Doorbell> {
+        use std::os::windows::io::FromRawHandle;
+        #[repr(C)]
+        struct SecurityAttributes {
+            length: u32,
+            descriptor: *mut core::ffi::c_void,
+            inherit: i32,
+        }
+        unsafe extern "system" {
+            fn CreatePipe(
+                read: *mut isize,
+                write: *mut isize,
+                attributes: *const SecurityAttributes,
+                size: u32,
+            ) -> i32;
+            fn SetHandleInformation(handle: isize, mask: u32, flags: u32) -> i32;
+        }
+        const HANDLE_FLAG_INHERIT: u32 = 1;
+        let attributes = SecurityAttributes {
+            length: core::mem::size_of::<SecurityAttributes>() as u32,
+            descriptor: core::ptr::null_mut(),
+            inherit: 1,
+        };
+        let (mut read, mut write) = (0isize, 0isize);
+        // SAFETY: both out-pointers are valid; the attributes make both ends inheritable.
+        if unsafe { CreatePipe(&mut read, &mut write, &attributes, 0) } == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        // SAFETY: the read end must not leak into other children.
+        unsafe { SetHandleInformation(read, HANDLE_FLAG_INHERIT, 0) };
+        // SAFETY: both handles were just created and belong to these files alone.
+        let (reader, writer) = unsafe {
+            (
+                std::fs::File::from_raw_handle(read as *mut core::ffi::c_void),
+                std::fs::File::from_raw_handle(write as *mut core::ffi::c_void),
+            )
+        };
+        Ok(Doorbell { reader, writer })
+    }
+}
+
 /// Wait for `child`, forwarding SIGINT and SIGTERM received meanwhile.
 pub fn wait_with_signals(child: &mut Child, stops: &Stops) -> std::io::Result<ExitStatus> {
-    wait_supervised(child, stops, None, None, &mut || false).map(|waited| waited.status)
+    wait_supervised(child, stops, None, &mut Drained::default).map(|waited| waited.status)
 }
 
 /// Wait for `child`, forwarding SIGINT and SIGTERM, killing it once `timeout` has elapsed, and
-/// calling `drain` (true kills the child as timed out) whenever a reader wakes the wait through
-/// `Stops::wake` and, for callers whose input has no wake, every `poll_every`.
+/// calling `drain` whenever a reader wakes the wait through `Stops::wake` and when the pass it
+/// last returned said the next one was due.
 ///
 /// The wait is an event wait: the child's exit, a signal and reader output each arrive on one
-/// channel, and the only clock is the deadline of `timeout` and, when given, `poll_every`.
+/// channel, and the only clocks are the deadline of `timeout` and the one `drain` asked for.
 pub fn wait_supervised(
     child: &mut Child,
     stops: &Stops,
     timeout: Option<Duration>,
-    poll_every: Option<Duration>,
-    drain: &mut dyn FnMut() -> bool,
+    drain: &mut dyn FnMut() -> Drained,
 ) -> std::io::Result<Waited> {
     let started = Instant::now();
     let (mut timed_out, mut interrupted) = (false, false);
@@ -284,11 +399,12 @@ pub fn wait_supervised(
         wait_for_exit(pid, handle);
         let _ = sender.send(Event::Exited);
     });
-    let mut next_poll = poll_every.map(|every| Instant::now() + every);
+    // One pass at the start, so a caller can set its first deadline and take early output.
+    let mut next_pass = Some(Instant::now());
     let result = loop {
         let deadline = [
             timeout.filter(|_| !timed_out).map(|limit| started + limit),
-            next_poll,
+            next_pass,
         ]
         .into_iter()
         .flatten()
@@ -323,13 +439,11 @@ pub fn wait_supervised(
                 break Err(std::io::Error::other("supervision ended"));
             }
         }
-        if next_poll.is_some_and(|at| Instant::now() >= at) {
-            next_poll = poll_every.map(|every| Instant::now() + every);
-        }
         let late = !timed_out && timeout.is_some_and(|limit| started.elapsed() >= limit);
         // Draining goes on after a kill, so the last output is taken as it arrives.
-        let asked = drain();
-        if late || (asked && !timed_out) {
+        let passed = drain();
+        next_pass = passed.next;
+        if late || (passed.kill && !timed_out) {
             // A child that ended first keeps its own status.
             match child.try_wait() {
                 Ok(Some(status)) => {
@@ -424,7 +538,7 @@ mod tests {
         let stops = Stops::catch();
         let mut child = sh("exit 3");
         let started = Instant::now();
-        let waited = wait_supervised(&mut child, &stops, None, None, &mut || false).unwrap();
+        let waited = wait_supervised(&mut child, &stops, None, &mut Drained::default).unwrap();
         assert_eq!(waited.status.code(), Some(3));
         assert!(!waited.timed_out && !waited.interrupted);
         assert!(started.elapsed() < Duration::from_secs(5));
@@ -440,8 +554,7 @@ mod tests {
             &mut child,
             &stops,
             Some(Duration::from_millis(200)),
-            None,
-            &mut || false,
+            &mut Drained::default,
         )
         .unwrap();
         assert!(waited.timed_out);
@@ -467,11 +580,11 @@ mod tests {
             }
         });
         let mut drained = 0;
-        let waited = wait_supervised(&mut child, &stops, None, None, &mut || {
+        let waited = wait_supervised(&mut child, &stops, None, &mut || {
             while seen.try_recv().is_ok() {
                 drained += 1;
             }
-            false
+            Drained::default()
         })
         .unwrap();
         assert!(waited.status.success());
@@ -484,13 +597,10 @@ mod tests {
         let _turn = serial();
         let stops = Stops::catch();
         let mut child = sh("sleep 30");
-        let waited = wait_supervised(
-            &mut child,
-            &stops,
-            None,
-            Some(Duration::from_millis(20)),
-            &mut || true,
-        )
+        let waited = wait_supervised(&mut child, &stops, None, &mut || Drained {
+            kill: true,
+            next: None,
+        })
         .unwrap();
         assert!(waited.timed_out);
     }
@@ -511,8 +621,34 @@ mod tests {
             .unwrap();
         // SAFETY: sends SIGINT to this process, whose disposition `Stops` replaced.
         unsafe { kill(std::process::id() as i32, SIGINT) };
-        let waited = wait_supervised(&mut child, &stops, None, None, &mut || false).unwrap();
+        let waited = wait_supervised(&mut child, &stops, None, &mut Drained::default).unwrap();
         assert!(waited.interrupted);
         assert_eq!(waited.status.code(), Some(7));
+    }
+
+    #[test]
+    fn a_ring_on_the_doorbell_wakes_the_wait() {
+        let _turn = serial();
+        let stops = Stops::catch();
+        let bell = Doorbell::new().unwrap();
+        let mut child = Command::new("/bin/sh")
+            .args([
+                "-c",
+                "echo > /dev/fd/$MS_TEST_WAKE; sleep 1; echo > /dev/fd/$MS_TEST_WAKE",
+            ])
+            .env("MS_TEST_WAKE", bell.rings_as())
+            .spawn()
+            .unwrap();
+        bell.listen(stops.wake());
+        let mut passes = 0;
+        let waited = wait_supervised(&mut child, &stops, None, &mut || {
+            passes += 1;
+            Drained::default()
+        })
+        .unwrap();
+        assert!(waited.status.success(), "status {:?}", waited.status);
+        // The pass at the start (which an early ring may share) and one for the ring a second
+        // later: without the doorbell nothing else wakes this wait, and there would be one.
+        assert!(passes >= 2, "passes: {passes}");
     }
 }

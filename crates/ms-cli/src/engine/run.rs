@@ -10,7 +10,7 @@ use crate::backend::{BackendResult, Io, RunRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::fault::{Fault, RecordFile, is_fault_status};
 use crate::json::Json;
-use crate::process::{Stops, exit_code, wait_supervised, wait_with_signals};
+use crate::process::{Drained, Stops, exit_code, wait_supervised, wait_with_signals};
 use crate::util::emit_json;
 
 use super::testing::pipe_reader;
@@ -158,14 +158,14 @@ fn run_structured(
     let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
     let stderr = pipe_reader(child.stderr.take().expect("piped stderr"), stops.wake());
     let (mut out, mut err): (Vec<u8>, Vec<u8>) = (Vec::new(), Vec::new());
-    let waited = wait_supervised(&mut child, &stops, None, None, &mut || {
+    let waited = wait_supervised(&mut child, &stops, None, &mut || {
         while let Ok(chunk) = stdout.try_recv() {
             out.extend_from_slice(&chunk);
         }
         while let Ok(chunk) = stderr.try_recv() {
             err.extend_from_slice(&chunk);
         }
-        false
+        Drained::default()
     });
     // Output written just before exit; a pipe held open elsewhere ends the wait.
     while let Ok(chunk) = stdout.recv_timeout(Duration::from_millis(100)) {
