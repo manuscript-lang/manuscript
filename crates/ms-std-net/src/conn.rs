@@ -964,6 +964,7 @@ impl Datagrams {
                 return Err(match e.kind() {
                     io::ErrorKind::TimedOut => NetErr::Timeout,
                     io::ErrorKind::PermissionDenied => NetErr::PermissionDenied,
+                    io::ErrorKind::InvalidInput => NetErr::InvalidInput,
                     _ => NetErr::Failed(describe_io_error(&e)),
                 });
             }

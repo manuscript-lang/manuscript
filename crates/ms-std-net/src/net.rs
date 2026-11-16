@@ -472,12 +472,11 @@ impl Network {
 
     /// Connects to the first reachable permitted address of `address`.
     pub fn dial_tcp(&self, address: &str, deadline: Deadline) -> Result<Socket, NetErr> {
-        let (host, port) =
-            split_host_port(address).ok_or_else(|| NetErr::failed("missing port in address"))?;
+        let (host, port) = split_host_port(address).ok_or(NetErr::InvalidInput)?;
         if !host_ok(&self.policy, host) {
             return Err(NetErr::PermissionDenied);
         }
-        let port = parse_port(port).ok_or_else(|| NetErr::failed("invalid port"))?;
+        let port = parse_port(port).ok_or(NetErr::InvalidInput)?;
         let ips = self.resolve_ips(host, deadline)?;
         let mut last = NetErr::failed("no permitted address");
         for ip in ips {
@@ -544,9 +543,8 @@ impl Network {
 
     /// Binds a listening TCP socket.
     pub fn listen_tcp(&self, address: &str) -> Result<Socket, NetErr> {
-        let (host, port) =
-            split_host_port(address).ok_or_else(|| NetErr::failed("missing port in address"))?;
-        let port = parse_port(port).ok_or_else(|| NetErr::failed("invalid port"))?;
+        let (host, port) = split_host_port(address).ok_or(NetErr::InvalidInput)?;
+        let port = parse_port(port).ok_or(NetErr::InvalidInput)?;
         let ip = if host.is_empty() {
             IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED)
         } else if let Ok(ip) = host.parse::<IpAddr>() {
@@ -609,9 +607,8 @@ impl Network {
         if !self.listen_allowed(address) {
             return Err(NetErr::PermissionDenied);
         }
-        let (host, port) =
-            split_host_port(address).ok_or_else(|| NetErr::failed("missing port in address"))?;
-        let port = parse_port(port).ok_or_else(|| NetErr::failed("invalid port"))?;
+        let (host, port) = split_host_port(address).ok_or(NetErr::InvalidInput)?;
+        let port = parse_port(port).ok_or(NetErr::InvalidInput)?;
         let ip = if host.is_empty() {
             IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED)
         } else {
@@ -648,10 +645,9 @@ impl Network {
         deadline: Deadline,
     ) -> Result<SocketAddr, io::Error> {
         let denied = || io::Error::from(io::ErrorKind::PermissionDenied);
-        let invalid = |m: &str| io::Error::other(m.to_string());
-        let (host, port) =
-            split_host_port(address).ok_or_else(|| invalid("missing port in address"))?;
-        let port = parse_port(port).ok_or_else(|| invalid("invalid port"))?;
+        let invalid = || io::Error::from(io::ErrorKind::InvalidInput);
+        let (host, port) = split_host_port(address).ok_or_else(invalid)?;
+        let port = parse_port(port).ok_or_else(invalid)?;
         if !host_ok(&self.policy, host) {
             return Err(denied());
         }
@@ -922,7 +918,7 @@ mod tests {
         );
         assert!(matches!(
             n.dial_tcp("nonsense", Deadline::none()),
-            Err(NetErr::Failed(_))
+            Err(NetErr::InvalidInput)
         ));
     }
 
