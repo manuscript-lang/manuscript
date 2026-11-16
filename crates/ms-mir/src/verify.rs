@@ -16,6 +16,7 @@
 //!   `unreachable` end the program, so values held at that point are ignored.
 
 use crate::ir::*;
+use crate::persist::OwnerSet;
 use crate::types::Ty;
 use std::collections::BTreeSet;
 use std::fmt;
@@ -566,13 +567,13 @@ impl Verifier<'_> {
                 }
             }
         }
-        let mut entry_state: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
+        let mut entry_state: Vec<Option<OwnerSet>> = vec![None; f.blocks.len()];
         for &b in rpo {
             let bi = b.index();
             let blk = &f.blocks[bi];
-            let mut live: BTreeSet<u32> = match (&entry_state[bi], bi) {
+            let mut live: OwnerSet = match (&entry_state[bi], bi) {
                 (Some(s), _) => s.clone(),
-                (None, 0) => BTreeSet::new(),
+                (None, 0) => OwnerSet::new(),
                 (None, _) => continue,
             };
             for p in &blk.params {
@@ -587,7 +588,7 @@ impl Verifier<'_> {
                     if !rc(*a) {
                         continue;
                     }
-                    if owned_def[a.index()] && !live.contains(&a.0) {
+                    if owned_def[a.index()] && !live.contains(a.0) {
                         self.err(
                             Some(bi),
                             format!(
@@ -624,7 +625,7 @@ impl Verifier<'_> {
                     }
                 }
                 for a in consumed_here {
-                    live.remove(&a.0);
+                    live.remove(a.0);
                 }
                 if let Some(r) = inst.res.filter(|r| owned_def[r.index()]) {
                     live.insert(r.0);
@@ -653,14 +654,14 @@ impl Verifier<'_> {
                                 v.0
                             ),
                         );
-                    } else if !live.remove(&v.0) {
+                    } else if !live.remove(v.0) {
                         self.err(
                             Some(bi),
                             format!("ret: %{} used after it was consumed", v.0),
                         );
                     }
                 }
-                if let Some(leak) = live.iter().next() {
+                if let Some(leak) = live.first() {
                     self.err(
                         Some(bi),
                         format!("ret: owned value %{leak} is never released"),
@@ -675,7 +676,7 @@ impl Verifier<'_> {
                     if !rc(*a) {
                         continue;
                     }
-                    if owned_def[a.index()] && !live.contains(&a.0) {
+                    if owned_def[a.index()] && !live.contains(a.0) {
                         self.err(
                             Some(bi),
                             format!("branch: %{} used after it was consumed", a.0),
@@ -695,7 +696,7 @@ impl Verifier<'_> {
                             );
                         } else {
                             seen.push(*a);
-                            after.remove(&a.0);
+                            after.remove(a.0);
                         }
                     }
                 }
@@ -706,6 +707,7 @@ impl Verifier<'_> {
                     Some(prev) => {
                         let diff: Vec<String> = prev
                             .symmetric_difference(&after)
+                            .into_iter()
                             .map(|v| format!("%{v}"))
                             .collect();
                         self.err(

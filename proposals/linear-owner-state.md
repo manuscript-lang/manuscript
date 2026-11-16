@@ -8,17 +8,19 @@
 
 ## Status
 
-Proposal, 2026-11-15, main at 4580c1dfa. Stage 1 implemented. Skeptical review: build a smaller version (the first draft's trie for `elaborate` was dropped: `elaborate` needs definition order, and per-path positions are not comparable across paths).
+Proposal, 2026-11-15, main at 4580c1dfa. Stages 1 to 3 implemented. Skeptical review: build a smaller version (the first draft's trie for `elaborate` was dropped: `elaborate` needs definition order, and per-path positions are not comparable across paths).
 
 ## Problem
 
 Shape (generated; N repetitions of the first three lines in `fn main`): `xs{i}: List[Int] := [i, 2]`, `run(fn: sink(xs{i}.length()))`, `if opaque(i) > 1000000: sink(1)`.
 
-| N | `ms build` before | after stage 1 |
-| --- | --- | --- |
-| 960 | 0.97 s | 0.70 s |
-| 1920 | 2.38 s | 1.68 s |
-| 3840 | 8.27 s | 4.83 s |
+| N | `ms build` before | after stage 1 | after stage 3 |
+| --- | --- | --- | --- |
+| 960 | 0.97 s | 0.70 s | 0.64 s |
+| 1920 | 2.38 s | 1.68 s | 1.30 s |
+| 3840 | 8.27 s | 4.83 s | 3.68 s |
+
+After stage 3, N = 960 is 2.36G instructions (2.79G after stage 1, 4.27G before); `verify_module_with` fell from 17.6% to 1.7% of the run. Doubling still costs 2.0x then 2.8x: the rest is in `elaborate`, `unwind` and `opt`.
 
 `valgrind --tool=callgrind`, release `ms build`, N = 960 against 480, inclusive Ir after stage 1 (4.0x or more is quadratic):
 
@@ -55,8 +57,8 @@ Rule: the verifier's live set is a persistent set, so an edge costs its changes,
 ## Stages
 
 1. `merge` returns the old state when the new one is equal (landed with this file).
-2. `persist.rs` with its model tests, no users. Check: `cargo test -p ms-mir`.
-3. The verifier on `persist`. Check: N-doubling table and a profile with no `BTreeSet` clones.
+2. `persist.rs` (`OwnerSet`) with its model tests (landed). Check: `cargo test -p ms-mir`.
+3. The verifier on `OwnerSet` (landed). Check: N-doubling table and a profile with no `BTreeSet` clones.
 4. Avoid the `push` copy in `elaborate`. Check: same table.
 5. Profile `unwind` and `opt` at N = 960 and 1920; extend this file with what is quadratic there, then raise the gate shapes.
 
