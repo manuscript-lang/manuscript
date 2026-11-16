@@ -30,6 +30,14 @@ The guard now sends the six headers a browser or curl sends (`guard-http-request
 
 Stage 0 (this PR, no design change): table-driven canonical names, word-at-a-time CR/LF scan, ASCII fast path for UTF-8 checks, one pass over the fields for the questions the server asks. Six-header request 23.97k to 20.68k (-3.3k), one-header 15.38k to 14.96k (-0.4k). The allocation stages below start from there; their per-header share (2 allocations per header, sorting, the entries copy) is what remains of the 1.7k.
 
+## Stage 1 (measured): a request's headers in one buffer, ordered when read
+
+Instead of per-header `String`s and `Vec`s, `Headers` is a `Table`: one buffer holding the head's bytes from the first name to the last value (copied once from the receive buffer) and one slot per field (name and value spans). A received table is raw: slots in arrival order, names as sent. Lookups by name compare case-insensitively across the slots and need nothing built; the canonical, sorted and grouped form that `entries()` shows is built on the first enumeration and kept. A request whose handler reads headers by name, or none, never sorts or canonicalizes. `h1` helpers (`RequestScan`, framing, `keep_alive`) read the raw pairs through a `FieldList` trait, so the HTTP/1 response side and HTTP/2 are unchanged. Per request, 3 allocations instead of 2 per header plus 2.
+
+Guard, instructions per 10,000 requests (server only, `MS_THREADS=1`): six headers 206.18M to 171.07M (-3.5k per request), one header 150.03M to 145.52M (-0.45k). With it, `std::thread::current` (132 per request, one `Arc` clone and drop per native-handle use) gives way to a per-thread counter (-97 per request).
+
+The pooled `RequestBuf` below is not needed for the header table; it remains the plan for the exchange objects (stage 2).
+
 ## Design
 
 A per-thread pool of `RequestBuf`, each `{ head: Vec<u8>, slots: Vec<Slot> }`, cleared and not freed when returned:

@@ -12,6 +12,6 @@ guard-cleanup 13553622
 guard-resultvar 5303423
 guard-csvcells 42211720
 guard-mapinsert 68926473
-guard-http-request 206179125
-guard-http-request-small 150033311
+guard-http-request 171069046
+guard-http-request-small 145524522
 guard-splitfirst 41153104
