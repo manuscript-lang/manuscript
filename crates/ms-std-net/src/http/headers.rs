@@ -151,23 +151,23 @@ pub fn canonical_owned(name: String) -> String {
         canonical &= class & wrong == 0;
         wrong = if b == b'-' { LOWER } else { UPPER };
     }
-    if !all_token || name.is_empty() {
+    if !all_token || canonical || name.is_empty() {
         return name;
     }
-    if canonical || name.is_empty() {
-        return name;
-    }
-    let mut out = String::with_capacity(name.len());
+    // A name that is not canonical is edited in place; its bytes are ASCII tokens, so they stay
+    // UTF-8.
+    let mut bytes = name.into_bytes();
     let mut upper = true;
-    for b in name.bytes() {
-        out.push(if upper {
-            b.to_ascii_uppercase()
+    for b in &mut bytes {
+        let was = *b;
+        if upper {
+            b.make_ascii_uppercase();
         } else {
-            b.to_ascii_lowercase()
-        } as char);
-        upper = b == b'-';
+            b.make_ascii_lowercase();
+        }
+        upper = was == b'-';
     }
-    out
+    String::from_utf8(bytes).unwrap_or_default()
 }
 
 impl Headers {

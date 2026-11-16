@@ -873,6 +873,27 @@ mod tests {
             Ok(Framing::Chunked)
         );
         assert_eq!(f("GET / HTTP/1.1\r\n\r\n"), Ok(Framing::None));
+        // With neither framing field there is no body, whatever the method or version.
+        assert_eq!(f("POST / HTTP/1.1\r\nHost: a\r\n\r\n"), Ok(Framing::None));
+        assert_eq!(f("POST / HTTP/1.0\r\n\r\n"), Ok(Framing::None));
+        // Names differing only by case are the same field, as before the one-pass scan.
+        assert!(f("POST / HTTP/1.1\r\ncontent-length: 1\r\nCONTENT-LENGTH: 2\r\n\r\n").is_err());
+        assert_eq!(
+            f("POST / HTTP/1.1\r\ncontent-length: 2\r\nContent-Length: 2\r\n\r\n"),
+            Ok(Framing::Length(2))
+        );
+        assert_eq!(
+            f("POST / HTTP/1.1\r\ntransfer-encoding: chunked\r\nCONTENT-length: 5\r\n\r\n")
+                .unwrap_err()
+                .status,
+            400
+        );
+        assert_eq!(
+            f("POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n")
+                .unwrap_err()
+                .status,
+            400
+        );
         assert!(f("POST / HTTP/1.1\r\nContent-Length: x\r\n\r\n").is_err());
         assert!(f("POST / HTTP/1.1\r\nContent-Length: 1\r\nContent-Length: 2\r\n\r\n").is_err());
         assert_eq!(
