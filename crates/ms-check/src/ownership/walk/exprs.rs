@@ -114,6 +114,22 @@ impl Walker<'_> {
         let ExprKind::Call { .. } = &e.kind else {
             return None;
         };
+        // `r.get(default)` and its kin hand back the payload they hold, still a reference into
+        // whatever `r` borrows (`ys := xs.slice(0, 2).get([])`).
+        if let Some(recv) = self.payload_or_default_receiver(e) {
+            return if self.is_place(recv) {
+                // An owned `r` copies its payload out; only a borrowing `r` passes the borrow on.
+                let places = self.pure_places(recv)?;
+                let root = self.root_name(recv)?;
+                let Resolution::Local(b) = self.cx.m.resolution(root) else {
+                    return None;
+                };
+                let own = Place::local(b.uid);
+                (self.resolve(&own) != [own]).then_some(places)
+            } else {
+                self.pure_origins(recv)
+            };
+        }
         let operands = match self.native_borrow_receiver(e) {
             Some(recv) => vec![recv],
             None => {
@@ -141,6 +157,25 @@ impl Walker<'_> {
             }
         }
         Some(out)
+    }
+
+    /// The receiver of a native Optional or Result call that hands back the payload it holds
+    /// (`r.get(default)`, `r.or_else(..)`).
+    fn payload_or_default_receiver<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return None;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return None;
+        };
+        let Resolution::Method(method) = self.cx.m.resolution(e) else {
+            return None;
+        };
+        let t = self.cx.m.ty(left);
+        (method.native != Native::Source
+            && (t.is(Builtin::Optional) || t.is(Builtin::Result))
+            && payload_passthrough(self.syms.str(name), args.len()))
+        .then_some(&**left)
     }
 
     /// Whether `e` starts a promise whose entry function is written here: a call of a source function
@@ -841,5 +876,15 @@ impl Walker<'_> {
             .partial_moves
             .insert(e.id, info.resolved[0].clone());
         true
+    }
+}
+
+/// Whether the native Optional/Result method `name` with `args` arguments can return the payload
+/// it holds (or a replacement of the same type) instead of building a new value.
+pub(super) fn payload_passthrough(name: &str, args: usize) -> bool {
+    match name {
+        "get" => args == 1,
+        "get_or_else" | "or_else" | "to_optional" | "ok_or" | "ok_or_else" => true,
+        _ => false,
     }
 }

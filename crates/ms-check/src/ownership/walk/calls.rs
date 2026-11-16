@@ -521,8 +521,7 @@ impl Walker<'_> {
         }
         // `xs.slice(a, b).get()`: the payload is the lent slice, so keeping it needs a `.clone()`.
         if d == Demand::Move
-            && name == "get"
-            && args.is_empty()
+            && (name == "get" && args.is_empty() || exprs::payload_passthrough(&name, args.len()))
             && let Some(inner) = receiver_expr
             && let Some((NativeBorrow::Derived, source)) = self.native_borrow_of(inner)
             && self.is_place(source)
