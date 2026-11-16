@@ -34,7 +34,7 @@
 use crate::ir::*;
 use crate::persist::{OwnerSet, PosMap};
 use crate::types::{AltId, Std, Ty, TyKind};
-use crate::verify::{arg_modes, is_raw};
+use crate::verify::{self, arg_modes, is_raw};
 use std::collections::{HashMap, HashSet};
 
 const DISCARD: &str = "msrt_cleanup_discard";
@@ -262,6 +262,31 @@ fn scope_of(inst: &Inst) -> i64 {
         Imm::Scope(s, _) => i64::from(s),
         _ => unreachable!("the verifier checks scope markers carry scope numbers"),
     }
+}
+
+/// Whether the definition of `v` dominates every block that ends `scope`, so the scope can still
+/// hold `v` there on every path.
+fn defined_before_every_end(f: &Func, idom: &[usize], v: Value, scope: i64) -> bool {
+    let Some(def) = f.blocks.iter().position(|b| {
+        b.params.iter().any(|p| p.value == v) || b.insts.iter().any(|i| i.res == Some(v))
+    }) else {
+        return true;
+    };
+    let dominates = |mut at: usize| loop {
+        if at == def {
+            return true;
+        }
+        if at == 0 || idom[at] == usize::MAX || idom[at] == at {
+            return false;
+        }
+        at = idom[at];
+    };
+    f.blocks.iter().enumerate().all(|(bi, b)| {
+        !b.insts
+            .iter()
+            .any(|i| i.op == Op::ScopeEnd && scope_of(i) == scope)
+            || dominates(bi)
+    })
 }
 
 /// Whether scope `outer` encloses scope `inner`.
@@ -538,16 +563,32 @@ fn function(
             }
         }
     }
-    for b in &f.blocks {
-        for i in &b.insts {
+    let mut disowned_so_far: HashSet<Value> = HashSet::new();
+    let mut idom: Option<Vec<usize>> = None;
+    for bi in 0..f.blocks.len() {
+        for ii in 0..f.blocks[bi].insts.len() {
+            let i = &f.blocks[bi].insts[ii];
+            if i.op == Op::ScopeDisown {
+                disowned_so_far.insert(i.args[0]);
+            }
             if let (Op::ScopeOwn, Imm::Scope(s, kind)) = (i.op, i.imm) {
                 let (s, kind) = (i64::from(s), i64::from(kind));
+                let v = i.args[0];
                 // A value an inner scope owns again (a statement's temporary holding a moved
                 // local) stays the outer scope's: the path that never reaches the inner scope
-                // still holds it there, and the inner scope's end finds it moved.
-                if let Some(&(old, _)) = cx.tags.get(&i.args[0])
+                // still holds it there, and the inner scope's end finds it moved. That holds only
+                // while the outer scope can still hold it at its own end: a value defined inside a
+                // branch and handed to a binding there (`var kept = outer`) belongs to the inner
+                // scope, which must drop it where the branch ends.
+                if let Some(&(old, _)) = cx.tags.get(&v)
                     && old != s
                     && is_ancestor(&cx.parents, old, s)
+                    && (!disowned_so_far.contains(&v) || {
+                        let idom = idom.get_or_insert_with(|| {
+                            verify::dominators(f, &f.rpo(), &f.predecessors())
+                        });
+                        defined_before_every_end(f, idom, v, old)
+                    })
                 {
                     continue;
                 }
