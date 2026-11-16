@@ -19,7 +19,7 @@ Rejected: replacing the HTTP watcher's periodic look with kernel timers (PR 4238
 | `ms-std-process/src/signals_windows.rs` `SLICE_MS` | 50 ms | The signal handler sets an event the task waits on (Windows CI) |
 | `ms-std-fs/src/stream.rs` `POLL_SLICE_MS` and `sys/windows.rs` `pause_2ms`; `ms-std-terminal/src/sys_windows.rs` `wait_readable` (10 ms) | 50, 2 and 10 ms | Kernel gap for pipes and the console: a blocking-pool wait on the handle plus a cancel event (`WaitForMultipleObjects`), or overlapped reads (Windows CI) |
 | `ms-std-process/src/command.rs` `POLL_MS` | 2 ms on macOS and Windows (Linux parks on a pidfd) | macOS `EVFILT_PROC` in the poller; Windows a wait on the process handle through the pool (macOS and Windows CI) |
-| `ms-cli` file watching (`WATCH_INTERVAL` 10 ms in `engine/tooling.rs`, `watch.rs`), `recv_timeout(100 ms)` loops draining child output (`engine/run.rs`, `testing.rs`), `process.rs` nap, `ms-conform` `exec.rs` 5 ms child poll | 5 to 100 ms | A channel close or a child exit; tooling, so its own PR |
+| `ms-cli` file watching (`WATCH_INTERVAL` 10 ms in `engine/tooling.rs`, `watch.rs`), `recv_timeout(100 ms)` loops draining child output (`engine/run.rs`, `testing.rs`), `process.rs` nap, `ms-conform` `exec.rs` 5 ms child poll | 5 to 100 ms | A channel close or a child exit; tooling, so its own PR. Decided 2026-11-16 (Chinmay): leave `ms --watch` polling for now. The compiler may not depend on runtime crates, so the runtime's native watchers cannot be reused there; an event-driven version needs its own per-system waiter or a shared watcher crate |
 
 ## Kept, named
 
