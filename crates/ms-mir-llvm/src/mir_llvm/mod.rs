@@ -780,7 +780,16 @@ pub fn emit(
                 let c = vals[&cond.index()][0].clone();
                 let from = exit_label(lay, f, checks, bb.index());
                 let to = edge_labels(lay, f, &bd.term, &from);
-                b.cond_br(&c, &to[0], &to[1]);
+                // A branch into a cold block (a check's fault, the growth of a full list) is
+                // unlikely.
+                let Term::CondBr { then, els, .. } = &bd.term else {
+                    unreachable!()
+                };
+                match (f.cold.contains(&then.block), f.cold.contains(&els.block)) {
+                    (true, false) => b.cond_br_likely(&c, &to[0], &to[1], false),
+                    (false, true) => b.cond_br_likely(&c, &to[0], &to[1], true),
+                    _ => b.cond_br(&c, &to[0], &to[1]),
+                }
                 edge_blocks(&mut b, lay, f, &vals, &bd.term, &to);
             }
             Term::Switch { value, cases, .. } => {
@@ -870,12 +879,23 @@ mod coverage {
         Op::ScopeMark,
     ];
 
+    /// The ops `ms_mir::expand` rewrites into others before code generation.
+    const EXPANDED: &[Op] = &[
+        Op::ListGet,
+        Op::ListGetNn,
+        Op::ListSet,
+        Op::ListSetNn,
+        Op::ListFill,
+        Op::ListPush,
+        Op::ListAddr,
+    ];
+
     #[test]
     fn every_op_is_lowered_or_listed() {
         for &op in Op::ALL {
             let lowered = area_of(op).is_some();
             let listed = UNLOWERED.contains(&op);
-            let marker = MARKERS.contains(&op);
+            let marker = MARKERS.contains(&op) || EXPANDED.contains(&op);
             assert!(
                 marker || lowered != listed,
                 "{op:?}: {}",

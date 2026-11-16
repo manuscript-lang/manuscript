@@ -274,9 +274,8 @@ fn payload_ty(lay: &Layouts, f: &Func, inst: &Inst) -> Ty {
     }
 }
 
-/// Whether `inst` writes a check before it, and then the clone of a payload that needs one:
-/// each is a block split.
-fn splits(lay: &Layouts, f: &Func, inst: &Inst, checks: bool) -> usize {
+/// Whether `inst` clones a payload that needs one: a block split.
+fn splits(lay: &Layouts, f: &Func, inst: &Inst, _checks: bool) -> usize {
     if matches!(inst.op, Op::AltRelease | Op::AltUnbox) {
         return released(lay, inst)
             .iter()
@@ -287,7 +286,7 @@ fn splits(lay: &Layouts, f: &Func, inst: &Inst, checks: bool) -> usize {
         return 0;
     }
     let clone = own_kind(lay, payload_ty(lay, f, inst)) == OwnKind::Str;
-    usize::from(checks) + usize::from(clone)
+    usize::from(clone)
 }
 
 /// The leaves a payload read or write moves between a field and the enum's slots: for each
@@ -672,15 +671,6 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
     }
 }
 
-/// Whether the niche or tagged optional `v` of type `ty` is present, as an `i1`.
-fn present(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
-    if opt_repr(lay, ty) == OptRepr::Tagged {
-        return v[0].clone();
-    }
-    let any = niche_any(b, lay, ty, v);
-    b.icmp("ne", &any, &zero(&any.ty))
-}
-
 /// The word of a niche optional that is zero exactly when it is none (a string also has the static
 /// tag: an inline string may have a zero first word, but never that tag).
 fn niche_any(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
@@ -694,16 +684,11 @@ fn niche_any(b: &mut FnBuilder, lay: &Layouts, ty: Ty, v: &[Val]) -> Val {
     }
 }
 
-/// `opt.unwrap`: faults on none when checks are on, then yields an owned payload: the leaves
-/// themselves when they own nothing (`pre` chose them), else a clone.
+/// `opt.unwrap`: yields an owned payload: the leaves themselves when they own nothing (`pre`
+/// chose them), else a clone. The optional is some: `ms_mir::expand` branched to the fault.
 fn unwrap(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
     let ty = cx.f.ty(inst.args[0]);
     let v = &vals[&inst.args[0].index()];
-    if cx.checks {
-        let some = present(b, cx.lay, ty, v);
-        let none = b.icmp("eq", &some, &Val::bool(false));
-        super::faults::fault_if(cx, b, &none, "msrt_fault_unwrap_none", &[]);
-    }
     let inner = payload_ty(cx.lay, cx.f, inst);
     let owns = own_kind(cx.lay, inner) != OwnKind::Identity;
     if boxed_opt(cx.lay, ty).is_some() {

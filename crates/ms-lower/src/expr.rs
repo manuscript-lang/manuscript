@@ -1091,7 +1091,7 @@ impl<'a> FnLower<'a> {
             name: sym.to_string(),
             params,
             ret,
-            noreturn: false,
+            noreturn: crate::rtcall::rt_flags(sym).noreturn,
             pure_: false,
             fresh: crate::rtcall::fresh_result(sym),
             role: crate::rtcall::extern_role(sym),

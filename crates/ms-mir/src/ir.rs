@@ -295,6 +295,8 @@ pub enum Op {
     TypeNew, TypeGet, TypeSet, TypeFill, AltNew, AltView, AltPlain, AltOwn, AltTag, AltGet, AltUnbox, AltTake, AltRelease, TypeRelease,
     // Lists.
     ListNew, ListLit, ListConst, ListConstView, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
+    // Lists after `expand`: the capacity, growth to a given capacity, and the unchecked fill and push.
+    ListCap, ListGrow, ListFillU, ListPushU,
     // Optionals.
     OptSome, OptView, OptViewAt, OptNone, OptNoneOwned, OptIsSome, OptGet, OptUnwrap, OptUnbox, OptAddr,
     // Strings.
@@ -747,6 +749,9 @@ pub struct Func {
     /// longer exists is ignored. Not part of the text format, and no pass reads it: the code
     /// generators show the value under its name while it is alive.
     pub names: Vec<NamedValue>,
+    /// Blocks laid out of line because control rarely enters them: the fault a check branches
+    /// to, the growth of a full list (`expand` sets it; not part of the text format).
+    pub cold: std::collections::HashSet<Block>,
 }
 
 impl Func {
@@ -777,6 +782,7 @@ impl Func {
             slot_result: None,
             close_exit: None,
             names: Vec::new(),
+            cold: Default::default(),
         };
         for p in params {
             let v = f.new_value(p.ty);

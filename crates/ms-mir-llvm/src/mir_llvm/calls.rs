@@ -434,7 +434,7 @@ fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder
     if let Some(slot) = &slot {
         args.push((slot.clone(), OUT));
     }
-    let attrs = crate::llvm_ir::runtime_attrs(&def.name, def.reads);
+    let attrs = crate::llvm_ir::runtime_attrs(def.noreturn, def.reads);
     let types = b.types();
     let formals: Vec<String> = args
         .iter()
