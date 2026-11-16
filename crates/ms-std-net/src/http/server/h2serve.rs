@@ -155,10 +155,16 @@ impl H2Conn {
         self.streams.values().map(|s| s.task).collect()
     }
 
-    /// Whether another thread could continue this connection: no streams, nothing to send, and
-    /// not winding down.
-    pub(super) fn can_move(&self) -> bool {
-        self.is_idle() && !self.goaway
+    /// Whether another thread could continue this connection: no streams, nothing to send, no
+    /// handler waiting on it, and not winding down. Nothing of this thread's is left in such a
+    /// connection: with no streams, the queue holds only ids of streams that are gone, which
+    /// this drops.
+    pub(super) fn can_move(&mut self) -> bool {
+        if !self.is_idle() || self.goaway || !self.waiters.is_empty() {
+            return false;
+        }
+        self.queue.clear();
+        true
     }
 
     fn is_idle(&self) -> bool {

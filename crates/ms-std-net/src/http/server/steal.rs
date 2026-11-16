@@ -112,7 +112,7 @@ pub enum Back {
     /// Another thread took it.
     Taken,
     /// Still the owner's, with what it parked.
-    Mine(Option<Box<Parked>>),
+    Mine(Option<Parked>),
 }
 
 /// A connection waiting for its next request.
@@ -121,7 +121,7 @@ struct Entry {
     token: u64,
     sock: Raw,
     deadline: Option<Instant>,
-    parked: Option<Box<Parked>>,
+    parked: Option<Parked>,
     /// Another thread serves it now; the owner drops its handle when it next looks.
     taken: bool,
 }
@@ -130,7 +130,7 @@ struct Entry {
 pub struct Taken {
     pub sock: socket2::Socket,
     pub deadline: Option<Instant>,
-    pub parked: Option<Box<Parked>>,
+    pub parked: Option<Parked>,
 }
 
 /// A request to take connections from another member.
@@ -169,7 +169,7 @@ impl Member {
         token: u64,
         sock: Raw,
         deadline: Option<Instant>,
-        parked: Option<Box<Parked>>,
+        parked: Option<Parked>,
     ) -> u32 {
         let mut idle = lock(&self.idle);
         idle.push(Entry {
@@ -216,6 +216,12 @@ impl Member {
             .filter(|e| e.taken)
             .map(|e| e.token)
             .collect()
+    }
+
+    /// How many connections are listed and not taken.
+    #[cfg(test)]
+    pub fn waiting_count(&self) -> usize {
+        self.waiting.load(Ordering::Relaxed)
     }
 
     /// Counts a connection the server gained (`+1`) or lost (`-1`).
@@ -380,6 +386,13 @@ fn tick(look: Look, resting: u64) -> bool {
     often
 }
 
+/// What an idle connection leaves in the list crosses threads: a compile-time check that it is
+/// `Send` without an `unsafe impl`.
+const _: fn() = || {
+    fn send<T: Send>() {}
+    send::<Parked>();
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -490,10 +503,10 @@ mod tests {
         let m = member();
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let parked = || {
-            Some(Box::new(Parked {
+            Some(Parked {
                 session: None,
                 h2: None,
-            }))
+            })
         };
         let (_kept_client, kept) = pair(&listener);
         let (_taken_client, taken) = pair(&listener);

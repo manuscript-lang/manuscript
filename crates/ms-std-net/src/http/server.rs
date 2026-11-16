@@ -686,6 +686,33 @@ impl Reactor {
     }
 }
 
+/// Whether a server created on this thread lists its idle connections for other threads: only a
+/// scheduler thread has others to share with.
+fn may_share() -> bool {
+    ms_rt::sched::thread() < ms_rt::sched::MAX_THREADS || test_sharing::on()
+}
+
+/// Lets a test thread, which is not a scheduler thread, list connections too, so the tests can
+/// see them wait.
+#[cfg(test)]
+pub(super) mod test_sharing {
+    use std::cell::Cell;
+    thread_local!(static ON: Cell<bool> = const { Cell::new(false) });
+    pub fn on() -> bool {
+        ON.with(Cell::get)
+    }
+    pub fn enable() {
+        ON.with(|o| o.set(true));
+    }
+}
+
+#[cfg(not(test))]
+mod test_sharing {
+    pub fn on() -> bool {
+        false
+    }
+}
+
 thread_local! {
     static SERVERS: RefCell<HashMap<usize, Weak<Server>>> = RefCell::new(HashMap::new());
     static NEXT_ID: Cell<usize> = const { Cell::new(1) };
@@ -788,7 +815,7 @@ impl Server {
         if options.limits.grace.is_some_and(|g| !g.is_zero()) {
             GRACED.with(|g| g.set(g.get() + 1));
         }
-        let shares = ms_rt::sched::thread() < ms_rt::sched::MAX_THREADS;
+        let shares = may_share();
         let member = shares.then(|| options.group.join(&reactor.beat));
         let server = Rc::new_cyclic(|me| Server {
             id,
@@ -1039,7 +1066,7 @@ impl Server {
         reactor: &Reactor,
         deadline: Option<Instant>,
         timed: bool,
-        parked: Option<Box<steal::Parked>>,
+        parked: Option<steal::Parked>,
     ) {
         let token = reactor.token();
         let mut h2 = None;
@@ -1154,7 +1181,7 @@ impl Server {
         let idle = st.waiting == NOT_WAITING && st.registered && !st.eof && !st.close_after;
         let http1 = matches!(st.phase, Phase::Head) && st.unread().is_empty();
         let http2 = matches!(st.phase, Phase::H2)
-            && st.h2.as_ref().is_some_and(|h| h.can_move())
+            && st.h2.as_mut().is_some_and(|h| h.can_move())
             && st.outbuf.is_empty();
         let Some(io) = st.io.clone() else {
             return;
@@ -1167,10 +1194,10 @@ impl Server {
             let Some(session) = io.take_session() else {
                 return;
             };
-            Some(Box::new(steal::Parked {
+            Some(steal::Parked {
                 session: Some(session),
                 h2: st.h2.take(),
-            }))
+            })
         } else if http2 {
             // Plain HTTP/2 is not served.
             return;

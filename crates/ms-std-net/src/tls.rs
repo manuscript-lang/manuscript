@@ -742,17 +742,25 @@ pub fn verify_certificates(
 
 // ------------------------------------------------------------------ Connection
 
+/// What a stream with its session parked reports: it is a closed stream. Another thread may
+/// hold the session; the owner never uses a parked stream, and a stray use must not panic.
+fn parked() -> io::Error {
+    io::Error::from(io::ErrorKind::UnexpectedEof)
+}
+
 /// The state of an established server session, apart from its socket.
 pub struct Session {
-    conn: rustls::Connection,
+    conn: Box<rustls::Connection>,
     verified: bool,
 }
 
 /// A TLS stream over a nonblocking socket.
 pub struct TlsIo {
     sock: OwnedSock,
-    /// Empty only while a server connection waits in another thread's reach (see `take_session`).
-    state: RefCell<Option<rustls::Connection>>,
+    /// Empty only while a server connection waits in another thread's reach (see
+    /// `take_session`); the stream then behaves as a closed one. Boxed so that parking moves a
+    /// pointer, not the session.
+    state: RefCell<Option<Box<rustls::Connection>>>,
     verified: bool,
 }
 
@@ -790,6 +798,10 @@ pub enum Handshake {
 impl TlsIo {
     /// Wraps a connected nonblocking socket; call `drive_handshake` until done.
     pub fn new(sock: socket2::Socket, conn: rustls::Connection, verified: bool) -> TlsIo {
+        TlsIo::boxed(sock, Box::new(conn), verified)
+    }
+
+    fn boxed(sock: socket2::Socket, conn: Box<rustls::Connection>, verified: bool) -> TlsIo {
         TlsIo {
             sock: OwnedSock::new(sock),
             state: RefCell::new(Some(conn)),
@@ -801,21 +813,18 @@ impl TlsIo {
         &self.sock
     }
 
-    fn session(&self) -> Ref<'_, rustls::Connection> {
-        Ref::map(self.state.borrow(), |s| {
-            s.as_ref().expect("TLS session parked")
-        })
+    /// The session, unless it is parked for another thread to take.
+    fn session(&self) -> Option<Ref<'_, rustls::Connection>> {
+        Ref::filter_map(self.state.borrow(), |s| s.as_deref()).ok()
     }
 
-    fn session_mut(&self) -> RefMut<'_, rustls::Connection> {
-        RefMut::map(self.state.borrow_mut(), |s| {
-            s.as_mut().expect("TLS session parked")
-        })
+    fn session_mut(&self) -> Option<RefMut<'_, rustls::Connection>> {
+        RefMut::filter_map(self.state.borrow_mut(), |s| s.as_deref_mut()).ok()
     }
 
     /// Builds a stream on `sock` that continues `session`, taken from another stream.
     pub fn resume(sock: socket2::Socket, session: Session) -> TlsIo {
-        TlsIo::new(sock, session.conn, session.verified)
+        TlsIo::boxed(sock, session.conn, session.verified)
     }
 
     /// Takes the session out of an established stream with nothing in flight, leaving the
@@ -844,7 +853,8 @@ impl TlsIo {
 
     /// Whether a server session received a client certificate.
     pub fn has_peer_certificates(&self) -> bool {
-        self.session().peer_certificates().is_some()
+        self.session()
+            .is_some_and(|c| c.peer_certificates().is_some())
     }
 
     pub fn set_verified(&mut self, verified: bool) {
@@ -854,9 +864,11 @@ impl TlsIo {
     /// Advances the handshake as far as the socket allows.
     pub fn drive_handshake(&self) -> Handshake {
         loop {
-            let (handshaking, wants_write) = {
-                let c = self.session();
-                (c.is_handshaking(), c.wants_write())
+            let Some((handshaking, wants_write)) = self
+                .session()
+                .map(|c| (c.is_handshaking(), c.wants_write()))
+            else {
+                return Handshake::Failed(NetErr::Failed(describe_io_error(&parked())));
             };
             if wants_write {
                 match self.write_pending() {
@@ -911,7 +923,9 @@ impl TlsIo {
 
     /// Writes buffered records; `Ok(false)` when the socket is full.
     fn write_pending(&self) -> io::Result<bool> {
-        let mut c = self.session_mut();
+        let Some(mut c) = self.session_mut() else {
+            return Err(parked());
+        };
         while c.wants_write() {
             match c.write_tls(&mut &*self.sock) {
                 Ok(_) => {}
@@ -925,7 +939,9 @@ impl TlsIo {
 
     /// Reads and processes records; `Ok(false)` when nothing is available.
     fn read_records(&self) -> Result<bool, HandshakeFail> {
-        let mut c = self.session_mut();
+        let Some(mut c) = self.session_mut() else {
+            return Err(HandshakeFail::Io(parked()));
+        };
         match c.read_tls(&mut &*self.sock) {
             Ok(0) => {
                 return Err(HandshakeFail::Io(io::Error::from(
@@ -954,7 +970,11 @@ impl Io for TlsIo {
 
     fn read(&self, buf: &mut [u8]) -> Step {
         loop {
-            let got = self.session_mut().reader().read(buf);
+            let Some(mut c) = self.session_mut() else {
+                return Step::Eof;
+            };
+            let got = c.reader().read(buf);
+            drop(c);
             match got {
                 Ok(0) if !buf.is_empty() => return Step::Eof,
                 Ok(n) => return Step::Done(n),
@@ -984,7 +1004,12 @@ impl Io for TlsIo {
 
     fn write(&self, data: &[u8]) -> Step {
         loop {
-            let n = match self.session_mut().writer().write(data) {
+            let Some(mut c) = self.session_mut() else {
+                return Step::Err(parked());
+            };
+            let wrote = c.writer().write(data);
+            drop(c);
+            let n = match wrote {
                 Ok(n) => n,
                 Err(e) => return Step::Err(e),
             };
@@ -1012,7 +1037,9 @@ impl Io for TlsIo {
     }
 
     fn shutdown_write(&self) -> Result<(), NetErr> {
-        self.session_mut().send_close_notify();
+        if let Some(mut c) = self.session_mut() {
+            c.send_close_notify();
+        }
         let _ = self.write_pending();
         self.sock
             .shutdown(std::net::Shutdown::Write)
@@ -1020,7 +1047,9 @@ impl Io for TlsIo {
     }
 
     fn shutdown_both(&self) {
-        self.session_mut().send_close_notify();
+        if let Some(mut c) = self.session_mut() {
+            c.send_close_notify();
+        }
         let _ = self.write_pending();
         let _ = self.sock.shutdown(std::net::Shutdown::Both);
     }
@@ -1038,7 +1067,7 @@ impl Io for TlsIo {
     }
 
     fn tls_details(&self) -> Option<TlsDetails> {
-        let c = self.session();
+        let c = self.session()?;
         let version = c.protocol_version().map(u16::from).unwrap_or(0);
         let suite = c
             .negotiated_cipher_suite()
@@ -1092,7 +1121,7 @@ pub fn accept(
         .map_err(|e| NetErr::Failed(handshake_error_text(&e)))?;
     let io = TlsIo::handshake(sock, rustls::Connection::Server(conn), deadline, false)?;
     // A server verified the client when one presented a certificate.
-    let verified = verified_clients && io.session().peer_certificates().is_some();
+    let verified = verified_clients && io.has_peer_certificates();
     let io = TlsIo { verified, ..io };
     Ok(Box::new(io))
 }
