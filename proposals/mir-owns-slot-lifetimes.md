@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-16, checked against `a4f4a88f`. Direction (Chinmay, 2026-11-16): "move language specific things in mir or in higher layers and keep backends for lowering and machine code". `lastuse` is already a MIR pass (`ms-mir/src/opt/lastuse.rs`); this extends the same idea to slot lifetimes.
+Proposal, 2026-11-16, checked against `a4f4a88f`. `lastuse` is already a MIR pass and no backend computes last use. Direction (Chinmay, 2026-11-16): "move language specific things in mir or in higher layers and keep backends for lowering and machine code". `lastuse` is already a MIR pass (`ms-mir/src/opt/lastuse.rs`); this extends the same idea to slot lifetimes.
 
 ## Problem
 
@@ -57,4 +57,4 @@ Review (independent subagent, 2026-11-16) found the original order unsafe and th
 
 ## Open questions
 
-None that change the language or user-visible behavior.
+- Should drops decided in lowering move into MIR too? `ms-lower` still emits scope-end drops (`drop_scope_locals`), temporary drops (`close_temp`, `drop_unused`) and `DropIf` for conditional or reassigned owners; `lastuse` and the cancel redesign then adjust them. Chinmay earlier let temporaries and locals stay in lowering, and the cancel redesign does not need the move. Moving them follows the newer direction (language behavior in MIR, backends only emit) and would leave one place that decides when a value dies. Recommendation: yes, as its own stage after stage 3, local drops first. Not started; needs Chinmay's OK.
