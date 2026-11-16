@@ -136,16 +136,6 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
             let v = b
                 .emit(Op::Take, &[ptr], Imm::Ty(opt_ty), Some(opt_ty))
                 .expect("take");
-            // The place holds `none` while the payload is closed, so a drop of the place that
-            // covers a fault in the close frees nothing the payload's own cover also frees.
-            let none = b.opt_none(opt_ty);
-            let none = if b.m.needs_drop(opt_ty) {
-                b.emit(Op::Clone, &[none], Imm::Int(1), Some(opt_ty))
-                    .expect("owned none")
-            } else {
-                none
-            };
-            b.emit(Op::Put, &[ptr, none], Imm::None, None);
             let x = b.opt_unbox(v);
             // The payload goes back before a failed close faults, so the place is never left
             // holding a hole for the cleanup that owns it.
