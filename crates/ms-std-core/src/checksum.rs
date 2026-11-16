@@ -36,6 +36,30 @@ pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
     if data.is_empty() {
         return crc;
     }
+    #[cfg(target_arch = "x86_64")]
+    if data.len() >= 128
+        && is_x86_feature_detected!("pclmulqdq")
+        && is_x86_feature_detected!("sse4.1")
+    {
+        // SAFETY: the required CPU features were just detected.
+        #[allow(unsafe_code)]
+        let (crc, rest) = unsafe { hardware::fold(crc, data) };
+        return crc32_table(crc, rest);
+    }
+    #[cfg(target_arch = "aarch64")]
+    if std::arch::is_aarch64_feature_detected!("crc") {
+        // SAFETY: the CRC32 instructions were just detected.
+        #[allow(unsafe_code)]
+        return unsafe { hardware::update(crc, data) };
+    }
+    crc32_table(crc, data)
+}
+
+/// Slicing-by-eight table implementation; the portable path and the tail of the hardware paths.
+fn crc32_table(crc: u32, data: &[u8]) -> u32 {
+    if data.is_empty() {
+        return crc;
+    }
     let mut c = !crc;
     let (chunks, tail) = data.as_chunks::<8>();
     // Slice by eight: each table advances its byte through the remaining bytes of the block.
@@ -59,6 +83,109 @@ pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
         c = CRC_TABLE[0][((c ^ u32::from(b)) & 0xff) as usize] ^ (c >> 8);
     }
     !c
+}
+
+/// CPU carry-less multiply (x86-64 PCLMULQDQ) and CRC32 (AArch64) instructions for the IEEE polynomial.
+/// The table path stays the oracle: the tests compare both on every length and alignment.
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+#[allow(unsafe_code)] // CPU intrinsics, guarded by run-time feature detection in `crc32_update`
+mod hardware {
+    #[cfg(target_arch = "x86_64")]
+    use core::arch::x86_64::*;
+
+    // Folding constants for the reflected IEEE polynomial (Intel, "Fast CRC Computation for Generic
+    // Polynomials Using PCLMULQDQ Instruction"): x^(4*128+32), x^(4*128-32), x^(128+32), x^(128-32),
+    // x^64, the polynomial P(x) and the Barrett constant mu.
+    #[cfg(target_arch = "x86_64")]
+    const K1: i64 = 0x1_5444_2bd4;
+    #[cfg(target_arch = "x86_64")]
+    const K2: i64 = 0x1_c6e4_1596;
+    #[cfg(target_arch = "x86_64")]
+    const K3: i64 = 0x1_7519_97d0;
+    #[cfg(target_arch = "x86_64")]
+    const K4: i64 = 0x0_ccaa_009e;
+    #[cfg(target_arch = "x86_64")]
+    const K5: i64 = 0x1_63cd_6124;
+    #[cfg(target_arch = "x86_64")]
+    const P_X: i64 = 0x1_db71_0641;
+    #[cfg(target_arch = "x86_64")]
+    const U_PRIME: i64 = 0x1_f701_1641;
+
+    /// Folds the leading 16-byte blocks of `data` (at least 128 bytes) into the finalized checksum
+    /// and returns it with the unprocessed tail of fewer than 16 bytes.
+    ///
+    /// # Safety
+    /// The CPU must support `pclmulqdq` and `sse4.1`.
+    #[cfg(target_arch = "x86_64")]
+    #[target_feature(enable = "pclmulqdq", enable = "sse2", enable = "sse4.1")]
+    pub unsafe fn fold(crc: u32, mut data: &[u8]) -> (u32, &[u8]) {
+        // SAFETY: every intrinsic below needs only the features this function requires of its caller.
+        unsafe {
+            #[target_feature(enable = "pclmulqdq", enable = "sse2", enable = "sse4.1")]
+            unsafe fn load(data: &mut &[u8]) -> __m128i {
+                // SAFETY: the caller guarantees at least 16 readable bytes; the load is unaligned.
+                let block = unsafe { _mm_loadu_si128(data.as_ptr().cast()) };
+                *data = &data[16..];
+                block
+            }
+            #[target_feature(enable = "pclmulqdq", enable = "sse2", enable = "sse4.1")]
+            unsafe fn reduce(a: __m128i, b: __m128i, keys: __m128i) -> __m128i {
+                let low = _mm_clmulepi64_si128(a, keys, 0x00);
+                let high = _mm_clmulepi64_si128(a, keys, 0x11);
+                _mm_xor_si128(_mm_xor_si128(b, low), high)
+            }
+            let mut x3 = load(&mut data);
+            let mut x2 = load(&mut data);
+            let mut x1 = load(&mut data);
+            let mut x0 = load(&mut data);
+            x3 = _mm_xor_si128(x3, _mm_cvtsi32_si128(!crc as i32));
+            let k1k2 = _mm_set_epi64x(K2, K1);
+            while data.len() >= 64 {
+                x3 = reduce(x3, load(&mut data), k1k2);
+                x2 = reduce(x2, load(&mut data), k1k2);
+                x1 = reduce(x1, load(&mut data), k1k2);
+                x0 = reduce(x0, load(&mut data), k1k2);
+            }
+            let k3k4 = _mm_set_epi64x(K4, K3);
+            let mut x = reduce(x3, x2, k3k4);
+            x = reduce(x, x1, k3k4);
+            x = reduce(x, x0, k3k4);
+            while data.len() >= 16 {
+                x = reduce(x, load(&mut data), k3k4);
+            }
+            // 128 to 64 bits, then a Barrett reduction to 32 bits.
+            let low32 = _mm_set_epi32(0, 0, 0, !0);
+            x = _mm_xor_si128(_mm_clmulepi64_si128(x, k3k4, 0x10), _mm_srli_si128(x, 8));
+            x = _mm_xor_si128(
+                _mm_clmulepi64_si128(_mm_and_si128(x, low32), _mm_set_epi64x(0, K5), 0x00),
+                _mm_srli_si128(x, 4),
+            );
+            let pu = _mm_set_epi64x(U_PRIME, P_X);
+            let t1 = _mm_clmulepi64_si128(_mm_and_si128(x, low32), pu, 0x10);
+            let t2 = _mm_clmulepi64_si128(_mm_and_si128(t1, low32), pu, 0x00);
+            let folded = _mm_extract_epi32(_mm_xor_si128(x, t2), 1) as u32;
+            (!folded, data)
+        }
+    }
+
+    /// Updates the finalized checksum with the AArch64 CRC32 instructions.
+    ///
+    /// # Safety
+    /// The CPU must support the `crc` feature.
+    #[cfg(target_arch = "aarch64")]
+    #[target_feature(enable = "crc")]
+    pub unsafe fn update(crc: u32, data: &[u8]) -> u32 {
+        use core::arch::aarch64::{__crc32b, __crc32d};
+        let mut c = !crc;
+        let (chunks, tail) = data.as_chunks::<8>();
+        for chunk in chunks {
+            c = __crc32d(c, u64::from_le_bytes(*chunk));
+        }
+        for &byte in tail {
+            c = __crc32b(c, byte);
+        }
+        !c
+    }
 }
 
 /// CRC-32 (IEEE) of `data`.
