@@ -723,9 +723,18 @@ fn tagged_len(b: &mut FnBuilder, w: &Val, name: Option<&Val>) -> Val {
 /// `0 < d < 1 << 62`: both strings then have one kind and the low bits differ (other lengths, or
 /// other inline bytes), so they are unequal. Most comparisons end here.
 pub(super) fn eq_differ(b: &mut FnBuilder, x: &[Val], y: &[Val]) -> (Val, Val) {
-    use ms_rt_abi::{STR_ASCII, STR_INLINE};
+    use ms_rt_abi::{STR_ASCII, STR_INLINE, STR_SPARE_MASK};
     let d = b.bin(Bin::Xor, &x[1], &y[1]);
-    let d = b.bin(Bin::And, &d, &Val::int(!(STR_ASCII as i64)));
+    // An owned string also records its spare room, which equal strings need not share; an
+    // inline string keeps its bytes in the same bits, so those stay.
+    let tag = b.bin(Bin::LShr, &x[1], &Val::int(62));
+    let inline = b.icmp("eq", &tag, &Val::int(1));
+    let mask = b.select(
+        &inline,
+        &Val::int(!(STR_ASCII as i64)),
+        &Val::int(!((STR_ASCII | STR_SPARE_MASK) as i64)),
+    );
+    let d = b.bin(Bin::And, &d, &mask);
     let below = b.bin(Bin::Sub, &d, &Val::int(1));
     let differ = b.icmp("ult", &below, &Val::int((STR_INLINE - 1) as i64));
     (d, differ)

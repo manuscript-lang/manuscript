@@ -21,10 +21,10 @@ import (
 // the runtime or the strings library would move.
 PROGRAMS := ["interp", "strings", "lz", "graph"]
 // Small programs of bench/perf/guards, one per recent speed fix (signature tables,
-// regex prefilter, image codecs, fused chains, map probes, scope-end close). Each is
-// counted as
+// regex prefilter, image codecs, fused chains, map probes, scope-end close, string
+// append). Each is counted as
 // `guard-<name>`.
-GUARDS := ["crypto", "regex", "image", "chains", "maps", "cleanup"]
+GUARDS := ["crypto", "regex", "image", "chains", "maps", "cleanup", "append"]
 COUNTS := "bench/perf/counts.txt"
 
 fn say(text: String) Void:

@@ -80,7 +80,14 @@ impl<'a, 'm> Lower<'a, 'm> {
         // differ: different lengths, or for inline strings different bytes. Either way unequal.
         // The ASCII flag may differ between equal strings, so it is masked out.
         let x = self.b.ins().bxor(a[1], b[1]);
-        let x = self.b.ins().band_imm_s(x, !(STR_ASCII as i64));
+        // An owned string also records its spare room, which equal strings need not share; an
+        // inline string keeps its bytes in the same bits, so those stay.
+        let tag = self.b.ins().ushr_imm_u(a[1], 62);
+        let inline = self.b.ins().icmp_imm_u(IntCC::Equal, tag, 1);
+        let keep_spare = self.iconst(!(STR_ASCII as i64));
+        let drop_spare = self.iconst(!((STR_ASCII | STR_SPARE_MASK) as i64));
+        let mask = self.b.ins().select(inline, keep_spare, drop_spare);
+        let x = self.b.ins().band(x, mask);
         let below = self.b.ins().iadd_imm_s(x, -1);
         let differ =
             self.b
