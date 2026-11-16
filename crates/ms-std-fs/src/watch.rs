@@ -1,7 +1,8 @@
 //! `FileWatcher`: a polling watcher (snapshot comparison) and a native one (inotify on Linux,
 //! kqueue on macOS, `ReadDirectoryChangesW` on Windows).
-//! The polling, kqueue and Windows watchers are driven from `next`, which waits in short slices
-//! and polls for cancellation between them, so they need no worker thread. Only inotify has one:
+//! The polling, kqueue and Windows watchers are driven from `next`, so they need no worker
+//! thread; the polling one sleeps its interval in one wait that `close` wakes, the other two
+//! still wait in short slices and poll for cancellation between them. Only inotify has one:
 //! it reports a new directory without watching it, so a reader thread (using no runtime calls,
 //! waking `next` through an eventfd) must register it at once or changes inside it are lost.
 //! kqueue registers new paths in the same snapshot diff that reports them, and

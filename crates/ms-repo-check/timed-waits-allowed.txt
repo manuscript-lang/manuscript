@@ -22,11 +22,11 @@ crates/ms-lsp/tests/supervise.rs 1 test: lets time pass
 crates/ms-mir/tests/unwind.rs 1 test: lets time pass
 crates/ms-rt/src/fault.rs 1 test: proves a publication stays blocked while a reader is inside
 crates/ms-rt/src/glue/mod.rs 4 the task sleep API itself and its docs
-crates/ms-rt/src/glue/pool.rs 3 test: a job that takes time on a pool thread
+crates/ms-rt/src/glue/pool.rs 4 test: a job that takes time on a pool thread
 crates/ms-rt/src/promise.rs 16 the sleep promise API and tests of it; test jobs that take time
 crates/ms-rt/src/sched.rs 1 test: `warm` waits for threads to come to rest
 crates/ms-rt/src/task/api.rs 1 the task sleep API
-crates/ms-rt/src/task/tests.rs 11 test: tasks that sleep on purpose
+crates/ms-rt/src/task/tests.rs 12 test: tasks that sleep on purpose
 crates/ms-rt/src/watch.rs 2 the watcher thread, removed by the event-driven waits change
 crates/ms-std-fs/src/sys/mod.rs 1 test: `sleep_ms` stand-in for a task sleep on a test thread
 crates/ms-std-fs/src/sys/windows.rs 2 Windows pipes and consoles cannot be waited on: pause between checks (event replacement pending)
