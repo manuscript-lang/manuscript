@@ -116,27 +116,28 @@ fn jpeg_forward(
 	y0: Int,
 	quant: List[Int],
 ) List[Int]:
+	// A module constant is rebuilt on every read (#4199), so the tables are read once
+	// here.
+	matrix := jpeg_dct_matrix
+	zigzag := jpeg_zigzag
 	var tmp = jpeg_zeros(64)
 
 	for y in 0..8:
 		for u in 0..8:
 			var sum = 0
 			for x in 0..8:
-				sum += (
-					jpeg_dct_matrix[x * 8 + u]
-					* (plane[(y0 + y) * stride + x0 + x] - 128)
-				)
+				sum += (matrix[x * 8 + u] * (plane[(y0 + y) * stride + x0 + x] - 128))
 			tmp[y * 8 + u] = sum
 
 	var levels = jpeg_zeros(64)
 
 	for zi in 0..64:
-		at := jpeg_zigzag[zi]
+		at := zigzag[zi]
 		v := at / 8
 		u := at % 8
 		var sum = 0
 		for y in 0..8:
-			sum += jpeg_dct_matrix[y * 8 + v] * tmp[y * 8 + u]
+			sum += matrix[y * 8 + v] * tmp[y * 8 + u]
 
 		q := quant[zi]
 		half := q * 8388608

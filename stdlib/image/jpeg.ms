@@ -151,6 +151,10 @@ fn jpeg_block(
 	ac: JpegHuffman,
 	scan: JpegScan,
 ) Void:
+	// A module constant is rebuilt on every read (#4199), so the zigzag order is read
+	// once here.
+	zigzag := jpeg_zigzag
+
 	if not scan.progressive:
 		t := bits.symbol(data, dc)
 
@@ -181,7 +185,7 @@ fn jpeg_block(
 					bits.failed = true
 					return
 
-				comp.coef[base + jpeg_zigzag[zi]] = jpeg_extend(
+				comp.coef[base + zigzag[zi]] = jpeg_extend(
 					bits.receive(data, size),
 					size,
 				)
@@ -228,7 +232,7 @@ fn jpeg_block(
 					bits.failed = true
 					return
 
-				comp.coef[base + jpeg_zigzag[zi]] = (
+				comp.coef[base + zigzag[zi]] = (
 					jpeg_extend(bits.receive(data, size), size)
 					* shift_left(1, scan.al)
 				)
@@ -264,7 +268,7 @@ fn jpeg_block(
 				break
 
 			while zi <= scan.se:
-				at := base + jpeg_zigzag[zi]
+				at := base + zigzag[zi]
 
 				if comp.coef[at] != 0:
 					if bits.bit(data) == 1 and bit_and(comp.coef[at], p1) == 0:
@@ -280,14 +284,14 @@ fn jpeg_block(
 					bits.failed = true
 					return
 
-				comp.coef[base + jpeg_zigzag[zi]] = value
+				comp.coef[base + zigzag[zi]] = value
 
 			zi += 1
 			if bits.failed: return
 
 	if bits.eobrun > 0:
 		while zi <= scan.se:
-			at := base + jpeg_zigzag[zi]
+			at := base + zigzag[zi]
 			if comp.coef[at] != 0:
 				if bits.bit(data) == 1 and bit_and(comp.coef[at], p1) == 0:
 					comp.coef[at] += if comp.coef[at] >= 0: p1 else: m1
@@ -297,6 +301,9 @@ fn jpeg_block(
 
 // Dequantizes and inverse-transforms every block of `comp` into a padded sample plane.
 fn jpeg_plane(comp: JpegComponent) List[UInt8]:
+	// A module constant is rebuilt on every read (#4199), so the matrix is read once
+	// here.
+	matrix := jpeg_dct_matrix
 	stride := comp.blocks_wide * 8
 	var plane = zeroed(stride * comp.blocks_high * 8)
 	var tmp = [0].repeated(64)
@@ -313,7 +320,7 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
 					for u in 0..8:
 						f := comp.coef[base + y * 8 + u]
 						if f != 0: sum += (
-							jpeg_dct_matrix[x * 8 + u]
+							matrix[x * 8 + u]
 							* f
 							* comp.quant[y * 8 + u]
 						)
@@ -324,7 +331,7 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
 				for y in 0..8:
 					var sum = 0
 					for v in 0..8:
-						sum += jpeg_dct_matrix[y * 8 + v] * tmp[v * 8 + x]
+						sum += matrix[y * 8 + v] * tmp[v * 8 + x]
 					plane[(by * 8 + y) * stride + bx * 8 + x] = byte(
 						shift_right(sum + 131072, 18) + 128
 					)

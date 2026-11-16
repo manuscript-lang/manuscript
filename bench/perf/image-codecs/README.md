@@ -24,5 +24,14 @@ the only field or element place among the `var` arguments and the others are dif
 | PNG encode 2048 by 2048 | | 544 ms | 355 ms |
 | PNG decode 2048 by 2048 | | 145 ms | 83 ms |
 
-What is left in JPEG is per-element work in `jpeg_plane` and `jpeg_forward` (about a million
-`msrt_free` calls each in the 256 by 256 profile), a separate change.
+A second cause was the module constants `jpeg_dct_matrix` and `jpeg_zigzag`: a module constant is rebuilt
+on every read, so indexing one in a loop allocated and freed a list per element (issue #4199). The decoder
+and encoder now read each table once per call (`matrix := jpeg_dct_matrix`), which is a workaround until
+a read of a constant list stops allocating.
+
+| 2048 by 2048 | After the lowering fix | After reading the tables once | Go 1.24.7 |
+| --- | --- | --- | --- |
+| JPEG decode | 1902 ms | 603 ms | 82 to 96 ms |
+| JPEG encode | 2382 ms | 493 ms | 158 to 183 ms |
+
+The remaining difference is the scalar 8 by 8 transform with a bounds-checked list access per multiply-add.
