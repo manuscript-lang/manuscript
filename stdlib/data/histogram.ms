@@ -1,3 +1,5 @@
+// ms: allow_effect std.clock.read
+
 import (
 	panic from "@std/core.ms",
 	ceil, leading_zeros, shift_left, shift_right from "@std/math/math.ms",

@@ -74,8 +74,6 @@ fn BitSet.next(from: Int = 0) Int?:
 
 		bits = self.words[word]
 
-	return none
-
 // Returns a new list of the members in ascending order.
 fn BitSet.values() List[Int]:
 	var out: List[Int] = []

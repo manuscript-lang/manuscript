@@ -1,7 +1,9 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, join from "@std/bytes.ms",
 	base64_decode, base64_encode, hex_decode, hex_encode from "@std/data/encoding.ms",
-	ReadStream, Transform, through from "@std/io/io.ms",
+	ReadStream, through from "@std/io/io.ms",
 )
 
 // Stream steps for `@std/data/encoding.ms`, in their own module because the streams

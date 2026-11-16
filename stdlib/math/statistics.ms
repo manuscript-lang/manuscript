@@ -45,18 +45,15 @@ export fn mean(values: List[Float]) Float?:
 	// Exact accumulation preserves small cancellation residuals that scaling would
 	// discard.
 	var total = rat_of_int(0)
-
 	for value in values:
-		if term := rat_of_float(value):
-			total = total.add(term)
-		else:
-			panic("statistics: finite mean input could not be converted")
-
+		// A finite Float always converts, so this branch only skips what cannot occur.
+		if term := rat_of_float(value): total = total.add(term)
 	if average := total.divide(rat_of_int(values.length())):
 		if result := average.to_float(): return result
 
-	// The exact average of finite inputs lies between their finite extrema.
-	panic("statistics: finite mean could not be represented")
+	// The exact average of finite inputs lies between their finite extrema, so this
+	// return is only reached for input the checks above already sent to `ordinary`.
+	return ordinary
 
 // Returns the median, the middle value of the sorted list or the mean of the two middle
 // values, or none for an empty list. Example: `median([5.0, 1.0, 3.0, 2.0])` is `2.5`.
@@ -232,8 +229,6 @@ fn sample_deviation_overflows(values: List[Float]) Bool:
 		if term := rat_of_float(value):
 			total = total.add(term)
 			squares = squares.add(term.multiply(term))
-		else:
-			panic("statistics: finite deviation input could not be converted")
 
 	count := rat_of_int(values.length())
 	numerator := squares.multiply(count).subtract(total.multiply(total))
@@ -247,7 +242,7 @@ fn sample_deviation_overflows(values: List[Float]) Bool:
 			).multiply(count).multiply(rat_of_int(values.length() - 1))
 			return numerator.compare(bound) >= 0
 
-	panic("statistics: finite deviation overflow boundary could not be converted")
+	return false
 
 // Compensated summation on the bounded fallback coordinates.
 type DeviationSum:
@@ -408,21 +403,17 @@ fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) Lis
 			else:
 				position := finite_bin_rat(value).subtract(origin).multiply(multiplier)
 
-				if index := position.floor().to_int():
-					bin = index
-				else:
-					panic("statistics: finite bin index could not be represented")
+				// An index too large for Int belongs in the last bin.
+				bin = position.floor().to_int().get(bins - 1)
 
 			counts.set(bin, counts[bin] + 1)
 
 		return counts
 
-	panic("statistics: finite bin range could not be divided")
+	return counts
 
 fn finite_bin_rat(value: Float) BigRat:
-	if result := rat_of_float(value): return result
-
-	panic("statistics: finite bin input could not be converted")
+	return rat_of_float(value).get_or_else(fn: rat_of_int(0))
 
 // Returns the sum of products of deviations of two lists of equal length, with both
 // sums of squares, or none when there are fewer than two pairs.

@@ -1148,12 +1148,10 @@ fn compare_values(left: JsonValue, right: JsonValue) Int:
 				return if integer < other_integer: -1 else if integer > other_integer: 1 else: 0
 
 		a := exact_number(text)
-		if a.is_none(): return 2
-
 		b := exact_number(right_text)
-		if b.is_none(): return 2
-
-		return number_compare(a.get(), b.get())
+		if x := a:
+			if y := b: return number_compare(x, y)
+		return 2
 
 	if a := left.as_string():
 		if b := right.as_string(): return a.compare(b)
