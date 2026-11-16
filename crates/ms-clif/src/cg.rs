@@ -421,10 +421,7 @@ impl<'m> Gen<'m> {
             Glue::ClosureDropFrom(f, k) => format!("{}.{k}", func_sym(f)),
             _ => format!("{:016x}", name_hash(&ms_mir::print::ty_str(self.m, ty))),
         };
-        let base = format!(
-            "{GLUE_PREFIX}{}.{owner}",
-            kind.suffix()
-        );
+        let base = format!("{GLUE_PREFIX}{}.{owner}", kind.suffix());
         let name = self.names.unique(&base);
         let id = self
             .module

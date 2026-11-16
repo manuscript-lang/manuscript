@@ -113,7 +113,15 @@ fn expand_inst(lay: &Layouts, f: &mut Func, i: Inst, out: &mut Vec<Inst>) {
         (Op::AltUnbox, Imm::AltField(a, c, k)) => {
             let res = i.res.expect("alt.unbox result");
             out.push(inst(Op::AltGet, &[v], i.imm, Some(res), loc));
-            release_alt_fields(lay, f, v, (a, c), 1u32.checked_shl(k).unwrap_or(0), loc, out);
+            release_alt_fields(
+                lay,
+                f,
+                v,
+                (a, c),
+                1u32.checked_shl(k).unwrap_or(0),
+                loc,
+                out,
+            );
         }
         (Op::AltRelease, Imm::AltMask(a, c, mask)) => {
             release_alt_fields(lay, f, v, (a, c), mask, loc, out);

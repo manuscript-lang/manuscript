@@ -109,7 +109,10 @@ fn wanted_types(m: &Module) -> Vec<Ty> {
 fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
     let name = format!("{GLUE_PREFIX}mir.{}.drop", m.drop_glue.len());
     let lay_boxed = |m: &Module, a| Layouts::new(m).is_boxed(a);
-    let params = vec![Param { ty, mode: Mode::Move }];
+    let params = vec![Param {
+        ty,
+        mode: Mode::Move,
+    }];
     match m.types.kind(ty).clone() {
         TyKind::Type(r) => {
             let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
@@ -125,9 +128,7 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
                 .cases
                 .iter()
                 .enumerate()
-                .map(|(c, case)| {
-                    !def.borrows(c) && case.fields.iter().any(|f| m.needs_drop(f.1))
-                })
+                .map(|(c, case)| !def.borrows(c) && case.fields.iter().any(|f| m.needs_drop(f.1)))
                 .collect();
             let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
             let p = b.params()[0];
