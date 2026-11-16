@@ -294,6 +294,35 @@ impl<'a> FnLower<'a> {
 
     /// The owned local that every changed parameter of a call names a distinct field of
     /// (`f(var self.a, var self.b)`), when there are several and each is `local.field`.
+    /// The one changed parameter whose argument is a field or element place, when every other changed
+    /// parameter is a plain local of another variable. That parameter changes in place (the callee
+    /// takes the value out of its place and puts it back); the others move through their own slots.
+    fn lone_place_var(&mut self, vars: &[usize], places: &[Option<Expr>]) -> Option<usize> {
+        let mut lone = None;
+        for &i in vars {
+            let place = places.get(i)?.as_ref()?;
+            if matches!(place.kind, ExprKind::Name(_)) && !self.is_alias_name(place) {
+                continue;
+            }
+            if lone.replace(i).is_some() {
+                return None;
+            }
+        }
+        let i = lone?;
+        let root = crate::mutation::place_root(self.syms, &self.hir, places[i].as_ref()?)?;
+        let root = self.aliases.get(&root).map_or(root, |a| a.root.uid);
+        for &j in vars.iter().filter(|&&j| j != i) {
+            let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(places[j].as_ref()?)
+            else {
+                return None;
+            };
+            if b.uid == root {
+                return None;
+            }
+        }
+        Some(i)
+    }
+
     fn joint_var_root(
         &mut self,
         vars: &[usize],
@@ -587,6 +616,7 @@ impl<'a> FnLower<'a> {
         // Several changed parameters that are distinct fields of one owned variable: each field
         // moves out of the variable, and the callee's results move back into it.
         let joint_root = self.joint_var_root(&vars, &args.places);
+        let lone_place = self.lone_place_var(&vars, &args.places);
         let mut joint: Vec<(usize, Expr, MTy)> = Vec::new();
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
             // An intact borrowed argument keeps its original registration and acquisition
@@ -673,7 +703,7 @@ impl<'a> FnLower<'a> {
                 vals.push(at);
                 continue;
             }
-            if vars.len() == 1
+            if lone_place == Some(i)
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
                 && (!matches!(place.kind, ExprKind::Name(_)) || self.is_alias_name(&place))
