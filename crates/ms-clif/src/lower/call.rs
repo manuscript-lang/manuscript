@@ -198,7 +198,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             } else {
                 let leaves = self.g.lay.leaves(p.ty);
                 // A result that points into the argument needs the slot after the call too.
-                args.push(if def.role == ExternRole::BorrowsArgument {
+                args.push(if self.g.m.pins_argument_slots(&def) {
                     self.spill(&v, &leaves)
                 } else {
                     self.spill_temp(&v, &leaves)
