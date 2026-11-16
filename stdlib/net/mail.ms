@@ -20,10 +20,10 @@ message into `Headers` and body and decodes RFC 2047 encoded words on request.
 
 // A mailbox: optional display name and the `local@domain` address.
 export type Address:
-	// Display name with quotes removed; empty when none was given.
-	name: String = ""
 	// The `local@domain` address without angle brackets.
 	address: String
+	// Display name with quotes removed; empty when none was given.
+	name: String = ""
 
 // Formats as `Name <addr>` (quoting the name when it has specials) or the bare
 // address when unnamed.

@@ -22,7 +22,7 @@ fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")
     void sleep(nanoseconds(30000000000)).wait()
     _reporter.close().get(none)
-    return HttpResponse(200, headers(), "late\n".to_bytes())
+    return HttpResponse(200, "late\n".to_bytes())
 
 export fn main() Int:
     if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):
