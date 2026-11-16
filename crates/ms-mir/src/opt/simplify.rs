@@ -54,8 +54,8 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         let mut c = false;
         c |= fold(f);
         c |= known_alts(m, f);
-        c |= dead_none_clones(f);
         c |= dropped_somes(f);
+        c |= dropped_nones(f);
         c |= known_ifaces(m, f);
         c |= known_lists(m, f);
         c |= phis(m, f);
@@ -99,6 +99,45 @@ fn apply_subst(f: &mut Func, subst: &ValueMap<Value>) {
     for n in &mut f.names {
         n.value = resolve(subst, n.value);
     }
+}
+
+/// An `opt.none_owned` whose every use is a drop owns nothing: the `none` and its drops go.
+fn dropped_nones(f: &mut Func) -> bool {
+    // Each owned `none` and whether every use of it is a drop.
+    let mut nones: ValueMap<bool> = ValueMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::OptNoneOwned, Some(r)) = (i.op, i.res) {
+            nones.insert(r, true);
+        }
+    }
+    if nones.is_empty() {
+        return false;
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            for (k, a) in i.args.iter().enumerate() {
+                if nones.contains_key(a) && !(i.op == Op::Drop && k == 0) {
+                    nones.insert(*a, false);
+                }
+            }
+        }
+        b.term.for_each_use(|v| {
+            if nones.contains_key(&v) {
+                nones.insert(v, false);
+            }
+        });
+    }
+    let mut changed = false;
+    for b in &mut f.blocks {
+        let before = b.insts.len();
+        b.insts.retain(|i| match (i.op, i.res, i.args.first()) {
+            (Op::OptNoneOwned, Some(r), _) => nones.get(&r) != Some(&true),
+            (Op::Drop, _, Some(a)) => nones.get(a) != Some(&true),
+            _ => true,
+        });
+        changed |= b.insts.len() != before;
+    }
+    changed
 }
 
 /// An `opt.some` whose only use is its drop never needed the box: drop the payload instead.
@@ -150,62 +189,6 @@ fn dropped_somes(f: &mut Func) -> bool {
             .retain(|i| !(i.op == Op::OptSome && i.res.is_some_and(|r| payload.contains_key(&r))));
     }
     true
-}
-
-/// A clone of an `opt.none` that is only dropped owns nothing: the clone and its drops are
-/// deleted. An emptied local holds `none` until it is stored to again, and the owned copy
-/// lowering takes of it and the scope-end drop otherwise call the optional's glue per pass.
-fn dead_none_clones(f: &mut Func) -> bool {
-    let mut none = ValueSet::new();
-    for b in &f.blocks {
-        for i in &b.insts {
-            if let (Op::OptNone, Some(r)) = (i.op, i.res) {
-                none.insert(r);
-            }
-        }
-    }
-    if none.is_empty() {
-        return false;
-    }
-    // Clones of `none` and whether every use of each is a drop.
-    let mut clones: ValueMap<bool> = ValueMap::new();
-    for b in &f.blocks {
-        for i in &b.insts {
-            if let (Op::Clone, Some(r), Some(a)) = (i.op, i.res, i.args.first())
-                && none.contains(a)
-            {
-                clones.insert(r, true);
-            }
-        }
-    }
-    if clones.is_empty() {
-        return false;
-    }
-    for b in &f.blocks {
-        for i in &b.insts {
-            for (k, a) in i.args.iter().enumerate() {
-                if clones.contains_key(a) && !(i.op == Op::Drop && k == 0) {
-                    clones.insert(*a, false);
-                }
-            }
-        }
-        b.term.for_each_use(|v| {
-            if clones.contains_key(&v) {
-                clones.insert(v, false);
-            }
-        });
-    }
-    let mut changed = false;
-    for b in &mut f.blocks {
-        let before = b.insts.len();
-        b.insts.retain(|i| match (i.op, i.res, i.args.first()) {
-            (Op::Clone, Some(r), _) => clones.get(&r) != Some(&true),
-            (Op::Drop, _, Some(a)) => clones.get(a) != Some(&true),
-            _ => true,
-        });
-        changed |= b.insts.len() != before;
-    }
-    changed
 }
 
 /// Folds operations on an alternative built in the same function by `alt.new` with a case
@@ -841,7 +824,7 @@ fn float_and_optional_rule(f: &mut Func, env: &mut Env, inst: &Inst) -> Act {
         Op::B2I => env.ci(a(0)).map_or(Act::Keep, |p| Act::Const(K::I(p))),
         Op::OptIsSome => match env.defs.get(&a(0)) {
             Some((Op::OptSome | Op::OptView, _, _)) => Act::Const(K::B(true)),
-            Some((Op::OptNone, _, _)) => Act::Const(K::B(false)),
+            Some((Op::OptNone | Op::OptNoneOwned, _, _)) => Act::Const(K::B(false)),
             _ => Act::Keep,
         },
         Op::OptGet | Op::OptUnwrap => {

@@ -27,6 +27,8 @@ pub const VALUE_OPTIONS: &[&str] = &[
     "--time",
     "--samples",
     "--iterations",
+    "--baseline",
+    "--fail-over",
     "--format",
     "--view",
     "--entity",
@@ -224,9 +226,10 @@ fn parse_options(
                 }
                 inv.build_type_name = value.to_string();
             }
-            "--list" | "--fail-fast" => inv.test_options.push(flag.to_string()),
+            "--list" | "--fail-fast" | "--ops" => inv.test_options.push(flag.to_string()),
             "--test" | "--match" | "--exclude" | "--repeat" | "--shuffle" | "--runs" | "--seed"
-            | "--fuzz" | "--time" | "--samples" | "--iterations" | "--bench" => {
+            | "--fuzz" | "--time" | "--samples" | "--iterations" | "--bench" | "--baseline"
+            | "--fail-over" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
                     return Err(usage_error(
                         io,
@@ -592,7 +595,14 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             .find(|flag| names.contains(flag))
     };
     if command == "test"
-        && let Some(flag) = only(&["--time", "--samples", "--iterations"])
+        && let Some(flag) = only(&[
+            "--time",
+            "--samples",
+            "--iterations",
+            "--baseline",
+            "--fail-over",
+            "--ops",
+        ])
     {
         return Err(usage_error(
             io,

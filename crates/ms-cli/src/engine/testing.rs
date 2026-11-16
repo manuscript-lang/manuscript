@@ -80,6 +80,13 @@ struct Options {
     bench_samples: Option<u64>,
     /// Fixed iterations per sample (`--iterations`); calibrated when unset.
     bench_iterations: Option<u64>,
+    /// Count MIR operations (`--ops`): the build carries a counter, so one iteration and one
+    /// sample run and the times are not meaningful.
+    ops: bool,
+    /// An earlier `ms bench --json` result to compare the work counters against (`--baseline`).
+    baseline: Option<String>,
+    /// Percent a work counter may rise over the baseline before the run fails (`--fail-over`).
+    fail_over: Option<f64>,
 }
 
 /// Reads the selection options the CLI forwards; the first unrecognized
@@ -100,6 +107,7 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
             }
             "--list" => options.list = true,
             "--fail-fast" => options.fail_fast = true,
+            "--ops" => options.ops = true,
             _ => {
                 let Some((name, value)) = arg.split_once('=') else {
                     break;
@@ -177,6 +185,17 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
                                 .ok()
                                 .filter(|n| *n > 0)
                                 .ok_or("invalid --iterations; use a positive integer")?,
+                        );
+                    }
+                    "--baseline" => options.baseline = Some(value.to_string()),
+                    "--fail-over" => {
+                        options.fail_over = Some(
+                            value
+                                .trim_end_matches('%')
+                                .parse::<f64>()
+                                .ok()
+                                .filter(|n| *n >= 0.0)
+                                .ok_or("invalid --fail-over; use a percentage such as 3 or 3%")?,
                         );
                     }
                     "--timeout" => {
@@ -299,6 +318,12 @@ fn run<L: Lower>(
         }
     };
     options.bench = bench;
+    if bench && options.ops {
+        // The counter slows the program, so run once: the count does not need more.
+        options.bench_iterations.get_or_insert(1);
+        options.bench_samples.get_or_insert(1);
+        backend.set_count_ops(true);
+    }
     if bench && !options.timeout_set {
         options.timeout = Some(DEFAULT_BENCH_TIMEOUT);
     }
@@ -379,7 +404,17 @@ fn run<L: Lower>(
         io,
         captured: structured.then(Vec::new),
     };
-    let status = runner.run_all(&available, &mut document, &mut out);
+    let mut status = runner.run_all(&available, &mut document, &mut out);
+    if bench && status == 0 {
+        match baseline_regressions(&options, &document, &mut out) {
+            Ok(true) => status = 1,
+            Ok(false) => {}
+            Err(message) => {
+                let _ = writeln!(out.io.stderr, "{message}");
+                status = 2;
+            }
+        }
+    }
     let captured = out.captured.take();
     if !structured {
         return Ok(status);
@@ -1091,6 +1126,83 @@ fn format_ns(nanos: f64) -> String {
     format!("{value:.3} {unit}")
 }
 
+/// The work counters of a bench's statistics: the numbers that do not depend on machine load, so
+/// a baseline comparison on them does not flake. Times are never compared.
+const WORK_COUNTERS: [&str; 7] = [
+    "mir_ops",
+    "allocations",
+    "allocated_bytes",
+    "list_copies",
+    "list_copy_bytes",
+    "string_clones",
+    "string_clone_bytes",
+];
+
+/// Compares the work counters of every measured bench with the `--baseline` result and reports each
+/// one that rose by more than `--fail-over` percent (default 3). Returns whether any did.
+fn baseline_regressions(
+    options: &Options,
+    document: &Document,
+    out: &mut Out,
+) -> Result<bool, String> {
+    let Some(path) = &options.baseline else {
+        return Ok(false);
+    };
+    let bound = options.fail_over.unwrap_or(3.0);
+    let text = std::fs::read_to_string(path)
+        .map_err(|error| format!("cannot read --baseline {path}: {error}"))?;
+    let baseline = crate::json::parse(&text)
+        .map_err(|_| format!("--baseline {path} is not the JSON that `ms bench --json` writes"))?;
+    let earlier = baseline
+        .get("benches")
+        .and_then(Json::as_array)
+        .ok_or_else(|| {
+            format!("--baseline {path} has no benches; save `ms bench --json` output")
+        })?;
+    let number = |stats: &Json, key: &str| match stats.get(key) {
+        Some(Json::Num(text)) => text.parse::<f64>().ok(),
+        _ => None,
+    };
+    let mut regressed = false;
+    for case in &document.tests {
+        let Some(now) = &case.stats else { continue };
+        let Some(before) = earlier
+            .iter()
+            .find(|b| b.get("name").and_then(Json::as_str) == Some(case.name.as_str()))
+            .and_then(|b| b.get("stats"))
+        else {
+            out.line(format!("NEW {}: not in the baseline", case.name));
+            continue;
+        };
+        for key in WORK_COUNTERS {
+            let (Some(was), Some(is)) = (number(before, key), number(now, key)) else {
+                continue;
+            };
+            // A counter that was zero may rise by up to one before it counts.
+            let allowed = was * (1.0 + bound / 100.0) + if was == 0.0 { 1.0 } else { 0.0 };
+            if is > allowed {
+                regressed = true;
+                out.line(format!(
+                    "REGRESSED {}: {key} {} -> {} (over the {bound}% bound)",
+                    case.name,
+                    round_count(was),
+                    round_count(is),
+                ));
+            }
+        }
+    }
+    Ok(regressed)
+}
+
+/// A per-operation count: whole numbers print as integers, fractions with two decimals.
+fn round_count(value: f64) -> String {
+    if value.fract() == 0.0 {
+        format!("{value:.0}")
+    } else {
+        format!("{value:.2}")
+    }
+}
+
 /// The one-line summary of a bench's statistics.
 fn describe_stats(stats: &Json) -> String {
     let number = |key: &str| match stats.get(key) {
@@ -1098,8 +1210,23 @@ fn describe_stats(stats: &Json) -> String {
         _ => f64::NAN,
     };
     let count = |key: &str| stats.get(key).and_then(Json::as_i64).unwrap_or(0);
+    let ops = match number("mir_ops") {
+        n if n > 0.0 => format!("; {} MIR ops", round_count(n)),
+        _ => String::new(),
+    };
+    let work = if stats.get("allocations").is_some() {
+        format!(
+            "{ops}; {} allocs, {} bytes, {} list copies, {} string clones per op",
+            round_count(number("allocations")),
+            round_count(number("allocated_bytes")),
+            round_count(number("list_copies")),
+            round_count(number("string_clones")),
+        )
+    } else {
+        String::new()
+    };
     format!(
-        "{}/op median (min {}, mean {}, max {}, stddev {}; {} iterations x {} samples)",
+        "{}/op median (min {}, mean {}, max {}, stddev {}; {} iterations x {} samples; cpu {}/op{work})",
         format_ns(number("median_ns")),
         format_ns(number("min_ns")),
         format_ns(number("mean_ns")),
@@ -1107,6 +1234,7 @@ fn describe_stats(stats: &Json) -> String {
         format_ns(number("stddev_ns")),
         count("iterations"),
         count("samples"),
+        format_ns(number("cpu_ns")),
     )
 }
 

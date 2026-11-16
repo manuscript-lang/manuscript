@@ -1029,6 +1029,10 @@ impl<'a> FnLower<'a> {
         if !self.needs_drop(t) {
             return v;
         }
+        if self.b.defining_op_anywhere(v) == Some(Op::OptNone) {
+            // A copy of `none` owns nothing: an owned `none`.
+            return self.b.opt_none_owned(t);
+        }
         self.b
             .emit(Op::Clone, &[v], ms_mir::ir::Imm::Int(1), Some(t))
             .expect("copy result")
@@ -1037,8 +1041,7 @@ impl<'a> FnLower<'a> {
     /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow; its copy owns
     /// nothing, so the copy costs a null check and never touches an object).
     pub fn none_owned(&mut self, t: MTy) -> Value {
-        let n = self.b.opt_none(t);
-        self.owned(Val { v: n, own: false })
+        self.b.opt_none_owned(t)
     }
 
     /// The operand for a borrowing use; owned temporaries are dropped by `flush_temps`.
