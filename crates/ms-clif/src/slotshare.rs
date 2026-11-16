@@ -16,8 +16,12 @@ use cranelift_codegen::ir::{self, Function, InstructionData, Opcode, StackSlot};
 /// Merges the block-confined slots of `temps` in `func`. Facts about slots, values and blocks sit
 /// in vectors indexed by their entity numbers: the pass visits every instruction, so a lookup is
 /// one bounds check rather than a hash.
-pub fn share(func: &mut Function, temps: &[StackSlot]) {
-    if temps.len() < 2 {
+///
+/// With `poison`, every confined slot is also filled with [`POISON`] at the end of the block that
+/// uses it (`BuildOptions::poison_slots`), shared or not: a pointer that outlives its slot then
+/// reads the pattern in every build.
+pub fn share(func: &mut Function, temps: &[StackSlot], poison: bool) {
+    if temps.len() < 2 && !(poison && !temps.is_empty()) {
         return;
     }
     let slots = func.sized_stack_slots.len();
@@ -112,9 +116,13 @@ pub fn share(func: &mut Function, temps: &[StackSlot]) {
     let mut colors: Vec<StackSlot> = Vec::new();
     let mut remap: Vec<Option<StackSlot>> = vec![None; slots];
     let mut merged: Vec<StackSlot> = Vec::new();
+    let mut dying: Vec<(ir::Block, StackSlot, u32)> = Vec::new();
     for (block, slot) in order {
         if bad[slot.index()] {
             continue;
+        }
+        if poison {
+            dying.push((block, slot, func.sized_stack_slots[slot].size));
         }
         let k = &mut rank[block.index()];
         let color = match colors.get(*k) {
@@ -138,6 +146,7 @@ pub fn share(func: &mut Function, temps: &[StackSlot]) {
         }
     }
     if merged.is_empty() {
+        poison_dying(func, &dying, &remap);
         return;
     }
     let mut insts: Vec<ir::Inst> = Vec::new();
@@ -152,7 +161,39 @@ pub fn share(func: &mut Function, temps: &[StackSlot]) {
             }
         }
     }
+    poison_dying(func, &dying, &remap);
     for slot in merged {
         func.sized_stack_slots[slot].size = 0;
+    }
+}
+
+/// The word every dead slot is filled with: the byte the counting runtime writes over freed heap
+/// blocks, repeated.
+const POISON: i64 = 0xDDDD_DDDD_DDDD_DDDDu64 as i64;
+
+/// The most bytes of one slot that poisoning fills (word stores, unrolled): a bigger slot keeps
+/// its tail unfilled.
+const POISON_LIMIT: u32 = 2048;
+
+/// Fills each slot of `dying` (block, slot, size) with [`POISON`] before its block's terminator,
+/// at the storage `remap` moved the slot to.
+fn poison_dying(
+    func: &mut Function,
+    dying: &[(ir::Block, StackSlot, u32)],
+    remap: &[Option<StackSlot>],
+) {
+    use cranelift_codegen::cursor::{Cursor, FuncCursor};
+    use cranelift_codegen::ir::{InstBuilder, types};
+    for &(block, slot, size) in dying {
+        let Some(end) = func.layout.last_inst(block) else {
+            continue;
+        };
+        let target = remap[slot.index()].unwrap_or(slot);
+        let mut cur = FuncCursor::new(func).at_inst(end);
+        let word = cur.ins().iconst(types::I64, POISON);
+        for off in (0..size.min(POISON_LIMIT) / 8).map(|w| w * 8) {
+            cur.ins()
+                .stack_store(types::I64, word, target, i32::try_from(off).unwrap_or(0));
+        }
     }
 }

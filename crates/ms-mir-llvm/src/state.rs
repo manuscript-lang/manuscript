@@ -118,6 +118,7 @@ impl<'m> Gen<'m> {
             .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
         let mut llvm = LlvmModule::new(files, cwd);
         llvm.heap_facts = opts.heap_facts;
+        llvm.set_poison_slots(opts.poison_slots);
         llvm.debug_types = ms_mir::debug_types::debug_types(m);
         let syms = m
             .funcs

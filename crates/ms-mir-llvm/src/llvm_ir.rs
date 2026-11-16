@@ -385,6 +385,11 @@ fn metadata_string(text: &str) -> Cow<'_, str> {
 
 impl LlvmModule {
     /// A module whose debug info names `files` relative to `cwd`.
+    /// Poisons dead block-confined stack slots (`BuildOptions::poison_slots`).
+    pub fn set_poison_slots(&mut self, on: bool) {
+        self.types.poison_slots.set(on);
+    }
+
     pub fn new(mut files: Vec<Option<String>>, cwd: String) -> Self {
         if files.is_empty() {
             files.push(None);
