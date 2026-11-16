@@ -510,19 +510,36 @@ unsafe fn short_ascii(s: *const StrVal) -> bool {
 }
 
 /// `find` for a short haystack and a non-empty needle.
+///
+/// The scan is for one of the needle's less common bytes (see [`rare_offset`]), so a log line full
+/// of spaces and slashes does not stop at each of them; only a position where that byte matches is compared
+/// whole.
 #[inline]
 pub(super) fn find_short(hay: &[u8], needle: &[u8]) -> Option<usize> {
-    let (&first, rest) = needle.split_first()?;
     let last = hay.len().checked_sub(needle.len())?;
+    let k = rare_offset(needle)?;
+    let pivot = needle[k];
     let mut i = 0;
     while i <= last {
-        i += memchr_short(first, &hay[i..=last])?;
-        if hay[i + 1..i + needle.len()] == *rest {
+        // `hay[i + k]` is the pivot byte of the candidate start `i`.
+        i += memchr_short(pivot, &hay[i + k..=last + k])?;
+        if hay[i..i + needle.len()] == *needle {
             return Some(i);
         }
         i += 1;
     }
     None
+}
+
+/// The offset of the byte to scan for: the last one that is not a space or common punctuation,
+/// which text is full of (a needle written between spaces would otherwise stop at every word),
+/// or the last byte when it is all of those. None for an empty needle.
+#[inline]
+fn rare_offset(needle: &[u8]) -> Option<usize> {
+    needle
+        .iter()
+        .rposition(|b| !matches!(b, b' ' | b'/' | b'.' | b',' | b'-' | b':' | b'_'))
+        .or(needle.len().checked_sub(1))
 }
 
 /// `memchr` for a short haystack: eight bytes per step, testing each word for a byte equal to
@@ -3563,6 +3580,51 @@ pub fn count_copy(kind: usize, bytes: usize) {
 mod tests {
     const NO_ERR: ms_rt_abi::ErrSlot = ms_rt_abi::ErrSlot(core::ptr::null_mut());
     use super::*;
+
+    #[test]
+    fn find_short_agrees_with_a_naive_search() {
+        let naive = |hay: &[u8], needle: &[u8]| {
+            (needle.len() <= hay.len())
+                .then(|| {
+                    (0..=hay.len() - needle.len()).find(|&i| hay[i..i + needle.len()] == *needle)
+                })
+                .flatten()
+        };
+        let alphabet = *b" /.a7P-";
+        // Every text up to five bytes and a set of needles over a small alphabet, plus longer
+        // texts built from a seed, so each pivot choice meets matches at every offset.
+        let mut texts: Vec<Vec<u8>> = vec![vec![]];
+        for len in 1..=5 {
+            let mut next = Vec::new();
+            for t in texts.iter().filter(|t| t.len() == len - 1) {
+                for &c in &alphabet {
+                    let mut u = t.clone();
+                    u.push(c);
+                    next.push(u);
+                }
+            }
+            texts.extend(next);
+        }
+        let mut seed = 7u32;
+        for _ in 0..2000 {
+            let len = 20 + (seed % 90) as usize;
+            let mut t = Vec::new();
+            for _ in 0..len {
+                seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
+                t.push(alphabet[(seed >> 16) as usize % alphabet.len()]);
+            }
+            texts.push(t);
+        }
+        let needles: Vec<&[u8]> = vec![
+            b" ", b"a", b"7", b"  ", b" a", b"a ", b" 7 ", b"/.", b"./a7", b" P-a", b"aaaa",
+            b" /.- ", b"7P-a7 /",
+        ];
+        for t in &texts {
+            for n in &needles {
+                assert_eq!(find_short(t, n), naive(t, n), "{t:?} {n:?}");
+            }
+        }
+    }
 
     #[test]
     fn from_scalars_covers_ascii_unicode_and_invalid_input() {

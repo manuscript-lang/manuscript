@@ -16,3 +16,4 @@ guard-http-request 206179125
 guard-http-request-small 150033311
 guard-splitfirst 41153104
 guard-splitbuf 65357918
+guard-findshort 63453059
