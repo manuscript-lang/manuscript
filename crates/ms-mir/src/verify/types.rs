@@ -186,6 +186,7 @@ impl InstCheck<'_, '_> {
             | Op::PtrAdd
             | Op::PtrNull
             | Op::PtrLoadU
+            | Op::PtrStoreU
             | Op::PtrField
             | Op::Load
             | Op::Take
@@ -1207,6 +1208,16 @@ impl InstCheck<'_, '_> {
                         && matches!(self.inst.imm, Imm::Int(1 | 2 | 4 | 8))
                         && self.res == Some(Ty::INT),
                     "ptr.loadu reads 1, 2, 4 or 8 unaligned bytes at a ptr into an int",
+                )
+            }
+            Op::PtrStoreU => {
+                self.arity(2)?;
+                self.want(
+                    self.t(0) == Ty::PTR
+                        && self.t(1) == Ty::INT
+                        && matches!(self.inst.imm, Imm::Int(1 | 2 | 4 | 8))
+                        && self.res.is_none(),
+                    "ptr.storeu writes the low 1, 2, 4 or 8 bytes of an int unaligned at a ptr",
                 )
             }
             Op::PtrNull => {

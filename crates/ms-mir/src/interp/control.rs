@@ -120,7 +120,8 @@ impl Interp<'_> {
             | Op::PtrField
             | Op::PtrAdd
             | Op::PtrNull
-            | Op::PtrLoadU => {
+            | Op::PtrLoadU
+            | Op::PtrStoreU => {
                 return Err(Raw::internal(
                     "interior pointers are not supported by the interpreter",
                 ));

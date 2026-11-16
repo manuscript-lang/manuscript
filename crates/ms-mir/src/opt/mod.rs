@@ -16,6 +16,7 @@
 
 use crate::ir::{Module, Op};
 
+pub mod appendfast;
 pub mod bytetake;
 pub mod copyelim;
 pub mod ifconv;
@@ -155,7 +156,11 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "copyelim");
     inline::run(m);
     check(m, "inline");
+    // The in-place append becomes an inlinable fast path, so the inliner runs again for it.
     strfuse::run(m);
+    if appendfast::run(m) {
+        inline::run(m);
+    }
     check(m, "strfuse");
     loopslot::run(m);
     check(m, "loopslot");

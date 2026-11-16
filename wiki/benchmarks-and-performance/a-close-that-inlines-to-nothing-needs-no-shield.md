@@ -10,4 +10,19 @@ Verified (2026-11-16, `bench/perf/guards/cleanup`): a scope that owns a `Closeab
 
 ## Measured against C, same day (callgrind, instructions)
 
-Hand-written C with `malloc`/`free`/`realloc` against the same program in Manuscript: 200 rounds of 1000 records with a string each, 64.5M C vs 34.9M; 200k `f"key-{i}-suffix"` temporaries 65.2M vs 53.6M; a 1M-element list grown by append 11.4M vs 11.4M; 300k small lists of records 122.7M vs 59.5M; a depth-14 tree built and freed 20 times 151.9M vs 124.0M; 20k promises 48.1M vs 43.2M; `Map[Int, Int]` with 200k inserts and lookups 33.9M vs 39.7M (1.17x). The one large gap is `s += "ab"` 200k times: 32.0M vs 2.4M, 111 instructions per `msrt_string_append` call against 12. Rewriting that function in place (no `memcpy`/`is_ascii` calls for short pieces) made it worse (168 per call): the cost is the tag decoding and the allocator size query, not the copy. The fix is an inline MIR fast path as `StringBuilder.append` has, which needs the block's spare capacity without an allocator call.
+Compare against checked C: `Int` overflow checks (`__builtin_*_overflow`), bounds checks on every index, and overflow-checked capacity growth, `-O2 -fno-builtin-malloc -fno-builtin-free -fno-builtin-realloc` (Chinmay, 2026-11-16). Unchecked C understates the baseline by up to 35% on index-heavy loops (a 1M `List[Int]` append and sum: 11.4M unchecked, 15.4M checked).
+
+| Program (callgrind, instructions) | Checked C | Manuscript |
+| --- | --- | --- |
+| 200 rounds of 1000 records with a string each | 65.3M | 34.9M |
+| 200k `f"key-{i}-suffix"` temporaries | 65.4M | 53.6M |
+| 1M-element list grown by append, then summed | 15.4M | 11.4M |
+| 300k small lists of records | 121.1M | 59.5M |
+| `Map[Int, Int]`, 200k inserts and lookups | 34.7M | 39.7M (1.14x) |
+| depth-14 tree built and freed 20 times | 150.2M | 124.0M |
+| 200k parse calls, one in four fails | 30.5M | not remeasured |
+| 100k clones of a record with a string and two tags | 59.2M | not remeasured |
+| 1M scope-end closes (`Res.close`) | 5.25M | see the guard |
+| `s += "ab"` 200k times | 2.39M | 32.0M before spare room, 5.0M after |
+
+The earlier unchecked numbers were slightly lower for C (listint 11.4M, mapint 33.9M, sb 2.39M); none of the verdicts changed except that the `Map` gap narrowed from 1.17x to 1.14x. The `s += "ab"` gap was 111 instructions per `msrt_string_append` call against 12; rewriting that function in place did not help (the cost is tag decoding and the allocator size query), so the fix is the inline MIR fast path over spare room ([spare room](strings-record-their-spare-room-in-the-length-word.md)).
