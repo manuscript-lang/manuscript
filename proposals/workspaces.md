@@ -94,6 +94,10 @@ entry = "./src/main.ms"
 - Cranelift codegen is already parallel (`cg.rs`). Measured, Debug, same workload: codegen 5.9 s on 1 core, 2.7 s on 4 cores. More threads will not remove the rest, so a cache is the only further lever for codegen.
 - Leaf edit with a cache: about 4.7 s to 2.6 s (estimate; check 1.7 s and lowering 0.5 s remain). Real projects check in 7 to 48 ms, so the cache matters only for very large workspaces; this is why stage 4 is gated and optional.
 
+## Stage 4 result (2026-11-16): not built
+
+Spike on 72k lines in 1,001 modules and 12k functions (release `ms`, 4 cores, Debug, `MS_CACHE=off`): build 1.8 s, of which codegen 1.6 s. Pinned to one core, codegen takes 1.9 s. Cranelift compilation already runs on the other cores, so it adds under 0.5 s of that wall time; the rest is single-threaded lowering, which a cache keyed on final MIR still has to run to rebuild symbols, glue and tables. The most a perfect object cache saves is about 20% of a Debug build, against the gate's 45% (4.7 s to 2.6 s). Stage 4 is dropped; reopen it only if lowering becomes parallel and a workload shows compilation dominating.
+
 ## Open questions
 
 Decided in review: members need the same `[effects]` entry as packages (one rule), and a root with `[workspace]` may also hold `[project]`. Chinmay sees both before merge.
