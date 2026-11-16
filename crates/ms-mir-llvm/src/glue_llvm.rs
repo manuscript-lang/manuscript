@@ -140,7 +140,8 @@ pub fn clone_str(
     let shared = b.icmp("ult", &tag, &Val::int(2));
     b.cond_br(&shared, join, dup);
     b.label(dup);
-    let slot = b.alloca(&LTy::Array(Box::new(LTy::I64), 2));
+    let words = b.types().named("ms.str", vec![LTy::I64, LTy::I64]);
+    let slot = b.alloca(&words);
     let at = b.ptrtoint(&slot);
     b.call(
         &LTy::Void,
@@ -148,8 +149,9 @@ pub fn clone_str(
         "msrt_str_copy",
         &[(vs[0].clone(), ""), (vs[1].clone(), ""), (at, "")],
     );
-    let c0 = b.load(&LTy::I64, &slot, 8);
-    let hi = b.gep_bytes(&slot, 8);
+    let lo = b.field_ptr(&words, &slot, 0);
+    let c0 = b.load(&LTy::I64, &lo, 8);
+    let hi = b.field_ptr(&words, &slot, 1);
     let c1 = b.load(&LTy::I64, &hi, 8);
     b.br(join);
     b.label(join);
@@ -199,10 +201,17 @@ pub fn unnative(sym: &str) -> Option<&str> {
     sym.strip_suffix(".n")
 }
 
-/// The type of a value of `leaves` in memory: a literal struct of the leaves' memory types, laid
-/// out like [`mem_layout`].
-fn slot_ty(leaves: &[Leaf]) -> LTy {
-    LTy::Tuple(leaves.iter().map(|l| mem(*l)).collect())
+/// The type of a value of `leaves` in memory: a struct of the leaves' memory types, laid out
+/// like [`mem_layout`] and named by them, so the module defines each shape once.
+fn slot_ty(types: &Types, leaves: &[Leaf]) -> LTy {
+    let name: Vec<String> = leaves
+        .iter()
+        .map(|l| format!("{l:?}").to_lowercase())
+        .collect();
+    types.named(
+        &format!("ms.slot.{}", name.join(".")),
+        leaves.iter().map(|l| mem(*l)).collect(),
+    )
 }
 
 /// Whether a value of `leaves` travels by pointer.
@@ -234,11 +243,11 @@ fn ptr_attrs(mode: Mode, leaves: &[Leaf]) -> String {
 }
 
 /// The hidden result pointer of a value of `leaves`.
-fn sret_attrs(leaves: &[Leaf]) -> String {
+fn sret_attrs(types: &Types, leaves: &[Leaf]) -> String {
     let lay = mem_layout(leaves);
     format!(
         " sret({}) noundef nonnull nocapture noalias align {} dereferenceable({})",
-        Types::default().text(&slot_ty(leaves)),
+        types.text(&slot_ty(types, leaves)),
         lay.align,
         lay.size
     )
@@ -258,8 +267,7 @@ struct Sig {
 }
 
 impl Sig {
-    fn formals(&self, named: bool) -> String {
-        let t = Types::default();
+    fn formals(&self, t: &Types, named: bool) -> String {
         self.params
             .iter()
             .enumerate()
@@ -275,17 +283,17 @@ impl Sig {
             .join(", ")
     }
 
-    fn ret_text(&self) -> String {
-        format!("{}{}", self.ret_attr, Types::default().text(&self.ret))
+    fn ret_text(&self, t: &Types) -> String {
+        format!("{}{}", self.ret_attr, t.text(&self.ret))
     }
 
-    fn declare(&self, sym: &str) -> (String, String) {
+    fn declare(&self, t: &Types, sym: &str) -> (String, String) {
         (
             sym.to_string(),
             format!(
                 "declare {} @\"{sym}\"({})",
-                self.ret_text(),
-                self.formals(false)
+                self.ret_text(t),
+                self.formals(t, false)
             ),
         )
     }
@@ -326,7 +334,7 @@ fn drop_sig(leaves: &[Leaf]) -> Sig {
     }
 }
 
-fn clone_sig(leaves: &[Leaf]) -> Sig {
+fn clone_sig(types: &Types, leaves: &[Leaf]) -> Sig {
     if !indirect(leaves) {
         let (ret, ret_attr) = reg_ret(leaves);
         return Sig {
@@ -339,7 +347,7 @@ fn clone_sig(leaves: &[Leaf]) -> Sig {
         params: vec![
             P {
                 ty: LTy::Ptr,
-                attrs: sret_attrs(leaves),
+                attrs: sret_attrs(types, leaves),
             },
             P {
                 ty: LTy::Ptr,
@@ -352,7 +360,7 @@ fn clone_sig(leaves: &[Leaf]) -> Sig {
 }
 
 /// The native signature of glue `kind` over a value of `leaves`.
-fn native_sig(kind: Glue, leaves: &[Leaf]) -> Sig {
+fn native_sig(types: &Types, kind: Glue, leaves: &[Leaf]) -> Sig {
     let ptr = |mode| P {
         ty: LTy::Ptr,
         attrs: ptr_attrs(mode, leaves),
@@ -364,7 +372,7 @@ fn native_sig(kind: Glue, leaves: &[Leaf]) -> Sig {
     };
     match kind {
         Glue::Drop => drop_sig(leaves),
-        Glue::Clone => clone_sig(leaves),
+        Glue::Clone => clone_sig(types, leaves),
         Glue::SlotDrop | Glue::BlockDrop => void(vec![ptr(Mode::Move)]),
         Glue::SlotCopy => void(vec![
             ptr(Mode::Borrow),
@@ -427,7 +435,7 @@ fn leaf_sig(kind: Glue, leaves: &[Leaf]) -> Sig {
 /// Loads the leaves stored at `p`, a `ptr` to a [`slot_ty`] value. A given name is the one the
 /// leaf's final instruction defines.
 fn load_leaves(b: &mut FnBuilder, p: &Val, leaves: &[Leaf], names: Option<&[Val]>) -> Vs {
-    let ty = slot_ty(leaves);
+    let ty = slot_ty(b.types(), leaves);
     let mut out = Vec::new();
     for (k, l) in leaves.iter().enumerate() {
         let at = b.field_ptr(&ty, p, k);
@@ -455,7 +463,7 @@ fn load_leaves(b: &mut FnBuilder, p: &Val, leaves: &[Leaf], names: Option<&[Val]
 
 /// Stores `vs` as a [`slot_ty`] value at `p`.
 fn store_leaves(b: &mut FnBuilder, p: &Val, leaves: &[Leaf], vs: &[Val]) {
-    let ty = slot_ty(leaves);
+    let ty = slot_ty(b.types(), leaves);
     for (k, l) in leaves.iter().enumerate() {
         let at = b.field_ptr(&ty, p, k);
         let v = match l {
@@ -484,6 +492,7 @@ pub enum GlueCall {
 
 /// Declares the drop glue `target` for a value of `ty` and says how to call it.
 pub fn drop_callee(
+    types: &Types,
     lay: &Layouts,
     ty: Ty,
     target: &str,
@@ -493,7 +502,7 @@ pub fn drop_callee(
     match unnative(target) {
         Some(sym) => {
             let n = native(sym);
-            decls.push(drop_sig(&leaves).declare(&n));
+            decls.push(drop_sig(&leaves).declare(types, &n));
             if indirect(&leaves) {
                 GlueCall::Memory(n)
             } else {
@@ -501,7 +510,7 @@ pub fn drop_callee(
             }
         }
         None => {
-            decls.push(leaf_sig(Glue::Drop, &leaves).declare(target));
+            decls.push(leaf_sig(Glue::Drop, &leaves).declare(types, target));
             GlueCall::Regs(target.to_string())
         }
     }
@@ -509,6 +518,7 @@ pub fn drop_callee(
 
 /// Declares the clone glue `target` for a value of `ty` and says how to call it.
 pub fn clone_callee(
+    types: &Types,
     lay: &Layouts,
     ty: Ty,
     target: &str,
@@ -518,7 +528,7 @@ pub fn clone_callee(
     match unnative(target) {
         Some(sym) => {
             let n = native(sym);
-            decls.push(clone_sig(&leaves).declare(&n));
+            decls.push(clone_sig(types, &leaves).declare(types, &n));
             if indirect(&leaves) {
                 GlueCall::Memory(n)
             } else {
@@ -526,7 +536,7 @@ pub fn clone_callee(
             }
         }
         None => {
-            decls.push(leaf_sig(Glue::Clone, &leaves).declare(target));
+            decls.push(leaf_sig(Glue::Clone, &leaves).declare(types, target));
             GlueCall::Regs(target.to_string())
         }
     }
@@ -543,14 +553,14 @@ pub fn call_drop(
 ) {
     let leaves = lay.leaves(ty);
     let Some(sym) = unnative(target) else {
-        decls.push(leaf_sig(Glue::Drop, &leaves).declare(target));
+        decls.push(leaf_sig(Glue::Drop, &leaves).declare(b.types(), target));
         b.call(&LTy::Void, "", target, &reg_args(vs, &leaves));
         return;
     };
     let n = native(sym);
-    decls.push(drop_sig(&leaves).declare(&n));
+    decls.push(drop_sig(&leaves).declare(b.types(), &n));
     if indirect(&leaves) {
-        let slot = b.alloca(&slot_ty(&leaves));
+        let slot = b.alloca(&slot_ty(b.types(), &leaves));
         store_leaves(b, &slot, &leaves, vs);
         b.call(&LTy::Void, "", &n, &[(slot, "")]);
     } else {
@@ -577,13 +587,16 @@ pub fn call_clone(
     // The leaf symbol of glue that falls back to the translation returns its leaves in registers
     // whatever their size.
     let sig = if native_call {
-        clone_sig(&leaves)
+        clone_sig(b.types(), &leaves)
     } else {
         leaf_sig(Glue::Clone, &leaves)
     };
-    decls.push(sig.declare(&n));
+    decls.push(sig.declare(b.types(), &n));
     if native_call && indirect(&leaves) {
-        let (src, dst) = (b.alloca(&slot_ty(&leaves)), b.alloca(&slot_ty(&leaves)));
+        let (src, dst) = (
+            b.alloca(&slot_ty(b.types(), &leaves)),
+            b.alloca(&slot_ty(b.types(), &leaves)),
+        );
         store_leaves(b, &src, &leaves, vs);
         b.call(&LTy::Void, "", &n, &[(dst.clone(), ""), (src, "")]);
         return load_leaves(b, &dst, &leaves, names);
@@ -637,7 +650,7 @@ fn call_func(e: &mut E, f: usize, args: &[Val]) {
         ret,
         ret_attr,
     };
-    e.decls.push(sig.declare(&sym));
+    e.decls.push(sig.declare(e.b.types(), &sym));
     let attr = if matches!(cr.as_slice(), [] | [_]) {
         sig.ret_attr
     } else {
@@ -719,7 +732,7 @@ impl E<'_, '_, '_> {
         store_leaves(&mut self.b, &blk, leaves, vs);
         let sym = self.g.glue_symbol(Glue::SlotDrop, ty);
         self.decls
-            .push(leaf_sig(Glue::SlotDrop, leaves).declare(&sym));
+            .push(leaf_sig(Glue::SlotDrop, leaves).declare(self.b.types(), &sym));
         let (f, p) = (
             self.b.ptrtoint(&Val::new(format!("@\"{sym}\""), LTy::Ptr)),
             self.b.ptrtoint(&blk),
@@ -814,7 +827,8 @@ impl E<'_, '_, '_> {
             .then(|| self.glue_sym(Glue::Drop, ty))
             .filter(|s| unnative(s).is_some());
         if let Some(sym) = sym {
-            self.decls.push(drop_sig(&leaves).declare(&sym));
+            self.decls
+                .push(drop_sig(&leaves).declare(self.b.types(), &sym));
             self.b.call(&LTy::Void, "", &sym, &[(p.clone(), "")]);
         } else if own_kind(&self.g.lay, ty) != OwnKind::Identity {
             let vs = load_leaves(&mut self.b, p, &leaves, None);
@@ -855,7 +869,8 @@ impl E<'_, '_, '_> {
             .then(|| self.glue_sym(Glue::Clone, ty))
             .filter(|s| unnative(s).is_some());
         if let Some(sym) = sym {
-            self.decls.push(clone_sig(&leaves).declare(&sym));
+            self.decls
+                .push(clone_sig(self.b.types(), &leaves).declare(self.b.types(), &sym));
             self.b.call(
                 &LTy::Void,
                 "",
@@ -917,7 +932,7 @@ impl E<'_, '_, '_> {
     fn drop_list(&mut self, ty: Ty, ptr: &Val, len: &Val) {
         let m = self.g.m;
         if let Some(e) = m.list_elem(ty).filter(|e| m.needs_drop(*e)) {
-            let et = slot_ty(&self.g.lay.leaves(e));
+            let et = slot_ty(self.b.types(), &self.g.lay.leaves(e));
             let base = self.ptr_of(ptr);
             self.count(len, |s, i| {
                 let at = s.b.elem_ptr(&et, &base, i);
@@ -1010,7 +1025,7 @@ impl E<'_, '_, '_> {
     /// A map or set is an owned value the runtime drops through its descriptor.
     fn drop_obj(&mut self, ty: Ty, vs: &[Val]) {
         let leaves = self.g.lay.leaves(ty);
-        let slot = self.b.alloca(&slot_ty(&leaves));
+        let slot = self.b.alloca(&slot_ty(self.b.types(), &leaves));
         store_leaves(&mut self.b, &slot, &leaves, vs);
         let slot = self.b.ptrtoint(&slot);
         let sym = self.g.typedesc_symbol(ty);
@@ -1468,7 +1483,7 @@ impl E<'_, '_, '_> {
         match elem.filter(|e| m.needs_drop(*e)) {
             None => self.b.memcpy((&np, align), (&src, align), &bytes),
             Some(e) => {
-                let et = slot_ty(&leaves.expect("element"));
+                let et = slot_ty(self.b.types(), &leaves.expect("element"));
                 self.count(len, |s, i| {
                     let from = s.b.elem_ptr(&et, &src, i);
                     let to = s.b.elem_ptr(&et, &np, i);
@@ -1545,8 +1560,8 @@ impl E<'_, '_, '_> {
                 // Map and Set are owned values the runtime copies through their descriptor.
                 let leaves = self.g.lay.leaves(ty);
                 let (src, dst) = (
-                    self.b.alloca(&slot_ty(&leaves)),
-                    self.b.alloca(&slot_ty(&leaves)),
+                    self.b.alloca(&slot_ty(self.b.types(), &leaves)),
+                    self.b.alloca(&slot_ty(self.b.types(), &leaves)),
                 );
                 store_leaves(&mut self.b, &src, &leaves, vs);
                 let desc = {
@@ -1581,7 +1596,7 @@ impl E<'_, '_, '_> {
 /// `DILocation` node of each function.
 pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitted {
     let leaves = g.lay.leaves(ty);
-    let sig = native_sig(kind, &leaves);
+    let sig = native_sig(types, kind, &leaves);
     let mut e = E {
         g,
         b: FnBuilder::new(types, Some(loc)),
@@ -1643,11 +1658,14 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
                 let (grow, cont) = (e.fresh("g"), e.fresh("c"));
                 e.b.cond_br(&low, &grow, &cont);
                 e.label(&grow);
-                let (src, dst) = (e.b.alloca(&slot_ty(&leaves)), e.b.alloca(&slot_ty(&leaves)));
+                let (src, dst) = (
+                    e.b.alloca(&slot_ty(e.b.types(), &leaves)),
+                    e.b.alloca(&slot_ty(e.b.types(), &leaves)),
+                );
                 store_leaves(&mut e.b, &src, &leaves, &vs);
                 let sym = e.g.glue_symbol(Glue::SlotCopy, ty);
                 e.decls
-                    .push(leaf_sig(Glue::SlotCopy, &leaves).declare(&sym));
+                    .push(leaf_sig(Glue::SlotCopy, &leaves).declare(e.b.types(), &sym));
                 let f = e.b.ptrtoint(&Val::new(format!("@\"{sym}\""), LTy::Ptr));
                 let (s, d) = (e.b.ptrtoint(&src), e.b.ptrtoint(&dst));
                 e.rt("msrt_slot_copy_grown", &[&f, &s, &d], false);
@@ -1689,8 +1707,8 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
     }
     let (native_decls, native_data, native_body) = (e.decls, e.data, e.b.finish());
     Emitted {
-        ret: sig.ret_text(),
-        params: sig.formals(true),
+        ret: sig.ret_text(types),
+        params: sig.formals(types, true),
         attrs: " nounwind".into(),
         decls: native_decls,
         data: native_data,
@@ -1705,7 +1723,7 @@ pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, types: &Types, loc: usize) 
     let mut b = FnBuilder::new(types, Some(loc));
     b.label("entry");
     let leaf = leaf_sig(kind, leaves);
-    let nat = native_sig(kind, leaves);
+    let nat = native_sig(types, kind, leaves);
     let n = native(sym);
     let a = |i: usize, t: &LTy| Val::new(format!("%a{i}"), t.clone());
     let args: Vec<Val> = leaf
@@ -1719,11 +1737,11 @@ pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, types: &Types, loc: usize) 
     match kind {
         Glue::Drop | Glue::Clone if indirect(leaves) => {
             if kind == Glue::Clone {
-                let out = b.alloca(&slot_ty(leaves));
+                let out = b.alloca(&slot_ty(types, leaves));
                 fwd.push((out.clone(), ""));
                 sret = Some(out);
             }
-            let slot = b.alloca(&slot_ty(leaves));
+            let slot = b.alloca(&slot_ty(types, leaves));
             store_leaves(&mut b, &slot, leaves, &args);
             fwd.push((slot, ""));
         }
@@ -1734,7 +1752,7 @@ pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, types: &Types, loc: usize) 
             }
         }
     }
-    let decls = vec![nat.declare(&n)];
+    let decls = vec![nat.declare(types, &n)];
     let ret_value = match (&sret, &nat.ret) {
         (Some(out), _) => {
             b.call(&LTy::Void, "", &n, &fwd);
@@ -1762,8 +1780,8 @@ pub fn thunk(g: &Gen, kind: Glue, ty: Ty, sym: &str, types: &Types, loc: usize) 
         Some(many) => b.ret_multi(many),
     }
     Emitted {
-        ret: leaf.ret_text(),
-        params: leaf.formals(true),
+        ret: leaf.ret_text(types),
+        params: leaf.formals(types, true),
         attrs: " nounwind".into(),
         decls,
         data: Vec::new(),
