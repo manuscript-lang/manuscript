@@ -257,9 +257,11 @@ impl Reactor {
             tokens.push(token);
             self.pending.set(tokens);
             // A task other than the reactor (the accept loop adopting a connection, a request
-            // task that finished) may start it while the reactor is parked with no deadline at
-            // all: it would not read the clock until something else woke it.
-            if self.next_sweep.get().is_none() && rt::current_task() != self.task.get() {
+            // task that finished) may start it while the reactor is parked, perhaps until the
+            // deadline of another connection or with none: it would not read the clock, set this
+            // deadline or list the connection until something else woke it. A kick costs a write
+            // only while the reactor is parked.
+            if rt::current_task() != self.task.get() {
                 self.poller.kick();
             }
         }
