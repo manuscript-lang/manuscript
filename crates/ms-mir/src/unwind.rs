@@ -521,6 +521,27 @@ fn takes_from_slot(m: &Module, callee: FuncId, memo: &mut HashMap<FuncId, bool>)
     found
 }
 
+/// Whether every path from the entry to block `to` passes through block `d`.
+fn dominates(f: &Func, d: usize, to: usize) -> bool {
+    if d == to {
+        return true;
+    }
+    let mut seen = vec![false; f.blocks.len()];
+    let mut stack = vec![0usize];
+    while let Some(b) = stack.pop() {
+        if b == d || std::mem::replace(&mut seen[b], true) {
+            continue;
+        }
+        if b == to {
+            return false;
+        }
+        f.blocks[b]
+            .term
+            .for_each_target(|t| stack.push(t.block.index()));
+    }
+    true
+}
+
 /// Covers a slot-held value while a shielded close works on it in place. A fault inside the
 /// close never returns to its caller, and the entry the scope registered for the value is gone
 /// by then, so a drop is registered around the close call.
@@ -612,6 +633,10 @@ fn cover_shielded_slots(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                         // path from its push on, one pushed before the path (a scope's entry,
                         // discarded just ahead of the shield) from the path's start.
                         let from = path[..=at].iter().position(|&x| x == b);
+                        // A push in another branch (another window's cover) is not this path's.
+                        if from.is_none() && !dominates(f, b, path[0]) {
+                            return false;
+                        }
                         !path[from.unwrap_or(0)..=at]
                             .iter()
                             .enumerate()
