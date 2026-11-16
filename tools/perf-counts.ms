@@ -1,4 +1,4 @@
-// Instruction-count gate (`make perf-counts`): builds four small suite programs, runs
+// Instruction-count gate (`make perf-counts`): builds the small suite and guard programs, runs
 // each under callgrind and compares the instructions it executed with the committed
 // numbers in bench/perf/counts.txt. Instruction counts do not depend on machine load,
 // so a few percent is a real change, unlike a wall-clock time on a shared runner. A
@@ -20,6 +20,10 @@ import (
 // Programs of bench/perf/suite measured, one per area that a change to generated code,
 // the runtime or the strings library would move.
 PROGRAMS := ["interp", "strings", "lz", "graph"]
+
+// Small programs of bench/perf/guards, one per recent speed fix (signature tables, regex
+// prefilter, image codecs, fused chains, map probes). Each is counted as `guard-<name>`.
+GUARDS := ["crypto", "regex", "image", "chains", "maps"]
 COUNTS := "bench/perf/counts.txt"
 
 fn say(text: String) Void:
@@ -67,9 +71,14 @@ fn main() Int:
 	var failures = 0
 	var report = "# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.\n"
 
-	for name in PROGRAMS:
+	var targets: List[List[String]] = []
+	for name in PROGRAMS: targets.append([name.clone(), f"{root}/bench/perf/suite/{name}/main.ms"])
+	for name in GUARDS: targets.append([f"guard-{name}", f"{root}/bench/perf/guards/{name}/main.ms"])
+
+	for target in targets:
+		name := target[0].clone()
+		source := target[1].clone()
 		binary := f"{scratch.path()}/{name}"
-		source := f"{root}/bench/perf/suite/{name}/main.ms"
 		built := run(
 			ms.clone(),
 			["build", source, "-o", binary.clone()],
