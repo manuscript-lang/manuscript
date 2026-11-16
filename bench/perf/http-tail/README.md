@@ -122,3 +122,14 @@ Instructions per TLS request with one thread (`valgrind --tool=callgrind` on the
 ## 2026-11-16: kernel timers instead of the watcher thread
 
 Three binaries on the same 4 vCPU shared VM, alternated runs: `main` at 9f09fd55, PR 4227's watcher, and kernel timers with T = 250 µs. The table, the cost split of the fast-mix CPU, and the choice of T are in the [proposal](../../../proposals/event-driven-waits.md#measurements-2026-11-16-4-vcpu-shared-vm-alternated-runs-three-binaries-main-at-9f09fd55-pr-4227s-watcher-this-design). Summary: slow-mix tail equal to the watcher's with 3 to 7% less CPU (plain, TLS and HTTP/2); fast-mix CPU 8 to 10% higher (two timer system calls per rest cycle, 5.2 µs per pair on this VM); closed loop 3 to 7% lower; idle server 91 µs of CPU and one context switch in a second.
+
+## Results, 2026-11-16, text built piece by piece, same 4 vCPU Linux VM
+
+"Before" is `main` at 9f09fd55. "Now": `out += f"..."` writes the pieces straight onto `out` (`msrt_string_append_fmtN`) instead of building the text and appending it.
+
+| | C | Manuscript before | Manuscript now |
+| --- | --- | --- | --- |
+| User CPU for 40,000 fast requests at 4000 req/s, three alternated runs | 0.22 s | 1.33, 1.62, 1.50 s | 1.16, 1.38, 1.29 s |
+| Instructions per item of the handler loop alone (callgrind, 200,000 items) | about 50 | 1,018 | 575 |
+
+Findings: user time falls about 14%. What is left per item is one call for the `","`, one for the item, two integer renderings and a capacity lookup per call.
