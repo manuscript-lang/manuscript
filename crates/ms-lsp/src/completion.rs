@@ -687,6 +687,7 @@ impl Completer<'_> {
         let Ok(files) = workspace_documents(self.d, self.docs, false, None) else {
             return;
         };
+        let importer = ms_driver::imports::Importer::new(&self.d.path());
         for file in files {
             if file.uri == self.d.uri {
                 continue;
@@ -702,9 +703,7 @@ impl Completer<'_> {
             if !matches {
                 continue;
             }
-            let Some(path) =
-                ms_driver::imports::import_path(&pathops::dir(&self.d.path()), &file.path())
-            else {
+            let Some(path) = importer.path(&file.path()) else {
                 continue;
             };
             let checked = workspace_analysis(syms, &self.a.result.session, &file, self.docs);

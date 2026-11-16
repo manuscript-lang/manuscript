@@ -212,6 +212,52 @@ pub fn import_path(dir: &str, target: &str) -> Option<String> {
     })
 }
 
+/// How a file in one project writes an import of another file: relative inside its own
+/// project, through the dependency name for a workspace member or package, and not at all
+/// for a file the project cannot import (a sibling member it does not depend on).
+pub struct Importer {
+    dir: String,
+    /// The project root and each dependency name with the directory it resolves to; `None`
+    /// outside a project, where every path is relative.
+    project: Option<(String, Vec<(String, String)>)>,
+}
+
+impl Importer {
+    pub fn new(importer: &str) -> Importer {
+        let project = crate::project::find_manifest(importer)
+            .and_then(|manifest| crate::project::read_project(&manifest).ok())
+            .map(|project| {
+                let deps = project.deps.into_iter().collect();
+                (project.root, deps)
+            });
+        Importer {
+            dir: pathops::dir(importer),
+            project,
+        }
+    }
+
+    pub fn path(&self, target: &str) -> Option<String> {
+        let Some((root, deps)) = &self.project else {
+            return import_path(&self.dir, target);
+        };
+        let target = pathops::eval_symlinks(target).unwrap_or_else(|_| target.to_string());
+        let inside = |base: &str| {
+            pathops::rel(base, &target)
+                .ok()
+                .filter(|relative| !pathops::escapes(relative) && relative != ".")
+        };
+        if inside(root).is_some() {
+            return import_path(&self.dir, &target);
+        }
+        deps.iter()
+            .filter_map(|(name, source)| {
+                Some((source.len(), format!("{name}/{}", inside(source)?)))
+            })
+            .max_by_key(|(depth, _)| *depth)
+            .map(|(_, path)| path)
+    }
+}
+
 fn walk(dir: &Path, files: &mut Vec<String>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;

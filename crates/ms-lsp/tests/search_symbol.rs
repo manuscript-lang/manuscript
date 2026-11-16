@@ -171,3 +171,60 @@ fn renaming_a_member_function_edits_the_importing_member() {
     assert!(edits.contains("app/src/main.ms"), "{edits}");
     assert!(edits.contains("util/src/greet.ms"), "{edits}");
 }
+
+#[test]
+fn auto_import_names_a_member_through_its_dependency_and_skips_unreachable_files() {
+    let syms = ms_syntax::Names::global();
+    let ws = Workspace::new("import-members");
+    two_members(&ws);
+    // A member that `app` does not depend on cannot be imported at all.
+    for (path, text) in [
+        (
+            "team/libs/other/ms.toml",
+            "[project]\nname = \"other\"\nsource = \"src\"\n",
+        ),
+        (
+            "team/libs/other/src/o.ms",
+            "export fn greet_other() Int:\n    return 1\n",
+        ),
+    ] {
+        let full = ws.root.join(path);
+        std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+        std::fs::write(full, text).unwrap();
+    }
+    std::fs::write(
+        ws.root.join("team/ms.toml"),
+        "[workspace]\nmembers = [\"app\", \"libs/*\"]\n",
+    )
+    .unwrap();
+    let source = "fn main() Int:\n    gree\n    return 0\n";
+    let d = Document::new(ws.uri("team/app/src/main.ms"), source);
+    let docs = Documents::from([(d.uri.clone(), d.clone())]);
+    let items: Vec<_> = ms_lsp::completion::completion_at(
+        syms,
+        &support::session(),
+        &d,
+        &docs,
+        ms_lsp::text::Position {
+            line: 1,
+            character: 8,
+        },
+        false,
+    )
+    .expect("completion")
+    .into_iter()
+    .map(|item| item.json())
+    .collect();
+    let edit = |label: &str| {
+        items
+            .iter()
+            .find(|i| i.get("label").and_then(|j| j.as_str()) == Some(label))
+            .and_then(|i| i.get("additionalTextEdits")?.as_array()?.first().cloned())
+            .and_then(|e| e.get("newText")?.as_str().map(str::to_string))
+    };
+    assert_eq!(
+        edit("greet").as_deref(),
+        Some("import greet from \"@util/greet.ms\"\n")
+    );
+    assert_eq!(edit("greet_other"), None);
+}
