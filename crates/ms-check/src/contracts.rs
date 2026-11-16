@@ -1,6 +1,6 @@
 //! Implementations, contracts and their evidence.
 
-use crate::checker::{Checker, Scope};
+use crate::checker::{Checker, PropertyMethods, Scope};
 use crate::fxmap::{HashMap, HashSet};
 use crate::hints::{list, signature_text};
 use crate::stdlib;
@@ -23,6 +23,15 @@ pub(crate) fn has_generic_operation(contract: &Ty) -> bool {
                 .is_some_and(|f| !f.type_params.is_empty())
         })
     })
+}
+
+fn property_slot(b: Builtin) -> Option<usize> {
+    match b {
+        Builtin::Equal => Some(0),
+        Builtin::Hashable => Some(1),
+        Builtin::Comparable => Some(2),
+        _ => None,
+    }
 }
 
 /// A structural property the language derives from a type's shape.
@@ -1313,6 +1322,31 @@ impl Checker {
         result
     }
 
+    /// The methods that decide `b`: implementations of its contract and inherent shape overrides.
+    fn deciding_methods(&self, b: Builtin) -> Rc<Vec<u32>> {
+        let Some(slot) = property_slot(b) else {
+            let all = (0..self.p.methods.len() as u32).collect();
+            return Rc::new(all);
+        };
+        let mut index = self.property_methods.borrow_mut();
+        if index.seen > self.p.methods.len() {
+            *index = PropertyMethods::default();
+        }
+        for at in index.seen..self.p.methods.len() {
+            let m = &self.p.methods[at];
+            for (slot, b) in [Builtin::Equal, Builtin::Hashable, Builtin::Comparable]
+                .into_iter()
+                .enumerate()
+            {
+                if m.contract.as_ref().is_some_and(|c| c.is(b)) || m.overrides(self.syms, b) {
+                    Rc::make_mut(&mut index.lists[slot]).push(at as u32);
+                }
+            }
+        }
+        index.seen = self.p.methods.len();
+        index.lists[slot].clone()
+    }
+
     fn property_compute(&self, t: &Ty, property: Property, state: &mut PropertyState) -> bool {
         if property == Property::Clonable {
             return self.clonable(t, state);
@@ -1323,14 +1357,9 @@ impl Checker {
             });
         }
         // Explicit implementations take precedence over structural data semantics.
-        for m in &self.p.methods {
-            if !self.method_visible(m)
-                || !(m
-                    .contract
-                    .as_ref()
-                    .is_some_and(|c| c.is(property.builtin()))
-                    || m.overrides(self.syms, property.builtin()))
-            {
+        for &at in self.deciding_methods(property.builtin()).iter() {
+            let m = &self.p.methods[at as usize];
+            if !self.method_visible(m) {
                 continue;
             }
             let mut s = Subst::default();
@@ -1344,11 +1373,9 @@ impl Checker {
             }
         }
         if property == Property::Hashable {
-            for m in &self.p.methods {
-                if !self.method_visible(m)
-                    || !(m.contract.as_ref().is_some_and(|c| c.is(Builtin::Equal))
-                        || m.overrides(self.syms, Builtin::Equal))
-                {
+            for &at in self.deciding_methods(Builtin::Equal).iter() {
+                let m = &self.p.methods[at as usize];
+                if !self.method_visible(m) {
                     continue;
                 }
                 let mut s = Subst::default();
@@ -1533,7 +1560,13 @@ impl Checker {
                 .iter()
                 .any(|m| m.ty.params.is_empty() && is_close_result(self.syms, &m.ty.result_ty()));
         }
-        self.implements(t, &self.session.standard("Closeable", vec![]))
+        let key = (self.current_file(), self.p.methods.len(), self.shape(t));
+        if let Some(&known) = self.closeable_cache.borrow().get(&key) {
+            return known;
+        }
+        let closeable = self.implements(t, &self.session.standard("Closeable", vec![]));
+        self.closeable_cache.borrow_mut().insert(key, closeable);
+        closeable
     }
 
     /// Checks every bound reachable from `t`. `seen` is keyed by pointer: a

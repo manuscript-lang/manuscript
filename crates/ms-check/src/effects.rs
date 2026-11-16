@@ -137,12 +137,10 @@ impl Scan<'_> {
         }
     }
 
-    fn info(&self, e: &Expr) -> Option<Info> {
-        self.module.facts().info(e.id).cloned()
-    }
-
     fn scan_call(&mut self, e: &Expr) {
-        let Some(info) = self.info(e) else {
+        let module = self.module;
+        let facts = module.facts();
+        let Some(info) = facts.info(e.id) else {
             self.effects.insert("unknown");
             return;
         };
@@ -224,14 +222,15 @@ impl Visitor for Scan<'_> {
     }
 
     fn expr(&mut self, e: &Expr) {
-        if self
-            .info(e)
-            .is_some_and(|i| i.native_str(self.syms) == "index")
-        {
+        // Facts are read in place: cloning an `Info` per lookup was a measurable share of the pass.
+        let module = self.module;
+        let facts = module.facts();
+        let info = facts.info(e.id);
+        if info.is_some_and(|i| i.native_str(self.syms) == "index") {
             self.effects.insert("read");
         }
         // Converting a type to an interface hands out its methods: charge the converter.
-        if let Some(info) = self.info(e)
+        if let Some(info) = info
             && let (Some(source), Some(target)) = (&info.interface_source, &info.ty)
             && let Some(ids) = self.conversions.get(&(target.id, source.id))
         {
@@ -241,7 +240,7 @@ impl Visitor for Scan<'_> {
                 }
             }
         }
-        if let Some(info) = self.info(e)
+        if let Some(info) = info
             && let (Some(source), Some(target)) = (&info.interface_source, &info.ty)
             && let (Some(def), Some(own)) = (&target.def, self.own_methods.get(&source.id))
         {
@@ -253,29 +252,29 @@ impl Visitor for Scan<'_> {
             }
         }
         // A generic call instantiated at a concrete type hands out that type's interface methods.
-        if let Some(info) = self.info(e) {
+        if let Some(info) = info {
             for arg in info.type_args.iter().flatten() {
                 self.charge_type(arg, e.pos, self.by_receiver);
             }
         }
         // A constant is a nullary function here: each use is a call to it.
-        if self.module.facts().const_use.contains(&e.id) {
+        if facts.const_use.contains(&e.id) {
             self.scan_call(e);
             return;
         }
         match &e.kind {
             ExprKind::Member { left, .. } => {
-                let receiver_record = self
-                    .info(left)
+                let receiver_record = facts
+                    .info(left.id)
                     .is_some_and(|r| r.ty.as_ref().is_some_and(|t| t.kind == Kind::Type));
-                if receiver_record && self.info(e).is_some_and(|i| i.method.is_none()) {
+                if receiver_record && info.is_some_and(|i| i.method.is_none()) {
                     self.effects.insert("read");
                 }
                 // A bound method value (`let f = value.method`) reaches the method where it is
                 // named, as a function named as a value does. A call's callee is also visited
                 // here; its edge was already recorded at the call.
-                if let Some(method) = self.info(e).and_then(|i| i.method) {
-                    self.scan_method_call(&method, e.pos);
+                if let Some(method) = info.and_then(|i| i.method.as_ref()) {
+                    self.scan_method_call(method, e.pos);
                 }
             }
             ExprKind::Map(entries) if entries.len() > 1 => {
@@ -289,15 +288,14 @@ impl Visitor for Scan<'_> {
                 left,
                 ..
             } => {
-                if let Some(ty) = self.info(left).and_then(|i| i.ty) {
-                    self.charge_operations(&ty, e.pos, &[Builtin::Equal]);
+                if let Some(ty) = facts.info(left.id).and_then(|i| i.ty.as_ref()) {
+                    self.charge_operations(ty, e.pos, &[Builtin::Equal]);
                 }
             }
             // A function named as a value, or called by name: authority is charged where it is referenced.
             ExprKind::Name(_) => {
-                let reference = self
-                    .info(e)
-                    .and_then(|i| i.symbol)
+                let reference = info
+                    .and_then(|i| i.symbol.as_ref())
                     .filter(|s| s.native == Native::Source && self.ids.contains(&s.id));
                 if let Some(s) = reference {
                     self.edge(s.id, e.pos);

@@ -93,6 +93,14 @@ pub struct TestFixture {
     pub hooks: Ty,
 }
 
+/// Positions in `Program::methods` of the methods that decide `Equal`, `Hashable` and `Comparable`,
+/// in method order. Extended as methods are added; a method never changes its contract or name.
+#[derive(Default)]
+pub(crate) struct PropertyMethods {
+    pub(crate) seen: usize,
+    pub(crate) lists: [Rc<Vec<u32>>; 3],
+}
+
 /// The result of checking: modules with facts, symbols, methods, diagnostics.
 #[derive(Default)]
 pub struct Program {
@@ -206,6 +214,14 @@ pub struct Checker {
     /// Method indices by implemented contract id for a receiver that is a type variable.
     pub(crate) variable_receiver_contract_methods: HashMap<Name, Vec<usize>>,
     pub(crate) generic_contract_methods: Vec<usize>,
+    /// Positions of the methods that decide each structural property (a contract implementation
+    /// or an inherent `equals`/`hash`/`compare`), so deciding a type's property does not test every
+    /// method of the program.
+    /// Whether a type is closeable, by file, method count and type shape: the answer depends only
+    /// on those (the visible methods grow with the count), and the same few types are asked about
+    /// at every binding.
+    pub(crate) closeable_cache: RefCell<HashMap<(Name, usize, crate::tytable::TyId), bool>>,
+    pub(crate) property_methods: RefCell<PropertyMethods>,
     pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
     /// Types whose own `clone` is being looked up; a recursive type meets itself through its
     /// `List[Self]` field, whose `clone` bounds ask whether the element is clonable.
@@ -315,6 +331,8 @@ impl Checker {
             methods_by_contract: HashMap::default(),
             variable_receiver_contract_methods: HashMap::default(),
             generic_contract_methods: Vec::new(),
+            property_methods: RefCell::new(Default::default()),
+            closeable_cache: RefCell::new(HashMap::default()),
             methods_by_name: HashMap::default(),
             clone_probes: RefCell::new(Vec::new()),
             tys: RefCell::new(TyTable::new()),
