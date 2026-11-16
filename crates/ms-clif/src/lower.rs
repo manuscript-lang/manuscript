@@ -13,12 +13,13 @@ use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_mir::vmap::ValueMap;
 use ms_rt_abi::symbols::{
-    DEEP_DROP_HEADROOM, ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_LIMIT_CELL, STACK_REGION,
+    DEEP_DROP_HEADROOM, ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, ISOLATE_HDR_UNWINDING,
+    STACK_LIMIT_CELL, STACK_REGION,
 };
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, IFACE_TAG_BOX, IFACE_TAG_MASK, IFACE_TAG_OWNED, IFACE_TAG_VIEW, STR_ASCII,
     STR_INLINE, STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_LEN_MASK, STR_LEN_OFFSET, STR_PTR_OFFSET,
-    STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
+    STR_SPARE_MASK, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -1086,9 +1087,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         let previous_overflow = self.overflow_result.take();
         let res_ty = inst.res.map(|r| f.ty(r));
         let out: Vs = match inst.op {
-            Op::IConst | Op::FConst | Op::BConst | Op::VoidConst | Op::StrLit | Op::BytesLit => {
-                self.constants(f, inst)
-            }
+            Op::IConst
+            | Op::FConst
+            | Op::BConst
+            | Op::VoidConst
+            | Op::Undef
+            | Op::StrLit
+            | Op::BytesLit => self.constants(f, inst),
             Op::IAdd | Op::ISub | Op::IMul | Op::INeg | Op::F32Round | Op::SDiv | Op::SRem => {
                 self.integer_ops(inst, previous_overflow)
             }
@@ -1179,7 +1184,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::IfaceData
             | Op::IfaceIs => self.closures_and_interfaces(f, inst),
             Op::Call | Op::CallInd | Op::CallMethod | Op::CallRt => self.calls(f, inst),
-            Op::MoveOut | Op::Clone | Op::Drop | Op::DropIf | Op::Free => self.ownership(f, inst),
+            Op::MoveOut | Op::Clone | Op::Drop | Op::Forget | Op::DropIf | Op::Free => {
+                self.ownership(f, inst)
+            }
             Op::Slot
             | Op::ListAddrU
             | Op::PtrIsNull

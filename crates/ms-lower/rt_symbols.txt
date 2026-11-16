@@ -52,16 +52,19 @@ msrt_bytes_starts_with(b: *const VecVal, v: *const VecVal) -> u8 @domain=binary 
 msrt_bytes_values(b: *const VecVal, out: *mut VecVal) @domain=binary @leaf
 msrt_bytes_view(b: *const VecVal, start: i64, end: i64, out: *mut VecVal) @borrows @domain=binary @leaf
 msrt_bytes_with_value(b: *const VecVal, index: i64, value: i64, out: *mut VecVal) @domain=binary @leaf
+msrt_cancel_edges() @domain=unwind @leaf
 msrt_cancel_fire(id: i64) @domain=cancel
 msrt_cancel_fired(id: i64) -> u8 @domain=cancel
 msrt_cancel_free(id: i64) @domain=cancel
 msrt_cancel_new() -> i64 @domain=cancel
 msrt_cancelled() -> !
+msrt_cleanup_base() -> usize @domain=unwind @leaf
 msrt_cleanup_cancel(handle: usize) @leaf
 msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf @retains
 msrt_cleanup_remove(handle: usize) @leaf
 msrt_cleanup_run(handle: usize) @leaf
+msrt_cleanup_unwind_to(base: usize)
 msrt_counts(out: *mut u64)
 msrt_drop_defer(run: RunDrop, block: *mut u8) @leaf
 msrt_drop_enter() -> u64 @leaf
@@ -386,6 +389,9 @@ msrt_uint_to_float32(v: i64) -> f64 @domain=number
 msrt_uint_to_string(v: i64, out: *mut StrVal) @domain=string
 msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) @domain=string
 msrt_unwind_drops() -> u8 @domain=unwind @leaf
+msrt_unwinding() -> u8 @domain=unwind @leaf
+msrt_unwinding_pause() @domain=unwind @leaf
+msrt_unwinding_resume() @domain=unwind @leaf
 msstd_archive_pack(entries: *const TypeList<EntryType>, format: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=archive
 msstd_archive_unpack(data: *const VecVal, format: *const StrVal, has_limits: HasRaw, has_entries: HasRaw, max_entries: i64, has_entry_bytes: HasRaw, max_entry_bytes: i64, has_total: HasRaw, max_total_bytes: i64, out: *mut VecVal) -> u8 @domain=archive
 msstd_bigint_abs(handle a: *const ObjCell<Big>) -> *mut ObjCell<Big> @handle @domain=big integer @leaf

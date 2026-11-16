@@ -62,9 +62,13 @@ impl InstCheck<'_, '_> {
 
     fn run(&self) -> Result<(), String> {
         match self.inst.op {
-            Op::IConst | Op::FConst | Op::BConst | Op::VoidConst | Op::StrLit | Op::BytesLit => {
-                self.constants()
-            }
+            Op::IConst
+            | Op::FConst
+            | Op::BConst
+            | Op::VoidConst
+            | Op::Undef
+            | Op::StrLit
+            | Op::BytesLit => self.constants(),
             Op::IAdd
             | Op::ISub
             | Op::IMul
@@ -171,7 +175,9 @@ impl InstCheck<'_, '_> {
             | Op::IfaceIs
             | Op::IfaceData => self.closures_and_interfaces(),
             Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod => self.calls(),
-            Op::Clone | Op::AltOwn | Op::MoveOut | Op::Drop | Op::DropIf => self.ownership(),
+            Op::Clone | Op::AltOwn | Op::MoveOut | Op::Drop | Op::Forget | Op::DropIf => {
+                self.ownership()
+            }
             Op::Free => self.arity(1),
             Op::Slot
             | Op::ListAddr
@@ -235,6 +241,10 @@ impl InstCheck<'_, '_> {
             Op::VoidConst => {
                 self.arity(0)?;
                 self.want(self.res == Some(Ty::VOID), "void yields void")
+            }
+            Op::Undef => {
+                self.arity(0)?;
+                self.want(self.res.is_some(), "undef yields a value")
             }
             Op::StrLit => {
                 self.arity(0)?;
@@ -1159,6 +1169,7 @@ impl InstCheck<'_, '_> {
                 self.arity(1)?;
                 self.want(self.v.needs_drop(self.t(0)), "drop takes a droppable value")
             }
+            Op::Forget => self.arity(1),
             Op::DropIf => {
                 self.arity(2)?;
                 self.want(

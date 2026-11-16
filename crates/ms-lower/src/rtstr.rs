@@ -58,7 +58,7 @@ fn bytes_of(b: &mut FuncBuilder<'_>, s: Value) -> (Value, Value) {
     let inline = b.icmp(Cc::Eq, tag, one);
     let short = int(b, Op::Ushr, w1, 56);
     let short = int(b, Op::And, short, 15);
-    let long = int(b, Op::And, w1, (1 << 61) - 1);
+    let long = int(b, Op::And, w1, ms_rt_abi::STR_LEN_MASK as i64);
     let len = b.select(inline, short, long);
     let data = b.select(inline, s, w0);
     (data, len)

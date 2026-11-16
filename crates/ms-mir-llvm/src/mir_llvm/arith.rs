@@ -41,6 +41,7 @@ fn handles(op: Op) -> bool {
             | Op::FConst
             | Op::BConst
             | Op::VoidConst
+            | Op::Undef
             | Op::IAdd
             | Op::ISub
             | Op::IMul
@@ -173,6 +174,16 @@ fn pre(
     b: &mut FnBuilder,
 ) -> Option<Vec<Val>> {
     match (inst.op, inst.imm) {
+        // Zero leaves; a type in memory gets a slot in `emit`.
+        (Op::Undef, _) => {
+            let ty = f.ty(inst.res?);
+            (!super::types::is_mem(lay, ty)).then(|| {
+                super::held_leaves(lay, ty)
+                    .iter()
+                    .map(super::enums::zero)
+                    .collect()
+            })
+        }
         // A conversion between floats of one width, or any `Float32` rounding of a `float`, is
         // the register itself; `emit` widens or narrows the others.
         (Op::Conv | Op::F32Round, _)
@@ -250,6 +261,19 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         inst.op,
         Op::IConst | Op::FConst | Op::BConst | Op::VoidConst
     ) {
+        return;
+    }
+    if inst.op == Op::Undef {
+        // A value in memory lives in a slot: zero words fill it. The others are zero leaves,
+        // which `pre` already produced.
+        let res = inst.res.expect("undef has a result");
+        if super::types::is_mem(cx.lay, cx.f.ty(res)) {
+            let zeros: Vec<Val> = super::held_leaves(cx.lay, cx.f.ty(res))
+                .iter()
+                .map(super::enums::zero)
+                .collect();
+            super::types::store_into_slot(b, cx.lay, cx.f.ty(res), &out[0], &zeros);
+        }
         return;
     }
     if inst.op == Op::NarrowChk {

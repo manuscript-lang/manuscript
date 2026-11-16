@@ -29,9 +29,12 @@ pub fn report<T, E: Status>(
     r.map_err(|e| {
         if crate::rt::cancel_pending() {
             // Every frame that held values across the park has returned and dropped them;
-            // the error is the last value, and the jump would skip its destructor.
+            // the error is the last value. It is dropped before the delivery, which may still
+            // jump, and the status goes back as usual: the caller's cancel exit ignores it.
+            let code = e.code();
             drop(e);
             crate::rt::cancelled();
+            return ms_rt::ffi::StatusCode(code);
         }
         if let Some(m) = e.failed_message() {
             err.set(m);
@@ -47,11 +50,12 @@ fn opt(has: bool, v: i64) -> Option<i64> {
 
 /// The status byte of a std error.
 pub fn code<E: Status>(e: E) -> ms_rt::ffi::StatusCode {
+    let code = e.code();
     if crate::rt::cancel_pending() {
         drop(e);
         crate::rt::cancelled();
     }
-    ms_rt::ffi::StatusCode(e.code())
+    ms_rt::ffi::StatusCode(code)
 }
 
 macro_rules! handle_newtype {

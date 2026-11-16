@@ -20,6 +20,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.drop_value(ty, &v);
                 vec![]
             }
+            Op::Forget => vec![],
             Op::DropIf => {
                 let ty = f.ty(inst.args[1]);
                 let flag = self.a(inst, 0)[0];

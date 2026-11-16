@@ -89,15 +89,20 @@ pub const STR_INLINE: usize = 1 << 62;
 pub const STR_INLINE_LEN_SHIFT: u32 = 56;
 /// Longest inline string.
 pub const STR_INLINE_MAX: usize = 15;
-/// Mask of the byte length in the second word (owned, static and view strings).
-pub const STR_LEN_MASK: usize = STR_ASCII - 1;
+/// Mask of the byte length in the second word (owned, static and view strings). A string is at
+/// most 1 << 30 bytes, so the length never needs more than 31 bits.
+pub const STR_LEN_MASK: usize = (1 << 31) - 1;
+/// Bit position of the spare room of an owned string, above the length.
+pub const STR_SPARE_SHIFT: u32 = 31;
+/// Bits of the second word that hold the spare room of an owned string.
+pub const STR_SPARE_MASK: usize = ((1 << 30) - 1) << STR_SPARE_SHIFT;
 /// Flag in the second word of an owned, static or view string: every byte is ASCII, so the scalar
 /// count is the byte length and a scalar index is a byte index. Set when the string is built;
 /// clear means unknown, never non-ASCII. Equal strings may differ in this bit.
 pub const STR_ASCII: usize = 1 << 61;
 
 impl StrVal {
-    /// An owned string over the allocation at `ptr`.
+    /// An owned string over the allocation at `ptr`, with no spare room recorded.
     #[inline(always)]
     pub const fn owned(ptr: *mut u8, len: usize) -> StrVal {
         StrVal {
@@ -172,6 +177,30 @@ impl StrVal {
         } else {
             self.ptr_word
         }
+    }
+
+    /// Bytes of room an owned string records after its text and NUL; 0 means none known, and the
+    /// allocator's size is then the only truth. The room is a lower bound: it may be less than
+    /// the block holds, never more.
+    #[inline(always)]
+    pub const fn spare(&self) -> usize {
+        if self.owns() {
+            (self.tagged & STR_SPARE_MASK) >> STR_SPARE_SHIFT
+        } else {
+            0
+        }
+    }
+
+    /// This owned string recording `n` bytes of room (clamped to what the field holds).
+    #[inline(always)]
+    pub const fn with_spare(mut self, n: usize) -> StrVal {
+        let n = if n > STR_SPARE_MASK >> STR_SPARE_SHIFT {
+            STR_SPARE_MASK >> STR_SPARE_SHIFT
+        } else {
+            n
+        };
+        self.tagged = (self.tagged & !STR_SPARE_MASK) | (n << STR_SPARE_SHIFT);
+        self
     }
 
     /// Whether the string is flagged as all ASCII (see [`STR_ASCII`]); inline strings are not
@@ -769,6 +798,9 @@ pub mod symbols {
     pub const ISOLATE_HDR_CANCEL: i64 = 8;
     /// `u8` at this offset of the block: non-zero while a guard is open on the task.
     pub const ISOLATE_HDR_GUARDED: i64 = 9;
+    /// `u8` at this offset of the block: non-zero once a park delivered a cancel and returned
+    /// (the block is 24 bytes). Tested by `br.cancel` after a call that can park.
+    pub const ISOLATE_HDR_UNWINDING: i64 = 16;
     pub const DESC_INT: &str = "msrt_desc_int";
     pub const DESC_FLOAT: &str = "msrt_desc_float";
     pub const DESC_FLOAT32: &str = "msrt_desc_float32";

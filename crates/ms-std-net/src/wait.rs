@@ -101,8 +101,8 @@ pub(crate) fn parks() -> bool {
 
 /// Waits until `fd` is ready for `interest` (hang-up and error count as ready, so
 /// the next read or write reports them) or the deadline passes. The task parks, so the
-/// server reactor and request handlers run meanwhile. Faults with the runtime's
-/// cancellation when a stop was requested.
+/// server reactor and request handlers run meanwhile. A stop request delivers the cancel and
+/// answers `TimedOut`.
 pub fn wait_fd(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     if parks() {
         wait_task(fd, interest, deadline)
@@ -111,9 +111,9 @@ pub fn wait_fd(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait
     }
 }
 
-/// Like [`wait_fd`] but reports a cancellation as `Err(Cancelled)` instead of jumping, so the
-/// caller's frames unwind with ordinary returns and run their destructors. The error must reach
-/// the FFI boundary (`ffi::report`), which then runs the cancellation path.
+/// Like [`wait_fd`] but reports a cancellation as `Err(Cancelled)`, so the caller's frames unwind
+/// with ordinary returns and run their destructors. The error must reach the FFI boundary
+/// (`ffi::report`), which then delivers the cancel.
 pub fn try_wait_fd(
     fd: Borrowed<'_>,
     interest: Interest,
@@ -141,7 +141,9 @@ pub fn try_wait_fd(
 }
 
 fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
-    rt::check_cancel();
+    if rt::check_cancel() {
+        return Wait::TimedOut;
+    }
     let events = match interest {
         Interest::Read => 1,
         Interest::Write => 2,
@@ -149,6 +151,7 @@ fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     let got = rt::wait_fd_at(fd, events, deadline.0);
     if got & 16 != 0 {
         rt::cancelled();
+        return Wait::TimedOut;
     }
     if got & 8 != 0 && got & 7 == 0 {
         Wait::TimedOut
@@ -157,13 +160,16 @@ fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     }
 }
 
-/// Parks until `token` is posted or the deadline passes. Faults with the runtime's
-/// cancellation when a stop was requested.
+/// Parks until `token` is posted or the deadline passes. A stop request delivers the cancel and
+/// answers `TimedOut`.
 pub fn wait_token(token: &rt::Token, deadline: Deadline) -> Wait {
-    rt::check_cancel();
+    if rt::check_cancel() {
+        return Wait::TimedOut;
+    }
     let got = token.park_at(deadline.0);
     if got & 16 != 0 {
         rt::cancelled();
+        return Wait::TimedOut;
     }
     if got == 0 {
         Wait::Ready
@@ -202,13 +208,15 @@ fn wait_poll(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     }
 }
 
-/// Sleeps for `d` while serving handlers; faults on cancellation.
+/// Sleeps for `d` while serving handlers; a stop request delivers the cancel and returns.
 pub fn sleep(d: Duration) {
     if !parks() {
         std::thread::sleep(d);
         return;
     }
-    rt::check_cancel();
+    if rt::check_cancel() {
+        return;
+    }
     if rt::sleep(d.as_nanos().min(i64::MAX as u128) as i64) & 16 != 0 {
         rt::cancelled();
     }

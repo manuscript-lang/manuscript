@@ -129,7 +129,7 @@ fn leaf_extern(m: &Module, e: ExtId) -> bool {
 
 /// Which functions can reach a cancellation point: a poll, an indirect call or a runtime call
 /// that is not a known leaf, directly or through a callee.
-fn parking_funcs(m: &Module) -> Vec<bool> {
+pub(crate) fn parking_funcs(m: &Module) -> Vec<bool> {
     let n = m.funcs.len();
     let mut parks = vec![false; n];
     let mut callees: Vec<Vec<usize>> = vec![Vec::new(); n];

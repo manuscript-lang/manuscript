@@ -78,6 +78,7 @@ unsafe extern "C-unwind" fn main_task(done: *mut u8) {
         crate::alloc::reset_requested();
         let value = f();
         if fault::cancel_flag().load(Ordering::Relaxed) != 0 {
+            // The main task's own boundary: nothing above it takes an exit, so it jumps.
             fault::msrt_cancelled();
         }
         if !(0..=MAX_MAIN_EXIT).contains(&value) {
