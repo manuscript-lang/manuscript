@@ -42,5 +42,5 @@ Stage 1 and the baseline gate implemented, 2026-11-15. The first draft counted o
 ## Stages
 
 1. Done: counters, `runtime_counts()`, bench report, baseline gate.
-2. Count runtime calls by name and syscalls (the choke point is `call.rt`); threads still running; CPU time ratio.
-3. Move `bench/perf/guards` to `bench` blocks gated by `--baseline`, keeping callgrind for the Rust crates.
+2. Done: `cpu_ns` (process user plus kernel time per operation) in `ms bench`; `bench/perf/guards/bench.ms` gated by `make bench-gate` in the nightly run, against `baseline.json`, with callgrind kept for the Rust crates.
+3. Not done: counting runtime calls by name and syscalls has no single choke point (lowered code calls `msrt_*` directly and the std crates call the OS themselves), so it needs compiler or per-crate instrumentation; threads still running are not in the allocation total; instruction counts stay callgrind-only because no portable source exists.
