@@ -28,11 +28,11 @@ fn main() Void:
 	versions := compile("/api/v[0-9]/").get()
 	email_count := emails.find_all(text, none).get().length()
 	var octet_total = 0
-	for m in ips.captures_all(text, none).get():
+	for m in ips.capture_all(text, none).get():
 		octet_total += m[4].parse_int().get(0)
 
 	var took_total = 0
-	for m in times.captures_all(text, none).get():
+	for m in times.capture_all(text, none).get():
 		took_total += m[1].parse_int().get(0)
 
 	masked := ips.replace_all(text, "x.x.x.x", none).get()

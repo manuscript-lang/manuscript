@@ -12,7 +12,7 @@ fn rows_bench(count: Int, grouped: Bool) Result[Void, Error]:
 	width := if grouped: 14 else: 7
 
 	fn work() Result[Void, Error]:
-		rows := re.captures_all(text)?
+		rows := re.capture_all(text)?
 		expect_equal(rows.length(), count)?
 
 		var checksum = 0
@@ -51,7 +51,7 @@ bench "regex.cardinality.whole.long":
 	expected := [[text.clone()]]
 
 	fn work() Result[Void, Error]:
-		rows := re.captures_all(text, 1)?
+		rows := re.capture_all(text, 1)?
 		expect_equal(rows, expected)?
 		return keep(rows[0][0].length())
 
@@ -61,7 +61,7 @@ bench "regex.cardinality.whole.empty_matches":
 	re := compile("a*")?
 
 	fn work() Result[Void, Error]:
-		rows := re.captures_all("a🙂🙂a", 3)?
+		rows := re.capture_all("a🙂🙂a", 3)?
 		expect_equal(rows, [["a"], [""], ["a"]])?
 		return keep(rows.length())
 
@@ -72,7 +72,7 @@ bench "regex.cardinality.whole.over_limit":
 	text := "word123 ".repeat(2000)?
 
 	fn work() Result[Void, Error]:
-		out := re.captures_all(text, 1)
+		out := re.capture_all(text, 1)
 		expected: Result[List[List[String]], Error] := error(
 			Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -88,7 +88,7 @@ fn first_bench(grouped: Bool, found: Bool) Result[Void, Error]:
 	expected := if found: hit else: []
 
 	fn work() Result[Void, Error]:
-		out := re.captures(text)
+		out := re.capture(text)
 		expect_equal(out, expected)?
 		return keep(out.length())
 
@@ -109,7 +109,7 @@ bench "regex.cardinality.first.whole.long":
 	expected := [text.clone()]
 
 	fn work() Result[Void, Error]:
-		out := re.captures(text)
+		out := re.capture(text)
 		expect_equal(out, expected)?
 		return keep(out[0].length())
 
@@ -123,7 +123,7 @@ fn names_bench(named: Bool, long_miss: Bool) Result[Void, Error]:
 		expected.add("id", "123")
 
 	fn work() Result[Void, Error]:
-		out := re.named_captures(text)
+		out := re.capture_named(text)
 		expect_equal(out, expected)?
 		return keep(out.length())
 
@@ -144,7 +144,7 @@ fn anonymous_names_bench(long_miss: Bool) Result[Void, Error]:
 	expected := Map[String, String]()
 
 	fn work() Result[Void, Error]:
-		out := re.named_captures(text)
+		out := re.capture_named(text)
 		expect_equal(out, expected)?
 		return keep(out.length())
 
@@ -165,7 +165,7 @@ fn late_names_bench(found: Bool) Result[Void, Error]:
 		expected.add("last", "x")
 
 	fn work() Result[Void, Error]:
-		out := re.named_captures(text)
+		out := re.capture_named(text)
 		expect_equal(out, expected)?
 		return keep(out.length())
 

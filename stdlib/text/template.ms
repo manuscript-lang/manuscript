@@ -842,7 +842,7 @@ fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 
 fn member(value: JsonValue, key: String) JsonValue?:
 	if found := value.get(key): return found
-	if index := key.parse_int(): return value.at(index).clone()
+	if index := key.parse_int(): return value.get_index(index).clone()
 
 	return none
 

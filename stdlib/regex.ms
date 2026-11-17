@@ -1,9 +1,12 @@
 import (
 	msstd_regex_capture_all_spans,
 	msstd_regex_capture_spans,
+	msstd_regex_captures,
+	msstd_regex_captures_all,
 	msstd_regex_compile,
 	msstd_regex_find_all_spans,
-	msstd_regex_find_span
+	msstd_regex_find_span,
+	msstd_regex_named_captures
 ) from "@std/internal/string.ms"
 
 // A compiled regular expression that can be reused across input strings.
@@ -25,15 +28,18 @@ fn Regex.replace_all(text: String, replacement: String, max_bytes: Int?) String!
 
 // Returns the first match as [whole, group1, ...]; groups that did not participate
 // are "". Empty list when nothing matches.
-fn Regex.captures(text: String) List[String]: ...
+fn Regex.capture(text: String) List[String]:
+	return msstd_regex_captures(self, text)
 
-// Like captures for every nonoverlapping match, under find_all's match-count
+// Like capture for every nonoverlapping match, under find_all's match-count
 // budget.
-fn Regex.captures_all(text: String, max_matches: Int?) List[List[String]]!: ...
+fn Regex.capture_all(text: String, max_matches: Int?) List[List[String]]!:
+	return msstd_regex_captures_all(self, text, max_matches)
 
 // Returns the first match's named groups that participated; empty map when nothing
 // matches.
-fn Regex.named_captures(text: String) Map[String, String]: ...
+fn Regex.capture_named(text: String) Map[String, String]:
+	return msstd_regex_named_captures(self, text)
 
 // Returns the UTF-8 byte range of the first match, or none when nothing matches.
 fn Regex.find_span(text: String) RegexSpan?:
@@ -71,7 +77,7 @@ fn Regex.capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
 	return ok(capture_slots(raw, 1, raw[0]))
 
 /*
-Like capture_spans for every match in captures_all order; no match gives an empty list.
+Like capture_spans for every match in capture_all order; no match gives an empty list.
 max_matches bounds rows; max_captures bounds total slots across rows, including whole and unmatched groups.
 Negative budgets return EINVAL, excess returns EOVERFLOW; these are output budgets, not search limits.
 */

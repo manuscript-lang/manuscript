@@ -71,9 +71,10 @@ fn HttpHeaders.contains(name: String) Bool:
 fn HttpHeaders.names() List[String]:
 	return msstd_http_headers_names(self)
 
-// Removes a name and its values; previously returned value lists remain unchanged.
-fn var HttpHeaders.remove(name: String) Bool:
-	return msstd_http_headers_remove(self, name)
+// Removes a name and its values; an absent name changes nothing. Previously returned
+// value lists remain unchanged.
+fn var HttpHeaders.remove(name: String) Void:
+	msstd_http_headers_remove(self, name)
 
 // Copies every name and value into independent headers.
 fn HttpHeaders.clone() HttpHeaders:

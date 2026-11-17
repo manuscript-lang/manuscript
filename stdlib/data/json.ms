@@ -102,7 +102,7 @@ fn JsonValue.get_in(keys: List[String]) JsonValue?:
 // Returns the array element at `index`, counting a negative index from the end. An
 // index out of range, or a value that is not an array, returns `none`. The result
 // borrows from the receiver.
-fn JsonValue.at(index: Int) JsonValue?:
+fn JsonValue.get_index(index: Int) JsonValue?:
 	match self:
 		ArrayValue(values):
 			if index >= values.length() or index < 0 - values.length(): return none
