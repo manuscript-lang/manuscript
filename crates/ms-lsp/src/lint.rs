@@ -19,6 +19,8 @@ pub struct LintFinding {
     pub file: String,
     /// Byte offset in that file.
     pub offset: usize,
+    /// The edit `ms lint --fix` applies for it, when it has one.
+    pub fix: Option<ms_syntax::DiagnosticFix>,
 }
 
 /// A source of lint findings.
@@ -42,6 +44,7 @@ impl Lint for Hygiene {
                 message: finding.message,
                 file: filename.to_string(),
                 offset: finding.pos.offset as usize,
+                fix: finding.fix,
             })
             .collect()
     }
@@ -73,6 +76,7 @@ impl Lint for Tooling {
                 message: finding.message,
                 file: finding.file.to_string(),
                 offset: finding.pos.offset as usize,
+                fix: finding.fix,
             })
             .collect()
     }

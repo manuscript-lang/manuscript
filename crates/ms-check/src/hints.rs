@@ -19,7 +19,12 @@ pub fn closest(name: &str, candidates: &[String]) -> String {
     if name.len() < 3 {
         return best;
     }
-    let limit = name.len().div_ceil(3).min(3);
+    // A third of the name may differ, rounded down from `len + 1`: `--fix` applies the
+    // suggestion, and `fail` -> `main` (two of four letters) rewrites a different function.
+    // A name that extends or truncates the typed one (`testing` for `test`) keeps every
+    // typed letter, so it may differ by a third rounded up.
+    let limit = ((name.len() + 1) / 3).min(3);
+    let prefix_limit = name.len().div_ceil(3).min(3);
     let lname = name.to_lowercase();
     for candidate in candidates {
         if candidate == name {
@@ -33,7 +38,8 @@ pub fn closest(name: &str, candidates: &[String]) -> String {
             d,
             !(lname.starts_with(&lcandidate) || lcandidate.starts_with(&lname)),
         );
-        if d <= limit
+        let related = !key.1;
+        if d <= if related { prefix_limit } else { limit }
             && (best.is_empty()
                 || key < best_key
                 || (key == best_key && candidate.as_str() < best.as_str()))
@@ -1115,5 +1121,25 @@ pub fn builtin_constructor_hint(syms: ms_syntax::Names, typ: &Ty) -> String {
         "Int" => "; parse text with text.parse_int() (Int?); Float has truncate_to_int()".to_string(),
         "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math/math.ms\")".to_string(),
         _ => String::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::closest;
+
+    fn names(of: &[&str]) -> Vec<String> {
+        of.iter().map(|n| n.to_string()).collect()
+    }
+
+    #[test]
+    fn a_suggestion_keeps_most_of_the_written_name() {
+        // `--fix` applies the suggestion, so half the letters changing is not a misspelling.
+        assert_eq!(closest("fail", &names(&["main", "fall"])), "fall");
+        assert_eq!(closest("fail", &names(&["main"])), "");
+        assert_eq!(closest("size", &names(&["sign"])), "");
+        assert_eq!(closest("cuont", &names(&["count"])), "count");
+        assert_eq!(closest("lenght", &names(&["length"])), "length");
+        assert_eq!(closest("sumn", &names(&["sum"])), "sum");
     }
 }
