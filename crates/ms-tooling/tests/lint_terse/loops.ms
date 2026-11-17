@@ -18,7 +18,7 @@ fn work(xs: List[Int], m: Map[String, Int], flag: Bool, n: Int) Int:
     var sum = 0
     for x in xs:
         sum += x
-    return total + label + m.get_or("a", 0) + out.length() + copy.length() + sum
+    return total + label + m.get("a").get(0) + out.length() + copy.length() + sum
 
 export fn main() Int:
     return work([1, 2], Map[String, Int](), true, 2)

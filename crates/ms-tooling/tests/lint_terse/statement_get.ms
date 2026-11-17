@@ -1,12 +1,12 @@
 fn work() Void!: ok()
 
 fn main() Void:
-    void work()
+    work().get(none)
     work().get()
 
 fn closer() Void:
     handles := [work()]
-    void handles[0]
+    handles[0].get(none)
 
 type Box:
     n: Int
@@ -14,4 +14,4 @@ type Box:
 fn Box.close() Void!: ok()
 
 fn shut(box: Box) Void:
-    void box.close()
+    box.close().get(none)
