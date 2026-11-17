@@ -545,7 +545,7 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
         ascii.lines().filter(|line| line.ends_with("[fn]")).count(),
         1
     );
-    assert!(ascii.contains("@std/os/env.ms#fn#arguments"));
+    assert!(ascii.contains("@std/os/env.ms::arguments"));
     let mermaid = ms(&dir, &["diagram", "main.ms", "--format", "mermaid"]);
     let mermaid = String::from_utf8_lossy(&mermaid.stdout);
     assert!(mermaid.contains("arguments"));
@@ -663,14 +663,14 @@ fn overview_shows_modules_effects_and_cross_module_calls() {
     };
     let ascii = text(&["diagram", "main.ms", "--view", "overview"]);
     assert!(
-        ascii.contains("main.ms  [entry]") && ascii.contains("-> util.ms  (1 calls)"),
+        ascii.contains("main.ms  [entry]") && ascii.contains("-> util.ms  (1 call)"),
         "{ascii}"
     );
     let mermaid = text(&[
         "diagram", "main.ms", "--view", "overview", "--format", "mermaid",
     ]);
     assert!(
-        mermaid.starts_with("flowchart LR\n") && mermaid.contains("|1 calls|"),
+        mermaid.starts_with("flowchart LR\n") && mermaid.contains("|1 call|"),
         "{mermaid}"
     );
 }

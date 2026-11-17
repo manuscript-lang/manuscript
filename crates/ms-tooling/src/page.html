@@ -54,7 +54,7 @@ main{grid-row:2;grid-column:3;overflow:auto;padding:0;min-width:0;display:flex;f
 #view{padding:8px 14px 10px;flex:1;min-height:0;overflow:auto}
 .var{color:var(--var);font-weight:700}.brw{color:var(--brw)}.own{color:var(--own);font-weight:600}
 .badge{display:inline-block;font-size:11px;padding:0 7px;border-radius:9px;background:var(--pan);color:var(--fg);border:1px solid var(--line)}
-.badge.write{border-color:var(--effs);color:var(--effs)}.badge.read{border-color:var(--brw);color:var(--brw)}.badge.err{border-color:var(--var);color:var(--var)}
+.badge.write,.badge.unknown{border-color:var(--effs);color:var(--effs)}.badge.read{border-color:var(--brw);color:var(--brw)}.badge.err{border-color:var(--var);color:var(--var)}
 svg text{fill:var(--fg);font:12px -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
 svg .node{cursor:pointer}svg .node rect{fill:var(--node);stroke:var(--line);stroke-width:1.2}svg .node:hover rect{stroke:var(--acc)}
 svg .pure rect{stroke:var(--pures)}svg .effect rect{stroke:var(--effs)}
@@ -121,7 +121,7 @@ body.focus{grid-template-columns:0 0 minmax(0,1fr) 0 0}body.focus aside,body.foc
 <header>
 <button class="ib" id="navbtn" title="Explorer">☰</button><div class="brand"><i>◈</i>Program map</div>
 <div><button class="ib" id="back" title="Back (Alt+←)">‹</button><button class="ib" id="fwd" title="Forward (Alt+→)">›</button></div>
-<nav id="tabs"></nav>
+<nav id="tabs" role="tablist" aria-label="Views"></nav>
 <button class="search" id="palbtn"><span>Go to symbol or file</span><kbd>Ctrl K</kbd></button>
 <div class="opts"><button class="ib" id="optbtn" title="View options">⚙</button>
 <div class="pop" id="optpop" hidden><label title="Show calls into the standard library"><input type="checkbox" id="all"> Include standard library calls</label><label id="onlywrap" hidden><input type="checkbox" id="only"> Show changed items only</label>
@@ -181,7 +181,7 @@ const HT=R.t?R.t[0]:[],HF={};
 if(R.t){const a=R.t[1];for(let i=0;i<a.length;i+=5){const f=HF[a[i]]||(HF[a[i]]={}),l=f[a[i+1]]||(f[a[i+1]]=[]);l.push([a[i+2],a[i+3],a[i+4]])}}
 const base=f=>f.split('/').pop();
 const dirOf=f=>f.slice(0,f.lastIndexOf('/')+1);
-const fx=e=>e.effects.filter(x=>x!=='unknown');
+const fx=e=>e.effects;
 const byFile=Object.create(null);for(const e of D.entities)(byFile[e.file]=byFile[e.file]||[]).push(e);
 function sigOf(e){
   if(!isFn(e)){const kw=e.kind==='interface'?'interface':e.kind==='type'?'type':e.kind==='alternative'?'enum':e.kind;return '<code><span class="tk-kw">'+esc(kw)+'</span> '+esc(e.name)+'</code>'}
@@ -205,7 +205,7 @@ function tabsFor(){const e=S.sel&&E[S.sel];
   if(isFn(e))return ['Overview','Calls','Sequence','Behavior','Types','Route'];
   if(isType(e))return ['Overview','Types'];
   return ['Overview']}
-function setTabs(){$('onlywrap').hidden=!HAS;$('tabs').innerHTML=tabsFor().map(t=>'<button class="'+(t===S.tab?'on':'')+'" data-tab="'+t+'">'+t+'</button>').join('');const on=$('tabs').querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}
+function setTabs(){$('onlywrap').hidden=!HAS;$('tabs').innerHTML=tabsFor().map(t=>'<button role="tab" aria-selected="'+(t===S.tab)+'" class="'+(t===S.tab?'on':'')+'" data-tab="'+t+'">'+t+'</button>').join('');const on=$('tabs').querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}
 function scopeKids(scope){
   const dirs=new Set(),mods=[];
   for(const m of D.modules)if(m.file.startsWith(scope)){const rest=m.file.slice(scope.length),i=rest.indexOf('/');if(i<0)mods.push(m.file);else dirs.add(scope+rest.slice(0,i+1))}
@@ -320,7 +320,7 @@ function panzoom(box){
   box.querySelector('[data-zoom="in"]').onclick=()=>zoom(1/1.3);box.querySelector('[data-zoom="out"]').onclick=()=>zoom(1.3);box.querySelector('[data-zoom="fit"]').onclick=fit;
   const r=svg.getBoundingClientRect();if(w<=r.width*1.5&&h<=r.height*1.5)fit();else{vb={x:0,y:0,w:r.width,h:r.height};apply()}
 }
-function stage(svg,note){return '<div class="tools"><button data-zoom="in">＋</button><button data-zoom="out">－</button><button data-zoom="fit">fit</button><button data-export="svg" title="Save this view as an SVG file">Export SVG</button>'+(note?'<span class="hint">'+note+'</span>':'')+'</div><div class="stage">'+svg+'</div>'}
+function stage(svg,note){return '<div class="tools"><button data-zoom="in" title="Zoom in">＋</button><button data-zoom="out" title="Zoom out">－</button><button data-zoom="fit">fit</button><button data-export="svg" title="Save this view as an SVG file">Export SVG</button>'+(note?'<span class="hint">'+note+'</span>':'')+'</div><div class="stage">'+svg+'</div>'}
 /* layered layout; iterative so depth never overflows the stack */
 function graph(nodes,edges,note){
   const ix=Object.fromEntries(nodes.map((n,i)=>[n.id,i]));
@@ -408,9 +408,10 @@ function types(){
   return graph(list,edges);
 }
 /* sequence: lifelines for functions, messages in execution order */
+const LIFELINES=8,clip=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
 function sequenceEvents(e,depth,all){
-  const ev=[],parts=[];let cap=0;
-  const part=k=>{if(!parts.includes(k)&&parts.length<14)parts.push(k)};
+  const ev=[],parts=[],dropped=new Set();let cap=0;
+  const part=k=>{if(!parts.includes(k)){if(parts.length<LIFELINES)parts.push(k);else dropped.add(k)}};
   const walk=(k,nodes,d,path)=>{for(const n of nodes){if(cap>160)return;
     const ref=n.reference&&E[n.reference];
     if(n.kind==='call'&&ref){cap++;part(n.reference);if(!parts.includes(n.reference))continue;ev.push({t:'msg',from:k,to:n.reference,label:n.label.replace(/^call\s+/,'')});
@@ -418,30 +419,30 @@ function sequenceEvents(e,depth,all){
       ev.push({t:'ret',from:n.reference,to:k})}
     else if(n.kind==='native'&&all){cap++;part('stdlib');if(parts.includes('stdlib'))ev.push({t:'msg',from:k,to:'stdlib',label:n.label.replace(/^call\s+/,'')})}
     else if(n.kind==='spawn'){cap++;ev.push({t:'note',at:k,label:'spawn'});walk(k,n.children||[],d,path);continue}
-    else if(['try','scope','branch','match'].includes(n.kind)){cap++;ev.push({t:'note',at:k,label:(n.kind==='try'?'try ⚠ ':'')+n.label.slice(0,30)})}
+    else if(['try','scope','branch','match'].includes(n.kind)){cap++;ev.push({t:'note',at:k,label:clip((n.kind==='try'?'try ⚠ ':'')+n.label,30)})}
     if(n.children&&n.children.length&&!(n.kind==='call'&&ref))walk(k,n.children,d,path)}};
   part(e.key);walk(e.key,e.flow,depth-1,[e.key]);
-  return {ev,parts};
+  return {ev,parts,dropped:dropped.size};
 }
-function sequenceDiagram(ev,parts){
+function sequenceDiagram(ev,parts,dropped){
   const X=170,top=50,row=30,W=140;const px=k=>20+parts.indexOf(k)*X+W/2;const H=top+ev.length*row+40;
   const sv=['<svg data-w="'+(40+parts.length*X)+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--fg)"/></marker></defs>'];
   parts.forEach(k=>{const x=px(k),t=E[k]?E[k].name:'stdlib';
-    sv.push('<line class="life" x1="'+x+'" y1="'+(top-6)+'" x2="'+x+'" y2="'+H+'"/><g class="node '+(E[k]?fcls(E[k]):'ext')+'" data-id="'+esc(k)+'" data-kind="'+(E[k]?'fn':'ext')+'"><title>'+esc(t)+'</title><rect x="'+(x-W/2)+'" y="8" width="'+W+'" height="32" rx="6"/><text x="'+x+'" y="29" text-anchor="middle" font-weight="600">'+esc(t.slice(0,20))+'</text></g>')});
+    sv.push('<line class="life" x1="'+x+'" y1="'+(top-6)+'" x2="'+x+'" y2="'+H+'"/><g class="node '+(E[k]?fcls(E[k]):'ext')+'" data-id="'+esc(k)+'" data-kind="'+(E[k]?'fn':'ext')+'"><title>'+esc(t)+'</title><rect x="'+(x-W/2)+'" y="8" width="'+W+'" height="32" rx="6"/><text x="'+x+'" y="29" text-anchor="middle" font-weight="600">'+esc(clip(t,20))+'</text></g>')});
   ev.forEach((v,i)=>{const y=top+i*row+14;
     if(v.t==='note'){const x=px(v.at),w=Math.min(190,v.label.length*6.4+14);sv.push('<g class="note"><rect x="'+(x+6)+'" y="'+(y-12)+'" width="'+w+'" height="20" rx="4"/><text x="'+(x+12)+'" y="'+(y+2)+'">'+esc(v.label)+'</text></g>');return}
     const a=px(v.from),b=px(v.to);
     if(v.from===v.to){
       sv.push('<path class="msg '+(v.t==='ret'?'ret':'')+'" d="M'+a+' '+y+'h42v12h-42" marker-end="url(#a)"/>');
-      if(v.t==='msg')sv.push('<text x="'+(a+21)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(v.label.slice(0,32))+'</text>');return}
+      if(v.t==='msg')sv.push('<text x="'+(a+21)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(clip(v.label,32))+'</text>');return}
     sv.push('<path class="msg '+(v.t==='ret'?'ret':'')+'" d="M'+a+' '+y+'L'+b+' '+y+'" marker-end="url(#a)"/>');
-    if(v.t==='msg')sv.push('<text x="'+((a+b)/2)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(v.label.slice(0,32))+'</text>')});
-  return stage(sv.join('')+'</svg>','time runs down · dotted = return');
+    if(v.t==='msg')sv.push('<text x="'+((a+b)/2)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(clip(v.label,32))+'</text>')});
+  return stage(sv.join('')+'</svg>','time runs down · dotted = return · drag to pan, scroll to zoom'+(dropped?' · '+dropped+' more function'+(dropped>1?'s':'')+' not drawn (limit '+LIFELINES+' lifelines); pick one to see its calls':''));
 }
 function sequence(){
   const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
-  const {ev,parts}=sequenceEvents(e,+$('depth').value+1,$('all').checked);
-  return sequenceDiagram(ev,parts);
+  const {ev,parts,dropped}=sequenceEvents(e,+$('depth').value+1,$('all').checked);
+  return sequenceDiagram(ev,parts,dropped);
 }
 function flowHTML(nodes,level){
   return '<ul>'+nodes.map(n=>{const ref=n.reference&&E[n.reference],kids=n.children&&n.children.length;
@@ -526,8 +527,8 @@ palres.addEventListener('click',ev=>{const r=ev.target.closest('[data-pi]');if(r
 /* help */
 const help=$('help');
 help.innerHTML='<div class="box"><div style="padding:18px 22px"><h3>Reading the map</h3><table>'+
- '<tr><td><span class="sw" style="border-color:var(--pures)"></span>Pure</td><td>no data effects</td></tr>'+
- '<tr><td><span class="sw" style="border-color:var(--effs)"></span>Effects</td><td>reads or writes data (a field, a List, Map, Set or builder)</td></tr>'+
+ '<tr><td><span class="sw" style="border-color:var(--pures)"></span>Pure</td><td>no effects found</td></tr>'+
+ '<tr><td><span class="sw" style="border-color:var(--effs)"></span>Effects</td><td>reads or writes data (a field, a List, Map, Set or builder); <b>unknown</b> means a call the analysis cannot classify, which is not the same as harmless</td></tr>'+
  '<tr><td><span class="sw" style="border-color:var(--acc)"></span>Entry / selected</td><td>main, or what you picked</td></tr>'+
  '<tr><td><span class="sw" style="border-color:var(--var)"></span>Changed</td><td>differs from the base in a diff</td></tr>'+
  '<tr><td><span class="var">var</span> / <span class="brw">borrow</span> / <span class="hint">copy</span> / <span class="own">move / owned</span></td><td>checked passing and result modes; hover a signature type for the exact mode</td></tr></table>'+
@@ -632,6 +633,9 @@ addEventListener('keydown',ev=>{
   else if(ev.key==='s'||ev.key==='S'){const b=document.querySelector('[data-star]');if(b)b.click()}});
 try{const h=JSON.parse(decodeURIComponent(location.hash.slice(1)));if(h&&TABS.includes(h.t)){S.tab=h.t;S.sel=E[h.s]?h.s:null;S.mod=h.m||null;S.scope=h.c||'';S.from=E[h.f]?h.f:null;S.to=E[h.o]?h.o:null}else throw 0}catch(_){const main=D.entities.find(e=>e.name==='main'&&e.kind==='fn');if(main){S.sel=main.key;S.scope=dirOf(main.file);S.tab='Sequence'}}
 setKinds();render();
+/* Icon buttons carry their name in `title`; give assistive technology the same text. */
+const nameButtons=()=>document.querySelectorAll('button[title]:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.title));
+nameButtons();new MutationObserver(nameButtons).observe(document.body,{childList:true,subtree:true});
 </script>
 </body>
 </html>

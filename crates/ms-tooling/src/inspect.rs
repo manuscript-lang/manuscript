@@ -731,7 +731,7 @@ impl Inspection {
         }
         for c in &self.calls {
             let owner = node(&mut out, &c.owner, &c.owner);
-            let target = node(&mut out, &c.target, &c.target);
+            let target = node(&mut out, &c.target, &crate::diagram::readable_id(&c.target));
             out.push_str(&format!("    {owner} -->|{}| {target}\n", c.kind));
         }
         out
