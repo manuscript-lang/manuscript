@@ -8,3 +8,7 @@ Why a build option: the fill changes the code, so it is in `BuildOptions` and th
 
 Apply when: changing `llvm_lifetimes.rs` or `slotshare.rs`, adding a runtime function whose result may point into its argument, or debugging output that differs between Debug and Release.
 Evidence: `a_poisoned_slot_is_filled_before_its_end_marker` (`llvm_lifetimes.rs`); `MS_POISON_SLOTS=1 ms test --build-type Release tests/conformance/fixtures/e2e/accept/split-in-frame.ms` fails loudly on a checkout without the #4285 fix.
+
+Valgrind on compiled programs (verified 2026-11-17, release build): a program that never leaves the main task runs clean (`bench/perf/string-lines`); one that switches task stacks (`regex-search`) reports hundreds of invalid writes and uninitialised reads inside `publish_region` and `switch_away`, because the runtime maps and switches its own stacks. A valgrind nightly needs a runtime mode without stack switching first; until then it only covers single-task programs and adds nothing over poison mode.
+
+`tools/view-matrix.ms` (`make view-matrix`, nightly) generates 420 programs: view operation x way of holding the text x temporaries after the view (including branch and loop blocks, which is where slots share storage). Negative control (verified 2026-11-17): with argument-slot pinning switched off it fails 36 programs, all `split` views in Release; unmodified it passes. A new view-returning operation belongs in its `operations()` table.
