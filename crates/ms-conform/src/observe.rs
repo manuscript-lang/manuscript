@@ -24,6 +24,10 @@ pub struct Ctx {
     /// fixture directories that exits with live blocks records `leaked_blocks`, so it differs from
     /// its expectation.
     pub leaks: bool,
+    /// `CONFORM_BUILD_TYPE`: the profile `ms run` and `ms test` build with (`Release` by default).
+    /// `Debug` replays the corpus through the unoptimized MIR path that `ms run` and `ms test`
+    /// take by default.
+    pub build_type: String,
 }
 
 /// Fixture directories whose programs must free every block they allocate.
@@ -72,6 +76,7 @@ impl Ctx {
             timeout_scale: 1.0,
             env: Vec::new(),
             leaks: std::env::var_os("CONFORM_LEAKS").is_some(),
+            build_type: std::env::var("CONFORM_BUILD_TYPE").unwrap_or_else(|_| "Release".into()),
         }
     }
 
@@ -186,7 +191,7 @@ fn process_fields(o: &mut Json, out: &Output, work: &Path) {
 }
 
 fn run_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
-    let mut args: Vec<&str> = vec!["run", entry, "--build-type", "Release"];
+    let mut args: Vec<&str> = vec!["run", entry, "--build-type", &ctx.build_type];
     if !fx.args.is_empty() {
         args.push("--");
         args.extend(fx.args.iter().map(String::as_str));
@@ -517,7 +522,7 @@ fn strip_faults(report: &mut Json) {
 }
 
 fn test_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
-    let mut args: Vec<&str> = vec!["test", entry, "--json", "--build-type", "Release"];
+    let mut args: Vec<&str> = vec!["test", entry, "--json", "--build-type", &ctx.build_type];
     if !fx.args.is_empty() {
         args.push("--");
         args.extend(fx.args.iter().map(String::as_str));
