@@ -220,7 +220,7 @@ fn analysis_each(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io)
 }
 
 /// Rounds of `--fix` per run; fixes that regenerate each other stop here.
-const FIX_PASSES: u8 = 8;
+const FIX_PASSES: u8 = 64;
 
 /// One run of the command, and the files that decide its result. `--fix` reports its total once,
 /// however many rounds it took.
@@ -261,6 +261,16 @@ struct FixTotals {
     fixes: usize,
     /// Distinct files edited; a file fixed in several rounds counts once.
     files: std::collections::BTreeSet<String>,
+    /// Every text a file has had during the run, by hash. A round that would write one of them
+    /// again is two fixes undoing each other, not progress.
+    seen: std::collections::HashSet<(String, u64)>,
+}
+
+fn text_hash(text: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    hasher.finish()
 }
 
 fn analysis_pass(
@@ -370,7 +380,7 @@ fn analysis_pass(
         }
     }
     if request.fix {
-        let (applied, edited) = apply_fixes(fixes, fix_errors);
+        let (applied, edited) = apply_fixes(fixes, fix_errors, &mut applied_total.seen);
         if applied > 0 {
             applied_total.fixes += applied;
             applied_total.files.extend(edited);
@@ -512,6 +522,7 @@ fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
 fn apply_fixes(
     fixes: Vec<(String, ms_driver::DiagnosticFix)>,
     errors: &mut BTreeMap<String, CommandDiagnostic>,
+    seen: &mut std::collections::HashSet<(String, u64)>,
 ) -> (usize, Vec<String>) {
     let mut by_file: BTreeMap<String, Vec<ms_driver::DiagnosticFix>> = BTreeMap::new();
     for (path, fix) in fixes {
@@ -564,11 +575,23 @@ fn apply_fixes(
         if chosen.is_empty() {
             continue;
         }
+        seen.insert((path.clone(), text_hash(&text)));
         for fix in chosen.iter().rev() {
             text.replace_range(
                 fix.pos.offset as usize..fix.end.offset as usize,
                 &fix.replacement,
             );
+        }
+        if !seen.insert((path.clone(), text_hash(&text))) {
+            errors.insert(
+                path.clone(),
+                CommandDiagnostic::source(
+                    "resolution",
+                    "--fix would return this file to an earlier state because two fixes undo each other; leaving it as it is, so report the pair as a bug and apply one of them by hand",
+                    Position::new(path.clone(), 1, 1),
+                ),
+            );
+            continue;
         }
         if let Err(error) = std::fs::write(&path, &text) {
             errors.insert(path.clone(), failure("write", error));
@@ -1175,13 +1198,15 @@ mod fix_tests {
             replacement: "x".to_string(),
         };
         let mut errors = BTreeMap::new();
+        let mut seen = std::collections::HashSet::new();
         assert_eq!(
             apply_fixes(
                 vec![
                     (missing.clone(), fix.clone()),
                     (writable.clone(), fix.clone())
                 ],
-                &mut errors
+                &mut errors,
+                &mut seen
             ),
             (1, vec![writable.clone()])
         );
@@ -1196,11 +1221,35 @@ mod fix_tests {
         // A later pass retains the original failure rather than retrying this path.
         std::fs::write(&missing, "").unwrap();
         assert_eq!(
-            apply_fixes(vec![(missing.clone(), fix)], &mut errors),
+            apply_fixes(vec![(missing.clone(), fix)], &mut errors, &mut seen),
             (0, Vec::new())
         );
         assert_eq!(std::fs::read_to_string(missing).unwrap(), "");
         assert_eq!(errors.len(), 1);
+        // Two fixes that undo each other: the second would restore the first text.
+        let cycle = dir.join("cycle.ms").to_string_lossy().into_owned();
+        std::fs::write(&cycle, "a").unwrap();
+        let at = |offset| ms_driver::Pos {
+            offset,
+            ..ms_driver::Pos::default()
+        };
+        let insert = ms_driver::DiagnosticFix {
+            pos: at(0),
+            end: at(0),
+            replacement: "x".to_string(),
+        };
+        let remove = ms_driver::DiagnosticFix {
+            pos: at(0),
+            end: at(1),
+            replacement: String::new(),
+        };
+        let (applied, _) = apply_fixes(vec![(cycle.clone(), insert)], &mut errors, &mut seen);
+        assert_eq!(applied, 1);
+        assert_eq!(std::fs::read_to_string(&cycle).unwrap(), "xa");
+        let (applied, _) = apply_fixes(vec![(cycle.clone(), remove)], &mut errors, &mut seen);
+        assert_eq!(applied, 0);
+        assert_eq!(std::fs::read_to_string(&cycle).unwrap(), "xa");
+        assert!(errors[&cycle].message.contains("undo each other"));
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
