@@ -808,6 +808,12 @@ pub mod symbols {
     /// `u8` at this offset of the block: non-zero once a park delivered a cancel and returned
     /// (the block is 24 bytes). Tested by `br.cancel` after a call that can park.
     pub const ISOLATE_HDR_UNWINDING: i64 = 16;
+    /// The task's cleanup stack at these offsets of the block: the buffer pointer, the number of
+    /// entries and the capacity, each a word. An entry is two words (action, argument) and a
+    /// handle is the entry count after its push.
+    pub const ISOLATE_HDR_CLEANUPS: i64 = 24;
+    pub const ISOLATE_HDR_CLEANUPS_LEN: i64 = 32;
+    pub const ISOLATE_HDR_CLEANUPS_CAP: i64 = 40;
     pub const DESC_INT: &str = "msrt_desc_int";
     pub const DESC_FLOAT: &str = "msrt_desc_float";
     pub const DESC_FLOAT32: &str = "msrt_desc_float32";
