@@ -622,7 +622,15 @@ fn drain(syms: ms_check::api::Names, cx: &mut Cx, m: &mut Module) -> Result<(), 
             None => match cx.queue.pop() {
                 Some(j) => j,
                 // Every function is lowered: place the Raw functions' scope-exit drops.
-                None => return ms_mir::elaborate::run(m).map_err(Error::new),
+                None => {
+                    ms_mir::elaborate::run(m).map_err(Error::new)?;
+                    // The exits go in before any inlining, so an inlined callee keeps its
+                    // checks and its caller's check after the call still catches the flag.
+                    if ms_mir::cancel_edges::enabled() {
+                        ms_mir::cancel_edges::run(m);
+                    }
+                    return Ok(());
+                }
             },
         };
         lower_job(syms, cx, m, next)?;
