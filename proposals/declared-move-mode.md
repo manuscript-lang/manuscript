@@ -10,7 +10,7 @@
 
 Proposal, 2026-11-17, checked at `54265b98`. Direction (Chinmay, 2026-11-17): `move` is the only new marker, borrow is the default, implementations match markers exactly like `var`; chose "owned results without a body" over a `move` marker on results after a second review (that option marked about 360 results, broke `xs.map(fn e: e.name)`, and gave "unmarked" two meanings).
 Reverses a recorded decision: "Chinmay declined `.ms` markers and a parameter-level `move` modifier because they pull C ownership complexity into the language (2026-11-03)" (`wiki/compiler/native-omissions-are-declared-in-the-standard-declaration.md`).
-Examples are not run through `ms check`: no `ms` binary was built for this draft.
+Stage 1 implemented 2026-11-17 with this proposal: `move` on parameters, receivers and function types; exact matching; interface results and kept parameters rejected instead of copied; The standard library's `Sink.write`, `Transform.step`, `Transport.write`/`write_bytes` and `HttpExchange.write`/`write_bytes` now take `move`, since implementations keep the value. Stage 2 (natives) follows; it also ends the clone a named function that keeps a parameter gets when used as a borrowing function value (`image_of` in `decode_png(..).map(image_of)`), which needs the native callback types to say `move` first.
 
 ## Problem
 

@@ -389,7 +389,7 @@ fn CsvRows.check_size(size: Int) Void!:
 	if limit := self.max_record_bytes:
 		if size > limit: return error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 
-fn var CsvRows.step(value: Bytes, var out: List[List[String]]) Void!:
+fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
 	cut := self.boundary(value)
 	rest := value.length() - cut
 	size := if cut == 0: self.pending_size + rest else: rest
@@ -544,7 +544,7 @@ type CsvRowsSink:
 	output: WriteStream[Bytes]
 	options: CsvOptions
 
-fn var CsvRowsSink.write(value: List[String]) Void!:
+fn var CsvRowsSink.write(move value: List[String]) Void!:
 	text := stringify([value], self.options)?
 	return self.output.write(text.to_bytes())
 

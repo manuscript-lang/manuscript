@@ -963,6 +963,7 @@ impl Checker {
             let m = f.decl.methods().get(f.index?)?;
             Some((
                 m.mutating,
+                m.consuming,
                 m.func.params.iter().map(|p| p.name).collect::<Vec<_>>(),
             ))
         };
@@ -1021,7 +1022,20 @@ impl Checker {
             }
             match (declared(&m.decl), declared(&op.decl)) {
                 // An operation declared `var fn` may be met by a method that does not change `self`.
-                (Some((own, own_names)), Some((want, want_names))) => {
+                (Some((own, own_moves, own_names)), Some((want, want_moves, want_names))) => {
+                    // `move` matches exactly: the caller through the interface either hands the
+                    // receiver over or keeps it, whatever type stands behind the view.
+                    if own_moves != want_moves {
+                        return Some(if want_moves {
+                            format!(
+                                "{name} must take its receiver with `move`, as the interface does"
+                            )
+                        } else {
+                            format!(
+                                "{name} must not take its receiver with `move`; the interface borrows it"
+                            )
+                        });
+                    }
                     if own_names != want_names {
                         return Some(format!(
                             "{name} must name its parameters like the interface"

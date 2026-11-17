@@ -54,7 +54,7 @@ test "a var field argument writes back to its record":
 type Words:
 	count: Int
 
-fn var Words.step(value: String, var out: List[String]) Void!:
+fn var Words.step(move value: String, var out: List[String]) Void!:
 	for word in value.split(" "):
 		self.count += 1
 		out.append(word.clone())
@@ -70,7 +70,7 @@ test "a transform writes zero or more items per input and more at the end":
 type Checked:
 	unused: Bool = false
 
-fn var Checked.step(value: Int, var out: List[Int]) Void!:
+fn var Checked.step(move value: Int, var out: List[Int]) Void!:
 	out.append(value)
 	if value < 0: return error(Error("negative", kind: "EBADMSG"))
 

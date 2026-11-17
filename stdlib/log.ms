@@ -36,9 +36,9 @@ export interface Transport:
 	// Accepts encoded record bytes and may return the original I/O cause. Errors can
 	// follow a partial external write, without rollback. Loggers on several threads
 	// each own a transport (see `duplicate`), so an implementation needs no locking.
-	fn write(data: String) Void!
+	fn write(move data: String) Void!
 	// Accepts encoded record bytes with the same rules as write.
-	fn write_bytes(data: Bytes) Void!
+	fn write_bytes(move data: Bytes) Void!
 	// Delegates flush to the destination; persistence and buffering depend on that
 	// destination.
 	fn flush() Void!
@@ -121,10 +121,10 @@ type FileTransport:
 	file: FileHandle
 	closed: Bool
 
-fn FileTransport.write(data: String) Void!:
+fn FileTransport.write(move data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn FileTransport.write_bytes(data: Bytes) Void!:
+fn FileTransport.write_bytes(move data: Bytes) Void!:
 	if self.closed: return error(log_closed())
 	return self.file.write(data)
 
@@ -147,13 +147,13 @@ fn var FileTransport.close() Void:
 type StdoutTransport:
 	closed: Bool
 
-fn StdoutTransport.write(data: String) Void!:
+fn StdoutTransport.write(move data: String) Void!:
 	if self.closed: return error(log_closed())
 
 	var out = stdout()
 	return out.write(data)
 
-fn StdoutTransport.write_bytes(data: Bytes) Void!:
+fn StdoutTransport.write_bytes(move data: Bytes) Void!:
 	if self.closed: return error(log_closed())
 
 	var out = stdout_bytes()
@@ -343,10 +343,10 @@ type RotatingTransport:
 	keep: Int
 	closed: Bool
 
-fn RotatingTransport.write(data: String) Void!:
+fn RotatingTransport.write(move data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn RotatingTransport.write_bytes(data: Bytes) Void!:
+fn RotatingTransport.write_bytes(move data: Bytes) Void!:
 	if self.closed: return error(log_closed())
 
 	var size = 0

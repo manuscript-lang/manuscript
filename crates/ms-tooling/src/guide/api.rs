@@ -306,12 +306,18 @@ fn fn_declaration(
     syms: ms_syntax::Names,
     name: &str,
     f: &Func,
-    mutating: bool,
+    (mutating, consuming): (bool, bool),
     source: Option<&Source>,
 ) -> String {
     format!(
         "{}{name}{}{} {}:\n",
-        if mutating { "var fn " } else { "fn " },
+        if mutating {
+            "var fn "
+        } else if consuming {
+            "move fn "
+        } else {
+            "fn "
+        },
         render::type_parameters(syms, &f.type_params),
         render::parameters(syms, &f.params, source),
         render::type_text(syms, &f.result)
@@ -324,12 +330,18 @@ fn receiver_declaration(
     receiver: &str,
     name: &str,
     f: &Func,
-    mutating: bool,
+    (mutating, consuming): (bool, bool),
     source: Option<&Source>,
 ) -> String {
     format!(
         "fn {}{receiver}.{name}{}{} {}:\n",
-        if mutating { "var " } else { "" },
+        if mutating {
+            "var "
+        } else if consuming {
+            "move "
+        } else {
+            ""
+        },
         render::type_parameters(syms, &f.type_params),
         render::parameters(syms, &f.params, source),
         render::type_text(syms, &f.result)
@@ -346,7 +358,7 @@ fn document_declaration(
     opaque: bool,
 ) -> String {
     if let Some(f) = decl.func() {
-        return fn_declaration(syms, name, f, false, source);
+        return fn_declaration(syms, name, f, (false, false), source);
     }
     let prefix = if opaque { "opaque " } else { "" };
     let mut b = format!(
@@ -384,7 +396,7 @@ fn document_declaration(
                 syms,
                 syms.str(method.func.name),
                 &method.func,
-                method.mutating,
+                (method.mutating, method.consuming),
                 source,
             );
             b += &format!("    {}\n", header.strip_suffix(":\n").unwrap_or(&header));
@@ -394,7 +406,7 @@ fn document_declaration(
                 &receiver,
                 syms.str(method.func.name),
                 &method.func,
-                method.mutating,
+                (method.mutating, method.consuming),
                 source,
             );
         }
@@ -485,7 +497,7 @@ fn document_members(
             syms,
             syms.str(method.func.name),
             &method.func,
-            method.mutating,
+            (method.mutating, method.consuming),
             source,
         )
         .trim()
@@ -713,7 +725,8 @@ fn document_implementations(
                     &method.receiver.display(syms).to_string(),
                     name,
                     f,
-                    decl.method().is_some_and(|m| m.mutating),
+                    decl.method()
+                        .map_or((false, false), |m| (m.mutating, m.consuming)),
                     None,
                 )
             )
@@ -725,7 +738,8 @@ fn document_implementations(
                     syms,
                     name,
                     f,
-                    decl.method().is_some_and(|m| m.mutating),
+                    decl.method()
+                        .map_or((false, false), |m| (m.mutating, m.consuming)),
                     None
                 )
             )
@@ -742,7 +756,8 @@ fn document_implementations(
                     syms,
                     name,
                     f,
-                    decl.method().is_some_and(|m| m.mutating),
+                    decl.method()
+                        .map_or((false, false), |m| (m.mutating, m.consuming)),
                     source
                 )
                 .trim()

@@ -963,6 +963,7 @@ impl<'a> FnLower<'a> {
                 name: self.syms.intern("value"),
                 ty: value_ty,
                 mutable: false,
+                moving: false,
                 positional: false,
             },
         ];

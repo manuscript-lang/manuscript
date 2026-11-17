@@ -10,16 +10,16 @@ type Counter:
 	calls: Int
 
 interface Defaults:
-	var fn add_default(key: String, value: Int) Void
-	var fn add_default_from(key: String, create: fn(String) Int) Void
+	var fn add_default(move key: String, value: Int) Void
+	var fn add_default_from(move key: String, create: fn(String) Int) Void
 
 type DefaultAdapter:
 	values: Map[String, Int]
 
-fn var DefaultAdapter.add_default(key: String, value: Int) Void:
+fn var DefaultAdapter.add_default(move key: String, value: Int) Void:
 	self.values.add_default(key, value)
 
-fn var DefaultAdapter.add_default_from(key: String, create: fn(String) Int) Void:
+fn var DefaultAdapter.add_default_from(move key: String, create: fn(String) Int) Void:
 	self.values.add_default_from(key, create)
 
 fn eager(var counter: Counter) Int:

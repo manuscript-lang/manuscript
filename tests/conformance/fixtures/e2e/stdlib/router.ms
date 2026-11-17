@@ -437,10 +437,10 @@ test "request_id keeps a usable id and makes one otherwise":
 type Sink:
 	path: String
 
-fn Sink.write(data: String) Void!:
+fn Sink.write(move data: String) Void!:
 	return append_file(self.path, data).wait()
 
-fn Sink.write_bytes(data: Bytes) Void!:
+fn Sink.write_bytes(move data: Bytes) Void!:
 	return self.write(data.decode_utf8().get_or(""))
 
 fn Sink.flush() Void!:

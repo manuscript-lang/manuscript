@@ -206,10 +206,10 @@ type CaptureTransport:
 	path: String
 	suffix: String
 
-fn CaptureTransport.write(data: String) Void!:
+fn CaptureTransport.write(move data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn CaptureTransport.write_bytes(data: Bytes) Void!:
+fn CaptureTransport.write_bytes(move data: Bytes) Void!:
 	if read_file(f"{self.path}{self.suffix}").wait().is_ok(): return error(
 		Error("logging: resource is closed", kind: "EBADF")
 	)
@@ -308,10 +308,10 @@ test "loggers on several threads never interleave a record":
 type Memory:
 	path: String
 
-fn Memory.write(data: String) Void!:
+fn Memory.write(move data: String) Void!:
 	return append_file(self.path, data).wait()
 
-fn Memory.write_bytes(data: Bytes) Void!:
+fn Memory.write_bytes(move data: Bytes) Void!:
 	return self.write(data.decode_utf8().get_or(""))
 
 fn Memory.flush() Void!:

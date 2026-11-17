@@ -77,31 +77,19 @@ pub struct Summary {
 }
 
 impl Summary {
-    /// The mode declared in source: `var` is `Mutate`, anything else borrows.
+    /// The mode declared in source: `var` is `Mutate`, `move` is `Move`, anything else borrows.
     pub fn declared(f: &FuncRef) -> Summary {
-        let (params, mutating): (&[ms_syntax::ast::Param], bool) = match (f.method(), f.func()) {
-            (Some(m), _) => (&m.func.params, m.mutating),
-            (None, Some(func)) => (&func.params, false),
-            (None, None) => (&[], false),
-        };
+        let (params, mutating, consuming): (&[ms_syntax::ast::Param], bool, bool) =
+            match (f.method(), f.func()) {
+                (Some(m), _) => (&m.func.params, m.mutating, m.consuming),
+                (None, Some(func)) => (&func.params, false, false),
+                (None, None) => (&[], false, false),
+            };
         Summary {
-            receiver: if mutating {
-                ParamMode::Mutate
-            } else {
-                ParamMode::Borrow
-            },
+            receiver: declared_mode(mutating, consuming),
             params: params
                 .iter()
-                .map(|p| {
-                    (
-                        p.name,
-                        if p.mutable {
-                            ParamMode::Mutate
-                        } else {
-                            ParamMode::Borrow
-                        },
-                    )
-                })
+                .map(|p| (p.name, declared_mode(p.mutable, p.moving)))
                 .collect(),
             consumed_at: Vec::new(),
             result: ResultBorrow::optimistic(params),
@@ -113,6 +101,17 @@ impl Summary {
             .iter()
             .find(|(n, _)| *n == name)
             .map(|(_, m)| *m)
+    }
+}
+
+/// The mode a signature declares for one parameter or receiver.
+pub fn declared_mode(mutable: bool, moving: bool) -> ParamMode {
+    if moving {
+        ParamMode::Move
+    } else if mutable {
+        ParamMode::Mutate
+    } else {
+        ParamMode::Borrow
     }
 }
 
@@ -363,10 +362,7 @@ fn function_value_modes(
                 let p = label(i)
                     .and_then(|l| fty.params.iter().find(|p| p.name == l))
                     .or_else(|| fty.params.get(i));
-                match p {
-                    Some(p) if p.mutable => ParamMode::Mutate,
-                    _ => ParamMode::Borrow,
-                }
+                p.map_or(ParamMode::Borrow, |p| declared_mode(p.mutable, p.moving))
             })
             .collect(),
         ..borrow_all

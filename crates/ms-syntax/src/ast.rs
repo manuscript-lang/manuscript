@@ -263,6 +263,8 @@ pub struct Method {
     pub func: Func,
     /// Declared `var fn`: the method may change its receiver.
     pub mutating: bool,
+    /// Declared `fn move Type.name`: the method takes ownership of its receiver.
+    pub consuming: bool,
 }
 
 /// One `Name[(fields)]` of an alternative type.
@@ -293,6 +295,8 @@ pub struct Param {
     pub default: Option<Expr>,
     /// Declared `var name: Type`: the callee may change the argument.
     pub mutable: bool,
+    /// Declared `move name: Type`: the callee takes ownership of the argument.
+    pub moving: bool,
 }
 
 /// A generic parameter `T: Bound & Other = Default`.

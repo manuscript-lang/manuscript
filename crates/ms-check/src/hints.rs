@@ -315,7 +315,8 @@ pub fn signature_text(syms: ms_syntax::Names, t: &Ty) -> String {
         .iter()
         .map(|p| {
             format!(
-                "{}{}: {}",
+                "{}{}{}: {}",
+                if p.moving { "move " } else { "" },
                 if p.mutable { "var " } else { "" },
                 syms.str(p.name),
                 p.ty.display(syms)

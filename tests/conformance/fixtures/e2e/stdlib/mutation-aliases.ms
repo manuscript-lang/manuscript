@@ -111,13 +111,13 @@ test "List splice moves replacement elements and handles Optional elements":
     expect_equal(optional[0], 2)?
 
 interface ListSplicing:
-    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Void
+    var fn splice(start: Int, delete_count: Int, move replacement: List[Int]) Void
     fn contents() List[Int]
 
 type ListAdapter:
     values: List[Int]
 
-fn var ListAdapter.splice(start: Int, delete_count: Int, replacement: List[Int]) Void:
+fn var ListAdapter.splice(start: Int, delete_count: Int, move replacement: List[Int]) Void:
     self.values.splice(start, delete_count, replacement)
 
 fn ListAdapter.contents() List[Int]: self.values.clone()

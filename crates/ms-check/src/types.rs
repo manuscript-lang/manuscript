@@ -73,6 +73,9 @@ pub struct Param {
     /// argument `var`. Part of a function type's identity (`fn(var List[Int]) Void`); never set
     /// on a field.
     pub mutable: bool,
+    /// A `move` parameter: the callee takes ownership of the argument. Part of a function type's
+    /// identity (`fn(move Item) Void`); never set on a field.
+    pub moving: bool,
     /// The parameter of a written function type (`fn(Int) Int`), which has no source label: calls
     /// pass it positionally and the parser's `_0`, `_1` names are internal.
     pub positional: bool,
@@ -85,6 +88,7 @@ impl Param {
             name,
             ty,
             mutable: false,
+            moving: false,
             positional: false,
         }
     }
@@ -431,6 +435,9 @@ impl Type {
             for (i, a) in self.params.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
+                }
+                if a.moving {
+                    f.write_str("move ")?;
                 }
                 if a.mutable {
                     f.write_str("var ")?;
@@ -1217,7 +1224,8 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
         }
         if a.kind == Kind::Function {
             for (p, q) in a.params.iter().zip(&b.params) {
-                if p.mutable != q.mutable || !compare(&p.ty, &q.ty, context) {
+                if p.mutable != q.mutable || p.moving != q.moving || !compare(&p.ty, &q.ty, context)
+                {
                     return false;
                 }
             }
@@ -1276,11 +1284,9 @@ pub fn reads_where_var_expected(actual: &Ty, expected: &Ty) -> bool {
             .iter()
             .zip(&expected.params)
             .any(|(a, e)| !a.mutable && e.mutable)
-        && actual
-            .params
-            .iter()
-            .zip(&expected.params)
-            .all(|(a, e)| (a.mutable == e.mutable || e.mutable) && same(&a.ty, &e.ty))
+        && actual.params.iter().zip(&expected.params).all(|(a, e)| {
+            (a.mutable == e.mutable || e.mutable) && a.moving == e.moving && same(&a.ty, &e.ty)
+        })
         && match (&actual.result, &expected.result) {
             (Some(a), Some(e)) => same(a, e),
             _ => false,
@@ -1335,12 +1341,14 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
             name: p.name,
             ty: r,
             mutable: p.mutable,
+            moving: p.moving,
             positional: p.positional,
         });
         values.extend(t.params[i + 1..].iter().map(|p| Param {
             name: p.name,
             ty: sub_walk(&p.ty, bindings),
             mutable: p.mutable,
+            moving: p.moving,
             positional: p.positional,
         }));
         params = Some(values);
@@ -1608,7 +1616,8 @@ fn unify_at(
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
             // A function that only reads a parameter stands in for one that may change it.
-            let mode_matches = p.mutable == q.mutable || (adapt_reader && p.mutable);
+            let mode_matches =
+                (p.mutable == q.mutable || (adapt_reader && p.mutable)) && p.moving == q.moving;
             if !mode_matches || !unify_at(&p.ty, &q.ty, vars, bindings, false) {
                 return false;
             }

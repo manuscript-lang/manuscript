@@ -14,21 +14,21 @@ type Pet:
 	alias: String?
 
 fn Pet.text() String:
-	return self.name
+	return self.name.clone()
 
 fn Pet.tags() List[String]:
-	return self.labels
+	return self.labels.clone()
 
 fn Pet.nick() String?:
-	return self.alias
+	return self.alias.clone()
 
 fn Pet.checked() String!:
-	return ok(self.name)
+	return ok(self.name.clone())
 
 fn describe(label: Label) String:
 	return label.text() + "/" + label.tags().length().to_string()
 
-test "an interface operation returns a copy of a field the method borrows":
+test "an interface operation returns the clone its method writes":
 	pet := Pet("rex", ["a", "b"], "r")
 	view: Label := pet
 	expect_equal(view.text(), "rex")?

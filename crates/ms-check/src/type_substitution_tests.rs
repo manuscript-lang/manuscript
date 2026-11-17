@@ -19,6 +19,7 @@ fn signature(children: &[Ty], result: Ty) -> Ty {
             name: n(&format!("p{i}")),
             ty: ty.clone(),
             mutable: false,
+            moving: false,
             positional: false,
         })
         .collect();

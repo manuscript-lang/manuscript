@@ -14,7 +14,7 @@ type Counted:
 fn var Counted.next() Int?!:
 	return ok(none)
 
-fn var Counted.write(value: Int) Void!:
+fn var Counted.write(move value: Int) Void!:
 	return ok()
 
 fn var Counted.flush() Void!:
