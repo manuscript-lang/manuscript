@@ -1,5 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	decode_bmp, encode_bmp from "@std/image/bmp.ms",
 	Raster,
 	byte,
@@ -323,7 +324,7 @@ export enum Chroma:
 
 // Settings for `encode_jpeg`.
 export type JpegOptions:
-	// 1 (smallest) to 100 (best); outside that range `encode_jpeg` fails with `EINVAL`.
+	// 1 (smallest) to 100 (best); outside that range `encode_jpeg` faults.
 	quality: Int = 85
 	// Chroma resolution for color images; gray images ignore it.
 	chroma: Chroma = Chroma.Quarter
@@ -357,17 +358,15 @@ export fn color_channels(mode: ColorMode) Int:
 
 // Checks dimensions against `max_pixels` and the hard ceiling, returning the pixel
 // count.
-// Creates an opaque black image (alpha modes are fully opaque); `EINVAL` for a
-// non-positive size, `EOVERFLOW` past `max_pixels`.
+// Creates an opaque black image (alpha modes are fully opaque); a non-positive size is
+// a programming fault, `EOVERFLOW` past `max_pixels`.
 export fn new_image(
 	width: Int,
 	height: Int,
 	mode: ColorMode,
 	max_pixels: Int? = none,
 ) Image!:
-	if width < 1 or height < 1: return error(
-		Error("image: dimensions must be positive", kind: "EINVAL")
-	)
+	if width < 1 or height < 1: panic("new_image: dimensions must be positive")
 
 	count := pixel_count(width, height, max_pixels)?
 	n := color_channels(mode)
@@ -447,6 +446,8 @@ export fn encode_image(image: Image, format: ImageFormat) Bytes!:
 // resolution. Alpha images fail with
 // `EINVAL`; convert or composite first.
 export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!:
+	if options.quality < 1 or options.quality > 100:
+		panic("encode_jpeg: quality must be from 1 through 100")
 	return jpeg_encode(
 		image.width,
 		image.height,
