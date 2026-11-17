@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	compile from "@std/regex.ms",
+	compile, RegexSpan from "@std/regex.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
@@ -39,7 +39,7 @@ test "regex captures groups spans and splits":
 	expect_equal(date.captures("none"), [])?
 	expect_equal(date.named_captures("2026-10")["y"], "2026")?
 	expect_equal(date.named_captures("none").is_empty(), true)?
-	expect_equal(date.find_span("on 2026-10").get(), [3, 10])?
+	expect_equal(date.find_span("on 2026-10").get(), RegexSpan(3, 10))?
 	expect_equal(date.find_span("none").is_none(), true)?
 	expect_equal(
 		(date.captures_all("2026-10 2027-11")?),

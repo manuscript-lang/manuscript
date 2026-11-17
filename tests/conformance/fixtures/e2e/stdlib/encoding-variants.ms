@@ -163,8 +163,8 @@ test "encoding variants honor Bytes views and cross block boundaries":
 				base64_decode(
 					base64_encode(bytes, url, padded: false),
 					url,
-					length,
 					padded: false,
+					max_bytes: length,
 				)?,
 				bytes,
 			)?
@@ -270,12 +270,12 @@ test "unpadded Base64 preserves byte budget precedence for invalid padding":
 	for url in [false, true]:
 		for text in ["AA==", "AAA=", "===="]:
 			for budget in 0..3:
-				expect_equal(base64_decode(text, url, budget, padded: false), limited)?
-			expect_equal(base64_decode(text, url, 3, padded: false), invalid)?
-			expect_equal(base64_decode(text, url, -1, padded: false), negative)?
+				expect_equal(base64_decode(text, url, padded: false, max_bytes: budget), limited)?
+			expect_equal(base64_decode(text, url, padded: false, max_bytes: 3), invalid)?
+			expect_equal(base64_decode(text, url, padded: false, max_bytes: -1), negative)?
 
-		expect_equal(base64_decode("A", url, 0, padded: false), invalid)?
-		expect_equal(base64_decode("!!!!", url, 0, padded: false), limited)?
-		expect_equal(base64_decode("!!!!", url, 3, padded: false), invalid)?
+		expect_equal(base64_decode("A", url, padded: false, max_bytes: 0), invalid)?
+		expect_equal(base64_decode("!!!!", url, padded: false, max_bytes: 0), limited)?
+		expect_equal(base64_decode("!!!!", url, padded: false, max_bytes: 3), invalid)?
 
 	expect_equal(base64_decode("Zg", max_bytes: 1, padded: false)?, "f".to_bytes())?

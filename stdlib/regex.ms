@@ -2,7 +2,8 @@ import (
 	msstd_regex_capture_all_spans,
 	msstd_regex_capture_spans,
 	msstd_regex_compile,
-	msstd_regex_find_all_spans
+	msstd_regex_find_all_spans,
+	msstd_regex_find_span
 ) from "@std/internal/string.ms"
 
 // A compiled regular expression that can be reused across input strings.
@@ -34,9 +35,10 @@ fn Regex.captures_all(text: String, max_matches: Int?) List[List[String]]!: ...
 // matches.
 fn Regex.named_captures(text: String) Map[String, String]: ...
 
-// Returns [start, end] UTF-8 byte offsets of the first match, or none when nothing
-// matches.
-fn Regex.find_span(text: String) List[Int]?: ...
+// Returns the UTF-8 byte range of the first match, or none when nothing matches.
+fn Regex.find_span(text: String) RegexSpan?:
+	if raw := msstd_regex_find_span(self, text): return RegexSpan(raw[0], raw[1])
+	return none
 
 // Splits text around every match, always returning at least one piece. max_pieces
 // is a strict budget like find_all's.

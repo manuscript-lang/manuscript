@@ -64,8 +64,8 @@ Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphab
 export fn base64_decode(
 	text: String,
 	url_safe: Bool = false,
-	max_bytes: Int?,
 	padded: Bool = true,
+	max_bytes: Int? = none,
 ) Bytes!:
 	if not padded: return msstd_encoding_base64_decode_unpadded(
 		text,
