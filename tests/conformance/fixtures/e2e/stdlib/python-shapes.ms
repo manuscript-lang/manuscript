@@ -78,6 +78,12 @@ test "path stem and with_extension":
 	expect_equal(with_extension("b.txt", ""), "b")?
 	expect_equal(with_extension("/", "md"), "/")?
 
+	// The extension is borrowed, so one value serves two calls.
+	extension := "md"
+	first := with_extension("a.txt", extension)
+	second := with_extension("c.tar", extension)
+	expect_equal(first + second + extension, "a.mdc.mdmd")?
+
 test "exists distinguishes absence from failure":
 	dir := temporary_directory("exists-")?
 	expect_true(exists(dir)?)?

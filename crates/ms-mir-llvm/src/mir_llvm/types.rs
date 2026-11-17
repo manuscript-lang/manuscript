@@ -310,6 +310,12 @@ pub(super) fn load_into_leaves(
     load_leaves(b, &s, base, 0, s.leaves.len(), named);
 }
 
+/// Loads the leaves of the type of type `ty` in memory at `base` as new values, one per leaf.
+pub(super) fn load_leaf_values(b: &mut FnBuilder, lay: &Layouts, ty: Ty, base: &Val) -> Vec<Val> {
+    let s = shape(b.types(), lay, ty).expect("is_mem checked");
+    load_leaves(b, &s, base, 0, s.leaves.len(), &[])
+}
+
 /// Defines the reserved pointer `dst` as a new slot for a type of type `ty` in memory and
 /// stores its `leaves` there.
 pub(super) fn store_into_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, dst: &Val, leaves: &[Val]) {

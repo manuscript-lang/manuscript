@@ -779,7 +779,7 @@ export fn with_extension(path: String, extension: String) String:
 			root: parts.root,
 			directory: parts.directory,
 			base: "",
-			extension: extension,
+			extension: extension.clone(),
 			name: parts.name,
 		)
 	)
