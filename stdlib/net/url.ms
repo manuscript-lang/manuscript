@@ -33,19 +33,17 @@ export type Url:
 	// Escaped path text, retaining escaped separators; format validates its percent
 	// escapes and UTF-8.
 	path: String
-	// Encoded query contents without the leading question mark; parse_query decodes
-	// individual entries.
-	query: String
 	// Decoded fragment contents without the leading hash mark.
 	fragment: String
+	// Encoded query contents without the leading question mark, or none when the URL
+	// has no query; `http://a/b?` has an empty one. parse_query decodes individual
+	// entries.
+	query: String?
 	// Explicit numeric port in 0..65535, or none when the input has no port.
 	port: Int?
 	// True when the URL was written without `//`, as in `mailto:?subject=hi`; format
 	// then omits the empty authority, so the text round-trips.
 	omit_host: Bool = false
-	// True when the URL has a query that is empty, as in `http://a/b?`; format then
-	// writes the `?`, so the text round-trips. A non-empty `query` is always written.
-	has_query: Bool = false
 
 // Decodes one percent-encoded URL component. `+` is not treated as a space.
 export fn decode_component(text: String) String!:
