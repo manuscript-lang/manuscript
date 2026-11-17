@@ -21,7 +21,10 @@ pub fn closest(name: &str, candidates: &[String]) -> String {
     }
     // A third of the name may differ, rounded down from `len + 1`: `--fix` applies the
     // suggestion, and `fail` -> `main` (two of four letters) rewrites a different function.
+    // A name that extends or truncates the typed one (`testing` for `test`) keeps every
+    // typed letter, so it may differ by a third rounded up.
     let limit = ((name.len() + 1) / 3).min(3);
+    let prefix_limit = name.len().div_ceil(3).min(3);
     let lname = name.to_lowercase();
     for candidate in candidates {
         if candidate == name {
@@ -35,7 +38,8 @@ pub fn closest(name: &str, candidates: &[String]) -> String {
             d,
             !(lname.starts_with(&lcandidate) || lcandidate.starts_with(&lname)),
         );
-        if d <= limit
+        let related = !key.1;
+        if d <= if related { prefix_limit } else { limit }
             && (best.is_empty()
                 || key < best_key
                 || (key == best_key && candidate.as_str() < best.as_str()))
