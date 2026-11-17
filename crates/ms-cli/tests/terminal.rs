@@ -109,6 +109,7 @@ fn raw_terminal_reads_keys_resizes_and_restores_the_terminal() {
 
     let mut log = String::new();
     wait_for(&master, &mut log, "size 80x24");
+    wait_for(&master, &mut log, "stalled:true");
     assert!(!canonical(master.as_raw_fd()), "raw mode is on");
     for (keys, expected) in [
         (&b"ab"[..], "text:ab"),
