@@ -1,21 +1,39 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import YamlValue, parse from "@std/data/yaml.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+	YamlValue, parse from "@std/data/yaml.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 // `-` and `?` followed directly by the mapping colon are plain keys, not indicators.
 fn number_at(doc: YamlValue, key: String) String:
-    match doc:
-        ObjectValue(m):
-            value := m.get(key).get(YamlValue.Null)
-            match value:
-                NumberValue(text): return text.clone()
-                _: return "not a number"
-        _: return "not a mapping"
+	match doc:
+		ObjectValue(m):
+			value := m.get(key).get(YamlValue.Null)
+			match value:
+				NumberValue(text): return text.clone()
+				_: return "not a number"
+		_: return "not a mapping"
 
 test "a lone dash or question mark can be a mapping key":
-    block := parse("-: 1\n?: 2\nname: 3\n") | expect_ok?
-    flow := parse("{-: 4}") | expect_ok?
-    void expect_equal(number_at(block, "-"), "1")?
-    void expect_equal(number_at(block, "?"), "2")?
-    return expect_equal(number_at(flow, "-"), "4")
+	block := parse("-: 1\n?: 2\nname: 3\n") | expect_ok?
+	flow := parse("{-: 4}") | expect_ok?
+	void expect_equal(number_at(block, "-"), "1")?
+	void expect_equal(number_at(block, "?"), "2")?
+	return expect_equal(number_at(flow, "-"), "4")
+
+test "a lone dash is a flow scalar and a flow pair key":
+	pair := parse("[-: 1]") | expect_ok?
+	single := parse("[-, a]") | expect_ok?
+	void expect_equal(parse("[- : 1]").is_error(), true)?
+
+	match pair:
+		ArrayValue(items):
+			void expect_equal(items.length(), 1)?
+			void expect_equal(number_at(items[0], "-"), "1")?
+		_: return expect_equal("not a sequence", "")
+
+	match single:
+		ArrayValue(items):
+			return expect_equal(items.length(), 2)
+		_: return expect_equal("not a sequence", "")

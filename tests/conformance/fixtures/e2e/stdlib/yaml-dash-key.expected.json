@@ -13,19 +13,24 @@
           "index": 0,
           "name": "yaml-dash-key.ms::a lone dash or question mark can be a mapping key",
           "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "yaml-dash-key.ms::a lone dash is a flow scalar and a flow pair key",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 1,
-        "selected": 1,
-        "passed": 1,
+        "available": 2,
+        "selected": 2,
+        "passed": 2,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN yaml-dash-key.ms::a lone dash or question mark can be a mapping key\nPASS yaml-dash-key.ms::a lone dash or question mark can be a mapping key\n1 tests, 0 failed\n",
+      "stdout": "RUN yaml-dash-key.ms::a lone dash or question mark can be a mapping key\nPASS yaml-dash-key.ms::a lone dash or question mark can be a mapping key\nRUN yaml-dash-key.ms::a lone dash is a flow scalar and a flow pair key\nPASS yaml-dash-key.ms::a lone dash is a flow scalar and a flow pair key\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

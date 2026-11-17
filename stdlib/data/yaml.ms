@@ -700,7 +700,8 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 		flow.pos += 1
 
 	// Slice once: appending each character to a string is quadratic on long scalars.
-	var text = blank_trim(flow.chars.slice(start, flow.pos).get([]).join(""))
+	raw := flow.chars.slice(start, flow.pos).get([]).join("")
+	var text = blank_trim(raw)
 	if (
 		text.starts_with("?")
 		and (text.length() == 1 or " \t".contains(text.chars()[1]))
@@ -710,7 +711,9 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 			reason: "explicit mapping keys are unsupported",
 		)
 	)
-	if not (plain_may_start(text) or key and text == "-"): return error(
+	// A lone `-` is a scalar when a flow indicator or colon follows it directly (`[-]`,
+	// `[-: 1]`); a space after it makes it a block entry mark.
+	if not (plain_may_start(text) or raw == "-"): return error(
 		flow_invalid(
 			flow,
 			"a plain scalar cannot start with an indicator character",
