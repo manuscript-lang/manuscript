@@ -23,19 +23,29 @@
           "index": 2,
           "name": "mock.ms::two args and zero args",
           "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "mock.ms::rules beat the queue, and answers can be errors",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "mock.ms::matching and unused answers",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN mock.ms::records and answers\nPASS mock.ms::records and answers\nRUN mock.ms::failures report\nPASS mock.ms::failures report\nRUN mock.ms::two args and zero args\nPASS mock.ms::two args and zero args\n3 tests, 0 failed\n",
+      "stdout": "RUN mock.ms::records and answers\nPASS mock.ms::records and answers\nRUN mock.ms::failures report\nPASS mock.ms::failures report\nRUN mock.ms::two args and zero args\nPASS mock.ms::two args and zero args\nRUN mock.ms::rules beat the queue, and answers can be errors\nPASS mock.ms::rules beat the queue, and answers can be errors\nRUN mock.ms::matching and unused answers\nPASS mock.ms::matching and unused answers\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

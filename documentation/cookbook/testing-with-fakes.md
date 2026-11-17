@@ -86,9 +86,9 @@ PASS mock_test.ms::each user is charged, the first at a special price
 1 tests, 0 failed
 ```
 
-- `fallback` is the answer after the queue is used up; `returns_once(value)` queues answers in order.
+- An answer comes from the first matching `returns_for(args, value)` rule, else the next `returns_once(value)`, else `fallback`. `R` can be a Result or optional, so a mock can fail on demand: `Mock1[String, Int!]`.
 - `calls` lists the arguments of every call (`Call2` and `Call3` records for two and three arguments). Arguments are cloned in, so the caller keeps its values.
-- `expect_called_times`, `expect_not_called`, `expect_called_with` and `expect_last_called_with` fail the test with the recorded calls in the message. `reset()` clears calls and queued answers.
+- `expect_called_times`, `expect_not_called`, `expect_called_with`, `expect_last_called_with`, `expect_called_matching(check)` (for arguments only partly known) and `expect_answers_used` (every `returns_once` was consumed) fail the test with the recorded calls in the message. `reset()` clears calls and queued answers.
 - A mock replaces what code is given. Code that reaches the clock or files directly has to take that as a parameter first.
 
 ## Control time

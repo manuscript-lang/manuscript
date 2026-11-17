@@ -47,3 +47,21 @@ test "two args and zero args":
 	var z = Mock0[Bool](fallback: true)
 	expect_equal(z.call(), true)?
 	z.expect_called_times(1)?
+
+test "rules beat the queue, and answers can be errors":
+	var m = Mock1[String, Int!](fallback: ok(0))
+	m.returns_once(ok(1))
+	m.returns_for("bad", error(Error("no such item", kind: "ENOENT")))
+	expect_true(m.call("bad").is_error())?
+	expect_equal(m.call("x")?, 1)?
+	expect_equal(m.call("y")?, 0)?
+	m.expect_answers_used()?
+
+test "matching and unused answers":
+	var m = Mock2[String, Int, Int](fallback: 0)
+	m.returns_once(3)
+	m.call("a", 5)
+	m.expect_called_matching(fn call: call.b > 4)?
+	expect_true(m.expect_called_matching(fn call: call.b > 9).is_error())?
+	m.returns_once(4)
+	expect_true(m.expect_answers_used().is_error())?
