@@ -422,6 +422,21 @@ fn stat_now(path: &[u8], follow: bool) -> Res<Info> {
     Ok(info_of(&st, &lossy_name(&path::base(path))))
 }
 
+/// Whether `path` names anything: a missing path or a missing directory part (`ENOENT`,
+/// `ENOTDIR`) is `false`; every other failure is returned.
+pub fn exists(path: &[u8], follow: bool) -> Res<bool> {
+    offload(follow, path, |follow, path| exists_now(path, *follow))
+}
+
+fn exists_now(path: &[u8], follow: bool) -> Res<bool> {
+    let p = cpath(path)?;
+    match sys::stat(&p, follow) {
+        Ok(_) => Ok(true),
+        Err(e) if sys::is_not_found(e) || sys::is_not_dir(e) => Ok(false),
+        Err(e) => Err(Fail::errno(e, if follow { "stat" } else { "lstat" }, path)),
+    }
+}
+
 #[derive(Debug)]
 pub struct Entry {
     pub name: Vec<u8>,
