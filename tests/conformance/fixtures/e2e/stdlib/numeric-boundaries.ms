@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Decimal from "@std/math/decimal.ms",
-	BigInt, from_int from "@std/math/math.ms",
+	BigInt, big_int_of_int from "@std/math/math.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
 	nanoseconds from "@std/time.ms",
 )
@@ -17,8 +17,8 @@ test "integer division retains signed boundary and remainder rules":
 	expect_false((1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan())?
 
 	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
-	expect_equal(from_int(1).divide(from_int(0)), invalid)?
-	expect_equal(from_int(1).remainder(from_int(0)), invalid)?
+	expect_equal(big_int_of_int(1).divide(big_int_of_int(0)), invalid)?
+	expect_equal(big_int_of_int(1).remainder(big_int_of_int(0)), invalid)?
 
 test "duration arithmetic retains full signed nanosecond range":
 	minimum := nanoseconds(-9223372036854775808)

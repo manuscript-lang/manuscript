@@ -12,7 +12,7 @@ import (
 	rat_of_binary,
 	rat_of_float,
 	rat_of_int from "@std/math/big.ms",
-	from_int from "@std/math/math.ms",
+	big_int_of_int from "@std/math/math.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 )
 
@@ -32,7 +32,7 @@ test "rationals stay in lowest terms and compare with ==":
 
 test "rational errors and decimal parsing":
 	zero: BigRat! := error(Error("bigrat: invalid input", kind: "EINVAL"))
-	expect_equal(rat(from_int(1), from_int(0)), zero)?
+	expect_equal(rat(big_int_of_int(1), big_int_of_int(0)), zero)?
 	expect_equal(rat_of_int(1).divide(rat_of_int(0)), zero)?
 
 	bad: BigRat! := error(Error("bigrat: invalid data", kind: "EBADMSG"))
@@ -154,17 +154,17 @@ test "to_float rounds once, onto the subnormal grid":
 	tiny := 4.9406564584124654e-324
 
 	// 2^-1075 + 2^-1129 is above the midpoint between zero and the least subnormal.
-	above := rat_of_binary(from_int(18014398509481985), -1129)
+	above := rat_of_binary(big_int_of_int(18014398509481985), -1129)
 	expect_equal(above.to_float(), tiny)?
 	expect_equal(above.negate().to_float(), -tiny)?
 	expect_equal(big_float_of_rat(above, 55).to_float(), tiny)?
 
 	// Exactly 2^-1075 is a tie and goes to even, zero; 3 * 2^-1075 goes to 2 * 2^-1074.
-	expect_equal(rat_of_binary(from_int(1), -1075).to_float(), 0.0)?
-	expect_equal(rat_of_binary(from_int(3), -1075).to_float(), 2.0 * tiny)?
-	expect_equal(rat_of_binary(from_int(1), -1074).to_float(), tiny)?
+	expect_equal(rat_of_binary(big_int_of_int(1), -1075).to_float(), 0.0)?
+	expect_equal(rat_of_binary(big_int_of_int(3), -1075).to_float(), 2.0 * tiny)?
+	expect_equal(rat_of_binary(big_int_of_int(1), -1074).to_float(), tiny)?
 
 	// Normal values and the boundary are unchanged.
-	expect_equal(rat_of_binary(from_int(1), -1022).to_float(), 2.2250738585072014e-308)?
+	expect_equal(rat_of_binary(big_int_of_int(1), -1022).to_float(), 2.2250738585072014e-308)?
 	expect_equal(rat_of_int(3).to_float(), 3.0)?
-	expect_equal(rat_of_binary(from_int(1), 1024).to_float(), none)?
+	expect_equal(rat_of_binary(big_int_of_int(1), 1024).to_float(), none)?

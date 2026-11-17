@@ -6,7 +6,7 @@ import (
 	filled,
 	map_from_entries,
 	range_by from "@std/collections/collections.ms",
-	from_int from "@std/math/math.ms",
+	big_int_of_int from "@std/math/math.ms",
 	compile from "@std/regex.ms",
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
@@ -483,8 +483,8 @@ test "normalization, empty separators, and precision formatting":
 	"é".normalize(form: "NFD", max_bytes: 2) | expect_equal(limit)?
 
 fn verify_bigint_and_regex() Void!:
-	a := from_int(value: 12)
-	b := from_int(value: 5)
+	a := big_int_of_int(value: 12)
+	b := big_int_of_int(value: 5)
 	a.add(other: b).to_string_radix(radix: 10) | expect_equal("17")?
 	a.subtract(other: b).to_string_radix(radix: 10) | expect_equal("7")?
 	a.multiply(other: b).to_string_radix(radix: 10) | expect_equal("60")?

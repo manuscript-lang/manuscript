@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 import stringify, parse from "@std/data/json.ms"
-import from_int from "@std/math/math.ms"
+import big_int_of_int from "@std/math/math.ms"
 
 type Report:
     name: String
@@ -19,8 +19,8 @@ test "a record with a Map[String, T] field is Data and roundtrips as a JSON obje
     expect_equal(back.scores["a"], 1)?
 
 test "BigInt clone starts an independent accumulator":
-    base := from_int(5)
+    base := big_int_of_int(5)
     var acc = base.clone()
     acc = acc + base
-    expect_equal(acc, from_int(10))?
-    expect_equal(base, from_int(5))?
+    expect_equal(acc, big_int_of_int(10))?
+    expect_equal(base, big_int_of_int(5))?

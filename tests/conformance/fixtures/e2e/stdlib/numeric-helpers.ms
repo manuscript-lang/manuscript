@@ -6,13 +6,13 @@ import (
 	copy_sign,
 	exp2,
 	fma,
-	from_int,
+	big_int_of_int,
 	infinity,
 	max_float,
 	min_float,
 	nan,
 	next_after,
-	parse,
+	parse_big_int,
 	reverse_bits,
 	reverse_bytes,
 	round_to_even,
@@ -103,8 +103,8 @@ test "fused multiply-add rounds once and avoids intermediate overflow":
 test "big integer gcd and lcm normalize signs and zero":
 	for left in [-12, 0, 12]:
 		for right in [-18, 0, 18]:
-			a := from_int(left)
-			b := from_int(right)
+			a := big_int_of_int(left)
+			b := big_int_of_int(right)
 			common := a.gcd(b)
 			multiple := a.lcm(b)
 			expect_equal(common, b.gcd(a))?
@@ -113,61 +113,61 @@ test "big integer gcd and lcm normalize signs and zero":
 			expect_false(common.sign() < 0)?
 			expect_false(multiple.sign() < 0)?
 
-	expect_equal(from_int(-12).gcd(from_int(18)), from_int(6))?
-	expect_equal(from_int(-12).lcm(from_int(18)), from_int(36))?
-	expect_equal(from_int(0).gcd(from_int(0)), from_int(0))?
-	expect_equal(from_int(0).lcm(from_int(0)), from_int(0))?
+	expect_equal(big_int_of_int(-12).gcd(big_int_of_int(18)), big_int_of_int(6))?
+	expect_equal(big_int_of_int(-12).lcm(big_int_of_int(18)), big_int_of_int(36))?
+	expect_equal(big_int_of_int(0).gcd(big_int_of_int(0)), big_int_of_int(0))?
+	expect_equal(big_int_of_int(0).lcm(big_int_of_int(0)), big_int_of_int(0))?
 
 test "big integer square root is exact and rejects negative input":
 	for number in [0, 1, 2, 3, 4, 15, 16, 17, 9223372036854775807]:
-		value := from_int(number)
+		value := big_int_of_int(number)
 		root := value.sqrt()?
 		expect_true(root * root <= value)?
 
-		above := root + from_int(1)
+		above := root + big_int_of_int(1)
 		expect_true(above * above > value)?
 
 	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
-	expect_equal(from_int(-1).sqrt(), invalid)?
+	expect_equal(big_int_of_int(-1).sqrt(), invalid)?
 
 test "modular exponentiation normalizes results and validates its domain":
-	expect_equal((from_int(2).pow_mod(from_int(10), from_int(1000))?), from_int(24))?
-	expect_equal((from_int(-2).pow_mod(from_int(3), from_int(5))?), from_int(2))?
-	expect_equal((from_int(-2).pow_mod(from_int(4), from_int(5))?), from_int(1))?
-	expect_equal((from_int(0).pow_mod(from_int(0), from_int(7))?), from_int(1))?
-	expect_equal((from_int(0).pow_mod(from_int(0), from_int(1))?), from_int(0))?
+	expect_equal((big_int_of_int(2).pow_mod(big_int_of_int(10), big_int_of_int(1000))?), big_int_of_int(24))?
+	expect_equal((big_int_of_int(-2).pow_mod(big_int_of_int(3), big_int_of_int(5))?), big_int_of_int(2))?
+	expect_equal((big_int_of_int(-2).pow_mod(big_int_of_int(4), big_int_of_int(5))?), big_int_of_int(1))?
+	expect_equal((big_int_of_int(0).pow_mod(big_int_of_int(0), big_int_of_int(7))?), big_int_of_int(1))?
+	expect_equal((big_int_of_int(0).pow_mod(big_int_of_int(0), big_int_of_int(1))?), big_int_of_int(0))?
 
 	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
-	expect_equal(from_int(2).pow_mod(from_int(-1), from_int(7)), invalid)?
-	expect_equal(from_int(2).pow_mod(from_int(3), from_int(0)), invalid)?
-	expect_equal(from_int(2).pow_mod(from_int(3), from_int(-7)), invalid)?
+	expect_equal(big_int_of_int(2).pow_mod(big_int_of_int(-1), big_int_of_int(7)), invalid)?
+	expect_equal(big_int_of_int(2).pow_mod(big_int_of_int(3), big_int_of_int(0)), invalid)?
+	expect_equal(big_int_of_int(2).pow_mod(big_int_of_int(3), big_int_of_int(-7)), invalid)?
 
 test "big integer helpers scale from machine words to 4096-bit values":
-	one := from_int(1)
+	one := big_int_of_int(1)
 
 	for width in [64, 256, 1024, 4096]:
 		factor := (one.shift_left(width)?) + one
-		a := factor * from_int(35)
-		b := factor * from_int(77)
-		expect_equal(a.gcd(b), factor * from_int(7))?
-		expect_equal(a.lcm(b), factor * from_int(385))?
+		a := factor * big_int_of_int(35)
+		b := factor * big_int_of_int(77)
+		expect_equal(a.gcd(b), factor * big_int_of_int(7))?
+		expect_equal(a.lcm(b), factor * big_int_of_int(385))?
 
 		square := factor * factor
 		expect_equal((square.sqrt()?), factor)?
 		expect_equal(((square - one).sqrt()?), factor - one)?
 
 		modulus := (one.shift_left(width)?) - one
-		expect_equal((from_int(2).pow_mod(from_int(width), modulus)?), one)?
+		expect_equal((big_int_of_int(2).pow_mod(big_int_of_int(width), modulus)?), one)?
 
-	exponent := parse("184467440737095516160000000000000000000000", 10)?
-	expect_equal((from_int(2).pow_mod(exponent, from_int(7))?), from_int(2))?
+	exponent := parse_big_int("184467440737095516160000000000000000000000", 10)?
+	expect_equal((big_int_of_int(2).pow_mod(exponent, big_int_of_int(7))?), big_int_of_int(2))?
 
 test "modular exponentiation matches exact large odd and even modulus reference vectors":
-	base := parse("-123456789012345678901234567891", 10)?
-	exponent := from_int(12345)
-	odd := parse("10000000000000000000000000000000000000007", 10)?
-	even := parse("340282366920938463463374607431768211456", 10)?
-	odd_result := parse("4339799581317112657124184116489215648661", 10)?
-	even_result := parse("223193219010250399600239597668322418573", 10)?
+	base := parse_big_int("-123456789012345678901234567891", 10)?
+	exponent := big_int_of_int(12345)
+	odd := parse_big_int("10000000000000000000000000000000000000007", 10)?
+	even := parse_big_int("340282366920938463463374607431768211456", 10)?
+	odd_result := parse_big_int("4339799581317112657124184116489215648661", 10)?
+	even_result := parse_big_int("223193219010250399600239597668322418573", 10)?
 	expect_equal((base.pow_mod(exponent, odd)?), odd_result)?
 	expect_equal((base.pow_mod(exponent, even)?), even_result)?

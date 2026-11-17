@@ -43,9 +43,14 @@ fn var HttpHeaders.append(name: String, value: String) Void!:
 fn var HttpHeaders.append_bytes(name: String, value: Bytes) Void!:
 	return msstd_http_headers_append(self, name, value)
 
+// Returns the first value as text, or none for an absent name. A value that is not
+// valid UTF-8 is skipped; read it with get_all_bytes.
+fn HttpHeaders.get(name: String) String?:
+	return self.get_all(name).first()
+
 // Returns every value as an owned list, empty for an absent name.
-// A received value that is not valid UTF-8 is left out; read it with values_bytes.
-fn HttpHeaders.values(name: String) List[String]:
+// A received value that is not valid UTF-8 is left out; read it with get_all_bytes.
+fn HttpHeaders.get_all(name: String) List[String]:
 	var out: List[String] = []
 	raw := msstd_http_headers_values(self, name)
 	if found := raw:
@@ -55,7 +60,7 @@ fn HttpHeaders.values(name: String) List[String]:
 
 // Returns the raw bytes of every value as an owned list, or none for an absent
 // name.
-fn HttpHeaders.values_bytes(name: String) List[Bytes]?:
+fn HttpHeaders.get_all_bytes(name: String) List[Bytes]?:
 	return msstd_http_headers_values(self, name)
 
 // Reports whether the name has any value, whatever its encoding.

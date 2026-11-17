@@ -50,7 +50,7 @@ fn body_of(response: HttpResponse) String:
 	return response.body.decode_utf8().get("")
 
 fn allow_of(response: HttpResponse) String:
-	values := response.headers.values("Allow")
+	values := response.headers.get_all("Allow")
 	return values.join(",")
 
 fn router() Router:
@@ -172,7 +172,7 @@ fn tagged(
 	return next(var exchange)
 
 fn trail(var exchange: HttpExchange, params: RouteParams) Void!:
-	values := exchange.headers().values("X-Trail")
+	values := exchange.headers().get_all("X-Trail")
 	return reply(var exchange, text(200, values.join(">")))
 
 test "middleware wraps routes outermost first":
@@ -400,18 +400,18 @@ test "json and redirect build responses":
 	sent := r.call(get("/j"))?
 	expect_equal(sent.status, 201)?
 	expect_equal(body_of(sent), "{\"name\":\"ok\",\"count\":2}")?
-	expect_equal(sent.headers.values("Content-Type").join(","), "application/json")?
+	expect_equal(sent.headers.get_all("Content-Type").join(","), "application/json")?
 
 	moved_to := r.call(get("/m"))?
 	expect_equal(moved_to.status, 303)?
-	expect_equal(moved_to.headers.values("Location").join(","), "/elsewhere")?
+	expect_equal(moved_to.headers.get_all("Location").join(","), "/elsewhere")?
 
 fn echo_id(var exchange: HttpExchange, params: RouteParams) Void!:
-	seen := exchange.headers().values("X-Request-Id")
+	seen := exchange.headers().get_all("X-Request-Id")
 	return reply(var exchange, text(200, seen.join(",")))
 
 fn id_of(response: HttpResponse) String:
-	return response.headers.values("X-Request-Id").join(",")
+	return response.headers.get_all("X-Request-Id").join(",")
 
 test "request_id keeps a usable id and makes one otherwise":
 	var r = Router()

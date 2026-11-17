@@ -98,7 +98,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 			or response.body != "hello".to_bytes()
 		)
 	)?
-	response.metadata().headers.values("X-Test") | expect_equal(["manuscript"])?
+	response.metadata().headers.get_all("X-Test") | expect_equal(["manuscript"])?
 
 	client_options := HttpClientOptions(
 		decompress: true,
@@ -216,7 +216,7 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
 	)?
 
 fn report_host(var exchange: HttpExchange) Void!:
-	hosts := exchange.headers().values("Host")
+	hosts := exchange.headers().get_all("Host")
 	_started := exchange.send_headers(status: 200, headers: headers())?
 	_written := (http_result(exchange.write(hosts.join(",")))?)
 

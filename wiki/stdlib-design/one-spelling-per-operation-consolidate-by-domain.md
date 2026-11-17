@@ -8,6 +8,8 @@ Round 2 (consolidation audit): `assert_*` aliases of `expect_*`, `chmod_link`/`c
 
 Round 3 (hardening week): a type's text form is `to_string()`, never `format()`, `to_text()` or `text()`: `Version`, `BigRat`, `Complex`, `Address`, `Headers`, `HttpMethod`, `DnsKind`, `IpFamily`, `IpAddress` and `Cidr` use it; lowering honors an extern type's own `to_string` (it printed `[object]` before). `FetchResponse.text()` and `XmlNode.text()` stay because they read content, not convert a value. `Histogram.min()/max()` match every other `min`/`max`. `Instant.unshift` was dropped: `instant - duration` and `shift` of a negative duration cover it (the native stays for the operator). `Result.error()` (optional) was dropped: `is_error()` then `err()` is the one way to read a cause.
 
+Round 4 (hardening week): a number type's constructor and parser are named for the type, as `rat_of_int` and `parse_rat` already were: `big_int_of_int` and `parse_big_int` replace the bare `from_int` and `parse`, which clashed when two number modules were imported. Header lookups read the same on both header types: `HttpHeaders.get` (first value) and `get_all`/`get_all_bytes` replace `values`/`values_bytes`, matching `Headers.get`/`get_all`. `Regex.find_span` returns a `RegexSpan?` like `find_all_spans`, and a decoder's `max_bytes` budget is its last parameter (`base64_decode`).
+
 Apply when: adding or moving a stdlib function, or when two modules could both own an operation.
 Evidence: commit 9a2dc4e6, [process](../../stdlib/os/process.ms), [fs](../../stdlib/os/fs.ms), [crypto](../../stdlib/crypto/crypto.ms), [sse](../../stdlib/net/sse.ms).
 Verify: `ms search_symbol <old name>` finds no declaration; `make docs-check` passes and every moved symbol has an updated fixture.

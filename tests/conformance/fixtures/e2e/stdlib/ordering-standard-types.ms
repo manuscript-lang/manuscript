@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 import seconds, parse_timestamp from "@std/time.ms"
-import from_int from "@std/math/math.ms"
+import big_int_of_int from "@std/math/math.ms"
 import Decimal from "@std/math/decimal.ms"
 
 test "Duration orders with min, max and clamp":
@@ -27,8 +27,8 @@ test "Decimal orders with min, max and clamp":
     expect_equal(a.clamp(b, b).to_fixed(0, none).get(), "7")?
 
 test "BigInt orders with min, max and clamp":
-    expect_equal(from_int(-4).min(from_int(2)).to_string_radix(10), "-4")?
-    expect_equal(from_int(-4).max(from_int(2)).to_string_radix(10), "2")?
+    expect_equal(big_int_of_int(-4).min(big_int_of_int(2)).to_string_radix(10), "-4")?
+    expect_equal(big_int_of_int(-4).max(big_int_of_int(2)).to_string_radix(10), "2")?
     expect_equal(
-        from_int(40).clamp(from_int(1), from_int(5)).to_string_radix(10), "5"
+        big_int_of_int(40).clamp(big_int_of_int(1), big_int_of_int(5)).to_string_radix(10), "5"
     )?

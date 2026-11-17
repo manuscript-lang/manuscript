@@ -38,7 +38,7 @@ fn header_failure(message: String) HttpResponse:
 fn handle_headers(request: HttpRequest) HttpResponse:
 	if request.method != HttpMethod.Get: return header_failure("typed request method")
 
-	received := request.headers.values("X-DUP")
+	received := request.headers.get_all("X-DUP")
 	if received != ["first", "second"]: return header_failure(
 		"case-insensitive received fields"
 	)
@@ -66,10 +66,10 @@ test "one header type preserves repeated values through buffered requests":
 	)
 	var metadata = response.metadata().clone()
 	metadata.status | expect_equal(200)?
-	metadata.headers.values("x-dup") | expect_equal(["first", "second"])?
+	metadata.headers.get_all("x-dup") | expect_equal(["first", "second"])?
 	expect_false(
 		(
-			(metadata.headers.values("SET-COOKIE")) != [
+			(metadata.headers.get_all("SET-COOKIE")) != [
 				"a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT", "b=2"
 			]
 		)
@@ -78,12 +78,12 @@ test "one header type preserves repeated values through buffered requests":
 	// The clone is independent: appending to it leaves the response's headers as
 	// received.
 	_appended := ((metadata.headers.append("x-dup", "third")) | expect_ok?)
-	metadata.headers.values("X-Dup") | expect_equal(["first", "second", "third"])?
-	expect_false(((response.metadata().headers.values("X-Dup")) != ["first", "second"]))?
+	metadata.headers.get_all("X-Dup") | expect_equal(["first", "second", "third"])?
+	expect_false(((response.metadata().headers.get_all("X-Dup")) != ["first", "second"]))?
 
 fn echo_headers(var exchange: HttpExchange) Void!:
 	received := exchange.headers()
-	if received.values("X-DUP") != ["first", "second"]: return error(
+	if received.get_all("X-DUP") != ["first", "second"]: return error(
 		Error("HTTP: invalid data", kind: "EBADMSG")
 	)
 
@@ -107,17 +107,17 @@ test "streaming proxy uses the same byte-valued header type":
 			options: RequestOptions(headers: (repeated_headers()?)),
 		) | expect_ok?
 	)
-	expect_false(((response.metadata().headers.values("x-DUP")) != ["first", "second"]))?
+	expect_false(((response.metadata().headers.get_all("x-DUP")) != ["first", "second"]))?
 
 test "lookup returns membership and clone separates it":
 	var fields = (repeated_headers()?)
 	_appended := fields.append("x-dup", "third") | expect_ok?
-	values := fields.values("X-DUP")
+	values := fields.get_all("X-DUP")
 	values.length() | expect_equal(3)?
 
 	var copy = fields.clone()
 	_copy_appended := copy.append("x-dup", "copy") | expect_ok?
-	fields.values("x-dup").length() | expect_equal(3)?
+	fields.get_all("x-dup").length() | expect_equal(3)?
 	(not fields.contains("missing")) | expect_true?
 
 	_k := fields.append("K", "ASCII") | expect_ok?
@@ -125,14 +125,16 @@ test "lookup returns membership and clone separates it":
 
 	_removed := fields.remove("X-DUP")
 	_new_field := fields.append("X-Dup", "new") | expect_ok?
-	(fields.values("x-dup").length() != 1) | expect_false?
+	(fields.get_all("x-dup").length() != 1) | expect_false?
 
 test "string lookup leaves out values that are not UTF-8":
 	var fields = headers()
 	_valid := fields.append("Raw", "first") | expect_ok?
 	_invalid := fields.append_bytes("raw", Bytes(values: [255])) | expect_ok?
-	fields.values("RAW") | expect_equal(["first"])?
-	fields.values_bytes("RAW").get().length() | expect_equal(2)?
+	fields.get_all("RAW") | expect_equal(["first"])?
+	fields.get("RAW") | expect_equal("first")?
+	fields.get("missing") | expect_equal(none)?
+	fields.get_all_bytes("RAW").get().length() | expect_equal(2)?
 
 	match fields.append("bad name", "value"):
 		ok(_): return fail("malformed name accepted")
@@ -181,7 +183,7 @@ fn cookie_handler(var exchange: HttpExchange) Void!:
 			"a=gone; Path=/; Expires=Thu Jan  1 00:00:01 1970",
 		)?
 
-	cookie := exchange.headers().values("Cookie").join("; ")
+	cookie := exchange.headers().get_all("Cookie").join("; ")
 	return exchange.send(200, fields, cookie.to_bytes())
 
 fn echoed_cookie(client: HttpClient, url: String) String!:

@@ -530,7 +530,7 @@ export fn wrapping_multiply(left: Int, right: Int) Int:
 
 /*
 An arbitrary-precision signed integer. Use the operators + - * / % and unary - for arithmetic and < <= > >= == != for comparison;
-both operands must be BigInt (convert an Int with from_int), and / or % by zero is a fault. The named methods below are the same operations;
+both operands must be BigInt (convert an Int with big_int_of_int), and / or % by zero is a fault. The named methods below are the same operations;
 divide and remainder return a Result for callers that want an error value instead of a fault.
 */
 // ms: data
@@ -554,7 +554,7 @@ fn BigInt.multiply(other: BigInt) BigInt:
 	return msstd_bigint_multiply(self, other)
 
 // Returns the non-negative greatest common divisor; gcd(0, 0) is zero.
-// Example: `from_int(-12).gcd(from_int(18))` is `from_int(6)`.
+// Example: `big_int_of_int(-12).gcd(big_int_of_int(18))` is `big_int_of_int(6)`.
 fn BigInt.gcd(other: BigInt) BigInt:
 	return msstd_bigint_gcd(self, other)
 
@@ -708,11 +708,11 @@ fn BigInt.mod_sqrt(modulus: BigInt) BigInt?!:
 	return bigint_mod_sqrt(self, modulus)
 
 // Converts a machine-sized integer without loss.
-export fn from_int(value: Int) BigInt:
+export fn big_int_of_int(value: Int) BigInt:
 	return msstd_bigint_from_int(value)
 
 // Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
-export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!:
+export fn parse_big_int(text: String, radix: Int, max_digits: Int?) BigInt!:
 	return msstd_bigint_parse(text, radix, max_digits)
 
 // Returns n! for a non-negative n; a negative n returns EINVAL. Work and result size

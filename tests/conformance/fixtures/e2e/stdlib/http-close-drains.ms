@@ -19,7 +19,7 @@ fn send(var conn: Connection, text: String) Void!:
 
 // The handler announces itself in the directory the request names, so the test closes the server only once a response is truly in progress, however slowly a loaded machine reads the request, and concurrent runs never see each other's marker.
 fn handle(request: HttpRequest) HttpResponse:
-    for dir in request.headers.values("x-marker-dir"):
+    for dir in request.headers.get_all("x-marker-dir"):
         _announced := write_file(f"{dir}/started", "started".to_bytes()).wait()
 
     void sleep(nanoseconds(300000000)).wait()

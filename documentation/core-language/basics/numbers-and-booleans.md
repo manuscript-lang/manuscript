@@ -125,12 +125,12 @@ Validate expected bad input with [expected failures](../errors/results.md); see 
 
 ### BigInt
 
-`BigInt` (from `@std/math/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `from_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
+`BigInt` (from `@std/math/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `big_int_of_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
 
 ```manuscript
-import from_int from "@std/math/math.ms"
+import big_int_of_int from "@std/math/math.ms"
 
-big := from_int(2) * from_int(3) + from_int(1)
+big := big_int_of_int(2) * big_int_of_int(3) + big_int_of_int(1)
 ```
 
 #### Scale rounding and fixed places

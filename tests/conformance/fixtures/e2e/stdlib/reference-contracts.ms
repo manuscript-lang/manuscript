@@ -21,8 +21,8 @@ test "buffered response metadata is already an independent copy":
 	copied.status = 201
 	copied.headers.append("x-test", "new")?
 	expect_equal(response.metadata().status, 200)?
-	expect_equal(response.metadata().headers.values("x-test"), ["original"])?
-	expect_equal(copied.headers.values("x-test"), ["original", "new"])?
+	expect_equal(response.metadata().headers.get_all("x-test"), ["original"])?
+	expect_equal(copied.headers.get_all("x-test"), ["original", "new"])?
 
 fn early_return() Int:
 	return 7

@@ -4,7 +4,7 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"
-import from_int from "@std/math/math.ms"
+import big_int_of_int from "@std/math/math.ms"
 import parse_int from "@std/math/math.ms"
 
 test "byte updates retain relative bounds and immutable storage":
@@ -45,7 +45,7 @@ test "radix formatting retains inclusive boundaries and parse errors":
         ((35).to_string_radix(2) != "100011" or (35).to_string_radix(36) != "z")
     )?
 
-    big := from_int(35)
+    big := big_int_of_int(35)
     expect_false(
         (big.to_string_radix(2) != "100011" or big.to_string_radix(36) != "z")
     )?
