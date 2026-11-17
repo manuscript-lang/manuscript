@@ -10,7 +10,7 @@ SEED := (
 )
 
 fn strip_nl(text: String) String:
-	var chars = text.chars()
+	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
 	while start < end and chars[start] == "\n":

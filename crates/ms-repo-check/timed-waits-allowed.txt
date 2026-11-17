@@ -7,7 +7,7 @@ crates/ms-cli/src/engine/run.rs 2 follow-up: tooling drains child output with a 
 crates/ms-cli/src/engine/testing.rs 4 follow-up: tooling drains child output and polls
 crates/ms-cli/src/engine/tooling.rs 2 follow-up: file watching polls every 10 ms
 crates/ms-cli/src/engine/watch.rs 3 follow-up: file watching polls every 10 ms
-crates/ms-cli/src/process.rs 1 follow-up: child poll nap
+crates/ms-cli/src/process.rs 1 the supervised wait takes its deadline (the run timeout, the records tick) from its one event channel
 crates/ms-cli/tests/blocking_reads.rs 2 test: lets time pass so a read stays blocked
 crates/ms-cli/tests/extern_link.rs 1 test: time for a child to start
 crates/ms-cli/tests/fifo_cancel.rs 1 test: lets time pass so a read stays blocked
@@ -17,7 +17,7 @@ crates/ms-cli/tests/watch.rs 3 test: lets the watcher run
 crates/ms-clif/src/link/lld/glibc_stubs/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-clif/src/link/lld/tests.rs 2 test: channel deadline of a hung link, not a wait for time
 crates/ms-clif/tests/native.rs 1 test: lets time pass
-crates/ms-conform/src/exec.rs 1 follow-up: child poll every 5 ms
+crates/ms-conform/src/exec.rs 2 deadlines: the run timeout and the grace for a killed child to be reaped
 crates/ms-lsp/tests/supervise.rs 1 test: lets time pass
 crates/ms-mir/tests/unwind.rs 1 test: lets time pass
 crates/ms-rt/src/fault.rs 1 test: proves a publication stays blocked while a reader is inside

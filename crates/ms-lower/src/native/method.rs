@@ -567,7 +567,7 @@ impl<'a> FnLower<'a> {
             (
                 TyKind::Alt(a),
                 "get" | "err" | "get_or_else" | "or_else" | "map_error" | "map" | "and_then"
-                | "to_optional" | "error",
+                | "to_optional",
             ) => {
                 let out = result;
                 self.result_method(out, name, recv, a, args)

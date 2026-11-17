@@ -61,11 +61,11 @@ export fn constant_time_select(choice: Int, left: Int, right: Int) Int:
 export fn constant_time_less_or_equal(left: Int, right: Int) Int:
 	return 1 + shift_right(right - left, 63)
 
-// Returns the byte-wise exclusive OR of two equal-length byte strings, or EINVAL when
-// the lengths differ.
-export fn xor_bytes(left: Bytes, right: Bytes) Bytes!:
+// Returns the byte-wise exclusive OR of two equal-length byte strings; lengths that
+// differ are a programming fault.
+export fn xor_bytes(left: Bytes, right: Bytes) Bytes:
 	if left.length() != right.length():
-		return error(Error("crypto: invalid input", kind: "EINVAL"))
+		panic("xor_bytes: the byte strings must have equal lengths")
 
 	var out = BytesBuilder()
 	for index in 0..left.length():
@@ -75,7 +75,7 @@ export fn xor_bytes(left: Bytes, right: Bytes) Bytes!:
 				right.get(index).to_int(),
 			).to_uint8().get(0)
 		)
-	return ok(out.build())
+	return out.build()
 
 // Derives a key with PBKDF2-HMAC-SHA-256 using the supplied iteration count and length.
 export fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) Bytes!:
@@ -259,22 +259,28 @@ fn HashAlgorithm.hmac(key: Bytes, data: Bytes) Bytes!:
 	return msstd_crypto_hmac(self, key, data)
 
 // Derives a key with PBKDF2-HMAC using this algorithm, the iteration count and
-// length. Fails with EINVAL for non-positive iterations or a length outside
-// 1..1048576.
+// length. Non-positive iterations or a length outside 1..1048576 are a programming
+// fault.
 fn HashAlgorithm.derive_key(
 	password: Bytes,
 	salt: Bytes,
 	iterations: Int,
 	length: Int,
 ) Bytes!:
+	if iterations <= 0: panic("derive_key: iterations must be positive")
+	if length < 1 or length > 1048576: panic(
+		"derive_key: length must be from 1 through 1048576"
+	)
 	return msstd_crypto_derive_key(self, password, salt, iterations, length)
 
 /*
 Expands secret into length bytes with HKDF (RFC 5869) using this algorithm.
-An empty salt uses the algorithm's zero-filled default. Fails with EINVAL when
-length is not positive or exceeds 255 times the digest size.
+An empty salt uses the algorithm's zero-filled default. A length that is not positive
+or exceeds 255 times the digest size is a programming fault.
 */
 fn HashAlgorithm.hkdf(secret: Bytes, salt: Bytes, info: Bytes, length: Int) Bytes!:
+	if length < 1 or length > 255 * self.digest(Bytes([])).length():
+		panic("hkdf: length must be from 1 through 255 times the digest size")
 	return msstd_crypto_hkdf(self, secret, salt, info, length)
 
 // Creates an incremental hasher for this algorithm.

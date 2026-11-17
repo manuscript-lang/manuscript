@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "crypto-subtle.ms::xor_bytes combines equal lengths and rejects others",
+          "name": "crypto-subtle.ms::xor_bytes combines equal lengths and faults on others",
           "status": "passed"
         }
       ],
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN crypto-subtle.ms::constant time select picks by choice\nPASS crypto-subtle.ms::constant time select picks by choice\nRUN crypto-subtle.ms::constant time less-or-equal orders non-negative values\nPASS crypto-subtle.ms::constant time less-or-equal orders non-negative values\nRUN crypto-subtle.ms::xor_bytes combines equal lengths and rejects others\nPASS crypto-subtle.ms::xor_bytes combines equal lengths and rejects others\n3 tests, 0 failed\n",
+      "stdout": "RUN crypto-subtle.ms::constant time select picks by choice\nPASS crypto-subtle.ms::constant time select picks by choice\nRUN crypto-subtle.ms::constant time less-or-equal orders non-negative values\nPASS crypto-subtle.ms::constant time less-or-equal orders non-negative values\nRUN crypto-subtle.ms::xor_bytes combines equal lengths and faults on others\nPASS crypto-subtle.ms::xor_bytes combines equal lengths and faults on others\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -505,16 +505,18 @@ export fn multiply_wide(left: UInt64, right: UInt64) WideProduct:
 	return msstd_math_multiply_wide(left, right)
 
 // Divides the unsigned 128-bit value high * 2^64 + low by divisor, returning a 64-bit
-// quotient and remainder. A zero divisor returns EINVAL; otherwise high >= divisor
+// quotient and remainder. A zero divisor faults; otherwise high >= divisor
 // returns ERANGE because the quotient cannot fit.
 export fn divide_wide(high: UInt64, low: UInt64, divisor: UInt64) WordDivision!:
+	if divisor == 0: panic("divide_wide: divisor must be nonzero")
 	return msstd_math_divide_wide(high, low, divisor)
 
 // Returns the remainder of the unsigned 128-bit value high * 2^64 + low divided by
-// divisor. A zero divisor returns EINVAL; any nonzero divisor is valid, even when the
+// divisor. A zero divisor faults; any nonzero divisor is valid, even when the
 // quotient would not fit in 64 bits.
-export fn remainder_wide(high: UInt64, low: UInt64, divisor: UInt64) UInt64!:
-	return msstd_math_remainder_wide(high, low, divisor)
+export fn remainder_wide(high: UInt64, low: UInt64, divisor: UInt64) UInt64:
+	if divisor == 0: panic("remainder_wide: divisor must be nonzero")
+	return msstd_math_remainder_wide(high, low, divisor).get()
 
 // Adds with two's-complement wraparound instead of faulting on overflow.
 export fn wrapping_add(left: Int, right: Int) Int:
@@ -563,37 +565,41 @@ fn BigInt.gcd(other: BigInt) BigInt:
 fn BigInt.lcm(other: BigInt) BigInt:
 	return msstd_bigint_lcm(self, other)
 
-// Returns the floor of the exact integer square root; a negative receiver returns
-// EINVAL.
-fn BigInt.sqrt() BigInt!:
-	return msstd_bigint_sqrt(self)
+// Returns the floor of the exact integer square root; a negative receiver faults.
+fn BigInt.sqrt() BigInt:
+	if self.sign() < 0: panic("BigInt.sqrt: the value must not be negative")
+	return msstd_bigint_sqrt(self).get()
 
 /*
 Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
-A negative exponent or non-positive modulus returns EINVAL. A zero exponent gives 1 modulo modulus, including 0^0.
+A negative exponent or non-positive modulus faults. A zero exponent gives 1 modulo modulus, including 0^0.
 Reduces during exponentiation instead of constructing the full power. Variable-time; unsuitable for secret exponents.
 */
-fn BigInt.pow_mod(exponent: BigInt, modulus: BigInt) BigInt!:
-	return msstd_bigint_pow_mod(self, exponent, modulus)
+fn BigInt.pow_mod(exponent: BigInt, modulus: BigInt) BigInt:
+	if exponent.sign() < 0 or modulus.sign() <= 0:
+		panic(
+			"BigInt.pow_mod: the exponent must not be negative and the modulus must be positive"
+		)
+	return msstd_bigint_pow_mod(self, exponent, modulus).get()
 
 // Returns the multiplicative inverse modulo a positive modulus, in 0 through
-// modulus - 1; a non-positive modulus returns EINVAL. No inverse gives ok(none);
+// modulus - 1; a non-positive modulus faults. No inverse gives none;
 // modulus 1 gives zero. Variable-time; unsuitable for secret operands.
-fn BigInt.inverse_mod(modulus: BigInt) BigInt?!:
-	if modulus.sign() <= 0: return error(
-		Error("big integer: invalid input", kind: "EINVAL")
-	)
-	return ok(msstd_bigint_inverse_mod(self, modulus))
+fn BigInt.inverse_mod(modulus: BigInt) BigInt?:
+	if modulus.sign() <= 0: panic("BigInt.inverse_mod: the modulus must be positive")
+	return msstd_bigint_inverse_mod(self, modulus)
 
 // Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
-// A zero divisor returns EINVAL.
-fn BigInt.divide(other: BigInt) BigInt!:
-	return msstd_bigint_divide(self, other)
+// A zero divisor faults, as `/` does.
+fn BigInt.divide(other: BigInt) BigInt:
+	if other.sign() == 0: panic("BigInt.divide: the divisor must be nonzero")
+	return msstd_bigint_divide(self, other).get()
 
 // Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
-// A zero divisor returns EINVAL.
-fn BigInt.remainder(other: BigInt) BigInt!:
-	return msstd_bigint_remainder(self, other)
+// A zero divisor faults, as `%` does.
+fn BigInt.remainder(other: BigInt) BigInt:
+	if other.sign() == 0: panic("BigInt.remainder: the divisor must be nonzero")
+	return msstd_bigint_remainder(self, other).get()
 
 // Returns -1 when this value is less than `other`, 0 when equal, and 1 when
 // greater.
@@ -654,20 +660,23 @@ fn BigInt.abs() BigInt:
 fn BigInt.sign() Int:
 	return msstd_bigint_sign(self)
 
-// Raises to a nonnegative `exponent`. A negative exponent returns EINVAL, and a
+// Raises to a nonnegative `exponent`. A negative exponent faults, and a
 // result above 16777216 bits returns EOVERFLOW.
 fn BigInt.pow(exponent: Int) BigInt!:
+	if exponent < 0: panic("BigInt.pow: the exponent must not be negative")
 	return msstd_bigint_pow(self, exponent)
 
 // Shifts left by `count` bits, multiplying by two to that power. A negative count
-// returns EINVAL, and a result above 16777216 bits returns EOVERFLOW.
+// faults, and a result above 16777216 bits returns EOVERFLOW.
 fn BigInt.shift_left(count: Int) BigInt!:
+	if count < 0: panic("BigInt.shift_left: the count must not be negative")
 	return msstd_bigint_shift_left(self, count)
 
 // Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by
-// 1 is -3. A negative count returns EINVAL.
-fn BigInt.shift_right(count: Int) BigInt!:
-	return msstd_bigint_shift_right(self, count)
+// 1 is -3. A negative count faults.
+fn BigInt.shift_right(count: Int) BigInt:
+	if count < 0: panic("BigInt.shift_right: the count must not be negative")
+	return msstd_bigint_shift_right(self, count).get()
 
 // Converts to the nearest Float, or returns none when the magnitude exceeds the
 // Float range.
@@ -715,10 +724,10 @@ export fn from_int(value: Int) BigInt:
 export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!:
 	return msstd_bigint_parse(text, radix, max_digits)
 
-// Returns n! for a non-negative n; a negative n returns EINVAL. Work and result size
+// Returns n! for a non-negative n; a negative n faults. Work and result size
 // grow quickly with n.
 export fn factorial(n: Int) BigInt!:
-	if n < 0: return error(Error("big integer: invalid input", kind: "EINVAL"))
+	if n < 0: panic("factorial: n must not be negative")
 	if n < 2: return ok(msstd_bigint_from_int(1))
 
 	return ok(range_product(2, n))
@@ -736,9 +745,9 @@ fn range_product(low: Int, high: Int) BigInt:
 	return range_product(low, middle) * range_product(middle + 1, high)
 
 // Returns the binomial coefficient "n choose k", which is 0 when k exceeds n; a
-// negative n or k returns EINVAL.
+// negative n or k faults.
 export fn binomial(n: Int, k: Int) BigInt!:
-	if n < 0 or k < 0: return error(Error("big integer: invalid input", kind: "EINVAL"))
+	if n < 0 or k < 0: panic("binomial: n and k must not be negative")
 	if k > n: return ok(msstd_bigint_from_int(0))
 
 	choose := if n - k < k: n - k else: k
@@ -775,7 +784,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 	var twos = 0
 
 	while bigint_is_even(odd_part):
-		odd_part = odd_part.shift_right(1).get(bigint_zero())
+		odd_part = odd_part.shift_right(1)
 		twos += 1
 
 	fixed := min(rounds, primes.length())
@@ -806,7 +815,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 fn bigint_strong_probable(n: BigInt, base: BigInt, odd_part: BigInt, twos: Int) Bool:
 	one := msstd_bigint_from_int(1)
 	minus_one := n - one
-	var x = base.pow_mod(odd_part, n).get(bigint_zero())
+	var x = base.pow_mod(odd_part, n)
 	if x.compare(one) == 0 or x.compare(minus_one) == 0: return true
 
 	for _step in 1..twos:
@@ -852,16 +861,12 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 
 	minus_one := modulus - one
 	half := minus_one / two
-	if target.pow_mod(half, modulus).get(bigint_zero()).compare(one) != 0:
-		return ok(absent)
+	if target.pow_mod(half, modulus).compare(one) != 0: return ok(absent)
 
 	var root = bigint_zero()
 
 	if (modulus % msstd_bigint_from_int(4)).compare(msstd_bigint_from_int(3)) == 0:
-		root = target.pow_mod(
-			(modulus + one) / msstd_bigint_from_int(4),
-			modulus,
-		).get(bigint_zero())
+		root = target.pow_mod((modulus + one) / msstd_bigint_from_int(4), modulus)
 	else:
 		var odd_part = minus_one.clone()
 		var twos = 0
@@ -873,7 +878,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 		var non_residue = two.clone()
 
 		while true:
-			criterion := non_residue.pow_mod(half, modulus)?
+			criterion := non_residue.pow_mod(half, modulus)
 			if criterion.compare(minus_one) == 0: break
 
 			// A prime gives only +1 or -1 here; any other value proves compositeness.
@@ -883,9 +888,9 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 			non_residue += one
 
 		var m = twos
-		var c = non_residue.pow_mod(odd_part, modulus).get(bigint_zero())
-		var t = target.pow_mod(odd_part, modulus).get(bigint_zero())
-		root = target.pow_mod((odd_part + one) / two, modulus).get(bigint_zero())
+		var c = non_residue.pow_mod(odd_part, modulus)
+		var t = target.pow_mod(odd_part, modulus)
+		root = target.pow_mod((odd_part + one) / two, modulus)
 
 		while t.compare(one) != 0:
 			var i = 0

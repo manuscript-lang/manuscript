@@ -427,6 +427,12 @@ impl Socket {
                     WsErr::LimitExceeded
                 }
             }
+            DecodeError::InvalidPayload => {
+                // RFC 6455 section 7.1.6: a close reason that is not UTF-8 fails with 1007.
+                let payload = frame::format_close(code::INVALID_PAYLOAD, "");
+                self.send_close(&payload, CONTROL_WRITE_NANOS);
+                WsErr::InvalidData
+            }
             DecodeError::Overflow => WsErr::LimitExceeded,
             DecodeError::Corrupt => WsErr::Failed(TRUNCATED.to_string()),
         };

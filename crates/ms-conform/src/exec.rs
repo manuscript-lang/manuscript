@@ -5,8 +5,12 @@ use std::io::{Read, Write};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::{Duration, Instant};
+
+/// How long a killed child may take to be reaped before the run gives up on its status.
+const KILL_GRACE: Duration = Duration::from_secs(10);
 
 /// Everything observed about one process run.
 #[derive(Debug, Clone, Default)]
@@ -93,31 +97,42 @@ pub fn run(
             .take()
             .map(|p| Box::new(p) as Box<dyn Read + Send>),
     );
+    // A thread blocks on the child's exit and reports it; this one waits for that report or the
+    // deadline, so an exit is seen at once and nothing wakes to look.
+    let (exited, report) = mpsc::channel();
+    thread::spawn(move || {
+        let _ = exited.send(child.wait().ok());
+    });
     let mut timed_out = false;
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break Some(status),
-            Ok(None) => {}
-            Err(_) => break None,
-        }
-        if started.elapsed() >= timeout {
+    let status = match report.recv_timeout(timeout.saturating_sub(started.elapsed())) {
+        Ok(status) => status,
+        Err(RecvTimeoutError::Timeout) => {
             timed_out = true;
             kill_group(pid);
-            let _ = child.kill();
-            break child.wait().ok();
+            // The kill ends the child; its exit still arrives on the channel.
+            report.recv_timeout(KILL_GRACE).ok().flatten()
         }
-        thread::sleep(Duration::from_millis(5));
+        Err(RecvTimeoutError::Disconnected) => None,
     };
     // Descendants of ms (the built program) may outlive it; reap the group. Unix keeps the group after its leader
     // exits. Windows walks the tree from a live root, so `taskkill /T` on an exited process finds nothing, and
     // starting it cost about 250 ms per fixture (most of the Windows corpus time).
     #[cfg(unix)]
     kill_group(pid);
-    if let Some(writer) = writer {
-        let _ = writer.join();
-    }
-    let stdout = out_thread.join().unwrap_or_default();
-    let stderr = err_thread.join().unwrap_or_default();
+    // A child that outlived its kill still holds its pipes: joining the readers would hang the
+    // run, so they are left to end with the process and the run reports no output.
+    let reaped = status.is_some() || !timed_out;
+    let (stdout, stderr) = if reaped {
+        if let Some(writer) = writer {
+            let _ = writer.join();
+        }
+        (
+            out_thread.join().unwrap_or_default(),
+            err_thread.join().unwrap_or_default(),
+        )
+    } else {
+        (Vec::new(), Vec::new())
+    };
     let code = match status {
         Some(s) => exit_code(s),
         None => 127,

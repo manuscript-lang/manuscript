@@ -70,7 +70,7 @@ Reading: the slow-mix tail is the same as the watcher's and CPU is 3 to 7% lower
 
 | Kind | Where | Value | Verdict |
 | --- | --- | --- | --- |
-| Periodic look | `ms-rt/src/watch.rs` | 100 µs while a hook asks, 2 ms otherwise, sleeps after 100 quiet looks | Removed (kernel timers) |
+| Periodic look | `ms-rt/src/watch.rs` | 100 µs while a hook asks, 2 ms otherwise, sleeps after 20 quiet looks | Kept: not adopted, see the wiki decision page |
 | Periodic look | `http/server/steal.rs` `BALANCE_EVERY` | 10 ms | Remove: balance on count change |
 | Periodic look | `http/server.rs` H2 sweep | 50 ms while any HTTP/2 connection lives | Follow-up PR (HTTP/2 stealing): per-stream deadlines |
 | Spin before sleep | `task/reactor.rs` `SPIN_NS` | 20 µs, with credit | Keep: bounded, adaptive, measured; not a wait for a condition |
