@@ -66,6 +66,7 @@ svg .chg rect{stroke:var(--var);stroke-width:3px}
 svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--eff);stroke:var(--effs)}svg .msg{stroke:var(--fg);stroke-width:1.2;fill:none}svg .msg.async{stroke-dasharray:5}svg .msg.ret{stroke:var(--mut);stroke-dasharray:2 3}
 .tools{display:flex;gap:4px;margin:0 0 6px;align-items:center;flex-wrap:wrap}.tools .hint{margin-left:8px}
 .tools button,.tools select{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:2px 9px;border-radius:6px;cursor:pointer}
+.tools input{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:3px 9px;border-radius:6px;font:inherit;min-width:0;width:200px;max-width:100%}.tools input:focus{outline:2px solid var(--acc);border-color:var(--acc)}
 .tools button:hover{border-color:var(--acc);color:var(--acc)}
 .stage{border:1px solid var(--line);border-radius:10px;overflow:hidden;background-color:var(--bg);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px}
 .stage svg{touch-action:none;display:block;width:100%;height:calc(100vh - 215px);min-height:300px;cursor:grab}
@@ -467,14 +468,16 @@ function srcPanel(){
     ls.map((l,i)=>{const ind=l.replace(/\t/g,'    ').length-l.replace(/\t/g,'    ').trimStart().length;return '<div class="r" data-ln="'+(e.first-1+i)+'"><span class="ln">'+(e.first+i)+'</span><span class="tx" style="--i:'+ind+'">'+(l?hl(l,true):'\u200b')+'</span></div>'}).join('')+'</div>';
   box.scrollTop=keep}
 function route(){
-  const opt=(sel)=>sel&&E[sel]?'<option value="'+esc(sel)+'" selected>'+esc(E[sel].name)+'</option>':'';
-  let h='<div class="tools"><input id="rf" list="fl" placeholder="from" value="'+(S.from?esc(E[S.from].name):'')+'"> → <input id="rt" list="fl" placeholder="to" value="'+(S.to?esc(E[S.to].name):'')+'"><datalist id="fl"></datalist></div>';
-  if(S.from&&S.to){
-    const prev={[S.from]:null},q=[S.from];for(let head=0;head<q.length;head++){const u=q[head];if(u===S.to)break;for(const v of E[u].calls)if(!(v in prev)){prev[v]=u;q.push(v)}}
+  const cur=S.sel&&E[S.sel],from=S.from||(cur&&isFn(cur)&&!isCheck(cur)?S.sel:null);
+  let h='<div class="tools"><input id="rf" list="fl" aria-label="From function" placeholder="from function" value="'+esc(S.missF||(from?E[from].name:''))+'"> → <input id="rt" list="fl" aria-label="To function" placeholder="to function" value="'+esc(S.missT||(S.to?E[S.to].name:''))+'"><datalist id="fl"></datalist></div>';
+  const miss=S.missF||S.missT;
+  if(miss)h+=empty('No function named "'+esc(miss)+'"','Pick a name from the list that appears as you type.');
+  else if(from&&S.to){
+    const prev={[from]:null},q=[from];for(let head=0;head<q.length;head++){const u=q[head];if(u===S.to)break;for(const v of E[u].calls)if(!(v in prev)){prev[v]=u;q.push(v)}}
     if(!(S.to in prev))h+=empty('No call path','These two functions are not connected by calls.');
     else{const p=[];for(let k=S.to;k!==null;k=prev[k])p.unshift(k);
       h+='<div class="route">'+p.map((k,i)=>(i?'<span class="arrow">→</span>':'')+'<span class="step" data-key="'+esc(k)+'">'+esc(E[k].name)+'</span>').join('')+'</div>'}
-  }else h+=empty('Find a route','Type a function name in each box.');
+  }else h+=empty('Find a route',from?'Type the function to reach in the second box.':'Type a function name in each box.');
   return h;
 }
 const VIEWS={Overview:overview,Calls:calls,Sequence:sequence,Types:types,Behavior:behavior,Route:route};
@@ -493,7 +496,8 @@ function setStatus(){const e=S.sel&&E[S.sel];
 function render(){fitTab();setTabs();setList();setInfo();srcPanel();$('view').innerHTML=VIEWS[S.tab]();
   const d=$('dir');if(d){d.value=S.dir;d.onchange=()=>{S.dir=d.value;render()}}
   const rf=$('rf');if(rf){const dl=$('fl');dl.innerHTML=fns.slice(0,2000).map(f=>'<option value="'+esc(f.name)+'">').join('');
-    rf.onchange=()=>{S.from=pickFn(rf.value);render()};$('rt').onchange=()=>{S.to=pickFn($('rt').value);render()}}
+    const pick=(v,key,miss)=>{const k=pickFn(v);S[key]=k;S[miss]=k||!v.trim()?'':v.trim();render()};
+    rf.onchange=()=>pick(rf.value,'from','missF');$('rt').onchange=()=>pick($('rt').value,'to','missT')}
   const box=$('view');if(box.querySelector('svg'))panzoom(box);setStatus();save()}
 /* theme */
 const THEMES=['auto','dark','light'],TICON={auto:'◐',dark:'☾',light:'☀'};let theme=store.get('theme','auto');
@@ -589,7 +593,7 @@ document.addEventListener('click',ev=>{
   if(t.dataset.tab)S.tab=t.dataset.tab;
   else if(t.dataset.expand){const li=t.closest('li');const e=E[t.dataset.expand];const slot=li.querySelector(':scope > .callee');
     if(slot.innerHTML){slot.innerHTML='';t.textContent='expand ▸'}else{slot.innerHTML=flowHTML(e.flow,1);t.textContent='collapse ▾'}return}
-  else if(t.dataset.routefrom){S.from=S.sel;S.to=null;S.tab='Route'}
+  else if(t.dataset.routefrom){S.from=S.sel;S.to=null;S.missF=S.missT='';S.tab='Route'}
   else if(t.dataset.scope!==undefined){S.scope=t.dataset.scope;S.mod=null;S.sel=null;S.cap=40;S.tab='Overview'}
   else if(t.dataset.key){S.sel=t.dataset.key;S.mod=null;if(S.tab==='Overview')S.tab='Sequence';if(S.tab==='Route'){if(!S.from)S.from=S.sel;else S.to=S.sel}}
   else if(t.dataset.mod){S.mod=t.dataset.mod;S.scope=dirOf(S.mod);S.sel=null;S.tab='Overview'}

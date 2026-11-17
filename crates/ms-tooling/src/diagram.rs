@@ -13,7 +13,8 @@ pub fn readable_id(id: &str) -> String {
         (Some(file), Some(kind), Some(name))
             if !file.is_empty() && !kind.is_empty() && !name.is_empty() =>
         {
-            format!("{file}::{name}")
+            // `+source` names the Manuscript half of a split standard-library module.
+            format!("{}::{name}", file.strip_suffix("+source").unwrap_or(file))
         }
         _ => id.to_string(),
     }
@@ -65,6 +66,10 @@ mod tests {
             "@std/time.ms::monotonic"
         );
         assert_eq!(readable_id("a.ms#method#Acc.bump"), "a.ms::Acc.bump");
+        assert_eq!(
+            readable_id("@std/core.ms+source#fn#print"),
+            "@std/core.ms::print"
+        );
         assert_eq!(readable_id("List[Int].append"), "List[Int].append");
         assert_eq!(readable_id("indirect"), "indirect");
     }

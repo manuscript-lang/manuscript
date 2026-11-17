@@ -13,6 +13,8 @@ use ms_syntax::{Arm, Expr, ExprKind, NodeId, Pos, Stmt, StmtKind, UnaryOp};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Site {
     pub target: String,
+    /// The target as a person reads it (`@std/os/env.ms::arguments`, `Map[String, Int].get_or`).
+    pub label: String,
     pub kind: String,
     /// A `TaskGroup.spawn` call.
     pub spawn: bool,
@@ -263,7 +265,7 @@ impl FlowBuilder<'_> {
         }
         let node = Node {
             kind: "native".into(),
-            label: format!("native {}", site.target),
+            label: format!("native {}", site.label),
             ..Node::default()
         };
         Some((node, site.spawn))

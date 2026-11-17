@@ -1385,3 +1385,25 @@ fn ownership_view_shows_receiver_modes_and_interface_operations() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// Standard-library calls read as names, never as source offsets or `+source` file halves.
+#[test]
+fn diagram_names_standard_library_calls_for_people() {
+    let dir = scratch("diagram-std-names");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("review_quoted/std_calls.ms"),
+    )
+    .unwrap();
+    let ascii = ms(&dir, &["diagram", "main.ms"]);
+    let text = String::from_utf8_lossy(&ascii.stdout).into_owned();
+    assert!(text.contains("Map[String, Int].get_or"), "{text}");
+    assert!(text.contains("@std/core.ms::print"), "{text}");
+    assert!(!text.contains("+source") && !text.contains("::2"), "{text}");
+    let flow = ms(
+        &dir,
+        &["diagram", "main.ms", "--view", "flow", "--entity", "main"],
+    );
+    let text = String::from_utf8_lossy(&flow.stdout).into_owned();
+    assert!(!text.contains('#'), "{text}");
+}
