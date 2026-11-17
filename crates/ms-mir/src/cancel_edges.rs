@@ -202,7 +202,9 @@ fn function(m: &Module, parks_of: &[bool], ext: Ext, f: &mut Func) -> bool {
     let ret = if ret_ty == Ty::VOID {
         None
     } else {
-        let (i, v) = inst(f, Op::Undef, vec![], Imm::None, ret_ty, entry_loc);
+        // A borrow-returning function hands back a borrowed zero (`undef 1`).
+        let imm = if f.ret_borrowed { Imm::Int(1) } else { Imm::None };
+        let (i, v) = inst(f, Op::Undef, vec![], imm, ret_ty, entry_loc);
         exit_insts.push(i);
         Some(v)
     };
