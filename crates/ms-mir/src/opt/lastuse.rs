@@ -322,11 +322,20 @@ fn is_scalar(m: &Module, t: crate::types::Ty) -> bool {
 }
 
 /// Grows the family of `v` (everything that may point into it) to a fixed point over the
-/// use index.
-fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> ValueSet {
+/// use index. `param_of` is the block `v` is a parameter of: its sibling parameters may be
+/// views into it that the predecessors derived from the value they passed (an owned optional
+/// passed beside its payload), so they join the family.
+fn family(m: &Module, f: &Func, ix: &Index, v: Value, param_of: Option<usize>) -> ValueSet {
     let mut fam: ValueSet = ValueSet::new();
     fam.insert(v);
     let mut work = vec![v];
+    if let Some(bi) = param_of {
+        for p in &f.blocks[bi].params {
+            if p.value != v && !is_scalar(m, f.ty(p.value)) && fam.insert(p.value) {
+                work.push(p.value);
+            }
+        }
+    }
     while let Some(w) = work.pop() {
         for &(bi, ii) in &ix.uses[w.index()] {
             if !ix.live(bi, ii) {
@@ -398,7 +407,7 @@ fn candidate(
     db: usize,
     di: Option<usize>,
 ) -> bool {
-    let fam = family(m, f, ix, v);
+    let fam = family(m, f, ix, v, di.is_none().then_some(db));
     // Leaks of the family into memory the pass cannot follow.
     for w in fam.iter() {
         for &(bi, ii) in &ix.uses[w.index()] {
