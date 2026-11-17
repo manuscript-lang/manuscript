@@ -4,7 +4,7 @@ import (
 	Bytes from "@std/bytes.ms",
 	JsonOptions, JsonValue, json_reader, stringify from "@std/data/json.ms",
 	ReadStream, Source from "@std/io/io.ms",
-	expect_equal, expect_false, fail from "@std/test/test.ms",
+	expect_equal, expect_false, expect_fault, fail from "@std/test/test.ms",
 )
 
 // Hands out the chunks in order, then ends.
@@ -47,8 +47,8 @@ fn decode(input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) List[Str
 test "values split at every chunk size are preserved":
 	source := "{\"a\":\"é🙂\\u00e9\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}\n\"s\"[1]{\"b\":2}  42"
 	expected := [
-		"{\"a\":\"é🙂é\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}",
-		"\"s\"", "[1]", "{\"b\":2}", "42"
+		"{\"a\":\"é🙂é\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}", "\"s\"",
+		"[1]", "{\"b\":2}", "42"
 	]
 	input := source.to_bytes()
 	for size in 1..input.length() + 1:
@@ -92,12 +92,16 @@ test "per-value budgets report LimitExceeded":
 	deep := decode("[[[".to_bytes(), 2, JsonOptions(max_depth: 2))
 	expect_equal(deep.err().kind, "EOVERFLOW")?
 
-test "negative limits fail the first read with EINVAL for every input":
+test "negative limits fault for every input":
 	for limits in [
 		JsonOptions(max_bytes: -1),
 		JsonOptions(max_depth: -1),
 		JsonOptions(max_values: -1),
 	]:
 		for input in ["", "  ", "1", "{}", "{\"a\":[1"]:
-			outcome := decode(input.to_bytes(), 2, limits.clone())
-			expect_equal(outcome.err().kind, "EINVAL")?
+			_outcome := expect_fault(
+				fn: discard(decode(input.to_bytes(), 2, limits.clone()))
+			)?
+
+fn discard[T](value: T) Void:
+	return
