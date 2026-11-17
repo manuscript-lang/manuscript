@@ -95,3 +95,5 @@ fn main() Void!:
 	if r.is_error(): return error(Error("bad"))
 	print(f"{brace}{esc}{flag.length()}{grid.length()}")
 ```
+
+`ms check --fix` rewrites the file in place (it adds `.wait()` and similar repairs), and `ms fmt` may rewrite imports into a parenthesised block, so re-read the file after either. Lint errors can hide under warnings in `ms verify` output: run `ms lint` for the full list. There is no date-only type: keep `"YYYY-MM-DD"` text and validate with `parse_timestamp(f"{d}T00:00:00Z")`. Effect names you will meet: `std.console.write`, `std.fs.read`, `std.fs.write`, `std.clock.read`, `std.env.read`.

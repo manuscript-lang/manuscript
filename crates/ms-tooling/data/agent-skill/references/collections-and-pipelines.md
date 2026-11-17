@@ -20,3 +20,5 @@ fn main() Int:
 `x | f(a: 1)` passes x first; `x | .m()` calls a method; `x | f?` propagates f's Result. Thus `x | f(a: 1) | g? | .m()` means `(g(f(x, a: 1))?).m()`.
 
 List `.filter/.map/.sum` are methods; similarly named stream steps are imported functions. Prefer these operations to bookkeeping loops.
+
+`String.slice(a, b)` returns a String (no Result); `List.slice(a, b)` returns a Result. Read a file's text with `read_file(path).wait()?.decode_utf8().ok_or(Error("not UTF-8"))?`: `read_file` returns a Promise of Bytes, and there is no `read_text`.
