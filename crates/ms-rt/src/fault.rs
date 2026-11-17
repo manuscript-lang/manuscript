@@ -9,6 +9,118 @@ use ms_rt_abi::record::{self, FaultKind, Record};
 use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, ScopeEntry, TABLES_WITH_SCOPES, Tables};
 use std::io::Write as _;
 
+/// The task's cleanup stack: pointer, length and capacity in the header block, so generated code
+/// pushes and discards entries with a few inline stores (`msrt_cleanup_push` is the slow path
+/// that grows it). It owns its buffer like a `Vec` and is emptied back into one at task end.
+#[repr(C)]
+pub struct CleanupVec {
+    ptr: *mut (usize, usize),
+    len: usize,
+    cap: usize,
+}
+
+// SAFETY: a task's cleanup stack is touched only by the thread running that task.
+unsafe impl Sync for CleanupVec {}
+// SAFETY: as above; a task moves between threads only while it is parked.
+unsafe impl Send for CleanupVec {}
+
+impl Default for CleanupVec {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CleanupVec {
+    pub const fn new() -> CleanupVec {
+        CleanupVec {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        }
+    }
+
+    /// Takes over the buffer of `v`.
+    pub fn from_vec(v: Vec<(usize, usize)>) -> CleanupVec {
+        let mut v = core::mem::ManuallyDrop::new(v);
+        CleanupVec {
+            ptr: v.as_mut_ptr(),
+            len: v.len(),
+            cap: v.capacity(),
+        }
+    }
+
+    /// Gives the buffer back as a `Vec`, leaving this empty.
+    pub fn take_vec(&mut self) -> Vec<(usize, usize)> {
+        let (ptr, len, cap) = (self.ptr, self.len, self.cap);
+        *self = CleanupVec::new();
+        if cap == 0 {
+            return Vec::new();
+        }
+        // SAFETY: the buffer came from a `Vec` of this length and capacity.
+        unsafe { Vec::from_raw_parts(ptr, len, cap) }
+    }
+
+    pub fn push(&mut self, entry: (usize, usize)) {
+        if self.len == self.cap {
+            let mut v = self.take_vec();
+            v.push(entry);
+            *self = CleanupVec::from_vec(v);
+            return;
+        }
+        // SAFETY: `len < cap` and the buffer is live.
+        unsafe { self.ptr.add(self.len).write(entry) };
+        self.len += 1;
+    }
+
+    pub fn pop(&mut self) -> Option<(usize, usize)> {
+        if self.len == 0 {
+            return None;
+        }
+        self.len -= 1;
+        // SAFETY: the entry at `len` was written by a push.
+        Some(unsafe { self.ptr.add(self.len).read() })
+    }
+
+    pub fn truncate(&mut self, len: usize) {
+        if len < self.len {
+            self.len = len;
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.len = 0;
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+
+impl core::ops::Deref for CleanupVec {
+    type Target = [(usize, usize)];
+    fn deref(&self) -> &[(usize, usize)] {
+        if self.len == 0 {
+            return &[];
+        }
+        // SAFETY: `len` entries are live at `ptr`.
+        unsafe { core::slice::from_raw_parts(self.ptr, self.len) }
+    }
+}
+
+impl core::ops::DerefMut for CleanupVec {
+    fn deref_mut(&mut self) -> &mut [(usize, usize)] {
+        if self.len == 0 {
+            return &mut [];
+        }
+        // SAFETY: `len` entries are live at `ptr`.
+        unsafe { core::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+}
+
 /// The words generated code reads, one block per task stack. On Unix it sits at the base of the
 /// task's stack slot, which generated code finds by masking the stack pointer; elsewhere it is
 /// reached through `msrt_isolate_hdr`.
@@ -36,6 +148,8 @@ pub struct Hdr {
     /// it. The task boundary clears it when the cancel exit completes. Set through
     /// [`deliver_cancel`].
     pub unwinding: AtomicU8,
+    /// The cleanup stack (offset 24: pointer, length, capacity), pushed and discarded inline.
+    pub cleanups: CleanupVec,
 }
 
 impl Hdr {
@@ -47,6 +161,7 @@ impl Hdr {
             shield: core::sync::atomic::AtomicU32::new(0),
             stop_shield: core::sync::atomic::AtomicU16::new(0),
             unwinding: AtomicU8::new(0),
+            cleanups: CleanupVec::new(),
         }
     }
 }
@@ -297,9 +412,18 @@ pub(crate) const fn stack_limit(lo: usize, hi: usize) -> usize {
 }
 
 type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
-crate::isolate_static! {
-    static CLEANUPS: Vec<(usize, usize)> = Vec::new();
+/// The running task's cleanup stack, which lives in its header block.
+pub(crate) struct CleanupsRef;
+
+impl CleanupsRef {
+    #[inline(always)]
+    pub(crate) fn ptr(&self) -> *mut CleanupVec {
+        // SAFETY: the running task's block lives as long as the task.
+        unsafe { &raw mut (*cur_hdr()).cleanups }
+    }
 }
+
+static CLEANUPS: CleanupsRef = CleanupsRef;
 pub static PENDING_SIGNAL: AtomicU8 = AtomicU8::new(0);
 crate::isolate_static! {
     static FAULTING: bool = false;
@@ -400,6 +524,10 @@ impl Ctx {
 
     /// The emptied cleanup and guard buffers, for the next task to reuse.
     pub(crate) fn take_spares(&mut self) -> Spares {
+        if !self.hdr.is_null() {
+            // SAFETY: the block lives in the task record this context belongs to.
+            self.cleanups = unsafe { (*self.hdr).cleanups.take_vec() };
+        }
         self.cleanups.clear();
         self.guards.clear();
         (
@@ -438,6 +566,8 @@ impl Ctx {
     pub(crate) fn set_hdr(&mut self, hdr: *mut Hdr) {
         self.hdr = hdr;
         // SAFETY: the block was just prepared for this task.
+        unsafe { (*hdr).cleanups = CleanupVec::from_vec(core::mem::take(&mut self.cleanups)) };
+        // SAFETY: the block was just prepared for this task.
         unsafe { (*hdr).limit = stack_limit(self.stack_lo, self.stack_hi) };
     }
 }
@@ -454,7 +584,6 @@ pub(crate) fn live_shielded() -> bool {
 pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
     // SAFETY: single threaded access to the runtime globals.
     unsafe {
-        core::ptr::swap(CLEANUPS.ptr(), &mut c.cleanups);
         core::ptr::swap(GUARDS.ptr(), &mut c.guards);
         core::ptr::swap(SECONDARY.ptr(), &mut c.secondary);
         crate::desc::swap_eq_pairs(&mut c.eq_pairs);
@@ -1194,7 +1323,7 @@ pub fn release_fault_state() {
     }
     // SAFETY: the isolate's main task has ended; nothing runs a cleanup or a guard any more.
     unsafe {
-        *CLEANUPS.ptr() = Vec::new();
+        *CLEANUPS.ptr() = CleanupVec::new();
         *SECONDARY.ptr() = Vec::new();
         *GUARDS.ptr() = Vec::new();
     }
@@ -1559,7 +1688,7 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
 
 /// Removes only final-retirement tombstones from the tail. Cancelled entries reserve their
 /// indices until a later discard, so they must never be pruned here.
-fn prune_removed_cleanups(stack: &mut Vec<(usize, usize)>) {
+fn prune_removed_cleanups(stack: &mut CleanupVec) {
     while stack.last().is_some_and(|entry| entry.0 == 0) {
         stack.pop();
     }
@@ -2246,11 +2375,18 @@ mod tests {
             core::mem::offset_of!(Hdr, guarded),
             ms_rt_abi::symbols::ISOLATE_HDR_GUARDED as usize,
         );
+        let c = core::mem::offset_of!(Hdr, cleanups);
+        assert_eq!(c, ms_rt_abi::symbols::ISOLATE_HDR_CLEANUPS as usize);
+        assert_eq!(c + 8, ms_rt_abi::symbols::ISOLATE_HDR_CLEANUPS_LEN as usize);
+        assert_eq!(
+            c + 16,
+            ms_rt_abi::symbols::ISOLATE_HDR_CLEANUPS_CAP as usize
+        );
         assert_eq!(
             core::mem::offset_of!(Hdr, unwinding),
             ms_rt_abi::symbols::ISOLATE_HDR_UNWINDING as usize,
         );
-        assert_eq!(core::mem::size_of::<Hdr>(), 24);
+        assert_eq!(core::mem::size_of::<Hdr>(), 48);
         // The region's last 16 bytes: the block's address, then the limit (`STACK_LIMIT_CELL`).
         assert_eq!(ms_rt_abi::symbols::STACK_LIMIT_CELL, 8);
     }
@@ -2433,6 +2569,28 @@ mod tests {
 
     unsafe extern "C-unwind" fn returns_cancelled(_: *mut u8) {
         deliver_cancel();
+    }
+
+    #[test]
+    fn the_cleanup_stack_lives_in_the_header_and_grows_past_its_buffer() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock and pass valid pointers.
+        unsafe {
+            let hdr = cur_hdr();
+            let mut last = 0;
+            for i in 0..100 {
+                last = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(i + 1));
+            }
+            // The header mirrors the stack generated code pushes to inline.
+            assert_eq!(last, 100);
+            assert_eq!((*hdr).cleanups.len(), 100);
+            assert!((*hdr).cleanups.cap >= 100);
+            assert_eq!((&(*hdr).cleanups)[41].1, 42);
+            msrt_cleanup_discard(51);
+            assert_eq!((*hdr).cleanups.len(), 50);
+            reset_for_tests();
+        }
     }
 
     #[test]
