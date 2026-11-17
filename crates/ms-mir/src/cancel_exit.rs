@@ -17,7 +17,8 @@
 //!
 //! A function converts only when every owned value live at a park is a scope owner or a value
 //! that is plainly droppable (a fresh result or an entry parameter). A value taken from a memory
-//! slot or moved out of a field has no such rule yet, and the function keeps the hybrid exit.
+//! slot or moved out of a field has no such rule yet, nor has a slot handed to a call that can park;
+//! those functions keep the hybrid exit.
 
 use crate::cancel_edges::{extern_of, parks};
 use crate::ir::*;
@@ -53,6 +54,22 @@ pub(crate) fn externs(m: &mut Module) -> Ext {
     }
 }
 
+/// What the conversion reads about the whole module.
+pub(crate) struct Cx {
+    pub(crate) parks: Vec<bool>,
+    pub(crate) ext: Ext,
+    /// Per function and parameter: a slot pointer the function only borrows (`unwind`).
+    pub(crate) safe: Vec<Vec<bool>>,
+}
+
+pub(crate) fn context(m: &mut Module) -> Cx {
+    Cx {
+        parks: crate::unwind::parking_funcs(m),
+        safe: crate::unwind::slot_safe_params(m),
+        ext: externs(m),
+    }
+}
+
 /// A parking call, with what is live and which scopes are open right after it.
 struct Site {
     block: usize,
@@ -84,17 +101,36 @@ fn droppable(op: Op) -> bool {
 }
 
 /// The parking calls of `f` in block order, or `None` when a value live at one has no rule.
-fn sites(
-    m: &Module,
-    parks_of: &[bool],
-    f: &Func,
-    tags: &HashMap<Value, (i64, i64)>,
-) -> Option<Vec<Site>> {
+fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Option<Vec<Site>> {
     let owned = |v: Value| m.needs_drop(f.ty(v));
     let mut def: HashMap<u32, Op> = HashMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
         if let Some(r) = i.res {
             def.insert(r.0, i.op);
+        }
+    }
+    // A callee that takes a part out of a slot and parks leaves the slot with a hole this exit
+    // cannot see. A slot handed to a parking callee that only borrows it is fine: the callee
+    // leaves the contents in place for the scope end. A slot handed to anything else that can
+    // park or keep it (a closure, a derived pointer) keeps the function hybrid.
+    let parks_of = &cx.parks[..];
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        let escapes =
+            parks(m, parks_of, i) || matches!(i.op, Op::ClosureNew | Op::PtrField | Op::PtrAdd);
+        if !escapes {
+            continue;
+        }
+        for (k, a) in i.args.iter().enumerate() {
+            if !tags.get(a).is_some_and(|t| t.1 >= 2) {
+                continue;
+            }
+            let borrowed = match (i.op, i.imm) {
+                (Op::Call, Imm::Func(g)) => cx.safe[g.index()].get(k).copied().unwrap_or(false),
+                _ => false,
+            };
+            if !borrowed {
+                return None;
+            }
         }
     }
     let n = f.blocks.len();
@@ -238,20 +274,20 @@ fn push(
 /// maps every value some scope owns to its scope.
 pub(crate) fn convert(
     m: &Module,
-    parks_of: &[bool],
-    ext: Ext,
+    cx: &Cx,
     f: &mut Func,
     tags: &HashMap<Value, (i64, i64)>,
 ) -> Vec<usize> {
     if f.blocks.is_empty() || f.unwind_only {
         return Vec::new();
     }
-    let Some(sites) = sites(m, parks_of, f, tags) else {
+    let Some(sites) = sites(m, cx, f, tags) else {
         return Vec::new();
     };
     if sites.is_empty() {
         return Vec::new();
     }
+    let ext = cx.ext;
     let loc = f.loc;
     let (base_inst, base) = push(
         f,
