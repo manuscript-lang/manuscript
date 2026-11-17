@@ -36,7 +36,8 @@ export type Url:
 	// Decoded fragment contents without the leading hash mark.
 	fragment: String
 	// Encoded query contents without the leading question mark, or none when the URL
-	// has no query; `http://a/b?` has an empty one. parse_query decodes individual entries.
+	// has no query; `http://a/b?` has an empty one. parse_query decodes individual
+	// entries.
 	query: String?
 	// Explicit numeric port in 0..65535, or none when the input has no port.
 	port: Int?
