@@ -37,6 +37,7 @@ pub const VALUE_OPTIONS: &[&str] = &[
     "--top",
     "--link",
     "--deny",
+    "--allow",
 ];
 
 /// The `--view` names of `ms diagram`.
@@ -74,6 +75,8 @@ pub struct Invocation {
     pub link: Vec<String>,
     /// Effect patterns the program may not reach (`--deny`).
     pub deny: Vec<String>,
+    /// Effect patterns the program may reach; anything else is refused (`--allow`).
+    pub allow: Vec<String>,
     /// `--static`: link a static musl executable instead of the system libc (Linux).
     pub static_libc: bool,
     pub format_check: bool,
@@ -363,14 +366,18 @@ fn parse_options(
                 };
                 inv.link.push(value.to_string());
             }
-            "--deny" => {
+            "--deny" | "--allow" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
                     return Err(usage_error(
                         io,
-                        "--deny requires an effect pattern, e.g. --deny 'std.net.*'",
+                        format!("{flag} requires an effect pattern, e.g. {flag} 'std.net.*'"),
                     ));
                 };
-                inv.deny.push(value.to_string());
+                if flag == "--deny" {
+                    inv.deny.push(value.to_string());
+                } else {
+                    inv.allow.push(value.to_string());
+                }
             }
             "-o" | "--output" | "--out-dir" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {

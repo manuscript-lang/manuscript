@@ -3,12 +3,12 @@
 ## Summary
 
 - Problem: a test cannot control what code gets from the outside world (time, randomness, environment, files, network, a database client) without a parameter on every caller, and an agent's program cannot be held to less reach than the machine gives it.
-- Change: both problems sit on one seam we already have, effects. `ms run --deny PATTERN` refuses to build a program that reaches a denied effect; `--allow EFFECT:RESOURCE` grants scoped access (a path, a host, a table). `fake(original, replacement)` in a test replaces a function that declares an effect, until the test ends.
+- Change: both problems sit on one seam we already have, effects. `ms run --deny PATTERN` refuses to build a program that reaches a denied effect; `--allow PATTERN` permits only the listed effects, and scoped access (a path, a host, a table) is a packaged function that declares its own effect. `fake(original, replacement)` in a test replaces a function that declares an effect, until the test ends.
 - Decision requested: approve both, and the rule that only functions declaring an effect can be faked.
 
 ## Status
 
-Proposal, 2026-11-16. `--deny` is built on this branch; `fake` is not. Direction (Chinmay): simpler than passing capabilities; fit with effects; `vi.mock` ergonomics, checked when compiling; two uses, limiting agents and faking in tests; fake more than the standard library. Replaces an earlier module-swap design that keyed fakes on file paths.
+Proposal, 2026-11-16. `--deny` and `--allow` are built on this branch; `fake` is not. Direction (Chinmay): simpler than passing capabilities; fit with effects; `vi.mock` ergonomics, checked when compiling; two uses, limiting agents and faking in tests; fake more than the standard library. Replaces an earlier module-swap design that keyed fakes on file paths.
 
 ## Why effects are the seam
 
@@ -28,15 +28,27 @@ app.ms:3:1: type: main reaches std.fs.read, which --deny std.fs.* forbids for th
 - Measured on this branch: a program that reads a file and the clock runs with `--deny 'std.net.*'` and is refused with `--deny 'std.fs.*'` or `--deny '*.read'`.
 - Not a sandbox: `extern fn`, `--link` and child processes are outside effects.
 
-## Restricted access: `--allow EFFECT:RESOURCE`
+## Restricted access: declared capabilities and `--allow`
 
-- An effect may name the argument that identifies what it touches: `// ms: effect std.fs.read(path)`, `std.net.connect(host)`, a project `db.read(table)`.
-- The runner grants scoped access: `--allow 'std.fs.read:/data/**'`, `--allow 'std.net.connect:api.example.com:443'`, `--allow 'db.read:orders'`. `--deny` and `--allow` are one rule set, last match wins.
-- Constant resource at every call: the checker proves it before building, no runtime cost. Otherwise the effect function checks the argument against the run's rules just before the system call; a miss returns `EACCES`.
-- Paths are checked after `..` and symlinks resolve; hosts by name before lookup.
-- The check lives in `@std` bodies; the runtime adds one pattern-match helper and reads the rules from the run.
-- Limit: scoping is only as fine as the declared resource. Raw SQL cannot be scoped to a table by the language; use a database role.
-- Capability values (`host_tree("/data")`) keep working; their constructors are one more place the same rule is checked.
+Scoped access (files under one path, one host, one table) is a function that declares its own effect, written once by trusted code. The runner allows only those effects.
+
+```manuscript
+// ms: effect data.read
+// ms: allow_effect std.fs.read
+export fn read_data(name: String) String!:
+	if name.contains("/") or name.contains("\\") or name == "..":
+		return error(Error(f"data.read: {name} is outside data/", kind: "EACCES"))
+
+	bytes := read_file(join(["data", name])).wait()?
+	return ok(bytes.decode_utf8().get(""))
+```
+
+- `ms run agent.ms --allow 'data.*' --allow std.console.write` builds only if everything `main` reaches matches an `--allow` pattern. A declared effect hides its body, so `read_data` counts as `data.read`, not `std.fs.read`.
+- The same shape gives one host (`api.get` wrapping `fetch` to a fixed host) or one table (`orders.read` wrapping queries on `orders`). No new syntax, no runtime cost.
+- Trust: a program must not relabel its own reads. Under `--allow`, only code it cannot edit may declare an effect: the standard library and fetched packages, which `ms.lock` pins by hash.
+- Measured on this branch (`examples/allowed-effects`): `agent_ok.ms` runs; `agent_bad.ms` is refused for reaching `std.fs.read`; `agent_sneaky.ms`, which declares `data.read` over a read of `/etc/hostname`, is refused at its declaration.
+- Spike gap: the trust check accepts any `@`-named module, so workspace members (editable) pass; the real rule trusts only locked packages.
+- Not a sandbox: `extern fn`, `--link` and child processes are outside effects.
 
 ## Fakes: `fake(original, replacement)`
 
@@ -82,7 +94,7 @@ test "banner uses a fixed clock":
 ## Stages
 
 1. `--deny` for `run`, `build` and `test`, with the call path in the message.
-2. Resource parameters on standard effects, `--allow EFFECT:RESOURCE`, build-time proof for constant arguments.
+2. `--allow`, with the trust rule limited to locked packages.
 3. `fake`: runtime table, test-build lowering, checker rule, stdlib function.
 
 ## Open questions

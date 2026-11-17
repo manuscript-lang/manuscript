@@ -47,8 +47,8 @@ pub struct Engine<L: Lower> {
     build: ms_build::BuildOptions,
     /// `--static` of the current command: link static musl.
     static_libc: std::cell::Cell<bool>,
-    /// `--deny` patterns of the current command: refuse a program that reaches a matching effect.
-    deny: std::cell::RefCell<Vec<String>>,
+    /// `--allow` and `--deny` patterns of the current command.
+    rules: std::cell::RefCell<Rules>,
     /// `ms profile --allocs` of the current command: link the allocation-sampling runtime.
     profile_allocs: std::cell::Cell<bool>,
     /// `ms bench --ops` of the current command: count MIR operations.
@@ -62,7 +62,7 @@ impl<L: Lower> Engine<L> {
             runtime: None,
             build: options::from_env(),
             static_libc: std::cell::Cell::new(false),
-            deny: std::cell::RefCell::new(Vec::new()),
+            rules: std::cell::RefCell::new(Rules::default()),
             profile_allocs: std::cell::Cell::new(false),
             count_ops: std::cell::Cell::new(false),
         }
@@ -73,9 +73,9 @@ impl<L: Lower> Engine<L> {
         self.static_libc.set(on);
     }
 
-    /// Refuse to build a program whose `main` reaches an effect matching one of `patterns`.
-    pub fn set_deny(&self, patterns: Vec<String>) {
-        *self.deny.borrow_mut() = patterns;
+    /// Refuse to build a program whose `main` reaches an effect the rules forbid.
+    pub fn set_rules(&self, rules: Rules) {
+        *self.rules.borrow_mut() = rules;
     }
 
     /// Link the allocation-sampling runtime for the commands that follow (`ms profile --allocs`).
@@ -411,7 +411,7 @@ pub(crate) fn compile_target<L: Lower>(
         return Err(failure(checked));
     };
     if target == Target::Program
-        && let Some(diagnostic) = denied(program, &entry, &backend.deny.borrow())
+        && let Some(diagnostic) = denied(program, &entry, &backend.rules.borrow())
     {
         return Err(failure(ms_driver::Checked {
             diagnostics: vec![diagnostic],
@@ -471,9 +471,10 @@ pub(crate) fn compile_target<L: Lower>(
     }
 }
 
-/// The first effect `main` reaches that a `--deny` pattern names, as a diagnostic at `main`.
-fn denied(program: &ms_check::Program, entry: &str, deny: &[String]) -> Option<Diagnostic> {
-    if deny.is_empty() {
+/// The first effect `main` reaches that the run's rules forbid, as a diagnostic at `main`. With
+/// `--allow` patterns only matching effects may be reached; `--deny` patterns are always refused.
+fn denied(program: &ms_check::Program, entry: &str, rules: &Rules) -> Option<Diagnostic> {
+    if rules.allow.is_empty() && rules.deny.is_empty() {
         return None;
     }
     let main = program
@@ -482,12 +483,27 @@ fn denied(program: &ms_check::Program, entry: &str, deny: &[String]) -> Option<D
         .borrow()
         .get(&ms_check::api::types::n("main"))
         .cloned()?;
+    // A declared effect hides what its body reaches. Under `--allow` only code the program cannot
+    // edit (the standard library and fetched packages, named `@...`) may declare one, or a program
+    // could relabel a file read as an allowed capability.
+    if !rules.allow.is_empty()
+        && let Some(diagnostic) = relabel(program)
+    {
+        return Some(diagnostic);
+    }
     let reached = program.declared_effects_of(main.id);
-    let (pattern, effect) = deny.iter().find_map(|pattern| {
-        reached
-            .iter()
-            .find(|effect| ms_check::effect_matches(pattern, effect))
-            .map(|effect| (pattern, effect.clone()))
+    let message = reached.iter().find_map(|effect| {
+        if let Some(pattern) = rules.deny.iter().find(|p| ms_check::effect_matches(p, effect)) {
+            return Some(format!("main reaches {effect}, which --deny {pattern} forbids for this run"));
+        }
+        let allowed = rules.allow.is_empty()
+            || rules.allow.iter().any(|p| ms_check::effect_matches(p, effect));
+        (!allowed).then(|| {
+            format!(
+                "main reaches {effect}, which no --allow pattern permits for this run (allowed: {})",
+                rules.allow.join(", ")
+            )
+        })
     })?;
     let pos = main.decl.as_ref().map_or(Pos::new(0, 1, 1), |d| d.pos());
     Some(Diagnostic {
@@ -496,12 +512,46 @@ fn denied(program: &ms_check::Program, entry: &str, deny: &[String]) -> Option<D
         file: entry.into(),
         pos,
         phase: Phase::Type,
-        message: format!(
-            "main reaches {effect}, which --deny {pattern} forbids for this run; `ms lint` shows the call that brings it in"
-        ),
+        message,
         end: None,
         fix: None,
     })
+}
+
+/// The first `// ms: effect` line in the program's own modules.
+fn relabel(program: &ms_check::Program) -> Option<Diagnostic> {
+    let syms = ms_syntax::Names::global();
+    program.modules.iter().find_map(|module| {
+        let file = syms.str(module.file);
+        if file.starts_with('@') {
+            return None;
+        }
+        let mut offset = 0;
+        for (index, line) in module.source.split('\n').enumerate() {
+            let column = line.len() - line.trim_start().len();
+            if line.trim_start().starts_with("// ms: effect ") {
+                return Some(Diagnostic {
+                    cause: Default::default(),
+                    opener_line: 0,
+                    file: file.into(),
+                    pos: Pos::new((offset + column) as u32, index as u32 + 1, column as u32 + 1),
+                    phase: Phase::Type,
+                    message: "under --allow, only the standard library and packages may declare an effect; move this function into a package, or run without --allow".to_string(),
+                    end: None,
+                    fix: None,
+                });
+            }
+            offset += line.len() + 1;
+        }
+        None
+    })
+}
+
+/// `--allow` and `--deny` effect patterns of the current command.
+#[derive(Default)]
+pub struct Rules {
+    pub allow: Vec<String>,
+    pub deny: Vec<String>,
 }
 
 fn library_failure(graph: &Graph) -> Failure {
