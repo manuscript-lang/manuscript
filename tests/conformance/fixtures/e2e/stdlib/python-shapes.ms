@@ -1,15 +1,18 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
-import SplitParts from "@std/string.ms"
-import DivMod, divmod, gcd, isqrt, lcm, max_int, min_int, pow_int from "@std/math/math.ms"
-import exists, temporary_directory from "@std/os/fs.ms"
-import stem, with_extension from "@std/os/path.ms"
+import (
+	DivMod, divmod, gcd, isqrt, lcm, max_int, min_int, pow_int from "@std/math/math.ms",
+	exists, temporary_directory from "@std/os/fs.ms",
+	stem, with_extension from "@std/os/path.ms",
+	SplitParts from "@std/string.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+)
 
 test "split_once cuts at the first or last separator":
 	parts := "key=a=b".split_once("=").get(SplitParts("", ""))
 	expect_equal(parts.before, "key")?
 	expect_equal(parts.after, "a=b")?
+
 	last := "a/b/c".rsplit_once("/").get(SplitParts("", ""))
 	expect_equal(last.before, "a/b")?
 	expect_equal(last.after, "c")?
@@ -40,9 +43,11 @@ test "divmod floors like Python":
 	pair := divmod(-7, 2).get(DivMod(0, 0))
 	expect_equal(pair.quotient, -4)?
 	expect_equal(pair.remainder, 1)?
+
 	neg := divmod(7, -2).get(DivMod(0, 0))
 	expect_equal(neg.quotient, -4)?
 	expect_equal(neg.remainder, -1)?
+
 	exact := divmod(-6, 3).get(DivMod(9, 9))
 	expect_equal(exact.quotient, -2)?
 	expect_equal(exact.remainder, 0)?
@@ -78,3 +83,12 @@ test "exists distinguishes absence from failure":
 	expect_true(exists(dir)?)?
 	expect_false(exists(f"{dir}/missing")?)?
 	expect_false(exists(f"{dir}/missing/deeper")?)?
+
+test "take_while and drop_while split at the first failing element":
+	values := [1, 2, 5, 1]
+	expect_equal(values.take_while(fn x: x < 3), [1, 2])?
+	expect_equal(values.drop_while(fn x: x < 3), [5, 1])?
+	expect_equal(values.take_while(fn x: x < 0), List[Int]())?
+	expect_equal(values.drop_while(fn x: x < 9), List[Int]())?
+	expect_equal(values.take_while(fn x: x < 9), values)?
+	expect_equal(List[Int]().take_while(fn x: x < 3), List[Int]())?

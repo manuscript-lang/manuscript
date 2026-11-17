@@ -6,7 +6,7 @@ Decision (Chinmay, 2026-11-16): borrow a Python stdlib shape only when it measur
 
 Already better than Python, so unchanged: `min`/`max` return an optional, `Map.update`/`add_default`/`get_or` cover `defaultdict`, `cut_prefix`/`cut_suffix` return `String?` (Python's `removeprefix` cannot say whether it matched).
 
-Not done: `fs.read_lines(path)`, because whole-file reads are promise-based and a line-list wrapper needs its own decision; `take_while`/`drop_while`.
+`List.take_while`/`drop_while` were added as methods beside `take`/`drop`. Not done: `fs.read_lines(path)`, because whole-file reads are promise-based and a line-list wrapper needs its own decision.
 
 Evidence: [python-shapes fixture](../../tests/conformance/fixtures/e2e/stdlib/python-shapes.ms); proposal in the project files, `proposals/python-stdlib-shapes-2026-11-17.md`.
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/python-shapes.ms`.

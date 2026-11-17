@@ -48,19 +48,24 @@
           "index": 7,
           "name": "python-shapes.ms::exists distinguishes absence from failure",
           "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "python-shapes.ms::take_while and drop_while split at the first failing element",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 8,
-        "selected": 8,
-        "passed": 8,
+        "available": 9,
+        "selected": 9,
+        "passed": 9,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN python-shapes.ms::split_once cuts at the first or last separator\nPASS python-shapes.ms::split_once cuts at the first or last separator\nRUN python-shapes.ms::split_once returns none for a missing or empty separator\nPASS python-shapes.ms::split_once returns none for a missing or empty separator\nRUN python-shapes.ms::counts tallies in first-seen order\nPASS python-shapes.ms::counts tallies in first-seen order\nRUN python-shapes.ms::pow_int returns none on overflow or a negative exponent\nPASS python-shapes.ms::pow_int returns none on overflow or a negative exponent\nRUN python-shapes.ms::divmod floors like Python\nPASS python-shapes.ms::divmod floors like Python\nRUN python-shapes.ms::gcd lcm and isqrt\nPASS python-shapes.ms::gcd lcm and isqrt\nRUN python-shapes.ms::path stem and with_extension\nPASS python-shapes.ms::path stem and with_extension\nRUN python-shapes.ms::exists distinguishes absence from failure\nPASS python-shapes.ms::exists distinguishes absence from failure\n8 tests, 0 failed\n",
+      "stdout": "RUN python-shapes.ms::split_once cuts at the first or last separator\nPASS python-shapes.ms::split_once cuts at the first or last separator\nRUN python-shapes.ms::split_once returns none for a missing or empty separator\nPASS python-shapes.ms::split_once returns none for a missing or empty separator\nRUN python-shapes.ms::counts tallies in first-seen order\nPASS python-shapes.ms::counts tallies in first-seen order\nRUN python-shapes.ms::pow_int returns none on overflow or a negative exponent\nPASS python-shapes.ms::pow_int returns none on overflow or a negative exponent\nRUN python-shapes.ms::divmod floors like Python\nPASS python-shapes.ms::divmod floors like Python\nRUN python-shapes.ms::gcd lcm and isqrt\nPASS python-shapes.ms::gcd lcm and isqrt\nRUN python-shapes.ms::path stem and with_extension\nPASS python-shapes.ms::path stem and with_extension\nRUN python-shapes.ms::exists distinguishes absence from failure\nPASS python-shapes.ms::exists distinguishes absence from failure\nRUN python-shapes.ms::take_while and drop_while split at the first failing element\nPASS python-shapes.ms::take_while and drop_while split at the first failing element\n9 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
