@@ -1727,13 +1727,18 @@ fn has_ascii_letter_of_case(text: &[u8], lower: bool) -> bool {
         let above = x + LO * u64::from(0x80 - last - 1);
         at_least & !above & HI != 0
     };
-    let (chunks, rest) = text.as_chunks::<8>();
-    if chunks.iter().any(|w| in_range(u64::from_le_bytes(*w))) {
-        return true;
+    let n = text.len();
+    if n < 8 {
+        let mut tail = [0u8; 8];
+        tail[..n].copy_from_slice(text);
+        return in_range(u64::from_le_bytes(tail));
     }
-    let mut tail = [0u8; 8];
-    tail[..rest.len()].copy_from_slice(rest);
-    in_range(u64::from_le_bytes(tail))
+    // The last word overlaps the one before it when the length is not a multiple of eight.
+    let (chunks, _) = text.as_chunks::<8>();
+    chunks.iter().any(|w| in_range(u64::from_le_bytes(*w)))
+        || in_range(u64::from_le_bytes(
+            text[n - 8..].try_into().unwrap_or([0; 8]),
+        ))
 }
 
 /// `upper` or `lower` of the string `s`: ASCII text is copied once into its result and mapped
