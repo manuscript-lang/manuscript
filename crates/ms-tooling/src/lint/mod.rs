@@ -241,6 +241,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome",
     },
+    Rule {
+        code: "MSL131",
+        family: "Result printed as a value",
+        severity: Severity::Warning,
+        repair: "write `call()?` in a function that returns a Result, or `if value := call():` to read the success",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.

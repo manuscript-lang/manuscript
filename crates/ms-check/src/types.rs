@@ -899,6 +899,16 @@ impl Method {
             && is_close_result(syms, &self.ty.result_ty())
     }
 
+    /// Whether the method is a type's own `to_json() JsonValue`, which encodes the type as JSON
+    /// without an `impl JsonEncode`. Only the full `JsonEncode` signature counts: a `to_json`
+    /// with another shape is an ordinary method.
+    pub fn encodes_json(&self, syms: ms_syntax::Names) -> bool {
+        self.is_inherent(syms)
+            && self.name().is_some_and(|n| syms.str(n) == "to_json")
+            && self.ty.params.is_empty()
+            && self.ty.result_ty().is(Builtin::JsonValue)
+    }
+
     /// Whether the method is a type's own `equals(other: Self) Bool`, `hash() Int` or
     /// `compare(other: Self) Int`, which decides the matching property by shape without an
     /// `impl Equal`, `impl Hashable` or `impl Comparable`.
