@@ -26,6 +26,8 @@ pub struct Components {
     pub fragment: String,
     /// The URL was written without `//`, as in `mailto:?subject=hi`.
     pub omit_host: bool,
+    /// The query is present but empty, as in `http://a/b?`.
+    pub has_query: bool,
 }
 
 fn string(b: S) -> Result<String, Fail> {
@@ -195,6 +197,7 @@ fn components(u: &Url) -> Result<Components, Fail> {
         query: string(u.raw_query.clone())?,
         fragment: string(u.fragment.clone())?,
         omit_host: u.omit_host,
+        has_query: u.force_query,
     })
 }
 
@@ -254,6 +257,7 @@ fn go_url(v: &Components) -> Option<Url> {
         raw_query: v.query.as_bytes().to_vec(),
         fragment: v.fragment.as_bytes().to_vec(),
         omit_host: v.omit_host,
+        force_query: v.has_query,
         ..Url::default()
     };
     let parsed = parser::parse(&u.render()).ok()?;
@@ -360,6 +364,7 @@ mod tests {
             query: query.into(),
             fragment: fragment.into(),
             omit_host: false,
+            has_query: false,
         }
     }
 
@@ -513,6 +518,19 @@ mod tests {
         assert_eq!(
             format(&c("http", "", None, "rel", "", "")),
             Err(Fail::InvalidInput)
+        );
+    }
+
+    #[test]
+    fn an_empty_query_round_trips() {
+        let u = parse("http://a/b?").unwrap();
+        assert!(u.has_query && u.query.is_empty());
+        assert_eq!(format(&u).unwrap(), "http://a/b?");
+        assert!(!parse("http://a/b").unwrap().has_query);
+        let base = parse("http://a/b/c/d;p?q").unwrap();
+        assert_eq!(
+            format(&resolve(&base, "?").unwrap()).unwrap(),
+            "http://a/b/c/d;p?"
         );
     }
 

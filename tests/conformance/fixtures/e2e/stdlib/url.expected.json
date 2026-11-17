@@ -43,19 +43,24 @@
           "index": 6,
           "name": "url.ms::URLs without an authority format without one and an IPv6 zone keeps its case",
           "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "url.ms::URL keeps an empty query through parse, format and resolve",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN url.ms::URL canonicalization and relative references\nPASS url.ms::URL canonicalization and relative references\nRUN url.ms::URL query retains duplicate keys empty values and spaces\nPASS url.ms::URL query retains duplicate keys empty values and spaces\nRUN url.ms::URL query skips empty segments\nPASS url.ms::URL query skips empty segments\nRUN url.ms::URL format rejects queries that would not round trip\nPASS url.ms::URL format rejects queries that would not round trip\nRUN url.ms::URL parse rejects malformed hosts and queries and keeps an empty authority\nPASS url.ms::URL parse rejects malformed hosts and queries and keeps an empty authority\nRUN url.ms::URL format and resolve reject invalid schemes and hostless relative paths\nPASS url.ms::URL format and resolve reject invalid schemes and hostless relative paths\nRUN url.ms::URLs without an authority format without one and an IPv6 zone keeps its case\nPASS url.ms::URLs without an authority format without one and an IPv6 zone keeps its case\n7 tests, 0 failed\n",
+      "stdout": "RUN url.ms::URL canonicalization and relative references\nPASS url.ms::URL canonicalization and relative references\nRUN url.ms::URL query retains duplicate keys empty values and spaces\nPASS url.ms::URL query retains duplicate keys empty values and spaces\nRUN url.ms::URL query skips empty segments\nPASS url.ms::URL query skips empty segments\nRUN url.ms::URL format rejects queries that would not round trip\nPASS url.ms::URL format rejects queries that would not round trip\nRUN url.ms::URL parse rejects malformed hosts and queries and keeps an empty authority\nPASS url.ms::URL parse rejects malformed hosts and queries and keeps an empty authority\nRUN url.ms::URL format and resolve reject invalid schemes and hostless relative paths\nPASS url.ms::URL format and resolve reject invalid schemes and hostless relative paths\nRUN url.ms::URLs without an authority format without one and an IPv6 zone keeps its case\nPASS url.ms::URLs without an authority format without one and an IPv6 zone keeps its case\nRUN url.ms::URL keeps an empty query through parse, format and resolve\nPASS url.ms::URL keeps an empty query through parse, format and resolve\n8 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

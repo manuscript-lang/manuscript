@@ -12,7 +12,6 @@ parse#46 by design: an unbracketed IPv6 address is not an RFC 3986 host, so it i
 parse#47 by design: an unbracketed IPv6 address is not an RFC 3986 host, so it is rejected where Go splits off a port
 parse#49 by design: `Url` cannot tell an empty port (`host:`) from no port, so the colon is dropped (the same URL)
 parse#54 by design: `format` refuses host characters that need escaping (`<` `>` `"`), which `parse` accepts as Go does
-parse#6 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
 parse_errors#26 by design: `parse` reads an absolute URL, so a reference with no scheme is rejected (`resolve` takes the reference)
 query#10 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
 query#11 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
@@ -25,11 +24,8 @@ query#4 by design: a semicolon is ordinary query text and is never a separator, 
 query#5 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
 query#8 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
 query#9 by design: a semicolon is ordinary query text and is never a separator, where Go reports an error (the recorded oracle pins this)
-resolve#2 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
 resolve#3 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
 resolve#40 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
-resolve#6 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
-resolve#86 by design: `Url` cannot tell an empty query (`?`) from no query, so a lone `?` is dropped
 resolve#87 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
 resolve#88 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says
 resolve#89 by design: an opaque URL (`mailto:x`, `g:h`, `http:opaque`) has no hierarchical parts and is rejected, as the `Url` documentation says

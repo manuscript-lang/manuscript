@@ -100,3 +100,24 @@ test "URLs without an authority format without one and an IPv6 zone keeps its ca
 
 	zoned := parse("tcp://[2020::2020:20:2020:2020%25Windows%20Loves%20Spaces]:2020")?
 	expect_equal(zoned.host, "2020::2020:20:2020:2020%Windows Loves Spaces")?
+
+test "URL keeps an empty query through parse, format and resolve":
+	for text in ["http://a/b?", "http://a/b?#f", "http://a/?", "mailto:?"]:
+		expect_equal(format(parse(text)?), ok(text))?
+	expect_equal((parse("http://a/b?")?).has_query, true)?
+	expect_equal((parse("http://a/b?")?).query, "")?
+	expect_equal((parse("http://a/b")?).has_query, false)?
+	expect_equal(format(parse("http://a/b")?), ok("http://a/b"))?
+	built := Url(
+		scheme: "http",
+		host: "a",
+		path: "/b",
+		query: "",
+		fragment: "",
+		port: none,
+		has_query: true,
+	)
+	expect_equal(format(built), ok("http://a/b?"))?
+	base := parse("http://a/b/c/d;p?q")?
+	expect_equal(format(resolve(base, "?")?), ok("http://a/b/c/d;p?"))?
+	expect_equal(format(resolve(base, "")?), ok("http://a/b/c/d;p?q"))?
