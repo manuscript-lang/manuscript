@@ -12,7 +12,7 @@ fn captures_bench(count: Int) Result[Void, Error]:
 	expected_row := ["word123", "word", "123"]
 
 	fn work() Result[Void, Error]:
-		rows := re.captures_all(text)?
+		rows := re.capture_all(text)?
 		var checksum = 0
 
 		for row in rows:
@@ -115,7 +115,7 @@ fn named_bench(count: Int) Result[Void, Error]:
 		expected.add(names[i].clone(), names[i].clone())
 
 	fn work() Result[Void, Error]:
-		out := re.named_captures("abcdefgh")
+		out := re.capture_named("abcdefgh")
 		expect_equal(out, expected)?
 		return keep(out.length())
 

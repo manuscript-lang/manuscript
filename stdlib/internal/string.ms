@@ -21,6 +21,16 @@ export extern fn msstd_regex_compile(pattern: String) Regex!
 
 export extern fn msstd_regex_find_span(re: Regex, text: String) List[Int]?
 
+export extern fn msstd_regex_captures(re: Regex, text: String) List[String]
+
+export extern fn msstd_regex_captures_all(
+	re: Regex,
+	text: String,
+	max_matches: Int?,
+) List[List[String]]!
+
+export extern fn msstd_regex_named_captures(re: Regex, text: String) Map[String, String]
+
 // Flat byte-offset pairs; captures start with the number of slots per match and use -1
 // for absent groups.
 export extern fn msstd_regex_find_all_spans(

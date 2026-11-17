@@ -24,7 +24,7 @@ fn has_map(value: JsonValue) Bool:
 fn tag(d: JsonValue, index: Int) String?:
 	if tags := d.get("user"):
 		if list := tags.get("tags"):
-			if item := list.at(index): return string_of(item)
+			if item := list.get_index(index): return string_of(item)
 	return none
 
 test "JSON accessors read nested objects without copying subtrees":
@@ -60,7 +60,7 @@ test "JSON borrowed list and map views match the tree":
 test "JSON accessors return none for the wrong type":
 	d := doc()
 	expect_true(d.get("missing").is_none())?
-	expect_true(d.at(0).is_none())?
+	expect_true(d.get_index(0).is_none())?
 	expect_true(d.as_string().is_none())?
 	expect_true(d.as_list().is_none())?
 	expect_true(d.as_bool().is_none())?
@@ -100,7 +100,7 @@ test "JSON get_in reads a chain of members in place":
 	expect_equal(user_name(d), "ada")?
 	expect_equal(d.get_in(["user", "age"]).and_then(fn n: n.as_int()), 36)?
 	if tags := d.get_in(["user", "tags"]):
-		expect_equal(tags.at(-1).and_then(fn t: string_of(t)), "c")?
+		expect_equal(tags.get_index(-1).and_then(fn t: string_of(t)), "c")?
 	expect_true(d.get_in(["user", "missing"]).is_none())?
 	expect_true(d.get_in(["user", "name", "first"]).is_none())?
 	expect_true(d.get_in([]).is_none())?

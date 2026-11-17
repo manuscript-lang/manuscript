@@ -10,6 +10,8 @@ Round 3 (hardening week): a type's text form is `to_string()`, never `format()`,
 
 Round 4 (hardening week): a number type's constructor and parser are named for the type, as `rat_of_int` and `parse_rat` already were: `big_int_of_int` and `parse_big_int` replace the bare `from_int` and `parse`, which clashed when two number modules were imported. Header lookups read the same on both header types: `HttpHeaders.get` (first value) and `get_all`/`get_all_bytes` replace `values`/`values_bytes`, matching `Headers.get`/`get_all`. `Regex.find_span` returns a `RegexSpan?` like `find_all_spans`, and a decoder's `max_bytes` budget is its last parameter (`base64_decode`).
 
+Regex capture methods are verb-first like the find family: `capture`, `capture_all`, `capture_named`, `capture_spans`, `capture_all_spans` (not `captures`, `captures_all`, `named_captures`). `JsonValue.get_index(index)` replaces `at`, which List lost in #669 (a type cannot overload `get` on key and index). `HttpHeaders.remove` returns nothing like every other `remove`; an absent name is a no-op.
+
 Apply when: adding or moving a stdlib function, or when two modules could both own an operation.
 Evidence: commit 9a2dc4e6, [process](../../stdlib/os/process.ms), [fs](../../stdlib/os/fs.ms), [crypto](../../stdlib/crypto/crypto.ms), [sse](../../stdlib/net/sse.ms).
 Verify: `ms search_symbol <old name>` finds no declaration; `make docs-check` passes and every moved symbol has an updated fixture.

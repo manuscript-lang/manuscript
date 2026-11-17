@@ -35,14 +35,14 @@ test "regex rejects invalid expressions and exhausted budgets":
 
 test "regex captures groups spans and splits":
 	date := compile("(?P<y>[0-9]{4})-(?P<m>[0-9]{2})")?
-	expect_equal(date.captures("on 2026-10 ok"), ["2026-10", "2026", "10"])?
-	expect_equal(date.captures("none"), [])?
-	expect_equal(date.named_captures("2026-10")["y"], "2026")?
-	expect_equal(date.named_captures("none").is_empty(), true)?
+	expect_equal(date.capture("on 2026-10 ok"), ["2026-10", "2026", "10"])?
+	expect_equal(date.capture("none"), [])?
+	expect_equal(date.capture_named("2026-10")["y"], "2026")?
+	expect_equal(date.capture_named("none").is_empty(), true)?
 	expect_equal(date.find_span("on 2026-10").get(), RegexSpan(3, 10))?
 	expect_equal(date.find_span("none").is_none(), true)?
 	expect_equal(
-		(date.captures_all("2026-10 2027-11")?),
+		(date.capture_all("2026-10 2027-11")?),
 		[["2026-10", "2026", "10"], ["2027-11", "2027", "11"]],
 	)?
 
@@ -64,15 +64,15 @@ test "regex captures groups spans and splits":
 test "regex repeated captures clear absent groups and preserve budgets":
 	re := compile("(a)|(b+)")?
 	expect_equal(
-		(re.captures_all("a bbb a", 3)?),
+		(re.capture_all("a bbb a", 3)?),
 		[["a", "a", ""], ["bbb", "", "bbb"], ["a", "a", ""]],
 	)?
 
 	limited: List[List[String]]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
-	expect_equal(re.captures_all("a bbb a", 2), limited)?
-	expect_equal((re.captures_all("xyz", 0)?), [])?
+	expect_equal(re.capture_all("a bbb a", 2), limited)?
+	expect_equal((re.capture_all("xyz", 0)?), [])?
 
 test "regex repeated template expansion preserves byte budgets":
 	re := compile("(?P<a>a+)|(b+)")?
@@ -108,7 +108,7 @@ test "regex capped templates preserve Unicode references and malformed syntax":
 
 test "regex named captures preserve unnamed gaps and absent groups":
 	re := compile("(a)?(?P<first>b)?(c)(?P<empty>d*)(?P<last>e)")?
-	found := re.named_captures("ce")
+	found := re.capture_named("ce")
 	expect_equal(found.length(), 2)?
 	expect_equal(found.get("first").is_none(), true)?
 	expect_equal(found.get("empty").get(), "")?
@@ -116,31 +116,31 @@ test "regex named captures preserve unnamed gaps and absent groups":
 
 test "regex capture methods preserve whole match only patterns":
 	re := compile("\\bword\\b")?
-	expect_equal(re.captures("sword word"), ["word"])?
-	expect_equal(re.captures("sword"), [])?
-	expect_equal(re.named_captures("word").is_empty(), true)?
+	expect_equal(re.capture("sword word"), ["word"])?
+	expect_equal(re.capture("sword"), [])?
+	expect_equal(re.capture_named("word").is_empty(), true)?
 
 	unnamed := compile("(word)([0-9]+)")?
-	expect_equal(unnamed.named_captures("word123").is_empty(), true)?
-	expect_equal((re.captures_all("sword word word", 2)?), [["word"], ["word"]])?
+	expect_equal(unnamed.capture_named("word123").is_empty(), true)?
+	expect_equal((re.capture_all("sword word word", 2)?), [["word"], ["word"]])?
 
 	limited: List[List[String]]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
-	expect_equal(re.captures_all("word word", 1), limited)?
-	expect_equal((re.captures_all("sword", 0)?), [])?
+	expect_equal(re.capture_all("word word", 1), limited)?
+	expect_equal((re.capture_all("sword", 0)?), [])?
 
 	empty := compile("a*")?
-	expect_equal((empty.captures_all("a🙂🙂a", 3)?), [["a"], [""], ["a"]])?
+	expect_equal((empty.capture_all("a🙂🙂a", 3)?), [["a"], [""], ["a"]])?
 
 	absent := compile("(a)?b")?
-	expect_equal(absent.captures("b"), ["b", ""])?
-	expect_equal((absent.captures_all("b b")?), [["b", ""], ["b", ""]])?
+	expect_equal(absent.capture("b"), ["b", ""])?
+	expect_equal((absent.capture_all("b b")?), [["b", ""], ["b", ""]])?
 
 test "regex collection budgets preserve empty adjacency and exact counts":
 	re := compile("a*")?
 	expect_equal((re.find_all("a🙂🙂a", 3)?), ["a", "", "a"])?
-	expect_equal((re.captures_all("a🙂🙂a", 3)?), [["a"], [""], ["a"]])?
+	expect_equal((re.capture_all("a🙂🙂a", 3)?), [["a"], [""], ["a"]])?
 
 	find_limit: List[String]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
@@ -149,25 +149,25 @@ test "regex collection budgets preserve empty adjacency and exact counts":
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(re.find_all("a🙂🙂a", 2), find_limit)?
-	expect_equal(re.captures_all("a🙂🙂a", 2), capture_limit)?
+	expect_equal(re.capture_all("a🙂🙂a", 2), capture_limit)?
 	expect_equal(re.find_all("", 0), find_limit)?
-	expect_equal(re.captures_all("", 0), capture_limit)?
+	expect_equal(re.capture_all("", 0), capture_limit)?
 
 	for pattern in ["x", "(x)"]:
 		matching := compile(pattern)?
 		expect_equal((matching.find_all("none", 0)?), [])?
-		expect_equal((matching.captures_all("none", 0)?), [])?
+		expect_equal((matching.capture_all("none", 0)?), [])?
 		expect_equal((matching.find_all("é🙂", 0)?), [])?
-		expect_equal((matching.captures_all("é🙂", 0)?), [])?
+		expect_equal((matching.capture_all("é🙂", 0)?), [])?
 		expect_equal(matching.find_all("x", 0), find_limit)?
-		expect_equal(matching.captures_all("x", 0), capture_limit)?
+		expect_equal(matching.capture_all("x", 0), capture_limit)?
 
 		for max in [1, 4, 8]:
 			text := "x".repeat(max)?
 			expect_equal((matching.find_all(text, max)?).length(), max)?
-			expect_equal((matching.captures_all(text, max)?).length(), max)?
+			expect_equal((matching.capture_all(text, max)?).length(), max)?
 			expect_equal(matching.find_all(text + "x", max), find_limit)?
-			expect_equal(matching.captures_all(text + "x", max), capture_limit)?
+			expect_equal(matching.capture_all(text + "x", max), capture_limit)?
 
 test "regex compile errors preserve columns after anchors and numbered lines":
 	for item in [

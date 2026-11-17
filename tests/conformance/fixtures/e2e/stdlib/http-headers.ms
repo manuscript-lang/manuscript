@@ -88,8 +88,8 @@ fn echo_headers(var exchange: HttpExchange) Void!:
 	)
 
 	var output = received.clone()
-	_removed_connection := output.remove("Connection")
-	_removed_length := output.remove("Content-Length")
+	output.remove("Connection")
+	output.remove("Content-Length")
 	return exchange.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":
@@ -123,7 +123,7 @@ test "lookup returns membership and clone separates it":
 	_k := fields.append("K", "ASCII") | expect_ok?
 	(not fields.contains("K")) | expect_true?
 
-	_removed := fields.remove("X-DUP")
+	fields.remove("X-DUP")
 	_new_field := fields.append("X-Dup", "new") | expect_ok?
 	(fields.get_all("x-dup").length() != 1) | expect_false?
 

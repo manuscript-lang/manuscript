@@ -74,7 +74,7 @@ test "capture spans distinguish no match absent groups and empty captures":
 		| expect_ok?
 		| expect_none?
 	)
-	re.captures("") | expect_equal(["", "", ""])?
+	re.capture("") | expect_equal(["", "", ""])?
 
 	plain := compile("é") | expect_ok?
 	plain_expected: List[List[Int]?] := [[1, 3]]
