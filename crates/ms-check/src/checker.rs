@@ -298,6 +298,8 @@ pub struct Checker {
     pub(crate) conflicted_arguments: HashSet<ms_syntax::ast::NodeId>,
     pub(crate) call_name: String,
     pub(crate) call_pos: Option<Pos>,
+    /// Whether the call being checked is written `receiver.name(...)`.
+    pub(crate) call_method: bool,
     pub(crate) captures: HashMap<usize, HashMap<usize, BindingRef>>,
     pub(crate) constants_visiting: HashSet<usize>,
     pub(crate) cycle_reported: HashSet<usize>,
@@ -397,6 +399,7 @@ impl Checker {
             conflicted_arguments: HashSet::default(),
             call_name: String::new(),
             call_pos: None,
+            call_method: false,
             captures: HashMap::default(),
             constants_visiting: HashSet::default(),
             cycle_reported: HashSet::default(),

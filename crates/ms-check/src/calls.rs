@@ -546,6 +546,7 @@ impl Checker {
         };
         let resolved = function_arguments(self.syms, args, &sig.params);
         i.arguments = slots(&resolved);
+        self.call_method = matches!(callee.kind, ExprKind::Member { .. });
         i.no_return = callable.no_return
             || self.arguments_for(
                 &callee_name(self.syms, callee),
@@ -610,14 +611,18 @@ impl Checker {
     fn arguments(&mut self, args: &[Arg], params: &[Param], defaults: &Defaults) -> bool {
         let call_name = std::mem::take(&mut self.call_name);
         let call_pos = self.call_pos.take();
+        let call_method = std::mem::take(&mut self.call_method);
         let mut seen: HashSet<Name> = HashSet::default();
         let mut no_return = false;
         let mut get_hinted = false;
         for arg in args {
             if self.syms.str(arg.name).is_empty() {
                 // `get(default)` became `get_or(default)`: name it, with a fix on the method.
-                if let (false, Some(at), true) = (get_hinted, call_pos, call_name.ends_with(".get"))
-                {
+                if let (false, Some(at), true) = (
+                    get_hinted,
+                    call_pos,
+                    call_method && call_name.rsplit('.').next() == Some("get"),
+                ) {
                     get_hinted = true;
                     self.type_error_name(
                         at,
