@@ -1152,6 +1152,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::DepthEnter
             | Op::DepthLeave
             | Op::StackLow
+            | Op::StackNear
             | Op::CleanupPush
             | Op::CleanupRun
             | Op::GlobalGet

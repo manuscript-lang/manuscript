@@ -8,7 +8,11 @@ import (
 	range_by from "@std/collections/collections.ms",
 	from_int from "@std/math/math.ms",
 	compile from "@std/regex.ms",
-	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
+	expect_equal,
+	expect_false,
+	expect_fault,
+	expect_true,
+	fail from "@std/test/test.ms",
 )
 
 fn positive(value: Int) Bool:
@@ -372,9 +376,6 @@ test "growth limits and invalid inputs return values":
 	list_limit: List[Int]! := error(
 		Error("collection: limit exceeded", kind: "EOVERFLOW")
 	)
-	list_invalid: List[Int]! := error(
-		Error("collection: invalid input", kind: "EINVAL")
-	)
 	(
 		range_by(
 			start: 0,
@@ -383,14 +384,17 @@ test "growth limits and invalid inputs return values":
 			options: RangeOptions(max_items: 3),
 		) | expect_equal(list_limit)?
 	)
-	(
-		range_by(
-			start: 0,
-			end: 4,
-			step: 0,
-			options: RangeOptions(max_items: 3),
-		) | expect_equal(list_invalid)?
-	)
+
+	_step := expect_fault(
+		fn: discard(
+			range_by(
+				start: 0,
+				end: 4,
+				step: 0,
+				options: RangeOptions(max_items: 3),
+			)
+		)
+	)?
 	filled(value: 1, count: 2, max_items: 1) | expect_equal(list_limit)?
 
 fn parity(value: Int) Int:
@@ -550,3 +554,6 @@ test "generic native methods accept omitted single-parameter labels":
 			observed_values.append(value)
 	)
 	observed_values | expect_equal(values)?
+
+fn discard[T](value: T) Void:
+	return

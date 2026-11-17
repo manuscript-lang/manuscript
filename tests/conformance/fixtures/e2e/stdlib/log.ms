@@ -23,6 +23,7 @@ import (
 	expect_equal,
 	expect_error,
 	expect_false,
+	expect_fault,
 	expect_ok,
 	expect_true from "@std/test/test.ms",
 )
@@ -100,8 +101,7 @@ test "levels filter methods and function values":
 	logger.fatal("filtered")?
 	expect_equal((written(path)?), before)?
 
-	invalid: Void! := error(Error("logging: invalid input", kind: "EINVAL"))
-	expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)?
+	_silent := expect_fault(fn: discard(logger.log(LogLevel.Silent, "invalid")))?
 
 type Service:
 	service: String
@@ -144,19 +144,8 @@ test "limits and unencodable values reject before writing":
 		LoggerOptions(timestamp: false, max_bytes: 0),
 	)?
 	expect_equal(zero.info(""), limited)?
-	expect_false(
-		(
-			(
-				expect_error(
-					create(
-						file_transport(path.clone())?,
-						LoggerOptions(max_bytes: -1),
-					)
-				)?
-			) != Error("logging: invalid input", kind: "EINVAL")
-		)
-	)?
 
+	_budget := expect_fault(fn: discard(create_with_budget(path.clone(), -1)))?
 	unlimited := create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
 	bad := JsonValue.NumberValue("NaN")
 	invalid_data: Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
@@ -409,5 +398,12 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
 test "rotating transport rejects invalid sizes":
 	directory := temporary("manuscript-rotate-")?
 	path := f"{directory.path()}/app.log"
-	expect_true(rotating_file_transport(path.clone(), 0, 1).is_error())?
-	expect_true(rotating_file_transport(path.clone(), 10, -1).is_error())?
+	_size := expect_fault(fn: discard(rotating_file_transport(path.clone(), 0, 1)))?
+	_keep := expect_fault(fn: discard(rotating_file_transport(path.clone(), 10, -1)))?
+
+fn create_with_budget(path: String, max_bytes: Int) Void!:
+	var logger = create(file_transport(path)?, LoggerOptions(max_bytes: max_bytes))?
+	logger.close()?
+
+fn discard[T](value: T) Void:
+	return

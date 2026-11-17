@@ -55,3 +55,7 @@ The closure drop (heap and framed), the drop-from tail registered while a captur
 ## Stage 7: boxed optionals, maps and sets
 
 A boxed optional is dropped with `opt.unbox` (the payload moves out of the box, which is freed) and cloned like any optional. A map or set is dropped and cloned in MIR through a stack slot and the runtime's `msrt_slot_drop` and `msrt_slot_copy` with its descriptor, as the backends did. Corpus 1460 of 1460 on both backends.
+
+## Stage 8: drop of data that contains itself
+
+`stack.near N` (new op: whether the stack pointer is within N bytes of the segment limit) lets the guard of recursive drops live in MIR. A recursive type's drop function is a wrapper: when the stack is within `DEEP_DROP_HEADROOM`, `msrt_drop_enter` decides whether to park the value (`msrt_drop_defer` with the slot drop function, a block holding the value) or run the body, and `msrt_drop_leave` follows the body. The body of a boxed enum with a tail field (`Cons(head, tail)`) is a loop: it reads the tail, releases the block with the tail marked moved, and continues with the tail, so a long chain does not recurse. The copy of recursive data (the chain copy needs an op that fills a field of a fresh block) stays in the backends. Corpus 1460 of 1460 on both backends. Instruction counts for `interp` under callgrind: 2,983,575,576 on main, 2,983,575,590 here; wall times of `exprparse`, `objgraph` and `treegrep` equal or better (minimum of seven runs).
