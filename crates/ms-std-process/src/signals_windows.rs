@@ -5,9 +5,10 @@
 //! counts each event for every observer of that signal, then returns `FALSE` so the handler that
 //! was installed before (the runtime's cancellation) still runs.
 use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
-use ms_rt::glue::{Wakeup, cancel_pending};
+use ms_rt::glue::Wakeup;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use ms_std_fs::err::{Fail, Res};
+use ms_std_fs::ops::check_wait;
 use ms_std_fs::sys;
 use windows_sys::Win32::System::Console::SetConsoleCtrlHandler;
 
@@ -155,9 +156,7 @@ impl Watcher {
             if let Some(sig) = self.take() {
                 return Ok(sig);
             }
-            if cancel_pending() {
-                return Err(Fail::failed("cancelled"));
-            }
+            check_wait()?;
             let parked = Wakeup::new();
             PARKED[self.slot].store(parked.id(), Ordering::SeqCst);
             // The handler counts before it reads `PARKED` and this stores before it re-reads

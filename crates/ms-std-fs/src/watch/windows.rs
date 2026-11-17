@@ -4,7 +4,7 @@
 //! is freed.
 use super::{Event, Gate, valid_native, wait_object};
 use crate::err::{Fail, Res};
-use crate::ops::poll_cancel;
+use crate::ops::{check_wait, poll_cancel};
 use crate::path;
 use crate::sys::{self, CPath};
 use alloc::boxed::Box;
@@ -251,6 +251,7 @@ impl Native {
                 // SAFETY: plain query.
                 let code = unsafe { GetLastError() };
                 if code == ERROR_IO_INCOMPLETE {
+                    check_wait()?;
                     if !wait_object(self.event as isize) {
                         return Err(Fail::failed("watch"));
                     }

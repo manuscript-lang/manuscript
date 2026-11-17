@@ -107,6 +107,18 @@ pub fn read_bounded(fd: sys::Fd, max: i64) -> Result<Vec<u8>, Fail> {
     read_limited(fd, max, true)
 }
 
+/// Called before each park of a wait that loops: a stop request is an `Err`, and so is a bounded
+/// read (`next(timeout:)`) whose time has passed, because a park past that limit returns at once
+/// and a loop that only retries would spin.
+pub fn check_wait() -> Res<()> {
+    poll_cancel()?;
+    #[cfg(not(test))]
+    if ms_rt::glue::read_limit_passed() {
+        return Err(Fail::status(ms_rt_abi::STATUS_TIMEOUT));
+    }
+    Ok(())
+}
+
 /// Parks the task until `fd` can be read, so a pipe with no data yet neither stalls the other
 /// tasks nor ignores a stop request.
 fn wait_readable(fd: sys::Fd) -> Res<()> {

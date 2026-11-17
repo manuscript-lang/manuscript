@@ -462,6 +462,14 @@ pub unsafe extern "C-unwind" fn msrt_task_read_limit(timeout_ns: i64) -> i64 {
     }
 }
 
+/// Whether the running task's read limit (`msrt_task_read_limit`) has passed. A wait that loops
+/// must stop with a timeout once it is true: every park returns at once past the limit, so a
+/// loop that only retries spins.
+pub fn read_limit_passed() -> bool {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { (*ensure_init()).read_limit <= clock_ns() }
+}
+
 /// Puts back the limit `msrt_task_read_limit` returned (`i64::MAX` is no bound).
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_read_limit_restore(previous: i64) {

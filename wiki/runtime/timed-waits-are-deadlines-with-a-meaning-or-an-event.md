@@ -22,3 +22,5 @@ Rejected: replacing the HTTP watcher's periodic look with kernel timers (PR 4238
 
 Apply when: adding a wait, a sleep in a test, or a retry loop.
 Evidence: [timed_waits.rs](../../crates/ms-repo-check/src/timed_waits.rs), [allow list](../../crates/ms-repo-check/timed-waits-allowed.txt), [wait.rs](../../crates/ms-std-net/src/wait.rs), [watch.rs](../../crates/ms-std-fs/src/watch.rs), [proposal](../../proposals/event-driven-waits.md).
+
+A native that waits in a loop must call `ms_std_fs::ops::check_wait()` before each park. `ReadStream.next(timeout:)` sets a read limit on the task, and every park past it returns at once as a timeout. A loop that only retries then spins a core and never ends: the native watcher, the polling watcher and the signal stream did this. `check_wait` returns `STATUS_TIMEOUT` once the limit has passed, and `watch-and-signal-reads-time-out.ms` pins it.
