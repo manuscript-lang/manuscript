@@ -2,8 +2,11 @@
 #![allow(unsafe_code)] // the `ms-rt` task wait call below
 
 use crate::{NS_PER_MS, pause};
+use core::sync::atomic::{AtomicI32, Ordering};
 use ms_rt::ffi::Failure;
 use ms_rt::glue::pool::Cancelled;
+#[cfg(not(test))]
+use ms_rt::glue::pool::Lane;
 use ms_rt_abi::STATUS_NOT_TERMINAL;
 use rustix::event::{PollFd, PollFlags, poll};
 use rustix::fd::BorrowedFd;
@@ -20,12 +23,105 @@ use std::os::unix::ffi::OsStrExt;
 const WAIT_READ: u32 = 1;
 #[cfg(not(test))]
 const WAIT_CANCELLED: u32 = 16;
+/// `SIGWINCH` on Linux and macOS.
+const SIGWINCH: i32 = 28;
+
+/// The wake pipe's read and write ends (`-1` until the first terminal opens). One pipe serves
+/// the process for good: a wait that was abandoned may still poll the read end, so it is never
+/// closed. A byte means "look again": the window changed size, or a wait must end.
+static WAKE_READ: AtomicI32 = AtomicI32::new(-1);
+static WAKE_WRITE: AtomicI32 = AtomicI32::new(-1);
+
+/// Writes the wake byte; a full pipe already holds a wake. Safe in a signal handler.
+fn wake() {
+    let fd = WAKE_WRITE.load(Ordering::Relaxed);
+    if fd >= 0 {
+        let byte = 1u8;
+        // SAFETY: `write` is async-signal-safe; the descriptor is never closed.
+        unsafe { libc::write(fd, (&raw const byte).cast(), 1) };
+    }
+}
+
+extern "C" fn on_winch(_: i32) {
+    // SAFETY: reads and restores this thread's errno around the write.
+    let saved = unsafe { *errno_location() };
+    wake();
+    // SAFETY: as above.
+    unsafe { *errno_location() = saved };
+}
+
+#[cfg(target_os = "linux")]
+use libc::__errno_location as errno_location;
+#[cfg(target_os = "macos")]
+use libc::__error as errno_location;
+
+/// Makes the wake pipe once and returns its read end.
+fn wake_read() -> Result<i32, Failure> {
+    static MAKE: std::sync::Once = std::sync::Once::new();
+    MAKE.call_once(|| {
+        let mut ends = [-1i32; 2];
+        // SAFETY: `ends` holds the two descriptors `pipe` writes; `fcntl` acts on them.
+        unsafe {
+            // `pipe2` does not exist on macOS, so set the flags after the call.
+            if libc::pipe(ends.as_mut_ptr()) != 0 {
+                return;
+            }
+            for fd in ends {
+                libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC);
+                libc::fcntl(
+                    fd,
+                    libc::F_SETFL,
+                    libc::fcntl(fd, libc::F_GETFL) | libc::O_NONBLOCK,
+                );
+            }
+        }
+        // Both ends stay open for the life of the process.
+        WAKE_READ.store(ends[0], Ordering::Release);
+        WAKE_WRITE.store(ends[1], Ordering::Release);
+    });
+    match WAKE_READ.load(Ordering::Acquire) {
+        -1 => Err(Failure::failed("cannot make the terminal wake pipe")),
+        fd => Ok(fd),
+    }
+}
+
+fn set_winch_handler(handler: usize) {
+    // SAFETY: a zeroed `sigaction` with a plain `fn(int)` handler is valid.
+    unsafe {
+        let mut act: libc::sigaction = core::mem::zeroed();
+        act.sa_sigaction = handler;
+        act.sa_flags = libc::SA_RESTART;
+        libc::sigaction(SIGWINCH, &act, core::ptr::null_mut());
+    }
+}
+
+/// Blocks until `input` is readable or something wrote the wake byte, which it takes. The wait
+/// has no limit: a resize or a stop wakes it.
+fn wait_input_or_wake(job: &(i32, i32)) {
+    // SAFETY: both descriptors outlive every wait (standard input; the wake pipe is never closed).
+    let (input, wake) = unsafe { (BorrowedFd::borrow_raw(job.0), BorrowedFd::borrow_raw(job.1)) };
+    loop {
+        let mut fds = [
+            PollFd::new(&input, PollFlags::IN),
+            PollFd::new(&wake, PollFlags::IN),
+        ];
+        if poll(&mut fds, None) == Err(Errno::INTR) {
+            continue;
+        }
+        if fds[1].revents().contains(PollFlags::IN) {
+            let mut buf = [0u8; 64];
+            while matches!(read(wake, &mut buf[..]), Ok(n) if n > 0) {}
+        }
+        return;
+    }
+}
 
 /// The terminal's descriptors and the settings to put back.
 pub struct Term {
     input: BorrowedFd<'static>,
     output: BorrowedFd<'static>,
     saved: Termios,
+    wake_read: i32,
 }
 
 fn env(name: &str) -> Option<OsString> {
@@ -90,6 +186,7 @@ impl Term {
         if !(isatty(input) && isatty(output)) {
             return Err(STATUS_NOT_TERMINAL.into());
         }
+        let wake_read = wake_read()?;
         let Ok(saved) = tcgetattr(input) else {
             return Err(Failure::failed("cannot read terminal settings"));
         };
@@ -119,28 +216,39 @@ impl Term {
         if tcsetattr(input, OptionalActions::Now, &raw).is_err() {
             return Err(Failure::failed("cannot enter raw mode"));
         }
+        // A resize raises SIGWINCH, which wakes a wait for input.
+        set_winch_handler(on_winch as *const () as usize);
         Ok(Term {
             input,
             output,
             saved,
+            wake_read,
         })
     }
 
     /// Puts the saved settings back; nothing to report if the terminal vanished already.
     pub fn restore(&self) {
         let _ = tcsetattr(self.input, OptionalActions::Now, &self.saved);
+        set_winch_handler(libc::SIG_DFL);
+        // A task waiting for input sees the terminal closed.
+        wake();
     }
 
     pub fn size(&self) -> Option<(i64, i64)> {
         size_of(self.output).or_else(|| size_of(self.input))
     }
 
-    /// Blocks the task until input is ready or `timeout_ns` passes; `Err` when a stop request
-    /// ends the wait, so the caller returns and drops what it holds.
-    pub fn wait_readable(&self, timeout_ns: i64) -> Result<bool, Cancelled> {
+    /// Blocks the task until input is ready. `timeout_ns` is a protocol delay (the wait for the
+    /// rest of an escape sequence); `None` waits for input or a wake (a resize, a close) with no
+    /// limit. `Ok(false)` on the timeout or a wake; `Err` when a stop request ends the wait, so
+    /// the caller returns and drops what it holds.
+    pub fn wait_readable(&self, timeout_ns: Option<i64>) -> Result<bool, Cancelled> {
         if poll_readable(self.input, 0) {
             return Ok(true);
         }
+        let Some(timeout_ns) = timeout_ns else {
+            return self.wait_until_woken();
+        };
         if timeout_ns <= 0 {
             return Ok(false);
         }
@@ -162,6 +270,24 @@ impl Term {
         }
         #[cfg(test)]
         Ok(poll_readable(self.input, timeout_ns))
+    }
+
+    /// Waits on a pool thread for input or a wake, so the task and the process sit idle.
+    fn wait_until_woken(&self) -> Result<bool, Cancelled> {
+        let job = (rustix::fd::AsRawFd::as_raw_fd(&self.input), self.wake_read);
+        #[cfg(test)]
+        wait_input_or_wake(&job);
+        #[cfg(not(test))]
+        match ms_rt::glue::pool::try_run(Lane::General, job, wait_input_or_wake, -1) {
+            Ok(Some(())) => {}
+            // A task limit ended the wait, or a stop request did: the abandoned wait holds a
+            // pool thread until something wakes it.
+            outcome => {
+                wake();
+                return outcome.map(|_| false);
+            }
+        }
+        Ok(poll_readable(self.input, 0))
     }
 
     /// Appends the ready input to `out`; `Err(())` once input ended or failed.

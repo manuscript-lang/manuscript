@@ -480,7 +480,8 @@ fn var TerminalEvents.next() TerminalEvent?!:
 			self.queue.remove(0)
 			return ok(event)
 
-		// Window changes carry no input, so compare the size on every wake.
+		// A resize wakes the read without input (SIGWINCH on Unix, a console record on
+		// Windows), so compare the size on every wake.
 		now := read_size(self.handle.native)
 
 		if current := now:
