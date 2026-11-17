@@ -109,7 +109,7 @@ fn raw_terminal_reads_keys_resizes_and_restores_the_terminal() {
 
     let mut log = String::new();
     wait_for(&master, &mut log, "size 80x24");
-    assert!(!canonical(slave.as_raw_fd()), "raw mode is on");
+    assert!(!canonical(master.as_raw_fd()), "raw mode is on");
     for (keys, expected) in [
         (&b"ab"[..], "text:ab"),
         (b"\x1b[A", "key:up ctrl=false alt=false shift=false"),
@@ -131,7 +131,9 @@ fn raw_terminal_reads_keys_resizes_and_restores_the_terminal() {
     // The scope shows the cursor again and the terminal settings come back.
     wait_for(&master, &mut log, "\x1b[?25h");
     assert!(child.wait().unwrap().success());
-    assert!(canonical(slave.as_raw_fd()), "settings restored");
+    // Ask the master: the child was the session leader of this terminal, and macOS hangs up the
+    // slave when it exits, so `tcgetattr` on the slave fails there while the master still answers.
+    assert!(canonical(master.as_raw_fd()), "settings restored");
     let enter = "\x1b[?2004h\x1b[>4;2m\x1b[>1u";
     let moves = "\x1b[2;3H\x1b[?25l\x1b[K\x1b[1A\x1b[2C\x1b]2;t\x07";
     assert!(log.starts_with(&format!("{enter}{moves}")), "{log:?}");
