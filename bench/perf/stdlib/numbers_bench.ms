@@ -44,12 +44,7 @@ bench "decimal.add_round":
 	measure(20000, work)?
 
 bench "compress.gzip":
-	blob := (
-		"the quick brown fox jumps over the lazy dog "
-		.repeat(20000)
-		.get("")
-		.to_bytes()
-	)
+	blob := "the quick brown fox jumps over the lazy dog ".repeat(20000).to_bytes()
 	size := blob.length()
 
 	fn work() Result[Void, Error]:
@@ -59,12 +54,7 @@ bench "compress.gzip":
 	measure(size, work)?
 
 bench "compress.roundtrip":
-	blob := (
-		"the quick brown fox jumps over the lazy dog "
-		.repeat(20000)
-		.get("")
-		.to_bytes()
-	)
+	blob := "the quick brown fox jumps over the lazy dog ".repeat(20000).to_bytes()
 	size := blob.length()
 
 	fn work() Result[Void, Error]:
@@ -96,7 +86,7 @@ bench "time.parse_timestamp_maximum_width":
 	measure(20000, work)?
 
 bench "time.parse_timestamp_oversized_fraction":
-	text := "2026-03-01T12:30:45." + "0".repeat(65536).get() + "Z"
+	text := "2026-03-01T12:30:45." + "0".repeat(65536) + "Z"
 
 	fn work() Result[Void, Error]:
 		var n = 0

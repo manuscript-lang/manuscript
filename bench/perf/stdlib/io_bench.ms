@@ -67,7 +67,7 @@ bench "io.stages.map3_fold":
 	measure(10, work)?
 
 bench "io.lines long fragmented":
-	text := "x".repeat(262144)?
+	text := "x".repeat(262144)
 	data := f"{text}\n".to_bytes()
 
 	fn work() Void!:

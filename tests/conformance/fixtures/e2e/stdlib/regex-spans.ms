@@ -222,7 +222,7 @@ test "span methods support bound calls and preserve anchor context":
 	rows.length() | expect_equal(3)?
 
 test "span results remain bounded for dense matches":
-	text := "é🙂".repeat(32768) | expect_ok?
+	text := "é🙂".repeat(32768)
 	re := compile("(é)|(🙂)") | expect_ok?
 	(
 		re.find_all_spans(text, 1)

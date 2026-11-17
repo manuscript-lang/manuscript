@@ -17,7 +17,7 @@ test "TOML quoting preserves empty plain and Unicode text":
 		"Ada",
 		"space punctuation : ; # ' []",
 		"é🙂日本語",
-		"é🙂日本語".repeat(1024).get(),
+		"é🙂日本語".repeat(1024),
 	]:
 		root := table(text.clone())
 		out := stringify(root)?
@@ -37,7 +37,7 @@ test "TOML quoting preserves escaped control and Unicode text":
 		"\u{1f}",
 		"\u{7f}",
 		"é🙂\n日本語\\",
-		"abcdefgh".repeat(2048).get().concat("\n"),
+		"abcdefgh".repeat(2048).concat("\n"),
 	]:
 		root := table(text)
 		(parse(stringify(root)?)?) | expect_equal(root)?

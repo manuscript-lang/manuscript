@@ -236,6 +236,109 @@ export pi: Float := 3.141592653589793
 export fn pow(base: Float, exponent: Float) Float:
 	return msstd_math_pow(base, exponent)
 
+// Returns `base` raised to a nonnegative integer `exponent`, or none when the exponent
+// is negative or the result does not fit in Int. Example: `pow_int(2, 10)` is 1024.
+export fn pow_int(base: Int, exponent: Int) Int?:
+	if exponent < 0: return none
+
+	var result = 1
+	var factor = base
+	var left = exponent
+
+	while left > 0:
+		if left % 2 == 1:
+			next_result := checked_multiply(result, factor)
+			if next_result.is_none(): return none
+
+			result = next_result.get(0)
+
+		left /= 2
+
+		if left > 0:
+			next_factor := checked_multiply(factor, factor)
+			if next_factor.is_none(): return none
+
+			factor = next_factor.get(0)
+
+	return result
+
+// Multiplies two Ints, or returns none when the product does not fit in Int.
+fn checked_multiply(left: Int, right: Int) Int?:
+	if left == 0 or right == 0: return 0
+
+	product := wrapping_multiply(left, right)
+	if left == min_int and right == -1: return none
+	if right == min_int and left == -1: return none
+	if product / right != left: return none
+
+	return product
+
+// The floor quotient and the remainder of `divmod`.
+export type DivMod:
+	// The quotient rounded toward negative infinity.
+	quotient: Int
+	// The remainder, which is zero or has the sign of the divisor.
+	remainder: Int
+
+// Divides rounding toward negative infinity, like Python's `divmod`: the remainder
+// has the divisor's sign and `quotient * divisor + remainder` is the dividend. Returns
+// none for a zero divisor or the one overflowing case, `min_int` by -1.
+// Example: `divmod(-7, 2)` is quotient -4, remainder 1.
+export fn divmod(dividend: Int, divisor: Int) DivMod?:
+	if divisor == 0: return none
+
+	if divisor == -1:
+		if dividend == min_int: return none
+		return DivMod(quotient: -dividend, remainder: 0)
+
+	var quotient = dividend / divisor
+	var remainder = dividend % divisor
+
+	if remainder != 0 and (remainder < 0) != (divisor < 0):
+		quotient -= 1
+		remainder += divisor
+
+	return DivMod(quotient: quotient, remainder: remainder)
+
+// Returns the non-negative greatest common divisor; `gcd(0, 0)` is zero. Faults like
+// `abs` when the result is 2^63, which Int cannot hold.
+export fn gcd(left: Int, right: Int) Int:
+	var a = left.abs()
+	var b = right.abs()
+
+	while b != 0:
+		next := a % b
+		a = b
+		b = next
+
+	return a
+
+// Returns the non-negative least common multiple; zero when either value is zero.
+// Faults like any Int overflow when the result does not fit.
+export fn lcm(left: Int, right: Int) Int:
+	if left == 0 or right == 0: return 0
+	return (left / gcd(left, right) * right).abs()
+
+// Returns the floor of the square root, or none for a negative value.
+// Example: `isqrt(17)` is 4.
+export fn isqrt(value: Int) Int?:
+	if value < 0: return none
+	if value < 2: return value
+
+	var low = 1
+	var high = value / 2 + 1
+	if high > 3037000499: high = 3037000499
+
+	while low < high:
+		mid := low + (high - low + 1) / 2
+
+		if mid <= value / mid:
+			low = mid
+		else:
+			high = mid - 1
+
+	return low
+
 // Returns the floating-point remainder of `left / right` with the sign of `left`, like
 // Int `%` (C `fmod`), not the IEEE round-to-nearest remainder: `remainder(5.0, 3.0)` is
 // 2.0. A zero `right` or infinite `left` gives NaN; an infinite `right` returns `left`.

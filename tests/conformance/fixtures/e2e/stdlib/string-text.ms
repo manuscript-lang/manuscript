@@ -90,9 +90,9 @@ test "char-set trims and find_char agree with a scalar walk across scan windows"
 		for trail in [0, 1, 31, 32, 33, 95, 96, 97, 300]:
 			for core in ["", "é", "x", "xé😀y"]:
 				text := (
-					"é".repeat(lead, none).get("")
+					"é".repeat(lead)
 					+ core
-					+ "é".repeat(trail, none).get("")
+					+ "é".repeat(trail)
 				)
 				expected_start := reference_start(text, "é")
 				expected_end := reference_end(text, "é")
@@ -160,9 +160,9 @@ test "character-set trims cover each end, non-ASCII sets, empty sets and whole-t
 	"a😀b😀".trim_end_chars("😀") | expect_equal("a😀b")?
 	(
 		(
-			"x".repeat(100000).get("")
+			"x".repeat(100000)
 			+ "é"
-			+ "y".repeat(100000).get("")
+			+ "y".repeat(100000)
 		).trim_chars("xy")
 		| expect_equal("é")?
 	)

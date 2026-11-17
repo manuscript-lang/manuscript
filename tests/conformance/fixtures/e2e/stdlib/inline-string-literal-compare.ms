@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 fn pad(n: Int) String:
-	return "x".repeat(n).get("")
+	return "x".repeat(n)
 
 test "a short literal equals the same text built at run time":
 	built := f"ab{1}"

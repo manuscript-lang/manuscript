@@ -101,8 +101,8 @@ test "regex capped templates preserve Unicode references and malformed syntax":
 	)
 	expect_equal(re.replace_template("é🙂", template, 9), limited)?
 
-	text := "é".repeat(65536)?
-	repeated := "$0".repeat(128)?
+	text := "é".repeat(65536)
+	repeated := "$0".repeat(128)
 	whole := compile(".+")?
 	expect_equal(whole.replace_template(text, repeated, 0), limited)?
 
@@ -163,7 +163,7 @@ test "regex collection budgets preserve empty adjacency and exact counts":
 		expect_equal(matching.capture_all("x", 0), capture_limit)?
 
 		for max in [1, 4, 8]:
-			text := "x".repeat(max)?
+			text := "x".repeat(max)
 			expect_equal((matching.find_all(text, max)?).length(), max)?
 			expect_equal((matching.capture_all(text, max)?).length(), max)?
 			expect_equal(matching.find_all(text + "x", max), find_limit)?

@@ -48,6 +48,7 @@
 @std/os/fs.ms create_directory: std.fs.write
 @std/os/fs.ms create_hard_link: std.fs.write
 @std/os/fs.ms create_symlink: std.fs.write
+@std/os/fs.ms exists: std.fs.read
 @std/os/fs.ms glob: std.fs.read
 @std/os/fs.ms list: std.fs.read
 @std/os/fs.ms move: std.fs.write, std.fs.delete

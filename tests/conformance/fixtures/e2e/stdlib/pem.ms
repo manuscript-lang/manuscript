@@ -15,7 +15,7 @@ test "parse finds blocks and ignores surrounding text":
 	expect_equal(blocks[1].data.length(), 0)?
 
 test "encode wraps at 64 columns and round-trips":
-	data := "x".repeat(100).get().to_bytes()
+	data := "x".repeat(100).to_bytes()
 	text := encode_all([PemBlock(label: "BLOB", data: data)])
 	expect_equal(text.lines()[1].length(), 64)?
 

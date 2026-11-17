@@ -34,7 +34,7 @@ fn main() Int:
 			"near1", "near7", "near8", "near9", "near15", "near16", "near17", "near18",
 			"near23", "near24", "near25", "near31", "near32", "near33"
 		]:
-			var data = "a".repeat(n).get().to_bytes()
+			var data = "a".repeat(n).to_bytes()
 			var pos = -1
 			var start = 0
 			if kind == "first" or kind == "negative" or kind == "past": pos = 0

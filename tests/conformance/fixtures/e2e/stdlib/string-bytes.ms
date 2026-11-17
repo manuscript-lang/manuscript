@@ -26,22 +26,13 @@ test "Unicode scalar offsets differ from scalar count":
 	expect_equal((text.slice(1, 7)?), "é🙂")?
 	expect_equal(("é".normalize("NFC")?), "é")?
 
-test "strings honor omitted none zero and explicit output limits":
-	expect_equal(("ab".repeat(2)?), "abab")?
-	expect_equal(("ab".repeat(2)?), "abab")?
-	expect_equal(("ab".repeat(0, 0)?), "")?
-	expect_failure(
-		"é".repeat(2, 3),
-		"EOVERFLOW",
-		"string: limit exceeded: repeating 2 bytes 2 times",
-	)?
+test "repeat is plain text and clamps nonpositive counts":
+	expect_equal("ab".repeat(2), "abab")?
+	expect_equal("ab".repeat(0), "")?
+	expect_equal("ab".repeat(-3), "")?
+	expect_equal("".repeat(5), "")?
 	expect_equal("x".pad_start(3, "ab"), "abx")?
 	expect_equal("x".pad_end(3, "ab"), "xab")?
-	expect_failure(
-		"ab".repeat(4611686018427387904),
-		"EOVERFLOW",
-		"string: limit exceeded: repeating 2 bytes",
-	)?
 	expect_equal("aa".replace("a", "xy"), "xyxy")?
 	expect_equal("a,,b".split(",", 2), ["a", ""])?
 	expect_equal(" \té \n".trim(), "é")?
@@ -130,8 +121,8 @@ test "empty text splits into one part and case mapping is full Unicode":
 	expect_equal("Maße".upper(), "MASSE")?
 
 test "offset walks over long strings match scalar_values":
-	a := "aé€🙂".repeat(300)?
-	b := "日é".repeat(450)?
+	a := "aé€🙂".repeat(300)
+	b := "日é".repeat(450)
 
 	for text in [a, b]:
 		var walked = 0
@@ -152,7 +143,7 @@ test "offset walks over long strings match scalar_values":
 
 test "offsets and slicing in long mixed-width text agree with the scalar walk":
 	block := "aé€🙂"
-	text := block.repeat(600)?
+	text := block.repeat(600)
 	expect_equal(text.length(), 6000)?
 	expect_equal(text.scalar_length(), 2400)?
 
@@ -223,11 +214,11 @@ test "builder appends variable text of every length across growth":
 	expect_equal((built.slice(0, 10)?), "0010120123")?
 
 test "search indexes are byte offsets for ascii, inline and unicode text":
-	long := "a".repeat(100).get().concat("!").concat("é").concat("!")
+	long := "a".repeat(100).concat("!").concat("é").concat("!")
 	expect_equal(long.index_of("!").get(-1), 100)?
 	expect_equal(long.last_index_of("!").get(-1), 103)?
 
-	ascii := "a".repeat(100).get().concat("!")
+	ascii := "a".repeat(100).concat("!")
 	expect_equal(ascii.index_of("!").get(-1), 100)?
 	expect_equal(ascii.last_index_of("!").get(-1), 100)?
 	expect_equal(ascii.last_index_of("a").get(-1), 99)?
@@ -236,7 +227,7 @@ test "search indexes are byte offsets for ascii, inline and unicode text":
 	expect_equal(ascii.last_index_of("?").get(-1), -1)?
 
 test "count matches split for nonempty parts and counts scalars plus one for an empty part":
-	expect_equal("word,".repeat(10000).get().count(","), 10000)?
+	expect_equal("word,".repeat(10000).count(","), 10000)?
 	expect_equal("aaaa".count("aa"), 2)?
 	expect_equal("héllo".count(""), 6)?
 	expect_equal("".count("a"), 0)?
@@ -244,16 +235,11 @@ test "count matches split for nonempty parts and counts scalars plus one for an 
 	expect_equal("🙂x🙂".count("🙂"), 2)?
 	expect_equal("abc".count("abcd"), 0)?
 
-test "slice and repeat errors name the values that failed":
+test "slice errors name the values that failed":
 	expect_failure(
 		"hello".slice(2, 10),
 		"ERANGE",
 		"string: value out of range: slice(2, 10) of a string with 5 bytes",
-	)?
-	expect_failure(
-		"ab".repeat(-3),
-		"EINVAL",
-		"string: invalid input: repeat count must not be negative, found -3",
 	)?
 
 	items := [1, 2, 3]

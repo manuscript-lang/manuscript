@@ -743,7 +743,7 @@ fn scan(text: String) List[Node]:
             close := find_run(cs.clone(), i + run, run, BT)
 
             if close < 0:
-                nodes.append(Text(value: "`".repeat(run).get()))
+                nodes.append(Text(value: "`".repeat(run)))
                 i += run
             else:
                 nodes.append(Code(value: code_span(cs.clone(), i + run, close)))
@@ -1067,7 +1067,7 @@ fn with_count(node: Node, count: Int) Node:
 fn as_text(node: Node) Node:
     match node:
         Delim(ch, count, _, _, _):
-            return Text(value: ch.repeat(count).get())
+            return Text(value: ch.repeat(count))
         _:
             return node
 
@@ -1200,7 +1200,7 @@ fn plain_one(node: Node) String:
         Link(_, _, _, children):
             return plain(children)
         Delim(ch, count, _, _, _):
-            return ch.repeat(count).get()
+            return ch.repeat(count)
         Opener(image, _):
             if image:
                 return "!["

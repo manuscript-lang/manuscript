@@ -28,7 +28,7 @@ fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Void!:
 	return keep(bytes)
 
 fn body(size: Int, count: Int = 1) Bytes:
-	payload := "x".repeat(size).get().to_bytes()
+	payload := "x".repeat(size).to_bytes()
 	var parts: List[Part] = []
 	for unused in 0..count:
 		parts.append(form_part("field", payload.clone()))

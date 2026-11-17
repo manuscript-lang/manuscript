@@ -7,7 +7,7 @@ import (
 
 test "path suffix scans preserve Unicode component boundaries":
 	paths := posix()
-	slashes := "/".repeat(8192).get("")
+	slashes := "/".repeat(8192)
 	expect_equal(paths.basename(f"é.txt{slashes}"), "é.txt")?
 	expect_equal(paths.basename_without(f"é.txt{slashes}", ".txt"), "é")?
 	expect_equal(paths.extension(f"目录/é.txt{slashes}"), ".txt")?
@@ -17,7 +17,7 @@ test "path suffix scans preserve Unicode component boundaries":
 
 test "UNC scans retain root spelling and Unicode server and share names":
 	paths := win32()
-	slashes := "/".repeat(8192).get("")
+	slashes := "/".repeat(8192)
 	root := f"//{slashes}服务器/{slashes}共享/"
 	spelling := f"{root}a/../文件.txt"
 	expect_equal(paths.parse(spelling).root, root)?

@@ -19,14 +19,14 @@ fn source(count: Int, mode: String) String:
 	if mode == "native-chain":
 		return (
 			"export fn main() Int:\n    result := [0]"
-			+ ".map(fn v: v + 1)".repeat(count).get()
+			+ ".map(fn v: v + 1)".repeat(count)
 			+ "\n    print(result[0])\n    return 0\n"
 		)
 	if mode == "source-chain":
 		return (
 			header
 			+ "export fn main() Int:\n    result := Counter(0)"
-			+ ".next()".repeat(count).get()
+			+ ".next()".repeat(count)
 			+ "\n    print(result.value)\n    return 0\n"
 		)
 

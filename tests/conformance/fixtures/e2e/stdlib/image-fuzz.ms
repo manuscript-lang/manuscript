@@ -175,7 +175,7 @@ test "hostile headers fail before allocating":
 	// JPEG SOF 65535x65535 with a scan header and almost no data.
 	jpeg := hex_decode(
 		"ffd8ffdb004300"
-		+ "01".repeat(64, none).get()
+		+ "01".repeat(64)
 		+ "ffc0000b08ffffffff0101110000ffc400150000010000000000000000000000000000000000ffda0008010100003f00ffd9",
 		none,
 	).get()

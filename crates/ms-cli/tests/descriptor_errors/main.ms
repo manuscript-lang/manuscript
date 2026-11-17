@@ -10,7 +10,7 @@ fn check_failed_writer(size: Int) Void!:
     expect_equal((child.wait()?), 0)?
 
     var writer = child.stdin()
-    written := writer.write("x".repeat(size).get().to_bytes())
+    written := writer.write("x".repeat(size).to_bytes())
 
     if size < 65536:
         written | expect_ok?
@@ -47,7 +47,7 @@ fn check_healthy_writer() Void!:
 
     draining_child := spawn(executable, ["read-large"])?
     var draining_writer = draining_child.stdin()
-    draining_writer.write("x".repeat(1048577).get().to_bytes()) | expect_ok?
+    draining_writer.write("x".repeat(1048577).to_bytes()) | expect_ok?
     draining_writer.flush() | expect_ok?
     draining_writer.close() | expect_ok?
     expect_equal((draining_child.wait()?), 0)?
@@ -82,7 +82,7 @@ export fn main() Int:
             if input.next().get().get() != "healthy\n".to_bytes(): return 2
 
         if args[0] == "read-large":
-            if read_all(stdin()).get() != "x".repeat(1048577).get().to_bytes(): return 3
+            if read_all(stdin()).get() != "x".repeat(1048577).to_bytes(): return 3
         return 0
 
     result := check_writers()

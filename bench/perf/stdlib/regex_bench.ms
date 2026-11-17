@@ -8,7 +8,7 @@ import (
 
 fn captures_bench(count: Int) Result[Void, Error]:
 	re := compile("(word)([0-9]+)")?
-	text := "word123 ".repeat(count)?
+	text := "word123 ".repeat(count)
 	expected_row := ["word123", "word", "123"]
 
 	fn work() Result[Void, Error]:
@@ -27,8 +27,8 @@ fn captures_bench(count: Int) Result[Void, Error]:
 
 fn template_bench(count: Int) Result[Void, Error]:
 	re := compile("(?P<word>word)([0-9]+)")?
-	text := "word123 ".repeat(count)?
-	expected := "123:word$ ".repeat(count)?
+	text := "word123 ".repeat(count)
+	expected := "123:word$ ".repeat(count)
 
 	fn work() Result[Void, Error]:
 		out := re.replace_template(text, "$2:${word}$$")?
@@ -63,11 +63,11 @@ bench "regex.replace_template.2000":
 
 bench "regex.replace_template.mixed_long_short.2000":
 	re := compile("(a+)")?
-	first := "a".repeat(65536)?
-	rest := " a".repeat(1999)?
+	first := "a".repeat(65536)
+	rest := " a".repeat(1999)
 	text := first + rest
-	expected_first := "a".repeat(131072)?
-	expected_rest := " aa".repeat(1999)?
+	expected_first := "a".repeat(131072)
+	expected_rest := " aa".repeat(1999)
 	expected := expected_first + expected_rest
 
 	fn work() Result[Void, Error]:
@@ -79,8 +79,8 @@ bench "regex.replace_template.mixed_long_short.2000":
 
 fn literal_template_bench(count: Int) Result[Void, Error]:
 	re := compile("(word)([0-9]+)")?
-	text := "word123 ".repeat(count)?
-	expected := "fixed ".repeat(count)?
+	text := "word123 ".repeat(count)
+	expected := "fixed ".repeat(count)
 
 	fn work() Result[Void, Error]:
 		out := re.replace_template(text, "fixed")?
@@ -97,7 +97,7 @@ bench "regex.replace_template.literal.2000":
 
 bench "regex.replace_template.unused_large":
 	re := compile("x")?
-	template := "a".repeat(2000000)?
+	template := "a".repeat(2000000)
 
 	fn work() Result[Void, Error]:
 		out := re.replace_template("z", template, 1)?
@@ -153,7 +153,7 @@ bench "regex.matches":
 bench "regex.replace_all":
 	text := words(2000).join(" ")
 	re := compile("word[0-9]+")?
-	expected := ("w ".repeat(1999)?) + "w"
+	expected := ("w ".repeat(1999)) + "w"
 
 	fn work() Result[Void, Error]:
 		out := re.replace_all(text, "w")?

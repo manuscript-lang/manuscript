@@ -119,7 +119,7 @@ test "which finds executables on PATH and rejects missing names":
 test "write_atomic replaces a file whose name is near the name length limit":
 	directory := temporary("manuscript-atomic-long-")?
 	root := directory.path()
-	name := "ñ".repeat(120)?
+	name := "ñ".repeat(120)
 	path := f"{root}/{name}"
 	write_atomic(path, "one").wait()?
 	write_atomic(path, "two").wait()?

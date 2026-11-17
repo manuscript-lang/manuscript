@@ -672,9 +672,9 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("internal/random.ms", 1),
         ("main.ms", 1),
         ("math/decimal.ms", 1),
-        ("math/math.ms", 4),
+        ("math/math.ms", 13),
         ("random.ms", 3),
-        ("string.ms", 3),
+        ("string.ms", 7),
         ("test/test.ms", 2),
     ]);
     for id in [first, second] {

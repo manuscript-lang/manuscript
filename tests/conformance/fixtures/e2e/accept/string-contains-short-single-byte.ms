@@ -24,8 +24,8 @@ test "empty, multi-byte and longer needles":
 	expect_equal("aé".contains("b"), false)?
 
 test "text of exactly 31 and 32 bytes":
-	t31 := "a".repeat(30).get("") + "z"
-	t32 := "a".repeat(31).get("") + "z"
+	t31 := "a".repeat(30) + "z"
+	t32 := "a".repeat(31) + "z"
 	expect_equal(t31.contains("z"), true)?
 	expect_equal(t32.contains("z"), true)?
 	expect_equal(t31.contains("y"), false)?

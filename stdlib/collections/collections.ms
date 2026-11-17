@@ -144,6 +144,17 @@ fn List[T: Clonable].take(count: Int) List[T]: ...
 // Leaves the receiver unchanged; a count of zero or below drops nothing.
 fn List[T: Clonable].drop(count: Int) List[T]: ...
 
+// Copies the leading elements for which `predicate` holds, stopping at the first one
+// that fails it. Example: `[1, 2, 5, 1].take_while(fn x: x < 3)` is `[1, 2]`.
+fn List[T: Clonable].take_while(predicate: fn(T) Bool) List[T]:
+	return self.take(self.find_index(fn x: not predicate(x)).get(self.length()))
+
+// Copies the elements from the first one that fails `predicate` to the end, so it is
+// what `take_while` leaves. Example: `[1, 2, 5, 1].drop_while(fn x: x < 3)` is
+// `[5, 1]`.
+fn List[T: Clonable].drop_while(predicate: fn(T) Bool) List[T]:
+	return self.drop(self.find_index(fn x: not predicate(x)).get(self.length()))
+
 // Splits the list into consecutive copies of `size` elements; the last chunk may be
 // shorter, and an empty list gives an empty list. A `size` of zero or less gives
 // an empty list.
@@ -206,6 +217,14 @@ fn List[T: Clonable].zip[U: Clonable](other: List[U]) List[Pair[T, U]]: ...
 // the elements that produced it. Keys appear in first-seen order and each group
 // keeps the original element order.
 fn List[T: Clonable].group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]: ...
+
+// Counts how many times each distinct element occurs. Keys appear in first-seen order.
+// Example: `["a", "b", "a"].counts()` maps `"a"` to 2 and `"b"` to 1.
+fn List[T: Hashable & Clonable].counts() Map[T, Int]:
+	var out = Map[T, Int]()
+	for x in self:
+		out.update(x.clone(), 0, fn n: n + 1)
+	return out
 
 // Reports whether any element equals `value`, using the element type's Equal
 // implementation; an empty list returns False.

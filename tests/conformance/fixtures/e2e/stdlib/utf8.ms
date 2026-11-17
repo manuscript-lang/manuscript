@@ -157,7 +157,7 @@ test "UTF8 supports forward and reverse walks without normalization":
 	last(data, none) | expect_scalar(0, 1)?
 
 test "UTF8 selects a bounded prefix or suffix in large inputs":
-	fill := "x".repeat(262144) | expect_ok?
+	fill := "x".repeat(262144)
 	data := "🙂".concat(fill).concat("é").to_bytes()
 	decode_first(data) | expect_scalar(128578, 4)?
 	decode_last(data) | expect_scalar(233, 2)?

@@ -6,7 +6,7 @@ import (
 )
 
 fn block() Bytes:
-	return "0123456789abcdef".repeat(4096).get("").to_bytes()
+	return "0123456789abcdef".repeat(4096).to_bytes()
 
 // Writes the 200 files that the read, stat, and list cases use.
 fn populate(root: String) Void:

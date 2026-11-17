@@ -322,7 +322,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 	address := listener.address()
 	served := promise(fn: ok(count_until_eof(listener)))
 	var client = connect(address.clone(), tls: client_tls, timeout: 5.seconds()).wait()?
-	send(var client, "y".repeat(20000000).get())?
+	send(var client, "y".repeat(20000000))?
 
 	// No read first: the server's post-handshake bytes must not reset the connection.
 	client.close()?

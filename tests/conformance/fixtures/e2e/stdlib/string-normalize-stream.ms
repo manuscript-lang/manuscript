@@ -66,9 +66,9 @@ test "normalization keeps exact exceeded zero negative and invalid form budgets"
 		)?
 
 test "normalization retains lookahead across a complete combining segment":
-	text := "a" + "\u{315}\u{300}".repeat(32).get()
-	decomposed := "a" + "\u{300}".repeat(32).get() + "\u{315}".repeat(32).get()
-	composed := "à" + "\u{300}".repeat(31).get() + "\u{315}".repeat(32).get()
+	text := "a" + "\u{315}\u{300}".repeat(32)
+	decomposed := "a" + "\u{300}".repeat(32) + "\u{315}".repeat(32)
+	composed := "à" + "\u{300}".repeat(31) + "\u{315}".repeat(32)
 	expect_equal(text.normalize("NFC").get(), composed.clone())?
 	expect_equal(text.normalize("NFD").get(), decomposed.clone())?
 	expect_equal(text.normalize("NFKC").get(), composed)?

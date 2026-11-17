@@ -3,7 +3,7 @@ import FileSystem, list, read_file, stat, temporary from "@std/os/fs.ms"
 import create, file_transport, Transport, Logger from "@std/log.ms"
 
 fn run(fs: FileSystem, root: String) Void:
-    data := "0123456789abcdef".repeat(4096).get("").to_bytes()
+    data := "0123456789abcdef".repeat(4096).to_bytes()
 
     bench(
         "fs.write_file_64k",

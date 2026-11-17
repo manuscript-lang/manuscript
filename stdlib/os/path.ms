@@ -761,6 +761,29 @@ export fn parse(path: String) PathParts:
 export fn format(parts: PathParts) String:
 	return format_in(host_windows(), parts)
 
+// Returns the final component without its extension: `stem("a/b.tar.gz")` is `"b.tar"`
+// and a dotfile such as `.bashrc` keeps its whole name.
+export fn stem(path: String) String:
+	return parse(path).name
+
+// Replaces the final extension, or adds one when there is none, keeping the directory:
+// `with_extension("a/b.txt", "md")` is `"a/b.md"`. A leading dot in `extension` is
+// optional and an empty `extension` removes the current one. A path with no final
+// component, such as `"/"`, comes back unchanged.
+export fn with_extension(path: String, extension: String) String:
+	parts := parse(path)
+	if parts.name.is_empty(): return path.clone()
+
+	return format(
+		PathParts(
+			root: parts.root,
+			directory: parts.directory,
+			base: "",
+			extension: extension,
+			name: parts.name,
+		)
+	)
+
 // Returns the host's path separator.
 export fn separator() String:
 	return if host_windows(): "\\" else: "/"

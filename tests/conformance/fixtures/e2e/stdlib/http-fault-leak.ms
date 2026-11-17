@@ -14,7 +14,7 @@ import (
 )
 
 fn faulting(var exchange: HttpExchange) Void!:
-	big := "x".repeat(1000000).get("")
+	big := "x".repeat(1000000)
 	xs: List[Int] := []
 	n := xs[big.length()]
 	if big.length() + n > 5: return ok()

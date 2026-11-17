@@ -19,7 +19,7 @@ fn ok_route(request: HttpRequest) HttpResponse:
 test "serve caps the request header block":
 	server := serve(address: "127.0.0.1:0", handler: buffered(ok_route)) | expect_ok?
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
-	filler := "a".repeat(2000000) | expect_ok?
+	filler := "a".repeat(2000000)
 	head := f"GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {filler}\r\n\r\n"
 
 	// The server may answer and close before the whole head is written.

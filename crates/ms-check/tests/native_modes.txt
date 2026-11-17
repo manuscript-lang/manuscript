@@ -118,7 +118,7 @@ String.pad_end receiver=Some(Borrow) copies=false (target_length=Borrow, padding
 String.pad_start receiver=Some(Borrow) copies=false (target_length=Borrow, padding=Borrow)
 String.parse_float receiver=Some(Borrow) copies=false ()
 String.parse_int receiver=Some(Borrow) copies=false ()
-String.repeat receiver=Some(Borrow) copies=false (count=Borrow, max_bytes=Borrow)
+String.repeat receiver=Some(Borrow) copies=false (count=Borrow)
 String.replace receiver=Some(Borrow) copies=false (old=Borrow, new=Borrow)
 String.replace_first receiver=Some(Borrow) copies=false (old=Borrow, new=Borrow)
 String.reverse receiver=Some(Borrow) copies=false ()

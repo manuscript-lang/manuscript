@@ -7,7 +7,7 @@ import (
 fn rows_bench(count: Int, grouped: Bool) Result[Void, Error]:
 	pattern := if grouped: "(word)([0-9]+)" else: "word[0-9]+"
 	re := compile(pattern)?
-	text := "word123 ".repeat(count)?
+	text := "word123 ".repeat(count)
 	expected := if grouped: ["word123", "word", "123"] else: ["word123"]
 	width := if grouped: 14 else: 7
 
@@ -47,7 +47,7 @@ bench "regex.cardinality.grouped.2000":
 
 bench "regex.cardinality.whole.long":
 	re := compile("a+")?
-	text := "a".repeat(65536)?
+	text := "a".repeat(65536)
 	expected := [[text.clone()]]
 
 	fn work() Result[Void, Error]:
@@ -69,7 +69,7 @@ bench "regex.cardinality.whole.empty_matches":
 
 bench "regex.cardinality.whole.over_limit":
 	re := compile("word[0-9]+")?
-	text := "word123 ".repeat(2000)?
+	text := "word123 ".repeat(2000)
 
 	fn work() Result[Void, Error]:
 		out := re.capture_all(text, 1)
@@ -105,7 +105,7 @@ bench "regex.cardinality.first.grouped.hit":
 
 bench "regex.cardinality.first.whole.long":
 	re := compile("a+")?
-	text := "a".repeat(65536)?
+	text := "a".repeat(65536)
 	expected := [text.clone()]
 
 	fn work() Result[Void, Error]:
@@ -117,7 +117,7 @@ bench "regex.cardinality.first.whole.long":
 
 fn names_bench(named: Bool, long_miss: Bool) Result[Void, Error]:
 	re := compile(if named: "word(?P<id>[0-9]+)" else: "word[0-9]+")?
-	text := if long_miss: ("z".repeat(65536)?) else: "word123"
+	text := if long_miss: ("z".repeat(65536)) else: "word123"
 	var expected = Map[String, String]()
 	if named and not long_miss:
 		expected.add("id", "123")
@@ -140,7 +140,7 @@ bench "regex.cardinality.named.named.hit":
 
 fn anonymous_names_bench(long_miss: Bool) Result[Void, Error]:
 	re := compile("(word)([0-9]+)")?
-	text := if long_miss: ("z".repeat(65536)?) else: "word123"
+	text := if long_miss: ("z".repeat(65536)) else: "word123"
 	expected := Map[String, String]()
 
 	fn work() Result[Void, Error]:
@@ -157,7 +157,7 @@ bench "regex.cardinality.named.anonymous.long_miss":
 	anonymous_names_bench(true)?
 
 fn late_names_bench(found: Bool) Result[Void, Error]:
-	prefix := "(a?)".repeat(128)?
+	prefix := "(a?)".repeat(128)
 	re := compile(prefix + "(?P<last>x)")?
 	text := if found: "x" else: "z"
 	var expected = Map[String, String]()

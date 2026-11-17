@@ -3,7 +3,7 @@
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 fn pad(n: Int) String:
-	return "x".repeat(n).get()
+	return "x".repeat(n)
 
 test "string order agrees across inline, static and heap forms":
 	expect_true("apple" < "banana")?

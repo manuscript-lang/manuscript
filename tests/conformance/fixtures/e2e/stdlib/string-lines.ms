@@ -4,7 +4,7 @@ import expect_equal from "@std/test/test.ms"
 
 test "lines preserve boundaries across search windows and unaligned starts":
 	for width in [0, 1, 7, 8, 15, 16, 31, 32, 63, 64, 1024]:
-		prefix := "x".repeat(width).get()
+		prefix := "x".repeat(width)
 		text := prefix + "\n\r\né日😀\r\n\nlast\r"
 		expect_equal(text.lines(), [prefix.clone(), "", "é日😀", "", "last\r"])?
 		expect_equal((prefix + "\n").lines(), [prefix.clone()])?

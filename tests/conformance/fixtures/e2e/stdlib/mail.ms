@@ -61,7 +61,7 @@ test "encoded words keep literal text and scale linearly":
 	expect_equal(decode_words("=?bad?X?zz?= =?utf-8?B?SGk=?="), "=?bad?X?zz?= Hi")?
 
 	// A quadratic decoder would take minutes on this many words.
-	big := decode_words("=?utf-8?B?SGk=?= x ".repeat(50000).get())
+	big := decode_words("=?utf-8?B?SGk=?= x ".repeat(50000))
 	expect_equal(big.scalar_length(), 50000 * 5)?
 
 test "address lists keep escaped quotes and backslashes inside names":

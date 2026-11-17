@@ -28,7 +28,7 @@ bench "csv.parse":
 	measure(5000, work)?
 
 bench "csv.parse escaped quote field":
-	value := "a\"".repeat(8000)?
+	value := "a\"".repeat(8000)
 	text := f"\"{value.replace("\"", "\"\"")}\"\n"
 
 	fn work() Void!:

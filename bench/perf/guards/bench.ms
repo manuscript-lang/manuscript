@@ -87,7 +87,7 @@ bench "fused chains":
 	total := rows.filter(fn(r: Row) Bool: r.id % 3 == 0).map(
 		fn(r: Row) Int: (r.name.length())
 	).sum()
-	text := "the quick brown fox jumps over the lazy dog ".repeat(100).get("")
+	text := "the quick brown fox jumps over the lazy dog ".repeat(100)
 	words := text.split(" ").filter(fn(w: String) Bool: w.length() > 3).map(
 		fn(w: String) Int: w.length()
 	).sum()
@@ -106,7 +106,7 @@ bench "map probes and predicates":
 	for i in 0..5000:
 		if counts.contains(i): hits += 1
 
-	text := "the quick brown fox jumps over the lazy dog ".repeat(100).get("")
+	text := "the quick brown fox jumps over the lazy dog ".repeat(100)
 	any_row := rows.any(fn(r: Row) Bool: r.name.starts_with("name3") and r.id > 4990)
 	every := rows.all(fn(r: Row) Bool: r.name.length() > 4)
 	lower := text.chars().all(fn(c: String) Bool: c != "Z")

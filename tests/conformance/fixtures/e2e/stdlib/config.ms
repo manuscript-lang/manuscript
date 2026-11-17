@@ -104,7 +104,7 @@ test "ini rejects malformed lines":
 	)
 
 test "dotenv multi-line quotes stay linear":
-	lines := "x\n".repeat(200000).get()
+	lines := "x\n".repeat(200000)
 	values := (parse_dotenv(f"A=\"{lines}end\" # c\nB=1") | expect_ok?)
 	values.get_or("B", "") | expect_equal("1")?
 	values.get_or("A", "").scalar_length() | expect_equal(400003)?

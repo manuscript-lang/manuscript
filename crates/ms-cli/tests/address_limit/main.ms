@@ -2,7 +2,7 @@ import Promise, promise from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 
 fn work(i: Int) Int!:
-    big := "x".repeat(2000000).get("")
+    big := "x".repeat(2000000)
     void sleep(milliseconds(1)).wait()
     return ok(big.length() % 7 + i % 3)
 

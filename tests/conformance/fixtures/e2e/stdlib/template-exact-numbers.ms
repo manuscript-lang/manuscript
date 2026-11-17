@@ -94,8 +94,8 @@ test "numbers do not become objects or strings on overflow":
 	check("left == right", "{\"left\":1e400,\"right\":{}}", "no")?
 
 test "exponents larger than machine integers never expand":
-	nines := "9".repeat(2000)?
-	previous := f"{ "9".repeat(1999)?}8"
+	nines := "9".repeat(2000)
+	previous := f"{ "9".repeat(1999)}8"
 	values := f"\{\"left\":1e{nines},\"right\":10e{previous}\}"
 	check("left == right", values, "yes")?
 
@@ -151,6 +151,6 @@ test "coefficient spans preserve decimal points and implicit trailing zeros":
 	check("left > right", "{\"left\":-1.2,\"right\":-1.2001}", "yes")?
 
 test "long shared coefficient prefixes retain exact order":
-	prefix := "23456789".repeat(125)?
+	prefix := "23456789".repeat(125)
 	values := f"\{\"left\":1.{prefix},\"right\":1.{prefix}1\}"
 	check("left < right and right > left and left != right", values, "yes")?
