@@ -21,10 +21,6 @@ import (
 	expect_equal, expect_fault from "@std/test/test.ms",
 )
 
-fn shift_too_far() Void:
-	_value := shift_left(1, 64)
-	return
-
 fn shift_negative() Void:
 	_value := shift_right(1, -1)
 	return
@@ -46,9 +42,16 @@ test "shifts distinguish arithmetic from logical":
 	expect_equal(shift_right_unsigned(min_int, 63), 1)?
 	expect_equal(shift_right_unsigned(-16, 4), 1152921504606846975)?
 
-test "shift counts outside 0 through 63 fault":
-	_first := expect_fault(shift_too_far)?
-	_second := expect_fault(shift_negative)?
+test "shift counts of 64 or more shift every bit out, a negative count faults":
+	expect_equal(shift_left(1, 64), 0)?
+	expect_equal(shift_left(-1, 9223372036854775807), 0)?
+	expect_equal(shift_right(5, 64), 0)?
+	expect_equal(shift_right(-5, 64), -1)?
+	expect_equal(shift_right(min_int, 1000), -1)?
+	expect_equal(shift_right_unsigned(-1, 64), 0)?
+	expect_equal(shift_left(1, 63), min_int)?
+
+	_negative := expect_fault(shift_negative)?
 
 test "rotation and bit counts":
 	expect_equal(rotate_left(1, 64), 1)?

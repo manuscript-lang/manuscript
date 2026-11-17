@@ -366,27 +366,34 @@ export fn bit_xor(left: Int, right: Int) Int:
 export fn bit_not(value: Int) Int:
 	return msrt_bits_bit_xor(value, -1)
 
-// Shifts bits toward the high end, discarding bits shifted out; `count` must be 0
-// through 63 or the call faults.
+// Shifts bits toward the high end, discarding bits shifted out. A `count` of 64 or more
+// shifts every bit out and gives 0. A negative `count` faults.
 export fn shift_left(value: Int, count: Int) Int:
 	check_shift_count("shift_left", count)
+	if count > 63: return 0
+
 	return msrt_bits_shift_left(value, count)
 
-// Shifts bits toward the low end, filling with the sign bit; `count` must be 0 through
-// 63 or the call faults.
+// Shifts bits toward the low end, filling with the sign bit. A `count` of 64 or more
+// gives 0 for a value that is not negative and -1 for a negative one. A negative
+// `count` faults.
 export fn shift_right(value: Int, count: Int) Int:
 	check_shift_count("shift_right", count)
+	if count > 63: return if value < 0: -1 else: 0
+
 	return msrt_bits_shift_right(value, count)
 
-// Shifts bits toward the low end, filling with zeros; `count` must be 0 through 63 or
-// the call faults.
+// Shifts bits toward the low end, filling with zeros. A `count` of 64 or more gives 0.
+// A negative `count` faults.
 export fn shift_right_unsigned(value: Int, count: Int) Int:
 	check_shift_count("shift_right_unsigned", count)
+	if count > 63: return 0
+
 	return msrt_bits_shift_right_unsigned(value, count)
 
 fn check_shift_count(operation: String, count: Int) Void:
-	if count < 0 or count > 63:
-		panic(f"{operation}: count must be between 0 and 63, found {count}")
+	if count < 0:
+		panic(f"{operation}: count must not be negative, found {count}")
 
 // Rotates the 64-bit pattern toward the high end; any `count` is reduced modulo 64.
 export fn rotate_left(value: Int, count: Int) Int:
