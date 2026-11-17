@@ -39,7 +39,7 @@ inputs:
     description: "'false' skips the gates, when another job of the same run covers them."
     default: 'true'
   llvm-job:
-    description: "A pull request's separate LLVM jobs: 'corpus' runs the LLVM corpus and leak sweep (one `shard`), 'gates' runs the LLVM backend tests and the release gates. Empty for the ordinary legs."
+    description: "A pull request's separate LLVM jobs: 'corpus' runs the LLVM corpus and leak sweep (one `shard`), 'gates' runs the LLVM backend tests and the release gates, 'package' packages and runs the distribution. Empty for the ordinary legs."
     default: ''
   shard:
     description: "For llvm-job 'corpus': the corpus shard, `i/n`."
@@ -68,6 +68,7 @@ runs:
           echo "LLVM=${{ inputs.llvm }}"
           echo "DOCS=${{ inputs.docs }}"
           echo "LLVM_TESTS=false"
+          echo "PACKAGE=$([[ $part == *$gates_part* ]] && echo true || echo false)"
         } >> "$GITHUB_ENV"
         # The LLVM jobs of a pull request replace the parts: the corpus alone, or the backend tests and
         # the gates, so no job carries both.
@@ -81,7 +82,12 @@ runs:
             echo "UNIT=false" >> "$GITHUB_ENV"; echo "CONFORM=false" >> "$GITHUB_ENV"
             echo "GATES=true" >> "$GITHUB_ENV"; echo "CRANELIFT=false" >> "$GITHUB_ENV"
             echo "LLVM=true" >> "$GITHUB_ENV"; echo "DOCS=false" >> "$GITHUB_ENV"
-            echo "LLVM_TESTS=true" >> "$GITHUB_ENV" ;;
+            echo "LLVM_TESTS=true" >> "$GITHUB_ENV"; echo "PACKAGE=false" >> "$GITHUB_ENV" ;;
+          package)
+            echo "UNIT=false" >> "$GITHUB_ENV"; echo "CONFORM=false" >> "$GITHUB_ENV"
+            echo "GATES=false" >> "$GITHUB_ENV"; echo "CRANELIFT=false" >> "$GITHUB_ENV"
+            echo "LLVM=true" >> "$GITHUB_ENV"; echo "DOCS=false" >> "$GITHUB_ENV"
+            echo "PACKAGE=true" >> "$GITHUB_ENV" ;;
         esac
     - name: Keep native test artifacts in runner storage
       shell: bash
@@ -290,7 +296,7 @@ runs:
         for t in bench/tools/*.ms bench/agent/*.ms; do "$ms" check "$t"; done
         for t in bench/tools/*_test.ms bench/agent/core_test.ms; do "$ms" test "$t"; done
     - name: Package and run the distribution on a hello project
-      if: env.GATES == 'true'
+      if: env.PACKAGE == 'true'
       shell: bash
       run: |
         # The shipped `ms` links without the test-only Windows flag.

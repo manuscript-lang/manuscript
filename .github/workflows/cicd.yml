@@ -190,8 +190,9 @@ jobs:
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
   # A pull request that touches LLVM-related code (rust-scope) also runs the LLVM suite, in jobs of its own so
-  # that no job passes ten minutes: the LLVM corpus in two shards, and the LLVM backend tests with the release
-  # gates. Only a pull request that touches LLVM-related code starts them (`due` decides from the scope). Main
+  # that no job passes ten minutes: the LLVM corpus in three shards, the LLVM backend tests with the release
+  # gates, and the distribution package. Only a pull request that touches LLVM-related code starts them (`due`
+  # decides from the scope). Main
   # runs the suite inside `rust`.
   llvm:
     needs: due
@@ -203,9 +204,11 @@ jobs:
       fail-fast: false
       matrix:
         leg:
-          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '0/2', index: 1}
-          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '1/2', index: 2}
+          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '0/3', index: 1}
+          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '1/3', index: 2}
+          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '2/3', index: 3}
           - {job: gates, arch: arm64, runner: ubuntu-24.04-arm}
+          - {job: package, arch: arm64, runner: ubuntu-24.04-arm}
     env:
       PR: 'true'
     steps:
@@ -220,7 +223,7 @@ jobs:
         with:
           os: linux
           arch: ${{ matrix.leg.arch }}
-          llvm-consumers: ${{ matrix.leg.job == 'gates' && 'true' || 'false' }}
+          llvm-consumers: ${{ matrix.leg.job != 'corpus' && 'true' || 'false' }}
       - uses: ./.github/actions/rust-checks
         with:
           os: linux
