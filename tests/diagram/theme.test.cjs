@@ -10,11 +10,9 @@ const site = fs.readFileSync(path.join(root, 'website/assets/_custom.scss'), 'ut
 const tokens = text => Object.fromEntries([...text.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map(m => [m[1], m[2]]));
 const blocks = [...page.matchAll(/:root(?:\[data-theme=dark\]|:not\(\[data-theme=light\]\))?\{([^}]+)\}/g)].map(m => m[1]);
 const palettes = blocks.map(tokens);
-// Syntax and link colors follow the website; surfaces and ink are neutral so the map stays readable.
+// Links follow the website; surfaces, ink and syntax colors are the map's own, chosen for contrast and for telling token classes apart.
 const shared = {
-  acc: 'color-link', cm: 'docs-muted',
-  kw: 'docs-code-keyword', nu: 'docs-code-keyword', st: 'docs-code-string',
-  fnc: 'docs-code-function', ty: 'docs-code-function',
+  acc: 'color-link',
 };
 
 test('code map follows public documentation tokens in light and both dark modes', () => {
