@@ -1,5 +1,8 @@
 export extern fn msstd_test_repr[T](value: T) String
 
+// Drops every replacement the running test installed.
+export extern fn msrt_fake_clear() Void
+
 // A new, empty capture of standard output for the test runner.
 export extern fn msrt_test_capture_new() Int
 

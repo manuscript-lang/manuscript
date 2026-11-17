@@ -48,6 +48,7 @@ const fn plain(symbol: &'static str, identity: &'static str) -> HandLowered {
 
 const HAND_LOWERED: &[HandLowered] = &[
     plain("msstd_test_repr", "test/repr"),
+    plain("fake", "test/fake"),
     plain("msstd_embed_bytes", "embed/bytes"),
     plain("msstd_json_parse", "json/parse"),
     plain("msstd_json_stringify", "json/stringify"),

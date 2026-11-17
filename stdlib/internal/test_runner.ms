@@ -3,6 +3,7 @@ import (
 	Instant, monotonic from "@std/time.ms",
 
 	msstd_process_environment_map from "@std/internal/env.ms",
+	msrt_fake_clear,
 	msrt_test_capture_current,
 	msrt_test_capture_fault,
 	msrt_test_capture_free,
@@ -208,6 +209,7 @@ fn start(results: String, file: Int, index: Int) Void:
 
 fn report(results: String, index: Int, started: Instant, outcome: Void!) Void:
 	msrt_test_deadline(false)
+	msrt_fake_clear()
 	output(results, f"{index}", msrt_test_capture_take(msrt_test_capture_current()))
 
 	nanos := (monotonic() - started).nanos

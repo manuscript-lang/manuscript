@@ -167,3 +167,17 @@ export fn fail(message: String, site: String = caller_site()) Void!:
 // `skip(reason)?` passes up; the test is reported skipped, not failed.
 export fn skip(reason: String) Void!:
 	return error(Error(reason, kind: "ESKIP"))
+
+/*
+Runs `body` with `replacement` standing in for the function `original`: every call to it,
+from `body` and from the promises `body` starts, runs `replacement` instead, and the
+original is back when `body` returns. Name the function as a plain reference; `replacement`
+has the same function type, so the checker proves it fits, and it may capture and change
+the test's variables, so a mock can record the calls. The function must be written in
+Manuscript and declare an effect (a standard-library boundary such as `now`, or your own marked
+`// ms: effect NAME`), without type parameters, and not change an argument or
+return a borrow. A method is named through an object (`fake(shop.price, ...)`) and is replaced
+for every object of its type; the replacement takes the other arguments, not the object. Fakes nest, innermost first. Only test builds route calls
+through a table: `ms run` and `ms build` call the function directly.
+*/
+export extern fn fake[F](original: F, replacement: F, body: fn() Void!) Void!

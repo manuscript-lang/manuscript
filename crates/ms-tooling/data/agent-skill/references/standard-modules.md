@@ -92,7 +92,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/test/iotest.ms`: check_reader, fail_after, fail_writer_after, one_byte
 - `@std/test/mock.ms`: Call2, Call3, Mock0, Mock1, Mock2, Mock3
 - `@std/test/property.ms`: Drawn, Gen, PropertyOptions, Settings, Source, bools, check, constant, draw, element_of, floats, ints, lists, one_of, optionals, pairs, settings, source, strings
-- `@std/test/test.ms`: TestHooks, caller_site, catch_fault, expect_close, expect_contains, expect_equal, expect_error, expect_false, expect_fault, expect_none, expect_not_equal, expect_ok, expect_some, expect_true, fail, repr, skip
+- `@std/test/test.ms`: TestHooks, caller_site, catch_fault, expect_close, expect_contains, expect_equal, expect_error, expect_false, expect_fault, expect_none, expect_not_equal, expect_ok, expect_some, expect_true, fail, fake, repr, skip
 - `@std/text.ms`: parse_bool, quote, quote_ascii, scalars, unquote
 - `@std/text/template.ms`: RenderOptions, Template, TemplateBranch, TemplateExpr, TemplateNode, compile, render, render_to, to_data
 - `@std/time.ms`: Date, Deadline, Duration, Instant, Timestamp, deadline_after, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, monotonic, nanoseconds, now, parse_duration, parse_timestamp, seconds, sleep, ticker, timestamp

@@ -32,6 +32,7 @@ pub mod cabi;
 pub mod cancel;
 pub mod desc;
 pub mod dropq;
+pub mod fake;
 pub mod fault;
 pub mod ffi;
 mod float_digits;

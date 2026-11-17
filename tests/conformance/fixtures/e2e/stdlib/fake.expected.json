@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "fake.ms::plain fake",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "fake.ms::mock inside fake",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "fake.ms::fake in a promise",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "fake.ms::nested, innermost wins",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "fake.ms::stdlib function",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "fake.ms::a replacement can call the original",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "fake.ms::a method that declares an effect, for every object",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN fake.ms::plain fake\nPASS fake.ms::plain fake\nRUN fake.ms::mock inside fake\nPASS fake.ms::mock inside fake\nRUN fake.ms::fake in a promise\nPASS fake.ms::fake in a promise\nRUN fake.ms::nested, innermost wins\nPASS fake.ms::nested, innermost wins\nRUN fake.ms::stdlib function\nPASS fake.ms::stdlib function\nRUN fake.ms::a replacement can call the original\nPASS fake.ms::a replacement can call the original\nRUN fake.ms::a method that declares an effect, for every object\nPASS fake.ms::a method that declares an effect, for every object\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

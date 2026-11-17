@@ -462,6 +462,7 @@ pub(crate) fn lower_program(
         .ok_or_else(|| Error::new("no main function"))?;
     let main_id = cx.function_for(&mut m, &main, &Subst::default())?;
     drain(syms, &mut cx, &mut m)?;
+    crate::testing::check_fakes_are_boundaries(&mut cx, program)?;
     cx.check_strict_copies()?;
     let entry = if m.funcs[main_id.index()].ret == MTy::INT {
         m.funcs[main_id.index()].linkage = Linkage::Export;
@@ -527,6 +528,7 @@ pub(crate) fn lower_tests(
     }
     if bench || tests.is_empty() {
         drain(syms, &mut cx, &mut m)?;
+        crate::testing::check_fakes_are_boundaries(&mut cx, program)?;
         cx.check_strict_copies()?;
         m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
         return Ok((m, names));
@@ -600,6 +602,7 @@ pub(crate) fn lower_tests(
         });
     }
     drain(syms, &mut cx, &mut m)?;
+    crate::testing::check_fakes_are_boundaries(&mut cx, program)?;
     cx.check_strict_copies()?;
     m.entry = Some(crate::runner::build_file_runners(
         &mut m, &files, run_files,
@@ -622,7 +625,10 @@ fn drain(syms: ms_check::api::Names, cx: &mut Cx, m: &mut Module) -> Result<(), 
             None => match cx.queue.pop() {
                 Some(j) => j,
                 // Every function is lowered: place the Raw functions' scope-exit drops.
-                None => return ms_mir::elaborate::run(m).map_err(Error::new),
+                None => {
+                    crate::testing::route_fakes(cx, m);
+                    return ms_mir::elaborate::run(m).map_err(Error::new);
+                }
             },
         };
         lower_job(syms, cx, m, next)?;
