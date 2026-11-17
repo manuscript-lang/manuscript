@@ -50,3 +50,20 @@ test "ordered priority queue defaults to natural order and honors capacity":
 	expect_equal(queue.dequeue(), "a")?
 	expect_equal(queue.dequeue(), "b")?
 	expect_equal(queue.dequeue(), none)?
+
+test "get reads by position and counts negative indexes from the end":
+	var queue = Queue[String]()
+	queue.enqueue("a")
+	queue.enqueue("b")
+	queue.enqueue("c")
+	expect_equal(queue.dequeue(), "a")?
+	expect_equal(queue.get(0), "b")?
+	expect_equal(queue.get(-1), "c")?
+	expect_equal(queue.get(2), none)?
+
+	var heap = PriorityQueue[Int]()
+	heap.enqueue(5)
+	heap.enqueue(1)
+	expect_equal(heap.get(0), 1)?
+	expect_equal(heap.get(-1), 5)?
+	expect_equal(heap.get(2), none)?

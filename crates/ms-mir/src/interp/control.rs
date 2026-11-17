@@ -70,6 +70,9 @@ impl Interp<'_> {
                 ops.set((**d).clone());
             }
 
+            Op::IfaceTag | Op::IfaceDestroy => {
+                return Err(Raw::internal("iface.tag and iface.destroy are native only"));
+            }
             _ => unreachable!("closures_and_interfaces is only called for its own ops"),
         }
         Ok(Flow::Next)
@@ -242,7 +245,7 @@ impl Interp<'_> {
             }
             Op::DepthLeave => self.depth -= 1,
             // The interpreter has one stack and counts depth in `depth.enter`: never low.
-            Op::StackLow => ops.set(Val::Bool(false)),
+            Op::StackLow | Op::StackNear => ops.set(Val::Bool(false)),
             Op::CleanupPush => {
                 let Imm::Func(g) = inst.imm else {
                     return Err(Raw::internal("cleanup.push without closer"));

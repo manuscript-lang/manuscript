@@ -235,7 +235,7 @@ fn report(programs: List[String]) Int:
 		result := report_program(source, kernels, var lines, var slow)
 
 		if result.is_error():
-			note(f"{source}: {result.error().map(fn e: e.message).get("failed")}")
+			note(f"{source}: {result.err().message}")
 			failed = true
 		else if not result.get(true):
 			note(f"{source}: the output differs between the LLVM and Cranelift builds")

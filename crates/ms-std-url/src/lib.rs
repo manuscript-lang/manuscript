@@ -22,7 +22,8 @@ pub struct Components {
     pub host: String,
     pub port: Option<i64>,
     pub path: String,
-    pub query: String,
+    /// The encoded query without its `?`: none when the URL has no query, empty for `?`.
+    pub query: Option<String>,
     pub fragment: String,
     /// The URL was written without `//`, as in `mailto:?subject=hi`.
     pub omit_host: bool,
@@ -192,7 +193,9 @@ fn components(u: &Url) -> Result<Components, Fail> {
         host: go_lower_host(hostname),
         port,
         path: string(u.escaped_path())?,
-        query: string(u.raw_query.clone())?,
+        query: (u.force_query || !u.raw_query.is_empty())
+            .then(|| string(u.raw_query.clone()))
+            .transpose()?,
         fragment: string(u.fragment.clone())?,
         omit_host: u.omit_host,
     })
@@ -243,7 +246,8 @@ fn go_url(v: &Components) -> Option<Url> {
     }
     // An IPv6 zone identifier may hold any text, which `render` escapes.
     let address = host.split(|&b| b == b'%').next().unwrap_or(&host);
-    if !valid_query(v.query.as_bytes()) || address.iter().any(|b| b" <>\"".contains(b)) {
+    let query = v.query.as_deref().unwrap_or("");
+    if !valid_query(query.as_bytes()) || address.iter().any(|b| b" <>\"".contains(b)) {
         return None;
     }
     let u = Url {
@@ -251,9 +255,10 @@ fn go_url(v: &Components) -> Option<Url> {
         host,
         path: decoded,
         raw_path: raw.to_vec(),
-        raw_query: v.query.as_bytes().to_vec(),
+        raw_query: query.as_bytes().to_vec(),
         fragment: v.fragment.as_bytes().to_vec(),
         omit_host: v.omit_host,
+        force_query: v.query.as_deref() == Some(""),
         ..Url::default()
     };
     let parsed = parser::parse(&u.render()).ok()?;
@@ -357,7 +362,7 @@ mod tests {
             host: host.into(),
             port,
             path: path.into(),
-            query: query.into(),
+            query: (!query.is_empty()).then(|| query.into()),
             fragment: fragment.into(),
             omit_host: false,
         }
@@ -513,6 +518,19 @@ mod tests {
         assert_eq!(
             format(&c("http", "", None, "rel", "", "")),
             Err(Fail::InvalidInput)
+        );
+    }
+
+    #[test]
+    fn an_empty_query_round_trips() {
+        let u = parse("http://a/b?").unwrap();
+        assert_eq!(u.query.as_deref(), Some(""));
+        assert_eq!(format(&u).unwrap(), "http://a/b?");
+        assert_eq!(parse("http://a/b").unwrap().query, None);
+        let base = parse("http://a/b/c/d;p?q").unwrap();
+        assert_eq!(
+            format(&resolve(&base, "?").unwrap()).unwrap(),
+            "http://a/b/c/d;p?"
         );
     }
 

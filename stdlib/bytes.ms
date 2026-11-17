@@ -32,7 +32,7 @@ fn Bytes.contains(value: Bytes) Bool: ...
 /*
 Splits exact byte separators into a fresh list of immutable byte views.
 Nonempty separators retain empty parts; empty data then yields one empty Bytes.
-Omitted/none max_parts is unlimited; zero returns no parts, negatives fault.
+Omitted/none max_parts is unlimited; zero or below returns no parts.
 A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
 */
 fn Bytes.split(separator: Bytes, max_parts: Int?) List[Bytes]: ...

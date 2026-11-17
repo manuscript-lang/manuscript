@@ -16,6 +16,5 @@ test "a stalled read times out and a ready one does not":
 	expect_equal(first.get(0), 7)?
 
 	stalled := input.next(timeout: milliseconds(50))
-	bad := stalled.error()
-	expect_equal(bad.is_some(), true)?
-	expect_equal(bad.get(Error("none")).kind, "ETIMEDOUT")?
+	expect_equal(stalled.is_error(), true)?
+	expect_equal(stalled.err().kind, "ETIMEDOUT")?

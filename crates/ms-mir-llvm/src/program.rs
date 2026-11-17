@@ -93,7 +93,7 @@ fn native_functions(g: &Gen) -> HashSet<usize> {
         clear(b.index());
     }
     // Callers name a drop function by one symbol and read its convention from the name.
-    for f in m.drop_glue.values().chain(m.clone_glue.values()) {
+    for f in m.made_glue_funcs() {
         clear(f.index());
     }
     for f in m.funcs.iter() {
@@ -162,12 +162,7 @@ fn direct_function(g: &mut Gen, i: usize, f: &Func) {
             mir_llvm::emit(g.m, &g.lay, place, f, &plan, env, &symbol_of)
         },
     );
-    if g.m
-        .drop_glue
-        .values()
-        .chain(g.m.clone_glue.values())
-        .any(|d| d.index() == i)
-    {
+    if g.m.made_glue_funcs().any(|d| d.index() == i) {
         llvm.mark_glue();
     }
     g.llvm = Some(llvm);
@@ -287,34 +282,19 @@ fn glue_info(symbol: String) -> FuncInfo {
     }
 }
 
-/// Emits the closure glue `kind` under its leaf symbol `sym`: the closure header and the runtime
-/// call it through a pointer, so it has no native twin.
-fn direct_closure_glue(g: &mut Gen, kind: Glue, sym: String) {
-    let mut llvm = g.llvm.take().expect("the module is set between functions");
-    let no_bits = HashMap::new();
-    let locs = DirectLocs {
-        syms: &NoSymbols,
-        bits: &no_bits,
-    };
-    llvm.add_direct(&sym, "glue", (0, 0), false, locs, |env| {
-        glue_llvm::closure::emit(g, kind, env.types, env.loc)
-    });
-    llvm.mark_glue();
-    g.llvm = Some(llvm);
-    g.funcs.push(glue_info(sym));
-}
-
 /// Emits the glue `kind` for `ty` straight to LLVM IR, or records it in `Gen::unsupported`.
 fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) {
-    if !glue_llvm::supports(g, kind, ty) {
-        let ty_kind = format!("{:?}", g.m.types.kind(ty));
-        let end = ty_kind.find(['(', ' ', '{']).unwrap_or(ty_kind.len());
-        return note_unsupported(g, &format!("glue {kind:?}"), &ty_kind[..end]);
-    }
+    // Drops and closure functions come from MIR; only copies of data the backend clones itself
+    // (recursive data) and the cleanup thunks are written here.
+    assert!(
+        matches!(
+            kind,
+            Glue::Clone | Glue::SlotCopy | Glue::BlockClone | Glue::CleanupThunk(_)
+        ),
+        "MIR made no {kind:?} function for {}",
+        ms_mir::print::ty_str(g.m, ty)
+    );
     let sym = g.existing_glue(kind, ty);
-    if glue_llvm::closure::is_closure(kind) {
-        return direct_closure_glue(g, kind, sym);
-    }
     let mut llvm = g.llvm.take().expect("the module is set between functions");
     let nat = glue_llvm::native(&sym);
     let no_bits = HashMap::new();

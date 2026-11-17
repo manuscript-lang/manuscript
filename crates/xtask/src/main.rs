@@ -151,7 +151,9 @@ fn symbols(check: bool) -> Result<String, String> {
          # function value, `@takes:<param>` takes ownership of that value, `@spawns` starts a task\n\
          # running program code, `@takes_self` has a `<name>_take` twin that reuses its first\n\
          # argument when it dies at the call, `@op=<mnemonic>` is exactly that MIR instruction on\n\
-         # its arguments, and `@domain=<words>` names its failures' domain.\n",
+         # its arguments, `@domain=<words>` names its failures' domain, and `@view_of=<sym>`,\n\
+         # `@shared_view_of=<sym>`, `@first_of=<sym>`, `@iter_of=<sym>` declare the function as the\n\
+         # borrowing twin of `<sym>` (a lent result, the first element, a one-at-a-time walk).\n",
     );
     for name in table.keys() {
         let declared = flags
@@ -225,6 +227,11 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
+/// The flags that declare a runtime function as the twin of another (`view_of=<sym>`): the entry
+/// lowering calls instead of `<sym>` when the result is only read in place. See
+/// `crates/ms-lower/src/rtcall.rs` (`Twin`).
+const TWIN_FLAGS: [&str; 4] = ["view_of=", "shared_view_of=", "first_of=", "iter_of="];
+
 /// The `// ms: flag ..` comments of `source`: each names the flags of the runtime function whose
 /// name is the first `msrt_*`/`msstd_*` identifier on the next code line. The flags are the
 /// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, `borrows`, `keeps:<param>`
@@ -256,6 +263,7 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
                     && !f.starts_with("takes:")
                     && !f.starts_with("op=")
                     && !f.starts_with("domain=")
+                    && !TWIN_FLAGS.iter().any(|t| f.starts_with(t))
             }) {
                 return Err(format!("line {}: unknown flag `{bad}`", n + 1));
             }

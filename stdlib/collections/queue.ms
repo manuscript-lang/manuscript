@@ -1,11 +1,9 @@
-import panic from "@std/core.ms"
-
 // A mutable first-in, first-out queue. Assigning it transfers ownership; `.clone()`
 // makes an independent queue when its elements are Clonable. Omitted or none capacity
 // grows as needed and adds no fixed queue limit.
 export type Queue[T]:
-	// Constructor capacity in items; omission/none is unbounded, and supplied values
-	// must be positive.
+	// Constructor capacity in items; omission/none is unbounded, and a capacity of
+	// zero or below is always full.
 	capacity: Int?
 	// Pending values from `head`; `none` marks consumed slots. Internal state: use the
 	// operations, not this field.
@@ -13,14 +11,10 @@ export type Queue[T]:
 	// Index in `items` of the oldest value. Internal state.
 	head: Int = 0
 
-// Adds a value, returning False when a bounded queue is full. A non-positive
-// capacity faults.
+// Adds a value, returning False when a bounded queue is full. A capacity of
+// zero or below is always full.
 fn var Queue[T].enqueue(value: T) Bool:
 	if limit := self.capacity:
-		if limit <= 0:
-			panic(
-				f"Queue: capacity must be between 1 and 9223372036854775807, found {limit}"
-			)
 		if self.length() >= limit: return false
 
 	count := self.items.length()
@@ -61,11 +55,13 @@ fn Queue[T].is_empty() Bool:
 fn Queue[T].length() Int:
 	return self.items.length() - self.head
 
-// Returns the value `index` places after the oldest, or none when out of range;
-// negative indexes are out of range.
-fn Queue[T].at(index: Int) T?:
-	if index < 0 or index >= self.length(): return none
-	return self.items.get(self.head + index)
+// Returns the value `index` places after the oldest, or `none` when out of range;
+// negative indexes count from the newest, as `List.get` does.
+fn Queue[T].get(index: Int) T?:
+	at := if index < 0: index + self.length() else: index
+	if at < 0 or at >= self.length(): return none
+
+	return self.items.get(self.head + at)
 
 // Orders two values: negative when `left` dequeues first, zero when equal, positive
 // when `right` dequeues first.
@@ -85,8 +81,8 @@ export type HeapEntry[T]:
 // Assigning a priority queue transfers ownership; `.clone()` makes an independent queue
 // when its elements are Clonable.
 export type PriorityQueue[T: Comparable]:
-	// Constructor capacity in items; omission/none is unbounded, and supplied values
-	// must be positive.
+	// Constructor capacity in items; omission/none is unbounded, and a capacity of
+	// zero or below is always full.
 	capacity: Int?
 	// Binary heap of waiting values, each with its enqueue sequence number (the smaller
 	// breaks ties between equal priorities). One list, so the two never fall out of
@@ -141,16 +137,11 @@ fn var PriorityQueue[T].sift_down(start: Int) Void:
 
 	self.sift_up(at, start)
 
-// Adds a value, returning False when a bounded queue is full. A non-positive
-// capacity faults.
+// Adds a value, returning False when a bounded queue is full. A capacity of
+// zero or below is always full.
 fn var PriorityQueue[T].enqueue(value: T) Bool:
 	if limit := self.capacity:
-		if limit <= 0:
-			panic(
-				f"PriorityQueue: capacity must be between 1 and 9223372036854775807, found {limit}"
-			)
 		if self.heap.length() >= limit: return false
-
 	self.heap.append(HeapEntry(value: value, order: self.next_order))
 	self.next_order += 1
 	self.sift_up(self.heap.length() - 1, 0)
@@ -180,8 +171,11 @@ fn PriorityQueue[T].is_empty() Bool:
 fn PriorityQueue[T].length() Int:
 	return self.heap.length()
 
-// Returns the value at `index` in heap order, or none when out of range; only index
-// 0 is known to be the next to dequeue. Negative indexes are out of range.
-fn PriorityQueue[T].at(index: Int) T?:
-	if index < 0 or index >= self.heap.length(): return none
-	return self.heap[index].value
+// Returns the value at `index` in heap order, or `none` when out of range; only index
+// 0 is known to be the next to dequeue. Negative indexes count from the end of the heap
+// array.
+fn PriorityQueue[T].get(index: Int) T?:
+	at := if index < 0: index + self.heap.length() else: index
+	if at < 0 or at >= self.heap.length(): return none
+
+	return self.heap[at].value

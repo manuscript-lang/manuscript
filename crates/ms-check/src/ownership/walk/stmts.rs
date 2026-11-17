@@ -478,11 +478,17 @@ impl Walker<'_> {
             _ => None,
         };
         let Some((operand, fields)) = target.filter(|(o, _)| self.is_place(o)) else {
+            // A borrowed view (`s.split(..)`, `xs.slice(..)`) is read-only: a `var` needs its own copy.
+            let remedy = if self.native_borrow_of(value).is_some() {
+                format!("it borrows its receiver; end the initializer with `.{CLONE}()` to own it")
+            } else {
+                "the result is a reference into more than one place; bind it with `let` to read it, or borrow the field it returns directly".to_string()
+            };
             self.expr(value, Demand::Read);
             self.error(
                 pos,
                 format!(
-                    "`var {}` cannot borrow `{text}` mutably: the result is a reference into more than one place; bind it with `let` to read it, or borrow the field it returns directly",
+                    "`var {}` cannot borrow `{text}` mutably: {remedy}",
                     self.syms.str(b.name)
                 ),
             );

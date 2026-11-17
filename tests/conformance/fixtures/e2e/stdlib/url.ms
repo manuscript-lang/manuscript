@@ -48,10 +48,10 @@ test "URL format rejects queries that would not round trip":
 	invalid: String! := error(Error("URL: invalid input", kind: "EINVAL"))
 
 	for query in ["a#b", "a b", "%zz", "a%2"]:
-		bad := Url(base.scheme.clone(), base.host.clone(), base.path.clone(), query.clone(), "", base.port, )
+		bad := Url(base.scheme.clone(), base.host.clone(), base.path.clone(), "", query.clone(), base.port, )
 		if format(bad) != invalid: return fail(f"query {query}")
 
-	good := Url(base.scheme.clone(), base.host.clone(), base.path.clone(), "a=%41&b", "", base.port, )
+	good := Url(base.scheme.clone(), base.host.clone(), base.path.clone(), "", "a=%41&b", base.port, )
 	expect_equal((format(good)?), "http://h/p?a=%41&b")?
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
@@ -70,12 +70,12 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
 	for scheme in [
 		"", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
 	]:
-		bad := Url(scheme.clone(), "host", "/path", "", "", none)
+		bad := Url(scheme.clone(), "host", "/path", "", none, none)
 		if format(bad) != invalid_text: return fail(f"invalid scheme accepted: {scheme}")
 
 		expect_equal(resolve(bad, "/next"), invalid_url)?
 
-	relative := Url("custom", "", "relative", "", "", none)
+	relative := Url("custom", "", "relative", "", none, none)
 	expect_equal(format(relative), invalid_text)?
 	expect_equal(resolve(relative, "/next"), invalid_url)?
 
@@ -85,7 +85,7 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
 			f"hierarchical URL round trip: {text}"
 		)
 
-	uppercase := Url("HTTP", "host", "/path", "", "", none)
+	uppercase := Url("HTTP", "host", "/path", "", none, none)
 	expect_equal((uppercase | format? | parse?).scheme, "http")?
 	expect_equal((resolve(uppercase, "/next")?).scheme, "http")?
 
@@ -100,3 +100,26 @@ test "URLs without an authority format without one and an IPv6 zone keeps its ca
 
 	zoned := parse("tcp://[2020::2020:20:2020:2020%25Windows%20Loves%20Spaces]:2020")?
 	expect_equal(zoned.host, "2020::2020:20:2020:2020%Windows Loves Spaces")?
+
+test "URL keeps an empty query through parse, format and resolve":
+	for text in ["http://a/b?", "http://a/b?#f", "http://a/?", "mailto:?"]:
+		expect_equal(format(parse(text)?), ok(text))?
+	empty: String? := ""
+	filled: String? := "x=1"
+	absent: String? := none
+	expect_equal((parse("http://a/b?")?).query, empty)?
+	expect_equal((parse("http://a/b?x=1")?).query, filled)?
+	expect_equal((parse("http://a/b")?).query, absent)?
+	expect_equal(format(parse("http://a/b")?), ok("http://a/b"))?
+	built := Url(
+		scheme: "http",
+		host: "a",
+		path: "/b",
+		fragment: "",
+		query: "",
+		port: none,
+	)
+	expect_equal(format(built), ok("http://a/b?"))?
+	base := parse("http://a/b/c/d;p?q")?
+	expect_equal(format(resolve(base, "?")?), ok("http://a/b/c/d;p?"))?
+	expect_equal(format(resolve(base, "")?), ok("http://a/b/c/d;p?q"))?

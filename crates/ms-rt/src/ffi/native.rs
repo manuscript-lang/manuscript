@@ -237,6 +237,34 @@ impl Str {
     }
 }
 
+/// An owned `String?` stored inside a record, for [`abi_type!`]; none holds no string.
+#[repr(transparent)]
+pub struct OptStrField(OptStr);
+
+impl OptStrField {
+    pub fn new(s: Option<&str>) -> OptStrField {
+        OptStrField(match s {
+            Some(s) => OptStr {
+                value: new_string(s),
+            },
+            None => OptStr::NONE,
+        })
+    }
+
+    /// The string slot; none reads as the empty string.
+    pub fn as_ptr(&self) -> *const StrVal {
+        &raw const self.0.value
+    }
+
+    pub fn get(&self) -> Option<&str> {
+        // SAFETY: a present `OptStrField` holds a live string, made by `new` or by the runtime
+        // inside a live record.
+        self.0
+            .is_some()
+            .then(|| unsafe { str_ref(&raw const self.0.value) })
+    }
+}
+
 /// An owned `List[String]` stored inside a record, for [`abi_type!`].
 #[repr(transparent)]
 pub struct StringList(VecVal);
@@ -719,6 +747,24 @@ impl AbiSlot for Str {
     unsafe fn duplicate(&self) -> Str {
         // SAFETY: caller contract.
         Str(unsafe { crate::ffi::str_clone(&self.0) })
+    }
+}
+
+impl AbiSlot for OptStrField {
+    unsafe fn release(&mut self) {
+        if self.0.is_some() {
+            // SAFETY: caller contract; a present string owns one reference.
+            unsafe { crate::ffi::str_release(&self.0.value) }
+        }
+    }
+    unsafe fn duplicate(&self) -> OptStrField {
+        if !self.0.is_some() {
+            return OptStrField(OptStr::NONE);
+        }
+        OptStrField(OptStr {
+            // SAFETY: caller contract.
+            value: unsafe { crate::ffi::str_clone(&self.0.value) },
+        })
     }
 }
 

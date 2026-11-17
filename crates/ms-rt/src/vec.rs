@@ -823,7 +823,7 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
 /// borrows the elements in place (`cap == 0`, never freed or dropped), so nothing is copied.
 /// Status protocol and bounds as `msrt_list_slice`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf shared_view_of=msrt_list_slice
 pub unsafe extern "C-unwind" fn msrt_list_slice_view(
     v: *const VecVal,
     d: ElemDesc,
@@ -854,13 +854,9 @@ pub unsafe extern "C-unwind" fn msrt_list_slice_view(
     }
 }
 
-fn take_count(name: &str, count: i64, len: usize) -> usize {
-    if count < 0 {
-        fault::fault_fmt(format_args!(
-            "List.{name}: count must be nonnegative, found {count}"
-        ));
-    }
-    (count as usize).min(len)
+/// How many elements `take` and `drop` split at: a count of zero or below is zero.
+fn take_count(count: i64, len: usize) -> usize {
+    (count.max(0) as usize).min(len)
 }
 
 #[unsafe(no_mangle)]
@@ -873,7 +869,7 @@ pub unsafe extern "C-unwind" fn msrt_list_take(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let n = take_count("take", count, (*v).len);
+        let n = take_count(count, (*v).len);
         let view = VecVal {
             ptr: (*v).ptr,
             len: n,
@@ -899,11 +895,10 @@ pub unsafe extern "C-unwind" fn msrt_list_pieces(
 ) {
     // SAFETY: caller contract.
     unsafe {
+        // No group of zero or fewer elements exists, so there are no groups.
         if size <= 0 {
-            fault::fault_fmt(format_args!(
-                "List.{}: size must be positive, found {size}",
-                if short_last != 0 { "chunks" } else { "windows" }
-            ));
+            *out = EMPTY;
+            return;
         }
         let (src, d, od) = (&*v, &*d, &*od);
         let (size, step) = (size as usize, step.max(1) as usize);
@@ -936,7 +931,7 @@ pub unsafe extern "C-unwind" fn msrt_list_drop_n(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let n = take_count("drop", count, (*v).len);
+        let n = take_count(count, (*v).len);
         let view = VecVal {
             ptr: if (*v).len == n {
                 core::ptr::null_mut()
@@ -1008,14 +1003,9 @@ pub unsafe extern "C-unwind" fn msrt_list_repeat(
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&*v, &*d);
-        if count < 0 {
-            fault::fault_fmt(format_args!(
-                "List.repeated: count {count} must not be negative"
-            ));
-        }
         let total = v
             .len
-            .checked_mul(count as usize)
+            .checked_mul(count.max(0) as usize)
             .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
         if total == 0 {
             *out = EMPTY;
@@ -1803,12 +1793,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_split(
     unsafe {
         let (data, sepb) = (bslice(b), bslice(sep));
         let limit = if has_max.is_set() {
-            if max < 0 {
-                fault::fault_fmt(format_args!(
-                    "split: max_parts must be nonnegative, found {max}"
-                ));
-            }
-            max as usize
+            max.max(0) as usize
         } else {
             usize::MAX
         };

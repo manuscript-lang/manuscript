@@ -15,8 +15,8 @@ test "semver parses and formats every component":
 	(version.major != 1 or version.minor != 2 or version.patch != 3) | expect_false?
 	version.prerelease | expect_equal(["alpha", "1"])?
 	version.build | expect_equal(["build", "5"])?
-	version.format() | expect_equal("1.2.3-alpha.1+build.5")?
-	(parse(text: "0.0.0") | expect_ok?).format() | expect_equal("0.0.0")?
+	version.to_string() | expect_equal("1.2.3-alpha.1+build.5")?
+	(parse(text: "0.0.0") | expect_ok?).to_string() | expect_equal("0.0.0")?
 
 test "semver rejects malformed text":
 	bad := [
@@ -80,7 +80,7 @@ test "semver ignores build metadata and compares huge numeric identifiers":
 
 test "semver keeps hyphens in pre-release and rejects extra plus signs":
 	version := (parse(text: "1.2.3-alpha-1") | expect_ok?)
-	version.format() | expect_equal("1.2.3-alpha-1")?
+	version.to_string() | expect_equal("1.2.3-alpha-1")?
 	(
 		(failure(parse(text: "1.2.3+a+b"))?)
 		| expect_equal(Error("semver: invalid data", kind: "EBADMSG"))?
@@ -91,7 +91,7 @@ test "semver reads and orders calendar versions":
 	version.major | expect_equal(2027)?
 	version.minor | expect_equal(1)?
 	version.patch | expect_equal(3)?
-	version.format() | expect_equal("2027.1.3")?
+	version.to_string() | expect_equal("2027.1.3")?
 
 	// The month has no leading zero, so a calendar version stays valid semver.
 	(

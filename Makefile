@@ -177,7 +177,7 @@ bench-check: build
 		while [ $$p != bench/perf ] && [ ! -f $$p/ms.toml ]; do p=$$(dirname $$p); done; \
 		[ -f $$p/ms.toml ] || "$(RELEASE_MS)" check $$f || exit 1; \
 	done
-	@for t in bench/tools/*.ms; do "$(RELEASE_MS)" check $$t || exit 1; done
+	@for t in bench/tools/*.ms bench/agent/*.ms; do "$(RELEASE_MS)" check $$t || exit 1; done
 	@for t in bench/tools/*_test.ms; do "$(RELEASE_MS)" test $$t || exit 1; done
 
 # Runs the bench blocks of bench/perf/stdlib; BENCHREPEATS is the sample count per case.

@@ -92,3 +92,19 @@ test "multipart accepts only transport padding before delimiter line endings":
 	for padding in ["x", "\n", "\u{b}", "\u{a0}", "\r"]:
 		body := f"--b{padding}\r\n\r\nx\r\n--b--\r\n".to_bytes()
 		expect_equal(parse_multipart(body, "b").err().kind, "EBADMSG")?
+
+test "line breaks in field and file names cannot inject header lines":
+	hostile := "a\r\nContent-Type: text/html"
+	part := form_part(hostile.clone(), "x".to_bytes(), hostile)
+	expect_equal(part.headers.fields.length(), 1)?
+
+	body := encode_multipart([part], "b")
+	parts := parse_multipart(body, "b")?
+	expect_equal(parts.length(), 1)?
+	expect_equal(parts[0].headers.fields.length(), 1)?
+	expect_equal(parts[0].name, "a%0D%0AContent-Type: text/html")?
+	expect_equal(parts[0].data, "x".to_bytes())?
+	expect_equal(
+		format_media_type(MediaType(essence: "a/b", params: {"k": "v\nX: y"})),
+		"a/b; k=\"v%0AX: y\"",
+	)?

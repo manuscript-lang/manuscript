@@ -6,7 +6,7 @@ import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 JT := "\n.data\ntable:  .word case0, case1, case2\n.text\nmain:   in r5\n        mov r1, [table+r5]\n        push r1\n        ret\ncase0:  out 100\n        halt\ncase1:  out 101\n        halt\ncase2:  out 102\n        halt\n"
 
 fn strip_nl(text: String) String:
-	var chars = text.chars()
+	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
 	while start < end and chars[start] == "\n":

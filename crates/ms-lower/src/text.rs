@@ -340,7 +340,7 @@ pub(crate) fn build_format(
         None => None,
     };
     match b.m.types.kind(t).clone() {
-        TyKind::Type(_) | TyKind::Alt(_) if own_text.is_some() => {
+        TyKind::Type(_) | TyKind::Alt(_) | TyKind::Obj(..) if own_text.is_some() => {
             // The type's own `to_string`, declared next to it.
             let f = own_text.expect("checked");
             let text = b.call(f, &[x]);
@@ -641,7 +641,7 @@ impl<'a> FnLower<'a> {
         t: &ms_check::api::types::Ty,
         x: Val,
     ) -> Result<Option<Val>, Error> {
-        if !matches!(t.kind, Kind::Type | Kind::Alternative) {
+        if !matches!(t.kind, Kind::Type | Kind::Alternative | Kind::Native) {
             return Ok(None);
         }
         let Some(f) = self.cx.own_text_fn(self.b.m, t)? else {

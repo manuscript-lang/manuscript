@@ -7,7 +7,7 @@ import (
 fn count(text: String, ch: String) Int: text.chars().count(fn c: c == ch)
 
 fn solve(s: String) String:
-	var rows = s.split("\n")
+	var rows = s.split("\n").clone()
 	while not rows.is_empty() and rows[rows.length() - 1] == "": rows.pop()
 
 	for r in 0..rows.length():
@@ -25,7 +25,7 @@ fn solve(s: String) String:
 
 	h := rows.length()
 	w := rows[0].length()
-	cells := rows.map(fn r: r.chars())
+	cells := rows.map(fn r: r.chars().clone())
 	var start = 0
 	for r in 0..h:
 		for c in 0..w:

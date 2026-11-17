@@ -28,19 +28,24 @@
           "index": 3,
           "name": "queues.ms::ordered priority queue defaults to natural order and honors capacity",
           "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "queues.ms::get reads by position and counts negative indexes from the end",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN queues.ms::FIFO capacity empty reads draining and reuse\nPASS queues.ms::FIFO capacity empty reads draining and reuse\nRUN queues.ms::priority queue orders values and honors capacity\nPASS queues.ms::priority queue orders values and honors capacity\nRUN queues.ms::priority queue sorts many values and copies are independent\nPASS queues.ms::priority queue sorts many values and copies are independent\nRUN queues.ms::ordered priority queue defaults to natural order and honors capacity\nPASS queues.ms::ordered priority queue defaults to natural order and honors capacity\n4 tests, 0 failed\n",
+      "stdout": "RUN queues.ms::FIFO capacity empty reads draining and reuse\nPASS queues.ms::FIFO capacity empty reads draining and reuse\nRUN queues.ms::priority queue orders values and honors capacity\nPASS queues.ms::priority queue orders values and honors capacity\nRUN queues.ms::priority queue sorts many values and copies are independent\nPASS queues.ms::priority queue sorts many values and copies are independent\nRUN queues.ms::ordered priority queue defaults to natural order and honors capacity\nPASS queues.ms::ordered priority queue defaults to natural order and honors capacity\nRUN queues.ms::get reads by position and counts negative indexes from the end\nPASS queues.ms::get reads by position and counts negative indexes from the end\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

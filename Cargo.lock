@@ -1133,7 +1133,6 @@ dependencies = [
  "miniz_oxide",
  "ms-inflate",
  "ms-rt",
- "ms-rt-abi",
  "ms-std-core",
 ]
 
@@ -1209,14 +1208,12 @@ name = "ms-std-html"
 version = "0.1.0"
 dependencies = [
  "ms-rt",
- "ms-rt-abi",
 ]
 
 [[package]]
 name = "ms-std-io"
 version = "0.1.0"
 dependencies = [
- "libc",
  "ms-rt",
  "ms-rt-abi",
  "ms-std-fs",
@@ -1257,7 +1254,6 @@ name = "ms-std-path"
 version = "0.1.0"
 dependencies = [
  "ms-rt",
- "ms-rt-abi",
 ]
 
 [[package]]
@@ -1297,7 +1293,6 @@ name = "ms-std-table"
 version = "0.1.0"
 dependencies = [
  "ms-rt",
- "ms-rt-abi",
  "unicode-width",
 ]
 

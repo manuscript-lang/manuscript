@@ -17,7 +17,6 @@ import (
 	variance from "@std/math/statistics.ms",
 	expect_close,
 	expect_equal,
-	expect_fault,
 	expect_none,
 	expect_some,
 	expect_true from "@std/test/test.ms",
@@ -148,14 +147,11 @@ test "regression stays finite and exact at large and tiny scales and with a larg
 	expect_equal(flat.slope, 0.0)?
 	expect_equal(flat.intercept, 5.0)?
 
-fn discard[T](value: T) Void:
-	return
-
-test "invalid arguments fault":
-	_first := expect_fault(fn: discard(percentile([1.0], 101.0)))?
-	_second := expect_fault(fn: discard(quantiles([1.0], 1)))?
-	_third := expect_fault(fn: discard(bin_counts([1.0], 0)))?
-	_fourth := expect_fault(fn: discard(correlation([1.0, 2.0], [1.0])))?
+test "requests with no answer give none or an empty list":
+	expect_true(percentile([1.0], 101.0).is_none())?
+	expect_equal(quantiles([1.0], 1), List[Float]())?
+	expect_true(bin_counts([1.0], 0).is_none())?
+	expect_true(correlation([1.0, 2.0], [1.0]).is_none())?
 
 test "percentile finite spans do not overflow during interpolation":
 	values := [-1e308, 1e308]

@@ -48,16 +48,13 @@ fn RetryPolicy.wait_after(attempt: Int) Duration:
 /*
 Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
 `operation` receives the attempt number, starting at 1. `E` must be `Clonable`, because the error is lent to `retryable` and then returned. `retryable` defaults to retrying every error.
-Waiting uses `sleep`, so cancelling the task ends the wait. A policy with fewer than one attempt faults.
+Waiting uses `sleep`, so cancelling the task ends the wait. The operation always runs once, so a policy with fewer than one attempt runs it once.
 */
 export fn retry[T, E: Clonable](
 	policy: RetryPolicy,
 	operation: fn(Int) T!E,
 	retryable: (fn(E) Bool)? = none
 ) T!E:
-	if policy.attempts < 1:
-		panic(f"retry: attempts must be at least 1, found {policy.attempts}")
-
 	var attempt = 1
 
 	while true:
@@ -202,7 +199,7 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // Applies `work` to every item with at most `limit` running at once and returns the
 // results in the order of `items`. A failed worker promise cancels the others. If
 // `work` returns a Result, that Result is an item in the returned list; inspect each
-// outcome.
+// outcome. A `limit` below 1 is `EINVAL`.
 //
 // <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
@@ -210,7 +207,12 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // ```
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
 	if limit < 1:
-		panic(f"map_concurrent: limit must be at least 1, found {limit}")
+		return error(
+			Error(
+				f"map_concurrent: limit must be at least 1, found {limit}",
+				kind: "EINVAL",
+			)
+		)
 
 	stripes := limit.min(items.length())
 	var running: List[Promise[List[U]]] = []

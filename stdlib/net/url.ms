@@ -33,11 +33,12 @@ export type Url:
 	// Escaped path text, retaining escaped separators; format validates its percent
 	// escapes and UTF-8.
 	path: String
-	// Encoded query contents without the leading question mark; parse_query decodes
-	// individual entries.
-	query: String
 	// Decoded fragment contents without the leading hash mark.
 	fragment: String
+	// Encoded query contents without the leading question mark, or none when the URL
+	// has no query; `http://a/b?` has an empty one. parse_query decodes individual
+	// entries.
+	query: String?
 	// Explicit numeric port in 0..65535, or none when the input has no port.
 	port: Int?
 	// True when the URL was written without `//`, as in `mailto:?subject=hi`; format

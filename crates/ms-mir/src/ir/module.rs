@@ -31,6 +31,8 @@ impl Module {
             desc_glue: Vec::new(),
             drop_glue: Default::default(),
             clone_glue: Default::default(),
+            addr_glue: Default::default(),
+            glue_bodies: Vec::new(),
             c_externs: std::collections::BTreeSet::new(),
         }
     }
@@ -336,9 +338,18 @@ impl Module {
         let table = match kind {
             crate::glue::Glue::Drop => &self.drop_glue,
             crate::glue::Glue::Clone => &self.clone_glue,
-            _ => return None,
+            _ => return self.addr_glue.get(&(kind, ty.unscoped())).copied(),
         };
         table.get(&ty.unscoped()).copied()
+    }
+
+    /// Every function [`crate::glue::run`] made.
+    pub fn made_glue_funcs(&self) -> impl Iterator<Item = FuncId> + '_ {
+        (self.drop_glue.values())
+            .chain(self.clone_glue.values())
+            .chain(self.addr_glue.values())
+            .chain(&self.glue_bodies)
+            .copied()
     }
 
     pub(crate) fn drop_children(&self, ty: Ty) -> Vec<Ty> {

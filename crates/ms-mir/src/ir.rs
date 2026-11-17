@@ -306,7 +306,7 @@ pub enum Op {
     // Byte builders.
     BytesPush,
     // Closures and interface views.
-    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
+    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs, IfaceTag, IfaceDestroy,
     // Ownership.
     Clone, Drop, DropIf, MoveOut, Forget,
     // Raw memory: stack slots, interior pointers into lists and types.
@@ -314,7 +314,7 @@ pub enum Op {
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
-    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, StackLow, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
+    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, StackLow, StackNear, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
     // Raw-phase scope markers, consumed by `elaborate`.
     ScopeBegin, ScopeOwn, ScopeEnd, ScopeDisown, ScopeMark,
 }
@@ -1120,6 +1120,11 @@ pub struct Module {
     pub drop_glue: HashMap<Ty, FuncId>,
     /// The clone function of a type (`fn(&T) -> T`), made like [`Module::drop_glue`].
     pub clone_glue: HashMap<Ty, FuncId>,
+    /// The functions made for the glue kinds that work on memory (slot and block drop and copy), keyed by
+    /// kind and the type they hold.
+    pub addr_glue: HashMap<(crate::glue::Glue, Ty), FuncId>,
+    /// Bodies of drop functions that [`crate::glue::run`] wrapped in the stack-depth guard of recursive data.
+    pub glue_bodies: Vec<FuncId>,
     /// Externs that are user `extern fn` shims (`ms_abi.h`): their sized numbers cross as the
     /// same-width C types, extended per the platform ABI, instead of the runtime's 64-bit words.
     pub c_externs: std::collections::BTreeSet<String>,

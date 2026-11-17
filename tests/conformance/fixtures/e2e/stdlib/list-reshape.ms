@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Deque from "@std/collections/deque.ms",
-	expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 type Person:
@@ -103,16 +103,13 @@ test "Deque rotate turns the ring":
 	ring.rotate(6)
 	expect_equal(ring.to_list(), [3, 4, 1, 2])?
 
-fn repeat_negative_empty() Void:
-	_result := List[Int]().repeated(-1)
-
 test "repeated empty lists return without traversing the count":
 	for count in [0, 1, 1000000, 9223372036854775807]:
 		expect_equal(List[Int]().repeated(count), List[Int]())?
 		expect_equal(List[String]().repeated(count), List[String]())?
 
-	fault := expect_fault(repeat_negative_empty)?
-	expect_equal(fault, "List.repeated: count -1 must not be negative")?
+	expect_equal(List[Int]().repeated(-1), List[Int]())?
+	expect_equal([1, 2].repeated(-1), List[Int]())?
 
 test "repeated nested lists remain independent copies":
 	values := [[1, 2]]

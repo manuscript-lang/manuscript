@@ -34,7 +34,7 @@ fn url_from(f: &[&str]) -> Components {
         host: text(f[1]),
         port: limit(f[2]),
         path: text(f[3]),
-        query: text(f[4]),
+        query: Some(text(f[4])).filter(|q| !q.is_empty()),
         fragment: text(f[5]),
         omit_host: false,
     }
@@ -47,7 +47,7 @@ fn url_text(u: &Components) -> String {
         hex(&u.host),
         u.port.map_or("-".to_string(), |p| p.to_string()),
         hex(&u.path),
-        hex(&u.query),
+        hex(u.query.as_deref().unwrap_or("")),
         hex(&u.fragment)
     )
 }

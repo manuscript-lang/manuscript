@@ -270,10 +270,9 @@ pub fn build_executable(
     if cfg!(debug_assertions) {
         verify_after(module, "expand")?;
     }
-    // Drop functions for records and enums are written as release shorthands, expanded next.
-    ms_mir::glue::run(module);
-    // The backends lower only primitives: the release shorthands become loads, drops and frees.
-    ms_mir::expand_owned::run(module);
+    // Drop and clone functions are made here; the backends lower only primitives, so the release
+    // shorthands become loads, drops and frees.
+    ms_mir::glue::run_and_expand(module);
     phase("mir optimize");
     let compiled = match llvm {
         Some(level) => crate::llvm::compile(module, options.checks, level, build),

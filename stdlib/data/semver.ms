@@ -39,7 +39,7 @@ fn Version.compare(other: Version) Int:
 	return shared
 
 // Formats a version as `major.minor.patch[-prerelease][+build]`.
-fn Version.format() String:
+fn Version.to_string() String:
 	var text = f"{self.major}.{self.minor}.{self.patch}"
 	if not self.prerelease.is_empty(): text = f"{text}-{self.prerelease.join(".")}"
 	if not self.build.is_empty(): text = f"{text}+{self.build.join(".")}"

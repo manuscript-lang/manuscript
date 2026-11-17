@@ -10,7 +10,7 @@ use std::process::Command;
 fn run_llvm(src: &str, opts: &BuildOptions, tag: &str) -> Outcome {
     let mut m = module(src);
     ms_mir::expand::run(&mut m, true);
-    ms_mir::expand_owned::run(&mut m);
+    ms_mir::glue::run_and_expand(&mut m);
     let mut objects =
         ms_build::llvm::compile(&m, true, "3", opts).unwrap_or_else(|e| panic!("{e}"));
     let d = dir();
@@ -624,11 +624,11 @@ pub fn boxed_enums_match_cranelift() {
         assert!(direct, "{f} was translated: {header}");
     }
     assert!(ir.contains("!range"), "the tag load has a range");
-    // Drop glue of enums is written directly: its native entry has a body here.
+    // Drop glue of enums is made in MIR and defined like any function.
     assert!(
         ir.lines()
-            .any(|l| l.starts_with("define") && l.contains(".n\"(")),
-        "no direct glue"
+            .any(|l| l.starts_with("define") && l.contains("ms.glue.mir.")),
+        "no MIR glue"
     );
     assert_eq!((got.code, &got.stdout), (want.code, &want.stdout));
     assert_eq!(got.code, 9 + 4 + 9 + 4 + 5);

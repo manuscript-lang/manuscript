@@ -311,6 +311,8 @@ pub enum DecodeError {
     /// The message passed the read limit (`websocket: read limit exceeded`). `reply_close`
     /// asks for close 1009 to be sent first.
     Limit { reply_close: bool, body: bool },
+    /// A close frame's reason is not valid UTF-8; the peer is sent close 1007.
+    InvalidPayload,
     /// A compressed message inflated past the limit.
     Overflow,
     /// A compressed message was not valid deflate data.
@@ -626,7 +628,7 @@ impl Decoder {
             return Err(self.protocol(format!("bad close code {c}")));
         }
         let Ok(reason) = std::str::from_utf8(&payload[2..]) else {
-            return Err(self.protocol("invalid utf8 payload in close frame"));
+            return Err(DecodeError::InvalidPayload);
         };
         Ok(Event::Close {
             code: c,
@@ -973,10 +975,7 @@ mod tests {
         }
         let mut payload = format_close(1000, "");
         payload.extend_from_slice(&[0xff, 0xfe]);
-        let Err(DecodeError::Protocol { text, .. }) = close(&payload) else {
-            panic!("bad utf8 accepted");
-        };
-        assert_eq!(text, "invalid utf8 payload in close frame");
+        assert_eq!(close(&payload).err(), Some(DecodeError::InvalidPayload));
     }
 
     #[test]

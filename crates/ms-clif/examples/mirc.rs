@@ -43,7 +43,7 @@ fn main() {
         ms_mir::depth::lower(&mut m);
     }
     ms_mir::expand::run(&mut m, opts.checks);
-    ms_mir::expand_owned::run(&mut m);
+    ms_mir::glue::run_and_expand(&mut m);
     let object = compile(&m, &opts).unwrap_or_else(|e| panic!("{e}"));
     let objp = out.with_extension("o");
     std::fs::write(&objp, object).expect("write object");

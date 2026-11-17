@@ -614,15 +614,22 @@ fn a_known_closure_argument_specializes_the_callee() {
     let before = module(SPECIALIZE);
     let m = inlined(SPECIALIZE);
     let text = print_module(&m);
-    assert_eq!(calls_to(&m, "total"), 0, "{text}");
-    assert!(has_func(&m, "total.add"), "{text}");
-    assert!(has_func(&m, "total.mul"), "{text}");
-    assert!(!has_func(&m, "total"), "{text}");
-    for name in ["total.add", "total.mul"] {
-        assert_eq!(count_op(&m, name, Op::CallInd), 0, "{text}");
-        assert_eq!(count_op(&m, name, Op::ClosureNew), 0, "{text}");
-        assert_eq!(count_op(&m, name, Op::Clone), 0, "{text}");
-        assert_eq!(count_op(&m, name, Op::Drop), 0, "{text}");
+    // The copies keep the callee's name, so a fault trace shows the function the program wrote:
+    // one per distinct closure code (`add`, `mul`), each taking the closure's capture in place
+    // of the closure; the original is gone.
+    let copies: Vec<_> = m.funcs.iter().filter(|f| f.name == "total").collect();
+    assert_eq!(copies.len(), 2, "{text}");
+    for f in copies {
+        assert_eq!(f.params.len(), 2, "{text}");
+        for op in [Op::CallInd, Op::ClosureNew, Op::Clone, Op::Drop] {
+            let n = f
+                .blocks
+                .iter()
+                .flat_map(|b| b.insts.iter())
+                .filter(|i| i.op == op)
+                .count();
+            assert_eq!(n, 0, "{op:?} in a copy: {text}");
+        }
     }
     assert_eq!(count_op(&m, "main", Op::ClosureNew), 0, "{text}");
     assert_eq!(outcome(&before), outcome(&m));

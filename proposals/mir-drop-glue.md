@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the thread "Move language logic out of the backends into MIR". Clone functions follow in stage 2 (same pass, `Module::clone_glue`: clone every field, rebuild with `type.new` or `alt.new`). Optionals, lists, interfaces, and types that contain themselves stay in the backends for now.
+Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the thread "Move language logic out of the backends into MIR". Clone functions follow in stage 2 (same pass, `Module::clone_glue`: clone every field, rebuild with `type.new` or `alt.new`). Stage 3 adds flag-and-payload optionals and lists (a drop loop over `list.get_u`, a clone loop with `list.push_u`; lists of plain elements keep the backends' block copy) and makes only the functions a program drops or clones, so the pass adds no compile time. Interfaces, closures, strings, maps and types that contain themselves stay in the backends for now.
 
 ## Problem
 
@@ -39,3 +39,43 @@ Proposal, 2026-11-16, checked against `e0fab5d0`. Stage 1 of the audit in the th
 ## Measurement
 
 Against `e0fab5d0` on a generated 1,000-module project (a record and an enum per module): release build 19.1 s to 15.0 s (median of 5), check 0.23 s to 0.29 s median with equal minimum (0.21 s and 0.19 s), debug build 1.87 s to 1.81 s. Ten suite programs run at equal speed within noise (for example `interp`, 11 alternating runs: median 0.228 s base, 0.223 s new).
+
+## Stage 4: slot and block glue
+
+The functions that descriptors and interface vtables point at are made in MIR too: slot drop (`take`, `drop`), slot copy (`load`, `clone`, `put`) and the interface payload block drop and clone (the clone allocates with `msrt_alloc`). They are keyed in `Module::addr_glue`. The pass finds the descriptor types by walking `typedesc` ops and each descriptor's inner types, using the same `statics::descriptor` plan the backends use, so the set matches. Generated debug build of the 1,000-module project: 15.2 to 15.9 s against 15.2 to 16.9 s on main (three runs each); the corpus passes 1460 of 1460 on both backends.
+
+## Stage 5: interface drop
+
+Two small ops, `iface.tag` (the ownership tag of the vtable word: 0 owns box and payload, 1 only the box, 2 nothing) and `iface.destroy` (runs the payload destructor in vtable slot 0), let the interface drop be written in MIR: destroy when the tag is 0, free the box when it is 1. Both backends lower the two ops; the interpreter reports them as native only. Corpus 1460 of 1460 on both backends.
+
+## Stage 6: closures
+
+The closure drop (heap and framed), the drop-from tail registered while a capture closer runs, and the clone entry are made in MIR from `ptr.add`, `take`, `load`, `put`, `cleanup.push` and `func.addr`, with capture offsets from `Layouts::closure`. They are keyed in `Module::addr_glue` by the closure function. Demand is every `closure.new`, with the framed variant read from `frames::framed_closure_objects`. Corpus 1460 of 1460 on both backends. Suite `dispatch` (closures and interfaces), nine alternating runs: median 0.287 s base, 0.296 s new (noise); the binary grows 280 bytes. Debug build of the 1,000-module project: 20.8 to 21.5 s base, 20.5 to 21.4 s new.
+
+## Stage 7: boxed optionals, maps and sets
+
+A boxed optional is dropped with `opt.unbox` (the payload moves out of the box, which is freed) and cloned like any optional. A map or set is dropped and cloned in MIR through a stack slot and the runtime's `msrt_slot_drop` and `msrt_slot_copy` with its descriptor, as the backends did. Corpus 1460 of 1460 on both backends.
+
+## Stage 8: drop of data that contains itself
+
+`stack.near N` (new op: whether the stack pointer is within N bytes of the segment limit) lets the guard of recursive drops live in MIR. A recursive type's drop function is a wrapper: when the stack is within `DEEP_DROP_HEADROOM`, `msrt_drop_enter` decides whether to park the value (`msrt_drop_defer` with the slot drop function, a block holding the value) or run the body, and `msrt_drop_leave` follows the body. The body of a boxed enum with a tail field (`Cons(head, tail)`) is a loop: it reads the tail, releases the block with the tail marked moved, and continues with the tail, so a long chain does not recurse. The copy of recursive data (the chain copy needs an op that fills a field of a fresh block) stays in the backends. Corpus 1460 of 1460 on both backends. Instruction counts for `interp` under callgrind: 2,983,575,576 on main, 2,983,575,590 here; wall times of `exprparse`, `objgraph` and `treegrep` equal or better (minimum of seven runs).
+
+## Stage 9: demand from vtables and from expansion
+
+Types dropped only by a vtable's payload block, a descriptor slot function, or a drop that
+`expand_owned` emits had no MIR function, so the backends still generated their drops. `glue::run`
+now also seeds from the slot and block types and repeats with `expand_owned` until nothing new is
+wanted. A corpus run (4,042 fixtures, Cranelift) with the backend fallback logged shows no drop
+generated by the backends. The remaining clone fallbacks are bytes, plain lists, interfaces and
+recursive data, all excluded on purpose. Debug compile time of the 1,000-module project: 15.79 s
+before, 15.57 s after. Callgrind on `bench/perf/clone-costs`: 2,813,658,955 before, 2,817,658,628
+after (+0.14%).
+
+## Stage 10: the backends no longer write drops
+
+`ClifGen::glue` and the LLVM `direct_glue` now assert that only copies of recursive data (`Clone`,
+`SlotCopy`, `BlockClone`) and cleanup thunks are made by a backend; every drop, slot, block and
+closure function comes from MIR. The drop, closure and release-shorthand bodies in `ms-clif`
+`lower/glue.rs` and `ms-mir-llvm` `glue_llvm.rs`, and `glue_llvm/closure.rs`, are deleted (about
+870 lines net). Debug compile of the 1,000-module project: 16.28 s before, 16.31 s after. Callgrind
+on `bench/perf/clone-costs`: 2,813,659,688 before, 2,817,659,361 after (+0.14%, the same as stage 9).
