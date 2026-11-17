@@ -749,3 +749,17 @@ fn lint_fix_keeps_a_default_the_condition_can_change() {
     assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn lint_fix_leaves_calls_split_over_lines_or_by_a_comment() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-lint-split-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // `xs\n    [i]` does not parse, and the map rewrite would delete the comment.
+    let source = include_str!("check_fix/terse_kept.ms");
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+    let (_, text) = ms(&["lint", "a.ms", "--fix"], &dir);
+    assert!(!text.contains("applied"), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -198,7 +198,8 @@ impl Visitor for Scan<'_> {
         let (Some(dot), Some(index)) = (dot, self.text(&arg.value, &arg.value)) else {
             return;
         };
-        if source.as_bytes().get(dot) != Some(&b'.') {
+        // `xs\n    .get(i)` would become `xs\n    [i]`, an indented line that opens no block.
+        if source.as_bytes().get(dot) != Some(&b'.') || left.end.offset as usize != dot {
             return;
         }
         let index = index.to_string();
@@ -466,7 +467,11 @@ impl Scan<'_> {
         ) else {
             return;
         };
-        if self.source().as_bytes().get(dot) != Some(&b'.') {
+        // The edit replaces everything between the two calls, so a comment there would be lost.
+        let between = self.span(dot, e.end.offset as usize);
+        if self.source().as_bytes().get(dot) != Some(&b'.')
+            || between.is_none_or(|t| t.contains("//") || t.contains("/*"))
+        {
             return;
         }
         self.report(
