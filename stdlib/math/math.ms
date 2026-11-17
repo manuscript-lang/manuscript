@@ -345,9 +345,11 @@ export fn parse_float(text: String) Float!:
 
 // Parses an integer with an optional sign in a radix from 2 through 36; `_` separators
 // and white space are not accepted. Radix 0 reads a `0x`, `0o` or `0b` prefix and
-// otherwise uses 10. A bad digit is EBADMSG, an overflow ERANGE and an unsupported
-// radix EINVAL.
+// otherwise uses 10. A bad digit is EBADMSG and an overflow ERANGE; a radix outside 0
+// and 2 through 36 is a programming fault.
 export fn parse_int(text: String, radix: Int = 10) Int!:
+	if radix != 0 and (radix < 2 or radix > 36):
+		panic("parse_int: radix must be 0 or from 2 through 36")
 	return msrt_numbers_parse_int(text, radix)
 
 // Returns the bitwise AND of two integers.
@@ -720,8 +722,12 @@ fn BigInt.mod_sqrt(modulus: BigInt) BigInt?!:
 export fn from_int(value: Int) BigInt:
 	return msstd_bigint_from_int(value)
 
-// Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
+// Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied; a
+// radix outside 2 through 36 or a negative `max_digits` is a programming fault.
 export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!:
+	if radix < 2 or radix > 36: panic("parse: radix must be from 2 through 36")
+	if limit := max_digits:
+		if limit < 0: panic("parse: max_digits must not be negative")
 	return msstd_bigint_parse(text, radix, max_digits)
 
 // Returns n! for a non-negative n; a negative n faults. Work and result size
