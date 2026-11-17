@@ -690,9 +690,19 @@ fn BigInt.to_int() Int?:
 	return msstd_bigint_to_int(self)
 
 // Formats the value in a radix from 2 through 36 using lowercase digits and a
-// leading `-` for negatives. A radix outside 2 through 36 is a programming fault.
-fn BigInt.to_string_radix(radix: Int) String:
+// leading `-` for negatives, or none when the radix is outside 2 through 36.
+fn BigInt.to_string_radix(radix: Int) String?:
+	if radix < 2 or radix > 36: return none
 	return msstd_bigint_to_string_radix(self, radix)
+
+// Formats the value in base 16 using lowercase digits and a leading `-` for
+// negatives; it cannot fail.
+fn BigInt.to_hex() String:
+	return msstd_bigint_to_string_radix(self, 16)
+
+// Formats the value in base 2 with a leading `-` for negatives; it cannot fail.
+fn BigInt.to_binary() String:
+	return msstd_bigint_to_string_radix(self, 2)
 
 /*
 Reports whether this value is probably prime: trial division by the primes below 100, then Miller-Rabin
@@ -825,7 +835,7 @@ fn bigint_strong_probable(n: BigInt, base: BigInt, odd_part: BigInt, twos: Int) 
 // A base drawn from operating-system entropy in 2 through n - 2, for n above the
 // deterministic bound.
 fn bigint_random_base(n: BigInt) BigInt:
-	size := n.to_string_radix(16).length() / 2 + 8
+	size := n.to_hex().length() / 2 + 8
 	data := random_bytes(size)
 	if data.is_error():
 		panic("is_probable_prime: the operating system entropy source failed")

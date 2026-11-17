@@ -9,9 +9,7 @@ fn verify_bigint() Void!:
     large := parse_big_int(text: "18446744073709551616", radix: 10, max_digits: 30)?
     (
         not (
-            ((large).multiply(other: large)).to_string_radix(
-                radix: 10
-            ) == "340282366920938463463374607431768211456"
+            ((large).multiply(other: large)).to_string() == "340282366920938463463374607431768211456"
         )
     ) | expect_false?
 

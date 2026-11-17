@@ -52,7 +52,7 @@ import (
 	finite_float_boundaries,
 	float_boundaries,
 	int_boundaries from "@std/test/boundary.ms",
-	expect_equal, expect_error, expect_true, fail from "@std/test/test.ms",
+	expect_equal, expect_error, expect_some, expect_true, fail from "@std/test/test.ms",
 )
 
 // The two's-complement 64-bit wrap of an exact integer.
@@ -322,7 +322,7 @@ test "shifts and rotations agree with exact arithmetic at every count":
 test "bit counts match the binary expansion":
 	for a in int_boundaries():
 		word := if a < 0: big_int_of_int(a) + two_pow(64) else: big_int_of_int(a)
-		digits := word.to_string_radix(2)
+		digits := word.to_binary()
 		var ones = 0
 		for c in digits.chars():
 			if c == "1":
@@ -348,7 +348,7 @@ test "integer conversions respect each target range":
 test "radix text and parsing round-trip every boundary":
 	for a in int_boundaries():
 		for radix in [2, 8, 10, 16, 36]:
-			text := a.to_string_radix(radix)
+			text := expect_some(a.to_string_radix(radix))?
 			expect_equal(big_int_of_int(a).to_string_radix(radix), text)?
 			expect_equal(parse_int(text, radix)?, a)?
 
@@ -542,20 +542,20 @@ test "Decimal arithmetic matches BigInt while the result fits 34 digits":
 			expect_equal(
 				(x + y).to_fixed(0),
 				Result.ok(
-					(big_int_of_int(a) + big_int_of_int(b)).to_string_radix(10)
+					(big_int_of_int(a) + big_int_of_int(b)).to_string()
 				),
 			)?
 			expect_equal(
 				(x - y).to_fixed(0),
 				Result.ok(
-					(big_int_of_int(a) - big_int_of_int(b)).to_string_radix(10)
+					(big_int_of_int(a) - big_int_of_int(b)).to_string()
 				),
 			)?
 			expect_equal(x.compare(y), a.compare(b))?
 
 			product := big_int_of_int(a) * big_int_of_int(b)
-			if product.abs().to_string_radix(10).length() <= 34:
+			if product.abs().to_string().length() <= 34:
 				expect_equal(
 					(x * y).to_fixed(0),
-					Result.ok(product.to_string_radix(10)),
+					Result.ok(product.to_string()),
 				)?

@@ -6,17 +6,17 @@ import (
 )
 
 test "factorial and binomial are exact":
-	expect_equal((factorial(0)?).to_string_radix(10), "1")?
-	expect_equal((factorial(5)?).to_string_radix(10), "120")?
-	expect_equal((factorial(25)?).to_string_radix(10), "15511210043330985984000000")?
-	expect_equal((factorial(100)?).to_string_radix(10).length(), 158)?
+	expect_equal((factorial(0)?).to_string(), "1")?
+	expect_equal((factorial(5)?).to_string(), "120")?
+	expect_equal((factorial(25)?).to_string(), "15511210043330985984000000")?
+	expect_equal((factorial(100)?).to_string().length(), 158)?
 	expect_equal((factorial(100)?) / (factorial(99)?), big_int_of_int(100))?
-	expect_equal((binomial(5, 2)?).to_string_radix(10), "10")?
-	expect_equal((binomial(60, 30)?).to_string_radix(10), "118264581564861424")?
-	expect_equal((binomial(5, 0)?).to_string_radix(10), "1")?
-	expect_equal((binomial(5, 6)?).to_string_radix(10), "0")?
+	expect_equal((binomial(5, 2)?).to_string(), "10")?
+	expect_equal((binomial(60, 30)?).to_string(), "118264581564861424")?
+	expect_equal((binomial(5, 0)?).to_string(), "1")?
+	expect_equal((binomial(5, 6)?).to_string(), "0")?
 	expect_equal(
-		(binomial(100, 50)?).to_string_radix(10),
+		(binomial(100, 50)?).to_string(),
 		"100891344545564193334812497256",
 	)?
 

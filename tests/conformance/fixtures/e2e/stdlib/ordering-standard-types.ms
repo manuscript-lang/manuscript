@@ -27,8 +27,8 @@ test "Decimal orders with min, max and clamp":
     expect_equal(a.clamp(b, b).to_fixed(0, none).get(), "7")?
 
 test "BigInt orders with min, max and clamp":
-    expect_equal(big_int_of_int(-4).min(big_int_of_int(2)).to_string_radix(10), "-4")?
-    expect_equal(big_int_of_int(-4).max(big_int_of_int(2)).to_string_radix(10), "2")?
+    expect_equal(big_int_of_int(-4).min(big_int_of_int(2)).to_string(), "-4")?
+    expect_equal(big_int_of_int(-4).max(big_int_of_int(2)).to_string(), "2")?
     expect_equal(
-        big_int_of_int(40).clamp(big_int_of_int(1), big_int_of_int(5)).to_string_radix(10), "5"
+        big_int_of_int(40).clamp(big_int_of_int(1), big_int_of_int(5)).to_string(), "5"
     )?

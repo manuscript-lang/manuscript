@@ -785,7 +785,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 			invalid_at(
 				chars,
 				index,
-				f"invalid character U+{code.to_string_radix(16).pad_start(4, "0").upper()}",
+				f"invalid character U+{code.to_hex().pad_start(4, "0").upper()}",
 			)
 		)
 

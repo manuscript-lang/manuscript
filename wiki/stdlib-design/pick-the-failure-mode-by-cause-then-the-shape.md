@@ -8,7 +8,7 @@ Decision (Chinmay, 2026-11-16, reversing the earlier "a caller mistake faults ev
 
 Shifts are total: a count of 64 or more shifts every bit out (`shift_left` and `shift_right_unsigned` give 0, `shift_right` gives 0 or -1 by sign); a negative count still faults because it is arithmetic nonsense, not data. `rate_limiter` and `BitSet.add` return `EINVAL` for a bad number (`BitSet.add` is now `Void!`: a silent drop would lose a member). Measured 2026-11-16: a 40-round 400000-add BitSet loop and a 40M-iteration shift loop run within noise of before.
 
-Still faults on a bad value: `to_string_radix` with a radix outside 2 through 36. All ~100 call sites pass a literal radix (10, 16, 2, 8, 32, 36), so a `String?` result would add noise to every call and catch nothing; the bad radix is a code bug, like a bad index.
+`to_string_radix` returns `none` for a radix outside 2 through 36 (Chinmay, 2026-11-17); the common bases cannot fail, so use `to_string()`, `to_hex()` and `to_binary()`. Python has `bin`, `oct` and `hex` but no general base-N; the same split.
 
 `Iterable` and `for` over it were removed (Chinmay, hardening week): `Deque`, `Queue` and `PriorityQueue` read by position with `get(index)` returning an optional, negative indexes from the end, like `Map.get(key)`. A plain `T` cannot be returned from a borrowed element in Manuscript source (only the native `List.get` lends), so the optional form is the one expressible spelling; walk with `for i in 0..q.length()`.
 

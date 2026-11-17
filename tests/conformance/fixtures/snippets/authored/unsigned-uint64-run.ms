@@ -22,7 +22,7 @@ fn main() Void:
         f"{max / 2} {max % 10} {half - 1 + half == max} {max - half}\n"
     )
     void stdout().write(
-        f"{max.compare(one)} {one.compare(max)} {half.to_string_radix(16)} {max.to_string_radix(2).length()}\n"
+        f"{max.compare(one)} {one.compare(max)} {half.to_hex()} {max.to_binary().length()}\n"
     )
     void stdout().write(
         f"{max.to_float()} {half.to_decimal()} {max.to_int()} {one.to_int()} {max.to_uint32()} {one.to_uint8()}\n"
