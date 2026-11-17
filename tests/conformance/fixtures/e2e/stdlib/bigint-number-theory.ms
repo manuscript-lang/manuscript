@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	BigInt, binomial, factorial, from_int, parse from "@std/math/math.ms",
-	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+	expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms",
 )
 
 test "factorial and binomial are exact":
@@ -21,10 +21,9 @@ test "factorial and binomial are exact":
 	)?
 
 test "factorial and binomial reject negative inputs":
-	bad: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
-	expect_equal(factorial(-1), bad)?
-	expect_equal(binomial(-1, 0), bad)?
-	expect_equal(binomial(3, -1), bad)?
+	_factorial := expect_fault(fn: discard(factorial(-1)))?
+	_top := expect_fault(fn: discard(binomial(-1, 0)))?
+	_bottom := expect_fault(fn: discard(binomial(3, -1)))?
 
 test "probable primes":
 	for p in [2, 3, 97, 101, 7919, 1000000007]:
@@ -106,9 +105,9 @@ test "large nonresidue modulus has a complete primality certificate":
 		if factor == 3 or factor == 13 or factor == 37: base = 3
 
 		a := from_int(base)
-		expect_equal(a.pow_mod(minus_one, p)?, one)?
+		expect_equal(a.pow_mod(minus_one, p), one)?
 
-		witness := (a.pow_mod(minus_one / from_int(factor), p)?) - one
+		witness := (a.pow_mod(minus_one / from_int(factor), p)) - one
 		expect_equal(witness.gcd(p), one)?
 
 test "modular square root searches beyond a thousand quadratic residues":
@@ -127,3 +126,6 @@ test "modular square root rejects a composite witnessed during search":
 	expect_equal(from_int(1).mod_sqrt(from_int(1729)), invalid)?
 	expect_equal(from_int(1).mod_sqrt(from_int(9)), invalid)?
 	expect_equal(from_int(1).mod_sqrt(from_int(25)), invalid)?
+
+fn discard[T](value: T) Void:
+	return

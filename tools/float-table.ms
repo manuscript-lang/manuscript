@@ -25,12 +25,10 @@ fn entry(k: Int) BigInt:
 
 	if e >= 0:
 		scaled := ten.pow(e).get()
-		whole := if r >= 0: scaled.shift_left(r).get() else: scaled.shift_right(
-			-r
-		).get()
+		whole := if r >= 0: scaled.shift_left(r).get() else: scaled.shift_right(-r)
 		return whole.add(from_int(1))
 
-	whole := from_int(1).shift_left(r).get().divide(ten.pow(-e).get()).get()
+	whole := from_int(1).shift_left(r).get().divide(ten.pow(-e).get())
 	return whole.add(from_int(1))
 
 fn hex16(value: BigInt) String:
@@ -54,6 +52,6 @@ fn main() Void:
 
 	for k in - 324..293:
 		g := entry(k)
-		print(f"    ({hex16(g.shift_right(63).get())}, {hex16(g.bit_and(mask))}),")
+		print(f"    ({hex16(g.shift_right(63))}, {hex16(g.bit_and(mask))}),")
 
 	print("];")

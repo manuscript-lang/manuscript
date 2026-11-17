@@ -3,7 +3,7 @@
 import (
 	Decimal from "@std/math/decimal.ms",
 	BigInt, from_int from "@std/math/math.ms",
-	expect_equal, expect_false from "@std/test/test.ms",
+	expect_equal, expect_false, expect_fault from "@std/test/test.ms",
 	nanoseconds from "@std/time.ms",
 )
 
@@ -16,9 +16,8 @@ test "integer division retains signed boundary and remainder rules":
 	expect_equal(1d / -1d, -1d)?
 	expect_false((1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan())?
 
-	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
-	expect_equal(from_int(1).divide(from_int(0)), invalid)?
-	expect_equal(from_int(1).remainder(from_int(0)), invalid)?
+	_divide := expect_fault(fn: discard(from_int(1).divide(from_int(0))))?
+	_remainder := expect_fault(fn: discard(from_int(1).remainder(from_int(0))))?
 
 test "duration arithmetic retains full signed nanosecond range":
 	minimum := nanoseconds(-9223372036854775808)
@@ -115,3 +114,6 @@ test "sized numbers widen to Int and Float with to_int and to_float":
 	total: Int := a.to_int() + b.to_int() + c.to_int() + d.to_int()
 	expect_equal(total, 69902)?
 	expect_equal(f.to_float(), 0.5)?
+
+fn discard[T](value: T) Void:
+	return

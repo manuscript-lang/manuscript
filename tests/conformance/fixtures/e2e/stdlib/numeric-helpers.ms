@@ -19,7 +19,7 @@ import (
 	shift_left,
 	sign_bit,
 	wrapping_multiply from "@std/math/math.ms",
-	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+	expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms",
 )
 
 test "bit and byte reversal map every position in a 64-bit pattern":
@@ -121,26 +121,28 @@ test "big integer gcd and lcm normalize signs and zero":
 test "big integer square root is exact and rejects negative input":
 	for number in [0, 1, 2, 3, 4, 15, 16, 17, 9223372036854775807]:
 		value := from_int(number)
-		root := value.sqrt()?
+		root := value.sqrt()
 		expect_true(root * root <= value)?
 
 		above := root + from_int(1)
 		expect_true(above * above > value)?
 
-	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
-	expect_equal(from_int(-1).sqrt(), invalid)?
+	_negative := expect_fault(fn: discard(from_int(-1).sqrt()))?
 
 test "modular exponentiation normalizes results and validates its domain":
-	expect_equal((from_int(2).pow_mod(from_int(10), from_int(1000))?), from_int(24))?
-	expect_equal((from_int(-2).pow_mod(from_int(3), from_int(5))?), from_int(2))?
-	expect_equal((from_int(-2).pow_mod(from_int(4), from_int(5))?), from_int(1))?
-	expect_equal((from_int(0).pow_mod(from_int(0), from_int(7))?), from_int(1))?
-	expect_equal((from_int(0).pow_mod(from_int(0), from_int(1))?), from_int(0))?
+	expect_equal((from_int(2).pow_mod(from_int(10), from_int(1000))), from_int(24))?
+	expect_equal((from_int(-2).pow_mod(from_int(3), from_int(5))), from_int(2))?
+	expect_equal((from_int(-2).pow_mod(from_int(4), from_int(5))), from_int(1))?
+	expect_equal((from_int(0).pow_mod(from_int(0), from_int(7))), from_int(1))?
+	expect_equal((from_int(0).pow_mod(from_int(0), from_int(1))), from_int(0))?
 
-	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
-	expect_equal(from_int(2).pow_mod(from_int(-1), from_int(7)), invalid)?
-	expect_equal(from_int(2).pow_mod(from_int(3), from_int(0)), invalid)?
-	expect_equal(from_int(2).pow_mod(from_int(3), from_int(-7)), invalid)?
+	_exponent := expect_fault(
+		fn: discard(from_int(2).pow_mod(from_int(-1), from_int(7)))
+	)?
+	_zero := expect_fault(fn: discard(from_int(2).pow_mod(from_int(3), from_int(0))))?
+	_modulus := expect_fault(
+		fn: discard(from_int(2).pow_mod(from_int(3), from_int(-7)))
+	)?
 
 test "big integer helpers scale from machine words to 4096-bit values":
 	one := from_int(1)
@@ -153,14 +155,14 @@ test "big integer helpers scale from machine words to 4096-bit values":
 		expect_equal(a.lcm(b), factor * from_int(385))?
 
 		square := factor * factor
-		expect_equal((square.sqrt()?), factor)?
-		expect_equal(((square - one).sqrt()?), factor - one)?
+		expect_equal((square.sqrt()), factor)?
+		expect_equal(((square - one).sqrt()), factor - one)?
 
 		modulus := (one.shift_left(width)?) - one
-		expect_equal((from_int(2).pow_mod(from_int(width), modulus)?), one)?
+		expect_equal((from_int(2).pow_mod(from_int(width), modulus)), one)?
 
 	exponent := parse("184467440737095516160000000000000000000000", 10)?
-	expect_equal((from_int(2).pow_mod(exponent, from_int(7))?), from_int(2))?
+	expect_equal((from_int(2).pow_mod(exponent, from_int(7))), from_int(2))?
 
 test "modular exponentiation matches exact large odd and even modulus reference vectors":
 	base := parse("-123456789012345678901234567891", 10)?
@@ -169,5 +171,8 @@ test "modular exponentiation matches exact large odd and even modulus reference 
 	even := parse("340282366920938463463374607431768211456", 10)?
 	odd_result := parse("4339799581317112657124184116489215648661", 10)?
 	even_result := parse("223193219010250399600239597668322418573", 10)?
-	expect_equal((base.pow_mod(exponent, odd)?), odd_result)?
-	expect_equal((base.pow_mod(exponent, even)?), even_result)?
+	expect_equal((base.pow_mod(exponent, odd)), odd_result)?
+	expect_equal((base.pow_mod(exponent, even)), even_result)?
+
+fn discard[T](value: T) Void:
+	return

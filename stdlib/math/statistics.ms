@@ -48,8 +48,8 @@ export fn mean(values: List[Float]) Float?:
 	for value in values:
 		// A finite Float always converts, so this branch only skips what cannot occur.
 		if term := rat_of_float(value): total = total.add(term)
-	if average := total.divide(rat_of_int(values.length())):
-		if result := average.to_float(): return result
+	if values.length() > 0:
+		if result := total.divide(rat_of_int(values.length())).to_float(): return result
 
 	// The exact average of finite inputs lies between their finite extrema, so this
 	// return is only reached for input the checks above already sent to `ordinary`.
@@ -394,7 +394,9 @@ fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) Lis
 	span := finite_bin_rat(high).subtract(origin)
 	var counts = [0].repeated(bins)
 
-	if multiplier := rat_of_int(bins).divide(span):
+	if span.sign() != 0:
+		multiplier := rat_of_int(bins).divide(span)
+
 		for value in values:
 			var bin = 0
 
