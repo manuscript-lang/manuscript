@@ -47,19 +47,6 @@ fn main() Int:
 	host_list := f"tests/conformance/expect-fail.{host()}.txt"
 	if access(host_list, 0).is_ok():
 		text += read_file(host_list).wait().get().decode_utf8().get("")
-
-	// CONFORM_BUILD_TYPE=Debug replays run and test through the unoptimized MIR path
-	// that
-	// `ms run` and `ms test` take by default. Fault traces differ there, so the known
-	// differences have their own list.
-	if env("CONFORM_BUILD_TYPE", "") == "Debug":
-		text += (
-			read_file("tests/conformance/expect-fail.debug.txt")
-			.wait()
-			.get()
-			.decode_utf8()
-			.get("")
-		)
 	write_file(allow, text, replace: true).wait().get()
 
 	conform := f"target/debug/ms-conform{exe()}"

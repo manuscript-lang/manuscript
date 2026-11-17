@@ -1,5 +1,0 @@
-# Known differences of the Debug build replay (CONFORM_BUILD_TYPE=Debug, see tools/conform.ms).
-# Optimized builds inline the callback into its caller and name the frame `Result.get_or_else.crash`;
-# a Debug build keeps the two frames, so these two fixtures' recorded Release traces differ.
-snippets/e2e-tests/testfaultsourcelocations-12
-snippets/e2e-tests/testlazyconversionfaultlocation-1
