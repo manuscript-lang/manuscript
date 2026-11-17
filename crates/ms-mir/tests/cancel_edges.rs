@@ -105,3 +105,32 @@ fn a_program_that_starts_no_task_gets_no_explicit_exit() {
     ms_mir::elaborate::run_with(&mut m, true).unwrap_or_else(|e| panic!("{e}"));
     assert!(!m.funcs[m.func_by_name("main").expect("main").index()].explicit_cancel);
 }
+
+// A value taken out of a local slot that no scope owns is an ordinary owner: the cancel exit drops it.
+const RAW_HOLDS_TAKEN: &str = r#"
+fn @main() -> int {
+b0:
+  scope.begin 1 0
+  %lit: str = str "held"
+  %s: str = clone %lit
+  %p: ptr = slot str
+  put %p, %s
+  %t: str = take str %p
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_pause (%n)
+  drop %t
+  scope.end 1 0
+  ret %r
+}
+"#;
+
+#[test]
+fn a_value_taken_from_a_local_slot_is_dropped_on_the_cancel_exit() {
+    let mut m = parse_module(&format!("{HEAD}{RAW_HOLDS_TAKEN}")).unwrap_or_else(|e| panic!("{e}"));
+    ms_mir::elaborate::run_with(&mut m, true).unwrap_or_else(|e| panic!("{e}"));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert!(m.funcs[m.func_by_name("main").expect("main").index()].explicit_cancel);
+    assert_eq!(count(&m, "main", Op::Drop), 2);
+}
