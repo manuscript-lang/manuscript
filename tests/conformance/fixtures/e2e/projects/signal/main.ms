@@ -17,4 +17,4 @@ fn main() Void:
 	_ignored := output.write("ready\n")
 	while true:
 		continue
-	_resource.close().get(none)
+	void _resource.close()

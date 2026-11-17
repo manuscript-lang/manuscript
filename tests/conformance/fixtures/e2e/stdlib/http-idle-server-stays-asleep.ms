@@ -78,13 +78,13 @@ fn run() Bool!:
 		- before.system_microseconds
 	)
 	switches := after.voluntary_switches - before.voluntary_switches
-	a.close().get(none)
-	b.close().get(none)
-	c.close().get(none)
-	d.close().get(none)
-	e.close().get(none)
-	f.close().get(none)
-	server.close().get(none)
+	void a.close()
+	void b.close()
+	void c.close()
+	void d.close()
+	void e.close()
+	void f.close()
+	void server.close()
 
 	asleep := warmed and cpu < 100000 and switches < 40
 	if not asleep:

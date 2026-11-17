@@ -16,7 +16,7 @@ fn open_then_read(path: String) Int:
 
     if var file = opened:
         _data := file.read_file()
-        file.close().get(none)
+        void file.close()
         return 1
 
     return -1

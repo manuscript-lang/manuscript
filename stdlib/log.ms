@@ -140,7 +140,7 @@ fn var FileTransport.close() Void:
 	if self.closed: return
 
 	self.closed = true
-	self.file.close().get(none)
+	void self.file.close()
 
 // Writes to the process standard-output stream. It keeps no handle: every write reaches
 // the process-wide buffer.
@@ -356,7 +356,7 @@ fn RotatingTransport.write_bytes(data: Bytes) Void!:
 
 	var file = open(self.path, OpenMode.Append, OpenOptions(permissions: 420))?
 	written := file.write(data)
-	file.close().get(none)
+	void file.close()
 	return written
 
 fn RotatingTransport.flush() Void!:
@@ -403,7 +403,7 @@ export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Trans
 	)
 
 	var probe = open(path, OpenMode.Append, OpenOptions(permissions: 420))?
-	probe.close().get(none)
+	void probe.close()
 	return ok(
 		RotatingTransport(
 			path: path.clone(),

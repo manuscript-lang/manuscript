@@ -46,7 +46,7 @@ fn breaks_out(dir: String) Int:
 
 fn closes_by_hand_too(dir: String) Int:
 	var r = Resource(dir, 20)
-	r.close().get(none)
+	void r.close()
 	return r.id
 
 test "a resource nothing takes is closed when its scope ends":

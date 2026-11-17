@@ -75,7 +75,7 @@ fn defaulted(
 		number:
 			var _resource = Resource(marker.clone())
 			_used := void
-			_resource.close().get(none)
+			void _resource.close()
 			number
 		none: 0
 ) Int: value
@@ -134,7 +134,7 @@ fn value_match_loop_try(marker: String) Int!Error:
 			number:
 				var _resource = Resource(marker.clone())
 				_value := failed()?
-				_resource.close().get(none)
+				void _resource.close()
 				number
 			none: 0
 

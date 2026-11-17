@@ -153,7 +153,7 @@ fn runs_wanted() Int:
 	return env("RUNS", "5").parse_int().get(5)
 
 fn keep_min(var best: Map[String, Int], name: String, micros: Int) Void:
-	if not best.contains(name) or micros < best.get(name).get(micros):
+	if not best.contains(name) or micros < best.get_or(name, micros):
 		best.add(name, micros)
 
 // Smallest time of each kernel over `runs` interleaved runs of both builds, in input
@@ -176,8 +176,8 @@ fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
 		names.map(
 			fn k: [
 				k.clone(),
-				f"{best_old.get(k).get(0)}",
-				f"{best_new.get(k).get(0)}",
+				f"{best_old.get_or(k, 0)}",
+				f"{best_new.get_or(k, 0)}",
 			]
 		)
 	)

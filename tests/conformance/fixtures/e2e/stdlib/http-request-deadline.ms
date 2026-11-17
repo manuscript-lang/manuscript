@@ -43,7 +43,7 @@ fn fetch(address: String, path: String) String:
 
             break
 
-        conn.close().get(none)
+        void conn.close()
         return text
 
     return "connect failed"
@@ -67,7 +67,7 @@ fn run(label: String, grace_ms: Int) Bool:
         _fast := stdout().write(
             f"{label} fast: {fast.starts_with("HTTP/1.1 200 OK")}\n"
         )
-        server.close().get(none)
+        void server.close()
         return true
 
     return false

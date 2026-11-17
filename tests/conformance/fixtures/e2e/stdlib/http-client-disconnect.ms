@@ -21,7 +21,7 @@ fn var Reporter.close() Void!:
 fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")
     void sleep(nanoseconds(30000000000)).wait()
-    _reporter.close().get(none)
+    void _reporter.close()
     return HttpResponse(200, "late\n".to_bytes())
 
 export fn main() Int:
@@ -33,11 +33,11 @@ export fn main() Int:
 
             // Let the handler start, then leave without waiting for the response.
             void sleep(nanoseconds(100000000)).wait()
-            conn.close().get(none)
+            void conn.close()
             void sleep(nanoseconds(500000000)).wait()
 
             _done := stdout().write("done\n")
-            server.close().get(none)
+            void server.close()
             return 0
 
     return 1

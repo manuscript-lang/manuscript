@@ -17,8 +17,8 @@ import (
 test "media types parse and format":
 	media := parse_media_type("Text/HTML; Charset=\"utf-8\"; q=\"a\\\"b\"").get()
 	expect_equal(media.essence, "text/html")?
-	expect_equal(media.params.get("charset").get(""), "utf-8")?
-	expect_equal(media.params.get("q").get(""), "a\"b")?
+	expect_equal(media.params.get_or("charset", ""), "utf-8")?
+	expect_equal(media.params.get_or("q", ""), "a\"b")?
 	expect_equal(
 		format_media_type(parse_media_type("text/plain; charset=utf-8").get()),
 		"text/plain; charset=utf-8",
@@ -34,10 +34,10 @@ test "an escaped closing quote does not end a quoted parameter":
 	expect_true(parse_media_type("text/plain; name=\"").is_error())?
 
 	pair := parse_media_type("text/plain; name=\"x\\\"y\"").get()
-	expect_equal(pair.params.get("name").get(""), "x\"y")?
+	expect_equal(pair.params.get_or("name", ""), "x\"y")?
 
 	slash := parse_media_type("text/plain; name=\"x\\\\\"").get()
-	expect_equal(slash.params.get("name").get(""), "x\\")?
+	expect_equal(slash.params.get_or("name", ""), "x\\")?
 
 test "extension table maps both ways":
 	expect_equal(media_type_for_extension(".JSON").get(""), "application/json")?

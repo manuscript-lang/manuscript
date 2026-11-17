@@ -36,4 +36,4 @@ fn main() Void:
 	for i in 0..5:
 		k += "k"
 		m[k.clone()] = i
-	print(m.get("key-that-is-long-enough-to-be-heap-kkk").get(-1))
+	print(m.get_or("key-that-is-long-enough-to-be-heap-kkk", -1))

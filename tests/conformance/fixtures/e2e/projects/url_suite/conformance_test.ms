@@ -23,10 +23,10 @@ fn text(tree: FileTree, path: String) String:
 	return tree.read(path, none).get("".to_bytes()).decode_utf8().get("")
 
 fn field(item: Case, key: String) String:
-	return item.fields.get(key).get("")
+	return item.fields.get_or(key, "")
 
 fn flag(item: Case, key: String) Bool:
-	return item.flags.get(key).get(false)
+	return item.flags.get_or(key, false)
 
 fn port_text(url: Url) String:
 	if port := url.port: return port.to_string()
@@ -90,7 +90,7 @@ fn query_ok(item: Case) Bool:
 	if grouped.length() != item.expected.length(): return false
 
 	for member in item.expected.entries():
-		if grouped.get(member.key).get([]) != member.value: return false
+		if grouped.get_or(member.key, []) != member.value: return false
 	return true
 
 fn check(table: String, index: Int, item: Case) Bool:

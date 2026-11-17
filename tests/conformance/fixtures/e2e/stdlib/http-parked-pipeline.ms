@@ -41,7 +41,7 @@ fn exchange(address: String) String:
 
             break
 
-        conn.close().get(none)
+        void conn.close()
         return text
 
     return "connect failed"
@@ -59,7 +59,7 @@ export fn main() Int:
             f"slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
         )
         _prompt := stdout().write(f"prompt: {elapsed_ms < 2000}\n")
-        server.close().get(none)
+        void server.close()
         return 0
 
     return 1

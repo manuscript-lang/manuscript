@@ -207,7 +207,7 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 fn answer_ping(var connection: Connection) Int:
 	ping := recv(var connection, 3.seconds())
 	pong := send(var connection, "pong")
-	connection.close().get(none)
+	void connection.close()
 	if ping.is_error() or pong.is_error(): return 0
 
 	return 1
@@ -298,7 +298,7 @@ fn count_until_eof(listener: Listener) Int:
 
 		total += chunk.get().get(Bytes([])).length()
 
-	connection.close().get(none)
+	void connection.close()
 	return total
 
 test "raw TLS client that writes a large payload and closes at once loses no bytes":

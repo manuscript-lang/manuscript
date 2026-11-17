@@ -14,7 +14,7 @@ fn main() Void:
 	print(a.length())
 	var seen: Map[String, Int] = {}
 	seen[a.clone()] = 1
-	print(seen.get(b).get(0))
+	print(seen.get_or(b, 0))
 	var c = grown(3)
 	c += "xyz"
 	d := "prefix-that-is-not-inline-ababab" + "xyz"

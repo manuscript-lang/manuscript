@@ -40,8 +40,8 @@ export fn main() Int:
                 tries = tries + 1
 
             start := monotonic()
-            server.close().get(none)
-            server.wait().get(none)
+            void server.close()
+            void server.wait()
 
             close_ms := monotonic().difference(start).to_milliseconds()
             var text = ""
@@ -54,7 +54,7 @@ export fn main() Int:
 
                 break
 
-            conn.close().get(none)
+            void conn.close()
             _removed := remove(dir, recursive: true)
 
             _status := stdout().write(

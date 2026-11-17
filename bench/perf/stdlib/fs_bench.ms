@@ -28,7 +28,7 @@ bench "fs.write_file_64k":
 			return keep(n)
 
 		measure(200, work)?
-		dir.close().get(none)
+		void dir.close()
 
 bench "fs.read_file_64k":
 	if var dir = temporary("ms-bench-"):
@@ -43,7 +43,7 @@ bench "fs.read_file_64k":
 			return keep(n)
 
 		measure(200, work)?
-		dir.close().get(none)
+		void dir.close()
 
 bench "fs.stat":
 	if var dir = temporary("ms-bench-"):
@@ -58,7 +58,7 @@ bench "fs.stat":
 			return keep(n)
 
 		measure(200, work)?
-		dir.close().get(none)
+		void dir.close()
 
 bench "fs.list_200":
 	if var dir = temporary("ms-bench-"):
@@ -70,7 +70,7 @@ bench "fs.list_200":
 			return keep(0)
 
 		measure(1, work)?
-		dir.close().get(none)
+		void dir.close()
 
 bench "log.info":
 	if var dir = temporary("ms-bench-"):
@@ -85,4 +85,4 @@ bench "log.info":
 
 				measure(20000, work)?
 
-		dir.close().get(none)
+		void dir.close()

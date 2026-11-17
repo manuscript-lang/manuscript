@@ -57,7 +57,7 @@ fn echo(var exchange: HttpExchange) Void!:
 				)
 			)?
 		)
-		socket.close().get(none)
+		void socket.close()
 		return ok()
 
 	var chain_1 = Map[String, List[String]]()

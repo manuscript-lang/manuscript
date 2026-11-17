@@ -47,7 +47,7 @@ export fn main() Int:
 				void stdout().write("timeout\r\n")
 				done = true
 
-		term.close().get(none)
+		void term.close()
 		return 0
 
 	void stdout().write("no raw mode\n")

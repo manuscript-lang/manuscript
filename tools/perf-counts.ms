@@ -130,7 +130,7 @@ fn main() Int:
 
 		report += f"{name} {now}\n"
 
-		before := known.get(name).get(0)
+		before := known.get_or(name, 0)
 
 		if before == 0:
 			say(f"{name}: {now} (no committed count)\n")

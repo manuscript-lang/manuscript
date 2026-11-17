@@ -26,7 +26,7 @@ fn count_then_wait(log: String) Int:
 	counter.value = 7
 
 	void sleep(nanoseconds(5000000000)).wait()
-	counter.close().get(none)
+	void counter.close()
 	return 0
 
 test "a var binding closes the value it ended with":

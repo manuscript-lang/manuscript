@@ -17,9 +17,9 @@ test "load_environment keeps existing values and takes the last duplicate":
 	load_environment(path)?
 
 	env := environment()?
-	expect_equal(env.get("MS_LOAD_A").get(""), "kept")?
-	expect_equal(env.get("MS_LOAD_B").get(""), "two")?
-	expect_equal(env.get("MS_LOAD_D").get(""), "2")?
+	expect_equal(env.get_or("MS_LOAD_A", ""), "kept")?
+	expect_equal(env.get_or("MS_LOAD_B", ""), "two")?
+	expect_equal(env.get_or("MS_LOAD_D", ""), "2")?
 
 test "load_environment errors change nothing":
 	dir := temporary("ms-env-")?

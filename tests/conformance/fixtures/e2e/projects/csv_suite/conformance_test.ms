@@ -33,7 +33,7 @@ fn passes(tree: FileTree, name: String) Bool:
 		if row.length() != header.length() or record.length() != header.length(): return false
 
 		for j in 0..header.length():
-			if record.get(header[j]).get("\u{0}") != row[j]: return false
+			if record.get_or(header[j], "\u{0}") != row[j]: return false
 
 	return true
 

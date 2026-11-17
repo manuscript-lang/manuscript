@@ -162,7 +162,7 @@ fn accept_one(l: Listener) Int:
 	r := l.accept(2.seconds()).wait()
 
 	if r.is_ok():
-		r.get().close().get(none)
+		void r.get().close()
 		return 1
 
 	return 0
