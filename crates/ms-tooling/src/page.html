@@ -11,7 +11,7 @@
 :root[data-theme=dark]{color-scheme:dark;--kw:#f2bc8d;--ty:#ffab72;--st:#ff873e;--nu:#f2bc8d;--cm:#c0aa99;--fnc:#ffab72;--bg:#1b120e;--fg:#ebdbce;--mut:#c0aa99;--line:#493326;--pan:#281b14;--node:#241810;--sel:#472719;--acc:#ffab72;--pure:#16301f;--pures:#4cc272;--eff:#33290f;--effs:#e2b341;--ent:#472719;--var:#ff7070;--own:#4cc272;--brw:#8aabff;--spawn:#cba2f2;--badgefg:#1b120e}
 *{box-sizing:border-box}
 a{color:var(--acc)}
-body{margin:0;font:13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);color:var(--fg);height:100vh;overflow:hidden;display:grid;
+body{margin:0;font:13.5px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);color:var(--fg);height:100vh;overflow:hidden;display:grid;
   grid-template-columns:var(--w1,250px) 4px minmax(0,1fr) auto auto;grid-template-rows:40px minmax(0,1fr) 24px}
 button{font:inherit;color:inherit}
 kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:0 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;color:var(--mut);background:var(--pan)}
@@ -33,7 +33,7 @@ aside{grid-row:2;grid-column:1;display:flex;flex-direction:column;min-height:0;b
 .tbar input:focus{outline:2px solid var(--acc);outline-offset:-1px;background:var(--bg)}
 .kinds{display:flex;flex-wrap:wrap;gap:4px;padding:2px 8px 6px;border-bottom:1px solid var(--line)}
 .kinds button{white-space:nowrap;border:1px solid var(--line);background:none;color:var(--mut);padding:0 8px;border-radius:10px;cursor:pointer;font-size:11px;line-height:18px}
-.kinds button.on{background:var(--sel);color:var(--acc);border-color:var(--acc)}
+.kinds button.on{color:var(--acc);border-color:var(--acc);font-weight:600}
 #list{flex:1;overflow:auto;padding:4px 6px 12px}
 #list h4{margin:12px 6px 3px;font-size:10.5px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
 .file{display:flex;gap:3px;align-items:center;padding:2px 6px;border-radius:5px;color:var(--fg);cursor:pointer;white-space:nowrap}
@@ -59,21 +59,21 @@ svg text{fill:var(--fg);font:12px -apple-system,BlinkMacSystemFont,'Segoe UI',sy
 svg .node{cursor:pointer}svg .node rect{fill:var(--node);stroke:var(--line);stroke-width:1.2}svg .node:hover rect{stroke:var(--fg);stroke-width:2}svg .node:focus{outline:none}svg .node:focus-visible rect{stroke:var(--fg);stroke-width:3}
 svg .pure rect{stroke:var(--pures)}svg .effect rect{stroke:var(--effs)}
 svg .entry rect{fill:var(--ent);stroke:var(--acc);stroke-width:2}svg .ext rect{stroke:var(--mut);stroke-dasharray:4}
-svg .cls rect{stroke:var(--mut)}svg .sel rect{stroke:var(--acc);stroke-width:2.5}
-svg path.edge{fill:none;stroke:var(--mut);stroke-width:1.2;opacity:.7}svg text.code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}svg .elabel{fill:var(--mut);font-size:11px}
-svg .more rect{stroke:var(--mut);stroke-dasharray:4}svg .dir rect{fill:var(--pan);stroke:var(--acc)}
+svg .cls rect{stroke:var(--mut)}svg .sel rect{fill:var(--sel);stroke:var(--acc);stroke-width:2}
+svg path.edge{fill:none;stroke:var(--line);stroke-width:1.2}svg path.edge.hot{stroke:var(--acc);stroke-width:1.8}svg text.code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}svg .elabel{fill:var(--mut);font-size:11.5px}
+svg .more rect{stroke:var(--mut);stroke-dasharray:4}svg .dir rect{fill:var(--pan);stroke:var(--line)}
 svg .chg rect{stroke:var(--var);stroke-width:3px}
 svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--eff);stroke:var(--effs)}svg .msg{stroke:var(--fg);stroke-width:1.2;fill:none}svg .msg.async{stroke-dasharray:5}svg .msg.ret{stroke:var(--mut);stroke-dasharray:2 3}
 .tools{display:flex;gap:4px;margin:0 0 6px;align-items:center;flex-wrap:wrap}.tools .hint{margin-left:8px}
 .tools button,.tools select{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:2px 9px;border-radius:6px;cursor:pointer}
 .tools input:not([type=checkbox]){border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:3px 9px;border-radius:6px;font:inherit;min-width:0;width:200px;max-width:100%}.tools input:not([type=checkbox]):focus{outline:2px solid var(--acc);border-color:var(--acc)}
 .tools button:hover{border-color:var(--acc);color:var(--acc)}
-.stage{border:1px solid var(--line);border-radius:10px;overflow:hidden;background-color:var(--bg);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px}
-.stage svg{touch-action:none;display:block;width:100%;height:calc(100vh - 215px);min-height:300px;cursor:grab}
+.stage{border:1px solid var(--line);border-radius:10px;overflow:hidden;background-color:var(--bg)}
+.stage svg{touch-action:none;display:block;width:100%;height:calc(100vh - 215px);min-height:200px;cursor:grab}
 .flow ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--line)}.flow>ul{border:0;padding:0}
 .flow li{margin:3px 0}.flow summary{cursor:pointer;list-style:none}.flow summary::-webkit-details-marker{display:none}
 .flow summary::before{content:'▾';display:inline-block;width:14px;color:var(--mut)}.flow details:not([open])>summary::before{content:'▸'}
-.flow .kind{font-size:10.5px;padding:0 6px;border-radius:4px;margin-right:6px;background:var(--pan);border:1px solid var(--line);color:var(--mut)}
+.flow .kind{display:inline-block;min-width:44px;text-align:center;font-size:11px;padding:0 6px;border-radius:4px;margin-right:6px;background:var(--pan);border:1px solid var(--line);color:var(--mut)}
 .kind.try{background:var(--var);color:var(--badgefg);border-color:var(--var)}.kind.spawn{background:var(--spawn);color:var(--badgefg)}.kind.scope{background:var(--effs);color:var(--badgefg)}.kind.exit{background:var(--mut);color:var(--badgefg)}.kind.native{background:var(--effs);color:var(--badgefg)}.kind.loop{background:var(--pan);color:var(--fg)}
 .flow code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace}.flow button{border:0;background:none;color:var(--acc);cursor:pointer;font-size:12px}
 .hint{color:var(--mut)}.empty{display:grid;place-items:center;height:60%;color:var(--mut);text-align:center;gap:6px}.empty b{color:var(--fg);font-size:14px}
@@ -199,8 +199,8 @@ const firstN=(l,n)=>l.slice(0,n);
 const NEXP=fns.filter(e=>e.exported&&e.name!=='main').length;
 const LAND={
   'Entry':firstN(fns.filter(e=>e.name==="main"),1),
-  'Exports':firstN(fns.filter(e=>e.exported&&e.name!=='main'),4),
-  'Hubs':firstN(fns.filter(e=>(callers[e.key]||[]).length>1).sort((a,b)=>callers[b.key].length-callers[a.key].length),6),
+  'Exports':firstN(fns.filter(e=>e.exported&&e.name!=='main').sort((a,b)=>(callers[b.key]||[]).length-(callers[a.key]||[]).length),4),
+  'Hubs':firstN(fns.filter(e=>(callers[e.key]||[]).length>1&&!(e.exported&&NEXP<=6)).sort((a,b)=>callers[b.key].length-callers[a.key].length),6),
   'Changes the world':firstN(fns.filter(e=>e.effects.some(x=>fxKind(x)==='write')).sort((a,b)=>(callers[b.key]||[]).length-(callers[a.key]||[]).length),6)
 };
 /* what a selection can show: a function has behavior, a type has shape, a module only has its place on the map */
@@ -221,6 +221,7 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON
 const STAR=new Set(store.get('stars',[]).filter(k=>E[k]));
 const KF={fn:true,type:true,check:true};
 const kindOK=e=>isCheck(e)?KF.check:isType(e)?KF.type:isFn(e)?KF.fn:false;
+const nat=(a,b)=>a.localeCompare(b,undefined,{numeric:true});
 const TREE={dirs:Object.create(null),files:[]};
 for(const m of D.modules){let n=TREE,p='';const parts=m.file.split('/');
   for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:Object.create(null),files:[]})}
@@ -235,10 +236,10 @@ function expandAll(){const walk=n=>{for(const d of Object.values(n.dirs)){OPEN.a
 const row=(e,pad)=>'<div class="item'+(S.sel===e.key?' sel':'')+'" tabindex="-1" style="padding-left:'+pad+'px" data-key="'+esc(e.key)+'" title="'+esc(e.file+':'+e.line)+'"><span class="k">'+(KI[e.kind]||'·')+'</span>'+esc(e.name)+(STAR.has(e.key)?' <span class="star">★</span>':'')+'</div>';
 function treeHTML(n,depth){
   const pad=depth*12+6;let h='';
-  const ds=Object.values(n.dirs).sort((a,b)=>a.name<b.name?-1:1);
+  const ds=Object.values(n.dirs).sort((a,b)=>nat(a.name,b.name));
   for(const d of ds.slice(0,CAP)){const o=OPEN.has(d.path);
     h+='<div class="file" tabindex="-1" style="padding-left:'+pad+'px" data-tg="'+esc(d.path)+'"><span class="c">'+(o?'▾':'▸')+'</span>'+esc(d.name)+'/</div>'+(o?treeHTML(d,depth+1):'')}
-  for(const f of n.files.slice(0,CAP)){const o=OPEN.has(f);
+  for(const f of n.files.slice().sort(nat).slice(0,CAP)){const o=OPEN.has(f);
     h+='<div class="file'+(f===S.mod?' cur':'')+'" tabindex="-1" style="padding-left:'+pad+'px" data-mod="'+esc(f)+'"><span class="c" data-tg="'+esc(f)+'">'+(o?'▾':'▸')+'</span>'+esc(base(f))+'</div>';
     if(o){const es=(byFile[f]||[]).filter(e=>(isFn(e)||isType(e))&&kindOK(e));
       h+=es.filter(e=>!isCheck(e)).slice(0,100).map(e=>row(e,pad+16)).join('');
@@ -288,7 +289,7 @@ function setInfo(){
   if(e){
     const starred=STAR.has(e.key);
     h+='<div class="ttl">'+sigOf(e)+'<span class="sp"></span><button class="ib'+(starred?' on':'')+'" data-star="1" title="'+(starred?'Unstar':'Star')+' (S)">'+(starred?'★':'☆')+'</button><button class="ib'+(srcOpen?' on':'')+'" data-src="1" title="Show or hide source">&lt;/&gt;</button><button class="ib" data-link="1" title="Copy link to this view">⧉</button></div><div class="meta"><span>'+esc(e.kind)+' · line '+e.line+'</span>';
-    h+=fx(e).map(x=>'<span class="badge '+fxKind(x)+'" title="Declared effect '+esc(x)+': this function or something it calls does this">'+esc(x)+'</span>').join('')+(e.error?'<span class="badge err">err '+esc(e.error)+'</span>':'')+(e.scopes?'<span class="badge" title="Resources this function closes when it exits">closes '+e.scopes+'</span>':'');
+    const fe=fx(e);h+=fe.slice(0,3).map(x=>'<span class="badge '+fxKind(x)+'" title="Declared effect '+esc(x)+': this function or something it calls does this">'+esc(x.replace(/^std\./,''))+'</span>').join('')+(fe.length>3?'<span class="badge" title="'+esc(fe.slice(3).join(', '))+'">+'+(fe.length-3)+'</span>':'')+(e.error?'<span class="badge err">err '+esc(e.error)+'</span>':'')+(e.scopes?'<span class="badge" title="Resources this function closes when it exits">closes '+e.scopes+'</span>':'');
     if(CH[e.key])h+='<span class="badge err">'+esc(CH[e.key].tier)+'</span><span>'+CH[e.key].changes.map(esc).join('; ')+'</span>';
     const cs=callers[e.key]||[];
     if(cs.length)h+='<span>callers</span>'+cs.slice(0,8).map(k=>'<a href="#" data-key="'+esc(k)+'">'+esc(E[k].name)+'</a>').join(' ')+(cs.length>8?'<span>+'+(cs.length-8)+'</span>':'');
@@ -305,7 +306,7 @@ function setInfo(){
 /* pan and zoom through the viewBox */
 function panzoom(box){
   const svg=box.querySelector('svg');if(!svg)return;
-  const w=+svg.dataset.w,h=+svg.dataset.h;let vb={x:0,y:0,w:Math.max(w,300),h:Math.max(h,200)};
+  const w=+svg.dataset.w,h=+svg.dataset.h;svg.style.height=Math.max(220,Math.min(h*1.3+30,innerHeight-215))+'px';let vb={x:0,y:0,w:Math.max(w,300),h:Math.max(h,200)};
   const apply=()=>svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
   const fit=()=>{const r=svg.getBoundingClientRect();const k=Math.min(Math.max(w/r.width,h/r.height,1),r.width<600?1.6:1.25);vb={x:0,y:0,w:r.width*k,h:r.height*k};apply()};
   const zoom=(f,cx,cy)=>{cx=cx??vb.x+vb.w/2;cy=cy??vb.y+vb.h/2;vb={x:cx-(cx-vb.x)*f,y:cy-(cy-vb.y)*f,w:vb.w*f,h:vb.h*f};apply()};
@@ -347,7 +348,7 @@ function graph(nodes,edges,note){
     const x1=a.x+W,y1=a.y+a.h/2,x2=b.x,y2=b.y+b.h/2;let d;
     if(x2>x1)d='M'+x1+' '+y1+'C'+(x1+GX/2)+' '+y1+' '+(x2-GX/2)+' '+y2+' '+x2+' '+y2;
     else d='M'+a.x+' '+y1+'C'+(a.x-GX/2)+' '+y1+' '+(b.x+W+GX/2)+' '+y2+' '+(b.x+W)+' '+y2;
-    parts.push('<path class="edge" d="'+d+'" marker-end="url(#a)"/>');
+    parts.push('<path class="edge'+(e.from===S.sel||e.to===S.sel?' hot':'')+'" data-a="'+esc(e.from)+'" data-b="'+esc(e.to)+'" d="'+d+'" marker-end="url(#a)"/>');
     if(e.label)parts.push('<text class="elabel" x="'+((x1+x2)/2)+'" y="'+((y1+y2)/2-4)+'" text-anchor="middle">'+esc(e.label)+'</text>')}
   nodes.forEach((n,i)=>{const p=pos[i];if(!p)return;
     parts.push('<g class="node '+(n.cls||'')+(chgOf(n)?' chg':'')+(n.id===S.sel||n.id===S.mod?' sel':'')+'" data-id="'+esc(n.id)+'" data-kind="'+(n.kind||'')+'" tabindex="0" role="button" aria-label="'+esc(n.title+(n.kind?', '+n.kind:''))+'"><title>'+esc(n.tip||n.title)+'</title><rect x="'+p.x+'" y="'+p.y+'" width="'+W+'" height="'+p.h+'" rx="7"/>'+(n.code?'<text class="code" x="'+(p.x+10)+'" y="'+(p.y+18)+'" font-weight="600">'+esc(n.title.slice(0,30))+':</text>':'<text x="'+(p.x+W/2)+'" y="'+(p.y+18)+'" text-anchor="middle" font-weight="600">'+esc(n.title.slice(0,26))+'</text>'));
@@ -376,7 +377,7 @@ function overview(){
   if(open)for(const e of byFile[open]||[])if(isFn(e)&&!isCheck(e)&&!(e.key in agg)){agg[e.key]='fn';weight[e.key]=0}
   const isc=id=>chgOf({id,kind:agg[id]});
   if(HAS)for(const id of Object.keys(agg))if(isc(id))weight[id]=(weight[id]||0)+1e6;
-  let ids=Object.keys(agg).sort((a,b)=>(weight[b]-weight[a])||a.localeCompare(b));
+  let ids=Object.keys(agg).sort((a,b)=>(weight[b]-weight[a])||nat(a,b));
   if(HAS&&$('only').checked){const near=new Set(ids.filter(isc));for(const k of Object.keys(cnt)){const [a,b]=k.split('\u0000');if(isc(a))near.add(b);if(isc(b))near.add(a)}ids=ids.filter(i=>near.has(i))}
   const keep=new Set(ids.slice(0,S.cap));if(S.sel&&agg[S.sel])keep.add(S.sel);
   const nodes=[...keep].map(id=>{const kind=agg[id];
@@ -399,7 +400,7 @@ function calls(){
   const edge=(a,b)=>{if(nodes[a]&&nodes[b])edges.push({from:a,to:b})};
   const up=(k,d,seen)=>{if(d>=depth||seen.has(k))return;seen.add(k);hidden+=Math.max(0,(callers[k]||[]).length-12);for(const c of (callers[k]||[]).slice(0,12)){add(c);edge(c,k);up(c,d+1,seen)}};
   const seen=new Set();
-  const down=(k,d)=>{if(d>=depth||seen.has(k))return;seen.add(k);hidden+=Math.max(0,E[k].calls.length-16);for(const c of E[k].calls.slice(0,16)){add(c);edge(k,c);down(c,d+1)}
+  const down=(k,d)=>{if(d>=depth||seen.has(k))return;seen.add(k);hidden+=Math.max(0,E[k].calls.length-12);for(const c of E[k].calls.slice(0,12)){add(c);edge(k,c);down(c,d+1)}
     if($('all').checked)for(const x of E[k].external.slice(0,6)){const id='x:'+x;if(!nodes[id]&&n<60){n++;nodes[id]={id,title:x.split('#').pop(),cls:'ext',kind:'ext'}}edge(k,id)}};
   if(S.dir!=='down')up(e.key,0,new Set());if(S.dir!=='up')down(e.key,0);
   if(hidden>0){nodes['more']={id:'more',title:'+'+hidden+' more',sub:'not drawn; narrow with Route or search',cls:'more',kind:'more'};edges.push({from:e.key,to:'more'})}
@@ -521,6 +522,9 @@ function save(){const x=snap(),fresh=!navigating&&HIST[hi]!==x;try{history[fresh
   if(!navigating&&HIST[hi]!==x){HIST.length=hi+1;HIST.push(x);hi=HIST.length-1;if(HIST.length>100){HIST.shift();hi--}}
   if(S.sel&&VISIT[0]!==S.sel){const i=VISIT.indexOf(S.sel);if(i>=0)VISIT.splice(i,1);VISIT.unshift(S.sel);VISIT.length=Math.min(VISIT.length,12)}
   $('back').disabled=hi<=0;$('fwd').disabled=hi>=HIST.length-1}
+const hotEdges=(id,on)=>document.querySelectorAll('svg path.edge').forEach(p=>{if(p.dataset.a===id||p.dataset.b===id)p.classList.toggle('hot',on)});
+document.addEventListener('mouseover',ev=>{const g=ev.target.closest&&ev.target.closest('svg .node');if(g)hotEdges(g.dataset.id,true)});
+document.addEventListener('mouseout',ev=>{const g=ev.target.closest&&ev.target.closest('svg .node');if(g&&g.dataset.id!==S.sel)hotEdges(g.dataset.id,false)});
 function go(d){const j=hi+d;if(j<0||j>=HIST.length)return;hi=j;const h=JSON.parse(HIST[j]);S.tab=h.t;S.sel=h.s;S.mod=h.m;S.scope=h.c;S.from=h.f;S.to=h.o;navigating=true;render();navigating=false}
 function pickFn(text){const t=text.trim().toLowerCase();const exact=fns.filter(f=>f.name.toLowerCase()===t);return (exact[0]||fns.find(f=>f.name.toLowerCase().includes(t))||{}).key||null}
 function fitTab(){const ok=tabsFor();if(ok.includes(S.tab))return false;const e=S.sel&&E[S.sel];S.tab=e&&isType(e)?'Types':e&&isFn(e)?'Sequence':'Overview';return true}
@@ -672,7 +676,7 @@ addEventListener('keydown',ev=>{
   else if(ev.key==='?'){help.classList.toggle('on')}
   else if(ev.key==='f'||ev.key==='F')toggleFocus();
   else if(ev.key==='s'||ev.key==='S'){const b=document.querySelector('[data-star]');if(b)b.click()}});
-try{const h=JSON.parse(decodeURIComponent(location.hash.slice(1)));if(h&&TABS.includes(h.t)){S.tab=h.t;S.sel=E[h.s]?h.s:null;S.mod=h.m||null;S.scope=h.c||'';S.from=E[h.f]?h.f:null;S.to=E[h.o]?h.o:null}else throw 0}catch(_){const main=D.entities.find(e=>e.name==='main'&&e.kind==='fn');if(main){S.sel=main.key;S.scope=dirOf(main.file);S.tab='Sequence'}}
+try{const h=JSON.parse(decodeURIComponent(location.hash.slice(1)));if(h&&TABS.includes(h.t)){S.tab=h.t;S.sel=E[h.s]?h.s:null;S.mod=h.m||null;S.scope=h.c||'';S.from=E[h.f]?h.f:null;S.to=E[h.o]?h.o:null}else throw 0}catch(_){const main=D.entities.find(e=>e.name==='main'&&e.kind==='fn');if(main&&fns.length<=300){S.sel=main.key;S.scope=dirOf(main.file);S.tab='Sequence'}}
 setKinds();render();
 addEventListener('popstate',()=>{try{const h=JSON.parse(decodeURIComponent(location.hash.slice(1)));if(h&&TABS.includes(h.t)){S.tab=h.t;S.sel=E[h.s]?h.s:null;S.mod=h.m||null;S.scope=h.c||'';S.from=E[h.f]?h.f:null;S.to=E[h.o]?h.o:null;navigating=true;render();navigating=false}}catch(_){}});
 /* Icon buttons carry their name in `title`; give assistive technology the same text. */

@@ -58,7 +58,7 @@ test('checked CLI enum facts render bare cases and retain type relationships', (
     assert.match(rendered, />paired\(left: Item, right: List\[T\]\)<\/text>/);
     assert.doesNotMatch(rendered, />case (missing|found|paired)/);
     assert.match(rendered, /<title>type Item<\/title>/);
-    assert.match(rendered, /class="edge"/);
+    assert.match(rendered, /class="edge[ "]/);
     assert.equal(p.sigOf(choice), '<code><span class="tk-kw">enum</span> Choice</code>');
     p.S.sel = box.key;
     const controls = p.types();
