@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: a test cannot control what code gets from the outside world (time, randomness, environment, files, network, a database client) without a parameter on every caller, and an agent's program cannot be held to less reach than the machine gives it.
-- Change: both problems sit on one seam we already have, effects. `ms run --deny PATTERN` refuses to build a program that reaches a denied effect. `fake(original, replacement)` in a test replaces a function that declares an effect, until the test ends.
+- Change: both problems sit on one seam we already have, effects. `ms run --deny PATTERN` refuses to build a program that reaches a denied effect; `--allow EFFECT:RESOURCE` grants scoped access (a path, a host, a table). `fake(original, replacement)` in a test replaces a function that declares an effect, until the test ends.
 - Decision requested: approve both, and the rule that only functions declaring an effect can be faked.
 
 ## Status
@@ -26,7 +26,17 @@ app.ms:3:1: type: main reaches std.fs.read, which --deny std.fs.* forbids for th
 - Checked before anything is built or run, from the effects `main` reaches. No runtime cost, and the program cannot remove the flag.
 - Patterns are the `allow_effect` patterns (`std.fs.*`, `*.write`, `*`).
 - Measured on this branch: a program that reads a file and the clock runs with `--deny 'std.net.*'` and is refused with `--deny 'std.fs.*'` or `--deny '*.read'`.
-- Not a sandbox: `extern fn`, `--link` and child processes are outside effects. A finer limit ("read only under /data") is a capability value such as `host_tree(root)`, which exists.
+- Not a sandbox: `extern fn`, `--link` and child processes are outside effects.
+
+## Restricted access: `--allow EFFECT:RESOURCE`
+
+- An effect may name the argument that identifies what it touches: `// ms: effect std.fs.read(path)`, `std.net.connect(host)`, a project `db.read(table)`.
+- The runner grants scoped access: `--allow 'std.fs.read:/data/**'`, `--allow 'std.net.connect:api.example.com:443'`, `--allow 'db.read:orders'`. `--deny` and `--allow` are one rule set, last match wins.
+- Constant resource at every call: the checker proves it before building, no runtime cost. Otherwise the effect function checks the argument against the run's rules just before the system call; a miss returns `EACCES`.
+- Paths are checked after `..` and symlinks resolve; hosts by name before lookup.
+- The check lives in `@std` bodies; the runtime adds one pattern-match helper and reads the rules from the run.
+- Limit: scoping is only as fine as the declared resource. Raw SQL cannot be scoped to a table by the language; use a database role.
+- Capability values (`host_tree("/data")`) keep working; their constructors are one more place the same rule is checked.
 
 ## Fakes: `fake(original, replacement)`
 
@@ -72,7 +82,8 @@ test "banner uses a fixed clock":
 ## Stages
 
 1. `--deny` for `run`, `build` and `test`, with the call path in the message.
-2. `fake`: runtime table, test-build lowering, checker rule, stdlib function.
+2. Resource parameters on standard effects, `--allow EFFECT:RESOURCE`, build-time proof for constant arguments.
+3. `fake`: runtime table, test-build lowering, checker rule, stdlib function.
 
 ## Open questions
 
