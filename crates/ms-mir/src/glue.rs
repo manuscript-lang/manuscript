@@ -176,6 +176,15 @@ pub fn run(m: &mut Module) -> bool {
     made
 }
 
+/// Makes the glue and expands the release shorthands, repeating until nothing new is wanted:
+/// expanding makes drops of more types. The last step before the backends.
+pub fn run_and_expand(m: &mut Module) {
+    while run(m) {
+        crate::expand_owned::run(m);
+    }
+    crate::expand_owned::run(m);
+}
+
 /// The closure functions whose objects the program makes, with whether the object lives in a
 /// stack frame (and so is not freed), and those whose objects get a clone entry.
 fn closure_demand(m: &Module) -> (Vec<(FuncId, bool)>, Vec<FuncId>) {
