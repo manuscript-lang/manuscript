@@ -1330,6 +1330,10 @@ impl<'a> Parser<'a> {
             }
             Tok::Fn => {
                 self.at += 1;
+                if self.kind() == Tok::Var && self.ahead(1).kind == Tok::Name {
+                    let t = self.peek();
+                    return self.fail(t, "'fn var' marks a method that changes its receiver, as in 'fn var Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter instead: 'fn add(var counter: Counter, n: Int) Void:'");
+                }
                 let name = self.need(Tok::Name)?;
                 let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;

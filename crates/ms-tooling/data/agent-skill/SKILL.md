@@ -53,7 +53,7 @@ fn main() Void!:
 - `enum Choice:` with cases `Empty` and `Value(n: Int)`, built `Choice.Value(2)`, matched with arms `Empty:`, `Value(n):`, `_:`. Keep `match` flat.
 - Text: `"plain"` never interpolates (braces are literal), `f"total {n}"` interpolates, `r"\d+"` is raw, `"""` and `r"""` open multi-line text on the next line.
 - Effects: narrow directives above functions, as in the example; they do not run effects. `ms check` ignores effects; `ms verify` reports each one a function reaches (`std.console.write`, `std.fs.read`, `std.fs.write`, `std.net...`) and the message names the exact directive to add.
-- Not in the language: no `assert` (import `expect_equal`, `expect_true` from `@std/test/test.ms`, call with `?`), no `x is Case` (use `match`), no static or constructor methods (`Store.new()`; write a free function `new_store()`), no `export` on methods (they travel with the type; a method must be declared in its type's module). An unused `match` binding is an error: write `_name`. Closeable values clean up at scope end; there is no GC.
+- Not in the language: no `assert` (import `expect_equal`, `expect_true` from `@std/test/test.ms`, call with `?`), no `x is Case` (use `match`), no static or constructor methods (`Store.new()`; write a free function `new_store()`), `fn var` on a free function (only methods; use `var` on the parameter), `Map.filter` (filter `.entries()` and rebuild with a loop), no `export` on methods (they travel with the type; a method must be declared in its type's module). An unused `match` binding is an error: write `_name`. Closeable values clean up at scope end; there is no GC.
 
 ## Compiler rules
 

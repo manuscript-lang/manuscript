@@ -38,3 +38,5 @@ Receiver methods satisfy interfaces by shape: names, parameter labels/types/muta
 Enum cases need no `case` keyword. Construct `Choice.Empty` or `Choice.Number(40)`. Match exhaustively; `_:` handles the remainder. Keep matches flat.
 
 Generic operations need bounds, such as `T: Clonable` for copying T. Not every type is cloneable.
+
+A generic type takes its parameter after the name and its methods repeat it: `type Repository[T]:` with `items: List[T] = []`, built `Repository[Book]()`. A method that calls an interface member on `T` states the bound on the receiver: `fn var Repository[T: Searchable].add(item: T) Void:`. Combine bounds with `&`: `T: Searchable & Clonable`. `fn var` belongs to methods only; a free function takes `var` on the parameter: `fn transfer(var from: Account)`. There are no static methods or constructors: build a record by calling the type, or write a free function such as `new_store()`.
