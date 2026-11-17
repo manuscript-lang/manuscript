@@ -1691,6 +1691,15 @@ pub extern "C-unwind" fn msrt_cleanup_unwind_to(base: usize) {
     }
 }
 
+/// Pops the cleanups registered above `base` without running them: a cancel exit that freed its
+/// owners by explicit drops leaves the registrations made for faults behind it.
+#[unsafe(no_mangle)]
+// ms: leaf domain=unwind
+pub extern "C" fn msrt_cleanup_truncate(base: usize) {
+    // SAFETY: single threaded access to the cleanup stack.
+    unsafe { (*CLEANUPS.ptr()).truncate(base) };
+}
+
 /// Clears `unwinding` while explicit exit code (a close that may park) runs; pair it with
 /// [`msrt_unwinding_resume`] before the exit returns.
 #[unsafe(no_mangle)]
@@ -2424,6 +2433,23 @@ mod tests {
 
     unsafe extern "C-unwind" fn returns_cancelled(_: *mut u8) {
         deliver_cancel();
+    }
+
+    #[test]
+    fn truncate_pops_the_cleanups_above_the_base_without_running_them() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock and pass valid pointers.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            let base = msrt_cleanup_base();
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(7));
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(8));
+            msrt_cleanup_truncate(base);
+            assert_eq!(*LOG_N.ptr(), 0);
+            assert_eq!(msrt_cleanup_base(), base);
+            reset_for_tests();
+        }
     }
 
     #[test]

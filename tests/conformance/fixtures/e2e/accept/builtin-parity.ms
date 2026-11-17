@@ -18,7 +18,7 @@ fn negative(value: Int) Bool:
 	return value < 0
 
 fn stringify(value: Int) String:
-	return value.to_string_radix(radix: 10)
+	return value.to_string()
 
 fn expand(value: Int) List[String]:
 	return [stringify(value: value), "x"]
@@ -89,7 +89,7 @@ fn checked_expansion() Void!:
 	"x".pad_end(target_length: 4, padding: "é🙂") | expect_equal("xé🙂é")?
 	(not ("aba".replace(old: "a", new: "é") == "ébé")) | expect_false?
 	(not ("é🙂".replace(old: "", new: "-") == "-é-🙂-")) | expect_false?
-	"é🙂".slice(start: 0, end: 2) | expect_equal("é")?
+	(common_result(result: "é🙂".slice(start: 0, end: 2))?) | expect_equal("é")?
 	"é".repeat(count: 3) | expect_equal("ééé")?
 
 test "list methods mutate explicit clones and remain typed":
@@ -98,8 +98,8 @@ test "list methods mutate explicit clones and remain typed":
 	original.get(index: -1) | expect_equal(1)?
 
 	absent: Int? := none
-	original.get_or(index: -9223372036854775808, -1) | expect_equal(-1)?
-	original.get_or(index: 9223372036854775807, -1) | expect_equal(-1)?
+	original.get_or(index: -9223372036854775808, default: -1) | expect_equal(-1)?
+	original.get_or(index: 9223372036854775807, default: -1) | expect_equal(-1)?
 	original.first() | expect_equal(3)?
 	original.last() | expect_equal(1)?
 
@@ -315,10 +315,10 @@ test "string methods use Unicode scalars":
 	absent: Int? := none
 	"é🙂é".index_of(value: "z") | expect_equal(absent)?
 	"é🙂é".last_index_of(value: "z") | expect_equal(absent)?
-	"é🙂é".slice(start: 2, end: 8) | expect_equal("🙂é")?
-	"é🙂é".slice(start: 1, end: 8) | expect_equal("🙂é")?
-	"é🙂é".slice(start: 2, end: 1) | expect_equal("")?
-	"é🙂é".slice(start: -99, end: 1) | expect_equal("")?
+	"é🙂é".slice(start: 2, end: 8).get() | expect_equal("🙂é")?
+	("é🙂é".slice(start: 1, end: 8).is_error()) | expect_true?
+	("é🙂é".slice(start: 2, end: 1).is_error()) | expect_true?
+	("é🙂é".slice(start: -99, end: 1).is_error()) | expect_true?
 	"é🙂".scalar_length() | expect_equal(2)?
 	"é🙂".scalar_values() | expect_equal([233, 128578])?
 	"\t hello \n".trim() | expect_equal("hello")?
@@ -346,7 +346,7 @@ test "bytes have analogous immutable operations":
 	data.get(index: -1) | expect_equal(2)?
 
 	missing: Int? := none
-	data.get_or(index: -9223372036854775808, 255) | expect_equal(255)?
+	data.get_or(index: -9223372036854775808, default: 255) | expect_equal(255)?
 	(data.contains(value: Bytes([2, 3]))) | expect_true?
 	data.index_of(value: Bytes([2])) | expect_equal(1)?
 	data.last_index_of(value: Bytes([2])) | expect_equal(3)?
@@ -359,7 +359,7 @@ test "bytes have analogous immutable operations":
 	(Bytes([]).is_empty()) | expect_true?
 	(not data.is_empty()) | expect_true?
 	data | expect_equal(Bytes([1, 2, 3, 2]))?
-	255.to_string_radix(radix: 16) | expect_equal("ff")?
+	255.to_hex() | expect_equal("ff")?
 	1.5.to_string() | expect_equal("1.5")?
 	(1.5.is_finite()) | expect_true?
 	(not 1.5.is_nan()) | expect_true?
@@ -485,9 +485,9 @@ test "normalization, empty separators, and precision formatting":
 fn verify_bigint_and_regex() Void!:
 	a := big_int_of_int(value: 12)
 	b := big_int_of_int(value: 5)
-	a.add(other: b).to_string_radix(radix: 10) | expect_equal("17")?
-	a.subtract(other: b).to_string_radix(radix: 10) | expect_equal("7")?
-	a.multiply(other: b).to_string_radix(radix: 10) | expect_equal("60")?
+	a.add(other: b).to_string() | expect_equal("17")?
+	a.subtract(other: b).to_string() | expect_equal("7")?
+	a.multiply(other: b).to_string() | expect_equal("60")?
 	(common_result(result: a.divide(other: b))?).to_int() | expect_equal(2)?
 	(common_result(result: a.remainder(other: b))?).to_int() | expect_equal(2)?
 	a.compare(other: b) | expect_equal(1)?

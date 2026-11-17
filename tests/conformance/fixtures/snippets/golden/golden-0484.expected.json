@@ -20,34 +20,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Failure; did you mean 'failed'?",
+        "message": "unknown binding Failure; declare it with 'Failure := ...' before use, define 'fn Failure(...) T:', or import it from a module",
         "position": {
           "file": "golden-0484.ms",
           "line": 3,
           "column": 42,
           "offset": 94
-        },
-        "fix": {
-          "position": {
-            "file": "golden-0484.ms",
-            "line": 3,
-            "column": 42,
-            "offset": 94
-          },
-          "end": {
-            "file": "golden-0484.ms",
-            "line": 3,
-            "column": 49,
-            "offset": 101
-          },
-          "replacement": "failed"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0484.ms:3:26: resolution: unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import it\n   |\n 3 | fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n   |                          ^\n<DIR>/golden-0484.ms:3:42: resolution: unknown binding Failure; did you mean 'failed'?\n   |\n 3 | fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n   |                                          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0484.ms:3:26: resolution: unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import it\n   |\n 3 | fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n   |                          ^\n<DIR>/golden-0484.ms:3:42: resolution: unknown binding Failure; declare it with 'Failure := ...' before use, define 'fn Failure(...) T:', or import it from a module\n   |\n 3 | fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n   |                                          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

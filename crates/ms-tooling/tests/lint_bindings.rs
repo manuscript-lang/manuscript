@@ -195,3 +195,10 @@ fn grouped_import_removal_ends_at_the_lexed_path_for_escaped_quotes() {
         assert_eq!(&*module.imports[0].path, "@std/math/math.ms");
     }
 }
+
+#[test]
+fn decimal_literal_counts_as_a_use_of_the_decimal_import() {
+    let source = "import Decimal from \"@std/math/decimal.ms\"\n\nexport fn main() Void:\n    price := 12.50d\n    print(price.to_string())\n";
+    let found = codes(source);
+    assert!(!found.iter().any(|c| c == "MSL102"), "{found:?}");
+}

@@ -697,3 +697,69 @@ fn fix_counts_a_file_once_across_rounds() {
     assert!(!text.contains("2 files"), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn lint_fix_edits_crlf_sources_like_lf_ones() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-lint-crlf-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let lf = include_str!("check_fix/lint_line_endings.ms");
+    std::fs::write(dir.join("lf.ms"), lf).unwrap();
+    std::fs::write(dir.join("crlf.ms"), lf.replace('\n', "\r\n")).unwrap();
+    for name in ["lf.ms", "crlf.ms"] {
+        let (status, text) = ms(&["lint", name, "--fix"], &dir);
+        assert_eq!(status, Some(0), "{name}: {text}");
+    }
+    let fixed_lf = std::fs::read_to_string(dir.join("lf.ms")).unwrap();
+    let fixed_crlf = std::fs::read_to_string(dir.join("crlf.ms")).unwrap();
+    assert_ne!(fixed_lf, lf, "the fixes applied");
+    assert_eq!(fixed_crlf.replace("\r\n", "\n"), fixed_lf, "{fixed_crlf:?}");
+    assert!(
+        !fixed_crlf.replace("\r\n", "").contains('\n'),
+        "every break stays CRLF: {fixed_crlf:?}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn lint_fix_keeps_the_decimal_import_a_literal_needs() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-lint-decimal-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = include_str!("check_fix/decimal_literal_import.ms");
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+    let (status, text) = ms(&["lint", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert!(!text.contains("applied"), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn lint_fix_keeps_a_default_the_condition_can_change() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-lint-default-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // `y := if bump(var a): 5 else: a` would read `a` after `bump` changed it.
+    let source = include_str!("check_fix/default_changed_by_condition.ms");
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+    let (status, text) = ms(&["lint", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert!(!text.contains("applied"), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn lint_fix_leaves_calls_split_over_lines_or_by_a_comment() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-lint-split-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // `xs\n    [i]` does not parse, and the map rewrite would delete the comment.
+    let source = include_str!("check_fix/terse_kept.ms");
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+    let (_, text) = ms(&["lint", "a.ms", "--fix"], &dir);
+    assert!(!text.contains("applied"), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
+    let _ = std::fs::remove_dir_all(&dir);
+}

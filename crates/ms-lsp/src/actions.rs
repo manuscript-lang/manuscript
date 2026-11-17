@@ -8,7 +8,6 @@ use crate::text::{self, Position, Range};
 use crate::uri;
 use crate::workspace;
 use ms_check::api::syntax::ModRef;
-use ms_syntax::token::Tok;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -394,10 +393,15 @@ pub fn editor_actions(
             if issue.file != syms.str(m.file) || issue.code != "MSL102" {
                 continue;
             }
-            let (edits, r) = unused_import_edits(syms, d, m, issue.offset);
-            if eligible(r) && !edits.is_empty() {
+            let Some(fix) = &issue.fix else { continue };
+            let r = Range::at(text::position(&d.text, issue.offset));
+            if eligible(r) {
+                let fix_range = Range {
+                    start: text::position(&d.text, fix.pos.offset as usize),
+                    end: text::position(&d.text, fix.end.offset as usize),
+                };
                 let diagnostic = obj([
-                    ("range", Range::at(r.start).json()),
+                    ("range", r.json()),
                     ("message", issue.message.clone().into()),
                     ("code", issue.code.clone().into()),
                     ("source", "manuscript-lint".into()),
@@ -406,7 +410,7 @@ pub fn editor_actions(
                     d,
                     "Remove unused import",
                     "quickfix",
-                    edits,
+                    vec![edit(fix_range, &fix.replacement)],
                     vec![diagnostic],
                 ));
             }
@@ -482,102 +486,4 @@ pub fn editor_actions(
                 .any(|wanted| kind == wanted || kind.starts_with(&format!("{wanted}.")))
         })
         .collect()
-}
-
-/// A grouped import expands into bindings sharing one declaration position.
-/// Remove the selected name and its following comma without touching comments or
-/// other bindings; the last name of an unparenthesized list also loses the comma before it.
-fn unused_import_edits(
-    syms: ms_syntax::Names,
-    d: &Document,
-    module: &ModRef,
-    offset: usize,
-) -> (Vec<Json>, Range) {
-    let none = (Vec::new(), Range::default());
-    let file: Arc<str> = syms.str(module.file).into();
-    let Ok(lexed) = ms_syntax::lexer::lex(&file, &module.source) else {
-        return none;
-    };
-    let tokens: Vec<_> = lexed
-        .tokens
-        .iter()
-        .filter(|t| t.kind != Tok::Comment)
-        .collect();
-    let Some(selected) = module
-        .imports
-        .iter()
-        .find(|i| i.name_pos.offset as usize == offset)
-    else {
-        return none;
-    };
-    let count = module
-        .imports
-        .iter()
-        .filter(|i| i.pos.offset == selected.pos.offset)
-        .count();
-    if count == 1 {
-        let mut end_line = selected.name_pos.line;
-        for token in &tokens {
-            if token.pos.offset >= selected.pos.offset && token.kind == Tok::String {
-                end_line = token.pos.line;
-                break;
-            }
-        }
-        let r = Range {
-            start: line_range(&d.text, selected.pos.line as usize - 1).start,
-            end: line_range(&d.text, end_line as usize - 1).end,
-        };
-        return (vec![edit(r, "")], r);
-    }
-    let r = Range {
-        start: text::position(&d.text, offset),
-        end: text::position(&d.text, offset + syms.str(selected.name).len()),
-    };
-    let mut edits = vec![edit(r, "")];
-    let Some(at) = tokens.iter().position(|t| t.pos.offset as usize == offset) else {
-        return (edits, r);
-    };
-    if let Some(next) = tokens.get(at + 1).filter(|t| t.kind == Tok::Comma) {
-        let comma = next.pos.offset as usize;
-        let spaces = d.text[comma + 1..]
-            .bytes()
-            .take_while(|b| matches!(b, b' ' | b'\t'))
-            .count();
-        edits.push(edit(
-            Range {
-                start: text::position(&d.text, comma),
-                end: text::position(&d.text, comma + 1 + spaces),
-            },
-            "",
-        ));
-    } else if let Some(previous) = at
-        .checked_sub(1)
-        .map(|before| tokens[before])
-        .filter(|t| t.kind == Tok::Comma)
-    {
-        // The last name of a list: drop the separator before it, since a
-        // trailing comma is only valid inside parentheses.
-        let comma = previous.pos.offset as usize;
-        let gap = &d.text[comma + 1..offset];
-        let spaces = if gap.chars().all(|c| c == ' ' || c == '\t') {
-            gap.len()
-        } else {
-            0
-        };
-        let removal = Range {
-            start: text::position(&d.text, offset - spaces),
-            end: r.end,
-        };
-        edits = vec![
-            edit(
-                Range {
-                    start: text::position(&d.text, comma),
-                    end: text::position(&d.text, comma + 1),
-                },
-                "",
-            ),
-            edit(removal, ""),
-        ];
-    }
-    (edits, r)
 }

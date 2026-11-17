@@ -163,7 +163,7 @@ fn main() Void:
 	// conversions
 	t = monotonic()
 	s = 0
-	for i in 0..n: s += i.to_string_radix(16).length()
+	for i in 0..n: s += i.to_string_radix(16).get_or("").length()
 	report("int_hex", t, s)
 	t = monotonic()
 	s = 0

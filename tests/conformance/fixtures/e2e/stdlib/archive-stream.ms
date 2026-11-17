@@ -115,7 +115,11 @@ fn sample() List[ArchiveEntry]:
 	return [
 		ArchiveEntry("dir", "".to_bytes(), directory: true),
 		ArchiveEntry("dir/a.txt", "alpha".to_bytes(), directory: false),
-		ArchiveEntry("big.bin", "x".repeat(1300).to_bytes(), directory: false),
+		ArchiveEntry(
+			"big.bin",
+			"x".repeat(1300).to_bytes(),
+			directory: false,
+		),
 		ArchiveEntry("empty", "".to_bytes(), directory: false),
 	]
 
@@ -181,7 +185,13 @@ fn var HeaderThenFail.close() Void!:
 
 test "tar entries refuse an oversized member from its header":
 	archive := pack(
-		[ArchiveEntry("f", "x".repeat(4000).to_bytes(), directory: false)],
+		[
+			ArchiveEntry(
+				"f",
+				"x".repeat(4000).to_bytes(),
+				directory: false,
+			)
+		],
 		ArchiveFormat.Tar,
 	)?
 	header := archive.slice(0, 512)?

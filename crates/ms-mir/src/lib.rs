@@ -3,6 +3,7 @@
 
 pub mod builder;
 pub mod cancel_edges;
+pub mod cancel_exit;
 pub mod copies;
 pub mod count_ops;
 pub mod debug_files;

@@ -31,7 +31,7 @@ test "JSON reads sized numbers back":
     back := parse[Sized](text).get()
     expect_equal(back.small.to_int(), 255)?
     expect_equal(back.signed.to_int(), -128)?
-    expect_equal(back.wide.to_string_radix(16), "ffffffffffffffff")?
+    expect_equal(back.wide.to_hex(), "ffffffffffffffff")?
     expect_equal(stringify(back).get(), text)?
 
 test "JSON rejects sized numbers outside their range":

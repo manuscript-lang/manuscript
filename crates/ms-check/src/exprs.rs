@@ -1101,7 +1101,7 @@ impl Checker {
             }
             self.type_error(
                 e.pos,
-                format!("'?' requires a Result, found {result_t}; apply '?' only to a call returning Result[T, E]{optional}", result_t = result.display(self.syms), optional = if result.is(Builtin::Optional) { ". '?' does not unwrap an Optional `x`: write `if v := x:` to use the value when present, `x.get(default)` for a fallback, or `x.get()` to fault when absent" } else { "" }),
+                format!("'?' requires a Result, found {result_t}; apply '?' only to a call returning Result[T, E]{optional}", result_t = result.display(self.syms), optional = if result.is(Builtin::Optional) { ". '?' does not unwrap an Optional `x`: write `if v := x:` to use the value when present, `x.get_or(default)` for a fallback, or `x.get()` to fault when absent" } else { "" }),
             );
             return;
         }
@@ -1113,7 +1113,7 @@ impl Checker {
         if !enclosing.is(Builtin::Result) || enclosing.args.len() != 2 {
             self.type_error(
                 e.pos,
-                "'?' requires an enclosing Result; declare this function to return Result[T, E], or use 'if value := x', '.get(default)', or '.get()'",
+                "'?' requires an enclosing Result; declare this function to return Result[T, E], or use 'if value := x', '.get_or(default)', or '.get()'",
             );
             return;
         }

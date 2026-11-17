@@ -105,4 +105,4 @@ test "parse trees keep their size and checksum for the recorded large documents"
 	expect_equal(cases, 4)?
 
 fn checksum_hex(text: String) String:
-	return crc32(text.to_bytes()).to_string_radix(16)
+	return crc32(text.to_bytes()).to_hex()

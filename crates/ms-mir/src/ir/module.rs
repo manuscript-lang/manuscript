@@ -447,6 +447,8 @@ impl Module {
             | Op::OptViewAt
             | Op::AltPlain
             | Op::OptNone => Mode::Borrow,
+            // The zero a cancel exit of a borrow-returning function hands back (`undef 1`).
+            Op::Undef if inst.imm == Imm::Int(1) => Mode::Borrow,
             // An owned `none` owns nothing, but keeps ownership linear without a copy.
             Op::OptNoneOwned => Mode::Move,
             // A borrowing variant is owned and drops only the cases it owns: `alt.view` fills a

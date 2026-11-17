@@ -2329,7 +2329,7 @@ fn closures_borrow(cx: &Cx, arity: usize, k: usize) -> bool {
 
 /// Per function and parameter, whether the parameter is a pointer to a slot whose contents the
 /// function only borrows: it `take`s them, uses them as borrows, and `put`s the same value back.
-fn slot_safe_params(m: &Module) -> Vec<Vec<bool>> {
+pub(crate) fn slot_safe_params(m: &Module) -> Vec<Vec<bool>> {
     let mut safe: Vec<Vec<bool>> = m
         .funcs
         .iter()

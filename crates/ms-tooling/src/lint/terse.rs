@@ -199,7 +199,8 @@ impl Visitor for Scan<'_> {
         let (Some(dot), Some(index)) = (dot, self.text(&arg.value, &arg.value)) else {
             return;
         };
-        if source.as_bytes().get(dot) != Some(&b'.') {
+        // `xs\n    .get(i)` would become `xs\n    [i]`, an indented line that opens no block.
+        if source.as_bytes().get(dot) != Some(&b'.') || left.end.offset as usize != dot {
             return;
         }
         let index = index.to_string();
@@ -273,6 +274,19 @@ fn leftmost(e: &Expr) -> usize {
         }
         _ => e.pos.offset as usize,
     }
+}
+
+/// Whether any call runs inside `e`.
+fn has_call(e: &Expr) -> bool {
+    struct Calls(bool);
+    impl Visitor for Calls {
+        fn expr(&mut self, e: &Expr) {
+            self.0 |= matches!(e.kind, ExprKind::Call { .. });
+        }
+    }
+    let mut calls = Calls(false);
+    visit::walk_expr(&mut calls, e);
+    calls.0
 }
 
 fn expr_reads(name: Symbol, e: &Expr) -> usize {
@@ -517,7 +531,11 @@ impl Scan<'_> {
         ) else {
             return;
         };
-        if self.source().as_bytes().get(dot) != Some(&b'.') {
+        // The edit replaces everything between the two calls, so a comment there would be lost.
+        let between = self.span(dot, e.end.offset as usize);
+        if self.source().as_bytes().get(dot) != Some(&b'.')
+            || between.is_none_or(|t| t.contains("//") || t.contains("/*"))
+        {
             return;
         }
         self.report(
@@ -582,10 +600,19 @@ impl Scan<'_> {
             .is_some_and(|t| {
                 t.is_string() || t.is(Builtin::Int) || t.is(Builtin::Float) || t.is(Builtin::Bool)
             });
+        // `x := if c: b else: a` reads `a` after `c` runs; a call in `c` can change a `var` `a`.
+        let moves = matches!(default.kind, ExprKind::Name(_))
+            && self
+                .module
+                .facts()
+                .info(default.id)
+                .and_then(|i| i.binding.as_ref())
+                .is_some_and(|b| b.mutable)
+            && has_call(cond);
         let rest = &body[at + 2..];
         let later = uses_in(*name, rest);
         let in_cond = expr_reads(*name, cond) + expr_reads(*name, replacement);
-        if target != name || !simple || !scalar || later.writes > 0 || in_cond > 0 {
+        if target != name || !simple || !scalar || moves || later.writes > 0 || in_cond > 0 {
             return;
         }
         let (from, to) = (first.pos.offset as usize, replacement.end.offset as usize);
@@ -649,7 +676,9 @@ impl Scan<'_> {
             from -= 1;
         }
         let mut to = end;
-        if source.as_bytes().get(to) == Some(&b'\n') {
+        if source[to..].starts_with("\r\n") {
+            to += 2;
+        } else if source[to..].starts_with('\n') {
             to += 1;
         }
         let Some(line) = self.span(from, to) else {
@@ -854,8 +883,9 @@ impl Scan<'_> {
                 .to_string(),
             first.pos,
             bind_line,
-            step_end + eol,
-            text.trim_end_matches('\n').to_string(),
+            // The line's own `\r` stays in place, so the break keeps its CRLF.
+            step_end + tail[..eol].trim_end_matches('\r').len(),
+            text.trim_end_matches(['\r', '\n']).to_string(),
         );
     }
 

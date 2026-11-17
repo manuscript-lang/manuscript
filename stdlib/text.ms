@@ -64,7 +64,7 @@ fn quote_with(text: String, ascii_only: Bool) String:
 			or (c >= 8294 and c <= 8297)
 			or (ascii_only and c > 127)
 		):
-			out.append("\\u{" + c.to_string_radix(16) + "}")
+			out.append("\\u{" + c.to_hex() + "}")
 		else:
 			out.append(from_scalars([c]).get_or(""))
 

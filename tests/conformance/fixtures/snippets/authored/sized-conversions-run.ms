@@ -11,7 +11,7 @@ fn main() Void:
         f"{a.to_int32() + b} {a.to_int64()} {b.to_int8()} {b.to_int16()} {big.to_int32()} {big.to_int64()}\n"
     )
     void stdout().write(
-        f"{a.to_float()} {b.to_float32()} {big.to_float32()} {a.compare(-99)} {b.to_string_radix(16)}\n"
+        f"{a.to_float()} {b.to_float32()} {big.to_float32()} {a.compare(-99)} {b.to_hex()}\n"
     )
     f: Float32 := 0.1
     g: Float := 0.1

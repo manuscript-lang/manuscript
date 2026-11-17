@@ -31,6 +31,6 @@ fn main() Void:
         f"{opt.get_or(0)} {big.to_uint8()} {big.to_uint16()} {wide.to_int32()} {wide.to_int64()}\n"
     )
     void stdout().write(
-        f"{high.to_int()} {mid.to_uint8()} {wide.to_string_radix(16)} {high.compare(low)}\n"
+        f"{high.to_int()} {mid.to_uint8()} {wide.to_hex()} {high.compare(low)}\n"
     )
     void stdout().write(f"{wide.to_float()} {high.to_float32()}\n")

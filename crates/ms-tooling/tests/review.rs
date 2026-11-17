@@ -1039,6 +1039,13 @@ fn git_quoted_paths_preserve_additions_deletions_and_rename_rejection() {
         parse_diff("diff --git \"a/old.ms\" \"b/new.ms\"\n--- \"a/old.ms\"\n+++ \"b/new.ms\"\n")
             .unwrap_err();
     assert!(renamed.contains("renamed files are not supported"));
+    // `git diff -R` writes b/ before a/ for the same path.
+    let reversed = parse_diff(
+        "diff --git b/src/x.ms a/src/x.ms\n--- b/src/x.ms\n+++ a/src/x.ms\n@@ -1 +1 @@\n-a\n+b\n",
+    )
+    .unwrap();
+    assert_eq!(reversed[0].old, "src/x.ms");
+    assert_eq!(reversed[0].new, "src/x.ms");
 }
 
 #[test]

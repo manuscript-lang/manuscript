@@ -1,6 +1,6 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
 
 fn pad(n: Int) String:
 	return "x".repeat(n)
@@ -26,3 +26,20 @@ test "trim handles Unicode whitespace and mixed ends":
 	expect_equal("\u{2003}é\u{2003}".trim(), "é")?
 	expect_equal("é ".trim(), "é")?
 	expect_equal(" é".trim(), "é")?
+
+test "case mapping and normalization return text that needs no change":
+	expect_equal("abc".lower(), "abc")?
+	expect_equal(pad(40).lower(), pad(40))?
+	expect_equal("ABC".upper(), "ABC")?
+	expect_equal(("A" + pad(40)).upper(), "A" + pad(40).upper())?
+	expect_equal(("A" + pad(40)).lower(), "a" + pad(40))?
+	expect_equal(("x" + pad(30) + "Z").upper(), "X" + pad(30).upper() + "Z")?
+	expect_equal("a1 _-~".upper(), "A1 _-~")?
+	expect_equal("@[`{".upper(), "@[`{")?
+	expect_equal("@[`{".lower(), "@[`{")?
+	expect_equal("É".lower(), "é")?
+	expect_equal(pad(20).normalize("NFC", none).get_or(""), pad(20))?
+	expect_equal("abc".normalize("NFKD", none).get_or(""), "abc")?
+	expect_equal("e\u{301}".normalize("NFC", none).get_or(""), "é")?
+	expect_true("abcdef".normalize("NFC", 3).is_error())?
+	expect_equal("abc".normalize("NFC", 3).get_or(""), "abc")?

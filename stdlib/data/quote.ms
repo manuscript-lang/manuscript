@@ -42,4 +42,4 @@ export fn quote_text(text: String, escape_c1: Bool) String:
 
 // Four lowercase hex digits for a code void, zero padded.
 fn hex4(code: Int) String:
-	return code.to_string_radix(16).pad_start(4, "0")
+	return code.to_hex().pad_start(4, "0")

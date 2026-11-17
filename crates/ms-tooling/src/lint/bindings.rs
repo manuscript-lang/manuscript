@@ -34,17 +34,25 @@ pub(super) fn lint(
             used.insert(symbol.key());
         }
     }
-    // Collection literals require canonical imports even without written types.
+    // Collection and Decimal literals require canonical imports even without written types.
     let symbols = program.symbols.get(&module.file);
     let symbol_of =
         |name: &str| symbols.and_then(|names| names.borrow().get(&n(name)).map(|s| s.key()));
-    let mut literals = Literals::default();
+    let mut literals = Literals {
+        syms,
+        list: false,
+        map: false,
+        decimal: false,
+    };
     walk_module(module, &mut literals);
     if literals.list {
         used.extend(symbol_of("List"));
     }
     if literals.map {
         used.extend(symbol_of("Map"));
+    }
+    if literals.decimal {
+        used.extend(symbol_of("Decimal"));
     }
     for ty in facts.type_refs.values() {
         if let Some(symbol) = ty.def.as_ref().and_then(|d| d.symbol()) {
@@ -140,8 +148,13 @@ fn name_removal(syms: ms_syntax::Names, source: &str, import: &Import) -> Option
         let next = source[after_at + 1..].trim_start_matches(blank);
         let next_at = source.len() - next.len();
         let line_start = source[..start].rfind('\n').map_or(0, |i| i + 1);
-        if next.starts_with('\n') && source[line_start..start].trim().is_empty() {
-            return fix_of(source, line_start, next_at + 1);
+        let newline = if next.starts_with("\r\n") {
+            2
+        } else {
+            usize::from(next.starts_with('\n'))
+        };
+        if newline > 0 && source[line_start..start].trim().is_empty() {
+            return fix_of(source, line_start, next_at + newline);
         }
         return fix_of(source, start, next_at);
     }
@@ -152,17 +165,23 @@ fn name_removal(syms: ms_syntax::Names, source: &str, import: &Import) -> Option
     fix_of(source, before.len() - 1, end)
 }
 
-#[derive(Default)]
 struct Literals {
+    syms: ms_syntax::Names,
     list: bool,
     map: bool,
+    decimal: bool,
 }
 
 impl Visitor for Literals {
     fn expr(&mut self, e: &Expr) {
-        match e.kind {
+        match &e.kind {
             ExprKind::List(_) => self.list = true,
             ExprKind::Map(_) => self.map = true,
+            ExprKind::Number(text) => {
+                self.decimal |= ms_syntax::number::is_decimal(&ms_syntax::number::canonical(
+                    self.syms.str(text),
+                ));
+            }
             _ => {}
         }
     }

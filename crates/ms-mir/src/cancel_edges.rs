@@ -29,7 +29,7 @@ pub fn enabled() -> bool {
     std::env::var_os("MS_CANCEL_EDGES").is_some()
 }
 
-fn extern_of(
+pub(crate) fn extern_of(
     m: &mut Module,
     name: &str,
     params: &[Ty],
@@ -124,7 +124,7 @@ pub fn run(m: &mut Module) -> bool {
         }
     }
     for fi in 0..m.funcs.len() {
-        if m.funcs[fi].blocks.is_empty() || m.funcs[fi].unwind_only {
+        if m.funcs[fi].blocks.is_empty() || m.funcs[fi].unwind_only || m.funcs[fi].explicit_cancel {
             continue;
         }
         let stand_in = m.funcs[fi].signature_stand_in();
@@ -143,7 +143,7 @@ struct Ext {
 }
 
 /// Whether `inst` can reach a cancellation point.
-fn parks(m: &Module, parks: &[bool], inst: &Inst) -> bool {
+pub(crate) fn parks(m: &Module, parks: &[bool], inst: &Inst) -> bool {
     match (inst.op, inst.imm) {
         (Op::Poll | Op::CallInd | Op::CallMethod, _) => true,
         (Op::CallRt, Imm::Ext(e)) => {
@@ -202,7 +202,13 @@ fn function(m: &Module, parks_of: &[bool], ext: Ext, f: &mut Func) -> bool {
     let ret = if ret_ty == Ty::VOID {
         None
     } else {
-        let (i, v) = inst(f, Op::Undef, vec![], Imm::None, ret_ty, entry_loc);
+        // A borrow-returning function hands back a borrowed zero (`undef 1`).
+        let imm = if f.ret_borrowed {
+            Imm::Int(1)
+        } else {
+            Imm::None
+        };
+        let (i, v) = inst(f, Op::Undef, vec![], imm, ret_ty, entry_loc);
         exit_insts.push(i);
         Some(v)
     };

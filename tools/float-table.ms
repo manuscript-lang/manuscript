@@ -15,7 +15,7 @@ fn floor_log2_pow10(e: Int) Int:
 	return -bit_length(n.subtract(big_int_of_int(1)))
 
 fn bit_length(value: BigInt) Int:
-	return value.to_string_radix(2).length()
+	return value.to_binary().length()
 
 // g(k) = floor(10^-k * 2^(125 - floor(log2(10^-k)))) + 1, a 126-bit value.
 fn entry(k: Int) BigInt:
@@ -34,7 +34,7 @@ fn entry(k: Int) BigInt:
 	return whole.add(big_int_of_int(1))
 
 fn hex16(value: BigInt) String:
-	return f"0x{value.to_string_radix(16).pad_start(16, "0")}"
+	return f"0x{value.to_hex().pad_start(16, "0")}"
 
 fn main() Void:
 	mask := big_int_of_int(1).shift_left(63).get().subtract(big_int_of_int(1))

@@ -3,102 +3,271 @@
   "phase": "test",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "string-bytes.ms::Unicode scalar offsets differ from scalar count",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "string-bytes.ms::repeat is plain text and clamps nonpositive counts",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "string-bytes.ms::bytes copy slice search and UTF8 validation",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "string-bytes.ms::Bytes values direct bound and free calls return independent lists",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "string-bytes.ms::String slice uses byte offsets with relative bounds, clamping and moving inward off a scalar",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "string-bytes.ms::string and bytes builders freeze",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "string-bytes.ms::empty text splits into one part and case mapping is full Unicode",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "string-bytes.ms::offset walks over long strings match scalar_values",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "string-bytes.ms::offsets and slicing in long mixed-width text agree with the scalar walk",
-          "status": "passed"
-        },
-        {
-          "index": 9,
-          "name": "string-bytes.ms::builder appends literals of every short length across growth",
-          "status": "passed"
-        },
-        {
-          "index": 10,
-          "name": "string-bytes.ms::builder appends variable text of every length across growth",
-          "status": "passed"
-        },
-        {
-          "index": 11,
-          "name": "string-bytes.ms::search indexes are byte offsets for ascii, inline and unicode text",
-          "status": "passed"
-        },
-        {
-          "index": 12,
-          "name": "string-bytes.ms::count matches split for nonempty parts and counts scalars plus one for an empty part",
-          "status": "passed"
-        },
-        {
-          "index": 13,
-          "name": "string-bytes.ms::slice clamps a bound past the end",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 14,
-        "selected": 14,
-        "passed": 14,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN string-bytes.ms::Unicode scalar offsets differ from scalar count\nPASS string-bytes.ms::Unicode scalar offsets differ from scalar count\nRUN string-bytes.ms::repeat is plain text and clamps nonpositive counts\nPASS string-bytes.ms::repeat is plain text and clamps nonpositive counts\nRUN string-bytes.ms::bytes copy slice search and UTF8 validation\nPASS string-bytes.ms::bytes copy slice search and UTF8 validation\nRUN string-bytes.ms::Bytes values direct bound and free calls return independent lists\nPASS string-bytes.ms::Bytes values direct bound and free calls return independent lists\nRUN string-bytes.ms::String slice uses byte offsets with relative bounds, clamping and moving inward off a scalar\nPASS string-bytes.ms::String slice uses byte offsets with relative bounds, clamping and moving inward off a scalar\nRUN string-bytes.ms::string and bytes builders freeze\nPASS string-bytes.ms::string and bytes builders freeze\nRUN string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nPASS string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nRUN string-bytes.ms::offset walks over long strings match scalar_values\nPASS string-bytes.ms::offset walks over long strings match scalar_values\nRUN string-bytes.ms::offsets and slicing in long mixed-width text agree with the scalar walk\nPASS string-bytes.ms::offsets and slicing in long mixed-width text agree with the scalar walk\nRUN string-bytes.ms::builder appends literals of every short length across growth\nPASS string-bytes.ms::builder appends literals of every short length across growth\nRUN string-bytes.ms::builder appends variable text of every length across growth\nPASS string-bytes.ms::builder appends variable text of every length across growth\nRUN string-bytes.ms::search indexes are byte offsets for ascii, inline and unicode text\nPASS string-bytes.ms::search indexes are byte offsets for ascii, inline and unicode text\nRUN string-bytes.ms::count matches split for nonempty parts and counts scalars plus one for an empty part\nPASS string-bytes.ms::count matches split for nonempty parts and counts scalars plus one for an empty part\nRUN string-bytes.ms::slice clamps a bound past the end\nPASS string-bytes.ms::slice clamps a bound past the end\n14 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 26,
+            "column": 24,
+            "offset": 1047
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 88,
+            "column": 24,
+            "offset": 3340
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 89,
+            "column": 24,
+            "offset": 3386
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 90,
+            "column": 24,
+            "offset": 3434
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 91,
+            "column": 25,
+            "offset": 3475
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 92,
+            "column": 25,
+            "offset": 3560
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 93,
+            "column": 25,
+            "offset": 3646
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 95,
+            "column": 25,
+            "offset": 3803
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 96,
+            "column": 25,
+            "offset": 3886
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 97,
+            "column": 25,
+            "offset": 3969
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 98,
+            "column": 24,
+            "offset": 4051
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 168,
+            "column": 24,
+            "offset": 5954
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 169,
+            "column": 24,
+            "offset": 6010
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 170,
+            "column": 24,
+            "offset": 6059
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 171,
+            "column": 24,
+            "offset": 6103
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 172,
+            "column": 24,
+            "offset": 6143
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 174,
+            "column": 14,
+            "offset": 6197
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 178,
+            "column": 25,
+            "offset": 6293
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 208,
+            "column": 27,
+            "offset": 7127
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 214,
+            "column": 25,
+            "offset": 7253
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 240,
+            "column": 17,
+            "offset": 8351
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -109,11 +278,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

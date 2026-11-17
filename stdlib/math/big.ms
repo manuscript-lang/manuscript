@@ -141,7 +141,7 @@ fn BigRat.to_fixed(digits: Int) String!:
 	if order > 0 or order == 0 and odd:
 		quotient += big(1)
 
-	var text = quotient.to_string_radix(10)
+	var text = quotient.to_string()
 
 	if digits > 0:
 		text = text.pad_start(digits + 1, "0")
@@ -155,8 +155,8 @@ fn BigRat.to_fixed(digits: Int) String!:
 
 // Formats as `a/b`, or just `a` for an integer; `parse_rat` reads the result back.
 fn BigRat.to_string() String:
-	if self.is_integer(): return self.num.to_string_radix(10)
-	return f"{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
+	if self.is_integer(): return self.num.to_string()
+	return f"{self.num.to_string()}/{self.den.to_string()}"
 
 // Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
 export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
@@ -523,7 +523,7 @@ fn pow10(count: Int) BigInt:
 // Returns the number of bits in the magnitude, 0 for zero.
 fn bit_length(value: BigInt) Int:
 	if value.sign() == 0: return 0
-	return value.abs().to_string_radix(2).length()
+	return value.abs().to_binary().length()
 
 // Returns the floor of `numerator / denominator` for a positive denominator.
 fn floor_div(numerator: BigInt, denominator: BigInt) BigInt:

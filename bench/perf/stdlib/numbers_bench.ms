@@ -17,7 +17,7 @@ bench "bigint.factorial_1000":
 		var acc = big_int_of_int(1)
 		for i in 1..1001:
 			acc = acc.multiply(big_int_of_int(i))
-		return keep(acc.to_string_radix(10).length())
+		return keep(acc.to_string().length())
 
 	measure(1000, work)?
 
@@ -27,7 +27,7 @@ bench "bigint.multiply_100_digits":
 		var acc = big_int_of_int(0)
 		for i in 0..20000:
 			acc = base * base
-		return keep(acc.to_string_radix(10).length())
+		return keep(acc.to_string().length())
 
 	measure(20000, work)?
 

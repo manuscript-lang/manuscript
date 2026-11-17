@@ -356,6 +356,37 @@ fn removing_the_last_unused_import_drops_the_separator() {
 }
 
 #[test]
+fn removing_an_unused_name_from_a_group_leaves_no_blank_line() {
+    for newline in ["\n", "\r\n"] {
+        let source = include_str!("editing_regressions/unused-in-group.ms").replace('\n', newline);
+        let (_, found) = actions(&source, "quickfix");
+        let removals: Vec<_> = found
+            .iter()
+            .filter(|a| title(a) == "Remove unused import")
+            .collect();
+        assert_eq!(removals.len(), 2, "sin and cos");
+        for action in removals {
+            let fixed = apply(&source, action);
+            assert!(
+                fixed
+                    .lines()
+                    .all(|line| line.is_empty() || !line.trim().is_empty()),
+                "{fixed:?}"
+            );
+            assert_eq!(
+                fixed.lines().count(),
+                source.lines().count() - 1,
+                "{fixed:?}"
+            );
+            if newline == "\r\n" {
+                assert!(!fixed.replace("\r\n", "").contains('\n'), "{fixed:?}");
+            }
+            ms_syntax::format(&"main.ms".into(), &fixed).expect("fixed source parses");
+        }
+    }
+}
+
+#[test]
 fn organize_imports_moves_whole_multiline_declarations() {
     for fixture in [
         include_str!("editing_regressions/multiline-imports.ms"),

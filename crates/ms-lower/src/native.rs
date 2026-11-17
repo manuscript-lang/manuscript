@@ -502,11 +502,16 @@ impl<'a> FnLower<'a> {
     ) -> Result<Option<Val>, Error> {
         let name = native.rsplit('/').next().unwrap_or(native);
         let v = self.borrow(recv);
+        if matches!(name, "to_string_radix" | "to_hex" | "to_binary") {
+            return Ok(Some(self.radix_method(
+                name,
+                "msrt_uint_to_string_radix",
+                result,
+                v,
+                args,
+            )?));
+        }
         let out = match name {
-            "to_string_radix" => {
-                let radix = self.borrow(args[0].val);
-                self.call_runtime("msrt_uint_to_string_radix", &[v, radix], MTy::STR)?
-            }
             "to_string" if args.is_empty() => {
                 self.call_runtime("msrt_uint_to_string", &[v], MTy::STR)?
             }

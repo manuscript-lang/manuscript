@@ -203,7 +203,7 @@ type Parser:
 	pos: Int
 
 fn var Parser.peek() String:
-	return self.chars.get(self.pos, "")
+	return self.chars.get_or(self.pos, "")
 
 fn var Parser.skip_spaces() Void:
 	while self.peek() == " ":
@@ -213,7 +213,7 @@ fn var Parser.number() Expr!:
 	start := self.pos
 	while self.peek() >= "0" and self.peek() <= "9" and not self.peek().is_empty():
 		self.pos += 1
-	digits := self.chars.slice(start, self.pos).get([]).join("")
+	digits := self.chars.slice(start, self.pos).get_or([]).join("")
 	value := digits.parse_int().ok_or(Error(f"expected a number at {start}", kind: "EINVAL"))?
 	return ok(Expr.Num(value))
 
@@ -266,7 +266,7 @@ fn main() Void:
 ```
 
 - Rebinding a changing value is `var left = ...` then `left = Expr.Mul(left, right)`; `var x := e` is not valid.
-- `self.chars.get(self.pos, "")` reads past the end safely; compare the empty string to detect the end.
+- `self.chars.get_or(self.pos, "")` reads past the end safely; compare the empty string to detect the end.
 
 ## 6. Algorithms: grids, queues, visited sets
 
@@ -282,8 +282,8 @@ fn neighbors(grid: List[String], at: Point) List[Point]:
 	var found = List[Point]()
 	for step in [Point(-1, 0), Point(1, 0), Point(0, -1), Point(0, 1)]:
 		next := Point(at.row + step.row, at.col + step.col)
-		line := grid.get(next.row, "")
-		if next.col >= 0 and next.col < line.length() and line.chars().get(next.col, "#") != "#":
+		line := grid.get_or(next.row, "")
+		if next.col >= 0 and next.col < line.length() and line.chars().get_or(next.col, "#") != "#":
 			found.append(next)
 	return found
 

@@ -1714,6 +1714,76 @@ unsafe fn map_case_in_place(text: &str, upper: bool) -> Option<StrVal> {
     Some(unsafe { finish_owned(r.ptr_word, at, false) })
 }
 
+/// The high bit of each byte of `x` (all below 0x80) that is a lowercase letter (`lower` true) or an
+/// uppercase one: `x + (0x80 - lo)` sets a byte's high bit when it is at least `lo`, and
+/// `x + (0x80 - hi - 1)` when it is above `hi`; no byte carries into the next.
+#[inline(always)]
+fn ascii_letters_of_case(x: u64, lower: bool) -> u64 {
+    const LO: u64 = 0x0101_0101_0101_0101;
+    const HI: u64 = 0x8080_8080_8080_8080;
+    let (first, last) = if lower { (b'a', b'z') } else { (b'A', b'Z') };
+    let at_least = x + LO * u64::from(0x80 - first);
+    let above = x + LO * u64::from(0x80 - last - 1);
+    at_least & !above & HI
+}
+
+/// The first eight bytes of `text`, or all of them zero padded when it is shorter.
+#[inline(always)]
+fn first_word(text: &[u8]) -> u64 {
+    let mut word = [0u8; 8];
+    let n = text.len().min(8);
+    word[..n].copy_from_slice(&text[..n]);
+    u64::from_le_bytes(word)
+}
+
+/// The last eight bytes of `text` (at least eight long).
+#[inline(always)]
+fn last_word(text: &[u8]) -> u64 {
+    u64::from_le_bytes(text[text.len() - 8..].try_into().unwrap_or([0; 8]))
+}
+
+/// Whether ASCII `text` holds a lowercase letter (`lower` false: an uppercase one), eight bytes per
+/// step, stopping at the first.
+#[inline(always)]
+fn has_ascii_letter_of_case(text: &[u8], lower: bool) -> bool {
+    if text.len() < 8 {
+        return ascii_letters_of_case(first_word(text), lower) != 0;
+    }
+    // Text that changes usually shows a letter in its first word; the last word overlaps the one
+    // before it when the length is not a multiple of eight.
+    let head = u64::from_le_bytes(text[..8].try_into().unwrap_or([0; 8]));
+    if ascii_letters_of_case(head, lower) != 0 {
+        return true;
+    }
+    let (chunks, _) = text.as_chunks::<8>();
+    for w in &chunks[1..] {
+        if ascii_letters_of_case(u64::from_le_bytes(*w), lower) != 0 {
+            return true;
+        }
+    }
+    ascii_letters_of_case(last_word(text), lower) != 0
+}
+
+/// Writes ASCII `text` to `dst` with its lowercase letters uppercased (`upper`) or its uppercase
+/// letters lowercased, eight bytes per step in one pass: flipping bit 5 of a letter changes its case.
+#[inline(always)]
+fn map_ascii_case_into(dst: &mut [u8], text: &[u8], upper: bool) {
+    let flip = |x: u64| x ^ (ascii_letters_of_case(x, upper) >> 2);
+    if text.len() < 8 {
+        let word = flip(first_word(text)).to_le_bytes();
+        dst.copy_from_slice(&word[..text.len()]);
+        return;
+    }
+    let (chunks, _) = text.as_chunks::<8>();
+    let (out, _) = dst.as_chunks_mut::<8>();
+    for (d, w) in out.iter_mut().zip(chunks) {
+        *d = flip(u64::from_le_bytes(*w)).to_le_bytes();
+    }
+    // The last word overlaps the one before it when the length is not a multiple of eight.
+    let n = dst.len();
+    dst[n - 8..].copy_from_slice(&flip(last_word(text)).to_le_bytes());
+}
+
 /// `upper` or `lower` of the string `s`: ASCII text is copied once into its result and mapped
 /// there; other text maps scalar by scalar.
 ///
@@ -1724,13 +1794,12 @@ unsafe fn map_case(s: *const StrVal, upper: bool) -> StrVal {
     unsafe {
         let text = bytes(s);
         if is_ascii(&*s) {
+            if !has_ascii_letter_of_case(text, upper) {
+                // Already in the requested case: share the unchanged input.
+                return cloned(&*s);
+            }
             return build_exact(text.len(), true, |dst| {
-                dst.copy_from_slice(text);
-                if upper {
-                    dst.make_ascii_uppercase();
-                } else {
-                    dst.make_ascii_lowercase();
-                }
+                map_ascii_case_into(dst, text, upper)
             });
         }
         let text = core::str::from_utf8(text).expect("String contains valid UTF-8");
@@ -3403,6 +3472,14 @@ unsafe fn normalize_kind(
             usize::MAX
         };
         let text = bytes(s);
+        if is_ascii(&*s) {
+            // ASCII text is already in every normalization form.
+            if text.len() > limit {
+                return STATUS_LIMIT_EXCEEDED;
+            }
+            *out = cloned(&*s);
+            return STATUS_OK;
+        }
         let mut chars: Vec<char> = Vec::new();
         let mut i = 0;
         while i < text.len() {
