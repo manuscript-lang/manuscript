@@ -1141,12 +1141,7 @@ impl Checker {
                     .contract
                     .as_ref()
                     .is_some_and(|c| c.is(Builtin::JsonEncode))
-                    || (m.is_inherent(self.syms)
-                        && m.name().is_some()
-                        && m.name()
-                            == self
-                                .session
-                                .sole_operation("@std/data/json.ms", "JsonEncode")))
+                    || m.encodes_json(self.syms))
                 && {
                     let mut s = Subst::default();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)

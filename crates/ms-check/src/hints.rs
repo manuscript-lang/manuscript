@@ -790,6 +790,18 @@ impl Checker {
         if let Some(reason) = self.unmet_member_bound(receiver, name) {
             return format!("{message}; {reason}");
         }
+        let is_function = self
+            .names
+            .borrow()
+            .iter()
+            .any(|(n, symbol)| *n == name && symbol.kind == SymKind::Fn);
+        if is_function {
+            return format!(
+                "{message}; {name_t} is a function here, not a method of {receiver_t}: call it as {name_t}(value) with the value as an argument, or declare it as a method with `fn {receiver_t}.{name_t}()`",
+                name_t = self.syms.str(name),
+                receiver_t = receiver.display(self.syms)
+            );
+        }
         let available = self.member_names(receiver);
         if receiver.kind != Kind::Type {
             for f in fields(receiver) {

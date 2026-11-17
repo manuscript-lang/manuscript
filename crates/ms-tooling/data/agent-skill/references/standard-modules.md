@@ -98,4 +98,4 @@ import expect_equal from "@std/test/test.ms"
 - `@std/unicode.ms`: is_alphabetic, is_alphanumeric, is_ascii, is_control, is_digit, is_lowercase, is_mark, is_numeric, is_punctuation, is_symbol, is_uppercase, is_whitespace
 <!-- modules:end -->
 
-Timing: `start := monotonic()` then `monotonic().difference(start).to_milliseconds()`, with `monotonic` from `@std/time.ms` (the function reaches `std.clock.read`). Padding: `s.pad_start(width, " ")` and `pad_end` exist; do not hand-write them. Do not name your own helper `to_json` on a type: it is the type's JSON encoder, and `stringify(self)` inside it recurses until the stack overflows (`dump_json` is fine). Stacked `// ms: allow_effect` lines above one function are allowed.
+Timing: `start := monotonic()` then `monotonic().difference(start).to_milliseconds()`, with `monotonic` from `@std/time.ms` (the function reaches `std.clock.read`). Padding: `s.pad_start(width, " ")` and `pad_end` exist; do not hand-write them. A type's `fn to_json() JsonValue` is its JSON encoder; a `to_json` with any other signature is an ordinary method. Stacked `// ms: allow_effect` lines above one function are allowed.
