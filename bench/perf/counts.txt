@@ -1,6 +1,6 @@
 # Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.
 interp 2983574943
-strings 1445287042
+strings 1391609111
 lz 617603724
 graph 473176965
 guard-crypto 160361215
