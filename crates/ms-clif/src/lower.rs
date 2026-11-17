@@ -91,8 +91,24 @@ pub struct Lower<'a, 'm> {
     blocks: Vec<Option<ir::Block>>,
     /// First unsupported construct met, reported by the driver.
     pub unsupported: Option<String>,
-    /// Slots of statement-scoped temporaries, merged between blocks by `slotshare`.
+    /// Slots of statement-scoped temporaries made outside a MIR block (glue, `main`), merged
+    /// between CLIF blocks by the `slotshare` scan.
     temps: Vec<ir::StackSlot>,
+    /// Inside a MIR block: the slot each temporary shares, by its rank among the block's
+    /// temporaries, with the largest size asked of it.
+    colors: Vec<(ir::StackSlot, u32)>,
+    /// The number of temporaries the current MIR block has made so far.
+    rank: usize,
+    /// Whether temporaries are being shared by MIR block (set while lowering a function body).
+    in_blocks: bool,
+    /// Values a `put` moves into a variable: a wide one that is still in the memory its call
+    /// wrote adopts that memory as the variable's own, which then outlives the block.
+    adopted: Vec<bool>,
+    /// Poison fills to add where each block's temporaries die: the CLIF block that ends the MIR
+    /// block, the slot and its size.
+    dying: Vec<(ir::Block, ir::StackSlot, u32)>,
+    /// The temporaries of the current MIR block, filled with poison when it ends.
+    block_temps: Vec<(ir::StackSlot, u32)>,
 }
 
 fn bargs(vs: &[Value]) -> Vec<BlockArg> {
@@ -128,25 +144,66 @@ impl<'a, 'm> Lower<'a, 'm> {
             blocks: Vec::new(),
             unsupported: None,
             temps: Vec::new(),
+            colors: Vec::new(),
+            rank: 0,
+            in_blocks: false,
+            adopted: Vec::new(),
+            dying: Vec::new(),
+            block_temps: Vec::new(),
             vars: Vec::new(),
             named: ValueMap::new(),
         }
     }
 
-    /// Finishes the function and returns the slots of its temporaries for `slotshare::share`.
-    pub fn finish(mut self) -> Vec<ir::StackSlot> {
+    /// Finishes the function and returns its temporaries for `slotshare::share`.
+    pub fn finish(mut self) -> crate::slotshare::Temps {
         self.b.seal_all_blocks();
         let config = self.g.module.target_config();
-        let temps = std::mem::take(&mut self.temps);
+        let temps = crate::slotshare::Temps {
+            scanned: std::mem::take(&mut self.temps),
+            colors: std::mem::take(&mut self.colors),
+            dying: std::mem::take(&mut self.dying),
+        };
         self.b.finalize(config);
         temps
     }
 
-    /// A new slot for a temporary that lives within one statement.
+    /// A new slot for a temporary that lives within one statement. In a MIR block it is the
+    /// slot of the same rank in every other block: a temporary is dead when its block ends and a
+    /// frame runs one block at a time, so the k-th temporaries of all blocks share storage.
     fn temp_slot(&mut self, size: u32) -> ir::StackSlot {
-        let slot = self.new_slot(size);
-        self.temps.push(slot);
+        if !self.in_blocks {
+            let slot = self.new_slot(size);
+            self.temps.push(slot);
+            return slot;
+        }
+        let k = self.rank;
+        self.rank += 1;
+        let slot = match self.colors.get_mut(k) {
+            Some((slot, biggest)) => {
+                *biggest = (*biggest).max(size);
+                *slot
+            }
+            None => {
+                let slot = self.new_slot(size);
+                self.colors.push((slot, size));
+                slot
+            }
+        };
+        self.block_temps.push((slot, size));
         slot
+    }
+
+    /// Ends the temporaries of the MIR block being lowered: with poison, each is filled where
+    /// the block's last CLIF block ends.
+    fn end_block_temps(&mut self) {
+        let temps = std::mem::take(&mut self.block_temps);
+        if !self.g.opts.build.poison_slots {
+            return;
+        }
+        let end = self.b.current_block().expect("a block is being lowered");
+        self.dying
+            .extend(temps.into_iter().map(|(slot, size)| (end, slot, size)));
     }
 
     // ---- small helpers ---------------------------------------------------
@@ -748,11 +805,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
             }
         }
+        self.adopted = vec![false; f.values.len()];
+        for bd in &f.blocks {
+            for inst in bd.insts.iter().filter(|i| i.op == Op::Put) {
+                self.adopted[inst.args[1].index()] = true;
+            }
+        }
+        self.in_blocks = true;
         for b in &rpo {
             let cb = self.blocks[b.index()].expect("created");
             self.b.switch_to_block(cb);
             // Bind block parameters.
             self.cur = b.index();
+            self.rank = 0;
+            self.block_temps.clear();
             self.quotients.clear();
             self.safe_quotients.clear();
             let params = self.b.block_params(cb).to_vec();
@@ -803,8 +869,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             let mut uses = Vec::new();
             f.blocks[b.index()].term.for_each_use(|v| uses.push(v));
             self.refresh(f, uses.into_iter());
+            self.end_block_temps();
             self.lower_term(f, &f.blocks[b.index()].term);
         }
+        self.in_blocks = false;
     }
 
     pub fn lower_main(&mut self, fid: FuncId) {
