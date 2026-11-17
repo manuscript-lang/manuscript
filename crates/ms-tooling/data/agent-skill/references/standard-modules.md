@@ -90,6 +90,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/test/boundary.ms`: finite_float_boundaries, float_boundaries, int_boundaries
 - `@std/test/golden.ms`: expect_golden, expect_golden_bytes
 - `@std/test/iotest.ms`: check_reader, fail_after, fail_writer_after, one_byte
+- `@std/test/mock.ms`: Call2, Call3, Mock0, Mock1, Mock2, Mock3
 - `@std/test/property.ms`: Drawn, Gen, PropertyOptions, Settings, Source, bools, check, constant, draw, element_of, floats, ints, lists, one_of, optionals, pairs, settings, source, strings
 - `@std/test/test.ms`: TestHooks, caller_site, catch_fault, expect_close, expect_contains, expect_equal, expect_error, expect_false, expect_fault, expect_none, expect_not_equal, expect_ok, expect_some, expect_true, fail, repr, skip
 - `@std/text.ms`: parse_bool, quote, quote_ascii, scalars, unquote
