@@ -112,7 +112,18 @@ impl FnLower<'_> {
         if !self.cx.faked.iter().any(|(f, _)| *f == fid) {
             self.cx.faked.push((fid, receiver));
             let shown = self.syms.str(callee.name).to_string();
-            self.cx.faked_names.push((id, shown));
+            let file = self
+                .b
+                .m
+                .files
+                .get(self.file as usize)
+                .cloned()
+                .unwrap_or_default();
+            let at = format!(
+                "{file}:{}:{}",
+                original.expr.pos.line, original.expr.pos.column
+            );
+            self.cx.faked_names.push((id, shown, at));
         }
         let replacement = self.expr(replacement.expr)?;
         if self.dead {
@@ -191,10 +202,10 @@ pub(crate) fn check_fakes_are_boundaries(
     cx: &mut Cx,
     program: &ms_check::Program,
 ) -> Result<(), Error> {
-    for (id, name) in std::mem::take(&mut cx.faked_names) {
+    for (id, name, at) in std::mem::take(&mut cx.faked_names) {
         if program.declared_effects_of(id).is_empty() {
             return Err(Error::new(format!(
-                "fake: {name} declares no effect, so it is not a boundary to the outside world; \
+                "{at}: fake: {name} declares no effect, so it is not a boundary to the outside world; \
                  pass what it computes in as a parameter, or declare the boundary with `// ms: effect NAME`"
             )));
         }

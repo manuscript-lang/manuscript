@@ -426,8 +426,8 @@ pub struct Cx {
     /// Functions a test replaces with `fake` (and whether the first parameter is a receiver the
     /// replacement does not take): each routes its calls through the fake table.
     pub faked: Vec<(FuncId, bool)>,
-    /// The checker id, display name of each function a `fake` call names, to verify afterwards.
-    pub faked_names: Vec<(ct::Name, String)>,
+    /// The checker id, display name and `file:line:column` of each function a `fake` call names, to verify afterwards.
+    pub faked_names: Vec<(ct::Name, String, String)>,
     /// The type a loop over an owned list keeps in memory (the list and the next index) by
     /// list type.
     pub list_cursors: HashMap<MTy, (ms_mir::types::TypeId, MTy)>,
