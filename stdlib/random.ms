@@ -275,8 +275,8 @@ fn var SeededRandom.sample[T: Clonable](values: List[T], count: Int) List[T]:
 	return out
 
 // Returns an item chosen with probability proportional to its weight, or none for
-// an empty list.
-// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this faults.
+// an empty list. `weights` must match `values` in length, hold no negative or
+// non-finite weight, and not all be zero; otherwise the result is none.
 fn var SeededRandom.weighted_choice[T: Clonable](
 	values: List[T],
 	weights: List[Float],
@@ -284,10 +284,7 @@ fn var SeededRandom.weighted_choice[T: Clonable](
 	if values.is_empty() and weights.is_empty(): return none
 
 	total := weight_total(values.length(), weights)
-	if total == 0.0:
-		panic(
-			"random weighted_choice: weights must match the values, be finite and non-negative, and not all be zero"
-		)
+	if total == 0.0: return none
 
 	point := self.float()
 	return values[weighted_position(weights, point, total)].clone()

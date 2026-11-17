@@ -5,7 +5,6 @@ import (
 	seeded, weighted_choice from "@std/random.ms",
 	expect_equal,
 	expect_error,
-	expect_fault,
 	expect_none,
 	expect_some from "@std/test/test.ms",
 )
@@ -108,10 +107,6 @@ test "weighted choices retain zero exclusions and caller values":
 	expect_equal(values, [[1], [2]])?
 	expect_equal(weights, [max_float, max_float])?
 
-fn invalid_seeded(weights: List[Float]) Void:
-	var rng = seeded(1)
-	_picked := rng.weighted_choice([0, 1], weights)
-
 test "weighted choices preserve invalid input and empty behavior":
 	for weights in [
 		[0.0, 0.0],
@@ -126,7 +121,8 @@ test "weighted choices preserve invalid input and empty behavior":
 	]:
 		expect_equal((expect_error(weighted_choice([0, 1], weights))?).kind, "EINVAL")?
 
-		_message := expect_fault(fn: invalid_seeded(weights))?
+		var invalid_rng = seeded(1)
+		expect_none(invalid_rng.weighted_choice([0, 1], weights))?
 
 	var rng = seeded(1)
 	expect_none(rng.weighted_choice(List[Int](), List[Float]()))?
