@@ -53,9 +53,6 @@ test "abs of the minimum overflows":
 	)?
 	message | expect_contains("Int overflow")?
 
-test "negative split cap gives no parts":
-	("a,b".split(separator: ",", max_parts: (0 - 1)).length() == 0) | expect_true?
-
 test "size and shape methods as values":
 	xs := [10, 20, 30]
 	var m = Map[String, Int]()

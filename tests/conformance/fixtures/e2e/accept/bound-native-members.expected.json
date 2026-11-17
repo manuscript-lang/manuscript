@@ -36,66 +36,61 @@
         },
         {
           "index": 5,
-          "name": "bound-native-members.ms::negative split cap gives no parts",
-          "status": "passed"
-        },
-        {
-          "index": 6,
           "name": "bound-native-members.ms::size and shape methods as values",
           "status": "passed"
         },
         {
-          "index": 7,
+          "index": 6,
           "name": "bound-native-members.ms::sorted as a value",
           "status": "passed"
         },
         {
-          "index": 8,
+          "index": 7,
           "name": "bound-native-members.ms::take as a value",
           "status": "passed"
         },
         {
-          "index": 9,
+          "index": 8,
           "name": "bound-native-members.ms::equals on built-in data",
           "status": "passed"
         },
         {
-          "index": 10,
+          "index": 9,
           "name": "bound-native-members.ms::built-in data passes as Equal",
           "status": "passed"
         },
         {
-          "index": 11,
+          "index": 10,
           "name": "bound-native-members.ms::list and map literals pass as Equal",
           "status": "passed"
         },
         {
-          "index": 12,
+          "index": 11,
           "name": "bound-native-members.ms::numeric and optional members as values",
           "status": "passed"
         },
         {
-          "index": 13,
+          "index": 12,
           "name": "bound-native-members.ms::native calls pass as Equal",
           "status": "passed"
         },
         {
-          "index": 14,
+          "index": 13,
           "name": "bound-native-members.ms::native contract methods through an interface value",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 15,
-        "selected": 15,
-        "passed": 15,
+        "available": 14,
+        "selected": 14,
+        "passed": 14,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN bound-native-members.ms::string members\nPASS bound-native-members.ms::string members\nRUN bound-native-members.ms::list members\nPASS bound-native-members.ms::list members\nRUN bound-native-members.ms::custom equality is kept for bound members\nPASS bound-native-members.ms::custom equality is kept for bound members\nRUN bound-native-members.ms::builder\nPASS bound-native-members.ms::builder\nRUN bound-native-members.ms::abs of the minimum overflows\nPASS bound-native-members.ms::abs of the minimum overflows\nRUN bound-native-members.ms::negative split cap gives no parts\nPASS bound-native-members.ms::negative split cap gives no parts\nRUN bound-native-members.ms::size and shape methods as values\nPASS bound-native-members.ms::size and shape methods as values\nRUN bound-native-members.ms::sorted as a value\nPASS bound-native-members.ms::sorted as a value\nRUN bound-native-members.ms::take as a value\nPASS bound-native-members.ms::take as a value\nRUN bound-native-members.ms::equals on built-in data\nPASS bound-native-members.ms::equals on built-in data\nRUN bound-native-members.ms::built-in data passes as Equal\nPASS bound-native-members.ms::built-in data passes as Equal\nRUN bound-native-members.ms::list and map literals pass as Equal\nPASS bound-native-members.ms::list and map literals pass as Equal\nRUN bound-native-members.ms::numeric and optional members as values\nPASS bound-native-members.ms::numeric and optional members as values\nRUN bound-native-members.ms::native calls pass as Equal\nPASS bound-native-members.ms::native calls pass as Equal\nRUN bound-native-members.ms::native contract methods through an interface value\nPASS bound-native-members.ms::native contract methods through an interface value\n15 tests, 0 failed\n",
+      "stdout": "RUN bound-native-members.ms::string members\nPASS bound-native-members.ms::string members\nRUN bound-native-members.ms::list members\nPASS bound-native-members.ms::list members\nRUN bound-native-members.ms::custom equality is kept for bound members\nPASS bound-native-members.ms::custom equality is kept for bound members\nRUN bound-native-members.ms::builder\nPASS bound-native-members.ms::builder\nRUN bound-native-members.ms::abs of the minimum overflows\nPASS bound-native-members.ms::abs of the minimum overflows\nRUN bound-native-members.ms::size and shape methods as values\nPASS bound-native-members.ms::size and shape methods as values\nRUN bound-native-members.ms::sorted as a value\nPASS bound-native-members.ms::sorted as a value\nRUN bound-native-members.ms::take as a value\nPASS bound-native-members.ms::take as a value\nRUN bound-native-members.ms::equals on built-in data\nPASS bound-native-members.ms::equals on built-in data\nRUN bound-native-members.ms::built-in data passes as Equal\nPASS bound-native-members.ms::built-in data passes as Equal\nRUN bound-native-members.ms::list and map literals pass as Equal\nPASS bound-native-members.ms::list and map literals pass as Equal\nRUN bound-native-members.ms::numeric and optional members as values\nPASS bound-native-members.ms::numeric and optional members as values\nRUN bound-native-members.ms::native calls pass as Equal\nPASS bound-native-members.ms::native calls pass as Equal\nRUN bound-native-members.ms::native contract methods through an interface value\nPASS bound-native-members.ms::native contract methods through an interface value\n14 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

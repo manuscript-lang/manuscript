@@ -685,7 +685,7 @@ fn components_after(text: String, root: String) List[String]:
 	rest := text.cut_prefix(root).get_or(text)
 	if rest.is_empty(): return []
 
-	return rest.split("/", none).clone()
+	return rest.split("/").clone()
 
 fn format_in(windows: Bool, parts: PathParts) String:
 	directory := if parts.directory.is_empty(): parts.root else: parts.directory

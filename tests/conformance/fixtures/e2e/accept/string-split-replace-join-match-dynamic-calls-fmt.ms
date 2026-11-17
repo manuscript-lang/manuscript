@@ -3,10 +3,8 @@
 // conform: origin=tests/e2e/testdata/accept/string-split-replace-join-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 
-test "omitted and supplied caps":
+test "split keeps every piece":
     expect_true(("a,b,c".split(separator: ",").length() == 3))?
-    expect_true(("a,b,c".split(separator: ",", max_parts: 2).length() == 2))?
-    expect_true(("a,b,c".split(separator: ",", max_parts: none).length() == 3))?
     expect_true(("".split(separator: ",").length() == 1))?
     expect_true(("abc".split(separator: "").length() == 3))?
     expect_true(("a-b-c".replace(old: "-", new: "+") == "a+b+c"))?

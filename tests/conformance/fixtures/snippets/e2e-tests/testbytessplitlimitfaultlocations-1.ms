@@ -1,7 +1,0 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
-// conform: origin=tests/e2e/bytes_split_test.go:14 TestBytesSplitLimitFaultLocations
-export fn main() Int:
-    data := Bytes([])
-    parts := data.split(Bytes([0]), -7)
-    return parts.length()

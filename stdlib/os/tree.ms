@@ -37,7 +37,7 @@ fn clean(path: String) String!:
 
 	var parts = List[String]()
 
-	for part in path.split("/", none):
+	for part in path.split("/"):
 		if part == "" or part == ".": continue
 
 		if part == "..":
@@ -55,11 +55,11 @@ fn child_path(directory: String, name: String) String:
 	return f"{directory}/{name}"
 
 fn parent_of(path: String) String:
-	parts := path.split("/", none)
+	parts := path.split("/")
 	return (parts.slice(0, parts.length() - 1)).get().join("/")
 
 fn name_of(path: String) String:
-	parts := path.split("/", none)
+	parts := path.split("/")
 	return parts.get_or(parts.length() - 1, "").clone()
 
 fn by_name(a: DirectoryEntry, b: DirectoryEntry) Int:

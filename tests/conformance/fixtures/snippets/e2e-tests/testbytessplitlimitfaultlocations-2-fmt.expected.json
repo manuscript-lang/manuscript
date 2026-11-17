@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export fn main() Int:\n\tdata := Bytes([1, 0, 2])\n\tsplit := data.split\n\tparts := split(max_parts: -7, separator: Bytes([0]))\n\treturn parts.length()\n"
-  }
-}
