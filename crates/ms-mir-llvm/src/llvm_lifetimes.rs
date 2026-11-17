@@ -18,7 +18,7 @@ pub const DECLARES: &str = "declare void @llvm.lifetime.start.p0(ptr captures(no
 
 /// The byte every dead slot is filled with when slots are poisoned (`BuildOptions::poison_slots`),
 /// the same pattern the counting runtime writes over freed heap blocks. As a signed `i8`.
-const POISON: i8 = -35;
+pub(crate) const POISON: i8 = -35;
 
 /// Operations whose result is an address derived from an operand address.
 const DERIVES: [&str; 5] = ["getelementptr", "ptrtoint", "inttoptr", "add", "sub"];
