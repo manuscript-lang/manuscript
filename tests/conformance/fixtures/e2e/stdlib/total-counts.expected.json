@@ -16,46 +16,41 @@
         },
         {
           "index": 1,
-          "name": "total-counts.ms::a negative split cap gives no parts",
-          "status": "passed"
-        },
-        {
-          "index": 2,
           "name": "total-counts.ms::a queue with no room is always full",
           "status": "passed"
         },
         {
-          "index": 3,
+          "index": 2,
           "name": "total-counts.ms::retry runs the operation once when attempts is below one",
           "status": "passed"
         },
         {
-          "index": 4,
+          "index": 3,
           "name": "total-counts.ms::map_concurrent with a limit below one is EINVAL",
           "status": "passed"
         },
         {
-          "index": 5,
+          "index": 4,
           "name": "total-counts.ms::close matches and unified diff accept any limit and context",
           "status": "passed"
         },
         {
-          "index": 6,
+          "index": 5,
           "name": "total-counts.ms::a negative histogram observation counts as zero",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN total-counts.ms::a count of zero or below takes, drops and repeats nothing\nPASS total-counts.ms::a count of zero or below takes, drops and repeats nothing\nRUN total-counts.ms::a negative split cap gives no parts\nPASS total-counts.ms::a negative split cap gives no parts\nRUN total-counts.ms::a queue with no room is always full\nPASS total-counts.ms::a queue with no room is always full\nRUN total-counts.ms::retry runs the operation once when attempts is below one\nPASS total-counts.ms::retry runs the operation once when attempts is below one\nRUN total-counts.ms::map_concurrent with a limit below one is EINVAL\nPASS total-counts.ms::map_concurrent with a limit below one is EINVAL\nRUN total-counts.ms::close matches and unified diff accept any limit and context\nPASS total-counts.ms::close matches and unified diff accept any limit and context\nRUN total-counts.ms::a negative histogram observation counts as zero\nPASS total-counts.ms::a negative histogram observation counts as zero\n7 tests, 0 failed\n",
+      "stdout": "RUN total-counts.ms::a count of zero or below takes, drops and repeats nothing\nPASS total-counts.ms::a count of zero or below takes, drops and repeats nothing\nRUN total-counts.ms::a queue with no room is always full\nPASS total-counts.ms::a queue with no room is always full\nRUN total-counts.ms::retry runs the operation once when attempts is below one\nPASS total-counts.ms::retry runs the operation once when attempts is below one\nRUN total-counts.ms::map_concurrent with a limit below one is EINVAL\nPASS total-counts.ms::map_concurrent with a limit below one is EINVAL\nRUN total-counts.ms::close matches and unified diff accept any limit and context\nPASS total-counts.ms::close matches and unified diff accept any limit and context\nRUN total-counts.ms::a negative histogram observation counts as zero\nPASS total-counts.ms::a negative histogram observation counts as zero\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

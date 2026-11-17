@@ -96,11 +96,10 @@ interface StringOperations:
 	fn scalar_length() Int
 	// Returns each Unicode scalar value as an integer.
 	fn scalar_values() List[Int]
-	// Splits exact separators, truncating parts to a supplied nonnegative cap; zero
-	// or below returns []. Empty text with a nonempty separator yields [""]; an
-	// empty separator splits into scalars. The pieces borrow the receiver: use them in
-	// place, or `.clone()` the result to keep it.
-	fn split(separator: String, max_parts: Int?) List[String]
+	// Splits at every exact separator, keeping empty pieces. Empty text with a nonempty
+	// separator yields [""]; an empty separator splits into scalars. The pieces borrow
+	// the receiver: use them in place, or `.clone()` the result to keep it.
+	fn split(separator: String) List[String]
 	// Tests whether the receiver begins with this exact prefix.
 	fn starts_with(prefix: String) Bool
 	// Removes Unicode whitespace at both ends; the exact set is listed in the text

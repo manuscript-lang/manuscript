@@ -342,7 +342,7 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 	)
 
 	crlf := "\r\n".to_bytes()
-	sections := crlf.concat(body).split(f"\r\n--{boundary}".to_bytes(), none)
+	sections := crlf.concat(body).split(f"\r\n--{boundary}".to_bytes())
 	var parts = List[Part]()
 
 	for i in 1..sections.length():

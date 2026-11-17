@@ -559,7 +559,7 @@ fn string_ops_match_char_model(seed: u64) {
                     len: 0,
                     cap: 0,
                 };
-                string::msrt_string_split(s, ns, HasRaw(0), 0, &mut parts);
+                string::msrt_string_split(s, ns, &mut parts);
                 let want: std::vec::Vec<_> = model
                     .split(&needle)
                     .map(std::string::String::from)
