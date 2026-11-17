@@ -23,19 +23,24 @@
           "index": 2,
           "name": "string-trim-forms.ms::trim handles Unicode whitespace and mixed ends",
           "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "string-trim-forms.ms::case mapping and normalization return text that needs no change",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN string-trim-forms.ms::trim keeps text with no outer whitespace in every string form\nPASS string-trim-forms.ms::trim keeps text with no outer whitespace in every string form\nRUN string-trim-forms.ms::trim removes ASCII whitespace from either end\nPASS string-trim-forms.ms::trim removes ASCII whitespace from either end\nRUN string-trim-forms.ms::trim handles Unicode whitespace and mixed ends\nPASS string-trim-forms.ms::trim handles Unicode whitespace and mixed ends\n3 tests, 0 failed\n",
+      "stdout": "RUN string-trim-forms.ms::trim keeps text with no outer whitespace in every string form\nPASS string-trim-forms.ms::trim keeps text with no outer whitespace in every string form\nRUN string-trim-forms.ms::trim removes ASCII whitespace from either end\nPASS string-trim-forms.ms::trim removes ASCII whitespace from either end\nRUN string-trim-forms.ms::trim handles Unicode whitespace and mixed ends\nPASS string-trim-forms.ms::trim handles Unicode whitespace and mixed ends\nRUN string-trim-forms.ms::case mapping and normalization return text that needs no change\nPASS string-trim-forms.ms::case mapping and normalization return text that needs no change\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
