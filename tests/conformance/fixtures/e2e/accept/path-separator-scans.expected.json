@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "path-separator-scans.ms::UNC scans retain root spelling and Unicode server and share names",
+          "name": "path-separator-scans.ms::UNC scans keep root spelling in parse and collapse repeated separators in normalize",
           "status": "passed"
         },
         {
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN path-separator-scans.ms::path suffix scans preserve Unicode component boundaries\nPASS path-separator-scans.ms::path suffix scans preserve Unicode component boundaries\nRUN path-separator-scans.ms::UNC scans retain root spelling and Unicode server and share names\nPASS path-separator-scans.ms::UNC scans retain root spelling and Unicode server and share names\nRUN path-separator-scans.ms::short path scans keep empty root and incomplete UNC rules\nPASS path-separator-scans.ms::short path scans keep empty root and incomplete UNC rules\n3 tests, 0 failed\n",
+      "stdout": "RUN path-separator-scans.ms::path suffix scans preserve Unicode component boundaries\nPASS path-separator-scans.ms::path suffix scans preserve Unicode component boundaries\nRUN path-separator-scans.ms::UNC scans keep root spelling in parse and collapse repeated separators in normalize\nPASS path-separator-scans.ms::UNC scans keep root spelling in parse and collapse repeated separators in normalize\nRUN path-separator-scans.ms::short path scans keep empty root and incomplete UNC rules\nPASS path-separator-scans.ms::short path scans keep empty root and incomplete UNC rules\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

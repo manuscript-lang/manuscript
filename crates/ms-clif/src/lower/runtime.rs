@@ -5,6 +5,92 @@
 use super::*;
 
 impl<'a, 'm> Lower<'a, 'm> {
+    /// Pushes the cleanup `action(arg)` on the task's stack and returns its handle: a store pair and
+    /// a length bump while the buffer has room, `msrt_cleanup_push` (which grows it) when full.
+    pub(super) fn cleanup_push(&mut self, action: Value, arg: Value) -> Vs {
+        let hdr = self.task_hdr();
+        let len = self
+            .b
+            .ins()
+            .load(types::I64, flags(), hdr, ISOLATE_HDR_CLEANUPS_LEN as i32);
+        let cap = self
+            .b
+            .ins()
+            .load(types::I64, flags(), hdr, ISOLATE_HDR_CLEANUPS_CAP as i32);
+        let full = self.b.ins().icmp(IntCC::Equal, len, cap);
+        let fast = self.b.create_block();
+        let slow = self.b.create_block();
+        let join = self.b.create_block();
+        self.b.append_block_param(join, types::I64);
+        self.b.set_cold_block(slow);
+        self.b.ins().brif(full, slow, &[], fast, &[]);
+        self.b.switch_to_block(fast);
+        let buf = self
+            .b
+            .ins()
+            .load(types::I64, flags(), hdr, ISOLATE_HDR_CLEANUPS as i32);
+        let off = self.b.ins().ishl_imm_s(len, 4);
+        let at = self.b.ins().iadd(buf, off);
+        self.b.ins().store(flags(), action, at, 0);
+        self.b.ins().store(flags(), arg, at, 8);
+        let next = self.b.ins().iadd_imm_s(len, 1);
+        self.b
+            .ins()
+            .store(flags(), next, hdr, ISOLATE_HDR_CLEANUPS_LEN as i32);
+        self.b.ins().jump(join, &[next.into()]);
+        self.b.switch_to_block(slow);
+        let h = self.rt_call("msrt_cleanup_push", &[action, arg])[0];
+        self.b.ins().jump(join, &[h.into()]);
+        self.b.switch_to_block(join);
+        self.b.block_params(join).to_vec()
+    }
+
+    /// Discards the entries from `handle` up: a length store when the entry below is live, the
+    /// runtime call (which also prunes retired entries) otherwise.
+    pub(super) fn cleanup_discard(&mut self, handle: Value) {
+        let hdr = self.task_hdr();
+        let len = self
+            .b
+            .ins()
+            .load(types::I64, flags(), hdr, ISOLATE_HDR_CLEANUPS_LEN as i32);
+        let slow = self.b.create_block();
+        let check = self.b.create_block();
+        let fast = self.b.create_block();
+        let done = self.b.create_block();
+        self.b.set_cold_block(slow);
+        let enough = self
+            .b
+            .ins()
+            .icmp(IntCC::UnsignedGreaterThanOrEqual, len, handle);
+        self.b.ins().brif(enough, check, &[], slow, &[]);
+        self.b.switch_to_block(check);
+        // The entry below the handle must not be a retired one (action 0), which the runtime prunes.
+        let one = self.iconst(1);
+        let first = self.b.ins().icmp(IntCC::Equal, handle, one);
+        let below = self.b.create_block();
+        self.b.ins().brif(first, fast, &[], below, &[]);
+        self.b.switch_to_block(below);
+        let buf = self
+            .b
+            .ins()
+            .load(types::I64, flags(), hdr, ISOLATE_HDR_CLEANUPS as i32);
+        let idx = self.b.ins().iadd_imm_s(handle, -2);
+        let off = self.b.ins().ishl_imm_s(idx, 4);
+        let at = self.b.ins().iadd(buf, off);
+        let action = self.b.ins().load(types::I64, flags(), at, 0);
+        self.b.ins().brif(action, fast, &[], slow, &[]);
+        self.b.switch_to_block(fast);
+        let new_len = self.b.ins().iadd_imm_s(handle, -1);
+        self.b
+            .ins()
+            .store(flags(), new_len, hdr, ISOLATE_HDR_CLEANUPS_LEN as i32);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(slow);
+        self.rt_call("msrt_cleanup_discard", &[handle]);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(done);
+    }
+
     /// Runtime services: polling, cleanup stack, globals.
     pub(super) fn runtime_services(&mut self, f: &Func, inst: &Inst) -> Vs {
         let m = self.g.m;
@@ -52,7 +138,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let slot = self.spill(&v, &leaves);
                     let r = self.fref(thunk);
                     let fa = self.b.ins().func_addr(types::I64, r);
-                    self.rt_call("msrt_cleanup_push", &[fa, slot])
+                    self.cleanup_push(fa, slot)
                 } else {
                     // A closer that only acts while a guarded task unwinds: with no guard open the
                     // registration is skipped, and its handle 0 makes the discard a no-op.
@@ -70,7 +156,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let slot = self.spill(&v, &leaves);
                     let r = self.fref(thunk);
                     let fa = self.b.ins().func_addr(types::I64, r);
-                    let h = self.rt_call("msrt_cleanup_push", &[fa, slot])[0];
+                    let h = self.cleanup_push(fa, slot)[0];
                     self.b.ins().jump(join, &[h.into()]);
                     self.b.switch_to_block(join);
                     self.b.block_params(join).to_vec()

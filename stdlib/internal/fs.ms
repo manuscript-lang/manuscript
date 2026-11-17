@@ -144,6 +144,8 @@ export extern fn msstd_fs_temporary_open(prefix: String) TemporaryDirectory!
 
 export extern fn msstd_fs_stat(path: String, follow: Bool) FileInfo!
 
+export extern fn msstd_fs_exists(path: String, follow: Bool) Int!
+
 export extern fn msstd_fs_list(path: String, max_entries: Int?) List[DirectoryEntry]!
 
 export extern fn msstd_fs_set_times(

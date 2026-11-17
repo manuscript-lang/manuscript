@@ -116,3 +116,13 @@ wrong: n: Int = 1
 right: n: Int := 1
 body: {};;print(n)
 diag: :=
+
+wrong: assert x == 1
+right: if x != 1: return 1
+body: x := 1;;{}
+diag: there is no 'assert'
+
+wrong: if x is Int: print(x)
+right: if x == 1: print(x)
+body: x := 1;;{}
+diag: there is no 'is' operator

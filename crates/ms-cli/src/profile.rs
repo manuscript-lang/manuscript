@@ -346,8 +346,16 @@ pub fn render_top(profile: &FoldedProfile, top: usize) -> String {
             entry.function
         ));
     }
+    if total < LOW_SAMPLES {
+        out.push_str(&format!(
+            "note: {total} samples is too few to rank functions; run the program for several seconds (about {LOW_SAMPLES} samples or more) or give it more work\n"
+        ));
+    }
     out
 }
+
+/// Below this many samples the order of the busiest functions is mostly chance.
+const LOW_SAMPLES: u64 = 100;
 
 fn perf_record(program: &str, arguments: &[String]) -> String {
     let mut command = format!("perf record -F 999 --call-graph fp -o perf.data -- {program}");
@@ -1032,6 +1040,17 @@ mod tests {
                 cum: 4
             }]
         );
+    }
+
+    #[test]
+    fn a_report_of_few_samples_says_so() {
+        let profile = parse_folded("main;work 3\n# period 10\n").unwrap();
+        let text = render_top(&profile, 5);
+        assert!(
+            text.contains("note: 3 samples is too few to rank functions"),
+            "{text}"
+        );
+        assert!(!render_top(&parse_folded(SAMPLE).unwrap(), 5).contains("note:"));
     }
 
     #[test]

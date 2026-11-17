@@ -138,7 +138,7 @@ impl State {
     /// Waits for input, for 40 ms when `quick` and until something happens otherwise, then
     /// stores its complete UTF-8 scalars in `text`: `STATUS_OK`, `STATUS_NONE` when nothing came
     /// (the quick wait ran out, or the window changed size and the caller compares it),
-    /// `STATUS_CLOSED` once closed or when input ended. The quick wait resolves a lone escape
+    /// `STATUS_CLOSED` once closed or when input ended, `STATUS_TIMEOUT` when a bounded read has used its time. The quick wait resolves a lone escape
     /// byte into the Escape key.
     pub fn read(&self, quick: bool, text: &mut String) -> u8 {
         if ms_rt::glue::cancel_pending() {
@@ -151,6 +151,12 @@ impl State {
             return STATUS_FAILED;
         };
         if !ready {
+            // A bounded read (`next(timeout:)`) whose time is up: its parks return at once, so
+            // reporting "nothing came" would make the caller retry without end.
+            #[cfg(not(test))]
+            if ms_rt::glue::read_limit_passed() {
+                return ms_rt_abi::STATUS_TIMEOUT;
+            }
             return STATUS_NONE;
         }
         let mut bytes = Vec::new();

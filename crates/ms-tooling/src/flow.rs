@@ -13,6 +13,8 @@ use ms_syntax::{Arm, Expr, ExprKind, NodeId, Pos, Stmt, StmtKind, UnaryOp};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Site {
     pub target: String,
+    /// The target as a person reads it (`@std/os/env.ms::arguments`, `Map[String, Int].get_or`).
+    pub label: String,
     pub kind: String,
     /// A `TaskGroup.spawn` call.
     pub spawn: bool,
@@ -45,6 +47,7 @@ pub struct StmtView<'a> {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Shape {
     Branch,
+    Loop,
     Exit,
     Return,
     Plain,
@@ -84,11 +87,11 @@ impl<'a> StmtView<'a> {
                 (view.value, view.body, view.else_body) = (Some(cond), body, else_body);
             }
             StmtKind::While { cond, body } => {
-                view.shape = Shape::Branch;
+                view.shape = Shape::Loop;
                 (view.value, view.body) = (Some(cond), body);
             }
             StmtKind::For { iter, body, .. } => {
-                view.shape = Shape::Branch;
+                view.shape = Shape::Loop;
                 (view.value, view.body) = (Some(iter), body);
             }
         }
@@ -170,10 +173,20 @@ impl FlowBuilder<'_> {
 
     pub fn statement(&self, s: &StmtView, original: Option<&Stmt>) -> Vec<Node> {
         match s.shape {
-            Shape::Branch => {
-                let mut node = self.node("branch", self.source(s.pos), s.pos);
-                node.children = self.events(s.value);
-                node.children.extend(self.body(s.body));
+            Shape::Branch | Shape::Loop => {
+                let kind = if s.shape == Shape::Loop {
+                    "loop"
+                } else {
+                    "branch"
+                };
+                let mut node = self.node(kind, self.source(s.pos), s.pos);
+                let mut steps = self.events(s.value);
+                steps.extend(self.body(s.body));
+                // `if x: return y` shows its `return y` once, not again as an exit step.
+                node.children = steps
+                    .into_iter()
+                    .filter(|n| !(n.kind == "exit" && node.label.ends_with(&n.label)))
+                    .collect();
                 if !s.else_body.is_empty() {
                     node.children.push(Node {
                         kind: "branch".into(),
@@ -228,7 +241,8 @@ impl FlowBuilder<'_> {
         node
     }
 
-    /// Lists the calls and try markers inside one expression, outermost first.
+    /// Lists the calls and try markers inside one expression in evaluation order: a call's
+    /// arguments and receiver come before the call.
     fn events(&self, e: Option<&Expr>) -> Vec<Node> {
         let Some(e) = e else { return Vec::new() };
         let mut collector = Events {
@@ -236,6 +250,7 @@ impl FlowBuilder<'_> {
             out: Vec::new(),
             pending_try: false,
             spawns: Vec::new(),
+            pending: Vec::new(),
         };
         walk_expr(&mut collector, e);
         let mut out = collector.out;
@@ -263,7 +278,7 @@ impl FlowBuilder<'_> {
         }
         let node = Node {
             kind: "native".into(),
-            label: format!("native {}", site.target),
+            label: format!("native {}", site.label),
             ..Node::default()
         };
         Some((node, site.spawn))
@@ -276,6 +291,8 @@ struct Events<'a, 'b> {
     pending_try: bool,
     /// Open `promise(fn: ...)` calls: the expression and where its node sits in `out`.
     spawns: Vec<(NodeId, usize)>,
+    /// Calls seen on entry, added once their arguments have been listed.
+    pending: Vec<(NodeId, Node)>,
 }
 
 impl Visitor for Events<'_, '_> {
@@ -305,15 +322,25 @@ impl Visitor for Events<'_, '_> {
             node.label = format!("spawn  {}", self.builder.source(x.pos));
             self.spawns.push((x.id, self.out.len()));
         }
+        let is_spawn = node.kind == "spawn";
         if self.pending_try {
             node.label = format!("try {}", node.label);
             node.kind = "try".into();
             self.pending_try = false;
         }
-        self.out.push(node);
+        if is_spawn {
+            self.out.push(node);
+        } else {
+            self.pending.push((x.id, node));
+        }
     }
 
     fn leave_expr(&mut self, x: &Expr) {
+        if self.pending.last().is_some_and(|(id, _)| *id == x.id)
+            && let Some((_, node)) = self.pending.pop()
+        {
+            self.out.push(node);
+        }
         if self.spawns.last().is_some_and(|(id, _)| *id == x.id) {
             let (_, at) = self.spawns.pop().unwrap_or((x.id, 0));
             let inside = self.out.split_off(at + 1);

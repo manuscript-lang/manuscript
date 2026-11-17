@@ -25,7 +25,7 @@ function purePage(data, source = template) {
     between(source, 'function stage(', 'const fcls='),
     between(source, 'function types(){', '/* sequence:'),
     between(source, 'const empty=', 'function behavior('),
-    between(source, 'function sequenceEvents(', 'function sequence(){'),
+    between(source, 'let LIFELINES=', 'function sequence(){'),
     'return {D,E,S,hl,sigOf,types,sequenceEvents,sequenceDiagram};',
   ].join('\n');
   return new Function('R', code)(data);

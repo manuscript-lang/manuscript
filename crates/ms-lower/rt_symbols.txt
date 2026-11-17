@@ -505,6 +505,7 @@ msstd_fs_directory_close(handle h: *mut ObjCell<Directory>) @domain=filesystem
 msstd_fs_directory_open(path: *const StrVal, out: *mut *mut ObjCell<Directory>, err: ErrSlot) -> u8 @domain=filesystem
 msstd_fs_directory_path(handle h: *const ObjCell<Directory>, out: *mut StrVal) @domain=filesystem
 msstd_fs_directory_read(handle h: *mut ObjCell<Directory>, out: *mut EntryOut, err: ErrSlot) -> u8 @domain=filesystem
+msstd_fs_exists(path: *const StrVal, follow: u8, out: *mut i64, err: ErrSlot) -> u8 @domain=filesystem
 msstd_fs_file_chmod(handle h: *mut ObjCell<Stream>, mode: i64, err: ErrSlot) -> u8 @domain=filesystem
 msstd_fs_file_chown(handle h: *mut ObjCell<Stream>, uid: i64, gid: i64, err: ErrSlot) -> u8 @domain=filesystem
 msstd_fs_file_clone(handle h: *const ObjCell<Stream>, out: *mut *mut ObjCell<Stream>, err: ErrSlot) -> u8 @domain=filesystem

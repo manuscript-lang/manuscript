@@ -41,9 +41,9 @@ test('callee notes retain a single return and native visibility stays optional',
 test('participant cap keeps calls balanced', () => {
   const many = Array.from({length: 200}, (_, i) => call(i + 1));
   const {p, events} = model([many, ...many.map(() => [])]);
-  assert.equal(p.sequenceEvents(p.D.entities[0], 3, false).parts.length, 14);
+  assert.equal(p.sequenceEvents(p.D.entities[0], 3, false).parts.length, 8);
   const ev = events();
-  assert.equal(ev.length, 26);
+  assert.equal(ev.length, 14);
   for (let i = 0; i < ev.length; i += 2) {
     assert.equal(ev[i].t, 'msg');
     assert.deepEqual(ev[i + 1], {t: 'ret', from: ev[i].to, to: ev[i].from});
@@ -54,21 +54,20 @@ test('event budget bounds repeated calls and still unwinds nested returns', () =
   const repeated = Array.from({length: 200}, () => call(2));
   const {events} = model([[call(1)], repeated, []]);
   const ev = events();
-  assert.equal(ev.length, 322);
+  // The repeats fold into one counted arrow, and the work is still bounded by the budget.
+  assert.equal(ev.length, 4);
   assert.deepEqual(ev[0], msg(0, 1));
-  assert.deepEqual(ev[ev.length - 1], ret(1, 0));
-  for (let i = 1; i < ev.length - 1; i += 2) {
-    assert.deepEqual(ev[i], msg(1, 2));
-    assert.deepEqual(ev[i + 1], ret(2, 1));
-  }
+  assert.deepEqual(ev[1], {...msg(1, 2), count: 160});
+  assert.deepEqual(ev[2], ret(2, 1));
+  assert.deepEqual(ev[3], ret(1, 0));
 });
 
 test('self calls render loop-shaped messages and dotted returns', () => {
   const {p} = model([[call(0)]]);
   const {ev, parts} = p.sequenceEvents(p.D.entities[0], 4, false);
   const svg = p.sequenceDiagram(ev, parts);
-  assert.match(svg, /class="msg " d="M90 64h42v12h-42" marker-end="url\(#a\)"/);
-  assert.match(svg, /class="msg ret" d="M90 94h42v12h-42" marker-end="url\(#a\)"/);
+  assert.match(svg, /class="msg " d="M85 64h42v12h-42" marker-end="url\(#a\)"/);
+  assert.match(svg, /class="msg ret" d="M85 94h42v12h-42" marker-end="url\(#a\)"/);
   assert.match(svg, />f0\(\)<\/text>/);
   assert.equal((svg.match(/<path class="msg /g) || []).length, 2);
   assert.doesNotMatch(svg, /NaN|undefined/);
@@ -79,8 +78,17 @@ test('ordinary calls retain straight arrows and escaped labels', () => {
   const {ev, parts} = p.sequenceEvents(p.D.entities[0], 3, false);
   ev[0].label = 'leaf<&"()';
   const svg = p.sequenceDiagram(ev, parts);
-  assert.match(svg, /class="msg " d="M90 64L260 64"/);
-  assert.match(svg, /class="msg ret" d="M260 94L90 94"/);
+  assert.match(svg, /class="msg " d="M85 64L235 64"/);
+  assert.match(svg, /class="msg ret" d="M235 94L85 94"/);
   assert.match(svg, />leaf&lt;&amp;&quot;\(\)<\/text>/);
   assert.doesNotMatch(svg, /h42v12h-42/);
+});
+
+test('direct callees keep their lifelines before deeper ones, and dropped names are listed', () => {
+  const many = Array.from({length: 12}, (_, i) => call(i + 1));
+  const {p} = model([[call(1), ...many.slice(1)], ...many.map(() => [])]);
+  const r = p.sequenceEvents(p.D.entities[0], 3, false);
+  assert.equal(r.parts.length, 8);
+  assert.equal(r.dropped, 5);
+  assert.equal(r.droppedNames.length, 5);
 });

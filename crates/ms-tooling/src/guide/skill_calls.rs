@@ -36,6 +36,22 @@ pub fn render() -> String {
     render_with(standard_library(ms_syntax::Names::global()))
 }
 
+/// Splits `name[U: Bound]: signature` at the colon after the name, not the one in a bound.
+fn split_operation(operation: &str) -> Option<(&str, &str)> {
+    let mut depth = 0usize;
+    for (at, c) in operation.char_indices() {
+        match c {
+            '[' => depth += 1,
+            ']' => depth = depth.saturating_sub(1),
+            ':' if depth == 0 && operation[at + 1..].starts_with(' ') => {
+                return Some((&operation[..at], &operation[at + 2..]));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
 pub fn render_with(modules: &[ApiModule]) -> String {
     let mut out = String::new();
     out.push_str(START);
@@ -50,7 +66,7 @@ pub fn render_with(modules: &[ApiModule]) -> String {
         // Every signature of a name, so an overload such as `sort(fn(T, T) Int)` is shown too.
         let mut by_name: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
         for operation in &declaration.operations {
-            let Some((name, signature)) = operation.split_once(": ") else {
+            let Some((name, signature)) = split_operation(operation) else {
                 continue;
             };
             let name = name.split('[').next().unwrap_or(name);

@@ -43,19 +43,24 @@
           "index": 6,
           "name": "path.ms::windows namespace prefixes join and normalize without doubled separators",
           "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "path.ms::windows UNC roots collapse repeated separators and need exactly two leading ones",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN path.ms::POSIX paths normalize resolve parse and match without host access\nPASS path.ms::POSIX paths normalize resolve parse and match without host access\nRUN path.ms::Windows paths use explicit dialect on every platform\nPASS path.ms::Windows paths use explicit dialect on every platform\nRUN path.ms::module dirname and basename_without follow the host dialect\nPASS path.ms::module dirname and basename_without follow the host dialect\nRUN path.ms::glob matching rejects NUL in the path as it does in the pattern\nPASS path.ms::glob matching rejects NUL in the path as it does in the pattern\nRUN path.ms::POSIX resolution preserves resets separators and all input validation\nPASS path.ms::POSIX resolution preserves resets separators and all input validation\nRUN path.ms::POSIX resolution handles long relative tails and absolute resets\nPASS path.ms::POSIX resolution handles long relative tails and absolute resets\nRUN path.ms::windows namespace prefixes join and normalize without doubled separators\nPASS path.ms::windows namespace prefixes join and normalize without doubled separators\n7 tests, 0 failed\n",
+      "stdout": "RUN path.ms::POSIX paths normalize resolve parse and match without host access\nPASS path.ms::POSIX paths normalize resolve parse and match without host access\nRUN path.ms::Windows paths use explicit dialect on every platform\nPASS path.ms::Windows paths use explicit dialect on every platform\nRUN path.ms::module dirname and basename_without follow the host dialect\nPASS path.ms::module dirname and basename_without follow the host dialect\nRUN path.ms::glob matching rejects NUL in the path as it does in the pattern\nPASS path.ms::glob matching rejects NUL in the path as it does in the pattern\nRUN path.ms::POSIX resolution preserves resets separators and all input validation\nPASS path.ms::POSIX resolution preserves resets separators and all input validation\nRUN path.ms::POSIX resolution handles long relative tails and absolute resets\nPASS path.ms::POSIX resolution handles long relative tails and absolute resets\nRUN path.ms::windows namespace prefixes join and normalize without doubled separators\nPASS path.ms::windows namespace prefixes join and normalize without doubled separators\nRUN path.ms::windows UNC roots collapse repeated separators and need exactly two leading ones\nPASS path.ms::windows UNC roots collapse repeated separators and need exactly two leading ones\n8 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

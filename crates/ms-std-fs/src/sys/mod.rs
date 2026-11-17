@@ -292,7 +292,7 @@ pub fn would_block(e: Errno) -> bool {
 }
 
 /// `true` when `e` says a path component is not a directory.
-fn is_not_dir(e: Errno) -> bool {
+pub fn is_not_dir(e: Errno) -> bool {
     // `ERROR_DIRECTORY`
     kind(e) == io::ErrorKind::NotADirectory || (cfg!(windows) && e == 267)
 }

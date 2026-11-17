@@ -195,8 +195,11 @@ fn describe_kind(kind: &str) -> String {
 /// The unspellable name a destructuring `for` or lambda binds before its pattern.
 const HIDDEN_ITEM: &str = "for item";
 
+const IS_HINT: &str = "; there is no 'is' operator: write '==' to compare values, or 'match value:' to test which alternative a value is";
+
 fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
     match kind {
+        ":" if found == Tok::Name && found_text == "is" => IS_HINT.into(),
         ":" => "; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body".into(),
         ")" => "; close the parenthesis, separating items with commas".into(),
         "]" if found == Tok::For => {
@@ -613,8 +616,13 @@ impl<'a> Parser<'a> {
             }
             let t = self.peek();
             let msg = format!(
-                "expected end of inline statement, found {}; an inline body holds one simple statement; for more statements or an `else`, put the body on indented lines and start `else:` on its own line at the `if`'s indentation",
-                describe(self.src, t)
+                "expected end of inline statement, found {}; an inline body holds one simple statement; for more statements or an `else`, put the body on indented lines and start `else:` on its own line at the `if`'s indentation{}",
+                describe(self.src, t),
+                if t.kind == Tok::Name && self.text(t) == "is" {
+                    IS_HINT
+                } else {
+                    ""
+                }
             );
             return self.fail(t, msg);
         }
@@ -654,9 +662,7 @@ impl<'a> Parser<'a> {
             _ if prev_word == "elif" => {
                 "; there is no 'elif': write 'else if <condition>:' for a further branch"
             }
-            Tok::Name if self.text(t) == "is" => {
-                "; there is no 'is' operator: write '==' to compare values, or 'match value:' to test which alternative a value is"
-            }
+            Tok::Name if self.text(t) == "is" => IS_HINT,
             Tok::Name if prev_new => {
                 "; there is no 'new': construct a value by calling the type, Name(field: value)"
             }
@@ -1324,6 +1330,10 @@ impl<'a> Parser<'a> {
             }
             Tok::Fn => {
                 self.at += 1;
+                if self.kind() == Tok::Var && self.ahead(1).kind == Tok::Name {
+                    let t = self.peek();
+                    return self.fail(t, "'fn var' marks a method that changes its receiver, as in 'fn var Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter instead: 'fn add(var counter: Counter, n: Int) Void:'");
+                }
                 let name = self.need(Tok::Name)?;
                 let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;
@@ -2156,6 +2166,7 @@ impl<'a> Parser<'a> {
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match self.names.str(*n) {
+                        "assert" => return self.fail(t, "there is no 'assert': in a test block write 'expect_equal(actual, expected)?' or 'expect_true(condition)?', imported from \"@std/test/test.ms\""),
                         "pass" => return self.fail_fix(t, "'pass' is not a keyword; write 'void' for an empty block or match arm", "void"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n_t}' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));

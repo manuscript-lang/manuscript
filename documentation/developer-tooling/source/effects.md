@@ -26,7 +26,7 @@ ms diagram hello.ms --view effects --entity main
 ```text
 EFFECTS VIEW
 `- main  effects: read+unknown
-   `- @std/core.ms+source#fn#print
+   `- @std/core.ms+source::print
 ```
 
 The summary includes behavior reachable through `print`, not just statements written directly in `main`. `unknown` means the analysis cannot classify every operation along that path; it does not mean that the call is harmless. Use the call path to find the implementation you need to review. For a larger program, open an [interactive code map](../implementation.md#interactive-code-map) or use the [review report](../implementation.md#review-report) to find newly introduced effects.

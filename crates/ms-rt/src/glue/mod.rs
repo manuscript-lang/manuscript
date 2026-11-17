@@ -298,6 +298,13 @@ pub fn signal_wakeup(id: u64) {
     crate::task::msrt_token_post_remote(id, 1);
 }
 
+/// Whether a bounded read (`ReadStream.next(timeout:)`) of the running task has used its time.
+/// A native that waits in a loop checks it before each park and fails with a timeout, because
+/// every park past the limit returns at once and the loop would spin.
+pub fn read_limit_passed() -> bool {
+    crate::task::read_limit_passed()
+}
+
 /// Delivers a pending stop request by return (see [`cancel_return`]) and answers `true`: the
 /// caller returns a zero result at once. Call it between blocking steps of an operation that
 /// can park; never in a `// ms: leaf` native, whose callers take no cancel edge.

@@ -426,6 +426,12 @@ unsafe fn fold(
             names.push(label);
         }
         names.reverse();
+        // The program's start shim is not a function of the program: leaving it as the
+        // root made `[runtime]` look like the cumulative total of every stack.
+        let shim = names.len() - names.iter().skip_while(|n| *n == b"[runtime]").count();
+        if shim < names.len() {
+            names.drain(..shim);
+        }
         let mut key = Vec::new();
         for (i, nme) in names.iter().enumerate() {
             if i > 0 {

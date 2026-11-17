@@ -249,6 +249,12 @@ native! {
         fs_status_at(path.as_bytes(), ops::stat(path.as_bytes(), follow), &err).map(info_out)
     }
 
+    /// 1 when `path` names anything, 0 when it or a directory part is missing; other failures
+    /// are errors, so a permission error is not mistaken for absence.
+    fn msstd_fs_exists(path: &str, follow: bool; err: ErrOut) -> Result<i64, StatusCode> {
+        fs_status_at(path.as_bytes(), ops::exists(path.as_bytes(), follow), &err).map(i64::from)
+    }
+
     /// Lists a directory sorted by name into a `List[DirectoryEntry]`.
     fn msstd_fs_list(
         path: &str,

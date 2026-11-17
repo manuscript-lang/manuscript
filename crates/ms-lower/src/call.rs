@@ -541,6 +541,11 @@ impl<'a> FnLower<'a> {
             };
             let binding = callee.parameters[j].clone();
             if vars.contains(&(j + offset)) {
+                // A default that never names the parameter cannot change it, and the argument
+                // keeps its own place: copying it would clone a resource that has one owner.
+                if crate::mutation::uses_of(&self.hir, d, binding.uid) == 0 {
+                    continue;
+                }
                 let ty = self.ty_of(v.v);
                 // An earlier `var` argument is the call's copy-in, as in `var_argument`.
                 let o = self.owned_boundary(v);

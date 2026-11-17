@@ -7,13 +7,16 @@ use super::types::{
 };
 use super::{Area, Cx, Vals, block_label, call_ret_ty, leaves, ret_attr};
 use crate::glue_llvm::{GlueCall, OwnKind, clone_callee, clone_str, drop_callee, own_kind};
+use crate::llvm_build::Bin;
 use crate::llvm_build::{FnBuilder, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op, Value};
 use ms_mir::layout::Layouts;
 use ms_mir::types::Ty;
 use ms_mir::types::TyKind;
 use ms_rt_abi::STR_INLINE;
-use ms_rt_abi::symbols::ISOLATE_HDR_GUARDED;
+use ms_rt_abi::symbols::{
+    ISOLATE_HDR_CLEANUPS, ISOLATE_HDR_CLEANUPS_CAP, ISOLATE_HDR_CLEANUPS_LEN, ISOLATE_HDR_GUARDED,
+};
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -58,7 +61,7 @@ fn unwind_only(m: &Module, i: &Inst) -> bool {
 
 fn splits(lay: &Layouts, f: &Func, i: &Inst, _: bool) -> usize {
     let split = match i.op {
-        Op::CleanupPush => unwind_only(lay.m, i),
+        Op::CleanupPush => true,
         Op::Clone => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::Drop => own_kind(lay, f.ty(i.args[0])) == OwnKind::Str,
         Op::DropIf => own_kind(lay, f.ty(i.args[1])) != OwnKind::Identity,
@@ -162,27 +165,64 @@ fn cleanup_push(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBu
     let thunk = Val::new(format!("@\"{}\"", cx.plan.cleanup[&c.index()]), LTy::Ptr);
     let thunk = b.ptr_to_int(&thunk);
     super::rt::declare(cx, "msrt_cleanup_push");
-    let Some((head, then, join)) = guard else {
-        b.name_next(&out[0]);
-        b.call(
-            &LTy::I64,
-            "",
-            "msrt_cleanup_push",
-            &[(thunk, ""), (slot, "")],
-        );
+    let Some((head, _then, join)) = guard else {
+        let n = cx.split;
+        cx.split += 1;
+        // The code after the push goes on in the block the next split names.
+        let join = block_label(cx.block, cx.split);
+        push_entry(cx, n, &thunk, &slot, (&out[0], join), b);
         return;
     };
+    let h = b.reserve(LTy::I64);
+    let n = cx.split;
+    let last = format!("pj{}_{n}", cx.block);
+    push_entry(cx, n, &thunk, &slot, (&h, last.clone()), b);
+    b.br(&join);
+    b.label(&join);
+    b.phi(&out[0], &[(Val::int(0), head), (h, last)]);
+}
+
+/// The push itself: a store pair and a length bump while the task's cleanup buffer has room, the
+/// runtime call (which grows it) when it is full. Returns the handle, the entry count after.
+fn push_entry(
+    cx: &Cx,
+    n: usize,
+    thunk: &Val,
+    slot: &Val,
+    (dst, join): (&Val, String),
+    b: &mut FnBuilder,
+) {
+    let hdr = super::depth::task_hdr(b);
+    let lenp = b.gep_bytes(&hdr, ISOLATE_HDR_CLEANUPS_LEN as u64);
+    let len = b.load(&LTy::I64, &lenp, 8);
+    let capp = b.gep_bytes(&hdr, ISOLATE_HDR_CLEANUPS_CAP as u64);
+    let cap = b.load(&LTy::I64, &capp, 8);
+    let full = b.icmp("eq", &len, &cap);
+    let (fast, slow) = (format!("pf{}_{n}", cx.block), format!("ps{}_{n}", cx.block));
+    b.cond_br_likely(&full, &slow, &fast, false);
+    b.label(&fast);
+    let bufp = b.gep_bytes(&hdr, ISOLATE_HDR_CLEANUPS as u64);
+    let buf = b.load(&LTy::Ptr, &bufp, 8);
+    let off = b.bin(Bin::Mul, &len, &Val::int(16));
+    let at = b.gep_dyn(&buf, &off);
+    b.store(thunk, &at, 8);
+    let at8 = b.gep_bytes(&at, 8);
+    b.store(slot, &at8, 8);
+    let next = b.bin(Bin::Add, &len, &Val::int(1));
+    b.store(&next, &lenp, 8);
+    b.br(&join);
+    b.label(&slow);
     let h = b
         .call(
             &LTy::I64,
             "",
             "msrt_cleanup_push",
-            &[(thunk, ""), (slot, "")],
+            &[(thunk.clone(), ""), (slot.clone(), "")],
         )
         .expect("a handle");
     b.br(&join);
     b.label(&join);
-    b.phi(&out[0], &[(Val::int(0), head), (h, then)]);
+    b.phi(dst, &[(next, fast), (h, slow)]);
 }
 
 /// A pointer leaf as the address word the runtime takes.

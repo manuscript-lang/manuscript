@@ -1,9 +1,8 @@
 import (
-	TerminalEvent, EraseRegion, raw_mode from "@std/cli/terminal.ms",
-	ReadStream from "@std/io/io.ms",
-	promise, PromiseOptions from "@std/concurrency/promise.ms",
-	stdout from "@std/io/io.ms",
-	Duration, nanoseconds from "@std/time.ms",
+	EraseRegion, TerminalEvent, raw_mode from "@std/cli/terminal.ms",
+	PromiseOptions, promise from "@std/concurrency/promise.ms",
+	ReadStream, stdout from "@std/io/io.ms",
+	Duration, milliseconds, nanoseconds from "@std/time.ms",
 )
 
 fn describe(e: TerminalEvent) String:
@@ -32,6 +31,12 @@ export fn main() Int:
 			void stdout().write(f"size {size.columns}x{size.rows}\r\n")
 
 		var events = term.events()
+
+		// A read with no input bounded by its own timeout must end, not retry without
+		// end.
+		stalled := events.next(timeout: milliseconds(100))
+		void stdout().write(f"stalled:{stalled.is_error()}\r\n")
+
 		var done = false
 
 		while not done:

@@ -214,7 +214,9 @@ fn unc_root(text: String) String:
 	data := text.to_bytes()
 	count := data.length()
 	var start = 2
-	while start < count and data.get_or(start, none).to_int() == 47: start += 1
+
+	// A third leading separator makes the text a rooted path, not a UNC server.
+	if start < count and data.get_or(start, none).to_int() == 47: return ""
 
 	server_end := data.index_of_byte(47, start).get_or(count)
 	if server_end == count: return ""
@@ -227,6 +229,15 @@ fn unc_root(text: String) String:
 	if share_end == count: return text.clone()
 
 	return text_of(data, 0, share_end + 1)
+
+// A `//server//share/` root with its repeated separators collapsed to `//server/share`
+// plus the trailing separator the root already had.
+fn canonical_unc_root(root: String) String:
+	parts := root.split("/").filter(fn part: not part.is_empty())
+	joined := "//" + parts.join("/")
+	if root.ends_with("/"): return joined + "/"
+
+	return joined
 
 fn root_in(windows: Bool, text: String) String:
 	return root_of(windows, slash(windows, text))
@@ -350,7 +361,12 @@ fn normalize_core(windows: Bool, text: String) String:
 		at += 1
 
 	var out = BytesBuilder()
-	out.append_bytes(data.view(0, root_bytes))
+
+	if windows and root.starts_with("//") and not is_device(root):
+		out.append_bytes(canonical_unc_root(root).to_bytes())
+	else:
+		out.append_bytes(data.view(0, root_bytes))
+
 	if unc_open: out.append(47)
 
 	for index in 0..stack.length():

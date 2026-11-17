@@ -107,6 +107,18 @@ pub fn read_bounded(fd: sys::Fd, max: i64) -> Result<Vec<u8>, Fail> {
     read_limited(fd, max, true)
 }
 
+/// Called before each park of a wait that loops: a stop request is an `Err`, and so is a bounded
+/// read (`next(timeout:)`) whose time has passed, because a park past that limit returns at once
+/// and a loop that only retries would spin.
+pub fn check_wait() -> Res<()> {
+    poll_cancel()?;
+    #[cfg(not(test))]
+    if ms_rt::glue::read_limit_passed() {
+        return Err(Fail::status(ms_rt_abi::STATUS_TIMEOUT));
+    }
+    Ok(())
+}
+
 /// Parks the task until `fd` can be read, so a pipe with no data yet neither stalls the other
 /// tasks nor ignores a stop request.
 fn wait_readable(fd: sys::Fd) -> Res<()> {
@@ -420,6 +432,21 @@ fn stat_now(path: &[u8], follow: bool) -> Res<Info> {
     let st = sys::stat(&p, follow)
         .map_err(|e| Fail::errno(e, if follow { "stat" } else { "lstat" }, path))?;
     Ok(info_of(&st, &lossy_name(&path::base(path))))
+}
+
+/// Whether `path` names anything: a missing path or a missing directory part (`ENOENT`,
+/// `ENOTDIR`) is `false`; every other failure is returned.
+pub fn exists(path: &[u8], follow: bool) -> Res<bool> {
+    offload(follow, path, |follow, path| exists_now(path, *follow))
+}
+
+fn exists_now(path: &[u8], follow: bool) -> Res<bool> {
+    let p = cpath(path)?;
+    match sys::stat(&p, follow) {
+        Ok(_) => Ok(true),
+        Err(e) if sys::is_not_found(e) || sys::is_not_dir(e) => Ok(false),
+        Err(e) => Err(Fail::errno(e, if follow { "stat" } else { "lstat" }, path)),
+    }
 }
 
 #[derive(Debug)]
