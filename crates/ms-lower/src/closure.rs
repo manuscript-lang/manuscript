@@ -166,7 +166,9 @@ impl FnLower<'_> {
             ty: *t,
             mode: Mode::Borrow,
         }));
-        let mut f = ms_mir::ir::Func::new("<anonymous>", ps, ret);
+        // Named for the function that makes it, so a stack, fault or profile says where it is.
+        let name = format!("{}.closure", self.b.func_mut().name);
+        let mut f = ms_mir::ir::Func::new(&name, ps, ret);
         f.kind = FuncKind::Closure { captures: cap_tys };
         f.scoped = scoped;
         // A closure made inside a function that keeps scoped closures is what keeps them.

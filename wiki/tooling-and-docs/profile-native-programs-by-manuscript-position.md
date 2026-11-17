@@ -14,3 +14,5 @@ Reading the report (2026-11-17 review of `ms profile` and `ms diagram`): the sta
 Apply when: changing source maps, line tables, the perf map, or profile output formats.
 Evidence: [runtime profiling](../../crates/ms-rt/src/profile.rs), [profile CLI tests](../../crates/ms-cli/tests/profile.rs), [debug artifact tests](../../crates/ms-build/tests/debug_artifacts.rs).
 Verify: run a representative profile, inspect the generated bundle and final executable line tables, and run the native debugger where installed and permitted. Keep profile CLI and debug-artifact tests passing.
+
+A closure is named `<enclosing function>.closure` (lowering, `ms-lower/src/closure.rs`), so profiles, fault stacks and MIR dumps say where it is; it was `<anonymous>`, which merged every closure into one row (#4414).
