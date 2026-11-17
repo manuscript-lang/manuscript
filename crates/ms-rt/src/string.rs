@@ -1714,6 +1714,28 @@ unsafe fn map_case_in_place(text: &str, upper: bool) -> Option<StrVal> {
     Some(unsafe { finish_owned(r.ptr_word, at, false) })
 }
 
+/// Whether ASCII `text` holds a lowercase letter (`lower` false: an uppercase one), eight bytes per
+/// step: `x + (0x80 - lo)` sets a byte's high bit when it is at least `lo`, and `x + (0x80 - hi - 1)`
+/// when it is above `hi`; no byte carries into the next because every byte is below 0x80.
+#[inline(always)]
+fn has_ascii_letter_of_case(text: &[u8], lower: bool) -> bool {
+    const LO: u64 = 0x0101_0101_0101_0101;
+    const HI: u64 = 0x8080_8080_8080_8080;
+    let (first, last) = if lower { (b'a', b'z') } else { (b'A', b'Z') };
+    let in_range = |x: u64| {
+        let at_least = x + LO * u64::from(0x80 - first);
+        let above = x + LO * u64::from(0x80 - last - 1);
+        at_least & !above & HI != 0
+    };
+    let (chunks, rest) = text.as_chunks::<8>();
+    if chunks.iter().any(|w| in_range(u64::from_le_bytes(*w))) {
+        return true;
+    }
+    let mut tail = [0u8; 8];
+    tail[..rest.len()].copy_from_slice(rest);
+    in_range(u64::from_le_bytes(tail))
+}
+
 /// `upper` or `lower` of the string `s`: ASCII text is copied once into its result and mapped
 /// there; other text maps scalar by scalar.
 ///
@@ -1724,6 +1746,10 @@ unsafe fn map_case(s: *const StrVal, upper: bool) -> StrVal {
     unsafe {
         let text = bytes(s);
         if is_ascii(&*s) {
+            if !has_ascii_letter_of_case(text, upper) {
+                // Already in the requested case: share the unchanged input.
+                return cloned(&*s);
+            }
             return build_exact(text.len(), true, |dst| {
                 dst.copy_from_slice(text);
                 if upper {
@@ -3421,6 +3447,14 @@ unsafe fn normalize_kind(
             usize::MAX
         };
         let text = bytes(s);
+        if is_ascii(&*s) {
+            // ASCII text is already in every normalization form.
+            if text.len() > limit {
+                return STATUS_LIMIT_EXCEEDED;
+            }
+            *out = cloned(&*s);
+            return STATUS_OK;
+        }
         let mut chars: Vec<char> = Vec::new();
         let mut i = 0;
         while i < text.len() {
