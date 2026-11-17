@@ -153,6 +153,8 @@ fn deeply_nested_type_keeps_structural_properties() {
     assert_eq!(diagnostics(&[("deep.ms", &source)]), vec![]);
 }
 
+// Thirty doublings build a type with 2^30 paths but 30 nodes: any walk that does not share visited
+// nodes (`has_variable` did, #4431) takes minutes here.
 #[test]
 fn shared_match_types_do_not_expand_every_type_path() {
     assert!(

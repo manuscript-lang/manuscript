@@ -25,12 +25,10 @@ pub(crate) fn has_generic_operation(contract: &Ty) -> bool {
     })
 }
 
-/// Whether `t` mentions a type variable anywhere.
+/// Whether `t` mentions a type variable anywhere. The walk shares visited nodes: a type built by
+/// repeated doubling (`Pair[T, T]` nested n times) is a DAG of n nodes but a tree of 2^n paths.
 fn has_variable(t: &Ty) -> bool {
-    t.kind == Kind::Variable
-        || t.args.iter().any(has_variable)
-        || t.params.iter().any(|p| has_variable(&p.ty))
-        || t.result.as_ref().is_some_and(has_variable)
+    type_any::<true>(t, |t| t.kind == Kind::Variable)
 }
 
 /// A structural property the language derives from a type's shape.
