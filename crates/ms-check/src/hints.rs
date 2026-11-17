@@ -394,7 +394,7 @@ pub fn ok_wrap_hint(actual: &Ty, expected: &Ty) -> String {
     {
         return String::new();
     }
-    "wrap the value in ok(...), e.g. return ok(value)".to_string()
+    "wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?".to_string()
 }
 
 /// A no-argument operation named without parentheses.

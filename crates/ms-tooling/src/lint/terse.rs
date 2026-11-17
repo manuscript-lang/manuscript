@@ -165,7 +165,10 @@ impl Visitor for Scan<'_> {
             }
             | StmtKind::While { cond, .. } => self.emptiness(cond, true),
             StmtKind::Return(Some(e)) => self.emptiness(e, true),
-            StmtKind::Call(e) => self.statement_get(e),
+            StmtKind::Call(e) => {
+                self.statement_get(e);
+                self.printed_result(e);
+            }
             _ => {}
         }
     }
@@ -425,6 +428,33 @@ impl Scan<'_> {
             .info(e.id)
             .and_then(|i| i.ty.as_ref())
             .is_some_and(|t| t.is(Builtin::Map))
+    }
+
+    /// `print(call())` on a Result prints the wrapper, so the call's success value is what was meant.
+    fn printed_result(&mut self, e: &Expr) {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return;
+        };
+        let ExprKind::Name(name) = &callee.kind else {
+            return;
+        };
+        let [arg] = args.as_slice() else {
+            return;
+        };
+        let is_result = self
+            .module
+            .facts()
+            .info(arg.value.id)
+            .and_then(|i| i.ty.as_ref())
+            .is_some_and(|t| t.is(Builtin::Result));
+        if self.syms.str(*name) == "print" && is_result {
+            self.findings.push(finding(
+                "MSL131",
+                "`print` of a Result shows the `ok(...)` wrapper; write `call()?` in a function that returns a Result, or `if value := call():` to read the success".to_string(),
+                self.file,
+                e.pos,
+            ));
+        }
     }
 
     /// A statement `r.get(none)` on a `Void!` is `void r`; a statement `r.get()` on a Result
