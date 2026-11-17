@@ -176,7 +176,7 @@ All assertions return `Result`, so use `?`:
 
 `expect_golden(path, actual)` in `@std/test/golden.ms` compares text with a file kept next to the test and names the first differing line on a mismatch. Run `MS_UPDATE_GOLDEN=1 ms test ...` to rewrite the files from the actual output, review the change in version control, then run again without it. `expect_golden_bytes` does the same for bytes.
 
-`@std/test/iotest.ms` wraps streams to test code that reads and writes: `one_byte(input)` trickles one byte per read, `fail_after(input, n, cause)` fails every read after `n` bytes, and `fail_writer_after(output, n, cause)` fails like a full disk. `check_reader(make, expected)` checks a `ReadStream` you wrote: whole reads, one-byte reads, a respected chunk size, and an end of input that stays ended.
+`@std/test/mock.ms` has mocks that answer with preset values and record calls (see [tests with fakes](../cookbook/testing-with-fakes.md)). `@std/test/iotest.ms` wraps streams to test code that reads and writes: `one_byte(input)` trickles one byte per read, `fail_after(input, n, cause)` fails every read after `n` bytes, and `fail_writer_after(output, n, cause)` fails like a full disk. `check_reader(make, expected)` checks a `ReadStream` you wrote: whole reads, one-byte reads, a respected chunk size, and an end of input that stays ended.
 
 ## Benchmark your code
 

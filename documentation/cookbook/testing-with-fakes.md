@@ -55,6 +55,42 @@ PASS notify_test.ms::a failing mailbox is reported
 - A fake can fail on demand or return fixed data. To check what the code did, assert on what it returns, as above.
 - Fakes stay in the test file. Keep the interface as small as the code under test needs; one or two operations are easier to fake than a whole client.
 
+## Record calls with a mock
+
+`@std/test/mock.ms` has `Mock0` to `Mock3` (the number is how many arguments the call takes). A mock answers with a preset value, records every call, and checks them afterwards. Pass it where the code expects a function, wrapped in a closure.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import Mock1 from "@std/test/mock.ms"
+import expect_equal from "@std/test/test.ms"
+
+fn charge_all(charge: fn(String) Int, users: List[String]) Int:
+    var total = 0
+    for user in users:
+        total += charge(user)
+    return total
+
+test "each user is charged, the first at a special price":
+    var charge = Mock1[String, Int](fallback: 5)
+    charge.returns_once(2)
+    total := charge_all(fn user: charge.call(user), ["ada", "sam"])
+    expect_equal(total, 7)?
+    charge.expect_called_times(2)?
+    charge.expect_called_with("sam")?
+    charge.expect_last_called_with("sam")?
+```
+
+```text
+RUN mock_test.ms::each user is charged, the first at a special price
+PASS mock_test.ms::each user is charged, the first at a special price
+1 tests, 0 failed
+```
+
+- `fallback` is the answer after the queue is used up; `returns_once(value)` queues answers in order.
+- `calls` lists the arguments of every call (`Call2` and `Call3` records for two and three arguments). Arguments are cloned in, so the caller keeps its values.
+- `expect_called_times`, `expect_not_called`, `expect_called_with` and `expect_last_called_with` fail the test with the recorded calls in the message. `reset()` clears calls and queued answers.
+- A mock replaces what code is given. Code that reaches the clock or files directly has to take that as a parameter first.
+
 ## Control time
 
 Save as `clock_test.ms`. Pass the current time in instead of reading it inside the function, and the test can choose any moment.
