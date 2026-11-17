@@ -60,6 +60,7 @@ fn runtime(m: &mut Module, name: &str, params: &[Ty], role: ExternRole) -> ExtId
         noreturn: false,
         pure_: false,
         fresh: false,
+        retains: false,
         role,
         leaf: true,
         reads: false,

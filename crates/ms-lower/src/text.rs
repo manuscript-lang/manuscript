@@ -43,6 +43,7 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
         noreturn: crate::rtcall::rt_flags(sym).noreturn,
         pure_: false,
         fresh: crate::rtcall::fresh_result(sym),
+        retains: crate::rtcall::rt_flags(sym).retains,
         role: crate::rtcall::extern_role(sym),
         leaf: crate::rtcall::rt_flags(sym).leaf,
         reads: crate::rtcall::rt_flags(sym).reads,
@@ -339,7 +340,7 @@ pub(crate) fn build_format(
         None => None,
     };
     match b.m.types.kind(t).clone() {
-        TyKind::Type(_) | TyKind::Alt(_) if own_text.is_some() => {
+        TyKind::Type(_) | TyKind::Alt(_) | TyKind::Obj(..) if own_text.is_some() => {
             // The type's own `to_string`, declared next to it.
             let f = own_text.expect("checked");
             let text = b.call(f, &[x]);
@@ -640,7 +641,7 @@ impl<'a> FnLower<'a> {
         t: &ms_check::api::types::Ty,
         x: Val,
     ) -> Result<Option<Val>, Error> {
-        if !matches!(t.kind, Kind::Type | Kind::Alternative) {
+        if !matches!(t.kind, Kind::Type | Kind::Alternative | Kind::Native) {
             return Ok(None);
         }
         let Some(f) = self.cx.own_text_fn(self.b.m, t)? else {

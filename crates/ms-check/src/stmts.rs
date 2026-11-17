@@ -487,13 +487,11 @@ impl Checker {
             return self.check_iterator_for(s, name, iter, body, Vec::new(), false);
         } else if self.stream_item(&t).is_some() {
             return self.check_iterator_for(s, name, iter, body, Vec::new(), true);
-        } else if self.is_iterable(&t) {
-            return self.check_iterable_for(s, name, iter, body);
         } else {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, a ReadStream, an Iterator, or an Iterable, found {t_t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement ReadStream with 'var fn next() T?!' and 'var fn close() Void!', Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
+                    "for requires List, Set, Map, a ReadStream, or an Iterator, found {t_t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement ReadStream with 'var fn next() T?!' and 'var fn close() Void!', or Iterator with 'var fn next() T?'"
                 , t_t = t.display(self.syms)),
             );
         }
@@ -657,155 +655,6 @@ impl Checker {
             kind: StmtKind::While {
                 cond: forever,
                 body: vec![step],
-            },
-        });
-        let expansion = Rc::new(expansion);
-        self.m()
-            .facts_mut()
-            .stmts
-            .entry(s.id)
-            .or_default()
-            .expansion = Some(expansion.clone());
-        self.block(&expansion, false)
-    }
-
-    /// Whether `t` implements `Iterable[T]`, the contract of iterating a container by position.
-    fn is_iterable(&self, t: &Ty) -> bool {
-        self.methods(t, n("at")).into_iter().any(|m| {
-            if m.contract
-                .as_ref()
-                .is_some_and(|contract| contract.is(Builtin::Iterable))
-            {
-                return true;
-            }
-            // Own `length` and `at` methods satisfy `Iterable[T]` by shape.
-            let result = m.ty.result_ty();
-            m.is_inherent(self.syms)
-                && result.is(Builtin::Optional)
-                && result.args.len() == 1
-                && self.implements(
-                    t,
-                    &self
-                        .session
-                        .standard("Iterable", vec![result.args[0].clone()]),
-                )
-        })
-    }
-
-    /// `for name in container:` over an `Iterable` container is checked as
-    /// `for $i in 0..container.length(): if let name = container.at($i): body`, so the container is
-    /// read in place and never copied. A container that is not a place is held in a hidden `let`
-    /// first.
-    fn check_iterable_for(
-        &mut self,
-        s: &Stmt,
-        name: Name,
-        iter: &Expr,
-        body: &[Stmt],
-    ) -> (bool, bool) {
-        let pos = s.pos;
-        let id = |c: &Self| c.m().facts_mut().fresh_id();
-        let expr = |c: &Self, kind: ExprKind| Expr {
-            id: id(c),
-            pos: iter.pos,
-            end: iter.pos,
-            kind,
-        };
-        let mut expansion: Vec<Stmt> = Vec::new();
-        let holder = |c: &Self, hidden: Name| {
-            if is_place_path(iter) {
-                iter.clone()
-            } else {
-                expr(c, ExprKind::Name(hidden))
-            }
-        };
-        let hidden = n(&format!("$iterable{}", s.id.0));
-        if !is_place_path(iter) {
-            let pattern = Pattern {
-                id: id(self),
-                pos,
-                kind: PatternKind::Name(hidden),
-            };
-            expansion.push(Stmt {
-                id: id(self),
-                pos,
-                kind: StmtKind::Bind {
-                    mutable: false,
-                    pattern,
-                    ty: None,
-                    value: iter.clone(),
-                    group: None,
-                },
-            });
-        }
-        let index = n(&format!("$index{}", s.id.0));
-        let method = |c: &Self, member: &str, args: Vec<Expr>| {
-            let callee = expr(
-                c,
-                ExprKind::Member {
-                    left: Box::new(holder(c, hidden)),
-                    name: n(member),
-                },
-            );
-            expr(
-                c,
-                ExprKind::Call {
-                    callee: Box::new(callee),
-                    args: args
-                        .into_iter()
-                        .map(|value| Argument {
-                            pos: value.pos,
-                            name: None,
-                            value,
-                            mutable: false,
-                        })
-                        .collect(),
-                },
-            )
-        };
-        expansion.push(Stmt {
-            id: id(self),
-            pos,
-            kind: StmtKind::For {
-                name: index,
-                iter: {
-                    let callee = expr(self, ExprKind::Name(n("..")));
-                    let zero = expr(self, ExprKind::Number(n("0")));
-                    let length = method(self, "length", Vec::new());
-                    expr(
-                        self,
-                        ExprKind::Call {
-                            callee: Box::new(callee),
-                            args: [zero, length]
-                                .into_iter()
-                                .map(|value| Argument {
-                                    pos: value.pos,
-                                    name: None,
-                                    value,
-                                    mutable: false,
-                                })
-                                .collect(),
-                        },
-                    )
-                },
-                body: vec![Stmt {
-                    id: id(self),
-                    pos,
-                    kind: StmtKind::If {
-                        binding: Some(Pattern {
-                            id: id(self),
-                            pos,
-                            kind: PatternKind::Name(name),
-                        }),
-                        mutable: false,
-                        cond: {
-                            let position = expr(self, ExprKind::Name(index));
-                            method(self, "at", vec![position])
-                        },
-                        body: body.to_vec(),
-                        else_body: Vec::new(),
-                    },
-                }],
             },
         });
         let expansion = Rc::new(expansion);

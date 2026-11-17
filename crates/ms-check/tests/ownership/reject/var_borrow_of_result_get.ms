@@ -1,3 +1,3 @@
 fn change(r: List[Int]!) Void:
-    var xs = r.get()  // error: the result is a reference into more than one place
+    var xs = r.get()  // error: it borrows its receiver
     xs.append(1)

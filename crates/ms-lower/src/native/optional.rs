@@ -12,6 +12,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            retains: false,
             role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags(sym).leaf,
             reads: crate::rtcall::rt_flags(sym).reads,
@@ -61,6 +62,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            retains: false,
             role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
             reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
@@ -560,25 +562,6 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let v = s.none_owned(out);
                         s.close_finish(recv);
-                        Ok(Some(v))
-                    },
-                )
-            }
-            "error" => {
-                let TyKind::Opt(_) = self.b.m.types.kind(out).clone() else {
-                    return Err(Error::new("error without Optional result"));
-                };
-                self.two_ways(
-                    is_ok,
-                    out,
-                    &mut |s| {
-                        let v = s.none_owned(out);
-                        s.close_finish(recv);
-                        Ok(Some(v))
-                    },
-                    &mut |s| {
-                        let po = s.take_alt_field_through(alt, err, 0, recv);
-                        let v = s.b.opt_some(po);
                         Ok(Some(v))
                     },
                 )

@@ -1,7 +1,7 @@
 //! A host stream over a file descriptor.
 //!
-//! Reads and writes block in `poll(2)` slices so a pending cancellation interrupts them; bytes a
-//! line reader took beyond the current line wait in `pending` for the next read.
+//! A read or write parks the task until the descriptor is ready, so a stop request interrupts it;
+//! bytes a line reader took beyond the current line wait in `pending` for the next read.
 use crate::err::describe;
 use crate::ops::offload;
 use crate::sys::{self, CPath, Interest};
@@ -88,8 +88,6 @@ pub struct Stream {
 }
 
 const DEFAULT_CHUNK: i64 = 64 * 1024;
-#[cfg(any(windows, test))]
-const POLL_SLICE_MS: i32 = 50;
 
 impl Stream {
     pub fn new(fd: sys::Fd, owned: bool, name: &[u8]) -> Stream {
@@ -203,22 +201,113 @@ impl Stream {
                 return Err(IoFail::cancelled());
             }
         }
-        // Tests run on many threads, which the runtime's scheduler does not support; Windows
-        // pipes and consoles cannot be polled, so they are checked in short slices.
-        #[cfg(any(windows, test))]
-        loop {
-            check()?;
-            // A slice on the blocking pool parks this task, so others run meanwhile.
-            let ready = offload((self.fd, interest), &[], |&(fd, interest), _| {
-                sys::wait_ready(fd, interest, POLL_SLICE_MS)
-            });
-            if ready {
-                // Ready, hung up, or failed: the next read or write reports the details.
-                return Ok(());
-            }
+        // Tests run on many threads, which the runtime's scheduler does not support: the test
+        // thread blocks on the descriptor.
+        #[cfg(all(unix, test))]
+        {
+            sys::wait_ready(self.fd, interest, -1);
+            Ok(())
         }
         #[cfg(all(unix, not(test)))]
-        Ok(())
+        {
+            Ok(())
+        }
+        #[cfg(windows)]
+        {
+            // A pipe is read where it blocks (`read_pipe`); only a console is waited on.
+            if interest == Interest::Read && sys::source(self.fd) == sys::Source::Console {
+                return self.wait_console();
+            }
+            check()
+        }
+    }
+
+    /// Waits for console input on a blocking-pool thread that also watches an event, which a
+    /// stop request signals, so the thread ends with the wait.
+    #[cfg(windows)]
+    fn wait_console(&self) -> IoRes<()> {
+        let stop = alloc::sync::Arc::new(
+            sys::Stop::new()
+                .map_err(|e| IoFail::os("read", &self.name, e.raw_os_error().unwrap_or(0)))?,
+        );
+        #[cfg(test)]
+        {
+            sys::wait_console(self.fd, &stop);
+            Ok(())
+        }
+        #[cfg(not(test))]
+        {
+            let job = (self.fd, stop.clone());
+            let ran = ms_rt::glue::pool::try_run(
+                ms_rt::glue::pool::Lane::General,
+                job,
+                |(fd, stop)| sys::wait_console(*fd, stop),
+                -1,
+            );
+            if ran.is_err() {
+                stop.signal();
+                return Err(IoFail::cancelled());
+            }
+            // Ready or failed: the next read reports the details.
+            Ok(())
+        }
+    }
+
+    /// One read from a pipe that cannot be waited on: a blocking read on a pool thread, which a
+    /// stop request fails with `CancelIoEx`. `CancelIoEx` does nothing before the read is
+    /// issued, so the request repeats until the job is done once it has started (a job that has
+    /// not started sees the flag and returns without reading); the repeat lasts only the few
+    /// instructions between the job's start and its read.
+    #[cfg(windows)]
+    fn read_pipe(&self, buf: &mut [u8]) -> IoRes<usize> {
+        #[cfg(test)]
+        {
+            return self
+                .read_raw(buf)
+                .map_err(|e| IoFail::os("read", &self.name, e));
+        }
+        #[cfg(not(test))]
+        {
+            use core::sync::atomic::{AtomicBool, Ordering::SeqCst};
+            #[derive(Default)]
+            struct Flags {
+                stopped: AtomicBool,
+                started: AtomicBool,
+                done: AtomicBool,
+            }
+            let flags = alloc::sync::Arc::new(Flags::default());
+            let job = (self.fd, buf.len(), flags.clone());
+            let ran = ms_rt::glue::pool::try_run(
+                ms_rt::glue::pool::Lane::General,
+                job,
+                |(fd, len, flags)| {
+                    flags.started.store(true, SeqCst);
+                    let out = if flags.stopped.load(SeqCst) {
+                        Err(sys::EIO)
+                    } else {
+                        let mut data = alloc::vec![0u8; *len];
+                        sys::read(*fd, &mut data).map(|n| {
+                            data.truncate(n);
+                            data
+                        })
+                    };
+                    flags.done.store(true, SeqCst);
+                    out
+                },
+                -1,
+            );
+            let Ok(Some(read)) = ran else {
+                flags.stopped.store(true, SeqCst);
+                while flags.started.load(SeqCst) && !flags.done.load(SeqCst) {
+                    sys::cancel_io(self.fd);
+                    std::thread::yield_now();
+                }
+                return Err(IoFail::cancelled());
+            };
+            let data = read.map_err(|e| IoFail::os("read", &self.name, e))?;
+            buf[..data.len()].copy_from_slice(&data);
+            Ok(data.len())
+        }
     }
 
     /// Whether the descriptor is a regular file, whose reads and writes cannot be waited on:
@@ -265,6 +354,10 @@ impl Stream {
         #[cfg(windows)]
         if self.adopted {
             return ms_rt::glue::pipe::read(self.fd, buf).map_err(|e| self.pipe_fail("read", e));
+        }
+        #[cfg(windows)]
+        if self.pollable && sys::source(self.fd) == sys::Source::Pipe {
+            return self.read_pipe(buf);
         }
         self.wait(Interest::Read)?;
         self.read_raw(buf)

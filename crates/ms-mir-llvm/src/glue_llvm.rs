@@ -189,7 +189,9 @@ pub fn native(sym: &str) -> String {
 /// The symbol a direct caller calls for glue `sym` of `kind` over `ty`: the native entry when it
 /// is emitted directly, else the leaf symbol of the Cranelift lowering.
 pub fn target(g: &Gen, kind: Glue, ty: Ty, sym: String) -> String {
-    if supports(g, kind, ty) {
+    // A function the module made has the leaf convention only.
+    let own = g.m.made_glue(kind, ty).is_some();
+    if !own && supports(g, kind, ty) {
         native(&sym)
     } else {
         sym
@@ -1022,16 +1024,20 @@ impl E<'_, '_, '_> {
         Val::new(format!("@\"{sym}\""), LTy::Ptr)
     }
 
-    /// A map or set is an owned value the runtime drops through its descriptor.
+    /// A map or set is an owned value the runtime drops through its descriptor. One that was never
+    /// filled has no slots (word 0), so there is nothing to release and no call.
     fn drop_obj(&mut self, ty: Ty, vs: &[Val]) {
-        let leaves = self.g.lay.leaves(ty);
-        let slot = self.b.alloca(&slot_ty(self.b.types(), &leaves));
-        store_leaves(&mut self.b, &slot, &leaves, vs);
-        let slot = self.b.ptrtoint(&slot);
-        let sym = self.g.typedesc_symbol(ty);
-        let desc = self.data_addr(sym);
-        let desc = self.b.ptrtoint(&desc);
-        self.rt("msrt_slot_drop", &[&desc, &slot], false);
+        let filled = self.test(&vs[0]);
+        self.if_then(&filled, |s| {
+            let leaves = s.g.lay.leaves(ty);
+            let slot = s.b.alloca(&slot_ty(s.b.types(), &leaves));
+            store_leaves(&mut s.b, &slot, &leaves, vs);
+            let slot = s.b.ptrtoint(&slot);
+            let sym = s.g.typedesc_symbol(ty);
+            let desc = s.data_addr(sym);
+            let desc = s.b.ptrtoint(&desc);
+            s.rt("msrt_slot_drop", &[&desc, &slot], false);
+        });
     }
 
     /// The vtable word's low bits say what the value owns: 0 the box and its payload (`vtable[0]`

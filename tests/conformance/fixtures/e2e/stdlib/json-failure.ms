@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	JsonOptions, JsonValue, parse from "@std/data/json.ms",
-	expect_contains, expect_equal, expect_error from "@std/test/test.ms",
+	expect_contains, expect_equal, expect_error, expect_fault from "@std/test/test.ms",
 )
 
 fn expect_syntax_error[T](actual: T!) Void!:
@@ -32,10 +32,12 @@ test "JSON value limits preserve Unicode precedence and byte admission":
 	expect_equal(parse("\"\\uD800\"", JsonOptions(max_bytes: 0)), limited)?
 	expect_equal(parse[String]("\"\\uD800\"", JsonOptions(max_bytes: 0)), typed_limited)?
 
-	negative: JsonValue! := error(Error("JSON: invalid input", kind: "EINVAL"))
-	typed_negative: String! := error(Error("JSON: invalid input", kind: "EINVAL"))
-	expect_equal(parse("\"\\uD800\"", JsonOptions(max_values: -1)), negative)?
-	expect_equal(
-		parse[String]("\"\\uD800\"", JsonOptions(max_values: -1)),
-		typed_negative,
+	_negative := expect_fault(
+		fn: discard(parse("\"\\uD800\"", JsonOptions(max_values: -1)))
 	)?
+	_typed_negative := expect_fault(
+		fn: discard(parse[String]("\"\\uD800\"", JsonOptions(max_values: -1)))
+	)?
+
+fn discard[T](value: T) Void:
+	return

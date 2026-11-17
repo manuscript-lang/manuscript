@@ -47,6 +47,7 @@ pub fn run(m: &mut Module, checks: bool) -> bool {
                 noreturn: true,
                 pure_: false,
                 fresh: false,
+                retains: false,
                 leaf: true,
                 reads: false,
                 role: ExternRole::None,

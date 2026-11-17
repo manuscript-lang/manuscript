@@ -10,7 +10,7 @@ use crate::cx::HelperKey;
 use crate::func::FnLower;
 use crate::text::runtime_fn;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{Cc, FuncId, Imm, InlineHint, Linkage, Mode, Op, Param, Value};
+use ms_mir::ir::{Cc, FuncId, Imm, Mode, Op, Param, Value};
 use ms_mir::types::Ty as MTy;
 
 /// The kinds of string helper.
@@ -22,6 +22,7 @@ pub(crate) enum StrFn {
     ScalarStep,
     StartsWith,
     EndsWith,
+    Compare,
 }
 
 fn int(b: &mut FuncBuilder<'_>, op: Op, x: Value, y: i64) -> Value {
@@ -83,8 +84,8 @@ impl FnLower<'_> {
     /// The generated helper for `which`, built on first use.
     pub(crate) fn str_fn(&mut self, which: StrFn) -> FuncId {
         let key = HelperKey::StrFast(which);
-        if let Some(f) = self.cx.helpers.get(&key) {
-            return *f;
+        if let Some(f) = self.fast_path_cached(&key) {
+            return f;
         }
         let (name, params, ret) = match which {
             StrFn::ParseInt => (
@@ -107,6 +108,11 @@ impl FnLower<'_> {
                 vec![param(MTy::STR), param(MTy::STR)],
                 MTy::BOOL,
             ),
+            StrFn::Compare => (
+                "string_compare",
+                vec![param(MTy::STR), param(MTy::STR)],
+                MTy::INT,
+            ),
             StrFn::ScalarStep => (
                 "scalar_step",
                 vec![param(MTy::STR), param(MTy::INT)],
@@ -123,9 +129,7 @@ impl FnLower<'_> {
                 MTy::INT,
             ),
         };
-        let mut b = FuncBuilder::new(self.b.m, name, params, ret);
-        b.func_mut().linkage = Linkage::Internal;
-        b.func_mut().inline = InlineHint::Always;
+        let mut b = self.fast_path_builder(name, params, ret);
         match which {
             StrFn::ParseInt => parse_int(&mut b),
             StrFn::ContainsByte => contains_byte(&mut b),
@@ -133,48 +137,32 @@ impl FnLower<'_> {
             StrFn::ScalarStep => scalar_step(&mut b),
             StrFn::StartsWith => affix(&mut b, false),
             StrFn::EndsWith => affix(&mut b, true),
+            StrFn::Compare => compare(&mut b),
         }
         let func = b.into_func();
-        let fid = self.b.m.add_func(func);
-        self.cx.helpers.insert(key, fid);
-        fid
+        self.fast_path_add(key, func)
     }
 
-    /// The inline form of a runtime string call, when one applies.
-    pub(crate) fn inline_str(&mut self, sym: &str, args: &[Value]) -> Option<Value> {
-        match sym {
-            "msrt_string_parse_int" => {
-                let f = self.str_fn(StrFn::ParseInt);
-                Some(self.b.call(f, args))
+    /// The generated fast path that stands for the runtime string call `sym`, when there is one.
+    pub(crate) fn str_fast(&self, sym: &str, args: &[Value]) -> Option<StrFn> {
+        Some(match sym {
+            "msrt_string_parse_int" => StrFn::ParseInt,
+            // A literal needle of two or more bytes skips the one-byte dispatch.
+            "msrt_string_contains"
+                if self
+                    .b
+                    .str_lit_of(args[1])
+                    .is_none_or(|id| self.b.m.strings[id.0 as usize].len() < 2) =>
+            {
+                StrFn::ContainsByte
             }
-            "msrt_string_contains" => {
-                // A literal needle of two or more bytes skips the one-byte dispatch.
-                if let Some(id) = self.b.str_lit_of(args[1])
-                    && self.b.m.strings[id.0 as usize].len() >= 2
-                {
-                    return None;
-                }
-                let f = self.str_fn(StrFn::ContainsByte);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_starts_with" => {
-                let f = self.str_fn(StrFn::StartsWith);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_ends_with" => {
-                let f = self.str_fn(StrFn::EndsWith);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_scalar_step" => {
-                let f = self.str_fn(StrFn::ScalarStep);
-                Some(self.b.call(f, args))
-            }
-            "msrt_string_scalar_at" => {
-                let f = self.str_fn(StrFn::ScalarAt);
-                Some(self.b.call(f, args))
-            }
-            _ => None,
-        }
+            "msrt_string_compare" => StrFn::Compare,
+            "msrt_string_starts_with" => StrFn::StartsWith,
+            "msrt_string_ends_with" => StrFn::EndsWith,
+            "msrt_string_scalar_step" => StrFn::ScalarStep,
+            "msrt_string_scalar_at" => StrFn::ScalarAt,
+            _ => return None,
+        })
     }
 }
 
@@ -607,5 +595,149 @@ fn affix(b: &mut FuncBuilder<'_>, end: bool) {
     b.ret(Some(f));
     b.switch_to(slow);
     let r = b.call_rt(ext, &[text, part]);
+    b.ret(Some(r));
+}
+
+/// `String` order as -1, 0 or 1: the first differing byte of the common prefix decides, then the
+/// lengths. A prefix of up to sixteen bytes is compared byte by byte from either string form
+/// (inline, static or heap); a longer one calls the runtime's `memcmp`.
+fn compare(b: &mut FuncBuilder<'_>) {
+    let ps = b.params();
+    let (x, y) = (ps[0], ps[1]);
+    let ext = runtime_fn(b.m, "msrt_string_compare", &[MTy::STR, MTy::STR], MTy::INT);
+    let (scan, slow, head, body, step, tail) = (
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+    );
+    let (minus, plus) = (b.iconst(-1), b.iconst(1));
+    let (sx, sy) = (slot_of(b, x), slot_of(b, y));
+    // Both inline (up to 15 bytes, zero past the length): the bytes are the words themselves, so
+    // the first differing byte comes from at most two word compares with no length decode.
+    let (inl, inl2, general, wdiff) = (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+    let (dx, dy, dd) = (
+        b.add_block_param(wdiff, MTy::INT, Mode::Borrow),
+        b.add_block_param(wdiff, MTy::INT, Mode::Borrow),
+        b.add_block_param(wdiff, MTy::INT, Mode::Borrow),
+    );
+    let (x0, x1) = (load(b, sx, 0, MTy::INT), load(b, sx, 8, MTy::INT));
+    let (y0, y1) = (load(b, sy, 0, MTy::INT), load(b, sy, 8, MTy::INT));
+    let (tx, ty) = (int(b, Op::Ushr, x1, 62), int(b, Op::Ushr, y1, 62));
+    let (nx, ny) = (int(b, Op::Xor, tx, 1), int(b, Op::Xor, ty, 1));
+    let not_inline = b.binop(Op::Or, nx, ny);
+    let zero_t = b.iconst(0);
+    let both = b.icmp(Cc::Eq, not_inline, zero_t);
+    b.br_if(both, inl, &[], general, &[]);
+    b.seal_block(inl);
+    b.seal_block(general);
+    b.switch_to(inl);
+    let first = b.binop(Op::Xor, x0, y0);
+    let zero_f = b.iconst(0);
+    let first_same = b.icmp(Cc::Eq, first, zero_f);
+    b.br_if(first_same, inl2, &[], wdiff, &[x0, y0, first]);
+    b.seal_block(inl2);
+    b.switch_to(inl2);
+    // The second word holds seven bytes (bits 0 to 55), then the length and the tag.
+    let (m1, m2) = (
+        int(b, Op::And, x1, (1 << 56) - 1),
+        int(b, Op::And, y1, (1 << 56) - 1),
+    );
+    let second = b.binop(Op::Xor, m1, m2);
+    let zero_s = b.iconst(0);
+    let second_same = b.icmp(Cc::Eq, second, zero_s);
+    let lens = b.new_block();
+    b.br_if(second_same, lens, &[], wdiff, &[m1, m2, second]);
+    b.seal_block(lens);
+    b.switch_to(lens);
+    let (lx, ly) = (int(b, Op::Ushr, x1, 56), int(b, Op::Ushr, y1, 56));
+    let (lx, ly) = (int(b, Op::And, lx, 15), int(b, Op::And, ly, 15));
+    let lx_less = b.icmp(Cc::Lt, lx, ly);
+    let lx_more = b.icmp(Cc::Gt, lx, ly);
+    let zero_l = b.iconst(0);
+    let more_or_same = b.select(lx_more, plus, zero_l);
+    let r = b.select(lx_less, minus, more_or_same);
+    b.ret(Some(r));
+    b.switch_to(wdiff);
+    let low = b.unop(Op::Ctz, dd);
+    let shift = int(b, Op::And, low, -8);
+    let (xs, ys) = (b.binop(Op::Ushr, dx, shift), b.binop(Op::Ushr, dy, shift));
+    let (xb, yb) = (int(b, Op::And, xs, 255), int(b, Op::And, ys, 255));
+    let less = b.icmp(Cc::Lt, xb, yb);
+    let r = b.select(less, minus, plus);
+    b.ret(Some(r));
+    b.switch_to(general);
+    let (xd, xn) = bytes_of(b, sx);
+    let (yd, yn) = bytes_of(b, sy);
+    let shorter = b.icmp(Cc::Lt, xn, yn);
+    let n = b.select(shorter, xn, yn);
+    let c16 = b.iconst(16);
+    let big = b.icmp(Cc::Gt, n, c16);
+    b.br_if(big, slow, &[], scan, &[]);
+    b.seal_block(slow);
+    b.seal_block(scan);
+    b.switch_to(slow);
+    let r = b.call_rt(ext, &[x, y]);
+    b.ret(Some(r));
+    b.switch_to(scan);
+    // Eight bytes at a time while a whole word remains in both strings; the first differing word
+    // is decided by its lowest differing byte (little endian). The rest goes byte by byte.
+    let (whead, wbody, wstep) = (b.new_block(), b.new_block(), b.new_block());
+    let w = b.add_block_param(whead, MTy::INT, Mode::Borrow);
+    let i = b.add_block_param(head, MTy::INT, Mode::Borrow);
+    let zero = b.iconst(0);
+    b.br(whead, &[zero]);
+    b.switch_to(whead);
+    let end = int(b, Op::IAdd, w, 8);
+    let room = b.icmp(Cc::Le, end, n);
+    b.br_if(room, wbody, &[], head, &[w]);
+    b.seal_block(wbody);
+    b.switch_to(wbody);
+    let word = |b: &mut FuncBuilder<'_>, p: Value| {
+        let at = b
+            .emit(Op::PtrAdd, &[p, w], Imm::None, Some(MTy::PTR))
+            .expect("ptr.add");
+        b.emit(Op::PtrLoadU, &[at], Imm::Int(8), Some(MTy::INT))
+            .expect("ptr.loadu")
+    };
+    let (xw, yw) = (word(b, xd), word(b, yd));
+    let diff = b.binop(Op::Xor, xw, yw);
+    let zero_w = b.iconst(0);
+    let alike = b.icmp(Cc::Eq, diff, zero_w);
+    b.br_if(alike, wstep, &[], wdiff, &[xw, yw, diff]);
+    b.seal_block(wstep);
+    b.seal_block(wdiff);
+    b.switch_to(wstep);
+    b.br(whead, &[end]);
+    b.seal_block(whead);
+    b.switch_to(head);
+    let more = b.icmp(Cc::Lt, i, n);
+    b.br_if(more, body, &[], tail, &[]);
+    b.seal_block(body);
+    b.seal_block(tail);
+    b.switch_to(body);
+    let (xb, yb) = (byte_at(b, xd, i), byte_at(b, yd, i));
+    let same = b.icmp(Cc::Eq, xb, yb);
+    let differ = b.new_block();
+    b.br_if(same, step, &[], differ, &[]);
+    b.seal_block(step);
+    b.seal_block(differ);
+    b.switch_to(differ);
+    let less = b.icmp(Cc::Lt, xb, yb);
+    let r = b.select(less, minus, plus);
+    b.ret(Some(r));
+    b.switch_to(step);
+    let one = b.iconst(1);
+    let next = b.binop(Op::IAdd, i, one);
+    b.br(head, &[next]);
+    b.seal_block(head);
+    // Equal prefixes: the shorter string is smaller.
+    b.switch_to(tail);
+    let longer = b.icmp(Cc::Gt, xn, yn);
+    let zero = b.iconst(0);
+    let tail_cmp = b.select(longer, plus, zero);
+    let r = b.select(shorter, minus, tail_cmp);
     b.ret(Some(r));
 }

@@ -3,6 +3,7 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::nativetype::native_type;
+use crate::rtcall::Twin;
 use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
 use ms_check::api::types::{self as ct, Builtin, Kind};
@@ -684,32 +685,29 @@ impl<'a> FnLower<'a> {
         Some((b.uid, names.clone()))
     }
 
-    /// `<call>.split(..)[0]`: only the first piece of the split is read.
-    fn first_of_split(&self, left: &Expr, index: &Expr) -> bool {
+    /// `<call>[0]`: only the first element of a native method call's result is read, and the
+    /// call's runtime function has a `first_of` twin.
+    fn first_of_call(&mut self, left: &Expr, index: &Expr) -> bool {
         let ExprKind::Number(text) = &index.kind else {
             return false;
         };
-        let ExprKind::Call { callee, .. } = &left.kind else {
-            return false;
-        };
-        let ExprKind::Member { name, .. } = &callee.kind else {
-            return false;
-        };
-        self.syms.str(text) == "0" && self.syms.str(name) == "split"
+        self.syms.str(text) == "0" && self.call_twin(left, Twin::First).is_some()
     }
 
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
         if self.ety(left).is(Builtin::Map) {
             return self.map_index(e, left, index);
         }
-        let first = self.first_of_split(left, index);
+        let first = self.first_of_call(left, index);
         if first {
-            self.split_first_for = Some(left as *const Expr);
+            self.first_for = Some(left as *const Expr);
         }
         let l = self.expr(left)?;
         if first {
-            self.split_first_for = None;
-            if matches!(self.b.m.types.kind(self.ty_of(l.v)), TyKind::Str) {
+            // The call took the flag when it lowered to the first element itself.
+            let taken = self.first_for.is_none();
+            self.first_for = None;
+            if taken {
                 return Ok(l);
             }
         }
@@ -1094,6 +1092,7 @@ impl<'a> FnLower<'a> {
             noreturn: crate::rtcall::rt_flags(sym).noreturn,
             pure_: false,
             fresh: crate::rtcall::fresh_result(sym),
+            retains: crate::rtcall::rt_flags(sym).retains,
             role: crate::rtcall::extern_role(sym),
             leaf: crate::rtcall::rt_flags(sym).leaf,
             reads: crate::rtcall::rt_flags(sym).reads,

@@ -414,6 +414,13 @@ pub type SlotEqFn = unsafe extern "C" fn(a: *const u8, b: *const u8) -> u8;
 /// Hash of a slot. Equal values must hash equally.
 pub type SlotHashFn = unsafe extern "C" fn(slot: *const u8) -> i64;
 
+/// Room in the caller's frame for `N` values of `T` that a runtime function fills and the caller
+/// then only reads in place. A parameter typed `*mut FrameBuf<T, N>` is passed a frame slot by
+/// lowering (`crates/ms-lower/src/rtcall.rs`); the callee falls back to the heap when the result
+/// does not fit.
+#[repr(C)]
+pub struct FrameBuf<T, const N: usize>(pub [T; N]);
+
 /// The presence byte that precedes the value of a flattened optional (`has_x: HasRaw, x: T`). It is
 /// the C byte `u8`; the distinct type is the declaration lowering reads the role from.
 #[repr(transparent)]
@@ -776,7 +783,7 @@ pub mod symbols {
     /// the task's current stack segment (0 = no limit); the region holds a copy at
     /// [`STACK_LIMIT_CELL`]. On entry to a recursive function compare
     /// the stack pointer against the copy and, when below, call `msrt_task_grow(shim, block)` with the
-    /// function's parameters stored at `block` (one 8-byte cell each, then room for its results)
+    /// function's parameters stored at `block` (each at its natural alignment, then room for its result)
     /// and return the results it leaves there. The runtime runs `shim(block)` on the task's next
     /// segment, a guarded slot that keeps the frame-pointer chain continuous, and faults with the
     /// stack overflow report when the task holds a region's worth of segments.

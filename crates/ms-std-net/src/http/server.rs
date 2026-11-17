@@ -1352,7 +1352,7 @@ impl Server {
                     // handshake flight; rustls already holds it, so no further
                     // readiness event will announce it. Read it now.
                     self.set_interest(conn, reactor, Ev::IN);
-                    self.read_in(conn, reactor);
+                    self.read_in(conn, reactor, false);
                 }
             }
             Handshake::WantRead => self.set_interest(conn, reactor, Ev::IN),
@@ -1487,12 +1487,14 @@ impl Server {
             return;
         }
         if flags.intersects(Ev::IN | Ev::HUP) {
-            self.read_in(conn, reactor);
+            self.read_in(conn, reactor, flags.contains(Ev::HUP));
         }
     }
 
-    /// Reads whatever is available, then parses.
-    fn read_in(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+    /// Reads whatever is available, then parses. A peer that has closed its sending side keeps
+    /// the read going past a short read: the FIN rode the same edge as the data, so no later
+    /// edge would announce it.
+    fn read_in(&self, conn: &Rc<Conn>, reactor: &Reactor, peer_closed: bool) {
         if matches!(conn.st.borrow().phase, Phase::Draining) {
             self.drain_rejected_input(conn, reactor);
             return;
@@ -1519,6 +1521,7 @@ impl Server {
                             break;
                         }
                         if n < scratch.len()
+                            && !peer_closed
                             && st.io.as_ref().is_some_and(|io| io.short_read_drains())
                         {
                             reactor.poller.consumed(st.fd(), Ev::IN);

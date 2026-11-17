@@ -12,7 +12,7 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    ErrSlot, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
+    ErrSlot, FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
     STATUS_OUT_OF_RANGE, STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
 };
 
@@ -1518,21 +1518,21 @@ unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) 
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, true, true, out) }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, true, false, out) }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf borrows
 pub unsafe extern "C-unwind" fn msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, false, true, out) }
@@ -2366,7 +2366,7 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 /// A flagged-ASCII text with bounds inside it is decided inline by the compiler (`view_guard`);
 /// everything else, including an inline text, comes here.
 #[unsafe(no_mangle)]
-// ms: leaf pure domain=string
+// ms: leaf pure borrows domain=string
 pub unsafe extern "C-unwind" fn msrt_string_view(
     s: *const StrVal,
     start: i64,
@@ -2799,9 +2799,8 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view(
 }
 
 /// Room for the pieces of a split that is read in place: the list borrows it.
-#[repr(C)]
-pub struct SplitBuf([StrVal; SPLIT_BUF]);
 const SPLIT_BUF: usize = 8;
+const _: () = assert!(size_of::<FrameBuf<StrVal, 8>>() == SPLIT_BUF * size_of::<StrVal>());
 
 /// `msrt_string_split_view` for a result the frame keeps: a split of at most eight pieces at a
 /// one-byte separator is written into `buf` and the list is a `cap == 0` view of it, so it
@@ -2810,13 +2809,13 @@ const SPLIT_BUF: usize = 8;
 /// # Safety
 /// As `msrt_string_split_view`; `buf` outlives the list and its pieces.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf view_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
     s: *const StrVal,
     sep: *const StrVal,
     has_max: HasRaw,
     max: i64,
-    buf: *mut SplitBuf,
+    buf: *mut FrameBuf<StrVal, 8>,
     out: *mut VecVal,
 ) {
     // SAFETY: caller passes live strings, a frame buffer and a writable out.
@@ -2854,7 +2853,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
 /// `text`, found without building the list. Faults like an index of an empty list when `max`
 /// is zero.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf first_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_first(
     s: *const StrVal,
     sep: *const StrVal,
@@ -3065,7 +3064,7 @@ unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
 
 /// Starts a split loop; the same fault as `split` for a negative `max_parts`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf iter_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_iter(
     s: *const StrVal,
     sep: *const StrVal,

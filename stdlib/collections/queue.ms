@@ -61,11 +61,13 @@ fn Queue[T].is_empty() Bool:
 fn Queue[T].length() Int:
 	return self.items.length() - self.head
 
-// Returns the value `index` places after the oldest, or none when out of range;
-// negative indexes are out of range.
-fn Queue[T].at(index: Int) T?:
-	if index < 0 or index >= self.length(): return none
-	return self.items.get(self.head + index)
+// Returns the value `index` places after the oldest, or `none` when out of range;
+// negative indexes count from the newest, as `List.get` does.
+fn Queue[T].get(index: Int) T?:
+	at := if index < 0: index + self.length() else: index
+	if at < 0 or at >= self.length(): return none
+
+	return self.items.get(self.head + at)
 
 // Orders two values: negative when `left` dequeues first, zero when equal, positive
 // when `right` dequeues first.
@@ -180,8 +182,11 @@ fn PriorityQueue[T].is_empty() Bool:
 fn PriorityQueue[T].length() Int:
 	return self.heap.length()
 
-// Returns the value at `index` in heap order, or none when out of range; only index
-// 0 is known to be the next to dequeue. Negative indexes are out of range.
-fn PriorityQueue[T].at(index: Int) T?:
-	if index < 0 or index >= self.heap.length(): return none
-	return self.heap[index].value
+// Returns the value at `index` in heap order, or `none` when out of range; only index
+// 0 is known to be the next to dequeue. Negative indexes count from the end of the heap
+// array.
+fn PriorityQueue[T].get(index: Int) T?:
+	at := if index < 0: index + self.heap.length() else: index
+	if at < 0 or at >= self.heap.length(): return none
+
+	return self.heap[at].value

@@ -62,7 +62,7 @@ fn rng(start: Int, ln: Int) String:
 	return if ln == 1: f"{s}" else: f"{s},{ln}"
 
 fn solve(s: String) String:
-	var lines = s.split("\n")
+	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 
 	head := words(lines[0])

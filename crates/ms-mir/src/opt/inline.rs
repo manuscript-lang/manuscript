@@ -1028,8 +1028,9 @@ fn specialized_callee(m: &Module, callee: FuncId, g: FuncId, i: usize) -> Func {
     let FuncKind::Closure { captures } = &m.funcs[g.index()].kind else {
         unreachable!("specialization picks closure code");
     };
+    // The copy keeps the callee's name: a fault trace names the function the program wrote, so
+    // an optimized build shows the same frames as a Debug build.
     let mut f = m.funcs[callee.index()].clone();
-    f.name = format!("{}.{}", f.name, m.funcs[g.index()].name);
     let old = f.blocks[0].params[i].value;
     let ty = f.ty(old);
     let loc = f.loc;

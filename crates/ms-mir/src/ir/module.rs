@@ -29,6 +29,10 @@ impl Module {
             funcs: Vec::new(),
             entry: None,
             desc_glue: Vec::new(),
+            drop_glue: Default::default(),
+            clone_glue: Default::default(),
+            addr_glue: Default::default(),
+            glue_bodies: Vec::new(),
             c_externs: std::collections::BTreeSet::new(),
         }
     }
@@ -240,7 +244,20 @@ impl Module {
     /// only a runtime function declared `fresh` (the result borrows nothing) or one whose result
     /// holds no pointer (a number, a flag) lets its argument slots share storage.
     pub fn pins_argument_slots(&self, def: &ExternDef) -> bool {
-        def.role == ExternRole::BorrowsArgument || (!def.fresh && self.needs_drop(def.ret))
+        def.retains
+            || def.role == ExternRole::BorrowsArgument
+            || (!def.fresh && self.needs_drop(def.ret))
+    }
+
+    /// Whether a stack slot passed to `def` as a pointer must keep its place for the whole
+    /// function: the result may point into it (a view), or the runtime keeps the pointer after
+    /// the call returns (`retains`).
+    pub fn pins_slot_argument(&self, def: &ExternDef) -> bool {
+        def.retains
+            || matches!(
+                def.role,
+                ExternRole::BorrowsArgument | ExternRole::ViewResult
+            )
     }
 
     /// Whether values of `ty` own resources that must be dropped (strings, lists,
@@ -316,7 +333,26 @@ impl Module {
     }
 
     /// The types whose values a drop of `ty` drops.
-    fn drop_children(&self, ty: Ty) -> Vec<Ty> {
+    /// The function the module made for glue `kind` of `ty`, when it did (see [`crate::glue::run`]).
+    pub fn made_glue(&self, kind: crate::glue::Glue, ty: Ty) -> Option<FuncId> {
+        let table = match kind {
+            crate::glue::Glue::Drop => &self.drop_glue,
+            crate::glue::Glue::Clone => &self.clone_glue,
+            _ => return self.addr_glue.get(&(kind, ty.unscoped())).copied(),
+        };
+        table.get(&ty.unscoped()).copied()
+    }
+
+    /// Every function [`crate::glue::run`] made.
+    pub fn made_glue_funcs(&self) -> impl Iterator<Item = FuncId> + '_ {
+        (self.drop_glue.values())
+            .chain(self.clone_glue.values())
+            .chain(self.addr_glue.values())
+            .chain(&self.glue_bodies)
+            .copied()
+    }
+
+    pub(crate) fn drop_children(&self, ty: Ty) -> Vec<Ty> {
         use crate::types::Native;
         match self.types.kind(ty) {
             TyKind::Opt(inner) | TyKind::List(inner) => vec![*inner],
@@ -535,6 +571,7 @@ mod pin_tests {
             noreturn: false,
             pure_: false,
             fresh,
+            retains: false,
             leaf: true,
             reads: false,
             role,
@@ -551,5 +588,16 @@ mod pin_tests {
         assert!(!m.pins_argument_slots(&def(Ty::STR, true, ExternRole::None)));
         assert!(!m.pins_argument_slots(&def(Ty::INT, false, ExternRole::None)));
         assert!(!m.pins_argument_slots(&def(Ty::VOID, false, ExternRole::None)));
+    }
+
+    #[test]
+    fn a_slot_passed_by_pointer_is_kept_for_a_view_or_a_retained_pointer() {
+        let m = Module::new("t");
+        let mut keeps = def(Ty::VOID, true, ExternRole::None);
+        assert!(!m.pins_slot_argument(&keeps));
+        keeps.retains = true;
+        assert!(m.pins_slot_argument(&keeps) && m.pins_argument_slots(&keeps));
+        assert!(m.pins_slot_argument(&def(Ty::STR, true, ExternRole::ViewResult)));
+        assert!(m.pins_slot_argument(&def(Ty::STR, true, ExternRole::BorrowsArgument)));
     }
 }

@@ -306,15 +306,15 @@ pub enum Op {
     // Byte builders.
     BytesPush,
     // Closures and interface views.
-    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
+    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs, IfaceTag, IfaceDestroy,
     // Ownership.
     Clone, Drop, DropIf, MoveOut, Forget,
     // Raw memory: stack slots, interior pointers into lists and types.
-    Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd, PtrNull, PtrLoadU,
+    Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull, PtrAdd, PtrNull, PtrLoadU, PtrStoreU,
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
-    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
+    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, StackLow, StackNear, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
     // Raw-phase scope markers, consumed by `elaborate`.
     ScopeBegin, ScopeOwn, ScopeEnd, ScopeDisown, ScopeMark,
 }
@@ -935,6 +935,10 @@ pub struct ExternDef {
     /// Whether the call only reads memory, cannot fault and cannot run user code (declared `pure`
     /// on the runtime function), so the backend may assume it does not clobber the caller's memory.
     pub reads: bool,
+    /// Whether the call keeps a pointer argument after it returns (declared `retains` on the
+    /// runtime function: a cleanup entry, a task's argument), so the slot that pointer names must
+    /// outlive the statement.
+    pub retains: bool,
     /// What the optimizer and code generator know this runtime function by.
     pub role: ExternRole,
 }
@@ -1111,6 +1115,16 @@ pub struct Module {
     /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
     /// descriptor of an aggregate type points to.
     pub desc_glue: Vec<(Ty, FuncId, FuncId)>,
+    /// The drop function of a type, made by [`crate::glue::run`] for the types whose drop is a
+    /// plain walk of their fields: a backend calls it where it would otherwise write its own.
+    pub drop_glue: HashMap<Ty, FuncId>,
+    /// The clone function of a type (`fn(&T) -> T`), made like [`Module::drop_glue`].
+    pub clone_glue: HashMap<Ty, FuncId>,
+    /// The functions made for the glue kinds that work on memory (slot and block drop and copy), keyed by
+    /// kind and the type they hold.
+    pub addr_glue: HashMap<(crate::glue::Glue, Ty), FuncId>,
+    /// Bodies of drop functions that [`crate::glue::run`] wrapped in the stack-depth guard of recursive data.
+    pub glue_bodies: Vec<FuncId>,
     /// Externs that are user `extern fn` shims (`ms_abi.h`): their sized numbers cross as the
     /// same-width C types, extended per the platform ABI, instead of the runtime's 64-bit words.
     pub c_externs: std::collections::BTreeSet<String>,

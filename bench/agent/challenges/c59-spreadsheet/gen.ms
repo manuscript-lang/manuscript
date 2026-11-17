@@ -7,7 +7,7 @@ fn add(var cs: Cases, name: String, script: String) Void:
 	cs.push(name, strip_nl(script))
 
 fn strip_nl(text: String) String:
-	var chars = text.chars()
+	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
 	while start < end and chars[start] == "\n":

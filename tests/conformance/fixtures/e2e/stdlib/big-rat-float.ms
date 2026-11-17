@@ -13,27 +13,33 @@ import (
 	rat_of_float,
 	rat_of_int from "@std/math/big.ms",
 	from_int from "@std/math/math.ms",
-	expect_equal, expect_true from "@std/test/test.ms",
+	expect_equal, expect_fault, expect_true from "@std/test/test.ms",
 )
+
+fn discard[T](value: T) Void:
+	return
 
 test "rationals stay in lowest terms and compare with ==":
 	half := parse_rat("1/2")?
 	third := parse_rat("1/3")?
-	expect_equal(half.add(third).format(), "5/6")?
-	expect_equal(half.subtract(third).format(), "1/6")?
-	expect_equal(half.multiply(third).format(), "1/6")?
-	expect_equal((half.divide(third)?).format(), "3/2")?
+	expect_equal(half.add(third).to_string(), "5/6")?
+	expect_equal(half.subtract(third).to_string(), "1/6")?
+	expect_equal(half.multiply(third).to_string(), "1/6")?
+	expect_equal((half.divide(third)).to_string(), "3/2")?
 	expect_equal(parse_rat("2/4")?, half)?
 	expect_equal(parse_rat("-3/-6")?, half)?
-	expect_equal((parse_rat("3/-6")?).format(), "-1/2")?
+	expect_equal((parse_rat("3/-6")?).to_string(), "-1/2")?
 	expect_equal(half.compare(third), 1)?
 	expect_true(rat_of_int(4).is_integer())?
-	expect_equal(rat_of_int(4).format(), "4")?
+	expect_equal(rat_of_int(4).to_string(), "4")?
 
 test "rational errors and decimal parsing":
-	zero: BigRat! := error(Error("bigrat: invalid input", kind: "EINVAL"))
-	expect_equal(rat(from_int(1), from_int(0)), zero)?
-	expect_equal(rat_of_int(1).divide(rat_of_int(0)), zero)?
+	_zero := expect_fault(fn: discard(rat(from_int(1), from_int(0))))?
+	_divide := expect_fault(fn: discard(rat_of_int(1).divide(rat_of_int(0))))?
+	_invert := expect_fault(fn: discard(rat_of_int(0).invert()))?
+	_digits := expect_fault(fn: discard(rat_of_int(1).to_fixed(-1)))?
+	text_zero: BigRat! := error(Error("bigrat: invalid input", kind: "EINVAL"))
+	expect_equal(parse_rat("1/0"), text_zero)?
 
 	bad: BigRat! := error(Error("bigrat: invalid data", kind: "EBADMSG"))
 	expect_equal(parse_rat("1/2/3"), bad)?
@@ -42,10 +48,10 @@ test "rational errors and decimal parsing":
 
 	big: BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse_rat("1e100001"), big)?
-	expect_equal((parse_rat("1.25")?).format(), "5/4")?
-	expect_equal((parse_rat("-.5")?).format(), "-1/2")?
-	expect_equal((parse_rat("6.02e3")?).format(), "6020")?
-	expect_equal((parse_rat("5E-3")?).format(), "1/200")?
+	expect_equal((parse_rat("1.25")?).to_string(), "5/4")?
+	expect_equal((parse_rat("-.5")?).to_string(), "-1/2")?
+	expect_equal((parse_rat("6.02e3")?).to_string(), "6020")?
+	expect_equal((parse_rat("5E-3")?).to_string(), "1/200")?
 
 test "rational rounding power and formatting":
 	value := parse_rat("-7/2")?
@@ -56,45 +62,45 @@ test "rational rounding power and formatting":
 	expect_equal((parse_rat("5/2")?).round().to_int(), 3)?
 
 	two_thirds := parse_rat("2/3")?
-	expect_equal((two_thirds.pow(3)?).format(), "8/27")?
-	expect_equal((two_thirds.pow(-2)?).format(), "9/4")?
-	expect_equal(two_thirds.to_fixed(4)?, "0.6667")?
-	expect_equal((parse_rat("1/8")?).to_fixed(2)?, "0.12")?
-	expect_equal((parse_rat("3/8")?).to_fixed(2)?, "0.38")?
-	expect_equal((parse_rat("-1/1000")?).to_fixed(2)?, "0.00")?
-	expect_equal((parse_rat("-5/2")?).to_fixed(0)?, "-2")?
-	expect_equal((parse_rat("1/3")?).to_fixed(3)?, "0.333")?
+	expect_equal((two_thirds.pow(3)?).to_string(), "8/27")?
+	expect_equal((two_thirds.pow(-2)?).to_string(), "9/4")?
+	expect_equal(two_thirds.to_fixed(4), "0.6667")?
+	expect_equal((parse_rat("1/8")?).to_fixed(2), "0.12")?
+	expect_equal((parse_rat("3/8")?).to_fixed(2), "0.38")?
+	expect_equal((parse_rat("-1/1000")?).to_fixed(2), "0.00")?
+	expect_equal((parse_rat("-5/2")?).to_fixed(0), "-2")?
+	expect_equal((parse_rat("1/3")?).to_fixed(3), "0.333")?
 
 test "rationals convert exactly from and to floats":
 	tenth := rat_of_float(0.1).get(rat_of_int(0))
-	expect_equal(tenth.format(), "3602879701896397/36028797018963968")?
+	expect_equal(tenth.to_string(), "3602879701896397/36028797018963968")?
 	expect_equal(tenth.to_float(), 0.1)?
 	expect_true(rat_of_float(1.0 / 0.0).is_none())?
-	expect_equal(rat_of_float(-2.5).get(rat_of_int(0)).format(), "-5/2")?
+	expect_equal(rat_of_float(-2.5).get(rat_of_int(0)).to_string(), "-5/2")?
 	expect_equal((parse_rat("1/3")?).to_float(), 1.0 / 3.0)?
 	expect_equal(rat_of_float(1e300).get(rat_of_int(0)).to_float(), 1e300)?
 
 test "big floats round once at their precision":
 	two := big_float_of_int(2, 200)
-	root := two.sqrt()?
-	expect_equal(root.to_fixed(40)?, "1.4142135623730950488016887242096980785697")?
+	root := two.sqrt()
+	expect_equal(root.to_fixed(40), "1.4142135623730950488016887242096980785697")?
 
 	error_bound := parse_big_float("1e-55", 200)?
 	expect_equal(root.multiply(root).subtract(two).abs().compare(error_bound), -1)?
 	expect_equal(
-		(big_float_of_int(1, 100).divide(big_float_of_int(3, 100))?).to_fixed(
+		(big_float_of_int(1, 100).divide(big_float_of_int(3, 100))).to_fixed(
 			30
-		)?,
+		),
 		"0.333333333333333333333333333333",
 	)?
-	expect_equal((big_float_of_int(2, 53).sqrt()?).to_float(), 1.4142135623730951)?
+	expect_equal((big_float_of_int(2, 53).sqrt()).to_float(), 1.4142135623730951)?
 	expect_equal(big_float_of_int(7, 10).precision(), 10)?
 	expect_equal(big_float_of_int(1000, 100).with_precision(3).to_float(), 1024.0)?
 
 test "big floats add, subtract and compare across magnitudes":
 	tenth := parse_big_float("0.1", 120)?
 	sum := tenth.add(tenth).add(tenth)
-	expect_equal(sum.to_fixed(25)?, "0.3000000000000000000000000")?
+	expect_equal(sum.to_fixed(25), "0.3000000000000000000000000")?
 
 	huge := parse_big_float("1e1000", 64)?
 	tiny := big_float_of_int(1, 64)
@@ -105,17 +111,18 @@ test "big floats add, subtract and compare across magnitudes":
 	expect_equal(big_float_of_int(5, 64).subtract(big_float_of_int(5, 64)).sign(), 0)?
 	expect_equal(big_float_of_float(0.5, 53).get(tiny).add(tiny).to_float(), 1.5)?
 	expect_equal(
-		big_float_of_int(-7, 64).divide(big_float_of_int(2, 64)).get(
-			tiny
+		big_float_of_int(-7, 64).divide(
+			big_float_of_int(2, 64)
 		).truncate().to_int(),
 		-3,
 	)?
 
 test "big float errors":
-	zero: BigFloat! := error(Error("bigfloat: invalid input", kind: "EINVAL"))
-	expect_equal(big_float_of_int(1, 64).divide(big_float_of_int(0, 64)), zero)?
-	expect_equal(big_float_of_int(-1, 64).sqrt(), zero)?
-
+	_divide := expect_fault(
+		fn: discard(big_float_of_int(1, 64).divide(big_float_of_int(0, 64)))
+	)?
+	_sqrt := expect_fault(fn: discard(big_float_of_int(-1, 64).sqrt()))?
+	_digits := expect_fault(fn: discard(big_float_of_int(1, 64).to_fixed(-1)))?
 	bad: BigFloat! := error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 	expect_equal(parse_big_float("x", 64), bad)?
 	expect_equal(parse_big_float("1/2", 64), bad)?
@@ -131,10 +138,10 @@ test "decimal text rejects a sign anywhere but the front of the digits and the e
 		expect_equal(parse_rat(text), bad)?
 		expect_true(parse_big_float(text, 64).is_error())?
 
-	expect_equal((parse_rat("1e+2")?).format(), "100")?
-	expect_equal((parse_rat("1e-2")?).format(), "1/100")?
-	expect_equal((parse_rat("-.5")?).format(), "-1/2")?
-	expect_equal((parse_rat("+1.5e+1")?).format(), "15")?
+	expect_equal((parse_rat("1e+2")?).to_string(), "100")?
+	expect_equal((parse_rat("1e-2")?).to_string(), "1/100")?
+	expect_equal((parse_rat("-.5")?).to_string(), "-1/2")?
+	expect_equal((parse_rat("+1.5e+1")?).to_string(), "15")?
 
 test "big floats compare across a huge exponent gap":
 	var far = big_float_of_int(2, 1)

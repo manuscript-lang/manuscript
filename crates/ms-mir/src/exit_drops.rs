@@ -87,6 +87,7 @@ fn gate_returns(m: &mut Module, fid: FuncId, gate: &mut Option<ExtId>) {
             noreturn: false,
             pure_: false,
             fresh: false,
+            retains: false,
             role: ExternRole::None,
             leaf: true,
             reads: false,

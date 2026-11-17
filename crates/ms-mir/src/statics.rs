@@ -6,8 +6,8 @@ use crate::ir::{FuncId, Module};
 use crate::layout::Layouts;
 use crate::types::{Native, Ty, TyKind};
 use ms_rt_abi::{
-    KIND_CUSTOM, KIND_LIST, KIND_MAP, KIND_POD, KIND_SET, KIND_SHARED, STR_INLINE,
-    STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_STATIC,
+    KIND_CUSTOM, KIND_LIST, KIND_MAP, KIND_POD, KIND_SET, KIND_SHARED, STR_ASCII, STR_INLINE,
+    STR_INLINE_LEN_SHIFT, STR_INLINE_MAX, STR_STATIC, symbols,
 };
 
 /// How a backend materializes the descriptor of one type key.
@@ -40,12 +40,12 @@ pub fn descriptor(m: &Module, lay: &Layouts, key: Ty) -> DescPlan {
     let runtime = match m.types.kind(ty) {
         // `Int8`..`Int32` and `UInt8`..`UInt64` are plain bits of their width and take the plain
         // path below.
-        TyKind::Int => Some("msrt_desc_int"),
-        TyKind::Float => Some("msrt_desc_float"),
-        TyKind::Float32 => Some("msrt_desc_float32"),
-        TyKind::Bool => Some("msrt_desc_bool"),
-        TyKind::Str => Some("msrt_desc_string"),
-        TyKind::Bytes => Some("msrt_desc_bytes"),
+        TyKind::Int => Some(symbols::DESC_INT),
+        TyKind::Float => Some(symbols::DESC_FLOAT),
+        TyKind::Float32 => Some(symbols::DESC_FLOAT32),
+        TyKind::Bool => Some(symbols::DESC_BOOL),
+        TyKind::Str => Some(symbols::DESC_STRING),
+        TyKind::Bytes => Some(symbols::DESC_BYTES),
         _ => None,
     };
     if let Some(name) = runtime {
@@ -113,8 +113,10 @@ pub enum StrLit {
 pub fn str_lit(s: &str) -> StrLit {
     let bytes = s.as_bytes();
     if bytes.len() > STR_INLINE_MAX {
+        // An ASCII literal carries the flag, so appending it keeps a flagged string flagged.
+        let ascii = if s.is_ascii() { STR_ASCII } else { 0 };
         return StrLit::Static {
-            tagged: (bytes.len() | STR_STATIC) as u64,
+            tagged: (bytes.len() | STR_STATIC | ascii) as u64,
         };
     }
     let bits = bytes

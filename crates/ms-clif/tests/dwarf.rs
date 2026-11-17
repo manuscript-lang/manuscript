@@ -240,6 +240,7 @@ b0:
         verify_module(&m).unwrap();
         if optimized {
             opt::optimize(&mut m, opt::Level::Speed, true);
+            ms_mir::depth::lower(&mut m);
         }
         let opts = Options {
             opt_level: if optimized { "speed" } else { "none" },

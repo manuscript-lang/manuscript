@@ -3,11 +3,7 @@
 import (
 	infinity, max_float, min_float, nan from "@std/math/math.ms",
 	seeded, weighted_choice from "@std/random.ms",
-	expect_equal,
-	expect_error,
-	expect_fault,
-	expect_none,
-	expect_some from "@std/test/test.ms",
+	expect_equal, expect_fault, expect_none, expect_some from "@std/test/test.ms",
 )
 
 fn compare_draws(weights: List[Float], ordinary: List[Float]) Void!:
@@ -108,6 +104,9 @@ test "weighted choices retain zero exclusions and caller values":
 	expect_equal(values, [[1], [2]])?
 	expect_equal(weights, [max_float, max_float])?
 
+fn discard[T](value: T) Void:
+	return
+
 fn invalid_seeded(weights: List[Float]) Void:
 	var rng = seeded(1)
 	_picked := rng.weighted_choice([0, 1], weights)
@@ -124,11 +123,11 @@ test "weighted choices preserve invalid input and empty behavior":
 		[1.0],
 		List[Float](),
 	]:
-		expect_equal((expect_error(weighted_choice([0, 1], weights))?).kind, "EINVAL")?
-
+		_secure := expect_fault(fn: discard(weighted_choice([0, 1], weights)))?
 		_message := expect_fault(fn: invalid_seeded(weights))?
 
 	var rng = seeded(1)
 	expect_none(rng.weighted_choice(List[Int](), List[Float]()))?
 	expect_none(weighted_choice(List[Int](), List[Float]())?)?
-	expect_equal((expect_error(weighted_choice(List[Int](), [1.0]))?).kind, "EINVAL")?
+
+	_mismatch := expect_fault(fn: discard(weighted_choice(List[Int](), [1.0])))?

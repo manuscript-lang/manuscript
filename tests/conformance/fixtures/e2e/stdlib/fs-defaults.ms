@@ -3,15 +3,21 @@
 import (
 	Bytes from "@std/bytes.ms",
 	CopyOptions,
+	OpenMode,
 	copy,
 	create_directory,
 	list,
+	open,
 	read_file,
 	remove,
 	stat,
 	temporary,
 	write_file from "@std/os/fs.ms",
-	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
+	expect_equal,
+	expect_error,
+	expect_fault,
+	expect_ok,
+	expect_true from "@std/test/test.ms",
 )
 
 fn expect_limit(outcome: Void!) Void!:
@@ -138,14 +144,19 @@ test "filesystem tree copies default to no replacement with distinct budgets":
 		) | expect_limit?
 	)
 
-	invalid: Void! := error(Error("filesystem: invalid input", kind: "EINVAL"))
-	(
-		copy(
-			source,
-			f"{temporary.path()}/negative-byte",
-			CopyOptions(recursive: true, max_bytes: -1),
-		) | expect_equal(invalid)?
-	)
+	_negative := expect_fault(
+		fn: discard(
+			copy(
+				source,
+				f"{temporary.path()}/negative-byte",
+				CopyOptions(recursive: true, max_bytes: -1),
+			)
+		)
+	)?
+	_negative_read := expect_fault(
+		fn: discard(read_file(f"{temporary.path()}/bytes", max_bytes: -1))
+	)?
+	_negative_list := expect_fault(fn: discard(list(temporary.path(), -1)))?
 	(
 		copy(
 			source,
@@ -247,3 +258,20 @@ test "filesystem default preparation retains written argument order":
 		) | expect_ok?
 	)
 	log | expect_equal(["data", "path", "destination", "source"])?
+
+test "file handle offsets and budgets fault when negative":
+	directory := temporary("manuscript-handle-faults-")?
+	path := f"{directory.path()}/data"
+	write_file(path, "abc").wait()?
+
+	var handle = open(path, OpenMode.ReadWrite)?
+	_read_at := expect_fault(fn: discard(handle.read_at(-1, none)))?
+	_write_at := expect_fault(fn: discard(handle.write_at(-1, "x")))?
+	_vectors := expect_fault(fn: discard(handle.read_vectors([-1], -1)))?
+	_truncate := expect_fault(fn: discard(handle.truncate(-1)))?
+	_lines := expect_fault(fn: discard(handle.read_lines(-1, none)))?
+	_read := expect_fault(fn: discard(handle.read(0)))?
+	handle.close()?
+
+fn discard[T](value: T) Void:
+	return

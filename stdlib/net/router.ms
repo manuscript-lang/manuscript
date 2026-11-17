@@ -118,7 +118,7 @@ fn var Router.route(
 	return insert(
 		var self.routes,
 		Route(
-			method: method.text(),
+			method: method.to_string(),
 			pattern: pattern,
 			segments: segments,
 			around: [],
@@ -453,7 +453,7 @@ fn dispatch(
 	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]],
 	var exchange: HttpExchange,
 ) Void!:
-	method := exchange.method().text()
+	method := exchange.method().to_string()
 	found := lookup(routes, method, split_path(exchange.path()))
 	var every: List[String] = []
 	if method == "OPTIONS" and exchange.path() == "*":
@@ -629,7 +629,7 @@ fn var TestExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:
 
 	var guard = hold[TestState](self.state)
 	guard.items[0].complete = true
-	if self.request.method.text() == "HEAD" or not has_body(status): return ok()
+	if self.request.method.to_string() == "HEAD" or not has_body(status): return ok()
 
 	guard.items[0].body.append_bytes(body)
 
@@ -654,7 +654,7 @@ fn var TestExchange.write_bytes(data: Bytes) Void!:
 	if not has_body(guard.items[0].status): return error(
 		Error("I/O: invalid input", kind: "EINVAL")
 	)
-	if self.request.method.text() == "HEAD": return ok()
+	if self.request.method.to_string() == "HEAD": return ok()
 
 	guard.items[0].body.append_bytes(data)
 
@@ -845,7 +845,7 @@ fn with_access_log(
 	next: fn(var HttpExchange) Void!
 ) Void!:
 	started := monotonic()
-	method := exchange.method().text()
+	method := exchange.method().to_string()
 	path := exchange.path()
 	protocol := exchange.protocol()
 	request := exchange.headers()

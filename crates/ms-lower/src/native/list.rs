@@ -86,7 +86,7 @@ impl<'a> FnLower<'a> {
         if let (
             TyKind::Alt(a),
             "get" | "err" | "get_or_else" | "or_else" | "map_error" | "map" | "and_then"
-            | "to_optional" | "error",
+            | "to_optional",
         ) = (self.b.m.types.kind(rty).clone(), name.as_str())
         {
             return self.result_method(result, &name, recv, a, args.to_vec());
@@ -987,6 +987,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            retains: false,
             role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags("msrt_list_index_fault").leaf,
             reads: crate::rtcall::rt_flags("msrt_list_index_fault").reads,

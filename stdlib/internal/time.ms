@@ -26,8 +26,6 @@ export extern fn msstd_time_local_zone() String
 
 export extern fn msstd_time_instant_shift(value: Instant, duration: Int) Instant
 
-export extern fn msstd_time_instant_unshift(value: Instant, duration: Int) Instant
-
 export extern fn msstd_time_instant_difference(value: Instant, other: Instant) Int
 
 export extern fn msstd_time_instant_compare(value: Instant, other: Instant) Int

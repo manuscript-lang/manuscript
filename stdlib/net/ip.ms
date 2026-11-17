@@ -21,7 +21,7 @@ export enum DnsKind:
 	SRV  // Service location records with priority, weight and port.
 
 // Returns the uppercase wire category.
-fn DnsKind.text() String:
+fn DnsKind.to_string() String:
 	match self:
 		A: return "A"
 		AAAA: return "AAAA"
@@ -38,7 +38,7 @@ export enum IpFamily:
 	IPv6  // A sixteen-byte numeric address.
 
 // Returns IPv4 or IPv6.
-fn IpFamily.text() String:
+fn IpFamily.to_string() String:
 	match self:
 		IPv4: return "IPv4"
 		IPv6: return "IPv6"
@@ -48,7 +48,7 @@ fn IpFamily.text() String:
 export extern type IpAddress
 
 // Returns canonical text; mapped IPv6 input is normalized to IPv4.
-fn IpAddress.text() String:
+fn IpAddress.to_string() String:
 	return msstd_net_ip_address_text(self)
 
 // Returns the normalized address family.
@@ -61,7 +61,7 @@ fn IpAddress.family() IpFamily:
 export extern type Cidr
 
 // Returns the canonical masked prefix without reparsing.
-fn Cidr.text() String:
+fn Cidr.to_string() String:
 	return msstd_net_cidr_text(self)
 
 // DNS record data returned by a typed lookup.

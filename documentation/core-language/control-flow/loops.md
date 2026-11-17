@@ -5,7 +5,7 @@ weight = 2
 
 # Loops
 
-`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Use a collection when you already have the values, a range when you need a count, or `while` when the next step depends on a condition. Custom sources can implement the standard `Iterator` or `Iterable` interfaces described below.
+`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Use a collection when you already have the values, a range when you need a count, or `while` when the next step depends on a condition. Custom sources can implement the standard `Iterator` interface described below.
 
 ## Traversing a list
 
@@ -83,7 +83,6 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `Set[T]` | `T` | Insertion order |
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 | `Iterator[T]` implementation | `T` | Order of `next()` results |
-| `Iterable[T]` implementation (`Deque`, `Queue`, `PriorityQueue`) | owned `T` | Index order of `at(index)` |
 
 `MapEntry[K, V]` is a type with `key: K` and `value: V` (constructor from `@std/collections/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
@@ -148,10 +147,9 @@ Output:
 1
 ```
 
-## Borrowing containers
+## Walking a Deque, Queue or PriorityQueue
 
-A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn length() Int` and `fn at(index: Int) T?`) is iterable: `for item in container:` reads `length()` once and then `at(index)` for each index, so the container is read in place and never copied, and `item` is an owned element. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back, `Queue` oldest first, and `PriorityQueue` in heap order, not dequeue order. A type that implements both `Iterator` and `Iterable` iterates with `Iterator`. The item count is fixed when the loop starts; a body that changes the container sees the new values at later indexes.
-
+These containers are not iterable. Walk one by position with `length()` and `get(index)`, which returns an optional (`none` when out of range, negative indexes count from the end):
 
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript
@@ -161,8 +159,9 @@ fn main() Void:
     var steps = Deque[Int]()
     steps.push_back(11)
     steps.push_back(12)
-    for step in steps:
-        print(step)
+    for index in 0..steps.length():
+        if step := steps.get(index):
+            print(step)
 ```
 
 Output:

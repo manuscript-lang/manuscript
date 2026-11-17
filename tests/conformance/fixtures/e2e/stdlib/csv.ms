@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	CsvOptions, parse, stringify from "@std/data/csv.ms",
-	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+	expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms",
 )
 
 test "CSV retains single empty fields and distinguishes empty rows":
@@ -130,8 +130,8 @@ test "CSV rejects malformed records invalid options and limits":
 	expect_equal(parse("a,b\n", CsvOptions(max_cells: 1)), limited)?
 	expect_equal(parse("a\nb\n", CsvOptions(max_rows: 1)), limited)?
 
-	invalid: String! := error(Error("CSV: invalid input", kind: "EINVAL"))
-	expect_equal(stringify([["a"]], CsvOptions("::", "\n")), invalid)?
+	_delimiter := expect_fault(fn: discard(stringify([["a"]], CsvOptions("::", "\n"))))?
+	_budget := expect_fault(fn: discard(parse("a\n", CsvOptions(max_rows: -1))))?
 
 test "CSV quoted fields preserve zero one and many escaped quotes":
 	for value in ["", "plain", "\"", "a\"b", "\"\"", "é\"日\"fin", "a\r\nb\"c\"d"]:
@@ -202,17 +202,25 @@ test "CSV quote scanning preserves Unicode and exact backslash dot":
 				failure,
 			)?
 
-test "CSV stringify retains invalid option and negative budget errors":
-	invalid: String! := error(Error("CSV: invalid input", kind: "EINVAL"))
+test "CSV stringify faults on invalid options and negative budgets":
 	for delimiter in ["", "::", "é", "\"", "\r", "\n"]:
-		expect_equal(stringify([["a"]], CsvOptions(delimiter.clone())), invalid)?
-	for ending in ["", "\r", "x"]:
-		expect_equal(
-			stringify([["a"]], CsvOptions(line_ending: ending.clone())),
-			invalid,
+		_delimiter := expect_fault(
+			fn: discard(stringify([["a"]], CsvOptions(delimiter.clone())))
 		)?
-	expect_equal(stringify([["a"]], max_bytes: -1), invalid)?
-	expect_equal(stringify([["a"]], CsvOptions("::", "x"), -1), invalid)?
+	for ending in ["", "\r", "x"]:
+		_ending := expect_fault(
+			fn: discard(
+				stringify(
+					[["a"]],
+					CsvOptions(line_ending: ending.clone()),
+				)
+			)
+		)?
 
+	_budget := expect_fault(fn: discard(stringify([["a"]], max_bytes: -1)))?
+	_both := expect_fault(fn: discard(stringify([["a"]], CsvOptions("::", "x"), -1)))?
 	no_rows: List[List[String]] := []
 	expect_equal((stringify(no_rows, max_bytes: 0)?), "")?
+
+fn discard[T](value: T) Void:
+	return

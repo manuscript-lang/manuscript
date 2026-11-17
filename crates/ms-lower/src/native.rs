@@ -2,6 +2,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use crate::rtcall::{Twin, rt_twin};
 use ms_check::api::ast::*;
 use ms_check::api::hir::{CallView, Resolution};
 use ms_check::api::syntax::DefaultForm;
@@ -189,6 +190,7 @@ impl<'a> FnLower<'a> {
                     noreturn: true,
                     pure_: false,
                     fresh: false,
+                    retains: false,
                     role: ms_mir::ir::ExternRole::None,
                     leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
                     reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
@@ -570,26 +572,34 @@ impl FnLower<'_> {
         }
     }
 
-    /// The runtime entry that lists a map's keys (or values) as borrowed views, when `m` is that
-    /// method on a map that stays unchanged for the whole call.
-    fn keys_view_symbol(
-        &self,
-        m: &ct::MethodRef,
-        recv_expr: &Expr,
-        recv: Value,
-    ) -> Option<&'static str> {
-        if !self.stable_place(recv_expr) {
+    /// The runtime function the native method `native` of a receiver of type `recv` calls: the
+    /// one whose borrowing twins (`crate::rtcall::Twin`) lowering may call instead. A set shares
+    /// its map's entry points, but not their views: a set's `values` are its keys.
+    pub(crate) fn twin_base(&self, recv: MTy, native: &str) -> Option<String> {
+        if matches!(self.b.m.types.kind(recv), TyKind::Obj(Native::Set, _)) {
             return None;
         }
-        let is_map = matches!(
-            self.b.m.types.kind(self.ty_of(recv)),
-            TyKind::Obj(Native::Map, _)
-        );
-        match self.syms.str(m.name()?) {
-            "keys" if is_map => Some("msrt_map_keys_view"),
-            "values" if is_map => Some("msrt_map_values_view"),
-            _ => None,
+        crate::rtcall::method_symbol(self.b.m, recv, native)
+    }
+
+    /// The twin of `kind` for the native method call `call`, when its function declares one.
+    pub(crate) fn call_twin(&mut self, call: &Expr, kind: Twin) -> Option<&'static str> {
+        let ExprKind::Call { callee, .. } = &call.kind else {
+            return None;
+        };
+        let ExprKind::Member { left, .. } = &callee.kind else {
+            return None;
+        };
+        let Resolution::Method(m) = self.hir.resolution(call) else {
+            return None;
+        };
+        if matches!(m.native, ct::Native::Source | ct::Native::Contract) {
+            return None;
         }
+        let recv_ty = self.ety(left);
+        let recv = self.mty(&recv_ty).ok()?;
+        let base = self.twin_base(recv, m.native.text(self.syms))?;
+        rt_twin(&base, kind)
     }
 }
 

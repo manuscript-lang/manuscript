@@ -1,8 +1,9 @@
 //! `FileWatcher`: a polling watcher (snapshot comparison) and a native one (inotify on Linux,
 //! kqueue on macOS, `ReadDirectoryChangesW` on Windows).
 //! The polling, kqueue and Windows watchers are driven from `next`, so they need no worker
-//! thread; the polling one sleeps its interval in one wait that `close` wakes, the other two
-//! still wait in short slices and poll for cancellation between them. Only inotify has one:
+//! thread; the polling one sleeps its interval in one wait that `close` wakes, kqueue parks on
+//! its descriptor (`close` queues a user event), and Windows parks on the request's event
+//! (`close` sets it). Only inotify has one:
 //! it reports a new directory without watching it, so a reader thread (using no runtime calls,
 //! waking `next` through an eventfd) must register it at once or changes inside it are lost.
 //! kqueue registers new paths in the same snapshot diff that reports them, and
@@ -19,10 +20,6 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NONE, STATUS_UNSUPPORTED};
 #[cfg(target_os = "linux")]
 use std::sync::{Arc, Mutex};
-
-/// How long the macOS and Windows watchers park between looks (their waits are not events yet).
-#[cfg(any(target_os = "macos", windows))]
-const SLICE_MS: i32 = 50;
 
 /// One event: the affected path and whether it appeared/disappeared/moved (`rename`) or changed.
 pub struct Event {
@@ -70,9 +67,9 @@ fn visit(
     Ok(())
 }
 
-/// Waits for inotify events: the task parks until the reader queues one or `close` signals the
-/// same descriptor, so other tasks keep running and nothing looks on a period.
-#[cfg(target_os = "linux")]
+/// Waits for a watcher descriptor (inotify's eventfd, the kqueue): the task parks until an event
+/// is queued or `close` signals the same descriptor, so other tasks keep running and nothing looks on a period.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn wait_events(fd: sys::Fd) {
     #[cfg(not(test))]
     // A stop request ends the wait early; the caller's next `poll_cancel()?` returns it.
@@ -126,13 +123,25 @@ fn valid_native(root: &[u8], recursive: bool, max: i64, events: i64, overflow: &
     snapshot(root, recursive, max).map(drop)
 }
 
-#[cfg(any(target_os = "macos", windows))]
-fn sleep_slice() {
+/// Parks the task until the waitable event `handle` is signalled; a stop request ends it early
+/// (the caller's next `poll_cancel()?` returns it). False when the runtime cannot watch it.
+#[cfg(windows)]
+fn wait_object(handle: isize) -> bool {
     #[cfg(not(test))]
-    // A stop request ends the sleep early; the caller's next `poll_cancel()?` returns it.
-    let _ = ms_rt::glue::try_task_sleep(i64::from(SLICE_MS) * 1_000_000);
+    {
+        // SAFETY: the event stays open for the wait, and the watch ends before the caller goes on.
+        let got = unsafe { ms_rt::glue::object::try_wait(handle, -1) };
+        ms_rt::glue::object::forget(handle);
+        !matches!(got, Ok(None))
+    }
+    // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
-    sys::sleep_ms(SLICE_MS);
+    {
+        use windows_sys::Win32::System::Threading::{INFINITE, WaitForSingleObject};
+        // SAFETY: the event is open for the call.
+        unsafe { WaitForSingleObject(handle as *mut _, INFINITE) };
+        true
+    }
 }
 
 /// What a watcher's wait ends on besides its own event: `close`. The waiting task parks on a

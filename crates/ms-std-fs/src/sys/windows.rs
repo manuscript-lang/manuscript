@@ -2,9 +2,8 @@
 //! unstable), volume sizes, readiness polling of pipes and consoles, the Go-style open flags, and
 //! the standard streams, which go through `std::io` so it converts console text to UTF-16.
 use super::{
-    CPath, EINVAL, Errno, Fd, FsStat, INVALID_FD, Interest, O_APPEND, O_CREAT, O_EXCL, O_RDONLY,
-    O_RDWR, O_SYNC, O_TRUNC, O_WRONLY, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFREG, Stat, code,
-    unix_pair,
+    CPath, EINVAL, Errno, Fd, FsStat, INVALID_FD, O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR,
+    O_SYNC, O_TRUNC, O_WRONLY, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFREG, Stat, code, unix_pair,
 };
 use std::fs::{File, Metadata, OpenOptions};
 use std::io::{self, Read, Write};
@@ -12,7 +11,7 @@ use std::os::windows::ffi::OsStrExt;
 use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::{AsRawHandle, IntoRawHandle, RawHandle};
 use std::path::{Component, Path};
-use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
+use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, WAIT_OBJECT_0};
 use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_READONLY, FILE_FLAG_BACKUP_SEMANTICS,
     FILE_FLAG_OPEN_REPARSE_POINT, FILE_FLAG_WRITE_THROUGH, FILE_TYPE_CHAR, FILE_TYPE_DISK,
@@ -22,8 +21,10 @@ use windows_sys::Win32::Storage::FileSystem::{
 use windows_sys::Win32::System::Console::{
     GetConsoleMode, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, SetStdHandle,
 };
-use windows_sys::Win32::System::Pipes::PeekNamedPipe;
-use windows_sys::Win32::System::Threading::WaitForSingleObject;
+use windows_sys::Win32::System::IO::CancelIoEx;
+use windows_sys::Win32::System::Threading::{
+    CreateEventW, INFINITE, SetEvent, WaitForMultipleObjects,
+};
 
 /// Opens `path` with Go's Windows `O_*` flag values and permission bits `mode` (only the owner
 /// write bit matters: without it a created file is read-only).
@@ -257,64 +258,70 @@ fn is_console(handle: RawHandle) -> bool {
     unsafe { GetConsoleMode(handle, &mut mode) != 0 }
 }
 
-/// Lets other tasks run for 2 ms between checks of a handle that cannot be polled.
-fn pause_2ms() {
-    #[cfg(not(test))]
-    // A stop request ends the sleep early; the caller's loop checks for it next.
-    let _ = ms_rt::glue::try_task_sleep(2_000_000);
-    // Tests run on many threads, which the runtime's scheduler does not support.
-    #[cfg(test)]
-    std::thread::sleep(std::time::Duration::from_millis(2));
+/// What a handle that cannot be polled blocks on.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Source {
+    /// A pipe: only a read waits for data, and it cannot be waited on without consuming.
+    Pipe,
+    /// A console: its input handle is signalled while input records are queued.
+    Console,
+    /// Anything else never blocks a read.
+    Other,
 }
 
-/// Blocks up to `ms` milliseconds until `fd` is ready; `true` when ready, hung up or failed (the
-/// next read or write reports the details). Only pipes and consoles can block a read.
-pub fn wait_ready(fd: Fd, interest: Interest, ms: i32) -> bool {
-    if interest == Interest::Write {
-        return true;
-    }
+/// How `fd` blocks.
+pub fn source(fd: Fd) -> Source {
     let handle = fd as RawHandle;
     // SAFETY: plain query.
     match unsafe { GetFileType(handle) } {
-        FILE_TYPE_PIPE => {
-            let mut waited = 0;
-            loop {
-                let mut avail = 0u32;
-                // SAFETY: `avail` is writable.
-                let r = unsafe {
-                    PeekNamedPipe(
-                        handle,
-                        std::ptr::null_mut(),
-                        0,
-                        std::ptr::null_mut(),
-                        &mut avail,
-                        std::ptr::null_mut(),
-                    )
-                };
-                if r == 0 || avail > 0 {
-                    return true;
-                }
-                if waited >= ms {
-                    return false;
-                }
-                pause_2ms();
-                waited += 2;
-            }
-        }
-        FILE_TYPE_CHAR if is_console(handle) => {
-            let mut waited = 0;
-            loop {
-                // SAFETY: polling a console input handle.
-                if unsafe { WaitForSingleObject(handle, 0) } == WAIT_OBJECT_0 {
-                    return true;
-                }
-                if waited >= ms {
-                    return false;
-                }
-                pause_2ms();
-                waited += 2;
-            }
-        }
-        _ => true,
+        FILE_TYPE_PIPE => Source::Pipe,
+        FILE_TYPE_CHAR if is_console(handle) => Source::Console,
+        _ => Source::Other,
     }
+}
+
+/// A manual-reset event that ends a console wait from another thread.
+pub struct Stop(HANDLE);
+
+// SAFETY: an event handle may be signalled and waited on from any thread.
+unsafe impl Send for Stop {}
+// SAFETY: as above.
+unsafe impl Sync for Stop {}
+
+impl Stop {
+    pub fn new() -> io::Result<Stop> {
+        // SAFETY: no security attributes and no name.
+        let event = unsafe { CreateEventW(std::ptr::null(), 1, 0, std::ptr::null()) };
+        if event.is_null() {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(Stop(event))
+    }
+
+    /// Ends the wait that watches this event, now or whenever it starts.
+    pub fn signal(&self) {
+        // SAFETY: the event is open until `drop`.
+        unsafe { SetEvent(self.0) };
+    }
+}
+
+impl Drop for Stop {
+    fn drop(&mut self) {
+        // SAFETY: the event is open and owned here.
+        unsafe { CloseHandle(self.0) };
+    }
+}
+
+/// Blocks until the console input `fd` has input or `stop` is signalled: `true` when it has
+/// input (or failed, which the next read reports), `false` when stopped.
+pub fn wait_console(fd: Fd, stop: &Stop) -> bool {
+    let handles = [fd as HANDLE, stop.0];
+    // SAFETY: two open handles; waits for either with no timeout.
+    unsafe { WaitForMultipleObjects(2, handles.as_ptr(), 0, INFINITE) == WAIT_OBJECT_0 }
+}
+
+/// Fails the blocking read another thread has pending on `fd`, so that thread returns.
+pub fn cancel_io(fd: Fd) {
+    // SAFETY: cancels every request on an open handle; nothing else uses it meanwhile.
+    unsafe { CancelIoEx(fd as HANDLE, std::ptr::null()) };
 }

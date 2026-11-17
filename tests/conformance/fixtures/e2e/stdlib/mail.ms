@@ -20,8 +20,8 @@ test "addresses parse in each form":
 
 	quoted := parse_address("\"Lovelace, Ada\" <ada@example.com>").get()
 	expect_equal(quoted.name, "Lovelace, Ada")?
-	expect_equal(quoted.to_text(), "\"Lovelace, Ada\" <ada@example.com>")?
-	expect_equal(named.to_text(), "Ada Lovelace <ada@example.com>")?
+	expect_equal(quoted.to_string(), "\"Lovelace, Ada\" <ada@example.com>")?
+	expect_equal(named.to_string(), "Ada Lovelace <ada@example.com>")?
 
 test "bad addresses are errors":
 	expect_true(parse_address("").is_error())?

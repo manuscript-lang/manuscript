@@ -157,6 +157,7 @@ pub(super) extern "C" fn task_main() -> ! {
 /// `SPAWN_DETACHED` nobody joins the task and a fault in it ends the process (exit 134);
 /// otherwise the fault is returned by `msrt_task_join`.
 #[unsafe(no_mangle)]
+// ms: retains
 pub unsafe extern "C-unwind" fn msrt_task_spawn(
     entry: Entry,
     arg: *mut u8,

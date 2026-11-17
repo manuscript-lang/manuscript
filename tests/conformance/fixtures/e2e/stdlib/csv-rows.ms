@@ -5,7 +5,7 @@ import (
 	CsvOptions, csv_rows, parse from "@std/data/csv.ms",
 	ReadStream, Source from "@std/io/io.ms",
 	collect, from_list from "@std/io/streams.ms",
-	expect_equal, fail from "@std/test/test.ms",
+	expect_equal, expect_fault, fail from "@std/test/test.ms",
 )
 
 // Hands out the chunks in order, then ends.
@@ -101,9 +101,7 @@ test "options apply":
 		[["a", "b"], ["c;d", "e"]],
 	)?
 
-test "empty CSV streams reject invalid options":
-	invalid: List[List[String]]! := error(Error("CSV: invalid input", kind: "EINVAL"))
-
+test "CSV streams fault on invalid options":
 	for options in [
 		CsvOptions(delimiter: ""),
 		CsvOptions(delimiter: "::"),
@@ -113,10 +111,9 @@ test "empty CSV streams reject invalid options":
 		CsvOptions(line_ending: "\r"),
 	]:
 		for text in ["", "a", "a\n"]:
-			expect_equal(read_rows(text, 1, options.clone()), invalid)?
+			_rows := expect_fault(fn: discard(read_rows(text, 1, options.clone())))?
 
-		empty_chunks := from_list(["".to_bytes(), "".to_bytes()])
-		expect_equal(empty_chunks | csv_rows(options.clone()) | collect(none), invalid)?
+		_stream := expect_fault(fn: discard(read_empty_chunks(options.clone())))?
 
 	no_rows: List[List[String]] := []
 	expect_equal(read_rows("", 1)?, no_rows)?
@@ -267,3 +264,14 @@ test "oversized EOF records stay rejected after a failed read":
 	expect_equal((rows.next()?).is_none(), true)?
 	expect_equal((read_rows("", 1, max_record_bytes: 0)?).is_empty(), true)?
 	expect_equal(read_rows("\"\"", 1, max_record_bytes: 2)?, [[""]])?
+
+fn read_empty_chunks(options: CsvOptions) List[List[String]]!:
+	empty_chunks := from_list(["".to_bytes(), "".to_bytes()])
+	return (
+		empty_chunks
+		| csv_rows(options)
+		| collect(none)
+	)
+
+fn discard[T](value: T) Void:
+	return

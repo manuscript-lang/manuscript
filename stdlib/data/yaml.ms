@@ -710,7 +710,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 			reason: "explicit mapping keys are unsupported",
 		)
 	)
-	if not plain_may_start(text): return error(
+	if not (plain_may_start(text) or key and text == "-"): return error(
 		flow_invalid(
 			flow,
 			"a plain scalar cannot start with an indicator character",
@@ -1129,6 +1129,11 @@ fn plain_may_start(text: String) Bool:
 		return not (second == 0 or second == 32 or second == 9)
 
 	return true
+
+// A mapping key may be a lone `-` or `?`: the colon that follows makes it a key, so no
+// space follows the indicator (`-: 1`).
+fn plain_key_may_start(text: String) Bool:
+	return text == "-" or text == "?" or plain_may_start(text)
 
 fn quoted_or_nested(text: String) Bool:
 	return (
@@ -2426,7 +2431,7 @@ fn block(
 				not quoted_key
 				and plain_key
 				and (
-					not plain_may_start(name)
+					not plain_key_may_start(name)
 					or key_start == 124
 					or key_start == 62
 				)

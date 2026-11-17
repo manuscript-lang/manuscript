@@ -622,6 +622,23 @@ mod tests {
         *ms
     }
 
+    /// Blocks until `done` holds of the pool, woken by each finished job; a deadline only keeps a
+    /// hung job from hanging the test run.
+    fn wait_for_pool(done: impl Fn(&Pool) -> bool) {
+        let end = Instant::now() + Duration::from_secs(30);
+        let mut pool = lock();
+        while !done(&pool) {
+            let left = end.saturating_duration_since(Instant::now());
+            assert!(!left.is_zero(), "the pool did not settle");
+            pool.finish_waiters += 1;
+            pool = FINISHED
+                .wait_timeout(pool, left)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+            pool.finish_waiters -= 1;
+        }
+    }
+
     #[expect(clippy::ptr_arg, reason = "a job takes `&I` for its input type")]
     fn doubled(v: &Vec<u8>) -> Vec<u8> {
         v.iter().map(|b| b * 2).collect()
@@ -664,10 +681,7 @@ mod tests {
         assert!(start.elapsed() < Duration::from_millis(250));
         // The job sleeps 300 ms on a pool thread; wait for it to finish rather than for a fixed time,
         // since a loaded runner can start that thread late (darwin-arm64 saw 0 finished after 400 ms).
-        let deadline = Instant::now() + Duration::from_secs(10);
-        while lock().finished.is_empty() && Instant::now() < deadline {
-            std::thread::sleep(Duration::from_millis(10));
-        }
+        wait_for_pool(|pool| !pool.finished.is_empty());
         assert_eq!(lock().finished.len(), 1);
         assert_eq!(
             run(Lane::General, std::vec![1u8], doubled, -1),
@@ -684,7 +698,7 @@ mod tests {
             run(Lane::General, std::vec![5u8], doubled, -1),
             Some(std::vec![10])
         );
-        std::thread::sleep(Duration::from_millis(200 * (threads() as u64 + 2)));
+        wait_for_pool(|pool| pool.dns_running == 0 && pool.queue.is_empty());
         assert!(MOST_DNS.load(Ordering::SeqCst) <= dns_cap());
         assert!(pool_threads() <= threads());
         let _ = run(Lane::General, std::vec![0u8], doubled, -1);

@@ -173,6 +173,8 @@ impl InstCheck<'_, '_> {
             | Op::IfaceBorrow
             | Op::IfaceView
             | Op::IfaceIs
+            | Op::IfaceTag
+            | Op::IfaceDestroy
             | Op::IfaceData => self.closures_and_interfaces(),
             Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod => self.calls(),
             Op::Clone | Op::AltOwn | Op::MoveOut | Op::Drop | Op::Forget | Op::DropIf => {
@@ -186,6 +188,7 @@ impl InstCheck<'_, '_> {
             | Op::PtrAdd
             | Op::PtrNull
             | Op::PtrLoadU
+            | Op::PtrStoreU
             | Op::PtrField
             | Op::Load
             | Op::Take
@@ -196,6 +199,8 @@ impl InstCheck<'_, '_> {
             Op::Poll
             | Op::DepthEnter
             | Op::DepthLeave
+            | Op::StackLow
+            | Op::StackNear
             | Op::CleanupRun
             | Op::CleanupPush
             | Op::GlobalGet
@@ -1009,6 +1014,21 @@ impl InstCheck<'_, '_> {
                     "iface.data takes an interface and yields ptr",
                 )
             }
+            Op::IfaceTag => {
+                self.arity(1)?;
+                self.want(
+                    matches!(self.m.types.kind(self.t(0)), TyKind::Iface(_))
+                        && self.res == Some(Ty::INT),
+                    "iface.tag takes an interface and yields int: 0 owns the box and payload, 1 only the box, 2 nothing",
+                )
+            }
+            Op::IfaceDestroy => {
+                self.arity(1)?;
+                self.want(
+                    matches!(self.m.types.kind(self.t(0)), TyKind::Iface(_)) && self.res.is_none(),
+                    "iface.destroy takes an interface and runs its payload destructor",
+                )
+            }
             _ => unreachable!("closures_and_interfaces is only called for its own ops"),
         }
     }
@@ -1209,6 +1229,16 @@ impl InstCheck<'_, '_> {
                     "ptr.loadu reads 1, 2, 4 or 8 unaligned bytes at a ptr into an int",
                 )
             }
+            Op::PtrStoreU => {
+                self.arity(2)?;
+                self.want(
+                    self.t(0) == Ty::PTR
+                        && self.t(1) == Ty::INT
+                        && matches!(self.inst.imm, Imm::Int(1 | 2 | 4 | 8))
+                        && self.res.is_none(),
+                    "ptr.storeu writes the low 1, 2, 4 or 8 bytes of an int unaligned at a ptr",
+                )
+            }
             Op::PtrNull => {
                 self.arity(0)?;
                 self.want(self.res == Some(Ty::PTR), "ptr.null yields a ptr")
@@ -1319,6 +1349,20 @@ impl InstCheck<'_, '_> {
     fn runtime_services(&self) -> Result<(), String> {
         match self.inst.op {
             Op::Poll | Op::DepthEnter | Op::DepthLeave => self.arity(0),
+            Op::StackLow => {
+                self.arity(0)?;
+                self.want(
+                    self.res == Some(Ty::BOOL),
+                    "stack.low yields whether the stack pointer is below the stack segment's limit",
+                )
+            }
+            Op::StackNear => {
+                self.arity(0)?;
+                self.want(
+                    matches!(self.inst.imm, Imm::Int(h) if h >= 0) && self.res == Some(Ty::BOOL),
+                    "stack.near N yields whether the stack pointer is within N bytes of the stack segment's limit",
+                )
+            }
             Op::CleanupRun => {
                 self.arity(1)?;
                 self.want(

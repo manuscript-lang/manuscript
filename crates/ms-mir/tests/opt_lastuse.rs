@@ -446,3 +446,27 @@ fn independent_values_in_one_block_keep_their_drop_positions() {
         assert_eq!(group[2].args, [group[0].res.unwrap()]);
     }
 }
+
+const JOINED_VIEW: &str = r#"module "t"
+file 0 "t.ms"
+entry @main
+
+fn @main() -> int export {
+b0:
+  %0: list<int> = list.lit
+  %1: opt<list<int>> = opt.some %0
+  %2: list<int> = opt.get %1
+  br b1(%2, %1)
+b1(%3: list<int>, %4: move opt<list<int>>):
+  %5: int = list.len %3
+  drop %4
+  ret %5
+}
+"#;
+
+#[test]
+fn a_parameter_stays_alive_while_a_sibling_parameter_views_it() {
+    // `%3` is a view into the payload of `%4`; `%4` is dropped where lowering put it, after the read.
+    let m = optimized(JOINED_VIEW);
+    assert_eq!(ops(&m, "main")[1], [Op::ListLen, Op::Drop]);
+}
