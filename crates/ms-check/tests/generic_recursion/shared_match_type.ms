@@ -26,7 +26,17 @@ fn main() Void:
     v18 := double(v17)
     v19 := double(v18)
     v20 := double(v19)
+    v21 := double(v20)
+    v22 := double(v21)
+    v23 := double(v22)
+    v24 := double(v23)
+    v25 := double(v24)
+    v26 := double(v25)
+    v27 := double(v26)
+    v28 := double(v27)
+    v29 := double(v28)
+    v30 := double(v29)
 
     _chosen := match true:
-        true: v20
-        false: v20
+        true: v30
+        false: v30
