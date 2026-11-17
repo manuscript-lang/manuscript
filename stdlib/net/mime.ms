@@ -225,10 +225,14 @@ fn is_token(value: String) Bool:
 	if value.is_empty(): return false
 	return not value.contains_any(" \t\"(),/:;<=>?@[\\]{}")
 
+// Line breaks cannot appear in a header value, so they are written as `%0D` and `%0A`,
+// as browsers do for form field and file names. Without this a name carrying a line
+// break would inject header lines into the part.
 fn quote_value(value: String) String:
-	if is_token(value): return value.clone()
+	safe := value.replace("\r", "%0D").replace("\n", "%0A")
+	if is_token(safe): return safe
 
-	escaped := value.replace("\\", "\\\\").replace("\"", "\\\"")
+	escaped := safe.replace("\\", "\\\\").replace("\"", "\\\"")
 	return f"\"{escaped}\""
 
 // Parses a header block (up to the first blank line). Continuation lines starting with
