@@ -1,7 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
-	Closeable, panic from "@std/core.ms",
+	Closeable from "@std/core.ms",
 	DescriptorSink,
 	DescriptorSource,
 	ReadStream,
@@ -349,11 +349,10 @@ export fn set_title(title: String) Void!:
 
 // Replaces the supplementary group list with the groups of `username` from the account
 // database plus `gid` first. Requires privilege. A failed user lookup returns EIO, a
-// `gid` outside 0 through 2147483647 is a programming fault, and a lack of privilege
-// returns EACCES.
+// `gid` outside 0 through 2147483647 returns EINVAL, and a lack of privilege returns
+// EACCES.
 // ms: effect std.process.write
 export fn initialize_groups(username: String, gid: Int) Void!:
-	require_id("initialize_groups", "gid", gid)
 	return msstd_process_initialize_groups(username, gid)
 
 // Replaces the running process image with `program` using exactly the given `arguments`
@@ -409,14 +408,12 @@ export fn resource_usage() ResourceUsage!:
 // Sets mask 0..511 (0777) and returns the previous mask; ENOTSUP on Windows.
 // ms: effect std.process.write
 export fn umask(mask: Int) Int!:
-	if mask < 0 or mask > 511: panic("umask: mask must be from 0 through 511")
 	return msstd_process_umask(mask)
 
-// Sets the real or effective user or group id to `id`, 0..2147483647; other ids are a
-// programming fault. Identity changes require OS permission and are ENOTSUP on Windows.
+// Sets the real or effective user or group id to `id`, 0..2147483647; other ids return
+// EINVAL. Identity changes require OS permission and are ENOTSUP on Windows.
 // ms: effect std.process.write
 export fn set_identity(kind: IdentityKind, id: Int) Void!:
-	require_id("set_identity", "id", id)
 	if kind == IdentityKind.Uid: return msstd_process_set_identity("uid", id)
 	if kind == IdentityKind.Gid: return msstd_process_set_identity("gid", id)
 	if kind == IdentityKind.Euid: return msstd_process_set_identity("euid", id)
@@ -424,34 +421,22 @@ export fn set_identity(kind: IdentityKind, id: Int) Void!:
 	return msstd_process_set_identity("egid", id)
 
 // Replaces the supplementary group list with the given numeric ids, each 0 through
-// 2147483647. Requires privilege. An invalid id is a programming fault, a lack of privilege
+// 2147483647. Requires privilege. Invalid ids return EINVAL, a lack of privilege
 // returns EACCES, and Windows returns ENOTSUP.
 // ms: effect std.process.write
 export fn set_groups(groups: List[Int]) Void!:
-	for group in groups:
-		require_id("set_groups", "group id", group)
 	return msstd_process_set_groups(groups)
 
 // Returns the scheduling priority of process `pid` (0 means the calling process) as a
 // nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority
-// classes onto this range. A pid outside 0 through 2147483647 is a programming fault,
-// and platforms without priorities return ENOTSUP.
+// classes onto this range. A pid outside 0 through 2147483647 returns EINVAL, and
+// platforms without priorities return ENOTSUP.
 // ms: effect std.process.read
 export fn get_priority(pid: Int) Int!:
-	require_id("get_priority", "pid", pid)
 	return msstd_system_get_priority(pid)
 
-// Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority); other
-// values are a programming fault.
+// Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
 // Unix uses nice values; Windows maps ranges to native priority classes.
 // ms: effect std.process.write
 export fn set_priority(pid: Int, priority: Int) Void!:
-	require_id("set_priority", "pid", pid)
-	if priority < -20 or priority > 19:
-		panic("set_priority: priority must be from -20 through 19")
 	return msstd_system_set_priority(pid, priority)
-
-// Faults when an operating-system id is outside 0 through 2147483647.
-fn require_id(function: String, name: String, value: Int) Void:
-	if value < 0 or value > 2147483647:
-		panic(f"{function}: {name} must be from 0 through 2147483647")

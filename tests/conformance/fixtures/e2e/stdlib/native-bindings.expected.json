@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "native-bindings.ms::set_identity and set_groups fault on bad ids and apply or refuse",
+          "name": "native-bindings.ms::set_identity and set_groups validate input and apply or refuse",
           "status": "passed"
         },
         {
@@ -41,7 +41,7 @@
         },
         {
           "index": 6,
-          "name": "native-bindings.ms::polling options fault on native-only settings",
+          "name": "native-bindings.ms::polling options reject native-only settings",
           "status": "passed"
         },
         {
@@ -60,7 +60,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN native-bindings.ms::process usage records report this process\nPASS native-bindings.ms::process usage records report this process\nRUN native-bindings.ms::set_identity and set_groups fault on bad ids and apply or refuse\nPASS native-bindings.ms::set_identity and set_groups fault on bad ids and apply or refuse\nRUN native-bindings.ms::replace rejects invalid programs before leaving this process\nPASS native-bindings.ms::replace rejects invalid programs before leaving this process\nRUN native-bindings.ms::stat_filesystem describes the filesystem under a path\nPASS native-bindings.ms::stat_filesystem describes the filesystem under a path\nRUN native-bindings.ms::polling and native watchers report a created file and close\nPASS native-bindings.ms::polling and native watchers report a created file and close\nRUN native-bindings.ms::native watcher max_entries counts the paths under the root\nPASS native-bindings.ms::native watcher max_entries counts the paths under the root\nRUN native-bindings.ms::polling options fault on native-only settings\nPASS native-bindings.ms::polling options fault on native-only settings\nRUN native-bindings.ms::recursive native watch sees a file in a new subdirectory\nPASS native-bindings.ms::recursive native watch sees a file in a new subdirectory\n8 tests, 0 failed\n",
+      "stdout": "RUN native-bindings.ms::process usage records report this process\nPASS native-bindings.ms::process usage records report this process\nRUN native-bindings.ms::set_identity and set_groups validate input and apply or refuse\nPASS native-bindings.ms::set_identity and set_groups validate input and apply or refuse\nRUN native-bindings.ms::replace rejects invalid programs before leaving this process\nPASS native-bindings.ms::replace rejects invalid programs before leaving this process\nRUN native-bindings.ms::stat_filesystem describes the filesystem under a path\nPASS native-bindings.ms::stat_filesystem describes the filesystem under a path\nRUN native-bindings.ms::polling and native watchers report a created file and close\nPASS native-bindings.ms::polling and native watchers report a created file and close\nRUN native-bindings.ms::native watcher max_entries counts the paths under the root\nPASS native-bindings.ms::native watcher max_entries counts the paths under the root\nRUN native-bindings.ms::polling options reject native-only settings\nPASS native-bindings.ms::polling options reject native-only settings\nRUN native-bindings.ms::recursive native watch sees a file in a new subdirectory\nPASS native-bindings.ms::recursive native watch sees a file in a new subdirectory\n8 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

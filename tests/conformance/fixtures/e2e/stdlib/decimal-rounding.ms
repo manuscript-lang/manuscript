@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Decimal, RoundingMode from "@std/math/decimal.ms",
-	expect_equal, expect_fault from "@std/test/test.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "decimal cents stay exact and fixed places retain zeros":
@@ -34,16 +34,20 @@ test "decimal rounding modes include signed ties and coarse scales":
 	rounded: fn(Int, RoundingMode?) Decimal! := 2.5d.round
 	expect_equal((rounded(0, RoundingMode.HalfEven)?), 2d)?
 
-test "decimal scale extremes and invalid requests fault":
+test "decimal scale extremes and invalid requests return typed errors":
 	expect_equal((1e-6176d.round(6176)?), 1e-6176d)?
 	expect_equal((5e-6176d.round(6175)?), 0d)?
 	expect_equal((1e6144d.round(-6144)?), 1e6144d)?
 	expect_equal((0d.to_fixed(6176)?).scalar_length(), 6178)?
 
-	_low := expect_fault(fn: discard(0d.round(-6145)))?
-	_high := expect_fault(fn: discard(0d.round(6177)))?
-	_negative := expect_fault(fn: discard(0d.to_fixed(-1)))?
-	_digits := expect_fault(fn: discard(0d.to_fixed(6177)))?
+	invalid_round: Decimal! := error(Error("number: invalid input", kind: "EINVAL"))
+	expect_equal(0d.round(-6145), invalid_round)?
+	expect_equal(0d.round(6177), invalid_round)?
+
+	invalid_fixed: String! := error(Error("number: invalid input", kind: "EINVAL"))
+	expect_equal(0d.to_fixed(-1), invalid_fixed)?
+	expect_equal(0d.to_fixed(6177), invalid_fixed)?
+
 	overflow: Decimal! := error(Error("number: value out of range", kind: "ERANGE"))
 	expect_equal(9.999999999999999999999999999999999e6144d.round(-6144), overflow)?
 
@@ -59,6 +63,3 @@ test "exact rounding retains values at every supported precision":
 			expect_equal((value.round(6176, mode)?), value)?
 		expect_equal((0d.round(-6144, mode)?), 0d)?
 		expect_equal(((-1e-6176d).round(6176, mode)?), -1e-6176d)?
-
-fn discard[T](value: T) Void:
-	return

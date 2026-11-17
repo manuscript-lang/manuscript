@@ -16,7 +16,6 @@ import (
 	expect_equal,
 	expect_error,
 	expect_false,
-	expect_fault,
 	expect_not_equal,
 	fail from "@std/test/test.ms",
 	Duration, Instant, Timestamp, nanoseconds, timestamp from "@std/time.ms",
@@ -63,8 +62,8 @@ test "JSON independently enforces byte depth and value budgets":
 	expect_equal(parse("[[[]]]", JsonOptions(max_depth: 2)), limited)?
 	expect_equal(parse("[1,2]", JsonOptions(max_values: 2)), limited)?
 
-	_negative := expect_fault(fn: discard(parse("null", JsonOptions(max_bytes: -1))))?
-	_indent := expect_fault(fn: discard(stringify(1, StringifyOptions(indent: -1))))?
+	invalid: JsonValue! := error(Error("JSON: invalid input", kind: "EINVAL"))
+	expect_equal(parse("null", JsonOptions(max_bytes: -1)), invalid)?
 
 test "JSON untyped parse keeps document shape and releases partial trees on failure":
 	long := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -141,13 +140,7 @@ fn encoded[T: Data](item: T) String!:
 	return stringify(item)
 
 test "JSON stringify encodes records in declaration order and omits none fields":
-	var request = Request(
-		model: "m",
-		stream: true,
-		user: none,
-		temperature: 0.5,
-		tags: ["a", "b"],
-	)
+	var request = Request(model: "m", stream: true, user: none, temperature: 0.5, tags: ["a", "b"])
 	expected := "{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]}"
 	expect_equal((encoded(request)?), expected)?
 	request.user = "u"
@@ -179,16 +172,15 @@ test "JSON stringify encodes scalars exactly":
 	mixed := Box[JsonValue](parsed, none)
 	expect_equal((encoded(mixed)?), "{\"first\":{\"n\":1.50}}")?
 
-test "JSON stringify reports non-finite numbers and exceeded budgets, and faults on negative ones":
+test "JSON stringify reports non-finite numbers and budgets as errors":
 	expect_equal((encoded(1e308 * 10.0)?), "null")?
 	expect_equal((encoded(1e308 * 10.0 - 1e308 * 10.0)?), "null")?
 
 	limited: String! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(stringify("abcdef", StringifyOptions(max_bytes: 4)), limited)?
 
-	_negative := expect_fault(
-		fn: discard(stringify(1, StringifyOptions(max_bytes: -1)))
-	)?
+	negative: String! := error(Error("JSON: invalid input", kind: "EINVAL"))
+	expect_equal(stringify(1, StringifyOptions(max_bytes: -1)), negative)?
 
 test "JSON stringify repeats shared acyclic values and reads current field values":
 	shared := Node("s", none)
@@ -246,7 +238,10 @@ test "JSON stringify encodes standard-library values":
 	ok: Int! := ok(5)
 	expect_equal((encoded(ok)?), "{\"ok\":{\"value\":5}}")?
 	expect_equal((encoded("EBADMSG")?), "\"EBADMSG\"")?
-	expect_equal((encoded(Tagged.Named("n", none))?), "{\"Named\":{\"name\":\"n\"}}")?
+	expect_equal(
+		(encoded(Tagged.Named("n", none))?),
+		"{\"Named\":{\"name\":\"n\"}}",
+	)?
 	expect_equal((encoded(Tagged.Plain)?), "\"Plain\"")?
 
 test "JSON stringify honors JsonEncode wherever the value appears":
@@ -256,13 +251,7 @@ test "JSON stringify honors JsonEncode wherever the value appears":
 	expect_equal((encoded(Money(7))?), "\"usd:7\"")?
 
 test "JSON stringify indents like JSON.stringify and clamps at ten":
-	request := Request(
-		model: "m",
-		stream: true,
-		user: none,
-		temperature: 0.5,
-		tags: ["a"],
-	)
+	request := Request(model: "m", stream: true, user: none, temperature: 0.5, tags: ["a"])
 	pretty := stringify(request, StringifyOptions(indent: 2))?
 	expected := "{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n}"
 	expect_equal(pretty, expected)?
@@ -274,7 +263,8 @@ test "JSON stringify indents like JSON.stringify and clamps at ten":
 	wide := stringify([1], StringifyOptions(indent: 99))?
 	expect_equal(wide, "[\n          1\n]")?
 
-	_negative := expect_fault(fn: discard(stringify(1, StringifyOptions(indent: -1))))?
+	negative: String! := error(Error("JSON: invalid input", kind: "EINVAL"))
+	expect_equal(stringify(1, StringifyOptions(indent: -1)), negative)?
 
 type Holder:
 	done: Void
@@ -432,7 +422,9 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
 	expect_equal(stringify(price), price_text)?
 
 	raw := parse("{\"n\":1.50}")?
-	boxed: Wrapper[JsonValue] := parse[Wrapper[JsonValue]]("{\"first\":{\"n\":1.50}}")?
+	boxed: Wrapper[JsonValue] := parse[Wrapper[JsonValue]](
+		"{\"first\":{\"n\":1.50}}"
+	)?
 	expect_equal(boxed.first, raw)?
 
 	list: List[Int?] := parse[List[Int?]]("[1,null]")?
@@ -565,6 +557,3 @@ test "JSON Decimal fields out of range or inexact are InvalidData":
 
 	wide := "{\"amount\":0.1234567890123456789012345678901234567890,\"cents\":1}"
 	expect_invalid_data(parse[Price](wide))?
-
-fn discard[T](value: T) Void:
-	return

@@ -30,7 +30,7 @@ import (
 	sign,
 	verify from "@std/crypto/crypto.ms",
 	hex_decode, hex_encode from "@std/data/encoding.ms",
-	expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 test "crypto known SHA256 HMAC and PBKDF2 vectors":
@@ -132,12 +132,9 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
 		"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
 	)?
 
-	_long := expect_fault(
-		fn: discard(HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1))
-	)?
-	_iterations := expect_fault(
-		fn: discard(HashAlgorithm.Sha256.derive_key(secret, salt, 0, 16))
-	)?
+	invalid: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
+	expect_equal(HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1), invalid)?
+	expect_equal(HashAlgorithm.Sha256.derive_key(secret, salt, 0, 16), invalid)?
 
 test "AES-GCM accepts 128 and 192 bit keys":
 	nonce := "012345678901".to_bytes()
@@ -205,6 +202,3 @@ test "RSA signs and encrypts":
 
 	sealed := rsa_encrypt(public, HashAlgorithm.Sha256, data)?
 	expect_equal(rsa_decrypt(private, HashAlgorithm.Sha256, sealed)?, data)?
-
-fn discard[T](value: T) Void:
-	return

@@ -8,18 +8,8 @@ use alloc::vec::Vec;
 #[cfg(test)]
 use ms_rt::ffi::HasRaw;
 use ms_rt::ffi::{
-    ErrOut, Fail, Has, IntList, ObjRef, Object, Out, StatusCode, StrMap, abi_handle, fault_kind,
-    native,
+    ErrOut, Fail, Has, IntList, ObjRef, Object, Out, StatusCode, StrMap, abi_handle, native,
 };
-
-/// A supplied budget as the library takes it; a negative budget is a caller mistake and faults.
-fn budget(function: &str, name: &str, has: Has, value: i64) -> Option<i64> {
-    if has.0 && value < 0 {
-        let message = alloc::format!("Regex.{function}: {name} must not be negative");
-        fault_kind(ms_rt::glue::FaultKind::Fault, &message);
-    }
-    has.then_some(value)
-}
 
 abi_handle!(Regex);
 
@@ -48,7 +38,7 @@ native! {
         has_max: Has,
         max: i64,
     ) -> Result<Vec<String>, Fail> {
-        re.find_all(text, budget("find_all", "max_matches", has_max, max))
+        re.find_all(text, has_max.then_some(max))
     }
 
     // ms: leaf
@@ -63,7 +53,7 @@ native! {
         has_max: Has,
         max: i64,
     ) -> Result<Vec<Vec<String>>, Fail> {
-        re.captures_all(text, budget("captures_all", "max_matches", has_max, max))
+        re.captures_all(text, has_max.then_some(max))
     }
 
     // ms: leaf
@@ -84,14 +74,14 @@ native! {
     fn msstd_regex_find_all_spans(
         re: ObjRef<Regex>, text: &str, has_max: Has, max: i64,
     ) -> Result<IntList, Fail> {
-        re.find_all_spans(text, budget("find_all_spans", "max_matches", has_max, max)).map(IntList)
+        re.find_all_spans(text, has_max.then_some(max)).map(IntList)
     }
 
     // ms: leaf
     fn msstd_regex_capture_spans(
         re: ObjRef<Regex>, text: &str, has_max: Has, max: i64,
     ) -> Result<IntList, Fail> {
-        re.capture_spans(text, budget("capture_spans", "max_captures", has_max, max)).map(IntList)
+        re.capture_spans(text, has_max.then_some(max)).map(IntList)
     }
 
     // ms: leaf
@@ -100,9 +90,7 @@ native! {
         has_matches: Has, max_matches: i64, has_captures: Has, max_captures: i64,
     ) -> Result<IntList, Fail> {
         re.capture_all_spans(
-            text,
-            budget("capture_all_spans", "max_matches", has_matches, max_matches),
-            budget("capture_all_spans", "max_captures", has_captures, max_captures),
+            text, has_matches.then_some(max_matches), has_captures.then_some(max_captures),
         ).map(IntList)
     }
 
@@ -113,7 +101,7 @@ native! {
         has_max: Has,
         max: i64,
     ) -> Result<Vec<String>, Fail> {
-        re.split(text, budget("split", "max_pieces", has_max, max))
+        re.split(text, has_max.then_some(max))
     }
 
     // ms: leaf
@@ -124,7 +112,7 @@ native! {
         has_max: Has,
         max: i64,
     ) -> Result<String, Fail> {
-        re.replace_template(text, template, budget("replace_template", "max_bytes", has_max, max))
+        re.replace_template(text, template, has_max.then_some(max))
     }
 
     // ms: leaf
@@ -135,7 +123,7 @@ native! {
         has_max: Has,
         max: i64,
     ) -> Result<String, Fail> {
-        re.replace_all(text, replacement, budget("replace_all", "max_bytes", has_max, max))
+        re.replace_all(text, replacement, has_max.then_some(max))
     }
 }
 

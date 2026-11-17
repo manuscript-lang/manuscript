@@ -1,6 +1,5 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	panic from "@std/core.ms",
 	from_scalars from "@std/string.ms",
 	StringBuilder from "@std/string_builder.ms",
 
@@ -24,10 +23,9 @@ export fn ascii85_encode(data: Bytes) String:
 /*
 Decodes unframed ASCII85, ignoring ASCII bytes 0 through 32; `z` is valid only between groups.
 Rejects Adobe delimiters, one-digit tails, invalid characters and overflowing complete or partial 32-bit groups.
-A negative `max_bytes` is a programming fault; decoded output above it returns EOVERFLOW before allocating output.
+Negative `max_bytes` returns EINVAL; decoded output above it returns EOVERFLOW before allocating output.
 */
 export fn ascii85_decode(text: String, max_bytes: Int?) Bytes!:
-	require_budget("ascii85_decode", max_bytes)
 	return msstd_encoding_ascii85_decode(text, max_bytes)
 
 // Alphabet and padding for `base32_encode` and `base32_decode`.
@@ -45,14 +43,13 @@ export fn base32_encode(data: Bytes, options: Base32Options = Base32Options()) S
 /*
 Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `options.hex_alphabet` is true.
 Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return EBADMSG.
-A negative `max_bytes` is a programming fault; output exceeding it returns EOVERFLOW.
+Negative `max_bytes` returns EINVAL; output exceeding it returns EOVERFLOW.
 */
 export fn base32_decode(
 	text: String,
 	options: Base32Options = Base32Options(),
 	max_bytes: Int? = none,
 ) Bytes!:
-	require_budget("base32_decode", max_bytes)
 	return msstd_encoding_base32_decode(
 		text,
 		options.hex_alphabet,
@@ -70,21 +67,15 @@ export fn base64_decode(
 	max_bytes: Int?,
 	padded: Bool = true,
 ) Bytes!:
-	require_budget("base64_decode", max_bytes)
 	if not padded: return msstd_encoding_base64_decode_unpadded(
 		text,
 		url_safe,
 		max_bytes,
 	)
-
 	return msstd_encoding_base64_decode(text, url_safe, max_bytes)
 
-// Faults when a supplied decoded-size budget is negative.
-fn require_budget(function: String, max_bytes: Int?) Void:
-	if limit := max_bytes:
-		if limit < 0: panic(f"{function}: max_bytes must not be negative")
-
-// The budget as a count, with no budget as a very large one.
+// The budget as a count, with no budget as a very large one and a negative budget as
+// -1.
 fn budget(max_bytes: Int?) Int:
 	if limit := max_bytes: return limit
 	return 9223372036854775807
@@ -105,7 +96,6 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false, padded: Bool = true
 
 // Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
-	require_budget("hex_decode", max_bytes)
 	return msstd_encoding_hex_decode(text, max_bytes)
 
 // Encodes each byte as two lowercase hexadecimal digits.
@@ -152,12 +142,12 @@ fn text_of(scalars: List[Int]) String:
 	return ""
 
 // Decodes UTF-16 bytes, little-endian unless `little_endian` is false. An odd length or
-// an unpaired surrogate returns EBADMSG; a negative `max_bytes` is a programming fault,
-// and decoded text longer than `max_bytes` UTF-8 bytes returns EOVERFLOW.
+// an unpaired surrogate returns EBADMSG; a negative `max_bytes` returns EINVAL, and
+// decoded text longer than `max_bytes` UTF-8 bytes returns EOVERFLOW.
 export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?) String!:
-	require_budget("utf16_decode", max_bytes)
-
 	limit := budget(max_bytes)
+	if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
+
 	bytes := data.values()
 	if bytes.length() % 2 != 0: return error(encoding_invalid_data())
 

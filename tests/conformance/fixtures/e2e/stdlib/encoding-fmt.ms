@@ -1,7 +1,7 @@
 // conform: tags=control-flow,formatter,modules,parser,stdlib-bytes,stdlib-encoding,stdlib-testing,strings,testing,tier-stdlib,try-result
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/stdlib/encoding.ms
-import expect_equal, expect_fault from "@std/test/test.ms"
+import expect_equal from "@std/test/test.ms"
 import (
     base64_encode,
     base64_decode,
@@ -37,7 +37,10 @@ test "encoding rejects malformed data and invalid budgets":
     )
     expect_equal(hex_decode("00ff", 1), limited)?
 
-    _negative := expect_fault(fn: discard(hex_decode("", -1)))?
+    invalid: Bytes! := error(
+        Error("encoding: invalid input", kind: "EINVAL")
+    )
+    expect_equal(hex_decode("", -1), invalid)?
 
 test "UTF-16 encodes surrogate pairs in either byte order":
     expect_equal(utf16_encode("a€😀"), Bytes([97, 0, 172, 32, 61, 216, 0, 222]))?
@@ -73,6 +76,3 @@ test "Latin-1 and ASCII are strict single-byte encodings":
         Error("encoding: invalid data", kind: "EBADMSG")
     )
     expect_equal(ascii_decode(Bytes([200])), invalid_decode)?
-
-fn discard[T](value: T) Void:
-    return

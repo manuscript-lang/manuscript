@@ -4,7 +4,7 @@ import (
 	Bytes from "@std/bytes.ms",
 	collect, copy, from_bytes, from_list, map, read_all from "@std/io/streams.ms",
 	OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms",
-	expect_equal, expect_error, expect_fault, expect_ok from "@std/test/test.ms",
+	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
 )
 
 fn upper(chunk: Bytes) Bytes:
@@ -34,9 +34,8 @@ test "read_all joins chunks and enforces its limit":
 	)?
 	expect_equal(read_all(from_bytes("abcdef".to_bytes(), 4), 5).is_error(), true)?
 
-test "from_bytes faults on a chunk size below one":
+test "from_bytes rejects a chunk size below one instead of never ending":
 	for size in [0, -1]:
-		_size := expect_fault(fn: discard(from_bytes("abc".to_bytes(), size)))?
-
-fn discard[T](value: T) Void:
-	return
+		var source = from_bytes("abc".to_bytes(), size)
+		first := expect_error(source.next())?
+		expect_equal(first.kind, "EINVAL")?

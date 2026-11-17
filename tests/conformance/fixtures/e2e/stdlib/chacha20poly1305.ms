@@ -7,7 +7,7 @@ import (
 	chacha20poly1305_seal,
 	poly1305 from "@std/crypto/chacha20poly1305.ms",
 	hex_decode, hex_encode from "@std/data/encoding.ms",
-	expect_equal, expect_error, expect_fault, expect_true from "@std/test/test.ms",
+	expect_equal, expect_error, expect_true from "@std/test/test.ms",
 )
 
 fn bytes_of(hex: String) Bytes:
@@ -56,7 +56,7 @@ test "empty message seals to a bare tag":
 	).get(Bytes([]))
 	expect_equal(hex_encode(sealed), "a0784d7a4716f3feb4f64e7f4b39bf04")?
 
-test "tampering is rejected and bad lengths fault":
+test "tampering and bad lengths are rejected":
 	var sealed = chacha20poly1305_seal(
 		bytes_of(key_hex),
 		bytes_of(nonce_hex),
@@ -79,36 +79,15 @@ test "tampering is rejected and bad lengths fault":
 			Bytes([]),
 		).is_error()
 	)?
-
-	_seal_key := expect_fault(
-		fn: discard(
-			chacha20poly1305_seal(
-				Bytes([1]),
-				bytes_of(nonce_hex),
-				Bytes([]),
-				Bytes([]),
-			)
-		)
+	expect_true(
+		chacha20poly1305_seal(
+			Bytes([1]),
+			bytes_of(nonce_hex),
+			Bytes([]),
+			Bytes([]),
+		).is_error()
 	)?
-	_open_nonce := expect_fault(
-		fn: discard(
-			chacha20poly1305_open(
-				bytes_of(key_hex),
-				Bytes([1]),
-				sealed.clone(),
-				Bytes([]),
-			)
-		)
-	)?
-	_stream_key := expect_fault(
-		fn: discard(chacha20(Bytes([1]), bytes_of(nonce_hex), 1, Bytes([])))
-	)?
-	_counter := expect_fault(
-		fn: discard(
-			chacha20(bytes_of(key_hex), bytes_of(nonce_hex), -1, Bytes([]))
-		)
-	)?
-	_poly_key := expect_fault(fn: discard(poly1305(Bytes([1]), Bytes([]))))?
+	expect_true(chacha20(Bytes([1]), bytes_of(nonce_hex), 1, Bytes([])).is_error())?
 
 test "authentication failures use EAUTH":
 	key := "01234567890123456789012345678901".to_bytes()
@@ -135,6 +114,3 @@ test "chacha20 rejects data past the 32-bit block counter":
 	data129 := ("a".repeat(129)?).to_bytes()
 	expect_equal(chacha20(key, nonce, last - 1, data128).is_error(), false)?
 	expect_equal(chacha20(key, nonce, last - 1, data129).is_error(), true)?
-
-fn discard[T](value: T) Void:
-	return

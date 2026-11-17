@@ -18,16 +18,14 @@ import (
 	draw_float,
 	draw_int,
 	draw_shuffle,
+	invalid_input,
 	msstd_random_os_bytes from "@std/internal/random.ms",
 )
 
 // Returns a secure integer at least `min` and below `max_exclusive` when supplied, from
-// the operating system's entropy. A `min` not below `max_exclusive` faults; an entropy
-// failure returns an Error.
+// the operating system's entropy.
 // ms: effect std.random.read
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
-	if min >= max_exclusive.get(max_int):
-		panic("random secure_int: min must be below max_exclusive")
 	return draw_int(min, max_exclusive)
 
 /*
@@ -72,7 +70,7 @@ export fn ulid() String!:
 /*
 Returns a random token of `size` bytes as unpadded URL-safe Base64.
 The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
-`size` follows `random_bytes`: 0 through 16 MiB, otherwise it faults.
+`size` follows `random_bytes`: 0 through 16 MiB, otherwise EINVAL.
 */
 // ms: effect std.random.read
 export fn token(size: Int = 32) String!:
@@ -97,11 +95,11 @@ export fn choice[T](values: List[T]) T?!:
 
 // Returns `count` distinct positions' items chosen uniformly without replacement, in
 // random order, as copies; the input is unchanged. A `count` outside 0 through the list
-// length faults.
+// length returns EINVAL.
 // ms: effect std.random.read
 export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 	if count < 0 or count > values.length():
-		panic("random sample: count must be from 0 through the number of values")
+		return error(Error("random: invalid input", kind: "EINVAL"))
 
 	var order = positions(if count == 0: 0 else: values.length())
 	var out: List[T] = []
@@ -115,16 +113,13 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 
 // Returns an item chosen with probability proportional to its weight, or none for an
 // empty list.
-// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this faults.
+// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns EINVAL.
 // ms: effect std.random.read
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
 	if values.is_empty() and weights.is_empty(): return ok(none)
 
 	total := weight_total(values.length(), weights)
-	if total == 0.0:
-		panic(
-			"random weighted_choice: weights must match the values, be finite and non-negative, and not all be zero"
-		)
+	if total == 0.0: return error(Error("random: invalid input", kind: "EINVAL"))
 
 	point := float()?
 	return ok(values[weighted_position(weights, point, total)].clone())
@@ -195,12 +190,10 @@ fn scaled_weighted_position(weights: List[Float], unit_draw: Float) Int:
 	return last
 
 // Returns exactly `count` unpredictable bytes from the operating system, with `count`
-// from 0 through 16 MiB (16777216). A negative or larger count faults; a source
+// from 0 through 16 MiB (16777216). A negative or larger count returns EINVAL; a source
 // failure returns EIO. The call observes task cancellation between 64 KiB chunks.
 // ms: effect std.random.read
 export fn random_bytes(count: Int) Bytes!:
-	if count < 0 or count > 16777216:
-		panic("random_bytes: count must be from 0 through 16777216")
 	return msstd_random_os_bytes(count)
 
 /*

@@ -723,7 +723,7 @@ export type RangeOptions:
 	max_items: Int? = none
 
 // Creates integers from `start` up to but excluding `end` using a nonzero `step`; a
-// negative step counts down. A zero step is a programming fault; `EOVERFLOW` when the
+// negative step counts down. Returns `EINVAL` for a zero step and `EOVERFLOW` when the
 // list would exceed `max_items`.
 export fn range_by(
 	start: Int,
@@ -731,9 +731,6 @@ export fn range_by(
 	step: Int,
 	options: RangeOptions = RangeOptions(),
 ) List[Int]!:
-	if step == 0: panic("range_by: step must not be zero")
-	if cap := options.max_items:
-		if cap < 0: panic("range_by: max_items must not be negative")
 	return msrt_list_range_by(start, end, step, options.max_items)
 
 // Builds a map from entries. Later entries replace earlier values for duplicate keys.

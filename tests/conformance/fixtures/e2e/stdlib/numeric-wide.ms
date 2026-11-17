@@ -24,7 +24,6 @@ import (
 	subtract_with_borrow from "@std/math/math.ms",
 	expect_equal,
 	expect_false,
-	expect_fault,
 	expect_ok,
 	expect_some,
 	expect_true from "@std/test/test.ms",
@@ -86,7 +85,7 @@ test "word arithmetic matches exact BigInt references at all width boundaries":
 
 			for divisor in values:
 				if divisor != 0:
-					actual := remainder_wide(left, right, divisor)
+					actual := remainder_wide(left, right, divisor)?
 					expect_equal(big_word(actual), (a * radix + b) % big_word(divisor))?
 
 			if left != 0:
@@ -100,18 +99,19 @@ test "wide division distinguishes invalid divisor and quotient overflow":
 	expect_equal(division.quotient, largest)?
 	expect_equal(division.remainder, 2)?
 
+	invalid: WordDivision! := error(Error("number: invalid input", kind: "EINVAL"))
 	overflow: WordDivision! := error(
 		Error("number: value out of range", kind: "ERANGE")
 	)
-	_zero_all := expect_fault(fn: discard(divide_wide(0, 0, 0)))?
-	_zero_low := expect_fault(fn: discard(divide_wide(largest, largest, 0)))?
+	expect_equal(divide_wide(0, 0, 0), invalid)?
+	expect_equal(divide_wide(largest, largest, 0), invalid)?
 	expect_equal(divide_wide(3, 0, 3), overflow)?
 	expect_equal(divide_wide(largest, 0, largest), overflow)?
-	expect_equal((remainder_wide(3, 5, 3)), 2)?
-	expect_equal((remainder_wide(largest, largest, largest)), 0)?
+	expect_equal((remainder_wide(3, 5, 3)?), 2)?
+	expect_equal((remainder_wide(largest, largest, largest)?), 0)?
 
-	_zero_divisor := expect_fault(fn: discard(remainder_wide(largest, largest, 0)))?
-	_zero_divide := expect_fault(fn: discard(divide_wide(largest, 0, 0)))?
+	invalid_remainder: UInt64! := error(Error("number: invalid input", kind: "EINVAL"))
+	expect_equal(remainder_wide(largest, largest, 0), invalid_remainder)?
 
 test "binary float decomposition round trips normals subnormals and signed zero":
 	for value in [
@@ -203,15 +203,30 @@ test "IEEE remainder uses nearest-even quotient without changing truncating rema
 	expect_true(ieee_remainder(1.0, nan).is_nan())?
 
 test "modular inverse distinguishes absence invalid modulus and the unit modulus":
-	expect_equal(from_int(271).inverse_mod(from_int(383)), from_int(106))?
-	expect_equal(from_int(-271).inverse_mod(from_int(383)), from_int(277))?
-	expect_true((from_int(6).inverse_mod(from_int(9))).is_none())?
-	expect_true((from_int(0).inverse_mod(from_int(2))).is_none())?
+	(
+		from_int(271).inverse_mod(from_int(383))
+		| expect_ok?
+		| expect_some?
+		| expect_equal(from_int(106))?
+	)
+	(
+		from_int(-271).inverse_mod(
+			from_int(383)
+		) | expect_ok? | expect_some? | expect_equal(from_int(277))?
+	)
+	expect_true((from_int(6).inverse_mod(from_int(9))?).is_none())?
+	expect_true((from_int(0).inverse_mod(from_int(2))?).is_none())?
 	for number in [-5, 0, 5]:
-		expect_equal(from_int(number).inverse_mod(from_int(1)), from_int(0))?
+		(
+			from_int(number).inverse_mod(from_int(1))
+			| expect_ok?
+			| expect_some?
+			| expect_equal(from_int(0))?
+		)
 
-	_zero := expect_fault(fn: discard(from_int(2).inverse_mod(from_int(0))))?
-	_negative := expect_fault(fn: discard(from_int(2).inverse_mod(from_int(-7))))?
+	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
+	expect_equal(from_int(2).inverse_mod(from_int(0)), invalid)?
+	expect_equal(from_int(2).inverse_mod(from_int(-7)), invalid)?
 
 test "modular inverse scales to 4096 bits and retains canonical residues":
 	one := from_int(1)
@@ -219,10 +234,12 @@ test "modular inverse scales to 4096 bits and retains canonical residues":
 	for width in [64, 256, 1024, 4096]:
 		modulus := one.shift_left(width)?
 		base := modulus - one
-		inverse := (base.inverse_mod(modulus)) | expect_some?
+		inverse := (base.inverse_mod(modulus)?) | expect_some?
 		expect_equal(inverse, base)?
 		expect_equal(base * inverse % modulus, one)?
-		expect_equal(base.negate().inverse_mod(modulus), one.clone())?
-
-fn discard[T](value: T) Void:
-	return
+		(
+			base.negate().inverse_mod(modulus)
+			| expect_ok?
+			| expect_some?
+			| expect_equal(one)?
+		)

@@ -77,7 +77,7 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
             (
                 "remainder_wide",
                 3,
-                "fn(UInt64, UInt64, UInt64) UInt64 — @std/math/math.ms",
+                "fn(UInt64, UInt64, UInt64) Result[UInt64, Error] — @std/math/math.ms",
                 "@std/math/math.ms",
             ),
         ] {
