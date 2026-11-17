@@ -327,6 +327,7 @@ fn run_source_command<L: Lower>(
         Err(status) => return status,
     };
     engine.set_static_libc(inv.static_libc);
+    engine.set_deny(inv.deny.clone());
     engine.set_profile_allocs(inv.allocs);
     let result = match inv.command.as_str() {
         "check" | "lint" => {
@@ -371,20 +372,13 @@ fn run_source_command<L: Lower>(
                 watch: inv.watch,
                 json: inv.structured,
                 arguments: inv.arguments.clone(),
-                swaps: inv.swaps.clone(),
             },
             io,
         ),
         "test" => {
             let request = TestRequest {
                 filename: inv.filename.clone(),
-                extra: inv
-                    .targets
-                    .iter()
-                    .skip(1)
-                    .chain(inv.swaps.iter())
-                    .cloned()
-                    .collect(),
+                extra: inv.targets.iter().skip(1).cloned().collect(),
                 build_type: plan.build_type,
                 link: inv.link.clone(),
                 json: inv.structured,

@@ -117,8 +117,6 @@ pub struct RunRequest {
     pub json: bool,
     /// Program arguments (everything after `--`).
     pub arguments: Vec<String>,
-    /// Swap modules added to the program (`--swap`).
-    pub swaps: Vec<String>,
 }
 
 /// `ms test`. `arguments` is what is forwarded to the test executable: the

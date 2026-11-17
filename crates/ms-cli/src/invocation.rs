@@ -36,7 +36,7 @@ pub const VALUE_OPTIONS: &[&str] = &[
     "--diff",
     "--top",
     "--link",
-    "--swap",
+    "--deny",
 ];
 
 /// The `--view` names of `ms diagram`.
@@ -72,8 +72,8 @@ pub struct Invocation {
     pub output: String,
     /// `--link`: extra objects and static libraries for `extern fn` symbols.
     pub link: Vec<String>,
-    /// Swap modules added to the program (`--swap`, spike).
-    pub swaps: Vec<String>,
+    /// Effect patterns the program may not reach (`--deny`).
+    pub deny: Vec<String>,
     /// `--static`: link a static musl executable instead of the system libc (Linux).
     pub static_libc: bool,
     pub format_check: bool,
@@ -363,14 +363,14 @@ fn parse_options(
                 };
                 inv.link.push(value.to_string());
             }
-            "--swap" => {
+            "--deny" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
                     return Err(usage_error(
                         io,
-                        "--swap requires a path argument, e.g. --swap limits/no_network.ms",
+                        "--deny requires an effect pattern, e.g. --deny 'std.net.*'",
                     ));
                 };
-                inv.swaps.push(value.to_string());
+                inv.deny.push(value.to_string());
             }
             "-o" | "--output" | "--out-dir" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {

@@ -135,31 +135,12 @@ pub fn load_editor_file(
     load_entries(syms, filename, &[], options, editor)
 }
 
-/// Loads the graph. A swap module (`// ms: swap "PATH"` in its header) stands in for PATH
-/// everywhere else in the program once it is part of the program. Swaps are only known once
-/// their module is read, so a program that has any is loaded a second time with them preset.
 fn load_entries(
     syms: ms_syntax::Names,
     filename: &str,
     extra: &[String],
     options: LoadOptions,
     editor: &EditorOptions,
-) -> Graph {
-    let mut swaps = HashMap::new();
-    let graph = load_pass(syms, filename, extra, options, editor, &mut swaps);
-    if swaps.is_empty() {
-        return graph;
-    }
-    load_pass(syms, filename, extra, options, editor, &mut swaps)
-}
-
-fn load_pass(
-    syms: ms_syntax::Names,
-    filename: &str,
-    extra: &[String],
-    options: LoadOptions,
-    editor: &EditorOptions,
-    swaps: &mut HashMap<String, String>,
 ) -> Graph {
     let mut seen = Vec::new();
     let (mut config, manifest) = match source_project(filename, &mut seen) {
@@ -249,7 +230,6 @@ fn load_pass(
         failed: HashMap::new(),
         resolved: HashMap::new(),
         seen_inputs,
-        swaps: swaps.clone(),
     };
     let file: Arc<str> = Arc::from(filename);
     if !config.entry.is_empty() {
@@ -286,7 +266,6 @@ fn load_pass(
             }
         }
     }
-    *swaps = std::mem::take(&mut loader.swaps);
     graph
 }
 
@@ -519,8 +498,6 @@ struct Loader<'a> {
     resolved: HashMap<(String, Box<str>), String>,
     // Keep first-seen input order without scanning every earlier path per module or asset.
     seen_inputs: HashSet<String>,
-    // Spike: the swapped module (`@std/...` path or canonical path) to its swap's canonical path.
-    swaps: HashMap<String, String>,
 }
 
 impl Loader<'_> {
@@ -605,23 +582,6 @@ impl Loader<'_> {
                 "source must be valid UTF-8; re-save the file with UTF-8 encoding",
             )))
         })?;
-        for line in text
-            .lines()
-            .take_while(|l| l.trim_start().starts_with("//"))
-        {
-            let Some(rest) = line.trim().strip_prefix("// ms: swap ") else {
-                continue;
-            };
-            let original = rest.trim().trim_matches('"');
-            let key = if original.starts_with("@std/") {
-                Some(original.to_string())
-            } else {
-                self.resolve(canonical, original).ok()
-            };
-            if let Some(key) = key {
-                self.swaps.insert(key, canonical.to_string());
-            }
-        }
         let module = if self.recover {
             let (module, issues) = ms_syntax::parse_partial(file, &text);
             self.graph.diagnostics.extend(issues);
@@ -649,24 +609,10 @@ impl Loader<'_> {
         let key = n(file);
         let mut resolved: Vec<(ms_syntax::NodeId, Name)> = Vec::new();
         for item in &module.imports {
-            let standard = item.path.starts_with("@std/");
-            let original = if standard {
-                Some(item.path.to_string())
-            } else if self.swaps.is_empty() {
-                None
-            } else {
-                self.resolve(canonical, &item.path).ok()
-            };
-            // A swap's own imports of the original are not redirected.
-            let swap = original
-                .and_then(|o| self.swaps.get(&o).cloned())
-                .filter(|s| s != canonical);
-            let outcome = match swap {
-                Some(target) => self.visit(syms, &target),
-                None if standard => continue,
-                None => self.import_module(syms, canonical, file, item),
-            };
-            match outcome {
+            if item.path.starts_with("@std/") {
+                continue;
+            }
+            match self.import_module(syms, canonical, file, item) {
                 Ok(target) => resolved.push((item.id, target)),
                 Err(failure) if self.recover => {
                     self.graph
@@ -774,7 +720,6 @@ mod tests {
             failed: HashMap::new(),
             resolved: HashMap::new(),
             seen_inputs: HashSet::new(),
-            swaps: HashMap::new(),
         };
         test(&mut loader, &root);
         std::fs::remove_dir_all(dir).unwrap();

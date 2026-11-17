@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use ms_build::Lower;
 
-use super::{Engine, TempDir};
+use super::{Engine, TempDir, compile};
 use crate::backend::{BackendResult, Io, RunRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::fault::{Fault, RecordFile, is_fault_status};
@@ -21,14 +21,7 @@ pub(super) fn run<L: Lower>(
     request: &RunRequest,
     io: &mut Io,
 ) -> BackendResult {
-    let compiled = super::compile_target(
-        syms,
-        backend,
-        &request.filename,
-        &request.swaps,
-        super::Target::Program,
-    );
-    let mut compiled = match compiled {
+    let mut compiled = match compile(syms, backend, &request.filename, false) {
         Ok(compiled) => compiled,
         Err(failure) if request.json => {
             let document = document(&failure.source_root, 1, "", "")

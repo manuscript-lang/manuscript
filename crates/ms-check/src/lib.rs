@@ -58,6 +58,7 @@ mod type_substitution_tests;
 mod tytable_tests;
 
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
+pub use effect_directives::matches as effect_matches;
 pub use stdlib::Session;
 pub use syntax::{ModRef, ModuleData};
 pub use types::PackageScope;

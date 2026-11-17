@@ -867,21 +867,7 @@ impl Checker {
         let mut broken: Option<String> = None;
         for item in &module.imports {
             let path = item.path.as_ref();
-            // A swap stands in for a standard module; a name the swap does not export keeps the
-            // original's.
-            let redirected = if path.starts_with("@std/") {
-                self.imports.get(module.file, item.id).filter(|swap| {
-                    self.p.symbols.get(swap).is_some_and(|names| {
-                        names
-                            .borrow()
-                            .get(&item.name)
-                            .is_some_and(|symbol| symbol.module == *swap && symbol.export)
-                    })
-                })
-            } else {
-                None
-            };
-            let found: Option<SymRef> = if path.starts_with("@std/") && redirected.is_none() {
+            let found: Option<SymRef> = if path.starts_with("@std/") {
                 let pn = n(path);
                 if self.session.standard_source_module(pn).is_some() {
                     let f = self
@@ -967,58 +953,8 @@ impl Checker {
             if self.session.is_prelude_symbol(&found) {
                 self.redundant_prelude_import(module, item);
             }
-            if redirected.is_some() {
-                self.check_swap_signature(module, item, &found);
-            }
             self.add_symbol(item.name, found, item.name_pos);
         }
-    }
-
-    /// A swap must keep the signature of the name it stands in for, so code that was checked
-    /// against the original stays correct with the swap.
-    fn check_swap_signature(
-        &mut self,
-        module: &ModRef,
-        item: &ms_syntax::ast::Import,
-        swap: &SymRef,
-    ) {
-        let path = n(item.path.as_ref());
-        let original = if self.session.standard_source_module(path).is_some() {
-            self.p
-                .symbols
-                .get(&path)
-                .and_then(|names| names.borrow().get(&item.name).cloned())
-        } else {
-            self.session
-                .standard_module_symbol(path, item.name)
-                .or_else(|| {
-                    let twin = self.session.import_source(item)?;
-                    let r = self.session.ensure_source(&twin).ok()?;
-                    r.exports.get(&item.name).cloned()
-                })
-        };
-        let Some(original) = original else {
-            return;
-        };
-        let want = crate::types::show(self.syms, &original.ty.borrow().clone());
-        let have = crate::types::show(self.syms, &swap.ty.borrow().clone());
-        if want == have {
-            return;
-        }
-        self.p.diagnostics.push(Diagnostic {
-            cause: Default::default(),
-            opener_line: 0,
-            file: self.syms.str(module.file).into(),
-            pos: item.name_pos,
-            phase: Phase::Type,
-            message: format!(
-                "the swap for {} declares {} as {have}, but the original declares {want}; a swap must keep the original's signature",
-                item.path,
-                self.syms.str(item.name)
-            ),
-            end: None,
-            fix: None,
-        });
     }
 
     /// A user `extern type`: an opaque handle a native shim makes with `ms_object_new`.

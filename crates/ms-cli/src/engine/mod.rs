@@ -47,6 +47,8 @@ pub struct Engine<L: Lower> {
     build: ms_build::BuildOptions,
     /// `--static` of the current command: link static musl.
     static_libc: std::cell::Cell<bool>,
+    /// `--deny` patterns of the current command: refuse a program that reaches a matching effect.
+    deny: std::cell::RefCell<Vec<String>>,
     /// `ms profile --allocs` of the current command: link the allocation-sampling runtime.
     profile_allocs: std::cell::Cell<bool>,
     /// `ms bench --ops` of the current command: count MIR operations.
@@ -60,6 +62,7 @@ impl<L: Lower> Engine<L> {
             runtime: None,
             build: options::from_env(),
             static_libc: std::cell::Cell::new(false),
+            deny: std::cell::RefCell::new(Vec::new()),
             profile_allocs: std::cell::Cell::new(false),
             count_ops: std::cell::Cell::new(false),
         }
@@ -68,6 +71,11 @@ impl<L: Lower> Engine<L> {
     /// Select static musl (`--static`) or glibc for the commands that follow.
     pub fn set_static_libc(&self, on: bool) {
         self.static_libc.set(on);
+    }
+
+    /// Refuse to build a program whose `main` reaches an effect matching one of `patterns`.
+    pub fn set_deny(&self, patterns: Vec<String>) {
+        *self.deny.borrow_mut() = patterns;
     }
 
     /// Link the allocation-sampling runtime for the commands that follow (`ms profile --allocs`).
@@ -402,6 +410,14 @@ pub(crate) fn compile_target<L: Lower>(
     let Some(program) = &checked.program else {
         return Err(failure(checked));
     };
+    if target == Target::Program
+        && let Some(diagnostic) = denied(program, &entry, &backend.deny.borrow())
+    {
+        return Err(failure(ms_driver::Checked {
+            diagnostics: vec![diagnostic],
+            ..checked
+        }));
+    }
     let lowered = if target == Target::Benches {
         backend.lowering.lower_benches(program, &entry)
     } else if tests {
@@ -453,6 +469,39 @@ pub(crate) fn compile_target<L: Lower>(
             }))
         }
     }
+}
+
+/// The first effect `main` reaches that a `--deny` pattern names, as a diagnostic at `main`.
+fn denied(program: &ms_check::Program, entry: &str, deny: &[String]) -> Option<Diagnostic> {
+    if deny.is_empty() {
+        return None;
+    }
+    let main = program
+        .symbols
+        .get(&ms_check::api::types::n(entry))?
+        .borrow()
+        .get(&ms_check::api::types::n("main"))
+        .cloned()?;
+    let reached = program.declared_effects_of(main.id);
+    let (pattern, effect) = deny.iter().find_map(|pattern| {
+        reached
+            .iter()
+            .find(|effect| ms_check::effect_matches(pattern, effect))
+            .map(|effect| (pattern, effect.clone()))
+    })?;
+    let pos = main.decl.as_ref().map_or(Pos::new(0, 1, 1), |d| d.pos());
+    Some(Diagnostic {
+        cause: Default::default(),
+        opener_line: 0,
+        file: entry.into(),
+        pos,
+        phase: Phase::Type,
+        message: format!(
+            "main reaches {effect}, which --deny {pattern} forbids for this run; `ms lint` shows the call that brings it in"
+        ),
+        end: None,
+        fix: None,
+    })
 }
 
 fn library_failure(graph: &Graph) -> Failure {
