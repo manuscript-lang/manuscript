@@ -4,7 +4,7 @@ mod reach;
 
 use crate::facts::{Fact, Facts};
 use crate::json::Json;
-use crate::views::{effect_list, or_none};
+use crate::views::or_none;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, VecDeque};
 
@@ -231,12 +231,6 @@ fn classify(
                 .evidence
                 .push(effect_path(h, &reach, head, |f| &f.reach));
         }
-        let gained = gained_effects(h, Some(b));
-        if !gained.is_empty() {
-            s.finding
-                .evidence
-                .push(effect_path(h, &gained, head, |f| &f.effects));
-        }
     }
     let scored = !s.finding.changes.is_empty() && s.finding.score > 1;
     s.finding.tier = s.tier().to_string();
@@ -272,21 +266,6 @@ fn compare(h: &Fact, b: &Fact, s: &mut Scorer) {
                 1,
             );
         }
-    }
-    if !gained_effects(h, Some(b)).is_empty() {
-        let change = format!(
-            "effects: {} -> {}",
-            effect_list(&b.effects),
-            effect_list(&h.effects)
-        );
-        s.add(TIER_EFFECT, change, "effect_gain", 6);
-    } else if effect_list(&h.effects) != effect_list(&b.effects) {
-        let change = format!(
-            "effects: {} -> {}",
-            effect_list(&b.effects),
-            effect_list(&h.effects)
-        );
-        s.add(TIER_INTERNAL, change, "effect_loss", 1);
     }
     let permits = added(&h.permits, &b.permits);
     if !permits.is_empty() {
@@ -339,14 +318,6 @@ fn visibility(exported: bool) -> &'static str {
 /// Entries of `head` that `base` lacks.
 fn added(head: &[String], base: &[String]) -> Vec<String> {
     head.iter().filter(|e| !base.contains(e)).cloned().collect()
-}
-
-fn gained_effects(h: &Fact, b: Option<&Fact>) -> Vec<String> {
-    h.effects
-        .iter()
-        .filter(|e| !b.is_some_and(|b| b.effects.contains(e)))
-        .cloned()
-        .collect()
 }
 
 /// Follows callees that carry a gained effect down to the native operation or

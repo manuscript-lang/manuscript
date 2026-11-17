@@ -73,7 +73,7 @@ ms diagram ms.toml
 ms diagram ms.toml --format mermaid -o calls.mmd
 ```
 
-These need no linker. `emit` checks and lowers the program, then prints MIR; it does not emit an executable. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` presents checked program relationships as ASCII (default), Mermaid, or an [interactive HTML code map](#interactive-code-map). Review and diagram describe project declarations; standard-library calls remain boundary leaves and imports remain visible dependencies.
+These need no linker. `emit` checks and lowers the program, then prints MIR; it does not emit an executable. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and declared effects. `diagram` presents checked program relationships as ASCII (default), Mermaid, or an [interactive HTML code map](#interactive-code-map). Review and diagram describe project declarations; standard-library calls remain boundary leaves and imports remain visible dependencies.
 
 ```sh
 ms diagram ms.toml --view effects --entity save
@@ -131,12 +131,12 @@ Entities match by file, kind, and name, so formatting and in-file moves are not 
 | Tier | Meaning |
 | --- | --- |
 | `CONTRACT` | Exported signature or visibility change, exported entity added or removed |
-| `EFFECT+` | New conservative effect, with the call path to where it enters |
+| `EFFECT+` | A newly reached declared effect, with the call path to where it enters |
 | `ERROR` | Different `Result` error type or number of `try` sites |
 | `RESOURCE` | Different number of resource scopes |
 | `INTERNAL` | Body changed without affecting any tier |
 
-Reach is the number of entities that transitively call the changed one; the score is the sum of the listed terms. `unknown` effects appear for indirect calls and most native operations, so only newly introduced effects rank.
+Reach is the number of entities that transitively call the changed one; the score is the sum of the listed terms. Only newly reached declared effects rank.
 
 The report compares tracked static properties; it does not run tests. An INTERNAL body edit can still change runtime behavior. “No tracked semantic changes” means the comparison found no changes to those properties.
 

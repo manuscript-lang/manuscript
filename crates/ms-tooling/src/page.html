@@ -54,7 +54,7 @@ main{grid-row:2;grid-column:3;overflow:auto;padding:0;min-width:0;display:flex;f
 #view{padding:8px 14px 10px;flex:1;min-height:0;overflow:auto}
 .var{color:var(--var);font-weight:700}.brw{color:var(--brw)}.own{color:var(--own);font-weight:600}
 .badge{display:inline-block;font-size:11px;padding:0 7px;border-radius:9px;background:var(--pan);color:var(--fg);border:1px solid var(--line)}
-.badge.write,.badge.unknown{border-color:var(--effs);color:var(--effs)}.badge.read{border-color:var(--brw);color:var(--brw)}.badge.err{border-color:var(--var);color:var(--var)}
+.badge.write{border-color:var(--effs);color:var(--effs)}.badge.read{border-color:var(--brw);color:var(--brw)}.badge.err{border-color:var(--var);color:var(--var)}
 svg text{fill:var(--fg);font:12px -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
 svg .node{cursor:pointer}svg .node rect{fill:var(--node);stroke:var(--line);stroke-width:1.2}svg .node:hover rect{stroke:var(--fg);stroke-width:2}svg .node:focus{outline:none}svg .node:focus-visible rect{stroke:var(--fg);stroke-width:3}
 svg .pure rect{stroke:var(--pures)}svg .effect rect{stroke:var(--effs)}
@@ -126,7 +126,7 @@ body.focus{grid-template-columns:0 0 minmax(0,1fr) 0 0}body.focus aside,body.foc
 <button class="search" id="palbtn" aria-label="Go to symbol or file (Ctrl K)"><span>Go to symbol or file</span><kbd>Ctrl K</kbd></button>
 <div class="opts"><button class="ib" id="optbtn" title="View options">⚙</button>
 <div class="pop" id="optpop" hidden><label title="Show calls into the standard library"><input type="checkbox" id="all"> Include standard library calls</label><label id="onlywrap" hidden><input type="checkbox" id="only"> Show changed items only</label>
-<label title="How many call levels to show">Call depth <input type="range" id="depth" min="1" max="4" value="1"> <output id="depthv">1</output></label></div>
+<label title="How many call levels to show">Call depth <input type="range" id="depth" aria-label="Call depth" min="1" max="4" value="1"> <output id="depthv">1</output></label></div>
 <button class="ib" id="focusbtn" title="Focus the map (F)">⛶</button><button class="ib" id="theme" title="Theme: auto, dark, light">◐</button><button class="ib" id="helpbtn" title="Shortcuts and legend (?)">?</button></div>
 </header>
 <aside id="side"><div class="tbar"><input id="q" placeholder="Filter files and symbols"><button class="ib" id="collapse" title="Collapse all">⊟</button><button class="ib" id="expand" title="Expand all">⊞</button><button class="ib" id="locate" title="Reveal current item">◎</button></div>
@@ -192,14 +192,16 @@ function sigOf(e){
 function ownershipSpan(s){const mode=s.ownership;
   const cls=mode==='var'?'var':mode==='borrow'?'brw':mode==='copy'?'hint':['move','owned','owned view','owned; borrowed ok','owned; borrowed error','owned; borrowed ok and error'].includes(mode)?'own':'';
   return '<span'+(cls?' class="'+cls+'"':'')+(mode?' data-ownership="'+esc(mode)+'" title="'+esc(mode)+'"':'')+'>'+esc(s.ty)+'</span>'}
-const FXTIP={read:'Reads input: files, the environment, the clock, or the network',write:'Writes output or changes the outside world',unknown:'Calls something whose effects could not be classified: it may read or write'};
+/* an effect is a declared name such as std.fs.read; colour it by what it does */
+const fxKind=x=>/\.read$/.test(x)?'read':'write';
 const fns=D.entities.filter(e=>e.kind==='fn'||e.kind==='method');
 const firstN=(l,n)=>l.slice(0,n);
+const NEXP=fns.filter(e=>e.exported&&e.name!=='main').length;
 const LAND={
   'Entry':firstN(fns.filter(e=>e.name==="main"),1),
   'Exports':firstN(fns.filter(e=>e.exported&&e.name!=='main'),4),
   'Hubs':firstN(fns.filter(e=>(callers[e.key]||[]).length>1).sort((a,b)=>callers[b.key].length-callers[a.key].length),6),
-  'Writes data':firstN(fns.filter(e=>e.effects.includes('write')).sort((a,b)=>(callers[b.key]||[]).length-(callers[a.key]||[]).length),6)
+  'Changes the world':firstN(fns.filter(e=>e.effects.some(x=>fxKind(x)==='write')).sort((a,b)=>(callers[b.key]||[]).length-(callers[a.key]||[]).length),6)
 };
 /* what a selection can show: a function has behavior, a type has shape, a module only has its place on the map */
 function tabsFor(){const e=S.sel&&E[S.sel];
@@ -261,7 +263,7 @@ function setList(){
   if(HAS){const ks=Object.keys(CH);h+='<h4>Changed ('+(ks.length+GONE.length)+')</h4><div class="chips">'+ks.slice(0,40).map(k=>'<button type="button" class="chip chg" data-key="'+esc(k)+'" title="'+esc(CH[k].tier)+'">'+esc(CH[k].name)+'</button>').join('')+GONE.slice(0,10).map(g=>'<span class="chip gone" title="removed">'+esc(g.name)+'</span>').join('')+(ks.length>40?'<span class="hint">+'+(ks.length-40)+' more</span>':'')+'</div>'}
   const lm=Object.entries(LAND).filter(([t,l])=>l.length);
   if(lm.length){const o=OPEN.has('#lm');h+='<h4 data-tg="#lm" style="cursor:pointer">'+(o?'▾ ':'▸ ')+'Landmarks</h4>';
-    if(o)for(const [t,l] of lm)h+='<div class="hint" style="margin:4px 8px 0;font-size:11px">'+esc(t)+'</div><div class="chips">'+l.map(e=>'<button type="button" class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</button>').join('')+'</div>'}
+    if(o)for(const [t,l] of lm)h+='<div class="hint" style="margin:4px 8px 0;font-size:11px">'+esc(t==='Exports'&&NEXP>l.length?'Exports ('+l.length+' of '+NEXP+')':t)+'</div><div class="chips">'+l.map(e=>'<button type="button" class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</button>').join('')+'</div>'}
   const cur=S.mod||(S.sel&&E[S.sel]&&E[S.sel].file)||'';
   if(cur+'|'+S.sel!==revealed){revealed=cur+'|'+S.sel;const se=S.sel&&E[S.sel];reveal(cur,se&&isCheck(se))}
   h+='<h4>Files</h4>'+treeHTML(TREE,0);
@@ -286,7 +288,7 @@ function setInfo(){
   if(e){
     const starred=STAR.has(e.key);
     h+='<div class="ttl">'+sigOf(e)+'<span class="sp"></span><button class="ib'+(starred?' on':'')+'" data-star="1" title="'+(starred?'Unstar':'Star')+' (S)">'+(starred?'★':'☆')+'</button><button class="ib'+(srcOpen?' on':'')+'" data-src="1" title="Show or hide source">&lt;/&gt;</button><button class="ib" data-link="1" title="Copy link to this view">⧉</button></div><div class="meta"><span>'+esc(e.kind)+' · line '+e.line+'</span>';
-    h+=fx(e).map(x=>'<span class="badge '+esc(x)+'" title="'+esc(FXTIP[x]||x)+'">'+esc(x)+'</span>').join('')+(e.error?'<span class="badge err">err '+esc(e.error)+'</span>':'')+(e.scopes?'<span class="badge" title="Resources this function closes when it exits">closes '+e.scopes+'</span>':'');
+    h+=fx(e).map(x=>'<span class="badge '+fxKind(x)+'" title="Declared effect '+esc(x)+': this function or something it calls does this">'+esc(x)+'</span>').join('')+(e.error?'<span class="badge err">err '+esc(e.error)+'</span>':'')+(e.scopes?'<span class="badge" title="Resources this function closes when it exits">closes '+e.scopes+'</span>':'');
     if(CH[e.key])h+='<span class="badge err">'+esc(CH[e.key].tier)+'</span><span>'+CH[e.key].changes.map(esc).join('; ')+'</span>';
     const cs=callers[e.key]||[];
     if(cs.length)h+='<span>callers</span>'+cs.slice(0,8).map(k=>'<a href="#" data-key="'+esc(k)+'">'+esc(E[k].name)+'</a>').join(' ')+(cs.length>8?'<span>+'+(cs.length-8)+'</span>':'');
@@ -335,7 +337,7 @@ function graph(nodes,edges,note){
       else{for(const v of out[u])if(st[v]===2)layer[u]=Math.max(layer[u],layer[v]+1);st[u]=2;stack.pop()}}}
   const max=Math.max(0,...layer),cols=[];
   nodes.forEach((n,i)=>{const c=max-layer[i];(cols[c]=cols[c]||[]).push(i)});
-  const W=260,GX=80,GY=24,pos=[];let H=0;
+  const W=224,GX=56,GY=24,pos=[];let H=0;
   if(max>5&&nodes.length>12){cols.length=0;nodes.forEach((_,i)=>{const c=Math.floor(i/8);(cols[c]=cols[c]||[]).push(i)})}
   const wrapped=[];cols.forEach(c=>{if(!c)return;for(let i=0;i<c.length;i+=10)wrapped.push(c.slice(i,i+10))});cols.length=0;wrapped.forEach(c=>cols.push(c));
   cols.forEach((c,ci)=>{if(!c)return;let y=10;c.forEach(i=>{const h=Math.max(40,18+14*(nodes[i].lines||[]).length+14);pos[i]={x:10+ci*(W+GX),y,h};y+=h+GY});H=Math.max(H,y)});
@@ -348,7 +350,7 @@ function graph(nodes,edges,note){
     parts.push('<path class="edge" d="'+d+'" marker-end="url(#a)"/>');
     if(e.label)parts.push('<text class="elabel" x="'+((x1+x2)/2)+'" y="'+((y1+y2)/2-4)+'" text-anchor="middle">'+esc(e.label)+'</text>')}
   nodes.forEach((n,i)=>{const p=pos[i];if(!p)return;
-    parts.push('<g class="node '+(n.cls||'')+(chgOf(n)?' chg':'')+(n.id===S.sel||n.id===S.mod?' sel':'')+'" data-id="'+esc(n.id)+'" data-kind="'+(n.kind||'')+'" tabindex="0" role="button" aria-label="'+esc(n.tip||n.title)+'"><title>'+esc(n.tip||n.title)+'</title><rect x="'+p.x+'" y="'+p.y+'" width="'+W+'" height="'+p.h+'" rx="7"/>'+(n.code?'<text class="code" x="'+(p.x+10)+'" y="'+(p.y+18)+'" font-weight="600">'+esc(n.title.slice(0,30))+':</text>':'<text x="'+(p.x+W/2)+'" y="'+(p.y+18)+'" text-anchor="middle" font-weight="600">'+esc(n.title.slice(0,26))+'</text>'));
+    parts.push('<g class="node '+(n.cls||'')+(chgOf(n)?' chg':'')+(n.id===S.sel||n.id===S.mod?' sel':'')+'" data-id="'+esc(n.id)+'" data-kind="'+(n.kind||'')+'" tabindex="0" role="button" aria-label="'+esc(n.title+(n.kind?', '+n.kind:''))+'"><title>'+esc(n.tip||n.title)+'</title><rect x="'+p.x+'" y="'+p.y+'" width="'+W+'" height="'+p.h+'" rx="7"/>'+(n.code?'<text class="code" x="'+(p.x+10)+'" y="'+(p.y+18)+'" font-weight="600">'+esc(n.title.slice(0,30))+':</text>':'<text x="'+(p.x+W/2)+'" y="'+(p.y+18)+'" text-anchor="middle" font-weight="600">'+esc(n.title.slice(0,26))+'</text>'));
     (n.lines||[]).forEach((l,j)=>parts.push('<text'+(n.code?' class="code" x="'+(p.x+36):' x="'+(p.x+10))+'" y="'+(p.y+36+14*j)+'">'+esc(l)+'</text>'));
     if(n.sub)parts.push('<text x="'+(p.x+W/2)+'" y="'+(p.y+p.h-8)+'" text-anchor="middle" class="elabel">'+esc(n.sub.slice(0,30))+'</text>');
     parts.push('</g>')});
@@ -356,7 +358,7 @@ function graph(nodes,edges,note){
 }
 const fcls=x=>x.name==='main'?'entry':fx(x).length?'effect':'pure';
 /* overview: the current folder's modules and subfolders, or one module's functions; capped and ranked */
-const LEGEND='green = pure · olive = reads or writes · orange fill = selected';
+const LEGEND='dashed = standard library · green = pure · olive = declared effects (std.fs.read …) · orange fill = selected';
 function overview(){
   normScope();
   const open=S.mod,scope=S.scope,agg=Object.create(null),cnt=Object.create(null),weight=Object.create(null);
@@ -391,15 +393,16 @@ function overview(){
 }
 function calls(){
   const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
-  const depth=+$('depth').value,nodes={},edges=[];let n=0;
+  const depth=+$('depth').value,nodes={},edges=[];let n=0,hidden=0;
   const add=k=>{if(nodes[k]||n>=60)return;n++;const x=E[k];nodes[k]={id:k,title:x.name,sub:base(x.file),cls:fcls(x),kind:'fn',tip:x.file+':'+x.line}};
   add(e.key);
   const edge=(a,b)=>{if(nodes[a]&&nodes[b])edges.push({from:a,to:b})};
-  const up=(k,d,seen)=>{if(d>=depth||seen.has(k))return;seen.add(k);for(const c of (callers[k]||[]).slice(0,12)){add(c);edge(c,k);up(c,d+1,seen)}};
+  const up=(k,d,seen)=>{if(d>=depth||seen.has(k))return;seen.add(k);hidden+=Math.max(0,(callers[k]||[]).length-12);for(const c of (callers[k]||[]).slice(0,12)){add(c);edge(c,k);up(c,d+1,seen)}};
   const seen=new Set();
-  const down=(k,d)=>{if(d>=depth||seen.has(k))return;seen.add(k);for(const c of E[k].calls.slice(0,16)){add(c);edge(k,c);down(c,d+1)}
+  const down=(k,d)=>{if(d>=depth||seen.has(k))return;seen.add(k);hidden+=Math.max(0,E[k].calls.length-16);for(const c of E[k].calls.slice(0,16)){add(c);edge(k,c);down(c,d+1)}
     if($('all').checked)for(const x of E[k].external.slice(0,6)){const id='x:'+x;if(!nodes[id]&&n<60){n++;nodes[id]={id,title:x.split('#').pop(),cls:'ext',kind:'ext'}}edge(k,id)}};
   if(S.dir!=='down')up(e.key,0,new Set());if(S.dir!=='up')down(e.key,0);
+  if(hidden>0){nodes['more']={id:'more',title:'+'+hidden+' more',sub:'not drawn; narrow with Route or search',cls:'more',kind:'more'};edges.push({from:e.key,to:'more'})}
   return '<div class="tools"><select id="dir"><option value="both">callers + callees</option><option value="up">callers</option><option value="down">callees</option></select></div>'+graph(Object.values(nodes),edges,LEGEND);
 }
 function types(){
@@ -411,9 +414,9 @@ function types(){
   roots.forEach(r=>{if(isFn(r)){nodes[r.key]={code:1,id:r.key,title:'fn '+r.name,cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});
   const list=Object.values(nodes);if(!list.length)return empty('No types','Nothing to show for this selection.');
   const cur=S.sel&&E[S.sel];
-  if(cur&&isFn(cur)&&!edges.length)return empty(cur.name+' uses no types from this program','Its signature takes and returns built-in types only. Open Behavior to see what it does.');
+  if(cur&&isFn(cur)&&!edges.length)return empty(cur.name+"'s signature uses only built-in types",'Parameter and result types are shown here. Open Behavior to see what the body does.');
   const users=cur&&isType(cur)?D.entities.filter(f=>(f.kind==='fn'||f.kind==='method')&&(f.slots.some(x=>x.refs.includes(cur.key))||(f.result&&f.result.refs.includes(cur.key)))).slice(0,12):[];
-  const usedBy=users.length?'<div class="tools"><span class="hint">Used by</span>'+users.map(f=>'<button data-key="'+esc(f.key)+'">'+esc(f.name)+'</button>').join('')+'</div>':'';
+  const usedBy=users.length?'<div class="tools"><span class="hint">In the signatures of</span>'+users.map(f=>'<button data-key="'+esc(f.key)+'">'+esc(f.name)+'</button>').join('')+'</div>':'';
   return usedBy+graph(list,edges);
 }
 /* sequence: lifelines for functions, messages in execution order */
@@ -433,7 +436,11 @@ function sequenceEvents(e,depth,all){
     else if(n.kind==='spawn'){cap++;ev.push({t:'note',at:k,label:'spawn'});walk(k,n.children||[],d,path);continue}
     else if(['try','scope','branch','loop','match'].includes(n.kind)){cap++;ev.push({t:'note',at:k,label:clip((n.kind==='try'?'try ⚠ ':'')+n.label,30)})}
     if(n.children&&n.children.length&&!(n.kind==='call'&&ref))walk(k,n.children,d,path)}};
-  part(e.key);direct(e.flow,[]).forEach(part);
+  const size=k=>{const x=E[k];return x&&x.last?x.last-x.first:0};
+  const dir=direct(e.flow,[]);
+  /* under a tight limit the callees with the most code stay, in call order */
+  const keep=dir.length<LIFELINES?dir:dir.map((k,i)=>[k,i]).sort((a,b)=>size(b[0])-size(a[0])||a[1]-b[1]).slice(0,LIFELINES-1).sort((a,b)=>a[1]-b[1]).map(x=>x[0]);
+  part(e.key);keep.forEach(part);
   walk(e.key,e.flow,depth-1,[e.key]);
   /* a run of identical leaf calls (`c(...)` fifty times) is one arrow with a count */
   const out=[],leaf=new Set();
@@ -449,7 +456,7 @@ function sequenceDiagram(ev,parts,dropped,droppedNames){
   const X=150,top=50,row=30,W=130;const px=k=>20+parts.indexOf(k)*X+W/2;const H=top+ev.length*row+40;
   const sv=['<svg data-w="'+(40+parts.length*X)+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--fg)"/></marker></defs>'];
   parts.forEach(k=>{const x=px(k),t=E[k]?E[k].name:'stdlib';
-    sv.push('<line class="life" x1="'+x+'" y1="'+(top-6)+'" x2="'+x+'" y2="'+H+'"/><g class="node '+(E[k]?fcls(E[k]):'ext')+'" data-id="'+esc(k)+'" data-kind="'+(E[k]?'fn':'ext')+'" tabindex="0" role="button" aria-label="'+esc(t)+'"><title>'+esc(t)+'</title><rect x="'+(x-W/2)+'" y="8" width="'+W+'" height="32" rx="6"/><text x="'+x+'" y="29" text-anchor="middle" font-weight="600">'+esc(clip(t,20))+'</text></g>')});
+    sv.push('<line class="life" x1="'+x+'" y1="'+(top-6)+'" x2="'+x+'" y2="'+H+'"/><g class="node '+(E[k]?fcls(E[k]):'ext')+'" data-id="'+esc(k)+'" data-kind="'+(E[k]?'fn':'ext')+'" tabindex="0" role="button" aria-label="'+esc(t+', function')+'"><title>'+esc(t)+'</title><rect x="'+(x-W/2)+'" y="8" width="'+W+'" height="32" rx="6"/><text x="'+x+'" y="29" text-anchor="middle" font-weight="600">'+esc(clip(t,20))+'</text></g>')});
   ev.forEach((v,i)=>{const y=top+i*row+14;
     if(v.t==='note'){const x=px(v.at),w=Math.min(190,v.label.length*6.4+14);sv.push('<g class="note"><rect x="'+(x+6)+'" y="'+(y-12)+'" width="'+w+'" height="20" rx="4"/><text x="'+(x+12)+'" y="'+(y+2)+'">'+esc(v.label)+'</text></g>');return}
     const a=px(v.from),b=px(v.to);
@@ -458,7 +465,7 @@ function sequenceDiagram(ev,parts,dropped,droppedNames){
       if(v.t==='msg')sv.push('<text x="'+(a+21)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(clip(v.label,32)+(v.count>1?' ×'+v.count:''))+'</text>');return}
     sv.push('<path class="msg '+(v.t==='ret'?'ret':'')+'" d="M'+a+' '+y+'L'+b+' '+y+'" marker-end="url(#a)"/>');
     if(v.t==='msg')sv.push('<text x="'+((a+b)/2)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(clip(v.label,32)+(v.count>1?' ×'+v.count:''))+'</text>')});
-  return stage(sv.join('')+'</svg>','time runs down · dotted = return · drag to pan, scroll to zoom'+(dropped?' · not drawn: '+(droppedNames||[]).slice(0,4).join(', ')+(dropped>4?' and '+(dropped-4)+' more':'')+' (limit '+LIFELINES+' lifelines); pick one to see its calls':''));
+  return stage(sv.join('')+'</svg>','time runs down · dotted = return · drag to pan, scroll to zoom'+(dropped?' · not drawn: '+(droppedNames||[]).slice(0,8).join(', ')+(dropped>8?' and '+(dropped-8)+' more':'')+' (limit '+LIFELINES+' lifelines); pick one to see its calls':''));
 }
 function sequence(){
   const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
@@ -510,7 +517,7 @@ function route(){
 const VIEWS={Overview:overview,Calls:calls,Sequence:sequence,Types:types,Behavior:behavior,Route:route};
 const snap=()=>JSON.stringify({t:S.tab,s:S.sel,m:S.mod,c:S.scope,f:S.from,o:S.to});
 const HIST=[];let hi=-1,navigating=false;const VISIT=[];
-function save(){const x=snap();try{history.replaceState(null,'','#'+encodeURIComponent(x))}catch(_){}
+function save(){const x=snap(),fresh=!navigating&&HIST[hi]!==x;try{history[fresh&&HIST.length?'pushState':'replaceState'](null,'','#'+encodeURIComponent(x))}catch(_){}
   if(!navigating&&HIST[hi]!==x){HIST.length=hi+1;HIST.push(x);hi=HIST.length-1;if(HIST.length>100){HIST.shift();hi--}}
   if(S.sel&&VISIT[0]!==S.sel){const i=VISIT.indexOf(S.sel);if(i>=0)VISIT.splice(i,1);VISIT.unshift(S.sel);VISIT.length=Math.min(VISIT.length,12)}
   $('back').disabled=hi<=0;$('fwd').disabled=hi>=HIST.length-1}
@@ -558,8 +565,8 @@ palres.addEventListener('click',ev=>{const r=ev.target.closest('[data-pi]');if(r
 /* help */
 const help=$('help');
 help.innerHTML='<div class="box"><div style="padding:18px 22px"><h3>Reading the map</h3><table>'+
- '<tr><td><span class="sw" style="border-color:var(--pures)"></span>Pure</td><td>no effects found</td></tr>'+
- '<tr><td><span class="sw" style="border-color:var(--effs)"></span>Effects</td><td>reads or writes data (a field, a List, Map, Set or builder); <b>unknown</b> means a call the analysis cannot classify, which is not the same as harmless</td></tr>'+
+ '<tr><td><span class="sw" style="border-color:var(--pures)"></span>Pure</td><td>reaches no declared effect</td></tr>'+
+ '<tr><td><span class="sw" style="border-color:var(--effs)"></span>Effects</td><td>reaches a declared effect such as <code>std.fs.read</code> or <code>std.console.write</code>: the same names <code>ms lint</code> checks against <code>allow_effect</code></td></tr>'+
  '<tr><td><span class="sw" style="border-color:var(--acc)"></span>Entry / selected</td><td>main, or what you picked</td></tr>'+
  '<tr><td><span class="sw" style="border-color:var(--var)"></span>Changed</td><td>differs from the base in a diff</td></tr>'+
  '<tr><td><span class="var">var</span> / <span class="brw">borrow</span> / <span class="hint">copy</span> / <span class="own">move / owned</span></td><td>checked passing and result modes; hover a signature type for the exact mode</td></tr></table>'+
@@ -667,6 +674,7 @@ addEventListener('keydown',ev=>{
   else if(ev.key==='s'||ev.key==='S'){const b=document.querySelector('[data-star]');if(b)b.click()}});
 try{const h=JSON.parse(decodeURIComponent(location.hash.slice(1)));if(h&&TABS.includes(h.t)){S.tab=h.t;S.sel=E[h.s]?h.s:null;S.mod=h.m||null;S.scope=h.c||'';S.from=E[h.f]?h.f:null;S.to=E[h.o]?h.o:null}else throw 0}catch(_){const main=D.entities.find(e=>e.name==='main'&&e.kind==='fn');if(main){S.sel=main.key;S.scope=dirOf(main.file);S.tab='Sequence'}}
 setKinds();render();
+addEventListener('popstate',()=>{try{const h=JSON.parse(decodeURIComponent(location.hash.slice(1)));if(h&&TABS.includes(h.t)){S.tab=h.t;S.sel=E[h.s]?h.s:null;S.mod=h.m||null;S.scope=h.c||'';S.from=E[h.f]?h.f:null;S.to=E[h.o]?h.o:null;navigating=true;render();navigating=false}}catch(_){}});
 /* Icon buttons carry their name in `title`; give assistive technology the same text. */
 const nameButtons=()=>document.querySelectorAll('button[title]:not([aria-label])').forEach(b=>b.setAttribute('aria-label',b.title));
 nameButtons();new MutationObserver(nameButtons).observe(document.body,{childList:true,subtree:true});
