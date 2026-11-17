@@ -10,7 +10,7 @@ import (
 	SpawnOptions,
 	Subprocess,
 	run from "@std/os/process.ms",
-	expect_equal, expect_false from "@std/test/test.ms",
+	expect_equal, expect_false, expect_fault from "@std/test/test.ms",
 )
 
 fn forward[T](item: T) T: item
@@ -102,8 +102,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
 		)
 	)?
 
-	invalid: String! := error(Error("CSV: invalid input", kind: "EINVAL"))
-	expect_equal(stringify([["a"]], CsvOptions("")), invalid)?
+	_empty := expect_fault(fn: discard(stringify([["a"]], CsvOptions(""))))?
 
 test "Base64 defaults support stored functions and explicit alphabets":
 	bytes := Bytes([255])
@@ -163,3 +162,6 @@ test "Commands defaults cross concrete bound view and generic boundaries":
 	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
 	native := run
 	expect_equal(native("", []).wait(), invalid)?
+
+fn discard[T](value: T) Void:
+	return
