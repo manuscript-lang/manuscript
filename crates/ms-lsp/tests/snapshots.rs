@@ -673,7 +673,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("main.ms", 1),
         ("math/decimal.ms", 1),
         ("math/math.ms", 13),
-        ("random.ms", 3),
+        ("random.ms", 4),
         ("string.ms", 7),
         ("test/test.ms", 2),
     ]);
