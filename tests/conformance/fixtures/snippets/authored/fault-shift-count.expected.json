@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 134,
     "stdout": "",
-    "stderr": "shift_left: count must be between 0 and 63, found 64\n  at @std/math/math.ms:<LINE> in check_shift_count\n  at @std/math/math.ms:<LINE> in shift_left\n  at fault-shift-count.ms:8 in main\n"
+    "stderr": "shift_left: count must not be negative, found -1\n  at @std/math/math.ms:<LINE> in check_shift_count\n  at @std/math/math.ms:<LINE> in shift_left\n  at fault-shift-count.ms:8 in main\n"
   }
 }

@@ -1,17 +1,16 @@
 import (
-	panic from "@std/core.ms",
 	bit_and,
 	bit_not,
 	bit_or,
 	bit_xor,
 	count_ones,
 	shift_left,
-	trailing_zeros from "@std/math/math.ms",
-)
+	trailing_zeros
+) from "@std/math/math.ms"
 
 /*
 A set of small non-negative integers stored one bit each: 8 bytes per 64 candidates, with O(1) add, remove and contains.
-Indexes must be 0 through 1073741823 (a 128 MiB bitmap); other indexes fault, so the set never grows without bound by accident.
+Indexes must be 0 through 1073741823 (a 128 MiB bitmap); other indexes are rejected by `add` with `EINVAL`, so the set never grows without bound by accident.
 Written in Manuscript; clone() makes an independent copy.
 Use it for visited marks, flags, and dense id sets; use Set for sparse or non-integer members.
 */
@@ -20,15 +19,22 @@ export type BitSet:
 	// operations, not this field.
 	words: List[Int] = []
 
-// Adds an index; faults when it is negative or above 1073741823.
-fn var BitSet.add(index: Int) Void:
+// Adds an index. A negative index, or one above 1073741823, is `EINVAL` and changes
+// nothing.
+fn var BitSet.add(index: Int) Void!:
 	if index < 0 or index > 1073741823:
-		panic(f"BitSet: index must be between 0 and 1073741823, found {index}")
+		return error(
+			Error(
+				f"BitSet: index must be between 0 and 1073741823, found {index}",
+				kind: "EINVAL",
+			)
+		)
 
 	word := index / 64
 	while self.words.length() <= word:
 		self.words.append(0)
 	self.words.set(word, bit_or(self.words[word], shift_left(1, index % 64)))
+	return ok()
 
 // Removes an index; absent and out-of-range indexes change nothing.
 fn var BitSet.remove(index: Int) Void:

@@ -59,7 +59,7 @@ test "backoff reaching the cap exactly returns it":
 	expect_equal(policy.wait_after(3).nanos, milliseconds(50).nanos)?
 
 test "rate limiter allows a burst then waits":
-	var limiter = rate_limiter(100, burst: 3)
+	var limiter = rate_limiter(100, burst: 3)?
 	expect_true(limiter.try_acquire())?
 	expect_true(limiter.try_acquire())?
 	expect_true(limiter.try_acquire())?
@@ -69,8 +69,12 @@ test "rate limiter allows a burst then waits":
 	limiter.acquire()
 	expect_true(monotonic().difference(start).nanos >= milliseconds(5).nanos)?
 
+test "rate limiter rejects a count or burst below one":
+	expect_equal((expect_error(rate_limiter(0, burst: 1))?).kind, "EINVAL")?
+	expect_equal((expect_error(rate_limiter(1, burst: -1))?).kind, "EINVAL")?
+
 test "rate limiter refills a full maximum burst without overflowing":
-	var limiter = rate_limiter(1, burst: 9223372036854775807)
+	var limiter = rate_limiter(1, burst: 9223372036854775807)?
 	limiter.stamp -= Duration(nanos: 1000000000)
 	expect_true(limiter.try_acquire())?
 	expect_equal(limiter.tokens, 9223372036854775807 - 1)?

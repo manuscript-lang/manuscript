@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "bits.ms::shift counts outside 0 through 63 fault",
+          "name": "bits.ms::shift counts of 64 or more shift every bit out, a negative count faults",
           "status": "passed"
         },
         {
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN bits.ms::bitwise operators follow two's complement\nPASS bits.ms::bitwise operators follow two's complement\nRUN bits.ms::shifts distinguish arithmetic from logical\nPASS bits.ms::shifts distinguish arithmetic from logical\nRUN bits.ms::shift counts outside 0 through 63 fault\nPASS bits.ms::shift counts outside 0 through 63 fault\nRUN bits.ms::rotation and bit counts\nPASS bits.ms::rotation and bit counts\nRUN bits.ms::rotation counts reduce modulo 64 for runtime counts\nPASS bits.ms::rotation counts reduce modulo 64 for runtime counts\nRUN bits.ms::wrapping arithmetic never faults\nPASS bits.ms::wrapping arithmetic never faults\n6 tests, 0 failed\n",
+      "stdout": "RUN bits.ms::bitwise operators follow two's complement\nPASS bits.ms::bitwise operators follow two's complement\nRUN bits.ms::shifts distinguish arithmetic from logical\nPASS bits.ms::shifts distinguish arithmetic from logical\nRUN bits.ms::shift counts of 64 or more shift every bit out, a negative count faults\nPASS bits.ms::shift counts of 64 or more shift every bit out, a negative count faults\nRUN bits.ms::rotation and bit counts\nPASS bits.ms::rotation and bit counts\nRUN bits.ms::rotation counts reduce modulo 64 for runtime counts\nPASS bits.ms::rotation counts reduce modulo 64 for runtime counts\nRUN bits.ms::wrapping arithmetic never faults\nPASS bits.ms::wrapping arithmetic never faults\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

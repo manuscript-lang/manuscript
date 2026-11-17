@@ -53,7 +53,7 @@ bench "bitset.add_contains_100000":
 	fn work() Result[Void, Error]:
 		var set = BitSet()
 		for i in 0..100000:
-			set.add((i * 7919) % 1000003)
+			set.add((i * 7919) % 1000003)?
 
 		var hits = 0
 		for i in 0..100000:
@@ -140,7 +140,7 @@ bench "bitset.add_contains_400000":
 	fn work() Result[Void, Error]:
 		var set = BitSet()
 		for i in 0..400000:
-			set.add((i * 7919) % 1000003)
+			set.add((i * 7919) % 1000003)?
 
 		var hits = 0
 		for i in 0..400000:
