@@ -17,7 +17,7 @@ interface Scaler:
 
 fn Counter.bump(by: Int) Int: self.n + by
 
-fn Counter.scale(factor: Int, offset: Int?) Int: (self.n * factor + offset.get(0))
+fn Counter.scale(factor: Int, offset: Int?) Int: (self.n * factor + offset.get_or(0))
 
 fn Shape.bump(by: Int) Int:
 	match self:
@@ -71,7 +71,7 @@ fn Chain.step(n: Int) Int!Error:
 	return ok((self.parser.parse(n)?) + 1)
 
 fn code(r: Int!Error) Int:
-	return r.get(-1)
+	return r.get_or(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:
 	return chain.step(n) | code

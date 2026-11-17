@@ -18,7 +18,7 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
 ## Reading `?` next to `?.`
 
 - `?` can exit the function; `?.` never does. `a?.b` is [optional chaining](../types/optionals.md) on an Optional.
-- `?` applies to a Result only. For an Optional, use `if x := v:` or `v.get(default)`.
+- `?` applies to a Result only. For an Optional, use `if x := v:` or `v.get_or(default)`.
 - `load()?.name` is rejected: `?.` chains an Optional and `load()` returns a Result. Bind first: `u := load()?`, then `u.name`.
 - `?` does not repeat: `f()??` is rejected.
 - `place[key]?` is the in-place borrow in an `if var` head, not propagation.

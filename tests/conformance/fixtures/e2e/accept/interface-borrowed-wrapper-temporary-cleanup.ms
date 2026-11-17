@@ -29,7 +29,7 @@ type Reader:
 	tag: Int
 
 fn Reader.observe(first: Resource?, second: Resource?, tail: Int? = none) Bool:
-	return first.is_some() or second.is_some() or tail.get(0) > 0
+	return first.is_some() or second.is_some() or tail.get_or(0) > 0
 
 fn Reader.reject(value: Resource?) Void!:
 	if value.is_some(): return error(Error("expected"))

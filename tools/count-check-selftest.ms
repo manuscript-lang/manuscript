@@ -29,7 +29,10 @@ fn gate(root: String, compiler: String, fixture: String) Gate:
 		arguments,
 		RunOptions(cwd: root.clone(), env: settings),
 	).wait():
-		text := out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
+		text := (
+			out.stdout.decode_utf8().get_or("")
+			+ out.stderr.decode_utf8().get_or("")
+		)
 		return Gate(out.exit_code, text)
 
 	return Gate(125, "cannot start the gate\n")

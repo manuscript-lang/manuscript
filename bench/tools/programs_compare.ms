@@ -68,8 +68,8 @@ fn main() Int:
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 
-	opts := parsed.get(Map[String, String]())
-	n := opts.get_or("repeats", "30").parse_int().get(0)
+	opts := parsed.get_or(Map[String, String]())
+	n := opts.get_or("repeats", "30").parse_int().get_or(0)
 	if n < 1: return fail("repeats must be positive")
 
 	return finish(run(opts, n))

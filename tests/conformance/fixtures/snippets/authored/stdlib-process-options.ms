@@ -32,12 +32,12 @@ fn root() String:
 test "run starts the child in cwd with extra environment":
     output := run(shell(), print_cwd(), RunOptions(cwd: root())).wait()?
     expect_equal(output.exit_code, 0)?
-    expect_contains(output.stdout.decode_utf8().get(""), root())?
+    expect_contains(output.stdout.decode_utf8().get_or(""), root())?
 
     probed := run(
         shell(), print_probe(), RunOptions(env: {"MS_PROBE": "from-env"})
     ).wait()?
-    expect_contains(probed.stdout.decode_utf8().get(""), "from-env")?
+    expect_contains(probed.stdout.decode_utf8().get_or(""), "from-env")?
 
 test "run reports the child's peak resident set":
     output := run(shell(), print_cwd()).wait()?

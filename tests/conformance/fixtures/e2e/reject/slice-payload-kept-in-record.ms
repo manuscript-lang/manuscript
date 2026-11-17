@@ -7,5 +7,5 @@ type Box:
 
 export fn main() Int:
 	var xs = [1, 2, 3, 4]
-	boxed := Box(xs.slice(0, 2).get([]))
+	boxed := Box(xs.slice(0, 2).get_or([]))
 	return boxed.items.length()

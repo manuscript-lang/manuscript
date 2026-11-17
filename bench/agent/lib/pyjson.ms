@@ -35,7 +35,7 @@ fn quote(text: String) String:
 			v := code - 65536
 			out = out + hex4(55296 + v / 1024) + hex4(56320 + v % 1024)
 		else:
-			out += from_scalars([code]).get("")
+			out += from_scalars([code]).get_or("")
 
 	return out + "\""
 
@@ -79,6 +79,6 @@ export fn dumps(value: JsonValue, indent: Int) String:
 
 // Encodes any `Data` value, then lays it out as `dumps` does.
 export fn dumps_data[T: Data](value: T, indent: Int) String:
-	text := stringify(value).get("null")
-	tree := parse(text).get(JsonValue.Null)
+	text := stringify(value).get_or("null")
+	tree := parse(text).get_or(JsonValue.Null)
 	return emit(tree, indent, 0)

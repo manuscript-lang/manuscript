@@ -12,9 +12,9 @@ fn counts() Int!:
 	return ok(c.length() + n.length())
 
 test "system inventories work from promises on any thread":
-	here := counts().get(-1)
+	here := counts().get_or(-1)
 	all := wait_all(
 		[promise(fn: counts()), promise(fn: counts()), promise(fn: counts())]
 	)
-	for n in all.get([]):
+	for n in all.get_or([]):
 		expect_equal(n, here)?

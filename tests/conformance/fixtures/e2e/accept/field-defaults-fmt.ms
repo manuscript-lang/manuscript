@@ -85,7 +85,7 @@ type Reader:
     number: Int = 5
 
 fn Reader.get(fallback: Int?) Int:
-    return fallback.get(self.number)
+    return fallback.get_or(self.number)
 
 type Marker: ...
 

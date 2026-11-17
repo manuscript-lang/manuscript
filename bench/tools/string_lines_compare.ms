@@ -67,7 +67,7 @@ export fn run_rows(
 	var seen = Set[String]()
 	var rows = List[Row]()
 
-	for line in lines.slice(1, lines.length()).get([]):
+	for line in lines.slice(1, lines.length()).get_or([]):
 		f := line.trim().split(",")
 		if f.length() != 5: return invalid(f"malformed row: {line}")
 
@@ -76,7 +76,7 @@ export fn run_rows(
 			f"duplicate or unknown case: {name}"
 		)
 
-		nums := all_ints(f.slice(1, 5).get([]))?
+		nums := all_ints(f.slice(1, 5).get_or([]))?
 		want := expected.get_or(name, Identity(0, 0, 0))
 		if (
 			nums[0] != want.input_bytes
@@ -97,7 +97,7 @@ fn read_identities(path: String) Map[String, Identity]!:
 	doc := parse[JsonValue](read_text(path))
 	if doc.is_error(): return invalid("identity file is not JSON")
 
-	members := doc.get(JsonValue.Null).as_map().get(Map[String, JsonValue]())
+	members := doc.get_or(JsonValue.Null).as_map().get_or(Map[String, JsonValue]())
 	if members.is_empty(): return invalid(
 		"identity file must contain a nonempty object"
 	)
@@ -105,7 +105,7 @@ fn read_identities(path: String) Map[String, Identity]!:
 	var out = Map[String, Identity]()
 
 	for entry in members.entries():
-		items := entry.value.as_list().get([])
+		items := entry.value.as_list().get_or([])
 		if entry.key == "" or items.length() != 3: return invalid(
 			"each identity must have a name and three integers"
 		)
@@ -114,11 +114,11 @@ fn read_identities(path: String) Map[String, Identity]!:
 
 		for item in items:
 			v := item.as_int()
-			if v.is_none() or v.get(-1) < 0: return invalid(
+			if v.is_none() or v.get_or(-1) < 0: return invalid(
 				"identities must have nonnegative integers and positive iterations"
 			)
 
-			n.append(v.get(0))
+			n.append(v.get_or(0))
 
 		if n[1] == 0: return invalid(
 			"identities must have nonnegative integers and positive iterations"
@@ -178,14 +178,14 @@ fn main() Int:
 	)
 
 	parsed := options(
-		args.slice(3, args.length()).get([]),
+		args.slice(3, args.length()).get_or([]),
 		["pairs", "identity-file"],
 		[],
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 
-	opts := parsed.get(Map[String, String]())
-	pairs := opts.get_or("pairs", "7").parse_int().get(0)
+	opts := parsed.get_or(Map[String, String]())
+	pairs := opts.get_or("pairs", "7").parse_int().get_or(0)
 	if pairs < 1: return fail("--pairs must be positive")
 
 	var expected = builtin_identities()
@@ -194,7 +194,7 @@ fn main() Int:
 		loaded := read_identities(file)
 		if loaded.is_error(): return fail(loaded.err().message)
 
-		expected = loaded.get(expected)
+		expected = loaded.get_or(expected)
 
 	return finish(
 		compare(

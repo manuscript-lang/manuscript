@@ -12,5 +12,5 @@ fn main() Int:
     var r = Res("b")
     n := r.name
     kept.append(n)  // error: cannot move `n` out: it is borrowed, not owned
-    r.close().get(none)
+    r.close().get_or(none)
     return kept.length()

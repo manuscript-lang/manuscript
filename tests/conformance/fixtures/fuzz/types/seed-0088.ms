@@ -20,7 +20,7 @@ export fn main() Int:
     f2 := ((805.192 + (161.901 / 304.045)) * (55.427 - (0.0 + 28.580)))
     say(f"f2 = {f2}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     var acc3 = 0
     for i in 0..7:
         acc3 += i * 7

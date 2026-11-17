@@ -96,8 +96,8 @@ test "nonconsuming bound methods continue borrowing ordinary inputs":
 
 test "bound native getter defaults remain unchanged":
 	values := ["first"]
-	get := values.get
-	expect_equal(get(0), "first")?
+	get := values.get_or
+	expect_equal(get(0, "none"), "first")?
 
 	fallback := f"fallback-{1}"
 	expect_equal(get(2, fallback), fallback)?

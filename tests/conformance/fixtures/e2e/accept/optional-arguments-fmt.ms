@@ -4,7 +4,7 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 import Queue from "@std/collections/queue.ms"
 
-fn number(value: Int?) Int: value.get(-1)
+fn number(value: Int?) Int: value.get_or(-1)
 
 fn present[T](value: T?) T?: value
 
@@ -15,7 +15,7 @@ fn list_size(value: List[Int]?) Int: value.get().length()
 fn flag(value: Bool?) Bool: value.get()
 
 fn success(value: Int!Error?) Int:
-    return value.get().get(-1)
+    return value.get().get_or(-1)
 
 fn context[T](value: T?, fallback: T) T:
     if inner := value:
@@ -41,7 +41,7 @@ interface Read:
 type Reader:
     offset: Int
 
-fn Reader.read(value: Int?) Int: value.get(0) + self.offset
+fn Reader.read(value: Int?) Int: value.get_or(0) + self.offset
 
 type Counter:
     calls: Int

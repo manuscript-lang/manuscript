@@ -213,7 +213,7 @@ fn invalid(context: Context, reason: String) Error:
 	)
 
 fn peek(flow: Flow) String:
-	return flow.chars.get(flow.pos, default: "").clone()
+	return flow.chars.get_or(flow.pos, "").clone()
 
 fn advance(var flow: Flow) String:
 	c := peek(flow)
@@ -223,7 +223,7 @@ fn advance(var flow: Flow) String:
 // The scalar value at the cursor, or 0 at the end; `codes` is empty for flows that only
 // read quoted text.
 fn cur(flow: Flow) Int:
-	return flow.codes.get(flow.pos, default: 0)
+	return flow.codes.get_or(flow.pos, 0)
 
 fn step(var flow: Flow) Int:
 	code := cur(flow)
@@ -636,13 +636,13 @@ fn pair_key_text(flow: Flow, key: YamlValue, from: Int, empty: Bool) String!:
 		)
 	)
 
-	return ok(scalar.get(""))
+	return ok(scalar.get_or(""))
 
 // Whether the cursor sits on a flow `?` that opens an explicit key.
 fn explicit_start(flow: Flow) Bool:
 	return (
 		cur(flow) == 63
-		and separates_colon(flow.codes.get(flow.pos + 1, default: 0), true)
+		and separates_colon(flow.codes.get_or(flow.pos + 1, 0), true)
 	)
 
 // A one-entry mapping from `key` to null.
@@ -671,7 +671,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 	start := flow.pos
 	while (flow.next_stop < flow.stops.length() and flow.stops[flow.next_stop] <= start): flow.next_stop += 1
 
-	stop := flow.stops.get(flow.next_stop, default: flow.chars.length())
+	stop := flow.stops.get_or(flow.next_stop, flow.chars.length())
 
 	while flow.pos < stop:
 		code := cur(flow)
@@ -690,7 +690,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 		if (
 			code == 58
 			and separates_colon(
-				flow.codes.get(flow.pos + 1, default: 0),
+				flow.codes.get_or(flow.pos + 1, 0),
 				flow.delimited or key,
 			)
 		):
@@ -700,7 +700,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 		flow.pos += 1
 
 	// Slice once: appending each character to a string is quadratic on long scalars.
-	var text = blank_trim(flow.chars.slice(start, flow.pos).get([]).join(""))
+	var text = blank_trim(flow.chars.slice(start, flow.pos).get_or([]).join(""))
 	if (
 		text.starts_with("?")
 		and (text.length() == 1 or " \t".contains(text.chars()[1]))
@@ -994,7 +994,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				if single:
 					done = YamlValue.ObjectValue(entries)
 
-					parent := frames.pop().get(FlowFrame())
+					parent := frames.pop().get_or(FlowFrame())
 					kind = parent.kind
 					level = parent.level
 					anchors = parent.anchors
@@ -1071,7 +1071,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 					)
 				)
 
-				name = flow_key.get("")
+				name = flow_key.get_or("")
 				flow_space(var flow)
 
 				// A key with no colon, as in `{a, b: 1}`, maps to null.
@@ -1097,7 +1097,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 		for anchor in anchors.reversed():
 			define_anchor(var flow.context, anchor, done.clone())
 
-		parent := frames.pop().get(FlowFrame())
+		parent := frames.pop().get_or(FlowFrame())
 		kind = parent.kind
 		level = parent.level
 		anchors = parent.anchors
@@ -1168,7 +1168,7 @@ fn plain_boundary(text: String, colon: Bool) Int:
 
 	while true:
 		rest := text.view(offset, text.length())
-		found := rest.index_of(marker).get(-1)
+		found := rest.index_of(marker).get_or(-1)
 		if found < 0: return -1
 
 		at := offset + found
@@ -1227,7 +1227,7 @@ fn scan_structure_part(
 			continue
 
 		c := chars[index]
-		next := chars.get(index + 1, default: 0)
+		next := chars.get_or(index + 1, 0)
 
 		if quote != 0:
 			if c == 92 and quote == 34: index += 1
@@ -1240,7 +1240,7 @@ fn scan_structure_part(
 			index += 1
 			continue
 
-		before := chars.get(index - 1, default: 0)
+		before := chars.get_or(index - 1, 0)
 
 		if (c == 35 and (index == 0 or before == 32 or before == 9 or before == 10)):
 			if target == "#":
@@ -1385,7 +1385,7 @@ fn classify(var context: Context, data: Bytes) Void:
 	var pos = 0
 
 	while context.simple.length() < context.lines.length():
-		end := data.index_of_byte(10, pos).get(total)
+		end := data.index_of_byte(10, pos).get_or(total)
 		var at = pos
 		while at < end and data.get(at) == 32: at += 1
 
@@ -1753,10 +1753,7 @@ fn block_string(
 		// quadratic.
 		pieces := result.split("\n")
 		var trailing = 0
-		while (
-			trailing < pieces.length()
-			and pieces.get(-1 - trailing, default: "x") == ""
-		): trailing += 1
+		while (trailing < pieces.length() and pieces.get_or(-1 - trailing, "x") == ""): trailing += 1
 		if trailing == pieces.length(): trailing -= 1
 		result = result.slice(0, (result.length() - trailing))
 		if (mode != "-" and content and final_break): result = result.concat("\n")
@@ -1886,7 +1883,7 @@ fn block_value(
 		result = block_string(
 			var context,
 			blank_trim_end(remainder),
-			base: block_base.get(base),
+			base: block_base.get_or(base),
 			header_line: start_line,
 			header_column: origin,
 		)?
@@ -1927,7 +1924,7 @@ fn block_value(
 
 			// Properties on a line of their own bind the node after them, which only
 			// has to be indented past the parent.
-			parent := block_base.get(base)
+			parent := block_base.get_or(base)
 
 			if (
 				next_indent > parent
@@ -1956,7 +1953,7 @@ fn block_value(
 					var context,
 					next_indent,
 					depth,
-					scalar_base: block_base.get(base),
+					scalar_base: block_base.get_or(base),
 					mapping_value: indentless,
 				)?
 			else:
@@ -1978,12 +1975,12 @@ fn nested_columns(line: String, base: Int) List[Int]:
 	var columns: List[Int] = []
 	var marker = base
 
-	while chars.get(marker, default: "") == "-":
+	while chars.get_or(marker, "") == "-":
 		var next = marker + 1
-		while chars.get(next, default: "") == " ": next += 1
-		if next == marker + 1 or chars.get(next, default: "") != "-": break
+		while chars.get_or(next, "") == " ": next += 1
+		if next == marker + 1 or chars.get_or(next, "") != "-": break
 
-		after := chars.get(next + 1, default: "")
+		after := chars.get_or(next + 1, "")
 		if (after != "" and after != " " and after != "\t"): break
 
 		columns.append(next)
@@ -2197,7 +2194,7 @@ fn explicit_entry(var context: Context, base: Int, depth: Int) ExplicitEntry!:
 			)
 		)
 
-		if rest != "" or node != YamlValue.Null: name = scalar.get("")
+		if rest != "" or node != YamlValue.Null: name = scalar.get_or("")
 		skip(var context)
 
 	if context.index >= context.lines.length(): return ok(
@@ -2399,7 +2396,7 @@ fn block(
 				aliased := context.anchors.get(alias_name)
 				if aliased.is_none(): return error(invalid(context, "unknown anchor"))
 
-				alias_text := key_text(aliased.get(YamlValue.Null))
+				alias_text := key_text(aliased.get_or(YamlValue.Null))
 				if alias_text.is_none(): return error(
 					yaml_unsupported(
 						line: source_line(
@@ -2410,7 +2407,7 @@ fn block(
 					)
 				)
 
-				name = alias_text.get("")
+				name = alias_text.get_or("")
 				plain_key = false
 
 			if (
@@ -2589,10 +2586,10 @@ fn open_stream(text: String, options: YamlOptions) Context!:
 		):
 			// The first occurrence of this invalid scalar is necessarily the first
 			// one encountered above; find its position only on the rejection path.
-			character := from_scalars([code]).get("")
+			character := from_scalars([code]).get_or("")
 			at := normalized.view(
 				0,
-				normalized.index_of(character).get(0),
+				normalized.index_of(character).get_or(0),
 			).scalar_length()
 			position := cursor_position(normalized.split(""), at, 1, 1)
 			return error(

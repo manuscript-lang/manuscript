@@ -53,7 +53,7 @@ fn main_run() Int:
                     sum * 31
                     + a.get(k) * 7
                     + b.get(k) * 3
-                    + c.get(k).truncate_to_int().get(0)
+                    + c.get(k).truncate_to_int().get_or(0)
                     + d.get(k) * 5
                     + e.get(k)
                 )

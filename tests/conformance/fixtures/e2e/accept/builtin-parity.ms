@@ -98,8 +98,8 @@ test "list methods mutate explicit clones and remain typed":
 	original.get(index: -1) | expect_equal(1)?
 
 	absent: Int? := none
-	original.get(index: -9223372036854775808, default: -1) | expect_equal(-1)?
-	original.get(index: 9223372036854775807, default: -1) | expect_equal(-1)?
+	original.get_or(index: -9223372036854775808, -1) | expect_equal(-1)?
+	original.get_or(index: 9223372036854775807, -1) | expect_equal(-1)?
 	original.first() | expect_equal(3)?
 	original.last() | expect_equal(1)?
 
@@ -346,7 +346,7 @@ test "bytes have analogous immutable operations":
 	data.get(index: -1) | expect_equal(2)?
 
 	missing: Int? := none
-	data.get(index: -9223372036854775808, default: 255) | expect_equal(255)?
+	data.get_or(index: -9223372036854775808, 255) | expect_equal(255)?
 	(data.contains(value: Bytes([2, 3]))) | expect_true?
 	data.index_of(value: Bytes([2])) | expect_equal(1)?
 	data.last_index_of(value: Bytes([2])) | expect_equal(3)?

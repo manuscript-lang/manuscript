@@ -59,12 +59,12 @@ fn lang_name(id: String) String:
 	return id.clone()
 
 fn today() String:
-	return now().format("YYYY-MM-DD", "Local").get("")
+	return now().format("YYYY-MM-DD", "Local").get_or("")
 
 fn trials_file() String: f"{root()}/results/trials-{today()}.jsonl"
 
 fn text_at(doc: JsonValue, key: String) String:
-	return doc.get(key).get(JsonValue.Null).as_string().get("")
+	return doc.get(key).get_or(JsonValue.Null).as_string().get_or("")
 
 fn seconds_of(text: String) Float:
 	t := parse_timestamp(text).get()
@@ -72,10 +72,10 @@ fn seconds_of(text: String) Float:
 
 // Which kind of content a step's tool results add to the context.
 fn categorize(step: JsonValue) String:
-	calls := step.get("tool_calls").get(JsonValue.Null).as_list().get([])
+	calls := step.get("tool_calls").get_or(JsonValue.Null).as_list().get_or([])
 	text := calls.map(
 		fn c: dumps(
-			c.get("arguments").get(
+			c.get("arguments").get_or(
 				JsonValue.ObjectValue(Map[String, JsonValue]())
 			),
 			0,
@@ -100,9 +100,9 @@ fn categorize(step: JsonValue) String:
 	return "reads"
 
 fn metric(step: JsonValue, key: String) Float:
-	return step.get("metrics").get(JsonValue.Null).get(key).get(
+	return step.get("metrics").get_or(JsonValue.Null).get(key).get_or(
 		JsonValue.Null
-	).as_float().get(0.0)
+	).as_float().get_or(0.0)
 
 // Attributes input tokens (cache reads included) to the source of the context they
 // carry.
@@ -126,7 +126,7 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 			done := metric(before, "completion_tokens")
 			comp[5] += done
 
-			at := CATEGORIES.index_of(categorize(before)).get(0)
+			at := CATEGORIES.index_of(categorize(before)).get_or(0)
 			grown := prompt - prev_prompt - done
 			comp[at] = comp[at] + (if grown > 0.0: grown else: 0.0)
 		else:
@@ -143,34 +143,36 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 fn read_trial(dir: String) Trial?:
 	if not access(f"{dir}/result.json", 0).is_ok(): return none
 
-	r := parse(must_read(f"{dir}/result.json")).get(JsonValue.Null)
+	r := parse(must_read(f"{dir}/result.json")).get_or(JsonValue.Null)
 	task := r.get("task_name")
 	if task.is_none(): return none
 
-	name := task.get(JsonValue.Null).as_string().get("").split("/").last().get("")
-	cut := name.last_index_of("-").get(0)
+	name := task.get_or(
+		JsonValue.Null
+	).as_string().get_or("").split("/").last().get_or("")
+	cut := name.last_index_of("-").get_or(0)
 	cid := name.slice(0, cut)
 	lang := name.slice(cut + 1, name.length())
 	meta_file := f"{root()}/challenges/{cid}/challenge.json"
 	if not access(meta_file, 0).is_ok(): return none
 
-	meta := parse(must_read(meta_file)).get(JsonValue.Null)
-	ar := r.get("agent_result").get(JsonValue.Null)
-	reward := r.get("verifier_result").get(JsonValue.Null).get("rewards").get(
+	meta := parse(must_read(meta_file)).get_or(JsonValue.Null)
+	ar := r.get("agent_result").get_or(JsonValue.Null)
+	reward := r.get("verifier_result").get_or(JsonValue.Null).get("rewards").get_or(
 		JsonValue.Null
 	).get("reward")
 	var detail = JsonValue.Null
 	if access(f"{dir}/verifier/detail.json", 0).is_ok(): detail = parse(
 		must_read(f"{dir}/verifier/detail.json")
-	).get(JsonValue.Null)
+	).get_or(JsonValue.Null)
 
 	var turns = 0
 	var sources = Map[String, JsonValue]()
 
 	if access(f"{dir}/agent/trajectory.json", 0).is_ok():
-		steps := parse(must_read(f"{dir}/agent/trajectory.json")).get(
+		steps := parse(must_read(f"{dir}/agent/trajectory.json")).get_or(
 			JsonValue.Null
-		).get("steps").get(JsonValue.Null).as_list().get([])
+		).get("steps").get_or(JsonValue.Null).as_list().get_or([])
 		turns = steps.count(fn s: text_at(s, "source") == "agent")
 
 		split := breakdown(steps)
@@ -179,11 +181,11 @@ fn read_trial(dir: String) Trial?:
 			sources.add(
 				cats[n].clone(),
 				JsonValue.NumberValue(
-					f"{round(split[n]).truncate_to_int().get(0)}"
+					f"{round(split[n]).truncate_to_int().get_or(0)}"
 				),
 			)
 
-	ex := r.get("agent_execution").get(JsonValue.Null)
+	ex := r.get("agent_execution").get_or(JsonValue.Null)
 	var wall = 0.0
 	if ex.get("started_at").is_some() and ex.get("finished_at").is_some():
 		wall = (
@@ -191,38 +193,46 @@ fn read_trial(dir: String) Trial?:
 			- seconds_of(text_at(ex, "started_at"))
 		)
 
-	agent_cfg := r.get("config").get(JsonValue.Null).get("agent").get(JsonValue.Null)
-	score := reward.get(JsonValue.Null).as_float()
-	passed := score.get(0.0) == 1.0
+	agent_cfg := r.get("config").get_or(JsonValue.Null).get("agent").get_or(
+		JsonValue.Null
+	)
+	score := reward.get_or(JsonValue.Null).as_float()
+	passed := score.get_or(0.0) == 1.0
 	return Trial(
 		trial: text_at(r, "trial_name"),
 		challenge: cid.clone(),
 		category: text_at(meta, "category"),
-		tier: meta.get("tier").get(JsonValue.Null).as_int().get(0),
+		tier: meta.get("tier").get_or(JsonValue.Null).as_int().get_or(0),
 		language: lang.clone(),
-		agent: agent_cfg.get("name").get(JsonValue.Null).as_string(),
-		model: agent_cfg.get("model_name").get(JsonValue.Null).as_string(),
+		agent: agent_cfg.get("name").get_or(JsonValue.Null).as_string(),
+		model: agent_cfg.get("model_name").get_or(JsonValue.Null).as_string(),
 		pass: passed,
 		errored: score.is_none(),
-		cases_passed: detail.get("passed").get(JsonValue.Null).as_int(),
-		cases_total: detail.get("total").get(JsonValue.Null).as_int(),
-		first_build_ok: detail.get("first_build_ok").get(
+		cases_passed: detail.get("passed").get_or(JsonValue.Null).as_int(),
+		cases_total: detail.get("total").get_or(JsonValue.Null).as_int(),
+		first_build_ok: detail.get("first_build_ok").get_or(
 			JsonValue.Null
 		).as_bool(),
-		code_tokens: detail.get("code_tokens").get(JsonValue.Null).as_int(),
-		builds: detail.get("builds").get(JsonValue.Null).as_int(),
-		tokens_in: ar.get("n_input_tokens").get(JsonValue.Null).as_int().get(0),
-		tokens_cached: ar.get("n_cache_tokens").get(
+		code_tokens: detail.get("code_tokens").get_or(JsonValue.Null).as_int(),
+		builds: detail.get("builds").get_or(JsonValue.Null).as_int(),
+		tokens_in: ar.get("n_input_tokens").get_or(
 			JsonValue.Null
-		).as_int().get(0),
-		tokens_out: ar.get("n_output_tokens").get(JsonValue.Null).as_int().get(
-			0
+		).as_int().get_or(0),
+		tokens_cached: ar.get("n_cache_tokens").get_or(
+			JsonValue.Null
+		).as_int().get_or(0),
+		tokens_out: ar.get("n_output_tokens").get_or(
+			JsonValue.Null
+		).as_int().get_or(0),
+		cost_usd: ar.get("cost_usd").get_or(JsonValue.Null).as_float().get_or(
+			0.0
 		),
-		cost_usd: ar.get("cost_usd").get(JsonValue.Null).as_float().get(0.0),
 		turns: turns,
 		wall_s: round(wall * 10.0) / 10.0,
 		input_by_source: JsonValue.ObjectValue(sources),
-		started: r.get("started_at").get(JsonValue.Null).as_string().get(""),
+		started: r.get("started_at").get_or(JsonValue.Null).as_string().get_or(
+			""
+		),
 	)
 
 fn read_trials(path: String) List[Trial]:
@@ -235,11 +245,11 @@ fn collect(dirs: List[String]) Int:
 	var rows = read_trials(trials_file())
 
 	for jobs in dirs:
-		for entry in glob(jobs, GlobOptions(patterns: ["**/*__*"])).get([]):
+		for entry in glob(jobs, GlobOptions(patterns: ["**/*__*"])).get_or([]):
 			path := entry.path.clone()
 			dir := f"{jobs}/{path}"
-			leaf := path.split("/").last().get("")
-			is_dir := stat(dir).to_optional().map(fn s: s.is_directory()).get(false)
+			leaf := path.split("/").last().get_or("")
+			is_dir := stat(dir).to_optional().map(fn s: s.is_directory()).get_or(false)
 
 			if is_dir and leaf.split("__").length() == 2:
 				if t := read_trial(dir):
@@ -292,19 +302,19 @@ fn agg(rs: List[Trial]) Agg:
 		rs.length(),
 		ok.length().to_float() / rs.length().to_float(),
 		rs.count(
-			fn r: r.first_build_ok.get(false)
+			fn r: r.first_build_ok.get_or(false)
 		).to_float() / rs.length().to_float(),
 		mean_of(ok.map(fn r: (r.tokens_in + r.tokens_out).to_float())),
 		mean_of(ok.map(fn r: (r.turns.to_float()))),
 		mean_scaled_opt(ok.map(fn r: r.wall_s), 10.0),
 		mean_of(ok.map(fn r: r.cost_usd)),
-		mean_of(coded.map(fn r: (r.code_tokens.get(0).to_float()))),
+		mean_of(coded.map(fn r: (r.code_tokens.get_or(0).to_float()))),
 	)
 
 fn fmt(kind: String, v: Float?) String:
 	if v.is_none(): return if kind == "n0": "n/a" else: "-"
 
-	x := v.get(0.0)
+	x := v.get_or(0.0)
 	if kind == "pct": return pct0(x)
 	if kind == "tok": return fixed(x / 1000.0, 0) + "k"
 	if kind == "n": return fixed(x, 1)
@@ -344,14 +354,14 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 fn order(a: Row, b: Row, ai: Int, bi: Int) Int:
 	if a.stats.pass != b.stats.pass: return if a.stats.pass > b.stats.pass: -1 else: 1
 
-	ac := a.stats.cost.get(1000000000.0)
-	bc := b.stats.cost.get(1000000000.0)
+	ac := a.stats.cost.get_or(1000000000.0)
+	bc := b.stats.cost.get_or(1000000000.0)
 	if ac != bc: return if ac < bc: -1 else: 1
 
 	return ai - bi
 
 fn source_value(t: Trial, c: String) Float:
-	return t.input_by_source.get(c).get(JsonValue.Null).as_float().get(0.0)
+	return t.input_by_source.get(c).get_or(JsonValue.Null).as_float().get_or(0.0)
 
 // Where input tokens go, per language, averaged over passing trials.
 fn source_table(rows: List[Trial]) String:
@@ -398,14 +408,14 @@ fn source_table(rows: List[Trial]) String:
 	return lines.join("\n") + "\n"
 
 fn render(src_arg: String?) Int:
-	var src = src_arg.get("")
+	var src = src_arg.get_or("")
 
 	if src == "":
-		found := glob(f"{root()}/results", GlobOptions(patterns: ["trials-*.jsonl"])).get(
+		found := glob(f"{root()}/results", GlobOptions(patterns: ["trials-*.jsonl"])).get_or(
 			[]
 		)
 		names := found.map(fn e: e.path.clone())
-		src = f"{root()}/results/{names.sorted().last().get("")}"
+		src = f"{root()}/results/{names.sorted().last().get_or("")}"
 
 	board := src.replace("trials-", "leaderboard-").replace(".jsonl", ".md")
 	trials := read_trials(src)
@@ -427,7 +437,7 @@ fn render(src_arg: String?) Int:
 		table(
 			"Models (all languages)",
 			clean,
-			fn t: f"{t.agent.get("None")} / {t.model.get("None")}",
+			fn t: f"{t.agent.get_or("None")} / {t.model.get_or("None")}",
 			"agent / model"
 		)
 	)
@@ -435,7 +445,7 @@ fn render(src_arg: String?) Int:
 		table(
 			"Model x language",
 			clean,
-			fn t: f"{t.model.get("None")} / {lang_name(t.language)}",
+			fn t: f"{t.model.get_or("None")} / {lang_name(t.language)}",
 			"model / language"
 		)
 	)
@@ -465,7 +475,7 @@ fn render(src_arg: String?) Int:
 fn main() Int:
 	args := arguments()
 	if args.length() >= 2 and args[0] == "collect": return collect(
-		args.slice(1, args.length()).get([])
+		args.slice(1, args.length()).get_or([])
 	)
 	if args.length() == 1 and args[0] == "render": return render(none)
 	if args.length() == 2 and args[0] == "render": return render(args[1].clone())

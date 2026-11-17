@@ -28,7 +28,7 @@ fn walk(v: JsonValue) Int:
 	match v:
 		Null: return 1
 		BoolValue(_): return 1
-		NumberValue(t): return t.parse_int().get(0)
+		NumberValue(t): return t.parse_int().get_or(0)
 		StringValue(s): return s.length()
 		ArrayValue(items):
 			var t = 0
@@ -49,6 +49,6 @@ fn main() Void:
 	for pass in 0..3:
 		doc := parse[JsonValue](text).get()
 		total += walk(doc)
-		out_len += stringify(doc).get("").length()
+		out_len += stringify(doc).get_or("").length()
 
 	print(f"text {text.length()} walk {total} out {out_len}")

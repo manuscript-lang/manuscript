@@ -198,7 +198,7 @@ fn json_failure(
 				):
 					return invalid(f"invalid identity/checksum/timer: {name}: {text}")
 
-				nums := all_ints(fields.slice(3, 6).get([]))?
+				nums := all_ints(fields.slice(3, 6).get_or([]))?
 				if nums[1] <= 0 or nums[2] <= 0: return invalid(
 					f"invalid identity/checksum/timer: {name}: {text}"
 				)
@@ -245,10 +245,13 @@ fn main() Int:
 			"usage: codecs_compare.ms -- <decode|json-failure> BEFORE AFTER OUTPUT_DIR [--pairs N]"
 		)
 
-	parsed := options(args.slice(4, args.length()).get([]), ["pairs"], [])
+	parsed := options(args.slice(4, args.length()).get_or([]), ["pairs"], [])
 	if parsed.is_error(): return fail(parsed.err().message)
 
-	pairs := parsed.get(Map[String, String]()).get_or("pairs", "9").parse_int().get(0)
+	pairs := parsed.get_or(Map[String, String]()).get_or(
+		"pairs",
+		"9",
+	).parse_int().get_or(0)
 	if pairs < 2: return fail("at least two pairs required")
 
 	before := absolute(args[1].clone())

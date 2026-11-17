@@ -18,7 +18,7 @@ export fn main() Int:
     s1 := ("héllo".upper() + ("a" + "  padded  "))
     say(f"s1 = [{s1}]")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     say(
         f"{7} {(((-29) + 334691) / (30 * 38))} {(7 < (((-29) + 334691) / (30 * 38)))} sum {7 + (((-29) + 334691) / (30 * 38))}"
     )

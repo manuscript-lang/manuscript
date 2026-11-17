@@ -9,6 +9,6 @@ fn marker() Marker!Error: ok(Marker(1))
 
 fn bad() Void:
     value := marker()
-    take := value.get
+    take := value.get_or
     got := take(Marker(2))
     void got.id

@@ -125,7 +125,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL110",
         family: "Optional.get() without a default",
         severity: Severity::Warning,
-        repair: "use `if value := ...:`, or pass a default to `get(default)`",
+        repair: "use `if value := ...:`, or write `get_or(default)`",
     },
     Rule {
         code: "MSL111",

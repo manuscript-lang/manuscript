@@ -9,7 +9,7 @@ fn show(number: Int) Result[Void, Error]:
     return stdout().flush()
 
 export fn main() Int:
-    number := arguments().get(0, default: "42").parse_int()
+    number := arguments().get_or(0, "42").parse_int()
     if value := number:
         if show(value).is_ok():
             return 0

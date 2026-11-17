@@ -52,5 +52,5 @@ export fn bench_path_url_math() Void:
             var acc = 0.0
             for i in 0..1000000:
                 acc += sqrt(2.0) + sin(1.0)
-            return acc.truncate_to_int().get(0)
+            return acc.truncate_to_int().get_or(0)
     )

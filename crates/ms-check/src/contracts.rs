@@ -1934,8 +1934,18 @@ fn native_method_of(
         let operations = def.operations.borrow();
         for operation in operations.iter() {
             if operation.name == name {
+                // `get_or` is `get` with a default, lowered by the same code.
+                let native = if matches!(
+                    receiver.builtin,
+                    Some(Builtin::Optional | Builtin::Result | Builtin::List | Builtin::Bytes)
+                ) && syms.str(name) == "get_or"
+                {
+                    n("get")
+                } else {
+                    name
+                };
                 return Some(native_of(
-                    name,
+                    native,
                     t,
                     sub(&operation.ty, &bindings),
                     instantiate_operation_variables(&session.operation_variables(&key), &bindings),

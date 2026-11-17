@@ -35,7 +35,7 @@ export fn main() Int:
     i2 := ((((-4) - (-15)) - (784513 - 239163325225)) % (-49))
     say(f"i2 = {i2}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
 
     if (("42" == "a") and false):
         say("a".upper())

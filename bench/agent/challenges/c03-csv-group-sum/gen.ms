@@ -24,8 +24,8 @@ fn cents(amt: String) Int?:
 		): return none
 
 	return (
-		whole.parse_int().get(0) * 100
-		+ f"{fraction}00".view(0, 2).parse_int().get(0)
+		whole.parse_int().get_or(0) * 100
+		+ f"{fraction}00".view(0, 2).parse_int().get_or(0)
 	)
 
 type Row:
@@ -37,7 +37,7 @@ fn parse_line(line: String) Row?:
 	var amt = ""
 
 	if line.starts_with("\""):
-		end := line.slice(1, line.length()).index_of("\"").get(-1)
+		end := line.slice(1, line.length()).index_of("\"").get_or(-1)
 		if end < 0: return none
 
 		close := end + 1

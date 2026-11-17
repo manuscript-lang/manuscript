@@ -26,7 +26,7 @@ fn failed() Int!: fail_cause(failure_error(Failure("domain")))
 
 fn forward[T]() T?: absent()
 
-fn consume(value: Int?) Int: value.get(0)
+fn consume(value: Int?) Int: value.get_or(0)
 
 type Events:
     values: List[Int]

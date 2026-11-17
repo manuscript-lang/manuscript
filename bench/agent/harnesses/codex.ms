@@ -28,9 +28,13 @@ fn Codex.parse(transcript: String) Usage:
 	var u = Usage()
 
 	for ev in events(transcript):
-		if (ev.get("type").get(JsonValue.Null).as_string().get("") != "turn.completed"): continue
+		if (
+			ev.get("type").get_or(JsonValue.Null).as_string().get_or(
+				""
+			) != "turn.completed"
+		): continue
 
-		us := ev.get("usage").get(JsonValue.Null)
+		us := ev.get("usage").get_or(JsonValue.Null)
 		cached := int_at(us, "cached_input_tokens")
 		u.tokens_in += int_at(us, "input_tokens") - cached
 		u.tokens_cached += cached

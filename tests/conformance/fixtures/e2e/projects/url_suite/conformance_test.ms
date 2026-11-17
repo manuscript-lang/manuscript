@@ -20,7 +20,7 @@ import (
 // `by design:` is a permanent decision. Case ids are `<table>#<index>`.
 
 fn text(tree: FileTree, path: String) String:
-	return tree.read(path, none).get("".to_bytes()).decode_utf8().get("")
+	return tree.read(path, none).get_or("".to_bytes()).decode_utf8().get_or("")
 
 fn field(item: Case, key: String) String:
 	return item.fields.get_or(key, "")
@@ -40,12 +40,12 @@ fn parse_ok(item: Case) Bool:
 	if flag(item, "has_user") or flag(item, "opaque"): return parsed.is_error()
 	if parsed.is_error(): return false
 
-	url := parsed.get(Url("", "", "", "", none, none))
+	url := parsed.get_or(Url("", "", "", "", none, none))
 	if url.scheme != field(item, "scheme") or url.host != field(item, "host"): return false
 	if port_text(url) != field(item, "port"): return false
 
 	formatted := format(url)
-	return formatted.is_ok() and formatted.get("") == field(item, "roundtrip")
+	return formatted.is_ok() and formatted.get_or("") == field(item, "roundtrip")
 
 // `parse_errors` table: whether Parse rejects the input.
 fn parse_error_ok(item: Case) Bool:
@@ -55,23 +55,26 @@ fn resolve_ok(item: Case) Bool:
 	base := parse(field(item, "base"))
 	if base.is_error(): return false
 
-	resolved := resolve(base.get(Url("", "", "", "", none, none)), field(item, "rel"))
+	resolved := resolve(
+		base.get_or(Url("", "", "", "", none, none)),
+		field(item, "rel"),
+	)
 	if resolved.is_error(): return false
 
-	formatted := format(resolved.get(Url("", "", "", "", none, none)))
-	return formatted.is_ok() and formatted.get("") == field(item, "expected")
+	formatted := format(resolved.get_or(Url("", "", "", "", none, none)))
+	return formatted.is_ok() and formatted.get_or("") == field(item, "expected")
 
 fn unescape_ok(item: Case) Bool:
 	decoded := decode_component(field(item, "in"))
 	if flag(item, "err"): return decoded.is_error()
 
-	return decoded.is_ok() and decoded.get("") == field(item, "out")
+	return decoded.is_ok() and decoded.get_or("") == field(item, "out")
 
 // Encoding is checked as a round trip: the escaped text decodes back to the input.
 fn escape_ok(item: Case) Bool:
 	original := field(item, "in")
 	decoded := decode_component(encode_component(original))
-	return decoded.is_ok() and decoded.get("") == original
+	return decoded.is_ok() and decoded.get_or("") == original
 
 fn query_ok(item: Case) Bool:
 	parsed := parse_query(field(item, "query"), none)
@@ -80,7 +83,7 @@ fn query_ok(item: Case) Bool:
 
 	var grouped = Map[String, List[String]]()
 
-	for entry in parsed.get([]):
+	for entry in parsed.get_or([]):
 		if values := grouped.get(entry.key):
 			var more = values.clone()
 			more.append(entry.value.clone())
@@ -124,7 +127,7 @@ test "Go net/url tables agree with the parser except for the listed cases":
 	var by_design = 0
 
 	for line in text(tree, "expect-fail.txt").split("\n"):
-		name := line.split(" ").get(0, "")
+		name := line.split(" ").get_or(0, "")
 		if name != "" and not name.starts_with("#"): expected.append(name.clone())
 		if line.contains(" by design:"): by_design += 1
 

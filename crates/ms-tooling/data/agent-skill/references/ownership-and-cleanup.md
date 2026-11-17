@@ -19,7 +19,7 @@ fn main() Int:
 	user := User("Ada")
 	var names = List[String]()
 	add(var names, user)
-	if name(user) == "Ada" and names.get(0, "") == "Ada": return 0
+	if name(user) == "Ada" and names.get_or(0, "") == "Ada": return 0
 	return 1
 ```
 

@@ -32,7 +32,7 @@ fn warm(var conn: Connection) Bool!:
 	while not text.ends_with("done\n"):
 		if chunk := recv(var conn, nanoseconds(10000000000)):
 			if data := chunk:
-				text = f"{text}{data.decode_utf8().get("?")}"
+				text = f"{text}{data.decode_utf8().get_or("?")}"
 				continue
 
 		return ok(false)
@@ -92,7 +92,7 @@ fn run() Bool!:
 	return ok(asleep)
 
 export fn main() Int:
-	asleep := run().get(false)
+	asleep := run().get_or(false)
 	_out := stdout().write(f"idle server stays asleep: {asleep}\n")
 	if asleep: return 0
 

@@ -29,7 +29,7 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 			line += 1
 			start = i + 1
 
-	before := bytes.decode_utf8_range(start, at).get("")
+	before := bytes.decode_utf8_range(start, at).get_or("")
 	column := before.scalar_length() + 1
 	return Error(
 		f"CSV {line}:{column}: {reason}",
@@ -53,9 +53,9 @@ fn open_reader(text: String, options: CsvOptions) Reader!:
 			text: text.clone(),
 			bytes: bytes,
 			total: total,
-			delimiter: options.delimiter.scalar_values()[0].to_uint8().get(
+			delimiter: options.delimiter.scalar_values()[
 				0
-			),
+			].to_uint8().get_or(0),
 			delimiter_text: options.delimiter.clone(),
 			at: 0,
 			quote: -1,
@@ -130,7 +130,7 @@ export fn each_cell(
 		found := record.get()
 		if found.is_none(): break
 
-		count := found.get(0)
+		count := found.get_or(0)
 		if rows >= rows_budget or count > cells_budget - cells: return error(
 			Error("CSV: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -178,7 +178,7 @@ type Reader:
 	line_at: Int
 
 fn var Reader.next_quote(from: Int) Int:
-	if self.quote < from: self.quote = self.bytes.index_of_byte(34, from).get(
+	if self.quote < from: self.quote = self.bytes.index_of_byte(34, from).get_or(
 		self.total
 	)
 	return self.quote
@@ -187,11 +187,11 @@ fn var Reader.next_delimiter(from: Int) Int:
 	if self.delimiter_at < from: self.delimiter_at = self.bytes.index_of_byte(
 		self.delimiter,
 		from,
-	).get(self.total)
+	).get_or(self.total)
 	return self.delimiter_at
 
 fn var Reader.next_line(from: Int) Int:
-	if self.line_at < from: self.line_at = self.bytes.index_of_byte(10, from).get(
+	if self.line_at < from: self.line_at = self.bytes.index_of_byte(10, from).get_or(
 		self.total
 	)
 	return self.line_at
@@ -354,8 +354,8 @@ fn var CsvRows.boundary(data: Bytes) Int:
 	var previous = self.pending_size
 	self.longest = 0
 
-	var quote = data.index_of_byte(34, pos).get(total)
-	var line = data.index_of_byte(10, pos).get(total)
+	var quote = data.index_of_byte(34, pos).get_or(total)
+	var line = data.index_of_byte(10, pos).get_or(total)
 
 	while pos < total:
 		if self.quoted:
@@ -363,11 +363,11 @@ fn var CsvRows.boundary(data: Bytes) Int:
 
 			self.quoted = false
 			pos = quote + 1
-			quote = data.index_of_byte(34, pos).get(total)
+			quote = data.index_of_byte(34, pos).get_or(total)
 			continue
 
-		if line < pos: line = data.index_of_byte(10, pos).get(total)
-		if quote < pos: quote = data.index_of_byte(34, pos).get(total)
+		if line < pos: line = data.index_of_byte(10, pos).get_or(total)
+		if quote < pos: quote = data.index_of_byte(34, pos).get_or(total)
 
 		if line < quote:
 			size := previous + line - cut
@@ -381,7 +381,7 @@ fn var CsvRows.boundary(data: Bytes) Int:
 
 		self.quoted = true
 		pos = quote + 1
-		quote = data.index_of_byte(34, pos).get(total)
+		quote = data.index_of_byte(34, pos).get_or(total)
 
 	return cut
 
@@ -417,7 +417,7 @@ fn var CsvRows.step(value: Bytes, var out: List[List[String]]) Void!:
 	decoded := data.decode_utf8_range(0, end)
 	if decoded.is_none(): return invalid_text()
 
-	text := decoded.get("")
+	text := decoded.get_or("")
 	return write_rows(parse(text, self.options)?, var out)
 
 fn var CsvRows.finish(var out: List[List[String]]) Void!:
@@ -431,7 +431,7 @@ fn var CsvRows.finish(var out: List[List[String]]) Void!:
 	decoded := data.decode_utf8()
 	if decoded.is_none(): return invalid_text()
 
-	text := decoded.get("")
+	text := decoded.get_or("")
 	return write_rows(parse(text, self.options)?, var out)
 
 fn invalid_text() Void!:

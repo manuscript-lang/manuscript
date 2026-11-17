@@ -156,7 +156,7 @@ A List keeps its identity and backing kind through generics, types, Optional, Re
 | --- | --- |
 | `List[T]()` | Empty `List[T]` |
 | `List[T](reserve: Int?)` | Empty `List[T]` with room for `reserve` items |
-| `List[T]` | `length() Int`; `get(index: Int, default: T?) T`; `[index] T` |
+| `List[T]` | `length() Int`; `get(index: Int) T`; `get_or(index: Int, default: T?) T`; `[index] T` |
 | `List[T]` | `append(value: T) Void`; `concat(values: List[T]) List[T]` |
 | `List[T]` | `set(index: Int, value: T) Void` (also `xs[index] = value`); `remove(index: Int) Void` |
 | `List[T]` | `insert(index: Int, value: T) Void`; `pop() T?` |
@@ -185,7 +185,7 @@ A List keeps its identity and backing kind through generics, types, Optional, Re
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `any(predicate: fn(T) Bool) Bool`; `all` uses the same predicate |
 
-An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get(0, default: 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
+An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get_or(0, 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
 `Map.add(key, value)` inserts or replaces and returns Void. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
 
@@ -243,7 +243,7 @@ fn positives(values: List[Int]) List[Int]:
 test "dynamic mutable data and explicit copies":
     if not (positives([3, -1, 2]) == [3, 2]):
         return panic("check failed")
-    if [1].get(5, default: -1) != -1:
+    if [1].get_or(5, -1) != -1:
         return panic("check failed")
     var original = Map[String, Int]()
     original.add("a", 1)

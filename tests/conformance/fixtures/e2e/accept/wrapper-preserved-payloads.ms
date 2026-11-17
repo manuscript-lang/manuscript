@@ -70,12 +70,12 @@ test "preserved resource payloads transfer exactly once":
 	result_map(log.clone())
 	result_then(log.clone())
 	discarded_error(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,5,6,7,")?
+	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,3,4,5,6,7,")?
 	transformed_success(log.clone())?
 	transformed_error(log.clone())?
 	transformed_then(log.clone())?
 	expect_equal(
-		read_file(log).wait().get().decode_utf8().get(""),
+		read_file(log).wait().get().decode_utf8().get_or(""),
 		"1,2,3,4,5,6,7,8,9,11,10,12,13,",
 	)?
 
@@ -93,7 +93,7 @@ test "callbacks borrow resource inputs while reusable methods copy only retained
 	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	bound_transform(log.clone())?
-	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "21,22,20,")?
+	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "21,22,20,")?
 
 	data: String!Int := ok("payload")
 	convert := data.to_optional
@@ -118,7 +118,7 @@ fn named_error(log: String) Void!:
 	value := error_result(31, log.clone())
 	absent := value.to_optional()
 	expect_equal(absent.is_none(), true)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,31,")?
+	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "30,31,")?
 
 test "discarded owned errors close, named ones too once to_optional moves them":
 	tmp := temporary("wrapper-errors-") | expect_ok?
@@ -127,9 +127,9 @@ test "discarded owned errors close, named ones too once to_optional moves them":
 
 	absent := error_result(30, log.clone()).to_optional()
 	expect_equal(absent.is_none(), true)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,")?
+	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "30,")?
 	named_error(log.clone())?
-	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,31,")?
+	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "30,31,")?
 
 fn specialized_optional[T](create: fn() Int, value: T?) T!Int:
 	return value.ok_or_else[Int](create)
@@ -148,7 +148,7 @@ test "specialized direct generic methods transfer instead of retaining reusable 
 	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	specialized_transfers(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "61,60,")?
+	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "61,60,")?
 
 type Box:
 	items: List[Int]

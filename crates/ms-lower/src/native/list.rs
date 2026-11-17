@@ -45,6 +45,14 @@ impl<'a> FnLower<'a> {
             .name()
             .map(|n| self.syms.str(n).to_string())
             .unwrap_or_default();
+        // `get_or` on an Optional or Result is `get` with a default.
+        let name = if name == "get_or"
+            && matches!(self.b.m.types.kind(rty), TyKind::Opt(_) | TyKind::Alt(_))
+        {
+            "get".to_string()
+        } else {
+            name
+        };
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS
             .iter()
             .find(|(n, ..)| *n == m.native.text(self.syms))

@@ -889,7 +889,7 @@ fn parse_input(lines: List[String]) List[Int]:
 // ms: allow_effect std.console.read
 fn main() Void!:
 	bytes := read_all(stdin())?
-	text := bytes.decode_utf8().get("")
+	text := bytes.decode_utf8().get_or("")
 	all := text.lines()
 	var src = List[String]()
 	var inp_lines = List[String]()

@@ -89,7 +89,7 @@ fn is_ws(c: String) Bool: c == " " or c == "\t" or c == "\r" or c == "\n"
 
 fn digit(c: String) Int:
 	if c.length() != 1: return -1
-	return "0123456789".index_of(c).get(-1)
+	return "0123456789".index_of(c).get_or(-1)
 
 fn is_lower(c: String) Bool: c.length() == 1 and c >= "a" and c <= "z"
 
@@ -129,9 +129,9 @@ fn valid_int(s: String) Bool:
 		if digit(c) < 0: return false
 	if s.length() > 1 and s.starts_with("0"): return false
 
-	return s.parse_int().get(2000000) <= 1000000
+	return s.parse_int().get_or(2000000) <= 1000000
 
-fn to_int(s: String) Int: s.parse_int().get(0)
+fn to_int(s: String) Int: s.parse_int().get_or(0)
 
 fn valid_date(s: String) Bool:
 	cs := s.chars()
@@ -239,7 +239,7 @@ fn prio_rank(s: String) Int:
 
 	return -1
 
-fn opt_s(x: String?) String: x.get("-")
+fn opt_s(x: String?) String: x.get_or("-")
 
 fn opt_i(x: Int?) String:
 	if v := x: return f"{v}"
@@ -475,7 +475,7 @@ fn sort_field(s: String) Int:
 		"id", "created", "updated", "priority", "points", "state", "title", "assignee",
 		"reporter", "due"
 	]
-	return names.find_index(fn x: x == s).get(-1)
+	return names.find_index(fn x: x == s).get_or(-1)
 
 fn field_code(s: String) Int:
 	names := [
@@ -484,7 +484,7 @@ fn field_code(s: String) Int:
 	]
 	if s == "labels": return 11
 
-	return names.find_index(fn x: x == s).get(-1)
+	return names.find_index(fn x: x == s).get_or(-1)
 
 fn op_ok(field: Int, op: Int) Bool:
 	if field <= 3 or field == 9 or field == 10: return op <= 5
@@ -732,7 +732,7 @@ fn build_term(
 		q := st.views.get(value)
 		if q.is_none(): return error(Error(f"query: unknown view '{value}'"))
 
-		qs := split_query(q.get(""))?
+		qs := split_query(q.get_or(""))?
 		root := parse_filter(st, qs.filter, var nodes, var refs)?
 		refs.append(value.clone())
 		return ok(add_node(var nodes, Node(kind: 4, a: root)))
@@ -982,7 +982,7 @@ fn State.run_list(
 		sort_text = sort_override.clone()
 		limit = limit_override
 
-	keys := parse_sort(sort_text.get(""))?
+	keys := parse_sort(sort_text.get_or(""))?
 	idxs.sort(fn a, b: cmp_issue(keys, self.issues[a], self.issues[b]))
 
 	var lines = List[String]()
@@ -1003,7 +1003,7 @@ fn var State.emit(s: String) Void:
 	self.out.append(s.clone())
 
 fn State.find(id: Int) Int:
-	return self.issues.find_index(fn i: i.id == id).get(-1)
+	return self.issues.find_index(fn i: i.id == id).get_or(-1)
 
 fn State.id_arg(arg: String) Int!:
 	id := parse_id_syntax(arg)?
@@ -1080,7 +1080,7 @@ fn var State.do_move(id: Int, target: String, comment: String) String!:
 	idx := self.find(id)
 	self.final_check(idx)?
 
-	ti := self.wf.states.find_index(fn x: x == target).get(-1)
+	ti := self.wf.states.find_index(fn x: x == target).get_or(-1)
 	if ti < 0: return error(Error(f"unknown state '{target}'"))
 
 	cur := self.issues[idx].state
@@ -1315,7 +1315,7 @@ fn var State.cmd_view(rest: String) String!:
 
 		var lines = List[String]()
 		for n in names:
-			lines.append(f"{n}: {self.views.get(n).get("")}")
+			lines.append(f"{n}: {self.views.get(n).get_or("")}")
 		return ok(lines.join("\n"))
 
 	if sub == "show":
@@ -1324,7 +1324,7 @@ fn var State.cmd_view(rest: String) String!:
 		q := self.views.get(ws[1])
 		if q.is_none(): return error(Error(f"unknown view '{ws[1]}'"))
 
-		return ok(f"{ws[1]}: {q.get("")}")
+		return ok(f"{ws[1]}: {q.get_or("")}")
 
 	if sub == "delete":
 		if ws.length() != 2: return error(Error("usage: view delete NAME"))
@@ -1335,7 +1335,7 @@ fn var State.cmd_view(rest: String) String!:
 		for m in self.sorted_views():
 			if m == name: continue
 
-			refs := view_refs(self, m, self.views.get(m).get(""))
+			refs := view_refs(self, m, self.views.get(m).get_or(""))
 			if refs.contains(name): return error(
 				Error(f"view '{name}' is used by '{m}'")
 			)
@@ -1352,7 +1352,7 @@ fn var State.cmd_view(rest: String) String!:
 		q := self.views.get(name)
 		if q.is_none(): return error(Error(f"unknown view '{name}'"))
 
-		spec := split_query(q.get(""))?
+		spec := split_query(q.get_or(""))?
 		extra := split_query(rest_after(rest, 2))?
 		if extra.filter.trim() != "": return error(
 			Error(f"unexpected '{extra.filter.trim()}'")
@@ -1510,7 +1510,7 @@ fn State.cmd_report(rest: String) String!:
 				if iss.f.assignee.is_none(): unass += 1
 				if d := iss.f.due:
 					if d < self.today: overdue += 1
-				open_pts += iss.f.points.get(0)
+				open_pts += iss.f.points.get_or(0)
 
 		var lines = List[String]()
 		total := self.issues.length()
@@ -1542,11 +1542,11 @@ fn State.cmd_report(rest: String) String!:
 
 			any_open = true
 
-			pts := iss.f.points.get(0)
+			pts := iss.f.points.get_or(0)
 
 			if a := iss.f.assignee:
 				key := a.lower()
-				gi := groups.find_index(fn g: g.key == key).get(-1)
+				gi := groups.find_index(fn g: g.key == key).get_or(-1)
 
 				if gi < 0:
 					groups.append(Grp(a.clone(), key, 1, pts))
@@ -1575,7 +1575,7 @@ fn State.cmd_report(rest: String) String!:
 
 		for i in idxs:
 			for l in self.issues[i].f.labels:
-				gi := counts.find_index(fn c: c.name == l).get(-1)
+				gi := counts.find_index(fn c: c.name == l).get_or(-1)
 
 				if gi < 0:
 					counts.append(LC(l.clone(), 1))
@@ -1623,7 +1623,7 @@ fn lc_cmp(a: LC, b: LC) Int:
 // ---------- workflow ----------
 
 fn reg(var states: List[String], name: String) Int:
-	gi := states.find_index(fn x: x == name).get(-1)
+	gi := states.find_index(fn x: x == name).get_or(-1)
 	if gi >= 0: return gi
 
 	states.append(name.clone())
@@ -1657,7 +1657,7 @@ fn parse_workflow(block: List[String]) Wf!:
 
 				finals.append(reg(var states, name))
 		else if line.contains("->"):
-			pos := line.index_of("->").get(0)
+			pos := line.index_of("->").get_or(0)
 			src := (line.slice(0, pos)?).trim()
 			if not valid_state_name(src): return error(
 				Error(f"workflow: bad state name '{src}'")
@@ -1793,7 +1793,7 @@ fn var State.exec(line: String) Void:
 // ms: allow_effect std.console.write
 fn main() Void!:
 	bytes := read_all(stdin(), none)?
-	text := bytes.decode_utf8().get("")
+	text := bytes.decode_utf8().get_or("")
 	lines := text.lines()
 	var st = State()
 	var i = 0

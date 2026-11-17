@@ -10,7 +10,7 @@ fn build(n: Int) Bytes:
 	var b = BytesBuilder()
 	var i = 0
 	while i < n:
-		b.append((i % 251).to_uint8().get(0))
+		b.append((i % 251).to_uint8().get_or(0))
 		i += 1
 	return b.build()
 

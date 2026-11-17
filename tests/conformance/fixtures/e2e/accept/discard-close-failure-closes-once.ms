@@ -17,7 +17,7 @@ fn var Item.close() Void!:
 
 fn events(log: String) String!:
 	bytes := read_file(log).wait()?
-	return ok(bytes.decode_utf8().get(""))
+	return ok(bytes.decode_utf8().get_or(""))
 
 fn list_remove(log: String) Void:
 	var items = [Item(1, log.clone(), true)]

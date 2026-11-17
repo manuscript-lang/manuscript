@@ -67,8 +67,8 @@ fn var Decoder.step(value: Bytes, var out: List[SseEvent]) Void!:
 	chunk := value
 	total := chunk.length()
 	var start = 0
-	var lf = chunk.index_of_byte(10, 0).get(total)
-	var cr = chunk.index_of_byte(13, 0).get(total)
+	var lf = chunk.index_of_byte(10, 0).get_or(total)
+	var cr = chunk.index_of_byte(13, 0).get_or(total)
 
 	while start < total:
 		var end = lf
@@ -89,8 +89,8 @@ fn var Decoder.step(value: Bytes, var out: List[SseEvent]) Void!:
 				return error(failure)
 
 		start = end + 1
-		if lf < start: lf = chunk.index_of_byte(10, start).get(total)
-		if cr < start: cr = chunk.index_of_byte(13, start).get(total)
+		if lf < start: lf = chunk.index_of_byte(10, start).get_or(total)
+		if cr < start: cr = chunk.index_of_byte(13, start).get_or(total)
 
 	if start < total:
 		self.carriage = false

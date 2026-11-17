@@ -35,7 +35,7 @@ fn answer(var conn: Connection) Bool:
 	while not text.ends_with("done\n"):
 		if chunk := recv(var conn, nanoseconds(10000000000)):
 			if data := chunk:
-				text = f"{text}{data.decode_utf8().get("?")}"
+				text = f"{text}{data.decode_utf8().get_or("?")}"
 				continue
 
 		return false
@@ -113,7 +113,7 @@ fn run() Bool!:
 	return ok(warmed and (first or second or third))
 
 export fn main() Int:
-	served := run().get(false)
+	served := run().get_or(false)
 	_out := stdout().write(f"others served during a long handler: {served}\n")
 	if served: return 0
 

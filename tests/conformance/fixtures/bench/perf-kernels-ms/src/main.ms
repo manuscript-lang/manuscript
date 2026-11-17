@@ -207,7 +207,6 @@ fn matmul(n: Int) Float:
 
 fn make(depth: Int) Tree:
 	if depth == 0: return Leaf
-
 	return Node(make(depth - 1), make(depth - 1))
 
 fn check(t: Tree) Int:
@@ -276,13 +275,13 @@ fn main() Int:
 				Body(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0),
 				Body(0.0, 2.0, 0.0, 1.0, 0.0, 0.0, 1.0),
 				Body(0.0, 0.0, 3.0, 0.0, 0.0, 1.0, 1.0),
-				Body(4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.5)
+				Body(4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.5),
 			]
-			return (advance(var bodies, 200000) * 1000.0).truncate_to_int().get(0)
+			return (advance(var bodies, 200000) * 1000.0).truncate_to_int().get_or(0)
 	)
 
 	timed("life_128x128_50", fn() Int: return life(50))
-	timed("matmul_200", fn() Int: return matmul(200).truncate_to_int().get(0))
+	timed("matmul_200", fn() Int: return matmul(200).truncate_to_int().get_or(0))
 	timed("trees_d16_x20", fn() Int: return trees(20))
 	timed("collatz_1M", fn() Int: return collatz(1000000))
 	timed("map_count_2M", fn() Int: return wordfreq(2000000))

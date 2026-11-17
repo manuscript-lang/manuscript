@@ -102,7 +102,7 @@ export fn read_log(ws: String) BuildLog:
 	for line in read_text(f"{ws}/.bench/log.jsonl").split("\n"):
 		if line.trim().is_empty(): continue
 
-		rows.append(parse[LogRow](line).get(LogRow("", false, "", "", "")))
+		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
 	checks := rows.filter(fn r: r.phase == "check")

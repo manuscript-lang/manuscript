@@ -71,11 +71,11 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 			slash.is_some()
 			and full_match(
 				NUM2,
-				item.slice(slash.get(0) + 1, item.length()),
+				item.slice(slash.get_or(0) + 1, item.length()),
 			)
 		):
-			body = item.slice(0, slash.get(0))
-			step = item.slice(slash.get(0) + 1, item.length()).parse_int().get(0)
+			body = item.slice(0, slash.get_or(0))
+			step = item.slice(slash.get_or(0) + 1, item.length()).parse_int().get_or(0)
 			stepped = true
 			if step < 1: return none
 			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)): return none
@@ -89,14 +89,14 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 		else if full_match(NUM2, body):
 			if stepped: return none
 
-			a = body.parse_int().get(0)
+			a = body.parse_int().get_or(0)
 			b = a
 		else:
 			if not full_match("[0-9]{1,2}-[0-9]{1,2}", body): return none
 
 			ends := body.split("-")
-			a = ends[0].parse_int().get(0)
-			b = ends[1].parse_int().get(0)
+			a = ends[0].parse_int().get_or(0)
+			b = ends[1].parse_int().get_or(0)
 			if a > b: return none
 
 		if a < lo or b > hi: return none
@@ -130,11 +130,11 @@ fn solve(s: String) String:
 		var start = -1
 
 		if full_match("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}", t[0]):
-			y := t[0].slice(0, 4).parse_int().get(0)
-			mo := t[0].slice(5, 7).parse_int().get(0)
-			d := t[0].slice(8, 10).parse_int().get(0)
-			h := t[0].slice(11, 13).parse_int().get(0)
-			mi := t[0].slice(14, 16).parse_int().get(0)
+			y := t[0].slice(0, 4).parse_int().get_or(0)
+			mo := t[0].slice(5, 7).parse_int().get_or(0)
+			d := t[0].slice(8, 10).parse_int().get_or(0)
+			h := t[0].slice(11, 13).parse_int().get_or(0)
+			mi := t[0].slice(14, 16).parse_int().get_or(0)
 			valid := (
 				mo >= 1
 				and mo <= 12
@@ -155,13 +155,13 @@ fn solve(s: String) String:
 
 		if (
 			not full_match(NUM2, t[1])
-			or t[1].parse_int().get(0) < 1
-			or t[1].parse_int().get(0) > 20
+			or t[1].parse_int().get_or(0) < 1
+			or t[1].parse_int().get_or(0) > 20
 		):
 			out.append(f"{pre} error: bad count")
 			continue
 
-		count := t[1].parse_int().get(0)
+		count := t[1].parse_int().get_or(0)
 		var sets = List[List[Int]]()
 		var bad = ""
 		var k = 0

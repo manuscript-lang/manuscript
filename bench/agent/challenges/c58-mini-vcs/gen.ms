@@ -13,11 +13,11 @@ fn resolve_hashes(oracle: String, script: String) String:
 	if not script.contains("{c"): return script.clone()
 
 	marker := compile("\\{c[0-9]+\\}").to_optional()
-	probe := marker.get().replace_all(script, "0000000").get("")
+	probe := marker.get().replace_all(script, "0000000").get_or("")
 	out := solve_with(oracle, probe)
 	found := compile("(?m)^\\[[^\\]]* ([0-9a-f]{7})\\] ").to_optional()
 	var shorts = List[String]()
-	for groups in found.get().captures_all(out, 1000).get([]):
+	for groups in found.get().capture_all(out, 1000).get_or([]):
 		shorts.append(groups[1].clone())
 
 	var resolved = script.clone()
@@ -40,7 +40,7 @@ fn strip_nl(text: String) String:
 		start += 1
 	while end > start and chars[end - 1] == "\n":
 		end -= 1
-	return chars.slice(start, end).get([]).join("") + "\n"
+	return chars.slice(start, end).get_or([]).join("") + "\n"
 
 fn W(name: String, lines: List[String] = []) String:
 	if lines.is_empty(): return f"write {name}\n.\n"

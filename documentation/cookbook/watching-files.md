@@ -43,7 +43,7 @@ import arguments from "@std/os/env.ms"
 import read_file, watch from "@std/os/fs.ms"
 
 fn main() Void!:
-    path := arguments().get(0, default: "config.json")
+    path := arguments().get_or(0, "config.json")
     var events = watch(path)?
     for event in events:
         text := read_file(event.path).wait()?

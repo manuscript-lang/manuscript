@@ -15,7 +15,7 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 
 	// Split on LF alone: a CR before it stays until the parser knows it is outside a
 	// quoted value.
-	lines := text.cut_prefix("\u{feff}").get(text).split("\n")
+	lines := text.cut_prefix("\u{feff}").get_or(text).split("\n")
 	var index = 0
 
 	while index < lines.length():
@@ -27,11 +27,11 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 		index += 1
 		if entry.trim().is_empty() or entry.starts_with("#"): continue
 
-		assignment := entry.cut_prefix("export ").get(entry)
+		assignment := entry.cut_prefix("export ").get_or(entry)
 		found := assignment.index_of("=")
 		if found.is_none(): return error(config_error(number, "expected NAME=value"))
 
-		at := found.get(0)
+		at := found.get_or(0)
 		name := assignment.view(0, at).trim()
 		if not valid_name(name): return error(
 			config_error(number, "invalid variable name")
@@ -64,7 +64,7 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 
 		last := parts.length() - 1
 		body := parts.join("\n")
-		end := body.length() - parts[last].length() + closing.get(0)
+		end := body.length() - parts[last].length() + closing.get_or(0)
 		trailing := body.view(end + 1, body.length()).trim()
 		if not trailing.is_empty() and not trailing.starts_with("#"): return error(
 			config_error(number, "unexpected text after quoted value")
@@ -91,7 +91,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 	var current = ""
 	var number = 0
 
-	for raw in text.cut_prefix("\u{feff}").get(text).lines():
+	for raw in text.cut_prefix("\u{feff}").get_or(text).lines():
 		number += 1
 
 		entry := raw.trim()
@@ -109,7 +109,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 		split := first_assignment(entry)
 		if split.is_none(): return error(config_error(number, "expected key = value"))
 
-		at := split.get(0)
+		at := split.get_or(0)
 		key := entry.view(0, at).trim()
 		if key.is_empty(): return error(config_error(number, "empty key"))
 
@@ -153,7 +153,7 @@ fn first_assignment(entry: String) Int?:
 	if eq.is_none(): return colon
 	if colon.is_none(): return eq
 
-	return eq.get(0).min(colon.get(0))
+	return eq.get_or(0).min(colon.get_or(0))
 
 fn ini_value(value: String) String:
 	trimmed := value.trim()

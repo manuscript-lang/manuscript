@@ -181,7 +181,7 @@ fn invalid(reader: Reader, reason: String) Error:
 
 // The text between two byte offsets of the document.
 fn slice_text(reader: Reader, start: Int, end: Int) String:
-	return reader.data.slice(start, end).get().decode_utf8().get("")
+	return reader.data.slice(start, end).get().decode_utf8().get_or("")
 
 fn space(var reader: Reader, multiline: Bool) Void:
 	var pos = cursor(reader)
@@ -462,7 +462,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 	return assign_one(
 		reader: var reader,
 		parent: current,
-		key: keys.last().get(""),
+		key: keys.last().get_or(""),
 		value: value,
 	)
 
@@ -578,14 +578,14 @@ fn date_valid(text: String) Bool:
 	day := text.slice(8, 10)
 	if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return false
 
-	m := month.parse_int().get(0)
+	m := month.parse_int().get_or(0)
 	var maximum = 31
 	if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
 	if m == 2:
 		maximum = 28
 
-		y := year.parse_int().get(0)
+		y := year.parse_int().get_or(0)
 		if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): maximum = 29
 
 	return date_number(day, 1, maximum)
@@ -626,8 +626,8 @@ fn datetime_valid(text: String) Bool:
 	if rest.ends_with("Z") or rest.ends_with("z"):
 		rest = rest.slice(0, rest.length() - 1)
 	else if rest.contains("+") or rest.contains("-"):
-		var index = rest.index_of("+").get(-1)
-		if index < 0: index = rest.index_of("-").get(-1)
+		var index = rest.index_of("+").get_or(-1)
+		if index < 0: index = rest.index_of("-").get_or(-1)
 
 		zone := rest.slice(index + 1, rest.length())
 		if zone.length() != 5 or zone.view(2, 3) != ":": return false
@@ -701,8 +701,8 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 					invalid_at(reader, at, "invalid exponent")
 				)
 
-			fraction := parts.first().get("").split(".")
-			if fraction.length() > 2 or not decimal_part(fraction.first().get("")): return error(
+			fraction := parts.first().get_or("").split(".")
+			if fraction.length() > 2 or not decimal_part(fraction.first().get_or("")): return error(
 				invalid_at(reader, at, "invalid float")
 			)
 			if fraction.length() == 2 and not decimal_digits(fraction[1]): return error(
@@ -750,10 +750,7 @@ fn scalar_offset(reader: Reader, count: Int) Int:
 
 	while left > 0 and pos < reader.data.length():
 		pos += 1
-		while (
-			reader.data.get(pos, default: 0) >= 128
-			and reader.data.get(pos, default: 0) < 192
-		): pos += 1
+		while (reader.data.get_or(pos, 0) >= 128 and reader.data.get_or(pos, 0) < 192): pos += 1
 		left -= 1
 
 	return pos
@@ -991,7 +988,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 				)?
 				index += 1
 
-			key := keys.last().get("")
+			key := keys.last().get_or("")
 			if flags(reader, parent).sealed: return error(
 				invalid(reader, "inline table is closed")
 			)

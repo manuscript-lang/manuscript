@@ -15,10 +15,10 @@ fn churn(n: Int) Int:
 	return t
 
 fn dflt(s: String, o: (fn() String)?) fn() String:
-	return o.get(fn: s + "d")
+	return o.get_or(fn: s + "d")
 
 fn mk(s: String, o: (fn() String)?) Box:
-	h := o.get(fn: s + "x")
+	h := o.get_or(fn: s + "x")
 	return Box(f: h)
 
 fn mk2(m: Map[Int, fn() String], s: String) List[fn() String]:

@@ -19,7 +19,7 @@ export fn bench_list() Void:
         fn() Int:
             var n = 0
             for i in 0..200000:
-                n += data.get(i % 100000, default: 0)
+                n += data.get_or(i % 100000, 0)
             return n
     )
 

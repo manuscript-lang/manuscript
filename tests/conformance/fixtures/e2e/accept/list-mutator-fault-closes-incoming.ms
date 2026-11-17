@@ -27,7 +27,7 @@ fn replace_out(log: String) Void:
 
 fn events(log: String) String!:
 	bytes := read_file(log).wait()?
-	return ok(bytes.decode_utf8().get(""))
+	return ok(bytes.decode_utf8().get_or(""))
 
 test "set bounds fault closes the incoming resource first":
 	temp := temporary("list-set-cleanup-")?

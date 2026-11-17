@@ -15,5 +15,5 @@ export fn main() Int:
     b2 := "ms".trim().is_empty()
     say(f"b2 = {b2}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     return 0

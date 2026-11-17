@@ -23,7 +23,7 @@ export fn main() Int:
     else:
         say(("beta" + "delta"))
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     say(f"gcd(4638, 395) = {gcd(4638, 395)}")
 
     i2 := (((i1 * i1) * (i1 % i1)) - ((i1 + i1) / i1))

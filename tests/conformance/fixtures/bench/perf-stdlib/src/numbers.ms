@@ -26,7 +26,7 @@ export fn bench_numbers() Void:
             var n = 0
             for i in 0..20000:
                 if d := (i.to_decimal() + rate).round(2):
-                    n += d.truncate_to_int().get(0)
+                    n += d.truncate_to_int().get_or(0)
             return n
     )
 
@@ -77,7 +77,7 @@ export fn bench_numbers() Void:
 
             var n = 0
             while not q.is_empty():
-                n += q.dequeue().get(0)
+                n += q.dequeue().get_or(0)
             return n
     )
 
@@ -91,7 +91,7 @@ export fn bench_numbers() Void:
 
             var n = 0
             while not q.is_empty():
-                n += q.dequeue().get(0)
+                n += q.dequeue().get_or(0)
             return n
     )
 

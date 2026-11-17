@@ -1,6 +1,6 @@
 # Errors and optionals
 
-`T?` is Optional[T]: values convert, `none` is absent. Extract with `if x := optional:` or `optional.get(default)`. `a?.field` chains absence. Postfix `?` propagates Result errors, not absence.
+`T?` is Optional[T]: values convert, `none` is absent. Extract with `if x := optional:` or `optional.get_or(default)`. `a?.field` chains absence. Postfix `?` propagates Result errors, not absence.
 
 `T!` is Result[T, Error]; `T!E` uses error type E. Return `ok(value)` or `error(reason)`. Error is a record: `Error("message", kind: "EINVAL")`; read `.message`.
 

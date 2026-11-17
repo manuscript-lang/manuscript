@@ -176,7 +176,7 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 				bit_and(
 					shift_right_unsigned(word, 8 * offset),
 					255,
-				).to_uint8().get(0)
+				).to_uint8().get_or(0)
 			)
 	return ok(out.build())
 
@@ -191,7 +191,7 @@ fn put_le64(var out: BytesBuilder, value: Int) Void:
 			bit_and(
 				shift_right_unsigned(value, 8 * offset),
 				255,
-			).to_uint8().get(0)
+			).to_uint8().get_or(0)
 		)
 
 fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) Bytes!:
@@ -203,7 +203,7 @@ fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) 
 	pad16(var mac, ciphertext.length())
 	put_le64(var mac, associated_data.length())
 	put_le64(var mac, ciphertext.length())
-	return poly1305(one_time.slice(0, 32).get(Bytes([])), mac.build())
+	return poly1305(one_time.slice(0, 32).get_or(Bytes([])), mac.build())
 
 // Encrypts and authenticates `plaintext` with ChaCha20-Poly1305 (RFC 8439), returning
 // the ciphertext followed by a 16-byte tag.
@@ -241,8 +241,8 @@ export fn chacha20poly1305_open(
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 
 	split := sealed.length() - 16
-	ciphertext := sealed.slice(0, split).get(Bytes([]))
-	tag := sealed.slice(split, sealed.length()).get(Bytes([]))
+	ciphertext := sealed.slice(0, split).get_or(Bytes([]))
+	tag := sealed.slice(split, sealed.length()).get_or(Bytes([]))
 	expected := tag_for(key, nonce, associated_data, ciphertext)?
 	if not constant_time_equal(expected, tag):
 		return error(Error("crypto: authentication failed", kind: "EAUTH"))
@@ -320,7 +320,7 @@ fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
 				bit_and(
 					shift_right_unsigned(word, 8 * offset),
 					255,
-				).to_uint8().get(0)
+				).to_uint8().get_or(0)
 			)
 	return out.build()
 
@@ -349,7 +349,7 @@ fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
 						bit_xor(
 							data.get(position).to_int(),
 							pad,
-						).to_uint8().get(0)
+						).to_uint8().get_or(0)
 					)
 					position += 1
 

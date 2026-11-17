@@ -10,10 +10,13 @@ export type List[T]:
 	reserve: Int?
 
 // Returns an element; negative indexes are relative to the end. An out-of-range
-// index returns `default`; pass one for indexes that may miss, or use `first()` and
-// `last()`. Without a default, an out-of-range index raises a fault, as `xs[i]`
-// does.
-fn List[T].get(index: Int, default: T?) T: ...
+// index raises a fault, as `xs[i]` does. Use `get_or` for indexes that may miss, or
+// `first()` and `last()`.
+fn List[T].get(index: Int) T: ...
+
+// Returns an element, or `default` when the index is out of range; negative indexes are
+// relative to the end.
+fn List[T].get_or(index: Int, default: T?) T: ...
 
 // Returns the first element, or none when the list is empty.
 fn List[T].first() T?:
@@ -147,13 +150,13 @@ fn List[T: Clonable].drop(count: Int) List[T]: ...
 // Copies the leading elements for which `predicate` holds, stopping at the first one
 // that fails it. Example: `[1, 2, 5, 1].take_while(fn x: x < 3)` is `[1, 2]`.
 fn List[T: Clonable].take_while(predicate: fn(T) Bool) List[T]:
-	return self.take(self.find_index(fn x: not predicate(x)).get(self.length()))
+	return self.take(self.find_index(fn x: not predicate(x)).get_or(self.length()))
 
 // Copies the elements from the first one that fails `predicate` to the end, so it is
 // what `take_while` leaves. Example: `[1, 2, 5, 1].drop_while(fn x: x < 3)` is
 // `[5, 1]`.
 fn List[T: Clonable].drop_while(predicate: fn(T) Bool) List[T]:
-	return self.drop(self.find_index(fn x: not predicate(x)).get(self.length()))
+	return self.drop(self.find_index(fn x: not predicate(x)).get_or(self.length()))
 
 // Splits the list into consecutive copies of `size` elements; the last chunk may be
 // shorter, and an empty list gives an empty list. A `size` of zero or less gives
@@ -716,7 +719,7 @@ export type SearchResult:
 // Creates a list containing independent copies of `value` repeated `count` times; the
 // value must be Clonable.
 export fn filled[T: Clonable](value: T, count: Int, max_items: Int?) List[T]!:
-	limit := max_items.get(9223372036854775807)
+	limit := max_items.get_or(9223372036854775807)
 	if count < 0 or limit < 0: return error(
 		Error("collection: invalid input", kind: "EINVAL")
 	)

@@ -23,7 +23,7 @@ bench "bigint.factorial_1000":
 
 bench "bigint.multiply_100_digits":
 	fn work() Result[Void, Error]:
-		base := big_int_of_int(7).pow(118).get(big_int_of_int(0))
+		base := big_int_of_int(7).pow(118).get_or(big_int_of_int(0))
 		var acc = big_int_of_int(0)
 		for i in 0..20000:
 			acc = base * base
@@ -38,7 +38,7 @@ bench "decimal.add_round":
 		var n = 0
 		for i in 0..20000:
 			if d := (i.to_decimal() + rate).round(2):
-				n += d.truncate_to_int().get(0)
+				n += d.truncate_to_int().get_or(0)
 		return keep(n)
 
 	measure(20000, work)?
@@ -110,7 +110,7 @@ bench "queue.enqueue_dequeue":
 
 		var n = 0
 		while not q.is_empty():
-			n += q.dequeue().get(0)
+			n += q.dequeue().get_or(0)
 		return keep(n)
 
 	measure(200000, work)?
@@ -123,7 +123,7 @@ bench "priority_queue.enqueue_dequeue":
 
 		var n = 0
 		while not q.is_empty():
-			n += q.dequeue().get(0)
+			n += q.dequeue().get_or(0)
 		return keep(n)
 
 	measure(100000, work)?

@@ -48,7 +48,7 @@ fn quote_with(text: String, ascii_only: Bool) String:
 			out.append("\\\\")
 		else if c == 123 or c == 125:
 			out.append("\\")
-			out.append(from_scalars([c]).get(""))
+			out.append(from_scalars([c]).get_or(""))
 		else if c == 10:
 			out.append("\\n")
 		else if c == 13:
@@ -66,7 +66,7 @@ fn quote_with(text: String, ascii_only: Bool) String:
 		):
 			out.append("\\u{" + c.to_string_radix(16) + "}")
 		else:
-			out.append(from_scalars([c]).get(""))
+			out.append(from_scalars([c]).get_or(""))
 
 	out.append("\"")
 	return out.build()
@@ -138,7 +138,7 @@ export fn unquote(text: String) String!:
 				if value.is_error():
 					return error(Error("string: invalid input", kind: "EINVAL"))
 
-				out.append(value.get(0))
+				out.append(value.get_or(0))
 				i = j + 1
 			else:
 				return error(Error("string: invalid input", kind: "EINVAL"))

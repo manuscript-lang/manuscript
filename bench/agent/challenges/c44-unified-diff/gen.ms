@@ -66,11 +66,11 @@ fn solve(s: String) String:
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 
 	head := words(lines[0])
-	c := head[2].parse_int().get(0)
-	n := head[3].parse_int().get(0)
-	m := head[4].parse_int().get(0)
-	a := lines.slice(1, 1 + n).get([])
-	b := lines.slice(1 + n, 1 + n + m).get([])
+	c := head[2].parse_int().get_or(0)
+	n := head[3].parse_int().get_or(0)
+	m := head[4].parse_int().get_or(0)
+	a := lines.slice(1, 1 + n).get_or([])
+	b := lines.slice(1 + n, 1 + n + m).get_or([])
 	ops := script(a, b)
 	var changed = List[Int]()
 	for k in 0..ops.length():
@@ -80,7 +80,7 @@ fn solve(s: String) String:
 	var groups = List[List[Int]]()
 	var cur = [changed[0]]
 
-	for k in changed.slice(1, changed.length()).get([]):
+	for k in changed.slice(1, changed.length()).get_or([]):
 		if k - cur[cur.length() - 1] - 1 <= 2 * c:
 			cur.append(k)
 		else:
@@ -94,10 +94,10 @@ fn solve(s: String) String:
 	for g in groups:
 		lo := if g[0] - c > 0: g[0] - c else: 0
 		hi := if g[g.length() - 1] + 1 + c < ops.length(): g[g.length() - 1] + 1 + c else: ops.length()
-		before := ops.slice(0, lo).get([])
+		before := ops.slice(0, lo).get_or([])
 		sa := before.count(fn o: o.mark != "+")
 		sb := before.count(fn o: o.mark != "-")
-		body := ops.slice(lo, hi).get([])
+		body := ops.slice(lo, hi).get_or([])
 		la := body.count(fn o: o.mark != "+")
 		lb := body.count(fn o: o.mark != "-")
 		out.append(f"@@ -{rng(sa, la)} +{rng(sb, lb)} @@")
@@ -187,7 +187,7 @@ export fn gen_c44() Void:
 				"start-and-end",
 				nums,
 				["new first"].concat(
-					nums.slice(0, nums.length() - 1).get([])
+					nums.slice(0, nums.length() - 1).get_or([])
 				).concat(["new last"]),
 				3,
 			),
@@ -230,9 +230,11 @@ export fn gen_c44() Void:
 			case3(
 				"pure-insert-delete",
 				base20,
-				base20.slice(0, 5).get([]).concat(["i1", "i2"]).concat(
-					base20.slice(5, 12).get([])
-				).concat(base20.slice(14, 20).get([])),
+				base20.slice(0, 5).get_or([]).concat(
+					["i1", "i2"]
+				).concat(base20.slice(5, 12).get_or([])).concat(
+					base20.slice(14, 20).get_or([])
+				),
 				2,
 			),
 			case3(

@@ -32,7 +32,7 @@ fn main() Int:
 			"tests/conformance/fixtures/e2e", "tests/conformance/fixtures/examples",
 			"tests/ownership-counts"
 		]:
-			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
+			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get_or([]):
 				files.append(f"{dir}/{f.path}")
 
 	ms := tool_ms(root.clone())
@@ -48,7 +48,7 @@ fn main() Int:
 
 	for f in files:
 		absolute := f"{root}/{f}"
-		source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
+		source := read_file(absolute.clone()).wait().get().decode_utf8().get_or("")
 		var command = List[String]()
 
 		if source.contains("export fn main"):
@@ -65,7 +65,7 @@ fn main() Int:
 		).wait():
 			swept += 1
 
-			sites := copies(out.stderr.decode_utf8().get(""))
+			sites := copies(out.stderr.decode_utf8().get_or(""))
 			if sites.is_empty(): continue
 
 			failing += 1

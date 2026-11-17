@@ -18,14 +18,13 @@ type Latch:
 fn var Latch.close() Void!:
 	if self.open:
 		self.open = false
-
 		void append_file(self.log, f"{self.id},").wait()
 
 fn latch(log: String, id: Int) Latch:
 	return Latch(log, id, true)
 
 fn closed(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
 	return ""
 
 type Holder:
@@ -80,13 +79,11 @@ fn map_values(log: String) Int:
 fn fault_through_holder(log: String) Void:
 	holder := Holder(latch(log, 9), 0)
 	panic("holder fault")
-
 	void holder.tag
 
 fn fault_plain(log: String) Void:
 	one := latch(log, 10)
 	panic("plain fault")
-
 	void one.id
 
 fn destructured_record(log: String) Int:

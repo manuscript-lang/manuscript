@@ -14,8 +14,8 @@ import (
 
 fn text(token: String) String:
 	digits := token.view(1, token.length())
-	bytes := hex_decode(digits, none) | .get("".to_bytes())
-	return bytes.decode_utf8().get("")
+	bytes := hex_decode(digits, none) | .get_or("".to_bytes())
+	return bytes.decode_utf8().get_or("")
 
 fn hex(value: String) String:
 	return f"x{hex_encode(value.to_bytes())}"
@@ -76,9 +76,9 @@ fn answer(rules: PathOperations, f: List[String]) String:
 test "path operations match the recorded corpus":
 	data := (
 		files().read("path.tsv", none)
-		| .get("".to_bytes())
+		| .get_or("".to_bytes())
 		| .decode_utf8()
-		| .get("")
+		| .get_or("")
 	)
 	var checked = 0
 	var failures = List[String]()

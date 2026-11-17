@@ -36,7 +36,7 @@ test "a loop that breaks hands the source back to its stream":
 		if seen.length() == 2: break
 
 	next := s.next()?
-	expect_equal(next.get(-1), 3)?
+	expect_equal(next.get_or(-1), 3)?
 	for x in s:
 		seen.append(x)
 	expect_equal(seen, [1, 2, 4, 5])?
@@ -60,7 +60,7 @@ test "an error ends the loop and the stream reads on":
 	expect_equal(failures, 1)?
 
 	next := s.next()?
-	expect_equal(next.get(-1), 3)?
+	expect_equal(next.get_or(-1), 3)?
 
 test "closing the stream inside its loop still closes the source once":
 	var closes = pipe[Int](capacity: 8)

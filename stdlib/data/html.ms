@@ -606,7 +606,7 @@ fn var Parser.read_until_close_angle() Void:
 		self.data_end = self.raw_end
 		return
 
-	self.raw_end = idx.get(0) + 1
+	self.raw_end = idx.get_or(0) + 1
 	self.data_end = self.raw_end - 1
 
 fn var Parser.read_markup_declaration() Int:
@@ -855,7 +855,7 @@ fn var Parser.read_tag_attr_val() Void:
 			self.pv_e = self.raw_end
 			return
 
-		self.raw_end = idx.get(0) + 1
+		self.raw_end = idx.get_or(0) + 1
 		self.pv_e = self.raw_end - 1
 	else:
 		self.pv_s = self.raw_end - 1
@@ -912,7 +912,7 @@ fn var Parser.next_token() Int:
 			self.eof = true
 			break
 
-		self.raw_end = idx.get(0) + 1
+		self.raw_end = idx.get_or(0) + 1
 
 		c := self.read_byte()
 		if self.eof: break
@@ -987,7 +987,7 @@ fn var Parser.next_token() Int:
 // handling.
 fn var Parser.token_text() String:
 	var s = convert_newlines(
-		self.src.decode_utf8_range(self.data_start, self.data_end).get("")
+		self.src.decode_utf8_range(self.data_start, self.data_end).get_or("")
 	)
 	if (self.convert_nul or self.tt == T_COMMENT) and s.contains("\u{0}"):
 		s = s.replace("\u{0}", "\u{FFFD}")
@@ -1021,7 +1021,7 @@ fn var Parser.load_token() Void:
 			self.src.decode_utf8_range(
 				self.attr_vs[i],
 				self.attr_ve[i],
-			).get("")
+			).get_or("")
 		)
 		if value.contains("&"): value = msstd_html_decode(value, true)
 
@@ -1190,7 +1190,7 @@ fn var Parser.oe_pop() Int:
 
 	self.oe_p.pop()
 	self.oe_stop.pop()
-	return self.oe.pop().get(-1)
+	return self.oe.pop().get_or(-1)
 
 fn var Parser.oe_truncate(len: Int) Void:
 	while self.oe.length() > len:
@@ -1240,7 +1240,7 @@ fn var Parser.afe_remove(n: Int) Void:
 
 fn var Parser.afe_truncate_pop() Int:
 	r := self.afe.pop()
-	return r.get(-1)
+	return r.get_or(-1)
 
 // Whether an HTML element with the atom is open.
 fn Parser.oe_contains(atom: Int) Bool:
@@ -1262,8 +1262,8 @@ fn Parser.is_special_element(n: Int) Bool:
 // matches any heading) before a boundary of the scope, or -1.
 fn Parser.scope_index(s: Int, m1: Int, m2: Int, m3: Int) Int:
 	if s == SCOPE_BUTTON and m1 == A_P and m2 == -1:
-		mark_p := self.oe_p.get(self.oe.length() - 1, 0)
-		mark_stop := self.oe_stop.get(self.oe.length() - 1, 0)
+		mark_p := self.oe_p.get_or(self.oe.length() - 1, 0)
+		mark_stop := self.oe_stop.get_or(self.oe.length() - 1, 0)
 		if mark_p > mark_stop: return mark_p - 1
 
 		return -1
@@ -3057,7 +3057,7 @@ fn var Parser.adjust_foreign_attributes() Void:
 		colon := key.index_of(":")
 
 		if colon.is_some():
-			at := colon.get(0)
+			at := colon.get_or(0)
 			self.tok_nss[i] = key.view(0, at).clone()
 			self.tok_keys[i] = key.view(at + 1, key.length()).clone()
 
@@ -3260,7 +3260,7 @@ fn var Parser.add_doctype(text: String) Bool:
 	while space < size and not is_html_whitespace(b.get(space).to_int()):
 		space += 1
 
-	name := b.decode_utf8_range(0, space).get("")
+	name := b.decode_utf8_range(0, space).get_or("")
 	if name != "html": quirks = true
 
 	node := self.alloc(K_DOCTYPE, 0, go_lower(name))
@@ -3271,7 +3271,7 @@ fn var Parser.add_doctype(text: String) Bool:
 		pos += 1
 	if size - pos < 6: return quirks or pos < size
 
-	var key = go_lower(b.decode_utf8_range(pos, pos + 6).get(""))
+	var key = go_lower(b.decode_utf8_range(pos, pos + 6).get_or(""))
 	pos += 6
 	if not valid_boundary(b, pos): pos = size
 	if key == "": key = "?"
@@ -3302,7 +3302,7 @@ fn var Parser.add_doctype(text: String) Bool:
 			scan += 1
 
 		keys.append(key.clone())
-		values.append(b.decode_utf8_range(pos, end).get(""))
+		values.append(b.decode_utf8_range(pos, end).get_or(""))
 		pos = next
 
 		if key == "public":
@@ -3394,7 +3394,7 @@ fn needs_ascii_lowering(src: Bytes, start: Int, end: Int) Bool:
 // The text of `src[start, end)` with ASCII capitals lower-cased (other scalars
 // unchanged).
 fn lowered_text(src: Bytes, start: Int, end: Int) String:
-	text := src.decode_utf8_range(start, end).get("")
+	text := src.decode_utf8_range(start, end).get_or("")
 	if not needs_ascii_lowering(src, start, end): return text
 
 	var out = StringBuilder()
@@ -4952,7 +4952,7 @@ fn limit_error() Error:
 fn budget(limit: Int?) Int!:
 	if limit.is_none(): return ok(9223372036854775807)
 
-	n := limit.get(0)
+	n := limit.get_or(0)
 	if n < 0: return error(Error("HTML: invalid input", kind: "EINVAL"))
 
 	return ok(n)
@@ -4966,8 +4966,8 @@ fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
 	var count = 0
 
 	while stack.length() > 0:
-		id := stack.pop().get(1)
-		depth := depths.pop().get(0)
+		id := stack.pop().get_or(1)
+		depth := depths.pop().get_or(0)
 		count += 1
 		if count > max_nodes or depth > max_depth: return false
 

@@ -122,8 +122,8 @@ fn main() Int:
 	parsed := options(arguments(), ["cli", "output", "runs", "cpu"], ["cli", "output"])
 	if parsed.is_error(): return fail(parsed.err().message)
 
-	opts := parsed.get(Map[String, String]())
-	runs := opts.get_or("runs", "3").parse_int().get(0)
+	opts := parsed.get_or(Map[String, String]())
+	runs := opts.get_or("runs", "3").parse_int().get_or(0)
 	if runs < 1: return fail("runs must be positive")
 
 	return finish(run(opts, runs))

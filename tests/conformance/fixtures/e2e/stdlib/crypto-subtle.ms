@@ -17,7 +17,7 @@ test "constant time less-or-equal orders non-negative values":
 	expect_equal(constant_time_less_or_equal(0, 0), 1)?
 
 test "xor_bytes combines equal lengths and rejects others":
-	mixed := xor_bytes(Bytes([1, 2, 255]), Bytes([3, 2, 15])).get(Bytes([]))
+	mixed := xor_bytes(Bytes([1, 2, 255]), Bytes([3, 2, 15])).get_or(Bytes([]))
 	expect_equal(mixed.get(0).to_int(), 2)?
 	expect_equal(mixed.get(1).to_int(), 0)?
 	expect_equal(mixed.get(2).to_int(), 240)?

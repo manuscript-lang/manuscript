@@ -35,7 +35,7 @@ export fn stdlib_table(output: String) String!:
 	]
 
 	for c in cases:
-		s := c.stats.get(
+		s := c.stats.get_or(
 			Stats(
 				operations: 0,
 				iterations: none,
@@ -51,8 +51,8 @@ export fn stdlib_table(output: String) String!:
 			left(labels.get_or(c.name, ""), width) + "  " + right(
 				s.median_ns.to_fixed(2),
 				12,
-			) + "  " + right(s.min_ns.get(0.0).to_fixed(2), 10) + "  " + right(
-				s.max_ns.get(0.0).to_fixed(2),
+			) + "  " + right(s.min_ns.get_or(0.0).to_fixed(2), 10) + "  " + right(
+				s.max_ns.get_or(0.0).to_fixed(2),
 				10,
 			)
 		)
@@ -77,4 +77,4 @@ fn main() Int:
 	output := stdlib_bench(ms_binary(), n, filter)
 	if output.is_error(): return finish(output)
 
-	return finish(stdlib_table(output.get("")))
+	return finish(stdlib_table(output.get_or("")))

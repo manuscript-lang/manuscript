@@ -15,7 +15,7 @@ export fn main() Int:
     b2 := ((not (false and true)) or "Tab\there".is_empty())
     say(f"b2 = {b2}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     l3 := [(-29), (-5), (-19), 15, 3]
     say(f"l3 = {l3} len {l3.length()}")
     return 0

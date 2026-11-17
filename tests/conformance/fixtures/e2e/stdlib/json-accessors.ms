@@ -68,7 +68,7 @@ test "JSON accessors return none for the wrong type":
 	expect_true(user_field(d, "age").and_then(fn n: string_of(n)).is_none())?
 	expect_true(user_field(d, "age").and_then(fn n: n.as_bool()).is_none())?
 	expect_true(user_field(d, "name").and_then(fn n: n.as_float()).is_none())?
-	expect_true(user_field(d, "tags").map(fn n: has_map(n)).get(true) == false)?
+	expect_true(user_field(d, "tags").map(fn n: has_map(n)).get_or(true) == false)?
 
 test "JSON as_int rejects fractions exponents and overflow":
 	d := doc()

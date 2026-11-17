@@ -113,7 +113,7 @@ test "partials":
 
 test "strict missing values and limits":
 	expect_true(render("{{ nope }}", data("{}")).is_error())?
-	expect_equal(render("[{{ nope }}]", data("{}")).get(""), "")?
+	expect_equal(render("[{{ nope }}]", data("{}")).get_or(""), "")?
 
 	page := compile("{{ nope }}").get()
 	expect_equal(page.render(data("{}"), RenderOptions(strict: false)).get(), "")?

@@ -58,13 +58,13 @@ test "an eager get_or fallback is released when the key is present":
 
 test "an eager list get default is released on every path":
     xs := [[1, 2], [3]]
-    expect_equal(xs.get(0, default: [9, 9]), [1, 2])?
-    expect_equal(xs.get(5, default: [9, 9]), [9, 9])?
-    expect_equal(xs.get(-1, default: [9, 9]), [3])?
+    expect_equal(xs.get_or(0, [9, 9]), [1, 2])?
+    expect_equal(xs.get_or(5, [9, 9]), [9, 9])?
+    expect_equal(xs.get_or(-1, [9, 9]), [3])?
 
     words := "a,b".split(",")
-    expect_equal(words.get(1, default: "z" + "z"), "b")?
-    expect_equal(words.get(8, default: "z" + "z"), "zz")?
+    expect_equal(words.get_or(1, "z" + "z"), "b")?
+    expect_equal(words.get_or(8, "z" + "z"), "zz")?
 
 test "find over owned elements keeps the hit":
     rows := [[1], [2], [3, 3]]

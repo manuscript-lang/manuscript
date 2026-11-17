@@ -20,4 +20,4 @@ fn main() Void:
     first := wait_first([promise(fn: ok(hold("loser"))), promise(fn: ok(4))])
     pending := promise(fn: ok(hold("dropped")))
     void pending
-    print(f"{timed_out.is_error()} {first.get(0)}")
+    print(f"{timed_out.is_error()} {first.get_or(0)}")

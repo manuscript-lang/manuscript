@@ -28,7 +28,7 @@ fn handle(request: HttpRequest) HttpResponse:
 export fn main() Int:
     if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):
         var server = acquired
-        dir := temporary_directory("ms-http-close-drains-*").get("")
+        dir := temporary_directory("ms-http-close-drains-*").get_or("")
 
         if var conn = connect(server.address()).wait():
             _sent := send(var conn, f"GET /slow HTTP/1.1\r\nHost: t\r\nX-Marker-Dir: {dir}\r\n\r\n")
@@ -49,7 +49,7 @@ export fn main() Int:
             while true:
                 if chunk := within(var conn.input, nanoseconds(5000000000)):
                     if data := chunk:
-                        text = f"{text}{data.decode_utf8().get("?")}"
+                        text = f"{text}{data.decode_utf8().get_or("?")}"
                         continue
 
                 break

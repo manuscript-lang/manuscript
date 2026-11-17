@@ -42,7 +42,7 @@ test "native wrapper passthrough transfers resources without duplicating owners"
 	transfer_optional_local(log.clone())
 	transfer_optional_temporary(log.clone())
 
-	events := read_file(log).wait().get().decode_utf8().get("")
+	events := read_file(log).wait().get().decode_utf8().get_or("")
 	expect_equal(events, "1,2,3,4,")?
 
 fn recover_resource_error(log: String) Void!:
@@ -66,7 +66,7 @@ test "or_else only borrows a resource error while preserving copyable successes"
 	recover_resource_error(log.clone())?
 	bound_resource_error(log.clone())?
 
-	events := read_file(log).wait().get().decode_utf8().get("")
+	events := read_file(log).wait().get().decode_utf8().get_or("")
 	expect_equal(events, "5,6,")?
 
 fn optional_callback(fail: Bool) (fn() Marker?)!:
@@ -103,7 +103,7 @@ test "owned native receivers stay closeable until later try arguments succeed":
 	expect_equal(held_optional_temporary(7, log.clone(), true).is_error(), true)?
 	expect_equal(held_optional_local(8, log.clone(), true).is_error(), true)?
 
-	events := read_file(log).wait().get().decode_utf8().get("")
+	events := read_file(log).wait().get().decode_utf8().get_or("")
 	expect_equal(events, "1,2,3,4,5,6,7,8,")?
 
 fn borrowed_error_callback(fail: Bool) (fn(Marker) Int!Marker)!:
@@ -122,5 +122,5 @@ test "later try does not take ownership of a genuinely borrowed native receiver"
 	borrowed_error_before_try(9, log.clone(), false)?
 	expect_equal(borrowed_error_before_try(10, log.clone(), true).is_error(), true)?
 
-	events := read_file(log).wait().get().decode_utf8().get("")
+	events := read_file(log).wait().get().decode_utf8().get_or("")
 	expect_equal(events, "9,10,")?

@@ -10,19 +10,23 @@ import (
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-	all := environment().get(Map[String, String]())
+	all := environment().get_or(Map[String, String]())
 	if value := all.get(name): return value.clone()
 
 	return fallback.clone()
 
 // The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
-	if data := read_file(path).wait().to_optional(): return data.decode_utf8().get("")
+	if data := read_file(path).wait().to_optional(): return (
+		data
+		.decode_utf8()
+		.get_or("")
+	)
 	return ""
 
 // The text of the file at `path`; a missing file stops the program.
 export fn must_read(path: String) String:
-	return read_file(path).wait().get().decode_utf8().get("")
+	return read_file(path).wait().get().decode_utf8().get_or("")
 
 // Replaces the file at `path`, creating its directory first.
 export fn write_text(path: String, text: String) Void:
@@ -74,8 +78,8 @@ export fn run_in(
 	if done := result.clone().to_optional():
 		return Ran(
 			done.exit_code,
-			done.stdout.decode_utf8().get(""),
-			done.stderr.decode_utf8().get(""),
+			done.stdout.decode_utf8().get_or(""),
+			done.stderr.decode_utf8().get_or(""),
 			elapsed,
 		)
 	if result.err().kind == "ETIMEDOUT": return Ran(124, "", "timeout", elapsed)
@@ -91,8 +95,8 @@ export fn split_max(text: String, separator: String, splits: Int) List[String]:
 		at := rest.index_of(separator)
 		if at.is_none(): break
 
-		out.append(rest.slice(0, at.get(0)))
-		rest = rest.slice(at.get(0) + separator.length(), rest.length())
+		out.append(rest.slice(0, at.get_or(0)))
+		rest = rest.slice(at.get_or(0) + separator.length(), rest.length())
 
 	out.append(rest)
 	return out

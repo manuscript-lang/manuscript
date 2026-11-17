@@ -19,7 +19,7 @@ test "a call over a temporary returns none when the callee does":
 	expect_true(keep(Tok("a"), false).is_none())?
 	expect_false(keep(Tok("a"), true).is_none())?
 	kept := keep(Tok("b"), true)
-	expect_equal(kept.get(Tok("")).s, "b")?
+	expect_equal(kept.get_or(Tok("")).s, "b")?
 	dropped := keep(Tok("c"), false)
 	expect_true(dropped.is_none())?
 

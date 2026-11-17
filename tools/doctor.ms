@@ -18,9 +18,9 @@ fn hugo_new_enough(version: String) Bool:
 	parts := version.split("-")[0].split("+")[0].split(".")
 	if parts.length() < 3: return false
 
-	major := parts[0].parse_int().get(0)
-	minor := parts[1].parse_int().get(0)
-	patch := parts[2].parse_int().get(0)
+	major := parts[0].parse_int().get_or(0)
+	minor := parts[1].parse_int().get_or(0)
+	patch := parts[2].parse_int().get_or(0)
 	return major > 0 or minor > 146 or (minor == 146 and patch >= 7)
 
 fn main() Int:
@@ -33,7 +33,7 @@ fn main() Int:
 		.wait()
 		.get()
 		.decode_utf8()
-		.get("")
+		.get_or("")
 		.trim()
 	)
 	node := capture("node", ["--version"]).trim()

@@ -13,7 +13,7 @@ fn var C.bump() Int:
 fn C.get() Int: self.n
 
 fn show(x: Int?) Void:
-    stdout().write(f"{x.get(-1)}\n").get()
+    stdout().write(f"{x.get_or(-1)}\n").get()
 
 fn clos() Void:
     var c: C? = C(1)

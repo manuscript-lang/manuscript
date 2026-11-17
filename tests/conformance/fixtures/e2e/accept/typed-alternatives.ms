@@ -57,7 +57,7 @@ fn nested(n: Int) Int??:
     return halve(n)
 
 fn matched_value(n: Int) Int:
-    return checked(n).get(-1)
+    return checked(n).get_or(-1)
 
 fn closure_return(n: Int) Int!Error:
     if y := halve(n):

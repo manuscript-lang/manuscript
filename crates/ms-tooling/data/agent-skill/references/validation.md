@@ -29,7 +29,7 @@ Each row is a shape agents wrote that fails; the right column compiles.
 
 | Not | Write |
 | --- | --- |
-| `!x`, `a ?? b`, `try f()`, `x or return y` | `not x`, `a.get(b)`, `f()?`, `if v := x:` then use `v` |
+| `!x`, `a ?? b`, `try f()`, `x or return y` | `not x`, `a.get_or(b)`, `f()?`, `if v := x:` then use `v` |
 | `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
 | `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
@@ -40,7 +40,7 @@ Each row is a shape agents wrote that fails; the right column compiles.
 | `for _ in xs` | `for _i in xs`; a bare `_` is not a name |
 | `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
 | `f(x)?` as a statement on a non-Void result | `_done := f(x)?` (a leading `_` marks it unused) |
-| `s.parse_int()?` (it returns `Int?`, not a Result) | `s.parse_int().ok_or(Error("bad number"))?` or `s.parse_int().get(0)` |
+| `s.parse_int()?` (it returns `Int?`, not a Result) | `s.parse_int().ok_or(Error("bad number"))?` or `s.parse_int().get_or(0)` |
 | `List<Int>`, `Map<K, V>` | `List[Int]`, `Map[K, V]` |
 | `r?.abs()` on a Result | `(r?).abs()`; `?.` is for Optionals only |
 | `m.contains_key(k)`, `xs.remove_last()` | `m.contains(k)`, `xs.pop()` |
@@ -60,9 +60,9 @@ type Pair:
 fn parse_line(line: String) Pair?:
 	parts := line.split(" ", none)
 	if parts.length() != 2: return none
-	n := parts.get(1, "").parse_int()
+	n := parts.get_or(1, "").parse_int()
 	if count := n:
-		return Pair(name: parts.get(0, ""), count: count)
+		return Pair(name: parts.get_or(0, ""), count: count)
 	return none
 
 fn bump(var seen: Set[String], word: String) Int:

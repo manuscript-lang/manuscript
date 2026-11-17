@@ -117,7 +117,7 @@ fn invalid_at(chars: List[String], at: Int, reason: String) Error:
 	var column = 1
 
 	for index in 0..at:
-		if chars.get(index, "") == "\n":
+		if chars.get_or(index, "") == "\n":
 			line += 1
 			column = 1
 		else:
@@ -140,7 +140,7 @@ type Reader:
 	max_depth: Int
 
 fn Reader.peek(offset: Int = 0) String:
-	return self.chars.get(self.at + offset, "")
+	return self.chars.get_or(self.at + offset, "")
 
 fn Reader.looking_at(literal: String) Bool:
 	wanted := literal.chars()
@@ -694,7 +694,7 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 			invalid_at(chars, here, "an entity reference must end with `;`")
 		)
 
-		entity := tail.view(0, end.get(0))
+		entity := tail.view(0, end.get_or(0))
 
 		if entity == "lt": out.append("<")
 		else if entity == "gt": out.append(">")
@@ -720,7 +720,7 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 		else:
 			return error(invalid_at(chars, here, f"unknown entity `&{entity};`"))
 
-		out.append(tail.view(end.get(0) + 1, tail.length()))
+		out.append(tail.view(end.get_or(0) + 1, tail.length()))
 
 	return ok(out.build())
 
@@ -732,7 +732,7 @@ fn digits(text: String, radix: Int) Int?:
 	value := parse_int(text, radix)
 	if value.is_error(): return none
 
-	return value.get(0)
+	return value.get_or(0)
 
 // Whether a code point is in XML 1.0's Char production, which excludes NUL, most
 // controls, and U+FFFE and U+FFFF.
@@ -745,11 +745,11 @@ fn is_xml_char(code: Int) Bool:
 	)
 
 fn scalar(chars: List[String], at: Int, value: Int?) String!:
-	if value.is_none() or not is_xml_char(value.get(0)): return error(
+	if value.is_none() or not is_xml_char(value.get_or(0)): return error(
 		invalid_at(chars, at, "invalid character reference")
 	)
 
-	text := from_scalars([value.get(0)])
+	text := from_scalars([value.get_or(0)])
 	if text.is_error(): return error(
 		invalid_at(chars, at, "invalid character reference")
 	)
@@ -775,7 +775,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 		"\n",
 	) else: text.clone()
 	var chars = normalized.chars().clone()
-	if chars.get(0, "") == "\u{feff}": chars.remove(0)
+	if chars.get_or(0, "") == "\u{feff}": chars.remove(0)
 
 	// XML's Char production applies even to discarded comments and instructions.
 	var index = 0

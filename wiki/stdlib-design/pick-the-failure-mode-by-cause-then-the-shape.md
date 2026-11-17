@@ -14,4 +14,4 @@ Still faults on a bad value: `to_string_radix` with a radix outside 2 through 36
 
 Apply when: designing any fallible read, lookup, or conversion.
 Evidence: [Optional](../../stdlib/core/core.ms), [Result](../../stdlib/core/core.ms), commits f7a3f26a and 040f6321, [collection rules](../../documentation/core-language/types/collections.md).
-Verify: out-of-range `[]` faults, `get(i, default: x)` returns `x`, and no `unwrap*` or `at` declaration remains (`ms search_symbol unwrap`).
+Verify: out-of-range `[]` faults, `get_or(i, x)` returns `x`, and no `unwrap*` or `at` declaration remains (`ms search_symbol unwrap`).

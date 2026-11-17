@@ -39,7 +39,7 @@ fn Lines.decode(start: Int, stop: Int) String!:
 fn var Lines.take(stop: Int, terminated: Bool) String!:
 	if self.pending_size == 0:
 		var end = stop
-		if terminated and end > self.start and self.data.get(end - 1, 0) == 13:
+		if terminated and end > self.start and self.data.get_or(end - 1, 0) == 13:
 			end -= 1
 		self.check(end - self.start)?
 
@@ -48,7 +48,7 @@ fn var Lines.take(stop: Int, terminated: Bool) String!:
 		return self.decode(from, end)
 
 	size := self.pending_size + stop - self.start
-	cr := if stop > self.start: self.data.get(stop - 1, 0) == 13 else: self.pending_cr
+	cr := if stop > self.start: self.data.get_or(stop - 1, 0) == 13 else: self.pending_cr
 	trimmed := if terminated and cr: size - 1 else: size
 	self.check(trimmed)?
 	self.pending.append(self.data.slice(self.start, stop)?)
@@ -68,7 +68,7 @@ fn var Lines.next() String?!:
 			if self.pending_size > 0: return ok(self.take(end, true)?)
 
 			var stop = end
-			if stop > self.start and self.data.get(stop - 1, 0) == 13:
+			if stop > self.start and self.data.get_or(stop - 1, 0) == 13:
 				stop -= 1
 			self.check(stop - self.start)?
 
@@ -84,7 +84,7 @@ fn var Lines.next() String?!:
 		// A trailing CR may belong to a split CRLF, so defer counting it until the
 		// next chunk or EOF.
 		rest := self.data.length() - self.start
-		cr := if rest > 0: self.data.get(self.data.length() - 1, 0) == 13 else: self.pending_cr
+		cr := if rest > 0: self.data.get_or(self.data.length() - 1, 0) == 13 else: self.pending_cr
 		self.check(self.pending_size + rest - if cr: 1 else: 0)?
 
 		chunk := self.input.next()?

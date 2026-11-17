@@ -17,7 +17,7 @@ review the changes with your version control, then run again without it.
 A missing golden file fails with the update hint; it is created only when updating.
 */
 fn updating() Bool:
-	env := environment().get(Map[String, String]())
+	env := environment().get_or(Map[String, String]())
 	if value := env.get("MS_UPDATE_GOLDEN"): return value != "" and value != "0"
 
 	return false

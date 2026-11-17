@@ -112,13 +112,13 @@ fn statement_get_on_a_result_is_flagged() {
     assert_eq!(
         got,
         vec![
-            ("work().get(none)".to_string(), "void work()".to_string()),
+            ("work().get_or(none)".to_string(), "void work()".to_string()),
             (
-                "handles[0].get(none)".to_string(),
+                "handles[0].get_or(none)".to_string(),
                 "void handles[0]".to_string()
             ),
             (
-                "box.close().get(none)".to_string(),
+                "box.close().get_or(none)".to_string(),
                 "void box.close()".to_string()
             ),
         ]

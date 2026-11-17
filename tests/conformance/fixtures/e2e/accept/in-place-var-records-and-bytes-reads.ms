@@ -14,7 +14,7 @@ type Cursor:
 	done: Bool
 
 fn Cursor.peek() Int:
-	return self.data.get(self.start, 0).to_int()
+	return self.data.get_or(self.start, 0).to_int()
 
 fn var Cursor.advance() Int:
 	at := self.start
@@ -46,11 +46,11 @@ test "bytes reads index, wrap negative and use defaults":
 	b := "hello".to_bytes()
 	expect_equal(b[0].to_int(), 104)?
 	expect_equal(b[-1].to_int(), 111)?
-	expect_equal(b.get(1, 7).to_int(), 101)?
-	expect_equal(b.get(9, 7).to_int(), 7)?
-	expect_equal(b.get(-9, 3).to_int(), 3)?
-	expect_equal(b.get(-5, 3).to_int(), 104)?
-	expect_equal(b.get(2, none), 108)?
+	expect_equal(b.get_or(1, 7).to_int(), 101)?
+	expect_equal(b.get_or(9, 7).to_int(), 7)?
+	expect_equal(b.get_or(-9, 3).to_int(), 3)?
+	expect_equal(b.get_or(-5, 3).to_int(), 104)?
+	expect_equal(b.get_or(2, none), 108)?
 
 test "var record methods change fields in place":
 	var c = Cursor("abcd".to_bytes(), 0, 3, "first", [], false)

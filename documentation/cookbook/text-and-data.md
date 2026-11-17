@@ -21,7 +21,7 @@ fn show(number: Int) Result[Void, Error]:
     return stdout().flush()
 
 fn main() Int:
-    number := arguments().get(0, default: "42").parse_int()
+    number := arguments().get_or(0, "42").parse_int()
     if value := number:
         if show(value).is_ok():
             return 0
@@ -36,7 +36,7 @@ ms run number.ms -- 42
 42
 ```
 
-Use `get(default)` for a default, or `if v := x` with a failure path ([Optional values](../core-language/types/optionals.md)).
+Use `get_or(default)` for a default, or `if v := x` with a failure path ([Optional values](../core-language/types/optionals.md)).
 
 ## Parse JSON
 
@@ -49,7 +49,7 @@ import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
-    text := parse[String](arguments().get(0, default: "\"hello\""))?
+    text := parse[String](arguments().get_or(0, "\"hello\""))?
     stdout().write(f"{text}\n")?
     return stdout().flush()
 
@@ -84,7 +84,7 @@ type Config:
     enabled: Bool = true
 
 fn run() Result[Void, Error]:
-    text := arguments().get(0, default: "{\"name\":\"Sam\"}")
+    text := arguments().get_or(0, "{\"name\":\"Sam\"}")
     config := parse[Config](text)?
     encoded := stringify(config, StringifyOptions(strict: true))?
     stdout().write(f"{encoded}\n")?

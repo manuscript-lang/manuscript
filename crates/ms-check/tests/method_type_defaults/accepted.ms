@@ -27,4 +27,4 @@ fn exercise() Int:
     inferred := source.choose(1, "x")
     fallback := source.fallback()
     output: String? := source.output()
-    return first + explicit + partial + inferred + fallback + output.get("").length() + from_bound(source)
+    return first + explicit + partial + inferred + fallback + output.get_or("").length() + from_bound(source)

@@ -31,12 +31,12 @@ the output and a newline; a faulted file's last output as `\u{1}MSOUT f<file> <b
 its fault record (`ms_rt_abi::record`) as `\u{1}MSOUT r<file> <bytes>`.
 */
 export fn run_test_files(files: List[fn(List[Int], String) Void]) Int:
-	environment := msstd_process_environment_map().get(Map[String, String]())
+	environment := msstd_process_environment_map().get_or(Map[String, String]())
 	results := environment.get_or("MS_TEST_RESULTS", "")
 	var selected = List[Int]()
 	for text in environment.get_or("MS_TEST_SELECT", "").split(","):
 		if text.length() > 0:
-			selected.append(text.parse_int().get(-1))
+			selected.append(text.parse_int().get_or(-1))
 
 	if environment.get_or("MS_TEST_PARALLEL", "") == "1":
 		for position in 0..files.length():

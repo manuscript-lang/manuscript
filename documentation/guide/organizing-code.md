@@ -45,7 +45,7 @@ fn main() Void:
     items: List[Priced] := [Book("Manuscript", 120), Subscription(6)]
     print(f"Cart: {total(items)} cents")
     top := largest([3, 9, 4], fn n: n)
-    print(f"Largest: {top.get(0)}")
+    print(f"Largest: {top.get_or(0)}")
 ```
 
 ```text

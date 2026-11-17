@@ -19,7 +19,7 @@ bench "csv.parse":
 	for i in 0..5000:
 		rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
-	csv_text := stringify(rows).get("")
+	csv_text := stringify(rows).get_or("")
 
 	fn work() Result[Void, Error]:
 		if r := parse(csv_text): return keep(r.length())

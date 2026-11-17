@@ -19,7 +19,7 @@ fn accept_one(address: String) Int:
 fn read_one(address: String) Int:
     var client = connect(address, timeout: nanoseconds(2000000000)).wait().get()
     got := client.input.next()
-    return got.get(none).map(fn b: b.length()).get(-1)
+    return got.get_or(none).map(fn b: b.length()).get_or(-1)
 
 fn receive_one(address: String) Int:
     var socket = bind_datagram(address).get()
@@ -76,7 +76,7 @@ fn main() Void:
         accepted := server.accept(nanoseconds(500000000)).wait()
 
         if accepted.is_ok():
-            var connection = accepted.get(none)
+            var connection = accepted.get_or(none)
             void connection.close()
 
     void server.close()

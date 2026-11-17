@@ -38,7 +38,7 @@ fn fetch(address: String, path: String) String:
         while true:
             if chunk := within(var conn.input, nanoseconds(5000000000)):
                 if data := chunk:
-                    text = f"{text}{data.decode_utf8().get("?")}"
+                    text = f"{text}{data.decode_utf8().get_or("?")}"
                     continue
 
             break

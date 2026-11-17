@@ -138,7 +138,7 @@ fn BitSet.combine(other: BitSet, mode: Int) BitSet:
 // Reports whether every member of this set is in `other`.
 fn BitSet.is_subset_of(other: BitSet) Bool:
 	for word in 0..self.words.length():
-		right := other.words.get(word, 0)
+		right := other.words.get_or(word, 0)
 		if bit_and(self.words[word], bit_not(right)) != 0: return false
 
 	return true

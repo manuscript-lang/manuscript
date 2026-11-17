@@ -21,7 +21,7 @@ fn longest(text: String) String:
 
 // The pieces are views of `rest`, which dies when the function returns: the clone must own them.
 fn components(text: String) List[String]:
-	rest := text.cut_prefix("/").get(text)
+	rest := text.cut_prefix("/").get_or(text)
 	return rest.split("/").clone()
 
 export fn main() Int:

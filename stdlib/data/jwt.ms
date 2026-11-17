@@ -84,8 +84,8 @@ export fn sign_token[T: Data](
 	payload := stringify(claims)
 	if header.is_error() or payload.is_error(): return error(jwt_invalid_key())
 
-	head := base64_encode(header.get("").to_bytes(), url_safe: true, padded: false)
-	body := base64_encode(payload.get("").to_bytes(), url_safe: true, padded: false)
+	head := base64_encode(header.get_or("").to_bytes(), url_safe: true, padded: false)
+	body := base64_encode(payload.get_or("").to_bytes(), url_safe: true, padded: false)
 	signing_input := f"{head}.{body}"
 	signature := sign_bytes(algorithm, key, signing_input.to_bytes())?
 	return ok(
@@ -116,7 +116,7 @@ export fn verify_token[T: Data = JsonValue](
 
 	header := decode_json[JsonValue](parts[0], check.max_bytes)?
 	if not header_algorithm_matches(
-		header.get("alg").get(JsonValue.Null),
+		header.get("alg").get_or(JsonValue.Null),
 		check.algorithm,
 	): return error(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 
@@ -126,7 +126,7 @@ export fn verify_token[T: Data = JsonValue](
 	)
 
 	if encoded := header.get("b64"):
-		if not encoded.as_bool().get(false): return error(
+		if not encoded.as_bool().get_or(false): return error(
 			Error("jwt: unsupported payload encoding", kind: "EBADMSG")
 		)
 
@@ -145,7 +145,7 @@ export fn verify_token[T: Data = JsonValue](
 		check.algorithm,
 		key,
 		signing_input.to_bytes(),
-		signature.get("".to_bytes()),
+		signature.get_or("".to_bytes()),
 	)?
 	if not genuine: return error(Error("jwt: bad signature", kind: "EBADMSG"))
 
@@ -171,10 +171,10 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
 	raw := base64_decode(part, url_safe: true, max_bytes: limit, padded: false)
 	if raw.is_error(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-	text := raw.get("".to_bytes()).decode_utf8()
+	text := raw.get_or("".to_bytes()).decode_utf8()
 	if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-	value := parse[T](text.get(""))
+	value := parse[T](text.get_or(""))
 	if decoded := value: return ok(decoded)
 
 	return error(Error("jwt: malformed token", kind: "EBADMSG"))
@@ -260,8 +260,8 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 		)
 
 	if issuer := check.issuer:
-		actual := claims.get("iss").get(JsonValue.Null).as_string()
-		if actual.is_none() or actual.get("") != issuer: return error(
+		actual := claims.get("iss").get_or(JsonValue.Null).as_string()
+		if actual.is_none() or actual.get_or("") != issuer: return error(
 			Error("jwt: wrong issuer", kind: "EBADMSG")
 		)
 
@@ -283,7 +283,7 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 				)
 
 	if audience := check.audience:
-		if not includes_audience(claims.get("aud").get(JsonValue.Null), audience): return error(
+		if not includes_audience(claims.get("aud").get_or(JsonValue.Null), audience): return error(
 			Error("jwt: wrong audience", kind: "EBADMSG")
 		)
 
@@ -387,7 +387,7 @@ fn date_compare(text: String, boundary: String) Int:
 fn includes_audience(claim: JsonValue, audience: String) Bool:
 	if single := claim.as_string(): return single == audience
 	if many := claim.as_list():
-		return many.any(fn item: item.as_string().get("") == audience)
+		return many.any(fn item: item.as_string().get_or("") == audience)
 
 	return false
 
@@ -437,7 +437,7 @@ fn raw_to_der(raw: Bytes) Bytes:
 		pad := raw.get(start).to_int() >= 128
 		if pad: size += 1
 		body.append(2)
-		body.append(size.to_uint8().get(0))
+		body.append(size.to_uint8().get_or(0))
 		if pad: body.append(0)
 		for place in start..((piece + 1) * half):
 			body.append(raw.get(place))
@@ -446,7 +446,7 @@ fn raw_to_der(raw: Bytes) Bytes:
 	var out = BytesBuilder()
 	out.append(48)
 	if inner.length() >= 128: out.append(129)
-	out.append(inner.length().to_uint8().get(0))
+	out.append(inner.length().to_uint8().get_or(0))
 	out.append_bytes(inner)
 	return out.build()
 

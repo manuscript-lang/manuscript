@@ -450,7 +450,7 @@ fn var WatchSource.next() FileEvent?!:
 		if next.is_none(): return ok(none)
 
 		// An empty batch only means nothing changed yet; only none ends the stream.
-		var batch = next.get(List[FileEvent]())
+		var batch = next.get_or(List[FileEvent]())
 		batch.reverse()
 		self.pending = batch
 
@@ -905,7 +905,7 @@ fn through_links(path: String) String:
 	link := stat(path, follow_links: false)
 	if link.is_error() or not link.get().is_symlink(): return path.clone()
 
-	return canonicalize(path).get(path.clone())
+	return canonicalize(path).get_or(path.clone())
 
 // A sibling name for `path` that stays within the 255-byte file name limit: the file
 // name is cut to 32 characters.
@@ -1072,7 +1072,7 @@ export fn watch(
 				recursive,
 				options.max_entries,
 				options.max_events,
-				options.overflow.get("error"),
+				options.overflow.get_or("error"),
 			)?
 		)
 	)

@@ -115,11 +115,7 @@ fn sample() List[ArchiveEntry]:
 	return [
 		ArchiveEntry("dir", "".to_bytes(), directory: true),
 		ArchiveEntry("dir/a.txt", "alpha".to_bytes(), directory: false),
-		ArchiveEntry(
-			"big.bin",
-			"x".repeat(1300).to_bytes(),
-			directory: false,
-		),
+		ArchiveEntry("big.bin", "x".repeat(1300).to_bytes(), directory: false),
 		ArchiveEntry("empty", "".to_bytes(), directory: false),
 	]
 
@@ -165,7 +161,7 @@ test "tar entries enforce limits and report truncation":
 	)
 	expect_equal(total.err().kind, "EOVERFLOW")?
 
-	cut := read_entries(chunked(archive.slice(0, 1000).get("".to_bytes()), 300))
+	cut := read_entries(chunked(archive.slice(0, 1000).get_or("".to_bytes()), 300))
 	expect_equal(cut.err().kind, "EBADMSG")?
 
 // Sends its bytes once, then fails every read, so a reader that waits for data it
@@ -185,13 +181,7 @@ fn var HeaderThenFail.close() Void!:
 
 test "tar entries refuse an oversized member from its header":
 	archive := pack(
-		[
-			ArchiveEntry(
-				"f",
-				"x".repeat(4000).to_bytes(),
-				directory: false,
-			)
-		],
+		[ArchiveEntry("f", "x".repeat(4000).to_bytes(), directory: false)],
 		ArchiveFormat.Tar,
 	)?
 	header := archive.slice(0, 512)?
@@ -289,7 +279,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
 	label := name.to_bytes()
 	for index in 0..label.length():
-		block[index] = label.get(index, 0).to_int()
+		block[index] = label.get_or(index, 0).to_int()
 
 	var left = size
 
@@ -301,7 +291,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
 	magic := "ustar".to_bytes()
 	for index in 0..5:
-		block[257 + index] = magic.get(index, 0).to_int()
+		block[257 + index] = magic.get_or(index, 0).to_int()
 	block[263] = 48
 	block[264] = 48
 	for index in 148..156:
@@ -319,7 +309,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
 	var out = BytesBuilder()
 	for byte in block:
-		out.append(byte.to_uint8().get(0))
+		out.append(byte.to_uint8().get_or(0))
 	return out.build()
 
 // Zero-pads `data` to a whole 512-byte block.
@@ -350,9 +340,9 @@ test "tar entries frame members by a PAX size override as unpack does":
 // Replaces the byte at `at` with `value`.
 fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
 	var out = BytesBuilder()
-	out.append_bytes(data.slice(0, at).get("".to_bytes()))
-	out.append(value.to_uint8().get(0))
-	out.append_bytes(data.slice(at + 1, data.length()).get("".to_bytes()))
+	out.append_bytes(data.slice(0, at).get_or("".to_bytes()))
+	out.append(value.to_uint8().get_or(0))
+	out.append_bytes(data.slice(at + 1, data.length()).get_or("".to_bytes()))
 	return out.build()
 
 test "gzip rejects reserved flags in whole and fragmented member headers":
@@ -391,7 +381,7 @@ test "gzip rejects reserved flags in whole and fragmented member headers":
 
 // "ok" with the entries' paths and sizes, or the error kind.
 fn outcome(entries: List[ArchiveEntry]!) String:
-	if entries.is_error(): return entries.err().kind.get("none")
+	if entries.is_error(): return entries.err().kind.get_or("none")
 
 	var text = "ok"
 	for entry in entries.get():
@@ -412,7 +402,7 @@ test "tar entries and unpack agree on corrupted and truncated archives":
 
 	// Truncations, including mid-block and exactly on member boundaries.
 	for cut in [0, 1, 511, 512, 513, 1024, 1500, 2047, 2048, 2561, 3000]:
-		cases.append(archive.slice(0, cut).get("".to_bytes()))
+		cases.append(archive.slice(0, cut).get_or("".to_bytes()))
 
 	// Bytes after the end blocks: a tar has no trailer, so both readers stop at the
 	// first zero block.

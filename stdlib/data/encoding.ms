@@ -135,7 +135,7 @@ fn utf8_length(scalar: Int) Int:
 
 // A byte from a count already known to be 0 through 255.
 fn byte_of(n: Int) UInt8:
-	return n.to_uint8().get(0)
+	return n.to_uint8().get_or(0)
 
 fn text_of(scalars: List[Int]) String:
 	if text := from_scalars(scalars): return text
@@ -216,7 +216,7 @@ export fn ascii_decode(data: Bytes) String!:
 	bytes := data.values()
 	for byte in bytes:
 		if byte > 127: return error(encoding_invalid_data())
-	return ok(data.decode_utf8().get(""))
+	return ok(data.decode_utf8().get_or(""))
 
 fn encoding_invalid_data() Error:
 	return Error("encoding: invalid data", kind: "EBADMSG")

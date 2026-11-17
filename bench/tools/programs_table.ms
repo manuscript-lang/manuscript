@@ -58,8 +58,8 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 		if name == "#":
 			var sink = List[Int]()
-			for p in parts.slice(3, parts.length()).get([]):
-				sink.append(p.parse_int().get(-1))
+			for p in parts.slice(3, parts.length()).get_or([]):
+				sink.append(p.parse_int().get_or(-1))
 			if parts.length() < 3 or parts[2] != "sink" or sink != SINK:
 				return invalid(f"incorrect {version} checksum")
 			if pending.get_or(version, Set[String]()).length() != ops().length():
@@ -77,9 +77,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		):
 			return invalid(f"invalid operation: {line.trim()}")
 
-		count := parts[2].parse_int().get(-1)
-		elapsed := parts[3].parse_int().get(-1)
-		if count != want.get(0) or elapsed <= 0:
+		count := parts[2].parse_int().get_or(-1)
+		elapsed := parts[3].parse_int().get_or(-1)
+		if count != want.get_or(0) or elapsed <= 0:
 			return invalid(f"incorrect work count or timing: {line.trim()}")
 
 		key := f"{version} {name}"

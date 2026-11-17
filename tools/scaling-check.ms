@@ -151,14 +151,14 @@ fn say(text: String) Void:
 	stdout().write(text).get()
 
 fn show(ratio: Float) String:
-	tenths := (ratio * 10.0).truncate_to_int().get(0)
+	tenths := (ratio * 10.0).truncate_to_int().get_or(0)
 	return f"{tenths / 10}.{tenths % 10}x"
 
 fn main() Int:
 	root := working_directory().get()
 	ms := tool_ms(root.clone())
-	bound := env("SCALING_BOUND", "30").parse_float().get(30.0)
-	limit := env("SCALING_TIMEOUT", "300").parse_int().get(300)
+	bound := env("SCALING_BOUND", "30").parse_float().get_or(30.0)
+	limit := env("SCALING_TIMEOUT", "300").parse_int().get_or(300)
 	var shapes = List[String]()
 	for a in arguments(): shapes.append(a.clone())
 
@@ -194,7 +194,7 @@ fn main() Int:
 
 		for spec in commands(shape.clone()):
 			command := spec[0].clone()
-			extra: List[String] := spec.slice(1, spec.length()).get([])
+			extra: List[String] := spec.slice(1, spec.length()).get_or([])
 
 			// The smallest input is the fixed cost, and its first run pays for starting
 			// the tools a build uses: take the faster of two.
@@ -341,10 +341,10 @@ fn run_phases(ms: String, program: String, n: Int, limit: Int) Map[String, Int]:
 	if ran.is_error(): return phases
 	if ran.get().exit_code != 0: return phases
 
-	for line in ran.get().stdout.decode_utf8().get("").split("\n"):
+	for line in ran.get().stdout.decode_utf8().get_or("").split("\n"):
 		parts := line.split(" ")
 		if parts.length() != 2: continue
 
-		phases[parts[0].clone()] = parts[1].parse_int().get(0)
+		phases[parts[0].clone()] = parts[1].parse_int().get_or(0)
 
 	return phases

@@ -250,7 +250,7 @@ export fn pow_int(base: Int, exponent: Int) Int?:
 			next_result := checked_multiply(result, factor)
 			if next_result.is_none(): return none
 
-			result = next_result.get(0)
+			result = next_result.get_or(0)
 
 		left /= 2
 
@@ -258,7 +258,7 @@ export fn pow_int(base: Int, exponent: Int) Int?:
 			next_factor := checked_multiply(factor, factor)
 			if next_factor.is_none(): return none
 
-			factor = next_factor.get(0)
+			factor = next_factor.get_or(0)
 
 	return result
 
@@ -885,7 +885,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 	var twos = 0
 
 	while bigint_is_even(odd_part):
-		odd_part = odd_part.shift_right(1).get(bigint_zero())
+		odd_part = odd_part.shift_right(1).get_or(bigint_zero())
 		twos += 1
 
 	fixed := min(rounds, primes.length())
@@ -901,7 +901,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 	// The first 13 prime bases decide every value below this bound exactly. Above it,
 	// fixed bases can be fooled by a composite built for them, so the requested rounds
 	// are repeated with secret random bases.
-	bound := msstd_bigint_parse("3317044064679887385961981", 10, none).get(
+	bound := msstd_bigint_parse("3317044064679887385961981", 10, none).get_or(
 		bigint_zero()
 	)
 	if n.compare(bound) < 0: return true
@@ -916,7 +916,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 fn bigint_strong_probable(n: BigInt, base: BigInt, odd_part: BigInt, twos: Int) Bool:
 	one := msstd_bigint_from_int(1)
 	minus_one := n - one
-	var x = base.pow_mod(odd_part, n).get(bigint_zero())
+	var x = base.pow_mod(odd_part, n).get_or(bigint_zero())
 	if x.compare(one) == 0 or x.compare(minus_one) == 0: return true
 
 	for _step in 1..twos:
@@ -962,7 +962,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 
 	minus_one := modulus - one
 	half := minus_one / two
-	if target.pow_mod(half, modulus).get(bigint_zero()).compare(one) != 0:
+	if target.pow_mod(half, modulus).get_or(bigint_zero()).compare(one) != 0:
 		return ok(absent)
 
 	var root = bigint_zero()
@@ -971,7 +971,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 		root = target.pow_mod(
 			(modulus + one) / msstd_bigint_from_int(4),
 			modulus,
-		).get(bigint_zero())
+		).get_or(bigint_zero())
 	else:
 		var odd_part = minus_one.clone()
 		var twos = 0
@@ -993,9 +993,9 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 			non_residue += one
 
 		var m = twos
-		var c = non_residue.pow_mod(odd_part, modulus).get(bigint_zero())
-		var t = target.pow_mod(odd_part, modulus).get(bigint_zero())
-		root = target.pow_mod((odd_part + one) / two, modulus).get(bigint_zero())
+		var c = non_residue.pow_mod(odd_part, modulus).get_or(bigint_zero())
+		var t = target.pow_mod(odd_part, modulus).get_or(bigint_zero())
+		root = target.pow_mod((odd_part + one) / two, modulus).get_or(bigint_zero())
 
 		while t.compare(one) != 0:
 			var i = 0

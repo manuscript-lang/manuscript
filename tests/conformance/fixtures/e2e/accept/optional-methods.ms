@@ -37,7 +37,7 @@ test "Optional fallbacks distinguish eager and lazy evaluation":
 	present: Int? := 0
 	missing: Int? := none
 	var counter = Counter(0)
-	expect_equal(present.get(fallback(var counter)), 0)?
+	expect_equal(present.get_or(fallback(var counter)), 0)?
 	expect_equal(counter.calls, 1)?
 
 	create := fn() Int?: 42
@@ -66,7 +66,7 @@ test "Optional methods retain generic payload and receiver identity":
 test "Optional fallbacks preserve standard option records":
 	limits := JsonOptions(max_bytes: -1)
 	missing: JsonOptions? := none
-	var extracted = missing.get(limits).clone()
+	var extracted = missing.get_or(limits).clone()
 	expect_equal(extracted.max_bytes.get(), -1)?
 	expect_false(not (extracted.max_depth.is_none()))?
 	extracted.max_values = 7
@@ -75,4 +75,4 @@ test "Optional fallbacks preserve standard option records":
 test "Optional methods work on inferred library return values":
 	values := [1, 2]
 	expect_equal(values.get(0), 1)?
-	expect_equal(values.get(5, default: 9), 9)?
+	expect_equal(values.get_or(5, 9), 9)?

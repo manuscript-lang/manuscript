@@ -8,10 +8,10 @@ import (
 // proposals/specialize-closure-args.md).
 fn best_index(points: List[Point], key: fn(Point) Int) Int:
 	var best = 0
-	var best_key = key(points.get(0, default: Point(x: 0, y: 0)))
+	var best_key = key(points.get_or(0, Point(x: 0, y: 0)))
 
 	for i in 1..points.length():
-		k := key(points.get(i, default: Point(x: 0, y: 0)))
+		k := key(points.get_or(i, Point(x: 0, y: 0)))
 
 		if k > best_key:
 			best_key = k
@@ -21,10 +21,10 @@ fn best_index(points: List[Point], key: fn(Point) Int) Int:
 
 fn best_index_loop(points: List[Point], scale: Int) Int:
 	var best = 0
-	var best_key = points.get(0, default: Point(x: 0, y: 0)).y * scale
+	var best_key = points.get_or(0, Point(x: 0, y: 0)).y * scale
 
 	for i in 1..points.length():
-		k := points.get(i, default: Point(x: 0, y: 0)).y * scale
+		k := points.get_or(i, Point(x: 0, y: 0)).y * scale
 
 		if k > best_key:
 			best_key = k
@@ -65,7 +65,7 @@ bench "list.at":
 	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..200000:
-			n += data.get(i % 100000, default: 0)
+			n += data.get_or(i % 100000, 0)
 		return keep(n)
 
 	measure(200000, work)?

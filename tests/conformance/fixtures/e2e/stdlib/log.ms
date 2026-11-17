@@ -296,7 +296,7 @@ test "loggers on several threads never interleave a record":
 	b.wait() | expect_ok?
 	logger.flush()?
 
-	text := (written(path)?).get("")
+	text := (written(path)?).get_or("")
 	expect_equal(text.split("\n").length(), 7)?
 
 	for line in text.split("\n"):
@@ -312,7 +312,7 @@ fn Memory.write(data: String) Void!:
 	return append_file(self.path, data).wait()
 
 fn Memory.write_bytes(data: Bytes) Void!:
-	return self.write(data.decode_utf8().get(""))
+	return self.write(data.decode_utf8().get_or(""))
 
 fn Memory.flush() Void!:
 	return ok()
@@ -324,7 +324,7 @@ fn Memory.close() Void:
 	return
 
 fn recorded(path: String) String:
-	return written(path).get(none).get("")
+	return written(path).get_or(none).get_or("")
 
 test "messages are escaped and fields keep their shape under data":
 	out_dir := temporary("manuscript-log-memory-")?
@@ -396,9 +396,9 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
 	for index in 0..12: logger.info(f"record number {index}")?
 	logger.flush()?
 
-	current := (written(path)?).get("")
-	first := (written(f"{path}.1")?).get("")
-	second := (written(f"{path}.2")?).get("")
+	current := (written(path)?).get_or("")
+	first := (written(f"{path}.1")?).get_or("")
+	second := (written(f"{path}.2")?).get_or("")
 	expect_true(current != "" and first != "" and second != "")?
 	expect_true(current.to_bytes().length() <= 80)?
 	expect_true(read_file(f"{path}.3").wait().is_error())?

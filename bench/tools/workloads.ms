@@ -44,7 +44,7 @@ fn largest_input(path: String) String!:
 	if cases.is_error(): return invalid(f"cannot read {path}")
 
 	var best = ""
-	for c in cases.get([]):
+	for c in cases.get_or([]):
 		if c.stdin.length() > best.length(): best = c.stdin.clone()
 
 	size := if not best.is_empty(): best.length() else: 1

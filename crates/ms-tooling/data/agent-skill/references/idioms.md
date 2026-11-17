@@ -106,7 +106,7 @@ fn main() Void:
 
 ## 3. Errors are values: `T!` and `?`
 
-A function that can fail returns `T!` (a Result). Inside it, `?` unwraps a success and returns the error early, so the happy path reads straight down. Turn an Optional into a Result with `.ok_or(Error(...))`. The message names the input; `kind` is a short code such as `"EINVAL"`. The caller decides: `?` again, `if r.is_error():`, or `.get(default)`. Nothing is thrown and a Result is never dropped.
+A function that can fail returns `T!` (a Result). Inside it, `?` unwraps a success and returns the error early, so the happy path reads straight down. Turn an Optional into a Result with `.ok_or(Error(...))`. The message names the input; `kind` is a short code such as `"EINVAL"`. The caller decides: `?` again, `if r.is_error():`, or `.get_or(default)`. Nothing is thrown and a Result is never dropped.
 
 <!-- complete: idiom-lines.ms -->
 ```manuscript
@@ -138,7 +138,7 @@ fn main() Void:
 		if result.is_error():
 			print(f"bad: {result.err().message}")
 		else:
-			print(f"total: {result.get(0)}")
+			print(f"total: {result.get_or(0)}")
 ```
 
 ## 4. One owner: borrow, change with `var`, clone to copy
@@ -262,7 +262,7 @@ fn main() Void:
 		if result.is_error():
 			print(f"{text}: error {result.err().message}")
 		else:
-			print(f"{text} = {result.get(0)}")
+			print(f"{text} = {result.get_or(0)}")
 ```
 
 - Rebinding a changing value is `var left = ...` then `left = Expr.Mul(left, right)`; `var x := e` is not valid.
@@ -340,7 +340,7 @@ fn var Shop.take(sku: String, qty: Int) String:
 
 fn run_command(var shop: Shop, line: String) String:
 	words := line.split(" ")
-	qty := words.get(2, "").parse_int()
+	qty := words.get_or(2, "").parse_int()
 	if words.length() != 3 or qty.is_none():
 		return "error: usage: add|take <sku> <qty>"
 	match words[0]:
@@ -423,7 +423,7 @@ fn word_counts(text: List[String]) Map[String, Int]:
 fn main() Void!:
 	text := stdin() | lines | collect(none)?
 	counts := word_counts(text)
-	top := counts.entries().sorted(fn a, b: b.value.compare(a.value)).slice(0, 3).get(none)
+	top := counts.entries().sorted(fn a, b: b.value.compare(a.value)).slice(0, 3).get_or(none)
 	for entry in top:
 		print(f"{entry.key} {entry.value}")
 ```

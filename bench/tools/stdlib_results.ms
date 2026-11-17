@@ -41,8 +41,8 @@ export fn read_cases(output: String) List[Bench]!:
 	parsed := parse[Document](output)
 	if parsed.is_error(): return invalid("invalid benchmark document")
 
-	doc := parsed.get(Document(List[Bench](), none))
-	diagnostics := doc.diagnostics.get([])
+	doc := parsed.get_or(Document(List[Bench](), none))
+	diagnostics := doc.diagnostics.get_or([])
 	if not diagnostics.is_empty(): return invalid(
 		diagnostics.map(fn d: d.message.clone()).join("; ")
 	)
@@ -54,10 +54,10 @@ export fn read_cases(output: String) List[Bench]!:
 
 		seen.add(bench.name.clone())
 		if bench.status != "passed": return invalid(
-			f"{bench.name}: {bench.status}: {bench.failure.get("")}"
+			f"{bench.name}: {bench.status}: {bench.failure.get_or("")}"
 		)
 
-		stats := bench.stats.get(
+		stats := bench.stats.get_or(
 			Stats(
 				operations: 0,
 				iterations: none,
@@ -70,7 +70,7 @@ export fn read_cases(output: String) List[Bench]!:
 			)
 		)
 		if stats.operations <= 0: return invalid(f"invalid operations: {bench.name}")
-		if (stats.iterations.get(1) <= 0) or (stats.samples.get(1) <= 0):
+		if (stats.iterations.get_or(1) <= 0) or (stats.samples.get_or(1) <= 0):
 			return invalid(f"invalid iterations or samples: {bench.name}")
 		if not finite(stats.median_ns): return invalid(
 			f"invalid median_ns: {bench.name}"
@@ -85,8 +85,8 @@ export fn read_cases(output: String) List[Bench]!:
 
 		if stats.min_ns.is_some() and stats.max_ns.is_some():
 			if not (
-				stats.min_ns.get(0.0) <= stats.median_ns
-				and stats.median_ns <= stats.max_ns.get(0.0)
+				stats.min_ns.get_or(0.0) <= stats.median_ns
+				and stats.median_ns <= stats.max_ns.get_or(0.0)
 			):
 				return invalid(f"inconsistent timing range: {bench.name}")
 
@@ -101,7 +101,7 @@ export fn case_labels(names: List[String]) Map[String, String]:
 
 	for name in names:
 		parts := name.split("::")
-		s := parts.slice(1, parts.length()).get([]).join("::")
+		s := parts.slice(1, parts.length()).get_or([]).join("::")
 		label := if parts.length() > 1: s else: name.clone()
 		short.add(name.clone(), label.clone())
 		counts.add(label.clone(), counts.get_or(label, 0) + 1)

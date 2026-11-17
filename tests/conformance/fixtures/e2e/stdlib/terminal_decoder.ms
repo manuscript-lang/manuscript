@@ -112,8 +112,8 @@ test "a bracketed paste is one event however the input is split":
 		var split = terminal_decoder()
 		head := scalars.take(cut)
 		tail := scalars.drop(cut)
-		var events = split.decode(from_scalars(head).get(""))
-		events.extend(split.decode(from_scalars(tail).get("")))
+		var events = split.decode(from_scalars(head).get_or(""))
+		events.extend(split.decode(from_scalars(tail).get_or("")))
 		expect_equal(merged(events), expected)?
 		cut += 1
 

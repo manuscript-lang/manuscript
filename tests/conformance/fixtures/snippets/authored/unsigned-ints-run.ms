@@ -28,7 +28,7 @@ fn main() Void:
     opt: UInt8? := 255
     big: Int := 300
     void stdout().write(
-        f"{opt.get(0)} {big.to_uint8()} {big.to_uint16()} {wide.to_int32()} {wide.to_int64()}\n"
+        f"{opt.get_or(0)} {big.to_uint8()} {big.to_uint16()} {wide.to_int32()} {wide.to_int64()}\n"
     )
     void stdout().write(
         f"{high.to_int()} {mid.to_uint8()} {wide.to_string_radix(16)} {high.compare(low)}\n"

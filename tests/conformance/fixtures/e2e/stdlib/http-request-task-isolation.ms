@@ -25,7 +25,7 @@ fn get(address: String, path: String) String!:
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	send(var client, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")?
 	reply := recv(var client, 3.seconds())?
-	return ok(reply.get(Bytes([])).decode_utf8().get(""))
+	return ok(reply.get_or(Bytes([])).decode_utf8().get_or(""))
 
 test "a response over the limit fails its request and the server answers the next":
 	server := (

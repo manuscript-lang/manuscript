@@ -41,6 +41,7 @@ test "serve ends a connection that trickles its request head":
 
 	while sent < 30:
 		void sleep(100.milliseconds()).wait()
+
 		written := send(var client, "a")
 		if written.is_error(): break
 
@@ -51,7 +52,7 @@ test "serve ends a connection that trickles its request head":
 	if sent == 30: return error(Error("trickled request head was never cut off"))
 
 	if reply := recv(var client, 3.seconds()):
-		text := reply.get(Bytes([])).decode_utf8().get("")
+		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error(f"incomplete request was served: {text}")
 		)
@@ -66,14 +67,13 @@ test "close cancels a handler that outlives the grace period":
 	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | expect_ok?
-
 	void sleep(100.milliseconds()).wait()
 	server.close()?
 
 	// An error here is the connection ending (a reset on macOS); only a served reply
 	// fails.
 	if reply := recv(var client, 5.seconds()):
-		text := reply.get(Bytes([])).decode_utf8().get("")
+		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error("handler finished instead of being cancelled")
 		)
@@ -97,19 +97,18 @@ test "close cancels a handler parked on a request body and releases its stream":
 			"POST / HTTP/1.1\r\nHost: t\r\nContent-Length: 100\r\n\r\nab",
 		) | expect_ok?
 	)
-
 	void sleep(100.milliseconds()).wait()
 	server.close()?
 
 	if reply := recv(var client, 5.seconds()):
-		text := reply.get(Bytes([])).decode_utf8().get("")
+		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error("handler finished instead of being cancelled")
 		)
 
 fn expect_file_reply(var conn: Connection) Void!:
 	reply := recv(var conn, 10.seconds()) | expect_ok?
-	text := reply.get(Bytes([])).decode_utf8().get("")
+	text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 	if not text.starts_with("HTTP/1.1 200"): return error(
 		Error(f"file handler failed: {text}")
 	)
@@ -169,7 +168,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
 	)
 
 	reply_bytes := recv(var client, 3.seconds()) | expect_ok?
-	head := reply_bytes.get(Bytes([])).decode_utf8().get("")
+	head := reply_bytes.get_or(Bytes([])).decode_utf8().get_or("")
 	if not head.starts_with("HTTP/1.1 500"): return error(
 		Error(f"expected a 500 reply, got: {head}")
 	)
@@ -179,7 +178,7 @@ fn raw_status(address: String, request: String) String!:
 	send(var client, request) | expect_ok?
 
 	reply := recv(var client, 2.seconds()) | expect_ok?
-	text := reply.get(Bytes([])).decode_utf8().get("")
+	text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 	return ok(text.split("\r\n")[0].clone())
 
 test "asterisk-form target is accepted only for OPTIONS":

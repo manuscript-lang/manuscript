@@ -59,7 +59,7 @@ fn decode(parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
 
 fn summary(events: List[SseEvent]) String:
 	return events.map(
-		fn event: f"{event.event}|{event.data}|{event.id.get("-")}"
+		fn event: f"{event.event}|{event.data}|{event.id.get_or("-")}"
 	).join(";")
 
 fn expect(source: String, want: String) Void!:

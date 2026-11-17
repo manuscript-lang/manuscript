@@ -16,5 +16,5 @@ fn run(xs: List[Int], name: String) Int!:
 test "a promise reads captures that are not scalars":
 	xs := [1, 2, 3]
 	both := wait_all([promise(fn: total(xs)), promise(fn: total(xs))])
-	expect_equal(both.get([]).length(), 2)?
-	expect_equal(run(xs, "ab").get(0), 5)?
+	expect_equal(both.get_or([]).length(), 2)?
+	expect_equal(run(xs, "ab").get_or(0), 5)?

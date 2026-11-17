@@ -5,4 +5,4 @@ fn fib(n: Int) Int:
 
 fn main() Void:
 	tasks := [36, 36, 36, 36].map(fn n: promise(fn: ok(fib(n))))
-	print(wait_all(tasks).get(List[Int]()).length())
+	print(wait_all(tasks).get_or(List[Int]()).length())

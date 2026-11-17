@@ -28,7 +28,7 @@ test "a promise owns the resource moved into it and closes it when it ends":
 	expect_equal(p.wait()?, 5)?
 
 	data := read_file(log, none).wait()?
-	text := data.decode_utf8().get("")
+	text := data.decode_utf8().get_or("")
 	expect_equal(text, "closed front;")?
 	remove(dir, true)?
 
@@ -41,6 +41,6 @@ test "a promise dropped before waiting still closes what it owns":
 		_p := promise(fn: slow(door))
 
 	data := read_file(log, none).wait()?
-	text := data.decode_utf8().get("")
+	text := data.decode_utf8().get_or("")
 	expect_equal(text, "closed back;")?
 	remove(dir, true)?

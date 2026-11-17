@@ -41,7 +41,7 @@ test "every challenge is complete":
 
 		if access(f"{ch.dir}/oracle", 0).is_ok():
 			// Large challenges: Go oracle only, no per-language references.
-			if glob(f"{ch.dir}/oracle", GlobOptions(patterns: ["*.ref"])).get(
+			if glob(f"{ch.dir}/oracle", GlobOptions(patterns: ["*.ref"])).get_or(
 				[]
 			).is_empty(): fail(f"{ch.id}: empty oracle")?
 			continue
@@ -89,7 +89,7 @@ test "random matches CPython's Mersenne Twister":
 	expect_equal(s.randrange(5, 50), 20)?
 
 test "json layout matches json.dumps":
-	doc := parse("[{\"a\": \"é\\n\", \"b\": [], \"c\": {}}, 1]").get(JsonValue.Null)
+	doc := parse("[{\"a\": \"é\\n\", \"b\": [], \"c\": {}}, 1]").get_or(JsonValue.Null)
 	expect_equal(
 		dumps(doc, 1),
 		"[\n {\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": {}\n },\n 1\n]",

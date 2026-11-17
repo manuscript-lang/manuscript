@@ -22,7 +22,7 @@ fn count_tokens(paths: List[String]) List[Int]?:
 	ran := bash(f"python3 -c \"{program}\" {quoted}", ".", 600, "")
 	if ran.code != 0: return none
 
-	counts: List[Int] := ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
+	counts: List[Int] := ran.out.trim().split("\n").map(fn n: n.parse_int().get_or(0))
 	return counts
 
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
@@ -37,7 +37,7 @@ fn main() Int:
 		var row = List[String]()
 
 		for lang in LANGS:
-			refs := glob(f"{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])).get(
+			refs := glob(f"{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])).get_or(
 				[]
 			)
 			if not refs.is_empty(): row.append(
@@ -60,7 +60,7 @@ fn main() Int:
 		)
 		return 1
 
-	all := counts.get([])
+	all := counts.get_or([])
 	var totals = [0, 0, 0, 0]
 	var out = (
 		"challenge".pad_end(26, " ")
@@ -69,7 +69,7 @@ fn main() Int:
 	)
 
 	for i in 0..names.length():
-		row := all.slice(i * 4, i * 4 + 4).get([])
+		row := all.slice(i * 4, i * 4 + 4).get_or([])
 		for j in 0..4: totals[j] += row[j]
 		out = (
 			out

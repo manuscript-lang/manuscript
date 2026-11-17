@@ -422,7 +422,8 @@ impl Scan<'_> {
         let ExprKind::Member { left, name } = &callee.kind else {
             return;
         };
-        if self.syms.str(name) != "get" {
+        let method = self.syms.str(name);
+        if method != "get" && method != "get_or" {
             return;
         }
         let Some(ty) = self
@@ -439,13 +440,14 @@ impl Scan<'_> {
         };
         match args.as_slice() {
             [arg]
-                if arg.name.is_none()
+                if method == "get_or"
+                    && arg.name.is_none()
                     && self.expr_text(&arg.value) == Some("none")
                     && ty.args.first().is_some_and(|t| t.is(Builtin::Void)) =>
             {
                 self.report(
                     "MSL129",
-                    "Use `void result` to ignore a Void! outcome instead of result.get(none)"
+                    "Use `void result` to ignore a Void! outcome instead of result.get_or(none)"
                         .to_string(),
                     e.pos,
                     leftmost(left),
@@ -453,7 +455,7 @@ impl Scan<'_> {
                     format!("void {receiver}"),
                 );
             }
-            [] => self.findings.push(finding(
+            [] if method == "get" => self.findings.push(finding(
                 "MSL130",
                 "A statement `result.get()` faults when the call fails; write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome".to_string(),
                 self.file,
@@ -463,7 +465,7 @@ impl Scan<'_> {
         }
     }
 
-    /// `m.get(k).get(d)` on a map is `m.get_or(k, d)`.
+    /// `m.get(k).get_or(d)` on a map is `m.get_or(k, d)`.
     fn map_get_chain(&mut self, e: &Expr) {
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
@@ -471,7 +473,7 @@ impl Scan<'_> {
         let ExprKind::Member { left: inner, name } = &callee.kind else {
             return;
         };
-        let ([fallback], true) = (args.as_slice(), self.syms.str(name) == "get") else {
+        let ([fallback], true) = (args.as_slice(), self.syms.str(name) == "get_or") else {
             return;
         };
         let ExprKind::Call {
@@ -520,7 +522,7 @@ impl Scan<'_> {
         }
         self.report(
             "MSL120",
-            "Use map.get_or(key, default) instead of map.get(key).get(default)".to_string(),
+            "Use map.get_or(key, default) instead of map.get(key).get_or(default)".to_string(),
             e.pos,
             dot,
             e.end.offset as usize,

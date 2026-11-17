@@ -25,7 +25,7 @@ fn token(log: String, id: Int, fail: Bool = false) Token:
 	return Token(log.clone(), id, fail: fail)
 
 fn events(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
 	return ""
 
 fn check(log: String, action: Int) Int!:

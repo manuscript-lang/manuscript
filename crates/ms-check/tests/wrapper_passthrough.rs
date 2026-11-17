@@ -142,7 +142,7 @@ fn specialized_source_receivers_preserve_borrow_and_overlap_checks() {
 
 #[test]
 fn derived_passthrough_covers_result_get_and_discarding_method_values() {
-    // `Result.get` returns the payload, so a method value of it needs a clonable payload; the
+    // `Result.get_or` returns the payload, so a method value of it needs a clonable payload; the
     // classification is read from the declaration, not from a list of method names.
     let got = diagnostics(include_str!(
         "wrapper_passthrough/reject-bound-result-get.ms"

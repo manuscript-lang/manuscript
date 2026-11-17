@@ -21,7 +21,7 @@ fn var Item.close() Void!:
 
 fn events(log: String) String!:
 	bytes := read_file(log).wait()?
-	return ok(bytes.decode_utf8().get(""))
+	return ok(bytes.decode_utf8().get_or(""))
 
 fn deque_then_fault(log: String) Void:
 	var queue = Deque[Item]()

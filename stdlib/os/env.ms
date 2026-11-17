@@ -43,7 +43,7 @@ export fn which(name: String) String?:
 	env := environment()
 
 	if env.is_ok():
-		for entry in env.get(Map[String, String]()).entries():
+		for entry in env.get_or(Map[String, String]()).entries():
 			key := if windows: entry.key.upper() else: entry.key
 			if key == "PATH": directories = entry.value.split(separator).clone()
 			if key == "PATHEXT" and windows: extensions = entry.value.split(";").clone()
@@ -99,7 +99,7 @@ export fn load_environment(path: String, max_bytes: Int? = none) Void!:
 	text := data.decode_utf8()
 	if text.is_none(): return error(Error("environment: invalid data", kind: "EBADMSG"))
 
-	entries := parse_dotenv(text.get(""))?
+	entries := parse_dotenv(text.get_or(""))?
 
 	for entry in entries.entries():
 		if msstd_process_environment_is_set(entry.key): continue

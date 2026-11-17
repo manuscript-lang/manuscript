@@ -25,7 +25,7 @@ test "serve caps the request header block":
 	// The server may answer and close before the whole head is written.
 	_written := send(var client, head)
 	reply := recv(var client, 5.seconds()) | expect_ok?
-	text := reply.get().decode_utf8().get("")
+	text := reply.get().decode_utf8().get_or("")
 	if not text.starts_with("HTTP/1.1 431"): return error(
 		Error(f"oversized header block was not rejected: {text}")
 	)
@@ -49,7 +49,7 @@ test "serve timeout closes idle connections":
 	send(var reused, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | expect_ok?
 
 	first := recv(var reused, 2.seconds()) | expect_ok?
-	answered := first.get(Bytes([]))
+	answered := first.get_or(Bytes([]))
 	if answered.is_empty(): return error(Error("no response"))
 
 	after := recv(var reused, 3.seconds()) | expect_ok?

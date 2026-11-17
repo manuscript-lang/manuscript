@@ -63,8 +63,8 @@ test "uuid_v7 is a version-7 uuid that sorts by creation time":
 	first := (uuid_v7() | expect_ok?)
 	uuid_version(first) | expect_equal(7)?
 	first.length() | expect_equal(36)?
-
 	void sleep(milliseconds(3)).wait()
+
 	second := (uuid_v7() | expect_ok?)
 	(first < second) | expect_true?
 
@@ -75,8 +75,8 @@ test "ulid has 26 Crockford characters and sorts by creation time":
 		if not "0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(ch): return fail(
 			f"bad character {ch}"
 		)
-
 	void sleep(milliseconds(3)).wait()
+
 	second := (ulid() | expect_ok?)
 	(first < second) | expect_true?
 
@@ -85,7 +85,7 @@ test "ulid starts with the current time in milliseconds":
 	id := (ulid() | expect_ok?)
 	var millis = 0
 	for ch in id.view(0, 10).chars():
-		millis = millis * 32 + alphabet.index_of(ch).get(0)
+		millis = millis * 32 + alphabet.index_of(ch).get_or(0)
 
 	moment := now()
 	current := moment.seconds * 1000 + moment.nanos / 1000000

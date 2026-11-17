@@ -233,7 +233,7 @@ impl<'a> FnLower<'a> {
             .expect("typedesc")
     }
 
-    /// `xs.get(i, default:)`: negative indexes count from the end.
+    /// `xs.get_or(i, default)`: negative indexes count from the end.
     pub(super) fn list_get_or(
         &mut self,
         recv: Val,

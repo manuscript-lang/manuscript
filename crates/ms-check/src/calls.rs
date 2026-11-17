@@ -612,12 +612,24 @@ impl Checker {
         let call_pos = self.call_pos.take();
         let mut seen: HashSet<Name> = HashSet::default();
         let mut no_return = false;
+        let mut get_hinted = false;
         for arg in args {
             if self.syms.str(arg.name).is_empty() {
-                self.type_error(
-                    arg.pos,
-                    "too many positional arguments; every parameter is already supplied, so remove this argument",
-                );
+                // `get(default)` became `get_or(default)`: name it, with a fix on the method.
+                if let (false, Some(at), true) = (get_hinted, call_pos, call_name.ends_with(".get"))
+                {
+                    get_hinted = true;
+                    self.type_error_name(
+                        at,
+                        3,
+                        "too many positional arguments; `get` takes no fallback, write `get_or` to supply one; did you mean 'get_or'?".to_string(),
+                    );
+                } else if !get_hinted {
+                    self.type_error(
+                        arg.pos,
+                        "too many positional arguments; every parameter is already supplied, so remove this argument",
+                    );
+                }
                 let v = self.expression(arg.value, None);
                 no_return = no_return || v.no_return;
                 continue;

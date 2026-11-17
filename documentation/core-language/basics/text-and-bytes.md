@@ -137,7 +137,7 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 | --- | --- |
 | `String` | `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(other: Bytes) Bytes` |
+| `Bytes` | `length() Int`; `get(index: Int) UInt8`; `get_or(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(other: Bytes) Bytes` |
 | `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start: Int, end: Int) String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 

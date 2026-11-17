@@ -48,7 +48,7 @@ fn small() String:
 	doc.add("params", jobject(params))
 	doc.add("tags", jlist([jstr("a"), jstr("b"), jstr("c")]))
 	doc.add("user", jobject(user))
-	return stringify(jobject(doc)).get("") + "\n"
+	return stringify(jobject(doc)).get_or("") + "\n"
 
 fn fetch_corpora() Void!:
 	_dir := create_directory(DATA, recursive: true)
@@ -79,7 +79,7 @@ fn load(text: String) Map[String, Rate]:
 
 		rows.add(
 			f"{f[0]}\t{f[1]}",
-			Rate(f[2].parse_int().get(1), f[3].parse_int().get(0)),
+			Rate(f[2].parse_int().get_or(1), f[3].parse_int().get_or(0)),
 		)
 
 	return rows

@@ -34,10 +34,10 @@ type Detail:
 
 fn main() Void:
 	args := arguments()
-	cases := parse[List[Case]](must_read(args[0])).get([])
+	cases := parse[List[Case]](must_read(args[0])).get_or([])
 	build := args[1].clone()
 	run := args[2].clone()
-	timeout := args[3].parse_int().get(5)
+	timeout := args[3].parse_int().get_or(5)
 	suffix := if args.length() > 4: args[4].clone() else: ""
 	app := env("MSBENCH_APP", "/app")
 	out_dir := env("MSBENCH_VERIFIER", "/logs/verifier")
@@ -45,7 +45,7 @@ fn main() Void:
 
 	var rows = List[LogRow]()
 	for line in nonblank_lines(read_text(f"{app}/.bench/log.jsonl")):
-		rows.append(parse[LogRow](line).get(LogRow("", false, "", "", "")))
+		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
 	var tokens: Int? = none
@@ -83,7 +83,7 @@ fn main() Void:
 			built.err.length(),
 		)
 
-	write_file(f"{out_dir}/detail.json", stringify(detail).get(""), replace: true).wait().get()
+	write_file(f"{out_dir}/detail.json", stringify(detail).get_or(""), replace: true).wait().get()
 
 	reward := if detail.built and detail.passed == detail.total: "1" else: "0"
 	write_file(f"{out_dir}/reward.txt", reward, replace: true).wait().get()

@@ -27,7 +27,7 @@ fn var Failing.close() Void!:
 			)
 
 fn events(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
 	return ""
 
 fn work(log: String, fail: Bool) Int!:
@@ -436,7 +436,6 @@ test "an uncalled closure cannot contribute an outer close error":
 fn replaced_handled_result[T](log: String, source: T!) T!:
 	var resource = Failing(log.clone(), 1, fail: false)
 	resource = Failing(log.clone(), 2)
-
 	void resource.close()
 	return source
 
@@ -452,7 +451,6 @@ fn failing_replacement() Failing!:
 fn replacement_exit(log: String) Int!:
 	var resource = Failing(log.clone(), 1)
 	resource = failing_replacement()?
-
 	void resource.close()
 	return ok(7)
 

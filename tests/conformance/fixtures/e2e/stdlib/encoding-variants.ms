@@ -133,7 +133,7 @@ test "encoding variants honor zero exact exceeded absent and negative limits":
 
 test "encoding variants honor Bytes views and cross block boundaries":
 	var out = BytesBuilder()
-	for value in 0..256: out.append(value.to_uint8().get(0))
+	for value in 0..256: out.append(value.to_uint8().get_or(0))
 
 	all := out.build()
 

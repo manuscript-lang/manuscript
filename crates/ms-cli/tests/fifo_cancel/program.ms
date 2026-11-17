@@ -50,7 +50,7 @@ fn main() Void:
     (
         stdout()
         .write(
-            f"{c_result.get(-9)} {a_result.is_error()} {b_result.is_error()} {d_result.is_error()}\n"
+            f"{c_result.get_or(-9)} {a_result.is_error()} {b_result.is_error()} {d_result.is_error()}\n"
         )
         .get()
     )

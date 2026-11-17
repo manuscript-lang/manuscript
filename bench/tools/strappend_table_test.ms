@@ -18,10 +18,10 @@ test "minima and reordered samples":
 
 test "invalid evidence":
 	valid := sample(0, "ms", 100).concat(sample(0, "rust", 100))
-	rest := valid.slice(1, valid.length()).get([])
+	rest := valid.slice(1, valid.length()).get_or([])
 	cases := [
 		List[String](),
-		valid.slice(0, valid.length() - 1).get([]),
+		valid.slice(0, valid.length() - 1).get_or([]),
 		valid.concat([valid[0].clone()]),
 		sample(0, "ms", 100),
 		[valid[0].replace("# 40000000", "# -1")].concat(rest),

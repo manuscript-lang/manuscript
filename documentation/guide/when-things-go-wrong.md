@@ -33,7 +33,7 @@ fn total(lines: List[String]) Int!:
 
 fn main() Void:
     good := total(["pen,2,150", "ink,1,899"])
-    print(f"good: {good.get(0)}")
+    print(f"good: {good.get_or(0)}")
     bad := total(["pen,2,150", "ink,0,899"])
     if bad.is_error():
         print(f"bad: {bad.err().message}")
@@ -57,7 +57,7 @@ Nothing is thrown. `total` returned an error value, and `main` decided what to p
 - `?` unwraps a success. If the call failed, the function returns that error immediately. That is the whole error plumbing in `total`: one `?` per call that can fail.
 - `parse_int()` returns an optional, because the text might not be a number. `.ok_or(error)` turns "nothing" into a specific error, so the message names the bad line.
 - `kind` is a short code a caller can branch on, such as `"EINVAL"`. The standard library uses the same codes, so you never import a per-module error type.
-- `good.get(0)` reads a result with a fallback. For a full branch use `if result.is_error():` as `main` does.
+- `good.get_or(0)` reads a result with a fallback. For a full branch use `if result.is_error():` as `main` does.
 
 ## Try it
 

@@ -25,9 +25,9 @@ fn overflows_late(width: Int) Int!:
 
 test "a task that updates a list in a loop gives the same answer as a direct call":
 	for seed in [1, 7, 99]:
-		direct := histogram(seed).get(-1)
+		direct := histogram(seed).get_or(-1)
 		p := promise(fn: histogram(seed))
-		expect_equal(p.wait().get(-2), direct)?
+		expect_equal(p.wait().get_or(-2), direct)?
 
 test "a task that faults in the loop frees the list once":
 	for width in [8, 20, 8, 20]:

@@ -9,4 +9,4 @@ fn amount() Decimal!Error:
 
 test "explicit standard imports":
     expect_equal([1, 2].length(), 2)?
-    expect_equal(amount().get(0.0d), 12.50d)?
+    expect_equal(amount().get_or(0.0d), 12.50d)?
