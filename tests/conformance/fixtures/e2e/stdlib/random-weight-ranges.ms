@@ -3,10 +3,7 @@
 import (
 	infinity, max_float, min_float, nan from "@std/math/math.ms",
 	seeded, weighted_choice from "@std/random.ms",
-	expect_equal,
-	expect_error,
-	expect_none,
-	expect_some from "@std/test/test.ms",
+	expect_equal, expect_error, expect_none, expect_some from "@std/test/test.ms",
 )
 
 fn compare_draws(weights: List[Float], ordinary: List[Float]) Void!:
