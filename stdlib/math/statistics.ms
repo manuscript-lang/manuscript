@@ -1,5 +1,4 @@
 import (
-	panic from "@std/core.ms",
 	BigRat, rat_of_float, rat_of_int from "@std/math/big.ms",
 	frexp, ldexp, sqrt from "@std/math/math.ms",
 )
@@ -7,7 +6,7 @@ import (
 /*
 Summary statistics over a `List[Float]`, in binary64 arithmetic.
 An operation that needs more data than it was given returns none: the mean of an empty list, the sample variance of one value.
-A violated precondition (a percentile outside 0 to 100, mismatched list lengths, a bin count below 1) faults.
+A request that has no answer returns none or an empty list: a percentile outside 0 to 100, mismatched list lengths, a bin count below 1, fewer than two quantile parts.
 `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
 */
 
@@ -48,8 +47,8 @@ export fn mean(values: List[Float]) Float?:
 	for value in values:
 		// A finite Float always converts, so this branch only skips what cannot occur.
 		if term := rat_of_float(value): total = total.add(term)
-	if values.length() > 0:
-		if result := total.divide(rat_of_int(values.length())).to_float(): return result
+	if average := total.divide(rat_of_int(values.length())):
+		if result := average.to_float(): return result
 
 	// The exact average of finite inputs lies between their finite extrema, so this
 	// return is only reached for input the checks above already sent to `ordinary`.
@@ -263,13 +262,12 @@ fn DeviationSum.value() Float:
 	return self.total + self.correction
 
 /*
-Returns the value `percent` percent of the way through the sorted list, interpolating linearly between neighbors, or none for an empty list.
-`percent` runs from 0.0 (the least value) to 100.0 (the greatest); a value outside that range faults.
+Returns the value `percent` percent of the way through the sorted list, interpolating linearly between neighbors, or none for an empty list or a `percent` outside 0 to 100 (NaN included).
+`percent` runs from 0.0 (the least value) to 100.0 (the greatest).
 Example: `percentile([1.0, 2.0, 3.0, 4.0, 5.0], 25.0)` is `2.0`.
 */
 export fn percentile(values: List[Float], percent: Float) Float?:
-	if not (percent >= 0.0 and percent <= 100.0):
-		panic("percentile: percent must be from 0 to 100")
+	if not (percent >= 0.0 and percent <= 100.0): return none
 	if values.is_empty(): return none
 
 	return percentile_sorted(values.sorted(), percent)
@@ -308,15 +306,12 @@ fn interpolate_sorted(ordered: List[Float], below: Int, fraction: Float) Float:
 
 /*
 Returns the `parts - 1` cut points that divide the sorted values into `parts` groups of equal probability, using the same interpolation as `percentile`.
-An empty list gives an empty list; a `parts` below 2 faults.
+An empty list, or a `parts` below 2, gives an empty list.
 Example: `quantiles([1.0, 2.0, 3.0, 4.0, 5.0], 4)` is `[2.0, 3.0, 4.0]`.
 */
 export fn quantiles(values: List[Float], parts: Int) List[Float]:
-	if parts < 2:
-		panic("quantiles: parts must be at least 2")
-
 	var cuts: List[Float] = []
-	if values.is_empty(): return cuts
+	if values.is_empty() or parts < 2: return cuts
 
 	ordered := values.sorted()
 
@@ -337,14 +332,12 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
 	return cuts
 
 /*
-Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list.
-Values equal to the greatest value fall in the last bin (so an infinite value does), and when every value is equal they all fall in the first bin. When the range is infinite, the finite values fall in the first bin. A `bins` below 1 faults.
+Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list or a `bins` below 1.
+Values equal to the greatest value fall in the last bin (so an infinite value does), and when every value is equal they all fall in the first bin. When the range is infinite, the finite values fall in the first bin.
 Example: `if bins := bin_counts([1.0, 2.0, 2.0, 3.0], 2): print(bins.counts)` prints `[1, 3]`.
 */
 export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
-	if bins < 1:
-		panic("bin_counts: bins must be at least 1")
-	if values.is_empty(): return none
+	if bins < 1 or values.is_empty(): return none
 
 	low := values.min().get(0.0)
 	high := values.max().get(0.0)
@@ -394,9 +387,7 @@ fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) Lis
 	span := finite_bin_rat(high).subtract(origin)
 	var counts = [0].repeated(bins)
 
-	if span.sign() != 0:
-		multiplier := rat_of_int(bins).divide(span)
-
+	if multiplier := rat_of_int(bins).divide(span):
 		for value in values:
 			var bin = 0
 
@@ -427,9 +418,7 @@ type Spread:
 	mean_y: Float
 
 fn spread(xs: List[Float], ys: List[Float]) Spread?:
-	if xs.length() != ys.length():
-		panic("statistics: the lists must have the same length")
-	if xs.length() < 2: return none
+	if xs.length() != ys.length() or xs.length() < 2: return none
 
 	mean_x := mean(xs).get(0.0)
 	mean_y := mean(ys).get(0.0)
@@ -448,13 +437,10 @@ fn spread(xs: List[Float], ys: List[Float]) Spread?:
 
 /*
 Returns the Pearson correlation of paired values, from -1.0 to 1.0, or none when there are fewer than two pairs or either list has no spread.
-Lists of different lengths fault.
+Lists of different lengths return none.
 Example: `correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])` is `1.0`.
 */
 export fn correlation(xs: List[Float], ys: List[Float]) Float?:
-	if xs.length() != ys.length():
-		panic("statistics: the lists must have the same length")
-
 	// Correlation is unchanged by scaling each list, so power-of-two scaling keeps
 	// every square and product in range.
 	if s := spread(unit_scaled(xs), unit_scaled(ys)):
@@ -480,7 +466,7 @@ fn unit_scaled(values: List[Float]) List[Float]:
 
 /*
 Returns the least-squares line through paired values, or none when there are fewer than two pairs or the `xs` are all equal.
-Lists of different lengths fault.
+Lists of different lengths return none.
 Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` and intercept `1.0`.
 */
 export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:

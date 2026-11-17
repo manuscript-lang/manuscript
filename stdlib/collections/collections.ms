@@ -137,21 +137,21 @@ fn List[T: Clonable].clone() List[T]: ...
 fn List[T: Clonable].slice(start: Int, end: Int) List[T]!: ...
 
 // Copies the first min(count, length) elements into fresh owned List storage.
-// Leaves the receiver unchanged; negative count is a programming fault.
+// Leaves the receiver unchanged; a count of zero or below gives an empty list.
 fn List[T: Clonable].take(count: Int) List[T]: ...
 
 // Copies the remainder after min(count, length) into fresh owned List storage.
-// Leaves the receiver unchanged; negative count is a programming fault.
+// Leaves the receiver unchanged; a count of zero or below drops nothing.
 fn List[T: Clonable].drop(count: Int) List[T]: ...
 
 // Splits the list into consecutive copies of `size` elements; the last chunk may be
-// shorter, and an empty list gives an empty list. A `size` of zero or less is a
-// programming fault.
+// shorter, and an empty list gives an empty list. A `size` of zero or less gives
+// an empty list.
 fn List[T: Clonable].chunks(size: Int) List[List[T]]: ...
 
 // Returns each run of `size` consecutive elements as an overlapping copy, in order;
-// a list shorter than `size` gives an empty list. A `size` of zero or less is a
-// programming fault. Windows are copies: `slice` and `take` do not borrow today.
+// a list shorter than `size` gives an empty list, as does a `size` of zero or
+// less. Windows are copies: `slice` and `take` do not borrow today.
 fn List[T: Clonable].windows(size: Int) List[List[T]]: ...
 
 // Calls `predicate` once per element in order and splits the elements into those
@@ -433,8 +433,8 @@ fn List[T: Comparable].is_sorted() Bool:
 fn List[T: Clonable].sorted_by_key[K: Comparable](key: fn(T) K) List[T]:
 	return self.sorted(fn a, b: key(a).compare(key(b)))
 
-// Returns a new list holding the elements `count` times over, in order; zero gives
-// an empty list and a negative `count` faults. Example: `[1, 2].repeated(2)` is
+// Returns a new list holding the elements `count` times over, in order; a `count` of
+// zero or below gives an empty list. Example: `[1, 2].repeated(2)` is
 // `[1, 2, 1, 2]`.
 fn List[T: Clonable].repeated(count: Int) List[T]: ...
 
@@ -723,7 +723,7 @@ export type RangeOptions:
 	max_items: Int? = none
 
 // Creates integers from `start` up to but excluding `end` using a nonzero `step`; a
-// negative step counts down. A zero step is a programming fault; `EOVERFLOW` when the
+// negative step counts down. Returns `EINVAL` for a zero step and `EOVERFLOW` when the
 // list would exceed `max_items`.
 export fn range_by(
 	start: Int,
@@ -731,9 +731,6 @@ export fn range_by(
 	step: Int,
 	options: RangeOptions = RangeOptions(),
 ) List[Int]!:
-	if step == 0: panic("range_by: step must not be zero")
-	if cap := options.max_items:
-		if cap < 0: panic("range_by: max_items must not be negative")
 	return msrt_list_range_by(start, end, step, options.max_items)
 
 // Builds a map from entries. Later entries replace earlier values for duplicate keys.

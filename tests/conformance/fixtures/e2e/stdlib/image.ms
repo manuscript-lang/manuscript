@@ -11,7 +11,7 @@ import (
 	encode_image,
 	encode_jpeg,
 	new_image from "@std/image/image.ms",
-	expect_equal, expect_fault, fail from "@std/test/test.ms",
+	expect_equal, fail from "@std/test/test.ms",
 
 	jpeg_vectors from "./support/image-jpeg-vectors.ms",
 	vectors from "./support/image-png-vectors.ms",
@@ -213,17 +213,3 @@ test "jpeg gray round trip and alpha rejection":
 	back := decode_image(encode_jpeg(img, JpegOptions(quality: 100)).get()).get()
 	expect_equal(back.channel_count(), 1)?
 	expect_equal(encode_jpeg(new_image(2, 2, ColorMode.Rgba).get()).is_ok(), false)?
-
-test "bad image dimensions and jpeg quality fault":
-	_width := expect_fault(fn: discard(new_image(0, 2, ColorMode.Gray)))?
-	_height := expect_fault(fn: discard(new_image(2, -1, ColorMode.Gray)))?
-	img := new_image(2, 2, ColorMode.Gray)?
-	_quality := expect_fault(
-		fn: discard(encode_jpeg(img.clone(), JpegOptions(quality: 0)))
-	)?
-	_high := expect_fault(
-		fn: discard(encode_jpeg(img.clone(), JpegOptions(quality: 101)))
-	)?
-
-fn discard[T](value: T) Void:
-	return

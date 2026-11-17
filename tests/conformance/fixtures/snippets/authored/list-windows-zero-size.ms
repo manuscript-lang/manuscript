@@ -1,6 +1,6 @@
-// conform: tags=lists,faults,tier-core
+// conform: tags=lists,tier-core
 // conform: phase=run
-// conform: origin=List.windows rejects a non-positive size
+// conform: origin=List.windows gives an empty list for a non-positive size
 import stdout from "@std/io/io.ms"
 
 fn main() Void:

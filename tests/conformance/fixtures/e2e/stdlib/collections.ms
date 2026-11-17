@@ -6,7 +6,7 @@ import (
 	flatten,
 	map_from_entries,
 	range_by from "@std/collections/collections.ms",
-	expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 fn positive(value: Int) Bool: value > 0
@@ -117,7 +117,9 @@ test "collection constructors validate bounds and exact limits":
 	expect_equal((range_by(3, -1, -1, RangeOptions(max_items: 4))?), [3, 2, 1, 0])?
 	expect_equal((filled("x", 2)?), ["x", "x"])?
 
-	_step := expect_fault(fn: discard(range_by(0, 1, 0)))?
+	invalid: List[Int]! := error(Error("collection: invalid input", kind: "EINVAL"))
+	expect_equal(range_by(0, 1, 0), invalid)?
+
 	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(range_by(0, 3, 1, RangeOptions(max_items: 2)), limited)?
 
@@ -251,6 +253,3 @@ test "flatten copies nested elements through generic and function calls":
 	via_function[1].append(4)
 	expect_equal(via_function, [[1], [2, 4]])?
 	expect_equal(source, [[[1]], [[2]]])?
-
-fn discard[T](value: T) Void:
-	return

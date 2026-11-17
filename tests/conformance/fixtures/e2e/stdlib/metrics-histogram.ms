@@ -3,7 +3,7 @@
 import (
 	histogram from "@std/data/histogram.ms",
 	infinity, nan from "@std/math/math.ms",
-	expect_equal, expect_fault, expect_true from "@std/test/test.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 	milliseconds from "@std/time.ms",
 )
 
@@ -48,18 +48,14 @@ test "histogram answers for the highest valid Int bucket":
 	low_edge.record(9079256848778919936)
 	expect_equal(low_edge.percentile(100.0).get(0), 9079256848778919936)?
 
-fn discard_percentile(value: Int?) Void:
-	return
-
-test "histogram rejects invalid percentiles whether empty or populated":
+test "histogram gives none for invalid percentiles whether empty or populated":
 	var h = histogram()
 
 	for populated in [false, true]:
 		if populated: h.record(10)
 
 		for p in [nan, -nan, infinity, -infinity, -0.1, 100.1]:
-			message := expect_fault(fn: discard_percentile(h.percentile(p)))?
-			expect_true(message.contains("must be within 0.0 and 100.0"))?
+			expect_true(h.percentile(p).is_none())?
 
 		for p in [-0.0, 0.0, 0.1, 50.0, 99.9, 100.0]:
 			if populated:

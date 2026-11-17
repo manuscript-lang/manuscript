@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "decimal-rounding.ms::decimal scale extremes and invalid requests fault",
+          "name": "decimal-rounding.ms::decimal scale extremes and invalid requests return typed errors",
           "status": "passed"
         },
         {
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN decimal-rounding.ms::decimal cents stay exact and fixed places retain zeros\nPASS decimal-rounding.ms::decimal cents stay exact and fixed places retain zeros\nRUN decimal-rounding.ms::decimal rounding modes include signed ties and coarse scales\nPASS decimal-rounding.ms::decimal rounding modes include signed ties and coarse scales\nRUN decimal-rounding.ms::decimal scale extremes and invalid requests fault\nPASS decimal-rounding.ms::decimal scale extremes and invalid requests fault\nRUN decimal-rounding.ms::exact rounding retains values at every supported precision\nPASS decimal-rounding.ms::exact rounding retains values at every supported precision\n4 tests, 0 failed\n",
+      "stdout": "RUN decimal-rounding.ms::decimal cents stay exact and fixed places retain zeros\nPASS decimal-rounding.ms::decimal cents stay exact and fixed places retain zeros\nRUN decimal-rounding.ms::decimal rounding modes include signed ties and coarse scales\nPASS decimal-rounding.ms::decimal rounding modes include signed ties and coarse scales\nRUN decimal-rounding.ms::decimal scale extremes and invalid requests return typed errors\nPASS decimal-rounding.ms::decimal scale extremes and invalid requests return typed errors\nRUN decimal-rounding.ms::exact rounding retains values at every supported precision\nPASS decimal-rounding.ms::exact rounding retains values at every supported precision\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

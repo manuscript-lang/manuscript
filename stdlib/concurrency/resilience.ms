@@ -48,16 +48,13 @@ fn RetryPolicy.wait_after(attempt: Int) Duration:
 /*
 Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
 `operation` receives the attempt number, starting at 1. `E` must be `Clonable`, because the error is lent to `retryable` and then returned. `retryable` defaults to retrying every error.
-Waiting uses `sleep`, so cancelling the task ends the wait. A policy with fewer than one attempt faults.
+Waiting uses `sleep`, so cancelling the task ends the wait. The operation always runs once, so a policy with fewer than one attempt runs it once.
 */
 export fn retry[T, E: Clonable](
 	policy: RetryPolicy,
 	operation: fn(Int) T!E,
 	retryable: (fn(E) Bool)? = none
 ) T!E:
-	if policy.attempts < 1:
-		panic(f"retry: attempts must be at least 1, found {policy.attempts}")
-
 	var attempt = 1
 
 	while true:
@@ -84,7 +81,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-var limiter = rate_limiter(10, burst: 20)
+var limiter = rate_limiter(10, burst: 20)?
 for url in urls:
     limiter.acquire()
     void fetch(url).wait()?
@@ -131,17 +128,22 @@ fn var RateLimiter.acquire() Void:
 		void sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait()
 
 // A rate limiter that allows `count` uses per second with room for `burst` at once; it
-// starts full. `count` and `burst` must be at least 1.
-export fn rate_limiter(count: Int, burst: Int) RateLimiter:
+// starts full. A `count` or `burst` below 1 is `EINVAL`.
+export fn rate_limiter(count: Int, burst: Int) RateLimiter!:
 	if count < 1 or burst < 1:
-		panic(
-			f"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
+		return error(
+			Error(
+				f"rate_limiter: count and burst must be at least 1, found {count} and {burst}",
+				kind: "EINVAL",
+			)
 		)
-	return RateLimiter(
-		burst: burst,
-		interval: seconds(1).divide(count),
-		tokens: burst,
-		stamp: monotonic(),
+	return ok(
+		RateLimiter(
+			burst: burst,
+			interval: seconds(1).divide(count),
+			tokens: burst,
+			stamp: monotonic(),
+		)
 	)
 
 // Why a circuit breaker call produced no result.
@@ -202,7 +204,7 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // Applies `work` to every item with at most `limit` running at once and returns the
 // results in the order of `items`. A failed worker promise cancels the others. If
 // `work` returns a Result, that Result is an item in the returned list; inspect each
-// outcome.
+// outcome. A `limit` below 1 is `EINVAL`.
 //
 // <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
@@ -210,7 +212,12 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // ```
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
 	if limit < 1:
-		panic(f"map_concurrent: limit must be at least 1, found {limit}")
+		return error(
+			Error(
+				f"map_concurrent: limit must be at least 1, found {limit}",
+				kind: "EINVAL",
+			)
+		)
 
 	stripes := limit.min(items.length())
 	var running: List[Promise[List[U]]] = []

@@ -20,8 +20,6 @@ use ms_rt_abi::{STATUS_CLOSED, STATUS_FAILED, STATUS_NONE, STATUS_NOT_TERMINAL, 
 use ms_rt::io::msrt_io_flush;
 use ms_rt::process::msrt_process_on_exit;
 
-/// The wait for input before the caller compares the window size.
-const SLICE_NS: i64 = 50 * NS_PER_MS;
 /// How long a lone escape byte waits for the rest of its sequence.
 const QUICK_NS: i64 = 40 * NS_PER_MS;
 
@@ -137,10 +135,11 @@ impl State {
         self.term.size().ok_or(STATUS_NOT_TERMINAL)
     }
 
-    /// Waits for input, for 40 ms when `quick` and 50 ms otherwise, then stores its complete
-    /// UTF-8 scalars in `text`: `STATUS_OK`, `STATUS_NONE` when nothing came, `STATUS_CLOSED` once
-    /// closed or when input ended. The short wait lets the caller compare the window size and
-    /// resolve a lone escape byte into the Escape key.
+    /// Waits for input, for 40 ms when `quick` and until something happens otherwise, then
+    /// stores its complete UTF-8 scalars in `text`: `STATUS_OK`, `STATUS_NONE` when nothing came
+    /// (the quick wait ran out, or the window changed size and the caller compares it),
+    /// `STATUS_CLOSED` once closed or when input ended. The quick wait resolves a lone escape
+    /// byte into the Escape key.
     pub fn read(&self, quick: bool, text: &mut String) -> u8 {
         if ms_rt::glue::cancel_pending() {
             return STATUS_FAILED;
@@ -148,10 +147,7 @@ impl State {
         if self.closed.get() {
             return STATUS_CLOSED;
         }
-        let Ok(ready) = self
-            .term
-            .wait_readable(if quick { QUICK_NS } else { SLICE_NS })
-        else {
+        let Ok(ready) = self.term.wait_readable(quick.then_some(QUICK_NS)) else {
             return STATUS_FAILED;
         };
         if !ready {

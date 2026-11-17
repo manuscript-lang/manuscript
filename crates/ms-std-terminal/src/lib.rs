@@ -51,6 +51,7 @@ impl core::ops::Deref for RawH {
 const NS_PER_MS: i64 = 1_000_000;
 
 /// Sleeps the task for `ns` so another task's read can finish; `Err` when a stop request ends it.
+#[cfg(unix)]
 #[allow(unsafe_code)]
 fn pause(ns: i64) -> Result<(), ms_rt::glue::pool::Cancelled> {
     #[cfg(not(test))]
@@ -171,7 +172,7 @@ native! {
     }
 
     /// Waits for input: `STATUS_OK` with the text in `msstd_terminal_input_text`,
-    /// `STATUS_NONE` when nothing came in 40 ms (`quick`) or 50 ms, `STATUS_CLOSED` once closed.
+    /// `STATUS_NONE` when nothing came in 40 ms (`quick`) or the window changed size, `STATUS_CLOSED` once closed.
     fn msstd_terminal_raw_terminal_read(h: ObjRef<RawH>, quick: bool) -> u8 {
         if poll_cancel() {
             return STATUS_OK;

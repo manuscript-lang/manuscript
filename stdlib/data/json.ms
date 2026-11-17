@@ -1,7 +1,7 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	Promise from "@std/concurrency/promise.ms",
-	Data, panic from "@std/core.ms",
+	Data from "@std/core.ms",
 	ReadStream, Sink, Transform, WriteStream, through from "@std/io/io.ms",
 	parse_float from "@std/math/math.ms",
 
@@ -188,8 +188,6 @@ export fn parse[T: Data = JsonValue](
 	text: String,
 	options: JsonOptions = JsonOptions(),
 ) T!:
-	require_limits("parse", options)
-
 	limits := JsonLimits(
 		max_bytes: options.max_bytes,
 		max_depth: options.max_depth,
@@ -265,8 +263,8 @@ fail the `Data` bound at compile time. A field holding `none` is still omitted.
 
 `indent` pretty-prints with that many spaces per level, at most 10; none or 0 is compact. Empty
 containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bounds the output,
-indentation included; exceeding it returns `EOVERFLOW`. A negative bound or indent is a
-programming fault.
+indentation included; exceeding it returns `EOVERFLOW`. A negative bound or indent returns
+`EINVAL`.
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
@@ -282,8 +280,6 @@ export fn stringify[T: Data](
 	value: T,
 	options: StringifyOptions = StringifyOptions(),
 ) String!:
-	if options.max_bytes.get(0) < 0: panic("stringify: max_bytes must not be negative")
-	if options.indent.get(0) < 0: panic("stringify: indent must not be negative")
 	return msstd_json_stringify(
 		value,
 		options.max_bytes,
@@ -435,17 +431,15 @@ fn starts_value(byte: UInt8) Bool:
 		or byte == 110
 	)
 
-// Faults when a supplied limit is negative.
-fn require_limits(function: String, options: JsonOptions) Void:
-	if options.max_bytes.get(0) < 0: panic(
-		f"{function}: max_bytes must not be negative"
-	)
-	if options.max_depth.get(0) < 0: panic(
-		f"{function}: max_depth must not be negative"
-	)
-	if options.max_values.get(0) < 0: panic(
-		f"{function}: max_values must not be negative"
-	)
+// The error a negative limit reports on the first read, or none.
+fn invalid_limits(options: JsonOptions) Error?:
+	if (
+		options.max_bytes.get(0) < 0
+		or options.max_depth.get(0) < 0
+		or options.max_values.get(0) < 0
+	):
+		return Error("JSON: invalid options", kind: "EINVAL")
+	return none
 
 /*
 Reads a sequence of JSON values of type `T` from a byte stream, such as JSON Lines or concatenated JSON.
@@ -457,14 +451,14 @@ being read is buffered. `T` decodes as in `parse`; the default `JsonValue` keeps
 `options` applies to each value separately: `max_bytes` counts its UTF-8 bytes, `max_depth` its nesting, and
 `max_values` its parsed values; an exceeded limit fails the read with `EOVERFLOW`. Leave the bounds unset only for
 trusted input, because an unterminated value is otherwise buffered without bound. Malformed or truncated
-input fails the read with `EBADMSG`, and a negative limit is a programming fault. Closing the result closes
+input fails the read with `EBADMSG`, and negative limits with `EINVAL`. Closing the result closes
 `input`.
 */
 export fn json_reader[T: Data = JsonValue](
 	input: ReadStream[Bytes],
 	options: JsonOptions = JsonOptions(),
 ) ReadStream[T]:
-	require_limits("json_reader", options)
+	failure := invalid_limits(options)
 	return through[Bytes, T](
 		input,
 		JsonReading[T](
@@ -476,7 +470,7 @@ export fn json_reader[T: Data = JsonValue](
 			in_string: false,
 			escaped: false,
 			finished: false,
-			failure: none,
+			failure: failure,
 		),
 	)
 

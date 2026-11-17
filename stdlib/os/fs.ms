@@ -22,7 +22,7 @@ import (
 	PromiseOptions,
 	adopt,
 	promise from "@std/concurrency/promise.ms",
-	Closeable, Writable, panic from "@std/core.ms",
+	Closeable, Writable from "@std/core.ms",
 	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
 	BigInt from "@std/math/math.ms",
 	Duration, Timestamp, milliseconds, monotonic, now, sleep from "@std/time.ms",
@@ -257,10 +257,8 @@ fn FileHandle.writer() WriteStream[Bytes]!:
 	return ok(WriteStream[Bytes](FileSink(own)))
 
 // Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must
-// be positive, and a non-positive size is a programming fault.
+// be positive.
 fn FileHandle.read(max_bytes: Int?) Bytes?!:
-	if size := max_bytes:
-		if size <= 0: panic("FileHandle.read: max_bytes must be positive")
 	return msstd_io_read(self.native, max_bytes)
 
 // Writes all of `data` (text as UTF-8) at the current position; errors can leave a
@@ -270,37 +268,29 @@ fn FileHandle.write(data: Writable) Void!:
 	return msstd_io_write_bytes(self.native, data.as_bytes())
 
 // Reads at a nonnegative byte offset without moving the position; short/empty Bytes
-// mark EOF. A negative offset or `max_bytes` is a programming fault.
+// mark EOF.
 fn FileHandle.read_at(offset: Int, max_bytes: Int?) Bytes!:
-	require_nonnegative("FileHandle.read_at", "offset", offset)
-	require_nonnegative_budget("FileHandle.read_at", "max_bytes", max_bytes)
 	return msstd_fs_file_read_at(self.native, offset, max_bytes)
 
 // Writes all of `data` (text as UTF-8) at a nonnegative offset without moving the
 // position; a handle opened for append returns EINVAL because the host would ignore
-// the offset; errors can leave a prefix. A negative offset is a programming fault.
+// the offset; errors can leave a prefix.
 fn FileHandle.write_at(offset: Int, data: Writable) Void!:
-	require_nonnegative("FileHandle.write_at", "offset", offset)
 	return msstd_fs_file_write_at(self.native, offset, data.as_bytes())
 
 // Reads remaining bytes from the current position; EOF returns empty Bytes.
 fn FileHandle.read_file(max_bytes: Int?) Bytes!:
-	require_nonnegative_budget("FileHandle.read_file", "max_bytes", max_bytes)
 	return msstd_fs_file_read_file(self.native, max_bytes)
 
 // Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all
 // together up to 16 MiB, and returns the bytes obtained for each.
-// `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or an offset below -1 is a programming fault.
+// `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns EINVAL.
 fn FileHandle.read_vectors(sizes: List[Int], offset: Int) List[Bytes]!:
-	for size in sizes:
-		require_nonnegative("FileHandle.read_vectors", "size", size)
-	if offset < -1: panic("FileHandle.read_vectors: offset must not be below -1")
 	return msstd_fs_file_read_vectors(self.native, sizes, offset)
 
 // Writes every buffer; offset -1 uses the current position. A nonnegative offset on
-// a handle opened for append returns EINVAL. An offset below -1 is a programming fault.
+// a handle opened for append returns EINVAL.
 fn FileHandle.write_vectors(buffers: List[Bytes], offset: Int) Void!:
-	if offset < -1: panic("FileHandle.write_vectors: offset must not be below -1")
 	return msstd_fs_file_write_vectors(self.native, buffers, offset)
 
 // Moves the position to `offset` bytes from `origin` and returns the new position;
@@ -312,10 +302,9 @@ fn FileHandle.seek(offset: Int, origin: Seek = Seek.Start) Int!:
 fn FileHandle.stat() FileInfo!:
 	return msstd_fs_file_stat(self.native)
 
-// Sets the file length to `size` bytes, discarding the excess or extending with zero
-// bytes. The current position is not moved. A negative size is a programming fault.
+// Sets the file length to `size` bytes, discarding the excess or extending with
+// zero bytes. The current position is not moved. A negative size returns EINVAL.
 fn FileHandle.truncate(size: Int) Void!:
-	require_nonnegative("FileHandle.truncate", "size", size)
 	return msstd_fs_file_truncate(self.native, size)
 
 // Flushes the file's data and metadata to stable storage.
@@ -374,10 +363,8 @@ fn FileHandle.set_times(accessed: Timestamp, modified: Timestamp) Void!:
 // Reads from the current position to the end and returns the lines with their `\n`
 // or `\r\n` terminators removed. Invalid UTF-8 returns EBADMSG, and more bytes than
 // `max_bytes` or lines than `max_lines` returns EOVERFLOW. A negative `max_bytes`
-// or `max_lines` is a programming fault.
+// or `max_lines` returns EINVAL.
 fn FileHandle.read_lines(max_bytes: Int?, max_lines: Int?) List[String]!:
-	require_nonnegative_budget("FileHandle.read_lines", "max_bytes", max_bytes)
-	require_nonnegative_budget("FileHandle.read_lines", "max_lines", max_lines)
 	return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 
 // Chunks of a file from its current position, until the end.
@@ -560,7 +547,7 @@ export type CopyOptions:
 	// returns EOVERFLOW. none sets no limit.
 	max_entries: Int? = none
 	// Most file bytes copied in total. Exceeding it returns EOVERFLOW. none sets no
-	// limit. A negative budget is a programming fault.
+	// limit.
 	max_bytes: Int? = none
 	// Called with each source and destination path; the entry is skipped when it
 	// returns False. none copies everything.
@@ -581,7 +568,7 @@ type NativeCopyOptions:
 /*
 How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
 Every field has a default, so `WatchOptions()` watches natively with no limits and `WatchOptions(interval: seconds(1))` polls.
-`max_events` and `overflow` apply only to native watching; combining them with `interval` is a programming fault.
+`max_events` and `overflow` apply only to native watching; combining them with `interval` returns `EINVAL`.
 */
 export type WatchOptions:
 	// Polling period, which must be positive. none watches with native OS events.
@@ -626,7 +613,7 @@ fn host() FileSystem:
 /*
 Returns entries matching the include patterns of `options`, sorted by path. `path` is the root; each result's
 `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
-returns True. A malformed pattern or one over 4096 bytes returns EINVAL; a negative limit is a programming fault.
+returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
@@ -639,8 +626,6 @@ export fn glob(
 	options: GlobOptions,
 	exclude: (fn(PathEntry) Bool)? = none,
 ) List[PathEntry]!:
-	require_nonnegative_budget("glob", "max_entries", options.max_entries)
-	require_nonnegative_budget("glob", "max_results", options.max_results)
 	return host().glob(path, options, exclude)
 
 fn clone_text(mode: CloneMode) String:
@@ -667,9 +652,6 @@ export fn copy(
 	destination: String,
 	options: CopyOptions = CopyOptions(),
 ) Void!:
-	require_nonnegative_budget("copy", "max_entries", options.max_entries)
-	require_nonnegative_budget("copy", "max_bytes", options.max_bytes)
-
 	native := NativeCopyOptions(
 		recursive: options.recursive,
 		replace: options.replace,
@@ -703,7 +685,6 @@ export fn create_symlink(path: String, target: String) Void!:
 // addresses the entry. The same holds for `glob`, `stat` names and directory cursors.
 // ms: effect std.fs.read
 export fn list(path: String, max_entries: Int? = none) List[DirectoryEntry]!:
-	require_nonnegative_budget("list", "max_entries", max_entries)
 	return msstd_fs_list(path, max_entries)
 
 // A slot among the few in-flight copies of large write payloads. The blocking pool has
@@ -720,19 +701,13 @@ fn var WritePermit.close() Void!:
 fn already_exists() Error:
 	return Error("filesystem: already exists", kind: "EEXIST")
 
-fn require_nonnegative(function: String, name: String, value: Int) Void:
-	if value < 0: panic(f"{function}: {name} must not be negative")
-
-fn require_nonnegative_budget(function: String, name: String, value: Int?) Void:
-	if present := value:
-		require_nonnegative(function, name, present)
+fn invalid_input() Error:
+	return Error("filesystem: invalid input", kind: "EINVAL")
 
 // Starts reading a file fully into memory and returns its promise. Supply `max_bytes`
 // for untrusted or large files.
 // ms: effect std.fs.read
 export fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]:
-	require_nonnegative_budget("read_file", "max_bytes", max_bytes)
-
 	owned := path.clone()
 	return promise(
 		fn: msstd_fs_read_file(owned, max_bytes),
@@ -839,7 +814,6 @@ export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool = true) Voi
 // Sets the target size in bytes; follows a final symbolic link.
 // ms: effect std.fs.write
 export fn truncate(path: String, size: Int) Void!:
-	require_nonnegative("truncate", "size", size)
 	return msstd_fs_truncate(path, size)
 
 // Sets the access and modification times of `path`. `follow_links` True (the default)
@@ -1047,7 +1021,7 @@ When `path` itself is removed or moved away, the stream delivers that event and 
 With `recursive`, a directory that appears is watched at once and its existing entries are reported as `rename` events.
 Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
 With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
-`max_events` and `overflow` apply only to native events; together with an interval they are a programming fault.
+`max_events` and `overflow` apply only to native events and return EINVAL together with an interval.
 `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts, and
 fails with EOVERFLOW the same way on every platform.
 
@@ -1063,10 +1037,9 @@ export fn watch(
 	options: WatchOptions = WatchOptions(),
 ) ReadStream[FileEvent]!:
 	if interval := options.interval:
-		if options.max_events.is_some() or options.overflow.is_some():
-			panic(
-				"watch: max_events and overflow apply only to native watching, not with an interval"
-			)
+		if options.max_events.is_some() or options.overflow.is_some(): return error(
+			invalid_input()
+		)
 		return ok(
 			watch_stream(
 				msstd_fs_watch(

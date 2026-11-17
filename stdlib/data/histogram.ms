@@ -1,7 +1,6 @@
 // ms: allow_effect std.clock.read
 
 import (
-	panic from "@std/core.ms",
 	ceil, leading_zeros, shift_left, shift_right from "@std/math/math.ms",
 	Duration, monotonic from "@std/time.ms",
 )
@@ -32,26 +31,26 @@ export opaque type Histogram:
 	// Largest observation; meaningful only when `total` is above zero.
 	high: Int
 
-// Adds one observation. A negative value faults: it is a caller error, not data to
-// clamp.
+// Adds one observation. A negative value is recorded as 0, so a clock that steps back
+// counts as an instant measurement.
 fn var Histogram.record(value: Int) Void:
-	if value < 0: panic(f"Histogram.record: value {value} must be at least 0")
-
-	index := bucket_of(value)
+	observed := value.max(0)
+	index := bucket_of(observed)
 	self.counts[index] += 1
-	if self.total == 0 or value < self.low: self.low = value
-	if value > self.high: self.high = value
+	if self.total == 0 or observed < self.low: self.low = observed
+	if observed > self.high: self.high = observed
 	self.total += 1
 
-	room := 9223372036854775807 - value
+	room := 9223372036854775807 - observed
 
 	if self.sum <= room:
-		self.sum += value
+		self.sum += observed
 	else:
 		self.sum -= room + 1
 		self.sum_wraps += 1
 
-// Adds one duration as nanoseconds. A negative duration faults like `record`.
+// Adds one duration as nanoseconds. A negative duration is recorded as 0, like
+// `record`.
 fn var Histogram.record_duration(elapsed: Duration) Void:
 	self.record(elapsed.to_nanoseconds())
 
@@ -87,12 +86,9 @@ fn Histogram.mean() Float:
 
 // Value at or below which `p` percent of observations fall, for `p` in 0.0 through
 // 100.0; none when empty. The answer is the top of the matching bucket, never above
-// `maximum`. A `p` outside the range faults.
+// `maximum`. A `p` outside the range gives none.
 fn Histogram.percentile(p: Float) Int?:
-	if not (p >= 0.0 and p <= 100.0): panic(
-		f"Histogram.percentile: p {p} must be within 0.0 and 100.0"
-	)
-	if self.total == 0: return none
+	if not (p >= 0.0 and p <= 100.0) or self.total == 0: return none
 
 	var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int().get(1)
 	if rank < 1: rank = 1

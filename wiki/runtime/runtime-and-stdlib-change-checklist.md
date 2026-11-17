@@ -20,9 +20,9 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - HTTP authorities such as `:80` are nonempty but have no host. Reject the empty host after splitting the authority, before transport setup; `http/url.rs` tests initial and redirected URLs, and `http-paths.ms` checks EINVAL through both HTTP client APIs. A valid host with an empty optional port remains accepted.
 - Concurrency is promises and pipes: see [concurrency is promises and pipes only](concurrency-is-promises-and-pipes-only.md); extend `@std/concurrency/promise.ms`, not new groups or locks.
 - Line streams buffer unfinished fragments once and join only at newline/EOF (#3212). Keep whole-chunk decoding direct; test split CRLF, empty chunks, UTF-8 and exact byte limits without rescanning or copying the growing prefix.
-- Empty `List.repeated` must not traverse the repetition count (#3204), but
-  validate negative counts before the empty return. Keep a nonempty nested-copy
-  control so a fast path does not weaken cloning or output order.
+- Empty `List.repeated` must not traverse the repetition count (#3204); a count of
+  zero or below gives an empty list. Keep a nonempty nested-copy control so a fast
+  path does not weaken cloning or output order.
 - Deque growth must move ring-buffer slots, including nested resource owners.
   Unwrap in place with `List.rotate`; `take`, `drop` and `concat` copy values and
   can close the same resource repeatedly. `deque-resource-growth.ms` checks both

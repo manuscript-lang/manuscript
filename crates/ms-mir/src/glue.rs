@@ -862,10 +862,24 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
                 .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
                 .expect("slot");
             b.emit(Op::Put, &[slot, p], Imm::None, None);
+            // A map that was never filled has no slots (word 0 is null): nothing to release, so
+            // no runtime call (guard-resultvar: 8.66M instructions without this, 5.30M with).
+            let first = b
+                .emit(Op::Load, &[slot], Imm::Ty(Ty::INT), Some(Ty::INT))
+                .expect("word 0");
+            let zero = b.iconst(0);
+            let filled = b.icmp(Cc::Ne, first, zero);
+            let (run, done) = (b.new_block(), b.new_block());
+            b.br_if(filled, run, &[], done, &[]);
+            b.seal_block(run);
+            b.seal_block(done);
+            b.switch_to(run);
             let d = b
                 .emit(Op::TypeDesc, &[], Imm::Ty(ty), Some(Ty::PTR))
                 .expect("descriptor");
             b.call_rt(drop, &[d, slot]);
+            b.br(done, &[]);
+            b.switch_to(done);
             b.ret(None);
             b.finish()
         }

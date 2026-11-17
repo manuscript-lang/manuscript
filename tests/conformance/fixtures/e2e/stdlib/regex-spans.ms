@@ -4,7 +4,6 @@ import (
 	RegexSpan, compile from "@std/regex.ms",
 	expect_equal,
 	expect_error,
-	expect_fault,
 	expect_none,
 	expect_ok,
 	expect_some from "@std/test/test.ms",
@@ -158,10 +157,48 @@ test "span budgets cover whole and unmatched capture slots":
 	)
 
 	for cap in [-1, -9223372036854775808]:
-		_matches := expect_fault(fn: discard(re.find_all_spans("", cap)))?
-		_slots := expect_fault(fn: discard(re.capture_spans("", cap)))?
-		_rows := expect_fault(fn: discard(re.capture_all_spans("", cap, none)))?
-		_columns := expect_fault(fn: discard(re.capture_all_spans("", none, cap)))?
+		(
+			re.find_all_spans("", cap)
+			| expect_error?
+			| expect_equal(
+				Error(
+					"regular expression: invalid input",
+					kind: "EINVAL",
+				)
+			)?
+		)
+		(
+			re.capture_spans("", cap) | expect_error? | expect_equal(
+				Error(
+					"regular expression: invalid input",
+					kind: "EINVAL",
+				)
+			)?
+		)
+		(
+			re.capture_all_spans(
+				"",
+				cap,
+				none,
+			) | expect_error? | expect_equal(
+				Error(
+					"regular expression: invalid input",
+					kind: "EINVAL",
+				)
+			)?
+		)
+		(
+			re.capture_all_spans(
+				"",
+				none,
+				cap,
+			) | expect_error? | expect_equal(
+				Error(
+					"regular expression: invalid input",
+					kind: "EINVAL",
+				)
+			)?
+		)
 
 test "span methods support bound calls and preserve anchor context":
 	re := compile("(?m)(^a)|(b$)") | expect_ok?
@@ -205,6 +242,3 @@ test "span results remain bounded for dense matches":
 			3,
 		) | expect_ok? | expect_some? | slots | expect_equal([[0, 2], [0, 2], none])?
 	)
-
-fn discard[T](value: T) Void:
-	return

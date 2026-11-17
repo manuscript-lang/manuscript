@@ -2,7 +2,6 @@
 
 import (
 	Bytes, join from "@std/bytes.ms",
-	panic from "@std/core.ms",
 	ReadStream, WriteStream, through from "@std/io/io.ms",
 	StringBuilder from "@std/string_builder.ms",
 )
@@ -42,22 +41,27 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 		},
 	)
 
-// A reader over `text`; invalid options are a programming fault.
-fn open_reader(text: String, options: CsvOptions) Reader:
-	require_options(options)
+// A reader over `text`, or the error of invalid options.
+fn open_reader(text: String, options: CsvOptions) Reader!:
+	valid := check_options(options)
+	if valid.is_error(): return error(valid.err())
 
 	bytes := text.to_bytes()
 	total := bytes.length()
-	return Reader(
-		text: text.clone(),
-		bytes: bytes,
-		total: total,
-		delimiter: options.delimiter.scalar_values()[0].to_uint8().get(0),
-		delimiter_text: options.delimiter.clone(),
-		at: 0,
-		quote: -1,
-		delimiter_at: -1,
-		line_at: -1,
+	return ok(
+		Reader(
+			text: text.clone(),
+			bytes: bytes,
+			total: total,
+			delimiter: options.delimiter.scalar_values()[0].to_uint8().get(
+				0
+			),
+			delimiter_text: options.delimiter.clone(),
+			at: 0,
+			quote: -1,
+			delimiter_at: -1,
+			line_at: -1,
+		)
 	)
 
 // Parses CSV into rows of cells, using fresh default options when omitted.
@@ -65,11 +69,13 @@ fn open_reader(text: String, options: CsvOptions) Reader:
 // reads as LF, so a cell holds one newline spelling whatever the file's line ending
 // was.
 export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[String]]!:
-	require_budgets(options)
-
 	rows_budget := budget(options.max_rows)
 	cells_budget := budget(options.max_cells)
-	var reader = open_reader(text, options)
+	if rows_budget < 0 or cells_budget < 0: return error(
+		Error("CSV: invalid input", kind: "EINVAL")
+	)
+
+	var reader = open_reader(text, options)?
 	var rows = List[List[String]]()
 	var cells = 0
 	var row = List[String]()
@@ -107,11 +113,13 @@ export fn each_cell(
 	f: fn(Int, Int, String) Void,
 	options: CsvOptions = CsvOptions()
 ) Void!:
-	require_budgets(options)
-
 	rows_budget := budget(options.max_rows)
 	cells_budget := budget(options.max_cells)
-	var reader = open_reader(text, options)
+	if rows_budget < 0 or cells_budget < 0: return error(
+		Error("CSV: invalid input", kind: "EINVAL")
+	)
+
+	var reader = open_reader(text, options)?
 	var rows = 0
 	var cells = 0
 
@@ -132,21 +140,16 @@ export fn each_cell(
 
 	return ok()
 
-// The budget as a count, with no budget as a very large one.
+// The budget as a count, with no budget as a very large one and a negative budget as
+// -1.
 fn budget(limit: Int?) Int:
 	if value := limit: return value
 	return 9223372036854775807
 
-// Faults when `max_rows` or `max_cells` is negative.
-fn require_budgets(options: CsvOptions) Void:
-	if options.max_rows.get(0) < 0: panic("CSV: max_rows must not be negative")
-	if options.max_cells.get(0) < 0: panic("CSV: max_cells must not be negative")
-
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
-// Anything else is a programming fault.
-fn require_options(options: CsvOptions) Void:
+fn check_options(options: CsvOptions) Void!:
 	scalars := options.delimiter.scalar_values()
-	if scalars.length() != 1: panic("CSV: the delimiter must be one scalar")
+	if scalars.length() != 1: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
 	delimiter := scalars[0]
 	if (
@@ -155,11 +158,10 @@ fn require_options(options: CsvOptions) Void:
 		or delimiter == 34
 		or delimiter == 13
 		or delimiter == 10
-	): panic(
-		"CSV: the delimiter must be an ASCII scalar other than quote, CR, LF or NUL"
+	): return error(Error("CSV: invalid input", kind: "EINVAL"))
+	if options.line_ending != "\n" and options.line_ending != "\r\n": return error(
+		Error("CSV: invalid input", kind: "EINVAL")
 	)
-	if options.line_ending != "\n" and options.line_ending != "\r\n":
-		panic("CSV: the line ending must be LF or CRLF")
 
 // The input as bytes with a cursor. The cached offsets are the next quote, delimiter
 // and LF at or after the cursor, or total when there is none; they are searched again
@@ -422,7 +424,7 @@ fn var CsvRows.finish(var out: List[List[String]]) Void!:
 	data := join(self.pending)
 	self.pending = []
 	self.pending_size = 0
-	if data.is_empty(): return ok()
+	if data.is_empty(): return check_options(self.options)
 
 	self.check_size(data.length())?
 
@@ -444,7 +446,7 @@ Reads CSV rows from a byte stream, one `List[String]` per record, with the cells
 Chunks may end anywhere, including inside a quoted cell, a CRLF or a UTF-8 scalar; only the unfinished
 record is buffered. `options.max_rows` and `options.max_cells` bound `parse` only and are ignored here,
 so the result never depends on chunk boundaries; `max_record_bytes` bounds that record and fails the read with `EOVERFLOW`. A
-malformed record fails the read with `EBADMSG`, and invalid `options` or a negative `max_record_bytes` are a programming fault. Closing the
+malformed record fails the read with `EBADMSG`, and invalid `options` with `EINVAL`. Closing the
 result closes `input`.
 */
 export fn csv_rows(
@@ -452,10 +454,6 @@ export fn csv_rows(
 	options: CsvOptions = CsvOptions(),
 	max_record_bytes: Int? = none,
 ) ReadStream[List[String]]:
-	require_options(options)
-	if max_record_bytes.get(0) < 0: panic(
-		"csv_rows: max_record_bytes must not be negative"
-	)
 	return through[Bytes, List[String]](
 		input,
 		CsvRows(
@@ -478,10 +476,11 @@ export fn stringify(
 	options: CsvOptions = CsvOptions(),
 	max_bytes: Int? = none,
 ) String!:
-	if max_bytes.get(0) < 0: panic("CSV stringify: max_bytes must not be negative")
-
 	limit := budget(max_bytes)
-	require_options(options)
+	if limit < 0: return error(Error("CSV: invalid input", kind: "EINVAL"))
+
+	valid := check_options(options)
+	if valid.is_error(): return error(valid.err())
 
 	var out = StringBuilder()
 	var used = 0
@@ -557,12 +556,11 @@ fn var CsvRowsSink.close() Void!:
 
 /*
 Writes rows to a byte stream, each as `stringify` encodes it (quoting cells that need it, ending with the
-options' line ending). Invalid `options` are a programming fault. Writes delegate to `output`'s sink, which may wait.
+options' line ending). Invalid `options` fail the first write with `EINVAL`. Writes delegate to `output`'s sink, which may wait.
 `flush().wait()` uses that sink's completion condition; a pipe may retain up to capacity unread values. Closing the result closes `output`.
 */
 export fn csv_writer(
 	output: WriteStream[Bytes],
 	options: CsvOptions = CsvOptions(),
 ) WriteStream[List[String]]:
-	require_options(options)
 	return WriteStream[List[String]](CsvRowsSink(output: output, options: options))

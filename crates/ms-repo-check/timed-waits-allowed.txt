@@ -38,6 +38,6 @@ crates/ms-std-net/src/rt.rs 2 the runtime sleep binding
 crates/ms-std-net/src/wait.rs 4 the sleep API and a deadline test
 crates/ms-std-process/src/command.rs 1 no exit event: Linux before 5.3, or a kqueue/process handle that could not be armed (kept as a fallback)
 crates/ms-std-process/src/plat/windows.rs 1 process handle could not be watched (fallback only)
-crates/ms-std-terminal/src/lib.rs 2 terminal pause API (resize and escape timing)
+crates/ms-std-terminal/src/lib.rs 2 terminal pause API (1 ms retry when a non-blocking write is full)
 crates/ms-tooling/tests/lint_tasks.rs 1 test: lets time pass
 crates/ms-std-net/src/http/server/steal.rs 1 test: lets time pass

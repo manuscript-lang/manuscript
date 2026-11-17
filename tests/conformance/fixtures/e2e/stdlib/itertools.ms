@@ -9,7 +9,7 @@ import (
 	permutations,
 	product,
 	zip_longest from "@std/collections/itertools.ms",
-	expect_equal, expect_fault from "@std/test/test.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "pairwise pairs neighbors":
@@ -62,13 +62,10 @@ test "product is the cartesian product":
 	expect_equal(product(List[List[Int]]()), [List[Int]()])?
 	expect_equal(product([[1], List[Int]()]), List[List[Int]]())?
 
-fn discard[T](value: T) Void:
-	return
-
-test "invalid sizes fault":
-	_first := expect_fault(fn: discard(permutations([1, 2], 3)))?
-	_second := expect_fault(fn: discard(combinations([1, 2], -1)))?
-	_third := expect_fault(fn: discard(cycle([1], -1)))?
+test "sizes with no answer give an empty list":
+	expect_equal(permutations([1, 2], 3), List[List[Int]]())?
+	expect_equal(combinations([1, 2], -1), List[List[Int]]())?
+	expect_equal(cycle([1], -1), List[Int]())?
 
 test "combinations of every size keep their order":
 	values := [10, 20, 30, 40]
@@ -94,11 +91,11 @@ test "product with an empty factor is empty wherever the factor sits":
 	expect_equal(product(List[List[Int]]()), [[]])?
 	expect_equal(product([some.clone()]), [[1], [2]])?
 
-test "cycle empty input skips repetition after validating count":
+test "cycle empty input skips repetition":
 	expect_equal(cycle(List[Int](), 9223372036854775807), List[Int]())?
 	expect_equal(cycle(List[Int](), 0), List[Int]())?
 
-	_invalid := expect_fault(fn: discard(cycle(List[Int](), -1)))?
+	expect_equal(cycle(List[Int](), -1), List[Int]())?
 	expect_equal(cycle(["a", "b"], 2), ["a", "b", "a", "b"])?
 
 test "full-size combinations do not consume call depth":
@@ -119,9 +116,9 @@ test "combinations distinguish equal positions and own nested copies":
 	expect_equal(input, [[1], [2], [3]])?
 	expect_equal(result[1], [[1], [3]])?
 
-	_too_large := expect_fault(fn: discard(combinations([1], 2)))?
+	expect_equal(combinations([1], 2), List[List[Int]]())?
 
-test "zero-size permutations preserve shape and validate sizes":
+test "zero-size permutations preserve shape and out-of-range sizes are empty":
 	empty := List[Int]()
 	expect_equal(permutations(empty), [List[Int]()])?
 	expect_equal(permutations(empty, none), [List[Int]()])?
@@ -135,10 +132,10 @@ test "zero-size permutations preserve shape and validate sizes":
 	expect_equal(values.length(), 100000)?
 	expect_equal(values[99999], 99999)?
 
-	_negative := expect_fault(fn: discard(permutations(empty, -1)))?
-	_oversized := expect_fault(fn: discard(permutations(empty, 1)))?
-	_minimum := expect_fault(fn: discard(permutations([1], -9223372036854775808)))?
-	_maximum := expect_fault(fn: discard(permutations([1], 9223372036854775807)))?
+	expect_equal(permutations(empty, -1), List[List[Int]]())?
+	expect_equal(permutations(empty, 1), List[List[Int]]())?
+	expect_equal(permutations([1], -9223372036854775808), List[List[Int]]())?
+	expect_equal(permutations([1], 9223372036854775807), List[List[Int]]())?
 
 test "nonzero permutations retain position order and own their results":
 	expect_equal(

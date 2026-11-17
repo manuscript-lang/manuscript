@@ -91,7 +91,7 @@ interface StringOperations:
 	// Returns each Unicode scalar value as an integer.
 	fn scalar_values() List[Int]
 	// Splits exact separators, truncating parts to a supplied nonnegative cap; zero
-	// returns [], negatives fault. Empty text with a nonempty separator yields [""]; an
+	// or below returns []. Empty text with a nonempty separator yields [""]; an
 	// empty separator splits into scalars. The pieces borrow the receiver: use them in
 	// place, or `.clone()` the result to keep it.
 	fn split(separator: String, max_parts: Int?) List[String]
