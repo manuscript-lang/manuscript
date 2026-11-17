@@ -16,7 +16,7 @@ test "a scalar stream yields every scalar width in order and matches chars":
 		expect_equal(read_all(text)?, text.chars())?
 
 test "a long non-ASCII scan is linear":
-	text := "héllo wörld ünï ".repeat(6250).get("")
+	text := "héllo wörld ünï ".repeat(6250)
 	var found = 0
 	for scalar in scalars(text):
 		if scalar == "ö": found += 1

@@ -117,7 +117,7 @@ fn expect_file_reply(var conn: Connection) Void!:
 test "serve answers requests while handlers read and write files":
 	var dir = temporary("ms-http-io") | expect_ok?
 	root := dir.path()
-	payload := ("0123456789abcdef".repeat(262144) | expect_ok?).to_bytes()
+	payload := ("0123456789abcdef".repeat(262144)).to_bytes()
 
 	fn io_route(request: HttpRequest) HttpResponse:
 		path := f"{root}/slot{request.query}.bin"
@@ -150,7 +150,7 @@ test "serve answers requests while handlers read and write files":
 	dir.close()?
 
 fn oversized(var exchange: HttpExchange) Void!:
-	return reply(var exchange, text(200, "z".repeat(5000).get("")))
+	return reply(var exchange, text(200, "z".repeat(5000)))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":
 	server := (

@@ -10,7 +10,7 @@ test "byte search preserves offsets across scanner boundaries":
 
 	for value in needles:
 		for size in [0, 1, 7, 8, 15, 16, 31, 32, 33, 63, 64, 65, 127, 128, 129]:
-			empty_hits := "a".repeat(size).get().to_bytes()
+			empty_hits := "a".repeat(size).to_bytes()
 			expect_equal(empty_hits.index_of_byte(value, 0), none)?
 
 			for at in 0..size:

@@ -10,7 +10,7 @@ import (
 // MiB and return at once.
 test "a descriptor write waits while the reader is slow":
 	child := spawn("sh", ["-c", "sleep 1; wc -c | tr -d ' '"])?
-	chunk := ("x".repeat(1024 * 1024) | expect_ok?).to_bytes()
+	chunk := ("x".repeat(1024 * 1024)).to_bytes()
 	var input = child.stdin()
 	started := monotonic()
 	for index in 0..8:

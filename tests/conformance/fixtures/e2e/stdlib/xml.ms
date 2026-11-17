@@ -162,7 +162,7 @@ test "entity decoding is linear in the text":
 	expect_true(parse("<a>&nope;</a>").is_error())?
 
 	// A quadratic decoder would take minutes on this many entities.
-	big := parse(f"<a>{"&amp;".repeat(100000).get()}</a>").get()
+	big := parse(f"<a>{"&amp;".repeat(100000)}</a>").get()
 	expect_equal(big.text().scalar_length(), 100000)?
 
 test "malformed comments fail inside before and after the root":
@@ -349,7 +349,7 @@ test "delimiter scans preserve empty spans Unicode and partial terminators":
 	expect_equal(parse("<a><![CDATA[]]></a>").get().text(), "")?
 	expect_equal(parse("<?p?><a k=''/>").get().attribute("k").get(), "")?
 
-	text := "é日]]x?y".repeat(1000).get()
+	text := "é日]]x?y".repeat(1000)
 	doc := parse(f"<a><![CDATA[{text}]]></a>").get()
 	expect_equal(doc.text(), text)?
 

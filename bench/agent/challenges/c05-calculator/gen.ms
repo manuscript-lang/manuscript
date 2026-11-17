@@ -156,9 +156,7 @@ export fn gen_c05() Void:
 			mk("random-valid", good.join("\n") + "\n"),
 			mk(
 				"deep-parens",
-				"(".repeat(200).get("") + "7" + ")".repeat(200).get(
-					""
-				) + "\n",
+				"(".repeat(200) + "7" + ")".repeat(200) + "\n",
 			),
 			mk(
 				"big-numbers",

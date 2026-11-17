@@ -829,7 +829,7 @@ export fn stringify(node: XmlNode, indent: String = "") String:
 	return out.build()
 
 fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Void:
-	pad := if indent.is_empty(): "" else: indent.repeat(level).get("")
+	pad := if indent.is_empty(): "" else: indent.repeat(level)
 	newline := if indent.is_empty(): "" else: "\n"
 
 	match node:

@@ -9,7 +9,7 @@ fn grown(n: Int) String:
 
 fn main() Void:
 	a := grown(40)
-	b := "prefix-that-is-not-inline-" + "ab".repeat(40).get("")
+	b := "prefix-that-is-not-inline-" + "ab".repeat(40)
 	print(a == b)
 	print(a.length())
 	var seen: Map[String, Int] = {}

@@ -870,14 +870,14 @@ test "YAML stringify escapes C1 control characters so output reparses":
 test "YAML parse without options stops alias bombs and deep nesting":
 	var bomb = "l0: &l0 [x, x, x, x, x, x, x, x, x, x]\n"
 	for i in 0..9:
-		bomb = bomb + f"l{i+1}: &l{i+1} [" + f"*l{i}, ".repeat(9).get() + f"*l{i}]\n"
+		bomb = bomb + f"l{i+1}: &l{i+1} [" + f"*l{i}, ".repeat(9) + f"*l{i}]\n"
 
 	bombed := parse(bomb)
 	if bombed.is_ok(): return fail(
 		"alias expansion over the default value budget was accepted"
 	)
 
-	deep := "[".repeat(20000).get() + "]".repeat(20000).get()
+	deep := "[".repeat(20000) + "]".repeat(20000)
 	nested := parse(deep)
 	if nested.is_ok(): return fail("nesting over the default depth was accepted")
 

@@ -74,9 +74,9 @@ interface StringOperations:
 	// Returns locale-independent full Unicode lowercase mapping; the scalar length can
 	// change.
 	fn lower() String
-	// Repeats text count times; negative counts/budgets return EINVAL, exceeded UTF-8
-	// budgets return EOVERFLOW.
-	fn repeat(count: Int, max_bytes: Int?) String!
+	// Repeats text `count` times; a count of zero or below, or empty text, gives empty
+	// text. Output beyond the string limit faults like `concat`.
+	fn repeat(count: Int) String
 	// Replaces the first occurrence of old; text without a match is unchanged. An empty
 	// old matches at the first scalar boundary, so new is inserted at the start.
 	fn replace_first(old: String, new: String) String

@@ -741,6 +741,20 @@ export fn rename(source: String, destination: String) Void!:
 export fn stat(path: String, follow_links: Bool = true) FileInfo!:
 	return msstd_fs_stat(path, follow_links)
 
+// Reports whether `path` names anything. A missing path (ENOENT) or a missing directory
+// part (ENOTDIR) is `false`; any other failure, such as a permission error, is returned
+// so it is not mistaken for absence. A dangling link is `false` unless `follow_links`
+// is False.
+// ms: effect std.fs.read
+export fn exists(path: String, follow_links: Bool = true) Bool!:
+	found := stat(path, follow_links)
+	if found.is_ok(): return ok(true)
+
+	cause := found.err()
+	if cause.kind == "ENOENT" or cause.kind == "ENOTDIR": return ok(false)
+
+	return error(cause)
+
 // Queries the host temp root without creating or checking a directory.
 // ms: effect std.fs.read
 export fn temporary_root() String!:

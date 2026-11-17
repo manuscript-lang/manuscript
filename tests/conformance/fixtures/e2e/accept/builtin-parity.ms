@@ -90,7 +90,7 @@ fn checked_expansion() Void!:
 	(not ("aba".replace(old: "a", new: "é") == "ébé")) | expect_false?
 	(not ("é🙂".replace(old: "", new: "-") == "-é-🙂-")) | expect_false?
 	(common_result(result: "é🙂".slice(start: 0, end: 2))?) | expect_equal("é")?
-	(common_result(result: "é".repeat(count: 3, max_bytes: 6))?) | expect_equal("ééé")?
+	"é".repeat(count: 3) | expect_equal("ééé")?
 
 test "list methods mutate explicit clones and remain typed":
 	original := [3, 1, 2, 1]

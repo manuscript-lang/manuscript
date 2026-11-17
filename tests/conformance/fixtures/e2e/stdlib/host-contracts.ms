@@ -81,7 +81,7 @@ test "every open mode with and without exclusive creation opens":
 test "full byte counts positions EOF and stream aliases retain their contracts":
 	temporary := temporary("manuscript-write-contract-")?
 	path := f"{temporary.path()}/data"
-	data := ("é".repeat(40000)?).to_bytes()
+	data := ("é".repeat(40000)).to_bytes()
 	var handle = open(path, OpenMode.WriteRead, OpenOptions(permissions: 384))?
 	handle.write(data)?
 	expect_equal((handle.stat()?).size, 80000)?

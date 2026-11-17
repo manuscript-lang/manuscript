@@ -67,7 +67,7 @@ test "a final record without a line end is read at the end":
 	expect_equal(read_rows("a,b\nc,d", 3)?, [["a", "b"], ["c", "d"]])?
 
 test "large fragmented records preserve rows and exact record budgets":
-	field := "é\"日\n".repeat(1024)?
+	field := "é\"日\n".repeat(1024)
 	encoded := f"\"{field.replace("\"", "\"\"")}\",tail\r"
 	text := f"first,row\n{encoded}\nlast,row"
 	expected := [["first", "row"], [field, "tail"], ["last", "row"]]

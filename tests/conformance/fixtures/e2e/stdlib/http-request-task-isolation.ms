@@ -17,7 +17,7 @@ import (
 
 fn route(request: HttpRequest) HttpResponse:
 	if request.path == "/big":
-		return HttpResponse(status: 200, headers: headers(), body: "x".repeat(1000).get("").to_bytes())
+		return HttpResponse(status: 200, headers: headers(), body: "x".repeat(1000).to_bytes())
 
 	return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 

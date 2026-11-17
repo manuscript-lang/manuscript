@@ -29,8 +29,8 @@ test "fields work as a bound method and return independent results":
 	text | expect_equal(" alpha é ")?
 
 test "fields handle large inputs and separator-heavy text":
-	word := "é".repeat(65536) | expect_ok?
+	word := "é".repeat(65536)
 	"  ".concat(word).concat("\u{2003}🙂 ").fields() | expect_equal([word, "🙂"])?
 
-	separators := "\u{a0} \t".repeat(65536) | expect_ok?
+	separators := "\u{a0} \t".repeat(65536)
 	separators.fields() | expect_equal(List[String]())?

@@ -104,13 +104,13 @@ test "chacha20 rejects data past the 32-bit block counter":
 	last := 4294967295
 
 	for count in [0, 64]:
-		data := ("a".repeat(count)?).to_bytes()
+		data := ("a".repeat(count)).to_bytes()
 		expect_equal(chacha20(key, nonce, last, data).is_error(), false)?
 
-	data65 := ("a".repeat(65)?).to_bytes()
+	data65 := ("a".repeat(65)).to_bytes()
 	expect_equal(chacha20(key, nonce, last, data65).is_error(), true)?
 
-	data128 := ("a".repeat(128)?).to_bytes()
-	data129 := ("a".repeat(129)?).to_bytes()
+	data128 := ("a".repeat(128)).to_bytes()
+	data129 := ("a".repeat(129)).to_bytes()
 	expect_equal(chacha20(key, nonce, last - 1, data128).is_error(), false)?
 	expect_equal(chacha20(key, nonce, last - 1, data129).is_error(), true)?

@@ -69,10 +69,10 @@ fn measure(item: Case) Void!:
 fn main() Void:
 	for chunk in [1, 64, 1000000]:
 		for length in [4096, 8192, 16384, 32768, 65536]:
-			expected := "x".repeat(length).get()
+			expected := "x".repeat(length)
 			measure(Case("plain", f"{expected}\n".to_bytes(), chunk, expected)).get()
 
-	quoted := "é\"日\n".repeat(2048).get()
+	quoted := "é\"日\n".repeat(2048)
 	encoded := f"\"{quoted.replace("\"", "\"\"")}\"\r\n".to_bytes()
 	for chunk in [1, 64, 1000000]:
 		measure(Case("quoted", encoded.clone(), chunk, quoted.clone())).get()

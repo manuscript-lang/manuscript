@@ -5,7 +5,7 @@
 import XmlNode, stringify from "@std/data/xml.ms"
 
 export fn main() Int:
-	text := "x".repeat(4096).get()
+	text := "x".repeat(4096)
 	root := XmlNode.XmlElement("root", [], [XmlNode.XmlText(text.clone())])
 	if stringify(root) != f"<root>{text}</root>": return 1
 

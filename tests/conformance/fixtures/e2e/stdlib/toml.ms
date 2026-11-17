@@ -361,7 +361,7 @@ test "TOML stringify rejects invalid date-time text":
 
 test "TOML deeply nested inline tables parse in linear time":
 	n := 6000
-	text := "a = " + "{ b = ".repeat(n).get() + "1" + " }".repeat(n).get()
+	text := "a = " + "{ b = ".repeat(n) + "1" + " }".repeat(n)
 	started := monotonic()
 	parsed := parse(text, TomlOptions())
 	elapsed := monotonic().difference(started).to_milliseconds()
@@ -370,7 +370,7 @@ test "TOML deeply nested inline tables parse in linear time":
 	if elapsed > 3000: return fail(f"nested inline tables took {elapsed} ms")
 
 test "TOML parse without options stops deep nesting and none lifts it":
-	deep := "a = " + "[".repeat(20000).get() + "]".repeat(20000).get()
+	deep := "a = " + "[".repeat(20000) + "]".repeat(20000)
 	if parse(deep).is_ok(): return fail("nesting over the default depth was accepted")
 
 	lifted := parse(deep, TomlOptions(max_depth: none, max_values: none))

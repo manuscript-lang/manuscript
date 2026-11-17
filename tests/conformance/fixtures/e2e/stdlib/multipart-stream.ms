@@ -79,13 +79,13 @@ test "a body without the closing delimiter is InvalidData":
 	expect_equal(outcome.err().kind, "EBADMSG")?
 
 test "the part budget reports LimitExceeded":
-	big := encode_multipart([form_part("f", "x".repeat(500).get("").to_bytes())], "XyZ")
+	big := encode_multipart([form_part("f", "x".repeat(500).to_bytes())], "XyZ")
 	outcome := read_parts(big.clone(), 64, 100)
 	expect_equal(outcome.err().kind, "EOVERFLOW")?
 	expect_equal((read_parts(big, 64, 1000)?).length(), 1)?
 
 test "a preamble longer than the part budget is ignored under every chunk size":
-	body := "p".repeat(80).get("").to_bytes().concat(
+	body := "p".repeat(80).to_bytes().concat(
 		"\r\n--XyZ\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
 	)
 
@@ -125,7 +125,7 @@ test "transport padded multipart delimiters survive every chunk size":
 		expect_equal(read_parts(body.clone(), size)?, expected)?
 
 test "transport padding does not bypass streaming part budget":
-	padding := " ".repeat(40).get("")
+	padding := " ".repeat(40)
 	body := f"--XyZ{padding}\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
 	for size in 1..body.length() + 1:
 		expect_equal(read_parts(body.clone(), size, 10).err().kind, "EOVERFLOW")?

@@ -38,7 +38,7 @@ test "ASCII decoding rejects valid non-ASCII UTF-8":
 		expect_equal(ascii_decode(text.to_bytes()), expected)?
 
 test "ASCII decoding preserves large offset views and rejects high byte tails":
-	expected := "Az09 \n\u{0}\u{7f}".repeat(4096)?
+	expected := "Az09 \n\u{0}\u{7f}".repeat(4096)
 	padded := ("é" + expected + "é").to_bytes()
 	data := padded.slice(2, 2 + expected.length())?
 	decode: fn(Bytes) String! := ascii_decode

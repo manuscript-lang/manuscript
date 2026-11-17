@@ -51,8 +51,8 @@ fn base32(length: Int, hex: Bool, padded: Bool) Void!:
 fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Void!:
 	data := sample(length)
 	var text = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
-	if mode == 1 or mode == 7: text = "!" + ("A".repeat(text.length() - 1)?)
-	if mode == 2: text = ("A".repeat(text.length() - 1)?) + "!"
+	if mode == 1 or mode == 7: text = "!" + ("A".repeat(text.length() - 1))
+	if mode == 2: text = ("A".repeat(text.length() - 1)) + "!"
 
 	var limit: Int? = none
 	if mode == 3: limit = 0
@@ -128,7 +128,7 @@ fn zero_budget85() Void!:
 	measure(1, work)?
 
 fn whitespace85(bounded: Bool) Void!:
-	text := " \t\r\n".repeat(16384)?
+	text := " \t\r\n".repeat(16384)
 	limit: Int? := if bounded: 0 else: none
 	expected: Bytes! := ok(Bytes([]))
 

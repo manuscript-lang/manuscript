@@ -49,8 +49,8 @@ fn main() Void!:
 	expect_equal(temporary_name("dir/設定.json", "s"), "dir/.設定.json.s.tmp")?
 	expect_equal(temporary_name("C:\\資料\\設定.json", "s"), "C:\\資料\\.設定.json.s.tmp")?
 
-	long := "ñ".repeat(40)?
-	short := "ñ".repeat(32)?
+	long := "ñ".repeat(40)
+	short := "ñ".repeat(32)
 	expect_equal(temporary_name(f"dir/{long}", "s"), f"dir/.{short}.s.tmp")?
 	print("names ok")
 	print("close failure")

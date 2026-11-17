@@ -32,7 +32,7 @@ test "affix cuts work as bound methods and labeled calls":
 	text | expect_equal("é=🙂=中")?
 
 test "large affix cuts preserve text and reject missing affixes":
-	middle := "é🙂".repeat(32768) | expect_ok?
+	middle := "é🙂".repeat(32768)
 	text := "start:".concat(middle).concat(":end")
 	(text.cut_prefix("start:") | expect_some? | expect_equal(middle.concat(":end"))?)
 	(text.cut_suffix(":end") | expect_some? | expect_equal("start:".concat(middle))?)

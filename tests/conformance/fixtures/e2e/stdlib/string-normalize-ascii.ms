@@ -6,7 +6,7 @@ test "ASCII normalization is identical under every form and byte budget":
 	pattern := "aZ09\u{0}\t\n\u{7f}"
 
 	for length in [0, 1, 2, 15, 16, 17, 31, 32, 128, 4096, 1048576]:
-		text := pattern.repeat((length + 7) / 8).get().slice(0, length).get()
+		text := pattern.repeat((length + 7) / 8).slice(0, length).get()
 
 		for form in ["NFC", "NFD", "NFKC", "NFKD"]:
 			expect_equal(text.normalize(form).get(), text.clone())?
@@ -35,7 +35,7 @@ test "ASCII normalization is identical under every form and byte budget":
 
 test "normalization falls back for Unicode before and after long ASCII prefixes":
 	for length in [0, 1, 4096, 1048576]:
-		ascii := "x".repeat(length).get()
+		ascii := "x".repeat(length)
 
 		for form in ["NFC", "NFD", "NFKC", "NFKD"]:
 			var expected = "e\u{301}fi"

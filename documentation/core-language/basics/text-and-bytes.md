@@ -166,6 +166,10 @@ test "explicit byte conversion":
         return panic("check failed")
 ```
 
+## Repeating and splitting once
+
+`repeat(count)` returns a `String`: a count of zero or below, or empty text, gives empty text, and an output beyond the string limit faults, as `concat` does. `split_once(separator)` cuts at the first separator and `rsplit_once(separator)` at the last. Each returns a `SplitParts` with `before` and `after`, or `none` when the separator is absent or empty, so a `key=value` line needs no index arithmetic.
+
 ## Padding and fixed digits
 
 `pad_start(target_length, padding)` and `pad_end` return a `String`. The text grows to `target_length` scalars by repeating `padding` (the last copy is cut to fit); a shorter or negative target or empty padding returns the text unchanged. An output beyond the string limit faults, as `concat` does, so a table row needs no unwrapping. `Float.to_fixed(digits)`, `to_precision(precision)` and `to_exponential(digits)` also return a `String`; a count outside their range (0 to 100, or 1 to 100 for `to_precision`) is a programming fault.

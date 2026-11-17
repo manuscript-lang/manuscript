@@ -1833,53 +1833,25 @@ pub unsafe extern "C-unwind" fn msrt_string_lower_take(s: *mut StrVal, out: *mut
     unsafe { map_case_take(s, false, out) }
 }
 
-/// `repeat` with `has_max`/`max`; status protocol, ok through `out`.
+/// `repeat`: a count of zero or below, or empty text, gives empty text; output beyond the
+/// string limit faults like `concat`.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_repeat(
-    s: *const StrVal,
-    count: i64,
-    has_max: HasRaw,
-    max: i64,
-    out: *mut StrVal,
-    err: ErrSlot,
-) -> u8 {
-    // SAFETY: caller passes a live string, a writable out and a null or writable err.
+pub unsafe extern "C-unwind" fn msrt_string_repeat(s: *const StrVal, count: i64, out: *mut StrVal) {
+    // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        init_err(err);
-        let limit = if has_max.is_set() { max } else { i64::MAX };
-        if count < 0 || limit < 0 {
-            store_err(
-                err,
-                &if count < 0 {
-                    std::format!("repeat count must not be negative, found {count}")
-                } else {
-                    std::format!("repeat max must not be negative, found {limit}")
-                },
-            );
-            return STATUS_INVALID_INPUT;
-        }
         let text = bytes(s);
-        if text.is_empty() {
+        if count <= 0 || text.is_empty() {
             *out = empty();
-            return STATUS_OK;
+            return;
         }
-        let limit = (limit as usize).min(MAX_BYTES);
-        if count as usize > limit / text.len() {
-            store_err(
-                err,
-                &std::format!(
-                    "repeating {} bytes {count} times exceeds the limit of {limit} bytes",
-                    text.len()
-                ),
-            );
-            return STATUS_LIMIT_EXCEEDED;
+        if count as usize > MAX_BYTES / text.len() {
+            fault::fault(b"string: limit exceeded");
         }
         let total = text.len() * count as usize;
         let r = alloc_str(total);
         fill_repeated(r.ptr_word, text, total);
         *out = if is_ascii(&*s) { r.with_ascii() } else { r };
-        STATUS_OK
     }
 }
 
@@ -4599,12 +4571,10 @@ mod tests {
         unsafe {
             for pattern in ["x", "ab", "é🙂", "abcd123"] {
                 for count in [0, 1, 2, 3, 5, 9, 17, 257] {
-                    let mut out = NO_STR;
                     assert_eq!(
-                        msrt_string_repeat(st(pattern), count, HasRaw(0), 0, &mut out, NO_ERR),
-                        STATUS_OK
+                        ret(|o| msrt_string_repeat(st(pattern), count, o)),
+                        pattern.repeat(count as usize)
                     );
-                    assert_eq!(txt(&out), pattern.repeat(count as usize));
                     let target = count * pattern.chars().count() as i64 + 1;
                     assert_eq!(
                         ret(|o| msrt_string_pad_start(st("!"), target, st(pattern), o)),
@@ -4620,20 +4590,9 @@ mod tests {
                 ret(|o| msrt_string_pad_start(st("!"), 6, st("é🙂"), o)),
                 "é🙂é🙂é!"
             );
-            let mut out = NO_STR;
-            assert_eq!(
-                msrt_string_repeat(st("ab"), -1, HasRaw(0), 0, &mut out, NO_ERR),
-                STATUS_INVALID_INPUT
-            );
-            assert_eq!(
-                msrt_string_repeat(st("ab"), 3, HasRaw(1), 5, &mut out, NO_ERR),
-                STATUS_LIMIT_EXCEEDED
-            );
-            assert_eq!(
-                msrt_string_repeat(st(""), 3, HasRaw(1), 0, &mut out, NO_ERR),
-                STATUS_OK
-            );
-            assert_eq!(txt(&out), "");
+            assert_eq!(ret(|o| msrt_string_repeat(st("ab"), -1, o)), "");
+            assert_eq!(ret(|o| msrt_string_repeat(st(""), 3, o)), "");
+            assert_eq!(ret(|o| msrt_string_repeat(st("ab"), 3, o)), "ababab");
         }
     }
 

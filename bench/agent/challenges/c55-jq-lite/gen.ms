@@ -376,7 +376,7 @@ export fn gen_c55() Void:
 		var cs,
 		"deep-nesting",
 		"[recurse(.[0]?; type == \"array\")] | length",
-		"[".repeat(150).get("") + "1" + "]".repeat(150).get(""),
+		"[".repeat(150) + "1" + "]".repeat(150),
 	)
 
 	examples := [

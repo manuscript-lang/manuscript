@@ -53,7 +53,6 @@ test "stable priority queue and optional capacity":
     expect_false(not (bounded.enqueue(Key(1, "only"))))?
     expect_false(bounded.enqueue(Key(0, "full")))?
 
-test "limits can be omitted or supplied":
-    repeated := "ab".repeat(3)?
+test "repeat builds plain text":
+    repeated := "ab".repeat(3)
     expect_equal(repeated, "ababab")?
-    expect_false("ab".repeat(3, 5).is_ok())?

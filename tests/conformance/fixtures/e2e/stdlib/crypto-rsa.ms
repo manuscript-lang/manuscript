@@ -117,7 +117,7 @@ test "RSA OAEP rejects ciphertext and oversized plaintext with domain errors":
 		Error("cryptography: authentication failed", kind: "EAUTH"),
 	)?
 
-	oversized := "x".repeat(127)?
+	oversized := "x".repeat(127)
 	expect_equal(
 		rsa_encrypt(public, HashAlgorithm.Sha512, oversized.to_bytes()).err(),
 		Error("cryptography: invalid input", kind: "EINVAL"),

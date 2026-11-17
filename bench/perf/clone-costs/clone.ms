@@ -34,7 +34,7 @@ fn main() Void:
 	var ms: Map[String, Int] = {}
 	for i in 0..200000: ms[f"key-number-{i}"] = i
 
-	var big = "x".repeat(1000000).get("")
+	var big = "x".repeat(1000000)
 	var t0 = monotonic().tick
 	var c = 0
 

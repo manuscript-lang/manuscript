@@ -72,7 +72,7 @@ fn main() Void:
 	report("reverse", t, n, s)
 	t = monotonic()
 	s = 0
-	for w in words: s += w.repeat(3).get("").length()
+	for w in words: s += w.repeat(3).length()
 	report("repeat", t, n, s)
 	t = monotonic()
 	s = 0

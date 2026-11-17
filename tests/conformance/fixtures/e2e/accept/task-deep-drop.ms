@@ -9,10 +9,10 @@ import parse from "@std/data/toml.ms"
 // A task runs on a 512 KiB stack slot, so freeing data that nests thousands of levels
 // deep must not recurse once per level.
 fn nested_tables(n: Int) String!:
-	return ok("a = " + "{ a = ".repeat(n)? + "1" + " }".repeat(n)? + "\n")
+	return ok("a = " + "{ a = ".repeat(n) + "1" + " }".repeat(n) + "\n")
 
 fn nested_arrays(n: Int) String!:
-	return ok("a = " + "[".repeat(n)? + "]".repeat(n)? + "\n")
+	return ok("a = " + "[".repeat(n) + "]".repeat(n) + "\n")
 
 fn parse_and_drop(text: String) Int:
 	value := parse(text)

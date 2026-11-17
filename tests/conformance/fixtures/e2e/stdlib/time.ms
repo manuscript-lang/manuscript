@@ -168,6 +168,6 @@ test "timestamp parsing rejects oversized fractions and suffixes":
 		"2024-02-29T12:30:45.1234567890+00:00",
 		"2024-02-29T12:30:45.123456789+00:00Z",
 		"2024-02-29T12:30:45.123456789+00:000",
-		"2024-02-29T12:30:45." + "0".repeat(1048576).get() + "Z",
+		"2024-02-29T12:30:45." + "0".repeat(1048576) + "Z",
 	]:
 		expect_equal(parse_timestamp(text), invalid)?

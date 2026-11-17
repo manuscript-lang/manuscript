@@ -33,7 +33,6 @@ export fn bench_numbers() Void:
     blob := (
         "the quick brown fox jumps over the lazy dog "
         .repeat(20000)
-        .get("")
         .to_bytes()
     )
 

@@ -65,7 +65,7 @@ test "lines decode in place across chunks with non-ASCII text and a final unterm
 	expect_equal(found, expected)?
 
 test "long lines cross small chunks without changing output":
-	text := "é日本".repeat(8192)?
+	text := "é日本".repeat(8192)
 
 	for chunk in [1, 7, 64, 4096]:
 		source := f"{text}\r\nnext\n{text}"

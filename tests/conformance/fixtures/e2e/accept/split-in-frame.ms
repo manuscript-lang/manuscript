@@ -32,7 +32,7 @@ test "max pieces and long texts":
 	expect_equal(limited("a b c d", " ", 0), "0:")?
 	expect_equal(limited("a b c d", " ", 9), "4:[a][b][c][d]")?
 
-	long := "x ".repeat(100).get("")
+	long := "x ".repeat(100)
 	expect_equal(long.split(" ").length(), 101)?
 
 	wide := "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz"

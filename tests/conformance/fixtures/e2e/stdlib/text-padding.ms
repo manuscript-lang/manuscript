@@ -13,8 +13,8 @@ test "padding counts scalars":
 	expect_equal("x".pad_end(4, "é🙂"), "xé🙂é")?
 
 test "repeated fills keep pattern and scalar boundaries":
-	expect_equal("ab".repeat(17).get(), "ababababababababababababababababab")?
-	expect_equal("é🙂".repeat(5).get(), "é🙂é🙂é🙂é🙂é🙂")?
+	expect_equal("ab".repeat(17), "ababababababababababababababababab")?
+	expect_equal("é🙂".repeat(5), "é🙂é🙂é🙂é🙂é🙂")?
 	expect_equal("!".pad_start(10, "ab"), "ababababa!")?
 	expect_equal("!".pad_end(6, "é🙂"), "!é🙂é🙂é")?
 
@@ -24,11 +24,11 @@ test "a padded result past the inline size keeps its text and length":
 	expect_equal(long_start.length(), 40)?
 
 	long_end := "name".pad_end(30, " ")
-	expect_equal(long_end, "name" + " ".repeat(26).get())?
+	expect_equal(long_end, "name" + " ".repeat(26))?
 	expect_equal(long_end.length(), 30)?
 
 	wide := "é".pad_start(30, "🙂")
-	expect_equal(wide, "🙂".repeat(29).get() + "é")?
+	expect_equal(wide, "🙂".repeat(29) + "é")?
 	expect_equal(wide.scalar_length(), 30)?
 	expect_equal(wide.view(wide.length() - 2, wide.length()), "é")?
 

@@ -151,7 +151,7 @@ test "CSV quoted fields preserve zero one and many escaped quotes":
 					expected,
 				)?
 
-	value := "a\"日".repeat(8000)?
+	value := "a\"日".repeat(8000)
 	encoded := f"\"{value.replace("\"", "\"\"")}\"\n"
 	expect_equal((parse(encoded)?), [[value]])?
 

@@ -28,7 +28,7 @@ fn main() Void:
 	var piece = "x"
 
 	for size in [4, 16, 64, 256, 1024, 8192]:
-		piece = "x".repeat(size).get()
+		piece = "x".repeat(size)
 
 		count := 1000000 / size
 		var best = 1000000000000

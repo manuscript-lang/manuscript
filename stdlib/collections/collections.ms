@@ -207,6 +207,14 @@ fn List[T: Clonable].zip[U: Clonable](other: List[U]) List[Pair[T, U]]: ...
 // keeps the original element order.
 fn List[T: Clonable].group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]: ...
 
+// Counts how many times each distinct element occurs. Keys appear in first-seen order.
+// Example: `["a", "b", "a"].counts()` maps `"a"` to 2 and `"b"` to 1.
+fn List[T: Hashable & Clonable].counts() Map[T, Int]:
+	var out = Map[T, Int]()
+	for x in self:
+		out.update(x.clone(), 0, fn n: n + 1)
+	return out
+
 // Reports whether any element equals `value`, using the element type's Equal
 // implementation; an empty list returns False.
 fn List[T: Equal].contains(value: T) Bool:

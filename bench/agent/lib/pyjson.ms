@@ -48,8 +48,8 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
 		ArrayValue(items):
 			if items.is_empty(): return "[]"
 
-			pad := " ".repeat((level + 1) * indent).get("")
-			end := " ".repeat(level * indent).get("")
+			pad := " ".repeat((level + 1) * indent)
+			end := " ".repeat(level * indent)
 			parts := items.map(fn item: emit(item, indent, level + 1))
 			if indent == 0: return "[" + parts.join(", ") + "]"
 
@@ -57,8 +57,8 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
 		ObjectValue(members):
 			if members.is_empty(): return "{}"
 
-			pad := " ".repeat((level + 1) * indent).get("")
-			end := " ".repeat(level * indent).get("")
+			pad := " ".repeat((level + 1) * indent)
+			end := " ".repeat(level * indent)
 			var parts = List[String]()
 			for entry in members.entries():
 				parts.append(

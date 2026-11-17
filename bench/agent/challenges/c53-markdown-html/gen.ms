@@ -171,7 +171,7 @@ export fn gen_c53() Void:
 	cs.push("crlf-ignored", "line one\n\nline two\n")
 	cs.push(
 		"unicode-free-long-line",
-		"word ".repeat(80).get("") + "\n\n" + "*a* ".repeat(40).get("") + "\n",
+		"word ".repeat(80) + "\n\n" + "*a* ".repeat(40) + "\n",
 	)
 
 	var inline = ""
@@ -181,12 +181,9 @@ export fn gen_c53() Void:
 
 	var nested = ""
 	for i in 0..40:
-		nested += "  ".repeat(i % 4).get("") + f"- item {i}\n"
+		nested += "  ".repeat(i % 4) + f"- item {i}\n"
 	cs.push("stress-nested-lists", nested)
-	cs.push(
-		"stress-quotes",
-		">".repeat(20).get("") + " deep\n" + "> ".repeat(5).get("") + "x\n",
-	)
+	cs.push("stress-quotes", ">".repeat(20) + " deep\n" + "> ".repeat(5) + "x\n")
 
 	examples := [
 		cs.make(

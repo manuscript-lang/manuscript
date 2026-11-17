@@ -137,13 +137,13 @@ export fn main() Int:
         for text in ["", "x", "123456789012345", "1234567890123456", "é🙂\u{0}é"]:
             if abi_string_length(text) != text.length(): return 1
 
-        owned := "ab".repeat(20).get()
+        owned := "ab".repeat(20)
         if abi_string_length(owned) != 40: return 2
         if abi_string_length(owned.clone()) != 40: return 3
         if abi_string_length(owned.view(1, 39)) != 38: return 4
         if abi_string_length(owned + "\u{0}") != 41: return 5
 
-        unicode := "é🙂".repeat(20).get()
+        unicode := "é🙂".repeat(20)
         if abi_string_length(unicode) != 120: return 6
 
         return 0

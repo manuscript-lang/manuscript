@@ -33,6 +33,42 @@ fn String.cut_suffix(suffix: String) String?:
 	).clone()
 	return none
 
+// The text before and after the first (or last) separator, from `split_once` and
+// `rsplit_once`.
+export type SplitParts:
+	// The text before the separator.
+	before: String
+	// The text after the separator.
+	after: String
+
+// Splits at the first exact separator, or returns none when it is absent or empty.
+// Example: `"key=a=b".split_once("=")` is `before: "key"`, `after: "a=b"`.
+fn String.split_once(separator: String) SplitParts?:
+	if separator.is_empty(): return none
+
+	at := self.index_of(separator)
+	if at.is_none(): return none
+
+	cut := at.get(0)
+	return SplitParts(
+		before: self.view(0, cut).clone(),
+		after: self.view(cut + separator.length(), self.length()).clone(),
+	)
+
+// Splits at the last exact separator, or returns none when it is absent or empty.
+// Example: `"a/b/c".rsplit_once("/")` is `before: "a/b"`, `after: "c"`.
+fn String.rsplit_once(separator: String) SplitParts?:
+	if separator.is_empty(): return none
+
+	at := self.last_index_of(separator)
+	if at.is_none(): return none
+
+	cut := at.get(0)
+	return SplitParts(
+		before: self.view(0, cut).clone(),
+		after: self.view(cut + separator.length(), self.length()).clone(),
+	)
+
 // The four Unicode normalization forms, selected without runtime string spelling
 // errors.
 export enum NormalizationForm:

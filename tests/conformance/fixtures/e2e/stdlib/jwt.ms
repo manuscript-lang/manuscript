@@ -119,7 +119,7 @@ test "verify rejects the none algorithm and malformed tokens":
 			| expect_equal(Error("jwt: malformed token", kind: "EBADMSG"))?
 		)
 
-	big := "a".repeat(20000).get("")
+	big := "a".repeat(20000)
 	(
 		(failure(verify_token[Session](big, secret))?) | expect_equal(
 			Error("jwt: malformed token", kind: "EBADMSG")
@@ -569,14 +569,14 @@ test "numeric date exponents and signed zero preserve exact boundaries":
 	expect_date_order("-1e-999999999999999999999", -1, 1)?
 	expect_date_order("1e999999999999999999999", 9223372036854775807, 1)?
 	expect_date_order("-1e999999999999999999999", -9223372036854775808, -1)?
-	expect_date_order("1e+" + "0".repeat(1000).get("") + "1", 10, 0)?
-	expect_date_order("1e" + "9".repeat(8000).get(""), 1, 1)?
-	expect_date_order("1e-" + "9".repeat(8000).get(""), 1, -1)?
+	expect_date_order("1e+" + "0".repeat(1000) + "1", 10, 0)?
+	expect_date_order("1e" + "9".repeat(8000), 1, 1)?
+	expect_date_order("1e-" + "9".repeat(8000), 1, -1)?
 
 	// The exponent must cancel a long coefficient's scale before comparison.
-	expect_date_order("1" + "0".repeat(1000).get("") + "e-1000", 1, 0)?
-	expect_date_order("0." + "0".repeat(1000).get("") + "1e1001", 1, 0)?
-	expect_date_order("1." + "0".repeat(1000).get("") + "1", 1, 1)?
+	expect_date_order("1" + "0".repeat(1000) + "e-1000", 1, 0)?
+	expect_date_order("0." + "0".repeat(1000) + "1e1001", 1, 0)?
+	expect_date_order("1." + "0".repeat(1000) + "1", 1, 1)?
 
 test "numeric date leeway is exact across Int boundaries":
 	secret := "secret".to_bytes()

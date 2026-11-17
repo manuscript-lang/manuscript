@@ -49,7 +49,7 @@ fn largest_input(path: String) String!:
 
 	size := if not best.is_empty(): best.length() else: 1
 	copies := if 3000000 / size > 1: 3000000 / size else: 1
-	return ok(best.repeat(copies).get(""))
+	return ok(best.repeat(copies))
 
 fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured) Void:
 	var samples = List[JsonValue]()

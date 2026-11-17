@@ -33,7 +33,7 @@ test "hex limits and round trips preserve actual nested byte views":
 	expect_equal(hex_decode(text, 4), limited)?
 
 test "hex rejects large over budget and odd inputs before digit validation":
-	text := "00".repeat(524288).get()
+	text := "00".repeat(524288)
 	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(hex_decode(text, 0), limited)?
@@ -56,7 +56,7 @@ test "hex encoding covers every byte and empty nested views":
 
 test "hex encoding preserves output across bounded chunks":
 	for length in [8191, 8192, 8193, 16383, 16384, 16385]:
-		text := "x".repeat(length)?
+		text := "x".repeat(length)
 		storage := ("!" + text + "?").to_bytes()
 		data := storage.view(1, length + 1)
-		expect_equal(hex_encode(data), "78".repeat(length)?)?
+		expect_equal(hex_encode(data), "78".repeat(length))?

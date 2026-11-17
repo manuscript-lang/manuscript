@@ -16,7 +16,7 @@ fn zeros(count: Int) Bytes:
 	return out.build()
 
 fn decode_case(length: Int, limit: Int?, bad: Int = 0) Void!:
-	var text = "0".repeat(length)?
+	var text = "0".repeat(length)
 	if bad == 1: text = "z" + text.view(1, text.length())
 	if bad == 2: text = text.view(0, length - 1) + "z"
 
@@ -54,10 +54,10 @@ fn unicode_case(limit: Int) Void!:
 
 fn neighbor(which: Int) Void!:
 	data := zeros(if which == 3 or which == 4: 8192 else: 4096)
-	text := "\u{0}".repeat(4096)?
+	text := "\u{0}".repeat(4096)
 	expected_text: String! := ok(text.clone())
-	hex := "00".repeat(4096)?
-	b64 := ("A".repeat(5462)?) + "=="
+	hex := "00".repeat(4096)
+	b64 := ("A".repeat(5462)) + "=="
 	scalar := "é".to_bytes()
 
 	fn work() Void!:

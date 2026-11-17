@@ -275,7 +275,7 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
 				path: f"/{mode}",
 				query: "",
 				headers: headers(),
-				body: "x".repeat(65537).get("").to_bytes(),
+				body: "x".repeat(65537).to_bytes(),
 			)
 		)?
 		expect_equal(body_of(response), "65536|1|true")?

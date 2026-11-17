@@ -10,7 +10,7 @@ export fn main() Int:
     long1 := "a rather long string, longer than fifteen bytes"
     long2 := "a rather long string, " + "longer than fifteen bytes"
     wide := "h\u{e9}llo"
-    mut := "x".repeat(20).get()
+    mut := "x".repeat(20)
     print(short == "abc")
     print(short == "abd")
     print("abc" == short)
@@ -21,7 +21,7 @@ export fn main() Int:
     print(same(long1, long2))
     print(same(short, "abc"))
     print(same("", ""))
-    print(same(mut, "x".repeat(20).get()))
+    print(same(mut, "x".repeat(20)))
     print(same("eight888", "eight888"))
     print(same(long1 + "!", long2 + "!"))
     print(long2 == "")

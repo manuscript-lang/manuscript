@@ -72,7 +72,7 @@ test "compression streams round trip all formats under every chunk size":
 			if restored != text: return fail(f"stream round trip, size {size}")
 
 test "decompressed streams preserve lines across decoder output batches":
-	data := "archive line input\n".repeat(3500).get("").to_bytes()
+	data := "archive line input\n".repeat(3500).to_bytes()
 
 	for format in [
 		CompressionFormat.Gzip,
@@ -117,7 +117,7 @@ fn sample() List[ArchiveEntry]:
 		ArchiveEntry("dir/a.txt", "alpha".to_bytes(), directory: false),
 		ArchiveEntry(
 			"big.bin",
-			"x".repeat(1300).get("").to_bytes(),
+			"x".repeat(1300).to_bytes(),
 			directory: false,
 		),
 		ArchiveEntry("empty", "".to_bytes(), directory: false),
@@ -188,7 +188,7 @@ test "tar entries refuse an oversized member from its header":
 		[
 			ArchiveEntry(
 				"f",
-				"x".repeat(4000).get("").to_bytes(),
+				"x".repeat(4000).to_bytes(),
 				directory: false,
 			)
 		],
@@ -223,7 +223,7 @@ test "tar entries reject a base-256 size that overflows as invalid":
 	expect_equal(got.err().kind, "EBADMSG")?
 
 test "decompressed streams reject bytes after the payload as decompress does":
-	text := "tail check ".repeat(50).get("").to_bytes()
+	text := "tail check ".repeat(50).to_bytes()
 
 	for format in [
 		CompressionFormat.Gzip,
@@ -417,7 +417,7 @@ test "tar entries and unpack agree on corrupted and truncated archives":
 	// Bytes after the end blocks: a tar has no trailer, so both readers stop at the
 	// first zero block.
 	cases.append(archive.concat("junk".to_bytes()))
-	cases.append(archive.concat("j".repeat(1024).get("").to_bytes()))
+	cases.append(archive.concat("j".repeat(1024).to_bytes()))
 
 	for index in 0..cases.length():
 		expected := outcome(unpack(cases[index].clone(), ArchiveFormat.Tar))

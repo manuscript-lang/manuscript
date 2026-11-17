@@ -35,13 +35,13 @@ fn main() Int:
 
 	for width in [7, 8, 15, 16, 31, 32, 128, 1024, 8192, 65536]:
 		count := 1048576 / (width + 1)
-		text := ("x".repeat(width).get() + "\n").repeat(count).get()
+		text := ("x".repeat(width) + "\n").repeat(count)
 		if measure(f"lf_{width}", text, (width + 17) * count, 16) != 0: return 1
 
-	unicode := ("é日😀".repeat(1000).get() + "\r\n").repeat(128).get()
+	unicode := ("é日😀".repeat(1000) + "\r\n").repeat(128)
 	if measure("unicode_crlf", unicode, (9000 + 17) * 128, 16) != 0: return 1
 
-	no_newline := "x".repeat(1048576).get()
+	no_newline := "x".repeat(1048576)
 	if measure("no_newline", no_newline, 1048576 + 17, 16) != 0: return 1
 
 	return 0
