@@ -726,7 +726,7 @@ fn lint_fix_keeps_the_decimal_import_a_literal_needs() {
     let dir = std::env::temp_dir().join(format!("ms-cli-lint-decimal-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "import Decimal from \"@std/math/decimal.ms\"\n\nexport fn main() Void:\n    price := 12.50d\n    print(price.to_string())\n";
+    let source = include_str!("check_fix/decimal_literal_import.ms");
     std::fs::write(dir.join("a.ms"), source).unwrap();
     let (status, text) = ms(&["lint", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");
