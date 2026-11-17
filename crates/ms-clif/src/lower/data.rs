@@ -79,14 +79,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     Some(AltRepr::Boxed { block, .. }) => {
                         let lay = mem_layout(block);
                         idx.iter()
-                            .map(|k| {
-                                self.b.ins().load(
-                                    leaf_type(block[*k]),
-                                    flags(),
-                                    v[0],
-                                    lay.offsets[*k] as i32,
-                                )
-                            })
+                            .map(|k| self.load_leaf(block[*k], v[0], lay.offsets[*k] as i32))
                             .collect()
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),

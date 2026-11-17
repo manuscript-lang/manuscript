@@ -10,7 +10,7 @@
 //! a shared static block that is never freed. Payloads that are types in memory stay on the
 //! translation. Fields a release leaves behind are dropped through the drop glue.
 
-use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves, types};
+use super::{Area, Cx, Vals, held_leaves, mem_leaf, mem_leaves, narrow_leaves, types};
 use crate::llvm_build::{Bin, FnBuilder, Meta, Range, Ty as LTy, Val};
 use ms_mir::ir::{Func, Imm, Inst, Module, Op};
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
@@ -205,12 +205,12 @@ fn block_of(lay: &Layouts, ty: Ty) -> Vec<Leaf> {
     }
 }
 
-/// The slot types this module reads and writes: word, double and byte. A block with narrow or
-/// `Float32` slots stays on the translation.
+/// Every slot type of a block is one this module reads and writes: a word, double, byte, or a
+/// narrow integer or `Float32` at its own width.
 fn block_ok(block: &[Leaf]) -> bool {
     block
         .iter()
-        .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8))
+        .all(|l| matches!(l, Leaf::I64 | Leaf::F64 | Leaf::I8 | Leaf::F32) || types::is_narrow(*l))
 }
 
 /// The constant zero of a held type.
@@ -496,11 +496,12 @@ pub(super) fn touches_memory(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
                 && boxed_opt(lay, subject(f, inst)).is_some()))
 }
 
-/// The LLVM type of a payload slot.
+/// The LLVM type of a payload slot: its memory type, an `i64` for a word that may hold a pointer.
 fn slot_ty(l: Leaf) -> LTy {
     match l {
         Leaf::F64 => LTy::F64,
-        Leaf::I8 => LTy::I8,
+        Leaf::I8 | Leaf::F32 => mem_leaf(l),
+        l if types::is_narrow(l) => mem_leaf(l),
         _ => LTy::I64,
     }
 }
