@@ -140,18 +140,6 @@ impl Session {
     }
 }
 
-/// Whether the runtime function `symbol` takes ownership of its argument `param` (it moves into
-/// the runtime), as its `// ms: takes:<param>` declares.
-pub fn takes_argument(symbol: &str, param: &str) -> bool {
-    RUNTIME_TAKES.contains(&(symbol, param))
-}
-
-/// Whether the runtime function `symbol` keeps the function values it is given instead of running
-/// them before it returns, as its `// ms: keeps:<param>` declares.
-pub fn keeps_callbacks(symbol: &str) -> bool {
-    RUNTIME_KEEPS.contains(&symbol)
-}
-
 /// Native types that declare fields, so they cannot be written `extern type`. A type in a native
 /// module is otherwise an ordinary type (`Error`), so the runtime's own `List` is named here.
 const NATIVE_WITH_FIELDS: &[&str] = &["List"];

@@ -24,7 +24,7 @@ fn drain(var xs: List[Int]) Void:
 	push(7)
 	push(8)
 
-fn each(f: fn(Int) Void) Void:
+fn each(f: fn(move Int) Void) Void:
 	f(100)
 
 test "a method value that changes its receiver borrows the variable":

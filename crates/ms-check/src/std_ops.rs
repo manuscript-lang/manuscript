@@ -26,7 +26,7 @@ pub fn discards_entries(name: &str) -> bool {
     matches!(name, "set" | "add" | "remove" | "clear" | "splice")
 }
 
-/// `StringBuilder` and `BytesBuilder`: owned values whose `build` moving_params them.
+/// `StringBuilder` and `BytesBuilder`: owned values whose `build` takes them.
 pub fn is_text_builder(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.is_std(syms, "StringBuilder") || t.is(Builtin::BytesBuilder)
 }

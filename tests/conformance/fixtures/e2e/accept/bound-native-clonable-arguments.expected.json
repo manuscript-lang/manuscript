@@ -11,12 +11,12 @@
       "tests": [
         {
           "index": 0,
-          "name": "bound-native-clonable-arguments.ms::bound list mutators copy named string inputs without consuming callers",
+          "name": "bound-native-clonable-arguments.ms::bound list mutators take their arguments, so a caller keeps a clone",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "bound-native-clonable-arguments.ms::generic bound mutator copies aggregate payload storage independently",
+          "name": "bound-native-clonable-arguments.ms::a generic bound mutator stores clones independent of the caller",
           "status": "passed"
         },
         {
@@ -26,12 +26,12 @@
         },
         {
           "index": 3,
-          "name": "bound-native-clonable-arguments.ms::invalid bound mutation does not consume the caller payload",
+          "name": "bound-native-clonable-arguments.ms::invalid bound mutation of a clone leaves the caller payload",
           "status": "passed"
         },
         {
           "index": 4,
-          "name": "bound-native-clonable-arguments.ms::bound native argument copies preserve named effects and propagation",
+          "name": "bound-native-clonable-arguments.ms::bound native arguments keep named effects and propagation",
           "status": "passed"
         },
         {
@@ -55,7 +55,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN bound-native-clonable-arguments.ms::bound list mutators copy named string inputs without consuming callers\nPASS bound-native-clonable-arguments.ms::bound list mutators copy named string inputs without consuming callers\nRUN bound-native-clonable-arguments.ms::generic bound mutator copies aggregate payload storage independently\nPASS bound-native-clonable-arguments.ms::generic bound mutator copies aggregate payload storage independently\nRUN bound-native-clonable-arguments.ms::optional native adapter handles supplied and absent payloads\nPASS bound-native-clonable-arguments.ms::optional native adapter handles supplied and absent payloads\nRUN bound-native-clonable-arguments.ms::invalid bound mutation does not consume the caller payload\nPASS bound-native-clonable-arguments.ms::invalid bound mutation does not consume the caller payload\nRUN bound-native-clonable-arguments.ms::bound native argument copies preserve named effects and propagation\nPASS bound-native-clonable-arguments.ms::bound native argument copies preserve named effects and propagation\nRUN bound-native-clonable-arguments.ms::nonconsuming bound methods continue borrowing ordinary inputs\nPASS bound-native-clonable-arguments.ms::nonconsuming bound methods continue borrowing ordinary inputs\nRUN bound-native-clonable-arguments.ms::bound native getter defaults remain unchanged\nPASS bound-native-clonable-arguments.ms::bound native getter defaults remain unchanged\n7 tests, 0 failed\n",
+      "stdout": "RUN bound-native-clonable-arguments.ms::bound list mutators take their arguments, so a caller keeps a clone\nPASS bound-native-clonable-arguments.ms::bound list mutators take their arguments, so a caller keeps a clone\nRUN bound-native-clonable-arguments.ms::a generic bound mutator stores clones independent of the caller\nPASS bound-native-clonable-arguments.ms::a generic bound mutator stores clones independent of the caller\nRUN bound-native-clonable-arguments.ms::optional native adapter handles supplied and absent payloads\nPASS bound-native-clonable-arguments.ms::optional native adapter handles supplied and absent payloads\nRUN bound-native-clonable-arguments.ms::invalid bound mutation of a clone leaves the caller payload\nPASS bound-native-clonable-arguments.ms::invalid bound mutation of a clone leaves the caller payload\nRUN bound-native-clonable-arguments.ms::bound native arguments keep named effects and propagation\nPASS bound-native-clonable-arguments.ms::bound native arguments keep named effects and propagation\nRUN bound-native-clonable-arguments.ms::nonconsuming bound methods continue borrowing ordinary inputs\nPASS bound-native-clonable-arguments.ms::nonconsuming bound methods continue borrowing ordinary inputs\nRUN bound-native-clonable-arguments.ms::bound native getter defaults remain unchanged\nPASS bound-native-clonable-arguments.ms::bound native getter defaults remain unchanged\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

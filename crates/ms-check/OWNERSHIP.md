@@ -90,6 +90,6 @@ Programs written for reference semantics change as follows:
 
 - Indexed assignment `xs[i] = v` has no syntax yet (`set` is the mutator).
 - `var` parameters, `var` call arguments and `var fn` are syntax additions (`ms-syntax`: `Param.mutable`, `Argument.mutable`, `Method.mutating`).
-- Native modes come from `collection_mutation` plus type-shape heuristics; a native that moving_params an argument without a collection signature is treated as `Borrow`.
+- Native modes come from their `.ms` declarations: `var fn` changes the receiver, `move` takes an argument or the receiver (`fn var List[T].append(move value: T)`, `fn move StringBuilder.build()`, `extern fn msrt_promise_start(id: Int, move work: fn() Void)`); `tests/native_modes.txt` lists them and `tests/extern_moves.rs` checks each `extern fn` against its runtime symbol's `@takes:`/`@keeps:` flags, which lowering reads. The one name table left is `native_borrow.rs`, for natives whose result borrows their receiver.
 - Moved-on-every-path is not tracked forward: `drops_old` is a may-drop fact paired with a drop flag cleared at `Move` uses.
 - Impl-vs-interface mode agreement: the `var` mode of every parameter must match the interface declaration (`implementation operation signature does not match contract`, `tests/interface_modes.rs`); a parameter an implementation keeps that the interface only borrows is the copy rule above (`require_clonable`). The two `Clonable` rules (`contracts.rs`, `Classifier::clonable`) are held equal by `tests/clonable_agreement.rs`.

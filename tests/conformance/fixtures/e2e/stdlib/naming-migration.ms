@@ -38,7 +38,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	values.add("b", 2)
 	expect_equal(values.keys(), ["a", "b"])?
 
-	lazy: fn(String, fn(String) Int) Void := values.add_default_from
+	lazy: fn(move String, fn(String) Int) Void := values.add_default_from
 	lazy("a", key_length)
 	lazy("ccc", key_length)
 	values.add_default("d", 4)
@@ -53,7 +53,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	expect_false(values.contains("copy") or not copy.contains("copy"))?
 	expect_equal(values.keys(), ["a", "b", "ccc", "d"])?
 
-	legacy: fn(String, Int) Void := values.add_default
+	legacy: fn(move String, move Int) Void := values.add_default
 	legacy("a", 100)
 	values.add_default_from("ff", key_length)
 	expect_false(counter.calls != 1 or values.get("a") != 1)?

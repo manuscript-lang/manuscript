@@ -246,7 +246,6 @@ fn contract_operation(
         ),
         decl: op.decl.clone(),
         native: Native::Contract,
-        copies_elements: false,
     }))
 }
 
@@ -742,8 +741,6 @@ impl Checker {
                     index: Some(index),
                 }),
                 native: Native::Source,
-                // The bounds are resolved here, before a call substitutes the variables away.
-                copies_elements: vars.iter().any(|v| v.bounds().iter().any(implies_clonable)),
             };
             for v in &own {
                 self.scope.types.borrow_mut().remove(&v.name);
@@ -776,7 +773,6 @@ impl Checker {
                 variables: vars.clone(),
                 decl: None,
                 native: Native::Source,
-                copies_elements: false,
             }));
         }
         for op in &ops {
@@ -821,7 +817,6 @@ impl Checker {
                     variables: vars.clone(),
                     decl: Some(FuncRef::of_decl(decl)),
                     native: Native::Source,
-                    copies_elements: false,
                 };
                 self.add_method(Rc::new(m));
             } else {
@@ -1530,7 +1525,6 @@ impl Checker {
                 variables: Vec::new(),
                 decl: stdlib::standard_method_declaration(&contract, name),
                 native: Native::Builtin(name),
-                copies_elements: false,
             })];
         }
         result
@@ -1881,7 +1875,6 @@ pub(crate) fn native_method(
             variables,
             decl,
             native: Native::Builtin(native),
-            copies_elements: false,
         };
     if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Type | Kind::Alternative)
