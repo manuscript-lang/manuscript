@@ -729,6 +729,9 @@ pub struct Func {
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
     pub unwind_only: bool,
+    /// A function whose cancel exit frees what it owns by explicit drops (`elaborate`), so the
+    /// cancel-edge pass leaves it alone and the inliner keeps it apart from hybrid functions.
+    pub explicit_cancel: bool,
     /// A generated sort helper whose lists hold bitwise copies of another list's slots and own
     /// nothing: an unwind frees their buffers and never drops their elements (see `unwind`).
     pub raw_scratch: bool,
@@ -778,6 +781,7 @@ impl Func {
             scoped: false,
             keeps_scoped: false,
             unwind_only: false,
+            explicit_cancel: false,
             raw_scratch: false,
             capture_closers: Vec::new(),
             slot_close: None,

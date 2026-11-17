@@ -76,6 +76,16 @@ enum Marker {
 
 /// Elaborates every Raw function of `m`.
 pub fn run(m: &mut Module) -> Result<(), String> {
+    run_with(m, false)
+}
+
+/// Elaborates every Raw function of `m`; with `cancel_exits` a function of a task program that
+/// parks also gets explicit cancel exits (`cancel_exit`) when its owners allow them.
+pub fn run_with(m: &mut Module, cancel_exits: bool) -> Result<(), String> {
+    let cancel_exits = (cancel_exits && crate::unwind::starts_tasks(m)).then(|| {
+        let parks = crate::unwind::parking_funcs(m);
+        (parks, crate::cancel_exit::externs(m))
+    });
     let close = m
         .funcs
         .iter()
@@ -104,7 +114,15 @@ pub fn run(m: &mut Module) -> Result<(), String> {
         }
         let stand_in = m.funcs[fi].signature_stand_in();
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
-        let out = function(m, &mut f, close, discard, cancel, shield);
+        let out = function(
+            m,
+            &mut f,
+            close,
+            discard,
+            cancel,
+            shield,
+            cancel_exits.as_ref(),
+        );
         m.funcs[fi] = f;
         out.map_err(|e| format!("{}: {e}", m.funcs[fi].name))?;
     }
@@ -241,6 +259,8 @@ struct Ctx {
     shield: Option<(ExtId, ExtId)>,
     /// Flagged owners that a `scope.disown` ahead of the consuming op leaves tracked as moved.
     disown_moves: HashSet<Value>,
+    /// The blocks of the function's cancel exits: a failing close there is dropped, not returned.
+    cancel_blocks: HashSet<usize>,
 }
 
 /// Whether `v` owns a memory slot (`scope.own S K p`, K >= 2): the owner is the slot's address.
@@ -546,6 +566,7 @@ fn function(
     discard: Option<ExtId>,
     cancel: Option<ExtId>,
     shield: Option<(ExtId, ExtId)>,
+    cancel_exits: Option<&(Vec<bool>, crate::cancel_exit::Ext)>,
 ) -> Result<(), String> {
     let mut cx = Ctx {
         tags: HashMap::new(),
@@ -556,6 +577,7 @@ fn function(
         cancel,
         shield,
         disown_moves: HashSet::new(),
+        cancel_blocks: HashSet::new(),
     };
     for b in &f.blocks {
         for i in &b.insts {
@@ -627,6 +649,14 @@ fn function(
         if !changed {
             break;
         }
+    }
+    if let Some((parks, ext)) = cancel_exits
+        && !f.explicit_cancel
+        && cx.tags.values().all(|(_, kind)| *kind < 2)
+    {
+        cx.cancel_blocks = crate::cancel_exit::convert(m, parks, *ext, f, &cx.tags)
+            .into_iter()
+            .collect();
     }
     let order = f.rpo();
     let mut entry = analyze(m, f, &cx, &order)?;
@@ -745,6 +775,7 @@ fn function(
         handles: HashMap::new(),
         pending: None,
         counts_depth,
+        in_cancel: false,
     };
     for b in order {
         let Some(e) = entry[b.index()].clone() else {
@@ -834,6 +865,8 @@ struct Em<'a> {
     pending: Option<Value>,
     /// The function guards its recursion depth (`depth.enter` at its start).
     counts_depth: bool,
+    /// The block being rebuilt is a cancel exit: a close that fails is dropped.
+    in_cancel: bool,
 }
 
 impl Em<'_> {
@@ -895,6 +928,7 @@ impl Em<'_> {
         let old = std::mem::take(&mut self.f.blocks[b]);
         self.f.blocks[b].params = old.params;
         self.flags = fparams[b].iter().copied().collect();
+        self.in_cancel = self.cx.cancel_blocks.contains(&b);
         // The value the block returns is pending for a close only once it exists: one the block
         // defines is not pending for a scope that ends before that (a loop's, say).
         let returned = match &old.term {
@@ -1765,6 +1799,13 @@ impl Em<'_> {
             return Ok(cur);
         };
         let by_result = self.f.ty(first) != Ty::INT;
+        if self.in_cancel {
+            // The exit serves a cancel: a close error has nowhere to go and is dropped.
+            if by_result {
+                self.drop_owned(cur, first);
+            }
+            return Ok(cur);
+        }
         let failed = if by_result {
             self.is_error(cur, first)
         } else {

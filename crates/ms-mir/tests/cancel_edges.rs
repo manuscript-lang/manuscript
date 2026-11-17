@@ -65,3 +65,43 @@ fn leaves_a_program_that_starts_no_task_alone() {
     .unwrap_or_else(|e| panic!("{e}"));
     assert!(!cancel_edges::run(&mut m));
 }
+
+const RAW_HOLDS_OWNER: &str = r#"
+fn @main() -> int {
+b0:
+  scope.begin 1 0
+  %lit: str = str "held"
+  %s: str = clone %lit
+  scope.own 1 0 %s
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_pause (%n)
+  scope.end 1 0
+  ret %r
+}
+"#;
+
+#[test]
+fn a_raw_function_leaves_by_scope_end_and_pops_its_registrations() {
+    let mut m = parse_module(&format!("{HEAD}{RAW_HOLDS_OWNER}")).unwrap_or_else(|e| panic!("{e}"));
+    ms_mir::elaborate::run_with(&mut m, true).unwrap_or_else(|e| panic!("{e}"));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    let main = &m.funcs[m.func_by_name("main").expect("main").index()];
+    assert!(main.explicit_cancel);
+    assert_eq!(calls(&m, "main", "msrt_cleanup_truncate"), 1);
+    assert_eq!(calls(&m, "main", "msrt_unwinding"), 1);
+    // The held string is dropped on the normal path and on the cancel exit; no hybrid exit follows.
+    assert_eq!(count(&m, "main", Op::Drop), 2);
+    assert!(!cancel_edges::run(&mut m) || calls(&m, "main", "msrt_cleanup_unwind_to") == 0);
+}
+
+#[test]
+fn a_program_that_starts_no_task_gets_no_explicit_exit() {
+    let mut m = parse_module(&format!(
+        "module \"t\"\nentry @main\nextern @msrt_task_pause(int) -> int\n{RAW_HOLDS_OWNER}"
+    ))
+    .unwrap_or_else(|e| panic!("{e}"));
+    ms_mir::elaborate::run_with(&mut m, true).unwrap_or_else(|e| panic!("{e}"));
+    assert!(!m.funcs[m.func_by_name("main").expect("main").index()].explicit_cancel);
+}

@@ -137,6 +137,9 @@ fn specialized_thunk(m: &Module, thunk: FuncId, g: FuncId) -> Option<Func> {
         return None;
     }
     let mut t = m.funcs[thunk.index()].clone();
+    if cancel_mismatch(&t, code) {
+        return None;
+    }
     t.name = format!("sort.cmp.{}", code.name);
     t.sort = SortThunk::Specialized;
     t.params[0].ty = Ty::PTR;
@@ -279,6 +282,18 @@ fn direct_graph(m: &Module) -> Vec<Vec<usize>> {
         .collect()
 }
 
+/// Whether inlining `callee` into a function whose explicit-cancel state differs would drop a
+/// cancel check: an explicit function's exits return an undefined result to a caller that tests the
+/// flag after the call, and a hybrid callee's checks are added only after inlining, so mixing the
+/// two is sound only for a callee that cannot park.
+fn cancel_mismatch(caller: &Func, callee: &Func) -> bool {
+    caller.explicit_cancel != callee.explicit_cancel
+        && callee.blocks.iter().flat_map(|b| &b.insts).any(|i| {
+            matches!(i.op, Op::Call | Op::CallInd | Op::CallMethod | Op::Poll)
+                || (i.op == Op::CallRt)
+        })
+}
+
 fn inline_calls(m: &mut Module, small: bool) -> bool {
     let adj = direct_graph(m);
     let cyc = cyclic(&adj);
@@ -413,6 +428,7 @@ fn inline_sites(
             if gi == fi
                 || (cyc[gi] && has_check(callee))
                 || !matches!(callee.kind, FuncKind::Normal)
+                || cancel_mismatch(&m.funcs[fi], callee)
             {
                 continue;
             }
@@ -705,7 +721,11 @@ fn inline_closures_in(m: &mut Module, fi: usize, fields: &HashMap<(TypeId, u32),
             let gi = g.index();
             let callee = &m.funcs[gi];
             let size = callee.inst_count();
-            if gi == fi || callee.inline == InlineHint::Never || size > BASE_THRESHOLD {
+            if gi == fi
+                || callee.inline == InlineHint::Never
+                || size > BASE_THRESHOLD
+                || cancel_mismatch(&m.funcs[fi], callee)
+            {
                 continue;
             }
             if grown + size > budget {
