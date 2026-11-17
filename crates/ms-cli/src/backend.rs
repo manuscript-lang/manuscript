@@ -171,6 +171,8 @@ pub struct ReviewRequest {
     /// Keep only findings that reach or permit this effect (a name or pattern).
     pub effect: String,
     pub all: bool,
+    /// Exit 1 when the diff adds an effect, a permission or a declared capability.
+    pub fail_on_new_effects: bool,
 }
 
 #[derive(Clone, Debug)]

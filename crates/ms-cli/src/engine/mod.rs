@@ -483,14 +483,6 @@ fn denied(program: &ms_check::Program, entry: &str, rules: &Rules) -> Option<Dia
         .borrow()
         .get(&ms_check::api::types::n("main"))
         .cloned()?;
-    // A declared effect hides what its body reaches. Under `--allow` only code the program cannot
-    // edit (the standard library and fetched packages, named `@...`) may declare one, or a program
-    // could relabel a file read as an allowed capability.
-    if !rules.allow.is_empty()
-        && let Some(diagnostic) = relabel(program)
-    {
-        return Some(diagnostic);
-    }
     let reached = program.declared_effects_of(main.id);
     let message = reached.iter().find_map(|effect| {
         if let Some(pattern) = rules.deny.iter().find(|p| ms_check::effect_matches(p, effect)) {
@@ -515,35 +507,6 @@ fn denied(program: &ms_check::Program, entry: &str, rules: &Rules) -> Option<Dia
         message,
         end: None,
         fix: None,
-    })
-}
-
-/// The first `// ms: effect` line in the program's own modules.
-fn relabel(program: &ms_check::Program) -> Option<Diagnostic> {
-    let syms = ms_syntax::Names::global();
-    program.modules.iter().find_map(|module| {
-        let file = syms.str(module.file);
-        if file.starts_with('@') {
-            return None;
-        }
-        let mut offset = 0;
-        for (index, line) in module.source.split('\n').enumerate() {
-            let column = line.len() - line.trim_start().len();
-            if line.trim_start().starts_with("// ms: effect ") {
-                return Some(Diagnostic {
-                    cause: Default::default(),
-                    opener_line: 0,
-                    file: file.into(),
-                    pos: Pos::new((offset + column) as u32, index as u32 + 1, column as u32 + 1),
-                    phase: Phase::Type,
-                    message: "under --allow, only the standard library and packages may declare an effect; move this function into a package, or run without --allow".to_string(),
-                    end: None,
-                    fix: None,
-                });
-            }
-            offset += line.len() + 1;
-        }
-        None
     })
 }
 

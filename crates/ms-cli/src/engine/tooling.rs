@@ -941,11 +941,23 @@ pub fn review(syms: ms_syntax::Names, request: &ReviewRequest, io: &mut Io) -> B
         });
     }
     let report = diff_report(&base, &head_facts, &input, options);
-    Ok(write_output(
+    let status = write_output(
         io,
         &request.output,
         report.render(&request.format).as_bytes(),
-    ))
+    );
+    let gained = report
+        .findings
+        .iter()
+        .any(|f| f.tier == ms_tooling::review::TIER_EFFECT);
+    if status == 0 && request.fail_on_new_effects && gained {
+        let _ = writeln!(
+            io.stderr,
+            "ms review: the change adds effects or permissions (EFFECT+ rows); approve them before merging"
+        );
+        return Ok(1);
+    }
+    Ok(status)
 }
 
 /// Reads the unified diff, rebuilds the base program from it, and returns the

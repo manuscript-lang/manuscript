@@ -45,9 +45,8 @@ export fn read_data(name: String) String!:
 
 - `ms run agent.ms --allow 'data.*' --allow std.console.write` builds only if everything `main` reaches matches an `--allow` pattern. A declared effect hides its body, so `read_data` counts as `data.read`, not `std.fs.read`.
 - The same shape gives one host (`api.get` wrapping `fetch` to a fixed host) or one table (`orders.read` wrapping queries on `orders`). No new syntax, no runtime cost.
-- Trust: a program must not relabel its own reads. Under `--allow`, only code it cannot edit may declare an effect: the standard library and fetched packages, which `ms.lock` pins by hash.
-- Measured on this branch (`examples/allowed-effects`): `agent_ok.ms` runs; `agent_bad.ms` is refused for reaching `std.fs.read`; `agent_sneaky.ms`, which declares `data.read` over a read of `/etc/hostname`, is refused at its declaration.
-- Spike gap: the trust check accepts any `@`-named module, so workspace members (editable) pass; the real rule trusts only locked packages.
+- Trust: we cannot rely on what an agent can or cannot edit, so the gate is CI, not the compiler. `git diff main... | ms review ms.toml --diff - --fail-on-new-effects` exits 1 when a change adds an effect, a permission or a declared capability, so relabelling a file read as `data.read` fails the PR until a person approves it.
+- Measured on this branch (`examples/allowed-effects`): `agent_ok.ms` runs under `--allow`; `agent_bad.ms` is refused for reaching `std.fs.read`. A diff that adds `// ms: effect data.read` over a read of `/etc/hostname` makes `ms review --fail-on-new-effects` exit 1; an unchanged tree exits 0.
 - Not a sandbox: `extern fn`, `--link` and child processes are outside effects.
 
 ## Fakes: `fake(original, replacement)`
@@ -94,7 +93,7 @@ test "banner uses a fixed clock":
 ## Stages
 
 1. `--deny` for `run`, `build` and `test`, with the call path in the message.
-2. `--allow`, with the trust rule limited to locked packages.
+2. `--allow`, and `ms review --fail-on-new-effects` as the CI gate.
 3. `fake`: runtime table, test-build lowering, checker rule, stdlib function.
 
 ## Open questions

@@ -210,7 +210,7 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
         String::new(),
         String::new(),
     );
-    let (mut all, mut json) = (false, false);
+    let (mut all, mut json, mut fail_on_effects) = (false, false, false);
     let mut i = 2;
     while i < args.len() {
         let (flag, value, inline) = split_value_option(
@@ -226,6 +226,7 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
         );
         match flag {
             "--all" => all = true,
+            "--fail-on-new-effects" => fail_on_effects = true,
             "--json" => json = true,
             "--diff" | "--format" | "--explain" | "--effect" | "-o" | "--output" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
@@ -278,6 +279,12 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
             "--explain needs --diff; it explains one finding of a diff report, e.g. ms review ms.toml --diff change.patch --explain 1",
         ));
     }
+    if fail_on_effects && diff.is_empty() {
+        return Err(usage_error(
+            io,
+            "--fail-on-new-effects needs --diff, e.g. git diff main... | ms review ms.toml --diff - --fail-on-new-effects",
+        ));
+    }
     if !effect.is_empty() && diff.is_empty() {
         return Err(usage_error(
             io,
@@ -292,5 +299,6 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
         explain,
         effect,
         all,
+        fail_on_new_effects: fail_on_effects,
     })
 }
