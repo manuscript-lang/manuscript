@@ -711,9 +711,14 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 			reason: "explicit mapping keys are unsupported",
 		)
 	)
+
 	// A lone `-` is a scalar when a flow indicator or colon follows it directly (`[-]`,
 	// `[-: 1]`); a space after it makes it a block entry mark.
-	if not (plain_may_start(text) or raw == "-"): return error(
+	if not (
+		plain_may_start(text)
+		or key and text == "-"
+		or flow.delimited and raw == "-"
+	): return error(
 		flow_invalid(
 			flow,
 			"a plain scalar cannot start with an indicator character",
