@@ -24,12 +24,12 @@ fn size(t: Tree) Int:
 		Named(m):
 			var n = 0
 			for k in m.keys():
-				n += size(m.get(k).get(Tree.Leaf(0)))
+				n += size(m.get(k).get_or(Tree.Leaf(0)))
 			return n
 		Seen(s):
 			return s.length()
 		Held(index):
-			return index.words.get(index.name).get(0)
+			return index.words.get(index.name).get_or(0)
 
 fn build() Tree:
 	var m = Map[String, Tree]()

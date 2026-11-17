@@ -20,7 +20,7 @@ fn total(c: Chain) Int:
 		End:
 			return 0
 		Link(next, small, mid, flag, half):
-			return small.to_int() + mid.to_int() + flag.to_int() + half.truncate_to_int().get(0) + total(next)
+			return small.to_int() + mid.to_int() + flag.to_int() + half.truncate_to_int().get_or(0) + total(next)
 		At(next, point):
 			return point.tiny.to_int() + point.wide.to_int() + total(next)
 
