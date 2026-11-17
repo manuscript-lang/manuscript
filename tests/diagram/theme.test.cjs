@@ -10,10 +10,9 @@ const site = fs.readFileSync(path.join(root, 'website/assets/_custom.scss'), 'ut
 const tokens = text => Object.fromEntries([...text.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map(m => [m[1], m[2]]));
 const blocks = [...page.matchAll(/:root(?:\[data-theme=dark\]|:not\(\[data-theme=light\]\))?\{([^}]+)\}/g)].map(m => m[1]);
 const palettes = blocks.map(tokens);
+// Syntax and link colors follow the website; surfaces and ink are neutral so the map stays readable.
 const shared = {
-  bg: 'body-background', fg: 'body-font-color', acc: 'color-link',
-  mut: 'docs-muted', cm: 'docs-muted', line: 'gray-200', pan: 'gray-100',
-  node: 'docs-code-bg', sel: 'docs-accent-bg', ent: 'docs-accent-bg',
+  acc: 'color-link', cm: 'docs-muted',
   kw: 'docs-code-keyword', nu: 'docs-code-keyword', st: 'docs-code-string',
   fnc: 'docs-code-function', ty: 'docs-code-function',
 };
