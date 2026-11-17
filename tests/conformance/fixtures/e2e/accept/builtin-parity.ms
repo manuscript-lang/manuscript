@@ -329,7 +329,7 @@ test "string methods use Unicode scalars":
 	("abc".contains(value: "b")) | expect_true?
 	("abc".starts_with(prefix: "ab")) | expect_true?
 	("abc".ends_with(suffix: "bc")) | expect_true?
-	"a,b,c".split(separator: ",", max_parts: 2) | expect_equal(["a", "b"])?
+	"a,b,c".split(separator: ",") | expect_equal(["a", "b", "c"])?
 	"aba".replace_first(old: "a", new: "x") | expect_equal("xba")?
 
 	strip := " hello ".trim
@@ -469,10 +469,10 @@ test "normalization, empty separators, and precision formatting":
 		error(cause):
 			return fail(message: cause.message)
 
-	"é🙂".split(separator: "", max_parts: 8) | expect_equal(["é", "🙂"])?
+	"é🙂".split(separator: "") | expect_equal(["é", "🙂"])?
 
 	empty_texts: List[String] := []
-	"".split(separator: "", max_parts: 8) | expect_equal(empty_texts)?
+	"".split(separator: "") | expect_equal(empty_texts)?
 	"é🙂".replace_first(old: "", new: "-") | expect_equal("-é🙂")?
 	"".replace_first(old: "", new: "-") | expect_equal("-")?
 	"é".concat(other: "🙂") | expect_equal("é🙂")?

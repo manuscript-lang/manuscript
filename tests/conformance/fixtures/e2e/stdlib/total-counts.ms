@@ -17,10 +17,6 @@ test "a count of zero or below takes, drops and repeats nothing":
 	expect_equal(xs.chunks(0), List[List[Int]]())?
 	expect_equal(xs.windows(-2), List[List[Int]]())?
 
-test "a negative split cap gives no parts":
-	expect_equal("a,b".split(separator: ",", max_parts: -1), List[String]())?
-	expect_equal("a,b".as_bytes().split(",".as_bytes(), -1).length(), 0)?
-
 test "a queue with no room is always full":
 	var queue = Queue[Int](0)
 	expect_equal(queue.enqueue(1), false)?

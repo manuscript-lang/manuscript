@@ -78,3 +78,24 @@ fn no_test_succeeds_only_when_source_checks_pass() {
     }
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn lint_errors_are_listed_before_warnings_in_the_capped_summary() {
+    let root = std::env::temp_dir().join(format!("ms-cli-verify-order-{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    // One lint error under more unused-import warnings than the summary shows.
+    std::fs::write(root.join("order.ms"), include_str!("verify/order.ms")).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&root)
+        .args(["verify", "order.ms"])
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success(), "{stderr}");
+    let first = stderr.lines().next().unwrap_or("");
+    assert!(
+        first.contains("is_empty"),
+        "the error comes first: {stderr}"
+    );
+    std::fs::remove_dir_all(root).unwrap();
+}

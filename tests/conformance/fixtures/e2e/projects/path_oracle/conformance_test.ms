@@ -24,10 +24,10 @@ fn list_of(token: String) List[String]:
 	inner := token.slice(1, token.length() - 1)
 	if inner.is_empty(): return []
 
-	return inner.split(",", none).map(fn item: text(item))
+	return inner.split(",").map(fn item: text(item))
 
 fn parts_of(token: String) PathParts:
-	f := token.split(" ", none).map(fn item: text(item))
+	f := token.split(" ").map(fn item: text(item))
 	return PathParts(
 		root: f[0].clone(),
 		directory: f[1].clone(),
@@ -83,10 +83,10 @@ test "path operations match the recorded corpus":
 	var checked = 0
 	var failures = List[String]()
 
-	for line in data.split("\n", none):
+	for line in data.split("\n"):
 		if line.is_empty() or line.starts_with("#"): continue
 
-		f := line.split("\t", none)
+		f := line.split("\t")
 		want := f[f.length() - 1]
 		rules := if f[1] == "1": win32() else: posix()
 		got := answer(rules, f)

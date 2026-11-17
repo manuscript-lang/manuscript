@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "split-in-frame.ms::max pieces and long texts",
+          "name": "split-in-frame.ms::long texts",
           "status": "passed"
         }
       ],
@@ -30,7 +30,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN split-in-frame.ms::a split read in place matches the list the heap builds\nPASS split-in-frame.ms::a split read in place matches the list the heap builds\nRUN split-in-frame.ms::max pieces and long texts\nPASS split-in-frame.ms::max pieces and long texts\n2 tests, 0 failed\n",
+      "stdout": "RUN split-in-frame.ms::a split read in place matches the list the heap builds\nPASS split-in-frame.ms::a split read in place matches the list the heap builds\nRUN split-in-frame.ms::long texts\nPASS split-in-frame.ms::long texts\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

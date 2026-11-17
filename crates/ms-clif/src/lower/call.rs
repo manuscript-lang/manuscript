@@ -124,9 +124,14 @@ impl<'a, 'm> Lower<'a, 'm> {
         if self.g.m.externs[e.index()].role == ExternRole::CleanupDiscard {
             // Handle 0 is a registration skipped for lack of a guard.
             let h = self.a(inst, 0)[0];
-            self.if_then(h, |s| {
-                s.call_extern_plain(f, inst);
-            });
+            let name = self.g.m.externs[e.index()].name.as_str();
+            if name == "msrt_cleanup_discard" {
+                self.if_then(h, |s| s.cleanup_discard(h));
+            } else {
+                self.if_then(h, |s| {
+                    s.call_extern_plain(f, inst);
+                });
+            }
             return vec![];
         }
         self.call_extern_plain(f, inst)

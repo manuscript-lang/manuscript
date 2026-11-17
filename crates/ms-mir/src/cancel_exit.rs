@@ -24,7 +24,7 @@ use crate::cancel_edges::{extern_of, parks};
 use crate::ir::*;
 use crate::types::Ty;
 use crate::verify::arg_modes;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// The runtime entries the exits call.
 #[derive(Clone, Copy)]
@@ -77,11 +77,14 @@ struct Site {
     /// The live owned values no open scope will release: the exit drops them itself.
     explicit: Vec<Value>,
     scopes: Vec<i64>,
+    /// Slots a `take` emptied whose value is still live: the exit puts it back before the scopes
+    /// end, so the owner of the slot (a caller, or a scope) releases it.
+    putback: Vec<(Value, Value)>,
 }
 
 /// What a walk knows at a point: the owned values live, the scopes open, and the values a
 /// `scope.disown` took from their scope.
-type Walk = (BTreeSet<u32>, Vec<i64>, BTreeSet<u32>);
+type Walk = (BTreeSet<u32>, Vec<i64>, BTreeSet<u32>, BTreeSet<u32>);
 
 /// Values a cancel exit can drop without knowing more: fresh results and constructions.
 fn droppable(op: Op) -> bool {
@@ -97,6 +100,9 @@ fn droppable(op: Op) -> bool {
             | Op::OptSome
             | Op::ClosureNew
             | Op::TypeNew
+            | Op::TypeFill
+            | Op::OptNoneOwned
+            | Op::AltTake
     )
 }
 
@@ -114,23 +120,62 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
     // leaves the contents in place for the scope end. A slot handed to anything else that can
     // park or keep it (a closure, a derived pointer) keeps the function hybrid.
     let parks_of = &cx.parks[..];
+    // A pointer derived from a slot stands for the slot. Deriving one is not an escape: only a
+    // parking call or a closure that receives it can take a part out.
+    let mut alias: HashSet<u32> = tags
+        .iter()
+        .filter(|(_, t)| t.1 >= 2)
+        .map(|(v, _)| v.0)
+        .collect();
+    for b in f.rpo() {
+        for i in &f.blocks[b.index()].insts {
+            if let (Op::PtrField | Op::PtrAdd, Some(r)) = (i.op, i.res)
+                && i.args.first().is_some_and(|a| alias.contains(&a.0))
+            {
+                alias.insert(r.0);
+            }
+        }
+    }
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
-        let escapes =
-            parks(m, parks_of, i) || matches!(i.op, Op::ClosureNew | Op::PtrField | Op::PtrAdd);
-        if !escapes {
+        if !(parks(m, parks_of, i) || i.op == Op::ClosureNew) {
             continue;
         }
         for (k, a) in i.args.iter().enumerate() {
-            if !tags.get(a).is_some_and(|t| t.1 >= 2) {
+            if !alias.contains(&a.0) {
                 continue;
             }
             let borrowed = match (i.op, i.imm) {
-                (Op::Call, Imm::Func(g)) => cx.safe[g.index()].get(k).copied().unwrap_or(false),
+                (Op::Call, Imm::Func(g)) => {
+                    tags.contains_key(a) && cx.safe[g.index()].get(k).copied().unwrap_or(false)
+                }
                 _ => false,
             };
             if !borrowed {
                 return None;
             }
+        }
+    }
+    // The value each `take` produced and the slot it came from, and the values some part was
+    // moved out of.
+    let mut taken: HashMap<u32, Value> = HashMap::new();
+    let mut holed: HashSet<u32> = HashSet::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        match (i.op, i.res) {
+            (Op::Take, Some(r)) => {
+                taken.insert(r.0, i.args[0]);
+            }
+            (Op::MoveOut, _) => {
+                if let Some(Op::TypeGet) = def.get(&i.args[0].0).copied()
+                    && let Some(g) = f
+                        .blocks
+                        .iter()
+                        .flat_map(|b| &b.insts)
+                        .find(|g| g.res == Some(i.args[0]))
+                {
+                    holed.insert(g.args[0].0);
+                }
+            }
+            _ => {}
         }
     }
     let n = f.blocks.len();
@@ -141,20 +186,17 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
             first.insert(p.value.0);
         }
     }
-    entry[0] = Some((first, Vec::new(), BTreeSet::new()));
+    entry[0] = Some((first, Vec::new(), BTreeSet::new(), BTreeSet::new()));
     let mut out = Vec::new();
     for b in f.rpo() {
         let bi = b.index();
-        let Some((mut live, mut scopes, mut disowned)) = entry[bi].clone() else {
+        let Some((mut live, mut scopes, mut disowned, mut empty)) = entry[bi].clone() else {
             continue;
         };
         if bi != 0 {
             for p in &f.blocks[bi].params {
                 if p.mode == Mode::Move && owned(p.value) {
                     live.insert(p.value.0);
-                    if !tags.contains_key(&p.value) {
-                        return None;
-                    }
                 }
             }
         }
@@ -168,12 +210,25 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
             }
             match (i.op, i.imm) {
                 (Op::ScopeBegin, Imm::Scope(s, _)) => scopes.push(i64::from(s)),
-                (Op::ScopeEnd, Imm::Scope(s, _)) => scopes.retain(|x| *x != i64::from(s)),
+                (Op::ScopeEnd, Imm::Scope(s, _)) => {
+                    scopes.retain(|x| *x != i64::from(s));
+                    // The scope released what it owned.
+                    live.retain(|v| {
+                        disowned.contains(v)
+                            || tags.get(&Value(*v)).is_none_or(|t| t.0 != i64::from(s))
+                    });
+                }
                 (Op::ScopeDisown, _) => {
                     disowned.insert(i.args[0].0);
                 }
                 (Op::ScopeOwn, _) => {
                     disowned.remove(&i.args[0].0);
+                }
+                (Op::Take, _) => {
+                    empty.insert(i.args[0].0);
+                }
+                (Op::Put, _) => {
+                    empty.remove(&i.args[0].0);
                 }
                 _ => {}
             }
@@ -188,24 +243,44 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
                 continue;
             }
             let mut explicit = Vec::new();
+            let mut putback = Vec::new();
             for v in &live {
                 let v = Value(*v);
                 if Some(v) == i.res {
                     continue;
                 }
-                match tags.get(&v) {
-                    // A scope owner releases it at the scope end, if that scope is open here.
-                    Some((scope, _)) if !disowned.contains(&v.0) => {
-                        if !scopes.contains(scope) {
-                            return None;
-                        }
-                        continue;
-                    }
-                    _ => {}
+                // A scope owner releases it at the scope end, if that scope is open here; one that
+                // is not is begun by the normal path only at its exits.
+                if !disowned.contains(&v.0)
+                    && tags
+                        .get(&v)
+                        .is_some_and(|(scope, _)| scopes.contains(scope))
+                {
+                    continue;
                 }
+                // A value taken from a slot a scope owns goes back into it, unless a part was moved
+                // out of it (the slot would then hold a hole the scope end drops twice). A slot
+                // parameter is not put back: a callee may own what it holds.
+                if let Some(&s) = taken.get(&v.0)
+                    && empty.contains(&s.0)
+                    && !holed.contains(&v.0)
+                    && tags.get(&s).is_some_and(|t| scopes.contains(&t.0))
+                {
+                    putback.push((s, v));
+                    continue;
+                }
+                // A value taken from a local slot no scope owns is dropped like any other owner.
+                let local = taken.get(&v.0).is_some_and(|s| {
+                    def.get(&s.0) == Some(&Op::Slot)
+                        && !tags.contains_key(s)
+                        && !holed.contains(&v.0)
+                });
                 let ok = match def.get(&v.0) {
-                    Some(op) => droppable(*op),
-                    None => f.blocks[0].params.iter().any(|p| p.value == v),
+                    Some(op) => droppable(*op) || local,
+                    None => f
+                        .blocks
+                        .iter()
+                        .any(|b| b.params.iter().any(|p| p.value == v)),
                 };
                 if !ok {
                     return None;
@@ -226,6 +301,7 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
                 inst: k,
                 explicit,
                 scopes: open,
+                putback,
             });
         }
         let term = &f.blocks[bi].term;
@@ -242,7 +318,7 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
             }
             let ti = t.block.index();
             if entry[ti].is_none() {
-                entry[ti] = Some((e, scopes.clone(), disowned.clone()));
+                entry[ti] = Some((e, scopes.clone(), disowned.clone(), empty.clone()));
             }
         });
     }
@@ -398,6 +474,9 @@ pub(crate) fn convert(
             && m.needs_drop(f.ty(r))
         {
             body.push(push(f, Op::Forget, vec![r], Imm::None, None, sloc).0);
+        }
+        for (s, v) in &site.putback {
+            body.push(push(f, Op::Put, vec![*s, *v], Imm::None, None, sloc).0);
         }
         for v in site.explicit.iter().rev() {
             body.push(push(f, Op::Drop, vec![*v], Imm::None, None, sloc).0);

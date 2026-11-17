@@ -288,6 +288,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL128 | error | A final `return ok()` in a `Void!` function, or `return` in a `Void` one, after other statements. The end of the body already returns it; delete the line |
 | MSL129 | error | A statement `result.get_or(none)` on a `Void!`. Write `void result`. `ms lint --fix` rewrites it |
 | MSL130 | warning | A statement `result.get()` on a Result faults when the call fails. Write `call()?` where the function returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome |
+| MSL131 | warning | `print(call())` where the call returns a Result prints the wrapper (`ok(2)`), not the value. Write `call()?` in a function that returns a Result, or `if value := call():` |
 
 Whitespace warnings exclude text-literal payloads. Whitespace deletion fixes are withheld while lexical boundaries are invalid or incomplete.
 

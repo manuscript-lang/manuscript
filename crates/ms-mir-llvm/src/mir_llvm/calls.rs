@@ -8,7 +8,7 @@ use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{ExternDef, ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
 use ms_mir::layout::Layouts;
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::ISOLATE_HDR_UNWINDING;
+use ms_rt_abi::symbols::{ISOLATE_HDR_CLEANUPS, ISOLATE_HDR_CLEANUPS_LEN, ISOLATE_HDR_UNWINDING};
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -143,7 +143,11 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         let next = super::block_label(cx.block, cx.split);
         b.cond_br_likely(&on, &then, &next, false);
         b.label(&then);
-        call_rt(cx, inst, vals, &out, b);
+        if matches!(inst.imm, Imm::Ext(e) if m.externs[e.index()].name == "msrt_cleanup_discard") {
+            discard_entries(cx, inst, vals, &out, b);
+        } else {
+            call_rt(cx, inst, vals, &out, b);
+        }
         b.br(&next);
         b.label(&next);
         return;
@@ -416,6 +420,46 @@ const OUT: &str = " noalias writeonly";
 /// A call of the runtime function in `inst`: values that pass directly go as leaves, any other as
 /// the address of a copy, and a result that does not pass directly comes back through a hidden last
 /// pointer.
+/// Discards the entries from the handle up: a length store while the entry below is live, the
+/// runtime call (which also prunes retired entries) otherwise.
+fn discard_entries(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
+    let handle = vals[&inst.args[0].index()][0].clone();
+    let hdr = super::depth::task_hdr(b);
+    let lenp = b.gep_bytes(&hdr, ISOLATE_HDR_CLEANUPS_LEN as u64);
+    let len = b.load(&LTy::I64, &lenp, 8);
+    let enough = b.icmp("uge", &len, &handle);
+    let n = cx.split;
+    let blk = cx.block;
+    let (check, below, fast, slow) = (
+        format!("dk{blk}_{n}"),
+        format!("db{blk}_{n}"),
+        format!("df{blk}_{n}"),
+        format!("ds{blk}_{n}"),
+    );
+    let done = format!("dd{blk}_{n}");
+    b.cond_br_likely(&enough, &check, &slow, true);
+    b.label(&check);
+    let first = b.icmp("eq", &handle, &Val::int(1));
+    b.cond_br(&first, &fast, &below);
+    b.label(&below);
+    let bufp = b.gep_bytes(&hdr, ISOLATE_HDR_CLEANUPS as u64);
+    let buf = b.load(&LTy::Ptr, &bufp, 8);
+    let idx = b.bin(Bin::Sub, &handle, &Val::int(2));
+    let off = b.bin(Bin::Mul, &idx, &Val::int(16));
+    let at = b.gep_dyn(&buf, &off);
+    let action = b.load(&LTy::I64, &at, 8);
+    let live = b.icmp("ne", &action, &Val::int(0));
+    b.cond_br_likely(&live, &fast, &slow, true);
+    b.label(&fast);
+    let new_len = b.bin(Bin::Sub, &handle, &Val::int(1));
+    b.store(&new_len, &lenp, 8);
+    b.br(&done);
+    b.label(&slow);
+    call_rt(cx, inst, vals, out, b);
+    b.br(&done);
+    b.label(&done);
+}
+
 fn call_rt(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
     let (m, lay) = (cx.m, cx.lay);
     let Imm::Ext(e) = inst.imm else { return };

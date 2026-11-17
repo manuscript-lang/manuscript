@@ -41,7 +41,7 @@ fn main() Void:
     var t = 0
     for q in "héllo wörld".split(""):
         t += q.scalar_length()
-    for q in "a,b,c,d".split(",", max_parts: 2):
+    for q in "a,b,c,d".split(","):
         say(f"<{q}>")
     for q in "".split(","):
         say(f"<{q}>")
@@ -49,9 +49,6 @@ fn main() Void:
     say(
         f"{let_form("ab,c,,defgh")} {let_kept("ab,c")} {nested("a,bb;ccc,dddd,e;")} {closure_keeps("x,yyyy,zz,wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww")}\n"
     )
-    for q in "a,b".split(",", max_parts: 0):
-        say("never")
-
     for q in "p,q,r".split(","):
         for r in "1-2".split("-"):
             if q == "q":
