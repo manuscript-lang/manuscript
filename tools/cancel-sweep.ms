@@ -45,20 +45,20 @@ fn counted(text: String) List[Counted]:
 
 	for line in text.split("\n"):
 		if line.starts_with("RUN "):
-			name = line.slice(4, line.length()).get("")
+			name = line.slice(4, line.length())
 			parks = 0
 			heap = 0
 			failed = false
 		else if line.starts_with("FAIL "): failed = true
 		else if line.starts_with("ms-rt parks: "):
-			parks = line.slice(13, line.length()).get("").trim().parse_int().get(0)
+			parks = line.slice(13, line.length()).trim().parse_int().get(0)
 		else if line.starts_with("ms-rt rust heap at exit: blocks="):
 			heap = line.slice(
 				32,
 				line.length(),
-			).get("").split(" ")[0].parse_int().get(0)
+			).split(" ")[0].parse_int().get(0)
 		else if line.starts_with("ms-rt live blocks at exit: "):
-			live := line.slice(27, line.length()).get("").trim().parse_int().get(0)
+			live := line.slice(27, line.length()).trim().parse_int().get(0)
 			found.append(
 				Counted(
 					name: name.clone(),

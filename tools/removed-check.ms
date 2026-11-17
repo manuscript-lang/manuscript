@@ -26,7 +26,7 @@ fn header(source: String, key: String) String:
 		if line.starts_with(prefix): return line.slice(
 			prefix.length(),
 			line.length(),
-		).get("").trim()
+		).trim()
 	return ""
 
 // The snippet without its header lines, so a header cannot satisfy a text check.
@@ -73,7 +73,7 @@ fn main() Int:
 			failing += 1
 		else if (
 			fixed.starts_with("none:")
-			and fixed.slice(5, fixed.length()).get("").trim() == ""
+			and fixed.slice(5, fixed.length()).trim() == ""
 		):
 			print(f"{f.path}: 'fix: none:' needs a reason")
 			failing += 1

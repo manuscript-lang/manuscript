@@ -79,7 +79,7 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	for ctx in lang.context:
 		if ctx.starts_with("@repo/"):
 			copy(
-				f"{repo()}/{ctx.slice(6, ctx.length()).get("")}",
+				f"{repo()}/{ctx.slice(6, ctx.length())}",
 				f"{dest}/docs",
 				CopyOptions(recursive: true, replace: true),
 			).get()
@@ -143,7 +143,7 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 		tail := built.err.slice(
 			if built.err.length() > 500: built.err.length() - 500 else: 0,
 			built.err.length(),
-		).get("")
+		)
 		return Grade(
 			built: false,
 			passed: 0,

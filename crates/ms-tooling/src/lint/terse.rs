@@ -165,6 +165,7 @@ impl Visitor for Scan<'_> {
             }
             | StmtKind::While { cond, .. } => self.emptiness(cond, true),
             StmtKind::Return(Some(e)) => self.emptiness(e, true),
+            StmtKind::Call(e) => self.statement_get(e, s.pos.offset as usize),
             _ => {}
         }
     }
@@ -399,6 +400,56 @@ impl Scan<'_> {
             .info(e.id)
             .and_then(|i| i.ty.as_ref())
             .is_some_and(|t| t.is(Builtin::Map))
+    }
+
+    /// A statement `r.get(none)` on a `Void!` is `void r`; a statement `r.get()` on a Result
+    /// faults on error, so it is `r?` where the function can return one.
+    fn statement_get(&mut self, e: &Expr, start: usize) {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return;
+        };
+        if self.syms.str(name) != "get" {
+            return;
+        }
+        let Some(ty) = self
+            .module
+            .facts()
+            .info(left.id)
+            .and_then(|i| i.ty.clone())
+            .filter(|t| t.is(Builtin::Result))
+        else {
+            return;
+        };
+        let Some(receiver) = self.expr_text(left).map(str::to_string) else {
+            return;
+        };
+        match args.as_slice() {
+            [arg]
+                if arg.name.is_none()
+                    && self.expr_text(&arg.value) == Some("none")
+                    && ty.args.first().is_some_and(|t| t.is(Builtin::Void)) =>
+            {
+                self.report(
+                    "MSL129",
+                    "Use `void result` to ignore a Void! outcome instead of result.get(none)"
+                        .to_string(),
+                    e.pos,
+                    start,
+                    e.end.offset as usize,
+                    format!("void {receiver}"),
+                );
+            }
+            [] => self.findings.push(finding(
+                "MSL130",
+                "A statement `result.get()` faults when the call fails; write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome".to_string(),
+                self.file,
+                e.pos,
+            )),
+            _ => {}
+        }
     }
 
     /// `m.get(k).get(d)` on a map is `m.get_or(k, d)`.

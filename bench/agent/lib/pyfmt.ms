@@ -8,8 +8,8 @@ fn strip_zeros(text: String) String:
 	if not text.contains("."): return text.clone()
 
 	var out = text.clone()
-	while out.ends_with("0"): out = out.slice(0, out.length() - 1).get("")
-	if out.ends_with("."): out = out.slice(0, out.length() - 1).get("")
+	while out.ends_with("0"): out = out.slice(0, out.length() - 1)
+	if out.ends_with("."): out = out.slice(0, out.length() - 1)
 	return out
 
 // `format(x, ".{places}f")`. CPython rounds the exact binary value, and an exact tie goes to the even digit,
@@ -18,15 +18,15 @@ export fn fixed(x: Float, places: Int) String:
 	wide := x.abs().to_fixed(places + 30)
 	at := wide.index_of(".").get(wide.length())
 	cut := at + 1 + places
-	tail := wide.slice(cut, wide.length()).get("")
+	tail := wide.slice(cut, wide.length())
 	tie := (
 		tail.starts_with("5")
-		and tail.slice(1, tail.length()).get("").replace("0", "") == ""
+		and tail.slice(1, tail.length()).replace("0", "") == ""
 	)
 	if not tie: return x.to_fixed(places)
 
-	var kept = wide.slice(0, cut).get("")
-	if places == 0: kept = wide.slice(0, at).get("")
+	var kept = wide.slice(0, cut)
+	if places == 0: kept = wide.slice(0, at)
 
 	last := kept.view(kept.length() - 1, kept.length()).parse_int().get(0)
 	if last % 2 == 1: return x.to_fixed(places)

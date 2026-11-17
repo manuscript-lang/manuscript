@@ -25,7 +25,7 @@ fn live_blocks(text: String) List[Int]:
 	var counts = List[Int]()
 	for line in text.split("\n"):
 		if line.starts_with("ms-rt live blocks at exit: "):
-			if n := line.slice(27, line.length()).get("").trim().parse_int(): counts.append(
+			if n := line.slice(27, line.length()).trim().parse_int(): counts.append(
 				n
 			)
 	return counts
@@ -38,9 +38,9 @@ fn leaking_tests(text: String) List[String]:
 	var current = ""
 
 	for line in text.split("\n"):
-		if line.starts_with("RUN "): current = line.slice(4, line.length()).get("")
+		if line.starts_with("RUN "): current = line.slice(4, line.length())
 		else if line.starts_with("ms-rt live blocks at exit: "):
-			n := line.slice(27, line.length()).get("").trim().parse_int().get(0)
+			n := line.slice(27, line.length()).trim().parse_int().get(0)
 			if n != 0: leaks.append(f"{current}: {n}")
 
 	return leaks

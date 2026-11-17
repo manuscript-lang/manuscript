@@ -89,7 +89,7 @@ fn checked_expansion() Void!:
 	"x".pad_end(target_length: 4, padding: "é🙂") | expect_equal("xé🙂é")?
 	(not ("aba".replace(old: "a", new: "é") == "ébé")) | expect_false?
 	(not ("é🙂".replace(old: "", new: "-") == "-é-🙂-")) | expect_false?
-	(common_result(result: "é🙂".slice(start: 0, end: 2))?) | expect_equal("é")?
+	"é🙂".slice(start: 0, end: 2) | expect_equal("é")?
 	"é".repeat(count: 3) | expect_equal("ééé")?
 
 test "list methods mutate explicit clones and remain typed":
@@ -315,10 +315,10 @@ test "string methods use Unicode scalars":
 	absent: Int? := none
 	"é🙂é".index_of(value: "z") | expect_equal(absent)?
 	"é🙂é".last_index_of(value: "z") | expect_equal(absent)?
-	"é🙂é".slice(start: 2, end: 8).get() | expect_equal("🙂é")?
-	("é🙂é".slice(start: 1, end: 8).is_error()) | expect_true?
-	("é🙂é".slice(start: 2, end: 1).is_error()) | expect_true?
-	("é🙂é".slice(start: -99, end: 1).is_error()) | expect_true?
+	"é🙂é".slice(start: 2, end: 8) | expect_equal("🙂é")?
+	"é🙂é".slice(start: 1, end: 8) | expect_equal("🙂é")?
+	"é🙂é".slice(start: 2, end: 1) | expect_equal("")?
+	"é🙂é".slice(start: -99, end: 1) | expect_equal("")?
 	"é🙂".scalar_length() | expect_equal(2)?
 	"é🙂".scalar_values() | expect_equal([233, 128578])?
 	"\t hello \n".trim() | expect_equal("hello")?

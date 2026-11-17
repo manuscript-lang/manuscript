@@ -119,7 +119,7 @@ fn blank_trim_start(text: String) String:
 		from += 1
 	if from == 0: return text.clone()
 
-	return text.slice(from, count).get("")
+	return text.slice(from, count)
 
 // `text` without trailing spaces and tabs.
 fn blank_trim_end(text: String) String:
@@ -128,7 +128,7 @@ fn blank_trim_end(text: String) String:
 		end -= 1
 	if end == text.length(): return text.clone()
 
-	return text.slice(0, end).get("")
+	return text.slice(0, end)
 
 // `text` without leading and trailing spaces and tabs.
 fn blank_trim(text: String) String:
@@ -401,7 +401,7 @@ fn numeric(text: String) Bool:
 	if clean.starts_with("+") or clean.starts_with("-"): clean = clean.slice(
 		1,
 		clean.length(),
-	).get("")
+	)
 	if (clean == ".inf" or clean == ".Inf" or clean == ".INF"): return true
 	if (text == ".nan" or text == ".NaN" or text == ".NAN"): return true
 
@@ -409,7 +409,7 @@ fn numeric(text: String) Bool:
 		if clean != text: return false
 
 		alphabet := if clean.starts_with("0x"): "0123456789abcdefABCDEF" else: "01234567"
-		digits := clean.slice(2, clean.length()).get("")
+		digits := clean.slice(2, clean.length())
 		if digits == "": return false
 
 		for c in digits.split(""):
@@ -424,7 +424,7 @@ fn numeric(text: String) Bool:
 		if power.starts_with("+") or power.starts_with("-"): power = power.slice(
 			1,
 			power.length(),
-		).get("")
+		)
 		if not digit_text(power): return false
 
 	mantissa := exponent.first().get().split(".")
@@ -494,12 +494,12 @@ fn tag_token(var flow: Flow) String!:
 	if name.starts_with("!"):
 		var prefix = "tag:yaml.org,2002:"
 		if declared := handles.get("!!"): prefix = declared.clone()
-		return ok(f"{prefix}{name.slice(1, name.length()).get("")}")
+		return ok(f"{prefix}{name.slice(1, name.length())}")
 
 	if bang := name.index_of("!"):
-		handle := f"!{name.slice(0, bang + 1).get("")}"
+		handle := f"!{name.slice(0, bang + 1)}"
 		if prefix := handles.get(handle):
-			return ok(f"{prefix}{name.slice(bang + 1, name.length()).get("")}")
+			return ok(f"{prefix}{name.slice(bang + 1, name.length())}")
 
 		return error(flow_invalid(flow, "undeclared tag handle"))
 
@@ -1331,7 +1331,7 @@ fn boundary(text: String, colon: Bool) Int:
 	// The first candidate also decides when no quote or bracket precedes it.
 	first := plain_boundary(text, colon)
 	if first < 0: return -1
-	if not quoted_or_nested(text.slice(0, first).get("")): return first
+	if not quoted_or_nested(text.slice(0, first)): return first
 
 	marker := scan_structure(text, if colon: ":" else: "#").marker
 	if marker < 0: return marker
@@ -1347,7 +1347,7 @@ fn uncomment(text: String) String:
 
 		return blank_trim_end(text).clone()
 
-	return blank_trim_end(text.slice(0, index).get("")).clone()
+	return blank_trim_end(text.slice(0, index)).clone()
 
 fn indent(text: String) Int:
 	var result = 0
@@ -1590,7 +1590,7 @@ fn inline_value(
 		else:
 			stops.append(joined_length + scan.marker)
 			joined = joined.concat(
-				next.slice(0, byte_at_scalar(next, scan.marker)).get("")
+				next.slice(0, byte_at_scalar(next, scan.marker))
 			)
 			joined_length += scan.marker
 
@@ -1630,7 +1630,7 @@ fn block_string(
 	var explicit = 0
 	var offset = 0
 
-	for c in header.slice(1, header.length()).get("").split(""):
+	for c in header.slice(1, header.length()).split(""):
 		offset += 1
 
 		if (c == "+" or c == "-") and mode == "": mode = c
@@ -1665,7 +1665,7 @@ fn block_string(
 			and context.lines[probe].slice(
 				indent(context.lines[probe]),
 				context.lines[probe].length(),
-			).get("") == ""
+			) == ""
 		):
 			spaces := indent(context.lines[probe])
 
@@ -1695,7 +1695,7 @@ fn block_string(
 		line := context.lines[context.index]
 		spaces := indent(line)
 
-		if (line.slice(spaces, line.length()).get("") != "" and spaces < content_indent):
+		if (line.slice(spaces, line.length()) != "" and spaces < content_indent):
 			// A tab where the scalar's first line must be indented is no indentation.
 			if parts.is_empty() and blank_trim(line) == "": return error(
 				invalid(context, "tabs cannot indent YAML")
@@ -1705,7 +1705,7 @@ fn block_string(
 
 		if spaces == 0 and document_marker(line): break
 
-		parts.append(line.slice(content_indent, line.length()).get(""))
+		parts.append(line.slice(content_indent, line.length()))
 		context.index += 1
 
 	var builder = StringBuilder()
@@ -1760,7 +1760,7 @@ fn block_string(
 			and pieces.get(-1 - trailing, default: "x") == ""
 		): trailing += 1
 		if trailing == pieces.length(): trailing -= 1
-		result = result.slice(0, (result.length() - trailing)).get("")
+		result = result.slice(0, (result.length() - trailing))
 		if (mode != "-" and content and final_break): result = result.concat("\n")
 
 	return ok(YamlValue.StringValue(result))
@@ -1869,7 +1869,7 @@ fn block_value(
 			remainder.slice(
 				byte_at_scalar(remainder, flow.pos),
 				remainder.length(),
-			).get("")
+			)
 		)
 		origin += previous_length - remainder.scalar_length()
 		lead = remainder.scalar_at(0, default: 0)
@@ -2014,7 +2014,7 @@ fn sequence_items(
 			if line_indent != base or not context.dash[context.index]: break
 
 			line = context.lines[context.index].clone()
-			item = blank_trim_start(line.slice(line_indent + 1, line.length()).get(""))
+			item = blank_trim_start(line.slice(line_indent + 1, line.length()))
 			compact = (
 				context.col[context.index] >= 0
 				or sequence(item)
@@ -2030,7 +2030,7 @@ fn sequence_items(
 				blank_trim_start(line).slice(
 					1,
 					(blank_trim_start(line).length()),
-				).get("")
+				)
 			)
 			compact = (
 				sequence(item)
@@ -2042,8 +2042,8 @@ fn sequence_items(
 			after := blank_trim_start(line).slice(
 				1,
 				blank_trim_start(line).length(),
-			).get("")
-			gap := after.slice(0, after.length() - item.length()).get("")
+			)
+			gap := after.slice(0, after.length() - item.length())
 			if gap.contains("\t") and sequence(item): return error(
 				invalid(
 					context,
@@ -2073,7 +2073,7 @@ fn sequence_items(
 			context.lines.set(
 				context.index,
 				pad(innermost).concat(
-					(raw.slice(innermost, raw.length()).get(""))
+					(raw.slice(innermost, raw.length()))
 				),
 			)
 			level = chain.length()
@@ -2108,7 +2108,7 @@ fn sequence_items(
 			marker := blank_trim_start(line).slice(
 				1,
 				(blank_trim_start(line).length()),
-			).get("")
+			)
 			var gap = indent(marker)
 			if gap == 0: gap = 1
 
@@ -2139,7 +2139,7 @@ fn sequence_items(
 			if not fast:
 				raw := context.lines[context.index]
 				rewritten = rewritten.concat(
-					raw.slice(line.length(), raw.length()).get("")
+					raw.slice(line.length(), raw.length())
 				)
 
 			context.lines.set(context.index, rewritten)
@@ -2179,7 +2179,7 @@ fn explicit_entry(var context: Context, base: Int, depth: Int) ExplicitEntry!:
 	lead := blank_trim_start(start).clone()
 
 	if lead.scalar_at(0, default: 0) == 63:
-		var rest = blank_trim_start(lead.slice(1, lead.length()).get(""))
+		var rest = blank_trim_start(lead.slice(1, lead.length()))
 		column := start.scalar_length() - rest.scalar_length() + 1
 		rest = uncomment(rest)
 		if sequence(rest) or (rest != "" and boundary(rest, colon: true) >= 0): return error(
@@ -2220,7 +2220,7 @@ fn explicit_entry(var context: Context, base: Int, depth: Int) ExplicitEntry!:
 		ExplicitEntry(name: name, value: value)
 	)
 
-	var text = blank_trim_start(value_lead.slice(1, value_lead.length()).get(""))
+	var text = blank_trim_start(value_lead.slice(1, value_lead.length()))
 	column := row.scalar_length() - text.scalar_length() + 1
 	text = uncomment(text)
 
@@ -2328,8 +2328,8 @@ fn block(
 				if colon < 0: break
 
 				raw := context.lines[context.index]
-				name = blank_trim(raw.slice(line_indent, colon).get(""))
-				text = blank_trim_start(raw.slice(colon + 1, raw.length()).get(""))
+				name = blank_trim(raw.slice(line_indent, colon))
+				text = blank_trim_start(raw.slice(colon + 1, raw.length()))
 				value_column = raw.scalar_length() - text.scalar_length() + 1
 			else:
 				line := uncomment(context.lines[context.index])
@@ -2340,11 +2340,9 @@ fn block(
 				colon := boundary(content, colon: true)
 				if colon < 0: break
 
-				name = blank_trim(content.slice(0, colon).get(""))
+				name = blank_trim(content.slice(0, colon))
 				text = blank_trim_start(
-					content.slice(colon + 1, content.length()).get(
-						""
-					)
+					content.slice(colon + 1, content.length())
 				)
 				value_column = line.scalar_length() - text.scalar_length() + 1
 
@@ -2363,9 +2361,9 @@ fn block(
 					word_end += 1
 
 				cut := byte_at_scalar(name, word_end)
-				word := name.slice(0, cut).get("")
-				if key_start == 38: key_anchor = word.slice(1, word.length()).get("")
-				name = blank_trim_start(name.slice(cut, name.length()).get("")).clone()
+				word := name.slice(0, cut)
+				if key_start == 38: key_anchor = word.slice(1, word.length())
+				name = blank_trim_start(name.slice(cut, name.length())).clone()
 				key_start = name.scalar_at(0, default: 0)
 				had_properties = true
 
@@ -2409,7 +2407,7 @@ fn block(
 					)
 				)
 
-				alias_name := name.slice(1, name.length()).get("")
+				alias_name := name.slice(1, name.length())
 				aliased := context.anchors.get(alias_name)
 				if aliased.is_none(): return error(invalid(context, "unknown anchor"))
 
@@ -2594,7 +2592,7 @@ fn open_stream(text: String, options: YamlOptions) Context!:
 	if normalized.starts_with("\u{feff}"): normalized = normalized.slice(
 		3,
 		normalized.length(),
-	).get("")
+	)
 
 	for code in normalized.scalar_values():
 		if (
@@ -2670,7 +2668,7 @@ fn document(var context: Context, options: YamlOptions) YamlValue!:
 		and inline_start(context.lines[context.index])
 	):
 		line := context.lines[context.index]
-		rest := line.slice(4, line.length()).get("")
+		rest := line.slice(4, line.length())
 
 		if not blank_trim(rest).starts_with("#"):
 			context.split_line = context.index

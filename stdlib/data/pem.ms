@@ -116,7 +116,7 @@ export fn encode_block(block: PemBlock) String:
 
 	while at < total:
 		stop := if at + 64 < total: at + 64 else: total
-		out.append(f"{body.slice(at, stop).get("")}\n")
+		out.append(f"{body.slice(at, stop)}\n")
 		at = stop
 
 	out.append(f"{END}{block.label}{DASHES}\n")

@@ -21,7 +21,7 @@ fn hex(value: String) String:
 	return f"x{hex_encode(value.to_bytes())}"
 
 fn list_of(token: String) List[String]:
-	inner := token.slice(1, token.length() - 1).get("")
+	inner := token.slice(1, token.length() - 1)
 	if inner.is_empty(): return []
 
 	return inner.split(",", none).map(fn item: text(item))

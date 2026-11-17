@@ -82,7 +82,7 @@ export type Lang:
 // The extension of the solution file, such as `.ms`.
 fn Lang.suffix() String:
 	base := self.solution.split("/").last().get("")
-	if at := base.last_index_of("."): return base.slice(at, base.length()).get("")
+	if at := base.last_index_of("."): return base.slice(at, base.length())
 
 	return ""
 

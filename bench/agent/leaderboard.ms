@@ -149,8 +149,8 @@ fn read_trial(dir: String) Trial?:
 
 	name := task.get(JsonValue.Null).as_string().get("").split("/").last().get("")
 	cut := name.last_index_of("-").get(0)
-	cid := name.slice(0, cut).get("")
-	lang := name.slice(cut + 1, name.length()).get("")
+	cid := name.slice(0, cut)
+	lang := name.slice(cut + 1, name.length())
 	meta_file := f"{root()}/challenges/{cid}/challenge.json"
 	if not access(meta_file, 0).is_ok(): return none
 

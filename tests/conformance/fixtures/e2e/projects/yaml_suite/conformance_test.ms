@@ -35,7 +35,7 @@ fn canon(value: YamlValue) String:
 fn number(text: String) Float:
 	if f := text.parse_float(): return f
 
-	digits := text.slice(2, text.length()).get("")
+	digits := text.slice(2, text.length())
 	if text.starts_with("0x"): return parse_int(digits, 16).get(0).to_float()
 	if text.starts_with("0o"): return parse_int(digits, 8).get(0).to_float()
 
@@ -66,7 +66,7 @@ test "the official YAML suite agrees with the parser except for the listed cases
 	var cases: List[String] = []
 	for entry in walk(tree).get([]):
 		if entry.path.ends_with("/in.yaml"):
-			cases.append(entry.path.slice(0, entry.path.length() - 8).get(""))
+			cases.append(entry.path.slice(0, entry.path.length() - 8))
 
 	var failing: List[String] = []
 	for id in cases:

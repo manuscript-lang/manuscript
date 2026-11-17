@@ -12,7 +12,7 @@ fn main() Void:
 	var lens = ""
 	var s = "0123456789abcdef-header"
 	for i in 1..40:
-		s += "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".slice(0, i % 20 + 1).get("")
+		s += "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".slice(0, i % 20 + 1)
 		lens += f"{s.length()},"
 	print(lens)
 	print(s)
@@ -23,8 +23,8 @@ fn main() Void:
 	print(u.length())
 	print(u)
 	var v = "another ascii string long enough to be heap"
-	v += v.slice(0, 5).get("")
-	v += v.slice(3, 9).get("")
+	v += v.slice(0, 5)
+	v += v.slice(3, 9)
 	print(v)
 	print(grow(["a", "bb", "ccc", "dddd", "eeeee", "ffffff", "ggggggg", "hhhhhhhh", "iiiiiiiii"]))
 	var w = grow(["é", "ab"])

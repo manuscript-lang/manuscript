@@ -13,7 +13,7 @@ use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
     ErrSlot, FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
-    STATUS_OUT_OF_RANGE, STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
+    STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
 };
 
 /// Starts the caller's `err` slot (null when it wants no text) as the empty string, which owns
@@ -2322,8 +2322,10 @@ unsafe fn byte_range(s: *const StrVal, start: i64, end: i64) -> Option<(usize, u
     }
 }
 
-/// `String.slice(start, end)`: an owned copy of the bytes `[start, end)`; `ERANGE` when a bound is
-/// outside the text or inside a scalar.
+/// `String.slice(start, end)`: an owned copy of the bytes `[start, end)`. Negative bounds count back
+/// from the end, bounds outside the text clamp to it, a start past the end gives empty text, and a
+/// bound inside a scalar moves inward (start forward, end backward) to the nearest boundary, so
+/// the result is always whole characters and the call never fails.
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_slice(
@@ -2331,23 +2333,24 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
     start: i64,
     end: i64,
     out: *mut StrVal,
-    err: ErrSlot,
-) -> u8 {
-    // SAFETY: caller passes a live string, a writable out and a null or writable err.
+) {
+    // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        init_err(err);
-        let Some((a, b)) = byte_range(s, start, end) else {
-            store_err(
-                err,
-                &std::format!(
-                    "slice({start}, {end}) of a string with {} bytes: bounds must satisfy 0 <= start <= end <= length (negative bounds count from the end) and fall on character boundaries",
-                    (*s).len()
-                ),
-            );
-            return STATUS_OUT_OF_RANGE;
+        let text = bytes(s);
+        let n = text.len() as i64;
+        let resolve = |bound: i64| (if bound < 0 { n.saturating_add(bound) } else { bound }).clamp(0, n) as usize;
+        let (mut a, mut b) = (resolve(start), resolve(end));
+        while a < b && !is_boundary(text, a) {
+            a += 1;
+        }
+        while b > a && !is_boundary(text, b) {
+            b -= 1;
+        }
+        *out = if a >= b {
+            StrVal::literal((&raw mut EMPTY).cast(), 0)
+        } else {
+            sub_bytes(s, a, b)
         };
-        *out = sub_bytes(s, a, b);
-        STATUS_OK
     }
 }
 
@@ -3679,23 +3682,17 @@ mod tests {
         // SAFETY: the strings are live for the whole test.
         unsafe {
             for (text, a, b, want) in [
-                ("Rent,133.47", 5, 11, Some("133.47")),
-                ("Rent,133.47", 0, 11, Some("Rent,133.47")),
-                ("Rent,133.47", 5, 12, None),
-                ("café,1", 3, 5, Some("é")),
-                ("café,1", 5, 7, Some(",1")),
-                ("café,1", 4, 5, None),
+                ("Rent,133.47", 5, 11, "133.47"),
+                ("Rent,133.47", 0, 11, "Rent,133.47"),
+                ("Rent,133.47", 5, 12, "133.47"),
+                ("café,1", 3, 5, "é"),
+                ("café,1", 5, 7, ",1"),
+                ("café,1", 4, 5, ""),
             ] {
                 let s = from_bytes(text.as_bytes());
                 let mut out = empty();
-                let status = msrt_string_slice(&s, a, b, &mut out, NO_ERR);
-                match want {
-                    Some(w) => {
-                        assert_eq!(status, STATUS_OK, "{text:?}[{a}..{b}]");
-                        assert_eq!(bytes(&out), w.as_bytes());
-                    }
-                    None => assert_eq!(status, STATUS_OUT_OF_RANGE),
-                }
+                msrt_string_slice(&s, a, b, &mut out);
+                assert_eq!(bytes(&out), want.as_bytes(), "{text:?}[{a}..{b}]");
             }
         }
     }
@@ -4239,15 +4236,16 @@ mod tests {
                 for j in i..n + 2 {
                     let mut o = NO_STR;
                     // SAFETY: `st` creates live strings and `o` is writable.
-                    let got = unsafe { msrt_string_slice(st(text), i, j, &mut o, NO_ERR) };
-                    let want = text.get(i as usize..j as usize).filter(|_| j <= n);
-                    match want {
-                        Some(w) => {
-                            assert_eq!(got, STATUS_OK, "{text:?} {i}..{j}");
-                            assert_eq!(txt(&o), w);
-                        }
-                        None => assert_eq!(got, STATUS_OUT_OF_RANGE, "{text:?} {i}..{j}"),
+                    unsafe { msrt_string_slice(st(text), i, j, &mut o) };
+                    // Bounds clamp, then a bound inside a scalar moves inward.
+                    let (mut a, mut b) = (i.min(n) as usize, j.min(n) as usize);
+                    while a < b && !text.is_char_boundary(a) {
+                        a += 1;
                     }
+                    while b > a && !text.is_char_boundary(b) {
+                        b -= 1;
+                    }
+                    assert_eq!(txt(&o), &text[a..b], "{text:?} {i}..{j}");
                 }
                 // SAFETY: as above.
                 let at = unsafe { msrt_string_scalar_at(st(text), i, HasRaw(1), -1) };
@@ -4552,15 +4550,10 @@ mod tests {
             );
             assert_eq!(ret(|o| msrt_string_pad_end(st("7"), -2, st("ab"), o)), "7");
             assert_eq!(ret(|o| msrt_string_pad_end(st("7"), 4, st(""), o)), "7");
-            assert_eq!(
-                msrt_string_slice(st("héllo"), 1, -1, &mut o, NO_ERR),
-                STATUS_OK
-            );
+            msrt_string_slice(st("héllo"), 1, -1, &mut o);
             assert_eq!(txt(&o), "éll");
-            assert_eq!(
-                msrt_string_slice(st("abc"), 2, 1, &mut o, NO_ERR),
-                STATUS_OUT_OF_RANGE
-            );
+            msrt_string_slice(st("abc"), 2, 1, &mut o);
+            assert_eq!(txt(&o), "");
             assert_eq!(ret(|o| msrt_string_reverse(st("aé"), o)), "éa");
         }
     }

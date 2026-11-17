@@ -50,7 +50,7 @@ fn main() Int:
 		if line.starts_with("host: "): triple = line.slice(
 			6,
 			line.length(),
-		).get("").trim()
+		).trim()
 	set_environment("CARGO_PROFILE_RELEASE_STRIP", "debuginfo").get()
 	code = run_program(
 		"cargo",

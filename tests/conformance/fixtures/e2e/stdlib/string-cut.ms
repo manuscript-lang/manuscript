@@ -54,7 +54,7 @@ fn check_affix(text: String, affix: String, prefix: Bool) Void!:
 
 	kept_start := if prefix: affix.length() else: 0
 	kept_end := if prefix: text.length() else: start
-	expected := text.slice(kept_start, kept_end) | expect_ok?
+	expected := text.slice(kept_start, kept_end)
 	return (
 		actual
 		| expect_some?

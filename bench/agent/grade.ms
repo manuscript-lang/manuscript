@@ -81,7 +81,7 @@ fn main() Void:
 		detail.error = built.err.slice(
 			if built.err.length() > 500: built.err.length() - 500 else: 0,
 			built.err.length(),
-		).get("")
+		)
 
 	write_file(f"{out_dir}/detail.json", stringify(detail).get(""), replace: true).wait().get()
 

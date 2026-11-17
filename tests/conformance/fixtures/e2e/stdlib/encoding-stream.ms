@@ -55,7 +55,7 @@ fn pieces(text: String, size: Int) List[String]:
 	while at < text.length():
 		var end = at + size
 		if end > text.length(): end = text.length()
-		out.append(text.slice(at, end).get(""))
+		out.append(text.slice(at, end))
 		at = end
 
 	return out
@@ -121,8 +121,8 @@ test "base64 decoding rejects data after padding at every chunk boundary":
 			expect_equal(base64_decode(text, url_safe).err().kind, "EBADMSG")?
 
 			for cut in 0..text.length() + 1:
-				left := text.slice(0, cut).get("")
-				right := text.slice(cut, text.length()).get("")
+				left := text.slice(0, cut)
+				right := text.slice(cut, text.length())
 				got := join_bytes(
 					base64_decoded(
 						ReadStream[String](
@@ -137,8 +137,8 @@ test "base64 decoding permits empty chunks after terminal padding":
 	for text in ["Zg==", "Zm8=", "Zm9v", ""]:
 		for url_safe in [false, true]:
 			for cut in 0..text.length() + 1:
-				left := text.slice(0, cut).get("")
-				right := text.slice(cut, text.length()).get("")
+				left := text.slice(0, cut)
+				right := text.slice(cut, text.length())
 				got := join_bytes(
 					base64_decoded(
 						ReadStream[String](

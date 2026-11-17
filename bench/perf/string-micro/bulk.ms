@@ -31,7 +31,7 @@ fn main() Void:
 	report("scalar_at", t, s)
 	t = monotonic()
 	s = 0
-	for k in 0..1000000: s += text.slice(k, k + 5).get("").length()
+	for k in 0..1000000: s += text.slice(k, k + 5).length()
 	report("slice", t, s)
 	t = monotonic()
 	s = 0

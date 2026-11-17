@@ -124,10 +124,10 @@ interface StringOperations:
 	// Pads on the right like `pad_start`. Example: `"id".pad_end(5, ".")` is `"id..."`.
 	fn pad_end(target_length: Int, padding: String) String
 	// Selects the bytes [start, end); negative bounds are relative to the end. Bounds
-	// outside 0 <= start <= end <= length(), or inside a scalar, return an `Error` of
-	// kind
-	// `ERANGE`; the receiver is unchanged.
-	fn slice(start: Int, end: Int) String!
+	// outside the text clamp to it, a start at or past the end gives "", and a bound
+	// inside a scalar moves inward (start forward, end backward), so the result is
+	// whole characters and the call never fails; the receiver is unchanged.
+	fn slice(start: Int, end: Int) String
 	// Borrows the bytes [start, end) of the receiver without copying; negative bounds
 	// are relative to the end. Bounds outside 0 <= start <= end <= length(), or inside
 	// a scalar, raise a fault. Like `Bytes.view`, the result borrows the receiver,

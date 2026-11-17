@@ -56,10 +56,10 @@ fn var Base64Decoding.step(value: String, var out: List[Bytes]) Void!:
 
 	text := self.tail.concat(value)
 	whole := text.length() - text.length() % 4
-	self.tail = text.slice(whole, text.length()).get("")
+	self.tail = text.slice(whole, text.length())
 	if whole == 0: return ok()
 
-	part := text.slice(0, whole).get("")
+	part := text.slice(0, whole)
 	decoded := base64_decode(part, self.url_safe)?
 
 	// Every complete group decodes to three bytes unless the last group has
@@ -110,10 +110,10 @@ type HexDecoding:
 fn var HexDecoding.step(value: String, var out: List[Bytes]) Void!:
 	text := self.tail.concat(value)
 	whole := text.length() - text.length() % 2
-	self.tail = text.slice(whole, text.length()).get("")
+	self.tail = text.slice(whole, text.length())
 	if whole == 0: return ok()
 
-	out.append(hex_decode(text.slice(0, whole).get(""))?)
+	out.append(hex_decode(text.slice(0, whole))?)
 
 fn var HexDecoding.finish(var out: List[Bytes]) Void!:
 	last := self.tail.clone()

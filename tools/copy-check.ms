@@ -21,7 +21,7 @@ fn copies(text: String) List[String]:
 	var sites = List[String]()
 	for line in text.split("\n"):
 		if line.starts_with("copy-probe\t"): sites.append(
-			line.slice(11, line.length()).get("")
+			line.slice(11, line.length())
 		)
 	return sites
 

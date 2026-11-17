@@ -573,9 +573,9 @@ fn date_valid(text: String) Bool:
 		or text.view(7, 8) != "-"
 	): return false
 
-	year := text.slice(0, 4).get("")
-	month := text.slice(5, 7).get("")
-	day := text.slice(8, 10).get("")
+	year := text.slice(0, 4)
+	month := text.slice(5, 7)
+	day := text.slice(8, 10)
 	if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return false
 
 	m := month.parse_int().get(0)
@@ -597,12 +597,12 @@ fn time_valid(text: String) Bool:
 		or text.view(2, 3) != ":"
 		or text.view(5, 6) != ":"
 	): return false
-	if not date_number(text.slice(0, 2).get(""), 0, 23): return false
-	if not date_number(text.slice(3, 5).get(""), 0, 59): return false
-	if not date_number(text.slice(6, 8).get(""), 0, 60): return false
+	if not date_number(text.slice(0, 2), 0, 23): return false
+	if not date_number(text.slice(3, 5), 0, 59): return false
+	if not date_number(text.slice(6, 8), 0, 60): return false
 	if text.length() == 8: return true
 
-	fraction := text.slice(9, text.length()).get("")
+	fraction := text.slice(9, text.length())
 	return (
 		text.view(8, 9) == "."
 		and decimal_digits(fraction)
@@ -615,26 +615,26 @@ fn datetime_valid(text: String) Bool:
 	if (
 		text.length() < 19
 		or text.scalar_length() != text.length()
-		or not date_valid((text.slice(0, 10).get("")))
+		or not date_valid((text.slice(0, 10)))
 	): return false
 
 	separator := text.view(10, 11)
 	if (separator != "T" and separator != "t" and separator != " "): return false
 
-	var rest = text.slice(11, text.length()).get("")
+	var rest = text.slice(11, text.length())
 
 	if rest.ends_with("Z") or rest.ends_with("z"):
-		rest = rest.slice(0, rest.length() - 1).get("")
+		rest = rest.slice(0, rest.length() - 1)
 	else if rest.contains("+") or rest.contains("-"):
 		var index = rest.index_of("+").get(-1)
 		if index < 0: index = rest.index_of("-").get(-1)
 
-		zone := rest.slice(index + 1, rest.length()).get("")
+		zone := rest.slice(index + 1, rest.length())
 		if zone.length() != 5 or zone.view(2, 3) != ":": return false
-		if not date_number(zone.slice(0, 2).get(""), 0, 23): return false
-		if not date_number(zone.slice(3, 5).get(""), 0, 59): return false
+		if not date_number(zone.slice(0, 2), 0, 23): return false
+		if not date_number(zone.slice(3, 5), 0, 59): return false
 
-		rest = rest.slice(0, index).get("")
+		rest = rest.slice(0, index)
 
 	return time_valid(rest)
 
@@ -648,7 +648,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 
 	if clean.starts_with("+") or clean.starts_with("-"):
 		signed = true
-		clean = clean.slice(1, clean.length()).get("")
+		clean = clean.slice(1, clean.length())
 
 	var radix = 10
 	var alphabet = "0123456789"
@@ -664,10 +664,10 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 		alphabet = "01"
 
 	if radix != 10:
-		if (signed or not digits(clean.slice(2, clean.length()).get(""), alphabet)):
+		if (signed or not digits(clean.slice(2, clean.length()), alphabet)):
 			return error(invalid_at(reader, at, "invalid integer"))
 		if value := parse_int(
-			(clean.slice(2, clean.length()).get("").replace("_", "")),
+			(clean.slice(2, clean.length()).replace("_", "")),
 			radix,
 		): return ok(Node.Leaf(TomlValue.IntValue(value)))
 
@@ -697,7 +697,6 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 				if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
 					exponent
 					.slice(1, exponent.length())
-					.get("")
 				)
 				if not decimal_digits(exponent): return error(
 					invalid_at(reader, at, "invalid exponent")

@@ -71,14 +71,14 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 			slash.is_some()
 			and full_match(
 				NUM2,
-				item.slice(slash.get(0) + 1, item.length()).get(""),
+				item.slice(slash.get(0) + 1, item.length()),
 			)
 		):
-			body = item.slice(0, slash.get(0)).get("")
+			body = item.slice(0, slash.get(0))
 			step = item.slice(
 				slash.get(0) + 1,
 				item.length(),
-			).get("").parse_int().get(0)
+			).parse_int().get(0)
 			stepped = true
 			if step < 1: return none
 			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)): return none
@@ -133,11 +133,11 @@ fn solve(s: String) String:
 		var start = -1
 
 		if full_match("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}", t[0]):
-			y := t[0].slice(0, 4).get("").parse_int().get(0)
-			mo := t[0].slice(5, 7).get("").parse_int().get(0)
-			d := t[0].slice(8, 10).get("").parse_int().get(0)
-			h := t[0].slice(11, 13).get("").parse_int().get(0)
-			mi := t[0].slice(14, 16).get("").parse_int().get(0)
+			y := t[0].slice(0, 4).parse_int().get(0)
+			mo := t[0].slice(5, 7).parse_int().get(0)
+			d := t[0].slice(8, 10).parse_int().get(0)
+			h := t[0].slice(11, 13).parse_int().get(0)
+			mi := t[0].slice(14, 16).parse_int().get(0)
 			valid := (
 				mo >= 1
 				and mo <= 12

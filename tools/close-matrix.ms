@@ -491,7 +491,7 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 		var wrong = false
 
 		for key in made.keys():
-			id := key.slice(5, key.length()).get("")
+			id := key.slice(5, key.length())
 			if made.get_or(key.clone(), 0) != closed.get_or(f"closed-{id}", 0): wrong = true
 
 		if closed.length() != made.length(): wrong = true

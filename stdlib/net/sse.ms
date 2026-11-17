@@ -254,8 +254,8 @@ fn end_line(
 
 // The value after the colon, skipping one leading space when `spaced`.
 fn value_after(line: String, colon_end: Int, spaced: Bool) String:
-	if spaced: return line.slice(colon_end + 1, line.length()).get()
-	return line.slice(colon_end, line.length()).get()
+	if spaced: return line.slice(colon_end + 1, line.length())
+	return line.slice(colon_end, line.length())
 
 fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Void:
 	if not decoder.data.is_empty():

@@ -81,7 +81,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 	for entry in list(root)?:
 		if (
 			not entry.name.starts_with("c")
-			or not "01234".contains(entry.name.slice(1, 2).get("9"))
+			or not "01234".contains(entry.name.slice(1, 2))
 		): continue
 
 		name := entry.name.clone()

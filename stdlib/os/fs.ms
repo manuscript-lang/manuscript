@@ -915,7 +915,7 @@ fn temporary_name(path: String, stamp: String) String:
 	if slash := path.last_index_of("\\"):
 		if slash + 1 > split: split = slash + 1
 
-	directory := path.slice(0, split).get("")
+	directory := path.slice(0, split)
 	name := path.view(split, path.length())
 	return f"{directory}.{leading_scalars(name, 32)}.{stamp}.tmp"
 

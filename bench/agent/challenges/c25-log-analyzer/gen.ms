@@ -118,7 +118,7 @@ fn mangle(var rnd: Random, l: String) String:
 	else if k == 1:
 		f[2] = "PATCH"
 	else if k == 2:
-		rest := f[3].slice(1, f[3].length()).get("")
+		rest := f[3].slice(1, f[3].length())
 		f[3] = if rest.is_empty(): "x" else: rest
 	else if k == 3:
 		f[4] = "20"

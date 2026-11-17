@@ -31,7 +31,7 @@
         },
         {
           "index": 4,
-          "name": "string-bytes.ms::String slice uses byte offsets with relative bounds and OutOfRange errors",
+          "name": "string-bytes.ms::String slice uses byte offsets with relative bounds, clamping and moving inward off a scalar",
           "status": "passed"
         },
         {
@@ -76,7 +76,7 @@
         },
         {
           "index": 13,
-          "name": "string-bytes.ms::slice errors name the values that failed",
+          "name": "string-bytes.ms::slice clamps a bound past the end",
           "status": "passed"
         }
       ],
@@ -90,7 +90,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN string-bytes.ms::Unicode scalar offsets differ from scalar count\nPASS string-bytes.ms::Unicode scalar offsets differ from scalar count\nRUN string-bytes.ms::repeat is plain text and clamps nonpositive counts\nPASS string-bytes.ms::repeat is plain text and clamps nonpositive counts\nRUN string-bytes.ms::bytes copy slice search and UTF8 validation\nPASS string-bytes.ms::bytes copy slice search and UTF8 validation\nRUN string-bytes.ms::Bytes values direct bound and free calls return independent lists\nPASS string-bytes.ms::Bytes values direct bound and free calls return independent lists\nRUN string-bytes.ms::String slice uses byte offsets with relative bounds and OutOfRange errors\nPASS string-bytes.ms::String slice uses byte offsets with relative bounds and OutOfRange errors\nRUN string-bytes.ms::string and bytes builders freeze\nPASS string-bytes.ms::string and bytes builders freeze\nRUN string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nPASS string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nRUN string-bytes.ms::offset walks over long strings match scalar_values\nPASS string-bytes.ms::offset walks over long strings match scalar_values\nRUN string-bytes.ms::offsets and slicing in long mixed-width text agree with the scalar walk\nPASS string-bytes.ms::offsets and slicing in long mixed-width text agree with the scalar walk\nRUN string-bytes.ms::builder appends literals of every short length across growth\nPASS string-bytes.ms::builder appends literals of every short length across growth\nRUN string-bytes.ms::builder appends variable text of every length across growth\nPASS string-bytes.ms::builder appends variable text of every length across growth\nRUN string-bytes.ms::search indexes are byte offsets for ascii, inline and unicode text\nPASS string-bytes.ms::search indexes are byte offsets for ascii, inline and unicode text\nRUN string-bytes.ms::count matches split for nonempty parts and counts scalars plus one for an empty part\nPASS string-bytes.ms::count matches split for nonempty parts and counts scalars plus one for an empty part\nRUN string-bytes.ms::slice errors name the values that failed\nPASS string-bytes.ms::slice errors name the values that failed\n14 tests, 0 failed\n",
+      "stdout": "RUN string-bytes.ms::Unicode scalar offsets differ from scalar count\nPASS string-bytes.ms::Unicode scalar offsets differ from scalar count\nRUN string-bytes.ms::repeat is plain text and clamps nonpositive counts\nPASS string-bytes.ms::repeat is plain text and clamps nonpositive counts\nRUN string-bytes.ms::bytes copy slice search and UTF8 validation\nPASS string-bytes.ms::bytes copy slice search and UTF8 validation\nRUN string-bytes.ms::Bytes values direct bound and free calls return independent lists\nPASS string-bytes.ms::Bytes values direct bound and free calls return independent lists\nRUN string-bytes.ms::String slice uses byte offsets with relative bounds, clamping and moving inward off a scalar\nPASS string-bytes.ms::String slice uses byte offsets with relative bounds, clamping and moving inward off a scalar\nRUN string-bytes.ms::string and bytes builders freeze\nPASS string-bytes.ms::string and bytes builders freeze\nRUN string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nPASS string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nRUN string-bytes.ms::offset walks over long strings match scalar_values\nPASS string-bytes.ms::offset walks over long strings match scalar_values\nRUN string-bytes.ms::offsets and slicing in long mixed-width text agree with the scalar walk\nPASS string-bytes.ms::offsets and slicing in long mixed-width text agree with the scalar walk\nRUN string-bytes.ms::builder appends literals of every short length across growth\nPASS string-bytes.ms::builder appends literals of every short length across growth\nRUN string-bytes.ms::builder appends variable text of every length across growth\nPASS string-bytes.ms::builder appends variable text of every length across growth\nRUN string-bytes.ms::search indexes are byte offsets for ascii, inline and unicode text\nPASS string-bytes.ms::search indexes are byte offsets for ascii, inline and unicode text\nRUN string-bytes.ms::count matches split for nonempty parts and counts scalars plus one for an empty part\nPASS string-bytes.ms::count matches split for nonempty parts and counts scalars plus one for an empty part\nRUN string-bytes.ms::slice clamps a bound past the end\nPASS string-bytes.ms::slice clamps a bound past the end\n14 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

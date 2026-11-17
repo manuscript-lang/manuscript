@@ -41,7 +41,7 @@ fn Scan.byte(offset: Int) Int:
 
 // The source text from `start` up to `end`.
 fn Scan.part(start: Int, end: Int) String:
-	return self.text.slice(start, end).get("")
+	return self.text.slice(start, end)
 
 fn Scan.starts(prefix: String) Bool:
 	return self.starts_at(self.at, prefix)
@@ -225,10 +225,10 @@ fn convert_fences(source: String) String:
 		var body = trimmed.clone()
 
 		if trimmed.starts_with("//"):
-			body = trimmed.slice(2, trimmed.length()).get("")
-			if body.starts_with(" "): body = body.slice(1, body.length()).get("")
+			body = trimmed.slice(2, trimmed.length())
+			if body.starts_with(" "): body = body.slice(1, body.length())
 
-		lead := line.slice(0, line.length() - body.length()).get("")
+		lead := line.slice(0, line.length() - body.length())
 
 		if fence == "":
 			out.append(line.clone())
@@ -256,7 +256,7 @@ fn convert_fences(source: String) String:
 		originals.append(line.clone())
 
 		if line.starts_with(prefix): block.append(
-			line.slice(prefix.length(), line.length()).get("")
+			line.slice(prefix.length(), line.length())
 		)
 		else: block.append("")
 

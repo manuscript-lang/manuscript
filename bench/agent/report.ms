@@ -129,7 +129,7 @@ fn codes_table(runs: List[Run], lang: String) String:
 
 fn cut(text: String, limit: Int) String:
 	if text.length() <= limit: return text.clone()
-	return text.slice(0, limit).get("")
+	return text.slice(0, limit)
 
 // The first diagnostic line of failed builds with the location and quoted names
 // removed, so equal mistakes group together, most frequent first.

@@ -42,7 +42,7 @@ test "csv-spectrum agrees with the parser except for the listed cases":
 	var cases: List[String] = []
 	for entry in walk(tree).get([]):
 		if entry.path.ends_with(".csv"):
-			cases.append(entry.path.slice(0, entry.path.length() - 4).get(""))
+			cases.append(entry.path.slice(0, entry.path.length() - 4))
 
 	var failing: List[String] = []
 	for name in cases:

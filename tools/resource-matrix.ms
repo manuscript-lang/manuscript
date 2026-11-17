@@ -466,10 +466,10 @@ fn main() Int:
 							line.slice(
 								5,
 								line.length(),
-							).get("")
+							)
 						)
 						if line.starts_with("closed-"):
-							closed.append(line.slice(7, line.length()).get(""))
+							closed.append(line.slice(7, line.length()))
 
 					made_counts := count(lines, "made-")
 					var wrong = made.length() != closed.length()

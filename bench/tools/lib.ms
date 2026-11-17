@@ -134,7 +134,7 @@ export fn grouped(value: Int) String:
 
 	for i in 0..n:
 		if i > 0 and (n - i) % 3 == 0: out += ","
-		out += digits.slice(i, i + 1).get("")
+		out += digits.slice(i, i + 1)
 
 	return if value < 0: "-" + out else: out
 
@@ -229,12 +229,12 @@ export fn options(
 		flag := args[i]
 		if (
 			not flag.starts_with("--")
-			or not known.contains(flag.slice(2, flag.length()).get(""))
+			or not known.contains(flag.slice(2, flag.length()))
 		):
 			return invalid(f"unknown argument: {flag}")
 		if i + 1 >= args.length(): return invalid(f"{flag} needs a value")
 
-		found.add(flag.slice(2, flag.length()).get(""), args[i + 1].clone())
+		found.add(flag.slice(2, flag.length()), args[i + 1].clone())
 		i += 2
 
 	for name in required:

@@ -91,7 +91,7 @@ export fn rust_arch() String:
 		if line.starts_with("host: "): return line.slice(
 			6,
 			line.length(),
-		).get("").split("-")[0].clone()
+		).split("-")[0].clone()
 	return "x86_64"
 
 // Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the

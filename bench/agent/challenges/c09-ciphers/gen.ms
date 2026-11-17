@@ -29,7 +29,7 @@ fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) S
 
 // A caesar key: an optional minus sign and one to seven digits.
 fn caesar_key(key: String) Bool:
-	digits := if key.starts_with("-"): key.slice(1, key.length()).get("") else: key.clone()
+	digits := if key.starts_with("-"): key.slice(1, key.length()) else: key.clone()
 	return (
 		digits.length() >= 1
 		and digits.length() <= 7

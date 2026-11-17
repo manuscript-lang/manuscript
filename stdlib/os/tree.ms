@@ -379,7 +379,7 @@ fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]
 
 fn relative(path: String, start: String) String:
 	if start == "": return path.clone()
-	return path.slice(start.length() + 1, path.length()).get().clone()
+	return path.slice(start.length() + 1, path.length()).clone()
 
 fn fs_invalid_input() Error:
 	return Error("filesystem: invalid input", kind: "EINVAL")

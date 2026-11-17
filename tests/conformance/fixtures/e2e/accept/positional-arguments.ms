@@ -134,7 +134,7 @@ test "methods native APIs function values and contextual labels":
 	add := memo.add
 	add(value: 8, 2)
 	expect_false(memo[1] != 7 or memo[2] != 8)?
-	expect_equal("abcd".slice(1, 3).get(), "bc")?
+	expect_equal("abcd".slice(1, 3), "bc")?
 
 test "written order before omitted defaults and body":
 	var counter = Counter()

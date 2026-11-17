@@ -90,7 +90,7 @@ test "bound native argument copies preserve named effects and propagation":
 test "nonconsuming bound methods continue borrowing ordinary inputs":
 	values := ["a", "b"]
 	contains := values.contains
-	query := f"b-{1}".slice(0, 1)?
+	query := f"b-{1}".slice(0, 1)
 	expect_equal(contains(query), true)?
 	expect_equal(query, "b")?
 

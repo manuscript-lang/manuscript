@@ -270,7 +270,7 @@ fn run(args: List[String]) String!:
 	out := absolute(args[0].clone())
 
 	if args[6].starts_with("summary-"):
-		action := args[6].slice(8, args[6].length()).get()
+		action := args[6].slice(8, args[6].length())
 		for size in args[4].split(","):
 			for mode in args[5].split(","):
 				report(out, f"{mode}-{size}-{action}")?

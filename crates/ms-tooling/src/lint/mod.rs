@@ -229,6 +229,18 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Error,
         repair: "delete the final `return ok()` (`Void!`) or `return` (`Void`)",
     },
+    Rule {
+        code: "MSL129",
+        family: "Void! outcome ignored with get(none)",
+        severity: Severity::Error,
+        repair: "write `void call()`; `ms lint --fix` does it",
+    },
+    Rule {
+        code: "MSL130",
+        family: "Statement get() on a Result",
+        severity: Severity::Warning,
+        repair: "write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.

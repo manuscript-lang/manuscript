@@ -39,7 +39,7 @@ export fn build_oracle(id: String) String:
 		name := source.split("/").last().get("")
 		copy(
 			f"{dir(id)}/{source}",
-			f"{tmp}/{name.slice(0, name.length() - 4).get("")}",
+			f"{tmp}/{name.slice(0, name.length() - 4)}",
 			CopyOptions(replace: true),
 		).get()
 

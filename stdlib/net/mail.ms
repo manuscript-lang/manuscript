@@ -60,7 +60,7 @@ export fn parse_address(text: String) Address!:
 		)
 
 		name = trimmed.view(0, open).trim().clone()
-		address = trimmed.slice(open + 1, trimmed.length() - 1).get("").trim()
+		address = trimmed.slice(open + 1, trimmed.length() - 1).trim()
 	else if trimmed.contains(">"):
 		return error(Error("mail: invalid address", kind: "EBADMSG"))
 
@@ -69,7 +69,7 @@ export fn parse_address(text: String) Address!:
 			Error("mail: invalid address", kind: "EBADMSG")
 		)
 
-		name = name.slice(1, name.length() - 1).get("").replace("\\\"", "\"").replace(
+		name = name.slice(1, name.length() - 1).replace("\\\"", "\"").replace(
 			"\\\\",
 			"\\",
 		)
