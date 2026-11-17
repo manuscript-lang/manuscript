@@ -63,8 +63,13 @@ use std::collections::HashSet;
 /// call these functions instead of writing a drop body of their own, so they cannot disagree on
 /// which cases and fields a drop releases. Returns whether anything was made.
 pub fn run(m: &mut Module) -> bool {
-    let (drops, clones) = wanted_types(m);
+    let (mut drops, mut clones) = wanted_types(m);
     let lay = Layouts::new(m);
+    // The slot and block functions call the drop and clone of their types.
+    let (mut slots, mut blocks) = addr_types(m, &lay);
+    let addressed: Vec<Ty> = slots.iter().chain(&blocks).copied().collect();
+    drops.extend(close(m, addressed.clone()));
+    clones.extend(close(m, addressed));
     let eligible = |t: &Ty| match m.types.kind(*t) {
         TyKind::Type(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Bytes | TyKind::Iface(_) => {
             true
@@ -77,11 +82,16 @@ pub fn run(m: &mut Module) -> bool {
         _ => false,
     };
     let eligible = |t: &Ty| eligible(t) && m.needs_drop(*t);
-    let mut drop_tys: Vec<Ty> = drops.into_iter().filter(eligible).collect();
+    let mut drop_tys: Vec<Ty> = drops
+        .into_iter()
+        .filter(eligible)
+        .filter(|t| !m.drop_glue.contains_key(t))
+        .collect();
     // A list of plain elements is copied by the backends in one block copy.
     let mut clone_tys: Vec<Ty> = clones
         .into_iter()
         .filter(eligible)
+        .filter(|t| !m.clone_glue.contains_key(t))
         // The copy of recursive data (a chain copied by a loop, on a new stack segment) stays with the backends.
         .filter(|t| !m.drop_recurses(*t))
         .filter(|t| match m.types.kind(*t) {
@@ -90,9 +100,22 @@ pub fn run(m: &mut Module) -> bool {
             _ => true,
         })
         .collect();
-    let (slots, blocks) = addr_types(m, &lay);
     drop(lay);
-    let (closure_drops, closure_clones) = closure_demand(m);
+    slots.retain(|t| !m.addr_glue.contains_key(&(Glue::SlotCopy, *t)));
+    blocks.retain(|t| !m.addr_glue.contains_key(&(Glue::BlockDrop, *t)));
+    let (mut closure_drops, mut closure_clones) = closure_demand(m);
+    closure_drops.retain(|(c, framed)| {
+        let kind = if *framed {
+            Glue::ClosureDropFramed(c.0)
+        } else {
+            Glue::ClosureDrop(c.0)
+        };
+        !m.addr_glue.contains_key(&(kind, Ty::VOID))
+    });
+    closure_clones.retain(|c| {
+        !m.addr_glue
+            .contains_key(&(Glue::ClosureClone(c.0), Ty::VOID))
+    });
     // The same order every run.
     drop_tys.sort_by_key(|t| t.0);
     clone_tys.sort_by_key(|t| t.0);
@@ -139,7 +162,11 @@ pub fn run(m: &mut Module) -> bool {
         }
     }
     for c in closure_clones {
-        if !dropped.contains(&c.0) {
+        if !dropped.contains(&c.0)
+            && !m
+                .addr_glue
+                .contains_key(&(Glue::ClosureDrop(c.0), Ty::VOID))
+        {
             let id = make_closure_drop(m, c, false);
             m.addr_glue.insert((Glue::ClosureDrop(c.0), Ty::VOID), id);
         }
