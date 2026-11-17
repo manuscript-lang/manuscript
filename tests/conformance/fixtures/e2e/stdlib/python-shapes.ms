@@ -3,7 +3,7 @@
 import (
 	DivMod, divmod, gcd, isqrt, lcm, max_int, min_int, pow_int from "@std/math/math.ms",
 	exists, temporary_directory from "@std/os/fs.ms",
-	stem, with_extension from "@std/os/path.ms",
+	join, stem, with_extension from "@std/os/path.ms",
 	SplitParts from "@std/string.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
@@ -72,9 +72,9 @@ test "path stem and with_extension":
 	expect_equal(stem("a/b.tar.gz"), "b.tar")?
 	expect_equal(stem(".bashrc"), ".bashrc")?
 	expect_equal(stem("dir/"), "dir")?
-	expect_equal(with_extension("a/b.txt", "md"), "a/b.md")?
-	expect_equal(with_extension("a/b.txt", ".md"), "a/b.md")?
-	expect_equal(with_extension("a/b", "md"), "a/b.md")?
+	expect_equal(with_extension("a/b.txt", "md"), join(["a", "b.md"]))?
+	expect_equal(with_extension("a/b.txt", ".md"), join(["a", "b.md"]))?
+	expect_equal(with_extension("a/b", "md"), join(["a", "b.md"]))?
 	expect_equal(with_extension("b.txt", ""), "b")?
 	expect_equal(with_extension("/", "md"), "/")?
 
