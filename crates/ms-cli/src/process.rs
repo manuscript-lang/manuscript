@@ -588,8 +588,15 @@ mod tests {
         })
         .unwrap();
         assert!(waited.status.success());
-        // Each line woke the wait once; a draining pass that found nothing would count zero.
-        assert_eq!(drained, 2);
+        // The first line arrives a second before the exit and no tick is due, so only its output
+        // wake can have run a pass that found it; a wait that needs a tick would count zero. The
+        // second line is written just before the exit, so the exit may be seen first and its
+        // chunk is read after the wait: it counts whenever it arrives.
+        assert!(drained >= 1, "no output wake ran a pass");
+        for _ in drained..2 {
+            seen.recv_timeout(Duration::from_secs(10))
+                .expect("every line reaches the reader");
+        }
     }
 
     #[test]
