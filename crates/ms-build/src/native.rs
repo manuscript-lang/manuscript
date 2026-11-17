@@ -258,6 +258,14 @@ pub fn build_executable(
     if unwound && cfg!(debug_assertions) {
         verify_after(module, "unwind")?;
     }
+    // The hybrid cancel exits run the cleanups `unwind` registered, so they go in after it: its
+    // discard after a parking call must not sit between the call and the check.
+    if ms_mir::cancel_edges::enabled()
+        && ms_mir::cancel_edges::run(module)
+        && cfg!(debug_assertions)
+    {
+        verify_after(module, "cancel_edges")?;
+    }
     // After `unwind`, which looks for the check as the first instruction of a function.
     if ms_mir::depth::lower(module) && cfg!(debug_assertions) {
         verify_after(module, "depth")?;
