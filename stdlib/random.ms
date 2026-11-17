@@ -85,7 +85,7 @@ export fn float() Float!:
 
 // Shuffles the list in place with an unbiased Fisher-Yates shuffle and returns it.
 // ms: effect std.random.read
-export fn shuffle[T](values: List[T]) List[T]!:
+export fn shuffle[T](move values: List[T]) List[T]!:
 	return draw_shuffle(values)
 
 // Returns a uniformly chosen item, or none for an empty list.

@@ -100,7 +100,7 @@ test "JSON get_in reads a chain of members in place":
 	expect_equal(user_name(d), "ada")?
 	expect_equal(d.get_in(["user", "age"]).and_then(fn n: n.as_int()), 36)?
 	if tags := d.get_in(["user", "tags"]):
-		expect_equal(tags.get_index(-1).and_then(fn t: string_of(t)), "c")?
+		if last := tags.get_index(-1): expect_equal(string_of(last), "c")?
 	expect_true(d.get_in(["user", "missing"]).is_none())?
 	expect_true(d.get_in(["user", "name", "first"]).is_none())?
 	expect_true(d.get_in([]).is_none())?

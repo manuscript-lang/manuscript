@@ -35,21 +35,6 @@ fn generic_result[T](value: T!Int) T?: value.to_optional()
 
 fn generic_error[E](value: Int!E) Int!E: value.map(fn item: item + 1)
 
-fn independent_map() Int:
-    value: Marker!Int := ok(Marker(1))
-    mapped := value.map(fn item: Marker(item.id + 1))
-    return value.get().id + mapped.get().id
-
-fn independent_error_map() Int:
-    value: Int!Marker := error(Marker(1))
-    mapped := value.map_error(fn item: Marker(item.id + 1))
-    return if value.is_error() and mapped.is_error(): 1 else: 0
-
-fn independent_and_then() Int:
-    value: Marker!Int := ok(Marker(1))
-    mapped: Marker!Int := value.and_then(fn item: ok(Marker(item.id + 1)))
-    return value.get().id + mapped.get().id
-
 fn bound_generic[T: Clonable](value: T!Int) T?:
     convert := value.to_optional
     return convert()
@@ -57,20 +42,6 @@ fn bound_generic[T: Clonable](value: T!Int) T?:
 fn bound_generic_error[E: Clonable](value: Int!E) Int!E:
     transform := value.map[Int]
     return transform(fn item: item + 1)
-
-fn bound_transformed_resource() Int:
-    value: Marker!Int := ok(Marker(1))
-    transform := value.map[Marker]
-    first := transform(fn item: Marker(item.id + 1))
-    second := transform(fn item: Marker(item.id + 2))
-    return value.get().id + first.get().id + second.get().id
-
-fn bound_transformed_error_resource() Bool:
-    value: Int!Marker := error(Marker(1))
-    transform := value.map_error[Marker]
-    first := transform(fn item: Marker(item.id + 1))
-    second := transform(fn item: Marker(item.id + 2))
-    return value.is_error() and first.is_error() and second.is_error()
 
 fn collection_get_still_borrows() Int:
     values := [Marker(1)]

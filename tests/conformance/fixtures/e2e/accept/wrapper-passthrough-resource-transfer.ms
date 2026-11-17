@@ -45,29 +45,19 @@ test "native wrapper passthrough transfers resources without duplicating owners"
 	events := read_file(log).wait().get().decode_utf8().get_or("")
 	expect_equal(events, "1,2,3,4,")?
 
+// `or_else` takes the Result; its callback reads the error, which closes after the call.
 fn recover_resource_error(log: String) Void!:
 	original: Int!Marker := error(Marker(5, log))
 	recovered := original.or_else(fn cause: ok(cause.id))
-	expect_equal(original.is_error(), true)?
 	expect_equal(recovered.get(), 5)?
 
-fn bound_resource_error(log: String) Void!:
-	original: Int!Marker := error(Marker(6, log))
-	recover := original.or_else
-	first := recover(fn cause: ok(cause.id))
-	second := recover(fn cause: ok(cause.id + 1))
-	expect_equal(original.is_error(), true)?
-	expect_equal(first.get(), 6)?
-	expect_equal(second.get(), 7)?
-
-test "or_else only borrows a resource error while preserving copyable successes":
+test "or_else takes a Result holding a resource error and closes it once":
 	tmp := temporary("wrapper-error-borrow-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	recover_resource_error(log.clone())?
-	bound_resource_error(log.clone())?
 
 	events := read_file(log).wait().get().decode_utf8().get_or("")
-	expect_equal(events, "5,6,")?
+	expect_equal(events, "5,")?
 
 fn optional_callback(fail: Bool) (fn() Marker?)!:
 	if fail: return error(Error("callback unavailable"))
@@ -113,10 +103,9 @@ fn borrowed_error_callback(fail: Bool) (fn(Marker) Int!Marker)!:
 fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Void!:
 	original: Int!Marker := error(Marker(id, log))
 	recovered := original.or_else(borrowed_error_callback(fail)?)
-	expect_equal(original.is_error(), true)?
 	expect_equal(recovered.get(), id)?
 
-test "later try does not take ownership of a genuinely borrowed native receiver":
+test "or_else takes its receiver before a later try fails":
 	tmp := temporary("wrapper-borrowed-receiver-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	borrowed_error_before_try(9, log.clone(), false)?

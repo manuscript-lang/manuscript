@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "wrapper-passthrough-resource-transfer.ms::or_else only borrows a resource error while preserving copyable successes",
+          "name": "wrapper-passthrough-resource-transfer.ms::or_else takes a Result holding a resource error and closes it once",
           "status": "passed"
         },
         {
@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "wrapper-passthrough-resource-transfer.ms::later try does not take ownership of a genuinely borrowed native receiver",
+          "name": "wrapper-passthrough-resource-transfer.ms::or_else takes its receiver before a later try fails",
           "status": "passed"
         }
       ],
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN wrapper-passthrough-resource-transfer.ms::native wrapper passthrough transfers resources without duplicating owners\nPASS wrapper-passthrough-resource-transfer.ms::native wrapper passthrough transfers resources without duplicating owners\nRUN wrapper-passthrough-resource-transfer.ms::or_else only borrows a resource error while preserving copyable successes\nPASS wrapper-passthrough-resource-transfer.ms::or_else only borrows a resource error while preserving copyable successes\nRUN wrapper-passthrough-resource-transfer.ms::owned native receivers stay closeable until later try arguments succeed\nPASS wrapper-passthrough-resource-transfer.ms::owned native receivers stay closeable until later try arguments succeed\nRUN wrapper-passthrough-resource-transfer.ms::later try does not take ownership of a genuinely borrowed native receiver\nPASS wrapper-passthrough-resource-transfer.ms::later try does not take ownership of a genuinely borrowed native receiver\n4 tests, 0 failed\n",
+      "stdout": "RUN wrapper-passthrough-resource-transfer.ms::native wrapper passthrough transfers resources without duplicating owners\nPASS wrapper-passthrough-resource-transfer.ms::native wrapper passthrough transfers resources without duplicating owners\nRUN wrapper-passthrough-resource-transfer.ms::or_else takes a Result holding a resource error and closes it once\nPASS wrapper-passthrough-resource-transfer.ms::or_else takes a Result holding a resource error and closes it once\nRUN wrapper-passthrough-resource-transfer.ms::owned native receivers stay closeable until later try arguments succeed\nPASS wrapper-passthrough-resource-transfer.ms::owned native receivers stay closeable until later try arguments succeed\nRUN wrapper-passthrough-resource-transfer.ms::or_else takes its receiver before a later try fails\nPASS wrapper-passthrough-resource-transfer.ms::or_else takes its receiver before a later try fails\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

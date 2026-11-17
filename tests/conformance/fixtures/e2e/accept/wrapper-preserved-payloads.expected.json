@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "wrapper-preserved-payloads.ms::callbacks borrow resource inputs while reusable methods copy only retained data",
+          "name": "wrapper-preserved-payloads.ms::map takes a resource payload while reusable methods copy only retained data",
           "status": "passed"
         },
         {
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN wrapper-preserved-payloads.ms::preserved resource payloads transfer exactly once\nPASS wrapper-preserved-payloads.ms::preserved resource payloads transfer exactly once\nRUN wrapper-preserved-payloads.ms::callbacks borrow resource inputs while reusable methods copy only retained data\nPASS wrapper-preserved-payloads.ms::callbacks borrow resource inputs while reusable methods copy only retained data\nRUN wrapper-preserved-payloads.ms::empty and transformed branches do not manufacture retained payloads\nPASS wrapper-preserved-payloads.ms::empty and transformed branches do not manufacture retained payloads\nRUN wrapper-preserved-payloads.ms::discarded owned errors close, named ones too once to_optional moves them\nPASS wrapper-preserved-payloads.ms::discarded owned errors close, named ones too once to_optional moves them\nRUN wrapper-preserved-payloads.ms::specialized direct generic methods transfer instead of retaining reusable captures\nPASS wrapper-preserved-payloads.ms::specialized direct generic methods transfer instead of retaining reusable captures\nRUN wrapper-preserved-payloads.ms::specialized source methods and indexed function calls keep their receiver paths\nPASS wrapper-preserved-payloads.ms::specialized source methods and indexed function calls keep their receiver paths\n6 tests, 0 failed\n",
+      "stdout": "RUN wrapper-preserved-payloads.ms::preserved resource payloads transfer exactly once\nPASS wrapper-preserved-payloads.ms::preserved resource payloads transfer exactly once\nRUN wrapper-preserved-payloads.ms::map takes a resource payload while reusable methods copy only retained data\nPASS wrapper-preserved-payloads.ms::map takes a resource payload while reusable methods copy only retained data\nRUN wrapper-preserved-payloads.ms::empty and transformed branches do not manufacture retained payloads\nPASS wrapper-preserved-payloads.ms::empty and transformed branches do not manufacture retained payloads\nRUN wrapper-preserved-payloads.ms::discarded owned errors close, named ones too once to_optional moves them\nPASS wrapper-preserved-payloads.ms::discarded owned errors close, named ones too once to_optional moves them\nRUN wrapper-preserved-payloads.ms::specialized direct generic methods transfer instead of retaining reusable captures\nPASS wrapper-preserved-payloads.ms::specialized direct generic methods transfer instead of retaining reusable captures\nRUN wrapper-preserved-payloads.ms::specialized source methods and indexed function calls keep their receiver paths\nPASS wrapper-preserved-payloads.ms::specialized source methods and indexed function calls keep their receiver paths\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

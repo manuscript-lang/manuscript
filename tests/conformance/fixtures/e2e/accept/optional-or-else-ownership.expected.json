@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "optional-or-else-ownership.ms::or_else copies a borrowed String Optional at its declared boundary",
+          "name": "optional-or-else-ownership.ms::or_else takes its receiver, so a caller that keeps a String Optional clones it",
           "status": "passed"
         },
         {
@@ -31,7 +31,7 @@
         },
         {
           "index": 4,
-          "name": "optional-or-else-ownership.ms::or_else copies a borrowed List Optional at its declared boundary",
+          "name": "optional-or-else-ownership.ms::or_else takes its receiver, so a caller that keeps a List Optional clones it",
           "status": "passed"
         },
         {
@@ -56,7 +56,7 @@
         },
         {
           "index": 9,
-          "name": "optional-or-else-ownership.ms::borrowed data receiver remains borrowed across a later try",
+          "name": "optional-or-else-ownership.ms::a cloned data receiver stays with its caller across a later try",
           "status": "passed"
         }
       ],
@@ -70,7 +70,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN optional-or-else-ownership.ms::or_else transfers an owned String Optional call\nPASS optional-or-else-ownership.ms::or_else transfers an owned String Optional call\nRUN optional-or-else-ownership.ms::or_else transfers a last-use String Optional\nPASS optional-or-else-ownership.ms::or_else transfers a last-use String Optional\nRUN optional-or-else-ownership.ms::or_else copies a borrowed String Optional at its declared boundary\nPASS optional-or-else-ownership.ms::or_else copies a borrowed String Optional at its declared boundary\nRUN optional-or-else-ownership.ms::or_else transfers an owned List Optional\nPASS optional-or-else-ownership.ms::or_else transfers an owned List Optional\nRUN optional-or-else-ownership.ms::or_else copies a borrowed List Optional at its declared boundary\nPASS optional-or-else-ownership.ms::or_else copies a borrowed List Optional at its declared boundary\nRUN optional-or-else-ownership.ms::or_else invokes a missing fallback once and skips a present fallback\nPASS optional-or-else-ownership.ms::or_else invokes a missing fallback once and skips a present fallback\nRUN optional-or-else-ownership.ms::or_else permits a fallback that stays absent\nPASS optional-or-else-ownership.ms::or_else permits a fallback that stays absent\nRUN optional-or-else-ownership.ms::bound or_else preserves its captured Optional across calls\nPASS optional-or-else-ownership.ms::bound or_else preserves its captured Optional across calls\nRUN optional-or-else-ownership.ms::owned data receiver keeps its value across a later try\nPASS optional-or-else-ownership.ms::owned data receiver keeps its value across a later try\nRUN optional-or-else-ownership.ms::borrowed data receiver remains borrowed across a later try\nPASS optional-or-else-ownership.ms::borrowed data receiver remains borrowed across a later try\n10 tests, 0 failed\n",
+      "stdout": "RUN optional-or-else-ownership.ms::or_else transfers an owned String Optional call\nPASS optional-or-else-ownership.ms::or_else transfers an owned String Optional call\nRUN optional-or-else-ownership.ms::or_else transfers a last-use String Optional\nPASS optional-or-else-ownership.ms::or_else transfers a last-use String Optional\nRUN optional-or-else-ownership.ms::or_else takes its receiver, so a caller that keeps a String Optional clones it\nPASS optional-or-else-ownership.ms::or_else takes its receiver, so a caller that keeps a String Optional clones it\nRUN optional-or-else-ownership.ms::or_else transfers an owned List Optional\nPASS optional-or-else-ownership.ms::or_else transfers an owned List Optional\nRUN optional-or-else-ownership.ms::or_else takes its receiver, so a caller that keeps a List Optional clones it\nPASS optional-or-else-ownership.ms::or_else takes its receiver, so a caller that keeps a List Optional clones it\nRUN optional-or-else-ownership.ms::or_else invokes a missing fallback once and skips a present fallback\nPASS optional-or-else-ownership.ms::or_else invokes a missing fallback once and skips a present fallback\nRUN optional-or-else-ownership.ms::or_else permits a fallback that stays absent\nPASS optional-or-else-ownership.ms::or_else permits a fallback that stays absent\nRUN optional-or-else-ownership.ms::bound or_else preserves its captured Optional across calls\nPASS optional-or-else-ownership.ms::bound or_else preserves its captured Optional across calls\nRUN optional-or-else-ownership.ms::owned data receiver keeps its value across a later try\nPASS optional-or-else-ownership.ms::owned data receiver keeps its value across a later try\nRUN optional-or-else-ownership.ms::a cloned data receiver stays with its caller across a later try\nPASS optional-or-else-ownership.ms::a cloned data receiver stays with its caller across a later try\n10 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -28,8 +28,3 @@ fn source_identity() Int:
     value := Holder("payload")
     borrowed := value.label_ref()
     return borrowed.length() + value.label.length()
-
-fn independent_map() Int:
-    value: Marker? := Marker(4)
-    mapped := value.map(fn item: Marker(item.id + 1))
-    return value.get().id + mapped.get().id

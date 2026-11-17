@@ -184,7 +184,7 @@ fn source_function_value_cannot_copy_a_borrowed_resource_result() {
         CheckRequest::default(),
     );
     assert!(!loaded.success(), "resource callback must not be copied");
-    assert!(format!("{:?}", loaded.diagnostics).contains("cannot be cloned"));
+    assert!(format!("{:?}", loaded.diagnostics).contains("cannot be copied"));
 }
 
 #[test]
