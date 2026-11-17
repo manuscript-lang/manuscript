@@ -271,8 +271,11 @@ pub fn build_executable(
         verify_after(module, "expand")?;
     }
     // Drop functions for records and enums are written as release shorthands, expanded next.
-    ms_mir::glue::run(module);
-    // The backends lower only primitives: the release shorthands become loads, drops and frees.
+    // The backends lower only primitives: the release shorthands become loads, drops and frees. Expanding
+    // makes drops of more types, so the two repeat until no glue is wanted.
+    while ms_mir::glue::run(module) {
+        ms_mir::expand_owned::run(module);
+    }
     ms_mir::expand_owned::run(module);
     phase("mir optimize");
     let compiled = match llvm {
