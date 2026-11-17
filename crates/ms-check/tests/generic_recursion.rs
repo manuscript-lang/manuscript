@@ -153,6 +153,9 @@ fn deeply_nested_type_keeps_structural_properties() {
     assert_eq!(diagnostics(&[("deep.ms", &source)]), vec![]);
 }
 
+// Twenty doublings: the check still grows about 2x per level (`ms check` at 24 levels 0.5 s, at 28
+// 7.5 s, at 30 the test took 28 s), so this depth keeps the test under a second and still fails
+// loudly on any steeper blowup.
 #[test]
 fn shared_match_types_do_not_expand_every_type_path() {
     assert!(
