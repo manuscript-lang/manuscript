@@ -210,6 +210,47 @@ fn title_word(word: String) String:
 
 	return title_scalar(first).concat(word.view(n, word.length()).lower())
 
+// Whether the scalar is one of the Greek titlecase letters (ᾈ to ᾏ, ᾘ to ᾟ, ᾨ to ᾯ, ᾼ,
+// ῌ, ῼ).
+fn greek_titlecase(code: Int) Bool:
+	return (
+		(code >= 0x1F88 and code <= 0x1F8F)
+		or (code >= 0x1F98 and code <= 0x1F9F)
+		or (code >= 0x1FA8 and code <= 0x1FAF)
+		or code == 0x1FBC
+		or code == 0x1FCC
+		or code == 0x1FFC
+	)
+
+// Whether the scalar is a Greek letter whose uppercase ends in capital iota but whose
+// titlecase ends in U+0345 (ᾲ ᾴ ᾷ ῂ ῄ ῇ ῲ ῴ ῷ).
+fn greek_iota_tail(code: Int) Bool:
+	return (
+		code == 0x1FB2
+		or code == 0x1FB4
+		or code == 0x1FB7
+		or code == 0x1FC2
+		or code == 0x1FC4
+		or code == 0x1FC7
+		or code == 0x1FF2
+		or code == 0x1FF4
+		or code == 0x1FF7
+	)
+
+// The Greek titlecase letter of a lowercase letter with ypogegrammeni (ᾀ gives ᾈ), or
+// 0.
+fn greek_titlecase_of(code: Int) Int:
+	if (
+		(code >= 0x1F80 and code <= 0x1F87)
+		or (code >= 0x1F90 and code <= 0x1F97)
+		or (code >= 0x1FA0 and code <= 0x1FA7)
+	): return code + 8
+	if code == 0x1FB3: return 0x1FBC
+	if code == 0x1FC3: return 0x1FCC
+	if code == 0x1FF3: return 0x1FFC
+
+	return 0
+
 // The titlecase mapping of one scalar: the four digraph families map to their
 // mixed-case letter, and any other scalar takes its full uppercase mapping with every
 // cased scalar after the first lowercased (`ß` gives `Ss`, `ﬁ` gives `Fi`, `ŉ` gives
@@ -220,7 +261,20 @@ fn title_scalar(c: String) String:
 		return "ǅǅǅǈǈǈǋǋǋ".chars()[code - 0x01C4].clone()
 	if code >= 0x01F1 and code <= 0x01F3: return "ǲ"
 
+	// The Greek letters with ypogegrammeni have their own titlecase letters (category
+	// Lt).
+	if greek_titlecase(code): return c.clone()
+
+	mapped := greek_titlecase_of(code)
+	if mapped > 0: return from_scalars([mapped]).get(c.clone())
+
 	upper := c.upper()
+
+	// The titlecase of these Greek letters ends in the combining ypogegrammeni
+	// (U+0345), where the uppercase ends in capital iota.
+	if greek_iota_tail(code) and upper.ends_with("Ι"):
+		return upper.view(0, upper.length() - 2).concat("\u{345}")
+
 	var out = StringBuilder()
 	var seen_cased = false
 
