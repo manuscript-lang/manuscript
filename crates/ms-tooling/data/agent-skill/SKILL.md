@@ -46,13 +46,14 @@ fn main() Void!:
 ```
 
 - Bindings: `x := e` (immutable, `x: T := e`), `var x = e` (mutable). Types: Int, Float, Bool, String, Void; literals `true`, `false`, `void`.
-- Functions: `fn f(x: Int, n: Int = 1) Int:`, called `f(2, n: 3)`. An inline body is an expression; a multiline body uses `return`. Closure: `fn x: x + 1`. Generics: `fn id[T](x: T) T: x`.
+- Functions: `fn f(x: Int, n: Int = 1) Int:`, called `f(2, n: 3)`. An inline body is an expression; a multiline body uses `return`. Closure: `fn x: x + 1` where a callback type is known; bound to a variable, type it: `f := fn(n: Int) Int: n * 2`. Generics: `fn id[T](x: T) T: x`.
 - Control: `if`/`else if`/`else`, `while`, `for x in xs:`, `for i in 0..n:` (excludes n), `break`, `continue`, `and or not`. Early exits: `if c: return x`. Expression form: `if c: a else: b`.
-- Collections need no import: `[1, 2]`, `Map[String, Int]()`, `Set[Int]()`. `m.get(k)` is Optional; `m.get_or(k, d)` has a fallback.
+- Collections need no import: `[1, 2]`, `Map[String, Int]()`, `Set[Int]()`. `m.get(k)` is Optional; `m.get_or(k, d)` has a fallback. `xs.get(i)` on a List is not Optional (it faults out of range): use `xs.get_or(i, d)`. `xs.slice(a, b)` returns a Result that is an error when `b` is past the end (no clamping), so `.get_or([])` silently gives an empty list: skip a header with `xs.slice(1, xs.length()).get_or([])`.
 - Imports: `import name from "./other.ms"` and `import sqrt from "@std/math/math.ms"`; `export` shares a declaration; `ms search_symbol <name>` prints a name's import line.
 - `enum Choice:` with cases `Empty` and `Value(n: Int)`, built `Choice.Value(2)`, matched with arms `Empty:`, `Value(n):`, `_:`. Keep `match` flat.
 - Text: `"plain"` never interpolates (braces are literal), `f"total {n}"` interpolates, `r"\d+"` is raw, `"""` and `r"""` open multi-line text on the next line.
-- Effects: narrow directives above functions, as in the example; they do not run effects. Closeable values clean up at scope end; there is no GC.
+- Effects: narrow directives above functions, as in the example; they do not run effects. `ms check` ignores effects; `ms verify` reports each one a function reaches (`std.console.write`, `std.fs.read`, `std.fs.write`, `std.net...`) and the message names the exact directive to add.
+- Not in the language: no `assert` (import `expect_equal`, `expect_true` from `@std/test/test.ms`, call with `?`), no `x is Case` (use `match`), no static or constructor methods (`Store.new()`; write a free function `new_store()`), no `export` on methods (they travel with the type; a method must be declared in its type's module). An unused `match` binding is an error: write `_name`. Closeable values clean up at scope end; there is no GC.
 
 ## Compiler rules
 
@@ -73,4 +74,4 @@ Four rules cover most compiler errors; an error that names one is that rule.
 
 ## Verify
 
-Run `ms check --fix <file>` first; it applies mechanical repairs. Run applicable `ms check`, `ms run` and `ms test` commands after editing. Check behavior, not just compilation; report unrun checks. Include imports. Prelude collections, Optional, Result, Error and print need none. For additional APIs, `ms search_symbol <words>` supplies signatures/imports; do not guess.
+Run `ms check --fix <file>` first; it applies mechanical repairs but does not format: run `ms fmt` before `ms verify`. Pass program arguments after `--`: `ms run main.ms -- in.json out.json`. Run applicable `ms check`, `ms run` and `ms test` commands after editing. Check behavior, not just compilation; report unrun checks. Include imports. Prelude collections, Optional, Result, Error and print need none. For additional APIs, `ms search_symbol <words>` supplies signatures/imports; do not guess.
