@@ -10,9 +10,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         let params = self.b.block_params(entry).to_vec();
         match kind {
             Glue::Clone => {
-                if self.g.m.drop_recurses(ty) {
-                    self.clone_on_new_segment(ty, &params);
-                }
                 let out = self.glue_copy(ty, &params);
                 self.b.ins().return_(&out);
             }
@@ -67,31 +64,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             limit = self.b.ins().iadd_imm_s(limit, headroom);
         }
         self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit)
-    }
-
-    /// The first thing the copy glue of recursive data does: when the stack is nearly used up,
-    /// the copy runs on a new segment through the slot copy glue and the glue returns its result
-    /// (`msrt_slot_copy_grown`); otherwise it carries on.
-    fn clone_on_new_segment(&mut self, ty: Ty, params: &[Value]) {
-        let low = self.stack_below(0);
-        let grow = self.b.create_block();
-        let cont = self.b.create_block();
-        self.b.set_cold_block(grow);
-        self.b.ins().brif(low, grow, &[], cont, &[]);
-        self.b.switch_to_block(grow);
-        let leaves = self.g.lay.leaves(ty);
-        let size = mem_layout(&leaves).size;
-        let (src, dst) = (self.new_slot(size), self.new_slot(size));
-        let src = self.b.ins().stack_addr(types::I64, src, 0);
-        let dst = self.b.ins().stack_addr(types::I64, dst, 0);
-        self.store_leaves(src, 0, &leaves, params);
-        let copy = self.g.glue(Glue::SlotCopy, ty);
-        let r = self.fref(copy);
-        let fa = self.b.ins().func_addr(types::I64, r);
-        self.rt_call("msrt_slot_copy_grown", &[fa, src, dst]);
-        let out = self.load_leaves(dst, 0, &leaves);
-        self.b.ins().return_(&out);
-        self.b.switch_to_block(cont);
     }
 
     /// Splits `vs` into per-field slices for a type.
@@ -320,230 +292,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.if_then(nn, |s| s.free(ptr));
     }
 
-    /// For a boxed alternative with payloadless cases: whether `tag` names one (such values are the
-    /// shared block, see [`Gen::unit_block`]) and that block's address. `None` when every case
-    /// carries a payload.
-    pub(super) fn unit_case(
-        &mut self,
-        a: ms_mir::types::AltId,
-        tag: Value,
-    ) -> Option<(Value, Value)> {
-        let ty = self
-            .g
-            .m
-            .types
-            .find(&TyKind::Alt(a))
-            .expect("alt type interned");
-        let shape = self.g.lay.shape(ty);
-        let Some(AltRepr::Boxed { block, .. }) = &shape.alt else {
-            return None;
-        };
-        let size = mem_layout(block).size;
-        let units: Vec<usize> = self.g.m.alts[a.index()]
-            .cases
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.fields.is_empty())
-            .map(|(i, _)| i)
-            .collect();
-        let mut acc: Option<(Value, Value)> = None;
-        for c in units {
-            let id = self.g.unit_block(a, c, size as usize);
-            let addr = self.data_addr(id);
-            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
-            acc = Some(match acc {
-                None => (is, addr),
-                Some((u, prev)) => (self.b.ins().bor(u, is), self.b.ins().select(is, addr, prev)),
-            });
-        }
-        acc
-    }
-
-    /// The field of `case` that holds the same boxed alternative again (the "tail" of a chain
-    /// such as `Cons(head, tail)`), as `(field index, leaf indices, optional)`. Drop and copy of a
-    /// boxed alternative loop over this field instead of recursing, so a long chain does not
-    /// overflow the stack. Other recursive fields (the left child of a tree) still recurse.
-    pub(super) fn tail_field(
-        &self,
-        ty: Ty,
-        case: &[(Ty, Vec<usize>)],
-    ) -> Option<(usize, Vec<usize>, bool)> {
-        let m = self.g.m;
-        case.iter().enumerate().rev().find_map(|(i, (fty, idx))| {
-            if *fty == ty && idx.len() == 1 {
-                return Some((i, idx.clone(), false));
-            }
-            match m.types.kind(*fty) {
-                TyKind::Opt(inner) if *inner == ty && idx.len() == 2 => {
-                    Some((i, idx.clone(), true))
-                }
-                _ => None,
-            }
-        })
-    }
-
-    pub(super) fn has_tail(&self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>]) -> bool {
-        fields.iter().any(|c| self.tail_field(ty, c).is_some())
-    }
-
-    /// Copies a chain of boxed blocks front to back: each iteration allocates the new block,
-    /// stores its address where the previous block's tail pointer lives, copies the non-tail
-    /// fields, and continues with the source's tail.
-    pub(super) fn copy_boxed_iter(
-        &mut self,
-        ty: Ty,
-        fields: &[Vec<(Ty, Vec<usize>)>],
-        first: Value,
-    ) -> Value {
-        let shape = self.g.lay.shape(ty);
-        let Some(AltRepr::Boxed { block, .. }) = &shape.alt else {
-            return first;
-        };
-        let lay = mem_layout(block);
-        let result =
-            self.b
-                .create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 8, 3));
-        let result_addr = self.b.ins().stack_addr(types::I64, result, 0);
-        let head = self.b.create_block();
-        let exit = self.b.create_block();
-        self.b.append_block_param(head, types::I64);
-        self.b.append_block_param(head, types::I64);
-        self.b.ins().jump(
-            head,
-            &[BlockArg::Value(first), BlockArg::Value(result_addr)],
-        );
-        self.b.switch_to_block(head);
-        let (src, dst) = {
-            let ps = self.b.block_params(head);
-            (ps[0], ps[1])
-        };
-        let sv = self.load_leaves(src, 0, block);
-        let tag = sv[0];
-        let TyKind::Alt(a) = self.g.m.types.kind(ty).clone() else {
-            unreachable!("boxed alternative")
-        };
-        if let Some((unit, addr)) = self.unit_case(a, tag) {
-            // A payloadless case is the shared block: link it and stop.
-            let shared = self.b.create_block();
-            let fresh = self.b.create_block();
-            self.b.ins().brif(unit, shared, &[], fresh, &[]);
-            self.b.switch_to_block(shared);
-            self.b.ins().store(flags(), addr, dst, 0);
-            self.b.ins().jump(exit, &[]);
-            self.b.switch_to_block(fresh);
-        }
-        let blk = self.alloc(lay.size as i64);
-        self.b.ins().store(flags(), blk, dst, 0);
-        for (c, case) in fields.iter().enumerate() {
-            let tail = self.tail_field(ty, case);
-            let droppable = case.iter().any(|(t, _)| self.g.m.needs_drop(*t));
-            if !droppable {
-                continue;
-            }
-            let this = self.b.create_block();
-            let next = self.b.create_block();
-            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
-            self.b.ins().brif(is, this, &[], next, &[]);
-            self.b.switch_to_block(this);
-            let mut out = sv.clone();
-            for (i, (fty, idx)) in case.iter().enumerate() {
-                if !self.g.m.needs_drop(*fty) || tail.as_ref().is_some_and(|t| t.0 == i) {
-                    continue;
-                }
-                let fv: Vs = idx.iter().map(|k| sv[*k]).collect();
-                let cv = self.clone_value(*fty, &fv);
-                for (k, v) in idx.iter().zip(cv) {
-                    out[*k] = v;
-                }
-            }
-            self.store_leaves(blk, 0, block, &out);
-            match tail {
-                Some((_, idx, optional)) => {
-                    let k = *idx.last().expect("tail leaf");
-                    let next_dst = self.b.ins().iadd_imm_s(blk, lay.offsets[k] as i64);
-                    let args = [BlockArg::Value(sv[k]), BlockArg::Value(next_dst)];
-                    if optional {
-                        self.b.ins().brif(sv[idx[0]], head, &args, exit, &[]);
-                    } else {
-                        self.b.ins().jump(head, &args);
-                    }
-                }
-                None => {
-                    self.b.ins().jump(exit, &[]);
-                }
-            }
-            self.b.switch_to_block(next);
-        }
-        self.store_leaves(blk, 0, block, &sv);
-        self.b.ins().jump(exit, &[]);
-        self.b.switch_to_block(exit);
-        self.b.ins().load(types::I64, flags(), result_addr, 0)
-    }
-
+    /// The copy of a list of plain elements, bytes, an interface or a nullable optional: the data
+    /// MIR makes no clone function for.
     pub(super) fn glue_copy(&mut self, ty: Ty, vs: &[Value]) -> Vs {
-        let m = self.g.m;
-        match m.types.kind(ty).clone() {
+        match self.g.m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => self.list_copy(ty, vs),
-            TyKind::Type(_) => {
-                let flat = self.type_expand(ty, vs);
-                let mut out = Vec::new();
-                for (fty, at, w) in self.fields_of(ty) {
-                    out.extend(self.clone_value(fty, &flat[at..at + w]));
-                }
-                self.type_pack(ty, out)
-            }
-            TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
-                // Null stays null; otherwise copy the payload into a fresh block.
-                let p = vs[0];
-                let leaves = self.g.lay.leaves(inner);
-                let size = mem_layout(&leaves).size as i64;
-                let join = self.b.create_block();
-                self.b.append_block_param(join, types::I64);
-                let yes = self.b.create_block();
-                self.b.ins().brif(p, yes, &[], join, &[BlockArg::Value(p)]);
-                self.b.switch_to_block(yes);
-                let payload = self.load_leaves(p, 0, &leaves);
-                let c = self.clone_value(inner, &payload);
-                let q = self.alloc(size);
-                self.store_leaves(q, 0, &leaves, &c);
-                self.b.ins().jump(join, &[BlockArg::Value(q)]);
-                self.b.switch_to_block(join);
-                vec![self.b.block_params(join)[0]]
-            }
-            TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.clone_value(ty, vs),
-            TyKind::Opt(inner) => {
-                if self.g.lay.opt_is_nullable(inner) {
-                    // A `none` is null, which the clone entry call passes through.
-                    vec![self.clone_obj(vs[0])]
-                } else {
-                    // Copy the payload only when present; otherwise the zero payload is returned.
-                    let present = vs[0];
-                    let payload = vs[1..].to_vec();
-                    let leaves = self.g.lay.leaves(inner);
-                    let join = self.b.create_block();
-                    for l in &leaves {
-                        self.b.append_block_param(join, leaf_type(*l));
-                    }
-                    let yes = self.b.create_block();
-                    self.b.ins().brif(present, yes, &[], join, &bargs(&payload));
-                    self.b.switch_to_block(yes);
-                    let c = self.clone_value(inner, &payload);
-                    self.b.ins().jump(join, &bargs(&c));
-                    self.b.switch_to_block(join);
-                    let mut out = vec![present];
-                    out.extend(self.b.block_params(join).to_vec());
-                    out
-                }
-            }
-            TyKind::Alt(_) => self.alt_copy(ty, vs),
-            TyKind::Obj(..) => {
-                let leaves = self.g.lay.leaves(ty);
-                let src = self.spill_temp(vs, &leaves);
-                let dst = self.spill_temp(vs, &leaves);
-                let d = self.typedesc_addr(ty);
-                self.rt_call("msrt_slot_copy", &[d, src, dst]);
-                self.load_leaves(dst, 0, &leaves)
-            }
+            // A `none` is null, which the clone entry call passes through.
+            TyKind::Opt(inner) if self.g.lay.opt_is_nullable(inner) => vec![self.clone_obj(vs[0])],
             TyKind::Iface(i) => {
                 // The payload copier sits after the methods in the vtable. The copy owns its
                 // payload whatever the source owned, so the tag bits come off.
@@ -557,7 +312,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let c = self.b.ins().call_indirect(sr, f, &[data]);
                 vec![self.b.inst_results(c)[0], vt]
             }
-            _ => vs.to_vec(),
+            _ => unreachable!("MIR makes the clone function of every other type"),
         }
     }
 
@@ -610,80 +365,5 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.switch_to_block(join);
         let p = self.b.block_params(join)[0];
         vec![p, len, len]
-    }
-
-    pub(super) fn alt_copy(&mut self, ty: Ty, vs: &[Value]) -> Vs {
-        let TyKind::Alt(a) = self.g.m.types.kind(ty).clone() else {
-            return vs.to_vec();
-        };
-        let fields = self.alt_fields(a);
-        let shape = self.g.lay.shape(ty);
-        let boxed = matches!(shape.alt, Some(AltRepr::Boxed { .. }));
-        if boxed && self.has_tail(ty, &fields) {
-            return vec![self.copy_boxed_iter(ty, &fields, vs[0])];
-        }
-        let leaves = match &shape.alt {
-            Some(AltRepr::Boxed { block, .. }) => block.clone(),
-            _ => shape.leaves.clone(),
-        };
-        // Source leaves: boxed values are loaded from the block.
-        let src: Vs = if boxed {
-            self.load_leaves(vs[0], 0, &leaves)
-        } else {
-            vs.to_vec()
-        };
-        let join = self.b.create_block();
-        for l in &leaves {
-            self.b.append_block_param(join, leaf_type(*l));
-        }
-        let tag = src[0];
-        for (c, case) in fields.iter().enumerate() {
-            if !case.iter().any(|(t, _)| self.g.m.needs_drop(*t)) {
-                continue;
-            }
-            let this = self.b.create_block();
-            let next = self.b.create_block();
-            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
-            self.b.ins().brif(is, this, &[], next, &[]);
-            self.b.switch_to_block(this);
-            let mut out = src.clone();
-            for (fty, idx) in case {
-                if !self.g.m.needs_drop(*fty) {
-                    continue;
-                }
-                let fv: Vs = idx.iter().map(|i| src[*i]).collect();
-                let cv = self.clone_value(*fty, &fv);
-                for (i, v) in idx.iter().zip(cv) {
-                    out[*i] = v;
-                }
-            }
-            self.b.ins().jump(join, &bargs(&out));
-            self.b.switch_to_block(next);
-        }
-        self.b.ins().jump(join, &bargs(&src));
-        self.b.switch_to_block(join);
-        let out = self.b.block_params(join).to_vec();
-        if boxed {
-            let size = mem_layout(&leaves).size as i64;
-            let Some((unit, addr)) = self.unit_case(a, out[0]) else {
-                let blk = self.alloc(size);
-                self.store_leaves(blk, 0, &leaves, &out);
-                return vec![blk];
-            };
-            let fin = self.b.create_block();
-            self.b.append_block_param(fin, types::I64);
-            let fresh = self.b.create_block();
-            self.b
-                .ins()
-                .brif(unit, fin, &[BlockArg::Value(addr)], fresh, &[]);
-            self.b.switch_to_block(fresh);
-            let blk = self.alloc(size);
-            self.store_leaves(blk, 0, &leaves, &out);
-            self.b.ins().jump(fin, &[BlockArg::Value(blk)]);
-            self.b.switch_to_block(fin);
-            vec![self.b.block_params(fin)[0]]
-        } else {
-            out
-        }
     }
 }

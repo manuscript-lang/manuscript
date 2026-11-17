@@ -54,7 +54,7 @@ impl Glue {
 
 use crate::builder::FuncBuilder;
 use crate::ir::{Cc, ExternDef, ExternRole, FuncId, Imm, Mode, Module, Op, Param};
-use crate::layout::Layouts;
+use crate::layout::{AltRepr, Layouts, mem_layout};
 use crate::types::{Ty, TyKind};
 use std::collections::HashSet;
 
@@ -92,8 +92,6 @@ pub fn run(m: &mut Module) -> bool {
         .into_iter()
         .filter(eligible)
         .filter(|t| !m.clone_glue.contains_key(t))
-        // The copy of recursive data (a chain copied by a loop, on a new stack segment) stays with the backends.
-        .filter(|t| !m.drop_recurses(*t))
         .filter(|t| match m.types.kind(*t) {
             TyKind::List(e) => m.needs_drop(*e),
             TyKind::Bytes | TyKind::Iface(_) => false,
@@ -135,7 +133,12 @@ pub fn run(m: &mut Module) -> bool {
         m.drop_glue.insert(ty, id);
     }
     for ty in clone_tys {
-        let id = make_clone(m, ty);
+        let body = make_clone(m, ty);
+        let id = if m.drop_recurses(ty) {
+            wrap_deep_clone(m, ty, body)
+        } else {
+            body
+        };
         m.clone_glue.insert(ty, id);
     }
     for ty in slots {
@@ -615,6 +618,61 @@ fn wrap_deep_drop(m: &mut Module, ty: Ty, body: FuncId) -> FuncId {
     b.finish()
 }
 
+/// The clone function of recursive data: when the stack is nearly used up the copy runs on a new
+/// stack segment (`msrt_slot_copy_grown`) through the slot copy function; otherwise `body` runs.
+fn wrap_deep_clone(m: &mut Module, ty: Ty, body: FuncId) -> FuncId {
+    m.glue_bodies.push(body);
+    let slot_copy = match m.addr_glue.get(&(Glue::SlotCopy, ty)) {
+        Some(f) => *f,
+        None => {
+            let f = make_slot_copy(m, ty);
+            m.addr_glue.insert((Glue::SlotCopy, ty), f);
+            f
+        }
+    };
+    let grown = rt_extern(
+        m,
+        "msrt_slot_copy_grown",
+        &[Ty::PTR, Ty::PTR, Ty::PTR],
+        Ty::VOID,
+        false,
+    );
+    let name = format!("{GLUE_PREFIX}mir.{}.clone_deep", m.funcs.len());
+    let params = vec![Param {
+        ty,
+        mode: Mode::Borrow,
+    }];
+    let mut b = FuncBuilder::new(m, &name, params, ty);
+    let v = b.params()[0];
+    let (grow, run) = (b.new_block(), b.new_block());
+    let low = b
+        .emit(Op::StackNear, &[], Imm::Int(0), Some(Ty::BOOL))
+        .expect("flag");
+    b.br_if(low, grow, &[], run, &[]);
+    b.switch_to(grow);
+    let src = b
+        .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+        .expect("slot");
+    b.emit(Op::Store, &[src, v], Imm::None, None);
+    let dst = b
+        .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+        .expect("slot");
+    let f = b
+        .emit(Op::FuncAddr, &[], Imm::Func(slot_copy), Some(Ty::PTR))
+        .expect("address");
+    b.call_rt(grown, &[f, src, dst]);
+    let out = b
+        .emit(Op::Take, &[dst], Imm::Ty(ty), Some(ty))
+        .expect("copy");
+    b.ret(Some(out));
+    b.switch_to(run);
+    let out = b
+        .emit(Op::Call, &[v], Imm::Func(body), Some(ty))
+        .expect("copy");
+    b.ret(Some(out));
+    b.finish()
+}
+
 fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
     let suffix = if m.drop_recurses(ty) {
         "drop_body"
@@ -849,8 +907,132 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
 
 /// `fn(&T) -> T` for a record or an enum: every field is cloned and the value rebuilt, so a
 /// borrowing variant comes out as an ordinary owned value.
+/// For a boxed alternative with a chain (a case holding the alternative again as its last such
+/// field), per case the tail field, whether it is optional, and the byte offset in the block of the
+/// leaf that holds the next block's pointer. `None` for any other alternative.
+fn boxed_chain(
+    m: &Module,
+    ty: Ty,
+    a: crate::types::AltId,
+) -> Option<Vec<Option<(u32, bool, i64)>>> {
+    let lay = Layouts::new(m);
+    if !lay.is_boxed(a) {
+        return None;
+    }
+    let Some(AltRepr::Boxed { block, .. }) = &lay.shape(ty).alt else {
+        return None;
+    };
+    let offsets = mem_layout(block).offsets;
+    let fields = lay.alt_fields(a);
+    let tails: Vec<Option<(u32, bool, i64)>> = m.alts[a.index()]
+        .cases
+        .iter()
+        .enumerate()
+        .map(|(c, case)| {
+            case.fields.iter().enumerate().rev().find_map(|(k, f)| {
+                let opt = m.opt_inner(f.1);
+                if k >= 32 || (f.1 != ty && opt != Some(ty)) {
+                    return None;
+                }
+                let leaf = *fields[c][k].1.last()?;
+                Some((k as u32, f.1 != ty, i64::from(offsets[leaf])))
+            })
+        })
+        .collect();
+    tails.iter().any(Option::is_some).then_some(tails)
+}
+
+/// The clone of a boxed alternative with a chain: a loop that copies the blocks front to back.
+/// Each round clones the other fields, makes the new block, stores it where the previous block's
+/// tail leaf (or the result slot) points, and goes on with the source's tail, so a long chain
+/// does not use the stack.
+fn clone_chain(
+    m: &mut Module,
+    name: &str,
+    params: Vec<Param>,
+    ty: Ty,
+    a: crate::types::AltId,
+    tails: &[Option<(u32, bool, i64)>],
+) -> FuncId {
+    let counts: Vec<u32> = m.alts[a.index()]
+        .cases
+        .iter()
+        .map(|c| c.fields.len() as u32)
+        .collect();
+    let mut b = FuncBuilder::new(m, name, params, ty);
+    let first = b.params()[0];
+    let (head, exit) = (b.new_block(), b.new_block());
+    let src = b.add_block_param(head, ty, Mode::Borrow);
+    let dst = b.add_block_param(head, Ty::PTR, Mode::Borrow);
+    let result = b
+        .emit(Op::Slot, &[], Imm::Ty(ty), Some(Ty::PTR))
+        .expect("slot");
+    b.br(head, &[first, result]);
+    b.switch_to(head);
+    let tag = b.alt_tag(src);
+    let blocks: Vec<_> = counts.iter().map(|_| b.new_block()).collect();
+    let default = b.new_block();
+    let sw: Vec<(i64, _)> = blocks
+        .iter()
+        .enumerate()
+        .map(|(c, k)| (c as i64, *k))
+        .collect();
+    b.switch(tag, &sw, default);
+    for (c, (n, blk)) in counts.into_iter().zip(blocks).enumerate() {
+        b.switch_to(blk);
+        let mut tail_value = None;
+        let fields: Vec<_> = (0..n)
+            .map(|k| {
+                let v = b.alt_get(a, c as u32, k, src);
+                if tails[c].is_some_and(|t| t.0 == k) {
+                    // The source's tail is copied as it is; the next round replaces it.
+                    tail_value = Some(v);
+                    v
+                } else {
+                    b.clone_value(v)
+                }
+            })
+            .collect();
+        let fresh = b.alt_new(a, c as u32, &fields);
+        b.emit(Op::Put, &[dst, fresh], Imm::None, None);
+        let (Some((_, optional, off)), Some(tail)) = (tails[c], tail_value) else {
+            b.br(exit, &[]);
+            continue;
+        };
+        let block_ptr = b
+            .emit(Op::Load, &[dst], Imm::Ty(Ty::PTR), Some(Ty::PTR))
+            .expect("pointer");
+        let next_dst = ptr_at(&mut b, block_ptr, off);
+        if optional {
+            let (more, last) = (b.new_block(), b.new_block());
+            let present = b.opt_is_some(tail);
+            b.br_if(present, more, &[], last, &[]);
+            b.switch_to(more);
+            let next = b.opt_get(tail);
+            b.br(head, &[next, next_dst]);
+            b.switch_to(last);
+            b.br(exit, &[]);
+        } else {
+            b.br(head, &[tail, next_dst]);
+        }
+    }
+    b.switch_to(default);
+    b.unreachable();
+    b.switch_to(exit);
+    let out = b
+        .emit(Op::Take, &[result], Imm::Ty(ty), Some(ty))
+        .expect("copy");
+    b.ret(Some(out));
+    b.finish()
+}
+
 fn make_clone(m: &mut Module, ty: Ty) -> FuncId {
-    let name = format!("{GLUE_PREFIX}mir.{}.clone", m.clone_glue.len());
+    let suffix = if m.drop_recurses(ty) {
+        "clone_body"
+    } else {
+        "clone"
+    };
+    let name = format!("{GLUE_PREFIX}mir.{}.{suffix}", m.clone_glue.len());
     let params = vec![Param {
         ty,
         mode: Mode::Borrow,
@@ -869,6 +1051,10 @@ fn make_clone(m: &mut Module, ty: Ty) -> FuncId {
             let out = b.type_new(r, &fields);
             b.ret(Some(out));
             b.finish()
+        }
+        TyKind::Alt(a) if boxed_chain(m, ty, a).is_some() => {
+            let chain = boxed_chain(m, ty, a).expect("a chain");
+            clone_chain(m, &name, params, ty, a, &chain)
         }
         TyKind::Alt(a) => {
             let cases: Vec<usize> = m.alts[a.index()]
