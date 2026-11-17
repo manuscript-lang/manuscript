@@ -1,5 +1,6 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	constant_time_equal from "@std/crypto/crypto.ms",
 	bit_and,
 	bit_not,
@@ -13,11 +14,12 @@ import (
 /*
 Encrypts or decrypts `data` with the ChaCha20 stream cipher (RFC 8439); the same call does both.
 `key` is 32 bytes, `nonce` 12 bytes and `counter` the initial 32-bit block counter (normally 1 after the Poly1305 key block).
-A wrong key or nonce length, or data that needs more blocks than the 32-bit counter has left, returns EINVAL. Never reuse a key and nonce pair.
+A wrong key or nonce length, or a counter outside the 32-bit range, is a programming fault; data that needs more blocks than the 32-bit counter has left returns EINVAL. Never reuse a key and nonce pair.
 */
 export fn chacha20(key: Bytes, nonce: Bytes, counter: Int, data: Bytes) Bytes!:
-	if not check_key_nonce(key, nonce) or counter < 0 or counter > 4294967295:
-		return error(Error("crypto: invalid input", kind: "EINVAL"))
+	require_key_nonce("chacha20", key, nonce)
+	if counter < 0 or counter > 4294967295:
+		panic("chacha20: counter must be a 32-bit unsigned value")
 	if not fits_counter(counter, data.length()):
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 
@@ -30,7 +32,7 @@ fn limbs_load(data: Bytes, at: Int, shift: Int) Int:
 // one-time key, returning 16 bytes. Authenticate with a key used for one message only;
 // use `chacha20poly1305_seal` unless implementing a protocol.
 export fn poly1305(key: Bytes, data: Bytes) Bytes!:
-	if key.length() != 32: return error(Error("crypto: invalid input", kind: "EINVAL"))
+	if key.length() != 32: panic("poly1305: key must be 32 bytes")
 
 	mask := 67108863
 	r0 := bit_and(le32(key, 0), 67108863)
@@ -207,14 +209,15 @@ fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) 
 
 // Encrypts and authenticates `plaintext` with ChaCha20-Poly1305 (RFC 8439), returning
 // the ciphertext followed by a 16-byte tag.
-// `key` is 32 bytes and `nonce` 12 bytes; a wrong length returns EINVAL. The caller supplies a nonce never reused with the key.
+// `key` is 32 bytes and `nonce` 12 bytes; a wrong length is a programming fault. The caller supplies a nonce never reused with the key.
 export fn chacha20poly1305_seal(
 	key: Bytes,
 	nonce: Bytes,
 	plaintext: Bytes,
 	associated_data: Bytes,
 ) Bytes!:
-	if not check_key_nonce(key, nonce) or not fits_counter(1, plaintext.length()):
+	require_key_nonce("chacha20poly1305_seal", key, nonce)
+	if not fits_counter(1, plaintext.length()):
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 
 	ciphertext := xor_stream(key, 1, nonce, plaintext)
@@ -225,19 +228,17 @@ export fn chacha20poly1305_seal(
 	return ok(out.build())
 
 // Authenticates and decrypts a value produced by `chacha20poly1305_seal`. A wrong key,
-// nonce, associated data or altered ciphertext returns EAUTH; a wrong key or nonce
-// length or input shorter than the 16-byte tag returns EINVAL.
+// nonce, associated data or altered ciphertext returns EAUTH; input shorter than the
+// 16-byte tag returns EINVAL. A key or nonce of the wrong length is a programming
+// fault.
 export fn chacha20poly1305_open(
 	key: Bytes,
 	nonce: Bytes,
 	sealed: Bytes,
 	associated_data: Bytes,
 ) Bytes!:
-	if (
-		not check_key_nonce(key, nonce)
-		or sealed.length() < 16
-		or not fits_counter(1, sealed.length() - 16)
-	):
+	require_key_nonce("chacha20poly1305_open", key, nonce)
+	if sealed.length() < 16 or not fits_counter(1, sealed.length() - 16):
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 
 	split := sealed.length() - 16
@@ -324,8 +325,9 @@ fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
 			)
 	return out.build()
 
-fn check_key_nonce(key: Bytes, nonce: Bytes) Bool:
-	return key.length() == 32 and nonce.length() == 12
+fn require_key_nonce(function: String, key: Bytes, nonce: Bytes) Void:
+	if key.length() != 32: panic(f"{function}: key must be 32 bytes")
+	if nonce.length() != 12: panic(f"{function}: nonce must be 12 bytes")
 
 // Whether `length` bytes fit in the block counter space left from `counter` (RFC 8439
 // counters are 32 bits).
