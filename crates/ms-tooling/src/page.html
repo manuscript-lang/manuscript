@@ -51,7 +51,7 @@ main{grid-row:2;grid-column:3;overflow:auto;padding:0;min-width:0;display:flex;f
 #info .ttl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}#info .ttl code{font:600 15px ui-monospace,SFMono-Regular,Menlo,monospace}
 #info .ttl .sp{flex:1}#info .meta{margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;color:var(--mut);font-size:12px}
 #info a{color:var(--acc);text-decoration:none}#info a:hover{text-decoration:underline}
-#view{padding:8px 14px 10px;flex:1;min-height:0;overflow:auto}
+#view{padding:6px 14px 8px;flex:1;min-height:0;overflow:auto}
 .var{color:var(--var);font-weight:700}.brw{color:var(--brw)}.own{color:var(--own);font-weight:600}
 .badge{display:inline-block;font-size:11px;padding:0 7px;border-radius:9px;background:var(--pan);color:var(--fg);border:1px solid var(--line)}
 .badge.write{border-color:var(--effs);color:var(--effs)}.badge.read{border-color:var(--brw);color:var(--brw)}.badge.err{border-color:var(--var);color:var(--var)}
@@ -64,8 +64,8 @@ svg path.edge{fill:none;stroke:var(--line);stroke-width:1.2}svg path.edge.hot{st
 svg .more rect{stroke:var(--mut);stroke-dasharray:4}svg .dir rect{fill:var(--pan);stroke:var(--line)}
 svg .chg rect{stroke:var(--var);stroke-width:3px}
 svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--eff);stroke:var(--effs)}svg .msg{stroke:var(--fg);stroke-width:1.2;fill:none}svg .msg.async{stroke-dasharray:5}svg .msg.ret{stroke:var(--mut);stroke-dasharray:2 3}
-.tools{display:flex;gap:4px;margin:0 0 6px;align-items:center;flex-wrap:wrap}.tools .hint{margin-left:8px}
-.tools button,.tools select{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:2px 9px;border-radius:6px;cursor:pointer}
+.tools{display:flex;gap:4px;margin:0 0 4px;align-items:center;flex-wrap:wrap}.tools .hint{margin-left:8px;flex:1 1 0;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.tools button,.tools select{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:0 8px;line-height:22px;font-size:12px;border-radius:6px;cursor:pointer}
 .tools input:not([type=checkbox]){border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:3px 9px;border-radius:6px;font:inherit;min-width:0;width:200px;max-width:100%}.tools input:not([type=checkbox]):focus{outline:2px solid var(--acc);border-color:var(--acc)}
 .tools button:hover{border-color:var(--acc);color:var(--acc)}
 .stage{border:1px solid var(--line);border-radius:10px;overflow:hidden;background-color:var(--bg)}
@@ -326,7 +326,7 @@ function panzoom(box){
   box.querySelector('[data-zoom="in"]').onclick=()=>zoom(1/1.3);box.querySelector('[data-zoom="out"]').onclick=()=>zoom(1.3);box.querySelector('[data-zoom="fit"]').onclick=fit;
   const r=svg.getBoundingClientRect();fit()
 }
-function stage(svg,note){return '<div class="tools"><button data-zoom="in" title="Zoom in">＋</button><button data-zoom="out" title="Zoom out">－</button><button data-zoom="fit">fit</button><button data-export="svg" title="Save this view as an SVG file">Export SVG</button>'+(note?'<span class="hint">'+note+'</span>':'')+'</div><div class="stage">'+svg+'</div>'}
+function stage(svg,note){return '<div class="tools"><button data-zoom="in" title="Zoom in">＋</button><button data-zoom="out" title="Zoom out">－</button><button data-zoom="fit">fit</button><button data-export="svg" title="Save this view as an SVG file">Export SVG</button>'+(note?'<span class="hint" title="'+note.replace(/"/g,'&quot;')+'">'+note+'</span>':'')+'</div><div class="stage">'+svg+'</div>'}
 /* layered layout; iterative so depth never overflows the stack */
 function graph(nodes,edges,note){
   const ix=Object.fromEntries(nodes.map((n,i)=>[n.id,i]));
