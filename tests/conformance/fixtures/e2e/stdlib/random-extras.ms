@@ -62,15 +62,15 @@ test "secure sample and weighted_choice":
 	expect_equal(picked.sorted(), [1, 2, 3, 4])?
 	expect_equal(expect_ok(sample([1, 2, 3], 0))?, List[Int]())?
 
-	_error := expect_fault(fn: discard(sample([1], 2)))?
+	_error := expect_error(sample([1], 2))?
 	expect_equal(expect_some(expect_ok(weighted_choice(["a", "b"], [0.0, 2.0]))?)?, "b")?
 
-	_other := expect_fault(fn: discard(weighted_choice(["a"], [0.0])))?
+	_other := expect_error(weighted_choice(["a"], [0.0]))?
 	expect_none(expect_ok(weighted_choice(List[String](), List[Float]()))?)?
 
 test "secure_int covers wide and empty ranges":
-	_same := expect_fault(fn: discard(secure_int(3, 3)))?
-	_reversed := expect_fault(fn: discard(secure_int(5, 2)))?
+	_same := expect_error(secure_int(3, 3))?
+	_reversed := expect_error(secure_int(5, 2))?
 	expect_equal(secure_int(7, 8)?, 7)?
 
 	wide := secure_int(-9223372036854775807 - 1, none)?

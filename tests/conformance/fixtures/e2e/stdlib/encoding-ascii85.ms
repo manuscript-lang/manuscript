@@ -3,7 +3,7 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	ascii85_decode, ascii85_encode from "@std/data/encoding.ms",
-	expect_equal, expect_fault from "@std/test/test.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "ASCII85 unframed vectors cover tails zero shorthand and maximum words":
@@ -53,6 +53,7 @@ test "ASCII85 rejects overflowing complete and padded partial groups":
 
 test "ASCII85 decoded byte limits count expansions and partial groups exactly":
 	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	invalid: Bytes! := error(Error("encoding: invalid input", kind: "EINVAL"))
 	expect_equal(ascii85_decode("", 0)?, Bytes([]))?
 	expect_equal(ascii85_decode("z", 3), limited)?
 	expect_equal(ascii85_decode("z", 4)?, Bytes([0, 0, 0, 0]))?
@@ -61,7 +62,7 @@ test "ASCII85 decoded byte limits count expansions and partial groups exactly":
 	expect_equal(ascii85_decode("zz", 7), limited)?
 	expect_equal(ascii85_decode("zz", 8)?, Bytes([0, 0, 0, 0, 0, 0, 0, 0]))?
 	for text in ["", "?", "uuuuu"]:
-		_negative := expect_fault(fn: discard(ascii85_decode(text, -1)))?
+		expect_equal(ascii85_decode(text, -1), invalid)?
 	expect_equal(ascii85_decode("!!", none)?, Bytes([0]))?
 
 test "ASCII85 round trips byte views across every block boundary":
@@ -76,6 +77,3 @@ test "ASCII85 round trips byte views across every block boundary":
 
 	middle := bytes.slice(17, 219)?
 	expect_equal(ascii85_decode(ascii85_encode(middle))?, middle)?
-
-fn discard[T](value: T) Void:
-	return

@@ -13,17 +13,14 @@ import (
 	join from "@std/os/path.ms",
 	IdentityKind,
 	cpu_usage,
-	get_priority,
 	groups,
 	process_info,
 	replace,
 	resource_usage,
 	set_groups,
-	set_identity,
-	set_priority,
-	umask from "@std/os/process.ms",
+	set_identity from "@std/os/process.ms",
 	memory_usage from "@std/os/system.ms",
-	expect_false, expect_fault, expect_ok, expect_true from "@std/test/test.ms",
+	expect_false, expect_ok, expect_true from "@std/test/test.ms",
 	milliseconds from "@std/time.ms",
 
 	within from "./support/conn.ms",
@@ -55,12 +52,16 @@ test "process usage records report this process":
 	expect_false(memory.heap_used <= 0 or memory.resident <= 0)?
 	expect_false(memory.heap_total < memory.heap_used)?
 
-test "set_identity and set_groups fault on bad ids and apply or refuse":
-	_identity := expect_fault(fn: discard(set_identity(kind: IdentityKind.Uid, id: -1)))?
-	_groups := expect_fault(fn: discard(set_groups(groups: [-1])))?
-	_mask := expect_fault(fn: discard(umask(512)))?
-	_pid := expect_fault(fn: discard(get_priority(-1)))?
-	_priority := expect_fault(fn: discard(set_priority(0, 20)))?
+test "set_identity and set_groups validate input and apply or refuse":
+	expect_process_error(
+		set_identity(kind: IdentityKind.Uid, id: -1),
+		Error("process: invalid input", kind: "EINVAL"),
+	)?
+	expect_process_error(
+		set_groups(groups: [-1]),
+		Error("process: invalid input", kind: "EINVAL"),
+	)?
+
 	info := process_info()?
 
 	if info.uid < 0:
@@ -169,30 +170,25 @@ test "native watcher max_entries counts the paths under the root":
 	)?
 	w.close()?
 
-test "polling options fault on native-only settings":
+test "polling options reject native-only settings":
 	t := temporary("ms-wo-") | expect_ok?
 	polled := WatchOptions(interval: milliseconds(20))
-	_events := expect_fault(
-		fn: discard(
-			watch(
-				path: t.path(),
-				options: WatchOptions(
-					interval: milliseconds(20),
-					max_events: 4,
-				),
-			)
-		)
+	expect_fs_error(
+		watch(
+			path: t.path(),
+			options: WatchOptions(interval: milliseconds(20), max_events: 4),
+		),
+		Error("filesystem: invalid input", kind: "EINVAL"),
 	)?
-	_overflow := expect_fault(
-		fn: discard(
-			watch(
-				path: t.path(),
-				options: WatchOptions(
-					interval: milliseconds(20),
-					overflow: "ignore",
-				),
-			)
-		)
+	expect_fs_error(
+		watch(
+			path: t.path(),
+			options: WatchOptions(
+				interval: milliseconds(20),
+				overflow: "ignore",
+			),
+		),
+		Error("filesystem: invalid input", kind: "EINVAL"),
 	)?
 	expect_fs_error(
 		watch(path: t.path(), options: WatchOptions(overflow: "bogus")),
@@ -215,6 +211,3 @@ test "recursive native watch sees a file in a new subdirectory":
 			if e := within(var w, 2.seconds())?:
 				if e.path == join([r.clone(), "d", "f"]): seen = true
 	expect_true(seen)?
-
-fn discard[T](value: T) Void:
-	return

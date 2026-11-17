@@ -3,14 +3,15 @@
 import (
 	Bytes from "@std/bytes.ms",
 	hex_decode, hex_encode from "@std/data/encoding.ms",
-	expect_equal, expect_fault from "@std/test/test.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "hex preflight preserves byte lengths and error precedence":
 	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+	negative: Bytes! := error(Error("encoding: invalid input", kind: "EINVAL"))
 	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	for text in ["", "a", "aaa", "zz", "é", "éa"]:
-		_negative := expect_fault(fn: discard(hex_decode(text, -1)))?
+		expect_equal(hex_decode(text, -1), negative)?
 	for text in ["aaa", "zz", "é", "éa"]:
 		expect_equal(hex_decode(text, 0), limited)?
 	for text in ["a", "zz", "é", "éa"]:
@@ -59,6 +60,3 @@ test "hex encoding preserves output across bounded chunks":
 		storage := ("!" + text + "?").to_bytes()
 		data := storage.view(1, length + 1)
 		expect_equal(hex_encode(data), "78".repeat(length)?)?
-
-fn discard[T](value: T) Void:
-	return

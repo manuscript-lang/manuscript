@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "chacha20poly1305.ms::tampering is rejected and bad lengths fault",
+          "name": "chacha20poly1305.ms::tampering and bad lengths are rejected",
           "status": "passed"
         },
         {
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN chacha20poly1305.ms::Poly1305 matches the RFC 8439 vector\nPASS chacha20poly1305.ms::Poly1305 matches the RFC 8439 vector\nRUN chacha20poly1305.ms::ChaCha20-Poly1305 matches the RFC 8439 sealed message\nPASS chacha20poly1305.ms::ChaCha20-Poly1305 matches the RFC 8439 sealed message\nRUN chacha20poly1305.ms::empty message seals to a bare tag\nPASS chacha20poly1305.ms::empty message seals to a bare tag\nRUN chacha20poly1305.ms::tampering is rejected and bad lengths fault\nPASS chacha20poly1305.ms::tampering is rejected and bad lengths fault\nRUN chacha20poly1305.ms::authentication failures use EAUTH\nPASS chacha20poly1305.ms::authentication failures use EAUTH\nRUN chacha20poly1305.ms::chacha20 rejects data past the 32-bit block counter\nPASS chacha20poly1305.ms::chacha20 rejects data past the 32-bit block counter\n6 tests, 0 failed\n",
+      "stdout": "RUN chacha20poly1305.ms::Poly1305 matches the RFC 8439 vector\nPASS chacha20poly1305.ms::Poly1305 matches the RFC 8439 vector\nRUN chacha20poly1305.ms::ChaCha20-Poly1305 matches the RFC 8439 sealed message\nPASS chacha20poly1305.ms::ChaCha20-Poly1305 matches the RFC 8439 sealed message\nRUN chacha20poly1305.ms::empty message seals to a bare tag\nPASS chacha20poly1305.ms::empty message seals to a bare tag\nRUN chacha20poly1305.ms::tampering and bad lengths are rejected\nPASS chacha20poly1305.ms::tampering and bad lengths are rejected\nRUN chacha20poly1305.ms::authentication failures use EAUTH\nPASS chacha20poly1305.ms::authentication failures use EAUTH\nRUN chacha20poly1305.ms::chacha20 rejects data past the 32-bit block counter\nPASS chacha20poly1305.ms::chacha20 rejects data past the 32-bit block counter\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

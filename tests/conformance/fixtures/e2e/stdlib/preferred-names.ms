@@ -3,7 +3,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	Regex, compile from "@std/regex.ms",
-	expect_equal, expect_false, expect_fault from "@std/test/test.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
 )
 
 interface ListMutation:
@@ -170,9 +170,11 @@ test "regex replace_all preserves literal text and exact output budgets":
 	limited: String! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
+	invalid: String! := error(
+		Error("regular expression: invalid input", kind: "EINVAL")
+	)
 	expect_equal(pattern.replace_all("aa", "é", 3), limited)?
-
-	_negative := expect_fault(fn: discard(all("a", "", -1)))?
+	expect_equal(all("a", "", -1), invalid)?
 	expect_equal((all("a", "", 0)?), "")?
 	expect_equal(pattern.replace_all("z", "b", 0), limited)?
 	expect_equal(
@@ -293,6 +295,3 @@ test "byte reversal names copy across direct bound and view calls":
 
 fn present[T](value: T) T?:
 	return value
-
-fn discard[T](value: T) Void:
-	return

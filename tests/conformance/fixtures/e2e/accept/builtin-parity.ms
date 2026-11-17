@@ -8,11 +8,7 @@ import (
 	range_by from "@std/collections/collections.ms",
 	from_int from "@std/math/math.ms",
 	compile from "@std/regex.ms",
-	expect_equal,
-	expect_false,
-	expect_fault,
-	expect_true,
-	fail from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
 fn positive(value: Int) Bool:
@@ -376,6 +372,9 @@ test "growth limits and invalid inputs return values":
 	list_limit: List[Int]! := error(
 		Error("collection: limit exceeded", kind: "EOVERFLOW")
 	)
+	list_invalid: List[Int]! := error(
+		Error("collection: invalid input", kind: "EINVAL")
+	)
 	(
 		range_by(
 			start: 0,
@@ -384,17 +383,14 @@ test "growth limits and invalid inputs return values":
 			options: RangeOptions(max_items: 3),
 		) | expect_equal(list_limit)?
 	)
-
-	_step := expect_fault(
-		fn: discard(
-			range_by(
-				start: 0,
-				end: 4,
-				step: 0,
-				options: RangeOptions(max_items: 3),
-			)
-		)
-	)?
+	(
+		range_by(
+			start: 0,
+			end: 4,
+			step: 0,
+			options: RangeOptions(max_items: 3),
+		) | expect_equal(list_invalid)?
+	)
 	filled(value: 1, count: 2, max_items: 1) | expect_equal(list_limit)?
 
 fn parity(value: Int) Int:
@@ -492,8 +488,8 @@ fn verify_bigint_and_regex() Void!:
 	a.add(other: b).to_string_radix(radix: 10) | expect_equal("17")?
 	a.subtract(other: b).to_string_radix(radix: 10) | expect_equal("7")?
 	a.multiply(other: b).to_string_radix(radix: 10) | expect_equal("60")?
-	a.divide(other: b).to_int() | expect_equal(2)?
-	a.remainder(other: b).to_int() | expect_equal(2)?
+	(common_result(result: a.divide(other: b))?).to_int() | expect_equal(2)?
+	(common_result(result: a.remainder(other: b))?).to_int() | expect_equal(2)?
 	a.compare(other: b) | expect_equal(1)?
 	a.bit_and(other: b).to_int() | expect_equal(4)?
 	a.bit_or(other: b).to_int() | expect_equal(13)?
@@ -554,6 +550,3 @@ test "generic native methods accept omitted single-parameter labels":
 			observed_values.append(value)
 	)
 	observed_values | expect_equal(values)?
-
-fn discard[T](value: T) Void:
-	return

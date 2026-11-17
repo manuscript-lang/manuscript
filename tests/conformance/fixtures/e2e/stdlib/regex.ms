@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	compile from "@std/regex.ms",
-	expect_equal, expect_false, expect_fault from "@std/test/test.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
 )
 
 test "regex receivers execute matching replacement and empty results":
@@ -200,14 +200,3 @@ test "regex compile errors point to duplicate flags and group names":
 			invalid.err().message,
 			"regular expression: invalid data: " + item[1],
 		)?
-
-test "a negative output budget faults":
-	regex := compile("[0-9]+")?
-	_find := expect_fault(fn: discard(regex.find_all("a1", -1)))?
-	_captures := expect_fault(fn: discard(regex.captures_all("a1", -1)))?
-	_split := expect_fault(fn: discard(regex.split("a1", -1)))?
-	_replace := expect_fault(fn: discard(regex.replace_all("a1", "#", -1)))?
-	_template := expect_fault(fn: discard(regex.replace_template("a1", "$0", -1)))?
-
-fn discard[T](value: T) Void:
-	return

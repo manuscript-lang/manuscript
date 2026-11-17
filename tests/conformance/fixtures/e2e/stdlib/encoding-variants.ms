@@ -7,7 +7,7 @@ import (
 	base32_encode,
 	base64_decode,
 	base64_encode from "@std/data/encoding.ms",
-	expect_equal, expect_fault from "@std/test/test.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "unpadded Base64 covers both alphabets and every tail":
@@ -112,6 +112,7 @@ test "Base32 rejects nonzero unused bits in each tail shape":
 
 test "encoding variants honor zero exact exceeded absent and negative limits":
 	empty := Bytes([])
+	invalid: Bytes! := error(Error("encoding: invalid input", kind: "EINVAL"))
 	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(base32_decode("", max_bytes: 0)?, empty)?
 	expect_equal(base64_decode("", max_bytes: 0, padded: false)?, empty)?
@@ -127,10 +128,8 @@ test "encoding variants honor zero exact exceeded absent and negative limits":
 	expect_equal(base64_decode("Zg", max_bytes: none, padded: false)?, "f".to_bytes())?
 
 	for text in ["", "?", "MY======"]:
-		_base32 := expect_fault(fn: discard(base32_decode(text, max_bytes: -1)))?
-		_base64 := expect_fault(
-			fn: discard(base64_decode(text, max_bytes: -1, padded: false))
-		)?
+		expect_equal(base32_decode(text, max_bytes: -1), invalid)?
+		expect_equal(base64_decode(text, max_bytes: -1, padded: false), invalid)?
 
 test "encoding variants honor Bytes views and cross block boundaries":
 	var out = BytesBuilder()
@@ -191,6 +190,7 @@ test "encoding variant function values retain defaults":
 
 test "Base32 rejects interior padding before output budgets":
 	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+	negative: Bytes! := error(Error("encoding: invalid input", kind: "EINVAL"))
 	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 
 	for hex in [false, true]:
@@ -203,18 +203,13 @@ test "Base32 rejects interior padding before output budgets":
 				),
 				invalid,
 			)?
-
-			_negative := expect_fault(
-				fn: discard(
-					base32_decode(
-						text,
-						Base32Options(
-							hex_alphabet: hex,
-							padded: true,
-						),
-						-1,
-					)
-				)
+			expect_equal(
+				base32_decode(
+					text,
+					Base32Options(hex_alphabet: hex, padded: true),
+					-1,
+				),
+				negative,
 			)?
 			expect_equal(
 				base32_decode(
@@ -269,6 +264,7 @@ test "Base32 rejects interior padding before output budgets":
 
 test "unpadded Base64 preserves byte budget precedence for invalid padding":
 	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+	negative: Bytes! := error(Error("encoding: invalid input", kind: "EINVAL"))
 	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 
 	for url in [false, true]:
@@ -276,16 +272,10 @@ test "unpadded Base64 preserves byte budget precedence for invalid padding":
 			for budget in 0..3:
 				expect_equal(base64_decode(text, url, budget, padded: false), limited)?
 			expect_equal(base64_decode(text, url, 3, padded: false), invalid)?
-
-			_negative := expect_fault(
-				fn: discard(base64_decode(text, url, -1, padded: false))
-			)?
+			expect_equal(base64_decode(text, url, -1, padded: false), negative)?
 
 		expect_equal(base64_decode("A", url, 0, padded: false), invalid)?
 		expect_equal(base64_decode("!!!!", url, 0, padded: false), limited)?
 		expect_equal(base64_decode("!!!!", url, 3, padded: false), invalid)?
 
 	expect_equal(base64_decode("Zg", max_bytes: 1, padded: false)?, "f".to_bytes())?
-
-fn discard[T](value: T) Void:
-	return
