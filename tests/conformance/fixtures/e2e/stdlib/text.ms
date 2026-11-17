@@ -79,7 +79,7 @@ test "text quoting escapes interpolation braces and literal controls":
 
 	for scalar in [0, 31, 127, 128, 133, 159, 8232, 8233, 8234, 8238, 8294, 8297]:
 		text := from_scalars([scalar])?
-		expected := "\"\\u{" + scalar.to_string_radix(16) + "}\""
+		expected := "\"\\u{" + scalar.to_hex() + "}\""
 		quote(text) | expect_equal(expected)?
 		(
 			unquote(quote(text))

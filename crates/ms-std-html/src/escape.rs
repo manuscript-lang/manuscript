@@ -128,14 +128,15 @@ fn unescape_entity(s: &[u8], out: &mut Vec<u8>, attribute: bool) -> usize {
 /// Unescapes the references in `b`, so that `a&lt;b` becomes `a<b`. `attribute` selects the
 /// attribute-value rules.
 pub fn unescape(b: &[u8], attribute: bool) -> Vec<u8> {
+    if find_any(b, *b"&").is_none() {
+        // No references: one copy.
+        return b.to_vec();
+    }
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
         // Copy the run up to the next reference in one piece.
-        let run = b[i..]
-            .iter()
-            .position(|&c| c == b'&')
-            .unwrap_or(b.len() - i);
+        let run = find_any(&b[i..], *b"&").unwrap_or(b.len() - i);
         out.extend_from_slice(&b[i..i + run]);
         i += run;
         if i < b.len() {
@@ -149,13 +150,14 @@ pub fn unescape(b: &[u8], attribute: bool) -> Vec<u8> {
 /// stay literal as HTML5 specifies.
 pub fn unescape_string(s: &str) -> String {
     let b = s.as_bytes();
+    if find_any(b, *b"&").is_none() {
+        // No references: one copy.
+        return String::from(s);
+    }
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        let run = b[i..]
-            .iter()
-            .position(|&c| c == b'&')
-            .unwrap_or(b.len() - i);
+        let run = find_any(&b[i..], *b"&").unwrap_or(b.len() - i);
         out.extend_from_slice(&b[i..i + run]);
         i += run;
         if i == b.len() {
@@ -171,24 +173,56 @@ pub fn unescape_string(s: &str) -> String {
     String::from_utf8(out).unwrap_or_default()
 }
 
+/// The offset of the first byte of `b` that is in `set`, eight bytes per step: a byte equal to
+/// `c` makes `x ^ c * LO` have a zero byte, which the subtract-and-mask test flags; the lowest
+/// flagged bit is always a true match.
+#[inline]
+fn find_any<const N: usize>(b: &[u8], set: [u8; N]) -> Option<usize> {
+    const LO: u64 = 0x0101_0101_0101_0101;
+    const HI: u64 = 0x8080_8080_8080_8080;
+    let (chunks, rest) = b.as_chunks::<8>();
+    let mut at = 0;
+    for w in chunks {
+        let x = u64::from_le_bytes(*w);
+        let mut hit = 0;
+        for c in set {
+            let y = x ^ (LO * u64::from(c));
+            hit |= y.wrapping_sub(LO) & !y & HI;
+        }
+        if hit != 0 {
+            return Some(at + hit.trailing_zeros() as usize / 8);
+        }
+        at += 8;
+    }
+    rest.iter().position(|c| set.contains(c)).map(|p| at + p)
+}
+
 /// `html.EscapeString`: escapes `<`, `>`, `&`, `'` and `"`.
 pub fn escape_string(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut start = 0;
-    for (i, &c) in s.as_bytes().iter().enumerate() {
-        let replacement = match c {
+    let mut rest = s;
+    let Some(first) = find_any(rest.as_bytes(), *b"&'<>\"") else {
+        // Nothing to escape: one copy.
+        return String::from(s);
+    };
+    let mut out = String::with_capacity(s.len() + s.len() / 4 + 8);
+    let mut at = first;
+    loop {
+        let replacement = match rest.as_bytes()[at] {
             b'&' => "&amp;",
             b'\'' => "&#39;",
             b'<' => "&lt;",
             b'>' => "&gt;",
-            b'"' => "&#34;",
-            _ => continue,
+            _ => "&#34;",
         };
-        // The special bytes are ASCII, so `start..i` ends on a character boundary.
-        out.push_str(&s[start..i]);
+        // The special bytes are ASCII, so `at` ends on a character boundary.
+        out.push_str(&rest[..at]);
         out.push_str(replacement);
-        start = i + 1;
+        rest = &rest[at + 1..];
+        match find_any(rest.as_bytes(), *b"&'<>\"") {
+            Some(next) => at = next,
+            None => break,
+        }
     }
-    out.push_str(&s[start..]);
+    out.push_str(rest);
     out
 }

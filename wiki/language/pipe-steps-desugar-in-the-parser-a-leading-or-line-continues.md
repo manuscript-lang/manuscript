@@ -6,4 +6,4 @@ Decision: Chinmay chose `|` (not `|>`, `?`, UFCS, or `map_error`) to compose fre
 
 Apply when: changing operator precedence, line layout, `?`, or call argument binding.
 Evidence: [pipe flows](../../documentation/core-language/basics/expressions.md#pipe-flows), [parser](../../crates/ms-syntax/src/parser.rs), and [pipe fixture](../../tests/conformance/fixtures/e2e/accept/pipe-flow.ms).
-Verify: `parse(text)? | double | check? | .to_string_radix(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
+Verify: `parse(text)? | double | check? | .to_string()` runs; a continuation line at the wrong indentation is rejected.

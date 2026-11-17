@@ -49,3 +49,35 @@ fn numeric_references_saturate_and_decode_one_digit() {
     assert_eq!(unescape("&#1"), "\u{1}");
     assert_eq!(unescape("&#x;"), "&#x;");
 }
+
+/// The escape of `text` by one byte at a time, the reference for the eight-byte scan.
+fn escape_naive(text: &str) -> String {
+    let mut out = String::new();
+    for c in text.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '\'' => out.push_str("&#39;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&#34;"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+#[test]
+fn escape_matches_a_byte_at_a_time_at_every_position() {
+    for len in 0..40 {
+        for special in ["&", "'", "<", ">", "\"", "é"] {
+            for at in 0..=len {
+                let mut text = "x".repeat(len);
+                text.insert_str(at, special);
+                assert_eq!(escape(&text), escape_naive(&text), "{text:?}");
+            }
+        }
+        let plain = "y".repeat(len);
+        assert_eq!(escape(&plain), plain);
+        assert_eq!(unescape(&plain), plain);
+    }
+}

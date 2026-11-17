@@ -5,4 +5,4 @@ import big_int_of_int from "@std/math/math.ms"
 
 fn main() Void:
     zero := big_int_of_int(0)
-    void stdout().write((big_int_of_int(1) / zero).to_string_radix(10))
+    void stdout().write((big_int_of_int(1) / zero).to_string())

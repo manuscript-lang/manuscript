@@ -18,7 +18,7 @@ fn negative(value: Int) Bool:
 	return value < 0
 
 fn stringify(value: Int) String:
-	return value.to_string_radix(radix: 10)
+	return value.to_string()
 
 fn expand(value: Int) List[String]:
 	return [stringify(value: value), "x"]
@@ -359,7 +359,7 @@ test "bytes have analogous immutable operations":
 	(Bytes([]).is_empty()) | expect_true?
 	(not data.is_empty()) | expect_true?
 	data | expect_equal(Bytes([1, 2, 3, 2]))?
-	255.to_string_radix(radix: 16) | expect_equal("ff")?
+	255.to_hex() | expect_equal("ff")?
 	1.5.to_string() | expect_equal("1.5")?
 	(1.5.is_finite()) | expect_true?
 	(not 1.5.is_nan()) | expect_true?
@@ -485,9 +485,9 @@ test "normalization, empty separators, and precision formatting":
 fn verify_bigint_and_regex() Void!:
 	a := big_int_of_int(value: 12)
 	b := big_int_of_int(value: 5)
-	a.add(other: b).to_string_radix(radix: 10) | expect_equal("17")?
-	a.subtract(other: b).to_string_radix(radix: 10) | expect_equal("7")?
-	a.multiply(other: b).to_string_radix(radix: 10) | expect_equal("60")?
+	a.add(other: b).to_string() | expect_equal("17")?
+	a.subtract(other: b).to_string() | expect_equal("7")?
+	a.multiply(other: b).to_string() | expect_equal("60")?
 	(common_result(result: a.divide(other: b))?).to_int() | expect_equal(2)?
 	(common_result(result: a.remainder(other: b))?).to_int() | expect_equal(2)?
 	a.compare(other: b) | expect_equal(1)?

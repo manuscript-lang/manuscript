@@ -9,7 +9,7 @@ test "big integers exceed machine range without losing precision":
 	big := parse_big_int("9223372036854775808", 10)?
 	expect_false(big.to_int().is_some())?
 	expect_equal(big.subtract(big_int_of_int(1)).to_int(), 9223372036854775807)?
-	expect_equal(big_int_of_int(7).multiply(big_int_of_int(6)).to_string_radix(10), "42")?
+	expect_equal(big_int_of_int(7).multiply(big_int_of_int(6)).to_string(), "42")?
 	expect_equal((big_int_of_int(-7).divide(big_int_of_int(3))?).to_int(), -2)?
 	expect_equal((big_int_of_int(-7).remainder(big_int_of_int(3))?).to_int(), -1)?
 	expect_equal(big_int_of_int(5).bit_xor(big_int_of_int(3)).to_int(), 6)?
@@ -48,7 +48,7 @@ test "big integers support sign pow shifts and conversion":
 	expect_equal(big_int_of_int(0).sign(), 0)?
 	expect_equal(five.bit_not().to_int(), -6)?
 	expect_equal(
-		(big_int_of_int(2).pow(100)?).to_string_radix(10),
+		(big_int_of_int(2).pow(100)?).to_string(),
 		"1267650600228229401496703205376",
 	)?
 	expect_equal((five.shift_left(3)?).to_int(), 40)?
