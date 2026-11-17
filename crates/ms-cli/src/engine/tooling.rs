@@ -1198,13 +1198,15 @@ mod fix_tests {
             replacement: "x".to_string(),
         };
         let mut errors = BTreeMap::new();
+        let mut seen = std::collections::HashSet::new();
         assert_eq!(
             apply_fixes(
                 vec![
                     (missing.clone(), fix.clone()),
                     (writable.clone(), fix.clone())
                 ],
-                &mut errors
+                &mut errors,
+                &mut seen
             ),
             (1, vec![writable.clone()])
         );
@@ -1219,11 +1221,35 @@ mod fix_tests {
         // A later pass retains the original failure rather than retrying this path.
         std::fs::write(&missing, "").unwrap();
         assert_eq!(
-            apply_fixes(vec![(missing.clone(), fix)], &mut errors),
+            apply_fixes(vec![(missing.clone(), fix)], &mut errors, &mut seen),
             (0, Vec::new())
         );
         assert_eq!(std::fs::read_to_string(missing).unwrap(), "");
         assert_eq!(errors.len(), 1);
+        // Two fixes that undo each other: the second would restore the first text.
+        let cycle = dir.join("cycle.ms").to_string_lossy().into_owned();
+        std::fs::write(&cycle, "a").unwrap();
+        let at = |offset| ms_driver::Pos {
+            offset,
+            ..ms_driver::Pos::default()
+        };
+        let insert = ms_driver::DiagnosticFix {
+            pos: at(0),
+            end: at(0),
+            replacement: "x".to_string(),
+        };
+        let remove = ms_driver::DiagnosticFix {
+            pos: at(0),
+            end: at(1),
+            replacement: String::new(),
+        };
+        let (applied, _) = apply_fixes(vec![(cycle.clone(), insert)], &mut errors, &mut seen);
+        assert_eq!(applied, 1);
+        assert_eq!(std::fs::read_to_string(&cycle).unwrap(), "xa");
+        let (applied, _) = apply_fixes(vec![(cycle.clone(), remove)], &mut errors, &mut seen);
+        assert_eq!(applied, 0);
+        assert_eq!(std::fs::read_to_string(&cycle).unwrap(), "xa");
+        assert!(errors[&cycle].message.contains("undo each other"));
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
