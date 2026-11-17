@@ -17,7 +17,7 @@ fn resolve_hashes(oracle: String, script: String) String:
 	out := solve_with(oracle, probe)
 	found := compile("(?m)^\\[[^\\]]* ([0-9a-f]{7})\\] ").to_optional()
 	var shorts = List[String]()
-	for groups in found.get().captures_all(out, 1000).get([]):
+	for groups in found.get().capture_all(out, 1000).get([]):
 		shorts.append(groups[1].clone())
 
 	var resolved = script.clone()

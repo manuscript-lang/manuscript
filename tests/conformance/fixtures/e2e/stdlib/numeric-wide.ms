@@ -30,7 +30,7 @@ import (
 )
 
 fn big_word(value: UInt64) BigInt:
-	return parse_big_int(value.to_string_radix(10), 10).get()
+	return parse_big_int(value.to_string(), 10).get()
 
 test "carry and borrow operate on unsigned words and chain across limbs":
 	largest: UInt64 := 18446744073709551615

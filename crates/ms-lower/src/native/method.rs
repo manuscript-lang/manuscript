@@ -3,6 +3,49 @@
 use super::*;
 
 impl<'a> FnLower<'a> {
+    /// `to_string_radix(radix)`, `to_hex()` and `to_binary()` over the runtime function `symbol`.
+    pub(crate) fn radix_method(
+        &mut self,
+        name: &str,
+        symbol: &str,
+        result: MTy,
+        value: Value,
+        args: &[NArg],
+    ) -> Result<Val, Error> {
+        if name == "to_string_radix" {
+            let radix = self.borrow(args[0].val);
+            return self.radix_text(result, symbol, value, radix);
+        }
+        let radix = self.b.iconst(if name == "to_hex" { 16 } else { 2 });
+        let text = self.call_runtime(symbol, &[value, radix], MTy::STR)?;
+        Ok(Val { v: text, own: true })
+    }
+
+    /// `to_string_radix`: the text in `radix` when it is 2 through 36, or none for any other radix.
+    pub(crate) fn radix_text(
+        &mut self,
+        result: MTy,
+        symbol: &str,
+        value: Value,
+        radix: Value,
+    ) -> Result<Val, Error> {
+        let (low, high) = (self.b.iconst(2), self.b.iconst(36));
+        let (above, below) = (
+            self.b.icmp(ms_mir::ir::Cc::Ge, radix, low),
+            self.b.icmp(ms_mir::ir::Cc::Le, radix, high),
+        );
+        let valid = self.b.binop(Op::And, above, below);
+        self.two_ways(
+            valid,
+            result,
+            &mut |s| {
+                let text = s.call_runtime(symbol, &[value, radix], MTy::STR)?;
+                Ok(Some(s.b.opt_some(text)))
+            },
+            &mut |s| Ok(Some(s.b.opt_none_owned(result))),
+        )
+    }
+
     pub fn native_method(
         &mut self,
         e: &Expr,
@@ -632,6 +675,12 @@ impl<'a> FnLower<'a> {
             (TyKind::List(_), _) if is_higher_order(name) => {
                 let out = result;
                 self.list_higher(name, out, recv_expr, recv, args)
+            }
+            (_, "to_string_radix" | "to_hex" | "to_binary")
+                if crate::rtcall::method_symbol(self.b.m, rty, "to_string_radix").is_some() =>
+            {
+                let v = self.borrow(recv);
+                self.radix_method(name, "msrt_int_to_string_radix", result, v, &args)
             }
             _ => {
                 let Some(sym) = crate::rtcall::method_symbol(self.b.m, rty, native) else {

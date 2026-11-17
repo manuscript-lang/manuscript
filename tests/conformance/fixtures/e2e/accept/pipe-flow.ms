@@ -35,7 +35,7 @@ fn describe(text: String) String!Error:
     label := parse(text)?
         | check?
         | add(1)
-        .to_string_radix(10)
+        .to_string()
     return ok(label)
 
 fn order(var log: List[String]) Int:

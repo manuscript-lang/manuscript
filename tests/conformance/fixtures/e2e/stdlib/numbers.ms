@@ -7,7 +7,7 @@ import parse_int, parse_float from "@std/math/math.ms"
 test "numbers radix and signed boundaries":
     expect_equal((parse_int("7fffffffffffffff", 16)?), 9223372036854775807)?
     expect_equal((parse_int("-9223372036854775808", 10)?), -9223372036854775808)?
-    expect_equal(255.to_string_radix(16), "ff")?
+    expect_equal(255.to_hex(), "ff")?
     expect_equal((parse_float("-1.25e2")?), -125.0)?
     expect_equal(1.25.to_fixed(2), "1.25")?
     expect_equal(1.9.truncate_to_int(), 1)?

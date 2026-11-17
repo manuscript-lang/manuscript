@@ -8,10 +8,10 @@ test "integer families share one set of operations":
 	expect_equal(a.sign(), -1)?
 	expect_equal(a.compare((3).to_int8().get()), -1)?
 	expect_equal(a.to_float(), -5.0)?
-	expect_equal(a.to_string_radix(2), "-101")?
+	expect_equal(a.to_binary(), "-101")?
 
 	u: UInt16 := (255).to_uint16().get()
-	expect_equal(u.to_string_radix(16), "ff")?
+	expect_equal(u.to_hex(), "ff")?
 	expect_equal(u.compare(u), 0)?
 	expect_equal((7).abs(), 7)?
 	expect_equal((-7).sign(), -1)?

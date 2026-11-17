@@ -20,8 +20,14 @@ Each integer type's own `<Type>Operations` interface adds only its conversions t
 */
 interface IntegerOperations[T]:
 	// Formats the integer in a radix from 2 through 36 using lowercase digits and a
-	// leading `-` for negatives. A radix outside 2 through 36 is a programming fault.
-	fn to_string_radix(radix: Int) String
+	// leading `-` for negatives, or none when the radix is outside 2 through 36.
+	fn to_string_radix(radix: Int) String?
+	// Formats the integer in base 16 using lowercase digits and a leading `-` for
+	// negatives, as `to_string_radix(16)` does; it cannot fail.
+	fn to_hex() String
+	// Formats the integer in base 2 with a leading `-` for negatives, as
+	// `to_string_radix(2)` does; it cannot fail.
+	fn to_binary() String
 	// Converts to the nearest Float; integers beyond 2^53 in magnitude can lose
 	// low-order digits.
 	fn to_float() Float

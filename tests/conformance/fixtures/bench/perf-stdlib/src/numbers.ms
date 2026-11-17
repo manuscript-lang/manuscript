@@ -16,7 +16,7 @@ export fn bench_numbers() Void:
             var acc = big_int_of_int(1)
             for i in 1..1001:
                 acc = acc.multiply(big_int_of_int(i))
-            return acc.to_string_radix(10).length()
+            return acc.to_string().length()
     )
 
     bench(
