@@ -776,7 +776,7 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 	var all = sent.clone()
 	for name in extra.names():
 		if not all.contains(name):
-			for value in extra.values(name):
+			for value in extra.get_all(name):
 				void all.append(name, value)
 	return all
 
@@ -792,7 +792,7 @@ export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
 
 fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Void!) Void!:
 	var request = exchange.headers()
-	var id = request.values("X-Request-Id").first().get("")
+	var id = request.get("X-Request-Id").get("")
 
 	if not usable_id(id):
 		id = new_id()?

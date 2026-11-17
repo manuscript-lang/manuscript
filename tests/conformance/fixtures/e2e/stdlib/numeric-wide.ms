@@ -6,7 +6,7 @@ import (
 	add_with_carry,
 	divide_wide,
 	frexp,
-	from_int,
+	big_int_of_int,
 	ieee_remainder,
 	infinity,
 	ldexp,
@@ -17,7 +17,7 @@ import (
 	modf,
 	multiply_wide,
 	nan,
-	parse,
+	parse_big_int,
 	remainder,
 	remainder_wide,
 	sign_bit,
@@ -30,7 +30,7 @@ import (
 )
 
 fn big_word(value: UInt64) BigInt:
-	return parse(value.to_string_radix(10), 10).get()
+	return parse_big_int(value.to_string_radix(10), 10).get()
 
 test "carry and borrow operate on unsigned words and chain across limbs":
 	largest: UInt64 := 18446744073709551615
@@ -60,7 +60,7 @@ test "word arithmetic matches exact BigInt references at all width boundaries":
 	values: List[UInt64] := [
 		0, 1, 4294967295, 4294967296, 9223372036854775808, 18446744073709551615
 	]
-	radix := from_int(1).shift_left(64)?
+	radix := big_int_of_int(1).shift_left(64)?
 
 	for left in values:
 		for right in values:
@@ -68,7 +68,7 @@ test "word arithmetic matches exact BigInt references at all width boundaries":
 			b := big_word(right)
 
 			for flag in [false, true]:
-				extra := from_int(if flag: 1 else: 0)
+				extra := big_int_of_int(if flag: 1 else: 0)
 				sum := add_with_carry(left, right, flag)
 				exact_sum := a + b + extra
 				expect_equal(big_word(sum.sum), exact_sum % radix)?
@@ -204,32 +204,32 @@ test "IEEE remainder uses nearest-even quotient without changing truncating rema
 
 test "modular inverse distinguishes absence invalid modulus and the unit modulus":
 	(
-		from_int(271).inverse_mod(from_int(383))
+		big_int_of_int(271).inverse_mod(big_int_of_int(383))
 		| expect_ok?
 		| expect_some?
-		| expect_equal(from_int(106))?
+		| expect_equal(big_int_of_int(106))?
 	)
 	(
-		from_int(-271).inverse_mod(
-			from_int(383)
-		) | expect_ok? | expect_some? | expect_equal(from_int(277))?
+		big_int_of_int(-271).inverse_mod(
+			big_int_of_int(383)
+		) | expect_ok? | expect_some? | expect_equal(big_int_of_int(277))?
 	)
-	expect_true((from_int(6).inverse_mod(from_int(9))?).is_none())?
-	expect_true((from_int(0).inverse_mod(from_int(2))?).is_none())?
+	expect_true((big_int_of_int(6).inverse_mod(big_int_of_int(9))?).is_none())?
+	expect_true((big_int_of_int(0).inverse_mod(big_int_of_int(2))?).is_none())?
 	for number in [-5, 0, 5]:
 		(
-			from_int(number).inverse_mod(from_int(1))
+			big_int_of_int(number).inverse_mod(big_int_of_int(1))
 			| expect_ok?
 			| expect_some?
-			| expect_equal(from_int(0))?
+			| expect_equal(big_int_of_int(0))?
 		)
 
 	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
-	expect_equal(from_int(2).inverse_mod(from_int(0)), invalid)?
-	expect_equal(from_int(2).inverse_mod(from_int(-7)), invalid)?
+	expect_equal(big_int_of_int(2).inverse_mod(big_int_of_int(0)), invalid)?
+	expect_equal(big_int_of_int(2).inverse_mod(big_int_of_int(-7)), invalid)?
 
 test "modular inverse scales to 4096 bits and retains canonical residues":
-	one := from_int(1)
+	one := big_int_of_int(1)
 
 	for width in [64, 256, 1024, 4096]:
 		modulus := one.shift_left(width)?

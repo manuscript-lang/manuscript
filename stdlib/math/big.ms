@@ -1,6 +1,12 @@
 import (
 	panic from "@std/core.ms",
-	BigInt, frexp, from_int, ldexp, max, parse, parse_int from "@std/math/math.ms",
+	BigInt,
+	big_int_of_int,
+	frexp,
+	ldexp,
+	max,
+	parse_big_int,
+	parse_int from "@std/math/math.ms",
 )
 
 /*
@@ -493,10 +499,10 @@ type Binary:
 	exp: Int
 
 fn big(value: Int) BigInt:
-	return from_int(value)
+	return big_int_of_int(value)
 
 fn parse_big(text: String) BigInt?:
-	if value := parse(text, 10): return value
+	if value := parse_big_int(text, 10): return value
 	return none
 
 fn shl(value: BigInt, count: Int) BigInt:
@@ -510,7 +516,7 @@ fn shr(value: BigInt, count: Int) BigInt:
 	panic("bigrat: shift count out of range")
 
 fn pow10(count: Int) BigInt:
-	if result := from_int(10).pow(count): return result
+	if result := big_int_of_int(10).pow(count): return result
 
 	panic("pow10: negative or oversized exponent")
 
@@ -522,7 +528,7 @@ fn bit_length(value: BigInt) Int:
 // Returns the floor of `numerator / denominator` for a positive denominator.
 fn floor_div(numerator: BigInt, denominator: BigInt) BigInt:
 	quotient := numerator / denominator
-	if (numerator % denominator).sign() < 0: return quotient - from_int(1)
+	if (numerator % denominator).sign() < 0: return quotient - big_int_of_int(1)
 
 	return quotient
 
@@ -537,11 +543,11 @@ fn round_to(mant: BigInt, exp: Int, sticky: Bool, prec: Int) Binary:
 	var shift = bits - prec
 	var kept = shr(magnitude, shift)
 	rest := magnitude - shl(kept, shift)
-	order := rest.compare(shl(from_int(1), shift - 1))
-	odd := kept.bit_and(from_int(1)).sign() != 0
+	order := rest.compare(shl(big_int_of_int(1), shift - 1))
+	odd := kept.bit_and(big_int_of_int(1)).sign() != 0
 
 	if order > 0 or order == 0 and (sticky or odd):
-		kept += from_int(1)
+		kept += big_int_of_int(1)
 
 		if bit_length(kept) > prec:
 			kept = shr(kept, 1)
@@ -559,7 +565,7 @@ type Quotient:
 
 fn div_parts(numerator: BigInt, denominator: BigInt, prec: Int) Quotient:
 	if numerator.sign() == 0:
-		return Quotient(value: Binary(mant: from_int(0), exp: 0), sticky: false)
+		return Quotient(value: Binary(mant: big_int_of_int(0), exp: 0), sticky: false)
 
 	magnitude := numerator.abs()
 	shift := max(prec + 2 + bit_length(denominator) - bit_length(magnitude), 0)
@@ -593,15 +599,15 @@ fn binary_to_float(value: Binary, sticky: Bool) Float?:
 		exponent = grid
 
 		if shift > bits:
-			kept = from_int(0)
+			kept = big_int_of_int(0)
 		else:
 			kept = shr(magnitude, shift)
 
 			rest := magnitude - shl(kept, shift)
-			order := rest.compare(shl(from_int(1), shift - 1))
-			odd := kept.bit_and(from_int(1)).sign() != 0
+			order := rest.compare(shl(big_int_of_int(1), shift - 1))
+			odd := kept.bit_and(big_int_of_int(1)).sign() != 0
 			if order > 0 or order == 0 and (sticky or odd):
-				kept += from_int(1)
+				kept += big_int_of_int(1)
 
 	if fraction := kept.to_float():
 		var result = ldexp(fraction, exponent)

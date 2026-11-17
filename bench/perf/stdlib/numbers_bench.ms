@@ -3,7 +3,7 @@ import (
 	PriorityQueue, Queue from "@std/collections/queue.ms",
 	CompressionFormat, compress, decompress from "@std/io/archive.ms",
 	Decimal from "@std/math/decimal.ms",
-	from_int from "@std/math/math.ms",
+	big_int_of_int from "@std/math/math.ms",
 	keep, measure from "@std/test/bench.ms",
 	parse_timestamp from "@std/time.ms",
 )
@@ -14,17 +14,17 @@ fn unpacked_length(data: Bytes) Int:
 
 bench "bigint.factorial_1000":
 	fn work() Result[Void, Error]:
-		var acc = from_int(1)
+		var acc = big_int_of_int(1)
 		for i in 1..1001:
-			acc = acc.multiply(from_int(i))
+			acc = acc.multiply(big_int_of_int(i))
 		return keep(acc.to_string_radix(10).length())
 
 	measure(1000, work)?
 
 bench "bigint.multiply_100_digits":
 	fn work() Result[Void, Error]:
-		base := from_int(7).pow(118).get(from_int(0))
-		var acc = from_int(0)
+		base := big_int_of_int(7).pow(118).get(big_int_of_int(0))
+		var acc = big_int_of_int(0)
 		for i in 0..20000:
 			acc = base * base
 		return keep(acc.to_string_radix(10).length())

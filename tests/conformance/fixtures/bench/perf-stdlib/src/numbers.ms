@@ -1,7 +1,7 @@
 import bench from "./harness.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
-import from_int from "@std/math/math.ms"
+import big_int_of_int from "@std/math/math.ms"
 import compress, decompress from "@std/io/archive.ms"
 import parse_timestamp from "@std/time.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"
@@ -13,9 +13,9 @@ export fn bench_numbers() Void:
         "bigint.factorial_1000",
         1000,
         fn() Int:
-            var acc = from_int(1)
+            var acc = big_int_of_int(1)
             for i in 1..1001:
-                acc = acc.multiply(from_int(i))
+                acc = acc.multiply(big_int_of_int(i))
             return acc.to_string_radix(10).length()
     )
 

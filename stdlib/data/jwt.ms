@@ -13,7 +13,7 @@ import (
 	verify from "@std/crypto/crypto.ms",
 	base64_decode, base64_encode from "@std/data/encoding.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
-	from_int from "@std/math/math.ms",
+	big_int_of_int from "@std/math/math.ms",
 	now from "@std/time.ms",
 )
 
@@ -247,14 +247,14 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 
 	if exp := claims.get("exp"):
 		limit := numeric_date(exp, "exp")?
-		boundary := (from_int(moment) - from_int(check.leeway)).to_string()
+		boundary := (big_int_of_int(moment) - big_int_of_int(check.leeway)).to_string()
 		if date_compare(limit, boundary) <= 0: return error(
 			Error("jwt: token expired", kind: "EBADMSG")
 		)
 
 	if nbf := claims.get("nbf"):
 		start := numeric_date(nbf, "nbf")?
-		boundary := (from_int(moment) + from_int(check.leeway)).to_string()
+		boundary := (big_int_of_int(moment) + big_int_of_int(check.leeway)).to_string()
 		if date_compare(start, boundary) > 0: return error(
 			Error("jwt: token not yet valid", kind: "EBADMSG")
 		)

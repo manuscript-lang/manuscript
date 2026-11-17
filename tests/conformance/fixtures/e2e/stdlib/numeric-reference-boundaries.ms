@@ -22,7 +22,7 @@ import (
 	floor,
 	fma,
 	frexp,
-	from_int,
+	big_int_of_int,
 	ieee_remainder,
 	is_integer,
 	ldexp,
@@ -57,12 +57,12 @@ import (
 
 // The two's-complement 64-bit wrap of an exact integer.
 fn wrap64(value: BigInt) BigInt!:
-	modulus := from_int(1).shift_left(64)?
+	modulus := big_int_of_int(1).shift_left(64)?
 	var reduced = value.remainder(modulus)?
 	if reduced.sign() < 0:
 		reduced += modulus
 
-	half := from_int(1).shift_left(63)?
+	half := big_int_of_int(1).shift_left(63)?
 	if reduced.compare(half) >= 0:
 		reduced -= modulus
 	return ok(reduced)
@@ -78,18 +78,18 @@ fn same_float(actual: Float, expected: Float) Bool:
 test "wrapping arithmetic matches exact arithmetic reduced mod 2^64":
 	for a in int_boundaries():
 		for b in int_boundaries():
-			sum := wrap64(from_int(a) + from_int(b))?
-			difference := wrap64(from_int(a) - from_int(b))?
-			product := wrap64(from_int(a) * from_int(b))?
-			expect_equal(from_int(wrapping_add(a, b)), sum)?
-			expect_equal(from_int(wrapping_subtract(a, b)), difference)?
-			expect_equal(from_int(wrapping_multiply(a, b)), product)?
+			sum := wrap64(big_int_of_int(a) + big_int_of_int(b))?
+			difference := wrap64(big_int_of_int(a) - big_int_of_int(b))?
+			product := wrap64(big_int_of_int(a) * big_int_of_int(b))?
+			expect_equal(big_int_of_int(wrapping_add(a, b)), sum)?
+			expect_equal(big_int_of_int(wrapping_subtract(a, b)), difference)?
+			expect_equal(big_int_of_int(wrapping_multiply(a, b)), product)?
 
 fn big_of_word(word: UInt64) BigInt:
-	if small := word.to_int(): return from_int(small)
+	if small := word.to_int(): return big_int_of_int(small)
 
 	low := (word - 9223372036854775808).to_int().get(0)
-	return from_int(low) + from_int(max_int) + from_int(1)
+	return big_int_of_int(low) + big_int_of_int(max_int) + big_int_of_int(1)
 
 test "multiply_wide matches the exact 128-bit product":
 	words: List[UInt64] := [
@@ -118,7 +118,7 @@ test "rounding functions agree with exact rationals":
 		)?
 
 		// `round` sends ties toward positive infinity, unlike `BigRat.round`, which sends them away from zero.
-		half := rat(from_int(1), from_int(2))?
+		half := rat(big_int_of_int(1), big_int_of_int(2))?
 		expect_equal(
 			rat_of_float(round(x)).get(rat_of_int(7)).numerator(),
 			exact.add(half).floor(),
@@ -228,7 +228,7 @@ fn word_boundaries() List[UInt64]:
 	]
 
 fn two_pow(count: Int) BigInt:
-	return from_int(1).shift_left(count).get(from_int(0))
+	return big_int_of_int(1).shift_left(count).get(big_int_of_int(0))
 
 test "add_with_carry and subtract_with_borrow match exact words":
 	modulus := two_pow(64)
@@ -236,7 +236,7 @@ test "add_with_carry and subtract_with_borrow match exact words":
 	for a in word_boundaries():
 		for b in word_boundaries():
 			for carry in [false, true]:
-				extra := if carry: from_int(1) else: from_int(0)
+				extra := if carry: big_int_of_int(1) else: big_int_of_int(0)
 				exact := big_of_word(a) + big_of_word(b) + extra
 				sum := add_with_carry(a, b, carry)
 				rebuilt := (
@@ -244,7 +244,7 @@ test "add_with_carry and subtract_with_borrow match exact words":
 					+ (
 						if sum
 						.carry: modulus
-						.clone() else: from_int(0)
+						.clone() else: big_int_of_int(0)
 					)
 				)
 				expect_equal(rebuilt, exact)?
@@ -256,7 +256,7 @@ test "add_with_carry and subtract_with_borrow match exact words":
 					- (
 						if diff
 						.borrow: modulus
-						.clone() else: from_int(0)
+						.clone() else: big_int_of_int(0)
 					)
 				)
 				expect_equal(rebuilt_diff, exact_diff)?
@@ -296,32 +296,32 @@ test "divide_wide and remainder_wide match exact division":
 test "bit operations match BigInt two's complement":
 	for a in int_boundaries():
 		for b in int_boundaries():
-			expect_equal(from_int(bit_and(a, b)), from_int(a).bit_and(from_int(b)))?
-			expect_equal(from_int(bit_or(a, b)), from_int(a).bit_or(from_int(b)))?
-			expect_equal(from_int(bit_xor(a, b)), from_int(a).bit_xor(from_int(b)))?
+			expect_equal(big_int_of_int(bit_and(a, b)), big_int_of_int(a).bit_and(big_int_of_int(b)))?
+			expect_equal(big_int_of_int(bit_or(a, b)), big_int_of_int(a).bit_or(big_int_of_int(b)))?
+			expect_equal(big_int_of_int(bit_xor(a, b)), big_int_of_int(a).bit_xor(big_int_of_int(b)))?
 
-		expect_equal(from_int(bit_not(a)), from_int(a).bit_not())?
+		expect_equal(big_int_of_int(bit_not(a)), big_int_of_int(a).bit_not())?
 
 test "shifts and rotations agree with exact arithmetic at every count":
 	for a in int_boundaries():
 		for count in [0, 1, 2, 31, 32, 33, 62, 63]:
-			shifted := wrap64(from_int(a).shift_left(count)?)?
-			expect_equal(from_int(shift_left(a, count)), shifted)?
+			shifted := wrap64(big_int_of_int(a).shift_left(count)?)?
+			expect_equal(big_int_of_int(shift_left(a, count)), shifted)?
 			expect_equal(
-				from_int(shift_right(a, count)),
-				from_int(a).shift_right(count)?,
+				big_int_of_int(shift_right(a, count)),
+				big_int_of_int(a).shift_right(count)?,
 			)?
 
 			rotated := rotate_left(rotate_right(a, count), count)
 			expect_equal(rotated, a)?
 
-			word := if a < 0: from_int(a) + two_pow(64) else: from_int(a)
+			word := if a < 0: big_int_of_int(a) + two_pow(64) else: big_int_of_int(a)
 			logical := word.shift_right(count)?
-			expect_equal(from_int(shift_right_unsigned(a, count)), wrap64(logical)?)?
+			expect_equal(big_int_of_int(shift_right_unsigned(a, count)), wrap64(logical)?)?
 
 test "bit counts match the binary expansion":
 	for a in int_boundaries():
-		word := if a < 0: from_int(a) + two_pow(64) else: from_int(a)
+		word := if a < 0: big_int_of_int(a) + two_pow(64) else: big_int_of_int(a)
 		digits := word.to_string_radix(2)
 		var ones = 0
 		for c in digits.chars():
@@ -349,7 +349,7 @@ test "radix text and parsing round-trip every boundary":
 	for a in int_boundaries():
 		for radix in [2, 8, 10, 16, 36]:
 			text := a.to_string_radix(radix)
-			expect_equal(from_int(a).to_string_radix(radix), text)?
+			expect_equal(big_int_of_int(a).to_string_radix(radix), text)?
 			expect_equal(parse_int(text, radix)?, a)?
 
 		expect_equal(f"{a}".parse_int(), a)?
@@ -357,11 +357,11 @@ test "radix text and parsing round-trip every boundary":
 test "BigInt agrees with Int on operations that cannot overflow":
 	for a in int_boundaries():
 		for b in int_boundaries():
-			expect_equal(from_int(a).compare(from_int(b)), a.compare(b))?
+			expect_equal(big_int_of_int(a).compare(big_int_of_int(b)), a.compare(b))?
 
 			// Int division faults on min_int / -1; BigInt has the exact quotient.
 			if b != 0 and not (a == min_int and b == -1):
-				expect_equal(from_int(a).divide(from_int(b))?, from_int(a / b))?
+				expect_equal(big_int_of_int(a).divide(big_int_of_int(b))?, big_int_of_int(a / b))?
 
 test "Float text round-trips exactly":
 	for x in float_boundaries():
@@ -444,7 +444,7 @@ test "ieee_remainder and remainder follow their definitions":
 				n := a.subtract(exact).divide(b)?
 				expect_true(n.is_integer())?
 
-				half := rat(from_int(1), from_int(2))?
+				half := rat(big_int_of_int(1), big_int_of_int(2))?
 				expect_true(exact.abs().compare(b.abs().multiply(half)) <= 0)?
 
 				t := rat_of_float(remainder(x, y)).get(rat_of_int(7))
@@ -459,7 +459,7 @@ test "conversions between Int and Float are exact where the type allows":
 		exact := rat_of_int(a)
 		nearest := exact.to_float().get(0.0)
 		expect_true(same_float(f, nearest))?
-		expect_equal(from_int(a).to_float().get(0.0), nearest)?
+		expect_equal(big_int_of_int(a).to_float().get(0.0), nearest)?
 
 test "Float32 conversion rounds once and rejects only overflow":
 	for x in float_boundaries():
@@ -471,18 +471,18 @@ test "Float32 conversion rounds once and rejects only overflow":
 			expect_true(narrowed.is_some())?
 
 test "BigInt shifts powers and bounds at the limits":
-	one := from_int(1)
+	one := big_int_of_int(1)
 
 	for count in [0, 1, 63, 64, 65, 1000]:
 		shifted := one.shift_left(count)?
 		expect_equal(shifted.shift_right(count)?, one.clone())?
-		expect_equal(from_int(-1).shift_right(count)?, from_int(-1))?
+		expect_equal(big_int_of_int(-1).shift_right(count)?, big_int_of_int(-1))?
 
 	negative_shift := one.shift_left(-1)
 	_e := expect_error(negative_shift)?
 	too_big := one.shift_left(16777217)
 	_e2 := expect_error(too_big)?
-	min := from_int(min_int)
+	min := big_int_of_int(min_int)
 	expect_equal(min.negate().to_int(), none)?
 	expect_equal(min.abs().to_int(), none)?
 	expect_equal(min.to_int(), min_int)?
@@ -542,18 +542,18 @@ test "Decimal arithmetic matches BigInt while the result fits 34 digits":
 			expect_equal(
 				(x + y).to_fixed(0),
 				Result.ok(
-					(from_int(a) + from_int(b)).to_string_radix(10)
+					(big_int_of_int(a) + big_int_of_int(b)).to_string_radix(10)
 				),
 			)?
 			expect_equal(
 				(x - y).to_fixed(0),
 				Result.ok(
-					(from_int(a) - from_int(b)).to_string_radix(10)
+					(big_int_of_int(a) - big_int_of_int(b)).to_string_radix(10)
 				),
 			)?
 			expect_equal(x.compare(y), a.compare(b))?
 
-			product := from_int(a) * from_int(b)
+			product := big_int_of_int(a) * big_int_of_int(b)
 			if product.abs().to_string_radix(10).length() <= 34:
 				expect_equal(
 					(x * y).to_fixed(0),

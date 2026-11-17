@@ -952,8 +952,8 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	)
 
 	if span := control_pattern().find_span(normalized):
-		place := locate(reader.data, span[0])
-		reason := if reader.data.get(span[0]) == 13: "bare carriage return" else: "invalid control character"
+		place := locate(reader.data, span.start)
+		reason := if reader.data.get(span.start) == 13: "bare carriage return" else: "invalid control character"
 		return error(toml_invalid(line: place[0], column: place[1], reason: reason))
 
 	allocate(var reader)?

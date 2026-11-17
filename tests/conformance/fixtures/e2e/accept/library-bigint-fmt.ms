@@ -2,11 +2,11 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/accept/library-bigint.ms
 import expect_false from "@std/test/test.ms"
-import parse from "@std/math/math.ms"
+import parse_big_int from "@std/math/math.ms"
 import BigInt from "@std/math/math.ms"
 
 fn verify_bigint() Void!:
-    large := parse(text: "18446744073709551616", radix: 10, max_digits: 30)?
+    large := parse_big_int(text: "18446744073709551616", radix: 10, max_digits: 30)?
     (
         not (
             ((large).multiply(other: large)).to_string_radix(
