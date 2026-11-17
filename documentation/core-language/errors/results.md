@@ -127,12 +127,12 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | `get_or(default: T?) T` | Return the successful payload, or `default` on an error |
 | `err() E` | Return the error payload; fault on success |
 | `get_or_else(create: fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
-| `or_else(create: fn(E) Result[T, E]) Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |
-| `map_error[F](transform: fn(E) F) Result[T, F]` | Transform an error once; preserve a success unchanged |
-| `map[U](transform: fn(T) U) Result[U, E]` | Transform success once; preserve an error unchanged |
-| `and_then[U](transform: fn(T) Result[U, E]) Result[U, E]` | On success, return the callback's Result; preserve an existing error |
+| `or_else(create: fn(move E) Result[T, E]) Result[T, E]` | Take the Result: keep a success, or hand the error to `create` once and return its Result |
+| `map_error[F](transform: fn(move E) F) Result[T, F]` | Take the Result and hand an error to `transform` once; preserve a success unchanged |
+| `map[U](transform: fn(move T) U) Result[U, E]` | Take the Result and hand a success to `transform` once; preserve an error unchanged |
+| `and_then[U](transform: fn(move T) Result[U, E]) Result[U, E]` | Take the Result; on success, return the callback's Result; preserve an existing error |
 
-`map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions.
+`map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions. The four combinators take their receiver like the [Optional ones](../types/optionals.md): `.clone()` a Result you still need.
 
 This fragment uses `discount` above:
 

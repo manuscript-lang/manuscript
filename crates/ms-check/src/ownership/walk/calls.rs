@@ -82,8 +82,9 @@ impl Walker<'_> {
         }
     }
 
-    /// A named function used as a value is called with its arguments borrowed, so a parameter it
-    /// keeps is a copy: rejected for a resource, a copy of the type parameter in generic code.
+    /// A named function used as a value whose type lends a parameter the function keeps would
+    /// need a hidden copy of every argument; it is rejected, and the remedy is a written
+    /// `.clone()` in a closure, or a function type that says `move`.
     pub(super) fn function_value_copies(
         &mut self,
         e: &Expr,
@@ -99,25 +100,41 @@ impl Walker<'_> {
                 continue;
             }
             let Some(p) = fty.params.get(i) else { continue };
-            // A declared `move` is part of the function type: the call hands the argument over.
+            // The function type hands the argument over.
             if p.moving {
                 continue;
             }
-            if self.cx.classes.class(self.syms, &p.ty) == Class::Resource {
-                let text = self.expr_text(e);
-                self.error(
-                    e.pos,
-                    format!("`{text}` keeps its parameter `{name_t}`, but a function value only borrows its arguments, so every call would hand it a clone; the resource `{}` cannot be cloned: declare `move {name_t}` on `{text}` where the function type says `move`, call `{text}` directly, or wrap it in a closure that uses `{name_t}` in place", p.ty.display(self.syms), name_t = self.syms.str(name)),
-                );
+            let text = self.expr_text(e);
+            let callee = text.trim_end_matches("[..]");
+            let name_t = self.syms.str(name);
+            let args: Vec<String> = (0..fty.params.len()).map(|k| format!("a{k}")).collect();
+            let call = args
+                .iter()
+                .enumerate()
+                .map(|(k, a)| {
+                    if k == i {
+                        format!("{a}.clone()")
+                    } else {
+                        a.clone()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            let remedy = if self.cx.classes.class(self.syms, &p.ty) == Class::Resource {
+                format!(
+                    "the resource `{}` cannot be copied, so declare `move {name_t}` on `{callee}` and use a function type that says `move`",
+                    p.ty.display(self.syms)
+                )
             } else {
-                let t = p.ty.clone();
-                let what = format!(
-                    "`{}` keeps its parameter `{name_t}`, but a function value only borrows its arguments, so it",
-                    self.expr_text(e),
-                    name_t = self.syms.str(name)
-                );
-                self.require_clonable(e, &t, &what);
-            }
+                format!(
+                    "pass `fn {}: {callee}({call})` to copy it where you can see it, or use a function type that says `move`",
+                    args.join(", ")
+                )
+            };
+            self.error(
+                e.pos,
+                format!("`{text}` keeps its parameter `{name_t}`, but this function type lends its arguments, so every call would need a hidden copy; {remedy}"),
+            );
         }
     }
 

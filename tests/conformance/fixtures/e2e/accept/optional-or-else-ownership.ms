@@ -29,9 +29,9 @@ test "or_else transfers a last-use String Optional":
 	kept := present.or_else(unexpected_text)
 	expect_equal(kept.get(), "dynamic optional payload 2")?
 
-test "or_else copies a borrowed String Optional at its declared boundary":
+test "or_else takes its receiver, so a caller that keeps a String Optional clones it":
 	present := text(3)
-	kept := present.or_else(unexpected_text)
+	kept := present.clone().or_else(unexpected_text)
 	expect_equal(present.get(), "dynamic optional payload 3")?
 	expect_equal(kept.get(), "dynamic optional payload 3")?
 
@@ -39,9 +39,9 @@ test "or_else transfers an owned List Optional":
 	kept := texts(4).or_else(unexpected_texts)
 	expect_equal(kept.get(), ["dynamic optional payload 4"])?
 
-test "or_else copies a borrowed List Optional at its declared boundary":
+test "or_else takes its receiver, so a caller that keeps a List Optional clones it":
 	present := texts(5)
-	kept := present.or_else(unexpected_texts)
+	kept := present.clone().or_else(unexpected_texts)
 	expect_equal(present.get(), ["dynamic optional payload 5"])?
 	expect_equal(kept.get(), ["dynamic optional payload 5"])?
 
@@ -79,8 +79,8 @@ test "owned data receiver keeps its value across a later try":
 	moved := original.or_else(text_callback(false)?)
 	expect_equal(moved.get(), "dynamic optional payload 9")?
 
-test "borrowed data receiver remains borrowed across a later try":
+test "a cloned data receiver stays with its caller across a later try":
 	original := text(10)
-	kept := original.or_else(text_callback(false)?)
+	kept := original.clone().or_else(text_callback(false)?)
 	expect_equal(original.get(), "dynamic optional payload 10")?
 	expect_equal(kept.get(), "dynamic optional payload 10")?

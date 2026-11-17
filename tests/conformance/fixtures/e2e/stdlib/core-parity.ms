@@ -35,7 +35,7 @@ test "core parity operations are callable":
 	expect_false(success.get() != 2 or failure.err().message != "failed")?
 	expect_equal(failure.get_or(7), 7)?
 	expect_equal(failure.get_or_else(fn cause: cause.message.scalar_length()), 6)?
-	expect_equal(success.map(fn n: n + 1).get(), 3)?
+	expect_equal(success.clone().map(fn n: n + 1).get(), 3)?
 
 	chained: String!Error := success.and_then(fn n: ok(n.to_string()))
 	expect_equal(chained.get(), "2")?

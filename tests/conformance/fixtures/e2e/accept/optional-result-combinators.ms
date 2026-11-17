@@ -65,8 +65,8 @@ test "Result get_or_else returns the payload and receives the error":
 test "Result or_else keeps the wrapper and is lazy":
 	success: Int!Error := ok(1)
 	failure: Int!Error := error(Error("failed"))
-	expect_equal(success.or_else(unexpected_recover), success)?
-	expect_equal(failure.or_else(fn cause: ok(9)), ok(9))?
+	expect_equal(success.clone().or_else(unexpected_recover), success)?
+	expect_equal(failure.clone().or_else(fn cause: ok(9)), ok(9))?
 
 	still: Int!Error := failure.or_else(fn cause: error(Error("again")))
 	expect_equal(still.err().message, "again")?
@@ -84,5 +84,5 @@ test "map and and_then on both types keep their meaning":
 	success: Int!Error := ok(2)
 	expect_equal(present.map(fn n: n + 1).get(), 3)?
 	expect_equal(present.and_then(fn(n: Int) Int?: n * 2).get(), 4)?
-	expect_equal(success.map(fn n: n + 1).get(), 3)?
+	expect_equal(success.clone().map(fn n: n + 1).get(), 3)?
 	expect_equal(success.and_then(fn n: ok(n * 2)).get(), 4)?

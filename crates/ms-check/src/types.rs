@@ -1277,25 +1277,32 @@ pub fn compatible(actual: &Option<Ty>, expected: &Ty) -> bool {
     }
 }
 
-/// Whether `actual` is `expected` except that it reads some parameters `expected` may change:
-/// a function that takes `x` stands in where one that takes `var x` is expected, never the other
-/// way round.
+/// Whether `actual` is `expected` except that it reads some parameters `expected` may change or
+/// take: a function that takes `x` stands in where one that takes `var x` or `move x` is
+/// expected (the caller keeps or drops the argument), never the other way round.
 pub fn reads_where_var_expected(actual: &Ty, expected: &Ty) -> bool {
     actual.kind == Kind::Function
         && expected.kind == Kind::Function
         && actual.params.len() == expected.params.len()
+        && actual.params.iter().zip(&expected.params).any(|(a, e)| {
+            lends_where_expected(a, e) && (a.mutable, a.moving) != (e.mutable, e.moving)
+        })
         && actual
             .params
             .iter()
             .zip(&expected.params)
-            .any(|(a, e)| !a.mutable && e.mutable)
-        && actual.params.iter().zip(&expected.params).all(|(a, e)| {
-            (a.mutable == e.mutable || e.mutable) && a.moving == e.moving && same(&a.ty, &e.ty)
-        })
+            .all(|(a, e)| lends_where_expected(a, e) && same(&a.ty, &e.ty))
         && match (&actual.result, &expected.result) {
             (Some(a), Some(e)) => same(a, e),
             _ => false,
         }
+}
+
+/// Whether a parameter declared as `actual` can stand where `expected` is declared: the same
+/// mode, or a plain (borrowing) parameter where `var` or `move` is expected.
+pub fn lends_where_expected(actual: &Param, expected: &Param) -> bool {
+    (actual.mutable, actual.moving) == (expected.mutable, expected.moving)
+        || (!actual.mutable && !actual.moving)
 }
 
 /// Substitutes type variables.
@@ -1620,9 +1627,12 @@ fn unify_at(
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            // A function that only reads a parameter stands in for one that may change it.
-            let mode_matches =
-                (p.mutable == q.mutable || (adapt_reader && p.mutable)) && p.moving == q.moving;
+            // A function that only reads a parameter stands in for one that may change or take it.
+            let mode_matches = if adapt_reader {
+                lends_where_expected(q, p)
+            } else {
+                p.mutable == q.mutable && p.moving == q.moving
+            };
             if !mode_matches || !unify_at(&p.ty, &q.ty, vars, bindings, false) {
                 return false;
             }
