@@ -119,8 +119,12 @@ pub fn run(m: &mut Module) -> bool {
     // The same order every run.
     drop_tys.sort_by_key(|t| t.0);
     clone_tys.sort_by_key(|t| t.0);
-    let made =
-        !drop_tys.is_empty() || !clone_tys.is_empty() || !slots.is_empty() || !blocks.is_empty();
+    let made = !(drop_tys.is_empty()
+        && clone_tys.is_empty()
+        && slots.is_empty()
+        && blocks.is_empty()
+        && closure_drops.is_empty()
+        && closure_clones.is_empty());
     for ty in drop_tys {
         let body = make_drop(m, ty);
         let id = if m.drop_recurses(ty) {
@@ -174,6 +178,15 @@ pub fn run(m: &mut Module) -> bool {
         m.addr_glue.insert((Glue::ClosureClone(c.0), Ty::VOID), id);
     }
     made
+}
+
+/// Makes the glue and expands the release shorthands, repeating until nothing new is wanted:
+/// expanding makes drops of more types. The last step before the backends.
+pub fn run_and_expand(m: &mut Module) {
+    while run(m) {
+        crate::expand_owned::run(m);
+    }
+    crate::expand_owned::run(m);
 }
 
 /// The closure functions whose objects the program makes, with whether the object lives in a

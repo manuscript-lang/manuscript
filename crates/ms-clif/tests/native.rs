@@ -15,7 +15,7 @@ use support::cc;
 /// Compiles `m` as `build_executable` does: the release shorthands are expanded first.
 pub fn compile(m: &ms_mir::ir::Module, opts: &Options) -> Result<Vec<u8>, ms_clif::Error> {
     let mut m = m.clone();
-    ms_mir::expand_owned::run(&mut m);
+    ms_mir::glue::run_and_expand(&mut m);
     ms_clif::compile(&m, opts)
 }
 

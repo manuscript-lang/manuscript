@@ -20,9 +20,6 @@ pub use tables::{TableFn, tables_unit};
 
 pub use ms_mir::glue::{GLUE_PREFIX, Glue};
 
-/// Offset of `code` in a closure object.
-pub(crate) const CLOSURE_CODE: i32 = ms_rt_abi::CLOSURE_CODE_OFFSET as i32;
-
 /// What [`emit`] needs to know about the build.
 #[derive(Clone, Debug)]
 pub struct Options {
