@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, Has, OptInt, Str, TypeList, abi_type, native};
 
 abi_type! {
-    /// `Url` record: `scheme, host, path, query, fragment, port: Int?, omit_host`.
+    /// `Url` record: `scheme, host, path, query, fragment, port: Int?, omit_host, has_query`.
     pub struct UrlType {
         pub scheme: Str,
         pub host: Str,
@@ -19,6 +19,7 @@ abi_type! {
         pub fragment: Str,
         pub port: OptInt,
         pub omit_host: u8,
+        pub has_query: u8,
     }
 }
 
@@ -39,6 +40,7 @@ fn read_url(u: &UrlType) -> Components {
         query: u.query.as_str().into(),
         fragment: u.fragment.as_str().into(),
         omit_host: u.omit_host != 0,
+        has_query: u.has_query != 0,
     }
 }
 
@@ -51,6 +53,7 @@ fn write_url(c: Components) -> UrlType {
         query: Str::new(&c.query),
         fragment: Str::new(&c.fragment),
         omit_host: u8::from(c.omit_host),
+        has_query: u8::from(c.has_query),
     }
 }
 

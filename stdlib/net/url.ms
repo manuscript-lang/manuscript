@@ -43,6 +43,9 @@ export type Url:
 	// True when the URL was written without `//`, as in `mailto:?subject=hi`; format
 	// then omits the empty authority, so the text round-trips.
 	omit_host: Bool = false
+	// True when the URL has a query that is empty, as in `http://a/b?`; format then
+	// writes the `?`, so the text round-trips. A non-empty `query` is always written.
+	has_query: Bool = false
 
 // Decodes one percent-encoded URL component. `+` is not treated as a space.
 export fn decode_component(text: String) String!:

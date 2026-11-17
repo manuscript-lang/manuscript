@@ -37,6 +37,7 @@ fn url_from(f: &[&str]) -> Components {
         query: text(f[4]),
         fragment: text(f[5]),
         omit_host: false,
+        has_query: false,
     }
 }
 
