@@ -103,6 +103,20 @@ fn mem_field(lay: &Layouts, ty: Ty, alt: AltId, c: usize, i: usize) -> Option<Ty
         .then_some(fty)
 }
 
+/// Whether field `i` of case `c` of the boxed enum `alt` (of type `ty`) is a type in memory whose
+/// leaves move to and from the slots of the enum's heap block one by one: a map or set (seven
+/// words) or a record that holds one.
+fn block_mem_field(lay: &Layouts, ty: Ty, alt: AltId, c: usize, i: usize) -> bool {
+    let (fty, idx) = &lay.alt_fields(alt)[c][i];
+    if !types::is_mem(lay, *fty) || !types::shape_ok(lay, *fty) {
+        return false;
+    }
+    let block = block_of(lay, ty);
+    idx.iter()
+        .zip(&mem_leaves(lay, *fty))
+        .all(|(k, m)| slot_fits(&slot_ty(block[*k]), m))
+}
+
 /// Whether a leaf of memory type `mem` moves to or from a slot held as `slot` by a conversion.
 fn slot_fits(slot: &LTy, mem: &LTy) -> bool {
     slot == mem
@@ -156,7 +170,12 @@ fn fields_leafy(lay: &Layouts, ty: Ty, a: AltId, case: Option<u32>) -> bool {
         .filter(|(c, _)| case.is_none_or(|k| k as usize == *c))
         .all(|(c, case)| {
             case.fields.iter().enumerate().all(|(i, f)| {
-                leafy(lay, f.1) || (!lay.is_boxed(a) && mem_field(lay, ty, a, c, i).is_some())
+                leafy(lay, f.1)
+                    || if lay.is_boxed(a) {
+                        block_mem_field(lay, ty, a, c, i)
+                    } else {
+                        mem_field(lay, ty, a, c, i).is_some()
+                    }
             })
         })
 }
@@ -575,7 +594,13 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
             b.store(&Val::int(i64::from(c)), &tag, 8);
             for (i, (fty, idx)) in fields.iter().enumerate() {
                 let signs = narrow_leaves(lay, *fty);
-                for ((slot, v), signed) in idx.iter().zip(arg(i)).zip(signs) {
+                // A type in memory is read into its leaves first.
+                let leaves = if types::is_mem(lay, *fty) {
+                    types::load_leaf_values(b, lay, *fty, &arg(i)[0])
+                } else {
+                    arg(i).clone()
+                };
+                for ((slot, v), signed) in idx.iter().zip(&leaves).zip(signs) {
                     let at = slot_ptr(b, &block, &p, *slot);
                     // A narrow integer or `float` fills its whole slot, extended as the value is.
                     let (mem, v) = match v.ty {
@@ -604,6 +629,13 @@ fn boxed(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) 
             b.load_with(&LTy::I64, &arg(0)[0], 8, meta);
         }
         (Op::AltGet | Op::AltTake, Imm::AltField(a, c, k)) => {
+            let (fty, _) = lay.alt_fields(a)[c as usize][k as usize];
+            if types::is_mem(lay, fty) {
+                // A type in memory is built from its slots in a fresh slot.
+                let leaves = block_field(b, lay, ty, (a, c, k as usize), &arg(0)[0], None);
+                types::store_into_slot(b, lay, fty, &out[0], &leaves);
+                return;
+            }
             block_field(b, lay, ty, (a, c, k as usize), &arg(0)[0], Some(out));
         }
         _ => unreachable!("handles lists the ops"),
