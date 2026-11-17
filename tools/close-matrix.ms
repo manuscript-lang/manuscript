@@ -554,7 +554,7 @@ fn main() Int:
 		rejected += tally.rejected
 		failures += tally.failures
 		for line in tally.lines:
-			stdout().write(line).get()
+			stdout().write(line.clone()).get()
 
 	(
 		stdout()
