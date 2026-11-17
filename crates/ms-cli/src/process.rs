@@ -594,8 +594,8 @@ mod tests {
         // chunk is read after the wait: it counts whenever it arrives.
         assert!(drained >= 1, "no output wake ran a pass");
         for _ in drained..2 {
-            seen.recv_timeout(Duration::from_secs(10))
-                .expect("every line reaches the reader");
+            // The reader ends when the pipe closes, so a missing line is an error, not a hang.
+            seen.recv().expect("every line reaches the reader");
         }
     }
 
