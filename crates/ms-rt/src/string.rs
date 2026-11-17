@@ -1446,7 +1446,20 @@ unsafe fn msrt_string_reverse_val(a: *const StrVal) -> StrVal {
     }
 }
 
+/// The range of `text` left after trimming. Text whose first and last bytes (the ends asked for)
+/// are ASCII and not white space, the usual case, is decided by those two bytes.
+#[inline(always)]
 fn trim_range(text: &[u8], start: bool, end: bool) -> (usize, usize) {
+    if let (Some(&first), Some(&last)) = (text.first(), text.last()) {
+        let keeps = |b: u8| b < 0x80 && b != b' ' && !(9..=13).contains(&b);
+        if (!start || keeps(first)) && (!end || keeps(last)) {
+            return (0, text.len());
+        }
+    }
+    trim_range_scan(text, start, end)
+}
+
+fn trim_range_scan(text: &[u8], start: bool, end: bool) -> (usize, usize) {
     let (mut a, mut b) = (0, text.len());
     // ASCII White_Space is \t \n \v \f \r and the space; anything else below 0x80 ends the scan
     // without decoding.
@@ -1506,12 +1519,19 @@ unsafe fn trimmed(s: *const StrVal, start: bool, end: bool) -> StrVal {
 unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable `out`.
     unsafe {
-        let (a, b) = trim_range(bytes(s), start, end);
+        let text = bytes(s);
+        let (a, b) = trim_range(text, start, end);
         let view = if a == b {
             // An empty result borrows nothing.
             StrVal::literal((&raw mut EMPTY).cast(), 0)
+        } else if b - a == text.len() && (*s).copies_bitwise() {
+            // Nothing trimmed from an inline or static string: the same two words.
+            StrVal {
+                ptr_word: (*s).ptr_word,
+                tagged: (*s).tagged,
+            }
         } else {
-            view_of(bytes(s)[a..b].as_ptr(), b - a)
+            view_of(text[a..b].as_ptr(), b - a)
         };
         view.write_to(out)
     }
