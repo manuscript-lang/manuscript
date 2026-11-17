@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	DivMod, divmod, gcd, isqrt, lcm, max_int, min_int, pow_int from "@std/math/math.ms",
-	exists, temporary_directory from "@std/os/fs.ms",
+	exists, temporary_directory, write_file from "@std/os/fs.ms",
 	join, stem, with_extension from "@std/os/path.ms",
 	SplitParts from "@std/string.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
@@ -89,6 +89,14 @@ test "exists distinguishes absence from failure":
 	expect_true(exists(dir)?)?
 	expect_false(exists(f"{dir}/missing")?)?
 	expect_false(exists(f"{dir}/missing/deeper")?)?
+
+test "exists is false below a file, as it is below a missing directory":
+	dir := temporary_directory("exists-")?
+	write_file(f"{dir}/file", "x").wait()?
+	expect_true(exists(f"{dir}/file")?)?
+	expect_false(exists(f"{dir}/file/child")?)?
+	expect_false(exists(f"{dir}/file/child", follow_links: false)?)?
+	expect_false(exists(f"{dir}/file/")?)?
 
 test "take_while and drop_while split at the first failing element":
 	values := [1, 2, 5, 1]

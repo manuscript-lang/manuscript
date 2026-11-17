@@ -76,3 +76,12 @@ test "windows namespace prefixes join and normalize without doubled separators":
 	expect_equal(paths.normalize("\\\\?\\."), "\\\\?\\")?
 	expect_equal(paths.normalize("\\\\?\\a"), "\\\\?\\a")?
 	expect_equal(paths.normalize("\\\\?\\C:\\a\\..\\b"), "\\\\?\\C:\\b")?
+
+test "windows UNC roots collapse repeated separators and need exactly two leading ones":
+	paths := win32()
+	expect_equal(paths.normalize("\\\\srv\\\\share\\\\a"), "\\\\srv\\share\\a")?
+	expect_equal(paths.join(["\\\\srv\\\\share", "/", "b"]), "\\\\srv\\share\\b")?
+	expect_equal(paths.normalize("\\\\srv\\share\\\\"), "\\\\srv\\share\\")?
+	// Three leading separators are a rooted path, not a UNC server.
+	expect_equal(paths.normalize("\\\\\\srv\\share"), "\\srv\\share")?
+	expect_equal(paths.parse("\\\\\\srv\\share\\a.txt").root, "\\")?
