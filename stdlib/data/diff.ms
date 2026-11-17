@@ -1,7 +1,4 @@
-import (
-	panic from "@std/core.ms",
-	StringBuilder from "@std/string_builder.ms",
-)
+import StringBuilder from "@std/string_builder.ms"
 
 /*
 Compare text by edit distance, similarity, closest candidate, or a unified line diff.
@@ -75,9 +72,10 @@ type Scored:
 
 // Settings for `close_matches`.
 export type CloseMatchesOptions:
-	// Maximum candidates returned; below 1 faults.
+	// Maximum candidates returned; zero or below returns none.
 	limit: Int = 3
-	// Minimum `similarity_ratio` from 0.0 to 1.0; outside that range faults.
+	// Minimum `similarity_ratio` from 0.0 to 1.0; at or below 0.0 keeps every candidate
+	// and above 1.0 keeps none.
 	cutoff: Float = 0.6
 
 /*
@@ -91,11 +89,6 @@ export fn close_matches(
 ) List[String]:
 	limit := options.limit
 	cutoff := options.cutoff
-	if limit < 1:
-		panic("close_matches: limit must be at least 1")
-	if not (cutoff >= 0.0 and cutoff <= 1.0):
-		panic("close_matches: cutoff must be from 0.0 to 1.0")
-
 	var scored: List[Scored] = []
 
 	for candidate in candidates:
@@ -226,7 +219,7 @@ fn hunk_range(start: Int, length: Int) String:
 
 // Settings for `unified_diff`.
 export type UnifiedDiffOptions:
-	// Unchanged lines kept around each change; must not be negative.
+	// Unchanged lines kept around each change; below zero counts as zero.
 	context: Int = 3
 	// Label of the `---` header.
 	old_name: String = "a"
@@ -243,12 +236,9 @@ export fn unified_diff(
 	new: List[String],
 	options: UnifiedDiffOptions = UnifiedDiffOptions(),
 ) String:
-	context := options.context
+	context := options.context.max(0)
 	old_name := options.old_name
 	new_name := options.new_name
-	if context < 0:
-		panic("unified_diff: context must not be negative")
-
 	steps := line_steps(old, new)
 	var keep = [false].repeated(steps.length())
 	var any_change = false

@@ -2821,8 +2821,8 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
     // SAFETY: caller passes live strings, a frame buffer and a writable out.
     unsafe {
         let (text, sepb) = (bytes(s), bytes(sep));
-        let limit = if has_max.is_set() && max >= 0 {
-            max as usize
+        let limit = if has_max.is_set() {
+            max.max(0) as usize
         } else {
             usize::MAX
         };
@@ -2863,12 +2863,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_first(
 ) {
     // SAFETY: caller passes live strings and a writable out; the piece borrows `s`.
     unsafe {
-        if has_max.is_set() && max < 0 {
-            fault::fault_fmt(format_args!(
-                "split: max_parts must be nonnegative, found {max}"
-            ));
-        }
-        if has_max.is_set() && max == 0 {
+        if has_max.is_set() && max <= 0 {
             fault::msrt_index_fault(0, 0);
         }
         let (text, sepb) = (bytes(s), bytes(sep));
@@ -2905,12 +2900,7 @@ unsafe fn split_into(
         let (text, sepb) = (bytes(s), bytes(sep));
         let mut limit = usize::MAX;
         if has_max.is_set() {
-            if max < 0 {
-                fault::fault_fmt(format_args!(
-                    "split: max_parts must be nonnegative, found {max}"
-                ));
-            }
-            limit = max as usize;
+            limit = max.max(0) as usize;
         }
         let mut v = EMPTY_VEC;
         if limit == 0 {
@@ -3062,7 +3052,7 @@ unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
     }
 }
 
-/// Starts a split loop; the same fault as `split` for a negative `max_parts`.
+/// Starts a split loop; a `max_parts` of zero or below gives no pieces.
 #[unsafe(no_mangle)]
 // ms: leaf iter_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_iter(
@@ -3075,12 +3065,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
     unsafe {
         let mut left = usize::MAX;
         if has_max.is_set() {
-            if max < 0 {
-                fault::fault_fmt(format_args!(
-                    "split: max_parts must be nonnegative, found {max}"
-                ));
-            }
-            left = max as usize;
+            left = max.max(0) as usize;
         }
         let it = obj::new_obj(core::mem::size_of::<SplitIter>(), None, split_iter_drop)
             as *mut SplitIter;
