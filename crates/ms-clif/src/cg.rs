@@ -396,6 +396,15 @@ impl<'m> Gen<'m> {
         if let Some(f) = self.m.made_glue(kind, ty) {
             return self.funcs[f.index()];
         }
+        // Only copies of data the backends clone themselves (recursive data) and the cleanup thunks are made here.
+        assert!(
+            matches!(
+                kind,
+                Glue::Clone | Glue::SlotCopy | Glue::BlockClone | Glue::CleanupThunk(_)
+            ),
+            "MIR made no {kind:?} function for {}",
+            ms_mir::print::ty_str(self.m, ty)
+        );
         let leaves = self.lay.leaves(ty);
         let sig = match kind {
             Glue::Drop => self.sig(&leaves, &[]),

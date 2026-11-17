@@ -3,166 +3,18 @@
 use super::*;
 
 impl<'a, 'm> Lower<'a, 'm> {
-    /// The capture types of closure function `f` with the offset and leaves each has in the object.
-    fn closure_captures(&mut self, f: u32) -> Vec<(Ty, i64, Vec<Leaf>)> {
-        let layout = self.g.lay.closure(&self.g.m.funcs[f as usize]);
-        (layout.captures.into_iter())
-            .map(|c| (c.ty, i64::from(c.offset), c.leaves))
-            .collect()
-    }
-
-    /// Registers the release of closure object `obj` from capture `k` on while a guarded task
-    /// unwinds; returns the cleanup handle, 0 when no guard is open (its discard is a no-op).
-    fn register_closure_tail(&mut self, f: u32, k: u32, obj: Value) -> Value {
-        let tail = self.g.glue(Glue::ClosureDropFrom(f, k), Ty::VOID);
-        let hdr = self.task_hdr();
-        let guarded = self
-            .b
-            .ins()
-            .load(types::I8, flags(), hdr, ISOLATE_HDR_GUARDED as i32);
-        let none = self.iconst(0);
-        let push = self.b.create_block();
-        let join = self.b.create_block();
-        self.b.append_block_param(join, types::I64);
-        self.b.ins().brif(guarded, push, &[], join, &[none.into()]);
-        self.b.switch_to_block(push);
-        let r = self.fref(tail);
-        let fa = self.b.ins().func_addr(types::I64, r);
-        let h = self.rt_call("msrt_cleanup_push", &[fa, obj])[0];
-        self.b.ins().jump(join, &[h.into()]);
-        self.b.switch_to_block(join);
-        self.b.block_params(join)[0]
-    }
-
     pub fn lower_glue(&mut self, kind: Glue, ty: Ty) {
         let entry = self.b.create_block();
         self.b.append_block_params_for_function_params(entry);
         self.b.switch_to_block(entry);
         let params = self.b.block_params(entry).to_vec();
         match kind {
-            Glue::Drop => {
-                // Data that can contain itself bounds its nesting (`ms_rt::dropq`): past the
-                // limit the value is parked on the runtime's worklist and dropped later.
-                let bounded = self.g.m.drop_recurses(ty);
-                let deep = bounded.then(|| self.stack_within_headroom());
-                if let Some(deep) = deep {
-                    let enter = self.b.create_block();
-                    let body = self.b.create_block();
-                    self.b.ins().brif(deep, enter, &[], body, &[]);
-                    self.b.switch_to_block(enter);
-                    let defer = self.rt_call("msrt_drop_enter", &[])[0];
-                    let park = self.b.create_block();
-                    let run = self.b.create_block();
-                    self.b.ins().brif(defer, park, &[], run, &[]);
-                    self.b.switch_to_block(park);
-                    let leaves = self.g.lay.leaves(ty);
-                    let blk = self.alloc(mem_layout(&leaves).size as i64);
-                    self.store_leaves(blk, 0, &leaves, &params);
-                    let slot_drop = self.g.glue(Glue::SlotDrop, ty);
-                    let r = self.fref(slot_drop);
-                    let fa = self.b.ins().func_addr(types::I64, r);
-                    self.rt_call("msrt_drop_defer", &[fa, blk]);
-                    self.b.ins().return_(&[]);
-                    self.b.switch_to_block(run);
-                    self.b.ins().jump(body, &[]);
-                    self.b.switch_to_block(body);
-                }
-                self.glue_drop(ty, &params);
-                if let Some(deep) = deep {
-                    let leave = self.b.create_block();
-                    let done = self.b.create_block();
-                    self.b.ins().brif(deep, leave, &[], done, &[]);
-                    self.b.switch_to_block(leave);
-                    self.rt_call("msrt_drop_leave", &[]);
-                    self.b.ins().jump(done, &[]);
-                    self.b.switch_to_block(done);
-                }
-                self.b.ins().return_(&[]);
-            }
             Glue::Clone => {
                 if self.g.m.drop_recurses(ty) {
                     self.clone_on_new_segment(ty, &params);
                 }
                 let out = self.glue_copy(ty, &params);
                 self.b.ins().return_(&out);
-            }
-            Glue::ClosureDrop(f) | Glue::ClosureDropFramed(f) => {
-                // Drops the captures then frees the object (a framed one lives in a stack slot).
-                let obj = params[0];
-                let caps = self.closure_captures(f);
-                let closers = self.g.m.funcs[f as usize].capture_closers.clone();
-                for (k, (c, off, leaves)) in caps.into_iter().enumerate() {
-                    if let Some((_, close)) = closers.iter().find(|(i, _)| *i as usize == k) {
-                        // A resource the environment owns is closed in place before it is
-                        // released: the closer takes the capture's address.
-                        let at = self.b.ins().iadd_imm_s(obj, off);
-                        let fid = self.g.funcs[close.index()];
-                        // A close that faults leaves by a jump: while a guarded task unwinds,
-                        // the rest of the object is released from here.
-                        let handle = self.register_closure_tail(f, k as u32, obj);
-                        self.call_id(fid, &[at]);
-                        self.rt_call("msrt_cleanup_discard", &[handle]);
-                    }
-                    if self.g.m.needs_drop(c) {
-                        let vs = self.load_leaves(obj, off, &leaves);
-                        self.drop_value(c, &vs);
-                    }
-                }
-                if matches!(kind, Glue::ClosureDrop(_)) {
-                    self.free(obj);
-                }
-                self.b.ins().return_(&[]);
-            }
-            Glue::ClosureDropFrom(f, from) => {
-                let obj = params[0];
-                let on = self.rt_call("msrt_unwind_drops", &[])[0];
-                let caps = self.closure_captures(f);
-                self.if_then(on, |s| {
-                    for (k, (c, off, leaves)) in caps.iter().enumerate() {
-                        if k as u32 >= from && s.g.m.needs_drop(*c) {
-                            let vs = s.load_leaves(obj, *off, leaves);
-                            s.drop_value(*c, &vs);
-                        }
-                    }
-                    s.free(obj);
-                });
-                self.b.ins().return_(&[]);
-            }
-            Glue::ClosureClone(f) => {
-                // A new closure object with the same header and code over copies of the captures.
-                let src = params[0];
-                let layout = self.g.lay.closure(&self.g.m.funcs[f as usize]);
-                let total = i64::from(layout.size);
-                let mut copies = Vec::new();
-                for cap in &layout.captures {
-                    let vs = self.load_leaves(src, i64::from(cap.offset), &cap.leaves);
-                    copies.push(self.clone_value(cap.ty, &vs));
-                }
-                let obj = self.alloc(total);
-                // The drop entry is the heap one even when `src` lives in a frame.
-                for at in [0, CLOSURE_CODE] {
-                    let word = self.b.ins().load(types::I64, flags(), src, at);
-                    self.b.ins().store(flags(), word, obj, at);
-                }
-                let drop = self.g.glue(Glue::ClosureDrop(f), Ty::VOID);
-                let dr = self.fref(drop);
-                let da = self.b.ins().func_addr(types::I64, dr);
-                self.b.ins().store(flags(), da, obj, 8);
-                for (cap, vs) in layout.captures.iter().zip(&copies) {
-                    self.store_leaves(obj, i64::from(cap.offset), &cap.leaves, vs);
-                }
-                self.b.ins().return_(&[obj]);
-            }
-            Glue::BlockDrop => {
-                // Interface payload block holding a `ty` value.
-                let blk = params[0];
-                if self.g.m.needs_drop(ty) {
-                    let leaves = self.g.lay.leaves(ty);
-                    let vs = self.load_leaves(blk, 0, &leaves);
-                    self.drop_value(ty, &vs);
-                }
-                self.free(blk);
-                self.b.ins().return_(&[]);
             }
             Glue::BlockClone => {
                 // Interface payload block holding a `ty` value.
@@ -173,14 +25,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.store_leaves(blk, 0, &leaves, &copied);
                 self.b.ins().return_(&[blk]);
             }
-            Glue::SlotDrop => {
-                if self.g.m.needs_drop(ty) {
-                    let leaves = self.g.lay.leaves(ty);
-                    let vs = self.load_leaves(params[0], 0, &leaves);
-                    self.drop_value(ty, &vs);
-                }
-                self.b.ins().return_(&[]);
-            }
             Glue::SlotCopy => {
                 let leaves = self.g.lay.leaves(ty);
                 let vs = self.load_leaves(params[0], 0, &leaves);
@@ -188,6 +32,13 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.store_leaves(params[1], 0, &leaves, &out);
                 self.b.ins().return_(&[]);
             }
+            Glue::Drop
+            | Glue::ClosureDrop(_)
+            | Glue::ClosureDropFramed(_)
+            | Glue::ClosureDropFrom(..)
+            | Glue::ClosureClone(_)
+            | Glue::BlockDrop
+            | Glue::SlotDrop => unreachable!("MIR makes {kind:?} functions"),
             Glue::CleanupThunk(f) => {
                 // `arg` points at a stack copy of the registered value.
                 let fid = self.g.funcs[f as usize];
@@ -198,12 +49,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.ins().return_(&[]);
             }
         }
-    }
-
-    /// Whether the stack pointer is within `DEEP_DROP_HEADROOM` of the running segment's limit:
-    /// the drop glue of recursive data counts its nesting only then.
-    fn stack_within_headroom(&mut self) -> Value {
-        self.stack_below(DEEP_DROP_HEADROOM)
     }
 
     /// Whether the stack pointer is below the running segment's limit plus `headroom` bytes:
@@ -359,35 +204,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.free(p);
     }
 
-    /// Drops the fields of the indirect type at `p` whose bit in `moved` is clear (the others
-    /// were moved out) and frees its block and its collection headers. A collection that was
-    /// never filled has no header block and costs one null check.
-    pub(super) fn type_release(&mut self, ty: Ty, p: Value, moved: u64) {
-        let block = self.type_block(ty).expect("indirect type");
-        let lay = mem_layout(&block);
-        for (i, (fty, _, _)) in self.fields_of(ty).into_iter().enumerate() {
-            let (bk, n) = self.type_block_fields(ty)[i];
-            let kept = moved >> i & 1 == 0 && self.g.m.needs_drop(fty);
-            if self.g.lay.type_field_boxed(fty) {
-                let bp = self.load_leaf(Leaf::I64, p, lay.offsets[bk] as i32);
-                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, bp, 0);
-                self.if_then(nn, |s| {
-                    if kept {
-                        let words = s.map_header_load(bp);
-                        s.drop_value(fty, &words);
-                    }
-                    s.free(bp);
-                });
-            } else if kept {
-                let v: Vs = (bk..bk + n)
-                    .map(|k| self.load_leaf(block[k], p, lay.offsets[k] as i32))
-                    .collect();
-                self.drop_value(fty, &v);
-            }
-        }
-        self.free(p);
-    }
-
     /// The seven words of the collection header behind `bp`, or the all-zero empty value.
     fn map_header_load(&mut self, bp: Value) -> Vs {
         let words = ms_rt_abi::MAP_SIZE / 8;
@@ -504,76 +320,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.if_then(nn, |s| s.free(ptr));
     }
 
-    pub(super) fn glue_drop(&mut self, ty: Ty, vs: &[Value]) {
-        let m = self.g.m;
-        match m.types.kind(ty).clone() {
-            TyKind::Bytes | TyKind::List(_) => {
-                // A view (`cap == 0`, from `slice` of a lent list) borrows its elements: there
-                // is nothing to drop or free.
-                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
-                self.if_then(owned, |s| s.drop_list_from(ty, vs[0], vs[1], None));
-            }
-            TyKind::Obj(..) => {
-                // Map and Set are owned `MapVal`s the runtime knows how to drop. One that was never
-                // filled has no slots (word 0): nothing to release, no call.
-                let filled = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[0], 0);
-                self.if_then(filled, |s| {
-                    let leaves = s.g.lay.leaves(ty);
-                    let slot = s.spill_temp(vs, &leaves);
-                    let d = s.typedesc_addr(ty);
-                    s.rt_call("msrt_slot_drop", &[d, slot]);
-                });
-            }
-            TyKind::Type(_) if self.type_block(ty).is_some() => self.type_release(ty, vs[0], 0),
-            TyKind::Type(_) => {
-                for (fty, at, w) in self.fields_of(ty) {
-                    if m.needs_drop(fty) {
-                        self.drop_value(fty, &vs[at..at + w]);
-                    }
-                }
-            }
-            TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
-                // Payload lives in a heap block behind a nullable pointer.
-                let p = vs[0];
-                let leaves = self.g.lay.leaves(inner);
-                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
-                self.if_then(nn, |s| {
-                    if m.needs_drop(inner) {
-                        let payload = s.load_leaves(p, 0, &leaves);
-                        s.drop_value(inner, &payload);
-                    }
-                    s.free(p);
-                });
-            }
-            TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.drop_value(ty, vs),
-            TyKind::Opt(inner) => {
-                // Non-nullable optional: [present, payload...].
-                let present = vs[0];
-                let payload = vs[1..].to_vec();
-                self.if_then(present, |s| s.drop_value(inner, &payload));
-            }
-            TyKind::Alt(a) => self.glue_drop_alt(ty, a, vs),
-            TyKind::Iface(_) => {
-                // The vtable word's low bits say what the value owns: 0 the box and its payload
-                // (vtable[0] is the payload destructor), 1 only the box (`iface.borrow`), 2
-                // nothing (`iface.view`).
-                let (data, vt) = (vs[0], vs[1]);
-                let tag = self.b.ins().band_imm_s(vt, IFACE_TAG_MASK);
-                let owned = self.b.ins().icmp_imm_s(IntCC::Equal, tag, IFACE_TAG_OWNED);
-                self.if_then(owned, |s| {
-                    let f = s.b.ins().load(types::I64, flags(), vt, 0);
-                    let mut sig = s.g.module.make_signature();
-                    sig.params.push(ir::AbiParam::new(types::I64));
-                    let sr = s.b.import_signature(sig);
-                    s.b.ins().call_indirect(sr, f, &[data]);
-                });
-                let borrowed = self.b.ins().icmp_imm_s(IntCC::Equal, tag, IFACE_TAG_BOX);
-                self.if_then(borrowed, |s| s.free(data));
-            }
-            _ => {}
-        }
-    }
-
     /// For a boxed alternative with payloadless cases: whether `tag` names one (such values are the
     /// shared block, see [`Gen::unit_block`]) and that block's address. `None` when every case
     /// carries a payload.
@@ -613,81 +359,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         acc
     }
 
-    /// Frees the block of a boxed alternative unless its tag names a payloadless (shared) case.
-    pub(super) fn free_boxed(&mut self, a: ms_mir::types::AltId, tag: Value, p: Value) {
-        match self.unit_case(a, tag) {
-            None => self.free(p),
-            Some((unit, _)) => {
-                let free = self.b.create_block();
-                let cont = self.b.create_block();
-                self.b.ins().brif(unit, cont, &[], free, &[]);
-                self.b.switch_to_block(free);
-                self.free(p);
-                self.b.ins().jump(cont, &[]);
-                self.b.switch_to_block(cont);
-            }
-        }
-    }
-
-    pub(super) fn glue_drop_alt(&mut self, ty: Ty, a: ms_mir::types::AltId, vs: &[Value]) {
-        let fields = self.alt_fields(a);
-        let boxed = matches!(self.g.lay.shape(ty).alt, Some(AltRepr::Boxed { .. }));
-        if boxed && self.has_tail(ty, &fields) {
-            self.drop_boxed_iter(ty, &fields, vs[0]);
-            return;
-        }
-        let (leaves, base) = match &self.g.lay.shape(ty).alt {
-            Some(AltRepr::Boxed { block, .. }) => (block.clone(), Some(vs[0])),
-            _ => (self.g.lay.leaves(ty), None),
-        };
-        let tag = match base {
-            Some(p) => self.b.ins().load(types::I64, flags(), p, 0),
-            None => vs[0],
-        };
-        let done = self.b.create_block();
-        for (c, case) in fields.iter().enumerate() {
-            if self.g.m.alts[a.index()].borrows(c)
-                || !case.iter().any(|(t, _)| self.g.m.needs_drop(*t))
-            {
-                continue;
-            }
-            let this = self.b.create_block();
-            let next = self.b.create_block();
-            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
-            self.b.ins().brif(is, this, &[], next, &[]);
-            self.b.switch_to_block(this);
-            for (fty, idx) in case {
-                if !self.g.m.needs_drop(*fty) {
-                    continue;
-                }
-                let fv: Vs = match base {
-                    Some(p) => {
-                        let lay = mem_layout(&leaves);
-                        idx.iter()
-                            .map(|i| {
-                                self.b.ins().load(
-                                    leaf_type(leaves[*i]),
-                                    flags(),
-                                    p,
-                                    lay.offsets[*i] as i32,
-                                )
-                            })
-                            .collect()
-                    }
-                    None => idx.iter().map(|i| vs[*i]).collect(),
-                };
-                self.drop_value(*fty, &fv);
-            }
-            self.b.ins().jump(done, &[]);
-            self.b.switch_to_block(next);
-        }
-        self.b.ins().jump(done, &[]);
-        self.b.switch_to_block(done);
-        if boxed {
-            self.free_boxed(a, tag, vs[0]);
-        }
-    }
-
     /// The field of `case` that holds the same boxed alternative again (the "tail" of a chain
     /// such as `Cons(head, tail)`), as `(field index, leaf indices, optional)`. Drop and copy of a
     /// boxed alternative loop over this field instead of recursing, so a long chain does not
@@ -713,96 +384,6 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     pub(super) fn has_tail(&self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>]) -> bool {
         fields.iter().any(|c| self.tail_field(ty, c).is_some())
-    }
-
-    /// Frees a chain of boxed blocks: each iteration drops the non-tail fields of the block,
-    /// reads its tail pointer, frees it and moves on to the tail.
-    pub(super) fn drop_boxed_iter(
-        &mut self,
-        ty: Ty,
-        fields: &[Vec<(Ty, Vec<usize>)>],
-        first: Value,
-    ) {
-        let shape = self.g.lay.shape(ty);
-        let Some(AltRepr::Boxed { block, .. }) = &shape.alt else {
-            return;
-        };
-        let lay = mem_layout(block);
-        let head = self.b.create_block();
-        let exit = self.b.create_block();
-        self.b.append_block_param(head, types::I64);
-        self.b.ins().jump(head, &[BlockArg::Value(first)]);
-        self.b.switch_to_block(head);
-        let cur = self.b.block_params(head)[0];
-        let tag = self.b.ins().load(types::I64, flags(), cur, 0);
-        for (c, case) in fields.iter().enumerate() {
-            let tail = self.tail_field(ty, case);
-            let droppable = case.iter().any(|(t, _)| self.g.m.needs_drop(*t));
-            if !droppable {
-                continue;
-            }
-            let this = self.b.create_block();
-            let next = self.b.create_block();
-            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
-            self.b.ins().brif(is, this, &[], next, &[]);
-            self.b.switch_to_block(this);
-            for (i, (fty, idx)) in case.iter().enumerate() {
-                if !self.g.m.needs_drop(*fty) || tail.as_ref().is_some_and(|t| t.0 == i) {
-                    continue;
-                }
-                let fv: Vs = idx
-                    .iter()
-                    .map(|k| {
-                        self.b.ins().load(
-                            leaf_type(block[*k]),
-                            flags(),
-                            cur,
-                            lay.offsets[*k] as i32,
-                        )
-                    })
-                    .collect();
-                self.drop_value(*fty, &fv);
-            }
-            match tail {
-                Some((_, idx, optional)) => {
-                    let k = *idx.last().expect("tail leaf");
-                    let child = self
-                        .b
-                        .ins()
-                        .load(types::I64, flags(), cur, lay.offsets[k] as i32);
-                    let present = if optional {
-                        Some(self.b.ins().load(
-                            leaf_type(block[idx[0]]),
-                            flags(),
-                            cur,
-                            lay.offsets[idx[0]] as i32,
-                        ))
-                    } else {
-                        None
-                    };
-                    self.free(cur);
-                    match present {
-                        Some(p) => self
-                            .b
-                            .ins()
-                            .brif(p, head, &[BlockArg::Value(child)], exit, &[]),
-                        None => self.b.ins().jump(head, &[BlockArg::Value(child)]),
-                    };
-                }
-                None => {
-                    self.free(cur);
-                    self.b.ins().jump(exit, &[]);
-                }
-            }
-            self.b.switch_to_block(next);
-        }
-        // A case with nothing to drop: only the block is freed.
-        let TyKind::Alt(a) = self.g.m.types.kind(ty).clone() else {
-            unreachable!("boxed alternative")
-        };
-        self.free_boxed(a, tag, cur);
-        self.b.ins().jump(exit, &[]);
-        self.b.switch_to_block(exit);
     }
 
     /// Copies a chain of boxed blocks front to back: each iteration allocates the new block,
