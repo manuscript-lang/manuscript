@@ -1589,9 +1589,7 @@ fn inline_value(
 			joined_length += next.scalar_length()
 		else:
 			stops.append(joined_length + scan.marker)
-			joined = joined.concat(
-				next.slice(0, byte_at_scalar(next, scan.marker))
-			)
+			joined = joined.concat(next.slice(0, byte_at_scalar(next, scan.marker)))
 			joined_length += scan.marker
 
 		context.index += 1
@@ -2039,10 +2037,7 @@ fn sequence_items(
 			)
 
 			// A tab cannot indent a nested sequence: `-<tab>- x` is invalid.
-			after := blank_trim_start(line).slice(
-				1,
-				blank_trim_start(line).length(),
-			)
+			after := blank_trim_start(line).slice(1, blank_trim_start(line).length())
 			gap := after.slice(0, after.length() - item.length())
 			if gap.contains("\t") and sequence(item): return error(
 				invalid(
@@ -2105,10 +2100,7 @@ fn sequence_items(
 		else if compact:
 			// Treat a compact mapping/sequence as a virtual indented first line.
 			// Its column follows the indicator, so extra spaces move the nested base.
-			marker := blank_trim_start(line).slice(
-				1,
-				(blank_trim_start(line).length()),
-			)
+			marker := blank_trim_start(line).slice(1, (blank_trim_start(line).length()))
 			var gap = indent(marker)
 			if gap == 0: gap = 1
 
@@ -2138,9 +2130,7 @@ fn sequence_items(
 
 			if not fast:
 				raw := context.lines[context.index]
-				rewritten = rewritten.concat(
-					raw.slice(line.length(), raw.length())
-				)
+				rewritten = rewritten.concat(raw.slice(line.length(), raw.length()))
 
 			context.lines.set(context.index, rewritten)
 			values.append(block(var context, column, (depth + 1), scalar_base: base)?)
@@ -2341,9 +2331,7 @@ fn block(
 				if colon < 0: break
 
 				name = blank_trim(content.slice(0, colon))
-				text = blank_trim_start(
-					content.slice(colon + 1, content.length())
-				)
+				text = blank_trim_start(content.slice(colon + 1, content.length()))
 				value_column = line.scalar_length() - text.scalar_length() + 1
 
 			var key_start = name.scalar_at(0, default: 0)

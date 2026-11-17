@@ -75,10 +75,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 			)
 		):
 			body = item.slice(0, slash.get(0))
-			step = item.slice(
-				slash.get(0) + 1,
-				item.length(),
-			).parse_int().get(0)
+			step = item.slice(slash.get(0) + 1, item.length()).parse_int().get(0)
 			stepped = true
 			if step < 1: return none
 			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)): return none

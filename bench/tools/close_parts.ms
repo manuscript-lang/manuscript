@@ -43,10 +43,7 @@ fn main() Int:
 	)
 
 	for toml in projects.sorted():
-		dir := (
-			"bench/perf/"
-			+ toml.slice(0, toml.length() - "ms.toml".length())
-		)
+		dir := ("bench/perf/" + toml.slice(0, toml.length() - "ms.toml".length()))
 		name := dir.slice("bench/perf/".length(), dir.length() - 1)
 
 		// Both compilers build the same directory, so no path differs between the

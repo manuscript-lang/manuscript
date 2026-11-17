@@ -2338,7 +2338,14 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
     unsafe {
         let text = bytes(s);
         let n = text.len() as i64;
-        let resolve = |bound: i64| (if bound < 0 { n.saturating_add(bound) } else { bound }).clamp(0, n) as usize;
+        let resolve = |bound: i64| {
+            (if bound < 0 {
+                n.saturating_add(bound)
+            } else {
+                bound
+            })
+            .clamp(0, n) as usize
+        };
         let (mut a, mut b) = (resolve(start), resolve(end));
         while a < b && !is_boundary(text, a) {
             a += 1;
@@ -3564,7 +3571,6 @@ pub fn count_copy(kind: usize, bytes: usize) {
 
 #[cfg(test)]
 mod tests {
-    const NO_ERR: ms_rt_abi::ErrSlot = ms_rt_abi::ErrSlot(core::ptr::null_mut());
     use super::*;
 
     #[test]
@@ -4245,7 +4251,11 @@ mod tests {
                     while b > a && !text.is_char_boundary(b) {
                         b -= 1;
                     }
-                    assert_eq!(txt(&o), &text[a..b], "{text:?} {i}..{j}");
+                    assert_eq!(
+                        txt(&o),
+                        if a < b { &text[a..b] } else { "" },
+                        "{text:?} {i}..{j}"
+                    );
                 }
                 // SAFETY: as above.
                 let at = unsafe { msrt_string_scalar_at(st(text), i, HasRaw(1), -1) };

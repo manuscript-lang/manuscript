@@ -19,7 +19,8 @@ fn findings(source: &str) -> Vec<(String, String)> {
         .into_iter()
         .filter(|f| {
             [
-                "MSL118", "MSL119", "MSL120", "MSL121", "MSL122", "MSL126", "MSL127", "MSL128", "MSL129",
+                "MSL118", "MSL119", "MSL120", "MSL121", "MSL122", "MSL126", "MSL127", "MSL128",
+                "MSL129",
             ]
             .contains(&f.code)
         })
@@ -107,8 +108,7 @@ fn a_final_return_the_end_already_makes_is_dropped() {
 
 #[test]
 fn statement_get_on_a_result_is_flagged() {
-    let source = "fn work() Void!: ok()\n\nfn main() Void:\n    work().get(none)\n    work().get()\n";
-    let got = findings(source);
+    let got = findings(include_str!("lint_terse/statement_get.ms"));
     assert_eq!(
         got,
         vec![("work().get(none)".to_string(), "void work()".to_string())]

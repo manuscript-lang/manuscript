@@ -53,10 +53,7 @@ fn counted(text: String) List[Counted]:
 		else if line.starts_with("ms-rt parks: "):
 			parks = line.slice(13, line.length()).trim().parse_int().get(0)
 		else if line.starts_with("ms-rt rust heap at exit: blocks="):
-			heap = line.slice(
-				32,
-				line.length(),
-			).split(" ")[0].parse_int().get(0)
+			heap = line.slice(32, line.length()).split(" ")[0].parse_int().get(0)
 		else if line.starts_with("ms-rt live blocks at exit: "):
 			live := line.slice(27, line.length()).trim().parse_int().get(0)
 			found.append(

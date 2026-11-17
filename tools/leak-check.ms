@@ -25,9 +25,7 @@ fn live_blocks(text: String) List[Int]:
 	var counts = List[Int]()
 	for line in text.split("\n"):
 		if line.starts_with("ms-rt live blocks at exit: "):
-			if n := line.slice(27, line.length()).trim().parse_int(): counts.append(
-				n
-			)
+			if n := line.slice(27, line.length()).trim().parse_int(): counts.append(n)
 	return counts
 
 // The tests of one `ms test` run that left live blocks, as "name: count" lines: each

@@ -666,10 +666,9 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 	if radix != 10:
 		if (signed or not digits(clean.slice(2, clean.length()), alphabet)):
 			return error(invalid_at(reader, at, "invalid integer"))
-		if value := parse_int(
-			(clean.slice(2, clean.length()).replace("_", "")),
-			radix,
-		): return ok(Node.Leaf(TomlValue.IntValue(value)))
+		if value := parse_int((clean.slice(2, clean.length()).replace("_", "")), radix): return ok(
+			Node.Leaf(TomlValue.IntValue(value))
+		)
 
 		return error(invalid_at(reader, at, "integer out of range"))
 
@@ -694,9 +693,9 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 
 			if parts.length() == 2:
 				var exponent = parts[1].clone()
-				if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
-					exponent
-					.slice(1, exponent.length())
+				if exponent.starts_with("+") or exponent.starts_with("-"): exponent = exponent.slice(
+					1,
+					exponent.length(),
 				)
 				if not decimal_digits(exponent): return error(
 					invalid_at(reader, at, "invalid exponent")
