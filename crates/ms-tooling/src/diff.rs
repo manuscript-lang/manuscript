@@ -189,7 +189,10 @@ fn diff_path(field: &str, prefix: &str, git: bool) -> Result<String, String> {
         } else {
             Cow::Borrowed(path)
         };
-        return Ok(path.strip_prefix(prefix).unwrap_or(&path).to_string());
+        // `git diff -R` swaps the prefixes: `--- b/x` then `+++ a/x`.
+        let other = if prefix == "a/" { "b/" } else { "a/" };
+        let stripped = path.strip_prefix(prefix).or(path.strip_prefix(other));
+        return Ok(stripped.unwrap_or(&path).to_string());
     }
     Ok(path.to_string())
 }
