@@ -2,7 +2,7 @@
 
 use crate::fxmap::{HashMap, HashSet};
 use crate::hir::*;
-use crate::std_ops::{collection_mutation, is_text_builder};
+use crate::std_ops::collection_mutation;
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::Pos;
@@ -77,31 +77,19 @@ pub struct Summary {
 }
 
 impl Summary {
-    /// The mode declared in source: `var` is `Mutate`, anything else borrows.
+    /// The mode declared in source: `var` is `Mutate`, `move` is `Move`, anything else borrows.
     pub fn declared(f: &FuncRef) -> Summary {
-        let (params, mutating): (&[ms_syntax::ast::Param], bool) = match (f.method(), f.func()) {
-            (Some(m), _) => (&m.func.params, m.mutating),
-            (None, Some(func)) => (&func.params, false),
-            (None, None) => (&[], false),
-        };
+        let (params, mutating, consuming): (&[ms_syntax::ast::Param], bool, bool) =
+            match (f.method(), f.func()) {
+                (Some(m), _) => (&m.func.params, m.mutating, m.consuming),
+                (None, Some(func)) => (&func.params, false, false),
+                (None, None) => (&[], false, false),
+            };
         Summary {
-            receiver: if mutating {
-                ParamMode::Mutate
-            } else {
-                ParamMode::Borrow
-            },
+            receiver: declared_mode(mutating, consuming),
             params: params
                 .iter()
-                .map(|p| {
-                    (
-                        p.name,
-                        if p.mutable {
-                            ParamMode::Mutate
-                        } else {
-                            ParamMode::Borrow
-                        },
-                    )
-                })
+                .map(|p| (p.name, declared_mode(p.mutable, p.moving)))
                 .collect(),
             consumed_at: Vec::new(),
             result: ResultBorrow::optimistic(params),
@@ -113,6 +101,17 @@ impl Summary {
             .iter()
             .find(|(n, _)| *n == name)
             .map(|(_, m)| *m)
+    }
+}
+
+/// The mode a signature declares for one parameter or receiver.
+pub fn declared_mode(mutable: bool, moving: bool) -> ParamMode {
+    if moving {
+        ParamMode::Move
+    } else if mutable {
+        ParamMode::Mutate
+    } else {
+        ParamMode::Borrow
     }
 }
 
@@ -286,31 +285,24 @@ fn call_modes_declared(
                 }
                 None => {
                     // A native runs the function arguments it is given before it returns,
-                    // unless it is a runtime function that declares it keeps them. A user extern's
-                    // shim may keep its functions with ms_fn_retain.
-                    let runtime = match s.native {
-                        Native::Extern { symbol, bundled } => bundled.then(|| syms.str(symbol)),
-                        _ => None,
-                    };
+                    // unless its declaration takes one with `move` (the runtime keeps it). A
+                    // user extern's shim may keep its functions with ms_fn_retain.
+                    let params = s.ty(syms).params.clone();
                     let runs_now = match s.native {
                         Native::Extern { bundled, .. } => {
-                            bundled && !runtime.is_some_and(crate::stdlib::keeps_callbacks)
+                            bundled
+                                && !params
+                                    .iter()
+                                    .any(|p| p.moving && p.ty.kind == Kind::Function)
                         }
                         _ => true,
                     };
-                    let params = s.ty(syms).params.clone();
                     CallModes {
                         arguments: (0..args.len())
                             .map(|i| {
                                 let p = label(i).and_then(|l| params.iter().find(|p| p.name == l));
                                 match p {
-                                    Some(p)
-                                        if runtime.is_some_and(|r| {
-                                            crate::stdlib::takes_argument(r, syms.str(p.name))
-                                        }) =>
-                                    {
-                                        ParamMode::Move
-                                    }
+                                    Some(p) if p.moving => ParamMode::Move,
                                     Some(p) if p.ty.kind == Kind::Function && !runs_now => {
                                         ParamMode::Move
                                     }
@@ -363,10 +355,7 @@ fn function_value_modes(
                 let p = label(i)
                     .and_then(|l| fty.params.iter().find(|p| p.name == l))
                     .or_else(|| fty.params.get(i));
-                match p {
-                    Some(p) if p.mutable => ParamMode::Mutate,
-                    _ => ParamMode::Borrow,
-                }
+                p.map_or(ParamMode::Borrow, |p| declared_mode(p.mutable, p.moving))
             })
             .collect(),
         ..borrow_all
@@ -599,6 +588,11 @@ fn native_method_modes(
 ) -> CallModes {
     let receiver = &method.receiver;
     let mutator = collection_mutation(syms, method);
+    let consuming = method
+        .decl
+        .as_ref()
+        .and_then(|d| d.method())
+        .is_some_and(|m| m.consuming);
     // A native method runs its callbacks before it returns.
     let callbacks_borrowed = true;
     let params = &method.ty.params;
@@ -609,41 +603,29 @@ fn native_method_modes(
             let Some(p) = label(i).and_then(|l| params.iter().find(|p| p.name == l)) else {
                 return ParamMode::Borrow;
             };
-            // An element a mutator stores, or a value of the receiver's or result's type.
-            // An optional parameter (`default: T?`) holds a `T`.
+            // A value of the receiver's element or result type may stay in what the call
+            // returns or keeps; `retained` records it for the borrow walk.
             let held = match p.ty.args.first() {
                 Some(inner) if p.ty.is(Builtin::Optional) => inner,
                 _ => &p.ty,
             };
-            // A collection of the receiver's own type is stored whole (`splice`'s replacement)
-            // unless the receiver's elements are bounded `Clonable`: those methods copy from it
-            // (`extend`, `merge`) and the caller keeps the argument. This is an inference from
-            // the bound, not a declared fact; `native_modes.txt` pins every decision.
-            let copies = method.copies_elements;
-            let stored = p.ty.kind == Kind::Variable
-                || (!copies && same(&p.ty, receiver))
-                || receiver.args.iter().any(|a| same(a, &p.ty));
-            let value = held.kind == Kind::Variable
+            retained[i] = p.moving
+                || held.kind == Kind::Variable
                 || same(held, &result)
                 || receiver.args.iter().any(|a| same(a, held));
-            retained[i] = (mutator && stored) || value;
-            // An element the mutator stores is owned by the collection, a function value
-            // included; a callback the native runs and drops is only borrowed.
-            if mutator && stored {
-                return ParamMode::Move;
+            // The declaration says which arguments the native takes (`move value: T`); a
+            // callback it runs and drops is only borrowed.
+            if p.moving {
+                ParamMode::Move
+            } else {
+                ParamMode::Borrow
             }
-            if p.ty.kind == Kind::Function && !callbacks_borrowed {
-                return ParamMode::Move;
-            }
-            ParamMode::Borrow
         })
         .collect();
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate
-        } else if is_text_builder(syms, receiver)
-            && method.name().is_some_and(|n| syms.str(n) == "build")
-        {
+        } else if consuming {
             ParamMode::Move
         } else {
             ParamMode::Borrow
@@ -718,10 +700,9 @@ mod native_mode_tests {
                     .map(|(i, m)| format!("{}={m:?}", syms.str(method.ty.params[i].name)))
                     .collect();
                 lines.push(format!(
-                    "{name}.{} receiver={:?} copies={} ({})",
+                    "{name}.{} receiver={:?} ({})",
                     syms.str(op),
                     modes.receiver,
-                    method.copies_elements,
                     args.join(", ")
                 ));
             }
@@ -745,11 +726,10 @@ mod native_mode_tests {
                 .map(|(i, m)| format!("{}={m:?}", syms.str(method.ty.params[i].name)))
                 .collect();
             declared.push(format!(
-                "{}.{} receiver={:?} copies={} ({})",
+                "{}.{} receiver={:?} ({})",
                 method.receiver.display(syms),
                 syms.str(func.name),
                 modes.receiver,
-                method.copies_elements,
                 args.join(", ")
             ));
         }

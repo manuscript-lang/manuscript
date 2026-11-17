@@ -42,7 +42,8 @@ pub fn parameters(syms: ms_syntax::Names, parameters: &[Param], source: Option<&
         .iter()
         .map(|p| {
             let mut value = format!(
-                "{}{}: {}",
+                "{}{}{}: {}",
+                if p.moving { "move " } else { "" },
                 if p.mutable { "var " } else { "" },
                 syms.str(p.name),
                 p.ty.as_ref().map_or(String::new(), |a| type_text(syms, a))
@@ -73,7 +74,8 @@ pub fn type_text(syms: ms_syntax::Names, t: &TypeRef) -> String {
                 .iter()
                 .map(|p| {
                     format!(
-                        "{}{}",
+                        "{}{}{}",
+                        if p.moving { "move " } else { "" },
                         if p.mutable { "var " } else { "" },
                         p.ty.as_ref().map_or(String::new(), |a| type_text(syms, a))
                     )

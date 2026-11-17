@@ -296,9 +296,9 @@ export interface HttpExchange:
 	) WebSocket!
 	// Writes one chunk of the response body and flushes it.
 	// `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return EINVAL.
-	var fn write(data: String) Void!
+	var fn write(move data: String) Void!
 	// Writes one chunk of raw bytes with the same rules as write.
-	var fn write_bytes(data: Bytes) Void!
+	var fn write_bytes(move data: Bytes) Void!
 
 // The runtime's side of `HttpExchange.upgrade`: it hands back the runtime socket
 // handle, which `exchange_upgrade` turns into a `WebSocket`. Handlers never see this

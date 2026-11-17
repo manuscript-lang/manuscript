@@ -941,6 +941,7 @@ impl FnLower<'_> {
                         name: p.name,
                         ty: ct::sub(&p.ty, &subst),
                         mutable: p.mutable,
+                        moving: p.moving,
                         positional: p.positional,
                     })
                     .collect();

@@ -70,6 +70,7 @@ impl Checker {
                 name: param.name,
                 ty: typ,
                 mutable: param.mutable,
+                moving: param.moving,
                 positional: false,
             });
             if param.default.is_some() {

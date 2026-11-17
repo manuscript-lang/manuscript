@@ -392,7 +392,7 @@ fn var JsonReading[T].advance(byte: UInt8) T?!:
 	value := self.complete()?
 	return ok(value)
 
-fn var JsonReading[T].step(value: Bytes, var out: List[T]) Void!:
+fn var JsonReading[T].step(move value: Bytes, var out: List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
 	if failure := self.failure: return error(failure.clone())
 
@@ -480,7 +480,7 @@ type JsonLines[T: Data]:
 	output: WriteStream[Bytes]
 	max_bytes: Int?
 
-fn var JsonLines[T].write(value: T) Void!:
+fn var JsonLines[T].write(move value: T) Void!:
 	text := stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))?
 	return self.output.write(f"{text}\n".to_bytes())
 

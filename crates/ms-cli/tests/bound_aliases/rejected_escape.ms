@@ -1,4 +1,4 @@
-fn escape() fn(Int) Void:
+fn escape() fn(move Int) Void:
     var rows = [[1]]
     var first = rows[0]
     return first.append

@@ -382,7 +382,7 @@ fn var FileSource.close() Void!:
 type FileSink:
 	file: FileHandle
 
-fn var FileSink.write(value: Bytes) Void!:
+fn var FileSink.write(move value: Bytes) Void!:
 	return self.file.write(value)
 
 fn var FileSink.flush() Void!:

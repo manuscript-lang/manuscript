@@ -124,7 +124,7 @@ type Compressing:
 	encoder: NativeEncoder?
 	failure: Error?
 
-fn var Compressing.step(value: Bytes, var out: List[Bytes]) Void!:
+fn var Compressing.step(move value: Bytes, var out: List[Bytes]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	if encoder := self.encoder:
@@ -160,7 +160,7 @@ type Decompressing:
 	decoder: NativeDecoder?
 	failure: Error?
 
-fn var Decompressing.step(value: Bytes, var out: List[Bytes]) Void!:
+fn var Decompressing.step(move value: Bytes, var out: List[Bytes]) Void!:
 	if failure := self.failure: return error(failure.clone())
 
 	if decoder := self.decoder:
@@ -409,7 +409,7 @@ fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Void!:
 				Error("archive: limit exceeded", kind: "EOVERFLOW")
 			)
 
-fn var TarEntries.step(value: Bytes, var out: List[ArchiveEntry]) Void!:
+fn var TarEntries.step(move value: Bytes, var out: List[ArchiveEntry]) Void!:
 	if self.done: return ok()
 
 	self.buffer = self.buffer.concat(value)

@@ -63,7 +63,7 @@ type WebSocketSink:
 
 // Sends one message. Text must be valid UTF-8 or the call returns EBADMSG, and a
 // payload over `max_message_bytes` returns EOVERFLOW.
-fn var WebSocketSink.write(value: WebSocketMessage) Void!:
+fn var WebSocketSink.write(move value: WebSocketMessage) Void!:
 	match value.kind:
 		Text: return msstd_websocket_send_bytes(self.native, value.data, true)
 		Binary: return msstd_websocket_send_bytes(self.native, value.data, false)

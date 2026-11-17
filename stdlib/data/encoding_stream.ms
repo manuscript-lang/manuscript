@@ -15,7 +15,7 @@ type Base64Encoding:
 	url_safe: Bool
 	tail: Bytes
 
-fn var Base64Encoding.step(value: Bytes, var out: List[String]) Void!:
+fn var Base64Encoding.step(move value: Bytes, var out: List[String]) Void!:
 	data := self.tail.concat(value)
 	whole := data.length() - data.length() % 3
 	self.tail = data.slice(whole, data.length())?
@@ -49,7 +49,7 @@ type Base64Decoding:
 	tail: String
 	ended: Bool = false
 
-fn var Base64Decoding.step(value: String, var out: List[Bytes]) Void!:
+fn var Base64Decoding.step(move value: String, var out: List[Bytes]) Void!:
 	if self.ended and not value.is_empty(): return error(
 		Error("encoding: invalid data", kind: "EBADMSG")
 	)
@@ -92,7 +92,7 @@ export fn base64_decoded(
 type HexEncoding:
 	unused: Int
 
-fn var HexEncoding.step(value: Bytes, var out: List[String]) Void!:
+fn var HexEncoding.step(move value: Bytes, var out: List[String]) Void!:
 	out.append(hex_encode(value))
 
 fn var HexEncoding.finish(var out: List[String]) Void!:
@@ -107,7 +107,7 @@ export fn hex_encoded(input: ReadStream[Bytes]) ReadStream[String]:
 type HexDecoding:
 	tail: String
 
-fn var HexDecoding.step(value: String, var out: List[Bytes]) Void!:
+fn var HexDecoding.step(move value: String, var out: List[Bytes]) Void!:
 	text := self.tail.concat(value)
 	whole := text.length() - text.length() % 2
 	self.tail = text.slice(whole, text.length())

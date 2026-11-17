@@ -30,7 +30,7 @@ export extern fn msstd_http_client_request_bytes(
 export extern fn msstd_http_serving_new(
 	address: String,
 	options: HttpServerOptions,
-	handler: fn(var HttpExchange) Void!
+	move handler: fn(var HttpExchange) Void!
 ) NativeServing!
 
 // Another handle on the same serving, for a connection promise to own.

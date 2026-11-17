@@ -30,7 +30,7 @@ Function types name no parameters; `fn(var List[Int]) Void` marks one the functi
 
 ## Function type compatibility
 
-Parameter types in order, their `var` markers, and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
+Parameter types in order, their `var` and `move` markers, and the result type are function-type identity. Compatibility is invariant except for one adaptation: a function that only reads a parameter may stand in where one that changes it (`var`) is expected ([changing parameters](#changing-parameters)); `move` always matches exactly. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
 
 ```manuscript
 fn subtract_one(amount: Int) Int:
@@ -54,6 +54,8 @@ An anonymous function may omit parameter types when context supplies them (argum
 ## Changing parameters
 
 A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Void` has type `fn(var List[Int]) Void`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Void` and `fn(var List[Int]) Void` are different types, but a function that only reads a parameter may be used where one that may change it is expected: `apply(fn(xs: List[Int]): void, var values)` is accepted, and the callee's `var` argument is passed to it as a plain read. The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
+
+A function that takes ownership of a parameter says so in its type: `fn keep(move item: Item) Int` has type `fn(move Item) Int`, and a call through the value hands the argument over, so the caller's name is dead after it. An anonymous function takes `move` from the expected type, or declares it as `fn move item: ...`. A named function that keeps a parameter without declaring `move`, used where a borrowing function type is expected, is called with a clone of the argument, and is rejected when the argument cannot be cloned ([moving into a function](../types/references.md#moving-into-a-function)).
 
 `List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each(fn var s: s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list. The rule is general: any method whose callback type has a `var` position of one of the receiver's type arguments behaves this way. Such a method cannot be taken as a value from a variable (`each := scores.for_each`); call it, or write a closure.
 

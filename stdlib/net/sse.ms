@@ -59,7 +59,7 @@ type Decoder:
 	// Internal: the first failure, repeated by later calls.
 	failure: Error?
 
-fn var Decoder.step(value: Bytes, var out: List[SseEvent]) Void!:
+fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 	var events = List[SseEvent]()
 	if failure := self.failure: return error(failure.clone())
 	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))

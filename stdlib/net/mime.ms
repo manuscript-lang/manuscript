@@ -366,7 +366,7 @@ type MultipartParts:
 	done: Bool
 	max_part_bytes: Int?
 
-fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
+fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 	if self.done: return ok()
 
 	self.buffer = self.buffer.concat(value)

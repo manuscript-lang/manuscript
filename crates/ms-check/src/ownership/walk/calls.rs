@@ -26,10 +26,11 @@ impl Walker<'_> {
         }
     }
 
-    /// A conversion of `src` to the interface `e` has: an implementation that keeps a parameter
-    /// the operation only borrows is called through the interface with a copy of its argument. A
-    /// resource cannot be copied, so the conversion is rejected; a type parameter passes the
-    /// duty on to this callable, as a generic copy does.
+    /// A conversion of `src` to the interface `e` has: a call through the interface hands each
+    /// argument over only where the operation says `move`, and takes its result as a new value.
+    /// An implementation that keeps a parameter the operation borrows, or returns a part of its
+    /// receiver or arguments, would need a hidden copy, so the conversion is rejected and the
+    /// remedy names the marker or the `.clone()` to write.
     pub(super) fn adapter_copies(&mut self, e: &Expr, src: &Ty) {
         let target = self.cx.m.ty(e);
         let Some(def) = &target.def else { return };
@@ -46,36 +47,37 @@ impl Walker<'_> {
                 continue;
             };
             let op = decl.name();
+            if !ops.iter().any(|o| o.name == op) {
+                continue;
+            }
+            let method_t = format!("{}.{}", src.display(self.syms), self.syms.str(op));
             let borrowed: Vec<Name> = ops
                 .iter()
                 .filter(|o| o.name == op)
                 .filter_map(|o| o.decl.as_ref().and_then(|d| d.func()))
-                .flat_map(|f| f.params.iter().filter(|p| !p.mutable).map(|p| p.name))
+                .flat_map(|f| {
+                    f.params
+                        .iter()
+                        .filter(|p| !p.mutable && !p.moving)
+                        .map(|p| p.name)
+                })
                 .collect();
             for (name, mode) in &summary.params {
                 if *mode != ParamMode::Move || !borrowed.contains(name) {
                     continue;
                 }
-                let Some(p) = m.ty.params.iter().find(|p| p.name == *name) else {
-                    continue;
-                };
-                let t = sub(&p.ty, &bound);
-                if self.cx.classes.class(self.syms, &t) == Class::Resource {
-                    let text = self.expr_text(e);
-                    self.error(
-                        e.pos,
-                        format!("`{text}` becomes a `{target_t}` whose `{op_t}` keeps its `{name_t}`, which the interface only borrows, so every call through it hands over a clone; the resource `{t_t}` cannot be cloned: pass something that is not a resource, or call `{src_t}`'s `{op_t}` directly", target_t = target.display(self.syms), op_t = self.syms.str(op), t_t = t.display(self.syms), name_t = self.syms.str(name), src_t = src.display(self.syms)),
-                    );
-                } else {
-                    let what = format!(
-                        "`{text}` becomes a `{target_t}` whose `{op_t}` keeps its `{name_t}`, which the interface only borrows, so it",
-                        text = self.expr_text(e),
-                        target_t = target.display(self.syms),
-                        op_t = self.syms.str(op),
-                        name_t = self.syms.str(name)
-                    );
-                    self.require_clonable(e, &t, &what);
-                }
+                let text = self.expr_text(e);
+                self.error(
+                    e.pos,
+                    format!("`{text}` becomes a `{target_t}`, but `{method_t}` keeps its `{name_t}`, which the interface borrows; declare `move {name_t}` in both the interface and `{method_t}`, or keep `{name_t}.clone()`", target_t = target.display(self.syms), name_t = self.syms.str(name)),
+                );
+            }
+            if summary.result.returns_borrow && !summary.result.view {
+                let text = self.expr_text(e);
+                self.error(
+                    e.pos,
+                    format!("`{text}` becomes a `{target_t}`, but `{method_t}` returns a part of its {from}, and a call through an interface gets a new value; return `.clone()` of that part", target_t = target.display(self.syms), from = if summary.result.receiver { "receiver" } else { "arguments" }),
+                );
             }
         }
     }
@@ -97,11 +99,15 @@ impl Walker<'_> {
                 continue;
             }
             let Some(p) = fty.params.get(i) else { continue };
+            // A declared `move` is part of the function type: the call hands the argument over.
+            if p.moving {
+                continue;
+            }
             if self.cx.classes.class(self.syms, &p.ty) == Class::Resource {
                 let text = self.expr_text(e);
                 self.error(
                     e.pos,
-                    format!("`{text}` keeps its parameter `{name_t}`, but a function value only borrows its arguments, so every call would hand it a clone; the resource `{}` cannot be cloned: call `{text}` directly, or wrap it in a closure that uses `{name_t}` in place", p.ty.display(self.syms), name_t = self.syms.str(name)),
+                    format!("`{text}` keeps its parameter `{name_t}`, but a function value only borrows its arguments, so every call would hand it a clone; the resource `{}` cannot be cloned: declare `move {name_t}` on `{text}` where the function type says `move`, call `{text}` directly, or wrap it in a closure that uses `{name_t}` in place", p.ty.display(self.syms), name_t = self.syms.str(name)),
                 );
             } else {
                 let t = p.ty.clone();

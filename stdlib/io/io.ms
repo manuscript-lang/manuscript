@@ -47,7 +47,7 @@ export interface Source[T]:
 export interface Sink[T]:
 	// Accepts `value` and returns any write failure. Waits while the sink is full, so a
 	// writer cannot outrun it.
-	var fn write(value: T) Void!
+	var fn write(move value: T) Void!
 	// Returns once everything written has drained: descriptor sinks drain pending
 	// bytes; a pipe waits until its queue is at most capacity or its reader closes.
 	var fn flush() Void!
@@ -139,7 +139,7 @@ fn var WriteStream[T].close() Void!:
 type ClosedSink[T]:
 	done: Bool = true
 
-fn var ClosedSink[T].write(value: T) Void!:
+fn var ClosedSink[T].write(move value: T) Void!:
 	return error(Error("I/O: resource is closed", kind: "EBADF"))
 
 fn var ClosedSink[T].flush() Void!:
@@ -202,7 +202,7 @@ export type DescriptorSink:
 // `HIGH_WATER` bytes queued waits until the descriptor has taken them, so a slow reader slows the writer.
 // An OS write failure returns `EIO`; later writes and flushes retain it until the
 // descriptor closes.
-fn var DescriptorSink.write(value: Bytes) Void!:
+fn var DescriptorSink.write(move value: Bytes) Void!:
 	if msrt_streams_write(self.id, value) != 0:
 		return error(Error("stream: closed", kind: "EBADF"))
 
@@ -255,7 +255,7 @@ export fn stdin() ReadStream[Bytes]:
 type StdoutText:
 	unused: Bool = false
 
-fn var StdoutText.write(value: String) Void!:
+fn var StdoutText.write(move value: String) Void!:
 	msrt_io_write_stdout(value)
 	return msstd_io_stdout_status(false)
 
@@ -268,7 +268,7 @@ fn var StdoutText.close() Void!:
 type StdoutBytes:
 	unused: Bool = false
 
-fn var StdoutBytes.write(value: Bytes) Void!:
+fn var StdoutBytes.write(move value: Bytes) Void!:
 	msrt_io_write_bytes_stdout(value)
 	return msstd_io_stdout_status(false)
 
@@ -282,7 +282,7 @@ fn var StdoutBytes.close() Void!:
 type StderrText:
 	unused: Bool = false
 
-fn var StderrText.write(value: String) Void!:
+fn var StderrText.write(move value: String) Void!:
 	msrt_io_write_stderr(value)
 
 fn var StderrText.flush() Void!:
@@ -294,7 +294,7 @@ fn var StderrText.close() Void!:
 type StderrBytes:
 	unused: Bool = false
 
-fn var StderrBytes.write(value: Bytes) Void!:
+fn var StderrBytes.write(move value: Bytes) Void!:
 	msrt_io_write_bytes_stderr(value)
 
 fn var StderrBytes.flush() Void!:
@@ -358,7 +358,7 @@ type PipeSink[T: Clonable]:
 	id: Int
 	capacity: Int
 
-fn var PipeSink[T].write(value: T) Void!:
+fn var PipeSink[T].write(move value: T) Void!:
 	status := msrt_pipe_write[T](self.id, value)
 	if status == 1: return error(Error("pipe: the reader is gone", kind: "EBADF"))
 
@@ -432,7 +432,7 @@ export fn pipe[T: Clonable](capacity: Int) Pipe[T]:
 export interface Transform[A, B]:
 	// Takes one input item and appends the output items it completes, possibly none, to
 	// `out`.
-	var fn step(value: A, var out: List[B]) Void!
+	var fn step(move value: A, var out: List[B]) Void!
 	// Called once at the end of the input; appends the items held back to `out`.
 	var fn finish(var out: List[B]) Void!
 

@@ -640,10 +640,10 @@ fn var TestExchange.upgrade(
 ) WebSocket!:
 	return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
 
-fn var TestExchange.write(data: String) Void!:
+fn var TestExchange.write(move data: String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn var TestExchange.write_bytes(data: Bytes) Void!:
+fn var TestExchange.write_bytes(move data: Bytes) Void!:
 	var guard = hold[TestState](self.state)
 	if guard.items[0].closed: return error(
 		Error("I/O: resource is closed", kind: "EBADF")
@@ -738,13 +738,15 @@ fn var Tap.upgrade(
 ) WebSocket!:
 	return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
-fn var Tap.write(data: String) Void!:
+fn var Tap.write(move data: String) Void!:
+	sent := data.length()
 	self.inner.write(data)?
-	counted(0, self.sent_length(self.status_so_far(), data.length()), self.state)
+	counted(0, self.sent_length(self.status_so_far(), sent), self.state)
 
-fn var Tap.write_bytes(data: Bytes) Void!:
+fn var Tap.write_bytes(move data: Bytes) Void!:
+	sent := data.length()
 	self.inner.write_bytes(data)?
-	counted(0, self.sent_length(self.status_so_far(), data.length()), self.state)
+	counted(0, self.sent_length(self.status_so_far(), sent), self.state)
 
 // `state` is a slot counting what is sent, which the caller made and reads afterwards.
 fn new_tap(

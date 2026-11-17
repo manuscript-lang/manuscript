@@ -14,7 +14,7 @@ type Point:
 type Echo:
 	out: WriteStream[String]
 
-fn var Echo.write(value: Bytes) Void!:
+fn var Echo.write(move value: Bytes) Void!:
 	return self.out.write(value.decode_utf8().get_or(""))
 
 fn var Echo.flush() Void!:

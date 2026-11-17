@@ -855,7 +855,12 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         if !self.take(Tok::RParen) {
             loop {
+                let moving = self.take_move(&[Tok::Var, Tok::Name]);
                 let mutable = self.take(Tok::Var);
+                if moving && mutable {
+                    let t = self.previous();
+                    return self.fail(t, "a parameter is either `move` (the callee takes it) or `var` (the callee changes it in place), not both");
+                }
                 let name = self.need(Tok::Name)?;
                 let mut ty = None;
                 let mut default = None;
@@ -890,6 +895,7 @@ impl<'a> Parser<'a> {
                     ty,
                     default,
                     mutable,
+                    moving,
                 });
                 if !self.take(Tok::Comma) {
                     break;
@@ -1069,7 +1075,12 @@ impl<'a> Parser<'a> {
             if !self.take(Tok::RParen) {
                 loop {
                     // `fn(var List[Int]) Void`: a parameter the function changes in place.
+                    let moving = self.take_move(&[Tok::Var, Tok::Name, Tok::Fn]);
                     let mutable = self.take(Tok::Var);
+                    if moving && mutable {
+                        let t = self.previous();
+                        return self.fail(t, "a parameter is either `move` (the callee takes it) or `var` (the callee changes it in place), not both");
+                    }
                     let ty = self.typ()?;
                     let id = self.id();
                     params.push(Param {
@@ -1079,6 +1090,7 @@ impl<'a> Parser<'a> {
                         ty: Some(ty),
                         default: None,
                         mutable,
+                        moving,
                     });
                     if !self.take(Tok::Comma) {
                         break;
@@ -1193,6 +1205,17 @@ impl<'a> Parser<'a> {
         self.end()
     }
 
+    /// Takes a contextual `move` marker: the word `move` followed by a token of `next` kind, so
+    /// a name `move` (a function `fs.move`, a parameter called `move`) still reads as a name.
+    fn take_move(&mut self, next: &[Tok]) -> bool {
+        let t = self.peek();
+        if t.kind == Tok::Name && self.text(t) == "move" && next.contains(&self.ahead(1).kind) {
+            self.at += 1;
+            return true;
+        }
+        false
+    }
+
     fn method_signature(
         &mut self,
         name: Token,
@@ -1227,6 +1250,7 @@ impl<'a> Parser<'a> {
                 external: false,
             },
             mutating,
+            consuming: false,
         })
     }
 
@@ -1282,7 +1306,12 @@ impl<'a> Parser<'a> {
                 // `fn [var] Type[T].name(...)`: one method of `Type`, the same declaration as a
                 // one-method `impl Type:` block.
                 self.at += 1;
+                let consuming = self.take_move(&[Tok::Var, Tok::Name]);
                 let mutating = self.take(Tok::Var);
+                if consuming && mutating {
+                    let t = self.previous();
+                    return self.fail(t, "a method either takes its receiver with `move` or changes it with `var`, not both");
+                }
                 // The receiver is a plain name with optional arguments: `named_type` would read
                 // `Type.name` as a module-qualified type.
                 let receiver_name = self.need(Tok::Name)?;
@@ -1319,8 +1348,9 @@ impl<'a> Parser<'a> {
                 };
                 self.need(Tok::Dot)?;
                 let name = self.need(Tok::Name)?;
-                let method =
+                let mut method =
                     self.method_signature(name, true, true, mutating, receiver_name.pos)?;
+                method.consuming = consuming;
                 DeclKind::Impl(ImplDecl {
                     contract: None,
                     receiver,
@@ -1473,6 +1503,12 @@ impl<'a> Parser<'a> {
     /// optionally followed by a balanced `[...]`, then `.`. A plain `fn name[T](...)` has `(` there.
     fn receiver_method_ahead(&self) -> bool {
         let mut at = 1;
+        if self.ahead(at).kind == Tok::Name
+            && self.text(self.ahead(at)) == "move"
+            && matches!(self.ahead(at + 1).kind, Tok::Name | Tok::Var)
+        {
+            at += 1;
+        }
         if self.ahead(at).kind == Tok::Var {
             at += 1;
         }
@@ -1593,7 +1629,13 @@ impl<'a> Parser<'a> {
                     return self.fail(self.peek(), "an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block");
                 }
             }
-            if token.kind == Tok::Interface && !matches!(self.kind(), Tok::Fn | Tok::Var) {
+            let move_fn = self.kind() == Tok::Name
+                && self.text(self.peek()) == "move"
+                && self.ahead(1).kind == Tok::Fn;
+            if token.kind == Tok::Interface
+                && !move_fn
+                && !matches!(self.kind(), Tok::Fn | Tok::Var)
+            {
                 let t = self.peek();
                 return self.fail(t, "an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' block");
             }
@@ -1626,8 +1668,10 @@ impl<'a> Parser<'a> {
                 });
                 self.end()?;
             } else if self.kind() == Tok::Fn
+                || move_fn
                 || (self.kind() == Tok::Var && self.ahead(1).kind == Tok::Fn)
             {
+                let consuming = self.take_move(&[Tok::Fn]);
                 let mutating = self.take(Tok::Var);
                 let fn_pos = self.need(Tok::Fn)?.pos;
                 if token.kind == Tok::Type {
@@ -1636,7 +1680,8 @@ impl<'a> Parser<'a> {
                     return self.fail(t, format!("a type declares only fields; write its methods after it as 'fn {name_t}{names}.name(...)'", name_t = self.names.str(name)));
                 }
                 let mname = self.need(Tok::Name)?;
-                let m = self.method_signature(mname, true, false, mutating, fn_pos)?;
+                let mut m = self.method_signature(mname, true, false, mutating, fn_pos)?;
+                m.consuming = consuming;
                 self.end()?;
                 methods.push(m);
             } else {
@@ -1656,6 +1701,7 @@ impl<'a> Parser<'a> {
                     ty: Some(ty),
                     default,
                     mutable: false,
+                    moving: false,
                 });
                 self.end()?;
             }
@@ -2865,6 +2911,7 @@ impl<'a> Parser<'a> {
                                 ty: None,
                                 default: None,
                                 mutable: false,
+                                moving: false,
                             });
                             destructured.push(self.destructure(pattern, hidden));
                             if !self.take(Tok::Comma) {
@@ -2872,7 +2919,9 @@ impl<'a> Parser<'a> {
                             }
                             continue;
                         }
-                        // `fn var exchange, next: ...`: a parameter the function changes in place.
+                        // `fn var exchange, next: ...`: a parameter the function changes in place;
+                        // `fn move item: ...` takes ownership of it.
+                        let moving = self.take_move(&[Tok::Name]);
                         let mutable = self.take(Tok::Var);
                         let name = self.next();
                         let id = self.id();
@@ -2883,6 +2932,7 @@ impl<'a> Parser<'a> {
                             ty: None,
                             default: None,
                             mutable,
+                            moving,
                         });
                         if !self.take(Tok::Comma) {
                             break;
@@ -3641,6 +3691,7 @@ impl<'a> Parser<'a> {
                             ty: p.ty.as_ref().map(|t| self.copy_type(t)),
                             default: p.default.clone(),
                             mutable: p.mutable,
+                            moving: p.moving,
                         }
                     })
                     .collect(),

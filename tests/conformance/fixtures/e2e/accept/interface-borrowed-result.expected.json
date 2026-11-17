@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "interface-borrowed-result.ms::an interface operation returns a copy of a field the method borrows",
+          "name": "interface-borrowed-result.ms::an interface operation returns the clone its method writes",
           "status": "passed"
         },
         {
@@ -30,7 +30,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN interface-borrowed-result.ms::an interface operation returns a copy of a field the method borrows\nPASS interface-borrowed-result.ms::an interface operation returns a copy of a field the method borrows\nRUN interface-borrowed-result.ms::a result of an operation outlives the value it was read from\nPASS interface-borrowed-result.ms::a result of an operation outlives the value it was read from\n2 tests, 0 failed\n",
+      "stdout": "RUN interface-borrowed-result.ms::an interface operation returns the clone its method writes\nPASS interface-borrowed-result.ms::an interface operation returns the clone its method writes\nRUN interface-borrowed-result.ms::a result of an operation outlives the value it was read from\nPASS interface-borrowed-result.ms::a result of an operation outlives the value it was read from\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
