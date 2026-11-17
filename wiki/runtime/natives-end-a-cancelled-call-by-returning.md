@@ -14,6 +14,8 @@ Rules:
 
 - `unwinding` reads 0 while any cleanup or explicit exit code runs, so a shielded close that parks does not see the flag of the cancel it serves: `msrt_cleanup_unwind_to` clears it for the duration and sets it again before returning, and exits that run code use `msrt_unwinding_pause()` and `msrt_unwinding_resume()`. `deliver_cancel` is idempotent, so a park entered while the flag is set never delivers a second cancel.
 
+- Cancel exits come in two forms. A hybrid exit (`cancel_edges`, after `unwind`) forgets the live owners and runs the registered cleanups above the entry height (`msrt_cleanup_unwind_to`). An explicit exit (`cancel_exit`, built inside `elaborate` for a Raw function whose live owners are scope owners or plainly droppable) ends the same scopes a `return` would, then pops the registrations without running them (`msrt_cleanup_truncate`), because they stay for faults until faults return by flag. The hybrid pass must run after `unwind`: `unwind` discards a window right after its parking call, so a check placed earlier would run the exit with the registration already gone (17 leaking runs instead of 3 on `deque-resource-growth`). An explicit function is never inlined into a hybrid one or the reverse unless the callee cannot park, since each form adds its checks at a different time.
+
 Apply when: adding or changing a native that parks, waits, or polls for cancellation.
 Evidence: `crates/ms-rt/src/fault.rs` (`cancel_return`, `take_unwinding`), `crates/ms-repo-check/src/cancel_jumps.rs`.
 Verify: `cargo test -p ms-rt --lib guard`; `cargo run -p ms-repo-check`.
