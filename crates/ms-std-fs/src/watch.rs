@@ -9,7 +9,7 @@
 //! kqueue registers new paths in the same snapshot diff that reports them, and
 //! `ReadDirectoryChangesW` covers new directories itself, so neither has that window.
 use crate::err::{Fail, Res};
-use crate::ops::poll_cancel;
+use crate::ops::{check_wait, poll_cancel};
 use crate::path;
 use crate::sys::{self, CPath};
 use alloc::collections::BTreeMap;
@@ -264,7 +264,7 @@ impl Poll {
             return Err(Fail::status(STATUS_NONE));
         }
         loop {
-            poll_cancel()?;
+            check_wait()?;
             if gate.sleep(self.interval_ns)? {
                 return Err(Fail::status(STATUS_CLOSED));
             }
@@ -443,7 +443,7 @@ impl Native {
                     return Err(Fail::status(STATUS_NONE));
                 }
             }
-            poll_cancel()?;
+            check_wait()?;
             wait_events(self.wake);
             let mut count = [0u8; 8];
             // SAFETY: `count` is writable for 8 bytes; the descriptor is non-blocking.

@@ -4,7 +4,7 @@
 //! queued; `close` queues an `EVFILT_USER` event to end the wait.
 use super::{Event, Gate, Stamp, diff, snapshot, valid_native, wait_events};
 use crate::err::{Fail, Res};
-use crate::ops::poll_cancel;
+use crate::ops::{check_wait, poll_cancel};
 use crate::sys::{self, CPath};
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
@@ -236,6 +236,7 @@ impl Native {
             if self.woken() {
                 self.refresh()?;
             } else {
+                check_wait()?;
                 wait_events(self.kq);
             }
         }
