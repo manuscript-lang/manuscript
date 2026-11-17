@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...), e.g. return ok(value)",
+        "message": "expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
         "position": {
           "file": "diag-return-mismatch-site.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-return-mismatch-site.ms:5:12: type: expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...), e.g. return ok(value)\n   |\n 5 |     return 1\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-return-mismatch-site.ms:5:12: type: expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?\n   |\n 5 |     return 1\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

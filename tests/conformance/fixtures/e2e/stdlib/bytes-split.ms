@@ -36,40 +36,26 @@ test "Bytes empty separator splits bytes without decoding":
     expect_false(scalars.get(0).decode_utf8().is_some())?
     expect_equal("é".to_bytes().split(Bytes([169])), [Bytes([195]), empty])?
 
-test "Bytes split optional limits truncate parts":
+test "Bytes split keeps empty parts and splits empty separators per byte":
     data := Bytes([1, 0, 2, 0, 3, 0])
     separator := Bytes([0])
     expected := [Bytes([1]), Bytes([2]), Bytes([3]), Bytes([])]
-    expect_false(
-        (
-            data.split(separator) != expected
-            or data.split(separator, none) != expected
-        )
-    )?
-    expect_equal(data.split(separator, 2), [Bytes([1]), Bytes([2])])?
-    expect_equal(data.split(separator, 1), [Bytes([1])])?
-    expect_false(
-        (
-            not (data.split(separator, 0).is_empty())
-            or not (Bytes([]).split(separator, 0).is_empty())
-        )
-    )?
-    expect_equal(data.split(separator, 9999999), expected)?
-    expect_equal(data.split(Bytes([]), 2), [Bytes([1]), Bytes([0])])?
+    expect_equal(data.split(separator), expected)?
+    expect_equal(Bytes([]).split(separator), [Bytes([])])?
+    expect_equal(data.split(Bytes([])), [Bytes([1]), Bytes([0]), Bytes([2]), Bytes([0]), Bytes([3]), Bytes([0])])?
 
 fn split_then[T](data: Bytes, separator: Bytes, transform: fn(List[Bytes]) T) T:
     return data.split(separator) | transform
 
-fn call_split(operation: fn(Bytes, Int?) List[Bytes]) List[Bytes]:
-    return operation(Bytes([0]), 2)
+fn call_split(operation: fn(Bytes) List[Bytes]) List[Bytes]:
+    return operation(Bytes([0]))
 
 test "Bytes split bound methods and generic forwarding retain contracts":
     var data = Bytes([1, 0, 2])
     split := data.clone().split
-    typed: fn(Bytes, Int?) List[Bytes] := data.clone().split
+    typed: fn(Bytes) List[Bytes] := data.clone().split
     data = Bytes([9])
     expect_equal(split(Bytes([0])), [Bytes([1]), Bytes([2])])?
-    expect_equal(split(max_parts: 1, Bytes([0])), [Bytes([1])])?
     expect_equal(call_split(typed), [Bytes([1]), Bytes([2])])?
     expect_false(
         (
@@ -99,9 +85,9 @@ test "Bytes split returns independent List storage and immutable views":
     expect_equal(second, [Bytes([1]), Bytes([2])])?
 
     empty := Bytes([])
-    var zero_parts = data.split(Bytes([0]), 0)
-    zero_parts.append(empty.clone())
-    expect_false(not (data.split(Bytes([0]), 0).is_empty()))?
+    var parts = data.split(Bytes([0]))
+    parts.append(empty.clone())
+    expect_equal(data.split(Bytes([0])).length(), 2)?
 
     var no_parts = empty.split(empty)
     no_parts.append(Bytes([1]))

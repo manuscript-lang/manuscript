@@ -8,12 +8,6 @@ fn describe(text: String, sep: String) String:
 	for p in f: out += f"[{p}]"
 	return out
 
-fn limited(text: String, sep: String, n: Int) String:
-	f := text.split(sep, n)
-	var out = f"{f.length()}:"
-	for p in f: out += f"[{p}]"
-	return out
-
 test "a split read in place matches the list the heap builds":
 	expect_equal(describe("a b c", " "), "3:[a][b][c]")?
 	expect_equal(describe("", " "), "1:[]")?
@@ -27,11 +21,7 @@ test "a split read in place matches the list the heap builds":
 	expect_equal(describe("aXXbXXc", "XX"), "3:[a][b][c]")?
 	expect_equal(describe("abc", ""), "3:[a][b][c]")?
 
-test "max pieces and long texts":
-	expect_equal(limited("a b c d", " ", 2), "2:[a][b]")?
-	expect_equal(limited("a b c d", " ", 0), "0:")?
-	expect_equal(limited("a b c d", " ", 9), "4:[a][b][c][d]")?
-
+test "long texts":
 	long := "x ".repeat(100)
 	expect_equal(long.split(" ").length(), 101)?
 

@@ -1785,18 +1785,11 @@ pub unsafe extern "C-unwind" fn msrt_bytes_concat(
 pub unsafe extern "C-unwind" fn msrt_bytes_split(
     b: *const VecVal,
     sep: *const VecVal,
-    has_max: HasRaw,
-    max: i64,
     out: *mut VecVal,
 ) {
     // SAFETY: caller contract; result is a List[Bytes] (24-byte slots).
     unsafe {
         let (data, sepb) = (bslice(b), bslice(sep));
-        let limit = if has_max.is_set() {
-            max.max(0) as usize
-        } else {
-            usize::MAX
-        };
         let d = &desc::msrt_desc_bytes;
         let mut res = EMPTY;
         let add = |part: &[u8], res: &mut VecVal| {
@@ -1806,13 +1799,13 @@ pub unsafe extern "C-unwind" fn msrt_bytes_split(
         };
         if sepb.is_empty() {
             let mut i = 0;
-            while i < data.len() && res.len < limit {
+            while i < data.len() {
                 add(&data[i..i + 1], &mut res);
                 i += 1;
             }
         } else {
             let mut start = 0;
-            while res.len < limit {
+            loop {
                 match string::find(&data[start..], sepb) {
                     None => {
                         add(&data[start..], &mut res);

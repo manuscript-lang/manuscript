@@ -1247,7 +1247,7 @@ fn spill_in(b: &mut FnBuilder, lay: &Layouts, ty: Ty, own: &[Val], pinned: bool)
     let slot = if pinned {
         b.alloca_pinned(&st)
     } else {
-        b.alloca(&st)
+        b.alloca_temp(&st)
     };
     store_regs(b, lay, ty, &st, &slot, &leaves);
     slot
@@ -1289,7 +1289,7 @@ pub(super) fn result_slot(b: &mut FnBuilder, lay: &Layouts, ty: Ty, out: &[Val])
         return out[0].clone();
     }
     let st = super::aggregate(b.types(), lay, ty);
-    b.alloca(&st)
+    b.alloca_temp(&st)
 }
 
 /// Reads the result of type `ty` back from the slot a call wrote it to, into the names `out`.

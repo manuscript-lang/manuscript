@@ -4,7 +4,7 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 0,
-    "stdout": "[aa][bbbb][c][][dddddd][eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee][f]\nbbbbb none 5\n<a><b><>\n11\n8 5 11 39\np1 p2 r1 r2 \n",
+    "stdout": "[aa][bbbb][c][][dddddd][eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee][f]\nbbbbb none 5\n<a><b><c><d><>\n11\n8 5 11 39\np1 p2 r1 r2 \n",
     "stderr": ""
   }
 }

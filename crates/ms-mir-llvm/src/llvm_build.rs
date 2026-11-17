@@ -403,6 +403,9 @@ pub struct FnBuilder<'t> {
     /// The slots of `allocas` that keep their place for the whole function (see
     /// [`FnBuilder::alloca_pinned`]).
     pinned: std::collections::HashSet<String>,
+    /// The temporaries of the MIR block being lowered, as (slot, type): each has its start marker
+    /// where it was made and gets its end marker from [`FnBuilder::end_temps`].
+    block_temps: Vec<(String, String)>,
     /// The running task's header pointer, loaded once after the allocas: it depends only on the
     /// frame's address, so every use in the function shares one load. Written by [`FnBuilder::task_hdr`].
     hdr: Option<Val>,
@@ -421,6 +424,7 @@ impl<'t> FnBuilder<'t> {
             next: 0,
             allocas: String::new(),
             pinned: std::collections::HashSet::new(),
+            block_temps: Vec::new(),
             hdr: None,
             prologue: String::new(),
             dbg,
@@ -770,6 +774,33 @@ impl<'t> FnBuilder<'t> {
         let v = self.alloca(ty);
         self.pinned.insert(v.text.clone());
         v
+    }
+
+    /// A stack slot for a value only the current MIR block reads, such as an argument spilled for
+    /// one call: its lifetime starts here and ends with the block ([`FnBuilder::end_temps`]), so
+    /// LLVM may give the storage to another block's temporary. The caller promises no pointer
+    /// into it is used after the block; the lifetime scan leaves it alone.
+    pub fn alloca_temp(&mut self, ty: &Ty) -> Val {
+        let v = self.alloca_pinned(ty);
+        let shape = self.ty(ty);
+        self.line(format!("call void @llvm.lifetime.start.p0(ptr {})", v.text));
+        self.block_temps.push((v.text.clone(), shape));
+        v
+    }
+
+    /// Ends the lifetime of the temporaries of the MIR block being lowered, after its last
+    /// statement. With poison each is filled first (`BuildOptions::poison_slots`).
+    pub fn end_temps(&mut self) {
+        let poison = self.types.poison_slots.get();
+        for (slot, shape) in std::mem::take(&mut self.block_temps) {
+            if poison {
+                self.line(format!(
+                    "call void @llvm.memset.p0.i64(ptr {slot}, i8 {}, i64 ptrtoint (ptr getelementptr ({shape}, ptr null, i32 1) to i64), i1 true)",
+                    crate::llvm_lifetimes::POISON
+                ));
+            }
+            self.line(format!("call void @llvm.lifetime.end.p0(ptr {slot})"));
+        }
     }
 
     /// A call to a callee that cannot fault (a runtime helper, an intrinsic); `ret` is `Ty::Void`

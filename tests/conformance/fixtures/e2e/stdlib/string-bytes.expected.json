@@ -40,7 +40,7 @@
             "file": "string-bytes.ms",
             "line": 88,
             "column": 24,
-            "offset": 3340
+            "offset": 3342
           }
         },
         {
@@ -51,7 +51,7 @@
             "file": "string-bytes.ms",
             "line": 89,
             "column": 24,
-            "offset": 3386
+            "offset": 3388
           }
         },
         {
@@ -62,73 +62,73 @@
             "file": "string-bytes.ms",
             "line": 90,
             "column": 24,
-            "offset": 3434
+            "offset": 3436
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
             "line": 91,
             "column": 25,
-            "offset": 3475
+            "offset": 3477
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
             "line": 92,
             "column": 25,
-            "offset": 3560
+            "offset": 3562
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
             "line": 93,
             "column": 25,
-            "offset": 3646
+            "offset": 3648
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
             "line": 95,
             "column": 25,
-            "offset": 3803
+            "offset": 3805
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
             "line": 96,
             "column": 25,
-            "offset": 3886
+            "offset": 3888
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
             "line": 97,
             "column": 25,
-            "offset": 3969
+            "offset": 3971
           }
         },
         {
@@ -139,7 +139,18 @@
             "file": "string-bytes.ms",
             "line": 98,
             "column": 24,
-            "offset": 4051
+            "offset": 4053
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "position": {
+            "file": "string-bytes.ms",
+            "line": 167,
+            "column": 24,
+            "offset": 5907
           }
         },
         {
@@ -150,7 +161,7 @@
             "file": "string-bytes.ms",
             "line": 168,
             "column": 24,
-            "offset": 5954
+            "offset": 5963
           }
         },
         {
@@ -161,7 +172,7 @@
             "file": "string-bytes.ms",
             "line": 169,
             "column": 24,
-            "offset": 6010
+            "offset": 6012
           }
         },
         {
@@ -172,7 +183,7 @@
             "file": "string-bytes.ms",
             "line": 170,
             "column": 24,
-            "offset": 6059
+            "offset": 6056
           }
         },
         {
@@ -183,40 +194,29 @@
             "file": "string-bytes.ms",
             "line": 171,
             "column": 24,
-            "offset": 6103
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
-          "position": {
-            "file": "string-bytes.ms",
-            "line": 172,
-            "column": 24,
-            "offset": 6143
+            "offset": 6096
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
-            "line": 174,
+            "line": 173,
             "column": 14,
-            "offset": 6197
+            "offset": 6150
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
-            "line": 178,
+            "line": 177,
             "column": 25,
-            "offset": 6293
+            "offset": 6246
           }
         },
         {
@@ -225,9 +225,9 @@
           "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
           "position": {
             "file": "string-bytes.ms",
-            "line": 208,
+            "line": 207,
             "column": 27,
-            "offset": 7127
+            "offset": 7080
           }
         },
         {
@@ -236,20 +236,20 @@
           "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
           "position": {
             "file": "string-bytes.ms",
-            "line": 214,
+            "line": 213,
             "column": 25,
-            "offset": 7253
+            "offset": 7206
           }
         },
         {
           "code": "MS3001",
           "phase": "type",
-          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...), e.g. return ok(value)",
+          "message": "expected Result[String, Error], found String (in argument 'result' of expect_failure); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
           "position": {
             "file": "string-bytes.ms",
-            "line": 240,
+            "line": 239,
             "column": 17,
-            "offset": 8351
+            "offset": 8304
           }
         }
       ]

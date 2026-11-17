@@ -733,6 +733,7 @@ pub fn emit(
         }
         // A fault names the position of its terminator in the trace.
         b.set_dbg(Some(env.at(bd.term_loc)));
+        b.end_temps();
         match &bd.term {
             Term::Br(t) => {
                 types::copies(&mut b, lay, f, &vals, t);
