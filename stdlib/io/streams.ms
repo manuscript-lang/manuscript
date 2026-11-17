@@ -2,6 +2,7 @@
 
 import (
 	Bytes, BytesBuilder, join from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	ReadStream, WriteStream from "@std/io/io.ms",
 )
 
@@ -136,8 +137,6 @@ type BytesSource:
 	chunk: Int
 
 fn var BytesSource.next() Bytes?!:
-	if self.chunk < 1:
-		return error(Error("I/O: chunk size must be positive", kind: "EINVAL"))
 	if self.at >= self.data.length(): return ok(none)
 
 	stop := (self.at + self.chunk).min(self.data.length())
@@ -149,8 +148,9 @@ fn var BytesSource.close() Void!:
 	return ok()
 
 // A stream that yields `data` in chunks of at most `chunk_bytes` bytes and then ends. A
-// `chunk_bytes` below 1 makes the first read fail with `EINVAL`.
+// `chunk_bytes` below 1 is a programming fault.
 export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream[Bytes]:
+	if chunk_bytes < 1: panic("from_bytes: chunk_bytes must be positive")
 	return ReadStream[Bytes](BytesSource(data, 0, chunk_bytes))
 
 type Mapped[T, U]:

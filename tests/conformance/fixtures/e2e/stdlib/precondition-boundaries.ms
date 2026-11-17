@@ -1,7 +1,7 @@
 // conform: tags=faults,modules,optional,stdlib-bigint,stdlib-bytes,stdlib-numbers,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/stdlib/precondition-boundaries.ms
-import expect_equal, expect_false from "@std/test/test.ms"
+import expect_equal, expect_false, expect_fault from "@std/test/test.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"
 import from_int from "@std/math/math.ms"
@@ -50,10 +50,7 @@ test "radix formatting retains inclusive boundaries and parse errors":
         (big.to_string_radix(2) != "100011" or big.to_string_radix(36) != "z")
     )?
 
-    invalid: Int! := error(
-        Error("number: invalid input", kind: "EINVAL")
-    )
-    expect_equal(parse_int("1", 1), invalid)?
+    _radix := expect_fault(fn: discard(parse_int("1", 1)))?
     expect_false(not "invalid".parse_int().is_none())?
 
 test "queue capacities retain omission none minimum maximum and full results":
@@ -71,3 +68,6 @@ test "queue capacities retain omission none minimum maximum and full results":
     var unlimited = PriorityQueue[Int](none)
     var large_priority = PriorityQueue[Int](9223372036854775807)
     expect_false(not unlimited.enqueue(1) or not large_priority.enqueue(1))?
+
+fn discard[T](value: T) Void:
+    return
