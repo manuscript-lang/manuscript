@@ -8,7 +8,7 @@ import (
 )
 
 fn upper(chunk: Bytes) Bytes:
-	return chunk.decode_utf8().get("").upper().to_bytes()
+	return chunk.decode_utf8().get_or("").upper().to_bytes()
 
 test "flows compose stream transforms":
 	temporary := temporary("manuscript-streams-") | expect_ok?

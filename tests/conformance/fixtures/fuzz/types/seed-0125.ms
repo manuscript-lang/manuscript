@@ -27,5 +27,5 @@ export fn main() Int:
     b6 := (((-(-262003)) + 572648243236) == ((-22) + (-i3)))
     say(f"b6 = {b6}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     return 0

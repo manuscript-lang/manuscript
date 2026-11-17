@@ -34,8 +34,8 @@ test "secure_int stays in range and rejects an empty range":
 test "uuid_v4 has the version and variant bits":
     id := uuid_v4()?
     expect_equal(id.length(), 36)?
-    expect_equal(id.slice(14, 15)?, "4")?
-    expect_equal(["8", "9", "a", "b"].contains(id.slice(19, 20)?), true)?
+    expect_equal(id.slice(14, 15), "4")?
+    expect_equal(["8", "9", "a", "b"].contains(id.slice(19, 20)), true)?
 
 test "float shuffle and choice use operating system entropy":
     sample := float()?

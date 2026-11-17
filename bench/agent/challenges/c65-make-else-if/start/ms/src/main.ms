@@ -391,7 +391,7 @@ fn var Ctx.eval_ref(inner: String) String!:
 	return self.lookup(name)
 
 fn var Ctx.arg(args: List[String], i: Int) String!:
-	a := args.get(i, "")
+	a := args.get_or(i, "")
 	return self.expand(a)
 
 fn var Ctx.call_func(fname: String, rest: String) String!:
@@ -472,7 +472,7 @@ fn var Ctx.call_func(fname: String, rest: String) String!:
 
 	if fname == "firstword":
 		t := words(self.arg(args, 0)?)
-		return ok(t.get(0, "").clone())
+		return ok(t.get_or(0, "").clone())
 
 	if fname == "lastword":
 		t := words(self.arg(args, 0)?)
@@ -518,7 +518,7 @@ fn var Ctx.call_func(fname: String, rest: String) String!:
 	if fname == "foreach":
 		vname := (self.arg(args, 0)?).trim()
 		lst := words(self.arg(args, 1)?)
-		body := args.get(2, "").clone()
+		body := args.get_or(2, "").clone()
 		had := self.binds.contains(vname)
 		oldv := self.binds.get_or(vname, "").clone()
 		var o = List[String]()
@@ -941,7 +941,7 @@ fn Ctx.resolve(t: String) Resolved:
 
 	if pi >= 0:
 		p := self.pats[pi]
-		st := stem_of(p.pat, t, true).get("")
+		st := stem_of(p.pat, t, true).get_or("")
 		var pre = List[String]()
 		var oo = List[String]()
 		for q in p.pre: pre.append(subst_pct(q, st))
@@ -962,11 +962,11 @@ fn Ctx.resolve(t: String) Resolved:
 
 fn var Ctx.simulate(cmd: String) Int:
 	ws := words(cmd)
-	first := ws.get(0, "")
+	first := ws.get_or(0, "")
 	if first == "false": return 1
 
 	if first == "exit":
-		if ws.length() > 1: return ws[1].parse_int().get(2)
+		if ws.length() > 1: return ws[1].parse_int().get_or(2)
 		return 0
 
 	if first == "touch":
@@ -1024,7 +1024,7 @@ fn var Ctx.run_recipe(
 
 	self.auto = Map[String, String]()
 	self.auto["@"] = t.clone()
-	self.auto["<"] = r.pre.get(0, "").clone()
+	self.auto["<"] = r.pre.get_or(0, "").clone()
 	self.auto["^"] = join_sp(pre)
 	self.auto["?"] = join_sp(upd)
 	self.auto["|"] = join_sp(dedup(r.oo))
@@ -1237,7 +1237,7 @@ fn fmt_rule(name: String, pre: List[String], oo: List[String]) String:
 // ms: allow_effect std.console.write
 fn main() Void!:
 	b := read_all(stdin())?
-	text := b.decode_utf8().get("")
+	text := b.decode_utf8().get_or("")
 	all := text.lines()
 	var sec = 0
 	var mk = List[String]()

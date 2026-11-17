@@ -15,20 +15,20 @@ import (
 
 // Whether the parser agrees with the suite on one case.
 fn passes(tree: FileTree, kind: String, path: String) Bool:
-	bytes := tree.read(path, none).get("".to_bytes())
+	bytes := tree.read(path, none).get_or("".to_bytes())
 	text := bytes.decode_utf8()
 
 	// A String cannot hold input that is not UTF-8, so such a document cannot be
 	// accepted.
 	if text.is_none(): return kind == "not-wf"
 
-	parsed := parse(text.get(""))
+	parsed := parse(text.get_or(""))
 	if kind == "not-wf": return parsed.is_error()
 
 	return parsed.is_ok()
 
 fn read(tree: FileTree, path: String) String:
-	return tree.read(path, none).get("".to_bytes()).decode_utf8().get("")
+	return tree.read(path, none).get_or("".to_bytes()).decode_utf8().get_or("")
 
 test "the W3C XML suite agrees with the parser except for the listed cases":
 	tree := files()
@@ -48,7 +48,7 @@ test "the W3C XML suite agrees with the parser except for the listed cases":
 	var by_design = 0
 
 	for line in read(tree, "expect-fail.txt").split("\n"):
-		name := line.split(" ").get(0, "")
+		name := line.split(" ").get_or(0, "")
 		if name != "" and not name.starts_with("#"): expected.append(name.clone())
 		if line.contains(" by design:"): by_design += 1
 

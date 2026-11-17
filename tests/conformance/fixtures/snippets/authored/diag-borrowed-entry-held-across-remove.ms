@@ -7,4 +7,4 @@ fn held() Int:
 
     x := m.get("a")
     m.remove("a")
-    return x.get([]).length()
+    return x.get_or([]).length()

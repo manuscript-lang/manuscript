@@ -21,4 +21,4 @@ fn use(var door: Door) Int!:
 fn main() Void:
     var door = Door(["front", "back"])
     moved := promise(fn: use(var door))
-    print(f"{moved.wait().get(0)}")
+    print(f"{moved.wait().get_or(0)}")

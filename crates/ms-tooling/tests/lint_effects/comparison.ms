@@ -35,7 +35,7 @@ fn by_nested(a: List[Key], b: List[Key]) Bool:
 
 fn by_order(items: List[Rank]) Int:
     top := items.max()
-    return (top?.n).get(0)
+    return (top?.n).get_or(0)
 
 fn equality_only(a: Rank, b: Rank) Bool:
     return a.n == b.n

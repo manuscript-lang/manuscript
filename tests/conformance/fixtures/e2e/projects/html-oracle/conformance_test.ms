@@ -21,7 +21,7 @@ fn hx(text: String) String:
 fn unhex(token: String) String:
 	h := token.view(1, token.length()).clone()
 	if h == "": return ""
-	if bytes := hex_decode(h, none): return bytes.decode_utf8().get("")
+	if bytes := hex_decode(h, none): return bytes.decode_utf8().get_or("")
 
 	return ""
 
@@ -60,7 +60,7 @@ fn render(result: HtmlNode!) String:
 
 fn corpus() String!:
 	bytes := files().read("oracle.tsv", none)?
-	return ok(bytes.decode_utf8().get(""))
+	return ok(bytes.decode_utf8().get_or(""))
 
 test "parse matches the recorded Go html trees":
 	text := corpus()?
@@ -96,7 +96,7 @@ test "parse trees keep their size and checksum for the recorded large documents"
 		body := got.cut_prefix("ok ")
 		if body.is_none(): return fail(f"parse failed: {got}")
 
-		tree := body.get("")
+		tree := body.get_or("")
 		summary := f"ok {tree.length()} {checksum_hex(tree)}"
 		if summary != f[f.length() - 1]: return fail(f"{summary} != {f[f.length() - 1]}")
 

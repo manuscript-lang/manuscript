@@ -169,11 +169,11 @@ test "match expressions preserve returns and cleanup":
 
 test "indexes read elements and get supplies defaults":
 	values := [1, 2]
-	values.get(2, default: 0) | expect_equal(0)?
-	values.get(-3, default: 0) | expect_equal(0)?
-	values.get(-9223372036854775808, default: 0) | expect_equal(0)?
+	values.get_or(2, 0) | expect_equal(0)?
+	values.get_or(-3, 0) | expect_equal(0)?
+	values.get_or(-9223372036854775808, 0) | expect_equal(0)?
 	(values[0] != values.get(0) or values[-1] != values.get(-1)) | expect_false?
-	List[Int]().get(0, default: 7) | expect_equal(7)?
+	List[Int]().get_or(0, 7) | expect_equal(7)?
 
 test "match blocks produce their final value":
 	present: Int? := 5
@@ -295,7 +295,7 @@ test "match in a loop header exits its lexical enclosing loop":
 
 test "indexing preserves zero and nested optionals":
 	numbers := [0]
-	(numbers[0] != 0 or numbers.get(0, default: 99) != 0) | expect_false?
+	(numbers[0] != 0 or numbers.get_or(0, 99) != 0) | expect_false?
 
 	nested: List[Int?] := [none, 0]
 	(nested[0].is_some() or nested[1].get() != 0) | expect_false?

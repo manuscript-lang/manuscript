@@ -55,7 +55,7 @@ fn optional_overflow(default: Int?) Int:
 	values := [9223372036854775807]
 	var sum = 0
 	for value in values:
-		sum += values.get(0, default)
+		sum += values.get_or(0, default)
 	return sum + 1
 
 fn effect(var visits: List[Int], value: Int) Int:
@@ -84,13 +84,13 @@ test "closed list reads preserve defaults and evaluation order":
 	values := [10, 20]
 	var visits: List[Int] = []
 	(
-		values.get(
+		values.get_or(
 			default: effect(var visits, 7),
 			index: effect(var visits, 0),
 		) | expect_equal(10)?
 	)
-	values.get(-1, effect(var visits, 8)) | expect_equal(20)?
-	values.get(3, effect(var visits, 9)) | expect_equal(9)?
+	values.get_or(-1, effect(var visits, 8)) | expect_equal(20)?
+	values.get_or(3, effect(var visits, 9)) | expect_equal(9)?
 	visits | expect_equal([7, 0, 8, 9])?
 
 test "recursive appends keep overflow checks":
@@ -131,7 +131,7 @@ fn reordered_default_overflow() Int:
 	values := [0]
 	var sum = 0
 	for value in values:
-		sum += values.get(default: 9223372036854775807, index: 2)
+		sum += values.get_or(default: 9223372036854775807, index: 2)
 	return sum + 1
 
 fn scalar_append_overflow() Int:

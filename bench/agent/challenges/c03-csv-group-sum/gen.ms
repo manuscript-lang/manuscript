@@ -24,8 +24,8 @@ fn cents(amt: String) Int?:
 		): return none
 
 	return (
-		whole.parse_int().get(0) * 100
-		+ f"{fraction}00".view(0, 2).parse_int().get(0)
+		whole.parse_int().get_or(0) * 100
+		+ f"{fraction}00".view(0, 2).parse_int().get_or(0)
 	)
 
 type Row:
@@ -37,14 +37,14 @@ fn parse_line(line: String) Row?:
 	var amt = ""
 
 	if line.starts_with("\""):
-		end := line.slice(1, line.length()).get("").index_of("\"").get(-1)
+		end := line.slice(1, line.length()).index_of("\"").get_or(-1)
 		if end < 0: return none
 
 		close := end + 1
-		if line.slice(close + 1, close + 2).get("") != ",": return none
+		if line.slice(close + 1, close + 2) != ",": return none
 
-		cat = line.slice(1, close).get("")
-		amt = line.slice(close + 2, line.length()).get("")
+		cat = line.slice(1, close)
+		amt = line.slice(close + 2, line.length())
 	else:
 		parts := line.split(",")
 		if parts.length() != 2: return none
@@ -63,7 +63,7 @@ fn solve(s: String) String:
 	var bad = 0
 
 	for raw in s.split("\n"):
-		line := if raw.ends_with("\r"): raw.slice(0, raw.length() - 1).get("") else: raw.clone()
+		line := if raw.ends_with("\r"): raw.slice(0, raw.length() - 1) else: raw.clone()
 		if line.trim().is_empty(): continue
 
 		if row := parse_line(line):

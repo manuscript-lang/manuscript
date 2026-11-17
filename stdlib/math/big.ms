@@ -147,7 +147,7 @@ fn BigRat.to_fixed(digits: Int) String!:
 		text = text.pad_start(digits + 1, "0")
 
 		split_at := text.scalar_length() - digits
-		text = f"{text.slice(0, split_at).get("")}.{text.slice(split_at, text.length()).get("")}"
+		text = f"{text.slice(0, split_at)}.{text.slice(split_at, text.length())}"
 
 	if self.num.sign() < 0 and quotient.sign() != 0: return ok(f"-{text}")
 
@@ -181,7 +181,7 @@ export fn rat_of_float(value: Float) BigRat?:
 	if value == 0.0: return rat_of_int(0)
 
 	parts := frexp(value)
-	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get(0)
+	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get_or(0)
 	return rat_of_binary(big(mantissa), parts.exponent - 53)
 
 // Returns the exact value `mantissa * 2^exponent`. A result needing more than 16777216
@@ -359,7 +359,7 @@ fn BigFloat.sqrt() BigFloat!:
 		padding += 1
 
 	scaled := shl(self.mant, padding)
-	root := scaled.sqrt().get(big(0))
+	root := scaled.sqrt().get_or(big(0))
 	sticky := (root * root).compare(scaled) != 0
 	return ok(
 		make(
@@ -448,7 +448,7 @@ export fn big_float_of_float(value: Float, precision: Int) BigFloat?:
 	if value == 0.0: return big_float_of_int(0, bits)
 
 	parts := frexp(value)
-	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get(0)
+	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get_or(0)
 	return make(round_to(big(mantissa), parts.exponent - 53, false, bits), bits)
 
 // Returns the rational rounded once to `precision` bits.

@@ -519,16 +519,7 @@ fn string_ops_match_char_model(seed: u64) {
                 let a = r.below(n + 1);
                 let b = a + r.below(n + 1 - a);
                 let mut out = NO_STR;
-                assert_eq!(
-                    string::msrt_string_slice(
-                        s,
-                        starts[a] as i64,
-                        starts[b] as i64,
-                        &mut out,
-                        ms_rt_abi::ErrSlot(core::ptr::null_mut())
-                    ),
-                    STATUS_OK
-                );
+                string::msrt_string_slice(s, starts[a] as i64, starts[b] as i64, &mut out);
                 assert_eq!(
                     text(&out),
                     chars[a..b].iter().collect::<std::string::String>()

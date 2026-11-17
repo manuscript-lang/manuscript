@@ -22,5 +22,5 @@ test "blocking file reads work from promises on any thread":
 			promise(fn: size(path)),
 		]
 	)
-	for n in all.get([]):
+	for n in all.get_or([]):
 		expect_equal(n, 10)?

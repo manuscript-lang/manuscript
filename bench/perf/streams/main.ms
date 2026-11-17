@@ -160,39 +160,44 @@ fn main() Void:
 
 	a := xs.clone()
 	t = monotonic()
-	report("source-list", n, t, drain(ListSource(a, 0)).get(-1))
+	report("source-list", n, t, drain(ListSource(a, 0)).get_or(-1))
 
 	b := xs.clone()
 	t = monotonic()
-	report("source-map", n, t, drain(MapSource(ListSource(b, 0), fn x: x + 1)).get(-1))
+	report(
+		"source-map",
+		n,
+		t,
+		drain(MapSource(ListSource(b, 0), fn x: x + 1)).get_or(-1),
+	)
 
 	c := xs.clone()
 	t = monotonic()
-	report("stream-map", n, t, stdlib_map(c).get(-1))
+	report("stream-map", n, t, stdlib_map(c).get_or(-1))
 
 	d := xs.clone()
 	t = monotonic()
-	report("stream-map3", n, t, stdlib_map3(d).get(-1))
+	report("stream-map3", n, t, stdlib_map3(d).get_or(-1))
 
 	e := xs.clone()
 	t = monotonic()
-	report("stream-collect", n, t, stdlib_collect(e).get(-1))
+	report("stream-collect", n, t, stdlib_collect(e).get_or(-1))
 	t = monotonic()
 	report("for-filter", n, t, plain_filter(xs))
 
 	g := xs.clone()
 	t = monotonic()
-	report("stream-filter", n, t, stdlib_filter(g).get(-1))
+	report("stream-filter", n, t, stdlib_filter(g).get_or(-1))
 	t = monotonic()
 	report("for-take", n, t, plain_take(xs, n / 2))
 
 	h := xs.clone()
 	t = monotonic()
-	report("stream-take", n / 2, t, stdlib_take(h, n / 2).get(-1))
+	report("stream-take", n / 2, t, stdlib_take(h, n / 2).get_or(-1))
 
 	k := xs.clone()
 	t = monotonic()
-	report("stream-fold", n, t, stdlib_fold(k).get(-1))
+	report("stream-fold", n, t, stdlib_fold(k).get_or(-1))
 
 	var builder = BytesBuilder()
 	rows := 1000000
@@ -201,8 +206,8 @@ fn main() Void:
 
 	data := builder.build()
 	t = monotonic()
-	report("hand-lines", rows, t, hand_lines(data).get(-1))
+	report("hand-lines", rows, t, hand_lines(data).get_or(-1))
 
 	f := data.clone()
 	t = monotonic()
-	report("stream-lines", rows, t, stdlib_lines(f).get(-1))
+	report("stream-lines", rows, t, stdlib_lines(f).get_or(-1))

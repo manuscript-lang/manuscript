@@ -93,7 +93,7 @@ test "closing the input leaves the output open and closing both ends the connect
 
 test "host names resolve whatever their case":
 	listener := listen("127.0.0.1:0")?
-	port := listener.address().split(":").last().get("")
+	port := listener.address().split(":").last().get_or("")
 	client := connect(f"LocalHost:{port}", timeout: 2.seconds()).wait()?
 	server := listener.accept(2.seconds()).wait()?
 	expect_equal(server.info.peer_address, client.info.local_address)?
@@ -162,7 +162,7 @@ fn accept_one(l: Listener) Int:
 	r := l.accept(2.seconds()).wait()
 
 	if r.is_ok():
-		r.get().close().get(none)
+		void r.get().close()
 		return 1
 
 	return 0
@@ -198,7 +198,7 @@ test "a promise reads a connection it owns":
 // mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
 	query := (within(var served.input, 2.seconds())?).get()
-	question := (query.data.slice(12, query.data.length())).get(Bytes([]))
+	question := (query.data.slice(12, query.data.length())).get_or(Bytes([]))
 	header := Bytes(
 		[query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
 	)

@@ -18,7 +18,7 @@ export fn main() Int:
     i1 := ((-(-13)) - 42)
     say(f"i1 = {i1}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     s2 := "quote\"d"
     say(f"s2 = [{s2}]")
     say(f"fact(11) = {fact(11)}")

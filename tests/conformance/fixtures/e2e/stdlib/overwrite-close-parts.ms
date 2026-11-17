@@ -18,7 +18,7 @@ fn track(log: String, id: Int) Tracked:
 	return Tracked(log, id)
 
 fn closed(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
 	return ""
 
 type Pair:

@@ -41,7 +41,7 @@ fn run_one(binary: String, c: Case, rounds: Int, cpu: String) List[Int]!:
 	):
 		return invalid(f"malformed harness row: {out.trim()}")
 
-	return all_ints(fields.slice(3, 8).get([]))
+	return all_ints(fields.slice(3, 8).get_or([]))
 
 fn compare(
 	before: String,
@@ -111,14 +111,14 @@ fn main() Int:
 	)
 
 	parsed := options(
-		args.slice(2, args.length()).get([]),
+		args.slice(2, args.length()).get_or([]),
 		["out", "samples", "cpu"],
 		["out"],
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 
-	opts := parsed.get(Map[String, String]())
-	samples := opts.get_or("samples", "10").parse_int().get(0)
+	opts := parsed.get_or(Map[String, String]())
+	samples := opts.get_or("samples", "10").parse_int().get_or(0)
 	if samples < 5: return fail("--samples must be at least 5")
 
 	result := compare(

@@ -5,6 +5,6 @@ import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn main() Void!:
-    name := arguments().get(0, default: "world")
+    name := arguments().get_or(0, "world")
     message := f"Hello, {name}!\n"
     stdout().write(message)?

@@ -117,7 +117,7 @@ measured_flag := "MS_BENCH_MEASURED"
 export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
 	body()?
 
-	environment := environment().get(Map[String, String]())
+	environment := environment().get_or(Map[String, String]())
 	if environment.get_or(measured_flag, "") == "1": return ok()
 
 	return measure(operations, body)
@@ -132,14 +132,14 @@ export fn keep(checksum: Int) Void!:
 		)
 
 fn settings() Settings:
-	environment := environment().get(Map[String, String]())
+	environment := environment().get_or(Map[String, String]())
 	var found = Settings(100 * 1000000, 10, 0)
 	if text := environment.get("MS_BENCH_TIME_MS"):
-		found.target_nanoseconds = max(text.parse_int().get(100), 1) * 1000000
+		found.target_nanoseconds = max(text.parse_int().get_or(100), 1) * 1000000
 	if text := environment.get("MS_BENCH_SAMPLES"):
-		found.samples = max(text.parse_int().get(10), 1)
+		found.samples = max(text.parse_int().get_or(10), 1)
 	if text := environment.get("MS_BENCH_ITERATIONS"):
-		found.iterations = max(text.parse_int().get(0), 0)
+		found.iterations = max(text.parse_int().get_or(0), 0)
 	return found
 
 // Runs `body` `count` times and returns the elapsed nanoseconds; the first failure

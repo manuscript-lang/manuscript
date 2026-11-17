@@ -113,15 +113,15 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 
 | Operation | Bounds and result |
 | --- | --- |
-| `String.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n` with both bounds on scalar boundaries. Invalid bounds, or a bound inside a scalar, return an `Error` of kind `"ERANGE"`. |
+| `String.slice(start:, end:)` | Add `n` to each negative bound, then clamp each to `0..n`. A start at or past the end gives `""`. A bound inside a scalar moves inward (start forward, end backward), so the result is whole characters. Returns a `String`; it never fails. |
 | `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is a new owned List with independent storage. |
 | `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is an owned copy of the selected bytes. |
 
-`String.view(start, end)` takes the same byte bounds as `slice` and borrows the range without copying, like `Bytes.view`. A bound outside the string, or inside a scalar, raises a fault, not an `Error`. The receiver must stay unchanged while the view is used; storing or returning a view is rejected, so call `.clone()` on it to keep an independent `String`. Use `slice` when you want an owned copy or an `ERANGE` error.
+`String.view(start, end)` takes the same byte bounds as `slice` and borrows the range without copying, like `Bytes.view`. A bound outside the string, or inside a scalar, raises a fault, not an `Error`. The receiver must stay unchanged while the view is used; storing or returning a view is rejected, so call `.clone()` on it to keep an independent `String`. Use `slice` when you want an owned copy that never faults.
 
 `String.view_bytes()` borrows the UTF-8 bytes of the whole text as `Bytes` without copying, where `to_bytes()` copies them. It follows the same rule as `view`: the text must stay unchanged while the bytes are used, storing or returning them is rejected, and `.clone()` keeps an independent `Bytes`. The bytes of a temporary receiver are copied, because the temporary does not outlive the call.
 
-Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `"ERANGE"` error, not a fault. `"aé🙂z".slice(start: -5, end: 7)` is `ok("🙂")`; `slice(start: 3, end: 1)`, `slice(start: 2, end: 7)` (inside `é`) and `slice(start: 1, end: 12)` are errors of kind `"ERANGE"`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections/collections.ms.md), and [Bytes](../../standard-library/reference/bytes.ms.md) references.
+Equal bounds give an empty range. List and Bytes bounds are never clamped or swapped: `xs.slice(start: 0, end: n + 1)` is an `"ERANGE"` error, not a fault. `String.slice` clamps instead: `"aé🙂z".slice(start: -5, end: 7)` is `"🙂"`; `slice(start: 3, end: 1)` is `""`, `slice(start: 2, end: 7)` (inside `é`) is `"🙂"`, and `slice(start: 1, end: 12)` is `"é🙂z"`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections/collections.ms.md), and [Bytes](../../standard-library/reference/bytes.ms.md) references.
 
 `Bytes.view(start, end)` uses the same byte bounds and borrows the range without copying. Invalid bounds raise a fault. The receiver must stay available while the view is used; call `.clone()` on the view to keep an independent value.
 
@@ -137,7 +137,7 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 | --- | --- |
 | `String` | `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(other: Bytes) Bytes` |
+| `Bytes` | `length() Int`; `get(index: Int) UInt8`; `get_or(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(other: Bytes) Bytes` |
 | `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start: Int, end: Int) String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 

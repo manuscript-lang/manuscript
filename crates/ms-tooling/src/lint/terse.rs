@@ -165,6 +165,7 @@ impl Visitor for Scan<'_> {
             }
             | StmtKind::While { cond, .. } => self.emptiness(cond, true),
             StmtKind::Return(Some(e)) => self.emptiness(e, true),
+            StmtKind::Call(e) => self.statement_get(e),
             _ => {}
         }
     }
@@ -262,6 +263,17 @@ fn uses_in(name: Symbol, stmts: &[Stmt]) -> Uses {
         visit::walk_stmt(&mut uses, s);
     }
     uses
+}
+
+/// The source offset where the chain `e` starts: the name its leftmost receiver is read from.
+fn leftmost(e: &Expr) -> usize {
+    match &e.kind {
+        ExprKind::Call { callee: inner, .. } => leftmost(inner),
+        ExprKind::Member { left: inner, .. } | ExprKind::Index { left: inner, .. } => {
+            leftmost(inner)
+        }
+        _ => e.pos.offset as usize,
+    }
 }
 
 /// Whether any call runs inside `e`.
@@ -415,7 +427,59 @@ impl Scan<'_> {
             .is_some_and(|t| t.is(Builtin::Map))
     }
 
-    /// `m.get(k).get(d)` on a map is `m.get_or(k, d)`.
+    /// A statement `r.get(none)` on a `Void!` is `void r`; a statement `r.get()` on a Result
+    /// faults on error, so it is `r?` where the function can return one.
+    fn statement_get(&mut self, e: &Expr) {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return;
+        };
+        let method = self.syms.str(name);
+        if method != "get" && method != "get_or" {
+            return;
+        }
+        let Some(ty) = self
+            .module
+            .facts()
+            .info(left.id)
+            .and_then(|i| i.ty.clone())
+            .filter(|t| t.is(Builtin::Result))
+        else {
+            return;
+        };
+        let Some(receiver) = self.expr_text(left).map(str::to_string) else {
+            return;
+        };
+        match args.as_slice() {
+            [arg]
+                if method == "get_or"
+                    && arg.name.is_none()
+                    && self.expr_text(&arg.value) == Some("none")
+                    && ty.args.first().is_some_and(|t| t.is(Builtin::Void)) =>
+            {
+                self.report(
+                    "MSL129",
+                    "Use `void result` to ignore a Void! outcome instead of result.get_or(none)"
+                        .to_string(),
+                    e.pos,
+                    leftmost(left),
+                    e.end.offset as usize,
+                    format!("void {receiver}"),
+                );
+            }
+            [] if method == "get" => self.findings.push(finding(
+                "MSL130",
+                "A statement `result.get()` faults when the call fails; write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome".to_string(),
+                self.file,
+                e.pos,
+            )),
+            _ => {}
+        }
+    }
+
+    /// `m.get(k).get_or(d)` on a map is `m.get_or(k, d)`.
     fn map_get_chain(&mut self, e: &Expr) {
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
@@ -423,7 +487,7 @@ impl Scan<'_> {
         let ExprKind::Member { left: inner, name } = &callee.kind else {
             return;
         };
-        let ([fallback], true) = (args.as_slice(), self.syms.str(name) == "get") else {
+        let ([fallback], true) = (args.as_slice(), self.syms.str(name) == "get_or") else {
             return;
         };
         let ExprKind::Call {
@@ -476,7 +540,7 @@ impl Scan<'_> {
         }
         self.report(
             "MSL120",
-            "Use map.get_or(key, default) instead of map.get(key).get(default)".to_string(),
+            "Use map.get_or(key, default) instead of map.get(key).get_or(default)".to_string(),
             e.pos,
             dot,
             e.end.offset as usize,

@@ -16,7 +16,7 @@ fn open_then_read(path: String) Int:
 
     if var file = opened:
         _data := file.read_file()
-        file.close().get(none)
+        void file.close()
         return 1
 
     return -1
@@ -50,7 +50,7 @@ fn main() Void:
     (
         stdout()
         .write(
-            f"{c_result.get(-9)} {a_result.is_error()} {b_result.is_error()} {d_result.is_error()}\n"
+            f"{c_result.get_or(-9)} {a_result.is_error()} {b_result.is_error()} {d_result.is_error()}\n"
         )
         .get()
     )

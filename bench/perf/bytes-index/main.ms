@@ -10,12 +10,12 @@ fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int
 	if expected == data.length():
 		if checked.is_some(): return 1
 	else:
-		if checked.get(-1) != expected: return 1
+		if checked.get_or(-1) != expected: return 1
 
 	var checksum = 0
 	started := monotonic()
 	for unused in 0..iterations:
-		checksum += data.index_of_byte(255, start).get(data.length())
+		checksum += data.index_of_byte(255, start).get_or(data.length())
 
 	elapsed := monotonic().difference(started).to_nanoseconds()
 	if checksum != expected * iterations: return 1

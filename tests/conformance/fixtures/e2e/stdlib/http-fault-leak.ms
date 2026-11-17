@@ -28,7 +28,7 @@ test "a faulting handler releases the values its frames own":
 		send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")?
 
 		reply_bytes := recv(var client, 3.seconds())?
-		head := reply_bytes.get(Bytes([])).decode_utf8().get("")
+		head := reply_bytes.get_or(Bytes([])).decode_utf8().get_or("")
 		if not head.starts_with("HTTP/1.1 500"): return error(Error(head))
 
 	// Each leaked fault kept 1 MB, so 60 faults would grow the process by 60 MB.

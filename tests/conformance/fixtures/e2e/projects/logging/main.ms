@@ -43,8 +43,8 @@ fn exercise(mode: String, path: String) Void!:
 
 export fn main() Int:
 	args := arguments()
-	mode := args.get(0, default: "stdout")
-	path := args.get(1, default: "events.ndjson")
+	mode := args.get_or(0, "stdout")
+	path := args.get_or(1, "events.ndjson")
 	result := exercise(mode, path)
 
 	if result.is_error():

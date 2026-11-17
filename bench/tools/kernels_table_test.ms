@@ -28,7 +28,7 @@ fn kernel_versions() List[String]:
 test "complete rotating trials preserve minimum and columns":
 	for suite in ["kernels", "competence"]:
 		versions := if suite == "kernels": kernel_versions() else: base_versions()
-		var rotated = versions.slice(1, versions.length()).get([])
+		var rotated = versions.slice(1, versions.length()).get_or([])
 		rotated.append(versions[0].clone())
 
 		lines := trials(versions, suite, 100).concat(trials(rotated, suite, 50))
@@ -73,23 +73,23 @@ test "rejects invalid evidence":
 		truncated,
 		good.concat(trial("ms", "kernels", 100)),
 		no_omitted,
-		good.slice(1, good.length()).get([]),
+		good.slice(1, good.length()).get_or([]),
 		[good[0].clone()].concat(good),
 		no_c,
 		[good[0].replace("100", "-1")].concat(
-			good.slice(1, good.length()).get([])
+			good.slice(1, good.length()).get_or([])
 		),
 		[good[0].replace("100", "nan")].concat(
-			good.slice(1, good.length()).get([])
+			good.slice(1, good.length()).get_or([])
 		),
 		[good[0].replace(" 1", " 2")].concat(
-			good.slice(1, good.length()).get([])
+			good.slice(1, good.length()).get_or([])
 		),
 		[good[0].replace(omitted, "unknown")].concat(
-			good.slice(1, good.length()).get([])
+			good.slice(1, good.length()).get_or([])
 		),
 		[good[0].replace("go ", "unknown ")].concat(
-			good.slice(1, good.length()).get([])
+			good.slice(1, good.length()).get_or([])
 		),
 		["go # end"].concat(good),
 		good.concat(["unrecognized output"]),
@@ -116,5 +116,5 @@ test "a producer that fails or prints nothing is rejected":
 	expect_equal(expect_ok(must("producer", fine))?, "ok")?
 
 	versions := kernel_versions()
-	empty := trials(versions.slice(0, 5).get([]), "kernels", 100)
+	empty := trials(versions.slice(0, 5).get_or([]), "kernels", 100)
 	_empty := expect_error(summarize(empty, "kernels", 1, versions))?

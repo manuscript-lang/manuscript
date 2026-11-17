@@ -22,7 +22,7 @@ import (
 
 fn text_of(path: String) String!:
 	data := read_file(path).wait()?
-	return ok(data.decode_utf8().get(""))
+	return ok(data.decode_utf8().get_or(""))
 
 test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
 	directory := temporary("manuscript-atomic-")?

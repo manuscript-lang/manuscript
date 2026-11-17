@@ -16,7 +16,7 @@ export fn main() Int:
     i1 := ((((-11) % 42) + (-39)) * (((-36989) * (-1)) + (497842 * 45)))
     say(f"i1 = {i1}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     b2 := ((i1 * i1) == i1)
     say(f"b2 = {b2}")
 

@@ -19,7 +19,7 @@ fn string_temporary(seed: Int) Int!String:
 
 fn fallback_temporary(seed: Int) String:
 	values := List[String]()
-	get := values.get
+	get := values.get_or
 	return get(0, heap_text(seed))
 
 interface Fallback:
@@ -57,7 +57,7 @@ test "bound ok_or leaves caller causes independent of its result":
 test "bound native get owns selected heap-backed fallback results":
 	result := fallback_temporary(5)
 	values := List[String]()
-	get := values.get
+	get := values.get_or
 	var fallback = heap_text(6)
 	selected := get(0, fallback)
 	fallback = heap_text(7)

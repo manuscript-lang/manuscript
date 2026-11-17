@@ -200,19 +200,19 @@ export fn styled(text: String, style: Style) String:
 fn escape_pattern() Regex:
 	// CSI sequences, OSC sequences ending in BEL or ST, and two-byte escapes.
 	pattern := f"{esc}\\[[0-?]*[ -/]*[@-~]|{esc}\\][^\u{7}{esc}]*(\u{7}|{esc}\\\\)|{esc}[@-Z\\\\-_]"
-	return compile(pattern).get(none)
+	return compile(pattern).get_or(none)
 
 // Removes escape sequences from `text`.
 export fn strip_ansi(text: String) String:
 	if not text.contains(esc): return text.clone()
-	return escape_pattern().replace_all(text, "").get(text.clone())
+	return escape_pattern().replace_all(text, "").get_or(text.clone())
 
 // The number of terminal columns `text` occupies, ignoring escape sequences.
 export fn visible_width(text: String) Int!:
 	return strip_ansi(text).display_width()
 
 fn char_width(c: String) Int:
-	return c.display_width().get(1)
+	return c.display_width().get_or(1)
 
 /*
 Splits `text` on newlines and wraps each line into rows of at most `width` columns, counting only visible

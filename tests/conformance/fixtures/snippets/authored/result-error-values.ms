@@ -20,7 +20,7 @@ fn actual(cause: ValidationError) Int:
         BelowMinimum(value, _): return value
 
 fn optional_result(value: Int!String?) Int:
-    return value.get().get(-1)
+    return value.get().get_or(-1)
 
 test "optional Result arguments supply constructor type context":
     optional_result(ok(4)) | expect_equal(4)?

@@ -33,7 +33,7 @@ test "core parity operations are callable":
 	failure: Int!Error := error(Error("failed"))
 	expect_false(not (success.is_ok()) or success.is_error())?
 	expect_false(success.get() != 2 or failure.err().message != "failed")?
-	expect_equal(failure.get(7), 7)?
+	expect_equal(failure.get_or(7), 7)?
 	expect_equal(failure.get_or_else(fn cause: cause.message.scalar_length()), 6)?
 	expect_equal(success.map(fn n: n + 1).get(), 3)?
 
@@ -116,13 +116,13 @@ test "Result preserves unconstrained payloads and success-only composition":
 	expect_false(not (unit_result.is_ok()))?
 
 	bool_result: Bool!Error := ok(false)
-	expect_false(bool_result.get(true))?
+	expect_false(bool_result.get_or(true))?
 
 test "Result fallbacks are eager or lazy and bound methods keep receivers":
 	var counter = Counter(0)
 	success: Int!Counter := ok(0)
 	failure: Int!Counter := error(counter.clone())
-	expect_false(success.get(bump(var counter)) != 0 or counter.calls != 1)?
+	expect_false(success.get_or(bump(var counter)) != 0 or counter.calls != 1)?
 
 	create := fn(cause: Counter) Int: 12
 	unexpected := fn(cause: Counter) Int: panic("fallback must stay lazy")

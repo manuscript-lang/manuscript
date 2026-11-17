@@ -6,4 +6,4 @@ fn first_line(path: String) String!:
 	return ok(lines[0].clone())
 
 fn main() Void:
-	print(first_line("scope.ms").get("unreadable"))
+	print(first_line("scope.ms").get_or("unreadable"))

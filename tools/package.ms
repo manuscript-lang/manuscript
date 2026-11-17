@@ -47,10 +47,7 @@ fn main() Int:
 	// `build.target` cannot move the output away from where the copy below reads it.
 	var triple = ""
 	for line in capture("rustc", ["-vV"]).split("\n"):
-		if line.starts_with("host: "): triple = line.slice(
-			6,
-			line.length(),
-		).get("").trim()
+		if line.starts_with("host: "): triple = line.slice(6, line.length()).trim()
 	set_environment("CARGO_PROFILE_RELEASE_STRIP", "debuginfo").get()
 	code = run_program(
 		"cargo",

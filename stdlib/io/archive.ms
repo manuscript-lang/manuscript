@@ -198,7 +198,7 @@ export fn decompressed(
 // Reads the octal (or base-256) size field of a tar header block; -1 when the size is
 // beyond any real member.
 fn tar_size(block: Bytes) Int:
-	first := block.get(124, 0).to_int()
+	first := block.get_or(124, 0).to_int()
 	var size = 0
 
 	if first >= 128:
@@ -209,14 +209,14 @@ fn tar_size(block: Bytes) Int:
 			// before the arithmetic overflows.
 			if size >= 4503599627370496: return -1
 
-			size = size * 256 + block.get(i, 0).to_int()
+			size = size * 256 + block.get_or(i, 0).to_int()
 
 		if size >= 4503599627370496: return -1
 
 		return size
 
 	for i in 124..136:
-		digit := block.get(i, 0).to_int()
+		digit := block.get_or(i, 0).to_int()
 		if digit < 48 or digit > 55: continue
 
 		size = size * 8 + (digit - 48)
@@ -236,7 +236,7 @@ fn pax_size(data: Bytes) Int:
 		var length = 0
 
 		for i in pos..space.get():
-			digit := data.get(i, 0).to_int()
+			digit := data.get_or(i, 0).to_int()
 			if digit < 48 or digit > 57 or i - pos > 9: return found
 
 			length = length * 10 + digit - 48
@@ -247,14 +247,14 @@ fn pax_size(data: Bytes) Int:
 		eq := data.index_of_byte(61, space.get() + 1)
 
 		if eq.is_some() and eq.get() < end:
-			key := data.slice(space.get() + 1, eq.get()).get("".to_bytes())
+			key := data.slice(space.get() + 1, eq.get()).get_or("".to_bytes())
 
 			if key == "size".to_bytes():
 				var value = 0
 				var valid = eq.get() + 1 < end and end - eq.get() - 1 <= 15
 
 				for i in eq.get() + 1..end:
-					digit := data.get(i, 0).to_int()
+					digit := data.get_or(i, 0).to_int()
 					if digit < 48 or digit > 57: valid = false
 					if valid: value = value * 10 + digit - 48
 
@@ -307,7 +307,7 @@ fn TarEntries.member_length(ended: Bool) Int!:
 		if self.buffer.length() < at + 512: return ok(0)
 
 		block := self.buffer.slice(at, at + 512)?
-		flag := block.get(156, 0).to_int()
+		flag := block.get_or(156, 0).to_int()
 		var size = tar_size(block)
 		var padded = 0
 		if size < 0: return error(Error("archive: invalid archive", kind: "EBADMSG"))

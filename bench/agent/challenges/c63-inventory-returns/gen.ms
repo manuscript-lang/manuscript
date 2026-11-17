@@ -17,15 +17,15 @@ fn add(var cs: Cases, name: String, script: String) Void:
 fn c13_inputs() List[JsonValue]:
 	doc := parse(
 		read_text(f"{root()}/challenges/c13-inventory-orders/hidden/cases.json")
-	).get(JsonValue.Null)
-	return doc.as_list().get([])
+	).get_or(JsonValue.Null)
+	return doc.as_list().get_or([])
 
 export fn gen_c63() Void:
 	var cs = Cases(build_oracle("c63-inventory-returns"))
 
 	for entry in c13_inputs():
-		name := entry.get("name").get(JsonValue.Null).as_string().get("")
-		stdin := entry.get("stdin").get(JsonValue.Null).as_string().get("")
+		name := entry.get("name").get_or(JsonValue.Null).as_string().get_or("")
+		stdin := entry.get("stdin").get_or(JsonValue.Null).as_string().get_or("")
 		add(var cs, f"kept-{name}", stdin)
 
 	setup := "stock A 100\nstock B 50\nprice A 250\nprice B 1999\n"

@@ -300,9 +300,9 @@ fn decode[T: Data](matches: Matches) T!:
 fn literal(kind: FlagKind, text: String) String:
 	match kind:
 		Bool: return text.clone()
-		Int: return f"{text.parse_int().get(0)}"
-		Float: return f"{text.parse_float().get(0.0)}"
-		_: return stringify(text.clone()).get("\"\"")
+		Int: return f"{text.parse_int().get_or(0)}"
+		Float: return f"{text.parse_float().get_or(0.0)}"
+		_: return stringify(text.clone()).get_or("\"\"")
 
 // Collects the JSON literal of every supplied flag and argument for `command`.
 fn collect_fields(
@@ -535,7 +535,7 @@ fn walk_from(
 			long := token.starts_with("--")
 			body := token.view(if long: 2 else: 1, token.length())
 			cut := body.index_of("=")
-			key := body.view(0, cut.get(body.length()))
+			key := body.view(0, cut.get_or(body.length()))
 			var flag = find_flag(flags, key, long)
 			var negated = false
 

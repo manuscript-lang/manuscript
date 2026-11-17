@@ -184,7 +184,7 @@ test "the tenth byte can only be zero or one":
 	prefix := Bytes([128, 128, 128, 128, 128, 128, 128, 128, 128])
 
 	for byte in 2..256:
-		data := prefix.concat(Bytes([byte.to_uint8().get(0)]))
+		data := prefix.concat(Bytes([byte.to_uint8().get_or(0)]))
 		expect_varint_error(
 			data,
 			0,
@@ -197,7 +197,7 @@ test "the tenth byte can only be zero or one":
 		)?
 
 	for byte in 0..2:
-		decoded := prefix.concat(Bytes([byte.to_uint8().get(0)])).uvarint(0)?
+		decoded := prefix.concat(Bytes([byte.to_uint8().get_or(0)])).uvarint(0)?
 		expected: UInt64 := if byte == 0: 0 else: 9223372036854775808
 		expect_equal(decoded.value, expected)?
 		expect_equal(decoded.next_offset, 10)?
@@ -260,6 +260,7 @@ test "unsigned fixed-width codecs cover the entire UInt64 range":
 		outer := data.slice(1, 18)?
 		nested := outer.slice(8, 16)?
 		expect_equal(nested.uint64_be(0)?, value)?
+
 		nested_range: UInt64! := error(Error("binary: out of range", kind: "ERANGE"))
 		expect_equal(nested.uint64_be(1), nested_range)?
 

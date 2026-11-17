@@ -7,7 +7,7 @@ import (
 )
 
 fn show[T: Data](value: T) String:
-	return stringify(value).get("")
+	return stringify(value).get_or("")
 
 type Report:
 	title: String

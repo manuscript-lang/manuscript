@@ -81,7 +81,7 @@ fn reference_for(ch: Challenge, lang: Lang) String:
 // grading build mentions an internal error or a Rust panic.
 fn keep_ice(said: String, ws: String, g: Grade) Bool:
 	last := read_text(f"{ws}/.bench/build.out")
-	text := f"{said}\n{last}\n{g.error.get("")}"
+	text := f"{said}\n{last}\n{g.error.get_or("")}"
 	return (
 		text.contains("internal error")
 		or text.contains("internal compiler error")
@@ -98,7 +98,7 @@ fn run_one(
 	tag: String,
 	model: String?,
 ) RunRecord:
-	run_id := uuid_v4().get("").replace("-", "").view(0, 10).clone()
+	run_id := uuid_v4().get_or("").replace("-", "").view(0, 10).clone()
 	base := temporary_directory("agent-bench-").get()
 	ws := f"{base}/ws"
 	prompt := make_workspace(ch, lang, ws)
@@ -288,7 +288,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 				tag.clone(),
 			)
 		)
-	for n in wait_all(running).get([]): bad += n
+	for n in wait_all(running).get_or([]): bad += n
 	if oracle: remove(o.out, recursive: false).to_optional()
 	return ok(if bad > 0 and oracle: 1 else: 0)
 

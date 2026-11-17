@@ -26,7 +26,7 @@ fn row(report: String, name: String) List[String]:
 	for line in report.split("\n"):
 		if line.starts_with(name + " "):
 			parts := line.split(" ").filter(fn p: p != "")
-			return parts.slice(1, parts.length()).get([])
+			return parts.slice(1, parts.length()).get_or([])
 
 	return []
 
@@ -56,11 +56,11 @@ test "zero samples stay visible without ratios":
 
 test "rejects invalid evidence":
 	good := trials(100)
-	rest := good.slice(1, good.length()).get([])
-	go_end := good.index_of("go # end").get(0)
+	rest := good.slice(1, good.length()).get_or([])
+	go_end := good.index_of("go # end").get_or(0)
 	var cases = Map[String, List[String]]()
 	cases.add("empty", List[String]())
-	cases.add("unfinished", good.slice(0, good.length() - 1).get([]))
+	cases.add("unfinished", good.slice(0, good.length() - 1).get_or([]))
 	cases.add("extra trial", good.concat(trial("ms", 100)))
 	cases.add("missing everywhere", good.filter(fn l: not l.contains("list_append")))
 	cases.add("duplicate", [good[0].clone()].concat(good))
@@ -73,9 +73,9 @@ test "rejects invalid evidence":
 	cases.add("unknown version", [good[0].replace("ms ", "unknown ")].concat(rest))
 	cases.add(
 		"unexpected go sorted map",
-		good.slice(0, go_end).get([]).concat(
+		good.slice(0, go_end).get_or([]).concat(
 			["go sorted_map_add_contains 600000 1"]
-		).concat(good.slice(go_end, good.length()).get([])),
+		).concat(good.slice(go_end, good.length()).get_or([])),
 	)
 	cases.add("changed count", ["ms list_append 100000000 100000000"].concat(rest))
 	cases.add("zero count", ["ms list_append 0 100000000"].concat(rest))

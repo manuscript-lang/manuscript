@@ -36,7 +36,7 @@ fn client(address: String, request: String) Int!:
 		connection.output.flush()?
 
 		reply := connection.input.next()?
-		if reply.get(Bytes([])).length() > 0: answered += 1
+		if reply.get_or(Bytes([])).length() > 0: answered += 1
 
 	return ok(answered)
 
@@ -51,7 +51,7 @@ fn drive(own_path: String, request: String) Int!:
 		["client", server.address(), request.clone()],
 		RunOptions(timeout: seconds(600)),
 	).wait()?
-	return ok(out.stdout.decode_utf8().get("").trim().parse_int().get(0))
+	return ok(out.stdout.decode_utf8().get_or("").trim().parse_int().get_or(0))
 
 // The guard's exit status: 0 when every request was answered. `request` is the whole
 // request text, sent on each pass.
@@ -59,14 +59,14 @@ export fn guard(request: String) Int:
 	args := arguments()
 
 	if args.length() == 3 and args[0] == "client":
-		print(client(args[1].clone(), args[2].clone()).get(0))
+		print(client(args[1].clone(), args[2].clone()).get_or(0))
 		return 0
 
 	if args.length() == 0 or args.length() > 2:
 		print("usage: main <own path>")
 		return 1
 
-	answered := drive(args[0].clone(), request).get(0)
+	answered := drive(args[0].clone(), request).get_or(0)
 	print(answered)
 	if answered != REQUESTS: return 1
 

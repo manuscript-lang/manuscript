@@ -895,7 +895,7 @@ impl Walker<'_> {
 /// it holds (or a replacement of the same type) instead of building a new value.
 pub(super) fn payload_passthrough(name: &str, args: usize) -> bool {
     match name {
-        "get" => args == 1,
+        "get_or" => args == 1,
         "get_or_else" | "or_else" | "to_optional" | "ok_or" | "ok_or_else" => true,
         _ => false,
     }

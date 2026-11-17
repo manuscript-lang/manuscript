@@ -66,7 +66,7 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 	for it in items:
 		if seen.contains(it.sku): return f"error: duplicate sku {it.sku}"
 
-		have := w.stock.get(it.sku).get(-1)
+		have := w.stock.get(it.sku).get_or(-1)
 		if have < 0: return f"error: unknown sku {it.sku}"
 		if it.qty > have: return f"error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
 
@@ -108,7 +108,7 @@ fn run_command(var w: Warehouse, line: String) String:
 	arity := (
 		{"stock": 3, "price": 3, "cancel": 2, "ship": 2, "report": 1}
 		.get(name)
-		.get(0)
+		.get_or(0)
 	)
 	if arity == 0 and name != "order": return "error: unknown command"
 	if (if name == "order": t.length() < 3 else: t.length() != arity): return "error: usage"

@@ -30,7 +30,7 @@ test "view borrows a range without copying":
 	data := Bytes([1, 2, 3, 4, 5])
 	middle := data.view(1, 4)
 	expect_equal(middle.length(), 3)?
-	expect_equal(middle.get(0, none), 2)?
+	expect_equal(middle.get_or(0, none), 2)?
 	expect_equal(data.view(-2, 5).clone(), Bytes([4, 5]))?
 	expect_equal(data.view(2, 2).length(), 0)?
 

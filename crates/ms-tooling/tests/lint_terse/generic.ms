@@ -11,4 +11,4 @@ fn nth[T](xs: List[T], index: Int) T?:
 
 export fn main() Int:
     bag := Bag(items: [1, 2, 3])
-    return bag.at(1).get(0) + nth([4, 5], 0).get(0)
+    return bag.at(1).get_or(0) + nth([4, 5], 0).get_or(0)

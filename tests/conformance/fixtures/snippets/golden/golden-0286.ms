@@ -5,4 +5,4 @@ fn pick[T](items: List[T], keep: fn(T) Bool) T?:
 fn f() Int:
     nums := [1, 2]
     hit := pick(nums, fn(value: Int) Bool: value > 1)
-    return hit.get(0)
+    return hit.get_or(0)

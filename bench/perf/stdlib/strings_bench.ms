@@ -111,7 +111,7 @@ bench "string.parse_int":
 	fn work() Result[Void, Error]:
 		var n = 0
 		for i in 0..100000:
-			n += "12345".parse_int().get(0)
+			n += "12345".parse_int().get_or(0)
 		return keep(n)
 
 	measure(100000, work)?

@@ -25,7 +25,7 @@ test "a promise task recurses far past its first stack slot":
 		fn: ok(depth(200000)),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-	expect_equal(p.wait().get(0), 200000)?
+	expect_equal(p.wait().get_or(0), 200000)?
 
 // Each call crosses the boundary of the first slot (about 3,200 release frames) and
 // comes back; the task keeps its second segment, so the loop allocates nothing after
@@ -35,7 +35,7 @@ test "a loop at a segment boundary runs in bounded time":
 		fn: ok(loop_at_boundary()),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-	expect_equal(p.wait().get(0), 3300 * 20000)?
+	expect_equal(p.wait().get_or(0), 3300 * 20000)?
 
 fn loop_at_boundary() Int:
 	var total = 0
@@ -55,7 +55,7 @@ test "a fault inside a grown segment unwinds to its guard":
 		fn: ok(catch_in_task()),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-	expect_equal(p.wait().get(0), 10000)?
+	expect_equal(p.wait().get_or(0), 10000)?
 
 fn catch_in_task() Int:
 	message := expect_fault(fn: faulting_depth(10000))

@@ -9,7 +9,7 @@ fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/line":
         var input = lines(stdin())
         if step := input.next():
-            return HttpResponse(200, f"{step.get("eof")}\n".to_bytes())
+            return HttpResponse(200, f"{step.get_or("eof")}\n".to_bytes())
 
         return HttpResponse(500, "read failed\n".to_bytes())
 

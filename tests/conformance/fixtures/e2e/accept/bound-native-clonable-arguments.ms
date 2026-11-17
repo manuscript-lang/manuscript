@@ -90,14 +90,14 @@ test "bound native argument copies preserve named effects and propagation":
 test "nonconsuming bound methods continue borrowing ordinary inputs":
 	values := ["a", "b"]
 	contains := values.contains
-	query := f"b-{1}".slice(0, 1)?
+	query := f"b-{1}".slice(0, 1)
 	expect_equal(contains(query), true)?
 	expect_equal(query, "b")?
 
 test "bound native getter defaults remain unchanged":
 	values := ["first"]
-	get := values.get
-	expect_equal(get(0), "first")?
+	get := values.get_or
+	expect_equal(get(0, "none"), "first")?
 
 	fallback := f"fallback-{1}"
 	expect_equal(get(2, fallback), fallback)?

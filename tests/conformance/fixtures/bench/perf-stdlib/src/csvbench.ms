@@ -6,7 +6,7 @@ export fn bench_csv() Void:
     for i in 0..5000:
         rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
-    csv_text := stringify(rows).get("")
+    csv_text := stringify(rows).get_or("")
 
     bench(
         "csv.stringify",

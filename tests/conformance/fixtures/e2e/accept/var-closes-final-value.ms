@@ -17,16 +17,15 @@ fn var Counter.close() Void!:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get("")
+	if bytes := read: return bytes.decode_utf8().get_or("")
 
 	return ""
 
 fn count_then_wait(log: String) Int:
 	var counter = Counter(value: 0, log: log.clone())
 	counter.value = 7
-
 	void sleep(nanoseconds(5000000000)).wait()
-	counter.close().get(none)
+	void counter.close()
 	return 0
 
 test "a var binding closes the value it ended with":

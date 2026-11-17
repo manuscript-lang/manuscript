@@ -15,7 +15,7 @@ fn main() Void!:
 	pending := promise(fn: work())
 	value := pending.wait()?
 	output := from_list([value]) | map(fn x: x * 2) | collect(none)?
-	if output.get(0, 0) != 42:
+	if output.get_or(0, 0) != 42:
 		return error(Error("unexpected output"))
 ```
 

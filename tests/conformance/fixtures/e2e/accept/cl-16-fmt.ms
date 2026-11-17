@@ -7,7 +7,7 @@ type Input:
     names: List[String?]
 
 fn outcome_value(outcome: Int!Error) Int:
-    return outcome.get(-1)
+    return outcome.get_or(-1)
 
 test "data constructor context":
     _input := Input([none, "Ada"])

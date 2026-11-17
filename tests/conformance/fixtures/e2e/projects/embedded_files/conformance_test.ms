@@ -20,7 +20,7 @@ test "embedded files read back byte for byte":
 
 	data := tree.read("data.bin", none) | expect_ok?
 	data.length() | expect_equal(256)?
-	data.get(255, 0).to_int() | expect_equal(255)?
+	data.get_or(255, 0).to_int() | expect_equal(255)?
 
 test "embedded tree walks in name order":
 	found := walk(files()) | expect_ok?

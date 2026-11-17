@@ -7,7 +7,7 @@ import (
 
 // A missing or malformed port is invalid input (EINVAL), not an I/O failure (EIO).
 fn kind_of(e: Error) String:
-	return e.kind.get("")
+	return e.kind.get_or("")
 
 test "malformed host and port text returns EINVAL":
 	for address in ["abc", "", "127.0.0.1:", "127.0.0.1:99999", "127.0.0.1:-1", "127.0.0.1:abc", "::1:0"]:

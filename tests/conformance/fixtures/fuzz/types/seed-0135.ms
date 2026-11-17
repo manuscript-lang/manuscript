@@ -21,5 +21,5 @@ export fn main() Int:
     f4 := (747.540 + f2)
     say(f"f4 = {f4}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     return 0

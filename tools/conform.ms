@@ -42,11 +42,11 @@ fn main() Int:
 		.wait()
 		.get()
 		.decode_utf8()
-		.get("")
+		.get_or("")
 	)
 	host_list := f"tests/conformance/expect-fail.{host()}.txt"
 	if access(host_list, 0).is_ok():
-		text += read_file(host_list).wait().get().decode_utf8().get("")
+		text += read_file(host_list).wait().get().decode_utf8().get_or("")
 	write_file(allow, text, replace: true).wait().get()
 
 	conform := f"target/debug/ms-conform{exe()}"

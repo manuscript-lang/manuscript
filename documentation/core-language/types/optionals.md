@@ -12,7 +12,7 @@ Save as `greeting.ms` and run `ms run greeting.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\nHello, guest!\n"} -->
 ```manuscript
 fn greeting(name: String?) String:
-    return f"Hello, {name.get("guest")}!"
+    return f"Hello, {name.get_or("guest")}!"
 
 fn main() Void:
     print(greeting("Ada"))
@@ -24,7 +24,7 @@ Hello, Ada!
 Hello, guest!
 ```
 
-`get("guest")` supplies a fallback only when the value is absent. An empty string is still present. There is no `some(...)` constructor.
+`get_or("guest")` supplies a fallback only when the value is absent. An empty string is still present. There is no `some(...)` constructor.
 
 `T?` is the only spelling; `Optional[T]` is rejected. It applies to the type before it, so a function type needs parentheses: `fn(Int) Int?` returns an optional, `(fn(Int) Int)?` is an optional function.
 
@@ -71,7 +71,8 @@ Receiver methods:
 | --- | --- |
 | `is_some() Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
 | `is_none() Bool` | Whether the optional is absent |
-| `get(default: T?) T` | Return the contained value, or `default` when absent; without a default, [fault](../errors/faults.md) with `called Optional.get() on none` |
+| `get() T` | Return the contained value; on `none`, [fault](../errors/faults.md) with `called Optional.get() on none` |
+| `get_or(default: T?) T` | Return the contained value, or `default` when absent |
 | `map[U](transform: fn(T) U) U?` | Transform a present payload once; preserve absence |
 | `and_then[U](transform: fn(T) U?) U?` | Return the callback's Optional when present; preserve absence |
 | `get_or_else(create: fn() T) T` | Return the contained value, or call `create` once when absent |
@@ -81,17 +82,17 @@ Fallback for routine absence:
 
 ```manuscript
 fn display_name(name: String?) String:
-    return name.get("Anonymous")
+    return name.get_or("Anonymous")
 ```
 
-`get(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
+`get_or(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
 
 ```manuscript
 fn display_name(create: fn() String, name: String?) String:
     return name.get_or_else(create)
 ```
 
-Prefer `if v := x` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; pass a default or unwrap with `if v := x`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get(fallback)` or `m.get(key).get()`:
+Prefer `if v := x` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; use `get_or(default)` or unwrap with `if v := x`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get_or(fallback)` or `m.get(key).get()`; `ms lint --fix` rewrites the first:
 
 ```manuscript
 fn greet(name: String?) String:

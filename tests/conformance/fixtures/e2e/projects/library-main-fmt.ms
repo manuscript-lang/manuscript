@@ -113,7 +113,7 @@ fn exercise(path: String) Void!:
     _removed := common_result(result: remove(path: path, recursive: false))?
 
 export fn main() Int:
-    path := arguments().get(index: 0, default: "")
+    path := arguments().get_or(index: 0, "")
     if path == "": return 2
 
     match exercise(path: path):

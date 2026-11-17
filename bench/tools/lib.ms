@@ -35,7 +35,7 @@ export fn host() String:
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-	all := environment().get(Map[String, String]())
+	all := environment().get_or(Map[String, String]())
 	if value := all.get(name): return value.clone()
 
 	return fallback.clone()
@@ -66,8 +66,8 @@ export fn capture(
 		return Ran(
 			true,
 			out.exit_code,
-			out.stdout.decode_utf8().get(""),
-			out.stderr.decode_utf8().get(""),
+			out.stdout.decode_utf8().get_or(""),
+			out.stderr.decode_utf8().get_or(""),
 			out.max_resident_bytes,
 		)
 	return Ran(false, 125, "", f"cannot start {program}\n")
@@ -113,7 +113,7 @@ export fn file_sha256(path: String) String:
 
 // Reads a UTF-8 text file.
 export fn read_text(path: String) String:
-	return read_file(path).wait().get().decode_utf8().get("")
+	return read_file(path).wait().get().decode_utf8().get_or("")
 
 // Fails with `text`.
 export fn invalid[T](text: String) T!:
@@ -134,7 +134,7 @@ export fn grouped(value: Int) String:
 
 	for i in 0..n:
 		if i > 0 and (n - i) % 3 == 0: out += ","
-		out += digits.slice(i, i + 1).get("")
+		out += digits.slice(i, i + 1)
 
 	return if value < 0: "-" + out else: out
 
@@ -142,7 +142,7 @@ export fn grouped(value: Int) String:
 export fn fixed(value: Float, digits: Int) String:
 	text := value.to_fixed(digits)
 	parts := text.split(".")
-	whole := parts[0].parse_int().get(0)
+	whole := parts[0].parse_int().get_or(0)
 	head := if text.starts_with("-") and whole == 0: "-0" else: grouped(whole)
 	if parts.length() == 1: return head
 
@@ -157,7 +157,7 @@ export fn repeats(text: String) Int!:
 // The absolute form of `path`, relative to the working directory.
 export fn absolute(path: String) String:
 	if is_absolute(path): return path.clone()
-	return join([working_directory().get("."), path])
+	return join([working_directory().get_or("."), path])
 
 // Runs `program` in directory `dir`; the caller's working directory is untouched, so
 // tasks may run children in different directories.
@@ -229,12 +229,12 @@ export fn options(
 		flag := args[i]
 		if (
 			not flag.starts_with("--")
-			or not known.contains(flag.slice(2, flag.length()).get(""))
+			or not known.contains(flag.slice(2, flag.length()))
 		):
 			return invalid(f"unknown argument: {flag}")
 		if i + 1 >= args.length(): return invalid(f"{flag} needs a value")
 
-		found.add(flag.slice(2, flag.length()).get(""), args[i + 1].clone())
+		found.add(flag.slice(2, flag.length()), args[i + 1].clone())
 		i += 2
 
 	for name in required:
@@ -288,7 +288,7 @@ export fn platform() String:
 
 // All of standard input as text.
 export fn read_stdin() String:
-	return read_all(stdin(), none).get().decode_utf8().get("")
+	return read_all(stdin(), none).get().decode_utf8().get_or("")
 
 // Runs `ms bench` for the bench/perf/stdlib suite and returns its JSON document.
 export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:
@@ -318,7 +318,7 @@ export fn jlist(items: List[JsonValue]) JsonValue:
 
 // `value` as indented JSON followed by a newline.
 export fn dump(value: JsonValue) String:
-	return stringify(value, StringifyOptions(indent: 2)).get("") + "\n"
+	return stringify(value, StringifyOptions(indent: 2)).get_or("") + "\n"
 
 // Runs `program` in `dir` with the parent's streams and returns its exit status (125
 // when it cannot start).
@@ -335,7 +335,7 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
 			cwd: dir,
 		),
 	):
-		code = child.wait().get(125)
+		code = child.wait().get_or(125)
 		if code < 0 or code > 125: code = 125
 	else:
 		note(f"cannot start {program}")

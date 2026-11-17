@@ -124,7 +124,7 @@ fn l_slices() Int:
 	xs := base()
 	var t = 0
 	for i in 0..2000:
-		t += xs.slice(i, i + 5000).get([]).length()
+		t += xs.slice(i, i + 5000).get_or([]).length()
 	return t
 
 fn l_enumerate_zip() Int:

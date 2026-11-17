@@ -12,8 +12,8 @@ test "byte updates retain relative bounds and immutable storage":
     expect_equal(bytes.with_value(-2, 255), Bytes([255, 255]))?
     expect_equal(bytes.with_value(1, 0), Bytes([0, 0]))?
     expect_equal(bytes, Bytes([0, 255]))?
-    expect_equal(bytes.get(-3, default: 7), 7)?
-    expect_equal(bytes.get(2, default: 7), 7)?
+    expect_equal(bytes.get_or(-3, 7), 7)?
+    expect_equal(bytes.get_or(2, 7), 7)?
     expect_equal(bytes.slice(2, 2).get(), Bytes([]))?
 
     var builder = BytesBuilder()
@@ -38,7 +38,7 @@ test "list boundaries retain mutation truncation and empty ranges":
     list.copy_within(0, 0, 0)
     list.splice(0, 0, [])
     expect_equal(list.length(), 0)?
-    expect_equal(list.get(0, default: -1), -1)?
+    expect_equal(list.get_or(0, -1), -1)?
 
 test "radix formatting retains inclusive boundaries and parse errors":
     expect_false(

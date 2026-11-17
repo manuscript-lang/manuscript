@@ -15,7 +15,7 @@ type Echo:
 	out: WriteStream[String]
 
 fn var Echo.write(value: Bytes) Void!:
-	return self.out.write(value.decode_utf8().get(""))
+	return self.out.write(value.decode_utf8().get_or(""))
 
 fn var Echo.flush() Void!:
 	return self.out.flush()
@@ -36,9 +36,7 @@ fn run() Void!:
 	rows.write(["1", "needs;quote"])?
 	rows.write(["2", "multi\nline"])?
 
-	page := compile(
-		"{{ for p in points }}{{ p.x }}={{ p.label }}\n{{ end }}"
-	)?
+	page := compile("{{ for p in points }}{{ p.x }}={{ p.label }}\n{{ end }}")?
 	data := to_data({"points": [Point(1, "one"), Point(2, "two")]})?
 	var out = stdout()
 	render_to(page, data, var out)?

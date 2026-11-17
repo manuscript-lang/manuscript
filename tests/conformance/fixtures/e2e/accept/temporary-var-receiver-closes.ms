@@ -23,7 +23,7 @@ fn Door.peek() Int:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get("")
+	if bytes := read: return bytes.decode_utf8().get_or("")
 
 	return ""
 

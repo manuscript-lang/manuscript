@@ -15,7 +15,7 @@ Manuscript is small, explicit and value-oriented: records and enums hold data, f
 - **Transformation:** a pipeline (`xs | .filter(f) | .map(g) | .sum()`) to derive values; a `for` loop to build a Map or change a `var`. A named function beats a one-use closure.
 - **Ownership:** reading borrows; changing needs `var` at the declaration and at the call; storing moves. `.clone()` is for a real second owner and costs time and memory: borrow, move at the last use, or keep an index first.
 - **Short forms:** `print(x)`, not `stdout().write`. `0..n`, `[0].repeated(n)`, `.map`, `.filter`, `.any`, `.all`, `.sum()`, `xs.extend(ys)` instead of loops that build or accumulate. `x := if c: a else: b`, `m.get_or(k, d)`, `s.is_empty()`, `a.max(b)`, `for _round in` for an unused name, `"""` for multi-line text.
-- **Failure:** `T!` for what can fail, `?` to propagate, `.ok_or(Error("what and which input", kind: "EINVAL"))` to turn absence into an error. `T?` when absence is normal; unwrap with `if v := o:` or `.get(default)`.
+- **Failure:** `T!` for what can fail, `?` to propagate, `.ok_or(Error("what and which input", kind: "EINVAL"))` to turn absence into an error. `T?` when absence is normal; unwrap with `if v := o:` or `.get_or(default)`. Do not write `call().get()` as a statement (it faults on error): use `call()?` (`main` may return `Void!`), or `void call()` to ignore the outcome.
 - **Waiting:** no `async`. A waiting call returns a Promise already running; start several, `wait_all` them. Streams are read with `for line in stream | lines`. Share state through one owner and a pipe.
 - **Tests:** `test "name":` blocks beside the code, run by `ms test`.
 

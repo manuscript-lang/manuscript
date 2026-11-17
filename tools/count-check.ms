@@ -27,7 +27,7 @@ fn after(text: String, prefix: String) List[String]:
 	var found = List[String]()
 	for line in text.split("\n"):
 		if line.starts_with(prefix): found.append(
-			line.slice(prefix.length(), line.length()).get("")
+			line.slice(prefix.length(), line.length())
 		)
 	return found
 
@@ -43,7 +43,9 @@ fn main() Int:
 	var files = List[String]()
 	for f in arguments(): files.append(f.clone())
 	if files.is_empty():
-		for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get([]):
+		for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get_or(
+			[]
+		):
 			files.append(f"tests/ownership-counts/{f.path}")
 
 	ms := tool_ms(root.clone())
@@ -54,7 +56,7 @@ fn main() Int:
 	var checked = 0
 
 	for f in files:
-		source := read_file(f"{root}/{f}").wait().get().decode_utf8().get("")
+		source := read_file(f"{root}/{f}").wait().get().decode_utf8().get_or("")
 		expected_out := after(source, "// expect-stdout: ")
 
 		for build in ["debug", "release"]:
@@ -78,8 +80,8 @@ fn main() Int:
 				continue
 
 			child := ran.get()
-			out := child.stdout.decode_utf8().get("")
-			err := child.stderr.decode_utf8().get("")
+			out := child.stdout.decode_utf8().get_or("")
+			err := child.stderr.decode_utf8().get_or("")
 
 			if child.exit_code != 0:
 				failures += 1

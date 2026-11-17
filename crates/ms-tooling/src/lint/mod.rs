@@ -125,7 +125,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL110",
         family: "Optional.get() without a default",
         severity: Severity::Warning,
-        repair: "use `if value := ...:`, or pass a default to `get(default)`",
+        repair: "use `if value := ...:`, or write `get_or(default)`",
     },
     Rule {
         code: "MSL111",
@@ -228,6 +228,18 @@ pub const RULES: &[Rule] = &[
         family: "Final return the end of the function already makes",
         severity: Severity::Error,
         repair: "delete the final `return ok()` (`Void!`) or `return` (`Void`)",
+    },
+    Rule {
+        code: "MSL129",
+        family: "Void! outcome ignored with get(none)",
+        severity: Severity::Error,
+        repair: "write `void call()`; `ms lint --fix` does it",
+    },
+    Rule {
+        code: "MSL130",
+        family: "Statement get() on a Result",
+        severity: Severity::Warning,
+        repair: "write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome",
     },
 ];
 

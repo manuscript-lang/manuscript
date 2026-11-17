@@ -142,9 +142,9 @@ test "padded multipart sections retain exact raw budget boundary":
 // Replaces the byte at `at` with `value`.
 fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
 	var out = BytesBuilder()
-	out.append_bytes(data.slice(0, at).get("".to_bytes()))
-	out.append(value.to_uint8().get(0))
-	out.append_bytes(data.slice(at + 1, data.length()).get("".to_bytes()))
+	out.append_bytes(data.slice(0, at).get_or("".to_bytes()))
+	out.append(value.to_uint8().get_or(0))
+	out.append_bytes(data.slice(at + 1, data.length()).get_or("".to_bytes()))
 	return out.build()
 
 // Compares the two parsers on one body: the same error kind, or the same parts.
@@ -173,7 +173,7 @@ test "parts and parse_multipart agree on corrupted and truncated bodies":
 			cases.append(with_byte(body.clone(), at, value))
 
 	for cut in 0..body.length():
-		if cut % 7 == 0: cases.append(body.slice(0, cut).get("".to_bytes()))
+		if cut % 7 == 0: cases.append(body.slice(0, cut).get_or("".to_bytes()))
 
 	for index in 0..cases.length():
 		for size in [1, 3, 64]:

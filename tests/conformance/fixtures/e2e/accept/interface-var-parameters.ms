@@ -91,7 +91,7 @@ test "a failed step's partial output is dropped and the failure is the next item
 
 		if item.get().is_none(): break
 
-		seen.append(item.get().get(0))
+		seen.append(item.get().get_or(0))
 
 	expect_equal(seen, [1])?
 	expect_equal(failed, true)?

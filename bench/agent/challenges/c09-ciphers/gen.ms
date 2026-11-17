@@ -25,11 +25,11 @@ fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) S
 		else:
 			out.append(ch)
 
-	return from_scalars(out).get("")
+	return from_scalars(out).get_or("")
 
 // A caesar key: an optional minus sign and one to seven digits.
 fn caesar_key(key: String) Bool:
-	digits := if key.starts_with("-"): key.slice(1, key.length()).get("") else: key.clone()
+	digits := if key.starts_with("-"): key.slice(1, key.length()) else: key.clone()
 	return (
 		digits.length() >= 1
 		and digits.length() <= 7
@@ -51,7 +51,7 @@ fn solve_line(line: String) String:
 
 	if cipher == "caesar":
 		if not caesar_key(key): return "error: bad key"
-		return shift(text, [], key.parse_int().get(0), false, sign)
+		return shift(text, [], key.parse_int().get_or(0), false, sign)
 
 	if key.is_empty() or not key.chars().all(fn c: LETTERS.contains(c)): return "error: bad key"
 

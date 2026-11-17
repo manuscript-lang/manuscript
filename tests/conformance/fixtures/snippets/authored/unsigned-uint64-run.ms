@@ -34,6 +34,6 @@ fn main() Void:
     void stdout().write(f"{s.id} {s.tag} {big.to_uint64()} {(-big).to_uint64()}\n")
     var h: UInt64 = 7
     for i in 0..10:
-        h = mix(h, i.to_uint64().get(0))
+        h = mix(h, i.to_uint64().get_or(0))
 
     void stdout().write(f"{h}\n")

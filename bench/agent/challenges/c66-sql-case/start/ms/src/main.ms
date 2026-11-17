@@ -62,7 +62,7 @@ fn is_alpha(c: Int) Bool: (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c =
 
 fn is_digit(c: Int) Bool: c >= 48 and c <= 57
 
-fn sub(src: Bytes, a: Int, b: Int) String: src.decode_utf8_range(a, b).get("")
+fn sub(src: Bytes, a: Int, b: Int) String: src.decode_utf8_range(a, b).get_or("")
 
 fn lex(src: Bytes) List[Chunk]:
 	kws := keywords()
@@ -1166,7 +1166,7 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 
 	for tr in st.trefs:
 		t := get_table(db, tr.name)?
-		for a in st.trefs.slice(0, ti).get([]):
+		for a in st.trefs.slice(0, ti).get_or([]):
 			if a.alias == tr.alias: return error(err(f"duplicate alias: {tr.alias}"))
 
 		var ci = 0

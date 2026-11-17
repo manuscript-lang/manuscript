@@ -22,7 +22,7 @@ enum Mode:
 	Slow
 
 fn text[T: Data](value: T) String:
-	return stringify(value).get("")
+	return stringify(value).get_or("")
 
 test "Data accepts plain records, lists, codecs, and JSON documents":
 	plain := Plain("a", ["x"], none)

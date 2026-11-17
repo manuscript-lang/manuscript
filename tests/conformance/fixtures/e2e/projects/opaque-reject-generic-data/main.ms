@@ -5,7 +5,7 @@ import (
 )
 
 fn wrap[T](v: T) String:
-	return stringify(v).get("")
+	return stringify(v).get_or("")
 
 export fn main() Int:
 	return wrap(approve("u")).length()

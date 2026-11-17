@@ -66,13 +66,13 @@ test "rational rounding power and formatting":
 	expect_equal((parse_rat("1/3")?).to_fixed(3)?, "0.333")?
 
 test "rationals convert exactly from and to floats":
-	tenth := rat_of_float(0.1).get(rat_of_int(0))
+	tenth := rat_of_float(0.1).get_or(rat_of_int(0))
 	expect_equal(tenth.to_string(), "3602879701896397/36028797018963968")?
 	expect_equal(tenth.to_float(), 0.1)?
 	expect_true(rat_of_float(1.0 / 0.0).is_none())?
-	expect_equal(rat_of_float(-2.5).get(rat_of_int(0)).to_string(), "-5/2")?
+	expect_equal(rat_of_float(-2.5).get_or(rat_of_int(0)).to_string(), "-5/2")?
 	expect_equal((parse_rat("1/3")?).to_float(), 1.0 / 3.0)?
-	expect_equal(rat_of_float(1e300).get(rat_of_int(0)).to_float(), 1e300)?
+	expect_equal(rat_of_float(1e300).get_or(rat_of_int(0)).to_float(), 1e300)?
 
 test "big floats round once at their precision":
 	two := big_float_of_int(2, 200)
@@ -103,9 +103,9 @@ test "big floats add, subtract and compare across magnitudes":
 	expect_equal(huge.negate().add(tiny).compare(huge.negate()), 0)?
 	expect_equal(huge.compare(tiny), 1)?
 	expect_equal(big_float_of_int(5, 64).subtract(big_float_of_int(5, 64)).sign(), 0)?
-	expect_equal(big_float_of_float(0.5, 53).get(tiny).add(tiny).to_float(), 1.5)?
+	expect_equal(big_float_of_float(0.5, 53).get_or(tiny).add(tiny).to_float(), 1.5)?
 	expect_equal(
-		big_float_of_int(-7, 64).divide(big_float_of_int(2, 64)).get(
+		big_float_of_int(-7, 64).divide(big_float_of_int(2, 64)).get_or(
 			tiny
 		).truncate().to_int(),
 		-3,

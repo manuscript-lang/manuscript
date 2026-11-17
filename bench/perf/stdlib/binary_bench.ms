@@ -10,7 +10,7 @@ import (
 fn build_packed() Bytes:
 	var bb = BytesBuilder()
 	for j in 0..25000:
-		bb.append_int32_le(j.to_int32().get(0))
+		bb.append_int32_le(j.to_int32().get_or(0))
 	return bb.build()
 
 bench "encoding.base64_encode":
@@ -39,7 +39,7 @@ bench "bytes.builder":
 	fn work() Result[Void, Error]:
 		var bb = BytesBuilder()
 		for j in 0..100000:
-			bb.append((j % 256).to_uint8().get(0))
+			bb.append((j % 256).to_uint8().get_or(0))
 		return keep(bb.build().length())
 
 	measure(100000, work)?
@@ -50,7 +50,7 @@ bench "bytes.read_int32_le":
 	fn work() Result[Void, Error]:
 		var sum = 0
 		for j in 0..25000:
-			sum += packed.int32_le(j * 4).get(0).to_int()
+			sum += packed.int32_le(j * 4).get_or(0).to_int()
 		return keep(sum)
 
 	measure(25000, work)?
@@ -61,7 +61,7 @@ bench "bytes.read_uint32_le":
 	fn work() Result[Void, Error]:
 		var sum = 0
 		for j in 0..25000:
-			sum += packed.uint32_le(j * 4).get(0).to_int()
+			sum += packed.uint32_le(j * 4).get_or(0).to_int()
 		return keep(sum)
 
 	measure(25000, work)?
@@ -70,7 +70,7 @@ bench "bytes.append_int32_le":
 	fn work() Result[Void, Error]:
 		var bb = BytesBuilder()
 		for j in 0..100000:
-			bb.append_int32_le(j.to_int32().get(0))
+			bb.append_int32_le(j.to_int32().get_or(0))
 		return keep(bb.build().length())
 
 	measure(100000, work)?

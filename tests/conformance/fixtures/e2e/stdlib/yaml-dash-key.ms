@@ -7,7 +7,7 @@ import expect_equal, expect_ok from "@std/test/test.ms"
 fn number_at(doc: YamlValue, key: String) String:
     match doc:
         ObjectValue(m):
-            value := m.get(key).get(YamlValue.Null)
+            value := m.get_or(key, YamlValue.Null)
             match value:
                 NumberValue(text): return text.clone()
                 _: return "not a number"

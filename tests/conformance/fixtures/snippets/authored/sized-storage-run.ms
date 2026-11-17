@@ -17,20 +17,20 @@ enum Tok:
 
 fn kind(t: Tok) Int:
     match t:
-        Num(v, s): return v.to_int64() + s.truncate_to_int().get(0)
+        Num(v, s): return v.to_int64() + s.truncate_to_int().get_or(0)
         Word(text, k): return text.length() + k.to_int64()
         End: return 0
 
 fn main() Void:
     var l: List[Int32] = []
     for i in 0..1000:
-        l.append((1000 - i).to_int32().get(0))
+        l.append((1000 - i).to_int32().get_or(0))
 
     sorted := l.sorted(fn a, b: a.compare(b))
     void stdout().write(f"{sorted[0]} {sorted[999]} {l.length()}\n")
     var m = Map[Int16, Int8]()
     for i in 0..300:
-        m.add(i.to_int16().get(0), (i % 100).to_int8().get(0))
+        m.add(i.to_int16().get_or(0), (i % 100).to_int8().get_or(0))
 
     var tot = 0
     for e in m.entries():
@@ -39,12 +39,12 @@ fn main() Void:
     void stdout().write(f"{m.length()} {tot} {m.get(299)}\n")
     var st = Set[Int8]()
     for i in 0..50:
-        st.add((i % 7).to_int8().get(0))
+        st.add((i % 7).to_int8().get_or(0))
 
     void stdout().write(f"{st.length()} {st.contains(3)} {st.contains(9)}\n")
     k: Int8 := -4
     f: Float32 := 1.25
-    cl: fn(Int) Int := fn x: (x.to_int8().get(0) + k).to_int64()
+    cl: fn(Int) Int := fn x: (x.to_int8().get_or(0) + k).to_int64()
     void stdout().write(f"{cl(10)} {f * 2.0 + 0.5}\n")
     var cells: List[Cell] = []
     for i in 0..5:

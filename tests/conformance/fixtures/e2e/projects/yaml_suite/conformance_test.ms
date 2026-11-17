@@ -35,9 +35,9 @@ fn canon(value: YamlValue) String:
 fn number(text: String) Float:
 	if f := text.parse_float(): return f
 
-	digits := text.slice(2, text.length()).get("")
-	if text.starts_with("0x"): return parse_int(digits, 16).get(0).to_float()
-	if text.starts_with("0o"): return parse_int(digits, 8).get(0).to_float()
+	digits := text.slice(2, text.length())
+	if text.starts_with("0x"): return parse_int(digits, 16).get_or(0).to_float()
+	if text.starts_with("0o"): return parse_int(digits, 8).get_or(0).to_float()
 
 	return 0.0
 
@@ -46,40 +46,44 @@ fn exists(tree: FileTree, path: String) Bool:
 
 // Whether the parser agrees with the suite on one case directory.
 fn passes(tree: FileTree, id: String) Bool:
-	text := tree.read(f"{id}/in.yaml", none).get("".to_bytes()).decode_utf8().get("")
+	text := tree.read(f"{id}/in.yaml", none).get_or(
+		"".to_bytes()
+	).decode_utf8().get_or("")
 	parsed := parse_all(text)
 	if exists(tree, f"{id}/error"): return parsed.is_error()
 	if parsed.is_error(): return false
 	if not exists(tree, f"{id}/in.json"): return true
 
-	json := tree.read(f"{id}/in.json", none).get("".to_bytes()).decode_utf8().get("")
+	json := tree.read(f"{id}/in.json", none).get_or(
+		"".to_bytes()
+	).decode_utf8().get_or("")
 	want := canon_json_stream(json)
 	if want.is_error(): return false
 
 	var got: List[String] = []
-	for document in parsed.get([]):
+	for document in parsed.get_or([]):
 		got.append(canon(document))
-	return got == want.get([])
+	return got == want.get_or([])
 
 test "the official YAML suite agrees with the parser except for the listed cases":
 	tree := files()
 	var cases: List[String] = []
-	for entry in walk(tree).get([]):
+	for entry in walk(tree).get_or([]):
 		if entry.path.ends_with("/in.yaml"):
-			cases.append(entry.path.slice(0, entry.path.length() - 8).get(""))
+			cases.append(entry.path.slice(0, entry.path.length() - 8))
 
 	var failing: List[String] = []
 	for id in cases:
 		if not passes(tree, id): failing.append(id.clone())
 	failing.sort()
 
-	listed := tree.read("expect-fail.txt", none).get(
+	listed := tree.read("expect-fail.txt", none).get_or(
 		"".to_bytes()
-	).decode_utf8().get("")
+	).decode_utf8().get_or("")
 	var expected: List[String] = []
 
 	for line in listed.split("\n"):
-		name := line.split(" ").get(0, "")
+		name := line.split(" ").get_or(0, "")
 		if name != "" and not name.starts_with("#"): expected.append(name.clone())
 
 	var by_design = 0

@@ -12,10 +12,10 @@ export fn main() Void:
 	while row < 2:
 		var column = 0
 		while column < 2:
-			total["a"] = total.get("a").get(0) + row + column
+			total["a"] = total.get("a").get_or(0) + row + column
 			column += 1
 
 		row += 1
 
-	print(f"{go(1.5)} {total.get("a").get(0)}")
+	print(f"{go(1.5)} {total.get("a").get_or(0)}")
 	return

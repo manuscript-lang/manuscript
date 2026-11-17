@@ -36,10 +36,10 @@ export fn build_oracle(id: String) String:
 	sources := bash("ls oracle/*.ref", dir(id), 10, "").out.trim().split("\n")
 
 	for source in sources:
-		name := source.split("/").last().get("")
+		name := source.split("/").last().get_or("")
 		copy(
 			f"{dir(id)}/{source}",
-			f"{tmp}/{name.slice(0, name.length() - 4).get("")}",
+			f"{tmp}/{name.slice(0, name.length() - 4)}",
 			CopyOptions(replace: true),
 		).get()
 
@@ -52,9 +52,7 @@ export fn build_oracle(id: String) String:
 // The oracle's output for `stdin`.
 export fn solve_with(oracle: String, stdin: String) String:
 	ran := bash(f"\"{oracle}\"", ".", 120, stdin)
-	if ran.code != 0: panic(
-		f"oracle failed (exit {ran.code}): {ran.err.slice(0, 500).get(ran.err)}"
-	)
+	if ran.code != 0: panic(f"oracle failed (exit {ran.code}): {ran.err.slice(0, 500)}")
 	return ran.out
 
 // The cases of a large challenge: inputs supplied by the generator, outputs from its Go

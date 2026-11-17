@@ -13,13 +13,13 @@ import (
 
 // Whether the parser agrees with the suite on one case file.
 fn passes(tree: FileTree, name: String) Bool:
-	bytes := tree.read(name, none).get("".to_bytes())
+	bytes := tree.read(name, none).get_or("".to_bytes())
 	text := bytes.decode_utf8()
 
 	// A String cannot hold invalid UTF-8, so such a file cannot be accepted.
 	if text.is_none(): return name.starts_with("n_")
 
-	parsed := parse[JsonValue](text.get(""))
+	parsed := parse[JsonValue](text.get_or(""))
 	if name.starts_with("n_"): return parsed.is_error()
 
 	return parsed.is_ok()
@@ -27,7 +27,7 @@ fn passes(tree: FileTree, name: String) Bool:
 test "JSONTestSuite agrees with the parser except for the listed cases":
 	tree := files()
 	var cases: List[String] = []
-	for entry in walk(tree).get([]):
+	for entry in walk(tree).get_or([]):
 		if entry.path.ends_with(".json"): cases.append(entry.path.clone())
 
 	var failing: List[String] = []
@@ -35,13 +35,13 @@ test "JSONTestSuite agrees with the parser except for the listed cases":
 		if not passes(tree, name): failing.append(name.clone())
 	failing.sort()
 
-	listed := tree.read("expect-fail.txt", none).get(
+	listed := tree.read("expect-fail.txt", none).get_or(
 		"".to_bytes()
-	).decode_utf8().get("")
+	).decode_utf8().get_or("")
 	var expected: List[String] = []
 
 	for line in listed.split("\n"):
-		name := line.split(" ").get(0, "")
+		name := line.split(" ").get_or(0, "")
 		if name != "" and not name.starts_with("#"): expected.append(name.clone())
 
 	expected.sort()

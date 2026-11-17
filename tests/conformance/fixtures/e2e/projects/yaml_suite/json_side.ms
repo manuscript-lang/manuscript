@@ -22,7 +22,7 @@ fn split_values(text: String) List[String]:
 	var started = false
 
 	for code in text.scalar_values():
-		ch := from_scalars([code]).get("")
+		ch := from_scalars([code]).get_or("")
 		spacing := code == 32 or code == 9 or code == 10 or code == 13
 
 		if in_string:
@@ -68,7 +68,7 @@ fn canon(value: JsonValue) String:
 	match value:
 		Null: return "n"
 		BoolValue(flag): return if flag: "t" else: "f"
-		NumberValue(text): return f"N{text.parse_float().get(0.0)}"
+		NumberValue(text): return f"N{text.parse_float().get_or(0.0)}"
 		StringValue(text): return f"s{text.length()}:{text}"
 		ArrayValue(items):
 			var parts: List[String] = []

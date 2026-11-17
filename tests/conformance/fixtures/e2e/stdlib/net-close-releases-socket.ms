@@ -19,7 +19,7 @@ fn accept_one(address: String) Int:
 fn read_one(address: String) Int:
     var client = connect(address, timeout: nanoseconds(2000000000)).wait().get()
     got := client.input.next()
-    return got.get(none).map(fn b: b.length()).get(-1)
+    return got.get_or(none).map(fn b: b.length()).get_or(-1)
 
 fn receive_one(address: String) Int:
     var socket = bind_datagram(address).get()
@@ -33,7 +33,7 @@ fn rebound_datagram(address: String) Int:
     match bind_datagram(address):
         ok(bound):
             var again = bound
-            again.close().get(none)
+            void again.close()
             return 1
         error(_): return 0
 
@@ -41,7 +41,7 @@ fn rebound(address: String) Int:
     match listen(address):
         ok(bound):
             var again = bound
-            again.close().get(none)
+            void again.close()
             return 1
         error(_): return 0
 
@@ -60,7 +60,7 @@ fn cancel_receive(address: String) Void:
 fn main() Void:
     var first = listen("127.0.0.1:0").get()
     address := first.address().clone()
-    first.close().get(none)
+    void first.close()
     print(f"closed listener rebound: {rebound(address.clone())}")
     cancel_accept(address.clone())
     print(f"cancelled accept rebound: {rebound(address.clone())}")
@@ -76,15 +76,15 @@ fn main() Void:
         accepted := server.accept(nanoseconds(500000000)).wait()
 
         if accepted.is_ok():
-            var connection = accepted.get(none)
-            connection.close().get(none)
+            var connection = accepted.get_or(none)
+            void connection.close()
 
-    server.close().get(none)
+    void server.close()
     print(f"cancelled reads rebound: {rebound(third_address.clone())}")
 
     var udp = bind_datagram("127.0.0.1:0").get()
     udp_address := udp.address.clone()
-    udp.close().get(none)
+    void udp.close()
     (
         stdout().write(
             f"closed datagram socket rebound: {rebound_datagram(udp_address.clone())}\n"

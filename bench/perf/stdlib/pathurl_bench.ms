@@ -51,6 +51,6 @@ bench "math.sqrt_sin":
 		var acc = 0.0
 		for i in 0..1000000:
 			acc += sqrt(2.0) + sin(1.0)
-		return keep(acc.truncate_to_int().get(0))
+		return keep(acc.truncate_to_int().get_or(0))
 
 	measure(1000000, work)?

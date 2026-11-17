@@ -25,7 +25,7 @@ fn via_get() Void:
 
 fn via_optional_get() Void:
     o: Res? := Res("optional")
-    r := o.get(Res("default"))
+    r := o.get_or(Res("default"))
     print(f"body {r.name}")
 
 fn via_passthrough() Void:

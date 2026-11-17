@@ -18,7 +18,7 @@ fn worker(url: String, nanos: Int) Int:
 		else:
 			return -1000000
 
-	f.close().get(none)
+	void f.close()
 	return n
 
 // Runs `conns` fetching promises; the runtime spreads them over its threads.

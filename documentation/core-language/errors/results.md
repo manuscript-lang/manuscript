@@ -123,7 +123,8 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | Method | Behavior |
 | --- | --- |
 | `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Void values |
-| `get(default: T?) T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
+| `get() T` | Return the successful payload; on an error, [fault](faults.md) |
+| `get_or(default: T?) T` | Return the successful payload, or `default` on an error |
 | `err() E` | Return the error payload; fault on success |
 | `get_or_else(create: fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
 | `or_else(create: fn(E) Result[T, E]) Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |

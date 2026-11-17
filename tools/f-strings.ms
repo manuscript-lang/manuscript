@@ -41,7 +41,7 @@ fn Scan.byte(offset: Int) Int:
 
 // The source text from `start` up to `end`.
 fn Scan.part(start: Int, end: Int) String:
-	return self.text.slice(start, end).get("")
+	return self.text.slice(start, end)
 
 fn Scan.starts(prefix: String) Bool:
 	return self.starts_at(self.at, prefix)
@@ -79,7 +79,7 @@ fn Scan.interpolates(multiline: Bool) Bool:
 
 		if c == 92:
 			if self.byte(i + 1) == 117 and self.byte(i + 2) == 123:
-				i = self.part(i, n).index_of("}").get(n - i) + i + 1
+				i = self.part(i, n).index_of("}").get_or(n - i) + i + 1
 			else:
 				i = self.past_escaped(i)
 
@@ -159,7 +159,7 @@ fn var Scan.code(stop_at_brace: Bool) String:
 		c := self.byte(self.at)
 
 		if self.starts("//"):
-			self.at = self.part(self.at, n).index_of("\n").get(n - self.at) + self.at
+			self.at = self.part(self.at, n).index_of("\n").get_or(n - self.at) + self.at
 		else if self.starts("/*"):
 			self.at = self.past("*/")
 		else if c == 114 and not self.after_name_byte() and self.starts("r\"\"\""):
@@ -225,10 +225,10 @@ fn convert_fences(source: String) String:
 		var body = trimmed.clone()
 
 		if trimmed.starts_with("//"):
-			body = trimmed.slice(2, trimmed.length()).get("")
-			if body.starts_with(" "): body = body.slice(1, body.length()).get("")
+			body = trimmed.slice(2, trimmed.length())
+			if body.starts_with(" "): body = body.slice(1, body.length())
 
-		lead := line.slice(0, line.length() - body.length()).get("")
+		lead := line.slice(0, line.length() - body.length())
 
 		if fence == "":
 			out.append(line.clone())
@@ -241,7 +241,9 @@ fn convert_fences(source: String) String:
 
 		if body.trim() == "```" and lead == prefix:
 			if not block.is_empty():
-				converted := convert(block.join("\n")).get(block.join("\n")).split("\n")
+				converted := convert(block.join("\n")).get_or(
+					block.join("\n")
+				).split("\n")
 
 				for i in 0..converted.length():
 					if block[i] == "": out.append(originals[i].clone())
@@ -256,7 +258,7 @@ fn convert_fences(source: String) String:
 		originals.append(line.clone())
 
 		if line.starts_with(prefix): block.append(
-			line.slice(prefix.length(), line.length()).get("")
+			line.slice(prefix.length(), line.length())
 		)
 		else: block.append("")
 
@@ -270,7 +272,7 @@ fn main() Int:
 			fences_only = true
 			continue
 
-		source := read_file(path).wait().get().decode_utf8().get("")
+		source := read_file(path).wait().get().decode_utf8().get_or("")
 		var converted = source.clone()
 
 		if fences_only or path.ends_with(".md"):

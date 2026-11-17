@@ -7,7 +7,7 @@ fn main() Int:
 	text := "name: demo\nitems:\n  - 1\n  - two\n  - {three: 3, four: [4, 4]}\nflag: true\n"
 
 	if value := parse(text):
-		print(stringify(value).get(""))
+		print(stringify(value).get_or(""))
 		return 0
 
 	return 1

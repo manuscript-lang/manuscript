@@ -17,8 +17,8 @@ import (
 test "media types parse and format":
 	media := parse_media_type("Text/HTML; Charset=\"utf-8\"; q=\"a\\\"b\"").get()
 	expect_equal(media.essence, "text/html")?
-	expect_equal(media.params.get("charset").get(""), "utf-8")?
-	expect_equal(media.params.get("q").get(""), "a\"b")?
+	expect_equal(media.params.get_or("charset", ""), "utf-8")?
+	expect_equal(media.params.get_or("q", ""), "a\"b")?
 	expect_equal(
 		format_media_type(parse_media_type("text/plain; charset=utf-8").get()),
 		"text/plain; charset=utf-8",
@@ -34,22 +34,22 @@ test "an escaped closing quote does not end a quoted parameter":
 	expect_true(parse_media_type("text/plain; name=\"").is_error())?
 
 	pair := parse_media_type("text/plain; name=\"x\\\"y\"").get()
-	expect_equal(pair.params.get("name").get(""), "x\"y")?
+	expect_equal(pair.params.get_or("name", ""), "x\"y")?
 
 	slash := parse_media_type("text/plain; name=\"x\\\\\"").get()
-	expect_equal(slash.params.get("name").get(""), "x\\")?
+	expect_equal(slash.params.get_or("name", ""), "x\\")?
 
 test "extension table maps both ways":
-	expect_equal(media_type_for_extension(".JSON").get(""), "application/json")?
-	expect_equal(media_type_for_extension("png").get(""), "image/png")?
+	expect_equal(media_type_for_extension(".JSON").get_or(""), "application/json")?
+	expect_equal(media_type_for_extension("png").get_or(""), "image/png")?
 	expect_true(media_type_for_extension(".nope").is_none())?
-	expect_equal(extension_for_media_type("image/svg+xml; x=y").get(""), ".svg")?
+	expect_equal(extension_for_media_type("image/svg+xml; x=y").get_or(""), ".svg")?
 
 test "headers fold and look up ignoring case":
 	headers := parse_headers(
 		"Subject: hello\r\n  world\r\nX-Tag: a\r\nx-tag: b\r\n\r\nbody: no"
 	).get()
-	expect_equal(headers.get("subject").get(""), "hello world")?
+	expect_equal(headers.get("subject").get_or(""), "hello world")?
 	expect_equal(headers.get_all("X-TAG"), ["a", "b"])?
 	expect_equal(headers.fields.length(), 3)?
 	expect_true(parse_headers("no colon").is_error())?
@@ -69,15 +69,18 @@ test "multipart round-trips fields and files":
 	back := parse_multipart(body, "XyZ").get()
 	expect_equal(back.length(), 2)?
 	expect_equal(back[0].name, "title")?
-	expect_equal(back[0].data.decode_utf8().get(""), "Hello")?
+	expect_equal(back[0].data.decode_utf8().get_or(""), "Hello")?
 	expect_equal(back[1].filename, "a b.txt")?
-	expect_equal(back[1].data.decode_utf8().get(""), "line1\r\nline2")?
-	expect_equal(back[1].headers.get("content-type").get(""), "text/plain")?
+	expect_equal(back[1].data.decode_utf8().get_or(""), "line1\r\nline2")?
+	expect_equal(back[1].headers.get("content-type").get_or(""), "text/plain")?
 
 test "multipart rejects a missing closing delimiter":
 	expect_true(parse_multipart("--b\r\n\r\nx".to_bytes(), "b").is_error())?
 	expect_true(parse_multipart("junk".to_bytes(), "b").is_error())?
-	expect_equal(multipart_boundary("multipart/form-data; boundary=abc").get(""), "abc")?
+	expect_equal(
+		multipart_boundary("multipart/form-data; boundary=abc").get_or(""),
+		"abc",
+	)?
 	expect_true(multipart_boundary("text/plain").is_none())?
 
 test "multipart accepts only transport padding before delimiter line endings":

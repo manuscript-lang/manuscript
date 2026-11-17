@@ -57,7 +57,7 @@ fn echo(var exchange: HttpExchange) Void!:
 				)
 			)?
 		)
-		socket.close().get(none)
+		void socket.close()
 		return ok()
 
 	var chain_1 = Map[String, List[String]]()
@@ -188,8 +188,8 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
 	)
 	send(var client, request)?
 
-	reply := (recv(var client, 2.seconds())?).get(Bytes([]))
-	return ok(reply.decode_utf8().get("").split("\r\n").first().get(""))
+	reply := (recv(var client, 2.seconds())?).get_or(Bytes([]))
+	return ok(reply.decode_utf8().get_or("").split("\r\n").first().get_or(""))
 
 test "WebSocket upgrades need HTTP/1.1 and one key":
 	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)

@@ -22,13 +22,14 @@ fn var Counted.close() Void!:
 	void append_file(self.log, "x").wait()
 
 fn closes(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
 	return ""
 
 test "read stream closes through the one close":
 	dir := temporary("shape-") | expect_ok?
 	log := f"{dir.path()}/r.log"
 	void append_file(log, "").wait()
+
 	var by_hand = ReadStream[Int](Counted(log.clone()))
 	by_hand.close()?
 	expect_equal(closes(log), "x")?
@@ -37,6 +38,7 @@ test "write stream closes through the one close":
 	dir := temporary("shape-") | expect_ok?
 	log := f"{dir.path()}/w.log"
 	void append_file(log, "").wait()
+
 	var out = WriteStream[Int](Counted(log.clone()))
 	out.close()?
 	expect_equal(closes(log), "x")?

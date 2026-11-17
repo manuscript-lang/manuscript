@@ -337,7 +337,7 @@ fn string_chains() Int:
 				continue
 
 			key := parts[0].trim()
-			v := parts[1].trim().parse_int().get(0)
+			v := parts[1].trim().parse_int().get_or(0)
 			m.update(key, 0, fn n: n + v)
 
 	var t = bad

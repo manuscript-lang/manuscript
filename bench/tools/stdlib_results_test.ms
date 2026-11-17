@@ -66,7 +66,7 @@ test "huge exponents and non-finite constants are rejected, finite zero is not":
 		)
 	)?
 	expect_equal(
-		cases[0].stats.get(
+		cases[0].stats.get_or(
 			Stats(
 				operations: 0,
 				iterations: none,

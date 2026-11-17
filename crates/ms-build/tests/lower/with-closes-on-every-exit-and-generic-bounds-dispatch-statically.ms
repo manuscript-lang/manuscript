@@ -15,7 +15,7 @@ fn run[T: Closeable](r: T, early: Bool) Int:
     if early:
         return 1
 
-    _it.close().get(none)
+    void _it.close()
     return 2
 
 export fn main() Int:

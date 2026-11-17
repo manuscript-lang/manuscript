@@ -21,7 +21,7 @@ fn unrelated_boundary() Int!OtherError:
 	return ok(value)
 
 fn optional_result(value: Int!String?) Int:
-	return value.get().get(-1)
+	return value.get().get_or(-1)
 
 fn unrelated_optional_error() Int:
 	return optional_result(error(7))

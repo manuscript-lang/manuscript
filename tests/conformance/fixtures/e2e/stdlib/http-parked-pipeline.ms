@@ -36,12 +36,12 @@ fn exchange(address: String) String:
         while true:
             if chunk := within(var conn.input, nanoseconds(5000000000)):
                 if data := chunk:
-                    text = f"{text}{data.decode_utf8().get("?")}"
+                    text = f"{text}{data.decode_utf8().get_or("?")}"
                     continue
 
             break
 
-        conn.close().get(none)
+        void conn.close()
         return text
 
     return "connect failed"
@@ -56,10 +56,10 @@ export fn main() Int:
             f"responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
         )
         _order := stdout().write(
-            f"slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
+            f"slow first: {text.index_of("ok /slow").get_or(-1) < text.index_of("ok /fast").get_or(-1)}\n"
         )
         _prompt := stdout().write(f"prompt: {elapsed_ms < 2000}\n")
-        server.close().get(none)
+        void server.close()
         return 0
 
     return 1

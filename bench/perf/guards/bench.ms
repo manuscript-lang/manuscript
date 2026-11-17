@@ -66,9 +66,9 @@ bench "image codecs":
 	for y in 0..h:
 		for x in 0..w:
 			at := (y * w + x) * 3
-			img.pixels[at] = ((x * 3 + y * 5) % 256).to_uint8().get(0)
-			img.pixels[at + 1] = ((x + y * 2) % 256).to_uint8().get(0)
-			img.pixels[at + 2] = ((x * 7 + y) % 256).to_uint8().get(0)
+			img.pixels[at] = ((x * 3 + y * 5) % 256).to_uint8().get_or(0)
+			img.pixels[at + 1] = ((x + y * 2) % 256).to_uint8().get_or(0)
+			img.pixels[at + 2] = ((x * 7 + y) % 256).to_uint8().get_or(0)
 
 	png := encode_image(img, ImageFormat.Png)?
 	jpg := encode_jpeg(img)?
@@ -99,7 +99,7 @@ bench "map probes and predicates":
 	var rows: List[Row] = []
 
 	for i in 0..5000:
-		counts[i % 997] = counts.get(i % 997).get(0) + 1
+		counts[i % 997] = counts.get_or(i % 997, 0) + 1
 		rows.append(Row(i, f"name{i % 311}"))
 
 	var hits = 0

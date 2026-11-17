@@ -141,13 +141,13 @@ test "dotenv keeps CRLF inside a quoted value and accepts CRLF records":
 			"A=\"one\r\ntwo\"\r\nB=3\r\nC='x\r\n\r\ny' # c\r\nD=\"z\"\r\n"
 		) | expect_ok?
 	)
-	expect_equal(values.get("A").get(""), "one\r\ntwo")?
-	expect_equal(values.get("B").get(""), "3")?
-	expect_equal(values.get("C").get(""), "x\r\n\r\ny")?
-	expect_equal(values.get("D").get(""), "z")?
+	expect_equal(values.get_or("A", ""), "one\r\ntwo")?
+	expect_equal(values.get_or("B", ""), "3")?
+	expect_equal(values.get_or("C", ""), "x\r\n\r\ny")?
+	expect_equal(values.get_or("D", ""), "z")?
 
 	mixed := (parse_dotenv("A=\"a\nb\r\nc\"\nB=1") | expect_ok?)
-	expect_equal(mixed.get("A").get(""), "a\nb\r\nc")?
+	expect_equal(mixed.get_or("A", ""), "a\nb\r\nc")?
 
 test "INI comments follow quoted values":
 	ini := (
@@ -156,13 +156,13 @@ test "INI comments follow quoted values":
 		)
 		| expect_ok?
 	)
-	top := ini.get("").get(Map[String, String]())
-	expect_equal(top.get("a").get(""), "x # y")?
-	expect_equal(top.get("b").get(""), "p ; q")?
-	expect_equal(top.get("c").get(""), "plain")?
-	expect_equal(top.get("d").get(""), "\"k\"#tight")?
-	expect_equal(top.get("e").get(""), "q")?
-	expect_equal(top.get("f").get(""), "w\" tail")?
+	top := ini.get_or("", Map[String, String]())
+	expect_equal(top.get_or("a", ""), "x # y")?
+	expect_equal(top.get_or("b", ""), "p ; q")?
+	expect_equal(top.get_or("c", ""), "plain")?
+	expect_equal(top.get_or("d", ""), "\"k\"#tight")?
+	expect_equal(top.get_or("e", ""), "q")?
+	expect_equal(top.get_or("f", ""), "w\" tail")?
 
 test "INI comments after quotes may contain the quote and ignore tab-only markers":
 	ini := (
@@ -171,9 +171,9 @@ test "INI comments after quotes may contain the quote and ignore tab-only marker
 		)
 		| expect_ok?
 	)
-	top := ini.get("").get(Map[String, String]())
-	expect_equal(top.get("a").get(""), "x")?
-	expect_equal(top.get("b").get(""), "y")?
-	expect_equal(top.get("c").get(""), "z")?
-	expect_equal(top.get("d").get(""), "\"x\"\t#literal")?
-	expect_equal(top.get("e").get(""), "'t'\t;literal")?
+	top := ini.get_or("", Map[String, String]())
+	expect_equal(top.get_or("a", ""), "x")?
+	expect_equal(top.get_or("b", ""), "y")?
+	expect_equal(top.get_or("c", ""), "z")?
+	expect_equal(top.get_or("d", ""), "\"x\"\t#literal")?
+	expect_equal(top.get_or("e", ""), "'t'\t;literal")?

@@ -13,7 +13,7 @@ fn strip_nl(text: String) String:
 		start += 1
 	while end > start and chars[end - 1] == "\n":
 		end -= 1
-	return chars.slice(start, end).get([]).join("")
+	return chars.slice(start, end).get_or([]).join("")
 
 fn add(var cs: Cases, name: String, prog: String, inp: String? = none) Void:
 	var s = strip_nl(prog) + "\n"

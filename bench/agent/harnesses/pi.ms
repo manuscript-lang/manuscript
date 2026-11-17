@@ -20,11 +20,15 @@ fn Pi.parse(transcript: String) Usage:
 	var u = Usage()
 
 	for ev in events(transcript):
-		msg := ev.get("message").get(JsonValue.Null)
-		if ev.get("type").get(JsonValue.Null).as_string().get("") != "message_end": continue
-		if msg.get("role").get(JsonValue.Null).as_string().get("") != "assistant": continue
+		msg := ev.get("message").get_or(JsonValue.Null)
+		if (
+			ev.get("type").get_or(JsonValue.Null).as_string().get_or(
+				""
+			) != "message_end"
+		): continue
+		if msg.get("role").get_or(JsonValue.Null).as_string().get_or("") != "assistant": continue
 
-		us := msg.get("usage").get(JsonValue.Null)
+		us := msg.get("usage").get_or(JsonValue.Null)
 		if us.is_null(): continue
 
 		u.tokens_in += int_at(us, "input")
@@ -32,8 +36,8 @@ fn Pi.parse(transcript: String) Usage:
 		u.tokens_out += int_at(us, "output")
 		u.turns += 1
 
-		if total := us.get("cost").get(JsonValue.Null).get("total"):
-			u.cost_usd += total.as_float().get(0.0)
+		if total := us.get("cost").get_or(JsonValue.Null).get("total"):
+			u.cost_usd += total.as_float().get_or(0.0)
 			u.cost_source = "harness"
 
 	return u

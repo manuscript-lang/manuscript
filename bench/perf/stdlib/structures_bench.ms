@@ -16,7 +16,7 @@ bench "queue.enqueue_dequeue_100000":
 
 		var total = 0
 		for i in 0..100000:
-			total += queue.dequeue().get(0)
+			total += queue.dequeue().get_or(0)
 		return keep(total)
 
 	measure(100000 * 2, work)?
@@ -29,7 +29,7 @@ bench "priority_queue.enqueue_dequeue_100000":
 
 		var total = 0
 		for i in 0..100000:
-			total += queue.dequeue().get(0)
+			total += queue.dequeue().get_or(0)
 		return keep(total)
 
 	measure(100000 * 2, work)?
@@ -44,7 +44,7 @@ bench "deque.push_pop_both_ends_100000":
 
 		var total = 0
 		for i in 0..100000:
-			total += deque.pop_front().get(0) + deque.pop_back().get(0)
+			total += deque.pop_front().get_or(0) + deque.pop_back().get_or(0)
 		return keep(total)
 
 	measure(100000 * 4, work)?
@@ -103,7 +103,7 @@ bench "queue.enqueue_dequeue_400000":
 
 		var total = 0
 		for i in 0..400000:
-			total += queue.dequeue().get(0)
+			total += queue.dequeue().get_or(0)
 		return keep(total)
 
 	measure(400000 * 2, work)?
@@ -116,7 +116,7 @@ bench "priority_queue.enqueue_dequeue_400000":
 
 		var total = 0
 		for i in 0..400000:
-			total += queue.dequeue().get(0)
+			total += queue.dequeue().get_or(0)
 		return keep(total)
 
 	measure(400000 * 2, work)?
@@ -131,7 +131,7 @@ bench "deque.push_pop_both_ends_400000":
 
 		var total = 0
 		for i in 0..400000:
-			total += deque.pop_front().get(0) + deque.pop_back().get(0)
+			total += deque.pop_front().get_or(0) + deque.pop_back().get_or(0)
 		return keep(total)
 
 	measure(400000 * 4, work)?

@@ -21,7 +21,7 @@ fn same_bytes(a: String, b: String) Bool:
 	right := read_file(b).wait()
 	if left.is_error() or right.is_error(): return false
 
-	return left.get("".to_bytes()) == right.get("".to_bytes())
+	return left.get_or("".to_bytes()) == right.get_or("".to_bytes())
 
 fn ok_status(program: String, args: List[String], dir: String) Bool:
 	ran := run_in(dir, program, args)
@@ -38,16 +38,13 @@ fn main() Int:
 	var same = 0
 	var differ = 0
 	var skipped = 0
-	projects := glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get([]).map(
-		fn e: e.path.clone()
-	)
+	projects := glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get_or(
+		[]
+	).map(fn e: e.path.clone())
 
 	for toml in projects.sorted():
-		dir := (
-			"bench/perf/"
-			+ toml.slice(0, toml.length() - "ms.toml".length()).get("")
-		)
-		name := dir.slice("bench/perf/".length(), dir.length() - 1).get("")
+		dir := ("bench/perf/" + toml.slice(0, toml.length() - "ms.toml".length()))
+		name := dir.slice("bench/perf/".length(), dir.length() - 1)
 
 		// Both compilers build the same directory, so no path differs between the
 		// outputs.

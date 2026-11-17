@@ -15,10 +15,10 @@ fn add(var cs: Cases, name: String, script: String) Void:
 
 // The entries of c56-make-lite's hidden cases.
 fn c56_inputs() List[JsonValue]:
-	doc := parse(read_text(f"{root()}/challenges/c56-make-lite/hidden/cases.json")).get(
+	doc := parse(read_text(f"{root()}/challenges/c56-make-lite/hidden/cases.json")).get_or(
 		JsonValue.Null
 	)
-	return doc.as_list().get([])
+	return doc.as_list().get_or([])
 
 CHAIN := "ifeq ($(MODE),debug)\nX = debug\nelse ifeq ($(MODE),release)\nX = release\nelse ifdef FAST\nX = fast\nelse ifneq ($(Y),)\nX = y\nelse\nX = none\nendif\nall:\n\t@echo $(X)\n====\n====\n"
 
@@ -26,8 +26,8 @@ export fn gen_c65() Void:
 	var cs = Cases(build_oracle("c65-make-else-if"))
 
 	for entry in c56_inputs():
-		name := entry.get("name").get(JsonValue.Null).as_string().get("")
-		stdin := entry.get("stdin").get(JsonValue.Null).as_string().get("")
+		name := entry.get("name").get_or(JsonValue.Null).as_string().get_or("")
+		stdin := entry.get("stdin").get_or(JsonValue.Null).as_string().get_or("")
 		add(var cs, f"kept-{name}", stdin)
 
 	add(

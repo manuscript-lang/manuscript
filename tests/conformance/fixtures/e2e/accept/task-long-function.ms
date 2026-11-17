@@ -377,7 +377,7 @@ test "a long function runs in a promise that starts here":
 		fn: ok(long_function()),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-	expect_equal(p.wait().get(0), 579186)?
+	expect_equal(p.wait().get_or(0), 579186)?
 
 test "a long function runs in a test body":
 	expect_equal(long_function(), 579186)?

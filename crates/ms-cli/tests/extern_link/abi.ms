@@ -131,7 +131,7 @@ fn counters() Void:
 
 export fn main() Int:
     var out = stdout()
-    mode := arguments().get(index: 0, default: "")
+    mode := arguments().get_or(index: 0, "")
 
     if mode == "string-length":
         for text in ["", "x", "123456789012345", "1234567890123456", "é🙂\u{0}é"]:
@@ -186,7 +186,7 @@ export fn main() Int:
     )
     reversed := abi_reverse("abc".to_bytes())
     void out.write(
-        f"{reversed.decode_utf8().get("")} {abi_cstring_length("hello")} {abi_cstring_length("a\u{0}b")}\n"
+        f"{reversed.decode_utf8().get_or("")} {abi_cstring_length("hello")} {abi_cstring_length("a\u{0}b")}\n"
     )
     void out.write(
         f"{abi_double([1, -2, 1000000000])} {abi_sum([200, 100, 255])} {abi_shout(["hi", "there"])}\n"
@@ -198,7 +198,7 @@ export fn main() Int:
         f"{describe(abi_parse("42"))} {describe(abi_parse("4x"))} {describe(abi_parse(""))} {describe(abi_parse("?"))}\n"
     )
     void out.write(f"drops {abi_drops()}\n")
-    void out.write(f"{abi_noisy().get("")} [{abi_lazy().get("x")}]\n")
+    void out.write(f"{abi_noisy().get_or("")} [{abi_lazy().get_or("x")}]\n")
     callbacks()
 
     void out.write(f"drops {abi_drops()}\n")

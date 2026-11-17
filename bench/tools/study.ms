@@ -57,7 +57,7 @@ export fn run_ints(path: String, args: List[String]) List[Int]!:
 		n := part.parse_int()
 		if n.is_none(): return invalid(f"not an integer: {part}")
 
-		out.append(n.get(0))
+		out.append(n.get_or(0))
 
 	return ok(out)
 
@@ -88,7 +88,7 @@ export fn distribution(values: List[Float]) JsonValue:
 
 // One JSON line appended to `path`.
 export fn append_json_line(path: String, value: JsonValue) Void:
-	append_file(path, stringify(value).get("") + "\n").wait().get()
+	append_file(path, stringify(value).get_or("") + "\n").wait().get()
 
 export fn write_json(path: String, value: JsonValue) Void:
 	write_text(path, dump(value))
@@ -110,22 +110,22 @@ export fn read_json(path: String) JsonValue!:
 	doc := parse[JsonValue](read_text(path))
 	if doc.is_error(): return invalid(f"{path} is not valid JSON")
 
-	return ok(doc.get(JsonValue.Null))
+	return ok(doc.get_or(JsonValue.Null))
 
 // The `median_ns` of `before` in the summary row for `case` (summary lists
 // `{case, distributions: {before: {median_ns}}}`).
 export fn before_median(summary: JsonValue, name: String, operation: String) Float!:
-	for row in summary.as_list().get([]):
-		c := row.get("case").get(JsonValue.Null).as_string().get("")
+	for row in summary.as_list().get_or([]):
+		c := row.get("case").get_or(JsonValue.Null).as_string().get_or("")
 		op := row.get("operation")
 		same_op := (
 			operation == ""
 			or op.is_none()
-			or op.get(JsonValue.Null).as_string().get("") == operation
+			or op.get_or(JsonValue.Null).as_string().get_or("") == operation
 		)
 		if c == name and same_op:
 			if v := row.get_in(["distributions", "before", "median_ns"]):
-				return ok(v.as_float().get(0.0))
+				return ok(v.as_float().get_or(0.0))
 
 	return invalid(f"no summary row for {name}")
 
@@ -146,7 +146,7 @@ export fn all_ints(values: List[String]) List[Int]!:
 		n := v.trim().parse_int()
 		if n.is_none(): return invalid(f"not an integer: {v}")
 
-		out.append(n.get(0))
+		out.append(n.get_or(0))
 
 	return ok(out)
 

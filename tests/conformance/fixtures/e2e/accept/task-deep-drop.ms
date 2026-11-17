@@ -2,9 +2,9 @@
 // conform: phase=test
 import (
 	Placement, PromiseOptions, promise from "@std/concurrency/promise.ms",
+	parse from "@std/data/toml.ms",
 	expect_equal from "@std/test/test.ms",
 )
-import parse from "@std/data/toml.ms"
 
 // A task runs on a 512 KiB stack slot, so freeing data that nests thousands of levels
 // deep must not recurse once per level.
@@ -17,6 +17,7 @@ fn nested_arrays(n: Int) String!:
 fn parse_and_drop(text: String) Int:
 	value := parse(text)
 	if value.is_error(): return -1
+
 	return 1
 
 test "a deep inline table is freed in a promise that starts here":
@@ -25,7 +26,7 @@ test "a deep inline table is freed in a promise that starts here":
 		fn: ok(parse_and_drop(text)),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-	expect_equal(p.wait().get(0), 1)?
+	expect_equal(p.wait().get_or(0), 1)?
 
 test "a deep inline table is freed in a promise that spreads":
 	text := nested_tables(6000)?
@@ -33,7 +34,7 @@ test "a deep inline table is freed in a promise that spreads":
 		fn: ok(parse_and_drop(text)),
 		options: PromiseOptions(placement: Placement.Spread)
 	)
-	expect_equal(p.wait().get(0), 1)?
+	expect_equal(p.wait().get_or(0), 1)?
 
 test "nested arrays are freed in a promise":
 	text := nested_arrays(9000)?
@@ -41,7 +42,7 @@ test "nested arrays are freed in a promise":
 		fn: ok(parse_and_drop(text)),
 		options: PromiseOptions(placement: Placement.Here)
 	)
-	expect_equal(p.wait().get(0), 1)?
+	expect_equal(p.wait().get_or(0), 1)?
 
 test "deep data is freed on the main task":
 	text := nested_tables(6000)?

@@ -60,7 +60,7 @@ export fn parse_address(text: String) Address!:
 		)
 
 		name = trimmed.view(0, open).trim().clone()
-		address = trimmed.slice(open + 1, trimmed.length() - 1).get("").trim()
+		address = trimmed.slice(open + 1, trimmed.length() - 1).trim()
 	else if trimmed.contains(">"):
 		return error(Error("mail: invalid address", kind: "EBADMSG"))
 
@@ -69,7 +69,7 @@ export fn parse_address(text: String) Address!:
 			Error("mail: invalid address", kind: "EBADMSG")
 		)
 
-		name = name.slice(1, name.length() - 1).get("").replace("\\\"", "\"").replace(
+		name = name.slice(1, name.length() - 1).replace("\\\"", "\"").replace(
 			"\\\\",
 			"\\",
 		)
@@ -84,8 +84,8 @@ fn valid_address(address: String) Bool:
 	at := address.last_index_of("@")
 	if at.is_none(): return false
 
-	local := address.view(0, at.get(0))
-	domain := address.view(at.get(0) + 1, address.length())
+	local := address.view(0, at.get_or(0))
+	domain := address.view(at.get_or(0) + 1, address.length())
 	if local.is_empty() or domain.is_empty(): return false
 
 	return not address.contains_any(" \t<>,;")
@@ -220,7 +220,7 @@ export fn decode_words(text: String) String:
 
 		// Whitespace between two adjacent encoded words is dropped.
 		if not (previous_encoded and literal.trim().is_empty()): out.append(literal)
-		out.append(decoded.get(""))
+		out.append(decoded.get_or(""))
 		previous_encoded = true
 		seg = fields[index + 4].view(1, fields[index + 4].length()).clone()
 		index += 4
@@ -262,7 +262,7 @@ fn q_decode(payload: String) Bytes:
 			value := parse_int(f"{chars[i + 1]}{chars[i + 2]}", 16)
 
 			if value.is_ok():
-				out.append(value.get(0).to_uint8().get(0))
+				out.append(value.get_or(0).to_uint8().get_or(0))
 				i += 2
 			else:
 				out.append(61)

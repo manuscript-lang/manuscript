@@ -86,7 +86,7 @@ fn encode_fields[F: Data](fields: F) String!:
 // child's text alone when either side is not an object. This runs once per child, never
 // per record.
 fn merge_context(child: String, parent: String?) String!:
-	base := parent.get("")
+	base := parent.get_or("")
 	if base == "": return ok(child)
 
 	left := parse(base)
@@ -99,8 +99,8 @@ fn merge_context(child: String, parent: String?) String!:
 	added := right.get().as_map()
 	if members.is_none() or added.is_none(): return ok(child)
 
-	var merged = members.get(Map[String, JsonValue]()).clone()
-	for entry in added.get(Map[String, JsonValue]()).entries():
+	var merged = members.get_or(Map[String, JsonValue]()).clone()
+	for entry in added.get_or(Map[String, JsonValue]()).entries():
 		merged.add(entry.key, entry.value.clone())
 
 	text := stringify(JsonValue.ObjectValue(merged))
@@ -140,7 +140,7 @@ fn var FileTransport.close() Void:
 	if self.closed: return
 
 	self.closed = true
-	self.file.close().get(none)
+	void self.file.close()
 
 // Writes to the process standard-output stream. It keeps no handle: every write reaches
 // the process-wide buffer.
@@ -356,7 +356,7 @@ fn RotatingTransport.write_bytes(data: Bytes) Void!:
 
 	var file = open(self.path, OpenMode.Append, OpenOptions(permissions: 420))?
 	written := file.write(data)
-	file.close().get(none)
+	void file.close()
 	return written
 
 fn RotatingTransport.flush() Void!:
@@ -403,7 +403,7 @@ export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Trans
 	)
 
 	var probe = open(path, OpenMode.Append, OpenOptions(permissions: 420))?
-	probe.close().get(none)
+	void probe.close()
 	return ok(
 		RotatingTransport(
 			path: path.clone(),

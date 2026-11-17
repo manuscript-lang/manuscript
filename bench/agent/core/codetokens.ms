@@ -22,15 +22,15 @@ export fn count_text(text: String) Int:
 	token := compile(
 		"\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|`[^`]*`|[A-Za-z_]\\w*|\\d[\\w.]*|[^\\s\\w]"
 	).get()
-	bare := comments.replace_all(text, " ", none).get(text)
-	return token.find_all(bare, none).get([]).length()
+	bare := comments.replace_all(text, " ", none).get_or(text)
+	return token.find_all(bare, none).get_or([]).length()
 
 // Tokens over every `*suffix` file under `root`, skipping build output and the bundled
 // docs.
 export fn count_workspace(root: String, suffix: String) Int:
 	var total = 0
 
-	for entry in glob(root, GlobOptions(patterns: [f"**/*{suffix}"])).get([]):
+	for entry in glob(root, GlobOptions(patterns: [f"**/*{suffix}"])).get_or([]):
 		path := entry.path.clone()
 		parts := path.split("/")
 		dirs := parts.take(parts.length() - 1)

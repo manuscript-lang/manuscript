@@ -13,7 +13,7 @@ fn positives(values: List[Int]) List[Int]:
 test "dynamic mutable data and explicit copies":
     if not (positives([3, -1, 2]) == [3, 2]):
         return panic("check failed")
-    if [1].get(5, default: -1) != -1:
+    if [1].get_or(5, -1) != -1:
         return panic("check failed")
 
     var original = Map[String, Int]()

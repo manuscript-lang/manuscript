@@ -4,5 +4,5 @@ A `var` parameter or receiver of record type is read and written through the cal
 
 - `ms-lower/src/func.rs` `bind_var_parameter` does it for `TyKind::Type`; other types (lists, strings, alternatives) are three words or fewer and keep the take/put form.
 - A function that falls back to `slotify` (a closure changes the parameter) keeps the old form.
-- `Bytes` indexing and `get(i, default)` lower to `list.get` (`Module::seq_elem` gives `uint8` for bytes) instead of `msrt_bytes_get`, so a one-byte read is a bounds check and a load.
+- `Bytes` indexing and `get_or(i, default)` lower to `list.get` (`Module::seq_elem` gives `uint8` for bytes) instead of `msrt_bytes_get`, so a one-byte read is a bounds check and a load.
 - Evidence: `bench/perf/codegen-2026-11-12.md`; fixture `e2e/accept/in-place-var-records-and-bytes-reads`.

@@ -30,7 +30,7 @@ fn clone_chain() Int!:
 
 fn on_a_task(f: fn() Int!) Int:
 	p := promise(fn: f(), options: PromiseOptions(placement: Placement.Spread))
-	return p.wait().get(-2)
+	return p.wait().get_or(-2)
 
 test "a JSON encoder recurses past a promise task's first stack slot":
 	expect_equal(on_a_task(stringify_chain), 0)?

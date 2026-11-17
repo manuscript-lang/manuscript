@@ -15,7 +15,7 @@ up; a path that would leave the root is `EINVAL`.
 import FileTree, walk from "@std/os/tree.ms"
 
 fn names(tree: FileTree) List[String]:
-    found := walk(tree).get(List())
+    found := walk(tree).get_or(List())
     return found.map(fn e: e.path.clone())
 ```
 */
@@ -60,7 +60,7 @@ fn parent_of(path: String) String:
 
 fn name_of(path: String) String:
 	parts := path.split("/", none)
-	return parts.get(parts.length() - 1, "").clone()
+	return parts.get_or(parts.length() - 1, "").clone()
 
 fn by_name(a: DirectoryEntry, b: DirectoryEntry) Int:
 	return a.name.compare(b.name)
@@ -379,7 +379,7 @@ fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]
 
 fn relative(path: String, start: String) String:
 	if start == "": return path.clone()
-	return path.slice(start.length() + 1, path.length()).get().clone()
+	return path.slice(start.length() + 1, path.length()).clone()
 
 fn fs_invalid_input() Error:
 	return Error("filesystem: invalid input", kind: "EINVAL")

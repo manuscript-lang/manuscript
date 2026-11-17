@@ -35,7 +35,7 @@ fn answer(var conn: Connection) Bool:
 	while not text.ends_with("done\n"):
 		if chunk := recv(var conn, nanoseconds(10000000000)):
 			if data := chunk:
-				text = f"{text}{data.decode_utf8().get("?")}"
+				text = f"{text}{data.decode_utf8().get_or("?")}"
 				continue
 
 		return false
@@ -103,17 +103,17 @@ fn run() Bool!:
 	first := round(var a, var d, var b, var c, var e, var f)?
 	second := round(var b, var e, var a, var c, var d, var f)?
 	third := round(var c, var f, var a, var b, var d, var e)?
-	a.close().get(none)
-	b.close().get(none)
-	c.close().get(none)
-	d.close().get(none)
-	e.close().get(none)
-	f.close().get(none)
-	server.close().get(none)
+	void a.close()
+	void b.close()
+	void c.close()
+	void d.close()
+	void e.close()
+	void f.close()
+	void server.close()
 	return ok(warmed and (first or second or third))
 
 export fn main() Int:
-	served := run().get(false)
+	served := run().get_or(false)
 	_out := stdout().write(f"others served during a long handler: {served}\n")
 	if served: return 0
 

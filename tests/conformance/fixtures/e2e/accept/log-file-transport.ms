@@ -13,7 +13,7 @@ type Request:
 
 fn lines(path: String) String!:
     data := read_file(path).wait()?
-    return ok(data.decode_utf8().get(""))
+    return ok(data.decode_utf8().get_or(""))
 
 test "levels filter, fields nest under data, and bound fields merge":
     directory := temporary("manuscript-log-")?

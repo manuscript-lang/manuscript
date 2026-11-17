@@ -35,7 +35,7 @@ fn var Tokens.close() Void!:
 	return ok()
 
 fn events(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
 	return ""
 
 fn read_one(input: ReadStream[Token]) Void!:
@@ -245,7 +245,6 @@ fn wait_cancelled(log: String) Void!:
 	for item in input:
 		token := item
 		use_token(token)?
-
 		void sleep(milliseconds(60000)).wait()
 
 test "cancelling an active body closes the delivered item once":
@@ -265,7 +264,6 @@ type PendingTokens:
 fn var PendingTokens.next() Token?!:
 	token := Token(1, self.log.clone())
 	append_file(self.log, "ready\n").wait()?
-
 	void sleep(milliseconds(60000)).wait()
 	return ok(token)
 

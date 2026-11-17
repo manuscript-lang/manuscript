@@ -9,7 +9,7 @@ fn say(text: String) Void:
     written := stdout().write(f"{text}\n")
 
 export fn main() Int:
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     i2 := 39
     say(f"i2 = {i2}")
 

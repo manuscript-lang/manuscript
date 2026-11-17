@@ -4,7 +4,7 @@ fn pick(xs: List[Int], i: Int) Int:
 
 fn chain(m: Map[String, Int]) Int:
     c := m.get("c") // keep this note
-        .get(3)
+        .get_or(3)
     return c
 
 export fn main() Void:

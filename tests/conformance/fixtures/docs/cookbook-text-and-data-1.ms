@@ -6,7 +6,7 @@ import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
-    text := parse[String](arguments().get(0, default: "\"hello\""))?
+    text := parse[String](arguments().get_or(0, "\"hello\""))?
     stdout().write(f"{text}\n")?
     return stdout().flush()
 

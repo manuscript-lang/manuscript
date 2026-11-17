@@ -35,7 +35,7 @@ export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
 	var medians = Map[String, Float]()
 
 	for c in cases:
-		stats := c.stats.get(
+		stats := c.stats.get_or(
 			Stats(
 				operations: 0,
 				iterations: none,
@@ -90,7 +90,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 
 			values.add(version.clone(), per)
 
-	want := expected.get(Map[String, Int]())
+	want := expected.get_or(Map[String, Int]())
 	labels := case_labels(names)
 	var table = [
 		f"Median of {repeats} alternating runs of {samples} samples; all {want.length()} cases and operation counts verified.",
@@ -123,7 +123,9 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		entry.add("after", jfloat(after))
 		entry.add(
 			"ratio",
-			if ratio.is_some(): jfloat(ratio.get(0.0)) else: JsonValue.Null,
+			if ratio.is_some(): jfloat(
+				ratio.get_or(0.0)
+			) else: JsonValue.Null,
 		)
 		summary.add(label.clone(), jobject(entry))
 
@@ -166,9 +168,9 @@ fn main() Int:
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 
-	opts := parsed.get(Map[String, String]())
-	repeats := opts.get_or("repeats", "5").parse_int().get(0)
-	samples := opts.get_or("samples", "5").parse_int().get(0)
+	opts := parsed.get_or(Map[String, String]())
+	repeats := opts.get_or("repeats", "5").parse_int().get_or(0)
+	samples := opts.get_or("samples", "5").parse_int().get_or(0)
 	if repeats < 1 or samples < 1: return fail("repeats and samples must be positive")
 
 	return finish(run(opts, repeats, samples))

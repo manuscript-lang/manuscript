@@ -7,5 +7,5 @@ fn var Marker.close() Void!: ok()
 
 fn bad() Int:
     items := [Marker(1)]
-    got := items.get(0, Marker(2))
+    got := items.get_or(0, Marker(2))
     return got.id

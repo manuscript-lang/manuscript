@@ -85,7 +85,7 @@ export fn parse(text: String) List[PemBlock]!:
 		)
 
 		if in_headers and line.contains(":"):
-			at := line.index_of(":").get(0)
+			at := line.index_of(":").get_or(0)
 			headers.add(
 				line.view(0, at).trim().clone(),
 				line.view(at + 1, line.length()).trim().clone(),
@@ -116,7 +116,7 @@ export fn encode_block(block: PemBlock) String:
 
 	while at < total:
 		stop := if at + 64 < total: at + 64 else: total
-		out.append(f"{body.slice(at, stop).get("")}\n")
+		out.append(f"{body.slice(at, stop)}\n")
 		at = stop
 
 	out.append(f"{END}{block.label}{DASHES}\n")

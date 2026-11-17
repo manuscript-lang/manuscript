@@ -207,13 +207,13 @@ fn code_key(code: Int) TerminalEvent?:
 // The first colon-separated sub-parameter of a CSI parameter, as a number.
 fn first_number(part: String) Int:
 	head := part.split(":")[0].clone()
-	return head.parse_int().get(0)
+	return head.parse_int().get_or(0)
 
 // The key a CSI sequence with parameters `params` and final byte `last` reports, if
 // any.
 fn csi_key(params: String, last: Int) TerminalEvent?:
 	numbers := params.split(";").map(first_number)
-	modifier := numbers.get(1, default: 1)
+	modifier := numbers.get_or(1, 1)
 	if last == 90: return key("tab", false, false, true)
 
 	var event: TerminalEvent? = none
@@ -221,7 +221,7 @@ fn csi_key(params: String, last: Int) TerminalEvent?:
 	if last == 117:
 		event = code_key(numbers[0])
 	else if last == 126 and numbers[0] == 27:
-		event = code_key(numbers.get(2, default: 0))
+		event = code_key(numbers.get_or(2, 0))
 	else if last == 126:
 		name := tilde_key(numbers[0])
 		if not name.is_empty(): event = plain(name)
@@ -274,7 +274,7 @@ fn csi_at(buf: List[String], at: Int) Parsed:
 		if j - start >= 128 and is_param: return parsed(3, j - at)
 
 		if c >= 64 and c <= 126:
-			params := concat_all(buf.slice(start, j).get(List[String]()))
+			params := concat_all(buf.slice(start, j).get_or(List[String]()))
 			if c == 126 and params == "200": return parsed(4, j + 1 - at)
 			if event := csi_key(params, c): return decoded(event, j + 1 - at)
 

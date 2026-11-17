@@ -19,13 +19,13 @@ enum Shape:
 fn area(s: Shape) Int:
     match s:
         Dot(x): return x.to_int64()
-        Box(w, h, c): return (w.to_int64() + c.to_int64() + h.truncate_to_int().get(0))
+        Box(w, h, c): return (w.to_int64() + c.to_int64() + h.truncate_to_int().get_or(0))
         Big(v): return v
 
 fn main() Void:
     var l: List[Int8] = []
     for i in 0..10:
-        l.append((i * 3 - 12).to_int8().get(0))
+        l.append((i * 3 - 12).to_int8().get_or(0))
 
     void stdout().write(f"{l} {l.length()} {l.contains(-3)}\n")
     s: List[Float32] := [1.5, 0.1, -2.0]

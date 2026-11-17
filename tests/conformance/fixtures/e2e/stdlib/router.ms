@@ -47,7 +47,7 @@ fn show(var exchange: HttpExchange, params: RouteParams) Void!:
 	return reply(var exchange, text(200, f"{id}|{rest}"))
 
 fn body_of(response: HttpResponse) String:
-	return response.body.decode_utf8().get("")
+	return response.body.decode_utf8().get_or("")
 
 fn allow_of(response: HttpResponse) String:
 	values := response.headers.get_all("Allow")
@@ -236,8 +236,8 @@ fn small_reads(var exchange: HttpExchange, params: RouteParams) Void!:
 	first := exchange.read(1)?
 	second := exchange.read(2)?
 	end := exchange.read(1)?
-	a := first.get(Bytes([])).decode_utf8().get("")
-	b := second.get(Bytes([])).decode_utf8().get("")
+	a := first.get_or(Bytes([])).decode_utf8().get_or("")
+	b := second.get_or(Bytes([])).decode_utf8().get_or("")
 	return reply(var exchange, text(200, f"{a}|{b}|{end.is_none()}"))
 
 test "in-process reads retain the unread body after a bounded chunk":
@@ -260,8 +260,8 @@ fn read_sizes(var exchange: HttpExchange, params: RouteParams) Void!:
 	first := exchange.read(limit)?
 	second := exchange.read(limit)?
 	end := exchange.read(limit)?
-	a := first.get(Bytes([])).length()
-	b := second.get(Bytes([])).length()
+	a := first.get_or(Bytes([])).length()
+	b := second.get_or(Bytes([])).length()
 	return reply(var exchange, text(200, f"{a}|{b}|{end.is_none()}"))
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
@@ -327,7 +327,7 @@ test "the router serves over a socket":
 	expect_equal(response.metadata.status, 200)?
 
 	body := read_to_end(var response.body)?
-	expect_equal(body.decode_utf8().get(""), "9|-")?
+	expect_equal(body.decode_utf8().get_or(""), "9|-")?
 
 	missing := client.request(
 		HttpMethod.Delete,
@@ -441,7 +441,7 @@ fn Sink.write(data: String) Void!:
 	return append_file(self.path, data).wait()
 
 fn Sink.write_bytes(data: Bytes) Void!:
-	return self.write(data.decode_utf8().get(""))
+	return self.write(data.decode_utf8().get_or(""))
 
 fn Sink.flush() Void!:
 	return ok()
@@ -454,7 +454,7 @@ fn Sink.close() Void:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get("")
+	if bytes := read: return bytes.decode_utf8().get_or("")
 
 	return ""
 

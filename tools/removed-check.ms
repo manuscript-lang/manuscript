@@ -26,7 +26,7 @@ fn header(source: String, key: String) String:
 		if line.starts_with(prefix): return line.slice(
 			prefix.length(),
 			line.length(),
-		).get("").trim()
+		).trim()
 	return ""
 
 // The snippet without its header lines, so a header cannot satisfy a text check.
@@ -50,9 +50,9 @@ fn main() Int:
 	var failing = 0
 	var seen = 0
 
-	for f in glob("tests/removed", GlobOptions(patterns: ["*.ms"])).get([]):
+	for f in glob("tests/removed", GlobOptions(patterns: ["*.ms"])).get_or([]):
 		path := f"{root}/tests/removed/{f.path}"
-		source := read_file(path.clone()).wait().get().decode_utf8().get("")
+		source := read_file(path.clone()).wait().get().decode_utf8().get_or("")
 		old := header(source, "removed")
 		want := header(source, "use")
 		fixed := header(source, "fix")
@@ -66,14 +66,14 @@ fn main() Int:
 			continue
 
 		out := run(ms.clone(), ["check", path], RunOptions(timeout: seconds(60))).wait().get()
-		text := out.stderr.decode_utf8().get("")
+		text := out.stderr.decode_utf8().get_or("")
 
 		if out.exit_code == 0:
 			print(f"{f.path}: '{old}' is accepted; a removed spelling must be an error")
 			failing += 1
 		else if (
 			fixed.starts_with("none:")
-			and fixed.slice(5, fixed.length()).get("").trim() == ""
+			and fixed.slice(5, fixed.length()).trim() == ""
 		):
 			print(f"{f.path}: 'fix: none:' needs a reason")
 			failing += 1
@@ -90,7 +90,7 @@ fn main() Int:
 				["check", "--fix", copy.clone()],
 				RunOptions(timeout: seconds(60)),
 			).wait().get()
-			result := read_file(copy).wait().get().decode_utf8().get("")
+			result := read_file(copy).wait().get().decode_utf8().get_or("")
 
 			if applied.exit_code != 0 or not result.contains(fixed):
 				print(

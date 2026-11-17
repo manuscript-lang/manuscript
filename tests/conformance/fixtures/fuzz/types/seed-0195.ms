@@ -32,5 +32,5 @@ export fn main() Int:
     b6 := (s1.trim() + (f"{(i4 - i4)}:" + "brace{s}")).is_empty()
     say(f"b6 = {b6}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     return 0

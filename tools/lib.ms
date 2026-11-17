@@ -41,7 +41,7 @@ export fn note(message: String) Void:
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-	all := environment().get(Map[String, String]())
+	all := environment().get_or(Map[String, String]())
 	if value := all.get(name): return value.clone()
 
 	return fallback.clone()
@@ -64,7 +64,7 @@ export fn run_program(program: String, arguments: List[String]) Int:
 			stderr: Stdio.Inherit,
 		),
 	):
-		return status(child.wait().get(125))
+		return status(child.wait().get_or(125))
 
 	note(f"cannot start {program}")
 	return 125
@@ -72,7 +72,7 @@ export fn run_program(program: String, arguments: List[String]) Int:
 // Runs `program` and returns its standard output; empty when it cannot run or fails.
 export fn capture(program: String, arguments: List[String]) String:
 	if out := run(program, arguments).wait():
-		if out.exit_code == 0: return out.stdout.decode_utf8().get("")
+		if out.exit_code == 0: return out.stdout.decode_utf8().get_or("")
 	return ""
 
 // Whether `program` runs and exits zero with `arguments`.
@@ -91,7 +91,7 @@ export fn rust_arch() String:
 		if line.starts_with("host: "): return line.slice(
 			6,
 			line.length(),
-		).get("").split("-")[0].clone()
+		).split("-")[0].clone()
 	return "x86_64"
 
 // Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the

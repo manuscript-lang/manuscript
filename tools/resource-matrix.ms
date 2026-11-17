@@ -94,13 +94,22 @@ fn operations() List[Operation]:
 			"r := ",
 			"saw(r)",
 		),
+		op(
+			"list_get_lent",
+			list_setup(),
+			"items",
+			"get",
+			"0",
+			"r := ",
+			"saw(r)",
+		),
 		op("list_pop", list_setup(), "items", "pop", "", "r := ", "saw_opt(r)"),
 		op("list_remove", list_setup(), "items", "remove", "0", "", ""),
 		op(
 			"list_get",
 			list_setup(),
 			"items",
-			"get",
+			"get_or",
 			"0, @V@",
 			"r := ",
 			"saw(r)",
@@ -146,7 +155,7 @@ fn operations() List[Operation]:
 			"optional_get_present",
 			optional_setup(true),
 			"held",
-			"get",
+			"get_or",
 			"@V@",
 			"r := ",
 			"saw(r)",
@@ -155,7 +164,7 @@ fn operations() List[Operation]:
 			"optional_get_absent",
 			optional_setup(false),
 			"held",
-			"get",
+			"get_or",
 			"@V@",
 			"r := ",
 			"saw(r)",
@@ -164,7 +173,7 @@ fn operations() List[Operation]:
 			"result_get_ok",
 			result_setup(true),
 			"held",
-			"get",
+			"get_or",
 			"@V@",
 			"r := ",
 			"saw(r)",
@@ -173,8 +182,26 @@ fn operations() List[Operation]:
 			"result_get_error",
 			result_setup(false),
 			"held",
-			"get",
+			"get_or",
 			"@V@",
+			"r := ",
+			"saw(r)",
+		),
+		op(
+			"optional_get_lent",
+			optional_setup(true),
+			"held",
+			"get",
+			"",
+			"r := ",
+			"saw(r)",
+		),
+		op(
+			"result_get_lent",
+			result_setup(true),
+			"held",
+			"get",
+			"",
 			"r := ",
 			"saw(r)",
 		),
@@ -270,19 +297,19 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
 	return false
 
 fn field(entry: JsonValue, key: String) String:
-	if value := entry.get(key): return value.as_string().get("")
+	if value := entry.get(key): return value.as_string().get_or("")
 	return ""
 
 // Every `Type.operation` of the standard type whose declaration mentions a type
 // parameter.
 fn declared_operations(ms: String, name: String) List[String]!:
 	ran := run(ms, ["search_symbol", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
-	page := parse(ran.stdout.decode_utf8().get(""))?
+	page := parse(ran.stdout.decode_utf8().get_or(""))?
 	var found = List[String]()
 	names := type_parameters(name.clone())
 
 	if all := page.get("matches"):
-		for entry in all.as_list().get([]):
+		for entry in all.as_list().get_or([]):
 			if field(entry, "kind") != "operation": continue
 			if not mentions_parameter(field(entry, "type"), names.clone()): continue
 
@@ -400,7 +427,7 @@ fn main() Int:
 				if verdict.is_error() or verdict.get().exit_code != 0:
 					rejected += 1
 
-					why := verdict.get().stderr.decode_utf8().get("")
+					why := verdict.get().stderr.decode_utf8().get_or("")
 
 					// Only a checker rule may reject a combination; a program that does
 					// not parse is this tool's bug.
@@ -443,12 +470,12 @@ fn main() Int:
 						continue
 
 					child := ran.get()
-					lines := child.stdout.decode_utf8().get("").split("\n")
+					lines := child.stdout.decode_utf8().get_or("").split("\n")
 
 					if child.exit_code != 0:
 						failures += 1
 
-						why := child.stderr.decode_utf8().get("")
+						why := child.stderr.decode_utf8().get_or("")
 						(
 							stdout()
 							.write(
@@ -463,13 +490,10 @@ fn main() Int:
 
 					for line in lines:
 						if line.starts_with("made-"): made.append(
-							line.slice(
-								5,
-								line.length(),
-							).get("")
+							line.slice(5, line.length())
 						)
 						if line.starts_with("closed-"):
-							closed.append(line.slice(7, line.length()).get(""))
+							closed.append(line.slice(7, line.length()))
 
 					made_counts := count(lines, "made-")
 					var wrong = made.length() != closed.length()

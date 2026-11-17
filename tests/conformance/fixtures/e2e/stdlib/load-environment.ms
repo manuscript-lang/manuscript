@@ -17,16 +17,16 @@ test "load_environment keeps existing values and takes the last duplicate":
 	load_environment(path)?
 
 	env := environment()?
-	expect_equal(env.get("MS_LOAD_A").get(""), "kept")?
-	expect_equal(env.get("MS_LOAD_B").get(""), "two")?
-	expect_equal(env.get("MS_LOAD_D").get(""), "2")?
+	expect_equal(env.get_or("MS_LOAD_A", ""), "kept")?
+	expect_equal(env.get_or("MS_LOAD_B", ""), "two")?
+	expect_equal(env.get_or("MS_LOAD_D", ""), "2")?
 
 test "load_environment errors change nothing":
 	dir := temporary("ms-env-")?
 	path := join([dir.path(), "b.env"])
 	write_file(path, "MS_LOAD_C=1\nexport  =bad\n").wait()?
 	set_environment("MS_LOAD_C", none)?
-	expect_equal(load_environment(path).err().kind.get(""), "EBADMSG")?
+	expect_equal(load_environment(path).err().kind.get_or(""), "EBADMSG")?
 	expect_false((environment()?).contains("MS_LOAD_C"))?
-	expect_equal(load_environment(path, 3).err().kind.get(""), "EOVERFLOW")?
-	expect_equal(load_environment(dir.path()).err().kind.get(""), "EINVAL")?
+	expect_equal(load_environment(path, 3).err().kind.get_or(""), "EOVERFLOW")?
+	expect_equal(load_environment(dir.path()).err().kind.get_or(""), "EINVAL")?

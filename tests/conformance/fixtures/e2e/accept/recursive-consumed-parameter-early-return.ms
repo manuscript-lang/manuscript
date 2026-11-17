@@ -28,4 +28,4 @@ test "second operand fails after the first succeeded":
 	expect_equal(r.err().message, "unbound y")?
 
 test "both operands succeed":
-	expect_equal(eval(Expr.Add(Expr.Num(1), Expr.Keep("k"))).get(0), 2)?
+	expect_equal(eval(Expr.Add(Expr.Num(1), Expr.Keep("k"))).get_or(0), 2)?

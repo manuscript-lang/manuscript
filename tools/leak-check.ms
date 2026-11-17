@@ -25,9 +25,7 @@ fn live_blocks(text: String) List[Int]:
 	var counts = List[Int]()
 	for line in text.split("\n"):
 		if line.starts_with("ms-rt live blocks at exit: "):
-			if n := line.slice(27, line.length()).get("").trim().parse_int(): counts.append(
-				n
-			)
+			if n := line.slice(27, line.length()).trim().parse_int(): counts.append(n)
 	return counts
 
 // The tests of one `ms test` run that left live blocks, as "name: count" lines: each
@@ -38,9 +36,9 @@ fn leaking_tests(text: String) List[String]:
 	var current = ""
 
 	for line in text.split("\n"):
-		if line.starts_with("RUN "): current = line.slice(4, line.length()).get("")
+		if line.starts_with("RUN "): current = line.slice(4, line.length())
 		else if line.starts_with("ms-rt live blocks at exit: "):
-			n := line.slice(27, line.length()).get("").trim().parse_int().get(0)
+			n := line.slice(27, line.length()).trim().parse_int().get_or(0)
 			if n != 0: leaks.append(f"{current}: {n}")
 
 	return leaks
@@ -55,7 +53,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
 	for f in files:
 		absolute := f"{root}/{f}"
-		source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
+		source := read_file(absolute.clone()).wait().get().decode_utf8().get_or("")
 
 		if has_tests(source):
 			if out := run(
@@ -63,7 +61,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 				["test", absolute.clone()],
 				RunOptions(timeout: seconds(600)),
 			).wait():
-				found := leaking_tests(out.stderr.decode_utf8().get(""))
+				found := leaking_tests(out.stderr.decode_utf8().get_or(""))
 				lines.append("swept")
 				if not found.is_empty(): lines.append(
 					f"leak: {absolute}\n  {found.join("\n  ")}"
@@ -76,7 +74,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 			["run", absolute.clone()],
 			RunOptions(timeout: seconds(60)),
 		).wait():
-			counts := live_blocks(out.stderr.decode_utf8().get(""))
+			counts := live_blocks(out.stderr.decode_utf8().get_or(""))
 			if counts.is_empty(): continue
 
 			lines.append("swept")
@@ -99,9 +97,9 @@ fn main() Int:
 			"tests/conformance/fixtures/fuzz/run", "tests/conformance/fixtures/e2e",
 			"tests/conformance/fixtures/examples"
 		]:
-			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
+			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get_or([]):
 				path := f"{dir}/{f.path}"
-				if read_file(path.clone()).wait().get().decode_utf8().get(
+				if read_file(path.clone()).wait().get().decode_utf8().get_or(
 					""
 				).contains("fn main"): files.append(path.clone())
 
@@ -109,9 +107,9 @@ fn main() Int:
 		for f in glob(
 			"tests/conformance/fixtures/e2e",
 			GlobOptions(patterns: ["**/*.ms"]),
-		).get([]):
+		).get_or([]):
 			path := f"tests/conformance/fixtures/e2e/{f.path}"
-			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
+			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get_or("")): files.append(
 				path.clone()
 			)
 
@@ -144,7 +142,7 @@ fn main() Int:
 	var leaks = 0
 
 	for task in tasks:
-		for line in task.wait().get(List[String]()):
+		for line in task.wait().get_or(List[String]()):
 			if line == "swept": swept += 1
 			else:
 				leaks += 1

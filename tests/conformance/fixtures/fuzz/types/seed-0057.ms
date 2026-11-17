@@ -18,7 +18,7 @@ export fn main() Int:
     b1 := false
     say(f"b1 = {b1}")
 
-    bad := Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get_or(1, 2, 3)
     say(f"gcd(717, 70) = {gcd(717, 70)}")
 
     f2 := (((626.801 + 18.907) + (4.5 + 860.872)) * (815.25 + (296.855 * 84.811)))

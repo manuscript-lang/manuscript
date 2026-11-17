@@ -270,14 +270,14 @@ fn run(args: List[String]) String!:
 	out := absolute(args[0].clone())
 
 	if args[6].starts_with("summary-"):
-		action := args[6].slice(8, args[6].length()).get()
+		action := args[6].slice(8, args[6].length())
 		for size in args[4].split(","):
 			for mode in args[5].split(","):
 				report(out, f"{mode}-{size}-{action}")?
 		return ok("summaries written")
 
 	binaries := [absolute(args[1].clone()), absolute(args[2].clone())]
-	repeats := args[3].parse_int().get(0)
+	repeats := args[3].parse_int().get_or(0)
 	if repeats < 1: return invalid("repeats must be positive")
 
 	ensure_directory(out)
@@ -337,7 +337,7 @@ fn run(args: List[String]) String!:
 		return ok("project controls passed")
 
 	for size_text in args[4].split(","):
-		size := size_text.parse_int().get(0)
+		size := size_text.parse_int().get_or(0)
 		if size < 1: return invalid("size must be positive")
 
 		for mode in args[5].split(","):

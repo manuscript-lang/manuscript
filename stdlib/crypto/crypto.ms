@@ -73,7 +73,7 @@ export fn xor_bytes(left: Bytes, right: Bytes) Bytes!:
 			bit_xor(
 				left.get(index).to_int(),
 				right.get(index).to_int(),
-			).to_uint8().get(0)
+			).to_uint8().get_or(0)
 		)
 	return ok(out.build())
 

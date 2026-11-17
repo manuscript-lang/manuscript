@@ -129,7 +129,7 @@ fn codes_table(runs: List[Run], lang: String) String:
 
 fn cut(text: String, limit: Int) String:
 	if text.length() <= limit: return text.clone()
-	return text.slice(0, limit).get("")
+	return text.slice(0, limit)
 
 // The first diagnostic line of failed builds with the location and quoted names
 // removed, so equal mistakes group together, most frequent first.
@@ -140,10 +140,10 @@ fn errors_table(runs: List[Run], lang: String) String:
 	all := mine.flat_map(
 		fn r: r.build_errors.map(
 			fn e: quoted.replace_all(
-				place.replace_all(e, "", none).get(e),
+				place.replace_all(e, "", none).get_or(e),
 				"'X'",
 				none,
-			).get(e)
+			).get_or(e)
 		)
 	)
 	stats := all.distinct().map(fn m: CodeStat(m.clone(), all.count(fn x: x == m)))

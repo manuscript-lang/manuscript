@@ -46,7 +46,7 @@ fn identities() Map[String, Identity]:
 			if kind == "first" or kind == "negative" or kind == "past": position = 0
 
 			if kind.starts_with("near"):
-				want := kind.slice(4, kind.length()).get("0").parse_int().get(0)
+				want := kind.slice(4, kind.length()).parse_int().get_or(0)
 				position = if want < size - 1: want else: size - 1
 
 			if kind == "middle": position = size / 2
@@ -160,7 +160,7 @@ fn main() Int:
 		"usage: bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]"
 	)
 
-	parsed := options(args.slice(4, args.length()).get([]), ["cpu"], [])
+	parsed := options(args.slice(4, args.length()).get_or([]), ["cpu"], [])
 	if parsed.is_error(): return fail(parsed.err().message)
 
 	var paths = Map[String, String]()
@@ -171,7 +171,7 @@ fn main() Int:
 	result := run(
 		paths,
 		args[3].clone(),
-		parsed.get(Map[String, String]()).get_or("cpu", ""),
+		parsed.get_or(Map[String, String]()).get_or("cpu", ""),
 	)
 	if result.is_error(): return fail(result.err().message)
 

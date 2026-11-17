@@ -286,13 +286,13 @@ export type Settings:
 // `MS_TEST_FUZZ_MS`) applied.
 export fn settings(runs: Int = 100) Settings:
 	var found = Settings(runs, 0, none)
-	environment := environment().get(Map[String, String]())
+	environment := environment().get_or(Map[String, String]())
 	if text := environment.get("MS_TEST_RUNS"):
-		found.runs = text.parse_int().get(runs)
+		found.runs = text.parse_int().get_or(runs)
 	if text := environment.get("MS_TEST_SEED"):
 		found.seed = text.parse_int()
 	if text := environment.get("MS_TEST_FUZZ_MS"):
-		found.fuzz_milliseconds = text.parse_int().get(0)
+		found.fuzz_milliseconds = text.parse_int().get_or(0)
 	return found
 
 // Result of running one case: the replayed source, and the failure when the property
@@ -313,7 +313,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
 	faulted := expect_fault(fn: run_property(property, value))
 	if faulted.is_error(): return Outcome(source, none)
 
-	message := faulted.get("")
+	message := faulted.get_or("")
 	if message != property_failed: return Outcome(source, Error(f"fault: {message}"))
 
 	replayed := Source(source.choices.take(source.pos), 0, 0, false, false)
@@ -495,7 +495,7 @@ fn report[T](
 	small := shrink(gen, property, used, 2000)
 	final := replay(gen, property, small)
 	{value: shown} := gen.make(Source(small.clone(), 0, 0, false, false))
-	reason := final.failure.get(message)
+	reason := final.failure.get_or(message)
 
 	// The failure keeps the details of the assertion that failed, which name its source
 	// position.

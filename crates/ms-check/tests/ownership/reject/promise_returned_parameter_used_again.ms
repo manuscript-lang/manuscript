@@ -9,4 +9,4 @@ fn start(address: String) Promise[Int]:
 fn demo() Int:
     address := "localhost"
     p := start(address)  // error: `address` is moved here but used again
-    return address.length() + p.wait().get(0)
+    return address.length() + p.wait().get_or(0)

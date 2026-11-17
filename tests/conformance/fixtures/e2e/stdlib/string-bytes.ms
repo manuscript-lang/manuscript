@@ -46,7 +46,7 @@ test "repeat is plain text and clamps nonpositive counts":
 test "bytes copy slice search and UTF8 validation":
 	data := Bytes([0, 1, 255, 1])
 	expect_equal(data.get(-1), 1)?
-	expect_equal(data.get(4, default: 7), 7)?
+	expect_equal(data.get_or(4, default: 7), 7)?
 	expect_equal(data.index_of(Bytes([1])), 1)?
 	expect_equal(data.last_index_of(Bytes([1])), 3)?
 	expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))?
@@ -215,16 +215,16 @@ test "builder appends variable text of every length across growth":
 
 test "search indexes are byte offsets for ascii, inline and unicode text":
 	long := "a".repeat(100).concat("!").concat("é").concat("!")
-	expect_equal(long.index_of("!").get(-1), 100)?
-	expect_equal(long.last_index_of("!").get(-1), 103)?
+	expect_equal(long.index_of("!").get_or(-1), 100)?
+	expect_equal(long.last_index_of("!").get_or(-1), 103)?
 
 	ascii := "a".repeat(100).concat("!")
-	expect_equal(ascii.index_of("!").get(-1), 100)?
-	expect_equal(ascii.last_index_of("!").get(-1), 100)?
-	expect_equal(ascii.last_index_of("a").get(-1), 99)?
-	expect_equal("ab!".last_index_of("!").get(-1), 2)?
-	expect_equal("é!".last_index_of("!").get(-1), 2)?
-	expect_equal(ascii.last_index_of("?").get(-1), -1)?
+	expect_equal(ascii.index_of("!").get_or(-1), 100)?
+	expect_equal(ascii.last_index_of("!").get_or(-1), 100)?
+	expect_equal(ascii.last_index_of("a").get_or(-1), 99)?
+	expect_equal("ab!".last_index_of("!").get_or(-1), 2)?
+	expect_equal("é!".last_index_of("!").get_or(-1), 2)?
+	expect_equal(ascii.last_index_of("?").get_or(-1), -1)?
 
 test "count matches split for nonempty parts and counts scalars plus one for an empty part":
 	expect_equal("word,".repeat(10000).count(","), 10000)?

@@ -24,7 +24,7 @@ fn make_fixture() ApiFixture:
     )
 
 fn var ApiFixture.after_all() Void!:
-    self.server.close().get(none)
+    void self.server.close()
 
 test "first request":
     response := expect_ok(

@@ -55,30 +55,30 @@ fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:
 	if shape != "": command.append(shape.clone())
 
 	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait():
-		for line in out.stderr.decode_utf8().get("").split("\n"):
+		for line in out.stderr.decode_utf8().get_or("").split("\n"):
 			if at := line.index_of("Collected : "):
-				digits := line.slice(at + 12, line.length()).get("").trim()
-				return digits.parse_int().get(-1)
+				digits := line.slice(at + 12, line.length()).trim()
+				return digits.parse_int().get_or(-1)
 
 	return -1
 
 // The committed counts: one `name instructions` pair per line.
 fn committed(path: String) Map[String, Int]:
 	var known = Map[String, Int]()
-	text := read_file(path).wait().get("".to_bytes()).decode_utf8().get("")
+	text := read_file(path).wait().get_or("".to_bytes()).decode_utf8().get_or("")
 
 	for line in text.split("\n"):
 		parts := line.trim().split(" ")
 		if parts.length() != 2 or parts[0].starts_with("#"): continue
 
-		known[parts[0].clone()] = parts[1].parse_int().get(0)
+		known[parts[0].clone()] = parts[1].parse_int().get_or(0)
 
 	return known
 
 fn main() Int:
 	root := working_directory().get()
 	ms := tool_ms(root.clone())
-	bound := env("PERF_COUNTS_BOUND", "3").parse_int().get(3)
+	bound := env("PERF_COUNTS_BOUND", "3").parse_int().get_or(3)
 	update := arguments().contains("--update")
 	path := f"{root}/{COUNTS}"
 	known := committed(path.clone())
@@ -130,7 +130,7 @@ fn main() Int:
 
 		report += f"{name} {now}\n"
 
-		before := known.get(name).get(0)
+		before := known.get_or(name, 0)
 
 		if before == 0:
 			say(f"{name}: {now} (no committed count)\n")

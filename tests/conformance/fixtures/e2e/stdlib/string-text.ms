@@ -119,11 +119,11 @@ test "slice and view agree on ASCII and non-ASCII text at scalar boundaries":
 		n := text.length()
 
 		for count in [0, 1, 3, 6, 7, 100]:
-			if count <= n and text.slice(0, count).is_ok():
-				expect_equal(text.view(0, count), text.slice(0, count).get(""))?
-				expect_equal(text.view(count, n), text.slice(count, n).get(""))?
+			if count <= n and (count == n or text.scalar_at(count, -1) != -1):
+				expect_equal(text.view(0, count), text.slice(0, count))?
+				expect_equal(text.view(count, n), text.slice(count, n))?
 			else if count > n:
-				expect_true(text.slice(0, count).is_error())?
+				expect_equal(text.slice(0, count), text)?
 
 test "scalar_at gives the default outside the text and inside a scalar":
 	text := "aé😀b日"
@@ -145,10 +145,8 @@ test "slice bounds from the end agree with the same bounds from the start on non
 			a := if start < 0: n + start else: start
 			b := if end < 0: n + end else: end
 
-			if a < 0 or b < a or b > n:
-				expect_true(text.slice(start, end).is_error())?
-			else:
-				expect_equal(text.slice(start, end).get(""), text.slice(a, b).get(""))?
+			if a >= 0 and b >= a and b <= n:
+				expect_equal(text.slice(start, end), text.slice(a, b))?
 
 test "character-set trims cover each end, non-ASCII sets, empty sets and whole-text trims":
 	"éxé—a—é".trim_chars("é—x") | expect_equal("a")?

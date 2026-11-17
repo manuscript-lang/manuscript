@@ -19,7 +19,7 @@ fn use_named(path: String) Void!:
 	expect_equal(observed(named), true)?
 
 	bytes := read_file(path).wait()?
-	expect_equal(bytes.decode_utf8().get(""), "")?
+	expect_equal(bytes.decode_utf8().get_or(""), "")?
 
 // A named resource borrowed through an implicit Optional stays open; its owner closes
 // it once.
@@ -30,4 +30,4 @@ test "borrowing through an Optional does not close the named owner":
 	use_named(path.clone())?
 
 	bytes := read_file(path).wait()?
-	expect_equal(bytes.decode_utf8().get(""), "closed,")?
+	expect_equal(bytes.decode_utf8().get_or(""), "closed,")?

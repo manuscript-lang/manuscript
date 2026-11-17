@@ -9,7 +9,7 @@ fn main() Void:
 	var rows: List[Row] = []
 
 	for i in 0..20000:
-		counts[i % 997] = counts.get(i % 997).get(0) + 1
+		counts[i % 997] = counts.get_or(i % 997, 0) + 1
 		rows.append(Row(i, f"name{i % 311}"))
 
 	var hits = 0

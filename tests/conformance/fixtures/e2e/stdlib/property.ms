@@ -71,7 +71,7 @@ test "pairs shrink both components":
 test "optionals shrink toward the failing payload":
     cause := expect_error(
         check(
-            "below seven", optionals(ints(0, 100)), fn o: expect_true(o.get(0) < 7),
+            "below seven", optionals(ints(0, 100)), fn o: expect_true(o.get_or(0) < 7),
             PropertyOptions(seed: 9)
         )
     )?

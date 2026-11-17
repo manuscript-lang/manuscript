@@ -86,29 +86,29 @@ fn solve_line(line: String) String:
 
 		var items = List[Thing]()
 
-		for tok in t.slice(2, t.length()).get([]):
+		for tok in t.slice(2, t.length()).get_or([]):
 			p := tok.split(":")
 			if (
 				p.length() != 2
 				or not full_match(NUM, p[0])
 				or not full_match(NUM, p[1])
-				or p[0].parse_int().get(0) < 1
+				or p[0].parse_int().get_or(0) < 1
 			): return bad
 
-			items.append(Thing(p[0].parse_int().get(0), p[1].parse_int().get(0)))
+			items.append(Thing(p[0].parse_int().get_or(0), p[1].parse_int().get_or(0)))
 
-		return f"{knap(t[1].parse_int().get(0), items)}"
+		return f"{knap(t[1].parse_int().get_or(0), items)}"
 
 	if cmd == "coins":
 		if t.length() < 3: return bad
 
-		rest := t.slice(1, t.length()).get([])
+		rest := t.slice(1, t.length()).get_or([])
 		if not rest.all(fn x: full_match(NUM, x)): return bad
 
-		cs := t.slice(2, t.length()).get([]).map(fn x: x.parse_int().get(0))
-		if cs.min().get(0) < 1: return bad
+		cs := t.slice(2, t.length()).get_or([]).map(fn x: x.parse_int().get_or(0))
+		if cs.min().get_or(0) < 1: return bad
 
-		return coins(t[1].parse_int().get(0), cs)
+		return coins(t[1].parse_int().get_or(0), cs)
 
 	return bad
 

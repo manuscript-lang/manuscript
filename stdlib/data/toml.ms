@@ -181,7 +181,7 @@ fn invalid(reader: Reader, reason: String) Error:
 
 // The text between two byte offsets of the document.
 fn slice_text(reader: Reader, start: Int, end: Int) String:
-	return reader.data.slice(start, end).get().decode_utf8().get("")
+	return reader.data.slice(start, end).get().decode_utf8().get_or("")
 
 fn space(var reader: Reader, multiline: Bool) Void:
 	var pos = cursor(reader)
@@ -462,7 +462,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 	return assign_one(
 		reader: var reader,
 		parent: current,
-		key: keys.last().get(""),
+		key: keys.last().get_or(""),
 		value: value,
 	)
 
@@ -573,19 +573,19 @@ fn date_valid(text: String) Bool:
 		or text.view(7, 8) != "-"
 	): return false
 
-	year := text.slice(0, 4).get("")
-	month := text.slice(5, 7).get("")
-	day := text.slice(8, 10).get("")
+	year := text.slice(0, 4)
+	month := text.slice(5, 7)
+	day := text.slice(8, 10)
 	if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return false
 
-	m := month.parse_int().get(0)
+	m := month.parse_int().get_or(0)
 	var maximum = 31
 	if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
 	if m == 2:
 		maximum = 28
 
-		y := year.parse_int().get(0)
+		y := year.parse_int().get_or(0)
 		if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): maximum = 29
 
 	return date_number(day, 1, maximum)
@@ -597,12 +597,12 @@ fn time_valid(text: String) Bool:
 		or text.view(2, 3) != ":"
 		or text.view(5, 6) != ":"
 	): return false
-	if not date_number(text.slice(0, 2).get(""), 0, 23): return false
-	if not date_number(text.slice(3, 5).get(""), 0, 59): return false
-	if not date_number(text.slice(6, 8).get(""), 0, 60): return false
+	if not date_number(text.slice(0, 2), 0, 23): return false
+	if not date_number(text.slice(3, 5), 0, 59): return false
+	if not date_number(text.slice(6, 8), 0, 60): return false
 	if text.length() == 8: return true
 
-	fraction := text.slice(9, text.length()).get("")
+	fraction := text.slice(9, text.length())
 	return (
 		text.view(8, 9) == "."
 		and decimal_digits(fraction)
@@ -615,26 +615,26 @@ fn datetime_valid(text: String) Bool:
 	if (
 		text.length() < 19
 		or text.scalar_length() != text.length()
-		or not date_valid((text.slice(0, 10).get("")))
+		or not date_valid((text.slice(0, 10)))
 	): return false
 
 	separator := text.view(10, 11)
 	if (separator != "T" and separator != "t" and separator != " "): return false
 
-	var rest = text.slice(11, text.length()).get("")
+	var rest = text.slice(11, text.length())
 
 	if rest.ends_with("Z") or rest.ends_with("z"):
-		rest = rest.slice(0, rest.length() - 1).get("")
+		rest = rest.slice(0, rest.length() - 1)
 	else if rest.contains("+") or rest.contains("-"):
-		var index = rest.index_of("+").get(-1)
-		if index < 0: index = rest.index_of("-").get(-1)
+		var index = rest.index_of("+").get_or(-1)
+		if index < 0: index = rest.index_of("-").get_or(-1)
 
-		zone := rest.slice(index + 1, rest.length()).get("")
+		zone := rest.slice(index + 1, rest.length())
 		if zone.length() != 5 or zone.view(2, 3) != ":": return false
-		if not date_number(zone.slice(0, 2).get(""), 0, 23): return false
-		if not date_number(zone.slice(3, 5).get(""), 0, 59): return false
+		if not date_number(zone.slice(0, 2), 0, 23): return false
+		if not date_number(zone.slice(3, 5), 0, 59): return false
 
-		rest = rest.slice(0, index).get("")
+		rest = rest.slice(0, index)
 
 	return time_valid(rest)
 
@@ -648,7 +648,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 
 	if clean.starts_with("+") or clean.starts_with("-"):
 		signed = true
-		clean = clean.slice(1, clean.length()).get("")
+		clean = clean.slice(1, clean.length())
 
 	var radix = 10
 	var alphabet = "0123456789"
@@ -664,12 +664,11 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 		alphabet = "01"
 
 	if radix != 10:
-		if (signed or not digits(clean.slice(2, clean.length()).get(""), alphabet)):
+		if (signed or not digits(clean.slice(2, clean.length()), alphabet)):
 			return error(invalid_at(reader, at, "invalid integer"))
-		if value := parse_int(
-			(clean.slice(2, clean.length()).get("").replace("_", "")),
-			radix,
-		): return ok(Node.Leaf(TomlValue.IntValue(value)))
+		if value := parse_int((clean.slice(2, clean.length()).replace("_", "")), radix): return ok(
+			Node.Leaf(TomlValue.IntValue(value))
+		)
 
 		return error(invalid_at(reader, at, "integer out of range"))
 
@@ -694,17 +693,16 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 
 			if parts.length() == 2:
 				var exponent = parts[1].clone()
-				if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
-					exponent
-					.slice(1, exponent.length())
-					.get("")
+				if exponent.starts_with("+") or exponent.starts_with("-"): exponent = exponent.slice(
+					1,
+					exponent.length(),
 				)
 				if not decimal_digits(exponent): return error(
 					invalid_at(reader, at, "invalid exponent")
 				)
 
-			fraction := parts.first().get("").split(".")
-			if fraction.length() > 2 or not decimal_part(fraction.first().get("")): return error(
+			fraction := parts.first().get_or("").split(".")
+			if fraction.length() > 2 or not decimal_part(fraction.first().get_or("")): return error(
 				invalid_at(reader, at, "invalid float")
 			)
 			if fraction.length() == 2 and not decimal_digits(fraction[1]): return error(
@@ -752,10 +750,7 @@ fn scalar_offset(reader: Reader, count: Int) Int:
 
 	while left > 0 and pos < reader.data.length():
 		pos += 1
-		while (
-			reader.data.get(pos, default: 0) >= 128
-			and reader.data.get(pos, default: 0) < 192
-		): pos += 1
+		while (reader.data.get_or(pos, 0) >= 128 and reader.data.get_or(pos, 0) < 192): pos += 1
 		left -= 1
 
 	return pos
@@ -993,7 +988,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 				)?
 				index += 1
 
-			key := keys.last().get("")
+			key := keys.last().get_or("")
 			if flags(reader, parent).sealed: return error(
 				invalid(reader, "inline table is closed")
 			)

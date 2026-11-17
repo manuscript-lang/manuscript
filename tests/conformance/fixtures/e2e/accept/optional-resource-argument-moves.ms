@@ -49,7 +49,7 @@ fn heap_cause(path: String) Bool:
 fn default_resource(path: String) Int:
 	fallback := Marker(5, path.clone())
 	missing: Marker? := none
-	return missing.get(fallback).id
+	return missing.get_or(fallback).id
 
 test "a resource passed to ok_or or get moves into the result and closes once":
 	directory := temporary("optional-argument-")?

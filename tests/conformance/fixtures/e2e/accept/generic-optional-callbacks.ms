@@ -28,7 +28,7 @@ fn same_optional(left: Int?, right: Int?) Bool:
 
 	return left.get() == right.get()
 
-fn optional_default(value: Int? = 7) Int: value.get(-1)
+fn optional_default(value: Int? = 7) Int: value.get_or(-1)
 
 fn bound_missing[T: Clonable](value: T?) T!Error:
 	convert := value.ok_or[Error]
@@ -44,7 +44,7 @@ fn nested_bound_missing[T: Clonable](value: T?) T!Error:
 type Defaults:
 	base: Int
 
-fn Defaults.optional(value: Int? = self.base) Int: value.get(-1)
+fn Defaults.optional(value: Int? = self.base) Int: value.get_or(-1)
 
 test "generic callbacks preserve Optional inputs and present zero":
 	values: List[Int?] := [none, 0, 4]
@@ -93,7 +93,7 @@ test "generic closure defaults and explicit callable arguments keep their behavi
 	expect_true(defaulted(absent, absent, same_optional))?
 
 test "Optional closure defaults distinguish omitted and explicitly absent values":
-	choose := fn(value: Int? = 7) Int: value.get(-1)
+	choose := fn(value: Int? = 7) Int: value.get_or(-1)
 	expect_equal(choose(), 7)?
 	expect_equal(choose(none), -1)?
 	expect_equal(choose(0), 0)?
@@ -126,7 +126,7 @@ test "implicit Optional lambda defaults remain callable through inferred and exp
 
 test "bound native Optional arguments stay required after explicit function typing":
 	values := [3, 4]
-	get := values.get
+	get := values.get_or
 	expect_equal(get(0), 3)?
 	expect_equal(get(9, 7), 7)?
 
@@ -137,19 +137,19 @@ test "bound native Optional arguments stay required after explicit function typi
 test "generic native folds accept Optional accumulators without omission wrappers":
 	values := {"one": 1, "two": 2}
 	initial: Int? := none
-	sum := values.fold_right(initial, fn acc, key, value: acc.get(0) + value)
+	sum := values.fold_right(initial, fn acc, key, value: acc.get_or(0) + value)
 	expect_equal(sum.get(), 3)?
 
 	fold := values.fold_right[Int?]
-	bound_sum := fold(initial, fn acc, key, value: acc.get(0) + value)
+	bound_sum := fold(initial, fn acc, key, value: acc.get_or(0) + value)
 	expect_equal(bound_sum.get(), 3)?
 
 	set := Set([1, 2])
-	set_sum := set.fold_right(initial, fn acc, value: acc.get(0) + value)
+	set_sum := set.fold_right(initial, fn acc, value: acc.get_or(0) + value)
 	expect_equal(set_sum.get(), 3)?
 
 	fold_set := set.fold_right[Int?]
-	bound_set_sum := fold_set(initial, fn acc, value: acc.get(0) + value)
+	bound_set_sum := fold_set(initial, fn acc, value: acc.get_or(0) + value)
 	expect_equal(bound_set_sum.get(), 3)?
 
 test "bound generic native defaults preserve concrete and Optional payload types":

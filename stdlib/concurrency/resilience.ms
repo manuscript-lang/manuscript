@@ -73,8 +73,8 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
 	wait := policy.wait_after(attempt)
 	if not policy.jitter: return wait
 
-	share := float().get(1.0)
-	return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int().get(0))
+	share := float().get_or(1.0)
+	return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int().get_or(0))
 
 /*
 A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
