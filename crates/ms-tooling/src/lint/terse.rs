@@ -165,7 +165,7 @@ impl Visitor for Scan<'_> {
             }
             | StmtKind::While { cond, .. } => self.emptiness(cond, true),
             StmtKind::Return(Some(e)) => self.emptiness(e, true),
-            StmtKind::Call(e) => self.statement_get(e, s.pos.offset as usize),
+            StmtKind::Call(e) => self.statement_get(e),
             _ => {}
         }
     }
@@ -262,6 +262,17 @@ fn uses_in(name: Symbol, stmts: &[Stmt]) -> Uses {
         visit::walk_stmt(&mut uses, s);
     }
     uses
+}
+
+/// The source offset where the chain `e` starts: the name its leftmost receiver is read from.
+fn leftmost(e: &Expr) -> usize {
+    match &e.kind {
+        ExprKind::Call { callee: inner, .. } => leftmost(inner),
+        ExprKind::Member { left: inner, .. } | ExprKind::Index { left: inner, .. } => {
+            leftmost(inner)
+        }
+        _ => e.pos.offset as usize,
+    }
 }
 
 fn expr_reads(name: Symbol, e: &Expr) -> usize {
@@ -404,7 +415,7 @@ impl Scan<'_> {
 
     /// A statement `r.get(none)` on a `Void!` is `void r`; a statement `r.get()` on a Result
     /// faults on error, so it is `r?` where the function can return one.
-    fn statement_get(&mut self, e: &Expr, start: usize) {
+    fn statement_get(&mut self, e: &Expr) {
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
         };
@@ -437,7 +448,7 @@ impl Scan<'_> {
                     "Use `void result` to ignore a Void! outcome instead of result.get(none)"
                         .to_string(),
                     e.pos,
-                    start,
+                    leftmost(left),
                     e.end.offset as usize,
                     format!("void {receiver}"),
                 );
