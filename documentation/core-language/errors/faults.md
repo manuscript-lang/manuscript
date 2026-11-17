@@ -5,7 +5,7 @@ weight = 3
 
 # Programming faults
 
-A programming fault means an assumption the code relies on has failed. For invalid user input, return a [Result](results.md) error instead.
+A programming fault means an assumption the code relies on has failed. For invalid user input, return a [Result](results.md) error instead. [Choosing a failure](_index.md#choosing-a-failure-in-the-standard-library) lists which cause gets which result.
 
 ## Invariant checks
 

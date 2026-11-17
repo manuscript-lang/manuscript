@@ -2,6 +2,17 @@
 
 Each release lists what changed for people who write Manuscript. Versions are dates (`YYYY.MM.PATCH`). See [what is frozen](documentation/core-language/stability.md).
 
+## Unreleased
+
+### Standard library
+
+- `Iterable` and `for` over it are removed. `Deque`, `Queue` and `PriorityQueue` read by position: `get(index)` returns an optional, and a negative index counts from the end. Walk one with `for i in 0..q.length()`.
+- `Result.error` is removed. Check `is_error()` and read the cause with `err()`.
+- `Url.query` is a `String?`: `none` means no query and an empty string means a bare `?`. `has_query` is removed, and `fragment` now comes before `query` in `Url(...)`.
+- A bad value from the caller returns instead of crashing. A size, count, radix or budget gives `EINVAL` where the function already returns an `Error`, and `none` where it already returns an optional. `take(0)`, `chunks(0)` and similar give an empty result, and a shift count of 64 or more shifts every bit out. Faults remain for bugs: an index out of range, overflow, a negative shift count. See [choosing a failure](documentation/core-language/errors/_index.md#choosing-a-failure-in-the-standard-library).
+- `rate_limiter` returns `RateLimiter!`, `BitSet.add` returns `Void!`, and `to_string_radix` returns `String?`. `to_hex()` and `to_binary()` always succeed, and `to_string()` is base 10.
+- `SeededRandom.weighted_choice` returns `none` for weights that do not fit the values.
+
 ## 2026.11.0 (first public release, beta)
 
 The first release. It ships one binary, `ms`, for Linux, macOS and Windows on amd64 and arm64.

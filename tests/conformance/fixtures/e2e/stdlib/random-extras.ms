@@ -53,9 +53,9 @@ fn discard[T](value: T) Void:
 test "seeded invalid arguments fault":
 	var rng = seeded(1)
 	_first := expect_fault(fn: discard(rng.sample([1], 2)))?
-	_second := expect_fault(fn: discard(rng.weighted_choice([1, 2], [1.0])))?
-	_third := expect_fault(fn: discard(rng.weighted_choice([1, 2], [0.0, 0.0])))?
-	_fourth := expect_fault(fn: discard(rng.weighted_choice([1, 2], [-1.0, 2.0])))?
+	expect_none(rng.weighted_choice([1, 2], [1.0]))?
+	expect_none(rng.weighted_choice([1, 2], [0.0, 0.0]))?
+	expect_none(rng.weighted_choice([1, 2], [-1.0, 2.0]))?
 
 test "secure sample and weighted_choice":
 	picked := expect_ok(sample([1, 2, 3, 4], 4))?
