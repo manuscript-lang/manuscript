@@ -294,6 +294,17 @@ fn direct_glue(g: &mut Gen, kind: Glue, ty: Ty) {
         "MIR made no {kind:?} function for {}",
         ms_mir::print::ty_str(g.m, ty)
     );
+    assert!(
+        matches!(kind, Glue::CleanupThunk(_))
+            || matches!(
+                g.m.types.kind(ty),
+                ms_mir::types::TyKind::Bytes
+                    | ms_mir::types::TyKind::List(_)
+                    | ms_mir::types::TyKind::Iface(_)
+            ),
+        "MIR made no {kind:?} function for {}",
+        ms_mir::print::ty_str(g.m, ty)
+    );
     let sym = g.existing_glue(kind, ty);
     let mut llvm = g.llvm.take().expect("the module is set between functions");
     let nat = glue_llvm::native(&sym);

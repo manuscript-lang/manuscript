@@ -8,10 +8,9 @@ use crate::Glue;
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use crate::mir_llvm::Emitted;
 use crate::state::Gen;
-use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
+use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::IFACE_TAG_MASK;
-use ms_rt_abi::symbols::{STACK_LIMIT_CELL, STACK_REGION};
 
 type Vs = Vec<Val>;
 
@@ -626,36 +625,6 @@ impl E<'_, '_, '_> {
         self.b.icmp("ne", v, &Val::new("0", v.ty.clone()))
     }
 
-    /// Whether the stack pointer is below the running segment's limit (the check a recursive
-    /// function starts with, `depth.enter`).
-    fn stack_low(&mut self) -> Val {
-        self.stack_within(0)
-    }
-
-    /// Whether the stack pointer is within `headroom` bytes of the running segment's limit.
-    fn stack_within(&mut self, headroom: i64) -> Val {
-        let frame = self
-            .b
-            .call(
-                &LTy::Ptr,
-                "",
-                "llvm.frameaddress.p0",
-                &[(Val::new("0", LTy::I32), "")],
-            )
-            .expect("a pointer");
-        let sp = self.b.ptr_to_int(&frame);
-        let base = self.b.bin(Bin::And, &sp, &Val::int(!(STACK_REGION - 1)));
-        let cell = self
-            .b
-            .bin(Bin::Add, &base, &Val::int(STACK_REGION - STACK_LIMIT_CELL));
-        let cell = self.b.int_to_ptr(&cell);
-        let mut limit = self.b.load(&LTy::I64, &cell, 8);
-        if headroom != 0 {
-            limit = self.b.bin(Bin::Add, &limit, &Val::int(headroom));
-        }
-        self.b.icmp("ult", &sp, &limit)
-    }
-
     fn declare(&mut self, name: &str, ret: &str, params: &str) {
         self.decls.push((
             name.to_string(),
@@ -748,23 +717,6 @@ impl E<'_, '_, '_> {
         }
     }
 
-    /// The fields of a plain type: `(type, first leaf, width)`.
-    fn fields_of(&self, ty: Ty) -> Vec<(Ty, usize, usize)> {
-        let TyKind::Type(r) = self.g.m.types.kind(ty) else {
-            return Vec::new();
-        };
-        let mut at = 0;
-        self.g.m.type_defs[r.index()]
-            .fields
-            .iter()
-            .map(|f| {
-                let w = self.g.lay.width(f.1);
-                at += w;
-                (f.1, at - w, w)
-            })
-            .collect()
-    }
-
     /// Runs `body(i)` for `i` in `0..len`.
     fn count(&mut self, len: &Val, body: impl FnOnce(&mut Self, &Val)) {
         let (head, bod, latch, done) = (
@@ -791,296 +743,6 @@ impl E<'_, '_, '_> {
         self.b.bin(Bin::Add, &i, &Val::int(1));
         self.br(&head);
         self.label(&done);
-    }
-
-    /// The symbol of a data object the glue addresses, as a pointer.
-    fn data_addr(&mut self, sym: String) -> Val {
-        self.data.push(sym.clone());
-        Val::new(format!("@\"{sym}\""), LTy::Ptr)
-    }
-
-    /// The field of `case` that holds the same boxed enum again (the tail of a chain such as
-    /// `Cons(head, tail)`): `(field, leaves, optional)`. Dropping loops over it, so a long chain
-    /// does not overflow the stack.
-    fn tail_field(&self, ty: Ty, case: &[(Ty, Vec<usize>)]) -> Option<(usize, Vec<usize>, bool)> {
-        case.iter().enumerate().rev().find_map(|(i, (fty, idx))| {
-            if *fty == ty && idx.len() == 1 {
-                return Some((i, idx.clone(), false));
-            }
-            match self.g.m.types.kind(*fty) {
-                TyKind::Opt(inner) if *inner == ty && idx.len() == 2 => {
-                    Some((i, idx.clone(), true))
-                }
-                _ => None,
-            }
-        })
-    }
-
-    /// Clones the indirect type whose block is `p`: a new block over clones of the fields. A
-    /// collection field lives behind a header block of its own, which the copy gets too (none
-    /// when the original has none).
-    fn clone_indirect(&mut self, r: ms_mir::types::TypeId, p: &Val) -> Vs {
-        let m = self.g.m;
-        let block = self.g.lay.type_block(r);
-        let base = self.ptr_of(p);
-        let loaded = load_leaves(&mut self.b, &base, &block, None);
-        let mut out = loaded.clone();
-        let mut at = 0;
-        for f in &m.type_defs[r.index()].fields {
-            let boxed = self.g.lay.type_field_boxed(f.1);
-            let n = if boxed { 1 } else { self.g.lay.width(f.1) };
-            let (bk, fty) = (at, f.1);
-            at += n;
-            if boxed {
-                let (yes, join) = (self.fresh("y"), self.fresh("j"));
-                let pre = self.cur.clone();
-                let nn = self.test(&loaded[bk]);
-                self.b.cond_br(&nn, &yes, &join);
-                self.label(&yes);
-                let hp = self.ptr_of(&loaded[bk]);
-                let words = load_leaves(
-                    &mut self.b,
-                    &hp,
-                    &[Leaf::I64; ms_rt_abi::MAP_SIZE / 8],
-                    None,
-                );
-                let words = if m.needs_drop(fty) {
-                    self.clone_value(fty, &words)
-                } else {
-                    words
-                };
-                let header = self.alloc(&Val::int(ms_rt_abi::MAP_SIZE as i64));
-                store_leaves(&mut self.b, &header, &vec![Leaf::I64; words.len()], &words);
-                let header = self.b.ptrtoint(&header);
-                self.br(&join);
-                let end = self.cur.clone();
-                self.label(&join);
-                let h = self.b.reserve(LTy::I64);
-                self.b.phi(&h, &[(Val::int(0), pre), (header, end)]);
-                out[bk] = h;
-            } else if m.needs_drop(fty) {
-                let cv = self.clone_value(fty, &loaded[bk..bk + n]);
-                out[bk..bk + n].clone_from_slice(&cv);
-            }
-        }
-        let blk = self.alloc(&Val::int(mem_layout(&block).size as i64));
-        store_leaves(&mut self.b, &blk, &block, &out);
-        vec![self.b.ptrtoint(&blk)]
-    }
-
-    /// For a boxed enum with payloadless cases: whether `tag` names one (such values are one
-    /// shared static block) and that block's address as a word.
-    fn unit_case(&mut self, a: ms_mir::types::AltId, tag: &Val, size: u32) -> Option<(Val, Val)> {
-        let units: Vec<usize> = self.g.m.alts[a.index()]
-            .cases
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.fields.is_empty())
-            .map(|(i, _)| i)
-            .collect();
-        let mut acc: Option<(Val, Val)> = None;
-        for c in units {
-            let sym = self.g.unit_block_symbol(a, c, size as usize);
-            let addr = self.data_addr(sym);
-            let addr = self.b.ptrtoint(&addr);
-            let is = self.b.icmp("eq", tag, &Val::int(c as i64));
-            acc = Some(match acc {
-                None => (is, addr),
-                Some((u, prev)) => (
-                    self.b.bin(Bin::Or, &u, &is),
-                    self.b.select(&is, &addr, &prev),
-                ),
-            });
-        }
-        acc
-    }
-
-    /// Clones an enum: the fields of its case, then (boxed) a new block unless the case has no
-    /// payload. A boxed enum whose case holds the enum again is copied front to back in a loop,
-    /// so a long chain does not overflow the stack.
-    fn clone_alt(&mut self, ty: Ty, a: ms_mir::types::AltId, vs: &[Val]) -> Vs {
-        let m = self.g.m;
-        let fields = self.g.lay.alt_fields(a);
-        let shape = self.g.lay.shape(ty);
-        let (leaves, boxed) = match &shape.alt {
-            Some(AltRepr::Boxed { block, .. }) => (block.clone(), true),
-            _ => (shape.leaves.clone(), false),
-        };
-        if boxed && fields.iter().any(|c| self.tail_field(ty, c).is_some()) {
-            return vec![self.clone_chain(ty, a, &fields, &leaves, &vs[0])];
-        }
-        let src = if boxed {
-            let p = self.ptr_of(&vs[0]);
-            load_leaves(&mut self.b, &p, &leaves, None)
-        } else {
-            vs.to_vec()
-        };
-        let tag = src[0].clone();
-        let join = self.fresh("j");
-        let mut incoming: Vec<Vec<(Val, String)>> = vec![Vec::new(); leaves.len()];
-        for (c, case) in fields.iter().enumerate() {
-            if !case.iter().any(|(t, _)| m.needs_drop(*t)) {
-                continue;
-            }
-            let (this, other) = (self.fresh("t"), self.fresh("o"));
-            let is = self.b.icmp("eq", &tag, &Val::int(c as i64));
-            self.b.cond_br(&is, &this, &other);
-            self.label(&this);
-            let mut out = src.clone();
-            for (fty, idx) in case.iter().filter(|(t, _)| m.needs_drop(*t)) {
-                let fv: Vs = idx.iter().map(|i| src[*i].clone()).collect();
-                let cv = self.clone_value(*fty, &fv);
-                for (i, v) in idx.iter().zip(cv) {
-                    out[*i] = v;
-                }
-            }
-            for (k, v) in out.into_iter().enumerate() {
-                incoming[k].push((v, self.cur.clone()));
-            }
-            self.br(&join);
-            self.label(&other);
-        }
-        for (k, v) in src.iter().enumerate() {
-            incoming[k].push((v.clone(), self.cur.clone()));
-        }
-        self.br(&join);
-        self.label(&join);
-        let out: Vs = src
-            .iter()
-            .zip(&incoming)
-            .map(|(s, inc)| {
-                let r = self.b.reserve(s.ty.clone());
-                self.b.phi(&r, inc);
-                r
-            })
-            .collect();
-        if !boxed {
-            return out;
-        }
-        let size = mem_layout(&leaves).size;
-        let fresh = |s: &mut Self, out: &Vs| {
-            let blk = s.alloc(&Val::int(i64::from(size.max(1))));
-            store_leaves(&mut s.b, &blk, &leaves, out);
-            s.b.ptrtoint(&blk)
-        };
-        let Some((unit, addr)) = self.unit_case(a, &out[0], size) else {
-            return vec![fresh(self, &out)];
-        };
-        let (new, fin) = (self.fresh("n"), self.fresh("f"));
-        let pre = self.cur.clone();
-        self.b.cond_br(&unit, &fin, &new);
-        self.label(&new);
-        let blk = fresh(self, &out);
-        self.br(&fin);
-        let end = self.cur.clone();
-        self.label(&fin);
-        let r = self.b.reserve(LTy::I64);
-        self.b.phi(&r, &[(addr, pre), (blk, end)]);
-        vec![r]
-    }
-
-    /// Copies a chain of boxed blocks front to back: each iteration allocates the new block,
-    /// stores its address where the previous block's tail pointer lives, clones the non-tail
-    /// fields, and continues with the source's tail. Returns the first new block.
-    fn clone_chain(
-        &mut self,
-        ty: Ty,
-        a: ms_mir::types::AltId,
-        fields: &[Vec<(Ty, Vec<usize>)>],
-        block: &[Leaf],
-        first: &Val,
-    ) -> Val {
-        let m = self.g.m;
-        let offsets = mem_layout(block).offsets;
-        let size = mem_layout(block).size;
-        let result = self.b.alloca(&LTy::I64);
-        let res_addr = self.b.ptrtoint(&result);
-        let (head, latch, exit) = (self.fresh("h"), self.fresh("l"), self.fresh("e"));
-        let pre = self.cur.clone();
-        let (src, dst) = (self.b.reserve(LTy::I64), self.b.reserve(LTy::I64));
-        let (next_src, next_dst) = (self.b.reserve(LTy::I64), self.b.reserve(LTy::I64));
-        self.br(&head);
-        self.label(&head);
-        self.b.phi(
-            &src,
-            &[
-                (first.clone(), pre.clone()),
-                (next_src.clone(), latch.clone()),
-            ],
-        );
-        self.b
-            .phi(&dst, &[(res_addr, pre), (next_dst.clone(), latch.clone())]);
-        let sp = self.ptr_of(&src);
-        let sv = load_leaves(&mut self.b, &sp, block, None);
-        let tag = sv[0].clone();
-        let dp = self.ptr_of(&dst);
-        if let Some((unit, addr)) = self.unit_case(a, &tag, size) {
-            // A payloadless case is the shared block: link it and stop.
-            let (shared, fresh) = (self.fresh("s"), self.fresh("n"));
-            self.b.cond_br(&unit, &shared, &fresh);
-            self.label(&shared);
-            self.b.store(&addr, &dp, 8);
-            self.br(&exit);
-            self.label(&fresh);
-        }
-        let blk = self.alloc(&Val::int(i64::from(size.max(1))));
-        let blk_word = self.b.ptrtoint(&blk);
-        self.b.store(&blk_word, &dp, 8);
-        let mut back: Vec<(Val, Val, String)> = Vec::new();
-        for (c, case) in fields.iter().enumerate() {
-            if !case.iter().any(|(t, _)| m.needs_drop(*t)) {
-                continue;
-            }
-            let tail = self.tail_field(ty, case);
-            let (this, other) = (self.fresh("t"), self.fresh("o"));
-            let is = self.b.icmp("eq", &tag, &Val::int(c as i64));
-            self.b.cond_br(&is, &this, &other);
-            self.label(&this);
-            let mut out = sv.clone();
-            for (i, (fty, idx)) in case.iter().enumerate() {
-                if !m.needs_drop(*fty) || tail.as_ref().is_some_and(|t| t.0 == i) {
-                    continue;
-                }
-                let fv: Vs = idx.iter().map(|k| sv[*k].clone()).collect();
-                let cv = self.clone_value(*fty, &fv);
-                for (k, v) in idx.iter().zip(cv) {
-                    out[*k] = v;
-                }
-            }
-            store_leaves(&mut self.b, &blk, block, &out);
-            match tail {
-                Some((_, idx, optional)) => {
-                    let k = *idx.last().expect("tail leaf");
-                    let at = self.b.gep_bytes(&blk, u64::from(offsets[k]));
-                    let at = self.b.ptrtoint(&at);
-                    back.push((sv[k].clone(), at, self.cur.clone()));
-                    if optional {
-                        let present = self.test(&sv[idx[0]]);
-                        self.b.cond_br(&present, &latch, &exit);
-                    } else {
-                        self.br(&latch);
-                    }
-                }
-                None => self.br(&exit),
-            }
-            self.label(&other);
-        }
-        store_leaves(&mut self.b, &blk, block, &sv);
-        self.br(&exit);
-        self.label(&latch);
-        let srcs: Vec<(Val, String)> = back
-            .iter()
-            .map(|(s, _, l)| (s.clone(), l.clone()))
-            .collect();
-        let dsts: Vec<(Val, String)> = back
-            .iter()
-            .map(|(_, d, l)| (d.clone(), l.clone()))
-            .collect();
-        self.b.phi(&next_src, &srcs);
-        self.b.phi(&next_dst, &dsts);
-        self.br(&head);
-        self.label(&exit);
-        self.b.load(&LTy::I64, &result, 8)
     }
 
     fn list_copy(&mut self, ty: Ty, vs: &[Val]) -> Vs {
@@ -1120,79 +782,12 @@ impl E<'_, '_, '_> {
         vec![p, len.clone(), len.clone()]
     }
 
+    /// The copy of a list of plain elements, bytes or an interface: the data MIR makes no clone
+    /// function for.
     fn glue_copy(&mut self, ty: Ty, vs: &[Val]) -> Vs {
         let m = self.g.m;
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => self.list_copy(ty, vs),
-            TyKind::Type(r) if m.type_defs[r.index()].indirect => self.clone_indirect(r, &vs[0]),
-            TyKind::Alt(a) => self.clone_alt(ty, a, vs),
-            TyKind::Type(_) => {
-                let mut out = Vec::new();
-                for (fty, at, w) in self.fields_of(ty) {
-                    out.extend(self.clone_value(fty, &vs[at..at + w]));
-                }
-                out
-            }
-            TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
-                let leaves = self.g.lay.leaves(inner);
-                let size = mem_layout(&leaves).size as i64;
-                let (yes, join) = (self.fresh("y"), self.fresh("j"));
-                let pre = self.cur.clone();
-                let nn = self.test(&vs[0]);
-                self.b.cond_br(&nn, &yes, &join);
-                self.label(&yes);
-                let src = self.ptr_of(&vs[0]);
-                let q = self.alloc(&Val::int(size.max(1)));
-                self.clone_at(inner, &src, &q);
-                let q = self.b.ptrtoint(&q);
-                self.br(&join);
-                let end = self.cur.clone();
-                self.label(&join);
-                let p = self.b.reserve(LTy::I64);
-                self.b.phi(&p, &[(vs[0].clone(), pre), (q, end)]);
-                vec![p]
-            }
-            TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.clone_value(ty, vs),
-            TyKind::Opt(inner) if self.g.lay.opt_is_nullable(inner) => {
-                vec![self.rt("msrt_obj_clone", &[&vs[0]], true).expect("result")]
-            }
-            TyKind::Opt(inner) => {
-                let payload = vs[1..].to_vec();
-                let (yes, join) = (self.fresh("y"), self.fresh("j"));
-                let pre = self.cur.clone();
-                let present = self.test(&vs[0]);
-                self.b.cond_br(&present, &yes, &join);
-                self.label(&yes);
-                let c = self.clone_value(inner, &payload);
-                self.br(&join);
-                let end = self.cur.clone();
-                self.label(&join);
-                let mut out = vec![vs[0].clone()];
-                for (k, p) in payload.iter().enumerate() {
-                    let r = self.b.reserve(p.ty.clone());
-                    self.b
-                        .phi(&r, &[(p.clone(), pre.clone()), (c[k].clone(), end.clone())]);
-                    out.push(r);
-                }
-                out
-            }
-            TyKind::Obj(..) => {
-                // Map and Set are owned values the runtime copies through their descriptor.
-                let leaves = self.g.lay.leaves(ty);
-                let (src, dst) = (
-                    self.b.alloca(&slot_ty(self.b.types(), &leaves)),
-                    self.b.alloca(&slot_ty(self.b.types(), &leaves)),
-                );
-                store_leaves(&mut self.b, &src, &leaves, vs);
-                let desc = {
-                    let sym = self.g.typedesc_symbol(ty);
-                    let addr = self.data_addr(sym);
-                    self.b.ptrtoint(&addr)
-                };
-                let (from, to) = (self.b.ptrtoint(&src), self.b.ptrtoint(&dst));
-                self.rt("msrt_slot_copy", &[&desc, &from, &to], false);
-                load_leaves(&mut self.b, &dst, &leaves, None)
-            }
             TyKind::Iface(i) => {
                 // The payload copier sits after the methods in the vtable. The copy owns its
                 // payload whatever the source owned, so the tag bits come off.
@@ -1207,7 +802,7 @@ impl E<'_, '_, '_> {
                     .expect("result");
                 vec![data, vt]
             }
-            _ => vs.to_vec(),
+            _ => unreachable!("MIR makes the clone function of every other type"),
         }
     }
 }
@@ -1255,27 +850,6 @@ pub fn emit(g: &mut Gen, kind: Glue, ty: Ty, types: &Types, loc: usize) -> Emitt
                     }
                 }
             };
-            // Recursive data copies on a new stack segment when this one is nearly used up.
-            if e.g.m.drop_recurses(ty) {
-                let low = e.stack_low();
-                let (grow, cont) = (e.fresh("g"), e.fresh("c"));
-                e.b.cond_br(&low, &grow, &cont);
-                e.label(&grow);
-                let (src, dst) = (
-                    e.b.alloca(&slot_ty(e.b.types(), &leaves)),
-                    e.b.alloca(&slot_ty(e.b.types(), &leaves)),
-                );
-                store_leaves(&mut e.b, &src, &leaves, &vs);
-                let sym = e.g.glue_symbol(Glue::SlotCopy, ty);
-                e.decls
-                    .push(leaf_sig(Glue::SlotCopy, &leaves).declare(e.b.types(), &sym));
-                let f = e.b.ptrtoint(&Val::new(format!("@\"{sym}\""), LTy::Ptr));
-                let (s, d) = (e.b.ptrtoint(&src), e.b.ptrtoint(&dst));
-                e.rt("msrt_slot_copy_grown", &[&f, &s, &d], false);
-                let out = load_leaves(&mut e.b, &dst, &leaves, None);
-                ret(&mut e, &out);
-                e.label(&cont);
-            }
             let out = e.glue_copy(ty, &vs);
             ret(&mut e, &out);
         }

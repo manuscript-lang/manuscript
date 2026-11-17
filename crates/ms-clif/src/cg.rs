@@ -405,6 +405,18 @@ impl<'m> Gen<'m> {
             "MIR made no {kind:?} function for {}",
             ms_mir::print::ty_str(self.m, ty)
         );
+        assert!(
+            matches!(kind, Glue::CleanupThunk(_))
+                || matches!(
+                    self.m.types.kind(ty),
+                    ms_mir::types::TyKind::Bytes
+                        | ms_mir::types::TyKind::List(_)
+                        | ms_mir::types::TyKind::Iface(_)
+                        | ms_mir::types::TyKind::Opt(_)
+                ),
+            "MIR made no {kind:?} function for {}",
+            ms_mir::print::ty_str(self.m, ty)
+        );
         let leaves = self.lay.leaves(ty);
         let sig = match kind {
             Glue::Drop => self.sig(&leaves, &[]),

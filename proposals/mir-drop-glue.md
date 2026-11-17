@@ -79,3 +79,17 @@ closure function comes from MIR. The drop, closure and release-shorthand bodies 
 `lower/glue.rs` and `ms-mir-llvm` `glue_llvm.rs`, and `glue_llvm/closure.rs`, are deleted (about
 870 lines net). Debug compile of the 1,000-module project: 16.28 s before, 16.31 s after. Callgrind
 on `bench/perf/clone-costs`: 2,813,659,688 before, 2,817,659,361 after (+0.14%, the same as stage 9).
+
+## Stage 11: the clone of recursive data in MIR
+
+Recursive types now get MIR clone functions. A boxed alternative with a chain (`Cons(head, tail)`)
+is a loop: each round clones the other fields, makes the block, stores it where the previous
+block's tail leaf points (found with `ptr.add` and the block layout) and goes on with the source's
+tail. Other recursive data recurses, behind a wrapper that runs the copy on a new stack segment
+through `msrt_slot_copy_grown` when `stack.near` says the stack is nearly used up. The backends
+make clones only for bytes, lists of plain elements, interfaces and nullable optionals, and
+`copy_boxed_iter`, the chain copiers, the segment growth and the field walks are deleted from both
+(about 540 lines net). A first version that recursed through the chain ran a 3M-node copy 60%
+slower, which is why the chain stays a loop; callgrind on a 300k-node chain copy is 25,561,659
+before and 25,561,751 after. `bench/perf/clone-costs`: 2,813,659,688 before, 2,817,659,301 after
+(+0.14%). Debug compile of the 1,000-module project: 15.69 s before, 15.81 s after.
