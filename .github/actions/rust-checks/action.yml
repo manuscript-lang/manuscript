@@ -230,6 +230,17 @@ runs:
         MS_BACKEND: cranelift
       shell: bash
       run: target/debug/ms run tools/conform.ms
+    # `ms run` and `ms test` build at Debug by default, which skips MIR optimization and so runs other MIR
+    # passes than the Release builds above (#4357). Main and scheduled runs replay the run and test phases
+    # that way on every platform; a pull request replays one quarter of them on the Linux legs.
+    - name: Conformance corpus (Debug build, unoptimized MIR)
+      if: env.CONFORM == 'true' && (env.CRANELIFT == 'true' || env.PR == 'true' && env.LLVM != 'true')
+      env:
+        MS_BACKEND: cranelift
+        CONFORM_BUILD_TYPE: Debug
+        CONFORM_SHARD: ${{ env.PR == 'true' && '0/4' || '0/1' }}
+      shell: bash
+      run: target/debug/ms run tools/conform.ms
     # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main, scheduled and manual
     # runs build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
     # that fires on the IR we generate is still caught.
