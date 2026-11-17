@@ -168,7 +168,7 @@ impl ViewBuilder<'_> {
                 }
                 self.count += 1;
                 node.children.push(Node {
-                    label: target.clone(),
+                    label: crate::diagram::readable_id(target),
                     kind: "external".into(),
                     reference: target.clone(),
                     ..Node::default()
@@ -1170,6 +1170,11 @@ fn module_summary(m: &Module) -> String {
     parts.join(", ")
 }
 
+/// `1 call`, `3 calls`.
+fn call_count(n: usize) -> String {
+    format!("{n} call{}", if n == 1 { "" } else { "s" })
+}
+
 fn overview_ascii(modules: &[Module]) -> String {
     let mut out = String::new();
     for m in modules.iter().take(NODE_CAP) {
@@ -1182,7 +1187,7 @@ fn overview_ascii(modules: &[Module]) -> String {
             effect_list(&m.effects)
         );
         for (file, n) in &m.calls {
-            let _ = writeln!(out, "  -> {file}  ({n} calls)");
+            let _ = writeln!(out, "  -> {file}  ({})", call_count(*n));
         }
     }
     if modules.is_empty() {
@@ -1213,7 +1218,13 @@ fn overview_mermaid(modules: &[Module]) -> String {
     }
     for m in modules.iter().take(NODE_CAP) {
         for (file, n) in &m.calls {
-            let _ = writeln!(out, "    {} -->|{n} calls| {}", id(&m.file), id(file));
+            let _ = writeln!(
+                out,
+                "    {} -->|{}| {}",
+                id(&m.file),
+                call_count(*n),
+                id(file)
+            );
         }
     }
     out.push_str("    classDef entry fill:#d6e9ff,stroke:#37b,stroke-width:3px\n");
@@ -1239,7 +1250,7 @@ fn overview_tree(modules: &[Module]) -> Node {
         };
         for (file, n) in &m.calls {
             node.children
-                .push(Node::new(format!("-> {file}  ({n} calls)")));
+                .push(Node::new(format!("-> {file}  ({})", call_count(*n))));
         }
         root.children.push(node);
     }

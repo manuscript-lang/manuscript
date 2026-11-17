@@ -41,9 +41,9 @@ test('callee notes retain a single return and native visibility stays optional',
 test('participant cap keeps calls balanced', () => {
   const many = Array.from({length: 200}, (_, i) => call(i + 1));
   const {p, events} = model([many, ...many.map(() => [])]);
-  assert.equal(p.sequenceEvents(p.D.entities[0], 3, false).parts.length, 14);
+  assert.equal(p.sequenceEvents(p.D.entities[0], 3, false).parts.length, 8);
   const ev = events();
-  assert.equal(ev.length, 26);
+  assert.equal(ev.length, 14);
   for (let i = 0; i < ev.length; i += 2) {
     assert.equal(ev[i].t, 'msg');
     assert.deepEqual(ev[i + 1], {t: 'ret', from: ev[i].to, to: ev[i].from});

@@ -198,6 +198,10 @@ pub fn collect(syms: ms_syntax::Names, program: &Program) -> Inspection {
         let Some(decl) = &method.decl else {
             continue;
         };
+        // A bodyless method is native: it has no entity, so its calls name `Receiver.method`.
+        if decl.func().is_none_or(|f| f.body.is_empty()) {
+            continue;
+        }
         methods.insert(
             (syms.str(method.module).to_string(), decl.id().0),
             method.clone(),
@@ -731,7 +735,7 @@ impl Inspection {
         }
         for c in &self.calls {
             let owner = node(&mut out, &c.owner, &c.owner);
-            let target = node(&mut out, &c.target, &c.target);
+            let target = node(&mut out, &c.target, &crate::diagram::readable_id(&c.target));
             out.push_str(&format!("    {owner} -->|{}| {target}\n", c.kind));
         }
         out

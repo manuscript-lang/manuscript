@@ -118,6 +118,9 @@ pub fn collect_facts(
                 c.id.clone(),
                 Site {
                     target: c.target.clone(),
+                    label: std_methods
+                        .get(c.target.as_str())
+                        .map_or_else(|| crate::diagram::readable_id(&c.target), |n| n.to_string()),
                     kind: c.kind.clone(),
                     spawn: c.spawn,
                 },

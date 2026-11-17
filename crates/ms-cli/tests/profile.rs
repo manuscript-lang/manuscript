@@ -156,6 +156,12 @@ fn allocs_with_the_real_runtime() {
         .status()
         .unwrap();
     assert!(status.success());
+    // The program's start shim is not a frame of the program: no stack is rooted at `[runtime]`.
+    let folded = std::fs::read_to_string(plain.join("profile.folded")).unwrap_or_default();
+    assert!(
+        folded.lines().all(|l| !l.starts_with("[runtime];")),
+        "{folded}"
+    );
     assert!(
         !plain.join("allocs.folded").exists(),
         "allocation sampling is off unless asked for"

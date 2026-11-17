@@ -4,6 +4,22 @@ use crate::collect::InspectionRows;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write;
 
+/// An entity ID written for people: `@std/time.ms#fn#monotonic` reads
+/// `@std/time.ms::monotonic`, the form the project's own declarations print. Text that is
+/// not a `file#kind#name` ID (`List[Int].append`, `indirect`) is returned unchanged.
+pub fn readable_id(id: &str) -> String {
+    let mut parts = id.splitn(3, '#');
+    match (parts.next(), parts.next(), parts.next()) {
+        (Some(file), Some(kind), Some(name))
+            if !file.is_empty() && !kind.is_empty() && !name.is_empty() =>
+        {
+            // `+source` names the Manuscript half of a split standard-library module.
+            format!("{}::{name}", file.strip_suffix("+source").unwrap_or(file))
+        }
+        _ => id.to_string(),
+    }
+}
+
 /// Renders the static call graph as a plain-text outline: owners in the
 /// inspection's (ID) order, each followed by its distinct callees with a count.
 /// The text depends only on the inspection, so equal programs print equal bytes.
@@ -13,7 +29,7 @@ pub fn diagram_ascii(inspection: &InspectionRows) -> String {
         .iter()
         .map(|e| (e.id.as_str(), format!("{}::{}", e.file, e.name)))
         .collect();
-    let label = |id: &str| labels.get(id).cloned().unwrap_or_else(|| id.to_string());
+    let label = |id: &str| labels.get(id).cloned().unwrap_or_else(|| readable_id(id));
     // Edges per owner, ordered by (target label, kind) as the output requires.
     let mut edges: HashMap<&str, BTreeMap<(String, &str), usize>> = HashMap::new();
     for call in &inspection.calls {
@@ -42,6 +58,21 @@ pub fn diagram_ascii(inspection: &InspectionRows) -> String {
 mod tests {
     use super::*;
     use crate::collect::{CallRow, EntityRow};
+
+    #[test]
+    fn external_ids_read_like_declarations() {
+        assert_eq!(
+            readable_id("@std/time.ms#fn#monotonic"),
+            "@std/time.ms::monotonic"
+        );
+        assert_eq!(readable_id("a.ms#method#Acc.bump"), "a.ms::Acc.bump");
+        assert_eq!(
+            readable_id("@std/core.ms+source#fn#print"),
+            "@std/core.ms::print"
+        );
+        assert_eq!(readable_id("List[Int].append"), "List[Int].append");
+        assert_eq!(readable_id("indirect"), "indirect");
+    }
 
     #[test]
     fn outline_is_ordered_and_counted() {

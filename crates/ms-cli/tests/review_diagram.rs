@@ -545,7 +545,7 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
         ascii.lines().filter(|line| line.ends_with("[fn]")).count(),
         1
     );
-    assert!(ascii.contains("@std/os/env.ms#fn#arguments"));
+    assert!(ascii.contains("@std/os/env.ms::arguments"));
     let mermaid = ms(&dir, &["diagram", "main.ms", "--format", "mermaid"]);
     let mermaid = String::from_utf8_lossy(&mermaid.stdout);
     assert!(mermaid.contains("arguments"));
@@ -663,14 +663,14 @@ fn overview_shows_modules_effects_and_cross_module_calls() {
     };
     let ascii = text(&["diagram", "main.ms", "--view", "overview"]);
     assert!(
-        ascii.contains("main.ms  [entry]") && ascii.contains("-> util.ms  (1 calls)"),
+        ascii.contains("main.ms  [entry]") && ascii.contains("-> util.ms  (1 call)"),
         "{ascii}"
     );
     let mermaid = text(&[
         "diagram", "main.ms", "--view", "overview", "--format", "mermaid",
     ]);
     assert!(
-        mermaid.starts_with("flowchart LR\n") && mermaid.contains("|1 calls|"),
+        mermaid.starts_with("flowchart LR\n") && mermaid.contains("|1 call|"),
         "{mermaid}"
     );
 }
@@ -1384,4 +1384,26 @@ fn ownership_view_shows_receiver_modes_and_interface_operations() {
             .contains("bump(var self)")
     );
     let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Standard-library calls read as names, never as source offsets or `+source` file halves.
+#[test]
+fn diagram_names_standard_library_calls_for_people() {
+    let dir = scratch("diagram-std-names");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("review_quoted/std_calls.ms"),
+    )
+    .unwrap();
+    let ascii = ms(&dir, &["diagram", "main.ms"]);
+    let text = String::from_utf8_lossy(&ascii.stdout).into_owned();
+    assert!(text.contains("Map[String, Int].get_or"), "{text}");
+    assert!(text.contains("@std/core.ms::print"), "{text}");
+    assert!(!text.contains("+source") && !text.contains("::2"), "{text}");
+    let flow = ms(
+        &dir,
+        &["diagram", "main.ms", "--view", "flow", "--entity", "main"],
+    );
+    let text = String::from_utf8_lossy(&flow.stdout).into_owned();
+    assert!(!text.contains('#'), "{text}");
 }
