@@ -31,7 +31,7 @@
         },
         {
           "index": 4,
-          "name": "metrics-histogram.ms::histogram rejects invalid percentiles whether empty or populated",
+          "name": "metrics-histogram.ms::histogram gives none for invalid percentiles whether empty or populated",
           "status": "passed"
         },
         {
@@ -55,7 +55,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN metrics-histogram.ms::histogram summarizes exact small values\nPASS metrics-histogram.ms::histogram summarizes exact small values\nRUN metrics-histogram.ms::histogram buckets large values within three percent and caps at the maximum\nPASS metrics-histogram.ms::histogram buckets large values within three percent and caps at the maximum\nRUN metrics-histogram.ms::histogram times a span and returns its result\nPASS metrics-histogram.ms::histogram times a span and returns its result\nRUN metrics-histogram.ms::histogram answers for the highest valid Int bucket\nPASS metrics-histogram.ms::histogram answers for the highest valid Int bucket\nRUN metrics-histogram.ms::histogram rejects invalid percentiles whether empty or populated\nPASS metrics-histogram.ms::histogram rejects invalid percentiles whether empty or populated\nRUN metrics-histogram.ms::histogram percentile returns the observation at an exact rank\nPASS metrics-histogram.ms::histogram percentile returns the observation at an exact rank\nRUN metrics-histogram.ms::large observations keep an exact mean\nPASS metrics-histogram.ms::large observations keep an exact mean\n7 tests, 0 failed\n",
+      "stdout": "RUN metrics-histogram.ms::histogram summarizes exact small values\nPASS metrics-histogram.ms::histogram summarizes exact small values\nRUN metrics-histogram.ms::histogram buckets large values within three percent and caps at the maximum\nPASS metrics-histogram.ms::histogram buckets large values within three percent and caps at the maximum\nRUN metrics-histogram.ms::histogram times a span and returns its result\nPASS metrics-histogram.ms::histogram times a span and returns its result\nRUN metrics-histogram.ms::histogram answers for the highest valid Int bucket\nPASS metrics-histogram.ms::histogram answers for the highest valid Int bucket\nRUN metrics-histogram.ms::histogram gives none for invalid percentiles whether empty or populated\nPASS metrics-histogram.ms::histogram gives none for invalid percentiles whether empty or populated\nRUN metrics-histogram.ms::histogram percentile returns the observation at an exact rank\nPASS metrics-histogram.ms::histogram percentile returns the observation at an exact rank\nRUN metrics-histogram.ms::large observations keep an exact mean\nPASS metrics-histogram.ms::large observations keep an exact mean\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

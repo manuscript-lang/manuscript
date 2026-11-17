@@ -1,7 +1,4 @@
-import (
-	Pair from "@std/collections/collections.ms",
-	panic from "@std/core.ms",
-)
+import Pair from "@std/collections/collections.ms"
 
 /*
 Build combinations, consecutive groups, and running totals from lists.
@@ -41,13 +38,10 @@ export fn accumulate[T: Clonable](values: List[T], step: fn(T, T) T) List[T]:
 
 	return out
 
-// Repeats the whole list `times` times in order. A negative `times` faults; zero gives
+// Repeats the whole list `times` times in order. A `times` of zero or below gives
 // an empty list. Example: `cycle([1, 2], 3)` is `[1, 2, 1, 2, 1, 2]`.
 export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
-	if times < 0:
-		panic("cycle: times must not be negative")
-
-	count := if values.is_empty(): 0 else: times
+	count := if values.is_empty() or times < 0: 0 else: times
 	return values.repeated(count)
 
 // Pairs items by position and pads the shorter list with none, so the result is as long
@@ -95,17 +89,14 @@ export fn group_runs[T: Clonable, K: Equal & Clonable](
 
 /*
 Returns every ordering of `size` items chosen from the list, in lexicographic order of position; items are distinguished by position, not value.
-Omit `size` for full-length orderings. A `size` outside 0 through the list length faults.
+Omit `size` for full-length orderings. A `size` outside 0 through the list length has no orderings and gives an empty list.
 Example: `permutations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]`.
 */
 export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[List[T]]:
 	n := values.length()
 	k := size.get(n)
-
-	if k <= 0 or k > n:
-		if k == 0: return [[]]
-
-		panic("permutations: size must be from 0 to the list length")
+	if k == 0: return [[]]
+	if k < 0 or k > n: return []
 
 	var out: List[List[T]] = []
 	var used = [false].repeated(n)
@@ -134,12 +125,11 @@ fn extend_permutations[T: Clonable](
 
 /*
 Returns every selection of `size` items in their original order, in lexicographic order of position; items are distinguished by position, not value.
-A `size` outside 0 through the list length faults.
+A `size` outside 0 through the list length has no selections and gives an empty list.
 Example: `combinations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 3]]`.
 */
 export fn combinations[T: Clonable](values: List[T], size: Int) List[List[T]]:
-	if size < 0 or size > values.length():
-		panic("combinations: size must be from 0 to the list length")
+	if size < 0 or size > values.length(): return []
 
 	var out: List[List[T]] = []
 	var chosen: List[Int] = []
