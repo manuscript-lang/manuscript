@@ -25,21 +25,21 @@ ms diagram hello.ms --view effects --entity main
 
 ```text
 EFFECTS VIEW
-`- main  effects: read+unknown
-   `- @std/core.ms+source::print
+`- main  effects: std.console.write
+   `- @std/core.ms::print
 ```
 
-The summary includes behavior reachable through `print`, not just statements written directly in `main`. `unknown` means the analysis cannot classify every operation along that path; it does not mean that the call is harmless. Use the call path to find the implementation you need to review. For a larger program, open an [interactive code map](../implementation.md#interactive-code-map) or use the [review report](../implementation.md#review-report) to find newly introduced effects.
+The summary lists the declared effects reachable through `print`, not just statements written directly in `main`. These are the same names `ms lint` checks against `allow_effect`. A function that reaches none is pure. Use the call path to find the implementation you need to review. For a larger program, open an [interactive code map](../implementation.md#interactive-code-map) or use the [review report](../implementation.md#review-report) to find newly introduced effects.
 
 ## Transitive analysis
 
-Effects combine along calls. The vocabulary is `read`, `write` and `unknown`. Reads and writes can concern program data as well as I/O; many native operations contribute `unknown`.
+Effects combine along calls: a function reaches the union of the declared effects (`// ms: effect NAME`) of everything it calls.
 
 | Call target | How it contributes to the summary |
 | --- | --- |
-| Known source target | Include its effects, including the effects of its callees. |
-| Several known targets | Include the union of their effects. |
-| Unresolved function value or contract call | Include `unknown`; do not treat it as having no effects. |
+| Source function | Include its effects, including the effects of its callees. |
+| Several possible targets | Include the union of their effects. |
+| Standard-library function with a declared effect | Include that effect (`std.fs.read`, `std.console.write`). |
 
 Summaries describe reachable behavior. To restrict what a function may reach, use [effects and permissions](../../core-language/functions/effects.md); this view does not enforce anything.
 

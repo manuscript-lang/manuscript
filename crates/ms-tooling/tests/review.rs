@@ -320,6 +320,7 @@ fn facts_of(list: Vec<Fact>) -> Facts {
 fn program(add_effect: bool) -> Facts {
     let mut say = fact("r.ms", "fn", "say", 3);
     say.effects = vec!["io".into()];
+    say.reach = say.effects.clone();
     say.external = vec!["@std/io/io.ms#stdout".into()];
     let mut add = fact("r.ms", "fn", "add", 7);
     let mut run = fact("r.ms", "fn", "run", 10);
@@ -327,8 +328,10 @@ fn program(add_effect: bool) -> Facts {
     run.calls = vec![add.key.clone()];
     if add_effect {
         add.effects = vec!["io".into()];
+        add.reach = add.effects.clone();
         add.calls = vec![say.key.clone()];
         run.effects = vec!["io".into()];
+        run.reach = run.effects.clone();
     }
     facts_of(vec![say, add, run])
 }
@@ -352,7 +355,7 @@ fn effect_gain_ranks_through_callers() {
     let text = diff_report(&base, &head, &input(&[8]), ReviewOptions::default()).render("ascii");
     for want in [
         "EFFECT+",
-        "effects: none -> io",
+        "reaches: + io",
         "path: add -> say -> @std/io/io.ms#stdout",
     ] {
         assert!(text.contains(want), "lacks {want:?}:\n{text}");
