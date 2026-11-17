@@ -237,7 +237,7 @@ test "JSON stringify omits none fields and keeps nested optionals":
 
 test "JSON stringify encodes standard-library values":
 	at := timestamp(1700000000, 500000000)?
-	link := Url("https", "example.com", "/a", "x=1", "", 8080)
+	link := Url("https", "example.com", "/a", "", "x=1", 8080)
 	item := Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
 	expected := "{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"}"
 	expect_equal((encoded(item)?), expected)?
@@ -467,7 +467,7 @@ test "JSON parse takes its type from an explicit argument, the expected result o
 
 test "JSON parse reads what stringify writes for standard values and scalar map keys":
 	at := timestamp(1700000000, 500000000)?
-	link := Url("https", "example.com", "/a", "x=1", "", 8080)
+	link := Url("https", "example.com", "/a", "", "x=1", 8080)
 	item := Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
 	text := stringify(item)?
 	back: Stamped := parse[Stamped](text)?

@@ -7,19 +7,18 @@
 use crate::Components;
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt::ffi::{Fail, Has, OptInt, Str, TypeList, abi_type, native};
+use ms_rt::ffi::{Fail, Has, OptInt, OptStrField, Str, TypeList, abi_type, native};
 
 abi_type! {
-    /// `Url` record: `scheme, host, path, query, fragment, port: Int?, omit_host, has_query`.
+    /// `Url` record: `scheme, host, path, fragment, query: String?, port: Int?, omit_host`.
     pub struct UrlType {
         pub scheme: Str,
         pub host: Str,
         pub path: Str,
-        pub query: Str,
         pub fragment: Str,
+        pub query: OptStrField,
         pub port: OptInt,
         pub omit_host: u8,
-        pub has_query: u8,
     }
 }
 
@@ -37,10 +36,9 @@ fn read_url(u: &UrlType) -> Components {
         host: u.host.as_str().into(),
         port: u.port.get(),
         path: u.path.as_str().into(),
-        query: u.query.as_str().into(),
+        query: u.query.get().map(Into::into),
         fragment: u.fragment.as_str().into(),
         omit_host: u.omit_host != 0,
-        has_query: u.has_query != 0,
     }
 }
 
@@ -50,10 +48,9 @@ fn write_url(c: Components) -> UrlType {
         host: Str::new(&c.host),
         port: OptInt::new(c.port),
         path: Str::new(&c.path),
-        query: Str::new(&c.query),
+        query: OptStrField::new(c.query.as_deref()),
         fragment: Str::new(&c.fragment),
         omit_host: u8::from(c.omit_host),
-        has_query: u8::from(c.has_query),
     }
 }
 

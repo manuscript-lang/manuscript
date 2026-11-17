@@ -40,7 +40,7 @@ fn parse_ok(item: Case) Bool:
 	if flag(item, "has_user") or flag(item, "opaque"): return parsed.is_error()
 	if parsed.is_error(): return false
 
-	url := parsed.get(Url("", "", "", "", "", none))
+	url := parsed.get(Url("", "", "", "", none, none))
 	if url.scheme != field(item, "scheme") or url.host != field(item, "host"): return false
 	if port_text(url) != field(item, "port"): return false
 
@@ -55,10 +55,10 @@ fn resolve_ok(item: Case) Bool:
 	base := parse(field(item, "base"))
 	if base.is_error(): return false
 
-	resolved := resolve(base.get(Url("", "", "", "", "", none)), field(item, "rel"))
+	resolved := resolve(base.get(Url("", "", "", "", none, none)), field(item, "rel"))
 	if resolved.is_error(): return false
 
-	formatted := format(resolved.get(Url("", "", "", "", "", none)))
+	formatted := format(resolved.get(Url("", "", "", "", none, none)))
 	return formatted.is_ok() and formatted.get("") == field(item, "expected")
 
 fn unescape_ok(item: Case) Bool:
