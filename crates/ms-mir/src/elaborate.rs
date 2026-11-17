@@ -82,10 +82,8 @@ pub fn run(m: &mut Module) -> Result<(), String> {
 /// Elaborates every Raw function of `m`; with `cancel_exits` a function of a task program that
 /// parks also gets explicit cancel exits (`cancel_exit`) when its owners allow them.
 pub fn run_with(m: &mut Module, cancel_exits: bool) -> Result<(), String> {
-    let cancel_exits = (cancel_exits && crate::unwind::starts_tasks(m)).then(|| {
-        let parks = crate::unwind::parking_funcs(m);
-        (parks, crate::cancel_exit::externs(m))
-    });
+    let cancel_exits =
+        (cancel_exits && crate::unwind::starts_tasks(m)).then(|| crate::cancel_exit::context(m));
     let close = m
         .funcs
         .iter()
@@ -566,7 +564,7 @@ fn function(
     discard: Option<ExtId>,
     cancel: Option<ExtId>,
     shield: Option<(ExtId, ExtId)>,
-    cancel_exits: Option<&(Vec<bool>, crate::cancel_exit::Ext)>,
+    cancel_exits: Option<&crate::cancel_exit::Cx>,
 ) -> Result<(), String> {
     let mut cx = Ctx {
         tags: HashMap::new(),
@@ -650,11 +648,10 @@ fn function(
             break;
         }
     }
-    if let Some((parks, ext)) = cancel_exits
+    if let Some(all) = cancel_exits
         && !f.explicit_cancel
-        && cx.tags.values().all(|(_, kind)| *kind < 2)
     {
-        cx.cancel_blocks = crate::cancel_exit::convert(m, parks, *ext, f, &cx.tags)
+        cx.cancel_blocks = crate::cancel_exit::convert(m, all, f, &cx.tags)
             .into_iter()
             .collect();
     }
