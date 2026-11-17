@@ -76,12 +76,14 @@ pub fn run(m: &mut Module) -> bool {
         TyKind::Obj(n, _) => n.is_map_or_set(),
         _ => false,
     };
-    let eligible = |t: &Ty| eligible(t) && m.needs_drop(*t) && !m.drop_recurses(*t);
+    let eligible = |t: &Ty| eligible(t) && m.needs_drop(*t);
     let mut drop_tys: Vec<Ty> = drops.into_iter().filter(eligible).collect();
     // A list of plain elements is copied by the backends in one block copy.
     let mut clone_tys: Vec<Ty> = clones
         .into_iter()
         .filter(eligible)
+        // The copy of recursive data (a chain copied by a loop, on a new stack segment) stays with the backends.
+        .filter(|t| !m.drop_recurses(*t))
         .filter(|t| match m.types.kind(*t) {
             TyKind::List(e) => m.needs_drop(*e),
             TyKind::Bytes | TyKind::Iface(_) => false,
@@ -97,7 +99,12 @@ pub fn run(m: &mut Module) -> bool {
     let made =
         !drop_tys.is_empty() || !clone_tys.is_empty() || !slots.is_empty() || !blocks.is_empty();
     for ty in drop_tys {
-        let id = make_drop(m, ty);
+        let body = make_drop(m, ty);
+        let id = if m.drop_recurses(ty) {
+            wrap_deep_drop(m, ty, body)
+        } else {
+            body
+        };
         m.drop_glue.insert(ty, id);
     }
     for ty in clone_tys {
@@ -105,8 +112,10 @@ pub fn run(m: &mut Module) -> bool {
         m.clone_glue.insert(ty, id);
     }
     for ty in slots {
-        let id = make_slot_drop(m, ty);
-        m.addr_glue.insert((Glue::SlotDrop, ty), id);
+        if !m.addr_glue.contains_key(&(Glue::SlotDrop, ty)) {
+            let id = make_slot_drop(m, ty);
+            m.addr_glue.insert((Glue::SlotDrop, ty), id);
+        }
         let id = make_slot_copy(m, ty);
         m.addr_glue.insert((Glue::SlotCopy, ty), id);
     }
@@ -246,7 +255,7 @@ fn make_closure_drop(m: &mut Module, c: FuncId, framed: bool) -> FuncId {
 }
 
 /// `fn(obj)` registered while the close of capture `k` of a closure runs: when a guarded task
-/// unwinds out of it, it drops the later captures (the close owns capture `k`) and frees the
+/// unwinds out of it, it drops capture `k` (without closing it again) and the later captures, and frees the
 /// object. It does nothing otherwise.
 fn make_closure_drop_from(m: &mut Module, c: FuncId, k: usize) -> FuncId {
     let (caps, _) = captures_of(m, c);
@@ -265,7 +274,7 @@ fn make_closure_drop_from(m: &mut Module, c: FuncId, k: usize) -> FuncId {
     b.br_if(on, body, &[], done, &[]);
     b.switch_to(body);
     for (j, (ty, off)) in caps.iter().enumerate() {
-        if j > k && needs[j] {
+        if j >= k && needs[j] {
             let at = ptr_at(&mut b, obj, *off);
             let v = b
                 .emit(Op::Take, &[at], Imm::Ty(*ty), Some(*ty))
@@ -500,8 +509,79 @@ fn close(m: &Module, seed: Vec<Ty>) -> HashSet<Ty> {
     seen
 }
 
+/// The drop function of recursive data: its nesting is bounded (`ms_rt::dropq`). When the stack is
+/// nearly used up the value is parked on the runtime's worklist, to be dropped from the top of the
+/// stack later through its slot drop function; otherwise `body` runs, counted as one more level.
+fn wrap_deep_drop(m: &mut Module, ty: Ty, body: FuncId) -> FuncId {
+    m.glue_bodies.push(body);
+    let slot_drop = match m.addr_glue.get(&(Glue::SlotDrop, ty)) {
+        Some(f) => *f,
+        None => {
+            let f = make_slot_drop(m, ty);
+            m.addr_glue.insert((Glue::SlotDrop, ty), f);
+            f
+        }
+    };
+    let size = i64::from(Layouts::new(m).mem(ty).size);
+    let enter = rt_extern(m, "msrt_drop_enter", &[], Ty::INT, false);
+    let defer = rt_extern(m, "msrt_drop_defer", &[Ty::PTR, Ty::PTR], Ty::VOID, false);
+    let leave = rt_extern(m, "msrt_drop_leave", &[], Ty::VOID, false);
+    let alloc = rt_extern(m, "msrt_alloc", &[Ty::INT], Ty::PTR, true);
+    let name = format!("{GLUE_PREFIX}mir.{}.drop_deep", m.funcs.len());
+    let params = vec![Param {
+        ty,
+        mode: Mode::Move,
+    }];
+    let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
+    let v = b.params()[0];
+    let (enter_blk, park, run, leave_blk, done) = (
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+        b.new_block(),
+    );
+    let deep = b
+        .emit(
+            Op::StackNear,
+            &[],
+            Imm::Int(ms_rt_abi::symbols::DEEP_DROP_HEADROOM),
+            Some(Ty::BOOL),
+        )
+        .expect("flag");
+    b.br_if(deep, enter_blk, &[], run, &[]);
+    b.switch_to(enter_blk);
+    let defer_it = b.call_rt(enter, &[]);
+    let zero = b.iconst(0);
+    let parked = b.icmp(Cc::Ne, defer_it, zero);
+    b.br_if(parked, park, &[], run, &[]);
+    b.switch_to(park);
+    let n = b.iconst(size.max(1));
+    let blk = b.call_rt(alloc, &[n]);
+    b.emit(Op::Put, &[blk, v], Imm::None, None);
+    let f = b
+        .emit(Op::FuncAddr, &[], Imm::Func(slot_drop), Some(Ty::PTR))
+        .expect("address");
+    b.call_rt(defer, &[f, blk]);
+    b.ret(None);
+    b.switch_to(run);
+    b.emit(Op::Call, &[v], Imm::Func(body), None);
+    b.br_if(deep, leave_blk, &[], done, &[]);
+    b.switch_to(leave_blk);
+    b.call_rt(leave, &[]);
+    b.br(done, &[]);
+    b.switch_to(done);
+    b.ret(None);
+    b.finish()
+}
+
 fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
-    let name = format!("{GLUE_PREFIX}mir.{}.drop", m.drop_glue.len());
+    let suffix = if m.drop_recurses(ty) {
+        "drop_body"
+    } else {
+        "drop"
+    };
+    let name = format!("{GLUE_PREFIX}mir.{}.{suffix}", m.funcs.len());
     let lay_boxed = |m: &Module, a| Layouts::new(m).is_boxed(a);
     let params = vec![Param {
         ty,
@@ -524,9 +604,43 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
                 .enumerate()
                 .map(|(c, case)| !def.borrows(c) && case.fields.iter().any(|f| m.needs_drop(f.1)))
                 .collect();
+            // The field of a case that holds the same boxed alternative again (the tail of a
+            // chain such as `Cons(head, tail)`), as the last such field and whether it is optional.
+            // A chain is freed by a loop, so its length cannot overflow the stack.
+            let tails: Vec<Option<(u32, bool)>> = def
+                .cases
+                .iter()
+                .map(|case| {
+                    if !boxed {
+                        return None;
+                    }
+                    case.fields.iter().enumerate().rev().find_map(|(k, f)| {
+                        let opt = m.opt_inner(f.1);
+                        if f.1 == ty && k < 32 {
+                            Some((k as u32, false))
+                        } else if opt == Some(ty) && k < 32 {
+                            Some((k as u32, true))
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect();
+            let looped = tails.iter().any(|t| t.is_some());
             let mut b = FuncBuilder::new(m, &name, params, Ty::VOID);
-            let p = b.params()[0];
+            let first = b.params()[0];
             let done = b.new_block();
+            let mut loop_head = None;
+            let p = if looped {
+                let head = b.new_block();
+                let cur = b.add_block_param(head, ty, Mode::Move);
+                b.br(head, &[first]);
+                b.switch_to(head);
+                loop_head = Some(head);
+                cur
+            } else {
+                first
+            };
             // A case that owns nothing needs no code, unless it holds a block to free: payloadless
             // cases of a boxed alternative share a static block that is never freed.
             let mut arms = Vec::new();
@@ -554,6 +668,26 @@ fn make_drop(m: &mut Module, ty: Ty) -> FuncId {
             b.switch(tag, &cases, done);
             for ((c, drops, n), blk) in arms.into_iter().zip(blocks) {
                 b.switch_to(blk);
+                if let Some((k, optional)) = tails[c] {
+                    // The next block of the chain is read before this one is released; the
+                    // release leaves the tail field alone.
+                    let tail = b.alt_get(a, c as u32, k, p);
+                    b.alt_release(a, c as u32, 1 << k, p);
+                    let head = loop_head.expect("a loop for a tail");
+                    if optional {
+                        let (more, last) = (b.new_block(), b.new_block());
+                        let present = b.opt_is_some(tail);
+                        b.br_if(present, more, &[], last, &[]);
+                        b.switch_to(more);
+                        let next = b.opt_get(tail);
+                        b.br(head, &[next]);
+                        b.switch_to(last);
+                        b.br(done, &[]);
+                    } else {
+                        b.br(head, &[tail]);
+                    }
+                    continue;
+                }
                 // Every field marked moved: the release only frees the block.
                 let mask = match (drops, n) {
                     (true, _) => 0,

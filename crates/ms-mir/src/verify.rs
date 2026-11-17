@@ -64,7 +64,9 @@ pub fn verify_module_with(m: &Module, opts: VerifyOptions) -> Result<(), Vec<Ver
     let drops = drop_table(m);
     // A drop function is written for the backends after ownership elaboration, as one release per
     // case: its paths do not all consume the value in the way the ownership rules ask.
-    let glue: std::collections::HashSet<usize> = m.drop_glue.values().map(|f| f.index()).collect();
+    let glue: std::collections::HashSet<usize> = (m.drop_glue.values().chain(&m.glue_bodies))
+        .map(|f| f.index())
+        .collect();
     for (i, f) in m.funcs.iter().enumerate() {
         if glue.contains(&i) {
             continue;

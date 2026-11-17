@@ -6,7 +6,7 @@
 
 import (
 	Bytes from "@std/bytes.ms",
-	Data from "@std/core.ms",
+	Data, panic from "@std/core.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	stdout, stdout_bytes from "@std/io/io.ms",
 	FileHandle, OpenMode, OpenOptions, open, remove, rename, stat from "@std/os/fs.ms",
@@ -28,7 +28,8 @@ export enum LogLevel:
 	Error
 	// Critical records at numeric level 60; logging does not terminate the process.
 	Fatal
-	// Filtering threshold that disables records; passing it to log returns EINVAL.
+	// Filtering threshold that disables records; passing it to log is a programming
+	// fault.
 	Silent
 
 // A destination that accepts encoded log records and can be flushed and closed.
@@ -215,11 +216,11 @@ The value is written as is under the record's `data` key, so a record, map, list
 keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
 such as a cyclic one, returns `EBADMSG`; encoding happens only when the level is enabled.
 The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
-record level, and returns `EINVAL`.
+record level, and passing it to `log` is a programming fault.
 */
 fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = none) Void!:
-	if level == LogLevel.Silent: return error(
-		Error("logging: invalid input", kind: "EINVAL")
+	if level == LogLevel.Silent: panic(
+		"Logger.log: Silent is a threshold, not a record level"
 	)
 	if not self.enabled(level): return ok()
 
@@ -307,7 +308,7 @@ export type LoggerOptions:
 // settings in `options`.
 export fn create(transport: Transport, options: LoggerOptions = LoggerOptions()) Logger!:
 	if max := options.max_bytes:
-		if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
+		if max < 0: panic("log.create: max_bytes must not be negative")
 	return ok(
 		Logger(
 			level_value(options.level),
@@ -393,14 +394,13 @@ fn rotate(path: String, keep: Int) Void:
 
 /*
 Appends log records to the file at `path` and rotates it by size.
-When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `EINVAL`. An existing file keeps being appended to, counting its current size.
+When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` is a programming fault. An existing file keeps being appended to, counting its current size.
 Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5))`.
 */
 // ms: effect std.fs.write
 export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Transport!:
-	if max_bytes <= 0 or keep < 0: return error(
-		Error("logging: invalid input", kind: "EINVAL")
-	)
+	if max_bytes <= 0: panic("rotating_file_transport: max_bytes must be positive")
+	if keep < 0: panic("rotating_file_transport: keep must not be negative")
 
 	var probe = open(path, OpenMode.Append, OpenOptions(permissions: 420))?
 	probe.close().get(none)
