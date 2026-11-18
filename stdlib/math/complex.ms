@@ -219,22 +219,6 @@ fn Complex.pow(exponent: Complex) Complex:
 
 	return self.log().multiply(exponent).exp()
 
-// Raises to a non-negative integer power by repeated squaring, then inverts for a
-// negative exponent.
-fn integer_power(base: Complex, count: Int, invert: Bool) Complex:
-	var result = Complex(re: 1.0, im: 0.0)
-	var factor = base
-	var remaining = count
-
-	while remaining > 0:
-		if remaining % 2 == 1: result = result.multiply(factor)
-		factor = factor.multiply(factor)
-		remaining /= 2
-
-	if invert: return Complex(re: 1.0, im: 0.0).divide(result)
-
-	return result
-
 // Returns the complex sine, `sin(a)cosh(b) + cos(a)sinh(b)i` for `a+bi`.
 fn Complex.sin() Complex:
 	if special := sin_special(self): return special
@@ -419,6 +403,22 @@ export type PolarParts:
 	radius: Float
 	// The angle in radians, from -pi through pi.
 	theta: Float
+
+// Raises to a non-negative integer power by repeated squaring, then inverts for a
+// negative exponent.
+fn integer_power(base: Complex, count: Int, invert: Bool) Complex:
+	var result = Complex(re: 1.0, im: 0.0)
+	var factor = base
+	var remaining = count
+
+	while remaining > 0:
+		if remaining % 2 == 1: result = result.multiply(factor)
+		factor = factor.multiply(factor)
+		remaining /= 2
+
+	if invert: return Complex(re: 1.0, im: 0.0).divide(result)
+
+	return result
 
 // The special-value rows of C99 Annex G for inputs with an infinite or NaN part. Each
 // returns `none` when the general formula applies. Where the standard leaves a sign or
