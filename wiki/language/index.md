@@ -63,3 +63,5 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Optional chaining `?.` is for Optionals only](optional-chaining-is-for-optionals-only.md): `?.` stays an Optional operator; Results and errors use `?` and `match`.
 - [String positions are byte offsets](string-positions-are-byte-offsets.md): `length`, `slice`, `view`, `index_of`, `scalar_at` use bytes; no scalar index; `get`/`take`/`drop`/`slice_scalars` removed.
 - [Plain text never interpolates; `f"..."` text does](plain-text-never-interpolates-f-text-does.md): `"..."` keeps braces as written, `f"..."` interpolates, `r"..."` is raw; no forgotten-f warning.
+- [Characters are plain `Int` values; there is no `Char` type](characters-are-plain-ints-and-there-is-no-char-type.md): no `Char` type before the release; a new API must beat what `Int` already does.
+- [`?` has one meaning, follows lexical scope, and grants no access](question-mark-has-one-meaning-and-grants-no-access.md): `?` returns by lexical scope and inherits access from the variable, default `let`; `match` with `_` for one case.
