@@ -1,6 +1,7 @@
 //! Windows counterpart of `shutdown.rs`: a Ctrl-Break sent to a child in its own process group
 //! reaches the program as SIGINT, for a native build and for the `ms run` launcher.
 #![cfg(windows)]
+#![allow(unsafe_code)]
 
 use crate::common::scratch;
 use std::io::{BufRead, BufReader, Read};
