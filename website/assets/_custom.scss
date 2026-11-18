@@ -214,8 +214,9 @@ html:root[data-theme="dark"] .docs-shot.has-dark .shot-dark { display: block; }
 .home-install { display: block; width: fit-content; max-width: 100%; margin: 2rem auto 0; padding: .8rem 1.15rem; border: 1px solid var(--docs-heading); background: var(--docs-code-bg); font: .8rem var(--docs-mono); overflow-x: auto; text-align: left; }
 .markdown .home-install code { padding: 0; background: transparent; font-size: inherit; }
 .home-hero { padding-bottom: 3rem; }
-.home-hero .home-pitch { width: 100%; }
-.home-install { box-sizing: border-box; white-space: pre; }
+.home-hero .home-pitch { width: 100%; max-width: 60rem; }
+.markdown .home-install { box-sizing: border-box; white-space: pre; margin: 2rem auto 0; }
+.markdown .home-actions a { flex: none; }
 .markdown h2#a-taste { font: 400 clamp(1.6rem, 3vw, 2.2rem)/1.3 var(--docs-mono); letter-spacing: -.06em; margin: 3rem 0 1.5rem; }
 .home-taste { display: grid; grid-template-columns: 1fr 1fr; gap: 0 2rem; align-items: start; }
 .home-taste > p { grid-row: 1; margin: 0 0 .75rem; color: var(--docs-muted); }
