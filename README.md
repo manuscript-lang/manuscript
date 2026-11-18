@@ -135,4 +135,4 @@ ms init hello
 
 Install `ms` with `curl -fsSL https://manuscript-lang.github.io/manuscript/install.sh | sh` (Windows: `irm https://manuscript-lang.github.io/manuscript/install.ps1 | iex`), or take an archive from the [releases page](https://github.com/manuscript-lang/manuscript/releases), then run the command above.
 
-Everything here works today and is hardened with each release. The core syntax, ownership rules, `ms.toml` keys, `--json` shapes and diagnostic codes are frozen; other standard library names may change; see [what is frozen](documentation/core-language/stability.md) and the [changelog](CHANGELOG.md).
+Everything here works today and is hardened with each release. The core syntax, ownership rules, `ms.toml` keys, `--json` shapes and diagnostic codes are frozen; other standard library names may change; see [what is frozen](documentation/core-language/stability.md).

@@ -83,7 +83,7 @@ c := -first       // error: unary - is not defined for UInt8
 1. **`UInt8`, `UInt16`, `UInt32`.** Checker, MIR, lowering, layout with zero-extending loads, packed lists/records/optionals, contextual literals, conversions and receivers, `sum()`. Gate: `make conform`, runtime tests per width, packed `List[UInt8]` memory measurement.
 2. **`UInt64`.** Unsigned MIR ops, literal range, formatting/parse, compare/sort/hash, Cranelift and LLVM. Gate: values above `i64::MAX` through arithmetic, compare, sort, print, parse, `to_float` on both backends and all platforms.
 3. **`Bytes` and stdlib migration.** `get`, `values`, `append`, `with_value`, `index_of_byte`, `uint8/16/32` readers and `append_uint*` (`uint64` only if stage 2 lands), other `Bytes` users; replace the `toml.ms` `-1` sentinel with `Optional[UInt8]`; update tests. Gate: `make verify-full`.
-4. **Docs.** Numbers page, conversion table, generated reference, changelog.
+4. **Docs.** Numbers page, conversion table, generated reference.
 
 ## Open questions
 
