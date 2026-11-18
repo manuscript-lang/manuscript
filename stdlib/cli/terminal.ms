@@ -214,7 +214,11 @@ fn first_number(part: String) Int:
 fn csi_key(params: String, last: Int) TerminalEvent?:
 	numbers := params.split(";").map(first_number)
 	modifier := numbers.get_or(1, 1)
-	if last == 90: return key("tab", false, false, true)
+
+	if last == 90:
+		// Backtab always carries Shift; a modifier parameter adds Control and Alt.
+		bits := if modifier > 1: modifier - 1 else: 0
+		return key("tab", bits / 4 % 2 == 1, bits / 2 % 2 == 1, true)
 
 	var event: TerminalEvent? = none
 
