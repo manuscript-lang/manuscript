@@ -71,3 +71,20 @@ fn fmt_leaves_empty_and_blank_files_empty() {
     assert_eq!(std::fs::read_to_string(dir.join("blank.ms")).unwrap(), "");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn fmt_always_writes_unix_line_endings() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fmt-eol-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a.ms"), "fn main() Void:\r\n\tx := 1\r\n").unwrap();
+
+    let (status, _, stderr) = ms(&dir, &["fmt", "--check", "a.ms"]);
+    assert_eq!(status, 1, "{stderr}");
+    let (status, _, stderr) = ms(&dir, &["fmt", "a.ms"]);
+    assert_eq!(status, 0, "{stderr}");
+    let written = std::fs::read(dir.join("a.ms")).unwrap();
+    assert_eq!(written, b"fn main() Void:\n\tx := 1\n");
+    let (status, _, stderr) = ms(&dir, &["fmt", "--check", "a.ms"]);
+    assert_eq!(status, 0, "{stderr}");
+}

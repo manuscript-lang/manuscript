@@ -18,12 +18,12 @@ type Rec:
 // A quoted category may contain commas.
 fn parse_line(line: String) Rec?:
     q := line.starts_with("\"")
-    rest := if q: line.slice(1, line.length()).get() else: line
+    rest := if q: line.slice(1, line.length()) else: line
     at := if q: rest.index_of("\"") else: rest.index_of(",")
     if i := at:
-        if q and not rest.slice(i + 1, rest.length()).get().starts_with(","): return none
-        cat := rest.slice(0, i).get()
-        amount := rest.slice(i + (if q: 2 else: 1), rest.length()).get()
+        if q and not rest.slice(i + 1, rest.length()).starts_with(","): return none
+        cat := rest.slice(0, i)
+        amount := rest.slice(i + (if q: 2 else: 1), rest.length())
         if cat.is_empty() or cat.contains("\"") or amount.contains(","): return none
         if cents := parse_amount(amount): return Rec(cat, cents)
     return none

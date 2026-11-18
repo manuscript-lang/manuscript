@@ -796,7 +796,7 @@ impl Runner<'_> {
         let mut child = match spawned {
             Ok(child) => child,
             Err(error) => {
-                run.ended = error.to_string();
+                run.ended = start_failure(&error, self.working);
                 return run;
             }
         };
@@ -886,7 +886,7 @@ impl Runner<'_> {
             .spawn();
         let mut child = match spawned {
             Ok(child) => child,
-            Err(error) => return Ran::Failed(error.to_string()),
+            Err(error) => return Ran::Failed(start_failure(&error, self.working)),
         };
         let stdout = pipe_reader(child.stdout.take().expect("piped stdout"), stops.wake());
         let stderr = pipe_reader(child.stderr.take().expect("piped stderr"), stops.wake());
@@ -1489,6 +1489,19 @@ impl Document {
             ),
         )
     }
+}
+
+/// Why the test or bench process could not start. Windows refuses a working directory of 260
+/// characters or more (`ERROR_DIRECTORY`, 267) however the path is spelled, so name the limit
+/// instead of the bare status.
+fn start_failure(error: &std::io::Error, working: &str) -> String {
+    if cfg!(windows) && error.raw_os_error() == Some(267) {
+        return format!(
+            "cannot start in {}: Windows does not allow a working directory of 260 or more characters; move the project to a shorter path",
+            working
+        );
+    }
+    error.to_string()
 }
 
 #[cfg(test)]

@@ -10,7 +10,7 @@ fn count(script: List[String], lo: Int, hi: Int, skip: String) Int:
     return script.slice(lo, hi).get().count(fn l: not l.starts_with(skip))
 
 export fn main() Int:
-    ls := (stdin() | lines | collect(none)).get([])
+    ls := (stdin() | lines | collect(none)).get_or([])
     if ls.is_empty(): return 0
     [name_a, name_b, ctx_text, n_text, m_text] := ls[0].split(" ")
     ctx := ctx_text.parse_int().get()

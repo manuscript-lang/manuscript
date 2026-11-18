@@ -108,6 +108,8 @@ pub struct Interner {
     /// Segment `k` holds `FIRST << k` texts and is allocated once, on first use, never freed
     /// before the interner drops.
     segments: [AtomicPtr<Text>; SEGMENTS],
+    /// The hash table lookups probe without the lock; it points into a box that `state` owns.
+    table: AtomicPtr<Table>,
     state: Mutex<State>,
 }
 
@@ -116,9 +118,28 @@ const FIRST: usize = 1024;
 /// Enough segments to hold every `u32` id.
 const SEGMENTS: usize = 22;
 
+/// Open-addressed ids, 0 for empty; the length is a power of two and at least twice the texts.
+/// A slot is written once, after its text is published, so a reader that sees an id can read it.
+struct Table {
+    mask: usize,
+    slots: Box<[AtomicU32]>,
+}
+
+impl Table {
+    fn new(len: usize) -> Box<Table> {
+        Box::new(Table {
+            mask: len - 1,
+            slots: (0..len).map(|_| AtomicU32::new(0)).collect(),
+        })
+    }
+}
+
 struct State {
-    /// Open-addressed ids, 0 for empty; the length is a power of two and at least twice the texts.
-    slots: Vec<u32>,
+    /// Every table the interner has had, the current one last. A table that growth replaced stays
+    /// alive until the interner drops, because a lookup may still be probing it.
+    // Boxed so a table keeps its address while the vector grows; `Interner::table` points at it.
+    #[allow(clippy::vec_box)]
+    tables: Vec<Box<Table>>,
     /// Total length of the texts.
     bytes: usize,
 }
@@ -161,11 +182,16 @@ impl Interner {
             generation: NEXT.fetch_add(1, Atomic::Relaxed),
             len: AtomicU32::new(0),
             segments: std::array::from_fn(|_| AtomicPtr::new(std::ptr::null_mut())),
+            table: AtomicPtr::new(std::ptr::null_mut()),
             state: Mutex::new(State {
-                slots: vec![0; 4096],
+                tables: Vec::new(),
                 bytes: 0,
             }),
         };
+        {
+            let mut state = interner.lock();
+            interner.install(&mut state, Table::new(4096));
+        }
         interner.push(Text(NonNull::from("")));
         interner
     }
@@ -222,48 +248,74 @@ impl Interner {
         Some(unsafe { &*self.text(id).0.as_ptr() })
     }
 
-    /// Interns `text`.
+    /// Makes `table` the one lookups probe.
+    fn install(&self, state: &mut State, table: Box<Table>) {
+        self.table
+            .store(std::ptr::from_ref(&*table).cast_mut(), Atomic::Release);
+        state.tables.push(table);
+    }
+
+    /// The id of `text` in `table`, or the empty slot where it belongs.
+    fn probe(&self, table: &Table, text: &str, hash: usize) -> Result<Symbol, usize> {
+        let mut at = hash & table.mask;
+        loop {
+            let id = table.slots[at].load(Atomic::Acquire);
+            if id == 0 {
+                return Err(at);
+            }
+            // SAFETY: a slot holds an id only after its text was published (`push`, then the
+            // slot's release store), and every `Text` points at a live allocation of this interner.
+            if unsafe { self.text(id).0.as_ref() } == text {
+                return Ok(Symbol(id));
+            }
+            at = (at + 1) & table.mask;
+        }
+    }
+
+    /// Interns `text`. A name already interned is found without the lock, so threads that read
+    /// the same names do not queue behind each other.
     pub fn intern(&self, text: &str) -> Symbol {
         if text.is_empty() {
             return Symbol(0);
         }
-        let mut state = self.lock();
-        let mask = state.slots.len() - 1;
-        let mut at = hash_text(text) as usize & mask;
-        loop {
-            let id = state.slots[at];
-            if id == 0 {
-                break;
-            }
-            // SAFETY: every `Text` points at a live allocation owned by this interner.
-            if unsafe { self.text(id).0.as_ref() } == text {
-                return Symbol(id);
-            }
-            at = (at + 1) & mask;
+        let hash = hash_text(text) as usize;
+        // SAFETY: the pointer is to a box `state` keeps until the interner drops.
+        let table = unsafe { &*self.table.load(Atomic::Acquire) };
+        if let Ok(found) = self.probe(table, text, hash) {
+            return found;
         }
+        let mut state = self.lock();
+        // A table installed since the lock-free probe, or a text another thread just added.
+        let table: &Table = state.tables.last().expect("a table is installed");
+        // SAFETY: the box lives as long as `state`, which only grows; the borrow of `state`
+        // ends here so `grow` can take it again.
+        let table: &Table = unsafe { &*std::ptr::from_ref(table) };
+        let at = match self.probe(table, text, hash) {
+            Ok(found) => return found,
+            Err(at) => at,
+        };
         let leaked: &'static mut str = Box::leak(text.to_owned().into_boxed_str());
         state.bytes += text.len();
         let id = self.push(Text(NonNull::from(leaked)));
-        state.slots[at] = id;
-        if self.len() * 2 > state.slots.len() {
+        table.slots[at].store(id, Atomic::Release);
+        if self.len() * 2 > table.slots.len() {
             self.grow(&mut state);
         }
         Symbol(id)
     }
 
     fn grow(&self, state: &mut State) {
-        let mut slots = vec![0u32; state.slots.len() * 2];
-        let mask = slots.len() - 1;
+        let table = Table::new(state.tables.last().map_or(4096, |t| t.slots.len()) * 2);
         for id in 1..self.len() as u32 {
             // SAFETY: every `Text` points at a live allocation owned by this interner.
             let text = unsafe { self.text(id).0.as_ref() };
-            let mut at = hash_text(text) as usize & mask;
-            while slots[at] != 0 {
-                at = (at + 1) & mask;
+            let mut at = hash_text(text) as usize & table.mask;
+            while table.slots[at].load(Atomic::Relaxed) != 0 {
+                at = (at + 1) & table.mask;
             }
-            slots[at] = id;
+            table.slots[at].store(id, Atomic::Relaxed);
         }
-        state.slots = slots;
+        self.install(state, table);
     }
 }
 

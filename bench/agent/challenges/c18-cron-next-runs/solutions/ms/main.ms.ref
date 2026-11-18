@@ -32,7 +32,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]?:
     for item in text.split(","):
         parts := item.split("/")
         body := parts[0]
-        step := if parts.length() == 2: digits(parts[1], 1, 2).get(0) else: 1
+        step := if parts.length() == 2: digits(parts[1], 1, 2).get_or(0) else: 1
         single := digits(body, 1, 2)
         r := body.split("-")
         if parts.length() > 2 or step < 1: return none
@@ -43,10 +43,10 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]?:
 
 // Returns [day number, minute of day] for a valid START, or an empty list.
 fn parse_start(s: String) List[Int]:
-    if s.length() != 16 or s.slice(4, 5).get() != "-" or s.slice(7, 8).get() != "-" or s.slice(10, 11).get() != "T" or s.slice(13, 14).get() != ":": return []
-    f := [s.slice(0, 4).get(), s.slice(5, 7).get(), s.slice(8, 10).get(), s.slice(11, 13).get(), s.slice(14, 16).get()].map(fn p: digits(p, p.length(), p.length()).get(-1))
+    if s.length() != 16 or s.slice(4, 5) != "-" or s.slice(7, 8) != "-" or s.slice(10, 11) != "T" or s.slice(13, 14) != ":": return []
+    f := [s.slice(0, 4), s.slice(5, 7), s.slice(8, 10), s.slice(11, 13), s.slice(14, 16)].map(fn p: digits(p, p.length(), p.length()).get_or(-1))
     leap := (f[0] % 4 == 0 and f[0] % 100 != 0) or f[0] % 400 == 0
-    limit := if f[1] == 2 and leap: 29 else: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31].get(f[1] - 1, 0)
+    limit := if f[1] == 2 and leap: 29 else: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31].get_or(f[1] - 1, 0)
     if f.any(fn x: x < 0) or f[0] < 1970 or f[0] > 2099 or f[1] < 1 or f[1] > 12 or f[2] < 1 or f[2] > limit or f[3] > 23 or f[4] > 59: return []
     return [days_from_civil(f[0], f[1], f[2]), f[3] * 60 + f[4]]
 
@@ -71,11 +71,11 @@ fn solve(t: List[String]) String:
     if t.length() != 7: return "error: bad line"
     start := parse_start(t[0])
     if start.is_empty(): return "error: bad start"
-    count := digits(t[1], 1, 2).get(0)
+    count := digits(t[1], 1, 2).get_or(0)
     if count < 1 or count > 20: return "error: bad count"
     sets := (0..5).map(fn i: parse_field(t[2 + i], lows[i], highs[i]))
     if bad := sets.index_of(none): return f"error: bad {names[bad]}"
-    runs := schedule(count, start, sets.map(fn s: s.get([])))
+    runs := schedule(count, start, sets.map(fn s: s.get_or([])))
     return if runs.is_empty(): "never" else: f"{runs.length()} runs\n{runs.join("\n")}"
 
 fn main() Void:

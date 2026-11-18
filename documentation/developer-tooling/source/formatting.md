@@ -54,7 +54,7 @@ ms fmt src/*.ms --check
 
 ## Formatter contract
 
-Formatting preserves meaning and comments, indents with one tab per level and uses LF endings with a final newline, and is idempotent. Rules:
+Formatting preserves meaning and comments, indents with one tab per level and always writes LF endings on every platform, converting CRLF input (`ms fmt --check` reports a CRLF file as needing formatting), ends with a final newline, and is idempotent. Rules:
 
 - Keep token spellings; wrap only past 88 columns. Groups that fit stay on one line; wrapped lists pack simple elements into rows.
 - A paragraph of consecutive `//` prose lines with a line wider than 88 columns is refilled to 88. Lists, indented text, code fences, `ms:`/`manuscript:`/`conform:` lines and trailing comments are left as written.

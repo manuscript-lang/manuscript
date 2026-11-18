@@ -5,6 +5,7 @@
 Perf and agent benchmarks, profiling.
 
 - [A lone file read runs where it is waited on](a-lone-file-read-runs-where-it-is-waited-on.md): `read_file` defers to its waiter when nothing else runs and opens with one `fstat` (3.7 to 2.2 us per small read; Rust 1.8).
+- [Independent files use every core, and a known name is looked up without the lock](independent-files-use-every-core-and-name-lookups-take-no-lock.md): `ms fmt` over 8 files 3.28 to 0.89 s; the interner mutex capped scaling at two cores; diagram html and LSP completion stopped repeating a compile and a sibling parse.
 - [A cloned `none` that is only dropped is deleted](an-emptied-local-must-not-clone-or-drop-its-none.md): a stored-to `Result` variable cloned and dropped its emptied slot every pass (48.2M to 5.3M instructions).
 - [A block above the cached range asks for huge pages](a-block-above-the-cached-range-asks-for-huge-pages.md): blocks over 16 MiB take one fault per 4 KiB; `MADV_HUGEPAGE` on their 2 MiB units cut 13,000 faults to 2,300 (c16 86 to 73 ms).
 - [Platform parity means functional parity](platform-parity-means-functional-parity.md): Chinmay's decision, each platform uses its best native fast path, no mirrored mechanism required.
@@ -17,6 +18,7 @@ Perf and agent benchmarks, profiling.
 - [`var` record parameters stay in the caller's slot](var-record-parameters-stay-in-the-callers-slot.md): wide-record methods no longer move every field out and back per call; `Bytes` reads inline (`Lines.next` 147 to 75 instructions per line).
 - [Constant list tables iterated in a loop are built once](constant-list-tables-in-loops-are-built-once.md): `for d in [[1, 0], [-1, 0], ...]` inside a loop no longer allocates per pass (248 to 20 ms for 5M passes).
 - [`map`/`filter` chains over numbers run as one loop](map-filter-chains-over-numbers-run-as-one-loop.md): filter/map/sum over reading lambdas build only the final result (163 to 78 ms on 2M elements).
+- [`for x in xs.filter(f)` walks `xs` in place](filtered-for-loops-walk-the-list-in-place.md): no filtered list or deep copies when the lambdas cannot fault (c13 392M to 350M instructions).
 - [`for e in list.entries()` walks the list in place](list-entries-loops-walk-the-list.md): no entry records when `e` is only read as `.index`/`.value` (28 to 3.2 ms on 2M elements).
 - [Small literal maps are searched, not built](small-literal-maps-are-searched-not-built.md): lookups on a literal of up to 12 constants compare keys directly (85 to 4 ns per call).
 - [A win needs a baseline comparison, not just a smaller number](a-win-needs-a-baseline-comparison-not-just-a-smaller-number.md): keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution…
