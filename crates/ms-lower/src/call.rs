@@ -1476,7 +1476,7 @@ impl<'a> FnLower<'a> {
             .and_then(|d| d.method())
             .is_some_and(|f| f.consuming);
         let r = if takes_self {
-            self.owned_payload(recv)
+            self.hand_over(recv)
         } else {
             self.borrow(recv)
         };
@@ -1506,39 +1506,6 @@ impl<'a> FnLower<'a> {
         }
         self.restore_var_arguments(slots_out, |p| places.get(p).cloned().flatten())?;
         Ok(self.val(v, true))
-    }
-
-    /// An interface value handed to an operation that takes its receiver, owning its payload: a
-    /// view of a borrowed value (`iface.borrow`, `iface.view`, tag 1 or 2) owns no payload to give,
-    /// so that payload is copied; an owned value (tag 0) is passed as it is.
-    fn owned_payload(&mut self, recv: Val) -> Value {
-        let x = self.hand_over(recv);
-        let t = self.ty_of(x);
-        let var = self.b.declare_var(t, Mode::Move);
-        let tag = self
-            .b
-            .emit(Op::IfaceTag, &[x], Imm::None, Some(MTy::INT))
-            .expect("tag");
-        let zero = self.b.iconst(0);
-        let owns = self.b.icmp(ms_mir::ir::Cc::Eq, tag, zero);
-        let (copy, held, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br_if(owns, held, &[], copy, &[]);
-        self.b.seal_block(held);
-        self.b.seal_block(copy);
-        self.b.switch_to(held);
-        self.b.def_var(var, x);
-        self.b.br(join, &[]);
-        self.b.switch_to(copy);
-        let c = self
-            .b
-            .emit(Op::Clone, &[x], Imm::None, Some(t))
-            .expect("copy");
-        self.b.emit(Op::Drop, &[x], Imm::None, None);
-        self.b.def_var(var, c);
-        self.b.br(join, &[]);
-        self.b.seal_block(join);
-        self.enter(join);
-        self.b.use_var(var)
     }
 
     /// The contract operation an implementation method fulfils: its parameters without a
