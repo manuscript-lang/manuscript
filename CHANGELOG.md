@@ -12,6 +12,7 @@ Each release lists what changed for people who write Manuscript. Versions are da
 - A bad value from the caller returns instead of crashing. A size, count, radix or budget gives `EINVAL` where the function already returns an `Error`, and `none` where it already returns an optional. `take(0)`, `chunks(0)` and similar give an empty result, and a shift count of 64 or more shifts every bit out. Faults remain for bugs: an index out of range, overflow, a negative shift count. See [choosing a failure](documentation/core-language/errors/_index.md#choosing-a-failure-in-the-standard-library).
 - `rate_limiter` returns `RateLimiter!`, `BitSet.add` returns `Void!`, and `to_string_radix` returns `String?`. `to_hex()` and `to_binary()` always succeed, and `to_string()` is base 10.
 - `SeededRandom.weighted_choice` returns `none` for weights that do not fit the values.
+- YAML: an explicit `: ` value that opens a collection after more than one space (`:  b: 1`) now parses; it was rejected as bad indentation.
 - `fs.exists` returns `false` for a path below a file (`file.txt/child`), as its documentation said. Windows UNC paths (`\\server\share`) now collapse repeated separators in `normalize` and `join`, and a path with three leading separators is no longer read as UNC.
 - `String.split` and `Bytes.split` take only the separator: the `max_parts` limit is removed, because it truncated instead of keeping the rest. Drop the second argument; to stop early, loop with `index_of`.
 

@@ -2214,8 +2214,9 @@ fn explicit_entry(var context: Context, base: Int, depth: Int) ExplicitEntry!:
 	// A collection may start on the indicator's line, as in `: - one`.
 	if sequence(text) or (text != "" and boundary(text, colon: true) >= 0):
 		context.simple.set(context.index, false)
-		context.lines.set(context.index, pad(base + 2).concat(text))
-		value = block(var context, base + 2, depth + 1, scalar_base: base)?
+		content := column - 1
+		context.lines.set(context.index, pad(content).concat(text))
+		value = block(var context, content, depth + 1, scalar_base: base)?
 	else:
 		context.index += 1
 		value = block_value(
