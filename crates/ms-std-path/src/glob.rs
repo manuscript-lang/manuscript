@@ -69,6 +69,21 @@ fn parse_class(token: &str) -> Option<Class> {
     Some(Class { negated, ranges })
 }
 
+/// Byte index of the `]` closing the class that opens `pattern`, skipping escaped characters.
+fn class_end(pattern: &str) -> Option<usize> {
+    let mut escaped = false;
+    for (i, c) in pattern.char_indices().skip(1) {
+        if escaped {
+            escaped = false;
+        } else if c == '\\' {
+            escaped = true;
+        } else if c == ']' {
+            return Some(i);
+        }
+    }
+    None
+}
+
 fn sequence(mut pattern: &str) -> Option<Vec<Atom>> {
     let mut atoms = Vec::new();
     while let Some(ch) = pattern.chars().next() {
@@ -124,7 +139,7 @@ fn sequence(mut pattern: &str) -> Option<Vec<Atom>> {
                 pattern = &pattern[1..];
             }
             '[' => {
-                let end = pattern.find(']')?;
+                let end = class_end(pattern)?;
                 let mut token = pattern[..=end].to_string();
                 if token.starts_with("[!") {
                     token = String::from("[^") + &token[2..];
@@ -510,6 +525,15 @@ mod tests {
         assert!(m("@(a|b)", "b"));
         assert!(m("?(a)b", "b"));
         assert!(m("\\*", "*"));
+    }
+
+    #[test]
+    fn escaped_bracket_stays_in_class() {
+        assert!(m("[\\]]", "]"));
+        assert!(m("[a\\]]", "]"));
+        assert!(m("[a\\]]x", "ax"));
+        assert!(!m("[\\]]", "a"));
+        assert!(Glob::new("[a").is_none());
     }
 
     #[test]
