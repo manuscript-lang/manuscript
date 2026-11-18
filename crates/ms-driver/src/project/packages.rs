@@ -230,12 +230,12 @@ pub fn verify_file(package: &Package, relative: &str, bytes: &[u8]) -> Result<()
     match package.files.get(relative) {
         Some(expected) if *expected == sha256::hex(bytes) => Ok(()),
         Some(_) => Err(ProjectError::msg(format!(
-            "{}/{relative} in the cache does not match ms.lock; delete {} and run `ms install`",
-            package.key, package.root
+            "{}/{relative} in the cache does not match ms.lock; run `ms install` to restore it",
+            package.key
         ))),
         None => Err(ProjectError::msg(format!(
-            "{}/{relative} is not in the locked package; delete {} and run `ms install`",
-            package.key, package.root
+            "{}/{relative} is not in the locked package; run `ms install` to restore it",
+            package.key
         ))),
     }
 }
@@ -460,7 +460,7 @@ impl Wiring<'_> {
                 directory.display()
             )));
         }
-        let files = read_index(cache, &directory, &entry.sha256, id)?;
+        let files = read_index(cache, &entry.sha256, id)?;
         let root = pathops::eval_symlinks(&directory.to_string_lossy())?;
         let manifest = pathops::join(&[&root, "ms.toml"]);
         let manifest_text =
@@ -547,7 +547,6 @@ fn check_effects(
 /// Reads the stored index and checks it is the one the lock names, then checks the manifest.
 fn read_index(
     cache: &Path,
-    directory: &Path,
     hash: &str,
     key: &str,
 ) -> Result<BTreeMap<String, String>, ProjectError> {
@@ -556,9 +555,7 @@ fn read_index(
         .map_err(|e| ProjectError::path("open", &path.to_string_lossy(), &e))?;
     if hash_index(&text) != hash {
         return Err(ProjectError::msg(format!(
-            "the index of package {key} does not match ms.lock; delete {} and {} and run `ms install`",
-            directory.display(),
-            path.display()
+            "the index of package {key} does not match ms.lock; run `ms install` to restore it"
         )));
     }
     Ok(parse_index(&text))

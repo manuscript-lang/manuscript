@@ -159,6 +159,13 @@ fn fetch_pins_a_package_and_checks_work_offline() {
         "{}",
         stderr(&tampered)
     );
+
+    // `ms install` replaces the damaged copy; nothing has to be deleted by hand.
+    std::fs::rename(root.join("gone"), &lib).unwrap();
+    let repaired = ms(&project, &cache, &["install"]);
+    assert!(repaired.status.success(), "{}", stderr(&repaired));
+    let checked = ms(&project, &cache, &["check", "ms.toml"]);
+    assert!(checked.status.success(), "{}", stderr(&checked));
 }
 
 #[test]
@@ -263,6 +270,30 @@ fn a_symbolic_link_in_a_package_is_rejected_where_git_checks_it_out_as_text() {
         "{}",
         stderr(&output)
     );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_package_manifest_error_names_paths_from_the_package_root() {
+    let root = scratch("package-no-source");
+    let (cache, lib, project) = (root.join("cache"), root.join("lib"), root.join("app"));
+    let spec = package(&lib, "", "export fn f() Int:\n    return 1\n");
+    std::fs::write(
+        lib.join("ms.toml"),
+        "[project]\nname = \"lib\"\nsource = \"missing\"\n",
+    )
+    .unwrap();
+    git(&lib, &["commit", "-q", "-a", "-m", "move source"]);
+    git(&lib, &["tag", "-f", "v1.0.0"]);
+    app(
+        &project,
+        &format!("[dependencies]\n\"@lib\" = {}\n", table(&spec)),
+    );
+    let output = ms(&project, &cache, &["install"]);
+    assert!(!output.status.success());
+    let message = stderr(&output);
+    assert!(message.contains("ms.toml:3:10: lstat missing"), "{message}");
+    assert!(!message.contains(".tmp-"), "{message}");
     let _ = std::fs::remove_dir_all(&root);
 }
 
