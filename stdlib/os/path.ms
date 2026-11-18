@@ -706,25 +706,45 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 		if target.starts_with(target_root): target_root.length() else: 0,
 		target.length(),
 	)
-	base_parts := base_rest.split("/")
-	target_parts := target_rest.split("/")
+	base_data := base_rest.view_bytes()
+	target_data := target_rest.view_bytes()
+	base_count := base_rest.length()
+	target_count := target_rest.length()
 
-	// Empty text splits into one empty piece, which is no component.
-	base_count := if base_rest.is_empty(): 0 else: base_parts.length()
-	target_count := if target_rest.is_empty(): 0 else: target_parts.length()
-	var shared = 0
-	while (
-		shared < base_count
-		and shared < target_count
-		and same_text(windows, base_parts[shared], target_parts[shared])
-	): shared += 1
+	// Skip the leading components both paths share, then climb out of what is left of
+	// `base` and descend into what is left of `target`.
+	var base_at = 0
+	var target_at = 0
 
-	var out: List[String] = []
-	for _step in shared..base_count:
+	while base_at < base_count and target_at < target_count:
+		base_end := base_data.index_of_byte(47, base_at).get_or(base_count)
+		target_end := target_data.index_of_byte(47, target_at).get_or(target_count)
+		if not same_text(
+			windows,
+			base_rest.view(base_at, base_end),
+			target_rest.view(target_at, target_end),
+		): break
+
+		base_at = base_end + 1
+		target_at = target_end + 1
+
+	var out = StringBuilder()
+	var climbs = 0
+	var scan = base_at
+
+	while scan < base_count:
+		climbs += 1
+		scan = base_data.index_of_byte(47, scan).get_or(base_count) + 1
+
+	for step in 0..climbs:
+		if step > 0: out.append("/")
 		out.append("..")
-	for at in shared..target_count:
-		out.append(target_parts[at].clone())
-	return ok(native(windows, out.join("/")))
+
+	if target_at < target_count:
+		if climbs > 0: out.append("/")
+		out.append(target_rest.view(target_at, target_count))
+
+	return ok(native(windows, out.build()))
 
 fn same_text(windows: Bool, left: String, right: String) Bool:
 	if windows: return equal_fold(left, right)
