@@ -62,6 +62,10 @@ test "strip_ansi removes sequences and keeps text":
 	expect_equal(strip_ansi(f"{esc}]2;title\u{7}after"), "after")?
 	expect_equal(strip_ansi("no escapes"), "no escapes")?
 
+test "strip_ansi and visible_width treat every two-byte escape as zero columns":
+	expect_equal(strip_ansi(f"a{esc}7b{esc}cc{esc}=d"), "abcd")?
+	expect_equal(visible_width(f"a{esc}7b{esc}cc")?, 3)?
+
 test "visible_width counts columns, not escape bytes":
 	expect_equal(visible_width(f"{esc}[1mbold{esc}[0m")?, 4)?
 	expect_equal(visible_width("日本")?, 4)?
