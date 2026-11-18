@@ -164,3 +164,11 @@ fn is_none_on_a_list_get_result_names_get_or() {
         "{got:?}"
     );
 }
+
+#[test]
+fn an_unbounded_type_variable_says_where_to_bound_it() {
+    let got = messages(
+        "type Box[T]:\n    items: List[T]\n\nfn Box[T].first_key() String:\n    return self.items.get(0).key()\n",
+    );
+    assert!(got.iter().any(|m| m.contains("T has no bound")), "{got:?}");
+}
