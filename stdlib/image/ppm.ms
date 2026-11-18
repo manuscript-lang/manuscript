@@ -43,12 +43,15 @@ fn ppm_number(data: Bytes, start: Int) List[Int]!:
 
 // Decodes binary PGM (P5) or PPM (P6) into a gray or RGB raster. A `maxval` up to 65535
 // is accepted, and samples are scaled to 8 bits. Malformed data returns EBADMSG, and
-// dimensions past `max_pixels` or the hard ceiling return EOVERFLOW. The caller must
-// have checked that the data starts with `P5` or `P6`, as `decode_image` does.
+// dimensions past `max_pixels` or the hard ceiling return EOVERFLOW. Data that does not
+// start with `P5` or `P6` returns EBADMSG.
 export fn decode_ppm(data: Bytes, max_pixels: Int?) Raster!:
 	if data.length() < 2: return error(bad("truncated PNM header"))
 
 	kind := data.get(1).to_int()
+	if data.get(0).to_int() != 80 or (kind != 53 and kind != 54):
+		return error(bad("not a binary PGM or PPM"))
+
 	n := if kind == 54: 3 else: 1
 	wide := ppm_number(data, 2)?
 	tall := ppm_number(data, wide[1])?
