@@ -68,7 +68,8 @@ svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--pan);s
 .tools button,.tools select{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:0 8px;line-height:22px;font-size:12px;border-radius:6px;cursor:pointer}
 .tools input:not([type=checkbox]){border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:3px 9px;border-radius:6px;font:inherit;min-width:0;width:200px;max-width:100%}.tools input:not([type=checkbox]):focus{outline:2px solid var(--acc);border-color:var(--acc)}
 .tools button:hover{border-color:var(--fg)}
-.stage{border:1px solid var(--line);border-radius:10px;overflow:hidden;background-color:var(--bg)}
+.stage{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background-color:var(--bg)}
+.cue{position:absolute;right:8px;bottom:8px;padding:2px 9px;border-radius:10px;background:var(--fg);color:var(--bg);font-size:12px;pointer-events:none;opacity:.85}
 .stage svg{touch-action:none;display:block;width:100%;height:calc(100vh - 215px);min-height:200px;cursor:grab}
 .flow ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--line)}.flow>ul{border:0;padding:0}
 .flow li{margin:3px 0}.flow summary{cursor:pointer;list-style:none}.flow summary::-webkit-details-marker{display:none}
@@ -196,14 +197,13 @@ function ownershipSpan(s){const mode=s.ownership;
 const fxKind=x=>/\.read$/.test(x)?'read':'write';
 const fns=D.entities.filter(e=>e.kind==='fn'||e.kind==='method');
 const firstN=(l,n)=>l.slice(0,n);
-/* Each list answers its own question and no function appears twice. */
-const direct=e=>e.effects.filter(x=>fxKind(x)==='write'&&e.calls.every(c=>!E[c]||!E[c].effects.includes(x)));
-const LAND={};{
-  const used=new Set(),calledBy=e=>(callers[e.key]||[]).length;
-  const take=(title,list,n)=>{const l=list.filter(e=>!used.has(e.key)).slice(0,n);l.forEach(e=>used.add(e.key));if(l.length)LAND[title]=l};
+/* Each list answers its own question; a function may be in several, and a capped list says how many there are. */
+const LAND={},LANDN={};{
+  const calledBy=e=>(callers[e.key]||[]).length;
+  const take=(title,list,n)=>{if(list.length){LAND[title]=list.slice(0,n);LANDN[title]=list.length}};
   take('Entry',fns.filter(e=>e.name==='main'),1);
   take('Most called',fns.filter(e=>calledBy(e)>1).sort((a,b)=>calledBy(b)-calledBy(a)),6);
-  take('Writes to the world',fns.filter(e=>direct(e).length).sort((a,b)=>calledBy(b)-calledBy(a)),6);
+  take('Writes to the world',fns.filter(e=>e.effects.some(x=>fxKind(x)==='write')).sort((a,b)=>calledBy(b)-calledBy(a)),6);
   take('Public API',fns.filter(e=>e.exported&&e.name!=='main'&&!calledBy(e)),4);
 }
 /* what a selection can show: a function has behavior, a type has shape, a module only has its place on the map */
@@ -267,7 +267,7 @@ function setList(){
   if(HAS){const ks=Object.keys(CH);h+='<h4>Changed ('+(ks.length+GONE.length)+')</h4><div class="chips">'+ks.slice(0,40).map(k=>'<button type="button" class="chip chg" data-key="'+esc(k)+'" title="'+esc(CH[k].tier)+'">'+esc(CH[k].name)+'</button>').join('')+GONE.slice(0,10).map(g=>'<span class="chip gone" title="removed">'+esc(g.name)+'</span>').join('')+(ks.length>40?'<span class="hint">+'+(ks.length-40)+' more</span>':'')+'</div>'}
   const lm=Object.entries(LAND).filter(([t,l])=>l.length);
   if(lm.length){const o=OPEN.has('#lm');h+='<h4 data-tg="#lm" style="cursor:pointer">'+(o?'▾ ':'▸ ')+'Landmarks</h4>';
-    if(o)for(const [t,l] of lm)h+='<div class="hint" style="margin:4px 8px 0;font-size:11px">'+esc(t)+'</div><div class="chips">'+l.map(e=>'<button type="button" class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</button>').join('')+'</div>'}
+    if(o)for(const [t,l] of lm)h+='<div class="hint" style="margin:4px 8px 0;font-size:11px">'+esc(t+(LANDN[t]>l.length?' ('+l.length+' of '+LANDN[t]+')':''))+'</div><div class="chips">'+l.map(e=>'<button type="button" class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</button>').join('')+'</div>'}
   const cur=S.mod||(S.sel&&E[S.sel]&&E[S.sel].file)||'';
   if(cur+'|'+S.sel!==revealed){revealed=cur+'|'+S.sel;const se=S.sel&&E[S.sel];reveal(cur,se&&isCheck(se))}
   h+='<h4>Files</h4>'+treeHTML(TREE,0);
@@ -309,13 +309,15 @@ function setInfo(){
 /* pan and zoom through the viewBox */
 function panzoom(box){
   const svg=box.querySelector('svg');if(!svg)return;
-  const w=+svg.dataset.w,h=+svg.dataset.h;svg.style.height=Math.max(220,Math.min(h*1.3+30,innerHeight-215))+'px';let vb={x:0,y:0,w:Math.max(w,300),h:Math.max(h,200)};
+  const w=+svg.dataset.w,h=+svg.dataset.h;svg.style.height=Math.max(220,svg.dataset.grow?Math.min(h+30,5000):Math.min(h*1.3+30,innerHeight-215))+'px';let vb={x:0,y:0,w:Math.max(w,300),h:Math.max(h,200)};
   const apply=()=>svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
-  const fit=()=>{const r=svg.getBoundingClientRect();const k=Math.min(Math.max(w/r.width,h/r.height,1),r.width<600?1.2:1.25);vb={x:0,y:0,w:r.width*k,h:r.height*k};apply()};
+  let cue=null;const dropCue=()=>{if(cue){cue.remove();cue=null}};
+  const fit=()=>{const r=svg.getBoundingClientRect();const k=Math.min(Math.max(w/r.width,h/r.height,1),r.width<600?1.2:1.25);vb={x:0,y:0,w:r.width*k,h:r.height*k};apply();
+    dropCue();if(w>vb.w*1.03||h>vb.h*1.03){cue=document.createElement('div');cue.className='cue';cue.textContent=w>vb.w*1.03?'drag to see more →':'drag to see more ↓';box.querySelector('.stage').appendChild(cue)}};
   const zoom=(f,cx,cy)=>{cx=cx??vb.x+vb.w/2;cy=cy??vb.y+vb.h/2;vb={x:cx-(cx-vb.x)*f,y:cy-(cy-vb.y)*f,w:vb.w*f,h:vb.h*f};apply()};
   svg.addEventListener('wheel',ev=>{ev.preventDefault();const r=svg.getBoundingClientRect();zoom(ev.deltaY>0?1.15:1/1.15,vb.x+(ev.clientX-r.left)/r.width*vb.w,vb.y+(ev.clientY-r.top)/r.height*vb.h)},{passive:false});
   const ptr=new Map();let drag=null,pinch=null;
-  svg.addEventListener('pointerdown',ev=>{if(ev.target.closest('.node'))return;svg.setPointerCapture(ev.pointerId);ptr.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  svg.addEventListener('pointerdown',ev=>{dropCue();if(ev.target.closest('.node'))return;svg.setPointerCapture(ev.pointerId);ptr.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
     if(ptr.size===1)drag={x:ev.clientX,y:ev.clientY,vx:vb.x,vy:vb.y};
     else if(ptr.size===2){drag=null;const [a,b]=[...ptr.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,vb:{...vb}}}
     svg.style.cursor='grabbing'});
@@ -340,12 +342,12 @@ function graph(nodes,edges,note){
       if(f[1]<out[u].length){const v=out[u][f[1]++];if(st[v]===0){st[v]=1;stack.push([v,0])}}
       else{for(const v of out[u])if(st[v]===2)layer[u]=Math.max(layer[u],layer[v]+1);st[u]=2;stack.pop()}}}
   const max=Math.max(0,...layer),cols=[];
-  nodes.forEach((n,i)=>{const c=max-layer[i];(cols[c]=cols[c]||[]).push(i)});
-  const vw=typeof document==='undefined'?0:document.getElementById('view').clientWidth,narrow=(vw||1100)<600,W=narrow?190:224,GX=narrow?36:56,GY=12,pos=[];let H=0;
+  nodes.forEach((n,i)=>{const c=n.kind==='more'&&!out.some(o=>o.includes(i))?0:max-layer[i];(cols[c]=cols[c]||[]).push(i)});
+  const vw=typeof document==='undefined'?0:document.getElementById('view').clientWidth,narrow=(vw||1100)<600,W=narrow?190:208,GX=narrow?36:44,GY=12,pos=[];let H=0;
   const used=cols.filter(Boolean);cols.length=0;used.forEach(c=>cols.push(c));
   cols.forEach((c,ci)=>{if(!c)return;let y=10;c.forEach(i=>{const h=Math.max(40,18+14*(nodes[i].lines||[]).length+14);pos[i]={x:10+ci*(W+GX),y,h};y+=h+GY});H=Math.max(H,y)});
   const width=10+cols.length*(W+GX);
-  const parts=['<svg data-w="'+width+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>'];
+  const parts=['<svg data-grow="1" data-w="'+width+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>'];
   for(const e of edges){const a=pos[ix[e.from]],b=pos[ix[e.to]];if(!a||!b||e.from===e.to)continue;
     const x1=a.x+W,y1=a.y+a.h/2,x2=b.x,y2=b.y+b.h/2;let d;
     if(x2>x1)d='M'+x1+' '+y1+'C'+(x1+GX/2)+' '+y1+' '+(x2-GX/2)+' '+y2+' '+x2+' '+y2;
@@ -394,8 +396,9 @@ function overview(){
     const nf=es.filter(x=>isFn(x)&&!isCheck(x)).length,nt=es.filter(isType).length;
     return {id,title:base(id),sub:nf+' function'+(nf===1?'':'s')+(nt?' · '+nt+' type'+(nt===1?'':'s'):''),cls:es.some(x=>x.name==='main')?'entry':f.size?'effect':'pure',kind,tip:id+' · '+([...f].join(' + ')||'pure')}});
   const rest=ids.length-keep.size;
-  if(rest>0)nodes.push({id:'+more',title:'+'+rest+' more',sub:'click to show '+Math.min(S.cap,rest)+' more',cls:'more',kind:'more'});
-  const edges=Object.entries(cnt).map(([k,n])=>{const [a,b]=k.split('\u0000');return {from:a,to:b,label:n>1?String(n):'',n}}).filter(e=>keep.has(e.from)&&keep.has(e.to)).sort((a,b)=>b.n-a.n).slice(0,Math.max(30,nodes.length*2));
+  if(rest>0)nodes.push({id:'+more',title:'+'+rest+' more',sub:'by connections · click',cls:'more',kind:'more'});
+  const tally={};Object.values(cnt).forEach(n=>tally[n]=(tally[n]||0)+1);const usual=+Object.keys(tally).sort((a,b)=>tally[b]-tally[a])[0];
+  const edges=Object.entries(cnt).map(([k,n])=>{const [a,b]=k.split('\u0000');return {from:a,to:b,label:n!==usual?String(n):'',n}}).filter(e=>keep.has(e.from)&&keep.has(e.to)).sort((a,b)=>b.n-a.n).slice(0,Math.max(30,nodes.length*2));
   if(!nodes.length)return empty('Nothing here','No calls between these items.');
   return graph(nodes,edges,'click a node to open it · '+LEGEND);
 }
@@ -434,16 +437,17 @@ function sequenceEvents(e,depth,all){
   const part=k=>{if(!parts.includes(k)){if(parts.length<LIFELINES)parts.push(k);else dropped.add(k)}};
   /* the selected function's own callees get lifelines first: they are what it does */
   const direct=(nodes,out)=>{for(const n of nodes){if(n.kind==='call'&&n.reference&&E[n.reference]&&isFn(E[n.reference])&&!out.includes(n.reference))out.push(n.reference);if(n.children)direct(n.children,out)}return out};
+  let via='',nest=0,cond='';
   const walk=(k,nodes,d,path)=>{for(const n of nodes){if(cap>160)return;
     const ref=n.reference&&E[n.reference];
     if(n.kind==='call'&&ref&&!isFn(ref)){cap++;ev.push({t:'note',at:k,label:clip('reads '+ref.name,30)})}
-    else if(n.kind==='call'&&ref){cap++;part(n.reference);if(!parts.includes(n.reference))continue;ev.push({t:'msg',from:k,to:n.reference,label:n.label.replace(/^call\s+/,'')});
+    else if(n.kind==='call'&&ref){cap++;part(n.reference);if(!parts.includes(n.reference))continue;ev.push({t:'msg',from:k,to:n.reference,label:n.label.replace(/^call\s+/,'')+(via?' (via '+via+')':'')});
       if(d>0&&!path.includes(n.reference))walk(n.reference,ref.flow,d-1,path.concat(n.reference));
       ev.push({t:'ret',from:n.reference,to:k})}
     else if(n.kind==='native'&&all){cap++;part('stdlib');if(parts.includes('stdlib'))ev.push({t:'msg',from:k,to:'stdlib',label:n.label.replace(/^native\s+/,'')})}
     else if(n.kind==='spawn'){cap++;ev.push({t:'note',at:k,label:'spawn'});walk(k,n.children||[],d,path);continue}
-    else if(['try','scope','branch','loop','match'].includes(n.kind)){cap++;ev.push({t:'note',at:k,label:clip((n.kind==='try'?'try ⚠ ':'')+n.label,30)})}
-    if(n.children&&n.children.length&&!(n.kind==='call'&&ref))walk(k,n.children,d,path)}};
+    else if(['try','scope','branch','loop','match'].includes(n.kind)){cap++;if(n.kind==='branch'&&/^if\b/.test(n.label))cond=n.label;const text=n.kind==='branch'&&/^else$/.test(n.label)&&cond?'else (not '+cond.replace(/^if\s+/,'')+')':n.label;ev.push({t:'note',at:k,dp:nest,label:clip((n.kind==='try'?'try ⚠ ':'')+text,34)})}
+    if(n.children&&n.children.length&&!(n.kind==='call'&&ref)){const was=via;if(n.kind==='native')via=n.label.replace(/^native\s+/,'').split('::').pop();const deeper=['branch','loop','scope','try','match'].includes(n.kind);if(deeper)nest++;walk(k,n.children,d,path);if(deeper)nest--;via=was}}};
   const size=k=>{const x=E[k];return x&&x.last?x.last-x.first:0};
   const dir=direct(e.flow,[]);
   /* under a tight limit the callees with the most code stay, in call order */
@@ -466,7 +470,7 @@ function sequenceDiagram(ev,parts,dropped,droppedNames){
   parts.forEach(k=>{const x=px(k),t=E[k]?E[k].name:'stdlib';
     sv.push('<line class="life" x1="'+x+'" y1="'+(top-6)+'" x2="'+x+'" y2="'+H+'"/><g class="node '+(E[k]?fcls(E[k]):'ext')+'" data-id="'+esc(k)+'" data-kind="'+(E[k]?'fn':'ext')+'" tabindex="0" role="button" aria-label="'+esc(t+', function')+'"><title>'+esc(t)+'</title><rect x="'+(x-W/2)+'" y="8" width="'+W+'" height="32" rx="6"/><text x="'+x+'" y="29" text-anchor="middle" font-weight="600">'+esc(clip(t,20))+'</text></g>')});
   ev.forEach((v,i)=>{const y=top+i*row+14;
-    if(v.t==='note'){const x=px(v.at),w=Math.min(190,v.label.length*6.4+14);sv.push('<g class="note"><rect x="'+(x+6)+'" y="'+(y-12)+'" width="'+w+'" height="20" rx="4"/><text x="'+(x+12)+'" y="'+(y+2)+'">'+esc(v.label)+'</text></g>');return}
+    if(v.t==='note'){const x=px(v.at)+(v.dp||0)*12,w=Math.min(210,v.label.length*6.4+14);sv.push('<g class="note"><rect x="'+(x+6)+'" y="'+(y-12)+'" width="'+w+'" height="20" rx="4"/><text x="'+(x+12)+'" y="'+(y+2)+'">'+esc(v.label)+'</text></g>');return}
     const a=px(v.from),b=px(v.to);
     if(v.from===v.to){
       sv.push('<path class="msg '+(v.t==='ret'?'ret':'')+'" d="M'+a+' '+y+'h42v12h-42" marker-end="url(#a)"/>');
