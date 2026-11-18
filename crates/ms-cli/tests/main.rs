@@ -42,7 +42,6 @@ mod runtime_symbols;
 mod search_symbol;
 mod shutdown;
 mod shutdown_windows;
-mod skill;
 mod stdout_errors;
 mod terminal;
 mod test_arguments;

@@ -42,7 +42,7 @@ Status: proposal, 2026-11-14. Direction from Chinmay: "okay let's do rust style"
 - `ms-lower/native/method.rs:176` maps `length` to `scalar_len`: it becomes the `byte_length` field read; `scalar.rs`/`fuse.rs` code-point fusion keyed on `get` moves to `scalar_at`; `ms-check/hints.rs` and `stmts.rs:1583` hints that suggest `get` change.
 - `ms-lower/rtstr.rs`: inline `length` becomes a field read for every string, not only ASCII; byte slicing needs only a boundary test of two bytes.
 - `stdlib/core/intrinsics.ms`, `stdlib/core/string.ms`, `stdlib/text.ms` and every stdlib body that indexes text (`fields_by`, `title_word`, `find_char`, formatters, parsers).
-- Docs: `text-and-bytes.md`, generated reference, `ms skill` text; wiki page on text units.
+- Docs: `text-and-bytes.md`, generated reference, agent skill text; wiki page on text units.
 - Tests and fixtures: those that index non-ASCII text.
 
 ## Evidence required before building

@@ -96,8 +96,7 @@ jobs:
           server=$!
           trap 'kill $server' EXIT
           sleep 2
-          if [ "$OS" = windows ]; then ms="$RUNNER_TEMP/ms-install/ms.exe"; else ms="$RUNNER_TEMP/ms-install/ms"; fi
-          sh toolchain/package-skill.sh "$ms" release
+          sh toolchain/package-skill.sh release
           export MS_RELEASE_URL=http://127.0.0.1:8765
           cd "$RUNNER_TEMP" && rm -rf skill-app && mkdir skill-app && cd skill-app
           if [ "$OS" = windows ]; then

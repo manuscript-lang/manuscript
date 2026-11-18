@@ -21,7 +21,7 @@
     <li><a href="{{ $start }}"><strong>Run your first program</strong><span>Install <code>ms</code>, run a project, and build a native executable.</span></a></li>
     <li><a href="{{ with .Site.GetPage "guide" }}{{ .RelPermalink }}{{ end }}"><strong>Learn the language</strong><span>Types, ownership, errors and concurrency, one idea at a time.</span></a></li>
     <li><a href="{{ with .Site.GetPage "cookbook" }}{{ .RelPermalink }}{{ end }}"><strong>Build something</strong><span>HTTP servers, JSON, files, processes and tests, ready to copy.</span></a></li>
-    <li><a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#commands-for-agents"><strong>Use it with an agent</strong><span><code>ms verify</code>, <code>ms check --fix</code> and <code>ms skill</code> give agents a tight loop.</span></a></li>
+    <li><a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#commands-for-agents"><strong>Use it with an agent</strong><span><code>ms verify</code>, <code>ms check --fix</code> and the downloadable agent skill give agents a tight loop.</span></a></li>
   </ul>
 </section>
 {{- else if eq $part "proof" -}}

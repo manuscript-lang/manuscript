@@ -62,7 +62,7 @@ fn stdout_errors_are_not_reported_as_success() {
     std::fs::write(dir.join("empty.ms"), "").unwrap();
     let mut explain = vec!["explain", "--json"];
     explain.extend(vec!["MS1001"; 200]);
-    for args in [vec!["diagram", "empty.ms"], explain, vec!["skill"]] {
+    for args in [vec!["diagram", "empty.ms"], explain] {
         let normal = Command::new(env!("CARGO_BIN_EXE_ms"))
             .args(&args)
             .current_dir(&dir)

@@ -112,7 +112,7 @@ jobs:
           tar -C .artifacts/book -czf "$archive" .
           gh release upload "$RELEASE_TAG" "$archive" --clobber
 
-  # The agent skill ships on its own, apart from `ms`: the same files `ms skill` writes, packed
+  # The agent skill ships on its own, apart from `ms`: the skill files from the tagged source, packed
   # under one stable name so releases/latest/download/manuscript-skill.tar.gz always works.
   skill:
     needs: publish
@@ -123,17 +123,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: manuscript-rust-linux-amd64
-          path: dist
-      - name: Pack the skill with the release compiler and attach it
+      - name: Pack the skill and attach it
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -eu
-          tar -xzf dist/manuscript-rust-linux-amd64.tar.gz -C dist
-          sh toolchain/package-skill.sh "$PWD/dist/manuscript-rust-linux-amd64/ms" skill-dist
+          sh toolchain/package-skill.sh skill-dist
           gh release upload "$RELEASE_TAG" skill-dist/manuscript-skill.tar.gz skill-dist/manuscript-skill.tar.gz.sha256 --clobber
