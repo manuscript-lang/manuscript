@@ -11,7 +11,7 @@
 {"id":10,"jsonrpc":"2.0","result":null}
 {"id":11,"jsonrpc":"2.0","result":[]}
 {"id":12,"jsonrpc":"2.0","result":null}
-{"id":13,"jsonrpc":"2.0","result":null}
+{"id":13,"jsonrpc":"2.0","result":[{"range":"","uri":"manuscript-stdlib:///core.ms"}]}
 {"id":14,"jsonrpc":"2.0","result":[]}
 {"id":15,"jsonrpc":"2.0","result":null}
 {"id":16,"jsonrpc":"2.0","result":[]}
@@ -26,7 +26,7 @@
 {"id":25,"jsonrpc":"2.0","result":null}
 {"id":26,"jsonrpc":"2.0","result":[]}
 {"id":27,"jsonrpc":"2.0","result":null}
-{"id":28,"jsonrpc":"2.0","result":null}
+{"id":28,"jsonrpc":"2.0","result":[{"range":"","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":29,"jsonrpc":"2.0","result":[]}
 {"id":30,"jsonrpc":"2.0","result":null}
 {"id":31,"jsonrpc":"2.0","result":[]}
@@ -36,12 +36,12 @@
 {"id":35,"jsonrpc":"2.0","result":null}
 {"id":36,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}},{"kind":2,"range":{"end":{"character":16,"line":65},"start":{"character":4,"line":65}}}]}
 {"id":37,"jsonrpc":"2.0","result":null}
-{"id":38,"jsonrpc":"2.0","result":null}
+{"id":38,"jsonrpc":"2.0","result":[{"range":"","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":39,"jsonrpc":"2.0","result":[]}
 {"id":40,"jsonrpc":"2.0","result":null}
 {"id":41,"jsonrpc":"2.0","result":[]}
 {"id":42,"jsonrpc":"2.0","result":null}
-{"id":43,"jsonrpc":"2.0","result":null}
+{"id":43,"jsonrpc":"2.0","result":[{"range":"","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":44,"jsonrpc":"2.0","result":[]}
 {"id":45,"jsonrpc":"2.0","result":null}
 {"id":46,"jsonrpc":"2.0","result":[]}
@@ -99,7 +99,7 @@
 {"id":98,"jsonrpc":"2.0","result":[{"range":{"end":{"character":12,"line":15},"start":{"character":7,"line":15}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":99,"jsonrpc":"2.0","result":[]}
 {"id":100,"jsonrpc":"2.0","result":null}
-{"id":101,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":12,"line":15},"start":{"character":7,"line":15}}}]}
+{"id":101,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":12,"line":15},"start":{"character":7,"line":15}}},{"kind":2,"range":{"end":{"character":14,"line":20},"start":{"character":9,"line":20}}}]}
 {"id":102,"jsonrpc":"2.0","result":null}
 {"id":103,"jsonrpc":"2.0","result":null}
 {"id":104,"jsonrpc":"2.0","result":[]}
@@ -134,7 +134,7 @@
 {"id":133,"jsonrpc":"2.0","result":[{"range":{"end":{"character":14,"line":20},"start":{"character":9,"line":20}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":134,"jsonrpc":"2.0","result":[]}
 {"id":135,"jsonrpc":"2.0","result":null}
-{"id":136,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":14,"line":20},"start":{"character":9,"line":20}}}]}
+{"id":136,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":12,"line":15},"start":{"character":7,"line":15}}},{"kind":2,"range":{"end":{"character":14,"line":20},"start":{"character":9,"line":20}}}]}
 {"id":137,"jsonrpc":"2.0","result":null}
 {"id":138,"jsonrpc":"2.0","result":null}
 {"id":139,"jsonrpc":"2.0","result":[]}

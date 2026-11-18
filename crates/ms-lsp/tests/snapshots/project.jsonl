@@ -17,7 +17,7 @@
 {"id":14,"jsonrpc":"2.0","result":null}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":15,"jsonrpc":"2.0"}
 {"id":16,"jsonrpc":"2.0","result":[]}
-{"id":17,"jsonrpc":"2.0","result":null}
+{"id":17,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":18,"jsonrpc":"2.0","result":null}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":19,"jsonrpc":"2.0"}
 {"id":20,"jsonrpc":"2.0","result":[]}
@@ -29,13 +29,13 @@
 {"id":26,"jsonrpc":"2.0","result":null}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":27,"jsonrpc":"2.0"}
 {"id":28,"jsonrpc":"2.0","result":[]}
-{"id":29,"jsonrpc":"2.0","result":null}
+{"id":29,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
 {"id":30,"jsonrpc":"2.0","result":null}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":31,"jsonrpc":"2.0"}
 {"id":32,"jsonrpc":"2.0","result":[]}
 {"id":33,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":34,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nmain: fn() Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}}}}
-{"id":35,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}}}}
+{"error":{"code":-32602,"message":"main is the program entry point; the run command looks it up by name"},"id":35,"jsonrpc":"2.0"}
 {"id":36,"jsonrpc":"2.0","result":[]}
 {"id":37,"jsonrpc":"2.0","result":null}
 {"id":38,"jsonrpc":"2.0","result":null}
@@ -116,7 +116,7 @@
 {"id":110,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":111,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":112,"jsonrpc":"2.0","result":[]}
-{"id":113,"jsonrpc":"2.0","result":null}
+{"id":113,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":114,"jsonrpc":"2.0","result":null}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":115,"jsonrpc":"2.0"}
 {"id":116,"jsonrpc":"2.0","result":[]}

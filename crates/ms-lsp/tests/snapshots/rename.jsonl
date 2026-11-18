@@ -218,8 +218,8 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":217,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":218,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":219,"jsonrpc":"2.0"}
-{"id":220,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":14,"line":49},"start":{"character":10,"line":49}}}}
-{"id":221,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":14,"line":49},"start":{"character":10,"line":49}}}}
+{"error":{"code":-32602,"message":"main is the program entry point; the run command looks it up by name"},"id":220,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"main is the program entry point; the run command looks it up by name"},"id":221,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":222,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":223,"jsonrpc":"2.0"}
 {"id":224,"jsonrpc":"2.0","result":{"placeholder":"_p","range":{"end":{"character":6,"line":50},"start":{"character":4,"line":50}}}}

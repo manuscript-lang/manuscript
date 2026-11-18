@@ -283,6 +283,9 @@ pub fn navigation(
     index: &[Occurrence],
 ) -> Json {
     let Some(hit) = at(syms, analysis, d, p, index) else {
+        if method == Navigate::Definition {
+            return import_path_definition(syms, analysis, d, p);
+        }
         return Json::Null;
     };
     let info = hit.info.clone();
@@ -345,6 +348,52 @@ pub fn navigation(
         return Json::Null;
     };
     declaration_location(syms, analysis, file, pos)
+}
+
+/// The start of the module an import path names, when the position is inside that path.
+fn import_path_definition(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    d: &Document,
+    p: Position,
+) -> Json {
+    let Some(module) = analysis.module(syms, d) else {
+        return Json::Null;
+    };
+    let Ok(cursor) = text::offset(&d.text, p) else {
+        return Json::Null;
+    };
+    let symbols = crate::index::module_symbols(syms, analysis, &module);
+    for import in &module.imports {
+        // The path is the first quoted text after the names of its clause.
+        let from = import.clause.offset as usize;
+        let Some(open) = d
+            .text
+            .get(from..)
+            .and_then(|t| t.find('"'))
+            .map(|i| from + i)
+        else {
+            continue;
+        };
+        let Some(close) = d.text[open + 1..].find('"').map(|i| open + 1 + i) else {
+            continue;
+        };
+        if cursor <= open || cursor > close {
+            continue;
+        }
+        let Some(symbol) = symbols.get(&import.name) else {
+            return Json::Null;
+        };
+        let start = Range::at(Position {
+            line: 0,
+            character: 0,
+        });
+        return Json::Arr(vec![location(
+            &analysis.source_uri(syms.str(symbol.module)),
+            start,
+        )]);
+    }
+    Json::Null
 }
 
 /// `[{uri, range}]` at a declaration position, or `null` for an unknown module.

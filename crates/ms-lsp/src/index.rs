@@ -239,6 +239,16 @@ struct Builder {
     binding_keys: HashMap<usize, String>,
     seen: HashSet<(Name, usize, String)>,
     out: Vec<Occurrence>,
+    /// Operations of the project's interfaces, which methods of types satisfy by shape.
+    operations: Vec<ShapeOperation>,
+}
+
+/// An interface operation, with the identity its implementations share.
+struct ShapeOperation {
+    name: Name,
+    ty: Ty,
+    parameters: Vec<Name>,
+    key: String,
 }
 
 fn binding_ptr(b: &BindingRef) -> usize {
@@ -278,6 +288,31 @@ impl Builder {
         });
     }
 
+    /// The identity of a method. A type satisfies an interface by having its operations with
+    /// the exact signature, so such a method shares the operation's identity: renaming one
+    /// renames the interface and every type that meets it.
+    fn method_key(&self, syms: ms_syntax::Names, m: &Method) -> String {
+        // A type's own methods carry its synthesized interface as their contract.
+        let own = m
+            .contract
+            .as_ref()
+            .and_then(|c| c.symbol())
+            .and_then(|s| s.decl.clone())
+            .is_none_or(|d| d.0.decl.synthetic);
+        if own
+            && matches!(m.receiver.kind, Kind::Type | Kind::Alternative)
+            && let Some(decl) = &m.decl
+            && let Some(op) = self.operations.iter().find(|o| {
+                o.name == decl.name()
+                    && ms_check::api::types::same(&o.ty, &m.ty)
+                    && o.parameters == m.ty.params.iter().map(|p| p.name).collect::<Vec<_>>()
+            })
+        {
+            return op.key.clone();
+        }
+        method_key(syms, &self.root, &self.files, m)
+    }
+
     fn local_key(&self, syms: ms_syntax::Names, b: &BindingRef) -> String {
         self.binding_keys
             .get(&binding_ptr(b))
@@ -313,10 +348,44 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
         binding_keys: HashMap::default(),
         seen: HashSet::default(),
         out: Vec::new(),
+        operations: Vec::new(),
     };
     // Checked facts exist only for modules this program contains; bundled
     // modules it never imports contribute declarations but no uses.
     let checked: HashSet<Name> = program.modules.iter().map(|m| m.file).collect();
+
+    for m in modules
+        .iter()
+        .filter(|m| !syms.str(m.file).starts_with("@std/"))
+    {
+        let symbols = module_symbols(syms, analysis, m);
+        for d in &m.decls {
+            if d.0.decl.synthetic || !matches!(d.decl().kind, DeclKind::Interface(_)) {
+                continue;
+            }
+            let Some(symbol) = symbols.get(&d.name()) else {
+                continue;
+            };
+            let (Some(decl), Some(def)) =
+                (&symbol.decl, symbol.ty_opt().and_then(|t| t.def.clone()))
+            else {
+                continue;
+            };
+            for op in def.operations.borrow().iter() {
+                b.operations.push(ShapeOperation {
+                    name: op.name,
+                    ty: op.ty.clone(),
+                    parameters: op.ty.params.iter().map(|p| p.name).collect(),
+                    key: format!(
+                        "operation:{}:{}:{}",
+                        source_key(syms, &b.root, symbol.module),
+                        decl.pos().offset,
+                        syms.str(op.name)
+                    ),
+                });
+            }
+        }
+    }
 
     // Parameter bindings first: calls and records name them by key.
     for m in modules.iter().filter(|m| checked.contains(&m.file)) {
@@ -454,7 +523,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
                             method.pos.offset as usize,
                             syms.str(method.func.name),
                         );
-                        let key = method_key(syms, &b.root, &b.files, &checked);
+                        let key = b.method_key(syms, &checked);
                         b.add(
                             key,
                             syms.str(method.func.name),
@@ -517,7 +586,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
             continue;
         };
         let at = b.header(file, decl.pos().offset as usize, syms.str(decl.name()));
-        let key = method_key(syms, &b.root, &b.files, method);
+        let key = b.method_key(syms, method);
         b.add(
             key,
             syms.str(decl.name()),
@@ -620,7 +689,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
 }
 
 /// The symbols a module declares or sees.
-fn module_symbols(
+pub(crate) fn module_symbols(
     syms: ms_syntax::Names,
     analysis: &Analysis,
     m: &ModRef,
@@ -917,7 +986,7 @@ impl UseWalker<'_> {
                     }
                 }
                 if let Some(method) = &info.method {
-                    let key = method_key(syms, &self.b.root, &self.b.files, method);
+                    let key = self.b.method_key(syms, method);
                     self.add(
                         key,
                         syms.str(name),

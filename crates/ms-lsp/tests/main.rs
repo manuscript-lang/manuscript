@@ -10,6 +10,7 @@ mod editor_sessions;
 mod enum_declarations;
 mod hover_fallback;
 mod inlay_names;
+mod interface_rename;
 mod match_cases;
 mod name_recycling;
 mod navigation_identity;
