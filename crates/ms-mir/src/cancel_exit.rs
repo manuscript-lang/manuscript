@@ -217,6 +217,10 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
                             || restoring_callee(cx, m, f, i, k)
                     }
                     (Op::CallInd, _) => restoring_callee(cx, m, f, i, k),
+                    // A closure that captures the slot by reference only borrows it.
+                    (Op::ClosureNew, Imm::Func(g)) => {
+                        crate::unwind::closure_borrows_capture(m, &cx.safe, &cx.parks, g, k as u32)
+                    }
                     _ => false,
                 };
             if !borrowed {

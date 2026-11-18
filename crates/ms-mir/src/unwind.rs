@@ -2184,8 +2184,23 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
         return slots;
     }
     let mut bad: BTreeSet<u32> = BTreeSet::new();
-    for blk in &f.blocks {
-        let mut full: BTreeSet<u32> = BTreeSet::new();
+    // A slot a closure captures by reference may hold its value across blocks (an early exit of
+    // a `?` takes it back out in another block); any other slot is used within one block.
+    let captured: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == Op::ClosureNew)
+        .flat_map(|i| i.args.iter().map(|a| a.0))
+        .collect();
+    // The slots holding a value when each block starts. Every path to a block must agree.
+    let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
+    entry[0] = Some(BTreeSet::new());
+    for b in f.rpo() {
+        let blk = &f.blocks[b.index()];
+        let Some(mut full) = entry[b.index()].clone() else {
+            continue;
+        };
         for inst in &blk.insts {
             for (k, a) in inst.args.iter().enumerate() {
                 let Some(&ty) = slots.get(&a.0) else { continue };
@@ -2202,6 +2217,11 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
                     (Op::CallInd, _) => {
                         k > 0 && full.contains(&a.0) && closures_borrow(cx, inst.args.len(), k)
                     }
+                    // A closure that captures the slot by reference only borrows it.
+                    (Op::ClosureNew, Imm::Func(g)) => {
+                        full.contains(&a.0)
+                            && closure_borrows_capture(m, &cx.safe, &cx.parks, g, k as u32)
+                    }
                     _ => false,
                 };
                 if !ok {
@@ -2209,11 +2229,22 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
                 }
             }
         }
-        // A `put` left unmatched at the end of the block spans blocks, which this does not follow.
-        bad.extend(full);
+        let mut leaves = true;
+        bad.extend(full.iter().filter(|s| !captured.contains(s)));
         blk.term.for_each_target(|t| {
+            leaves = false;
             bad.extend(t.args.iter().map(|a| a.0).filter(|a| slots.contains_key(a)));
+            match &mut entry[t.block.index()] {
+                None => entry[t.block.index()] = Some(full.clone()),
+                Some(seen) => {
+                    bad.extend(seen.symmetric_difference(&full).copied());
+                }
+            }
         });
+        // A `put` left unmatched when the function ends is not followed.
+        if leaves {
+            bad.extend(full);
+        }
         if let Term::Ret(Some(v)) = blk.term {
             bad.insert(v.0);
         }
@@ -2359,6 +2390,42 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
     else {
         return false;
     };
+    borrows_slot_value(m, safe, &[], f, p)
+}
+
+/// Whether closure `g` only borrows the slot it captured by reference as its capture `idx`: every
+/// read of that capture (`closure.cap`) satisfies [`borrows_slot_value`].
+pub(crate) fn closure_borrows_capture(
+    m: &Module,
+    safe: &[Vec<bool>],
+    parks: &[bool],
+    g: FuncId,
+    idx: u32,
+) -> bool {
+    // A closure that never parks cannot be cancelled while it holds the slot's value out.
+    if parks.get(g.index()) == Some(&false) {
+        return true;
+    }
+    let Some(f) = m.funcs.get(g.index()) else {
+        return false;
+    };
+    let mut any = false;
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::ClosureCap, Imm::Idx(i), Some(r)) = (inst.op, inst.imm, inst.res)
+            && i == idx
+        {
+            any = true;
+            if !borrows_slot_value(m, safe, parks, f, r) {
+                return false;
+            }
+        }
+    }
+    any
+}
+
+/// Whether `f` only borrows the contents of the slot that the pointer `p` names (a parameter or a
+/// capture): it `take`s them, uses them as borrows, and `put`s the same value back.
+fn borrows_slot_value(m: &Module, safe: &[Vec<bool>], parks: &[bool], f: &Func, p: Value) -> bool {
     // What `p` holds (taken, or passed on to a block parameter), and the borrows derived from it.
     let mut taken: BTreeSet<u32> = BTreeSet::new();
     let mut derived: BTreeSet<u32> = BTreeSet::new();
@@ -2456,6 +2523,10 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                     }
                 } else if *a == p {
                     let ok = match (inst.op, inst.imm) {
+                        // A closure made here that captures the slot by reference only borrows it.
+                        (Op::ClosureNew, Imm::Func(g)) => {
+                            closure_borrows_capture(m, safe, parks, g, i as u32)
+                        }
                         (Op::Take | Op::Load, _) => i == 0,
                         (Op::Put, _) => i == 0 && taken.contains(&inst.args[1].0),
                         (Op::Call, Imm::Func(g)) => {
@@ -2483,18 +2554,23 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                         }
                         _ => true,
                     };
+                    // Writing a scalar through a derived address changes no owned value.
+                    let scalar_write = inst.op == Op::Store
+                        && i == 0
+                        && inst.args.get(1).is_some_and(|v| !m.needs_drop(f.ty(*v)));
                     let borrowed = modes.get(i) == Some(&Mode::Borrow)
                         && method
-                        && !matches!(
-                            inst.op,
-                            Op::MoveOut
-                                | Op::Store
-                                | Op::Put
-                                | Op::CleanupPush
-                                | Op::TypeFill
-                                | Op::ListFill
-                                | Op::CallInd
-                        );
+                        && (scalar_write
+                            || !matches!(
+                                inst.op,
+                                Op::MoveOut
+                                    | Op::Store
+                                    | Op::Put
+                                    | Op::CleanupPush
+                                    | Op::TypeFill
+                                    | Op::ListFill
+                                    | Op::CallInd
+                            ));
                     if !putback && !borrowed {
                         return false;
                     }
