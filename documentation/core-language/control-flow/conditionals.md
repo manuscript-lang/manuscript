@@ -44,6 +44,7 @@ See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing i
 - Each branch has its own scope; assignments to an outer `var` persist.
 - An `else if` chain tests in order and stops at the first match.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn classify(value: Int) String:
     if value < 0:
@@ -71,6 +72,7 @@ The branches are one-line expressions on the same line. For statements in a bran
 
 `if name := expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn greeting(name: String?) String:
     if value := name:
@@ -79,6 +81,7 @@ fn greeting(name: String?) String:
         return "Hello!"
 ```
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn port(lookup: Result[Int, Error]) Int:
     if value := lookup:
@@ -107,6 +110,7 @@ A present `0`, `false`, or empty string still takes the first branch. The bindin
 
 Validate with an early return:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn nonnegative(value: Int) Bool:
     if value < 0:

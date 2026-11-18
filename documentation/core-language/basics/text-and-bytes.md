@@ -23,6 +23,7 @@ A literal is delimited by `"` and fits on one source line. Plain `"..."` text ne
 
 Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace in `f` text, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 quote := "She said \"hello\"."
 template := "Literal braces: {name}"
@@ -38,6 +39,7 @@ symbol := "\u{1F642}"
 
 `r"""` opens raw text with the same layout where every character is literal: no escapes, no interpolation, braces and backslashes included. Use it for JSON, regular expressions, and fixtures.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 name := "Ada"
 greeting := f"""
@@ -57,6 +59,7 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 
 Only `f"..."` and `f"""` text interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed; a nested literal that interpolates is itself an `f` literal. Empty expressions, format suffixes, comments, and newlines are rejected. Write `\{` and `\}` for literal braces inside `f` text. A plain `"..."` or `"""` literal never interpolates, so `"{name}"` is the six characters `{name}`; if a value is not inserted, a missing `f` is the usual cause.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 name := "Ada"
 count := 3
@@ -70,6 +73,7 @@ Embedded expressions evaluate once, left to right, each formatted before the nex
 
 Every value has a built-in `to_string() String`, needing no import or bound. A bound method keeps its receiver:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn text[T](value: T) String:
     return value.to_string()
@@ -86,6 +90,7 @@ Each conversion produces `"3"`. Passing an Int to a String parameter still needs
 
 A type or enum may declare its own `fn T.to_string() String`. It replaces the built-in text form of a value of that type wherever the conversion happens: `value.to_string()`, a bound `value.to_string`, `f"{value}"`, and `print(value)`. A value of that type nested in a list, map, set, optional, record field or payload shows the same text, so a list prints as its items do. A type without its own method, and every other kind of value, uses the built-in method, which wins over any field or interface operation named `to_string`. The built-in conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Money:
     cents: Int
@@ -149,6 +154,7 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 
 `trim`, `trim_start` and `trim_end` remove the Unicode `White_Space` scalars: U+0009 to U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. Zero-width spaces (U+200B), U+180E and U+FEFF are not whitespace.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import panic from "@std/core.ms"
 

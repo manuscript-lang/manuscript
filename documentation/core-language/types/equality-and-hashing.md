@@ -51,6 +51,7 @@ Equality reads both collections. The ownership rules prevent mutating a collecti
 
 An explicit implementation can select identity instead of every field:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type CustomerKey:
     id: Int

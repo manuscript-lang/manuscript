@@ -7,6 +7,7 @@ weight = 3
 
 Use `Int` for counts and indexes, `Float` for approximate measurements, and `Decimal` for base-ten calculations where rounding must be explicit. Booleans are `true` and `false`. Numeric types stay distinct: choose a type for the calculation and convert at its boundaries.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 

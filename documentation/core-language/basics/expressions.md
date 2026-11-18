@@ -163,6 +163,7 @@ fn main() Void:
 
 ## Examples
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn calculated(value: Int, active: Bool) Int:
     product := 1 + 2 * 3             // 7

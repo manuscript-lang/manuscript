@@ -68,6 +68,7 @@ export type Error:
 
 Build one with the constructor call. There is no separate constructor and no namespace.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn find_user(id: Int) String!:
     if id < 0:
@@ -87,6 +88,7 @@ Standard-library failures are `Error` values too: branch on `kind`, read `detail
 
 An `Error` fits most code. Use your own type as `E` when callers need typed payloads or exhaustive cases.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
