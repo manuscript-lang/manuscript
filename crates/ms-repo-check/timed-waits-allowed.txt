@@ -12,6 +12,7 @@ crates/ms-cli/tests/blocking_reads.rs 2 test: lets time pass so a read stays blo
 crates/ms-cli/tests/extern_link.rs 1 test: time for a child to start
 crates/ms-cli/tests/fifo_cancel.rs 1 test: lets time pass so a read stays blocked
 crates/ms-cli/tests/fifo_cleanup.rs 1 test: lets time pass so a read stays blocked
+crates/ms-cli/tests/shutdown_windows.rs 2 test: channel deadlines for readiness and exit after Ctrl-Break, not a wait for time
 crates/ms-cli/tests/shutdown.rs 2 test: lets time pass before a signal
 crates/ms-cli/tests/watch.rs 3 test: lets the watcher run
 crates/ms-clif/src/link/lld/glibc_stubs/tests.rs 2 test: channel deadline of a hung link, not a wait for time
