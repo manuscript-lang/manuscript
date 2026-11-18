@@ -93,6 +93,14 @@ import (
 	msstd_math_truncate from "@std/internal/math.ms",
 )
 
+/*
+Floating-point and integer math: trigonometric, exponential, logarithmic and rounding functions on `Float`;
+constants such as `pi` and `max_int`; `Int` helpers for bit manipulation, wrapping arithmetic and 128-bit word arithmetic;
+text parsing with `parse_float` and `parse_int`; and `BigInt`, an arbitrary-precision integer, with `factorial` and `binomial`.
+Float functions follow IEEE 754 rules for NaN, infinities and signed zero. For exact fractions see `@std/math/big.ms`,
+for complex numbers `@std/math/complex.ms`, and for summary statistics `@std/math/statistics.ms`.
+*/
+
 // Returns the inverse cosine in radians.
 export fn acos(value: Float) Float:
 	return msstd_math_acos(value)
@@ -105,7 +113,9 @@ export fn asin(value: Float) Float:
 export fn atan(value: Float) Float:
 	return msstd_math_atan(value)
 
-// Returns the angle in radians for `(x, y)`, preserving its quadrant.
+// Returns the angle in radians from the positive x axis to the point `(x, y)`, in -pi
+// through pi. The signs of both arguments pick the quadrant, which is why `y` comes
+// first.
 export fn atan2(y: Float, x: Float) Float:
 	return msstd_math_atan2(y, x)
 
@@ -224,12 +234,12 @@ export fn max[T: Comparable](left: T, right: T) T:
 	return left
 
 // Returns the lesser of two values, or `left` when they compare equal. Float orders NaN
-// above every other value.
+// above every other value, so `min` ignores a NaN operand unless both are NaN.
 export fn min[T: Comparable](left: T, right: T) T:
 	if right.compare(left) < 0: return right
 	return left
 
-// Π, the ratio of a circle's circumference to its diameter.
+// Pi, the ratio of a circle's circumference to its diameter.
 export pi: Float := 3.141592653589793
 
 // Returns `base` raised to `exponent`.
@@ -422,11 +432,11 @@ export min_float: Float := 5e-324
 export max_int: Int := 9223372036854775807
 // The smallest Int, -2^63.
 export min_int: Int := -9223372036854775807 - 1
-// 2^53 - 1, the largest integer every smaller integer of which a Float represents
-// exactly.
+// 2^53 - 1, the largest Int up to which every integer is exactly representable as a
+// Float.
 export max_safe_integer: Int := 9007199254740991
-// The smallest integer every larger integer of which a Float represents exactly, -(2^53
-// - 1).
+// -(2^53 - 1), the smallest Int down to which every integer is exactly representable as
+// a Float.
 export min_safe_integer: Int := -9007199254740991
 // The natural logarithm of 2.
 export ln2: Float := 0.6931471805599453
@@ -595,12 +605,12 @@ export type WordDivision:
 	// The unsigned remainder, smaller than the divisor.
 	remainder: UInt64
 
-// Adds two unsigned 64-bit words and an optional input carry; returns the wrapped sum
+// Adds two unsigned 64-bit words and an optional input `carry`; returns the wrapped sum
 // and output carry.
 export fn add_with_carry(left: UInt64, right: UInt64, carry: Bool = false) WordSum:
 	return msstd_math_add_with_carry(left, right, carry)
 
-// Subtracts right and an optional input borrow from left; returns the wrapped
+// Subtracts `right` and an optional input `borrow` from `left`; returns the wrapped
 // difference and output borrow.
 export fn subtract_with_borrow(
 	left: UInt64,
@@ -639,9 +649,9 @@ export fn wrapping_multiply(left: Int, right: Int) Int:
 	return msrt_bits_wrapping_multiply(left, right)
 
 /*
-An arbitrary-precision signed integer. Use the operators + - * / % and unary - for arithmetic and < <= > >= == != for comparison;
-both operands must be BigInt (convert an Int with big_int_of_int), and / or % by zero is a fault. The named methods below are the same operations;
-divide and remainder return a Result for callers that want an error value instead of a fault.
+An arbitrary-precision signed integer. Use the operators + - * / % and unary - for arithmetic and < <= > >= == != for comparison.
+Both operands must be BigInt (convert an Int with `big_int_of_int`), and / or % by zero is a fault.
+The named methods below perform the same operations. `divide` and `remainder` return a Result for callers that want an error value instead of a fault.
 */
 // ms: data
 export extern type BigInt
@@ -764,8 +774,8 @@ fn BigInt.abs() BigInt:
 fn BigInt.sign() Int:
 	return msstd_bigint_sign(self)
 
-// Raises to a nonnegative `exponent`. A negative exponent returns EINVAL, and a
-// result above 16777216 bits returns EOVERFLOW.
+// Returns `self` raised to a nonnegative `exponent`. A negative exponent returns
+// EINVAL, and a result above 16777216 bits returns EOVERFLOW.
 fn BigInt.pow(exponent: Int) BigInt!:
 	return msstd_bigint_pow(self, exponent)
 
@@ -787,8 +797,7 @@ fn BigInt.to_float() Float?:
 
 	return none
 
-// Returns the value as an Int when it fits in the platform's Int, or none when it
-// is outside that range.
+// Returns the value as an Int, or none when it is outside Int's range.
 fn BigInt.to_int() Int?:
 	return msstd_bigint_to_int(self)
 
@@ -809,8 +818,8 @@ fn BigInt.to_binary() String:
 
 /*
 Reports whether this value is probably prime: trial division by the primes below 100, then Miller-Rabin
-with the first `rounds` primes as bases (at most 25). The default 13 rounds is exact below 3.3e24. Above that,
-`rounds` more bases are drawn from operating-system entropy, so a composite passes with odds at most 4^-rounds
+with the first `rounds` primes as bases (at most 25, the primes below 100). The default 13 rounds is exact below 3.3e24.
+Above that bound, `rounds` more bases are drawn from operating-system entropy, so a composite passes with odds at most 4^-rounds
 even when it was built to fool fixed bases; an entropy failure is a fault.
 Values below 2, including negatives, are not prime. A `rounds` below 1 is a programming fault.
 */
@@ -821,8 +830,8 @@ fn BigInt.is_probable_prime(rounds: Int = 13) Bool:
 
 /*
 Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or none when the value is not a square there.
-The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns EINVAL
-(a composite modulus is detected only when the computation fails to produce a root).
+The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns EINVAL.
+A composite modulus is not reliably detected: the call may return EINVAL, none, or a valid root, so only a prime modulus gives a trustworthy none.
 */
 fn BigInt.mod_sqrt(modulus: BigInt) BigInt?!:
 	return bigint_mod_sqrt(self, modulus)
@@ -831,7 +840,10 @@ fn BigInt.mod_sqrt(modulus: BigInt) BigInt?!:
 export fn big_int_of_int(value: Int) BigInt:
 	return msstd_bigint_from_int(value)
 
-// Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
+// Parses an integer with an optional sign in a radix from 2 through 36; `_` separators
+// and white space are not accepted. Pass `max_digits` to bound the work on untrusted
+// text. A bad digit or empty text is EBADMSG, more digits than `max_digits` is
+// EOVERFLOW, and an unsupported radix is EINVAL.
 export fn parse_big_int(text: String, radix: Int, max_digits: Int?) BigInt!:
 	return msstd_bigint_parse(text, radix, max_digits)
 

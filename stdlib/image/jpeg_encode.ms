@@ -14,6 +14,9 @@ import (
 
 // ---- JPEG encoder ----
 
+// The example luminance and chrominance quantization tables from the JPEG standard
+// (Annex K), in zigzag order, followed by the standard Huffman tables as the count of
+// codes per length and the symbols in code order.
 jpeg_base_luma := [
 	16, 11, 12, 14, 12, 10, 16, 14, 13, 14, 18, 17, 16, 19, 24, 40, 26, 24, 22, 22, 24,
 	49, 35, 37, 29, 40, 58, 51, 61, 60, 57, 51, 56, 55, 64, 72, 92, 78, 64, 68, 87, 69,
@@ -54,7 +57,7 @@ jpeg_ac_chroma_values := [
 	232, 233, 234, 242, 243, 244, 245, 246, 247, 248, 249, 250
 ]
 
-// Code and length per symbol for an encoder.
+// The Huffman code and its bit length for each of the 256 possible symbols.
 type JpegCodes:
 	code: List[Int]
 	size: List[Int]
@@ -217,6 +220,8 @@ fn jpeg_dht(var out: BytesBuilder, class_id: Int, counts: List[Int], values: Lis
 		body.append(byte(v))
 	jpeg_marker(var out, 196, body.build())
 
+// Scales a base quantization table for `quality` (1 through 100) with the libjpeg
+// formula, keeping each entry in 1 through 255.
 fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
 	scale := if quality < 50: 5000 / quality else: 200 - quality * 2
 	var table = List[Int]()
@@ -224,9 +229,11 @@ fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
 		table.append(jpeg_clamp(max_of((base[zi] * scale + 50) / 100, 1), 255))
 	return table
 
-// Encodes baseline JPEG of `pixels` (`channels` 1 or 3; alpha fails with `EINVAL`);
-// `quarter` subsamples chroma 4:2:0, `restart_interval` is MCUs between restart markers
-// or 0.
+// Encodes baseline JPEG of `pixels`, which hold `channels` 1 (gray) or 3 (RGB) bytes
+// per pixel. `quarter` subsamples chroma 4:2:0, and `restart_interval` is the MCUs
+// between restart markers, or 0 for none. Alpha (an even `channels`), a `quality`
+// outside 1 through 100 and a `restart_interval` outside 0 through 65535 return EINVAL,
+// and a width or height above 65535 returns EOVERFLOW.
 export fn jpeg_encode(
 	width: Int,
 	height: Int,

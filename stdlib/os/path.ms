@@ -21,17 +21,17 @@ import (
 	msstd_path_host_windows from "@std/internal/path.ms",
 )
 
-// Parsed path components using the familiar root, directory, base, extension, and name
-// fields.
+// The components of a path: root, directory, base, extension, and name. `parse` splits
+// a path into them and `format` joins them again.
 export type PathParts:
 	// Root prefix under the chosen path rules, including a POSIX slash or Windows
 	// drive/UNC root.
 	root: String
-	// Directory portion, including the root when present; it takes precedence over root
-	// during format.
+	// Directory portion, including the root when present; `format` prefers it over
+	// `root`.
 	directory: String
-	// Final component with extension; it takes precedence over name/extension during
-	// format.
+	// Final component with its extension; `format` prefers it over `name` plus
+	// `extension`.
 	base: String
 	// Final extension including its dot; simple dotfiles and dot/dot-dot components
 	// have no extension.
@@ -44,8 +44,8 @@ export interface PathOperations:
 	// Returns the last component after ignoring trailing separators under this view's
 	// path rules.
 	fn basename(path: String) String
-	// Removes an exact suffix under basename compatibility rules; it does not strip
-	// arbitrary extensions.
+	// Returns the basename with `suffix` removed when it matches exactly. It is not an
+	// extension stripper: a suffix equal to the whole basename is not removed.
 	fn basename_without(path: String, suffix: String) String
 	// Returns the directory component using the selected POSIX or Windows convention.
 	fn dirname(path: String) String
@@ -60,17 +60,18 @@ export interface PathOperations:
 	// Cleans repeated separators and dot segments lexically; it does not resolve
 	// symlinks.
 	fn normalize(path: String) String
-	// Computes a lexical relative path from absolute anchors; different roots return
-	// the original target. Nonabsolute anchors or invalid NUL input return EINVAL.
+	// Computes the lexical relative path from `base` to `target`, both absolute. Paths
+	// with different roots, such as Windows drives, return `target` normalized. A
+	// relative argument or a NUL byte returns EINVAL.
 	fn relative(base: String, target: String) String!
-	// Resolves parts against an explicit absolute base; no process working directory is
-	// consulted.
+	// Resolves `parts` against the absolute `base`, without consulting the process
+	// working directory. A relative `base` or a NUL byte returns EINVAL.
 	fn resolve(base: String, parts: List[String]) String!
 	// Splits the original spelling into root, directory, base, extension and name
 	// without filesystem access.
 	fn parse(path: String) PathParts
-	// Builds a path with directory preferred over root, and base preferred over name
-	// plus extension.
+	// Builds a path from `parts`, preferring `directory` over `root` and `base` over
+	// `name` plus `extension`.
 	fn format(parts: PathParts) String
 	// Returns slash for POSIX or backslash for Windows path components.
 	fn separator() String
@@ -751,8 +752,8 @@ fn same_text(windows: Bool, left: String, right: String) Bool:
 	if windows: return equal_fold(left, right)
 	return left == right
 
-// The slash-separated components of `text` after its `root`; an empty remainder has
-// none.
+// Builds a path from `parts`: `directory` (else `root`), then `base` (else `name` plus
+// `extension`), joined by the dialect's separator.
 fn format_in(windows: Bool, parts: PathParts) String:
 	directory := if parts.directory.is_empty(): parts.root else: parts.directory
 	var base = parts.base.clone()
@@ -804,11 +805,12 @@ export fn win32() PathOperations:
 export fn basename(path: String) String:
 	return basename_in(host_windows(), path)
 
-// Returns the basename with the supplied suffix removed when it matches.
+// Returns the basename with `suffix` removed when it matches exactly. A suffix equal to
+// the whole basename is not removed.
 export fn basename_without(path: String, suffix: String) String:
 	return basename_without_in(host_windows(), path, suffix)
 
-// Returns the directory portion of a path.
+// Returns the directory portion of a path, or `.` when it has none.
 export fn dirname(path: String) String:
 	return dirname_in(host_windows(), path)
 
@@ -875,7 +877,8 @@ export fn separator() String:
 export fn delimiter() String:
 	return if host_windows(): ";" else: ":"
 
-// Converts a path to the host's namespaced representation when applicable.
+// On Windows, returns the `\\?\` namespaced form of an absolute path; elsewhere, and
+// for other paths, returns the path unchanged.
 export fn to_namespaced_path(path: String) String:
 	return namespaced_in(host_windows(), path)
 

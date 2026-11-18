@@ -251,8 +251,8 @@ fn decoded(event: TerminalEvent, used: Int) Parsed:
 fn code_of(c: String) Int:
 	return c.scalar_at(0, -1)
 
-// Concatenates `parts` in order. Pairwise merging keeps a long paste linear-ish without
-// a string builder, which would make this module import a cycle.
+// Concatenates `parts` in order. Pairwise merging keeps the cost of a long paste close
+// to linear without a string builder, which would make this module import a cycle.
 fn concat_all(parts: List[String]) String:
 	var level = parts.clone()
 
@@ -620,7 +620,8 @@ fn RawTerminal.erase(region: EraseRegion) Void!:
 fn RawTerminal.clear() Void!:
 	return self.write(f"{esc}[2J{esc}[H")
 
-// Sets the window title; control characters are removed first.
+// Sets the window title. BEL, ESC, and U+009C are removed first, so the text cannot end
+// the title early or start another escape sequence.
 fn RawTerminal.set_title(title: String) Void!:
 	clean := title.replace("\u{7}", "").replace(esc, "").replace("\u{9c}", "")
 	return self.write(f"{esc}]2;{clean}\u{7}")
@@ -653,8 +654,9 @@ export fn terminal_size() TerminalSize!:
 		)
 	)
 
-// Acquires raw input with an optional alternate screen; returns `EBUSY` while another
-// raw terminal is open and `ENOTTY` when streams are redirected.
+// Acquires raw input and, when `alternate_screen` is true, switches to the alternate
+// screen. Returns `EBUSY` while another raw terminal is open and `ENOTTY` when the
+// streams are redirected.
 // ms: effect std.console.read
 // ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:

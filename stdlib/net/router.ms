@@ -115,8 +115,8 @@ export type Router:
 	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]] = []
 
 // Registers `handler` for `method` and `pattern`. A route also answers HEAD when
-// `method` is GET and no HEAD route matches. Registering the same method and
-// pattern shape twice returns Duplicate.
+// `method` is GET and no HEAD route matches. An invalid pattern returns `EINVAL`, and
+// registering the same method and pattern shape twice returns `EEXIST`.
 fn var Router.route(
 	method: HttpMethod,
 	pattern: String,
@@ -194,7 +194,8 @@ fn var Router.options(
 // middleware. The prefix is `/` followed by segments with no trailing slash, and it
 // may hold parameters. The mounted router's `/` route answers `prefix` itself. A
 // router holds functions, which have one owner, so `routes` is taken: build it
-// again to mount it elsewhere.
+// again to mount it elsewhere. An invalid prefix returns `EINVAL`, and a route that
+// duplicates an existing method and pattern shape returns `EEXIST`.
 fn var Router.mount(prefix: String, routes: Router) Void!:
 	if prefix.ends_with("/") and prefix != "/": return error(invalid_pattern(prefix))
 
@@ -224,11 +225,10 @@ fn var Router.use(
 ) Void:
 	self.middleware.append(middleware)
 
-// Returns the function to pass to `serve`; it takes the router, so register every
-// route first. Unmatched paths answer 404, a path matched only under other methods
-// answers 405 with
-// `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
-// the `Allow` of every registered method.
+// Returns the function to pass to `serve`; it takes the router, so register every route
+// first. Unmatched paths answer 404. A path matched only under other methods answers
+// 405 with `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *`
+// answers 204 with the `Allow` of every registered method.
 fn Router.handler() fn(var HttpExchange) Void!:
 	return fn(var exchange: HttpExchange): dispatch(
 		self.routes,
@@ -450,10 +450,9 @@ fn accepts(segment: Segment, part: String, var values: List[String]) Bool:
 			return true
 		Rest(_): return true
 
-// What `finish` needs from the routes: the matched route and, for `OPTIONS *`, every
-// registered method. Copies of the little the request uses, so the continuation handed
-// to middleware owns it. Where a request goes: the method, the lookup, and the `Allow`
-// of every route for `OPTIONS *`.
+// What `finish` needs from the routes: the method, the lookup, and, for `OPTIONS *`,
+// the method of every registered route. These are copies of the little the request
+// uses, so the continuation handed to middleware owns it.
 type Target:
 	method: String
 	found: Lookup
@@ -802,9 +801,9 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 	return all
 
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it
-// is 1 to 128 printable ASCII characters, otherwise a new UUID. The id is set on the
-// request headers the wrapped exchange reports, where handlers and later middleware
-// read it, and added to the response as `X-Request-Id`.
+// is 1 to 128 visible ASCII characters (no spaces), otherwise a new UUID. The id is set
+// on the request headers the wrapped exchange reports, where handlers and later
+// middleware read it, and added to the response as `X-Request-Id`.
 export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
 	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Void!): with_request_id(
 		var exchange,

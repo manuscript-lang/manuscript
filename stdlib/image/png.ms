@@ -49,7 +49,8 @@ fn png_channels(color: Int) Int:
 
 	return 4
 
-// Total filtered byte count for the image, or the first pass that cannot be sized.
+// The total filtered byte count of the image, summed over its passes: each row adds
+// one filter byte to its packed pixel bytes.
 fn png_raw_size(width: Int, height: Int, bits_per_pixel: Int, interlaced: Bool) Int:
 	var total = 0
 
@@ -74,8 +75,12 @@ fn paeth(a: Int, b: Int, c: Int) Int:
 fn abs_of(value: Int) Int:
 	return if value < 0: 0 - value else: value
 
-// Decodes any PNG color type, bit depth and interlacing into a raster; `EBADMSG`,
-// `ENOTSUP` or `EOVERFLOW` on failure.
+// Decodes any PNG color type, bit depth and interlacing into an 8-bit raster; 16-bit
+// samples keep their high byte. Indexed images expand to RGB, and a `tRNS` chunk adds
+// alpha to gray, RGB and indexed images. Malformed data, including a bad chunk
+// checksum, returns EBADMSG. An unsupported feature, such as an unknown critical chunk,
+// returns ENOTSUP, and dimensions past `max_pixels` or the hard ceiling return
+// EOVERFLOW.
 export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 	if data.length() < 33: return error(bad("truncated PNG"))
 
@@ -435,7 +440,9 @@ fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
 
 	return best
 
-// Encodes pixels as an 8-bit PNG with per-row filtering; `EOVERFLOW` past PNG limits.
+// Encodes pixels as an 8-bit PNG, choosing a filter for each row. `channels` 1, 2, 3
+// and 4 write gray, gray with alpha, RGB and RGBA. A dimension past 2^31 - 1 returns
+// EOVERFLOW.
 export fn encode_png(width: Int, height: Int, channels: Int, pixels: List[UInt8]) Bytes!:
 	if width > 2147483647 or height > 2147483647:
 		return error(too_big("PNG dimensions too large"))

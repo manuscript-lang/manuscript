@@ -57,7 +57,7 @@ fn Headers.get_all(name: String) List[String]:
 		if field.name.lower() == wanted: values.append(field.value.clone())
 	return values
 
-// Writes the block as `Name: value` lines with CRLF endings.
+// Formats the block as `Name: value` lines, each ending in CRLF.
 fn Headers.to_string() String:
 	var out = StringBuilder()
 	for field in self.fields:
@@ -112,8 +112,9 @@ TYPES := {
 	"ttf": "font/ttf"
 }
 
-// Returns the media type for a file extension with or without the leading dot
-// (case-insensitive), or none when unknown.
+// Returns the media type for a file extension, with or without the leading dot and in
+// any case, or none when unknown. Text types include `charset=utf-8`, as in
+// `text/html; charset=utf-8`.
 export fn media_type_for_extension(extension: String) String?:
 	key := extension.lower().cut_prefix(".").get_or(extension.lower())
 	return TYPES.get(key)
@@ -127,7 +128,8 @@ export fn extension_for_media_type(media_type: String) String?:
 	return none
 
 // Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are
-// lower-cased; a missing slash, empty part, or unterminated quote returns `EBADMSG`.
+// lower-cased. A missing slash, an empty part, a parameter without `=`, or an
+// unterminated quote returns `EBADMSG`.
 export fn parse_media_type(text: String) MediaType!:
 	pieces := split_params(text)
 	essence := pieces[0].trim().lower()

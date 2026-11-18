@@ -9,7 +9,7 @@ import (
 // the `|` operator. A step pulls from its input only inside its own `next`, so a slow
 // consumer slows every step and the source. Closing a step closes its input.
 
-// Internal: lines of bytes, without their `\n` or `\r\n`, cut only at line ends. An
+// Internal: lines of text, without their `\n` or `\r\n`, cut only at line ends. An
 // unterminated last line comes at the end. `data` is the current chunk, `start` is
 // the first unread byte in it, and `pending` holds earlier unfinished fragments.
 type Lines:

@@ -8,8 +8,8 @@ import (
 fn is_space(b: Int) Bool:
 	return b == 32 or b == 9 or b == 10 or b == 13 or b == 11 or b == 12
 
-// Reads one header integer from `at`, skipping whitespace and # comments; returns
-// (value, next offset).
+// Reads one header integer at `start`, skipping whitespace and `#` comments; returns
+// `[value, next offset]`.
 fn ppm_number(data: Bytes, start: Int) List[Int]!:
 	var at = start
 
@@ -41,8 +41,10 @@ fn ppm_number(data: Bytes, start: Int) List[Int]!:
 
 	return ok([value, at])
 
-// Decodes binary PGM (P5) or PPM (P6) into a raster; `EBADMSG`, `ENOTSUP` or
-// `EOVERFLOW` on failure.
+// Decodes binary PGM (P5) or PPM (P6) into a gray or RGB raster. A `maxval` up to 65535
+// is accepted, and samples are scaled to 8 bits. Malformed data returns EBADMSG, and
+// dimensions past `max_pixels` or the hard ceiling return EOVERFLOW. The caller must
+// have checked that the data starts with `P5` or `P6`, as `decode_image` does.
 export fn decode_ppm(data: Bytes, max_pixels: Int?) Raster!:
 	if data.length() < 2: return error(bad("truncated PNM header"))
 
@@ -88,7 +90,8 @@ export fn decode_ppm(data: Bytes, max_pixels: Int?) Raster!:
 
 	return ok(Raster(width, height, if n == 3: 3 else: 1, pixels))
 
-// Encodes gray or RGB pixels as P5 or P6; `EINVAL` for alpha.
+// Encodes gray or RGB pixels as 8-bit binary P5 or P6. Pixels with alpha (an even
+// `channels`) return EINVAL.
 export fn encode_ppm(width: Int, height: Int, channels: Int, pixels: List[UInt8]) Bytes!:
 	if channels % 2 == 0:
 		return error(

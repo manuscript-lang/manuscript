@@ -9,7 +9,7 @@ import (
 	msstd_net_parse_ip from "@std/internal/net.ms",
 )
 
-// Supported DNS query categories; unknown spellings are rejected by checking.
+// The DNS record categories that `resolve_dns` can request.
 export enum DnsKind:
 	A  // IPv4 address records for the queried name.
 	AAAA  // IPv6 address records for the queried name.
@@ -60,7 +60,7 @@ fn IpAddress.family() IpFamily:
 // ms: data
 export extern type Cidr
 
-// Returns the canonical masked prefix without reparsing.
+// Returns the canonical text of the masked range, such as `10.0.0.0/8`.
 fn Cidr.to_string() String:
 	return msstd_net_cidr_text(self)
 

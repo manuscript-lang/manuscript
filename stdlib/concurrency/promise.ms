@@ -83,8 +83,8 @@ fn Promise[T].wait() T!:
 // Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`,
 // `exec`) and returns it, so
 // `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds
-// the read. The timeout counts from now. A provided cancel signal replaces the
-// previous one.
+// the read. The timeout counts from now. A provided cancel signal replaces the previous
+// one.
 fn Promise[T].with(options: PromiseOptions = PromiseOptions()) Promise[T]:
 	limit(self.id, options)
 	return self
@@ -111,9 +111,9 @@ export enum Placement:
 	// The least loaded thread at once, starting a thread when the limit allows. For
 	// long-lived work that should use every core, such as one serving worker per core.
 	Spread
-	// A task on the calling thread. For work that uses values bound to this thread (a
-	// network handle, a connection, a socket) and only waits (on a file, a socket, a
-	// child process): work that computes blocks its thread.
+	// A task on the calling thread. Use it for work that uses values bound to this
+	// thread (a network handle, a connection, a socket) and only waits (on a file, a
+	// socket, a child process). Work that computes blocks the thread.
 	Here
 
 // What bounds a promise, fixed when it is made. `timeout` counts from construction and
@@ -321,12 +321,13 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 		taken.append(false)
 		members.append(pending[at].id)
 
-	// In list order, take what is finished. A promise that has not started runs here,
-	// and when it first waits the rest join the set (`mode` 1; 2 when one cannot join
-	// and is polled with `wait_any` instead), so a failure behind a slow promise ends
-	// that run and the wait without waiting for the slow one. A run that never waits
-	// costs nothing for watching. When the next promise is not finished, block until
-	// anything finishes and take it. The set reports each finished promise once.
+	// Go through the list in order and take what is finished. A promise that has not
+	// started runs here. When it first waits, the rest join the set (`mode` 1, or 2
+	// when one cannot join and is polled with `wait_any` instead), so a failure behind
+	// a slow promise ends that run and the wait without waiting for the slow one. A run
+	// that never waits costs nothing for watching. When the next promise is not
+	// finished, block until any promise finishes and take it. The set reports each
+	// finished promise once.
 	var head = 0
 	var tried = -1
 	var mode = 0
