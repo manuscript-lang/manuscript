@@ -20,7 +20,7 @@ For a type that satisfies `Closeable`, cleanup calls its declared operation:
 
 A value typed as the standard `Closeable` interface owns its concrete value and closes it automatically. An unrelated interface merely declaring `var fn close() Void!` does not opt into cleanup; retain a concrete owner or call its `close()` explicitly.
 
-The standard handles a caller owns are nominal types with that method, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are types with that `close`, so a binding of one closes at scope end. Built-in descriptor streams hand queued writes to the runtime on close; they do not wait for delivery. A custom stream calls its source or sink’s `close`, which may wait. Use [`flush()`](scopes.md#close-a-resource-explicitly) to observe the destination’s backpressure or drain result before closing.
+The standard handles a caller owns are nominal types with that method, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are types with that `close`, so a binding of one closes at scope end. Closing a built-in descriptor write stream waits until its queued bytes are handed to the descriptor, then releases it, even if the wait fails; the failure is returned. A custom stream calls its source or sink’s `close`, which may wait. Call [`flush()`](scopes.md#close-a-resource-explicitly) before closing to handle a drain failure or observe the destination’s backpressure.
 
 ## Cloning a resource
 
@@ -40,7 +40,7 @@ A type, enum, `Optional`, `List` or `Map` that holds a `Closeable` value is itse
 | `List` | Elements, last index first |
 | `Map` | Values, last inserted first |
 
-A `Map` iterates in insertion order, so its close order is the reverse of the order you added the entries; no order is unspecified. Nested holders close depth first in the same way. A value derived from a resource, such as `name := r.name`, borrows it and cannot outlive it: the checker rejects closing or changing the resource while the borrow is still used.
+A `Map` iterates in insertion order, so its values close in the reverse of the order you added the entries. Nested holders close depth first in the same way. A value derived from a resource, such as `name := r.name`, borrows it and cannot outlive it: the checker rejects closing or changing the resource while the borrow is still used.
 
 A holder of values that are not resources adds no code: a `List[Int]`, or a type whose fields are strings, is not a resource. A generic holder such as `List[T]` closes its resource parts, and the compiler picks cleanup for each concrete instance, so an instance holding only plain data adds no close calls. A part may already have closed itself (for example in a hand-written `close` that forwards to its fields). Closing again is harmless because `close()` is idempotent.
 
@@ -51,7 +51,7 @@ A holder of values that are not resources adds no code: a `List[Int]`, or a type
 
 A similarly named method whose signature is not `fn var close() Void!` does not opt a concrete type into cleanup.
 
-`close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. Implementations coordinate ongoing access with closure and report closed state afterward.
+`close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. An implementation must coordinate access that is still in progress when `close()` runs, and report the closed state afterward.
 
 ## A close returns a Result
 

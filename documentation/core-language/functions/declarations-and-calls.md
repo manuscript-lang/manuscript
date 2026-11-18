@@ -68,7 +68,7 @@ All five results are `7`. Arguments resolve left to right and labels do not rese
 
 `reduce(amount: amount, deduction: deduction)` binds the same as `reduce(amount, deduction)`. `ms fmt --drop-labels` removes `name: name` labels only when the call binds identically without them.
 
-The rule covers functions, generics, methods, function values, library APIs, and constructors. A method's receiver is evaluated before its arguments and takes no positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Function-type identity depends on ordered parameter types with their `var` markers and the result type; parameter names are not part of [type identity](function-values-and-closures.md).
+The rule covers functions, generics, methods, library APIs, and constructors. A call through a value of an explicit function type is positional ([function values](function-values-and-closures.md)). A method's receiver is evaluated before its arguments and takes no positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Function-type identity depends on ordered parameter types with their `var` markers and the result type; parameter names are not part of [type identity](function-values-and-closures.md).
 
 A parameter with a default may be omitted; others are required, except `T?`, which defaults to `none`. A supplied `T` is wrapped once as the present case ([optional arguments](../types/optionals.md#passing-optional-arguments)). Variadics and spreading are unsupported. Match bindings such as `value:` beside `none:` are [patterns](../control-flow/pattern-matching.md), not calls.
 
@@ -114,7 +114,7 @@ empty := sum([])
 print(total)
 ```
 
-The argument is one list reference: `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list.
+The argument is one list: `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list.
 
 See [collections](../types/collections.md) for list literals and element requirements.
 
@@ -130,7 +130,7 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 
 ## Void and Never
 
-`Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok()`, which can also be written `ok()`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
+`Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may use a bare `return` or fall off the end. A function returning `Void!` (or `Void!E`) may do the same, and both return `ok()`, which you may also write explicitly. Other functions must return a compatible value on every reachable exit: a bare `return` or reachable fallthrough is an error. Multiline bodies need an explicit `return`.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

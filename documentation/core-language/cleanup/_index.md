@@ -11,4 +11,4 @@ A file, socket, or response body closes when the binding that holds it goes out 
 2. [Implementing `Closeable`](closeable.md)
 3. [Cleanup failures](cleanup-faults.md)
 
-A reference keeps an object reachable, not a closed resource open; see [mutation and references](../types/references.md).
+Borrowing a resource does not extend its life: the owning binding closes it at scope end. See [mutation and references](../types/references.md).

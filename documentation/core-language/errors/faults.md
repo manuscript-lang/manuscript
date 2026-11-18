@@ -5,7 +5,7 @@ weight = 3
 
 # Programming faults
 
-A programming fault means an assumption the code relies on has failed. For invalid user input, return a [Result](results.md) error instead. [Choosing a failure](_index.md#choosing-a-failure-in-the-standard-library) lists which cause gets which result.
+A programming fault means an assumption the code relies on has been broken. For invalid user input, return a [Result](results.md) error instead. [Choosing a failure](_index.md#choosing-a-failure-in-the-standard-library) lists which cause gets which result.
 
 ## Invariant checks
 
@@ -28,7 +28,7 @@ The example treats nonpositive prices and percentages outside (0, 100) as faults
 
 ## Explicit faults
 
-`panic(message: message)` raises a programming fault. Its type is `fn(String) Never`: it never completes normally and fits any result type, but it is not a catchable error and does not permit fallthrough in a function that does not return `Void` or `Void!`. See [Void and Never](../functions/declarations-and-calls.md#void-and-never).
+`panic(message)` raises a programming fault. Its type is `fn(String) Never`: it never completes normally, so it fits any result type. It is not a catchable error, and it does not let control fall off the end of a function that does not return `Void` or `Void!`. See [Void and Never](../functions/declarations-and-calls.md#void-and-never).
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
@@ -36,7 +36,7 @@ import panic from "@std/core.ms"
 panic("Required invariant was violated.")
 ```
 
-A fault aborts the current operation after cleanup.
+A fault aborts the current operation, after running cleanup.
 
 ## Faults the checker rejects
 
@@ -55,15 +55,15 @@ Only literals and arithmetic over literals are folded. Values that arrive throug
   - It unwinds and runs cleanup. In a test run, it fails the current test while other tests remain isolated.
 - `ms lint` reports **MSL112** for a function that calls itself on every path, such as `fn f(n: Int) Int: return f(n - 1)`; a `return`, `?`, or fault before the call counts as a base case.
 - A fault trace keeps its innermost 32 frames.
-- `==` and `!=` recurse through nested values; past 250,000 the fault is `equality depth limit exceeded (250000 nested values)`.
+- `==` and `!=` recurse through nested values; past 200,000 nested comparisons the fault is `equality comparison is nested too deeply`.
 
 ## Out of memory
 
-When the system refuses an allocation, the fault is `out of memory: could not allocate N bytes; hold less data at once, or process it in chunks or as a stream`, with the source frames and cleanup of any other fault, and exit status 139. A program the operating system kills for lack of memory after overcommit never reaches this report.
+When the system refuses an allocation, the fault is `out of memory: could not allocate N bytes; hold less data at once, or process it in chunks or as a stream`. Like any fault it reports source frames and runs cleanup, then exits with status 139. A program that the operating system kills for lack of memory after overcommit never reaches this report.
 
 ## Exit status
 
-A fault reports, runs cleanup, then ends the process the way a C program ends: status 134 (what a shell reports for `abort`, 128 plus SIGABRT), or 139 (SIGSEGV) for a stack overflow or out of memory. The same numbers on every platform. The process exits normally after the report, so no core dump or crash dialog appears. `main` may return only 0 to 125, so a fault status never collides with a program's own.
+A fault reports, runs cleanup, then ends the process the way a C program ends: status 134 (what a shell reports for `abort`, 128 plus SIGABRT), or 139 (SIGSEGV) for a stack overflow or out of memory. The numbers are the same on every platform. The process exits normally after the report, so no core dump or crash dialog appears. `main` may return only 0 to 125, so a fault status never collides with a program's own.
 
 ## Cleanup and observation
 

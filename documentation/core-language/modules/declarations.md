@@ -5,11 +5,13 @@ weight = 1
 
 # Imports and exports
 
-Each `.ms` file is a module with its own boundary. `export` makes a declaration available; `import` brings in one exported declaration. Resolved file paths identify modules. There is no `module` declaration, wildcard import, or cyclic dependency.
+Each `.ms` file is a module with its own boundary. `export` makes a declaration available to other files; `import` brings in one exported declaration. The resolved file path identifies the module. There is no `module` declaration, wildcard import, or cyclic dependency.
 
 ## Names and declaration order
 
-Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. `ms fmt` sorts the names, writes a list that fits on one line bare, and wraps a wider list into the parenthesized form, one name per line. Single-symbol `import Name from "./module.ms"` also works. Braces are rejected. Duplicate names and collisions are errors.
+Import several symbols with a nonempty comma-separated list on one line: `import Name, OtherName from "./module.ms"`. A single name (`import Name from "./module.ms"`) works the same way. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. Braces are rejected, and duplicate names and collisions are errors.
+
+`ms fmt` sorts the names. It writes a list that fits on one line bare, and wraps a wider list into the parenthesized form, one name per line.
 
 One statement can import from several modules: parenthesize comma-separated `names from "path"` clauses.
 
@@ -21,17 +23,19 @@ import (
 )
 ```
 
-A group is the same as the separate imports it replaces. Inside the parentheses, `from` after the names starts a clause; `)` after the names is the single-module form above. `ms fmt` merges consecutive imports into one group with one clause per module, names sorted. Clauses are ordered by path within three sections separated by a blank line: public `@std/` modules, `@std/internal/` modules, then everything else. A clause wider than 88 columns puts one name on each line, and a single clause that fits stays a bare import. An import with a comment is left as written.
+A group means the same as the separate imports it replaces. Inside the parentheses, `from` after the names starts a clause; `)` after the names is the single-module form above. `ms fmt` merges consecutive imports into one group with one clause per module, names sorted. Clauses are ordered by path within three sections separated by a blank line: public `@std/` modules, `@std/internal/` modules, then everything else. A clause wider than 88 columns puts one name on each line, and a single clause that fits stays a bare import. An import with a comment is left as written.
 
-Types, interfaces, functions, and imports share one module namespace. Duplicates, import/declaration collisions, and overloads are rejected. Two modules that export the same name (for example `parse` in `@std/data/csv.ms` and `@std/data/toml.ms`) cannot both be imported into one module, and imports cannot be renamed. Import one, and wrap the other in a small module that exports it under a new name.
+Types, interfaces, functions, and imports share one module namespace. Duplicates, collisions between an import and a declaration, and overloads are rejected.
 
-Order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/named-types.md#recursive-data).
+Two modules that export the same name (for example `parse` in `@std/data/csv.ms` and `@std/data/toml.ms`) cannot both be imported into one module, and imports cannot be renamed. Import one, and wrap the other in a small module that exports it under a new name.
 
-The intrinsic core type names are `Bool`, `Int`, `Float`, `String`, `Void`, and `Never`. The standard interfaces `Equal`, `Comparable`, `Hashable`, and `Clonable` also have fixed identities in the prelude. Declarations, imports, and type parameters cannot redefine these. Locals may reuse module-level names. They cannot shadow another local or parameter unless the new name starts with `_`; see [scope and shadowing](../basics/bindings.md#scope-and-shadowing). A value name cannot be used as a type.
+Declaration order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/named-types.md#recursive-data).
+
+The intrinsic core type names are `Bool`, `Int`, `Float`, `String`, `Void`, and `Never`. The standard interfaces `Equal`, `Comparable`, `Hashable`, and `Clonable` also have fixed identities in the prelude. Declarations, imports, and type parameters cannot redefine these. A local may reuse a module-level name, but it cannot shadow another local or parameter unless the new name starts with `_`; see [scope and shadowing](../basics/bindings.md#scope-and-shadowing). A value name cannot be used as a type.
 
 Prelude declarations: `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `ListEntry`, `MapEntry`, the function `print`, and `none`, `ok`, `error`. A present optional is a plain value in a `T?` position; there is no `some(...)` constructor. Qualify a Result case when its types need context, for example `Result[Int, Error].ok(3)`. A module declaration or import reusing a prelude name is rejected ("reuses a prelude name"); locals, parameters, and type parameters may shadow them.
 
-Explicit imports of any prelude declaration, including `Equal` and `Hashable`, are rejected with `MS2003`; remove the binding. Application declarations and imports cannot reuse prelude names. Other exports of those modules, such as collection builders, need explicit imports.
+An explicit import of a prelude declaration, including `Equal` and `Hashable`, is rejected with `MS2003`; remove the import. Other exports of the same standard modules, such as collection builders, still need explicit imports.
 
 Other standard declarations (`Decimal`, `Bytes`, builders, `Closeable`, runtime and host APIs) are imported from `@std`; see the [API reference](../../standard-library/reference/_index.md).
 
@@ -101,7 +105,7 @@ A method declared in its type's module is available wherever the type is used; a
 import Queue from "@std/collections/queue.ms"
 ```
 
-`@std` is always available, needs no `[aliases]` entry, and cannot be overridden. Importing one export does not import the other type names in its signature: importing `Queue` does not bring other names from the module into scope (`Result` is in the prelude). Host accessors are imported separately and return services when called.
+`@std` is always available, needs no `[aliases]` entry, and cannot be overridden. An import brings in only the named declaration, not the other types its signatures mention (`Result`, for example, comes from the prelude). Import each operation you call, such as `read_file` from `@std/os/fs.ms`.
 
 ## Optional aliases
 

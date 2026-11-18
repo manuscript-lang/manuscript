@@ -24,7 +24,7 @@ fn main() Void:
 
 ## Grouping bindings
 
-`var (` declares several mutable bindings, one per line, indented four spaces, with the closing `)` aligned with `var`. Each entry is the same as a single `var` binding, including an optional annotation or a destructuring pattern, and later entries see earlier ones.
+`var (` declares several mutable bindings, one per line, indented four spaces, with the closing `)` aligned with `var`. Each entry works like a single `var` binding, including an optional annotation or a destructuring pattern, and later entries see earlier ones.
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
@@ -84,10 +84,14 @@ Only a simple name accepts a type annotation. Destructuring infers each local; e
 
 ## Reassignment and references
 
-A `:=` value cannot be mutated. Primitives copy implicitly. A string, a value of a named type or a collection has one owner: `y := x` and `y := x.part` borrow it (`x` stays readable and cannot change while `y` is used), `var y = x.part` borrows it exclusively so `y.append(1)` changes `x.part`, and `var y = x` moves it when `x` is not itself a `var`.
+A `:=` value cannot be mutated. Primitives copy implicitly. A string, a value of a named type, or a collection has one owner, and binding it works like this:
 
-A value moves into a moving position (a field, a collection, a `return` of something that is not a parameter) at its last use; `.clone()` makes an explicit deep copy wherever an independent value is wanted. See [mutation and references](../types/references.md).
+- `y := x` and `y := x.part` borrow it. `x` stays readable and cannot change while `y` is used.
+- `var y = x.part` borrows it exclusively, so `y.append(1)` changes `x.part`.
+- `var y = x` moves it when `x` is not itself a `var`.
 
-`var n = r.n` of a primitive copies the number: `n += 1` leaves `r.n` as it was. A call that returns a part of its argument returns a borrow of it, so `var xs = b.list()` changes `b`'s list and `var xs = f()` of a function building a new value owns it.
+A value moves into a moving position (a field, a collection, or a `return` of something that is not a parameter) at its last use. Write `.clone()` for an explicit deep copy when you want an independent value. See [mutation and references](../types/references.md).
 
-Reassigning an owning `var` drops the previous value and closes resources it held. A live borrow prevents that reassignment. The replacement closes when its owning scope ends unless it moves to another owner. See [mutation and references](../types/references.md).
+`var n = r.n` of a primitive copies the number: `n += 1` leaves `r.n` as it was. A call that returns a part of its argument returns a borrow of it, so `var xs = b.list()` changes `b`'s list. `var xs = f()` owns the result when `f` builds a new value.
+
+Reassigning an owning `var` drops the previous value and closes resources it held. A live borrow prevents that reassignment. The replacement closes when its owning scope ends unless it moves to another owner. Details are in the page above.
