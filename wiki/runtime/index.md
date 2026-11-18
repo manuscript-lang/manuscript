@@ -66,3 +66,4 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Perf paths need a macOS and Windows equivalent](perf-paths-need-a-macos-and-windows-equivalent.md): the native standard library's global allocator was Linux-only; fixes are cross-platform, measuring may be Linux.
 - [ChaCha and BLAKE2 stay in Manuscript](chacha-and-blake2-stay-in-manuscript.md): no Rust natives or SIMD for these ciphers and hashes for now.
 - [A computing handler holds its thread, so other threads take its waiting connections](a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md): move idle HTTP/1 connections, not tasks; judge "held up" only from a thread awake a whole tick.
+- [The lock-free pipe lane is unused and enabling it gains nothing](the-lock-free-pipe-lane-is-unused-and-enabling-it-gains-nothing.md): `pipe()` always takes the locked lane; the lane has a claim race; cross-thread cost is cache lines, not locks.
