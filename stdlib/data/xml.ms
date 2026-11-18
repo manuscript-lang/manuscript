@@ -136,6 +136,8 @@ fn invalid_at(chars: List[String], at: Int, reason: String) Error:
 // A cursor over the document's scalars.
 type Reader:
 	chars: List[String]
+	// The scalar values of `chars`, so literals are matched without building strings.
+	codes: List[Int]
 	at: Int
 	max_depth: Int
 
@@ -143,9 +145,13 @@ fn Reader.peek(offset: Int = 0) String:
 	return self.chars.get_or(self.at + offset, "")
 
 fn Reader.looking_at(literal: String) Bool:
-	wanted := literal.chars()
-	for k in 0..wanted.length():
-		if self.peek(k) != wanted[k]: return false
+	var k = 0
+
+	for code in literal.scalar_values():
+		if self.codes.get_or(self.at + k, -1) != code: return false
+
+		k += 1
+
 	return true
 
 fn Reader.done() Bool:
@@ -163,19 +169,21 @@ fn var Reader.skip_space() Void:
 fn var Reader.expect(literal: String) Void!:
 	if not self.looking_at(literal): return error(self.invalid(f"expected `{literal}`"))
 
-	self.at += literal.chars().length()
+	// Every literal passed here is ASCII, so its byte length is its scalar count.
+	self.at += literal.length()
 
 // Returns the text up to `stop` and consumes it, or fails when `stop` never appears;
 // `what` names the construct in that error, which points at `opened`, where it began.
 fn var Reader.take_until(stop: String, what: String, opened: Int) String!:
 	var out = StringBuilder()
-	wanted := stop.chars()
+	var wanted: List[Int] = []
+	for code in stop.scalar_values(): wanted.append(code)
 
 	while not self.done():
 		var matches = true
 
 		for k in 0..wanted.length():
-			if self.peek(k) != wanted[k]:
+			if self.codes.get_or(self.at + k, -1) != wanted[k]:
 				matches = false
 				break
 
@@ -205,19 +213,13 @@ fn var Reader.comment() String!:
 	return ok(text)
 
 fn var Reader.name() String!:
+	start := self.at
+	count := self.codes.length()
+	while self.at < count and is_name_char(self.codes[self.at], self.at == start): self.at += 1
+	if self.at == start: return error(self.invalid("expected a name"))
+
 	var out = StringBuilder()
-	var first = true
-
-	while not self.done():
-		c := self.peek()
-		if not is_name_char(c, first): break
-
-		out.append(c)
-		first = false
-		self.at += 1
-
-	if first: return error(self.invalid("expected a name"))
-
+	for k in start..self.at: out.append(self.chars[k])
 	return ok(out.build())
 
 // The reserved target `xml` belongs to a declaration, never a processing
@@ -630,10 +632,15 @@ fn is_encoding_name(text: String) Bool:
 	return not first
 
 // XML 1.0 (Fifth Edition), productions [4] NameStartChar and [4a] NameChar.
-fn is_name_char(c: String, first: Bool) Bool:
-	if c.is_empty(): return false
+fn is_name_char(code: Int, first: Bool) Bool:
+	// ASCII first: letters, `_` and `:` start a name, digits, `-` and `.` continue it.
+	if code < 0x80:
+		if (code >= 0x61 and code <= 0x7a) or (code >= 0x41 and code <= 0x5a): return true
+		if code == 0x5f or code == 0x3a: return true
+		if first: return false
 
-	code := c.scalar_at(0)
+		return code == 0x2d or code == 0x2e or (code >= 0x30 and code <= 0x39)
+
 	if is_name_start(code): return true
 	if first: return false
 
@@ -775,12 +782,16 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 		"\n",
 	) else: text.clone()
 	var chars = normalized.chars().clone()
-	if chars.get_or(0, "") == "\u{feff}": chars.remove(0)
+	var codes: List[Int] = []
+	for code in normalized.scalar_values(): codes.append(code)
+
+	if codes.get_or(0, 0) == 0xfeff:
+		chars.remove(0)
+		codes.remove(0)
 
 	// XML's Char production applies even to discarded comments and instructions.
-	var index = 0
-
-	for code in chars.join("").scalar_values():
+	for index in 0..codes.length():
+		code := codes[index]
 		if not is_xml_char(code): return error(
 			invalid_at(
 				chars,
@@ -789,9 +800,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 			)
 		)
 
-		index += 1
-
-	var reader = Reader(chars: chars, at: 0, max_depth: max_depth)
+	var reader = Reader(chars: chars, codes: codes, at: 0, max_depth: max_depth)
 	reader.skip_misc(declaration_allowed: true, doctype_allowed: true)?
 	if not reader.looking_at("<"): return error(
 		reader.invalid("expected the root element")
