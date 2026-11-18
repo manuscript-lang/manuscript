@@ -417,6 +417,9 @@ pub struct FnBuilder<'t> {
     dbg: Option<usize>,
     /// The name the next defined value takes, set by [`FnBuilder::name_next`].
     pending: Option<Val>,
+    /// Labels of loop headers whose back edges, written from the current MIR block, are marked
+    /// not to be vectorized (`mir_llvm::loops`).
+    no_vector: Vec<String>,
 }
 
 impl<'t> FnBuilder<'t> {
@@ -433,6 +436,7 @@ impl<'t> FnBuilder<'t> {
             prologue: String::new(),
             dbg,
             pending: None,
+            no_vector: Vec::new(),
         }
     }
 
@@ -443,7 +447,10 @@ impl<'t> FnBuilder<'t> {
         Val::new(format!("%v{}", self.next), ty)
     }
 
-    fn line(&mut self, text: String) {
+    fn line(&mut self, mut text: String) {
+        if text.starts_with("br ") && self.no_vector.iter().any(|h| branches_to(&text, h)) {
+            let _ = write!(text, ", !llvm.loop !{}", crate::llvm_ir::NO_VECTOR_NODE);
+        }
         match self.dbg {
             Some(d) => {
                 let _ = writeln!(self.out, "  {text}, !dbg !{d}");
@@ -987,6 +994,11 @@ impl<'t> FnBuilder<'t> {
         ));
     }
 
+    /// Marks the back edges written from now on to these loop headers (until the next call).
+    pub fn set_no_vector_targets(&mut self, headers: Vec<String>) {
+        self.no_vector = headers;
+    }
+
     pub fn br(&mut self, block: &str) {
         self.line(format!("br label %{block}"));
     }
@@ -1114,6 +1126,17 @@ impl<'t> FnBuilder<'t> {
         );
         format!("{first}\n{}{}{rest}}}\n\n", self.allocas, self.prologue)
     }
+}
+
+/// Whether the branch line `text` has `label` among its targets.
+fn branches_to(text: &str, label: &str) -> bool {
+    let target = format!("label %{label}");
+    text.match_indices(&target).any(|(at, _)| {
+        text[at + target.len()..]
+            .chars()
+            .next()
+            .is_none_or(|c| c == ',' || c == ' ')
+    })
 }
 
 #[cfg(test)]
