@@ -330,7 +330,7 @@ fn has_loop(f: &Func) -> bool {
 }
 
 /// Per block: whether it lies on a cycle of the control-flow graph.
-fn blocks_in_loops(f: &Func) -> Vec<bool> {
+pub fn blocks_in_loops(f: &Func) -> Vec<bool> {
     let adj: Vec<Vec<usize>> = f
         .blocks
         .iter()
