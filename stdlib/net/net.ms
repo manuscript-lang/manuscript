@@ -417,7 +417,7 @@ fn Network.request(
 
 // Looks up DNS records of one `kind` for `name`; each record carries that kind.
 // `options.max_records` and `options.timeout` apply as for `lookup`.
-fn Network.resolve(
+fn Network.resolve_dns(
 	name: String,
 	kind: DnsKind,
 	options: DnsOptions = DnsOptions(),
@@ -604,7 +604,7 @@ export fn resolve_dns(
 	kind: DnsKind,
 	options: DnsOptions = DnsOptions(),
 ) List[DnsRecord]!:
-	return host_network().resolve(name, kind, options)
+	return host_network().resolve_dns(name, kind, options)
 
 // Returns a derived network limited to the given host names and CIDR ranges. Names
 // match case-insensitively without a trailing dot, and IP-literal hosts also match
