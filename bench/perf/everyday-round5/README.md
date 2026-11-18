@@ -1,10 +1,9 @@
 # Everyday code round 5
 
-Collections, iterator chains, closures, generics, interface calls, enums, records, results and graph code against Rust (`rustc -O -C overflow-checks=on`), standard library only, checksums compared. `probe.ms`/`probe.rs` are 28 small cases; `probe2.ms`/`probe2.rs` are 11 larger programs (expression trees, memo, particles, grid stencil, BFS, Dijkstra, records in maps, result pipelines).
+Collections, iterator chains, closures, generics, interface calls, enums, records, results and graph code against Rust (`rustc -O -C overflow-checks=on`), standard library only, checksums compared. `probe.ms`/`probe.rs` are 28 small cases; `probe2` is 11 larger programs (expression trees, memo, particles, grid stencil, BFS, Dijkstra, records in maps, result pipelines), `probe3` 10 more (VM and state-machine `match`, string `match`, matmul, sieve, `SortedMap`, bound generics, record clones, optionals, statistics) and `probe4` 12 collection idioms (top-k by count, insert and remove in the middle, `concat` in a loop, `group_by`, `distinct`, set union, `flatten`, `reversed`).
 
 ```sh
-MS=./target/release/ms sh bench/perf/everyday-round5/run.sh 5 # probe
-MS=./target/release/ms sh bench/perf/everyday-round5/run.sh 5 probe2     # probe2
+MS=./target/release/ms sh bench/perf/everyday-round5/run.sh 5 [probe|probe2|probe3|probe4]
 ```
 
 ## 2026-11-18: Linux x86_64
@@ -22,3 +21,7 @@ Everything else in `probe` is 0.24x to 1.17x Rust, apart from `g_max` (1.7x: LLV
 
 `sorted` by a capturing comparator, 1M records, 1000 keys: 148 to 35 ms (capture-free 44 ms).
 `windows(3)` over 500k: 441M to 384M instructions with the outer list sized once.
+
+`probe3` and `probe4` (min of 3): every case is 0.06x to 1.31x Rust except `z_reverse_extend` (below). Slowest: `y_match_string` 1.31 (10M `match` on a string, 1.9 ns each), `z_flatten_nested` 1.21, `y_generic_bound` 1.09, `y_sorted_map` 1.06, `y_vm` 1.04. The `HashMap<String, _>` idioms (`counts`, `distinct`, `group_by`, `to_set`, `keys().sorted()`) run 3 to 5x faster than Rust's SipHash maps.
+
+`reverse` and `reversed` of lists with one to four word slots now move whole words instead of calling a swap per slot: 50 in-place reversals of 2M `Int`, 108 to 48 ms (same machine, alternating builds). `z_reverse_extend` first read 2.96x Rust; run alone with Rust's `rev().collect()` the same loop is 62 ms against 145 ms, so the probe's Rust twin was not doing the same work and the gap is not real.

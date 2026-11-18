@@ -38,19 +38,24 @@
           "index": 5,
           "name": "sort-and-search-large-capturing.ms::binary_search works on strings",
           "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "sort-and-search-large-capturing.ms::reverse and reversed handle one to four word slots and owning slots",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN sort-and-search-large-capturing.ms::a captured list orders owning records stably\nPASS sort-and-search-large-capturing.ms::a captured list orders owning records stably\nRUN sort-and-search-large-capturing.ms::a captured scalar orders plain integers, and a counter it updates is visible\nPASS sort-and-search-large-capturing.ms::a captured scalar orders plain integers, and a counter it updates is visible\nRUN sort-and-search-large-capturing.ms::sorted_by_key orders large lists by a captured key\nPASS sort-and-search-large-capturing.ms::sorted_by_key orders large lists by a captured key\nRUN sort-and-search-large-capturing.ms::binary_search agrees with a linear scan on every shape\nPASS sort-and-search-large-capturing.ms::binary_search agrees with a linear scan on every shape\nRUN sort-and-search-large-capturing.ms::binary_search finds the first of equal elements in a large list\nPASS sort-and-search-large-capturing.ms::binary_search finds the first of equal elements in a large list\nRUN sort-and-search-large-capturing.ms::binary_search works on strings\nPASS sort-and-search-large-capturing.ms::binary_search works on strings\n6 tests, 0 failed\n",
+      "stdout": "RUN sort-and-search-large-capturing.ms::a captured list orders owning records stably\nPASS sort-and-search-large-capturing.ms::a captured list orders owning records stably\nRUN sort-and-search-large-capturing.ms::a captured scalar orders plain integers, and a counter it updates is visible\nPASS sort-and-search-large-capturing.ms::a captured scalar orders plain integers, and a counter it updates is visible\nRUN sort-and-search-large-capturing.ms::sorted_by_key orders large lists by a captured key\nPASS sort-and-search-large-capturing.ms::sorted_by_key orders large lists by a captured key\nRUN sort-and-search-large-capturing.ms::binary_search agrees with a linear scan on every shape\nPASS sort-and-search-large-capturing.ms::binary_search agrees with a linear scan on every shape\nRUN sort-and-search-large-capturing.ms::binary_search finds the first of equal elements in a large list\nPASS sort-and-search-large-capturing.ms::binary_search finds the first of equal elements in a large list\nRUN sort-and-search-large-capturing.ms::binary_search works on strings\nPASS sort-and-search-large-capturing.ms::binary_search works on strings\nRUN sort-and-search-large-capturing.ms::reverse and reversed handle one to four word slots and owning slots\nPASS sort-and-search-large-capturing.ms::reverse and reversed handle one to four word slots and owning slots\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

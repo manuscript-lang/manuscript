@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	Pair from "@std/collections/collections.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 // Sorts with a comparator that captures a variable, over lists large enough to leave
 // the insertion-sort size, and `binary_search` over every shape of list: results must
@@ -101,3 +104,45 @@ test "binary_search works on strings":
 	expect_equal(words.binary_search("grape").index, 2)?
 	expect_equal(words.binary_search("grape").found, false)?
 	expect_equal(words.binary_search("zebra").index, 4)?
+
+type Wide:
+	a: Int
+	b: Int
+	c: Int
+	d: Int
+
+test "reverse and reversed handle one to four word slots and owning slots":
+	for size in 0..9:
+		var ints: List[Int] = []
+		var pairs: List[Pair[Int, Int]] = []
+		var triples: List[Pair[Int, Pair[Int, Int]]] = []
+		var wides: List[Wide] = []
+		var names: List[String] = []
+
+		for i in 0..size:
+			ints.append(i)
+			pairs.append(Pair(i, i * 2))
+			triples.append(Pair(i, Pair(i * 2, i * 3)))
+			wides.append(Wide(i, i + 1, i + 2, i + 3))
+			names.append(f"name-longer-than-inline-{i}")
+
+		flipped := ints.reversed()
+		moved := wides.reversed()
+
+		for i in 0..size:
+			expect_equal(flipped[i], size - 1 - i)?
+			expect_equal(pairs.reversed()[i].first, size - 1 - i)?
+			expect_equal(triples.reversed()[i].second.second, (size - 1 - i) * 3)?
+			expect_equal(moved[i].d, size - 1 - i + 3)?
+			expect_equal(names.reversed()[i], f"name-longer-than-inline-{size - 1 - i}")?
+
+		pairs.reverse()
+		wides.reverse()
+		names.reverse()
+		ints.reverse()
+
+		for i in 0..size:
+			expect_equal(ints[i], size - 1 - i)?
+			expect_equal(pairs[i].second, (size - 1 - i) * 2)?
+			expect_equal(wides[i].a, size - 1 - i)?
+			expect_equal(names[i], f"name-longer-than-inline-{size - 1 - i}")?

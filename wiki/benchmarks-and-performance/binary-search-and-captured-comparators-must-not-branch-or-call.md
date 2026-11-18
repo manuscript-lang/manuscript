@@ -6,6 +6,8 @@ Verified (2026-11-18, release LLVM, `bench/perf/everyday-round5`): `List.binary_
 
 `ms-mir/src/opt/sortgen.rs` used to replace the runtime sort only for capture-free comparators, so `sorted(fn a, b: weights[a.key] - weights[b.key])` and `sorted_by_key` took the runtime driftsort with one indirect call per comparison (148 ms for 1M records, 3.3x the capture-free 44). The closure value is the environment pointer its code takes, so the generated sort now passes it (stored to a slot and read back as a `ptr`) instead of a dummy slot: 35 ms. `sorted_by_key` is 205 to 83 ms; the rest is its two `key` calls per comparison (computing keys once into a decorated list was no faster: 88 ms).
 
+`msrt_list_reverse` called `swap_nonoverlapping` with a runtime size per slot pair (about 3 ns); one to four word slots now reverse as typed arrays (50 reversals of 2M `Int`, 108 to 48 ms), and `reversed` of plain slots copies back to front in one pass.
+
 Apply when: writing a stdlib search or sort loop, or a sort comparator that captures.
 Evidence: `crates/ms-mir/src/opt/sortgen.rs` (`comparator_env`), `stdlib/collections/collections.ms` (`binary_search`), fixture `e2e/accept/sort-and-search-large-capturing`.
 Verify: `MS=./target/release/ms sh bench/perf/everyday-round5/run.sh 5` rows `m_binary_search`, `r_sort_field`.
