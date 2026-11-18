@@ -5,7 +5,7 @@
   <div class="home-pitch">
     <p class="home-eyebrow"><span aria-hidden="true"></span>Manuscript</p>
     <h1 id="home-title">The language<br> <span>for the agentic era.</span></h1>
-    <p class="home-description">A statically typed, natively compiled language with single ownership and no garbage collector. Agents now write much of the code, so the compiler checks ownership, types and effects, and every diagnostic names its cause and fix. An agent can correct itself, and a person can review the result.</p>
+    <p class="home-description">A statically typed, natively compiled language with single ownership and no garbage collector. Agents now write much of the code, so the compiler checks ownership, types and effects, and every diagnostic names its cause and fix. An agent can correct itself, and a person can review the result through built-in diagrams and an interactive code map.</p>
     <pre class="home-install"><code>curl -fsSL https://manuscript-lang.github.io/manuscript/install.sh | sh</code></pre>
     <div class="home-actions">
       <a class="home-button home-button-primary" href="{{ $start }}">Get started <span aria-hidden="true">→</span></a>
@@ -31,7 +31,7 @@
     <li><strong>One owner per value.</strong> No GC, no lifetimes to write, and use-after-move is a compile error. <a href="{{ with .Site.GetPage "core-language/types/references" }}{{ .RelPermalink }}{{ end }}">Ownership rules</a></li>
     <li><strong>Failure is a value.</strong> <code>T!</code> and <code>T?</code> make errors and absence visible. There is no <code>any</code> and no reflection.</li>
     <li><strong>Effects the compiler checks.</strong> Declare one in a comment and <code>ms lint</code> flags every caller that did not allow it.</li>
-    <li><strong>Review generated code.</strong> <code>ms diagram</code> makes an offline code map with a diff overlay. <a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#interactive-code-map">Code map</a></li>
+    <li><strong>Diagrams and a code map.</strong> <code>ms diagram</code> builds an interactive, offline code map of types, calls and control flow, with a diff overlay for what changed. <a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#interactive-code-map">Code map</a></li>
     <li><strong>Build speed.</strong> A 122,000-line project builds in debug in 5.4 s against 9.0 s for <code>go build</code> (<a href="https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/results-2026-11-05.md">measured 2026-11-05</a>).</li>
   </ul>
   <p class="home-status">Built in Rust, with most of the standard library written in Manuscript, and shaped by <a href="https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md">recorded agent runs</a>. The syntax is mostly stable; APIs and the standard library may still change.</p>
