@@ -7,12 +7,16 @@
 //! signature of the language-level method.
 
 use crate::Error;
+use crate::cx::{Cx, HelperKey, Job, JobKind};
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
+use ms_check::api::hir::ModuleHir;
 use ms_check::api::types as ct;
-use ms_mir::ir::{Cc, Imm, Op, Value};
+use ms_mir::builder::FuncBuilder;
+use ms_mir::ir::{Cc, Func, FuncId, Imm, Linkage, Mode, Module, Op, Param, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
+use std::rc::Rc;
 
 /// Every exported runtime function with its parameters and return type, sorted by name. Generated
 /// by `build.rs` from the exported items of `ms-rt` and the `ms-std-*` crates.
@@ -1237,13 +1241,31 @@ impl FnLower<'_> {
         }
         let table = status_table(sym);
         let domain = domain_of(sym);
-        self.status_chain(er, code, &table, &domain)
+        // One function per table builds the error: a chain of its cases at every call site is
+        // most of the code of a program that uses the network (28 KB per site).
+        let said = self.err_slot.is_some();
+        let hir = self.hir.clone();
+        let f = self
+            .cx
+            .status_error_fn(self.b.m, &hir, er, table, domain, said);
+        let mut args = vec![code];
+        if let Some(slot) = self.err_slot {
+            let text = self
+                .b
+                .emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+                .expect("take");
+            args.push(text);
+        }
+        Ok(self.b.call(f, &args))
     }
 
-    fn status_chain(
+    /// The `Error` of the row of `table` that `code` names (the last row otherwise); `said` is the
+    /// text the native stored for a failure, when it has an `err` slot.
+    pub(crate) fn status_chain(
         &mut self,
         er: ms_mir::types::TypeId,
         code: Value,
+        said: Option<Value>,
         table: &[(i64, &'static str, &'static str)],
         domain: &str,
     ) -> Result<Value, Error> {
@@ -1252,11 +1274,8 @@ impl FnLower<'_> {
             .ok_or_else(|| Error::new("no error kind for a runtime status"))?;
         let build = |s: &mut Self| -> Result<Value, Error> {
             let text = if words == "-" {
-                match s.err_slot {
-                    Some(slot) => {
-                        s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
-                            .expect("take")
-                    }
+                match said {
+                    Some(said) => said,
                     None => {
                         let l = s.lit(&format!("{domain}: failed")).v;
                         s.owned(Val { v: l, own: false })
@@ -1268,13 +1287,10 @@ impl FnLower<'_> {
                     let l = s.lit(&fallback).v;
                     s.owned(Val { v: l, own: false })
                 };
-                match s.err_slot {
+                match said {
                     // A native with an `err` slot may explain the failure (a position, a path):
                     // its non-empty text follows the status words.
-                    Some(slot) => {
-                        let said =
-                            s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
-                                .expect("take");
+                    Some(said) => {
                         let len = s.b.str_len(said);
                         let zero = s.b.iconst(0);
                         let has = s.b.icmp(Cc::Gt, len, zero);
@@ -1307,7 +1323,7 @@ impl FnLower<'_> {
         let hit = self.b.icmp(Cc::Eq, code, k);
         let ty = self.b.m.types.named(er);
         let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
-            s.status_chain(er, code, rest, domain).map(Some)
+            s.status_chain(er, code, said, rest, domain).map(Some)
         })?;
         Ok(r.v)
     }
@@ -1438,13 +1454,96 @@ impl FnLower<'_> {
     }
 }
 
+/// The rows of a status table: `(status, kind, words)`.
+pub(crate) type StatusRows = Vec<(i64, &'static str, &'static str)>;
+
+/// The function that builds the `Error` a nonzero status stands for.
+pub(crate) struct StatusErrorJob {
+    hir: Rc<ModuleHir>,
+    er: ms_mir::types::TypeId,
+    table: StatusRows,
+    domain: String,
+    /// Whether the native has an `err` slot: its text is the function's second parameter.
+    said: bool,
+}
+
+impl Cx {
+    /// The function `(status, text) -> Error` for `table` (reserved on first use); the text
+    /// parameter is there when `said`. Natives of one module share a table, so a program has a
+    /// handful of these instead of one chain of cases per call.
+    pub(crate) fn status_error_fn(
+        &mut self,
+        m: &mut Module,
+        hir: &Rc<ModuleHir>,
+        er: ms_mir::types::TypeId,
+        table: StatusRows,
+        domain: String,
+        said: bool,
+    ) -> FuncId {
+        let key = HelperKey::StatusError(er, table.clone(), domain.clone(), said);
+        if let Some(f) = self.helpers.get(&key) {
+            return *f;
+        }
+        let mut params = vec![Param {
+            ty: MTy::INT,
+            mode: Mode::Borrow,
+        }];
+        if said {
+            params.push(Param {
+                ty: MTy::STR,
+                mode: Mode::Move,
+            });
+        }
+        let ret = m.types.named(er);
+        let id = m.add_func(Func::new("status_error", params, ret));
+        self.helpers.insert(key, id);
+        self.queue.push(Job {
+            func: id,
+            kind: JobKind::StatusError(Rc::new(StatusErrorJob {
+                hir: hir.clone(),
+                er,
+                table,
+                domain,
+                said,
+            })),
+        });
+        id
+    }
+}
+
+pub(crate) fn build_status_error(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    job: &StatusErrorJob,
+) -> Result<(), Error> {
+    let proto = m.funcs[func.index()].clone();
+    let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    let mut fl = FnLower::new(cx, b, job.hir.clone(), Default::default(), 0, proto.ret);
+    fl.b.func_mut().linkage = Linkage::Internal;
+    let args = fl.b.params();
+    let said = job.said.then(|| args[1]);
+    let result = fl.status_chain(job.er, args[0], said, &job.table, &job.domain);
+    if let Ok(error) = &result {
+        fl.emit_return(Some(Val {
+            v: *error,
+            own: true,
+        }));
+    }
+    let mut out = fl.b.into_func();
+    result?;
+    out.compact_blocks();
+    m.funcs[func.index()] = out;
+    Ok(())
+}
+
 include!(concat!(env!("OUT_DIR"), "/status_rows.rs"));
 
 /// The error code and message words of each runtime status of `sym`'s module, as
 /// `(status, kind, words)`. The rows are declared in the standard library next to `Error.kind`
 /// (`stdlib/core.ms`); a module's own wording for a status is declared in the file that holds
 /// `sym` (see `build.rs`). Words `-` mean the native's own text is the message.
-pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
+pub(crate) fn status_table(sym: &str) -> StatusRows {
     STATUS_ROWS
         .iter()
         .map(|&(n, kind, words)| {

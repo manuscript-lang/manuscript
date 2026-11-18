@@ -4,6 +4,7 @@
 
 Checking, lowering, MIR, Cranelift, build, fault sites.
 
+- [Fallible native calls share one error builder](fallible-native-calls-share-one-error-builder.md): the status-to-`Error` chain was inlined at every call site (web server MIR 12,070 to 6,414 lines, binary 3.96 to 3.65 MB).
 - [Callback adapters do not change generic type identity](callback-adapters-do-not-change-generic-type-identity.md): reader conversion applies at a callable value boundary; implementation overlap and receiver matching preserve nested callback modes.
 
 - [Checker state must scale with the function, not the program](checker-state-must-scale-with-the-function-not-the-program.md): uid-indexed arrays, scans over all methods and `Info` clones were half of `ms check` on a large project.

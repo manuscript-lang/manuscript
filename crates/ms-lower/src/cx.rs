@@ -63,6 +63,13 @@ pub enum BoundTarget {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum HelperKey {
     Eq(MTy, u32),
+    /// The error of a runtime status: its type, table, domain, and whether the text is passed.
+    StatusError(
+        ms_mir::types::TypeId,
+        crate::rtcall::StatusRows,
+        String,
+        bool,
+    ),
     Fmt(MTy, bool),
     Json {
         encode: bool,
@@ -225,6 +232,8 @@ pub enum JobKind {
     Json(Rc<crate::json::JsonJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
+    /// The error a nonzero runtime status stands for.
+    StatusError(Rc<crate::rtcall::StatusErrorJob>),
 }
 
 /// An interface method value waiting to be lowered; the closure holds the interface value.
