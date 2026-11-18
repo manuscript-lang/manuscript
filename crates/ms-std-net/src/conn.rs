@@ -225,6 +225,12 @@ pub fn socket_addr_text(addr: &socket2::SockAddr) -> String {
 
 const READ_CHUNK: i64 = 65536;
 
+thread_local! {
+    /// The buffer a connection read fills before copying the message out; taken for the length of
+    /// one non-blocking read, never across a wait.
+    static SCRATCH: Cell<Vec<u8>> = const { Cell::new(Vec::new()) };
+}
+
 /// Drives `io` until `op` makes progress or the deadline passes.
 fn drive<T>(
     io: &dyn Io,
@@ -408,13 +414,31 @@ impl Connection {
             return Err(IoErr::InvalidInput);
         }
         let n = max.min(READ_CHUNK as u128) as usize;
-        let mut buf = vec![0u8; n];
-        match self.read_into(&mut buf, deadline)? {
-            0 => Ok(None),
-            count => {
-                buf.truncate(count);
-                Ok(Some(buf))
-            }
+        // The read waits for the socket before it touches a buffer, and a message is copied out
+        // into a vector of its own size: a parked read holds no memory, and a short message does
+        // not pay to zero and allocate the whole chunk.
+        let mut message = None;
+        let r = self.parked(|| {
+            drive(
+                &*self.io,
+                deadline,
+                || {
+                    let mut scratch = SCRATCH.with(Cell::take);
+                    scratch.resize(READ_CHUNK as usize, 0);
+                    let step = self.io.read(&mut scratch[..n]);
+                    if let Step::Done(count) = step {
+                        message = Some(scratch[..count].to_vec());
+                    }
+                    SCRATCH.with(|slot| slot.set(scratch));
+                    step
+                },
+                |_| (),
+                || (),
+            )
+        });
+        match r {
+            Ok(()) => Ok(message.filter(|m| !m.is_empty())),
+            Err(e) => Err(self.failure(e)),
         }
     }
 

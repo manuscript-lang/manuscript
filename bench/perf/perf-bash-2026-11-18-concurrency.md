@@ -26,7 +26,7 @@ Nothing here is a gap worth a fix. Spawn, timers, thread scaling, files, process
 | --- | ---: | ---: | --- |
 | Pipe, one writer to one reader on another thread, 4M `Int`, capacity 1024 | 650 | 280 (chan; 140 per 2M measured), Rust `sync_channel` 70 to 90 | Trivial work per item. One thread runs it in 150 ms. |
 | Request and reply over two pipes, 500k rounds, two threads | 1100 | 212 (85 per 200k measured) | Same. One thread: 280. |
-| Echo over loopback TCP, 31k rounds of 64 bytes | 305 to 330 | 215 (`splice`, so not like for like) | 10 system calls per hop, mostly kernel. |
+| Echo over loopback TCP, 31k rounds of 64 bytes | 225 (was 316, see the read buffer change below) | 226 (`splice`, so not like for like) | Kernel bound now. |
 | 20,000 short connections, 4 to 128 at a time | 810 to 960 | 420 to 540 | A listener pins its thread, so accept and the handlers share one core; Go spreads over four. `serve` spreads HTTP; `Listener.accept_pending` spreads raw TCP (section below). |
 
 The worker-pool rows above show the pipe cost disappearing once an item does real work: 500k jobs at 0.4 us each take 236 ms against Go's 222 ms, and at 3 us each the two are equal.
@@ -77,3 +77,19 @@ A `Connection` belongs to the thread that uses it, and so does the listener that
 | Go | 493 |
 
 The handlers here do almost no work, so the saving is small: the cost per connection is mostly kernel time (sys 0.9 s of 1.6 s CPU, Go the same) and the accept loop. With 300,000 loop iterations of work per connection (1,024 connections): 1758 ms pinned, 1229 ms spread. The remaining gap to Go on empty handlers is user-space cost per connection (about 0.7 s against 0.4 s), not placement.
+
+### Change: a TCP read no longer zeroes and allocates 64 KiB
+
+`Connection.read` allocated a zero-filled 64 KiB vector before waiting for the socket, read into it, and truncated it. Every read, however short, paid for the memset (75 to 80% of the user-space instructions of the connection storm under `valgrind --tool=callgrind`, from `alloc_zeroed_cached`), and every parked read of an idle connection held 64 KiB. A read now waits for the socket first, reads into a per-thread scratch buffer for the length of one non-blocking read (never across a wait), and copies out a vector of the message's size.
+
+| | before | after | Go |
+| --- | ---: | ---: | ---: |
+| echo, 2 MB in 64-byte rounds, median of 5, ms | 316 | 225 | 226 |
+| echo, 64 MB in 64 KiB chunks, ms | 24 | 25 | 15 |
+| 20,000 connections, 128 at a time, spread, ms | 775 | 720 | 440 |
+| user-space instructions, 1,024 connections (callgrind) | 247 M | 49 M | |
+
+The storm barely moves in wall time because it is bound by the kernel (sys 0.9 s of its CPU, the same as Go) and by wake-ups: each spread connection costs one cross-thread post, a `getsockname` and a `getpeername` for its `ConnectionInfo`, two `fcntl` to make the accepted socket non-blocking (`accept4` with `SOCK_NONBLOCK` would remove them, but `socket2` does not expose it and a direct `libc` call needs a new dependency edge), and three `epoll_ctl`. Each is under 5% and below the 8% run-to-run spread of this VM, so none is taken.
+
+### The pipe throughput gap, closed as not planned
+The 4M-`Int` case runs in 430 to 550 ms against Go's 310 and does not park (6 to 7 context switches in the whole run). Single-thread it costs 32 ns per item, so about two thirds of the 107 ns is cache-line traffic between the two cores: the writer's lock, queue header and length line move to the reader once per batch, and the reader keeps pace so a batch is one or two items. The one design that removes this, a single-producer ring with cached indices, is what the deleted lane was; it measured 670 to 670 against the lock before the swap change. A principled variant (publish the tail every N items) trades latency for a benchmark and would stall a request and reply pair, so it is not taken.
