@@ -59,7 +59,7 @@ fn main() Void:
 - The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
 - Generic inference matches either the whole optional or its payload: `fn present[T](value: T?) T?` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
 - A `T?` parameter or field with no default is `none` when omitted.
-- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`id: Int? = 3`). A user-defined `Optional` gets no wrapping.
+- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`id: Int? := 3`). A user-defined `Optional` gets no wrapping.
 
 See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
 

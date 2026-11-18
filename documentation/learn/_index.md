@@ -42,8 +42,8 @@ ms search_symbol PromiseOptions
 The `PromiseOptions` search starts with:
 
 ```text
-promise.PromiseOptions  record  std:@std/concurrency/promise.ms
-  type PromiseOptions: timeout: Duration? = none cancel: Signal? = none
+promise.PromiseOptions  type  std:@std/concurrency/promise.ms
+  type PromiseOptions: timeout: Duration? = none cancel: Signal? = none ...
 ```
 
 It also lists matching fields and related functions. Search includes project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output. Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
