@@ -493,7 +493,9 @@ impl Checker {
                 self.m().facts_mut().const_use.insert(e.id);
                 return self.call(e, e, &[], true, expected);
             } else {
-                i.ty = s.ty_opt();
+                // A function used as a value is passed positionally, like an explicit
+                // `fn(Int) Int`; direct calls bind labels in `call`, which never reaches here.
+                i.ty = s.ty_opt().map(positional_function);
                 i.symbol = Some(s.clone());
                 if !s.variables().is_empty() {
                     self.type_error(
@@ -1381,4 +1383,17 @@ pub(crate) fn accepts_arguments(callable: &Ty, count: usize) -> bool {
     let omittable = callable.defaults.as_ref().map_or(0, |d| d.len());
     let total = callable.params.len();
     total.saturating_sub(omittable) <= count && count <= total
+}
+
+/// `ty` with every parameter positional when it is a function type, so a function value takes
+/// no labels however it was written.
+fn positional_function(ty: Ty) -> Ty {
+    if ty.kind != Kind::Function || ty.params.iter().all(|p| p.positional) {
+        return ty;
+    }
+    let mut copy = (*ty).clone();
+    for p in &mut copy.params {
+        p.positional = true;
+    }
+    Rc::new(copy)
 }

@@ -29,4 +29,4 @@ test "omitted defaults":
     expect_true((countdown(n: 4) == 10 and countdown(n: 4, step: 2) == 6))?
 
     callback := scaled
-    expect_true((callback(base: 2, factor: 3, label: "z") == "z6"))?
+    expect_true((callback(2, 3, "z") == "z6"))?

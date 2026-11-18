@@ -9,7 +9,7 @@
       {
         "code": "MS3003",
         "phase": "type",
-        "message": "missing argument value: Int; add 'value: <Int>'",
+        "message": "missing argument 1: Int; pass it positionally, without a label",
         "position": {
           "file": "diag-erased-default-missing-argument-list.ms",
           "line": 10,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-erased-default-missing-argument-list.ms:10:12: type: missing argument value: Int; add 'value: <Int>'\n    |\n 10 |     return callbacks[1]()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-erased-default-missing-argument-list.ms:10:12: type: missing argument 1: Int; pass it positionally, without a label\n    |\n 10 |     return callbacks[1]()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

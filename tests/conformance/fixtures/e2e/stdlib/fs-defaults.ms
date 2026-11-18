@@ -59,10 +59,10 @@ test "filesystem writes default to exclusive creation through aliases and bounds
 	write := write_file
 	alias := write_file
 	(rejected(alias(path, "second").wait())?)
-	(rejected(write(path, "second", replace: false).wait())?)
+	(rejected(write(path, "second", false).wait())?)
 	(rejected(generic_write(path, "second"))?)
 	(text(path)?) | expect_equal("first")?
-	(alias(path, "second", replace: true).wait() | expect_ok?)
+	(alias(path, "second", true).wait() | expect_ok?)
 	(text(path)?) | expect_equal("second")?
 	(generic_write(f"{temporary.path()}/generic", "generic") | expect_ok?)
 	(rejected(write_file("", "invalid").wait())?)
@@ -193,7 +193,7 @@ test "filesystem directory creation defaults to requiring an existing parent":
 	(rejected(create(child, false))?)
 	(rejected(generic_directory(child))?)
 	(list(temporary.path()) | expect_ok?).length() | expect_equal(0)?
-	(create(child, recursive: true) | expect_ok?)
+	(create(child, true) | expect_ok?)
 	((stat(child, follow_links: false) | expect_ok?).is_directory()) | expect_true?
 	(generic_directory(f"{temporary.path()}/generic") | expect_ok?)
 	(rejected(create(""))?)
@@ -234,16 +234,16 @@ test "filesystem default preparation retains written argument order":
 	copy := copy
 	(
 		copy(
-			destination: argument(
-				var log,
-				"destination",
-				f"{temporary.path()}/copy",
-			),
-			source: argument(
+			argument(
 				var log,
 				"source",
 				f"{temporary.path()}/ordered",
 			),
+			argument(
+				var log,
+				"destination",
+				f"{temporary.path()}/copy",
+			),
 		) | expect_ok?
 	)
-	log | expect_equal(["data", "path", "destination", "source"])?
+	log | expect_equal(["data", "path", "source", "destination"])?

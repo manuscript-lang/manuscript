@@ -18,4 +18,7 @@ export fn main() Int:
     direct := _hidden(other: 1)
     named := numbered(value: 2)
     short := numbered(_0: 1)
+    copy := identity
+    copied := copy(value: 3)
+    kept := identity(value: 3)
     return transform(value: 2) + keep(1)
