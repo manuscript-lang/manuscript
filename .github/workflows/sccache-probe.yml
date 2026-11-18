@@ -28,6 +28,10 @@ jobs:
         with:
           os: linux
           arch: amd64
+      - uses: ./.github/actions/native-runtime
+        with:
+          os: linux
+          arch: amd64
       - name: Workspace build, then clean cranelift-codegen and rebuild it the same way
         shell: bash
         run: |
