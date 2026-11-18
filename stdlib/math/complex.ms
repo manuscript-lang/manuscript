@@ -1,4 +1,5 @@
 import (
+	asinh,
 	atan2,
 	copy_sign,
 	cos,
@@ -161,6 +162,11 @@ fn Complex.log() Complex:
 
 // Returns the principal square root, with a non-negative real part.
 fn Complex.sqrt() Complex:
+	// An infinite imaginary part gives an infinite root whatever the real part is, even
+	// NaN; otherwise a NaN real part makes the whole root NaN.
+	if not self.im.is_finite() and not self.im.is_nan(): return Complex(re: infinity, im: self.im)
+	if self.re.is_nan(): return Complex(re: self.re, im: self.re)
+
 	if self.im == 0.0:
 		if self.re >= 0.0: return Complex(re: sqrt(self.re), im: self.im)
 		return Complex(re: 0.0, im: copy_sign(sqrt(-self.re), self.im))
@@ -246,6 +252,19 @@ fn Complex.tanh() Complex:
 
 // Returns the principal inverse sine, `-i * log(i*z + sqrt(1 - z^2))`.
 fn Complex.asin() Complex:
+	// Near the origin `log(iz + root)` is the log of a number close to 1 and loses the
+	// digits of z. Kahan's form has no such cancellation: with a = sqrt(1-z) and
+	// b = sqrt(1+z), the real part is atan2(x, Re(ab)) and the imaginary part is
+	// asinh(Im(conj(a) b)). The parts of 1-z and 1+z are built one by one so a -0
+	// imaginary part keeps its side of the branch cut.
+	if self.re.is_finite() and self.im.is_finite() and self.re.abs().max(self.im.abs()) <= 1.0:
+		low := Complex(re: 1.0 - self.re, im: -self.im).sqrt()
+		high := Complex(re: 1.0 + self.re, im: self.im).sqrt()
+		return Complex(
+			re: atan2(self.re, low.re * high.re - low.im * high.im),
+			im: asinh(low.re * high.im - low.im * high.re),
+		)
+
 	// asin(-z) = -asin(z). In the upper half plane iz and the root have opposite
 	// real parts and cancel for large |im|, so evaluate through the lower half
 	// plane, where they add. A +0 imaginary part is on the upper side of the cut,
@@ -271,6 +290,18 @@ fn Complex.asin() Complex:
 
 // Returns the principal inverse cosine, pi/2 minus the inverse sine.
 fn Complex.acos() Complex:
+	// Kahan's form keeps a real part that is tiny next to pi/2, which the subtraction
+	// below would round away for a large real part: with a = sqrt(1-z) and
+	// b = sqrt(1+z), the real part is 2 atan2(Re a, Re b) and the imaginary part is
+	// asinh(Im(conj(b) a)).
+	if self.re.is_finite() and self.im.is_finite():
+		low := Complex(re: 1.0 - self.re, im: -self.im).sqrt()
+		high := Complex(re: 1.0 + self.re, im: self.im).sqrt()
+		return Complex(
+			re: 2.0 * atan2(low.re, high.re),
+			im: asinh(high.re * low.im - high.im * low.re),
+		)
+
 	s := self.asin()
 	return Complex(re: 1.5707963267948966 - s.re, im: -s.im)
 
