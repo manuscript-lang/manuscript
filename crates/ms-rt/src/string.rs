@@ -3435,32 +3435,63 @@ unsafe fn normalize_kind(
             *out = cloned(&*s);
             return STATUS_OK;
         }
+        // ASCII is stable under every form and never composes with what precedes it, so
+        // a normalization segment starts at the last ASCII byte before a non-ASCII run
+        // (a base letter may take a following mark) and ends at the next ASCII byte.
+        // Everything between segments is copied as it is.
+        let mut b: Vec<u8> = Vec::with_capacity(text.len());
         let mut chars: Vec<char> = Vec::new();
-        let mut i = 0;
-        while i < text.len() {
-            let (c, w) = utf8::decode(&text[i..]);
-            chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
-            i += w;
-        }
-        let mut b = Vec::new();
         let mut tmp = [0u8; 4];
-        let mut push = |c: char| -> bool {
-            let e = c.encode_utf8(&mut tmp).as_bytes();
-            if e.len() > limit.saturating_sub(b.len()) {
-                return false;
+        let mut at = 0;
+        while at < text.len() {
+            let run_end = at
+                + text[at..]
+                    .iter()
+                    .position(|&x| x >= 0x80)
+                    .unwrap_or(text.len() - at);
+            if run_end == text.len() {
+                if text.len() - at > limit.saturating_sub(b.len()) {
+                    return STATUS_LIMIT_EXCEEDED;
+                }
+                b.extend_from_slice(&text[at..]);
+                break;
             }
-            b.extend_from_slice(e);
-            true
-        };
-        let it = chars.as_slice().iter().copied();
-        let ok = match kind {
-            0 => it.nfc().all(&mut push),
-            1 => it.nfd().all(&mut push),
-            2 => it.nfkc().all(&mut push),
-            _ => it.nfkd().all(&mut push),
-        };
-        if !ok {
-            return STATUS_LIMIT_EXCEEDED;
+            let start = if run_end > at { run_end - 1 } else { run_end };
+            if start - at > limit.saturating_sub(b.len()) {
+                return STATUS_LIMIT_EXCEEDED;
+            }
+            b.extend_from_slice(&text[at..start]);
+            let end = run_end
+                + text[run_end..]
+                    .iter()
+                    .position(|&x| x < 0x80)
+                    .unwrap_or(text.len() - run_end);
+            chars.clear();
+            let mut i = start;
+            while i < end {
+                let (c, w) = utf8::decode(&text[i..end]);
+                chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
+                i += w;
+            }
+            let mut push = |c: char| -> bool {
+                let e = c.encode_utf8(&mut tmp).as_bytes();
+                if e.len() > limit.saturating_sub(b.len()) {
+                    return false;
+                }
+                b.extend_from_slice(e);
+                true
+            };
+            let it = chars.iter().copied();
+            let ok = match kind {
+                0 => it.nfc().all(&mut push),
+                1 => it.nfd().all(&mut push),
+                2 => it.nfkc().all(&mut push),
+                _ => it.nfkd().all(&mut push),
+            };
+            if !ok {
+                return STATUS_LIMIT_EXCEEDED;
+            }
+            at = end;
         }
         *out = from_buf(b);
         STATUS_OK
@@ -4736,6 +4767,54 @@ mod tests {
                     STATUS_INVALID_INPUT
                 );
                 assert_eq!(bytes(&actual), b"sentinel");
+            }
+        }
+    }
+
+    #[test]
+    fn normalize_copies_ascii_runs_and_normalizes_around_marks() {
+        let _g = testutil::lock();
+        unsafe {
+            let piece = "ab e\u{301} cd e\u{301}\u{323}x\u{fb01}y";
+            let expect = [
+                ("NFC", "ab \u{e9} cd \u{1eb9}\u{301}x\u{fb01}y"),
+                ("NFD", "ab e\u{301} cd e\u{323}\u{301}x\u{fb01}y"),
+                ("NFKC", "ab \u{e9} cd \u{1eb9}\u{301}xfiy"),
+                ("NFKD", "ab e\u{301} cd e\u{323}\u{301}xfiy"),
+            ];
+            for (form, want) in expect {
+                let mut o = NO_STR;
+                assert_eq!(
+                    msrt_string_normalize(st(piece), st(form), HasRaw(0), 0, &mut o),
+                    STATUS_OK
+                );
+                assert_eq!(txt(&o), want, "{form}");
+                let wrapped = format!("q{piece}r");
+                assert_eq!(
+                    msrt_string_normalize(st(&wrapped), st(form), HasRaw(0), 0, &mut o),
+                    STATUS_OK
+                );
+                assert_eq!(txt(&o), format!("q{want}r"), "{form} wrapped");
+                assert_eq!(
+                    msrt_string_normalize(
+                        st(piece),
+                        st(form),
+                        HasRaw(1),
+                        want.len() as i64,
+                        &mut o
+                    ),
+                    STATUS_OK
+                );
+                assert_eq!(
+                    msrt_string_normalize(
+                        st(piece),
+                        st(form),
+                        HasRaw(1),
+                        want.len() as i64 - 1,
+                        &mut o
+                    ),
+                    STATUS_LIMIT_EXCEEDED
+                );
             }
         }
     }

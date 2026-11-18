@@ -159,7 +159,31 @@ fn String.fields_by(is_separator: fn(String) Bool) List[String]:
 // "STRASSE". This is not Unicode default case folding: the dotless "ı" (U+0131)
 // uppercases to "I" and so compares equal to "i" and "I".
 fn String.equal_fold(other: String) Bool:
-	return fold_key(self) == fold_key(other)
+	// While both texts are ASCII the keys match byte for byte after ASCII lowercasing,
+	// so the first difference decides and no key is built. A non-ASCII byte on either
+	// side hands the whole comparison to the full case mapping.
+	left := self.view_bytes()
+	right := other.view_bytes()
+	var shared = left.length()
+	if right.length() < shared: shared = right.length()
+
+	var at = 0
+
+	while at < shared:
+		a := left.get(at)
+		b := right.get(at)
+		if a >= 128 or b >= 128: return fold_key(self) == fold_key(other)
+
+		if a != b:
+			low_a := if a >= 65 and a <= 90: a + 32 else: a
+			low_b := if b >= 65 and b <= 90: b + 32 else: b
+			if low_a != low_b: return false
+
+		at += 1
+
+	// A longer text keeps scalars the shorter one lacks, and no case mapping erases a
+	// scalar, so the keys differ in length.
+	return left.length() == right.length()
 
 // Capital sharp s (U+1E9E) uppercases to itself but is the capital form of "ß", so it
 // is written as "ß" before the comparison.
@@ -217,11 +241,48 @@ fn String.capitalize() String:
 // titlecase form and lowercases the others; a word is lowercased whole, so a final
 // sigma stays final (`ΑΣ` becomes `Ας`).
 fn String.title() String:
+	bytes := self.view_bytes()
+	count := bytes.length()
+	var at = 0
+	while at < count and bytes.get(at) < 128: at += 1
+	if at < count: return title_scalars(self)
+
+	// ASCII text: lowercase it once and copy the lowercase runs between the first
+	// letters of words, which come from the uppercase alphabet by index.
+	lowered := self.lower()
+	var out = StringBuilder()
+	var copied = 0
+	var in_word = false
+
+	for i in 0..count:
+		b := bytes.get(i)
+		word := (
+			(b >= 48 and b <= 57)
+			or (b >= 65 and b <= 90)
+			or (b >= 97 and b <= 122)
+			or b == 39
+		)
+
+		if word and not in_word and ((b >= 97 and b <= 122) or (b >= 65 and b <= 90)):
+			out.append(lowered.view(copied, i))
+
+			var letter = b.to_int() - 97
+			if b <= 90: letter = b.to_int() - 65
+			out.append("ABCDEFGHIJKLMNOPQRSTUVWXYZ".view(letter, letter + 1))
+			copied = i + 1
+
+		in_word = word
+
+	out.append(lowered.view(copied, count))
+	return out.build()
+
+// `title` for text with any non-ASCII scalar, one word at a time.
+fn title_scalars(text: String) String:
 	var out = StringBuilder()
 	var word = StringBuilder()
 	var in_word = false
 
-	for c in self.chars():
+	for c in text.chars():
 		if is_word_scalar(c):
 			word.append(c)
 			in_word = true
