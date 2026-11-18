@@ -58,7 +58,8 @@ export type Flag:
 	name: String
 	// What the flag accepts, and so the type of the record field; defaults to String.
 	kind: FlagKind = FlagKind.String
-	// One-letter alias used as `-p`; empty for none.
+	// One-letter alias used as `-p`; empty for none. A value follows as `-p 8080` or
+	// `-p=8080`; short flags do not combine (`-vd`) or attach a value (`-p8080`).
 	short: String = ""
 	// Text used when the flag is absent; none for no default. A Bool defaults to false.
 	default: String?

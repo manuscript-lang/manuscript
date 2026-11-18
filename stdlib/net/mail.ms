@@ -15,7 +15,7 @@ message into `Headers` and body and decodes RFC 2047 encoded words on request.
     sender := parse_address("Ada Lovelace <ada@example.com>")?
     print(sender.name)              // "Ada Lovelace"
     mail := parse_message(raw)?
-    print(mail.headers.get("Subject").get(""))
+    print(mail.headers.get("Subject").get_or(""))
 */
 
 // A mailbox: optional display name and the `local@domain` address.

@@ -80,11 +80,15 @@ export type DnsRecord:
 	// The service port of an SRV record; 0 for other kinds.
 	port: Int
 
-// Reports whether an IP address belongs to a CIDR range.
+// Reports whether an IP address belongs to a CIDR range. The families must match: an
+// address written `::ffff:1.2.3.4` is normalized to IPv4, so an IPv4 range contains it
+// and a range written in `::ffff:` form (which keeps its IPv6 spelling) contains no
+// IPv4 address.
 export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!:
 	return msstd_net_contains_ip(cidr, address)
 
-// Validates and canonicalizes an IPv4 or IPv6 CIDR range.
+// Validates and canonicalizes an IPv4 or IPv6 CIDR range: host bits are cleared, so
+// `10.1.2.3/8` is `10.0.0.0/8`, and the prefix length has no sign or leading zero.
 export fn parse_cidr(text: String) Cidr!:
 	return msstd_net_parse_cidr(text)
 

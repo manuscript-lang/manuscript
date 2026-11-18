@@ -70,7 +70,7 @@ fn level_at(value: Int) LogLevel:
 
 	return LogLevel.Silent
 
-// Milliseconds since the Unix epoch, the void of the `time` field.
+// Milliseconds since the Unix epoch, the unit of the `time` field.
 fn now_ms() Int:
 	now := now()
 	return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000

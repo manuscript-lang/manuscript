@@ -37,19 +37,19 @@ export type StringifyOptions:
 /*
 A JSON value. Number text is retained to avoid losing precision during parsing.
 
-`get` and `at` read one level and `as_*` read a scalar or container, each returning `none` on a
-mismatch. `get` and `at` borrow the selected part; keep the document available and unchanged
-while using it. `as_string`, `as_list` and `as_map` explicitly clone their payloads. Nested reads
-bind each level with `if let`:
+`get` and `get_index` read one level and `as_*` read a scalar or container, each returning `none`
+on a mismatch. `get` and `get_index` borrow the selected part; keep the document available and
+unchanged while using it. `as_string`, `as_list` and `as_map` explicitly clone their payloads.
+Nested reads bind each level with `if value := ...`:
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 if user := doc.get("user"):
     if name := user.get("name"):
-        return name.as_string().get("")
+        return name.as_string().get_or("")
 ```
 
-`get_in` reads a chain of object members in one call and lends the result: `doc.get_in(["user", "name"])`.
+`get_in` reads a chain of object members in one call and borrows the result: `doc.get_in(["user", "name"])`.
 */
 // A JSON document is Data, including its string-keyed object members.
 // ms: data

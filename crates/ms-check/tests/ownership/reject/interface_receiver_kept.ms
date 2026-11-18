@@ -14,4 +14,4 @@ fn total(sized: Sized) Int:
     return sized.size()
 
 fn f() Int:
-    return total(Name("a"))  // error: becomes a `Sized`, but `Name.size` keeps its receiver, which the interface lends
+    return total(Name("a"))  // error: becomes a `Sized`, but `Name.size` keeps its receiver, which the interface borrows

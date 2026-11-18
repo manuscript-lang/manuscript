@@ -47,7 +47,7 @@ fn RetryPolicy.wait_after(attempt: Int) Duration:
 
 /*
 Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
-`operation` receives the attempt number, starting at 1. `E` must be `Clonable`, because the error is lent to `retryable` and then returned. `retryable` defaults to retrying every error.
+`operation` receives the attempt number, starting at 1. `E` must be `Clonable`, because the error is borrowed by `retryable` and then returned. `retryable` defaults to retrying every error.
 Waiting uses `sleep`, so cancelling the task ends the wait. The operation always runs once, so a policy with fewer than one attempt runs it once.
 */
 export fn retry[T, E: Clonable](
@@ -176,8 +176,9 @@ export type CircuitBreaker:
 	// Internal state: when the circuit opened, or `none` while closed.
 	opened: Instant? = none
 
-// Whether a call may go ahead now: the circuit is closed, or its cooldown has
-// passed (the trial call).
+// Whether the circuit is open and still cooling down, so a call fails at once. It is
+// false while the circuit is closed and once the cooldown has passed, which lets the
+// trial call through.
 fn CircuitBreaker.is_open() Bool:
 	if since := self.opened:
 		return monotonic().difference(since).compare(self.cooldown) < 0

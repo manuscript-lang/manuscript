@@ -63,7 +63,7 @@ impl Walker<'_> {
                 })
                 .collect();
             // The interface value keeps owning its data, so an operation that does not take the
-            // receiver lends it to the implementation.
+            // receiver borrows it to the implementation.
             let lends_receiver = ops
                 .iter()
                 .filter(|o| o.name == op)
@@ -73,7 +73,7 @@ impl Walker<'_> {
                 let text = self.expr_text(e);
                 self.error(
                     e.pos,
-                    format!("`{text}` becomes a `{target_t}`, but `{method_t}` keeps its receiver, which the interface lends; declare `move fn` in both the interface and `{method_t}`, or keep `self.clone()`", target_t = target.display(self.syms)),
+                    format!("`{text}` becomes a `{target_t}`, but `{method_t}` keeps its receiver, which the interface borrows; declare `move fn` in both the interface and `{method_t}`, or keep `self.clone()`", target_t = target.display(self.syms)),
                 );
             }
             for (name, mode) in &summary.params {
@@ -96,7 +96,7 @@ impl Walker<'_> {
         }
     }
 
-    /// A method the language calls on a value it only lends (to show, compare, hash or encode
+    /// A method the language calls on a value it only borrows (to show, compare, hash or encode
     /// it) that keeps its receiver or an argument would need a hidden copy at every such call,
     /// so it is rejected and the remedy names the `.clone()` to write.
     pub(super) fn lent_property_keeps(&mut self, summary: &Summary) {
@@ -122,12 +122,12 @@ impl Walker<'_> {
             let name_t = self.syms.str(name);
             self.error(
                 c.func.pos(),
-                format!("`{method}` keeps `{name_t}`, but the language calls it when it {what} and only lends the value; keep a copy instead, such as `{name_t}.clone()`"),
+                format!("`{method}` keeps `{name_t}`, but the language calls it when it {what} and only borrows the value; keep a copy instead, such as `{name_t}.clone()`"),
             );
         }
     }
 
-    /// A named function used as a value whose type lends a parameter the function keeps would
+    /// A named function used as a value whose type borrows a parameter the function keeps would
     /// need a hidden copy of every argument; it is rejected, and the remedy is a written
     /// `.clone()` in a closure, or a function type that says `move`.
     pub(super) fn function_value_copies(
@@ -178,7 +178,7 @@ impl Walker<'_> {
             };
             self.error(
                 e.pos,
-                format!("`{text}` keeps its parameter `{name_t}`, but this function type lends its arguments, so every call would need a hidden copy; {remedy}"),
+                format!("`{text}` keeps its parameter `{name_t}`, but this function type borrows its arguments, so every call would need a hidden copy; {remedy}"),
             );
         }
     }
@@ -194,7 +194,7 @@ impl Walker<'_> {
                 .for_each(|m| *m = ParamMode::Borrow);
         }
         self.facts.calls.insert(e.id, modes.clone());
-        // A native read lent in place (`s.value.get()`) is not the receiver's to hand over: an owning
+        // A native read borrowed in place (`s.value.get()`) is not the receiver's to hand over: an owning
         // position would copy it, and a value with no `clone` has no copy, so the caller's owner and the new
         // owner would both close it.
         if d == Demand::Move
@@ -324,7 +324,7 @@ impl Walker<'_> {
                 _ => None,
             };
             // A source callable the summary found to return a borrow (`fn G[T].get() T: return
-            // self.v`) lends its result whatever `T` is: the receiver stays the owner and the
+            // self.v`) borrows its result whatever `T` is: the receiver stays the owner and the
             // result is a view, so only natives take a payload out of their receiver.
             let lends = result_borrow(cx.m, e, cx.summaries).returns_borrow;
             let takes_payload = !lends
@@ -366,9 +366,9 @@ impl Walker<'_> {
                 if (takes_preserved || !args.is_empty())
                     && let Some(source) = self.native_borrow_receiver(r)
                 {
-                    // The receiver is itself a native lend (`m.get(k)`, `xs.first()`): the
+                    // The receiver is itself a native borrow (`m.get(k)`, `xs.first()`): the
                     // element stays in its collection. Taking its payload into an owning
-                    // result would copy it; a plain `get()` still lends it in place.
+                    // result would copy it; a plain `get()` still borrows it in place.
                     let (from, text) = (self.expr_text(source), self.expr_text(r));
                     let why =
                         clone_blocker(&result_ty).unwrap_or("it has one owner and no `clone`");
@@ -491,7 +491,7 @@ impl Walker<'_> {
             }
             self.check_overlap(e.pos, &format!("`{name}`"), &operands);
         }
-        // A checked native container read used in place lends from its held receiver. Keep
+        // A checked native container read used in place borrows from its held receiver. Keep
         // that result borrowed for inline lowering too; a temporary source or owning use
         // keeps its existing boundary handling.
         if d != Demand::Move
@@ -501,7 +501,7 @@ impl Walker<'_> {
         {
             self.facts.borrowed_reads.insert(e.id);
         }
-        // A native read that lends an element of its receiver cannot hand it to an owner: the
+        // A native read that borrows an element of its receiver cannot hand it to an owner: the
         // collection keeps the element, so the new owner would be a second one. A resource has
         // no copy and closes twice; a plain value needs `.clone()` (a value whose type is still
         // generic is copied when the function is instantiated, as its bound allows).
@@ -592,7 +592,7 @@ impl Walker<'_> {
                 ),
             );
         }
-        // `xs.slice(a, b).get()`: the payload is the lent slice, so keeping it needs a `.clone()`.
+        // `xs.slice(a, b).get()`: the payload is the borrowed slice, so keeping it needs a `.clone()`.
         if d == Demand::Move
             && (name == "get" && args.is_empty() || exprs::payload_passthrough(&name, args.len()))
             && let Some(inner) = receiver_expr

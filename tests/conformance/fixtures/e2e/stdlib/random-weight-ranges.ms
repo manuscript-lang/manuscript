@@ -47,7 +47,7 @@ test "ordinary weighted choices keep direct draws":
 			expected := if point < weights[0]: 0 else: 1
 			expect_equal(rng.weighted_choice([0, 1], weights), expected)?
 
-	// The largest void draw rounds to the minimum-normal total; keep the last positive
+	// The largest unit draw rounds to the minimum-normal total; keep the last positive
 	// slot.
 	var edge = seeded(3558559446808474027)
 	expect_equal(

@@ -16,7 +16,7 @@ fn apply[T](xs: List[T], f: fn(T) List[T]) Int:
     return n
 
 fn outer[T](xs: List[T]) Int:
-    return apply(xs, keep[T])  // error: this function type lends its arguments
+    return apply(xs, keep[T])  // error: this function type borrows its arguments
 
 fn g() Int:
     return outer([Door(1)])

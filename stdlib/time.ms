@@ -30,7 +30,7 @@ import (
 
 // A span of elapsed time, counted in signed nanoseconds.
 export type Duration:
-	// The signed count of nanoseconds; `nanoseconds(n)` and the void constructors build
+	// The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build
 	// one.
 	nanos: Int
 
@@ -100,8 +100,9 @@ fn Duration.to_microseconds() Int:
 fn Duration.to_milliseconds() Int:
 	return msstd_time_duration_to_milliseconds(self.nanos)
 
-// Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string
-// interpolation uses it too.
+// Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h0m0s`, or `0s`; string
+// interpolation uses it too. A larger unit is followed by every smaller whole
+// unit down to seconds, so two minutes is `2m0s` and an exact hour is `1h0m0s`.
 fn Duration.to_string() String:
 	total := self.to_nanoseconds()
 	if total == 0: return "0s"
@@ -352,6 +353,7 @@ fn Timestamp.calendar(zone: String) Date!:
 /*
 Formats this timestamp in a zone with a token pattern.
 Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
+Tokens are replaced wherever they appear, including inside words (`"Dummy"` becomes `"Du13y"`), and there is no escape, so keep literal letters that spell a token out of the pattern and join the pieces yourself.
 An unknown zone returns EINVAL.
 */
 fn Timestamp.format(pattern: String, zone: String) String!:
@@ -403,7 +405,7 @@ fn duration_decimal(whole: Int, frac: Int, width: Int) String:
 
 	return f"{whole}.{digits}"
 
-// Constructs a duration of `n` nanoseconds, the void `Duration` counts in; `n` may be
+// Constructs a duration of `n` nanoseconds, the unit `Duration` counts in; `n` may be
 // negative.
 export fn nanoseconds(n: Int) Duration:
 	return Duration(nanos: n)
@@ -605,7 +607,10 @@ export fn local_zone() String:
 export fn sleep(duration: Duration) Promise[Void]:
 	return adopt[Void](msrt_promise_sleep(duration.nanos))
 
-// Constructs a timestamp from Unix seconds and a nanosecond adjustment.
+// Constructs a timestamp from Unix seconds and the nanosecond within that second.
+// `nanoseconds` must be 0 through 999999999, and `seconds` from -62135596800 (year 1)
+// through 253402300799 (year 9999); anything else returns ERANGE. It does not carry
+// extra nanoseconds into the seconds.
 export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
 	if nanoseconds < 0 or nanoseconds >= 1000000000:
 		return error(Error("time: value out of range", kind: "ERANGE"))

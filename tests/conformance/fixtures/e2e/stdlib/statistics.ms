@@ -108,6 +108,9 @@ test "correlation and regression":
 		-1.0,
 		0.000001,
 	)?
+	expect_equal(expect_some(correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]))?, 1.0)?
+	expect_equal(expect_some(correlation([1.0, 2.0, 3.0], [6.0, 4.0, 2.0]))?, -1.0)?
+	expect_equal(expect_some(correlation([1e-160, 2e-160], [3e-160, 5e-160]))?, 1.0)?
 	expect_none(correlation([1.0, 1.0, 1.0], [1.0, 2.0, 3.0]))?
 	expect_none(correlation([1.0], [2.0]))?
 

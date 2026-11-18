@@ -682,9 +682,11 @@ export fn create_directory(path: String, recursive: Bool = false) Void!:
 export fn create_symlink(path: String, target: String) Void!:
 	return msstd_fs_create_link(path, target)
 
-// Lists a directory, optionally limiting the number of returned entries. A name that is
-// not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer
-// addresses the entry. The same holds for `glob`, `stat` names and directory cursors.
+// Lists a directory in native order. A directory with more than `max_entries` entries
+// returns EOVERFLOW rather than a shortened list, and a negative `max_entries` returns
+// EINVAL; none sets no limit. A name that is not valid UTF-8 is listed with U+FFFD in
+// place of each invalid byte, so it no longer addresses the entry. The same holds for
+// `glob`, `stat` names and directory cursors.
 // ms: effect std.fs.read
 export fn list(path: String, max_entries: Int? = none) List[DirectoryEntry]!:
 	return msstd_fs_list(path, max_entries)

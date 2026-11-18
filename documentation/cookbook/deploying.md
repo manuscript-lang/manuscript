@@ -43,6 +43,8 @@ hello from a single file
 ms verify
 ```
 
+The format check fails on any file `ms fmt` would change, so run `ms fmt` first.
+
 ## Run it in a container
 
 The executable needs no base image, so the container holds one file:

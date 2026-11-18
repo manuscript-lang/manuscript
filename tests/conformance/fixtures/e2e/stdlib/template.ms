@@ -111,6 +111,15 @@ test "partials":
 	)?
 	expect_true(page.render(data("{\"a\":7}")).is_error())?
 
+test "a partial that includes itself reports its depth, not a missing partial":
+	var partials = Map[String, Template]()
+	partials.add("loop", compile("{{ include \"loop\" }}").get())
+	looped := compile("{{ include \"loop\" }}").get().render(
+		data("{}"),
+		RenderOptions(partials: partials),
+	)
+	expect_equal(looped.err().kind, "EOVERFLOW")?
+
 test "strict missing values and limits":
 	expect_true(render("{{ nope }}", data("{}")).is_error())?
 	expect_equal(render("[{{ nope }}]", data("{}")).get_or(""), "")?

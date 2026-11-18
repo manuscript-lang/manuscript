@@ -20,7 +20,7 @@ encodings are the caller's to decode before parsing. Names keep their prefix as 
     import parse from "@std/data/xml.ms"
     doc := parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")?
     item := doc.find("item").get()
-    print(item.attribute("id").get("")) // "1"
+    print(item.attribute("id").get_or("")) // "1"
     print(item.text())                  // "Hi & bye"
 */
 

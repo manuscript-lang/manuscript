@@ -2256,11 +2256,11 @@ impl FnLower<'_> {
         if !lifts {
             return Ok(x);
         }
-        // A function that lends a parameter stands where one takes it (the adapter takes the
+        // A function that borrows a parameter stands where one takes it (the adapter takes the
         // argument and drops it after the call); never the other way round.
         if held_owned & !owned != 0 {
             return Err(Error::new(format!(
-                "a function value of type {} that takes a parameter used where {} lends it",
+                "a function value of type {} that takes a parameter used where {} borrows it",
                 ms_mir::print::ty_str(self.b.m, have),
                 ms_mir::print::ty_str(self.b.m, want),
             )));
@@ -2385,7 +2385,7 @@ fn lower_fn_adapter(
     let mut args = Vec::new();
     for (i, h) in hp.iter().enumerate() {
         let v = params[i + 1];
-        // An argument the adapter takes and the held function lends is dropped at the end.
+        // An argument the adapter takes and the held function borrows is dropped at the end.
         let mine = fl.b.func_mut().params[i + 1].mode == Mode::Move;
         if reads.get(i).copied().unwrap_or(false) {
             // The caller's slot holds the value; the held function only reads it.
@@ -2396,7 +2396,7 @@ fn lower_fn_adapter(
             continue;
         }
         if fl.ty_of(v) == *h {
-            // An argument the adapter takes and the held function lends drops at the return.
+            // An argument the adapter takes and the held function borrows drops at the return.
             let lent = mine && !ms_mir::types::owns(held_owned, i);
             args.push(if lent {
                 fl.borrow(Val { v, own: true })
@@ -2405,7 +2405,7 @@ fn lower_fn_adapter(
             });
             continue;
         }
-        // A taken argument is wrapped as it is; a lent one is copied (checked by `require_clonable`).
+        // A taken argument is wrapped as it is; a borrowed one is copied (checked by `require_clonable`).
         let o = if mine { v } else { fl.clone_value(v) };
         let some = fl.b.opt_some(o);
         if ms_mir::types::owns(held_owned, i) {

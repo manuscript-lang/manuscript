@@ -13,7 +13,7 @@ header block (folded lines joined, names kept as written, lookup case-insensitiv
 `parse_multipart` and `encode_multipart` read and write `multipart/form-data` and `multipart/mixed` bodies.
 
     import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
-    print(media_type_for_extension(".json").get("")) // "application/json"
+    print(media_type_for_extension(".json").get_or("")) // "application/json"
     charset := (parse_media_type("text/html; charset=utf-8")?).params.get("charset")
 */
 

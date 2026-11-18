@@ -1,6 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
-	DirectoryEntry, list, read_file from "@std/os/fs.ms",
+	DirectoryEntry, canonicalize, list, read_file from "@std/os/fs.ms",
 )
 
 /*
@@ -73,21 +73,51 @@ fn limited(entries: List[DirectoryEntry], max_entries: Int?) List[DirectoryEntry
 
 	return ok(entries)
 
-// The host filesystem below `root`, read through the `FileTree` interface. Paths cannot
-// climb out of `root`.
+// True when the resolved `target` is the resolved `root` or below it.
+fn below(root: String, target: String) Bool:
+	if target == root: return true
+	if not target.starts_with(root): return false
+
+	rest := target.view(root.length(), target.length())
+	return (
+		root.ends_with("/")
+		or root.ends_with("\\")
+		or rest.starts_with("/")
+		or rest.starts_with("\\")
+	)
+
+// The host filesystem below `root`, read through the `FileTree` interface. A path
+// cannot climb out of `root`, and a symbolic link that leads outside it is `EINVAL`;
+// links that stay inside are followed.
 export type HostTree:
 	// Directory that is the tree's root, in the host's spelling.
 	root: String
 
+// Checks that `full`, once its symbolic links are resolved, is inside the root. A path
+// that does not resolve is left to the read or listing, which reports why.
+fn HostTree.confine(full: String) Void!:
+	real := canonicalize(full)
+	if real.is_error(): return ok()
+
+	root := canonicalize(self.root)?
+	if not below(root, real.get()): return error(fs_invalid_input())
+
+	return ok()
+
 // Reads a file below the root from the host disk; failures are the host's `Error`.
 fn HostTree.read(path: String, max_bytes: Int?) Bytes!:
 	inside := clean(path)?
-	return read_file(child_path(self.root, inside), max_bytes).wait()
+	full := child_path(self.root, inside)
+	self.confine(full)?
+	return read_file(full, max_bytes).wait()
 
 // Lists a directory below the root from the host disk, sorted by name.
 fn HostTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
 	inside := clean(path)?
-	entries := list(child_path(self.root, inside), max_entries)?
+	full := child_path(self.root, inside)
+	self.confine(full)?
+
+	entries := list(full, max_entries)?
 	return ok(entries.sorted(by_name))
 
 // Returns a tree over the directory `root` of the host filesystem.
