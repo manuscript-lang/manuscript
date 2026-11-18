@@ -363,15 +363,20 @@ const LEGEND='dashed = standard library · green = pure · olive = declared effe
 function overview(){
   normScope();
   const open=S.mod,scope=S.scope,agg=Object.create(null),cnt=Object.create(null),weight=Object.create(null);
+  /* A folder that holds nearly every module (src/) is a single box that says nothing, so its own folders and modules are shown instead. */
+  const top=scopeKids(scope),inScope=D.modules.filter(m=>m.file.startsWith(scope)).length;
+  const dom=!open&&top.mods.length<=3?top.dirs.find(d=>D.modules.filter(m=>m.file.startsWith(d)).length>=inScope*0.8):null;
   const endpoint=e=>{
     if(open&&e.file===open)return {id:e.key,kind:'fn'};
     if(!e.file.startsWith(scope))return null;
-    const rest=e.file.slice(scope.length),i=rest.indexOf('/');
-    return i<0?{id:e.file,kind:'mod'}:{id:scope+rest.slice(0,i+1),kind:'dir'};
+    const base0=dom&&e.file.startsWith(dom)?dom:scope;
+    const rest=e.file.slice(base0.length),i=rest.indexOf('/');
+    return i<0?{id:e.file,kind:'mod'}:{id:base0+rest.slice(0,i+1),kind:'dir'};
   };
   for(const e of D.entities)if(!isCheck(e))for(const c of e.calls){const t=E[c];if(!t)continue;const a=endpoint(e),b=endpoint(t);if(!a||!b||a.id===b.id)continue;
     agg[a.id]=a.kind;agg[b.id]=b.kind;const k=a.id+'\u0000'+b.id;cnt[k]=(cnt[k]||0)+1;weight[a.id]=(weight[a.id]||0)+1;weight[b.id]=(weight[b.id]||0)+1}
   const kids=scopeKids(scope);
+  if(dom){const inner=scopeKids(dom);kids.dirs=kids.dirs.filter(d=>d!==dom).concat(inner.dirs);kids.mods=kids.mods.concat(inner.mods)}
   for(const m of kids.mods)if(!(m in agg)&&!open){agg[m]='mod';weight[m]=0}
   for(const d of kids.dirs)if(!(d in agg)&&!open){agg[d]='dir';weight[d]=0}
   if(open)for(const e of byFile[open]||[])if(isFn(e)&&!isCheck(e)&&!(e.key in agg)){agg[e.key]='fn';weight[e.key]=0}
@@ -382,7 +387,7 @@ function overview(){
   const keep=new Set(ids.slice(0,S.cap));if(S.sel&&agg[S.sel])keep.add(S.sel);
   const nodes=[...keep].map(id=>{const kind=agg[id];
     if(kind==='fn'){const x=E[id];return {id,title:x.name,sub:fx(x).join(' · ')||'pure',cls:fcls(x),kind}}
-    if(kind==='dir'){const n=D.modules.filter(m=>m.file.startsWith(id)).length;return {id,title:id.slice(scope.length),sub:n+' modules',cls:'dir',kind,tip:id}}
+    if(kind==='dir'){const n=D.modules.filter(m=>m.file.startsWith(id)).length;return {id,title:id.slice((dom&&id.startsWith(dom)?dom:scope).length),sub:n+' modules',cls:'dir',kind,tip:id}}
     const es=byFile[id]||[],f=new Set();es.forEach(x=>fx(x).forEach(y=>f.add(y)));
     const nf=es.filter(x=>isFn(x)&&!isCheck(x)).length,nt=es.filter(isType).length;
     return {id,title:base(id),sub:nf+' function'+(nf===1?'':'s')+(nt?' · '+nt+' type'+(nt===1?'':'s'):''),cls:es.some(x=>x.name==='main')?'entry':f.size?'effect':'pure',kind,tip:id+' · '+([...f].join(' + ')||'pure')}});
