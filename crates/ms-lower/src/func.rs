@@ -1262,7 +1262,13 @@ impl<'a> FnLower<'a> {
         } else {
             self.b.declare_single(ty, mode)
         };
-        let v = self.owned(x);
+        // A binding of a part of a pending temporary owns a copy: the temporary drops at the
+        // statement end (the checker's rule "a binding of a temporary owns its value").
+        let v = if !x.own && self.temp_rooted(x.v, 0) {
+            self.owned_boundary(x)
+        } else {
+            self.owned(x)
+        };
         self.b.def_var(var, v);
         // A reassigned local holds several values, so a debugger name for the first would show
         // a stale one after the assignment; only a binding with one definition is named.
