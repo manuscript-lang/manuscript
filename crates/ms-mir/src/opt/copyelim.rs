@@ -1,12 +1,14 @@
-//! The `copyelim` pass: turns copy-then-drop-the-source into a move, and unboxes dead
-//! options and type fields.
+//! The `copyelim` pass: removes deep copies that only feed read-only uses.
 //!
-//! Lowering copies a value, then drops the source. When the source is dead after the copy,
-//! the copy becomes a move. Debug builds rely on this to avoid rebuilding values
-//! quadratically.
+//! Lowering copies a value when it binds a pattern payload or a field out of a borrowed
+//! parameter, then drops the copy at scope end. When every use of the copy is a borrowing
+//! operand, the copy is the same value as its source for the whole function, provided the
+//! source cannot change or die before the copy would: a borrowed parameter is neither
+//! mutated nor released by its callee, and neither is anything projected out of one.
 
 use crate::ir::{ExternRole, Func, Imm, Inst, Mode, Module, Op, Value};
 use crate::types::TyKind;
+use crate::verify::arg_modes;
 
 /// Runs the pass; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
@@ -19,8 +21,10 @@ pub fn run(m: &mut Module) -> bool {
 
 /// Runs the pass over one function; returns whether it changed.
 pub fn run_funcs(m: &Module, f: &mut Func) -> bool {
-    let mut changed = move_dead_sources(m, f);
+    let mut changed = run_func(m, f);
+    changed |= move_dead_sources(m, f);
     changed |= move_dead_sources_across_blocks(m, f);
+    changed |= borrow_local_copies(m, f);
     changed |= unbox_dead_sources(m, f);
     changed |= unbox_dead_options(m, f);
     changed
@@ -349,6 +353,185 @@ fn move_dead_sources_across_blocks(m: &Module, f: &mut Func) -> bool {
     true
 }
 
+/// Removes `c = clone v; ...; drop c` when the span only borrows the copy and its
+/// source stays alive. Composite values additionally require a span without writes
+/// that could change or release a projection's owner. String length may cache its
+/// result, but cannot release or replace data. This includes read-only iteration
+/// over a list of types, which otherwise copies every type on every visit.
+fn borrow_local_copies(m: &Module, f: &mut Func) -> bool {
+    let mut uses = vec![0u32; f.values.len()];
+    // Operand uses of each value as (block, index), in order.
+    let mut at: Vec<Vec<(usize, usize)>> = vec![Vec::new(); f.values.len()];
+    let mut defs: Vec<Option<(usize, usize)>> = vec![None; f.values.len()];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            if let Some(r) = inst.res {
+                defs[r.index()] = Some((bi, ii));
+            }
+            for a in &inst.args {
+                uses[a.index()] += 1;
+                at[a.index()].push((bi, ii));
+            }
+        }
+        b.term.for_each_use(|v| uses[v.index()] += 1);
+    }
+    // Per block, how many of the first `k` instructions write memory or touch reference
+    // counts (other than `str.len` and `copy`), so a span is checked without a scan.
+    let unstable: Vec<Vec<u32>> = f
+        .blocks
+        .iter()
+        .map(|b| {
+            let mut n = 0u32;
+            std::iter::once(0)
+                .chain(b.insts.iter().map(|i| {
+                    let e = i.op.info().effects;
+                    if (e.writes && i.op != Op::StrLen) || (e.ownership && i.op != Op::Clone) {
+                        n += 1;
+                    }
+                    n
+                }))
+                .collect()
+        })
+        .collect();
+    // Whether an instruction of block `bi` strictly between `lo` and `hi` takes `x` other
+    // than by borrow.
+    let consumes = |x: Value, bi: usize, lo: usize, hi: usize| -> bool {
+        at[x.index()].iter().any(|&(bx, k)| {
+            bx == bi && k > lo && k < hi && {
+                let n = &f.blocks[bi].insts[k];
+                n.args
+                    .iter()
+                    .zip(arg_modes(m, f, n))
+                    .any(|(a, mode)| *a == x && mode != Mode::Borrow)
+            }
+        })
+    };
+    let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
+    let mut dead: Vec<(usize, usize)> = Vec::new();
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (i, inst) in b.insts.iter().enumerate() {
+            let (Op::Clone, Some(c)) = (inst.op, inst.res) else {
+                continue;
+            };
+            let v = inst.args[0];
+            let kind = m.types.kind(f.ty(v));
+            let is_str = matches!(kind, TyKind::Str);
+            let composite = matches!(
+                kind,
+                TyKind::Type(_) | TyKind::Alt(_) | TyKind::Opt(_) | TyKind::List(_) | TyKind::Bytes
+            );
+            if !(matches!(kind, TyKind::Fn(..)) || is_str || composite)
+                || alias[v.index()].is_some()
+            {
+                continue;
+            }
+            // The first drop of `c` after the copy in this block.
+            let Some(j) = at[c.index()]
+                .iter()
+                .find(|&&(bx, k)| bx == bi && k > i && b.insts[k].op == Op::Drop)
+                .map(|&(_, k)| k)
+            else {
+                continue;
+            };
+            if is_str {
+                // Strings are immutable, so the copy can only differ from `v` once `v`'s
+                // owner releases or replaces it.
+                let Some(root) = str_source(f, &defs, v) else {
+                    continue;
+                };
+                if root.is_some_and(|r| consumes(r, bi, i, j)) {
+                    continue;
+                }
+            }
+            if composite && unstable[bi][j] > unstable[bi][i + 1] {
+                continue;
+            }
+            if matches!(kind, TyKind::Fn(..))
+                && field_root(f, &defs, v).is_some_and(|r| consumes(r, bi, i, j))
+            {
+                // A closure read out of a type dies with the type.
+                continue;
+            }
+            let c_uses = at[c.index()]
+                .iter()
+                .filter(|&&(bx, k)| bx == bi && k > i && k < j)
+                .count() as u32;
+            if c_uses + 1 != uses[c.index()] {
+                continue;
+            }
+            if consumes(v, bi, i, j) || consumes(c, bi, i, j) {
+                continue;
+            }
+            alias[c.index()] = Some(v);
+            dead.push((bi, i));
+            dead.push((bi, j));
+        }
+    }
+    if dead.is_empty() {
+        return false;
+    }
+    remove_insts(f, &dead);
+    for b in &mut f.blocks {
+        for i in &mut b.insts {
+            for a in &mut i.args {
+                if let Some(s) = alias[a.index()] {
+                    *a = s;
+                }
+            }
+        }
+    }
+    true
+}
+
+/// What a string copy of `v` may borrow instead of copying: `Some(None)` when `v` is a
+/// parameter or a literal, `Some(Some(owner))` when `v` is an element read out of a list, which
+/// stays valid while the owner of that list (the value whose field it is, else the list itself)
+/// is only borrowed, `None` for any other source.
+fn str_source(f: &Func, defs: &[Option<(usize, usize)>], v: Value) -> Option<Option<Value>> {
+    let Some((db, di)) = defs[v.index()] else {
+        return Some(None);
+    };
+    let def = &f.blocks[db].insts[di];
+    match def.op {
+        Op::StrLit => Some(None),
+        Op::ListGet | Op::ListGetU | Op::ListGetNn => {
+            Some(Some(element_owner(f, defs, def.args[0])))
+        }
+        _ => None,
+    }
+}
+
+/// The value `list` is ultimately read out of: followed through field projections and element
+/// reads (a list inside a record inside a list), `list` itself when it is not one.
+fn element_owner(f: &Func, defs: &[Option<(usize, usize)>], mut v: Value) -> Value {
+    while let Some((db, di)) = defs[v.index()] {
+        let def = &f.blocks[db].insts[di];
+        if !matches!(
+            def.op,
+            Op::TypeGet | Op::ListGet | Op::ListGetU | Op::ListGetNn
+        ) {
+            break;
+        }
+        v = def.args[0];
+    }
+    v
+}
+
+/// The owner at the end of the field projections that produced `v`, or `None` when `v` is not
+/// a projection.
+fn field_root(f: &Func, defs: &[Option<(usize, usize)>], mut v: Value) -> Option<Value> {
+    let mut root = None;
+    while let Some((db, di)) = defs[v.index()] {
+        let def = &f.blocks[db].insts[di];
+        if def.op != Op::TypeGet {
+            break;
+        }
+        v = def.args[0];
+        root = Some(v);
+    }
+    root
+}
+
 /// Removes the instructions at the (block, index) positions in `dead`.
 fn remove_insts(f: &mut Func, dead: &[(usize, usize)]) {
     let mut per_block: Vec<Vec<usize>> = vec![Vec::new(); f.blocks.len()];
@@ -635,4 +818,89 @@ fn take_type_fields(m: &Module, f: &mut Func) -> bool {
     release.op = Op::TypeRelease;
     release.imm = Imm::TypeMask(tval, mask);
     true
+}
+
+fn run_func(m: &Module, f: &mut Func) -> bool {
+    let stable = stable_values(f);
+    // `copy` results that can be replaced by their source.
+    let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
+    let mut any = false;
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::Clone, Some(res)) = (i.op, i.res)
+                && stable[i.args[0].index()]
+            {
+                alias[res.index()] = Some(i.args[0]);
+                any = true;
+            }
+        }
+    }
+    if !any {
+        return false;
+    }
+    // A copy stays unless every use is a read-only operand or one of its drops.
+    for b in &f.blocks {
+        for i in &b.insts {
+            let modes = arg_modes(m, f, i);
+            for (a, mode) in i.args.iter().zip(&modes) {
+                if alias[a.index()].is_some() && *mode != Mode::Borrow && i.op != Op::Drop {
+                    alias[a.index()] = None;
+                }
+            }
+            if i.op == Op::DropIf
+                && let Some(a) = i.args.get(1)
+            {
+                alias[a.index()] = None;
+            }
+        }
+        let mut uses = Vec::new();
+        b.term.for_each_use(|v| uses.push(v));
+        for v in uses {
+            alias[v.index()] = None;
+        }
+    }
+    let mut changed = false;
+    for b in &mut f.blocks {
+        b.insts.retain(|i| {
+            let dead = match i.op {
+                Op::Clone => i.res.is_some_and(|r| alias[r.index()].is_some()),
+                Op::Drop => alias[i.args[0].index()].is_some(),
+                _ => false,
+            };
+            changed |= dead;
+            !dead
+        });
+        for i in &mut b.insts {
+            for a in &mut i.args {
+                if let Some(s) = alias[a.index()] {
+                    *a = s;
+                }
+            }
+        }
+    }
+    changed
+}
+
+/// Values that stay valid and unchanged for the whole function: borrowed parameters and
+/// borrowed projections of them.
+fn stable_values(f: &Func) -> Vec<bool> {
+    let mut stable = vec![false; f.values.len()];
+    for p in &f.blocks[0].params {
+        stable[p.value.index()] = p.mode == Mode::Borrow;
+    }
+    // Definitions precede uses in reverse post-order, so one sweep suffices.
+    for b in f.rpo() {
+        for i in &f.blocks[b.index()].insts {
+            let projection = matches!(
+                i.op,
+                Op::TypeGet | Op::AltGet | Op::OptGet | Op::ListGet | Op::ListGetNn | Op::ListGetU
+            );
+            if let (true, Some(res)) = (projection, i.res)
+                && stable[i.args[0].index()]
+            {
+                stable[res.index()] = true;
+            }
+        }
+    }
+    stable
 }

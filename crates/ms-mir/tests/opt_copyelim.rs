@@ -5,6 +5,85 @@ use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
 use ms_mir::verify::verify_module;
 
+const TREE: &str = r#"module "t"
+file 0 "t.ms"
+alt Tree { Leaf, Node(left: Tree, right: Tree) }
+entry @main
+
+fn @make(%0: int) -> Tree inline(never) {
+b0:
+  %1: int = iconst 0
+  %2: bool = icmp.eq %0, %1
+  br_if %2, b1(), b2()
+b1():
+  %3: Tree = alt.new Tree.Leaf
+  ret %3
+b2():
+  %4: int = iconst 1
+  %5: int = isub.chk %0, %4
+  %6: Tree = call @make (%5)
+  %9: Tree = call @make (%5)
+  %10: Tree = alt.new Tree.Node %6, %9
+  ret %10
+}
+
+fn @check(%0: Tree) -> int inline(never) {
+b0:
+  %1: int = alt.tag %0
+  switch %1 [0: b1(), 1: b2()] default b3()
+b1():
+  %2: int = iconst 1
+  ret %2
+b2():
+  %3: Tree = alt.get Tree.Node.left %0
+  %4: Tree = clone %3
+  %5: Tree = alt.get Tree.Node.right %0
+  %6: Tree = clone %5
+  %7: int = iconst 1
+  %8: int = call @check (%4)
+  %9: int = iadd.chk %7, %8
+  %10: int = call @check (%6)
+  %11: int = iadd.chk %9, %10
+  drop %6
+  drop %4
+  ret %11
+b3():
+  unreachable
+}
+
+
+fn @mirror(%0: Tree) -> Tree inline(never) {
+b0:
+  %1: int = alt.tag %0
+  switch %1 [0: b1(), 1: b2()] default b3()
+b1():
+  %2: Tree = alt.new Tree.Leaf
+  ret %2
+b2():
+  %3: Tree = alt.get Tree.Node.left %0
+  %4: Tree = clone %3
+  %5: Tree = alt.get Tree.Node.right %0
+  %6: Tree = clone %5
+  %7: Tree = alt.new Tree.Node %6, %4
+  ret %7
+b3():
+  unreachable
+}
+
+fn @main() -> int export {
+b0:
+  %0: int = iconst 6
+  %1: Tree = call @make (%0)
+  %2: Tree = call @mirror (%1)
+  %3: int = call @check (%2)
+  drop %2
+  drop %1
+  %4: int = iconst 100
+  %5: int = srem.chk %3, %4
+  ret %5
+}
+"#;
+
 fn count(m: &Module, name: &str, op: Op) -> usize {
     let id = m.func_by_name(name).expect("function");
     m.funcs[id.index()]
@@ -13,6 +92,23 @@ fn count(m: &Module, name: &str, op: Op) -> usize {
         .flat_map(|b| &b.insts)
         .filter(|i| i.op == op)
         .count()
+}
+
+#[test]
+fn copies_that_only_feed_borrows_are_removed() {
+    let mut m = parse_module(TREE).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let before = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert!(opt::copyelim::run(&mut m));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert_eq!(count(&m, "check", Op::Clone), 0);
+    assert_eq!(count(&m, "check", Op::Drop), 0);
+    // Consumed copies stay.
+    assert_eq!(count(&m, "mirror", Op::Clone), 2);
+    let after = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert_eq!(before, after);
 }
 
 const CHAIN: &str = r#"module "t"
@@ -125,6 +221,64 @@ fn unwrapping_an_owned_option_moves_the_payload_out() {
     assert_eq!(count(&m, "build", Op::OptUnbox), 0);
     assert_eq!(count(&m, "build", Op::OptGet), gets + 1);
     assert!(!ms_mir::expand_owned::needed(&m));
+}
+
+const CLOSURE_LOOP: &str = r#"module "t"
+entry @main
+fn @add(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %r: int = iadd %x, %k
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %k: int = iconst 10
+  %f: fn(int) -> int = closure.new @add %k
+  %c: fn(int) -> int = clone %f
+  %x: int = iconst 5
+  %r: int = call.ind (%c, %x)
+  drop %c
+  drop %f
+  ret %r
+}
+"#;
+
+#[test]
+fn a_closure_copy_that_only_feeds_calls_is_removed() {
+    let mut m = parse_module(CLOSURE_LOOP).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let before = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert!(opt::copyelim::run(&mut m));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert_eq!(count(&m, "main", Op::Clone), 0);
+    assert_eq!(count(&m, "main", Op::Drop), 1);
+    assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
+}
+
+#[test]
+fn readonly_type_projections_borrow_the_original_without_a_deep_copy() {
+    for (source, copies) in [
+        (include_str!("fixtures-opt/type_readonly_copy.mir"), 0),
+        (include_str!("fixtures-opt/type_copy_owner_drop.mir"), 1),
+        (include_str!("fixtures-opt/type_copy_parent_update.mir"), 1),
+        // A projection taken before the copy is read after the copy's drop, so the copy stays.
+        (
+            include_str!("fixtures-opt/type_copy_earlier_projection.mir"),
+            1,
+        ),
+    ] {
+        let mut m = parse_module(source).unwrap();
+        verify_module(&m).unwrap();
+        let before = Interp::new(&m).run_entry().map_err(|e| e.message);
+        opt::copyelim::run(&mut m);
+        verify_module(&m).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&m)));
+        assert_eq!(count(&m, "main", Op::Clone), copies, "{}", print_module(&m));
+        assert_eq!(before, Interp::new(&m).run_entry().map_err(|e| e.message));
+        assert_eq!(before, Ok(10));
+    }
 }
 
 const LAST_USE: &str = r#"module "t"
@@ -264,6 +418,7 @@ fn a_long_literal_is_optimized_in_linear_time() {
     if let Err(e) = verify_module(&m) {
         panic!("{e:?}\n{}", &print_module(&m)[..2000]);
     }
+    assert_eq!(count(&m, "main", Op::Clone), 0);
     assert_eq!(count(&m, "main", Op::TypeDesc), 1);
     // Only the collection's own slot is left; every entry's roundtrip through a slot is gone.
     assert_eq!(count(&m, "main", Op::Slot), 1);
