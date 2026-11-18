@@ -165,12 +165,7 @@ impl Remote for Git {
         let spec = format!("{url}#{reference}");
         let cache = cache_dir();
         let entry = match locked {
-            Some(entry)
-                if cache.join(&entry.sha256).is_dir()
-                    && index_path(&cache, &entry.sha256).is_file() =>
-            {
-                entry.clone()
-            }
+            Some(entry) if cached_intact(&cache, &entry.sha256) => entry.clone(),
             _ => download(url, &spec, locked, nested)?,
         };
         let directory = cache_dir().join(&entry.sha256);
@@ -194,6 +189,9 @@ fn add(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
                 .ok_or_else(|| format!("{arg} needs {what}"))
         };
         match arg.as_str() {
+            "--version" | "--tag" | "--sha" if pin.is_some() => {
+                return Err("name exactly one of --version, --tag and --sha".to_string());
+            }
             "--version" => pin = Some(("version", value("a requirement such as 1.2")?)),
             "--tag" => pin = Some(("tag", value("a tag")?)),
             "--sha" => pin = Some(("sha", value("a full commit")?)),
@@ -365,6 +363,15 @@ fn is_commit(text: &str) -> bool {
 
 /// Download `spec` into the cache. With a lock entry it fetches exactly that revision and checks
 /// its hash; otherwise it resolves the tag.
+/// Whether the cache holds the package with `hash` exactly as it was stored: its index is the
+/// one the hash names and its files are the ones the index lists.
+fn cached_intact(cache: &Path, hash: &str) -> bool {
+    let Ok(index) = std::fs::read_to_string(index_path(cache, hash)) else {
+        return false;
+    };
+    hash_index(&index) == hash && index_tree(&cache.join(hash)).is_ok_and(|found| found == index)
+}
+
 fn download(
     key: &str,
     spec: &str,
@@ -482,15 +489,24 @@ fn download_into(
     }
     validate(key, temporary)?;
     let destination = root.join(&hash);
-    if !destination.is_dir() {
-        std::fs::rename(temporary, &destination)
-            .map_err(|e| format!("store {}: {e}", destination.display()))?;
-        read_only(&destination);
-    }
-    let index_file = index_path(root, &hash);
-    if !index_file.is_file() {
-        std::fs::write(&index_file, &index)
+    if !cached_intact(root, &hash) {
+        // A missing or damaged copy (a file edited after the fetch, an interrupted store) is
+        // replaced by the verified download. The index goes first and atomically, so a
+        // directory that exists is always complete beside its index when another install runs.
+        let index_file = index_path(root, &hash);
+        let staged = root.join(format!(".tmp-{}.index", std::process::id()));
+        std::fs::write(&staged, &index).map_err(|e| format!("write {}: {e}", staged.display()))?;
+        std::fs::rename(&staged, &index_file)
             .map_err(|e| format!("write {}: {e}", index_file.display()))?;
+        if destination.exists() && !cached_intact(root, &hash) {
+            remove_all(&destination)?;
+        }
+        if let Err(e) = std::fs::rename(temporary, &destination)
+            && !cached_intact(root, &hash)
+        {
+            return Err(format!("store {}: {e}", destination.display()));
+        }
+        read_only(&destination);
     }
     Ok(LockEntry {
         spec: String::new(),
@@ -525,8 +541,11 @@ fn validate(key: &str, dir: &Path) -> Result<(), String> {
         return Err(format!("package {key} has no ms.toml at its root"));
     }
     let mut package = Project::default();
-    read_manifest(&manifest.to_string_lossy(), &mut package)
-        .map_err(|e| format!("package {key}: {e}"))?;
+    read_manifest(&manifest.to_string_lossy(), &mut package).map_err(|e| {
+        // The download sits in a temporary directory; name paths from the package root.
+        let root = format!("{}{}", dir.display(), std::path::MAIN_SEPARATOR);
+        format!("package {key}: {}", e.to_string().replace(&root, ""))
+    })?;
     if !package.entry.is_empty() {
         return Err(format!(
             "package {key} has an entry; a package is a library, so remove entry"
@@ -575,6 +594,11 @@ fn remove_all(dir: &Path) -> Result<(), String> {
         return Ok(());
     }
     fn writable(dir: &Path) {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o755));
+        }
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();

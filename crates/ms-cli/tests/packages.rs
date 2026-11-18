@@ -159,6 +159,13 @@ fn fetch_pins_a_package_and_checks_work_offline() {
         "{}",
         stderr(&tampered)
     );
+
+    // `ms install` replaces the damaged copy; nothing has to be deleted by hand.
+    std::fs::rename(root.join("gone"), &lib).unwrap();
+    let repaired = ms(&project, &cache, &["install"]);
+    assert!(repaired.status.success(), "{}", stderr(&repaired));
+    let checked = ms(&project, &cache, &["check", "ms.toml"]);
+    assert!(checked.status.success(), "{}", stderr(&checked));
 }
 
 #[test]
@@ -267,6 +274,30 @@ fn a_symbolic_link_in_a_package_is_rejected_where_git_checks_it_out_as_text() {
 }
 
 #[test]
+fn a_package_manifest_error_names_paths_from_the_package_root() {
+    let root = scratch("package-no-source");
+    let (cache, lib, project) = (root.join("cache"), root.join("lib"), root.join("app"));
+    let spec = package(&lib, "", "export fn f() Int:\n    return 1\n");
+    std::fs::write(
+        lib.join("ms.toml"),
+        "[project]\nname = \"lib\"\nsource = \"missing\"\n",
+    )
+    .unwrap();
+    git(&lib, &["commit", "-q", "-a", "-m", "move source"]);
+    git(&lib, &["tag", "-f", "v1.0.0"]);
+    app(
+        &project,
+        &format!("[dependencies]\n\"@lib\" = {}\n", table(&spec)),
+    );
+    let output = ms(&project, &cache, &["install"]);
+    assert!(!output.status.success());
+    let message = stderr(&output);
+    assert!(message.contains("ms.toml:3:10: lstat missing"), "{message}");
+    assert!(!message.contains(".tmp-"), "{message}");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn the_checker_rejects_natives_in_a_package() {
     let checked = checked_with("package-native", "", include_str!("packages/native.ms"), "");
     assert!(!checked.status.success());
@@ -331,7 +362,11 @@ fn a_tampered_lock_never_reaches_git_and_nested_packages_must_use_https() {
     std::fs::write(project.join("ms.lock"), lock).unwrap();
     let fetched = ms(&project, &cache, &["install"]);
     assert!(!fetched.status.success());
-    assert!(stderr(&fetched).contains("ms.lock"), "{}", stderr(&fetched));
+    assert!(
+        stderr(&fetched).contains("delete ms.lock and run ms install"),
+        "{}",
+        stderr(&fetched)
+    );
     assert!(!project.join("touch_pwned").exists() && !root.join("touch_pwned").exists());
 
     // A package's own dependencies may not read the local machine.
@@ -558,6 +593,20 @@ fn add_and_remove_edit_the_manifest_and_the_lock() {
         stderr(&missing).contains("v9.9.9 is not a tag"),
         "{}",
         stderr(&missing)
+    );
+    assert_eq!(manifest(&project), before);
+
+    // Two ways to pin one dependency are refused, not resolved by order.
+    let both = ms(
+        &project,
+        &cache,
+        &["add", url, "--version", "1", "--tag", "v1.0.0"],
+    );
+    assert!(!both.status.success());
+    assert!(
+        stderr(&both).contains("exactly one of"),
+        "{}",
+        stderr(&both)
     );
     assert_eq!(manifest(&project), before);
 
