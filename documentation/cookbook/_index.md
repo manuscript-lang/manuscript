@@ -9,7 +9,7 @@ aliases = ["/learn/common-tasks/", "/learn/best-practices/"]
 Complete programs for common jobs. Pick the one closest to what you are building, copy it, and change it.
 
 - [Command-line programs](command-line.md): print, read arguments, subcommands and flags
-- [Files and standard input](files-and-input.md): read and write text, process lines from stdin
+- [Files and standard input](files-and-input.md): read and write text, process lines from stdin, find files by pattern
 - [Numbers and JSON](text-and-data.md): parse integers, parse JSON, read and write typed JSON
 - [HTTP requests](http.md): fetch a URL and read the body
 - [Service configuration](service-config.md): settings from a file with environment overrides
