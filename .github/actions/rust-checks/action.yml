@@ -212,10 +212,13 @@ runs:
       if: env.GATES == 'true'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/scaling-check.ms
+    # A pull request's Cranelift legs already ran lint, check and parse on this commit (Chinmay, 2026-11-18),
+    # so its LLVM job replays only what reaches a code generator. Main has no such leg and runs every phase.
     - name: Conformance corpus (LLVM) and leaks
       if: env.CONFORM == 'true' && env.LLVM == 'true'
       env:
         CONFORM_LEAKS: '1'
+        CONFORM_BACKEND_ONLY: ${{ env.PR == 'true' && '1' || '' }}
       shell: bash
       run: target/debug/ms run tools/conform.ms
     # A pull request that touches no LLVM-related code runs the whole corpus once, built by Cranelift.
