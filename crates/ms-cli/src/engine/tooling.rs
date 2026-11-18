@@ -311,7 +311,8 @@ fn analysis_pass(
     }
     files.extend(selection.scanned.iter().cloned());
     for input in &selection.inputs {
-        let checked = analyze_with(syms, session, &input.path, &Overlay::new(), check, check);
+        // A project lints every source module and test file, as `ms check` checks them, so a module nothing imports is still linted.
+        let checked = analyze_with(syms, session, &input.path, &Overlay::new(), true, check);
         if request.fix {
             fixes.extend(source_fixes(&checked));
         }
