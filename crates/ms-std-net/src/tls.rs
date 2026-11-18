@@ -290,6 +290,8 @@ pub enum Reject {
     UnknownAuthority,
     Name(String),
     Usage,
+    /// A CA constraint the chain breaks, such as a path length or a name constraint.
+    Constraint(&'static str),
 }
 
 impl Reject {
@@ -300,6 +302,7 @@ impl Reject {
             Reject::UnknownAuthority => "x509: certificate signed by unknown authority".into(),
             Reject::Name(m) => m.clone(),
             Reject::Usage => "x509: certificate specifies an incompatible key usage".into(),
+            Reject::Constraint(m) => (*m).into(),
         }
     }
 }
@@ -438,7 +441,7 @@ pub fn verify_chain(
         .filter_map(|d| X509Certificate::from_der(d).ok().map(|(_, c)| c))
         .collect();
     let mut expired = false;
-    let trusted = build(
+    let built = build(
         leaf,
         &parsed[1..],
         &root_certs,
@@ -449,13 +452,14 @@ pub fn verify_chain(
         0,
         &mut Vec::new(),
     );
-    if !trusted {
+    let Some(path) = built else {
         return Err(if expired {
             Reject::Expired
         } else {
             Reject::UnknownAuthority
         });
-    }
+    };
+    check_path(&path)?;
     if !usage_ok(leaf, usage) {
         return Err(Reject::Usage);
     }
@@ -465,27 +469,30 @@ pub fn verify_chain(
     }
 }
 
+/// A certificate chain from the leaf to the trust anchor that signed it.
+type Path<'a> = Vec<&'a X509Certificate<'a>>;
+
 #[allow(clippy::too_many_arguments)]
-fn build(
-    cert: &X509Certificate<'_>,
-    pool: &[X509Certificate<'_>],
-    roots: &[X509Certificate<'_>],
+fn build<'a>(
+    cert: &'a X509Certificate<'a>,
+    pool: &'a [X509Certificate<'a>],
+    roots: &'a [X509Certificate<'a>],
     root_ders: &[Vec<u8>],
     der: &[u8],
     now: i64,
     expired: &mut bool,
     depth: usize,
     seen: &mut Vec<Vec<u8>>,
-) -> bool {
+) -> Option<Path<'a>> {
     if depth > 8 || seen.iter().any(|s| s == der) {
-        return false;
+        return None;
     }
     if !valid_at(cert, now) {
         *expired = true;
-        return false;
+        return None;
     }
     if root_ders.iter().any(|r| r == der) {
-        return true;
+        return Some(vec![cert]);
     }
     seen.push(der.to_vec());
     let issuer = cert.issuer().as_raw();
@@ -496,14 +503,14 @@ fn build(
             && cert.verify_signature(Some(root.public_key())).is_ok()
         {
             seen.pop();
-            return true;
+            return Some(vec![cert, root]);
         }
     }
     for next in pool {
         if next.subject().as_raw() == issuer
             && is_ca(next)
             && cert.verify_signature(Some(next.public_key())).is_ok()
-            && build(
+            && let Some(mut above) = build(
                 next,
                 pool,
                 roots,
@@ -516,11 +523,125 @@ fn build(
             )
         {
             seen.pop();
-            return true;
+            above.insert(0, cert);
+            return Some(above);
         }
     }
     seen.pop();
-    false
+    None
+}
+
+fn self_issued(cert: &X509Certificate<'_>) -> bool {
+    cert.subject().as_raw() == cert.issuer().as_raw()
+}
+
+/// Whether the DNS `name` (a leading `*.` is dropped) lies inside the constraint `base`:
+/// the domain itself or any subdomain, or only subdomains when `base` starts with a dot.
+fn dns_within(name: &str, base: &str) -> bool {
+    let name = name
+        .trim_end_matches('.')
+        .strip_prefix("*.")
+        .unwrap_or_else(|| name.trim_end_matches('.'))
+        .to_ascii_lowercase();
+    let base = base.trim_end_matches('.').to_ascii_lowercase();
+    if base.is_empty() {
+        return true;
+    }
+    if base.starts_with('.') {
+        return name.ends_with(&base);
+    }
+    name == base || name.ends_with(&format!(".{base}"))
+}
+
+/// Whether the address bytes lie inside a constraint of address then mask.
+fn ip_within(address: &[u8], constraint: &[u8]) -> bool {
+    if constraint.len() != address.len() * 2 {
+        return false;
+    }
+    let (net, mask) = constraint.split_at(address.len());
+    address
+        .iter()
+        .zip(net.iter().zip(mask))
+        .all(|(a, (n, m))| a & m == n & m)
+}
+
+/// Whether the SAN `name` is allowed by the permitted and excluded subtrees of one CA.
+/// Subtrees of other name types do not constrain it.
+fn name_allowed(name: &GeneralName<'_>, nc: &NameConstraints<'_>) -> bool {
+    let within = |base: &GeneralName<'_>| match (name, base) {
+        (GeneralName::DNSName(n), GeneralName::DNSName(b)) => Some(dns_within(n, b)),
+        (GeneralName::IPAddress(n), GeneralName::IPAddress(b)) => Some(ip_within(n, b)),
+        _ => None,
+    };
+    let kind = |g: &GeneralName<'_>| std::mem::discriminant(g) == std::mem::discriminant(name);
+    if let Some(excluded) = &nc.excluded_subtrees
+        && excluded.iter().any(|t| within(&t.base) == Some(true))
+    {
+        return false;
+    }
+    match &nc.permitted_subtrees {
+        Some(permitted) if permitted.iter().any(|t| kind(&t.base)) => {
+            permitted.iter().any(|t| within(&t.base) == Some(true))
+        }
+        _ => true,
+    }
+}
+
+/// Applies the CA constraints along a built path, leaf first: path length, key usage for
+/// signing certificates, name constraints on every name below a constrained CA, and no
+/// critical extension that is not understood.
+fn check_path(path: &[&X509Certificate<'_>]) -> Result<(), Reject> {
+    for (j, cert) in path.iter().enumerate() {
+        let unknown = cert.extensions().iter().any(|e| {
+            e.critical
+                && matches!(
+                    e.parsed_extension(),
+                    ParsedExtension::UnsupportedExtension { .. }
+                        | ParsedExtension::ParseError { .. }
+                )
+        });
+        if unknown {
+            return Err(Reject::Constraint("x509: unhandled critical extension"));
+        }
+        if j == 0 {
+            continue;
+        }
+        if let Ok(Some(ku)) = cert.key_usage()
+            && !ku.value.key_cert_sign()
+        {
+            return Err(Reject::Usage);
+        }
+        if let Ok(Some(bc)) = cert.basic_constraints()
+            && let Some(max) = bc.value.path_len_constraint
+        {
+            // Intermediates between the leaf and this CA; self-issued ones do not count.
+            let between = path[1..j].iter().filter(|c| !self_issued(c)).count();
+            if between as u64 > u64::from(max) {
+                return Err(Reject::Constraint("x509: path length constraint exceeded"));
+            }
+        }
+        if let Ok(Some(nc)) = cert.name_constraints() {
+            for (k, below) in path[..j].iter().enumerate() {
+                if k > 0 && self_issued(below) {
+                    continue;
+                }
+                let Ok(Some(san)) = below.subject_alternative_name() else {
+                    continue;
+                };
+                if san
+                    .value
+                    .general_names
+                    .iter()
+                    .any(|g| !name_allowed(g, nc.value))
+                {
+                    return Err(Reject::Constraint(
+                        "x509: a name violates the name constraints of a CA",
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug)]
