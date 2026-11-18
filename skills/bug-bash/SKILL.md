@@ -15,3 +15,14 @@ Scope is one area (type checker, formatter, a stdlib module, a backend). Read [m
 6. **Fix classes, not instances.** When the same kind of bug recurs, ask what is missing architecturally (one general mechanism, a generated check) and fix it once instead of patching each site. A new module gets a hardening pass: fuzz its decoders and parsers and fix what breaks.
 7. **Audit before you finish.** Read the round's merged PRs against the [root-cause rule](../../wiki/repository/fixes-address-the-root-cause-not-a-name-or-shape.md); file an issue for each special case or symptom patch and fix it properly.
 8. **Land.** Combine related fixes into one PR with [create-pr](../create-pr/SKILL.md). Report what held up as well as what broke. Run rounds until one finds nothing new or major. When an area is clean, report it with a list of areas not yet covered so the next one can be assigned.
+
+## Standing rules
+
+Fix root causes with general algorithms. Every fix gets a regression test. Never gate or drop a test without the owner's okay; make a flaky test deterministic. Stack PRs with auto-merge and do not idle on CI. Keep platform parity, add no CI shards, add no dependencies without asking, and keep stdlib work in Manuscript. Say "borrow", never "lend". Add the `in progress` label before fixing an issue and verify every fixed issue closes. Keep going until a round finds nothing new.
+
+## Areas
+
+Pick an area and probe it; this is a list of areas, not a status.
+
+- Stdlib, including against its docs; networking, file I/O and big programs; editor and LSP; docs and examples; packages and the build; backend differences (Cranelift and LLVM); compiler and move rules; lint autofixes; platform gaps and cross-compiling; cancel-cleanup leaks; compiler fuzzing; agent-facing diagnostics.
+- Startup time; the FFI and extern boundary; long-running servers (thread churn, parked-task unwind); LLVM on huge functions (#3928); incremental builds; package resolution at scale; unicode edge cases; numeric correctness.
