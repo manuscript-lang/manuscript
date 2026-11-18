@@ -21,6 +21,11 @@ native! {
     fn msstd_random_os_bytes(count: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
         super::os_bytes(count).map_err(|f| fail_status(f, &err))
     }
+
+    /// The next version-7 UUID `(millis << 12) | sequence`; see `super::v7_next`.
+    safe fn msstd_random_v7_next(millis: i64, seed: i64) -> i64 {
+        super::v7_next(millis, seed)
+    }
 }
 
 #[cfg(test)]
@@ -32,6 +37,16 @@ mod tests {
     use ms_rt::ffi::VecVal; // links the msrt_* runtime symbols
 
     const NO_ERR: ms_rt::ffi::ErrSlot = ms_rt::ffi::ErrSlot(core::ptr::null_mut());
+
+    #[test]
+    fn v7_next_is_strictly_increasing() {
+        let first = super::super::v7_next(1_000, 5);
+        assert_eq!(first >> 12, 1_000);
+        // Same millisecond and a clock that steps back both continue the sequence.
+        assert_eq!(super::super::v7_next(1_000, 2), first + 1);
+        assert_eq!(super::super::v7_next(999, 2), first + 2);
+        assert!(super::super::v7_next(1_001, 9) > first + 2);
+    }
 
     #[test]
     fn os_bytes_bounds() {

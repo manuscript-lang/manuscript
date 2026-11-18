@@ -29,7 +29,7 @@ fn main() Void!:
 ```
 
 - `token(16)` is 16 random bytes as unpadded URL-safe Base64, 22 characters; the default 32 bytes is 43. Use it for session ids and API keys.
-- `uuid_v7` sorts by creation time, which keeps database index writes together; `uuid_v5` gives the same id for the same name.
+- `uuid_v7` sorts by creation time, even for ids made in the same millisecond, which keeps database index writes together; `uuid_v5` gives the same id for the same name.
 - A plain hash is not a password hash. For passwords use `derive_key` from `@std/crypto/crypto.ms` with a random salt.
 
 ## Random numbers you can repeat
