@@ -119,14 +119,14 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         Err(e) => return Err(ProjectError::path("open", &path, &e)),
     };
     let mut entries = BTreeMap::new();
-    for (index, line) in text.lines().enumerate() {
+    for (index, line) in text.trim_start_matches('\u{feff}').lines().enumerate() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
         let bad = || {
             ProjectError::msg(format!(
-                "ms.lock line {} is not `\"@name\" = \"url#tag revision sha256:hash\"`; run ms install to rewrite it",
+                "ms.lock line {} is not `\"@name\" = \"url#tag revision sha256:hash\"`; delete ms.lock and run ms install to pin again",
                 index + 1
             ))
         };
@@ -143,7 +143,7 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
         let hash = hash.strip_prefix("sha256:").ok_or_else(bad)?;
         if !is_hex(revision, 40) || !is_hex(hash, 64) {
             return Err(ProjectError::msg(format!(
-                "ms.lock line {} must hold a 40-digit commit and a 64-digit sha256, both lowercase hexadecimal; run ms install to rewrite it",
+                "ms.lock line {} must hold a 40-digit commit and a 64-digit sha256, both lowercase hexadecimal; delete ms.lock and run ms install to pin again",
                 index + 1
             )));
         }
@@ -151,18 +151,21 @@ pub fn read_lock(root: &str) -> Result<BTreeMap<String, LockEntry>, ProjectError
             .map_err(|why| ProjectError::msg(format!("ms.lock line {}: {why}", index + 1)))?;
         if crate::project::resolve::id_of_spec(spec).as_deref() != Some(key) {
             return Err(ProjectError::msg(format!(
-                "ms.lock line {} is keyed {key}, but its source is {spec}; run ms install to rewrite it",
+                "ms.lock line {} is keyed {key}, but its source is {spec}; delete ms.lock and run ms install to pin again",
                 index + 1
             )));
         }
-        entries.insert(
-            key.to_string(),
-            LockEntry {
-                spec: spec.to_string(),
-                revision: revision.to_string(),
-                sha256: hash.to_string(),
-            },
-        );
+        let entry = LockEntry {
+            spec: spec.to_string(),
+            revision: revision.to_string(),
+            sha256: hash.to_string(),
+        };
+        if entries.insert(key.to_string(), entry).is_some() {
+            return Err(ProjectError::msg(format!(
+                "ms.lock line {} repeats {key}; a merge may have kept both sides, so delete ms.lock and run ms install to pin again",
+                index + 1
+            )));
+        }
     }
     Ok(entries)
 }
@@ -591,6 +594,14 @@ mod tests {
         assert_eq!(lock(&text).unwrap()["h/x@v1"].revision, COMMIT);
         let wrong = format!("\"h/y@v1\" = \"https://h/x.git#v1 {COMMIT} sha256:{HASH}\"\n");
         assert!(lock(&wrong).unwrap_err().to_string().contains("keyed"));
+    }
+
+    #[test]
+    fn a_byte_order_mark_is_skipped_and_a_repeated_key_is_rejected() {
+        let line = format!("\"h/x@v1\" = \"https://h/x.git#v1 {COMMIT} sha256:{HASH}\"\n");
+        assert!(lock(&format!("\u{feff}# note\n{line}")).is_ok());
+        let twice = format!("{line}{line}");
+        assert!(lock(&twice).unwrap_err().to_string().contains("repeats"));
     }
 
     #[test]

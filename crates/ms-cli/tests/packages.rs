@@ -362,7 +362,11 @@ fn a_tampered_lock_never_reaches_git_and_nested_packages_must_use_https() {
     std::fs::write(project.join("ms.lock"), lock).unwrap();
     let fetched = ms(&project, &cache, &["install"]);
     assert!(!fetched.status.success());
-    assert!(stderr(&fetched).contains("ms.lock"), "{}", stderr(&fetched));
+    assert!(
+        stderr(&fetched).contains("delete ms.lock and run ms install"),
+        "{}",
+        stderr(&fetched)
+    );
     assert!(!project.join("touch_pwned").exists() && !root.join("touch_pwned").exists());
 
     // A package's own dependencies may not read the local machine.
