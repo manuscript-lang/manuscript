@@ -953,10 +953,17 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
 fn msrt_promise_run_unstarted(id: i64) -> u8 {
     let t = table();
     let Some(i) = index(&t, id) else { return 0 };
-    if t.state[i] != State::Pending || t.closure[i] == 0 {
+    if t.state[i] != State::Pending {
         return 0;
     }
-    run_unstarted(id);
+    // Deferred work has no task and no queue entry: only a waiter runs it, so `wait_all` must.
+    if t.flags[i] & DEFERRED != 0 {
+        run_deferred(id, None);
+    } else if t.closure[i] != 0 {
+        run_unstarted(id);
+    } else {
+        return 0;
+    }
     let t = table();
     index(&t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
 }
