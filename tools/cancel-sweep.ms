@@ -8,11 +8,12 @@
 // (a test that leaks without cancellation belongs to `leak-check`). A run that ends
 // with more Rust heap blocks (`ms-rt rust heap at exit`) is a `heap:` hit and fails
 // too. A hit must reproduce: it is re-run twice, and counts the uncancelled run itself
-// shows over five runs (worker buffers vary with timing) are not hits. A cancel that
-// ends the process (status 143) prints no counts and is not swept. Arguments name the
-// files to sweep (default: tests/conformance/fixtures/e2e/stdlib). SWEEP_MAX_PARKS
-// bounds the parks tried per test (default 64); MS names the ms to run (default
-// target/release/ms). Usage: ms run tools/cancel-sweep.ms [-- files]
+// shows over five runs are not hits. A test whose five runs differ in heap blocks (HTTP
+// reactors of the scheduler threads that served) has its heap checked on one thread. A
+// cancel that ends the process (status 143) prints no counts and is not swept.
+// Arguments name the files to sweep (default: tests/conformance/fixtures/e2e/stdlib).
+// SWEEP_MAX_PARKS bounds the parks tried per test (default 64); MS names the ms to run
+// (default target/release/ms). Usage: ms run tools/cancel-sweep.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",
@@ -71,9 +72,16 @@ fn counted(text: String) List[Counted]:
 fn has_tests(source: String) Bool:
 	return source.starts_with("test \"") or source.contains("\ntest \"")
 
-fn test_run(ms: String, file: String, filter: String, cancel_at: Int) List[Counted]:
+fn test_run(
+	ms: String,
+	file: String,
+	filter: String,
+	cancel_at: Int,
+	threads: Int,
+) List[Counted]:
 	var settings = Map[String, String]()
 	settings["MS_PARK_COUNT"] = "1"
+	if threads > 0: settings["MS_THREADS"] = f"{threads}"
 	if cancel_at > 0: settings["MS_CANCEL_AT_PARK"] = f"{cancel_at}"
 
 	var arguments = ["test", file.clone()]
@@ -102,6 +110,46 @@ fn test_names(ms: String, file: String) List[String]:
 			if line.contains("::"): names.append(line.clone())
 	return names
 
+// The Rust heap check of one test on a single scheduler thread, where no thread's
+// leftovers vary: the uncancelled run must repeat its count exactly, and a cancelled
+// run may not end with more (a failing run holds `report` more).
+fn heap_sweep(
+	ms: String,
+	file: String,
+	name: String,
+	most: Int,
+	report: Int,
+) List[String]:
+	var lines = List[String]()
+	var base = Counted(name: "", parks: 0, heap: 0, live: 0, failed: false)
+	for r in test_run(ms.clone(), file.clone(), name.clone(), 0, 1):
+		if r.name == name: base = r.clone()
+	if base.parks == 0: return lines
+
+	for repeat in 0..2:
+		for r in test_run(ms.clone(), file.clone(), name.clone(), 0, 1):
+			if r.name == name and r.heap != base.heap: return [
+				f"heap: {file} \"{name}\" ends with {r.heap} and {base.heap} Rust heap blocks on one thread without any cancel: the baseline is not deterministic"
+			]
+
+	last := if base.parks < most: base.parks else: most
+
+	for k in 1..last + 1:
+		for hit in test_run(ms.clone(), file.clone(), name.clone(), k, 1):
+			var heap = hit.heap
+			var tries = 0
+
+			while heap > base.heap + (if hit.failed: report else: 0) and tries < 2:
+				tries += 1
+				for r in test_run(ms.clone(), file.clone(), name.clone(), k, 1):
+					if r.heap < heap: heap = r.heap
+
+			if heap > base.heap + (if hit.failed: report else: 0): lines.append(
+				f"heap: {file} \"{name}\" cancelled at park {k} of {base.parks} ended with {heap} Rust heap blocks on one thread (uncancelled run: {base.heap})"
+			)
+
+	return lines
+
 // Sweeps `files`: one line per cancelled run (`swept`), then one `leak:` report per run
 // that left live blocks.
 fn sweep(
@@ -119,7 +167,7 @@ fn sweep(
 		// A file's tests share one process, so each test is counted in a run of its
 		// own.
 		for name in test_names(ms.clone(), file.clone()):
-			found := test_run(ms.clone(), file.clone(), name.clone(), 0)
+			found := test_run(ms.clone(), file.clone(), name.clone(), 0, 0)
 			if found.is_empty() or found[0].name != name: continue
 
 			base := found[0].clone()
@@ -134,16 +182,34 @@ fn sweep(
 			var normal_live = [reference.live]
 			var normal_heap = [reference.heap]
 			var ceiling = reference.heap
+			var floor = reference.heap
 
 			for repeat in 0..4:
-				for r in test_run(ms.clone(), file.clone(), base.name.clone(), 0):
+				for r in test_run(ms.clone(), file.clone(), base.name.clone(), 0, 0):
 					if r.name == base.name:
 						normal_live.append(r.live)
 						normal_heap.append(r.heap)
 						if r.heap > ceiling: ceiling = r.heap
+						if r.heap < floor: floor = r.heap
+
+			// A test whose uncancelled runs end with different Rust heap counts has no
+			// baseline at the default thread count: every scheduler thread that served
+			// an HTTP connection keeps a reactor (about 64 KiB, nine blocks) for the
+			// program's end, and which threads served varies. Its heap is checked on
+			// one thread instead, where the count is exact (`heap_sweep`).
+			noisy := ceiling != floor
+			if noisy: lines = lines.concat(
+				heap_sweep(
+					ms.clone(),
+					f.clone(),
+					base.name.clone(),
+					most,
+					report,
+				)
+			)
 
 			for k in 1..last + 1:
-				for hit in test_run(ms.clone(), file.clone(), base.name.clone(), k):
+				for hit in test_run(ms.clone(), file.clone(), base.name.clone(), k, 0):
 					lines.append("swept")
 
 					var live = hit.live
@@ -152,7 +218,12 @@ fn sweep(
 
 					// A run the cancel made fail also holds the `report` blocks a fault
 					// leaves (measured once); that is the only allowance.
-					var bad_heap = heap > ceiling + (if hit.failed: report else: 0)
+					var bad_heap = (
+						not noisy
+						and heap > ceiling + (
+							if hit.failed: report else: 0
+						)
+					)
 					var tries = 0
 
 					while (bad_live or bad_heap) and tries < 2:
@@ -165,6 +236,7 @@ fn sweep(
 							file.clone(),
 							base.name.clone(),
 							k,
+							0,
 						):
 							ran = true
 
@@ -226,8 +298,8 @@ fn main() Int:
 	).wait().get()
 
 	var report = 0
-	for a in test_run(ms.clone(), fault_file.clone(), "", 0):
-		for b in test_run(ms.clone(), pass_file.clone(), "", 0):
+	for a in test_run(ms.clone(), fault_file.clone(), "", 0, 0):
+		for b in test_run(ms.clone(), pass_file.clone(), "", 0, 0):
 			if a.heap > b.heap: report = a.heap - b.heap
 
 	var chunks = List[List[String]]()

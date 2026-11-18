@@ -172,7 +172,50 @@ pub fn reap_at_exit() {
     while !lock().abandoned.is_empty() && std::time::Instant::now() < end {
         std::thread::sleep(core::time::Duration::from_millis(1));
     }
+    stop_threads();
     reap();
+}
+
+/// Counting builds: asks every pool thread to end and waits until each has run its thread-local
+/// destructors. A thread that ran a job keeps buffers of its own, which count as Rust heap blocks
+/// at exit; whether a job reached the pool or ran inline is timing, so the count must not include
+/// threads that are still alive.
+#[cfg(feature = "stats")]
+fn stop_threads() {
+    STOPPING.store(true, core::sync::atomic::Ordering::SeqCst);
+    let end = std::time::Instant::now() + core::time::Duration::from_millis(500);
+    loop {
+        READY.notify_all();
+        let started = lock().threads;
+        if EXITED.load(core::sync::atomic::Ordering::SeqCst) >= started
+            || std::time::Instant::now() >= end
+        {
+            return;
+        }
+        std::thread::sleep(core::time::Duration::from_millis(1));
+    }
+}
+
+#[cfg(feature = "stats")]
+static STOPPING: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+#[cfg(feature = "stats")]
+static EXITED: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+
+/// Counts a pool thread as gone once its thread-local destructors have run: registered before
+/// any other thread-local of the thread, so it is dropped after them.
+#[cfg(feature = "stats")]
+struct ExitMark;
+
+#[cfg(feature = "stats")]
+impl Drop for ExitMark {
+    fn drop(&mut self) {
+        EXITED.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+#[cfg(feature = "stats")]
+std::thread_local! {
+    static EXIT_MARK: ExitMark = const { ExitMark };
 }
 
 /// `MS_POOL_THREADS`, read once.
@@ -513,7 +556,9 @@ pub fn on_pool_thread() -> bool {
 
 /// The body of a pool thread. The lock that marks a job done also takes the next one, so a
 /// busy pool takes the lock once per job, and a system call only to post the waiter.
-fn work() -> ! {
+fn work() {
+    #[cfg(feature = "stats")]
+    EXIT_MARK.with(|_| {});
     ON_POOL.with(|on| on.set(true));
     let mut done: Option<Ptr> = None;
     loop {
@@ -558,6 +603,10 @@ fn work() -> ! {
                 pool = READY.wait(pool).unwrap_or_else(|e| e.into_inner());
                 pool.idle -= 1;
                 pool.wakes = pool.wakes.saturating_sub(1);
+                #[cfg(feature = "stats")]
+                if STOPPING.load(core::sync::atomic::Ordering::SeqCst) && pool.queue.is_empty() {
+                    return;
+                }
             }
         };
         if announce {
@@ -576,7 +625,8 @@ fn work() -> ! {
 #[cfg(unix)]
 fn spawn_thread() -> bool {
     extern "C" fn start(_: *mut libc::c_void) -> *mut libc::c_void {
-        work()
+        work();
+        core::ptr::null_mut()
     }
     // SAFETY: plain pthread calls; the thread takes no argument, so nothing is allocated for it.
     unsafe {
