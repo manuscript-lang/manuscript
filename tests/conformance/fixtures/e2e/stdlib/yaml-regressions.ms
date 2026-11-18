@@ -1060,3 +1060,26 @@ test "YAML an explicit key opens a mapping inside a sequence entry":
 			YamlValue.ArrayValue([YamlValue.ObjectValue(bare)])
 		)?
 	)
+
+test "YAML an explicit value may open a collection after extra spaces":
+	var inner = Map[String, YamlValue]()
+	inner.add("b", YamlValue.NumberValue("1"))
+	inner.add("c", YamlValue.NumberValue("2"))
+	var outer = Map[String, YamlValue]()
+	outer.add("a", YamlValue.ObjectValue(inner))
+	(
+		parse("? a\n:  b: 1\n   c: 2\n") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(outer)
+		)?
+	)
+
+	var seq = Map[String, YamlValue]()
+	seq.add(
+		"a",
+		YamlValue.ArrayValue([YamlValue.NumberValue("1"), YamlValue.NumberValue("2")]),
+	)
+	(
+		parse("? a\n:   - 1\n    - 2\n") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(seq)
+		)?
+	)
