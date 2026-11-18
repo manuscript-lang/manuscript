@@ -1401,6 +1401,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
         })
         .filter_map(|i| i.res.map(|r| r.0))
         .collect();
+    let mut caller_projections: BTreeSet<u32> = BTreeSet::new();
     let mut moved = true;
     while moved {
         moved = false;
@@ -1423,6 +1424,22 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
                     }
                     (Op::Take, Some(r))
                         if caller_slots.contains(&i.args[0].0)
+                            && caller_values.insert(r.0)
+                            && from_slot.insert(r.0) =>
+                    {
+                        owned_def[r.index()] = false;
+                        moved = true;
+                    }
+                    // A field of a caller's value, and that field moved out (`self.source` taken
+                    // before a park): the caller still covers the value it came from.
+                    (Op::TypeGet | Op::AltGet, Some(r))
+                        if caller_values.contains(&i.args[0].0)
+                            && caller_projections.insert(r.0) =>
+                    {
+                        moved = true;
+                    }
+                    (Op::MoveOut, Some(r))
+                        if caller_projections.contains(&i.args[0].0)
                             && caller_values.insert(r.0)
                             && from_slot.insert(r.0) =>
                     {
@@ -2402,6 +2419,7 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
     for g in m.vtables.iter().flat_map(|v| &v.methods) {
         owns[g.index()].iter_mut().for_each(|f| *f = false);
     }
+    let covered = covered_slot_params(m);
     let mut changed = true;
     while changed {
         changed = false;
@@ -2415,13 +2433,15 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
                     _ => None,
                 })
                 .collect();
-            let entries: BTreeSet<u32> = caller
+            let mut entries: BTreeSet<u32> = caller
                 .blocks
                 .iter()
                 .flat_map(|b| &b.insts)
                 .filter(|i| i.op == Op::CleanupPush)
                 .filter_map(|i| i.args.first().map(|a| a.0))
                 .collect();
+            let refilled = refilled_from_covered(m, caller, &covered[ci], &entries);
+            entries.extend(refilled);
             for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
                 // A call through a function value may reach every closure of its shape.
                 let reached: Vec<FuncId> = match (inst.op, inst.imm) {
@@ -2472,6 +2492,91 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
         }
     }
     owns
+}
+
+/// Per function and parameter, whether some direct call passes a slot that has a cleanup entry,
+/// or the caller's own parameter that is covered in turn: the caller's cover reads the slot as the
+/// callee leaves it.
+fn covered_slot_params(m: &Module) -> Vec<Vec<bool>> {
+    let mut covered: Vec<Vec<bool>> = m
+        .funcs
+        .iter()
+        .map(|f| vec![false; f.params.len()])
+        .collect();
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (ci, caller) in m.funcs.iter().enumerate() {
+            let entries: BTreeSet<u32> = caller
+                .blocks
+                .iter()
+                .flat_map(|b| &b.insts)
+                .filter(|i| i.op == Op::CleanupPush)
+                .filter_map(|i| i.args.first().map(|a| a.0))
+                .collect();
+            for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
+                let (Op::Call, Imm::Func(g)) = (inst.op, inst.imm) else {
+                    continue;
+                };
+                for (k, a) in inst.args.iter().enumerate() {
+                    let held = entries.contains(&a.0)
+                        || caller.blocks[0]
+                            .params
+                            .iter()
+                            .position(|p| p.value == *a)
+                            .is_some_and(|kp| covered[ci][kp]);
+                    if held && !covered[g.index()][k] {
+                        covered[g.index()][k] = true;
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+    covered
+}
+
+/// The local slots of `f` that are filled with a value taken out of a slot that something else
+/// covers: a slot parameter its callers cover, or a local slot with a cleanup entry. That cover
+/// reads the slot as `f` left it, so a callee that owned the value passed on would free it a
+/// second time.
+fn refilled_from_covered(
+    m: &Module,
+    f: &Func,
+    covered: &[bool],
+    entries: &BTreeSet<u32>,
+) -> BTreeSet<u32> {
+    let params: BTreeSet<u32> = f.blocks[0]
+        .params
+        .iter()
+        .enumerate()
+        .filter(|(k, _)| covered.get(*k).copied().unwrap_or(false))
+        .map(|(_, p)| p.value.0)
+        .chain(entries.iter().copied())
+        .collect();
+    let mut taken: BTreeSet<u32> = BTreeSet::new();
+    let mut out = BTreeSet::new();
+    for inst in f.rpo().into_iter().flat_map(|b| &f.blocks[b.index()].insts) {
+        match (inst.op, inst.res) {
+            (Op::Put, _) if inst.args.get(1).is_some_and(|v| taken.contains(&v.0)) => {
+                out.insert(inst.args[0].0);
+            }
+            (Op::Take, Some(r))
+                if inst.args.first().is_some_and(|a| params.contains(&a.0))
+                    && m.needs_drop(f.ty(r)) =>
+            {
+                taken.insert(r.0);
+            }
+            (Op::TypeGet | Op::AltGet | Op::MoveOut, Some(r))
+                if inst.args.first().is_some_and(|a| taken.contains(&a.0))
+                    && m.needs_drop(f.ty(r)) =>
+            {
+                taken.insert(r.0);
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 /// The functions that `closure.new` instructions make callable.

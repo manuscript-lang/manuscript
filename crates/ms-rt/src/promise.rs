@@ -430,7 +430,8 @@ fn wait_foreign(id: i64, timeout_ns: i64) -> i64 {
         // SAFETY: the owner holds no registration of it any more.
         unsafe { task::msrt_token_free(token) };
         if woke == task::WAIT_CANCELLED {
-            msrt_promise_drop(id);
+            // The owner's close drops the slot, and a value left in it with its type.
+            msrt_promise_end(id);
             fault::cancel_return();
             return CLOSED;
         }
@@ -1768,10 +1769,10 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
         let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
         let woke = park_on(id, remaining);
         if woke == task::WAIT_CANCELLED {
-            // The promise may be a temporary that unwinding never drops (`read_file(p).wait()`):
-            // cancel its work and wait for it to end now, so what it holds (a listener, a file) is
-            // released before the unwinding task goes on.
-            msrt_promise_drop(id);
+            // Cancel the work and wait for it to end now, so what it holds (a listener, a file) is
+            // released before the unwinding task goes on. The owner's close takes a value left in
+            // the slot with its type and frees the slot.
+            msrt_promise_end(id);
             fault::cancel_return();
             return CLOSED;
         }
@@ -2155,8 +2156,30 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         });
         return;
     }
+    msrt_promise_end(id);
     let mut t = table();
     let Some(i) = index(&t, id) else { return };
+    release_result(&mut t, i);
+    t.watchers.retain(|&(slot, _)| slot != i);
+    t.group[i] = 0;
+    t.state[i] = State::Free;
+    t.free.push(i);
+}
+
+/// Cancels `id` if it is unfinished and joins its work, keeping the slot and the result. Answers
+/// 1 when a value of the promise's type is left to take, else 0. The compiled `close` takes and
+/// drops that value itself, so a value that holds closeable parts is closed. An id that no
+/// longer exists answers 0.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_end(id: i64) -> u8 {
+    if is_foreign(id) {
+        return match ask(id, move || Answer::Outcome(msrt_promise_end(id) as i64)) {
+            Answer::Outcome(1) => 1,
+            _ => 0,
+        };
+    }
+    let mut t = table();
+    let Some(i) = index(&t, id) else { return 0 };
     if t.cancel[i] != 0 {
         crate::cancel::unregister(core::mem::take(&mut t.cancel[i]), id);
     }
@@ -2193,13 +2216,11 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         }
         fault::msrt_shield_exit();
     }
-    let mut t = table();
-    let Some(i) = index(&t, id) else { return };
-    release_result(&mut t, i);
-    t.watchers.retain(|&(slot, _)| slot != i);
-    t.group[i] = 0;
-    t.state[i] = State::Free;
-    t.free.push(i);
+    let t = table();
+    match index(&t, id) {
+        Some(i) => (t.state[i] == State::Ok && !t.result[i].ptr.is_null()) as u8,
+        None => 0,
+    }
 }
 
 #[cfg(test)]
