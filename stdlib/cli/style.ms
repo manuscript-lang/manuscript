@@ -214,41 +214,79 @@ export fn visible_width(text: String) Int!:
 fn char_width(c: String) Int:
 	return c.display_width().get_or(1)
 
+// The index just past the escape sequence that starts at `at` in `cs`, or `at` when
+// what follows the escape character is not a complete sequence. The grammar is the one
+// `strip_ansi` removes: CSI, OSC ending in BEL or ST, and two-byte escapes.
+fn escape_end(cs: List[String], at: Int) Int:
+	count := cs.length()
+	if at + 1 >= count: return at
+
+	kind := cs[at + 1]
+
+	if kind == "[":
+		var j = at + 2
+		while j < count and "0123456789:;<=>?".contains(cs[j]):
+			j += 1
+		while j < count and " !\"#$%&'()*+,-/".contains(cs[j]):
+			j += 1
+		if j < count and csi_final.contains(cs[j]): return j + 1
+
+		return at
+
+	if kind == "]":
+		var j = at + 2
+
+		while j < count:
+			if cs[j] == "\u{7}": return j + 1
+
+			if cs[j] == esc:
+				if j + 1 < count and cs[j + 1] == "\\": return j + 2
+				return at
+
+			j += 1
+
+		return at
+
+	if "0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ\\^_`abcdefghijklmnopqrstuvwxyz{|}~".contains(
+		kind
+	): return (at + 2)
+
+	return at
+
 /*
 Splits `text` on newlines and wraps each line into rows of at most `width` columns, counting only visible
 characters. Escape sequences stay with the text they style: a row that breaks inside styled text ends with a
-reset and the next row repeats the active sequences. A `width` below 1 is treated as 1.
+reset and the next row repeats the active colour and style sequences. Other sequences, such as window titles
+and hyperlinks, are kept whole and count for no columns. A `width` below 1 is treated as 1.
 */
 export fn wrap_text(text: String, width: Int) List[String]:
 	room := if width < 1: 1 else: width
 	var out = List[String]()
 
 	for line in text.split("\n"):
+		cs := line.chars()
 		var row = ""
 		var used = 0
 		var active = ""
-		var sequence = ""
-		var in_sequence = false
+		var at = 0
 
-		for c in line.chars():
-			if in_sequence:
-				sequence = f"{sequence}{c}"
+		while at < cs.length():
+			c := cs[at]
 
-				if csi_final.contains(c) and sequence.length() > 2 or c == "\u{7}":
-					in_sequence = false
+			if c == esc:
+				end := escape_end(cs, at)
+
+				if end > at:
+					sequence := cs.slice(at, end).get_or([]).join("")
 					row = f"{row}{sequence}"
 
 					if sequence == f"{esc}[0m" or sequence == f"{esc}[m":
 						active = ""
-					else:
+					else if sequence.starts_with(f"{esc}[") and sequence.ends_with("m"):
 						active = f"{active}{sequence}"
 
-				continue
-
-			if c == esc:
-				in_sequence = true
-				sequence = c.clone()
-				continue
+					at = end
+					continue
 
 			w := char_width(c)
 
@@ -260,6 +298,7 @@ export fn wrap_text(text: String, width: Int) List[String]:
 
 			row = f"{row}{c}"
 			used += w
+			at += 1
 
 		out.append(row)
 

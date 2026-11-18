@@ -75,6 +75,13 @@ test "wrap_text breaks at the width and carries styles across rows":
 	styled := f"{esc}[31mabcdef{esc}[0m"
 	expect_equal(wrap_text(styled, 4), [f"{esc}[31mabcd{esc}[0m", f"{esc}[31mef{esc}[0m"])?
 
+test "wrap_text keeps hyperlinks, titles and two-byte escapes whole":
+	link := f"{esc}]8;;http://x{esc}\\go{esc}]8;;{esc}\\"
+	expect_equal(wrap_text(link, 2), [link])?
+	expect_equal(wrap_text(f"{esc}]0;title\u{7}abcd", 2), [f"{esc}]0;title\u{7}ab", "cd"])?
+	expect_equal(wrap_text(f"ab{esc}7cd", 2), [f"ab{esc}7", "cd"])?
+	expect_equal(visible_width(f"{esc}]8;;http://x{esc}\\go{esc}]8;;{esc}\\")?, 2)?
+
 test "truncate_text keeps the first row":
 	expect_equal(truncate_text("hello world", 5), "hello")?
 	expect_equal(truncate_text("hi", 5), "hi")?
