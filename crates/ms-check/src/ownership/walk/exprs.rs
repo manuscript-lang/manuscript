@@ -127,7 +127,7 @@ impl Walker<'_> {
                 let own = Place::local(b.uid);
                 (self.resolve(&own) != [own]).then_some(places)
             } else {
-                // Only a lent slice is a view; any other borrowed payload (`map.get(k)`) is copied out.
+                // Only a borrowed slice is a view; any other borrowed payload (`map.get(k)`) is copied out.
                 self.lent_view(recv)
                     .then(|| self.pure_origins(recv))
                     .flatten()
@@ -162,7 +162,7 @@ impl Walker<'_> {
         Some(out)
     }
 
-    /// Whether `e` is a lent slice, or an Optional or Result call that passes one through.
+    /// Whether `e` is a borrowed slice, or an Optional or Result call that passes one through.
     fn lent_view(&self, e: &Expr) -> bool {
         if matches!(self.native_borrow_of(e), Some((NativeBorrow::Derived, _))) {
             return true;
@@ -565,11 +565,11 @@ impl Walker<'_> {
             parameter.is_some() && perm == Perm::Mutable && self.self_assign != Some(b.uid);
         let lent = role == Role::LambdaParameter && !self.owned_lambda_params.contains(&b.uid);
         if lent && self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
-            // The function type lends this argument, so taking it would copy it, and the
+            // The function type borrows this argument, so taking it would copy it, and the
             // caller still closes the original.
             self.error(
                 e.pos,
-                format!("cannot move `{name_t}` out: this function type lends its argument, and the resource `{}` stays with its caller, which closes it; use `{name_t}` in place here, or declare the parameter `move` in the function type", b.ty.display(self.syms), name_t = self.syms.str(name)),
+                format!("cannot move `{name_t}` out: this function type borrows its argument, and the resource `{}` stays with its caller, which closes it; use `{name_t}` in place here, or declare the parameter `move` in the function type", b.ty.display(self.syms), name_t = self.syms.str(name)),
             );
             self.record(e.id, b, Access::Move);
             return;

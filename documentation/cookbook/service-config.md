@@ -9,7 +9,7 @@ Read settings for a service from a JSON file, let environment variables override
 
 ## Load settings with defaults and overrides
 
-Save as `settings.ms`. The file supplies the defaults, `PORT` and `LOG_LEVEL` override it, and a missing file means the built-in defaults.
+Save as `settings.ms`. The file supplies the defaults, `PORT` and `LOG_LEVEL` override it, and a missing file means the built-in defaults. Any other read failure, such as a directory or a permission error, stops startup.
 
 <!-- manuscript-example: {"mode":"run","stdout":"listening on 0.0.0.0:8080, level info\n","cases":[{"files":{"settings.json":"{\"host\":\"127.0.0.1\",\"port\":9000}"},"stdout":"listening on 127.0.0.1:9000, level info\n"},{"files":{"settings.json":"{\"port\":\"abc\"}"},"exit_code":1}]} -->
 ```manuscript
@@ -24,9 +24,9 @@ type Settings:
 
 fn from_file(path: String) Settings!:
     bytes := read_file(path).wait()
-    if bytes.is_error():
+    if bytes.is_error() and bytes.err().kind == "ENOENT":
         return ok(Settings())
-    text := bytes.get().decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?
+    text := (bytes?).decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?
     return parse[Settings](text)
 
 fn apply_environment(var settings: Settings) Void!:

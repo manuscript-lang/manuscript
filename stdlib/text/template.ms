@@ -11,24 +11,24 @@ import (
 Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
 
     import compile, to_data from "@std/text/template.ms"
-    page := compile("Hello \{\{ name | title \}\}!")?
+    page := compile("Hello {{ name | title }}!")?
     rendered := page.render(to_data(user)?)?
 
 Actions sit between `{{` and `}}`:
 
 - `{{ user.name }}` prints a value; a path walks object members and list positions (`items.0`).
   Names resolve to loop variables first, then to members of the root object. A missing path is an
-  error unless `strict: false`, or the value goes through `default`.
+  error unless `RenderOptions(strict: false)`, or the value goes through `default`.
 - `{{ name | upper | default("anonymous") }}` pipes a value through filters. Filters bind tighter than
   operators: `{{ if name | length > 3 }}`. Filters: `upper lower trim title length join(sep) json
-  default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)` (`n` counts bytes; a cut never splits a character).
+  default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`. `length` counts list items, object members or the UTF-8 bytes of text. `truncate(n)` keeps at most `n` bytes (a cut never splits a character), adds `...` when it cuts, and rejects a negative `n`.
 - `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
   parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
   in a condition is false. Numbers compare by their exact JSON decimal value, without Float rounding.
 - `{{ for item in items }}…{{ else }}…{{ end }}` loops a list (the `else` branch runs when it is empty).
   `for i, item in items` adds the position; for an object, `for key, value in object`; a single name over
   an object binds `{key, value}`. Inside a loop `loop.index`, `loop.first`, `loop.last` and `loop.length` exist.
-- `{{ include "name" }}` renders a partial from the `partials` map passed to `render`, in the current scope.
+- `{{ include "name" }}` renders a partial from the `partials` map passed to `render`, in the current scope. Partials may nest 64 deep; a partial that includes itself fails with `EOVERFLOW`.
 - `{{# comment }}` prints nothing. `{{-` and `-}}` trim adjacent white space. `{{ "{{" }}` prints braces.
 
 `compile(source, html: true)` escapes every printed value for HTML text and quoted attributes; end an
@@ -816,7 +816,7 @@ fn var Run.each(
 
 fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 	key := to_text(self.eval(name, true)?)
-	if depth > MAX_DEPTH: return error(unknown_partial_error(name: key))
+	if depth > MAX_DEPTH: return error(partial_depth_error(name: key))
 
 	partial := self.partials.get(key).clone()
 	if partial.is_none(): return error(unknown_partial_error(name: key))
@@ -1294,6 +1294,13 @@ fn invalid_filter_error(name: String, reason: String) Error:
 		f"template: filter {name}: {reason}",
 		kind: "EINVAL",
 		details: {"filter": name},
+	)
+
+fn partial_depth_error(name: String) Error:
+	return Error(
+		f"template: partial {name} is nested more than {MAX_DEPTH} deep; a partial may include itself",
+		kind: "EOVERFLOW",
+		details: {"partial": name},
 	)
 
 fn unknown_partial_error(name: String) Error:

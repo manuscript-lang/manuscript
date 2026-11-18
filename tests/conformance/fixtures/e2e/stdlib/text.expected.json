@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "text.ms::text quoting escapes interpolation braces and literal controls",
+          "name": "text.ms::text quoting keeps braces plain and escapes literal controls",
           "status": "passed"
         },
         {
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN text.ms::text conversions and quoting\nPASS text.ms::text conversions and quoting\nRUN text.ms::parse_int radix 0 reads a prefix and others reject it\nPASS text.ms::parse_int radix 0 reads a prefix and others reject it\nRUN text.ms::text quoting escapes interpolation braces and literal controls\nPASS text.ms::text quoting escapes interpolation braces and literal controls\nRUN text.ms::text Unicode escapes reject signs nonhex digits and excess width\nPASS text.ms::text Unicode escapes reject signs nonhex digits and excess width\nRUN text.ms::text Unicode escapes preserve scalar boundaries and leading zeros\nPASS text.ms::text Unicode escapes preserve scalar boundaries and leading zeros\nRUN text.ms::text quoting round trips scalar and escape neighbors\nPASS text.ms::text quoting round trips scalar and escape neighbors\n6 tests, 0 failed\n",
+      "stdout": "RUN text.ms::text conversions and quoting\nPASS text.ms::text conversions and quoting\nRUN text.ms::parse_int radix 0 reads a prefix and others reject it\nPASS text.ms::parse_int radix 0 reads a prefix and others reject it\nRUN text.ms::text quoting keeps braces plain and escapes literal controls\nPASS text.ms::text quoting keeps braces plain and escapes literal controls\nRUN text.ms::text Unicode escapes reject signs nonhex digits and excess width\nPASS text.ms::text Unicode escapes reject signs nonhex digits and excess width\nRUN text.ms::text Unicode escapes preserve scalar boundaries and leading zeros\nPASS text.ms::text Unicode escapes preserve scalar boundaries and leading zeros\nRUN text.ms::text quoting round trips scalar and escape neighbors\nPASS text.ms::text quoting round trips scalar and escape neighbors\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -12,7 +12,7 @@ Scalar classification lives in `@std/unicode.ms`; whole-string operations such a
 `trim_chars` and `title` are methods on String.
 
     import quote from "@std/text.ms"
-    quote("a\tb")                  # a double-quoted literal with the escape written out
+    quote("a\tb")                  // a double-quoted literal with the escape written out
 */
 
 // Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`;
@@ -27,7 +27,7 @@ export fn parse_bool(text: String) Bool?:
 /*
 Quotes text as a double-quoted literal using the escapes of Manuscript string literals.
 Printable Unicode stays as is; controls, bidi controls and U+2028/U+2029 become `\u{..}`.
-Braces are escaped so the result stays literal instead of starting interpolation.
+Braces stay as they are, because plain `"..."` text never interpolates; the result is valid source text for the same string.
 */
 export fn quote(text: String) String:
 	return quote_with(text, false)
@@ -46,9 +46,6 @@ fn quote_with(text: String, ascii_only: Bool) String:
 			out.append("\\\"")
 		else if c == 92:
 			out.append("\\\\")
-		else if c == 123 or c == 125:
-			out.append("\\")
-			out.append(from_scalars([c]).get_or(""))
 		else if c == 10:
 			out.append("\\n")
 		else if c == 13:
@@ -73,7 +70,7 @@ fn quote_with(text: String, ascii_only: Bool) String:
 
 /*
 Reverses quote: reads a double-quoted literal and returns its text. Supports `\"`, `\\`, `\n`,
-`\r`, `\t`, `\0`, escaped braces and `\u{hex}` with 1 to 6 hexadecimal digits;
+`\r`, `\t`, `\0`, `\{` and `\}` (the escaped braces of `f"..."` text; `quote` never writes them) and `\u{hex}` with 1 to 6 hexadecimal digits;
 anything else, or text that is not fully quoted, is EINVAL.
 */
 export fn unquote(text: String) String!:

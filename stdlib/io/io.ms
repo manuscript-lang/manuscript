@@ -376,8 +376,8 @@ fn var PipeSink[T].close() Void!:
 	self.id = 0
 
 // An in-memory stream of whole values, in order: any number of writers and one reader.
-// A write hands the pipe a copy (the stream interface only lends the argument), so `T`
-// must be `Clonable`; the copy then moves through by pointer.
+// A write hands the pipe a copy (the stream interface only borrows the argument), so
+// `T` must be `Clonable`; the copy then moves through by pointer.
 // `capacity` is the number of queued values above which a writer's `write` and `flush` wait. The pipe itself is not a writer: the
 // reader ends once every writer from `writer()` has closed, so make the writers before
 // reading. Closing the reader makes later writes fail with `EBADF`.
