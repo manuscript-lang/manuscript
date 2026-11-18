@@ -16,6 +16,7 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Tools read structured causes, not message or line text](tools-read-structured-causes-not-message-or-line-text.md): diagnostics carry an opener line, spawn sites a flag, build settings one `BuildOptions` value.
 - [Suppress only pending recovery responses](suppress-only-pending-recovery-responses.md): forward ordinary client replies with the private replay ID before and after recovery.
 - [Recovered navigation needs local header ranges](recovered-navigation-needs-local-header-ranges.md): a malformed neighbor must not move declaration names to their keyword positions.
+- [Type parameters need scope and receiver positions](type-parameters-need-scope-and-receiver-positions.md): merged method blocks keep one receiver, so each method keeps its receiver arguments; receiver names are uses of the type's parameters.
 - [Keep CLI and HTTP documentation with their packages](keep-cli-and-http-documentation-with-their-packages.md): the user explicitly removed the "Application hosts" section.
 - [Polish the documentation design without expanding its prose](polish-the-documentation-design-without-expanding-its-prose.md): the user selected Tailwind CSS and Vercel as documentation design references and asked not to add filler.
 - [Preserve OS argument identity before dispatch](preserve-os-argument-identity-before-dispatch.md): lossy conversion can select an existing replacement-character filename instead of the requested byte path.

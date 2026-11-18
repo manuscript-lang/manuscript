@@ -280,3 +280,31 @@ fn check_json_with_text_carries_the_terminal_output() {
     let misuse = ms(&dir, &["check", "bad.ms", "--with-text"]);
     assert_eq!(misuse.status.code(), Some(2));
 }
+
+/// A project lints every source module and test file, as `ms check` checks them, so a module
+/// that nothing imports is still linted.
+#[test]
+fn project_lint_covers_modules_nothing_imports() {
+    let dir = scratch("lint-unimported");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("ms.toml"),
+        "[project]\nname = \"demo\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.ms"),
+        "fn main() Void:\n    print(\"hi\")\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/unused.ms"),
+        "fn dead() Int:\n    return 1\n    return 2\n",
+    )
+    .unwrap();
+    let output = ms(&dir, &["lint", "ms.toml"]);
+    let text = String::from_utf8_lossy(&output.stdout).into_owned()
+        + &String::from_utf8_lossy(&output.stderr);
+    assert!(text.contains("unused.ms:3:5"), "{text}");
+    assert!(text.contains("MSL103"), "{text}");
+}

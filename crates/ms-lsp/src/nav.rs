@@ -6,7 +6,7 @@ use crate::index::{DeclFiles, OccInfo, Occurrence, callables, expr_text, hidden_
 use crate::json::{Json, obj};
 use crate::text::{self, Position, Range};
 use ms_check::api::syntax::ModRef;
-use ms_check::api::types::{Name, SymRef};
+use ms_check::api::types::{Kind, Name, SymRef};
 use ms_check::fxmap::HashMap;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
@@ -204,6 +204,26 @@ fn effects_line(
     Some(parts.join("  \n"))
 }
 
+/// The hover line: `name: type`, or a type parameter with the contracts it requires.
+fn hover_signature(syms: ms_syntax::Names, name: &str, info: &OccInfo, shown: &str) -> String {
+    let Some(param) = info.ty.as_ref().filter(|t| t.kind == Kind::Variable) else {
+        return format!("{name}: {shown}");
+    };
+    // The checker adds a parameter's bounds each time a receiver is resolved.
+    let mut bounds: Vec<String> = Vec::new();
+    for bound in param.bounds() {
+        let bound = bound.display(syms).to_string();
+        if !bounds.contains(&bound) {
+            bounds.push(bound);
+        }
+    }
+    if bounds.is_empty() {
+        format!("type parameter {name}")
+    } else {
+        format!("type parameter {name}: {}", bounds.join(" & "))
+    }
+}
+
 /// The type hover shows for an occurrence, or `None` when its type did not resolve.
 pub fn hover_type(syms: ms_syntax::Names, info: &OccInfo) -> Option<String> {
     let mut shown = info.ty.clone()?;
@@ -263,6 +283,9 @@ pub fn navigation(
     index: &[Occurrence],
 ) -> Json {
     let Some(hit) = at(syms, analysis, d, p, index) else {
+        if method == Navigate::Definition {
+            return import_path_definition(syms, analysis, d, p);
+        }
         return Json::Null;
     };
     let info = hit.info.clone();
@@ -270,7 +293,10 @@ pub fn navigation(
         let Some(shown) = hover_type(syms, &info) else {
             return Json::Null;
         };
-        let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown);
+        let mut value = format!(
+            "```manuscript\n{}\n```",
+            hover_signature(syms, &hit.text, &info, &shown)
+        );
         if let Some(line) = effects_line(syms, analysis, &info, &shown) {
             value.push_str("\n\n");
             value.push_str(&line);
@@ -322,6 +348,52 @@ pub fn navigation(
         return Json::Null;
     };
     declaration_location(syms, analysis, file, pos)
+}
+
+/// The start of the module an import path names, when the position is inside that path.
+fn import_path_definition(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    d: &Document,
+    p: Position,
+) -> Json {
+    let Some(module) = analysis.module(syms, d) else {
+        return Json::Null;
+    };
+    let Ok(cursor) = text::offset(&d.text, p) else {
+        return Json::Null;
+    };
+    let symbols = crate::index::module_symbols(syms, analysis, &module);
+    for import in &module.imports {
+        // The path is the first quoted text after the names of its clause.
+        let from = import.clause.offset as usize;
+        let Some(open) = d
+            .text
+            .get(from..)
+            .and_then(|t| t.find('"'))
+            .map(|i| from + i)
+        else {
+            continue;
+        };
+        let Some(close) = d.text[open + 1..].find('"').map(|i| open + 1 + i) else {
+            continue;
+        };
+        if cursor <= open || cursor > close {
+            continue;
+        }
+        let Some(symbol) = symbols.get(&import.name) else {
+            return Json::Null;
+        };
+        let start = Range::at(Position {
+            line: 0,
+            character: 0,
+        });
+        return Json::Arr(vec![location(
+            &analysis.source_uri(syms.str(symbol.module)),
+            start,
+        )]);
+    }
+    Json::Null
 }
 
 /// `[{uri, range}]` at a declaration position, or `null` for an unknown module.

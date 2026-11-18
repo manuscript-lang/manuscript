@@ -48,6 +48,18 @@ pub fn rename(
     if selected.key.contains(":@std/") {
         return Err("standard-library declarations are read-only".to_string());
     }
+    // The program starts at a free function named `main`; nothing in the checked graph names it.
+    if selected.name == "main"
+        && selected
+            .info
+            .as_ref()
+            .and_then(|i| i.symbol.as_ref())
+            .is_some_and(|s| s.kind == ms_check::api::types::SymKind::Fn)
+    {
+        return Err(
+            "main is the program entry point; the run command looks it up by name".to_string(),
+        );
+    }
     // Preparing only needs proof of an editable declaration in the checked
     // graph. Discovering references and validating edits belongs to rename.
     if name.is_empty() {

@@ -40,4 +40,4 @@ On escalation, `crates/ms-rt/src/start.rs` writes an `incomplete cleanup: <reaso
 ## Verifying
 
 - `cargo clippy -p ms-rt -p ms-rt-abi --all-targets -- -D warnings` and `cargo nextest run -p ms-rt`.
-- `make void` runs every crate's tests, and `make conform` runs programs end to end.
+- `make unit` runs every crate's tests, and `make conform` runs programs end to end.

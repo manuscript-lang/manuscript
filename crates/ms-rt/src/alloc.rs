@@ -976,10 +976,17 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
             && let Some(q) = grow_take(s, new_size)
         {
             // SAFETY: both blocks are valid for `old` bytes and do not overlap.
-            unsafe {
-                core::ptr::copy_nonoverlapping(p, q, old);
-                free(p);
+            unsafe { core::ptr::copy_nonoverlapping(p, q, old) };
+            // The old block goes straight back: it was this buffer's own size class, and the
+            // buffer now grows in the region, so a cached copy would stay resident unused (8 MiB
+            // for a list that grew from a presized block).
+            #[cfg(any(test, feature = "stats"))]
+            {
+                live_add(s, -1);
+                live_bucket(NUM_CLASSES, -1);
             }
+            // SAFETY: `p` is a live system block that nothing else uses.
+            unsafe { sys::free(p.cast()) };
             return q;
         }
         // Growing a big block with no cached block to move into: let the system remap its
@@ -1404,6 +1411,31 @@ mod tests {
             free(p);
         }
         assert_eq!(live_blocks(), before);
+    }
+
+    #[test]
+    fn a_block_that_moves_into_the_growth_region_is_not_cached() {
+        let _g = lock();
+        let small = alloc(64); // claims the heap
+        // SAFETY: this thread's allocator state.
+        let cached = unsafe { (*STATE.ptr()).large_cached };
+        let p = alloc(1 << 20);
+        // SAFETY: `p` is a live block of 1 MiB; the grown block holds its bytes.
+        unsafe {
+            fill(p, 0, 1 << 20);
+            let q = realloc(p, 2 << 20);
+            assert!(grow_chunk_of(q).is_some());
+            assert_eq!(
+                (*STATE.ptr()).large_cached,
+                cached,
+                "the old block went back"
+            );
+            for i in (0..1 << 20).step_by(89) {
+                assert_eq!(*q.add(i), tag(i));
+            }
+            free(q);
+            free(small);
+        }
     }
 
     #[test]
