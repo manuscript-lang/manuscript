@@ -181,6 +181,14 @@ impl FnLower<'_> {
         // Named for the function that makes it, so a stack, fault or profile says where it is.
         let name = format!("{}.closure", self.b.func_mut().name);
         let mut f = ms_mir::ir::Func::new(&name, ps, ret);
+        // A `var` parameter is the address of the caller's slot, after the environment.
+        f.noalias = lam
+            .params
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.mutable)
+            .map(|(i, _)| i as u32 + 1)
+            .collect();
         f.kind = FuncKind::Closure { captures: cap_tys };
         f.scoped = scoped;
         // A closure made inside a function that keeps scoped closures is what keeps them.
@@ -294,6 +302,8 @@ impl FnLower<'_> {
                 b.func_mut().kind = FuncKind::Closure {
                     captures: Vec::new(),
                 };
+                // The environment comes first, so each `var` slot of the function moves up one.
+                b.func_mut().noalias = proto.noalias.iter().map(|k| k + 1).collect();
                 let args: Vec<_> = b.params().into_iter().skip(1).collect();
                 let r = b.call(fid, &args);
                 b.release_lent_params();
@@ -1372,6 +1382,7 @@ fn build_queued(
     f.linkage = proto.linkage;
     f.scoped = proto.scoped;
     f.keeps_scoped = proto.keeps_scoped;
+    f.noalias = proto.noalias.clone();
     let mut fl = FnLower::new(cx, b, hir, subst, file, proto.ret);
     let result = body(&mut fl, &proto, file);
     let mut f = fl.b.into_func();

@@ -180,3 +180,124 @@ fn a_value_taken_from_a_borrowed_slot_keeps_the_function_hybrid() {
     let held = m.func_by_name("held").expect("held");
     assert!(!m.funcs[held.index()].explicit_cancel);
 }
+
+// A local slot that holds an owned value no scope owns is released by the cancel exit.
+const HOLDS_IN_SLOT: &str = r#"
+fn @held() -> int {
+b0:
+  scope.begin 1 0
+  %s: ptr = slot str
+  %l: str = str "x"
+  %v: str = clone %l
+  put %s, %v
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_pause (%n)
+  %t: str = take str %s
+  drop %t
+  scope.end 1 0
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %r: int = iconst 0
+  ret %r
+}
+"#;
+
+#[test]
+fn a_local_slot_holding_an_owned_value_is_released_on_the_cancel_exit() {
+    let mut m = parse_module(&format!("{HEAD}{HOLDS_IN_SLOT}")).unwrap_or_else(|e| panic!("{e}"));
+    ms_mir::elaborate::run_with(&mut m, true).unwrap_or_else(|e| panic!("{e}"));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    let held = m.func_by_name("held").expect("held");
+    assert!(
+        m.funcs[held.index()].explicit_cancel,
+        "{}",
+        print_module(&m)
+    );
+    // The normal path takes the value once and the cancel exit takes and drops it.
+    assert_eq!(count(&m, "held", Op::Take), 2);
+}
+
+// A `var` slot handed to a closure call is restored only when every closure of that type restores
+// its own, so the caller converts only then.
+fn closure_call_module(second_closure: &str) -> String {
+    format!(
+        r#"{HEAD}
+fn @inner(%env: ptr, %p: ptr) -> int closure() {{
+b0:
+  scope.begin 1 0
+  %t: str = take str %p
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_pause (%n)
+  put %p, %t
+  scope.end 1 0
+  ret %r
+}}
+{second_closure}
+fn @outer(%p: ptr, %f: fn(ptr) -> int) -> int {{
+b0:
+  scope.begin 1 0
+  %t: str = take str %p
+  %s: ptr = slot str
+  put %s, %t
+  %r: int = call.ind (%f, %s)
+  %u: str = take str %s
+  put %p, %u
+  scope.end 1 0
+  ret %r
+}}
+fn @main() -> int {{
+b0:
+  %a: fn(ptr) -> int = closure.new @inner
+  %b: fn(ptr) -> int = closure.new @other
+  drop %a
+  drop %b
+  %z: int = iconst 0
+  ret %z
+}}
+"#
+    )
+}
+
+fn converts_outer(second_closure: &str, second_restores: bool) -> bool {
+    let mut m =
+        parse_module(&closure_call_module(second_closure)).unwrap_or_else(|e| panic!("{e}"));
+    for (name, var) in [("inner", true), ("other", second_restores), ("outer", true)] {
+        let f = m.func_by_name(name).expect("function");
+        let slot = if name == "outer" { 0 } else { 1 };
+        m.funcs[f.index()].noalias = if var { vec![slot] } else { Vec::new() };
+    }
+    ms_mir::elaborate::run_with(&mut m, true).unwrap_or_else(|e| panic!("{e}"));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    let outer = m.func_by_name("outer").expect("outer");
+    m.funcs[outer.index()].explicit_cancel
+}
+
+const RESTORING_OTHER: &str = r#"
+fn @other(%env: ptr, %p: ptr) -> int closure() {
+b0:
+  scope.begin 1 0
+  %t: str = take str %p
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_pause (%n)
+  put %p, %t
+  scope.end 1 0
+  ret %r
+}
+"#;
+
+#[test]
+fn a_var_slot_handed_to_a_closure_call_converts_when_every_closure_restores() {
+    assert!(converts_outer(RESTORING_OTHER, true));
+}
+
+#[test]
+fn a_var_slot_handed_to_a_closure_call_stays_hybrid_when_one_closure_may_not_restore() {
+    // The same closure without its `var` slot marked: the call cannot assume it restores.
+    assert!(!converts_outer(RESTORING_OTHER, false));
+}

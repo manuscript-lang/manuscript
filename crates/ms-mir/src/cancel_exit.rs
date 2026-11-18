@@ -63,13 +63,30 @@ pub(crate) struct Cx {
     /// Per function: converted (or free of parks), so its cancel exits leave every `var` slot
     /// parameter holding the value the normal exit would. Filled callee first.
     pub(crate) restores: std::cell::RefCell<Vec<bool>>,
+    /// The functions a closure value of each function type may run: every `closure.new` result of
+    /// that type. A call through a closure restores a `var` slot only when all of them do.
+    pub(crate) closures: HashMap<Ty, Vec<usize>>,
 }
 
 pub(crate) fn context(m: &mut Module) -> Cx {
+    let mut closures: HashMap<Ty, Vec<usize>> = HashMap::new();
+    for f in &m.funcs {
+        for i in f.blocks.iter().flat_map(|b| &b.insts) {
+            if let (Op::ClosureNew, Imm::Func(g), Some(r)) = (i.op, i.imm, i.res) {
+                let targets = closures.entry(f.ty(r)).or_default();
+                if !targets.contains(&g.index()) {
+                    targets.push(g.index());
+                }
+            }
+        }
+    }
+    // Every function with a `var` slot parameter starts out assumed to restore it (`elaborate`
+    // lowers the assumption until it holds, so a cycle of callers and callees is proved together).
     Cx {
         parks: crate::unwind::parking_funcs(m),
         safe: crate::unwind::slot_safe_params(m),
-        restores: std::cell::RefCell::new(vec![false; m.funcs.len()]),
+        restores: std::cell::RefCell::new(m.funcs.iter().map(|f| !f.noalias.is_empty()).collect()),
+        closures,
         ext: externs(m),
     }
 }
@@ -89,6 +106,8 @@ struct Site {
     refills: Vec<Refill>,
     /// A `var` slot whose value was moved whole into a local slot: take it back and put it in.
     returns: Vec<(Value, Value, Ty)>,
+    /// Local slots still holding a value nothing else releases: the exit takes it out and drops it.
+    slot_drops: Vec<(Value, Ty)>,
 }
 
 /// A value taken from a slot, with the part it moved out held in another slot.
@@ -158,6 +177,13 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
         .iter()
         .filter(|(_, t)| t.1 >= 2)
         .map(|(v, _)| v.0)
+        .chain(
+            f.blocks[0]
+                .params
+                .iter()
+                .filter(|p| var_param(f, p.value))
+                .map(|p| p.value.0),
+        )
         .collect();
     for b in f.rpo() {
         for i in &f.blocks[b.index()].insts {
@@ -182,17 +208,17 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
             if !alias.contains(&a.0) {
                 continue;
             }
-            let borrowed = match (i.op, i.imm) {
-                (Op::Call, Imm::Func(g)) => {
-                    tags.contains_key(a)
-                        && (cx.safe[g.index()].get(k).copied().unwrap_or(false)
+            let borrowed = (tags.contains_key(a) || var_param(f, *a))
+                && match (i.op, i.imm) {
+                    (Op::Call, Imm::Func(g)) => {
+                        cx.safe[g.index()].get(k).copied().unwrap_or(false)
                             // A callee whose cancel exits restore its `var` slots leaves the slot
                             // as its normal exit would.
-                            || (m.funcs[g.index()].noalias.contains(&(k as u32))
-                                && cx.restores.borrow().get(g.index()).copied().unwrap_or(false)))
-                }
-                _ => false,
-            };
+                            || restoring_callee(cx, m, f, i, k)
+                    }
+                    (Op::CallInd, _) => restoring_callee(cx, m, f, i, k),
+                    _ => false,
+                };
             if !borrowed {
                 return None;
             }
@@ -244,18 +270,41 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
             });
         }
     }
-    // A taken `var` slot value moved whole into a local slot (handed on to a callee that borrows it
-    // or restores it): the slot it came from, by the local slot holding it.
-    let mut fwd: HashMap<u32, (Value, Ty)> = HashMap::new();
+    // A `var` slot whose value lives in a local slot while the function runs (the variable is handed
+    // on to a callee there): the exit takes it back out of that slot. The normal exit refills the
+    // slot from one:
+    let mut fwd: HashMap<u32, Vec<(Value, Ty)>> = HashMap::new();
+    let mut refilled_by: HashMap<u32, Value> = HashMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        // Or it holds the value taken from the slot, moved whole into a local slot.
         if i.op == Op::Put
             && let Some(&s) = i.args.get(1).and_then(|v| taken.get(&v.0))
             && var_param(f, s)
             && defs.get(&i.args[0].0).is_some_and(|d| d.op == Op::Slot)
         {
-            fwd.insert(s.0, (i.args[0], f.ty(i.args[1])));
+            fwd.entry(s.0)
+                .or_default()
+                .push((i.args[0], f.ty(i.args[1])));
+        }
+        if i.op == Op::Put
+            && var_param(f, i.args[0])
+            && let Some(&w) = i.args.get(1).and_then(|v| taken.get(&v.0))
+            && defs.get(&w.0).is_some_and(|d| d.op == Op::Slot)
+        {
+            fwd.entry(i.args[0].0)
+                .or_default()
+                .push((w, f.ty(i.args[1])));
+            refilled_by.insert(w.0, i.args[0]);
         }
     }
+    // The content type of a local slot that holds an owned value no scope owns.
+    let owned_slot = |s: u32| -> Option<Ty> {
+        let d = defs.get(&s)?;
+        let Imm::Ty(t) = d.imm else {
+            return None;
+        };
+        (d.op == Op::Slot && !tags.contains_key(&Value(s)) && m.needs_drop(t)).then_some(t)
+    };
     let n = f.blocks.len();
     let mut entry: Vec<Option<Walk>> = vec![None; n];
     let mut first = BTreeSet::new();
@@ -325,7 +374,39 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
             {
                 live.insert(r.0);
             }
+            // A local slot holding an owned value no scope owns is released by the exit, when the
+            // callees it was handed to left its contents as the normal path would find them.
+            let held: Vec<(usize, u32)> = i
+                .args
+                .iter()
+                .enumerate()
+                .filter(|(_, a)| full.contains(&a.0) && owned_slot(a.0).is_some())
+                .map(|(k, a)| (k, a.0))
+                .collect();
+            let leaves_alone = |k: usize| {
+                matches!(i.op, Op::Call | Op::CallInd)
+                    && (matches!((i.op, i.imm), (Op::Call, Imm::Func(g)) if cx.safe[g.index()].get(k).copied().unwrap_or(false))
+                        || restoring_callee(cx, m, f, i, k))
+            };
+            let call_op = matches!(i.op, Op::Call | Op::CallInd | Op::CallMethod | Op::CallRt);
             let last_unreachable = k + 1 == count && matches!(f.blocks[bi].term, Term::Unreachable);
+            let parking = parks(m, parks_of, i)
+                && i.op != Op::Poll
+                && !last_unreachable
+                && !shielded.contains(&(bi, k));
+            if call_op {
+                if parking && held.iter().any(|(k, _)| !leaves_alone(*k)) {
+                    return None;
+                }
+                if !parking {
+                    // A callee that may consume it leaves the slot's contents unknown.
+                    for (k, s) in &held {
+                        if !leaves_alone(*k) {
+                            full.remove(s);
+                        }
+                    }
+                }
+            }
             if !parks(m, parks_of, i)
                 || i.op == Op::Poll
                 || last_unreachable
@@ -352,6 +433,18 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
                 {
                     continue;
                 }
+                // The value the normal exit puts back into a `var` slot, taken out of the local slot
+                // it lived in: the exit puts it there.
+                if let Some(&w) = taken.get(&v.0)
+                    && let Some(&s) = refilled_by.get(&w.0)
+                    && empty.contains(&s.0)
+                    && !handled.contains(&s.0)
+                    && !holed.contains(&v.0)
+                {
+                    handled.insert(s.0);
+                    putback.push((s, v));
+                    continue;
+                }
                 // A value taken from a slot a scope owns goes back into it, unless a part was moved
                 // out of it (the slot would then hold a hole the scope end drops twice). A slot
                 // parameter is not put back: a callee may own what it holds.
@@ -363,7 +456,9 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
                     match window {
                         // A part is out in a slot: take it back and fill it in first.
                         Some((w, part_ty, fill))
-                            if full.contains(&w.0) && var_param(f, s) && handed_ok(cx, i, w) =>
+                            if full.contains(&w.0)
+                                && var_param(f, s)
+                                && handed_ok(cx, m, f, i, w) =>
                         {
                             handled.insert(s.0);
                             refills.push(Refill {
@@ -408,10 +503,11 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
                 if !var_param(f, Value(*s)) || handled.contains(s) {
                     continue;
                 }
-                if let Some((w, ty)) = fwd.get(s)
-                    && full.contains(&w.0)
-                    && handed_ok(cx, i, *w)
-                {
+                let held = fwd.get(s).and_then(|ws| {
+                    ws.iter()
+                        .find(|(w, _)| full.contains(&w.0) && handed_ok(cx, m, f, i, *w))
+                });
+                if let Some((w, ty)) = held {
                     handled.insert(*s);
                     returns.push((Value(*s), *w, *ty));
                 }
@@ -422,6 +518,12 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
             {
                 return None;
             }
+            let slot_drops: Vec<(Value, Ty)> = full
+                .iter()
+                .filter(|s| !returns.iter().any(|r| r.1.0 == **s))
+                .filter(|s| !refills.iter().any(|r| r.part_slot.0 == **s))
+                .filter_map(|s| owned_slot(*s).map(|t| (Value(*s), t)))
+                .collect();
             // The result a scope takes right after the call is forgotten here, and that scope
             // still ends so a drop flag it carries sees the value gone.
             let mut open = scopes.clone();
@@ -439,6 +541,7 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
                 putback,
                 refills,
                 returns,
+                slot_drops,
             });
         }
         let term = &f.blocks[bi].term;
@@ -505,12 +608,13 @@ pub(crate) fn convert(
     if f.blocks.is_empty() || f.unwind_only {
         return Vec::new();
     }
-    let Some(sites) = sites(m, cx, f, tags) else {
-        return Vec::new();
-    };
+    let sites = sites(m, cx, f, tags);
     // A function that parks nowhere, or whose exits are built below, leaves its `var` slots as
     // its normal exit does.
-    cx.restores.borrow_mut()[fi] = true;
+    cx.restores.borrow_mut()[fi] = sites.is_some();
+    let Some(sites) = sites else {
+        return Vec::new();
+    };
     if sites.is_empty() {
         return Vec::new();
     }
@@ -627,8 +731,17 @@ pub(crate) fn convert(
             body.push(push(f, Op::Forget, vec![r], Imm::None, None, sloc).0);
         }
         for (s, w, ty) in &site.returns {
+            // The value leaves a slot a scope owns, as it does on the normal path: the scope end
+            // must not close or drop what the `var` slot now holds.
+            let owned = tags.contains_key(w);
+            if owned {
+                body.push(push(f, Op::ScopeDisown, vec![*w], Imm::None, None, sloc).0);
+            }
             let (take, held) = push(f, Op::Take, vec![*w], Imm::Ty(*ty), Some(*ty), sloc);
             body.push(take);
+            if owned {
+                body.push(push(f, Op::ScopeDisown, vec![*w], Imm::None, None, sloc).0);
+            }
             body.push(
                 push(
                     f,
@@ -660,6 +773,21 @@ pub(crate) fn convert(
         }
         for (s, v) in &site.putback {
             body.push(push(f, Op::Put, vec![*s, *v], Imm::None, None, sloc).0);
+        }
+        for (s, ty) in &site.slot_drops {
+            let (take, held) = push(f, Op::Take, vec![*s], Imm::Ty(*ty), Some(*ty), sloc);
+            body.push(take);
+            body.push(
+                push(
+                    f,
+                    Op::Drop,
+                    vec![held.expect("held")],
+                    Imm::None,
+                    None,
+                    sloc,
+                )
+                .0,
+            );
         }
         for v in site.explicit.iter().rev() {
             body.push(push(f, Op::Drop, vec![*v], Imm::None, None, sloc).0);
@@ -729,18 +857,26 @@ fn refill_pattern(f: &Func, defs: &HashMap<u32, &Inst>, v: Value) -> Option<(Val
 }
 
 /// Whether the parking call `i` leaves slot `w` as its normal return would: it is not handed to the
-/// call, or the callee is a function whose cancel exits restore its `var` slots.
-fn handed_ok(cx: &Cx, i: &Inst, w: Value) -> bool {
-    if !i.args.contains(&w) {
-        return true;
-    }
+/// call, or every callee it may run restores the `var` slot it gets.
+fn handed_ok(cx: &Cx, m: &Module, f: &Func, i: &Inst, w: Value) -> bool {
+    i.args
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| **a == w)
+        .all(|(k, _)| restoring_callee(cx, m, f, i, k))
+}
+
+/// Whether the call `i` leaves the slot at argument `k` as its normal return would: a function
+/// whose cancel exits restore its `var` slots, or a closure call whose possible targets all do.
+fn restoring_callee(cx: &Cx, m: &Module, f: &Func, i: &Inst, k: usize) -> bool {
+    let restores = cx.restores.borrow();
+    let ok = |g: usize| restores[g] && m.funcs[g].noalias.contains(&(k as u32));
     match (i.op, i.imm) {
-        (Op::Call, Imm::Func(g)) => cx
-            .restores
-            .borrow()
-            .get(g.index())
-            .copied()
-            .unwrap_or(false),
+        (Op::Call, Imm::Func(g)) => ok(g.index()),
+        (Op::CallInd, _) => cx
+            .closures
+            .get(&f.ty(i.args[0]))
+            .is_some_and(|ts| !ts.is_empty() && ts.iter().all(|g| ok(*g))),
         _ => false,
     }
 }
@@ -748,11 +884,11 @@ fn handed_ok(cx: &Cx, i: &Inst, w: Value) -> bool {
 /// The functions in the order their conversion should run: a callee before its callers (a cycle is
 /// cut where it is first met), so `Cx::restores` is known when a caller asks. Natural order when no
 /// cancel exits are built.
-pub(crate) fn callee_first(m: &Module, wanted: bool) -> Vec<usize> {
+pub(crate) fn callee_first(m: &Module, cx: Option<&Cx>) -> Vec<usize> {
     let n = m.funcs.len();
-    if !wanted {
+    let Some(cx) = cx else {
         return (0..n).collect();
-    }
+    };
     let calls: Vec<Vec<usize>> = m
         .funcs
         .iter()
@@ -760,9 +896,15 @@ pub(crate) fn callee_first(m: &Module, wanted: bool) -> Vec<usize> {
             f.blocks
                 .iter()
                 .flat_map(|b| &b.insts)
-                .filter_map(|i| match (i.op, i.imm) {
-                    (Op::Call, Imm::Func(g)) => Some(g.index()),
-                    _ => None,
+                .flat_map(|i| match (i.op, i.imm) {
+                    (Op::Call, Imm::Func(g)) => vec![g.index()],
+                    // A closure call runs any closure of its type.
+                    (Op::CallInd, _) => cx
+                        .closures
+                        .get(&f.ty(i.args[0]))
+                        .cloned()
+                        .unwrap_or_default(),
+                    _ => Vec::new(),
                 })
                 .collect()
         })

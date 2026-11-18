@@ -39,6 +39,14 @@ fn var Held[T].close() Void!:
 		if value := self.items.pop():
 			put_slot(self.slot, value)
 
+// Owns a slot: the scope that holds it releases the slot however the scope ends.
+type SlotOwner:
+	slot: Int
+
+fn var SlotOwner.close() Void!:
+	release_slot(self.slot)
+	return ok()
+
 // The values a matched pattern captured, by name.
 export type RouteParams:
 	// Names in pattern order.
@@ -233,21 +241,23 @@ fn Router.handler() fn(var HttpExchange) Void!:
 // produced. A handler error is returned as is; the server would answer it with a
 // 500. A handler that sends nothing answers 204.
 fn Router.call(request: HttpRequest) HttpResponse!:
-	state := new_slot(
-		TestState(
-			status: 0,
-			sent: false,
-			complete: false,
-			closed: false,
-			head: headers(),
-			body: BytesBuilder(),
-			unread: request.body.clone(),
+	owner := SlotOwner(
+		slot: new_slot(
+			TestState(
+				status: 0,
+				sent: false,
+				complete: false,
+				closed: false,
+				head: headers(),
+				body: BytesBuilder(),
+				unread: request.body.clone(),
+			)
 		)
 	)
+	state := owner.slot
 	var exchange: HttpExchange = TestExchange(request: request.clone(), state: state)
 	ran := dispatch(self.routes, self.middleware, self.groups, var exchange)
 	outcome := finished(state)
-	release_slot(state)
 	if ran.is_error(): return error(ran.err().clone())
 
 	return outcome
@@ -860,13 +870,12 @@ fn with_access_log(
 	path := exchange.path()
 	protocol := exchange.protocol()
 	request := exchange.headers()
-	state := new_slot(TapState(status: 0, bytes: 0))
+	owner := SlotOwner(slot: new_slot(TapState(status: 0, bytes: 0)))
+	state := owner.slot
 	exchange = new_tap(exchange, headers(), request, state)
 
 	result := next(var exchange)
 	sent := snapshot(state)
-	release_slot(state)
-
 	status := answered(sent.status, result.is_ok())
 	entry := AccessEntry(
 		method: method,
