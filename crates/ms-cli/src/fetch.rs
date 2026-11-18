@@ -318,11 +318,33 @@ fn git(directory: Option<&Path>, protocols: &str, args: &[&str]) -> Result<Strin
     if !output.status.success() {
         return Err(format!(
             "git {} failed: {}",
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr).trim()
+            redact_credentials(&args.join(" ")),
+            redact_credentials(String::from_utf8_lossy(&output.stderr).trim())
         ));
     }
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// `text` without the `user:password@` of any URL in it, so a token in a dependency URL is not
+/// echoed into terminal logs and CI output by an error message.
+fn redact_credentials(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("://") {
+        let (head, tail) = rest.split_at(at + 3);
+        out.push_str(head);
+        let end = tail
+            .find(|c: char| c.is_whitespace() || c == '/' || c == '\'' || c == '"')
+            .unwrap_or(tail.len());
+        let authority = &tail[..end];
+        match authority.rfind('@') {
+            Some(i) => out.push_str(&authority[i + 1..]),
+            None => out.push_str(authority),
+        }
+        rest = &tail[end..];
+    }
+    out.push_str(rest);
+    out
 }
 
 fn is_commit(text: &str) -> bool {
@@ -592,3 +614,22 @@ The cached copy stays in the package cache.
 Options:
   -h, --help  Show this help
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::redact_credentials;
+
+    #[test]
+    fn credentials_in_urls_are_not_echoed() {
+        assert_eq!(
+            redact_credentials(
+                "ls-remote -- https://user:secret@host:1/x.git failed: unable to access 'https://tok@host/x.git/'"
+            ),
+            "ls-remote -- https://host:1/x.git failed: unable to access 'https://host/x.git/'"
+        );
+        assert_eq!(
+            redact_credentials("file:///tmp/x#v1 plain"),
+            "file:///tmp/x#v1 plain"
+        );
+    }
+}
