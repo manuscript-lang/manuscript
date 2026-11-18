@@ -8,7 +8,7 @@ use ms_check::api::ast::Expr;
 use ms_check::api::hir::{ModuleHir, Resolution};
 use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op, Param};
+use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op};
 use ms_mir::types::{Ty as MTy, TyKind};
 use std::rc::Rc;
 
@@ -37,20 +37,13 @@ impl FnLower<'_> {
             return Ok(None);
         };
         let fty = self.emty(e)?;
-        let TyKind::Fn(params, ret) = self.b.m.types.kind(fty).clone() else {
+        let TyKind::Fn(params, ret, owned) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("method value without function type"));
         };
         let mut types = Vec::new();
         let mut values = Vec::new();
         let capture = self.capture_alias(&binding, alias, &mut types, &mut values)?;
-        let mut ps = vec![Param {
-            ty: MTy::PTR,
-            mode: Mode::Borrow,
-        }];
-        ps.extend(params.into_iter().map(|ty| Param {
-            ty,
-            mode: Mode::Borrow,
-        }));
+        let ps = crate::closure::indirect_params(&params, owned);
         let mut f = ms_mir::ir::Func::new("<borrowed method>", ps, ret);
         f.kind = FuncKind::Closure { captures: types };
         // Each site has its own saved field path; method/type-only caches cannot
@@ -125,6 +118,7 @@ pub(crate) fn build_bound_alias(
     // invocation's leaf slot. The owning root remains live during callbacks.
     let method = fl.expr(&job.expr)?;
     let result = fl.b.call_ind(method.v, &params[1..]);
+    fl.b.release_lent_params();
     fl.drop_value(method.v);
     let updated = fl.move_out(slot, ty);
     fl.alias_update(&alias, &[], &mut |s, old| {

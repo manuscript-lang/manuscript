@@ -90,7 +90,7 @@ test "map takes a resource payload while reusable methods copy only retained dat
 	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "20,21,")?
 
 	data: String!Int := ok("payload")
-	convert := data.to_optional
+	convert := fn: data.clone().to_optional()
 	expect_equal(convert().get(), "payload")?
 	expect_equal(convert().get(), "payload")?
 	expect_equal(data.get(), "payload")?

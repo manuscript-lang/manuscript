@@ -67,7 +67,7 @@ impl FnLower<'_> {
         exchange: MTy,
     ) -> Result<ms_mir::ir::Value, Error> {
         let user_ty = self.ty_of(handler.v);
-        let TyKind::Fn(_, result) = self.b.m.types.kind(user_ty).clone() else {
+        let TyKind::Fn(_, result, _) = self.b.m.types.kind(user_ty).clone() else {
             return Err(Error::new("a server handler is not a function"));
         };
         let key = HelperKey::ServeThunk(user_ty);

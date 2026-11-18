@@ -179,10 +179,12 @@ impl Interp<'_> {
                     return Err(Raw::internal("call.ind on &inst.args non-closure"));
                 };
                 let mut args = vec![ops.regs[inst.args[0].index()].clone()];
+                let owned = crate::verify::indirect_owned(m, f, inst);
                 args.extend(
                     inst.args[1..]
                         .iter()
-                        .map(|v| arg(f, ops.regs, *v, false, m)),
+                        .enumerate()
+                        .map(|(i, v)| arg(f, ops.regs, *v, crate::types::owns(owned, i), m)),
                 );
                 return Ok(Flow::Call { callee: g, args });
             }
@@ -195,10 +197,12 @@ impl Interp<'_> {
                 };
                 let g = m.vtables[vt.index()].methods[k as usize];
                 let mut args = vec![(*data).clone()];
+                let owned = crate::verify::indirect_owned(m, f, inst);
                 args.extend(
                     inst.args[1..]
                         .iter()
-                        .map(|v| arg(f, ops.regs, *v, false, m)),
+                        .enumerate()
+                        .map(|(i, v)| arg(f, ops.regs, *v, crate::types::owns(owned, i), m)),
                 );
                 return Ok(Flow::Call { callee: g, args });
             }

@@ -421,7 +421,7 @@ impl FnLower<'_> {
     /// calls `f` with arguments the runtime has converted from `ms_value`s, and the signature
     /// `ms_call` checks them against (see `ms_rt::cabi::ms_call_v1`).
     fn function_argument(&mut self, f: Value, fty: MTy) -> Result<Value, Error> {
-        let TyKind::Fn(ps, ret) = self.b.m.types.kind(fty).clone() else {
+        let TyKind::Fn(ps, ret, _) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("an ms_fn needs a function"));
         };
         if ps.len() > CALL_MAX_PARAMS {

@@ -51,7 +51,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     pub(super) fn call_closure(&mut self, f: &Func, inst: &Inst) -> Vs {
         let clo = self.a(inst, 0)[0];
-        let TyKind::Fn(ps, r) = self.g.m.types.kind(f.ty(inst.args[0])).clone() else {
+        let TyKind::Fn(ps, r, _) = self.g.m.types.kind(f.ty(inst.args[0])).clone() else {
             unreachable!()
         };
         let mut params = vec![Leaf::I64];

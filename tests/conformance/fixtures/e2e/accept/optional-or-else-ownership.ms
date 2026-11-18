@@ -60,8 +60,9 @@ test "or_else permits a fallback that stays absent":
 	kept := missing.or_else(fn: none)
 	expect_equal(kept, none)?
 
-test "bound or_else preserves its captured Optional across calls":
-	bound := text(7).or_else
+test "a closure over or_else copies its captured Optional for each call":
+	held := text(7)
+	bound := fn(fallback: fn() String?) String?: held.clone().or_else(fallback)
 	first := bound(unexpected_text)
 	second := bound(unexpected_text)
 	expect_equal(first.get(), "dynamic optional payload 7")?

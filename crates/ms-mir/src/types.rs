@@ -82,8 +82,9 @@ pub enum TyKind {
     /// A runtime-implemented object type such as `Map[K, V]`
     /// or `Set[T]`, named as the runtime names it.
     Obj(Native, Vec<Ty>),
-    /// A closure object: parameter types (all passed borrowed) and the result.
-    Fn(Vec<Ty>, Ty),
+    /// A closure object: parameter types, the result, and the parameters passed owned
+    /// (bit `i` set: argument `i` moves into the call; see [`owns`]). The rest are borrowed.
+    Fn(Vec<Ty>, Ty, u64),
     /// An interface fat pointer `{ data, vtable }`; owning it owns `data`.
     Iface(IfaceId),
 }
@@ -292,9 +293,14 @@ impl TyTable {
         self.intern(TyKind::Alt(id))
     }
 
-    /// A closure type.
+    /// A closure type whose parameters are all borrowed.
     pub fn func(&mut self, params: Vec<Ty>, ret: Ty) -> Ty {
-        self.intern(TyKind::Fn(params, ret))
+        self.intern(TyKind::Fn(params, ret, 0))
+    }
+
+    /// A closure type taking the parameters in `owned` (see [`owns`]) owned.
+    pub fn func_owning(&mut self, params: Vec<Ty>, ret: Ty, owned: u64) -> Ty {
+        self.intern(TyKind::Fn(params, ret, owned))
     }
 
     /// An interface type.
@@ -517,13 +523,25 @@ impl AltDef {
     }
 }
 
-/// An interface method signature. The receiver is implicit; arguments are borrowed.
+/// Whether bit `i` of an owned-parameter set (a function type's or a [`MethodSig`]'s) is set.
+/// Parameters past bit 63 are never owned: lowering rejects such signatures.
+pub fn owns(owned: u64, i: usize) -> bool {
+    u32::try_from(i)
+        .ok()
+        .and_then(|i| owned.checked_shr(i))
+        .is_some_and(|b| b & 1 == 1)
+}
+
+/// An interface method signature. The receiver is implicit and borrowed; arguments are
+/// borrowed unless `owned` says otherwise.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MethodSig {
     /// Method name.
     pub name: String,
     /// Parameter types after the receiver.
     pub params: Vec<Ty>,
+    /// Parameters passed owned (see [`owns`]), indexed like `params`.
+    pub owned: u64,
     /// Result type.
     pub ret: Ty,
     /// Parameters declared as the implementing type (`Self`): the table entry receives an

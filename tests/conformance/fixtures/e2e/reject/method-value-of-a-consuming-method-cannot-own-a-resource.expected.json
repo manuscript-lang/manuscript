@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "this method value keeps its receiver for repeated calls, so it clones `Marker`, which has one owner and cannot be cloned; use it in place",
+        "message": "`.finish` takes its receiver, but a function value can be called more than once, so every call would need a hidden copy; write a function that copies it, such as `fn ...: value.clone().finish(...)`",
         "position": {
           "file": "method-value-of-a-consuming-method-cannot-own-a-resource.ms",
           "line": 20,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/method-value-of-a-consuming-method-cannot-own-a-resource.ms:20:15: type: this method value keeps its receiver for repeated calls, so it clones `Marker`, which has one owner and cannot be cloned; use it in place\n    |\n 20 |     f := held.finish\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/method-value-of-a-consuming-method-cannot-own-a-resource.ms:20:15: type: `.finish` takes its receiver, but a function value can be called more than once, so every call would need a hidden copy; write a function that copies it, such as `fn ...: value.clone().finish(...)`\n    |\n 20 |     f := held.finish\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

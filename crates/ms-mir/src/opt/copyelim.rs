@@ -403,7 +403,7 @@ fn borrow_local_copies(m: &Module, f: &mut Func) -> bool {
                 let n = &f.blocks[bi].insts[k];
                 n.args
                     .iter()
-                    .zip(arg_modes(m, n))
+                    .zip(arg_modes(m, f, n))
                     .any(|(a, mode)| *a == x && mode != Mode::Borrow)
             }
         })
@@ -559,7 +559,7 @@ fn borrow_str_copies_across_blocks(m: &Module, f: &mut Func) -> bool {
             let mut c_borrows = 0u32;
             let mut visit = |insts: &[Inst], term: Option<&crate::ir::Term>| {
                 for n in insts {
-                    for (a, mode) in n.args.iter().zip(arg_modes(m, n)) {
+                    for (a, mode) in n.args.iter().zip(arg_modes(m, f, n)) {
                         if *a == c {
                             if mode != Mode::Borrow {
                                 ok = false;
@@ -703,7 +703,7 @@ fn borrow_str_phis(m: &Module, f: &mut Func) -> bool {
                         }
                         continue;
                     }
-                    for (a, mode) in n.args.iter().zip(arg_modes(m, n)) {
+                    for (a, mode) in n.args.iter().zip(arg_modes(m, f, n)) {
                         if *a == p {
                             if mode != Mode::Borrow {
                                 continue 'param;
@@ -741,7 +741,7 @@ fn borrow_str_phis(m: &Module, f: &mut Func) -> bool {
             let mut ok = true;
             let mut check = |insts: &[Inst], term: Option<&crate::ir::Term>| {
                 for n in insts {
-                    for (a, mode) in n.args.iter().zip(arg_modes(m, n)) {
+                    for (a, mode) in n.args.iter().zip(arg_modes(m, f, n)) {
                         if chain.contains(a) && mode != Mode::Borrow {
                             ok = false;
                         }
@@ -1144,7 +1144,7 @@ fn run_func(m: &Module, f: &mut Func) -> bool {
     // A copy stays unless every use is a read-only operand or one of its drops.
     for b in &f.blocks {
         for i in &b.insts {
-            let modes = arg_modes(m, i);
+            let modes = arg_modes(m, f, i);
             for (a, mode) in i.args.iter().zip(&modes) {
                 if alias[a.index()].is_some() && *mode != Mode::Borrow && i.op != Op::Drop {
                     alias[a.index()] = None;

@@ -13,7 +13,7 @@ use crate::text::runtime_fn;
 use ms_check::api::hir::ModuleHir;
 use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableId};
+use ms_mir::ir::{FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, VtableId};
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
 use std::rc::Rc;
 
@@ -258,14 +258,7 @@ impl Cx {
                 row.map(|r| r.3.to_string()),
                 row.map_or(Shape::Plain, |r| r.4),
             );
-            let mut ps = vec![Param {
-                ty: MTy::PTR,
-                mode: Mode::Borrow,
-            }];
-            ps.extend(s.params.iter().map(|t| Param {
-                ty: *t,
-                mode: Mode::Borrow,
-            }));
+            let ps = crate::closure::indirect_params(&s.params, s.owned);
             let mut f = ms_mir::ir::Func::new(&format!("{iface_name}.{}", s.name), ps, s.ret);
             f.kind = FuncKind::Method;
             f.linkage = Linkage::Internal;
@@ -349,7 +342,11 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         .zip(&args[1..])
         .map(|(p, v)| NArg {
             name: p.name,
-            val: Val { v: *v, own: false },
+            // An argument the operation hands over is the forwarder's to pass on or drop.
+            val: Val {
+                v: *v,
+                own: fl.owned_param(*v),
+            },
             wrapped: false,
             reader: false,
         })
@@ -386,7 +383,7 @@ fn forward_ms(
         .find(|((f, _), c)| *f == file && fl.syms.str(c.name) == name)
         .map(|(_, c)| c.clone())
         .ok_or_else(|| Error::new(format!("{name} is not declared in the standard library")))?;
-    let fid = fl.instance(&callable, &Default::default())?;
+    let fid = fl.forwarded(&callable, &Default::default())?;
     let raw = callable
         .parameters
         .first()
@@ -412,6 +409,7 @@ fn forward_ms(
     let mut call_args = vec![slot];
     call_args.extend_from_slice(&args[1..]);
     let r = fl.b.call(fid, &call_args);
+    fl.b.release_lent_params();
     let back = fl.move_out(slot, raw_ty);
     fl.drop_value(back);
     fl.emit_return(Some(Val { v: r, own: true }));

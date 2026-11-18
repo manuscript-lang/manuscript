@@ -194,7 +194,7 @@ export type Logger:
 // Internal: writes one record at a level number. `data` is JSON text attached as
 // is.
 fn Logger.emit(level: Int, message: String, data: String?) Void!:
-	msg := stringify(JsonValue.StringValue(message))
+	msg := stringify(message)
 	if msg.is_error(): return error(encode_error(msg.err()))
 
 	var line = f"\{\"level\":{level},\"msg\":{msg.get()}"

@@ -709,16 +709,15 @@ impl Walker<'_> {
             );
         }
         if let Some((m, _)) = self.method_value_parts(e)
-            && self.is_place(recv)
             && receiver_mode(self.syms, self.cx.summaries, &m) == Some(ParamMode::Move)
         {
-            // A source method that moves its receiver does so on every call of the value, so
-            // the value needs a copy of the receiver per call; a resource has none, and a
-            // local value would otherwise leave both the variable and the result to close it.
-            self.require_clonable(
-                e,
-                &self.cx.m.ty(recv),
-                "this method value keeps its receiver for repeated calls, so it",
+            // The method takes its receiver, on every call of the value; the value holds one
+            // receiver and can be called again, so it would copy it per call. A lambda states
+            // that copy, or calls the method once.
+            let name = m.name().map_or("", |n| self.syms.str(n));
+            self.error(
+                e.pos,
+                format!("`.{name}` takes its receiver, but a function value can be called more than once, so every call would need a hidden copy; write a function that copies it, such as `fn ...: value.clone().{name}(...)`"),
             );
         }
         if let Some((m, _)) = self.method_value_parts(e)

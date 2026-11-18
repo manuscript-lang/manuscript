@@ -251,6 +251,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
         nested_cache: HashMap::default(),
         resources: Vec::new(),
+        owned_lambda_params: HashSet::default(),
         arm_payloads: Vec::new(),
         chain_places: HashMap::default(),
         keep_scrutinee: false,
@@ -385,6 +386,9 @@ struct Walker<'a> {
     nested_cache: HashMap<NodeId, Vec<Place>>,
     /// Owned immutable and `var` resources: binding, name and declaration position.
     resources: Vec<(usize, Name, Pos, bool)>,
+    /// Lambda parameters whose function type passes them owned (`fn(move T)`): the lambda
+    /// keeps or drops them like a named function's `move` parameter.
+    owned_lambda_params: HashSet<usize>,
     /// Payload bindings of match arms over a consumed scrutinee.
     arm_payloads: Vec<usize>,
     /// The optional place each `?.` payload binding was read from.
@@ -603,12 +607,20 @@ impl Walker<'_> {
         }
     }
 
-    /// Closes at scope end a resource parameter or receiver the callee keeps on some path: the caller
-    /// handed it over, so the paths that do not move it on close it.
+    /// Closes at scope end a resource parameter or receiver the callee takes (declared `move`, or
+    /// kept on some path): the caller handed it over, so the paths that do not move it on close it.
     fn consumed_param_resources(&mut self) {
+        let declared = Summary::declared(&self.cx.c.func);
+        let mut taken: Vec<bool> = declared
+            .params
+            .iter()
+            .map(|(_, mode)| *mode == ParamMode::Move)
+            .collect();
+        taken.resize(self.cx.c.parameters.len(), false);
+        taken.push(declared.receiver == ParamMode::Move);
         let receiver = self.cx.c.self_binding.iter();
-        for b in self.cx.c.parameters.iter().chain(receiver) {
-            let tracked = self.consumed.contains(&b.uid)
+        for (b, declared) in self.cx.c.parameters.iter().chain(receiver).zip(taken) {
+            let tracked = (declared || self.consumed.contains(&b.uid))
                 && self.may_close(&b.ty)
                 && matches!(b.ty.kind, Kind::Type | Kind::Alternative | Kind::Native);
             if !tracked {
@@ -751,6 +763,7 @@ impl Walker<'_> {
         self.mutated.push(HashSet::default());
         self.captured.push(captures.iter().map(|b| b.uid).collect());
         let mark = self.declared.len();
+        let fty = m.ty(e);
         for (i, b) in params.iter().enumerate() {
             let var = l.params.get(i).is_some_and(|p| p.mutable);
             self.declare(
@@ -760,6 +773,14 @@ impl Walker<'_> {
                 None,
                 false,
             );
+            if !var && fty.params.get(i).is_some_and(|p| p.moving) {
+                // The caller hands the argument over: a resource the body does not move on
+                // closes at its end.
+                self.owned_lambda_params.insert(b.uid);
+                if self.may_close(&b.ty) {
+                    self.resources.push((b.uid, b.name, e.pos, true));
+                }
+            }
         }
         self.block(&l.body);
         self.declared.truncate(mark);

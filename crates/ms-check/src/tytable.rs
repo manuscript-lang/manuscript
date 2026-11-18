@@ -20,10 +20,11 @@ impl TyId {
     }
 }
 
-/// A pool entry: a child id in the low bits, flags in the top two.
+/// A pool entry: a child id in the low bits, flags in the top three.
 const VAR: u32 = 1 << 31;
 const LIFTED: u32 = 1 << 30;
-const CHILD: u32 = LIFTED - 1;
+const MOVE: u32 = 1 << 29;
+const CHILD: u32 = MOVE - 1;
 /// The child of a function type with no result yet.
 const NO_RESULT: u32 = CHILD;
 const EMPTY: u32 = u32::MAX;
@@ -183,6 +184,9 @@ impl TyTable {
                 let mut e = child;
                 if p.mutable {
                     e |= VAR;
+                }
+                if p.moving {
+                    e |= MOVE;
                 }
                 if lifted && t.is_lifted(p.name) {
                     e |= LIFTED;

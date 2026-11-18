@@ -484,6 +484,25 @@ impl FnLower<'_> {
         (v, owner.kind)
     }
 
+    /// An evaluated argument handed to a parameter that takes it: an owned temporary (or a held
+    /// resource temporary's key) leaves the statement's cleanup, an owned value passes as it is,
+    /// and a borrow is copied (the checker allowed the move, so it is clonable).
+    pub(crate) fn hand_over(&mut self, x: crate::func::Val) -> Value {
+        let v = x.v;
+        if self.resource_temps.contains_key(&v) {
+            self.unhold_temp(v);
+            return self.take_resource_temp(v).0;
+        }
+        if self.temps.contains(&v) {
+            self.unhold_temp(v);
+            return v;
+        }
+        if x.own || !self.needs_drop(self.ty_of(v)) {
+            return v;
+        }
+        self.owned_boundary(x)
+    }
+
     /// Drops an owned temporary at the end of its statement, closing it first when it is a
     /// resource (`open().id()`).
     pub(crate) fn drop_temp(&mut self, v: Value) {

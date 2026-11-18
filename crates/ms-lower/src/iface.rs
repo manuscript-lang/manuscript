@@ -124,14 +124,7 @@ impl Cx {
                     concrete_t = concrete.display(self.syms)
                 ))
             })?;
-            let mut ps = vec![Param {
-                ty: MTy::PTR,
-                mode: Mode::Borrow,
-            }];
-            ps.extend(s.params.iter().map(|t| Param {
-                ty: *t,
-                mode: Mode::Borrow,
-            }));
+            let ps = crate::closure::indirect_params(&s.params, s.owned);
             let writes_back;
             let changed: Vec<usize>;
             let op_vars = self.iface_op_vars(iface, &s.name);
@@ -172,7 +165,7 @@ impl Cx {
                 }
                 writes_back = vars.contains(&0);
                 changed = vars;
-                self.function_in(m, &c, &subst, scope)?
+                self.forwarded(m, &c, &subst, scope)?
             };
             let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
             b.func_mut().kind = FuncKind::Method;
@@ -183,8 +176,18 @@ impl Cx {
             let recv = if writes_back {
                 args[0]
             } else {
-                b.emit(Op::Load, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
-                    .expect("load")
+                let v = b
+                    .emit(Op::Load, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
+                    .expect("load");
+                // A `move fn` operation's implementation takes its receiver, which the interface
+                // value keeps owning: the entry hands it a copy (the checker requires one).
+                if b.m.funcs[callee.index()].params[0].mode == Mode::Move && b.m.needs_drop(data_ty)
+                {
+                    b.emit(Op::Clone, &[v], Imm::None, Some(data_ty))
+                        .expect("copy receiver")
+                } else {
+                    v
+                }
             };
             let mut call_args = vec![recv];
             // A `Self` argument is an interface value holding the implementing type: another type
@@ -230,6 +233,7 @@ impl Cx {
                 call_args.push(inner);
             }
             let r = b.call(callee, &call_args);
+            b.release_lent_params();
             let r = own_result(&mut b, callee, r, s.ret);
             b.ret(Some(r));
             let f = b.into_func();
@@ -554,14 +558,7 @@ fn build_builtin_compare(
     own_table: VtableId,
 ) -> ms_mir::ir::FuncId {
     use ms_mir::ir::{Cc, ExternDef};
-    let mut ps = vec![Param {
-        ty: MTy::PTR,
-        mode: Mode::Borrow,
-    }];
-    ps.extend(sig.params.iter().map(|t| Param {
-        ty: *t,
-        mode: Mode::Borrow,
-    }));
+    let ps = crate::closure::indirect_params(&sig.params, sig.owned);
     let mut b = FuncBuilder::new(m, "vt.compare", ps, sig.ret);
     b.func_mut().kind = FuncKind::Method;
     b.func_mut().linkage = Linkage::Internal;

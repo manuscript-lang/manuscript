@@ -15,6 +15,25 @@ use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use std::rc::Rc;
 
+/// The parameters of code reached through a function value or an interface table: the
+/// environment (or receiver data) pointer, then `params`, owned where `owned` says (see
+/// [`ms_mir::types::owns`]). An owned parameter is the callee's to keep or drop.
+pub(crate) fn indirect_params(params: &[MTy], owned: u64) -> Vec<Param> {
+    let mut ps = vec![Param {
+        ty: MTy::PTR,
+        mode: Mode::Borrow,
+    }];
+    ps.extend(params.iter().enumerate().map(|(i, t)| Param {
+        ty: *t,
+        mode: if ms_mir::types::owns(owned, i) {
+            Mode::Move
+        } else {
+            Mode::Borrow
+        },
+    }));
+    ps
+}
+
 /// The receiver a method value's closure is built from.
 #[derive(Clone, Copy)]
 enum Receiver {
@@ -55,7 +74,7 @@ impl FnLower<'_> {
         };
         let captures = self.hir.captures(e);
         let fty = self.emty(e)?;
-        let TyKind::Fn(params, ret) = self.b.m.types.kind(fty).clone() else {
+        let TyKind::Fn(params, ret, owned) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("lambda without function type"));
         };
         let mut cap_tys = Vec::new();
@@ -158,14 +177,7 @@ impl FnLower<'_> {
             cap_vals.push(self.owned_boundary(x));
             self.moved_closer(b.uid, e);
         }
-        let mut ps = vec![Param {
-            ty: MTy::PTR,
-            mode: Mode::Borrow,
-        }];
-        ps.extend(params.iter().map(|t| Param {
-            ty: *t,
-            mode: Mode::Borrow,
-        }));
+        let ps = crate::closure::indirect_params(&params, owned);
         // Named for the function that makes it, so a stack, fault or profile says where it is.
         let name = format!("{}.closure", self.b.func_mut().name);
         let mut f = ms_mir::ir::Func::new(&name, ps, ret);
@@ -252,16 +264,16 @@ impl FnLower<'_> {
                 ));
             }
         }
-        let fid = self.instance(&callee, &subst)?;
-        if let Some(thunk) = self.default_thunk(e, fid, &callee, &subst, None, None)? {
-            let fty = self.emty(e)?;
+        let fid = self.forwarded(&callee, &subst)?;
+        let fty = self.function_value_ty(e, fid, 0)?;
+        if let Some(thunk) = self.default_thunk(fty, fid, &callee, &subst, None, None)? {
             let v = self
                 .b
                 .emit(Op::ClosureNew, &[], Imm::Func(thunk), Some(fty))
                 .expect("closure");
             return Ok(Val { v, own: true });
         }
-        let key = HelperKey::Thunk(fid);
+        let key = HelperKey::Thunk(fid, fty);
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
@@ -273,17 +285,18 @@ impl FnLower<'_> {
                         "a function value returns a non-Clonable borrow; call the function directly",
                     ));
                 }
-                let mut ps = vec![Param {
-                    ty: MTy::PTR,
-                    mode: Mode::Borrow,
-                }];
-                ps.extend(proto.params.iter().cloned());
+                let TyKind::Fn(_, _, owned) = self.b.m.types.kind(fty).clone() else {
+                    return Err(Error::new("function value without function type"));
+                };
+                let ptys: Vec<MTy> = proto.params.iter().map(|p| p.ty).collect();
+                let ps = indirect_params(&ptys, owned);
                 let mut b = FuncBuilder::new(self.b.m, &proto.name, ps, proto.ret);
                 b.func_mut().kind = FuncKind::Closure {
                     captures: Vec::new(),
                 };
                 let args: Vec<_> = b.params().into_iter().skip(1).collect();
                 let r = b.call(fid, &args);
+                b.release_lent_params();
                 let r = if copy_result {
                     b.emit(Op::Clone, &[r], Imm::Int(1), Some(proto.ret))
                         .expect("copy result")
@@ -297,7 +310,6 @@ impl FnLower<'_> {
                 id
             }
         };
-        let fty = self.emty(e)?;
         let v = self
             .b
             .emit(Op::ClosureNew, &[], Imm::Func(thunk), Some(fty))
@@ -305,20 +317,43 @@ impl FnLower<'_> {
         Ok(Val { v, own: true })
     }
 
+    /// The function type of a named function or method used as a value: the checked type, also
+    /// passing owned each parameter the forwarded instance `fid` takes (after `skip` leading
+    /// receiver parameters). The checker accepts such a value only where the expected type says
+    /// `move` there, which this type then matches.
+    fn function_value_ty(&mut self, e: &Expr, fid: FuncId, skip: usize) -> Result<MTy, Error> {
+        let fty = self.emty(e)?;
+        let TyKind::Fn(ps, ret, owned) = self.b.m.types.kind(fty).clone() else {
+            return Ok(fty);
+        };
+        let mut taken = owned;
+        for (i, p) in self.b.m.funcs[fid.index()]
+            .params
+            .iter()
+            .skip(skip)
+            .enumerate()
+        {
+            if p.mode == Mode::Move && i < 64 && self.needs_drop(p.ty) {
+                taken |= 1 << i;
+            }
+        }
+        Ok(self.b.m.types.func_owning(ps, ret, taken))
+    }
+
     /// The thunk of a source callable whose function type takes some parameters as optionals
     /// (the omittable ones): it fills each omitted parameter with its default. `None` when the
     /// function type matches the callable's own parameters.
+    #[allow(clippy::too_many_arguments)]
     fn default_thunk(
         &mut self,
-        e: &Expr,
+        fty: MTy,
         fid: FuncId,
         callee: &Rc<ms_check::api::hir::Callable>,
         subst: &ct::Subst,
         recv: Option<MTy>,
         shared: Option<MTy>,
     ) -> Result<Option<FuncId>, Error> {
-        let fty = self.emty(e)?;
-        let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
+        let TyKind::Fn(ptys, ret, owned) = self.b.m.types.kind(fty).clone() else {
             return Ok(None);
         };
         let own: Vec<MTy> = self.b.m.funcs[fid.index()]
@@ -336,7 +371,7 @@ impl FnLower<'_> {
             shared: shared.is_some(),
         };
         Ok(Some(self.queue_default_thunk(
-            key, fid, &ptys, ret, callee, subst, recv, shared,
+            key, fid, &ptys, owned, ret, callee, subst, recv, shared,
         )))
     }
 
@@ -348,6 +383,7 @@ impl FnLower<'_> {
         key: HelperKey,
         fid: FuncId,
         ptys: &[MTy],
+        owned: u64,
         ret: MTy,
         callee: &Rc<ms_check::api::hir::Callable>,
         subst: &ct::Subst,
@@ -357,14 +393,7 @@ impl FnLower<'_> {
         if let Some(t) = self.cx.helpers.get(&key) {
             return *t;
         }
-        let mut ps = vec![Param {
-            ty: MTy::PTR,
-            mode: Mode::Borrow,
-        }];
-        ps.extend(ptys.iter().map(|t| Param {
-            ty: *t,
-            mode: Mode::Borrow,
-        }));
+        let ps = crate::closure::indirect_params(ptys, owned);
         let mut f = ms_mir::ir::Func::new(&self.b.m.funcs[fid.index()].name.clone(), ps, ret);
         f.kind = FuncKind::Closure {
             captures: recv.into_iter().collect(),
@@ -423,7 +452,7 @@ impl FnLower<'_> {
             });
         }
         let key = HelperKey::DirectDefault(fid);
-        let thunk = self.queue_default_thunk(key, fid, &ptys, ret, c, subst, None, None);
+        let thunk = self.queue_default_thunk(key, fid, &ptys, 0, ret, c, subst, None, None);
         let fty = self.b.m.types.func(ptys.clone(), ret);
         let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
         for a in view.arguments.iter() {
@@ -562,19 +591,13 @@ impl FnLower<'_> {
         name: &str,
         fid: FuncId,
         params: &[MTy],
+        owned: u64,
         ret: MTy,
     ) -> FuncId {
         if let Some(t) = self.cx.helpers.get(&key) {
             return *t;
         }
-        let mut ps = vec![Param {
-            ty: MTy::PTR,
-            mode: Mode::Borrow,
-        }];
-        ps.extend(params.iter().map(|t| Param {
-            ty: *t,
-            mode: Mode::Borrow,
-        }));
+        let ps = crate::closure::indirect_params(params, owned);
         let mut b = FuncBuilder::new(self.b.m, &format!("<{name}>"), ps, ret);
         b.func_mut().kind = FuncKind::Closure {
             captures: vec![MTy::PTR],
@@ -586,6 +609,7 @@ impl FnLower<'_> {
         let mut all = vec![slot];
         all.extend_from_slice(&args[1..]);
         let r = b.call(fid, &all);
+        b.release_lent_params();
         b.ret(Some(r));
         let f = b.into_func();
         let id = self.b.m.add_func(f);
@@ -598,8 +622,8 @@ impl FnLower<'_> {
         if let Some(value) = self.bound_alias_method(e, left, m)? {
             return Ok(value);
         }
-        let fty = self.emty(e)?;
-        let TyKind::Fn(params, ret) = self.b.m.types.kind(fty).clone() else {
+        let mut fty = self.emty(e)?;
+        let TyKind::Fn(params, ret, mut owned) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("method value without function type"));
         };
         let recv_ty = self.ety(left);
@@ -639,14 +663,7 @@ impl FnLower<'_> {
                 let thunk = match self.cx.helpers.get(&key) {
                     Some(t) => *t,
                     None => {
-                        let mut ps = vec![Param {
-                            ty: MTy::PTR,
-                            mode: Mode::Borrow,
-                        }];
-                        ps.extend(params.iter().map(|t| Param {
-                            ty: *t,
-                            mode: Mode::Borrow,
-                        }));
+                        let ps = crate::closure::indirect_params(&params, owned);
                         let mut f = ms_mir::ir::Func::new(&format!("<{name}>"), ps, ret);
                         f.kind = FuncKind::Closure {
                             captures: vec![held_ty],
@@ -683,14 +700,7 @@ impl FnLower<'_> {
                 let thunk = match self.cx.helpers.get(&key) {
                     Some(t) => *t,
                     None => {
-                        let mut ps = vec![Param {
-                            ty: MTy::PTR,
-                            mode: Mode::Borrow,
-                        }];
-                        ps.extend(params.iter().map(|t| Param {
-                            ty: *t,
-                            mode: Mode::Borrow,
-                        }));
+                        let ps = crate::closure::indirect_params(&params, owned);
                         let mut b = FuncBuilder::new(self.b.m, &format!("<{name}>"), ps, ret);
                         b.func_mut().kind = FuncKind::Closure {
                             captures: vec![MTy::PTR],
@@ -703,6 +713,7 @@ impl FnLower<'_> {
                             .emit(Op::Load, &[ptr], Imm::Ty(recv_mty), Some(recv_mty))
                             .expect("load");
                         let r = b.call_method(iface, k as u32, this, &args[1..]);
+                        b.release_lent_params();
                         b.ret(Some(r));
                         let f = b.into_func();
                         let id = self.b.m.add_func(f);
@@ -770,7 +781,11 @@ impl FnLower<'_> {
             if vars.iter().any(|v| *v != 0) {
                 return Err(Error::new("method value with changed parameters"));
             }
-            let fid = self.instance(&c, &subst)?;
+            let fid = self.forwarded(&c, &subst)?;
+            fty = self.function_value_ty(e, fid, 1)?;
+            if let TyKind::Fn(_, _, taken) = self.b.m.types.kind(fty) {
+                owned = *taken;
+            }
             let changes = !vars.is_empty();
             let recv = self.method_receiver(e, left, changes)?;
             if let Receiver::Value(v) = recv
@@ -782,12 +797,12 @@ impl FnLower<'_> {
                 // The closure holds the variable's address: a thunk with defaults reads the
                 // current value, and one of a changing method changes it in place.
                 let ptr_ty = Some(MTy::PTR);
-                let thunk = self.default_thunk(e, fid, &c, &subst, ptr_ty, Some(recv_mty))?;
+                let thunk = self.default_thunk(fty, fid, &c, &subst, ptr_ty, Some(recv_mty))?;
                 let thunk = match (thunk, changes) {
                     (Some(t), _) => Some(t),
                     (None, true) => {
                         let key = HelperKey::BoundSharedFunc { fid, fty };
-                        Some(self.shared_method_thunk(key, &name, fid, &params, ret))
+                        Some(self.shared_method_thunk(key, &name, fid, &params, owned, ret))
                     }
                     (None, false) => None,
                 };
@@ -799,7 +814,7 @@ impl FnLower<'_> {
                     return Ok(Val { v, own: true });
                 }
             } else if let Some(thunk) =
-                self.default_thunk(e, fid, &c, &subst, Some(recv_mty), None)?
+                self.default_thunk(fty, fid, &c, &subst, Some(recv_mty), None)?
             {
                 if !changes {
                     self.own_receiver_capture(thunk, recv)?;
@@ -829,14 +844,7 @@ impl FnLower<'_> {
                     Ok((fid, _)) => self.borrowed_result_copy(fid, ret, &name)?,
                     Err(_) => false,
                 };
-                let mut ps = vec![Param {
-                    ty: MTy::PTR,
-                    mode: Mode::Borrow,
-                }];
-                ps.extend(params.iter().map(|t| Param {
-                    ty: *t,
-                    mode: Mode::Borrow,
-                }));
+                let ps = crate::closure::indirect_params(&params, owned);
                 let mut b = FuncBuilder::new(self.b.m, &format!("<{name}>"), ps, ret);
                 let held_ty = if addr { MTy::PTR } else { recv_mty };
                 b.func_mut().kind = FuncKind::Closure {
@@ -862,6 +870,9 @@ impl FnLower<'_> {
                     }
                     Ok((fid, true)) => call_changing_receiver(&mut b, fid, this, recv_mty, rest),
                 };
+                if !matches!(callee, Ok((_, true))) {
+                    b.release_lent_params();
+                }
                 let r = if copy_result {
                     b.emit(Op::Clone, &[r], Imm::Int(1), Some(ret))
                         .expect("copy result")
@@ -911,7 +922,7 @@ impl FnLower<'_> {
             ));
         }
         let fty = self.emty(e)?;
-        let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
+        let TyKind::Fn(ptys, ret, owned) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("native function value without function type"));
         };
         let key = HelperKey::NativeThunk {
@@ -921,14 +932,7 @@ impl FnLower<'_> {
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {
-                let mut ps = vec![Param {
-                    ty: MTy::PTR,
-                    mode: Mode::Borrow,
-                }];
-                ps.extend(ptys.iter().map(|t| Param {
-                    ty: *t,
-                    mode: Mode::Borrow,
-                }));
+                let ps = crate::closure::indirect_params(&ptys, owned);
                 let mut f = ms_mir::ir::Func::new(self.syms.str(sym.name), ps, ret);
                 f.kind = FuncKind::Closure {
                     captures: Vec::new(),
@@ -989,7 +993,7 @@ impl FnLower<'_> {
             Receiver::Value(v) => (self.ty_of(v.v), Held::Value),
         };
         let fty = self.emty(e)?;
-        let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
+        let TyKind::Fn(ptys, ret, owned) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("method value without function type"));
         };
         let scope = self
@@ -1007,14 +1011,7 @@ impl FnLower<'_> {
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {
-                let mut ps = vec![Param {
-                    ty: MTy::PTR,
-                    mode: Mode::Borrow,
-                }];
-                ps.extend(ptys.iter().map(|t| Param {
-                    ty: *t,
-                    mode: Mode::Borrow,
-                }));
+                let ps = crate::closure::indirect_params(&ptys, owned);
                 let mut f = ms_mir::ir::Func::new(m.native.text(self.syms), ps, ret);
                 f.kind = FuncKind::Closure {
                     captures: vec![held.capture(rty)],
@@ -1217,7 +1214,7 @@ impl FnLower<'_> {
         let checked = self.ety(callee);
         let declared = &checked.params;
         let ftype = self.ty_of(f.v);
-        let TyKind::Fn(ptys, _) = self.b.m.types.kind(ftype).clone() else {
+        let TyKind::Fn(ptys, _, owned) = self.b.m.types.kind(ftype).clone() else {
             return Err(Error::new("call of a non-function value"));
         };
         let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
@@ -1225,6 +1222,7 @@ impl FnLower<'_> {
         // moves back after the call.
         let mut slots_out: Vec<crate::call::VarArgument> = Vec::new();
         let mut places: Vec<Option<Expr>> = vec![None; ptys.len()];
+        let mut taken = vec![false; ptys.len()];
         for (i, a) in view.arguments.iter().enumerate() {
             let at = declared
                 .iter()
@@ -1262,6 +1260,11 @@ impl FnLower<'_> {
                 None
             };
             let x = self.lift_argument(x, ptys[at]);
+            if ms_mir::types::owns(owned, at) {
+                // The callee takes the argument. Until every argument is evaluated it stays this
+                // statement's temporary (an early exit drops or closes it); then it is handed over.
+                taken[at] = true;
+            }
             slots[at] = Some(if let Some(kind) = closer {
                 let kind = if self.ty_of(x.v) != payload_ty {
                     self.optional_resource_closer(self.ty_of(x.v), payload_ty, kind)
@@ -1281,6 +1284,7 @@ impl FnLower<'_> {
             .and_then(|d| d.missing_value_at_call());
         for (i, s) in slots.into_iter().enumerate() {
             args.push(match s {
+                Some(v) if taken[i] => self.hand_over(Val { v, own: false }),
                 Some(v) => v,
                 None if missing_value == Some(declared[i].name)
                     && declared[i].ty.is(Builtin::Optional)
@@ -1337,6 +1341,7 @@ fn call_changing_receiver(
     let mut all = vec![slot];
     all.extend_from_slice(rest);
     let r = b.call(fid, &all);
+    b.release_lent_params();
     let take = if drops { Op::Take } else { Op::Load };
     let after = b
         .emit(take, &[slot], Imm::Ty(recv_ty), Some(recv_ty))
@@ -1439,7 +1444,7 @@ fn lower_default_thunk(
             val
         });
     }
-    let fid = fl.instance(&callee, &job.subst)?;
+    let fid = fl.forwarded(&callee, &job.subst)?;
     let mut vals: Vec<Value> = Vec::new();
     for s in slots.into_iter().flatten() {
         vals.push(fl.borrow(s));
@@ -1448,7 +1453,9 @@ fn lower_default_thunk(
         (Some(_), true) if slot.is_some() => {
             let mut all = vec![slot.expect("slot")];
             all.extend(vals);
-            fl.b.call(fid, &all)
+            let r = fl.b.call(fid, &all);
+            fl.b.release_lent_params();
+            r
         }
         (Some(this), true) => {
             let recv_ty = fl.ty_of(this.v);
@@ -1457,7 +1464,9 @@ fn lower_default_thunk(
         _ => {
             let mut all: Vec<Value> = recv.iter().map(|r| r.v).collect();
             all.extend(vals);
-            fl.b.call(fid, &all)
+            let r = fl.b.call(fid, &all);
+            fl.b.release_lent_params();
+            r
         }
     };
     // A callee returning a borrow points into its receiver or a holder: copy it before the
@@ -1515,7 +1524,15 @@ fn lower_iface_thunk(
     let func = job.method.decl.as_ref().and_then(|d| d.func());
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
-    let vals: Vec<Value> = args.iter().map(|a| fl.borrow(a.val)).collect();
+    let owned = fl.b.m.ifaces[job.iface.index()].methods[job.index as usize].owned;
+    let mut vals: Vec<Value> = Vec::new();
+    for (i, a) in args.iter().enumerate() {
+        vals.push(if ms_mir::types::owns(owned, i) {
+            fl.hand_over(a.val)
+        } else {
+            fl.borrow(a.val)
+        });
+    }
     let r = fl.b.call_method(job.iface, job.index, this, &vals);
     let out = fl.val(r, true);
     fl.emit_return(Some(out));
@@ -1596,6 +1613,12 @@ fn lower_native_thunk(
 }
 
 impl FnLower<'_> {
+    /// Whether `v` is a parameter of the function being built that it receives owned.
+    pub(crate) fn owned_param(&mut self, v: Value) -> bool {
+        let at = self.b.params().iter().position(|p| *p == v);
+        at.is_some_and(|i| self.b.func_mut().params[i].mode == Mode::Move)
+    }
+
     /// The arguments of a native called through a function value: a parameter the function type
     /// made optional is read as its supplied value or the declared default.
     pub(crate) fn thunk_native_args(
@@ -1657,7 +1680,11 @@ impl FnLower<'_> {
                         .ok_or_else(|| Error::new("omitted parameter without a default"))
                 })?
             } else {
-                Val { v: *v, own: false }
+                // A parameter the function type passes owned is the thunk's to hand on.
+                Val {
+                    v: *v,
+                    own: self.owned_param(*v),
+                }
             };
             args.push(crate::native::NArg {
                 name: p.name,
@@ -1962,6 +1989,9 @@ fn lower_lambda_body(
             let d = default.expect("lifted parameter has a default");
             let x = fl.unlift_param(*v, &mut |s| s.expr(d))?;
             fl.bind_local(b, x);
+        } else if fl.owned_param(*v) && fl.holds(fl.ty_of(*v)) {
+            // The function type passes this parameter owned: the lambda keeps or drops it.
+            fl.bind_owned_param(b, *v)?;
         } else if mutated.contains(&b.uid) && fl.needs_drop(fl.ty_of(*v)) {
             // A parameter the body changes is the lambda's own copy.
             fl.bind_local(b, Val { v: *v, own: false });
@@ -2201,7 +2231,7 @@ impl FnLower<'_> {
         if want == have {
             return Ok(x);
         }
-        let (TyKind::Fn(hp, hr), TyKind::Fn(wp, wr)) = (
+        let (TyKind::Fn(hp, hr, held_owned), TyKind::Fn(wp, wr, owned)) = (
             self.b.m.types.kind(have).clone(),
             self.b.m.types.kind(want).clone(),
         ) else {
@@ -2215,7 +2245,16 @@ impl FnLower<'_> {
         if !lifts {
             return Ok(x);
         }
-        self.make_fn_adapter(x, have, want, &wp, wr, Vec::new())
+        // A function that lends a parameter stands where one takes it (the adapter takes the
+        // argument and drops it after the call); never the other way round.
+        if held_owned & !owned != 0 {
+            return Err(Error::new(format!(
+                "a function value of type {} that takes a parameter used where {} lends it",
+                ms_mir::print::ty_str(self.b.m, have),
+                ms_mir::print::ty_str(self.b.m, want),
+            )));
+        }
+        self.make_fn_adapter(x, have, want, Vec::new())
     }
 
     /// A function value that only reads a parameter, used where its type may change it
@@ -2230,7 +2269,7 @@ impl FnLower<'_> {
         let want_ty = self.hir.ty(e);
         let want = self.mty(&want_ty)?;
         let have = self.ty_of(x.v);
-        let (TyKind::Fn(_, _), TyKind::Fn(wp, wr)) = (
+        let (TyKind::Fn(..), TyKind::Fn(..)) = (
             self.b.m.types.kind(have).clone(),
             self.b.m.types.kind(want).clone(),
         ) else {
@@ -2242,7 +2281,7 @@ impl FnLower<'_> {
             .zip(&src.params)
             .map(|(w, s)| w.mutable && !s.mutable)
             .collect();
-        self.make_fn_adapter(x, have, want, &wp, wr, reads)
+        self.make_fn_adapter(x, have, want, reads)
     }
 
     fn make_fn_adapter(
@@ -2250,18 +2289,12 @@ impl FnLower<'_> {
         x: Val,
         have: MTy,
         want: MTy,
-        wp: &[MTy],
-        wr: MTy,
         reads: Vec<bool>,
     ) -> Result<Val, Error> {
-        let mut ps = vec![Param {
-            ty: MTy::PTR,
-            mode: Mode::Borrow,
-        }];
-        ps.extend(wp.iter().map(|t| Param {
-            ty: *t,
-            mode: Mode::Borrow,
-        }));
+        let TyKind::Fn(wp, wr, owned) = self.b.m.types.kind(want).clone() else {
+            return Err(Error::new("a function adapter without a function type"));
+        };
+        let ps = indirect_params(&wp, owned);
         let mut f = ms_mir::ir::Func::new("<function adapter>", ps, wr);
         // A held closure that points into this frame stays here: the adapter reads it through
         // a pointer to a slot, and is itself scoped.
@@ -2335,12 +2368,14 @@ fn lower_fn_adapter(
             fl.b.emit(Op::Load, &[held], Imm::Ty(have), Some(have))
                 .expect("load");
     }
-    let TyKind::Fn(hp, _) = fl.b.m.types.kind(have).clone() else {
+    let TyKind::Fn(hp, _, held_owned) = fl.b.m.types.kind(have).clone() else {
         return Err(Error::new("function adapter without a function type"));
     };
     let mut args = Vec::new();
     for (i, h) in hp.iter().enumerate() {
         let v = params[i + 1];
+        // An argument the adapter takes and the held function lends is dropped at the end.
+        let mine = fl.b.func_mut().params[i + 1].mode == Mode::Move;
         if reads.get(i).copied().unwrap_or(false) {
             // The caller's slot holds the value; the held function only reads it.
             let loaded =
@@ -2350,13 +2385,23 @@ fn lower_fn_adapter(
             continue;
         }
         if fl.ty_of(v) == *h {
-            args.push(v);
+            // An argument the adapter takes and the held function lends drops at the return.
+            let lent = mine && !ms_mir::types::owns(held_owned, i);
+            args.push(if lent {
+                fl.borrow(Val { v, own: true })
+            } else {
+                v
+            });
             continue;
         }
-        // A function value borrows its arguments; the adapter's copy is checked by `require_clonable`.
-        let o = fl.clone_value(v);
+        // A taken argument is wrapped as it is; a lent one is copied (checked by `require_clonable`).
+        let o = if mine { v } else { fl.clone_value(v) };
         let some = fl.b.opt_some(o);
-        args.push(fl.borrow(Val { v: some, own: true }));
+        if ms_mir::types::owns(held_owned, i) {
+            args.push(some);
+        } else {
+            args.push(fl.borrow(Val { v: some, own: true }));
+        }
     }
     let r = fl.b.call_ind(held, &args);
     let out = fl.val(r, true);

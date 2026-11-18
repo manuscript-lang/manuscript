@@ -202,7 +202,7 @@ fn sites(m: &Module, cx: &Cx, f: &Func, tags: &HashMap<Value, (i64, i64)>) -> Op
         }
         let count = f.blocks[bi].insts.len();
         for (k, i) in f.blocks[bi].insts.iter().enumerate() {
-            let modes = arg_modes(m, i);
+            let modes = arg_modes(m, f, i);
             for (a, mode) in i.args.iter().zip(&modes) {
                 if *mode == Mode::Move {
                     live.remove(&a.0);

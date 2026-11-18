@@ -70,11 +70,14 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
                 out.push('>');
             }
         }
-        TyKind::Fn(ps, r) => {
+        TyKind::Fn(ps, r, owned) => {
             out.push_str("fn(");
             for (i, a) in ps.iter().enumerate() {
                 if i > 0 {
                     out.push_str(", ");
+                }
+                if crate::types::owns(*owned, i) {
+                    out.push_str("move ");
                 }
                 write_ty(m, *a, out);
             }
@@ -164,7 +167,19 @@ pub fn print_module(m: &Module) -> String {
             .methods
             .iter()
             .map(|s| {
-                let ps: Vec<String> = s.params.iter().map(|t| ty_str(m, *t)).collect();
+                let ps: Vec<String> = s
+                    .params
+                    .iter()
+                    .enumerate()
+                    .map(|(k, t)| {
+                        let own = if crate::types::owns(s.owned, k) {
+                            "move "
+                        } else {
+                            ""
+                        };
+                        format!("{own}{}", ty_str(m, *t))
+                    })
+                    .collect();
                 format!("{}({}) -> {}", s.name, ps.join(", "), ty_str(m, s.ret))
             })
             .collect();

@@ -62,9 +62,17 @@ fn reusable_passthrough_requires_clonable_receiver() {
 }
 
 #[test]
-fn clonable_bound_methods_keep_reusable_semantics() {
-    let got = diagnostics(include_str!("wrapper_passthrough/accept-clonable-bound.ms"));
-    assert!(got.is_empty(), "{got:?}");
+fn method_values_of_consuming_methods_are_rejected_even_when_clonable() {
+    // `or_else` and `to_optional` take their receiver; a function value could be called again,
+    // so it would copy the receiver per call. The lambda that writes `.clone()` states the copy.
+    let got = diagnostics(include_str!(
+        "wrapper_passthrough/reject-consuming-bound.ms"
+    ));
+    let rejected = got
+        .iter()
+        .filter(|d| d.contains("takes its receiver"))
+        .count();
+    assert_eq!(rejected, 3, "{got:?}");
 }
 
 #[test]
@@ -114,7 +122,9 @@ fn preserved_bound_payloads_require_clonable() {
         let got = diagnostics(body);
         assert!(
             got.iter()
-                .any(|d| d.contains("method value keeps its receiver") && d.contains("clone")),
+                .any(|d| (d.contains("method value keeps its receiver")
+                    || d.contains("takes its receiver"))
+                    && d.contains("clone")),
             "{body}: {got:?}"
         );
     }

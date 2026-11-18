@@ -118,7 +118,7 @@ test "Result preserves unconstrained payloads and success-only composition":
 	bool_result: Bool!Error := ok(false)
 	expect_false(bool_result.get_or(true))?
 
-test "Result fallbacks are eager or lazy and bound methods keep receivers":
+test "Result fallbacks are eager or lazy, and closures copy their receivers":
 	var counter = Counter(0)
 	success: Int!Counter := ok(0)
 	failure: Int!Counter := error(counter.clone())
@@ -126,7 +126,8 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
 
 	create := fn(cause: Counter) Int: 12
 	unexpected := fn(cause: Counter) Int: panic("fallback must stay lazy")
-	lazy := success.clone().get_or_else
+	// `get_or_else` takes its receiver, so a reusable value states the copy.
+	lazy := fn(fallback: fn(Counter) Int) Int: success.clone().get_or_else(fallback)
 	expect_false(lazy(unexpected) != 0)?
 	expect_false(failure.clone().get_or_else(create) != 12)?
 
@@ -136,10 +137,8 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
 	expect_equal(failure.err().calls, 0)?
 	expect_equal(extracted.calls, 3)?
 
-	bound_map := success.clone().map[String]
-	bound_chain := success.clone().and_then[String]
-	expect_equal(bound_map(fn n: n.to_string()).get(), "0")?
-	expect_equal(bound_chain(fn n: ok(n.to_string())).get(), "0")?
+	expect_equal(success.clone().map(fn n: n.to_string()).get(), "0")?
+	expect_equal(success.clone().and_then(fn n: ok(n.to_string())).get(), "0")?
 
 test "Optional composition keeps nesting identity and lazy callback counts":
 	counter := Counter(0)
@@ -166,8 +165,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 
 	create := fn() Counter?: Counter(5)
 	unexpected_create := fn() Counter?: panic("fallback must stay lazy")
-	bound := present.clone().or_else
-	expect_equal(bound(unexpected_create).get().calls, 0)?
+	expect_equal(present.clone().or_else(unexpected_create).get().calls, 0)?
 
 	fallback := missing.clone().or_else(create)
 	expect_equal(fallback.get().calls, 5)?
@@ -175,11 +173,8 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	nested := present.clone().map(fn(unused: Counter) Int?: none)
 	expect_false(not (nested.is_some()) or not (nested.get().is_none()))?
 
-	bound_map := mapped.clone().map[String]
-	expect_equal(bound_map(fn value: value.calls.to_string()).get(), "1")?
-
-	bound_chain := missing.clone().and_then[String]
-	expect_false(not (bound_chain(fn unused: "unexpected").is_none()))?
+	expect_equal(mapped.clone().map(fn value: value.calls.to_string()).get(), "1")?
+	expect_false(not (missing.clone().and_then[String](fn unused: "unexpected").is_none()))?
 
 test "Map filter copies ordered membership and get_or never inserts":
 	var counter = Counter(0)

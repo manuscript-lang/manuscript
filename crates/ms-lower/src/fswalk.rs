@@ -170,7 +170,7 @@ impl FnLower<'_> {
             mode: Mode::Borrow,
         }));
         // The caller's parameter types, read before the builder borrows the module.
-        let TyKind::Fn(user_params, _) = self.b.m.types.kind(user_ty).clone() else {
+        let TyKind::Fn(user_params, _, _) = self.b.m.types.kind(user_ty).clone() else {
             return Err(Error::new("a predicate is not a function"));
         };
         let entry = (!copy)

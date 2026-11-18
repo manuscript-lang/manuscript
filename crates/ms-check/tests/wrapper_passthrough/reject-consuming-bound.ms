@@ -19,3 +19,7 @@ fn data() Int:
     first := recover(fn: none)
     second := recover(fn: none)
     return first.get().length() + second.get().length() + value.get().length()
+
+fn bound_generic[T: Clonable](value: T!Int) T?:
+    convert := value.to_optional
+    return convert()

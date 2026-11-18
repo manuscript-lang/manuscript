@@ -444,7 +444,7 @@ fn candidate(
             *e = (*e).min(ii);
             continue;
         }
-        let modes = crate::verify::arg_modes(m, i);
+        let modes = crate::verify::arg_modes(m, f, i);
         if i.args
             .iter()
             .zip(modes)

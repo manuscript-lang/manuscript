@@ -133,7 +133,7 @@ impl Builder<'_> {
             TyKind::Opt(t) => format!("{}?", self.name(*t)),
             TyKind::Obj(n, args) if args.is_empty() => n.name().to_string(),
             TyKind::Obj(n, args) => format!("{}[{}]", n.name(), list(args)),
-            TyKind::Fn(params, ret) => format!("Fn({}) {}", list(params), self.name(*ret)),
+            TyKind::Fn(params, ret, _) => format!("Fn({}) {}", list(params), self.name(*ret)),
             TyKind::Iface(i) => self.m.ifaces[i.index()].name.clone(),
         }
     }

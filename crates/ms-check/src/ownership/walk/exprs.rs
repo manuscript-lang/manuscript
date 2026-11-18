@@ -563,19 +563,18 @@ impl Walker<'_> {
         // assignment to itself, which refills it (`exchange = wrap(exchange)`).
         let var_param =
             parameter.is_some() && perm == Perm::Mutable && self.self_assign != Some(b.uid);
-        if role == Role::LambdaParameter
-            && self.cx.classes.class(self.syms, &b.ty) == Class::Resource
-        {
-            // A function value is called with its arguments borrowed, so taking one would copy it,
-            // and the caller still closes the original.
+        let lent = role == Role::LambdaParameter && !self.owned_lambda_params.contains(&b.uid);
+        if lent && self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
+            // The function type lends this argument, so taking it would copy it, and the
+            // caller still closes the original.
             self.error(
                 e.pos,
-                format!("cannot move `{name_t}` out: a function value only borrows its arguments, and the resource `{}` stays with its caller, which closes it; use `{name_t}` in place here", b.ty.display(self.syms), name_t = self.syms.str(name)),
+                format!("cannot move `{name_t}` out: this function type lends its argument, and the resource `{}` stays with its caller, which closes it; use `{name_t}` in place here, or declare the parameter `move` in the function type", b.ty.display(self.syms), name_t = self.syms.str(name)),
             );
             self.record(e.id, b, Access::Move);
             return;
         }
-        if role == Role::LambdaParameter {
+        if lent {
             // The borrowed argument is copied: in generic code its type must be `Clonable`.
             let t = b.ty.clone();
             self.require_clonable(

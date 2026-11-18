@@ -936,10 +936,23 @@ impl InstCheck<'_, '_> {
                     }
                 }
                 let ps: Vec<Ty> = callee.params[1..].iter().map(|p| p.ty).collect();
-                match self.res.map(|r| self.m.types.kind(r)) {
-                    Some(TyKind::Fn(fp, fr)) if *fp == ps && *fr == callee.ret => Ok(()),
-                    _ => Err("closure.new yields a function type matching the closure code".into()),
+                let Some(TyKind::Fn(fp, fr, owned)) = self.res.map(|r| self.m.types.kind(r)) else {
+                    return Err("closure.new yields a function type".into());
+                };
+                if *fp != ps || *fr != callee.ret {
+                    return Err(
+                        "closure.new yields a function type matching the closure code".into(),
+                    );
                 }
+                for (i, p) in callee.params[1..].iter().enumerate() {
+                    if (p.mode == Mode::Move) != crate::types::owns(*owned, i) {
+                        return Err(format!(
+                            "{} parameter {i} must be `move` exactly where its function type passes it owned",
+                            callee.name
+                        ));
+                    }
+                }
+                Ok(())
             }
             Op::ClosureCap => {
                 self.arity(1)?;
@@ -1063,7 +1076,7 @@ impl InstCheck<'_, '_> {
                 if self.n == 0 {
                     return Err("call.ind needs a closure".into());
                 }
-                let TyKind::Fn(ps, r) = self.m.types.kind(self.t(0)) else {
+                let TyKind::Fn(ps, r, _) = self.m.types.kind(self.t(0)) else {
                     return Err("operand 0 must be a closure".into());
                 };
                 if self.n - 1 != ps.len() {

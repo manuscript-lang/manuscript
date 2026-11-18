@@ -459,7 +459,7 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
         finish(cx, st, inst.args[0]);
         return Ok(());
     }
-    consume_args(m, f, cx, st, &inst.args, &arg_modes(m, inst))?;
+    consume_args(m, f, cx, st, &inst.args, &arg_modes(m, f, inst))?;
     if let (Op::AltTake, Imm::AltField(a, c, i)) = (inst.op, inst.imm)
         && let Some(cur) = st.get(inst.args[0])
         && cx.tags.contains_key(&inst.args[0])
@@ -1024,7 +1024,7 @@ impl Em<'_> {
                 }
                 None => {}
             }
-            let modes = arg_modes(self.m, &inst);
+            let modes = arg_modes(self.m, &*self.f, &inst);
             for (a, mode) in inst.args.iter_mut().zip(&modes) {
                 if *mode == Mode::Move && self.m.needs_drop(self.f.ty(*a)) {
                     *a = self.move_arg(cur, *a);
