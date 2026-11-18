@@ -1059,7 +1059,7 @@ impl Walker<'_> {
                     let (label, other) = (self.operand_text(label), self.operand_text(other));
                     self.error(
                         pos,
-                        format!("{label} of {context} is changed in place but overlaps {other}; a changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first"),
+                        format!("{label} of {context} is moved or changed in place but overlaps {other}; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first"),
                     );
                     return;
                 }
