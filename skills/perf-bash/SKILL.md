@@ -16,3 +16,15 @@ Read [benchmarks and performance](../../wiki/benchmarks-and-performance/index.md
 
 Do not over-index on a few kernels: a fix must help programs in general, with no special case for one benchmark. Perf work covers stdlib and release builds for ordinary engineering tasks.
 Do not fall back to Rust to make a program fast: make Manuscript fast enough, with a general compiler or stdlib change, and take general wins before one-off ones. Everyday data structures (types, enums, generics, collections) must be fast in the general case. Be skeptical of a result that looks too good (a Manuscript win of 2x or more over Rust usually means an unfair baseline). Deleting or replacing code must not regress perf; fast paths are shared MIR operations both backends inline. Run an experiment or spike before a big rewrite. Release builds keep cross-file optimization and the vectorizer.
+
+## Standing rules
+
+Fix root causes with general algorithms and no benchmark hacks. Design data-oriented (flat arrays, indices) and compare against checked C on both Cranelift and LLVM, reading the generated machine code. Never gate or drop a test without the owner's okay. Stack PRs with auto-merge and do not idle on CI. Keep platform parity, add no CI shards, add no dependencies without asking, and keep stdlib work in Manuscript. Say "borrow", never "lend". Add the `in progress` label before fixing an issue and verify every fixed issue closes. Keep going until nothing new is found.
+
+## Coverage (Nov 2026)
+
+Update this list when a round finishes.
+
+- **Covered:** memory and binary size; compile speed; workloads and stdlib hot paths; text and parsing; collections, iterators and generics; concurrency and I/O; MIR passes.
+- **In progress:** generated code vs C.
+- **Not yet covered:** startup time; the FFI and extern boundary; long-running servers (thread churn, parked-task unwind); LLVM on huge functions (#3928); incremental builds; package resolution at scale.
