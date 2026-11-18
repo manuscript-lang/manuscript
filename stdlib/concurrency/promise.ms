@@ -23,6 +23,7 @@ import (
 	msrt_promise_run_watched,
 	msrt_promise_start,
 	msrt_promise_start_here,
+	msrt_promise_start_idle,
 	msrt_promise_start_spread,
 	msrt_promise_take,
 	msrt_promise_wait,
@@ -215,6 +216,15 @@ export fn complete[U](id: Int, result: U!) Void:
 			msrt_promise_put(id, value, 0)
 		error(cause):
 			msrt_promise_put(id, cause, 1)
+
+// Starts `entry` like a `Placement.Here` promise, except that with no other task
+// running it runs in the task that first waits on it, which saves the cost of a task of
+// its own. For operations that do not block for long, such as reading a file; the work
+// keeps the capture rules of `promise`.
+export fn promise_when_idle[U](entry: fn() U!) Promise[U]:
+	id := msrt_promise_new()
+	msrt_promise_start_idle(id, fn: complete(id, entry()))
+	return Promise[U](id: id)
 
 // Runs `entry` as a promise and returns it. The closure follows the capture rules: a
 // promise that is returned or kept owns what `entry` captures (bind a `.clone()` first

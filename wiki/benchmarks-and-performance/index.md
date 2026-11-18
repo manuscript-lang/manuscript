@@ -4,6 +4,7 @@
 
 Perf and agent benchmarks, profiling.
 
+- [A lone file read runs where it is waited on](a-lone-file-read-runs-where-it-is-waited-on.md): `read_file` defers to its waiter when nothing else runs and opens with one `fstat` (3.7 to 2.2 us per small read; Rust 1.8).
 - [A cloned `none` that is only dropped is deleted](an-emptied-local-must-not-clone-or-drop-its-none.md): a stored-to `Result` variable cloned and dropped its emptied slot every pass (48.2M to 5.3M instructions).
 - [A block above the cached range asks for huge pages](a-block-above-the-cached-range-asks-for-huge-pages.md): blocks over 16 MiB take one fault per 4 KiB; `MADV_HUGEPAGE` on their 2 MiB units cut 13,000 faults to 2,300 (c16 86 to 73 ms).
 - [Platform parity means functional parity](platform-parity-means-functional-parity.md): Chinmay's decision, each platform uses its best native fast path, no mirrored mechanism required.

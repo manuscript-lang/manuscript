@@ -21,7 +21,8 @@ import (
 	Promise,
 	PromiseOptions,
 	adopt,
-	promise from "@std/concurrency/promise.ms",
+	promise,
+	promise_when_idle from "@std/concurrency/promise.ms",
 	Closeable, Writable from "@std/core.ms",
 	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
 	BigInt from "@std/math/math.ms",
@@ -710,10 +711,7 @@ fn invalid_input() Error:
 // ms: effect std.fs.read
 export fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]:
 	owned := path.clone()
-	return promise(
-		fn: msstd_fs_read_file(owned, max_bytes),
-		options: PromiseOptions(placement: Placement.Here)
-	)
+	return promise_when_idle(fn: msstd_fs_read_file(owned, max_bytes))
 
 // Returns the target text stored in the symbolic link at `path`, without resolving it.
 // A path that is not a link returns EINVAL.
