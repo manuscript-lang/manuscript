@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/list-sort-on-let.ms:5:5: type: cannot change `items`: `items` is an immutable binding, immutable including its contents; declare it `var items` to change it\n   |\n 5 |     items.sort()\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/list-sort-on-let.ms:5:5: type: cannot change `items`: `items` is an immutable binding, immutable including its contents; declare it `var items` to change it\n   |\n 5 |     items.sort()\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/return-bytes-view.ms:9:18: type: cannot return a view of `bytes`: a returned `Bytes` is owned and a view only borrows `bytes`; copy it with `.clone()` after the view\n   |\n 9 |     return bytes.view(1, 3)\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/return-bytes-view.ms:9:18: type: cannot return a view of `bytes`: a returned `Bytes` is owned and a view only borrows `bytes`; copy it with `.clone()` after the view\n   |\n 9 |     return bytes.view(1, 3)\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

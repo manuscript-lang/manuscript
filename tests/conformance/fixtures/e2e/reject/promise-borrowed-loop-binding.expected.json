@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/promise-borrowed-loop-binding.ms:20:13: type: this promise reads `body`, which ends before `running` does; start the promise from a value that outlives `running`, or wait for it before the block ends\n    |\n 20 |             promise(\n    |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/promise-borrowed-loop-binding.ms:20:13: type: this promise reads `body`, which ends before `running` does; start the promise from a value that outlives `running`, or wait for it before the block ends\n    |\n 20 |             promise(\n    |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

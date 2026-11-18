@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/broken-f-text-interpolation.ms:4:21: parse: expected an expression, found end of line; write a value, name, call, or literal here ('{' at column 13 starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)\n   |\n 4 |     print(f\"{total +}\")\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/broken-f-text-interpolation.ms:4:21: parse: expected an expression, found end of line; write a value, name, call, or literal here ('{' at column 13 starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)\n   |\n 4 |     print(f\"{total +}\")\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

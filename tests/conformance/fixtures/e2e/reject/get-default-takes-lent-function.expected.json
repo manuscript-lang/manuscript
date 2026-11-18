@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/get-default-takes-lent-function.ms:7:21: type: `get_or` would take `fn() String` out of `m.get(..)`, which only borrows an element of `m`; a function value cannot be cloned, so read it in place (`if value := optional:`)\n   |\n 7 |     return m.get(7).get_or(fn: s + \"y\")()\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/get-default-takes-lent-function.ms:7:21: type: `get_or` would take `fn() String` out of `m.get(..)`, which only borrows an element of `m`; a function value cannot be cloned, so read it in place (`if value := optional:`)\n   |\n 7 |     return m.get(7).get_or(fn: s + \"y\")()\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

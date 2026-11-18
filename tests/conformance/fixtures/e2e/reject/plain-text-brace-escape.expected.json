@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/plain-text-brace-escape.ms:4:12: parse: braces are plain characters in \"...\" text, so write { and } without a backslash; only f\"...\" text interpolates and escapes them\n   |\n 4 |     print(\"\\{ \\}\")\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/plain-text-brace-escape.ms:4:12: parse: braces are plain characters in \"...\" text, so write { and } without a backslash; only f\"...\" text interpolates and escapes them\n   |\n 4 |     print(\"\\{ \\}\")\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
