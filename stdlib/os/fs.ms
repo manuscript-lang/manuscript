@@ -614,7 +614,7 @@ fn host() FileSystem:
 /*
 Returns entries matching the include patterns of `options`, sorted by path. `path` is the root; each result's
 `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
-returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
+returns True. A pattern ending in `/` matches directories only, as in a shell. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript

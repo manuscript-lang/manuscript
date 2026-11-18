@@ -69,3 +69,10 @@ test "glob patterns ignore dot segments and never match the root":
 	expect_equal(matched_paths(root, GlobOptions(patterns: ["./*.ms"]))?, ["x.ms"])?
 	expect_equal(matched_paths(root, GlobOptions(patterns: ["a/./z.ms"]))?, ["a/z.ms"])?
 	expect_equal(matched_paths(root, GlobOptions(patterns: ["a//z.ms"]))?, ["a/z.ms"])?
+	expect_equal(matched_paths(root, GlobOptions(patterns: ["*/"]))?, ["a"])?
+	expect_equal(matched_paths(root, GlobOptions(patterns: ["**/"]))?, ["a"])?
+	expect_equal(matched_paths(root, GlobOptions(patterns: ["x.ms/"]))?, [])?
+	expect_equal(
+		matched_paths(root, GlobOptions(patterns: ["**/*"], exclude: ["a/"]))?,
+		["x.ms"],
+	)?
