@@ -277,6 +277,18 @@ pub fn analyze(cx: &Context) -> Outcome {
         self_assign: None,
         entry_lambda: None,
     };
+    // A parameter declared `move` is the callee's even when the body only reads it or ignores it.
+    let declared = Summary::declared(&cx.c.func);
+    if declared.receiver == ParamMode::Move
+        && let Some(b) = &cx.c.self_binding
+    {
+        w.consumed.insert(b.uid);
+    }
+    for (b, (_, mode)) in cx.c.parameters.iter().zip(&declared.params) {
+        if *mode == ParamMode::Move {
+            w.consumed.insert(b.uid);
+        }
+    }
     w.run();
     w.unclosed_resources();
     w.consumed_param_resources();
@@ -527,7 +539,7 @@ impl Walker<'_> {
         self.cx.m.stmt(s).cleanup.is_some()
             || matches!(
                 ty.kind,
-                Kind::Type | Kind::Alternative | Kind::Native | Kind::Variable
+                Kind::Type | Kind::Alternative | Kind::Native | Kind::Variable | Kind::Contract
             )
     }
 
@@ -610,7 +622,10 @@ impl Walker<'_> {
         for b in self.cx.c.parameters.iter().chain(receiver) {
             let tracked = self.consumed.contains(&b.uid)
                 && self.may_close(&b.ty)
-                && matches!(b.ty.kind, Kind::Type | Kind::Alternative | Kind::Native);
+                && matches!(
+                    b.ty.kind,
+                    Kind::Type | Kind::Alternative | Kind::Native | Kind::Variable | Kind::Contract
+                );
             if !tracked {
                 continue;
             }
