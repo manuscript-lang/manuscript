@@ -40,6 +40,10 @@ struct Token {
     kind: Lex,
     previous_fn: bool,
     previous_type: bool,
+    /// The receiver type of `fn Type.method` or `fn Type[T].method`.
+    receiver: bool,
+    /// A capitalized name inside the brackets of such a receiver: a bound on its parameter.
+    bound: bool,
     text: String,
     offset: usize,
 }
@@ -56,7 +60,54 @@ fn lexer_tokens(d: &Document) -> Vec<Token> {
             tokens[i - 1].kind = Lex::Keyword;
         }
     }
+    mark_receivers(&mut tokens);
     tokens
+}
+
+/// Marks the receiver name of `fn [var|move] Type[...].method`: a type, not the function.
+fn mark_receivers(tokens: &mut [Token]) {
+    for i in 0..tokens.len() {
+        if tokens[i].kind != Lex::Name || !receiver_position(tokens, i) {
+            continue;
+        }
+        let mut next = i + 1;
+        let mut bounds = Vec::new();
+        if tokens.get(next).is_some_and(|t| t.text == "[") {
+            let mut depth = 0usize;
+            while let Some(t) = tokens.get(next) {
+                match t.text.as_str() {
+                    "[" => depth += 1,
+                    "]" => depth -= 1,
+                    text if t.kind == Lex::Name
+                        && text.starts_with(|c: char| c.is_ascii_uppercase()) =>
+                    {
+                        bounds.push(next);
+                    }
+                    _ => {}
+                }
+                next += 1;
+                if depth == 0 {
+                    break;
+                }
+            }
+        }
+        if tokens.get(next).is_some_and(|t| t.text == ".") {
+            tokens[i].receiver = true;
+            for at in bounds {
+                tokens[at].bound = true;
+            }
+        }
+    }
+}
+
+/// Whether the name at `i` follows `fn`, optionally with `var` or `move` between.
+fn receiver_position(tokens: &[Token], i: usize) -> bool {
+    let word = |at: usize| tokens.get(at).map(|t| t.text.as_str());
+    match i.checked_sub(1).and_then(word) {
+        Some("fn") => true,
+        Some("var" | "move") => i >= 2 && word(i - 2) == Some("fn"),
+        _ => false,
+    }
 }
 
 fn scanned_tokens(d: &Document) -> Vec<Token> {
@@ -83,6 +134,8 @@ fn scanned_tokens(d: &Document) -> Vec<Token> {
                 kind,
                 previous_fn: previous == Tok::Fn,
                 previous_type: matches!(previous, Tok::Type | Tok::Enum),
+                receiver: false,
+                bound: false,
                 // Keep token text and offsets in the same, original coordinate space.
                 text: d.text[t.pos.offset as usize..t.end.offset as usize].to_string(),
                 offset: t.pos.offset as usize,
@@ -113,6 +166,8 @@ fn scanned_tokens(d: &Document) -> Vec<Token> {
             kind,
             previous_fn: previous == "fn",
             previous_type: matches!(previous, "type" | "enum"),
+            receiver: false,
+            bound: false,
             text: t.text.to_string(),
             offset: t.start,
         });
@@ -193,6 +248,8 @@ pub fn semantic_tokens(
                 kind = 8;
             } else if entry.key.starts_with("case:") {
                 kind = 9;
+            } else if entry.key.starts_with("binding:typeparam:") {
+                kind = 10;
             } else if info
                 .symbol
                 .as_ref()
@@ -246,7 +303,7 @@ pub fn semantic_tokens(
             if token.previous_fn {
                 kind = 5;
             }
-            if token.previous_type {
+            if token.previous_type || token.receiver || (token.bound && kind == 1) {
                 kind = 6;
             }
         }
