@@ -7,10 +7,10 @@
 // process. The cancelled test must end with the same live blocks as the uncancelled run
 // (a test that leaks without cancellation belongs to `leak-check`). A run that ends
 // with more Rust heap blocks (`ms-rt rust heap at exit`) is a `heap:` hit and fails
-// too. A hit must reproduce: it is re-run twice, and counts the uncancelled run itself
-// shows over five runs are not hits. A test whose five runs differ in heap blocks (HTTP
-// reactors of the scheduler threads that served) has its heap checked on one thread. A
-// cancel that ends the process (status 143) prints no counts and is not swept.
+// too; the heap is compared on one scheduler thread (`MS_THREADS=1`), where it is
+// exact, since which threads served is timing. A live-block hit must reproduce: it is
+// re-run twice, and live counts the uncancelled run itself shows over five runs are not
+// hits. A cancel that ends the process (status 143) prints no counts and is not swept.
 // Arguments name the files to sweep (default: tests/conformance/fixtures/e2e/stdlib).
 // SWEEP_MAX_PARKS bounds the parks tried per test (default 64); MS names the ms to run
 // (default target/release/ms). Usage: ms run tools/cancel-sweep.ms [-- files]
@@ -176,29 +176,18 @@ fn sweep(
 			last := if base.parks < most: base.parks else: most
 			reference := base.clone()
 
-			// Counts the uncancelled run shows on any of five runs are normal for this
-			// test: worker threads leave buffers of timing-dependent size behind, which
-			// is not a leaked frame.
+			// Live counts the uncancelled run shows on any of five runs are normal for
+			// this test.
 			var normal_live = [reference.live]
-			var normal_heap = [reference.heap]
-			var ceiling = reference.heap
-			var floor = reference.heap
-
 			for repeat in 0..4:
 				for r in test_run(ms.clone(), file.clone(), base.name.clone(), 0, 0):
-					if r.name == base.name:
-						normal_live.append(r.live)
-						normal_heap.append(r.heap)
-						if r.heap > ceiling: ceiling = r.heap
-						if r.heap < floor: floor = r.heap
+					if r.name == base.name: normal_live.append(r.live)
 
-			// A test whose uncancelled runs end with different Rust heap counts has no
-			// baseline at the default thread count: every scheduler thread that served
-			// an HTTP connection keeps a reactor (about 64 KiB, nine blocks) for the
-			// program's end, and which threads served varies. Its heap is checked on
-			// one thread instead, where the count is exact (`heap_sweep`).
-			noisy := ceiling != floor
-			if noisy: lines = lines.concat(
+			// The Rust heap is compared on one scheduler thread (`heap_sweep`): with
+			// several, which threads served a request (and kept per-thread buffers) is
+			// timing, so five uncancelled runs can agree by chance and a cancelled run
+			// differ by a block.
+			lines = lines.concat(
 				heap_sweep(
 					ms.clone(),
 					f.clone(),
@@ -213,20 +202,10 @@ fn sweep(
 					lines.append("swept")
 
 					var live = hit.live
-					var heap = hit.heap
 					var bad_live = not normal_live.contains(live)
-
-					// A run the cancel made fail also holds the `report` blocks a fault
-					// leaves (measured once); that is the only allowance.
-					var bad_heap = (
-						not noisy
-						and heap > ceiling + (
-							if hit.failed: report else: 0
-						)
-					)
 					var tries = 0
 
-					while (bad_live or bad_heap) and tries < 2:
+					while bad_live and tries < 2:
 						tries += 1
 
 						var ran = false
@@ -243,16 +222,10 @@ fn sweep(
 							if not normal_live.contains(r.live): live = r.live
 							else: bad_live = false
 
-							if r.heap <= ceiling + (if r.failed: report else: 0): bad_heap = false
-							else if r.heap < heap: heap = r.heap
-
 						if not ran: break
 
 					if bad_live: lines.append(
 						f"leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} left {live} live blocks (uncancelled run: {reference.live})"
-					)
-					else if bad_heap: lines.append(
-						f"heap: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} ended with {heap} Rust heap blocks (uncancelled runs: at most {ceiling})"
 					)
 
 	return lines

@@ -85,6 +85,10 @@ unsafe extern "C-unwind" fn main_task(done: *mut u8) {
             fault::fault(b"main exit code must be between 0 and 125; return 0 for success or a small positive Int for failure (126 and above are reserved by shells)");
         }
         *MAIN_RESULT.ptr() = value;
+        // A process that frees at exit also unwinds the tasks still parked, so what they own is released.
+        if msrt_exit_frees() != 0 {
+            crate::task::unwind_others();
+        }
     }
     // SAFETY: `done` is the live token `run_main` waits on.
     unsafe { crate::task::msrt_token_post(done as usize as u64, 1) };

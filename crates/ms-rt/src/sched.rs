@@ -834,6 +834,8 @@ fn root(_: *mut u8) {
             crate::task::sweep::internal(false);
         }
         crate::task::msrt_token_free(token);
+        // The thread ends: tasks still parked here unwind first.
+        crate::task::unwind_others();
     }
 }
 
