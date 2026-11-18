@@ -19,7 +19,6 @@ use cranelift_isle::error::Errors;
 use meta::isle::IsleCompilation;
 
 use std::env;
-use std::io::Read;
 use std::process;
 use std::time::Instant;
 
@@ -99,32 +98,11 @@ fn main() {
         println!("cargo:warning=Generated files are in {}", out_dir.display());
     }
 
-    let pkg_version = env::var("CARGO_PKG_VERSION").unwrap();
-    let mut cmd = std::process::Command::new("git");
-    cmd.arg("rev-parse")
-        .arg("HEAD")
-        .stdout(std::process::Stdio::piped())
-        .current_dir(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let version = if let Ok(mut child) = cmd.spawn() {
-        let mut git_rev = String::new();
-        child
-            .stdout
-            .as_mut()
-            .unwrap()
-            .read_to_string(&mut git_rev)
-            .unwrap();
-        let status = child.wait().unwrap();
-        if status.success() {
-            let git_rev = git_rev.trim().chars().take(9).collect::<String>();
-            format!("{pkg_version}-{git_rev}")
-        } else {
-            // not a git repo
-            pkg_version
-        }
-    } else {
-        // git not available
-        pkg_version
-    };
+    // Manuscript: the published crate appends the git revision of the checkout that holds it. This copy
+    // lives inside the Manuscript repository, so that was the revision of every Manuscript commit, which
+    // gave each commit a different `VERSION` and so a different sccache key: CI recompiled the whole crate
+    // (85 s, a 110 MB cache entry) on every run. See PATCH.md.
+    let version = env::var("CARGO_PKG_VERSION").unwrap();
     std::fs::write(
         std::path::Path::new(&out_dir).join("version.rs"),
         format!(
