@@ -76,7 +76,7 @@ runs:
             echo "UNIT=false" >> "$GITHUB_ENV"; echo "CONFORM=true" >> "$GITHUB_ENV"
             echo "GATES=false" >> "$GITHUB_ENV"; echo "CRANELIFT=false" >> "$GITHUB_ENV"
             echo "LLVM=true" >> "$GITHUB_ENV"; echo "DOCS=false" >> "$GITHUB_ENV"
-            echo "CONFORM_SHARD=${{ inputs.shard }}" >> "$GITHUB_ENV" ;;
+            echo "CONFORM_SHARD=${{ inputs.shard || '0/1' }}" >> "$GITHUB_ENV" ;;
           gates)
             echo "UNIT=false" >> "$GITHUB_ENV"; echo "CONFORM=false" >> "$GITHUB_ENV"
             echo "GATES=true" >> "$GITHUB_ENV"; echo "CRANELIFT=false" >> "$GITHUB_ENV"
