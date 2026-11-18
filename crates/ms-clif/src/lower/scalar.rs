@@ -224,7 +224,18 @@ impl<'a, 'm> Lower<'a, 'm> {
                         Op::ISubChk => self.b.ins().ssub_overflow(x, y),
                         _ => self.mul_overflow(x, y),
                     };
-                    self.fault_if(of, "msrt_fault_int_overflow", vec![]);
+                    // A sized result reports its type's range, as the LLVM backend does:
+                    // `UInt32 * UInt32` can pass 63 bits before it passes 32.
+                    let sized = inst
+                        .res
+                        .map(|r| f.ty(r))
+                        .is_some_and(|t| self.g.lay.m.types.int_bits(t).is_some_and(|b| b < 64));
+                    let fault = if sized {
+                        "msrt_fault_int_range"
+                    } else {
+                        "msrt_fault_int_overflow"
+                    };
+                    self.fault_if(of, fault, vec![]);
                     vec![v]
                 }
             }
