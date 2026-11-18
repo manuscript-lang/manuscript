@@ -862,7 +862,7 @@ fn analyze(
         };
         let cover = |live: &OwnerSet| coverable(live, &hoisted[bi]);
         for p in &blk.params {
-            if owned_def[p.value.index()] {
+            if owned_def[p.value.index()] || (bi == 0 && cx.cells.contains_key(&p.value.0)) {
                 born(&mut live, p.value.0);
             }
         }
@@ -1383,7 +1383,12 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
         .blocks
         .iter()
         .flat_map(|b| &b.insts)
-        .filter(|i| i.op == Op::Take && i.args.first().is_some_and(|a| slot_params.contains(&a.0)))
+        .filter(|i| {
+            i.op == Op::Take
+                && i.args
+                    .first()
+                    .is_some_and(|a| slot_params.contains(&a.0) && !owned_params.contains(&a.0))
+        })
         .filter_map(|i| i.res.map(|r| r.0))
         .collect();
     let mut moved = true;
@@ -1429,7 +1434,24 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
             }
         }
     }
-    cx.cells = find_cells(m, cx, f);
+    // What an owned slot parameter holds, read from how the function takes, fills or loads it.
+    let mut param_cells: BTreeMap<u32, Ty> = BTreeMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        let (Some(&a), Some(ty)) = (
+            i.args.first(),
+            match (i.op, i.imm) {
+                (Op::Take | Op::Load, Imm::Ty(ty)) => Some(ty),
+                (Op::Put, _) => i.args.get(1).map(|v| f.ty(*v)),
+                _ => None,
+            },
+        ) else {
+            continue;
+        };
+        if owned_params.contains(&a.0) && m.needs_drop(ty) {
+            param_cells.entry(a.0).or_insert(ty);
+        }
+    }
+    cx.cells = find_cells(m, cx, f, &param_cells);
     cx.cells.retain(|slot, _| !caller_slots.contains(slot));
     // Quick exit: nothing can be live across a call without an owned definition.
     if !owned_def.iter().any(|o| *o) && cx.cells.is_empty() {
@@ -2171,8 +2193,9 @@ fn hole_step(open: u32, op: Op, next: Option<Op>) -> u32 {
 /// qualifies when every use is a `put` into it, a `take` out of it, a `load`, or a call whose
 /// callee only borrows what it takes from the slot, and each such use sits between a `put` and
 /// its `take` in one block.
-fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
-    let mut slots: BTreeMap<u32, Ty> = BTreeMap::new();
+fn find_cells(m: &Module, cx: &Cx, f: &Func, params: &BTreeMap<u32, Ty>) -> BTreeMap<u32, Ty> {
+    // A slot parameter this function owns holds a value from the start.
+    let mut slots: BTreeMap<u32, Ty> = params.clone();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
         if let (Op::Slot, Imm::Ty(ty), Some(r)) = (inst.op, inst.imm, inst.res)
             && m.needs_drop(ty)
@@ -2184,9 +2207,10 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
         return slots;
     }
     let mut bad: BTreeSet<u32> = BTreeSet::new();
-    // A slot a closure captures by reference, or one only `put`, `take`n and `load`ed (never
-    // handed to a call), may hold its value across blocks: an early exit of a `?` takes it back
-    // out in another block. A slot a call receives is used within one block.
+    // A slot a closure captures by reference, or one whose every `put` stores a fresh value and
+    // that no call receives, may hold its value across blocks: an early exit of a `?` takes it
+    // back out in another block. A slot that holds a part taken out of another owner (a field of
+    // a capture) is covered by that owner, and a slot a call receives is used within one block.
     let handed: BTreeSet<u32> = f
         .blocks
         .iter()
@@ -2199,13 +2223,37 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
         })
         .flat_map(|i| i.args.iter().map(|a| a.0))
         .collect();
+    let fresh_defs: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| {
+            matches!(
+                i.op,
+                Op::ListLit | Op::ListFill | Op::TypeNew | Op::AltNew | Op::Clone | Op::Call
+            )
+        })
+        .filter_map(|i| i.res.map(|r| r.0))
+        .collect();
+    let stale: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == Op::Put && i.args.get(1).is_some_and(|v| !fresh_defs.contains(&v.0)))
+        .filter_map(|i| i.args.first().map(|a| a.0))
+        .collect();
     let captured: BTreeSet<u32> = f
         .blocks
         .iter()
         .flat_map(|b| &b.insts)
         .filter(|i| i.op == Op::ClosureNew)
         .flat_map(|i| i.args.iter().map(|a| a.0))
-        .chain(slots.keys().copied().filter(|s| !handed.contains(s)))
+        .chain(
+            slots
+                .keys()
+                .copied()
+                .filter(|s| !handed.contains(s) && !stale.contains(s)),
+        )
         .collect();
     let guarded: BTreeSet<u32> = {
         let mut other: BTreeSet<u32> = BTreeSet::new();
@@ -2223,7 +2271,7 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
     };
     // The slots holding a value when each block starts. Every path to a block must agree.
     let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
-    entry[0] = Some(BTreeSet::new());
+    entry[0] = Some(params.keys().copied().collect());
     for b in f.rpo() {
         let blk = &f.blocks[b.index()];
         let Some(mut full) = entry[b.index()].clone() else {
@@ -2275,7 +2323,8 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
         });
         // A `put` left unmatched when the function ends is not followed.
         if leaves {
-            bad.extend(full);
+            // A slot parameter goes back to the caller holding its value.
+            bad.extend(full.iter().filter(|s| !params.contains_key(s)));
         }
         if let Term::Ret(Some(v)) = blk.term {
             bad.insert(v.0);
@@ -2311,6 +2360,7 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
         })
         .collect();
     let mut used = vec![false; m.funcs.len()];
+    let targets = closure_targets(m);
     for caller in &m.funcs {
         let slots: HashMap<u32, Ty> = caller
             .blocks
@@ -2329,22 +2379,33 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
             .filter_map(|i| i.args.first().map(|a| a.0))
             .collect();
         for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
-            let Imm::Func(g) = inst.imm else { continue };
-            used[g.index()] = true;
-            let direct = inst.op == Op::Call;
-            for (k, flag) in owns[g.index()].iter_mut().enumerate() {
-                if !*flag {
-                    continue;
-                }
-                // The slot is the caller's own, holds the type the callee's parameter names,
-                // and no entry covers it.
-                let ok = direct
-                    && inst.args.get(k).is_some_and(|a| {
-                        slots.get(&a.0).is_some_and(|ty| m.needs_drop(*ty))
-                            && !entries.contains(&a.0)
-                    });
-                if !ok {
-                    *flag = false;
+            // A call through a function value may reach every closure of its shape.
+            let reached: Vec<FuncId> = match (inst.op, inst.imm) {
+                (Op::CallInd, _) => targets
+                    .iter()
+                    .copied()
+                    .filter(|g| m.funcs[g.index()].params.len() == inst.args.len())
+                    .collect(),
+                (_, Imm::Func(g)) => vec![g],
+                _ => continue,
+            };
+            let direct = matches!(inst.op, Op::Call | Op::CallInd);
+            for g in reached {
+                used[g.index()] = true;
+                for (k, flag) in owns[g.index()].iter_mut().enumerate() {
+                    if !*flag {
+                        continue;
+                    }
+                    // The slot is the caller's own, holds the type the callee's parameter names,
+                    // and no entry covers it.
+                    let ok = direct
+                        && inst.args.get(k).is_some_and(|a| {
+                            slots.get(&a.0).is_some_and(|ty| m.needs_drop(*ty))
+                                && !entries.contains(&a.0)
+                        });
+                    if !ok {
+                        *flag = false;
+                    }
                 }
             }
         }
