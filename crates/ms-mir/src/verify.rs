@@ -617,6 +617,8 @@ impl Verifier<'_> {
         let mut dropped_in: Vec<BTreeSet<u32>> = vec![BTreeSet::new(); f.blocks.len()];
         let mut owner_of: Vec<Option<Value>> = vec![None; f.values.len()];
         let mut views = vec![false; f.values.len()];
+        // Owners some borrowed value points into: only their drops are worth carrying along edges.
+        let mut watched = vec![false; f.values.len()];
         // A parameter holding a borrowing variant takes the cases an incoming edge borrowed.
         for p in f.blocks.iter().flat_map(|b| &b.params) {
             views[p.value.index()] = matches!(m.types.kind(f.ty(p.value)),
@@ -657,6 +659,7 @@ impl Verifier<'_> {
                 }
                 if matches!(inst.op, Op::Drop | Op::DropIf)
                     && let Some(a) = inst.args.first()
+                    && watched[a.index()]
                 {
                     dropped.insert(a.0);
                 }
@@ -672,6 +675,9 @@ impl Verifier<'_> {
                     owner_of[r.index()] = owned_def[first.index()]
                         .then_some(*first)
                         .or(owner_of[first.index()]);
+                    if let Some(o) = owner_of[r.index()] {
+                        watched[o.index()] = true;
+                    }
                 }
                 let mut consumed_here: Vec<Value> = Vec::new();
                 for (a, mode) in inst.args.iter().zip(&modes) {
