@@ -226,6 +226,9 @@ pub fn type_hints(syms: ms_syntax::Names, analysis: &Analysis) -> Vec<ms_tooling
         .map(|m| (m.file, m))
         .collect();
     let mut hints = Vec::new();
+    // Line starts are indexed once per file; scanning from the start of the
+    // file for every occurrence is quadratic in the file's size.
+    let mut positions: HashMap<Name, text::SourcePositions> = HashMap::default();
     for entry in analysis.occurrence_index(syms) {
         let (Some(module), Some(info)) = (modules.get(&entry.file), &entry.info) else {
             continue;
@@ -233,7 +236,10 @@ pub fn type_hints(syms: ms_syntax::Names, analysis: &Analysis) -> Vec<ms_tooling
         let Some(ty) = hover_type(syms, info) else {
             continue;
         };
-        let at = text::position(&module.source, entry.offset);
+        let at = positions
+            .entry(entry.file)
+            .or_insert_with(|| text::SourcePositions::new(&module.source))
+            .position(entry.offset);
         hints.push(ms_tooling::html::TypeHint {
             file: syms.str(entry.file).to_string(),
             line: at.line,
