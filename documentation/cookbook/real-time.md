@@ -1,6 +1,6 @@
 +++
 title = "WebSockets and server-sent events"
-weight = 19
+weight = 14
 +++
 
 # WebSockets and server-sent events

@@ -1,6 +1,6 @@
 +++
 title = "Images"
-weight = 18
+weight = 11
 +++
 
 # Images

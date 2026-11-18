@@ -1,6 +1,6 @@
 +++
 title = "Service configuration"
-weight = 5
+weight = 16
 +++
 
 # Service configuration

@@ -1,6 +1,6 @@
 +++
 title = "YAML and XML"
-weight = 16
+weight = 7
 +++
 
 # YAML and XML

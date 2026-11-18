@@ -1,6 +1,6 @@
 +++
 title = "Tables and colors"
-weight = 15
+weight = 5
 +++
 
 # Tables and colors

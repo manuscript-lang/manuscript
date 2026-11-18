@@ -1,6 +1,6 @@
 +++
 title = "Exact numbers"
-weight = 17
+weight = 10
 +++
 
 # Exact numbers

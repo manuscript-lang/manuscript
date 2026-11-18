@@ -1,6 +1,6 @@
 +++
 title = "Numbers and JSON"
-weight = 3
+weight = 6
 +++
 
 # Numbers and JSON

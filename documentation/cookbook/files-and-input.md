@@ -1,6 +1,6 @@
 +++
 title = "Files and standard input"
-weight = 2
+weight = 3
 +++
 
 # Files and standard input

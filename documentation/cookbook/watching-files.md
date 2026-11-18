@@ -1,6 +1,6 @@
 +++
 title = "Watching files"
-weight = 10
+weight = 4
 +++
 
 # Watching files

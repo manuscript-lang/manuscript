@@ -1,6 +1,6 @@
 +++
 title = "HTTPS and certificates"
-weight = 20
+weight = 15
 +++
 
 # HTTPS and certificates

@@ -1,6 +1,6 @@
 +++
 title = "Retries and limits"
-weight = 7
+weight = 18
 +++
 
 # Retries and limits
