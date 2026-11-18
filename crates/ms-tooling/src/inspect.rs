@@ -248,8 +248,8 @@ pub fn collect(syms: ms_syntax::Names, program: &Program) -> Inspection {
             {
                 entity.checker_id = syms.str(symbol.id).to_string();
                 entity.ty = show(syms, &symbol.value_type());
-                entity.effects = effects_of(program, syms.str(symbol.id));
                 entity.reach = reach_of(program, syms.str(symbol.id));
+                entity.effects = entity.reach.clone();
                 entity.permits = permits_of(program, syms.str(symbol.id));
             }
             if let DeclKind::Impl(_) = decl.decl().kind {
@@ -288,7 +288,7 @@ pub fn collect(syms: ms_syntax::Names, program: &Program) -> Inspection {
                     ty: checked.ty.display(syms).to_string(),
                     span: source_span(syms, module, method.pos, ends),
                     exported: false,
-                    effects: effects_of(program, syms.str(checked.id)),
+                    effects: reach_of(program, syms.str(checked.id)),
                     reach: reach_of(program, syms.str(checked.id)),
                     permits: permits_of(program, syms.str(checked.id)),
                 });
@@ -321,14 +321,6 @@ fn symbol_of(
         .symbols
         .get(&module.file)
         .and_then(|names| names.borrow().get(&n(name)).cloned())
-}
-
-fn effects_of(program: &Program, id: &str) -> Vec<String> {
-    program
-        .effects_of(n(id))
-        .iter()
-        .map(|s| s.to_string())
-        .collect()
 }
 
 fn reach_of(program: &Program, id: &str) -> Vec<String> {

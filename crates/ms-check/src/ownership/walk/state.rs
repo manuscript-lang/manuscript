@@ -260,6 +260,11 @@ impl Walker<'_> {
                 )
             } else if why == PROMISE_WHY {
                 String::new()
+            } else if held_ty.as_ref().is_some_and(|t| t.kind == Kind::Function) {
+                format!(
+                    "or build `{holder_t}` from a clone: bind `.{CLONE}()` of the captured value first and capture that binding",
+                    holder_t = self.syms.str(holder)
+                )
             } else if held_ty.as_ref().and_then(clone_blocker).is_some() {
                 format!(
                     "or give `{holder_t}` its own value by converting a clone of the concrete value",

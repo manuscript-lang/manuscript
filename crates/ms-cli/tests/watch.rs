@@ -1,4 +1,3 @@
-#![cfg(unix)]
 //! `ms run --watch` and `ms test --watch` against the real binary: a saved change rebuilds and
 //! restarts, a broken edit keeps the old program, and Ctrl-C ends the watch with status 130.
 
@@ -74,14 +73,23 @@ impl Watch {
         }
     }
 
-    /// Ctrl-C, then the exit status.
-    fn interrupt(mut self) -> Option<i32> {
-        let status = Command::new("kill")
-            .args(["-INT", &self.child.id().to_string()])
-            .status()
-            .expect("kill");
-        assert!(status.success());
-        self.child.wait().expect("wait").code()
+    /// Ctrl-C, then the exit status must be 130. A console Ctrl-C cannot be sent to a child
+    /// without a console of its own, so Windows only stops the watch and checks it ends.
+    fn interrupt(mut self) {
+        #[cfg(unix)]
+        {
+            let status = Command::new("kill")
+                .args(["-INT", &self.child.id().to_string()])
+                .status()
+                .expect("kill");
+            assert!(status.success());
+            assert_eq!(self.child.wait().expect("wait").code(), Some(130));
+        }
+        #[cfg(not(unix))]
+        {
+            self.child.kill().expect("kill");
+            self.child.wait().expect("wait");
+        }
     }
 }
 
@@ -111,7 +119,7 @@ fn run_restarts_after_each_change_and_survives_a_broken_edit() {
     save(&source, &program(4));
     watch.until("ms: restarted run");
     watch.until("ms: exited with status 4; waiting for changes");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -132,7 +140,7 @@ fn test_reruns_after_each_change() {
     save(&source, &tests(2));
     watch.until("ms: waiting for changes");
     assert!(watch.stdout(&dir).contains("PASS sample_test.ms::adds"));
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -152,7 +160,7 @@ fn check_watch_reruns_when_a_broken_dependency_is_repaired() {
     // The broken import loaded no modules, yet the dependency is still watched.
     save(&dependency, valid);
     watch.until("ms: waiting for changes");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -167,10 +175,11 @@ fn check_watch_sees_a_new_file_in_an_existing_subdirectory() {
     save(&dir.join("demo/src/new.ms"), "export fn broken(\n");
     watch.until("new.ms");
     watch.until("ms: waiting for changes");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[cfg(unix)]
 #[test]
 fn check_watch_reruns_when_an_imported_link_is_retargeted() {
     let dir = scratch("check-link");
@@ -186,10 +195,11 @@ fn check_watch_reruns_when_an_imported_link_is_retargeted() {
     std::os::unix::fs::symlink("b.ms", dir.join("dep.ms")).unwrap();
     watch.until("suite cannot be empty");
     watch.until("ms: waiting for changes");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[cfg(unix)]
 #[test]
 fn check_watch_reruns_when_a_link_inside_a_link_chain_is_retargeted() {
     let dir = scratch("check-link-chain");
@@ -216,7 +226,7 @@ fn check_watch_reruns_when_a_link_inside_a_link_chain_is_retargeted() {
     std::os::unix::fs::symlink("b.ms", dir.join("mid.ms")).unwrap();
     watch.until("unknown");
     watch.until("ms: waiting for changes");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -245,7 +255,7 @@ fn project_check_watch_reruns_when_a_source_file_is_added() {
     .unwrap();
     watch.until("extra.ms");
     watch.until("ms: waiting for changes");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -274,7 +284,7 @@ fn check_watch_reruns_when_an_embedded_file_is_edited() {
     );
     watch.until("larger than 16 MiB");
     watch.until("ms: waiting for changes");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -288,7 +298,7 @@ fn check_watch_reruns_when_a_missing_embedded_directory_appears() {
     std::fs::create_dir_all(dir.join("assets")).unwrap();
     save(&dir.join("assets/message.txt"), "hello\n");
     watch.until("ms: waiting for changes");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -310,7 +320,7 @@ fn check_and_run_watch_recover_when_an_initially_missing_import_is_created() {
             watch.until("ms: restarted run");
             watch.until("ms: exited with status 3; waiting for changes");
         }
-        assert_eq!(watch.interrupt(), Some(130));
+        watch.interrupt();
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
@@ -331,7 +341,7 @@ fn bare_file_check_watch_recovers_when_its_nearest_manifest_is_repaired() {
     save(&manifest, include_str!("watch/manifest.toml"));
     watch.until("ms: waiting for changes");
     watch.until_stdout(&dir, "Checked main.ms");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -352,6 +362,6 @@ fn bare_file_check_watch_recovers_when_a_manifest_is_created() {
     );
     watch.until("ms: waiting for changes");
     watch.until_stdout(&dir, "Checked main.ms");
-    assert_eq!(watch.interrupt(), Some(130));
+    watch.interrupt();
     let _ = std::fs::remove_dir_all(&dir);
 }

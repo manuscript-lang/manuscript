@@ -1228,7 +1228,12 @@ impl<'a> FnLower<'a> {
         {
             // A resource the callee keeps on some path closes on the others.
             let cleanup = self.hir.binding_cleanup(b.uid);
-            if let Some(kind) = self.closer_opt(cleanup.as_ref(), &b.ty)? {
+            // An interface with no `close` holds nothing to close.
+            let closable = match self.b.m.types.kind(self.ty_of(v)).clone() {
+                TyKind::Iface(iface) => self.iface_closer(iface).is_some(),
+                _ => true,
+            };
+            if closable && let Some(kind) = self.closer_opt(cleanup.as_ref(), &b.ty)? {
                 return self.bind_closing_kind(b, Val { v, own: true }, kind);
             }
         }

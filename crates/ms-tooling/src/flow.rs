@@ -180,22 +180,24 @@ impl FlowBuilder<'_> {
                     "branch"
                 };
                 let mut node = self.node(kind, self.source(s.pos), s.pos);
-                let mut steps = self.events(s.value);
-                steps.extend(self.body(s.body));
+                // The condition (or the iterated value) is evaluated before the branch body runs.
+                let mut out = self.events(s.value);
                 // `if x: return y` shows its `return y` once, not again as an exit step.
-                node.children = steps
+                node.children = self
+                    .body(s.body)
                     .into_iter()
                     .filter(|n| !(n.kind == "exit" && node.label.ends_with(&n.label)))
                     .collect();
+                out.push(node);
                 if !s.else_body.is_empty() {
-                    node.children.push(Node {
+                    out.push(Node {
                         kind: "branch".into(),
                         label: "else".into(),
                         children: self.body(s.else_body),
                         ..Node::default()
                     });
                 }
-                return vec![node];
+                return out;
             }
             Shape::Exit => {
                 let label = original.map_or("break", exit_label);

@@ -198,10 +198,10 @@ test('large CLI file list keeps original module order and existing file cap', ()
   assert.ok(m.render().includes('more - use the filter'));
 });
 
-test('numeric and case-distinct keys preserve current sorted directory rendering', () => {
+test('numeric and case-distinct keys sort naturally, so 2 comes before 10', () => {
   const input = ['10/a.ms', '2/b.ms', 'A/c.ms', 'a/d.ms', 'constructor/e.ms'];
   const m = model(input.map(file => ({ file })));
-  assert.deepEqual(rows(m.render(), 'data-tg').filter(f => f.endsWith('/')), ['10/', '2/', 'A/', 'a/', 'constructor/']);
+  assert.deepEqual(rows(m.render(), 'data-tg').filter(f => f.endsWith('/')), ['2/', '10/', 'a/', 'A/', 'constructor/']);
 });
 
 function standalone(name, declarations) {
@@ -244,7 +244,7 @@ for (const name of ['plain', ...collisionNames]) {
     const overview = m.overview();
     assert.deepEqual(rows(overview, 'data-id'), [name, 'helper.ms', 'other.ms']);
     assert.deepEqual(rows(overview, 'data-kind'), ['mod', 'mod', 'mod']);
-    assert.equal((overview.match(/class="edge"/g) || []).length, 2);
+    assert.equal((overview.match(/class="edge[ "]/g) || []).length, 2);
     assert.match(overview, /class="elabel"[^>]*>2<\/text>/);
     m.S.cap = 1;
     assert.deepEqual(rows(m.overview(), 'data-id'), [name, '+more']);
@@ -264,7 +264,7 @@ for (const name of ['plain', ...collisionNames]) {
     const m = model(input, sourceData);
     const overview = m.overview();
     assert.deepEqual(rows(overview, 'data-id').sort(), [name, 'helper.ms'].sort());
-    assert.equal((overview.match(/class="edge"/g) || []).length, 0);
+    assert.equal((overview.match(/class="edge[ "]/g) || []).length, 0);
     assert.equal(m.prototypeIntact(), true);
   });
 }

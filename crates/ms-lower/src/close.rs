@@ -1175,7 +1175,7 @@ impl FnLower<'_> {
     }
 
     /// The `close` entry of an interface value's vtable, if the interface declares one.
-    fn iface_closer(&self, iface: IfaceId) -> Option<CloseKind> {
+    pub(crate) fn iface_closer(&self, iface: IfaceId) -> Option<CloseKind> {
         let k = self.b.m.ifaces[iface.index()].close?;
         Some(CloseKind::Iface(iface, k))
     }
