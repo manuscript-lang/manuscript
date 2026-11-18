@@ -172,6 +172,135 @@ static int64_t collatz(int64_t limit) {
     return best;
 }
 
+typedef struct { double re, im; } Cx;
+static inline Cx cx_mul(Cx a, Cx b) { return (Cx){a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re}; }
+static inline Cx cx_add(Cx a, Cx b) { return (Cx){a.re + b.re, a.im + b.im}; }
+
+static int64_t mandel(int64_t n) {
+    int64_t total = 0;
+    for (int64_t y = 0; y < n; y++)
+        for (int64_t x = 0; x < n; x++) {
+            Cx c = {3.0 * (double)x / (double)n - 2.0, 2.0 * (double)y / (double)n - 1.0};
+            Cx z = {0.0, 0.0};
+            int64_t i = 0;
+            while (i < 100 && z.re * z.re + z.im * z.im < 4.0) {
+                z = cx_add(cx_mul(z, z), c);
+                i++;
+            }
+            total += i;
+        }
+    return total;
+}
+
+typedef struct { double x, y, vx, vy; } Particle;
+
+static int64_t particles(int64_t n, int64_t steps) {
+    Particle *ps = xmalloc(sizeof(Particle) * (size_t)n);
+    for (int64_t i = 0; i < n; i++) ps[i] = (Particle){(double)i, (double)i * 0.5, 1.0, -1.0};
+    for (int64_t s = 0; s < steps; s++)
+        for (int64_t i = 0; i < n; i++) {
+            Particle p = ps[i];
+            p.x += p.vx * 0.01;
+            p.y += p.vy * 0.01;
+            if (p.x > 100.0) p.vx = -p.vx;
+            ps[i] = p;
+        }
+    double e = 0.0;
+    for (int64_t i = 0; i < n; i++) e += ps[i].x + ps[i].y;
+    free(ps);
+    return (int64_t)e;
+}
+
+enum { OP_PUSH, OP_ADD, OP_MUL, OP_DUP, OP_SWAP, OP_POP, OP_JMPNZ, OP_DEC };
+typedef struct { int64_t kind, arg; } Op;
+
+static int64_t vm(int64_t iters) {
+    Op code[] = {{OP_PUSH, 3}, {OP_PUSH, 7}, {OP_MUL, 0}, {OP_POP, 0}, {OP_DEC, 0}, {OP_JMPNZ, 0}, {OP_POP, 0}};
+    int64_t ncode = 7, cap = 4, len = 0, pc = 0, acc = 0;
+    int64_t *st = xmalloc(sizeof(int64_t) * (size_t)cap);
+#define PUSHV(v) do { if (len == cap) { cap *= 2; st = realloc(st, sizeof(int64_t) * (size_t)cap); } st[len++] = (v); } while (0)
+#define POPV() (len == 0 ? 0 : st[--len])
+    PUSHV(iters);
+    while (pc < ncode) {
+        Op o = code[pc];
+        switch (o.kind) {
+        case OP_PUSH: PUSHV(o.arg); pc++; break;
+        case OP_ADD: { int64_t b = POPV(), a = POPV(); PUSHV(a + b); pc++; break; }
+        case OP_MUL: { int64_t b = POPV(), a = POPV(); PUSHV(a * b % 1000003); pc++; break; }
+        case OP_DUP: { int64_t v = st[len - 1]; PUSHV(v); pc++; break; }
+        case OP_SWAP: { int64_t b = POPV(), a = POPV(); PUSHV(b); PUSHV(a); pc++; break; }
+        case OP_POP: acc += POPV(); pc++; break;
+        case OP_JMPNZ: if (st[len - 1] != 0) pc = o.arg; else pc++; break;
+        case OP_DEC: { int64_t v = POPV(); PUSHV(v - 1); pc++; break; }
+        }
+    }
+    free(st);
+    return acc;
+}
+
+typedef struct Expr { int64_t kind, n; struct Expr *l, *r; } Expr;
+
+static Expr *expr_build(int64_t d, int64_t s) {
+    Expr *e = xmalloc(sizeof(Expr));
+    e->n = 0;
+    e->l = e->r = NULL;
+    if (d == 0) { e->kind = 0; e->n = s % 10; return e; }
+    if (d % 2 == 0) { e->kind = 1; e->l = expr_build(d - 1, s * 3 + 1); e->r = expr_build(d - 1, s * 7 + 2); }
+    else { e->kind = 2; e->l = expr_build(d - 1, s + 1); e->r = expr_build(d - 1, s + 3); }
+    return e;
+}
+
+static int64_t expr_eval(const Expr *e) {
+    if (e->kind == 0) return e->n;
+    if (e->kind == 1) return (expr_eval(e->l) + expr_eval(e->r)) % 1000003;
+    return expr_eval(e->l) * expr_eval(e->r) % 1000003;
+}
+
+static void expr_free(Expr *e) {
+    if (!e) return;
+    expr_free(e->l);
+    expr_free(e->r);
+    free(e);
+}
+
+static int64_t exprs(int64_t d, int64_t reps) {
+    Expr *e = expr_build(d, 1);
+    int64_t t = 0;
+    for (int64_t i = 0; i < reps; i++) t += expr_eval(e);
+    expr_free(e);
+    return t;
+}
+
+static int64_t closures(int64_t n) {
+    int64_t k = opaque(7), t = 0;
+    for (int64_t i = 0; i < n; i++) t += (i * k + 1) % 13;
+    int64_t *xs = xmalloc(sizeof(int64_t) * 1000);
+    for (int64_t i = 0; i < 1000; i++) xs[i] = i * k;
+    for (int64_t r = 0; r < n / 1000; r++)
+        for (int64_t i = 0; i < 1000; i++) {
+            int64_t v = xs[i] + k;
+            if (v % 3 == 0) t += v;
+        }
+    free(xs);
+    return t;
+}
+
+static int64_t stencil(int64_t n, int64_t iters) {
+    int64_t *a = xmalloc(sizeof(int64_t) * (size_t)(n * n)), *b = xmalloc(sizeof(int64_t) * (size_t)(n * n));
+    for (int64_t i = 0; i < n * n; i++) { a[i] = i % 17; b[i] = 0; }
+    for (int64_t it = 0; it < iters; it++) {
+        for (int64_t y = 1; y < n - 1; y++)
+            for (int64_t x = 1; x < n - 1; x++)
+                b[y * n + x] = (a[y * n + x - 1] + a[y * n + x + 1] + a[(y - 1) * n + x] + a[(y + 1) * n + x]) % 1009;
+        int64_t *t = a; a = b; b = t;
+    }
+    int64_t s = 0;
+    for (int64_t i = 0; i < n * n; i++) s += a[i];
+    free(a);
+    free(b);
+    return s;
+}
+
 static int64_t now_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -197,5 +326,11 @@ int main(void) {
     TIMED("matmul_200", (int64_t)matmul(opaque(200)));
     TIMED("trees_d16_x20", trees(opaque(20)));
     TIMED("collatz_1M", collatz(opaque(1000000)));
+    TIMED("mandel_400", mandel(opaque(400)));
+    TIMED("particles_1k_5k", particles(opaque(1000), opaque(5000)));
+    TIMED("vm_5M", vm(opaque(5000000)));
+    TIMED("expr_d20_x20", exprs(opaque(20), opaque(20)));
+    TIMED("closures_20M", closures(opaque(20000000)));
+    TIMED("stencil_1000_20", stencil(opaque(1000), opaque(20)));
     return 0;
 }

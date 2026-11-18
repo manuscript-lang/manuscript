@@ -193,6 +193,207 @@ fn wordfreq(n: i64) -> i64 {
     m.len() as i64
 }
 
+#[derive(Clone, Copy)]
+struct Cx {
+    re: f64,
+    im: f64,
+}
+
+impl Cx {
+    fn mul(self, o: Cx) -> Cx {
+        Cx { re: self.re * o.re - self.im * o.im, im: self.re * o.im + self.im * o.re }
+    }
+    fn add(self, o: Cx) -> Cx {
+        Cx { re: self.re + o.re, im: self.im + o.im }
+    }
+    fn norm2(self) -> f64 {
+        self.re * self.re + self.im * self.im
+    }
+}
+
+fn mandel(n: i64) -> i64 {
+    let mut total = 0;
+    for y in 0..n {
+        for x in 0..n {
+            let c = Cx { re: 3.0 * x as f64 / n as f64 - 2.0, im: 2.0 * y as f64 / n as f64 - 1.0 };
+            let mut z = Cx { re: 0.0, im: 0.0 };
+            let mut i = 0;
+            while i < 100 && z.norm2() < 4.0 {
+                z = z.mul(z).add(c);
+                i += 1;
+            }
+            total += i;
+        }
+    }
+    total
+}
+
+#[derive(Clone)]
+struct Particle {
+    x: f64,
+    y: f64,
+    vx: f64,
+    vy: f64,
+}
+
+fn particles(n: usize, steps: usize) -> i64 {
+    let mut ps: Vec<Particle> = Vec::new();
+    for i in 0..n {
+        let f = i as f64;
+        ps.push(Particle { x: f, y: f * 0.5, vx: 1.0, vy: -1.0 });
+    }
+    for _ in 0..steps {
+        for i in 0..n {
+            let mut p = ps[i].clone();
+            p.x += p.vx * 0.01;
+            p.y += p.vy * 0.01;
+            if p.x > 100.0 {
+                p.vx = -p.vx;
+            }
+            ps[i] = p;
+        }
+    }
+    let mut e = 0.0;
+    for p in &ps {
+        e += p.x + p.y;
+    }
+    e as i64
+}
+
+enum Op {
+    Push(i64),
+    #[allow(dead_code)]
+    Add,
+    Mul,
+    #[allow(dead_code)]
+    Dup,
+    #[allow(dead_code)]
+    Swap,
+    Pop,
+    JmpNz(usize),
+    Dec,
+}
+
+fn vm(iters: i64) -> i64 {
+    let code = [Op::Push(3), Op::Push(7), Op::Mul, Op::Pop, Op::Dec, Op::JmpNz(0), Op::Pop];
+    let mut stack: Vec<i64> = vec![iters];
+    let (mut pc, mut acc) = (0, 0);
+    while pc < code.len() {
+        match &code[pc] {
+            Op::Push(n) => {
+                stack.push(*n);
+                pc += 1;
+            }
+            Op::Add => {
+                let b = stack.pop().unwrap_or(0);
+                let a = stack.pop().unwrap_or(0);
+                stack.push(a + b);
+                pc += 1;
+            }
+            Op::Mul => {
+                let b = stack.pop().unwrap_or(0);
+                let a = stack.pop().unwrap_or(0);
+                stack.push(a * b % 1000003);
+                pc += 1;
+            }
+            Op::Dup => {
+                let v = stack[stack.len() - 1];
+                stack.push(v);
+                pc += 1;
+            }
+            Op::Swap => {
+                let b = stack.pop().unwrap_or(0);
+                let a = stack.pop().unwrap_or(0);
+                stack.push(b);
+                stack.push(a);
+                pc += 1;
+            }
+            Op::Pop => {
+                acc += stack.pop().unwrap_or(0);
+                pc += 1;
+            }
+            Op::JmpNz(t) => {
+                if stack[stack.len() - 1] != 0 {
+                    pc = *t;
+                } else {
+                    pc += 1;
+                }
+            }
+            Op::Dec => {
+                let v = stack.pop().unwrap_or(0);
+                stack.push(v - 1);
+                pc += 1;
+            }
+        }
+    }
+    acc
+}
+
+enum Expr {
+    Num(i64),
+    Add(Box<Expr>, Box<Expr>),
+    Mul(Box<Expr>, Box<Expr>),
+}
+
+fn build(d: i64, s: i64) -> Expr {
+    if d == 0 {
+        return Expr::Num(s % 10);
+    }
+    if d % 2 == 0 {
+        return Expr::Add(Box::new(build(d - 1, s * 3 + 1)), Box::new(build(d - 1, s * 7 + 2)));
+    }
+    Expr::Mul(Box::new(build(d - 1, s + 1)), Box::new(build(d - 1, s + 3)))
+}
+
+fn eval(e: &Expr) -> i64 {
+    match e {
+        Expr::Num(n) => *n,
+        Expr::Add(l, r) => (eval(l) + eval(r)) % 1000003,
+        Expr::Mul(l, r) => eval(l) * eval(r) % 1000003,
+    }
+}
+
+fn exprs(d: i64, reps: i64) -> i64 {
+    let e = build(d, 1);
+    let mut t = 0;
+    for _ in 0..reps {
+        t += eval(&e);
+    }
+    t
+}
+
+fn closures(n: i64) -> i64 {
+    let k = 7;
+    let f = |x: i64| x * k + 1;
+    let mut t = 0;
+    for i in 0..n {
+        t += f(i) % 13;
+    }
+    let xs: Vec<i64> = (0..1000).map(|x| x * k).collect();
+    for _ in 0..n / 1000 {
+        t += xs.iter().map(|x| x + k).filter(|x| x % 3 == 0).sum::<i64>();
+    }
+    t
+}
+
+fn stencil(n: usize, iters: usize) -> i64 {
+    let mut a = vec![0i64; n * n];
+    let mut b = vec![0i64; n * n];
+    for i in 0..n * n {
+        a[i] = (i % 17) as i64;
+    }
+    for _ in 0..iters {
+        for y in 1..n - 1 {
+            for x in 1..n - 1 {
+                let v = a[y * n + x - 1] + a[y * n + x + 1] + a[(y - 1) * n + x] + a[(y + 1) * n + x];
+                b[y * n + x] = v % 1009;
+            }
+        }
+        std::mem::swap(&mut a, &mut b);
+    }
+    a.iter().sum()
+}
+
 // black_box keeps the compiler from folding a whole kernel at compile time.
 fn timed(name: &str, f: impl FnOnce() -> i64) {
     let t = Instant::now();
@@ -217,4 +418,10 @@ fn main() {
     timed("trees_d16_x20", || trees(black_box(20)));
     timed("collatz_1M", || collatz(black_box(1000000)));
     timed("map_count_2M", || wordfreq(black_box(2000000)));
+    timed("mandel_400", || mandel(black_box(400)));
+    timed("particles_1k_5k", || particles(black_box(1000), black_box(5000)));
+    timed("vm_5M", || vm(black_box(5000000)));
+    timed("expr_d20_x20", || exprs(black_box(20), black_box(20)));
+    timed("closures_20M", || closures(black_box(20000000)));
+    timed("stencil_1000_20", || stencil(black_box(1000), black_box(20)));
 }

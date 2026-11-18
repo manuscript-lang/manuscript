@@ -6,6 +6,21 @@ The current runner reports the minimum of N rotating runs. It checks each produc
 
 Record the source revision, machine, tool versions, build type and effective backend when publishing timings. `ms build` defaults to Release; a release-built compiler binary alone does not establish LLVM use. `MS_BACKEND=cranelift` opts out of LLVM, and unavailable LLVM tools can also cause a fallback. This validation change does not rerun or change the historical results below.
 
+## main at 113a7fa5 plus the new kernels (2026-11-18)
+
+linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1, gcc `-O2`, `ms` Release build with LLVM; minimum of 3 rotating runs, microseconds. Six kernels added for generated-code quality: `mandel_400` (small records returned by value), `particles_1k_5k` (list of records updated in place), `vm_5M` (enum `match` bytecode loop over a list used as a stack), `expr_d20_x20` (boxed enum tree, 2^20 nodes), `closures_20M` (a captured closure and a map/filter/sum chain) and `stencil_1000_20` (four-neighbour 2D stencil on a flat list). Every version prints the same checksum. `c-ms` is the checked C (overflow, bounds, poll). Rust unchecked folds the loop-invariant `eval` in `expr`, so compare that kernel against `rust-checked`.
+
+| kernel | go us | ms us | rust-checked us | c us | c-ms us | ms / rust-checked | ms / c-ms |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| mandel_400 | 11294 | 10671 | 10969 | 10871 | 11005 | 0.97x | 0.97x |
+| particles_1k_5k | 5293 | 2917 | 2923 | 4051 | 3844 | 1.00x | 0.76x |
+| vm_5M | 50016 | 48861 | 34953 | 45030 | 63824 | 1.40x | 0.77x |
+| expr_d20_x20 | 353560 | 392662 | 313456 | 268429 | 622836 | 1.25x | 0.63x |
+| closures_20M | 36112 | 21011 | 31772 | 70003 | 131918 | 0.66x | 0.16x |
+| stencil_1000_20 | 44503 | 41876 | 38621 | 27345 | 63463 | 1.08x | 0.66x |
+
+The `c-ms` column pays a poll on every loop back edge, which the Manuscript backends do not, so it is slower than plain C by design. Gaps against checked Rust: the bytecode loop (1.40x) and the expression tree (1.25x). `ms build` with `MS_BACKEND=cranelift` runs these kernels 1.1x to 3x slower than LLVM (stencil 1.9x, vm 1.9x, by instruction count); Cranelift is not held to C parity.
+
 ## main at b4b25a2b (2026-11-18)
 
 linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1, gcc `-O2`, `ms` Release build with LLVM; minimum of 5 rotating runs, microseconds. `MS=./target/release/ms GO=go ms run bench/tools/kernels.ms -- kernels 5`.
