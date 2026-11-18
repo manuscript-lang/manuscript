@@ -894,6 +894,9 @@ impl<'a> FnLower<'a> {
         if !self.boundary_reads.contains(&x.v)
             // A `trim` view kept as a value is the allocation `trim` would have made.
             && !self.views.contains(&x.v)
+            // A part of a pending temporary is copied out before the statement end drops the
+            // temporary (the checker's `OwnedBorrow::Clone`): the copy is declared.
+            && !self.temp_rooted(x.v, 0)
             && !matches!(
                 self.b.defining_op_anywhere(x.v),
                 Some(Op::StrLit | Op::BytesLit | Op::ListConstView | Op::OptNone)

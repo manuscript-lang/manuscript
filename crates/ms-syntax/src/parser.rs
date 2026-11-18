@@ -708,11 +708,11 @@ impl<'a> Parser<'a> {
                 let t = self.peek();
                 return self.fail(t, "imports read: import name, other from \"path.ms\"");
             }
+            let export_tok = self.peek();
             let exported = self.take(Tok::Export);
             let mut d = self.declaration()?;
             if exported && matches!(d.kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
-                let t = self.previous();
-                return self.fail(t, "only types, interfaces, and named functions can be exported; remove 'export' before this impl, test, or bench");
+                return self.fail(export_tok, "only types, interfaces, and named functions can be exported; remove 'export' before this method, impl, test, or bench (a method is exported with its type)");
             }
             d.export = exported;
             module.decls.push(d);
