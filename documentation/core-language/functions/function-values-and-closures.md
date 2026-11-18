@@ -111,7 +111,15 @@ fn total(values: List[Int]) Int:
     return sum
 ```
 
-A function value has one owner and no `.clone()`, and a type or list that holds one is not `Clonable`: pass it where it is only read, move it at its last use, or make it again from a named `fn`. A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a loop variable, a `:=` that borrows another value), bind a `.clone()` before the closure and capture that. A parameter the closure takes is moved by the function, so the caller gives the value up; pass `.clone()` to keep it. A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `:=` copy first (`base := offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`add := xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure. The parameter case, with the caller keeping its list:
+A function value has one owner and no `.clone()`. A type or list that holds one is not `Clonable`. To use a function value, pass it where it is only read, move it at its last use, or make it again from a named `fn`.
+
+A closure that is returned or stored owns what it captures, so it cannot change a captured variable:
+
+- **Moving a variable in.** The closure takes a captured variable when the closure is its last use. If the variable is used again, or is only borrowed (a loop variable, or a `:=` that borrows another value), bind a `.clone()` before the closure and capture that.
+- **Parameters.** A parameter the closure takes is moved by the function, so the caller gives the value up. Pass `.clone()` to keep it.
+- **A `var` used again.** A returned or stored closure cannot capture a `var` that is used after the closure is made, because it would keep a stale copy. Bind a `:=` copy first (`base := offset`) and capture that.
+
+A bound method keeps its receiver by the same rules. A method that changes its receiver (`add := xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it, or write a closure. The parameter case, with the caller keeping its list:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
