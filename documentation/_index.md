@@ -38,6 +38,8 @@ fn main() Void:
 
 </div>
 
+![A screencast of Manuscript: failure as values, ownership errors, promises, ms verify, the call graph and a native build, each with a short caption.](/images/screencast.gif "A short tour: errors, ownership, promises, ms verify, the call graph and a native build.")
+
 {{< docs-home part="paths" >}}
 
 {{< docs-home part="proof" >}}
