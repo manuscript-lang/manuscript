@@ -8,6 +8,8 @@ The counting runtime also counts Rust's own heap (`ms-rt rust heap at exit: bloc
 
 A park inside a shield (a scope close, a promise's task-end drop) is not cancelled: a real cancel stays pending under a shield, so the injection records the request and the next unshielded park reports it (`task::sweep::cancel_here`). Cancelling shielded parks had made every `close` that parks look like a leak (about 100 of the 145 first-night hits, 2026-11-15, #4052): the shielded close runs with its owner uncovered, which a real cancel never interrupts.
 
+A task started while its spawner is shielded (`Task.born_shielded`) is shielded work too: the sweep does not cancel its parks. A close that writes through a child task (`append_file(..).wait()` in a `close`) otherwise had the child cancelled during a shielded close, the close failed and faulted, and about 90 of the 119 leaks of 2026-11-18 were that artifact; no real cancel reaches such a child.
+
 An implicit close is always shielded, including the close of a discarded statement result (`xs.pop()` as a statement, `drop_unused`) and of a pending temporary (`close_temp`): they were the two that were not, so a cancel arriving during such a close made it fail and then fault (`implicit-close-shielded.ms`).
 
 A thread's promise table owns the closures of deferred promises nobody waited on; `promise::teardown` drops them (a cancelled `promise-cross-thread.ms` run leaked two blocks at every park until it did).
