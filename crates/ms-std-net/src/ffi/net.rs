@@ -371,6 +371,33 @@ native! {
         Ok(())
     }
 
+    /// Waits for the next connection and returns its socket handle without wrapping it, for
+    /// `connection_adopt` on any thread. A TLS listener refuses.
+    fn msstd_net_listener_accept_raw(
+        l: ObjRef<ListenerH>,
+        has_timeout: Has,
+        timeout: i64,
+        out: Out<i64>,
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
+        out.write(report(l.accept_raw(opt(*has_timeout, timeout)), &err)?);
+        Ok(())
+    }
+
+    /// Wraps a socket handle `accept_raw` returned as a connection of the host network on this
+    /// thread, which then owns it.
+    fn msstd_net_connection_adopt(raw: i64, out: Out<Object<ConnH>>, err: ErrOut) -> Result<(), StatusCode> {
+        let sock = report(crate::conn::take_raw_handle(raw).ok_or(NetErr::InvalidInput), &err)?;
+        let wrap = Box::new(|s| Ok(Box::new(crate::conn::Plain::new(s)) as Box<dyn crate::conn::Io>));
+        out.write(Object(ConnH(Bound::new(report(root().adopt(sock, wrap), &err)?))));
+        Ok(())
+    }
+
+    /// Closes a socket handle `accept_raw` returned that was never adopted.
+    fn msstd_net_pending_release(raw: i64) -> () {
+        drop(crate::conn::take_raw_handle(raw));
+    }
+
     /// Another handle on the same listener, for a promise that accepts on it. Dropping the handle
     /// leaves the listener open; `Listener.close()` stops it.
     fn msstd_net_listener_share(l: ObjRef<ListenerH>) -> Object<ListenerH> {

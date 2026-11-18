@@ -62,7 +62,10 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [XML comments validate content at every parser site](xml-comments-validate-content-at-every-parser-site.md)
 
 - [Template numbers preserve exact JSON values](template-numbers-preserve-exact-json-values.md): compare normalized coefficients and decimal orders without Float rounding or expanding exponents.
+- [A TCP read copies out of a scratch buffer instead of zeroing a chunk](a-tcp-read-copies-out-of-a-scratch-buffer-instead-of-zeroing-a-chunk.md): check readers for `vec![0; chunk]` plus `truncate`.
+- [A listener serves on its own thread unless connections are accepted unbound](a-listener-serves-on-its-own-thread-unless-connections-are-accepted-unbound.md): accept with `accept_pending`, adopt in a `Placement.Spread` promise.
 - [A pinned stream keeps every promise on its thread, so workers must spread](a-pinned-stream-keeps-every-promise-on-its-thread-so-workers-must-spread.md): use `PromiseOptions(placement: Placement.Spread)` for per-core workers; check `top -H` for one busy thread.
 - [Perf paths need a macOS and Windows equivalent](perf-paths-need-a-macos-and-windows-equivalent.md): the native standard library's global allocator was Linux-only; fixes are cross-platform, measuring may be Linux.
 - [ChaCha and BLAKE2 stay in Manuscript](chacha-and-blake2-stay-in-manuscript.md): no Rust natives or SIMD for these ciphers and hashes for now.
 - [A computing handler holds its thread, so other threads take its waiting connections](a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md): move idle HTTP/1 connections, not tasks; judge "held up" only from a thread awake a whole tick.
+- [The lock-free pipe lane is unused and enabling it gains nothing](the-lock-free-pipe-lane-is-unused-and-enabling-it-gains-nothing.md): `pipe()` always takes the locked lane; the lane has a claim race; cross-thread cost is cache lines, not locks.

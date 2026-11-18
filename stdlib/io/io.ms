@@ -10,6 +10,7 @@ import (
 	msrt_io_write_stderr,
 	msrt_io_write_stdout,
 	msrt_pipe_add_writer,
+	msrt_pipe_brief_wait,
 	msrt_pipe_close_reader,
 	msrt_pipe_close_writer,
 	msrt_pipe_ended,
@@ -332,6 +333,9 @@ fn pipe_next[T](id: Int) T?!:
 	// Fast path: a queued value or the end needs no promise.
 	if queued := msrt_pipe_try[T](id): return ok(queued)
 	if msrt_pipe_ended(id) == 1: return ok(none)
+
+	if msrt_pipe_brief_wait(id) == 1:
+		if queued := msrt_pipe_try[T](id): return ok(queued)
 
 	p := msrt_pipe_read(id)
 	code := msrt_promise_wait(p, -1)

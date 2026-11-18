@@ -130,6 +130,20 @@ export extern fn msstd_net_listener_accept(
 // leaves the listener open.
 export extern fn msstd_net_listener_share(handle: NativeListener) NativeListener
 
+// Waits for the next connection and returns its socket handle without wrapping it, for
+// `msstd_net_connection_adopt` on any thread. A TLS listener fails.
+export extern fn msstd_net_listener_accept_raw(
+	handle: NativeListener,
+	timeout: Duration?,
+) Int!
+
+// Closes a socket handle `accept_raw` returned that was never adopted.
+export extern fn msstd_net_pending_release(raw: Int) Void
+
+// Wraps a socket handle `accept_raw` returned as a connection owned by the calling
+// thread.
+export extern fn msstd_net_connection_adopt(raw: Int) NativeConnection!
+
 export extern fn msstd_net_listener_address(handle: NativeListener) String
 
 export extern fn msstd_net_listener_close(handle: NativeListener) Void
