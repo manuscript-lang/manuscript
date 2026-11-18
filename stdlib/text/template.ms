@@ -798,11 +798,13 @@ fn var Run.each(
 ) Void!Error:
 	collection := self.eval(source, false)?
 	var keys: List[String] = []
-	count := collection_size(collection, var keys)
+	var items = collection_items(collection, var keys)
+	count := items.length() + keys.length()
 	if count == 0: return self.nodes(otherwise, depth + 1)
 
 	for i in 0..count:
-		var frame = row_frame(collection, first, second, keys, i)
+		var frame = Map[String, JsonValue]()
+		bind_row(var frame, collection, var items, first, second, keys, i)
 		frame.add("loop", loop_info(i, count))
 		self.frames.append(frame)
 
@@ -858,30 +860,31 @@ fn loop_info(index: Int, length: Int) JsonValue:
 	fields.add("length", JsonValue.NumberValue(f"{length}"))
 	return JsonValue.ObjectValue(fields)
 
-// How many iterations a loop over `collection` runs; for an object, `keys` receives its
-// keys in order, which is how `row_frame` tells the two apart.
-fn collection_size(collection: JsonValue, var keys: List[String]) Int:
-	if items := collection.as_list(): return items.length()
+// The items of a list loop, last first so each can be moved out with `pop` instead of
+// copied; for an object loop `keys` receives its keys in order and the result is empty.
+fn collection_items(collection: JsonValue, var keys: List[String]) List[JsonValue]:
+	if found := collection.as_list():
+		var items = found
+		items.reverse()
+		return items
 
 	if members := collection.as_map():
 		for entry in members.entries(): keys.append(entry.key.clone())
-		return keys.length()
+	return List[JsonValue]()
 
-	return 0
-
-// The variable frame of iteration `i`: the list item, or an object's key and value.
-// Reads the item in place: copying the collection per iteration would be quadratic.
-fn row_frame(
+// Binds the variables of iteration `i` into `frame`: the list item (moved out of
+// `items`), or an object's key and value.
+fn bind_row(
+	var frame: Map[String, JsonValue],
 	collection: JsonValue,
+	var items: List[JsonValue],
 	first: String,
 	second: String,
 	keys: List[String],
 	i: Int,
-) Map[String, JsonValue]:
-	var frame = Map[String, JsonValue]()
-
+) Void:
 	if keys.is_empty():
-		item := collection.get_index(i).get_or(JsonValue.Null).clone()
+		item := items.pop().get_or(JsonValue.Null)
 
 		if second.is_empty():
 			frame.add(first.clone(), item)
@@ -899,8 +902,6 @@ fn row_frame(
 		else:
 			frame.add(first.clone(), JsonValue.StringValue(keys[i].clone()))
 			frame.add(second.clone(), value)
-
-	return frame
 
 // Keep validated coefficient bytes and a small decimal-order offset. Only
 // exponent-bearing comparisons need arbitrary signed decimal-order arithmetic.
