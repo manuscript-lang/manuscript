@@ -106,10 +106,19 @@ pub fn run_with(m: &mut Module, cancel_exits: bool) -> Result<(), String> {
             runtime(m, SHIELD_EXIT, &[], ExternRole::ShieldExit),
         )
     });
-    for fi in crate::cancel_exit::callee_first(m, cancel_exits.is_some()) {
-        if !is_raw(&m.funcs[fi]) {
+    let order = crate::cancel_exit::callee_first(m, cancel_exits.as_ref());
+    if let Some(cx) = &cancel_exits {
+        settle_restores(m, cx, &order, close, discard, cancel, shield);
+    }
+    for fi in order {
+        // A function with `var` slots gets cancel exits even without owners of its own.
+        let slots = cancel_exits.is_some() && !m.funcs[fi].noalias.is_empty();
+        if !is_raw(&m.funcs[fi]) && !slots {
             continue;
         }
+        let restores = cancel_exits
+            .as_ref()
+            .is_some_and(|cx| cx.restores.borrow()[fi]);
         let stand_in = m.funcs[fi].signature_stand_in();
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         let out = function(
@@ -123,6 +132,15 @@ pub fn run_with(m: &mut Module, cancel_exits: bool) -> Result<(), String> {
         );
         m.funcs[fi] = f;
         out.map_err(|e| format!("{}: {e}", m.funcs[fi].name))?;
+        if let Some(cx) = &cancel_exits
+            && !m.funcs[fi].noalias.is_empty()
+            && cx.restores.borrow()[fi] != restores
+        {
+            return Err(format!(
+                "{}: cancel exits disagree with the restore set",
+                m.funcs[fi].name
+            ));
+        }
     }
     // The helper references are consumed: later passes renumber functions.
     for f in &mut m.funcs {
@@ -130,6 +148,34 @@ pub fn run_with(m: &mut Module, cancel_exits: bool) -> Result<(), String> {
         f.close_exit = None;
     }
     Ok(())
+}
+
+/// Lowers the assumption that every function with `var` slots restores its `var` slots until each function that
+/// keeps it can build its exits under the others' (`cancel_exit::convert` sets its own entry): a
+/// callee can then be a caller's callee in a cycle. Converts clones, so nothing is changed.
+fn settle_restores(
+    m: &Module,
+    cx: &crate::cancel_exit::Cx,
+    order: &[usize],
+    close: Option<FuncId>,
+    discard: Option<ExtId>,
+    cancel: Option<ExtId>,
+    shield: Option<(ExtId, ExtId)>,
+) {
+    loop {
+        let before = cx.restores.borrow().clone();
+        for &fi in order {
+            if m.funcs[fi].noalias.is_empty() {
+                continue;
+            }
+            let mut f = m.funcs[fi].clone();
+            // A function that fails to elaborate fails again in the real pass.
+            let _ = function(m, &mut f, close, discard, cancel, shield, Some((cx, fi)));
+        }
+        if *cx.restores.borrow() == before {
+            return;
+        }
+    }
 }
 
 /// The move state of an owner.

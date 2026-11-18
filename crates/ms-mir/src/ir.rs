@@ -807,6 +807,7 @@ impl Func {
         let mut s = Func::new("", self.params.clone(), self.ret);
         s.ret_borrowed = self.ret_borrowed;
         s.ret_view = self.ret_view;
+        s.noalias = self.noalias.clone();
         s
     }
 
