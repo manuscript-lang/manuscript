@@ -14,3 +14,7 @@ Update (2026-11-18, `b4b25a2b`): c16-maze-bfs is 1.8x Rust (75 ms against 41, 3 
 
 Update (2026-11-18, same revision): c14-dp-suite is not a gap. The workloads table's 1.47x came from one fast Rust sample (377 ms); alternating 21 runs by CPU time give ms 518 ms against Rust 627 ms, and callgrind 660M against 955M instructions. A MIR rule that turns the `compare`-based `Int.min`/`max` into one `icmp` changed nothing in a release build (identical instruction counts; LLVM folds it). Before chasing a ratio from the workloads table, repeat it alone with alternating runs and CPU time.
 
+
+## `List.slice` of owning elements stays a copy (2026-11-18)
+
+The checker lends a `slice` only when the elements are `Int`, `Float` or `Bool` (`native_borrow.rs`): a by-value `for` over a view drops each element, which would free what the receiver still holds. Widening the lowering alone to `List[String]` (cap 0 view) is not enough for that reason. A safe version needs an alias-cell twin like `map.keys()` (new cell array, non-owning strings). On c09, `msrt_list_slice` is 2.5% of instructions (3.7% inclusive) and most pieces are inline strings, so the saving is at most a couple of percent. Not built; revisit only if a workload shows long strings in sliced lists.
