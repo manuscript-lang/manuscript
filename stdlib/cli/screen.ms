@@ -86,7 +86,9 @@ fn var Screen.render(rows: List[String], cursor_row: Int, cursor_column: Int) St
 
 		i += 1
 
-	out = f"{out}{esc}[J"
+	// Identical rows leave the cursor on the last drawn row; clearing from there would
+	// erase it.
+	if diff < rows.length() or diff < self.previous.length(): out = f"{out}{esc}[J"
 
 	goal := if cursor_row < 0: 0 else: cursor_row
 	out = f"{out}{vertical(at, goal)}"
