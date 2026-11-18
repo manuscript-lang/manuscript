@@ -144,6 +144,23 @@ pub(crate) fn open_waitless(path: &CPath, flags: i32, mode: u32) -> Result<sys::
     sys::open(path, flags, mode)
 }
 
+/// Opens `path` for reading and returns its `fstat` with it, one system call fewer than `stat` then
+/// `open`. On Unix the open does not wait, so a FIFO without a writer returns at once; a descriptor
+/// that is not a regular file is switched back to blocking mode, as [`open_waitless`] does.
+fn open_read_stat(path: &CPath) -> Result<(sys::Fd, Option<sys::Stat>), Errno> {
+    #[cfg(unix)]
+    let flags = sys::O_RDONLY | libc::O_NONBLOCK;
+    #[cfg(not(unix))]
+    let flags = sys::O_RDONLY;
+    let fd = sys::open(path, flags, 0)?;
+    let stat = sys::fstat(fd).ok();
+    #[cfg(unix)]
+    if !stat.as_ref().is_some_and(|st| st.is_regular()) {
+        sys::clear_nonblocking(fd);
+    }
+    Ok((fd, stat))
+}
+
 /// `read_bounded`; `cancellable` checks for a stop request between reads, which a blocking-pool
 /// thread must not do. A cancellable read of a pipe or device also waits for it to be readable.
 fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fail> {
@@ -220,10 +237,9 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
         }
     }
     let p = cpath(path)?;
-    let fd = open_waitless(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
+    let (fd, stat) = open_read_stat(&p).map_err(|e| Fail::errno(e, "open", path))?;
     drop(p);
     let read = || {
-        let stat = sys::fstat(fd).ok();
         if stat.as_ref().is_some_and(sys::is_dir) {
             return Err(Fail::invalid());
         }
