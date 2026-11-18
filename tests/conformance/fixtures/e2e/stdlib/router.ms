@@ -520,3 +520,15 @@ test "verb helpers register their method":
 	expect_equal(body_of(r.call(request(HttpMethod.Delete, "/v"))?), "delete")?
 	expect_equal(body_of(r.call(request(HttpMethod.Options, "/o"))?), "options")?
 	expect_equal((r.call(request(HttpMethod.Post, "/v"))?).status, 405)?
+
+test "a path that is not absolute matches no route":
+	var router = Router()
+	router.get("/", say("root"))?
+	router.get("/*rest", show)?
+
+	for path in ["", "*", "x"]:
+		response := router.call(get(path))?
+		expect_equal(response.status, 404)?
+
+	options := router.call(request(HttpMethod.Options, "*"))?
+	expect_equal(options.status, 204)?

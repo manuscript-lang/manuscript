@@ -364,6 +364,11 @@ type Lookup:
 	// The matching route for the method, if any.
 	found: Int?
 
+// The lookup for a path that is not absolute (such as `*` or an empty path): no route
+// matches it.
+fn unrouted() Lookup:
+	return Lookup(params: RouteParams(names: [], values: []), allow: [], found: none)
+
 fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
 	var found: Int? = none
 	var fallback = false
@@ -454,7 +459,11 @@ fn dispatch(
 	var exchange: HttpExchange,
 ) Void!:
 	method := exchange.method().to_string()
-	found := lookup(routes, method, split_path(exchange.path()))
+	found := if exchange.path().starts_with("/"): lookup(
+		routes,
+		method,
+		split_path(exchange.path()),
+	) else: unrouted()
 	var every: List[String] = []
 	if method == "OPTIONS" and exchange.path() == "*":
 		every = routes.map(fn route: route.method.clone())
