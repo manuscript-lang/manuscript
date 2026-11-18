@@ -1,6 +1,6 @@
 +++
 title = "Logging"
-weight = 6
+weight = 17
 +++
 
 # Logging

@@ -12,9 +12,12 @@ MIME building blocks: media types, header blocks, and multipart bodies.
 header block (folded lines joined, names kept as written, lookup case-insensitive);
 `parse_multipart` and `encode_multipart` read and write `multipart/form-data` and `multipart/mixed` bodies.
 
-    import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
-    print(media_type_for_extension(".json").get_or("")) // "application/json"
-    charset := (parse_media_type("text/html; charset=utf-8")?).params.get("charset")
+<!-- manuscript-example: {"mode":"fragment"} -->
+```manuscript
+import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
+print(media_type_for_extension(".json").get_or("")) // "application/json"
+charset := (parse_media_type("text/html; charset=utf-8")?).params.get("charset")
+```
 */
 
 // A parsed media type with lower-cased `essence` and parameters keyed by lower-cased

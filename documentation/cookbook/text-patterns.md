@@ -1,6 +1,6 @@
 +++
 title = "Patterns and URLs"
-weight = 13
+weight = 8
 +++
 
 # Patterns and URLs

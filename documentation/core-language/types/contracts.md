@@ -47,7 +47,13 @@ A method may add [defaults](../functions/declarations-and-calls.md#default-argum
 
 ## Satisfying an interface
 
-A type satisfies an interface when each operation has one own method with the same name, parameter labels, `var`-ness, parameter types and result type. Nothing is declared: the methods are the declaration. After substituting generic arguments the methods must match the interface exactly: every operation once, under the same labels, order, types and result. An operation that changes its receiver is `var fn` in the interface and `fn var Type.name` on the type, though a method that does not change `self` also meets it. A `var` parameter is the same: an operation that changes a caller's value declares it `var` in both, and a call marks the argument `var` as for any [function](../functions/function-values-and-closures.md). A `move` parameter or receiver matches exactly: an operation that takes its argument declares it `move` in both, and a method that only reads it still writes `move` ([moving into a function](references.md#moving-into-a-function)). A method that returns a part of its receiver or arguments does not meet an operation: a call through an interface gets a new value, so the method returns `.clone()` of the part. Interface implementations preserve argument labels even though labels are not part of [function-value type identity](../functions/function-values-and-closures.md#function-type-compatibility).
+A type satisfies an interface when it has one own method for each operation, with the same name, parameter labels, `var`-ness, parameter types and result type. Nothing is declared: the methods are the declaration. After you substitute generic arguments, the methods must match exactly: every operation once, with the same labels, order, types and result.
+
+- **Changing the receiver.** An operation that changes its receiver is `var fn` in the interface and `fn var Type.name` on the type. A method that does not change `self` also meets it.
+- **`var` parameters.** An operation that changes a caller's value declares the parameter `var` in both places, and the call marks the argument `var`, as for any [function](../functions/function-values-and-closures.md).
+- **`move` parameters and receivers.** An operation that takes its argument declares it `move` in both places. A method that only reads the argument still writes `move` ([moving into a function](references.md#moving-into-a-function)).
+- **Returning a part.** A method that returns a part of its receiver or arguments does not meet an operation, because a call through an interface gets a new value. Return `.clone()` of the part.
+- **Labels.** An implementation keeps the interface's argument labels, even though labels are not part of [function-value type identity](../functions/function-values-and-closures.md#function-type-compatibility).
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
 ```manuscript
