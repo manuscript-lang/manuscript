@@ -1401,6 +1401,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
         })
         .filter_map(|i| i.res.map(|r| r.0))
         .collect();
+    let mut caller_projections: BTreeSet<u32> = BTreeSet::new();
     let mut moved = true;
     while moved {
         moved = false;
@@ -1423,6 +1424,22 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
                     }
                     (Op::Take, Some(r))
                         if caller_slots.contains(&i.args[0].0)
+                            && caller_values.insert(r.0)
+                            && from_slot.insert(r.0) =>
+                    {
+                        owned_def[r.index()] = false;
+                        moved = true;
+                    }
+                    // A field of a caller's value, and that field moved out (`self.source` taken
+                    // before a park): the caller still covers the value it came from.
+                    (Op::TypeGet | Op::AltGet, Some(r))
+                        if caller_values.contains(&i.args[0].0)
+                            && caller_projections.insert(r.0) =>
+                    {
+                        moved = true;
+                    }
+                    (Op::MoveOut, Some(r))
+                        if caller_projections.contains(&i.args[0].0)
                             && caller_values.insert(r.0)
                             && from_slot.insert(r.0) =>
                     {
