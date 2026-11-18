@@ -11,6 +11,9 @@ const LIB: &str = "export fn greeting(name: String) String: f\"Hello, {name}\"\n
 const LIB_TEST: &str = include_str!("init/lib_test.ms");
 const WORKSPACE_MAIN: &str = include_str!("init/workspace_main.ms");
 const IGNORE: &str = ".ms-cache/\n";
+/// Source, manifests and the lock are LF in every checkout: the formatter writes LF, so a Windows
+/// checkout that converted them to CRLF would fail `ms fmt --check` on every file.
+const ATTRIBUTES: &str = "*.ms text eol=lf\n*.toml text eol=lf\nms.lock text eol=lf\n";
 
 pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     let mut directory = ".".to_string();
@@ -106,7 +109,8 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
             std::fs::create_dir_all(pathops::dir(&path))?;
             std::fs::write(path, content)?;
         }
-        ignore_build_cache(&pathops::join(&[&absolute, ".gitignore"]))
+        ignore_build_cache(&pathops::join(&[&absolute, ".gitignore"]))?;
+        keep_lf(&pathops::join(&[&absolute, ".gitattributes"]))
     };
     if let Err(error) = create() {
         let message = ms_driver::project::error::errno_message(error.raw_os_error().unwrap_or(0));
@@ -156,6 +160,27 @@ fn ignore_build_cache(path: &str) -> std::io::Result<()> {
         content.push('\n');
     }
     std::fs::write(path, content + IGNORE)
+}
+
+/// Create `.gitattributes`, or append the line-ending rules to an existing one that does not
+/// already pin `*.ms`.
+fn keep_lf(path: &str) -> std::io::Result<()> {
+    let existing = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error),
+    };
+    if existing
+        .split('\n')
+        .any(|line| line.trim().starts_with("*.ms "))
+    {
+        return Ok(());
+    }
+    let mut content = existing;
+    if !content.is_empty() && !content.ends_with('\n') {
+        content.push('\n');
+    }
+    std::fs::write(path, content + ATTRIBUTES)
 }
 
 /// A manifest name from the directory: lowercase letters, digits, `-` and `_`,

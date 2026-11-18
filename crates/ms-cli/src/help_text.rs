@@ -19,7 +19,7 @@ Commands:
   diagram        Emit a static call graph as ascii or Mermaid
   review         Report where to look: project map, or the semantic effect of a diff
   profile        Run with sampling profile capture: folded stacks, pprof, top report
-  init           Create a new project with a manifest, entry, test, and .gitignore
+  init           Create a new project with a manifest, entry, test, .gitignore, and .gitattributes
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
   skill          Print the Manuscript agent skill, or write its files with -o
@@ -344,9 +344,11 @@ Examples:
 pub const HELP_INIT: &str = r#"Usage: ms init [--lib | --workspace] [directory]
 
 Create a runnable project in the directory (default: the current directory).
-Writes ms.toml, src/main.ms (a hello program), test.ms, and a .gitignore that
-excludes the .ms-cache/ build cache. An existing file is never overwritten; the
-command fails before writing anything when ms.toml, src/main.ms, or test.ms exist.
+Writes ms.toml, src/main.ms (a hello program), test.ms, a .gitignore that excludes the
+.ms-cache/ build cache, and a .gitattributes that keeps source, manifests and the lock LF
+on Windows checkouts. An existing .gitignore or .gitattributes gets the lines appended.
+An existing file is never overwritten; the command fails before writing anything when
+ms.toml, src/main.ms, or test.ms exist.
 
 --lib creates a library, which a package must be: its ms.toml has no entry, and
 src/lib.ms holds a function and a test in place of main.
