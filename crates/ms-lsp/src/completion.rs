@@ -692,6 +692,9 @@ impl Completer<'_> {
             if file.uri == self.d.uri {
                 continue;
             }
+            if !may_export_match(&file.text, &self.c.prefix) {
+                continue;
+            }
             let name: std::sync::Arc<str> = uri::filename(&file.uri).into();
             let Ok(parsed) = ms_syntax::parser::parse(&name, &file.text) else {
                 continue;
@@ -732,6 +735,21 @@ impl Completer<'_> {
             }
         }
     }
+}
+
+/// Whether some line of `text` could declare an exported name that matches `prefix`. A top-level
+/// declaration starts its line with `export` and names itself on that line, so a file with no such
+/// line needs no parse. Text inside a literal or comment can only make this say yes wrongly.
+fn may_export_match(text: &str, prefix: &str) -> bool {
+    text.lines().any(|line| {
+        let Some(rest) = line.trim_start().strip_prefix("export") else {
+            return false;
+        };
+        rest.starts_with([' ', '\t'])
+            && rest
+                .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .any(|word| !word.is_empty() && name_matches(word, prefix))
+    })
 }
 
 fn keyword_template(word: &str) -> Option<&'static str> {
@@ -1266,4 +1284,20 @@ fn argument_label(tokens: &[text::EditorToken<'_>]) -> Option<String> {
         && !tokens[0].is_name("fn")
         && tokens[1].is(b':'))
     .then(|| tokens[0].text.to_string())
+}
+
+#[cfg(test)]
+mod export_filter_tests {
+    use super::may_export_match;
+
+    #[test]
+    fn only_a_line_that_exports_a_matching_name_needs_a_parse() {
+        let text = "import a from \"./a.ms\"\n\nexport fn parse_user(x: Int) Int:\n\treturn x\nfn helper():\n\treturn\n";
+        assert!(may_export_match(text, "pu"));
+        assert!(may_export_match(text, "PARSE"));
+        assert!(!may_export_match(text, "helper"));
+        assert!(!may_export_match("fn parse_user():\n\treturn\n", "parse"));
+        assert!(may_export_match("export\ttype Point:\n\tx: Int\n", "po"));
+        assert!(!may_export_match("exported fn parse():\n", "parse"));
+    }
 }
