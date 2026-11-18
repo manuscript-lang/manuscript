@@ -47,8 +47,8 @@ export enum YamlValue:
 		values: Map[String, YamlValue]
 	)
 
-// Limits for `parse` and `parse_all` on input bytes, nesting depth and parsed values. A
-// field set to none adds no limit. The defaults, depth 10,000 and 1,000,000 values,
+// Limits for `parse` and `parse_all` on input bytes, nesting depth and parsed values.
+// A limit set to none adds no limit. The defaults, depth 10,000 and 1,000,000 values,
 // guard against deep nesting and alias expansion. A negative limit returns `EINVAL`,
 // and a document that exceeds one returns `EOVERFLOW`.
 export type YamlOptions:
