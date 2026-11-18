@@ -34,7 +34,7 @@ A function that owns a slot parameter (`slot_owned_params`) is owned only throug
 
 A field moved out of a value taken from a slot parameter no caller-free function owns (`self.source` out of a `ReadStream` before the park in `read_bounded`) is still the caller's: covering it in the callee freed the same 16 B interface box twice when a stalled read was cancelled (`live blocks: -1`, `read-stream-timeout.ms`), so `type.get` plus `move.out` of a caller's value joins `caller_values`. A negative live count is a double free: find the block by recording every allocation and free address in the stats allocator.
 
-Open (2026-11-18): `promise-cross-thread.ms` park 4 leaks 2 blocks depending on timing.
+Open (2026-11-18): `promise-cross-thread.ms` park 4 leaks the two closures (32 B and 48 B, from `closure.new`) of a promise that `make` returned inside another promise. It needs more than one thread (`MS_THREADS=1` is clean) and happens when the test is cancelled at the wait on the outer promise: the runtime drops the result of the cancelled outer promise (`release_result`) with its type descriptor, and the descriptor's drop of a `Promise` value does not close it, so the inner promise's queued start keeps its closure. Fixing it means deciding whether a promise discarded by value is closed (the doc comment says dropping ends it) or the runtime closes promise-typed results itself. A probe: `outer := promise(fn: make(0))` then `outer.wait()?` in a test, cancel at park 4; allocation tracking in the stats allocator hides it (timing), so record blocks of 17 to 48 bytes only.
 
 Apply when: adding a park, a cleanup, or an `rt::Parked`; run the sweep on the touched fixture (`ms run tools/cancel-sweep.ms -- <file>`).
 
