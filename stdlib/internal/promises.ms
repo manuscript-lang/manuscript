@@ -90,6 +90,9 @@ export extern fn msrt_promise_fault_report(id: Int) String
 
 export extern fn msrt_promise_drop(id: Int) Void
 
+// Cancels and joins the work of `id` and keeps its slot; true when a value is left to take.
+export extern fn msrt_promise_end(id: Int) Bool
+
 // A promise that finishes after `ns` nanoseconds; it has no task. Wait with code 0.
 export extern fn msrt_promise_sleep(ns: Int) Int
 

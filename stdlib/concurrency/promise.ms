@@ -15,6 +15,7 @@ import (
 	msrt_promise_defer,
 	msrt_promise_done,
 	msrt_promise_drop,
+	msrt_promise_end,
 	msrt_promise_fault_report,
 	msrt_promise_limit,
 	msrt_promise_new,
@@ -93,8 +94,10 @@ fn Promise[T].done() Bool:
 	return msrt_promise_done(self.id)
 
 // Dropping a promise ends it: unfinished work is cancelled and waited for, and a
-// result nobody took is dropped.
+// result nobody took is dropped, which closes what it holds.
 fn var Promise[T].close() Void!:
+	if msrt_promise_end(self.id):
+		leftover := msrt_promise_take[T](self.id)
 	msrt_promise_drop(self.id)
 
 // Which thread runs a promise's work.
