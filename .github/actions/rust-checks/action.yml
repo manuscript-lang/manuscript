@@ -119,7 +119,9 @@ runs:
       run: |
         # One build with every target: the later steps (nextest, the CLI, the native tests, the
         # corpus runner) then reuse it instead of rebuilding dependencies with other features.
-        cargo build --workspace --all-targets --locked --keep-going
+        # --timings writes target/cargo-timings/*.html (uploaded below): which crates and test binaries
+        # the 120 to 240 s build spends its time on.
+        cargo build --workspace --all-targets --locked --keep-going --timings
         # The LLVM job of a pull request runs only the tests of the LLVM backend.
         if [ "$LLVM_TESTS" = true ]; then
           cargo nextest run --workspace --locked --no-fail-fast -E 'package(ms-mir-llvm) | test(/^llvm::/) | test(/^llvm_direct(_data)?::/)'
@@ -347,6 +349,7 @@ runs:
         name: rust-${{ inputs.os }}-${{ inputs.arch }}-${{ inputs.part }}${{ inputs.suffix }}
         path: |
           .artifacts/conform.md
+          target/cargo-timings/cargo-timing-*.html
           ${{ runner.temp }}/ms-clif-tests-*
           ${{ runner.temp }}/ms-native-conformance/
           ${{ runner.temp }}/ms-dwarf-*
