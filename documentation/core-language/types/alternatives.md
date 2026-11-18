@@ -26,6 +26,7 @@ Migration: replace `type Choice:` with `enum Choice:` when its body declares cas
 
 ## Construction and identity
 
+<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt: String)\n    Declined(reason: String)","given":[]} -->
 ```manuscript
 payment := Payment.Paid("receipt-42")
 declined: Payment := Declined("Card rejected")
@@ -38,6 +39,7 @@ declined: Payment := Declined("Card rejected")
 
 Ordinary name lookup runs first: a local, declaration, or import with that spelling wins over case shorthand. Otherwise an unqualified case name must match exactly one case among visible enums. If several declare it, qualify it, even with an annotation. An expected enum type can supply generic arguments once the case is unique; a qualified case that contradicts the expected type is rejected, and matching payload shapes never make distinct enums compatible.
 
+<!-- manuscript-example: {"mode":"error","contains":"ambiguous alternative case","given":[]} -->
 ```manuscript
 enum LeftState:
     Ready

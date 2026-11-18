@@ -42,6 +42,7 @@ A binding is closed unless something takes the resource from it. Returning it, p
 
 To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `?` or `void`.
 
+<!-- manuscript-example: {"mode":"fragment","context":"import open from \"@std/os/fs.ms\"\n\nfn slow_work(head: List[String]) Void:\n    return","given":["path: String"]} -->
 ```manuscript
 var file = open(path)?
 head := file.read_lines(max_lines: 1)?

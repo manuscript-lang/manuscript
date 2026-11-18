@@ -54,6 +54,7 @@ entry = "./src/main.ms"
 
 Create `assets/message.txt` containing `hello from assets` followed by a newline. Add `import files from "@assets"` above the generated `main`, then replace its body with this fragment:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
     tree := files()
     text := tree.read("message.txt", none).get().decode_utf8().get()
@@ -137,6 +138,7 @@ Packages can depend on packages. The resolver follows Cargo: it reads the requir
 
 `ms.lock` has one line per copy, keyed by the repository and version, such as `github.com/acme/wire@v1.4.2`. A lock that still satisfies the requirements is kept, so a new upstream tag changes nothing until `ms install --update @name`. A resolved copy that declares more effects than a package allows is an error on every build, and the message names the package and the effect.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import Config, open from "@pg/conn.ms"
 ```
@@ -187,6 +189,7 @@ entry = "src/main.ms"
 
 Imports name an exported symbol and a path:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import CustomerId from "./domain/customers.ms"
 import Order from "@domain/orders.ms"

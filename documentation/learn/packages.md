@@ -35,6 +35,7 @@ Commit `ms.lock`. Everyone who builds the project gets the same bytes: a changed
 
 `@pg/` names the package's source directory:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import Config, open from "@pg/conn.ms"
 import Value from "@pg/value.ms"

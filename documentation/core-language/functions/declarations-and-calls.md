@@ -7,6 +7,7 @@ weight = 1
 
 A function names its inputs, declares their types, and declares its return type. Use `return` in a multiline body. A one-line body returns its expression implicitly: `fn double(value: Int) Int: value * 2` (see [suite rules](../basics/grammar.md#statements-and-patterns)).
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 fn decrement(value: Int) Int:
     return value - 1
@@ -41,6 +42,7 @@ fn main() Void!:
 
 Labels are optional. An unlabeled argument fills the first parameter not yet filled, in declaration order. `name: value` fills that parameter in any order. A bare identifier is an ordinary expression, so renaming a local never changes which parameter it fills.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 fn reduce(amount: Int, deduction: Int) Int:
     return amount - deduction
@@ -51,6 +53,9 @@ mixed := reduce(deduction: 3, 10)
 amount := 10
 deduction := 3
 swapped := reduce(deduction: deduction, amount: amount)
+print(remaining)
+print(explicit_remaining)
+print(mixed)
 ```
 
 All five results are `7`. Arguments resolve left to right and labels do not reserve parameters for later arguments:
@@ -97,6 +102,7 @@ fn example() Int:
 
 To accept a variable number of values, declare an ordinary list parameter:
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 fn sum(values: List[Int]) Int:
     total := values.sum()
@@ -105,6 +111,7 @@ fn sum(values: List[Int]) Int:
 
 total := sum([1, 2, 3])
 empty := sum([])
+print(total)
 ```
 
 The argument is one list reference: `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list.
@@ -155,6 +162,7 @@ An expression has no normal successor when a necessarily evaluated subexpression
 
 Typing is separate: `1 + panic(message: "stop")` has type `Int` ([operators](../basics/expressions.md#never-operands)) but cannot complete, so the next statement is unreachable.
 
+<!-- manuscript-example: {"mode":"error","contains":"reachable fallthrough","given":[]} -->
 ```manuscript
 fn incomplete(active: Bool) Int:
     if active:

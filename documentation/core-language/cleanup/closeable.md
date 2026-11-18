@@ -7,6 +7,7 @@ weight = 3
 
 Implement `Closeable` when your type owns a resource that must be released at scope end. Import it from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 interface Closeable:
     var fn close() Void!

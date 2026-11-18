@@ -41,6 +41,7 @@ Run it next to an `orders.csv` file containing a header and two rows. With an em
 
 Declare the binding with `var` and call `close()` when you are done reading but not yet done with the function. A second close is harmless:
 
+<!-- manuscript-example: {"mode":"fragment","context":"import open from \"@std/os/fs.ms\"\n\nfn slow_work(head: List[String]) Void:\n    return","given":["path: String"]} -->
 ```manuscript
 var file = open(path)?
 head := file.read_lines(max_lines: 1)?

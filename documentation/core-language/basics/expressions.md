@@ -173,6 +173,7 @@ fn calculated(value: Int, active: Bool) Int:
     return value
 ```
 
+<!-- manuscript-example: {"mode":"error","contains":"comparison operators cannot chain","given":[]} -->
 ```manuscript
 fn invalid(value: Int, ratio: Float) Bool:
     mixed := value + ratio           // Type error: exact numeric types differ.

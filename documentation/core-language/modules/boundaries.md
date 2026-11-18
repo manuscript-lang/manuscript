@@ -24,6 +24,7 @@ export fn total(items: List[Item]) Int:
 
 Save the caller as `main.ms` in the same directory:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import Item, total from "./pricing.ms"
 

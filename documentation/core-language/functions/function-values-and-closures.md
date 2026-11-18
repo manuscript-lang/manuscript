@@ -32,6 +32,7 @@ Function types name no parameters; `fn(var List[Int]) Void` marks one the functi
 
 Parameter types in order, their `var` and `move` markers, and the result type are function-type identity. Compatibility is invariant except for one adaptation: a function that only reads a parameter may stand in where one that changes it (`var`) is expected ([changing parameters](#changing-parameters)); `move` always matches exactly. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
 fn subtract_one(amount: Int) Int:
     return amount - 1
@@ -166,6 +167,7 @@ A non-escaping callback can borrow an already-open file while its owner stays in
 
 ## Contextual callback inference
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn names() List[String]:
     return [1, 2].map(fn value: value.to_string())

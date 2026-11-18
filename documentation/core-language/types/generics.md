@@ -7,7 +7,7 @@ weight = 9
 
 Generics let one function or data type work with several concrete types while keeping its inputs and results known to the compiler. Type arguments go in brackets.
 
-```manuscript
+```text
 List[String]
 Map[String, Int]
 String?
@@ -48,6 +48,7 @@ fn use_view() Bool:
 
 ## Declarations and applications
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 type Box[T]:
     value: T
@@ -61,6 +62,8 @@ fn same[T: Equal](left: T, right: T) Bool:
 box := Box[Int](1)
 exact := identity[Int](1)
 inferred := identity(1)
+print(box)
+print(exact)
 ```
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
@@ -73,6 +76,7 @@ inferred := identity(1)
 
 A parameter may declare `= Type` as a default. Later parameters then need defaults too. A default may name earlier parameters, not itself or later ones, and must satisfy the bounds.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 type Pair[A, B = A]:
     first: A
@@ -83,6 +87,7 @@ fn parse[T = String](text: String) T?:
 
 same: Pair[Int] := Pair[Int](1, 2)    // Pair[Int, Int]
 mixed := Pair[Int, String](1, "x")
+print(same)
 ```
 
 Inference runs first; a parameter it leaves undetermined takes its default, for calls and constructors alike. An undetermined parameter without a default is an error.
@@ -91,6 +96,7 @@ Inference runs first; a parameter it leaves undetermined takes its default, for 
 
 A call may omit type arguments when its arguments and expected result uniquely determine every parameter. Evidence is gathered in order: independently typed arguments, then the expected result, then callbacks with known inputs. Repeated occurrences must agree. Bounds are checked after substitution. No common supertype, union, or numeric widening is inferred.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected Int","given":[]} -->
 ```manuscript
 fn choose[T](first: T, second: T) T:
     return first
@@ -102,6 +108,7 @@ mixed := choose(1, 2.0)
 
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 fn fail[T](message: String) Result[T, Error]: error(Error(message))
 
@@ -113,6 +120,7 @@ Matching adds no numeric conversions, interface conversions, or `Optional` wrapp
 
 Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `T?` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 
+<!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
 fn count[T](values: List[T]) Int:
     return 0
@@ -128,6 +136,7 @@ Generic constructors infer from fields or payloads, or from an expected applicat
 
 A generic body is checked once against its declared bounds, which expose only their declared properties. An unconstrained `T` cannot use `==`, be a map key, or call contract operations.
 
+<!-- manuscript-example: {"mode":"error","contains":"equality requires Equal","given":[]} -->
 ```manuscript
 // Rejected at declaration: missing Equal bound.
 fn unchecked_same[T](left: T, right: T) Bool:
@@ -147,6 +156,7 @@ A generic implementation is likewise checked once under its inherited bounds. Ma
 
 Generic function calls and specialized function values follow the same rule across the module graph: a recursive cycle must preserve the starting type parameters one-to-one. Nonrecursive calls may use other arguments. Expanding specialization is rejected before code generation, even if unreachable.
 
+<!-- manuscript-example: {"mode":"error","contains":"recursive generic"} -->
 ```manuscript
 fn repeat[T](value: T) Never:
     return repeat[T](value)  // Regular specialization; allowed.

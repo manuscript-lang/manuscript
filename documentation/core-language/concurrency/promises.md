@@ -55,6 +55,7 @@ The entry follows the ordinary capture rules. A promise that is returned owns wh
 
 For several file reads, give each promise the same signal (this fragment assumes `paths` is a `List[String]` and imports `cancel_switch`):
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 stop := cancel_switch()
 options := PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())

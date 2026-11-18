@@ -51,6 +51,7 @@ Sam has 4 items; archived: 3
 
 Leave out the `.clone()`:
 
+<!-- manuscript-example: {"mode":"error","contains":"moved here but used again","context":"type Cart:\n    owner: String\n    items: List[String]\n\nfn archive(cart: Cart, var history: List[Cart]) Void:\n    history.append(cart)","given":["cart: Cart","var history: List[Cart]"]} -->
 ```manuscript
     archive(cart, var history)
     print(cart.owner)
