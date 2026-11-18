@@ -39,6 +39,7 @@ import (
 	msstd_http_worker_adopt,
 	msstd_http_worker_close from "@std/internal/http.ms",
 	msstd_net_connection_accept_tls,
+	msstd_net_connection_adopt,
 	msstd_net_connection_alias,
 	msstd_net_connection_close,
 	msstd_net_connection_close_if_last,
@@ -57,6 +58,7 @@ import (
 	msstd_net_datagram_send_bytes,
 	msstd_net_datagram_share,
 	msstd_net_listener_accept,
+	msstd_net_listener_accept_raw,
 	msstd_net_listener_address,
 	msstd_net_listener_close,
 	msstd_net_listener_share,
@@ -75,7 +77,8 @@ import (
 	msstd_net_network_resolve,
 	msstd_net_network_restrict,
 	msstd_net_network_web_socket,
-	msstd_net_network_with_resolver from "@std/internal/net.ms",
+	msstd_net_network_with_resolver,
+	msstd_net_pending_release from "@std/internal/net.ms",
 )
 
 // The runtime handle behind a `Connection`.
@@ -285,6 +288,17 @@ fn Listener.accept(timeout: Duration? = none) Promise[Connection]:
 		options: PromiseOptions(placement: Placement.Here)
 	)
 
+// Starts waiting for the next incoming connection without binding it to a thread, and
+// returns its promise. A timeout gives ETIMEDOUT and a closed listener gives EBADF from
+// `wait`, as for `accept`. A TLS listener gives EINVAL: its handshake belongs to the
+// accepting thread.
+fn Listener.accept_pending(timeout: Duration? = none) Promise[PendingConnection]:
+	native := msstd_net_listener_share(self.native)
+	return promise(
+		fn: accepted_pending(native, timeout),
+		options: PromiseOptions(placement: Placement.Here)
+	)
+
 // Returns the bound local address as `host:port` text, which reveals the port
 // chosen when listening on port 0.
 fn Listener.address() String:
@@ -293,6 +307,33 @@ fn Listener.address() String:
 // The work of `accept`, on its own handle on the listener.
 fn accepted(native: NativeListener, timeout: Duration?) Connection!:
 	return ok(connection(msstd_net_listener_accept(native, timeout)?))
+
+fn accepted_pending(native: NativeListener, timeout: Duration?) PendingConnection!:
+	return ok(PendingConnection(raw: msstd_net_listener_accept_raw(native, timeout)?))
+
+// An accepted connection that no thread has taken yet. A connection belongs to the
+// thread that uses it, so accepting and using it are two steps: the listener's thread
+// accepts, and whichever thread should serve the connection calls `adopt`. Move it into
+// a promise placed with `Placement.Spread` to serve connections on every core, as
+// `serve` does for HTTP. Closing it without adopting closes the socket.
+export opaque type PendingConnection:
+	// The socket handle, or -1 once adopted or closed.
+	raw: Int
+
+// Closes the socket unless it was adopted. Safe to call repeatedly.
+fn var PendingConnection.close() Void!:
+	if self.raw >= 0:
+		msstd_net_pending_release(self.raw)
+		self.raw = -1
+
+// Turns the pending connection into a `Connection` owned by the calling thread.
+// Adopting twice returns EBADF.
+fn var PendingConnection.adopt() Connection!:
+	if self.raw < 0: return error(Error("network: closed", kind: "EBADF"))
+
+	raw := self.raw
+	self.raw = -1
+	return ok(connection(msstd_net_connection_adopt(raw)?))
 
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork

@@ -27,7 +27,7 @@ Nothing here is a gap worth a fix. Spawn, timers, thread scaling, files, process
 | Pipe, one writer to one reader on another thread, 4M `Int`, capacity 1024 | 650 | 280 (chan; 140 per 2M measured), Rust `sync_channel` 70 to 90 | Trivial work per item. One thread runs it in 150 ms. |
 | Request and reply over two pipes, 500k rounds, two threads | 1100 | 212 (85 per 200k measured) | Same. One thread: 280. |
 | Echo over loopback TCP, 31k rounds of 64 bytes | 305 to 330 | 215 (`splice`, so not like for like) | 10 system calls per hop, mostly kernel. |
-| 20,000 short connections, 4 to 128 at a time | 810 to 960 | 420 to 540 | A listener pins its thread, so accept and the handlers share one core; Go spreads over four. `serve` already spreads. |
+| 20,000 short connections, 4 to 128 at a time | 810 to 960 | 420 to 540 | A listener pins its thread, so accept and the handlers share one core; Go spreads over four. `serve` spreads HTTP; `Listener.accept_pending` spreads raw TCP (section below). |
 
 The worker-pool rows above show the pipe cost disappearing once an item does real work: 500k jobs at 0.4 us each take 236 ms against Go's 222 ms, and at 3 us each the two are equal.
 
@@ -63,3 +63,17 @@ The first lane that `pipe()` never used is deleted (#4507).
 Go on the same machine: 310 ms for the same throughput case with 4 procs (200 with 1), and request and reply 170 to 190 per 400k rounds at any proc count, because Go keeps the two goroutines on one thread. Run-to-run spread on this VM is large (single runs 230 to 830 ms), so the table uses medians of interleaved runs.
 
 Tried and dropped on top: spinning for a writer on another thread before the read parks (request and reply 1119 to 694, throughput 614 to 796: the spin reads the line the writer writes on every value).
+
+### Change: `Listener.accept_pending` spreads raw TCP connections
+
+A `Connection` belongs to the thread that uses it, and so does the listener that made it, so a program that accepts and serves on one listener ran its handlers on the accepting core. `serve` avoids this for HTTP by accepting a raw socket handle and adopting it on a worker thread. `Listener.accept_pending` exposes the same two steps: it returns a `PendingConnection` (a socket not yet bound to a thread), and `PendingConnection.adopt` on the thread that should serve it gives the `Connection`. A handler promise started with `Placement.Spread` does the adopt, so each connection lands on the least loaded thread. No new scheduling code: it is `Placement.Spread` plus the handoff `serve` already uses.
+
+20,000 short connections, 128 at a time, echo of 11 bytes, median of 9 runs (4 vCPU VM, clients in the same process and spread):
+
+| server | ms |
+| --- | ---: |
+| `accept` plus handler on the listener's thread | 843 |
+| `accept_pending` plus handler `Placement.Spread` | 766 |
+| Go | 493 |
+
+The handlers here do almost no work, so the saving is small: the cost per connection is mostly kernel time (sys 0.9 s of 1.6 s CPU, Go the same) and the accept loop. With 300,000 loop iterations of work per connection (1,024 connections): 1758 ms pinned, 1229 ms spread. The remaining gap to Go on empty handlers is user-space cost per connection (about 0.7 s against 0.4 s), not placement.
