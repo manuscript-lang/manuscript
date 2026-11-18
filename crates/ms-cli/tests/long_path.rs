@@ -54,10 +54,14 @@ fn a_project_under_a_long_path_builds_tests_and_runs() {
 
     let exe = dir.join(if cfg!(windows) { "out.exe" } else { "out" });
     passes(&ms(&["build", file, "-o", exe.to_str().unwrap()]), "build");
-    let ran = Command::new(&exe)
+    assert!(Path::new(&exe).is_file());
+    // Windows cannot start an executable whose own path is 260 or more characters, so the built
+    // program runs from a short path and works on the deep directory.
+    let short = common::scratch("long-path-exe").join(exe.file_name().unwrap());
+    std::fs::copy(&exe, &short).unwrap();
+    let ran = Command::new(&short)
         .arg(dir.to_str().unwrap())
         .output()
         .unwrap();
     assert!(passes(&ran, "built program").ends_with("done\n"));
-    assert!(Path::new(&exe).is_file());
 }

@@ -112,9 +112,10 @@ fn send_signal(pid: u32, handle: isize, signum: i32) {
     }
     #[cfg(windows)]
     {
-        let _ = (pid, signum);
+        let _ = pid;
+        // The status is 128 + signal, as on Unix, so an interrupt reads the same everywhere.
         // SAFETY: the handle belongs to a `Child` that stays alive until its wait returns.
-        unsafe { TerminateProcess(handle, 1) };
+        unsafe { TerminateProcess(handle, 128 + signum as u32) };
     }
 }
 
