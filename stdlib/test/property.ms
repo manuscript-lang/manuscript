@@ -153,13 +153,20 @@ fn bool_draw(s: Source) Drawn[Bool]:
 	return Drawn(value == 1, source)
 
 // Generates floats from `low` through `high` at 2^-53 resolution, shrinking toward
-// `low`.
+// `low`. The bounds may be as far apart as the largest finite Floats.
 export fn floats(low: Float, high: Float) Gen[Float]:
 	return Gen[Float](fn s: float_draw(s.clone(), low, high))
 
 fn float_draw(s: Source, low: Float, high: Float) Drawn[Float]:
 	{value, source} := draw(s, 9007199254740992)
-	return Drawn(low + (high - low) * (value.to_float() / 9007199254740992.0), source)
+	fraction := value.to_float() / 9007199254740992.0
+	span := high - low
+	if span - span != 0.0:
+		// The span overflows: weigh the ends instead of scaling the distance between
+		// them.
+		return Drawn(low * (1.0 - fraction) + high * fraction, source)
+
+	return Drawn(low + span * fraction, source)
 
 // Always generates a copy of `value`, consuming no draws, so it never shrinks.
 export fn constant[T: Clonable](value: T) Gen[T]:
