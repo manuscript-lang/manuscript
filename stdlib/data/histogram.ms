@@ -86,7 +86,7 @@ fn Histogram.mean() Float:
 
 // Value at or below which `p` percent of observations fall, for `p` in 0.0 through
 // 100.0; none when empty. The answer is the top of the matching bucket, never above
-// `maximum`. A `p` outside the range gives none.
+// the largest observation. A `p` outside the range gives none.
 fn Histogram.percentile(p: Float) Int?:
 	if not (p >= 0.0 and p <= 100.0) or self.total == 0: return none
 
