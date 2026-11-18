@@ -894,6 +894,9 @@ impl<'a> FnLower<'a> {
         if !self.boundary_reads.contains(&x.v)
             // A `trim` view kept as a value is the allocation `trim` would have made.
             && !self.views.contains(&x.v)
+            // A part of a pending temporary is copied out before the statement end drops the
+            // temporary (the checker's `OwnedBorrow::Clone`): the copy is declared.
+            && !self.temp_rooted(x.v, 0)
             && !matches!(
                 self.b.defining_op_anywhere(x.v),
                 Some(Op::StrLit | Op::BytesLit | Op::ListConstView | Op::OptNone)
@@ -1262,13 +1265,7 @@ impl<'a> FnLower<'a> {
         } else {
             self.b.declare_single(ty, mode)
         };
-        // A binding of a part of a pending temporary owns a copy: the temporary drops at the
-        // statement end (the checker's rule "a binding of a temporary owns its value").
-        let v = if !x.own && self.temp_rooted(x.v, 0) {
-            self.owned_boundary(x)
-        } else {
-            self.owned(x)
-        };
+        let v = self.owned(x);
         self.b.def_var(var, v);
         // A reassigned local holds several values, so a debugger name for the first would show
         // a stale one after the assignment; only a binding with one definition is named.

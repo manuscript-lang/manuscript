@@ -23,19 +23,24 @@
           "index": 2,
           "name": "bind-part-of-temporary.ms::a part two levels into a temporary record",
           "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "bind-part-of-temporary.ms::a list literal and append own copies of nested elements of a temporary",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN bind-part-of-temporary.ms::an immutable binding of a part of a temporary owns a copy\nPASS bind-part-of-temporary.ms::an immutable binding of a part of a temporary owns a copy\nRUN bind-part-of-temporary.ms::a var binding of a part of a temporary owns a copy\nPASS bind-part-of-temporary.ms::a var binding of a part of a temporary owns a copy\nRUN bind-part-of-temporary.ms::a part two levels into a temporary record\nPASS bind-part-of-temporary.ms::a part two levels into a temporary record\n3 tests, 0 failed\n",
+      "stdout": "RUN bind-part-of-temporary.ms::an immutable binding of a part of a temporary owns a copy\nPASS bind-part-of-temporary.ms::an immutable binding of a part of a temporary owns a copy\nRUN bind-part-of-temporary.ms::a var binding of a part of a temporary owns a copy\nPASS bind-part-of-temporary.ms::a var binding of a part of a temporary owns a copy\nRUN bind-part-of-temporary.ms::a part two levels into a temporary record\nPASS bind-part-of-temporary.ms::a part two levels into a temporary record\nRUN bind-part-of-temporary.ms::a list literal and append own copies of nested elements of a temporary\nPASS bind-part-of-temporary.ms::a list literal and append own copies of nested elements of a temporary\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

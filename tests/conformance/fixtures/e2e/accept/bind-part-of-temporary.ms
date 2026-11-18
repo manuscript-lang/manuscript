@@ -24,3 +24,10 @@ test "a var binding of a part of a temporary owns a copy":
 test "a part two levels into a temporary record":
 	t := items()[0].tags[1]
 	expect_equal(t, "yy")?
+
+test "a list literal and append own copies of nested elements of a temporary":
+	a := [nested()[0][0], nested()[0][1]]
+	expect_equal(a.length(), 2)?
+	var b: List[String] = []
+	b.append(nested()[0][1])
+	expect_equal(b[0], "b")?
