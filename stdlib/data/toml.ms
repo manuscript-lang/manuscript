@@ -1086,8 +1086,8 @@ fn inline_value(value: TomlValue) String:
 		TableValue(values):
 			var parts: List[String] = []
 			for entry in values.entries(): parts.append(
-				format_key(entry.key.clone()).concat(" = ").concat(
-					inline_value(entry.value.clone())
+				format_key(entry.key).concat(" = ").concat(
+					inline_value(entry.value)
 				)
 			)
 			if parts.is_empty(): return "{}"
@@ -1137,21 +1137,18 @@ fn emit_one(
 	brackets: String,
 	table: Map[String, TomlValue],
 ) Void:
-	if brackets == "[[": emit_header(
-		var writer,
-		"[[".concat(dotted(path.clone())).concat("]]"),
-	)
-	else: emit_header(var writer, "[".concat(dotted(path.clone())).concat("]"))
+	if brackets == "[[": emit_header(var writer, "[[".concat(dotted(path)).concat("]]"))
+	else: emit_header(var writer, "[".concat(dotted(path)).concat("]"))
 
 	emit_table(var writer, path, table)
 
 fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) Void:
 	for entry in values.entries():
-		if section_kind(entry.value.clone()) == 0: writer.out.append(
+		if section_kind(entry.value) == 0: writer.out.append(
 			(
-				format_key(entry.key.clone())
+				format_key(entry.key)
 				.concat(" = ")
-				.concat(inline_value(entry.value.clone()))
+				.concat(inline_value(entry.value))
 				.concat("\n")
 			)
 		)
@@ -1168,10 +1165,10 @@ fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlVa
 				table: table,
 			)
 			ArrayValue(elements):
-				if section_kind(entry.value.clone()) == 2:
-					for table in table_items(elements.clone()): emit_one(
+				if section_kind(entry.value) == 2:
+					for table in table_items(elements): emit_one(
 						writer: var writer,
-						path: child.clone(),
+						path: child,
 						brackets: "[[",
 						table: table,
 					)
@@ -1186,7 +1183,7 @@ fn datetimes_valid(value: TomlValue) Bool:
 			return true
 		TableValue(values):
 			for entry in values.entries():
-				if not datetimes_valid(entry.value.clone()): return false
+				if not datetimes_valid(entry.value): return false
 			return true
 		_: return true
 
