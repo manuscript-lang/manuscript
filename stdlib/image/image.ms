@@ -257,14 +257,17 @@ fn Image.convert(target: ColorMode) Image:
 	return Image(self.width, self.height, target, out)
 
 // Scales to `width` by `height` with `method` and returns a new image. A non-positive
-// size returns EBADMSG, and a pixel count past `max_pixels` or the 2^30 hard ceiling
-// returns EOVERFLOW.
+// size returns EINVAL, as `new_image` does, and a pixel count past `max_pixels` or the
+// 2^30 hard ceiling returns EOVERFLOW.
 fn Image.resize(
 	width: Int,
 	height: Int,
 	method: Resampling = Resampling.Bilinear,
 	max_pixels: Int? = none,
 ) Image!:
+	if width < 1 or height < 1:
+		return error(Error("image: dimensions must be positive", kind: "EINVAL"))
+
 	count := pixel_count(width, height, max_pixels)?
 	n := color_channels(self.mode)
 	var out = List[UInt8](reserve: count * n)
