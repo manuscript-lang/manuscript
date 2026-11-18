@@ -606,9 +606,20 @@ impl Walker<'_> {
     /// Closes at scope end a resource parameter or receiver the callee keeps on some path: the caller
     /// handed it over, so the paths that do not move it on close it.
     fn consumed_param_resources(&mut self) {
+        // A parameter declared `move` is the callee's even when the body only reads it.
+        let declared = Summary::declared(&self.cx.c.func);
+        let declared_move = |w: &Self, uid: usize| {
+            w.cx.c
+                .self_binding
+                .iter()
+                .any(|b| b.uid == uid && declared.receiver == ParamMode::Move)
+                || w.cx.c.parameters.iter().zip(&declared.params).any(
+                    |(b, (_, mode))| b.uid == uid && *mode == ParamMode::Move,
+                )
+        };
         let receiver = self.cx.c.self_binding.iter();
         for b in self.cx.c.parameters.iter().chain(receiver) {
-            let tracked = self.consumed.contains(&b.uid)
+            let tracked = (self.consumed.contains(&b.uid) || declared_move(self, b.uid))
                 && self.may_close(&b.ty)
                 && matches!(b.ty.kind, Kind::Type | Kind::Alternative | Kind::Native);
             if !tracked {
