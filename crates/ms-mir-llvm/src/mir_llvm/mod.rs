@@ -17,6 +17,7 @@ mod faults;
 mod globals;
 mod glue;
 mod lists;
+mod loops;
 mod maps;
 pub(crate) mod rt;
 mod strings;
@@ -708,9 +709,17 @@ pub fn emit(
         native,
         in_loop: ms_mir::opt::inline::blocks_in_loops(f),
     };
+    let searches = loops::arithmetic_searches(f);
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         cx.block = bb.index();
+        b.set_no_vector_targets(
+            searches
+                .iter()
+                .filter(|(_, body)| body[bb.index()])
+                .map(|(h, _)| format!("b{h}"))
+                .collect(),
+        );
         cx.split = 0;
         b.label(&format!("b{}", bb.index()));
         if bb.index() == 0 {

@@ -1,4 +1,4 @@
-//! Sorts of word lists by a known, capture-free comparator, compiled with the program.
+//! Sorts of word lists by a known comparator, compiled with the program.
 //!
 //! The runtime sort calls its comparator through a pointer once per comparison, which keeps
 //! the comparator from being inlined. When the comparator is a closure the module already
@@ -28,12 +28,12 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
     let mut made: HashMap<FuncId, FuncId> = HashMap::new();
     for fi in 0..m.funcs.len() {
-        let mut known: ValueMap<FuncId> = ValueMap::new();
+        let mut known: ValueMap<(FuncId, bool)> = ValueMap::new();
         let mut thunks: ValueMap<FuncId> = ValueMap::new();
         for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
             match (inst.op, inst.imm, inst.res) {
-                (Op::ClosureNew, Imm::Func(g), Some(r)) if inst.args.is_empty() => {
-                    known.insert(r, g);
+                (Op::ClosureNew, Imm::Func(g), Some(r)) => {
+                    known.insert(r, (g, !inst.args.is_empty()));
                 }
                 (Op::FuncAddr, Imm::Func(t), Some(r))
                     if m.funcs[t.index()].sort == SortThunk::Specialized =>
@@ -56,17 +56,18 @@ pub fn run(m: &mut Module) -> bool {
                 if m.externs[e.index()].role != ExternRole::ListSorted {
                     continue;
                 }
-                let (Some(&t), Some(&g)) = (thunks.get(&inst.args[2]), known.get(&inst.args[3]))
+                let (Some(&t), Some(&(g, captures))) =
+                    (thunks.get(&inst.args[2]), known.get(&inst.args[3]))
                 else {
                     continue;
                 };
                 if let Some(elem) = word_elem(m, t, g) {
-                    sites.push((bi, ii, g, elem));
+                    sites.push((bi, ii, g, elem, captures));
                 }
             }
         }
         // Last first, so each rewrite leaves the earlier indices valid.
-        for (bi, ii, g, elem) in sites.into_iter().rev() {
+        for (bi, ii, g, elem, captures) in sites.into_iter().rev() {
             if elem == Ty::INT
                 && let Some(desc) = plain_int_order(m, g)
             {
@@ -131,9 +132,9 @@ pub fn run(m: &mut Module) -> bool {
             let sort = *made.entry(g).or_insert_with(|| build_drift(m, g, elem));
             if m.needs_drop(elem) {
                 let ext = shadow_externs(m, fi, bi, ii);
-                rewrite_owned(&mut m.funcs[fi], bi, ii, sort, elem, ext);
+                rewrite_owned(&mut m.funcs[fi], bi, ii, sort, elem, captures, ext);
             } else {
-                rewrite(&mut m.funcs[fi], bi, ii, sort, elem);
+                rewrite(&mut m.funcs[fi], bi, ii, sort, elem, captures);
             }
             changed = true;
         }
@@ -403,6 +404,37 @@ fn shadow_externs(
     (shadow, free)
 }
 
+/// The environment pointer a generated sort passes to its comparator `g`: a scratch slot for a
+/// comparator that captures nothing, and the closure's own environment for one that does (the
+/// closure value is that pointer; it is stored to a slot and read back as a `ptr`).
+fn comparator_env(
+    f: &mut Func,
+    insts: &mut Vec<Inst>,
+    closure: Value,
+    elem: Ty,
+    captures: bool,
+    loc: crate::ir::Loc,
+) -> Value {
+    let mut push = |f: &mut Func, op, args: Vec<Value>, imm, ty: Option<Ty>| {
+        let res = ty.map(|t| f.new_value(t));
+        insts.push(Inst {
+            op,
+            args,
+            imm,
+            res,
+            loc,
+        });
+        res
+    };
+    if !captures {
+        return push(f, Op::Slot, vec![], Imm::Ty(elem), Some(Ty::PTR)).expect("env slot");
+    }
+    let closure_ty = f.values[closure.index()];
+    let slot = push(f, Op::Slot, vec![], Imm::Ty(closure_ty), Some(Ty::PTR)).expect("env slot");
+    push(f, Op::Store, vec![slot, closure], Imm::None, None);
+    push(f, Op::Load, vec![slot], Imm::Ty(Ty::PTR), Some(Ty::PTR)).expect("env")
+}
+
 /// Rewrites the runtime sort of owning elements. The sort permutes bitwise copies of the slots
 /// (two scratch buffers that own nothing) and only then clones the sorted slots into the result,
 /// so a comparator that exits early never leaves a list with duplicated owners.
@@ -412,6 +444,7 @@ fn rewrite_owned(
     ii: usize,
     sort: FuncId,
     elem: Ty,
+    captures: bool,
     (shadow, free): (crate::ir::ExtId, crate::ir::ExtId),
 ) {
     let call = f.blocks[bi].insts[ii].clone();
@@ -419,6 +452,7 @@ fn rewrite_owned(
     let out = call.res.expect("sorted result");
     let list_ty = f.values[out.index()];
     let mut insts = Vec::new();
+    let env = comparator_env(f, &mut insts, call.args[3], elem, captures, call.loc);
     let mut emit = |op, args: Vec<Value>, imm, res: Option<Value>| {
         insts.push(Inst {
             op,
@@ -437,8 +471,6 @@ fn rewrite_owned(
     emit(Op::ListLen, vec![items], Imm::None, Some(len));
     let zero = f.new_value(Ty::INT);
     emit(Op::IConst, vec![], Imm::Int(0), Some(zero));
-    let env = f.new_value(Ty::PTR);
-    emit(Op::Slot, vec![], Imm::Ty(elem), Some(env));
     let unit = f.new_value(Ty::VOID);
     emit(
         Op::Call,
@@ -457,7 +489,7 @@ fn rewrite_owned(
 }
 
 /// Rewrites the runtime sort at `blocks[bi].insts[ii]` into a copy, a buffer copy and a call.
-fn rewrite(f: &mut Func, bi: usize, ii: usize, sort: FuncId, elem: Ty) {
+fn rewrite(f: &mut Func, bi: usize, ii: usize, sort: FuncId, elem: Ty, captures: bool) {
     let call = f.blocks[bi].insts[ii].clone();
     let list = call.args[0];
     let out = call.res.expect("sorted result");
@@ -486,24 +518,23 @@ fn rewrite(f: &mut Func, bi: usize, ii: usize, sort: FuncId, elem: Ty) {
     let buf = buf.expect("buffer");
     let (len, len_v) = new(f, Op::ListLen, vec![out], Imm::None, Some(Ty::INT));
     let (zero, zero_v) = new(f, Op::IConst, vec![], Imm::Int(0), Some(Ty::INT));
-    let (env, env_v) = new(f, Op::Slot, vec![], Imm::Ty(elem), Some(Ty::PTR));
+    let mut env_insts = Vec::new();
+    let env_v = comparator_env(f, &mut env_insts, call.args[3], elem, captures, call.loc);
     let (run, _) = new(
         f,
         Op::Call,
-        vec![
-            buf,
-            out,
-            zero_v.expect("zero"),
-            len_v.expect("len"),
-            env_v.expect("env"),
-        ],
+        vec![buf, out, zero_v.expect("zero"), len_v.expect("len"), env_v],
         Imm::Func(sort),
         Some(Ty::VOID),
     );
     let (drop_buf, _) = new(f, Op::Drop, vec![buf], Imm::None, None);
     f.blocks[bi]
         .insts
-        .splice(ii..=ii, [copy_out, copy_buf, len, zero, env, run, drop_buf]);
+        .splice(ii..=ii, [copy_out, copy_buf, len, zero]);
+    let at = ii + 4;
+    f.blocks[bi]
+        .insts
+        .splice(at..at, env_insts.into_iter().chain([run, drop_buf]));
 }
 
 /// Builds `merge(src, dst, lo, hi, env)`: stable merge sort that leaves `dst[lo..hi]` sorted by the

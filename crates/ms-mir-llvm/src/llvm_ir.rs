@@ -348,6 +348,8 @@ pub(crate) fn range_tag_node(n: usize) -> usize {
 }
 /// The largest enum whose case index has a range node.
 pub(crate) const MAX_TAG_RANGE: usize = 16;
+/// The loop node that turns vectorization off (`!llvm.loop`), and the property it holds.
+pub(crate) const NO_VECTOR_NODE: usize = TBAA_BASE + 7 + MAX_TAG_RANGE + 1;
 /// The empty node `!noundef` and `!nonnull` point at.
 pub(crate) const EMPTY_NODE: usize = 3;
 
@@ -733,6 +735,12 @@ impl LlvmModule {
             h = TBAA_BASE + 2,
             ts = TBAA_SCALAR_ELEM_NODE,
             th = TBAA_HEADER_ELEM_NODE
+        );
+        let _ = write!(
+            tail,
+            "!{n} = distinct !{{!{n}, !{p}}}\n!{p} = !{{!\"llvm.loop.vectorize.enable\", i1 false}}\n",
+            n = NO_VECTOR_NODE,
+            p = NO_VECTOR_NODE + 1
         );
         let _ = write!(
             tail,
