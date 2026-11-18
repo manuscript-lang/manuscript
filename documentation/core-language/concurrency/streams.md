@@ -123,6 +123,6 @@ The producer closes its writer after sending the values, allowing the reader's l
 - `capacity` is the level above which a writer's `write` and `flush` wait.
 - The reader ends when every writer is closed, after it has read what was sent. Closing the reader makes writers fail with `"EBADF"`.
 - `write` is a `var fn`, so two promises cannot share one writer; each takes its own. Make one `var` writer per producer before starting the promises: the promise takes it over and may pass it on or write to it, so any number of producers can feed one reader.
-- A hand-over between promises on different threads costs about 2 µs when the reader keeps catching up with the writer (a request and reply over two pipes: 1.2 s for 500,000 rounds, against 0.3 s with `Placement.Here`). For chatty, fast exchanges start the pair with `PromiseOptions(placement: Placement.Here)`; for stages that each do real work per value, the default placement runs them in parallel and wins.
+- A hand-over between promises on different threads costs about 1 µs when the reader keeps catching up with the writer (a request and reply over two pipes: 0.6 s for 500,000 rounds, against 0.3 s with `Placement.Here`). For chatty, fast exchanges start the pair with `PromiseOptions(placement: Placement.Here)`; for stages that each do real work per value, the default placement runs them in parallel and wins.
 
 `json_reader[T]` and `json_writer[T]` give a typed view of a byte stream, for example to send newline-delimited JSON over a socket.

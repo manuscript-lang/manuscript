@@ -207,6 +207,7 @@ msrt_obj_clone(o: *mut Obj) -> *mut Obj
 msrt_obj_drop(o: *mut Obj)
 msrt_ops_add(n: i64) @leaf
 msrt_pipe_add_writer(pipe: i64) @domain=pipe
+msrt_pipe_brief_wait(pipe: i64) -> i64 @domain=pipe
 msrt_pipe_close_reader(pipe: i64) @domain=pipe
 msrt_pipe_close_writer(pipe: i64) @domain=pipe
 msrt_pipe_ended(pipe: i64) -> i64 @domain=pipe

@@ -257,6 +257,13 @@ crate::isolate_static! {
     static FATAL: Vec<u8> = Vec::new();
 }
 
+/// Whether this thread has another task that could run now, or a promise to start: then a task
+/// that waits for a value should park and let it run, because the value may be its to produce.
+pub(crate) fn others_runnable() -> bool {
+    let queued = !sched().ready.is_empty();
+    queued || crate::sched::work_available()
+}
+
 /// Lets other runnable tasks run, then continues.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_yield() {

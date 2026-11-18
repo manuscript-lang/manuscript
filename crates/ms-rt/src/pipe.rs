@@ -224,6 +224,10 @@ struct Shared {
     waiting: AtomicI64,
     /// Whether some flush promise waits for the queue to fall to its capacity.
     flush_pending: AtomicBool,
+    /// How many writers are open, mirrored from the pipe so the reader can see the end without the
+    /// lock. A writer queues its values before it closes, so a reader that sees 0 here (acquire)
+    /// sees every value that was ever queued.
+    writers: AtomicU32,
 }
 
 /// Values in the shared queue: written by every write, so it sits apart from the flags that the
@@ -240,6 +244,8 @@ struct Consumer {
     front: UnsafeCell<VecDeque<Item>>,
     /// Values taken from the shared queue ahead of reading them.
     local: UnsafeCell<VecDeque<Item>>,
+    /// Nanoseconds the reader leaves between looks at an empty queue; see `msrt_pipe_brief_wait`.
+    gap: AtomicI64,
 }
 
 /// One pipe, its parts on cache lines of their own so a writer never invalidates a line the
@@ -274,6 +280,7 @@ impl Cell {
                 capacity: AtomicUsize::new(0),
                 waiting: AtomicI64::new(0),
                 flush_pending: AtomicBool::new(false),
+                writers: AtomicU32::new(0),
             },
             counts: Counts {
                 queue_len: AtomicUsize::new(0),
@@ -281,6 +288,7 @@ impl Cell {
             consumer: Consumer {
                 front: UnsafeCell::new(VecDeque::new()),
                 local: UnsafeCell::new(VecDeque::new()),
+                gap: AtomicI64::new(GAP_MIN),
             },
         }
     }
@@ -429,6 +437,15 @@ fn take_batch(cell: &Cell, p: &mut Pipe) -> Option<Item> {
     let local = unsafe { cell.local() };
     debug_assert!(local.is_empty());
     core::mem::swap(&mut p.queue, local);
+    // A run of values means the writer streams: look less often, so it queues longer runs between
+    // looks. A lone value means a request and a reply: look soon.
+    let gap = cell.consumer.gap.load(Ordering::Relaxed);
+    let gap = if local.len() >= 4 {
+        (gap * 2).min(GAP_MAX)
+    } else {
+        (gap / 2).max(GAP_MIN)
+    };
+    cell.consumer.gap.store(gap, Ordering::Relaxed);
     cell.counts.queue_len.store(0, Ordering::Relaxed);
     local.pop_front()
 }
@@ -495,6 +512,7 @@ pub extern "C-unwind" fn msrt_pipe_new(capacity: i64) -> i64 {
     cell.shared.reader_open.store(true, Ordering::Relaxed);
     cell.shared.waiting.store(0, Ordering::Relaxed);
     cell.shared.flush_pending.store(false, Ordering::Relaxed);
+    cell.shared.writers.store(1, Ordering::Relaxed);
     cell.shared
         .live_generation
         .store(p.generation, Ordering::Release);
@@ -504,8 +522,9 @@ pub extern "C-unwind" fn msrt_pipe_new(capacity: i64) -> i64 {
 /// Another writing end, like `dup` on a descriptor.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_pipe_add_writer(pipe: i64) {
-    if let Some((_, mut p)) = locked(pipe) {
+    if let Some((cell, mut p)) = locked(pipe) {
         p.writers += 1;
+        cell.shared.writers.store(p.writers, Ordering::Release);
     }
 }
 
@@ -677,12 +696,62 @@ pub unsafe extern "C-unwind" fn msrt_pipe_try(
 /// Whether a read would finish with no value: every writer has closed and nothing is queued.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_pipe_ended(pipe: i64) -> i64 {
-    let Some((cell, p)) = locked(pipe) else {
+    let Some(cell) = cell_for(pipe) else {
         return 1;
     };
+    // The writers first: they queue before they close, so no value can appear after this sees 0.
+    if cell.shared.writers.load(Ordering::Acquire) != 0 {
+        return 0;
+    }
     // SAFETY: this is the reader.
     let held = unsafe { !cell.front().is_empty() || !cell.local().is_empty() };
-    (p.writers == 0 && p.queue.is_empty() && !held) as i64
+    (cell.backlog() == 0 && !held) as i64
+}
+
+/// The gap between the reader's looks at an empty queue: it starts at the least, doubles while the
+/// writer streams (a run of values at each look), and halves while values arrive alone. The reader
+/// parks after `BRIEF_NS` without a value, which bounds the cpu an idle reader spends per park and
+/// the delay a lone value can meet to the largest gap.
+const GAP_MIN: i64 = 100;
+const GAP_MAX: i64 = 16_000;
+const BRIEF_NS: i64 = 20_000;
+
+/// Lets a writer that is about to queue a value do it before the reader pays to park for it, and
+/// answers whether a value is queued (or the pipe ended). The reader looks at the queue's length,
+/// which every write stores to, only now and then: each look moves that line to the reader and
+/// makes the next write wait for it back, so a reader that looks all the time keeps the writer at
+/// a value per hand-over. Looking at doubling gaps up to a cap, within a total near the cost of a
+/// park and wake, lets the writer queue a run of values between looks and still answers a lone
+/// value within about a gap.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_pipe_brief_wait(pipe: i64) -> i64 {
+    let Some(cell) = cell_for(pipe) else {
+        return 1;
+    };
+    if cell.backlog() != 0 || cell.shared.writers.load(Ordering::Acquire) == 0 {
+        return 1;
+    }
+    // Looking for a value is for a writer on another thread: with one thread, or another task here
+    // that could be the writer, the wait would only hold it back.
+    if crate::sched::started() <= 1 || crate::task::others_runnable() {
+        return 0;
+    }
+    let mut gap = cell.consumer.gap.load(Ordering::Relaxed);
+    let start = crate::sys::monotonic_ns();
+    let mut until = start;
+    loop {
+        until += gap;
+        while crate::sys::monotonic_ns() < until {
+            core::hint::spin_loop();
+        }
+        if cell.backlog() != 0 || cell.shared.writers.load(Ordering::Acquire) == 0 {
+            return 1;
+        }
+        if until - start >= BRIEF_NS {
+            return 0;
+        }
+        gap = (gap * 2).min(GAP_MAX);
+    }
 }
 
 /// Starts a flush: answers a promise that finishes when no more than `capacity` values are queued
@@ -735,6 +804,7 @@ pub extern "C-unwind" fn msrt_pipe_close_writer(pipe: i64) {
             return;
         };
         p.writers = p.writers.saturating_sub(1);
+        cell.shared.writers.store(p.writers, Ordering::Release);
         // A parked reader means the queue was empty when it parked, and a write since would
         // have claimed it, so it ends.
         let reader = if p.writers == 0 && p.queue.is_empty() {
@@ -808,6 +878,49 @@ mod tests {
     fn write_int(pipe: i64, mut v: i64) -> i64 {
         // SAFETY: `v` is an Int slot the call takes.
         unsafe { msrt_pipe_write(pipe, (&raw mut v).cast(), &msrt_desc_int) }
+    }
+
+    #[test]
+    fn a_brief_wait_answers_at_once_for_a_value_or_the_end_and_never_holds_a_lone_thread() {
+        let _g = lock();
+        let pipe = msrt_pipe_new(8);
+        // One thread runs the writer too, so waiting for it would only hold it back.
+        let start = crate::sys::monotonic_ns();
+        assert_eq!(msrt_pipe_brief_wait(pipe), 0);
+        assert!(
+            crate::sys::monotonic_ns() - start < BRIEF_NS,
+            "it answers without waiting"
+        );
+        assert_eq!(write_int(pipe, 7), WRITTEN);
+        assert_eq!(msrt_pipe_brief_wait(pipe), 1);
+        let read = msrt_pipe_read(pipe);
+        assert_eq!(finish(read), Some(7));
+        msrt_pipe_close_writer(pipe);
+        assert_eq!(msrt_pipe_brief_wait(pipe), 1);
+        msrt_pipe_close_reader(pipe);
+    }
+
+    #[test]
+    fn the_reader_looks_less_often_while_runs_arrive_and_more_often_for_lone_values() {
+        let _g = lock();
+        let pipe = msrt_pipe_new(64);
+        let cell = cell_for(pipe).expect("the pipe is live");
+        for round in 0..12 {
+            for v in 0..8 {
+                assert_eq!(write_int(pipe, round * 8 + v), WRITTEN);
+            }
+            for v in 0..8 {
+                assert_eq!(finish(msrt_pipe_read(pipe)), Some(round * 8 + v));
+            }
+        }
+        assert_eq!(cell.consumer.gap.load(Ordering::Relaxed), GAP_MAX);
+        for v in 0..12 {
+            assert_eq!(write_int(pipe, v), WRITTEN);
+            assert_eq!(finish(msrt_pipe_read(pipe)), Some(v));
+        }
+        assert_eq!(cell.consumer.gap.load(Ordering::Relaxed), GAP_MIN);
+        msrt_pipe_close_writer(pipe);
+        msrt_pipe_close_reader(pipe);
     }
 
     /// Waits for a read promise: the value, or `None` at the end.

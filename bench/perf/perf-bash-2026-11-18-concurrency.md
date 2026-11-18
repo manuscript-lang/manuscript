@@ -24,8 +24,8 @@ Nothing here is a gap worth a fix. Spawn, timers, thread scaling, files, process
 
 | Workload | Manuscript | Go | Why it stays |
 | --- | ---: | ---: | --- |
-| Pipe, one writer to one reader on another thread, 4M `Int`, capacity 1024 | 650 | 280 (chan; 140 per 2M measured), Rust `sync_channel` 70 to 90 | Trivial work per item. One thread runs it in 150 ms. |
-| Request and reply over two pipes, 500k rounds, two threads | 1100 | 212 (85 per 200k measured) | Same. One thread: 280. |
+| Pipe, one writer to one reader on another thread, 4M `Int`, capacity 1024 | 342 (was 575; see the back-off change below) | 310 (chan), Rust `sync_channel` 70 to 90 | Close to Go now. One thread runs it in 130 ms. |
+| Request and reply over two pipes, 400k rounds, two threads | 476 (was 994) | 193 | The wake of a parked reader crosses threads; Go keeps the pair on one. One thread: 215. |
 | Echo over loopback TCP, 31k rounds of 64 bytes | 225 (was 316, see the read buffer change below) | 226 (`splice`, so not like for like) | Kernel bound now. |
 | 20,000 short connections, 4 to 128 at a time | 810 to 960 | 420 to 540 | A listener pins its thread, so accept and the handlers share one core; Go spreads over four. `serve` spreads HTTP; `Listener.accept_pending` spreads raw TCP (section below). |
 
@@ -91,5 +91,19 @@ The handlers here do almost no work, so the saving is small: the cost per connec
 
 The storm barely moves in wall time because it is bound by the kernel (sys 0.9 s of its CPU, the same as Go) and by wake-ups: each spread connection costs one cross-thread post, a `getsockname` and a `getpeername` for its `ConnectionInfo`, two `fcntl` to make the accepted socket non-blocking (`accept4` with `SOCK_NONBLOCK` would remove them, but `socket2` does not expose it and a direct `libc` call needs a new dependency edge), and three `epoll_ctl`. Each is under 5% and below the 8% run-to-run spread of this VM, so none is taken.
 
-### The pipe throughput gap, closed as not planned
-The 4M-`Int` case runs in 430 to 550 ms against Go's 310 and does not park (6 to 7 context switches in the whole run). Single-thread it costs 32 ns per item, so about two thirds of the 107 ns is cache-line traffic between the two cores: the writer's lock, queue header and length line move to the reader once per batch, and the reader keeps pace so a batch is one or two items. The one design that removes this, a single-producer ring with cached indices, is what the deleted lane was; it measured 670 to 670 against the lock before the swap change. A principled variant (publish the tail every N items) trades latency for a benchmark and would stall a request and reply pair, so it is not taken.
+### Change: a reader that keeps pace backs off instead of polling
+
+The 4M-`Int` case ran anywhere from 89 to 650 ms on the same binary. Counting showed why: parks stayed under 2,500 per run, but reader batches ranged from 26,000 (fast runs) to 520,000 (slow runs), and the time followed the batch count. A reader that keeps pace with its writer found the queue empty about every 100 ns and looked at the line the writer stores its length to; each look moved the line to the reader and made the writer's next locked operation wait for it back, so the writer queued one value per hand-over and the two fought for the lock (the writer was in `sched_yield` in 22% of stack samples). Moving a value is cheap with one heap (32 ns per item on one thread); the cost was the polling.
+
+The reader now looks at doubling gaps after it finds the queue empty, within 20 us in total, and parks after that. The first gap adapts per pipe: it doubles (to 16 us) after a look that finds a run of 4 or more values, and halves (to 100 ns) after one that finds fewer, as adaptive interrupt moderation does. A streaming writer then queues long runs between looks; a request and reply pair keeps looking within 100 ns. The reader does not wait when the thread is the only one or has another task or promise that could run (the writer may be that task): one-thread results are unchanged.
+
+Medians of 7 interleaved runs, 4M `Int`, capacity 1024, 4 vCPUs:
+
+| | before | after | Go |
+| --- | ---: | ---: | ---: |
+| throughput, two threads, ms | 575 | 342 | 310 |
+| request and reply, 400k rounds, ms | 994 | 476 | 193 |
+| `MS_THREADS=1`, throughput / request and reply, ms | 132 / 207 | 130 to 166 / 215 to 275 | 200 / |
+| spread of the throughput runs, ms | 549 to 814 | 286 to 452 | 295 to 309 |
+
+Spawn, parallel loop, worker pool and loopback echo are unchanged within run-to-run noise (par 2642 to 2660, spawn 23 to 22, pool 173 to 171, echo 225 to 235). Request and reply is still 2.5x Go's: Go keeps both goroutines on one thread, and here the wake of a parked reader crosses threads. Sweeps that fixed the gap instead (no adaptation) traded one case for the other: a fixed 16 us gap gave 145 ms throughput and 1,518 ms request and reply.
