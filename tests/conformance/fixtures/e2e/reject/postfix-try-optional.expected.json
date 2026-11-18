@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "'?' requires a Result, found Int?; apply '?' only to a call returning Result[T, E]. '?' does not unwrap an Optional `x`: write `if v := x:` to use the value when present, `x.get_or(default)` for a fallback, or `x.get()` to fault when absent",
+        "message": "'?' on an Optional leaves the function when the value is absent, so the function must return an Optional or Void; declare it to return T?, or use 'if value := x', '.get_or(default)', or '.get()'",
         "position": {
           "file": "postfix-try-optional.ms",
           "line": 7,
           "column": 14,
-          "offset": 158
+          "offset": 157
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/postfix-try-optional.ms:7:14: type: '?' requires a Result, found Int?; apply '?' only to a call returning Result[T, E]. '?' does not unwrap an Optional `x`: write `if v := x:` to use the value when present, `x.get_or(default)` for a fallback, or `x.get()` to fault when absent\n   |\n 7 |     value := first(items)?\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/postfix-try-optional.ms:7:14: type: '?' on an Optional leaves the function when the value is absent, so the function must return an Optional or Void; declare it to return T?, or use 'if value := x', '.get_or(default)', or '.get()'\n   |\n 7 |     value := first(items)?\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

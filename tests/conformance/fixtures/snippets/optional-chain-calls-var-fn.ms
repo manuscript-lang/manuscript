@@ -28,12 +28,15 @@ fn show(x: Int?) Void:
 fn tick(var c: C?) Int?:
     return c?.bump()
 
+fn leave_when_absent(var c: C?) Void:
+    c?.note("kept")
+    stdout().write("present\n").get()
+
 fn main() Void:
     var c: C? = C(1, List[String]())
     var none_c: C? = none
     show(c?.bump())
     show(c?.bump())
-    show(none_c?.bump())
     c?.note("hi")
     show(c?.get())
     show(c?.log.length())
@@ -45,4 +48,8 @@ fn main() Void:
     show(c?.get())
 
     var hn = H(none)
-    show(hn.c?.bump())
+    show(tick(var none_c))
+    show(tick(var hn.c))
+    leave_when_absent(var c)
+    leave_when_absent(var none_c)
+    stdout().write("done\n").get()

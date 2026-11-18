@@ -114,6 +114,8 @@ impl<'a> FnLower<'a> {
     pub fn stmt(&mut self, s: &Stmt) -> Result<(), Error> {
         let outer = self.stmt_pos.replace(s.pos);
         self.at(s.pos);
+        // A test of an Optional place holds only within the statement that made it.
+        self.checked_optionals.clear();
         let r = self.stmt_inner(s);
         self.stmt_pos = outer;
         if let Some(p) = outer {
@@ -617,6 +619,8 @@ impl<'a> FnLower<'a> {
     fn place_indices(&self, e: &Expr, out: &mut Vec<crate::func::PlaceKey>) {
         if let ExprKind::Member { left, .. } = &e.kind {
             self.place_indices(left, out);
+        } else if let Some(operand) = crate::mutation::optional_try(&self.hir, e) {
+            self.place_indices(operand, out);
         } else if let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, e) {
             self.place_indices(left, out);
             out.push(self.place_key(index));
@@ -731,6 +735,21 @@ impl<'a> FnLower<'a> {
             let at = self.place_index(index)?;
             return self.place_update_prepared(left, &mut |s, list| {
                 s.update_elem(list, at, &mut |s, elem| s.update_path(elem, &path, f))
+            });
+        }
+        if let Some(operand) = crate::mutation::optional_try(&self.hir, cur) {
+            // `x?.f()` on an Optional place: `none` leaves the function, otherwise the payload
+            // is taken out of the optional, changed, and put back.
+            // The test comes first, before the place is taken from, so leaving the function
+            // finds every variable whole.
+            if self.checked_optionals.insert(cur.id) {
+                let held = self.read_place(operand)?;
+                self.leave_when_absent(held.v)?;
+            }
+            return self.place_update_prepared(operand, &mut |s, opt| {
+                let payload = s.b.opt_unbox(opt);
+                let updated = s.update_path(payload, &path, f)?;
+                Ok(s.b.opt_some(updated))
             });
         }
         if !matches!(cur.kind, ExprKind::Name(_)) {

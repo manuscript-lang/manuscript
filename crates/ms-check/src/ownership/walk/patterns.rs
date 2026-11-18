@@ -20,29 +20,6 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.is_receiver)
         };
         let text = info.text.clone();
-        // `?.` desugars to a hidden `?N` binding of the payload. Changing it changes the
-        // optional it was read from, so the binding becomes an exclusive borrow of that place.
-        if self.syms.str(root.name).starts_with('?') && perm != Perm::MutBorrowed {
-            let Some(place) = self.chain_places.get(&root.uid).cloned() else {
-                // Only a variable (or a part of one) can be changed through `?.`; a call result
-                // such as `m.get(k)` is a read-only view.
-                self.error(
-                    pos,
-                    format!("cannot {what} through `?.` on a value that is not a variable; bind it to a `var` first, or index the collection and assign"),
-                );
-                return;
-            };
-            // The read-only borrow `?N` held becomes the exclusive one.
-            self.active.release(&[root.uid], |_| true);
-            let before = self.diags.len();
-            self.mutate(pos, &place, what);
-            if self.diags.len() == before {
-                let origins = place.resolved.clone();
-                let parent = self.borrow_parent(&place.root);
-                self.declare_mut_borrow(&root, role, origins, pos, parent);
-            }
-            return;
-        }
         if let Some(field) = info.through_ref {
             self.error(
                 pos,
@@ -127,7 +104,6 @@ impl Walker<'_> {
             let whole = matches!(e.kind, ExprKind::Name(_));
             let mut deferred = None;
             if whole
-                && !std::mem::take(&mut self.keep_scrutinee)
                 && class != Class::Copy
                 && let Resolution::Local(b) = self.cx.m.resolution(e)
                 && self.is_last(e.id, &b)

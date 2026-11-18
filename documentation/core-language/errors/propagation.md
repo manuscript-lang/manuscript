@@ -16,11 +16,11 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
     return ok(f"Discounted price: {value}")
 ```
 
-## Reading `?` next to `?.`
+## `?` on Results and Optionals
 
-- `?` can exit the function; `?.` never does. `a?.b` is [optional chaining](../types/optionals.md) on an Optional.
-- `?` applies to a Result only. For an Optional, use `if x := v:` or `v.get_or(default)`.
-- `load()?.name` is rejected: `?.` chains an Optional and `load()` returns a Result. Bind first: `u := load()?`, then `u.name`.
+- `?` applies to a Result or an Optional. On a Result it returns the error; on an [Optional](../types/optionals.md#unwrapping-with-) it returns `none` (or just returns, from a `Void` function) when the value is absent.
+- A function cannot mix the two: a Result needs a Result return, an Optional needs an Optional or `Void` return.
+- `load()?.name` is `(load()?).name`: unwrap, then read `name`. There is no `?.` operator.
 - `?` does not repeat: `f()??` is rejected.
 - `place[key]?` is the in-place borrow in an `if var` head, not propagation.
 
@@ -76,9 +76,10 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
 
 The compiler rejects `?` when:
 
-- its expression is not a Result;
+- its expression is not a Result or an Optional;
 - its error type differs from the function's;
-- the enclosing function or test returns Void.
+- the enclosing function or test returns Void and the operand is a Result (a `Void` function may use `?` on an Optional);
+- the operand is an Optional and the function returns neither an Optional nor `Void` (a test returns a Result, so `?` in a test applies to Results only).
 
 See [type compatibility](../types/compatibility.md).
 

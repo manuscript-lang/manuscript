@@ -46,6 +46,13 @@ type Tag:
 fn var Tag.append_label(s: String) Void:
 	self.label += s
 
+fn var Node.rename_left(delta: Int) Void:
+	self.left?.rename(delta)
+	self.key += 1000
+
+fn var Tag.label_next(s: String) Void:
+	self.next?.append_label(s)
+
 test "inserts through boxed optional fields":
 	var root = Node(50, none, none)
 	for k in [30, 70, 20, 40, 60, 80, 35, 45]:
@@ -58,18 +65,18 @@ test "inserts through boxed optional fields":
 
 test "an absent optional field is left alone":
 	var root = Node(1, none, none)
-	root.left?.rename(5)
+	root.rename_left(5)
 	expect_equal(root.left.is_none(), true)?
 	expect_equal(root.key, 1)?
 
 test "a change through a present field is kept":
 	var root = Node(10, Node(5, none, none), none)
-	root.left?.rename(100)
+	root.rename_left(100)
 	expect_equal(root.left.get().key, 105)?
-	expect_equal(root.key, 10)?
+	expect_equal(root.key, 1010)?
 
 test "owned payload fields are updated in place":
 	var t = Tag("a", Tag("b", none))
-	t.next?.append_label("!")
+	t.label_next("!")
 	expect_equal(t.next.get().label, "b!")?
 	expect_equal(t.label, "a")?

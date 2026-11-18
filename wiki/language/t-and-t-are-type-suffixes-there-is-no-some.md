@@ -2,7 +2,7 @@
 
 # `T!` and `T?` are type suffixes; there is no `some`
 
-Decision (Chinmay): `T!` is `Result[T, Error]` and `T!E` is `Result[T, E]` (no space before `E`), mirroring `T?` for optionals. Both are parser sugar, so the checker and diagnostics see the same `Named` type; `Result[T, E]` stays valid. `T?` is the only optional spelling: a plain `T` converts where `T?` is expected, `some(...)` is rejected, a `T?` parameter or field defaults to `none`, and `a?.b` chains through optionals.
+Decision (Chinmay): `T!` is `Result[T, Error]` and `T!E` is `Result[T, E]` (no space before `E`), mirroring `T?` for optionals. Both are parser sugar, so the checker and diagnostics see the same `Named` type; `Result[T, E]` stays valid. `T?` is the only optional spelling: a plain `T` converts where `T?` is expected, `some(...)` is rejected, a `T?` parameter or field defaults to `none`, and `a?.b` is `(a?).b`, which leaves the function when `a` is absent.
 
 
 Apply when: writing signatures, examples, stdlib code, or changing type-suffix parsing. Use `X!` rather than `Result[X, Error]` in new code.

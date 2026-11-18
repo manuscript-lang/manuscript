@@ -55,12 +55,26 @@ pub(crate) fn is_index_apply(syms: ms_check::api::Names, hir: &ModuleHir, e: &Ex
         || matches!(hir.resolution(e), Resolution::Native(n) if syms.str(n) == "index")
 }
 
-/// Peels field selections and element reads off a place expression down to its base.
+/// The operand of `x?` when it is an Optional: the payload of the place `x` takes its access
+/// from `x`.
+pub(crate) fn optional_try<'e>(hir: &ModuleHir, e: &'e Expr) -> Option<&'e Expr> {
+    match &e.kind {
+        ExprKind::Unary {
+            op: UnaryOp::Try,
+            operand,
+        } if hir.ty(operand).is(ct::Builtin::Optional) => Some(operand),
+        _ => None,
+    }
+}
+
+/// Peels field selections, element reads and Optional unwraps off a place expression down to its base.
 pub(crate) fn place_base<'e>(syms: ms_check::api::Names, hir: &ModuleHir, e: &'e Expr) -> &'e Expr {
     let mut cur = e;
     loop {
         if let ExprKind::Member { left, .. } = &cur.kind {
             cur = left;
+        } else if let Some(operand) = optional_try(hir, cur) {
+            cur = operand;
         } else if let Some((left, _)) = index_parts(syms, hir, cur) {
             cur = left;
         } else {

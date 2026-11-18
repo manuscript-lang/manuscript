@@ -365,6 +365,11 @@ impl Walker<'_> {
                 value: Some(_),
                 ..
             } => self.cx.m.info(e).native_str(self.syms) == "index" && self.is_place(left),
+            // `x?` on an Optional place is that place's payload.
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                operand,
+            } => self.cx.m.ty(operand).is(Builtin::Optional) && self.is_place(operand),
             _ => false,
         }
     }
@@ -413,6 +418,10 @@ impl Walker<'_> {
                 value: Some(_),
                 ..
             } => self.container_root(left),
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                operand,
+            } if self.cx.m.ty(operand).is(Builtin::Optional) => self.container_root(operand),
             _ => None,
         }
     }
@@ -441,6 +450,15 @@ impl Walker<'_> {
                 info.resolved = self.resolve(&p);
                 info.projection = true;
                 info.text = format!("{}.{}", info.text, self.syms.str(name));
+                Some((info, p))
+            }
+            // `x?` on an Optional is the payload of the place `x`, with the access `x` has.
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                operand,
+            } if self.cx.m.ty(operand).is(Builtin::Optional) => {
+                let (mut info, p) = self.place(operand)?;
+                info.projection = true;
                 Some((info, p))
             }
             ExprKind::Index { left, index } => {

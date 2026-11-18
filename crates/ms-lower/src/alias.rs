@@ -47,6 +47,27 @@ pub(crate) enum Found {
 type Update<'u, 'a> = &'u mut dyn FnMut(&mut FnLower<'a>, Value) -> Result<Value, Error>;
 
 impl<'a> FnLower<'a> {
+    /// Returns from the function (`none`, or Void) when the optional at `place` is absent.
+    fn leave_on_none(&mut self, place: &Alias) -> Result<(), Error> {
+        let cur = self.alias_read(place)?;
+        self.leave_when_absent(cur.v)
+    }
+
+    /// Returns from the function (`none`, or Void) when the borrowed optional `opt` is absent.
+    pub(crate) fn leave_when_absent(&mut self, opt: Value) -> Result<(), Error> {
+        let ret = self.result_ty();
+        let present = self.b.opt_is_some(opt);
+        let (some, none) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(present, some, &[], none, &[]);
+        self.b.seal_block(some);
+        self.b.seal_block(none);
+        self.enter(none);
+        let out = self.empty_return_value(ret)?;
+        self.emit_return(Some(out));
+        self.enter(some);
+        Ok(())
+    }
+
     /// The place named by a variable or a chain of fields and elements from one.
     pub(crate) fn alias_chain(&mut self, e: &Expr) -> Result<Alias, Error> {
         match &e.kind {
@@ -67,6 +88,19 @@ impl<'a> FnLower<'a> {
             ExprKind::Member { left, name } => {
                 let mut a = self.alias_chain(left)?;
                 a.steps.push(AStep::Field(*name));
+                Ok(a)
+            }
+            // `x?` on an Optional place: `none` leaves the function, otherwise the payload of
+            // `x` itself is the place.
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                operand,
+            } => {
+                let mut a = self.alias_chain(operand)?;
+                if self.checked_optionals.insert(e.id) {
+                    self.leave_on_none(&a)?;
+                }
+                a.steps.push(AStep::Some);
                 Ok(a)
             }
             ExprKind::Call { callee, args } => {
@@ -246,16 +280,24 @@ impl<'a> FnLower<'a> {
     /// payload (`c?.f()` on `left: Node?`): the box is the payload's storage, so a callee that
     /// changes it writes there, and nothing is unboxed, copied back or reboxed.
     pub(crate) fn alias_payload_addr(&mut self, place: &Expr) -> Option<Value> {
-        if !matches!(place.kind, ExprKind::Name(_)) {
-            return None;
-        }
-        let Resolution::Local(b) = self.hir.resolution(place) else {
-            return None;
+        let a = match &place.kind {
+            ExprKind::Name(_) => {
+                let Resolution::Local(b) = self.hir.resolution(place) else {
+                    return None;
+                };
+                let mut a = self.aliases.get(&b.uid)?.clone();
+                if !matches!(a.steps.pop(), Some(AStep::Some)) {
+                    return None;
+                }
+                a
+            }
+            // `x?` on an Optional place: the payload of `x` itself.
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                operand,
+            } => self.alias_chain(operand).ok()?,
+            _ => return None,
         };
-        let mut a = self.aliases.get(&b.uid)?.clone();
-        if !matches!(a.steps.pop(), Some(AStep::Some)) {
-            return None;
-        }
         let held = self.alias_read(&a).ok()?.v;
         let inner = self.b.m.opt_inner(self.ty_of(held))?;
         if !ms_mir::ir::Boxing::default().opt(self.b.m, inner) {
