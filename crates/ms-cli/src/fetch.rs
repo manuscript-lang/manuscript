@@ -189,6 +189,9 @@ fn add(args: &[String], io: &mut Io<'_>) -> Result<(), String> {
                 .ok_or_else(|| format!("{arg} needs {what}"))
         };
         match arg.as_str() {
+            "--version" | "--tag" | "--sha" if pin.is_some() => {
+                return Err("name exactly one of --version, --tag and --sha".to_string());
+            }
             "--version" => pin = Some(("version", value("a requirement such as 1.2")?)),
             "--tag" => pin = Some(("tag", value("a tag")?)),
             "--sha" => pin = Some(("sha", value("a full commit")?)),

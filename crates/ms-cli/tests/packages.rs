@@ -596,6 +596,20 @@ fn add_and_remove_edit_the_manifest_and_the_lock() {
     );
     assert_eq!(manifest(&project), before);
 
+    // Two ways to pin one dependency are refused, not resolved by order.
+    let both = ms(
+        &project,
+        &cache,
+        &["add", url, "--version", "1", "--tag", "v1.0.0"],
+    );
+    assert!(!both.status.success());
+    assert!(
+        stderr(&both).contains("exactly one of"),
+        "{}",
+        stderr(&both)
+    );
+    assert_eq!(manifest(&project), before);
+
     // A server that cannot be reached is not blamed on the tag.
     let unreachable = ms(
         &project,
