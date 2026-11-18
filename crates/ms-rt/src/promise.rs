@@ -953,10 +953,17 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
 fn msrt_promise_run_unstarted(id: i64) -> u8 {
     let t = table();
     let Some(i) = index(&t, id) else { return 0 };
-    if t.state[i] != State::Pending || t.closure[i] == 0 {
+    if t.state[i] != State::Pending {
         return 0;
     }
-    run_unstarted(id);
+    // Deferred work has no task and no queue entry: only a waiter runs it, so `wait_all` must.
+    if t.flags[i] & DEFERRED != 0 {
+        run_deferred(id, None);
+    } else if t.closure[i] != 0 {
+        run_unstarted(id);
+    } else {
+        return 0;
+    }
     let t = table();
     index(&t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
 }
@@ -1510,6 +1517,27 @@ pub unsafe extern "C-unwind" fn msrt_promise_start_spread(id: i64, work: *mut ms
 pub unsafe extern "C-unwind" fn msrt_promise_start_here(id: i64, work: *mut ms_rt_abi::Closure) {
     // SAFETY: forwarded contract.
     unsafe { start_on(id, work, Mode::Here) }
+}
+
+/// Starts `work` as the task of promise `id` like [`msrt_promise_start_here`], except that when the
+/// calling task is the only one running the work is deferred to the task that first waits on it (see
+/// [`msrt_promise_defer`]). For an operation that does not block for long, such as a file read:
+/// with nothing else to overlap it, running it where it is waited on skips a task start, a park
+/// and two context switches. A busy thread starts the task as usual, so reads still overlap.
+///
+/// # Safety
+/// `work` is a live closure object.
+// ms: keeps:work spawns
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_promise_start_idle(id: i64, work: *mut ms_rt_abi::Closure) {
+    // SAFETY: single threaded scheduler; forwarded contract.
+    unsafe {
+        if task::msrt_task_count() <= 1 {
+            msrt_promise_defer(id, work);
+        } else {
+            start_on(id, work, Mode::Here);
+        }
+    }
 }
 
 /// Starts `work` as the task of promise `id` where `mode` says, on this thread when a live native

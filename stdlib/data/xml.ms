@@ -136,6 +136,13 @@ fn invalid_at(chars: List[String], at: Int, reason: String) Error:
 // A cursor over the document's scalars.
 type Reader:
 	chars: List[String]
+	// The scalar values of `chars`, so literals are matched without building strings.
+	codes: List[Int]
+	// The normalized document and whether it is all ASCII; then a scalar index is a
+	// byte offset and a span of the document is one slice, not a string built scalar by
+	// scalar.
+	text: String
+	ascii: Bool
 	at: Int
 	max_depth: Int
 
@@ -143,10 +150,22 @@ fn Reader.peek(offset: Int = 0) String:
 	return self.chars.get_or(self.at + offset, "")
 
 fn Reader.looking_at(literal: String) Bool:
-	wanted := literal.chars()
-	for k in 0..wanted.length():
-		if self.peek(k) != wanted[k]: return false
+	var k = 0
+
+	for code in literal.scalar_values():
+		if self.codes.get_or(self.at + k, -1) != code: return false
+
+		k += 1
+
 	return true
+
+// The document text from scalar `start` up to `end`.
+fn Reader.span(start: Int, end: Int) String:
+	if self.ascii: return self.text.view(start, end).clone()
+
+	var out = StringBuilder()
+	for k in start..end: out.append(self.chars[k])
+	return out.build()
 
 fn Reader.done() Bool:
 	return self.at >= self.chars.length()
@@ -163,27 +182,33 @@ fn var Reader.skip_space() Void:
 fn var Reader.expect(literal: String) Void!:
 	if not self.looking_at(literal): return error(self.invalid(f"expected `{literal}`"))
 
-	self.at += literal.chars().length()
+	// Every literal passed here is ASCII, so its byte length is its scalar count.
+	self.at += literal.length()
 
 // Returns the text up to `stop` and consumes it, or fails when `stop` never appears;
 // `what` names the construct in that error, which points at `opened`, where it began.
 fn var Reader.take_until(stop: String, what: String, opened: Int) String!:
-	var out = StringBuilder()
-	wanted := stop.chars()
+	var wanted: List[Int] = []
+	for code in stop.scalar_values(): wanted.append(code)
 
-	while not self.done():
-		var matches = true
+	start := self.at
+	count := self.codes.length()
+	head := wanted[0]
 
-		for k in 0..wanted.length():
-			if self.peek(k) != wanted[k]:
-				matches = false
-				break
+	while self.at < count:
+		if self.codes[self.at] == head:
+			var matches = true
 
-		if matches:
-			self.at += wanted.length()
-			return ok(out.build())
+			for k in 1..wanted.length():
+				if self.codes.get_or(self.at + k, -1) != wanted[k]:
+					matches = false
+					break
 
-		out.append(self.peek())
+			if matches:
+				found := self.span(start, self.at)
+				self.at += wanted.length()
+				return ok(found)
+
 		self.at += 1
 
 	return error(invalid_at(self.chars, opened, f"unterminated {what}"))
@@ -205,20 +230,12 @@ fn var Reader.comment() String!:
 	return ok(text)
 
 fn var Reader.name() String!:
-	var out = StringBuilder()
-	var first = true
+	start := self.at
+	count := self.codes.length()
+	while self.at < count and is_name_char(self.codes[self.at], self.at == start): self.at += 1
+	if self.at == start: return error(self.invalid("expected a name"))
 
-	while not self.done():
-		c := self.peek()
-		if not is_name_char(c, first): break
-
-		out.append(c)
-		first = false
-		self.at += 1
-
-	if first: return error(self.invalid("expected a name"))
-
-	return ok(out.build())
+	return ok(self.span(start, self.at))
 
 // The reserved target `xml` belongs to a declaration, never a processing
 // instruction.
@@ -468,12 +485,13 @@ fn var Reader.element(depth: Int) XmlNode!:
 		self.skip_space()
 
 		separated := self.at > before
+		here := self.codes.get_or(self.at, -1)
 
-		if self.looking_at("/>"):
+		if here == 0x2f and self.codes.get_or(self.at + 1, -1) == 0x3e:
 			self.at += 2
 			return ok(XmlElement(name, attributes, List[XmlNode]()))
 
-		if self.looking_at(">"):
+		if here == 0x3e:
 			self.at += 1
 			break
 
@@ -548,7 +566,12 @@ fn var Reader.element(depth: Int) XmlNode!:
 			self.invalid(f"the element `{name}` is never closed")
 		)
 
-		if self.looking_at("</"):
+		// The first two scalars pick the construct, so the literals are tested only
+		// when they could match.
+		opens := self.codes.get_or(self.at, -1) == 0x3c
+		next := self.codes.get_or(self.at + 1, -1)
+
+		if opens and next == 0x2f:
 			self.at += 2
 
 			closing_at := self.at
@@ -565,9 +588,9 @@ fn var Reader.element(depth: Int) XmlNode!:
 			self.expect(">")?
 			return ok(XmlElement(name, attributes, children))
 
-		if self.looking_at("<!--"):
+		if opens and next == 0x21 and self.looking_at("<!--"):
 			children.append(XmlComment(self.comment()?))
-		else if self.looking_at("<![CDATA["):
+		else if opens and next == 0x21 and self.looking_at("<![CDATA["):
 			self.at += 9
 			children.append(
 				XmlText(
@@ -578,19 +601,15 @@ fn var Reader.element(depth: Int) XmlNode!:
 					)?
 				)
 			)
-		else if self.looking_at("<?"):
+		else if opens and next == 0x3f:
 			self.instruction()?
-		else if self.looking_at("<"):
+		else if opens:
 			children.append(self.element(depth + 1)?)
 		else:
-			var text = StringBuilder()
 			text_at := self.at
+			while self.at < self.codes.length() and self.codes[self.at] != 0x3c: self.at += 1
 
-			while not self.done() and self.peek() != "<":
-				text.append(self.peek())
-				self.at += 1
-
-			raw := text.build()
+			raw := self.span(text_at, self.at)
 			if raw.contains("]]>"): return error(
 				invalid_at(
 					self.chars,
@@ -630,10 +649,15 @@ fn is_encoding_name(text: String) Bool:
 	return not first
 
 // XML 1.0 (Fifth Edition), productions [4] NameStartChar and [4a] NameChar.
-fn is_name_char(c: String, first: Bool) Bool:
-	if c.is_empty(): return false
+fn is_name_char(code: Int, first: Bool) Bool:
+	// ASCII first: letters, `_` and `:` start a name, digits, `-` and `.` continue it.
+	if code < 0x80:
+		if (code >= 0x61 and code <= 0x7a) or (code >= 0x41 and code <= 0x5a): return true
+		if code == 0x5f or code == 0x3a: return true
+		if first: return false
 
-	code := c.scalar_at(0)
+		return code == 0x2d or code == 0x2e or (code >= 0x30 and code <= 0x39)
+
 	if is_name_start(code): return true
 	if first: return false
 
@@ -775,12 +799,20 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 		"\n",
 	) else: text.clone()
 	var chars = normalized.chars().clone()
-	if chars.get_or(0, "") == "\u{feff}": chars.remove(0)
+	var codes: List[Int] = []
+	var ascii = true
+
+	for code in normalized.scalar_values():
+		codes.append(code)
+		if code >= 0x80: ascii = false
+
+	if codes.get_or(0, 0) == 0xfeff:
+		chars.remove(0)
+		codes.remove(0)
 
 	// XML's Char production applies even to discarded comments and instructions.
-	var index = 0
-
-	for code in chars.join("").scalar_values():
+	for index in 0..codes.length():
+		code := codes[index]
 		if not is_xml_char(code): return error(
 			invalid_at(
 				chars,
@@ -789,9 +821,14 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 			)
 		)
 
-		index += 1
-
-	var reader = Reader(chars: chars, at: 0, max_depth: max_depth)
+	var reader = Reader(
+		chars: chars,
+		codes: codes,
+		text: normalized,
+		ascii: ascii,
+		at: 0,
+		max_depth: max_depth,
+	)
 	reader.skip_misc(declaration_allowed: true, doctype_allowed: true)?
 	if not reader.looking_at("<"): return error(
 		reader.invalid("expected the root element")

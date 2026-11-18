@@ -137,7 +137,7 @@ fn Template.render(
 		limit: options.max_output,
 		html: self.html,
 	)
-	run.nodes(self.nodes.clone(), 0)?
+	run.nodes(self.nodes, 0)?
 	return ok(run.out.build())
 
 type Token:
@@ -715,12 +715,12 @@ fn Run.path_value(parts: List[String], strict: Bool) JsonValue!Error:
 	return ok(JsonValue.Null)
 
 fn Run.operator(op: String, args: List[TemplateExpr]) JsonValue!Error:
-	left := self.eval(args[0].clone(), false)?
+	left := self.eval(args[0], false)?
 	if op == "not": return ok(JsonValue.BoolValue(not truthy(left)))
 	if op == "and" and not truthy(left): return ok(JsonValue.BoolValue(false))
 	if op == "or" and truthy(left): return ok(JsonValue.BoolValue(true))
 
-	right := self.eval(args[1].clone(), false)?
+	right := self.eval(args[1], false)?
 	if op == "and" or op == "or": return ok(JsonValue.BoolValue(truthy(right)))
 	if op == "==": return ok(JsonValue.BoolValue(equal(left, right)))
 	if op == "!=": return ok(JsonValue.BoolValue(not equal(left, right)))
@@ -734,19 +734,22 @@ fn Run.operator(op: String, args: List[TemplateExpr]) JsonValue!Error:
 
 fn Run.call(name: String, args: List[TemplateExpr], strict: Bool) JsonValue!Error:
 	if name == "default":
-		input := self.eval(args[0].clone(), false)?
+		input := self.eval(args[0], false)?
 		if truthy(input): return ok(input)
 		if args.length() != 2: return error(
-			invalid_filter_error(name: name, reason: "needs one argument")
+			invalid_filter_error(
+				name: name.clone(),
+				reason: "needs one argument",
+			)
 		)
 
-		return self.eval(args[1].clone(), strict)
+		return self.eval(args[1], strict)
 
-	input := self.eval(args[0].clone(), strict)?
+	input := self.eval(args[0], strict)?
 	var values = List[JsonValue]()
 	for i in 1..args.length():
-		values.append(self.eval(args[i].clone(), strict)?)
-	return apply_filter(name, input, values)
+		values.append(self.eval(args[i], strict)?)
+	return apply_filter(name.clone(), input, values)
 
 fn var Run.nodes(items: List[TemplateNode], depth: Int) Void!Error:
 	for node in items:
@@ -780,8 +783,8 @@ fn var Run.branch(
 	depth: Int,
 ) Void!Error:
 	for branch in branches:
-		verdict := self.eval(branch.cond.clone(), false)?
-		if truthy(verdict): return self.nodes(branch.body.clone(), depth + 1)
+		verdict := self.eval(branch.cond, false)?
+		if truthy(verdict): return self.nodes(branch.body, depth + 1)
 
 	return self.nodes(otherwise, depth + 1)
 
@@ -794,15 +797,18 @@ fn var Run.each(
 	depth: Int,
 ) Void!Error:
 	collection := self.eval(source, false)?
-	rows := rows_of(collection, first, second)
-	if rows.is_empty(): return self.nodes(otherwise, depth + 1)
+	var keys: List[String] = []
+	var items = collection_items(collection, var keys)
+	count := items.length() + keys.length()
+	if count == 0: return self.nodes(otherwise, depth + 1)
 
-	for i in 0..rows.length():
-		var frame = rows[i].clone()
-		frame.add("loop", loop_info(i, rows.length()))
+	for i in 0..count:
+		var frame = Map[String, JsonValue]()
+		bind_row(var frame, collection, var items, first, second, keys, i)
+		frame.add("loop", loop_info(i, count))
 		self.frames.append(frame)
 
-		result := self.nodes(body.clone(), depth + 1)
+		result := self.nodes(body, depth + 1)
 		_frame := self.frames.remove(self.frames.length() - 1)
 		if result.is_error(): return result
 
@@ -854,41 +860,48 @@ fn loop_info(index: Int, length: Int) JsonValue:
 	fields.add("length", JsonValue.NumberValue(f"{length}"))
 	return JsonValue.ObjectValue(fields)
 
-// One variable frame per iteration: the list item, or an object's key and value.
-fn rows_of(
+// The items of a list loop, last first so each can be moved out with `pop` instead of
+// copied; for an object loop `keys` receives its keys in order and the result is empty.
+fn collection_items(collection: JsonValue, var keys: List[String]) List[JsonValue]:
+	if found := collection.as_list():
+		var items = found
+		items.reverse()
+		return items
+
+	if members := collection.as_map():
+		for entry in members.entries(): keys.append(entry.key.clone())
+	return List[JsonValue]()
+
+// Binds the variables of iteration `i` into `frame`: the list item (moved out of
+// `items`), or an object's key and value.
+fn bind_row(
+	var frame: Map[String, JsonValue],
 	collection: JsonValue,
+	var items: List[JsonValue],
 	first: String,
 	second: String,
-) List[Map[String, JsonValue]]:
-	var rows = List[Map[String, JsonValue]]()
+	keys: List[String],
+	i: Int,
+) Void:
+	if keys.is_empty():
+		item := items.pop().get_or(JsonValue.Null)
 
-	if items := collection.as_list():
-		for i in 0..items.length():
-			var frame = Map[String, JsonValue]()
+		if second.is_empty():
+			frame.add(first.clone(), item)
+		else:
+			frame.add(first.clone(), JsonValue.NumberValue(f"{i}"))
+			frame.add(second.clone(), item)
+	else:
+		value := collection.get(keys[i]).get_or(JsonValue.Null).clone()
 
-			if second.is_empty():
-				frame.add(first.clone(), items[i].clone())
-			else:
-				frame.add(first.clone(), JsonValue.NumberValue(f"{i}"))
-				frame.add(second.clone(), items[i].clone())
-
-			rows.append(frame)
-	else if members := collection.as_map():
-		for entry in members.entries():
-			var frame = Map[String, JsonValue]()
-
-			if second.is_empty():
-				var pair = Map[String, JsonValue]()
-				pair.add("key", JsonValue.StringValue(entry.key.clone()))
-				pair.add("value", entry.value.clone())
-				frame.add(first.clone(), JsonValue.ObjectValue(pair))
-			else:
-				frame.add(first.clone(), JsonValue.StringValue(entry.key.clone()))
-				frame.add(second.clone(), entry.value.clone())
-
-			rows.append(frame)
-
-	return rows
+		if second.is_empty():
+			var pair = Map[String, JsonValue]()
+			pair.add("key", JsonValue.StringValue(keys[i].clone()))
+			pair.add("value", value)
+			frame.add(first.clone(), JsonValue.ObjectValue(pair))
+		else:
+			frame.add(first.clone(), JsonValue.StringValue(keys[i].clone()))
+			frame.add(second.clone(), value)
 
 // Keep validated coefficient bytes and a small decimal-order offset. Only
 // exponent-bearing comparisons need arbitrary signed decimal-order arithmetic.

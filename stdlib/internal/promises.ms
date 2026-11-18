@@ -18,6 +18,10 @@ export extern fn msrt_promise_start(id: Int, move work: fn() Void) Void
 // As `msrt_promise_start`, but always on the calling thread.
 export extern fn msrt_promise_start_here(id: Int, move work: fn() Void) Void
 
+// Like `msrt_promise_start_here`, but with no other task running the work waits for its
+// waiter.
+export extern fn msrt_promise_start_idle(id: Int, move work: fn() Void) Void
+
 // As `msrt_promise_start`, but on the least loaded thread.
 export extern fn msrt_promise_start_spread(id: Int, move work: fn() Void) Void
 
