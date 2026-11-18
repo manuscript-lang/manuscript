@@ -88,6 +88,8 @@ jobs:
           "$ms" test
 
       - name: Install the skill without the compiler
+        env:
+          OS: ${{ matrix.os }}
         run: |
           set -eu
           python3 -m http.server 8765 --bind 127.0.0.1 --directory release >"$RUNNER_TEMP/skill-server.log" 2>&1 &
