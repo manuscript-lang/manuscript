@@ -198,6 +198,30 @@ fn run_case(path: &str, dir: &Path, case: &Json) -> Option<String> {
     (!problems.is_empty()).then(|| format!("args {args:?}: {}\n{err}", problems.join("; ")))
 }
 
+/// Splits a fragment into top-level declarations (kept as is) and statements (placed in
+/// one function body) so that the whole text parses as a module.
+fn wrap_fragment(source: &str) -> String {
+    let mut decls = String::new();
+    let mut body = String::new();
+    let mut in_decl = false;
+    for line in source.lines() {
+        let starts_decl = ["import ", "type ", "enum ", "fn ", "export "]
+            .iter()
+            .any(|k| line.starts_with(k));
+        let continues = in_decl && (line.is_empty() || line.starts_with([' ', '\t', ')']));
+        in_decl = starts_decl || continues;
+        if in_decl {
+            decls.push_str(line);
+            decls.push('\n');
+        } else {
+            body.push_str("    ");
+            body.push_str(line);
+            body.push('\n');
+        }
+    }
+    format!("{decls}\nfn example() Void!:\n{body}    return\n")
+}
+
 fn verify(examples: &[Example], label: &str) {
     let dir = std::env::temp_dir().join(format!("ms-{label}-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
@@ -208,6 +232,13 @@ fn verify(examples: &[Example], label: &str) {
         let path = path.to_str().unwrap();
         let name = format!("{}:{}", example.file.display(), example.line);
         if example.spec.contains("\"mode\":\"fragment\"") {
+            // A fragment leaves names free, so it is only parsed: the declarations stay at
+            // the top and the statements move into a function body.
+            fs::write(path, wrap_fragment(&example.source)).unwrap();
+            let (code, _, err) = ms(&["fmt", path], "", None);
+            if code != Some(0) {
+                failures.push(format!("{name}: fragment does not parse\n{err}"));
+            }
             continue;
         }
         if example.spec.contains("\"mode\":\"test\"") {
