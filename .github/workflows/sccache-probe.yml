@@ -28,22 +28,22 @@ jobs:
         with:
           os: linux
           arch: amd64
-      - name: Probe
+      - name: Workspace build, then clean cranelift-codegen and rebuild it the same way
         shell: bash
         run: |
-          sccache --show-stats | grep -E "Compile requests|Cache hits  |Cache misses  |Cache size"
-          for i in 1 2 3; do
+          cargo build --workspace --all-targets --locked -q
+          for i in 1 2; do
             sccache --zero-stats >/dev/null
             cargo clean -p cranelift-codegen -q
             s=$(date +%s)
-            cargo build -p cranelift-codegen --locked -q
+            cargo build --workspace --all-targets --locked -q
             echo "round $i: $(( $(date +%s) - s )) s"
             sccache --show-stats | grep -E "Compile requests  |Cache hits \(Rust\)|Cache misses \(Rust\)|Non-cacheable"
           done
-      - name: Why (debug log of one build)
+      - name: Why (debug log of one more rebuild)
         shell: bash
         run: |
           sccache --stop-server >/dev/null 2>&1 || true
           cargo clean -p cranelift-codegen -q
-          SCCACHE_LOG=debug SCCACHE_ERROR_LOG=$RUNNER_TEMP/sccache.log cargo build -p cranelift-codegen --locked -q || true
-          grep -iE "cranelift_codegen|cache (hit|miss)|Cache hit|Compiled in" $RUNNER_TEMP/sccache.log | grep -iE "cranelift.codegen|miss|hit" | head -30 | cut -c1-250
+          SCCACHE_LOG=debug SCCACHE_ERROR_LOG=$RUNNER_TEMP/sccache.log cargo build --workspace --all-targets --locked -q || true
+          grep -E "\[cranelift_codegen\]" $RUNNER_TEMP/sccache.log | cut -c1-400 | head -20
