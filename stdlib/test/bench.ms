@@ -46,13 +46,9 @@ max_iterations := 100000000
 /*
 Runs `work` repeatedly and writes the statistics line, per operation, where each run performs `operations` operations (at least 1).
 A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
-
-```text
-bench "sorts":
-    data := [3, 1, 2]
-    measure(1, fn: keep(data.sorted().length()))?
-```
-
+  bench "sorts":
+      data := [3, 1, 2]
+      measure(1, fn: keep(data.sorted().length()))?
 Everything the body does before `measure` runs once, untimed.
 */
 export fn measure(operations: Int, work: fn() Void!) Void!:
