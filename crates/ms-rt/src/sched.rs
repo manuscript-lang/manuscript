@@ -653,7 +653,14 @@ fn own_ready(me: usize, now: i64) -> bool {
     // up by starting its own promise, which also keeps a creator and the promise it waits on
     // together: a pipe or promise hand-over on one thread is a task switch, across two a wake.
     let alone = SLOTS[me].live.load(Ordering::SeqCst) == 0 && !crate::task::external_waits();
-    queued > helpers(me, now) || at == 0 || now - at >= OWN_HOLD_NS || alone
+    may_start_own(queued, helpers(me, now), at, now, alone)
+}
+
+/// The rule behind `own_ready` for a program with several threads: `queued` promises wait on this
+/// thread, `helpers` other threads could take them, the oldest was queued at `front_at` (0 for
+/// none), and `alone` says this thread has nothing else to answer.
+fn may_start_own(queued: usize, helpers: usize, front_at: i64, now: i64, alone: bool) -> bool {
+    queued > helpers || front_at == 0 || now - front_at >= OWN_HOLD_NS || alone
 }
 
 /// A stolen promise that was started at `at` has ended. One that ran for less than a steal costs
@@ -888,4 +895,30 @@ pub fn shutdown() {
         slot.live.store(0, Ordering::SeqCst);
     }
     IDLE.store(0, Ordering::SeqCst);
+}
+
+#[cfg(test)]
+mod own_start_tests {
+    use super::*;
+
+    #[test]
+    fn a_thread_that_waits_on_a_clock_holds_a_young_promise_for_a_helper() {
+        let now = 10 * OWN_HOLD_NS;
+        // One promise, a helper free, queued just now, and the thread waits on a timer.
+        assert!(!may_start_own(1, 1, now - 1, now, false));
+    }
+
+    #[test]
+    fn an_idle_thread_starts_its_own_promise_at_once() {
+        let now = 10 * OWN_HOLD_NS;
+        assert!(may_start_own(1, 1, now - 1, now, true));
+    }
+
+    #[test]
+    fn a_held_promise_is_started_after_the_hold_or_when_helpers_run_out() {
+        let now = 10 * OWN_HOLD_NS;
+        assert!(may_start_own(1, 1, now - OWN_HOLD_NS, now, false));
+        assert!(may_start_own(2, 1, now - 1, now, false));
+        assert!(may_start_own(1, 1, 0, now, false));
+    }
 }
