@@ -46,7 +46,7 @@ fn Version.to_string() String:
 	return text
 
 // Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are
-// rejected.
+// rejected. A numeric part too large for `Int` returns kind `ERANGE`.
 export fn parse(text: String) Version!:
 	build_parts := split_first(text, "+")
 	core_and_pre := split_first(build_parts[0].clone(), "-")
