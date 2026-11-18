@@ -617,6 +617,11 @@ impl Verifier<'_> {
         let mut dropped_in: Vec<BTreeSet<u32>> = vec![BTreeSet::new(); f.blocks.len()];
         let mut owner_of: Vec<Option<Value>> = vec![None; f.values.len()];
         let mut views = vec![false; f.values.len()];
+        // A parameter holding a borrowing variant takes the cases an incoming edge borrowed.
+        for p in f.blocks.iter().flat_map(|b| &b.params) {
+            views[p.value.index()] = matches!(m.types.kind(f.ty(p.value)),
+                TyKind::Alt(a) if m.alts[a.index()].borrowed != 0);
+        }
         let mut entry_state: Vec<Option<OwnerSet>> = vec![None; f.blocks.len()];
         for &b in rpo {
             let bi = b.index();
