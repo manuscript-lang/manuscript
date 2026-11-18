@@ -614,7 +614,7 @@ impl Verifier<'_> {
         // `dropped_in` holds, per block, the owners an explicit `drop` released on some path
         // there (a move into a branch parameter or a consuming call keeps the storage, so only
         // `drop` counts); using a borrow of one of them reads freed storage.
-        let mut dropped_in: Vec<BTreeSet<u32>> = vec![BTreeSet::new(); f.blocks.len()];
+        let mut dropped_in: Vec<OwnerSet> = vec![OwnerSet::new(); f.blocks.len()];
         let mut owner_of: Vec<Option<Value>> = vec![None; f.values.len()];
         let mut views = vec![false; f.values.len()];
         // The owner a pointer returned by a runtime lookup points into.
@@ -647,7 +647,7 @@ impl Verifier<'_> {
                     let Some(o) = owner_of[a.index()] else {
                         continue;
                     };
-                    if dropped.contains(&o.0) {
+                    if dropped.contains(o.0) {
                         self.err(
                             Some(bi),
                             format!(
@@ -787,7 +787,7 @@ impl Verifier<'_> {
             for t in &edges {
                 for a in &t.args {
                     if let Some(o) = owner_of[a.index()]
-                        && dropped.contains(&o.0)
+                        && dropped.contains(o.0)
                     {
                         self.err(
                             Some(bi),
@@ -801,7 +801,7 @@ impl Verifier<'_> {
             }
             for t in edges {
                 let dest = &f.blocks[t.block.index()];
-                dropped_in[t.block.index()].extend(&dropped);
+                dropped_in[t.block.index()].union_with(&dropped);
                 let mut after = live.clone();
                 let mut seen = Vec::new();
                 for (a, p) in t.args.iter().zip(&dest.params) {
