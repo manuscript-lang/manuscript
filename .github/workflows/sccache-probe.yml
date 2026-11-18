@@ -1,0 +1,49 @@
+name: sccache probe
+
+# Temporary experiment (#4426): does cranelift-codegen hit the sccache? Closed unmerged once answered.
+on:
+  pull_request:
+    paths: ['.github/workflows/sccache-probe.yml']
+
+permissions:
+  contents: read
+
+env:
+  RUSTC_WRAPPER: sccache
+  SCCACHE_CACHE_SIZE: 1500M
+  CARGO_PROFILE_DEV_DEBUG: '0'
+  CARGO_INCREMENTAL: '0'
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: sccache
+        uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-linux-amd64-
+      - uses: ./.github/actions/rust-env
+        with:
+          os: linux
+          arch: amd64
+      - name: Probe
+        shell: bash
+        run: |
+          sccache --show-stats | grep -E "Compile requests|Cache hits  |Cache misses  |Cache size"
+          for i in 1 2 3; do
+            sccache --zero-stats >/dev/null
+            cargo clean -p cranelift-codegen -q
+            s=$(date +%s)
+            cargo build -p cranelift-codegen --locked -q
+            echo "round $i: $(( $(date +%s) - s )) s"
+            sccache --show-stats | grep -E "Compile requests  |Cache hits \(Rust\)|Cache misses \(Rust\)|Non-cacheable"
+          done
+      - name: Why (debug log of one build)
+        shell: bash
+        run: |
+          sccache --stop-server >/dev/null 2>&1 || true
+          cargo clean -p cranelift-codegen -q
+          SCCACHE_LOG=debug SCCACHE_ERROR_LOG=$RUNNER_TEMP/sccache.log cargo build -p cranelift-codegen --locked -q || true
+          grep -iE "cranelift_codegen|cache (hit|miss)|Cache hit|Compiled in" $RUNNER_TEMP/sccache.log | grep -iE "cranelift.codegen|miss|hit" | head -30 | cut -c1-250
