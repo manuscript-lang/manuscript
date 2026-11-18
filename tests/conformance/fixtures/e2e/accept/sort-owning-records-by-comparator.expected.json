@@ -31,7 +31,7 @@
         }
       ],
       "summary": {
-        "available": 3,
+        "available": 4,
         "selected": 4,
         "passed": 4,
         "failed": 0,
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN sort-owning-records-by-comparator.ms::sorting records that own strings and lists orders by key and keeps equal keys in input order\nPASS sort-owning-records-by-comparator.ms::sorting records that own strings and lists orders by key and keeps equal keys in input order\nRUN sort-owning-records-by-comparator.ms::the sorted copy owns its strings and lists independently of the original\nPASS sort-owning-records-by-comparator.ms::the sorted copy owns its strings and lists independently of the original\nRUN sort-owning-records-by-comparator.ms::sorting records that own data in place keeps every record\nPASS sort-owning-records-by-comparator.ms::sorting records that own data in place keeps every record\n3 tests, 0 failed\n",
+      "stdout": "RUN sort-owning-records-by-comparator.ms::sorting records that own strings and lists orders by key and keeps equal keys in input order\nPASS sort-owning-records-by-comparator.ms::sorting records that own strings and lists orders by key and keeps equal keys in input order\nRUN sort-owning-records-by-comparator.ms::the sorted copy owns its strings and lists independently of the original\nPASS sort-owning-records-by-comparator.ms::the sorted copy owns its strings and lists independently of the original\nRUN sort-owning-records-by-comparator.ms::sorting records that own data in place keeps every record\nPASS sort-owning-records-by-comparator.ms::sorting records that own data in place keeps every record\nRUN sort-owning-records-by-comparator.ms::sorting strings longer than the inline size by compare leaves the original alone\nPASS sort-owning-records-by-comparator.ms::sorting strings longer than the inline size by compare leaves the original alone\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
