@@ -495,6 +495,204 @@ static int64_t nbody(void) {
     return r;
 }
 
+typedef struct { double re, im; } Cx;
+static inline Cx cx_mul(Cx a, Cx b) { return (Cx){a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re}; }
+static inline Cx cx_add(Cx a, Cx b) { return (Cx){a.re + b.re, a.im + b.im}; }
+
+static int64_t mandel(int64_t n) {
+    int64_t total = 0;
+    for (int64_t y = 0; y < n; y = ms_add(y, 1)) {
+        MS_POLL();
+        for (int64_t x = 0; x < n; x = ms_add(x, 1)) {
+            MS_POLL();
+            Cx c = {3.0 * (double)x / (double)n - 2.0, 2.0 * (double)y / (double)n - 1.0};
+            Cx z = {0.0, 0.0};
+            int64_t i = 0;
+            while (i < 100 && z.re * z.re + z.im * z.im < 4.0) {
+                MS_POLL();
+                z = cx_add(cx_mul(z, z), c);
+                i = ms_add(i, 1);
+            }
+            total = ms_add(total, i);
+        }
+    }
+    return total;
+}
+
+typedef struct { double x, y, vx, vy; } Particle;
+MS_LIST(Particle, ListParticle)
+
+static int64_t particles(int64_t n, int64_t steps) {
+    ListParticle ps = ListParticle_new();
+    for (int64_t i = 0; i < n; i = ms_add(i, 1)) {
+        MS_POLL();
+        double f = (double)i;
+        ListParticle_append(&ps, (Particle){f, f * 0.5, 1.0, -1.0});
+    }
+    for (int64_t s = 0; s < steps; s = ms_add(s, 1)) {
+        MS_POLL();
+        for (int64_t i = 0; i < n; i = ms_add(i, 1)) {
+            MS_POLL();
+            Particle p = *ListParticle_at(&ps, i);
+            p.x += p.vx * 0.01;
+            p.y += p.vy * 0.01;
+            if (p.x > 100.0) p.vx = -p.vx;
+            *ListParticle_at(&ps, i) = p;
+        }
+    }
+    double e = 0.0;
+    for (int64_t i = 0; i < ps.len; i = ms_add(i, 1)) {
+        MS_POLL();
+        const Particle *p = ListParticle_at(&ps, i);
+        e += p->x + p->y;
+    }
+    free(ps.data);
+    return (int64_t)e;
+}
+
+enum { OP_PUSH, OP_ADD, OP_MUL, OP_DUP, OP_SWAP, OP_POP, OP_JMPNZ, OP_DEC };
+typedef struct { int64_t kind, arg; } Op;
+MS_LIST(Op, ListOp)
+
+static int64_t list_pop_or_zero(ListInt *l) { return l->len == 0 ? 0 : l->data[--l->len]; }
+
+static int64_t vm(int64_t iters) {
+    ListOp code = ListOp_new();
+    ListOp_append(&code, (Op){OP_PUSH, 3});
+    ListOp_append(&code, (Op){OP_PUSH, 7});
+    ListOp_append(&code, (Op){OP_MUL, 0});
+    ListOp_append(&code, (Op){OP_POP, 0});
+    ListOp_append(&code, (Op){OP_DEC, 0});
+    ListOp_append(&code, (Op){OP_JMPNZ, 0});
+    ListOp_append(&code, (Op){OP_POP, 0});
+    ListInt st = ListInt_new();
+    ListInt_append(&st, iters);
+    int64_t pc = 0, acc = 0;
+    while (pc < code.len) {
+        MS_POLL();
+        Op o = *ListOp_at(&code, pc);
+        switch (o.kind) {
+        case OP_PUSH: ListInt_append(&st, o.arg); pc = ms_add(pc, 1); break;
+        case OP_ADD: { int64_t b = list_pop_or_zero(&st), a = list_pop_or_zero(&st); ListInt_append(&st, ms_add(a, b)); pc = ms_add(pc, 1); break; }
+        case OP_MUL: { int64_t b = list_pop_or_zero(&st), a = list_pop_or_zero(&st); ListInt_append(&st, ms_mod(ms_mul(a, b), 1000003)); pc = ms_add(pc, 1); break; }
+        case OP_DUP: { int64_t v = *ListInt_at(&st, ms_sub(st.len, 1)); ListInt_append(&st, v); pc = ms_add(pc, 1); break; }
+        case OP_SWAP: { int64_t b = list_pop_or_zero(&st), a = list_pop_or_zero(&st); ListInt_append(&st, b); ListInt_append(&st, a); pc = ms_add(pc, 1); break; }
+        case OP_POP: acc = ms_add(acc, list_pop_or_zero(&st)); pc = ms_add(pc, 1); break;
+        case OP_JMPNZ: if (*ListInt_at(&st, ms_sub(st.len, 1)) != 0) pc = o.arg; else pc = ms_add(pc, 1); break;
+        case OP_DEC: { int64_t v = list_pop_or_zero(&st); ListInt_append(&st, ms_sub(v, 1)); pc = ms_add(pc, 1); break; }
+        }
+    }
+    free(st.data);
+    free(code.data);
+    return acc;
+}
+
+typedef struct Expr { int64_t kind, n; struct Expr *l, *r; } Expr;
+
+static Expr *expr_build(int64_t d, int64_t s) {
+    Expr *e = ms_alloc(sizeof(Expr));
+    e->n = 0;
+    e->l = e->r = NULL;
+    if (d == 0) { e->kind = 0; e->n = ms_mod(s, 10); return e; }
+    if (ms_mod(d, 2) == 0) {
+        e->kind = 1;
+        e->l = expr_build(ms_sub(d, 1), ms_add(ms_mul(s, 3), 1));
+        e->r = expr_build(ms_sub(d, 1), ms_add(ms_mul(s, 7), 2));
+    } else {
+        e->kind = 2;
+        e->l = expr_build(ms_sub(d, 1), ms_add(s, 1));
+        e->r = expr_build(ms_sub(d, 1), ms_add(s, 3));
+    }
+    return e;
+}
+
+static int64_t expr_eval(const Expr *e) {
+    if (e->kind == 0) return e->n;
+    if (e->kind == 1) return ms_mod(ms_add(expr_eval(e->l), expr_eval(e->r)), 1000003);
+    return ms_mod(ms_mul(expr_eval(e->l), expr_eval(e->r)), 1000003);
+}
+
+static void expr_free(Expr *e) {
+    if (!e) return;
+    expr_free(e->l);
+    expr_free(e->r);
+    free(e);
+}
+
+static int64_t exprs(int64_t d, int64_t reps) {
+    Expr *e = expr_build(d, 1);
+    int64_t t = 0;
+    for (int64_t i = 0; i < reps; i = ms_add(i, 1)) {
+        MS_POLL();
+        t = ms_add(t, expr_eval(e));
+    }
+    expr_free(e);
+    return t;
+}
+
+static int64_t closures(int64_t n) {
+    int64_t k = 7, t = 0;
+    for (int64_t i = 0; i < n; i = ms_add(i, 1)) {
+        MS_POLL();
+        t = ms_add(t, ms_mod(ms_add(ms_mul(i, k), 1), 13));
+    }
+    ListInt xs = ListInt_new();
+    for (int64_t i = 0; i < 1000; i = ms_add(i, 1)) {
+        MS_POLL();
+        ListInt_append(&xs, ms_mul(i, k));
+    }
+    for (int64_t r = 0; r < ms_div(n, 1000); r = ms_add(r, 1)) {
+        MS_POLL();
+        int64_t s = 0;
+        for (int64_t i = 0; i < xs.len; i = ms_add(i, 1)) {
+            MS_POLL();
+            int64_t v = ms_add(*ListInt_at(&xs, i), k);
+            if (ms_mod(v, 3) == 0) s = ms_add(s, v);
+        }
+        t = ms_add(t, s);
+    }
+    free(xs.data);
+    return t;
+}
+
+static int64_t stencil(int64_t n, int64_t iters) {
+    int64_t nn = ms_mul(n, n);
+    ListInt a = ListInt_new(), b = ListInt_new();
+    for (int64_t i = 0; i < nn; i = ms_add(i, 1)) {
+        MS_POLL();
+        ListInt_append(&a, 0);
+        ListInt_append(&b, 0);
+    }
+    for (int64_t i = 0; i < nn; i = ms_add(i, 1)) {
+        MS_POLL();
+        *ListInt_at(&a, i) = ms_mod(i, 17);
+    }
+    for (int64_t it = 0; it < iters; it = ms_add(it, 1)) {
+        MS_POLL();
+        for (int64_t y = 1; y < ms_sub(n, 1); y = ms_add(y, 1)) {
+            MS_POLL();
+            for (int64_t x = 1; x < ms_sub(n, 1); x = ms_add(x, 1)) {
+                MS_POLL();
+                int64_t v = ms_add(ms_add(ms_add(
+                    *ListInt_at(&a, ms_sub(ms_add(ms_mul(y, n), x), 1)),
+                    *ListInt_at(&a, ms_add(ms_add(ms_mul(y, n), x), 1))),
+                    *ListInt_at(&a, ms_add(ms_mul(ms_sub(y, 1), n), x))),
+                    *ListInt_at(&a, ms_add(ms_mul(ms_add(y, 1), n), x)));
+                *ListInt_at(&b, ms_add(ms_mul(y, n), x)) = ms_mod(v, 1009);
+            }
+        }
+        ListInt t = a; a = b; b = t;
+    }
+    int64_t s = 0;
+    for (int64_t i = 0; i < a.len; i = ms_add(i, 1)) {
+        MS_POLL();
+        s = ms_add(s, *ListInt_at(&a, i));
+    }
+    free(a.data);
+    free(b.data);
+    return s;
+}
+
 int main(void) {
     TIMED("sieve_5M", sieve(opaque(5000000)));
     TIMED("nbody_200k", nbody());
@@ -503,5 +701,11 @@ int main(void) {
     TIMED("trees_d16_x20", trees(opaque(20)));
     TIMED("collatz_1M", collatz(opaque(1000000)));
     TIMED("map_count_2M", wordfreq(opaque(2000000)));
+    TIMED("mandel_400", mandel(opaque(400)));
+    TIMED("particles_1k_5k", particles(opaque(1000), opaque(5000)));
+    TIMED("vm_5M", vm(opaque(5000000)));
+    TIMED("expr_d20_x20", exprs(opaque(20), opaque(20)));
+    TIMED("closures_20M", closures(opaque(20000000)));
+    TIMED("stencil_1000_20", stencil(opaque(1000), opaque(20)));
     return 0;
 }

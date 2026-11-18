@@ -8,7 +8,8 @@ import invalid, minimum from "./lib.ms"
 export fn suite_names(suite: String) List[String]:
 	if suite == "kernels": return [
 		"sieve_5M", "nbody_200k", "life_128x128_50", "matmul_200", "trees_d16_x20",
-		"collatz_1M", "map_count_2M"
+		"collatz_1M", "map_count_2M", "mandel_400", "particles_1k_5k", "vm_5M",
+		"expr_d20_x20", "closures_20M", "stencil_1000_20"
 	]
 	return [
 		"call_fib_36", "dispatch_100M", "closure_100M", "sort_1M", "text_1M",
