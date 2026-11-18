@@ -395,7 +395,11 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     let mname = c.ident()?;
                     c.expect_p('(')?;
                     let mut params = Vec::new();
+                    let mut owned = 0u64;
                     while !c.eat_p(')') {
+                        if c.eat_ident("move") {
+                            owned |= 1 << params.len();
+                        }
                         params.push(parse_ty(&mut c, &mut m)?);
                         c.eat_p(',');
                     }
@@ -408,6 +412,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     methods.push(MethodSig {
                         name: mname,
                         params,
+                        owned,
                         ret,
                         self_params: Vec::new(),
                     });
@@ -720,7 +725,11 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
         "fn" => {
             c.expect_p('(')?;
             let mut ps = Vec::new();
+            let mut owned = 0u64;
             while !c.eat_p(')') {
+                if c.eat_ident("move") {
+                    owned |= 1 << ps.len();
+                }
                 ps.push(parse_ty(c, m)?);
                 c.eat_p(',');
             }
@@ -729,7 +738,7 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
             }
             c.next();
             let r = parse_ty(c, m)?;
-            m.types.func(ps, r)
+            m.types.func_owning(ps, r, owned)
         }
         "dyn" => {
             let n = c.ident()?;

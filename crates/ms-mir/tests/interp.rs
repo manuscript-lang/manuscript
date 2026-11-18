@@ -445,3 +445,48 @@ b0:
 "#;
     assert_eq!(run(src), 0);
 }
+
+/// A closure whose function type passes its argument owned (`fn(move list<int>)`): the caller
+/// hands the list over and the closure code, which declares the parameter `move`, releases it.
+const OWNED_CLOSURE: &str = r#"module "owned"
+entry @main
+fn @take(%env: ptr, %l: move list<int>) -> int closure() {
+b0:
+  %n: int = list.len %l
+  drop %l
+  ret %n
+}
+fn @main() -> int {
+b0:
+  %f: fn(move list<int>) -> int = closure.new @take
+  %n: int = iconst 4
+  %l0: list<int> = list.new %n
+  %a: int = iconst 10
+  %l1: list<int> = list.push %l0, %a
+  %r: int = call.ind (%f, %l1)
+  drop %f
+  ret %r
+}
+"#;
+
+#[test]
+fn closures_take_owned_arguments() {
+    assert_eq!(run(OWNED_CLOSURE), 1);
+    let printed = ms_mir::print::print_module(&module(OWNED_CLOSURE));
+    assert!(printed.contains("fn(move list<int>) -> int"), "{printed}");
+}
+
+#[test]
+fn closure_code_must_match_the_owned_positions_of_its_type() {
+    // The code borrows its argument but the type hands it over: rejected.
+    let lent = OWNED_CLOSURE
+        .replace("%l: move list<int>", "%l: list<int>")
+        .replace("  drop %l\n", "");
+    let m = ms_mir::parse::parse_module(&lent).unwrap();
+    let errs = verify_module(&m).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| e.message.contains("exactly where its function type")),
+        "{errs:?}"
+    );
+}

@@ -1464,7 +1464,10 @@ impl<'a> FnLower<'a> {
                 args.push(slot);
                 continue;
             }
-            args.push(if x.own && self.resource_temps.contains_key(&x.v) {
+            args.push(if ms_mir::types::owns(sig.owned, i) {
+                // The operation takes the argument.
+                self.hand_over(x)
+            } else if x.own && self.resource_temps.contains_key(&x.v) {
                 x.v
             } else {
                 self.borrow(x)

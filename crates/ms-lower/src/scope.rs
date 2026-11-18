@@ -51,6 +51,18 @@ impl crate::func::FnLower<'_> {
     }
 }
 
+impl crate::func::FnLower<'_> {
+    /// [`Cx::forwarded`] for the current evidence scope.
+    pub(crate) fn forwarded(
+        &mut self,
+        c: &std::rc::Rc<ms_check::api::hir::Callable>,
+        subst: &ct::Subst,
+    ) -> Result<ms_mir::ir::FuncId, crate::Error> {
+        let scope = self.evidence();
+        self.cx.forwarded(self.b.m, c, subst, scope)
+    }
+}
+
 impl Cx {
     /// The instance of `c` under `subst`. An instance over a type with a local extension is
     /// separate per `scope`, the module whose implementations its type variables use.
@@ -136,7 +148,7 @@ impl Cx {
                 .any(|f| self.holds_extension_in(m, f.1, seen)),
             TyKind::List(e) | TyKind::Opt(e) => self.holds_extension_in(m, e, seen),
             TyKind::Obj(_, args) => args.iter().any(|a| self.holds_extension_in(m, *a, seen)),
-            TyKind::Fn(params, ret) => params
+            TyKind::Fn(params, ret, _) => params
                 .iter()
                 .chain(std::iter::once(&ret))
                 .any(|a| self.holds_extension_in(m, *a, seen)),

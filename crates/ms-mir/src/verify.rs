@@ -17,7 +17,7 @@
 
 use crate::ir::*;
 use crate::persist::OwnerSet;
-use crate::types::Ty;
+use crate::types::{Ty, TyKind};
 use std::collections::BTreeSet;
 use std::fmt;
 
@@ -105,7 +105,10 @@ fn verify_decls(m: &Module, errs: &mut Vec<VerifyError>) {
                 && f.params[1..]
                     .iter()
                     .zip(&ms.params)
-                    .all(|(p, t)| p.ty == *t)
+                    .enumerate()
+                    .all(|(k, (p, t))| {
+                        p.ty == *t && (p.mode == Mode::Move) == crate::types::owns(ms.owned, k)
+                    })
                 && f.ret == ms.ret;
             if !ok {
                 bad(format!(
@@ -164,8 +167,8 @@ pub fn is_raw(f: &Func) -> bool {
     })
 }
 
-/// For each argument of `inst`, whether the position moving_params an owned value.
-pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
+/// For each argument of `inst` in `f`, whether the position takes an owned value.
+pub fn arg_modes(m: &Module, f: &Func, inst: &Inst) -> Vec<Mode> {
     let n = inst.args.len();
     let all = |mode: Mode| vec![mode; n];
     let one = |i: usize| {
@@ -208,7 +211,34 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
             Imm::Ext(e) => m.externs[e.index()].params.iter().map(|p| p.mode).collect(),
             _ => all(Mode::Borrow),
         },
+        // Operand 0 (the closure or interface value) is borrowed; argument `i` is operand `i + 1`.
+        Op::CallInd | Op::CallMethod => {
+            let owned = indirect_owned(m, f, inst);
+            (0..n)
+                .map(|i| match i.checked_sub(1) {
+                    Some(k) if crate::types::owns(owned, k) => Mode::Move,
+                    _ => Mode::Borrow,
+                })
+                .collect()
+        }
         _ => all(Mode::Borrow),
+    }
+}
+
+/// The arguments a `call.ind` (from the closure's type) or `call.method` (from the interface
+/// method) passes owned; see [`crate::types::owns`].
+pub fn indirect_owned(m: &Module, f: &Func, inst: &Inst) -> u64 {
+    match (inst.op, inst.imm) {
+        (Op::CallMethod, Imm::Method(i, k)) => m
+            .ifaces
+            .get(i.index())
+            .and_then(|x| x.methods.get(k as usize))
+            .map_or(0, |s| s.owned),
+        (Op::CallInd, _) => match inst.args.first().map(|&c| m.types.kind(f.ty(c))) {
+            Some(TyKind::Fn(_, _, owned)) => *owned,
+            _ => 0,
+        },
+        _ => 0,
     }
 }
 
@@ -290,7 +320,7 @@ impl Verifier<'_> {
             .collect();
         for (bi, b) in f.blocks.iter().enumerate() {
             for inst in &b.insts {
-                let modes = arg_modes(self.m, inst);
+                let modes = arg_modes(self.m, self.f, inst);
                 for (i, a) in inst.args.iter().enumerate() {
                     if !family.contains(a) {
                         continue;
@@ -360,13 +390,12 @@ impl Verifier<'_> {
                 if f.params.first().map(|p| p.ty) != Some(Ty::PTR) {
                     self.err(None, "closure and method functions take the erased environment/receiver as parameter 0 (ptr)");
                 }
-                if f.params
-                    .iter()
-                    .any(|p| p.mode == Mode::Move && self.needs_drop(p.ty))
-                {
+                // Later parameters are owned where the function type or interface method says
+                // (checked at `closure.new` and against each vtable).
+                if f.params.first().is_some_and(|p| p.mode == Mode::Move) {
                     self.err(
                         None,
-                        "closure and method functions take all parameters borrowed",
+                        "closure and method functions borrow their environment/receiver",
                     );
                 }
             }
@@ -594,7 +623,7 @@ impl Verifier<'_> {
                 }
             }
             for inst in &blk.insts {
-                let modes = arg_modes(m, inst);
+                let modes = arg_modes(m, f, inst);
                 let mut consumed_here: Vec<Value> = Vec::new();
                 for (a, mode) in inst.args.iter().zip(&modes) {
                     if !rc(*a) {

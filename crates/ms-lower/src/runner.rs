@@ -103,7 +103,7 @@ fn ok_unit(b: &mut FuncBuilder<'_>, ret: MTy) -> ms_mir::ir::Value {
 /// The parameter and result types of the closure type `ty`.
 fn fn_parts(m: &Module, ty: MTy) -> Result<(Vec<MTy>, MTy), Error> {
     match m.types.kind(ty).clone() {
-        TyKind::Fn(params, ret) => Ok((params, ret)),
+        TyKind::Fn(params, ret, _) => Ok((params, ret)),
         _ => Err(Error::new("the test runner expects a function value")),
     }
 }

@@ -306,7 +306,7 @@ fn capture(cx: &mut Cx, inst: &Inst, vals: &Vals, i: u32, out: &[Val], b: &mut F
 }
 
 fn call_closure(cx: &mut Cx, inst: &Inst, vals: &Vals, out: &[Val], b: &mut FnBuilder) {
-    let TyKind::Fn(params, ret) = cx.m.types.kind(cx.f.ty(inst.args[0])).clone() else {
+    let TyKind::Fn(params, ret, _) = cx.m.types.kind(cx.f.ty(inst.args[0])).clone() else {
         unreachable!("call.ind of a non-closure")
     };
     let clo = vals[&inst.args[0].index()][0].clone();

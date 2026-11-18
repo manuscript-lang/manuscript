@@ -885,7 +885,7 @@ fn analyze(
                 // The discard may pop entries the window pushed.
                 reach = None;
             }
-            let modes = crate::verify::arg_modes(m, inst);
+            let modes = crate::verify::arg_modes(m, f, inst);
             let consumed: Vec<u32> = inst
                 .args
                 .iter()
@@ -1244,7 +1244,7 @@ fn stable_params(
             if let (true, Some(r)) = (is_set(inst.op), inst.res) {
                 sets.insert(r.0, inst.args[0].0);
             }
-            let modes = crate::verify::arg_modes(m, inst);
+            let modes = crate::verify::arg_modes(m, f, inst);
             for (a, mode) in inst.args.iter().zip(&modes) {
                 if *mode == Mode::Move {
                     *moves.entry(a.0).or_default() += 1;
@@ -1306,7 +1306,7 @@ fn consumed_inside(m: &Module, f: &Func, owned_def: &[bool], body: &[usize]) -> 
     for &b in body {
         let blk = &f.blocks[b];
         for inst in &blk.insts {
-            let modes = crate::verify::arg_modes(m, inst);
+            let modes = crate::verify::arg_modes(m, f, inst);
             for (a, mode) in inst.args.iter().zip(&modes) {
                 if *mode == Mode::Move && owned_def[a.index()] {
                     used.insert(a.0);
@@ -1725,7 +1725,7 @@ fn covered_slot_takes(m: &Module, f: &Func) -> BTreeSet<u32> {
 fn only_borrowed_until_put(m: &Module, f: &Func, taken: Value, slot: Value) -> bool {
     for blk in &f.blocks {
         for inst in &blk.insts {
-            let modes = crate::verify::arg_modes(m, inst);
+            let modes = crate::verify::arg_modes(m, f, inst);
             for (i, a) in inst.args.iter().enumerate() {
                 if *a != taken {
                     continue;
@@ -2440,7 +2440,7 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
     }
     for blk in &f.blocks {
         for inst in &blk.insts {
-            let modes = crate::verify::arg_modes(m, inst);
+            let modes = crate::verify::arg_modes(m, f, inst);
             for (i, a) in inst.args.iter().enumerate() {
                 if fwd.contains(&a.0) {
                     let ok = match (inst.op, inst.imm) {

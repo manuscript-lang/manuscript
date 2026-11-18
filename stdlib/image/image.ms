@@ -398,7 +398,7 @@ fn color_mode(channels: Int) ColorMode:
 
 	return ColorMode.Rgba
 
-fn image_of(raster: Raster) Image:
+fn image_of(move raster: Raster) Image:
 	return Image(
 		raster.width,
 		raster.height,

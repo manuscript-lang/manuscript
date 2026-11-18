@@ -89,14 +89,13 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	bound_cause.calls = 5
 	counter.calls | expect_equal(1)?
 
-	bound_lazy := missing.ok_or_else[Counter]
-	bound_lazy(create).err().calls | expect_equal(10)?
+	missing.clone().ok_or_else(create).err().calls | expect_equal(10)?
 
 	failure: Counter!Pending := error(Pending([1, 2]))
 	(success_only(failure).is_none()) | expect_true?
 
 	success: Counter!Error := ok(counter.clone())
-	extract := success.to_optional
+	extract := fn: success.clone().to_optional()
 	var extracted = extract().get().clone()
 	extracted.calls = 7
 	counter.calls | expect_equal(1)?

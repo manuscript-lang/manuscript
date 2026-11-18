@@ -257,7 +257,7 @@ fn function(m: &Module, parks_of: &[bool], ext: Ext, f: &mut Func) -> bool {
         let mut buf: Vec<Inst> = Vec::new();
         let count = old.len();
         for (k, i) in old.into_iter().enumerate() {
-            let modes = arg_modes(m, &i);
+            let modes = arg_modes(m, f, &i);
             for (a, mode) in i.args.iter().zip(&modes) {
                 if *mode == Mode::Move {
                     live.remove(&a.0);

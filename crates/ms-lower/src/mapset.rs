@@ -956,7 +956,16 @@ impl<'a> FnLower<'a> {
             .find(|p| self.syms.str(p.name) == "create")
             .and_then(|p| p.ty.result.clone())
             .ok_or_else(|| Error::new("add_default_from create is not a function"))?;
-        let key_decl = decl[..1].to_vec();
+        // `contains` only reads the key, which `add_default` may take later.
+        let mut key_decl = decl[..1].to_vec();
+        key_decl[0].moving = false;
+        let lent_key = NArg {
+            val: Val {
+                v: key.val.v,
+                own: false,
+            },
+            ..key
+        };
         let add_decl = vec![
             decl[0].clone(),
             ct::Param {
@@ -967,6 +976,8 @@ impl<'a> FnLower<'a> {
                 positional: false,
             },
         ];
+        // The call below lends both; the key's ownership is settled on each branch.
+        let f = self.borrow(create.val);
         let slot = self.put_slot(old);
         let recv = Val { v: old, own: false };
         let has = self.rt_method_at(
@@ -974,17 +985,25 @@ impl<'a> FnLower<'a> {
             recv,
             Some(slot),
             &key_decl,
-            &[key],
+            &[lent_key],
             MTy::BOOL,
         )?;
         let present = self.borrow(has);
         let (absent, join) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(present, join, &[], absent, &[]);
+        // An owned key goes into the map only when it is absent; otherwise it is dropped here.
+        if key.val.own && self.needs_drop(self.ty_of(key.val.v)) {
+            let found = self.b.new_block();
+            self.b.br_if(present, found, &[], absent, &[]);
+            self.b.seal_block(found);
+            self.b.switch_to(found);
+            self.b.emit(Op::Drop, &[key.val.v], Imm::None, None);
+            self.b.br(join, &[]);
+        } else {
+            self.b.br_if(present, join, &[], absent, &[]);
+        }
         self.b.seal_block(absent);
         self.b.switch_to(absent);
-        let k = self.borrow(key.val);
-        let f = self.borrow(create.val);
-        let made = self.b.call_ind(f, &[k]);
+        let made = self.b.call_ind(f, &[key.val.v]);
         let value = NArg {
             name: self.syms.intern("value"),
             val: Val { v: made, own: true },

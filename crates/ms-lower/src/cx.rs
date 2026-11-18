@@ -84,7 +84,7 @@ pub enum HelperKey {
         writes_back: bool,
         in_slot: bool,
     },
-    Thunk(FuncId),
+    Thunk(FuncId, MTy),
     /// An inlinable map or set lookup of the given slot shape and result.
     MapProbe(crate::rtinline::Shape, crate::rtinline::Answer),
     /// The inlinable fast path of `String.view`.
@@ -631,7 +631,11 @@ impl Cx {
         match t.kind {
             Kind::Function => {
                 let mut params = Vec::new();
+                let mut owned = 0u64;
                 for p in &t.params {
+                    if p.moving {
+                        owned |= owned_bit(params.len())?;
+                    }
                     if p.mutable {
                         // A changed parameter travels as the address of a slot the callee takes
                         // the value from and puts the final value back into, as in a direct call.
@@ -644,7 +648,7 @@ impl Cx {
                     params.push(if lifted { m.types.opt(pt) } else { pt });
                 }
                 let ret = self.lower_ty(m, &t.result_ty())?;
-                Ok(m.types.func(params, ret))
+                Ok(m.types.func_owning(params, ret, owned))
             }
             Kind::Native => self.lower_native_ty(m, t),
             Kind::Type if t.is(Builtin::Bytes) => Ok(MTy::BYTES),
@@ -744,7 +748,11 @@ impl Cx {
                         let sig = ct::sub(&op.ty, &subst);
                         let vars = op_var_params(&op);
                         let mut params = Vec::new();
+                        let mut owned = 0u64;
                         for (i, p) in sig.params.iter().enumerate() {
+                            if p.moving {
+                                owned |= owned_bit(i)?;
+                            }
                             // A `var` parameter travels as the address of the caller's slot.
                             if vars.get(i).copied().unwrap_or(false) {
                                 params.push(MTy::PTR);
@@ -759,6 +767,7 @@ impl Cx {
                         methods.push(MethodSig {
                             name: self.syms.str(op.name).to_string(),
                             params,
+                            owned,
                             ret,
                             self_params,
                         });
@@ -841,4 +850,12 @@ pub(crate) fn op_var_params(op: &ct::Operation) -> Vec<bool> {
         (None, None) => return Vec::new(),
     };
     params.iter().map(|p| p.mutable).collect()
+}
+
+/// The owned-parameter bit for parameter `i` of a function type or interface operation.
+fn owned_bit(i: usize) -> Result<u64, Error> {
+    u32::try_from(i)
+        .ok()
+        .and_then(|i| 1u64.checked_shl(i))
+        .ok_or_else(|| Error::new("a function type moves a parameter past the 64th"))
 }

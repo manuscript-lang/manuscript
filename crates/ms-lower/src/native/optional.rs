@@ -3,6 +3,37 @@
 use super::*;
 
 impl<'a> FnLower<'a> {
+    /// Whether the callback `f` takes its first argument (a `fn(move T)`).
+    fn callback_takes(&self, f: Value) -> bool {
+        matches!(self.b.m.types.kind(self.ty_of(f)), TyKind::Fn(_, _, owned) if ms_mir::types::owns(*owned, 0))
+    }
+
+    /// The payload of the optional `recv`, known present, handed over whole.
+    fn take_some(&mut self, recv: Val) -> Value {
+        let o = self.hand_over(recv);
+        self.b.opt_unbox(o)
+    }
+
+    /// Calls `f` with the payload of `recv`'s `case`: handed over when `f` takes it, else lent
+    /// and `recv` finished (an owned resource closes) after the call.
+    fn call_with_case(
+        &mut self,
+        f: Value,
+        alt: ms_mir::types::AltId,
+        case: u32,
+        recv: Val,
+    ) -> Value {
+        if self.callback_takes(f) {
+            let o = self.hand_over(recv);
+            let p = self.take_alt_field(alt, case, 0, Val { v: o, own: true });
+            return self.b.call_ind(f, &[p]);
+        }
+        let p = self.b.alt_get(alt, case, 0, recv.v);
+        let y = self.b.call_ind(f, &[p]);
+        self.close_finish(recv);
+        y
+    }
+
     /// A fault with no operands (the runtime formats the message).
     pub(super) fn runtime_fault(&mut self, sym: &str) {
         let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
@@ -192,12 +223,18 @@ impl<'a> FnLower<'a> {
                             s.finish(f.val);
                             return Ok(Some(o));
                         }
-                        let p = s.b.opt_get(r);
                         let fv = f.val.v;
-                        let y = s.b.call_ind(fv, &[p]);
+                        let y = if s.callback_takes(fv) {
+                            let p = s.take_some(recv);
+                            s.b.call_ind(fv, &[p])
+                        } else {
+                            let p = s.b.opt_get(r);
+                            let y = s.b.call_ind(fv, &[p]);
+                            // The callback only borrowed the payload: an owned temporary closes it.
+                            s.close_finish(recv);
+                            y
+                        };
                         let v = if by_map { s.b.opt_some(y) } else { y };
-                        // The callback only borrowed the payload: an owned temporary closes it.
-                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -448,9 +485,7 @@ impl<'a> FnLower<'a> {
                         Ok(Some(o))
                     },
                     &mut |s| {
-                        let p = s.b.alt_get(alt, err, 0, r);
-                        let v = s.b.call_ind(f.val.v, &[p]);
-                        s.close_finish(recv);
+                        let v = s.call_with_case(f.val.v, alt, err, recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -478,10 +513,8 @@ impl<'a> FnLower<'a> {
                         Ok(Some(v))
                     },
                     &mut |s| {
-                        let p = s.b.alt_get(alt, err, 0, r);
-                        let y = s.b.call_ind(f.val.v, &[p]);
+                        let y = s.call_with_case(f.val.v, alt, err, recv);
                         let v = s.b.alt_new(oa, out_err, &[y]);
-                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -528,14 +561,12 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let p = s.b.alt_get(alt, ok, 0, r);
-                        let y = s.b.call_ind(f.val.v, &[p]);
+                        let y = s.call_with_case(f.val.v, alt, ok, recv);
                         let v = if is_map {
                             s.b.alt_new(oa, out_ok, &[y])
                         } else {
                             y
                         };
-                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },

@@ -94,6 +94,34 @@ impl<'m> FuncBuilder<'m> {
         self.f.param_values()
     }
 
+    /// For a function that forwards its parameters to one call (a thunk or table entry): drops
+    /// each parameter it receives owned that the last instruction of the current block, the
+    /// forwarding call, only lent.
+    pub fn release_lent_params(&mut self) {
+        let Some(inst) = self.f.blocks[self.cur.index()].insts.last().cloned() else {
+            return;
+        };
+        let modes = crate::verify::arg_modes(self.m, &self.f, &inst);
+        let taken: Vec<Value> = inst
+            .args
+            .iter()
+            .zip(&modes)
+            .filter(|(_, m)| **m == Mode::Move)
+            .map(|(a, _)| *a)
+            .collect();
+        let owned: Vec<Value> = self
+            .f
+            .params
+            .iter()
+            .zip(self.f.param_values())
+            .filter(|(p, v)| p.mode == Mode::Move && !taken.contains(v) && self.m.needs_drop(p.ty))
+            .map(|(_, v)| v)
+            .collect();
+        for v in owned {
+            self.emit(Op::Drop, &[v], Imm::None, None);
+        }
+    }
+
     /// The type of a value.
     pub fn ty(&self, v: Value) -> Ty {
         self.f.ty(v)
@@ -704,7 +732,7 @@ impl<'m> FuncBuilder<'m> {
     }
     /// `call.ind` through a closure value.
     pub fn call_ind(&mut self, closure: Value, args: &[Value]) -> Value {
-        let TyKind::Fn(_, r) = self.m.types.kind(self.ty(closure)).clone() else {
+        let TyKind::Fn(_, r, _) = self.m.types.kind(self.ty(closure)).clone() else {
             panic!("call_ind needs a closure")
         };
         let mut all = vec![closure];

@@ -35,14 +35,6 @@ fn generic_result[T](value: T!Int) T?: value.to_optional()
 
 fn generic_error[E](value: Int!E) Int!E: value.map(fn item: item + 1)
 
-fn bound_generic[T: Clonable](value: T!Int) T?:
-    convert := value.to_optional
-    return convert()
-
-fn bound_generic_error[E: Clonable](value: Int!E) Int!E:
-    transform := value.map[Int]
-    return transform(fn item: item + 1)
-
 fn collection_get_still_borrows() Int:
     values := [Marker(1)]
     return values.first().get().id
