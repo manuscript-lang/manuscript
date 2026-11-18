@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Complex, complex, complex_polar, imaginary_unit from "@std/math/complex.ms",
-	infinity, sign_bit from "@std/math/math.ms",
+	infinity, nan, sign_bit from "@std/math/math.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 )
 
@@ -306,7 +306,7 @@ test "complex inverse tangent preserves poles and ordinary controls":
 		)
 	)?
 	expect_true(near(complex(0.3, 0.4).tan().atan(), complex(0.3, 0.4)))?
-	expect_true(complex(infinity, 1.0).atan().is_nan())?
+	expect_equal(complex(infinity, 1.0).atan(), complex(1.5707963267948966, 0.0))?
 	expect_true(complex(1.0, 0.0 / 0.0).atan().is_nan())?
 
 	negative_zero := complex(1.0, -0.0).atan()
@@ -412,3 +412,24 @@ test "square root of an infinite imaginary part is infinite and of a NaN real pa
 	expect_equal(down.im, -infinity)?
 	expect_true(complex(0.0 / 0.0, 0.0).sqrt().is_nan())?
 	expect_true(complex(0.0 / 0.0, 0.0).sqrt().re.is_nan())?
+
+test "complex functions follow C99 Annex G for infinite and NaN parts":
+	half_pi := 1.5707963267948966
+	expect_equal(complex(0.69, infinity).asin(), complex(0.0, infinity))?
+	expect_equal(complex(-infinity, 0.5).acos(), complex(3.141592653589793, -infinity))?
+	expect_equal(complex(-infinity, 1e300).asin(), complex(-half_pi, infinity))?
+	expect_equal(complex(-infinity, 2.0).atan(), complex(-half_pi, 0.0))?
+	expect_equal(complex(infinity, -infinity).tanh(), complex(1.0, 0.0))?
+	expect_equal(complex(-infinity, nan).sinh().re, infinity)?
+	expect_true(complex(-infinity, nan).sinh().im.is_nan())?
+	expect_equal(complex(infinity, nan).cosh().re, infinity)?
+	expect_equal(complex(0.0, nan).cosh().im, 0.0)?
+	expect_equal(complex(-infinity, infinity).exp(), complex(0.0, 0.0))?
+	expect_equal(complex(infinity, infinity).tan(), complex(0.0, 1.0))?
+	expect_equal(complex(0.0, nan).sin().re, 0.0)?
+	expect_equal(complex(nan, infinity).cos().re, infinity)?
+
+test "complex pow multiplies out a small integer exponent":
+	expect_equal(complex(0.0, -7.25).pow(complex(1.0, 0.0)), complex(0.0, -7.25))?
+	expect_equal(complex(0.0, 2.0).pow(complex(2.0, 0.0)).re, -4.0)?
+	expect_equal(complex(2.0, 0.0).pow(complex(-2.0, 0.0)).re, 0.25)?
