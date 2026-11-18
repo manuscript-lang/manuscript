@@ -2618,7 +2618,11 @@ fn borrows_slot_value(m: &Module, safe: &[Vec<bool>], parks: &[bool], f: &Func, 
                 .iter()
                 .any(|a| taken.contains(&a.0) || derived.contains(&a.0));
             let view = inst.op == Op::Load && inst.args.first() == Some(&p);
+            // A value that owns nothing and is no address (a promise handle, a number) is no
+            // borrow of the slot's contents.
+            let holds = m.needs_drop(f.ty(r)) || f.ty(r) == Ty::PTR;
             if (from_held || view)
+                && holds
                 && !taken.contains(&r.0)
                 && m.result_mode(f, inst) != Some(Mode::Move)
                 && derived.insert(r.0)
