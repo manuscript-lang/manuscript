@@ -44,6 +44,11 @@ static ASLEEP: AtomicBool = AtomicBool::new(false);
 static STIRRED: [AtomicU64; MAX_THREADS] = [const { AtomicU64::new(0) }; MAX_THREADS];
 static HOOKS: Mutex<Vec<Hook>> = Mutex::new(Vec::new());
 static WATCHER: OnceLock<std::thread::Thread> = OnceLock::new();
+/// Counting builds: the watcher's handle and its stop request, so it can end before the count.
+#[cfg(feature = "stats")]
+static HANDLE: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
+#[cfg(feature = "stats")]
+static STOP: AtomicBool = AtomicBool::new(false);
 
 /// The watcher's clock as of its last look, in ticks (see [`Look`]).
 #[inline]
@@ -75,13 +80,29 @@ pub fn start() {
         return;
     }
     WATCHER.get_or_init(|| {
-        std::thread::Builder::new()
+        let handle = std::thread::Builder::new()
             .name("ms-watch".into())
             .spawn(run)
-            .expect("watcher thread")
-            .thread()
-            .clone()
+            .expect("watcher thread");
+        let thread = handle.thread().clone();
+        #[cfg(feature = "stats")]
+        {
+            *HANDLE.lock().unwrap_or_else(|e| e.into_inner()) = Some(handle);
+        }
+        thread
     });
+}
+
+/// Counting builds: ends the watcher and waits for it, so the buffers of its own do not count as
+/// Rust heap blocks at exit (whether the watcher ran at all is timing).
+#[cfg(feature = "stats")]
+pub fn stop() {
+    let Some(handle) = HANDLE.lock().unwrap_or_else(|e| e.into_inner()).take() else {
+        return;
+    };
+    STOP.store(true, Ordering::SeqCst);
+    handle.thread().unpark();
+    let _ = handle.join();
 }
 
 /// Notes that scheduler thread `thread` leaves its rest, and wakes a sleeping watcher.
@@ -105,6 +126,10 @@ fn wake() {
 fn run() {
     let (mut quiet, mut often_until) = (0u32, 0u64);
     loop {
+        #[cfg(feature = "stats")]
+        if STOP.load(Ordering::SeqCst) {
+            return;
+        }
         if ASLEEP.load(Ordering::Acquire) {
             std::thread::park();
             continue;

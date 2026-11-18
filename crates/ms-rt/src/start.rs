@@ -124,6 +124,7 @@ unsafe fn run_main() {
 /// Runs on the isolate's own thread, whose allocator and task state it reads.
 #[cfg(feature = "stats")]
 fn report_leaks() {
+    crate::watch::stop();
     fault::release_fault_state();
     crate::glue::pool::reap_at_exit();
     {
