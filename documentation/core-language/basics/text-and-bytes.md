@@ -33,7 +33,13 @@ symbol := "\u{1F642}"
 
 ## Multi-line and raw literals
 
-`"""` opens text that spans lines. The opening quotes end their line, the closing quotes stand alone on a later line, and the closing line's indentation is removed from every line, so the text can be indented with the code around it. The line break after the opening quotes and the one before the closing line are not part of the value. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error. Escapes work as in `"..."`, `"` needs no escape, and braces are plain. `f"""` is the same text with `{expression}` interpolation as in `f"..."` (an interpolated expression still stays on one line). The text cannot contain `"""` at all.
+`"""` opens text that spans lines.
+
+- The opening quotes end their line, and the closing quotes stand alone on a later line.
+- The closing line's indentation is removed from every line, so the text can be indented with the code around it. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error.
+- The line break after the opening quotes and the one before the closing line are not part of the value.
+- Escapes work as in `"..."`, `"` needs no escape, and braces are plain. The text cannot contain `"""` at all.
+- `f"""` is the same text with `{expression}` interpolation as in `f"..."`; an interpolated expression still stays on one line.
 
 `r"..."` is one-line raw text: every character is literal up to the first `"`, so there are no escapes, and it cannot contain a quote. Use it for regular expressions and Windows paths: `digits := r"\d+"`. Control characters (tabs included) are rejected as in `"..."`; use `r"""` for text with quotes.
 

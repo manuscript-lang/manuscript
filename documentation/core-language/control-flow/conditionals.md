@@ -89,7 +89,13 @@ fn port(lookup: Result[Int, Error]) Int:
     return 8080
 ```
 
-`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it: `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`, and `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar. A missing key or out-of-range index takes the `else` branch. The origin must be `var`, and nothing else may use it until the last use of `name`. `place[key]?` is written only here. `if var name = map.get(key):` also borrows the map entry in place. For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary Optional. To change an independent copy, use `if v := x` and explicitly clone the payload into a `var`.
+`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it. `place[key]?` is written only here.
+
+- `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`. `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar.
+- A missing key or out-of-range index takes the `else` branch.
+- The origin must be `var`, and nothing else may use it until the last use of `name`.
+- `if var name = map.get(key):` also borrows the map entry in place.
+- For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary `Optional`. To change an independent copy, use `if v := x` and clone the payload into a `var`.
 
 This complete test updates an existing map entry:
 
