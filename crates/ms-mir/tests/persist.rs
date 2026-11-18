@@ -43,6 +43,35 @@ fn follows_a_model_under_random_updates() {
 }
 
 #[test]
+fn a_union_follows_a_model_and_leaves_its_operand_alone() {
+    for (seed, range) in [(5, 40u64), (6, 700), (7, 20_000), (8, 3_000_000)] {
+        let mut rng = Rng(seed);
+        for _ in 0..60 {
+            let (mut a, mut b) = (OwnerSet::new(), OwnerSet::new());
+            let (mut ma, mut mb) = (BTreeSet::new(), BTreeSet::new());
+            for _ in 0..(rng.next() % 200) {
+                let v = (rng.next() % range) as u32;
+                a.insert(v);
+                ma.insert(v);
+            }
+            for _ in 0..(rng.next() % 200) {
+                let v = (rng.next() % (range * 4)) as u32;
+                b.insert(v);
+                mb.insert(v);
+            }
+            let before = a.clone();
+            a.union_with(&b);
+            ma.extend(&mb);
+            agree(&a, &ma);
+            agree(&b, &mb);
+            let mut again = a.clone();
+            again.union_with(&before);
+            assert_eq!(again, a);
+        }
+    }
+}
+
+#[test]
 fn a_clone_is_unaffected_by_later_updates() {
     let mut a = OwnerSet::new();
     for v in [3, 70, 5000, 9_000_000] {

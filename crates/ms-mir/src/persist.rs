@@ -199,6 +199,15 @@ impl OwnerSet {
         }
     }
 
+    /// Adds every member of `other`. Subtrees the two sets share are not visited, so the cost
+    /// follows what differs, not the sizes.
+    pub fn union_with(&mut self, other: &Self) {
+        let height = self.height.max(other.height);
+        let (a, b) = (self.lifted(height), other.lifted(height));
+        self.root = union_in(a.as_ref(), b.as_ref());
+        self.height = height;
+    }
+
     /// The values in exactly one of the two sets, ascending.
     pub fn symmetric_difference(&self, other: &Self) -> Vec<u32> {
         let (mine, theirs) = self.diff(other);
@@ -230,6 +239,46 @@ impl OwnerSet {
             h += 1;
         }
         root
+    }
+}
+
+/// The union of two subtrees of one height, sharing whichever input already holds the result.
+fn union_in(a: Option<&Rc<Node>>, b: Option<&Rc<Node>>) -> Option<Rc<Node>> {
+    match (a, b) {
+        (None, other) | (other, None) => other.cloned(),
+        (Some(x), Some(y)) if Rc::ptr_eq(x, y) => Some(x.clone()),
+        (Some(x), Some(y)) => match (&**x, &**y) {
+            (Node::Leaf(p), Node::Leaf(q)) => {
+                let word = p | q;
+                if word == *p {
+                    Some(x.clone())
+                } else if word == *q {
+                    Some(y.clone())
+                } else {
+                    Some(Rc::new(Node::Leaf(word)))
+                }
+            }
+            (Node::Branch(p), Node::Branch(q)) => {
+                let kids: Box<[Option<Rc<Node>>; FAN]> = Box::new(std::array::from_fn(|i| {
+                    union_in(p[i].as_ref(), q[i].as_ref())
+                }));
+                let is = |from: &[Option<Rc<Node>>; FAN]| {
+                    kids.iter().zip(from.iter()).all(|(k, f)| match (k, f) {
+                        (None, None) => true,
+                        (Some(k), Some(f)) => Rc::ptr_eq(k, f),
+                        _ => false,
+                    })
+                };
+                if is(p) {
+                    Some(x.clone())
+                } else if is(q) {
+                    Some(y.clone())
+                } else {
+                    Some(Rc::new(Node::Branch(kids)))
+                }
+            }
+            _ => unreachable!("two subtrees of one height have one shape"),
+        },
     }
 }
 

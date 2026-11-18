@@ -34,6 +34,8 @@ linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1 `-O`, `ms` Release build
 | c36-bank-ledger | 74.5 | 115.8 | 63.0 | 0.64x | 1.18x |
 | c44-unified-diff | 14.7 | 67.1 | 14.4 | 0.22x | 1.02x |
 
+Re-measured after the table: c14-dp-suite is not 1.47x. The table's Rust time (377 ms) was one fast sample on a noisy shared VM; 21 alternating runs of the same 3 MB input, user plus system CPU time, give ms 518 ms (median 569) against Rust 627 ms (median 672), so 0.83x. Callgrind agrees: 660M instructions for ms against 955M for Rust on 300 KB. The other ratios in the table carry the same noise of up to about 1.4x; rerun a program alone with alternating samples before treating it as a gap. A three-way comparison folded to one compare in MIR (`a.max(b)` over `Int`) changed nothing in the release build: LLVM already did it (660,254,501 instructions both ways), so that rule was not kept.
+
 c13 alone, 11 runs on the unchanged tree and then with the change: 166 ms to 162 ms best, 210 ms to 193 ms median (Rust 129 ms); callgrind on 400 KB of input: 392M to 350M instructions (Rust 215M).
 
 ## main at c1b81215 (2026-10-25)

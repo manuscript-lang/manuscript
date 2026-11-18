@@ -12,7 +12,7 @@ import (
     HttpResponse,
     HttpServerOptions
 ) from "@std/net/http.ms"
-import stdout, ReadStream from "@std/io/io.ms"
+import stderr, stdout, ReadStream from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import Duration, monotonic, nanoseconds, sleep from "@std/time.ms"
 
@@ -64,6 +64,9 @@ fn run(label: String, grace_ms: Int) Bool:
         _slow := stdout().write(
             f"{label} slow: {slow.starts_with("HTTP/1.1 504")} prompt: {elapsed_ms < 2000}\n"
         )
+        if not slow.starts_with("HTTP/1.1 504"):
+            _seen := stderr().write(f"{label} slow answer: {slow}\n")
+
         _fast := stdout().write(
             f"{label} fast: {fast.starts_with("HTTP/1.1 200 OK")}\n"
         )
