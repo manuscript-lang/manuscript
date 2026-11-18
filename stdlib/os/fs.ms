@@ -442,8 +442,8 @@ type WatchSource:
 	pending: List[FileEvent]
 
 // Waits for the next change. none once the watched path itself has been removed (its
-// removal event comes first). A stream closed by the caller ends (`none`); a native watcher that
-// overflowed with policy `error` is `EOVERFLOW`.
+// removal event comes first). A stream closed by the caller ends (`none`); a native
+// watcher that overflowed with policy `error` is `EOVERFLOW`.
 fn var WatchSource.next() FileEvent?!:
 	while true:
 		if event := self.pending.pop(): return ok(event)
