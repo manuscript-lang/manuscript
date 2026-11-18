@@ -27,7 +27,14 @@ test "an unchanged frame rewrites only the cursor":
 	rows := ["one", "two", "three"]
 	void s.render(rows.clone(), 2, 0)
 	out := s.render(rows.clone(), 2, 3)
-	expect_equal(out, f"{begin}\r{esc}[J\r{esc}[3C{end}")?
+	expect_equal(out, f"{begin}\r\r{esc}[3C{end}")?
+
+test "an unchanged frame keeps the last row when the cursor sits on it":
+	var s = screen(24)
+	rows := ["one", "two", "three"]
+	void s.render(rows.clone(), 2, 0)
+	out := s.render(rows.clone(), 2, 0)
+	expect_equal(out.contains(f"{esc}[J"), false)?
 
 test "a changed row rewrites from that row down":
 	var s = screen(24)
