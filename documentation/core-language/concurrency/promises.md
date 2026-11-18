@@ -71,7 +71,7 @@ stop.cancel()
 
 Dropping an unfinished promise cancels it and waits for it to end, so work never outlives the values it uses. At the end of a scope, promises drop before the locals they read. An unused promise is a lint warning, because the work is cancelled the moment the value is dropped.
 
-Cancellation is delivered at the next wait. `cancel()` asks the work to stop the same way and returns at once. A loop that never waits is not stopped by a timeout either; it ends at its next wait. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits. Cleanup runs on cancellation as on any other exit.
+Cancellation is delivered at the next wait. `cancel()` asks the work to stop the same way and returns at once. A loop that never waits is not stopped by cancellation or a timeout. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits. Cleanup runs on cancellation as on any other exit.
 
 ## Reading and changing shared values
 

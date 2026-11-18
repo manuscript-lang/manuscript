@@ -30,7 +30,7 @@ fn read_head(path: String) Bytes?!:
 4. Run the rest of the scope.
 5. Close the registered resource when execution leaves the scope.
 
-Cleanup runs on every exit: end of scope, `break`, `continue`, `return`, `?` propagation, fault, or cancellation. Nested scopes close inner to outer, and bindings in one scope close last declared first.
+Cleanup runs on every exit: the end of the scope, `break`, `continue`, `return`, `?` propagation, fault, or cancellation. Nested scopes close inner to outer, and bindings in one scope close last declared first.
 
 ## Which values are closed?
 
@@ -50,11 +50,11 @@ void file.close()
 slow_work(head)
 ```
 
-`close` returns `Void!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`output.flush()?`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
+`close` returns `Void!`, so a failed close is returned or faults rather than lost. Flush buffered streams first (`output.flush()?`) so delivery errors can be handled.
+
+`ms lint` reports **MSL114** when a resource closed at scope end has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
 
 ## Close a resource explicitly
-
-# Closing a resource
 
 Usually, let scope-end cleanup close a file, socket or stream. Close explicitly when the next operation should begin only after the resource is released, or when you need to handle a close error.
 
@@ -78,15 +78,13 @@ fn finish(var output: WriteStream[String]) Void!:
 
 The owner still performs its scope-end close, which is harmless because close is idempotent.
 
-Choose the operation that confirms your work: `close()` returns a `Result` and a failed scope-end close is returned or faults; explicit commit, finish, or flush operations report expected errors with `Result`. A value that is not a resource, such as a `List[Int]` or a closure that captures none, adds no close behavior.
+To confirm that your work succeeded, call the operation that reports it. `close()` returns a `Result`, and a failed scope-end close is returned or faults. Explicit commit, finish, and flush operations report expected errors with `Result`. A value that is not a resource, such as a `List[Int]` or a closure that captures none, adds no close behavior.
 
 Factories close newly acquired native resources when cancellation or an error prevents delivery, and a binding registers its close right after the initializer succeeds, before cancellation can unwind it. See [Closeable](closeable.md).
 
 ## Cleanup order
 
-# Cleanup order
-
-On scope exit, cleanup closes inner resources before outer ones, and the bindings of one scope last declared first. A borrow registers no extra close. A type or collection that owns resources closes its owned parts; see [holder cleanup](closeable.md#types-and-collections-close-what-they-hold).
+On scope exit, inner resources close before outer ones, and the bindings of one scope close last declared first. A borrow registers no extra close. A type or collection that owns resources closes its owned parts; see [holder cleanup](closeable.md#types-and-collections-close-what-they-hold).
 
 1. Evaluate the pending return value or select the initiating error, fault, or cancellation.
 2. Call registered `close()` methods in reverse registration/nesting order.

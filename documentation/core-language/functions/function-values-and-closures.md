@@ -26,7 +26,11 @@ fn main() Int:
 2
 ```
 
-Function types name no parameters; `fn(var List[Int]) Void` marks one the function changes in place ([changing parameters](#changing-parameters)). Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A named or anonymous `fn` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+Function types name no parameters. A parameter the function changes in place is marked `var`: `fn(var List[Int]) Void` ([changing parameters](#changing-parameters)).
+
+- Calls through a value of an explicit function type are positional; a label on such a call is an error. Suspension and evaluation order are the same as for declared functions.
+- A named or anonymous `fn` inside a function is a local binding of a function value.
+- Inferred immutable copies of a named function keep its [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 
@@ -99,7 +103,7 @@ A `var` parameter is the caller's value, so the function cannot move it out (`ol
 
 Captures follow ownership rules. A non-escaping closure borrows its captures; an escaping closure owns them. The checker infers escape and parameter modes.
 
-A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
+A closure that only reads its captures and is called only in the function that made it borrows them, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -112,7 +116,7 @@ fn tag_count() Int:
 // tag_count() returns 2.
 ```
 
-A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
+A closure that is called only in the function that made it (including a callback such as `for_each`) may also change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

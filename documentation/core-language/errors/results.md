@@ -7,7 +7,7 @@ weight = 1
 
 Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` may be any value type. Most failures use the prelude type [`Error`](#the-error-type). `Result`, `ok`, `error`, and `Error` are in the prelude.
 
-Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if v := x`, or pass the error back with `?`. Validate runtime input with ordinary conditions before doing the work.
+Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test the Result with `is_error()`, read the success value with `if v := x`, or pass the error on with `?`. Validate runtime input with ordinary conditions before doing the work.
 
 ## Validate a value and show the outcome
 
@@ -65,10 +65,11 @@ export type Error:
 ```
 
 - `message` is the text to show a person.
-- `kind` is an optional short code a caller can branch on; it is `none` when no code fits (the default). The standard library uses POSIX errno names such as `"ENOENT"` (not found), `"EEXIST"`, `"EACCES"`, `"EINVAL"` (invalid input), `"EBADMSG"` (malformed data), `"EOVERFLOW"` (limit exceeded), `"ERANGE"`, `"ENOTSUP"`, `"EBADF"` (closed), `"EIO"`, `"EAGAIN"`, `"EBUSY"`, `"ETIMEDOUT"`, and `"ECANCELED"`; the full list is in the `Error` declaration. Your own code uses any string, preferably with its own prefix such as `"EQUOTA"`. A literal, or any string of at most 15 bytes, never allocates.
+- `kind` is an optional short code a caller can branch on. It is `none` (the default) when no code fits. The standard library uses POSIX errno names such as `"ENOENT"` (not found), `"EEXIST"`, `"EACCES"`, `"EINVAL"` (invalid input), `"EBADMSG"` (malformed data), `"EOVERFLOW"` (limit exceeded), `"ERANGE"`, `"ENOTSUP"`, `"EBADF"` (closed), `"EIO"`, `"EAGAIN"`, `"EBUSY"`, `"ETIMEDOUT"`, and `"ECANCELED"`; the full list is in the `Error` declaration.
+  Your own code may use any string, preferably with its own prefix such as `"EQUOTA"`. A literal, or any string of at most 15 bytes, never allocates.
 - `details` holds extra named context as text, such as a path or a line number.
 
-Build one with the constructor call. There is no separate constructor and no namespace.
+Build one by calling `Error(...)`. There is no separate constructor function and no namespace.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

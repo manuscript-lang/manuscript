@@ -5,7 +5,7 @@ weight = 2
 
 # Error propagation with ?
 
-A postfix `expression?` unwraps `ok`; on `error` it returns that error from the enclosing function, which must return a compatible `Result`. It reads after the call, so nested calls and pipe steps need no leading keyword.
+A postfix `expression?` unwraps `ok`; on `error` it returns that error from the enclosing function, which must return a compatible `Result`. Because it is written after the call, nested calls and pipe steps need no leading keyword.
 
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 

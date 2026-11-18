@@ -103,7 +103,7 @@ fn var Connection.close() Void!:
 
 ## Calling back into Manuscript
 
-A function argument reaches the native as an `ms_fn *`, which `ms_call(f, args, count, result)` calls on the same thread with an array of `ms_value`s. Each argument must have the kind and range of its parameter (`MS_INT` for a signed type, `MS_UINT` for an unsigned one), or `ms_call` faults before the call. `result`, which may be NULL, receives the value as `ms_list_get` gives it. A fault in the function ends the program like any fault; `ms_call` does not return from it. A function takes at most six parameters.
+A function argument reaches the native as an `ms_fn *`, which `ms_call(f, args, count, result)` calls on the same thread with an array of `ms_value`s. Each argument must have the kind and range of its parameter (`MS_INT` for a signed type, `MS_UINT` for an unsigned one), or `ms_call` faults before the call. `result`, which may be NULL, receives the value as `ms_list_get` gives it. A fault in the function ends the program like any fault; `ms_call` does not return from it. A function passed to a native takes at most six parameters.
 
 A native that keeps a function past the call, for a library that calls back later, takes its own copy with `ms_fn_clone` and drops it with `ms_fn_drop`. It calls the function only on the thread that called the native. Because a native may keep it, a closure passed to an extern owns what it captures.
 

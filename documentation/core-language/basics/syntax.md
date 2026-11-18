@@ -38,7 +38,9 @@ customer := Customer(
 )
 ```
 
-Comments start with `//` and run to the end of the line (a trailing comment follows code on its line). A multi-line comment is a `/* ... */` block on its own lines. The comment lines or block directly above a declaration, or a trailing `//` on its line, document it. See the [grammar](grammar.md) for the exact rules. Source is UTF-8 and case-sensitive. Identifiers use ASCII letters, digits, and underscores; text and comments may contain Unicode.
+Comments start with `//` and run to the end of the line (a trailing comment follows code on its line). A multi-line comment is a `/* ... */` block on its own lines. The comment lines or block directly above a declaration, or a trailing `//` on its line, document it. See the [grammar](grammar.md) for the exact rules.
+
+Source is UTF-8 and case-sensitive. Identifiers use ASCII letters, digits, and underscores; text and comments may contain Unicode.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

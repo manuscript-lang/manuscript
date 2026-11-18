@@ -16,20 +16,22 @@ Result[Decimal, DiscountError]
 
 ## Bounds
 
-Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds (`T: Compare[T]` is valid, `T: T` is not). Don't name a parameter `Error`; use `E`. `Error` is a type, not an interface or a bound; use it directly when a helper needs its `message`, `kind`, or `details`.
+Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds: `T: Converter[T]` is valid, `T: T` is not.
+
+Don't name a parameter `Error`; use `E`. `Error` is a type, not an interface or a bound. Use it directly when a helper needs its `message`, `kind`, or `details`.
 
 | Bound | Required property |
 | --- | --- |
 | `Equal` | Values can be compared by their contents with `==` and `!=` |
-| `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with an own `compare` |
-| `Hashable` | Values can be map keys or set elements; also supports equality |
-| `Clonable` | `value.clone()` returns an independent copy, so a generic body can keep a value it only borrows. Every type qualifies except a resource (`Closeable`), a type holding one, a native type without a `clone` of its own (`Regex`, `Pipe`), a function value, and any type holding one of those. Generic code that copies a value of `T` (`xs.take(1)`, `xs.concat(ys)`, keeping a borrowed argument) declares `T: Clonable` |
-| `Data` | Values hold no resource, function, interface value, or runtime handle, so they can cross a byte boundary: `json.parse`, `json.stringify`, and typed JSON stream codecs require it. Promises and pipes do not require this bound. Import it from `@std/core.ms`. Types and enums qualify when every part does; `Closeable` types never do; of the collections `List` qualifies, and a `Map[String, T]` when `T` does (it is a JSON object), never a `Set` or a `Map` with another key type; `JsonValue` is declared `Data`, so a dynamic JSON object travels as one. A type with a `JsonEncode` implementation qualifies; the codec owns its JSON form |
+| `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. `Int`, `Float`, `String`, `Decimal`, `BigInt`, `Duration`, `Instant`, and `Timestamp` qualify; other types opt in with their own `compare` |
+| `Hashable` | Values can be map keys or set elements; implies `Equal` |
+| `Clonable` | `value.clone()` returns an independent copy, so a generic body can keep a value it only borrows ([details](#clonable-and-data)) |
+| `Data` | Values hold no resource, function, interface value, or runtime handle, so they can cross a byte boundary ([details](#clonable-and-data)) |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
-Bounds are checked at every application; `Hashable` implies `Equal`, and `Data` and `Hashable` imply `Clonable`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
+Bounds are checked at every application. `Hashable` implies `Equal`, and `Data` and `Hashable` imply `Clonable`. Interface values gain no equality or hashing.
 
-`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types and type arguments. Their prelude names cannot be redefined by declarations, imports, or type parameters.
+`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`, so they work as bounds, parameter types, and type arguments. Declarations, imports, and type parameters cannot redefine their prelude names.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -45,6 +47,15 @@ fn same_key(left: Equal, right: Equal) Bool:
 fn use_view() Bool:
     return same_key(Key(1), Key(1))
 ```
+
+### Clonable and Data
+
+- **`Clonable`**: every type qualifies except a resource (`Closeable`), a type holding one, a native type without a `clone` of its own (`Regex`, `Pipe`), a function value, and any type holding one of those. Generic code that copies a value of `T` (`xs.take(1)`, `xs.concat(ys)`, keeping a borrowed argument) declares `T: Clonable`.
+- **`Data`**: `json.parse`, `json.stringify`, and typed JSON stream codecs require it. Promises and pipes do not. Import it from `@std/core.ms`.
+  - Types and enums qualify when every part does; `Closeable` types never do.
+  - Of the collections, `List` qualifies, and a `Map[String, T]` qualifies when `T` does (it is a JSON object). A `Set` or a `Map` with another key type never does.
+  - `JsonValue` is declared `Data`, so a dynamic JSON object travels as one.
+  - A type with a `JsonEncode` implementation qualifies; the codec owns its JSON form.
 
 ## Declarations and applications
 
@@ -152,7 +163,9 @@ A generic implementation is likewise checked once under its inherited bounds. Ma
 
 ## Finite recursive applications
 
-[Recursive data](named-types.md#recursive-data) may be generic only if each cycle passes the original parameters back in their original positions (composed around mutual cycles). `Tree[T]` with `Branch(left: Tree[T], right: Tree[T])` is allowed; substituting, reordering, or expanding arguments is rejected, so `Grow[T]` holding `List[Grow[List[T]]]` is an error. Nonrecursive nesting like `Box[Box[Int]]` is fine. The check covers every type reference, including function signatures and contracts.
+[Recursive data](named-types.md#recursive-data) may be generic only if each cycle passes the original parameters back in their original positions (composed around mutual cycles). `Tree[T]` with `Branch(left: Tree[T], right: Tree[T])` is allowed. Substituting, reordering, or expanding arguments is rejected, so `Grow[T]` holding `List[Grow[List[T]]]` is an error. Nonrecursive nesting like `Box[Box[Int]]` is fine.
+
+The check covers every type reference, including function signatures and interfaces.
 
 Generic function calls and specialized function values follow the same rule across the module graph: a recursive cycle must preserve the starting type parameters one-to-one. Nonrecursive calls may use other arguments. Expanding specialization is rejected before code generation, even if unreachable.
 
@@ -169,7 +182,7 @@ The check also covers mutual recursion, function values such as `grow[List[T]]`,
 
 ## Built-in requirements
 
-`List[T]`, `Queue[T]`, and other collections accept any value type, including functions and contract views. Map keys and set elements require `Hashable` ([equality and hashing](equality-and-hashing.md)).
+`List[T]`, `Queue[T]`, and other collections accept any value type, including functions and interface values. Map keys and set elements require `Hashable` ([equality and hashing](equality-and-hashing.md)).
 
 ## Type sets
 
@@ -188,6 +201,6 @@ fn total[T: Number](values: List[T]) T:
 
 - Members are concrete types, not type parameters or interfaces. A set may name another set; its members are flattened in.
 - Inside the body, `+`, `-`, `*`, `/` and comparisons work on a `T` whose members are all numeric, and the literal `0` is the zero of every member. Each instance keeps its own arithmetic: `Int8` overflow faults and `Float32` rounds to binary32.
-- A set cannot be a value type: `fn f(x: Number)` is rejected with `Number is a type set, which constrains a type parameter and has no values`. A type outside the set is rejected where the argument is checked: `String is not a member of the type set Number`.
-- A method may be declared once on a set declared in the same module: `fn Length.double() Self:` with `type Length = Meters | Feet` gives `Meters` and `Feet` each the method, with `Self` the receiving member. The module may declare methods only on types it owns, as for any receiver. The members must be concrete types.
+- A set cannot be the type of a value: `fn f(x: Number)` is rejected with `Number is a type set, which constrains a type parameter and has no values`. A type outside the set is rejected where the argument is checked: `String is not a member of the type set Number`.
+- A method may be declared once on a type set declared in the same module. With `type Length = Meters | Feet`, `fn Length.double() Self:` gives `Meters` and `Feet` each the method, with `Self` the receiving member. As for any receiver, the module may declare methods only on types it owns, and the members must be concrete types.
 - `@std/collections/collections.ms` exports `Numeric`, the integer and float types `List.sum` adds.
