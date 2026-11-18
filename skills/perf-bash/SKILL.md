@@ -17,6 +17,16 @@ Read [benchmarks and performance](../../wiki/benchmarks-and-performance/index.md
 Do not over-index on a few kernels: a fix must help programs in general, with no special case for one benchmark. Perf work covers stdlib and release builds for ordinary engineering tasks.
 Do not fall back to Rust to make a program fast: make Manuscript fast enough, with a general compiler or stdlib change, and take general wins before one-off ones. Everyday data structures (types, enums, generics, collections) must be fast in the general case. Be skeptical of a result that looks too good (a Manuscript win of 2x or more over Rust usually means an unfair baseline). Deleting or replacing code must not regress perf; fast paths are shared MIR operations both backends inline. Run an experiment or spike before a big rewrite. Release builds keep cross-file optimization and the vectorizer.
 
+## Working practices
+
+- **Count instructions before blaming an algorithm.** A large wall-time ratio can be cache and memory effects. See `make scaling-check`.
+- **Measure compile cost as well as run time**, before and after.
+- **Record rejected experiments** in the wiki with the result and the decision.
+- **Existing primitives first.** A micro-optimization that needs a new primitive is not worth it; try what exists (for example `set` and `swap` on a list) first. Moving data should be almost free with a single heap: when it is not, find out why.
+- **No shortcuts.** Use legitimate algorithms. Do not over-index on one benchmark: scheduling and other shared paths must be fast in general.
+- **Portable.** A fast path on Linux epoll needs an equivalent on macOS (kqueue) and Windows (IOCP). Measuring on Linux alone is fine.
+- **Unsafe speedups lose.** Prefer the change that cannot silently change behavior; a perf fix that adds a bug is reverted.
+
 ## Standing rules
 
 Fix root causes with general algorithms and no benchmark hacks. Design data-oriented (flat arrays, indices) and compare against checked C on both Cranelift and LLVM, reading the generated machine code. Never gate or drop a test without the owner's okay. Stack PRs with auto-merge and do not idle on CI. Keep platform parity, add no CI shards, add no dependencies without asking, and keep stdlib work in Manuscript. Say "borrow", never "lend". Add the `in progress` label before fixing an issue and verify every fixed issue closes. Keep going until nothing new is found.
