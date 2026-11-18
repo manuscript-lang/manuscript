@@ -288,6 +288,39 @@ pub unsafe extern "C-unwind" fn msrt_task_yield() {
     }
 }
 
+/// Cancels every other task of this thread and lets each run to its end, so the frames of tasks
+/// still parked when the thread's work is over (a server's reactor task, a detached handler)
+/// unwind and release what they own. The thread's own end would otherwise discard their stacks
+/// with the values on them. A task that is shielded or never returns is left after `ROUNDS`
+/// yields, as before.
+///
+/// # Safety
+/// Called by a task of this thread, which is not the one being waited for.
+pub(crate) unsafe fn unwind_others() {
+    const ROUNDS: u32 = 1000;
+    // SAFETY: single threaded scheduler; records are read before each switch.
+    unsafe {
+        let cur = ensure_init();
+        for _ in 0..ROUNDS {
+            let live: Vec<u64> = sched()
+                .slots
+                .iter()
+                .filter(|slot| !slot.task.is_null())
+                .map(|slot| slot.task)
+                .filter(|&t| t != cur && t != sched().main && (*t).state != State::Done)
+                .map(|t| (*t).handle)
+                .collect();
+            if live.is_empty() {
+                return;
+            }
+            for h in live {
+                msrt_task_cancel(h);
+            }
+            msrt_task_yield();
+        }
+    }
+}
+
 /// Parks the current task until `fd` is ready for `events` (`WAIT_READ`, `WAIT_WRITE`), the
 /// timeout (nanoseconds, negative for none) expires, or cancellation is requested. Returns the
 /// ready bits, `WAIT_TIMEOUT`, or `WAIT_CANCELLED`. A file that cannot be polled (a regular
