@@ -1,7 +1,7 @@
 // conform: tags=interfaces,scope-cleanup,tier-core
 // conform: phase=run
 // A `move` parameter of a function type or interface operation is handed over at run time:
-// a lambda, a named function and an implementation each own the resource they receive, close
+// a lambda, a named function, an implementation and a `move fn` receiver each own the resource they receive, close
 // it when they only read it, and keep it when they move it on. Nothing is copied.
 import Closeable, print from "@std/core.ms"
 
@@ -21,6 +21,17 @@ type Counter:
 fn var Counter.take(move door: Door) Int:
 	self.seen = self.seen + door.id
 	return self.seen
+
+interface Finisher:
+	var fn close() Void!
+	move fn finish() Int
+
+// Takes the door out of the interface value and closes it at its end, once.
+fn move Door.finish() Int:
+	return self.id
+
+fn finish(move f: Finisher) Int:
+	return f.finish()
 
 fn apply(f: fn(move Door) Int, move door: Door) Int:
 	return f(door)
@@ -49,4 +60,5 @@ fn main() Void:
 	print(f"map {maybe.map(fn d: d.id * 10).get_or(0)}")
 	var t: Taker = Counter(0)
 	print(f"interface {give(var t, Door(6))}")
+	print(f"finished {finish(Door(7))}")
 	print(f"kept {kept.length()}")

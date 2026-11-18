@@ -176,18 +176,16 @@ impl Cx {
             let recv = if writes_back {
                 args[0]
             } else {
-                let v = b
-                    .emit(Op::Load, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
-                    .expect("load");
-                // A `move fn` operation's implementation takes its receiver, which the interface
-                // value keeps owning: the entry hands it a copy (the checker requires one).
-                if b.m.funcs[callee.index()].params[0].mode == Mode::Move && b.m.needs_drop(data_ty)
-                {
-                    b.emit(Op::Clone, &[v], Imm::None, Some(data_ty))
-                        .expect("copy receiver")
+                // A `move fn` operation's implementation takes its receiver: the caller handed
+                // over an interface value that owns its payload, so the entry moves the payload
+                // out of the box, which the caller then frees.
+                let op = if b.m.funcs[callee.index()].params[0].mode == Mode::Move {
+                    Op::Take
                 } else {
-                    v
-                }
+                    Op::Load
+                };
+                b.emit(op, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
+                    .expect("receiver")
             };
             let mut call_args = vec![recv];
             // A `Self` argument is an interface value holding the implementing type: another type
