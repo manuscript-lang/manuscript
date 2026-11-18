@@ -8,7 +8,7 @@
 
 ## Status
 
-Implemented 2026-11-18 (checked at `52ee712d`). Follows [declared move mode](declared-move-mode.md) stage 3, whose Status listed these two gaps. Found on the way and fixed: a declared `move` resource parameter the body only reads was never closed (`consumed_param_resources` tracked only inferred moves). Follow-up (2026-11-18): the borrowed instance is gone. The checker rejects a text, comparison, hash or JSON method that keeps what the language lends it, and an interface conversion whose method keeps a receiver the operation lends, so every caller hands over what an instance keeps. Left as is: a `move fn` interface operation's entry still copies the receiver, since the interface value keeps owning its data; no standard interface declares one.
+Implemented 2026-11-18 (checked at `52ee712d`). Follows [declared move mode](declared-move-mode.md) stage 3, whose Status listed these two gaps. Found on the way and fixed: a declared `move` resource parameter the body only reads was never closed (`consumed_param_resources` tracked only inferred moves). Follow-up (2026-11-18): the borrowed instance is gone. The checker rejects a text, comparison, hash or JSON method that keeps what the language lends it, and an interface conversion whose method keeps a receiver the operation lends, so every caller hands over what an instance keeps. A `move fn` operation called through an interface now takes the receiver too: the caller hands over the interface value, the table entry moves the payload out of its box, and the caller frees the empty box; a view of a borrowed value (which owns no payload) is copied first.
 
 ## Problem
 

@@ -6,7 +6,7 @@ use ms_check::api::ast::*;
 use ms_check::api::hir::{CallView, Callable, Resolution};
 use ms_check::api::syntax::DefaultForm;
 use ms_check::api::types::{self as ct, Builtin, Subst};
-use ms_mir::ir::{Mode, Op, Value};
+use ms_mir::ir::{Imm, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use std::rc::Rc;
 
@@ -1468,7 +1468,18 @@ impl<'a> FnLower<'a> {
                 self.borrow(x)
             });
         }
-        let r = self.borrow(recv);
+        // A `move fn` operation takes the receiver: its implementation moves the payload out of
+        // the interface value's box, and the caller frees the emptied box.
+        let takes_self = m
+            .decl
+            .as_ref()
+            .and_then(|d| d.method())
+            .is_some_and(|f| f.consuming);
+        let r = if takes_self {
+            self.owned_payload(recv)
+        } else {
+            self.borrow(recv)
+        };
         self.at(e.pos);
         let v = if let Some((i, place, ty)) = in_place {
             let mut result = None;
@@ -1485,8 +1496,49 @@ impl<'a> FnLower<'a> {
         } else {
             self.b.call_method(iface, k as u32, r, &args)
         };
+        if takes_self {
+            let data = self
+                .b
+                .emit(Op::IfaceData, &[r], Imm::None, Some(MTy::PTR))
+                .expect("data");
+            self.b.emit(Op::Free, &[data], Imm::None, None);
+            self.b.emit(Op::Forget, &[r], Imm::None, None);
+        }
         self.restore_var_arguments(slots_out, |p| places.get(p).cloned().flatten())?;
         Ok(self.val(v, true))
+    }
+
+    /// An interface value handed to an operation that takes its receiver, owning its payload: a
+    /// view of a borrowed value (`iface.borrow`, `iface.view`, tag 1 or 2) owns no payload to give,
+    /// so that payload is copied; an owned value (tag 0) is passed as it is.
+    fn owned_payload(&mut self, recv: Val) -> Value {
+        let x = self.hand_over(recv);
+        let t = self.ty_of(x);
+        let var = self.b.declare_var(t, Mode::Move);
+        let tag = self
+            .b
+            .emit(Op::IfaceTag, &[x], Imm::None, Some(MTy::INT))
+            .expect("tag");
+        let zero = self.b.iconst(0);
+        let owns = self.b.icmp(ms_mir::ir::Cc::Eq, tag, zero);
+        let (copy, held, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(owns, held, &[], copy, &[]);
+        self.b.seal_block(held);
+        self.b.seal_block(copy);
+        self.b.switch_to(held);
+        self.b.def_var(var, x);
+        self.b.br(join, &[]);
+        self.b.switch_to(copy);
+        let c = self
+            .b
+            .emit(Op::Clone, &[x], Imm::None, Some(t))
+            .expect("copy");
+        self.b.emit(Op::Drop, &[x], Imm::None, None);
+        self.b.def_var(var, c);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.enter(join);
+        self.b.use_var(var)
     }
 
     /// The contract operation an implementation method fulfils: its parameters without a
