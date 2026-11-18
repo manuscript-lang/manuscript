@@ -94,7 +94,9 @@ test "string conversion":
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
 
-A type or enum may declare its own `fn T.to_string() String`. It replaces the built-in text form of a value of that type wherever the conversion happens: `value.to_string()`, a bound `value.to_string`, `f"{value}"`, and `print(value)`. A value of that type nested in a list, map, set, optional, record field or payload shows the same text, so a list prints as its items do. A type without its own method, and every other kind of value, uses the built-in method, which wins over any field or interface operation named `to_string`. The built-in conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
+A type or enum may declare its own `fn T.to_string() String`. It replaces the built-in text form of a value of that type wherever the conversion happens: `value.to_string()`, a bound `value.to_string`, `f"{value}"`, and `print(value)`.
+
+A value of that type nested in a list, map, set, optional, record field or payload shows the same text, so a list prints as its items do. A type without its own method, and every other kind of value, uses the built-in method, which wins over any field or interface operation named `to_string`. The built-in conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -156,7 +158,9 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
-`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. `parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
+`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`.
+
+`parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
 
 `trim`, `trim_start` and `trim_end` remove the Unicode `White_Space` scalars: U+0009 to U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. Zero-width spaces (U+200B), U+180E and U+FEFF are not whitespace.
 
@@ -199,7 +203,9 @@ test "padding and fixed digits":
 
 ## Binary data
 
-`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `T!` (`Result[T, Error]`); bytes that are not all there give an `Error` of kind `"ERANGE"`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
+`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `T!` (`Result[T, Error]`); bytes that are not all there give an `Error` of kind `"ERANGE"`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`.
+
+`BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript

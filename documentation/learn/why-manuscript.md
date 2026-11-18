@@ -69,7 +69,11 @@ Reading the diff line by line does not scale when an agent writes the code. Manu
 ms diagram ms.toml --format html -o code-map.html
 ```
 
-You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted, and a Behavior view that lays out the control flow of the selected function. The actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes. A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye. The language and the tools are shaped to keep the cognitive load low: you see the structure first and open the code only where it matters. See [working with an agent](../guide/working-with-an-agent.md) for the full review workflow.
+You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted, and a Behavior view that lays out the control flow of the selected function. The actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes.
+
+A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye.
+
+The language and the tools are shaped to keep the cognitive load low: you see the structure first and open the code only where it matters. See [working with an agent](../guide/working-with-an-agent.md) for the full review workflow.
 
 ## Test, benchmark and profile in one toolchain
 
