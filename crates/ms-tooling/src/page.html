@@ -78,7 +78,7 @@ svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--pan);s
 .kind.try{background:var(--var);color:var(--badgefg);border-color:var(--var)}.kind.spawn{background:var(--spawn);color:var(--badgefg)}.kind.scope{background:var(--effs);color:var(--badgefg)}.kind.exit{background:var(--mut);color:var(--badgefg)}.kind.native{background:none;border-style:dashed}.kind.call{background:var(--pan);color:var(--fg);border-color:var(--fg);font-weight:600}.kind.loop{background:var(--pan);color:var(--fg)}
 .flow code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace}.flow button{border:0;background:none;color:var(--acc);cursor:pointer;font-size:12px}
 .hint{color:var(--mut)}.empty{display:grid;place-items:center;height:60%;color:var(--mut);text-align:center;gap:6px}.empty b{color:var(--fg);font-size:14px}
-.chips{display:flex;flex-wrap:wrap;gap:4px;margin:2px 6px}.chip{color:inherit;font-family:inherit;padding:0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:12px;line-height:20px}
+.linkb{border:0;background:none;color:var(--mut);text-decoration:underline;cursor:pointer;font:inherit;padding:0 0 0 4px}.chips{display:flex;flex-wrap:wrap;gap:4px;margin:2px 6px}.chip{color:inherit;font-family:inherit;padding:0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:12px;line-height:20px}
 .chip:hover{border-color:var(--acc)}.chip.chg{border-color:var(--var);color:var(--var)}.gone{text-decoration:line-through;color:var(--mut)}
 .route{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px}.route .step{padding:6px 12px;border-radius:8px;border:1px solid var(--effs);background:var(--eff);cursor:pointer}.route .arrow{color:var(--mut)}
 .tk-kw{color:var(--kw);font-weight:600}.tk-ty{color:var(--ty)}.tk-st{color:var(--st)}.tk-nu{color:var(--nu)}.tk-cm{color:var(--cm);font-style:italic}.tk-fn{color:var(--fnc)}
@@ -198,12 +198,14 @@ const fxKind=x=>/\.read$/.test(x)?'read':'write';
 const fns=D.entities.filter(e=>e.kind==='fn'||e.kind==='method');
 const firstN=(l,n)=>l.slice(0,n);
 /* Each list answers its own question; a function may be in several, and a capped list says how many there are. */
-const LAND={},LANDN={};{
+const direct=e=>e.effects.filter(x=>fxKind(x)==='write'&&e.calls.every(c=>!E[c]||!E[c].effects.includes(x)));
+const condOf=l=>{let q='',d=0,t=l.replace(/^if\s+/,'');for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='\\')i++;else if(c===q)q=''}else if(c==='"'||c==='\'')q=c;else if('([{'.includes(c))d++;else if(')]}'.includes(c))d--;else if(c===':'&&d===0&&(t[i+1]===' '||i===t.length-1))return t.slice(0,i)}return t};
+const LAND={},LANDN={},LANDALL=new Set();{
   const calledBy=e=>(callers[e.key]||[]).length;
-  const take=(title,list,n)=>{if(list.length){LAND[title]=list.slice(0,n);LANDN[title]=list.length}};
+  const take=(title,list,n)=>{if(list.length){LAND[title]=list;LANDN[title]=n}};
   take('Entry',fns.filter(e=>e.name==='main'),1);
   take('Most called',fns.filter(e=>calledBy(e)>1).sort((a,b)=>calledBy(b)-calledBy(a)),6);
-  take('Writes to the world',fns.filter(e=>e.effects.some(x=>fxKind(x)==='write')).sort((a,b)=>calledBy(b)-calledBy(a)),6);
+  take('Writes to the world',fns.filter(e=>direct(e).length).sort((a,b)=>direct(b).length-direct(a).length||a.name.localeCompare(b.name,undefined,{numeric:true})),6);
   take('Public API',fns.filter(e=>e.exported&&e.name!=='main'&&!calledBy(e)),4);
 }
 /* what a selection can show: a function has behavior, a type has shape, a module only has its place on the map */
@@ -267,7 +269,8 @@ function setList(){
   if(HAS){const ks=Object.keys(CH);h+='<h4>Changed ('+(ks.length+GONE.length)+')</h4><div class="chips">'+ks.slice(0,40).map(k=>'<button type="button" class="chip chg" data-key="'+esc(k)+'" title="'+esc(CH[k].tier)+'">'+esc(CH[k].name)+'</button>').join('')+GONE.slice(0,10).map(g=>'<span class="chip gone" title="removed">'+esc(g.name)+'</span>').join('')+(ks.length>40?'<span class="hint">+'+(ks.length-40)+' more</span>':'')+'</div>'}
   const lm=Object.entries(LAND).filter(([t,l])=>l.length);
   if(lm.length){const o=OPEN.has('#lm');h+='<h4 data-tg="#lm" style="cursor:pointer">'+(o?'▾ ':'▸ ')+'Landmarks</h4>';
-    if(o)for(const [t,l] of lm)h+='<div class="hint" style="margin:4px 8px 0;font-size:11px">'+esc(t+(LANDN[t]>l.length?' ('+l.length+' of '+LANDN[t]+')':''))+'</div><div class="chips">'+l.map(e=>'<button type="button" class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</button>').join('')+'</div>'}
+    if(o)for(const [t,all] of lm){const cap=LANDN[t],more=all.length>cap,open2=LANDALL.has(t),l=more&&!open2?all.slice(0,cap):all;
+      h+='<div class="hint" style="margin:4px 8px 0;font-size:11px">'+esc(t)+(more?' <button type="button" class="linkb" data-landall="'+esc(t)+'">'+(open2?'show fewer':cap+' of '+all.length+' - show all')+'</button>':'')+'</div><div class="chips">'+l.map(e=>'<button type="button" class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</button>').join('')+'</div>'}}
   const cur=S.mod||(S.sel&&E[S.sel]&&E[S.sel].file)||'';
   if(cur+'|'+S.sel!==revealed){revealed=cur+'|'+S.sel;const se=S.sel&&E[S.sel];reveal(cur,se&&isCheck(se))}
   h+='<h4>Files</h4>'+treeHTML(TREE,0);
@@ -345,6 +348,7 @@ function graph(nodes,edges,note){
   nodes.forEach((n,i)=>{const c=n.kind==='more'&&!out.some(o=>o.includes(i))?0:max-layer[i];(cols[c]=cols[c]||[]).push(i)});
   const vw=typeof document==='undefined'?0:document.getElementById('view').clientWidth,narrow=(vw||1100)<600,W=narrow?190:208,GX=narrow?36:44,GY=12,pos=[];let H=0;
   const used=cols.filter(Boolean);cols.length=0;used.forEach(c=>cols.push(c));
+  {const mi=nodes.findIndex(n=>n.kind==='more');if(mi>=0&&!out.some(o=>o.includes(mi))){cols.forEach(c=>{const k=c.indexOf(mi);if(k>=0)c.splice(k,1)});const big=cols.reduce((b,c)=>c.length>b.length?c:b,cols[0]);big.push(mi)}}
   cols.forEach((c,ci)=>{if(!c)return;let y=10;c.forEach(i=>{const h=Math.max(40,18+14*(nodes[i].lines||[]).length+14);pos[i]={x:10+ci*(W+GX),y,h};y+=h+GY});H=Math.max(H,y)});
   const width=10+cols.length*(W+GX);
   const parts=['<svg data-grow="1" data-w="'+width+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>'];
@@ -446,7 +450,7 @@ function sequenceEvents(e,depth,all){
       ev.push({t:'ret',from:n.reference,to:k})}
     else if(n.kind==='native'&&all){cap++;part('stdlib');if(parts.includes('stdlib'))ev.push({t:'msg',from:k,to:'stdlib',label:n.label.replace(/^native\s+/,'')})}
     else if(n.kind==='spawn'){cap++;ev.push({t:'note',at:k,label:'spawn'});walk(k,n.children||[],d,path);continue}
-    else if(['try','scope','branch','loop','match'].includes(n.kind)){cap++;if(n.kind==='branch'&&/^if\b/.test(n.label))cond=n.label;const text=n.kind==='branch'&&/^else$/.test(n.label)&&cond?'else (not '+cond.replace(/^if\s+/,'')+')':n.label;ev.push({t:'note',at:k,dp:nest,label:clip((n.kind==='try'?'try ⚠ ':'')+text,34)})}
+    else if(['try','scope','branch','loop','match'].includes(n.kind)){cap++;if(n.kind==='branch'&&/^if\b/.test(n.label))cond=n.label;const text=n.kind==='branch'&&/^else$/.test(n.label)&&cond?'else (not '+condOf(cond)+')':n.label;ev.push({t:'note',at:k,dp:nest,label:clip((n.kind==='try'?'try ⚠ ':'')+text,34)})}
     if(n.children&&n.children.length&&!(n.kind==='call'&&ref)){const was=via;if(n.kind==='native')via=n.label.replace(/^native\s+/,'').split('::').pop();const deeper=['branch','loop','scope','try','match'].includes(n.kind);if(deeper)nest++;walk(k,n.children,d,path);if(deeper)nest--;via=was}}};
   const size=k=>{const x=E[k];return x&&x.last?x.last-x.first:0};
   const dir=direct(e.flow,[]);
@@ -628,8 +632,9 @@ let timer=null;
 document.addEventListener('click',ev=>{
   const idEl=ev.target.closest('#src .id');if(idEl){ev.preventDefault();showTip(idEl);return}
   if(!ev.target.closest('#tip'))hideTip();
-  const t=ev.target.closest('[data-tg],[data-copy],[data-close],[data-src],[data-tab],[data-key],[data-mod],[data-scope],[data-id],[data-expand],[data-routefrom],[data-star],[data-link],[data-wrap],[data-export],[data-flow],[data-kf]');if(!t)return;ev.preventDefault();
+  const t=ev.target.closest('[data-tg],[data-copy],[data-close],[data-src],[data-tab],[data-key],[data-mod],[data-scope],[data-id],[data-expand],[data-routefrom],[data-star],[data-link],[data-wrap],[data-export],[data-flow],[data-kf],[data-landall]');if(!t)return;ev.preventDefault();
   if(t.dataset.tg!==undefined){const k=t.dataset.tg;if(OPEN.has(k))OPEN.delete(k);else OPEN.add(k);setList();return}
+  if(t.dataset.landall){const k=t.dataset.landall;if(LANDALL.has(k))LANDALL.delete(k);else LANDALL.add(k);setList();return}
   if(t.dataset.kf){KF[t.dataset.kf]=!KF[t.dataset.kf];setKinds();setList();return}
   if(t.dataset.close||t.dataset.src){srcOpen=t.dataset.src?!srcOpen:false;store.set('srcOpen',srcOpen);srcPanel();return}
   if(t.dataset.star){const e=S.sel&&E[S.sel];if(!e)return;if(STAR.has(e.key))STAR.delete(e.key);else STAR.add(e.key);store.set('stars',[...STAR]);setInfo();setList();return}
