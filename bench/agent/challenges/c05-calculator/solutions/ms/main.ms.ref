@@ -9,7 +9,7 @@ type Parser:
 // Skips blanks and returns the next character code, or 0 at the end of the line.
 fn peek(var p: Parser) Int:
     while p.pos < p.s.length() and (p.s[p.pos] == 32 or p.s[p.pos] == 9): p.pos += 1
-    return p.s.get(p.pos, 0)
+    return p.s.get_or(p.pos, 0)
 
 fn atom(var p: Parser) Int!:
     c := peek(var p)

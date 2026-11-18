@@ -32,6 +32,8 @@ Latest generated-code gaps against Rust: [`codegen-2026-11-12.md`](codegen-2026-
 
 Latest kernels against C with bounds checks: [`results-2026-11-09.md`](results-2026-11-09.md).
 
+Latest kernels and workloads: [`kernels`](kernels/README.md) and [`workloads`](workloads/results.md), 2026-11-18.
+
 Latest `for_each` check: [`for-each-var-2026-11-06.md`](for-each-var-2026-11-06.md).
 
 Latest perf bash: [`perf-bash-2026-11-09.md`](perf-bash-2026-11-09.md) (previous: [`perf-bash-2026-11-03.md`](perf-bash-2026-11-03.md)).

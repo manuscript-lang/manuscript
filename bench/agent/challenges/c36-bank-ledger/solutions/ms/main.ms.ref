@@ -27,7 +27,7 @@ fn money(var l: Ledger, cmd: String, t: List[String]) String:
     from := ids[0]
     amount := t[t.length() - 1]
     if cmd == "transfer" and from == ids[1]: return reject(var l, from, "error: same account")
-    if amount.scalar_values().any(fn c: c < 48 or c > 57) or amount.parse_int().get(0) <= 0: return reject(var l, from, "error: invalid amount")
+    if amount.scalar_values().any(fn c: c < 48 or c > 57) or amount.parse_int().get_or(0) <= 0: return reject(var l, from, "error: invalid amount")
     for id in ids:
         if l.accounts.get(id).get().frozen: return reject(var l, id, f"error: account frozen {id}")
     n := amount.parse_int().get()
@@ -55,7 +55,7 @@ fn money(var l: Ledger, cmd: String, t: List[String]) String:
     return f"ok {old - n - fee} {to_bal}{suffix}"
 
 fn step(var l: Ledger, t: List[String]) String:
-    arity := {"open": 3, "deposit": 3, "withdraw": 3, "transfer": 4, "freeze": 2, "unfreeze": 2, "report": 1}.get(t[0]).get(0)
+    arity := {"open": 3, "deposit": 3, "withdraw": 3, "transfer": 4, "freeze": 2, "unfreeze": 2, "report": 1}.get(t[0]).get_or(0)
     if arity != t.length(): return "error: bad command"
     if t[0] == "report": return report(l)
     if t[0] == "open":

@@ -57,7 +57,62 @@ fn reading(e: &Expr) -> bool {
     }
 }
 
+/// Whether evaluating `e` can neither fault nor have an effect: names, literals, fields,
+/// comparisons and boolean connectives. Arithmetic and indexing can fault, so they are left out.
+fn cannot_fault(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Name(_) => true,
+        ExprKind::Text(parts) => parts.iter().all(|p| matches!(p, TextPart::Lit(_))),
+        ExprKind::Member { left, .. } => cannot_fault(left),
+        ExprKind::Unary { op, operand } => *op == UnaryOp::Not && cannot_fault(operand),
+        ExprKind::Binary { op, left, right } => {
+            matches!(
+                op,
+                BinaryOp::Eq
+                    | BinaryOp::Ne
+                    | BinaryOp::Lt
+                    | BinaryOp::Le
+                    | BinaryOp::Gt
+                    | BinaryOp::Ge
+                    | BinaryOp::And
+                    | BinaryOp::Or
+            ) && cannot_fault(left)
+                && cannot_fault(right)
+        }
+        _ => false,
+    }
+}
+
 impl FnLower<'_> {
+    /// `for x in xs.filter(f)` (a chain of `filter` calls) over a list place: the lambdas of the
+    /// chain, first stage first, and the list they read. Each lambda is one `return` of an
+    /// expression that cannot fault, so running it as the loop reaches each element, rather than
+    /// building the filtered list first, changes nothing a program can observe.
+    pub(crate) fn filter_walk_source<'e>(
+        &mut self,
+        iter: &'e Expr,
+    ) -> Result<Option<(Vec<&'e Expr>, &'e Expr)>, Error> {
+        let (stages, src) = self.chain_of(iter)?;
+        if stages.is_empty() || stages.iter().any(|s| s.kind != Kind::Filter) {
+            return Ok(None);
+        }
+        let place = |mut e: &Expr| loop {
+            match &e.kind {
+                ExprKind::Name(_) => return true,
+                ExprKind::Member { left, .. } => e = left,
+                _ => return false,
+            }
+        };
+        let total = stages.iter().all(|s| {
+            matches!(&s.f.kind, ExprKind::Lambda(l)
+                if matches!(&l.body[0].kind, StmtKind::Return(Some(b)) if cannot_fault(b)))
+        });
+        if !total || !place(src) {
+            return Ok(None);
+        }
+        Ok(Some((stages.iter().map(|s| s.f).collect(), src)))
+    }
+
     fn scalar(&self, t: MTy) -> bool {
         let ty = &self.b.m.types;
         t == MTy::BOOL || ty.is_int(t) || ty.is_float(t)
