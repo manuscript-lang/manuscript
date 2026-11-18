@@ -6,7 +6,7 @@ use crate::index::{DeclFiles, OccInfo, Occurrence, callables, expr_text, hidden_
 use crate::json::{Json, obj};
 use crate::text::{self, Position, Range};
 use ms_check::api::syntax::ModRef;
-use ms_check::api::types::{Name, SymRef};
+use ms_check::api::types::{Kind, Name, SymRef};
 use ms_check::fxmap::HashMap;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
@@ -204,6 +204,26 @@ fn effects_line(
     Some(parts.join("  \n"))
 }
 
+/// The hover line: `name: type`, or a type parameter with the contracts it requires.
+fn hover_signature(syms: ms_syntax::Names, name: &str, info: &OccInfo, shown: &str) -> String {
+    let Some(param) = info.ty.as_ref().filter(|t| t.kind == Kind::Variable) else {
+        return format!("{name}: {shown}");
+    };
+    // The checker adds a parameter's bounds each time a receiver is resolved.
+    let mut bounds: Vec<String> = Vec::new();
+    for bound in param.bounds() {
+        let bound = bound.display(syms).to_string();
+        if !bounds.contains(&bound) {
+            bounds.push(bound);
+        }
+    }
+    if bounds.is_empty() {
+        format!("type parameter {name}")
+    } else {
+        format!("type parameter {name}: {}", bounds.join(" & "))
+    }
+}
+
 /// The type hover shows for an occurrence, or `None` when its type did not resolve.
 pub fn hover_type(syms: ms_syntax::Names, info: &OccInfo) -> Option<String> {
     let mut shown = info.ty.clone()?;
@@ -270,7 +290,10 @@ pub fn navigation(
         let Some(shown) = hover_type(syms, &info) else {
             return Json::Null;
         };
-        let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown);
+        let mut value = format!(
+            "```manuscript\n{}\n```",
+            hover_signature(syms, &hit.text, &info, &shown)
+        );
         if let Some(line) = effects_line(syms, analysis, &info, &shown) {
             value.push_str("\n\n");
             value.push_str(&line);

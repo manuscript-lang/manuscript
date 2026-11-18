@@ -559,6 +559,44 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
         }
     }
 
+    // Type parameters: the written name declares one and every use inside its declaration
+    // resolves to it, so they navigate and rename like locals.
+    for m in &modules {
+        let facts = m.facts();
+        let file_key = source_key(syms, &b.root, m.file);
+        let mut found: Vec<(String, Symbol, usize, bool, Option<Ty>)> = Vec::new();
+        for site in type_parameter_sites(m) {
+            let ty = site
+                .checked
+                .and_then(|id| facts.type_refs.get(&id))
+                .filter(|t| t.kind == Kind::Variable);
+            if site.checked.is_some() && ty.is_none() {
+                continue;
+            }
+            let key = format!("binding:typeparam:{file_key}:{}", site.declared);
+            found.push((key, site.name, site.pos, site.declaration, ty.cloned()));
+        }
+        let first_type: HashMap<String, Ty> = found
+            .iter()
+            .filter_map(|(key, _, _, _, ty)| Some((key.clone(), ty.clone()?)))
+            .collect();
+        for (key, name, pos, declaration, ty) in found {
+            let ty = ty.or_else(|| first_type.get(&key).cloned());
+            b.add(
+                key,
+                syms.str(name),
+                m.file,
+                pos,
+                declaration,
+                false,
+                OccInfo {
+                    ty,
+                    ..OccInfo::default()
+                },
+            );
+        }
+    }
+
     for m in modules.iter().filter(|m| checked.contains(&m.file)) {
         let mut walker = UseWalker {
             syms,
@@ -1227,6 +1265,190 @@ pub fn type_references(m: &ModRef) -> Vec<TypeSite> {
             .iter()
             .for_each(|m| collect_func(&m.func, &mut out));
         visit::walk_decl(&mut BodyTypes { out: &mut out }, d.decl());
+    }
+    out
+}
+
+/// A written type parameter: its declaration, or a use inside the declaration's scope.
+struct ParamSite {
+    name: Symbol,
+    /// Start byte of the written name.
+    pos: usize,
+    /// Start byte of the declaring name, which identifies the parameter.
+    declared: usize,
+    /// Whether this is the declaring name.
+    declaration: bool,
+    /// The written type of a use whose resolution the checker recorded; it must be a type
+    /// parameter, not a type that shares the name.
+    checked: Option<NodeId>,
+}
+
+/// Type parameters visible in the declaration being walked, innermost last.
+#[derive(Clone, Default)]
+struct ParamScope(Vec<(Symbol, usize)>);
+
+impl ParamScope {
+    fn declare(&mut self, params: &[TypeParam], out: &mut Vec<ParamSite>) {
+        for p in params {
+            let pos = p.pos.offset as usize;
+            self.0.push((p.name, pos));
+            out.push(ParamSite {
+                name: p.name,
+                pos,
+                declared: pos,
+                declaration: true,
+                checked: None,
+            });
+        }
+    }
+
+    fn uses(&self, sites: &[TypeSite], out: &mut Vec<ParamSite>) {
+        self.uses_of(sites, true, out);
+    }
+
+    /// Uses the checker did not resolve itself: the receiver arguments of methods merged into
+    /// the first method's block. The checker requires their names to match the type's.
+    fn written_uses(&self, sites: &[TypeSite], out: &mut Vec<ParamSite>) {
+        self.uses_of(sites, false, out);
+    }
+
+    fn uses_of(&self, sites: &[TypeSite], checked: bool, out: &mut Vec<ParamSite>) {
+        for site in sites {
+            let Some(name) = site.name else { continue };
+            if let Some((_, declared)) = self.0.iter().rev().find(|(n, _)| *n == name) {
+                out.push(ParamSite {
+                    name,
+                    pos: site.pos.offset as usize,
+                    declared: *declared,
+                    declaration: false,
+                    checked: checked.then_some(site.id),
+                });
+            }
+        }
+    }
+}
+
+/// Type sites of one function: its signature and the annotations in its body.
+fn func_type_sites(f: &Func) -> Vec<TypeSite> {
+    let mut sites = Vec::new();
+    collect_func(f, &mut sites);
+    visit::walk_callable(&mut BodyTypes { out: &mut sites }, &f.params, &f.body);
+    sites
+}
+
+fn method_params(scope: &ParamScope, methods: &[ms_syntax::ast::Method], out: &mut Vec<ParamSite>) {
+    for method in methods {
+        let mut scope = scope.clone();
+        let mut receiver = Vec::new();
+        method
+            .receiver_args
+            .iter()
+            .for_each(|t| collect_type(t, &mut receiver));
+        scope.written_uses(&receiver, out);
+        scope.declare(&method.func.type_params, out);
+        scope.uses(&func_type_sites(&method.func), out);
+    }
+}
+
+/// Every type parameter declaration and use of a module, scoped by the declaration that
+/// declares it. A receiver method declares the receiver's parameters by writing them
+/// (`fn Gen[T].map`).
+fn type_parameter_sites(m: &ModRef) -> Vec<ParamSite> {
+    let mut out = Vec::new();
+    for d in &m.decls {
+        // A type's own interface is synthesized from its declaration: not written source.
+        if d.0.decl.synthetic && matches!(d.decl().kind, DeclKind::Interface(_)) {
+            continue;
+        }
+        let mut scope = ParamScope::default();
+        let mut sites = Vec::new();
+        match &d.decl().kind {
+            DeclKind::Fn(f) => {
+                scope.declare(&f.type_params, &mut out);
+                scope.uses(&func_type_sites(f), &mut out);
+            }
+            DeclKind::Type(r) => {
+                scope.declare(&r.type_params, &mut out);
+                collect_type_params(&r.type_params, &mut sites);
+                collect_params(&r.fields, &mut sites);
+            }
+            DeclKind::Alternative(a) => {
+                scope.declare(&a.type_params, &mut out);
+                collect_type_params(&a.type_params, &mut sites);
+                a.cases
+                    .iter()
+                    .for_each(|c| collect_params(&c.fields, &mut sites));
+            }
+            DeclKind::Alias(a) => {
+                scope.declare(&a.type_params, &mut out);
+                collect_type_params(&a.type_params, &mut sites);
+                a.targets.iter().for_each(|t| collect_type(t, &mut sites));
+            }
+            DeclKind::Interface(i) => {
+                scope.declare(&i.type_params, &mut out);
+                collect_type_params(&i.type_params, &mut sites);
+            }
+            DeclKind::Impl(i) => {
+                // The receiver's bare arguments name the parameters of the type it extends
+                // (`fn Gen[T].map` uses `T` of `type Gen[T]`); a receiver whose type is declared
+                // elsewhere declares them here.
+                let mut receiver = Vec::new();
+                collect_type(&i.receiver, &mut receiver);
+                if let TypeKind::Named {
+                    name: type_name,
+                    args,
+                } = &i.receiver.kind
+                {
+                    let declared = m.decls.iter().find_map(|other| match &other.decl().kind {
+                        DeclKind::Type(r) if r.name == *type_name => Some(&r.type_params),
+                        DeclKind::Alternative(a) if a.name == *type_name => Some(&a.type_params),
+                        _ => None,
+                    });
+                    for (index, arg) in args.iter().enumerate() {
+                        let TypeKind::Named { name, args } = &arg.kind else {
+                            continue;
+                        };
+                        if !args.is_empty() {
+                            continue;
+                        }
+                        match declared.and_then(|params| params.get(index)) {
+                            Some(param) if param.name == *name => {
+                                scope.0.push((*name, param.pos.offset as usize));
+                            }
+                            Some(_) => {}
+                            None => scope.declare(
+                                std::slice::from_ref(&TypeParam {
+                                    id: arg.id,
+                                    pos: arg.pos,
+                                    name: *name,
+                                    bounds: Vec::new(),
+                                    default: None,
+                                }),
+                                &mut out,
+                            ),
+                        }
+                    }
+                }
+                scope.uses(&receiver[1..], &mut out);
+                for bound in &i.bounds {
+                    let mut bounds = Vec::new();
+                    bound
+                        .bounds
+                        .iter()
+                        .for_each(|t| collect_type(t, &mut bounds));
+                    scope.uses(&bounds, &mut out);
+                }
+                if let Some(c) = &i.contract {
+                    collect_type(c, &mut sites);
+                }
+            }
+            DeclKind::Const(_) | DeclKind::Test(_) => {}
+        }
+        scope.uses(&sites, &mut out);
+        // Methods folded into a type declare their own parameters in a declaration of their own.
+        if matches!(d.decl().kind, DeclKind::Interface(_) | DeclKind::Impl(_)) {
+            method_params(&scope, d.methods(), &mut out);
+        }
     }
     out
 }

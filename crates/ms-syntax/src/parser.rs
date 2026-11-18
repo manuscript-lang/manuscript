@@ -1251,6 +1251,7 @@ impl<'a> Parser<'a> {
             },
             mutating,
             consuming: false,
+            receiver_args: Vec::new(),
         })
     }
 
@@ -1338,6 +1339,7 @@ impl<'a> Parser<'a> {
                 } else {
                     Vec::new()
                 };
+                let receiver_args = args.clone();
                 let receiver = TypeRef {
                     id: self.id(),
                     pos: receiver_name.pos,
@@ -1351,6 +1353,7 @@ impl<'a> Parser<'a> {
                 let mut method =
                     self.method_signature(name, true, true, mutating, receiver_name.pos)?;
                 method.consuming = consuming;
+                method.receiver_args = receiver_args;
                 DeclKind::Impl(ImplDecl {
                     contract: None,
                     receiver,

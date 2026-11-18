@@ -7,6 +7,9 @@ pub fn renumber_method(method: &mut Method, next: &mut u32) {
     let mut r = Renumber { next };
     r.id(&mut method.id);
     r.func(&mut method.func);
+    for t in &mut method.receiver_args {
+        r.ty(t);
+    }
 }
 
 struct Renumber<'a> {
