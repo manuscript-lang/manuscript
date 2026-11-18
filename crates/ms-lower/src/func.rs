@@ -149,6 +149,9 @@ pub(crate) struct FnLower<'a> {
     /// Intact resource temporaries: their slots own the values while later expressions run.
     /// The keys are borrowed views, consumed only by `take_resource_temp`.
     pub resource_temps: HashMap<Value, crate::close::ResourceTemp>,
+    /// The close of a resource temporary the next `var_argument` takes into its slot: the slot
+    /// keeps the close registered while the callee runs, so a cancel inside the call closes it.
+    pub var_cover: Option<crate::close::CloseKind>,
     pub loops: Vec<LoopCtx>,
     /// The current position is unreachable.
     pub dead: bool,
@@ -768,6 +771,7 @@ impl<'a> FnLower<'a> {
             prepared_indices: HashMap::default(),
             capture_indices: HashSet::default(),
             resource_temps: HashMap::default(),
+            var_cover: None,
             loops: Vec::new(),
             dead: false,
             ret_ty,
