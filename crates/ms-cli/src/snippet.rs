@@ -103,8 +103,21 @@ fn byte_index(source: &str, column: usize) -> usize {
     source.len()
 }
 
+/// The line as printed: tabs become spaces, and a control character (a NUL, or an escape that
+/// would drive the terminal) becomes its one-cell picture so a source line cannot rewrite the
+/// screen.
 fn expand(text: &str) -> String {
-    text.replace('\t', &" ".repeat(TAB_WIDTH))
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '\t' => out.push_str(&" ".repeat(TAB_WIDTH)),
+            '\0'..='\u{1f}' => out.push(char::from_u32(0x2400 + c as u32).unwrap_or('\u{fffd}')),
+            '\u{7f}' => out.push('\u{2421}'),
+            '\u{80}'..='\u{9f}' => out.push('\u{fffd}'),
+            c => out.push(c),
+        }
+    }
+    out
 }
 
 /// Terminal cells `text` occupies, with tabs at a fixed width.
@@ -204,6 +217,14 @@ mod tests {
     fn multiline_span_underlines_to_line_end() {
         let out = render("ab cd\nef\n", 1, 4, Some((2, 2)));
         assert!(out.ends_with("|    ^^"), "{out}");
+    }
+
+    #[test]
+    fn control_characters_are_not_sent_to_the_terminal() {
+        let out = render("a\u{1b}[2Jb\0\u{9b}\n", 1, 2, Some((1, 3)));
+        assert!(!out.chars().any(|c| c.is_control() && c != '\n'), "{out:?}");
+        assert!(out.contains("a\u{241b}[2Jb\u{2400}\u{fffd}"), "{out:?}");
+        assert!(out.ends_with("|  ^"), "{out:?}");
     }
 
     #[test]
