@@ -23,9 +23,9 @@
         "message": "expected CompressionFormat, found String (in argument 'format' of compress)",
         "position": {
           "file": "src/numbers.ms",
-          "line": 44,
+          "line": 43,
           "column": 36,
-          "offset": 1142
+          "offset": 1128
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "expected CompressOptions, found Int (in argument 'options' of compress)",
         "position": {
           "file": "src/numbers.ms",
-          "line": 44,
+          "line": 43,
           "column": 44,
-          "offset": 1150
+          "offset": 1136
         }
       },
       {
@@ -45,9 +45,9 @@
         "message": "expected CompressionFormat, found String (in argument 'format' of compress)",
         "position": {
           "file": "src/numbers.ms",
-          "line": 54,
+          "line": 53,
           "column": 36,
-          "offset": 1334
+          "offset": 1320
         }
       },
       {
@@ -56,9 +56,9 @@
         "message": "expected CompressOptions, found Int (in argument 'options' of compress)",
         "position": {
           "file": "src/numbers.ms",
-          "line": 54,
+          "line": 53,
           "column": 44,
-          "offset": 1342
+          "offset": 1328
         }
       },
       {
@@ -67,9 +67,9 @@
         "message": "expected CompressionFormat, found String (in argument 'format' of decompress)",
         "position": {
           "file": "src/numbers.ms",
-          "line": 100,
+          "line": 99,
           "column": 30,
-          "offset": 2386
+          "offset": 2378
         }
       },
       {
@@ -152,7 +152,7 @@
           "file": "src/fsbench.ms",
           "line": 62,
           "column": 36,
-          "offset": 1510
+          "offset": 1502
         }
       },
       {
@@ -163,14 +163,14 @@
           "file": "src/fsbench.ms",
           "line": 79,
           "column": 13,
-          "offset": 1905
+          "offset": 1897
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/src/binarybench.ms:36:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 36 |                 bb.append(j % 256)\n    |                             ^\n<DIR>/src/numbers.ms:44:36: type: expected CompressionFormat, found String (in argument 'format' of compress)\n    |\n 44 |             if b := compress(blob, \"gzip\", 6):\n    |                                    ^\n<DIR>/src/numbers.ms:44:44: type: expected CompressOptions, found Int (in argument 'options' of compress)\n    |\n 44 |             if b := compress(blob, \"gzip\", 6):\n    |                                            ^\n<DIR>/src/numbers.ms:54:36: type: expected CompressionFormat, found String (in argument 'format' of compress)\n    |\n 54 |             if b := compress(blob, \"gzip\", 6):\n    |                                    ^\n<DIR>/src/numbers.ms:54:44: type: expected CompressOptions, found Int (in argument 'options' of compress)\n    |\n 54 |             if b := compress(blob, \"gzip\", 6):\n    |                                            ^\n<DIR>/src/numbers.ms:100:30: type: expected CompressionFormat, found String (in argument 'format' of decompress)\n     |\n 100 |     if b := decompress(data, \"gzip\"):\n     |                              ^\n<DIR>/src/hostbench.ms:32:32: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 32 |             if b := pack(list, \"zip\"):\n    |                                ^\n<DIR>/src/hostbench.ms:42:32: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 42 |             if b := pack(list, \"tar\"):\n    |                                ^\n<DIR>/src/hostbench.ms:48:29: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 48 |     if packed := pack(list, \"zip\"):\n    |                             ^\n<DIR>/src/hostbench.ms:56:36: type: expected ArchiveFormat, found String (in argument 'format' of unpack)\n    |\n 56 |             if e := unpack(packed, \"zip\"):\n    |                                    ^\n<DIR>/src/fsbench.ms:2:8: resolution: module does not export FileSystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 2 | import FileSystem, list, read_file, stat, temporary from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/src/fsbench.ms:5:12: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 5 | fn run(fs: FileSystem, root: String) Void:\n   |            ^\n<DIR>/src/fsbench.ms:62:36: type: unknown argument timestamp; parameters of create: options, transport\n    |\n 62 |     if logger := create(transport, timestamp: false):\n    |                                    ^\n<DIR>/src/fsbench.ms:79:13: resolution: unknown binding fs; declare it with 'fs := ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 79 |         run(fs, dir.path())\n    |             ^\n14 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/src/binarybench.ms:36:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 36 |                 bb.append(j % 256)\n    |                             ^\n<DIR>/src/numbers.ms:43:36: type: expected CompressionFormat, found String (in argument 'format' of compress)\n    |\n 43 |             if b := compress(blob, \"gzip\", 6):\n    |                                    ^\n<DIR>/src/numbers.ms:43:44: type: expected CompressOptions, found Int (in argument 'options' of compress)\n    |\n 43 |             if b := compress(blob, \"gzip\", 6):\n    |                                            ^\n<DIR>/src/numbers.ms:53:36: type: expected CompressionFormat, found String (in argument 'format' of compress)\n    |\n 53 |             if b := compress(blob, \"gzip\", 6):\n    |                                    ^\n<DIR>/src/numbers.ms:53:44: type: expected CompressOptions, found Int (in argument 'options' of compress)\n    |\n 53 |             if b := compress(blob, \"gzip\", 6):\n    |                                            ^\n<DIR>/src/numbers.ms:99:30: type: expected CompressionFormat, found String (in argument 'format' of decompress)\n    |\n 99 |     if b := decompress(data, \"gzip\"):\n    |                              ^\n<DIR>/src/hostbench.ms:32:32: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 32 |             if b := pack(list, \"zip\"):\n    |                                ^\n<DIR>/src/hostbench.ms:42:32: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 42 |             if b := pack(list, \"tar\"):\n    |                                ^\n<DIR>/src/hostbench.ms:48:29: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 48 |     if packed := pack(list, \"zip\"):\n    |                             ^\n<DIR>/src/hostbench.ms:56:36: type: expected ArchiveFormat, found String (in argument 'format' of unpack)\n    |\n 56 |             if e := unpack(packed, \"zip\"):\n    |                                    ^\n<DIR>/src/fsbench.ms:2:8: resolution: module does not export FileSystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 2 | import FileSystem, list, read_file, stat, temporary from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/src/fsbench.ms:5:12: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 5 | fn run(fs: FileSystem, root: String) Void:\n   |            ^\n<DIR>/src/fsbench.ms:62:36: type: unknown argument timestamp; parameters of create: options, transport\n    |\n 62 |     if logger := create(transport, timestamp: false):\n    |                                    ^\n<DIR>/src/fsbench.ms:79:13: resolution: unknown binding fs; declare it with 'fs := ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 79 |         run(fs, dir.path())\n    |             ^\n14 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

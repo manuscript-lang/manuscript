@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/unsigned-append-range.ms:7:16: type: literal 256 is out of range for UInt8; use a value between 0 and 255\n   |\n 7 |     out.append(256)\n   |                   ^\n<DIR>/unsigned-append-range.ms:8:17: type: literal -1 is out of range for UInt8; use a value between 0 and 255\n   |\n 8 |     out.append(-1)\n   |                   ^\n<DIR>/unsigned-append-range.ms:9:26: type: literal 65536 is out of range for UInt16; use a value between 0 and 65535\n   |\n 9 |     out.append_uint16_le(65536)\n   |                             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/unsigned-append-range.ms:7:16: type: literal 256 is out of range for UInt8; use a value between 0 and 255\n   |\n 7 |     out.append(256)\n   |                ^\n<DIR>/unsigned-append-range.ms:8:17: type: literal -1 is out of range for UInt8; use a value between 0 and 255\n   |\n 8 |     out.append(-1)\n   |                 ^\n<DIR>/unsigned-append-range.ms:9:26: type: literal 65536 is out of range for UInt16; use a value between 0 and 65535\n   |\n 9 |     out.append_uint16_le(65536)\n   |                          ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

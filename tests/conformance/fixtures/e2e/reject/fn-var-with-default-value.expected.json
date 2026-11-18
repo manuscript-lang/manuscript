@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fn-var-with-default-value.ms:10:15: type: push has both a var parameter and a parameter default, so it cannot be a function value; call push from a closure that supplies the default\n    |\n 10 |     change := push\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fn-var-with-default-value.ms:10:15: type: push has both a var parameter and a parameter default, so it cannot be a function value; call push from a closure that supplies the default\n    |\n 10 |     change := push\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/f-text-backslash-in-expression.ms:4:13: parse: a backslash cannot appear in the interpolated expression ('{' starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)\n   |\n 4 |     print(f\"{xs.join(\\\", \\\")}\")\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/f-text-backslash-in-expression.ms:4:13: parse: a backslash cannot appear in the interpolated expression ('{' starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)\n   |\n 4 |     print(f\"{xs.join(\\\", \\\")}\")\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

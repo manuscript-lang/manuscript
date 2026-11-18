@@ -554,7 +554,25 @@ fn add_and_remove_edit_the_manifest_and_the_lock() {
     let before = manifest(&project);
     let missing = ms(&project, &cache, &["add", url, "--tag", "v9.9.9"]);
     assert!(!missing.status.success());
+    assert!(
+        stderr(&missing).contains("v9.9.9 is not a tag"),
+        "{}",
+        stderr(&missing)
+    );
     assert_eq!(manifest(&project), before);
+
+    // A server that cannot be reached is not blamed on the tag.
+    let unreachable = ms(
+        &project,
+        &cache,
+        &["add", "https://127.0.0.1:1/ms-x.git", "--tag", "v1"],
+    );
+    assert!(!unreachable.status.success());
+    assert!(
+        !stderr(&unreachable).contains("is not a tag"),
+        "{}",
+        stderr(&unreachable)
+    );
 
     // Added without --allow: the package's effects are printed and the build refuses them.
     let added = ms(&project, &cache, &["add", url, "--tag", "v1.0.0"]);

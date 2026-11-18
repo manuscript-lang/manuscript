@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fix-method-without-parens.ms:4:21: type: operator operands require the same independently known type, found fn() Int > Int; this is a method, not a property; call it with parentheses, as in `xs.length()`\n   |\n 4 |     if items.length > 0:\n   |                        ^\n<DIR>/fix-method-without-parens.ms:5:22: type: expected Int, found fn() Int (in the return value); this is a method, not a property; call it with parentheses to get its Int result, as in `xs.length()`\n   |\n 5 |         return items.length\n   |                            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fix-method-without-parens.ms:4:21: type: operator operands require the same independently known type, found fn() Int > Int; this is a method, not a property; call it with parentheses, as in `xs.length()`\n   |\n 4 |     if items.length > 0:\n   |                     ^\n<DIR>/fix-method-without-parens.ms:5:22: type: expected Int, found fn() Int (in the return value); this is a method, not a property; call it with parentheses to get its Int result, as in `xs.length()`\n   |\n 5 |         return items.length\n   |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

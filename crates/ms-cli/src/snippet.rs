@@ -14,7 +14,8 @@ pub struct Sources {
 impl Sources {
     /// The excerpt for the span `line:column` to `end` in `file`, or an empty
     /// string when the file is unreadable (a bundled standard-library file).
-    /// `end` is `(line, column)`; columns are 1-based byte columns.
+    /// `end` is `(line, column)`; columns are 1-based byte columns except that each
+    /// leading tab counts as four (the lexer's `Pos::column`).
     pub fn excerpt(
         &mut self,
         file: &str,
@@ -63,11 +64,9 @@ impl Source {
 
 fn render(raw: &str, line: usize, column: usize, end: Option<(usize, usize)>) -> String {
     let source = raw.strip_suffix('\r').unwrap_or(raw);
-    let start = source.floor_char_boundary(column.saturating_sub(1));
+    let start = byte_index(source, column);
     let stop = match end {
-        Some((end_line, end_column)) if end_line == line => {
-            source.floor_char_boundary(end_column.saturating_sub(1))
-        }
+        Some((end_line, end_column)) if end_line == line => byte_index(source, end_column),
         Some((end_line, _)) if end_line > line => source.len(),
         _ => start,
     };
@@ -81,6 +80,27 @@ fn render(raw: &str, line: usize, column: usize, end: Option<(usize, usize)>) ->
         " ".repeat(indent),
         "^".repeat(marks)
     )
+}
+
+/// The byte offset of 1-based lexer column `column` in `source`: a leading tab spans
+/// four columns, every other byte one.
+fn byte_index(source: &str, column: usize) -> usize {
+    let target = column.saturating_sub(1);
+    let mut columns = 0;
+    let mut leading = true;
+    for (at, c) in source.char_indices() {
+        leading &= matches!(c, '\t' | ' ');
+        let span = if leading && c == '\t' {
+            TAB_WIDTH
+        } else {
+            c.len_utf8()
+        };
+        if columns + span > target {
+            return at;
+        }
+        columns += span;
+    }
+    source.len()
 }
 
 fn expand(text: &str) -> String {
@@ -168,8 +188,10 @@ mod tests {
 
     #[test]
     fn tabs_and_crlf() {
-        let out = render("\tx = 1\r\ny\r\n", 1, 2, Some((1, 3)));
+        let out = render("\tx = 1\r\ny\r\n", 1, 5, Some((1, 6)));
         assert_eq!(out, "\n   |\n 1 |     x = 1\n   |     ^");
+        let out = render("\t\tprint(y)\n", 1, 15, Some((1, 16)));
+        assert_eq!(out, "\n   |\n 1 |         print(y)\n   |               ^");
     }
 
     #[test]
