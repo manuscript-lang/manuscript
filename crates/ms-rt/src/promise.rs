@@ -635,25 +635,13 @@ fn finish_end(job: EndJob) {
         if closure != 0 {
             // SAFETY: the closure handed over at start; the task is over, so this is its last use.
             // The slot keeps the closure until it is gone, so a result that arrives meanwhile waits.
-            unsafe { drop_ended_closure(closure) };
+            unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
             if let Some(i) = index(&table(), id) {
                 table().closure[i] = 0;
             }
         }
     }
     apply(Event::Ended { id, status, report });
-}
-
-/// Drops the closure of a promise whose task is over. Its captures close here, and no cancel
-/// reaches the end of a task: the close is shielded as every implicit close is.
-///
-/// # Safety
-/// `closure` is the closure handed over at start, dropped once.
-unsafe fn drop_ended_closure(closure: usize) {
-    fault::msrt_shield_enter();
-    // SAFETY: by the caller.
-    unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
-    fault::msrt_shield_exit();
 }
 
 fn drop_block(ptr: usize, desc: usize) {
@@ -713,7 +701,7 @@ fn apply(event: Event) {
             let closure = core::mem::take(&mut t.closure[i]);
             if closure != 0 {
                 // SAFETY: the closure handed over at start; the task is over, so this is its last use.
-                unsafe { drop_ended_closure(closure) };
+                unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
             }
             let creator = core::mem::take(&mut t.creator[i]);
             if creator != 0 {
