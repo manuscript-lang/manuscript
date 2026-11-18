@@ -641,14 +641,19 @@ fn helpers(me: usize, now: i64) -> usize {
 }
 
 /// Whether the calling thread may start its own oldest queued promise: when more are queued than
-/// other threads could take, or the oldest has waited out `OWN_HOLD_NS`.
+/// other threads could take, the oldest has waited out `OWN_HOLD_NS`, or this thread has nothing
+/// else to serve.
 fn own_ready(me: usize, now: i64) -> bool {
     if STARTED.load(Ordering::Acquire) <= 1 {
         return true;
     }
     let queued = SLOTS[me].pending.load(Ordering::SeqCst) as usize;
     let at = SLOTS[me].front_at.load(Ordering::SeqCst);
-    queued > helpers(me, now) || at == 0 || now - at >= OWN_HOLD_NS
+    // A thread that runs no promise and has nothing to answer but other tasks has nothing to give
+    // up by starting its own promise, which also keeps a creator and the promise it waits on
+    // together: a pipe or promise hand-over on one thread is a task switch, across two a wake.
+    let alone = SLOTS[me].live.load(Ordering::SeqCst) == 0 && !crate::task::external_waits();
+    queued > helpers(me, now) || at == 0 || now - at >= OWN_HOLD_NS || alone
 }
 
 /// A stolen promise that was started at `at` has ended. One that ran for less than a steal costs

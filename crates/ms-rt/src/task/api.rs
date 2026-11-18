@@ -257,6 +257,17 @@ crate::isolate_static! {
     static FATAL: Vec<u8> = Vec::new();
 }
 
+/// Whether a task or promise of this thread waits for something that does not come from another
+/// task: a timer, a time limit or a descriptor. Starting a long promise here would then make that wait
+/// late, since a task never gives up its thread until it parks.
+pub(crate) fn external_waits() -> bool {
+    let s = sched();
+    !s.timers.is_empty()
+        || !s.kills.is_empty()
+        || s.fd_waiting > 0
+        || crate::promise::next_deadline().is_some()
+}
+
 /// Whether this thread has another task that could run now, or a promise to start: then a task
 /// that waits for a value should park and let it run, because the value may be its to produce.
 pub(crate) fn others_runnable() -> bool {

@@ -107,3 +107,18 @@ Medians of 7 interleaved runs, 4M `Int`, capacity 1024, 4 vCPUs:
 | spread of the throughput runs, ms | 549 to 814 | 286 to 452 | 295 to 309 |
 
 Spawn, parallel loop, worker pool and loopback echo are unchanged within run-to-run noise (par 2642 to 2660, spawn 23 to 22, pool 173 to 171, echo 225 to 235). Request and reply is still 2.5x Go's: Go keeps both goroutines on one thread, and here the wake of a parked reader crosses threads. Sweeps that fixed the gap instead (no adaptation) traded one case for the other: a fixed 16 us gap gave 145 ms throughput and 1,518 ms request and reply.
+
+### Change: an idle thread starts its own promise at once when nothing on it waits for a clock
+
+A new promise was queued on its creator and held for up to a millisecond for an idle thread to steal it, so a program that started a producer and then waited on its pipe ran the pair on two threads: every hand-over was a cross-thread wake (request and reply 1.2 us per round trip against 0.54 us when the two share a thread). Go keeps the new goroutine on the creator's thread (`runnext`), which is why it was 2.5x faster there.
+
+A thread now starts its own oldest promise immediately when it runs no promise of its own and no task or promise on it waits for a timer, a time limit or a descriptor (`own_ready`, `task::external_waits`). Such a thread is idle and answers only other tasks, so starting the work there gives nothing up, and the waiter and the promise it waits for stay together. Any other thread keeps the old rule (hold for a helper, steal after 20 us), so a main thread that sleeps or serves keeps answering while a promise computes elsewhere. Without the timer condition, a main that slept 1 ms in a loop while a promise computed saw its sleep take 1.57 s; with it, 1.15 ms (`promise-timer-not-starved-by-started-work.ms` pins this).
+
+Medians of 7 interleaved runs, 4M `Int`, capacity 1024, 4 vCPUs:
+
+| | before | after | Go |
+| --- | ---: | ---: | ---: |
+| throughput, ms | 332 | 127 | 325 |
+| request and reply, 400k rounds, ms | 467 | 210 | 198 |
+
+Parallel loop (2659 to 2641), spawn (21 to 22), worker pool (170 to 176), loopback echo (260 to 264) and the connection storm (700 to 700, pinned 850 to 830) are unchanged within noise. A cross-thread move of a parked task was not attempted: its stack, native handles and promise records belong to its thread.
