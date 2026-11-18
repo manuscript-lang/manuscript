@@ -38,6 +38,8 @@ Latest `for_each` check: [`for-each-var-2026-11-06.md`](for-each-var-2026-11-06.
 
 Latest memory and binary size: [`perf-bash-memory-and-size-2026-11-18.md`](perf-bash-memory-and-size-2026-11-18.md).
 
+Latest text and data processing: [`perf-bash-text-2026-11-18.md`](perf-bash-text-2026-11-18.md).
+
 Latest perf bash: [`perf-bash-2026-11-18.md`](perf-bash-2026-11-18.md) (previous: [`perf-bash-2026-11-09.md`](perf-bash-2026-11-09.md)).
 
 Latest Manuscript-only baseline for every suite: [`baseline-2026-10-28.md`](baseline-2026-10-28.md) (previous: [`baseline-2026-10-27.md`](baseline-2026-10-27.md)). Latest same-machine before/after: [`refcount-removal-2026-11-03.md`](refcount-removal-2026-11-03.md) (the refcount removal, three binaries, every suite).

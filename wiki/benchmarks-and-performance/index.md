@@ -4,6 +4,7 @@
 
 Perf and agent benchmarks, profiling.
 
+- [`ms run` builds Debug: time `ms build` binaries](ms-run-builds-debug-so-time-ms-build.md): an HTML parse read 2,000 ms under `ms run` and 150 ms built.
 - [A lone file read runs where it is waited on](a-lone-file-read-runs-where-it-is-waited-on.md): `read_file` defers to its waiter when nothing else runs and opens with one `fstat` (3.7 to 2.2 us per small read; Rust 1.8).
 - [Independent files use every core, and a known name is looked up without the lock](independent-files-use-every-core-and-name-lookups-take-no-lock.md): `ms fmt` over 8 files 3.28 to 0.89 s; the interner mutex capped scaling at two cores; diagram html and LSP completion stopped repeating a compile and a sibling parse.
 - [A cloned `none` that is only dropped is deleted](an-emptied-local-must-not-clone-or-drop-its-none.md): a stored-to `Result` variable cloned and dropped its emptied slot every pass (48.2M to 5.3M instructions).
