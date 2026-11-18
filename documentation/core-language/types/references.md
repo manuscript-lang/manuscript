@@ -28,7 +28,10 @@ A borrow is a handle to a value another binding owns: many readers, or one write
 - A plain returned part cannot be mixed with a newly owned value on another path; clone the part when the result needs to own it. Wrapping a part does not make every function return a borrow: the checker considers all return paths. A call through a lambda or an interface owns its result ([moving into a function](#moving-into-a-function)).
 - A call that borrows from a temporary must leave an owned result: it can move the whole temporary, but retaining a part requires a clonable result. Bind the argument first to borrow a part of a non-clonable value.
 - A field owns its value. A type cannot view another variable.
-- A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid. The receiver of a method and a function value a variable holds are read in place while the arguments run, so an argument (a `match` arm among them) may not reassign that variable: `f(match m: _: f = g; 1)` is rejected, as is `r.m(match m: _: r = other; 1)`; reassign before the call instead.
+- A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope.
+  - Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint. Every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live.
+  - A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid.
+  - The receiver of a method and a function value a variable holds are read in place while the arguments run, so an argument (a `match` arm among them) may not reassign that variable. `f(match m: _: f = g; 1)` and `r.m(match m: _: r = other; 1)` are rejected; reassign before the call instead.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -43,7 +46,9 @@ fn grow(var b: Box) Int:
     xs.append(1)
     return b.items.length()
 ```
-`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `x := m.get(k)` keeps `m` unchangeable until `x` is last used, `x := m.get(k).get()` borrows the entry the same way, and `if var x = m.get(k)` or `var x = m.get(k).get()` changes the entry in place (a missing key faults for the second). Use `if v := x` to read a borrowed resource or function value without moving it out of its container.
+`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list.
+
+The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `x := m.get(k)` keeps `m` unchangeable until `x` is last used, `x := m.get(k).get()` borrows the entry the same way, and `if var x = m.get(k)` or `var x = m.get(k).get()` changes the entry in place (a missing key faults for the second). Use `if v := x` to read a borrowed resource or function value without moving it out of its container.
 
 ## Moving into a function
 
