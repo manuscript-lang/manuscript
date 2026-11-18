@@ -445,11 +445,14 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 	// every square and product in range.
 	if s := spread(unit_scaled(xs), unit_scaled(ys)):
 		if s.xx == 0.0 or s.yy == 0.0: return none
-		// One square root of the product is correctly rounded, so perfectly linear data gives
-		// exactly 1.0; the product of two roots is not. The roots are the fallback when the
-		// product would lose its precision to underflow.
+
+		// One square root of the product is correctly rounded, so perfectly linear data
+		// gives exactly 1.0; the product of two roots is not. The roots are the
+		// fallback when the product would lose its precision to underflow.
 		product := s.xx * s.yy
-		root := if product >= 2.2250738585072014e-308: sqrt(product) else: sqrt(s.xx) * sqrt(s.yy)
+		root := if product >= 2.2250738585072014e-308: sqrt(product) else: sqrt(s.xx) * sqrt(
+			s.yy
+		)
 		return (s.xy / root).max(-1.0).min(1.0)
 
 	return none
