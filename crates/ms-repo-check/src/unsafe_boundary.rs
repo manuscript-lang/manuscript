@@ -12,6 +12,7 @@ const ALLOWED: &[&str] = &[
     "crates/ms-cli/src/process.rs",          // libc signal/kill; std has no signal API
     "crates/ms-syntax/src/symbol.rs", // the name table hands out text that lives until its interner is dropped or released
     "crates/ms-lsp/src/server.rs", // frees the retired name table when the server starts over (Session::release)
+    "crates/ms-cli/tests/shutdown_windows.rs", // Win32 GenerateConsoleCtrlEvent to send Ctrl-Break; std has no console-event API
     "crates/ms-cli/tests/terminal.rs", // libc pseudo-terminal to drive RawTerminal end to end; std has no pty API
 ];
 
