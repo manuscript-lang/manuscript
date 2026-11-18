@@ -33,9 +33,11 @@ PASS watch_test.ms::a new file is reported
 
 `temporary` returns a directory that removes itself and its contents when it is closed.
 
-## Run a command when a file changes
+## Re-read a file when it changes
 
-Save as `reload.ms`. This program re-reads a file each time it changes and stops when the watched path is removed. Pass `recursive: true` to watch a whole tree, and `WatchOptions(interval: ...)` to poll instead of using operating-system events, for example on a network drive.
+Save as `reload.ms`. This program re-reads a file each time it changes and stops when the watched path is removed.
+
+Pass `recursive: true` to watch a whole tree. Pass `WatchOptions(interval: ...)` to poll instead of using operating-system events, for example on a network drive.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

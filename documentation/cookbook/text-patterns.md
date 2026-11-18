@@ -9,7 +9,9 @@ Pull fields out of text with a regular expression, and take a URL apart.
 
 ## Count lines by a field
 
-Save as `levels.ms`. `compile` returns an error for a bad pattern, so a typo shows up at startup. `capture_named` returns the named groups of the first match, or an empty map when the line does not match, which makes skipping a bad line one check. A value read from the map is borrowed from it, so `.clone()` it before using it as a key in `counts`.
+Save as `levels.ms`. `compile` returns an error for a bad pattern, so a typo shows up at startup. `capture_named` returns the named groups of the first match, or an empty map when the line does not match, which makes skipping a bad line one check.
+
+A value read from the map is borrowed from it, so `.clone()` it before using it as a key in `counts`.
 
 <!-- manuscript-example: {"mode":"run","stdout":"INFO: 2\nWARN: 1\n"} -->
 ```manuscript

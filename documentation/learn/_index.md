@@ -46,8 +46,12 @@ promise.PromiseOptions  type  std:@std/concurrency/promise.ms
   type PromiseOptions: timeout: Duration? = none cancel: Signal? = none ...
 ```
 
-It also lists matching fields and related functions. Search includes project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output. Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
+It also lists matching fields and related functions. Search covers project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output.
+
+Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
 
 ## Working with a coding agent?
 
-Install its writing reference with `ms skill -o .claude/skills -o .agents/skills`; this creates a self-contained `manuscript` skill with concept references and the compiler version. Use `ms verify` for type checking, formatting checks, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Install its writing reference with `ms skill -o .claude/skills -o .agents/skills`; this creates a self-contained `manuscript` skill with concept references and the compiler version.
+
+Use `ms verify` to run type checking, the formatting check, lint and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).

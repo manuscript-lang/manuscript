@@ -117,7 +117,10 @@ ms test test.ms --repeat 10 --shuffle 42
 - Copy exact `module::name` identities from `--list`; repeat `--test` to select several.
 - `--filter`, `--match`, and `--exclude` narrow the selection; regexes match any part of the identity. Empty selections fail.
 - `--list` builds but never runs test bodies.
-- Test files run at once, each in its own promise, in one process; a file's tests run in order and share its fixture. Process-wide state (working directory, environment, files, services) is shared, so a test that changes it restores it. A fault in a test ends its file: later tests in that file are reported not run. `--shuffle` takes a seed.
+- Test files run concurrently, each in its own promise, in one process. A file's tests run in order and share its fixture.
+- Process-wide state (working directory, environment, files, services) is shared, so a test that changes it must restore it.
+- A fault in a test ends its file: later tests in that file are reported not run.
+- `--shuffle` takes a seed.
 - `--fail-fast` leaves remaining tests `not_run` in JSON.
 
 ## Property tests and fuzzing
@@ -211,7 +214,8 @@ ms bench ms.toml --filter "sum" --json
 - `--json` also reports the runtime's work per operation from one extra counted run: `allocations`, `allocated_bytes`, `list_copies`, `list_copy_bytes`, `string_clones` and `string_clone_bytes`. Unlike times, these do not depend on machine load or on the host, so they can gate a build.
   - Save a run with `ms bench ms.toml --json > baseline.json`. Then `ms bench ms.toml --baseline baseline.json --fail-over 3` exits 1 and names each count that rose more than 3% (times are never compared).
   - Allocations count the calling thread and finished threads. Copies count the calling thread. Work done inside the Rust runtime (crypto, regex, image decoding) shows only as allocations and bytes, so also watch the time for those.
-  - `ms bench --ops` also counts the MIR operations your own code executes (`mir_ops` in `--json`, `MIR ops` in the text). The build carries a counter and runs each bench once, and the count is the same on every platform and backend. A project such as a database driver can gate on its own code without caring about the runtime. Times of an `--ops` run are not meaningful; run without `--ops` for times. `--baseline` compares `mir_ops` like the other counts.
+  - `ms bench --ops` also counts the MIR operations your own code executes (`mir_ops` in `--json`, `MIR ops` in the text). The build carries a counter and runs each bench once. The count is the same on every platform and backend, so a project such as a database driver can gate on its own code without depending on the runtime.
+  - Times of an `--ops` run are not meaningful; run without `--ops` for times. `--baseline` compares `mir_ops` like the other counts.
 - Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `?` so the compiler cannot discard the work; `ms bench` builds `Release` by default, which is what you want to measure.
 
 ## Profile application work
@@ -259,7 +263,7 @@ PASS test.ms::starts fresh
 2 tests, 0 failed
 ```
 
-A file's tests share one fixture: `make_fixture` and `before_all` run once before the file's first test, `before_each` and `after_each` around each test, and `after_all` after the last, so `before_each` above resets the `Counter` that the second test reads. Each `--repeat` round runs the file again on a new fixture.
+A file's tests share one fixture. `make_fixture` and `before_all` run once before the file's first test, `before_each` and `after_each` run around each test, and `after_all` runs after the last. So `before_each` above resets the `Counter` that the second test reads. Each `--repeat` round runs the file again on a new fixture.
 
 - One instance per file and run; a fault in a test still runs `after_each` and `after_all`, and the file's later tests are reported not run.
 - Optional hooks (use `self`, no arguments, return `Void!`): `before_all`, `before_each`, `after_each`, `after_all`. A hook's error fails the tests it guards; `skip(reason)?` skips them.

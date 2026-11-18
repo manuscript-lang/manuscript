@@ -24,7 +24,7 @@ irm https://manuscript-lang.github.io/manuscript/install.ps1 | iex
 
 The script downloads the archive for your system, checks its SHA-256, and puts `ms` in `~/.local/bin` (`%USERPROFILE%\.ms\bin` on Windows, which it adds to your user PATH). `MS_VERSION=2026.11.0` picks a release and `MS_INSTALL_DIR` picks the directory. You can also extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) yourself, or [build from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) with `make build` for the latest development version.
 
-If `ms` is not found afterwards, add its directory to your `PATH` (for a manual archive or a source build, the extracted directory or the checkout's `target/release`; use the full path so it works from any directory). On Windows, the compiler is `ms.exe`. Open a new terminal if your PATH settings require it, then confirm:
+If `ms` is not found afterwards, add its directory to your `PATH`. For a manual archive that is the extracted directory; for a source build it is the checkout's `target/release`. Use the full path so it works from any directory. On Windows, the compiler is `ms.exe`. Open a new terminal if your `PATH` change needs it, then confirm:
 
 ```sh
 ms --version

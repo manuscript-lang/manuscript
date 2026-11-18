@@ -5,7 +5,9 @@ weight = 2
 
 # Development workflow
 
-Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.node-version` pins Node. Use Make and a C compiler (`cc`) to build `ms`; repository tools in `tools/` then run with that compiler. Install the [source-build prerequisites](rust-toolchain.md#build-and-run) before running checks. Book work needs Hugo Extended 0.146.7 or newer. The debugger display helpers in `tools/debugger/` are Python (gdb and lldb embed it), so their decoding test (`display_helper_decoding_matches_the_layouts`) needs Python 3 as `python3` or `python`; it fails, not skips, without it, and `make doctor` reports it. Every CI runner image (Linux, macOS and Windows, both architectures) has it. Application builds use [cached or locally configured linking tools](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
+Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.node-version` pins Node. Use Make and a C compiler (`cc`) to build `ms`; repository tools in `tools/` then run with that compiler. Install the [source-build prerequisites](rust-toolchain.md#build-and-run) before running checks. Book work needs Hugo Extended 0.146.7 or newer. Application builds use [cached or locally configured linking tools](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
+
+The debugger display helpers in `tools/debugger/` are Python (gdb and lldb embed it). Their decoding test, `display_helper_decoding_matches_the_layouts`, needs Python 3 as `python3` or `python`. It fails, not skips, without Python, and `make doctor` reports it. Every CI runner image (Linux, macOS and Windows, both architectures) has it.
 
 ```sh
 make doctor
@@ -35,7 +37,9 @@ It adds `make conform` (the conformance corpus, which includes the former end-to
 
 ## Conformance
 
-`make conform` builds the Rust `ms` and `ms-conform`, lints the corpus, and replays the run, check, and test phases of `tests/conformance/` against `ms`, excluding fixtures tagged `aliasing`, and the parse phase for every fixture. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. `make conform` builds every program with Cranelift (about 2.5 minutes against about 8 on 4 cores for LLVM, measured 2026-11-13: the LLVM -O3 step is about 90% of a run or test fixture's time) and runs all four phases. `make conform-llvm` is the same corpus built by LLVM (Release); run it after changing LLVM code. CI runs the LLVM pass on `main` and on pull requests that touch LLVM-related code (paths listed in `.github/actions/rust-scope`); other pull requests build programs with Cranelift. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
+`make conform` builds the Rust `ms` and `ms-conform`, lints the corpus, and replays the run, check, and test phases of `tests/conformance/` against `ms`, excluding fixtures tagged `aliasing`, and the parse phase for every fixture. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. `make conform` builds every program with Cranelift and runs all four phases. It takes about 2.5 minutes, against about 8 on 4 cores for LLVM (measured 2026-11-13: the LLVM -O3 step is about 90% of a run or test fixture's time). `make conform-llvm` is the same corpus built by LLVM (Release); run it after changing LLVM code.
+
+CI runs the LLVM pass on `main` and on pull requests that touch LLVM-related code (paths listed in `.github/actions/rust-scope`); other pull requests build programs with Cranelift. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
 CI does not run `make leak-check`: `CONFORM_LEAKS=1 make conform` runs the corpus against the counting runtime, and the runner fails a `fuzz/run`, `e2e` or `examples` fixture that exits with live blocks. `make leak-check` builds the runtime with allocation counters (`ms-rt` feature `stats`, via `MS_RT_LIB`) and runs the corpus programs that finish normally and the `test` blocks of `tests/conformance/fixtures/e2e` (one count per test), failing when any leaves live heap blocks at exit. Pass files to sweep instead (`target/release/ms run tools/leak-check.ms -- path.ms`). Run it after changing lowering, ownership, or runtime code; valgrind covers the native `ms-std-*` crates that use the system allocator.
 
@@ -59,7 +63,9 @@ Keep Manuscript source out of Rust strings. Diagnostics and run output belong in
 
 Write source assertions with `@std/test/test.ms` and propagate their Results: `operation() | expect_ok? | expect_equal(value)?`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.
 
-`make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib` (`BENCHREPEATS`, `BENCHFILTER`); add cases as `bench` blocks in `bench/perf/stdlib/*_bench.ms` (`measure(ops, work)` times the work after untimed setup); `BENCHREPEATS` is the sample count. It is a profiling guide, not a gate. `make agent-bench-check` runs the agent benchmark oracle.
+`make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib`. `BENCHREPEATS` sets the sample count per case and `BENCHFILTER` narrows the cases. Add cases as `bench` blocks in `bench/perf/stdlib/*_bench.ms` (`measure(ops, work)` times the work after untimed setup). It is a profiling guide, not a gate.
+
+`make agent-bench-check` runs the agent benchmark oracle.
 
 Complete tutorial fences carry a `manuscript-example` JSON comment giving `test` or `run`, arguments, and expected stdout (more fields in [cookbook](../cookbook/command-line.md)).
 

@@ -25,7 +25,9 @@ Checked ms.toml (2 modules)
 Arguments: 2
 ```
 
-`check` catches source errors without running the application. `run` builds and starts it; arguments after `--` go to your program. `Debug` keeps the edit/run cycle quick. Use `ms run ms.toml --watch -- first second` to rebuild after saved changes, or [set up your editor](implementation.md) for diagnostics while you type.
+`check` catches source errors without running the application. `run` builds and starts it; arguments after `--` go to your program. `Debug` keeps the edit/run cycle quick.
+
+To rebuild after each saved change, use `ms run ms.toml --watch -- first second`. To see diagnostics while you type, [set up your editor](implementation.md).
 
 ## Build the executable
 
@@ -39,11 +41,11 @@ Built my-app
 Arguments: 2
 ```
 
-On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. `ms build` defaults to optimized `Release` (`ms run` and `ms test` default to `Debug`, built with Cranelift); choose [a build level](builds/build-levels.md) when you need unoptimized debugging or a smaller executable.
+On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. `ms build` defaults to optimized `Release`, while `ms run` and `ms test` default to `Debug`, which builds with Cranelift. Choose [a build level](builds/build-levels.md) for unoptimized debugging or a smaller executable.
 
-Share the executable for the platform you built on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
+Share the executable only with the platform you built it on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
 
-The adjacent `my-app.ms-build.json` holds the compiler version, build level and backend; it is not needed to run the executable. Its `backend` is `llvm` when LLVM compiled the program's functions, or `cranelift` otherwise. A cached build retains the backend that produced the stored executable. Keep source and debug artifacts when you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
+The adjacent `my-app.ms-build.json` holds the compiler version, build level and backend; it is not needed to run the executable. Its `backend` is `llvm` when LLVM compiled the program's functions, or `cranelift` otherwise. Keep the source and debug artifacts if you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
 
 ## Check a change before sharing it {#one-binary}
 
@@ -61,7 +63,7 @@ lint   passed
 test   passed
 ```
 
-`verify` checks types, formatting, lint and tests; fix a failed check before building the version you intend to share. It does not rewrite formatting. The second command succeeds silently and writes an offline HTML map: open `code-map.html` to follow source, checked types and calls during review. See [the code-map workflow](implementation.md#interactive-code-map) for change overlays.
+`verify` checks types, formatting, lint and tests. Fix any failed step before you build the version you intend to share. It never rewrites files. The second command succeeds silently and writes an offline HTML map: open `code-map.html` to follow source, checked types and calls during review. See [the code-map workflow](implementation.md#interactive-code-map) for change overlays.
 
 The same compiler includes the standard library, formatter, linter, language server and analysis tools. Source-only commands such as `check`, `fmt`, `lint` and `diagram` need no native linker. For a repeatable team setup, use the same `ms` version and keep `ms.toml` with your source.
 
@@ -80,6 +82,6 @@ See [cache locations](builds/incremental-compilation.md) and [platform linking d
 
 ## Rebuild after changes {#runtime-cache}
 
-`ms build` can reuse an unchanged executable. `run`, `test` and `profile` build fresh executables, while reusing installed tools and the extracted runtime archive. You do not need to manage these caches for normal development; use [build caches](builds/incremental-compilation.md) when troubleshooting reuse or choosing cache locations.
+`ms build`, `run`, `test` and `profile` each compile the whole program again. They reuse the installed tools and the extracted runtime archive, so you do not need to manage caches in normal development. See [build caches](builds/incremental-compilation.md) to troubleshoot or to find cache locations.
 
 For the compiler's internal stages, see the contributor [compilation pipeline](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/compiler/frontend/pipeline.md).
