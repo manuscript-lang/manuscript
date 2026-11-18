@@ -60,6 +60,10 @@ jobs:
       # The build a pull request job starts with (rust-checks), so its outputs are what gets cached.
       - name: Build the workspace
         run: cargo build --workspace --all-targets --locked --keep-going
+      # The corpus-only jobs (`-p ms-cli`, no workspace build) unify features differently and compile
+      # the Cranelift crates, ms-clif, ms-build and ms-cli again (about 40 s) unless this build is cached too.
+      - name: Build the CLI alone
+        run: cargo build --locked -p ms-cli
       # The leak-counting runtime that the ownership count gate and the LLVM corpus link against
       # (`use_stats_runtime` in tools/lib.ms builds it with these arguments): without this its compile
       # missed the sccache and cost about 65 s in each LLVM pull request job that needs it.
