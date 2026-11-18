@@ -1,4 +1,6 @@
-//! Lifetime markers for block-confined stack slots of a function body written as LLVM text.
+//! Lifetime markers for block-confined temporaries of a function body written as LLVM text. MIR
+//! `slot`s are not scanned: [`ms_mir::slot_scope`] names the confined ones and the builder
+//! brackets them ([`crate::llvm_build::FnBuilder::alloca_scoped`]).
 //!
 //! Lowering gives every temporary (an out-parameter of a call, a string spilled for a runtime
 //! call, a copied record) its own `alloca`. Without `llvm.lifetime.start` and `.end`, LLVM's
