@@ -40,7 +40,7 @@ fn knap(t: List[String]) String:
 fn coins(t: List[String]) String:
     if t.length() < 3: return "error: bad command"
     amount := parse_num(t[1])
-    cs := t.slice(2, t.length()).get().map(fn s: parse_num(s).get(0))
+    cs := t.slice(2, t.length()).get().map(fn s: parse_num(s).get_or(0))
     if not amount.is_some() or cs.any(fn c: c < 1): return "error: bad command"
     inf := 1000000000
     var best = [0]

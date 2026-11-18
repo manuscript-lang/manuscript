@@ -17,6 +17,25 @@ reproductions, release settings and paired native samples. Historical results
 below retain their original measurement method; this validation fix makes no
 generated-program speedup claim.
 
+## main at b4b25a2b plus the filtered-loop walk (2026-11-18)
+
+linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1 `-O`, `ms` Release build (LLVM); minimum of 3, milliseconds, 3 MB of each program's largest hidden stdin. The ten Manuscript reference programs had stopped compiling after the `get` and `slice` changes, so they were ported first (`.get(d)` to `.get_or(d)`, `.slice(a, b).get()` to `.slice(a, b)`); the table includes the change that makes `for x in xs.filter(f)` walk `xs` in place (c13).
+
+| program | ms | go | rust | ms / go | ms / rust |
+|---|---:|---:|---:|---:|---:|
+| c03-csv-group-sum | 38.5 | 37.1 | 26.4 | 1.04x | 1.45x |
+| c05-calculator | 42.3 | 48.1 | 146.9 | 0.88x | 0.29x |
+| c09-ciphers | 50.6 | 59.8 | 38.5 | 0.85x | 1.31x |
+| c13-inventory-orders | 190.9 | 260.0 | 125.8 | 0.73x | 1.52x |
+| c14-dp-suite | 553.5 | 1631.2 | 377.0 | 0.34x | 1.47x |
+| c16-maze-bfs | 75.3 | 38.4 | 41.3 | 1.96x | 1.82x |
+| c18-cron-next-runs | 680.5 | 976.5 | 743.2 | 0.70x | 0.92x |
+| c25-log-analyzer | 19.1 | 52.6 | 18.1 | 0.36x | 1.05x |
+| c36-bank-ledger | 74.5 | 115.8 | 63.0 | 0.64x | 1.18x |
+| c44-unified-diff | 14.7 | 67.1 | 14.4 | 0.22x | 1.02x |
+
+c13 alone, 11 runs on the unchanged tree and then with the change: 166 ms to 162 ms best, 210 ms to 193 ms median (Rust 129 ms); callgrind on 400 KB of input: 392M to 350M instructions (Rust 215M).
+
 ## main at c1b81215 (2026-10-25)
 
 linux/amd64, four cores, Go 1.24.7, rustc 1.99.1.

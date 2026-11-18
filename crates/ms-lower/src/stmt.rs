@@ -1678,6 +1678,21 @@ impl<'a> FnLower<'a> {
         let mut cursor: Option<(Value, ms_mir::types::TypeId, MTy)> = None;
         let entries_recv = self.list_entries_walk(iter, &loop_var, body);
         let mut entries_loop = false;
+        let mut filters: Vec<ms_mir::builder::Var> = Vec::new();
+        // `for x in xs.filter(f)` over a place the body leaves alone tests each element in
+        // place; the filtered list, and the deep copy of every element it keeps, is never built.
+        let filter_walk = if entries_recv.is_none()
+            && !loop_var.mutable
+            && !self.slotted.contains(&loop_var.uid)
+            && !self.cx.ownership.moves.contains_key(&loop_var.uid)
+        {
+            match self.filter_walk_source(iter)? {
+                Some((lams, src)) if self.unchanged_by(src, body) => Some((lams, src)),
+                _ => None,
+            }
+        } else {
+            None
+        };
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
             None if entries_recv.is_some() => {
@@ -1692,6 +1707,39 @@ impl<'a> FnLower<'a> {
                 self.b.def_var(var, it.v);
                 list_var = Some(var);
                 entries_loop = true;
+                let list = self.b.use_var(var);
+                (self.b.iconst(0), self.b.list_len(list))
+            }
+            None if filter_walk.is_some() => {
+                let (lams, src) = filter_walk.expect("filter walk");
+                let it = self.expr(src)?;
+                if self.dead {
+                    self.discard_scope();
+                    return Ok(());
+                }
+                let var = if it.own {
+                    self.bind_hidden_iterable(it)
+                } else {
+                    let var = self
+                        .b
+                        .declare_var(self.ty_of(it.v), ms_mir::ir::Mode::Borrow);
+                    self.b.def_var(var, it.v);
+                    var
+                };
+                list_var = Some(var);
+                for lam in lams {
+                    let f = self.expr(lam)?;
+                    if self.dead {
+                        self.discard_scope();
+                        return Ok(());
+                    }
+                    let ft = self.ty_of(f.v);
+                    filters.push(if f.own && self.needs_drop(ft) {
+                        self.bind_hidden_iterable(f)
+                    } else {
+                        self.callback_var(f).0
+                    });
+                }
                 let list = self.b.use_var(var);
                 (self.b.iconst(0), self.b.list_len(list))
             }
@@ -1916,6 +1964,17 @@ impl<'a> FnLower<'a> {
             }
             None => i,
         };
+        for fv in &filters {
+            let f = self.b.use_var(*fv);
+            let keep_it = self.b.call_ind(f, &[e]);
+            let keep = self.b.new_block();
+            self.b.br_if(keep_it, keep, &[], step, &[]);
+            self.b.seal_block(keep);
+            self.enter(keep);
+            if let Some(ctx) = self.loops.last_mut() {
+                ctx.cont_used = true;
+            }
+        }
         if moving {
             match closing {
                 Some(kind) => {
