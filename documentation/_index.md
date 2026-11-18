@@ -2,7 +2,7 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "A statically typed, natively compiled language with single ownership and no garbage collector. Diagnostics name the cause and the fix."
+description = "A statically typed, natively compiled language with single ownership: no garbage collector and no lifetime annotations. Diagnostics name the cause and the fix."
 +++
 
 {{< docs-home part="hero" >}}
