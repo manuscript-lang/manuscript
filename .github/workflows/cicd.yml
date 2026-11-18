@@ -2,7 +2,7 @@ name: CI/CD
 
 # One workflow, four triggers:
 #   pull request  the Linux legs with programs built by Cranelift (the Debug backend); a pull request that touches
-#                 LLVM-related code (see .github/actions/rust-scope) also starts the `llvm` jobs: the LLVM corpus in two shards, and the LLVM backend tests with the release gates. The Linux legs, each one job (`ab`: the tests and the conformance corpus together); the language checks
+#                 LLVM-related code (see .github/actions/rust-scope) also starts the `llvm` jobs: the LLVM corpus (amd64) and the LLVM backend tests with the release gates. The Linux legs, each one job (`ab`: the tests and the conformance corpus together); the language checks
 #                 and the book run inside linux-arm64. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
@@ -190,7 +190,7 @@ jobs:
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
   # A pull request that touches LLVM-related code (rust-scope) also runs the LLVM suite, in jobs of its own so
-  # that no job passes ten minutes: the LLVM corpus in two shards, and the LLVM backend tests with the release
+  # that no job passes ten minutes: the LLVM corpus (amd64) and the LLVM backend tests with the release
   # gates. Only a pull request that touches LLVM-related code starts them (`due` decides from the scope). Main
   # runs the suite inside `rust`.
   llvm:
@@ -203,8 +203,7 @@ jobs:
       fail-fast: false
       matrix:
         leg:
-          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '0/2', index: 1}
-          - {job: corpus, arch: amd64, runner: ubuntu-24.04, shard: '1/2', index: 2}
+          - {job: corpus, arch: amd64, runner: ubuntu-24.04}
           - {job: gates, arch: arm64, runner: ubuntu-24.04-arm}
     env:
       PR: 'true'
