@@ -6,7 +6,7 @@ use ms_driver::project::pathops;
 use crate::backend::Io;
 
 const MAIN: &str = "import arguments from \"@std/os/env.ms\"\n\nfn main() Void:\n\tprint(f\"Arguments: {arguments().length()}\")\n";
-const TEST: &str = "import panic from \"@std/core.ms\"\n\ntest \"arithmetic\":\n\tif not (2 + 3 == 5): return panic(message: \"arithmetic failed\")\n";
+const TEST: &str = "import expect_equal from \"@std/test/test.ms\"\n\ntest \"arithmetic\":\n\texpect_equal(2 + 3, 5)?\n";
 const LIB: &str = "export fn greeting(name: String) String: f\"Hello, {name}\"\n";
 const LIB_TEST: &str = include_str!("init/lib_test.ms");
 const WORKSPACE_MAIN: &str = include_str!("init/workspace_main.ms");

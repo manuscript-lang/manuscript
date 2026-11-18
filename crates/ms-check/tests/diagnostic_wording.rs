@@ -154,3 +154,13 @@ fn exception_remedies_typecheck_as_complete_result_programs() {
     let got = messages(include_str!("diagnostic_wording/result-remedies.ms"));
     assert!(got.is_empty(), "{got:?}");
 }
+
+#[test]
+fn is_none_on_a_list_get_result_names_get_or() {
+    let got = messages("fn f(xs: List[Int]) Bool:\n    return xs.get(0).is_none()\n");
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(
+        got[0].contains("never none") && got[0].contains("get_or"),
+        "{got:?}"
+    );
+}
