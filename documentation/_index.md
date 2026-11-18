@@ -59,16 +59,6 @@ fn audit(total: Int) Void!:
 
 </div>
 
-## See what the agent built
-
-`ms diagram` writes one offline HTML file: your source beside checked types, calls and control flow, with a diff overlay that marks what changed. [Open the code map guide](developer-tooling/implementation.md#interactive-code-map).
-
-```sh
-ms diagram ms.toml --format html -o code-map.html
-```
-
-![The code map's Behavior view of a function: its branches, calls and exits beside its source, with the changed declarations listed on the left.](/images/code-map-behavior.png "The code map, Behavior view, with a diff overlay.")
-
 {{< docs-home part="paths" >}}
 
 {{< docs-home part="proof" >}}
