@@ -9,6 +9,26 @@ description = "A statically typed, natively compiled language with single owners
 
 ## A taste
 
+A web server in a dozen lines. Each connection runs as its own promise across all cores.
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
+import serve from "@std/net/net.ms"
+
+fn handle(request: HttpRequest) HttpResponse:
+    return HttpResponse(200, f"hello {request.path}".to_bytes())
+
+fn main() Void!:
+    server := serve("127.0.0.1:0", buffered(handle))?
+    print(f"{server.address()}")
+    server.wait()?
+```
+
+![A screencast of Manuscript: failure as values, ownership errors, promises, ms verify, the call graph and a native build, each with a short caption.](/images/screencast.gif "A short tour: errors, ownership, promises, ms verify, the call graph and a native build.")
+
+## What the compiler catches
+
 <div class="home-taste">
 
 Using a value after it moved is a compile error:
@@ -23,23 +43,23 @@ fn main() Void:
     // type: `first` is moved here but used again at 5:11
 ```
 
-Promises run across all cores. There is no `async` or `await`:
+An effect must be allowed by every caller that reaches it:
 
-<!-- manuscript-example: {"mode":"run","stdout":"4\n"} -->
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import promise, wait_all from "@std/concurrency/promise.ms"
+import write_file from "@std/os/fs.ms"
 
-fn fib(n: Int) Int:
-    return if n < 2: n else: fib(n - 1) + fib(n - 2)
+// ms: effect db.write
+// ms: allow_effect std.fs.write
+fn save(order: String) Void!:
+    return write_file("orders.log", order).wait()
 
-fn main() Void:
-    tasks := [36, 36, 36, 36].map(fn n: promise(fn: ok(fib(n))))
-    print(wait_all(tasks).get_or(List[Int]()).length())
+fn audit(total: Int) Void!:
+    return save(f"audit {total}")
+    // ms lint: `audit` reaches db.write: audit -> save
 ```
 
 </div>
-
-![A screencast of Manuscript: failure as values, ownership errors, promises, ms verify, the call graph and a native build, each with a short caption.](/images/screencast.gif "A short tour: errors, ownership, promises, ms verify, the call graph and a native build.")
 
 {{< docs-home part="paths" >}}
 
