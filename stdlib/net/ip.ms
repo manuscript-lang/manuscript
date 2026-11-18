@@ -82,8 +82,8 @@ export type DnsRecord:
 
 // Reports whether an IP address belongs to a CIDR range. The families must match: an
 // address written `::ffff:1.2.3.4` is normalized to IPv4, so an IPv4 range contains it
-// and a range written in `::ffff:` form (which keeps its IPv6 spelling) contains no IPv4
-// address.
+// and a range written in `::ffff:` form (which keeps its IPv6 spelling) contains no
+// IPv4 address.
 export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!:
 	return msstd_net_contains_ip(cidr, address)
 
