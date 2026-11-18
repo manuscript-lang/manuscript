@@ -207,6 +207,65 @@ fn checked_with(name: &str, manifest_extra: &str, source: &str, allowed: &str) -
     ms(&project, &cache, &["check", "ms.toml"])
 }
 
+/// Git writes a link as a small text file where it creates no links (Windows by default), so the
+/// package must be judged by git's record, or its hash would differ between platforms.
+#[test]
+fn a_symbolic_link_in_a_package_is_rejected_where_git_checks_it_out_as_text() {
+    let root = scratch("package-symlink");
+    let lib = root.join("lib");
+    let spec = package(&lib, "", "export fn one() Int:\n    return 1\n");
+    let blob = Command::new("git")
+        .args(["hash-object", "-w", "--stdin"])
+        .current_dir(&lib)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(b"src/lib.ms")
+                .unwrap();
+            child.wait_with_output()
+        })
+        .unwrap();
+    let blob = String::from_utf8(blob.stdout).unwrap().trim().to_string();
+    git(
+        &lib,
+        &[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("120000,{blob},link.ms"),
+        ],
+    );
+    git(&lib, &["commit", "-q", "-m", "link"]);
+    git(&lib, &["tag", "-f", "v1.0.0"]);
+    let app_dir = root.join("app");
+    app(
+        &app_dir,
+        &format!("[dependencies]\n\"@lib\" = {}\n", table(&spec)),
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(["install"])
+        .current_dir(&app_dir)
+        .env("MS_PACKAGE_CACHE", root.join("cache"))
+        .env("GIT_CONFIG_COUNT", "1")
+        .env("GIT_CONFIG_KEY_0", "core.symlinks")
+        .env("GIT_CONFIG_VALUE_0", "false")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output).contains("symbolic link link.ms"),
+        "{}",
+        stderr(&output)
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 #[test]
 fn the_checker_rejects_natives_in_a_package() {
     let checked = checked_with("package-native", "", include_str!("packages/native.ms"), "");

@@ -426,6 +426,7 @@ fn download_into(
         protocols,
         &["checkout", "--quiet", "--force", &commit, "--"],
     )?;
+    reject_symlinks(key, temporary, protocols)?;
     remove_all(&temporary.join(".git"))?;
     let index = index_tree(temporary).map_err(|e| format!("package {key}: {e}"))?;
     let hash = hash_index(&index);
@@ -454,6 +455,23 @@ fn download_into(
         revision: commit,
         sha256: hash,
     })
+}
+
+/// A symbolic link is rejected from git's own record of the checkout. Where links are not
+/// created (Windows without `core.symlinks`) git writes them as small text files, which a scan of
+/// the directory would hash as regular files and so pin a different hash than Linux and macOS.
+fn reject_symlinks(key: &str, directory: &Path, protocols: &str) -> Result<(), String> {
+    let listing = git(Some(directory), protocols, &["ls-files", "-z", "--stage"])?;
+    let link = listing
+        .split('\0')
+        .filter_map(|entry| entry.split_once('\t'))
+        .find(|(meta, _)| meta.starts_with("120000 "));
+    match link {
+        Some((_, path)) => Err(format!(
+            "package {key}: package contains the symbolic link {path}; a package holds regular files only"
+        )),
+        None => Ok(()),
+    }
 }
 
 /// A package is a library with a manifest, no entry, no embedded files and no top-level `@`
