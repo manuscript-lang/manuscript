@@ -41,6 +41,7 @@ Renaming, namespace imports, re-exports, and wildcards have no syntax. A dotted 
 
 A module-level `:=` names a value usable throughout the module; add `export` to share it.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export MAX_ITEMS := 100
 NAMES: List[String] := ["Ada", "Grace"]

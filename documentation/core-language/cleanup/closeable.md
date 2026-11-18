@@ -51,6 +51,7 @@ A similarly named method whose signature is not `fn var close() Void!` does not 
 
 `close()` returns `Void!`, which is `Result[Void, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok()`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 

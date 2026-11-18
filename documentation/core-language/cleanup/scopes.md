@@ -10,6 +10,7 @@ A `:=` or `var` that holds a resource closes it when its scope ends. There is no
 
 This function reads a file and closes its handle on every exit:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"

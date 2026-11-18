@@ -9,6 +9,7 @@ A `.ms` file is a module. Top level holds imports, types, functions, constants, 
 
 `src/greeting.ms`:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export type Customer:
     name: String

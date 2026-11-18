@@ -48,6 +48,7 @@ Matching a `Result` with only `ok` and `error` arms is flagged the same way as a
 
 A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (with an optional `-`), plain text literals, `true`, and `false`. Arms are tested in order; each value may appear once. A final `_` is required unless `true` and `false` are both covered. Arms bind nothing.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn name(count: Int) String:
     match count:
@@ -62,6 +63,7 @@ Computed values, interpolated text, ranges, and `Float` scrutinees are not liter
 
 An arm may hold statements then a final expression, which is its value; ending in a statement gives `Void`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Cents:
     Valid(amount: Int)
@@ -86,6 +88,7 @@ Payloads bind by position in field order: exactly one identifier or `_` per fiel
 
 Lowercase variant names, including `case`, follow the same rule. A lone lowercase arm binds a payload only when matching an `Optional`; on another enum it names a payloadless variant.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Position:
     Point(x: Int, y: Int)

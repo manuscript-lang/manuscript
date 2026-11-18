@@ -1,6 +1,6 @@
 +++
 title = "Deploying one binary"
-weight = 13
+weight = 16
 +++
 
 # Deploying one binary

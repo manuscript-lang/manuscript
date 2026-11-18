@@ -268,6 +268,7 @@ There is no platform attribute on `test` blocks. Skip at run time instead, compa
 
 To skip a single test, call `skip` in its body:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import skip from "@std/test/test.ms"
 import os, Os from "@std/os/system.ms"
@@ -280,6 +281,7 @@ test "unix permission bits":
 
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import skip from "@std/test/test.ms"
 import os, Os from "@std/os/system.ms"

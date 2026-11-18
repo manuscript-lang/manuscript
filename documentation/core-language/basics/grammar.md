@@ -222,6 +222,7 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 - Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` discards a binding or match payload and is the wildcard match arm; it cannot be read as a value.
 - Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn double(value: Int) Int: value * 2
 fn positive(value: Int) Bool:

@@ -7,6 +7,7 @@ weight = 2
 
 Use an enum (a tagged union) when a value is exactly one of several declared cases, each with its own data.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Payment:
     Paid(receipt: String)
