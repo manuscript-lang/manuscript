@@ -438,6 +438,8 @@ pub struct GlobOptions<'a> {
 /// A parsed pattern list with the text it came from, so absolute patterns can be told apart.
 struct Compiled {
     glob: Glob,
+    /// The pattern ended in `/`, as in a shell: only directories (and links to them) match.
+    directories_only: bool,
     absolute: bool,
 }
 
@@ -463,6 +465,7 @@ fn compile(patterns: &[&[u8]]) -> Option<Vec<Compiled>> {
             let text = core::str::from_utf8(p).ok()?;
             Some(Compiled {
                 glob: Glob::new(&without_dot_segments(text))?,
+                directories_only: text.ends_with('/'),
                 absolute: text.starts_with('/'),
             })
         })
@@ -581,7 +584,16 @@ impl GlobState {
                 relative_text.as_str()
             }
         };
-        if excluded.iter().any(|c| c.glob.matches(target(c))) {
+        // A link to a directory counts as one for a pattern that ends in `/`.
+        let names_directory = value.directory
+            || (value.symlink
+                && cpath(p)
+                    .ok()
+                    .and_then(|c| sys::stat(&c, true).ok())
+                    .is_some_and(|st| is_dir(&st)));
+        let hits =
+            |c: &Compiled| (names_directory || !c.directories_only) && c.glob.matches(target(c));
+        if excluded.iter().any(hits) {
             return Ok(());
         }
         if let Some(f) = exclude.as_mut()
@@ -593,7 +605,7 @@ impl GlobState {
         let is_root = rel.as_slice() == b".";
         if patterns
             .iter()
-            .any(|c| !(is_root && !c.absolute) && c.glob.matches(target(c)))
+            .any(|c| !(is_root && !c.absolute) && hits(c))
             && !self.items.contains_key(&value.path)
         {
             if self.items.len() as i64 >= o.max_results {
@@ -963,6 +975,17 @@ mod tests {
             texts(glob(&root, b"link/*", UNLIMITED).unwrap()),
             Vec::<String>::new()
         );
+        // A trailing `/` keeps directories only, as in a shell.
+        assert_eq!(
+            texts(glob(&root, b"*/", UNLIMITED).unwrap()),
+            ["link", "sub"]
+        );
+        assert_eq!(
+            texts(glob(&root, b"**/", UNLIMITED).unwrap()),
+            ["link", "sub", "sub/deep"]
+        );
+        assert!(glob(&root, b"a.txt/", UNLIMITED).unwrap().is_empty());
+        assert_eq!(texts(glob(&root, b"sub/", UNLIMITED).unwrap()), ["sub"]);
         ops::remove(&root, true).unwrap();
     }
 

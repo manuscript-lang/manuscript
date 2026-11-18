@@ -323,7 +323,12 @@ impl Walker<'_> {
                 Resolution::Method(m) => wrapper_passthrough(&m, &self.cx.m.ty(r)),
                 _ => None,
             };
-            let takes_payload = self.class_of(e) != Class::Copy
+            // A source callable the summary found to return a borrow (`fn G[T].get() T: return
+            // self.v`) lends its result whatever `T` is: the receiver stays the owner and the
+            // result is a view, so only natives take a payload out of their receiver.
+            let lends = result_borrow(cx.m, e, cx.summaries).returns_borrow;
+            let takes_payload = !lends
+                && self.class_of(e) != Class::Copy
                 && !self.cx.classes.clonable(self.syms, &result_ty)
                 && (unbounded_parameter(&result_ty).is_none() || self.wrapper_receiver(r))
                 && ty_contains(&self.cx.m.ty(r), &result_ty);

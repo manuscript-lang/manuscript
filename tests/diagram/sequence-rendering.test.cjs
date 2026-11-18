@@ -32,7 +32,7 @@ test('recursive and mutually recursive calls remain bounded and return', () => {
 
 test('callee notes retain a single return and native visibility stays optional', () => {
   const {events} = model([[call(1)], [note('branch'), note('native')]]);
-  const branch = {t: 'note', at: 'main.ms#fn#f1', label: 'branch'};
+  const branch = {t: 'note', at: 'main.ms#fn#f1', dp: 0, label: 'branch'};
   assert.deepEqual(events(), [msg(0, 1), branch, ret(1, 0)]);
   assert.deepEqual(events(3, true), [msg(0, 1), branch,
     {t: 'msg', from: 'main.ms#fn#f1', to: 'stdlib', label: 'native'}, ret(1, 0)]);

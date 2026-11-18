@@ -617,6 +617,8 @@ impl Verifier<'_> {
         let mut dropped_in: Vec<BTreeSet<u32>> = vec![BTreeSet::new(); f.blocks.len()];
         let mut owner_of: Vec<Option<Value>> = vec![None; f.values.len()];
         let mut views = vec![false; f.values.len()];
+        // The owner a pointer returned by a runtime lookup points into.
+        let mut pointer_owner: Vec<Option<Value>> = vec![None; f.values.len()];
         // Owners some borrowed value points into: only their drops are worth carrying along edges.
         let mut watched = vec![false; f.values.len()];
         // A parameter holding a borrowing variant takes the cases an incoming edge borrowed.
@@ -676,6 +678,22 @@ impl Verifier<'_> {
                         .then_some(*first)
                         .or(owner_of[first.index()]);
                     if let Some(o) = owner_of[r.index()] {
+                        watched[o.index()] = true;
+                    }
+                }
+                // A runtime lookup (a map entry) returns a pointer into its first operand's
+                // storage, and `load` of that pointer reads a borrow of the same owner.
+                if let (Some(r), Some(first)) = (inst.res, inst.args.first()) {
+                    if inst.op == Op::CallRt && !rc(r) && rc(*first) && !views[first.index()] {
+                        pointer_owner[r.index()] = owned_def[first.index()]
+                            .then_some(*first)
+                            .or(owner_of[first.index()]);
+                    } else if inst.op == Op::Load
+                        && rc(r)
+                        && !owned_def[r.index()]
+                        && let Some(o) = pointer_owner[first.index()]
+                    {
+                        owner_of[r.index()] = Some(o);
                         watched[o.index()] = true;
                     }
                 }
@@ -762,6 +780,23 @@ impl Verifier<'_> {
                         Some(bi),
                         format!("ret: owned value %{leak} is never released"),
                     );
+                }
+            }
+            // A borrow handed to a successor reads its owner's storage there, so the owner must
+            // not have been dropped on the way.
+            for t in &edges {
+                for a in &t.args {
+                    if let Some(o) = owner_of[a.index()]
+                        && dropped.contains(&o.0)
+                    {
+                        self.err(
+                            Some(bi),
+                            format!(
+                                "branch: %{} points into %{}, which was consumed before this use",
+                                a.0, o.0
+                            ),
+                        );
+                    }
                 }
             }
             for t in edges {

@@ -436,7 +436,7 @@ fn borrow_local_copies(m: &Module, f: &mut Func) -> bool {
             if is_str {
                 // Strings are immutable, so the copy can only differ from `v` once `v`'s
                 // owner releases or replaces it.
-                let Some(root) = str_source(f, &defs, v) else {
+                let Some(root) = str_source(m, f, &defs, v) else {
                     continue;
                 };
                 if root.is_some_and(|r| consumes(r, bi, i, j)) {
@@ -485,9 +485,14 @@ fn borrow_local_copies(m: &Module, f: &mut Func) -> bool {
 
 /// What a string copy of `v` may borrow instead of copying: `Some(None)` when `v` is a
 /// parameter or a literal, `Some(Some(owner))` when `v` is an element read out of a list, which
-/// stays valid while the owner of that list (the value whose field it is, else the list itself)
-/// is only borrowed, `None` for any other source.
-fn str_source(f: &Func, defs: &[Option<(usize, usize)>], v: Value) -> Option<Option<Value>> {
+/// stays valid while the owner of that list (see `projection_owner`) is only borrowed, `None`
+/// for any other source or when the owner cannot be traced.
+fn str_source(
+    m: &Module,
+    f: &Func,
+    defs: &[Option<(usize, usize)>],
+    v: Value,
+) -> Option<Option<Value>> {
     let Some((db, di)) = defs[v.index()] else {
         return Some(None);
     };
@@ -495,26 +500,41 @@ fn str_source(f: &Func, defs: &[Option<(usize, usize)>], v: Value) -> Option<Opt
     match def.op {
         Op::StrLit => Some(None),
         Op::ListGet | Op::ListGetU | Op::ListGetNn => {
-            Some(Some(element_owner(f, defs, def.args[0])))
+            projection_owner(m, f, defs, def.args[0]).map(Some)
         }
         _ => None,
     }
 }
 
-/// The value `list` is ultimately read out of: followed through field projections and element
-/// reads (a list inside a record inside a list), `list` itself when it is not one.
-fn element_owner(f: &Func, defs: &[Option<(usize, usize)>], mut v: Value) -> Value {
+/// The owned value (or parameter) `v` is ultimately read out of, followed through every kind of
+/// projection: field, list element, optional payload, alternative payload, and a map entry
+/// (`load` of the pointer a map lookup returns). `None` when the chain reaches a borrow it cannot
+/// see through (a call returning a reference, a global), so the caller keeps its copy.
+fn projection_owner(
+    m: &Module,
+    f: &Func,
+    defs: &[Option<(usize, usize)>],
+    mut v: Value,
+) -> Option<Value> {
     while let Some((db, di)) = defs[v.index()] {
         let def = &f.blocks[db].insts[di];
-        if !matches!(
-            def.op,
-            Op::TypeGet | Op::ListGet | Op::ListGetU | Op::ListGetNn
-        ) {
-            break;
+        match def.op {
+            Op::TypeGet | Op::ListGet | Op::ListGetU | Op::ListGetNn | Op::OptGet | Op::AltGet => {
+                v = def.args[0]
+            }
+            Op::Load => {
+                let (pb, pi) = defs[def.args[0].index()]?;
+                let ptr_def = &f.blocks[pb].insts[pi];
+                if ptr_def.op != Op::CallRt {
+                    return None;
+                }
+                v = *ptr_def.args.first()?;
+            }
+            _ if m.result_mode(f, def) == Some(Mode::Move) => return Some(v),
+            _ => return None,
         }
-        v = def.args[0];
     }
-    v
+    Some(v)
 }
 
 /// The owner at the end of the field projections that produced `v`, or `None` when `v` is not

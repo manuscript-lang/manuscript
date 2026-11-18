@@ -6,6 +6,22 @@ The current runner reports the minimum of N rotating runs. It checks each produc
 
 Record the source revision, machine, tool versions, build type and effective backend when publishing timings. `ms build` defaults to Release; a release-built compiler binary alone does not establish LLVM use. `MS_BACKEND=cranelift` opts out of LLVM, and unavailable LLVM tools can also cause a fallback. This validation change does not rerun or change the historical results below.
 
+## main at b4b25a2b (2026-11-18)
+
+linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1, gcc `-O2`, `ms` Release build with LLVM; minimum of 5 rotating runs, microseconds. `MS=./target/release/ms GO=go ms run bench/tools/kernels.ms -- kernels 5`.
+
+| kernel | go us | ms us | ms / go | rust us | rust-checked us | c us | c-ms us | ms / rust | ms / rust-checked |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| sieve_5M | 63083 | 27080 | 0.43x | 28608 | 30827 | 24860 | 31291 | 0.95x | 0.88x |
+| nbody_200k | 7506 | 6813 | 0.91x | 6257 | 6270 | 7657 | 8294 | 1.09x | 1.09x |
+| life_128x128_50 | 45965 | 3319 | 0.07x | 3271 | 3436 | 30771 | 46117 | 1.01x | 0.97x |
+| matmul_200 | 11512 | 6966 | 0.61x | 6770 | 6795 | 4177 | 12138 | 1.03x | 1.03x |
+| trees_d16_x20 | 42122 | 29394 | 0.70x | 31652 | 34426 | 26609 | 26433 | 0.93x | 0.85x |
+| collatz_1M | 249759 | 241366 | 0.97x | 171885 | 260346 | 224808 | 297024 | 1.40x | 0.93x |
+| map_count_2M | 22496 | 7311 | 0.32x | 22081 | 23036 | n/a | 15951 | 0.33x | 0.32x |
+
+Against Rust with overflow checks, Manuscript is level or ahead on every kernel; the 1.2x to 1.3x gaps of 2026-10-25 on nbody and life are gone. The widest gap is nbody at 1.09x. collatz is 1.40x against unchecked Rust and 0.93x against checked Rust.
+
 ## main at c1b81215 (2026-10-25)
 
 linux/amd64, four cores, Go 1.24.7, rustc 1.99.1, `ms` Release build with LLVM; median of 5, microseconds. "c" is the same algorithm in C at `-O3`; "c-ms" is the C a no-GC Manuscript backend would emit, with bounds, overflow and poll checks.

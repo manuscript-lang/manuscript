@@ -539,3 +539,40 @@ fn a_field_cloned_out_of_a_dying_type_is_moved_not_copied() {
     assert!(count(&m, "main", Op::Drop) >= drops);
     assert!(!ms_mir::expand_owned::needed(&m));
 }
+
+/// A string read out of a list stored in a map entry lives in the map. Dropping the map before
+/// the copy's drop means the copy must stay: it is the only owner of the string.
+const MAP_ENTRY_LIST: &str = r#"module "t"
+file 0 "t.ms"
+extern @msrt_map_new() -> Map<str, list<str>>
+extern @msrt_map_get_ptr(Map<str, list<str>>, ptr, ptr, ptr) -> ptr
+entry @main
+
+fn @main() -> int export {
+b0:
+  %m: Map<str, list<str>> = call.rt @msrt_map_new ()
+  %k: str = str "a"
+  %kd: ptr = typedesc str
+  %vd: ptr = typedesc list<str>
+  %ks: ptr = slot str
+  store %ks, %k
+  %p: ptr = call.rt @msrt_map_get_ptr (%m, %kd, %vd, %ks)
+  %l: list<str> = load list<str> %p
+  %i: int = iconst 0
+  %s: str = list.get %l, %i
+  %c: str = clone %s
+  drop %m
+  %n: int = str.len %c
+  drop %c
+  ret %n
+}
+"#;
+
+#[test]
+fn a_copy_of_a_map_entry_element_stays_when_the_map_is_dropped_first() {
+    let mut m = parse_module(MAP_ENTRY_LIST).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    opt::copyelim::run(&mut m);
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&m)));
+    assert_eq!(count(&m, "main", Op::Clone), 1, "{}", print_module(&m));
+}

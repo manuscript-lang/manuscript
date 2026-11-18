@@ -17,7 +17,7 @@ fn main() Void:
     var slowest = -1
     var levels = Map[String, Int]()
     var stats = Map[String, Stat]()
-    for line in data.decode_utf8().get("").split("\n").filter(fn l: not l.trim().is_empty()):
+    for line in data.decode_utf8().get_or("").split("\n").filter(fn l: not l.trim().is_empty()):
         f := line.split(" ")
         if f.length() != 6 or f[0].is_empty() or not ["DEBUG", "INFO", "WARN", "ERROR"].contains(f[1]) or not ["GET", "POST", "PUT", "DELETE"].contains(f[2]) or not f[3].starts_with("/") or f[4].length() != 3 or not digits(f[4]) or not digits(f[5]) or f[5].length() > 9:
             bad += 1
