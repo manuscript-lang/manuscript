@@ -2240,7 +2240,13 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func, params: &BTreeMap<u32, Ty>) -> BTre
         .filter(|i| {
             matches!(
                 i.op,
-                Op::ListLit | Op::ListFill | Op::TypeNew | Op::AltNew | Op::Clone | Op::Call
+                Op::ListLit
+                    | Op::ListFill
+                    | Op::TypeNew
+                    | Op::AltNew
+                    | Op::IfaceNew
+                    | Op::Clone
+                    | Op::Call
             )
         })
         .filter_map(|i| i.res.map(|r| r.0))
@@ -2258,7 +2264,9 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func, params: &BTreeMap<u32, Ty>) -> BTre
         .flat_map(|b| &b.insts)
         .filter(|i| i.op == Op::ClosureNew)
         .flat_map(|i| i.args.iter().map(|a| a.0))
-        .chain(params.keys().copied())
+        // A slot parameter that is only refilled with fresh values; one refilled with the very value
+        // taken out of it (a field moved out and back) stays within a block.
+        .chain(params.keys().copied().filter(|s| !stale.contains(s)))
         .chain(
             slots
                 .keys()
@@ -2373,6 +2381,27 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
         .collect();
     let mut used = vec![false; m.funcs.len()];
     let targets = closure_targets(m);
+    // The functions some call reaches; a function nothing calls directly is reached some other way
+    // (a method table, a function value), so its callers do not cover its slot parameters and a
+    // callee cannot count on it to pass them on.
+    for caller in &m.funcs {
+        for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
+            match (inst.op, inst.imm) {
+                (Op::CallInd, _) => targets
+                    .iter()
+                    .filter(|g| m.funcs[g.index()].params.len() == inst.args.len())
+                    .for_each(|g| used[g.index()] = true),
+                (Op::ClosureNew, _) => {}
+                (_, Imm::Func(g)) => used[g.index()] = true,
+                _ => {}
+            }
+        }
+    }
+    // A method table entry is called with whatever the interface call passes, never with a slot
+    // the caller left uncovered.
+    for g in m.vtables.iter().flat_map(|v| &v.methods) {
+        owns[g.index()].iter_mut().for_each(|f| *f = false);
+    }
     let mut changed = true;
     while changed {
         changed = false;
@@ -2409,7 +2438,6 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
                 let direct = matches!(inst.op, Op::Call | Op::CallInd);
                 let mine = owns[ci].clone();
                 for g in reached {
-                    used[g.index()] = true;
                     for (k, flag) in owns[g.index()].iter_mut().enumerate() {
                         if !*flag {
                             continue;
@@ -2426,7 +2454,7 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
                                         .params
                                         .iter()
                                         .position(|p| p.value == *a)
-                                        .is_some_and(|kp| mine[kp])
+                                        .is_some_and(|kp| used[ci] && mine[kp])
                             });
                         if !ok {
                             *flag = false;
