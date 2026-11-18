@@ -582,6 +582,8 @@ struct Cx<'a> {
     native: &'a HashSet<usize>,
     /// Per MIR block: whether it lies on a cycle (hot code gets inline fast paths).
     in_loop: Vec<bool>,
+    /// Each slot that only holds one owned map or set parameter, and that parameter.
+    slot_aliases: HashMap<ms_mir::ir::Value, ms_mir::ir::Value>,
 }
 
 /// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
@@ -653,6 +655,7 @@ pub fn emit(
         vals.insert(f.blocks[0].params[i].value.index(), own);
     }
     let confined = ms_mir::slot_scope::confined(m, f);
+    let slot_aliases = types::slot_aliases(f, lay);
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         if bb.index() != 0 {
@@ -664,11 +667,12 @@ pub fn emit(
         for inst in &bd.insts {
             let Some(res) = inst.res else { continue };
             let pre = area_of(inst.op).and_then(|a| (a.pre)(m, lay, f, inst, &vals, &mut b));
-            let own =
-                match pre.or_else(|| types::bind_early(&mut b, lay, f, &vals, &confined, inst)) {
-                    Some(own) => own,
-                    None => types::reserve(&mut b, lay, f.ty(res)),
-                };
+            let own = match pre.or_else(|| {
+                types::bind_early(&mut b, lay, f, &vals, &confined, &slot_aliases, inst)
+            }) {
+                Some(own) => own,
+                None => types::reserve(&mut b, lay, f.ty(res)),
+            };
             vals.insert(res.index(), own);
         }
     }
@@ -708,6 +712,7 @@ pub fn emit(
         split: 0,
         native,
         in_loop: ms_mir::opt::inline::blocks_in_loops(f),
+        slot_aliases,
     };
     let searches = loops::arithmetic_searches(f);
     for bb in &rpo {

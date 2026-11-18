@@ -54,6 +54,17 @@ pub struct FuncBuilder<'m> {
     /// edge arguments that still name a removed parameter are resolved through this map when read
     /// and once more when the function is finished.
     forward: HashMap<Value, Value>,
+    /// Where each value was defined, indexed by value: the instruction that yields it or the block
+    /// whose parameter it is. An entry can outlive its definition (a rolled-back run, a removed
+    /// parameter), so a lookup confirms it before using it.
+    def_site: Vec<DefSite>,
+}
+
+#[derive(Clone, Copy)]
+enum DefSite {
+    None,
+    Inst(Block, u32),
+    Param(Block),
 }
 
 impl<'m> FuncBuilder<'m> {
@@ -70,6 +81,10 @@ impl<'m> FuncBuilder<'m> {
     /// Starts a function; the entry block is current and sealed.
     pub fn new(m: &'m mut Module, name: &str, params: Vec<Param>, ret: Ty) -> Self {
         let f = Func::new(name, params, ret);
+        let mut def_site = Vec::new();
+        for v in f.param_values() {
+            Self::record(&mut def_site, v, DefSite::Param(Block(0)));
+        }
         FuncBuilder {
             m,
             f,
@@ -81,7 +96,24 @@ impl<'m> FuncBuilder<'m> {
             sealed: vec![true],
             incomplete: HashMap::new(),
             forward: HashMap::new(),
+            def_site,
         }
+    }
+
+    fn record(sites: &mut Vec<DefSite>, v: Value, site: DefSite) {
+        if sites.len() <= v.0 as usize {
+            sites.resize(v.0 as usize + 1, DefSite::None);
+        }
+        sites[v.0 as usize] = site;
+    }
+
+    /// The instruction that defines `v`, in any block: found through `def_site`, not a search.
+    fn def_inst(&self, v: Value) -> Option<&Inst> {
+        let DefSite::Inst(b, i) = *self.def_site.get(v.0 as usize)? else {
+            return None;
+        };
+        let inst = self.f.blocks.get(b.index())?.insts.get(i as usize)?;
+        (inst.res == Some(v)).then_some(inst)
     }
 
     /// Mutable access to the function under construction (linkage, kind, hints).
@@ -135,25 +167,14 @@ impl<'m> FuncBuilder<'m> {
 
     /// The op that defines `v`, looking through every block of the function.
     pub fn defining_op_anywhere(&self, v: Value) -> Option<Op> {
-        self.f
-            .blocks
-            .iter()
-            .flat_map(|b| &b.insts)
-            .find(|i| i.res == Some(v))
-            .map(|i| i.op)
+        self.def_inst(v).map(|i| i.op)
     }
 
     /// Whether `v` is, through copies, a closure whose environment points into this frame.
     pub fn is_scoped_closure(&self, v: Value) -> bool {
         let mut cur = v;
         loop {
-            let Some(i) = self
-                .f
-                .blocks
-                .iter()
-                .flat_map(|b| &b.insts)
-                .find(|i| i.res == Some(cur))
-            else {
+            let Some(i) = self.def_inst(cur) else {
                 return false;
             };
             match (i.op, i.imm) {
@@ -167,17 +188,18 @@ impl<'m> FuncBuilder<'m> {
     }
 
     /// Whether `v` is a borrow: defined by an operation whose result borrows, or a borrowed
-    /// parameter. Searches every block; an undefined value is not.
+    /// parameter. An undefined value is not.
     pub fn is_borrowed(&self, v: Value) -> bool {
-        for b in &self.f.blocks {
-            if let Some(p) = b.params.iter().find(|p| p.value == v) {
-                return p.mode == crate::ir::Mode::Borrow;
-            }
-            if let Some(i) = b.insts.iter().find(|i| i.res == Some(v)) {
-                return self.m.result_mode(&self.f, i) != Some(crate::ir::Mode::Move);
-            }
+        if let Some(DefSite::Param(b)) = self.def_site.get(v.0 as usize)
+            && let Some(p) = self.f.blocks[b.index()]
+                .params
+                .iter()
+                .find(|p| p.value == v)
+        {
+            return p.mode == crate::ir::Mode::Borrow;
         }
-        false
+        self.def_inst(v)
+            .is_some_and(|i| self.m.result_mode(&self.f, i) != Some(crate::ir::Mode::Move))
     }
 
     /// The first operand of the instruction that defined `v` in the current block.
@@ -192,12 +214,7 @@ impl<'m> FuncBuilder<'m> {
 
     /// The operands of the instruction that defined `v`, looking through every block.
     pub fn defining_args_anywhere(&self, v: Value) -> Option<&[Value]> {
-        self.f
-            .blocks
-            .iter()
-            .flat_map(|b| &b.insts)
-            .find(|i| i.res == Some(v))
-            .map(|i| i.args.as_slice())
+        self.def_inst(v).map(|i| i.args.as_slice())
     }
 
     /// Sets the source location attached to subsequently emitted instructions.
@@ -245,6 +262,7 @@ impl<'m> FuncBuilder<'m> {
         self.f.blocks[b.index()]
             .params
             .push(BlockParam { value: v, mode });
+        Self::record(&mut self.def_site, v, DefSite::Param(b));
         v
     }
 
@@ -263,7 +281,15 @@ impl<'m> FuncBuilder<'m> {
             res,
             loc: self.loc,
         };
-        self.f.blocks[self.cur.index()].insts.push(inst);
+        let insts = &mut self.f.blocks[self.cur.index()].insts;
+        if let Some(r) = res {
+            Self::record(
+                &mut self.def_site,
+                r,
+                DefSite::Inst(self.cur, insts.len() as u32),
+            );
+        }
+        insts.push(inst);
         res
     }
 

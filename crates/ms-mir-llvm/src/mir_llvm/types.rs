@@ -21,6 +21,7 @@ use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
 use ms_mir::ir::{Func, Imm, Inst, Mode, Op, Target, Value};
 use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
+use std::collections::{HashMap, HashSet};
 
 pub(super) const AREA: Area = Area {
     handles,
@@ -604,33 +605,49 @@ pub(super) fn copies(b: &mut FnBuilder, lay: &Layouts, f: &Func, vals: &Vals, t:
     }
 }
 
-/// The map or set that slot `slot` only ever holds: one owned block parameter put into it. The
+/// The map or set that each slot only ever holds: one owned block parameter put into it. The
 /// runtime updates the map in place through the slot, and the parameter is consumed by the put, so
-/// the slot is the parameter's own storage and the copies in and out disappear.
-fn slot_alias(f: &Func, lay: &Layouts, slot: Value) -> Option<Value> {
-    // A `put` through a pointer parameter writes the caller's map, so only a `slot` of this
-    // function can be the parameter's own storage.
-    let is_slot = f
-        .blocks
-        .iter()
-        .flat_map(|bl| &bl.insts)
-        .any(|i| i.res == Some(slot) && i.op == Op::Slot);
-    if !is_slot {
-        return None;
+/// the slot is the parameter's own storage and the copies in and out disappear. Found in one pass
+/// over the function: a `put` through a pointer parameter writes the caller's map, so only a
+/// `slot` of this function can be the parameter's own storage.
+pub(super) fn slot_aliases(f: &Func, lay: &Layouts) -> HashMap<Value, Value> {
+    let mut slots = HashSet::new();
+    // The first write to each slot (its `put` operand, when it is a `put`) and whether a second
+    // write follows.
+    let mut writes: HashMap<Value, (Option<Value>, bool)> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|bl| &bl.insts) {
+        match i.op {
+            Op::Slot => {
+                slots.extend(i.res);
+            }
+            Op::Put | Op::Store => {
+                let w = writes.entry(i.args[0]).or_insert((None, false));
+                if w.1 || w.0.is_some() {
+                    w.1 = true;
+                } else if i.op == Op::Put {
+                    w.0 = Some(i.args[1]);
+                } else {
+                    w.1 = true;
+                }
+            }
+            _ => {}
+        }
     }
-    let mut writes = f
+    let owned: HashSet<Value> = f
         .blocks
         .iter()
-        .flat_map(|bl| &bl.insts)
-        .filter(|i| matches!(i.op, Op::Put | Op::Store) && i.args[0] == slot);
-    let put = writes.next().filter(|i| i.op == Op::Put)?;
-    let v = put.args[1];
-    let owned = f.blocks.iter().any(|bl| {
-        bl.params
-            .iter()
-            .any(|p| p.value == v && p.mode == Mode::Move)
-    });
-    (writes.next().is_none() && owned && is_map_or_set(lay, f.ty(v))).then_some(v)
+        .flat_map(|bl| &bl.params)
+        .filter(|p| p.mode == Mode::Move)
+        .map(|p| p.value)
+        .collect();
+    writes
+        .into_iter()
+        .filter_map(|(slot, (put, again))| {
+            let v = put?;
+            (slots.contains(&slot) && !again && owned.contains(&v) && is_map_or_set(lay, f.ty(v)))
+                .then_some((slot, v))
+        })
+        .collect()
 }
 
 /// Whether the result of `inst` is bound by [`bind_early`]: a type held as leaves is built, read
@@ -658,6 +675,7 @@ pub(super) fn bind_early(
     f: &Func,
     vals: &Vals,
     confined: &std::collections::HashMap<Value, ms_mir::ir::Block>,
+    aliases: &HashMap<Value, Value>,
     inst: &Inst,
 ) -> Option<Vec<Val>> {
     if !is_early(lay, f, inst) {
@@ -667,7 +685,7 @@ pub(super) fn bind_early(
     match inst.op {
         Op::Slot => {
             let Imm::Ty(t) = inst.imm else { return None };
-            if let Some(v) = slot_alias(f, lay, inst.res?) {
+            if let Some(v) = aliases.get(&inst.res?) {
                 return Some(vals[&v.index()].clone());
             }
             // The runtime may write a whole word to a slot of a smaller type.
@@ -719,7 +737,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
         _ if is_early(lay, f, inst) => {}
         Op::Load | Op::Take | Op::Store | Op::Put
             if empty(lay, f.ty(inst.res.unwrap_or_else(|| inst.args[1]))) => {}
-        Op::Take if slot_alias(f, lay, inst.args[0]).is_some() => {
+        Op::Take if cx.slot_aliases.contains_key(&inst.args[0]) => {
             let s = shape(b.types(), lay, f.ty(inst.res.expect("take result"))).expect("is_mem");
             b.name_next(&out[0]);
             b.leaf_ptr(&s.st, &arg(0)[0], 0);
@@ -728,7 +746,7 @@ fn emit(cx: &mut Cx, inst: &Inst, vals: &Vals, b: &mut FnBuilder) {
             let ty = f.ty(inst.res.expect("load result"));
             load_value(b, lay, ty, &arg(0)[0], &out);
         }
-        Op::Put if slot_alias(f, lay, inst.args[0]).is_some() => {}
+        Op::Put if cx.slot_aliases.contains_key(&inst.args[0]) => {}
         Op::Store | Op::Put => {
             store_value(b, lay, f.ty(inst.args[1]), vals, inst.args[1], &arg(0)[0]);
         }
