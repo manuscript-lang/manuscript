@@ -16,7 +16,7 @@ fn burn(rounds: Int) Int!:
 	return ok(x)
 
 test "a sleeping main wakes on time while a promise it started computes":
-	work := promise[Int](fn: burn(40000000))
+	work := promise[Int](fn: burn(150000000))
 	for round in 0..5:
 		void sleep(1.milliseconds()).wait()
 	expect_true(not work.done())?
