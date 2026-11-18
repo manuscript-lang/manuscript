@@ -189,6 +189,14 @@ fn possibly_negative_index_keeps_the_check() {
 }
 
 #[test]
+fn a_bound_on_n_minus_one_bounds_n() {
+    // `1 <= x < n - 1` gives `n > 2`, so `x * n` is not negative and the access needs no wrap.
+    let (_, a) = optimized("narrow_through_offset.mir");
+    assert_eq!(count(&a, "list.get.nn"), 1, "{}", print_module(&a));
+    assert_eq!(count(&a, "list.get"), 0, "{}", print_module(&a));
+}
+
+#[test]
 fn push_changes_the_length() {
     let (_, a) = optimized("list_negative.mir");
     // Before the push `i < len(l0)` is known; after it only `n >= 0` is.
