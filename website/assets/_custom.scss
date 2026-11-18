@@ -183,6 +183,7 @@ html:root[data-theme="dark"] .docs-shot.has-dark .shot-dark { display: block; }
 .markdown .home-hero h1 { font-family: var(--docs-mono); font-size: clamp(2.3rem, 5vw, 4.4rem); font-weight: 400; line-height: 1.12; letter-spacing: -.065em; margin: 0 0 2rem; }
 .home-hero h1 span { color: var(--docs-prose-link); }
 .markdown .home-description { max-width: 44rem; margin: 0 auto; font-size: 1.05rem; line-height: 1.75; color: var(--docs-muted); }
+.markdown .home-description + .home-description { margin-top: .9rem; font-size: .9rem; line-height: 1.7; }
 .home-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.5rem; margin-top: 2rem; }
 .markdown .home-button[href] { display: inline-flex; align-items: center; justify-content: center; gap: 1.5rem; border: 1px solid var(--docs-heading); border-radius: 0; padding: .9rem 1.15rem; font: .8rem var(--docs-mono); text-decoration: none; }
 .markdown a.home-button-primary[href], .markdown a.home-button-primary[href]:visited { background: var(--docs-button-bg); color: var(--docs-button-fg); box-shadow: 3px 3px 0 var(--docs-heading); }
