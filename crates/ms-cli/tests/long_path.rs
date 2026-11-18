@@ -36,8 +36,18 @@ fn a_project_under_a_long_path_builds_tests_and_runs() {
     passes(&ms(&["check", file]), "check");
     passes(&ms(&["fmt", "--check", file]), "fmt");
     passes(&ms(&["lint", file]), "lint");
-    let tested = passes(&ms(&["test", file]), "test");
-    assert!(tested.contains("1 tests, 0 failed"), "{tested}");
+    let tested = ms(&["test", file]);
+    if cfg!(windows) {
+        // Windows cannot start a process whose working directory is 260 or more characters; the
+        // failure must say so rather than "directory name is invalid".
+        let text = String::from_utf8_lossy(&tested.stdout).into_owned()
+            + &String::from_utf8_lossy(&tested.stderr);
+        assert!(!tested.status.success(), "{text}");
+        assert!(text.contains("260 or more characters"), "{text}");
+    } else {
+        let tested = passes(&tested, "test");
+        assert!(tested.contains("1 tests, 0 failed"), "{tested}");
+    }
 
     let ran = passes(&ms(&["run", file, "--", dir.to_str().unwrap()]), "run");
     assert!(ran.ends_with("true\nfalse\ndone\n"), "{ran}");
