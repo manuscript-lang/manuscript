@@ -32,8 +32,9 @@ BEGIN := "-----BEGIN "
 END := "-----END "
 DASHES := "-----"
 
-// Parses every PEM block in `text`; text outside blocks is ignored, and a text without
-// blocks gives an empty list.
+// Parses every PEM block in `text`. Text outside blocks is ignored, and a text without
+// blocks gives an empty list. Mismatched, nested or unterminated armor, or a body that
+// is not valid Base64, returns an `Error` with kind `EBADMSG`.
 export fn parse(text: String) List[PemBlock]!:
 	var blocks = List[PemBlock]()
 	var label = ""

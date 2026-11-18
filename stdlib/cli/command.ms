@@ -6,8 +6,8 @@ Command-line parsing for programs with nested subcommands, typed flags, position
 A `Command` holds a schema (`flags`, `args`), `children`, and a handler. `command[T]` builds a leaf whose handler
 receives your own options record `T`: every flag and argument is stored under its name (dashes become underscores),
 and the record is decoded from those values like `json.parse[T]`, so each field needs a flag or argument with its name
-and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
-`arguments()` from `@std/os/env.ms` in `main`.
+and a matching type. Flags and arguments without a field, such as inherited persistent flags, are ignored.
+Parsing reads only the `List[String]` you give it; pass `arguments()` from `@std/os/env.ms` in `main`.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -47,7 +47,8 @@ export enum FlagKind:
 	String
 	// `Int` field. A whole number that fits in Int; other text returns an Error with kind `"EINVAL"`.
 	Int
-	// `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, returns an Error with kind `"EINVAL"`.
+	// `Float` field. A finite decimal number that parses as Float; other text, including NaN
+	// and infinities, returns an Error with kind `"EINVAL"`.
 	Float
 	// `List[String]` field. The flag may repeat; every occurrence is kept in order.
 	List

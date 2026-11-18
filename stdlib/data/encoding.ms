@@ -14,6 +14,14 @@ import (
 	msstd_encoding_hex_encode from "@std/internal/encoding.ms",
 )
 
+/*
+Binary-to-text encodings (ASCII85, Base32, Base64, hexadecimal) and text encodings
+(UTF-16, ISO-8859-1, ASCII) over `Bytes`. Decoders return an `Error` with kind `EBADMSG`
+for malformed input. Where a decoder takes `max_bytes`, a negative value returns
+`EINVAL` and output above the limit returns `EOVERFLOW`; pass it when the input is
+untrusted. `@std/data/encoding_stream.ms` has the streaming forms.
+*/
+
 // Encodes unframed ASCII85; complete groups of four zero bytes become `z`. No Adobe
 // `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is
 // `"BOu!rDZ"`.
@@ -21,9 +29,9 @@ export fn ascii85_encode(data: Bytes) String:
 	return msstd_encoding_ascii85_encode(data)
 
 /*
-Decodes unframed ASCII85, ignoring ASCII bytes 0 through 32; `z` is valid only between groups.
-Rejects Adobe delimiters, one-digit tails, invalid characters and overflowing complete or partial 32-bit groups.
-Negative `max_bytes` returns EINVAL; decoded output above it returns EOVERFLOW before allocating output.
+Decodes unframed ASCII85. ASCII bytes 0 through 32 are ignored, and `z` is valid only between groups.
+Rejects Adobe delimiters, one-digit tails, invalid characters and groups that overflow 32 bits.
+A negative `max_bytes` returns `EINVAL`; decoded output above it returns `EOVERFLOW` before the output is allocated.
 */
 export fn ascii85_decode(text: String, max_bytes: Int?) Bytes!:
 	return msstd_encoding_ascii85_decode(text, max_bytes)
@@ -42,8 +50,8 @@ export fn base32_encode(data: Bytes, options: Base32Options = Base32Options()) S
 
 /*
 Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `options.hex_alphabet` is true.
-Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return EBADMSG.
-Negative `max_bytes` returns EINVAL; output exceeding it returns EOVERFLOW.
+Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return `EBADMSG`.
+A negative `max_bytes` returns `EINVAL`; output exceeding it returns `EOVERFLOW`.
 */
 export fn base32_decode(
 	text: String,
@@ -59,7 +67,8 @@ export fn base32_decode(
 
 /*
 Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
-`padded: false` expects text without `=` and rejects it, whitespace and nonzero unused bits.
+`padded: false` expects text without `=` and rejects `=`. Whitespace and nonzero unused bits are always rejected.
+Malformed text returns `EBADMSG`; `max_bytes` behaves as in `base32_decode`.
 */
 export fn base64_decode(
 	text: String,
@@ -74,8 +83,8 @@ export fn base64_decode(
 	)
 	return msstd_encoding_base64_decode(text, url_safe, max_bytes)
 
-// The budget as a count, with no budget as a very large one and a negative budget as
-// -1.
+// The budget as a count: no budget is the largest `Int`, and a negative budget stays
+// negative.
 fn budget(max_bytes: Int?) Int:
 	if limit := max_bytes: return limit
 	return 9223372036854775807
@@ -94,7 +103,9 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false, padded: Bool = true
 
 	return text
 
-// Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
+// Decodes hexadecimal text, upper or lower case. Odd length or a non-hex character
+// returns
+// `EBADMSG`. `max_bytes` bounds decoded output as in `base32_decode`.
 export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
 	return msstd_encoding_hex_decode(text, max_bytes)
 
@@ -142,8 +153,8 @@ fn text_of(scalars: List[Int]) String:
 	return ""
 
 // Decodes UTF-16 bytes, little-endian unless `little_endian` is false. An odd length or
-// an unpaired surrogate returns EBADMSG; a negative `max_bytes` returns EINVAL, and
-// decoded text longer than `max_bytes` UTF-8 bytes returns EOVERFLOW.
+// an unpaired surrogate returns `EBADMSG`; a negative `max_bytes` returns `EINVAL`, and
+// decoded text longer than `max_bytes` UTF-8 bytes returns `EOVERFLOW`.
 export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?) String!:
 	limit := budget(max_bytes)
 	if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
@@ -189,7 +200,7 @@ export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?)
 	return ok(text_of(scalars))
 
 // Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns
-// EBADMSG.
+// `EBADMSG`.
 export fn latin1_encode(text: String) Bytes!:
 	return narrow(text, 255)
 
@@ -207,11 +218,11 @@ fn narrow(text: String, maximum: Int) Bytes!:
 export fn latin1_decode(data: Bytes) String:
 	return text_of(data.values().map(fn b: b.to_int()))
 
-// Encodes text as 7-bit ASCII. A scalar above U+007F returns EBADMSG.
+// Encodes text as 7-bit ASCII. A scalar above U+007F returns `EBADMSG`.
 export fn ascii_encode(text: String) Bytes!:
 	return narrow(text, 127)
 
-// Decodes 7-bit ASCII bytes. A byte above 0x7F returns EBADMSG.
+// Decodes 7-bit ASCII bytes. A byte above 0x7F returns `EBADMSG`.
 export fn ascii_decode(data: Bytes) String!:
 	bytes := data.values()
 	for byte in bytes:

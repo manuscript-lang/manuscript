@@ -3,7 +3,9 @@
 /*
 Terminal text styling and measuring: colors, attributes, and width-aware helpers for strings that carry escape sequences.
 
-`paint(text, style, colors)` wraps `text` in the SGR sequences for a `Style` and resets afterwards. `colors` is the count from `terminal_capabilities().colors`: 0 returns `text` unchanged, 16 and 256 downgrade richer colors to the nearest available one. `styled` reads the count itself. `strip_ansi` removes escape sequences, `visible_width` counts the columns a string occupies on screen, and `wrap_text` breaks text into rows of at most a width, carrying the active style across breaks.
+`paint(text, style, colors)` wraps `text` in the SGR sequences for a `Style` and resets afterwards. `colors` is the count from `terminal_capabilities().colors`: 0 returns `text` unchanged, and 16 or 256 downgrade richer colors to the nearest available one. `styled` reads the count itself.
+
+`strip_ansi` removes escape sequences. `visible_width` counts the columns a string occupies on screen. `wrap_text` breaks text into rows of at most a given width, carrying the active style across breaks.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

@@ -51,7 +51,8 @@ export type CommandOutput:
 	max_resident_bytes: Int
 
 // Where a child's standard input, output, or error goes, chosen per stream.
-// `spawn("make", [], SpawnOptions(stdout: Stdio.Inherit, stderr: Stdio.Inherit))` lets the child's output reach the parent's terminal while stdin stays piped.
+// `spawn("make", [], SpawnOptions(stdout: Stdio.Inherit, stderr: Stdio.Inherit))` lets the
+// child's output reach the parent's terminal while stdin stays piped.
 export enum Stdio:
 	// An OS pipe to the parent, read or written through the Subprocess's stream.
 	Pipe
@@ -358,7 +359,9 @@ export fn initialize_groups(username: String, gid: Int) Void!:
 // Replaces the running process image with `program` using exactly the given `arguments`
 // as argv, where `arguments[0]` is the program name, and exactly the given
 // `environment`. On success it never returns.
-// `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return EINVAL, and exec failures return ENOENT, EACCES, or EIO. ENOTSUP on Windows.
+// `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL
+// bytes return EINVAL, and exec failures return ENOENT, EACCES, or EIO. ENOTSUP on
+// Windows.
 // ms: effect std.process.run
 export fn replace(
 	program: String,

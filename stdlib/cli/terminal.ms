@@ -1,7 +1,11 @@
 /*
 Terminal detection, size, and raw input with cursor and screen control, on Linux, macOS and Windows.
 
-`terminal_capabilities` reports whether the standard streams are terminals and how many colors they support. `raw_mode` acquires a `RawTerminal` whose `events()` stream yields keys, text, pastes and resizes. Bracketed paste and the extended keyboard protocols are on while it is held, so a paste arrives as one `Paste` event and Shift-Enter, Ctrl-Enter and the like arrive as an `enter` key with modifiers on terminals that report them. Cursor moves, erasing, the title and raw `write` go through the terminal so they stay ordered with buffered program output; styling and width helpers are in `@std/cli/style.ms` and the diffed redraw in `@std/cli/screen.ms`.
+`terminal_capabilities` reports whether the standard streams are terminals and how many colors they support. `raw_mode` acquires a `RawTerminal` whose `events()` stream yields keys, text, pastes and resizes.
+
+Bracketed paste and the extended keyboard protocols are on while the `RawTerminal` is held. A paste arrives as one `Paste` event, and on terminals that report them, Shift-Enter and Ctrl-Enter arrive as an `enter` key with modifiers. Cursor moves, erasing, the title and raw `write` go through the terminal, so they stay ordered with buffered program output.
+
+Styling and width helpers are in `@std/cli/style.ms`; the diffed redraw is in `@std/cli/screen.ms`.
 */
 import (
 	Closeable from "@std/core.ms",

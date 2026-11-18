@@ -288,14 +288,19 @@ export interface HttpExchange:
 	// Requests without an Origin are accepted; otherwise it must exactly match an entry
 	// of `allowed_origins`, or, when that list is empty, match the request's own scheme
 	// and host.
-	// `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
+	// `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be
+	// positive when given. An exchange that already sent headers or upgraded returns
+	// EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
 	var fn upgrade(
 		allowed_origins: List[String] = [],
 		subprotocols: List[String] = [],
 		max_message_bytes: Int? = none,
 	) WebSocket!
 	// Writes one chunk of the response body and flushes it.
-	// `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return EINVAL.
+	// `send_headers` must come first, and writing beyond `max_response_bytes` returns an
+	// `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a
+	// handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a
+	// body and return EINVAL.
 	var fn write(move data: String) Void!
 	// Writes one chunk of raw bytes with the same rules as write.
 	var fn write_bytes(move data: Bytes) Void!

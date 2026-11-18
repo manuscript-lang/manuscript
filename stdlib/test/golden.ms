@@ -12,9 +12,9 @@ import (
 
 /*
 Golden files: expected output kept in a file next to the test and compared by `expect_golden`.
-Run the tests with `MS_UPDATE_GOLDEN=1` to write the actual output to the files instead of comparing;
-review the changes with your version control, then run again without it.
-A missing golden file fails with the update hint; it is created only when updating.
+Run the tests with `MS_UPDATE_GOLDEN=1` to write the actual output to the files instead of comparing,
+review the changes in version control, then run again without it.
+A missing golden file fails with a hint to update; it is created only when updating.
 */
 fn updating() Bool:
 	env := environment().get_or(Map[String, String]())
@@ -22,8 +22,8 @@ fn updating() Bool:
 
 	return false
 
-// Names the first line where two texts differ, with both sides, so a mismatch is
-// readable without a diff tool.
+// Internal: names the first line where two texts differ, with both sides, so a
+// mismatch is readable without a diff tool.
 fn first_difference(expected: String, actual: String) String:
 	want := expected.split("\n")
 	got := actual.split("\n")
@@ -41,8 +41,9 @@ fn first_difference(expected: String, actual: String) String:
 
 	return f"line {line + 1}: golden has {want.length()} lines, actual has {got.length()}"
 
-// Compares `actual` with the text in the golden file at `path`, or rewrites the file
-// under `MS_UPDATE_GOLDEN=1`. The failure names the file and the first differing line.
+// Compares `actual` with the text in the golden file at `path`. Under
+// `MS_UPDATE_GOLDEN=1` it rewrites the file instead. A mismatch names the file and the
+// first differing line.
 export fn expect_golden(path: String, actual: String) Void!:
 	if updating():
 		create_directory(dirname(path), true)?
@@ -65,7 +66,7 @@ export fn expect_golden(path: String, actual: String) Void!:
 
 	return fail(f"golden file {path} is not UTF-8; use expect_golden_bytes")
 
-// Byte-for-byte version of `expect_golden`; the failure names the first differing
+// Byte-for-byte version of `expect_golden`. A mismatch names the first differing
 // offset.
 export fn expect_golden_bytes(path: String, actual: Bytes) Void!:
 	if updating():

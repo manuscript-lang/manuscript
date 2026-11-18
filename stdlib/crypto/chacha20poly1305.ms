@@ -207,7 +207,8 @@ fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) 
 
 // Encrypts and authenticates `plaintext` with ChaCha20-Poly1305 (RFC 8439), returning
 // the ciphertext followed by a 16-byte tag.
-// `key` is 32 bytes and `nonce` 12 bytes; a wrong length returns EINVAL. The caller supplies a nonce never reused with the key.
+// `key` is 32 bytes and `nonce` 12 bytes; a wrong length returns EINVAL. The caller supplies
+// a nonce never reused with the key.
 export fn chacha20poly1305_seal(
 	key: Bytes,
 	nonce: Bytes,

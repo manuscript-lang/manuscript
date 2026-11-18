@@ -11,11 +11,25 @@ export type Error:
 	// never allocates when it is a literal or at most 15 bytes. The standard library
 	// reports POSIX errno names (`EAUTH` is Manuscript's own), so
 	// `error.kind == "ENOENT"` means the same on every platform:
-	//   EINVAL caller input is invalid, EBADMSG input data is malformed, EOVERFLOW a limit was exceeded,
-	//   ERANGE a value or index is out of range, ENOENT not found, EEXIST already exists, ENOTEMPTY directory not empty,
-	//   EACCES permission denied, ENOTSUP unsupported, ENOTTY not a terminal, EBADF resource closed,
-	//   EIO a task, process or peer ended abnormally, EAGAIN service unavailable, EBUSY resource busy,
-	//   ETIMEDOUT a deadline expired, ECANCELED cancelled, EAUTH authentication failed.
+	//
+	// - `EINVAL`: caller input is invalid
+	// - `EBADMSG`: input data is malformed
+	// - `EOVERFLOW`: a limit was exceeded
+	// - `ERANGE`: a value or index is out of range
+	// - `ENOENT`: not found
+	// - `EEXIST`: already exists
+	// - `ENOTEMPTY`: directory not empty
+	// - `EACCES`: permission denied
+	// - `ENOTSUP`: unsupported
+	// - `ENOTTY`: not a terminal
+	// - `EBADF`: resource closed
+	// - `EIO`: a task, process or peer ended abnormally
+	// - `EAGAIN`: service unavailable
+	// - `EBUSY`: resource busy
+	// - `ETIMEDOUT`: a deadline expired
+	// - `ECANCELED`: cancelled
+	// - `EAUTH`: authentication failed
+	//
 	// Your own code uses its own prefix, such as `"EQUOTA"`.
 	kind: String? = none
 	// Extra facts about the failure, such as the path or operation, keyed by name.
@@ -53,8 +67,10 @@ export fn panic(message: String) Never: ...
 extern fn msrt_io_write_stdout_line(text: String, end: String) Void
 
 /*
-Writes `value` as text and `end` (a newline unless given) to standard output; `print(chunk, end: "")` streams text without a newline. A type that declares its own `to_string()` prints that text, also when nested in a list or map; other records print structurally.
-It returns `Void`. Output to a terminal is flushed at each newline and output to a pipe or file is flushed when the program blocks or exits, so a line printed before a wait is visible while it waits. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
+Writes `value` as text, followed by `end` (a newline unless given), to standard output. `print(chunk, end: "")` streams text without a newline.
+A type that declares its own `to_string()` prints that text, also when nested in a list or map; other records print structurally.
+`print` returns `Void`. Output to a terminal is flushed at each newline. Output to a pipe or file is flushed when the program blocks or exits, so a line printed before a wait is visible while it waits.
+Use `stdout()` from `@std/io/io.ms` to write text with no appended newline, or `stdout_bytes()` for bytes.
 
 <!-- manuscript-example: {"mode":"fragment","given":["total: Int","order: String"]} -->
 ```manuscript
@@ -67,8 +83,8 @@ export fn print[T](value: T, end: String = "\n") Void:
 	msrt_io_write_stdout_line(value.to_string(), end)
 
 /*
-Data that a write accepts as either text or raw bytes: `String` and `Bytes` both implement it, so
-`write_file(path, "text")` and `write_file(path, bytes)` use the same function.
+Data that a write accepts as either text or raw bytes. `String` and `Bytes` both implement it, so
+`write_file(path, "text")` and `write_file(path, bytes)` call the same function.
 Text is written as its UTF-8 encoding.
 */
 export interface Writable:
@@ -77,26 +93,27 @@ export interface Writable:
 
 /*
 A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
+
 The implicit close behaves like `value.close()?`: a failed close becomes the function's error, after the
-other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
-close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
-already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
-handle the failure; the binding is then consumed.
+other bindings of the scopes it leaves have closed. A failed close is a fault where the function cannot
+return an `Error`, or where the resource sits inside a holder (a record, list or temporary).
+If the scope is already returning an error, that error is kept and the close error is dropped.
+Call `close()` yourself to handle the failure; the binding is then consumed.
 */
 export interface Closeable:
 	/*
-    Releases the implementation's resource state; with calls this on every scope exit.
-    Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
-    fail returns `ok()`.
+Releases the resource. The compiler calls this on every scope exit, including
+returns, expected errors, faults and cancellation. A type whose release cannot fail
+returns `ok()`.
     */
 	var fn close() Void!
 
 /*
 A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
-`for item in source:` calls `next` until `none`; a variable or field path advances in place and
-keeps its final state, while any other expression is held by the loop alone. `next` should keep
-returning `none` after the end. The item is a borrow: it stays valid, and the iterator
-unchanged, until the loop body ends; clone it to keep it.
+`for item in source:` calls `next` until `none`. A variable or field path advances in place and
+keeps its final state, while any other expression is held by the loop alone.
+`next` should keep returning `none` after the end.
+The item is a borrow: it stays valid, and the iterator stays unchanged, until the loop body ends. Clone it to keep it.
 */
 export interface Iterator[T]:
 	// Returns the next item, or none when no items remain. The item borrows from the
@@ -114,7 +131,7 @@ export enum Optional[T]:
 	// An absent value with no payload; no T needs to be constructed.
 	none
 
-// Returns True when a value is present, and False for none.
+// Reports whether a value is present.
 fn Optional[T].is_some() Bool: ...
 
 // Reports whether this value is absent.
@@ -128,26 +145,30 @@ fn Optional[T].get() T: ...
 // evaluated; use `get_or_else` when it costs work.
 fn Optional[T].get_or(default: T?) T: ...
 
-// Transforms a present payload; none remains absent.
+// Transforms a present payload with `transform`; `none` stays `none`.
 fn move Optional[T].map[U](transform: fn(move T) U) U?: ...
 
-// Calls transform only when present, returning its Optional unchanged.
+// Calls `transform` only when a value is present and returns the Optional it
+// produces; `none` stays `none`.
 fn move Optional[T].and_then[U](transform: fn(move T) U?) U?: ...
 
-// Returns the payload, or calls create once and returns its value only when absent.
+// Returns the payload; only when this is `none`, calls `create` once and returns its
+// value.
 fn Optional[T].get_or_else(create: fn() T) T:
 	if self.is_none(): return create()
 	return self.get()
 
-// Calls create once only when absent, returning its Optional unchanged.
+// Returns this value when present; otherwise calls `create` once and returns the
+// Optional it produces.
 fn move Optional[T].or_else(create: fn() T?) T?: ...
 
-// Returns ok with the original payload, or error with the eager cause. Without a
-// cause, E is Error (kind ENOENT) and the message names the calling source file and
-// line.
+// Returns `ok` with the payload, or `error` with `cause`, which is built before the
+// call whether or not it is used. Without a cause, `E` is `Error` with kind `ENOENT`
+// and a message naming the calling source file and line.
 fn Optional[T].ok_or[E = Error](cause: E?) T!E: ...
 
-// Constructs an error once only for none; present payloads remain unchanged.
+// Returns `ok` with the payload; for `none`, calls `create` once and returns its
+// error.
 fn Optional[T].ok_or_else[E](create: fn() E) T!E:
 	if self.is_none(): return error(create())
 	return ok(self.get())
@@ -183,14 +204,14 @@ fn Result[T, E].get_or(default: T?) T: ...
 // raises a fault.
 fn Result[T, E].err() E: ...
 
-// Returns the successful payload, or calls create once with the original error and
-// returns its value.
+// Returns the successful payload; for an error, calls `create` once with that error
+// and returns its value.
 fn Result[T, E].get_or_else(create: fn(E) T) T:
 	if self.is_error(): return create(self.err())
 	return self.get()
 
-// Calls create once with the original error only when this is an error, returning
-// its Result.
+// Returns this result when it is successful; for an error, calls `create` once with
+// that error and returns the Result it produces.
 fn move Result[T, E].or_else(create: fn(move E) T!E) T!E: ...
 
 // Transforms only an error, preserving a successful payload unchanged.
@@ -199,7 +220,8 @@ fn move Result[T, E].map_error[F](transform: fn(move E) F) T!F: ...
 // Transforms only a successful payload, preserving an error unchanged.
 fn move Result[T, E].map[U](transform: fn(move T) U) U!E: ...
 
-// Calls transform only on success. Its result keeps the same error type.
+// Calls `transform` only on success and returns the Result it produces; an error
+// passes through. The error type stays the same.
 fn move Result[T, E].and_then[U](transform: fn(move T) U!E) U!E: ...
 
 // Returns some with the original success payload, or none for an error.
@@ -207,8 +229,8 @@ fn Result[T, E].to_optional() T?:
 	if self.is_error(): return none
 	return self.get()
 
-// Equality and hashing are ordinary operation interfaces. Built-in data retains
-// its value semantics; an explicit implementation selects domain identity.
+// A type that can be compared for equality. Built-in data keeps its value
+// semantics; an explicit implementation chooses what counts as the same value.
 export interface Equal:
 	// Compares this value with another value of the same type.
 	fn equals(other: Self) Bool
@@ -229,12 +251,14 @@ export interface Clonable:
 	fn clone() Self
 
 /*
-A type whose values are plain data: no resource, function, interface value, or runtime handle
-anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
+A type whose values are plain data: no resource, function, interface value or runtime handle
+anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify` and the
 typed JSON stream codecs require `T: Data`. Promises and pipes do not require this bound.
-There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
-only `List` is, when its element is, and a `Map[String, T]` is, when `T` is (it is a JSON object). A `Set` or a `Map` with another key type is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
-is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
+
+There is nothing to implement. Records and alternatives are `Data` when every field is.
+Among the collections, a `List` is `Data` when its element is, and a `Map[String, T]` is `Data` when `T` is (it is a JSON object).
+A `Set`, a `Map` with another key type, a `Closeable` type and an `opaque type` are never `Data`.
+`JsonValue` is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
 */
 export interface Data: ...
 
@@ -246,15 +270,15 @@ export interface Stringable:
 	// Returns this value as text.
 	fn to_string() String
 
-// A type with a stable hash consistent with its `Equal` implementation.
+// A type with a stable hash that is consistent with its `Equal` implementation.
 export interface Hashable:
 	// Returns a stable hash consistent with `equals` for the same value.
 	fn hash() Int
 
 /*
-Returns a copy of `cause` with `context` in front of its message: `read(path)?` becomes
+Returns a copy of `cause` with `context` in front of its message, as in
 `error(wrap_error("read config", cause))`. The kind and details are kept, and the original message is
-in `details["cause"]`.
+added to `details["cause"]`.
 */
 export fn wrap_error(context: String, cause: Error) Error:
 	var details = cause.details.clone()

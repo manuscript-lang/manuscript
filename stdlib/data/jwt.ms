@@ -63,7 +63,8 @@ type JwtHeader:
 Creates a signed token from `claims`, a record or `JsonValue` object such as `Session(sub: "42", exp: 1900000000)`.
 The result is the compact `header.claims.signature` form, ready for an `Authorization: Bearer` header or a cookie.
 `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
-Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns an Error with kind `EINVAL`.
+Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library adds none, so set `exp` yourself.
+A key that does not suit the algorithm returns an `Error` with kind `EINVAL`.
 
 <!-- manuscript-example: {"mode":"fragment","given":["secret: Bytes"]} -->
 ```manuscript
@@ -99,12 +100,12 @@ export fn sign_token[T: Data](
 /*
 Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
 The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
-The payload must be a JSON object; any other JSON value returns EBADMSG.
+The payload must be a JSON object; any other JSON value returns `EBADMSG`.
 Critical header extensions and unencoded payloads are unsupported and rejected.
-`exp` and `nbf` (seconds since the Unix epoch, including fractions) are compared exactly when present, with integer clock skew from `check.leeway`.
-`iss` and `aud` are enforced when `check` names them.
+When present, `exp` and `nbf` (seconds since the Unix epoch, fractions allowed) are compared exactly, allowing `check.leeway` whole seconds of clock skew.
+`iss` and `aud` are enforced only when `check` names them.
 `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
-Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
+A failure returns an `Error` that says which check failed. Show callers one generic message, because the specific cause helps an attacker.
 */
 export fn verify_token[T: Data = JsonValue](
 	token: String,

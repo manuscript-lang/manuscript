@@ -17,25 +17,25 @@ import (
 
 // One file or directory in an archive. Paths use forward slashes.
 export type ArchiveEntry:
-	// Relative forward-slash path; pack/unpack reject traversal, absolute paths and
-	// duplicate normalized names. Tar unpack also skips a bare `./` entry and strips a
-	// leading `./` from member names (as in `tar -cf x.tar .`); pack stays strict.
-	// Unpack returns directory paths without a trailing slash.
+	// Relative forward-slash path. `pack` and `unpack` reject path traversal, absolute
+	// paths and duplicate normalized names. Tar `unpack` also skips a bare `./` entry
+	// and strips a leading `./` from member names (as in `tar -cf x.tar .`); `pack` is
+	// strict. `unpack` returns directory paths without a trailing slash.
 	path: String
-	// File contents as immutable bytes; directory entries must carry empty bytes.
+	// File contents as immutable bytes; a directory entry must have empty bytes.
 	data: Bytes
-	// True for a directory entry rather than a regular file; links and special files
+	// True for a directory entry, false for a regular file. Links and special files
 	// are not supported.
 	directory: Bool
 
-// Bounds applied while unpacking untrusted archive data. Fields set to none add no
-// budget.
+// Limits applied while unpacking untrusted archive data. A field left as `none` sets
+// no limit.
 export type ArchiveOptions:
 	// Maximum unpacked entries, including directories.
 	max_entries: Int? = none
 	// Maximum unpacked bytes for each entry; zero admits only empty data.
 	max_entry_bytes: Int? = none
-	// Cumulative unpacked file bytes across all entries.
+	// Maximum unpacked file bytes summed across all entries.
 	max_bytes: Int? = none
 
 // A supported archive format.
@@ -48,7 +48,8 @@ fn archive_format_name(format: ArchiveFormat) String:
 		Zip: return "zip"
 		Tar: return "tar"
 
-// Encodes entries as `format`. `max_bytes` bounds the encoded output when supplied.
+// Encodes `entries` as `format`. When `max_bytes` is supplied, it bounds the encoded
+// output.
 export fn pack(
 	entries: List[ArchiveEntry],
 	format: ArchiveFormat,
@@ -56,7 +57,8 @@ export fn pack(
 ) Bytes!:
 	return msstd_archive_pack(entries, archive_format_name(format), max_bytes)
 
-// Decodes `format`, applying the entry and size bounds in `options`.
+// Decodes archive `data` in `format`, applying the entry and size limits in
+// `options`.
 export fn unpack(
 	data: Bytes,
 	format: ArchiveFormat,
@@ -69,7 +71,7 @@ export fn unpack(
 	)
 	return msstd_archive_unpack(data, archive_format_name(format), limits)
 
-// Selects a compression format; Deflate is raw DEFLATE without a wrapper.
+// A compression format. `Deflate` is raw DEFLATE without a wrapper.
 export enum CompressionFormat:
 	Gzip  // DEFLATE data wrapped in GZIP headers and a checksum trailer.
 	Zlib  // DEFLATE data with ZLIB header and Adler-32 checksum framing.
@@ -81,17 +83,17 @@ fn compression_format_name(format: CompressionFormat) String:
 		Zlib: return "zlib"
 		Deflate: return "deflate"
 
-// Settings for `compress`: the DEFLATE level (0 to 9, default 6) and an optional budget
+// Settings for `compress`: the DEFLATE level (0 to 9, default 6) and an optional limit
 // on the encoded output bytes.
 export type CompressOptions:
-	// Compression level 0..9, where 0 stores data and 6 is balanced; other levels
-	// return EINVAL.
+	// Compression level 0 to 9, where 0 stores the data uncompressed and 6 is balanced.
+	// Other levels return `EINVAL`.
 	level: Int = 6
-	// Maximum encoded bytes; none adds no output budget.
+	// Maximum encoded bytes; `none` sets no limit.
 	max_bytes: Int? = none
 
-// Compresses `data` as `format`; `options.max_bytes` bounds the encoded output when
-// supplied.
+// Compresses `data` as `format`. When `options.max_bytes` is supplied, it bounds the
+// encoded output.
 export fn compress(
 	data: Bytes,
 	format: CompressionFormat,
@@ -104,8 +106,8 @@ export fn compress(
 		options.max_bytes,
 	)
 
-// Decompresses `format`, stopping with EOVERFLOW when `max_bytes` of output is
-// exceeded.
+// Decompresses `data` from `format`. Output beyond `max_bytes` stops with
+// `EOVERFLOW`.
 export fn decompress(
 	data: Bytes,
 	format: CompressionFormat,
@@ -113,8 +115,7 @@ export fn decompress(
 ) Bytes!:
 	return msstd_compress_decompress(data, compression_format_name(format), max_bytes)
 
-// A codec held by a stream step; `failure` is a construction error returned by every
-// read.
+// A native compression codec held by a stream step.
 export extern type NativeEncoder
 
 // A native decompression codec held by a stream step.
@@ -139,8 +140,8 @@ fn var Compressing.finish(var out: List[Bytes]) Void!:
 	self.encoder = none
 
 // Compresses a byte stream into `format`, chunk by chunk, holding only the codec's
-// window. `level` defaults to 6 and must be 0..9, otherwise reads fail with `EINVAL`.
-// Closing the result closes `input`.
+// window in memory. `level` defaults to 6 and must be 0 to 9; otherwise reads fail
+// with `EINVAL`. Closing the result closes `input`.
 export fn compressed(
 	input: ReadStream[Bytes],
 	format: CompressionFormat,
@@ -177,9 +178,9 @@ fn var Decompressing.finish(var out: List[Bytes]) Void!:
 	self.decoder = none
 
 // Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated
-// data, or bytes after the payload, fail the read with
-// `EBADMSG`; `max_bytes` bounds the total output and exceeding it fails with `EOVERFLOW`. Closing the
-// result closes `input`.
+// data, or bytes after the payload, fail the read with `EBADMSG`. `max_bytes` bounds
+// the total output, and exceeding it fails with `EOVERFLOW`. Closing the result closes
+// `input`.
 export fn decompressed(
 	input: ReadStream[Bytes],
 	format: CompressionFormat,
@@ -195,8 +196,8 @@ export fn decompressed(
 
 	return through[Bytes, Bytes](input, step)
 
-// Reads the octal (or base-256) size field of a tar header block; -1 when the size is
-// beyond any real member.
+// Internal: reads the octal (or base-256) size field of a tar header block; -1 when
+// the size is beyond any real member.
 fn tar_size(block: Bytes) Int:
 	first := block.get_or(124, 0).to_int()
 	var size = 0
@@ -223,8 +224,8 @@ fn tar_size(block: Bytes) Int:
 
 	return size
 
-// The decimal `size` among the `length key=value\n` records of a PAX extended header,
-// or -1.
+// Internal: the decimal `size` among the `length key=value\n` records of a PAX
+// extended header, or -1.
 fn pax_size(data: Bytes) Int:
 	var found = -1
 	var pos = 0
@@ -269,9 +270,9 @@ fn tar_is_zero(block: Bytes) Bool:
 		if byte != 0: return false
 	return true
 
-// Frames a tar byte stream into members (extension headers, the header and its data)
-// and unpacks each one with
-// `unpack`, so one entry at a time is in memory.
+// Internal: frames a tar byte stream into members (extension headers, the header and
+// its data) and unpacks each one with `unpack`, so only one entry is in memory at a
+// time.
 type TarEntries:
 	options: ArchiveOptions
 	buffer: Bytes
@@ -285,7 +286,7 @@ type TarEntries:
 	files: Set[String]
 	parents: Set[String]
 
-// Fails with `EOVERFLOW` when a member of `size` data bytes exceeds
+// Internal: fails with `EOVERFLOW` when a member of `size` data bytes exceeds
 // `max_entry_bytes` or would take the archive past `max_bytes`.
 fn TarEntries.check_size(size: Int) Void!:
 	over: Void! := error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
@@ -294,8 +295,8 @@ fn TarEntries.check_size(size: Int) Void!:
 	if most := self.options.max_bytes:
 		if self.total + size > most: return over
 
-// Bytes of the member at the start of the buffer, or 0 while its end has not
-// arrived. Once the input has ended (`ended`), a final member whose data is
+// Internal: the byte length of the member at the start of the buffer, or 0 while its
+// end has not arrived. Once the input has ended (`ended`), a final member whose data is
 // complete but whose padding is short counts as whole, as `unpack` accepts it.
 fn TarEntries.member_length(ended: Bool) Int!:
 	var at = 0
@@ -351,8 +352,8 @@ fn TarEntries.member_length(ended: Bool) Int!:
 
 	return ok(0)
 
-// Applies `unpack`'s whole-archive path rules across members: no duplicate path, no
-// file that is also a directory, and no entry below a file.
+// Internal: applies `unpack`'s whole-archive path rules across members: no duplicate
+// path, no file that is also a directory, and no entry below a file.
 fn var TarEntries.admit(path: String, directory: Bool) Void!:
 	invalid: Void! := error(Error("archive: invalid archive", kind: "EBADMSG"))
 	if self.names.contains(path.clone()): return invalid
@@ -372,8 +373,8 @@ fn var TarEntries.admit(path: String, directory: Bool) Void!:
 	if not directory: self.files.add(path.clone())
 	self.names.add(path)
 
-// Emits the members the buffer holds completely; `ended` says no more input will
-// come.
+// Internal: emits the members the buffer holds completely. `ended` means no more
+// input will come.
 fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Void!:
 	while true:
 		if (self.buffer.length() >= 512 and tar_is_zero(self.buffer.slice(0, 512)?)):
@@ -423,14 +424,15 @@ fn var TarEntries.finish(var out: List[ArchiveEntry]) Void!:
 
 	return error(Error("archive: truncated tar", kind: "EBADMSG"))
 
-// Reads the entries of a tar byte stream one at a time, for archives too big to hold in
-// memory. Each entry is validated as `unpack` does; `max_entry_bytes` bounds one entry
-// and `max_entries` and `max_bytes` the whole archive, failing the read with
-// `EOVERFLOW`. A truncated archive fails with `EBADMSG`. Like `unpack` and
-// `tar`, it stops at the first zero block and ignores what follows (archives are often padded to a blocking
-// factor), and accepts a last member whose data is complete but whose padding is short;
-// unlike compression streams, a tar has no trailer to check. Closing the result closes
-// `input`.
+// Reads the entries of a tar byte stream one at a time, for archives too big to hold
+// in memory. Each entry is validated as `unpack` does. `max_entry_bytes` bounds one
+// entry, and `max_entries` and `max_bytes` bound the whole archive; exceeding a limit
+// fails the read with `EOVERFLOW`. A truncated archive fails with `EBADMSG`.
+//
+// Like `unpack`, it stops at the first zero block and ignores what follows, since
+// archives are often padded to a blocking factor. It accepts a last member whose data
+// is complete but whose padding is short. Unlike a compression stream, a tar has no
+// trailer to check. Closing the result closes `input`.
 export fn tar_entries(
 	input: ReadStream[Bytes],
 	options: ArchiveOptions = ArchiveOptions(),

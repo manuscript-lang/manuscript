@@ -8,8 +8,8 @@ import (
 
 /*
 Decodes one UTF-8 scalar at a byte position without decoding or copying the entire input.
-Walk forward by adding the returned width: `part := decode_first(data, position)?`.
-The scalar decoders examine at most four input bytes; is_valid checks the whole buffer.
+To walk forward, add each returned `width` to the position: `part := decode_first(data, position)?`.
+`decode_first` and `decode_last` examine at most four input bytes; `is_valid` checks the whole buffer.
 No normalization or replacement is applied.
 */
 
@@ -109,7 +109,7 @@ fn decoded(value: Int) Utf8Scalar!Utf8Error:
 /*
 Decodes only the scalar beginning at absolute byte offset at (zero by default).
 Later malformed bytes do not invalidate an earlier scalar. End of input returns Incomplete.
-Requires 0 <= at <= data.length(); invalid offsets fault, without negative-index wrapping.
+Requires 0 <= at <= data.length(); an offset outside that range faults (negative offsets do not wrap).
 */
 export fn decode_first(data: Bytes, at: Int = 0) Utf8Scalar!Utf8Error:
 	if at < 0 or at > data.length():
@@ -119,7 +119,7 @@ export fn decode_first(data: Bytes, at: Int = 0) Utf8Scalar!Utf8Error:
 /*
 Decodes only the scalar ending at exclusive absolute byte offset end, or at the byte length when omitted.
 Earlier malformed bytes do not invalidate a valid final scalar. An empty prefix returns Incomplete.
-Requires 0 <= end <= data.length(); invalid offsets fault. A trailing proper scalar prefix returns Incomplete.
+Requires 0 <= end <= data.length(); an offset outside that range faults. A trailing proper prefix of a scalar returns Incomplete.
 */
 export fn decode_last(data: Bytes, end: Int?) Utf8Scalar!Utf8Error:
 	stop := end.get_or(data.length())

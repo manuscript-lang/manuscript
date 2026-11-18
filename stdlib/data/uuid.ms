@@ -18,7 +18,8 @@ export namespace_oid := "6ba7b812-9dad-11d1-80b4-00c04fd430c8"
 // The namespace for X.500 distinguished names, for `uuid_v5`.
 export namespace_x500 := "6ba7b814-9dad-11d1-80b4-00c04fd430c8"
 
-// Creates a version-4 UUID from the operating system's entropy.
+// Creates a random version-4 UUID in lowercase text from the operating system's
+// entropy. Entropy failures return an `Error`.
 // ms: effect std.random.read
 export fn uuid_v4() String!:
 	return draw_uuid()
@@ -26,7 +27,7 @@ export fn uuid_v4() String!:
 /*
 Creates the version-5 (SHA-1, name-based) UUID of `name` within `namespace`.
 The same namespace and name always give the same lowercase UUID, so it makes a stable id for a URL, a path or a key.
-`namespace` is any UUID text, such as `namespace_url` or an application's own UUID; malformed text returns EBADMSG.
+`namespace` is any UUID text, such as `namespace_url` or an application's own UUID; malformed text returns an `Error` with kind `EBADMSG`.
 Example: `uuid_v5(namespace_dns, "python.org")` is `"886313e1-3b8a-5372-9b90-0c9aee199e5d"`.
 */
 export fn uuid_v5(namespace: String, name: String) String!:
@@ -58,8 +59,8 @@ export fn uuid_v7() String!:
 	raw.append_bytes(noise)
 	return ok(format_uuid(raw.build(), 7))
 
-// Returns the version digit (1 through 8) of an RFC 9562 UUID text, or none when `text`
-// is not a UUID of that variant. Case does not matter. Example:
+// Returns the version digit (1 through 8) of a UUID text, or none when `text` is not an
+// RFC 9562 UUID (including malformed text). Case does not matter. Example:
 // `uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d")` is `5`.
 export fn uuid_version(text: String) Int?:
 	raw := uuid_to_bytes(text)

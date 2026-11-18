@@ -287,7 +287,9 @@ fn FileHandle.read_file(max_bytes: Int?) Bytes!:
 
 // Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all
 // together up to 16 MiB, and returns the bytes obtained for each.
-// `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns EINVAL.
+// `offset` -1 reads from the current position; other offsets read without moving it. A
+// buffer is shorter than requested at end of file. A negative size or offset below -1
+// returns EINVAL.
 fn FileHandle.read_vectors(sizes: List[Int], offset: Int) List[Bytes]!:
 	return msstd_fs_file_read_vectors(self.native, sizes, offset)
 
@@ -821,7 +823,8 @@ export fn chmod(path: String, mode: Int, follow_links: Bool = true) Void!:
 	return msstd_fs_chmod(path, mode, follow: follow_links)
 
 // Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
-// `follow_links` True (the default) follows a final symbolic link; False changes the link itself, with ENOTSUP on hosts lacking this operation.
+// `follow_links` True (the default) follows a final symbolic link; False changes the link
+// itself, with ENOTSUP on hosts lacking this operation.
 // Usually needs privilege, and Windows returns ENOTSUP.
 // ms: effect std.fs.write
 export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool = true) Void!:
@@ -891,7 +894,9 @@ export fn open_directory(path: String) Directory!:
 
 /*
 Starts replacing the file at `path` with `data` (text or `Bytes`) all-or-nothing and returns its promise: readers see the old contents or the new, never a partial file.
-The data goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. When `path` is a symbolic link the file it names is replaced and the link stays; a link that cannot be resolved is replaced itself. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
+The data goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so the directory of `path` must be writable.
+When `path` is a symbolic link, the file it names is replaced and the link stays; a link that cannot be resolved is replaced itself.
+An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
 Example: `write_atomic("config.json", text).wait()`.
 */
 // ms: effect std.fs.write

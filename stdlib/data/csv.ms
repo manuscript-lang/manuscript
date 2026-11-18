@@ -6,12 +6,13 @@ import (
 	StringBuilder from "@std/string_builder.ms",
 )
 
-// Delimiter and line ending used when parsing or writing CSV, and the row and cell
-// bounds for `parse`.
+// Delimiter and line ending for parsing or writing CSV, and the row and cell bounds
+// for `parse`. Invalid values return an `Error` with kind `EINVAL`.
 export type CsvOptions:
-	// One non-NUL ASCII delimiter other than quote, CR or LF; defaults to comma.
+	// One ASCII delimiter other than NUL, quote, CR or LF; defaults to comma.
 	delimiter: String = ","
-	// Row terminator for encoding, either LF or CRLF; defaults to LF.
+	// Row terminator when writing, either LF or CRLF; defaults to LF. Parsing accepts
+	// both.
 	line_ending: String = "\n"
 	// Maximum rows `parse` returns; none adds no row budget.
 	max_rows: Int? = none
@@ -64,10 +65,12 @@ fn open_reader(text: String, options: CsvOptions) Reader!:
 		)
 	)
 
-// Parses CSV into rows of cells, using fresh default options when omitted.
-// `options.max_rows` and `options.max_cells` bound large inputs. A CRLF inside a quoted cell
-// reads as LF, so a cell holds one newline spelling whatever the file's line ending
-// was.
+// Parses CSV into rows of cells. Empty lines are skipped, and a quoted cell may hold
+// the delimiter, quotes (written `""`) and line breaks. `options.max_rows` and
+// `options.max_cells` bound large inputs and return `EOVERFLOW` when exceeded. Malformed
+// input returns an `Error` with kind `EBADMSG`, the line and column in `details`.
+// A CRLF inside a quoted cell reads as LF, so a cell holds one newline spelling
+// whatever the file's line ending was.
 export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[String]]!:
 	rows_budget := budget(options.max_rows)
 	cells_budget := budget(options.max_cells)
@@ -103,11 +106,10 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 	return ok(rows)
 
 // Calls `f(row, column, cell)` for every cell of `text`, in order, without building
-// rows. A cell is a view of `text` that is valid during the call (clone it to keep it),
-// except that a quoted cell holding escapes is a fresh text. Rows count from zero and
-// columns from zero;
-// `options` and errors are as for `parse`, and a malformed input fails after the cells
-// before it were visited.
+// rows. Rows and columns count from zero. A cell is a view of `text` that is valid only
+// during the call (clone it to keep it), except that a quoted cell holding escapes is a
+// fresh text. `options` and errors are as for `parse`; malformed input fails after the
+// cells before it were visited.
 export fn each_cell(
 	text: String,
 	f: fn(Int, Int, String) Void,
@@ -140,8 +142,8 @@ export fn each_cell(
 
 	return ok()
 
-// The budget as a count, with no budget as a very large one and a negative budget as
-// -1.
+// The budget as a count: no budget is the largest `Int`, and a negative budget stays
+// negative.
 fn budget(limit: Int?) Int:
 	if value := limit: return value
 	return 9223372036854775807
@@ -443,11 +445,11 @@ fn write_rows(rows: List[List[String]], var out: List[List[String]]) Void!:
 /*
 Reads CSV rows from a byte stream, one `List[String]` per record, with the cells `parse` returns.
 
-Chunks may end anywhere, including inside a quoted cell, a CRLF or a UTF-8 scalar; only the unfinished
-record is buffered. `options.max_rows` and `options.max_cells` bound `parse` only and are ignored here,
-so the result never depends on chunk boundaries; `max_record_bytes` bounds that record and fails the read with `EOVERFLOW`. A
-malformed record fails the read with `EBADMSG`, and invalid `options` with `EINVAL`. Closing the
-result closes `input`.
+Chunks may end anywhere, including inside a quoted cell, a CRLF or a UTF-8 scalar; only the
+unfinished record is buffered. `options.max_rows` and `options.max_cells` are ignored here, so
+the result never depends on chunk boundaries. Use `max_record_bytes` to bound the buffered
+record; exceeding it fails the read with `EOVERFLOW`. A malformed record fails the read with
+`EBADMSG`, and invalid `options` with `EINVAL`. Closing the result closes `input`.
 */
 export fn csv_rows(
 	input: ReadStream[Bytes],
@@ -469,8 +471,10 @@ export fn csv_rows(
 		),
 	)
 
-// Encodes rows as CSV with comma delimiters and LF endings by default.
-// Quotes cells when required by the delimiter or line ending.
+// Encodes rows as CSV, with comma delimiters and LF endings by default. A cell is
+// quoted only when it needs it, for example when it holds the delimiter, a quote or a
+// line break. Every row, including the last, ends with the line ending. `max_bytes`
+// bounds the output and returns `EOVERFLOW` when exceeded.
 export fn stringify(
 	rows: List[List[String]],
 	options: CsvOptions = CsvOptions(),
@@ -557,7 +561,7 @@ fn var CsvRowsSink.close() Void!:
 /*
 Writes rows to a byte stream, each as `stringify` encodes it (quoting cells that need it, ending with the
 options' line ending). Invalid `options` fail the first write with `EINVAL`. Writes delegate to `output`'s sink, which may wait.
-`flush().wait()` uses that sink's completion condition; a pipe may retain up to capacity unread values. Closing the result closes `output`.
+`flush().wait()` uses that sink's completion condition; a pipe may retain up to its capacity of unread values. Closing the result closes `output`.
 */
 export fn csv_writer(
 	output: WriteStream[Bytes],

@@ -9,13 +9,17 @@ ATTRIBUTE_SCAN_LIMIT := 16
 
 /*
 XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
-`parse` accepts well-formed XML 1.0 without DTD processing. A DOCTYPE is read only far enough to
-find its end (its name, external identifier and the extent of an internal subset) and is then
-dropped: its declarations are neither checked nor applied, an external subset is never fetched, and
-no entity a DTD defines is ever expanded. Only the five predefined entities and numeric character
-references resolve, so any other `&name;` is an error. The input is text: UTF-16 and other
-encodings are the caller's to decode before parsing. Names keep their prefix as written
-(`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
+`parse` accepts well-formed XML 1.0 without DTD processing, and `stringify` writes a tree
+back with escaping.
+
+A DOCTYPE is read only far enough to find its end (its name, external identifier and the
+extent of an internal subset) and is then dropped. Its declarations are neither checked nor
+applied, an external subset is never fetched, and no entity a DTD defines is ever expanded.
+Only the five predefined entities and numeric character references resolve, so any other
+`&name;` is an error.
+
+The input is text: decode UTF-16 and other encodings before parsing. Names keep their
+prefix as written (`svg:rect`); namespaces are not resolved.
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
@@ -62,7 +66,8 @@ fn XmlNode.tag() String:
 		XmlElement(name, _, _): return name.clone()
 		_: return ""
 
-// Returns the value of an attribute of an element, or none.
+// Returns the value of the attribute `name`, or none when it is absent or the node is
+// not an element.
 fn XmlNode.attribute(name: String) String?:
 	match self:
 		XmlElement(_, attributes, _):
@@ -785,10 +790,11 @@ fn scalar(chars: List[String], at: Int, value: Int?) String!:
 
 /*
 Parses a document with a single root element and returns that element.
-`max_depth` bounds element nesting (default 1000); deeper input is `EOVERFLOW`.
-A document with several roots, text outside the root, or any syntax error is `EBADMSG`; its message reads
-`XML <line>:<column>: <reason>` and `details` holds `line`, `column` and `reason`, counted in
-scalars after line ends are normalized.
+`max_depth` bounds element nesting (default 1000); deeper input returns `EOVERFLOW`, and a
+`max_depth` of zero or less returns `EINVAL`.
+A document with several roots, text outside the root, or any syntax error returns `EBADMSG`.
+Its message reads `XML <line>:<column>: <reason>`, and `details` holds `line`, `column` and
+`reason`, counted in scalars after line ends are normalized.
 An XML declaration is allowed only at the start, after an optional BOM. Its encoding
 name is checked for valid syntax; the String input has already been decoded.
 */

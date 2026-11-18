@@ -59,7 +59,8 @@ fn Duration.negate() Duration:
 fn Duration.abs() Duration:
 	return Duration(nanos: msstd_time_duration_abs(self.nanos))
 
-// Returns -1, 0, or 1.
+// Returns -1 when this duration is shorter than `other`, 0 when equal and 1 when
+// longer.
 fn Duration.compare(other: Duration) Int:
 	if self.nanos < other.nanos: return -1
 	if self.nanos > other.nanos: return 1
@@ -148,11 +149,13 @@ export type Instant:
 fn Instant.shift(duration: Duration) Instant:
 	return msstd_time_instant_shift(self, duration.nanos)
 
-// Returns the elapsed duration from `right` to this instant.
+// Returns this instant minus `other`: the time elapsed since `other`, negative when
+// `other` is later.
 fn Instant.difference(other: Instant) Duration:
 	return Duration(nanos: msstd_time_instant_difference(self, other))
 
-// Returns -1, 0, or 1; instants from different clock domains fault.
+// Returns -1 when this instant is earlier than `other`, 0 when equal and 1 when
+// later. Instants from different clock domains fault.
 fn Instant.compare(other: Instant) Int:
 	return msstd_time_instant_compare(self, other)
 
@@ -238,7 +241,8 @@ fn Timestamp.unix_seconds() Int:
 fn Timestamp.nanoseconds() Int:
 	return self.nanos
 
-// Adds a duration to this wall-clock timestamp.
+// Adds a duration to this wall-clock timestamp. A result outside years 1 through
+// 9999 returns `ERANGE`.
 fn Timestamp.shift(duration: Duration) Timestamp!:
 	// A start beyond this can never land in the calendar range: the carry below is at
 	// most about 2e10 seconds. It also keeps the sum from overflowing.
@@ -269,7 +273,8 @@ fn Timestamp.shift(duration: Duration) Timestamp!:
 
 	return ok(Timestamp(seconds: seconds, nanos: nanos))
 
-// Returns `self - right` as a duration.
+// Returns this timestamp minus `other` as a duration. A result that does not fit a
+// Duration returns `ERANGE`.
 fn Timestamp.difference(other: Timestamp) Duration!:
 	// Normalized fields of nearby timestamps: the subtraction and product cannot
 	// overflow.
@@ -315,7 +320,8 @@ fn Timestamp.difference(other: Timestamp) Duration!:
 	right := floor_split(other.nanos)
 	return duration_of(sd + left.whole - right.whole, left.rest - right.rest)
 
-// Returns -1, 0, or 1 across the full calendar range.
+// Returns -1 when this timestamp is earlier than `other`, 0 when equal and 1 when
+// later, across the full calendar range.
 fn Timestamp.compare(other: Timestamp) Int:
 	if self.seconds != other.seconds: return if self.seconds > other.seconds: 1 else: -1
 	if self.nanos != other.nanos: return if self.nanos > other.nanos: 1 else: -1
@@ -346,15 +352,16 @@ fn Timestamp.clamp(low: Timestamp, high: Timestamp) Timestamp:
 
 // Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an
 // IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`. An
-// unknown zone returns EINVAL.
+// unknown zone returns `EINVAL`.
 fn Timestamp.calendar(zone: String) Date!:
 	return msstd_time_timestamp_calendar(self, zone)
 
 /*
 Formats this timestamp in a zone with a token pattern.
-Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
-Tokens are replaced wherever they appear, including inside words (`"Dummy"` becomes `"Du13y"`), and there is no escape, so keep literal letters that spell a token out of the pattern and join the pieces yourself.
-An unknown zone returns EINVAL.
+The tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`) and `zone` (abbreviation). Other text is copied.
+Tokens are replaced wherever they appear, even inside words (`"Dummy"` becomes `"Du13y"`), and there is no escape.
+To include literal letters that spell a token, format the fields separately and join the pieces yourself.
+An unknown zone returns `EINVAL`.
 */
 fn Timestamp.format(pattern: String, zone: String) String!:
 	return msstd_time_timestamp_format(self, pattern, zone)
@@ -425,10 +432,10 @@ export fn milliseconds(n: Int) Duration:
 export fn seconds(n: Int) Duration:
 	return nanoseconds(n * 1000000000)
 
-// Constructs a duration of `n` minutes, as in
-// `monotonic().difference(start).compare(minutes(5)) > 0` to test an elapsed span; `n`
-// may be negative, and a nanosecond count outside Int faults like any Int
-// multiplication.
+// Constructs a duration of `n` minutes; `n` may be negative, and a nanosecond count
+// outside Int faults like any Int multiplication. For example,
+// `monotonic().difference(start).compare(minutes(5)) > 0` tests whether more than
+// five minutes have elapsed.
 export fn minutes(n: Int) Duration:
 	return nanoseconds(n * 60000000000)
 
@@ -438,12 +445,12 @@ export fn hours(n: Int) Duration:
 	return nanoseconds(n * 3600000000000)
 
 /*
-Parses a span such as `1h30m`, `-250ms`, or `1.5µs`, including every Duration.to_string() result.
-Accepts one optional leading `+` or `-`, then decimal components with units `ns`, `us`, `µs`, `μs`, `ms`, `s`, `m`, or `h`.
-Components may repeat or appear in any order; `.5s` and `1.s` are valid. Bare `0` is also valid, including `+0` and `-0`.
-Fractions may have any number of ASCII digits; each component truncates toward zero to whole nanoseconds, without floating-point rounding. Negative zero becomes zero.
-Whitespace, exponents, missing units, and other syntax return EBADMSG, even after an overflowing prefix.
-A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns ERANGE.
+Parses a span such as `1h30m`, `-250ms` or `1.5µs`, including every `Duration.to_string()` result.
+Accepts one optional leading `+` or `-`, then decimal components with the units `ns`, `us`, `µs`, `μs`, `ms`, `s`, `m` or `h`.
+Components may repeat or appear in any order; `.5s` and `1.s` are valid. A bare `0` is also valid, including `+0` and `-0`.
+Fractions may have any number of ASCII digits. Each component truncates toward zero to whole nanoseconds, without floating-point rounding, and negative zero becomes zero.
+Whitespace, exponents, missing units and other syntax return `EBADMSG`, even after an overflowing prefix.
+A well-formed span outside -9223372036854775808 through 9223372036854775807 nanoseconds returns `ERANGE`.
 */
 export fn parse_duration(text: String) Duration!:
 	data := text.to_bytes()
@@ -571,7 +578,7 @@ export fn parse_timestamp(text: String) Timestamp!:
 
 /*
 Builds a timestamp from calendar fields interpreted in a time zone (see `Timestamp.calendar` for zone names).
-Fields outside their calendar range, such as month 13 or February 30, return ERANGE; an unknown zone returns EINVAL.
+Fields outside their calendar range, such as month 13 or February 30, return `ERANGE`; an unknown zone returns `EINVAL`.
 A local time skipped or repeated by a daylight-saving change resolves to the earlier valid offset.
 */
 export fn from_calendar(
@@ -609,7 +616,7 @@ export fn sleep(duration: Duration) Promise[Void]:
 
 // Constructs a timestamp from Unix seconds and the nanosecond within that second.
 // `nanoseconds` must be 0 through 999999999, and `seconds` from -62135596800 (year 1)
-// through 253402300799 (year 9999); anything else returns ERANGE. It does not carry
+// through 253402300799 (year 9999); anything else returns `ERANGE`. It does not carry
 // extra nanoseconds into the seconds.
 export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
 	if nanoseconds < 0 or nanoseconds >= 1000000000:
@@ -632,8 +639,8 @@ export fn monotonic() Instant:
 export fn now() Timestamp:
 	return msstd_time_wall_clock_now()
 
-// A point on the monotonic clock to wait for or check against, such as a request's time
-// budget.
+// A point on the monotonic clock to wait for or check against, such as the end of a
+// request's time budget.
 export type Deadline:
 	// The instant the deadline expires.
 	at: Instant
@@ -642,7 +649,7 @@ export type Deadline:
 fn Deadline.remaining() Duration:
 	return self.at.difference(monotonic()).max(nanoseconds(0))
 
-// Whether the deadline has passed.
+// Reports whether the deadline has passed.
 fn Deadline.expired() Bool:
 	return self.at.compare(monotonic()) <= 0
 

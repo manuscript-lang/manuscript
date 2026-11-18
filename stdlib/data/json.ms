@@ -9,7 +9,8 @@ import (
 )
 
 // Settings for `parse` and `json_reader`: optional bounds on input bytes, nesting depth
-// and parsed values, and how object members that are not fields are treated.
+// and parsed values, and whether object members that are not fields of `T` are ignored.
+// Set the bounds when the input is untrusted.
 export type JsonOptions:
 	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
 	max_bytes: Int? = none
@@ -37,10 +38,10 @@ export type StringifyOptions:
 /*
 A JSON value. Number text is retained to avoid losing precision during parsing.
 
-`get` and `get_index` read one level and `as_*` read a scalar or container, each returning `none`
-on a mismatch. `get` and `get_index` borrow the selected part; keep the document available and
-unchanged while using it. `as_string`, `as_list` and `as_map` explicitly clone their payloads.
-Nested reads bind each level with `if value := ...`:
+`get` and `get_index` read one level, and the `as_*` methods read a scalar or container.
+Each returns `none` on a mismatch. `get` and `get_index` borrow the selected part, so keep the
+document alive and unchanged while you use it. `as_string`, `as_list` and `as_map` return clones.
+For nested reads, bind each level with `if value := ...`:
 
 <!-- manuscript-example: {"mode":"fragment","given":["doc: JsonValue"]} -->
 ```manuscript
@@ -62,7 +63,7 @@ export enum JsonValue:
 	Null
 	// A JSON true or false value.
 	BoolValue(
-		// The decoded boolean, without a textual representation requirement.
+		// The decoded boolean: true for JSON true, false for JSON false.
 		value: Bool
 	)
 	// An exact JSON number token; parsing does not coerce it into Float.
@@ -128,7 +129,7 @@ fn JsonValue.as_int() Int?:
 		_: return none
 
 // Returns a number value as a Float, or `none` when the value is not a number or
-// its text is not finite.
+// its text does not parse to a finite number.
 fn JsonValue.as_float() Float?:
 	match self:
 		NumberValue(text): return parse_float(text).to_optional()
@@ -164,10 +165,12 @@ fn JsonValue.is_null() Bool:
 Parses one JSON value and applies the supplied input, depth, and value limits.
 
 With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
-document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `result: Request! = parse(text)`
-return a decoded `Request` in a `Result` (`?` passes no expected type, so write `parse[Request](text)?`). A value whose shape does not match `T` returns
-`EBADMSG`; a type that is not `Data` is rejected at compile time. Input, depth and value limits
-apply to the document before decoding.
+document by the inverse of the `stringify` encoding, and the result is a `Result` holding the
+decoded `T`. Name `T` either way: `parse[Request](text)` or `result: Request! = parse(text)`.
+The `?` operator passes no expected type, so write `parse[Request](text)?`.
+
+A value whose shape does not match `T` returns `EBADMSG`; a type that is not `Data` is rejected
+at compile time. The input, depth and value limits apply to the document before decoding.
 
 - A record is an object. Members may appear in any order. An absent member takes the field's default,
   else `none` for an `Optional` field. An absent `Void` field becomes `void`; any other absent
@@ -176,7 +179,8 @@ apply to the document before decoding.
 - An alternative case without payload is its name as a string; one with payload is externally tagged,
   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
   as `Result` follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
-- `T?` reads `null` as `none`, so a present `none` (an `Int??` holding `none`), written as `null`, reads back as `none`. `List` reads an array.
+- `T?` reads `null` as `none`, so a present `none` (an `Int??` holding `none`), written as `null`, reads back as `none`.
+- `List` reads an array.
 - A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
 - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
@@ -200,17 +204,21 @@ export fn parse[T: Data = JsonValue](
 	return msstd_json_parse[T](text, limits, options.ignore_unknown_fields)
 
 /*
-Customizes how `stringify` encodes a type. It takes precedence over the
-structural encoding for every record and alternative, so it is the way to choose a tagged or
-discriminator encoding, or any other shape. A value whose type implements it is encoded as the
-`JsonValue` its `to_json` returns, wherever it appears: at the root, in a field, in a list, or as a map
-value. The returned `JsonValue` is written as stored and is not customized again. Implement it in the
-module that defines the type. Custom typed decoding is not supported; parse a `JsonValue`
-and handle its cases when the input needs a different shape.
+Customizes how `stringify` encodes a type. It takes precedence over the structural
+encoding for every record and alternative, so use it to choose a tagged or discriminator
+encoding, or any other shape.
 
-The default encoding of an alternative is externally tagged, `{"Created":{"id":1}}`, so a structural
-encoding round-trips. This implementation writes an internal `type` discriminator instead, a common
-protocol shape:
+A value whose type implements it is encoded as the `JsonValue` its `to_json` returns,
+wherever it appears: at the root, in a field, in a list, or as a map value. The returned
+`JsonValue` is written as stored and is not customized again. Implement it in the module
+that defines the type.
+
+Custom typed decoding is not supported. When the input has a different shape, parse a
+`JsonValue` and handle its cases.
+
+The default encoding of an alternative is externally tagged, `{"Created":{"id":1}}`, so it
+round-trips through `parse`. This implementation writes a `type` discriminator member instead,
+a common protocol shape:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -302,8 +310,8 @@ fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
 
 	return none
 
-// Scanner modes: between values, inside a container, inside a top-level string, and
-// inside a top-level scalar token.
+// Incremental scanner state for `json_reader`. `mode` is 0 between values, 1 inside a
+// container, 2 inside a top-level string, and 3 inside a top-level scalar token.
 type JsonReading[T: Data]:
 	options: JsonOptions
 	pending: BytesBuilder
