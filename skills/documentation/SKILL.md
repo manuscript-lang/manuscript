@@ -19,6 +19,7 @@ Use for `README.md`, `documentation/`, `crates/ms-tooling/src/guide/`, or `websi
 - Language and contributor guides live in `documentation/`; standard-library guides live in documentation comment blocks in `stdlib/*.ms`, Hugo inputs/overrides in `website/`, generated HTML in ignored `.artifacts/book/`. Customize project overrides rather than vendored theme; `.msversion` is the shared version source.
 - Run applicable example checks, `make docs-check` (validates source without requiring generated Markdown), and `make book-check`; `make book` generates production output with destination cleanup. Check project-prefix links, rendered signatures/downloads, highlighting, retired routes, and search artifacts after removal.
 - When publishing is requested, verify actual Pages deployment and current reader artifacts separately from source freshness or merge success.
+- Balance technical and practical: line-by-line accurate, plain and factual. No slogans or boasting ("a real language with real engineering"); show a program and its output instead. Landing pages stay short and link deeper from each summary. Do not put comparison tables against other languages in docs, wiki, READMEs or proposals; give idiom guidance as prose.
 
 ## Broad refresh or revamp
 

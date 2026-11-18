@@ -23,6 +23,10 @@ Do not fall back to Rust to make a program fast: make Manuscript fast enough, wi
 - **Measure compile cost as well as run time.** Inlining the cleanup push everywhere cost about 50k IR lines per test binary; inlining it only in loops cut `ms test` CPU from 13.4 s to 11.5 s with the loop unchanged. Check both before and after ([wiki](../../wiki/benchmarks-and-performance/a-close-that-inlines-to-nothing-needs-no-shield.md)).
 - **Remove work the optimizer can prove empty.** A shield around a close that inlines to nothing cost 152 instructions per scope; the `simplify` pass now drops it.
 - **Record rejected experiments.** Write the result and the decision to keep the current design in the wiki (the hole-heap versus swap-heap result), so the next round does not rerun it.
+- **Existing primitives first.** A micro-optimization that needs a new primitive is not worth it; try what exists (for example `set` and `swap` on a list) first. Moving data should be almost free with a single heap: when it is not, find out why.
+- **No shortcuts.** Use legitimate algorithms. Do not over-index on one benchmark: scheduling and other shared paths must be fast in general.
+- **Portable.** A fast path on Linux epoll needs an equivalent on macOS (kqueue) and Windows (IOCP). Measuring on Linux alone is fine.
+- **Unsafe speedups lose.** Prefer the change that cannot silently change behavior; a perf fix that adds a bug is reverted.
 
 ## Standing rules
 
