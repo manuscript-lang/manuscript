@@ -96,7 +96,7 @@ SHAPES := [
 ]
 
 // The input sizes of a shape: three that grow by 10, or fewer and smaller for a shape
-// that builds with LLVM, which is costly per void. The Release shape stays above the
+// that builds with LLVM, which is costly per unit. The Release shape stays above the
 // size where a loop-free function skips optimization (about 700 statements), so its
 // time is one regime. A test shape has one size and only has to pass: its test holds
 // hundreds of owners live across calls and branches, which overflowed the test's task

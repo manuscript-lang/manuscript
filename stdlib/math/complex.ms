@@ -393,7 +393,7 @@ export fn complex(re: Float, im: Float) Complex:
 export fn complex_polar(radius: Float, theta: Float) Complex:
 	return Complex(re: radius * cos(theta), im: radius * sin(theta))
 
-// Returns the imaginary void `i`.
+// Returns the imaginary unit `i`.
 export fn imaginary_unit() Complex:
 	return Complex(re: 0.0, im: 1.0)
 

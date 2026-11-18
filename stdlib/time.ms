@@ -30,7 +30,7 @@ import (
 
 // A span of elapsed time, counted in signed nanoseconds.
 export type Duration:
-	// The signed count of nanoseconds; `nanoseconds(n)` and the void constructors build
+	// The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build
 	// one.
 	nanos: Int
 
@@ -405,7 +405,7 @@ fn duration_decimal(whole: Int, frac: Int, width: Int) String:
 
 	return f"{whole}.{digits}"
 
-// Constructs a duration of `n` nanoseconds, the void `Duration` counts in; `n` may be
+// Constructs a duration of `n` nanoseconds, the unit `Duration` counts in; `n` may be
 // negative.
 export fn nanoseconds(n: Int) Duration:
 	return Duration(nanos: n)

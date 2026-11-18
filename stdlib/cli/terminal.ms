@@ -59,7 +59,7 @@ One decoded terminal input event. `Text` carries printable characters typed
 together. `Key` names a non-printing or modified key: `enter`, `tab`,
 `backspace`, `escape`, `space`, `up`, `down`, `left`, `right`, `home`, `end`,
 `insert`, `delete`, `page_up`, `page_down`, `f1` to `f12`, or a letter with
-`ctrl` or `alt` set. `Paste` carries text pasted as one void, line breaks as `\n`. `Resize`
+`ctrl` or `alt` set. `Paste` carries text pasted as one unit, line breaks as `\n`. `Resize`
 carries the new size.
 */
 export enum TerminalEvent:
