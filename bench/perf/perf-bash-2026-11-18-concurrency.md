@@ -37,6 +37,29 @@ The worker-pool rows above show the pipe cost disappearing once an item does rea
 | --- | --- |
 | Keep the descriptor registered with the poller between waits for plain sockets (`WAIT_KEEP`, drops one `epoll_ctl` per wait) | 62,500 fewer system calls per 31k rounds, wall 5% lower (sys 0.33 to 0.29 s); not worth the ET soundness argument. |
 | Spin 2 us for a peer on another thread before a pipe read or flush parks | Request and reply 1100 to 620 ms; throughput unchanged at 650; costs 2 us of the thread per park when nothing arrives. Not kept: a stress-probe gain with a tax on every slow pipe. |
-| Store scalar pipe values in the queue item instead of one heap block each | Throughput 650 to 650. |
-| Use the lock-free first lane for the single writer | Throughput 670 to 670, request and reply unchanged. See the wiki page below: the lane is never used by `pipe()`, and turning it on trips a race. |
+| Store scalar pipe values in the queue item instead of one heap block each | Throughput 650 to 650 while the lock was contended; kept once the lock fix below removed that bottleneck. |
+| Use the lock-free first lane for the single writer | Throughput 670 to 670, request and reply unchanged. The lane was never used by `pipe()` and turning it on tripped a race, so it is deleted (#4507); see the wiki page. |
 | Remove both `SeqCst` fences from the single-writer path (experiment only) | No gain (734 to 874); the cost is cache lines moving between cores (about 160 ns per item), not locks or fences. |
+
+## Change: pipes hold their lock for a swap, and the reader polls without it
+
+Callgrind cannot see this; gdb stack samples of a two-thread producer and consumer put a quarter of the samples in `sched_yield` from `msrt_pipe_write`: the writer spun on the pipe lock while the reader held it to copy up to 256 queued items into its own queue, then retried it three times per empty poll. Four changes, all in `ms-rt/src/pipe.rs`:
+
+- the reader takes the whole shared queue by swapping the two buffers (a few pointer moves under the lock) instead of draining up to 256 items;
+- an empty poll (`msrt_pipe_try`) reads the queue length and returns without the lock;
+- the queue length sits on a cache line of its own, apart from the flags the reader reads for every value;
+- values of one word or less that own nothing (`Int`, `Float`, `Bool`, plain records) are stored in the queue slot, not in a heap block freed by another thread.
+
+The first lane that `pipe()` never used is deleted (#4507).
+
+| 4M `Int`, capacity 1024, one writer and one reader | before | after |
+| --- | ---: | ---: |
+| two or more threads, 15 interleaved runs: min / p25 / median / p75 ms | 636 / 644 / 698 / 734 | 388 / 468 / 546 / 592 |
+| `MS_THREADS=1` ms | 159 | 127 |
+| request and reply, 500k rounds, one thread ms | 328 | 320 |
+| request and reply, 500k rounds, two threads ms | 1178 | 1177 |
+| worker pool, 500k jobs of about 20 ns, ms | 281 to 319 | 257 to 277 |
+
+Go on the same machine: 310 ms for the same throughput case with 4 procs (200 with 1), and request and reply 170 to 190 per 400k rounds at any proc count, because Go keeps the two goroutines on one thread. Run-to-run spread on this VM is large (single runs 230 to 830 ms), so the table uses medians of interleaved runs.
+
+Tried and dropped on top: spinning for a writer on another thread before the read parks (request and reply 1119 to 694, throughput 614 to 796: the spin reads the line the writer writes on every value).

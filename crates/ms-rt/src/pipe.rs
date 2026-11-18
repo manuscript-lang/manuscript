@@ -22,7 +22,7 @@ use crate::desc::slot_drop;
 use crate::{alloc, promise};
 use core::cell::UnsafeCell;
 use core::ptr::null_mut;
-use ms_rt_abi::TypeDesc;
+use ms_rt_abi::{KIND_BOOL, KIND_FLOAT, KIND_INT, KIND_POD, TypeDesc};
 use std::collections::VecDeque;
 use std::sync::atomic::{
     AtomicBool, AtomicI64, AtomicPtr, AtomicU32, AtomicUsize, Ordering, fence,
@@ -36,9 +36,75 @@ pub const CLOSED: i64 = 1;
 /// writer should wait on a flush (back pressure) without asking the pipe again.
 pub const FULL: i64 = 2;
 
+/// A queued value: a block of the process heap holding it, or the value itself in `ptr` when it
+/// is a plain scalar of at most a word (`INLINE` set in `desc`), which then costs no allocation
+/// and no cache line of its own to hand between threads.
 struct Item {
     ptr: usize,
     desc: usize,
+}
+
+/// Tag in `Item::desc` (descriptors are 8-byte aligned): the value is stored in `ptr`.
+const INLINE: usize = 1;
+
+impl Item {
+    /// Whether values of `d` fit in an item with no block: plain scalars and PODs of up to a
+    /// word own nothing, so a bitwise copy is a move.
+    fn fits(d: &TypeDesc) -> bool {
+        matches!(d.kind, KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD) && d.size as usize <= 8
+    }
+
+    /// The item for the owned value of `d` at `value`, in a block unless it fits inline.
+    ///
+    /// # Safety
+    /// `value` holds an owned value of `d`.
+    unsafe fn new(value: *const u8, d: ms_rt_abi::ValueDesc) -> Item {
+        // SAFETY: forwarded contract; a block is `size` bytes (at least 1), the word 8.
+        unsafe {
+            let size = (*d).size as usize;
+            if Item::fits(&*d) {
+                let mut word = 0usize;
+                core::ptr::copy_nonoverlapping(value, core::ptr::addr_of_mut!(word).cast(), size);
+                return Item {
+                    ptr: word,
+                    desc: d as usize | INLINE,
+                };
+            }
+            let block = alloc::alloc(size.max(1));
+            core::ptr::copy_nonoverlapping(value, block, size);
+            Item {
+                ptr: block as usize,
+                desc: d as usize,
+            }
+        }
+    }
+
+    fn is_inline(&self) -> bool {
+        self.desc & INLINE != 0
+    }
+
+    fn descriptor(&self) -> &'static TypeDesc {
+        // SAFETY: descriptors are static; the tag bit is cleared.
+        unsafe { &*((self.desc & !INLINE) as *const TypeDesc) }
+    }
+
+    /// The value as a heap block and its descriptor, the form a promise result takes.
+    fn into_block(self) -> (usize, usize) {
+        if !self.is_inline() {
+            return (self.ptr, self.desc);
+        }
+        let d = self.descriptor();
+        let block = alloc::alloc((d.size as usize).max(1));
+        // SAFETY: `block` holds at least `size` bytes and the word holds the value's bytes.
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                core::ptr::addr_of!(self.ptr).cast::<u8>(),
+                block,
+                d.size as usize,
+            );
+        }
+        (block as usize, self.desc & !INLINE)
+    }
 }
 
 struct Pipe {
@@ -141,10 +207,6 @@ impl<T> Drop for SpinGuard<'_, T> {
     }
 }
 
-/// The most values the reader takes from the shared queue per lock acquisition (never more than
-/// the pipe's capacity, so a reader's own queue is bounded by it as the shared one is).
-const BATCH: usize = 256;
-
 /// Cells per chunk, and chunks in the table: a pipe lives in a cell that never moves, so a cell is
 /// found from its id by two loads. The table holds up to 16M pipes at once.
 const CHUNK: usize = 256;
@@ -162,7 +224,12 @@ struct Shared {
     waiting: AtomicI64,
     /// Whether some flush promise waits for the queue to fall to its capacity.
     flush_pending: AtomicBool,
-    /// Values in the shared queue.
+}
+
+/// Values in the shared queue: written by every write, so it sits apart from the flags that the
+/// reader reads on every value.
+#[repr(align(128))]
+struct Counts {
     queue_len: AtomicUsize,
 }
 
@@ -181,6 +248,7 @@ struct Consumer {
 struct Cell {
     pipe: Spin<Pipe>,
     shared: Shared,
+    counts: Counts,
     consumer: Consumer,
 }
 
@@ -206,6 +274,8 @@ impl Cell {
                 capacity: AtomicUsize::new(0),
                 waiting: AtomicI64::new(0),
                 flush_pending: AtomicBool::new(false),
+            },
+            counts: Counts {
                 queue_len: AtomicUsize::new(0),
             },
             consumer: Consumer {
@@ -217,7 +287,7 @@ impl Cell {
 
     /// Values queued and not yet read (not the reader's own queues).
     fn backlog(&self) -> usize {
-        self.shared.queue_len.load(Ordering::Relaxed)
+        self.counts.queue_len.load(Ordering::Relaxed)
     }
 
     /// The reader's queue of handed-back values.
@@ -266,7 +336,7 @@ impl Cell {
                 free_block(&item);
             }
         }
-        self.shared.queue_len.store(0, Ordering::Relaxed);
+        self.counts.queue_len.store(0, Ordering::Relaxed);
     }
 
     /// Takes over the read promise that waits, if any.
@@ -320,9 +390,12 @@ fn locked(id: i64) -> Option<(&'static Cell, SpinGuard<'static, Pipe>)> {
 }
 
 fn free_block(item: &Item) {
+    if item.is_inline() {
+        return;
+    }
     // SAFETY: the block holds an owned value of its descriptor that nobody took.
     unsafe {
-        slot_drop(&*(item.desc as *const TypeDesc), item.ptr as *mut u8);
+        slot_drop(item.descriptor(), item.ptr as *mut u8);
         alloc::free(item.ptr as *mut u8);
     }
 }
@@ -344,17 +417,20 @@ fn retire(cell: &Cell, p: &mut Pipe) {
     }
 }
 
-/// The next value for the reader from the shared queue, with a batch behind it moved into the
-/// reader's own queue, so the following reads need no lock.
+/// The next value for the reader from the shared queue, with everything queued behind it moved
+/// into the reader's own queue by swapping the two buffers, so the lock is held for a few pointer
+/// moves and the following reads need none. The reader's queue is empty here (`take_ready` found
+/// nothing), and writers wait above the capacity, so it never holds more than about that.
 fn take_batch(cell: &Cell, p: &mut Pipe) -> Option<Item> {
-    let item = p.queue.pop_front()?;
-    let more = p.queue.len().min(p.capacity.clamp(1, BATCH) - 1);
+    if p.queue.is_empty() {
+        return None;
+    }
     // SAFETY: this is the reader, and nothing else holds its queue here.
-    unsafe { cell.local().extend(p.queue.drain(..more)) };
-    cell.shared
-        .queue_len
-        .store(p.queue.len(), Ordering::Relaxed);
-    Some(item)
+    let local = unsafe { cell.local() };
+    debug_assert!(local.is_empty());
+    core::mem::swap(&mut p.queue, local);
+    cell.counts.queue_len.store(0, Ordering::Relaxed);
+    local.pop_front()
 }
 
 /// The flushes that no longer wait, once the queues have fallen to the capacity.
@@ -446,27 +522,18 @@ pub unsafe extern "C-unwind" fn msrt_pipe_write(
     d: ms_rt_abi::ValueDesc,
 ) -> i64 {
     // SAFETY: forwarded contract.
-    let ptr = unsafe {
-        let size = (*d).size as usize;
-        let block = alloc::alloc(size.max(1));
-        core::ptr::copy_nonoverlapping(value, block, size);
-        block as usize
-    };
-    let item = Item {
-        ptr,
-        desc: d as usize,
-    };
+    let item = unsafe { Item::new(value, d) };
     let reader = match locked(pipe) {
         Some((cell, mut p)) if p.reader_open => {
             p.queue.push_back(item);
-            cell.shared
+            cell.counts
                 .queue_len
                 .store(p.queue.len(), Ordering::Relaxed);
             match cell.claim_reader() {
                 Some(reader) => {
                     // The reader was parked, so the queue held nothing else.
                     let first = p.queue.pop_front().expect("the value just queued");
-                    cell.shared
+                    cell.counts
                         .queue_len
                         .store(p.queue.len(), Ordering::Relaxed);
                     (reader, first)
@@ -488,7 +555,8 @@ pub unsafe extern "C-unwind" fn msrt_pipe_write(
             return CLOSED;
         }
     };
-    promise::io_done_block(reader.0, reader.1.ptr, reader.1.desc, pipe);
+    let (ptr, desc) = reader.1.into_block();
+    promise::io_done_block(reader.0, ptr, desc, pipe);
     WRITTEN
 }
 
@@ -513,53 +581,41 @@ pub extern "C-unwind" fn msrt_pipe_read(pipe: i64) -> i64 {
         promise::io_done(id);
         return id;
     };
-    enum Next {
-        Value(Item, Vec<i64>),
-        End,
-        Wait,
+    // SAFETY: this is the reader.
+    if let Some(item) = unsafe { cell.take_ready() } {
+        after_consume(cell);
+        let (ptr, desc) = item.into_block();
+        promise::io_done_block(id, ptr, desc, pipe);
+        return id;
     }
-    loop {
-        // SAFETY: this is the reader.
-        if let Some(item) = unsafe { cell.take_ready() } {
-            after_consume(cell);
-            promise::io_done_block(id, item.ptr, item.desc, pipe);
+    let (item, released) = {
+        let Some((cell, mut p)) = locked(pipe) else {
+            promise::io_done(id);
             return id;
-        }
-        let next = {
-            let Some((cell, mut p)) = locked(pipe) else {
-                promise::io_done(id);
-                return id;
-            };
-            if cell.shared.waiting.load(Ordering::Acquire) != 0 {
-                drop(p);
-                crate::fault::fault(b"pipe: a read is already waiting");
-            }
-            if let Some(item) = take_batch(cell, &mut p) {
-                let released = take_flushes(cell, &mut p);
-                Next::Value(item, released)
-            } else if p.writers == 0 {
-                Next::End
-            } else {
-                cell.shared.waiting.store(id, Ordering::SeqCst);
-                Next::Wait
-            }
         };
-        match next {
-            Next::Value(item, released) => {
-                complete_flushes(released);
-                promise::io_done_block(id, item.ptr, item.desc, pipe);
-                return id;
-            }
-            Next::End => {
+        if cell.shared.waiting.load(Ordering::Acquire) != 0 {
+            drop(p);
+            crate::fault::fault(b"pipe: a read is already waiting");
+        }
+        match take_batch(cell, &mut p) {
+            Some(item) => (item, take_flushes(cell, &mut p)),
+            None if p.writers == 0 => {
+                drop(p);
                 promise::io_done(id);
                 return id;
             }
-            Next::Wait => {
+            None => {
+                cell.shared.waiting.store(id, Ordering::SeqCst);
+                drop(p);
                 promise::on_drop(id, reader_cancelled, pipe as usize);
                 return id;
             }
         }
-    }
+    };
+    complete_flushes(released);
+    let (ptr, desc) = item.into_block();
+    promise::io_done_block(id, ptr, desc, pipe);
+    id
 }
 
 /// Takes the next queued value without a promise: moves it to `out` and answers 1, or answers 0
@@ -587,6 +643,10 @@ pub unsafe extern "C-unwind" fn msrt_pipe_try(
             item
         }
         None => {
+            // Nothing queued: a reader that has caught up must not fight the writers for the lock.
+            if cell.counts.queue_len.load(Ordering::Relaxed) == 0 {
+                return 0;
+            }
             let (item, released) = {
                 let Some((cell, mut p)) = locked(pipe) else {
                     return 0;
@@ -603,8 +663,13 @@ pub unsafe extern "C-unwind" fn msrt_pipe_try(
     // SAFETY: the block holds an owned value of the writer's descriptor, which has the size `d`
     // names; it moves out and the block is freed.
     unsafe {
-        core::ptr::copy_nonoverlapping(item.ptr as *const u8, out, (*d).size as usize);
-        alloc::free(item.ptr as *mut u8);
+        let size = (*d).size as usize;
+        if item.is_inline() {
+            core::ptr::copy_nonoverlapping(core::ptr::addr_of!(item.ptr).cast::<u8>(), out, size);
+        } else {
+            core::ptr::copy_nonoverlapping(item.ptr as *const u8, out, size);
+            alloc::free(item.ptr as *mut u8);
+        }
     }
     1
 }
@@ -699,7 +764,7 @@ pub extern "C-unwind" fn msrt_pipe_close_reader(pipe: i64) {
         for item in p.queue.drain(..) {
             free_block(&item);
         }
-        cell.shared.queue_len.store(0, Ordering::Relaxed);
+        cell.counts.queue_len.store(0, Ordering::Relaxed);
         // SAFETY: this is the reader.
         while let Some(item) = unsafe { cell.take_ready() } {
             free_block(&item);
