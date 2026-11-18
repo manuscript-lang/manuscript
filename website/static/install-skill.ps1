@@ -31,8 +31,10 @@ try {
     $actual = (Get-FileHash "$work\$name.tar.gz" -Algorithm SHA256).Hash.ToLower()
     if ($expected -ne $actual) { throw "install-skill: checksum mismatch: expected $expected, got $actual" }
 
-    # tar.exe ships with Windows 10 and later.
-    tar -xzf "$work\$name.tar.gz" -C $work
+    # tar.exe ships with Windows 10 and later. Unpack from inside the folder with relative names:
+    # GNU tar (Git for Windows) reads a drive letter such as C: as a remote host.
+    Push-Location $work
+    try { tar -xzf "$name.tar.gz" } finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) { throw 'install-skill: tar failed to unpack the archive' }
     if (-not (Test-Path "$work\manuscript\SKILL.md")) { throw 'install-skill: the archive has no manuscript\SKILL.md' }
 
