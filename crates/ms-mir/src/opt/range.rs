@@ -1285,6 +1285,34 @@ impl<'a> Fa<'a> {
         };
     }
 
+    /// Narrows `v` and, when `v` is `p + c` or `p - c` computed by a checked operation, the
+    /// operand `p` too: the check succeeded, so the arithmetic was exact and `p` lies in the
+    /// shifted interval. `x < n - 1` then gives `n > x + 1`.
+    fn narrow_back(&self, env: &mut Env, v: Value, lo: i128, hi: i128) {
+        env.narrow(v, lo, hi);
+        let mut v = v;
+        let (mut lo, mut hi) = (lo, hi);
+        for _ in 0..3 {
+            let Some(i) = self.def_inst(v) else { return };
+            let c = |x: Value| self.constant(x).map(i128::from);
+            let (p, plo, phi) = match i.op {
+                Op::IAddChk => match (c(i.args[0]), c(i.args[1])) {
+                    (None, Some(k)) => (i.args[0], lo - k, hi - k),
+                    (Some(k), None) => (i.args[1], lo - k, hi - k),
+                    _ => return,
+                },
+                Op::ISubChk => match (c(i.args[0]), c(i.args[1])) {
+                    (None, Some(k)) => (i.args[0], lo + k, hi + k),
+                    (Some(k), None) => (i.args[1], k - hi, k - lo),
+                    _ => return,
+                },
+                _ => return,
+            };
+            env.narrow(p, plo, phi);
+            (v, lo, hi) = (p, plo, phi);
+        }
+    }
+
     fn refine_cmp(&self, cc: Cc, a: Value, b: Value, env: &mut Env) {
         let (Some(ia), Some(ib)) = (self.get(a, env), self.get(b, env)) else {
             return;
@@ -1293,44 +1321,44 @@ impl<'a> Fa<'a> {
         let (min, max) = (i64::MIN as i128, i64::MAX as i128);
         match cc {
             Cc::Lt => {
-                env.narrow(a, min, bh - 1);
-                env.narrow(b, al + 1, max);
+                self.narrow_back(env, a, min, bh - 1);
+                self.narrow_back(env, b, al + 1, max);
                 env.rels.push((a, b, true));
             }
             Cc::Le => {
-                env.narrow(a, min, bh);
-                env.narrow(b, al, max);
+                self.narrow_back(env, a, min, bh);
+                self.narrow_back(env, b, al, max);
                 env.rels.push((a, b, false));
             }
             Cc::Gt => {
-                env.narrow(a, bl + 1, max);
-                env.narrow(b, min, ah - 1);
+                self.narrow_back(env, a, bl + 1, max);
+                self.narrow_back(env, b, min, ah - 1);
                 env.rels.push((b, a, true));
             }
             Cc::Ge => {
-                env.narrow(a, bl, max);
-                env.narrow(b, min, ah);
+                self.narrow_back(env, a, bl, max);
+                self.narrow_back(env, b, min, ah);
                 env.rels.push((b, a, false));
             }
             Cc::Eq => {
-                env.narrow(a, bl, bh);
-                env.narrow(b, al, ah);
+                self.narrow_back(env, a, bl, bh);
+                self.narrow_back(env, b, al, ah);
                 env.rels.push((a, b, false));
                 env.rels.push((b, a, false));
             }
             Cc::Ne => {
                 if ib.is_point() {
                     if ia.lo == ib.lo {
-                        env.narrow(a, al + 1, max);
+                        self.narrow_back(env, a, al + 1, max);
                     } else if ia.hi == ib.lo {
-                        env.narrow(a, min, ah - 1);
+                        self.narrow_back(env, a, min, ah - 1);
                     }
                 }
                 if ia.is_point() {
                     if ib.lo == ia.lo {
-                        env.narrow(b, bl + 1, max);
+                        self.narrow_back(env, b, bl + 1, max);
                     } else if ib.hi == ia.lo {
-                        env.narrow(b, min, bh - 1);
+                        self.narrow_back(env, b, min, bh - 1);
                     }
                 }
             }
