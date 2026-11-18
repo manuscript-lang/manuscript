@@ -23,6 +23,11 @@ Complete programs for common jobs. Pick the one closest to what you are building
 - [Patterns and URLs](text-patterns.md): regular expressions, URL parts and queries
 - [Hashes, IDs and random values](ids-and-hashes.md): SHA-256, UUIDs, tokens, repeatable random numbers
 - [Tables and colors](terminal-output.md): aligned columns and color that switches off in a pipe
+- [YAML and XML](yaml-and-xml.md): read a YAML setting or an XML document
+- [Exact numbers](exact-numbers.md): numbers beyond Int and exact fractions
+- [Images](images.md): build, resize, encode and decode PNG and JPEG
+- [WebSockets and server-sent events](real-time.md): push data to a client as it happens
+- [HTTPS and certificates](tls.md): serve TLS, trust a private authority, watch expiry
 - [Deploying one binary](deploying.md): a static executable and a container
 
 Shell commands assume POSIX; the HTTP recipe needs Python 3 as a local server. New to the language? Start with the [guide](../guide/_index.md).
