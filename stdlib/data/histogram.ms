@@ -12,11 +12,15 @@ EXACT := 64
 BUCKETS := 1888
 
 /*
-A latency histogram: records non-negative `Int` values, usually nanoseconds, in fixed memory and
-answers count, extremes, mean and percentiles. Values below 64 are exact and larger ones fall in
-buckets about 3% wide, so a percentile is an upper bound within that error. One histogram belongs to
-one owner; send observations from other promises to that owner over a `pipe`.
-Example: `latency.time(fn: handle(request))` records one span, and `latency.percentile(99.0)` reads the slowest 1%.
+A latency histogram. It records non-negative `Int` values, usually nanoseconds, in fixed
+memory and answers count, extremes, mean and percentiles.
+
+Values below 64 are exact. Larger values fall in buckets about 3% wide, so a percentile
+is an upper bound within that error. A histogram has one owner; other promises send
+their observations to that owner over a `pipe`.
+
+Example: `latency.time(fn: handle(request))` records one span, and
+`latency.percentile(99.0)` returns the value that 99% of observations do not exceed.
 */
 export opaque type Histogram:
 	// Observation count per bucket.

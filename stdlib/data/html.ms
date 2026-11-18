@@ -7,8 +7,19 @@ import (
 	msstd_html_unescape from "@std/internal/html.ms",
 )
 
-// Bounds for HTML input bytes, tree depth, and node count.
-// Fields set to none add no budget. The defaults are depth 10,000 and 1,000,000 nodes.
+/*
+Parses HTML into a normalized tree of documents, elements, text, comments and doctypes, and
+escapes or unescapes text for HTML. `parse` follows the HTML5 tree-construction rules, so
+any input produces a tree: a missing `html`, `head` or `body` element is added and
+misnested tags are repaired, as in a browser. Invalid input is not an error, only a limit
+or option violation is. Use `escape` before putting text in markup and `unescape` to read
+character references back.
+*/
+
+// Limits for `parse` on input bytes, tree depth and node count. A field set to none
+// adds no limit. The defaults are depth 10,000 and 1,000,000 nodes. A negative limit
+// returns
+// `EINVAL`, and input that exceeds one returns `EOVERFLOW`.
 export type HtmlOptions:
 	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
 	max_bytes: Int? = none
@@ -19,9 +30,9 @@ export type HtmlOptions:
 	// element nodes.
 	max_nodes: Int? = 1000000
 
-// An HTML attribute, including its namespace and decoded value.
+// An HTML attribute with its name, namespace and decoded value.
 export type HtmlAttribute:
-	// Local attribute name after native HTML parsing and normalization.
+	// Attribute name after HTML parsing and normalization.
 	name: String
 	// Attribute namespace prefix, or empty text for an unqualified attribute.
 	namespace: String
@@ -59,7 +70,7 @@ export enum HtmlNode:
 	)
 	// A document-type declaration retained from the parsed HTML.
 	Doctype(
-		// Doctype name supplied by the native HTML parser.
+		// Doctype name as normalized by the parser.
 		name: String,
 		// Public identifier, or empty text when no public identifier is present.
 		public_id: String,
@@ -71,9 +82,9 @@ export enum HtmlNode:
 export fn escape(text: String) String:
 	return msstd_html_escape(text)
 
-// Decodes HTML5 named and numeric character references in text context, once.
-// Recognized references can omit semicolons; unrecognized text remains literal.
-// Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
+// Decodes HTML5 named and numeric character references in text context, once. A
+// recognized reference may omit its semicolon; unrecognized text stays literal. Invalid
+// numeric references become U+FFFD. It does not parse markup or normalize text.
 export fn unescape(text: String) String:
 	return msstd_html_unescape(text)
 
@@ -4958,8 +4969,7 @@ fn budget(limit: Int?) Int!:
 	return ok(n)
 
 // Whether the tree under the document has at most `max_nodes` reachable nodes and nests
-// at most
-// `max_depth` levels (the document is level zero).
+// at most `max_depth` levels (the document is level zero).
 fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
 	var stack: List[Int] = [1]
 	var depths: List[Int] = [0]
@@ -4980,7 +4990,8 @@ fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
 
 	return true
 
-// Parses HTML into a normalized tree and applies the resource limits in `options`.
+// Parses HTML into a normalized tree and applies the limits in `options`. The result is
+// the `Document` node.
 export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
 	max_bytes := budget(options.max_bytes)?
 	max_depth := budget(options.max_depth)?

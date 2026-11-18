@@ -10,7 +10,7 @@ import (
 /*
 Misbehaving streams for testing code that reads and writes. Each wrapper takes its input first, like the
 helpers in `@std/io/streams.ms`, so `from_bytes(data) | one_byte` is a reader that trickles.
-`check_reader` is the conformance check for a `ReadStream[Bytes]` you wrote.
+`check_reader` checks that a `ReadStream[Bytes]` you wrote behaves like a well-formed stream.
 */
 type OneByte:
 	input: ReadStream[Bytes]
@@ -37,7 +37,7 @@ fn var OneByte.next() Bytes?!:
 fn var OneByte.close() Void!:
 	return self.input.close()
 
-// Returns `input` limited to one byte per read, which exposes code that assumes a read
+// Returns `input` limited to one byte per read. This exposes code that assumes a read
 // fills its buffer.
 export fn one_byte(input: ReadStream[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](OneByte(input, none))
@@ -65,9 +65,9 @@ fn var FailAfter.next() Bytes?!:
 fn var FailAfter.close() Void!:
 	return self.input.close()
 
-// Returns `input` that delivers `after` bytes and then fails every read with `cause`,
-// even if `input` has ended. Use it to check that a parser reports a truncated or
-// broken source instead of treating it as clean end of input.
+// Returns a stream that delivers `after` bytes of `input` and then fails every read
+// with `cause`, even if `input` has ended. Use it to check that a parser reports a
+// truncated or broken source instead of treating it as a clean end of input.
 export fn fail_after(
 	input: ReadStream[Bytes],
 	after: Int,
@@ -100,9 +100,9 @@ fn var FailingSink.flush() Void!:
 fn var FailingSink.close() Void!:
 	return self.output.close()
 
-// Returns a writer that passes `after` bytes through to `output`, writes the prefix of
-// the write that crosses the limit, and then fails that write and every later one with
-// `cause`. Use it to check error handling on a full disk or closed pipe.
+// Returns a writer that passes `after` bytes through to `output`, writes the part of
+// the write that fits under the limit, and then fails that write and every later one
+// with `cause`. Use it to check error handling on a full disk or closed pipe.
 export fn fail_writer_after(
 	output: WriteStream[Bytes],
 	after: Int,
@@ -110,9 +110,10 @@ export fn fail_writer_after(
 ) WriteStream[Bytes]:
 	return WriteStream[Bytes](FailingSink(output, after, cause))
 
-// Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly `expected`:
-// whole reads, one-byte reads, and an end of input that stays ended. `make` is called
-// once per check so each starts from the beginning.
+// Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly
+// `expected`: whole reads, one-byte reads, and an end of input that stays ended.
+// `make` is called once per check, so each check starts from the beginning. Fails the
+// test if any check does not hold.
 export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
 	all := read_all(make())
 	if all.is_error(): return fail("check_reader: reading everything failed")

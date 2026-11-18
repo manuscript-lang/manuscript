@@ -1,9 +1,9 @@
 import panic from "@std/core.ms"
 
-// Source-written ordering methods for the built-in scalars and String: `a.min(b)`,
-// `a.max(b)` and `a.clamp(low, high)`, defined once over `compare` so every numeric
-// width and String agree. The methods apply to every program. Each is written once
-// on the `Ordered` set and exists on every member.
+// Ordering methods for the built-in scalars and String: `a.min(b)`, `a.max(b)` and
+// `a.clamp(low, high)`. Each is written once over `compare` on the `Ordered` set and
+// exists on every member, so every numeric width and String agree. They are available
+// in every program.
 type Ordered = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | UInt64 | Float | Float32 | String
 
 fn lesser[T: Comparable](left: T, right: T) T:

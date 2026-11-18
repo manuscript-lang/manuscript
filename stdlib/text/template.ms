@@ -8,7 +8,7 @@ import (
 )
 
 /*
-Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
+Text templates: compile a template once, then render it with `JsonValue` data.
 
 <!-- manuscript-example: {"mode":"fragment","given":["user: JsonValue"]} -->
 ```manuscript
@@ -22,24 +22,28 @@ print(rendered)
 
 Actions sit between `{{` and `}}`:
 
-- `{{ user.name }}` prints a value; a path walks object members and list positions (`items.0`).
+- `{{ user.name }}` prints a value. A path walks object members and list positions (`items.0`).
   Names resolve to loop variables first, then to members of the root object. A missing path is an
-  error unless `RenderOptions(strict: false)`, or the value goes through `default`.
+  error, unless `RenderOptions(strict: false)` is set or the value goes through `default`.
 - `{{ name | upper | default("anonymous") }}` pipes a value through filters. Filters bind tighter than
-  operators: `{{ if name | length > 3 }}`. Filters: `upper lower trim title length join(sep) json
-  default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`. `length` counts list items, object members or the UTF-8 bytes of text. `truncate(n)` keeps at most `n` bytes (a cut never splits a character), adds `...` when it cuts, and rejects a negative `n`.
-- `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
-  parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
+  operators, as in `{{ if name | length > 3 }}`. The filters are `upper`, `lower`, `trim`, `title`,
+  `length`, `join(sep)`, `json`, `default(value)`, `escape`, `raw`, `first`, `last`, `reverse`, `keys`,
+  `contains(x)`, `replace(old, new)` and `truncate(n)`.
+  `length` counts list items, object members or the UTF-8 bytes of text.
+  `truncate(n)` keeps at most `n` bytes without splitting a character, adds `...` when it cuts, and rejects a negative `n`.
+- `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` accepts `== != < <= > >= and or not` and
+  parentheses. Empty text, zero, null, false, and empty lists and objects are false. A missing path
   in a condition is false. Numbers compare by their exact JSON decimal value, without Float rounding.
-- `{{ for item in items }}…{{ else }}…{{ end }}` loops a list (the `else` branch runs when it is empty).
-  `for i, item in items` adds the position; for an object, `for key, value in object`; a single name over
-  an object binds `{key, value}`. Inside a loop `loop.index`, `loop.first`, `loop.last` and `loop.length` exist.
-- `{{ include "name" }}` renders a partial from the `partials` map passed to `render`, in the current scope. Partials may nest 64 deep; a partial that includes itself fails with `EOVERFLOW`.
+- `{{ for item in items }}…{{ else }}…{{ end }}` loops over a list; the `else` branch runs when it is empty.
+  `for i, item in items` adds the position. For an object, write `for key, value in object`; a single name over
+  an object binds `{key, value}`. Inside a loop, `loop.index`, `loop.first`, `loop.last` and `loop.length` are available.
+- `{{ include "name" }}` renders a partial from the `partials` map in `RenderOptions`, in the current scope.
+  Partials may nest 64 deep; a partial that includes itself fails with `EOVERFLOW`.
 - `{{# comment }}` prints nothing. `{{-` and `-}}` trim adjacent white space. `{{ "{{" }}` prints braces.
 
-`compile(source, html: true)` escapes every printed value for HTML text and quoted attributes; end an
+`compile(source, html: true)` escapes every printed value for HTML text and quoted attributes. End an
 action with `| raw` to print trusted markup unchanged. Values come from data only: templates cannot
-call functions or run code, and `max_output` bounds the result.
+call functions or run code. `max_output` bounds the size of the result.
 */
 
 // A parsed template expression: a literal, a path, a filter call or an operator.
@@ -125,8 +129,8 @@ export opaque type Template:
 	// True when printed values are HTML-escaped by default.
 	html: Bool
 
-// Renders with `data` (an object supplies the root names) and the settings in
-// `options`.
+// Renders the template with `data` and the settings in `options`. When `data` is an
+// object, its members supply the root names.
 fn Template.render(
 	data: JsonValue,
 	options: RenderOptions = RenderOptions(),
@@ -162,7 +166,7 @@ FILTERS := [
 MAX_DEPTH := 64
 
 // Compiles template source. With `html: true`, printed values are HTML-escaped unless
-// they end in `| raw`.
+// the action ends in `| raw`.
 export fn compile(source: String, html: Bool = false) Template!Error:
 	tokens := tokenize(source)?
 	var builder = Builder(tokens: tokens, at: 0, html: html)
@@ -173,13 +177,14 @@ export fn compile(source: String, html: Bool = false) Template!Error:
 
 	return ok(Template(nodes: done.nodes, html: html))
 
-// Compiles and renders in one call; use `compile` when rendering more than once.
+// Compiles and renders in one call, with default `RenderOptions`. Use `compile` when
+// rendering more than once.
 export fn render(source: String, data: JsonValue, html: Bool = false) String!Error:
 	template := compile(source, html: html)?
 	return template.render(data)
 
-// Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template
-// reads.
+// Converts any `Data` value (records, lists, scalars) to the `JsonValue` that a
+// template reads.
 export fn to_data[T: Data](value: T) JsonValue!Error:
 	text := stringify(value: value)
 	if text.is_error(): return error(
@@ -193,18 +198,19 @@ export fn to_data[T: Data](value: T) JsonValue!Error:
 
 	return ok(parsed.get())
 
-// Settings for `render` and `render_to`.
+// Settings for `Template.render` and `render_to`.
 export type RenderOptions:
 	// Templates that `include` can name.
 	partials: Map[String, Template] = Map[String, Template]()
-	// True fails a render on a missing printed path; false prints it as empty.
+	// When true, a missing printed path fails the render; when false, it prints as
+	// empty.
 	strict: Bool = true
 	// Maximum text length in bytes (default 16 MiB).
 	max_output: Int = 16777216
 
-// Renders `template` as its `render` method does and writes the text to `output`, which
-// the caller keeps and closes. A failed render writes nothing; a failed write returns
-// the stream's error.
+// Renders `template` as its `render` method does and writes the text to `output`. The
+// caller keeps `output` and closes it. A failed render writes nothing; a failed write
+// returns the stream's error.
 export fn render_to(
 	template: Template,
 	data: JsonValue,

@@ -18,8 +18,9 @@ print(quote("a\tb"))           // a double-quoted literal with the escape writte
 ```
 */
 
-// Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`;
-// anything else is none.
+// Parses a boolean after trimming whitespace and ignoring case. `true`, `t`, `1`,
+// `yes` and `on` give true; `false`, `f`, `0`, `no` and `off` give false. Anything
+// else is `none`.
 export fn parse_bool(text: String) Bool?:
 	word := text.trim().lower()
 	if ["true", "t", "1", "yes", "on"].contains(word): return true
@@ -28,15 +29,15 @@ export fn parse_bool(text: String) Bool?:
 	return none
 
 /*
-Quotes text as a double-quoted literal using the escapes of Manuscript string literals.
+Quotes text as a double-quoted literal, using the escapes of Manuscript string literals.
 Printable Unicode stays as is; controls, bidi controls and U+2028/U+2029 become `\u{..}`.
-Braces stay as they are, because plain `"..."` text never interpolates; the result is valid source text for the same string.
+Braces stay as they are, because plain `"..."` text never interpolates. The result is valid source text for the same string.
 */
 export fn quote(text: String) String:
 	return quote_with(text, false)
 
-// Like quote, but every non-ASCII scalar is written as `\u{..}`, so the result is pure
-// ASCII.
+// Like `quote`, but every non-ASCII scalar is written as `\u{..}`, so the result is
+// pure ASCII.
 export fn quote_ascii(text: String) String:
 	return quote_with(text, true)
 
@@ -72,9 +73,10 @@ fn quote_with(text: String, ascii_only: Bool) String:
 	return out.build()
 
 /*
-Reverses quote: reads a double-quoted literal and returns its text. Supports `\"`, `\\`, `\n`,
-`\r`, `\t`, `\0`, `\{` and `\}` (the escaped braces of `f"..."` text; `quote` never writes them) and `\u{hex}` with 1 to 6 hexadecimal digits;
-anything else, or text that is not fully quoted, is EINVAL.
+Reverses `quote`: reads a double-quoted literal and returns its text.
+Supported escapes are `\"`, `\\`, `\n`, `\r`, `\t`, `\0`, `\u{hex}` with 1 to 6 hexadecimal digits,
+and `\{` and `\}` (the escaped braces of `f"..."` text, which `quote` never writes).
+Any other escape, or text that is not fully quoted, returns `EINVAL`.
 */
 export fn unquote(text: String) String!:
 	cs := text.scalar_values()

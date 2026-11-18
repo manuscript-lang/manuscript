@@ -16,15 +16,20 @@ import (
 )
 
 /*
-Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,
-and this module repeats it, times it, and reports per-iteration statistics. The entry that `ms bench` builds calls
-`run_bench_block` with the block's body, so programs do not call it themselves; a body may instead time its own work
-with `measure`.
-Settings come from environment variables that `ms bench` fills from its flags: MS_BENCH_TIME_MS (target time per sample,
-default 100), MS_BENCH_SAMPLES (default 10), and MS_BENCH_ITERATIONS (a fixed iteration count; 0 calibrates).
-A block written `bench "name" per N:` performs N operations per iteration, and every statistic is per operation.
-The result is one line on standard output: `MSBENCH ` followed by a JSON object of nanoseconds per operation (one operation per iteration by default), the process CPU time per operation (`cpu_ns`, user plus kernel, which ignores time spent waiting for a CPU), and the runtime's work counters per operation (allocations, bytes allocated, list copies and string clones with their bytes) from one extra counted run.
-Run settings.
+Measurement driver for `bench` blocks. `ms bench` runs each block in its own process. The block's body is one
+iteration; this module repeats it, times it and reports per-iteration statistics. The entry that `ms bench` builds
+calls `run_bench_block` with the block's body, so programs do not call it themselves. A body may instead time its
+own work with `measure`.
+
+Settings come from environment variables that `ms bench` fills from its flags: `MS_BENCH_TIME_MS` (target time per
+sample, default 100), `MS_BENCH_SAMPLES` (default 10) and `MS_BENCH_ITERATIONS` (a fixed iteration count; 0
+calibrates). A block written `bench "name" per N:` performs N operations per iteration, and every statistic is per
+operation.
+
+The result is one line on standard output: `MSBENCH ` followed by a JSON object. It holds the time in nanoseconds per
+operation (one operation per iteration by default) and the process CPU time per operation (`cpu_ns`, user plus kernel,
+which ignores time spent waiting for a CPU). It also holds the runtime's work counters per operation (allocations,
+bytes allocated, list copies and string clones, with their bytes), taken from one extra counted run.
 */
 type Settings:
 	// Target duration of one sample in nanoseconds; calibration grows the iteration
@@ -39,11 +44,15 @@ type Settings:
 max_iterations := 100000000
 
 /*
-Runs `work` repeatedly and writes the statistics line, per operation for `operations` (at least 1) operations per run.
+Runs `work` repeatedly and writes the statistics line, per operation, where each run performs `operations` operations (at least 1).
 A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
-  bench "sorts":
-      data := [3, 1, 2]
-      measure(1, fn: keep(data.sorted().length()))?
+
+```text
+bench "sorts":
+    data := [3, 1, 2]
+    measure(1, fn: keep(data.sorted().length()))?
+```
+
 Everything the body does before `measure` runs once, untimed.
 */
 export fn measure(operations: Int, work: fn() Void!) Void!:
@@ -110,12 +119,12 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 	stdout().write(line).get()
 	set_environment(measured_flag, "1").get()
 
-// Set once a body has timed its own work with `measure`.
+// The environment variable that `measure` sets once a body has timed its own work.
 measured_flag := "MS_BENCH_MEASURED"
 
-// The entry `ms bench` builds calls this with each block's body; programs do not. The
-// body runs once first (the warmup); a body that called `measure` has reported already,
-// and any other body is one iteration to repeat and time.
+// Called by the entry that `ms bench` builds, with each block's body; programs do not
+// call it. The body runs once first, as the warmup. A body that called `measure` has
+// already reported; any other body is one iteration to repeat and time.
 export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
 	body()?
 
@@ -124,8 +133,8 @@ export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
 
 	return measure(operations, body)
 
-// Checks a bench's Int result so the work that computed it stays observable. Apply
-// `keep(value)?` in the body. The smallest Int returns an error; choose a different
+// Consumes a bench's Int result so the work that computed it stays observable. Write
+// `keep(value)?` in the body. The smallest Int returns an error, so choose a different
 // checksum if that value is a valid result of your workload.
 export fn keep(checksum: Int) Void!:
 	if checksum == -9223372036854775807 - 1:
@@ -144,16 +153,16 @@ fn settings() Settings:
 		found.iterations = max(text.parse_int().get_or(0), 0)
 	return found
 
-// Runs `body` `count` times and returns the elapsed nanoseconds; the first failure
-// stops the run and is returned.
+// Internal: runs `body` `count` times and returns the elapsed nanoseconds. The first
+// failure stops the run and is returned.
 fn time_batch(body: fn() Void!, count: Int) Int!:
 	started := monotonic()
 	for unused in 0..count:
 		body()?
 	return ok(monotonic().difference(started).to_nanoseconds())
 
-// Returns the iteration count whose sample should take about `target` nanoseconds,
-// given that `count` took `elapsed`.
+// Internal: returns the iteration count whose sample should take about `target`
+// nanoseconds, given that `count` took `elapsed`.
 fn next_count(count: Int, elapsed: Int, target: Int) Int:
 	scaled := count * target / max(elapsed, 1) * 12 / 10
 	return min(max(scaled, count + 1), min(count * 100, max_iterations))

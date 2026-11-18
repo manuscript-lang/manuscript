@@ -6,7 +6,7 @@ To load a file straight into the environment use `load_environment` from `@std/o
 - Blank lines and `#` comment lines are skipped; a leading byte-order mark is ignored.
 - `export NAME=value` is accepted, and a name is letters, digits and `_`, not starting with a digit.
 - A bare value ends at an inline ` # comment` (a `#` after a space or tab, or first) and is trimmed, so `a#b` is the value `a#b`. A single-, double- or backtick-quoted value is literal, may span lines, and keeps any `#`.
-- Only text after a closing quote may be a comment. A later duplicate name replaces the earlier value and keeps its first position.
+- Only text after a closing quote may be a comment. A later duplicate name replaces the earlier value and keeps its first position. Malformed lines (no `=`, an invalid name, an unterminated quote, text after a closing quote) return an `Error` with kind `EBADMSG` and the line number in `details`.
 
 Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"8080"` and `NAME` as `"my app"`.
 */
@@ -80,7 +80,7 @@ Parses INI text into sections of settings, both in file order. Keys before the f
 - `[name]` starts a section; a repeated header continues the earlier one. Names and keys are trimmed.
 - `key = value` and `key: value` both assign; the first `=` or `:` splits, so values may contain the other.
 - Lines starting with `#` or `;` are comments, and so is text after ` #` or ` ;` in a value. A value wrapped in matching `"` or `'` keeps such text and loses the quotes.
-- A later duplicate key in a section replaces the earlier value. A line without `=` or `:` returns EBADMSG.
+- A later duplicate key in a section replaces the earlier value. A line without `=` or `:`, or an unterminated `[section` header, returns an `Error` with kind `EBADMSG` and the line number in `details`.
 
 Example: `parse_ini("[db]\nhost = localhost\nport: 5432")` holds `ini["db"]["port"]` as `"5432"`.
 */

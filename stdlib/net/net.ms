@@ -165,9 +165,9 @@ fn connection(native: NativeConnection) Connection:
 
 /*
 Upgrades a plain TCP connection to TLS in place, as a protocol's STARTTLS step does (Postgres `SSLRequest`, SMTP and IMAP
-`STARTTLS`). It runs the client handshake on the same socket and returns the TLS connection. The plain connection is
-consumed (`plain`): it is closed without closing the socket, and the returned connection owns the socket. Use the returned value
-from here on.
+`STARTTLS`). It runs the client handshake on the same socket and returns the TLS connection. The `plain` argument is
+consumed: it is closed without closing the socket, and the returned connection owns the socket. Use the returned
+connection from here on.
 
 The connection must be plain and idle: no read or write may be waiting on it, and the peer must send no application
 bytes before it agrees to TLS. `options` is read as for `connect`: `server_name` is required and verified against
@@ -189,8 +189,8 @@ export fn start_tls(
 
 // Upgrades a plain TCP connection to TLS in place on the server side: it accepts the
 // client's handshake with the certificate and key in `options`, then returns the TLS
-// connection, consuming `plain` as `start_tls` does.
-// `options` must hold a certificate and key, otherwise EINVAL is returned; the other errors match `start_tls`.
+// connection, consuming `plain` as `start_tls` does. `options` must hold a certificate
+// and key, otherwise EINVAL is returned; the other errors match `start_tls`.
 export fn accept_tls(
 	var plain: Connection,
 	options: TlsOptions = TlsOptions(),
@@ -322,7 +322,9 @@ fn Network.close() Void:
 // work as a promise. Returns EACCES for names or addresses a restricted network
 // disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses
 // or the handshake or verification fails.
-// `tls` verifies the server certificate against `tls.roots_pem` (the system roots when empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or invalid options return EINVAL. `timeout` bounds the whole attempt.
+// `tls` verifies the server certificate against `tls.roots_pem` (the system roots when
+// empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or
+// invalid options return EINVAL. `timeout` bounds the whole attempt.
 fn Network.connect(
 	address: String,
 	tls: TlsOptions? = none,
@@ -507,8 +509,12 @@ export fn bind_datagram(address: String) DatagramSocket!:
 // Starts resolving `address` (`host:port`) and opening a TCP connection to the first
 // reachable permitted address, and returns its promise. With `tls`, it then completes a
 // TLS handshake.
-// `wait` gives EACCES for names or addresses a restricted network disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses or the handshake or verification fails.
-// `tls` verifies the server certificate against `tls.roots_pem` (the system roots when empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or invalid options give EINVAL. `timeout` bounds the whole attempt.
+// `wait` gives EACCES for names or addresses a restricted network disallows, ETIMEDOUT when
+// `timeout` elapses, and EIO when every address refuses or the handshake or verification
+// fails.
+// `tls` verifies the server certificate against `tls.roots_pem` (the system roots when
+// empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or
+// invalid options give EINVAL. `timeout` bounds the whole attempt.
 // ms: effect std.net.connect
 export fn connect(
 	address: String,
@@ -616,9 +622,13 @@ export fn restrict(
 // answered with 503, an oversized header block with 431, and a handler fault with 500.
 // An address that cannot be bound returns EIO. Returns EINVAL for invalid options
 // (`cores` below 1 included). Close the server, or drop it, to stop it.
-// `serve` binds a plain TCP listener and runs the accept loop as a promise. It starts one worker per core (`options.cores`), each placed on the least loaded thread, and deals each accepted connection to the next worker, which keeps it; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
-// A handler is cancelled when its request times out or its client disconnects (an
-// HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its
+// `serve` binds a plain TCP listener and runs the accept loop as a promise. It starts one
+// worker per core (`options.cores`), each placed on the least loaded thread, and deals
+// each accepted connection to the next worker, which keeps it; HTTP/1.1, HTTP/2 and the
+// TLS handshake of `options.tls` run there. `handler` is built once and only read by
+// every thread. `options.cores` limits the runtime to that many threads (none: every
+// core). A handler is cancelled when its request times out or its client disconnects
+// (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its
 // resource cleanup runs. A client that half-closes its end after sending the request
 // counts as disconnected. A faulting handler's frames release the heap values they own,
 // as a cancelled handler's do. Return an error response for expected failures instead

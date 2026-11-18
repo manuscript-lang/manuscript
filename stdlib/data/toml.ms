@@ -1,4 +1,5 @@
-// TOML 1.0 parser implemented in Manuscript.
+// TOML 1.0 parser and writer implemented in Manuscript. `parse` reads a document into a
+// `TomlValue` table, and `stringify` writes one back.
 import (
 	Bytes from "@std/bytes.ms",
 	quote_text from "@std/data/quote.ms",
@@ -46,9 +47,9 @@ export enum TomlValue:
 		values: Map[String, TomlValue]
 	)
 
-// Input-byte, nesting-depth, and parsed-value limit settings for TOML parsing. Fields
-// set to none add no budget. The defaults, depth 10,000 and 1,000,000 values, guard
-// against deep nesting and alias expansion.
+// Limits for `parse` on input bytes, nesting depth and parsed values. A field set to
+// none adds no limit. The defaults, depth 10,000 and 1,000,000 values, guard against
+// deeply nested or very large documents. A negative limit returns `EINVAL`.
 export type TomlOptions:
 	// Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
 	max_bytes: Int? = none
@@ -921,8 +922,9 @@ fn materialize(
 fn control_pattern() Regex:
 	return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
-// Parses a TOML document into a table value and reports source line and column on
-// invalid input.
+// Parses a TOML document into a `TableValue`, which is empty for an empty document.
+// Invalid TOML returns an `Error` with kind `EBADMSG` that reports the source line and
+// column. A limit in `options` that the document exceeds returns `EOVERFLOW`.
 export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
 		if value := limit:
@@ -1187,8 +1189,10 @@ fn datetimes_valid(value: TomlValue) Bool:
 			return true
 		_: return true
 
-// Serializes a table value as a TOML document. Tables and arrays of tables use headers;
-// other values are written inline.
+// Writes a table value as a TOML document. Tables and arrays of tables use headers;
+// other values are written inline. A `value` that is not a `TableValue`, or that holds
+// a malformed date or time, returns `EINVAL`. Output longer than `max_bytes` returns
+// `EOVERFLOW`.
 export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
 	if limit := max_bytes:
 		if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))

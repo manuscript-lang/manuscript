@@ -30,9 +30,9 @@ fn Bytes.clone() Bytes: ...
 fn Bytes.contains(value: Bytes) Bool: ...
 
 /*
-Splits exact byte separators into a fresh list of immutable byte views.
-Nonempty separators retain empty parts; empty data then yields one empty Bytes.
-An empty separator yields one Bytes per byte, no parts for empty data.
+Splits at every occurrence of `separator` and returns the parts as a new list.
+Empty parts are kept, so empty data with a nonempty separator yields one empty Bytes.
+An empty separator yields one Bytes per byte, and no parts for empty data.
 */
 fn Bytes.split(separator: Bytes) List[Bytes]: ...
 
@@ -108,7 +108,8 @@ fn Bytes.int8(at: Int) Int8!:
 	raw := msrt_bytes_read_word(self, at, 1, true)?
 	return ok(signed(raw, 128).to_int8().get_or(0))
 
-// Reads one unsigned byte at `at`.
+// Reads one unsigned byte at `at`; a missing byte returns an `Error` of kind
+// `ERANGE`.
 fn Bytes.uint8(at: Int) UInt8!:
 	raw := msrt_bytes_read_word(self, at, 1, true)?
 	return ok(raw.to_uint8().get_or(0))
@@ -186,9 +187,9 @@ fn Bytes.uint64_be(at: Int) UInt64!:
 	return read_uint64(self, at, false)
 
 /*
-Reads an unsigned base-128 integer, least-significant group first, from absolute byte offset `at`.
-Reads at most ten bytes; byte ten must be 0 or 1. Accepts nonminimal encodings and ignores trailing bytes.
-Offsets require 0 <= at <= length(), otherwise ERANGE; an unterminated shorter input returns EBADMSG.
+Reads an unsigned base-128 integer, least-significant group first, starting at byte offset `at`.
+Reads at most ten bytes, and the tenth must be 0 or 1. Accepts nonminimal encodings and ignores trailing bytes.
+An offset outside 0 <= at <= length() returns `ERANGE`; input that ends before the encoding does returns `EBADMSG`.
 */
 fn Bytes.uvarint(at: Int) VarintRead[UInt64]!:
 	if at < 0 or at > self.length():
@@ -213,8 +214,9 @@ fn Bytes.uvarint(at: Int) VarintRead[UInt64]!:
 
 	return error(Error("binary: varint overflows 64 bits", kind: "ERANGE"))
 
-// Reads a signed 64-bit zigzag integer (0, -1, 1, -2 become 0, 1, 2, 3).
-// Shares uvarint's offsets, ten-byte bound, nonminimal acceptance, and error cases.
+// Reads a signed 64-bit zigzag integer: the encoded values 0, 1, 2, 3 decode to 0,
+// -1, 1, -2. Offsets, the ten-byte bound, nonminimal encodings and errors are the
+// same as for `uvarint`.
 fn Bytes.varint(at: Int) VarintRead[Int]!:
 	raw := self.uvarint(at)?
 	half := (raw.value / 2).to_int().get_or(0)
@@ -246,8 +248,8 @@ fn Bytes.float64_be(at: Int) Float!:
 	raw := msrt_bytes_read_word(self, at, 8, false)?
 	return ok(msrt_float_from_bits(raw))
 
-// Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One
-// allocation and one copy of each part, unlike repeated concat.
+// Joins the parts end to end into one new Bytes; an empty list gives empty bytes.
+// It allocates once and copies each part once, unlike repeated `concat`.
 export fn join(parts: List[Bytes]) Bytes:
 	return msrt_bytes_join(parts)
 

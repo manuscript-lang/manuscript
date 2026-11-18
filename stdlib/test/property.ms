@@ -21,15 +21,17 @@ import (
 /*
 Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
 `check` runs it on many generated values and, on failure, shrinks the input to a small counterexample.
+
 Generators draw integers from a `Source` that records them, so a failing input shrinks by editing the recorded
 draws (deleting spans, lowering values) and replaying the generator. Every generator, including your own
-composed with `map`, `flat_map`, `lists`, and the rest, therefore shrinks without a shrinker of its own.
+built with `map`, `flat_map`, `lists` and the rest, therefore shrinks without a shrinker of its own.
+
 Example: `check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))?`.
-`ms test --runs N`, `--seed N`, and `--fuzz DURATION` set the case count, the starting seed, and a time budget.
+`ms test --runs N`, `--seed N` and `--fuzz DURATION` set the case count, the starting seed and a time budget.
 */
 
-// The recorded stream of draws a generator reads. Create one with `source`; generators
-// call `draw`.
+// The recorded stream of draws that a generator reads. Create one with `source`;
+// generators call `draw`.
 export type Source:
 	// Every draw so far, in order, each within its bound.
 	choices: List[Int]
@@ -44,7 +46,7 @@ export type Source:
 	// instead of running them.
 	invalid: Bool
 
-// Returns the next 64 random bits as a signed Int (SplitMix64).
+// Internal: returns the next 64 random bits as a signed Int (SplitMix64).
 fn var Source.next_bits() Int:
 	self.state = wrapping_add(self.state, -7046029254386353131)
 
@@ -97,26 +99,28 @@ export fn draw(source: Source, max: Int) Drawn[Int]:
 	s.pos += 1
 	return Drawn(value, s)
 
-// A generator of `T` values. Build one with the functions below; run it with `check`.
+// A generator of `T` values. Build one with the functions in this module and run it
+// with `check`.
 export type Gen[T]:
 	// Reads draws from the source and builds a value.
 	make: fn(Source) Drawn[T]
 
-// Transforms every generated value.
+// Returns a generator that applies `transform` to every generated value.
 fn Gen[T].map[B](transform: fn(T) B) Gen[B]:
 	return Gen[B](fn s: map_draw(self, transform, s))
 
-// Generates a value, then generates again with a generator chosen from it
-// (dependent generation).
+// Generates a value, then generates again with the generator that `next` returns for
+// it (dependent generation).
 fn Gen[T].flat_map[B](next: fn(T) Gen[B]) Gen[B]:
 	return Gen[B](fn s: flat_map_draw(self, next, s))
 
-// Keeps values for which `keep` is true. After 50 consecutive rejections the case
-// is marked invalid and discarded.
+// Keeps only the values for which `keep` is true. After 50 consecutive rejections the
+// case is marked invalid and discarded.
 fn Gen[T].filter(keep: fn(T) Bool) Gen[T]:
 	return Gen[T](fn s: filter_draw(self, keep, s.clone()))
 
-// Combines one value from this generator with one from `other`.
+// Generates one value from this generator and one from `other`, and combines them
+// with `combine`.
 fn Gen[T].zip[B, C](other: Gen[B], combine: fn(T, B) C) Gen[C]:
 	return Gen[C](fn s: zip_draw(self, other, combine, s))
 
@@ -264,8 +268,7 @@ fn list_draw[T](gen: Gen[T], min_length: Int, max_length: Int, s: Source) Drawn[
 	return Drawn(items, cursor)
 
 // Generates strings of up to `max_length` characters drawn from `alphabet`, shrinking
-// toward shorter text of its first characters.
-// `alphabet` must not be empty.
+// toward shorter text of its first characters. `alphabet` must not be empty.
 export fn strings(
 	alphabet: String = "abcdefghijklmnopqrstuvwxyz0123456789 ",
 	max_length: Int = 20,
@@ -278,7 +281,7 @@ export fn strings(
 export fn pairs[A: Clonable, B: Clonable](first: Gen[A], second: Gen[B]) Gen[Pair[A, B]]:
 	return first.zip(second, fn a, b: Pair(a, b))
 
-// Run settings. `ms test` fills them from `--runs`, `--seed`, and `--fuzz` through
+// Run settings. `ms test` fills them from `--runs`, `--seed` and `--fuzz` through
 // environment variables.
 export type Settings:
 	// Cases to run when not fuzzing.
@@ -289,8 +292,8 @@ export type Settings:
 	// First case seed, or none for a random one that failures report.
 	seed: Int?
 
-// Returns defaults with `ms test` flag overrides (`MS_TEST_RUNS`, `MS_TEST_SEED`,
-// `MS_TEST_FUZZ_MS`) applied.
+// Returns the run settings, with `runs` as the default case count, after applying the
+// `ms test` flag overrides (`MS_TEST_RUNS`, `MS_TEST_SEED`, `MS_TEST_FUZZ_MS`).
 export fn settings(runs: Int = 100) Settings:
 	var found = Settings(runs, 0, none)
 	environment := environment().get_or(Map[String, String]())
@@ -302,8 +305,8 @@ export fn settings(runs: Int = 100) Settings:
 		found.fuzz_milliseconds = text.parse_int().get_or(0)
 	return found
 
-// Result of running one case: the replayed source, and the failure when the property
-// did not hold.
+// Internal: the result of running one case: the replayed source, and the failure when
+// the property did not hold.
 type Outcome:
 	source: Source
 	failure: Error?
@@ -334,7 +337,7 @@ fn run_property[T](property: fn(T) Void!, value: T) Void:
 	if property(value).is_error():
 		panic(property_failed)
 
-// Order used to guarantee shrinking terminates: fewer draws first, then
+// Internal: the order that guarantees shrinking terminates: fewer draws first, then
 // lexicographically smaller.
 fn simpler(candidate: List[Int], current: List[Int]) Bool:
 	if candidate.length() != current.length():
@@ -415,13 +418,13 @@ fn shrink[T](
 export type PropertyOptions:
 	// Number of generated cases (default 100).
 	runs: Int = 100
-	// Fixes the random seed to replay a failure; none picks a fresh seed.
+	// Fixes the random seed to replay a failure; `none` picks a fresh seed.
 	seed: Int? = none
 
 /*
 Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
-Properties return `Result` like test assertions; write them with `expect_*` calls and `?`.
-A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs under `expect_fault`.
+A property returns a `Result`, like a test assertion; write it with `expect_*` calls and `?`.
+A fault (`panic`) inside a property counts as a failing case and shrinks like an error.
 */
 export fn check[T](
 	name: String,

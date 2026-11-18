@@ -1,11 +1,13 @@
-// Configuration-oriented YAML 1.2 parser implemented in Manuscript.
+// Configuration-oriented YAML 1.2 parser and writer implemented in Manuscript. Use
+// `parse` for one document and `parse_all` for a stream.
 //
 // Mapping keys are strings. A scalar key (a number, boolean or null spelling, a quoted
 // string, an empty key, or an alias to a scalar) becomes the text of that scalar, so
-// `1` and
-// `"1"` in one mapping are a duplicate key, which is an error. A sequence or mapping used as
-// a key is rejected with an error that names its position. Tags other than `!` and
-// `!!str` are read and ignored; those two make the node a string.
+// `1` and `"1"` in one mapping are a duplicate key, which is an error. A sequence or
+// mapping used as a key is rejected with an error that names its position.
+//
+// Tags other than `!` and `!!str` are read and ignored; those two make the node a
+// string.
 import (
 	Bytes from "@std/bytes.ms",
 	quote_text from "@std/data/quote.ms",
@@ -45,9 +47,10 @@ export enum YamlValue:
 		values: Map[String, YamlValue]
 	)
 
-// Input-byte, nesting-depth, and parsed-value limit settings for YAML parsing. Fields
-// set to none add no budget. The defaults, depth 10,000 and 1,000,000 values, guard
-// against deep nesting and alias expansion.
+// Limits for `parse` and `parse_all` on input bytes, nesting depth and parsed values. A
+// field set to none adds no limit. The defaults, depth 10,000 and 1,000,000 values,
+// guard against deep nesting and alias expansion. A negative limit returns `EINVAL`,
+// and a document that exceeds one returns `EOVERFLOW`.
 export type YamlOptions:
 	// Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
 	max_bytes: Int? = none
@@ -781,9 +784,9 @@ type FlowFrame:
 	single: Bool = false
 
 /*
-Parses a flow value. Nested sequences and mappings are parsed with explicit stacks, not by
-recursion, so the nesting depth is bounded by the depth limit and not by the call stack. Only
-a mapping key recurses, and a key cannot be a container.
+Parses a flow value. Nested sequences and mappings use explicit stacks instead of recursion,
+so the depth limit, not the call stack, bounds nesting. Only a mapping key recurses, and a
+key cannot be a container.
 */
 fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 	// The open containers, innermost last: kind (1 sequence, 2 mapping), depth,
@@ -2706,8 +2709,9 @@ fn document(var context: Context, options: YamlOptions) YamlValue!:
 	validate(var context, result, 1)?
 	return ok(result)
 
-// Parses a single YAML document; a stream of several is an error, so use `parse_all`
-// for it. Unsupported YAML features and invalid input include source locations.
+// Parses a single YAML document. A stream of several documents is an error; use
+// `parse_all` for it. Invalid input returns `EBADMSG` and unsupported YAML syntax returns
+// `ENOTSUP`; both errors include the source location.
 export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 	var context = open_stream(text, options)?
 	result := document(var context, options)?
@@ -2847,7 +2851,8 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 			return ok()
 		_: return ok()
 
-// Serializes a YAML value in block style with double-quoted strings.
+// Writes a YAML value in block style with double-quoted strings. Output longer than
+// `max_bytes` returns `EOVERFLOW`, and a negative `max_bytes` returns `EINVAL`.
 export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:
 	if limit := max_bytes:
 		if limit < 0: return error(Error("invalid YAML input", kind: "EINVAL"))

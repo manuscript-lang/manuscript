@@ -12,8 +12,8 @@ export type Version:
 	// Dot-separated build metadata identifiers in input order; ignored by compare.
 	build: List[String] = []
 
-// Compares two versions by SemVer precedence, returning -1, 0 or 1.
-// Build metadata is ignored, and a pre-release sorts before its release.
+// Compares two versions by SemVer precedence, returning -1, 0 or 1. Build metadata is
+// ignored, and a pre-release sorts before its release (`1.0.0-rc.1` before `1.0.0`).
 fn Version.compare(other: Version) Int:
 	core := compare_ints(self.major, other.major)
 	if core != 0: return core
@@ -45,8 +45,9 @@ fn Version.to_string() String:
 	if not self.build.is_empty(): text = f"{text}+{self.build.join(".")}"
 	return text
 
-// Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are
-// rejected. A numeric part too large for `Int` returns kind `ERANGE`.
+// Parses strict Semantic Versioning 2.0.0 text. A leading `v` or surrounding space is
+// rejected with kind `EBADMSG`, like any other malformed text. A numeric part too large
+// for `Int` returns kind `ERANGE`.
 export fn parse(text: String) Version!:
 	build_parts := split_first(text, "+")
 	core_and_pre := split_first(build_parts[0].clone(), "-")

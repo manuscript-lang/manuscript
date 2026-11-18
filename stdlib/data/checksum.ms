@@ -11,7 +11,7 @@ import (
 Computes CRC-32/ISO-HDLC (IEEE, as used by ZIP and gzip) as an unsigned 32-bit value.
 Uses polynomial 0x04C11DB7 (reflected 0xEDB88320), reflected input/output,
 initial register 0xFFFFFFFF and final XOR 0xFFFFFFFF. Empty input returns zero.
-Reads the input without copying it. Detects accidental corruption; it does not authenticate data.
+Reads the input without copying it. Detects accidental corruption only; it does not authenticate data.
 `crc32("123456789".to_bytes())` returns 3421780262 (0xCBF43926).
 */
 export fn crc32(data: Bytes) UInt32:

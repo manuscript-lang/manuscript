@@ -10,13 +10,13 @@ import (
 
 /*
 Boundary values for numeric tests. Run a function over every value or pair these return and compare the result with an exact
-reference such as `BigRat` or `BigInt`, which is how a missing overflow, sign or rounding case shows up.
+reference such as `BigRat` or `BigInt`. This is how a missing overflow, sign or rounding case shows up.
 Example: `for x in int_boundaries(): expect_equal(wrapping_add(x, 0), x)?`.
 */
 
 // Returns the Int values where arithmetic changes behavior: zero, plus and minus one
-// and two, powers of two and their neighbors up to 2^62, 2^31 and 2^32 edges, 10^18,
-// and both extremes with their neighbors.
+// and two, powers of two and their neighbors up to 2^62, the 2^31 and 2^32 edges,
+// 10^18, and both extremes with their neighbors.
 export fn int_boundaries() List[Int]:
 	var values = [
 		0,
@@ -115,6 +115,6 @@ export fn float_boundaries() List[Float]:
 	]
 
 // Returns `float_boundaries` without NaN and the two infinities, for references that
-// need an exact rational.
+// need an exact rational value.
 export fn finite_float_boundaries() List[Float]:
 	return float_boundaries().filter(fn value: value.is_finite())

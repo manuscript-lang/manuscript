@@ -37,28 +37,30 @@ import (
 
 // Supplies the items of a stream; `next` may wait for an item to become available.
 export interface Source[T]:
-	// Returns the next item, waiting when needed; none at the end of the stream, an
-	// error when the source fails.
+	// Returns the next item, waiting when needed. Returns `none` at the end of the
+	// stream and an error when the source fails.
 	var fn next() T?!
 	// Releases what the source owns; the stream calls it once, when it closes.
 	var fn close() Void!
 
-// Receives written values and defines their buffering, flush condition, and cleanup.
+// Receives written values and defines their buffering, when they count as flushed
+// and how the sink is cleaned up.
 export interface Sink[T]:
 	// Accepts `value` and returns any write failure. Waits while the sink is full, so a
 	// writer cannot outrun it.
 	var fn write(move value: T) Void!
-	// Returns once everything written has drained: descriptor sinks drain pending
-	// bytes; a pipe waits until its queue is at most capacity or its reader closes.
+	// Returns once everything written has drained. A descriptor sink drains its pending
+	// bytes; a pipe waits until its queue is at most its capacity or its reader closes.
 	var fn flush() Void!
-	// Called when the stream closes to release what the sink owns. The sink defines how
-	// buffered work finishes and may wait.
+	// Called when the stream closes, to release what the sink owns. The sink decides
+	// how buffered work finishes, and may wait.
 	var fn close() Void!
 
-// A stream of items: `for item in stream:` walks it, and a failed read returns its
-// error from the enclosing function as `?` would. `next` waits inside the source, so a
-// task parks only at a file, socket or pipe. Make one with
-// `ReadStream(source)`. The stream owns its source; closing or dropping it releases that source and what it owns.
+// A stream of items. `for item in stream:` walks it, and a failed read returns its
+// error from the enclosing function, as `?` would. `next` waits inside the source, so
+// a task parks only at a file, socket or pipe. Make one with `ReadStream(source)`.
+// The stream owns its source; closing or dropping the stream releases the source and
+// what it owns.
 export type ReadStream[T]:
 	// The source this stream pulls; `close` replaces it with an ended one so what it
 	// owned is released at once.
@@ -66,9 +68,9 @@ export type ReadStream[T]:
 	// Whether `close` has run; a closed stream is at its end.
 	closed: Bool = false
 
-// Returns the next item; none at the end or after `close`. A failed read is the
-// error. With `timeout`, a read that waits that long in all (a stalled socket)
-// fails with `ETIMEDOUT`; the source may be left mid-item, so close the stream
+// Returns the next item, or `none` at the end or after `close`. A failed read returns
+// its error. With `timeout`, a read that waits that long in total (a stalled socket)
+// fails with `ETIMEDOUT`. The source may be left mid-item, so close the stream
 // afterwards.
 fn var ReadStream[T].next(timeout: Duration? = none) T?!:
 	if self.closed: return ok(none)
@@ -76,8 +78,8 @@ fn var ReadStream[T].next(timeout: Duration? = none) T?!:
 
 	return self.source.next()
 
-// Closes the source and drops it, so a socket or file it held is released now;
-// later calls do nothing.
+// Closes the source and drops it, so a socket or file it held is released now.
+// Later calls do nothing.
 fn var ReadStream[T].close() Void!:
 	if self.closed: return ok()
 
@@ -87,7 +89,7 @@ fn var ReadStream[T].close() Void!:
 	self.source = EndedSource[T]()
 	return result
 
-// One read of `source` that waits at most `bound` in all.
+// Internal: one read of `source` that waits at most `bound` in total.
 fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
 	var nanos = bound.to_nanoseconds()
 	if nanos < 0: nanos = 0
@@ -111,9 +113,9 @@ fn var EndedSource[T].next() T?!:
 fn var EndedSource[T].close() Void!:
 	return ok()
 
-// Values go out with `write`; `flush` waits for the destination's flush condition. Make
-// one with `WriteStream(sink)`. The stream owns its sink and closes it when its scope
-// ends.
+// A stream that sends values out with `write`; `flush` waits until the destination
+// has taken them. Make one with `WriteStream(sink)`. The stream owns its sink and
+// closes it when its scope ends.
 export type WriteStream[T]:
 	// The destination the stream's writes go to; `close` replaces it with a closed one.
 	sink: Sink[T]
@@ -151,16 +153,16 @@ fn var ClosedSink[T].close() Void!:
 // ---- Descriptors and standard input --------------------------------------------------------------------------------
 
 // Reads chunks from the runtime stream-table descriptor `id` (a pipe, socket or file)
-// until the end; a negative id is at its end already.
-// `ReadStream(DescriptorSource(id))` is the stream.
+// until the end; a negative id is already at its end. Wrap it as
+// `ReadStream(DescriptorSource(id))` to get a stream.
 export type DescriptorSource:
 	// The runtime descriptor read from.
 	id: Int
 	// Set by `close`, so a second close (the owner's scope end) releases nothing.
 	closed: Bool = false
 
-// Waits for the next chunk of the descriptor; none at its end, `EIO` when the
-// descriptor failed.
+// Waits for the next chunk of the descriptor. Returns `none` at its end and `EIO`
+// when the descriptor failed.
 fn var DescriptorSource.next() Bytes?!:
 	p := msrt_streams_read(self.id)
 	code := msrt_promise_wait(p, -1)
@@ -189,19 +191,17 @@ fn var DescriptorSource.close() Void!:
 HIGH_WATER := 1048576
 
 // Writes to the runtime stream-table descriptor `id`; a negative id fails every write
-// with `EBADF`.
-// `WriteStream(DescriptorSink(id))` is the stream.
+// with `EBADF`. Wrap it as `WriteStream(DescriptorSink(id))` to get a stream.
 export type DescriptorSink:
 	// The runtime descriptor written to.
 	id: Int
 	// Set by `close`, so a second close (the owner's scope end) releases nothing.
 	closed: Bool = false
 
-// Queues the bytes for the descriptor; `EBADF` once it is closed. Back pressure: a
-// write that leaves more than
-// `HIGH_WATER` bytes queued waits until the descriptor has taken them, so a slow reader slows the writer.
-// An OS write failure returns `EIO`; later writes and flushes retain it until the
-// descriptor closes.
+// Queues the bytes for the descriptor; returns `EBADF` once it is closed. A write
+// that leaves more than `HIGH_WATER` bytes queued waits until the descriptor has taken
+// them, so a slow reader slows the writer. An OS write failure returns `EIO`, and
+// later writes and flushes keep returning it until the descriptor closes.
 fn var DescriptorSink.write(move value: Bytes) Void!:
 	if msrt_streams_write(self.id, value) != 0:
 		return error(Error("stream: closed", kind: "EBADF"))
@@ -214,8 +214,8 @@ fn var DescriptorSink.write(move value: Bytes) Void!:
 fn var DescriptorSink.flush() Void!:
 	return flush_descriptor(self.id)
 
-// Waits until the queued bytes have been handed to the descriptor, then releases
-// it. The descriptor is released even when the wait fails or is cancelled, and that
+// Waits until the queued bytes have been handed to the descriptor, then releases it.
+// The descriptor is released even when the wait fails or is cancelled, and that
 // failure is returned.
 fn var DescriptorSink.close() Void!:
 	if self.closed: return ok()
@@ -245,13 +245,13 @@ export fn stdin() ReadStream[Bytes]:
 
 // ---- Standard output and error -------------------------------------------------------------------------------------
 
-// Standard output, as text or bytes; the runtime's process-wide buffer is shared.
-// Writes are buffered until flushed or the process exits, a child starts, or something
-// is written to standard error. Closing does not flush: `stdout()` makes a fresh stream
+// Standard output, as text or bytes, sharing the runtime's process-wide buffer.
+// Writes are buffered until a flush, process exit, the start of a child process, or a
+// write to standard error. Closing does not flush: `stdout()` makes a fresh stream on
 // each call, so a flush on close would turn every `stdout().write(...)` into a system
-// call. `flush` returns the first failed write (a full disk, a closed descriptor),
-// `write` returns it once it is known, and the process exits 1 if output was lost and
-// the program would have exited 0; a broken pipe is not an error.
+// call. `flush` returns the first failed write (a full disk, a closed descriptor), and
+// `write` returns it once it is known. If output was lost and the program would
+// otherwise have exited 0, the process exits 1. A broken pipe is not an error.
 type StdoutText:
 	unused: Bool = false
 
@@ -325,7 +325,8 @@ export fn stderr_bytes() WriteStream[Bytes]:
 
 // ---- Pipes ---------------------------------------------------------------------------------------------------------
 
-// The next value of pipe `id`, waiting when needed; none once every writer has closed.
+// Internal: the next value of pipe `id`, waiting when needed; `none` once every writer
+// has closed.
 fn pipe_next[T](id: Int) T?!:
 	// Fast path: a queued value or the end needs no promise.
 	if queued := msrt_pipe_try[T](id): return ok(queued)
@@ -375,12 +376,14 @@ fn var PipeSink[T].close() Void!:
 	msrt_pipe_close_writer(self.id)
 	self.id = 0
 
-// An in-memory stream of whole values, in order: any number of writers and one reader.
-// A write hands the pipe a copy (the stream interface only borrows the argument), so
-// `T` must be `Clonable`; the copy then moves through by pointer.
-// `capacity` is the number of queued values above which a writer's `write` and `flush` wait. The pipe itself is not a writer: the
-// reader ends once every writer from `writer()` has closed, so make the writers before
-// reading. Closing the reader makes later writes fail with `EBADF`.
+// An in-memory stream of whole values, in order, with any number of writers and one
+// reader. A write hands the pipe a copy (the stream interface only borrows the
+// argument), so `T` must be `Clonable`; the copy then moves through by pointer.
+//
+// `capacity` is the number of queued values above which a writer's `write` and `flush`
+// wait. The pipe itself is not a writer: the reader ends once every writer from
+// `writer()` has closed, so make the writers before reading. Closing the reader makes
+// later writes fail with `EBADF`.
 export opaque type Pipe[T: Clonable]:
 	// The runtime pipe's id.
 	id: Int
@@ -389,28 +392,29 @@ export opaque type Pipe[T: Clonable]:
 	// Whether `reader` has handed out the reading end.
 	taken: Bool
 
-// A new writing end, like dup on a descriptor. Close it when done: the reader ends
-// when every writer has closed. Safe to call from a promise that owns the pipe:
-// each call makes a writer of its own.
+// Returns a new writing end, like `dup` on a descriptor. Close it when done: the
+// reader ends when every writer has closed. It is safe to call from a promise that
+// owns the pipe, since each call makes a writer of its own.
 fn Pipe[T].writer() WriteStream[T]:
 	msrt_pipe_add_writer(self.id)
 	return WriteStream[T](PipeSink[T](self.id, self.capacity))
 
-// The reading end. A pipe has one: later calls return a stream that is already at
-// its end.
+// Returns the reading end. A pipe has only one: later calls return a stream that is
+// already at its end.
 fn var Pipe[T].reader() ReadStream[T]:
 	if self.taken: return ReadStream[T](PipeSource[T](0))
 
 	self.taken = true
 	return ReadStream[T](PipeSource[T](self.id))
 
-// Waits for the next value, none once every writer has closed. It reads the pipe's
-// one reader place without taking a stream, for a consumer that only borrows the
-// pipe, such as a promise: use it instead of `reader()`, never beside it.
+// Waits for the next value; returns `none` once every writer has closed. It reads
+// from the pipe's single reader place without taking a stream, for a consumer that
+// only borrows the pipe, such as a promise. Use it instead of `reader()`, never
+// together with it.
 fn Pipe[T].receive() T?!:
 	return pipe_next[T](self.id)
 
-// Releases the reading end if no one took it.
+// Releases the reading end if `reader()` was never called.
 fn var Pipe[T].close() Void!:
 	if not self.taken:
 		msrt_pipe_close_reader(self.id)
@@ -427,13 +431,13 @@ export fn pipe[T: Clonable](capacity: Int) Pipe[T]:
 
 // ---- Transforms ----------------------------------------------------------------------------------------------------
 
-// Transforms each input into zero or more output items, then emits anything held back
-// at the end; custom steps may wait.
+// Turns each input item into zero or more output items, then emits anything held
+// back at the end. A custom step may wait.
 export interface Transform[A, B]:
-	// Takes one input item and appends the output items it completes, possibly none, to
-	// `out`.
+	// Takes one input item and appends to `out` the output items it completes, possibly
+	// none.
 	var fn step(move value: A, var out: List[B]) Void!
-	// Called once at the end of the input; appends the items held back to `out`.
+	// Called once at the end of the input; appends any held-back items to `out`.
 	var fn finish(var out: List[B]) Void!
 
 // A transform over a stream: its output collects in `out`, reversed after each step so
@@ -471,7 +475,7 @@ fn var Through[A, B].next() B?!:
 fn var Through[A, B].close() Void!:
 	return self.input.close()
 
-// A stream of `transform`'s output over `input`; closing it closes `input`.
+// Returns a stream of `transform`'s output over `input`. Closing it closes `input`.
 export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
 	return ReadStream[B](Through[A, B](input, transform, [], false))
 
@@ -483,10 +487,11 @@ export enum StdStream:
 	Output  // Standard output; once redirected its writes are discarded.
 	Error  // Standard error; once redirected its writes are discarded.
 
-// Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on
-// Windows): input reads as end of file and output is discarded. This replaces the
-// descriptor itself, so it also affects children started afterwards that inherit it.
-// Buffered standard output is written first. The change cannot be undone.
+// Points one of the process's own standard streams at the null device (`/dev/null`,
+// or `NUL` on Windows): input reads as end of file and output is discarded. This
+// replaces the descriptor itself, so it also affects child processes started
+// afterwards that inherit it. Buffered standard output is written first. The change
+// cannot be undone.
 // ms: effect std.console.write
 export fn redirect_to_null(stream: StdStream) Void!:
 	var which = 2
