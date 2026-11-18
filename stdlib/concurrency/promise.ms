@@ -39,14 +39,21 @@ import (
 // what it captures: concurrent code never changes a shared value (to change shared
 // state, give it one owner and send it values over a `pipe`).
 //
-// <!-- manuscript-example: {"mode":"fragment"} -->
+// <!-- manuscript-example: {"mode":"fragment","given":["text: String"]} -->
 // ```manuscript
+// import PromiseOptions, promise from "@std/concurrency/promise.ms"
+// import read_file from "@std/os/fs.ms"
+//
+// fn count_words(text: String) Int!:
+//     return ok(text.split(" ").length())
+//
 // config := read_file("config.json")  // Promise[Bytes], already running
 // words := promise(
 //     fn: count_words(text), options: PromiseOptions(timeout: 5.seconds())
 // )  // may run on another thread, ends with ETIMEDOUT after 5 s
 // bytes := config.wait()?
 // total := words.wait()?
+// print(f"{bytes.length()} bytes, {total} words")
 // ```
 
 // An operation with one result. `wait` takes it once; a stream read may defer work

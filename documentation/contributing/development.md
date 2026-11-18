@@ -63,6 +63,8 @@ Write source assertions with `@std/test/test.ms` and propagate their Results: `o
 
 Complete tutorial fences carry a `manuscript-example` JSON comment giving `test` or `run`, arguments, and expected stdout (more fields in [cookbook](../cookbook/command-line.md)).
 
+A snippet that leaves names free is marked `"mode":"fragment"`. It is parsed only, unless the marker lists the free names as parameters, `"given":["raw: String"]`, in which case it is type-checked too: its imports and every standard name it uses must resolve, and a local it binds must be read. Prefer `given` for new fragments.
+
 `make dist` builds a single-binary archive in `dist/` with `tools/package.ms`.
 
 ## Preview and publish the book

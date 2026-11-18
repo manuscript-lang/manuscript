@@ -20,11 +20,15 @@ Raster images as one flat, interleaved byte buffer, decoded from and encoded to 
 An `Image` owns `pixels`: row-major, `channels` bytes per pixel, no padding. The byte of
 channel `c` at `(x, y)` is `pixels[(y * width + x) * channels + c]`.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import ImageFormat, decode_image, encode_image from "@std/image/image.ms"
+import read_file from "@std/os/fs.ms"
+
 img := decode_image(read_file("photo.jpg").wait().get())?
 small := img.resize(img.width / 4, img.height / 4)?
 png := encode_image(small, ImageFormat.Png)?
+print(png.length())
 ```
 
 Decoding never faults on hostile input. Malformed data is an `Error` of kind `EBADMSG`, an unsupported

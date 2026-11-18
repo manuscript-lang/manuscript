@@ -199,8 +199,9 @@ fn run_case(path: &str, dir: &Path, case: &Json) -> Option<String> {
 }
 
 /// Splits a fragment into top-level declarations (kept as is) and statements (placed in
-/// one function body) so that the whole text parses as a module.
-fn wrap_fragment(source: &str) -> String {
+/// one function body, whose parameters are the fragment's `given` names) so that the whole
+/// text parses as a module.
+fn wrap_fragment(source: &str, given: &[String]) -> String {
     let mut decls = String::new();
     let mut body = String::new();
     let mut in_decl = false;
@@ -219,7 +220,10 @@ fn wrap_fragment(source: &str) -> String {
             body.push('\n');
         }
     }
-    format!("{decls}\nfn example() Void!:\n{body}    return\n")
+    format!(
+        "{decls}\nfn example({}) Void!:\n{body}    return\n",
+        given.join(", ")
+    )
 }
 
 /// Checks one example and returns what is wrong with it; examples are independent, so
@@ -231,12 +235,20 @@ fn verify_one(n: usize, example: &Example, dir: &Path) -> Vec<String> {
     let path = path.to_str().unwrap();
     let name = format!("{}:{}", example.file.display(), example.line);
     if example.spec.contains("\"mode\":\"fragment\"") {
-        // A fragment leaves names free, so it is only parsed: the declarations stay at
-        // the top and the statements move into a function body.
-        fs::write(path, wrap_fragment(&example.source)).unwrap();
-        let (code, _, err) = ms(&["fmt", path], "", None);
+        // A fragment leaves names free. With a `given` list ("given":["raw: String"]) they become
+        // parameters of the wrapper function and the fragment is type-checked, so its imports and
+        // every standard name it uses must resolve. Without one it is only parsed: the
+        // declarations stay at the top and the statements move into a function body.
+        let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let given = json_strings(spec.get("given"));
+        fs::write(path, wrap_fragment(&example.source, &given)).unwrap();
+        let (code, _, err) = if spec.get("given").is_some() {
+            ms(&["check", path], "", None)
+        } else {
+            ms(&["fmt", path], "", None)
+        };
         if code != Some(0) {
-            failures.push(format!("{name}: fragment does not parse\n{err}"));
+            failures.push(format!("{name}: fragment does not check\n{err}"));
         }
         return failures;
     }
