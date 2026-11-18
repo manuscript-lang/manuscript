@@ -817,10 +817,15 @@ impl Scanner<'_> {
                         return self.fail("interpolation closes the virtual parenthesis");
                     }
                     if self.delimiters.is_empty() {
-                        return self.fail(format!(
-                            "unmatched closing delimiter '{}'; remove it or add the matching opener before it",
-                            b as char
-                        ));
+                        // A lone `}` left behind by a braced block is removed by the fix.
+                        let fix = (b == b'}' && self.trailing_semicolon()).then_some("");
+                        return self.fail_char(
+                            format!(
+                                "unmatched closing delimiter '{}'; remove it or add the matching opener before it",
+                                b as char
+                            ),
+                            fix,
+                        );
                     }
                     if self.levels.len() > 1
                         && self.delimiters.len() <= top_depth

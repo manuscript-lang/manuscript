@@ -226,7 +226,9 @@ impl Checker {
                     .diagnostics
                     .iter()
                     .any(|d| d.cause.is_inference() && d.pos.line == e.pos.line);
+            // A function whose parameters are invalid already has its own diagnostic.
             if !actual.is_invalid()
+                && !(actual.kind == Kind::Function && invalid_ty(&actual))
                 && !exp.is_invalid()
                 && !inference_reported
                 && !compatible(&Some(actual.clone()), exp)

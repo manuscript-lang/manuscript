@@ -4,6 +4,7 @@
 mod actionable_diagnostics;
 mod bench_inputs;
 mod bidi;
+mod braced_block_fixes;
 mod bracket_speculation;
 mod comments;
 mod corpus;

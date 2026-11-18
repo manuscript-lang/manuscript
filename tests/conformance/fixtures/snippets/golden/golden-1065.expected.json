@@ -32,6 +32,12 @@
           "line": 9,
           "column": 5,
           "offset": 186
+        },
+        "end": {
+          "file": "golden-1065.ms",
+          "line": 9,
+          "column": 6,
+          "offset": 187
         }
       }
     ],

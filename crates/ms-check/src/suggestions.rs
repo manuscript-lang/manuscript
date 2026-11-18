@@ -37,18 +37,22 @@ fn import_statement(message: &str) -> Option<&str> {
 
 /// The single spelling an `unknown binding` hint names for a habit from
 /// another language (`Ok`, `Err`, `True`, `null`, `this`).
-fn habit_replacement(message: &str) -> Option<&'static str> {
+fn habit_replacement(message: &str) -> Option<String> {
     let rest = message.strip_prefix("unknown binding ")?;
     let (name, hint) = rest.split_once("; ")?;
-    match name {
-        "Ok" => Some("ok"),
-        "Err" | "err" | "Error" => Some("error"),
-        "True" => Some("true"),
-        "False" => Some("false"),
-        "nil" | "null" | "None" | "undefined" => Some("none"),
-        "this" if hint.ends_with("write self instead of this") => Some("self"),
-        _ => None,
-    }
+    let word = match name {
+        "Ok" => "ok",
+        "Err" | "err" | "Error" => "error",
+        "True" => "true",
+        "False" => "false",
+        "nil" | "null" | "None" | "undefined" => "none",
+        "this" if hint.ends_with("write self instead of this") => "self",
+        _ if hint.ends_with(&format!("so write self.{name}")) => {
+            return Some(format!("self.{name}"));
+        }
+        _ => return None,
+    };
+    Some(word.to_string())
 }
 
 /// The fix for a diagnostic at `pos` whose offending name has `len` bytes.
@@ -58,7 +62,7 @@ pub(crate) fn fix_for(message: &str, pos: Pos, len: usize) -> Option<DiagnosticF
         return Some(DiagnosticFix {
             pos,
             end,
-            replacement: name.to_string(),
+            replacement: name,
         });
     }
     if let Some(name) = single_suggestion(message) {
@@ -250,6 +254,9 @@ pub(crate) fn conversion_fix(
     match (actual, expected) {
         ("Int", "Float") => to_float(source, e),
         ("Int" | "Float" | "Bool", "String") => interpolate(source, e),
+        ("String", "Error" | "@std/Error") => {
+            rewrite_expr(source, e, |text, _| Some(format!("Error({text})")))
+        }
         _ => None,
     }
 }

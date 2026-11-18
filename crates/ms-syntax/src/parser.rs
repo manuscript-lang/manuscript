@@ -222,6 +222,9 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
         "=" if found == Tok::Newline => {
             "; every let/var binding needs an initial value, e.g. var count: Int = 0".into()
         }
+        ":=" if found == Tok::Newline => {
+            "; a binding needs a value: write name := value, or name: Type := value; closure parameters with a type go in parentheses, as in fn(n: Int): n + 1".into()
+        }
         "NAME" => {
             if found == Tok::SelfKw {
                 "; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the body".into()
@@ -403,11 +406,19 @@ impl<'a> Parser<'a> {
             return Err(self.dummy());
         }
         if k == Tok::Colon && t.kind == Tok::LBrace {
-            return self.fail_fix(
-                t,
-                "expected ':', found '{'; blocks are not braced: end the header with ':', indent the body four spaces on the following lines, and remove the closing '}'",
-                ":",
-            );
+            let message = "expected ':', found '{'; blocks are not braced: end the header with ':', indent the body four spaces on the following lines, and remove the closing '}'";
+            // The colon attaches to the header, so the edit also takes the
+            // spaces before the brace (`for x in xs {` becomes `for x in xs:`).
+            let mut d = Diagnostic::parse(self.file, t.pos, message);
+            let before = self.at.checked_sub(1).map(|i| self.tokens[i].end);
+            let start = before.filter(|e| e.line == t.pos.line).unwrap_or(t.pos);
+            d.end = Some(t.end);
+            d.fix = Some(DiagnosticFix {
+                pos: start,
+                end: t.end,
+                replacement: ":".to_string(),
+            });
+            return Err(Box::new(d));
         }
         let hint = need_hint(k.as_str(), t.kind, self.text(t));
         let msg = format!(
@@ -3127,6 +3138,15 @@ impl<'a> Parser<'a> {
                 if self.kind() == Tok::Name && self.ahead(1).kind == Tok::Assign {
                     let eq = self.ahead(1);
                     let n = self.text(self.peek());
+                    let gt = self.ahead(2);
+                    if gt.kind == Tok::Gt && gt.pos.offset == eq.end.offset {
+                        // `x => x * 2`: a closure written with an arrow.
+                        let name = self.peek();
+                        let message = format!(
+                            "there is no '=>' closure; write fn {n}: body, with the parameter after fn and a colon before the body"
+                        );
+                        return self.fail_fix_range(name, gt, message, &format!("fn {n}:"));
+                    }
                     return self.fail(eq, format!("argument labels use a colon; write {n}: value"));
                 }
                 let mutable = self.take(Tok::Var);

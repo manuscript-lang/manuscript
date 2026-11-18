@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding name; name is a field of this method's receiver, so write self.name",
+        "position": {
+          "file": "diag-field-needs-self.ms",
+          "line": 7,
+          "column": 20,
+          "offset": 129
+        },
+        "fix": {
+          "position": {
+            "file": "diag-field-needs-self.ms",
+            "line": 7,
+            "column": 20,
+            "offset": 129
+          },
+          "end": {
+            "file": "diag-field-needs-self.ms",
+            "line": 7,
+            "column": 24,
+            "offset": 133
+          },
+          "replacement": "self.name"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-field-needs-self.ms:7:20: resolution: unknown binding name; name is a field of this method's receiver, so write self.name\n   |\n 7 |     return \"hi \" + name\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

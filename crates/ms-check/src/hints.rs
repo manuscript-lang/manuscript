@@ -389,6 +389,14 @@ pub fn number_conversion_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty
     }
 }
 
+/// Text where an `Error` is required: wrap the message in `Error(...)`.
+pub fn error_wrap_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
+    if syms.str(actual.id) != "String" || !expected.is_std(syms, "Error") {
+        return String::new();
+    }
+    "String does not convert to Error implicitly; make the error with Error(\"message\"), e.g. error(Error(\"message\"))".to_string()
+}
+
 /// A plain value where a Result is required: wrap it in `ok(...)`.
 pub fn ok_wrap_hint(actual: &Ty, expected: &Ty) -> String {
     if !expected.is(Builtin::Result) || expected.args.is_empty() || !same(&expected.args[0], actual)
@@ -416,7 +424,7 @@ pub fn uncalled_function_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty
     )
 }
 
-fn plural(count: usize, word: &str) -> String {
+pub(crate) fn plural(count: usize, word: &str) -> String {
     if count == 1 {
         word.to_string()
     } else {
@@ -630,6 +638,14 @@ impl Checker {
                 );
             }
             _ => {}
+        }
+        if let Some(receiver) = self.scope.binding(n("self"))
+            && fields(&receiver.ty).iter().any(|f| f.name == name)
+        {
+            return format!(
+                "{message}; {name_t} is a field of this method's receiver, so write self.{name_t}",
+                name_t = self.syms.str(name)
+            );
         }
         let hint = did_you_mean(self.syms.str(name), &self.value_names());
         if !hint.is_empty() {
@@ -990,9 +1006,9 @@ impl Checker {
                         "unknown standard module {path}; did you mean '{with_ext}'? Import paths end in .ms"
                     );
                 }
+                let base = |p: &str| p.rsplit('/').next().unwrap_or(p).to_string();
                 // The right module under another folder (`@std/json/json.ms` for `@std/data/json.ms`)
                 // has the same stem, which a spelling suggestion does not report.
-                let base = |p: &str| p.rsplit('/').next().unwrap_or(p).to_string();
                 if hint.is_empty()
                     && let Some(same) = names.iter().find(|name| base(name) == base(path))
                 {
@@ -1003,6 +1019,23 @@ impl Checker {
                     && let Some(full) = names.iter().find(|name| stem(name) == found)
                 {
                     hint = format!("; did you mean '{full}'?");
+                }
+                // The imported name is exported by another module, and the spelling
+                // suggestion (if any) is not one that exports it (`Closeable` lives in
+                // `@std/core.ms`, not in the similarly named `@std/cli/table.ms`).
+                let elsewhere = import_hint(&self.session, self.syms.str(item.name));
+                let suggestion_exports = hint.split('\'').nth(1).is_some_and(|module| {
+                    self.session
+                        .standard_exports(module)
+                        .contains_key(&item.name)
+                });
+                if let Some(statement) = elsewhere.strip_prefix("; add: ")
+                    && !suggestion_exports
+                {
+                    return format!(
+                        "unknown standard module {path}; {} is exported by another standard module, so write: {statement}",
+                        self.syms.str(item.name)
+                    );
                 }
                 return format!("unknown standard module {path}{hint}");
             }
@@ -1062,6 +1095,7 @@ impl Checker {
         for hint in [
             optional_use_hint(self.syms, actual, expected),
             number_conversion_hint(self.syms, actual, expected),
+            error_wrap_hint(self.syms, actual, expected),
             ok_wrap_hint(actual, expected),
             promise_use_hint(self.syms, actual, expected),
             uncalled_function_hint(self.syms, actual, expected),

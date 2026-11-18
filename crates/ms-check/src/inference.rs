@@ -4,6 +4,7 @@
 use crate::checker::{CheckedArgument, Checker};
 use crate::exprs::is_plain_literal;
 use crate::hints::arity_mismatch_hint;
+use crate::suggestions;
 use crate::syntax::*;
 use crate::types::Param;
 use crate::types::*;
@@ -349,9 +350,57 @@ impl Checker {
             return;
         }
         if mentions_variable(&pattern, vars) && !concrete_callback_mismatch {
+            if self.callback_needs_result(arg, &pattern, &actual_ty) {
+                return;
+            }
             self.conflicted_arguments.insert(arg.value.id);
             self.type_error(arg.pos, CONFLICTING_INFERENCE);
         }
+    }
+
+    /// A callback that returns a plain value where the parameter's function type
+    /// returns a `Result` (`promise(fn: 1)`): names the missing `ok(...)` instead of a
+    /// conflict between type arguments. Returns whether it reported.
+    fn callback_needs_result(&mut self, arg: &Arg, pattern: &Ty, actual: &Ty) -> bool {
+        let (Some(want), Some(have)) = (&pattern.result, &actual.result) else {
+            return false;
+        };
+        if pattern.kind != Kind::Function
+            || actual.kind != Kind::Function
+            || !want.is(Builtin::Result)
+            || have.is(Builtin::Result)
+            || invalid_ty(have)
+        {
+            return false;
+        }
+        // An expression-bodied closure `fn: value` is repaired by wrapping its value.
+        let fix = match &arg.value.kind {
+            ExprKind::Lambda(l) => match l.body.as_slice() {
+                [only] => match &only.kind {
+                    StmtKind::Return(Some(value)) => {
+                        suggestions::rewrite_expr(&self.m().source, value, |text, _| {
+                            Some(format!("ok({text})"))
+                        })
+                    }
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        };
+        self.type_error_with_fix(
+            arg.pos,
+            Cause::Mismatch,
+            format!(
+                "the callback returns {have_t}, but this parameter needs a function returning {want_t}; a Result-returning callback reports failure as a value, so wrap the value in ok(...), e.g. fn: ok(value)",
+                have_t = have.display(self.syms),
+                want_t = want.display(self.syms)
+            ),
+            fix,
+        );
+        self.unknown_type = true;
+        self.label_mismatch = true;
+        true
     }
 
     /// Result evidence is transactional and invariant. A failed structural match
