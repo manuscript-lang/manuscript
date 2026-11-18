@@ -21,6 +21,13 @@ pub use crate::bound::Bound;
 
 use crate::error::Status;
 
+/// An `Int?` declared inside a record, read from its two leaves. The compiler aligns every
+/// leaf on its own, so after a one-byte field the presence byte follows at the next byte and
+/// the value at the next 8-byte boundary; an inline `OptInt` would start on the boundary.
+pub(crate) fn leaf_opt(present: u8, value: i64) -> Option<i64> {
+    (present != 0).then_some(value)
+}
+
 /// Records the `Failed` message of `r`'s error and turns it into its status byte.
 pub fn report<T, E: Status>(
     r: Result<T, E>,

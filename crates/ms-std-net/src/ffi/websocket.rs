@@ -1,6 +1,7 @@
 //! Natives for `@std/net/websocket.ms`, `Network.web_socket` and `HttpExchange.upgrade`.
 //! ms: domain WebSocket
 
+use super::leaf_opt;
 use super::tls::tls_options;
 use super::{ExchH, HeadersH, NetH, SocketH, opt, report};
 use crate::bound::Bound;
@@ -8,7 +9,7 @@ use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
 use ms_rt::ffi::{
-    Bytes, ErrOut, Has, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_type, native,
+    Bytes, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, StringList, abi_type, native,
 };
 use ms_rt_abi::STATUS_NONE;
 
@@ -23,8 +24,12 @@ abi_type! {
         pub tls_alpn: StringList,
         pub tls_require_client_certificate: u8,
         pub compression: u8,
-        pub max_message_bytes: OptInt,
-        pub timeout: OptInt,
+        // Each `Int?` is a presence byte and a naturally aligned value, not an inline
+        // `OptInt`, which would start on the next 8-byte boundary (see `leaf_opt`).
+        pub max_message_bytes_present: u8,
+        pub max_message_bytes: i64,
+        pub timeout_present: u8,
+        pub timeout: i64,
     }
 }
 
@@ -90,8 +95,8 @@ native! {
                     address,
                     headers: &fields,
                     subprotocols: &protocols,
-                    max_message_bytes: opts.max_message_bytes.get(),
-                    timeout: opts.timeout.get(),
+                    max_message_bytes: leaf_opt(opts.max_message_bytes_present, opts.max_message_bytes),
+                    timeout: leaf_opt(opts.timeout_present, opts.timeout),
                     tls: &tls,
                     compression: opts.compression != 0,
                 },
@@ -194,5 +199,15 @@ mod tests {
             88
         );
         assert_eq!(offset_of!(WebSocketOptionsWire, compression), 89);
+        // Leaves are aligned one by one, so an `Int?` after a byte starts one byte later and
+        // its value at the next 8-byte boundary.
+        assert_eq!(
+            offset_of!(WebSocketOptionsWire, max_message_bytes_present),
+            90
+        );
+        assert_eq!(offset_of!(WebSocketOptionsWire, max_message_bytes), 96);
+        assert_eq!(offset_of!(WebSocketOptionsWire, timeout_present), 104);
+        assert_eq!(offset_of!(WebSocketOptionsWire, timeout), 112);
+        assert_eq!(size_of::<WebSocketOptionsWire>(), 120);
     }
 }

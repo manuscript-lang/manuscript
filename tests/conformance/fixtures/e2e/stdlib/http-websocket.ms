@@ -191,6 +191,27 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
 	reply := (recv(var client, 2.seconds())?).get_or(Bytes([]))
 	return ok(reply.decode_utf8().get_or("").split("\r\n").first().get_or(""))
 
+test "WebSocket client options bound messages and reject bad values":
+	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
+	server := serve(address: "127.0.0.1:0", handler: echo, options: options) | expect_ok?
+	url := f"ws://{server.address()}/ws"
+
+	var limited = web_socket(url, WebSocketOptions(max_message_bytes: 10)) | expect_ok?
+	over := limited.output.write(
+		WebSocketMessage(data: "x".repeat(11).to_bytes(), kind: WebSocketKind.Binary)
+	)
+	expect_equal(over.err().kind, "EOVERFLOW")?
+	exact := WebSocketMessage(data: "y".repeat(10).to_bytes(), kind: WebSocketKind.Binary)
+	limited.output.write(exact) | expect_ok?
+	echoed := (limited.input.next() | expect_ok?).get()
+	expect_equal(echoed.data.length(), 10)?
+	void limited.close()
+
+	zero := web_socket(url, WebSocketOptions(max_message_bytes: 0))
+	expect_equal(zero.err().kind, "EINVAL")?
+	negative := web_socket(url, WebSocketOptions(timeout: 0.seconds() - 1.seconds()))
+	expect_equal(negative.err().kind, "EINVAL")?
+
 test "WebSocket upgrades need HTTP/1.1 and one key":
 	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
 	server := (

@@ -37,8 +37,10 @@ abi_type! {
         pub tls_private_key_pem: Str,
         pub tls_alpn: StringList,
         pub tls_require_client_certificate: u8,
-        // Read by `serve` itself, not by the server: the runtime thread limit.
-        pub cores: OptInt,
+        // Read by `serve` itself, not by the server: the runtime thread limit. Its presence byte
+        // follows the byte above directly, as the compiler lays leaves out (see `leaf_opt`).
+        pub cores_present: u8,
+        pub cores: i64,
     }
 }
 
