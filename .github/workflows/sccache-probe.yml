@@ -32,10 +32,25 @@ jobs:
         with:
           os: linux
           arch: amd64
+      - name: Restored cache contents
+        shell: bash
+        run: |
+          du -sh "$SCCACHE_DIR"
+          sccache --show-stats | grep -E "Cache size|Max cache size"
+          echo "entries: $(find "$SCCACHE_DIR" -type f | wc -l)"
+          echo "oldest/newest entry mtime:"
+          find "$SCCACHE_DIR" -type f -printf '%TY-%Tm-%Td %TH:%TM\n' | sort | sed -n '1p;$p'
+          echo "entries over 20 MB (size MB, mtime):"
+          find "$SCCACHE_DIR" -type f -size +20M -printf '%s %TY-%Tm-%Td_%TH:%TM\n' | awk '{printf "%d %s\n", $1/1048576, $2}' | sort -k2 | head -40
       - name: Workspace build, then clean cranelift-codegen and rebuild it the same way
         shell: bash
         run: |
+          s0=$(date +%s)
           cargo build --workspace --all-targets --locked -q
+          echo "first workspace build: $(( $(date +%s) - s0 )) s"
+          sccache --show-stats | grep -E "Compile requests  |Cache hits \(Rust\)|Cache misses \(Rust\)"
+          echo "entries over 20 MB after the build:"
+          find "$SCCACHE_DIR" -type f -size +20M -printf '%s %TY-%Tm-%Td_%TH:%TM\n' | awk '{printf "%d %s\n", $1/1048576, $2}' | sort -k2 | head -40
           for i in 1 2; do
             sccache --zero-stats >/dev/null
             cargo clean -p cranelift-codegen -q
