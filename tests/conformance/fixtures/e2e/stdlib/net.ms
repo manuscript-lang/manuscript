@@ -227,7 +227,7 @@ test "resolve returns typed DNS records from the configured resolver":
 	server := bind_datagram("127.0.0.1:0")?
 	derived := with_resolver(server.address.clone())?
 	asking := promise(
-		fn: derived.resolve(
+		fn: derived.resolve_dns(
 			"example.test",
 			DnsKind.MX,
 			DnsOptions(timeout: 2.seconds()),
