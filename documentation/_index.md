@@ -14,7 +14,7 @@ description = "A statically typed, natively compiled language with single owners
 Using a value after it moved is a compile error:
 
 <!-- manuscript-example: {"mode":"error","contains":"is moved here"} -->
-```rust
+```manuscript
 fn main() Void:
     var names = List[String]()
     first := "ada"
@@ -25,7 +25,8 @@ fn main() Void:
 
 Promises run across all cores. There is no `async` or `await`:
 
-```rust
+<!-- manuscript-example: {"mode":"run","stdout":"4\n"} -->
+```manuscript
 import promise, wait_all from "@std/concurrency/promise.ms"
 
 fn fib(n: Int) Int:

@@ -12,6 +12,12 @@
 
 A statically typed, natively compiled language with single ownership and no garbage collector. Agents now write much of the code, so the compiler checks ownership, types and effects, and every diagnostic names its cause and fix. An agent can correct itself, and a person can review the result through built-in diagrams and an interactive code map.
 
+Manuscript makes agent-generated code practical to work with. The common footguns are gone, and the syntax is token-efficient and readable at a glance, so agents get it right.
+
+Under the hood, the compiler enforces one owner per value with no GC. Programs run close to C speed and scale across all cores, and a simple effects system tracks what your code is allowed to do.
+
+The whole toolchain is tuned for agents. Errors tell you how to fix them, and built-in commands let you verify, test, fuzz, benchmark and profile. Agent benchmarks drive the evolution of the language and toolchain together, and adversarial probing of the compiler and standard library finds and fixes correctness and performance bugs.
+
 A simple HTTP server:
 
 ```rust
