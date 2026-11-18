@@ -132,24 +132,31 @@ fn MemoryTree.exists(path: String) Bool:
 	key := inside.get()
 	return self.files.contains(key) or self.directories.contains(key)
 
-// Creates `path` and any missing parent directories. An existing directory is fine;
-// an existing file is `EEXIST`.
+// Creates `path` and any missing parent directories. An existing directory is fine; an
+// existing file is `EEXIST`, and a file where a parent directory should be is `EINVAL`.
 fn var MemoryTree.create_directory(path: String) Void!:
 	inside := clean(path)?
 	if self.files.contains(inside): return error(
 		Error("filesystem: already exists", kind: "EEXIST")
 	)
 
-	var at = inside.clone()
+	var at = parent_of(inside)
+
+	while not self.directories.contains(at):
+		if self.files.contains(at): return error(fs_invalid_input())
+
+		at = parent_of(at)
+
+	at = inside.clone()
 
 	while not self.directories.contains(at):
 		self.directories.add(at.clone())
 		if at != "": self.link(at)
 		at = parent_of(at)
 
-// Writes a file, replacing any earlier content and creating missing parent
-// directories. A path that is a directory, or whose parent is a file, is `EINVAL`;
-// the root cannot be written.
+// Writes a file, replacing any earlier content and creating missing parent directories.
+// A path that is a directory, or that has a file for an ancestor, is `EINVAL`; the root
+// cannot be written.
 fn var MemoryTree.write_file(path: String, data: Bytes) Void!:
 	inside := clean(path)?
 	if inside == "" or self.directories.contains(inside): return error(
