@@ -904,6 +904,11 @@ fn analyze(
             {
                 live.remove(inst.args[0].0);
             }
+            for (ak, a) in inst.args.iter().enumerate() {
+                if cx.cells.contains_key(&a.0) && hands_off(cx, inst, ak) {
+                    live.remove(a.0);
+                }
+            }
             if plain[bi]
                 && (exits_at(m, cx, inst)
                     || (inst.op == Op::Drop
@@ -990,6 +995,11 @@ fn analyze(
                     .is_some_and(|a| cx.cells.contains_key(&a.0))
             {
                 born(&mut live, inst.args[0].0);
+            }
+            for (ak, a) in inst.args.iter().enumerate() {
+                if cx.cells.contains_key(&a.0) && hands_off(cx, inst, ak) {
+                    born(&mut live, a.0);
+                }
             }
             if let Some(r) = inst.res.filter(|r| owned_def[r.index()]) {
                 born(&mut live, r.0);
@@ -2248,6 +2258,7 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func, params: &BTreeMap<u32, Ty>) -> BTre
         .flat_map(|b| &b.insts)
         .filter(|i| i.op == Op::ClosureNew)
         .flat_map(|i| i.args.iter().map(|a| a.0))
+        .chain(params.keys().copied())
         .chain(
             slots
                 .keys()
@@ -2288,6 +2299,7 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func, params: &BTreeMap<u32, Ty>) -> BTre
                         full.remove(&a.0) || inst.res.is_some_and(|r| guarded.contains(&r.0))
                     }
                     (Op::Load, _) => full.contains(&a.0),
+                    (Op::Call | Op::CallInd, _) if hands_off(cx, inst, k) => full.contains(&a.0),
                     (Op::Call, Imm::Func(g)) => {
                         full.contains(&a.0)
                             && cx.safe.get(g.index()).and_then(|p| p.get(k)).copied() == Some(true)
@@ -2361,50 +2373,65 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
         .collect();
     let mut used = vec![false; m.funcs.len()];
     let targets = closure_targets(m);
-    for caller in &m.funcs {
-        let slots: HashMap<u32, Ty> = caller
-            .blocks
-            .iter()
-            .flat_map(|b| &b.insts)
-            .filter_map(|i| match (i.op, i.imm, i.res) {
-                (Op::Slot, Imm::Ty(ty), Some(r)) => Some((r.0, ty)),
-                _ => None,
-            })
-            .collect();
-        let entries: BTreeSet<u32> = caller
-            .blocks
-            .iter()
-            .flat_map(|b| &b.insts)
-            .filter(|i| i.op == Op::CleanupPush)
-            .filter_map(|i| i.args.first().map(|a| a.0))
-            .collect();
-        for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
-            // A call through a function value may reach every closure of its shape.
-            let reached: Vec<FuncId> = match (inst.op, inst.imm) {
-                (Op::CallInd, _) => targets
-                    .iter()
-                    .copied()
-                    .filter(|g| m.funcs[g.index()].params.len() == inst.args.len())
-                    .collect(),
-                (_, Imm::Func(g)) => vec![g],
-                _ => continue,
-            };
-            let direct = matches!(inst.op, Op::Call | Op::CallInd);
-            for g in reached {
-                used[g.index()] = true;
-                for (k, flag) in owns[g.index()].iter_mut().enumerate() {
-                    if !*flag {
-                        continue;
-                    }
-                    // The slot is the caller's own, holds the type the callee's parameter names,
-                    // and no entry covers it.
-                    let ok = direct
-                        && inst.args.get(k).is_some_and(|a| {
-                            slots.get(&a.0).is_some_and(|ty| m.needs_drop(*ty))
-                                && !entries.contains(&a.0)
-                        });
-                    if !ok {
-                        *flag = false;
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (ci, caller) in m.funcs.iter().enumerate() {
+            let slots: HashMap<u32, Ty> = caller
+                .blocks
+                .iter()
+                .flat_map(|b| &b.insts)
+                .filter_map(|i| match (i.op, i.imm, i.res) {
+                    (Op::Slot, Imm::Ty(ty), Some(r)) => Some((r.0, ty)),
+                    _ => None,
+                })
+                .collect();
+            let entries: BTreeSet<u32> = caller
+                .blocks
+                .iter()
+                .flat_map(|b| &b.insts)
+                .filter(|i| i.op == Op::CleanupPush)
+                .filter_map(|i| i.args.first().map(|a| a.0))
+                .collect();
+            for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
+                // A call through a function value may reach every closure of its shape.
+                let reached: Vec<FuncId> = match (inst.op, inst.imm) {
+                    (Op::CallInd, _) => targets
+                        .iter()
+                        .copied()
+                        .filter(|g| m.funcs[g.index()].params.len() == inst.args.len())
+                        .collect(),
+                    // Making a closure calls nothing: its calls are the `call.ind`s above.
+                    (Op::ClosureNew, _) => continue,
+                    (_, Imm::Func(g)) => vec![g],
+                    _ => continue,
+                };
+                let direct = matches!(inst.op, Op::Call | Op::CallInd);
+                let mine = owns[ci].clone();
+                for g in reached {
+                    used[g.index()] = true;
+                    for (k, flag) in owns[g.index()].iter_mut().enumerate() {
+                        if !*flag {
+                            continue;
+                        }
+                        // The slot is the caller's own, holds the type the callee's parameter names,
+                        // and no entry covers it.
+                        // Or the caller's own slot parameter, passed on, which the caller owns as well:
+                        // only the function that touches the slot's value covers it.
+                        let ok = direct
+                            && inst.args.get(k).is_some_and(|a| {
+                                slots.get(&a.0).is_some_and(|ty| m.needs_drop(*ty))
+                                    && !entries.contains(&a.0)
+                                    || caller.blocks[0]
+                                        .params
+                                        .iter()
+                                        .position(|p| p.value == *a)
+                                        .is_some_and(|kp| mine[kp])
+                            });
+                        if !ok {
+                            *flag = false;
+                            changed = true;
+                        }
                     }
                 }
             }
@@ -2436,6 +2463,29 @@ fn closure_targets(m: &Module) -> Vec<FuncId> {
 
 /// Whether every closure that takes `arity` parameters (its environment first) and a pointer at
 /// position `k` only borrows what that pointer's slot holds. False when there is no such closure.
+/// Whether a call hands the slot at argument `k` to a callee that owns it while it runs: the
+/// callee covers what it takes, so the caller's cover pauses for the call.
+fn hands_off(cx: &Cx, inst: &Inst, k: usize) -> bool {
+    let owns = |g: FuncId| cx.owns[g.index()].get(k).copied() == Some(true);
+    match (inst.op, inst.imm) {
+        (Op::Call, Imm::Func(g)) => owns(g),
+        (Op::CallInd, _) if k > 0 => {
+            let mut any = false;
+            for g in &cx.closure_targets {
+                if cx.safe[g.index()].len() != inst.args.len() || !cx.pointer_params[g.index()][k] {
+                    continue;
+                }
+                if !owns(*g) {
+                    return false;
+                }
+                any = true;
+            }
+            any
+        }
+        _ => false,
+    }
+}
+
 fn closures_borrow(cx: &Cx, arity: usize, k: usize) -> bool {
     let mut any = false;
     for g in &cx.closure_targets {
