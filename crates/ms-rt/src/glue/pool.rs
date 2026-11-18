@@ -182,19 +182,24 @@ pub fn reap_at_exit() {
 /// threads that are still alive.
 #[cfg(feature = "stats")]
 fn stop_threads() {
-    STOPPING.store(true, core::sync::atomic::Ordering::SeqCst);
-    let end = std::time::Instant::now() + core::time::Duration::from_millis(500);
-    loop {
-        READY.notify_all();
-        let started = lock().threads;
-        if EXITED.load(core::sync::atomic::Ordering::SeqCst) >= started
-            || std::time::Instant::now() >= end
-        {
-            return;
-        }
-        std::thread::sleep(core::time::Duration::from_millis(1));
+    use core::sync::atomic::Ordering::SeqCst;
+    STOPPING.store(true, SeqCst);
+    // Taking the pool lock first means a thread that checked `STOPPING` before it was set has
+    // reached its wait, so the notification is not lost.
+    let started = lock().threads;
+    READY.notify_all();
+    // Each exiting thread signals `EXIT_CV` as its destructors end; the abandoned-job wait above
+    // has finished, so no thread is held up by a job.
+    let mut gone = EXIT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    while EXITED.load(SeqCst) < started {
+        gone = EXIT_CV.wait(gone).unwrap_or_else(|e| e.into_inner());
     }
 }
+
+#[cfg(feature = "stats")]
+static EXIT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+#[cfg(feature = "stats")]
+static EXIT_CV: std::sync::Condvar = std::sync::Condvar::new();
 
 #[cfg(feature = "stats")]
 static STOPPING: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
@@ -209,7 +214,9 @@ struct ExitMark;
 #[cfg(feature = "stats")]
 impl Drop for ExitMark {
     fn drop(&mut self) {
+        let _held = EXIT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         EXITED.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
+        EXIT_CV.notify_all();
     }
 }
 
@@ -598,6 +605,10 @@ fn work() {
                     msrt_token_post_remote(token, 1);
                     pool = lock();
                     continue;
+                }
+                #[cfg(feature = "stats")]
+                if STOPPING.load(core::sync::atomic::Ordering::SeqCst) {
+                    return;
                 }
                 pool.idle += 1;
                 pool = READY.wait(pool).unwrap_or_else(|e| e.into_inner());
