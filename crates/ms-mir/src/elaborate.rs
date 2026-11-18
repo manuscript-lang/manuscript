@@ -106,7 +106,7 @@ pub fn run_with(m: &mut Module, cancel_exits: bool) -> Result<(), String> {
             runtime(m, SHIELD_EXIT, &[], ExternRole::ShieldExit),
         )
     });
-    for fi in 0..m.funcs.len() {
+    for fi in crate::cancel_exit::callee_first(m, cancel_exits.is_some()) {
         if !is_raw(&m.funcs[fi]) {
             continue;
         }
@@ -119,7 +119,7 @@ pub fn run_with(m: &mut Module, cancel_exits: bool) -> Result<(), String> {
             discard,
             cancel,
             shield,
-            cancel_exits.as_ref(),
+            cancel_exits.as_ref().map(|cx| (cx, fi)),
         );
         m.funcs[fi] = f;
         out.map_err(|e| format!("{}: {e}", m.funcs[fi].name))?;
@@ -564,7 +564,7 @@ fn function(
     discard: Option<ExtId>,
     cancel: Option<ExtId>,
     shield: Option<(ExtId, ExtId)>,
-    cancel_exits: Option<&crate::cancel_exit::Cx>,
+    cancel_exits: Option<(&crate::cancel_exit::Cx, usize)>,
 ) -> Result<(), String> {
     let mut cx = Ctx {
         tags: HashMap::new(),
@@ -648,10 +648,10 @@ fn function(
             break;
         }
     }
-    if let Some(all) = cancel_exits
+    if let Some((all, fi)) = cancel_exits
         && !f.explicit_cancel
     {
-        cx.cancel_blocks = crate::cancel_exit::convert(m, all, f, &cx.tags)
+        cx.cancel_blocks = crate::cancel_exit::convert(m, all, fi, f, &cx.tags)
             .into_iter()
             .collect();
     }
