@@ -9,20 +9,25 @@ Read configuration from YAML and documents from XML. Both parsers are written in
 
 ## Read a YAML setting
 
-Save as `settings.ms`. `parse` returns a `YamlValue`: `ObjectValue` for a mapping, `ArrayValue` for a sequence, and `StringValue`, `BoolValue`, `NumberValue` or `Null` for scalars. A number keeps its original text, so nothing is rounded before you choose how to read it. `get` on a map returns an optional, and `get_or(Null)` turns a missing key into `Null`.
+Save as `settings.ms`. One small function per `match` keeps the flow flat. `parse` returns a `YamlValue`: `ObjectValue` for a mapping, `ArrayValue` for a sequence, and `StringValue`, `BoolValue`, `NumberValue` or `Null` for scalars. A number keeps its original text, so nothing is rounded before you choose how to read it. `get` on a map returns an optional, and `get_or(Null)` turns a missing key into `Null`.
 
 <!-- manuscript-example: {"mode":"run","stdout":"port 8080\n"} -->
 ```manuscript
 import YamlValue, parse from "@std/data/yaml.ms"
 
+fn number_text(value: YamlValue) String:
+    match value:
+        NumberValue(text): return text.clone()
+        _: return "not a number"
+
+fn port_of(doc: YamlValue) String:
+    match doc:
+        ObjectValue(fields): return number_text(fields.get("port").get_or(Null))
+        _: return "not a mapping"
+
 fn main() Void!:
     doc := parse("name: api\nport: 8080\ntags:\n  - web\n  - internal\n")?
-    match doc:
-        ObjectValue(fields):
-            match fields.get("port").get_or(Null):
-                NumberValue(text): print(f"port {text}")
-                _: print("port is not a number")
-        _: print("not a mapping")
+    print(f"port {port_of(doc)}")
 ```
 
 - `parse_all` reads a file with several `---` documents. `stringify` writes a value back.
