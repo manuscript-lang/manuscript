@@ -57,8 +57,14 @@ fn main() Int:
 	fast := env("CONFORM_FAST", "") != ""
 	ms := if fast: f"target/release/ms{exe()}" else: f"target/debug/ms{exe()}"
 	shard := env("CONFORM_SHARD", "0/1")
-	code = run_program(conform, ["lint"])
-	if code != 0: return code
+
+	// `CONFORM_BACKEND_ONLY=1` is for a run whose lint, check and parse phases another job of the
+	// same pull request already ran (the LLVM job beside the Cranelift legs).
+	skip_frontend := env("CONFORM_BACKEND_ONLY", "") != ""
+
+	if not skip_frontend:
+		code = run_program(conform, ["lint"])
+		if code != 0: return code
 
 	extra := arguments()
 
@@ -67,7 +73,10 @@ fn main() Int:
 	// ran them, and their results do not depend on the backend. `CONFORM_ALL_PHASES=1`
 	// keeps them, for a Cranelift run that is the only pass (pull requests in CI).
 	all_phases := env("CONFORM_ALL_PHASES", "") != ""
-	backend_only := env("MS_BACKEND", "") == "cranelift" and not fast and not all_phases
+	backend_only := (
+		skip_frontend
+		or env("MS_BACKEND", "") == "cranelift" and not fast and not all_phases
+	)
 	phases := if backend_only: "run,test" else: "run,check,test"
 	main_run := [
 		"run",
