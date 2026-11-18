@@ -573,8 +573,12 @@ fn validate(key: &str, dir: &Path) -> Result<(), String> {
     let mut package = Project::default();
     read_manifest(&manifest.to_string_lossy(), &mut package).map_err(|e| {
         // The download sits in a temporary directory; name paths from the package root.
-        let root = format!("{}{}", dir.display(), std::path::MAIN_SEPARATOR);
-        format!("package {key}: {}", e.to_string().replace(&root, ""))
+        // Windows paths come back spelled with either separator.
+        let plain = dir.display().to_string();
+        let root = format!("{plain}{}", std::path::MAIN_SEPARATOR);
+        let slashed = format!("{}/", plain.replace('\\', "/"));
+        let message = e.to_string().replace(&root, "").replace(&slashed, "");
+        format!("package {key}: {message}")
     })?;
     if !package.entry.is_empty() {
         return Err(format!(

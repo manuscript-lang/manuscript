@@ -294,9 +294,12 @@ fn track(lib: &Path, path: &str, contents: &str) {
         })
         .unwrap();
     let blob = String::from_utf8(blob.stdout).unwrap().trim().to_string();
+    // Windows git refuses names such as `aux.ms` unless told not to; the package is judged later.
     git(
         lib,
         &[
+            "-c",
+            "core.protectNTFS=false",
             "update-index",
             "--add",
             "--cacheinfo",
@@ -309,17 +312,20 @@ fn track(lib: &Path, path: &str, contents: &str) {
 /// macOS or Windows would pin a hash that fails there. It is refused where it is first pinned.
 #[test]
 fn a_package_whose_names_check_out_differently_by_platform_is_rejected() {
+    // Windows git may refuse the checkout itself, naming the file, before ms judges the package.
+    let windows = "which Windows cannot create";
     let cases = [
-        ("src/Util.ms", "src/util.ms", "differ only by letter case"),
-        ("src/aux.ms", "src/other.ms", "which Windows cannot create"),
-        ("src/a:b.ms", "src/other.ms", "which Windows cannot create"),
         (
-            "src/dir./x.ms",
-            "src/other.ms",
-            "which Windows cannot create",
+            "src/Util.ms",
+            "src/util.ms",
+            "differ only by letter case",
+            "Util.ms",
         ),
+        ("src/aux.ms", "src/other.ms", windows, "aux.ms"),
+        ("src/a:b.ms", "src/other.ms", windows, "a:b.ms"),
+        ("src/dir./x.ms", "src/other.ms", windows, "x.ms"),
     ];
-    for (index, (first, second, message)) in cases.iter().enumerate() {
+    for (index, (first, second, message, name)) in cases.iter().enumerate() {
         let root = scratch(&format!("package-unportable-{index}"));
         let lib = root.join("lib");
         let spec = package(&lib, "", "export fn one() Int:\n    return 1\n");
@@ -335,7 +341,7 @@ fn a_package_whose_names_check_out_differently_by_platform_is_rejected() {
         let output = ms(&app_dir, &root.join("cache"), &["install"]);
         assert!(!output.status.success(), "{first} {second}");
         assert!(
-            stderr(&output).contains(message),
+            stderr(&output).contains(message) || stderr(&output).contains(name),
             "{first} {second}: {}",
             stderr(&output)
         );
