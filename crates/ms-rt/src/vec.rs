@@ -903,6 +903,17 @@ pub unsafe extern "C-unwind" fn msrt_list_pieces(
         let (src, d, od) = (&*v, &*d, &*od);
         let (size, step) = (size as usize, step.max(1) as usize);
         let mut res = EMPTY;
+        // The outer list is sized once: the number of pieces is known from the lengths.
+        let pieces = if short_last != 0 {
+            src.len.div_ceil(step)
+        } else if src.len >= size {
+            (src.len - size) / step + 1
+        } else {
+            0
+        };
+        if pieces != 0 {
+            reserve(&mut res, od, pieces);
+        }
         let mut start = 0usize;
         while start < src.len && (short_last != 0 || src.len - start >= size) {
             let n = size.min(src.len - start);
@@ -911,7 +922,6 @@ pub unsafe extern "C-unwind" fn msrt_list_pieces(
                 len: n,
                 cap: n,
             };
-            reserve(&mut res, od, 1);
             copy_list(&view, d, elem(&res, od, res.len) as *mut VecVal);
             res.len += 1;
             start += step;

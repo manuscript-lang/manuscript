@@ -304,18 +304,21 @@ Returns the first compare-equal element, or its insertion position with `found: 
 Example: `[1, 3, 3, 5].binary_search(3).index` is `1`; searching for 4 gives index 3 with `found: false`.
 */
 fn List[T: Comparable].binary_search(value: T) SearchResult:
-	var low = 0
-	var high = self.length()
+	// The insertion position is one of `length + 1` candidates in [base, base + size).
+	// Each step halves the window by a count that depends only on `size`, and only
+	// `base` depends on the comparison, as a select: the unpredictable result costs no
+	// misprediction.
+	count := self.length()
+	var base = 0
+	var size = count + 1
 
-	while low < high:
-		middle := low + (high - low) / 2
+	while size > 1:
+		half := size / 2
+		middle := base + half
+		base = if self[middle - 1].compare(value) < 0: middle else: base
+		size -= half
 
-		if self[middle].compare(value) < 0:
-			low = middle + 1
-		else:
-			high = middle
-
-	return SearchResult(low, low < self.length() and self[low].compare(value) == 0)
+	return SearchResult(base, base < count and self[base].compare(value) == 0)
 
 // Returns a copy of the least element, or none for an empty list; the first of
 // equal elements wins. Example: `[3, 1, 2].min()` is `1`; `List[Int]().min()` is

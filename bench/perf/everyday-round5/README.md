@@ -1,0 +1,24 @@
+# Everyday code round 5
+
+Collections, iterator chains, closures, generics, interface calls, enums, records, results and graph code against Rust (`rustc -O -C overflow-checks=on`), standard library only, checksums compared. `probe.ms`/`probe.rs` are 28 small cases; `probe2.ms`/`probe2.rs` are 11 larger programs (expression trees, memo, particles, grid stencil, BFS, Dijkstra, records in maps, result pipelines).
+
+```sh
+MS=./target/release/ms sh bench/perf/everyday-round5/run.sh 5 # probe
+MS=./target/release/ms sh bench/perf/everyday-round5/run.sh 5 probe2     # probe2
+```
+
+## 2026-11-18: Linux x86_64
+
+Release LLVM `ms`, shared 4 vCPU VM, min of 3, microseconds. Base `121cf809`.
+
+| case | ms before | ms after | rust | ms / rust after |
+| --- | ---: | ---: | ---: | ---: |
+| m_binary_search (2M searches over 1M) | 271,391 | 31,493 | 90,222 | 0.35 |
+| r_sort_field (`sorted_by_key`, 1M records) | 196,210 | 68,711 | 70,716 | 0.97 |
+| c_chunks_windows | 15,634 | 16,381 | 9,173 | 1.8 |
+
+Everything else in `probe` is 0.24x to 1.17x Rust, apart from `g_max` (1.7x: LLVM vectorizes the generic max with emulated 64-bit compares on baseline SSE2; scalar would match) and `c_flat_map` (1.4x, the Rust twin appends in place without a list per element).
+`probe2`: `x_dijkstra` 2.2x (`PriorityQueue`, see the wiki page on heap gaps), `x_find_first` 1.8x (4 ms), `x_compose` 1.4x (closures returning closures; each indirect call about 1 ns, the code is already a tail call), the rest 0.63x to 1.18x.
+
+`sorted` by a capturing comparator, 1M records, 1000 keys: 148 to 35 ms (capture-free 44 ms).
+`windows(3)` over 500k: 441M to 384M instructions with the outer list sized once.
