@@ -20,11 +20,9 @@ Scope is one area (type checker, formatter, a stdlib module, a backend). Read [m
 
 Fix root causes with general algorithms. Every fix gets a regression test. Never gate or drop a test without the owner's okay; make a flaky test deterministic. Stack PRs with auto-merge and do not idle on CI. Keep platform parity, add no CI shards, add no dependencies without asking, and keep stdlib work in Manuscript. Say "borrow", never "lend". Add the `in progress` label before fixing an issue and verify every fixed issue closes. Keep going until a round finds nothing new.
 
-## Coverage (Nov 2026)
+## Areas
 
-Update this list when a round finishes.
+Pick an area and probe it; this is a list of areas, not a status.
 
-- **Covered:** stdlib (three rounds, including against its docs); networking, file I/O and big programs; editor and LSP; docs and examples; packages and the build; backend differences; compiler and move rules; lint autofixes; platform gaps and cross-compiling; cancel-cleanup leaks.
-- **In progress:** compiler fuzzing; agent-facing diagnostics.
-- **Not yet covered:** startup time; the FFI and extern boundary; long-running servers (thread churn, parked-task unwind); LLVM on huge functions (#3928); incremental builds; package resolution at scale; unicode edge cases; numeric correctness.
-- **Deferred:** the `Char` type until after the release; no shared state in handlers (#4409); the priority queue stays as is.
+- Stdlib, including against its docs; networking, file I/O and big programs; editor and LSP; docs and examples; packages and the build; backend differences (Cranelift and LLVM); compiler and move rules; lint autofixes; platform gaps and cross-compiling; cancel-cleanup leaks; compiler fuzzing; agent-facing diagnostics.
+- Startup time; the FFI and extern boundary; long-running servers (thread churn, parked-task unwind); LLVM on huge functions (#3928); incremental builds; package resolution at scale; unicode edge cases; numeric correctness.

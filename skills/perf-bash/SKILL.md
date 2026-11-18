@@ -21,10 +21,9 @@ Do not fall back to Rust to make a program fast: make Manuscript fast enough, wi
 
 Fix root causes with general algorithms and no benchmark hacks. Design data-oriented (flat arrays, indices) and compare against checked C on both Cranelift and LLVM, reading the generated machine code. Never gate or drop a test without the owner's okay. Stack PRs with auto-merge and do not idle on CI. Keep platform parity, add no CI shards, add no dependencies without asking, and keep stdlib work in Manuscript. Say "borrow", never "lend". Add the `in progress` label before fixing an issue and verify every fixed issue closes. Keep going until nothing new is found.
 
-## Coverage (Nov 2026)
+## Areas
 
-Update this list when a round finishes.
+Pick an area and measure it; this is a list of areas, not a status.
 
-- **Covered:** memory and binary size; compile speed; workloads and stdlib hot paths; text and parsing; collections, iterators and generics; concurrency and I/O; MIR passes.
-- **In progress:** generated code vs C.
-- **Not yet covered:** startup time; the FFI and extern boundary; long-running servers (thread churn, parked-task unwind); LLVM on huge functions (#3928); incremental builds; package resolution at scale.
+- Memory and binary size; compile speed; workloads and stdlib hot paths; text and parsing; collections, iterators and generics; concurrency and I/O; MIR passes; generated code vs C.
+- Startup time; the FFI and extern boundary; long-running servers (thread churn, parked-task unwind); LLVM on huge functions (#3928); incremental builds; package resolution at scale.
