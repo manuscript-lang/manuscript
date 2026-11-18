@@ -9,7 +9,9 @@ Print aligned columns and color that turns itself off when the output is not a t
 
 ## Align columns
 
-Save as `report.ms`. A `Table` takes one alignment per column and pads every cell to the widest one, using display width, so wide characters line up. `add` returns an error when a row has the wrong number of cells or a cell holds a control character, and `render` returns the lines joined by `\n` with no final newline.
+Save as `report.ms`. A `Table` takes one alignment per column and pads every cell to the widest one, using display width, so wide characters line up.
+
+`add` returns an error when a row has the wrong number of cells or a cell holds a control character. `render` returns the lines joined by `\n` with no final newline.
 
 <!-- manuscript-example: {"mode":"run","stdout":"service   ms\nsearch   340\nhome      12\n"} -->
 ```manuscript

@@ -5,7 +5,7 @@ weight = 2
 
 # Commands and editor setup
 
-Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md). `ms` brings formatting, lint, editor support, code maps, builds and profiling into one workflow. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
+Install an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build it from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md). One binary covers formatting, lint, editor support, code maps, builds and profiling. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
 
 ## Choose the next command
 
@@ -20,7 +20,7 @@ Run project commands from the directory containing `ms.toml`. For a single-file 
 | Find an API | `ms search_symbol json` | A bounded page of matching declarations |
 | Understand a program visually | `ms diagram ms.toml --format html -o code-map.html` | An offline HTML file with checked source relationships |
 
-Start with the [first-program workflow](../learn/getting-started.md) for a complete example and its output. The sections below explain command options and structured results for automation.
+For a complete example with its output, start with the [first-program workflow](../learn/getting-started.md). The sections below explain command options and the structured results that automation reads.
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
 - Command-line arguments must be valid UTF-8; invalid OS arguments return usage status 2.
@@ -61,7 +61,7 @@ git diff --no-renames > change.patch
 ms diagram ms.toml --format html --diff change.patch -o review.html
 ```
 
-These commands write `change.patch` and `review.html` without terminal output. Run this against the working tree represented by the diff's after state. The map shows relationships and control flow from the checked source; sequence and behavior views are static views, not runtime execution traces. Use [profiling](debugging/debugger-integration.md) to observe a running program and [tests](../learn/testing.md) to check its outcomes.
+These commands write `change.patch` and `review.html` without terminal output. Run them in a working tree that matches the diff's after state. The map shows relationships and control flow from the checked source; the sequence and behavior views are static, not runtime traces. Use [profiling](debugging/debugger-integration.md) to observe a running program and [tests](../learn/testing.md) to check its outcomes.
 
 ## Source inspection
 
@@ -141,7 +141,7 @@ Entities match by file, kind, and name, so formatting and in-file moves are not 
 
 Reach is the number of entities that transitively call the changed one; the score is the sum of the listed terms. Only newly reached declared effects rank.
 
-The report compares tracked static properties; it does not run tests. An INTERNAL body edit can still change runtime behavior. “No tracked semantic changes” means the comparison found no changes to those properties.
+The report compares tracked static properties; it does not run tests. An INTERNAL body edit can still change runtime behavior. "No tracked semantic changes" means the comparison found no changes to those properties.
 
 For an agent, follow a finding's stable ID through the same workflow:
 
@@ -151,11 +151,11 @@ ms review ms.toml --diff change.patch --explain 1 --json
 ms diagram ms.toml --view flow --entity 'src/main.ms#fn#save' --diff change.patch --json
 ```
 
-Replace the example ID with `diagram.entity` from the explanation. The diff must be available again for each command; save a piped diff to a file when following up.
+Replace the example ID with `diagram.entity` from the explanation. Each command needs the diff again, so save a piped diff to a file before following up.
 
 ## Commands for agents
 
-These commands answer what the compiler commands do not and print only what is needed to act.
+These commands answer questions the compiler commands do not, and print only what you need to act.
 
 | Command | Behavior |
 | --- | --- |
@@ -335,7 +335,7 @@ Expression layout uses a soft limit of 88 columns:
 
 Native builds keep frame pointers and DWARF line tables, so faults report source frames and external tools such as `perf` can attribute samples; see [profiling and native debugging](debugging/debugger-integration.md).
 
-`ms profile module-or-project --out-dir new-directory` builds the application, runs it with the sampling profiler, and writes `program`, `profile.folded`, `profile.pb` (pprof), `top.txt`, and `manifest.json`. Existing directories are rejected. Profiling adds overhead, so measure an unprofiled executable when comparing speed.
+`ms profile <file.ms|ms.toml> --out-dir <new-directory>` builds the application, runs it with the sampling profiler, and writes `program`, `profile.folded`, `profile.pb` (pprof), `top.txt`, and `manifest.json`. Existing directories are rejected. Profiling adds overhead, so measure an unprofiled executable when comparing speed.
 
 ```sh
 ms profile main.ms --out-dir samples --top 10

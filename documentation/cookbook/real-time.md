@@ -41,7 +41,9 @@ fn main() Void!:
 
 ## Stream events with SSE
 
-Save as `ticks.ms`. The server sends headers with `Content-Type: text/event-stream` and then writes events as blank-line-separated blocks. `sse_events` turns the response body into a stream of `SseEvent` values with `event`, `data`, `id` and `retry`, however the bytes were split. Destructure the response to take its body: a stream is a resource and cannot be moved out of a field.
+Save as `ticks.ms`. The server sends headers with `Content-Type: text/event-stream` and then writes events as blank-line-separated blocks. `sse_events` turns the response body into a stream of `SseEvent` values with `event`, `data`, `id` and `retry`, however the bytes were split.
+
+Destructure the response to take its body: a stream is a resource and cannot be moved out of a field.
 
 <!-- manuscript-example: {"mode":"run","stdout":"tick: 1\ntick: 2\n"} -->
 ```manuscript

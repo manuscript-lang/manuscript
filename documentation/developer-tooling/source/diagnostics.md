@@ -46,13 +46,13 @@ Each diagnostic also has a stable rule code and source position for editor and a
 
 ## Message shape
 
-Messages read `<cause>; <fix>`. The cause has stable wording naming the offending name, type, or count.
+Messages read `<cause>; <fix>`. The cause uses stable wording and names the offending name, type, or count.
 
 The fix says what to write, such as `did you mean 'count'?`, `add: import panic from "@std/core.ms"`, `declare it with 'var x = ...' instead of 'count := ...'`, or the valid arguments, members, cases, or exports. Codes classify only the text before the first `; `, and follow-on errors that restate an earlier one are not reported.
 
 ## Explaining a violated rule
 
-A diagnostic names the violated rule and the declaration or call site involved. Runtime closed-resource errors carry operation and source locations separately.
+A diagnostic names the violated rule and the declaration or call site involved. Runtime closed-resource faults carry the operation and the source location as separate fields.
 
 ## JSON diagnostics
 

@@ -104,7 +104,9 @@ An empty line is `""`, and the loop ends at end of input. Line endings (`\n` or 
 
 ## Find files by pattern
 
-Save as `find.ms`. `glob` walks a directory and returns the entries that match any include pattern, sorted by path, each with a path relative to the root and `/`-separated on every platform. `**` crosses directories. A pattern that ends in `/` matches directories only, as in a shell. `exclude` patterns skip an entry and do not enter a skipped directory, and `max_results` bounds a walk of an unknown tree.
+Save as `find.ms`. `glob` walks a directory and returns the entries that match any include pattern, sorted by path. Each path is relative to the root and `/`-separated on every platform.
+
+`**` crosses directories. A pattern that ends in `/` matches directories only, as in a shell. `exclude` patterns skip an entry and do not enter a skipped directory, and `max_results` bounds a walk of an unknown tree.
 
 <!-- manuscript-example: {"mode":"run","stdout":"src/main.ms\nsrc/util/text.ms\nsrc\nsrc/util\n"} -->
 ```manuscript

@@ -26,7 +26,7 @@ Every diagnostic reads `<cause>; <fix>`, so a message states what is wrong and w
 
 An agent does not need the whole manual in its context.
 
-- `ms skill -o .claude/skills -o .agents/skills` writes `manuscript/SKILL.md` and its concept references into each folder, bundled with the compiler. Claude Code loads `.claude/skills`; Codex and other agents load `.agents/skills`. Install it before the agent writes code so it loads natively. The generated version can be compared with `ms --version`; existing skill directories are never overwritten.
+- `ms skill -o .claude/skills -o .agents/skills` writes `manuscript/SKILL.md` and its concept references into each folder. They are bundled with the compiler, so they match its version (compare with `ms --version`). Claude Code loads `.claude/skills`; Codex and other agents load `.agents/skills`. Install the skill before the agent writes code so it loads natively. Existing skill directories are never overwritten.
 - `ms search_symbol read file` finds a project or standard-library API and prints its signature in bounded output.
 - `ms verify` runs the checker, the formatter check, lint and tests, and returns one exit code. The agent loops until it is zero.
 
@@ -41,7 +41,9 @@ ms diagram ms.toml --format html -o code-map.html
 git diff main | ms review ms.toml --diff -
 ```
 
-The code map is one offline file with source, types, calls and ownership side by side. `ms review --diff` compares the checked program before and after the diff and ranks what to look at first: changed contracts, error flow and resource scopes. ![The Calls view of the code map, showing run calling run_command, with the three changed declarations listed in the sidebar](/images/code-map-calls.png "The Calls view for a changed program. Start from the outlined declarations and follow callers and callees.")
+The code map is one offline file with source, types, calls and ownership side by side. `ms review --diff` compares the checked program before and after the diff and ranks what to look at first: changed contracts, error flow and resource scopes.
+
+![The Calls view of the code map, showing run calling run_command, with the three changed declarations listed in the sidebar](/images/code-map-calls.png "The Calls view for a changed program. Start from the outlined declarations and follow callers and callees.")
 
 See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map).
 
