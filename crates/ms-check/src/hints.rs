@@ -845,6 +845,15 @@ impl Checker {
                 return format!("{message}; {fix}");
             }
         }
+        if !receiver.is(Builtin::Optional)
+            && !receiver.is(Builtin::Result)
+            && matches!(self.syms.str(name), "is_none" | "is_some")
+        {
+            return format!(
+                "{message}; a value of type {receiver_t} is never none here. List.get(i) returns the element and faults when i is out of range: use xs.get_or(i, default) for a fallback, or check i against xs.length() first",
+                receiver_t = receiver.display(self.syms)
+            );
+        }
         if (receiver.is(Builtin::Optional) || receiver.is(Builtin::Result))
             && !receiver.args.is_empty()
             && self
