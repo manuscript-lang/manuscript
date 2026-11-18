@@ -25,7 +25,6 @@ Commands:
   remove         Remove a dependency from ms.toml and ms.lock
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
-  skill          Print the Manuscript agent skill, or write its files with -o
   explain        Explain diagnostic codes and their usual repairs
   help           Show help for a command
   version        Print the compiler version
@@ -411,25 +410,6 @@ Examples:
   ms search_symbol parse_config
   ms search_symbol read file lines
   ms search_symbol json.parse
-"#;
-
-pub const HELP_SKILL: &str = r#"Usage: ms skill [-o <directory>]...
-
-Print the versioned Manuscript agent skill with all references inlined as one
-Markdown document. Pipe it to an agent or redirect it to a file.
-With -o, write SKILL.md and reference files into <directory>/manuscript/ instead;
-repeat -o to install in several agent folders (Claude Code reads .claude/skills,
-Codex and other agents read .agents/skills).
-Works offline without this repository; existing skill directories are never overwritten.
-
-Options:
-  -o, --output <directory>  Parent directory for the skill files; may repeat
-  -h, --help               Show this help without writing files
-
-Examples:
-  ms skill
-  ms skill > manuscript-skill.md
-  ms skill -o .claude/skills -o .agents/skills
 "#;
 
 pub const HELP_EXPLAIN: &str = r#"Usage: ms explain <code...> [--json]

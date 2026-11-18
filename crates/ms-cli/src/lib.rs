@@ -24,7 +24,6 @@ pub mod json;
 pub mod process;
 pub mod profile;
 mod regexp;
-mod skill;
 mod snippet;
 pub mod util;
 pub mod verify;
@@ -72,7 +71,6 @@ pub fn run<L: Lower>(
         "install" => fetch::run_install(&args[1..], io),
         "add" => fetch::run_add(&args[1..], io),
         "remove" => fetch::run_remove(&args[1..], io),
-        "skill" => skill::run_skill(&args[1..], io),
         "verify" => verify::run_verify(syms, &args[1..], engine, io),
         "fmt" => fmt::run_format(syms, &args[1..], io),
         "lsp" => commands::run_lsp(syms, args, io),

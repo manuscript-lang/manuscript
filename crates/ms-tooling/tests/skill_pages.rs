@@ -1,12 +1,40 @@
 //! The installed skill teaches executable, versioned Manuscript rather than placeholders.
 use ms_check::{CheckOptions, ImportMap};
-use ms_tooling::guide::skill::FILES;
+
+/// The skill files as they sit in the repository, `SKILL.md` first, with `{{MS_VERSION}}` unfilled.
+pub fn files() -> &'static [(&'static str, &'static str)] {
+    static FILES: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
+        std::sync::OnceLock::new();
+    FILES.get_or_init(|| {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("data/agent-skill");
+        let mut names: Vec<String> = std::fs::read_dir(root.join("references"))
+            .unwrap()
+            .map(|entry| {
+                format!(
+                    "references/{}",
+                    entry.unwrap().file_name().to_string_lossy()
+                )
+            })
+            .collect();
+        names.sort();
+        names.insert(0, "SKILL.md".to_string());
+        names
+            .into_iter()
+            .map(|name| {
+                let text = std::fs::read_to_string(root.join(&name)).unwrap();
+                let name: &'static str = Box::leak(name.into_boxed_str());
+                (name, &*Box::leak(text.into_boxed_str()))
+            })
+            .collect()
+    })
+}
+
 use std::sync::Arc;
 
 #[test]
 fn skill_complete_examples_check() {
     let mut examples = 0;
-    for (path, text) in FILES {
+    for (path, text) in files() {
         for fence in text.split("```manuscript\n").skip(1) {
             let source = fence.split_once("```").expect("closed fence").0;
             assert!(
@@ -54,7 +82,7 @@ fn skill_complete_examples_check() {
 
 #[test]
 fn skill_root_is_short_and_references_are_substantive() {
-    let root = FILES
+    let root = files()
         .iter()
         .find(|(path, _)| *path == "SKILL.md")
         .unwrap()
@@ -63,7 +91,7 @@ fn skill_root_is_short_and_references_are_substantive() {
     assert!(root.starts_with("---\nname: manuscript\n"));
     assert!(root.contains("{{MS_VERSION}}"));
     assert!(root.contains("Use tabs for indentation"));
-    for (path, text) in FILES
+    for (path, text) in files()
         .iter()
         .filter(|(path, _)| path.starts_with("references/"))
     {
@@ -82,7 +110,7 @@ fn skill_root_is_short_and_references_are_substantive() {
 /// The server-state example is also a conformance fixture, which runs it.
 #[test]
 fn skill_server_state_example_is_the_tested_fixture() {
-    let page = FILES
+    let page = files()
         .iter()
         .find(|(path, _)| *path == "references/servers-and-state.md")
         .unwrap()
@@ -110,7 +138,7 @@ fn skill_server_state_example_is_the_tested_fixture() {
 #[test]
 fn skill_call_tables_match_the_declarations() {
     use ms_tooling::guide::skill_calls::{block_of, render};
-    let page = FILES
+    let page = files()
         .iter()
         .find(|(path, _)| *path == "references/standard-calls.md")
         .unwrap()
@@ -130,7 +158,7 @@ fn skill_module_map_matches_the_declarations() {
     use ms_tooling::guide::skill_calls::{
         MODULES_END, MODULES_START, block_between, render_modules,
     };
-    let page = FILES
+    let page = files()
         .iter()
         .find(|(path, _)| *path == "references/standard-modules.md")
         .unwrap()
@@ -149,7 +177,7 @@ fn skill_module_map_matches_the_declarations() {
 #[test]
 fn skill_manifest_examples_parse() {
     use ms_driver::project::manifest::read_manifest;
-    let page = FILES
+    let page = files()
         .iter()
         .find(|(path, _)| *path == "references/projects-and-packages.md")
         .unwrap()

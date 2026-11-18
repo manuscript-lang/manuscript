@@ -248,7 +248,7 @@ fn search_rejects_noise_and_empty_queries() {
 /// Scope-end close replaced `with`; no skill reference should teach it.
 #[test]
 fn cheatsheet_does_not_teach_with() {
-    for (path, text) in ms_tooling::guide::skill::FILES {
+    for (path, text) in crate::skill_pages::files() {
         let taught = text.lines().find(|line| line.contains("`with "));
         assert!(
             taught.is_none(),

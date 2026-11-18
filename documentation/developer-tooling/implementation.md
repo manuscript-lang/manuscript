@@ -160,7 +160,6 @@ These commands answer questions the compiler commands do not, and print only wha
 | Command | Behavior |
 | --- | --- |
 | `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10 total matches; `--json`). Project matches come first and print `file:line:column`, type, description, and up to five uses; standard matches fill remaining places and print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
-| `ms skill [-o <directory>]` | Print the complete versioned agent skill as one Markdown document for piping; with `-o`, export `SKILL.md` and reference files to `<directory>/manuscript/` without overwriting an existing skill |
 | `ms explain <code...> [--json]` | Explain diagnostic families, severity and usual repairs |
 
 Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which print compact diagnostics (`--json` for complete documents).
