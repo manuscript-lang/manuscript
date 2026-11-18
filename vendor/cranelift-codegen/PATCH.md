@@ -18,3 +18,7 @@ tried to fold the same operand load into the arithmetic instruction. The fused a
 now take their second operand as an immediate or a register (`gpr_or_simm32`, `gpr_no_load`). Manuscript's
 `random_programs_agree` test found it (26 of 1500 seeds; 6 failed before the patch because `imul.chk` already
 took the path).
+
+A third change, in `build.rs`: `VERSION` is the crate version without the `-<git revision>` suffix. The published
+build script appends the revision of the enclosing git checkout, which for this vendored copy is the
+Manuscript commit, so every commit compiled the crate again in CI (85 s and a 110 MB sccache entry per run).
