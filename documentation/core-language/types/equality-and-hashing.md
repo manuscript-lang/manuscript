@@ -12,6 +12,7 @@ Both are prelude interfaces from `@std/core.ms`; importing them is rejected. The
 
 `Comparable` (also in `@std/core.ms`) orders values for `math.max`, `math.min`, `List.sorted`, `List.min`, and `List.max`. It does not imply `Equal`: Float orders NaN above every value yet NaN != NaN. Make `compare` return zero exactly when `equals` is true.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 interface Equal:
     fn equals(other: Self) Bool

@@ -32,6 +32,7 @@ A parameter or field of type `T?` with no default is `none` when omitted, so `= 
 
 `T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `x := 1` is an `Int`, not an `Int?`.
 
+<!-- manuscript-example: {"mode":"error","contains":"cannot infer the type of none","given":[]} -->
 ```manuscript
 explicit: String? := none
 // Rejected: no type determines the absent payload.
@@ -81,6 +82,7 @@ Receiver methods:
 
 Fallback for routine absence:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn display_name(name: String?) String:
     return name.get_or("Anonymous")
@@ -88,6 +90,7 @@ fn display_name(name: String?) String:
 
 `get_or(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn display_name(create: fn() String, name: String?) String:
     return name.get_or_else(create)
@@ -105,6 +108,7 @@ fn greet(name: String?) String:
 
 Extraction returns the payload itself: no clone, no flattening. `map` transforms a payload; `and_then` chains an operation that returns an Optional:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn first_number(text: String?) Int?:
     return text.map(fn value: value.trim().clone()).and_then(fn value: value.parse_int())
@@ -168,6 +172,7 @@ Through a `:=` or an undeclared-`var` parameter, `counter?.bump()` is rejected l
 
 Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `?` it:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn port_number(text: String) Int!:
     port := text.parse_int().ok_or()?

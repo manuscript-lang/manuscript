@@ -8,6 +8,7 @@ weight = 1
 
 A type groups related data into named fields. Use it when a function should receive one meaningful value, such as a customer or an order. Each declaration creates a distinct type; fields change through a `var` binding.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Customer:
     name: String
@@ -20,6 +21,7 @@ Field types are explicit and names unique. An empty type is `type Marker:`. A fi
 
 Supply each required field exactly once, by position or label; fields with defaults may be omitted. Missing, duplicate, and unknown fields are compile errors. Supplied expressions evaluate in written order, then omitted defaults in declaration order. Each is checked against its field type, so `none` and `[]` get their expected type.
 
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    email: String?","given":[]} -->
 ```manuscript
 customer := Customer(name: "Ada", email: none)
 name := customer.name
@@ -27,6 +29,7 @@ name := customer.name
 
 Positional arguments follow declaration order and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Box(3)` equals `Box(value: 3)`. Handle an optional field as described in [optional values](optionals.md).
 
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type Customer:\n    name: String\n    email: String? = none","given":[]} -->
 ```manuscript
 // An omitted optional field is none.
 without_email := Customer(name: "Ada")
@@ -36,6 +39,7 @@ customer.name = "Grace"
 
 Generic types declare parameters (`type Box[T]:`) and construct as `Box[Int](value: 1)`; see [generics](generics.md).
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 type Options:
     count: Int = 3
@@ -121,6 +125,7 @@ scores
 
 Reading a field is different from moving it. `rows := report.rows` borrows it. A getter that returns the field also returns an inferred borrow:
 
+<!-- manuscript-example: {"mode":"fragment","context":"type Report:\n    rows: List[Int]","given":[]} -->
 ```manuscript
 fn rows_of(report: Report) List[Int]:
     return report.rows
@@ -165,6 +170,7 @@ type OrderId:
     value: String
 ```
 
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type CustomerId:\n    value: String\n\ntype OrderId:\n    value: String","given":[]} -->
 ```manuscript
 customer_id := CustomerId("42")
 // Rejected: equal field shapes do not make nominal types interchangeable.
@@ -255,6 +261,7 @@ Use [enums](alternatives.md) for a choice among cases and `interface` for [opera
 
 `type Name = Type` gives another name to a type expression. An alias is not a new type: it and its target are interchangeable everywhere, and it has no constructor or methods of its own. Use a record when the type must be distinct.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 type Rows = List[Int]
 type Handler = fn(Int) Int

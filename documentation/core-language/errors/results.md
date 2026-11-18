@@ -43,6 +43,7 @@ Both calls return normally. The second returns an error value, and `show` choose
 
 `T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Use `T!E` for a failure that is not an `Error`. `Result[T, E]` stays valid.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn parse_port(text: String) Int!:
     port := text.parse_int().ok_or()?
@@ -55,6 +56,7 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 
 `Error` is a plain type with a fixed shape:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 export type Error:
     message: String
@@ -111,6 +113,7 @@ The function validates inputs, returns an explicit error for each failure, and w
 
 This continues the declarations above:
 
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
 ```manuscript
 fn discount_message(price: Decimal, percent: Decimal) String:
     if value := discount(price, percent):
@@ -138,8 +141,9 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 
 This fragment uses `discount` above:
 
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
 ```manuscript
-price := discount(price: 20d, percent: 10d).get(0d)
+price := discount(price: 20d, percent: 10d).get_or(0d)
 text := discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 ```
 
@@ -149,7 +153,9 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 
 `to_optional() T?` returns the original payload as a present optional, or `none` on error. It does not flatten the payload or turn faults or cancellation into absence.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import Decimal from "@std/math/decimal.ms"
 fn successful_price(outcome: Result[Decimal, Error]) Decimal?:
     return outcome.to_optional()
 ```
@@ -160,6 +166,7 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Void, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, put `void` in front:
 
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
 ```manuscript
 void discount(price: 20d, percent: 10d)
 ```
@@ -170,6 +177,7 @@ The initializer still runs and the outcome is dropped unread. Several `void` sta
 
 `?` forwards the error type unchanged and never converts one. Translate a domain error with an ordinary function or `map_error`:
 
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
 ```manuscript
 fn discount_error(cause: DiscountError) Error:
     return Error("discount failed", kind: "EINVAL")

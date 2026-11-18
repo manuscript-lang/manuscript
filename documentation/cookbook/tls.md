@@ -9,6 +9,7 @@ Serve HTTPS from your own certificate, call a server that uses a private authori
 
 The programs below read PEM files as text. Each one carries the same small helper:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import read_file from "@std/os/fs.ms"
 

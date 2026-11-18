@@ -40,6 +40,7 @@ Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer lite
 - A literal takes a sized type from an expected type or from the other operand of an operator: `x: Int8 := 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`x: Int8 := 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). Arithmetic made only of literals takes the type as a whole (`x: Float32 := 0.1 + 0.2`, `y: Int8 := 100 + 27`), and each step must fit. A literal never changes kind: `x: Float32 := 1` is rejected. A `Float32` literal is rounded once, directly from its decimal text to binary32 (not through `Float`), so `x: Float32 := 340282356779733661637539395458142568447.0` is the largest finite `Float32` while the overflow midpoint `...448.0` is rejected.
 - The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected Float","context":"import Decimal from \"@std/math/decimal.ms\"","given":[]} -->
 ```manuscript
 fn literals() Void:
     smallest: Int := -9223372036854775808
@@ -55,6 +56,7 @@ fn literals() Void:
 
 `Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, user types, optionals, enums, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
 
+<!-- manuscript-example: {"mode":"error","contains":"same independently known type","given":[]} -->
 ```manuscript
 fn sized() Void:
     a: Int8 := 100
@@ -128,7 +130,9 @@ A Decimal literal must be exactly representable: `1.00d` is fine, but 35 signifi
 
 Every literal needs the `d` suffix to stay `Decimal`:
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import Decimal from "@std/math/decimal.ms"
 price := 100d
 percent := 15d
 discounted := price * (1d - percent / 100d)
@@ -140,6 +144,7 @@ Validate expected bad input with [expected failures](../errors/results.md); see 
 
 `BigInt` (from `@std/math/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `big_int_of_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import big_int_of_int from "@std/math/math.ms"
 

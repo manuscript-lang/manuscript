@@ -29,6 +29,7 @@ Inactive
 
 A short branch can be one simple statement on the same line:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn status(active: Bool) String:
     if active: return "Active"
@@ -61,6 +62,7 @@ fn classify(value: Int) String:
 
 `if c: a else: b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and `else if` chains:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn sign(value: Int) Int:
     return if value < 0: -1 else if value == 0: 0 else: 1

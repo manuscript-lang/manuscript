@@ -36,6 +36,7 @@ PASS server_test.ms::serve a greeting
 
 In a function returning `Void!`, keep the server alive with `wait()`:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 server := serve("127.0.0.1:8080", handler)?
 server.wait()?

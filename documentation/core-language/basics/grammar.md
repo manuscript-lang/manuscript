@@ -15,7 +15,7 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 
 The language uses these keywords:
 
-```manuscript
+```text
 and break continue else enum export extern false fixture fn for if
 import in interface match not or return self test true try type
 void var while
@@ -71,8 +71,9 @@ Inside a call, list, or grouping, a function expression may have an inline suite
 
 A delimiter opened outside the body cannot close at body indentation. Group the function when a following comma belongs to the enclosing arguments:
 
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
-fn example() Int:
+fn offset() Int:
     return apply(
         value: 3,
         transform: (
@@ -84,8 +85,9 @@ fn example() Int:
 
 The grouping close (eight spaces) ends the function suite before the comma. An ungrouped suite-bodied function can be the final argument:
 
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
-fn example() Int:
+fn offset() Int:
     return apply(
         value: 3,
         transform: fn(value: Int) Int:
@@ -95,8 +97,9 @@ fn example() Int:
 
 Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value (it can be a conditional expression: `fn value: if value > 0: value else: 0`), while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
-fn example() Int:
+fn offset() Int:
     return apply(
         transform: fn(value: Int) Int:
             return value - 1
@@ -239,6 +242,7 @@ fn positive(value: Int) Bool:
 
 ## Rejected forms
 
+<!-- manuscript-example: {"mode":"error"} -->
 ```manuscript
 count := 3                       // Not a complete module item.
 fn wrong() Int:

@@ -96,7 +96,7 @@ fn repo_files(dir: &str, ext: &str) -> Vec<PathBuf> {
 }
 
 fn examples() -> Vec<Example> {
-    examples_in(&repo_files("documentation", "md"), false)
+    examples_in(&repo_files("documentation", "md"), true)
 }
 
 fn ms(args: &[&str], stdin: &str, cwd: Option<&Path>) -> (Option<i32>, String, String) {
@@ -201,12 +201,28 @@ fn run_case(path: &str, dir: &Path, case: &Json) -> Option<String> {
 /// Splits a fragment into top-level declarations (kept as is) and statements (placed in
 /// one function body, whose parameters are the fragment's `given` names) so that the whole
 /// text parses as a module.
-fn wrap_fragment(source: &str, given: &[String]) -> String {
+fn wrap_fragment(source: &str, given: &[String], context: &str) -> String {
+    // A snippet shown inside a function keeps its indentation in the book; remove it here.
+    let indent = source
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| l.len() - l.trim_start().len())
+        .min()
+        .unwrap_or(0);
+    let dedented: String = source
+        .lines()
+        .map(|l| format!("{}\n", l.get(indent..).unwrap_or("")))
+        .collect();
+    let source = dedented.as_str();
     let mut decls = String::new();
+    decls.push_str(context);
+    if !context.is_empty() {
+        decls.push('\n');
+    }
     let mut body = String::new();
     let mut in_decl = false;
     for line in source.lines() {
-        let starts_decl = ["import ", "type ", "enum ", "fn ", "export "]
+        let starts_decl = ["import ", "type ", "enum ", "interface ", "fn ", "export "]
             .iter()
             .any(|k| line.starts_with(k));
         let continues = in_decl && (line.is_empty() || line.starts_with([' ', '\t', ')']));
@@ -226,6 +242,25 @@ fn wrap_fragment(source: &str, given: &[String]) -> String {
     )
 }
 
+/// `ms check` on a snippet. A snippet binds names it never reads, so "never read" findings do
+/// not count. Returns the remaining diagnostic messages, empty when the snippet checks.
+fn check_snippet(path: &str) -> Vec<String> {
+    let (_, out, err) = ms(&["check", path, "--json"], "", None);
+    let Ok(doc) = ms_json::parse(&out) else {
+        return vec![err];
+    };
+    let diagnostics = doc
+        .get("diagnostics")
+        .and_then(Json::as_array)
+        .unwrap_or_default();
+    diagnostics
+        .iter()
+        .filter_map(|d| d.get("message").and_then(Json::as_str))
+        .filter(|m| !m.contains("is never read"))
+        .map(str::to_string)
+        .collect()
+}
+
 /// Checks one example and returns what is wrong with it; examples are independent, so
 /// `verify` runs them on several threads.
 fn verify_one(n: usize, example: &Example, dir: &Path) -> Vec<String> {
@@ -241,14 +276,47 @@ fn verify_one(n: usize, example: &Example, dir: &Path) -> Vec<String> {
         // declarations stay at the top and the statements move into a function body.
         let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
         let given = json_strings(spec.get("given"));
-        fs::write(path, wrap_fragment(&example.source, &given)).unwrap();
-        let (code, _, err) = if spec.get("given").is_some() {
-            ms(&["check", path], "", None)
+        let context = spec
+            .get("context")
+            .and_then(Json::as_str)
+            .unwrap_or_default();
+        fs::write(path, wrap_fragment(&example.source, &given, context)).unwrap();
+        if spec.get("given").is_some() || !context.is_empty() {
+            let found = check_snippet(path);
+            if !found.is_empty() {
+                failures.push(format!(
+                    "{name}: fragment does not check\n{}",
+                    found.join("\n")
+                ));
+            }
         } else {
-            ms(&["fmt", path], "", None)
-        };
-        if code != Some(0) {
-            failures.push(format!("{name}: fragment does not check\n{err}"));
+            let (code, _, err) = ms(&["fmt", path], "", None);
+            if code != Some(0) {
+                failures.push(format!("{name}: fragment does not parse\n{err}"));
+            }
+        }
+        return failures;
+    }
+    if example.spec.contains("\"mode\":\"error\"") {
+        // A deliberately wrong sample: `ms check` must fail, and say `contains` when given.
+        // `given` wraps it like a fragment.
+        let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
+        if spec.get("given").is_some() {
+            let given = json_strings(spec.get("given"));
+            let context = spec
+                .get("context")
+                .and_then(Json::as_str)
+                .unwrap_or_default();
+            fs::write(path, wrap_fragment(&example.source, &given, context)).unwrap();
+        }
+        let (code, _, err) = ms(&["check", path], "", None);
+        let want = spec.get("contains").and_then(Json::as_str);
+        if code == Some(0) {
+            failures.push(format!("{name}: expected an error, but ms check passed"));
+        } else if let Some(want) = want
+            && !err.contains(want)
+        {
+            failures.push(format!("{name}: error does not contain {want:?}\n{err}"));
         }
         return failures;
     }
@@ -326,6 +394,16 @@ fn verify(examples: &[Example], label: &str) {
 fn marked_tutorial_examples_compile_and_pass() {
     let all = examples();
     assert!(all.len() >= 20, "found only {} examples", all.len());
+    let unmarked: Vec<String> = all
+        .iter()
+        .filter(|e| e.spec.is_empty())
+        .map(|e| format!("{}:{}", e.file.display(), e.line))
+        .collect();
+    assert!(
+        unmarked.is_empty(),
+        "add `<!-- manuscript-example: {{\"mode\":\"check\"}} -->` (or run, fragment with given, error) above each fence:\n{}",
+        unmarked.join("\n")
+    );
     verify(&all, "doc-examples");
 }
 

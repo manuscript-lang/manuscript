@@ -64,6 +64,7 @@ Largest: 9
 
 Each `.ms` file is a module and `export` marks what other files can import. Standard APIs come from `@std/...` and your own code from a relative path:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import line_total from "./pricing.ms"
 ```

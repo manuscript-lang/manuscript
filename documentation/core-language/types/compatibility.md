@@ -23,6 +23,7 @@ A generic bound grants properties, not subtyping. Type positions use [ordinary n
 
 `Equal` and `Hashable` are [standard interfaces](equality-and-hashing.md) usable as bounds and as parameter types. Only generic bounds can be conjoined; value types have no intersection or refinement syntax.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","given":[]} -->
 ```manuscript
 fn identity(value: Int) Int:
     return value
@@ -40,6 +41,7 @@ There are no implicit numeric conversions, optional unwrapping, result wrapping,
 
 An expected type comes from an annotation, assignment target, return declaration, substituted parameter, field, or enum payload. It guides parenthesized expressions, list elements, constructor fields, and case payloads, and supplies missing type arguments for a uniquely identified `none`, `ok`, or `error`. It never resolves an ambiguous case name or overrides a type an expression already determines.
 
+<!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
 type Input:
     names: List[String?]
@@ -65,6 +67,7 @@ A list whose independently typed elements disagree is rejected.
 
 Operators and `?` normally require operands to determine their own types first. The exception is [arithmetic over numeric literals](../basics/numbers-and-booleans.md#sized-numbers): it takes an expected sized numeric type, including the payload of an expected optional, without changing numeric kind or narrowing a named value.
 
+<!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
 fn known() Result[Int, Error]:
     number: Int := Result[Int, Error].ok(1)?

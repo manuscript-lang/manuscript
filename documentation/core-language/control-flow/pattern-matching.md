@@ -113,6 +113,7 @@ fn horizontal(position: Position) Int:
 
 Arms never fall through, and a missing case is a compile error. `_:` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
 
+<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt: String)\n    Declined(reason: String)","given":[]} -->
 ```manuscript
 fn paid(payment: Payment) Bool:
     match payment:

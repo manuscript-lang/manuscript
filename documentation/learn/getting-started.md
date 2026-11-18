@@ -69,6 +69,7 @@ fn main() Void:
 
 Replace the `print` line with:
 
+<!-- manuscript-example: {"mode":"fragment","context":"import arguments from \"@std/os/env.ms\"","given":[]} -->
 ```manuscript
     print(f"Hello! You passed {arguments().length()} arguments.")
 ```

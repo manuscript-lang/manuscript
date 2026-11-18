@@ -155,6 +155,7 @@ A value whose type satisfies an interface converts implicitly wherever that inte
 
 The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (field, collection entry, `:=`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
+<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount: Int) Int\n\ntype Offset:\n    delta: Int\n\nfn Offset.apply(amount: Int) Int:\n    return amount + self.delta","given":[]} -->
 ```manuscript
 fn use_increment(operation: Increment) Int:
     return operation.apply(1)
@@ -173,6 +174,7 @@ A type has one method per name, so a call on a concrete receiver, a generic para
 
 An interface type satisfies its own exact generic bound: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
+<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount: Int) Int\n\ntype Offset:\n    delta: Int\n\nfn Offset.apply(amount: Int) Int:\n    return amount + self.delta","given":["offset: Offset","view: Increment"]} -->
 ```manuscript
 fn invoke[T: Increment](operation: T) Int:
     view: Increment := operation

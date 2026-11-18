@@ -19,11 +19,15 @@ Choose a `List` for an ordered sequence, a `Map` for lookup by key, and a `Set` 
 
 Brackets construct mutable lists of values:
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 values := [1, 2, 3]
 empty: List[Int] := []
 also_empty := List[Int]()
 sized := List[Int](reserve: 1000)
+print(values)
+print(empty)
+print(also_empty)
 ```
 
 `reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list stays empty; a negative or `none` reserve preallocates nothing, and a count above 134217728 (2^27) is capped there as the list grows on demand past it.
@@ -34,6 +38,7 @@ The first literal infers `List[Int]`; an empty literal needs an annotation or ex
 
 Braces construct mutable maps:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 scores := {"Ada": 3, "Lin": 5}
 empty: Map[String, Int] := {}
@@ -52,6 +57,7 @@ Lists and map values accept functions, interface values, builders and resources.
 
 Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected Int","given":[]} -->
 ```manuscript
 nested: List[List[Int]] := [[], [1, 2]]
 // Rejected: incompatible Int and Float elements.
@@ -108,6 +114,7 @@ List details:
 - `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`.
 - Invalid bounds fault; nothing is clamped.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 var values = [1, 2]
 copy := values.clone()
@@ -268,6 +275,7 @@ Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filt
 
 `map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, borrow the receiver, and return an owned Map. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
     return scores.map(fn name, score: score + 1)

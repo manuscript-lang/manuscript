@@ -59,6 +59,7 @@ A constant has no storage or initialization order; each use evaluates the initia
 
 `src/domain/customers.ms` exports a nominal identifier type:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export type CustomerId:
     value: String
@@ -66,6 +67,7 @@ export type CustomerId:
 
 `src/main.ms` imports it:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import CustomerId from "./domain/customers.ms"
 ```
@@ -76,6 +78,7 @@ Relative imports resolve from the importing file's directory. Paths include `.ms
 
 An exported function, data type, or contract cannot expose an internal nominal type through a parameter, result, field, case payload, generic bound, or operation signature, transitively. Imported exported types may appear without being re-exported. Generic parameters are not private declarations.
 
+<!-- manuscript-example: {"mode":"error","contains":"PrivateToken"} -->
 ```manuscript
 type PrivateToken:
     value: String
@@ -91,6 +94,7 @@ A method declared in its type's module is available wherever the type is used; a
 
 ## Standard-library imports
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Queue from "@std/collections/queue.ms"
 ```
@@ -101,10 +105,12 @@ import Queue from "@std/collections/queue.ms"
 
 A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` to `./src/domain/customers.ms`, either import selects the same type:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import CustomerId from "@domain/customers.ms"
 ```
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import CustomerId from "@customers"
 ```

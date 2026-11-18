@@ -30,7 +30,9 @@ The example treats nonpositive prices and percentages outside (0, 100) as faults
 
 `panic(message: message)` raises a programming fault. Its type is `fn(String) Never`: it never completes normally and fits any result type, but it is not a catchable error and does not permit fallthrough in a function that does not return `Void` or `Void!`. See [Void and Never](../functions/declarations-and-calls.md#void-and-never).
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import panic from "@std/core.ms"
 panic("Required invariant was violated.")
 ```
 
