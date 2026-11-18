@@ -624,6 +624,9 @@ pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: ElemDesc) {
     unsafe {
         let (v, d) = (&mut *v, &*d);
         let size = d.size as usize;
+        if v.len < 2 {
+            return;
+        }
         // Slots of one to four words reverse as typed arrays, which the compiler turns into wide
         // loads and stores; a swap call per slot costs about 3 ns. Slots are word aligned.
         macro_rules! words {
