@@ -25,8 +25,6 @@ fn main() Void!:
     server.wait()?
 ```
 
-![A screencast of Manuscript: failure as values, ownership errors, promises, ms verify, the call graph and a native build, each with a short caption.](/images/screencast.gif "A short tour: errors, ownership, promises, ms verify, the call graph and a native build.")
-
 ## What the compiler catches
 
 <div class="home-taste">
