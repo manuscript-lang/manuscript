@@ -265,6 +265,10 @@ fn make_closure_drop(m: &mut Module, c: FuncId, framed: bool) -> FuncId {
         })
         .collect();
     let discard = rt_extern(m, "msrt_cleanup_discard", &[Ty::INT], Ty::VOID, false);
+    let (shield_in, shield_out) = (
+        rt_extern(m, "msrt_shield_enter", &[], Ty::VOID, false),
+        rt_extern(m, "msrt_shield_exit", &[], Ty::VOID, false),
+    );
     let name = format!("{GLUE_PREFIX}mir.{}.closure_drop", m.funcs.len());
     let params = vec![Param {
         ty: Ty::PTR,
@@ -280,7 +284,10 @@ fn make_closure_drop(m: &mut Module, c: FuncId, framed: bool) -> FuncId {
             let h = b
                 .emit(Op::CleanupPush, &[obj], Imm::Func(tail), Some(Ty::INT))
                 .expect("handle");
+            // Like every implicit close, the close of a capture is not interrupted by a cancel.
+            b.call_rt(shield_in, &[]);
             b.emit(Op::Call, &[at], Imm::Func(*close), None);
+            b.call_rt(shield_out, &[]);
             b.call_rt(discard, &[h]);
         }
         if needs[k] {
