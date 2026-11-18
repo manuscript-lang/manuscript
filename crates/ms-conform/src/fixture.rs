@@ -113,6 +113,30 @@ pub enum FixtureRoot {
 }
 
 impl Fixture {
+    /// Bytes of source the fixture builds, a rough cost for scheduling: a program that imports a
+    /// large module costs more than its size, but the large fixtures are the large files.
+    pub fn weight(&self) -> u64 {
+        fn tree(dir: &Path) -> u64 {
+            fs::read_dir(dir)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|e| {
+                    let path = e.path();
+                    if path.is_dir() {
+                        tree(&path)
+                    } else {
+                        e.metadata().map_or(0, |m| m.len())
+                    }
+                })
+                .sum()
+        }
+        match &self.root {
+            FixtureRoot::File(path) => fs::metadata(path).map_or(0, |m| m.len()),
+            FixtureRoot::Dir(dir) => tree(dir),
+        }
+    }
+
     /// Copy the fixture's inputs into `work` and return the entry path argument.
     pub fn materialize(&self, work: &Path) -> std::io::Result<String> {
         fs::create_dir_all(work)?;

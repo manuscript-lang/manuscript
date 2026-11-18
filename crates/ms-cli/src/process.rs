@@ -17,6 +17,9 @@ use std::time::{Duration, Instant};
 const SIGINT: i32 = 2;
 const SIGTERM: i32 = 15;
 const SIGKILL: i32 = 9;
+/// Windows Ctrl-Break; reported as SIGINT, like Ctrl-C.
+#[cfg(windows)]
+const SIGBREAK: i32 = 21;
 const SIG_DFL: usize = 0;
 
 unsafe extern "C" {
@@ -109,9 +112,10 @@ fn send_signal(pid: u32, handle: isize, signum: i32) {
     }
     #[cfg(windows)]
     {
-        let _ = (pid, signum);
+        let _ = pid;
+        // The status is 128 + signal, as on Unix, so an interrupt reads the same everywhere.
         // SAFETY: the handle belongs to a `Child` that stays alive until its wait returns.
-        unsafe { TerminateProcess(handle, 1) };
+        unsafe { TerminateProcess(handle, 128 + signum as u32) };
     }
 }
 
@@ -129,6 +133,8 @@ fn child_handle(child: &Child) -> isize {
 static PENDING: AtomicI32 = AtomicI32::new(0);
 
 extern "C" fn record(signum: i32) {
+    #[cfg(windows)]
+    let signum = if signum == SIGBREAK { SIGINT } else { signum };
     PENDING.store(signum, Ordering::SeqCst);
     #[cfg(unix)]
     {
@@ -159,6 +165,8 @@ pub struct Waited {
 pub struct Stops {
     old_int: usize,
     old_term: usize,
+    #[cfg(windows)]
+    old_break: usize,
     id: usize,
     wake: Sender<Event>,
     events: Receiver<Event>,
@@ -183,6 +191,8 @@ impl Stops {
             Stops {
                 old_int: signal(SIGINT, record as *const () as usize),
                 old_term: signal(SIGTERM, record as *const () as usize),
+                #[cfg(windows)]
+                old_break: signal(SIGBREAK, record as *const () as usize),
                 id,
                 wake,
                 events,
@@ -249,6 +259,8 @@ impl Drop for Stops {
         unsafe {
             signal(SIGINT, restore(self.old_int));
             signal(SIGTERM, restore(self.old_term));
+            #[cfg(windows)]
+            signal(SIGBREAK, restore(self.old_break));
         }
         hub().retain(|(id, _)| *id != self.id);
     }

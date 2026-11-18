@@ -6,12 +6,12 @@
 //! spellings.
 
 use crate::ast::*;
+use crate::fxmap::{HashMap, HashSet};
 use crate::lexer::{PResult, lex};
 use crate::parser::parse;
 use crate::pos::Pos;
 use crate::token::{Tok, Token};
 use crate::visit::{self, Visitor};
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 mod compact;
@@ -151,7 +151,6 @@ fn strip_columns(line: &str, columns: usize) -> Option<&str> {
 }
 
 fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
-    parse(file, source)?;
     let mut normalized = source.replace("\r\n", "\n");
     let mut lines: Vec<String> = normalized.split('\n').map(str::to_string).collect();
     let module = parse(file, &normalized)?;
@@ -851,12 +850,12 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
     }
     let mut p = P {
         lines,
-        breaks: HashSet::new(),
+        breaks: HashSet::default(),
     };
     // Imports may be interleaved with declarations. Separate each import
     // section while keeping consecutive imports, constants and aliases,
     // together.
-    let mut groups: HashMap<usize, &str> = HashMap::new();
+    let mut groups: HashMap<usize, &str> = HashMap::default();
     let mut top_level: Vec<usize> = Vec::new();
     for d in &module.decls {
         let line = d.pos.line as usize;
@@ -1022,8 +1021,8 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
         src: &source,
         lines: source.split('\n').collect(),
         groups: Vec::new(),
-        by_open: HashMap::new(),
-        by_item: HashMap::new(),
+        by_open: HashMap::default(),
+        by_item: HashMap::default(),
     };
     let with_comments = layout.layout_tokens(&tokens);
     let nodes = layout.tree(&with_comments);
@@ -1169,7 +1168,7 @@ fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> O
         tokens,
         source,
         cuts: Vec::new(),
-        suites: HashSet::new(),
+        suites: HashSet::default(),
         stack: Vec::new(),
     };
     for d in &module.decls {
@@ -1259,7 +1258,7 @@ impl<'a> Layout<'a> {
     /// Recovers comment trivia only outside lexer tokens, so `//` and
     /// interpolation inside strings never become formatter instructions.
     fn layout_tokens(&self, tokens: &[Token]) -> Vec<Token> {
-        let mut last: HashMap<u32, usize> = HashMap::new();
+        let mut last: HashMap<u32, usize> = HashMap::default();
         for t in tokens {
             if !layout_token(t.kind) {
                 last.insert(
@@ -1893,20 +1892,26 @@ fn trim_trailing_comma<'n>(_: &Layout, nodes: &'n [Node]) -> &'n [Node] {
 
 /// Ordinary newlines cannot split ungrouped expressions. Adds grouping only
 /// around a statement's complete value, retaining its precedence and inline suite.
+const NO_PAIR: u32 = u32::MAX;
+
 fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PResult<String> {
     let module = parse(file, source)?;
     let lexed = lex(file, source)?;
     let tokens = &lexed.tokens;
-    let mut starts: HashMap<u32, usize> = HashMap::new();
-    let mut pairs: HashMap<usize, usize> = HashMap::new();
+    debug_assert!(
+        tokens
+            .windows(2)
+            .all(|w| w[0].pos.offset <= w[1].pos.offset)
+    );
+    // The close bracket's token index for each open bracket's, `NO_PAIR` elsewhere.
+    let mut pairs: Vec<u32> = vec![NO_PAIR; tokens.len()];
     let mut stack: Vec<usize> = Vec::new();
     for (i, t) in tokens.iter().enumerate() {
-        starts.insert(t.pos.offset, i);
         match t.kind {
             k if is_open(k) => stack.push(i),
             Tok::RParen | Tok::RBracket | Tok::RBrace => {
                 if let Some(open) = stack.pop() {
-                    pairs.insert(open, i);
+                    pairs[open] = i as u32;
                 }
             }
             _ => {}
@@ -1915,18 +1920,32 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
     struct G<'a> {
         tokens: &'a [Token],
         source: &'a str,
-        starts: HashMap<u32, usize>,
-        pairs: HashMap<usize, usize>,
+        pairs: Vec<u32>,
         insert: HashMap<usize, String>,
         remove: Vec<(usize, usize, String)>,
         strip: bool,
     }
     impl G<'_> {
+        /// The last token starting at `offset`.
+        fn start_of(&self, offset: u32) -> Option<usize> {
+            let after = self.tokens.partition_point(|t| t.pos.offset <= offset);
+            after
+                .checked_sub(1)
+                .filter(|&i| self.tokens[i].pos.offset == offset)
+        }
+
+        /// The close bracket matching the open bracket token `open`.
+        fn pair(&self, open: usize) -> Option<usize> {
+            Some(self.pairs[open])
+                .filter(|&p| p != NO_PAIR)
+                .map(|p| p as usize)
+        }
+
         /// Parentheses around a whole method chain only add a line; the
         /// layout pass restores them when the chain cannot hug its last call.
         fn unwrap_chain(&mut self, start: usize) {
             let tokens = self.tokens;
-            let Some(&close) = self.pairs.get(&start) else {
+            let Some(close) = self.pair(start) else {
                 return;
             };
             if tokens[start].kind != Tok::LParen {
@@ -1995,7 +2014,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             let (mut end, mut booleans, mut dots, mut operators, mut pipes) = (start, 0, 0, 0, 0);
             let mut calls: Vec<(usize, usize)> = Vec::new();
             while end < tokens.len() && tokens[end].pos.offset < limit {
-                if let Some(&close) = self.pairs.get(&end) {
+                if let Some(close) = self.pair(end) {
                     // A call with a trivial argument gains nothing from breaking.
                     if tokens[end].kind == Tok::LParen && close > end + 3 {
                         calls.push((end, close));
@@ -2094,7 +2113,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             if suite_expression(value) {
                 return;
             }
-            let Some(&start) = self.starts.get(&s.pos.offset) else {
+            let Some(start) = self.start_of(s.pos.offset) else {
                 return;
             };
             let tokens = self.tokens;
@@ -2128,7 +2147,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     } else {
                         matches!(tokens[start].kind, Tok::Assign | Tok::ColonAssign)
                     }) {
-                        if let Some(&end) = self.pairs.get(&start) {
+                        if let Some(end) = self.pair(start) {
                             start = end;
                         }
                         start += 1;
@@ -2139,7 +2158,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     // `xs[i] = value` is a call of `[]=`; only the value wraps.
                     let mut at = start;
                     while at < tokens.len() && tokens[at].pos.offset < value.end.offset {
-                        if let Some(&end) = self.pairs.get(&at) {
+                        if let Some(end) = self.pair(at) {
                             at = end + 1;
                             continue;
                         }
@@ -2158,9 +2177,8 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
     let mut g = G {
         tokens,
         source,
-        starts,
         pairs,
-        insert: HashMap::new(),
+        insert: HashMap::default(),
         remove: Vec::new(),
         strip,
     };
@@ -2174,7 +2192,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
         // may be text, so it bypasses the keyword and text-statement handling.
         if let DeclKind::Const(c) = &d.kind
             && !suite_expression(&c.value)
-            && let Some(&start) = g.starts.get(&c.init_pos.offset)
+            && let Some(start) = g.start_of(c.init_pos.offset)
         {
             g.wrap(start, c.value.end.offset);
         }

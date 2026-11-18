@@ -232,6 +232,14 @@ pub fn run_all(
     }
     // A batch is sized so every worker gets some, however few the check fixtures are.
     let size = checks.len().div_ceil(jobs.max(1)).clamp(1, CHECK_BATCH);
+    // Longest first: a big program that starts last runs alone while the other workers idle.
+    // Check batches are short and go at the end. Results return to `fixtures` order below.
+    let mut weighted: Vec<(u64, Vec<usize>)> = items
+        .into_iter()
+        .map(|at| (fixtures[at[0]].weight(), at))
+        .collect();
+    weighted.sort_by_key(|(weight, _)| std::cmp::Reverse(*weight));
+    let mut items: Vec<Vec<usize>> = weighted.into_iter().map(|(_, at)| at).collect();
     items.extend(checks.chunks(size).map(<[usize]>::to_vec));
     let finished = parallel_map(&items, jobs, |_, at| {
         let cases: Vec<Case> = if fixtures[at[0]].phase == Phase::Check {

@@ -100,6 +100,25 @@ pub struct Analysis {
 pub use ms_driver::ModuleRoots;
 
 impl Analysis {
+    /// The analysis of a program a caller already checked, so a tool that needs both the facts
+    /// and the editor queries compiles once.
+    pub fn from_checked(checked: ms_driver::Checked) -> Analysis {
+        let session = checked
+            .program
+            .as_ref()
+            .map(|p| p.session.clone())
+            .unwrap_or_default();
+        Analysis {
+            source_root: checked.source_root,
+            project_root: checked.project_root,
+            package_roots: checked.package_roots,
+            program: checked.program,
+            diagnostics: checked.diagnostics,
+            session,
+            ..Analysis::default()
+        }
+    }
+
     /// The occurrence index, built once per analysis; empty without a program.
     pub fn occurrence_index(&self, syms: ms_syntax::Names) -> &[Occurrence] {
         if self.program.is_none() {

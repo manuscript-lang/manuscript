@@ -113,12 +113,16 @@ pub fn run_format(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
     let mut ordered: Vec<(String, String)> = files.into_iter().collect();
     ordered.sort_by(|a, b| a.1.cmp(&b.1));
     let none = ordered.is_empty();
-    for (path, display) in ordered {
+    // Files format independently, so they spread over the cores; the results are reported in
+    // file order whichever thread finished first.
+    let results = parallel_map(&ordered, |(path, display)| {
         let file = FormatFile {
             path: path.clone(),
             display: display.clone(),
         };
-        let (state, error) = format_file(syms, &file, check, drop_labels);
+        format_file(syms, &file, check, drop_labels)
+    });
+    for ((path, display), (state, error)) in ordered.into_iter().zip(results) {
         files_report.push((display, state));
         if let Some(error) = error {
             report(io, &path, error);
@@ -155,6 +159,41 @@ pub fn run_format(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
         return emit_json(io, &document, status);
     }
     status
+}
+
+/// `work` over every item on up to one thread per core, results in item order.
+fn parallel_map<T: Sync, R: Send>(items: &[T], work: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let threads = std::thread::available_parallelism()
+        .map_or(1, usize::from)
+        .min(items.len());
+    if threads <= 1 {
+        return items.iter().map(work).collect();
+    }
+    let next = AtomicUsize::new(0);
+    let parts: Vec<Vec<(usize, R)>> = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut done = Vec::new();
+                    loop {
+                        let index = next.fetch_add(1, Ordering::Relaxed);
+                        let Some(item) = items.get(index) else {
+                            return done;
+                        };
+                        done.push((index, work(item)));
+                    }
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .map(|w| w.join().unwrap_or_else(|e| std::panic::resume_unwind(e)))
+            .collect()
+    });
+    let mut all: Vec<(usize, R)> = parts.into_iter().flatten().collect();
+    all.sort_unstable_by_key(|(index, _)| *index);
+    all.into_iter().map(|(_, result)| result).collect()
 }
 
 /// Order by position, then code and message, so every command reports the

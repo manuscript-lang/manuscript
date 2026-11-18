@@ -7,6 +7,7 @@ pub mod diag;
 pub mod doc;
 pub mod dump;
 pub mod format;
+pub mod fxmap;
 pub mod lexer;
 pub mod number;
 pub mod parser;
