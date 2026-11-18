@@ -380,3 +380,35 @@ test "inverse sine of a huge finite number stays finite":
 	component_close(big.re, 0.7853981633974483)?
 	component_close(big.im, 691.8152486690535)?
 	component_close(complex(0.5, 1.0e300).asin().im, 691.4686750787736)?
+
+test "inverse sine and cosine keep every digit of a tiny argument and of a huge real part":
+	tiny := complex(0.0, 1e-300).asin()
+	expect_equal(tiny.re, 0.0)?
+	component_close(tiny.im, 1e-300)?
+
+	small := complex(1e-10, 1e-10).asin()
+	component_close(small.re, 1e-10)?
+	component_close(small.im, 1e-10)?
+
+	axis := complex(1e-8, 0.0).asin()
+	component_close(axis.re, 1e-8)?
+	expect_equal(axis.im, 0.0)?
+
+	// pi/2 minus a result near 0 would round the real part away.
+	huge := complex(1e154, 527549.237953228).acos()
+	component_close(huge.re, 5.275492379532279e-149)?
+	component_close(huge.im, -355.291251501643)?
+
+	large := complex(1e10, 0.5).acos()
+	component_close(large.re, 5e-11)?
+
+test "square root of an infinite imaginary part is infinite and of a NaN real part is NaN":
+	up := complex(0.5, infinity).sqrt()
+	expect_equal(up.re, infinity)?
+	expect_equal(up.im, infinity)?
+
+	down := complex(0.0 / 0.0, -infinity).sqrt()
+	expect_equal(down.re, infinity)?
+	expect_equal(down.im, -infinity)?
+	expect_true(complex(0.0 / 0.0, 0.0).sqrt().is_nan())?
+	expect_true(complex(0.0 / 0.0, 0.0).sqrt().re.is_nan())?

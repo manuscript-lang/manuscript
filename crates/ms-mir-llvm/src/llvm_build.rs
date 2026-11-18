@@ -406,6 +406,9 @@ pub struct FnBuilder<'t> {
     /// The temporaries of the MIR block being lowered, as (slot, type): each has its start marker
     /// where it was made and gets its end marker from [`FnBuilder::end_temps`].
     block_temps: Vec<(String, String)>,
+    /// MIR slots confined to one block ([`ms_mir::slot_scope`]), by block: (slot, type), started
+    /// when the block begins ([`FnBuilder::begin_block`]).
+    scoped: std::collections::HashMap<usize, Vec<(String, String)>>,
     /// The running task's header pointer, loaded once after the allocas: it depends only on the
     /// frame's address, so every use in the function shares one load. Written by [`FnBuilder::task_hdr`].
     hdr: Option<Val>,
@@ -425,6 +428,7 @@ impl<'t> FnBuilder<'t> {
             allocas: String::new(),
             pinned: std::collections::HashSet::new(),
             block_temps: Vec::new(),
+            scoped: std::collections::HashMap::new(),
             hdr: None,
             prologue: String::new(),
             dbg,
@@ -786,6 +790,26 @@ impl<'t> FnBuilder<'t> {
         self.line(format!("call void @llvm.lifetime.start.p0(ptr {})", v.text));
         self.block_temps.push((v.text.clone(), shape));
         v
+    }
+
+    /// A stack slot of a MIR `slot` that only block `block` uses: it lives from the start of that
+    /// block to its end, like [`FnBuilder::alloca_temp`].
+    pub fn alloca_scoped(&mut self, ty: &Ty, block: usize) -> Val {
+        let v = self.alloca_pinned(ty);
+        let shape = self.ty(ty);
+        self.scoped
+            .entry(block)
+            .or_default()
+            .push((v.text.clone(), shape));
+        v
+    }
+
+    /// Starts the lifetime of the slots confined to `block`, which is about to be lowered.
+    pub fn begin_block(&mut self, block: usize) {
+        for (slot, shape) in self.scoped.remove(&block).unwrap_or_default() {
+            self.line(format!("call void @llvm.lifetime.start.p0(ptr {slot})"));
+            self.block_temps.push((slot, shape));
+        }
     }
 
     /// Ends the lifetime of the temporaries of the MIR block being lowered, after its last
