@@ -51,18 +51,6 @@ impl crate::func::FnLower<'_> {
     }
 }
 
-impl crate::func::FnLower<'_> {
-    /// [`Cx::forwarded`] for the current evidence scope.
-    pub(crate) fn forwarded(
-        &mut self,
-        c: &std::rc::Rc<ms_check::api::hir::Callable>,
-        subst: &ct::Subst,
-    ) -> Result<ms_mir::ir::FuncId, crate::Error> {
-        let scope = self.evidence();
-        self.cx.forwarded(self.b.m, c, subst, scope)
-    }
-}
-
 impl Cx {
     /// The instance of `c` under `subst`. An instance over a type with a local extension is
     /// separate per `scope`, the module whose implementations its type variables use.
@@ -73,23 +61,11 @@ impl Cx {
         subst: &ct::Subst,
         scope: Name,
     ) -> Result<ms_mir::ir::FuncId, crate::Error> {
-        self.function_in_as(m, c, subst, scope, false)
-    }
-
-    /// [`Cx::function_in`], taking the consumed parameters owned when `owned`.
-    pub(crate) fn function_in_as(
-        &mut self,
-        m: &mut Module,
-        c: &std::rc::Rc<ms_check::api::hir::Callable>,
-        subst: &ct::Subst,
-        scope: Name,
-        owned: bool,
-    ) -> Result<ms_mir::ir::FuncId, crate::Error> {
         let evidence = subst
             .values()
             .any(|t| self.mentions_extension(t))
             .then_some(scope);
-        self.function_variant(m, c, subst, crate::cx::Variant { owned, evidence })
+        self.function_variant(m, c, subst, crate::cx::Variant { evidence })
     }
 
     /// The descriptor scope number of a module (`0` is no scope).

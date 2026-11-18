@@ -62,6 +62,20 @@ impl Walker<'_> {
                         .map(|p| p.name)
                 })
                 .collect();
+            // The interface value keeps owning its data, so an operation that does not take the
+            // receiver lends it to the implementation.
+            let lends_receiver = ops
+                .iter()
+                .filter(|o| o.name == op)
+                .filter_map(|o| o.decl.as_ref())
+                .any(|d| Summary::declared(d).receiver != ParamMode::Move);
+            if summary.receiver == ParamMode::Move && lends_receiver {
+                let text = self.expr_text(e);
+                self.error(
+                    e.pos,
+                    format!("`{text}` becomes a `{target_t}`, but `{method_t}` keeps its receiver, which the interface lends; declare `move fn` in both the interface and `{method_t}`, or keep `self.clone()`", target_t = target.display(self.syms)),
+                );
+            }
             for (name, mode) in &summary.params {
                 if *mode != ParamMode::Move || !borrowed.contains(name) {
                     continue;
@@ -79,6 +93,37 @@ impl Walker<'_> {
                     format!("`{text}` becomes a `{target_t}`, but `{method_t}` returns a part of its {from}, and a call through an interface gets a new value; return `.clone()` of that part", target_t = target.display(self.syms), from = if summary.result.receiver { "receiver" } else { "arguments" }),
                 );
             }
+        }
+    }
+
+    /// A method the language calls on a value it only lends (to show, compare, hash or encode
+    /// it) that keeps its receiver or an argument would need a hidden copy at every such call,
+    /// so it is rejected and the remedy names the `.clone()` to write.
+    pub(super) fn lent_property_keeps(&mut self, summary: &Summary) {
+        let c = self.cx.c;
+        let Some(property) = self.cx.methods.lent_property((c.module.file, c.id())) else {
+            return;
+        };
+        let what = match property {
+            Builtin::Stringable => "shows a value as text",
+            Builtin::Equal => "compares values with `==`",
+            Builtin::Hashable => "hashes a value",
+            Builtin::Comparable => "orders values",
+            _ => "encodes a value as JSON",
+        };
+        let receiver = (summary.receiver == ParamMode::Move).then(|| self.syms.intern("self"));
+        let kept = summary
+            .params
+            .iter()
+            .filter(|(_, mode)| *mode == ParamMode::Move)
+            .map(|(name, _)| *name);
+        let method = self.syms.str(c.func.name());
+        for name in receiver.into_iter().chain(kept) {
+            let name_t = self.syms.str(name);
+            self.error(
+                c.func.pos(),
+                format!("`{method}` keeps `{name_t}`, but the language calls it when it {what} and only lends the value; keep a copy instead, such as `{name_t}.clone()`"),
+            );
         }
     }
 

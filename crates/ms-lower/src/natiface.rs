@@ -383,7 +383,7 @@ fn forward_ms(
         .find(|((f, _), c)| *f == file && fl.syms.str(c.name) == name)
         .map(|(_, c)| c.clone())
         .ok_or_else(|| Error::new(format!("{name} is not declared in the standard library")))?;
-    let fid = fl.forwarded(&callable, &Default::default())?;
+    let fid = fl.instance(&callable, &Default::default())?;
     let raw = callable
         .parameters
         .first()

@@ -45,6 +45,9 @@ pub struct ContractMethods {
     /// Receiver methods match a contract by shape: they are candidates for every contract.
     inherent: HashMap<Name, Vec<MethodRef>>,
     inherent_variable: Vec<MethodRef>,
+    /// Methods the language calls on a value it only lends (see `Method::lent_property`), by
+    /// declaration.
+    lent: HashMap<(Name, NodeId), Builtin>,
 }
 
 impl ContractMethods {
@@ -54,8 +57,12 @@ impl ContractMethods {
             by_variable: HashMap::default(),
             inherent: HashMap::default(),
             inherent_variable: Vec::new(),
+            lent: HashMap::default(),
         };
         for m in methods {
+            if let (Some(decl), Some(property)) = (&m.decl, m.lent_property(syms)) {
+                index.lent.insert((m.module, decl.id()), property);
+            }
             let Some(contract) = &m.contract else {
                 continue;
             };
@@ -89,6 +96,11 @@ impl ContractMethods {
             }
         }
         index
+    }
+
+    /// The property the language computes by calling the method declared at `key` on a lent value.
+    pub fn lent_property(&self, key: (Name, NodeId)) -> Option<Builtin> {
+        self.lent.get(&key).copied()
     }
 
     /// The methods implementing `contract` whose receiver can match `receiver`.
@@ -342,6 +354,7 @@ pub fn analyze(cx: &Context) -> Outcome {
             },
         },
     };
+    w.lent_property_keeps(&summary);
     w.facts.returns_borrow = summary.result.returns_borrow;
     w.facts.view = summary.result.view;
     w.facts.borrowed_cases = summary.result.borrowed_cases;
