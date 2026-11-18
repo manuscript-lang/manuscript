@@ -253,6 +253,7 @@ impl FlowBuilder<'_> {
             pending_try: false,
             spawns: Vec::new(),
             pending: Vec::new(),
+            closures: Vec::new(),
         };
         walk_expr(&mut collector, e);
         let mut out = collector.out;
@@ -293,8 +294,11 @@ struct Events<'a, 'b> {
     pending_try: bool,
     /// Open `promise(fn: ...)` calls: the expression and where its node sits in `out`.
     spawns: Vec<(NodeId, usize)>,
-    /// Calls seen on entry, added once their arguments have been listed.
-    pending: Vec<(NodeId, Node)>,
+    /// Calls seen on entry, added once their arguments have been listed, with where their
+    /// arguments' events begin in `out`.
+    pending: Vec<(NodeId, Node, usize)>,
+    /// Open function literals: the expression and where its node sits in `out`.
+    closures: Vec<(NodeId, usize)>,
 }
 
 impl Visitor for Events<'_, '_> {
@@ -307,6 +311,15 @@ impl Visitor for Events<'_, '_> {
             }
         ) {
             self.pending_try = true;
+            return;
+        }
+        if matches!(x.kind, ExprKind::Lambda(_)) {
+            // A function literal runs when its receiver calls it, not where it is written:
+            // its calls are listed under the call that takes it.
+            let mut node = self.builder.node("closure", String::new(), x.pos);
+            node.label = format!("closure {}", self.builder.source(x.pos));
+            self.closures.push((x.id, self.out.len()));
+            self.out.push(node);
             return;
         }
         let constant =
@@ -333,14 +346,25 @@ impl Visitor for Events<'_, '_> {
         if is_spawn {
             self.out.push(node);
         } else {
-            self.pending.push((x.id, node));
+            self.pending.push((x.id, node, self.out.len()));
         }
     }
 
     fn leave_expr(&mut self, x: &Expr) {
-        if self.pending.last().is_some_and(|(id, _)| *id == x.id)
-            && let Some((_, node)) = self.pending.pop()
+        if self.closures.last().is_some_and(|(id, _)| *id == x.id) {
+            let (_, at) = self.closures.pop().unwrap_or((x.id, 0));
+            let inside = self.out.split_off(at + 1);
+            self.out[at].children = inside;
+        }
+        if self.pending.last().is_some_and(|(id, _, _)| *id == x.id)
+            && let Some((_, mut node, start)) = self.pending.pop()
         {
+            // Function literals passed as arguments belong to this call.
+            let args = self.out.split_off(start);
+            let (closures, others): (Vec<Node>, Vec<Node>) =
+                args.into_iter().partition(|n| n.kind == "closure");
+            self.out.extend(others);
+            node.children.extend(closures);
             self.out.push(node);
         }
         if self.spawns.last().is_some_and(|(id, _)| *id == x.id) {
