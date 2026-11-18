@@ -444,11 +444,13 @@ fn rewrite_owned(
         Imm::Func(sort),
         Some(unit),
     );
+    // The merge buffer is dead once the sort returns: freeing it before the clone lets the result
+    // reuse its block instead of the sort holding a third and fourth copy of the list.
+    let u = f.new_value(Ty::VOID);
+    emit(Op::CallRt, vec![buf], Imm::Ext(free), Some(u));
     emit(Op::Clone, vec![items], Imm::None, Some(out));
-    for raw in [items, buf] {
-        let u = f.new_value(Ty::VOID);
-        emit(Op::CallRt, vec![raw], Imm::Ext(free), Some(u));
-    }
+    let u = f.new_value(Ty::VOID);
+    emit(Op::CallRt, vec![items], Imm::Ext(free), Some(u));
     f.blocks[bi].insts.splice(ii..=ii, insts);
 }
 

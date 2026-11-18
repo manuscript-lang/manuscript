@@ -38,3 +38,18 @@ A fallible native call turned a nonzero status into an `Error` with a chain of u
 | executable bytes | 3,960,976 | 3,648,696 |
 
 The Rust hyper server is 926 KB, but it has no TLS; the Manuscript server carries rustls for `serve(tls: ...)`, about 30% of its remaining size. Output is unchanged: the conformance corpus (4,060 and 1,460 fixtures) passes.
+
+## Change: sorting records that own data frees the merge buffer before cloning the result
+
+`sorted` over records with a `String` field copies the list twice as raw scratch (working copy and merge buffer), sorts, then clones the working copy into the result. The merge buffer was freed last, so the sort held the original, two scratch copies and the result at once. It is now freed right after the sort, so the result reuses its block.
+
+| 1M records of `Int`, `String`, `Float`, sorted by the float | before | after | Rust (`sort_by` in place) |
+| --- | ---: | ---: | ---: |
+| peak RSS | 127 MB | 96 MB | 92 MB |
+
+Other programs measured, all level with Rust or better: 5M `Int?` list 82 vs 80 MB, `map`/`filter`/`map` over 5M ints 56 vs 54 MB, 8M floats 66 vs 65 MB, 200k-line split 23 vs 25 MB, 5M-int `sorted` 43 vs 100 MB, 1M-string `Set` 92 vs 122 MB.
+
+## Not planned
+
+- Hello world is 546 KB stripped against Rust's 341 KB because about 220 KB is Rust `std` backtrace, DWARF reader and unwinder code that the default panic hook keeps reachable. Removing it needs `-Zbuild-std` with `panic_immediate_abort`, which is nightly only; the repository pins stable 1.99.1.
+- `sortstr` (1M strings sorted with `compare`) is 623 ms against Rust's 505 ms: a time gap in string comparison, not a memory one; left for a later round.
