@@ -1292,12 +1292,12 @@ mod export_filter_tests {
 
     #[test]
     fn only_a_line_that_exports_a_matching_name_needs_a_parse() {
-        let text = "import a from \"./a.ms\"\n\nexport fn parse_user(x: Int) Int:\n\treturn x\nfn helper():\n\treturn\n";
-        assert!(may_export_match(text, "pu"));
-        assert!(may_export_match(text, "PARSE"));
-        assert!(!may_export_match(text, "helper"));
-        assert!(!may_export_match("fn parse_user():\n\treturn\n", "parse"));
-        assert!(may_export_match("export\ttype Point:\n\tx: Int\n", "po"));
-        assert!(!may_export_match("exported fn parse():\n", "parse"));
+        let text = ["import a", "", "export fn parse_user", "fn helper"].join("\n");
+        assert!(may_export_match(&text, "pu"));
+        assert!(may_export_match(&text, "PARSE"));
+        assert!(!may_export_match(&text, "helper"));
+        assert!(!may_export_match("fn parse_user", "parse"));
+        assert!(may_export_match("export\ttype Point", "po"));
+        assert!(!may_export_match("exported fn parse", "parse"));
     }
 }
