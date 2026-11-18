@@ -60,7 +60,7 @@ impl Checker {
                     param.pos,
                     Cause::CannotInferCallback,
                     format!(
-                        "cannot infer callback parameter {}; provide a type or a known function context",
+                        "cannot infer callback parameter {}; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n: Int) Int: n * 2`",
                         self.syms.str(param.name)
                     ),
                 );
