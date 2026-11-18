@@ -995,8 +995,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<(), Error> {
         for (p, slot, ty, moved, covered) in slots_out {
             if covered && !self.dead {
-                self.b
-                    .emit(Op::ScopeDisown, &[slot], Imm::None, None);
+                self.b.emit(Op::ScopeDisown, &[slot], Imm::None, None);
             }
             let new = self.move_out(slot, ty);
             if let Some(uid) = moved {
