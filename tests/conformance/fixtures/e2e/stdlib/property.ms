@@ -107,6 +107,18 @@ test "mapped, one_of, element_of, constant, floats and bools compose":
     )?
     check("bool", bools(), fn b: expect_true(b or not b))?
 
+test "floats spanning the whole finite range stay inside it":
+    widest := 1.7976931348623157e308
+    check(
+        "wide floats", floats(0.0 - widest, widest),
+        fn f: expect_true(f >= 0.0 - widest and f <= widest),
+        PropertyOptions(runs: 300, seed: 1)
+    )?
+    check(
+        "equal bounds", floats(0.1, 0.1), fn f: expect_true(f == 0.1),
+        PropertyOptions(runs: 50, seed: 1)
+    )?
+
 test "the same seed reproduces the same failure":
     first := expect_error(
         check(
