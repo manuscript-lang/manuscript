@@ -649,6 +649,7 @@ pub fn emit(
         let own = types::bind_param(&mut b, lay, p.ty, abi, &mut entry);
         vals.insert(f.blocks[0].params[i].value.index(), own);
     }
+    let confined = ms_mir::slot_scope::confined(m, f);
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];
         if bb.index() != 0 {
@@ -660,10 +661,11 @@ pub fn emit(
         for inst in &bd.insts {
             let Some(res) = inst.res else { continue };
             let pre = area_of(inst.op).and_then(|a| (a.pre)(m, lay, f, inst, &vals, &mut b));
-            let own = match pre.or_else(|| types::bind_early(&mut b, m, lay, f, &vals, inst)) {
-                Some(own) => own,
-                None => types::reserve(&mut b, lay, f.ty(res)),
-            };
+            let own =
+                match pre.or_else(|| types::bind_early(&mut b, lay, f, &vals, &confined, inst)) {
+                    Some(own) => own,
+                    None => types::reserve(&mut b, lay, f.ty(res)),
+                };
             vals.insert(res.index(), own);
         }
     }
@@ -727,6 +729,7 @@ pub fn emit(
                 }
             }
         }
+        b.begin_block(bb.index());
         for inst in &bd.insts {
             b.set_dbg(Some(env.at(inst.loc)));
             inst_text(&mut cx, inst, &vals, &mut b);

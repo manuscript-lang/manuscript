@@ -18,7 +18,7 @@
 use super::{Area, Cx, Vals, held_leaves, mem_leaves, narrow_leaves};
 use crate::glue_llvm::{OwnKind, own_kind};
 use crate::llvm_build::{Bin, FnBuilder, Ty as LTy, Types, Val};
-use ms_mir::ir::{Func, Imm, Inst, Mode, Module, Op, Target, Value};
+use ms_mir::ir::{Func, Imm, Inst, Mode, Op, Target, Value};
 use ms_mir::layout::{Layouts, Leaf, mem_layout};
 use ms_mir::types::{Ty, TyKind};
 
@@ -633,15 +633,6 @@ fn slot_alias(f: &Func, lay: &Layouts, slot: Value) -> Option<Value> {
     (writes.next().is_none() && owned && is_map_or_set(lay, f.ty(v))).then_some(v)
 }
 
-/// Whether `slot` is an argument of a call whose result may point into it or whose runtime keeps
-/// the pointer ([`Module::pins_slot_argument`]).
-fn feeds_pinning_call(m: &Module, f: &Func, slot: Value) -> bool {
-    f.blocks.iter().flat_map(|bl| &bl.insts).any(|i| {
-        matches!((i.op, i.imm), (Op::CallRt, Imm::Ext(e)) if m.pins_slot_argument(&m.externs[e.index()]))
-            && i.args.contains(&slot)
-    })
-}
-
 /// Whether the result of `inst` is bound by [`bind_early`]: a type held as leaves is built, read
 /// and replaced by moving leaves around, and a stack slot is an `alloca`.
 fn is_early(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
@@ -663,10 +654,10 @@ fn is_early(lay: &Layouts, f: &Func, inst: &Inst) -> bool {
 /// `alloca` goes to the entry block anyway). `None` for any other instruction.
 pub(super) fn bind_early(
     b: &mut FnBuilder,
-    m: &Module,
     lay: &Layouts,
     f: &Func,
     vals: &Vals,
+    confined: &std::collections::HashMap<Value, ms_mir::ir::Block>,
     inst: &Inst,
 ) -> Option<Vec<Val>> {
     if !is_early(lay, f, inst) {
@@ -685,10 +676,9 @@ pub(super) fn bind_early(
             // A view result may point into the slot, or the runtime keeps its address, so the slot
             // keeps its place for the whole function instead of getting block-confined lifetime
             // markers.
-            Some(vec![if feeds_pinning_call(m, f, inst.res?) {
-                b.alloca_pinned(&ty)
-            } else {
-                b.alloca(&ty)
+            Some(vec![match confined.get(&inst.res?) {
+                Some(block) => b.alloca_scoped(&ty, block.index()),
+                None => b.alloca_pinned(&ty),
             }])
         }
         Op::TypeNew => Some(
