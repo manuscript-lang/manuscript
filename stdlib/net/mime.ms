@@ -296,6 +296,10 @@ fn make_part(section: Bytes) Part!:
 		padding += 1
 
 	framed := section.slice(padding, section.length())?
+
+	// The next delimiter right after this one's line: a part with no headers and no
+	// body.
+	if framed.is_empty(): return ok(Part(data: "".to_bytes()))
 	if not framed.starts_with(crlf): return error(
 		Error("MIME: invalid multipart body", kind: "EBADMSG")
 	)
@@ -304,12 +308,12 @@ fn make_part(section: Bytes) Part!:
 	blank := if inner.starts_with(crlf): 0 else: inner.index_of(
 		"\r\n\r\n".to_bytes()
 	).get_or(-1)
-	if blank < 0 and not inner.starts_with(crlf): return error(
-		Error("MIME: invalid multipart body", kind: "EBADMSG")
-	)
 
-	skip := if blank == 0: 2 else: 4
-	header_text := inner.decode_utf8_range(0, blank)
+	// Without a blank line the section is only headers (RFC 2046 makes the blank line
+	// and body optional): the last header line's break is the delimiter's own.
+	header_end := if blank < 0: inner.length() else: blank
+	data_start := if blank < 0: inner.length() else if blank == 0: 2 else: blank + 4
+	header_text := inner.decode_utf8_range(0, header_end)
 	if header_text.is_none(): return error(
 		Error("MIME: invalid multipart body", kind: "EBADMSG")
 	)
@@ -317,7 +321,7 @@ fn make_part(section: Bytes) Part!:
 	headers := parse_headers(header_text.get_or(""))?
 	var part = Part(
 		headers: headers,
-		data: inner.slice(blank + skip, inner.length()).get_or("".to_bytes()),
+		data: inner.slice(data_start, inner.length()).get_or("".to_bytes()),
 	)
 
 	if disposition := part.headers.get("Content-Disposition"):
@@ -334,7 +338,7 @@ fn make_part(section: Bytes) Part!:
 /*
 Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
 closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
-A body without a closing delimiter returns `EBADMSG`.
+A part may be only headers, or empty. A body without a closing delimiter returns `EBADMSG`.
 */
 export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 	if boundary.is_empty(): return error(

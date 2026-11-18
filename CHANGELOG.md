@@ -14,6 +14,7 @@ Each release lists what changed for people who write Manuscript. Versions are da
 - `SeededRandom.weighted_choice` returns `none` for weights that do not fit the values.
 - `fs.exists` returns `false` for a path below a file (`file.txt/child`), as its documentation said. Windows UNC paths (`\\server\share`) now collapse repeated separators in `normalize` and `join`, and a path with three leading separators is no longer read as UNC.
 - `String.split` and `Bytes.split` take only the separator: the `max_parts` limit is removed, because it truncated instead of keeping the rest. Drop the second argument; to stop early, loop with `index_of`.
+- `parse_multipart` and `multipart_parts` accept a part that has headers but no blank line or body, and a delimiter followed at once by the next delimiter (an empty part), as RFC 2046 allows. They returned `EBADMSG` before.
 
 ## 2026.11.0 (first public release, beta)
 

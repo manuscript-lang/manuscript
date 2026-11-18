@@ -111,3 +111,21 @@ test "line breaks in field and file names cannot inject header lines":
 		format_media_type(MediaType(essence: "a/b", params: {"k": "v\nX: y"})),
 		"a/b; k=\"v%0AX: y\"",
 	)?
+
+test "a part may be only headers or empty, as RFC 2046 allows":
+	headers_only := parse_multipart("--b\r\nX-A: 1\r\n--b--\r\n".to_bytes(), "b")?
+	expect_equal(headers_only.length(), 1)?
+	expect_equal(headers_only[0].headers.get("x-a").get_or(""), "1")?
+	expect_equal(headers_only[0].data, "".to_bytes())?
+
+	closed := parse_multipart("--b\r\nX-A: 1\r\n\r\n--b--\r\n".to_bytes(), "b")?
+	expect_equal(closed.length(), 1)?
+	expect_equal(closed[0].data, "".to_bytes())?
+
+	empty := parse_multipart("--b\r\n--b\r\nX-A: 2\r\n\r\nv\r\n--b--\r\n".to_bytes(), "b")?
+	expect_equal(empty.length(), 2)?
+	expect_equal(empty[0].headers.fields.length(), 0)?
+	expect_equal(empty[1].data, "v".to_bytes())?
+
+	// A section that is neither headers nor empty is still rejected.
+	expect_true(parse_multipart("--b\r\nnot a header\r\n--b--\r\n".to_bytes(), "b").is_error())?
