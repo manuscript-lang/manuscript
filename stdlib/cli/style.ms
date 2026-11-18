@@ -198,8 +198,9 @@ export fn styled(text: String, style: Style) String:
 	return paint(text, style, terminal_capabilities().colors)
 
 fn escape_pattern() Regex:
-	// CSI sequences, OSC sequences ending in BEL or ST, and two-byte escapes.
-	pattern := f"{esc}\\[[0-?]*[ -/]*[@-~]|{esc}\\][^\u{7}{esc}]*(\u{7}|{esc}\\\\)|{esc}[@-Z\\\\-_]"
+	// CSI sequences, OSC sequences ending in BEL or ST, and two-byte escapes
+	// (the same three `wrap_text` reads).
+	pattern := f"{esc}\\[[0-?]*[ -/]*[@-~]|{esc}\\][^\u{7}{esc}]*(\u{7}|{esc}\\\\)|{esc}[0-Z\\\\^-~]"
 	return compile(pattern).get_or(none)
 
 // Removes escape sequences from `text`.
