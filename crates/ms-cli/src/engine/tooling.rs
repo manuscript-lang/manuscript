@@ -816,7 +816,7 @@ pub fn diagram(syms: ms_syntax::Names, request: &DiagramRequest, io: &mut Io) ->
         || !request.entity.is_empty()
         || request.format == "html"
     {
-        return Ok(view(syms, request, &checked, io));
+        return Ok(view(syms, request, checked, io));
     }
     let program = checked.program.as_ref().expect("accepted program");
     let mut inspection = inspect(syms, program);
@@ -846,29 +846,25 @@ pub fn diagram(syms: ms_syntax::Names, request: &DiagramRequest, io: &mut Io) ->
 }
 
 /// One scoped diagram view, optionally marked with what a diff changes.
-fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
+fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: Checked, io: &mut Io) -> i32 {
     let name = if request.view.is_empty() {
         "calls"
     } else {
         &request.view
     };
-    let facts = facts_of(syms, head);
+    let facts = facts_of(syms, &head);
     if request.format == "html" {
         let changes = if request.diff.is_empty() {
             None
         } else {
             let (input, base) =
-                match diff_inputs(syms, &request.filename, &request.diff, head, false, io) {
+                match diff_inputs(syms, &request.filename, &request.diff, &head, false, io) {
                     Ok(inputs) => inputs,
                     Err(status) => return status,
                 };
             Some(compare_facts(&base, &facts, &input))
         };
-        let analysis = ms_lsp::analysis::compile_file(
-            syms,
-            &request.filename,
-            &ms_lsp::analysis::Options::default(),
-        );
+        let analysis = ms_lsp::analysis::Analysis::from_checked(head);
         let hints = ms_lsp::nav::type_hints(syms, &analysis);
         let page = ms_tooling::html::html_page(&facts, changes.as_deref(), &hints);
         return write_output(io, &request.output, page.as_bytes());
@@ -882,7 +878,7 @@ fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &m
     };
     if !request.diff.is_empty() {
         let (input, base) =
-            match diff_inputs(syms, &request.filename, &request.diff, head, false, io) {
+            match diff_inputs(syms, &request.filename, &request.diff, &head, false, io) {
                 Ok(inputs) => inputs,
                 Err(status) => return status,
             };
