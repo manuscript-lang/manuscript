@@ -44,6 +44,8 @@ The public contracts are syntax, standard signatures, CLI flags and statuses, di
 
 A version update creates no tag. The release workflow also attaches the release's book as `manuscript-docs-<version>.tar.gz`; a dropdown entry only links to it.
 
+The workflow also attaches the agent skill as `manuscript-skill.tar.gz` and its checksum, packed by `toolchain/package-skill.sh` from the release compiler's `ms skill` output, so the file name is the same on every release. `website/static/install-skill.sh` and `install-skill.ps1` download it; the release rehearsal installs it on all six targets.
+
 ## Keep the feedback loop healthy
 
 Use `make verify` while editing and `make verify-full` before merging native changes. The `Platform checks` gate fails if any platform job fails or is cancelled.

@@ -87,6 +87,27 @@ jobs:
           test "$("$ms" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
           "$ms" test
 
+      - name: Install the skill without the compiler
+        run: |
+          set -eu
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory release >"$RUNNER_TEMP/skill-server.log" 2>&1 &
+          server=$!
+          trap 'kill $server' EXIT
+          sleep 2
+          if [ "$OS" = windows ]; then ms="$RUNNER_TEMP/ms-install/ms.exe"; else ms="$RUNNER_TEMP/ms-install/ms"; fi
+          sh toolchain/package-skill.sh "$ms" release
+          export MS_RELEASE_URL=http://127.0.0.1:8765
+          cd "$RUNNER_TEMP" && rm -rf skill-app && mkdir skill-app && cd skill-app
+          if [ "$OS" = windows ]; then
+            MS_SKILL_DIRS=".claude/skills;.agents/skills" pwsh -NoProfile -File "$GITHUB_WORKSPACE/website/static/install-skill.ps1"
+            if MS_SKILL_DIRS=".claude/skills" pwsh -NoProfile -File "$GITHUB_WORKSPACE/website/static/install-skill.ps1"; then echo "the skill installer overwrote a skill"; exit 1; fi
+          else
+            sh "$GITHUB_WORKSPACE/website/static/install-skill.sh"
+            if sh "$GITHUB_WORKSPACE/website/static/install-skill.sh" .claude/skills; then echo "the skill installer overwrote a skill"; exit 1; fi
+          fi
+          grep -q "$(cat "$GITHUB_WORKSPACE/.msversion")" .claude/skills/manuscript/SKILL.md
+          test -f .agents/skills/manuscript/references/idioms.md
+
       - name: The shell installer refuses Windows
         if: matrix.os == 'windows'
         run: |
