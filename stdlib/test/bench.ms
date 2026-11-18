@@ -39,7 +39,7 @@ type Settings:
 max_iterations := 100000000
 
 /*
-Runs `work` repeatedly and writes the statistics line, per operation for `operations` operations per run.
+Runs `work` repeatedly and writes the statistics line, per operation for `operations` (at least 1) operations per run.
 A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
   bench "sorts":
       data := [3, 1, 2]
@@ -47,6 +47,8 @@ A bench body that needs setup outside the timed region builds its data first and
 Everything the body does before `measure` runs once, untimed.
 */
 export fn measure(operations: Int, work: fn() Void!) Void!:
+	if operations < 1: return fail("measure: operations must be at least 1")
+
 	body := work
 	config := settings()
 	var count = max(config.iterations, 1)
