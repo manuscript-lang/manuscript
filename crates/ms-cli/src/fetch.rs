@@ -475,7 +475,7 @@ fn download_into(
         protocols,
         &["checkout", "--quiet", "--force", &commit, "--"],
     )?;
-    reject_symlinks(key, temporary, protocols)?;
+    reject_unportable(key, temporary, protocols)?;
     remove_all(&temporary.join(".git"))?;
     let index = index_tree(temporary).map_err(|e| format!("package {key}: {e}"))?;
     let hash = hash_index(&index);
@@ -515,21 +515,51 @@ fn download_into(
     })
 }
 
-/// A symbolic link is rejected from git's own record of the checkout. Where links are not
-/// created (Windows without `core.symlinks`) git writes them as small text files, which a scan of
-/// the directory would hash as regular files and so pin a different hash than Linux and macOS.
-fn reject_symlinks(key: &str, directory: &Path, protocols: &str) -> Result<(), String> {
+/// A package is judged from git's own record of the checkout, because the hash is taken from the
+/// directory and must come out the same on Linux, macOS and Windows. Three things make a checkout
+/// differ by platform, so each is rejected on every platform:
+///
+/// - a symbolic link, which git writes as a small text file where links are not created (Windows
+///   without `core.symlinks`);
+/// - two paths that differ only by letter case, where one file overwrites the other on macOS and
+///   Windows;
+/// - a name Windows cannot create (`a:b`, `aux`, a trailing dot or space).
+fn reject_unportable(key: &str, directory: &Path, protocols: &str) -> Result<(), String> {
     let listing = git(Some(directory), protocols, &["ls-files", "-z", "--stage"])?;
-    let link = listing
+    let mut seen = std::collections::HashMap::new();
+    for (meta, path) in listing
         .split('\0')
         .filter_map(|entry| entry.split_once('\t'))
-        .find(|(meta, _)| meta.starts_with("120000 "));
-    match link {
-        Some((_, path)) => Err(format!(
-            "package {key}: package contains the symbolic link {path}; a package holds regular files only"
-        )),
-        None => Ok(()),
+    {
+        if meta.starts_with("120000 ") {
+            return Err(format!(
+                "package {key}: package contains the symbolic link {path}; a package holds regular files only"
+            ));
+        }
+        if let Some(part) = path.split('/').find(|part| !portable_name(part)) {
+            return Err(format!(
+                "package {key}: {path} has the name {part:?}, which Windows cannot create; rename it"
+            ));
+        }
+        if let Some(other) = seen.insert(path.to_lowercase(), path) {
+            return Err(format!(
+                "package {key}: {other} and {path} differ only by letter case, so one overwrites the other on macOS and Windows; rename one"
+            ));
+        }
     }
+    Ok(())
+}
+
+/// Whether Windows can create a file or directory called `name`.
+fn portable_name(name: &str) -> bool {
+    const RESERVED: [&str; 22] = [
+        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+    ];
+    let stem = name.split('.').next().unwrap_or(name).to_lowercase();
+    !name.ends_with(['.', ' '])
+        && !name.contains(|c: char| c.is_control() || "<>:\"\\|?*".contains(c))
+        && !RESERVED.contains(&stem.as_str())
 }
 
 /// A package is a library with a manifest, no entry, no embedded files and no top-level `@`
@@ -543,8 +573,12 @@ fn validate(key: &str, dir: &Path) -> Result<(), String> {
     let mut package = Project::default();
     read_manifest(&manifest.to_string_lossy(), &mut package).map_err(|e| {
         // The download sits in a temporary directory; name paths from the package root.
-        let root = format!("{}{}", dir.display(), std::path::MAIN_SEPARATOR);
-        format!("package {key}: {}", e.to_string().replace(&root, ""))
+        // Windows paths come back spelled with either separator.
+        let plain = dir.display().to_string();
+        let root = format!("{plain}{}", std::path::MAIN_SEPARATOR);
+        let slashed = format!("{}/", plain.replace('\\', "/"));
+        let message = e.to_string().replace(&root, "").replace(&slashed, "");
+        format!("package {key}: {message}")
     })?;
     if !package.entry.is_empty() {
         return Err(format!(
