@@ -2,7 +2,7 @@ name: Nightly safety
 
 # Slow safety checks that do not fit the pull request budget. They run on main only, once a night, and on demand.
 # A failure here is a real bug: file an issue and fix the cause, never skip the check.
-#   miri          runtime memory safety under Miri (needs nightly; see documentation/contributing/rust-toolchain.md)
+#   miri          the runtime and the native crates under Miri, one job per crate (needs nightly; see documentation/contributing/rust-toolchain.md)
 #   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
 #   drift-check   runs the corpus under LLVM and Cranelift and fails on any difference
 #   poison-check  runs the corpus under both backends with dead stack slots filled with a pattern
@@ -26,17 +26,26 @@ env:
 
 jobs:
   miri:
+    name: miri ${{ matrix.crate }}
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        # The runtime and the native crates with unsafe code that Miri can run. `ms-std-fs`,
+        # `ms-std-net` and `ms-std-process` need real files, sockets and processes, which Miri cannot
+        # provide, so they stay out.
+        crate: [ms-rt, ms-rt-abi, ms-std-core, ms-std-bigint, ms-std-crypto, ms-std-url, ms-std-json, ms-std-regex, ms-std-archive, ms-std-system, ms-std-terminal]
     steps:
       - uses: actions/checkout@v7
       - name: Install nightly Rust with Miri
         run: rustup toolchain install nightly --profile minimal -c miri
-      - name: Miri on the runtime
+      - name: Miri on ${{ matrix.crate }}
         env:
-          MIRIFLAGS: -Zmiri-ignore-leaks
-        run: cargo +nightly miri test -p ms-rt --lib
+          # `ms-rt-abi` reads its header file in a test, which Miri's isolation forbids.
+          MIRIFLAGS: -Zmiri-ignore-leaks ${{ matrix.crate == 'ms-rt-abi' && '-Zmiri-disable-isolation' || '' }}
+        run: cargo +nightly miri test -p ${{ matrix.crate }} --lib
 
   sweeps:
     if: github.ref == 'refs/heads/main'
