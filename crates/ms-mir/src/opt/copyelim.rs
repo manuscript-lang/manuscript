@@ -806,8 +806,9 @@ fn borrow_str_phis(m: &Module, f: &mut Func) -> bool {
 }
 
 /// What a string copy of `v` may borrow instead of copying: `Some(None)` when `v` is a
-/// parameter or a literal, `Some(Some(list))` when `v` is an element read out of `list`,
-/// which stays valid while the list is only borrowed, `None` for any other source.
+/// parameter or a literal, `Some(Some(owner))` when `v` is an element read out of a list, which
+/// stays valid while the owner of that list (the value whose field it is, else the list itself)
+/// is only borrowed, `None` for any other source.
 fn str_source(f: &Func, defs: &[Option<(usize, usize)>], v: Value) -> Option<Option<Value>> {
     let Some((db, di)) = defs[v.index()] else {
         return Some(None);
@@ -815,9 +816,27 @@ fn str_source(f: &Func, defs: &[Option<(usize, usize)>], v: Value) -> Option<Opt
     let def = &f.blocks[db].insts[di];
     match def.op {
         Op::StrLit => Some(None),
-        Op::ListGet | Op::ListGetU | Op::ListGetNn => Some(Some(def.args[0])),
+        Op::ListGet | Op::ListGetU | Op::ListGetNn => {
+            Some(Some(element_owner(f, defs, def.args[0])))
+        }
         _ => None,
     }
+}
+
+/// The value `list` is ultimately read out of: followed through field projections and element
+/// reads (a list inside a record inside a list), `list` itself when it is not one.
+fn element_owner(f: &Func, defs: &[Option<(usize, usize)>], mut v: Value) -> Value {
+    while let Some((db, di)) = defs[v.index()] {
+        let def = &f.blocks[db].insts[di];
+        if !matches!(
+            def.op,
+            Op::TypeGet | Op::ListGet | Op::ListGetU | Op::ListGetNn
+        ) {
+            break;
+        }
+        v = def.args[0];
+    }
+    v
 }
 
 /// The owner at the end of the field projections that produced `v`, or `None` when `v` is not

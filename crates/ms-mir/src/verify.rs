@@ -608,6 +608,22 @@ impl Verifier<'_> {
                 }
             }
         }
+        // The owned value each borrowed value points into, followed through chains of borrows. An
+        // owned value that itself points into its operands (`Module::result_views`) frees only
+        // its own cases, so it is no owner: what it lends may live as long as those operands.
+        // `dropped_in` holds, per block, the owners an explicit `drop` released on some path
+        // there (a move into a branch parameter or a consuming call keeps the storage, so only
+        // `drop` counts); using a borrow of one of them reads freed storage.
+        let mut dropped_in: Vec<BTreeSet<u32>> = vec![BTreeSet::new(); f.blocks.len()];
+        let mut owner_of: Vec<Option<Value>> = vec![None; f.values.len()];
+        let mut views = vec![false; f.values.len()];
+        // Owners some borrowed value points into: only their drops are worth carrying along edges.
+        let mut watched = vec![false; f.values.len()];
+        // A parameter holding a borrowing variant takes the cases an incoming edge borrowed.
+        for p in f.blocks.iter().flat_map(|b| &b.params) {
+            views[p.value.index()] = matches!(m.types.kind(f.ty(p.value)),
+                TyKind::Alt(a) if m.alts[a.index()].borrowed != 0);
+        }
         let mut entry_state: Vec<Option<OwnerSet>> = vec![None; f.blocks.len()];
         for &b in rpo {
             let bi = b.index();
@@ -622,8 +638,47 @@ impl Verifier<'_> {
                     live.insert(p.value.0);
                 }
             }
+            let mut dropped = dropped_in[bi].clone();
             for inst in &blk.insts {
                 let modes = arg_modes(m, f, inst);
+                for a in &inst.args {
+                    let Some(o) = owner_of[a.index()] else {
+                        continue;
+                    };
+                    if dropped.contains(&o.0) {
+                        self.err(
+                            Some(bi),
+                            format!(
+                                "{}: %{} points into %{}, which was consumed before this use",
+                                inst.op.info().name,
+                                a.0,
+                                o.0
+                            ),
+                        );
+                    }
+                }
+                if matches!(inst.op, Op::Drop | Op::DropIf)
+                    && let Some(a) = inst.args.first()
+                    && watched[a.index()]
+                {
+                    dropped.insert(a.0);
+                }
+                if let Some(r) = inst.res {
+                    views[r.index()] = m.result_views(f, inst);
+                }
+                if let (Some(r), Some(first)) = (inst.res, inst.args.first())
+                    && rc(r)
+                    && !owned_def[r.index()]
+                    && rc(*first)
+                    && !views[first.index()]
+                {
+                    owner_of[r.index()] = owned_def[first.index()]
+                        .then_some(*first)
+                        .or(owner_of[first.index()]);
+                    if let Some(o) = owner_of[r.index()] {
+                        watched[o.index()] = true;
+                    }
+                }
                 let mut consumed_here: Vec<Value> = Vec::new();
                 for (a, mode) in inst.args.iter().zip(&modes) {
                     if !rc(*a) {
@@ -711,6 +766,7 @@ impl Verifier<'_> {
             }
             for t in edges {
                 let dest = &f.blocks[t.block.index()];
+                dropped_in[t.block.index()].extend(&dropped);
                 let mut after = live.clone();
                 let mut seen = Vec::new();
                 for (a, p) in t.args.iter().zip(&dest.params) {
