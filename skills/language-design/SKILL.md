@@ -51,12 +51,8 @@ Chinmay's design preferences for languages, standard libraries, runtimes, compil
 - `ms fmt` is zero-config: tune the defaults, never add a config file.
 - A stdlib function with more than three parameters takes an options record; three or fewer stay positional. A closure capture truly borrows or is a compile error, never a hidden copy. Callbacks may change the element they receive (`fn(var T)`).
 - Options, arguments and headers are optional with defaults across the stdlib (`serve` takes `HttpServerOptions`). A `Void` or `Void!` function needs no written return. Keywords are contextual where they can be (a field may be named `continue`). Compiler stages stay layered: a bug that needs a cross-layer patch points to wrong layering.
-- Give each operator one clear meaning. `?` returns by lexical scope and grants no access of its own: it inherits access from the variable it applies to, defaulting to `let`.
-- For one wanted case, use `match` with `_` instead of new syntax.
+- Prefer no new syntax or API when an existing construct works; before adding an API, check whether existing features already cover the need.
 - When the compiler can do something behind the scenes, do not ask the user to write it. Prefer the change that cannot silently change behavior.
-- No shared state between handlers or tasks for now (#4409); keep cross-thread state minimal.
 - Reject what cannot work at compile time (for example a key type that is not hashable) rather than falling back to a slow or surprising path.
 - If something feels weird or inconsistent (a name, which functions copy and which change in place, an error policy), it is worth fixing. Prefer hardening and polish over new features.
-- Prefer no new syntax or API when existing constructs work (`get_or`, `match` with `_`). Before adding an API, check whether existing features already cover the need: a character is already a plain `Int`, so there is no `Char` type.
-- `Closeable.close` returns `Void!`; `mean` keeps its current definition.
 - Present a design decision with code examples showing the same program with and without the change.

@@ -17,12 +17,11 @@ Read [benchmarks and performance](../../wiki/benchmarks-and-performance/index.md
 Do not over-index on a few kernels: a fix must help programs in general, with no special case for one benchmark. Perf work covers stdlib and release builds for ordinary engineering tasks.
 Do not fall back to Rust to make a program fast: make Manuscript fast enough, with a general compiler or stdlib change, and take general wins before one-off ones. Everyday data structures (types, enums, generics, collections) must be fast in the general case. Be skeptical of a result that looks too good (a Manuscript win of 2x or more over Rust usually means an unfair baseline). Deleting or replacing code must not regress perf; fast paths are shared MIR operations both backends inline. Run an experiment or spike before a big rewrite. Release builds keep cross-file optimization and the vectorizer.
 
-## Lessons from the Nov 2026 rounds
+## Working practices
 
-- **Count instructions before blaming an algorithm.** A 15 to 20x wall ratio in `make scaling-check` can be cache and memory effects; callgrind showed a constant cost per function. A pass that walks the whole function or file per item needs a side table built once.
-- **Measure compile cost as well as run time.** Inlining the cleanup push everywhere cost about 50k IR lines per test binary; inlining it only in loops cut `ms test` CPU from 13.4 s to 11.5 s with the loop unchanged. Check both before and after ([wiki](../../wiki/benchmarks-and-performance/a-close-that-inlines-to-nothing-needs-no-shield.md)).
-- **Remove work the optimizer can prove empty.** A shield around a close that inlines to nothing cost 152 instructions per scope; the `simplify` pass now drops it.
-- **Record rejected experiments.** Write the result and the decision to keep the current design in the wiki (the hole-heap versus swap-heap result), so the next round does not rerun it.
+- **Count instructions before blaming an algorithm.** A large wall-time ratio can be cache and memory effects. See `make scaling-check`.
+- **Measure compile cost as well as run time**, before and after.
+- **Record rejected experiments** in the wiki with the result and the decision.
 - **Existing primitives first.** A micro-optimization that needs a new primitive is not worth it; try what exists (for example `set` and `swap` on a list) first. Moving data should be almost free with a single heap: when it is not, find out why.
 - **No shortcuts.** Use legitimate algorithms. Do not over-index on one benchmark: scheduling and other shared paths must be fast in general.
 - **Portable.** A fast path on Linux epoll needs an equivalent on macOS (kqueue) and Windows (IOCP). Measuring on Linux alone is fine.

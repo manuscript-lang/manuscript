@@ -13,4 +13,3 @@ Read [the CI budget](../../wiki/repository/pull-request-ci-has-a-ten-minute-budg
 4. **Show before/after** per step in the PR, from CI runs rather than local timings. A new test must fit the budget or something else is cut.
 5. **List every cut.** Each sampled loop, fewer combinations or shorter input goes in the PR body with what it no longer covers, so the owner can ask for it back.
 6. **Record** a lesson in the CI budget page; land with [create-pr](../create-pr/SKILL.md).
-- LLVM jobs on pull requests skip lint, check and parse that the Cranelift legs already run.
