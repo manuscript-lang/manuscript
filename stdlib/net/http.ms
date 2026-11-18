@@ -316,8 +316,8 @@ export interface RawExchange:
 		max_message_bytes: Int? = none,
 	) NativeWebSocket!
 
-// Runs `HttpExchange.upgrade` on a native exchange: the compiler's forwarder for that
-// operation calls this with the exchange viewed as a `RawExchange`.
+// Runs `HttpExchange.upgrade` on a native exchange. The compiler's forwarder for that
+// call passes the exchange viewed as a `RawExchange`.
 fn exchange_upgrade(
 	var raw: RawExchange,
 	allowed_origins: List[String],
