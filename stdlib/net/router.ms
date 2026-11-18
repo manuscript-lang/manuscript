@@ -33,6 +33,12 @@ type Held[T]:
 	items: List[T]
 	held: Bool
 
+fn var Held[T].close() Void!:
+	if self.held:
+		self.held = false
+		if value := self.items.pop():
+			put_slot(self.slot, value)
+
 // Owns a slot: the scope that holds it releases the slot however the scope ends.
 type SlotOwner:
 	slot: Int
@@ -40,12 +46,6 @@ type SlotOwner:
 fn var SlotOwner.close() Void!:
 	release_slot(self.slot)
 	return ok()
-
-fn var Held[T].close() Void!:
-	if self.held:
-		self.held = false
-		if value := self.items.pop():
-			put_slot(self.slot, value)
 
 // The values a matched pattern captured, by name.
 export type RouteParams:
@@ -867,7 +867,6 @@ fn with_access_log(
 
 	result := next(var exchange)
 	sent := snapshot(state)
-
 	status := answered(sent.status, result.is_ok())
 	entry := AccessEntry(
 		method: method,
