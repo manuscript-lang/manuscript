@@ -1,17 +1,19 @@
 //! `filter` and `map` chains that end in numbers run as one loop.
 //!
 //! `xs.filter(f).map(g).sum()` built a list for each stage: an allocation, a push per element
-//! and a second pass to read it back. When every callback is a lambda whose body only reads
-//! (operators, names, fields, indexing; no call, so no effect other than a possible fault),
-//! every stage reads its element in place and the chain ends in numbers, the stages instead run
-//! per element in one loop and only the last result is built. Callbacks run per element rather than per stage; with
-//! no effects the only visible difference is which fault is reported when two stages would
-//! both fault.
+//! and a second pass to read it back. When every callback only reads, every stage reads its
+//! element in place and the chain ends in numbers, the stages instead run per element in one
+//! loop and only the last result is built. A callback reads when it is a lambda, or a named
+//! function, that is one `return` of operators, names, fields, indexing and calls of functions
+//! that read in turn (a bounded depth, so no recursion): no effect other than a possible fault.
+//! A chain over `a.zip(b)` of two lists of numbers makes each pair as the loop reaches it. Callbacks
+//! run per element rather than per stage; with no effects the only visible difference is which
+//! fault is reported when two stages would both fault.
 
 use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::api::ast::*;
-use ms_check::api::hir::Resolution;
+use ms_check::api::hir::{Body, ModuleHir, Resolution};
 use ms_check::api::types as ct;
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Mode, Op};
@@ -20,6 +22,9 @@ use ms_mir::types::{Ty as MTy, TyKind};
 /// The per-scalar step of a fused scan: the scalar in, a flag that stops the scan out.
 type ScalarBody<'b, S> =
     dyn FnMut(&mut S, ms_mir::ir::Value) -> Result<Option<ms_mir::ir::Value>, Error> + 'b;
+
+/// How many functions deep a reading callback may call.
+const CALL_DEPTH: u8 = 3;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Kind {
@@ -35,26 +40,6 @@ struct Stage<'e> {
     call: &'e Expr,
     /// The receiver list expression.
     recv: &'e Expr,
-}
-
-/// A lambda of one by-value parameter whose body is one `return` of a reading expression.
-fn simple_lambda(l: &Lambda) -> bool {
-    l.params.len() == 1
-        && !l.params[0].mutable
-        && l.body.len() == 1
-        && matches!(&l.body[0].kind, StmtKind::Return(Some(e)) if reading(e))
-}
-
-fn reading(e: &Expr) -> bool {
-    match &e.kind {
-        ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Name(_) => true,
-        ExprKind::Text(parts) => parts.iter().all(|p| matches!(p, TextPart::Lit(_))),
-        ExprKind::Member { left, .. } => reading(left),
-        ExprKind::Index { left, index } => reading(left) && reading(index),
-        ExprKind::Unary { op, operand } => *op != UnaryOp::Try && reading(operand),
-        ExprKind::Binary { left, right, .. } => reading(left) && reading(right),
-        _ => false,
-    }
 }
 
 /// Whether evaluating `e` can neither fault nor have an effect: names, literals, fields,
@@ -84,6 +69,72 @@ fn cannot_fault(e: &Expr) -> bool {
 }
 
 impl FnLower<'_> {
+    /// A lambda of one by-value parameter whose body is one `return` of a reading expression.
+    fn simple_lambda(&self, l: &Lambda) -> bool {
+        l.params.len() == 1
+            && !l.params[0].mutable
+            && l.body.len() == 1
+            && matches!(&l.body[0].kind, StmtKind::Return(Some(e)) if self.reads(&self.hir, e, CALL_DEPTH))
+    }
+
+    /// Whether `e` only reads: operators, names, fields, indexing and calls of functions that
+    /// are themselves one `return` of a reading expression (no recursion: `depth` bounds the
+    /// nesting). Such an expression has no effect other than a possible fault, so running it per
+    /// element instead of per stage is invisible.
+    fn reads(&self, hir: &ModuleHir, e: &Expr, depth: u8) -> bool {
+        match &e.kind {
+            ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Name(_) => true,
+            ExprKind::Text(parts) => parts.iter().all(|p| matches!(p, TextPart::Lit(_))),
+            ExprKind::Member { left, .. } => self.reads(hir, left, depth),
+            ExprKind::Index { left, index } => {
+                self.reads(hir, left, depth) && self.reads(hir, index, depth)
+            }
+            ExprKind::Unary { op, operand } => {
+                *op != UnaryOp::Try && self.reads(hir, operand, depth)
+            }
+            ExprKind::Binary { left, right, .. } => {
+                self.reads(hir, left, depth) && self.reads(hir, right, depth)
+            }
+            ExprKind::Call { callee, args } => {
+                depth > 0
+                    && matches!(callee.kind, ExprKind::Name(_))
+                    && args
+                        .iter()
+                        .all(|a| a.name.is_none() && !a.mutable && self.reads(hir, &a.value, depth))
+                    && self.reading_function(hir, callee, args.len(), depth - 1)
+            }
+            _ => false,
+        }
+    }
+
+    /// Whether `name` (resolved in `hir`) is a source function of `arity` plain parameters whose
+    /// body is one `return` of a reading expression.
+    fn reading_function(&self, hir: &ModuleHir, name: &Expr, arity: usize, depth: u8) -> bool {
+        let Resolution::Function(sym) = hir.resolution(name) else {
+            return false;
+        };
+        if sym.native != ct::Native::Source || !sym.variables.borrow().is_empty() {
+            return false;
+        }
+        let Ok(c) = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id())) else {
+            return false;
+        };
+        let (Some(f), Body::Block([stmt])) = (c.func.func(), c.body()) else {
+            return false;
+        };
+        let StmtKind::Return(Some(body)) = &stmt.kind else {
+            return false;
+        };
+        !f.external
+            && f.type_params.is_empty()
+            && f.params.len() == arity
+            && f.params.iter().all(|p| !p.mutable && p.default.is_none())
+            && self
+                .cx
+                .module(c.module.file)
+                .is_ok_and(|m| self.reads(&m, body, depth))
+    }
+
     /// `for x in xs.filter(f)` (a chain of `filter` calls) over a list place: the lambdas of the
     /// chain, first stage first, and the list they read. Each lambda is one `return` of an
     /// expression that cannot fault, so running it as the loop reaches each element, rather than
@@ -148,10 +199,12 @@ impl FnLower<'_> {
         let [arg] = args.as_slice() else {
             return Ok(None);
         };
-        let ExprKind::Lambda(l) = &arg.value.kind else {
-            return Ok(None);
+        let reading = match &arg.value.kind {
+            ExprKind::Lambda(l) => self.simple_lambda(l),
+            ExprKind::Name(_) => self.reading_function(&self.hir, &arg.value, 1, CALL_DEPTH),
+            _ => false,
         };
-        if arg.name.is_some() || arg.mutable || !simple_lambda(l) {
+        if arg.name.is_some() || arg.mutable || !reading {
             return Ok(None);
         }
         let (rt, ot) = (self.emty(recv)?, self.emty(e)?);
@@ -213,7 +266,7 @@ impl FnLower<'_> {
         let ExprKind::Lambda(l) = &arg.value.kind else {
             return Ok(None);
         };
-        if arg.name.is_some() || arg.mutable || !simple_lambda(l) {
+        if arg.name.is_some() || arg.mutable || !self.simple_lambda(l) {
             return Ok(None);
         }
         let ExprKind::Call { callee, args: none } = &recv_expr.kind else {
@@ -360,6 +413,36 @@ impl FnLower<'_> {
         Ok(())
     }
 
+    /// `a.zip(b)` of two lists of numbers: the two lists the pairs are made from.
+    fn zip_source<'e>(&mut self, src: &'e Expr) -> Result<Option<(&'e Expr, &'e Expr)>, Error> {
+        let Some(view) = self.hir.call(src) else {
+            return Ok(None);
+        };
+        let Resolution::Method(m) = &view.target else {
+            return Ok(None);
+        };
+        if m.name().map(|n| self.syms.str(n)) != Some("zip")
+            || matches!(m.native, ct::Native::Source | ct::Native::Contract)
+        {
+            return Ok(None);
+        }
+        let (Some(left), ExprKind::Call { args, .. }) = (self.receiver_expr(src), &src.kind) else {
+            return Ok(None);
+        };
+        let [arg] = args.as_slice() else {
+            return Ok(None);
+        };
+        if arg.name.is_some() || arg.mutable {
+            return Ok(None);
+        }
+        let (lt, rt) = (self.emty(left)?, self.emty(&arg.value)?);
+        let numbers = |s: &Self, t| s.list_elem(t).is_some_and(|e| s.scalar(e));
+        if !numbers(self, lt) || !numbers(self, rt) {
+            return Ok(None);
+        }
+        Ok(Some((left, &arg.value)))
+    }
+
     /// Fuses a chain that ends in this call (`map`, `filter` or `sum`), when it can.
     pub(crate) fn fused_chain(
         &mut self,
@@ -396,11 +479,33 @@ impl FnLower<'_> {
         }
         let result = self.emty(e)?;
 
-        let source = self.expr(src)?;
+        // Pairs of a zip source are made per element and read in place, so no list of pairs is built.
+        let zip = self.zip_source(src)?;
+        let (first, second) = zip.map_or((src, None), |(a, b)| (a, Some(b)));
+        let source = self.expr(first)?;
         if self.dead {
             return Ok(Some(source));
         }
-        let (lv, hidden) = self.list_source(Some(src), source)?;
+        let mut pairs = None;
+        let mut same = false;
+        if let Some(other) = second {
+            let zipped = self.emty(src)?;
+            let TyKind::List(pair) = self.b.m.types.kind(zipped).clone() else {
+                return Err(Error::new("zip without a list result"));
+            };
+            let TyKind::Type(rid) = self.b.m.types.kind(pair).clone() else {
+                return Err(Error::new("zip without a type element"));
+            };
+            let other = self.expr(other)?;
+            if self.dead {
+                return Ok(Some(other));
+            }
+            let other = self.borrow(other);
+            same = other == source.v;
+            let len = self.b.list_len(other);
+            pairs = Some((rid, other, len));
+        }
+        let (lv, hidden) = self.list_source(if same { None } else { Some(first) }, source)?;
         let mut fns = Vec::with_capacity(stages.len());
         for s in &stages {
             let f = self.expr(s.f)?;
@@ -431,9 +536,18 @@ impl FnLower<'_> {
             acc
         };
         let kinds: Vec<Kind> = stages.iter().map(|s| s.kind).collect();
-        self.each_element(lv, &mut |s, _, x| {
-            let skip = kinds.contains(&Kind::Filter).then(|| s.b.new_block());
+        self.each_element(lv, &mut |s, i, x| {
+            let skip = (pairs.is_some() || kinds.contains(&Kind::Filter)).then(|| s.b.new_block());
             let mut x = x;
+            if let Some((rid, other, len)) = pairs {
+                let inside = s.b.icmp(Cc::Lt, i, len);
+                let take = s.b.new_block();
+                s.b.br_if(inside, take, &[], skip.expect("skip block"), &[]);
+                s.b.seal_block(take);
+                s.b.switch_to(take);
+                let y = s.b.list_get(other, i);
+                x = s.b.type_new(rid, &[x, y]);
+            }
             for (kind, (fv, _)) in kinds.iter().zip(&fns) {
                 let f = s.b.use_var(*fv);
                 let r = s.b.call_ind(f, &[x]);
