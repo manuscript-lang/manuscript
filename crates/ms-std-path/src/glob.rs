@@ -161,81 +161,146 @@ fn sequence(mut pattern: &str) -> Option<Vec<Atom>> {
     Some(atoms)
 }
 
+/// A set of positions `0..=n`. Matching builds one per atom, so the usual case (a name of
+/// up to 127 characters, a path of up to 63 parts) lives in a fixed array on the stack and
+/// only longer input pays for a heap vector.
+trait Positions: Sized {
+    fn empty(n: usize) -> Self;
+    fn insert(&mut self, i: usize);
+    fn has(&self, i: usize) -> bool;
+    fn first(&self) -> Option<usize>;
+    fn is_empty(&self) -> bool;
+    fn merge(&mut self, other: &Self);
+}
+
+struct Fixed<const W: usize>([u64; W]);
+
+impl<const W: usize> Positions for Fixed<W> {
+    fn empty(_n: usize) -> Self {
+        Fixed([0; W])
+    }
+    fn insert(&mut self, i: usize) {
+        self.0[i / 64] |= 1 << (i % 64);
+    }
+    fn has(&self, i: usize) -> bool {
+        self.0[i / 64] >> (i % 64) & 1 == 1
+    }
+    fn first(&self) -> Option<usize> {
+        self.0
+            .iter()
+            .position(|&w| w != 0)
+            .map(|k| k * 64 + self.0[k].trailing_zeros() as usize)
+    }
+    fn is_empty(&self) -> bool {
+        self.0.iter().all(|&w| w == 0)
+    }
+    fn merge(&mut self, other: &Self) {
+        for (w, o) in self.0.iter_mut().zip(&other.0) {
+            *w |= o;
+        }
+    }
+}
+
+struct Heap(Vec<u64>);
+
+impl Positions for Heap {
+    fn empty(n: usize) -> Self {
+        Heap(vec![0; n / 64 + 1])
+    }
+    fn insert(&mut self, i: usize) {
+        self.0[i / 64] |= 1 << (i % 64);
+    }
+    fn has(&self, i: usize) -> bool {
+        self.0[i / 64] >> (i % 64) & 1 == 1
+    }
+    fn first(&self) -> Option<usize> {
+        self.0
+            .iter()
+            .position(|&w| w != 0)
+            .map(|k| k * 64 + self.0[k].trailing_zeros() as usize)
+    }
+    fn is_empty(&self) -> bool {
+        self.0.iter().all(|&w| w == 0)
+    }
+    fn merge(&mut self, other: &Self) {
+        for (w, o) in self.0.iter_mut().zip(&other.0) {
+            *w |= o;
+        }
+    }
+}
+
 /// Positions reachable after matching `atoms` from `start`.
-fn ends(atoms: &[Atom], value: &[char], start: usize) -> Vec<bool> {
+fn ends<S: Positions>(atoms: &[Atom], value: &[char], start: usize) -> S {
     let n = value.len();
-    let mut positions = vec![false; n + 1];
-    positions[start] = true;
+    let mut positions = S::empty(n);
+    positions.insert(start);
     for atom in atoms {
-        let mut next = vec![false; n + 1];
+        let mut next = S::empty(n);
         match atom {
             Atom::Star => {
-                if let Some(earliest) = positions.iter().position(|&p| p) {
-                    next[earliest..].fill(true);
+                if let Some(earliest) = positions.first() {
+                    for at in earliest..=n {
+                        next.insert(at);
+                    }
                 }
             }
             Atom::Literal(c) => {
-                for at in (0..n).filter(|&at| positions[at]) {
-                    if value[at] == *c {
-                        next[at + 1] = true;
+                for (at, &ch) in value.iter().enumerate() {
+                    if positions.has(at) && ch == *c {
+                        next.insert(at + 1);
                     }
                 }
             }
             Atom::Any => {
-                for at in (0..n).filter(|&at| positions[at]) {
-                    next[at + 1] = true;
+                for at in 0..n {
+                    if positions.has(at) {
+                        next.insert(at + 1);
+                    }
                 }
             }
             Atom::Class(class) => {
-                for at in (0..n).filter(|&at| positions[at]) {
-                    if class.matches(value[at]) {
-                        next[at + 1] = true;
+                for (at, &ch) in value.iter().enumerate() {
+                    if positions.has(at) && class.matches(ch) {
+                        next.insert(at + 1);
                     }
                 }
             }
             Atom::Group(kind, alternatives) => {
-                for at in (0..=n).filter(|&at| positions[at]) {
-                    let mut accepted = vec![false; n + 1];
+                for at in (0..=n).filter(|&at| positions.has(at)) {
+                    let mut accepted = S::empty(n);
                     for alt in alternatives {
-                        for (e, ok) in ends(alt, value, at).into_iter().enumerate() {
-                            accepted[e] |= ok;
-                        }
+                        accepted.merge(&ends::<S>(alt, value, at));
                     }
                     if *kind == '!' {
                         for e in at..=n {
-                            if !accepted[e] {
-                                next[e] = true;
+                            if !accepted.has(e) {
+                                next.insert(e);
                             }
                         }
                         continue;
                     }
-                    for (e, &ok) in accepted.iter().enumerate() {
-                        if ok {
-                            next[e] = true;
-                        }
-                    }
+                    next.merge(&accepted);
                     if *kind == '?' || *kind == '*' {
-                        next[at] = true;
+                        next.insert(at);
                     }
                     if *kind == '+' || *kind == '*' {
-                        let mut seen = vec![false; n + 1];
-                        seen[at] = true;
+                        let mut seen = S::empty(n);
+                        seen.insert(at);
                         let mut queue = alloc::collections::VecDeque::new();
-                        for (e, &ok) in accepted.iter().enumerate() {
-                            if ok && !seen[e] {
-                                seen[e] = true;
+                        for e in 0..=n {
+                            if accepted.has(e) && !seen.has(e) {
+                                seen.insert(e);
                                 queue.push_back(e);
                             }
                         }
                         while let Some(position) = queue.pop_front() {
                             for alt in alternatives {
-                                for (e, ok) in ends(alt, value, position).into_iter().enumerate() {
-                                    if ok {
-                                        next[e] = true;
-                                        if !seen[e] {
-                                            seen[e] = true;
-                                            queue.push_back(e);
-                                        }
+                                let reached = ends::<S>(alt, value, position);
+                                for e in (0..=n).filter(|&e| reached.has(e)) {
+                                    next.insert(e);
+                                    if !seen.has(e) {
+                                        seen.insert(e);
+                                        queue.push_back(e);
                                     }
                                 }
                             }
@@ -245,11 +310,21 @@ fn ends(atoms: &[Atom], value: &[char], start: usize) -> Vec<bool> {
             }
         }
         positions = next;
-        if !positions.iter().any(|&p| p) {
+        if positions.is_empty() {
             break;
         }
     }
     positions
+}
+
+/// Whether `atoms` match all of `value`.
+fn matches_whole(atoms: &[Atom], value: &[char]) -> bool {
+    let n = value.len();
+    if n < 128 {
+        ends::<Fixed<2>>(atoms, value, 0).has(n)
+    } else {
+        ends::<Heap>(atoms, value, 0).has(n)
+    }
 }
 
 struct Segment {
@@ -292,35 +367,59 @@ impl Glob {
 
     /// Whether `value` (slash separated) matches.
     pub fn matches(&self, value: &str) -> bool {
-        let parts: Vec<&str> = value.split('/').collect();
-        self.0.iter().any(|alt| match_segments(&parts, alt))
+        // The characters of every part in one buffer, the parts as ranges into it.
+        let mut chars: Vec<char> = Vec::with_capacity(value.len());
+        let mut parts: Vec<(usize, usize)> = Vec::new();
+        for part in value.split('/') {
+            let start = chars.len();
+            chars.extend(part.chars());
+            parts.push((start, chars.len()));
+        }
+        self.0.iter().any(|alt| {
+            if parts.len() < 64 {
+                match_segments::<Fixed<1>>(&chars, &parts, alt)
+            } else {
+                match_segments::<Heap>(&chars, &parts, alt)
+            }
+        })
     }
 }
 
-fn match_segments(value: &[&str], pattern: &[Segment]) -> bool {
-    let n = value.len();
-    let mut previous = vec![false; n + 1];
-    previous[0] = true;
+fn match_segments<S: Positions>(
+    chars: &[char],
+    parts: &[(usize, usize)],
+    pattern: &[Segment],
+) -> bool {
+    let n = parts.len();
+    let dotted = |j: usize| {
+        chars.get(parts[j - 1].0).is_some_and(|&c| c == '.') && parts[j - 1].0 < parts[j - 1].1
+    };
+    let mut previous = S::empty(n);
+    previous.insert(0);
     for segment in pattern {
-        let mut next = vec![false; n + 1];
+        let mut next = S::empty(n);
         if segment.pattern == "**" {
-            next[0] = previous[0];
+            if previous.has(0) {
+                next.insert(0);
+            }
             for j in 1..=n {
-                next[j] = previous[j] || next[j - 1] && !value[j - 1].starts_with('.');
+                if previous.has(j) || next.has(j - 1) && !dotted(j) {
+                    next.insert(j);
+                }
             }
         } else {
             for j in 1..=n {
-                if previous[j - 1]
-                    && (!value[j - 1].starts_with('.') || segment.pattern.starts_with('.'))
-                {
-                    let runes: Vec<char> = value[j - 1].chars().collect();
-                    next[j] = ends(&segment.atoms, &runes, 0)[runes.len()];
+                if previous.has(j - 1) && (!dotted(j) || segment.pattern.starts_with('.')) {
+                    let (from, to) = parts[j - 1];
+                    if matches_whole(&segment.atoms, &chars[from..to]) {
+                        next.insert(j);
+                    }
                 }
             }
         }
         previous = next;
     }
-    previous[n]
+    previous.has(n)
 }
 
 fn brace_letter(c: u8) -> bool {

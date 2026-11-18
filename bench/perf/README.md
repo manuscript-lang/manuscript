@@ -39,6 +39,7 @@ Latest `for_each` check: [`for-each-var-2026-11-06.md`](for-each-var-2026-11-06.
 Latest memory and binary size: [`perf-bash-memory-and-size-2026-11-18.md`](perf-bash-memory-and-size-2026-11-18.md).
 
 Latest text and data processing: [`perf-bash-text-2026-11-18.md`](perf-bash-text-2026-11-18.md).
+Latest paths, URLs and globs: [`perf-bash-paths-urls-2026-11-18.md`](perf-bash-paths-urls-2026-11-18.md).
 
 Latest perf bash: [`perf-bash-2026-11-18.md`](perf-bash-2026-11-18.md) (previous: [`perf-bash-2026-11-09.md`](perf-bash-2026-11-09.md)).
 

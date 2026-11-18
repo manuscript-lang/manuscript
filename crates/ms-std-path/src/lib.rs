@@ -7,26 +7,42 @@ extern crate alloc;
 pub mod ffi;
 pub mod glob;
 
-use alloc::string::String;
+use alloc::borrow::Cow;
 
 /// `PathError.InvalidInput` is the only error case.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InvalidInput;
 
-/// Tests `value` against `pattern`; Windows rules read backslashes as separators in both.
-pub fn matches_glob(windows: bool, value: &str, pattern: &str) -> Result<bool, InvalidInput> {
-    let slash = |s: &str| -> String {
-        if windows {
-            s.replace('\\', "/")
-        } else {
-            String::from(s)
-        }
-    };
-    let glob = glob::Glob::new(&slash(pattern)).ok_or(InvalidInput)?;
-    if value.contains('\0') {
-        return Err(InvalidInput);
+/// A glob pattern compiled once under one dialect's separator rules (Windows reads
+/// backslashes as separators in both pattern and value).
+pub struct CompiledGlob {
+    windows: bool,
+    glob: glob::Glob,
+}
+
+impl CompiledGlob {
+    /// Compiles `pattern`; bad syntax, a NUL byte or an over-long pattern is `InvalidInput`.
+    pub fn new(windows: bool, pattern: &str) -> Result<CompiledGlob, InvalidInput> {
+        let glob = glob::Glob::new(&slash(windows, pattern)).ok_or(InvalidInput)?;
+        Ok(CompiledGlob { windows, glob })
     }
-    Ok(glob.matches(&slash(value)))
+
+    /// Whether `value` matches; a NUL byte in `value` is `InvalidInput`.
+    pub fn matches(&self, value: &str) -> Result<bool, InvalidInput> {
+        if value.contains('\0') {
+            return Err(InvalidInput);
+        }
+        Ok(self.glob.matches(&slash(self.windows, value)))
+    }
+}
+
+/// `text` with backslashes read as separators under Windows rules; borrowed otherwise.
+pub fn slash(windows: bool, text: &str) -> Cow<'_, str> {
+    if windows && text.contains('\\') {
+        Cow::Owned(text.replace('\\', "/"))
+    } else {
+        Cow::Borrowed(text)
+    }
 }
 
 #[cfg(test)]
@@ -35,9 +51,12 @@ mod tests {
 
     #[test]
     fn dialect_selects_separator() {
-        assert_eq!(matches_glob(false, "a/b.ms", "a/*.ms"), Ok(true));
-        assert_eq!(matches_glob(true, "a\\b.ms", "a/*.ms"), Ok(true));
-        assert_eq!(matches_glob(false, "a", "["), Err(InvalidInput));
-        assert_eq!(matches_glob(false, "a\0", "*"), Err(InvalidInput));
+        let matches = |windows, value, pattern| {
+            CompiledGlob::new(windows, pattern).and_then(|glob| glob.matches(value))
+        };
+        assert_eq!(matches(false, "a/b.ms", "a/*.ms"), Ok(true));
+        assert_eq!(matches(true, "a\\b.ms", "a/*.ms"), Ok(true));
+        assert_eq!(matches(false, "a", "["), Err(InvalidInput));
+        assert_eq!(matches(false, "a\0", "*"), Err(InvalidInput));
     }
 }

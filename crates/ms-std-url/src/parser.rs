@@ -24,7 +24,8 @@ pub enum Enc {
 
 pub struct Bad;
 
-fn should_escape(c: u8, mode: Enc) -> bool {
+/// Whether `c` must be percent-encoded under `mode`, by the rules of Go's `shouldEscape`.
+const fn escape_rule(c: u8, mode: Enc) -> bool {
     if c.is_ascii_alphanumeric() {
         return false;
     }
@@ -63,10 +64,48 @@ fn should_escape(c: u8, mode: Enc) -> bool {
         },
         _ => {}
     }
-    if mode == Enc::Fragment && matches!(c, b'!' | b'(' | b')' | b'*') {
+    if matches!(mode, Enc::Fragment) && matches!(c, b'!' | b'(' | b')' | b'*') {
         return false;
     }
     true
+}
+
+const MODES: usize = 7;
+
+/// One row per `Enc`: a byte is escaped when its entry is set. A table lookup replaces the
+/// branch chain of `escape_rule`, which ran once per byte of every escaped component.
+static ESCAPE: [[bool; 256]; MODES] = {
+    let modes = [
+        Enc::Path,
+        Enc::PathSegment,
+        Enc::Host,
+        Enc::Zone,
+        Enc::UserPassword,
+        Enc::QueryComponent,
+        Enc::Fragment,
+    ];
+    let mut table = [[false; 256]; MODES];
+    let mut m = 0;
+    while m < MODES {
+        let mut c = 0;
+        while c < 256 {
+            table[modes[m] as usize][c] = escape_rule(c as u8, modes[m]);
+            c += 1;
+        }
+        m += 1;
+    }
+    table
+};
+
+#[inline(always)]
+fn should_escape(c: u8, mode: Enc) -> bool {
+    ESCAPE[mode as usize][c as usize]
+}
+
+/// Text with no percent sign and no byte `mode` would escape reads as itself and writes as
+/// itself, so parsing it needs neither an unescape nor an escape to compare.
+fn is_canonical(s: &[u8], mode: Enc) -> bool {
+    !s.iter().any(|&c| c == b'%' || should_escape(c, mode))
 }
 
 pub fn unescape(s: &[u8], mode: Enc) -> Result<S, Bad> {
@@ -130,8 +169,13 @@ pub fn unescape(s: &[u8], mode: Enc) -> Result<S, Bad> {
 }
 
 pub fn escape(s: &[u8], mode: Enc) -> S {
-    let mut t = Vec::with_capacity(s.len());
-    for &c in s {
+    let first = s.iter().position(|&c| should_escape(c, mode));
+    let Some(first) = first else {
+        return s.to_vec();
+    };
+    let mut t = Vec::with_capacity(s.len() + 8);
+    t.extend_from_slice(&s[..first]);
+    for &c in &s[first..] {
         if c == b' ' && mode == Enc::QueryComponent {
             t.push(b'+');
         } else if should_escape(c, mode) {
@@ -332,6 +376,11 @@ fn find(s: &[u8], needle: &[u8]) -> Option<usize> {
 
 impl Url {
     fn set_path(&mut self, p: &[u8]) -> Result<(), Bad> {
+        if is_canonical(p, Enc::Path) {
+            self.path = p.to_vec();
+            self.raw_path = Vec::new();
+            return Ok(());
+        }
         let path = unescape(p, Enc::Path)?;
         self.raw_path = if escape(&path, Enc::Path) == p {
             Vec::new()
@@ -343,6 +392,11 @@ impl Url {
     }
 
     fn set_fragment(&mut self, f: &[u8]) -> Result<(), Bad> {
+        if is_canonical(f, Enc::Fragment) {
+            self.fragment = f.to_vec();
+            self.raw_fragment = Vec::new();
+            return Ok(());
+        }
         let frag = unescape(f, Enc::Fragment)?;
         self.raw_fragment = if escape(&frag, Enc::Fragment) == f {
             Vec::new()
