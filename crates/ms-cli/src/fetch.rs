@@ -292,12 +292,19 @@ fn not_a_workspace_root(manifest: &str, command: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Abort a transfer below 1 kB/s for this long.
+#[cfg(not(test))]
+const STALL_SETTING: &str = "http.lowSpeedTime=30";
+#[cfg(test)]
+const STALL_SETTING: &str = "http.lowSpeedTime=2";
+
 /// Run git without prompts and with only the transports a package may use: `https` always, and
 /// `file` for the project's own dependencies.
 fn git(directory: Option<&Path>, protocols: &str, args: &[&str]) -> Result<String, String> {
     let mut command = Command::new("git");
     command
         .env("GIT_TERMINAL_PROMPT", "0")
+        .env("LC_ALL", "C")
         .env("GIT_ALLOW_PROTOCOL", protocols);
     command.args([
         "-c",
@@ -306,6 +313,11 @@ fn git(directory: Option<&Path>, protocols: &str, args: &[&str]) -> Result<Strin
         "core.safecrlf=false",
         "-c",
         "advice.detachedHead=false",
+        // A server that stops sending must fail the install, not hang it.
+        "-c",
+        "http.lowSpeedLimit=1000",
+        "-c",
+        STALL_SETTING,
     ]);
     if let Some(directory) = directory {
         command.arg("-C").arg(directory);
@@ -429,7 +441,15 @@ fn download_into(
                 &format!("{tag}:{tag}"),
             ],
         )
-        .map_err(|e| format!("package {key}: {reference} is not a tag of {url}? {e}"))?;
+        .map_err(|e| {
+            // Only a missing ref means a wrong tag; a refused, unreachable or stalled server
+            // is reported as git said it.
+            if e.contains("couldn't find remote ref") {
+                format!("package {key}: {reference} is not a tag of {url}: {e}")
+            } else {
+                format!("package {key}: {e}")
+            }
+        })?;
     }
     let revision = if locked.is_some() || is_commit(reference) {
         "FETCH_HEAD".to_string()
@@ -631,5 +651,28 @@ mod tests {
             redact_credentials("file:///tmp/x#v1 plain"),
             "file:///tmp/x#v1 plain"
         );
+    }
+
+    #[test]
+    fn a_stalled_server_fails_instead_of_hanging() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            let mut held = Vec::new();
+            for stream in listener.incoming().flatten() {
+                let mut stream = stream;
+                let _ = stream.read(&mut [0u8; 4096]);
+                let _ = stream.write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: application/x-git-upload-pack-advertisement\r\nContent-Length: 100000\r\n\r\n001e# service=git-upload-pack\n",
+                );
+                held.push(stream);
+            }
+        });
+        let started = std::time::Instant::now();
+        let url = format!("http://127.0.0.1:{port}/x.git");
+        let error = super::git(None, "http", &["ls-remote", &url]).unwrap_err();
+        assert!(error.contains("too slow"), "{error}");
+        assert!(started.elapsed() < std::time::Duration::from_secs(30));
     }
 }

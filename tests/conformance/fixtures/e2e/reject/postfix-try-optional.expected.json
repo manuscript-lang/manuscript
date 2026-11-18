@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/postfix-try-optional.ms:7:14: type: '?' requires a Result, found Int?; apply '?' only to a call returning Result[T, E]. '?' does not unwrap an Optional `x`: write `if v := x:` to use the value when present, `x.get_or(default)` for a fallback, or `x.get()` to fault when absent\n   |\n 7 |     value := first(items)?\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/postfix-try-optional.ms:7:14: type: '?' requires a Result, found Int?; apply '?' only to a call returning Result[T, E]. '?' does not unwrap an Optional `x`: write `if v := x:` to use the value when present, `x.get_or(default)` for a fallback, or `x.get()` to fault when absent\n   |\n 7 |     value := first(items)?\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

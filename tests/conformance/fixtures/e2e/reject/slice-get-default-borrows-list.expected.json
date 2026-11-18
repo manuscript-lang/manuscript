@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/slice-get-default-borrows-list.ms:8:5: type: cannot change `xs` while `ys` borrows it (binding of a part of it, at 7:5); finish using `ys` before this, or give `ys` its own value by ending its initializer with `.clone()`\n   |\n 8 |     xs.append(5)\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/slice-get-default-borrows-list.ms:8:5: type: cannot change `xs` while `ys` borrows it (binding of a part of it, at 7:5); finish using `ys` before this, or give `ys` its own value by ending its initializer with `.clone()`\n   |\n 8 |     xs.append(5)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

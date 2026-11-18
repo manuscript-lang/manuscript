@@ -25,6 +25,7 @@ mod fmt;
 mod if_var_evaluation;
 mod import_hints;
 mod llvm;
+mod long_path;
 mod lsp;
 mod many_joins;
 mod min_size_rel;

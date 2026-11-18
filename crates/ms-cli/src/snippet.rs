@@ -14,7 +14,8 @@ pub struct Sources {
 impl Sources {
     /// The excerpt for the span `line:column` to `end` in `file`, or an empty
     /// string when the file is unreadable (a bundled standard-library file).
-    /// `end` is `(line, column)`; columns are 1-based byte columns.
+    /// `end` is `(line, column)`; columns are 1-based byte columns except that each
+    /// leading tab counts as four (the lexer's `Pos::column`).
     pub fn excerpt(
         &mut self,
         file: &str,
@@ -63,11 +64,9 @@ impl Source {
 
 fn render(raw: &str, line: usize, column: usize, end: Option<(usize, usize)>) -> String {
     let source = raw.strip_suffix('\r').unwrap_or(raw);
-    let start = source.floor_char_boundary(column.saturating_sub(1));
+    let start = byte_index(source, column);
     let stop = match end {
-        Some((end_line, end_column)) if end_line == line => {
-            source.floor_char_boundary(end_column.saturating_sub(1))
-        }
+        Some((end_line, end_column)) if end_line == line => byte_index(source, end_column),
         Some((end_line, _)) if end_line > line => source.len(),
         _ => start,
     };
@@ -83,8 +82,42 @@ fn render(raw: &str, line: usize, column: usize, end: Option<(usize, usize)>) ->
     )
 }
 
+/// The byte offset of 1-based lexer column `column` in `source`: a leading tab spans
+/// four columns, every other byte one.
+fn byte_index(source: &str, column: usize) -> usize {
+    let target = column.saturating_sub(1);
+    let mut columns = 0;
+    let mut leading = true;
+    for (at, c) in source.char_indices() {
+        leading &= matches!(c, '\t' | ' ');
+        let span = if leading && c == '\t' {
+            TAB_WIDTH
+        } else {
+            c.len_utf8()
+        };
+        if columns + span > target {
+            return at;
+        }
+        columns += span;
+    }
+    source.len()
+}
+
+/// The line as printed: tabs become spaces, and a control character (a NUL, or an escape that
+/// would drive the terminal) becomes its one-cell picture so a source line cannot rewrite the
+/// screen.
 fn expand(text: &str) -> String {
-    text.replace('\t', &" ".repeat(TAB_WIDTH))
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '\t' => out.push_str(&" ".repeat(TAB_WIDTH)),
+            '\0'..='\u{1f}' => out.push(char::from_u32(0x2400 + c as u32).unwrap_or('\u{fffd}')),
+            '\u{7f}' => out.push('\u{2421}'),
+            '\u{80}'..='\u{9f}' => out.push('\u{fffd}'),
+            c => out.push(c),
+        }
+    }
+    out
 }
 
 /// Terminal cells `text` occupies, with tabs at a fixed width.
@@ -168,8 +201,10 @@ mod tests {
 
     #[test]
     fn tabs_and_crlf() {
-        let out = render("\tx = 1\r\ny\r\n", 1, 2, Some((1, 3)));
+        let out = render("\tx = 1\r\ny\r\n", 1, 5, Some((1, 6)));
         assert_eq!(out, "\n   |\n 1 |     x = 1\n   |     ^");
+        let out = render("\t\tprint(y)\n", 1, 15, Some((1, 16)));
+        assert_eq!(out, "\n   |\n 1 |         print(y)\n   |               ^");
     }
 
     #[test]
@@ -182,6 +217,14 @@ mod tests {
     fn multiline_span_underlines_to_line_end() {
         let out = render("ab cd\nef\n", 1, 4, Some((2, 2)));
         assert!(out.ends_with("|    ^^"), "{out}");
+    }
+
+    #[test]
+    fn control_characters_are_not_sent_to_the_terminal() {
+        let out = render("a\u{1b}[2Jb\0\u{9b}\n", 1, 2, Some((1, 3)));
+        assert!(!out.chars().any(|c| c.is_control() && c != '\n'), "{out:?}");
+        assert!(out.contains("a\u{241b}[2Jb\u{2400}\u{fffd}"), "{out:?}");
+        assert!(out.ends_with("|  ^"), "{out:?}");
     }
 
     #[test]
