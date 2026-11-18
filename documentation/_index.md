@@ -59,6 +59,10 @@ fn audit(total: Int) Void!:
 
 </div>
 
-{{< docs-home part="paths" >}}
+Read on: [ownership and references](core-language/types/references.md), [errors as values](core-language/errors/_index.md), [effects](developer-tooling/source/effects.md), [diagnostics](developer-tooling/source/diagnostics.md) and [concurrency](core-language/concurrency/_index.md).
 
 {{< docs-home part="proof" >}}
+
+{{< docs-home part="paths" >}}
+
+{{< docs-home part="status" >}}

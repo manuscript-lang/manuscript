@@ -26,7 +26,7 @@
 </section>
 {{- else if eq $part "proof" -}}
 <section class="home-proof" aria-labelledby="proof-title">
-  <h2 id="proof-title">What it provides</h2>
+  <h2 id="proof-title">Built for the agent loop</h2>
   <ul class="home-proof-list">
     <li><strong>One owner per value.</strong> No GC, no lifetimes to write, and use-after-move is a compile error. <a href="{{ with .Site.GetPage "core-language/types/references" }}{{ .RelPermalink }}{{ end }}">Ownership rules</a></li>
     <li><strong>Failure is a value.</strong> <code>T!</code> and <code>T?</code> make errors and absence visible. There is no <code>any</code> and no reflection.</li>
@@ -36,6 +36,9 @@
     </li>
     <li><strong>Build speed.</strong> A 122,000-line project builds in debug in 5.4 s against 9.0 s for <code>go build</code> (<a href="https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/results-2026-11-05.md">measured 2026-11-05</a>).</li>
   </ul>
+</section>
+{{- else if eq $part "status" -}}
+<section class="home-proof-status">
   <p class="home-status">Built in Rust, with most of the standard library written in Manuscript, and shaped by <a href="https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md">recorded agent runs</a>. The syntax is mostly stable; APIs and the standard library may still change.</p>
 </section>
 {{- end -}}
