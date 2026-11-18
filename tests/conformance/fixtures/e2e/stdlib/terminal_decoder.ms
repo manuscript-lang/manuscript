@@ -135,3 +135,15 @@ test "an unterminated paste keeps waiting":
 	expect_equal(d.partial(), false)?
 	expect_equal(d.flush(), List[TerminalEvent]())?
 	expect_equal(d.decode(" more\u{1b}[201~"), [TerminalEvent.Paste("partial more")])?
+
+test "backtab keeps the Control and Alt of its modifier":
+	var d = terminal_decoder()
+	expect_equal(
+		d.decode("\u{1b}[1;5Z\u{1b}[1;3Z\u{1b}[1;8Z\u{1b}[1;2Z"),
+		[
+			key("tab", true, false, true),
+			key("tab", false, true, true),
+			key("tab", true, true, true),
+			key("tab", false, false, true),
+		],
+	)?

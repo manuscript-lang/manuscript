@@ -38,19 +38,24 @@
           "index": 5,
           "name": "terminal_decoder.ms::an unterminated paste keeps waiting",
           "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "terminal_decoder.ms::backtab keeps the Control and Alt of its modifier",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN terminal_decoder.ms::text, controls and named keys\nPASS terminal_decoder.ms::text, controls and named keys\nRUN terminal_decoder.ms::a lone escape waits for a flush and unknown sequences are dropped\nPASS terminal_decoder.ms::a lone escape waits for a flush and unknown sequences are dropped\nRUN terminal_decoder.ms::modified Enter arrives from the kitty and modifyOtherKeys protocols\nPASS terminal_decoder.ms::modified Enter arrives from the kitty and modifyOtherKeys protocols\nRUN terminal_decoder.ms::a bracketed paste is one event however the input is split\nPASS terminal_decoder.ms::a bracketed paste is one event however the input is split\nRUN terminal_decoder.ms::an overlong CSI sequence is dropped whole however it is split\nPASS terminal_decoder.ms::an overlong CSI sequence is dropped whole however it is split\nRUN terminal_decoder.ms::an unterminated paste keeps waiting\nPASS terminal_decoder.ms::an unterminated paste keeps waiting\n6 tests, 0 failed\n",
+      "stdout": "RUN terminal_decoder.ms::text, controls and named keys\nPASS terminal_decoder.ms::text, controls and named keys\nRUN terminal_decoder.ms::a lone escape waits for a flush and unknown sequences are dropped\nPASS terminal_decoder.ms::a lone escape waits for a flush and unknown sequences are dropped\nRUN terminal_decoder.ms::modified Enter arrives from the kitty and modifyOtherKeys protocols\nPASS terminal_decoder.ms::modified Enter arrives from the kitty and modifyOtherKeys protocols\nRUN terminal_decoder.ms::a bracketed paste is one event however the input is split\nPASS terminal_decoder.ms::a bracketed paste is one event however the input is split\nRUN terminal_decoder.ms::an overlong CSI sequence is dropped whole however it is split\nPASS terminal_decoder.ms::an overlong CSI sequence is dropped whole however it is split\nRUN terminal_decoder.ms::an unterminated paste keeps waiting\nPASS terminal_decoder.ms::an unterminated paste keeps waiting\nRUN terminal_decoder.ms::backtab keeps the Control and Alt of its modifier\nPASS terminal_decoder.ms::backtab keeps the Control and Alt of its modifier\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
