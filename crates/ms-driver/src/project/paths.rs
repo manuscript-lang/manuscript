@@ -190,7 +190,10 @@ pub fn source_path(root: &str, path: &str, overlay: &Overlay) -> Result<String, 
         pathops::join(&[root, path])
     };
     let canonical = match pathops::eval_symlinks(&path) {
-        Ok(canonical) => canonical,
+        Ok(canonical) => {
+            exact_case(root, &path)?;
+            canonical
+        }
         Err(error) => {
             if overlay.is_empty() || !error.is_not_exist() {
                 return Err(error);
@@ -220,6 +223,53 @@ pub fn source_path(root: &str, path: &str, overlay: &Overlay) -> Result<String, 
             "path escapes project root: {path}; keep imported files inside the directory containing ms.toml (or the entry file's directory)"
         ))),
     }
+}
+
+/// Rejects a path that names an existing entry with the wrong letter case. macOS and Windows
+/// file systems resolve `./UTIL.ms` to `util.ms`, so a program would run there and fail to find
+/// the file on Linux, and two spellings of one file would load as two modules. Linux names are
+/// exact already, so it skips the listing. Only components below `root` are checked, and a name
+/// that differs only by Unicode normalization is left alone.
+fn exact_case(root: &str, path: &str) -> Result<(), ProjectError> {
+    if !cfg!(any(windows, target_os = "macos")) {
+        return Ok(());
+    }
+    let cleaned = pathops::clean(path);
+    let Ok(relative) = pathops::rel(root, &cleaned) else {
+        return Ok(());
+    };
+    if pathops::escapes(&relative) {
+        return Ok(());
+    }
+    let mut directory = root.to_string();
+    for name in relative
+        .split('/')
+        .filter(|part| !part.is_empty() && *part != ".")
+    {
+        let Ok(entries) = std::fs::read_dir(&directory) else {
+            return Ok(());
+        };
+        let (mut exact, mut other_case) = (false, false);
+        let wanted = name.to_lowercase();
+        for entry in entries.flatten() {
+            let found = entry.file_name().to_string_lossy().into_owned();
+            if found == name {
+                exact = true;
+                break;
+            }
+            other_case |= found.to_lowercase() == wanted;
+        }
+        if !exact && other_case {
+            let missing = std::io::Error::from_raw_os_error(crate::project::error::ENOENT);
+            return Err(ProjectError::path(
+                "open",
+                &pathops::join(&[&directory, name]),
+                &missing,
+            ));
+        }
+        directory = pathops::join(&[&directory, name]);
+    }
+    Ok(())
 }
 
 fn alias_hint(aliases: &BTreeMap<String, String>, deps: &BTreeMap<String, String>) -> String {
