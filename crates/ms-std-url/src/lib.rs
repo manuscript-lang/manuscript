@@ -210,8 +210,9 @@ pub fn parse(text: &str) -> Result<Components, Fail> {
     components(&u)
 }
 
-/// Rebuilds a Go URL from components, rejecting anything that would not parse back.
-fn go_url(v: &Components) -> Option<Url> {
+/// Rebuilds a Go URL from components, rejecting anything that would not parse back. The
+/// text it rendered for that check comes back with it, so `format` renders once.
+fn go_url(v: &Components) -> Option<(Url, S)> {
     let mut host: S = v.host.as_bytes().to_vec();
     if host.contains(&b':') {
         let mut h = alloc::vec![b'['];
@@ -261,7 +262,8 @@ fn go_url(v: &Components) -> Option<Url> {
         force_query: v.query.as_deref() == Some(""),
         ..Url::default()
     };
-    let parsed = parser::parse(&u.render()).ok()?;
+    let rendered = u.render();
+    let parsed = parser::parse(&rendered).ok()?;
     if parsed.scheme.is_empty()
         || !parsed.scheme.eq_ignore_ascii_case(&u.scheme)
         || !parsed.opaque.is_empty()
@@ -270,13 +272,12 @@ fn go_url(v: &Components) -> Option<Url> {
     {
         return None;
     }
-    Some(u)
+    Some((u, rendered))
 }
 
 /// Formats components as an absolute hierarchical URL.
 pub fn format(v: &Components) -> Result<String, Fail> {
-    let u = go_url(v).ok_or(Fail::InvalidInput)?;
-    let mut text = u.render();
+    let (u, mut text) = go_url(v).ok_or(Fail::InvalidInput)?;
     // A bare scheme would read as an opaque URL, so an empty hierarchical part keeps `//`
     // unless the URL was read without one.
     if u.host.is_empty() && u.path.is_empty() && !u.omit_host {
@@ -287,7 +288,7 @@ pub fn format(v: &Components) -> Result<String, Fail> {
 
 /// Resolves a relative reference against `base` (RFC 3986 section 5.2 as in Go).
 pub fn resolve(base: &Components, reference: &str) -> Result<Components, Fail> {
-    let b = go_url(base).ok_or(Fail::InvalidInput)?;
+    let (b, _) = go_url(base).ok_or(Fail::InvalidInput)?;
     let r = parser::parse(reference.as_bytes()).map_err(|_| Fail::InvalidData)?;
     if r.has_user() {
         return Err(Fail::InvalidData);
