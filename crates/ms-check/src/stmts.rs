@@ -52,28 +52,6 @@ fn literal_key(syms: ms_syntax::Names, path: &Expr) -> Option<String> {
 }
 
 impl Checker {
-    /// A member of the optional itself (`get`, `map`, ...) written inside a `?.` chain runs on
-    /// the payload, which does not have it: say how to apply it to the whole chain.
-    fn explain_chain_optional_member(&mut self, from: usize) {
-        let optional = self.session.standard("Optional", vec![invalid()]);
-        let members = self.member_names(&optional);
-        for d in &mut self.p.diagnostics[from..] {
-            let Cause::UnknownMember {
-                name,
-                optional_receiver: false,
-            } = d.cause
-            else {
-                continue;
-            };
-            let name = self.syms.str(name);
-            if members.iter().any(|m| m == name) {
-                d.message.push_str(&format!(
-                    "; this call is part of the `?.` chain, so it runs on the present value; to use the optional's {name} on the whole chain, parenthesize it: (a?.b()).{name}(...)"
-                ));
-            }
-        }
-    }
-
     pub(crate) fn info_of(&self, e: &Expr) -> Option<Info> {
         self.m().facts().info(e.id).cloned()
     }
@@ -783,37 +761,6 @@ impl Checker {
     ) -> (bool, bool) {
         let info = self.expression(value, None);
         let t = info.t();
-        if arms.first().is_some_and(|a| a.chain) && !t.is_invalid() && !t.is(Builtin::Optional) {
-            let fix = if t.is(Builtin::Result) {
-                "`?.` is the Optional chain, not `?` followed by `.`; unwrap the Result first with `v := x?` or `(x?).member`"
-            } else {
-                "write `.` to read a member of a value that is always present"
-            };
-            let mut repair = None;
-            if t.is(Builtin::Result) {
-                let source = self.m().source.clone();
-                let (start, end) = (value.start(), value.end);
-                if let Some(text) = source.get(start.offset as usize..end.offset as usize)
-                    && source[end.offset as usize..].starts_with("?.")
-                {
-                    repair = Some(ms_syntax::DiagnosticFix {
-                        pos: start,
-                        end: ms_syntax::Pos::new(end.offset + 2, end.line, end.column + 2),
-                        replacement: format!("({text}?)."),
-                    });
-                }
-            }
-            self.type_error_with_fix(
-                value.pos,
-                Cause::Other,
-                format!(
-                    "`?.` needs an optional receiver, found {t_t}; {fix}",
-                    t_t = t.display(self.syms)
-                ),
-                repair,
-            );
-            return (true, false);
-        }
         if t.kind == Kind::Contract {
             return self.match_contract(pos, arms, &info, body);
         }
@@ -1576,7 +1523,6 @@ impl Checker {
                 }
                 Some(value) => {
                     if !self.contextual(value) {
-                        let before = self.p.diagnostics.len();
                         let info = self.arm_value(value, result.as_ref(), expected);
                         let t = info.t();
                         invalid_arm = invalid_arm || t.is_invalid();
@@ -1585,19 +1531,9 @@ impl Checker {
                             && crate::inference::inference_type_known(&t, &self.inference_variables)
                         {
                             let t = required_type(&t);
-                            result = Some(if arm.chain && !t.is(Builtin::Optional) {
-                                self.session.standard("Optional", vec![t])
-                            } else {
-                                t
-                            });
+                            result = Some(t);
                         }
-                        // A chain's present value becomes optional by being checked
-                        // again against the optional result.
-                        let rewrap = arm.chain && !info.t().is(Builtin::Optional);
-                        if rewrap {
-                            self.p.diagnostics.truncate(before);
-                        }
-                        states[si].info = (!rewrap).then_some(info);
+                        states[si].info = Some(info);
                     }
                 }
             }
@@ -1622,14 +1558,7 @@ impl Checker {
                         self.check_expression(value, info, result.as_ref())
                     }
                     Some(info) => info,
-                    None => {
-                        let before = self.p.diagnostics.len();
-                        let info = self.arm_value(value, result.as_ref(), expected);
-                        if arm.chain {
-                            self.explain_chain_optional_member(before);
-                        }
-                        info
-                    }
+                    None => self.arm_value(value, result.as_ref(), expected),
                 };
                 states[si].info = Some(info);
                 if normal {

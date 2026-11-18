@@ -144,6 +144,9 @@ pub(crate) struct FnLower<'a> {
     pub default_frames: Vec<DefaultFrame>,
     /// Checked place indices retained through the final writeback.
     pub prepared_indices: HashMap<PlaceKey, Value>,
+    /// `x?` nodes on an Optional whose absent case already left the function on this path; a
+    /// repeated read of the same place (the call's receiver, then its update) skips the test.
+    pub checked_optionals: std::collections::HashSet<ms_check::api::NodeId>,
     /// Only receiver-chain indices are captured during a checked place read.
     pub capture_indices: HashSet<PlaceKey>,
     /// Intact resource temporaries: their slots own the values while later expressions run.
@@ -766,6 +769,7 @@ impl<'a> FnLower<'a> {
             pass_temps: std::collections::HashMap::default(),
             default_frames: Vec::new(),
             prepared_indices: HashMap::default(),
+            checked_optionals: Default::default(),
             capture_indices: HashSet::default(),
             resource_temps: HashMap::default(),
             loops: Vec::new(),

@@ -661,6 +661,10 @@ impl Walker<'_> {
     /// The error path of `try operand` returns the operand's error: a reference when the operand
     /// returns a borrow of it from the arguments as it is, otherwise a new value, like any `return`.
     pub(super) fn try_return(&mut self, e: &Expr, operand: &Expr) {
+        // `none` leaves the function empty-handed: nothing of the operand escapes.
+        if self.cx.m.ty(operand).is(Builtin::Optional) {
+            return;
+        }
         if !self.captured.is_empty() || self.implements_contract() {
             return;
         }

@@ -23,7 +23,7 @@ For additional APIs, inspect `ms search_symbol` signatures/imports. Report compi
 ## Habits from other languages
 
 - Methods always take parentheses, even with no arguments: `xs.length()`, `name.length()`, `opt.is_none()`; `xs.length` is a method value, not an Int. Test absence with `x.is_none()` or `x.is_some()`, never `x == none`. Write `not x` (no `!x`), `f(x)?` (no `try`), `fn f() Result[Int, Error]:` (no `->`), `"\{ \}"` for literal braces in text, and `else:` only after an indented `if` block.
-- Inside `{}` of an `f` string, write quotes plainly: `f"{xs.join(", ")}"`, never `\"`. `?.` chains an Optional only; to use a Result's value write `(r?).abs()`. In a `Void!` function a bare `return` means `return ok()`; other Result functions need `ok(value)` or `error(e)`.
+- Inside `{}` of an `f` string, write quotes plainly: `f"{xs.join(", ")}"`, never `\"`. `r?.abs()` unwraps the Result, then calls `abs()`; it needs a Result-returning function. In a `Void!` function a bare `return` means `return ok()`; other Result functions need `ok(value)` or `error(e)`.
 
 Each row is a shape agents wrote that fails; the right column compiles.
 
@@ -40,9 +40,8 @@ Each row is a shape agents wrote that fails; the right column compiles.
 | `for _ in xs` | `for _i in xs`; a bare `_` is not a name |
 | `(String, Int)`, `[A, B]` tuples | a record: `type Pair:` with fields |
 | `f(x)?` as a statement on a non-Void result | `_done := f(x)?` (a leading `_` marks it unused) |
-| `s.parse_int()?` (it returns `Int?`, not a Result) | `s.parse_int().ok_or(Error("bad number"))?` or `s.parse_int().get_or(0)` |
+| `s.parse_int()?` in a function returning `Int!` (it returns `Int?`, and `?` on an Optional needs an Optional or `Void` return) | `s.parse_int().ok_or(Error("bad number"))?` or `s.parse_int().get_or(0)` |
 | `List<Int>`, `Map<K, V>` | `List[Int]`, `Map[K, V]` |
-| `r?.abs()` on a Result | `(r?).abs()`; `?.` is for Optionals only |
 | `m.contains_key(k)`, `xs.remove_last()` | `m.contains(k)`, `xs.pop()` |
 | `xs.sort_by(f)`, `for b in s.as_bytes()` | `xs.sort(fn a, b: a.compare(b))`, `for b in values(s.as_bytes())` with `import values from "@std/bytes.ms"` |
 | `set.insert(x)`, `r.is_err()`, `s.find(t)` | `set.add(x)`, `r.is_error()`, `s.index_of(t)` |

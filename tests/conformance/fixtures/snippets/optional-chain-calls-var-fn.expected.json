@@ -4,7 +4,7 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 0,
-    "stdout": "some 2\nsome 3\nnone\nsome 3\nsome 1\nsome 11\nsome 11\nsome 4\nsome 4\nnone\n",
+    "stdout": "some 2\nsome 3\nsome 3\nsome 1\nsome 11\nsome 11\nsome 4\nsome 4\nnone\nnone\npresent\ndone\n",
     "stderr": ""
   }
 }

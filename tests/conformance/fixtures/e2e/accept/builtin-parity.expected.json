@@ -35,7 +35,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found <invalid>; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found <invalid>; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "builtin-parity.ms",
             "line": 92,

@@ -266,13 +266,6 @@ impl FnLower<'_> {
                     break;
                 }
                 let Some(b) = b else { continue };
-                if arm.chain && self.cx.exclusive(b.uid) {
-                    // `c?.f()` changing the payload: `?N` names the payload of `c` itself.
-                    let mut alias = self.alias_chain(scrutinee)?;
-                    alias.steps.push(crate::alias::AStep::Some);
-                    self.aliases.insert(b.uid, alias);
-                    continue;
-                }
                 let cur = match owned_uid {
                     // An owned scrutinee lives in its slot; a borrowed case is read in place.
                     Some(uid) => {
@@ -350,8 +343,6 @@ impl FnLower<'_> {
                 if !self.dead {
                     let v = match x {
                         Some(x) if borrowed => x.v,
-                        // An optional chain wraps the part it reaches in an `Optional`.
-                        Some(x) if arm.chain => self.owned_boundary(x),
                         Some(x) => self.owned(x),
                         None => self.b.unit(),
                     };
@@ -540,6 +531,9 @@ impl FnLower<'_> {
         }
         let r = self.b.use_var(rv);
         let rty = self.ty_of(r);
+        if let TyKind::Opt(_) = self.b.m.types.kind(rty) {
+            return self.try_optional(e, rv, hidden);
+        }
         let TyKind::Alt(a) = self.b.m.types.kind(rty).clone() else {
             return Err(Error::new("try on a non-Result"));
         };
@@ -655,5 +649,71 @@ impl FnLower<'_> {
         let po = self.b.alt_take(a, ok as u32, 0, cur);
         self.b.alt_release(a, ok as u32, 1, cur);
         Ok(self.val(po, true))
+    }
+
+    /// `x?` on an Optional operand held in `rv`: the payload when present, otherwise an early
+    /// return of `none`.
+    fn try_optional(
+        &mut self,
+        e: &Expr,
+        rv: ms_mir::builder::Var,
+        hidden: bool,
+    ) -> Result<Val, Error> {
+        if !hidden && !self.checked_optionals.insert(e.id) {
+            // The absent case already left the function on this path.
+            let cur = self.b.use_var(rv);
+            let payload = self.b.opt_get(cur);
+            return Ok(Val {
+                v: payload,
+                own: false,
+            });
+        }
+        let ret = self.result_ty();
+        let r = self.b.use_var(rv);
+        let present = self.b.opt_is_some(r);
+        let (nonb, somb) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(present, somb, &[], nonb, &[]);
+        self.b.seal_block(nonb);
+        self.b.seal_block(somb);
+
+        self.enter(nonb);
+        if hidden {
+            let cur = self.b.use_var(rv);
+            self.drop_value(cur);
+        }
+        let out = self.empty_return_value(ret)?;
+        self.emit_return(Some(out));
+
+        self.enter(somb);
+        let cur = self.b.use_var(rv);
+        if hidden {
+            // The operand is ours: its payload moves out.
+            let payload = self.b.opt_unbox(cur);
+            return Ok(self.val(payload, true));
+        }
+        // A part of a place: a consumer that keeps it takes its own copy.
+        let payload = self.b.opt_get(cur);
+        Ok(Val {
+            v: payload,
+            own: false,
+        })
+    }
+
+    /// What `?` returns from a function of result type `ret` when its Optional is absent:
+    /// `none` for an Optional result, the unit for Void.
+    pub(crate) fn empty_return_value(&mut self, ret: MTy) -> Result<Val, Error> {
+        if ret == MTy::VOID {
+            return Ok(Val {
+                v: self.b.unit(),
+                own: false,
+            });
+        }
+        if matches!(self.b.m.types.kind(ret), TyKind::Opt(_)) {
+            let none = self.b.opt_none_owned(ret);
+            return Ok(Val { v: none, own: true });
+        }
+        Err(Error::new(
+            "'?' on an Optional in a function that returns neither an Optional nor Void",
+        ))
     }
 }

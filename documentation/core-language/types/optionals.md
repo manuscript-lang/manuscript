@@ -137,13 +137,11 @@ fn display_name(name: String?) String:
 
 A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. `ms lint` reports a two-arm match as MSL108.
 
-Use [Result](../errors/results.md) when a failure needs an explanation. The `?` operator propagates only `Result` errors.
+Use [Result](../errors/results.md) when a failure needs an explanation.
 
-## Optional chaining
+## Unwrapping with `?`
 
-`a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than becoming `B??` when `b` is already optional.
-
-The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side. The receiver must be optional; use plain `.` for a value that is always present.
+Postfix `?` gives the present value, or leaves the function when the value is absent. It is the same operator as [error propagation](../errors/propagation.md): on a `Result` it returns the error, on an Optional it returns `none`. The enclosing function must return an Optional (`U?`) or `Void`; a `Void` function simply returns. Inside an anonymous function `?` returns from that function.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -157,9 +155,11 @@ fn city_length(user: User?) Int?:
     return user?.address?.city?.length()
 ```
 
-A chain cannot move a field out of the optional it reads, so end it with `.clone()` to get an owned `String` or other field value.
+`user?.address` is `(user?).address`. If `user` is `none`, the function returns `none` at that point; nothing after it on the line runs, so `a?.f(args)` evaluates `args` only when `a` is present. There is no separate chaining operator.
 
-A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself, in place; on `none` nothing runs:
+A function cannot mix the two kinds: `?` on a Result needs a Result return, and `?` on an Optional needs an Optional or `Void` return. Convert explicitly with `ok_or`, `if v := x:`, or `get_or(default)`.
+
+`?` takes its access from the value it is applied to. It borrows the optional it starts from; when that place is a `var` (a `var` binding or parameter, or a field of one), a `var fn` called through it, or a change to the payload, lands in the optional itself, in place:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -174,7 +174,7 @@ fn tick(var counter: Counter?) Int?:
     return counter?.bump()
 ```
 
-Through a `:=` binding or a parameter not declared `var`, `counter?.bump()` is rejected like any other change to that binding.
+Through a `:=` binding or a parameter not declared `var`, `counter?.bump()` is rejected like any other change to that binding. `?` cannot move a field out of the optional it reads, so end the expression with `.clone()` to get an owned `String` or other field value.
 
 ## Converting absence to a Result
 

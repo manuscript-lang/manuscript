@@ -13,4 +13,4 @@ fn bump_let() Int?:
     return c?.bump() // error: is an immutable binding
 
 fn bump_view(m: Map[String, Counter]) Int?:
-    return m.get("a")?.bump() // error: on a value that is not a variable
+    return m.get("a")?.bump() // error: it is a read-only reference into another value

@@ -1085,6 +1085,10 @@ impl Checker {
     /// boundary.
     fn check_try(&mut self, e: &Expr, operand: &Info, i: &mut Info) {
         let result = operand.t();
+        if result.is(Builtin::Optional) && result.args.len() == 1 {
+            self.check_try_optional(e, &result, i);
+            return;
+        }
         if !result.is(Builtin::Result) || result.args.len() != 2 {
             if result.is(Builtin::Promise)
                 && let ExprKind::Unary { operand: inner, .. } = &e.kind
@@ -1101,7 +1105,7 @@ impl Checker {
             }
             self.type_error(
                 e.pos,
-                format!("'?' requires a Result, found {result_t}; apply '?' only to a call returning Result[T, E]{optional}", result_t = result.display(self.syms), optional = if result.is(Builtin::Optional) { ". '?' does not unwrap an Optional `x`: write `if v := x:` to use the value when present, `x.get_or(default)` for a fallback, or `x.get()` to fault when absent" } else { "" }),
+                format!("'?' requires a Result or an Optional, found {result_t}; apply '?' to a value of type Result[T, E] or T?", result_t = result.display(self.syms)),
             );
             return;
         }
@@ -1126,6 +1130,21 @@ impl Checker {
             e.pos,
             format!("'?' requires the same error type; this function returns {enclosing_t} but the operand fails with {failure_t}, so change the return error type or translate the error with map_error", enclosing_t = enclosing.display(self.syms), failure_t = failure.display(self.syms)),
         );
+    }
+
+    /// `x?` on an Optional: the present value, or `none` returned from an enclosing Optional.
+    fn check_try_optional(&mut self, e: &Expr, optional: &Ty, i: &mut Info) {
+        if let Some(r) = self.return_inference.as_mut() {
+            r.context_dependent = true;
+        }
+        i.ty = Some(optional.args[0].clone());
+        let enclosing = self.result_ty();
+        if !enclosing.is(Builtin::Optional) && !same(&enclosing, &unit()) {
+            self.type_error(
+                e.pos,
+                "'?' on an Optional leaves the function when the value is absent, so the function must return an Optional or Void; declare it to return T?, or use 'if value := x', '.get_or(default)', or '.get()'",
+            );
+        }
     }
 
     fn infer_binary(

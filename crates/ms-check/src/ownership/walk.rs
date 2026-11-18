@@ -265,8 +265,6 @@ pub fn analyze(cx: &Context) -> Outcome {
         resources: Vec::new(),
         owned_lambda_params: HashSet::default(),
         arm_payloads: Vec::new(),
-        chain_places: HashMap::default(),
-        keep_scrutinee: false,
         closed: HashSet::default(),
         close_completions: HashSet::default(),
         borrow_receiver: false,
@@ -416,10 +414,6 @@ struct Walker<'a> {
     owned_lambda_params: HashSet<usize>,
     /// Payload bindings of match arms over a consumed scrutinee.
     arm_payloads: Vec<usize>,
-    /// The optional place each `?.` payload binding was read from.
-    chain_places: HashMap<usize, PlaceInfo>,
-    /// The scrutinee being walked stays borrowed, never consumed at its last use.
-    keep_scrutinee: bool,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
     /// Completed explicit closes or whole-binding replacements, by expression and binding.
@@ -669,11 +663,7 @@ impl Walker<'_> {
     // ---------------------------------------------------------- match
 
     fn match_expr(&mut self, e: &Expr, scrutinee: &Expr, arms: &[Arm], d: Demand, returning: bool) {
-        // A `?.` chain only borrows its receiver, even at its last use: a change through the
-        // chain (`c?.bump()`) lands in the receiver.
-        self.keep_scrutinee = arms.first().is_some_and(|a| a.chain);
         let source = self.scrutinee(scrutinee);
-        self.keep_scrutinee = false;
         self.release_pending();
         // The value is a reference when every arm yields one and nothing moving_params it: lowering
         // joins the arms without copying.
@@ -682,14 +672,12 @@ impl Walker<'_> {
             && self.class_of(e) != Class::Copy
             && self.arm_origins(arms).is_some();
         // Arms that do not all yield references produce an owned value, so a place among them
-        // is moved or must be cloned, even when the match itself is only read. An optional chain
-        // keeps its own rule for the part it reaches.
-        let arm_demand =
-            if !borrowed && !returning && d == Demand::Read && !arms.iter().any(|a| a.chain) {
-                Demand::Move
-            } else {
-                d
-            };
+        // is moved or must be cloned, even when the match itself is only read.
+        let arm_demand = if !borrowed && !returning && d == Demand::Read {
+            Demand::Move
+        } else {
+            d
+        };
         let borrowed_before = self.borrowed_return;
         let view_before = self.view_return;
         let entry = self.active.clone();
@@ -707,12 +695,6 @@ impl Walker<'_> {
                     }
                 }
                 self.payload(b, &source, Role::Arm, arm.pos);
-                if arm.chain
-                    && !source.owned
-                    && let Some((info, _)) = self.place(scrutinee)
-                {
-                    self.chain_places.insert(b.uid, info);
-                }
             }
             self.block(&arm.body);
             // `block` ended its own declarations; the arm bindings end here.

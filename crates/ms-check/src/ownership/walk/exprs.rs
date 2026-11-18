@@ -758,18 +758,11 @@ impl Walker<'_> {
                 ),
             );
         } else if d == Demand::Move && class != Class::Copy {
-            let message = if self.syms.str(info.root.name).starts_with('?') {
-                // The payload of an optional chain `a?.b`, which has no written name.
-                format!(
-                    "an optional chain `?.` cannot move a field out of the optional; take a clone by ending the access with `.{CLONE}()`"
-                )
-            } else {
-                format!(
-                    "cannot move `{0}` out of `{1}`: only a whole variable can move; this position keeps its own copy, so write `{0}.{CLONE}()`; to avoid the copy, use `{0}` only where it is read",
-                    info.text,
-                    self.syms.str(info.root.name)
-                )
-            };
+            let message = format!(
+                "cannot move `{0}` out of `{1}`: only a whole variable can move; this position keeps its own copy, so write `{0}.{CLONE}()`; to avoid the copy, use `{0}` only where it is read",
+                info.text,
+                self.syms.str(info.root.name)
+            );
             // A member's position is its name, so the copy goes right after it.
             self.error(e.pos, message);
         }

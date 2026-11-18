@@ -1172,7 +1172,7 @@ impl Visitor for UseWalker<'_> {
                         .info_of(scrutinee)
                         .and_then(|info| info.ty)
                         .is_some_and(|ty| ty.is(ms_check::api::types::Builtin::Optional));
-                if !optional_binding && !arm.chain && !arm.from_if {
+                if !optional_binding && !arm.from_if {
                     self.match_case(syms, scrutinee, &arm.path);
                 }
                 visit_arm_path(syms, self, &arm.path);

@@ -997,6 +997,10 @@ impl Walker<'_> {
                 value: Some(_),
                 ..
             } => self.borrowed_call_root(left),
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                operand,
+            } if self.cx.m.ty(operand).is(Builtin::Optional) => self.borrowed_call_root(operand),
             _ => None,
         }
     }
@@ -1013,6 +1017,10 @@ impl Walker<'_> {
                 value: Some(_),
                 ..
             } => self.constant_root(left),
+            ExprKind::Unary {
+                op: UnaryOp::Try,
+                operand,
+            } if self.cx.m.ty(operand).is(Builtin::Optional) => self.constant_root(operand),
             _ => None,
         }
     }

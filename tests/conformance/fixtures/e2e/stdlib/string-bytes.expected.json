@@ -24,7 +24,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 26,
@@ -35,7 +35,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 88,
@@ -46,7 +46,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 89,
@@ -57,7 +57,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 90,
@@ -134,7 +134,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 98,
@@ -145,7 +145,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 167,
@@ -156,7 +156,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 168,
@@ -167,7 +167,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 169,
@@ -178,7 +178,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 170,
@@ -189,7 +189,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 171,
@@ -222,7 +222,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 207,
@@ -233,7 +233,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "'?' requires a Result, found String; apply '?' only to a call returning Result[T, E]",
+          "message": "'?' requires a Result or an Optional, found String; apply '?' to a value of type Result[T, E] or T?",
           "position": {
             "file": "string-bytes.ms",
             "line": 213,
