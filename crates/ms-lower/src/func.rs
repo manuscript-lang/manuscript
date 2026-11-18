@@ -197,8 +197,6 @@ pub(crate) struct FnLower<'a> {
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
-    /// This instance is the borrowed instance of a function that keeps a parameter.
-    pub adapter: bool,
     /// The scrutinee `hold` just evaluated is a declared read (see `boundary_reads`).
     pub hold_declared: bool,
     /// Values whose copy on storing is declared: the payload an `Optional`/`Result` read (`get()`,
@@ -278,8 +276,7 @@ impl Cx {
     /// The parameters a call hands over owned: those the body keeps (moves, stores or returns),
     /// for a function or method whose parameters all pass by value; a method's mask starts with
     /// its receiver. Direct calls, function values and interface entries use that instance, since
-    /// their types pass those parameters owned; only the compiler's own lending callers use the
-    /// borrowed instance.
+    /// their types pass those parameters owned. Every other callable borrows.
     pub(crate) fn owned_mask(&mut self, c: &Callable) -> Option<Vec<bool>> {
         self.ensure_ownership(c);
         if !matches!(c.kind, CallableKind::Function | CallableKind::Method) {
@@ -292,31 +289,6 @@ impl Cx {
         let key = (c.module.file, c.id());
         let mask = self.ownership.moving_params.get(&key)?;
         (mask.len() == c.parameters.len() + c.self_binding.iter().count()).then(|| mask.clone())
-    }
-
-    /// The instance of `c` that takes the parameters `owned_mask` names owned.
-    pub(crate) fn function_owned(
-        &mut self,
-        m: &mut Module,
-        c: &Rc<Callable>,
-        subst: &Subst,
-        scope: ct::Name,
-    ) -> Result<FuncId, Error> {
-        self.function_in_as(m, c, subst, scope, true)
-    }
-
-    /// The instance a function value's thunk or an interface table entry forwards to: the one
-    /// that takes the parameters its body keeps, which the function or operation type passes
-    /// owned (the checker rejects a type that lends one of them).
-    pub(crate) fn forwarded(
-        &mut self,
-        m: &mut Module,
-        c: &Rc<Callable>,
-        subst: &Subst,
-        scope: ct::Name,
-    ) -> Result<FuncId, Error> {
-        let owned = self.owned_mask(c).is_some();
-        self.function_in_as(m, c, subst, scope, owned)
     }
 
     /// The checked result type of a callable (generic-open).
@@ -369,25 +341,6 @@ impl Cx {
         self.function_variant(m, c, subst, Variant::default())
     }
 
-    /// The instance of `c` for a generated caller that hands over what the body keeps.
-    pub(crate) fn function_owned_for(
-        &mut self,
-        m: &mut Module,
-        c: &Rc<Callable>,
-        subst: &Subst,
-    ) -> Result<FuncId, Error> {
-        let owned = self.owned_mask(c).is_some();
-        self.function_variant(
-            m,
-            c,
-            subst,
-            Variant {
-                owned,
-                ..Variant::default()
-            },
-        )
-    }
-
     /// Reserves (and queues) the instance of `c` under `subst` and `variant`.
     pub(crate) fn function_variant(
         &mut self,
@@ -404,7 +357,7 @@ impl Cx {
         let mut params = Vec::new();
         let bindings: Vec<&BindingRef> = c.self_binding.iter().chain(c.parameters.iter()).collect();
         let vars = self.var_positions(c);
-        let owned_mask = variant.owned.then(|| self.owned_mask(c)).flatten();
+        let owned_mask = self.owned_mask(c);
         let takes_function = bindings.iter().any(|b| b.ty.kind == ct::Kind::Function);
         for (i, b) in bindings.into_iter().enumerate() {
             let t = ct::sub(&b.ty, subst);
@@ -550,7 +503,7 @@ pub(crate) fn lower_tests(
             .cloned()
             .ok_or_else(|| Error::new("the bench driver @std/test/bench.ms is not loaded"))?;
         // The driver hands over the closure it makes when the body keeps it.
-        let driver = cx.function_owned_for(&mut m, &driver, &Subst::default())?;
+        let driver = cx.function_for(&mut m, &driver, &Subst::default())?;
         let per: Vec<i64> = tests
             .iter()
             .map(|(_, c)| match &c.func.decl.decl().kind {
@@ -612,7 +565,7 @@ pub(crate) fn lower_tests(
         let mut subst = Subst::default();
         subst.insert(variable.id, fixture.ty.clone());
         // The runner hands over the closures it makes for a parameter the harness keeps.
-        let harness = cx.function_owned_for(&mut m, &generic, &subst)?;
+        let harness = cx.function_for(&mut m, &generic, &subst)?;
         let factory = fixture
             .factory
             .decl
@@ -849,7 +802,6 @@ impl<'a> FnLower<'a> {
             scalar_locals: HashMap::default(),
             entry_locals: HashMap::default(),
             in_thunk: false,
-            adapter: false,
             hold_declared: false,
             boundary_reads: Default::default(),
             elem_origin: Default::default(),
@@ -939,8 +891,7 @@ impl<'a> FnLower<'a> {
         if x.own || !self.needs_drop(self.ty_of(x.v)) {
             return x.v;
         }
-        if !self.adapter
-            && !self.boundary_reads.contains(&x.v)
+        if !self.boundary_reads.contains(&x.v)
             // A `trim` view kept as a value is the allocation `trim` would have made.
             && !self.views.contains(&x.v)
             && !matches!(
@@ -2092,7 +2043,7 @@ impl<'a> FnLower<'a> {
             .cloned()
             .collect();
         let vars = self.cx.var_positions(c);
-        let owned_mask = self.variant.owned.then(|| self.cx.owned_mask(c)).flatten();
+        let owned_mask = self.cx.owned_mask(c);
         if let ms_check::api::hir::Body::Block(stmts) = c.body() {
             self.slotted = crate::closure::slotted_in(self.syms, self, stmts);
             self.closing_fn = crate::closure::closes_resources(
@@ -2113,10 +2064,6 @@ impl<'a> FnLower<'a> {
             ),
             ms_check::api::hir::Body::Expr(_) => Default::default(),
         };
-        // The borrowed instance of a function that keeps a parameter serves the compiler's own
-        // lending callers (formatting, JSON and arithmetic hooks): its copies are that
-        // adaptation, not hidden ones. Function values and interfaces use the owned instance.
-        self.adapter = !self.variant.owned && self.cx.owned_mask(c).is_some();
         // A `var` parameter is the address of the caller's slot, not the value, so it has no name here.
         let names = bindings
             .iter()

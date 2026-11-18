@@ -165,7 +165,7 @@ impl Cx {
                 }
                 writes_back = vars.contains(&0);
                 changed = vars;
-                self.forwarded(m, &c, &subst, scope)?
+                self.function_in(m, &c, &subst, scope)?
             };
             let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
             b.func_mut().kind = FuncKind::Method;

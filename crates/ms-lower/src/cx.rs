@@ -15,8 +15,6 @@ use std::rc::Rc;
 /// What an instance is requested with besides its type variables.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Variant {
-    /// The instance takes the parameters its body moving_params owned.
-    pub owned: bool,
     /// The module whose local implementations the instance's type variables use.
     pub evidence: Option<ms_check::api::types::Name>,
 }
