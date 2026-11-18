@@ -18,3 +18,5 @@ Update (2026-11-18, same revision): c14-dp-suite is not a gap. The workloads tab
 ## `List.slice` of owning elements stays a copy (2026-11-18)
 
 The checker lends a `slice` only when the elements are `Int`, `Float` or `Bool` (`native_borrow.rs`): a by-value `for` over a view drops each element, which would free what the receiver still holds. Widening the lowering alone to `List[String]` (cap 0 view) is not enough for that reason. A safe version needs an alias-cell twin like `map.keys()` (new cell array, non-owning strings). On c09, `msrt_list_slice` is 2.5% of instructions (3.7% inclusive) and most pieces are inline strings, so the saving is at most a couple of percent. Not built; revisit only if a workload shows long strings in sliced lists.
+
+Resolved (2026-11-18): Chinmay chose integer cells over a character type, so the c16 reference holds `List[List[Int]]` (`scalar_values()`). Instructions 345.7M to 108.0M, CPU 81 to 31 ms, against 40 ms for Rust. When a reference holds one-character strings in a hot grid, use scalar values; the type was the whole gap.

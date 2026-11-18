@@ -171,3 +171,15 @@ Revision `3b2ef968`, Release LLVM build, min of 5, shared 4 vCPU Xeon @ 2.10GHz,
 | c44-unified-diff | 15.4 | 100.4 | 15.2 | 0.15x | 1.02x |
 
 Against the 2026-11-12 table: c03 2.62x to 1.75x, c14 1.63x to 1.15x, c36 1.79x to 1.18x, c44 1.31x to 1.02x. Remaining gaps against Rust: c16 (grid held as `List[List[String]]`), c13 (map call counts), c03, c09.
+
+## 2026-11-18, c16 reference holds the grid as `List[Int]` rows
+
+Chinmay approved the change (Manuscript has no character type). `c16-maze-bfs/solutions/ms/main.ms.ref` now keeps scalar values (`line.scalar_values()`; `#` 35, `.` 46, `S` 83, `E` 69) instead of one-character strings. Output is identical on both generated inputs. Shared 4 vCPU VM, release build, same input as the rows above, CPU time (user+sys), median of 9 alternating runs; instructions from callgrind.
+
+| Reference | CPU ms (median) | Instructions |
+| --- | --- | --- |
+| Manuscript, `List[List[String]]` cells | 81 | 345.7M |
+| Manuscript, `List[List[Int]]` cells | 31 | 108.0M |
+| Rust | 40 | n/a |
+
+The Manuscript reference is now level with or slightly ahead of the Rust one, whose rows are `Vec<char>`. The earlier c16 gap was the 16-byte `String` cell, not code generation.
