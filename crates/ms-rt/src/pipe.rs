@@ -1,23 +1,13 @@
 //! `Pipe[T]`: an in-memory stream of whole values, any number of writers and one reader.
 //!
-//! A pipe is one of the few objects two threads touch at once, so it synchronizes itself, and the
-//! common pipe, a link from one writer to one reader, takes no lock at all. Each pipe has its own
-//! cache-line-aligned cell, found by index without a lock, with two lanes for values:
-//!
-//! * the first lane is a single-producer, single-consumer queue of segments: while the pipe has
-//!   had only its first writer, a write is one store and a read is one load;
-//! * the second lane is a queue under the cell's lock, used once the pipe has had a second
-//!   writer (`add_writer`): writers hand values over under the lock, and the reader takes a batch
-//!   per lock acquisition into a queue only it touches.
-//!
-//! The reader drains the first lane before the second, so each writer's values arrive in the
-//! order it wrote them (the first writer's earlier values sit in the first lane, its later ones in
-//! the second). Values of different writers have no order between them beyond that. A reader that
-//! finds both lanes empty and a flush that must wait publish themselves, then look once more
-//! (a store, a fence, a load on each side), so a value or a wake is never lost. A value is
-//! written as a block of the process heap and read by pointer, never copied deeper; a reader or
-//! a flush is a promise in the table of the thread that made it, completed by event from
-//! whichever thread wrote or read.
+//! A pipe is one of the few objects two threads touch at once, so it synchronizes itself. Each pipe
+//! has its own cache-line-aligned cell, found by index without a lock. Writers hand values over
+//! under the cell's lock; the reader takes a batch per lock acquisition into a queue only it
+//! touches. Each writer's values arrive in the order it wrote them; values of different writers have
+//! no order between them. A reader or a flush that must wait publishes itself under the lock, so a
+//! value or a wake is never lost. A value is written as a block of the process heap and read by
+//! pointer, never copied deeper; a reader or a flush is a promise in the table of the thread that
+//! made it, completed by event from whichever thread wrote or read.
 //!
 //! * `write` never waits: it moves the value into the queue, or straight to a waiting reader.
 //! * `read` answers a promise: ready now if a value is queued, `none` (no value) once every writer
@@ -31,7 +21,6 @@
 use crate::desc::slot_drop;
 use crate::{alloc, promise};
 use core::cell::UnsafeCell;
-use core::mem::MaybeUninit;
 use core::ptr::null_mut;
 use ms_rt_abi::TypeDesc;
 use std::collections::VecDeque;
@@ -152,40 +141,20 @@ impl<T> Drop for SpinGuard<'_, T> {
     }
 }
 
-/// The most values the reader takes from the locked lane per lock acquisition (never more than
+/// The most values the reader takes from the shared queue per lock acquisition (never more than
 /// the pipe's capacity, so a reader's own queue is bounded by it as the shared one is).
 const BATCH: usize = 256;
-
-/// Values per segment of the first lane.
-const SEG: usize = 64;
 
 /// Cells per chunk, and chunks in the table: a pipe lives in a cell that never moves, so a cell is
 /// found from its id by two loads. The table holds up to 16M pipes at once.
 const CHUNK: usize = 256;
 const CHUNKS: usize = 1 << 16;
 
-/// A run of `SEG` values of the first lane, linked to the next.
-struct Seg {
-    slots: [UnsafeCell<MaybeUninit<Item>>; SEG],
-    next: AtomicPtr<Seg>,
-}
-
-impl Seg {
-    fn new() -> *mut Seg {
-        Box::into_raw(Box::new(Seg {
-            slots: [const { UnsafeCell::new(MaybeUninit::uninit()) }; SEG],
-            next: AtomicPtr::new(null_mut()),
-        }))
-    }
-}
-
 /// What the pipe's flags say, read by every writer and written rarely, on a line of their own.
 #[repr(align(128))]
 struct Shared {
     /// The generation of the live pipe in this cell, 0 when none.
     live_generation: AtomicU32,
-    /// Set for good by the first `add_writer`: later writes use the locked lane.
-    multi: AtomicBool,
     reader_open: AtomicBool,
     capacity: AtomicUsize,
     /// The id of the read promise waiting for a value, 0 when none. Whoever swaps it to 0 owns the
@@ -193,49 +162,29 @@ struct Shared {
     waiting: AtomicI64,
     /// Whether some flush promise waits for the queue to fall to its capacity.
     flush_pending: AtomicBool,
-    /// Values in the locked lane, for the writers of the first lane to count.
+    /// Values in the shared queue.
     queue_len: AtomicUsize,
 }
 
-/// The first lane's writer half.
-#[repr(align(128))]
-struct Producer {
-    produced: AtomicUsize,
-    /// The first segment, published once for the consumer.
-    first: AtomicPtr<Seg>,
-    tail: UnsafeCell<*mut Seg>,
-    /// The last `consumed` the writer saw, so a write reads the reader's line only when the
-    /// queue might be over capacity.
-    seen_consumed: UnsafeCell<usize>,
-}
-
-/// The first lane's reader half, and the reader's own queues.
-#[repr(align(128))]
+/// The reader's own queues, touched by the reader only (or, while the reader is parked and has been
+/// claimed, by the writer that finishes its read).
 struct Consumer {
-    consumed: AtomicUsize,
-    /// The last `produced` the reader saw, so a read reads the writer's line only when it has
-    /// caught up with it.
-    seen_produced: UnsafeCell<usize>,
-    head: UnsafeCell<*mut Seg>,
     /// Values handed back by a dropped read: they come out first.
     front: UnsafeCell<VecDeque<Item>>,
-    /// Values taken from the locked lane ahead of reading them.
+    /// Values taken from the shared queue ahead of reading them.
     local: UnsafeCell<VecDeque<Item>>,
 }
 
 /// One pipe, its parts on cache lines of their own so a writer never invalidates a line the
-/// reader works on, and two busy pipes never share a line. `producer` is touched by the first
-/// writer only, `consumer` by the reader only (or, while the reader is parked and has been claimed,
-/// by the writer that finishes its read).
+/// reader works on, and two busy pipes never share a line.
 #[repr(align(128))]
 struct Cell {
     pipe: Spin<Pipe>,
     shared: Shared,
-    producer: Producer,
     consumer: Consumer,
 }
 
-// SAFETY: `pipe` is a lock, `shared` is atomic, and the other two halves each have one user at a time.
+// SAFETY: `pipe` is a lock, `shared` is atomic, and the reader's queues have one user at a time.
 unsafe impl Sync for Cell {}
 
 impl Cell {
@@ -253,116 +202,22 @@ impl Cell {
             }),
             shared: Shared {
                 live_generation: AtomicU32::new(0),
-                multi: AtomicBool::new(false),
                 reader_open: AtomicBool::new(false),
                 capacity: AtomicUsize::new(0),
                 waiting: AtomicI64::new(0),
                 flush_pending: AtomicBool::new(false),
                 queue_len: AtomicUsize::new(0),
             },
-            producer: Producer {
-                produced: AtomicUsize::new(0),
-                first: AtomicPtr::new(null_mut()),
-                tail: UnsafeCell::new(null_mut()),
-                seen_consumed: UnsafeCell::new(0),
-            },
             consumer: Consumer {
-                consumed: AtomicUsize::new(0),
-                seen_produced: UnsafeCell::new(0),
-                head: UnsafeCell::new(null_mut()),
                 front: UnsafeCell::new(VecDeque::new()),
                 local: UnsafeCell::new(VecDeque::new()),
             },
         }
     }
 
-    /// Appends to the first lane.
-    ///
-    /// # Safety
-    /// Only the first writer may call this.
-    unsafe fn lane_push(&self, item: Item) {
-        let n = self.producer.produced.load(Ordering::Relaxed);
-        // SAFETY: the producer owns `tail`.
-        let tail = unsafe { &mut *self.producer.tail.get() };
-        if n.is_multiple_of(SEG) {
-            let seg = Seg::new();
-            if n == 0 {
-                self.producer.first.store(seg, Ordering::Release);
-            } else {
-                // SAFETY: `tail` is the segment this producer filled last.
-                unsafe { (**tail).next.store(seg, Ordering::Release) };
-            }
-            *tail = seg;
-        }
-        // SAFETY: the slot is past `produced`, so the consumer does not read it yet.
-        unsafe { (**tail).slots[n % SEG].get().write(MaybeUninit::new(item)) };
-        self.producer.produced.store(n + 1, Ordering::Release);
-    }
-
-    /// Takes the oldest value of the first lane.
-    ///
-    /// # Safety
-    /// Only the reader (or the writer finishing a claimed read) may call this.
-    unsafe fn lane_pop(&self) -> Option<Item> {
-        let c = self.consumer.consumed.load(Ordering::Relaxed);
-        // SAFETY: the consumer owns `seen_produced`.
-        let seen = unsafe { &mut *self.consumer.seen_produced.get() };
-        if c == *seen {
-            *seen = self.producer.produced.load(Ordering::Acquire);
-            if c == *seen {
-                return None;
-            }
-        }
-        // SAFETY: the consumer owns `head`.
-        let head = unsafe { &mut *self.consumer.head.get() };
-        if c.is_multiple_of(SEG) {
-            *head = if c == 0 {
-                self.producer.first.load(Ordering::Acquire)
-            } else {
-                let old = *head;
-                // SAFETY: `old` is fully read, and the producer linked its successor before it
-                // published the value at `c`.
-                unsafe {
-                    let next = (*old).next.load(Ordering::Acquire);
-                    drop(Box::from_raw(old));
-                    next
-                }
-            };
-        }
-        // SAFETY: the producer published this slot before `produced` passed it.
-        let item = unsafe { (**head).slots[c % SEG].get().read().assume_init() };
-        self.consumer.consumed.store(c + 1, Ordering::Release);
-        Some(item)
-    }
-
-    /// Whether the queues hold more than the capacity, after the sole writer's push. It reads the
-    /// reader's progress only when the values written since the last look exceed the capacity.
-    ///
-    /// # Safety
-    /// Only the first writer may call this.
-    unsafe fn lane_over(&self) -> bool {
-        let cap = self.shared.capacity.load(Ordering::Relaxed);
-        let produced = self.producer.produced.load(Ordering::Relaxed);
-        // SAFETY: forwarded contract.
-        let seen = unsafe { &mut *self.producer.seen_consumed.get() };
-        if produced - *seen + self.shared.queue_len.load(Ordering::Relaxed) <= cap {
-            return false;
-        }
-        *seen = self.consumer.consumed.load(Ordering::Acquire);
-        produced - *seen + self.shared.queue_len.load(Ordering::Relaxed) > cap
-    }
-
-    fn lane_len(&self) -> usize {
-        let consumed = self.consumer.consumed.load(Ordering::Acquire);
-        self.producer
-            .produced
-            .load(Ordering::Acquire)
-            .saturating_sub(consumed)
-    }
-
-    /// Values queued and not yet read: both lanes (not the reader's own queues).
+    /// Values queued and not yet read (not the reader's own queues).
     fn backlog(&self) -> usize {
-        self.lane_len() + self.shared.queue_len.load(Ordering::Relaxed)
+        self.shared.queue_len.load(Ordering::Relaxed)
     }
 
     /// The reader's queue of handed-back values.
@@ -375,7 +230,7 @@ impl Cell {
         unsafe { &mut *self.consumer.front.get() }
     }
 
-    /// The reader's queue of values taken from the locked lane.
+    /// The reader's queue of values taken from the shared queue.
     ///
     /// # Safety
     /// As for `front`.
@@ -385,8 +240,8 @@ impl Cell {
         unsafe { &mut *self.consumer.local.get() }
     }
 
-    /// The value the reader can take without the lock: a handed-back one, then the first lane,
-    /// then the batch taken from the locked lane.
+    /// The value the reader can take without the lock: a handed-back one, then the batch taken
+    /// from the shared queue.
     ///
     /// # Safety
     /// As for `front`.
@@ -396,14 +251,11 @@ impl Cell {
             if let Some(item) = self.front().pop_front() {
                 return Some(item);
             }
-            if let Some(item) = self.lane_pop() {
-                return Some(item);
-            }
             self.local().pop_front()
         }
     }
 
-    /// Frees every value still queued and both lanes' segments, and resets them for the next pipe.
+    /// Frees every value still queued, for the next pipe.
     ///
     /// # Safety
     /// No writer or reader is left (every writer closed, the reader closed).
@@ -413,20 +265,6 @@ impl Cell {
             while let Some(item) = self.take_ready() {
                 free_block(&item);
             }
-            let head = *self.consumer.head.get();
-            if !head.is_null() {
-                drop(Box::from_raw(head));
-            }
-            *self.consumer.head.get() = null_mut();
-            *self.producer.tail.get() = null_mut();
-        }
-        self.producer.first.store(null_mut(), Ordering::Relaxed);
-        self.producer.produced.store(0, Ordering::Relaxed);
-        self.consumer.consumed.store(0, Ordering::Relaxed);
-        // SAFETY: no writer or reader is left.
-        unsafe {
-            *self.producer.seen_consumed.get() = 0;
-            *self.consumer.seen_produced.get() = 0;
         }
         self.shared.queue_len.store(0, Ordering::Relaxed);
     }
@@ -506,7 +344,7 @@ fn retire(cell: &Cell, p: &mut Pipe) {
     }
 }
 
-/// The next value for the reader from the locked lane, with a batch behind it moved into the
+/// The next value for the reader from the shared queue, with a batch behind it moved into the
 /// reader's own queue, so the following reads need no lock.
 fn take_batch(cell: &Cell, p: &mut Pipe) -> Option<Item> {
     let item = p.queue.pop_front()?;
@@ -578,7 +416,6 @@ pub extern "C-unwind" fn msrt_pipe_new(capacity: i64) -> i64 {
     p.reader_open = true;
     p.flushes.clear();
     cell.shared.capacity.store(p.capacity, Ordering::Relaxed);
-    cell.shared.multi.store(false, Ordering::Relaxed);
     cell.shared.reader_open.store(true, Ordering::Relaxed);
     cell.shared.waiting.store(0, Ordering::Relaxed);
     cell.shared.flush_pending.store(false, Ordering::Relaxed);
@@ -588,13 +425,11 @@ pub extern "C-unwind" fn msrt_pipe_new(capacity: i64) -> i64 {
     (i64::from(p.generation) << 32) | (index as i64 + 1)
 }
 
-/// Another writing end, like `dup` on a descriptor. From now on every write goes to the locked
-/// lane, the first lane only draining.
+/// Another writing end, like `dup` on a descriptor.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_pipe_add_writer(pipe: i64) {
-    if let Some((cell, mut p)) = locked(pipe) {
+    if let Some((_, mut p)) = locked(pipe) {
         p.writers += 1;
-        cell.shared.multi.store(true, Ordering::Release);
     }
 }
 
@@ -621,32 +456,6 @@ pub unsafe extern "C-unwind" fn msrt_pipe_write(
         ptr,
         desc: d as usize,
     };
-    let Some(cell) = cell_for(pipe) else {
-        free_block(&item);
-        return CLOSED;
-    };
-    if !cell.shared.multi.load(Ordering::Acquire) {
-        // The only writer: the first lane, with no lock.
-        if !cell.shared.reader_open.load(Ordering::Acquire) {
-            free_block(&item);
-            return CLOSED;
-        }
-        // SAFETY: while the pipe has had one writer, this is it.
-        unsafe { cell.lane_push(item) };
-        fence(Ordering::SeqCst);
-        if let Some(reader) = cell.claim_reader() {
-            // The reader is parked and claimed: finish its read with the oldest value.
-            // SAFETY: the claim makes this the only user of the reader's side.
-            let first =
-                unsafe { cell.lane_pop() }.expect("a claimed reader finds the value just written");
-            promise::io_done_block(reader, first.ptr, first.desc, pipe);
-            return WRITTEN;
-        }
-        // SAFETY: the sole writer owns `seen_consumed`.
-        let over = unsafe { cell.lane_over() };
-        let _ = cancellation_point();
-        return if over { FULL } else { WRITTEN };
-    }
     let reader = match locked(pipe) {
         Some((cell, mut p)) if p.reader_open => {
             p.queue.push_back(item);
@@ -708,7 +517,6 @@ pub extern "C-unwind" fn msrt_pipe_read(pipe: i64) -> i64 {
         Value(Item, Vec<i64>),
         End,
         Wait,
-        Again,
     }
     loop {
         // SAFETY: this is the reader.
@@ -730,32 +538,13 @@ pub extern "C-unwind" fn msrt_pipe_read(pipe: i64) -> i64 {
                 let released = take_flushes(cell, &mut p);
                 Next::Value(item, released)
             } else if p.writers == 0 {
-                // Every writer closed; what they wrote before closing is visible by now.
-                if cell.lane_len() == 0 {
-                    Next::End
-                } else {
-                    Next::Again
-                }
+                Next::End
             } else {
                 cell.shared.waiting.store(id, Ordering::SeqCst);
-                fence(Ordering::SeqCst);
-                if cell.lane_len() == 0 {
-                    Next::Wait
-                } else if cell
-                    .shared
-                    .waiting
-                    .compare_exchange(id, 0, Ordering::AcqRel, Ordering::Relaxed)
-                    .is_ok()
-                {
-                    Next::Again
-                } else {
-                    // A writer claimed this read first and will finish it.
-                    Next::Wait
-                }
+                Next::Wait
             }
         };
         match next {
-            Next::Again => {}
             Next::Value(item, released) => {
                 complete_flushes(released);
                 promise::io_done_block(id, item.ptr, item.desc, pipe);
@@ -828,7 +617,7 @@ pub extern "C-unwind" fn msrt_pipe_ended(pipe: i64) -> i64 {
     };
     // SAFETY: this is the reader.
     let held = unsafe { !cell.front().is_empty() || !cell.local().is_empty() };
-    (p.writers == 0 && p.queue.is_empty() && cell.lane_len() == 0 && !held) as i64
+    (p.writers == 0 && p.queue.is_empty() && !held) as i64
 }
 
 /// Starts a flush: answers a promise that finishes when no more than `capacity` values are queued
@@ -881,9 +670,9 @@ pub extern "C-unwind" fn msrt_pipe_close_writer(pipe: i64) {
             return;
         };
         p.writers = p.writers.saturating_sub(1);
-        // A parked reader means both lanes were empty when it parked, and a write since would
+        // A parked reader means the queue was empty when it parked, and a write since would
         // have claimed it, so it ends.
-        let reader = if p.writers == 0 && p.queue.is_empty() && cell.lane_len() == 0 {
+        let reader = if p.writers == 0 && p.queue.is_empty() {
             cell.claim_reader()
         } else {
             None
@@ -1140,7 +929,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
-    fn a_sole_writer_on_another_thread_keeps_order_without_a_lock() {
+    fn a_sole_writer_on_another_thread_keeps_order() {
         let _g = lock();
         sched::msrt_runtime_set_threads(4);
         let pipe = msrt_pipe_new(64);
