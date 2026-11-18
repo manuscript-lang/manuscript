@@ -54,10 +54,10 @@ fn definition_on_an_import_path_opens_the_module() {
     std::fs::create_dir(ws.path("imp")).unwrap();
     std::fs::write(
         ws.path("imp/util.ms"),
-        "export fn twice(x: Int) Int:\n\treturn x * 2\n",
+        include_str!("interface_rename/util.ms"),
     )
     .unwrap();
-    let main = "import twice from \"./util.ms\"\n\nfn main() Void:\n\tprint(twice(2))\n";
+    let main = include_str!("interface_rename/importer.ms");
     std::fs::write(ws.path("imp/main.ms"), main).unwrap();
     let d = Document::new(ws.uri("imp/main.ms"), main);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
