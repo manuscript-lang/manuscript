@@ -924,6 +924,12 @@ impl Checker {
             }
             return format!("{message}; available: {}", list(&available, 40));
         }
+        if receiver.kind == Kind::Variable {
+            return format!(
+                "{message}; {receiver_t} has no bound, so it has no operations: bound it where it is declared, as in `fn f[{receiver_t}: Contract]` for a function or `fn var Repository[{receiver_t}: Contract].add` for a method of a generic type",
+                receiver_t = receiver.display(self.syms)
+            );
+        }
         format!("{message}; this type has no fields or operations")
     }
 
