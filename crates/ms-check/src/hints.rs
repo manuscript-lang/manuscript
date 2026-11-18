@@ -315,7 +315,8 @@ pub fn signature_text(syms: ms_syntax::Names, t: &Ty) -> String {
         .iter()
         .map(|p| {
             format!(
-                "{}{}: {}",
+                "{}{}{}: {}",
+                if p.moving { "move " } else { "" },
                 if p.mutable { "var " } else { "" },
                 syms.str(p.name),
                 p.ty.display(syms)
@@ -394,7 +395,7 @@ pub fn ok_wrap_hint(actual: &Ty, expected: &Ty) -> String {
     {
         return String::new();
     }
-    "wrap the value in ok(...), e.g. return ok(value)".to_string()
+    "wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?".to_string()
 }
 
 /// A no-argument operation named without parentheses.
@@ -789,6 +790,18 @@ impl Checker {
         );
         if let Some(reason) = self.unmet_member_bound(receiver, name) {
             return format!("{message}; {reason}");
+        }
+        let is_function = self
+            .names
+            .borrow()
+            .iter()
+            .any(|(n, symbol)| *n == name && symbol.kind == SymKind::Fn);
+        if is_function {
+            return format!(
+                "{message}; {name_t} is a function here, not a method of {receiver_t}: call it as {name_t}(value) with the value as an argument, or declare it as a method with `fn {receiver_t}.{name_t}()`",
+                name_t = self.syms.str(name),
+                receiver_t = receiver.display(self.syms)
+            );
         }
         let available = self.member_names(receiver);
         if receiver.kind != Kind::Type {

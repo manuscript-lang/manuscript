@@ -16,7 +16,7 @@ fn apply[T](xs: List[T], f: fn(T) List[T]) Int:
     return n
 
 fn outer[T](xs: List[T]) Int:
-    return apply(xs, keep[T])  // error: so it clones values of `T`, which may be a resource; declare `T: Clonable`
+    return apply(xs, keep[T])  // error: this function type lends its arguments
 
 fn g() Int:
     return outer([Door(1)])

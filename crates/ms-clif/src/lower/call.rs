@@ -233,7 +233,14 @@ impl<'a, 'm> Lower<'a, 'm> {
         } else {
             let leaves = self.g.lay.leaves(ret_ty);
             let lay = mem_layout(&leaves);
-            let slot = self.temp_slot(lay.size);
+            // A result a `put` moves into a variable may keep this memory as the variable's:
+            // that slot is the variable's for the whole function, so it is not shared.
+            let adopted = inst.res.is_some_and(|r| self.adopted[r.index()]);
+            let slot = if adopted {
+                self.new_slot(lay.size)
+            } else {
+                self.temp_slot(lay.size)
+            };
             let out = self.b.ins().stack_addr(types::I64, slot, 0);
             args.push(out);
             self.call_id(id, &args);

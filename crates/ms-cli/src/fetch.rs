@@ -318,11 +318,33 @@ fn git(directory: Option<&Path>, protocols: &str, args: &[&str]) -> Result<Strin
     if !output.status.success() {
         return Err(format!(
             "git {} failed: {}",
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr).trim()
+            redact_credentials(&args.join(" ")),
+            redact_credentials(String::from_utf8_lossy(&output.stderr).trim())
         ));
     }
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// `text` without the `user:password@` of any URL in it, so a token in a dependency URL is not
+/// echoed into terminal logs and CI output by an error message.
+fn redact_credentials(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("://") {
+        let (head, tail) = rest.split_at(at + 3);
+        out.push_str(head);
+        let end = tail
+            .find(|c: char| c.is_whitespace() || c == '/' || c == '\'' || c == '"')
+            .unwrap_or(tail.len());
+        let authority = &tail[..end];
+        match authority.rfind('@') {
+            Some(i) => out.push_str(&authority[i + 1..]),
+            None => out.push_str(authority),
+        }
+        rest = &tail[end..];
+    }
+    out.push_str(rest);
+    out
 }
 
 fn is_commit(text: &str) -> bool {
@@ -426,6 +448,7 @@ fn download_into(
         protocols,
         &["checkout", "--quiet", "--force", &commit, "--"],
     )?;
+    reject_symlinks(key, temporary, protocols)?;
     remove_all(&temporary.join(".git"))?;
     let index = index_tree(temporary).map_err(|e| format!("package {key}: {e}"))?;
     let hash = hash_index(&index);
@@ -454,6 +477,23 @@ fn download_into(
         revision: commit,
         sha256: hash,
     })
+}
+
+/// A symbolic link is rejected from git's own record of the checkout. Where links are not
+/// created (Windows without `core.symlinks`) git writes them as small text files, which a scan of
+/// the directory would hash as regular files and so pin a different hash than Linux and macOS.
+fn reject_symlinks(key: &str, directory: &Path, protocols: &str) -> Result<(), String> {
+    let listing = git(Some(directory), protocols, &["ls-files", "-z", "--stage"])?;
+    let link = listing
+        .split('\0')
+        .filter_map(|entry| entry.split_once('\t'))
+        .find(|(meta, _)| meta.starts_with("120000 "));
+    match link {
+        Some((_, path)) => Err(format!(
+            "package {key}: package contains the symbolic link {path}; a package holds regular files only"
+        )),
+        None => Ok(()),
+    }
 }
 
 /// A package is a library with a manifest, no entry, no embedded files and no top-level `@`
@@ -574,3 +614,22 @@ The cached copy stays in the package cache.
 Options:
   -h, --help  Show this help
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::redact_credentials;
+
+    #[test]
+    fn credentials_in_urls_are_not_echoed() {
+        assert_eq!(
+            redact_credentials(
+                "ls-remote -- https://user:secret@host:1/x.git failed: unable to access 'https://tok@host/x.git/'"
+            ),
+            "ls-remote -- https://host:1/x.git failed: unable to access 'https://host/x.git/'"
+        );
+        assert_eq!(
+            redact_credentials("file:///tmp/x#v1 plain"),
+            "file:///tmp/x#v1 plain"
+        );
+    }
+}

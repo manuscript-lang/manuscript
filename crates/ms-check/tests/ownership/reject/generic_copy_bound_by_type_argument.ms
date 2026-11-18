@@ -17,7 +17,7 @@ fn Bin[T].put(d: T) Int:
     return xs.length()
 
 fn wrap[T]() Sink[T]:
-    return Bin[T](0)  // error: so it clones values of `T`, which may be a resource; declare `T: Clonable`
+    return Bin[T](0)  // error: keeps its `d`, which the interface borrows
 
 fn f() Int:
     s := wrap[Door]()

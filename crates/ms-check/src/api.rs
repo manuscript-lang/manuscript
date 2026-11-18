@@ -54,8 +54,7 @@ pub mod effects {
 
 pub mod stdlib {
     pub use crate::stdlib::{
-        PRIMITIVE_NAMES, SOURCES, STANDARD_PRELUDE_NAMES, is_bundled_source, keeps_callbacks,
-        module_stem,
+        PRIMITIVE_NAMES, SOURCES, STANDARD_PRELUDE_NAMES, is_bundled_source, module_stem,
     };
 }
 

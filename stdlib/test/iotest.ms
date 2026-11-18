@@ -80,7 +80,7 @@ type FailingSink:
 	remaining: Int
 	cause: Error
 
-fn var FailingSink.write(value: Bytes) Void!:
+fn var FailingSink.write(move value: Bytes) Void!:
 	size := value.length()
 
 	if size <= self.remaining:

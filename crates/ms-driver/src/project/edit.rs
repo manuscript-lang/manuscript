@@ -22,6 +22,16 @@ pub fn default_name(url: &str) -> Option<String> {
     valid_alias(&name).then_some(name)
 }
 
+/// `edited` with the line endings of `original`: toml_edit writes `\n` for what it adds and
+/// rewrites, so a CRLF manifest (a Windows checkout) would otherwise come back mixed or all LF.
+fn keep_line_endings(original: &str, edited: String) -> String {
+    if original.contains("\r\n") {
+        edited.replace("\r\n", "\n").replace('\n', "\r\n")
+    } else {
+        edited
+    }
+}
+
 fn edit(text: &str) -> Result<DocumentMut, String> {
     text.parse::<DocumentMut>()
         .map_err(|e| format!("ms.toml is not valid TOML: {}", e.message()))
@@ -52,7 +62,7 @@ pub fn add_dependency(text: &str, name: &str, url: &str, pin: &Pin<'_>) -> Resul
         Pin::Version(version) => entry.insert("version", (*version).into()),
     };
     dependencies.insert(name, value(entry));
-    Ok(document.to_string())
+    Ok(keep_line_endings(text, document.to_string()))
 }
 
 /// `text` allowing `name` the `effects` it declares, under `[effects]`.
@@ -68,7 +78,7 @@ pub fn allow_effects(text: &str, name: &str, effects: &[String]) -> Result<Strin
                 .collect::<toml_edit::Array>(),
         ),
     );
-    Ok(document.to_string())
+    Ok(keep_line_endings(text, document.to_string()))
 }
 
 /// `text` without `name` in `[dependencies]` and `[effects]`; an error when it was not a dependency.
@@ -97,7 +107,7 @@ pub fn remove_dependency(text: &str, name: &str) -> Result<String, String> {
     {
         document.remove("dependencies");
     }
-    Ok(document.to_string())
+    Ok(keep_line_endings(text, document.to_string()))
 }
 
 #[cfg(test)]
@@ -155,5 +165,16 @@ mod tests {
                 .unwrap_err()
                 .contains("not in [dependencies]")
         );
+    }
+
+    #[test]
+    fn a_crlf_manifest_stays_crlf() {
+        let crlf = BASE.replace('\n', "\r\n");
+        let added =
+            add_dependency(&crlf, "@pg", "https://h/x/ms-pg.git", &Pin::Tag("v1.0.0")).unwrap();
+        assert!(!added.replace("\r\n", "").contains('\n'), "{added:?}");
+        assert!(added.contains("# my app\r\n[project]\r\n"), "{added:?}");
+        let removed = remove_dependency(&added, "@pg").unwrap();
+        assert_eq!(removed.trim_end(), crlf.trim_end());
     }
 }

@@ -342,7 +342,7 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 	)
 
 	crlf := "\r\n".to_bytes()
-	sections := crlf.concat(body).split(f"\r\n--{boundary}".to_bytes(), none)
+	sections := crlf.concat(body).split(f"\r\n--{boundary}".to_bytes())
 	var parts = List[Part]()
 
 	for i in 1..sections.length():
@@ -366,7 +366,7 @@ type MultipartParts:
 	done: Bool
 	max_part_bytes: Int?
 
-fn var MultipartParts.step(value: Bytes, var out: List[Part]) Void!:
+fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 	if self.done: return ok()
 
 	self.buffer = self.buffer.concat(value)

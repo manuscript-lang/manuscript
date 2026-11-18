@@ -1,6 +1,6 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-// `or_else` on a lent slice returns the slice itself, so the list cannot change while it is held.
+// `or_else` takes its receiver, and a lent slice is not its to give.
 export fn main() Void!:
 	var xs = [1, 2, 3, 4]
 	ys := xs.slice(0, 2).or_else(fn e: ok([]))

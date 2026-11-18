@@ -60,11 +60,11 @@ test "primitive failures work with contextual constructors and assertion aliases
 
 test "Result transforms preserve primitive errors and map to named cases":
     failure: Int!String := error("missing")
-    failure.map(fn value: value + 1).err() | expect_equal("missing")?
+    failure.clone().map(fn value: value + 1).err() | expect_equal("missing")?
 
     var calls = 0
 
-    mapped := failure.map_error(
+    mapped := failure.clone().map_error(
         fn message:
             calls += 1
             return BelowMinimum(message.length(), 10)
@@ -74,7 +74,7 @@ test "Result transforms preserve primitive errors and map to named cases":
     calls | expect_equal(1)?
 
     success: Int!String := ok(4)
-    success.map_error(
+    success.clone().map_error(
         fn message:
             calls += 1
             return 9
@@ -86,7 +86,7 @@ test "Result transforms preserve primitive errors and map to named cases":
     )
     chained.get() | expect_equal("4")?
 
-    recovered := failure.or_else(
+    recovered := failure.clone().or_else(
         fn message: Result[Int, String].ok(message.length())
     )
     recovered.get() | expect_equal(7)?

@@ -18,7 +18,11 @@ fn present(path: String, id: Int) Resource?: Resource(id, path.clone())
 
 fn observed(value: Resource?) Bool: value.is_some()
 
-fn mapped(value: Resource?) Int?: value.map(fn item: item.id)
+// Reads the payload in place: `map` would take the resource.
+fn mapped(value: Resource?) Int?:
+	if item := value: return item.id
+
+	return none
 
 fn generic_map[T, U](transform: fn(T) U, value: T?) U?: value.map(transform)
 

@@ -58,7 +58,7 @@ type Pair:
 	count: Int
 
 fn parse_line(line: String) Pair?:
-	parts := line.split(" ", none)
+	parts := line.split(" ")
 	if parts.length() != 2: return none
 	n := parts.get_or(1, "").parse_int()
 	if count := n:

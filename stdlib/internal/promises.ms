@@ -7,19 +7,19 @@ import Bytes from "@std/bytes.ms"
 
 export extern fn msrt_promise_new() Int
 
-export extern fn msrt_promise_put[T](id: Int, value: T, failed: Int) Void
+export extern fn msrt_promise_put[T](id: Int, move value: T, failed: Int) Void
 
 export extern fn msrt_promise_take[T](id: Int) T?
 
 export extern fn msrt_promise_done(id: Int) Bool
 
-export extern fn msrt_promise_start(id: Int, work: fn() Void) Void
+export extern fn msrt_promise_start(id: Int, move work: fn() Void) Void
 
 // As `msrt_promise_start`, but always on the calling thread.
-export extern fn msrt_promise_start_here(id: Int, work: fn() Void) Void
+export extern fn msrt_promise_start_here(id: Int, move work: fn() Void) Void
 
 // As `msrt_promise_start`, but on the least loaded thread.
-export extern fn msrt_promise_start_spread(id: Int, work: fn() Void) Void
+export extern fn msrt_promise_start_spread(id: Int, move work: fn() Void) Void
 
 export extern fn msrt_promise_wait(id: Int, timeout_ns: Int) Int
 
@@ -98,7 +98,7 @@ export extern fn msrt_pipe_add_writer(pipe: Int) Void
 
 // Moves a value in; 0 written, 1 the reader is gone (the value is dropped). Never
 // waits.
-export extern fn msrt_pipe_write[T](pipe: Int, value: T) Int
+export extern fn msrt_pipe_write[T](pipe: Int, move value: T) Int
 
 // A promise for the next value (take it with msrt_promise_take[T]); finishes with no
 // value at the end.
@@ -143,7 +143,7 @@ export extern fn msrt_streams_error(stream: Int) String
 export extern fn msrt_streams_close(stream: Int) Void
 
 // Makes the new promise `id` one whose work runs in the first task that waits on it.
-export extern fn msrt_promise_defer(id: Int, work: fn() Void) Void
+export extern fn msrt_promise_defer(id: Int, move work: fn() Void) Void
 
 // An already finished promise with no value.
 export extern fn msrt_promise_finished() Int

@@ -14,6 +14,15 @@ fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
 	return ok
 
 // Whether `version` ("0.146.7") is at least 0.146.7.
+// Whether `hugo version` output names an extended build new enough for the book.
+fn hugo_usable(output: String) Bool:
+	fields := output.split(" ")
+	return (
+		output.contains("extended")
+		and fields.length() > 1
+		and hugo_new_enough(fields[1].replace("v", ""))
+	)
+
 fn hugo_new_enough(version: String) Bool:
 	parts := version.split("-")[0].split("+")[0].split(".")
 	if parts.length() < 3: return false
@@ -60,12 +69,8 @@ fn main() Int:
 
 	hugo := env("HUGO", "hugo")
 	hugo_output := capture(hugo, ["version"])
-	var hugo_ok = false
-	fields := hugo_output.split(" ")
-	if hugo_output.contains("extended") and fields.length() > 1:
-		hugo_ok = hugo_new_enough(fields[1].replace("v", ""))
 
-	if hugo_ok: stdout().write(hugo_output).get()
+	if hugo_usable(hugo_output): stdout().write(hugo_output).get()
 	else:
 		print("MISSING Hugo Extended 0.146.7 or newer (book checks)")
 		failed += 1

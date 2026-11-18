@@ -73,10 +73,10 @@ Receiver methods:
 | `is_none() Bool` | Whether the optional is absent |
 | `get() T` | Return the contained value; on `none`, [fault](../errors/faults.md) with `called Optional.get() on none` |
 | `get_or(default: T?) T` | Return the contained value, or `default` when absent |
-| `map[U](transform: fn(T) U) U?` | Transform a present payload once; preserve absence |
-| `and_then[U](transform: fn(T) U?) U?` | Return the callback's Optional when present; preserve absence |
+| `map[U](transform: fn(move T) U) U?` | Take the Optional and hand a present payload to `transform` once; preserve absence |
+| `and_then[U](transform: fn(move T) U?) U?` | Take the Optional and return the callback's Optional when present; preserve absence |
 | `get_or_else(create: fn() T) T` | Return the contained value, or call `create` once when absent |
-| `or_else(create: fn() T?) T?` | Keep a present Optional or call `create` once when absent |
+| `or_else(create: fn() T?) T?` | Take the Optional: return it when present, or call `create` once when absent |
 
 Fallback for routine absence:
 
@@ -109,6 +109,8 @@ fn first_number(text: String?) Int?:
 ```
 
 `map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
+
+`map`, `and_then` and `or_else` take their receiver (`fn move`), so the callback owns the payload and the Optional is gone after the call: write `x.clone().map(...)` to keep `x`. An Optional read in place from a collection or another value (`xs.first()`, `m.get(key)`) is not the caller's to give; read it with `if v := xs.first():`, or `.clone()` it first. A callback that only reads its argument is accepted where `fn(move T)` is expected; the call drops the payload when the callback returns.
 
 [`if v := x`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 

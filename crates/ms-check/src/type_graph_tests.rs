@@ -52,6 +52,7 @@ fn callable_edges_remain_part_of_only_callable_queries() {
         name: n("value"),
         ty: variable.clone(),
         mutable: false,
+        moving: false,
         positional: false,
     });
     function.result = Some(invalid());
@@ -82,6 +83,7 @@ fn structural_equality_keeps_missing_results_and_late_mismatches() {
         name: n("value"),
         ty: left,
         mutable: false,
+        moving: false,
         positional: false,
     });
     let incomplete = Rc::new(incomplete);
@@ -137,6 +139,7 @@ fn required_types_erase_permissions_in_every_original_child_position() {
         name: n("value"),
         ty: int(),
         mutable: false,
+        moving: false,
         positional: false,
     });
     permitted.result = Some(int());
@@ -147,6 +150,7 @@ fn required_types_erase_permissions_in_every_original_child_position() {
         name: n("unusual"),
         ty: permitted.clone(),
         mutable: false,
+        moving: false,
         positional: false,
     });
     container.result = Some(permitted.clone());

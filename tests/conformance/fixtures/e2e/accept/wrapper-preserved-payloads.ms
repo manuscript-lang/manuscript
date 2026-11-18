@@ -44,19 +44,16 @@ fn discarded_error(log: String) Void:
 fn transformed_success(log: String) Void!:
 	value: Marker!Int := ok(Marker(8, log.clone()))
 	mapped := value.map(fn item: Marker(item.id + 1, log.clone()))
-	expect_equal(value.get().id, 8)?
 	expect_equal(mapped.get().id, 9)?
 
 fn transformed_error(log: String) Void!:
 	value: Int!Marker := error(Marker(10, log.clone()))
 	mapped := value.map_error(fn item: Marker(item.id + 1, log.clone()))
-	expect_equal(value.is_error(), true)?
 	expect_equal(mapped.is_error(), true)?
 
 fn transformed_then(log: String) Void!:
 	value: Marker!Int := ok(Marker(12, log.clone()))
 	mapped: Marker!Int := value.and_then(fn item: ok(Marker(item.id + 1, log.clone())))
-	expect_equal(value.get().id, 12)?
 	expect_equal(mapped.get().id, 13)?
 
 test "preserved resource payloads transfer exactly once":
@@ -76,24 +73,21 @@ test "preserved resource payloads transfer exactly once":
 	transformed_then(log.clone())?
 	expect_equal(
 		read_file(log).wait().get().decode_utf8().get_or(""),
-		"1,2,3,4,5,6,7,8,9,11,10,12,13,",
+		"1,2,3,4,5,6,7,8,9,10,11,12,13,",
 	)?
 
-fn bound_transform(log: String) Void!:
+// `map` takes the Result; its callback reads the resource, which closes after the call.
+fn transform_once(log: String) Void!:
 	value: Marker!Int := ok(Marker(20, log.clone()))
-	transform: fn(fn(Marker) Marker) Marker!Int := value.map[Marker]
-	first := transform(fn item: Marker(item.id + 1, log.clone()))
-	second := transform(fn item: Marker(item.id + 2, log.clone()))
-	expect_equal(first.get().id, 21)?
-	expect_equal(second.get().id, 22)?
-	expect_equal(value.get().id, 20)?
+	mapped := value.map(fn item: Marker(item.id + 1, log.clone()))
+	expect_equal(mapped.get().id, 21)?
 
-test "callbacks borrow resource inputs while reusable methods copy only retained data":
+test "map takes a resource payload while reusable methods copy only retained data":
 	tmp := temporary("wrapper-callback-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
-	bound_transform(log.clone())?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "21,22,20,")?
+	transform_once(log.clone())?
+	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "20,21,")?
 
 	data: String!Int := ok("payload")
 	convert := data.to_optional

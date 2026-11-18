@@ -95,7 +95,7 @@ fn var ConnectionSource.close() Void!:
 type ConnectionSink:
 	native: NativeConnection
 
-fn var ConnectionSink.write(value: Bytes) Void!:
+fn var ConnectionSink.write(move value: Bytes) Void!:
 	return msstd_net_connection_write_bytes(self.native, value, none)
 
 fn var ConnectionSink.flush() Void!:
@@ -225,7 +225,7 @@ type DatagramSink:
 
 // Sends `value.data` as one datagram to `value.address`, resolving a host name with
 // the network's resolver.
-fn var DatagramSink.write(value: Datagram) Void!:
+fn var DatagramSink.write(move value: Datagram) Void!:
 	return msstd_net_datagram_send_bytes(self.native, value.data, value.address, none)
 
 fn var DatagramSink.flush() Void!:

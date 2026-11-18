@@ -25,7 +25,7 @@ A borrow is a handle to a value another binding owns: many readers, or one write
 
 - A function can return a borrowed part of a parameter or receiver: `fn list() List[Int]: return self.items`. A binding of that result borrows the original place; `xs := b.list()` reads it and `var xs = b.list()` changes it exclusively.
 - `Optional` and `Result` can carry borrowed payloads. When the relevant return paths borrow the payload, `ok(self.name)` or `self.slots.get(i)` keeps it borrowed; `none` needs no owner. A `Result` can own its success value while borrowing its error from an argument, and `?` preserves the ownership of the active case. A borrowed payload must be cloned before storing it in a new owner.
-- A plain returned part cannot be mixed with a newly owned value on another path; clone the part when the result needs to own it. Wrapping a part does not make every function return a borrow: the checker considers all return paths. A lambda or an interface method owns its result.
+- A plain returned part cannot be mixed with a newly owned value on another path; clone the part when the result needs to own it. Wrapping a part does not make every function return a borrow: the checker considers all return paths. A call through a lambda or an interface owns its result ([moving into a function](#moving-into-a-function)).
 - A call that borrows from a temporary must leave an owned result: it can move the whole temporary, but retaining a part requires a clonable result. Bind the argument first to borrow a part of a non-clonable value.
 - A field owns its value. A type cannot view another variable.
 - A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid. The receiver of a method and a function value a variable holds are read in place while the arguments run, so an argument (a `match` arm among them) may not reassign that variable: `f(match m: _: f = g; 1)` is rejected, as is `r.m(match m: _: r = other; 1)`; reassign before the call instead.
@@ -43,6 +43,35 @@ fn grow(var b: Box) Int:
     return b.items.length()
 ```
 `grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `x := m.get(k)` keeps `m` unchangeable until `x` is last used, `x := m.get(k).get()` borrows the entry the same way, and `if var x = m.get(k)` or `var x = m.get(k).get()` changes the entry in place (a missing key faults for the second). Use `if v := x` to read a borrowed resource or function value without moving it out of its container.
+
+## Moving into a function
+
+A function with a body shows what it does with each argument, so the compiler infers it: a parameter the body stores, returns or hands to another owner is taken from the caller, and the caller's name is dead after the call. A signature with no body to read, an interface operation, a function type or a standard-library native, borrows each argument unless it says `move`:
+
+```manuscript
+type Item:
+    name: String
+
+interface Sink:
+    fn add(move item: Item) Int
+
+type Log:
+    count: Int
+
+fn Log.add(move item: Item) Int:
+    return item.name.length()
+
+fn send(s: Sink, move item: Item) Int:
+    return s.add(item)
+```
+
+- `move name: Type` says the callee takes the argument; `fn move Type.name` takes the receiver (`move fn name` in an interface). A caller writes nothing: the argument moves at its last use, and using it afterwards is an error.
+- `move` may be written on any function. Written on one with a body, it is the declared mode: a `move` parameter the body only reads is dropped when the body ends.
+- A type meets an interface operation only when its method writes `move` exactly where the operation does, as with `var` parameters.
+- A function type carries `move`: `fn(move Item) Int` and `fn(Item) Int` are different types, and an anonymous function takes its modes from the expected type (`fn move x: ...`).
+- The standard collections declare what they keep: `fn var List[T].append(move value: T)`, `Map.add(move key: T, move value: U)`, `fn move StringBuilder.build()`. A method value has the same modes as the call, so `xs.append` is a `fn(move T) Void` and `append(name)` takes `name` just as `xs.append(name)` does.
+- A function without a body returns a new value. A call through an interface or a function value always owns its result, so a method that returns its own field (`return self.name`) cannot meet an interface operation; return `self.name.clone()`.
+- `move` and `var` do not combine on one parameter.
 
 ## Reassignment
 

@@ -73,6 +73,9 @@ pub struct Param {
     /// argument `var`. Part of a function type's identity (`fn(var List[Int]) Void`); never set
     /// on a field.
     pub mutable: bool,
+    /// A `move` parameter: the callee takes ownership of the argument. Part of a function type's
+    /// identity (`fn(move Item) Void`); never set on a field.
+    pub moving: bool,
     /// The parameter of a written function type (`fn(Int) Int`), which has no source label: calls
     /// pass it positionally and the parser's `_0`, `_1` names are internal.
     pub positional: bool,
@@ -85,6 +88,7 @@ impl Param {
             name,
             ty,
             mutable: false,
+            moving: false,
             positional: false,
         }
     }
@@ -431,6 +435,9 @@ impl Type {
             for (i, a) in self.params.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
+                }
+                if a.moving {
+                    f.write_str("move ")?;
                 }
                 if a.mutable {
                     f.write_str("var ")?;
@@ -859,10 +866,6 @@ pub struct Method {
     pub decl: Option<FuncRef>,
     /// What the method binds to.
     pub native: Native,
-    /// A native method whose receiver's elements are bounded `Clonable` (or by a bound that
-    /// implies it): it can only copy elements out of an argument, so it borrows the argument.
-    /// Read from the resolved bounds recorded when the standard library loads.
-    pub copies_elements: bool,
 }
 
 /// A shared method.
@@ -897,6 +900,16 @@ impl Method {
             && self.name().is_some_and(|n| syms.str(n) == "close")
             && self.ty.params.is_empty()
             && is_close_result(syms, &self.ty.result_ty())
+    }
+
+    /// Whether the method is a type's own `to_json() JsonValue`, which encodes the type as JSON
+    /// without an `impl JsonEncode`. Only the full `JsonEncode` signature counts: a `to_json`
+    /// with another shape is an ordinary method.
+    pub fn encodes_json(&self, syms: ms_syntax::Names) -> bool {
+        self.is_inherent(syms)
+            && self.name().is_some_and(|n| syms.str(n) == "to_json")
+            && self.ty.params.is_empty()
+            && self.ty.result_ty().is(Builtin::JsonValue)
     }
 
     /// Whether the method is a type's own `equals(other: Self) Bool`, `hash() Int` or
@@ -957,7 +970,6 @@ impl Clone for Method {
             variables: self.variables.clone(),
             decl: self.decl.clone(),
             native: self.native,
-            copies_elements: self.copies_elements,
         }
     }
 }
@@ -1217,7 +1229,8 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
         }
         if a.kind == Kind::Function {
             for (p, q) in a.params.iter().zip(&b.params) {
-                if p.mutable != q.mutable || !compare(&p.ty, &q.ty, context) {
+                if p.mutable != q.mutable || p.moving != q.moving || !compare(&p.ty, &q.ty, context)
+                {
                     return false;
                 }
             }
@@ -1264,27 +1277,32 @@ pub fn compatible(actual: &Option<Ty>, expected: &Ty) -> bool {
     }
 }
 
-/// Whether `actual` is `expected` except that it reads some parameters `expected` may change:
-/// a function that takes `x` stands in where one that takes `var x` is expected, never the other
-/// way round.
+/// Whether `actual` is `expected` except that it reads some parameters `expected` may change or
+/// take: a function that takes `x` stands in where one that takes `var x` or `move x` is
+/// expected (the caller keeps or drops the argument), never the other way round.
 pub fn reads_where_var_expected(actual: &Ty, expected: &Ty) -> bool {
     actual.kind == Kind::Function
         && expected.kind == Kind::Function
         && actual.params.len() == expected.params.len()
+        && actual.params.iter().zip(&expected.params).any(|(a, e)| {
+            lends_where_expected(a, e) && (a.mutable, a.moving) != (e.mutable, e.moving)
+        })
         && actual
             .params
             .iter()
             .zip(&expected.params)
-            .any(|(a, e)| !a.mutable && e.mutable)
-        && actual
-            .params
-            .iter()
-            .zip(&expected.params)
-            .all(|(a, e)| (a.mutable == e.mutable || e.mutable) && same(&a.ty, &e.ty))
+            .all(|(a, e)| lends_where_expected(a, e) && same(&a.ty, &e.ty))
         && match (&actual.result, &expected.result) {
             (Some(a), Some(e)) => same(a, e),
             _ => false,
         }
+}
+
+/// Whether a parameter declared as `actual` can stand where `expected` is declared: the same
+/// mode, or a plain (borrowing) parameter where `var` or `move` is expected.
+pub fn lends_where_expected(actual: &Param, expected: &Param) -> bool {
+    (actual.mutable, actual.moving) == (expected.mutable, expected.moving)
+        || (!actual.mutable && !actual.moving)
 }
 
 /// Substitutes type variables.
@@ -1335,12 +1353,14 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
             name: p.name,
             ty: r,
             mutable: p.mutable,
+            moving: p.moving,
             positional: p.positional,
         });
         values.extend(t.params[i + 1..].iter().map(|p| Param {
             name: p.name,
             ty: sub_walk(&p.ty, bindings),
             mutable: p.mutable,
+            moving: p.moving,
             positional: p.positional,
         }));
         params = Some(values);
@@ -1607,8 +1627,12 @@ fn unify_at(
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            // A function that only reads a parameter stands in for one that may change it.
-            let mode_matches = p.mutable == q.mutable || (adapt_reader && p.mutable);
+            // A function that only reads a parameter stands in for one that may change or take it.
+            let mode_matches = if adapt_reader {
+                lends_where_expected(q, p)
+            } else {
+                p.mutable == q.mutable && p.moving == q.moving
+            };
             if !mode_matches || !unify_at(&p.ty, &q.ty, vars, bindings, false) {
                 return false;
             }

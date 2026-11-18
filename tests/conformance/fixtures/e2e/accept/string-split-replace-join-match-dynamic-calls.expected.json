@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "string-split-replace-join-match-dynamic-calls.ms::omitted and supplied caps",
+          "name": "string-split-replace-join-match-dynamic-calls.ms::split keeps every piece",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN string-split-replace-join-match-dynamic-calls.ms::omitted and supplied caps\nPASS string-split-replace-join-match-dynamic-calls.ms::omitted and supplied caps\n1 tests, 0 failed\n",
+      "stdout": "RUN string-split-replace-join-match-dynamic-calls.ms::split keeps every piece\nPASS string-split-replace-join-match-dynamic-calls.ms::split keeps every piece\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -2841,12 +2841,10 @@ fn find_newline(text: &[u8]) -> Option<usize> {
 pub unsafe extern "C-unwind" fn msrt_string_split(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: HasRaw,
-    max: i64,
     out: *mut VecVal,
 ) {
     // SAFETY: caller passes live strings and a writable out.
-    unsafe { split_into(s, sep, has_max, max, out, from_bytes) }
+    unsafe { split_into(s, sep, out, from_bytes) }
 }
 
 /// `let parts = text.split(separator)` where `text` outlives `parts` unchanged and nothing keeps
@@ -2856,13 +2854,11 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
 pub unsafe extern "C-unwind" fn msrt_string_split_view(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: HasRaw,
-    max: i64,
     out: *mut VecVal,
 ) {
     // SAFETY: caller passes live strings and a writable out; the pieces borrow `s`.
     unsafe {
-        split_into(s, sep, has_max, max, out, |b| match b {
+        split_into(s, sep, out, |b| match b {
             [] | [0..=0x7f] => from_bytes(b),
             _ => view_of(b.as_ptr(), b.len()),
         })
@@ -2884,21 +2880,13 @@ const _: () = assert!(size_of::<FrameBuf<StrVal, 8>>() == SPLIT_BUF * size_of::<
 pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: HasRaw,
-    max: i64,
     buf: *mut FrameBuf<StrVal, 8>,
     out: *mut VecVal,
 ) {
     // SAFETY: caller passes live strings, a frame buffer and a writable out.
     unsafe {
         let (text, sepb) = (bytes(s), bytes(sep));
-        let limit = if has_max.is_set() {
-            max.max(0) as usize
-        } else {
-            usize::MAX
-        };
         if let [c] = *sepb
-            && limit > 0
             && text.len() <= ONE_PASS_SPLIT
         {
             let mut v = VecVal {
@@ -2910,33 +2898,28 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
                 [] | [0..=0x7f] => from_bytes(b),
                 _ => view_of(b.as_ptr(), b.len()),
             };
-            if split_bytes_once::<true>(text, c, limit, &mut v, piece) {
+            if split_bytes_once::<true>(text, c, &mut v, piece) {
                 v.cap = 0;
                 *out = v;
                 return;
             }
         }
-        msrt_string_split_view(s, sep, has_max, max, out)
+        msrt_string_split_view(s, sep, out)
     }
 }
 
-/// `text.split(separator, max)[0]` where `text` outlives the piece: the first piece, a view of
-/// `text`, found without building the list. Faults like an index of an empty list when `max`
-/// is zero.
+/// `text.split(separator)[0]` where `text` outlives the piece: the first piece, a view of
+/// `text`, found without building the list. Faults like an index of an empty list when `text`
+/// is empty and `separator` is not.
 #[unsafe(no_mangle)]
 // ms: leaf first_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_first(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: HasRaw,
-    max: i64,
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes live strings and a writable out; the piece borrows `s`.
     unsafe {
-        if has_max.is_set() && max <= 0 {
-            fault::msrt_index_fault(0, 0);
-        }
         let (text, sepb) = (bytes(s), bytes(sep));
         let end = if sepb.is_empty() {
             // Split after each scalar: the first piece is the first scalar.
@@ -2961,32 +2944,22 @@ pub unsafe extern "C-unwind" fn msrt_string_split_first(
 unsafe fn split_into(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: HasRaw,
-    max: i64,
     out: *mut VecVal,
     piece: impl Fn(&[u8]) -> StrVal,
 ) {
     // SAFETY: caller passes live strings and a writable out.
     unsafe {
         let (text, sepb) = (bytes(s), bytes(sep));
-        let mut limit = usize::MAX;
-        if has_max.is_set() {
-            limit = max.max(0) as usize;
-        }
         let mut v = EMPTY_VEC;
-        if limit == 0 {
-            *out = v;
-            return;
-        }
         if sepb.is_empty() {
             // Split after each scalar: the piece count is known, so the list is sized once.
-            let n = utf8::count(text).min(limit);
+            let n = utf8::count(text);
             if n > 0 {
                 v.ptr = alloc::alloc(n * ELEM);
                 v.cap = n;
             }
             let mut i = 0;
-            while i < text.len() && v.len < limit {
+            while i < text.len() {
                 let w = utf8::decode(&text[i..]).1;
                 push_str(&mut v, piece(&text[i..i + w]));
                 i += w;
@@ -2997,19 +2970,19 @@ unsafe fn split_into(
         // Most splits are of records with several fields: room for eight pieces (never more than
         // the text can hold) saves the grow-and-copy of the usual seven, without sizing a
         // two-piece split for eight.
-        let first = (text.len() / sepb.len() + 1).min(limit).min(8);
+        let first = (text.len() / sepb.len() + 1).min(8);
         v.ptr = alloc::alloc(first * ELEM);
         v.cap = first;
         if let [sep] = *sepb
             && text.len() <= ONE_PASS_SPLIT
         {
-            split_bytes_once::<false>(text, sep, limit, &mut v, piece);
+            split_bytes_once::<false>(text, sep, &mut v, piece);
             *out = v;
             return;
         }
         let mut start = 0;
         let needle = Needle::for_text(sepb, text.len());
-        while v.len < limit {
+        loop {
             match needle.find(&text[start..]) {
                 Some(p) => {
                     push_str(&mut v, piece(&text[start..start + p]));
@@ -3029,8 +3002,7 @@ unsafe fn split_into(
 /// record's fields are a few bytes apart, where a search per piece costs more than the scan.
 const ONE_PASS_SPLIT: usize = 128;
 
-/// The pieces of `text` between bytes equal to `sep`, at most `limit` of them (the rest of the
-/// text is dropped once the list is full), found by testing eight bytes at a time and taking
+/// The pieces of `text` between bytes equal to `sep`, found by testing eight bytes at a time and taking
 /// each match from the word's mask.
 ///
 /// # Safety
@@ -3039,7 +3011,6 @@ const ONE_PASS_SPLIT: usize = 128;
 unsafe fn split_bytes_once<const STACK: bool>(
     text: &[u8],
     sep: u8,
-    limit: usize,
     v: &mut VecVal,
     piece: impl Fn(&[u8]) -> StrVal,
 ) -> bool {
@@ -3060,9 +3031,6 @@ unsafe fn split_bytes_once<const STACK: bool>(
                 return false;
             }
             start = at + 1;
-            if v.len >= limit {
-                return true;
-            }
             mask &= mask - 1;
         }
     }
@@ -3074,12 +3042,9 @@ unsafe fn split_bytes_once<const STACK: bool>(
                 return false;
             }
             start = base + j + 1;
-            if v.len >= limit {
-                return true;
-            }
         }
     }
-    // SAFETY: as above; the list is not full, or the loops returned.
+    // SAFETY: as above.
     unsafe { put::<STACK>(v, piece(&text[start..])) }
 }
 
@@ -3109,8 +3074,6 @@ pub struct SplitIter {
     /// Byte capacity of `cur` when it is a private allocation, else 0.
     cap: usize,
     pos: usize,
-    /// Pieces still allowed (`max_parts`).
-    left: usize,
     done: bool,
 }
 
@@ -3123,21 +3086,15 @@ unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
     }
 }
 
-/// Starts a split loop; a `max_parts` of zero or below gives no pieces.
+/// Starts a split loop.
 #[unsafe(no_mangle)]
 // ms: leaf iter_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_iter(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: HasRaw,
-    max: i64,
 ) -> *mut SplitIter {
     // SAFETY: caller passes live strings.
     unsafe {
-        let mut left = usize::MAX;
-        if has_max.is_set() {
-            left = max.max(0) as usize;
-        }
         let it = obj::new_obj(core::mem::size_of::<SplitIter>(), None, split_iter_drop)
             as *mut SplitIter;
         // The loop keeps both strings alive until it ends, so the iterator only borrows them.
@@ -3146,7 +3103,6 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
         (*it).cur = NO_STR;
         (*it).cap = 0;
         (*it).pos = 0;
-        (*it).left = left;
         (*it).done = false;
         it
     }
@@ -3173,7 +3129,7 @@ unsafe fn split_next(it: *mut SplitIter) -> Option<StrVal> {
     // SAFETY: `it` is a live iterator.
     unsafe {
         let st = &mut *it;
-        if st.done || st.left == 0 {
+        if st.done {
             return None;
         }
         let (text, sepb) = (bytes(&st.src), bytes(&st.sep));
@@ -3205,7 +3161,6 @@ unsafe fn split_next(it: *mut SplitIter) -> Option<StrVal> {
                 }
             }
         };
-        st.left -= 1;
         set_piece(st, piece);
         Some(st.cur.alias())
     }
@@ -3960,9 +3915,9 @@ mod tests {
             let s = from_bytes(b"alpha-is-a-long-piece,b,,gamma\xc3\xa9");
             let sep = from_bytes(b",");
             let mut views = EMPTY_VEC;
-            msrt_string_split_view(&s, &sep, HasRaw(0), 0, &mut views);
+            msrt_string_split_view(&s, &sep, &mut views);
             let mut copies = EMPTY_VEC;
-            msrt_string_split(&s, &sep, HasRaw(0), 0, &mut copies);
+            msrt_string_split(&s, &sep, &mut copies);
             assert_eq!(views.len, 4);
             for i in 0..views.len {
                 let (v, c) = (
@@ -4377,15 +4332,12 @@ mod tests {
                 let Ok(text) = std::string::String::from_utf8(text) else {
                     continue;
                 };
-                for max in [usize::MAX, 0, 1, 2, 5, 9] {
-                    let want: std::vec::Vec<&str> = text.split(',').take(max).collect();
-                    // SAFETY: the strings are live for the calls and the list is released by the test.
-                    unsafe {
-                        let mut v = EMPTY_VEC;
-                        let has = HasRaw((max != usize::MAX) as _);
-                        msrt_string_split(st(&text), st(","), has, max as i64, &mut v);
-                        assert_eq!(list(v), want, "{text:?} max {max}");
-                    }
+                let want: std::vec::Vec<&str> = text.split(',').collect();
+                // SAFETY: the strings are live for the calls and the list is released by the test.
+                unsafe {
+                    let mut v = EMPTY_VEC;
+                    msrt_string_split(st(&text), st(","), &mut v);
+                    assert_eq!(list(v), want, "{text:?}");
                 }
             }
         }
@@ -4396,9 +4348,9 @@ mod tests {
         let _g = testutil::lock();
         unsafe {
             let mut v = EMPTY_VEC;
-            msrt_string_split(st("a,b,c"), st(","), HasRaw(1), 2, &mut v);
-            assert_eq!(list(v), ["a", "b"]);
-            msrt_string_split(st("héy"), st(""), HasRaw(0), 0, &mut v);
+            msrt_string_split(st("a,b,c"), st(","), &mut v);
+            assert_eq!(list(v), ["a", "b", "c"]);
+            msrt_string_split(st("héy"), st(""), &mut v);
             assert_eq!(list(v), ["h", "é", "y"]);
             assert_eq!(
                 ret(|o| msrt_string_replace_first(st("aaa"), st("a"), st("b"), o)),

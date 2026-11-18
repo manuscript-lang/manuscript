@@ -230,7 +230,10 @@ fn print_findings(step: &Step, io: &mut Io) -> usize {
     }
     if let Some(result) = &step.result {
         if let Some(diagnostics) = result.get("diagnostics").and_then(Json::as_array) {
-            for d in diagnostics {
+            // Errors first: a capped list must not bury them under warnings.
+            let mut ordered: Vec<&Json> = diagnostics.iter().collect();
+            ordered.sort_by_key(|d| d.get("severity").and_then(Json::as_str) != Some("error"));
+            for d in ordered {
                 let position = d.get("position");
                 let number = |key: &str| match position.and_then(|p| p.get(key)) {
                     Some(Json::Num(n)) => n.clone(),

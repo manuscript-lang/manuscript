@@ -35,6 +35,7 @@ fn nominal(
             name: n(&format!("f{i}")),
             ty,
             mutable: false,
+            moving: false,
             positional: false,
         })
         .collect();
@@ -158,6 +159,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
             name: n("next"),
             ty: a.clone(),
             mutable: false,
+            moving: false,
             positional: false,
         }],
     });
@@ -169,6 +171,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
             name: n("next"),
             ty: b.clone(),
             mutable: false,
+            moving: false,
             positional: false,
         }],
     });
@@ -234,6 +237,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
         name: n("value"),
         ty: int(),
         mutable: false,
+        moving: false,
         positional: false,
     });
     let a = nominal(
@@ -252,6 +256,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
             name: n("next"),
             ty: a.clone(),
             mutable: false,
+            moving: false,
             positional: false,
         }],
     });
@@ -488,7 +493,6 @@ fn trait_fact(receiver: &Ty, contract: Option<Ty>, clone_decl: bool) -> MethodRe
         variables: vec![],
         decl,
         native: crate::types::Native::Source,
-        copies_elements: false,
     })
 }
 

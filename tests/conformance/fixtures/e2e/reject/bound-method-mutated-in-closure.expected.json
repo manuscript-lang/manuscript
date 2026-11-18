@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or give `any_of` its own value by converting a clone of the concrete value",
+        "message": "cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding",
         "position": {
           "file": "bound-method-mutated-in-closure.ms",
           "line": 15,
@@ -20,7 +20,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or give `any_of` its own value by converting a clone of the concrete value",
+        "message": "cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding",
         "position": {
           "file": "bound-method-mutated-in-closure.ms",
           "line": 12,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/bound-method-mutated-in-closure.ms:15:13: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or give `any_of` its own value by converting a clone of the concrete value\n    |\n 15 |             values.remove(\"a\")\n    |                      ^\n<DIR>/bound-method-mutated-in-closure.ms:12:9: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or give `any_of` its own value by converting a clone of the concrete value\n    |\n 12 |         fn key,\n    |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/bound-method-mutated-in-closure.ms:15:13: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding\n    |\n 15 |             values.remove(\"a\")\n    |                      ^\n<DIR>/bound-method-mutated-in-closure.ms:12:9: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding\n    |\n 12 |         fn key,\n    |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

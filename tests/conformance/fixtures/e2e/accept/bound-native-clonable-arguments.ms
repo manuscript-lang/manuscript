@@ -5,31 +5,31 @@ import (
 	expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
 )
 
-test "bound list mutators copy named string inputs without consuming callers":
+test "bound list mutators take their arguments, so a caller keeps a clone":
 	var values = ["old"]
 	next := f"new-{1}"
 	set := values.set
-	set(value: next, index: 0)
+	set(value: next.clone(), index: 0)
 	expect_equal(next, "new-1")?
 
 	append := values.append
-	append(next)
+	append(next.clone())
 
 	insert := values.insert
-	insert(value: next, index: 1)
+	insert(value: next.clone(), index: 1)
 
 	replace := values.replace
-	old := replace(0, next)
+	old := replace(0, next.clone())
 	expect_equal(old, "new-1")?
 	expect_equal(next, "new-1")?
 	expect_equal(values, ["new-1", "new-1", "new-1"])?
 
 fn fill[T: Clonable](var target: List[T], item: T) Void:
 	append := target.append
-	append(item)
-	append(item)
+	append(item.clone())
+	append(item.clone())
 
-test "generic bound mutator copies aggregate payload storage independently":
+test "a generic bound mutator stores clones independent of the caller":
 	var target: List[List[String]] = []
 	var item = [f"original-{1}"]
 	fill(var target, item)
@@ -43,18 +43,18 @@ test "optional native adapter handles supplied and absent payloads":
 	var values: List[String?] = ["first"]
 	set := values.set
 	text: String? := f"next-{2}"
-	set(0, text)
+	set(0, text.clone())
 	set(0, none)
-	set(0, text)
+	set(0, text.clone())
 	expect_equal(values[0], text)?
 	expect_equal(text.get(), "next-2")?
 
 fn invalid(value: String, index: Int) Void:
 	var values = ["old"]
 	set := values.set
-	set(index, value)
+	set(index, value.clone())
 
-test "invalid bound mutation does not consume the caller payload":
+test "invalid bound mutation of a clone leaves the caller payload":
 	text := f"survives-{3}"
 	fault := expect_fault(fn: invalid(text, 2))?
 	expect_contains(fault, "index")?
@@ -76,7 +76,7 @@ fn ordered(log: String, fail: Bool) List[String]!:
 	set(value: supplied(log)?, index: picked(log, fail)?)
 	return ok(values)
 
-test "bound native argument copies preserve named effects and propagation":
+test "bound native arguments keep named effects and propagation":
 	tmp := temporary("bound-native-order-")?
 	log := f"{tmp.path()}/log"
 	expect_equal((ordered(log, false)?), ["supplied"])?

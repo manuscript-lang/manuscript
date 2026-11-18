@@ -1892,6 +1892,7 @@ impl Checker {
                 name: p.name,
                 ty,
                 mutable: p.mutable,
+                moving: p.moving,
                 positional: false,
             });
         }

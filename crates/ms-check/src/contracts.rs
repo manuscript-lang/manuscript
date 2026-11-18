@@ -25,12 +25,10 @@ pub(crate) fn has_generic_operation(contract: &Ty) -> bool {
     })
 }
 
-/// Whether `t` mentions a type variable anywhere.
+/// Whether `t` mentions a type variable anywhere. The walk shares visited nodes: a type built by
+/// repeated doubling (`Pair[T, T]` nested n times) is a DAG of n nodes but a tree of 2^n paths.
 fn has_variable(t: &Ty) -> bool {
-    t.kind == Kind::Variable
-        || t.args.iter().any(has_variable)
-        || t.params.iter().any(|p| has_variable(&p.ty))
-        || t.result.as_ref().is_some_and(has_variable)
+    type_any::<true>(t, |t| t.kind == Kind::Variable)
 }
 
 /// A structural property the language derives from a type's shape.
@@ -246,7 +244,6 @@ fn contract_operation(
         ),
         decl: op.decl.clone(),
         native: Native::Contract,
-        copies_elements: false,
     }))
 }
 
@@ -742,8 +739,6 @@ impl Checker {
                     index: Some(index),
                 }),
                 native: Native::Source,
-                // The bounds are resolved here, before a call substitutes the variables away.
-                copies_elements: vars.iter().any(|v| v.bounds().iter().any(implies_clonable)),
             };
             for v in &own {
                 self.scope.types.borrow_mut().remove(&v.name);
@@ -776,7 +771,6 @@ impl Checker {
                 variables: vars.clone(),
                 decl: None,
                 native: Native::Source,
-                copies_elements: false,
             }));
         }
         for op in &ops {
@@ -821,7 +815,6 @@ impl Checker {
                     variables: vars.clone(),
                     decl: Some(FuncRef::of_decl(decl)),
                     native: Native::Source,
-                    copies_elements: false,
                 };
                 self.add_method(Rc::new(m));
             } else {
@@ -963,6 +956,7 @@ impl Checker {
             let m = f.decl.methods().get(f.index?)?;
             Some((
                 m.mutating,
+                m.consuming,
                 m.func.params.iter().map(|p| p.name).collect::<Vec<_>>(),
             ))
         };
@@ -1021,7 +1015,20 @@ impl Checker {
             }
             match (declared(&m.decl), declared(&op.decl)) {
                 // An operation declared `var fn` may be met by a method that does not change `self`.
-                (Some((own, own_names)), Some((want, want_names))) => {
+                (Some((own, own_moves, own_names)), Some((want, want_moves, want_names))) => {
+                    // `move` matches exactly: the caller through the interface either hands the
+                    // receiver over or keeps it, whatever type stands behind the view.
+                    if own_moves != want_moves {
+                        return Some(if want_moves {
+                            format!(
+                                "{name} must take its receiver with `move`, as the interface does"
+                            )
+                        } else {
+                            format!(
+                                "{name} must not take its receiver with `move`; the interface borrows it"
+                            )
+                        });
+                    }
                     if own_names != want_names {
                         return Some(format!(
                             "{name} must name its parameters like the interface"
@@ -1141,12 +1148,7 @@ impl Checker {
                     .contract
                     .as_ref()
                     .is_some_and(|c| c.is(Builtin::JsonEncode))
-                    || (m.is_inherent(self.syms)
-                        && m.name().is_some()
-                        && m.name()
-                            == self
-                                .session
-                                .sole_operation("@std/data/json.ms", "JsonEncode")))
+                    || m.encodes_json(self.syms))
                 && {
                     let mut s = Subst::default();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
@@ -1516,7 +1518,6 @@ impl Checker {
                 variables: Vec::new(),
                 decl: stdlib::standard_method_declaration(&contract, name),
                 native: Native::Builtin(name),
-                copies_elements: false,
             })];
         }
         result
@@ -1867,7 +1868,6 @@ pub(crate) fn native_method(
             variables,
             decl,
             native: Native::Builtin(native),
-            copies_elements: false,
         };
     if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Type | Kind::Alternative)

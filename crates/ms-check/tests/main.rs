@@ -10,6 +10,7 @@ mod control_flow;
 mod demand_analysis;
 mod diagnostic_wording;
 mod error_values;
+mod extern_moves;
 mod follow_on_errors;
 mod generic_recursion;
 mod impl_parameter_names;

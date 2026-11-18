@@ -10,7 +10,7 @@ fn a[T: Clonable](xs: List[Box[T]]) List[Box[T]]: xs.concat(xs)
 
 fn b[T: Clonable](xs: List[T]) List[T]: xs.take(1)
 
-fn c[T: Clonable](xs: List[T]) T?: xs.first().map(fn x: x.clone())
+fn c[T: Clonable](xs: List[T]) T?: xs.first().clone()
 
 fn d[T](xs: List[T]) Int: xs.length()
 

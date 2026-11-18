@@ -13,6 +13,33 @@
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::{self, Function, InstructionData, Opcode, StackSlot};
 
+/// The statement-scoped temporaries of one lowered function.
+#[derive(Default)]
+pub struct Temps {
+    /// Made outside a MIR block (glue, `main`): `share` finds the ones confined to a CLIF block
+    /// by scanning.
+    pub scanned: Vec<StackSlot>,
+    /// Made inside MIR blocks, already shared by rank: each slot with the largest size any block
+    /// asked of it.
+    pub colors: Vec<(StackSlot, u32)>,
+    /// With poison, the CLIF block where each temporary of a MIR block dies, its slot and size.
+    pub dying: Vec<(ir::Block, StackSlot, u32)>,
+}
+
+/// Sizes the shared slots of `temps`, poisons the dead ones and merges the rest by scanning.
+pub fn share(func: &mut Function, temps: &Temps, poison: bool) {
+    for &(slot, size) in &temps.colors {
+        let data = &mut func.sized_stack_slots[slot];
+        data.size = data.size.max(size);
+    }
+    poison_dying(
+        func,
+        &temps.dying,
+        &vec![None; func.sized_stack_slots.len()],
+    );
+    share_scanned(func, &temps.scanned, poison);
+}
+
 /// Merges the block-confined slots of `temps` in `func`. Facts about slots, values and blocks sit
 /// in vectors indexed by their entity numbers: the pass visits every instruction, so a lookup is
 /// one bounds check rather than a hash.
@@ -20,7 +47,7 @@ use cranelift_codegen::ir::{self, Function, InstructionData, Opcode, StackSlot};
 /// With `poison`, every confined slot is also filled with [`POISON`] at the end of the block that
 /// uses it (`BuildOptions::poison_slots`), shared or not: a pointer that outlives its slot then
 /// reads the pattern in every build.
-pub fn share(func: &mut Function, temps: &[StackSlot], poison: bool) {
+fn share_scanned(func: &mut Function, temps: &[StackSlot], poison: bool) {
     if temps.len() < 2 && !(poison && !temps.is_empty()) {
         return;
     }

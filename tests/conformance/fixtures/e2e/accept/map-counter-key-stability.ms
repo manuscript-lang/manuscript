@@ -168,8 +168,8 @@ test "counter fusion preserves faults from an equal-valued source clone":
 
 test "native borrowers retain owned arguments after a later try":
 	separator := f"long-dynamic-map-key-{1}"
-	pieces := "before-long-dynamic-map-key-1-after".split(
-		separator.clone(),
-		max_parts: successful_value(2)?,
+	pieces := "before-long-dynamic-map-key-1-after".replace_first(
+		old: separator.clone(),
+		new: f"{successful_value(2)?}",
 	)
-	expect_equal(pieces, ["before-", "-after"])?
+	expect_equal(pieces, "before-2-after")?
