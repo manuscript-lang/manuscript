@@ -282,8 +282,8 @@ export enum HashAlgorithm:
 	Sha3_384  // SHA3-384, producing a 48-byte digest or HMAC.
 	Sha3_512  // SHA3-512, producing a 64-byte digest or HMAC.
 
-// Returns the digest of `data` as `Bytes` of this algorithm's fixed length. It never fails and
-// leaves `data` unchanged.
+// Returns the digest of `data` as `Bytes` of this algorithm's fixed length. It never
+// fails and leaves `data` unchanged.
 fn HashAlgorithm.digest(data: Bytes) Bytes:
 	return msstd_crypto_digest(self, data)
 
