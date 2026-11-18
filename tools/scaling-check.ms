@@ -78,6 +78,12 @@ fn generate(shape: String, n: Int) String:
 				f"    t += id({i})\n    if id(opaque_text({i})).length() > 100: t += 1\n"
 			)
 		out.append("    return t % 256\n")
+	else if shape == "map_adds" or shape == "release_map_adds":
+		// One map changed by every statement: the builder's value lookups and the LLVM
+		// emitter's slot analysis must not scan the whole function per statement.
+		out.append("export fn main() Int:\n    var m = Map[String, Int]()\n")
+		for i in 0..n: out.append(f"    m.add(\"k{i}\", {i})\n")
+		out.append("    return m.length() % 256\n")
 	else if shape == "big_literal":
 		out.append("export fn main() Int:\n    xs := [0")
 		for i in 1..n: out.append(f", {i}")
@@ -92,7 +98,7 @@ RETRIES := 2
 SHAPES := [
 	"long_function", "many_locals", "long_interpolation", "many_impls",
 	"many_functions", "many_branches", "big_literal", "test_owners", "test_branches",
-	"release_loopfree"
+	"release_loopfree", "map_adds", "release_map_adds"
 ]
 
 // The input sizes of a shape: three that grow by 10, or fewer and smaller for a shape
@@ -103,13 +109,15 @@ SHAPES := [
 // stack when every block registered every live owner (#3979), and linear code fits.
 fn sizes(shape: String) List[Int]:
 	if shape == "test_owners" or shape == "test_branches": return [400]
-	if shape == "release_loopfree": return [800, 1600, 6400]
+	if shape == "release_loopfree" or shape == "release_map_adds": return [
+		800, 1600, 6400
+	]
 
 	return [1000, 10000, 100000]
 
 // The commands that measure a shape, each with its arguments after the file.
 fn commands(shape: String) List[List[String]]:
-	if shape == "release_loopfree":
+	if shape == "release_loopfree" or shape == "release_map_adds":
 		return [["build", "--build-type", "Release", "-o", "OUT"]]
 	return [["check"], ["emit"]]
 
