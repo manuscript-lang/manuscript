@@ -26,8 +26,8 @@ sample, default 100), `MS_BENCH_SAMPLES` (default 10) and `MS_BENCH_ITERATIONS` 
 calibrates). A block written `bench "name" per N:` performs N operations per iteration, and every statistic is per
 operation.
 
-The result is one line on standard output: `MSBENCH ` followed by a JSON object. It holds the time in nanoseconds per
-operation (one operation per iteration by default) and the process CPU time per operation (`cpu_ns`, user plus kernel,
+The result is one line on standard output: `MSBENCH ` followed by a JSON object. It holds the time in nanoseconds per operation
+(one operation per iteration by default) and the process CPU time per operation (`cpu_ns`, user plus kernel,
 which ignores time spent waiting for a CPU). It also holds the runtime's work counters per operation (allocations,
 bytes allocated, list copies and string clones, with their bytes), taken from one extra counted run.
 */
