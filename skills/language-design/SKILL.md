@@ -57,3 +57,6 @@ Chinmay's design preferences for languages, standard libraries, runtimes, compil
 - No shared state between handlers or tasks for now (#4409); keep cross-thread state minimal.
 - Reject what cannot work at compile time (for example a key type that is not hashable) rather than falling back to a slow or surprising path.
 - If something feels weird or inconsistent (a name, which functions copy and which change in place, an error policy), it is worth fixing. Prefer hardening and polish over new features.
+- Prefer no new syntax or API when existing constructs work (`get_or`, `match` with `_`). Before adding an API, check whether existing features already cover the need: a character is already a plain `Int`, so there is no `Char` type.
+- `Closeable.close` returns `Void!`; `mean` keeps its current definition.
+- Present a design decision with code examples showing the same program with and without the change.
