@@ -410,6 +410,5 @@ test "square root of an infinite imaginary part is infinite and of a NaN real pa
 	down := complex(0.0 / 0.0, -infinity).sqrt()
 	expect_equal(down.re, infinity)?
 	expect_equal(down.im, -infinity)?
-
 	expect_true(complex(0.0 / 0.0, 0.0).sqrt().is_nan())?
 	expect_true(complex(0.0 / 0.0, 0.0).sqrt().re.is_nan())?

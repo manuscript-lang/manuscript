@@ -164,7 +164,10 @@ fn Complex.log() Complex:
 fn Complex.sqrt() Complex:
 	// An infinite imaginary part gives an infinite root whatever the real part is, even
 	// NaN; otherwise a NaN real part makes the whole root NaN.
-	if not self.im.is_finite() and not self.im.is_nan(): return Complex(re: infinity, im: self.im)
+	if not self.im.is_finite() and not self.im.is_nan(): return Complex(
+		re: infinity,
+		im: self.im,
+	)
 	if self.re.is_nan(): return Complex(re: self.re, im: self.re)
 
 	if self.im == 0.0:
@@ -257,7 +260,11 @@ fn Complex.asin() Complex:
 	// b = sqrt(1+z), the real part is atan2(x, Re(ab)) and the imaginary part is
 	// asinh(Im(conj(a) b)). The parts of 1-z and 1+z are built one by one so a -0
 	// imaginary part keeps its side of the branch cut.
-	if self.re.is_finite() and self.im.is_finite() and self.re.abs().max(self.im.abs()) <= 1.0:
+	if (
+		self.re.is_finite()
+		and self.im.is_finite()
+		and self.re.abs().max(self.im.abs()) <= 1.0
+	):
 		low := Complex(re: 1.0 - self.re, im: -self.im).sqrt()
 		high := Complex(re: 1.0 + self.re, im: self.im).sqrt()
 		return Complex(
