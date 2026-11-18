@@ -17,11 +17,14 @@ references resolve, so any other `&name;` is an error. The input is text: UTF-16
 encodings are the caller's to decode before parsing. Names keep their prefix as written
 (`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
 
-    import parse from "@std/data/xml.ms"
-    doc := parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")?
-    item := doc.find("item").get()
-    print(item.attribute("id").get_or("")) // "1"
-    print(item.text())                  // "Hi & bye"
+<!-- manuscript-example: {"mode":"fragment"} -->
+```manuscript
+import parse from "@std/data/xml.ms"
+doc := parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")?
+item := doc.find("item").get()
+print(item.attribute("id").get_or("")) // "1"
+print(item.text())                  // "Hi & bye"
+```
 */
 
 // An XML attribute with its decoded value.

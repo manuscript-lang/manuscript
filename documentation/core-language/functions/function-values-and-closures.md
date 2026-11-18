@@ -89,7 +89,6 @@ A closure that is only called in the function that made it borrows what it captu
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-
 fn tag_count() Int:
     var tags = ["docs"]
     tags.append("release")
@@ -157,7 +156,6 @@ A non-escaping callback can borrow an already-open file while its owner stays in
 ## Contextual callback inference
 
 ```manuscript
-
 fn names() List[String]:
     return [1, 2].map(fn value: value.to_string())
 ```
