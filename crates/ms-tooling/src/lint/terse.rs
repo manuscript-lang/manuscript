@@ -181,6 +181,7 @@ impl Visitor for Scan<'_> {
             self.emptiness(e, false);
         }
         self.map_get_chain(e);
+        self.slice_fallback(e);
         // `xs.get(i)` on a list held in a name or field is `xs[i]`.
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
@@ -428,6 +429,39 @@ impl Scan<'_> {
             .info(e.id)
             .and_then(|i| i.ty.as_ref())
             .is_some_and(|t| t.is(Builtin::Map))
+    }
+
+    /// `xs.slice(a, b).get_or(fallback)` turns a range past the end into the fallback without a trace.
+    fn slice_fallback(&mut self, e: &Expr) {
+        let ExprKind::Call { callee, .. } = &e.kind else {
+            return;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return;
+        };
+        if self.syms.str(name) != "get_or" {
+            return;
+        }
+        let ExprKind::Call { callee: inner, .. } = &left.kind else {
+            return;
+        };
+        let ExprKind::Member { name: slice, .. } = &inner.kind else {
+            return;
+        };
+        let is_result = self
+            .module
+            .facts()
+            .info(left.id)
+            .and_then(|i| i.ty.as_ref())
+            .is_some_and(|t| t.is(Builtin::Result));
+        if self.syms.str(slice) == "slice" && is_result {
+            self.findings.push(finding(
+                "MSL132",
+                "`slice(..).get_or(..)` returns the fallback for any bad range, including an end past the length; use `?` to report it, or clamp the end with `min(end, xs.length())` first".to_string(),
+                self.file,
+                e.pos,
+            ));
+        }
     }
 
     /// `print(call())` on a Result prints the wrapper, so the call's success value is what was meant.

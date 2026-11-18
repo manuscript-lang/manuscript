@@ -145,3 +145,24 @@ fn printing_a_result_is_flagged_once() {
         .collect();
     assert_eq!(lines, [4]);
 }
+
+#[test]
+fn a_slice_with_a_fallback_is_flagged() {
+    let source = include_str!("lint_terse/slice_fallback.ms");
+    let syms = ms_syntax::Names::global();
+    let file: Arc<str> = Arc::from("lint.ms");
+    let module = ms_syntax::parser::parse(&file, source).expect("parses");
+    let program = ms_check::check(
+        syms,
+        vec![ms_check::load_module(syms, &module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    );
+    assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
+    let lines: Vec<u32> = lint_program(syms, &program)
+        .into_iter()
+        .filter(|f| f.code == "MSL132")
+        .map(|f| f.pos.line)
+        .collect();
+    assert_eq!(lines, [3, 4]);
+}

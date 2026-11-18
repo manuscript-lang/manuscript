@@ -247,6 +247,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "write `call()?` in a function that returns a Result, or `if value := call():` to read the success",
     },
+    Rule {
+        code: "MSL132",
+        family: "slice result replaced by a fallback",
+        severity: Severity::Warning,
+        repair: "write `xs.slice(a, b)?`, or clamp the end with `min(end, xs.length())` before slicing",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.
