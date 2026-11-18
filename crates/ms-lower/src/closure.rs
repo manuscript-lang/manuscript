@@ -264,7 +264,7 @@ impl FnLower<'_> {
                 ));
             }
         }
-        let fid = self.forwarded(&callee, &subst)?;
+        let fid = self.instance(&callee, &subst)?;
         let fty = self.function_value_ty(e, fid, 0)?;
         if let Some(thunk) = self.default_thunk(fty, fid, &callee, &subst, None, None)? {
             let v = self
@@ -781,7 +781,7 @@ impl FnLower<'_> {
             if vars.iter().any(|v| *v != 0) {
                 return Err(Error::new("method value with changed parameters"));
             }
-            let fid = self.forwarded(&c, &subst)?;
+            let fid = self.instance(&c, &subst)?;
             fty = self.function_value_ty(e, fid, 1)?;
             if let TyKind::Fn(_, _, taken) = self.b.m.types.kind(fty) {
                 owned = *taken;
@@ -1444,7 +1444,7 @@ fn lower_default_thunk(
             val
         });
     }
-    let fid = fl.forwarded(&callee, &job.subst)?;
+    let fid = fl.instance(&callee, &job.subst)?;
     let mut vals: Vec<Value> = Vec::new();
     for s in slots.into_iter().flatten() {
         vals.push(fl.borrow(s));

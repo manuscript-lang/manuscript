@@ -134,3 +134,49 @@ fn a_value_taken_from_a_local_slot_is_dropped_on_the_cancel_exit() {
     assert!(m.funcs[m.func_by_name("main").expect("main").index()].explicit_cancel);
     assert_eq!(count(&m, "main", Op::Drop), 2);
 }
+
+// A value taken from a `var` slot parameter goes back into the slot on the cancel exit, so the
+// caller's scope end releases it once.
+const RAW_TAKES_VAR: &str = r#"
+fn @held(%p: ptr) -> int {
+b0:
+  scope.begin 1 0
+  %t: str = take str %p
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_pause (%n)
+  put %p, %t
+  scope.end 1 0
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %r: int = iconst 0
+  ret %r
+}
+"#;
+
+#[test]
+fn a_value_taken_from_a_var_slot_is_put_back_on_the_cancel_exit() {
+    let mut m = parse_module(&format!("{HEAD}{RAW_TAKES_VAR}")).unwrap_or_else(|e| panic!("{e}"));
+    let held = m.func_by_name("held").expect("held");
+    m.funcs[held.index()].noalias = vec![0];
+    ms_mir::elaborate::run_with(&mut m, true).unwrap_or_else(|e| panic!("{e}"));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert!(
+        m.funcs[held.index()].explicit_cancel,
+        "{}",
+        print_module(&m)
+    );
+    // The normal exit puts the value back once and the cancel exit does the same.
+    assert_eq!(count(&m, "held", Op::Put), 2);
+}
+
+#[test]
+fn a_value_taken_from_a_borrowed_slot_keeps_the_function_hybrid() {
+    let mut m = parse_module(&format!("{HEAD}{RAW_TAKES_VAR}")).unwrap_or_else(|e| panic!("{e}"));
+    ms_mir::elaborate::run_with(&mut m, true).unwrap_or_else(|e| panic!("{e}"));
+    let held = m.func_by_name("held").expect("held");
+    assert!(!m.funcs[held.index()].explicit_cancel);
+}

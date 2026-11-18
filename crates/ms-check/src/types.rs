@@ -936,8 +936,29 @@ impl Method {
                     && self.ty.params[0].ty.id == self.receiver.id
                     && self.ty.result_ty().is(Builtin::Int)
             }
+            (Builtin::Stringable, "to_string") => {
+                self.ty.params.is_empty() && self.ty.result_ty().is(Builtin::String)
+            }
             _ => false,
         }
+    }
+
+    /// The property the language computes by calling this method on a value it only lends:
+    /// showing it as text, comparing, hashing or encoding it as JSON. Such a method borrows its
+    /// receiver and arguments.
+    pub fn lent_property(&self, syms: ms_syntax::Names) -> Option<Builtin> {
+        let declared = |b: Builtin| self.contract.as_ref().is_some_and(|c| c.is(b));
+        if declared(Builtin::JsonEncode) || self.encodes_json(syms) {
+            return Some(Builtin::JsonEncode);
+        }
+        [
+            Builtin::Stringable,
+            Builtin::Equal,
+            Builtin::Hashable,
+            Builtin::Comparable,
+        ]
+        .into_iter()
+        .find(|b| declared(*b) || self.overrides(syms, *b))
     }
 
     /// The operation name.

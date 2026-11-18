@@ -603,12 +603,7 @@ impl<'a> FnLower<'a> {
             return Ok(self.dummy(MTy::VOID));
         }
         let owned_mask = self.cx.owned_mask(c);
-        let fid = if owned_mask.is_some() {
-            let scope = self.evidence();
-            self.cx.function_owned(self.b.m, c, subst, scope)?
-        } else {
-            self.instance(c, subst)?
-        };
+        let fid = self.instance(c, subst)?;
         let vars = self.cx.var_positions(c);
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<VarArgument> = Vec::new();
