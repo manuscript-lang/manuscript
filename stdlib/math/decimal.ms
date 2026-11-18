@@ -27,8 +27,9 @@ export extern type Decimal
 fn Decimal.compare(other: Decimal) Int:
 	return msstd_decimal_compare(self, other)
 
-// Returns the text of this value: its coefficient and exponent as a plain decimal
-// number.
+// Returns the text of this value without trailing zeros: `1.2` for `1.20`. Plain digits
+// are used for moderate magnitudes and exponent notation such as `1e+21` or `1e-7` for
+// very large or small ones. Use `to_fixed` for a fixed number of fractional digits.
 fn Decimal.to_string() String:
 	return msstd_decimal_to_string(self)
 
@@ -64,32 +65,32 @@ fn Decimal.to_float() Float?:
 	return none
 
 // Discards the fractional part toward zero and returns the integer, so -2.9 gives
-// -2. Returns none when the integer part does not fit in the platform's Int.
+// -2. Returns none when the integer part does not fit in Int.
 fn Decimal.truncate_to_int() Int?:
 	return msstd_decimal_truncate_to_int(self)
 
 /*
 Rounds exactly to a multiple of `10^-places`, without converting to Float.
-Places range from -6144 through 6176; negative places round tens, hundreds, etc.
+`places` ranges from -6144 through 6176; negative places round to tens, hundreds and so on.
 Invalid places return EINVAL; an unrepresentable result returns ERANGE.
-Omitted or `none` mode selects HalfEven. This does not preserve trailing zeros or change arithmetic.
+An omitted or `none` mode selects HalfEven. The result keeps no trailing zeros, so use `to_fixed` to format a fixed number of digits.
 */
 fn Decimal.round(places: Int, mode: RoundingMode?) Decimal!:
 	return msstd_decimal_round(self, places, mode)
 
 /*
-Rounds exactly and prints plain decimal notation with exactly `digits` fractional digits.
-Digits range from 0 through 6176; invalid digits return EINVAL.
-HalfEven is the default; rounded zero has no minus sign. Trailing zeros are retained.
+Rounds exactly and formats in plain decimal notation with exactly `digits` fractional digits, keeping trailing zeros.
+`digits` ranges from 0 through 6176; any other value returns EINVAL.
+An omitted or `none` mode selects HalfEven. A result that rounds to zero has no minus sign.
 */
 fn Decimal.to_fixed(digits: Int, mode: RoundingMode?) String!:
 	return msstd_decimal_to_fixed(self, digits, mode)
 
 /*
 Parses decimal text exactly: an optional sign, digits with an optional fraction (digits on both sides of the point), and
-an optional exponent, as in `19.99`, `-0.5` or `1e3` (the `d` literal without its suffix). Text that is empty,
-malformed, has more than 34 significant digits, or has an exponent out of range gives an
-`EINVAL` error. Nothing is rounded.
+an optional exponent, as in `19.99`, `-0.5` or `1e3` (the `d` literal without its suffix).
+Text that is empty, malformed, has more than 34 significant digits, or has an exponent out of range returns EINVAL.
+Nothing is rounded.
 */
 export fn parse_decimal(text: String) Decimal!:
 	return msstd_decimal_parse(text)

@@ -65,7 +65,7 @@ fn BigRat.abs() BigRat:
 fn BigRat.sign() Int:
 	return self.num.sign()
 
-// Returns true when the denominator is 1.
+// Reports whether the denominator is 1, so the value is a whole number.
 fn BigRat.is_integer() Bool:
 	return self.den.compare(big(1)) == 0
 
@@ -83,9 +83,9 @@ fn BigRat.max(other: BigRat) BigRat:
 	if other.compare(self) > 0: return other.clone()
 	return self.clone()
 
-// Returns the exact power. A negative exponent returns the reciprocal power, so
-// zero with a negative exponent returns EINVAL. A numerator or denominator power
-// above 16777216 bits returns EOVERFLOW.
+// Returns the exact power. A negative exponent returns the reciprocal power, so zero
+// with a negative exponent returns EINVAL. A numerator or denominator above 16777216
+// bits returns EOVERFLOW.
 fn BigRat.pow(exponent: Int) BigRat!:
 	// `abs` faults on the minimum Int, so take its magnitude as `max + 1` powers.
 	extra := exponent == -9223372036854775807 - 1
@@ -127,7 +127,7 @@ fn BigRat.to_float() Float?:
 	parts := div_parts(self.num, self.den, 53)
 	return binary_to_float(parts.value, parts.sticky)
 
-// Prints plain decimal notation with exactly `digits` fractional digits, rounding
+// Formats in plain decimal notation with exactly `digits` fractional digits, rounding
 // ties to even. A negative digit count returns EINVAL; a result that rounds to zero
 // has no minus sign.
 fn BigRat.to_fixed(digits: Int) String!:
@@ -174,8 +174,9 @@ export fn rat_of_int(value: Int) BigRat:
 export fn rat_of_big_int(value: BigInt) BigRat:
 	return BigRat(num: value.clone(), den: big(1))
 
-// Returns the exact value of a Float, such as 0.5 for 0.5 and
-// 3602879701896397/36028797018963968 for 0.1. Returns none for NaN and infinities.
+// Returns the exact value of a Float as a fraction: 1/2 for 0.5, and
+// 3602879701896397/36028797018963968 for 0.1, which a Float stores inexactly. Returns
+// none for NaN and infinities.
 export fn rat_of_float(value: Float) BigRat?:
 	if not value.is_finite(): return none
 	if value == 0.0: return rat_of_int(0)
@@ -255,7 +256,7 @@ export max_big_float_precision: Int := 1000000
 An arbitrary-precision binary floating-point number, `mantissa * 2^exponent`, whose mantissa holds at most `precision` bits.
 Every operation rounds once, to nearest with ties to even, at the larger operand precision, so results are exact
 up to that single rounding. Zero is unsigned and there are no infinities or NaN: out-of-domain operations return a Result.
-Example: `big_float_of_int(2, 100).sqrt()` gives the square root of two to 100 bits, and `to_fixed(30)` prints it.
+Example: `big_float_of_int(2, 100).sqrt()` returns the square root of two to 100 bits as a Result, and `to_fixed(30)` formats it.
 */
 export opaque type BigFloat:
 	// The signed integer mantissa, at most `prec` bits; zero when the value is zero.
@@ -412,7 +413,7 @@ fn BigFloat.truncate() BigInt:
 fn BigFloat.to_float() Float?:
 	return binary_to_float(binary_of(self), false)
 
-// Prints plain decimal notation with exactly `digits` fractional digits, rounding
+// Formats in plain decimal notation with exactly `digits` fractional digits, rounding
 // ties to even. A negative digit count returns EINVAL.
 fn BigFloat.to_fixed(digits: Int) String!:
 	if text := self.to_rat().to_fixed(digits): return ok(text)

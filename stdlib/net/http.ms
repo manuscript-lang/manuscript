@@ -28,14 +28,14 @@ import (
 )
 
 /*
-Mutable HTTP fields with ASCII case-insensitive names and separate values, which are Strings by default and Bytes on request.
-Names keep first-insertion order and spelling; values keep append order.
-Headers are an owned value: assignment moves them, mutation needs `var`, and clone() copies them.
+Mutable HTTP header fields. Names are ASCII case-insensitive, and each name holds separate values: Strings by default,
+Bytes on request. Names keep their first-insertion order and spelling; values keep append order.
+Headers have one owner: assignment moves them, mutation needs `var`, and `clone()` copies them.
 */
 export extern type HttpHeaders
 
-// Appends a String value under a valid HTTP name; invalid names return EINVAL.
-// Transport operations additionally validate framing and field values.
+// Appends a String value under a valid HTTP name; an invalid name returns EINVAL.
+// Requests and responses validate field values and framing again when they are sent.
 fn var HttpHeaders.append(name: String, value: String) Void!:
 	return msstd_http_headers_append(self, name, value.to_bytes())
 
@@ -67,7 +67,7 @@ fn HttpHeaders.get_all_bytes(name: String) List[Bytes]?:
 fn HttpHeaders.contains(name: String) Bool:
 	return msstd_http_headers_values(self, name).is_some()
 
-// Returns first-inserted spellings in insertion order.
+// Returns the names in insertion order, each as spelled when first inserted.
 fn HttpHeaders.names() List[String]:
 	return msstd_http_headers_names(self)
 
@@ -102,8 +102,7 @@ export type ClientResponse:
 	// The complete response payload within the supplied byte bound.
 	body: Bytes
 
-// Returns an independent owned copy of the current response metadata, including its
-// headers.
+// Returns an independent copy of the response metadata, including its headers.
 fn ClientResponse.metadata() HttpResponseMetadata:
 	return self.head.clone()
 
@@ -162,8 +161,9 @@ export type HttpClient:
 fn var HttpClient.close() Void!:
 	msstd_http_client_close(self.native)
 
-// Sends the body (text or `Bytes`) and returns the response with its body as a
-// stream.
+// Sends the request, with `body` as text or `Bytes`, and returns the response with its
+// body as a stream. `max_response_bytes` bounds the body (none sets no limit) and
+// `timeout` bounds the whole exchange (none waits without limit).
 fn HttpClient.request(
 	method: HttpMethod,
 	url: String,
@@ -182,8 +182,8 @@ fn HttpClient.request(
 	)?
 	return ok(response(raw))
 
-// Sends immutable Bytes and returns the native response, for callers that buffer
-// the whole body.
+// Sends `body` as `Bytes` and returns the native response, for callers that buffer the
+// whole response body with `RawResponse.read_all`.
 fn HttpClient.request_raw(
 	method: HttpMethod,
 	url: String,
@@ -202,9 +202,8 @@ fn HttpClient.request_raw(
 		timeout,
 	)
 
-// Reads `body` to its end, then sends it as the request body. The upload is
-// buffered until the request can return a `WriteStream` for the body to be written
-// into.
+// Reads `body` to its end, then sends it as the request body. The upload is buffered,
+// not streamed, so the whole body must fit in memory.
 fn HttpClient.request_stream(
 	method: HttpMethod,
 	url: String,
@@ -253,8 +252,8 @@ export type HttpClientOptions:
 // One streaming server exchange. Read or write incrementally and close when done.
 // Received headers are an owned copy; repeated values stay separate.
 export interface HttpExchange:
-	// Ends the exchange, interrupting reads or writes in progress.
-	// Later operations return EBADF.
+	// Ends the exchange, interrupting reads or writes in progress. Later operations
+	// return EBADF.
 	var fn close() Void
 	// Returns an owned copy of the request headers with every repeated value retained.
 	fn headers() HttpHeaders
@@ -270,7 +269,7 @@ export interface HttpExchange:
 	fn query() String
 	// Returns the next chunk of the request body, at most `max_bytes` and never more
 	// than 65536, or none at the end of the body. Reading past `max_body_bytes` returns
-	// an `Error` of kind `EIO`, and a non-positive `max_bytes` returns EINVAL.
+	// an `Error` of kind `EOVERFLOW`, and a non-positive `max_bytes` returns EINVAL.
 	var fn read(max_bytes: Int?) Bytes?!
 	// Sends a whole response: the status line, `headers`, and `body` with its length
 	// known, so the response carries `Content-Length` rather than chunked framing.
@@ -285,12 +284,12 @@ export interface HttpExchange:
 	// EBADF.
 	var fn send_headers(status: Int, headers: HttpHeaders) Void!
 	// Switches the connection to a WebSocket after checking the `Origin` header.
-	// Requests without an Origin are accepted; otherwise it must exactly match an entry
-	// of `allowed_origins`, or, when that list is empty, match the request's own scheme
-	// and host.
-	// `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be
-	// positive when given. An exchange that already sent headers or upgraded returns
-	// EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
+	// Requests without an Origin are accepted. Otherwise the Origin must exactly match
+	// an entry of `allowed_origins` or, when that list is empty, the request's own
+	// scheme and host.
+	// `subprotocols` lists the protocols the server accepts, and `max_message_bytes`
+	// must be positive when given. An exchange that already sent headers or upgraded
+	// returns EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
 	var fn upgrade(
 		allowed_origins: List[String] = [],
 		subprotocols: List[String] = [],
@@ -298,9 +297,9 @@ export interface HttpExchange:
 	) WebSocket!
 	// Writes one chunk of the response body and flushes it.
 	// `send_headers` must come first, and writing beyond `max_response_bytes` returns an
-	// `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a
-	// handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a
-	// body and return EINVAL.
+	// `Error` of kind `EOVERFLOW`. A write on a HEAD request succeeds and drops the
+	// bytes, so a handler written for GET needs no HEAD case. Statuses 204 and 304
+	// cannot have a body, so a write returns EINVAL.
 	var fn write(move data: String) Void!
 	// Writes one chunk of raw bytes with the same rules as write.
 	var fn write_bytes(move data: Bytes) Void!
@@ -393,8 +392,8 @@ fn HttpServer.address() String:
 	return self.bound.clone()
 
 // Waits until the server has stopped. Returns Ok after `close`, or the error that
-// ended accepting (`EIO` with the host's text). `timeout` bounds the wait and
-// cancels the server when it passes.
+// ended accepting (`EIO` with the host's text). `timeout` bounds the wait, and the
+// server is cancelled when it passes.
 fn HttpServer.wait(timeout: Duration? = none) Void!:
 	set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
@@ -466,7 +465,7 @@ export type StreamingResponse:
 	// Status and headers, available whether or not the body is read.
 	metadata: HttpResponseMetadata
 	// The body, at most 64 KiB per item. Reading past the request's
-	// `max_response_bytes` is an `Error` of kind `EIO`.
+	// `max_response_bytes` returns an `Error` of kind `EOVERFLOW`.
 	body: ReadStream[Bytes]
 
 // Closes the body, which cancels what is unread and releases the connection.

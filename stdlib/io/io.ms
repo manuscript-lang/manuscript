@@ -162,7 +162,8 @@ export type DescriptorSource:
 	closed: Bool = false
 
 // Waits for the next chunk of the descriptor. Returns `none` at its end and `EIO`
-// when the descriptor failed.
+// when the descriptor failed. A wait that ends early, such as at the `timeout` of
+// `ReadStream.next`, returns `ETIMEDOUT`.
 fn var DescriptorSource.next() Bytes?!:
 	p := msrt_streams_read(self.id)
 	code := msrt_promise_wait(p, -1)
@@ -377,7 +378,7 @@ fn var PipeSink[T].close() Void!:
 	self.id = 0
 
 // An in-memory stream of whole values, in order, with any number of writers and one
-// reader. A write hands the pipe a copy (the stream interface only borrows the
+// reader. A write hands the pipe a copy (`WriteStream.write` only borrows its
 // argument), so `T` must be `Clonable`; the copy then moves through by pointer.
 //
 // `capacity` is the number of queued values above which a writer's `write` and `flush`
@@ -407,10 +408,9 @@ fn var Pipe[T].reader() ReadStream[T]:
 	self.taken = true
 	return ReadStream[T](PipeSource[T](self.id))
 
-// Waits for the next value; returns `none` once every writer has closed. It reads
-// from the pipe's single reader place without taking a stream, for a consumer that
-// only borrows the pipe, such as a promise. Use it instead of `reader()`, never
-// together with it.
+// Waits for the next value; returns `none` once every writer has closed. Unlike
+// `reader()`, it takes no stream, so a consumer that only borrows the pipe, such as a
+// promise, can use it. Use it instead of `reader()`, never together with it.
 fn Pipe[T].receive() T?!:
 	return pipe_next[T](self.id)
 

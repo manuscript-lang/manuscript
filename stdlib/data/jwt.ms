@@ -64,7 +64,7 @@ Creates a signed token from `claims`, a record or `JsonValue` object such as `Se
 The result is the compact `header.claims.signature` form, ready for an `Authorization: Bearer` header or a cookie.
 `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
 Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library adds none, so set `exp` yourself.
-A key that does not suit the algorithm returns an `Error` with kind `EINVAL`.
+A key that does not suit the algorithm, or claims that cannot be encoded as JSON (a `NumberValue` whose text is not a JSON number, say), return an `Error` with kind `EINVAL`; the message says which.
 
 <!-- manuscript-example: {"mode":"fragment","given":["secret: Bytes"]} -->
 ```manuscript
@@ -87,7 +87,10 @@ export fn sign_token[T: Data](
 ) String!:
 	header := stringify(JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"))
 	payload := stringify(claims)
-	if header.is_error() or payload.is_error(): return error(jwt_invalid_key())
+	if header.is_error(): return error(jwt_invalid_key())
+	if payload.is_error(): return error(
+		Error("jwt: claims cannot be encoded as JSON", kind: "EINVAL")
+	)
 
 	head := base64_encode(header.get_or("").to_bytes(), url_safe: true, padded: false)
 	body := base64_encode(payload.get_or("").to_bytes(), url_safe: true, padded: false)

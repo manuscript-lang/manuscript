@@ -27,11 +27,11 @@ export interface FileTree:
 	// path is `ENOENT`.
 	fn read(path: String, max_bytes: Int?) Bytes!
 	// Lists a directory's children, sorted by name. A missing path is `ENOENT`, a file
-	// is `EINVAL`.
+	// is `EINVAL`, and more than `max_entries` children (when given) is `EOVERFLOW`.
 	fn children(path: String, max_entries: Int?) List[DirectoryEntry]!
 
-// Resolves `path` to its parts under the root. Returns the clean path joined by `/`;
-// the root is the empty string.
+// Normalizes `path` to a clean path under the root: its parts joined by `/`, with the
+// root as the empty string. A NUL byte or a `..` that would leave the root is `EINVAL`.
 fn clean(path: String) String!:
 	if path.contains("\u{0}"): return error(fs_invalid_input())
 
@@ -124,8 +124,8 @@ fn HostTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
 export fn host_tree(root: String) HostTree:
 	return HostTree(root)
 
-// A file tree held in memory: build it with `write_file` and `create_directory`, read
-// it through `FileTree`.
+// A file tree held in memory: build it with `write_file` and `create_directory`, change
+// it with `remove`, and read it through `FileTree`.
 export type MemoryTree:
 	// File contents by clean path.
 	files: Map[String, Bytes]
@@ -363,8 +363,7 @@ fn index_child(var kids: Map[String, List[String]], path: String) Void:
 
 // One file or directory found by `walk`.
 export type WalkEntry:
-	// Path below the walked root, `/`-separated, starting with the walked root's own
-	// children.
+	// Path relative to the walked root, `/`-separated.
 	path: String
 	// True when the entry is a directory (its children follow it).
 	directory: Bool

@@ -9,7 +9,7 @@ import (
 /*
 Internet mail messages (RFC 5322): addresses, address lists, and message parsing.
 `parse_address("Ada <ada@example.com>")` gives name and address; `parse_message` splits a raw
-message into `Headers` and body and decodes RFC 2047 encoded words on request.
+message into `Headers` and body; `decode_words` decodes RFC 2047 encoded words in header text.
 
 <!-- manuscript-example: {"mode":"fragment","given":["raw: String"]} -->
 ```manuscript
@@ -28,8 +28,8 @@ export type Address:
 	// Display name with quotes removed; empty when none was given.
 	name: String = ""
 
-// Formats as `Name <addr>` (quoting the name when it has specials) or the bare
-// address when unnamed.
+// Formats as `Name <addr>`, quoting the name when it contains special characters, or as
+// the bare address when there is no name.
 fn Address.to_string() String:
 	if self.name.is_empty(): return self.address.clone()
 
@@ -49,7 +49,8 @@ export type Message:
 	body: String
 
 // Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`.
-// Encoded words in the name are decoded. Comments are not supported.
+// Encoded words in the name are decoded. Comments are not supported. Text that is not
+// a valid mailbox returns `EBADMSG`.
 export fn parse_address(text: String) Address!:
 	trimmed := text.trim()
 	if trimmed.is_empty(): return error(Error("mail: invalid address", kind: "EBADMSG"))
@@ -94,7 +95,8 @@ fn valid_address(address: String) Bool:
 	return not address.contains_any(" \t<>,;")
 
 // Parses a comma-separated address list, honoring quoted names and angle brackets.
-// Empty items (a trailing comma) are skipped; an empty list is an empty result.
+// Empty items (a trailing comma) are skipped, and empty text gives an empty list. An
+// invalid item returns `EBADMSG`.
 export fn parse_address_list(text: String) List[Address]!:
 	var out = List[Address]()
 	var current = StringBuilder()
@@ -133,7 +135,8 @@ export fn parse_address_list(text: String) List[Address]!:
 	return ok(out)
 
 // Splits a raw message at the first blank line into headers and body. Both CRLF and LF
-// line endings are accepted; a message without a blank line has an empty body.
+// line endings are accepted; a message without a blank line has an empty body. Empty
+// text or an invalid header block returns `EBADMSG`.
 export fn parse_message(raw: String) Message!:
 	if raw.trim().is_empty(): return error(
 		Error("mail: invalid message", kind: "EBADMSG")

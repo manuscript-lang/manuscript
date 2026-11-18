@@ -18,9 +18,9 @@ import (
 	sqrt
 ) from "@std/math/math.ms"
 
-// A complex number with `Float` parts. It is plain data and copies freely. Arithmetic
-// uses named methods; `Complex(re: 1.0, im: 2.0).multiply(complex(0.0, 1.0))` is
-// `-2 + 1i`.
+// A complex number with `Float` parts. It is plain data, so `.clone()` gives an
+// independent copy. Arithmetic uses named methods:
+// `Complex(re: 1.0, im: 2.0).multiply(complex(0.0, 1.0))` is `-2+1i`.
 export type Complex:
 	// The real part, a Float that may be infinite or NaN.
 	re: Float
@@ -48,11 +48,11 @@ fn Complex.scale(factor: Float) Complex:
 	return Complex(re: self.re * factor, im: self.im * factor)
 
 // Returns the quotient. Dividing by zero follows Float rules and gives infinities
-// or NaN, never a fault. The divisor is scaled by its larger part to avoid overflow
-// in the intermediate squares. Finite operands whose parts are near the Float range
-// limits are first scaled by exact powers of two so the quotient keeps its
-// precision; a numerator is only scaled enough to stay in range, so its smaller
-// part survives.
+// or NaN, never a fault.
+// The divisor is scaled by its larger part to avoid overflow in the intermediate
+// squares. Finite operands whose parts are near the Float range limits are first
+// scaled by exact powers of two so the quotient keeps its precision. A numerator is
+// scaled only enough to stay in range, so its smaller part survives.
 fn Complex.divide(other: Complex) Complex:
 	sn := self.re.abs().max(self.im.abs())
 	sd := other.re.abs().max(other.im.abs())
@@ -107,15 +107,15 @@ fn Complex.abs() Float:
 fn Complex.phase() Float:
 	return atan2(self.im, self.re)
 
-// Returns magnitude and angle together.
+// Returns the magnitude as `radius` and the angle as `theta`, as `abs` and `phase` do.
 fn Complex.to_polar() PolarParts:
 	return PolarParts(radius: self.abs(), theta: self.phase())
 
-// True when either part is NaN.
+// Reports whether either part is NaN.
 fn Complex.is_nan() Bool:
 	return self.re.is_nan() or self.im.is_nan()
 
-// True when either part is infinite and neither is NaN.
+// Reports whether either part is infinite and neither is NaN.
 fn Complex.is_infinite() Bool:
 	if self.is_nan(): return false
 	return (
@@ -195,8 +195,10 @@ fn Complex.sqrt() Complex:
 
 	return Complex(re: self.im.abs() / (2.0 * real), im: copy_sign(real, self.im))
 
-// Returns this number raised to `exponent`: 0^0 is 1, and a zero base with a
-// positive exponent real part is 0.
+// Returns this number raised to `exponent`. A zero base gives 1 for a zero exponent,
+// 0 when the exponent's real part is positive, and infinity otherwise. A real integer
+// exponent of magnitude 100 or less multiplies out exactly; any other exponent uses
+// `exp(exponent * log(self))`.
 fn Complex.pow(exponent: Complex) Complex:
 	if self.re == 0.0 and self.im == 0.0:
 		if exponent.re == 0.0 and exponent.im == 0.0: return Complex(re: 1.0, im: 0.0)
@@ -388,8 +390,8 @@ fn Complex.to_string() String:
 export fn complex(re: Float, im: Float) Complex:
 	return Complex(re: re, im: im)
 
-// Returns the number with magnitude `radius` and angle `theta` in radians, so
-// `complex_polar(1.0, pi)` is about -1.
+// Returns the number with magnitude `radius` and angle `theta` in radians.
+// `complex_polar(1.0, pi)` is about -1, with a tiny imaginary part from rounding.
 export fn complex_polar(radius: Float, theta: Float) Complex:
 	return Complex(re: radius * cos(theta), im: radius * sin(theta))
 
@@ -397,15 +399,15 @@ export fn complex_polar(radius: Float, theta: Float) Complex:
 export fn imaginary_unit() Complex:
 	return Complex(re: 0.0, im: 1.0)
 
-// A polar decomposition from `to_polar`.
+// The magnitude and angle of a complex number, from `to_polar`.
 export type PolarParts:
 	// The magnitude, never negative.
 	radius: Float
 	// The angle in radians, from -pi through pi.
 	theta: Float
 
-// Raises to a non-negative integer power by repeated squaring, then inverts for a
-// negative exponent.
+// Raises `base` to the non-negative integer power `count` by repeated squaring, then
+// takes the reciprocal when `invert` is set.
 fn integer_power(base: Complex, count: Int, invert: Bool) Complex:
 	var result = Complex(re: 1.0, im: 0.0)
 	var factor = base
