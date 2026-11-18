@@ -579,6 +579,8 @@ struct Cx<'a> {
     /// The functions in the native calling convention (`abi_llvm`); every other function takes
     /// and returns leaves.
     native: &'a HashSet<usize>,
+    /// Per MIR block: whether it lies on a cycle (hot code gets inline fast paths).
+    in_loop: Vec<bool>,
 }
 
 /// The label a MIR block ends in: each check splits it, and a successor's phis name that label.
@@ -704,6 +706,7 @@ pub fn emit(
         block: 0,
         split: 0,
         native,
+        in_loop: ms_mir::opt::inline::blocks_in_loops(f),
     };
     for bb in &rpo {
         let bd = &f.blocks[bb.index()];

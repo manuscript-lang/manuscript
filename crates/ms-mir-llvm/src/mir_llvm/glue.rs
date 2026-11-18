@@ -192,13 +192,23 @@ fn push_entry(
     (dst, join): (&Val, String),
     b: &mut FnBuilder,
 ) {
+    let (fast, slow) = (format!("pf{}_{n}", cx.block), format!("ps{}_{n}", cx.block));
+    if !cx.in_loop[cx.block] {
+        // Straight-line code runs the push once: the call is smaller than the inline path.
+        b.br(&slow);
+        b.label(&slow);
+        let h = push_call(thunk, slot, b);
+        b.br(&join);
+        b.label(&join);
+        b.phi(dst, &[(h, slow)]);
+        return;
+    }
     let hdr = super::depth::task_hdr(b);
     let lenp = b.gep_bytes(&hdr, ISOLATE_HDR_CLEANUPS_LEN as u64);
     let len = b.load(&LTy::I64, &lenp, 8);
     let capp = b.gep_bytes(&hdr, ISOLATE_HDR_CLEANUPS_CAP as u64);
     let cap = b.load(&LTy::I64, &capp, 8);
     let full = b.icmp("eq", &len, &cap);
-    let (fast, slow) = (format!("pf{}_{n}", cx.block), format!("ps{}_{n}", cx.block));
     b.cond_br_likely(&full, &slow, &fast, false);
     b.label(&fast);
     let bufp = b.gep_bytes(&hdr, ISOLATE_HDR_CLEANUPS as u64);
@@ -212,17 +222,21 @@ fn push_entry(
     b.store(&next, &lenp, 8);
     b.br(&join);
     b.label(&slow);
-    let h = b
-        .call(
-            &LTy::I64,
-            "",
-            "msrt_cleanup_push",
-            &[(thunk.clone(), ""), (slot.clone(), "")],
-        )
-        .expect("a handle");
+    let h = push_call(thunk, slot, b);
     b.br(&join);
     b.label(&join);
     b.phi(dst, &[(next, fast), (h, slow)]);
+}
+
+/// The runtime push, which grows the buffer when it is full. Returns the handle.
+fn push_call(thunk: &Val, slot: &Val, b: &mut FnBuilder) -> Val {
+    b.call(
+        &LTy::I64,
+        "",
+        "msrt_cleanup_push",
+        &[(thunk.clone(), ""), (slot.clone(), "")],
+    )
+    .expect("a handle")
 }
 
 /// A pointer leaf as the address word the runtime takes.
