@@ -121,7 +121,7 @@ known := count[Int]([])
 unknown := count([])
 ```
 
-Generic constructors infer from fields or payloads, or from an expected application: `box: Box[Int] = Box(value: 1)`. The result must be one complete application.
+Generic constructors infer from fields or payloads, or from an expected application: `box: Box[Int] := Box(value: 1)`. The result must be one complete application.
 
 ## Body checking and well-formedness
 

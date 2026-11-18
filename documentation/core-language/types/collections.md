@@ -60,7 +60,7 @@ mixed := [1, 2.0]
 unknown := []
 ```
 
-An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `values: List[Int?] = [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](named-types.md#recursive-data) but derive no hashing.
+An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `values: List[Int?] := [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](named-types.md#recursive-data) but derive no hashing.
 
 ## Iteration
 

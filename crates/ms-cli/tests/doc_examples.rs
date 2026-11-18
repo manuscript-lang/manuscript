@@ -281,3 +281,54 @@ fn stdlib_comment_examples_are_marked_and_pass() {
     );
     verify(&all, "stdlib-examples");
 }
+
+/// README samples sit in `rust` fences (GitHub highlights those) and are not Markdown the book
+/// checks, so they drift. Each must pass `ms check`; a `"mode":"error"` marker names the
+/// diagnostic a deliberately wrong sample must give.
+#[test]
+fn readme_samples_check() {
+    let readme = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../README.md");
+    let text = fs::read_to_string(readme).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    let dir = std::env::temp_dir().join(format!("ms-readme-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let mut failures = Vec::new();
+    let mut count = 0;
+    for (i, line) in lines.iter().enumerate() {
+        if *line != "```rust" {
+            continue;
+        }
+        count += 1;
+        let source: Vec<&str> = lines[i + 1..]
+            .iter()
+            .copied()
+            .take_while(|l| !l.starts_with("```"))
+            .collect();
+        let path = dir.join(format!("readme{count}.ms"));
+        fs::write(&path, source.join("\n") + "\n").unwrap();
+        let (code, _, err) = ms(&["check", path.to_str().unwrap()], "", None);
+        let marker = i.checked_sub(1).and_then(|m| lines[m].strip_prefix(MARKER));
+        let want = marker
+            .and_then(|rest| ms_json::parse(rest.trim_end().trim_end_matches("-->").trim()).ok())
+            .and_then(|spec| {
+                spec.get("contains")
+                    .and_then(Json::as_str)
+                    .map(str::to_string)
+            });
+        match want {
+            Some(text) if code == Some(0) || !err.contains(&text) => {
+                failures.push(format!(
+                    "README.md:{}: want an error containing {text:?}\n{err}",
+                    i + 1
+                ));
+            }
+            None if code != Some(0) => {
+                failures.push(format!("README.md:{}: ms check failed\n{err}", i + 1));
+            }
+            _ => {}
+        }
+    }
+    fs::remove_dir_all(&dir).ok();
+    assert!(count >= 4, "found only {count} README samples");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

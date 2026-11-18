@@ -155,7 +155,7 @@ again := offset.delta
 kept: Increment := offset.clone()
 ```
 
-An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
+An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view: Increment := offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
 
 ### Selecting an operation
 

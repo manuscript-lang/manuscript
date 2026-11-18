@@ -15,8 +15,9 @@ One statement can import from several modules: parenthesize comma-separated `nam
 
 ```text
 import (
-    Queue, Deque from "@std/collections/queue.ms",
-    Path from "@std/path.ms",
+    Deque from "@std/collections/deque.ms",
+    Queue from "@std/collections/queue.ms",
+    PathParts from "@std/os/path.ms",
 )
 ```
 
