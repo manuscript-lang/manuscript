@@ -28,22 +28,23 @@ export enum LogLevel:
 	Error
 	// Critical records at numeric level 60; logging does not terminate the process.
 	Fatal
-	// Filtering threshold that disables records; passing it to log returns EINVAL.
+	// Filtering threshold that disables all records; passing it to `log` returns
+	// `EINVAL`.
 	Silent
 
 // A destination that accepts encoded log records and can be flushed and closed.
 export interface Transport:
-	// Accepts encoded record bytes and may return the original I/O cause. Errors can
-	// follow a partial external write, without rollback. Loggers on several threads
-	// each own a transport (see `duplicate`), so an implementation needs no locking.
+	// Accepts one encoded record as text and may return the original I/O cause. An
+	// error can follow a partial write to the destination, which is not rolled back.
+	// Each logger owns its transport (see `duplicate`), so an implementation needs no
+	// locking.
 	fn write(move data: String) Void!
-	// Accepts encoded record bytes with the same rules as write.
+	// Accepts one encoded record as bytes, with the same rules as `write`.
 	fn write_bytes(move data: Bytes) Void!
-	// Delegates flush to the destination; persistence and buffering depend on that
-	// destination.
+	// Flushes the destination; what that guarantees depends on the destination.
 	fn flush() Void!
-	// A new transport onto the same destination with its own handle; child loggers
-	// write through one each.
+	// Returns a new transport onto the same destination with its own handle. Each
+	// child logger writes through one.
 	fn duplicate() Transport!
 	// Releases owned resources. Later writes return `EBADF`.
 	var fn close() Void
@@ -70,7 +71,7 @@ fn level_at(value: Int) LogLevel:
 
 	return LogLevel.Silent
 
-// Milliseconds since the Unix epoch, the void of the `time` field.
+// Milliseconds since the Unix epoch, the unit of the `time` field.
 fn now_ms() Int:
 	now := now()
 	return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
@@ -229,13 +230,14 @@ fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = non
 
 	return self.emit(level_value(level), message, none)
 
-// Logs at Trace when enabled. Most detailed records; a filtered call returns ok
-// without encoding or transport access. Fields are encoded as in `log`.
+// Logs at Trace, the most detailed level, when enabled. A filtered call returns ok
+// without encoding the fields or touching the transport. Fields are encoded as in
+// `log`.
 fn Logger.trace[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Trace, message, fields)
 
-// Logs at Debug when enabled. Development diagnostics, including the logger's
-// `context`. Fields are encoded as in `log`.
+// Logs at Debug when enabled, for development diagnostics. Fields are encoded as in
+// `log`.
 fn Logger.debug[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Debug, message, fields)
 
@@ -244,25 +246,25 @@ fn Logger.debug[F: Data = Void](message: String, fields: F? = none) Void!:
 fn Logger.info[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Info, message, fields)
 
-// Logs at Warn when enabled. Warning records, returning encoding, size-budget, or
-// transport errors unchanged. Fields are encoded as in `log`.
+// Logs at Warn when enabled. Returns encoding, size-limit and transport errors
+// unchanged. Fields are encoded as in `log`.
 fn Logger.warn[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Warn, message, fields)
 
-// Logs at Error when enabled. Failure records: an expected diagnostic rather than a
-// fault. Fields are encoded as in `log`.
+// Logs at Error when enabled. This records a failure for diagnosis; it does not
+// raise a fault. Fields are encoded as in `log`.
 fn Logger.error[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Error, message, fields)
 
-// Logs at Fatal when enabled. Critical records; the caller remains responsible for
-// process termination. Fields are encoded as in `log`.
+// Logs at Fatal when enabled. Logging does not stop the process; the caller must
+// do that. Fields are encoded as in `log`.
 fn Logger.fatal[F: Data = Void](message: String, fields: F? = none) Void!:
 	return self.log(LogLevel.Fatal, message, fields)
 
 /*
 Returns a logger that writes `fields` under `context` in each record. A child of a child merges
-object members, the newer value winning; any other combination keeps the newer value. A value
-that cannot be encoded returns `EBADMSG`.
+object members, and the newer value wins on a clash; if either side is not an object, the newer
+value replaces the older one. A value that cannot be encoded returns `EBADMSG`.
 */
 fn Logger.child[F: Data](fields: F) Logger!:
 	text := encode_fields(fields)?
@@ -270,7 +272,7 @@ fn Logger.child[F: Data](fields: F) Logger!:
 	own := self.transport.duplicate()?
 	return ok(Logger(self.threshold, self.timestamp, own, self.max_bytes, context))
 
-// Tests the current filtering threshold; Silent is never enabled as a record level.
+// Tests whether records at `level` pass the threshold; `Silent` is never enabled.
 fn Logger.enabled(level: LogLevel) Bool:
 	value := level_value(level)
 	return value >= self.threshold and value < 70
@@ -279,8 +281,8 @@ fn Logger.enabled(level: LogLevel) Bool:
 fn Logger.level() LogLevel:
 	return level_at(self.threshold)
 
-// Changes only this logger's threshold; existing child loggers retain their copied
-// threshold.
+// Changes only this logger's threshold; existing child loggers keep the threshold
+// they copied.
 fn var Logger.set_level(level: LogLevel) Void:
 	self.threshold = level_value(level)
 
@@ -288,8 +290,8 @@ fn var Logger.set_level(level: LogLevel) Void:
 fn Logger.flush() Void!:
 	return self.transport.flush()
 
-// Closes this logger's transport, which consumes the logger; a scope that owns one
-// closes it on every exit. Children and the parent are not affected.
+// Closes this logger's transport and consumes the logger. A scope that owns a
+// logger should close it on every exit. Children and the parent are not affected.
 fn var Logger.close() Void!:
 	self.transport.close()
 
@@ -334,9 +336,9 @@ export fn file_transport(path: String) Transport!:
 	file := open(path, OpenMode.Append, OpenOptions(permissions: 420))?
 	return ok(handle_transport(file))
 
-// Appends to a file and moves it aside once it would exceed a size, as `file_transport`
-// does otherwise. It opens the file for each record, so a rotation by one logger is
-// seen by the others; two loggers rotating at the same instant can lose records.
+// Appends to a file like `file_transport`, but moves it aside when a record would
+// take it past a size limit. It opens the file for each record, so loggers see each
+// other's rotations; two loggers rotating at the same instant can lose records.
 type RotatingTransport:
 	path: String
 	max_bytes: Int
@@ -393,7 +395,11 @@ fn rotate(path: String, keep: Int) Void:
 
 /*
 Appends log records to the file at `path` and rotates it by size.
-When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `EINVAL`. An existing file keeps being appended to, counting its current size.
+When a record would take the file past `max_bytes`, the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted.
+`max_bytes` must be positive, and a single record larger than it is still written whole, to a fresh file.
+`keep` is the number of rotated files to retain, zero or more; zero discards the old contents.
+A non-positive `max_bytes` or a negative `keep` returns `EINVAL`.
+An existing file is appended to, and its current size counts toward `max_bytes`.
 Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5))`.
 */
 // ms: effect std.fs.write

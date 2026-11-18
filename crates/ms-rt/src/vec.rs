@@ -624,11 +624,29 @@ pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: ElemDesc) {
     unsafe {
         let (v, d) = (&mut *v, &*d);
         let size = d.size as usize;
-        let (mut i, mut j) = (0usize, v.len);
-        while i + 1 < j {
-            j -= 1;
-            core::ptr::swap_nonoverlapping(elem(v, d, i), elem(v, d, j), size);
-            i += 1;
+        if v.len < 2 {
+            return;
+        }
+        // Slots of one to four words reverse as typed arrays, which the compiler turns into wide
+        // loads and stores; a swap call per slot costs about 3 ns. Slots are word aligned.
+        macro_rules! words {
+            ($n:literal) => {
+                core::slice::from_raw_parts_mut(v.ptr as *mut [u64; $n], v.len).reverse()
+            };
+        }
+        match size {
+            8 => words!(1),
+            16 => words!(2),
+            24 => words!(3),
+            32 => words!(4),
+            _ => {
+                let (mut i, mut j) = (0usize, v.len);
+                while i + 1 < j {
+                    j -= 1;
+                    core::ptr::swap_nonoverlapping(elem(v, d, i), elem(v, d, j), size);
+                    i += 1;
+                }
+            }
         }
     }
 }
@@ -642,7 +660,35 @@ pub unsafe extern "C-unwind" fn msrt_list_reversed(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        copy_list(v, &*d, out);
+        let (src, desc) = (&*v, &*d);
+        let size = desc.size as usize;
+        // Plain slots of one to four words are copied back to front in one pass.
+        if src.len != 0 && is_plain(desc) && matches!(size, 8 | 16 | 24 | 32) {
+            let p = alloc::alloc(src.len * size);
+            crate::string::count_copy(0, src.len * size);
+            macro_rules! words {
+                ($n:literal) => {{
+                    let from = core::slice::from_raw_parts(src.ptr as *const [u64; $n], src.len);
+                    let to = core::slice::from_raw_parts_mut(p as *mut [u64; $n], src.len);
+                    for (slot, value) in to.iter_mut().zip(from.iter().rev()) {
+                        *slot = *value;
+                    }
+                }};
+            }
+            match size {
+                8 => words!(1),
+                16 => words!(2),
+                24 => words!(3),
+                _ => words!(4),
+            }
+            *out = VecVal {
+                ptr: p,
+                len: src.len,
+                cap: src.len,
+            };
+            return;
+        }
+        copy_list(v, desc, out);
         msrt_list_reverse(out, d);
     }
 }
@@ -903,6 +949,17 @@ pub unsafe extern "C-unwind" fn msrt_list_pieces(
         let (src, d, od) = (&*v, &*d, &*od);
         let (size, step) = (size as usize, step.max(1) as usize);
         let mut res = EMPTY;
+        // The outer list is sized once: the number of pieces is known from the lengths.
+        let pieces = if short_last != 0 {
+            src.len.div_ceil(step)
+        } else if src.len >= size {
+            (src.len - size) / step + 1
+        } else {
+            0
+        };
+        if pieces != 0 {
+            reserve(&mut res, od, pieces);
+        }
         let mut start = 0usize;
         while start < src.len && (short_last != 0 || src.len - start >= size) {
             let n = size.min(src.len - start);
@@ -911,7 +968,6 @@ pub unsafe extern "C-unwind" fn msrt_list_pieces(
                 len: n,
                 cap: n,
             };
-            reserve(&mut res, od, 1);
             copy_list(&view, d, elem(&res, od, res.len) as *mut VecVal);
             res.len += 1;
             start += step;

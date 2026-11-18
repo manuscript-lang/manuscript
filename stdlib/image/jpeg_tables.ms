@@ -7,8 +7,8 @@ export jpeg_zigzag := [
 	34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
 	30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63
 ]
-// Fixed-point (x4096) 8-point transform matrix: row x, column u is c(u)/2 *
-// cos((2x+1)u*pi/16).
+// Fixed-point (scaled by 4096) 8-point DCT matrix: the entry at row x, column u is
+// c(u)/2 * cos((2x+1)u*pi/16), where c(0) is 1/sqrt(2) and c(u) is 1 otherwise.
 export jpeg_dct_matrix := [
 	1448,
 	2008,
@@ -75,8 +75,6 @@ export jpeg_dct_matrix := [
 	784,
 	-400,
 ]
-
-// A canonical Huffman table in the decoding form of JPEG Annex F.
 
 // Clamps `value` to 0 through `high`.
 export fn jpeg_clamp(value: Int, high: Int) Int:

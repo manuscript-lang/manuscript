@@ -81,6 +81,10 @@ pub mod sweep {
             return false;
         }
         let hit = PARKS.fetch_add(1, Ordering::Relaxed) + 1 == target();
+        // A task started under a shield is part of the shielded work, which no cancel reaches.
+        if hit && super::born_shielded() {
+            return false;
+        }
         if hit {
             crate::fault::set_live_task_cancel(1);
         }
@@ -105,6 +109,13 @@ pub mod sweep {
     #[inline(always)]
     pub fn internal(_: bool) {}
 }
+/// Whether the running task started while its spawner was shielded.
+#[cfg(feature = "stats")]
+fn born_shielded() -> bool {
+    // SAFETY: single threaded scheduler; the current task is live.
+    unsafe { (*records::ensure_init()).born_shielded }
+}
+
 /// Request bit: keep the descriptor registered between waits instead of re-arming it. Only for
 /// a descriptor whose owner drains it before every wait and keeps it open for good.
 pub const WAIT_KEEP: u32 = 32;
@@ -172,6 +183,9 @@ struct Task {
     entry: Option<Entry>,
     arg: *mut u8,
     detached: bool,
+    /// Started while its spawner was shielded: work a cancel cannot reach, so the cancel sweep
+    /// does not cancel its parks either (a close that writes through a child task).
+    born_shielded: bool,
     joiner: u64,
     status: u8,
     msg: StrVal,

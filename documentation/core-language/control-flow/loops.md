@@ -5,10 +5,11 @@ weight = 2
 
 # Loops
 
-`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Use a collection when you already have the values, a range when you need a count, or `while` when the next step depends on a condition. Custom sources can implement the standard `Iterator` interface described below.
+`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Loop over a collection when you already have the values, over a range when you need a count, and with `while` when the next step depends on a condition. A custom type can be iterable by implementing the standard `Iterator` interface ([Iterators](#iterators)).
 
 ## Traversing a list
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn sum(values: List[Int]) Int:
     var total = 0
@@ -84,8 +85,11 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 | `Iterator[T]` implementation | `T` | Order of `next()` results |
 
-`MapEntry[K, V]` is a type with `key: K` and `value: V` (constructor from `@std/collections/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
+`MapEntry[K, V]` is a record with `key: K` and `value: V`. Iterating needs no import; only constructing one does (`@std/collections/collections.ms`). It is not a positional pair, so destructure it in the body. The entry is borrowed from the map, not copied.
 
+`for e in m.entries()`, `m.values()` and `m.keys()` visit the map directly, without building a list, when the body does not change the map. When the body does change the map, the list is built first, so the loop sees the entries as they were.
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn total(values: Map[String, Int]) Int:
     var sum = 0
@@ -95,7 +99,9 @@ fn total(values: Map[String, Int]) Int:
     return sum
 ```
 
-`for [key, value] in values:` is a type error: a `MapEntry` is a record, so write `for {key, value} in values:`. Numbers, text, optionals, functions, and types without a `next` method of the `Iterator` shape are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
+`for [key, value] in values:` is a type error: a `MapEntry` is a record, so write `for {key, value} in values:`. Numbers, text, optionals, functions, and types without a `next` method of the `Iterator` shape are not iterable.
+
+Each iteration has a new scope. Assigning to the loop variable is rejected, but an outer `var` can change.
 
 ## Destructuring the element
 
@@ -119,7 +125,9 @@ test "destructure each element":
 
 ## Iterators
 
-A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as the owned result of `next` (`var fn next() T?`). It is the same as `while true:` with `if item := source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
+A type that implements `Iterator[T]` from `@std/core.ms` is iterable. `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as the owned result of `next` (`var fn next() T?`). It behaves like `while true:` with `if item := source.next(): ... else: break`, so `break`, `continue` and `return` work as in any loop.
+
+A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript
@@ -173,6 +181,7 @@ Output:
 
 ## Repeating while a condition holds
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn count_down(start: Int) Int:
     var remaining = start

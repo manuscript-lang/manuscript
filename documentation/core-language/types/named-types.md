@@ -8,25 +8,30 @@ weight = 1
 
 A type groups related data into named fields. Use it when a function should receive one meaningful value, such as a customer or an order. Each declaration creates a distinct type; fields change through a `var` binding.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Customer:
     name: String
     email: String?
 ```
 
-Field types are explicit and names unique. An empty type is `type Marker:`. A field may have a default expression checked against its type.
+Field types are explicit and field names are unique. An empty type is `type Marker:`. A field may have a default expression, which is checked against the field's type.
 
 ## Construction
 
-Supply each required field exactly once, by position or label; fields with defaults may be omitted. Missing, duplicate, and unknown fields are compile errors. Supplied expressions evaluate in written order, then omitted defaults in declaration order. Each is checked against its field type, so `none` and `[]` get their expected type.
+Supply each required field exactly once, by position or label; fields with defaults may be omitted. Missing, duplicate, and unknown fields are compile errors.
 
+Supplied expressions evaluate in written order, then omitted defaults evaluate in declaration order. Each is checked against its field type, so `none` and `[]` get their expected type.
+
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    email: String?","given":[]} -->
 ```manuscript
 customer := Customer(name: "Ada", email: none)
 name := customer.name
 ```
 
-Positional arguments follow declaration order and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Box(3)` equals `Box(value: 3)`. Handle an optional field as described in [optional values](optionals.md).
+Positional arguments follow declaration order, and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Customer("Ada", none)` equals `Customer(name: "Ada", email: none)`. To handle an optional field such as `email`, see [optional values](optionals.md).
 
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type Customer:\n    name: String\n    email: String? = none","given":[]} -->
 ```manuscript
 // An omitted optional field is none.
 without_email := Customer(name: "Ada")
@@ -36,6 +41,7 @@ customer.name = "Grace"
 
 Generic types declare parameters (`type Box[T]:`) and construct as `Box[Int](value: 1)`; see [generics](generics.md).
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 type Options:
     count: Int = 3
@@ -44,11 +50,13 @@ type Options:
 options := Options(count: 5)  // total defaults to 6
 ```
 
-An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `void`, `none`, or zero, skips the default. Generic arguments never come from defaults.
+An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields.
+
+A default is evaluated on each construction, so a collection default is a fresh collection each time. Any supplied value, even `void`, `none`, or zero, skips the default. Generic arguments never come from defaults.
 
 ## Mutation and cloning
 
-A clone gives a value its own nested data. Changing the clone leaves the original alone.
+`.clone()` is a deep copy: the clone has its own nested types and collections, and changing it leaves the original alone.
 
 Save as `customers.ms` and run `ms run customers.ms`:
 
@@ -71,8 +79,9 @@ Ada
 Grace
 ```
 
-Methods are receiver methods, `fn Type.name(...)` ([methods](contracts.md#methods)); methods inside the type are rejected. A method marked `var fn` can update receiver fields in place:
+Methods are receiver methods, `fn Type.name(...)` ([methods](contracts.md#methods)); a method declared inside the type body is rejected. A method marked `var fn` can update receiver fields in place:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 interface Counter:
     var fn increment() Void
@@ -84,15 +93,15 @@ fn var Val.increment() Void:
     self.val = self.val + 1
 ```
 
-Field writes keep the declared type; the receiver evaluates once, before the new value. Types follow the move and borrow rules of every container; only primitives copy implicitly. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
+A field write keeps the field's declared type, and the receiver evaluates once, before the new value. A type follows the same move and borrow rules as any other owner, and only primitives copy implicitly. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
 
-`.clone()` is a deep copy of nested types and collections; changing a clone never affects the original. Resource handles are never copied.
+Types, enums, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not, and neither does a function value, which owns its captures and has one owner.
 
-Types, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not, and neither does a function value: it owns its captures and has one owner. A type, alternative or collection that holds a resource or a function value is not `Clonable`, so it has no `.clone()` and the copying collection operations (`concat`, `take`, `sorted`) do not apply to it; move it, or build it again (a `Router` is moved into `mount` and into its `handler`).
+A type, enum, or collection that holds a resource or a function value is not `Clonable`. It has no `.clone()`, and the copying collection operations (`concat`, `take`, `sorted`) do not apply to it. Move it or build it again instead.
 
 ## Moving a field out
 
-Move a field into a new owner when you no longer need that field in the original type. This avoids cloning a large value just to store it somewhere else.
+Move a field into a new owner when the original no longer needs it. This avoids cloning a large value just to store it elsewhere.
 
 Save as `batches.ms` and run `ms run batches.ms`:
 
@@ -114,21 +123,23 @@ scores
 [3, 4]
 ```
 
-- The outer list owns `report.rows` after construction. The sibling field `report.title` remains readable because fields are tracked separately. Reading `report.rows` or using the whole `report` afterwards is rejected; use `report.rows.clone()` at construction if both owners need the rows.
-- Field moves apply to owned fields (strings, lists, types, resources) of a `:=` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and types that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
-- A parameter whose field is moved into another owner is consumed: its caller gives up the type. Passing `.clone()` keeps an independent caller-owned type.
+- The outer list owns `report.rows` after construction. The sibling field `report.title` stays readable because fields are tracked separately. Reading `report.rows` or using the whole `report` afterwards is rejected. If both owners need the rows, use `report.rows.clone()` at construction.
+- Field moves apply to owned fields (strings, lists, types, resources) of a `:=` binding or a consuming parameter. They do not apply to elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, or types that declare `close`. For those, clone a clonable value or move the whole owner.
+- A parameter whose field is moved into another owner is consumed, so the caller gives up the whole value. Pass `.clone()` to keep an independent caller-owned value.
 
-Reading a field is different from moving it. `rows := report.rows` borrows it. A getter that returns the field also returns an inferred borrow:
+Reading a field is different from moving it: `rows := report.rows` borrows the field. A function that returns the field also returns an inferred borrow:
 
+<!-- manuscript-example: {"mode":"fragment","context":"type Report:\n    rows: List[Int]","given":[]} -->
 ```manuscript
 fn rows_of(report: Report) List[Int]:
     return report.rows
 ```
 
-Calling `rows_of(report)` leaves `report.rows` readable; the type must stay available while the returned borrow is used. See [borrow-returning functions](references.md#borrowing).
+Calling `rows_of(report)` leaves `report.rows` readable, and `report` must stay available while the returned borrow is in use. See [borrow-returning functions](references.md#borrowing).
 
-A resource field moves without a copy, and the new owner closes it. The type closes only the fields that were not moved, last declared first, on every way out of the function:
+A resource field moves without a copy, and the new owner closes it. The type closes only the fields that were not moved, last declared first, on every way out of the function. In this example `door` is moved and `spare` is not:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 
@@ -148,12 +159,13 @@ fn open_door(r: Room) List[Door]:
     return doors
 ```
 
-Here `r.spare` closes when `open_door` returns and `r.door` closes with `doors`' new owner. A place and a part of it (`r.room` and `r.room.door`) cannot both be moved out of one binding.
+Here `r.spare` closes when `open_door` returns, and `r.door` closes with its new owner, `doors`. A place and a part of it (such as `r.door` and `r.door.id`) cannot both be moved out of one binding.
 
 ## Domain identity
 
 Wrap identifiers in their own types so they cannot be mixed up.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type CustomerId:
     value: String
@@ -162,21 +174,24 @@ type OrderId:
     value: String
 ```
 
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type CustomerId:\n    value: String\n\ntype OrderId:\n    value: String","given":[]} -->
 ```manuscript
 customer_id := CustomerId("42")
 // Rejected: equal field shapes do not make nominal types interchangeable.
 order_id: OrderId := customer_id
 ```
 
-Identity is module, declaration, and type arguments; alternate import paths to one module do not create new types. Applications are [invariant](compatibility.md).
+A type's identity is its module, its declaration, and its type arguments. Importing one module by different paths does not create different types. Type applications are [invariant](compatibility.md).
 
 ## Public data surfaces
 
-Exporting a type exports its constructor and every field; there are no per-field visibility modifiers; [`export opaque type`](#opaque-types) hides all fields outside the declaring file. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a type does not import its field types' names.
+Exporting a type exports its constructor and every field. There are no per-field visibility modifiers; [`export opaque type`](#opaque-types) hides all fields outside the declaring file instead.
+
+Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a type does not import the names of its field types.
 
 ## Recursive data
 
-Types and alternatives may refer to themselves or each other directly, with no box. Give construction an endpoint with a base case, `Optional`, or a collection.
+Types and enums may refer to themselves or each other directly, with no box. Give construction an endpoint with a base case, an `Optional`, or a collection.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -216,7 +231,7 @@ test "recursive links":
         panic("clones must be independent")
 ```
 
-Constructors still need every required field, and a binding is unavailable in its own initializer, so `node := Node(value: 1, next: node)` is rejected. `.clone()` copies the whole chain. Recursive shapes derive no `Hashable`; keys need explicit implementations ([equality and hashing](equality-and-hashing.md)).
+Constructors still need every required field, and a binding is unavailable in its own initializer, so `node := Node(value: 1, next: node)` is rejected. Recursive shapes get no automatic `Hashable`; a key needs an explicit implementation ([equality and hashing](equality-and-hashing.md)).
 
 Generic recursion must preserve type parameters along every cycle; see [finite recursive applications](generics.md#finite-recursive-applications).
 
@@ -238,9 +253,11 @@ n := approve("u2").nonce                  # error: field nonce is hidden
 {entity} := approve("u2")                 # error: its fields cannot be destructured here
 ```
 
-Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no new methods in another module. Its text form, in interpolation, `to_string()`, and test output, is only the type name: `f"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and typed JSON stream codecs reject it at compile time. Promises and pipes do not require `Data`.
+Outside the declaring file, an opaque type allows none of the following: construction, field reads or writes, field patterns, `match` on its cases, or new methods declared in another module.
 
-Opaque controls visibility: an opaque value can still be cloned when its fields permit it, so it proves where a value was built, not that it is spent once. Hold a resource or a non-clonable field for single use.
+Its text form, in interpolation, `to_string()`, and test output, is only the type name: `f"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and typed JSON stream codecs reject it at compile time. Promises and pipes do not require `Data`.
+
+Opaque controls visibility only. An opaque value can still be cloned when its fields permit it, so it shows where a value was built, not that it is used once. For single use, hold a resource or a non-clonable field.
 
 ## Resource fields
 
@@ -250,8 +267,9 @@ Use [enums](alternatives.md) for a choice among cases and `interface` for [opera
 
 ## Aliases
 
-`type Name = Type` gives another name to a type expression. An alias is not a new type: it and its target are interchangeable everywhere, and it has no constructor or methods of its own. Use a record when the type must be distinct.
+`type Name = Type` gives another name to a type expression. An alias is not a new type: it and its target are interchangeable everywhere, and it has no constructor or methods of its own. Declare a `type` with fields when you need a distinct type.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 type Rows = List[Int]
 type Handler = fn(Int) Int
@@ -265,6 +283,6 @@ sum := total(numbers)
 ```
 
 - The target is any type expression, including function types, `T?`, `T!E` and applications such as `List[Row]`.
-- An alias may take type parameters, written like a record's: `type Pairs[A: Hashable, B] = List[Map[A, B]]`. Every parameter is supplied, or defaulted, where the alias is used. Bounds apply to the expansion.
-- An alias may name one declared later in the module; a cycle (`type A = B` with `type B = A`) is rejected.
-- An exported alias must not expose a private type, like any exported signature.
+- An alias may take type parameters, written like a generic type's: `type Pairs[A: Hashable, B] = List[Map[A, B]]`. Every parameter is supplied, or defaulted, where the alias is used. Bounds apply to the expansion.
+- An alias may name a type declared later in the module. A cycle (`type A = B` with `type B = A`) is rejected.
+- An exported alias must not expose a private type, as with any exported signature.

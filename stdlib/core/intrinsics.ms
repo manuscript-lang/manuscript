@@ -10,7 +10,7 @@ import (
 interface ValueOperations:
 	fn to_string() String
 
-// Data values have a deep clone returning the concrete receiver type.
+// Data values have a deep `clone` that returns the receiver's own type.
 interface CloneOperations[T]:
 	fn clone() T
 
@@ -47,9 +47,9 @@ interface SignedIntegerOperations[T]:
 	fn sign() Int
 
 /*
-String receiver operations use UTF-8 text. Lengths, offsets and slice bounds count bytes and
-every offset a method returns starts a scalar, so they are constant time; methods named
-`scalar_*` count Unicode scalar values and scan the text. Walk characters with `chars()`.
+String receiver operations work on UTF-8 text. Lengths, offsets and slice bounds count bytes,
+and every offset a method returns starts a scalar. Methods named `scalar_*` count Unicode scalar
+values instead and scan the text. Walk characters with `chars()`.
 */
 interface StringOperations:
 	// The UTF-8 byte length, in constant time.
@@ -59,17 +59,19 @@ interface StringOperations:
 	// Returns a list with one String for each Unicode scalar, in order. The result
 	// borrows the receiver: use it in place, or `.clone()` it to keep it.
 	fn chars() List[String]
-	// Reverses Unicode scalar order; combining sequences/graphemes may change.
+	// Reverses the order of Unicode scalars, so a combining sequence or grapheme
+	// cluster can come out reordered.
 	fn reverse() String
 	// Returns -1, 0 or 1 in lexical scalar order, without locale or normalization.
 	fn compare(other: String) Int
-	// Splits LF and CRLF lines, preserving interior empty lines and standalone CR.
-	// Omits a final extra empty item; empty text returns an empty list. The result
-	// borrows the receiver: use it in place, or `.clone()` it to keep it.
+	// Splits at LF and CRLF, keeping interior empty lines and any standalone CR.
+	// Text that ends in a newline yields no extra empty item, and empty text returns
+	// an empty list. The result borrows the receiver: use it in place, or `.clone()`
+	// it to keep it.
 	fn lines() List[String]
-	// Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes
-	// optionally bounds UTF-8 output. Invalid forms or negative budgets return EINVAL;
-	// exceeded budgets return EOVERFLOW.
+	// Normalizes to the form named by `form`, which must be exactly `"NFC"`, `"NFD"`,
+	// `"NFKC"` or `"NFKD"`. `max_bytes` optionally bounds the UTF-8 output. An invalid
+	// form or negative bound returns `EINVAL`; exceeding the bound returns `EOVERFLOW`.
 	fn normalize(form: String, max_bytes: Int?) String!
 	// Concatenates text without changing either operand.
 	fn concat(other: String) String
@@ -77,19 +79,19 @@ interface StringOperations:
 	fn contains(value: String) Bool
 	// Tests whether the receiver ends with this exact suffix.
 	fn ends_with(suffix: String) Bool
-	// Returns locale-independent full Unicode lowercase mapping; the scalar length can
-	// change.
+	// Returns the text in full Unicode lowercase, independent of locale. The scalar
+	// length can change.
 	fn lower() String
-	// Repeats text `count` times; a count of zero or below, or empty text, gives empty
-	// text. Output beyond the string limit faults like `concat`.
+	// Repeats the text `count` times. A count of zero or below, or empty text, gives
+	// empty text. Output beyond the string limit faults, as `concat` does.
 	fn repeat(count: Int) String
-	// Replaces the first occurrence of old; text without a match is unchanged. An empty
-	// old matches at the first scalar boundary, so new is inserted at the start.
+	// Replaces the first occurrence of `old`; text without a match is unchanged. An
+	// empty `old` matches at the start, so `new` is inserted there.
 	fn replace_first(old: String, new: String) String
 	/*
-    Replaces every nonoverlapping occurrence of old, scanning left to right; inserted text is not rescanned.
-    An empty old matches at each scalar boundary, so "ab".replace("", "-") is "-a-b-".
-    Output beyond the string limit faults like concat; use Regex.replace_all for a bounded replacement.
+    Replaces every nonoverlapping occurrence of `old`, scanning left to right; inserted text is not rescanned.
+    An empty `old` matches at each scalar boundary, so `"ab".replace("", "-")` is `"-a-b-"`.
+    Output beyond the string limit faults, as `concat` does; use `Regex.replace_all` for a bounded replacement.
     */
 	fn replace(old: String, new: String) String
 	// Counts the Unicode scalar values by scanning the text.
@@ -97,51 +99,53 @@ interface StringOperations:
 	// Returns each Unicode scalar value as an integer.
 	fn scalar_values() List[Int]
 	// Splits at every exact separator, keeping empty pieces. Empty text with a nonempty
-	// separator yields [""]; an empty separator splits into scalars. The pieces borrow
-	// the receiver: use them in place, or `.clone()` the result to keep it.
+	// separator yields `[""]`; an empty separator splits into scalars. The pieces
+	// borrow the receiver: use them in place, or `.clone()` the result to keep it.
 	fn split(separator: String) List[String]
 	// Tests whether the receiver begins with this exact prefix.
 	fn starts_with(prefix: String) Bool
-	// Removes Unicode whitespace at both ends; the exact set is listed in the text
+	// Removes Unicode whitespace at both ends. The exact set is listed in the text
 	// guide.
 	fn trim() String
-	// Returns locale-independent full Unicode uppercase mapping; the scalar length can
-	// change.
+	// Returns the text in full Unicode uppercase, independent of locale. The scalar
+	// length can change.
 	fn upper() String
 	// Returns the Unicode scalar value that starts at byte `offset`. An offset outside
 	// the text or inside a scalar returns `default`, and without one raises a fault.
 	fn scalar_at(offset: Int, default: Int?) Int
 	// Counts non-overlapping occurrences; an empty part counts the scalars plus one.
 	fn count(part: String) Int
-	// Returns the byte offset of the first match or none; empty value matches at zero.
+	// Returns the byte offset of the first match, or `none`. An empty `value` matches
+	// at zero.
 	fn index_of(value: String) Int?
-	// Returns the byte offset of the last match or none; empty value matches at
-	// length().
+	// Returns the byte offset of the last match, or `none`. An empty `value` matches at
+	// `length()`.
 	fn last_index_of(value: String) Int?
 	fn trim_start() String  // Removes Unicode whitespace at the start.
 	fn trim_end() String  // Removes Unicode whitespace at the end.
 	/*
     Pads on the left until the scalar length reaches `target_length`, repeating `padding` and cutting its last copy.
-    A shorter or negative target or empty padding returns the text unchanged; output beyond the string limit faults like `concat`.
+    A target that is not longer than the text, a negative target, or empty padding returns the text unchanged.
+    Output beyond the string limit faults, as `concat` does.
     Example: `"7".pad_start(3, "0")` is `"007"`.
     */
 	fn pad_start(target_length: Int, padding: String) String
 	// Pads on the right like `pad_start`. Example: `"id".pad_end(5, ".")` is `"id..."`.
 	fn pad_end(target_length: Int, padding: String) String
-	// Selects the bytes [start, end); negative bounds are relative to the end. Bounds
-	// outside the text clamp to it, a start at or past the end gives "", and a bound
+	// Copies the bytes [start, end); negative bounds are relative to the end. Bounds
+	// outside the text clamp to it, and a start at or past the end gives `""`. A bound
 	// inside a scalar moves inward (start forward, end backward), so the result is
-	// whole characters and the call never fails; the receiver is unchanged.
+	// always whole characters. The call never fails and leaves the receiver unchanged.
 	fn slice(start: Int, end: Int) String
 	// Borrows the bytes [start, end) of the receiver without copying; negative bounds
 	// are relative to the end. Bounds outside 0 <= start <= end <= length(), or inside
 	// a scalar, raise a fault. Like `Bytes.view`, the result borrows the receiver,
-	// which cannot change while the view is used; `.clone()` keeps the text. `slice`
-	// copies instead.
+	// which cannot change while the view is used; `.clone()` keeps the text. Use
+	// `slice` for a copy.
 	fn view(start: Int, end: Int) String
 	// Borrows the UTF-8 bytes of the text without copying. Like `view`, the result
 	// borrows the receiver, which cannot change while the bytes are used; `.clone()`
-	// keeps them. `to_bytes` copies instead.
+	// keeps them. Use `to_bytes` for a copy.
 	fn view_bytes() Bytes
 	// Encodes the string as UTF-8 bytes.
 	fn to_bytes() Bytes
@@ -162,7 +166,8 @@ interface IntOperations:
 	// A Duration of this many minutes, as in `2.minutes()`; faults when the nanosecond
 	// count overflows Int.
 	fn minutes() Duration
-	// Returns the same value; Int64 is another name for Int while Int is 64 bits wide.
+	// Returns the same value. `Int64` is another name for `Int` while `Int` is 64 bits
+	// wide.
 	fn to_int64() Int64
 	// Converts to Int; every value fits, so no check is needed.
 	fn to_int() Int
@@ -183,14 +188,15 @@ interface IntOperations:
 
 // Formatting and classification operations for floating-point values.
 interface FloatOperations:
-	// Formats 1..100 significant digits, preserving trailing zeros; a count outside
-	// 1..100 faults.
+	// Formats with `precision` significant digits, from 1 to 100, keeping trailing
+	// zeros; a count outside 1..100 faults.
 	fn to_precision(precision: Int) String
-	// Formats scientific notation with 0..100 fractional digits; a count outside 0..100
-	// faults.
+	// Formats in scientific notation with `digits` fractional digits, from 0 to 100; a
+	// count outside 0..100 faults.
 	fn to_exponential(digits: Int) String
-	// Formats 0..100 fractional digits; magnitude >= 1e21 uses ordinary round-trip
-	// notation. A count outside 0..100 faults; rounding uses binary64 ties to even.
+	// Formats with `digits` fractional digits, from 0 to 100; a magnitude of 1e21 or
+	// more uses the ordinary round-trip notation. A count outside 0..100 faults.
+	// Rounding is binary64 round half to even.
 	// Example: `3.14159.to_fixed(2)` is `"3.14"`.
 	fn to_fixed(digits: Int) String
 	// Returns the shortest round-trip representation, including NaN and signed
@@ -266,7 +272,7 @@ interface UInt32Operations:
 	// Converts to Int; every value fits, so no check is needed.
 	fn to_int() Int
 
-// Conversion operations for UInt64, an unsigned 32-bit integer.
+// Conversion operations for UInt64, an unsigned 64-bit integer.
 interface UInt64Operations:
 	// Converts to Int, or returns none when the value is above Int's maximum.
 	fn to_int() Int?

@@ -41,7 +41,11 @@ An extern follows `crates/ms-rt-abi/include/ms_abi.h`, which a C shim includes.
 
 Any other type is rejected by `ms check`. A type, enum, map or optional is converted in an ordinary Manuscript function around the extern.
 
-Arguments are borrowed: a native reads them and does not keep a pointer after returning. It builds results with `ms_string_new`, `ms_bytes_new` and `ms_list_push`, never with its own allocator, so the program can free them. A list knows its element type: `ms_list_get` widens an element into an `ms_value`, and `ms_list_push` faults on a value of another kind or out of the element's range. Strings and bytes from `ms_list_get` are `malloc` copies that `ms_value_free` releases. A native that blocks, such as an event loop, returns when a stop is requested only if it registers a stop hook (see [Calling back into Manuscript](#calling-back-into-manuscript)), since a native call is not a cancellation point.
+Arguments are borrowed: a native reads them and does not keep a pointer after returning.
+
+- **Results.** Build them with `ms_string_new`, `ms_bytes_new` and `ms_list_push`, never with your own allocator, so the program can free them.
+- **Lists.** A list knows its element type. `ms_list_get` widens an element into an `ms_value`, and `ms_list_push` faults on a value of another kind or out of the element's range. Strings and bytes from `ms_list_get` are `malloc` copies that `ms_value_free` releases.
+- **Blocking.** A native call is not a cancellation point. A native that blocks, such as an event loop, returns when a stop is requested only if it registers a stop hook (see [Calling back into Manuscript](#calling-back-into-manuscript)).
 
 Every output arrives holding an empty value (0, `""`, an empty list, NULL), and the program drops every output after the call. A native that writes the wrong output, or none, therefore leaves nothing undefined. An object result that is still NULL faults.
 
@@ -99,7 +103,7 @@ fn var Connection.close() Void!:
 
 ## Calling back into Manuscript
 
-A function argument reaches the native as an `ms_fn *`, which `ms_call(f, args, count, result)` calls on the same thread with an array of `ms_value`s. Each argument must have the kind and range of its parameter (`MS_INT` for a signed type, `MS_UINT` for an unsigned one), or `ms_call` faults before the call. `result`, which may be NULL, receives the value as `ms_list_get` gives it. A fault in the function ends the program like any fault; `ms_call` does not return from it. A function takes at most six parameters.
+A function argument reaches the native as an `ms_fn *`, which `ms_call(f, args, count, result)` calls on the same thread with an array of `ms_value`s. Each argument must have the kind and range of its parameter (`MS_INT` for a signed type, `MS_UINT` for an unsigned one), or `ms_call` faults before the call. `result`, which may be NULL, receives the value as `ms_list_get` gives it. A fault in the function ends the program like any fault; `ms_call` does not return from it. A function passed to a native takes at most six parameters.
 
 A native that keeps a function past the call, for a library that calls back later, takes its own copy with `ms_fn_clone` and drops it with `ms_fn_drop`. It calls the function only on the thread that called the native. Because a native may keep it, a closure passed to an extern owns what it captures.
 

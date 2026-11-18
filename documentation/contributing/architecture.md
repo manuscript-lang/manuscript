@@ -5,7 +5,7 @@ weight = 1
 
 # Repository architecture
 
-`ms` is a Rust workspace under `crates/`; `ms` compiles Manuscript to native code through Cranelift, or LLVM for optimized builds when its tools are available. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
+`ms` is a Rust workspace under `crates/`. It compiles Manuscript to native code through Cranelift, or through LLVM for optimized builds when its tools are available. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
 
 ## Follow one compilation
 
@@ -26,7 +26,7 @@ weight = 1
 5. `ms-check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup, effects, and ownership, and keeps what lowering, docs, and editors need.
 6. Check, lint, inspect, diagram, and review stop after checking. Formatting uses only the syntax crate.
 7. `ms-lower` turns checked HIR into MIR; `ms-mir` optimizes and verifies it. See [lowering](compiler/lowering/_index.md).
-8. `ms-clif` emits object code and `ms-build` links it with the embedded native runtime: supported platforms use the pinned, cached `lld` (stubs of glibc 2.28 on Linux, or musl with `--static`; generated SDK stubs on macOS, the mingw-w64 CRT on Windows).
+8. `ms-clif` emits object code and `ms-build` links it with the embedded native runtime. Supported platforms use the pinned, cached `lld`, with these C-library inputs: stubs of glibc 2.28 on Linux (musl with `--static`), generated SDK stubs on macOS, and the mingw-w64 CRT on Windows.
 
 ## Know what each crate owns
 

@@ -26,12 +26,16 @@ fn mask_shift(mask: Int) Int:
 	while bit_and(shift_right_unsigned(mask, shift), 1) == 0: shift += 1
 	return shift
 
-// Scales a bit-field channel with maximum `peak` to eight bits.
+// Extracts a bit-field channel at `shift` with maximum value `peak` and scales it to
+// eight bits.
 fn mask_channel(value: Int, shift: Int, peak: Int) Int:
 	return (bit_and(shift_right_unsigned(value, shift), peak) * 255 + peak / 2) / peak
 
-// Decodes an uncompressed BMP into a raster; `EBADMSG`, `ENOTSUP` or `EOVERFLOW` on
-// failure.
+// Decodes an uncompressed BMP, or a 32-bit BMP with bit-field masks, into a raster of 3
+// channels (RGB) or 4 (RGBA, for 32-bit pixels with alpha). Palette images expand to
+// RGB. Malformed data returns EBADMSG, an unsupported feature such as RLE compression
+// returns ENOTSUP, and dimensions past `max_pixels` or the hard ceiling return
+// EOVERFLOW.
 export fn decode_bmp(data: Bytes, max_pixels: Int?) Raster!:
 	if data.length() < 26: return error(bad("truncated BMP header"))
 
@@ -213,7 +217,9 @@ fn put32(var out: BytesBuilder, value: Int) Void:
 	put16(var out, bit_and(value, 65535))
 	put16(var out, bit_and(shift_right_unsigned(value, 16), 65535))
 
-// Encodes pixels as a 24-bit BMP, or 32-bit with alpha; `EOVERFLOW` past BMP limits.
+// Encodes pixels as a 24-bit BMP, or as a 32-bit BMP when `channels` is 2 or 4 (alpha).
+// Gray pixels are stored as RGB. A size past the BMP limits (2^31 - 1 per dimension, or
+// 4 GiB in total) returns EOVERFLOW.
 export fn encode_bmp(width: Int, height: Int, channels: Int, pixels: List[UInt8]) Bytes!:
 	if width > 2147483647 or height > 2147483647:
 		return error(too_big("BMP dimensions too large"))

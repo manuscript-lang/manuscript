@@ -11,8 +11,8 @@ import (
 /*
 A set of small non-negative integers stored one bit each: 8 bytes per 64 candidates, with O(1) add, remove and contains.
 Indexes must be 0 through 1073741823 (a 128 MiB bitmap); other indexes are rejected by `add` with `EINVAL`, so the set never grows without bound by accident.
-Written in Manuscript; clone() makes an independent copy.
-Use it for visited marks, flags, and dense id sets; use Set for sparse or non-integer members.
+`clone()` makes an independent copy.
+Use it for visited marks, flags and dense id sets; use `Set` for sparse or non-integer members.
 */
 export type BitSet:
 	// Bitmap words, 64 members each, grown on demand. Internal state: use the
@@ -63,8 +63,8 @@ fn BitSet.is_empty() Bool:
 fn var BitSet.clear() Void:
 	self.words = []
 
-// Returns the smallest member that is at least `from`, or `none` when there is
-// none.
+// Returns the smallest member that is at least `from`, or `none` when there is no
+// such member.
 fn BitSet.next(from: Int = 0) Int?:
 	start := from.max(0)
 	var word = start / 64
@@ -110,8 +110,8 @@ fn BitSet.difference(other: BitSet) BitSet:
 fn BitSet.symmetric_difference(other: BitSet) BitSet:
 	return self.combine(other, 3)
 
-// Merges words pairwise; `mode` 0 is union, 1 intersection, 2 difference, 3
-// symmetric difference.
+// Internal: merges words pairwise. `mode` 0 is union, 1 intersection, 2 difference
+// and 3 symmetric difference.
 fn BitSet.combine(other: BitSet, mode: Int) BitSet:
 	var out: List[Int] = []
 

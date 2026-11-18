@@ -19,39 +19,45 @@ Choose a `List` for an ordered sequence, a `Map` for lookup by key, and a `Set` 
 
 Brackets construct mutable lists of values:
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 values := [1, 2, 3]
 empty: List[Int] := []
 also_empty := List[Int]()
 sized := List[Int](reserve: 1000)
+print(values)
+print(empty)
+print(also_empty)
 ```
 
-`reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list stays empty; a negative or `none` reserve preallocates nothing, and a count above 134217728 (2^27) is capped there as the list grows on demand past it.
+`reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list itself stays empty. A negative or `none` reserve preallocates nothing, and a count above 134217728 (2^27) is capped there; the list grows on demand past that point.
 
-The first literal infers `List[Int]`; an empty literal needs an annotation or expected type. Every element must match the element type (no implicit numeric conversion) and evaluates left to right. See [collections as arguments](../functions/declarations-and-calls.md#collections-as-arguments).
+The literal `[1, 2, 3]` infers `List[Int]`; an empty literal needs an annotation or expected type. Every element must match the element type (there is no implicit numeric conversion), and elements evaluate left to right. See [collections as arguments](../functions/declarations-and-calls.md#collections-as-arguments).
 
 ## Map literals
 
 Braces construct mutable maps:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 scores := {"Ada": 3, "Lin": 5}
 empty: Map[String, Int] := {}
 ```
 
-Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name: score}` uses the value of `name`; `{"name": score}` uses a String. Map literals never construct types.
+Entries are `key: value`, and trailing commas are allowed. Keys are expressions: `{name: score}` uses the value of `name`, while `{"name": score}` uses the String `"name"`. A map literal never constructs a type.
 
-- A nonempty literal infers key and value types independently; an expected Map type propagates to both. An empty map needs an annotation or expected type.
+- A nonempty literal infers key and value types independently, and an expected `Map` type propagates to both. An empty map needs an annotation or expected type.
 - Keys must be `Hashable`.
 - Entries evaluate once, in written order, key before value.
 - Duplicate keys keep their first position and last value, like `add`.
 
 ## Element requirements
 
-Lists and map values accept functions, interface values, builders and resources. Moving a resource into a collection transfers its cleanup duty to that collection; [aggregate cleanup](../cleanup/closeable.md#types-and-collections-close-what-they-hold) closes owned resources at scope end. Map keys and set elements also require `Hashable`.
+Lists and map values accept functions, interface values, builders, and resources. Moving a resource into a collection transfers its cleanup duty to that collection; [aggregate cleanup](../cleanup/closeable.md#types-and-collections-close-what-they-hold) closes owned resources at scope end. Map keys and set elements also require `Hashable`.
 
 Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected Int","given":[]} -->
 ```manuscript
 nested: List[List[Int]] := [[], [1, 2]]
 // Rejected: incompatible Int and Float elements.
@@ -60,7 +66,11 @@ mixed := [1, 2.0]
 unknown := []
 ```
 
-An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `values: List[Int?] = [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](named-types.md#recursive-data) but derive no hashing.
+An expected type propagates into inner literals. Without one, elements must agree on one type.
+
+`none` needs context to fix its payload type, and neither `[none, 1]` nor `[none]` supplies it, so annotate the binding: `values: List[Int?] := [none, 1]`.
+
+Collections can hold [recursive data](named-types.md#recursive-data) but get no automatic hashing.
 
 ## Iteration
 
@@ -102,12 +112,14 @@ Mutators update the receiver in place and return Void; a `:=` binding cannot be 
 List details:
 
 - `set(index:, value:)` and `remove(index:)` accept negative indexes and fault on invalid ones.
-- `replace(index:, value:)` stores `value` and returns the element that was there; `swap(i:, j:)` exchanges two elements. Both move elements without copying them, so they take an element out of a list of owned values (`items.replace(0, none)` on a `List[T?]`) and reorder it without `.clone()`. Both accept negative indexes and fault on invalid ones.
-- `insert(index:, value:)` places before `index`, valid from `-length()` to `length()` (which appends).
-- `pop()` returns the last element as the value, or `none` when empty.
+- `replace(index:, value:)` stores `value` and returns the element that was there; `swap(i:, j:)` exchanges two elements. Both accept negative indexes and fault on invalid ones.
+- `replace` and `swap` move elements without copying them. They take an element out of a list of owned values (`items.replace(0, none)` on a `List[T?]`) or reorder it without `.clone()`.
+- `insert(index:, value:)` places the value before `index`. Valid indexes run from `-length()` to `length()`, and `length()` appends.
+- `pop()` removes and returns the last element, or returns `none` when the list is empty.
 - `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`.
 - Invalid bounds fault; nothing is clamped.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 var values = [1, 2]
 copy := values.clone()
@@ -123,13 +135,19 @@ A collection loop or non-escaping callback borrows the receiver for the traversa
 
 ### Choosing a copy or an update {#naming-and-migration}
 
-Mutating methods such as `append`, `set`, `add` and `reverse` update a `var` receiver. Transforms such as `concat`, `filter`, `sorted` and `reversed` return independent results. `slice` on a List of numbers or `Bool`s and `keys()` and `values()` on a Map lend instead: the result is used in place while the receiver stays unchanged, and keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `xs.slice(1, 3).get().clone()` does. For bytes, `slice` copies and `view(start, end)` borrows a range; see [half-open slices](../basics/text-and-bytes.md#half-open-slices).
+Mutating methods such as `append`, `set`, `add`, and `reverse` update a `var` receiver. Transforms such as `concat`, `filter`, `sorted`, and `reversed` return independent results.
 
-Use `Queue` from `@std/collections/queue.ms` for first-in, first-out work (`enqueue`, `dequeue`, `peek`); `dequeue` is O(1). Use `Deque` when adding or removing at both ends. Both are owned values: declare them with `var` to mutate and use `.clone()` for an independent copy.
+Some methods borrow instead: `slice` on a List of numbers or `Bool`s, and `keys()` and `values()` on a Map. Use the result in place while the receiver stays unchanged. Keeping it (storing it, returning it, binding it with `var`, or capturing it in an escaping closure) needs `.clone()`, as in `xs.slice(1, 3).get().clone()`.
 
-Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. For an independent map, bind `var copy = map.clone()` and call `copy.add_default(...)`.
+For bytes, `slice` copies and `view(start, end)` borrows a range; see [half-open slices](../basics/text-and-bytes.md#half-open-slices).
 
-Builder mutations return Void; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` takes ownership of them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a field, where `build` cannot move it out.
+Use `Queue` from `@std/collections/queue.ms` for first-in, first-out work (`enqueue`, `dequeue`, `peek`); `dequeue` is O(1). Use `Deque` when adding or removing at both ends. Both are owned values: declare them with `var` to mutate them, and use `.clone()` for an independent copy.
+
+Map `add_default` evaluates its argument and inserts only when the key is absent. `add_default_from` calls `create(key:)` once, only when the key is absent. Neither replaces an existing value or position. To leave the original map unchanged, bind `var copy = map.clone()` and call `copy.add_default(...)`.
+
+Builder mutations return Void, and `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var` and pass them with `var`. `build` takes ownership of the builder, so using one after `build` is a move error.
+
+`drain` returns the content so far and leaves the builder empty. Use it for a builder held in a field, where `build` cannot move the builder out.
 
 ## Other collections
 
@@ -187,9 +205,9 @@ A List keeps its identity and backing kind through generics, types, Optional, Re
 
 An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get_or(0, 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
-`Map.add(key, value)` inserts or replaces and returns Void. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Remove then add moves the entry to the end. Equality ignores insertion order. Use builders for construction with a sealed result.
+`Map.add(key, value)` inserts or replaces and returns Void. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Removing an entry and adding it again moves it to the end. Equality ignores insertion order.
 
-Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (constant time on average). Map and Set `remove` keep order by shifting later entries, costing a fast copy proportional to size. List `contains` and `index_of` scan. A key mutated while stored becomes unreachable; remove it first or store a `.clone()` ([key consistency](equality-and-hashing.md#key-consistency)).
+Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (constant time on average). Map and Set `remove` keep order by shifting later entries, costing a fast copy proportional to size. List `contains` and `index_of` scan. A key changed while stored becomes unreachable; remove it first or store a `.clone()` ([key consistency](equality-and-hashing.md#key-consistency)).
 
 ### Search and enumeration
 
@@ -201,19 +219,24 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `any(predicate:)`, `all(predicate:)` | Whether some or every element satisfies the predicate; stops at the first deciding element. Empty lists give `false` and `true`. |
 | List `max_by(key:)`, `min_by(key:)` | The first element whose key (a `Comparable` value from `key(element)`) is greatest or least, or `none` when empty. Calls `key` once per element in order; ties keep the earlier element. Like `find`, the result is a copy of the element. |
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
-| List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` types containing `index` and `value`. |
-| List `zip(other)` | A new list of `Pair[T, U]` types (`first` from the receiver, `second` from `other`), as long as the shorter list. |
+| List `keys()`, `entries()` | `keys()` returns a new list of indexes; `entries()` returns a new `List[ListEntry[T]]` whose entries have `index` and `value`. |
+| List `zip(other)` | A new list of `Pair[T, U]` values (`first` from the receiver, `second` from `other`), as long as the shorter list. |
 | List `chunks(size)`, `windows(size)` | Lists of copies of `size` consecutive elements: `chunks` splits (the last may be shorter), `windows` overlaps (a list shorter than `size` gives none). A `size` of zero or less is a fault. |
-| List `partition(predicate)` | A `Partition[T]` type whose `matching` and `rest` lists keep the original order; the predicate runs once per element. |
+| List `partition(predicate)` | A `Partition[T]` whose `matching` and `rest` lists keep the original order; the predicate runs once per element. |
 | Map `keys()`, `values()` | Lists in insertion order that borrow the Map: use them in place or `.clone()` to keep them. |
-| Map `entries()` | A new list in insertion order of `MapEntry[K, V]` types with `key` and `value`. |
+| Map `entries()` | A new list, in insertion order, of `MapEntry[K, V]` values with `key` and `value`. |
 | Set `values()` | A new list in insertion order. |
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Void. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Void. |
 
-Enumeration returns owned results. Callbacks borrow the receiver for the traversal; they cannot mutate it.
+Enumeration returns owned results. Callbacks borrow the receiver for the traversal and cannot change it.
 
-List `sorted()` returns a new list in ascending natural order and `sort()` orders the list in place; both are stable. Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with its own `compare`), and Float orders NaN above every other value. Pass `compare: fn a, b: ...` to order by anything else; a negative result puts the first argument first. `sum()` adds Int, Float, or sized numeric elements with `+` (Int overflow faults; an empty list sums to zero). `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list, the first of equal elements, or `none` for an empty list.
+List `sorted()` returns a new list in ascending natural order, and `sort()` orders the list in place. Both are stable.
+
+- Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with its own `compare`). Float orders NaN above every other value.
+- Pass `compare: fn a, b: ...` to order by anything else. A negative result puts the first argument first.
+- `sum()` adds Int, Float, or sized numeric elements with `+`. Int overflow faults, and an empty list sums to zero.
+- `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list: the first of equal elements, or `none` for an empty list.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -232,6 +255,7 @@ test "sorting and aggregates":
 
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -256,12 +280,17 @@ test "dynamic mutable data and explicit copies":
         return panic("check failed")
 ```
 
-Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filter` return fresh storage in insertion order, copying retained values; predicates borrow the receiver. Set `map` also borrows its receiver and returns a fresh set whose output type must be `Hashable`; equal results keep the first payload and position. Callbacks run sequentially in the caller's context; faults and cancellation stop the traversal.
+Map `get_or` evaluates its fallback eagerly and never inserts.
+
+Map and Set `filter` return fresh storage in insertion order, copying the retained values; predicates borrow the receiver. Set `map` also borrows its receiver and returns a fresh set whose output type must be `Hashable`; equal results keep the first payload and position.
+
+Callbacks run sequentially in the caller's context, and faults and cancellation stop the traversal.
 
 ## Transforming Map keys and values
 
 `map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, borrow the receiver, and return an owned Map. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
     return scores.map(fn name, score: score + 1)
@@ -277,4 +306,4 @@ All of these borrow the receiver while callbacks run; mutating or clearing that 
 
 ## Building data
 
-The [collection reference](../../standard-library/reference/collections/collections.ms.md) lists all methods and constructors. Builders construct with a sealed result. See [generics and bounds](generics.md) and [equality and hashing](equality-and-hashing.md) for key eligibility.
+The [collection reference](../../standard-library/reference/collections/collections.ms.md) lists all methods and constructors. See [generics and bounds](generics.md) and [equality and hashing](equality-and-hashing.md) for key eligibility.

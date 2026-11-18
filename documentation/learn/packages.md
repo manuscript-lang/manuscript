@@ -13,7 +13,9 @@ A package is another project's source, fetched by name and version. `ms` pins it
 ms add https://github.com/manuscript-lang/ms-pg.git --sha <40-character commit> --allow
 ```
 
-`ms add` writes the dependency into `ms.toml`, downloads it with `git`, records the commit and a content hash in `ms.lock`, and prints what the package may reach. The name defaults to the repository name without a leading `ms-`, so this is `@pg`; `--as @name` picks another. ms-pg has no release tag yet, so this pins a commit. For a repository that tags releases, `--version 1` means any 1.x tag, as in Cargo, and `--tag v1.0.0` means exactly one tag.
+`ms add` writes the dependency into `ms.toml`, downloads it with `git`, records the commit and a content hash in `ms.lock`, and prints what the package may reach. The name defaults to the repository name without a leading `ms-`, so this is `@pg`; `--as @name` picks another.
+
+ms-pg has no release tag yet, so this pins a commit. For a repository that tags releases, `--version 1` means any 1.x tag, as in Cargo, and `--tag v1.0.0` means exactly one tag.
 
 The result in `ms.toml` is a table with the git `url` and one of `sha`, `tag` or `version`:
 
@@ -35,6 +37,7 @@ Commit `ms.lock`. Everyone who builds the project gets the same bytes: a changed
 
 `@pg/` names the package's source directory:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import Config, open from "@pg/conn.ms"
 import Value from "@pg/value.ms"

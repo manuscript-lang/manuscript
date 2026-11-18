@@ -5,7 +5,7 @@ weight = 2
 
 # Commands and editor setup
 
-Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md). `ms` brings formatting, lint, editor support, code maps, builds and profiling into one workflow. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
+Install an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build it from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md). One binary covers formatting, lint, editor support, code maps, builds and profiling. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
 
 ## Choose the next command
 
@@ -20,7 +20,7 @@ Run project commands from the directory containing `ms.toml`. For a single-file 
 | Find an API | `ms search_symbol json` | A bounded page of matching declarations |
 | Understand a program visually | `ms diagram ms.toml --format html -o code-map.html` | An offline HTML file with checked source relationships |
 
-Start with the [first-program workflow](../learn/getting-started.md) for a complete example and its output. The sections below explain command options and structured results for automation.
+For a complete example with its output, start with the [first-program workflow](../learn/getting-started.md). The sections below explain command options and the structured results that automation reads.
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
 - Command-line arguments must be valid UTF-8; invalid OS arguments return usage status 2.
@@ -61,7 +61,7 @@ git diff --no-renames > change.patch
 ms diagram ms.toml --format html --diff change.patch -o review.html
 ```
 
-These commands write `change.patch` and `review.html` without terminal output. Run this against the working tree represented by the diff's after state. The map shows relationships and control flow from the checked source; sequence and behavior views are static views, not runtime execution traces. Use [profiling](debugging/debugger-integration.md) to observe a running program and [tests](../learn/testing.md) to check its outcomes.
+These commands write `change.patch` and `review.html` without terminal output. Run them in a working tree that matches the diff's after state. The map shows relationships and control flow from the checked source; the sequence and behavior views are static, not runtime traces. Use [profiling](debugging/debugger-integration.md) to observe a running program and [tests](../learn/testing.md) to check its outcomes.
 
 ## Source inspection
 
@@ -105,7 +105,10 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 - `--depth n` bounds expansion (default 3; 1 for `flow`, `scope`, `tasks` and `ownership`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
 - `--diff <file|->` reads a unified diff like `ms review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. ASCII and Mermaid overlays need `--view` or `--entity`; HTML includes the whole map.
 - `--format html` includes all views in one page and accepts `--diff`; omit `--view` and `--entity`. Type hints are capped at 200,000 identifiers. Individual views bound their display (about 40 overview nodes, 60 call nodes and 14 sequence lifelines); the map shows omitted counts and lets you navigate to a different part of the program.
-- `--json` emits a versioned document with `view`, `entity`, and `tree` (defaults to the `calls` view). Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted`, and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap. `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o: Order, i: Item) Order`; `var` may change the argument; use JSON or Mermaid for the checked ownership modes) (not the generic tree) unless `--diff` is given. Use `--format mermaid` to render a view for people (`types` becomes a class diagram with composition arrows; `ownership` a flow colored by borrow mode, unless `--diff` is given); `--json` and `--format` cannot be combined.
+- `--json` emits a versioned document with `view`, `entity` and `tree` (the default view is `calls`).
+  - Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted` and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap.
+  - Unless `--diff` is given, `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o: Order, i: Item) Order`), not the generic tree. `var` may change the argument; use JSON or Mermaid for the checked ownership modes.
+  - `--format mermaid` renders a view for people: `types` becomes a class diagram with composition arrows, and `ownership` a flow colored by borrow mode (unless `--diff` is given). `--json` and `--format` cannot be combined.
 
 ## Review report
 
@@ -138,7 +141,7 @@ Entities match by file, kind, and name, so formatting and in-file moves are not 
 
 Reach is the number of entities that transitively call the changed one; the score is the sum of the listed terms. Only newly reached declared effects rank.
 
-The report compares tracked static properties; it does not run tests. An INTERNAL body edit can still change runtime behavior. “No tracked semantic changes” means the comparison found no changes to those properties.
+The report compares tracked static properties; it does not run tests. An INTERNAL body edit can still change runtime behavior. "No tracked semantic changes" means the comparison found no changes to those properties.
 
 For an agent, follow a finding's stable ID through the same workflow:
 
@@ -148,11 +151,11 @@ ms review ms.toml --diff change.patch --explain 1 --json
 ms diagram ms.toml --view flow --entity 'src/main.ms#fn#save' --diff change.patch --json
 ```
 
-Replace the example ID with `diagram.entity` from the explanation. The diff must be available again for each command; save a piped diff to a file when following up.
+Replace the example ID with `diagram.entity` from the explanation. Each command needs the diff again, so save a piped diff to a file before following up.
 
 ## Commands for agents
 
-These commands answer what the compiler commands do not and print only what is needed to act.
+These commands answer questions the compiler commands do not, and print only what you need to act.
 
 | Command | Behavior |
 | --- | --- |
@@ -208,7 +211,14 @@ A nonzero application exit keeps its status with `completed: true` and `reason: 
 
 `ms fmt <targets> --check --json`, `ms test <input> --json`, and `ms run <input> --json` write one `format: 1` document to stdout. Usage errors return 2 on stderr with no JSON. `fmt --json` requires `--check`; `test --json --watch` is rejected.
 
-`ms run --json` captures the program's output and reports `exit_code`, `stdout`, `stderr`, and `diagnostics`; compile errors return `reason: "compile_error"` with diagnostics. A program that ends in a runtime fault (exit status 134, or 139 for `stack_overflow` and `out_of_memory`) adds a `fault` object, and `ms test --json` adds the same object to a test that faulted: `kind` (`division_by_zero`, `overflow`, `index_out_of_range`, `stack_overflow`, `out_of_memory`, `deadlock`, `incomplete_cleanup`, or `fault`, chosen by the runtime entry point that raised it; an absent `Map` key reports `fault` with `map key not found: <key>`), `message` (which carries the offending values), `position` and `trace` (`function`, `file`, `line`, innermost first, `repeated` when frames collapsed), `trace_truncated`, `cleanups_ran` (the runtime runs every cleanup before it reports), `cleanup_faults`, and `exit_code`. `ms run --json` returns the program's own status.
+`ms run --json` captures the program's output and reports `exit_code`, `stdout`, `stderr` and `diagnostics`. Compile errors return `reason: "compile_error"` with diagnostics. It returns the program's own exit status.
+
+A program that ends in a runtime fault (exit status 134, or 139 for `stack_overflow` and `out_of_memory`) adds a `fault` object. `ms test --json` adds the same object to a test that faulted. Its fields:
+
+- `kind`: `division_by_zero`, `overflow`, `index_out_of_range`, `stack_overflow`, `out_of_memory`, `deadlock`, `incomplete_cleanup`, or `fault`, chosen by the runtime entry point that raised it. An absent `Map` key reports `fault` with `map key not found: <key>`.
+- `message`, which carries the offending values.
+- `position` and `trace` (`function`, `file`, `line`, innermost first, `repeated` when frames collapsed), and `trace_truncated`.
+- `cleanups_ran` (the runtime runs every cleanup before it reports), `cleanup_faults`, and `exit_code`.
 
 `ms verify [target] [--json] [--no-test] [--deny-warnings]` runs `check`, `fmt --check`, `lint`, and `test` on one target (default `ms.toml`) and exits 1 when any step fails. Lint warnings do not fail the `lint` step unless `--deny-warnings` is passed.
 
@@ -325,7 +335,7 @@ Expression layout uses a soft limit of 88 columns:
 
 Native builds keep frame pointers and DWARF line tables, so faults report source frames and external tools such as `perf` can attribute samples; see [profiling and native debugging](debugging/debugger-integration.md).
 
-`ms profile module-or-project --out-dir new-directory` builds the application, runs it with the sampling profiler, and writes `program`, `profile.folded`, `profile.pb` (pprof), `top.txt`, and `manifest.json`. Existing directories are rejected. Profiling adds overhead, so measure an unprofiled executable when comparing speed.
+`ms profile <file.ms|ms.toml> --out-dir <new-directory>` builds the application, runs it with the sampling profiler, and writes `program`, `profile.folded`, `profile.pb` (pprof), `top.txt`, and `manifest.json`. Existing directories are rejected. Profiling adds overhead, so measure an unprofiled executable when comparing speed.
 
 ```sh
 ms profile main.ms --out-dir samples --top 10

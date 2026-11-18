@@ -65,3 +65,16 @@ test "sorting records that own data in place keeps every record":
 		ids += e.id
 	expect_equal(ids, 299 * 300 / 2)?
 	expect_equal(list[299].tags[1], "u")?
+
+test "sorting strings longer than the inline size by compare leaves the original alone":
+	var words: List[String] = []
+	for i in 0..300:
+		words.append(f"a string longer than the inline size {(i * 7919) % 1009}")
+
+	sorted := words.sorted(compare: fn(a: String, b: String) Int: a.compare(b))
+	for i in 1..sorted.length():
+		expect_equal(sorted[i - 1].compare(sorted[i]) <= 0, true)?
+
+	expect_equal(words[0], "a string longer than the inline size 0")?
+	expect_equal(words[1], "a string longer than the inline size 856")?
+	expect_equal(sorted.length(), 300)?

@@ -1,6 +1,6 @@
 +++
 title = "Files and standard input"
-weight = 2
+weight = 3
 +++
 
 # Files and standard input
@@ -101,3 +101,27 @@ last line
 ```
 
 An empty line is `""`, and the loop ends at end of input. Line endings (`\n` or `\r\n`) are stripped, and a read failure is returned by `wait()`.
+
+## Find files by pattern
+
+Save as `find.ms`. `glob` walks a directory and returns the entries that match any include pattern, sorted by path. Each path is relative to the root and `/`-separated on every platform.
+
+`**` crosses directories. A pattern that ends in `/` matches directories only, as in a shell. `exclude` patterns skip an entry and do not enter a skipped directory, and `max_results` bounds a walk of an unknown tree.
+
+<!-- manuscript-example: {"mode":"run","stdout":"src/main.ms\nsrc/util/text.ms\nsrc\nsrc/util\n"} -->
+```manuscript
+import GlobOptions, create_directory, glob, temporary, write_file from "@std/os/fs.ms"
+
+fn main() Void!:
+    dir := temporary("glob-")?
+    root := dir.path()
+    create_directory(f"{root}/src/util", true)?
+    write_file(f"{root}/src/main.ms", "a").wait()?
+    write_file(f"{root}/src/util/text.ms", "b").wait()?
+    write_file(f"{root}/notes.txt", "c").wait()?
+
+    for entry in glob(root, GlobOptions(patterns: ["**/*.ms"]))?:
+        print(entry.path)
+    for entry in glob(root, GlobOptions(patterns: ["**/"]))?:
+        print(entry.path)
+```

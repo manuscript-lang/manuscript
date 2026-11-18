@@ -17,7 +17,6 @@ A model writes Manuscript well because there is little to get wrong. The concept
 
 <!-- manuscript-example: {"mode":"run","stdout":"1650 cents\n"} -->
 ```manuscript {filename="shop.ms"}
-
 enum Item:
     Book(pages: Int)
     Coffee(grams: Int)
@@ -70,7 +69,11 @@ Reading the diff line by line does not scale when an agent writes the code. Manu
 ms diagram ms.toml --format html -o code-map.html
 ```
 
-You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted, and a Behavior view that lays out the control flow of the selected function. The actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes. A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye. The language and the tools are shaped to keep the cognitive load low: you see the structure first and open the code only where it matters. See [working with an agent](../guide/working-with-an-agent.md) for the full review workflow.
+You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted. A Behavior view lays out the control flow of the selected function, and the actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes.
+
+A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye.
+
+The language and the tools are shaped to keep the cognitive load low: you see the structure first and open the code only where it matters. See [working with an agent](../guide/working-with-an-agent.md) for the full review workflow.
 
 ## Test, benchmark and profile in one toolchain
 
@@ -90,7 +93,7 @@ The method is simple. For correctness, a model probes one area at a time: it wri
 
 ## Fast to iterate, fast to ship
 
-The compiler is a pipeline that gets slower and smarter at each step:
+The compiler is a pipeline in which each step costs more time and optimizes more:
 
 ```text
 Manuscript source -> HIR -> MIR -> CLIF -> LLVM
@@ -110,7 +113,7 @@ The numbers come from the [compile-time benchmark](https://github.com/manuscript
 
 ## We measure it with agents
 
-The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md) gives agents the same challenges in TypeScript, Go, Rust and Manuscript and grades them on hidden tests. What goes wrong there decides what we build next. Every result types its revision and machine.
+The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md) gives agents the same challenges in TypeScript, Go, Rust and Manuscript and grades them on hidden tests. What goes wrong there decides what we build next. Every result names its revision and machine.
 
 ## Where it stands
 

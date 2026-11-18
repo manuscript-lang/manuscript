@@ -641,6 +641,7 @@ fn lower_job(
             return crate::text::build_format(cx, m, job.func, *t, *repr);
         }
         JobKind::Equal(t, scope) => return crate::eq::build_eq(cx, m, job.func, *t, *scope),
+        JobKind::StatusError(j) => return crate::rtcall::build_status_error(cx, m, job.func, j),
         JobKind::HandleMethod(j) => {
             return crate::natiface::build_method(cx, m, job.func, j);
         }

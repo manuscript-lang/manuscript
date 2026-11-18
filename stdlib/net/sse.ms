@@ -20,12 +20,13 @@ export type SseEvent:
 	// event, or none if the stream sent none.
 	retry: Int?
 
-// Optional byte budgets for one line and for one event.
+// Optional byte limits for one line and for one event. A supplied limit must be
+// positive.
 export type SseLimits:
-	// Largest line in bytes, excluding its line ending; none adds no budget.
+	// Largest line in bytes, excluding its line ending; none sets no limit.
 	max_line_bytes: Int?
 	// Largest total of all field lines in one event, excluding line endings and
-	// comments; none adds no budget.
+	// comments; none sets no limit.
 	max_event_bytes: Int?
 
 // Internal transform state behind `sse_events`.

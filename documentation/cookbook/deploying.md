@@ -1,6 +1,6 @@
 +++
 title = "Deploying one binary"
-weight = 13
+weight = 22
 +++
 
 # Deploying one binary
@@ -42,6 +42,8 @@ hello from a single file
 ```sh
 ms verify
 ```
+
+The format check fails on any file `ms fmt` would change, so run `ms fmt` first.
 
 ## Run it in a container
 

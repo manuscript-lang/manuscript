@@ -5,7 +5,7 @@ weight = 2
 
 # Build levels
 
-`--build-type` sets native optimization and debugging information. `ms build` and `ms bench` default to an optimized Release executable. `ms run` and `ms test` default to Debug, which compiles with Cranelift and builds much faster; pass `--build-type Release` to run or test the optimized (LLVM) code.
+`--build-type` sets native optimization and debugging information. `ms build` and `ms bench` default to an optimized Release executable. `ms run` and `ms test` default to Debug, which compiles with Cranelift and builds much faster. Pass `--build-type Release` to run or test the optimized (LLVM) code.
 
 Save this entrypoint as `main.ms`:
 
@@ -39,7 +39,7 @@ On Linux, the default executable runs on glibc 2.28 or newer. Use `--static` wit
 | `Release` | Speed | Kept, so profilers and backtraces show names |
 | `MinSizeRel` | Speed and size | Stripped |
 
-Every level links with `--gc-sections` (`-dead_strip` on macOS), so runtime and standard-library code the program never reaches is dropped. Executable size depends on the target, build level and reachable library code. Build levels never change language semantics.
+Every level links with `--gc-sections` (`-dead_strip` on macOS), which drops runtime and standard-library code the program never reaches. Executable size depends on the target, build level and reachable library code. Build levels never change language semantics.
 
 ## Defaults and command behavior
 

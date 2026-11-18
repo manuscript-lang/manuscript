@@ -265,6 +265,9 @@ pub struct Method {
     pub mutating: bool,
     /// Declared `fn move Type.name`: the method takes ownership of its receiver.
     pub consuming: bool,
+    /// The type arguments written on the receiver of `fn Type[A, B].name`, kept here because
+    /// methods of one type merge into a single block that keeps only the first receiver.
+    pub receiver_args: Vec<TypeRef>,
 }
 
 /// One `Name[(fields)]` of an alternative type.

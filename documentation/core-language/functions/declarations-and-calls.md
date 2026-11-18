@@ -7,6 +7,7 @@ weight = 1
 
 A function names its inputs, declares their types, and declares its return type. Use `return` in a multiline body. A one-line body returns its expression implicitly: `fn double(value: Int) Int: value * 2` (see [suite rules](../basics/grammar.md#statements-and-patterns)).
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 fn decrement(value: Int) Int:
     return value - 1
@@ -41,6 +42,7 @@ fn main() Void!:
 
 Labels are optional. An unlabeled argument fills the first parameter not yet filled, in declaration order. `name: value` fills that parameter in any order. A bare identifier is an ordinary expression, so renaming a local never changes which parameter it fills.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 fn reduce(amount: Int, deduction: Int) Int:
     return amount - deduction
@@ -51,6 +53,9 @@ mixed := reduce(deduction: 3, 10)
 amount := 10
 deduction := 3
 swapped := reduce(deduction: deduction, amount: amount)
+print(remaining)
+print(explicit_remaining)
+print(mixed)
 ```
 
 All five results are `7`. Arguments resolve left to right and labels do not reserve parameters for later arguments:
@@ -63,7 +68,7 @@ All five results are `7`. Arguments resolve left to right and labels do not rese
 
 `reduce(amount: amount, deduction: deduction)` binds the same as `reduce(amount, deduction)`. `ms fmt --drop-labels` removes `name: name` labels only when the call binds identically without them.
 
-The rule covers functions, generics, methods, function values, library APIs, and constructors. A method's receiver is evaluated before its arguments and takes no positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Function-type identity depends on ordered parameter types with their `var` markers and the result type; parameter names are not part of [type identity](function-values-and-closures.md).
+The rule covers functions, generics, methods, library APIs, and constructors. A call through a value of an explicit function type is positional ([function values](function-values-and-closures.md)). A method's receiver is evaluated before its arguments and takes no positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Function-type identity depends on ordered parameter types with their `var` markers and the result type; parameter names are not part of [type identity](function-values-and-closures.md).
 
 A parameter with a default may be omitted; others are required, except `T?`, which defaults to `none`. A supplied `T` is wrapped once as the present case ([optional arguments](../types/optionals.md#passing-optional-arguments)). Variadics and spreading are unsupported. Match bindings such as `value:` beside `none:` are [patterns](../control-flow/pattern-matching.md), not calls.
 
@@ -71,6 +76,7 @@ A parameter with a default may be omitted; others are required, except `T?`, whi
 
 Write `= expression` after a parameter's type to supply a default:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn subtract(amount: Int, deduction: Int = 1) Int:
     return amount - deduction
@@ -96,6 +102,7 @@ fn example() Int:
 
 To accept a variable number of values, declare an ordinary list parameter:
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 fn sum(values: List[Int]) Int:
     total := values.sum()
@@ -104,9 +111,10 @@ fn sum(values: List[Int]) Int:
 
 total := sum([1, 2, 3])
 empty := sum([])
+print(total)
 ```
 
-The argument is one list reference: `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list.
+The argument is one list: `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list.
 
 See [collections](../types/collections.md) for list literals and element requirements.
 
@@ -122,8 +130,9 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 
 ## Void and Never
 
-`Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok()`, which can also be written `ok()`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
+`Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may use a bare `return` or fall off the end. A function returning `Void!` (or `Void!E`) may do the same, and both return `ok()`, which you may also write explicitly. Other functions must return a compatible value on every reachable exit: a bare `return` or reachable fallthrough is an error. Multiline bodies need an explicit `return`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -153,6 +162,7 @@ An expression has no normal successor when a necessarily evaluated subexpression
 
 Typing is separate: `1 + panic(message: "stop")` has type `Int` ([operators](../basics/expressions.md#never-operands)) but cannot complete, so the next statement is unreachable.
 
+<!-- manuscript-example: {"mode":"error","contains":"reachable fallthrough","given":[]} -->
 ```manuscript
 fn incomplete(active: Bool) Int:
     if active:

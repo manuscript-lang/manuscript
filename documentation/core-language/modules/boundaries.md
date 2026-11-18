@@ -5,7 +5,7 @@ weight = 2
 
 # Module boundaries
 
-Exports define what other files can use. Export the types that public functions name; keep helpers private.
+Exports define what other files can use. Export every type that an exported function names in its signature, and keep helpers private.
 
 Save this module as `pricing.ms`. It exports a type and the operation callers need:
 
@@ -24,6 +24,7 @@ export fn total(items: List[Item]) Int:
 
 Save the caller as `main.ms` in the same directory:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import Item, total from "./pricing.ms"
 
@@ -39,4 +40,4 @@ Run `ms run main.ms`:
 
 The caller imports `Item` to build values and `total` to use them. A public signature cannot expose a private type ([public type visibility](../types/named-types.md#public-data-surfaces)).
 
-Functions that need files, network access, or other services can import a host accessor or take a service parameter. Parameters make dependencies visible and let tests substitute them. See [interfaces](../types/contracts.md).
+A function that needs files, network access, or another service can import the operation it uses (such as `read_file` from `@std/os/fs.ms`) or take the service as a parameter. A parameter makes the dependency visible and lets tests substitute it. See [interfaces](../types/contracts.md).

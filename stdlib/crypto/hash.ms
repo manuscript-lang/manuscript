@@ -1,8 +1,8 @@
 // ms: allow_effect std.random.read
 
-// Non-cryptographic hashes and checksums (FNV, CRC-64, a seeded table hash). They
-// spread keys and detect accidental damage; for SHA-2, HMAC and other secure digests,
-// see `@std/crypto/crypto.ms`.
+// Non-cryptographic hashes and checksums: FNV, CRC-64 and a seeded hash for hash
+// tables. They spread keys over buckets and detect accidental damage. For SHA-2, HMAC
+// and other secure digests, see `@std/crypto/crypto.ms`.
 import (
 	Bytes from "@std/bytes.ms",
 	ReadStream from "@std/io/io.ms",
@@ -32,7 +32,7 @@ export fn fnv1a32(data: Bytes) UInt32:
 		)
 	return hash.to_uint32().get_or(0)
 
-// Hashes `data` with 32-bit FNV-1, which multiplies before it mixes in each byte.
+// Hashes `data` with 32-bit FNV-1, which multiplies before it XORs in each byte.
 // `fnv1_32("a".to_bytes())` returns 84696446 (0x050C5D7E).
 export fn fnv1_32(data: Bytes) UInt32:
 	var hash = 2166136261
@@ -51,7 +51,7 @@ export fn fnv1a64(data: Bytes) UInt64:
 		hash = wrapping_multiply(bit_xor(hash, data.get(index).to_int()), 1099511628211)
 	return unsigned(hash)
 
-// Hashes `data` with 64-bit FNV-1, which multiplies before it mixes in each byte.
+// Hashes `data` with 64-bit FNV-1, which multiplies before it XORs in each byte.
 // `fnv1_64("a".to_bytes())` returns 12638153115695167422 (0xAF63BD4C8601B7BE).
 export fn fnv1_64(data: Bytes) UInt64:
 	var hash = -3750763034362895579
@@ -191,14 +191,14 @@ export fn crc64(polynomial: Crc64Polynomial, data: Bytes) UInt64:
 A seeded, non-cryptographic 64-bit hash for hash tables and sharding.
 Equal seeds hash equal bytes to equal values on every platform; `random_seed()` draws a fresh seed per call,
 so hash values are not stable across runs. Do not use it to authenticate data or defend against chosen input.
-`seed := MapHash(seed: random_seed())` then `seed.hash("key".to_bytes())` buckets keys unpredictably.
+`table_hash := MapHash(seed: random_seed())` then `table_hash.hash("key".to_bytes())` buckets keys unpredictably.
 */
 export type MapHash:
 	// The seed mixed into every hash.
 	seed: Int
 
-// Hashes the bytes with this seed, finishing with a 64-bit avalanche so every
-// output bit depends on all input bits.
+// Hashes the bytes with this seed. A final 64-bit avalanche step makes every output
+// bit depend on all input bits.
 fn MapHash.hash(data: Bytes) UInt64:
 	var state = bit_xor(self.seed, -3750763034362895579)
 

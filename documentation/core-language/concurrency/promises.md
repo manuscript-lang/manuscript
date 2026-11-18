@@ -43,7 +43,13 @@ For a `config.json` containing exactly `{}` (two bytes), the program prints:
 
 `PromiseOptions(timeout: ...)` is given when a promise is made, with `promise(fn: ..., options: ...)`, or to a promise another call returned with `.with(options: ...)`, as in `read_file(path).with(options: PromiseOptions(timeout: 5.seconds()))`. The timeout counts from creation for `promise`, or from applying `.with` to an existing promise, and is enforced whether or not anyone waits; `wait` itself takes no timeout. A negative timeout is no time at all.
 
-`PromiseOptions(placement: ...)` picks the thread: `Placement.Any` (the default) lets the runtime choose, `Placement.Spread` starts the work on the least loaded thread at once (one serving worker per core), and `Placement.Here` runs it as a task on the calling thread, for work that uses a network, connection or socket bound to that thread and only waits. The entry follows the ordinary capture rules: a promise that is returned owns what its closure captures, and one that is stored or stays in the function reads its captures in place, so the captured values must outlive it (a value made inside a loop body does not; start the promise in a helper that returns it).
+`PromiseOptions(placement: ...)` picks the thread:
+
+- `Placement.Any` (the default) lets the runtime choose.
+- `Placement.Spread` starts the work on the least loaded thread at once (one serving worker per core).
+- `Placement.Here` runs it as a task on the calling thread, for work that uses a network, connection or socket bound to that thread and only waits.
+
+The entry follows the ordinary capture rules. A promise that is returned owns what its closure captures. One that is stored, or stays in the function, reads its captures in place, so the captured values must outlive it. A value made inside a loop body does not, so start the promise in a helper that returns it.
 
 A listener and its connections are bound to one thread, so a server that accepts and handles on that thread uses one core. `listener.accept_pending()` returns a promise of a `PendingConnection`, an accepted socket that no thread owns yet; move it into a promise started with `Placement.Spread` and call `adopt()` there to get the `Connection` on that thread, as `serve` does for HTTP. A `PendingConnection` closed or dropped without `adopt` closes the socket, and a TLS listener returns EINVAL because its handshake belongs to the accepting thread.
 
@@ -51,6 +57,7 @@ A listener and its connections are bound to one thread, so a server that accepts
 
 For several file reads, give each promise the same signal (this fragment assumes `paths` is a `List[String]` and imports `cancel_switch`):
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 stop := cancel_switch()
 options := PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
@@ -66,7 +73,7 @@ stop.cancel()
 
 Dropping an unfinished promise cancels it and waits for it to end, so work never outlives the values it uses. At the end of a scope, promises drop before the locals they read. An unused promise is a lint warning, because the work is cancelled the moment the value is dropped.
 
-Cancellation is delivered at the next wait. `cancel()` asks the work to stop the same way and returns at once. A loop that never waits is not stopped by a timeout either; it ends at its next wait. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits. Cleanup runs on cancellation as on any other exit.
+Cancellation is delivered at the next wait. `cancel()` asks the work to stop the same way and returns at once. A loop that never waits is not stopped by cancellation or a timeout. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits. Cleanup runs on cancellation as on any other exit.
 
 ## Reading and changing shared values
 

@@ -66,12 +66,15 @@ export type TlsOptions:
 	// against `roots_pem`. Setting it on a client configuration is rejected.
 	require_client_certificate: Bool = false
 
-// Parses PEM certificates and optionally limits the number returned.
+// Parses PEM certificates. When `max_certificates` is given and the text holds more,
+// the call returns `EOVERFLOW` rather than a truncated list; a negative limit returns
+// `EINVAL`, and text that is not a PEM certificate returns `EBADMSG`.
 export fn parse_certificates(pem: String, max_certificates: Int?) List[CertificateInfo]!:
 	return msstd_tls_parse_certificates(pem, max_certificates)
 
-// Verifies a PEM certificate chain against roots, name constraints, and the supplied
-// time. An empty `roots_pem` reads the system roots.
+// Verifies a PEM certificate chain for `server_name` against the roots and name
+// constraints, as of `now`. An empty `roots_pem` reads the system roots. An empty
+// `server_name` returns `EINVAL`, and invalid PEM returns `EBADMSG`.
 // ms: effect std.system.read
 export fn verify_certificates(
 	chain_pem: String,

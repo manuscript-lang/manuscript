@@ -6,8 +6,8 @@ Command-line parsing for programs with nested subcommands, typed flags, position
 A `Command` holds a schema (`flags`, `args`), `children`, and a handler. `command[T]` builds a leaf whose handler
 receives your own options record `T`: every flag and argument is stored under its name (dashes become underscores),
 and the record is decoded from those values like `json.parse[T]`, so each field needs a flag or argument with its name
-and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
-`arguments()` from `@std/os/env.ms` in `main`.
+and a matching type. Flags and arguments without a field, such as inherited persistent flags, are ignored.
+Parsing reads only the `List[String]` you give it; pass `arguments()` from `@std/os/env.ms` in `main`.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -43,11 +43,12 @@ import (
 export enum FlagKind:
 	// `Bool` field. Present or absent; `--name`, `--name=false` and `--no-name` are accepted.
 	Bool
-	// `String` field. Any text, including text that begins with a dash when given as `--name=value`.
+	// `String` field. Any text. The value may begin with a dash (`--name=-x` or `--name -x`).
 	String
 	// `Int` field. A whole number that fits in Int; other text returns an Error with kind `"EINVAL"`.
 	Int
-	// `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, returns an Error with kind `"EINVAL"`.
+	// `Float` field. A finite decimal number that parses as Float; other text, including NaN
+	// and infinities, returns an Error with kind `"EINVAL"`.
 	Float
 	// `List[String]` field. The flag may repeat; every occurrence is kept in order.
 	List
@@ -58,13 +59,15 @@ export type Flag:
 	name: String
 	// What the flag accepts, and so the type of the record field; defaults to String.
 	kind: FlagKind = FlagKind.String
-	// One-letter alias used as `-p`; empty for none.
+	// One-letter alias used as `-p`; empty for none. A value follows as `-p 8080` or
+	// `-p=8080`; short flags do not combine (`-vd`) or attach a value (`-p8080`).
 	short: String = ""
 	// Text used when the flag is absent; none for no default. A Bool defaults to false.
 	default: String?
 	// One line shown in help.
 	help: String = ""
-	// Absence is an error when there is no default.
+	// Absence is an error when there is no default. A Bool or List flag is never absent
+	// (false or empty), so `required` has no effect on it.
 	required: Bool = false
 	// Also accepted by every subcommand below the command that declares it.
 	persistent: Bool = false
@@ -153,9 +156,9 @@ export type Command:
 	// Runs after a successful parse; the returned Int is the exit status.
 	exec: fn(Matches) Int! = fn m: ok(0)
 
-// Checks the tree, resolves the subcommand chain, and validates flags and
+// Checks the command tree, resolves the subcommand chain, and validates flags and
 // arguments. Returns `Help` for `-h`, `--help`, a leading `help` word, or a group
-// invoked without a subcommand.
+// invoked without a subcommand; an invalid schema or usage error returns `EINVAL`.
 fn Command.parse(argv: List[String]) Parsed!:
 	check_schema(self, [], [self.name.clone()])?
 	return walk(self, argv)
@@ -209,7 +212,7 @@ fn Command.child(word: String) Command?:
 
 // The outcome of parsing: help text to show, or a node ready to run.
 export enum Parsed:
-	// `-h`, `--help`, `help` or a group without a handler.
+	// `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
 	Help(
 		// The rendered help ending in a newline, ready to write to stdout.
 		text: String
@@ -499,9 +502,10 @@ fn walk(root: Command, argv: List[String]) Parsed!:
 		Map[String, List[String]](),
 	)
 
-// Resolves `argv` from `start` on at `node`, reached by `path` with the persistent
+// Resolves `argv` from `start` on at `node`, reached by `path`, with the persistent
 // flags
-// `inherited` and the flag values `given` so far; a subcommand word continues at the child.
+// `inherited` and the flag values `given` so far. A subcommand word continues at the
+// child.
 fn walk_from(
 	node: Command,
 	argv: List[String],

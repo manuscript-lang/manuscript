@@ -7,7 +7,7 @@ weight = 3
 
 This page covers the call-graph view of how code reads and writes data. For permissions that `ms lint` enforces, see [effects and permissions](../../core-language/functions/effects.md).
 
-Use an effects view when reviewing how code reads or changes data and reaches external operations. It follows calls so you can see how a small helper reaches behavior outside the program.
+Use the effects view when you review how code reads or changes data and reaches external operations. It follows calls, so you can see how a small helper reaches behavior outside the program.
 
 Save this as `hello.ms`:
 
@@ -45,4 +45,4 @@ Summaries describe reachable behavior. To restrict what a function may reach, us
 
 ## Effects and cancellation
 
-Cancellation cannot undo a completed external write. When retrying, review both returned errors and external effects.
+Cancellation cannot undo an external write that has already completed. Before retrying an operation, check both the errors it returned and the external effects it may already have had.

@@ -57,22 +57,22 @@ test "parse_int radix 0 reads a prefix and others reject it":
 	expect_equal(parse_int("9223372036854775808", 10).is_error(), true)?
 	expect_equal(parse_int("12", 2).is_error(), true)?
 
-test "text quoting escapes interpolation braces and literal controls":
-	quote("{x}") | expect_equal("\"\\{x\\}\"")?
+test "text quoting keeps braces plain and escapes literal controls":
+	quote("{x}") | expect_equal("\"{x}\"")?
+	(
+		unquote("\"{x}\"")
+		| expect_ok?
+		| expect_equal("{x}")?
+	)
 	(
 		unquote("\"\\{x\\}\"")
 		| expect_ok?
 		| expect_equal("{x}")?
 	)
-	quote("}") | expect_equal("\"\\}\"")?
+	quote("}") | expect_equal("\"}\"")?
+	quote("\\u{41}") | expect_equal("\"\\\\u{41}\"")?
 	(
-		unquote("\"\\}\"")
-		| expect_ok?
-		| expect_equal("}")?
-	)
-	quote("\\u{41}") | expect_equal("\"\\\\u\\{41\\}\"")?
-	(
-		unquote("\"\\\\u\\{41\\}\"")
+		unquote("\"\\\\u{41}\"")
 		| expect_ok?
 		| expect_equal("\\u{41}")?
 	)

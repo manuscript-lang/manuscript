@@ -9,11 +9,14 @@ PEM (RFC 7468) text armor: `-----BEGIN LABEL-----`, base64 body, `-----END LABEL
 Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a text and
 `encode_all` writes blocks back with 64-column lines.
 
-    import parse, encode_all, PemBlock from "@std/data/pem.ms"
-    blocks := parse(text)?
-    print(blocks[0].label)         // "CERTIFICATE"
-    print(blocks[0].data.length())  // decoded DER byte count
-    print(encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())]))
+<!-- manuscript-example: {"mode":"fragment","given":["text: String"]} -->
+```manuscript
+import PemBlock, encode_all, parse from "@std/data/pem.ms"
+blocks := parse(text)?
+print(blocks[0].label)         // "CERTIFICATE"
+print(blocks[0].data.length())  // decoded DER byte count
+print(encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())]))
+```
 */
 
 // One PEM block: its label, optional RFC 1421 style headers, and decoded body bytes.
@@ -29,8 +32,9 @@ BEGIN := "-----BEGIN "
 END := "-----END "
 DASHES := "-----"
 
-// Parses every PEM block in `text`; text outside blocks is ignored, and a text without
-// blocks gives an empty list.
+// Parses every PEM block in `text`. Text outside blocks is ignored, and a text without
+// blocks gives an empty list. Mismatched, nested or unterminated armor, or a body that
+// is not valid Base64, returns an `Error` with kind `EBADMSG`.
 export fn parse(text: String) List[PemBlock]!:
 	var blocks = List[PemBlock]()
 	var label = ""

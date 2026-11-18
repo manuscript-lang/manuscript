@@ -14,15 +14,18 @@ import (
 	msstd_fs_read_file from "@std/internal/fs.ms",
 )
 
-// Returns the host-supplied startup arguments, excluding the executable path.
-// Each call returns an owned list; mutations do not change later calls or native argv.
+// Returns the startup arguments the host supplied, excluding the executable path.
+// Each call returns a new list, so changing it affects neither later calls nor the
+// native argv.
 // ms: effect std.env.read
 export fn arguments() List[String]:
 	return msrt_args()
 
 /*
 Finds the executable that running `name` would start, or none.
-A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries. Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there. The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
+A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries.
+Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there.
+The result is a regular file the process may execute (any regular file on Windows). It is not made absolute or canonical.
 Example: `if path := which("git"): print(path)` prints the executable found on this host.
 */
 // ms: effect std.env.read
@@ -72,8 +75,8 @@ fn runnable(path: String, windows: Bool) Bool:
 
 	return access(path, 1).is_ok()
 
-// Reads a fresh live process environment map. An entry whose name or value is not valid
-// UTF-8 is left out.
+// Returns a new map of the process's current environment. An entry whose name or value
+// is not valid UTF-8 is left out.
 // ms: effect std.env.read
 export fn environment() Map[String, String]!:
 	return msstd_process_environment_map()
@@ -87,11 +90,12 @@ export fn set_environment(name: String, value: String?) Void!:
 
 // Reads `KEY=value` lines from the file at `path` and sets each variable that is not
 // already present in the environment. Existing variables keep their values, and a later
-// duplicate name in the file replaces the earlier one. Blank
-// lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted
-// values spanning lines are accepted. The whole file is validated first, so a malformed
-// or non-UTF-8 file returns EBADMSG and changes nothing. A file larger than `max_bytes`
-// returns EOVERFLOW, and a directory returns EINVAL, as for `read_file`.
+// duplicate name in the file replaces the earlier one.
+// Blank lines, `#` comments, an `export ` prefix, and single-, double-, or
+// backtick-quoted values spanning lines are accepted.
+// The whole file is validated first, so a malformed or non-UTF-8 file returns EBADMSG
+// and changes nothing. A file larger than `max_bytes` returns EOVERFLOW, and a
+// directory returns EINVAL, as for `read_file`.
 // ms: effect std.env.write
 // ms: effect std.fs.read
 export fn load_environment(path: String, max_bytes: Int? = none) Void!:
@@ -106,7 +110,8 @@ export fn load_environment(path: String, max_bytes: Int? = none) Void!:
 
 		set_environment(entry.key, entry.value)?
 
-// Reads the live process directory, preserving OS failures as `Error` values.
+// Returns the process's current working directory. An OS failure is returned as an
+// `Error`.
 // ms: effect std.env.read
 export fn working_directory() String!:
 	return msstd_process_working_directory()

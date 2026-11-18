@@ -14,14 +14,14 @@ Run a program, learn the language, then build something useful. The same `ms` co
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
 2. **[Read the guide](../guide/_index.md).** Small order-processing programs, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
-4. **[Build a small tool](../cookbook/_index.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
+4. **[Build a small tool](../cookbook/_index.md).** Start from a complete recipe: arguments, files, JSON, HTTP, text patterns, hashes, images, WebSockets and more.
 5. **[Use a package](packages.md).** Depend on another project's source, pinned and checked.
 
 Read in order with **Next**.
 
 ## Ready to build?
 
-The [cookbook](../cookbook/_index.md) has complete programs: arguments, files, JSON, and HTTP. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
+The [cookbook](../cookbook/_index.md) has complete programs for common jobs: command-line tools, files, JSON and YAML, HTTP and WebSockets, retries, background jobs, logging and deployment. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
 
 ## Need an exact answer?
 
@@ -42,12 +42,16 @@ ms search_symbol PromiseOptions
 The `PromiseOptions` search starts with:
 
 ```text
-promise.PromiseOptions  record  std:@std/concurrency/promise.ms
-  type PromiseOptions: timeout: Duration? = none cancel: Signal? = none
+promise.PromiseOptions  type  std:@std/concurrency/promise.ms
+  type PromiseOptions: timeout: Duration? = none cancel: Signal? = none ...
 ```
 
-It also lists matching fields and related functions. Search includes project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output. Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
+It also lists matching fields and related functions. Search covers project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output.
+
+Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
 
 ## Working with a coding agent?
 
-Install its writing reference with `ms skill -o .claude/skills -o .agents/skills`; this creates a self-contained `manuscript` skill with concept references and the compiler version. Use `ms verify` for type checking, formatting checks, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Install its writing reference with `ms skill -o .claude/skills -o .agents/skills`; this creates a self-contained `manuscript` skill with concept references and the compiler version.
+
+Use `ms verify` to run type checking, the formatting check, lint and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).

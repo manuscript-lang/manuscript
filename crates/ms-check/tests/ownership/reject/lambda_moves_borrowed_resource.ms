@@ -7,6 +7,6 @@ fn var Door.close() Void!:
     return ok()
 
 fn f() Int:
-    wrap := fn(d: Door) Door?: d  // error: cannot move `d` out: this function type lends its argument
+    wrap := fn(d: Door) Door?: d  // error: cannot move `d` out: this function type borrows its argument
     kept := wrap(Door(1))
     return kept.get().n

@@ -24,8 +24,9 @@ fn main() Void:
 
 ## Grouping bindings
 
-`var (` declares several mutable bindings, one per line, indented four spaces, with the closing `)` aligned with `var`. Each entry is the same as a single `var` binding, including an optional annotation or a destructuring pattern, and later entries see earlier ones.
+`var (` declares several mutable bindings, one per line, indented four spaces, with the closing `)` aligned with `var`. Each entry works like a single `var` binding, including an optional annotation or a destructuring pattern, and later entries see earlier ones.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 var (
     attempts = 0
@@ -39,6 +40,7 @@ A group is only a layout: entries are separate bindings with their own scope rul
 
 Parameters and return types are explicit; local annotations are optional. `count := 3` and `count: Int := 3` are the same: `:=` marks an immutable binding and the annotation only names its type. `var` alone binds with `=`, so `var count: Int = 3` keeps it. Writing `count: Int = 3` is rejected with a fix to `:=`. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
 
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    active: Bool\n\nfn welcome(customer: Customer) String:\n    return customer.name","given":[]} -->
 ```manuscript
 customer := Customer(name: "Ada", active: true)
 greeting := welcome(customer)
@@ -51,6 +53,7 @@ remaining -= 1
 
 Unpack positions or named fields:
 
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    email: String","given":["names: List[String]","customer: Customer"]} -->
 ```manuscript
 [first_name, second_name] := names
 {name, email: customer_email} := customer
@@ -67,6 +70,7 @@ Unpack positions or named fields:
 - A `var` keeps the type from its annotation or initializer; later values must fit it.
 - Assignment targets a `var` binding or a field reached through mutable storage. `:=` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver and return Void.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected Int"} -->
 ```manuscript
 fn example() Void:
     var remaining = 3
@@ -80,8 +84,14 @@ Only a simple name accepts a type annotation. Destructuring infers each local; e
 
 ## Reassignment and references
 
-A `:=` value cannot be mutated. Primitives copy implicitly. A string, a value of a named type or a collection has one owner: `y := x` and `y := x.part` borrow it (`x` stays readable and cannot change while `y` is used), `var y = x.part` borrows it exclusively so `y.append(1)` changes `x.part`, and `var y = x` moves it when `x` is not itself a `var`. A value moves into a moving position (a field, a collection, a `return` of something that is not a parameter) at its last use; `.clone()` makes an explicit deep copy wherever an independent value is wanted. See [mutation and references](../types/references.md).
+A `:=` value cannot be mutated. Primitives copy implicitly. A string, a value of a named type, or a collection has one owner, and binding it works like this:
 
-`var n = r.n` of a primitive copies the number: `n += 1` leaves `r.n` as it was. A call that returns a part of its argument returns a borrow of it, so `var xs = b.list()` changes `b`'s list and `var xs = f()` of a function building a new value owns it.
+- `y := x` and `y := x.part` borrow it. `x` stays readable and cannot change while `y` is used.
+- `var y = x.part` borrows it exclusively, so `y.append(1)` changes `x.part`.
+- `var y = x` moves it when `x` is not itself a `var`.
 
-Reassigning an owning `var` drops the previous value and closes resources it held. A live borrow prevents that reassignment. The replacement closes when its owning scope ends unless it moves to another owner. See [mutation and references](../types/references.md).
+A value moves into a moving position (a field, a collection, or a `return` of something that is not a parameter) at its last use. Write `.clone()` for an explicit deep copy when you want an independent value. See [mutation and references](../types/references.md).
+
+`var n = r.n` of a primitive copies the number: `n += 1` leaves `r.n` as it was. A call that returns a part of its argument returns a borrow of it, so `var xs = b.list()` changes `b`'s list. `var xs = f()` owns the result when `f` builds a new value.
+
+Reassigning an owning `var` drops the previous value and closes resources it held. A live borrow prevents that reassignment. The replacement closes when its owning scope ends unless it moves to another owner. Details are in the page above.

@@ -168,9 +168,9 @@ fn connection(native: NativeConnection) Connection:
 
 /*
 Upgrades a plain TCP connection to TLS in place, as a protocol's STARTTLS step does (Postgres `SSLRequest`, SMTP and IMAP
-`STARTTLS`). It runs the client handshake on the same socket and returns the TLS connection. The plain connection is
-consumed (`plain`): it is closed without closing the socket, and the returned connection owns the socket. Use the returned value
-from here on.
+`STARTTLS`). It runs the client handshake on the same socket and returns the TLS connection. The `plain` argument is
+consumed: it is closed without closing the socket, and the returned connection owns the socket. Use the returned
+connection from here on.
 
 The connection must be plain and idle: no read or write may be waiting on it, and the peer must send no application
 bytes before it agrees to TLS. `options` is read as for `connect`: `server_name` is required and verified against
@@ -192,8 +192,8 @@ export fn start_tls(
 
 // Upgrades a plain TCP connection to TLS in place on the server side: it accepts the
 // client's handshake with the certificate and key in `options`, then returns the TLS
-// connection, consuming `plain` as `start_tls` does.
-// `options` must hold a certificate and key, otherwise EINVAL is returned; the other errors match `start_tls`.
+// connection, consuming `plain` as `start_tls` does. `options` must hold a certificate
+// and key, otherwise EINVAL is returned; the other errors match `start_tls`.
 export fn accept_tls(
 	var plain: Connection,
 	options: TlsOptions = TlsOptions(),
@@ -202,11 +202,12 @@ export fn accept_tls(
 	upgraded := msstd_net_connection_accept_tls(plain.native, options, timeout)?
 	return ok(connection(upgraded))
 
-// One datagram. Received, `address` is where it came from; written, where it goes.
+// One datagram. When received, `address` is where it came from; when written, where it
+// goes.
 export type Datagram:
 	// The payload bytes of this datagram, at most 65535 bytes.
 	data: Bytes
-	// Native host:port text, with bracketed IPv6 addresses.
+	// The address as `host:port` text, with IPv6 hosts in brackets.
 	address: String
 
 // The runtime handle behind a `DatagramSocket`.
@@ -339,7 +340,8 @@ fn var PendingConnection.adopt() Connection!:
 export extern type NativeNetwork
 
 // A set of network permissions and a resolver for the connections, listeners, sockets,
-// clients and servers opened through it. Nothing restricts the host network.
+// and HTTP clients opened through it. The host network that the module-level functions
+// use is unrestricted; `restrict` derives a narrower one.
 export opaque type Network:
 	// The runtime handle; it is released when the last reference to this network ends.
 	native: NativeNetwork
@@ -363,7 +365,9 @@ fn Network.close() Void:
 // work as a promise. Returns EACCES for names or addresses a restricted network
 // disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses
 // or the handshake or verification fails.
-// `tls` verifies the server certificate against `tls.roots_pem` (the system roots when empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or invalid options return EINVAL. `timeout` bounds the whole attempt.
+// `tls` verifies the server certificate against `tls.roots_pem` (the system roots when
+// empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or
+// invalid options return EINVAL. `timeout` bounds the whole attempt.
 fn Network.connect(
 	address: String,
 	tls: TlsOptions? = none,
@@ -452,7 +456,8 @@ fn Network.request(
 		options.timeout,
 	)
 
-// Resolves the selected supported category, retaining it in each record.
+// Looks up DNS records of one `kind` for `name`; each record carries that kind.
+// `options.max_records` and `options.timeout` apply as for `lookup`.
 fn Network.resolve(
 	name: String,
 	kind: DnsKind,
@@ -548,8 +553,12 @@ export fn bind_datagram(address: String) DatagramSocket!:
 // Starts resolving `address` (`host:port`) and opening a TCP connection to the first
 // reachable permitted address, and returns its promise. With `tls`, it then completes a
 // TLS handshake.
-// `wait` gives EACCES for names or addresses a restricted network disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses or the handshake or verification fails.
-// `tls` verifies the server certificate against `tls.roots_pem` (the system roots when empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or invalid options give EINVAL. `timeout` bounds the whole attempt.
+// `wait` gives EACCES for names or addresses a restricted network disallows, ETIMEDOUT when
+// `timeout` elapses, and EIO when every address refuses or the handshake or verification
+// fails.
+// `tls` verifies the server certificate against `tls.roots_pem` (the system roots when
+// empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or
+// invalid options give EINVAL. `timeout` bounds the whole attempt.
 // ms: effect std.net.connect
 export fn connect(
 	address: String,
@@ -628,7 +637,8 @@ export fn request(
 ) ClientResponse!:
 	return host_network().request(method, url, body, options)
 
-// Resolves the selected supported category, retaining it in each record.
+// Looks up DNS records of one `kind` for `name`; each record carries that kind.
+// `options.max_records` and `options.timeout` apply as for `lookup`.
 // ms: effect std.net.connect
 export fn resolve_dns(
 	name: String,
@@ -655,9 +665,16 @@ export fn restrict(
 // `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts,
 // and TLS come from `options`. A request beyond `max_requests` concurrent requests is
 // answered with 503, an oversized header block with 431, and a handler fault with 500.
-// An address that cannot be bound returns EIO. Returns EINVAL for invalid options
-// (`cores` below 1 included). Close the server, or drop it, to stop it.
-// `serve` binds a plain TCP listener and runs the accept loop as a promise. It starts one worker per core (`options.cores`), each placed on the least loaded thread, and deals each accepted connection to the next worker, which keeps it; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
+// An address that cannot be bound returns EIO, and invalid options (`cores` below 1
+// included) return EINVAL. Close the server, or drop it, to stop it.
+//
+// `serve` binds a plain TCP listener and runs the accept loop as a promise. It starts one
+// worker per core (`options.cores`), each placed on the least loaded thread, and deals
+// each accepted connection to the next worker, which keeps it. HTTP/1.1, HTTP/2 and the
+// TLS handshake of `options.tls` run in the worker. `handler` is built once and only
+// read by every thread. `options.cores` limits the runtime to that many threads (none:
+// every core).
+//
 // A handler is cancelled when its request times out or its client disconnects (an
 // HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its
 // resource cleanup runs. A client that half-closes its end after sending the request

@@ -22,7 +22,7 @@ export type BinCounts:
 
 // The least-squares line `y = slope * x + intercept` fitted by `linear_regression`.
 export type Regression:
-	// The change in `y` per void of `x`.
+	// The change in `y` per unit of `x`.
 	slope: Float
 	// The value of `y` at `x = 0`.
 	intercept: Float
@@ -101,10 +101,10 @@ type Moments:
 	squares: Float
 	exponent: Int
 
-// Returns the centered second moment, or none for an empty list or any nonfinite value
-// (which keeps plain Float rules). Values are scaled by a power of two to at most 1 in
-// magnitude, shifted by the first value, then summed with compensation, so a large
-// common offset keeps its variation.
+// Returns the sum of squared deviations from the mean, or none for an empty list or any
+// nonfinite value (which then follows plain Float rules). Values are scaled by a power
+// of two to at most 1 in magnitude and shifted by the first value, then summed with
+// compensation, so a large common offset keeps its variation.
 fn centered_moments(values: List[Float]) Moments?:
 	if values.is_empty(): return none
 
@@ -333,7 +333,8 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
 
 /*
 Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list or a `bins` below 1.
-Values equal to the greatest value fall in the last bin (so an infinite value does), and when every value is equal they all fall in the first bin. When the range is infinite, the finite values fall in the first bin.
+Values equal to the greatest value fall in the last bin, so an infinite greatest value does. When every value is equal they all fall in the first bin.
+When the range is infinite, the finite values fall in the first bin.
 Example: `if bins := bin_counts([1.0, 2.0, 2.0, 3.0], 2): print(bins.counts)` prints `[1, 3]`.
 */
 export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
@@ -408,8 +409,8 @@ fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) Lis
 fn finite_bin_rat(value: Float) BigRat:
 	return rat_of_float(value).get_or_else(fn: rat_of_int(0))
 
-// Returns the sum of products of deviations of two lists of equal length, with both
-// sums of squares, or none when there are fewer than two pairs.
+// The sums of deviation products (`xy`) and squares (`xx`, `yy`) of two paired lists,
+// with each list's mean.
 type Spread:
 	xy: Float
 	xx: Float
@@ -417,6 +418,8 @@ type Spread:
 	mean_x: Float
 	mean_y: Float
 
+// Returns the `Spread` of two lists, or none when their lengths differ or there are
+// fewer than two pairs.
 fn spread(xs: List[Float], ys: List[Float]) Spread?:
 	if xs.length() != ys.length() or xs.length() < 2: return none
 
@@ -445,7 +448,15 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 	// every square and product in range.
 	if s := spread(unit_scaled(xs), unit_scaled(ys)):
 		if s.xx == 0.0 or s.yy == 0.0: return none
-		return s.xy / (sqrt(s.xx) * sqrt(s.yy))
+
+		// One square root of the product is correctly rounded, so perfectly linear data
+		// gives exactly 1.0; the product of two roots is not. The roots are the
+		// fallback when the product would lose its precision to underflow.
+		product := s.xx * s.yy
+		root := if product >= 2.2250738585072014e-308: sqrt(product) else: sqrt(s.xx) * sqrt(
+			s.yy
+		)
+		return (s.xy / root).max(-1.0).min(1.0)
 
 	return none
 

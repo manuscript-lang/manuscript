@@ -7,8 +7,19 @@ import (
 	msstd_html_unescape from "@std/internal/html.ms",
 )
 
-// Bounds for HTML input bytes, tree depth, and node count.
-// Fields set to none add no budget. The defaults are depth 10,000 and 1,000,000 nodes.
+/*
+Parses HTML into a normalized tree of documents, elements, text, comments and doctypes, and
+escapes or unescapes text for HTML. `parse` follows the HTML5 tree-construction rules, so
+any input produces a tree: a missing `html`, `head` or `body` element is added and
+misnested tags are repaired, as in a browser. Invalid input is not an error, only a limit
+or option violation is. Use `escape` before putting text in markup and `unescape` to read
+character references back.
+*/
+
+// Limits for `parse` on input bytes, tree depth and node count. A field set to none
+// adds no limit. The defaults are a depth of 10,000 and 1,000,000 nodes, with no limit
+// on input bytes. A negative limit returns `EINVAL`, and input that exceeds a limit
+// returns `EOVERFLOW`.
 export type HtmlOptions:
 	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
 	max_bytes: Int? = none
@@ -19,9 +30,9 @@ export type HtmlOptions:
 	// element nodes.
 	max_nodes: Int? = 1000000
 
-// An HTML attribute, including its namespace and decoded value.
+// An HTML attribute with its name, namespace and decoded value.
 export type HtmlAttribute:
-	// Local attribute name after native HTML parsing and normalization.
+	// Attribute name after HTML parsing and normalization.
 	name: String
 	// Attribute namespace prefix, or empty text for an unqualified attribute.
 	namespace: String
@@ -39,12 +50,11 @@ export enum HtmlNode:
 	Element(
 		// Local element tag name produced by the HTML parser.
 		tag: String,
-		// Element namespace, such as svg/math, or empty text for ordinary HTML.
+		// Element namespace, `svg` or `math`, or empty text for ordinary HTML.
 		namespace: String,
 		// Attributes in parser order, with decoded values and namespace information.
 		attributes: List[HtmlAttribute],
-		// Direct child nodes in normalized tree order; mutable list storage is
-		// retained.
+		// Direct child nodes in normalized tree order.
 		children: List[HtmlNode]
 	)
 	// Text node contents after HTML entity decoding and tree normalization.
@@ -59,7 +69,7 @@ export enum HtmlNode:
 	)
 	// A document-type declaration retained from the parsed HTML.
 	Doctype(
-		// Doctype name supplied by the native HTML parser.
+		// Doctype name as normalized by the parser.
 		name: String,
 		// Public identifier, or empty text when no public identifier is present.
 		public_id: String,
@@ -71,9 +81,9 @@ export enum HtmlNode:
 export fn escape(text: String) String:
 	return msstd_html_escape(text)
 
-// Decodes HTML5 named and numeric character references in text context, once.
-// Recognized references can omit semicolons; unrecognized text remains literal.
-// Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
+// Decodes HTML5 named and numeric character references in text context, once. A
+// recognized reference may omit its semicolon; unrecognized text stays literal. Invalid
+// numeric references become U+FFFD. It does not parse markup or normalize text.
 export fn unescape(text: String) String:
 	return msstd_html_unescape(text)
 
@@ -99,7 +109,8 @@ K_MARKER := 5
 NS_HTML := 0
 NS_MATH := 1
 NS_SVG := 2
-// Raw-text elements the tokenizer reads as text up to the matching end tag.
+// Raw-text and RCDATA elements the tokenizer reads as text up to the matching end tag
+// (`plaintext` has no end tag and runs to the end of the input).
 RAW_NONE := 0
 RAW_IFRAME := 1
 RAW_NOEMBED := 2
@@ -206,10 +217,10 @@ E_APPLET := 10
 E_BR := 11
 E_TEMPLATE := 12
 
-// The open elements, the active formatting elements and the tree are flat arrays
-// indexed by node id: node 0 is the formatting-list marker and node 1 the document. A
-// node's name is its atom (see the generated tables), or `data` when the tag is not a
-// known atom.
+// The tree is stored as flat arrays indexed by node id: node 0 is the formatting-list
+// marker and node 1 the document. The open elements (`oe`) and the active formatting
+// elements (`afe`) are lists of node ids. An element's name is its atom (see the
+// generated tables), or its `data` text when the tag is not a known atom.
 type Parser:
 	src: Bytes
 	size: Int
@@ -261,9 +272,9 @@ type Parser:
 	akey: List[String] = []
 	aval: List[String] = []
 	ans: List[String] = []
-	// Open elements, with the nearest `p` and the nearest button-scope boundary at or
-	// below each entry (index plus one), so "is a `p` open in button scope" needs no
-	// stack walk.
+	// Open elements. For each entry, `oe_p` and `oe_stop` hold the index plus one of
+	// the nearest open `p` and of the nearest button-scope boundary at or below that
+	// entry (0 for none), so "is a `p` open in button scope" needs no stack walk.
 	oe: List[Int] = []
 	oe_p: List[Int] = []
 	oe_stop: List[Int] = []
@@ -576,8 +587,9 @@ fn Parser.abrupt_comment_data_end() Int:
 	length := self.raw_end - self.raw_start
 
 	if length >= 4:
-		// The raw token without its first four bytes ends the way an abrupt comment
-		// does.
+		// A comment cut off by the end of input drops a trailing `-`, `--` or `--!`
+		// from its data, as long as that trailing run lies after the four-byte `<!--`
+		// opener.
 		last := self.byte_at(self.raw_end - 1)
 		prior := self.byte_at(self.raw_end - 2)
 		before := self.byte_at(self.raw_end - 3)
@@ -730,7 +742,8 @@ fn Parser.raw_text_tag() Int:
 
 	return RAW_NONE
 
-// Whether `length` bytes at `start` equal the lower-case `word` ignoring ASCII case.
+// Whether the `length` bytes at `start` equal the lower-case `word`, ignoring ASCII
+// case.
 fn Parser.name_is(start: Int, length: Int, word: String) Bool:
 	if length != word.length(): return false
 	return bytes_equal_fold(self.src, start, word.to_bytes())
@@ -1334,7 +1347,8 @@ fn var Parser.parse_generic_raw_text_element() Void:
 	self.original_im = self.im
 	self.im = IM_TEXT
 
-// Pops elements whose end tags are implied, stopping at `except` (an atom or -1).
+// Pops elements whose end tags are implied, stopping before an element with atom
+// `skip_atom` (-1 for none).
 fn var Parser.generate_implied_end_tags(skip_atom: Int) Void:
 	var i = self.oe.length()
 
@@ -1444,7 +1458,8 @@ fn var Parser.add_element() Void:
 	if self.tok_n > 0: self.set_token_attributes(id)
 	self.add_child(id)
 
-// Whether the attributes of node `n` match the current token's attributes exactly.
+// Whether node `n` and the current token have the same attributes (name, namespace and
+// value), in any order.
 fn Parser.same_attributes(n: Int) Bool:
 	count := self.attr_count[n]
 	if count != self.tok_n: return false
@@ -3375,7 +3390,7 @@ fn lower_byte(c: Int) Int:
 	if c >= 65 and c <= 90: return c + 32
 	return c
 
-// Whether the `length` bytes of `data` at `at` equal `name` ignoring ASCII case.
+// Whether the bytes of `data` at `at` equal the lower-case `name`, ignoring ASCII case.
 fn bytes_equal_fold(data: Bytes, at: Int, name: Bytes) Bool:
 	for i in 0..name.length():
 		if lower_byte(data.get(at + i).to_int()) != name.get(i).to_int(): return false
@@ -3383,7 +3398,7 @@ fn bytes_equal_fold(data: Bytes, at: Int, name: Bytes) Bool:
 
 // ---- tokenizer ----
 
-// Whether `data[start, end)` has a byte that is an ASCII capital or at least 128.
+// Whether `src[start, end)` has a byte that is an ASCII capital or at least 128.
 fn needs_ascii_lowering(src: Bytes, start: Int, end: Int) Bool:
 	for i in start..end:
 		b := src.get(i).to_int()
@@ -3475,7 +3490,7 @@ fn trim_left_len(text: String) Int:
 
 // ---- tree-construction helpers ----
 
-// Removes the first scalars of `text` that are a leading CR and then LF.
+// Removes a leading CR, then a leading LF, from `text` (each only if present).
 fn strip_leading_newline(text: String) String:
 	var d = text
 	if d.starts_with("\r"): d = d.view(1, d.length()).clone()
@@ -4665,7 +4680,7 @@ fn is_end_ok_in_body(atom: Int) Bool:
 		115: return true
 		_: return false
 
-// In-body start-tag rule for an atom (see START_* uses).
+// In-body start-tag rule for an atom, as one of the `S_*` constants (0 for none).
 fn body_start_class(atom: Int) Int:
 	match atom:
 		115: return 1  // html
@@ -4777,7 +4792,7 @@ fn body_start_class(atom: Int) Int:
 		352: return 32  // tr
 		_: return 0
 
-// In-body end-tag rule for an atom.
+// In-body end-tag rule for an atom, as one of the `E_*` constants (0 for none).
 fn body_end_class(atom: Int) Int:
 	match atom:
 		35: return 1  // body
@@ -4948,7 +4963,7 @@ fn svg_attribute(name: String) String:
 fn limit_error() Error:
 	return Error("HTML: limit exceeded", kind: "EOVERFLOW")
 
-// A budget: none is unlimited and a negative bound is invalid.
+// A limit as a count: none is unlimited and a negative limit is an `EINVAL` error.
 fn budget(limit: Int?) Int!:
 	if limit.is_none(): return ok(9223372036854775807)
 
@@ -4958,8 +4973,7 @@ fn budget(limit: Int?) Int!:
 	return ok(n)
 
 // Whether the tree under the document has at most `max_nodes` reachable nodes and nests
-// at most
-// `max_depth` levels (the document is level zero).
+// at most `max_depth` levels (the document is level zero).
 fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
 	var stack: List[Int] = [1]
 	var depths: List[Int] = [0]
@@ -4980,7 +4994,8 @@ fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
 
 	return true
 
-// Parses HTML into a normalized tree and applies the resource limits in `options`.
+// Parses HTML into a normalized tree and applies the limits in `options`. The result is
+// the `Document` node.
 export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
 	max_bytes := budget(options.max_bytes)?
 	max_depth := budget(options.max_depth)?

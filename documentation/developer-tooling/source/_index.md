@@ -5,7 +5,7 @@ weight = 4
 
 # Source tools
 
-Keep a change readable, repair a compiler error, then inspect data access and external calls. These tools operate on source without running your application.
+These tools work on source without running your application. Format a change, repair a compiler error, then inspect how code reaches data and external calls.
 
 1. [Formatting](formatting.md)
 2. [Diagnostics](diagnostics.md)

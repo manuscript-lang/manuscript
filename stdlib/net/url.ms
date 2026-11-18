@@ -9,11 +9,10 @@ import (
 ) from "@std/internal/net.ms"
 
 // URLs follow RFC 3986 as Go's `net/url` reads it, not the WHATWG URL Standard that
-// browsers
-// implement: there is no IDNA, IPv4 canonicalization or default-port removal. A parsed `Url`
-// is an absolute hierarchical URL with a scheme; user information and opaque URLs
-// (`mailto:x`) are rejected. A semicolon in a query is ordinary text, never a
-// separator.
+// browsers implement: there is no IDNA, IPv4 canonicalization or default-port removal.
+// A parsed `Url` is an absolute hierarchical URL with a scheme. User information and
+// opaque URLs (`mailto:x`) are rejected. A semicolon in a query is ordinary text, never
+// a separator.
 
 // One decoded key and value in a URL query string.
 export type QueryEntry:

@@ -1,8 +1,8 @@
 import StringBuilder from "@std/string_builder.ms"
 
-// Double-quotes text with JSON-style escapes. Controls below U+0020 use a short JSON
-// escape where available, otherwise \uXXXX. U+007F is always escaped as \uXXXX;
-// `escape_c1` also escapes U+0080 to U+009F.
+// Wraps text in double quotes and escapes it the way JSON does. A control character
+// below U+0020 gets its short JSON escape where one exists, otherwise \uXXXX. U+007F is
+// always escaped as \uXXXX. Pass `escape_c1: true` to escape U+0080 to U+009F too.
 export fn quote_text(text: String, escape_c1: Bool) String:
 	var clean = true
 
@@ -40,6 +40,6 @@ export fn quote_text(text: String, escape_c1: Bool) String:
 	result.append("\"")
 	return result.build()
 
-// Four lowercase hex digits for a code void, zero padded.
+// Four lowercase hex digits for a code unit, zero padded.
 fn hex4(code: Int) String:
 	return code.to_hex().pad_start(4, "0")

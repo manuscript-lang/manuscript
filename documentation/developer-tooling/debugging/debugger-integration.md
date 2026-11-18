@@ -54,7 +54,7 @@ Open `capture/top.txt` to read the same report again. Its columns are:
 - **cum** counts samples whose stack contains the function, including its callees: use this to find callers responsible for expensive work.
 - The percentages use the total sample count. Counts and rankings vary between runs; they are not exact call counts or elapsed wall-clock measurements.
 
-This example spends much of its work splitting and allocating strings, so `[runtime]` may lead the flat report while `main` has cumulative samples. Optimization can inline the small `count_words` helper. A very short run may collect no samples: increase the representative workload before drawing conclusions. Measure normal execution separately because profiling adds overhead.
+This example spends most of its work splitting and allocating strings, so `[runtime]` may lead the flat report while `main` has the cumulative samples. Optimization can inline the small `count_words` helper. A very short run may collect no samples; increase the workload before drawing conclusions. Measure normal execution separately, because profiling adds overhead.
 
 The bundle keeps the executable and data for further investigation:
 
@@ -74,7 +74,9 @@ CPU samples show where time goes, not who asks for memory. Add `--allocs` to als
 ms profile words.ms --out-dir capture --allocs
 ```
 
-The report then lists the functions that allocate most, in allocations and bytes, and the bundle adds `allocs.txt`, `allocs.folded` (stacks weighted by allocation count) and `allocs.folded.bytes` (weighted by bytes). A sample is a stack walk on every 128th allocation (set `MS_PROFILE_ALLOC_PERIOD` to change it; `1` counts every allocation), so counts are scaled estimates. Only the program's main thread is sampled. `--allocs` links a separate runtime with the sampling check, shipped in release builds of `ms` (a build from source needs `cargo xtask runtime --alloc-profile`) and not combined with `--static`. Without `--allocs` the program is the ordinary runtime and nothing is recorded or paid.
+The report then lists the functions that allocate most, in allocations and bytes, and the bundle adds `allocs.txt`, `allocs.folded` (stacks weighted by allocation count) and `allocs.folded.bytes` (weighted by bytes). A sample is a stack walk on every 128th allocation (set `MS_PROFILE_ALLOC_PERIOD` to change it; `1` counts every allocation), so counts are scaled estimates. Only the program's main thread is sampled.
+
+`--allocs` links a separate runtime that includes the sampling check. Release builds of `ms` ship it; a build from source needs `cargo xtask runtime --alloc-profile`. It cannot be combined with `--static`. Without `--allocs` the program uses the ordinary runtime, records nothing and pays no cost.
 
 Use `--json` when another tool needs the versioned result instead of terminal prose. On Linux, the command also prints a `perf record` invocation for the executable; using it requires an installed `perf` and permission to sample processes.
 
@@ -123,7 +125,10 @@ With [GDB](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Sample-Session
 
 ## What source information is available {#source-attribution}
 
-Native builds retain frame pointers and DWARF file/line mappings. These support source breakpoints, stack attribution and stepping; optimized code can reorder or remove operations. It also describes every Manuscript type as a structure (`String`, `List[Int]`, `Int?`, records, enums), with member names and offsets, on both backends. In a Cranelift build (`--build-type debug`) a frame's parameters and the locals it declares are named and located, so `info args`, `info locals` and `frame variable` show them, and each callee the build inlined is a frame of its own with its own parameters and locals, so a backtrace and `up` still name it. A part with no location at the current instruction reads `<optimized out>`. A local that is assigned again after its declaration is not described: it holds several values, and naming the first would show a stale one. Release builds (LLVM) describe the types but not variables, because variable debug info costs release compile time (about 4%) and size: use source-level `print` calls or a focused test, and read a value you can address (a pointer from a register, a member, a stack slot) through its type, as below.
+Native builds keep frame pointers and DWARF file and line mappings. These support source breakpoints, stack attribution and stepping. Optimized code can reorder or remove operations. Both backends also describe every Manuscript type as a structure (`String`, `List[Int]`, `Int?`, records, enums), with member names and offsets.
+
+- **Cranelift builds (`--build-type debug`)** name and locate a frame's parameters and the locals it declares, so `info args`, `info locals` and `frame variable` show them. Each callee the build inlined is a frame of its own with its own parameters and locals, so a backtrace and `up` still name it. A part with no location at the current instruction reads `<optimized out>`. A local that is assigned again after its declaration is not described, because it holds several values and naming the first would show a stale one.
+- **Release builds (LLVM)** describe the types but not variables, because variable debug info costs release compile time (about 4%) and size. Use source-level `print` calls or a focused test, and read a value you can address (a pointer from a register, a member, a stack slot) through its type, as below.
 
 ## Print a value as Manuscript shows it {#print-values}
 
@@ -147,6 +152,6 @@ expression -- *(struct Shape*)$sp
 
 On Windows, GDB and LLDB read the DWARF in the `.exe` and use the same helpers. Debuggers that need a PDB (Visual Studio, WinDbg) cannot read the type information, because the compiler does not emit a PDB. The decoding rules live in `tools/debugger/manuscript_values.py`, which `tools/debugger/test_values.py` tests without a debugger. In LLDB, name a list type with the script API (`frame variable`, `expression`), not a cast, since the name contains brackets.
 
-On macOS, keep the adjacent `words.dSYM` bundle with the executable. `ms build` creates it when `dsymutil` is available; without it the executable runs but source line lookup is unavailable. On Windows, name the output `words.exe` and use a debugger that can read its DWARF information; the compiler does not emit a PDB. Linux keeps the line information in the executable itself.
+On macOS, keep the adjacent `words.dSYM` bundle with the executable. `ms build` creates it when `dsymutil` is available; without it the executable runs but source line lookup is unavailable. On Windows, name the output `words.exe` and use a debugger that can read DWARF. Linux keeps the line information in the executable itself.
 
 To investigate which functions can call each other before running, open an [interactive code map](../implementation.md#interactive-code-map). To compare an optimization with repeatable measurements, use [benchmarks](../../learn/testing.md#benchmark-your-code).

@@ -3,7 +3,9 @@
 /*
 Terminal text styling and measuring: colors, attributes, and width-aware helpers for strings that carry escape sequences.
 
-`paint(text, style, colors)` wraps `text` in the SGR sequences for a `Style` and resets afterwards. `colors` is the count from `terminal_capabilities().colors`: 0 returns `text` unchanged, 16 and 256 downgrade richer colors to the nearest available one. `styled` reads the count itself. `strip_ansi` removes escape sequences, `visible_width` counts the columns a string occupies on screen, and `wrap_text` breaks text into rows of at most a width, carrying the active style across breaks.
+`paint(text, style, colors)` wraps `text` in the SGR sequences for a `Style` and resets afterwards. `colors` is the count from `terminal_capabilities().colors`: 0 returns `text` unchanged, and 16 or 256 downgrade richer colors to the nearest available one. `styled` reads the count itself.
+
+`strip_ansi` removes escape sequences. `visible_width` counts the columns a string occupies on screen. `wrap_text` breaks text into rows of at most a given width, carrying the active style across breaks.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -38,7 +40,8 @@ export enum Color:
 		// 0 to 255 in the 256-color palette.
 		index: Int
 	)
-	// A 24-bit color; terminals below 16777216 colors get the nearest palette entry.
+	// A 24-bit color; terminals with fewer than 16777216 colors get the nearest color
+	// they support.
 	Rgb(
 		// Red, 0 to 255.
 		red: Int,
@@ -208,7 +211,8 @@ export fn strip_ansi(text: String) String:
 	if not text.contains(esc): return text.clone()
 	return escape_pattern().replace_all(text, "").get_or(text.clone())
 
-// The number of terminal columns `text` occupies, ignoring escape sequences.
+// The number of terminal columns `text` occupies, ignoring escape sequences. Any other
+// control character returns EBADMSG.
 export fn visible_width(text: String) Int!:
 	return strip_ansi(text).display_width()
 
@@ -257,7 +261,7 @@ fn escape_end(cs: List[String], at: Int) Int:
 /*
 Splits `text` on newlines and wraps each line into rows of at most `width` columns, counting only visible
 characters. Escape sequences stay with the text they style: a row that breaks inside styled text ends with a
-reset and the next row repeats the active colour and style sequences. Other sequences, such as window titles
+reset and the next row repeats the active color and style sequences. Other sequences, such as window titles
 and hyperlinks, are kept whole and count for no columns. A `width` below 1 is treated as 1.
 */
 export fn wrap_text(text: String, width: Int) List[String]:

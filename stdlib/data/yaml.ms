@@ -1,11 +1,13 @@
-// Configuration-oriented YAML 1.2 parser implemented in Manuscript.
+// Configuration-oriented YAML 1.2 parser and writer implemented in Manuscript. Use
+// `parse` for one document and `parse_all` for a stream.
 //
 // Mapping keys are strings. A scalar key (a number, boolean or null spelling, a quoted
 // string, an empty key, or an alias to a scalar) becomes the text of that scalar, so
-// `1` and
-// `"1"` in one mapping are a duplicate key, which is an error. A sequence or mapping used as
-// a key is rejected with an error that names its position. Tags other than `!` and
-// `!!str` are read and ignored; those two make the node a string.
+// `1` and `"1"` in one mapping are a duplicate key, which is an error. A sequence or
+// mapping used as a key is rejected with an error that names its position.
+//
+// Tags other than `!` and `!!str` are read and ignored. Those two make a scalar a
+// string, whatever its spelling.
 import (
 	Bytes from "@std/bytes.ms",
 	quote_text from "@std/data/quote.ms",
@@ -45,9 +47,10 @@ export enum YamlValue:
 		values: Map[String, YamlValue]
 	)
 
-// Input-byte, nesting-depth, and parsed-value limit settings for YAML parsing. Fields
-// set to none add no budget. The defaults, depth 10,000 and 1,000,000 values, guard
-// against deep nesting and alias expansion.
+// Limits for `parse` and `parse_all` on input bytes, nesting depth and parsed values.
+// A limit set to none adds no limit. The defaults, depth 10,000 and 1,000,000 values,
+// guard against deep nesting and alias expansion. A negative limit returns `EINVAL`,
+// and a document that exceeds one returns `EOVERFLOW`.
 export type YamlOptions:
 	// Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
 	max_bytes: Int? = none
@@ -65,9 +68,12 @@ type Context:
 	anchors: Map[String, YamlValue]
 	sizes: Map[String, Int]
 	/*
-    Per-line facts computed once from the document bytes. A simple line is ASCII with no tab,
-    quote, bracket, brace or `#`, no trailing space and no leading `?`, so its comment-free
-    text, indentation and mapping colon need no character-by-character scan.
+    Per-line facts computed once from the document bytes. A simple line is ASCII with no
+    control character (so no tab), quote, bracket, brace or `#`, no trailing space and no
+    leading `?`, so its comment-free text, indentation and mapping colon need no
+    character-by-character scan. `blank` marks lines of spaces only, `dash` marks simple
+    lines that start a sequence entry, `ind` is the indentation, and `col` is the offset of
+    the mapping colon (-1 for none).
     */
 	simple: List[Bool]
 	blank: List[Bool]
@@ -76,7 +82,6 @@ type Context:
 	col: List[Int]
 	max_depth: Int?
 	max_values: Int?
-	// Diagnostic projection for virtual lines; parsing continues to use the same bases.
 	// Prefixes declared by %TAG directives, keyed by handle (`!`, `!!`, `!name!`).
 	tag_handles: Map[String, String] = Map[String, String]()
 	// Whether the document just read ended with an explicit `...` marker.
@@ -84,6 +89,9 @@ type Context:
 	// Whether the document just read had no `---` marker and no content: no document at
 	// all.
 	absent_document: Bool = false
+	// Diagnostic projection for virtual lines (a line rewritten or split during
+	// parsing): these shift reported line and column numbers back to the source;
+	// parsing continues to use the same bases.
 	split_line: Int = -1
 	shift_row: Int = -1
 	shift_column: Int = 0
@@ -237,7 +245,9 @@ fn flow_space(var flow: Flow) Void:
 
 		flow.pos += 1
 
-// Project an existing scalar cursor only on errors. Valid input needs no position scan.
+// The source line and column of scalar offset `cursor` in `chars`, which starts at
+// `line` and `column`. Called only to build errors, so valid input needs no position
+// scan.
 fn cursor_position(
 	chars: List[String],
 	cursor: Int,
@@ -268,8 +278,10 @@ fn flow_invalid(flow: Flow, reason: String, cursor: Int = -1) Error:
 	position := flow_position(flow, if cursor < 0: flow.pos else: cursor)
 	return yaml_invalid(line: position.line, column: position.column, reason: reason)
 
-// The first physical break folds to a space, or is removed before empty lines.
-// An escaped first break is removed even when no empty lines follow it.
+// Reads the empty lines after a line break inside a quoted scalar, whose first break
+// has been consumed. With no empty lines the break folds to one space; with empty lines
+// each becomes a newline and the first break adds nothing. An escaped break adds
+// nothing even when no empty lines follow it.
 fn folded_break(var flow: Flow, escaped: Bool) String:
 	var result = ""
 
@@ -460,8 +472,9 @@ fn anchor_name(var flow: Flow) String!:
 
 	return ok(name)
 
-// The resolved tag at the cursor, which sits on `!`: a verbatim `!<uri>`, `!!name` of
-// the core schema, `!` alone (the non-specific tag), or a local `!name`.
+// The resolved tag at the cursor, which sits on `!`: a verbatim `!<uri>`, `!!name` (the
+// core schema unless a `%TAG` directive redeclares `!!`), `!handle!name` for a declared
+// handle, `!` alone (the non-specific tag), or a local `!name`.
 fn tag_token(var flow: Flow) String!:
 	advance(var flow)
 
@@ -563,8 +576,8 @@ fn merge(
 
 	return ok()
 
-// A plain scalar continued across lines folds each break into one space; blank lines
-// stay breaks.
+// Folds a plain scalar that continues across lines: a single line break becomes one
+// space, and each blank line becomes a newline.
 fn fold_plain(text: String) String:
 	if not text.contains("\n"): return text.clone()
 
@@ -611,8 +624,8 @@ fn separates_colon(next: Int, delimited: Bool) Bool:
 		)
 	)
 
-// The text of a one-entry mapping's key, which an implicit key must keep on one line
-// from `from` to the cursor.
+// The text of the key of a one-entry mapping inside a flow sequence. An implicit key
+// must stay on one line from offset `from` to the cursor.
 fn pair_key_text(flow: Flow, key: YamlValue, from: Int, empty: Bool) String!:
 	var row = from
 
@@ -781,14 +794,14 @@ type FlowFrame:
 	single: Bool = false
 
 /*
-Parses a flow value. Nested sequences and mappings are parsed with explicit stacks, not by
-recursion, so the nesting depth is bounded by the depth limit and not by the call stack. Only
-a mapping key recurses, and a key cannot be a container.
+Parses a flow value. Nested sequences and mappings use explicit stacks instead of recursion,
+so the depth limit, not the call stack, bounds nesting. Only a mapping key recurses, and a
+key cannot be a container.
 */
 fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
-	// The open containers, innermost last: kind (1 sequence, 2 mapping), depth,
-	// anchors, and the entries so far. The innermost one is held in the variables below
-	// `parents`.
+	// The suspended parent containers, innermost last, each with its kind (1 sequence,
+	// 2 mapping), depth, anchors and entries so far. The innermost open container is
+	// held in the variables below, not in `frames`.
 	var frames: List[FlowFrame] = []
 
 	// kind 0 is the request itself, before any container opens.
@@ -1110,8 +1123,9 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 		empty_key = false
 		phase = 1
 
-// A plain scalar cannot start with a reserved indicator, nor with `-` or `?` followed
-// by a space or the end.
+// A plain scalar cannot start with one of `]`, `}`, `,`, `%`, `@` or a backtick, nor
+// with
+// `-` or `?` followed by a space, tab or the end.
 fn plain_may_start(text: String) Bool:
 	first := text.scalar_at(0, default: 0)
 	if first == 0: return true
@@ -1143,7 +1157,8 @@ fn quoted_or_nested(text: String) Bool:
 		or text.contains("{")
 	)
 
-// Whether the colon at scalar `at` ends an anchor or alias name, which runs to a blank.
+// Whether the colon at offset `at` is part of an anchor or alias name (the word it ends
+// starts with `&` or `*`; such a name runs to a blank), so it is not a mapping colon.
 fn names_node(text: String, at: Int) Bool:
 	// Quoted or bracketed text is scanned structurally, where a blank can sit inside
 	// it.
@@ -1160,8 +1175,9 @@ fn names_node(text: String, at: Int) Bool:
 	first := text.scalar_at(start, default: 0)
 	return first == 38 or first == 42
 
-// boundary for text with no quotes or brackets: the first marker that follows a blank
-// (or ends the text) wins.
+// The offset of the first marker in text with no quotes or brackets, or -1. With
+// `colon`, the marker is a `:` followed by a blank or the end; otherwise it is a `#`
+// at the start of the text or after a blank.
 fn plain_boundary(text: String, colon: Bool) Int:
 	marker := if colon: ":" else: "#"
 	var offset = 0
@@ -1186,7 +1202,9 @@ fn plain_boundary(text: String, colon: Bool) Int:
 
 		offset = at + 1
 
-// A structural marker; `closed` is meaningful only when the scan reaches the end.
+// The result of a structure scan. `marker` is the offset of the requested marker, or -1
+// when the scan reached the end first. `closed` is meaningful only in that case: it is
+// true when no quote or flow collection is left open.
 type StructureScan:
 	marker: Int
 	closed: Bool
@@ -1203,7 +1221,8 @@ fn scan_structure(text: String, target: String) StructureScan:
 	var state = StructureState()
 	return scan_structure_part(text, target, var state)
 
-// Scan quoted and flow nodes without interpreting quotes or brackets inside plain text.
+// Scans quoted and flow nodes, treating quotes and brackets inside plain text as
+// ordinary characters. `state` carries over between consecutive lines of one value.
 fn scan_structure_part(
 	text: String,
 	target: String,
@@ -1320,7 +1339,8 @@ fn structure_delimiter(code: Int) Bool:
 		or code == 125
 	)
 
-// Find a mapping colon or comment outside quoted/flow values.
+// The offset of the first mapping colon (with `colon`) or comment `#` outside quoted
+// and flow values, or -1.
 fn boundary(text: String, colon: Bool) Int:
 	// Without the marker nothing can match; without quotes or brackets the first
 	// candidate decides.
@@ -1482,7 +1502,8 @@ fn explicit_key(text: String) Bool:
 	if text.scalar_at(0, default: 0) != 63: return false
 	return (text == "?" or text.starts_with("? ") or text.starts_with("?\t"))
 
-// A flow collection or quoted scalar can continue across physical lines.
+// Whether `text` leaves no quote or flow collection open. An open one continues on the
+// next physical line.
 fn complete(text: String) Bool:
 	if not quoted_or_nested(text): return true
 	return scan_structure(text, "").closed
@@ -2706,8 +2727,9 @@ fn document(var context: Context, options: YamlOptions) YamlValue!:
 	validate(var context, result, 1)?
 	return ok(result)
 
-// Parses a single YAML document; a stream of several is an error, so use `parse_all`
-// for it. Unsupported YAML features and invalid input include source locations.
+// Parses a single YAML document. A stream of several documents is an error; use
+// `parse_all` for it. Invalid input returns `EBADMSG` and unsupported YAML syntax returns
+// `ENOTSUP`; both errors include the source location.
 export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 	var context = open_stream(text, options)?
 	result := document(var context, options)?
@@ -2847,7 +2869,8 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 			return ok()
 		_: return ok()
 
-// Serializes a YAML value in block style with double-quoted strings.
+// Writes a YAML value in block style with double-quoted strings. Output longer than
+// `max_bytes` returns `EOVERFLOW`, and a negative `max_bytes` returns `EINVAL`.
 export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:
 	if limit := max_bytes:
 		if limit < 0: return error(Error("invalid YAML input", kind: "EINVAL"))

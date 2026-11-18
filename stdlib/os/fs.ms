@@ -5,14 +5,15 @@ Completion rule: an operation on a whole file's contents (`read_file`, `write_fi
 `write_atomic`) returns a `Promise` that is already running, so it can overlap other work; every other call
 (metadata, directories, links, handles, copy, move, glob) blocks and returns `T!`.
 Text and bytes use one function: `write_file(path, "text")` and `write_file(path, bytes)` both type-check.
-Functions take at most three parameters; more settings travel in an `*Options` record.
+Settings beyond a few parameters travel in an `*Options` record.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import read_file, write_file from "@std/os/fs.ms"
 
 write_file("notes.txt", "hello").wait()?
 data := read_file("notes.txt").wait()?
+print(data.length())
 ```
 */
 import (
@@ -135,7 +136,8 @@ export type OpenOptions:
 	// When True, creating a file that already exists returns EEXIST. Applies to
 	// `Write`, `WriteRead`, `Append` and `AppendRead`.
 	exclusive: Bool = false
-	// Permission bits 0..4095 given to a created file, subject to umask and OS policy.
+	// Permission bits, from 0 through 4095, given to a created file, subject to umask
+	// and OS policy. The default is 438 (0666).
 	permissions: Int = 438
 
 // The position a `seek` offset counts from.
@@ -176,8 +178,9 @@ export type FileInfo:
 	// Device id the entry represents when it is a device file, otherwise 0.
 	rdev: Int
 	// Unbounded copies of the numeric fields `size`, `mode`, `device`, `inode`,
-	// `links`, `uid`, `gid`, `block_size`, `blocks`, and `rdev`, which cannot overflow,
-	// plus the times as nanoseconds since the Unix epoch under `accessed_ns`,
+	// `links`,
+	// `uid`, `gid`, `block_size`, `blocks`, and `rdev`, which cannot overflow.
+	// It also holds the times as nanoseconds since the Unix epoch under `accessed_ns`,
 	// `modified_ns`, `changed_ns`, and `created_ns`. Unavailable values are 0.
 	exact: Map[String, BigInt]
 	// Id of the device that holds the file; with `inode` it identifies the file. 0
@@ -253,13 +256,14 @@ fn FileHandle.reader() ReadStream[Bytes]!:
 	own := self.clone()?
 	return ok(ReadStream[Bytes](FileSource(own)))
 
-// Adapts complete writes to `Error`/Void; flush synchronizes the file.
+// Duplicates this handle for chunk writes, as `reader` does for reads; flushing the
+// stream syncs the file.
 fn FileHandle.writer() WriteStream[Bytes]!:
 	own := self.clone()?
 	return ok(WriteStream[Bytes](FileSink(own)))
 
-// Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must
-// be positive.
+// Returns the next chunk of at most `max_bytes` (and never more than 64 KiB), or none
+// at the end of the file. A supplied size must be positive.
 fn FileHandle.read(max_bytes: Int?) Bytes?!:
 	return msstd_io_read(self.native, max_bytes)
 
@@ -269,8 +273,8 @@ fn FileHandle.read(max_bytes: Int?) Bytes?!:
 fn FileHandle.write(data: Writable) Void!:
 	return msstd_io_write_bytes(self.native, data.as_bytes())
 
-// Reads at a nonnegative byte offset without moving the position; short/empty Bytes
-// mark EOF.
+// Reads up to `max_bytes` at a nonnegative byte `offset` without moving the position.
+// A short or empty result means the end of the file was reached.
 fn FileHandle.read_at(offset: Int, max_bytes: Int?) Bytes!:
 	return msstd_fs_file_read_at(self.native, offset, max_bytes)
 
@@ -280,13 +284,16 @@ fn FileHandle.read_at(offset: Int, max_bytes: Int?) Bytes!:
 fn FileHandle.write_at(offset: Int, data: Writable) Void!:
 	return msstd_fs_file_write_at(self.native, offset, data.as_bytes())
 
-// Reads remaining bytes from the current position; EOF returns empty Bytes.
+// Reads the remaining bytes from the current position; at the end of the file it
+// returns empty Bytes.
 fn FileHandle.read_file(max_bytes: Int?) Bytes!:
 	return msstd_fs_file_read_file(self.native, max_bytes)
 
 // Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all
 // together up to 16 MiB, and returns the bytes obtained for each.
-// `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns EINVAL.
+// `offset` -1 reads from the current position; other offsets read without moving it. A
+// buffer is shorter than requested at end of file. A negative size or offset below -1
+// returns EINVAL.
 fn FileHandle.read_vectors(sizes: List[Int], offset: Int) List[Bytes]!:
 	return msstd_fs_file_read_vectors(self.native, sizes, offset)
 
@@ -407,8 +414,7 @@ export opaque type Directory:
 	// this value.
 	native: NativeDirectory
 
-// Releases the directory handle. Safe to call repeatedly; further reads fail with a
-// closed error.
+// Releases the directory handle. Safe to call repeatedly; later reads return EBADF.
 fn var Directory.close() Void!:
 	msstd_fs_directory_close(self.native)
 
@@ -421,7 +427,7 @@ fn Directory.path() String:
 fn Directory.read() DirectoryEntry?!:
 	return msstd_fs_directory_read(self.native)
 
-// A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path))`
+// A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path)?)`
 // yields its children in native order, so steps compose:
 // `... | filter(...) | collect(none)`. Closing the stream closes the directory.
 fn var Directory.next() DirectoryEntry?!:
@@ -442,8 +448,8 @@ type WatchSource:
 	pending: List[FileEvent]
 
 // Waits for the next change. none once the watched path itself has been removed (its
-// removal event comes first). A closed watcher is `EBADF`; a native watcher that
-// overflowed with policy `error` is `EOVERFLOW`.
+// removal event comes first). A stream closed by the caller ends (`none`); a native
+// watcher that overflowed with policy `error` is `EOVERFLOW`.
 fn var WatchSource.next() FileEvent?!:
 	while true:
 		if event := self.pending.pop(): return ok(event)
@@ -489,13 +495,13 @@ export type FileEvent:
 	// Path of the affected entry, formed from the watched path plus any child
 	// components.
 	path: String
-	// Exactly `rename` (appearance/disappearance/rename) or `change`
-	// (contents/metadata).
+	// Exactly `rename` (an entry appeared, disappeared, or was renamed) or `change`
+	// (its contents or metadata changed).
 	kind: String
 
-// Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts
-// in those blocks, and files/files_free are native file-node counts (zero if
-// unavailable).
+// Capacity and free-space statistics for a filesystem. `block_size` is in bytes; the
+// block fields count blocks of that size; `files` and `files_free` count native file
+// nodes (zero if unavailable).
 export type FileSystemInfo:
 	// The host's numeric filesystem type code, such as the magic number reported by
 	// Linux; 0 where unavailable.
@@ -617,9 +623,12 @@ Returns entries matching the include patterns of `options`, sorted by path. `pat
 `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
 returns True. A pattern ending in `/` matches directories only, as in a shell. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import GlobOptions, glob from "@std/os/fs.ms"
+
 sources := glob(".", GlobOptions(patterns: ["*.ms"]))?
+print(sources.length())
 ```
 */
 // ms: effect std.fs.read
@@ -642,8 +651,10 @@ By default an existing destination returns EEXIST; set `replace` to overwrite it
 source and destination path and skips the entry when it returns False.
 Entry and byte limits apply cumulatively across the whole copy.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import CopyOptions, copy from "@std/os/fs.ms"
+
 copy("a.txt", "b.txt", CopyOptions(replace: true))?
 ```
 */
@@ -682,9 +693,11 @@ export fn create_directory(path: String, recursive: Bool = false) Void!:
 export fn create_symlink(path: String, target: String) Void!:
 	return msstd_fs_create_link(path, target)
 
-// Lists a directory, optionally limiting the number of returned entries. A name that is
-// not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer
-// addresses the entry. The same holds for `glob`, `stat` names and directory cursors.
+// Lists a directory in native order. A directory with more than `max_entries` entries
+// returns EOVERFLOW rather than a shortened list, and a negative `max_entries` returns
+// EINVAL; none sets no limit. A name that is not valid UTF-8 is listed with U+FFFD in
+// place of each invalid byte, so it no longer addresses the entry. The same holds for
+// `glob`, `stat` names and directory cursors.
 // ms: effect std.fs.read
 export fn list(path: String, max_entries: Int? = none) List[DirectoryEntry]!:
 	return msstd_fs_list(path, max_entries)
@@ -719,9 +732,9 @@ export fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]:
 export fn read_symlink(path: String) String!:
 	return msstd_fs_read_link(path)
 
-// Removes a file or empty directory; recursive defaults to False, retaining nonempty
-// trees. A missing path returns ENOENT, except that a recursive removal of a missing
-// path succeeds.
+// Removes a file or an empty directory. With `recursive`, it removes a directory and
+// everything inside it; otherwise a nonempty directory returns ENOTEMPTY. A missing
+// path returns ENOENT, except that a recursive removal of a missing path succeeds.
 // ms: effect std.fs.delete
 export fn remove(path: String, recursive: Bool = false) Void!:
 	return msstd_fs_remove(path, recursive)
@@ -749,22 +762,23 @@ export fn exists(path: String, follow_links: Bool = true) Bool!:
 	found := msstd_fs_exists(path, follow_links)?
 	return ok(found != 0)
 
-// Queries the host temp root without creating or checking a directory.
+// Returns the host's temporary directory path, without creating or checking it.
 // ms: effect std.fs.read
 export fn temporary_root() String!:
 	return ok(msstd_fs_temporary_root())
 
-// Creates a new directory under the host temp root; the caller must remove it. Prefix
-// must be nonempty and contain no slash, backslash, or NUL. The name is the prefix
-// followed by random digits; the last `*` in the prefix marks where the digits go
-// instead, so `"build-*.tmp"` makes `build-4123.tmp`.
+// Creates a new directory under the host's temporary directory and returns its path;
+// the caller must remove it. `prefix` must be nonempty and contain no slash, backslash,
+// or NUL. The name is the prefix followed by random digits. If the prefix has a `*`,
+// the last one marks where the digits go instead, so `"build-*.tmp"` makes
+// `build-4123.tmp`.
 // ms: effect std.fs.write
 export fn temporary_directory(prefix: String) String!:
 	return msstd_fs_temporary_directory(prefix)
 
-// Starts creating a file exclusively and returns its promise; replace defaults to
-// False, retaining an existing file.
-// `data` is text (written as UTF-8) or `Bytes`.
+// Starts writing `data` to a new file at `path` and returns its promise. `data` is text
+// (written as UTF-8) or `Bytes`. By default an existing file returns EEXIST; set
+// `replace` to overwrite it.
 // ms: effect std.fs.write
 export fn write_file(path: String, data: Writable, replace: Bool = false) Promise[Void]:
 	payload := data.as_bytes()
@@ -782,8 +796,10 @@ fn write_held(path: String, data: Bytes, replace: Bool, held: Bool) Void!:
 	permit := WritePermit(held: held)
 	return msstd_fs_write_file(path, data, replace)
 
-// Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined
-// bits. Native permissions and Windows access policy still apply.
+// Checks that the process may access `path` in `mode`, from 0 through 7: 0 checks
+// existence, 4 read, 2 write, 1 execute, and a sum of them checks several at once.
+// Native permissions and Windows access policy still apply. A missing path returns
+// ENOENT.
 // ms: effect std.fs.read
 export fn access(path: String, mode: Int) Void!:
 	return msstd_fs_access(path, mode)
@@ -805,21 +821,23 @@ fn append_held(path: String, data: Bytes, held: Bool) Void!:
 	permit := WritePermit(held: held)
 	return msstd_fs_append_file(path, data)
 
-// Changes target permissions with mode 0..4095. `follow_links` True (the default)
-// follows a final symbolic link; False changes the link itself, which returns ENOTSUP
-// on hosts lacking this operation.
+// Sets the permission bits of `path` to `mode`, from 0 through 4095. `follow_links`
+// True (the default) follows a final symbolic link; False changes the link itself,
+// which returns ENOTSUP on hosts lacking this operation.
 // ms: effect std.fs.write
 export fn chmod(path: String, mode: Int, follow_links: Bool = true) Void!:
 	return msstd_fs_chmod(path, mode, follow: follow_links)
 
 // Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
-// `follow_links` True (the default) follows a final symbolic link; False changes the link itself, with ENOTSUP on hosts lacking this operation.
+// `follow_links` True (the default) follows a final symbolic link; False changes the link
+// itself, with ENOTSUP on hosts lacking this operation.
 // Usually needs privilege, and Windows returns ENOTSUP.
 // ms: effect std.fs.write
 export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool = true) Void!:
 	return msstd_fs_chown(path, uid, gid, follow: follow_links)
 
-// Sets the target size in bytes; follows a final symbolic link.
+// Sets the length of the file at `path` to `size` bytes, following a final symbolic
+// link.
 // ms: effect std.fs.write
 export fn truncate(path: String, size: Int) Void!:
 	return msstd_fs_truncate(path, size)
@@ -856,9 +874,12 @@ fn open_flags(mode: OpenMode, exclusive: Bool) String:
 Opens `path` in `mode` (default `Read`). `options.exclusive` makes creation fail with EEXIST when the file exists;
 `options.permissions` is applied on creation, subject to umask and OS policy.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-file := open("out.log", OpenMode.Append)?
+import OpenMode, open from "@std/os/fs.ms"
+
+var file = open("out.log", OpenMode.Append)?
+file.close()?
 ```
 */
 // ms: effect std.fs.read
@@ -880,7 +901,9 @@ export fn open_directory(path: String) Directory!:
 
 /*
 Starts replacing the file at `path` with `data` (text or `Bytes`) all-or-nothing and returns its promise: readers see the old contents or the new, never a partial file.
-The data goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. When `path` is a symbolic link the file it names is replaced and the link stays; a link that cannot be resolved is replaced itself. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
+The data goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so the directory of `path` must be writable.
+When `path` is a symbolic link, the file it names is replaced and the link stays; a link that cannot be resolved is replaced itself.
+An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
 Example: `write_atomic("config.json", text).wait()`.
 */
 // ms: effect std.fs.write
@@ -991,10 +1014,9 @@ fn finish_atomic(
 	return moved
 
 // Moves a file or tree from `source` to `destination`, across filesystems too. It
-// renames when it can. When the rename fails with a host error other than a missing or
-// protected path, as a move across devices does, it copies the tree, then removes
-// `source`, and removes the partial copy if copying fails. A destination that already
-// exists is not replaced by the copy fallback and returns EEXIST.
+// renames when it can. When the rename fails with EIO, as a move across devices does,
+// it copies the tree, then removes `source`, and removes the partial copy if copying
+// fails. The copy fallback does not replace an existing destination and returns EEXIST.
 // ms: effect std.fs.write
 // ms: effect std.fs.delete
 export fn move(source: String, destination: String) Void!:
@@ -1033,9 +1055,12 @@ With an interval it compares snapshots of the tree every `interval`, which must 
 `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts, and
 fails with EOVERFLOW the same way on every platform.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import WatchOptions, watch from "@std/os/fs.ms"
+
 var watcher = watch("src", recursive: true, options: WatchOptions(interval: 1.seconds()))?
+watcher.close()?
 ```
 */
 // ms: effect std.fs.read
@@ -1071,8 +1096,9 @@ export fn watch(
 		)
 	)
 
-// Creates a new temp directory whose contents are removed by scoped close. Prefix has
-// the same validation as temporary_directory; this does not query the temp root.
+// Creates a new temporary directory that is removed, with its contents, when it is
+// closed, as at the end of its scope. `prefix` follows the rules of
+// `temporary_directory`.
 // ms: effect std.fs.write
 export fn temporary(prefix: String) TemporaryDirectory!:
 	return msstd_fs_temporary_open(prefix)

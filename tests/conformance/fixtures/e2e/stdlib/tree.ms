@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	panic from "@std/core.ms",
-	create_directory, temporary, write_file from "@std/os/fs.ms",
+	create_directory, create_symlink, temporary, write_file from "@std/os/fs.ms",
 	FileTree,
 	MemoryTree,
 	WalkEntry,
@@ -133,6 +133,24 @@ test "host tree walks the same way":
 			kind: "EINVAL",
 		)
 	): return panic("host escape")
+
+test "host tree follows links inside the root and refuses links that leave it":
+	base := temporary("manuscript-tree-links-") | expect_ok?
+	create_directory(f"{base.path()}/root/in", true) | expect_ok?
+	create_directory(f"{base.path()}/outside", true) | expect_ok?
+	write_file(path: f"{base.path()}/root/in/a.txt", data: "a").wait() | expect_ok?
+	write_file(path: f"{base.path()}/outside/s.txt", data: "s").wait() | expect_ok?
+	create_symlink(f"{base.path()}/root/inner", f"{base.path()}/root/in") | expect_ok?
+	create_symlink(f"{base.path()}/root/out", f"{base.path()}/outside") | expect_ok?
+
+	tree := host_tree(f"{base.path()}/root")
+	if (tree.read("inner/a.txt", none) | expect_ok?) != "a".to_bytes(): return panic(
+		"inner link"
+	)
+	invalid := Error("filesystem: invalid input", kind: "EINVAL")
+	if tree.read("out/s.txt", none).err() != invalid: return panic("outer file")
+	if tree.children("out", none).err() != invalid: return panic("outer directory")
+	if tree.read("missing", none).err() == invalid: return panic("missing is not escape")
 
 test "memory tree listing follows writes and removals":
 	var tree = memory_tree()

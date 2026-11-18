@@ -5,10 +5,11 @@ weight = 2
 
 # Error propagation with ?
 
-A postfix `expression?` unwraps `ok`; on `error` it returns that error from the enclosing function, which must return a compatible `Result`. It reads after the call, so nested calls and pipe steps need no leading keyword.
+A postfix `expression?` unwraps `ok`; on `error` it returns that error from the enclosing function, which must return a compatible `Result`. Because it is written after the call, nested calls and pipe steps need no leading keyword.
 
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
     value := discount(price, percent)?
@@ -57,6 +58,7 @@ Omitting `?` discards the Result, which the checker rejects. To ignore it delibe
 
 A trailing `?` on a pipe step in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `value := discount(...)?` then `label(value)`:
 
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)\n\nfn label(value: Decimal) String:\n    return value.to_string()","given":[]} -->
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
     return ok(discount(price, percent)? | label)

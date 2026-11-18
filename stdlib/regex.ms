@@ -16,14 +16,14 @@ export extern type Regex
 // whole-string match.
 fn Regex.matches(text: String) Bool: ...
 
-// Returns nonoverlapping full-match text in occurrence order, excluding capture
-// groups. A supplied cap is a strict budget, not truncation; zero-width matches
-// follow the engine's rules.
+// Returns the text of each nonoverlapping match in order, without capture groups.
+// A supplied `max_matches` is a strict budget: more matches return an error rather
+// than a truncated list. Zero-width matches follow the engine's rules.
 fn Regex.find_all(text: String, max_matches: Int?) List[String]!: ...
 
-// Replaces every nonoverlapping match with literal replacement text; $ and capture
-// names are not expanded. max_bytes optionally bounds UTF-8 output; negatives
-// return EINVAL, exhaustion EOVERFLOW.
+// Replaces every nonoverlapping match with `replacement`, used literally: `$` and
+// capture names are not expanded. `max_bytes` optionally bounds the UTF-8 output; a
+// negative bound returns `EINVAL` and exceeding it returns `EOVERFLOW`.
 fn Regex.replace_all(text: String, replacement: String, max_bytes: Int?) String!: ...
 
 // Returns the first match as [whole, group1, ...]; groups that did not participate
@@ -50,13 +50,13 @@ fn Regex.find_span(text: String) RegexSpan?:
 // is a strict budget like find_all's.
 fn Regex.split(text: String, max_pieces: Int?) List[String]!: ...
 
-// Like replace_all but expands $1, ${name}, and $$ in template from each match
-// (Rust regex syntax: use ${1}x, not $1x).
+// Like `replace_all`, but expands `$1`, `${name}` and `$$` in `template` from each
+// match. The syntax is Rust's: write `${1}x`, not `$1x`.
 fn Regex.replace_template(text: String, template: String, max_bytes: Int?) String!: ...
 
-// Returns all full-match byte ranges in find_all order, without copying matched
-// text. max_matches is a strict output budget: negatives return EINVAL, excess
-// returns EOVERFLOW.
+// Returns the byte range of each match in `find_all` order, without copying the
+// matched text. `max_matches` is a strict output budget: a negative value returns
+// `EINVAL` and more matches return `EOVERFLOW`.
 fn Regex.find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!:
 	raw := msstd_regex_find_all_spans(self, text, max_matches)?
 	var out = List[RegexSpan](reserve: raw.length() / 2)
@@ -65,10 +65,10 @@ fn Regex.find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!:
 	return ok(out)
 
 /*
-Returns the first match's [whole, group1, ...] byte ranges, or outer none when no match exists.
-An unmatched group is inner none; a participating empty group has start == end.
-max_captures bounds slots including the whole match and unmatched groups. Negative budgets return EINVAL;
-excess returns EOVERFLOW. The budget bounds output, not input scanning or engine scratch space.
+Returns the byte ranges of the first match as [whole, group1, ...], or an outer `none` when nothing matches.
+A group that did not participate is an inner `none`; a participating empty group has start == end.
+`max_captures` bounds the slots, counting the whole match and unmatched groups. A negative budget returns `EINVAL`
+and exceeding it returns `EOVERFLOW`. The budget bounds the output, not input scanning or engine scratch space.
 */
 fn Regex.capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
 	raw := msstd_regex_capture_spans(self, text, max_captures)?
@@ -77,9 +77,9 @@ fn Regex.capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
 	return ok(capture_slots(raw, 1, raw[0]))
 
 /*
-Like capture_spans for every match in capture_all order; no match gives an empty list.
-max_matches bounds rows; max_captures bounds total slots across rows, including whole and unmatched groups.
-Negative budgets return EINVAL, excess returns EOVERFLOW; these are output budgets, not search limits.
+Like `capture_spans`, for every match in `capture_all` order; no match gives an empty list.
+`max_matches` bounds the rows; `max_captures` bounds the total slots across rows, counting whole matches and unmatched groups.
+A negative budget returns `EINVAL` and exceeding one returns `EOVERFLOW`. These bound the output, not the search.
 */
 fn Regex.capture_all_spans(
 	text: String,

@@ -36,7 +36,8 @@ export type Screen:
 	height: Int
 
 // Draws `rows` on `terminal` and leaves the cursor at `cursor_row` (an index into
-// `rows`, negative for the first) and `cursor_column`.
+// `rows`; a negative value means the first row) and `cursor_column` (0 is the left
+// edge).
 fn var Screen.draw(
 	terminal: RawTerminal,
 	rows: List[String],

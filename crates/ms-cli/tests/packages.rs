@@ -159,6 +159,13 @@ fn fetch_pins_a_package_and_checks_work_offline() {
         "{}",
         stderr(&tampered)
     );
+
+    // `ms install` replaces the damaged copy; nothing has to be deleted by hand.
+    std::fs::rename(root.join("gone"), &lib).unwrap();
+    let repaired = ms(&project, &cache, &["install"]);
+    assert!(repaired.status.success(), "{}", stderr(&repaired));
+    let checked = ms(&project, &cache, &["check", "ms.toml"]);
+    assert!(checked.status.success(), "{}", stderr(&checked));
 }
 
 #[test]
@@ -266,6 +273,106 @@ fn a_symbolic_link_in_a_package_is_rejected_where_git_checks_it_out_as_text() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
+/// Records `path` in the package's git index without creating it on disk, so a name that this
+/// platform's filesystem could not hold can still be committed.
+fn track(lib: &Path, path: &str, contents: &str) {
+    let blob = Command::new("git")
+        .args(["hash-object", "-w", "--stdin"])
+        .current_dir(lib)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(contents.as_bytes())
+                .unwrap();
+            child.wait_with_output()
+        })
+        .unwrap();
+    let blob = String::from_utf8(blob.stdout).unwrap().trim().to_string();
+    // Windows git refuses names such as `aux.ms` unless told not to; the package is judged later.
+    git(
+        lib,
+        &[
+            "-c",
+            "core.protectNTFS=false",
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("100644,{blob},{path}"),
+        ],
+    );
+}
+
+/// A package's hash comes from the checked-out directory, so a name that checks out differently on
+/// macOS or Windows would pin a hash that fails there. It is refused where it is first pinned.
+#[test]
+fn a_package_whose_names_check_out_differently_by_platform_is_rejected() {
+    // Windows git may refuse the checkout itself, naming the file, before ms judges the package.
+    let windows = "which Windows cannot create";
+    let cases = [
+        (
+            "src/Util.ms",
+            "src/util.ms",
+            "differ only by letter case",
+            "Util.ms",
+        ),
+        ("src/aux.ms", "src/other.ms", windows, "aux.ms"),
+        ("src/a:b.ms", "src/other.ms", windows, "a:b.ms"),
+        ("src/dir./x.ms", "src/other.ms", windows, "x.ms"),
+    ];
+    for (index, (first, second, message, name)) in cases.iter().enumerate() {
+        let root = scratch(&format!("package-unportable-{index}"));
+        let lib = root.join("lib");
+        let spec = package(&lib, "", "export fn one() Int:\n    return 1\n");
+        track(&lib, first, "export fn two() Int:\n    return 2\n");
+        track(&lib, second, "export fn three() Int:\n    return 3\n");
+        git(&lib, &["commit", "-q", "-m", "names"]);
+        git(&lib, &["tag", "-f", "v1.0.0"]);
+        let app_dir = root.join("app");
+        app(
+            &app_dir,
+            &format!("[dependencies]\n\"@lib\" = {}\n", table(&spec)),
+        );
+        let output = ms(&app_dir, &root.join("cache"), &["install"]);
+        assert!(!output.status.success(), "{first} {second}");
+        assert!(
+            stderr(&output).contains(message) || stderr(&output).contains(name),
+            "{first} {second}: {}",
+            stderr(&output)
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn a_package_manifest_error_names_paths_from_the_package_root() {
+    let root = scratch("package-no-source");
+    let (cache, lib, project) = (root.join("cache"), root.join("lib"), root.join("app"));
+    let spec = package(&lib, "", "export fn f() Int:\n    return 1\n");
+    std::fs::write(
+        lib.join("ms.toml"),
+        "[project]\nname = \"lib\"\nsource = \"missing\"\n",
+    )
+    .unwrap();
+    git(&lib, &["commit", "-q", "-a", "-m", "move source"]);
+    git(&lib, &["tag", "-f", "v1.0.0"]);
+    app(
+        &project,
+        &format!("[dependencies]\n\"@lib\" = {}\n", table(&spec)),
+    );
+    let output = ms(&project, &cache, &["install"]);
+    assert!(!output.status.success());
+    let message = stderr(&output);
+    assert!(message.contains("ms.toml:3:10: lstat missing"), "{message}");
+    assert!(!message.contains(".tmp-"), "{message}");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 #[test]
 fn the_checker_rejects_natives_in_a_package() {
     let checked = checked_with("package-native", "", include_str!("packages/native.ms"), "");
@@ -331,7 +438,11 @@ fn a_tampered_lock_never_reaches_git_and_nested_packages_must_use_https() {
     std::fs::write(project.join("ms.lock"), lock).unwrap();
     let fetched = ms(&project, &cache, &["install"]);
     assert!(!fetched.status.success());
-    assert!(stderr(&fetched).contains("ms.lock"), "{}", stderr(&fetched));
+    assert!(
+        stderr(&fetched).contains("delete ms.lock and run ms install"),
+        "{}",
+        stderr(&fetched)
+    );
     assert!(!project.join("touch_pwned").exists() && !root.join("touch_pwned").exists());
 
     // A package's own dependencies may not read the local machine.
@@ -558,6 +669,20 @@ fn add_and_remove_edit_the_manifest_and_the_lock() {
         stderr(&missing).contains("v9.9.9 is not a tag"),
         "{}",
         stderr(&missing)
+    );
+    assert_eq!(manifest(&project), before);
+
+    // Two ways to pin one dependency are refused, not resolved by order.
+    let both = ms(
+        &project,
+        &cache,
+        &["add", url, "--version", "1", "--tag", "v1.0.0"],
+    );
+    assert!(!both.status.success());
+    assert!(
+        stderr(&both).contains("exactly one of"),
+        "{}",
+        stderr(&both)
     );
     assert_eq!(manifest(&project), before);
 

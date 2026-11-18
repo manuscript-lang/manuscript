@@ -1,8 +1,8 @@
 import StringBuilder from "@std/string_builder.ms"
 
 /*
-Compare text by edit distance, similarity, closest candidate, or a unified line diff.
-Strings are compared by Unicode scalar, lines by exact equality.
+Compares text by edit distance, similarity, closest candidate, or a unified line diff.
+Strings are compared by Unicode scalar and lines by exact equality.
 `diff.edit_distance("kitten", "sitting")` is `3`.
 */
 
@@ -176,8 +176,7 @@ fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 
 	return steps
 
-// Formats a hunk range like unified diff: the 1-based start and length, with an empty
-// range counted from the line before it. Matches common leading and trailing lines
+// Lists the steps that turn `old` into `new`. Matches common leading and trailing lines
 // directly, so only the differing middle pays for the quadratic table.
 fn line_steps(old: List[String], new: List[String]) List[Step]:
 	var head = 0
@@ -211,6 +210,8 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
 
 	return steps
 
+// Formats a hunk range like unified diff: the 1-based start and length, with an empty
+// range counted from the line before it.
 fn hunk_range(start: Int, length: Int) String:
 	if length == 1: return f"{start + 1}"
 	if length == 0: return f"{start},0"
@@ -228,7 +229,7 @@ export type UnifiedDiffOptions:
 
 /*
 Compares two lists of lines and returns the differences in unified diff format, or an empty string when the lists are equal.
-Lines carry no trailing newline, and the result lines are joined with "\n" with a final newline.
+Input lines carry no trailing newline. Each output line, including the last, ends with "\n".
 Example: `unified_diff(["a", "b"], ["a", "c"], UnifiedDiffOptions(context: 1))` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
 */
 export fn unified_diff(

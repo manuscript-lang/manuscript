@@ -1,35 +1,37 @@
 /*
 Lexical path text: no function here touches the filesystem.
 
-Every function exists twice: the module-level one follows the host's rules (backslash and drive roots on Windows, slash elsewhere), and `posix()` / `win32()` return the same operations for one chosen dialect, so a program can handle either spelling on any host.
+Every function exists twice. The module-level one follows the host's rules (backslash and drive roots on Windows, slash elsewhere). `posix()` and `win32()` return the same operations for one chosen dialect, so a program can handle either spelling on any host.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import join, basename from "@std/os/path.ms"
 
 config := join(["/etc", "app", "main.toml"])
 name := basename(config)
+print(name)
 ```
 */
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	Os, os from "@std/os/system.ms",
 	StringBuilder from "@std/string_builder.ms",
 
-	msstd_path_matches_glob from "@std/internal/path.ms",
+	msstd_path_compile_glob,
+	msstd_path_glob_matches,
+	msstd_path_host_windows from "@std/internal/path.ms",
 )
 
-// Parsed path components using the familiar root, directory, base, extension, and name
-// fields.
+// The components of a path: root, directory, base, extension, and name. `parse` splits
+// a path into them and `format` joins them again.
 export type PathParts:
 	// Root prefix under the chosen path rules, including a POSIX slash or Windows
 	// drive/UNC root.
 	root: String
-	// Directory portion, including the root when present; it takes precedence over root
-	// during format.
+	// Directory portion, including the root when present; `format` prefers it over
+	// `root`.
 	directory: String
-	// Final component with extension; it takes precedence over name/extension during
-	// format.
+	// Final component with its extension; `format` prefers it over `name` plus
+	// `extension`.
 	base: String
 	// Final extension including its dot; simple dotfiles and dot/dot-dot components
 	// have no extension.
@@ -42,8 +44,8 @@ export interface PathOperations:
 	// Returns the last component after ignoring trailing separators under this view's
 	// path rules.
 	fn basename(path: String) String
-	// Removes an exact suffix under basename compatibility rules; it does not strip
-	// arbitrary extensions.
+	// Returns the basename with `suffix` removed when it matches exactly. It is not an
+	// extension stripper: a suffix equal to the whole basename is not removed.
 	fn basename_without(path: String, suffix: String) String
 	// Returns the directory component using the selected POSIX or Windows convention.
 	fn dirname(path: String) String
@@ -58,17 +60,18 @@ export interface PathOperations:
 	// Cleans repeated separators and dot segments lexically; it does not resolve
 	// symlinks.
 	fn normalize(path: String) String
-	// Computes a lexical relative path from absolute anchors; different roots return
-	// the original target. Nonabsolute anchors or invalid NUL input return EINVAL.
+	// Computes the lexical relative path from `base` to `target`, both absolute. Paths
+	// with different roots, such as Windows drives, return `target` normalized. A
+	// relative argument or a NUL byte returns EINVAL.
 	fn relative(base: String, target: String) String!
-	// Resolves parts against an explicit absolute base; no process working directory is
-	// consulted.
+	// Resolves `parts` against the absolute `base`, without consulting the process
+	// working directory. A relative `base` or a NUL byte returns EINVAL.
 	fn resolve(base: String, parts: List[String]) String!
 	// Splits the original spelling into root, directory, base, extension and name
 	// without filesystem access.
 	fn parse(path: String) PathParts
-	// Builds a path with directory preferred over root, and base preferred over name
-	// plus extension.
+	// Builds a path from `parts`, preferring `directory` over `root` and `base` over
+	// `name` plus `extension`.
 	fn format(parts: PathParts) String
 	// Returns slash for POSIX or backslash for Windows path components.
 	fn separator() String
@@ -80,6 +83,9 @@ export interface PathOperations:
 	// Tests one lexical path against the supported glob syntax; malformed patterns
 	// return EINVAL.
 	fn matches_glob(path: String, pattern: String) Bool!
+	// Compiles a glob pattern once for matching many paths under this dialect's rules;
+	// malformed patterns return EINVAL.
+	fn compile_glob(pattern: String) Glob!
 
 // One dialect's rules; the interface implementation forwards to the functions below
 // with its flag.
@@ -131,8 +137,11 @@ fn Dialect.to_namespaced_path(path: String) String:
 fn Dialect.matches_glob(path: String, pattern: String) Bool!:
 	return glob_in(self.windows, path, pattern)
 
+fn Dialect.compile_glob(pattern: String) Glob!:
+	return msstd_path_compile_glob(self.windows, pattern)
+
 fn host_windows() Bool:
-	return os() == Os.Windows
+	return msstd_path_host_windows()
 
 fn invalid_input() Error:
 	return Error("path: invalid input", kind: "EINVAL")
@@ -240,7 +249,8 @@ fn canonical_unc_root(root: String) String:
 	return joined
 
 fn root_in(windows: Bool, text: String) String:
-	return root_of(windows, slash(windows, text))
+	if not windows: return root_of(false, text)
+	return root_of(true, slash(true, text))
 
 fn is_absolute_in(windows: Bool, text: String) Bool:
 	root := root_in(windows, text)
@@ -285,22 +295,19 @@ fn is_clean(data: Bytes) Bool:
 	if count == 1: return data.get_or(0, none).to_int() == 47
 
 	var start = if data.get_or(0, none).to_int() == 47: 1 else: 0
-	var at = start
 
-	while at <= count:
-		if at == count or data.get_or(at, none).to_int() == 47:
-			size := at - start
-			if size == 0: return false
-			if size == 1 and data.get_or(start, none).to_int() == 46: return false
-			if (
-				size == 2
-				and data.get_or(start, none).to_int() == 46
-				and data.get_or(start + 1, none).to_int() == 46
-			): return false
+	while start <= count:
+		end := data.index_of_byte(47, start).get_or(count)
+		size := end - start
+		if size == 0: return false
+		if size == 1 and data.get_or(start, none).to_int() == 46: return false
+		if (
+			size == 2
+			and data.get_or(start, none).to_int() == 46
+			and data.get_or(start + 1, none).to_int() == 46
+		): return false
 
-			start = at + 1
-
-		at += 1
+		start = end + 1
 
 	return true
 
@@ -322,67 +329,75 @@ fn normalize_core(windows: Bool, text: String) String:
 
 	// One pass over the bytes after the root: segments are spans into `data`, never
 	// copied until written.
-	data := text.to_bytes()
+	data := text.view_bytes()
 	count := data.length()
 	if not windows and is_clean(data): return text.clone()
 
 	var stack: List[Int] = []
 	var start = root_bytes
-	var at = root_bytes
 
-	while at <= count:
-		if at == count or data.get_or(at, none).to_int() == 47:
-			size := at - start
-			dot := size == 1 and data.get_or(start, none).to_int() == 46
+	while start <= count:
+		end := data.index_of_byte(47, start).get_or(count)
+		size := end - start
+		dot := size == 1 and data.get_or(start, none).to_int() == 46
 
-			if size == 0 or dot:
-				start = at + 1
-			else if (
-				size == 2
-				and data.get_or(start, none).to_int() == 46
-				and data.get_or(start + 1, none).to_int() == 46
+		if size == 0 or dot:
+			start = end + 1
+			continue
+
+		if (
+			size == 2
+			and data.get_or(start, none).to_int() == 46
+			and data.get_or(start + 1, none).to_int() == 46
+		):
+			if (
+				not stack.is_empty()
+				and not span_is_parent(data, stack[stack.length() - 1])
 			):
-				if (
-					not stack.is_empty()
-					and not span_is_parent(
-						data,
-						stack[stack.length() - 1],
-					)
-				):
-					stack.pop()
-				else if not root_ends_slash:
-					stack.append(span(start, at))
+				stack.pop()
+			else if not root_ends_slash:
+				stack.append(span(start, end))
+		else:
+			stack.append(span(start, end))
 
-				start = at + 1
-			else:
-				stack.append(span(start, at))
-				start = at + 1
+		start = end + 1
 
-		at += 1
-
-	var out = BytesBuilder()
+	// Segments are runs between slashes of valid text, so they are copied as views.
+	var out = StringBuilder()
 
 	if windows and root.starts_with("//") and not is_device(root):
-		out.append_bytes(canonical_unc_root(root).to_bytes())
+		out.append(canonical_unc_root(root))
 	else:
-		out.append_bytes(data.view(0, root_bytes))
+		out.append(text.view(0, root_bytes))
 
-	if unc_open: out.append(47)
+	if unc_open: out.append("/")
 
-	for index in 0..stack.length():
-		if index > 0: out.append(47)
+	// Segments one separator apart in the input are one run of the input: copy a run
+	// at a time, not a segment and a separator at a time.
+	var index = 0
+	var first_run = true
 
-		packed := stack[index]
-		out.append_bytes(data.view(span_start(packed), span_end(packed)))
+	while index < stack.length():
+		run_start := span_start(stack[index])
+		var run_end = span_end(stack[index])
+		index += 1
 
-	if root.is_empty() and stack.is_empty(): out.append(46)
+		while index < stack.length() and span_start(stack[index]) == run_end + 1:
+			run_end = span_end(stack[index])
+			index += 1
+
+		if not first_run: out.append("/")
+		first_run = false
+		out.append(text.view(run_start, run_end))
+
+	if root.is_empty() and stack.is_empty(): out.append(".")
 
 	// A trailing separator survives unless the result already ends with one.
 	if text.ends_with("/") and not (stack.is_empty() and root_ends_slash): out.append(
-		47
+		"/"
 	)
 
-	var value = out.build().decode_utf8().get_or("")
+	var value = out.build()
 	if not windows: return value
 
 	if root.length() == 2 and stack.is_empty(): value = f"{root}."
@@ -566,8 +581,18 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 			value = out.build()
 
 	var normalized = normalize_in(windows, value)
-	if normalized != native(windows, root_in(windows, normalized)):
-		if stripped := normalized.cut_suffix(native(windows, "/")): normalized = stripped.clone()
+
+	if windows:
+		if normalized != native(true, root_in(true, normalized)):
+			if stripped := normalized.cut_suffix("\\"): normalized = stripped.clone()
+		return normalized
+
+	// POSIX: a trailing separator survives only on the root itself.
+	if normalized.length() > 1 and normalized.ends_with("/"): return normalized.view(
+		0,
+		normalized.length() - 1,
+	).clone()
+
 	return normalized
 
 fn resolve_in(windows: Bool, base: String, parts: List[String]) String!:
@@ -620,19 +645,33 @@ fn dirname_in(windows: Bool, original: String) String:
 	return original.view(0, at.get_or(0)).clone()
 
 fn join_in(windows: Bool, items: List[String]) String:
-	var out = BytesBuilder()
 	var first = ""
-	var count = 0
+	var has_empty = false
 
 	for part in items:
-		if part.is_empty(): continue
+		if part.is_empty():
+			has_empty = true
+			continue
 
-		if windows and count == 0: first = slash(true, part)
-		if count > 0: out.append(47)
-		out.append_bytes(part.to_bytes())
-		count += 1
+		if windows and first.is_empty(): first = slash(true, part)
 
-	var joined = out.build().decode_utf8().get_or("")
+	// Without empty parts the joined text is one exact-size allocation.
+	var joined = ""
+
+	if not has_empty:
+		joined = items.join("/")
+	else:
+		var out = StringBuilder()
+		var count = 0
+
+		for part in items:
+			if part.is_empty(): continue
+
+			if count > 0: out.append("/")
+			out.append(part)
+			count += 1
+
+		joined = out.build()
 
 	if windows and slash(true, joined).starts_with("//"):
 		unc := (
@@ -659,34 +698,62 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 		target_resolved.get_or("")
 	)
 
-	base_parts := components_after(base, base_root)
-	target_parts := components_after(target, target_root)
-	var shared = 0
-	while (
-		shared < base_parts.length()
-		and shared < target_parts.length()
-		and same_text(windows, base_parts[shared], target_parts[shared])
-	): shared += 1
+	// The components borrow `base` and `target` for the comparison; only the result
+	// copies.
+	base_rest := base.view(
+		if base.starts_with(base_root): base_root.length() else: 0,
+		base.length(),
+	)
+	target_rest := target.view(
+		if target.starts_with(target_root): target_root.length() else: 0,
+		target.length(),
+	)
+	base_data := base_rest.view_bytes()
+	target_data := target_rest.view_bytes()
+	base_count := base_rest.length()
+	target_count := target_rest.length()
 
-	var out: List[String] = []
-	for _step in shared..base_parts.length():
+	// Skip the leading components both paths share, then climb out of what is left of
+	// `base` and descend into what is left of `target`.
+	var base_at = 0
+	var target_at = 0
+
+	while base_at < base_count and target_at < target_count:
+		base_end := base_data.index_of_byte(47, base_at).get_or(base_count)
+		target_end := target_data.index_of_byte(47, target_at).get_or(target_count)
+		if not same_text(
+			windows,
+			base_rest.view(base_at, base_end),
+			target_rest.view(target_at, target_end),
+		): break
+
+		base_at = base_end + 1
+		target_at = target_end + 1
+
+	var out = StringBuilder()
+	var climbs = 0
+	var scan = base_at
+
+	while scan < base_count:
+		climbs += 1
+		scan = base_data.index_of_byte(47, scan).get_or(base_count) + 1
+
+	for step in 0..climbs:
+		if step > 0: out.append("/")
 		out.append("..")
-	for at in shared..target_parts.length():
-		out.append(target_parts[at].clone())
-	return ok(native(windows, out.join("/")))
+
+	if target_at < target_count:
+		if climbs > 0: out.append("/")
+		out.append(target_rest.view(target_at, target_count))
+
+	return ok(native(windows, out.build()))
 
 fn same_text(windows: Bool, left: String, right: String) Bool:
 	if windows: return equal_fold(left, right)
 	return left == right
 
-// The slash-separated components of `text` after its `root`; an empty remainder has
-// none.
-fn components_after(text: String, root: String) List[String]:
-	rest := text.cut_prefix(root).get_or(text)
-	if rest.is_empty(): return []
-
-	return rest.split("/").clone()
-
+// Builds a path from `parts`: `directory` (else `root`), then `base` (else `name` plus
+// `extension`), joined by the dialect's separator.
 fn format_in(windows: Bool, parts: PathParts) String:
 	directory := if parts.directory.is_empty(): parts.root else: parts.directory
 	var base = parts.base.clone()
@@ -723,7 +790,8 @@ fn namespaced_in(windows: Bool, text: String) String:
 	return f"\\\\?\\{value}"
 
 fn glob_in(windows: Bool, path: String, pattern: String) Bool!:
-	return msstd_path_matches_glob(windows, path, pattern)
+	glob := msstd_path_compile_glob(windows, pattern)?
+	return msstd_path_glob_matches(glob, path)
 
 // Returns path operations using POSIX separators and parsing rules.
 export fn posix() PathOperations:
@@ -737,11 +805,12 @@ export fn win32() PathOperations:
 export fn basename(path: String) String:
 	return basename_in(host_windows(), path)
 
-// Returns the basename with the supplied suffix removed when it matches.
+// Returns the basename with `suffix` removed when it matches exactly. A suffix equal to
+// the whole basename is not removed.
 export fn basename_without(path: String, suffix: String) String:
 	return basename_without_in(host_windows(), path, suffix)
 
-// Returns the directory portion of a path.
+// Returns the directory portion of a path, or `.` when it has none.
 export fn dirname(path: String) String:
 	return dirname_in(host_windows(), path)
 
@@ -808,10 +877,26 @@ export fn separator() String:
 export fn delimiter() String:
 	return if host_windows(): ";" else: ":"
 
-// Converts a path to the host's namespaced representation when applicable.
+// On Windows, returns the `\\?\` namespaced form of an absolute path; elsewhere, and
+// for other paths, returns the path unchanged.
 export fn to_namespaced_path(path: String) String:
 	return namespaced_in(host_windows(), path)
 
-// Tests a path against a glob pattern.
+// Tests a path against a glob pattern. To test many paths against one pattern, compile
+// it once with `compile_glob`.
 export fn matches_glob(path: String, pattern: String) Bool!:
 	return glob_in(host_windows(), path, pattern)
+
+// A compiled glob pattern that can be reused across paths. It matches `*`, `?`, `[...]`
+// classes, `{a,b}` and `{1..3}` braces, `@(..)`, `+(..)`, `?(..)`, `!(..)` and `*(..)`
+// groups, and `**` segments, as `matches_glob` does.
+export extern type Glob
+
+// Tests one lexical path against the compiled pattern; a path with a NUL byte returns
+// EINVAL.
+fn Glob.matches(path: String) Bool!:
+	return msstd_path_glob_matches(self, path)
+
+// Compiles a glob pattern under the host path rules. Malformed patterns return EINVAL.
+export fn compile_glob(pattern: String) Glob!:
+	return msstd_path_compile_glob(host_windows(), pattern)

@@ -191,6 +191,7 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         (*t).arg = arg;
         (*t).capture = capture();
         (*t).detached = flags & SPAWN_DETACHED != 0;
+        (*t).born_shielded = fault::live_shielded();
         (*t).fatal = flags & SPAWN_FATAL != 0;
         (*t).sp = sp;
         sched().ready.push_back((*t).handle);

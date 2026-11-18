@@ -24,13 +24,13 @@ export extern type NativeWebSocket
 export enum WebSocketKind:
 	Text  // A text frame: the payload is valid UTF-8.
 	Binary  // A binary frame: the payload is arbitrary bytes.
-	Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
+	Ping  // A ping control frame, at most 125 bytes. It is only written; the connection answers the peer's pings with pongs itself.
 
 // One WebSocket message.
 export type WebSocketMessage:
 	// The payload bytes; for a text message they are the UTF-8 encoding of the text.
 	data: Bytes
-	// Whether the message is text or binary, or a ping.
+	// Whether the message is text, binary, or a ping.
 	kind: WebSocketKind
 
 // A message as the native layer reports it.
@@ -43,9 +43,9 @@ export type RawWebSocketMessage:
 type WebSocketSource:
 	native: NativeWebSocket
 
-// Waits for the next complete message; none once the peer closes normally. A larger
-// message is `EOVERFLOW` and a malformed text message `EBADMSG`; after any failure
-// the connection is closed.
+// Waits for the next complete message; none once the peer closes normally. A message
+// over `max_message_bytes` is `EOVERFLOW` and a text message that is not valid UTF-8 is
+// `EBADMSG`; after any failure the connection is closed.
 fn var WebSocketSource.next() WebSocketMessage?!:
 	raw := msstd_websocket_receive(self.native)?
 
@@ -61,7 +61,7 @@ fn var WebSocketSource.close() Void!:
 type WebSocketSink:
 	native: NativeWebSocket
 
-// Sends one message. Text must be valid UTF-8 or the call returns EBADMSG, and a
+// Sends one message. A text payload that is not valid UTF-8 returns EBADMSG, and a
 // payload over `max_message_bytes` returns EOVERFLOW.
 fn var WebSocketSink.write(move value: WebSocketMessage) Void!:
 	match value.kind:
@@ -77,8 +77,8 @@ fn var WebSocketSink.close() Void!:
 
 /*
 A WebSocket connection: `input` reads whole messages and `output` writes them. Move the streams to different tasks to
-receive and send at once. The connection closes, after a normal-closure frame, when both streams are closed, which is
-also what closing the `WebSocket` does.
+receive and send at once. The connection closes, after a normal-closure frame, when both streams are closed. Closing the
+`WebSocket` closes both.
 */
 export type WebSocket:
 	// Messages from the peer; none once the peer closes normally.
@@ -104,8 +104,8 @@ export fn web_socket_from(native: NativeWebSocket) WebSocket:
 		subprotocol: subprotocol,
 	)
 
-// What a WebSocket client connection is opened with: headers, subprotocols, message
-// bound, time budget, TLS settings and compression.
+// Settings for opening a WebSocket client connection: headers, subprotocols, message
+// size limit, time budget, TLS settings, and compression.
 export type WebSocketOptions:
 	// Extra handshake headers. `Upgrade`, `Connection`, `Host` and `Sec-WebSocket-*`
 	// cannot be set.

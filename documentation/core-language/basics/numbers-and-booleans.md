@@ -7,6 +7,7 @@ weight = 3
 
 Use `Int` for counts and indexes, `Float` for approximate measurements, and `Decimal` for base-ten calculations where rounding must be explicit. Booleans are `true` and `false`. Numeric types stay distinct: choose a type for the calculation and convert at its boundaries.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
@@ -16,12 +17,14 @@ price := 12.50d
 active := true
 ```
 
-Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
+Decimal literals need `import Decimal from "@std/math/decimal.ms"`.
+
+Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary. A fraction or exponent selects `Float`, and the `d` suffix selects `Decimal` (`1d` included). `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
 
 | Type | Representation |
 | --- | --- |
 | `Int` | Signed 64-bit integer with checked arithmetic; `Int64` is the same type |
-| `Int8`, `Int16`, `Int32` | Signed integers of that width with checked arithmetic; `Int64` is another name for `Int` |
+| `Int8`, `Int16`, `Int32` | Signed integers of that width with checked arithmetic |
 | `UInt8`, `UInt16`, `UInt32`, `UInt64` | Unsigned integers of that width (0 to 255, 65535, 4294967295, 18446744073709551615) with checked arithmetic |
 | `Float` | IEEE 754 binary64; `Float64` is another name for it |
 | `Float32` | IEEE 754 binary32; every operation rounds to binary32 |
@@ -36,9 +39,12 @@ Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer lite
 - Conversions between existing values use the [methods below](#numeric-conversion). A literal can take a sized type from context, as described below.
 - Integer literals are checked against the signed 64-bit range. `9223372036854775808` is accepted only when directly negated (parentheses do not help).
 - A Float literal rounds to binary64; one that rounds to infinity is rejected.
-- A literal takes a sized type from an expected type or from the other operand of an operator: `x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). Arithmetic made only of literals takes the type as a whole (`x: Float32 = 0.1 + 0.2`, `y: Int8 = 100 + 27`), and each step must fit. A literal never changes kind: `x: Float32 = 1` is rejected. A `Float32` literal is rounded once, directly from its decimal text to binary32 (not through `Float`), so `x: Float32 = 340282356779733661637539395458142568447.0` is the largest finite `Float32` while the overflow midpoint `...448.0` is rejected.
+- A literal takes a sized type from an expected type or from the other operand of an operator: `x: Int8 := 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`x: Int8 := 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`).
+- Arithmetic made only of literals takes the type as a whole (`x: Float32 := 0.1 + 0.2`, `y: Int8 := 100 + 27`), and each step must fit. A literal never changes kind: `x: Float32 := 1` is rejected.
+- A `Float32` literal is rounded once, directly from its decimal text to binary32 (not through `Float`). So `x: Float32 := 340282356779733661637539395458142568447.0` is the largest finite `Float32`, while the overflow midpoint `...448.0` is rejected.
 - The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected Float","context":"import Decimal from \"@std/math/decimal.ms\"","given":[]} -->
 ```manuscript
 fn literals() Void:
     smallest: Int := -9223372036854775808
@@ -52,8 +58,11 @@ fn literals() Void:
 
 ## Sized numbers
 
-`Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, user types, optionals, enums, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
+`Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, user types, optionals, enums, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`.
 
+Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected. An `Int8` operation that leaves -128 to 127 faults:
+
+<!-- manuscript-example: {"mode":"error","contains":"same independently known type","given":[]} -->
 ```manuscript
 fn sized() Void:
     a: Int8 := 100
@@ -78,11 +87,27 @@ fn sized() Void:
 | `Decimal`, `BigInt` | `to_float() Float?` (none beyond the `Float` range); `truncate_to_int() Int?` |
 | `String` to `Decimal` | `parse_decimal(text) Decimal!` from `@std/math/decimal.ms`: sign, digits, optional fraction and exponent, exact or an `EINVAL` error (`String.parse_int()` and `parse_float` cover `Int` and `Float`) |
 
-`to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float rounds once to nearest binary64, ties to even. A conversion to a float returns `none` only when a finite value is beyond the target range (`1e300.to_float32()`, a huge `Decimal` or `BigInt` `to_float()`); rounding itself is silent. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
+`to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and an `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000).
 
-Unsigned types follow the same rules with a lower bound of zero: `b: UInt8 = 200`, `x: UInt8 = -1` and `256` are rejected, `a - b` faults when `b > a`, and unary `-` is a compile error. `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`; each returns `Optional` unless every source value fits (`Int.to_uint8()` is `none` for -1 or 256, `UInt32.to_int32()` is `none` above 2147483647). Other pairs, such as `UInt8.to_int16()`, are not declared: go through `to_int()` (`UInt8.to_int().to_int16()`). `UInt8.to_int()` widens directly; `UInt64.to_int()` is `none` above 9223372036854775807. `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values. Floats reach an unsigned type through `truncate_to_int().get_or(0).to_uint8()`-style chains, as there is no `truncate_to_uintN()`.
+Conversions to a float round to the nearest value, ties to even. `Int` to `Decimal` is exact, and `Int` to `Float` rounds once to the nearest binary64. A conversion to a float returns `none` only when a finite value is beyond the target range (`1e300.to_float32()`, or `to_float()` on a huge `Decimal` or `BigInt`); rounding itself is silent.
 
-`abs()` and `sign()` are methods on every signed integer and float type (unsigned values are never negative, so they have neither), so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `@std/math/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling. Every integer width, Float, Float32 and String also have `a.min(b)`, `a.max(b)` and `a.clamp(low, high)` methods that need no import and return the receiver's own type; the lesser or greater of equal values is the receiver, Float orders NaN above every other value, and `clamp` with `low` greater than `high` is a programming fault. `math.min`, `math.max`, `List.min` and `List.max` accept any `Comparable` type, including Decimal, BigInt and the time types.
+`truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
+
+Unsigned types follow the same rules with a lower bound of zero:
+
+- `b: UInt8 := 200` is fine. `x: UInt8 := -1` and `256` are rejected, `a - b` faults when `b > a`, and unary `-` is a compile error.
+- `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`. Each returns an `Optional` unless every source value fits (`Int.to_uint8()` is `none` for -1 or 256, `UInt32.to_int32()` is `none` above 2147483647).
+- Other pairs, such as `UInt8.to_int16()`, are not declared. Go through `to_int()`: `UInt8.to_int().to_int16()`. `UInt8.to_int()` widens directly; `UInt64.to_int()` is `none` above 9223372036854775807.
+- `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values.
+- A `Float` reaches an unsigned type through a chain such as `truncate_to_int().get_or(0).to_uint8()`, because there is no `truncate_to_uintN()`.
+
+`abs()` and `sign()` are methods on every signed integer and float type, so no cast is needed. Unsigned values are never negative, so they have neither.
+
+- `abs()` returns the receiver's own type. `Int8` `-128` has no absolute value and faults like any overflow.
+- `sign()` on an integer returns `Int` (-1, 0 or 1). On a float it returns the receiver's type, with zeros and NaN unchanged.
+- `@std/math/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling.
+
+Every integer width, `Float`, `Float32` and `String` also have `a.min(b)`, `a.max(b)` and `a.clamp(low, high)`. They need no import and return the receiver's own type. Of equal values, the receiver is the result. `Float` orders NaN above every other value, and `clamp` with `low` greater than `high` is a programming fault. `math.min`, `math.max`, `List.min` and `List.max` accept any `Comparable` type, including `Decimal`, `BigInt` and the time types.
 
 ## Runtime numeric outcomes
 
@@ -92,7 +117,7 @@ Unsigned types follow the same rules with a lower bound of zero: `b: UInt8 = 200
 - `/` truncates toward zero; `%` takes the dividend's sign, so `a = (a / b) * b + a % b`. `-7 / 2` is -3 and `-7 % 3` is -1.
 - A zero divisor faults. Minimum Int `/ -1` faults; Minimum Int `% -1` is zero.
 
-These are programming faults; BigInt division returns a Result error.
+These are programming faults. `BigInt` never overflows, and its `divide` and `remainder` return a `Result` ([BigInt](#bigint)).
 
 ### Float
 
@@ -102,9 +127,9 @@ Each operation rounds to binary64 (ties to even) with no fused multiply-add or r
 
 Values are `c × 10^q`: a signed coefficient `c` of at most 34 digits and exponent `q` from -6176 to 6111 (largest adjusted exponent 6144, smallest normal -6143, subnormals down to `1e-6176d`). There is no NaN or infinity, and every zero formats as `0`.
 
-Each operator:
+Each Decimal operator follows these steps:
 
-1. Compute the exact mathematical result. Division by zero faults.
+1. Compute the exact result. Division by zero faults.
 2. For a nonzero magnitude with adjusted decimal exponent `e`, choose quantum `q = max(e - 33, -6176)`.
 3. Round the exact value divided by `10^q` to an integer coefficient, ties to even. If it has 35 digits, shift one exact trailing zero into `q`.
 4. Require an equivalent representation with at most 34 coefficient digits and `q` in range. Otherwise overflow faults.
@@ -115,7 +140,9 @@ A Decimal literal must be exactly representable: `1.00d` is fine, but 35 signifi
 
 Every literal needs the `d` suffix to stay `Decimal`:
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import Decimal from "@std/math/decimal.ms"
 price := 100d
 percent := 15d
 discounted := price * (1d - percent / 100d)
@@ -127,6 +154,7 @@ Validate expected bad input with [expected failures](../errors/results.md); see 
 
 `BigInt` (from `@std/math/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `big_int_of_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
 
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import big_int_of_int from "@std/math/math.ms"
 
@@ -175,6 +203,6 @@ Booleans drive [if](../control-flow/conditionals.md) and [while](../control-flow
 
 ## Durations
 
-`500.milliseconds()`, `2.seconds()`, and `2.minutes()` are `Duration` values; these are methods of `Int`. A `Duration` is a signed 64-bit nanosecond count (`2.seconds()` is 2,000,000,000), and they check overflow. `@std/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`); all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
+`500.milliseconds()`, `2.seconds()`, and `2.minutes()` are `Duration` values, built by methods of `Int`. A `Duration` is a signed 64-bit nanosecond count (`2.seconds()` is 2,000,000,000), and Duration arithmetic checks overflow. `@std/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`); all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
 
-Use `monotonic()` from `@std/time.ms` to read an `Instant` for measuring elapsed time. An instant records a clock domain and a nanosecond tick; compare readings from the same domain, since crossing domains faults. Duration and Instant arithmetic checks overflow ([operator table](expressions.md)). Mixed arithmetic such as `2.seconds() + 1` is a type error.
+Use `monotonic()` from `@std/time.ms` to read an `Instant` for measuring elapsed time. An instant records a clock domain and a nanosecond tick; compare readings from the same domain, since crossing domains faults. Duration and Instant arithmetic checks overflow (see the [operator table](expressions.md#operand-and-result-types)). Mixed arithmetic such as `2.seconds() + 1` is a type error.

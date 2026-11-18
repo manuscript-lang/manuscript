@@ -383,6 +383,12 @@ test "sign returns InvalidKey for a key that does not fit":
 
 	result | expect_equal(error(Error("jwt: invalid key", kind: "EINVAL")))?
 
+test "sign names the claims when they cannot be encoded":
+	result := sign_token(JsonValue.ObjectValue({"n": JsonValue.NumberValue("not a number")}), "secret".to_bytes())
+	if _ := result: return fail("accepted")
+
+	result | expect_equal(error(Error("jwt: claims cannot be encoded as JSON", kind: "EINVAL")))?
+
 // Independent HS256 signatures use key "secret" and payload {}. The comments
 // show the exact protected headers, including malformed extension requirements.
 test "verify rejects unsupported and malformed critical headers":

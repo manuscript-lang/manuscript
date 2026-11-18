@@ -32,6 +32,7 @@ A parameter or field of type `T?` with no default is `none` when omitted, so `= 
 
 `T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `x := 1` is an `Int`, not an `Int?`.
 
+<!-- manuscript-example: {"mode":"error","contains":"cannot infer the type of none","given":[]} -->
 ```manuscript
 explicit: String? := none
 // Rejected: no type determines the absent payload.
@@ -46,6 +47,7 @@ There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Res
 
 An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `none`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Queue from "@std/collections/queue.ms"
 
@@ -58,10 +60,9 @@ fn main() Void:
 - Wraps exactly one layer: an `Int?` fits `Int??`, a bare `Int` does not.
 - The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
 - Generic inference matches either the whole optional or its payload: `fn present[T](value: T?) T?` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
-- A `T?` parameter or field with no default is `none` when omitted.
-- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`id: Int? = 3`). A user-defined `Optional` gets no wrapping.
+- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`id: Int? := 3`). A user-defined `Optional` gets no wrapping.
 
-See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
+For omitted and labeled arguments, see [declarations and calls](../functions/declarations-and-calls.md#argument-names).
 
 ## Checking and extracting values
 
@@ -73,13 +74,14 @@ Receiver methods:
 | `is_none() Bool` | Whether the optional is absent |
 | `get() T` | Return the contained value; on `none`, [fault](../errors/faults.md) with `called Optional.get() on none` |
 | `get_or(default: T?) T` | Return the contained value, or `default` when absent |
-| `map[U](transform: fn(move T) U) U?` | Take the Optional and hand a present payload to `transform` once; preserve absence |
-| `and_then[U](transform: fn(move T) U?) U?` | Take the Optional and return the callback's Optional when present; preserve absence |
+| `map[U](transform: fn(move T) U) U?` | Consume the Optional and hand a present payload to `transform` once; preserve absence |
+| `and_then[U](transform: fn(move T) U?) U?` | Consume the Optional and return the callback's Optional when present; preserve absence |
 | `get_or_else(create: fn() T) T` | Return the contained value, or call `create` once when absent |
-| `or_else(create: fn() T?) T?` | Take the Optional: return it when present, or call `create` once when absent |
+| `or_else(create: fn() T?) T?` | Consume the Optional: return it when present, or call `create` once when absent |
 
 Fallback for routine absence:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn display_name(name: String?) String:
     return name.get_or("Anonymous")
@@ -87,13 +89,19 @@ fn display_name(name: String?) String:
 
 `get_or(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn display_name(create: fn() String, name: String?) String:
     return name.get_or_else(create)
 ```
 
-Prefer `if v := x` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; use `get_or(default)` or unwrap with `if v := x`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get_or(fallback)` or `m.get(key).get()`; `ms lint --fix` rewrites the first:
+Prefer `if v := x` to test and unwrap in one step, rather than `is_some()` followed by `get()`. `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; use `get_or(default)` or unwrap with `if v := x` instead.
 
+For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when the key is absent) instead of `m.get(key).get_or(fallback)` or `m.get(key).get()`. `ms lint --fix` rewrites the first form.
+
+Unwrapping with `if v := x`:
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn greet(name: String?) String:
     if value := name:
@@ -103,6 +111,7 @@ fn greet(name: String?) String:
 
 Extraction returns the payload itself: no clone, no flattening. `map` transforms a payload; `and_then` chains an operation that returns an Optional:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn first_number(text: String?) Int?:
     return text.map(fn value: value.trim().clone()).and_then(fn value: value.parse_int())
@@ -110,10 +119,15 @@ fn first_number(text: String?) Int?:
 
 `map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
 
-`map`, `and_then` and `or_else` take their receiver (`fn move`), so the callback owns the payload and the Optional is gone after the call: write `x.clone().map(...)` to keep `x`. An Optional read in place from a collection or another value (`xs.first()`, `m.get(key)`) is not the caller's to give; read it with `if v := xs.first():`, or `.clone()` it first. A callback that only reads its argument is accepted where `fn(move T)` is expected; the call drops the payload when the callback returns.
+`map`, `and_then` and `or_else` take their receiver (`fn move`), so the callback owns the payload and the Optional is gone after the call. Write `x.clone().map(...)` to keep `x`.
+
+An Optional read in place from a collection or another value (`xs.first()`, `m.get(key)`) is not the caller's to give away. Read it with `if v := xs.first():`, or `.clone()` it first.
+
+A callback that only reads its argument is accepted where `fn(move T)` is expected; the call drops the payload when the callback returns.
 
 [`if v := x`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn display_name(name: String?) String:
     if value := name:
@@ -121,12 +135,17 @@ fn display_name(name: String?) String:
     return "Anonymous"
 ```
 
-A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. A two-arm match is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `?` propagates only `Result` errors.
+A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. `ms lint` reports a two-arm match as MSL108.
+
+Use [Result](../errors/results.md) when a failure needs an explanation. The `?` operator propagates only `Result` errors.
 
 ## Optional chaining
 
-`a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than `B??` when `b` is already optional. The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side; the receiver must be optional, since `.` already reads a member of a value that is always present.
+`a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than becoming `B??` when `b` is already optional.
 
+The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side. The receiver must be optional; use plain `.` for a value that is always present.
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Address:
     city: String?
@@ -138,10 +157,11 @@ fn city_length(user: User?) Int?:
     return user?.address?.city?.length()
 ```
 
-A chain cannot move a field out of the optional it reads, so end an owned `String` or field with `.clone()`.
+A chain cannot move a field out of the optional it reads, so end it with `.clone()` to get an owned `String` or other field value.
 
 A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself, in place; on `none` nothing runs:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Counter:
     n: Int
@@ -154,7 +174,7 @@ fn tick(var counter: Counter?) Int?:
     return counter?.bump()
 ```
 
-Through a `:=` or an undeclared-`var` parameter, `counter?.bump()` is rejected like any other change to that binding.
+Through a `:=` binding or a parameter not declared `var`, `counter?.bump()` is rejected like any other change to that binding.
 
 ## Converting absence to a Result
 
@@ -163,6 +183,7 @@ Through a `:=` or an undeclared-`var` parameter, `counter?.bump()` is rejected l
 
 Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `?` it:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn port_number(text: String) Int!:
     port := text.parse_int().ok_or()?
@@ -171,8 +192,8 @@ fn port_number(text: String) Int!:
 
 When fixing another error type, such as `Result[Int, ParseFailure]`, supply a cause explicitly.
 
-[Result.to_optional](../errors/results.md#converting-success-to-an-optional) to keep success while discarding an error.
+To keep the success value and discard the error, use [Result.to_optional](../errors/results.md#converting-success-to-an-optional).
 
 ## Data modeling
 
-A [type](named-types.md) can have optional fields such as `email: String?`. Manuscript has no nullable references; absence always lives in the declared type.
+A [type](named-types.md) can have optional fields such as `email: String?`. Manuscript has no nullable references, so absence always appears in the declared type.

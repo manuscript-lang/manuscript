@@ -1,7 +1,7 @@
 /*
 A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
-Use `.clone()` for an independent deque when its elements are Clonable; assigning a deque transfers ownership.
-Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
+Use `.clone()` for an independent deque when its elements are Clonable; assigning a deque moves it.
+Use `Queue` for plain first-in, first-out work, and `Deque` when either end is pushed or popped, such as a sliding window or work stealing.
 */
 export type Deque[T]:
 	// Ring-buffer storage; `none` marks unused slots. Internal state: use the
@@ -16,9 +16,9 @@ export type Deque[T]:
 fn Deque[T].is_empty() Bool:
 	return self.size == 0
 
-// Doubles the ring buffer. The full buffer holds the values from `start` to the end,
-// then those before `start`; moving the first run to the end of the larger buffer keeps
-// that order and moves each value once.
+// Internal: doubles the ring buffer. A full buffer holds the values from `start` to
+// the end, then those before `start`; moving the first run to the end of the larger
+// buffer keeps that order and moves each value once.
 fn var Deque[T].grow() Void:
 	capacity := self.slots.length()
 	var next = capacity * 2
@@ -40,8 +40,8 @@ fn var Deque[T].grow() Void:
 	if capacity > 0:
 		self.start += shift
 
-// Returns the ring-buffer index of the value `offset` places after the front;
-// `offset` is at most the capacity.
+// Internal: returns the ring-buffer index of the value `offset` places after the
+// front. `offset` is at most the capacity.
 fn Deque[T].slot_of(offset: Int) Int:
 	at := self.start + offset
 	capacity := self.slots.length()
@@ -102,9 +102,8 @@ fn var Deque[T].clear() Void:
 	self.start = 0
 	self.size = 0
 
-// Ring behaviour: a Deque is also a ring buffer that can be turned.
 /*
-Moves `by` values from the front to the back, one at a time, so the value `by` places in becomes the front;
+Turns the deque like a ring buffer. Moves `by` values from the front to the back, one at a time, so the value `by` places in becomes the front;
 a negative `by` moves values from the back to the front. Any magnitude is reduced modulo the length, and an empty deque is unchanged.
 Example: with 1, 2, 3, 4 queued, `rotate(1)` leaves 2, 3, 4, 1.
 */

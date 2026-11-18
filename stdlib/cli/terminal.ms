@@ -1,7 +1,11 @@
 /*
 Terminal detection, size, and raw input with cursor and screen control, on Linux, macOS and Windows.
 
-`terminal_capabilities` reports whether the standard streams are terminals and how many colors they support. `raw_mode` acquires a `RawTerminal` whose `events()` stream yields keys, text, pastes and resizes. Bracketed paste and the extended keyboard protocols are on while it is held, so a paste arrives as one `Paste` event and Shift-Enter, Ctrl-Enter and the like arrive as an `enter` key with modifiers on terminals that report them. Cursor moves, erasing, the title and raw `write` go through the terminal so they stay ordered with buffered program output; styling and width helpers are in `@std/cli/style.ms` and the diffed redraw in `@std/cli/screen.ms`.
+`terminal_capabilities` reports whether the standard streams are terminals and how many colors they support. `raw_mode` acquires a `RawTerminal` whose `events()` stream yields keys, text, pastes and resizes.
+
+Bracketed paste and the extended keyboard protocols are on while the `RawTerminal` is held. A paste arrives as one `Paste` event, and on terminals that report them, Shift-Enter and Ctrl-Enter arrive as an `enter` key with modifiers. Cursor moves, erasing, the title and raw `write` go through the terminal, so they stay ordered with buffered program output.
+
+Styling and width helpers are in `@std/cli/style.ms`; the diffed redraw is in `@std/cli/screen.ms`.
 */
 import (
 	Closeable from "@std/core.ms",
@@ -59,7 +63,7 @@ One decoded terminal input event. `Text` carries printable characters typed
 together. `Key` names a non-printing or modified key: `enter`, `tab`,
 `backspace`, `escape`, `space`, `up`, `down`, `left`, `right`, `home`, `end`,
 `insert`, `delete`, `page_up`, `page_down`, `f1` to `f12`, or a letter with
-`ctrl` or `alt` set. `Paste` carries text pasted as one void, line breaks as `\n`. `Resize`
+`ctrl` or `alt` set. `Paste` carries text pasted as one unit, line breaks as `\n`. `Resize`
 carries the new size.
 */
 export enum TerminalEvent:
@@ -247,8 +251,8 @@ fn decoded(event: TerminalEvent, used: Int) Parsed:
 fn code_of(c: String) Int:
 	return c.scalar_at(0, -1)
 
-// Concatenates `parts` in order. Pairwise merging keeps a long paste linear-ish without
-// a string builder, which would make this module import a cycle.
+// Concatenates `parts` in order. Pairwise merging keeps the cost of a long paste close
+// to linear without a string builder, which would make this module import a cycle.
 fn concat_all(parts: List[String]) String:
 	var level = parts.clone()
 
@@ -616,7 +620,8 @@ fn RawTerminal.erase(region: EraseRegion) Void!:
 fn RawTerminal.clear() Void!:
 	return self.write(f"{esc}[2J{esc}[H")
 
-// Sets the window title; control characters are removed first.
+// Sets the window title. BEL, ESC, and U+009C are removed first, so the text cannot end
+// the title early or start another escape sequence.
 fn RawTerminal.set_title(title: String) Void!:
 	clean := title.replace("\u{7}", "").replace(esc, "").replace("\u{9c}", "")
 	return self.write(f"{esc}]2;{clean}\u{7}")
@@ -649,8 +654,9 @@ export fn terminal_size() TerminalSize!:
 		)
 	)
 
-// Acquires raw input with an optional alternate screen; returns `EBUSY` while another
-// raw terminal is open and `ENOTTY` when streams are redirected.
+// Acquires raw input and, when `alternate_screen` is true, switches to the alternate
+// screen. Returns `EBUSY` while another raw terminal is open and `ENOTTY` when the
+// streams are redirected.
 // ms: effect std.console.read
 // ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:

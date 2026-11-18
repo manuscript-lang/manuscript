@@ -5,7 +5,7 @@ weight = 6
 
 # Source grammar
 
-Exact syntax reference. New to the language? Start with [source files](syntax.md). Parsing checks shape only; [expression rules](expressions.md) and [type rules](../types/compatibility.md) decide legality.
+This page is the exact syntax reference. New to the language? Start with [source files](syntax.md). Parsing checks shape only; [expression rules](expressions.md) and [type rules](../types/compatibility.md) decide legality.
 
 ## Source characters and tokens
 
@@ -15,20 +15,22 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 
 The language uses these keywords:
 
-```manuscript
+```text
 and break continue else enum export extern false fixture fn for if
 import in interface match not or return self test true try type
 void var while
 ```
 
-- Most keywords are reserved only where they mean something. After `.`, and as a `name:` label that starts a line or follows `(` or `,` (a record or enum field, a parameter, an argument label), these are ordinary names: `break continue enum export extern fixture for if import in interface match return test type while`. So `type Options:` can declare `continue: Bool` and `if: Int`, `Options(continue: true)` sets it, and `opts.continue` reads it. A binding or function still cannot use these words, and `and`, `or`, `not`, `else`, `fn`, `try`, `var`, `self`, `void`, `true` and `false` stay reserved everywhere.
+- Most keywords are reserved only where they mean something. After `.`, and as a `name:` label that starts a line or follows `(` or `,` (a record or enum field, a parameter, an argument label), these are ordinary names: `break continue enum export extern fixture for if import in interface match return test type while`.
+- So `type Options:` can declare `continue: Bool` and `if: Int`, `Options(continue: true)` sets it, and `opts.continue` reads it. A binding or function still cannot use these words. `and`, `or`, `not`, `else`, `fn`, `try`, `var`, `self`, `void`, `true` and `false` stay reserved everywhere.
 - `try` is reserved only to report that it was replaced: write a postfix `?` (`f(x)?`) to propagate a Result error.
 - `opaque` is contextual: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `opaque := 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `from := 2` and `bench := 3` are valid.
 - Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Void) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `void`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
-- `//` starts a comment through the end of the line. `/* ... */` is a block comment: it starts its own line (after indentation), ends at the first `*/`, and only blanks or a `//` comment may follow the `*/`. Block comments do not nest (a `/*` inside one is an error), an unterminated block is an error at its opening `/*`, and the block counts as comment-only lines for layout, so its contents are free-form. `#` is not syntax.
+- `//` starts a comment through the end of the line. `#` is not syntax.
+- `/* ... */` is a block comment. It starts its own line (after indentation), ends at the first `*/`, and only blanks or a `//` comment may follow the `*/`. Block comments do not nest (a `/*` inside one is an error), and an unterminated block is an error at its opening `/*`. The block counts as comment-only lines for layout, so its contents are free-form.
 - A tab is allowed only as leading indentation, where it is one level (four columns); a tab after spaces or between tokens is rejected. Tabs are allowed in text and comments. Control characters in text are rejected; use [text escapes](text-and-bytes.md#string-literals). Semicolons and backslash continuation are rejected.
 
 Numeric tokens:
@@ -71,8 +73,9 @@ Inside a call, list, or grouping, a function expression may have an inline suite
 
 A delimiter opened outside the body cannot close at body indentation. Group the function when a following comma belongs to the enclosing arguments:
 
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
-fn example() Int:
+fn offset() Int:
     return apply(
         value: 3,
         transform: (
@@ -84,8 +87,9 @@ fn example() Int:
 
 The grouping close (eight spaces) ends the function suite before the comma. An ungrouped suite-bodied function can be the final argument:
 
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
-fn example() Int:
+fn offset() Int:
     return apply(
         value: 3,
         transform: fn(value: Int) Int:
@@ -95,8 +99,9 @@ fn example() Int:
 
 Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value (it can be a conditional expression: `fn value: if value > 0: value else: 0`), while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
-fn example() Int:
+fn offset() Int:
     return apply(
         transform: fn(value: Int) Int:
             return value - 1
@@ -222,6 +227,7 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 - Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` discards a binding or match payload and is the wildcard match arm; it cannot be read as a value.
 - Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn double(value: Int) Int: value * 2
 fn positive(value: Int) Bool:
@@ -232,12 +238,13 @@ fn positive(value: Int) Bool:
 - `else if` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
 - A match arm holds one statement or value inline, or statements then a value when indented.
 - Match patterns use positional payloads, not labels. On a contract view, a pattern names a complete concrete type and one receiver binding, with a final wildcard ([pattern matching](../control-flow/pattern-matching.md)).
-- `match` is an expression even when discarded; loops are statements, and `if` is a statement. The conditional expression is `if c: a else: b` (a required `else:`; chains continue with `else if`). An inline function body that starts with one is parenthesized: `fn x: (if x > 0: 1 else: 0)`.
+- `match` is an expression even when discarded; loops are statements, and `if` is a statement. The conditional expression is `if c: a else: b`; `else:` is required and chains continue with `else if`. An inline function body may start with one, with or without parentheses: `fn x: if x > 0: 1 else: 0`.
 - Local type, implementation, import, test, and bench declarations are rejected; a local function is a `fn` statement, sugar for binding a `fn` (it cannot call itself).
-- Resources follow the [scope-end cleanup](../cleanup/scopes.md) contract. There is no move, borrow, spawn, or deferred-call syntax.
+- Resources follow the [scope-end cleanup](../cleanup/scopes.md) contract. There is no borrow, spawn, or deferred-call syntax. The only ownership keyword is `move`, which marks a parameter or receiver the callee takes ([moving into a function](../types/references.md#moving-into-a-function)); the EBNF above omits it.
 
 ## Rejected forms
 
+<!-- manuscript-example: {"mode":"error"} -->
 ```manuscript
 count := 3                       // Not a complete module item.
 fn wrong() Int:

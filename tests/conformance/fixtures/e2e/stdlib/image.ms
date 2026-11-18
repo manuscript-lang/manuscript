@@ -11,6 +11,7 @@ import (
 	encode_image,
 	encode_jpeg,
 	new_image from "@std/image/image.ms",
+	decode_ppm from "@std/image/ppm.ms",
 	expect_equal, fail from "@std/test/test.ms",
 
 	jpeg_vectors from "./support/image-jpeg-vectors.ms",
@@ -136,6 +137,13 @@ test "truncated rejected":
 	data := encode_image(new_image(4, 4, ColorMode.Rgb).get(), ImageFormat.Ppm).get()
 	cut := data.slice(0, data.length() - 1).get()
 	expect_equal(decode_image(cut).is_ok(), false)?
+
+	// A direct decode checks the magic bytes itself; resize rejects a bad size as an
+	// argument error.
+	expect_equal(decode_ppm("P7 1 1 255 xxx".to_bytes(), none).err().kind, "EBADMSG")?
+
+	image := new_image(2, 2, ColorMode.Rgb).get()
+	expect_equal(image.resize(0, 2).err().kind, "EINVAL")?
 
 test "png decodes every independent vector":
 	for v in vectors():

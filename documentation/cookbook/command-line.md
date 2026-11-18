@@ -1,6 +1,6 @@
 +++
 title = "Command-line programs"
-weight = 1
+weight = 2
 +++
 
 # Command-line programs

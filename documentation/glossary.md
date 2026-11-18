@@ -12,7 +12,7 @@ Unfamiliar term? Follow its link for exact rules.
 | [Binding](core-language/basics/bindings.md) | A name attached to a value. `:=` prevents reassignment; `var` allows a replacement value. |
 | [Scope](core-language/basics/bindings.md#scope-and-shadowing) | The part of a program where a name is visible. |
 | [Module](core-language/modules/declarations.md) | One `.ms` source file. It imports and exports individual declarations. |
-| [Type](core-language/types/named-types.md) | A value with named fields, such as a customer with a name and email. |
+| [Type](core-language/types/named-types.md) | A declared shape with named fields, such as a customer with a name and email. |
 | [Opaque type](core-language/types/named-types.md#opaque-types) | A type whose fields stay hidden outside the file that declares it; other files use the functions it exports. |
 | [Nominal type](core-language/types/named-types.md) | A type identified by its declaration. Two types with identical fields can still be different types. |
 | [Enum (alternative)](core-language/types/alternatives.md) | A nominal tagged union declared with `enum`, with a fixed set of cases. A value is one case at a time and may carry that case's data. |
@@ -25,9 +25,9 @@ Unfamiliar term? Follow its link for exact rules.
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
 | [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
-| [Effect](core-language/functions/effects.md) | Something a function does beyond computing a value, such as printing, reading a file or the clock. `// ms: allow_effect` permits one; a function with no line is pure. |
-| [Closure](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. |
-| [Own](core-language/types/references.md) | The binding, field, or collection slot responsible for dropping a value. A move transfers that responsibility; replacing an owned value drops the old one. |
+| [Effect](core-language/functions/effects.md) | Something a function does beyond computing a value, such as printing, reading a file or reading the clock. `// ms: allow_effect` permits one; a function with no such line is pure. See also [effects in developer tooling](developer-tooling/source/effects.md). |
+| [Closure](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses (its captures). |
+| [Owner](core-language/types/references.md) | The binding, field, or collection slot responsible for dropping a value. A move transfers that responsibility; replacing an owned value drops the old one. |
 | [Borrow](core-language/types/references.md#borrowing) | Access to a value another holder owns, without taking it: shared (`:=`, plain argument) or exclusive (`var`). It ends at its last use. |
 | [Move](core-language/types/references.md) | Ownership transfers to a new holder at the value's last use. The old name is dead until reassigned. |
 | [Clone](core-language/types/named-types.md#mutation-and-cloning) | `.clone()`: the only explicit, deep duplicate of an owned value. Numbers and other plain values copy implicitly. |
@@ -38,7 +38,6 @@ Unfamiliar term? Follow its link for exact rules.
 | [Stream](core-language/concurrency/streams.md) | `ReadStream[T]` produces values over time; `WriteStream[T]` accepts them. Reads obtain the next item; built-in writers buffer immediately, and flushing follows the destination’s backpressure rule. Custom stream operations may wait. |
 | [Pipe](core-language/concurrency/streams.md) | An in-memory reader and writer for transferring values between promises. |
 | Capability / authority | A service object that permits external operations, obtained through a host accessor or passed to a helper. |
-| [Effect](developer-tooling/source/effects.md) | External behavior reachable from an operation, such as reading, writing, or calling a service. |
 | Join | Wait until every started operation has finished, including its cleanup. |
 | [Cancel signal](core-language/concurrency/promises.md#waiting) | A signal attached through `PromiseOptions` so a `Cancel` can request that several promises stop. |
 | [Cancellation checkpoint](core-language/concurrency/promises.md#cancellation) | A wait where cancellation can stop work and run cleanup. A loop that never waits must check a cancel signal itself. |

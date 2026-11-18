@@ -51,7 +51,8 @@ export type CommandOutput:
 	max_resident_bytes: Int
 
 // Where a child's standard input, output, or error goes, chosen per stream.
-// `spawn("make", [], SpawnOptions(stdout: Stdio.Inherit, stderr: Stdio.Inherit))` lets the child's output reach the parent's terminal while stdin stays piped.
+// `spawn("make", [], SpawnOptions(stdout: Stdio.Inherit, stderr: Stdio.Inherit))` lets the
+// child's output reach the parent's terminal while stdin stays piped.
 export enum Stdio:
 	// An OS pipe to the parent, read or written through the Subprocess's stream.
 	Pipe
@@ -75,7 +76,7 @@ export type RunOptions:
 	env: Map[String, String] = Map[String, String]()
 
 // Settings for `spawn`. Every field has a default, so `SpawnOptions()` pipes all three
-// streams, inherits the caller's directory and environment.
+// streams and inherits the caller's directory and environment.
 export type SpawnOptions:
 	// Where the child reads standard input.
 	stdin: Stdio = Stdio.Pipe
@@ -154,8 +155,9 @@ fn Subprocess.stderr() ReadStream[Bytes]:
 		DescriptorSource(msstd_process_subprocess_stream_id(self.native, 2))
 	)
 
-// Waits for the child to exit and returns its exit status. Returns ETIMEDOUT if
-// `timeout` elapses first, leaving the child running.
+// Waits for the child to exit and returns its exit status, or -1 for a child ended by a
+// signal on Unix. Returns ETIMEDOUT if `timeout` elapses first, leaving the child
+// running.
 fn Subprocess.wait(timeout: Duration? = none) Int!:
 	return msstd_process_subprocess_wait(self.native, timeout)
 
@@ -181,8 +183,8 @@ export type ProcessInfo:
 	parent_pid: Int
 	// Absolute path of the running program file.
 	executable: String
-	// Live native argv including argv[0]; process.arguments() is the supplied startup
-	// tail without it.
+	// The native argv including argv[0]. `arguments()` from `@std/os/env.ms` returns
+	// the startup arguments without it.
 	arguments: List[String]
 	// Operating system name, such as `linux`, `darwin`, or `windows`.
 	os: String
@@ -324,9 +326,10 @@ export fn spawn(
 	)
 
 /*
-Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
-Capacity must be 1..1048576; omission/none uses 128 buffered signals.
-Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
+Observes the native signal numbers in `signals`: a nonempty list of numbers from 1 through 64, excluding SIGKILL and
+SIGSTOP. Other lists return EINVAL. `capacity` is how many signals are buffered while no read waits, from 1 through
+1048576; none uses 128. A number in range may still be unsupported by the OS. Observing a signal does not suppress
+host cancellation.
 Each read yields the next signal number; the stream never ends on its own. Dropping it unregisters the observer.
 Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation may prevent code after a read from running.
 */
@@ -358,7 +361,9 @@ export fn initialize_groups(username: String, gid: Int) Void!:
 // Replaces the running process image with `program` using exactly the given `arguments`
 // as argv, where `arguments[0]` is the program name, and exactly the given
 // `environment`. On success it never returns.
-// `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return EINVAL, and exec failures return ENOENT, EACCES, or EIO. ENOTSUP on Windows.
+// `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL
+// bytes return EINVAL, and exec failures return ENOENT, EACCES, or EIO. ENOTSUP on
+// Windows.
 // ms: effect std.process.run
 export fn replace(
 	program: String,
@@ -386,9 +391,11 @@ export fn process_info() ProcessInfo!:
 export fn cpu_usage() CpuUsage!:
 	return msstd_process_cpu_usage()
 
-// Validates a signed 32-bit PID and signal 0..64; the OS decides supported
-// numbers/permissions. Signal 0 checks existence; Windows positive PIDs support 0 and
-// forced INT/KILL/TERM termination. A pid that names no process returns ENOENT.
+// Sends `signal`, from 0 through 64, to process `pid`, a signed 32-bit id; other values
+// return EINVAL, and the OS decides which signals and permissions are supported.
+// Signal 0 only checks that the process exists. On Windows, a positive PID supports
+// signal 0 and forced termination with INT, KILL, or TERM. A pid that names no process
+// returns ENOENT.
 // ms: effect std.process.signal
 export fn send_signal(pid: Int, signal: Int) Void!:
 	return msstd_process_send_signal(pid, signal)
@@ -405,7 +412,8 @@ export fn groups() List[Int]!:
 export fn resource_usage() ResourceUsage!:
 	return msstd_process_resource_usage()
 
-// Sets mask 0..511 (0777) and returns the previous mask; ENOTSUP on Windows.
+// Sets the file-creation mask to `mask`, from 0 through 511 (0777), and returns the
+// previous mask. Other values return EINVAL, and Windows returns ENOTSUP.
 // ms: effect std.process.write
 export fn umask(mask: Int) Int!:
 	return msstd_process_umask(mask)
@@ -435,8 +443,10 @@ export fn set_groups(groups: List[Int]) Void!:
 export fn get_priority(pid: Int) Int!:
 	return msstd_system_get_priority(pid)
 
-// Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
-// Unix uses nice values; Windows maps ranges to native priority classes.
+// Sets the scheduling priority of process `pid` (0 means the calling process) to a
+// nice-style value from -20 (highest) through 19 (lowest). A pid outside 0 through
+// 2147483647 or a priority outside that range returns EINVAL. Unix uses nice values;
+// Windows maps the range to native priority classes.
 // ms: effect std.process.write
 export fn set_priority(pid: Int, priority: Int) Void!:
 	return msstd_system_set_priority(pid, priority)

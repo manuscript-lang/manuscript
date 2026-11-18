@@ -210,30 +210,40 @@ pub fn parse(text: &str) -> Result<Components, Fail> {
     components(&u)
 }
 
-/// Rebuilds a Go URL from components, rejecting anything that would not parse back.
-fn go_url(v: &Components) -> Option<Url> {
-    let mut host: S = v.host.as_bytes().to_vec();
-    if host.contains(&b':') {
-        let mut h = alloc::vec![b'['];
-        h.extend_from_slice(&host);
-        h.push(b']');
-        host = h;
+/// Rebuilds a Go URL from components, rejecting anything that would not parse back. The
+/// text it rendered for that check comes back with it, so `format` renders once.
+fn go_url(v: &Components) -> Option<(Url, S)> {
+    go_url_with(v, false)
+}
+
+/// `go_url`; `always_reparse` skips the `reads_back_plain` shortcut and parses every result.
+fn go_url_with(v: &Components, always_reparse: bool) -> Option<(Url, S)> {
+    let u = build_url(v)?;
+    let rendered = u.render();
+    if (always_reparse || !reads_back_plain(&u)) && !reparses(&u, &rendered) {
+        return None;
+    }
+    Some((u, rendered))
+}
+
+/// The `Url` for `v` once its parts pass the cheap checks; `valid_url` finishes the validation.
+fn build_url(v: &Components) -> Option<Url> {
+    let mut host: S = Vec::with_capacity(v.host.len() + 8);
+    // net.JoinHostPort: a colon in the host means an IPv6 literal, which takes brackets.
+    let bracket = v.host.contains(':');
+    if bracket {
+        host.push(b'[');
+    }
+    host.extend_from_slice(v.host.as_bytes());
+    if bracket {
+        host.push(b']');
     }
     if let Some(n) = v.port {
         if !(0..=65535).contains(&n) {
             return None;
         }
-        // net.JoinHostPort
-        let mut h = v.host.as_bytes().to_vec();
-        if h.contains(&b':') {
-            let mut b = alloc::vec![b'['];
-            b.extend_from_slice(&h);
-            b.push(b']');
-            h = b;
-        }
-        h.push(b':');
-        h.extend_from_slice(alloc::format!("{n}").as_bytes());
-        host = h;
+        host.push(b':');
+        host.extend_from_slice(alloc::format!("{n}").as_bytes());
     }
     let raw = v.path.as_bytes();
     // Without an authority, a relative path would be serialized as a hostname.
@@ -261,22 +271,71 @@ fn go_url(v: &Components) -> Option<Url> {
         force_query: v.query.as_deref() == Some(""),
         ..Url::default()
     };
-    let parsed = parser::parse(&u.render()).ok()?;
-    if parsed.scheme.is_empty()
+    Some(u)
+}
+
+/// Whether `u` renders as a URL that reads back as hierarchical, rendering only when the
+/// shortcut does not apply.
+fn valid_url(u: &Url) -> bool {
+    reads_back_plain(u) || reparses(u, &u.render())
+}
+
+const SCHEME: u8 = 1;
+const NAME: u8 = 2;
+
+/// Per byte: bit `SCHEME` for a scheme byte after the first, bit `NAME` for an unreserved host
+/// byte, which `render` writes unescaped.
+static PLAIN: [u8; 256] = {
+    let mut table = [0; 256];
+    let mut c = 0;
+    while c < 256 {
+        let b = c as u8;
+        if b.is_ascii_alphanumeric() || b == b'-' || b == b'.' {
+            table[c] = SCHEME | NAME;
+        } else if b == b'+' {
+            table[c] = SCHEME;
+        } else if b == b'_' || b == b'~' {
+            table[c] = NAME;
+        }
+        c += 1;
+    }
+    table
+};
+
+/// Whether `render`ing `u` is known to read back as a URL with the same scheme and no
+/// userinfo, without parsing it. That holds when the scheme is a valid one, the host is a plain
+/// name (unreserved bytes with at most a numeric port, which `render` leaves unescaped), and
+/// the path cannot be re-read as an authority. The path and fragment are rendered escaped, so
+/// they always parse; the query was checked by `valid_query`. Anything else falls back to
+/// `reparses`, which the differential test in this module compares against on random input.
+fn reads_back_plain(u: &Url) -> bool {
+    let scheme_ok = u.scheme.first().is_some_and(u8::is_ascii_alphabetic)
+        && u.scheme.iter().all(|&b| PLAIN[b as usize] & SCHEME != 0);
+    // A plain host is name bytes, then `:` and digits; `[` and `%` never occur in one.
+    let (name, _) = u.host_port();
+    let plain_host =
+        !u.host.starts_with(b"[") && name.iter().all(|&b| PLAIN[b as usize] & NAME != 0);
+    let rereads_path =
+        u.host.is_empty() && (u.path.starts_with(b"//") || u.raw_path.starts_with(b"//"));
+    scheme_ok && plain_host && !rereads_path
+}
+
+/// The reference check: parse what `render` wrote and require a hierarchical URL, with the same
+/// scheme, no userinfo and no host byte that would change the authority.
+fn reparses(u: &Url, rendered: &[u8]) -> bool {
+    let Ok(parsed) = parser::parse(rendered) else {
+        return false;
+    };
+    !(parsed.scheme.is_empty()
         || !parsed.scheme.eq_ignore_ascii_case(&u.scheme)
         || !parsed.opaque.is_empty()
         || parsed.has_user()
-        || u.host.iter().any(|b| b"/@\\\r\n".contains(b))
-    {
-        return None;
-    }
-    Some(u)
+        || u.host.iter().any(|b| b"/@\\\r\n".contains(b)))
 }
 
 /// Formats components as an absolute hierarchical URL.
 pub fn format(v: &Components) -> Result<String, Fail> {
-    let u = go_url(v).ok_or(Fail::InvalidInput)?;
-    let mut text = u.render();
+    let (u, mut text) = go_url(v).ok_or(Fail::InvalidInput)?;
     // A bare scheme would read as an opaque URL, so an empty hierarchical part keeps `//`
     // unless the URL was read without one.
     if u.host.is_empty() && u.path.is_empty() && !u.omit_host {
@@ -287,7 +346,9 @@ pub fn format(v: &Components) -> Result<String, Fail> {
 
 /// Resolves a relative reference against `base` (RFC 3986 section 5.2 as in Go).
 pub fn resolve(base: &Components, reference: &str) -> Result<Components, Fail> {
-    let b = go_url(base).ok_or(Fail::InvalidInput)?;
+    let b = build_url(base)
+        .filter(valid_url)
+        .ok_or(Fail::InvalidInput)?;
     let r = parser::parse(reference.as_bytes()).map_err(|_| Fail::InvalidData)?;
     if r.has_user() {
         return Err(Fail::InvalidData);
@@ -496,6 +557,86 @@ mod tests {
         assert_eq!(parse("http://a b/"), Err(Fail::InvalidData));
         assert_eq!(parse("http://h/?q=a b"), Err(Fail::InvalidData));
         assert_eq!(parse("http://h/%zz"), Err(Fail::InvalidData));
+    }
+
+    /// The plain-host shortcut must reject exactly what the re-parse rejects.
+    #[test]
+    fn format_shortcut_matches_reparse() {
+        const SCHEMES: &[&str] = &["http", "HTTPS", "a+b-c.d", "", "1x", "a b", "x:y", "é", "f"];
+        const HOSTS: &[&str] = &[
+            "",
+            "example.com",
+            "a_b~c-d.e",
+            "::1",
+            "[::1]",
+            "fe80::1%25eth0",
+            "a b",
+            "a/b",
+            "a@b",
+            "a\\b",
+            "é.com",
+            "a%41",
+            "a%2f",
+            "h:80",
+            "a:b",
+            ":",
+            "a\nb",
+            "a<b>",
+            "a\"b",
+            "%25",
+            "[",
+            "]",
+            "a]b",
+        ];
+        const PATHS: &[&str] = &[
+            "", "/", "/a", "a", "a b", "/a b", "//", "//x", "//a:b/x", "///", "a:b", "/a%2Fb",
+            "/%zz", "%", "/a?b", "/a#b", "%2F%2Fx", "\u{7f}", "/é", "/%ff", ":", "/a\nb",
+        ];
+        const QUERIES: &[Option<&str>] = &[
+            None,
+            Some(""),
+            Some("a=b"),
+            Some("a b"),
+            Some("a#"),
+            Some("%zz"),
+            Some("?"),
+        ];
+        const FRAGMENTS: &[&str] = &["", "f", "a b", "%zz", "#", "é", "a%41"];
+        const PORTS: &[Option<i64>] =
+            &[None, Some(0), Some(80), Some(65535), Some(65536), Some(-1)];
+        let (mut accepted, mut rejected) = (0, 0);
+        for scheme in SCHEMES {
+            for host in HOSTS {
+                for path in PATHS {
+                    for (i, query) in QUERIES.iter().enumerate() {
+                        let fragment = FRAGMENTS[i % FRAGMENTS.len()];
+                        for (omit_host, port) in [false, true]
+                            .into_iter()
+                            .flat_map(|o| PORTS.iter().map(move |p| (o, *p)))
+                        {
+                            let v = Components {
+                                scheme: (*scheme).into(),
+                                host: (*host).into(),
+                                port,
+                                path: (*path).into(),
+                                query: query.map(Into::into),
+                                fragment: fragment.into(),
+                                omit_host,
+                            };
+                            let fast = go_url_with(&v, false).map(|(_, text)| text);
+                            let slow = go_url_with(&v, true).map(|(_, text)| text);
+                            assert_eq!(fast, slow, "{v:?}");
+                            if fast.is_some() {
+                                accepted += 1
+                            } else {
+                                rejected += 1
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(accepted > 1000 && rejected > 1000, "{accepted} {rejected}");
     }
 
     #[test]

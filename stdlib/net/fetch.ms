@@ -109,8 +109,9 @@ fn FetchResponse.json[T: Data](ignore_unknown_fields: Bool = true) T!:
 	text := self.text()?
 	return parse[T](text, JsonOptions(ignore_unknown_fields: ignore_unknown_fields))
 
-// Succeeds when the status is 200 through 299 and otherwise returns `Status`, so
-// `response.check_status()?` rejects error responses.
+// Succeeds when the status is 200 through 299. Otherwise returns an `Error` of kind
+// `EIO` whose `details` hold the status, so `response.check_status()?` rejects error
+// responses.
 fn FetchResponse.check_status() Void!:
 	if self.ok(): return ok()
 	return error(
@@ -122,13 +123,13 @@ fn FetchResponse.check_status() Void!:
 	)
 
 // A reusable client with connection pooling. Bind it to a local and its scope closes
-// it, or close it when done.
+// it, or call `close` yourself.
 export type Fetcher:
 	// Internal state: the pooled HTTP client every request goes through.
 	client: HttpClient
 
-// Sends the request and buffers the response body. A `Raw` or `Text` body is resent
-// on redirects that keep it. Returns the promise of the response; requests started
+// Starts the request and returns a promise of the response, whose body is buffered.
+// A `Raw` or `Text` body is resent on redirects that keep it. Requests started
 // together are in flight together.
 fn Fetcher.fetch(
 	url: String,
@@ -142,8 +143,8 @@ fn Fetcher.fetch(
 		options: PromiseOptions(placement: Placement.Here)
 	)
 
-// Sends the request and returns the streaming body. `options.timeout` is a
-// whole-exchange deadline, so set it to none for long streams.
+// Sends the request and returns the response with its body as a stream. The default
+// `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
 fn Fetcher.stream(
 	url: String,
 	options: FetchOptions = FetchOptions(),
@@ -243,9 +244,10 @@ export fn fetcher(
 	return ok(Fetcher(client: client))
 
 // Starts one buffered request on a one-shot client and returns its promise; requests
-// started together are in flight together. Redirects are followed up to 20 times, the
-// body is limited to 16 MiB, and the exchange to 30 seconds; override them in
-// `options`.
+// started together are in flight together. By default it follows up to 20 redirects,
+// limits the body to 16 MiB, and limits the exchange to 30 seconds. Set
+// `FetchOptions` fields to change the body and time limits; for the redirect limit
+// and other client settings, use a `Fetcher`.
 // ms: effect std.net.connect
 export fn fetch(
 	url: String,

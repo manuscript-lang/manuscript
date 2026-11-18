@@ -7,6 +7,7 @@ weight = 2
 
 Use an enum (a tagged union) when a value is exactly one of several declared cases, each with its own data.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Payment:
     Paid(receipt: String)
@@ -16,15 +17,18 @@ enum Payment:
 
 Enums are tagged and exhaustively matched.
 
-- At least one case; case names are unique, and payload field names are unique within a case.
+- An enum has at least one case. Case names are unique, and payload field names are unique within a case.
 - A case may have no payload: `Missing`.
-- Payload types are explicit; fields have no defaults.
-- `enum` bodies contain only bare variant names with optional payload parameters; fields belong in a `type` and methods are receiver methods, `fn Enum.name(...)`.
+- Payload types are explicit, and payload fields have no defaults.
+- An `enum` body holds only case names with optional payload parameters. Fields belong in a `type`, and methods are receiver methods, `fn Enum.name(...)`.
 
-Migration: replace `type Choice:` with `enum Choice:` when its body declares cases. Then remove `case` before each variant. Both legacy spellings are rejected with diagnostics explaining the new spelling. Types keep `type`; constructors and exhaustive matching keep the same behavior. `enum` is reserved, so rename existing identifiers with that spelling. `case` is no longer reserved: `case`, `case(value: Int)`, and field `case: Int` are ordinary names in their respective contexts.
+Migration from the old syntax: replace `type Choice:` with `enum Choice:` when its body declares cases, then remove `case` before each case name. The compiler rejects both old spellings with a diagnostic that names the new one. Constructors and exhaustive matching behave as before, and `type` still declares types.
+
+`enum` is a reserved word, so rename any existing identifier spelled `enum`. `case` is no longer reserved: `case`, `case(value: Int)`, and a field `case: Int` are ordinary names in their contexts.
 
 ## Construction and identity
 
+<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt: String)\n    Declined(reason: String)","given":[]} -->
 ```manuscript
 payment := Payment.Paid("receipt-42")
 declined: Payment := Declined("Card rejected")
@@ -35,8 +39,11 @@ declined: Payment := Declined("Card rejected")
 - Multi-payload constructors follow the ordinary [call rules](../functions/declarations-and-calls.md#argument-names); every payload field appears exactly once.
 - Payloadless cases are values (`State.Ready`), without `()`. Tags do not convert to integers.
 
-Ordinary name lookup runs first: a local, declaration, or import with that spelling wins over case shorthand. Otherwise an unqualified case name must match exactly one case among visible enums. If several declare it, qualify it, even with an annotation. An expected enum type can supply generic arguments once the case is unique; a qualified case that contradicts the expected type is rejected, and matching payload shapes never make distinct enums compatible.
+Ordinary name lookup runs first: a local, declaration, or import with that spelling wins over case shorthand. Otherwise an unqualified case name must match exactly one case among the visible enums. If several enums declare it, qualify it, even when an annotation names the enum.
 
+Once the case is unique, an expected enum type can supply generic arguments. A qualified case that contradicts the expected type is rejected, and matching payload shapes never make distinct enums compatible.
+
+<!-- manuscript-example: {"mode":"error","contains":"ambiguous alternative case","given":[]} -->
 ```manuscript
 enum LeftState:
     Ready
@@ -55,7 +62,7 @@ wrong: LeftState := RightState.Ready
 
 After `Ready := LeftState.Ready`, `Ready` refers to that binding, not case lookup.
 
-Type arguments attach to the enum, never the case: write `Choice[Int].Found(value: 1)`. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected; unqualified `Found(value: 1)` may infer arguments or use a complete expected `Choice[Int]`. This also holds for standard Optional/Result cases.
+Type arguments attach to the enum, never the case: write `Choice[Int].Found(value: 1)`. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected; unqualified `Found(value: 1)` may infer arguments or use a complete expected `Choice[Int]`. The same holds for the standard `Optional` and `Result` cases.
 
 Exporting an enum exposes every case and payload field. Payload types follow the [public surface](named-types.md#public-data-surfaces) and [recursive data](named-types.md#recursive-data) rules for types.
 
@@ -67,4 +74,4 @@ There are no implicit unions or nullable references. Declare an enum, or use [Op
 
 ## Resource payloads
 
-A payload borrowed by a match keeps its owner available while it is used. A match on an owned value at its last use can move a payload to a new owner, transferring its cleanup duty. See [references inside other values](references.md).
+A payload that a match borrows keeps its owner available while the payload is in use. A match on an owned value at its last use can move a payload to a new owner, which takes over its cleanup duty. See [references inside other values](references.md).

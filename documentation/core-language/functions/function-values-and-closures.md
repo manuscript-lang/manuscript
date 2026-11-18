@@ -26,12 +26,17 @@ fn main() Int:
 2
 ```
 
-Function types name no parameters; `fn(var List[Int]) Void` marks one the function changes in place ([changing parameters](#changing-parameters)). Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A named or anonymous `fn` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+Function types name no parameters. A parameter the function changes in place is marked `var`: `fn(var List[Int]) Void` ([changing parameters](#changing-parameters)).
+
+- Calls through a value of an explicit function type are positional; a label on such a call is an error. Suspension and evaluation order are the same as for declared functions.
+- A named or anonymous `fn` inside a function is a local binding of a function value.
+- Inferred immutable copies of a named function keep its [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 
 Parameter types in order, their `var` and `move` markers, and the result type are function-type identity. Compatibility is invariant except for one adaptation: a function that only reads a parameter may stand in where one that changes it (`var`) is expected ([changing parameters](#changing-parameters)); `move` always matches exactly. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
 
+<!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
 fn subtract_one(amount: Int) Int:
     return amount - 1
@@ -54,12 +59,26 @@ An anonymous function may omit parameter types when context supplies them (argum
 
 ## Changing parameters
 
-A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Void` has type `fn(var List[Int]) Void`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Void` and `fn(var List[Int]) Void` are different types, but a function that only reads a parameter may be used where one that may change it is expected: `apply(fn(xs: List[Int]): void, var values)` is accepted, and the callee's `var` argument is passed to it as a plain read. The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
+A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Void` has type `fn(var List[Int]) Void`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way.
 
-A function that takes ownership of a parameter says so in its type: `fn keep(move item: Item) Int` has type `fn(move Item) Int`, and a call through the value hands the argument over, so the caller's name is dead after it. An anonymous function takes `move` from the expected type, or declares it as `fn move item: ...`; it then owns the argument, so it may keep it, even a resource, and one it only reads is dropped (a resource closed) when it returns. A function that only reads a parameter is accepted where `fn(move T)` is expected: the call drops the argument when it returns. The other way round is an error: a named function that keeps a parameter, used where the function type lends it (`fn(T)`), would need a hidden copy of every argument, so write the copy in a closure (`fn x: keep(x.clone())`) ([moving into a function](../types/references.md#moving-into-a-function)).
+`fn(List[Int]) Void` and `fn(var List[Int]) Void` are different types:
 
-`List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each(fn var s: s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list. The rule is general: any method whose callback type has a `var` position of one of the receiver's type arguments behaves this way. Such a method cannot be taken as a value from a variable (`each := scores.for_each`); call it, or write a closure.
+- A function that only reads a parameter may be used where one that may change it is expected. `apply(fn(xs: List[Int]): void, var values)` is accepted, and the callee's `var` argument is passed to it as a plain read.
+- The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
 
+A function that takes ownership of a parameter says so in its type: `fn keep(move item: Item) Int` has type `fn(move Item) Int`. A call through the value hands the argument over, so the caller's name is dead after it.
+
+- **Anonymous functions** take `move` from the expected type, or declare it as `fn move item: ...`. They then own the argument and may keep it, even a resource. One that only reads it drops the argument (closing a resource) when it returns.
+- **Reading is accepted where `move` is expected.** A function that only reads a parameter may stand in for `fn(move T)`: the call drops the argument when it returns.
+- **Keeping is not accepted where borrowing is expected.** A named function that keeps a parameter, used where the function type borrows it (`fn(T)`), would need a hidden copy of every argument. Write the copy in a closure instead: `fn x: keep(x.clone())`.
+
+See [moving into a function](../types/references.md#moving-into-a-function).
+
+`List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each(fn var s: s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list.
+
+The rule is general: any method whose callback type has a `var` position of one of the receiver's type arguments behaves this way. Such a method cannot be taken as a value from a variable (`each := scores.for_each`); call it, or write a closure.
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn push_one(var values: List[Int]) Void:
     values.append(1)
@@ -84,10 +103,10 @@ A `var` parameter is the caller's value, so the function cannot move it out (`ol
 
 Captures follow ownership rules. A non-escaping closure borrows its captures; an escaping closure owns them. The checker infers escape and parameter modes.
 
-A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
+A closure that only reads its captures and is called only in the function that made it borrows them, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-
 fn tag_count() Int:
     var tags = ["docs"]
     tags.append("release")
@@ -97,8 +116,9 @@ fn tag_count() Int:
 // tag_count() returns 2.
 ```
 
-A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
+A closure that is called only in the function that made it (including a callback such as `for_each`) may also change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn total(values: List[Int]) Int:
     var sum = 0
@@ -108,8 +128,17 @@ fn total(values: List[Int]) Int:
     return sum
 ```
 
-A function value has one owner and no `.clone()`, and a type or list that holds one is not `Clonable`: pass it where it is only read, move it at its last use, or make it again from a named `fn`. A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a loop variable, a `:=` that borrows another value), bind a `.clone()` before the closure and capture that. A parameter the closure takes is moved by the function, so the caller gives the value up; pass `.clone()` to keep it. A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `:=` copy first (`base := offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`add := xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure. The parameter case, with the caller keeping its list:
+A function value has one owner and no `.clone()`. A type or list that holds one is not `Clonable`. To use a function value, pass it where it is only read, move it at its last use, or make it again from a named `fn`.
 
+A closure that is returned or stored owns what it captures, so it cannot change a captured variable:
+
+- **Moving a variable in.** The closure takes a captured variable when the closure is its last use. If the variable is used again, or is only borrowed (a loop variable, or a `:=` that borrows another value), bind a `.clone()` before the closure and capture that.
+- **Parameters.** A parameter the closure takes is moved by the function, so the caller gives the value up. Pass `.clone()` to keep it.
+- **A `var` used again.** A returned or stored closure cannot capture a `var` that is used after the closure is made, because it would keep a stale copy. Bind a `:=` copy first (`base := offset`) and capture that.
+
+A bound method keeps its receiver by the same rules. A method that changes its receiver (`add := xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it, or write a closure. The parameter case, with the caller keeping its list:
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Counter:
     read: fn() Int
@@ -127,6 +156,7 @@ fn total() Int:
 
 Open a resource inside the callback that uses it:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
@@ -143,8 +173,8 @@ A non-escaping callback can borrow an already-open file while its owner stays in
 
 ## Contextual callback inference
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-
 fn names() List[String]:
     return [1, 2].map(fn value: value.to_string())
 ```

@@ -35,19 +35,27 @@ fn main() Void:
 
 ## Methods
 
-A type's methods are declared beside it, never inside the `type`. A receiver method is `fn Type.name(...)`; one that changes `self` is `fn var Type.name(...)`. A generic type repeats its parameters, `fn Box[T].get() T`. `self` is an implicit binding of the receiver type in each method; it is not a parameter and cannot be redeclared. A method may declare [type parameters of its own](#generic-operations).
+A type's methods are declared beside it, never inside the `type`. A receiver method is `fn Type.name(...)`; one that changes `self` is `fn var Type.name(...)`. A generic type repeats its parameters: `fn Box[T].get() T`. A method may declare [type parameters of its own](#generic-operations).
 
-A method is declared in the module that declares its type, and travels with the type wherever the type is used. To add operations to another module's type, write a free function or a wrapper type. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`.
+`self` is an implicit binding of the receiver type in each method. It is not a parameter and cannot be redeclared.
+
+A method is declared in the module that declares its type, and it travels with the type wherever the type is used. To add operations to another module's type, write a free function or a wrapper type. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called as `reset(counter)`, never `counter.reset()`.
 
 A type has one method per name. A second method of the same name on one receiver is an error, so one `close` or one `read` serves every interface that asks for it.
 
-A receiver may add bounds, `fn Box[T: Equal].same(other: T) Bool`, so the method exists only where the arguments satisfy them, or fix an argument, `fn List[Int].sum() Int`. Methods of one name on receivers with different bounds or arguments are separate declarations; a call picks the one whose receiver matches.
+A receiver may add bounds, as in `fn Box[T: Equal].same(other: T) Bool`, so the method exists only where the arguments satisfy them. It may also fix an argument, as in `fn List[Int].sum() Int`. Methods of one name on receivers with different bounds or arguments are separate declarations, and a call picks the one whose receiver matches.
 
-A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) to its parameters. A call on the concrete receiver uses them; a call through an interface value uses the interface signature, which carries the interface's own defaults.
+A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) to its parameters. A call on the concrete receiver uses them. A call through an interface value uses the interface's signature, with the interface's own defaults.
 
 ## Satisfying an interface
 
-A type satisfies an interface when each operation has one own method with the same name, parameter labels, `var`-ness, parameter types and result type. Nothing is declared: the methods are the declaration. After substituting generic arguments the methods must match the interface exactly: every operation once, under the same labels, order, types and result. An operation that changes its receiver is `var fn` in the interface and `fn var Type.name` on the type, though a method that does not change `self` also meets it. A `var` parameter is the same: an operation that changes a caller's value declares it `var` in both, and a call marks the argument `var` as for any [function](../functions/function-values-and-closures.md). A `move` parameter or receiver matches exactly: an operation that takes its argument declares it `move` in both, and a method that only reads it still writes `move` ([moving into a function](references.md#moving-into-a-function)). A method that returns a part of its receiver or arguments does not meet an operation: a call through an interface gets a new value, so the method returns `.clone()` of the part. Interface implementations preserve argument labels even though labels are not part of [function-value type identity](../functions/function-values-and-closures.md#function-type-compatibility).
+A type satisfies an interface when it has one own method for each operation, with the same name, parameter labels, `var` marking, parameter types, and result type. The type declares nothing extra: its methods are the declaration. For a generic interface, the methods must match exactly after the generic arguments are substituted.
+
+- **Changing the receiver.** An operation that changes its receiver is `var fn` in the interface and `fn var Type.name` on the type. A method that does not change `self` also meets it.
+- **`var` parameters.** An operation that changes a caller's value declares the parameter `var` in both places, and the call marks the argument `var`, as for any [function](../functions/function-values-and-closures.md).
+- **`move` parameters and receivers.** An operation that takes its argument declares it `move` in both places. A method that only reads the argument still writes `move` ([moving into a function](references.md#moving-into-a-function)).
+- **Returning a part.** A method that returns a part of its receiver or arguments does not meet an operation, because a call through an interface gets a new value. Return `.clone()` of the part.
+- **Labels.** An implementation keeps the interface's argument labels, even though labels are not part of [function-value type identity](../functions/function-values-and-closures.md#function-type-compatibility).
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
 ```manuscript
@@ -73,7 +81,11 @@ fn main() Void:
 
 - A mismatch is not an error until the type is used as the interface; the diagnostic lists the first operation that is missing or differs.
 - A type with `fn var close() Void!` satisfies `Closeable` and is closed at scope end, so a type that is also a `Source` and a `Sink` closes once. Make such a `close` safe to call again when an owner also closes the value.
-- `Comparable`, `Equal`, `Hashable`, `Stringable` and `JsonEncode` are met by an own `compare`, `equals`, `hash`, `to_string` or `to_json` of the exact signature. A record or alternative that meets `Stringable` has that `to_string` as its text form in interpolation, `print` and containers; a `to_string()` that does not return `String` is an ordinary method and the type prints structurally. `to_string(prefix)` with parameters is an ordinary method too. The language calls these methods on values it only lends, so such a method may not keep its receiver or argument (pass it on with `move`, store it or return it); keep a copy instead, such as `keep(self.clone())`. `Clonable` and `Data` are properties the compiler derives from a type's fields; they are not declared. `Decimal` is plain words like the numeric primitives, so using one never moves it.
+- `Comparable`, `Equal`, `Hashable`, `Stringable` and `JsonEncode` are met by an own `compare`, `equals`, `hash`, `to_string` or `to_json` of the exact signature.
+  - A type or enum that meets `Stringable` uses that `to_string` as its text form in interpolation, `print`, and containers. A `to_string()` that does not return `String`, or a `to_string(prefix)` with parameters, is an ordinary method, and the type prints structurally.
+  - The language calls these methods on values it only borrows, so such a method may not keep its receiver or argument by passing it on with `move`, storing it, or returning it. Keep a copy instead, such as `keep(self.clone())`.
+  - `Clonable` and `Data` are properties the compiler derives from a type's fields; they are not declared.
+  - `Decimal` is a plain value like the numeric primitives, so using one never moves it.
 - Operations with type parameters of their own are met by a method that repeats them with the same bounds ([generic operations](#generic-operations)).
 
 ```text
@@ -84,7 +96,9 @@ fn Offset.apply(amount: Int) Int:
 
 ## Coherence and visibility
 
-A method is available wherever its type is used, and satisfying an interface follows from the methods, so it is the same in every module. There are no per-module extensions: a module cannot add methods to a type it imports, and a `Map` or `Set` always uses its key type's own `equals` and `hash`, or structural equality when it has none.
+A method is available wherever its type is used, and satisfying an interface follows from the methods, so the result is the same in every module. There are no per-module extensions: a module cannot add methods to a type it imports.
+
+A `Map` or `Set` always uses its key type's own `equals` and `hash`, or structural equality when the type has none.
 
 - Receivers must be source-defined types or enums declared in the same module. The standard library gives its own types and the built-in scalars their methods the same way.
 - Interfaces may be generic but have at least one operation and no fields, cases, default bodies, associated types, or static operations.
@@ -137,14 +151,21 @@ fn Scores.best_by[K: Comparable](key: fn(Int) K) Int?:
     ...
 ```
 
-A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface. An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known; converting to it is rejected. The standard `List` uses this for `max_by` and `min_by` (`stdlib/collections/collections.ms`).
+A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface.
+
+An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known. Converting to it is rejected. The standard `List` uses generic operations for `max_by` and `min_by` (`stdlib/collections/collections.ms`).
 
 ## Interface conversion
 
-A value whose type satisfies an interface converts implicitly wherever that interface is expected: arguments, `:=` with a type annotation, fields, collection entries, and returns. The type's own methods [match every operation](#satisfying-an-interface); a method name alone never converts. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
+A value whose type satisfies an interface converts implicitly wherever that interface is expected: arguments, `:=` with a type annotation, fields, collection entries, and returns. The type's own methods [match every operation](#satisfying-an-interface); a method name alone never converts.
 
-The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (field, collection entry, `:=`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
+A value that is already a view of the same interface application is unchanged. Other interface-to-interface conversions and unchecked downcasts are rejected. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver with a runtime nominal check.
 
+The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position. A read-only argument borrows the operand, so the operand stays usable afterwards. A stored position (field, collection entry, `:=`, return) moves the operand at its last use, or needs `.clone()` otherwise.
+
+A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
+
+<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount: Int) Int\n\ntype Offset:\n    delta: Int\n\nfn Offset.apply(amount: Int) Int:\n    return amount + self.delta","given":[]} -->
 ```manuscript
 fn use_increment(operation: Increment) Int:
     return operation.apply(1)
@@ -155,7 +176,7 @@ again := offset.delta
 kept: Increment := offset.clone()
 ```
 
-An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
+An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view: Increment := offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
 
 ### Selecting an operation
 
@@ -163,6 +184,7 @@ A type has one method per name, so a call on a concrete receiver, a generic para
 
 An interface type satisfies its own exact generic bound: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
+<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount: Int) Int\n\ntype Offset:\n    delta: Int\n\nfn Offset.apply(amount: Int) Int:\n    return amount + self.delta","given":["offset: Offset","view: Increment"]} -->
 ```manuscript
 fn invoke[T: Increment](operation: T) Int:
     view: Increment := operation
@@ -176,4 +198,4 @@ Both calls satisfy the bound without implicit conversion.
 
 ## Interfaces and services
 
-Pass a service as an interface value when a function needs storage, networking, or a clock. Contracts also serve as [generic bounds](generics.md) naming the operations a type argument must provide.
+Pass a service as an interface value when a function needs storage, networking, or a clock. An interface can also serve as a [generic bound](generics.md) that names the operations a type argument must provide.

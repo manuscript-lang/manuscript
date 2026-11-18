@@ -862,7 +862,7 @@ fn analyze(
         };
         let cover = |live: &OwnerSet| coverable(live, &hoisted[bi]);
         for p in &blk.params {
-            if owned_def[p.value.index()] {
+            if owned_def[p.value.index()] || (bi == 0 && cx.cells.contains_key(&p.value.0)) {
                 born(&mut live, p.value.0);
             }
         }
@@ -903,6 +903,11 @@ fn analyze(
                     .is_some_and(|a| cx.cells.contains_key(&a.0))
             {
                 live.remove(inst.args[0].0);
+            }
+            for (ak, a) in inst.args.iter().enumerate() {
+                if cx.cells.contains_key(&a.0) && hands_off(cx, inst, ak) {
+                    live.remove(a.0);
+                }
             }
             if plain[bi]
                 && (exits_at(m, cx, inst)
@@ -990,6 +995,11 @@ fn analyze(
                     .is_some_and(|a| cx.cells.contains_key(&a.0))
             {
                 born(&mut live, inst.args[0].0);
+            }
+            for (ak, a) in inst.args.iter().enumerate() {
+                if cx.cells.contains_key(&a.0) && hands_off(cx, inst, ak) {
+                    born(&mut live, a.0);
+                }
             }
             if let Some(r) = inst.res.filter(|r| owned_def[r.index()]) {
                 born(&mut live, r.0);
@@ -1383,7 +1393,12 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
         .blocks
         .iter()
         .flat_map(|b| &b.insts)
-        .filter(|i| i.op == Op::Take && i.args.first().is_some_and(|a| slot_params.contains(&a.0)))
+        .filter(|i| {
+            i.op == Op::Take
+                && i.args
+                    .first()
+                    .is_some_and(|a| slot_params.contains(&a.0) && !owned_params.contains(&a.0))
+        })
         .filter_map(|i| i.res.map(|r| r.0))
         .collect();
     let mut moved = true;
@@ -1429,7 +1444,24 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
             }
         }
     }
-    cx.cells = find_cells(m, cx, f);
+    // What an owned slot parameter holds, read from how the function takes, fills or loads it.
+    let mut param_cells: BTreeMap<u32, Ty> = BTreeMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        let (Some(&a), Some(ty)) = (
+            i.args.first(),
+            match (i.op, i.imm) {
+                (Op::Take | Op::Load, Imm::Ty(ty)) => Some(ty),
+                (Op::Put, _) => i.args.get(1).map(|v| f.ty(*v)),
+                _ => None,
+            },
+        ) else {
+            continue;
+        };
+        if owned_params.contains(&a.0) && m.needs_drop(ty) {
+            param_cells.entry(a.0).or_insert(ty);
+        }
+    }
+    cx.cells = find_cells(m, cx, f, &param_cells);
     cx.cells.retain(|slot, _| !caller_slots.contains(slot));
     // Quick exit: nothing can be live across a call without an owned definition.
     if !owned_def.iter().any(|o| *o) && cx.cells.is_empty() {
@@ -2171,8 +2203,9 @@ fn hole_step(open: u32, op: Op, next: Option<Op>) -> u32 {
 /// qualifies when every use is a `put` into it, a `take` out of it, a `load`, or a call whose
 /// callee only borrows what it takes from the slot, and each such use sits between a `put` and
 /// its `take` in one block.
-fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
-    let mut slots: BTreeMap<u32, Ty> = BTreeMap::new();
+fn find_cells(m: &Module, cx: &Cx, f: &Func, params: &BTreeMap<u32, Ty>) -> BTreeMap<u32, Ty> {
+    // A slot parameter this function owns holds a value from the start.
+    let mut slots: BTreeMap<u32, Ty> = params.clone();
     for inst in f.blocks.iter().flat_map(|b| &b.insts) {
         if let (Op::Slot, Imm::Ty(ty), Some(r)) = (inst.op, inst.imm, inst.res)
             && m.needs_drop(ty)
@@ -2184,15 +2217,97 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
         return slots;
     }
     let mut bad: BTreeSet<u32> = BTreeSet::new();
-    for blk in &f.blocks {
-        let mut full: BTreeSet<u32> = BTreeSet::new();
+    // A slot a closure captures by reference, or one whose every `put` stores a fresh value and
+    // that no call receives, may hold its value across blocks: an early exit of a `?` takes it
+    // back out in another block. A slot that holds a part taken out of another owner (a field of
+    // a capture) is covered by that owner, and a slot a call receives is used within one block.
+    let handed: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| {
+            matches!(
+                i.op,
+                Op::Call | Op::CallInd | Op::CallMethod | Op::CallRt | Op::Poll
+            )
+        })
+        .flat_map(|i| i.args.iter().map(|a| a.0))
+        .collect();
+    let fresh_defs: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| {
+            matches!(
+                i.op,
+                Op::ListLit
+                    | Op::ListFill
+                    | Op::TypeNew
+                    | Op::AltNew
+                    | Op::IfaceNew
+                    | Op::Clone
+                    | Op::Call
+            )
+        })
+        .filter_map(|i| i.res.map(|r| r.0))
+        .collect();
+    let stale: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == Op::Put && i.args.get(1).is_some_and(|v| !fresh_defs.contains(&v.0)))
+        .filter_map(|i| i.args.first().map(|a| a.0))
+        .collect();
+    let captured: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == Op::ClosureNew)
+        .flat_map(|i| i.args.iter().map(|a| a.0))
+        // A slot parameter that is only refilled with fresh values; one refilled with the very value
+        // taken out of it (a field moved out and back) stays within a block.
+        .chain(params.keys().copied().filter(|s| !stale.contains(s)))
+        .chain(
+            slots
+                .keys()
+                .copied()
+                .filter(|s| !handed.contains(s) && !stale.contains(s)),
+        )
+        .collect();
+    let guarded: BTreeSet<u32> = {
+        let mut other: BTreeSet<u32> = BTreeSet::new();
+        let mut cond: BTreeSet<u32> = BTreeSet::new();
+        for i in f.blocks.iter().flat_map(|b| &b.insts) {
+            for (k, a) in i.args.iter().enumerate() {
+                if i.op == Op::DropIf && k == 1 {
+                    cond.insert(a.0);
+                } else {
+                    other.insert(a.0);
+                }
+            }
+        }
+        cond.difference(&other).copied().collect()
+    };
+    // The slots holding a value when each block starts. Every path to a block must agree.
+    let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
+    entry[0] = Some(params.keys().copied().collect());
+    for b in f.rpo() {
+        let blk = &f.blocks[b.index()];
+        let Some(mut full) = entry[b.index()].clone() else {
+            continue;
+        };
         for inst in &blk.insts {
             for (k, a) in inst.args.iter().enumerate() {
                 let Some(&ty) = slots.get(&a.0) else { continue };
                 let ok = match (inst.op, inst.imm) {
                     (Op::Put, _) if k == 0 => full.insert(a.0) && f.ty(inst.args[1]) == ty,
-                    (Op::Take, _) => full.remove(&a.0),
+                    (Op::Take, _) => {
+                        // A take whose result only feeds `drop.if` runs after a move emptied
+                        // the slot, and drops nothing then.
+                        full.remove(&a.0) || inst.res.is_some_and(|r| guarded.contains(&r.0))
+                    }
                     (Op::Load, _) => full.contains(&a.0),
+                    (Op::Call | Op::CallInd, _) if hands_off(cx, inst, k) => full.contains(&a.0),
                     (Op::Call, Imm::Func(g)) => {
                         full.contains(&a.0)
                             && cx.safe.get(g.index()).and_then(|p| p.get(k)).copied() == Some(true)
@@ -2202,6 +2317,11 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
                     (Op::CallInd, _) => {
                         k > 0 && full.contains(&a.0) && closures_borrow(cx, inst.args.len(), k)
                     }
+                    // A closure that captures the slot by reference only borrows it.
+                    (Op::ClosureNew, Imm::Func(g)) => {
+                        full.contains(&a.0)
+                            && closure_borrows_capture(m, &cx.safe, &cx.parks, g, k as u32)
+                    }
                     _ => false,
                 };
                 if !ok {
@@ -2209,11 +2329,23 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
                 }
             }
         }
-        // A `put` left unmatched at the end of the block spans blocks, which this does not follow.
-        bad.extend(full);
+        let mut leaves = true;
+        bad.extend(full.iter().filter(|s| !captured.contains(s)));
         blk.term.for_each_target(|t| {
+            leaves = false;
             bad.extend(t.args.iter().map(|a| a.0).filter(|a| slots.contains_key(a)));
+            match &mut entry[t.block.index()] {
+                None => entry[t.block.index()] = Some(full.clone()),
+                Some(seen) => {
+                    bad.extend(seen.symmetric_difference(&full).copied());
+                }
+            }
         });
+        // A `put` left unmatched when the function ends is not followed.
+        if leaves {
+            // A slot parameter goes back to the caller holding its value.
+            bad.extend(full.iter().filter(|s| !params.contains_key(s)));
+        }
         if let Term::Ret(Some(v)) = blk.term {
             bad.insert(v.0);
         }
@@ -2248,40 +2380,87 @@ fn slot_owned_params(m: &Module, safe: &[Vec<bool>]) -> Vec<Vec<bool>> {
         })
         .collect();
     let mut used = vec![false; m.funcs.len()];
+    let targets = closure_targets(m);
+    // The functions some call reaches; a function nothing calls directly is reached some other way
+    // (a method table, a function value), so its callers do not cover its slot parameters and a
+    // callee cannot count on it to pass them on.
     for caller in &m.funcs {
-        let slots: HashMap<u32, Ty> = caller
-            .blocks
-            .iter()
-            .flat_map(|b| &b.insts)
-            .filter_map(|i| match (i.op, i.imm, i.res) {
-                (Op::Slot, Imm::Ty(ty), Some(r)) => Some((r.0, ty)),
-                _ => None,
-            })
-            .collect();
-        let entries: BTreeSet<u32> = caller
-            .blocks
-            .iter()
-            .flat_map(|b| &b.insts)
-            .filter(|i| i.op == Op::CleanupPush)
-            .filter_map(|i| i.args.first().map(|a| a.0))
-            .collect();
         for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
-            let Imm::Func(g) = inst.imm else { continue };
-            used[g.index()] = true;
-            let direct = inst.op == Op::Call;
-            for (k, flag) in owns[g.index()].iter_mut().enumerate() {
-                if !*flag {
-                    continue;
-                }
-                // The slot is the caller's own, holds the type the callee's parameter names,
-                // and no entry covers it.
-                let ok = direct
-                    && inst.args.get(k).is_some_and(|a| {
-                        slots.get(&a.0).is_some_and(|ty| m.needs_drop(*ty))
-                            && !entries.contains(&a.0)
-                    });
-                if !ok {
-                    *flag = false;
+            match (inst.op, inst.imm) {
+                (Op::CallInd, _) => targets
+                    .iter()
+                    .filter(|g| m.funcs[g.index()].params.len() == inst.args.len())
+                    .for_each(|g| used[g.index()] = true),
+                (Op::ClosureNew, _) => {}
+                (_, Imm::Func(g)) => used[g.index()] = true,
+                _ => {}
+            }
+        }
+    }
+    // A method table entry is called with whatever the interface call passes, never with a slot
+    // the caller left uncovered.
+    for g in m.vtables.iter().flat_map(|v| &v.methods) {
+        owns[g.index()].iter_mut().for_each(|f| *f = false);
+    }
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (ci, caller) in m.funcs.iter().enumerate() {
+            let slots: HashMap<u32, Ty> = caller
+                .blocks
+                .iter()
+                .flat_map(|b| &b.insts)
+                .filter_map(|i| match (i.op, i.imm, i.res) {
+                    (Op::Slot, Imm::Ty(ty), Some(r)) => Some((r.0, ty)),
+                    _ => None,
+                })
+                .collect();
+            let entries: BTreeSet<u32> = caller
+                .blocks
+                .iter()
+                .flat_map(|b| &b.insts)
+                .filter(|i| i.op == Op::CleanupPush)
+                .filter_map(|i| i.args.first().map(|a| a.0))
+                .collect();
+            for inst in caller.blocks.iter().flat_map(|b| &b.insts) {
+                // A call through a function value may reach every closure of its shape.
+                let reached: Vec<FuncId> = match (inst.op, inst.imm) {
+                    (Op::CallInd, _) => targets
+                        .iter()
+                        .copied()
+                        .filter(|g| m.funcs[g.index()].params.len() == inst.args.len())
+                        .collect(),
+                    // Making a closure calls nothing: its calls are the `call.ind`s above.
+                    (Op::ClosureNew, _) => continue,
+                    (_, Imm::Func(g)) => vec![g],
+                    _ => continue,
+                };
+                let direct = matches!(inst.op, Op::Call | Op::CallInd);
+                let mine = owns[ci].clone();
+                for g in reached {
+                    for (k, flag) in owns[g.index()].iter_mut().enumerate() {
+                        if !*flag {
+                            continue;
+                        }
+                        // The slot is the caller's own, holds the type the callee's parameter names,
+                        // and no entry covers it.
+                        // Or the caller's own slot parameter, passed on, which the caller owns as well:
+                        // only the function that touches the slot's value covers it.
+                        let ok = direct
+                            && inst.args.get(k).is_some_and(|a| {
+                                slots.get(&a.0).is_some_and(|ty| m.needs_drop(*ty))
+                                    && !entries.contains(&a.0)
+                                    || caller.blocks[0]
+                                        .params
+                                        .iter()
+                                        .position(|p| p.value == *a)
+                                        .is_some_and(|kp| used[ci] && mine[kp])
+                            });
+                        if !ok {
+                            *flag = false;
+                            changed = true;
+                        }
+                    }
                 }
             }
         }
@@ -2312,6 +2491,29 @@ fn closure_targets(m: &Module) -> Vec<FuncId> {
 
 /// Whether every closure that takes `arity` parameters (its environment first) and a pointer at
 /// position `k` only borrows what that pointer's slot holds. False when there is no such closure.
+/// Whether a call hands the slot at argument `k` to a callee that owns it while it runs: the
+/// callee covers what it takes, so the caller's cover pauses for the call.
+fn hands_off(cx: &Cx, inst: &Inst, k: usize) -> bool {
+    let owns = |g: FuncId| cx.owns[g.index()].get(k).copied() == Some(true);
+    match (inst.op, inst.imm) {
+        (Op::Call, Imm::Func(g)) => owns(g),
+        (Op::CallInd, _) if k > 0 => {
+            let mut any = false;
+            for g in &cx.closure_targets {
+                if cx.safe[g.index()].len() != inst.args.len() || !cx.pointer_params[g.index()][k] {
+                    continue;
+                }
+                if !owns(*g) {
+                    return false;
+                }
+                any = true;
+            }
+            any
+        }
+        _ => false,
+    }
+}
+
 fn closures_borrow(cx: &Cx, arity: usize, k: usize) -> bool {
     let mut any = false;
     for g in &cx.closure_targets {
@@ -2359,6 +2561,42 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
     else {
         return false;
     };
+    borrows_slot_value(m, safe, &[], f, p)
+}
+
+/// Whether closure `g` only borrows the slot it captured by reference as its capture `idx`: every
+/// read of that capture (`closure.cap`) satisfies [`borrows_slot_value`].
+pub(crate) fn closure_borrows_capture(
+    m: &Module,
+    safe: &[Vec<bool>],
+    parks: &[bool],
+    g: FuncId,
+    idx: u32,
+) -> bool {
+    // A closure that never parks cannot be cancelled while it holds the slot's value out.
+    if parks.get(g.index()) == Some(&false) {
+        return true;
+    }
+    let Some(f) = m.funcs.get(g.index()) else {
+        return false;
+    };
+    let mut any = false;
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::ClosureCap, Imm::Idx(i), Some(r)) = (inst.op, inst.imm, inst.res)
+            && i == idx
+        {
+            any = true;
+            if !borrows_slot_value(m, safe, parks, f, r) {
+                return false;
+            }
+        }
+    }
+    any
+}
+
+/// Whether `f` only borrows the contents of the slot that the pointer `p` names (a parameter or a
+/// capture): it `take`s them, uses them as borrows, and `put`s the same value back.
+fn borrows_slot_value(m: &Module, safe: &[Vec<bool>], parks: &[bool], f: &Func, p: Value) -> bool {
     // What `p` holds (taken, or passed on to a block parameter), and the borrows derived from it.
     let mut taken: BTreeSet<u32> = BTreeSet::new();
     let mut derived: BTreeSet<u32> = BTreeSet::new();
@@ -2408,7 +2646,11 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                 .iter()
                 .any(|a| taken.contains(&a.0) || derived.contains(&a.0));
             let view = inst.op == Op::Load && inst.args.first() == Some(&p);
+            // A value that owns nothing and is no address (a promise handle, a number) is no
+            // borrow of the slot's contents.
+            let holds = m.needs_drop(f.ty(r)) || f.ty(r) == Ty::PTR;
             if (from_held || view)
+                && holds
                 && !taken.contains(&r.0)
                 && m.result_mode(f, inst) != Some(Mode::Move)
                 && derived.insert(r.0)
@@ -2456,6 +2698,10 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                     }
                 } else if *a == p {
                     let ok = match (inst.op, inst.imm) {
+                        // A closure made here that captures the slot by reference only borrows it.
+                        (Op::ClosureNew, Imm::Func(g)) => {
+                            closure_borrows_capture(m, safe, parks, g, i as u32)
+                        }
                         (Op::Take | Op::Load, _) => i == 0,
                         (Op::Put, _) => i == 0 && taken.contains(&inst.args[1].0),
                         (Op::Call, Imm::Func(g)) => {
@@ -2483,18 +2729,23 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                         }
                         _ => true,
                     };
+                    // Writing a scalar through a derived address changes no owned value.
+                    let scalar_write = inst.op == Op::Store
+                        && i == 0
+                        && inst.args.get(1).is_some_and(|v| !m.needs_drop(f.ty(*v)));
                     let borrowed = modes.get(i) == Some(&Mode::Borrow)
                         && method
-                        && !matches!(
-                            inst.op,
-                            Op::MoveOut
-                                | Op::Store
-                                | Op::Put
-                                | Op::CleanupPush
-                                | Op::TypeFill
-                                | Op::ListFill
-                                | Op::CallInd
-                        );
+                        && (scalar_write
+                            || !matches!(
+                                inst.op,
+                                Op::MoveOut
+                                    | Op::Store
+                                    | Op::Put
+                                    | Op::CleanupPush
+                                    | Op::TypeFill
+                                    | Op::ListFill
+                                    | Op::CallInd
+                            ));
                     if !putback && !borrowed {
                         return false;
                     }

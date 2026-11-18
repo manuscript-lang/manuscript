@@ -96,7 +96,7 @@ fn repo_files(dir: &str, ext: &str) -> Vec<PathBuf> {
 }
 
 fn examples() -> Vec<Example> {
-    examples_in(&repo_files("documentation", "md"), false)
+    examples_in(&repo_files("documentation", "md"), true)
 }
 
 fn ms(args: &[&str], stdin: &str, cwd: Option<&Path>) -> (Option<i32>, String, String) {
@@ -198,61 +198,195 @@ fn run_case(path: &str, dir: &Path, case: &Json) -> Option<String> {
     (!problems.is_empty()).then(|| format!("args {args:?}: {}\n{err}", problems.join("; ")))
 }
 
+/// Splits a fragment into top-level declarations (kept as is) and statements (placed in
+/// one function body, whose parameters are the fragment's `given` names) so that the whole
+/// text parses as a module.
+fn wrap_fragment(source: &str, given: &[String], context: &str) -> String {
+    // A snippet shown inside a function keeps its indentation in the book; remove it here.
+    let indent = source
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| l.len() - l.trim_start().len())
+        .min()
+        .unwrap_or(0);
+    let dedented: String = source
+        .lines()
+        .map(|l| format!("{}\n", l.get(indent..).unwrap_or("")))
+        .collect();
+    let source = dedented.as_str();
+    let mut decls = String::new();
+    decls.push_str(context);
+    if !context.is_empty() {
+        decls.push('\n');
+    }
+    let mut body = String::new();
+    let mut in_decl = false;
+    for line in source.lines() {
+        let starts_decl = ["import ", "type ", "enum ", "interface ", "fn ", "export "]
+            .iter()
+            .any(|k| line.starts_with(k));
+        let continues = in_decl && (line.is_empty() || line.starts_with([' ', '\t', ')']));
+        in_decl = starts_decl || continues;
+        if in_decl {
+            decls.push_str(line);
+            decls.push('\n');
+        } else {
+            body.push_str("    ");
+            body.push_str(line);
+            body.push('\n');
+        }
+    }
+    format!(
+        "{decls}\nfn example({}) Void!:\n{body}    return\n",
+        given.join(", ")
+    )
+}
+
+/// `ms check` on a snippet. A snippet binds names it never reads, so "never read" findings do
+/// not count. Returns the remaining diagnostic messages, empty when the snippet checks.
+fn check_snippet(path: &str) -> Vec<String> {
+    let (_, out, err) = ms(&["check", path, "--json"], "", None);
+    let Ok(doc) = ms_json::parse(&out) else {
+        return vec![err];
+    };
+    let diagnostics = doc
+        .get("diagnostics")
+        .and_then(Json::as_array)
+        .unwrap_or_default();
+    diagnostics
+        .iter()
+        .filter_map(|d| d.get("message").and_then(Json::as_str))
+        .filter(|m| !m.contains("is never read"))
+        .map(str::to_string)
+        .collect()
+}
+
+/// Checks one example and returns what is wrong with it; examples are independent, so
+/// `verify` runs them on several threads.
+fn verify_one(n: usize, example: &Example, dir: &Path) -> Vec<String> {
+    let mut failures = Vec::new();
+    let path = dir.join(format!("example{n}.ms"));
+    fs::write(&path, &example.source).unwrap();
+    let path = path.to_str().unwrap();
+    let name = format!("{}:{}", example.file.display(), example.line);
+    if example.spec.contains("\"mode\":\"fragment\"") {
+        // A fragment leaves names free. With a `given` list ("given":["raw: String"]) they become
+        // parameters of the wrapper function and the fragment is type-checked, so its imports and
+        // every standard name it uses must resolve. Without one it is only parsed: the
+        // declarations stay at the top and the statements move into a function body.
+        let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let given = json_strings(spec.get("given"));
+        let context = spec
+            .get("context")
+            .and_then(Json::as_str)
+            .unwrap_or_default();
+        fs::write(path, wrap_fragment(&example.source, &given, context)).unwrap();
+        if spec.get("given").is_some() || !context.is_empty() {
+            let found = check_snippet(path);
+            if !found.is_empty() {
+                failures.push(format!(
+                    "{name}: fragment does not check\n{}",
+                    found.join("\n")
+                ));
+            }
+        } else {
+            let (code, _, err) = ms(&["fmt", path], "", None);
+            if code != Some(0) {
+                failures.push(format!("{name}: fragment does not parse\n{err}"));
+            }
+        }
+        return failures;
+    }
+    if example.spec.contains("\"mode\":\"error\"") {
+        // A deliberately wrong sample: `ms check` must fail, and say `contains` when given.
+        // `given` wraps it like a fragment.
+        let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
+        if spec.get("given").is_some() {
+            let given = json_strings(spec.get("given"));
+            let context = spec
+                .get("context")
+                .and_then(Json::as_str)
+                .unwrap_or_default();
+            fs::write(path, wrap_fragment(&example.source, &given, context)).unwrap();
+        }
+        let (code, _, err) = ms(&["check", path], "", None);
+        let want = spec.get("contains").and_then(Json::as_str);
+        if code == Some(0) {
+            failures.push(format!("{name}: expected an error, but ms check passed"));
+        } else if let Some(want) = want
+            && !err.contains(want)
+        {
+            failures.push(format!("{name}: error does not contain {want:?}\n{err}"));
+        }
+        return failures;
+    }
+    if example.spec.contains("\"mode\":\"test\"") {
+        let (code, _, err) = ms(&["test", path, "--build-type", "Debug"], "", None);
+        if code != Some(0) {
+            failures.push(format!("{name}: ms test failed\n{err}"));
+        }
+        return failures;
+    }
+    if example.spec.contains("\"mode\":\"bench\"") {
+        let (code, _, err) = ms(
+            &["bench", path, "--time", "5ms", "--samples", "2"],
+            "",
+            None,
+        );
+        if code != Some(0) {
+            failures.push(format!("{name}: ms bench failed\n{err}"));
+        }
+        return failures;
+    }
+    let (code, _, err) = ms(&["check", path], "", None);
+    if code != Some(0) {
+        failures.push(format!("{name}: ms check failed\n{err}"));
+        return failures;
+    }
+    if !example.spec.contains("\"mode\":\"run\"") {
+        return failures;
+    }
+    let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
+    let mut cases = vec![spec.clone()];
+    cases.extend(
+        spec.get("cases")
+            .and_then(Json::as_array)
+            .unwrap_or_default()
+            .iter()
+            .cloned(),
+    );
+    for (i, case) in cases.iter().enumerate() {
+        let case_dir = dir.join(format!("run{n}-{i}"));
+        if let Some(problem) = run_case(path, &case_dir, case) {
+            failures.push(format!("{name}: case {i}: {problem}"));
+        }
+    }
+    failures
+}
+
 fn verify(examples: &[Example], label: &str) {
     let dir = std::env::temp_dir().join(format!("ms-{label}-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
-    let mut failures = Vec::new();
-    for (n, example) in examples.iter().enumerate() {
-        let path = dir.join(format!("example{n}.ms"));
-        fs::write(&path, &example.source).unwrap();
-        let path = path.to_str().unwrap();
-        let name = format!("{}:{}", example.file.display(), example.line);
-        if example.spec.contains("\"mode\":\"fragment\"") {
-            continue;
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let failures = std::sync::Mutex::new(Vec::new());
+    let threads = std::thread::available_parallelism().map_or(2, |n| n.get().min(8));
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| {
+                loop {
+                    let n = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(example) = examples.get(n) else {
+                        break;
+                    };
+                    let found = verify_one(n, example, &dir);
+                    failures.lock().unwrap().extend(found);
+                }
+            });
         }
-        if example.spec.contains("\"mode\":\"test\"") {
-            let (code, _, err) = ms(&["test", path, "--build-type", "Debug"], "", None);
-            if code != Some(0) {
-                failures.push(format!("{name}: ms test failed\n{err}"));
-            }
-            continue;
-        }
-        if example.spec.contains("\"mode\":\"bench\"") {
-            let (code, _, err) = ms(
-                &["bench", path, "--time", "5ms", "--samples", "2"],
-                "",
-                None,
-            );
-            if code != Some(0) {
-                failures.push(format!("{name}: ms bench failed\n{err}"));
-            }
-            continue;
-        }
-        let (code, _, err) = ms(&["check", path], "", None);
-        if code != Some(0) {
-            failures.push(format!("{name}: ms check failed\n{err}"));
-            continue;
-        }
-        if !example.spec.contains("\"mode\":\"run\"") {
-            continue;
-        }
-        let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
-        let mut cases = vec![spec.clone()];
-        cases.extend(
-            spec.get("cases")
-                .and_then(Json::as_array)
-                .unwrap_or_default()
-                .iter()
-                .cloned(),
-        );
-        for (i, case) in cases.iter().enumerate() {
-            let case_dir = dir.join(format!("run{n}-{i}"));
-            if let Some(problem) = run_case(path, &case_dir, case) {
-                failures.push(format!("{name}: case {i}: {problem}"));
-            }
-        }
-    }
+    });
     fs::remove_dir_all(&dir).ok();
+    let mut failures = failures.into_inner().unwrap();
+    failures.sort();
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
@@ -260,6 +394,16 @@ fn verify(examples: &[Example], label: &str) {
 fn marked_tutorial_examples_compile_and_pass() {
     let all = examples();
     assert!(all.len() >= 20, "found only {} examples", all.len());
+    let unmarked: Vec<String> = all
+        .iter()
+        .filter(|e| e.spec.is_empty())
+        .map(|e| format!("{}:{}", e.file.display(), e.line))
+        .collect();
+    assert!(
+        unmarked.is_empty(),
+        "add `<!-- manuscript-example: {{\"mode\":\"check\"}} -->` (or run, fragment with given, error) above each fence:\n{}",
+        unmarked.join("\n")
+    );
     verify(&all, "doc-examples");
 }
 
@@ -280,4 +424,55 @@ fn stdlib_comment_examples_are_marked_and_pass() {
         unmarked.join("\n")
     );
     verify(&all, "stdlib-examples");
+}
+
+/// README samples sit in `rust` fences (GitHub highlights those) and are not Markdown the book
+/// checks, so they drift. Each must pass `ms check`; a `"mode":"error"` marker names the
+/// diagnostic a deliberately wrong sample must give.
+#[test]
+fn readme_samples_check() {
+    let readme = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../README.md");
+    let text = fs::read_to_string(readme).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    let dir = std::env::temp_dir().join(format!("ms-readme-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let mut failures = Vec::new();
+    let mut count = 0;
+    for (i, line) in lines.iter().enumerate() {
+        if *line != "```rust" {
+            continue;
+        }
+        count += 1;
+        let source: Vec<&str> = lines[i + 1..]
+            .iter()
+            .copied()
+            .take_while(|l| !l.starts_with("```"))
+            .collect();
+        let path = dir.join(format!("readme{count}.ms"));
+        fs::write(&path, source.join("\n") + "\n").unwrap();
+        let (code, _, err) = ms(&["check", path.to_str().unwrap()], "", None);
+        let marker = i.checked_sub(1).and_then(|m| lines[m].strip_prefix(MARKER));
+        let want = marker
+            .and_then(|rest| ms_json::parse(rest.trim_end().trim_end_matches("-->").trim()).ok())
+            .and_then(|spec| {
+                spec.get("contains")
+                    .and_then(Json::as_str)
+                    .map(str::to_string)
+            });
+        match want {
+            Some(text) if code == Some(0) || !err.contains(&text) => {
+                failures.push(format!(
+                    "README.md:{}: want an error containing {text:?}\n{err}",
+                    i + 1
+                ));
+            }
+            None if code != Some(0) => {
+                failures.push(format!("README.md:{}: ms check failed\n{err}", i + 1));
+            }
+            _ => {}
+        }
+    }
+    fs::remove_dir_all(&dir).ok();
+    assert!(count >= 4, "found only {count} README samples");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

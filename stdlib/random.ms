@@ -22,16 +22,17 @@ import (
 	msstd_random_os_bytes from "@std/internal/random.ms",
 )
 
-// Returns a secure integer at least `min` and below `max_exclusive` when supplied, from
-// the operating system's entropy.
+// Returns a secure integer from the operating system's entropy, at least `min` and
+// below `max_exclusive`. When `max_exclusive` is `none`, the upper bound is the
+// largest Int. A `min` that is not below the bound returns `EINVAL`.
 // ms: effect std.random.read
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
 	return draw_int(min, max_exclusive)
 
 /*
 Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
-ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
-Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
+A ULID made later sorts after an earlier one as a string; two made in the same millisecond sort in random order.
+Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. An entropy failure returns an `Error`.
 */
 // ms: effect std.random.read
 // ms: effect std.clock.read
@@ -70,7 +71,7 @@ export fn ulid() String!:
 /*
 Returns a random token of `size` bytes as unpadded URL-safe Base64.
 The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
-`size` follows `random_bytes`: 0 through 16 MiB, otherwise EINVAL.
+`size` follows `random_bytes`: 0 through 16 MiB, otherwise `EINVAL`.
 */
 // ms: effect std.random.read
 export fn token(size: Int = 32) String!:
@@ -93,9 +94,9 @@ export fn shuffle[T](move values: List[T]) List[T]!:
 export fn choice[T](values: List[T]) T?!:
 	return draw_choice(values)
 
-// Returns `count` distinct positions' items chosen uniformly without replacement, in
-// random order, as copies; the input is unchanged. A `count` outside 0 through the list
-// length returns EINVAL.
+// Returns `count` items chosen uniformly without replacement, in random order, as
+// copies; the input is unchanged. A `count` outside 0 through the list length returns
+// `EINVAL`.
 // ms: effect std.random.read
 export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 	if count < 0 or count > values.length():
@@ -112,8 +113,8 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 	return ok(out)
 
 // Returns an item chosen with probability proportional to its weight, or none for an
-// empty list.
-// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns EINVAL.
+// empty list. `weights` must match `values` in length, hold no negative or non-finite
+// weight, and not all be zero; otherwise this returns `EINVAL`.
 // ms: effect std.random.read
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
 	if values.is_empty() and weights.is_empty(): return ok(none)
@@ -147,7 +148,7 @@ fn weight_total(count: Int, weights: List[Float]) Float:
 
 	return total
 
-// Selects a positive-weight position from a void draw, keeping ordinary sums on their
+// Selects a positive-weight position from a unit draw, keeping ordinary sums on their
 // original scale.
 fn weighted_position(weights: List[Float], unit_draw: Float, total: Float) Int:
 	if not total.is_finite() or total < 2.2250738585072014e-308:
@@ -189,9 +190,10 @@ fn scaled_weighted_position(weights: List[Float], unit_draw: Float) Int:
 
 	return last
 
-// Returns exactly `count` unpredictable bytes from the operating system, with `count`
-// from 0 through 16 MiB (16777216). A negative or larger count returns EINVAL; a source
-// failure returns EIO. The call observes task cancellation between 64 KiB chunks.
+// Returns exactly `count` unpredictable bytes from the operating system. `count` runs
+// from 0 through 16 MiB (16777216); a negative or larger count returns `EINVAL` and a
+// source failure returns `EIO`. The call observes task cancellation between 64 KiB
+// chunks.
 // ms: effect std.random.read
 export fn random_bytes(count: Int) Bytes!:
 	return msstd_random_os_bytes(count)
@@ -199,7 +201,7 @@ export fn random_bytes(count: Int) Bytes!:
 /*
 A deterministic pseudo-random generator: the same seed always gives the same sequence, on every platform.
 It is not secure; use `secure_int`, `float`, `shuffle` and `choice` when the values must be unpredictable.
-`var rng = seeded(1)` then `rng.int(0, 10)` returns the same value on every run.
+After `var rng = seeded(1)`, `rng.int(0, 10)` returns the same value on every run.
 */
 export type SeededRandom:
 	// Internal state: the SplitMix64 counter, advanced on every draw.
@@ -295,8 +297,7 @@ fn var SeededRandom.normal() Float:
 	radius := sqrt(-2.0 * log(1.0 - self.float()))
 	return radius * cos(6.283185307179586 * self.float())
 
-// Returns an exponentially distributed Float with rate 1 (mean 1), always positive
-// or zero.
+// Returns an exponentially distributed Float with rate 1 (mean 1); never negative.
 fn var SeededRandom.exponential() Float:
 	return -log(1.0 - self.float())
 
@@ -311,7 +312,7 @@ fn var SeededRandom.permutation(count: Int) List[Int]:
 		items.append(index)
 	return self.shuffle(items)
 
-// Returns a generator that starts from `seed`; equal seeds give equal sequences
-// (SplitMix64).
+// Returns a generator that starts from `seed`. Equal seeds give equal sequences. The
+// algorithm is SplitMix64.
 export fn seeded(seed: Int) SeededRandom:
 	return SeededRandom(state: seed)

@@ -6,6 +6,8 @@ Decision (the prime-time lead for Chinmay, 2026-11-15): a project names git depe
 
 Resolution (Chinmay, 2026-11-15: follow Rust): `version` is a Cargo-style requirement on tags (caret by default); one copy per repository per compatible range (major, or minor for 0.x), highest tag that satisfies every asker in the graph; another major is another copy with its own types. `ms.lock` has one line per copy keyed `github.com/acme/wire@v1.4.2`, a satisfying lock is kept, and `ms install --update @name` re-picks. `[project] version` is optional semver (CalVer fits); at a tagged commit it must equal the tag, the tag selects and the manifest only checks. Effects of a unified copy are checked against every dependent's allowance on every build. Design: [proposal](../../proposals/package-resolution.md), [resolver](../../crates/ms-driver/src/project/resolve.rs).
 
+Portability (bug bash 2026-11-18): the hash comes from the checked-out directory, so `ms install` rejects, from git's own file list and on every platform, a symbolic link, two paths equal after lowercasing, and a Windows-invalid name (`reject_unportable` in `fetch.rs`). Before, a Linux install pinned a case-colliding package that macOS and Windows could not reproduce. The test records such names with `git update-index --cacheinfo`, so it runs on every platform without creating them.
+
 Why: copying source with an alias had no pin, origin or check.
 
 Apply when: changing manifest parsing, import resolution, the loader's path confinement or logical file names, or `ms install`.

@@ -48,6 +48,7 @@ Matching a `Result` with only `ok` and `error` arms is flagged the same way as a
 
 A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (with an optional `-`), plain text literals, `true`, and `false`. Arms are tested in order; each value may appear once. A final `_` is required unless `true` and `false` are both covered. Arms bind nothing.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn name(count: Int) String:
     match count:
@@ -62,6 +63,7 @@ Computed values, interpolated text, ranges, and `Float` scrutinees are not liter
 
 An arm may hold statements then a final expression, which is its value; ending in a statement gives `Void`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Cents:
     Valid(amount: Int)
@@ -84,8 +86,9 @@ Short arms put the value after the colon (`none: 0`). End an effect-only arm wit
 
 Payloads bind by position in field order: exactly one identifier or `_` per field, even though constructors use named fields. Nullary cases are a bare name without `()`.
 
-Lowercase variant names, including `case`, follow the same rule. A lone lowercase arm binds a payload only when matching an `Optional`; on another enum it names a payloadless variant.
+A lone lowercase arm binds a payload only when matching an `Optional`; on another enum it names a payloadless variant, including a variant that is named in lowercase.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Position:
     Point(x: Int, y: Int)
@@ -110,6 +113,7 @@ fn horizontal(position: Position) Int:
 
 Arms never fall through, and a missing case is a compile error. `_:` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
 
+<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt: String)\n    Declined(reason: String)","given":[]} -->
 ```manuscript
 fn paid(payment: Payment) Bool:
     match payment:
@@ -121,7 +125,7 @@ fn paid(payment: Payment) Bool:
 
 Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return completeness follows the [function return rules](../functions/declarations-and-calls.md#void-and-never).
 
-## Optional and result values
+## Optional and Result values
 
 [Optional](../types/optionals.md) and [Result](../errors/results.md) are alternatives, but do not match them. Use `if value := expression:` for a value or success, `get(default)` for a default, `?` to propagate an error, and `is_error()` with `err()` to read a cause.
 
@@ -154,4 +158,4 @@ fn describe(shape: Shape) String:
 
 ## Matching resource references
 
-Matching a borrowed value borrows its payloads. Matching an owned value at its last use can move its payloads, transferring responsibility for their cleanup. Unmoved resource parts still close; see [ownership](../types/references.md). [Destructuring](../types/destructuring.md) uses brackets or braces; match cases use `Case(payload)`. See [references](../types/references.md).
+Matching a borrowed value borrows its payloads. Matching an owned value at its last use can move its payloads, which transfers responsibility for their cleanup. Resource parts that are not moved still close. See [mutation and references](../types/references.md). [Destructuring](../types/destructuring.md) uses brackets or braces, while match cases use `Case(payload)`.

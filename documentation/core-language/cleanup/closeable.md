@@ -7,6 +7,7 @@ weight = 3
 
 Implement `Closeable` when your type owns a resource that must be released at scope end. Import it from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 interface Closeable:
     var fn close() Void!
@@ -19,7 +20,7 @@ For a type that satisfies `Closeable`, cleanup calls its declared operation:
 
 A value typed as the standard `Closeable` interface owns its concrete value and closes it automatically. An unrelated interface merely declaring `var fn close() Void!` does not opt into cleanup; retain a concrete owner or call its `close()` explicitly.
 
-The standard handles a caller owns are nominal types with that method, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are types with that `close`, so a binding of one closes at scope end. Built-in descriptor streams hand queued writes to the runtime on close; they do not wait for delivery. A custom stream calls its source or sink’s `close`, which may wait. Use [`flush()`](scopes.md#close-a-resource-explicitly) to observe the destination’s backpressure or drain result before closing.
+The standard handles a caller owns are nominal types with that method, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are types with that `close`, so a binding of one closes at scope end. Closing a built-in descriptor write stream waits until its queued bytes are handed to the descriptor, then releases it, even if the wait fails; the failure is returned. A custom stream calls its source or sink’s `close`, which may wait. Call [`flush()`](scopes.md#close-a-resource-explicitly) before closing to handle a drain failure or observe the destination’s backpressure.
 
 ## Cloning a resource
 
@@ -39,18 +40,24 @@ A type, enum, `Optional`, `List` or `Map` that holds a `Closeable` value is itse
 | `List` | Elements, last index first |
 | `Map` | Values, last inserted first |
 
-A `Map` iterates in insertion order, so its close order is the reverse of the order you added the entries; no order is unspecified. Nested holders close depth first in the same way. A value derived from a resource, such as `name := r.name`, borrows it and cannot outlive it: the checker rejects closing or changing the resource while the borrow is still used.
+A `Map` iterates in insertion order, so its values close in the reverse of the order you added the entries. Nested holders close depth first in the same way. A value derived from a resource, such as `name := r.name`, borrows it and cannot outlive it: the checker rejects closing or changing the resource while the borrow is still used.
 
-A holder of values that are not resources adds no code, because a `List[Int]` or a type whose fields are strings is not a resource. A part may already have closed itself, for example in a hand-written `close` that forwards to its fields; closing again is harmless because `close()` is idempotent. A generic holder such as `List[T]` also closes its resource parts: lowering selects cleanup for each concrete instance, and an instance holding only plain data adds no close calls. Overwriting a field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map close the old part first, then store the new one; `xs.pop()` returns the element to a binding, which closes it. `splice` closes the elements it deletes. `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners of resources, so the checker rejects them on a holder of resources; move a list element out with `pop`. `remove` closes the removed element. A `Set` cannot hold resources because its elements must be `Hashable`.
+A holder of values that are not resources adds no code: a `List[Int]`, or a type whose fields are strings, is not a resource. A generic holder such as `List[T]` closes its resource parts, and the compiler picks cleanup for each concrete instance, so an instance holding only plain data adds no close calls. A part may already have closed itself (for example in a hand-written `close` that forwards to its fields). Closing again is harmless because `close()` is idempotent.
+
+- **Replacing or removing closes the old part first.** This covers overwriting a field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map. `splice` closes the elements it deletes.
+- **`pop` hands the element out.** `xs.pop()` returns the element to a binding, which closes it. To take an element out of a list, use `pop`.
+- **Some methods are rejected on a holder of resources.** `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners, so the checker refuses them.
+- **No sets.** A `Set` cannot hold resources because its elements must be `Hashable`.
 
 A similarly named method whose signature is not `fn var close() Void!` does not opt a concrete type into cleanup.
 
-`close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. Implementations coordinate ongoing access with closure and report closed state afterward.
+`close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. An implementation must coordinate access that is still in progress when `close()` runs, and report the closed state afterward.
 
 ## A close returns a Result
 
 `close()` returns `Void!`, which is `Result[Void, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok()`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 

@@ -9,7 +9,9 @@ weight = 4
 
 ## String literals
 
-A literal is delimited by `"` and fits on one source line. Plain `"..."` text never interpolates: braces are ordinary characters, so `"{"` and `"{\"a\": 1}"` mean what they say. Text that inserts values is written `f"..."` ([interpolation](#interpolation)). Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Raw and multi-line literals](#multi-line-and-raw-literals) skip escapes or span lines. There are no single-quoted or byte literals.
+A literal is delimited by `"` and fits on one source line. Plain `"..."` text never interpolates: braces are ordinary characters, so `"{"` and `"{\"a\": 1}"` mean what they say. Text that inserts values is written `f"..."` ([interpolation](#interpolation)).
+
+Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Raw and multi-line literals](#multi-line-and-raw-literals) skip escapes or span lines. There are no single-quoted or byte literals.
 
 | Escape | Value |
 | --- | --- |
@@ -23,6 +25,7 @@ A literal is delimited by `"` and fits on one source line. Plain `"..."` text ne
 
 Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace in `f` text, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 quote := "She said \"hello\"."
 template := "Literal braces: {name}"
@@ -32,12 +35,19 @@ symbol := "\u{1F642}"
 
 ## Multi-line and raw literals
 
-`"""` opens text that spans lines. The opening quotes end their line, the closing quotes stand alone on a later line, and the closing line's indentation is removed from every line, so the text can be indented with the code around it. The line break after the opening quotes and the one before the closing line are not part of the value. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error. Escapes work as in `"..."`, `"` needs no escape, and braces are plain. `f"""` is the same text with `{expression}` interpolation as in `f"..."` (an interpolated expression still stays on one line). The text cannot contain `"""` at all.
+`"""` opens text that spans lines.
+
+- The opening quotes end their line, and the closing quotes stand alone on a later line.
+- The closing line's indentation is removed from every line, so the text can be indented with the code around it. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error.
+- The line break after the opening quotes and the one before the closing line are not part of the value.
+- Escapes work as in `"..."`, `"` needs no escape, and braces are plain. The text cannot contain `"""` at all.
+- `f"""` is the same text with `{expression}` interpolation as in `f"..."`; an interpolated expression still stays on one line.
 
 `r"..."` is one-line raw text: every character is literal up to the first `"`, so there are no escapes, and it cannot contain a quote. Use it for regular expressions and Windows paths: `digits := r"\d+"`. Control characters (tabs included) are rejected as in `"..."`; use `r"""` for text with quotes.
 
 `r"""` opens raw text with the same layout where every character is literal: no escapes, no interpolation, braces and backslashes included. Use it for JSON, regular expressions, and fixtures.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 name := "Ada"
 greeting := f"""
@@ -51,12 +61,13 @@ config := r"""
 
 `greeting` is `Hello, Ada!` and `  Indented line, "quoted".` on two lines; `config` holds the JSON exactly as written. Import paths, `test` names and `bench` names must be one-line `"..."` text. The formatter keeps the literal's lines and moves them with the line where the literal starts.
 
-Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equality](../types/equality-and-hashing.md) compares contents exactly.
+Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values, and [equality](../types/equality-and-hashing.md) compares contents exactly.
 
 ## Interpolation
 
 Only `f"..."` and `f"""` text interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed; a nested literal that interpolates is itself an `f` literal. Empty expressions, format suffixes, comments, and newlines are rejected. Write `\{` and `\}` for literal braces inside `f` text. A plain `"..."` or `"""` literal never interpolates, so `"{name}"` is the six characters `{name}`; if a value is not inserted, a missing `f` is the usual cause.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 name := "Ada"
 count := 3
@@ -70,6 +81,7 @@ Embedded expressions evaluate once, left to right, each formatted before the nex
 
 Every value has a built-in `to_string() String`, needing no import or bound. A bound method keeps its receiver:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn text[T](value: T) String:
     return value.to_string()
@@ -84,8 +96,11 @@ test "string conversion":
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
 
-A type or enum may declare its own `fn T.to_string() String`. It replaces the built-in text form of a value of that type wherever the conversion happens: `value.to_string()`, a bound `value.to_string`, `f"{value}"`, and `print(value)`. A value of that type nested in a list, map, set, optional, record field or payload shows the same text, so a list prints as its items do. A type without its own method, and every other kind of value, uses the built-in method, which wins over any field or interface operation named `to_string`. The built-in conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
+A type or enum may declare its own `fn T.to_string() String`. It replaces the built-in text form of a value of that type wherever the conversion happens: `value.to_string()`, a bound `value.to_string`, `f"{value}"`, and `print(value)`.
 
+A value of that type nested in a list, map, set, optional, record field or payload shows the same text, so a list prints as its items do. A type without its own method, and every other kind of value, uses the built-in method, which wins over any field or interface operation named `to_string`. The built-in conversion never calls user-defined formatting or resource operations; a closed resource is still printable.
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Money:
     cents: Int
@@ -96,16 +111,18 @@ fn Money.to_string() String:
 
 ## Indexing and character boundaries
 
-There is no `text[index]`, and no integer scalar index into a String. Positions are **byte offsets**, as in Rust: `length()` is the byte count in constant time, and `slice`, `view`, `index_of`, `last_index_of` and `scalar_at` all speak bytes, so a position found by one can be passed to another. Walk characters with `for c in text.chars()` or the `scalars(text)` stream from `@std/text.ms`; nothing walks the text from the start on every access. Bytes, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
+There is no `text[index]`, and no integer scalar index into a String. Positions are **byte offsets**, as in Rust. `length()` is the byte count in constant time, and `slice`, `view`, `index_of`, `last_index_of` and `scalar_at` all take byte offsets, so a position found by one can be passed to another. Walk characters with `for c in text.chars()` or the `scalars(text)` stream from `@std/text.ms`.
+
+Bytes, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
 
 - `index_of` and `last_index_of` return the byte offset of the first or last match, or `none`. An empty search matches at 0 (`index_of`) or `length()` (`last_index_of`).
 - `scalar_at(offset, default:)` returns the code point that starts at byte `offset` as an Int. An offset that is out of range or inside another scalar gives the default, or a fault without one.
-- `length()` counts bytes in constant time; `scalar_length()` counts scalars in linear time; `is_empty()` tests for zero.
+- `scalar_length()` counts scalars in linear time; `is_empty()` tests for zero length.
 - `chars()` returns a `List[String]` that borrows the receiver, like `split` and `lines`; `scalar_values()` returns code points.
 - `reverse()` reverses scalars without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`.
 - `compare(other:)` returns `-1`, `0`, or `1` by scalar order, case-sensitive, a prefix first: `"Z".compare("a")` is `-1`; `"é".compare("e\u{301}")` is `1`.
 - `lines()` splits at LF or CRLF, drops those terminators, keeps interior empty lines and lone CRs, and adds no item for a final newline: `"a\r\nb\n".lines()` is `["a", "b"]`, `"\n\n".lines()` is `["", ""]`, `"a\r".lines()` is `["a\r"]`.
-- `split`, `lines` and `chars` lend their receiver: the result is used in place while the receiver stays unchanged, and keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `Row(line.split(" ").clone())` does. A loop variable over a lent result borrows its piece, so `out.append(piece.clone())` keeps it.
+- `split`, `lines` and `chars` borrow their receiver: the result is used in place while the receiver stays unchanged, and keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `Row(line.split(" ").clone())` does. A loop variable over a borrowed result borrows its piece, so `out.append(piece.clone())` keeps it.
 
 ### Half-open slices
 
@@ -117,13 +134,11 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 | `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is a new owned List with independent storage. |
 | `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is an owned copy of the selected bytes. |
 
-`String.view(start, end)` takes the same byte bounds as `slice` and borrows the range without copying, like `Bytes.view`. A bound outside the string, or inside a scalar, raises a fault, not an `Error`. The receiver must stay unchanged while the view is used; storing or returning a view is rejected, so call `.clone()` on it to keep an independent `String`. Use `slice` when you want an owned copy that never faults.
+`String.view(start, end)` takes the same byte bounds as `slice` and borrows the range without copying. `Bytes.view(start, end)` does the same for bytes. A bound outside the receiver, or inside a scalar of a String, raises a fault, not an `Error`. The receiver must stay unchanged while the view is used, and storing or returning a view is rejected. Call `.clone()` on the view to keep an independent value. Use `String.slice` when you want an owned copy that never faults.
 
 `String.view_bytes()` borrows the UTF-8 bytes of the whole text as `Bytes` without copying, where `to_bytes()` copies them. It follows the same rule as `view`: the text must stay unchanged while the bytes are used, storing or returning them is rejected, and `.clone()` keeps an independent `Bytes`. The bytes of a temporary receiver are copied, because the temporary does not outlive the call.
 
 Equal bounds give an empty range. List and Bytes bounds are never clamped or swapped: `xs.slice(start: 0, end: n + 1)` is an `"ERANGE"` error, not a fault. `String.slice` clamps instead: `"aé🙂z".slice(start: -5, end: 7)` is `"🙂"`; `slice(start: 3, end: 1)` is `""`, `slice(start: 2, end: 7)` (inside `é`) is `"🙂"`, and `slice(start: 1, end: 12)` is `"é🙂z"`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections/collections.ms.md), and [Bytes](../../standard-library/reference/bytes.ms.md) references.
-
-`Bytes.view(start, end)` uses the same byte bounds and borrows the range without copying. Invalid bounds raise a fault. The receiver must stay available while the view is used; call `.clone()` on the view to keep an independent value.
 
 ## Replacing text
 
@@ -141,14 +156,17 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 | `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start: Int, end: Int) String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
-`to_bytes` encodes UTF-8. `Bytes.decode_utf8` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
+`to_bytes` encodes UTF-8. `Bytes.decode_utf8` succeeds exactly for valid UTF-8 and returns `none` otherwise. `get(index)`, `get_or(index, default)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic. Negative indexes count from the end. `get` and `[]` fault when the index is out of range, while `get_or` returns its default. Bytes are immutable, so `data[i] = v` is rejected.
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
-`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. `parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
+`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`.
+
+`parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Locale-aware operations are unsupported.
 
 `trim`, `trim_start` and `trim_end` remove the Unicode `White_Space` scalars: U+0009 to U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. Zero-width spaces (U+200B), U+180E and U+FEFF are not whitespace.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -187,7 +205,9 @@ test "padding and fixed digits":
 
 ## Binary data
 
-`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `T!` (`Result[T, Error]`); bytes that are not all there give an `Error` of kind `"ERANGE"`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
+`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `T!` (`Result[T, Error]`); bytes that are not all there give an `Error` of kind `"ERANGE"`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`.
+
+`BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript

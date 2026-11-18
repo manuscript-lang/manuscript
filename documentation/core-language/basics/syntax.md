@@ -9,6 +9,7 @@ A `.ms` file is a module. Top level holds imports, types, functions, constants, 
 
 `src/greeting.ms`:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export type Customer:
     name: String
@@ -29,6 +30,7 @@ Calls take positional arguments, optional labels, or both; an unlabeled argument
 
 Expressions inside parentheses, brackets, or braces can span lines:
 
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    active: Bool\n    email: String?","given":[]} -->
 ```manuscript
 customer := Customer(
     name: "Ada",
@@ -36,8 +38,11 @@ customer := Customer(
 )
 ```
 
-Comments start with `//` and run to the end of the line (a trailing comment follows code on its line). A multi-line comment is a `/* ... */` block on its own lines. The comment lines or block directly above a declaration, or a trailing `//` on its line, document it. See the [grammar](grammar.md) for the exact rules. Source is UTF-8 and case-sensitive. Identifiers use ASCII letters, digits, and underscores; text and comments may contain Unicode.
+Comments start with `//` and run to the end of the line (a trailing comment follows code on its line). A multi-line comment is a `/* ... */` block on its own lines. The comment lines or block directly above a declaration, or a trailing `//` on its line, document it. See the [grammar](grammar.md) for the exact rules.
 
+Source is UTF-8 and case-sensitive. Identifiers use ASCII letters, digits, and underscores; text and comments may contain Unicode.
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 // A local binding can infer its type from the value.
 count := 3
@@ -72,6 +77,7 @@ fn check(rows: List[String], limit: Int) String:
 
 A file's resolved path identifies its module. `export` makes a declaration visible to other modules:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import Customer from "./greeting.ms"
 ```

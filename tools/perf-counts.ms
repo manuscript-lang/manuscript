@@ -27,7 +27,7 @@ PROGRAMS := ["interp", "strings", "lz", "graph"]
 GUARDS := [
 	"crypto", "regex", "image", "chains", "maps", "cleanup", "resultvar", "csvcells",
 	"mapinsert", "http-request", "splitfirst", "splitbuf", "findshort", "append",
-	"strcmp"
+	"strcmp", "iterchain"
 ]
 // Guards that take their own path as the argument (they start themselves as a child,
 // which valgrind does not follow, so only the part under test is counted).

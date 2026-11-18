@@ -29,6 +29,7 @@ Inactive
 
 A short branch can be one simple statement on the same line:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn status(active: Bool) String:
     if active: return "Active"
@@ -44,6 +45,7 @@ See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing i
 - Each branch has its own scope; assignments to an outer `var` persist.
 - An `else if` chain tests in order and stops at the first match.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn classify(value: Int) String:
     if value < 0:
@@ -60,6 +62,7 @@ fn classify(value: Int) String:
 
 `if c: a else: b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and `else if` chains:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn sign(value: Int) Int:
     return if value < 0: -1 else if value == 0: 0 else: 1
@@ -71,6 +74,7 @@ The branches are one-line expressions on the same line. For statements in a bran
 
 `if name := expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn greeting(name: String?) String:
     if value := name:
@@ -79,6 +83,7 @@ fn greeting(name: String?) String:
         return "Hello!"
 ```
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn port(lookup: Result[Int, Error]) Int:
     if value := lookup:
@@ -86,7 +91,13 @@ fn port(lookup: Result[Int, Error]) Int:
     return 8080
 ```
 
-`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it: `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`, and `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar. A missing key or out-of-range index takes the `else` branch. The origin must be `var`, and nothing else may use it until the last use of `name`. `place[key]?` is written only here. `if var name = map.get(key):` also borrows the map entry in place. For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary Optional. To change an independent copy, use `if v := x` and explicitly clone the payload into a `var`.
+`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it. `place[key]?` is written only here.
+
+- `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`. `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar.
+- A missing key or out-of-range index takes the `else` branch.
+- The origin must be `var`, and nothing else may use it until the last use of `name`.
+- `if var name = map.get(key):` also borrows the map entry in place.
+- For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary `Optional`. To change an independent copy, use `if v := x` and clone the payload into a `var`.
 
 This complete test updates an existing map entry:
 
@@ -107,6 +118,7 @@ A present `0`, `false`, or empty string still takes the first branch. The bindin
 
 Validate with an early return:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn nonnegative(value: Int) Bool:
     if value < 0:

@@ -133,7 +133,8 @@ fn build_huffman(counts: List[Int], values: List[Int]) JpegHuffman!:
 fn empty_huffman() JpegHuffman:
 	return JpegHuffman(false, List[Int](), List[Int](), List[Int](), List[Int]())
 
-// Coded blocks in the scan.
+// The parameters of one scan: the indexes of the components it codes, its spectral
+// selection `ss` through `se`, and its successive approximation bits `ah` and `al`.
 type JpegScan:
 	members: List[Int]
 	ss: Int
@@ -354,8 +355,11 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
 
 	return plane
 
-// Decodes baseline or progressive JPEG into a raster; `EBADMSG`, `ENOTSUP` or
-// `EOVERFLOW` on failure.
+// Decodes a baseline or progressive Huffman-coded JPEG with 8-bit samples into a raster
+// of 1 channel (gray) or 3 (RGB); CMYK and YCCK images are converted to RGB. Malformed
+// data returns EBADMSG. An unsupported feature, such as arithmetic coding or another
+// sample precision, returns ENOTSUP, and dimensions past `max_pixels` or the hard
+// ceiling return EOVERFLOW.
 export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 	n := data.length()
 	if n < 4 or data.get(0).to_int() != 255 or data.get(1).to_int() != 216:

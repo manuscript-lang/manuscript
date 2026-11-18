@@ -104,6 +104,32 @@ fn help_for_unknown_command_lists_commands() {
     assert!(err.contains("Commands: check,"), "{err}");
 }
 
+/// `ms --help` lists every command the unknown-command error names (`install`, `add` and `remove`
+/// were once missing from it).
+#[test]
+fn help_lists_every_command() {
+    let (_, err) = ms(&["help", "bogus"]);
+    let names = err
+        .split("Commands: ")
+        .nth(1)
+        .unwrap()
+        .split(". Run")
+        .next()
+        .unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .arg("--help")
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{out:?}");
+    let help = String::from_utf8_lossy(&out.stdout);
+    for name in names.split(", ") {
+        let listed = help
+            .lines()
+            .any(|l| l.split_whitespace().next() == Some(name) && l.starts_with("  "));
+        assert!(listed, "ms --help does not list {name}:\n{help}");
+    }
+}
+
 #[test]
 fn path_in_command_position_suggests_run() {
     let (status, err) = ms(&["main.ms"]);

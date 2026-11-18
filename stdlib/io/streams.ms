@@ -5,13 +5,13 @@ import (
 	ReadStream, WriteStream from "@std/io/io.ms",
 )
 
-// Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A
-// step pulls its input only inside its own `next`, so a slow consumer slows every step
-// and the source, and closing a step closes its input.
+// Steps for streams. Each takes its input first, so a pipeline can be written with
+// the `|` operator. A step pulls from its input only inside its own `next`, so a slow
+// consumer slows every step and the source. Closing a step closes its input.
 
-// Lines of bytes, without their `\n` or `\r\n`, cut only at line ends; the unterminated
-// last line comes at the end.
-// `data` is the current chunk and `start` the first unread byte; `pending` owns earlier unfinished fragments.
+// Internal: lines of text, without their `\n` or `\r\n`, cut only at line ends. An
+// unterminated last line comes at the end. `data` is the current chunk, `start` is
+// the first unread byte in it, and `pending` holds earlier unfinished fragments.
 type Lines:
 	input: ReadStream[Bytes]
 	data: Bytes
@@ -22,20 +22,21 @@ type Lines:
 	pending_cr: Bool
 	max_bytes: Int?
 
-// Fails with `EOVERFLOW` when a line of `size` bytes is longer than the limit.
+// Internal: fails with `EOVERFLOW` when a line of `size` bytes is longer than the
+// limit.
 fn Lines.check(size: Int) Void!:
 	if limit := self.max_bytes:
 		if size > limit: return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 
-// Decodes the held bytes in `[start, stop)` as one line, or fails with `EBADMSG`
-// rather than turning bytes that are not UTF-8 into an empty line. The range is
-// decoded in place, with no `Bytes` copy of the line first.
+// Internal: decodes the held bytes in `[start, stop)` as one line. Bytes that are not
+// UTF-8 fail with `EBADMSG` rather than becoming an empty line. The range is decoded
+// in place, without first copying the line into a `Bytes`.
 fn Lines.decode(start: Int, stop: Int) String!:
 	if text := self.data.decode_utf8_range(start, stop): return ok(text)
 	return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
-// Joins only a completed line; incomplete chunks are copied once, not as a growing
-// prefix.
+// Internal: joins only a completed line. Incomplete chunks are copied once, not as a
+// growing prefix.
 fn var Lines.take(stop: Int, terminated: Bool) String!:
 	if self.pending_size == 0:
 		var end = stop
@@ -103,15 +104,16 @@ fn var Lines.next() String?!:
 fn var Lines.close() Void!:
 	return self.input.close()
 
-// Reads lines of text from a byte stream such as `stdin()`: splits `input` at `\n`,
-// removing a trailing `\r`; a line longer than `max_bytes` is an error.
+// Reads lines of text from a byte stream such as `stdin()`. It splits `input` at
+// `\n` and removes a trailing `\r`. A line longer than `max_bytes` returns
+// `EOVERFLOW`, and a line that is not valid UTF-8 returns `EBADMSG`.
 export fn lines(input: ReadStream[Bytes], max_bytes: Int? = none) ReadStream[String]:
 	return ReadStream[String](
 		Lines(input, "".to_bytes(), 0, false, [], 0, false, max_bytes)
 	)
 
-// Items of a list, in order. The list is the stream's own, held last item first so
-// `pop` moves the next one out.
+// Internal: the items of a list, in order. The list belongs to the stream and is held
+// last item first, so `pop` moves the next one out.
 type ListSource[T]:
 	items: List[T]
 
@@ -121,15 +123,15 @@ fn var ListSource[T].next() T?!:
 fn var ListSource[T].close() Void!:
 	return ok()
 
-// A stream that yields copies of the items of `items` in order and then ends; the items
-// must be Clonable, since a resource has one owner and cannot be copied (move it into a
-// custom Source instead).
+// Returns a stream that yields copies of the items of `items` in order and then ends.
+// The items must be Clonable: a resource has one owner and cannot be copied, so move
+// it into a custom `Source` instead.
 export fn from_list[T: Clonable](items: List[T]) ReadStream[T]:
 	var reversed = items.clone()
 	reversed.reverse()
 	return ReadStream[T](ListSource[T](reversed))
 
-// Chunks of at most `chunk_bytes` bytes of `data`.
+// Internal: chunks of at most `chunk` bytes of `data`.
 type BytesSource:
 	data: Bytes
 	at: Int
@@ -148,8 +150,8 @@ fn var BytesSource.next() Bytes?!:
 fn var BytesSource.close() Void!:
 	return ok()
 
-// A stream that yields `data` in chunks of at most `chunk_bytes` bytes and then ends. A
-// `chunk_bytes` below 1 makes the first read fail with `EINVAL`.
+// Returns a stream that yields `data` in chunks of at most `chunk_bytes` bytes and
+// then ends. A `chunk_bytes` below 1 makes the first read fail with `EINVAL`.
 export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream[Bytes]:
 	return ReadStream[Bytes](BytesSource(data, 0, chunk_bytes))
 
@@ -166,7 +168,8 @@ fn var Mapped[T, U].next() U?!:
 fn var Mapped[T, U].close() Void!:
 	return self.input.close()
 
-// A stream of `f` applied to each item of `input`; closing it closes `input`.
+// Returns a stream of `f` applied to each item of `input`. Closing it closes
+// `input`.
 export fn map[T, U](input: ReadStream[T], f: fn(T) U) ReadStream[U]:
 	return ReadStream[U](Mapped[T, U](input, f))
 
@@ -186,12 +189,12 @@ fn var Filtered[T].next() T?!:
 fn var Filtered[T].close() Void!:
 	return self.input.close()
 
-// A stream of the items of `input` for which `keep` is true, in order; closing it
-// closes `input`.
+// Returns a stream of the items of `input` for which `keep` is true, in order.
+// Closing it closes `input`.
 export fn filter[T](input: ReadStream[T], keep: fn(T) Bool) ReadStream[T]:
 	return ReadStream[T](Filtered[T](input, keep))
 
-// The first `left` items of another stream; it never pulls past them.
+// Internal: the first `left` items of another stream; it never pulls past them.
 type Taker[T]:
 	input: ReadStream[T]
 	left: Int
@@ -206,14 +209,15 @@ fn var Taker[T].next() T?!:
 fn var Taker[T].close() Void!:
 	return self.input.close()
 
-// A stream of at most the first `count` items of `input`, then the end: later items are
-// never read, so `take` can end an endless stream. A failed read does not count as an
-// item. A `count` of 0 or less is an empty stream. Closing it closes `input`.
+// Returns a stream of at most the first `count` items of `input`, then the end. Later
+// items are never read, so `take` can end an endless stream. A failed read does not
+// count as an item. A `count` of 0 or less gives an empty stream. Closing it closes
+// `input`.
 export fn take[T](input: ReadStream[T], count: Int) ReadStream[T]:
 	return ReadStream[T](Taker[T](input, count))
 
-// Combines the items of `input` in order into one value: `f` takes the value so far and
-// the next item, starting from `start`.
+// Combines the items of `input` in order into one value: `f` takes the value so far
+// and the next item, starting from `start`. A failed read returns its error.
 export fn fold[T, S](input: ReadStream[T], start: S, f: fn(S, T) S) S!:
 	var source = input
 	var total = start
@@ -221,7 +225,8 @@ export fn fold[T, S](input: ReadStream[T], start: S, f: fn(S, T) S) S!:
 		total = f(total, item)
 	return ok(total)
 
-// Every item of `input`, in order; more than `max_items` items is an error.
+// Returns every item of `input`, in order. More than `max_items` items returns
+// `EOVERFLOW`.
 export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
 	var source = input
 	var items: List[T] = []
@@ -234,7 +239,7 @@ export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
 
 	return ok(items)
 
-// All bytes of `input`; more than `max_bytes` bytes is an error.
+// Returns all bytes of `input`. More than `max_bytes` bytes returns `EOVERFLOW`.
 export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
 	var source = input
 	var all = BytesBuilder()
@@ -249,8 +254,8 @@ export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
 
 	return ok(all.build())
 
-// Moves every item of `input` to `output`, pulling the next only after `write` accepts
-// the last; answers how many.
+// Moves every item of `input` to `output`, pulling the next item only after `write`
+// accepts the last, then flushes `output`. Returns the number of items moved.
 export fn copy[T](input: ReadStream[T], output: WriteStream[T]) Int!:
 	var source = input
 	var sink = output

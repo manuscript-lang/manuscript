@@ -117,7 +117,10 @@ ms test test.ms --repeat 10 --shuffle 42
 - Copy exact `module::name` identities from `--list`; repeat `--test` to select several.
 - `--filter`, `--match`, and `--exclude` narrow the selection; regexes match any part of the identity. Empty selections fail.
 - `--list` builds but never runs test bodies.
-- Test files run at once, each in its own promise, in one process; a file's tests run in order and share its fixture. Process-wide state (working directory, environment, files, services) is shared, so a test that changes it restores it. A fault in a test ends its file: later tests in that file are reported not run. `--shuffle` takes a seed.
+- Test files run concurrently, each in its own promise, in one process. A file's tests run in order and share its fixture.
+- Process-wide state (working directory, environment, files, services) is shared, so a test that changes it must restore it.
+- A fault in a test ends its file: later tests in that file are reported not run.
+- `--shuffle` takes a seed.
 - `--fail-fast` leaves remaining tests `not_run` in JSON.
 
 ## Property tests and fuzzing
@@ -208,7 +211,11 @@ ms bench ms.toml --filter "sum" --json
 - To keep setup out of the timing, build the data first and time only the work: `measure(1000, fn: keep(data.sorted().length()))?` from `@std/test/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
 - Each bench runs in its own process. A body that returns an error, faults, or exceeds `--timeout` (default 10 minutes) fails that bench and the exit status is 1. Standard output written by a bench is discarded.
 - `--json` adds `stats` to each entry of `benches`: `iterations`, `operations`, `samples`, and `min_ns`, `median_ns`, `mean_ns`, `max_ns`, `stddev_ns` in nanoseconds per operation (per iteration when `operations` is 1), and `cpu_ns`, the process CPU time (user plus kernel) per operation, which ignores time spent waiting for a CPU.
-- `--json` also reports the runtime's work per operation from one extra counted run: `allocations`, `allocated_bytes`, `list_copies`, `list_copy_bytes`, `string_clones` and `string_clone_bytes`. Unlike times, these do not depend on machine load or on the host, so they can gate a build. Save a run with `ms bench ms.toml --json > baseline.json`, then `ms bench ms.toml --baseline baseline.json --fail-over 3` exits 1 and names each count that rose more than 3% (times are never compared). Allocations count the calling thread and finished threads; copies count the calling isolate. Work done inside the Rust runtime (crypto, regex, image decoding) shows only as allocations and bytes, so also watch the time for those. `ms bench --ops` also counts the MIR operations your own code executes (`mir_ops` in `--json`, `MIR ops` in the text): the build carries a counter, runs each bench once, and gives the same number on every platform and backend, so a project such as a database driver can gate on its own code without caring about the runtime. Times of an `--ops` run are not meaningful; run without `--ops` for times. `--baseline` compares `mir_ops` like the other counts.
+- `--json` also reports the runtime's work per operation from one extra counted run: `allocations`, `allocated_bytes`, `list_copies`, `list_copy_bytes`, `string_clones` and `string_clone_bytes`. Unlike times, these do not depend on machine load or on the host, so they can gate a build.
+  - Save a run with `ms bench ms.toml --json > baseline.json`. Then `ms bench ms.toml --baseline baseline.json --fail-over 3` exits 1 and names each count that rose more than 3% (times are never compared).
+  - Allocations count the calling thread and finished threads. Copies count the calling thread. Work done inside the Rust runtime (crypto, regex, image decoding) shows only as allocations and bytes, so also watch the time for those.
+  - `ms bench --ops` also counts the MIR operations your own code executes (`mir_ops` in `--json`, `MIR ops` in the text). The build carries a counter and runs each bench once. The count is the same on every platform and backend, so a project such as a database driver can gate on its own code without depending on the runtime.
+  - Times of an `--ops` run are not meaningful; run without `--ops` for times. `--baseline` compares `mir_ops` like the other counts.
 - Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `?` so the compiler cannot discard the work; `ms bench` builds `Release` by default, which is what you want to measure.
 
 ## Profile application work
@@ -256,7 +263,7 @@ PASS test.ms::starts fresh
 2 tests, 0 failed
 ```
 
-A file's tests share one fixture: `make_fixture` and `before_all` run once before the file's first test, `before_each` and `after_each` around each test, and `after_all` after the last, so `before_each` above resets the `Counter` that the second test reads. Each `--repeat` round runs the file again on a new fixture.
+A file's tests share one fixture. `make_fixture` and `before_all` run once before the file's first test, `before_each` and `after_each` run around each test, and `after_all` runs after the last. So `before_each` above resets the `Counter` that the second test reads. Each `--repeat` round runs the file again on a new fixture.
 
 - One instance per file and run; a fault in a test still runs `after_each` and `after_all`, and the file's later tests are reported not run.
 - Optional hooks (use `self`, no arguments, return `Void!`): `before_all`, `before_each`, `after_each`, `after_all`. A hook's error fails the tests it guards; `skip(reason)?` skips them.
@@ -268,6 +275,7 @@ There is no platform attribute on `test` blocks. Skip at run time instead, compa
 
 To skip a single test, call `skip` in its body:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import skip from "@std/test/test.ms"
 import os, Os from "@std/os/system.ms"
@@ -280,6 +288,7 @@ test "unix permission bits":
 
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import skip from "@std/test/test.ms"
 import os, Os from "@std/os/system.ms"

@@ -20,6 +20,9 @@ Commands:
   review         Report where to look: project map, or the semantic effect of a diff
   profile        Run with sampling profile capture: folded stacks, pprof, top report
   init           Create a new project with a manifest, entry, test, .gitignore, and .gitattributes
+  install        Download the packages under [dependencies] and pin them in ms.lock
+  add            Add a git dependency to ms.toml and install it
+  remove         Remove a dependency from ms.toml and ms.lock
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
   skill          Print the Manuscript agent skill, or write its files with -o
@@ -75,7 +78,7 @@ Examples:
 pub const HELP_LINT: &str = r#"Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix] [--deny-warnings]
 
 Check source hygiene and semantic lint rules in independent inputs and their imports.
-A project directory selects ms.toml; standalone directories discover .ms files recursively.
+A project directory selects ms.toml; standalone directories discover .ms files recursively. A project lints all its source modules and test files, imported or not.
 Discovery skips hidden/vendor/node_modules directories, directory symlinks, and nested projects.
 Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
 Each rule is a warning or an error (`severity` in --json; `ms explain MSL110` shows it). Warnings are reported

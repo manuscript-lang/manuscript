@@ -1,6 +1,6 @@
 +++
 title = "Watching files"
-weight = 10
+weight = 4
 +++
 
 # Watching files
@@ -33,9 +33,11 @@ PASS watch_test.ms::a new file is reported
 
 `temporary` returns a directory that removes itself and its contents when it is closed.
 
-## Run a command when a file changes
+## Re-read a file when it changes
 
-Save as `reload.ms`. This program re-reads a file each time it changes and stops when the watched path is removed. Pass `recursive: true` to watch a whole tree, and `WatchOptions(interval: ...)` to poll instead of using operating-system events, for example on a network drive.
+Save as `reload.ms`. This program re-reads a file each time it changes and stops when the watched path is removed.
+
+Pass `recursive: true` to watch a whole tree. Pass `WatchOptions(interval: ...)` to poll instead of using operating-system events, for example on a network drive.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -46,7 +48,10 @@ fn main() Void!:
     path := arguments().get_or(0, "config.json")
     var events = watch(path)?
     for event in events:
-        text := read_file(event.path).wait()?
+        read := read_file(event.path).wait()
+        if read.is_error() and read.err().kind == "ENOENT":
+            continue
+        text := read?
         print(f"{event.path} changed, {text.length()} bytes")
     return ok()
 ```
@@ -55,5 +60,6 @@ fn main() Void!:
 ms run reload.ms -- config.json
 ```
 
+- A path removed before it is read is skipped, and the stream then ends.
 - One edit can produce several events. Treat an event as "look again", and read the file rather than relying on the event's kind.
 - The stream ends when the watched root is removed or moved, so a `for` loop over it finishes instead of waiting forever.

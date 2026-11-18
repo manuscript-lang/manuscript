@@ -70,8 +70,9 @@ export type RuntimeCounts:
 
 // Operating system and processor architecture for the current host.
 export type SystemInfo:
-	// Operating system identifier, such as linux, darwin, or windows; an open host
-	// identifier set. `os()` names the supported families as an enum.
+	// Operating system name, such as linux, darwin, or windows. Hosts outside those
+	// families report their own name; `os()` returns the three named families as an
+	// enum.
 	os: String
 	// The processor architecture in common naming, such as `amd64`, `arm64`, or `386`.
 	architecture: String
@@ -102,7 +103,7 @@ export type NetworkInterface:
 	// The address's network mask in the same textual form as `address`, such as
 	// `255.255.255.0`.
 	netmask: String
-	// The IPv4/IPv6 alternative for the native address record.
+	// Whether `address` is IPv4 or IPv6.
 	family: IpFamily
 	// Hardware address as colon-separated lowercase hexadecimal, or an empty string for
 	// interfaces without one such as loopback.
@@ -122,7 +123,8 @@ export type CpuInfo:
 	model: String
 	// Integer megahertz, not a time interval.
 	speed_mhz: Int
-	// The user, nice, system, idle, and irq fields are cumulative milliseconds.
+	// Cumulative milliseconds this logical CPU spent running normal-priority user
+	// processes.
 	user: Int
 	// Cumulative milliseconds this logical CPU spent running low-priority (niced) user
 	// processes.
@@ -205,7 +207,8 @@ export fn available_memory() Int!:
 export fn memory_usage() MemoryUsage!:
 	return msstd_process_memory_usage()
 
-// Returns the runtime's work counters: allocations, bytes allocated, and copies.
+// Returns the runtime's work counters: allocations, bytes allocated, and list and
+// string copies.
 // ms: effect std.system.read
 export fn runtime_counts() RuntimeCounts!:
 	return msstd_process_runtime_counts()

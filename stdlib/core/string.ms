@@ -15,8 +15,8 @@ import (
 fn String.as_bytes() Bytes:
 	return self.to_bytes()
 
-// Removes one exact prefix, or returns none when absent; an empty prefix succeeds
-// unchanged.
+// Returns the text without `prefix`, or `none` when the text does not start with it.
+// An empty prefix succeeds and returns the text unchanged.
 fn String.cut_prefix(prefix: String) String?:
 	if self.starts_with(prefix): return self.view(
 		prefix.length(),
@@ -24,8 +24,8 @@ fn String.cut_prefix(prefix: String) String?:
 	).clone()
 	return none
 
-// Removes one exact suffix, or returns none when absent; an empty suffix succeeds
-// unchanged.
+// Returns the text without `suffix`, or `none` when the text does not end with it.
+// An empty suffix succeeds and returns the text unchanged.
 fn String.cut_suffix(suffix: String) String?:
 	if self.ends_with(suffix): return self.view(
 		0,
@@ -33,15 +33,16 @@ fn String.cut_suffix(suffix: String) String?:
 	).clone()
 	return none
 
-// The text before and after the first (or last) separator, from `split_once` and
-// `rsplit_once`.
+// The text before and after the first (or last) separator, as returned by
+// `split_once` and `rsplit_once`.
 export type SplitParts:
 	// The text before the separator.
 	before: String
 	// The text after the separator.
 	after: String
 
-// Splits at the first exact separator, or returns none when it is absent or empty.
+// Splits at the first exact separator. Returns `none` when the separator is empty or
+// does not occur.
 // Example: `"key=a=b".split_once("=")` is `before: "key"`, `after: "a=b"`.
 fn String.split_once(separator: String) SplitParts?:
 	if separator.is_empty(): return none
@@ -55,7 +56,8 @@ fn String.split_once(separator: String) SplitParts?:
 		after: self.view(cut + separator.length(), self.length()).clone(),
 	)
 
-// Splits at the last exact separator, or returns none when it is absent or empty.
+// Splits at the last exact separator. Returns `none` when the separator is empty or
+// does not occur.
 // Example: `"a/b/c".rsplit_once("/")` is `before: "a/b"`, `after: "c"`.
 fn String.rsplit_once(separator: String) SplitParts?:
 	if separator.is_empty(): return none
@@ -69,8 +71,8 @@ fn String.rsplit_once(separator: String) SplitParts?:
 		after: self.view(cut + separator.length(), self.length()).clone(),
 	)
 
-// The four Unicode normalization forms, selected without runtime string spelling
-// errors.
+// The four Unicode normalization forms, as an enum so a misspelled form is a compile
+// error rather than a runtime `EINVAL`.
 export enum NormalizationForm:
 	// Canonical decomposition followed by canonical recomposition where Unicode permits
 	// it.
@@ -83,24 +85,26 @@ export enum NormalizationForm:
 	// Compatibility decomposition with combining marks placed in canonical order.
 	Nfkd
 
-// Normalizes text with the existing String.normalize budgets and error kinds.
-// Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
+// Normalizes `text` to this form, with the same budget and errors as
+// `String.normalize`. When `max_bytes` is omitted or `none` the output is not
+// bounded; a supplied bound counts UTF-8 bytes.
 fn NormalizationForm.normalize(text: String, max_bytes: Int?) String!: ...
 
 // Builds text from Unicode scalar values. Invalid scalars return `EINVAL`.
 export fn from_scalars(values: List[Int]) String!:
 	return msrt_string_from_scalars(values)
 
-// Splits on Unicode White_Space, omitting empty fields; empty or all-whitespace
-// text gives an empty list. Exact field text is preserved without normalization;
-// the byte-order mark and zero-width space are not separators.
+// Splits on runs of Unicode White_Space and omits empty fields, so empty or
+// all-whitespace text gives an empty list. Field text is kept exactly, without
+// normalization. The byte-order mark and zero-width space are not separators.
 fn String.fields() List[String]:
 	return msrt_string_fields(self)
 
-// Terminal columns the text occupies, measured by Unicode sequence width with
-// ambiguous characters narrow: combining marks add nothing, wide characters and
-// supported emoji sequences count two. An estimate, not a promise for every font or
-// terminal. Controls (tabs, CR/LF, ESC, C1), U+2028 and U+2029 return EBADMSG.
+// Returns the number of terminal columns the text occupies. Combining marks add
+// nothing, ambiguous-width characters count as narrow, and wide characters and
+// supported emoji sequences count two. This is an estimate, not a promise for every
+// font or terminal. Controls (tabs, CR/LF, ESC, C1), U+2028 and U+2029 return
+// `EBADMSG`.
 fn String.display_width() Int!:
 	return msstd_unicode_display_width(self)
 
@@ -113,8 +117,8 @@ fn scalar_width(code: Int) Int:
 
 	return 4
 
-// Splits around runs of characters (one-scalar strings) the predicate accepts; no
-// empty items.
+// Splits around runs of characters (one-scalar strings) for which `is_separator`
+// returns true. The result has no empty items.
 fn String.fields_by(is_separator: fn(String) Bool) List[String]:
 	var out = List[String]()
 
@@ -154,40 +158,64 @@ fn String.fields_by(is_separator: fn(String) Bool) List[String]:
 		out.append(current.drain())
 	return out
 
-// Compares text ignoring case: both sides are uppercased and then lowercased with
-// Unicode full case mapping (no locale, no normalization), so "Straße" equals
+// Compares text ignoring case. Both sides are uppercased and then lowercased with
+// Unicode full case mapping, without locale or normalization, so "Straße" equals
 // "STRASSE". This is not Unicode default case folding: the dotless "ı" (U+0131)
-// uppercases to "I" and so compares equal to "i" and "I".
+// uppercases to "I", so it compares equal to "i" and "I".
 fn String.equal_fold(other: String) Bool:
-	return fold_key(self) == fold_key(other)
+	// While both texts are ASCII the keys match byte for byte after ASCII lowercasing,
+	// so the first difference decides and no key is built. A non-ASCII byte on either
+	// side hands the whole comparison to the full case mapping.
+	left := self.view_bytes()
+	right := other.view_bytes()
+	var shared = left.length()
+	if right.length() < shared: shared = right.length()
+
+	var at = 0
+
+	while at < shared:
+		a := left.get(at)
+		b := right.get(at)
+		if a >= 128 or b >= 128: return fold_key(self) == fold_key(other)
+
+		if a != b:
+			low_a := if a >= 65 and a <= 90: a + 32 else: a
+			low_b := if b >= 65 and b <= 90: b + 32 else: b
+			if low_a != low_b: return false
+
+		at += 1
+
+	// A longer text keeps scalars the shorter one lacks, and no case mapping erases a
+	// scalar, so the keys differ in length.
+	return left.length() == right.length()
 
 // Capital sharp s (U+1E9E) uppercases to itself but is the capital form of "ß", so it
 // is written as "ß" before the comparison.
 fn fold_key(text: String) String:
 	return text.replace("ẞ", "ß").upper().lower()
 
-// Removes every leading and trailing scalar that occurs in set.
+// Removes every leading and trailing scalar that occurs in `set`.
 fn String.trim_chars(set: String) String:
 	return msrt_string_trim_chars(self, set, true, true)
 
-// Removes every leading scalar that occurs in set.
+// Removes every leading scalar that occurs in `set`.
 fn String.trim_start_chars(set: String) String:
 	return msrt_string_trim_chars(self, set, true, false)
 
-// Removes every trailing scalar that occurs in set.
+// Removes every trailing scalar that occurs in `set`.
 fn String.trim_end_chars(set: String) String:
 	return msrt_string_trim_chars(self, set, false, true)
 
-// Reports whether any scalar of set occurs in the text.
+// Reports whether any scalar of `set` occurs in the text.
 fn String.contains_any(set: String) Bool:
 	return self.index_any(set).is_some()
 
-// Byte offset of the first scalar that occurs in set, or none.
+// Returns the byte offset of the first scalar that occurs in `set`, or `none`.
 fn String.index_any(set: String) Int?:
 	return msrt_string_index_any(self, set)
 
-// Splits after each separator, keeping it at the end of each piece; an empty
-// separator splits into scalars.
+// Splits after each separator and keeps the separator at the end of each piece. An
+// empty separator splits into scalars.
 fn String.split_after(separator: String) List[String]:
 	if separator.is_empty(): return self.chars().clone()
 
@@ -202,8 +230,8 @@ fn String.split_after(separator: String) List[String]:
 
 	return out
 
-// Uppercases the first scalar to its titlecase form (`ǆ` becomes `ǅ`, `ß` becomes `Ss`)
-// and leaves the rest unchanged.
+// Converts the first scalar to its titlecase form (`ǆ` becomes `ǅ`, `ß` becomes
+// `Ss`) and leaves the rest unchanged.
 fn String.capitalize() String:
 	first := self.scalar_at(0, -1)
 	if first >= 0 and first < 128: return self.view(0, 1).upper().concat(
@@ -213,15 +241,52 @@ fn String.capitalize() String:
 	n := scalar_width(first)
 	return title_scalar(self.view(0, n)).concat(self.view(n, self.length()))
 
-// Capitalizes the first letter of each run of letters, digits and apostrophes with its
-// titlecase form and lowercases the others; a word is lowercased whole, so a final
+// Titlecases the first letter of each word and lowercases the rest. A word is a run
+// of letters, digits and apostrophes. Each word is lowercased as a whole, so a final
 // sigma stays final (`ΑΣ` becomes `Ας`).
 fn String.title() String:
+	bytes := self.view_bytes()
+	count := bytes.length()
+	var at = 0
+	while at < count and bytes.get(at) < 128: at += 1
+	if at < count: return title_scalars(self)
+
+	// ASCII text: lowercase it once and copy the lowercase runs between the first
+	// letters of words, which come from the uppercase alphabet by index.
+	lowered := self.lower()
+	var out = StringBuilder()
+	var copied = 0
+	var in_word = false
+
+	for i in 0..count:
+		b := bytes.get(i)
+		word := (
+			(b >= 48 and b <= 57)
+			or (b >= 65 and b <= 90)
+			or (b >= 97 and b <= 122)
+			or b == 39
+		)
+
+		if word and not in_word and ((b >= 97 and b <= 122) or (b >= 65 and b <= 90)):
+			out.append(lowered.view(copied, i))
+
+			var letter = b.to_int() - 97
+			if b <= 90: letter = b.to_int() - 65
+			out.append("ABCDEFGHIJKLMNOPQRSTUVWXYZ".view(letter, letter + 1))
+			copied = i + 1
+
+		in_word = word
+
+	out.append(lowered.view(copied, count))
+	return out.build()
+
+// `title` for text with any non-ASCII scalar, one word at a time.
+fn title_scalars(text: String) String:
 	var out = StringBuilder()
 	var word = StringBuilder()
 	var in_word = false
 
-	for c in self.chars():
+	for c in text.chars():
 		if is_word_scalar(c):
 			word.append(c)
 			in_word = true
@@ -324,14 +389,16 @@ fn title_scalar(c: String) String:
 
 	return out.build()
 
-// Replaces each scalar with the transform's result; an empty result deletes it.
+// Replaces each scalar (a one-scalar string) with the result of `transform`; an
+// empty result deletes it.
 fn String.map_chars(transform: fn(String) String) String:
 	var out = StringBuilder()
 	for c in self.chars():
 		out.append(transform(c))
 	return out.build()
 
-// Byte offset of the first scalar the predicate accepts, or none.
+// Returns the byte offset of the first scalar (passed as a one-scalar string) for
+// which `predicate` returns true, or `none`.
 fn String.find_char(predicate: fn(String) Bool) Int?:
 	var at = 0
 	n := self.length()
@@ -345,10 +412,8 @@ fn String.find_char(predicate: fn(String) Bool) Int?:
 	return none
 
 // Replaces many patterns in one pass. At each position the first pair, in map
-// order, whose key matches wins and its replacement is not rescanned; empty keys
-// are ignored. The scan is over bytes: a valid UTF-8 key matches only at scalar
-// boundaries, and each key's first byte is found by a byte search, so positions
-// that cannot start a match cost nothing in this loop.
+// order, whose key matches wins, and its replacement is not rescanned. Empty keys
+// are ignored.
 fn String.replace_each(pairs: Map[String, String]) String:
 	if pairs.is_empty(): return self.clone()
 
