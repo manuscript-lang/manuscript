@@ -905,7 +905,7 @@ fn jpeg_fill_row(
 			row[x] = plane[base + x].to_int()
 		return
 
-	if exact and hr == 2 and vr == 2:
+	if exact and hr == 2 and vr == 2 and span[0] > 2:
 		last_x := span[0] - 1
 		last_y := span[1] - 1
 		py := min_of(y / 2, last_y)
@@ -940,7 +940,15 @@ fn jpeg_sample(
 	vr: Int,
 	exact: Bool,
 ) Int:
-	if not exact or (hr == 1 and vr == 1) or hr > 2 or vr > 2:
+	// libjpeg replicates, without the triangle filter, a horizontally halved plane that
+	// is two samples wide or less.
+	if (
+		not exact
+		or (hr == 1 and vr == 1)
+		or hr > 2
+		or vr > 2
+		or (hr == 2 and span[0] <= 2)
+	):
 		return plane[(y / max_of(vr, 1)) * stride + x / max_of(hr, 1)].to_int()
 
 	last_x := span[0] - 1
