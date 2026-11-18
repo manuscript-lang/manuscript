@@ -62,7 +62,15 @@ Several inputs share one document; see [analysis selection](../implementation.md
 Each diagnostic's `position`, `end`, and `fix` boundaries use the same source-path spelling, including paths relative to the invocation directory for collection inputs.
 
 - Optional `end` has the same coordinate fields (exclusive). Parser token errors and failed import names provide it.
-- Optional `fix` has `position`, exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. Redundant prelude imports, misspelled names, members, labels and types with one `did you mean` candidate, unresolved standard names and the `Decimal` literal import (an `import` inserted at the top of the file), `Some`/`Ok`/`Err`/`True`/`null`/`this` habits, assignment to a `:=` binding (`:=` becomes `var`), and `Case()` on a nullary case, Int values used as Float (`.to_float()`, or `3.0` for a literal), Int, Float and Bool values used as String (`f"{value}"`), and `ms lint` unused imports (MSL102, the name with its separator, or the whole statement) carry one; string-match rewrites, ambiguous imports and ownership errors get prose only: a machine-applied `.clone()` would hide the design choice and cost time and memory. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
+- An optional `fix` has `position`, an exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. These diagnostics carry one:
+  - redundant prelude imports, and misspelled names, members, labels and types with one `did you mean` candidate
+  - unresolved standard names and the `Decimal` literal import (an `import` inserted at the top of the file)
+  - `Some`/`Ok`/`Err`/`True`/`null`/`this` habits, and `Case()` on a nullary case
+  - assignment to a `:=` binding (`:=` becomes `var`)
+  - an `Int` used as `Float` (`.to_float()`, or `3.0` for a literal), and an `Int`, `Float` or `Bool` used as `String` (`f"{value}"`)
+  - `ms lint` unused imports (MSL102: the name with its separator, or the whole statement)
+
+  String-match rewrites, ambiguous imports and ownership errors get prose only: a machine-applied `.clone()` would hide the design choice and cost time and memory. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
 - Optional `subcode` (`MS3000.1`) names the cause within the family `code`; it is absent for messages without a known cause. Sub-codes are never renumbered or reused.
 - Consumers must tolerate absent optional fields.
 

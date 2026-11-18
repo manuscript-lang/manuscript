@@ -1,6 +1,6 @@
 +++
 title = "Stopping cleanly"
-weight = 12
+weight = 20
 +++
 
 # Stopping cleanly

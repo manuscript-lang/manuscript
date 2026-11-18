@@ -17,7 +17,6 @@ A model writes Manuscript well because there is little to get wrong. The concept
 
 <!-- manuscript-example: {"mode":"run","stdout":"1650 cents\n"} -->
 ```manuscript {filename="shop.ms"}
-
 enum Item:
     Book(pages: Int)
     Coffee(grams: Int)

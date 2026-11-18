@@ -71,6 +71,7 @@ A parameter with a default may be omitted; others are required, except `T?`, whi
 
 Write `= expression` after a parameter's type to supply a default:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn subtract(amount: Int, deduction: Int = 1) Int:
     return amount - deduction
@@ -124,6 +125,7 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 
 `Void` is a value type with exactly one value, written `void`; it is not an uninhabited type (that is `Never`). A `Void` function may `return`, `return`, or fall off the end. A function returning `Void!` (or `Void!E`) may fall off the end too, or write a bare `return`; both return `ok()`, which can also be written `ok()`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import panic from "@std/core.ms"
 

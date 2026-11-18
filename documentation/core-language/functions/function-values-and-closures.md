@@ -60,6 +60,7 @@ A function that takes ownership of a parameter says so in its type: `fn keep(mov
 
 `List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each(fn var s: s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list. The rule is general: any method whose callback type has a `var` position of one of the receiver's type arguments behaves this way. Such a method cannot be taken as a value from a variable (`each := scores.for_each`); call it, or write a closure.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn push_one(var values: List[Int]) Void:
     values.append(1)
@@ -86,8 +87,8 @@ Captures follow ownership rules. A non-escaping closure borrows its captures; an
 
 A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-
 fn tag_count() Int:
     var tags = ["docs"]
     tags.append("release")
@@ -99,6 +100,7 @@ fn tag_count() Int:
 
 A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn total(values: List[Int]) Int:
     var sum = 0
@@ -108,8 +110,17 @@ fn total(values: List[Int]) Int:
     return sum
 ```
 
-A function value has one owner and no `.clone()`, and a type or list that holds one is not `Clonable`: pass it where it is only read, move it at its last use, or make it again from a named `fn`. A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a loop variable, a `:=` that borrows another value), bind a `.clone()` before the closure and capture that. A parameter the closure takes is moved by the function, so the caller gives the value up; pass `.clone()` to keep it. A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `:=` copy first (`base := offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`add := xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure. The parameter case, with the caller keeping its list:
+A function value has one owner and no `.clone()`. A type or list that holds one is not `Clonable`. To use a function value, pass it where it is only read, move it at its last use, or make it again from a named `fn`.
 
+A closure that is returned or stored owns what it captures, so it cannot change a captured variable:
+
+- **Moving a variable in.** The closure takes a captured variable when the closure is its last use. If the variable is used again, or is only borrowed (a loop variable, or a `:=` that borrows another value), bind a `.clone()` before the closure and capture that.
+- **Parameters.** A parameter the closure takes is moved by the function, so the caller gives the value up. Pass `.clone()` to keep it.
+- **A `var` used again.** A returned or stored closure cannot capture a `var` that is used after the closure is made, because it would keep a stale copy. Bind a `:=` copy first (`base := offset`) and capture that.
+
+A bound method keeps its receiver by the same rules. A method that changes its receiver (`add := xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it, or write a closure. The parameter case, with the caller keeping its list:
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Counter:
     read: fn() Int
@@ -127,6 +138,7 @@ fn total() Int:
 
 Open a resource inside the callback that uses it:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
@@ -144,7 +156,6 @@ A non-escaping callback can borrow an already-open file while its owner stays in
 ## Contextual callback inference
 
 ```manuscript
-
 fn names() List[String]:
     return [1, 2].map(fn value: value.to_string())
 ```

@@ -73,6 +73,7 @@ Grace
 
 Methods are receiver methods, `fn Type.name(...)` ([methods](contracts.md#methods)); methods inside the type are rejected. A method marked `var fn` can update receiver fields in place:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 interface Counter:
     var fn increment() Void
@@ -129,6 +130,7 @@ Calling `rows_of(report)` leaves `report.rows` readable; the type must stay avai
 
 A resource field moves without a copy, and the new owner closes it. The type closes only the fields that were not moved, last declared first, on every way out of the function:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 
@@ -154,6 +156,7 @@ Here `r.spare` closes when `open_door` returns and `r.door` closes with `doors`'
 
 Wrap identifiers in their own types so they cannot be mixed up.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type CustomerId:
     value: String

@@ -46,6 +46,7 @@ There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Res
 
 An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `none`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Queue from "@std/collections/queue.ms"
 
@@ -94,6 +95,7 @@ fn display_name(create: fn() String, name: String?) String:
 
 Prefer `if v := x` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; use `get_or(default)` or unwrap with `if v := x`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get_or(fallback)` or `m.get(key).get()`; `ms lint --fix` rewrites the first:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn greet(name: String?) String:
     if value := name:
@@ -114,6 +116,7 @@ fn first_number(text: String?) Int?:
 
 [`if v := x`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn display_name(name: String?) String:
     if value := name:
@@ -127,6 +130,7 @@ A [match](../control-flow/pattern-matching.md) on an Optional writes the present
 
 `a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than `B??` when `b` is already optional. The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side; the receiver must be optional, since `.` already reads a member of a value that is always present.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Address:
     city: String?
@@ -142,6 +146,7 @@ A chain cannot move a field out of the optional it reads, so end an owned `Strin
 
 A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself, in place; on `none` nothing runs:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Counter:
     n: Int

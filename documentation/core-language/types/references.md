@@ -30,6 +30,7 @@ A borrow is a handle to a value another binding owns: many readers, or one write
 - A field owns its value. A type cannot view another variable.
 - A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid. The receiver of a method and a function value a variable holds are read in place while the arguments run, so an argument (a `match` arm among them) may not reassign that variable: `f(match m: _: f = g; 1)` is rejected, as is `r.m(match m: _: r = other; 1)`; reassign before the call instead.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Box:
     items: List[Int]
@@ -48,6 +49,7 @@ fn grow(var b: Box) Int:
 
 A function with a body shows what it does with each argument, so the compiler infers it: a parameter the body stores, returns or hands to another owner is taken from the caller, and the caller's name is dead after the call. A signature with no body to read, an interface operation, a function type or a standard-library native, borrows each argument unless it says `move`:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Item:
     name: String

@@ -9,6 +9,7 @@ weight = 2
 
 ## Traversing a list
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn sum(values: List[Int]) Int:
     var total = 0
@@ -86,6 +87,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 
 `MapEntry[K, V]` is a type with `key: K` and `value: V` (constructor from `@std/collections/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn total(values: Map[String, Int]) Int:
     var sum = 0
@@ -173,6 +175,7 @@ Output:
 
 ## Repeating while a condition holds
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn count_down(start: Int) Int:
     var remaining = start

@@ -11,6 +11,7 @@ A programming fault means an assumption the code relies on has failed. For inval
 
 Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to raise a fault when it fails.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import panic from "@std/core.ms"
 import Decimal from "@std/math/decimal.ms"

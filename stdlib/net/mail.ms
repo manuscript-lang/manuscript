@@ -11,11 +11,14 @@ Internet mail messages (RFC 5322): addresses, address lists, and message parsing
 `parse_address("Ada <ada@example.com>")` gives name and address; `parse_message` splits a raw
 message into `Headers` and body and decodes RFC 2047 encoded words on request.
 
-    import parse_address, parse_message from "@std/net/mail.ms"
-    sender := parse_address("Ada Lovelace <ada@example.com>")?
-    print(sender.name)              // "Ada Lovelace"
-    mail := parse_message(raw)?
-    print(mail.headers.get("Subject").get_or(""))
+<!-- manuscript-example: {"mode":"fragment"} -->
+```manuscript
+import parse_address, parse_message from "@std/net/mail.ms"
+sender := parse_address("Ada Lovelace <ada@example.com>")?
+print(sender.name)              // "Ada Lovelace"
+mail := parse_message(raw)?
+print(mail.headers.get("Subject").get_or(""))
+```
 */
 
 // A mailbox: optional display name and the `local@domain` address.

@@ -14,14 +14,14 @@ Run a program, learn the language, then build something useful. The same `ms` co
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
 2. **[Read the guide](../guide/_index.md).** Small order-processing programs, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
-4. **[Build a small tool](../cookbook/_index.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
+4. **[Build a small tool](../cookbook/_index.md).** Start from a complete recipe: arguments, files, JSON, HTTP, text patterns, hashes, images, WebSockets and more.
 5. **[Use a package](packages.md).** Depend on another project's source, pinned and checked.
 
 Read in order with **Next**.
 
 ## Ready to build?
 
-The [cookbook](../cookbook/_index.md) has complete programs: arguments, files, JSON, and HTTP. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
+The [cookbook](../cookbook/_index.md) has complete programs for common jobs: command-line tools, files, JSON and YAML, HTTP and WebSockets, retries, background jobs, logging and deployment. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
 
 ## Need an exact answer?
 

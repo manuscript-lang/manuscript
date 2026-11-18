@@ -41,7 +41,12 @@ A type, enum, `Optional`, `List` or `Map` that holds a `Closeable` value is itse
 
 A `Map` iterates in insertion order, so its close order is the reverse of the order you added the entries; no order is unspecified. Nested holders close depth first in the same way. A value derived from a resource, such as `name := r.name`, borrows it and cannot outlive it: the checker rejects closing or changing the resource while the borrow is still used.
 
-A holder of values that are not resources adds no code, because a `List[Int]` or a type whose fields are strings is not a resource. A part may already have closed itself, for example in a hand-written `close` that forwards to its fields; closing again is harmless because `close()` is idempotent. A generic holder such as `List[T]` also closes its resource parts: lowering selects cleanup for each concrete instance, and an instance holding only plain data adds no close calls. Overwriting a field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map close the old part first, then store the new one; `xs.pop()` returns the element to a binding, which closes it. `splice` closes the elements it deletes. `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners of resources, so the checker rejects them on a holder of resources; move a list element out with `pop`. `remove` closes the removed element. A `Set` cannot hold resources because its elements must be `Hashable`.
+A holder of values that are not resources adds no code: a `List[Int]`, or a type whose fields are strings, is not a resource. A generic holder such as `List[T]` closes its resource parts, and the compiler picks cleanup for each concrete instance, so an instance holding only plain data adds no close calls. A part may already have closed itself (for example in a hand-written `close` that forwards to its fields). Closing again is harmless because `close()` is idempotent.
+
+- **Replacing or removing closes the old part first.** This covers overwriting a field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map. `splice` closes the elements it deletes.
+- **`pop` hands the element out.** `xs.pop()` returns the element to a binding, which closes it. To take an element out of a list, use `pop`.
+- **Some methods are rejected on a holder of resources.** `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners, so the checker refuses them.
+- **No sets.** A `Set` cannot hold resources because its elements must be `Hashable`.
 
 A similarly named method whose signature is not `fn var close() Void!` does not opt a concrete type into cleanup.
 
@@ -51,6 +56,7 @@ A similarly named method whose signature is not `fn var close() Void!` does not 
 
 `close()` returns `Void!`, which is `Result[Void, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok()`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 

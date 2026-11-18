@@ -31,6 +31,7 @@ Bounds are checked at every application; `Hashable` implies `Equal`, and `Data` 
 
 `Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types and type arguments. Their prelude names cannot be redefined by declarations, imports, or type parameters.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Key:
     id: Int
@@ -164,6 +165,7 @@ The check also covers mutual recursion, function values such as `grow[List[T]]`,
 
 `type Name = A | B | C` names a closed set of types. A set is only a bound: `T: Name` accepts exactly its members, and nothing exists at run time (no tag, no layout, no `match`). Generic code is monomorphized, so each instance is compiled for one member.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Number = Int | Int8 | Float | Float32
 

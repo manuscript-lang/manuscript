@@ -7,6 +7,7 @@ weight = 3
 
 Use `Int` for counts and indexes, `Float` for approximate measurements, and `Decimal` for base-ten calculations where rounding must be explicit. Booleans are `true` and `false`. Numeric types stay distinct: choose a type for the calculation and convert at its boundaries.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
@@ -80,7 +81,19 @@ fn sized() Void:
 
 `to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float rounds once to nearest binary64, ties to even. A conversion to a float returns `none` only when a finite value is beyond the target range (`1e300.to_float32()`, a huge `Decimal` or `BigInt` `to_float()`); rounding itself is silent. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
-Unsigned types follow the same rules with a lower bound of zero: `b: UInt8 := 200`, `x: UInt8 := -1` and `256` are rejected, `a - b` faults when `b > a`, and unary `-` is a compile error. `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`; each returns `Optional` unless every source value fits (`Int.to_uint8()` is `none` for -1 or 256, `UInt32.to_int32()` is `none` above 2147483647). Other pairs, such as `UInt8.to_int16()`, are not declared: go through `to_int()` (`UInt8.to_int().to_int16()`). `UInt8.to_int()` widens directly; `UInt64.to_int()` is `none` above 9223372036854775807. `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values. Floats reach an unsigned type through `truncate_to_int().get_or(0).to_uint8()`-style chains, as there is no `truncate_to_uintN()`.
+Unsigned types follow the same rules with a lower bound of zero:
+
+`abs()` and `sign()` are methods on every signed integer and float type, so no cast is needed. Unsigned values are never negative, so they have neither.
+
+- `abs()` returns the receiver's own type. `Int8` `-128` has no absolute value and faults like any overflow.
+- `sign()` on an integer returns `Int` (-1, 0 or 1). On a float it returns the receiver's type, with zeros and NaN unchanged.
+- `@std/math/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling.
+
+Every integer width, `Float`, `Float32` and `String` also have `a.min(b)`, `a.max(b)` and `a.clamp(low, high)`. They need no import and return the receiver's own type. Of equal values, the receiver is the result. `Float` orders NaN above every other value, and `clamp` with `low` greater than `high` is a programming fault. `math.min`, `math.max`, `List.min` and `List.max` accept any `Comparable` type, including `Decimal`, `BigInt` and the time types.
+- `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`. Each returns an `Optional` unless every source value fits (`Int.to_uint8()` is `none` for -1 or 256, `UInt32.to_int32()` is `none` above 2147483647).
+- Other pairs, such as `UInt8.to_int16()`, are not declared. Go through `to_int()`: `UInt8.to_int().to_int16()`. `UInt8.to_int()` widens directly; `UInt64.to_int()` is `none` above 9223372036854775807.
+- `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values.
+- A `Float` reaches an unsigned type through a chain such as `truncate_to_int().get_or(0).to_uint8()`, because there is no `truncate_to_uintN()`.
 
 `abs()` and `sign()` are methods on every signed integer and float type (unsigned values are never negative, so they have neither), so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `@std/math/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling. Every integer width, Float, Float32 and String also have `a.min(b)`, `a.max(b)` and `a.clamp(low, high)` methods that need no import and return the receiver's own type; the lesser or greater of equal values is the receiver, Float orders NaN above every other value, and `clamp` with `low` greater than `high` is a programming fault. `math.min`, `math.max`, `List.min` and `List.max` accept any `Comparable` type, including Decimal, BigInt and the time types.
 

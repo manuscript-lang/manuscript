@@ -10,9 +10,12 @@ import (
 /*
 Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
 
-    import compile, to_data from "@std/text/template.ms"
-    page := compile("Hello {{ name | title }}!")?
-    rendered := page.render(to_data(user)?)?
+<!-- manuscript-example: {"mode":"fragment"} -->
+```manuscript
+import compile, to_data from "@std/text/template.ms"
+page := compile("Hello {{ name | title }}!")?
+rendered := page.render(to_data(user)?)?
+```
 
 Actions sit between `{{` and `}}`:
 

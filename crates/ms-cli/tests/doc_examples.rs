@@ -222,68 +222,91 @@ fn wrap_fragment(source: &str) -> String {
     format!("{decls}\nfn example() Void!:\n{body}    return\n")
 }
 
+/// Checks one example and returns what is wrong with it; examples are independent, so
+/// `verify` runs them on several threads.
+fn verify_one(n: usize, example: &Example, dir: &Path) -> Vec<String> {
+    let mut failures = Vec::new();
+    let path = dir.join(format!("example{n}.ms"));
+    fs::write(&path, &example.source).unwrap();
+    let path = path.to_str().unwrap();
+    let name = format!("{}:{}", example.file.display(), example.line);
+    if example.spec.contains("\"mode\":\"fragment\"") {
+        // A fragment leaves names free, so it is only parsed: the declarations stay at
+        // the top and the statements move into a function body.
+        fs::write(path, wrap_fragment(&example.source)).unwrap();
+        let (code, _, err) = ms(&["fmt", path], "", None);
+        if code != Some(0) {
+            failures.push(format!("{name}: fragment does not parse\n{err}"));
+        }
+        return failures;
+    }
+    if example.spec.contains("\"mode\":\"test\"") {
+        let (code, _, err) = ms(&["test", path, "--build-type", "Debug"], "", None);
+        if code != Some(0) {
+            failures.push(format!("{name}: ms test failed\n{err}"));
+        }
+        return failures;
+    }
+    if example.spec.contains("\"mode\":\"bench\"") {
+        let (code, _, err) = ms(
+            &["bench", path, "--time", "5ms", "--samples", "2"],
+            "",
+            None,
+        );
+        if code != Some(0) {
+            failures.push(format!("{name}: ms bench failed\n{err}"));
+        }
+        return failures;
+    }
+    let (code, _, err) = ms(&["check", path], "", None);
+    if code != Some(0) {
+        failures.push(format!("{name}: ms check failed\n{err}"));
+        return failures;
+    }
+    if !example.spec.contains("\"mode\":\"run\"") {
+        return failures;
+    }
+    let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
+    let mut cases = vec![spec.clone()];
+    cases.extend(
+        spec.get("cases")
+            .and_then(Json::as_array)
+            .unwrap_or_default()
+            .iter()
+            .cloned(),
+    );
+    for (i, case) in cases.iter().enumerate() {
+        let case_dir = dir.join(format!("run{n}-{i}"));
+        if let Some(problem) = run_case(path, &case_dir, case) {
+            failures.push(format!("{name}: case {i}: {problem}"));
+        }
+    }
+    failures
+}
+
 fn verify(examples: &[Example], label: &str) {
     let dir = std::env::temp_dir().join(format!("ms-{label}-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
-    let mut failures = Vec::new();
-    for (n, example) in examples.iter().enumerate() {
-        let path = dir.join(format!("example{n}.ms"));
-        fs::write(&path, &example.source).unwrap();
-        let path = path.to_str().unwrap();
-        let name = format!("{}:{}", example.file.display(), example.line);
-        if example.spec.contains("\"mode\":\"fragment\"") {
-            // A fragment leaves names free, so it is only parsed: the declarations stay at
-            // the top and the statements move into a function body.
-            fs::write(path, wrap_fragment(&example.source)).unwrap();
-            let (code, _, err) = ms(&["fmt", path], "", None);
-            if code != Some(0) {
-                failures.push(format!("{name}: fragment does not parse\n{err}"));
-            }
-            continue;
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let failures = std::sync::Mutex::new(Vec::new());
+    let threads = std::thread::available_parallelism().map_or(2, |n| n.get().min(8));
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| {
+                loop {
+                    let n = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(example) = examples.get(n) else {
+                        break;
+                    };
+                    let found = verify_one(n, example, &dir);
+                    failures.lock().unwrap().extend(found);
+                }
+            });
         }
-        if example.spec.contains("\"mode\":\"test\"") {
-            let (code, _, err) = ms(&["test", path, "--build-type", "Debug"], "", None);
-            if code != Some(0) {
-                failures.push(format!("{name}: ms test failed\n{err}"));
-            }
-            continue;
-        }
-        if example.spec.contains("\"mode\":\"bench\"") {
-            let (code, _, err) = ms(
-                &["bench", path, "--time", "5ms", "--samples", "2"],
-                "",
-                None,
-            );
-            if code != Some(0) {
-                failures.push(format!("{name}: ms bench failed\n{err}"));
-            }
-            continue;
-        }
-        let (code, _, err) = ms(&["check", path], "", None);
-        if code != Some(0) {
-            failures.push(format!("{name}: ms check failed\n{err}"));
-            continue;
-        }
-        if !example.spec.contains("\"mode\":\"run\"") {
-            continue;
-        }
-        let spec = ms_json::parse(&example.spec).unwrap_or_else(|e| panic!("{name}: {e}"));
-        let mut cases = vec![spec.clone()];
-        cases.extend(
-            spec.get("cases")
-                .and_then(Json::as_array)
-                .unwrap_or_default()
-                .iter()
-                .cloned(),
-        );
-        for (i, case) in cases.iter().enumerate() {
-            let case_dir = dir.join(format!("run{n}-{i}"));
-            if let Some(problem) = run_case(path, &case_dir, case) {
-                failures.push(format!("{name}: case {i}: {problem}"));
-            }
-        }
-    }
+    });
     fs::remove_dir_all(&dir).ok();
+    let mut failures = failures.into_inner().unwrap();
+    failures.sort();
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
