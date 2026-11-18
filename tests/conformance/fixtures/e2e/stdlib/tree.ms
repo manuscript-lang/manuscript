@@ -143,3 +143,16 @@ test "memory tree listing follows writes and removals":
 	names := (tree.children("a", none)?).map(fn e: e.name.clone())
 	if names != ["two.txt"]: return panic(f"children {names}")
 	if (tree.children("", none)?).length() != 1: return panic("root")
+
+test "a file cannot be an ancestor of a directory or file":
+	var tree = memory_tree()
+	tree.write_file("a", "1".to_bytes())?
+
+	deep := tree.write_file("a/b/c", "2".to_bytes())
+	if deep.is_ok() or deep.err().kind != "EINVAL": return panic("write below a file")
+
+	made := tree.create_directory("a/d")
+	if made.is_ok() or made.err().kind != "EINVAL": return panic("directory below a file")
+
+	if paths(walk(tree)?) != ["a"]: return panic(f"walk {paths(walk(tree)?)}")
+	if (tree.read("a", none)?).length() != 1: return panic("file replaced")
