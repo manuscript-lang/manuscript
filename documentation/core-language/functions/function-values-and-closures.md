@@ -28,9 +28,9 @@ fn main() Int:
 
 Function types name no parameters. A parameter the function changes in place is marked `var`: `fn(var List[Int]) Void` ([changing parameters](#changing-parameters)).
 
-- Calls through a value of an explicit function type are positional; a label on such a call is an error. Suspension and evaluation order are the same as for declared functions.
+- Calls through any function value are positional, whether its type is written (`fn(Int) Int`) or inferred from a named function (`f := subtract_one`); a label on such a call is an error. Only a call that names the declaration, `subtract_one(amount: 1)`, takes labels. Suspension and evaluation order are the same as for declared functions.
 - A named or anonymous `fn` inside a function is a local binding of a function value.
-- Inferred immutable copies of a named function keep its [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+- Inferred immutable copies of a named function keep its [default arguments](declarations-and-calls.md#default-arguments), but only trailing ones can be omitted because a copy takes no labels to skip an earlier one; explicit function types require all parameters.
 
 ## Function type compatibility
 

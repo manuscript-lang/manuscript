@@ -129,7 +129,7 @@ test "Base64 defaults support stored functions and explicit alphabets":
 	)?
 
 	decode := base64_decode
-	expect_equal((decode("/w==", max_bytes: 1)?), bytes)?
+	expect_equal((decode("/w==", false, true, 1)?), bytes)?
 
 	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(base64_decode("_w=="), invalid)?

@@ -150,18 +150,18 @@ test "RSA native function values preserve argument order and borrowed bytes":
 	expect_equal(calls, [1, 2])?
 
 	signature := sign_message(
-		data: marked(var calls, 3, data.clone()),
-		hash: HashAlgorithm.Sha256,
-		private_key: marked(var calls, 4, private.clone()),
+		marked(var calls, 3, private.clone()),
+		HashAlgorithm.Sha256,
+		marked(var calls, 4, data.clone()),
 	)?
 	expect_equal(calls, [1, 2, 3, 4])?
 	expect_equal(signature, direct)?
 	expect_true(
 		verify_message(
-			signature: signature,
-			data: data,
-			hash: HashAlgorithm.Sha256,
-			public_key: public,
+			public,
+			HashAlgorithm.Sha256,
+			data,
+			signature,
 		)
 	)?
 

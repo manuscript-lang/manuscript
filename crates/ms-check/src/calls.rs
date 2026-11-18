@@ -57,7 +57,11 @@ fn bind_arguments<'a>(
                 by_name[&name]
             })
         } else {
-            by_name.get(&name).copied()
+            // A function value's parameters carry no label, whatever name the declaration gave.
+            by_name
+                .get(&name)
+                .copied()
+                .filter(|&i| !params[i].positional)
         };
         if let Some(index) = parameter {
             seen[index] = true;

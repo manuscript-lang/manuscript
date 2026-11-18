@@ -186,7 +186,7 @@ test "encoding variant function values retain defaults":
 	raw_decode := base64_decode
 	expect_equal(raw_encode("f".to_bytes()), "Zg==")?
 	expect_equal(raw_decode("Zg==")?, "f".to_bytes())?
-	expect_equal(raw_encode("f".to_bytes(), padded: false), "Zg")?
+	expect_equal(raw_encode("f".to_bytes(), false, false), "Zg")?
 
 test "Base32 rejects interior padding before output budgets":
 	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))

@@ -31,5 +31,5 @@ test "source call dispatch contracts":
     expect_equal(pair(b: 2, a: 1), 12)?
 
     callback := pair
-    expect_equal(callback(a: 3, b: 4), 34)?
+    expect_equal(callback(3, 4), 34)?
     expect_equal(identity(6), 6)?
