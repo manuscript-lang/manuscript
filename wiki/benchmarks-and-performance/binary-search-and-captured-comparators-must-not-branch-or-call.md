@@ -8,6 +8,8 @@ Verified (2026-11-18, release LLVM, `bench/perf/everyday-round5`): `List.binary_
 
 `msrt_list_reverse` called `swap_nonoverlapping` with a runtime size per slot pair (about 3 ns); one to four word slots now reverse as typed arrays (50 reversals of 2M `Int`, 108 to 48 ms), and `reversed` of plain slots copies back to front in one pass.
 
+Open (2026-11-18, issue #4521): LLVM 23's early-exit vectorizer turns a pure arithmetic "find the next match" loop (a custom `Iterator` adapter over a counter, `Evens.next` filtering `Counter.next`) into a vector loop whose setup and exit cost about 50 instructions per found item: 250 ms against 39 ms with `-enable-early-exit-vectorization=false` and 48 ms for Rust's equivalent `Box<dyn Iterator>` chain. Turning it off for every build costs `contains` over a list 1.26x and `contains` over strings 1.5x, and leaves the 23-program suite unchanged, so it was not changed. A scan that loads from a list is vectorized only when the loads are provably dereferenceable, which keeps this to loops with no memory access. Revisit if a real workload shows an iterator-adapter loop; a per-loop `llvm.loop.vectorize.enable` hint would be the targeted fix.
+
 Apply when: writing a stdlib search or sort loop, or a sort comparator that captures.
 Evidence: `crates/ms-mir/src/opt/sortgen.rs` (`comparator_env`), `stdlib/collections/collections.ms` (`binary_search`), fixture `e2e/accept/sort-and-search-large-capturing`.
 Verify: `MS=./target/release/ms sh bench/perf/everyday-round5/run.sh 5` rows `m_binary_search`, `r_sort_field`.
