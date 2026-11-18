@@ -23,7 +23,7 @@ The check prints:
 Checked ms.toml (2 modules)
 ```
 
-`init` creates `ms.toml`, `src/main.ms`, `test.ms` and a `.gitignore` excluding the local build cache. Run the following examples from `store`. You can add aliases to the generated manifest as the project grows:
+`init` creates `ms.toml`, `src/main.ms`, `test.ms`, a `.gitignore` excluding the local build cache and a `.gitattributes` that keeps source and manifests LF on Windows checkouts. Run the following examples from `store`. You can add aliases to the generated manifest as the project grows:
 
 ```toml
 [project]

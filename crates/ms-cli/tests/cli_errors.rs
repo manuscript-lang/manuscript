@@ -392,3 +392,30 @@ fn init_lib_writes_a_library_with_no_entry_that_tests() {
     assert!(tested.status.success(), "{tested:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn init_pins_line_endings_without_replacing_an_existing_gitattributes() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-init-attrs-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("kept")).unwrap();
+    std::fs::write(dir.join("kept/.gitattributes"), "*.png binary").unwrap();
+    for name in ["fresh", "kept"] {
+        let out = std::process::Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(["init", name])
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{out:?}");
+    }
+    let fresh = std::fs::read_to_string(dir.join("fresh/.gitattributes")).unwrap();
+    assert_eq!(
+        fresh,
+        "*.ms text eol=lf\n*.toml text eol=lf\nms.lock text eol=lf\n"
+    );
+    let kept = std::fs::read_to_string(dir.join("kept/.gitattributes")).unwrap();
+    assert!(
+        kept.starts_with("*.png binary\n*.ms text eol=lf\n"),
+        "{kept}"
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
