@@ -20,6 +20,9 @@ Complete programs for common jobs. Pick the one closest to what you are building
 - [Watching files](watching-files.md): react to changes in a file or folder
 - [Tests with fakes](testing-with-fakes.md): replace a dependency in a test
 - [Stopping cleanly](shutdown.md): handle Ctrl-C and SIGTERM
+- [Patterns and URLs](text-patterns.md): regular expressions, URL parts and queries
+- [Hashes, IDs and random values](ids-and-hashes.md): SHA-256, UUIDs, tokens, repeatable random numbers
+- [Tables and colors](terminal-output.md): aligned columns and color that switches off in a pipe
 - [Deploying one binary](deploying.md): a static executable and a container
 
 Shell commands assume POSIX; the HTTP recipe needs Python 3 as a local server. New to the language? Start with the [guide](../guide/_index.md).
