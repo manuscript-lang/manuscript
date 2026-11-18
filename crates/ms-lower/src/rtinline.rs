@@ -439,8 +439,20 @@ impl FnLower<'_> {
             return Some(self.b.call_rt(ext, args));
         }
         if sym == "msrt_string_view" {
-            let f = self.view_fn();
+            let f = self.view_fn(false);
             return Some(self.b.call(f, args));
+        }
+        if sym == "msrt_string_slice" && args.len() == 3 && ret == MTy::STR {
+            // The runtime returns the copy; the generated twin writes it through a slot.
+            let f = self.view_fn(true);
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
+                .expect("slot");
+            self.b.call(f, &[args[0], args[1], args[2], slot]);
+            return self
+                .b
+                .emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR));
         }
         if sym == "msrt_bytes_view" && args.len() == 4 {
             let f = self.bytes_view_fn(self.ty_of(args[0]));
@@ -684,8 +696,15 @@ impl FnLower<'_> {
         self.fast_path_add(key, func)
     }
 
-    fn view_fn(&mut self) -> FuncId {
-        let key = HelperKey::StringView;
+    /// The generated `String.view` (`slice` false) or `String.slice` (true). They share the
+    /// guard and the inline form of a piece of up to fifteen bytes. A longer view borrows the
+    /// receiver's bytes, while a longer slice is an owned copy, which the runtime makes.
+    fn view_fn(&mut self, slice: bool) -> FuncId {
+        let key = if slice {
+            HelperKey::StringSlice
+        } else {
+            HelperKey::StringView
+        };
         if let Some(f) = self.fast_path_cached(&key) {
             return f;
         }
@@ -701,11 +720,19 @@ impl FnLower<'_> {
         ];
         let ext = runtime_fn(
             self.b.m,
-            "msrt_string_view",
+            if slice {
+                "msrt_string_slice"
+            } else {
+                "msrt_string_view"
+            },
             &[MTy::STR, MTy::INT, MTy::INT, MTy::PTR],
             MTy::VOID,
         );
-        let mut b = self.fast_path_builder("string_view", params, MTy::VOID);
+        let mut b = self.fast_path_builder(
+            if slice { "string_slice" } else { "string_view" },
+            params,
+            MTy::VOID,
+        );
         let ps = b.params();
         let (text, start, end, out) = (ps[0], ps[1], ps[2], ps[3]);
         let (slow, join, flat_block, inl) =
@@ -742,16 +769,21 @@ impl FnLower<'_> {
         let n = b.binop(Op::ISub, end, start);
         let c15 = b.iconst(15);
         let fits = b.icmp(Cc::Le, n, c15);
-        b.br_if(fits, short, &[p, n], long, &[]);
+        // A longer slice is copied by the runtime.
+        b.br_if(fits, short, &[p, n], if slice { slow } else { long }, &[]);
         b.seal_block(short);
         b.seal_block(long);
         // Longer text: a view over the bytes.
         b.switch_to(long);
-        let tagged = int(&mut b, Op::Or, n, 3 << 62);
-        b.emit(Op::Store, &[out, p], Imm::None, None);
-        let out8 = add(&mut b, out, 8);
-        b.emit(Op::Store, &[out8, tagged], Imm::None, None);
-        b.br(join, &[]);
+        if slice {
+            b.unreachable();
+        } else {
+            let tagged = int(&mut b, Op::Or, n, 3 << 62);
+            b.emit(Op::Store, &[out, p], Imm::None, None);
+            let out8 = add(&mut b, out, 8);
+            b.emit(Op::Store, &[out8, tagged], Imm::None, None);
+            b.br(join, &[]);
+        }
         // A piece of up to fifteen bytes is copied into the two words of an inline string.
         b.switch_to(short);
         let (lo, hi) = pack_short(&mut b, sp, sn);
