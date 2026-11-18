@@ -13,6 +13,9 @@ subtract common path components. Do not resolve filesystem links or count a
 root as one separator byte. Keep patterns, excludes, callbacks, and returned
 paths in their documented forms; output always uses `/` separators.
 
+Patterns are cleaned of `.` and empty segments, but a trailing `/` is kept as a
+"directories only" flag (links to directories count), as in a shell (#4480).
+
 Apply when: changing filesystem glob traversal roots or relative result paths.
 Verify: `relative_paths_keep_whole_components` covers component boundaries and
 the host volume root; `glob_relative_roots_match_the_same_files_as_absolute_roots`
