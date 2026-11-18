@@ -5,6 +5,7 @@ import (
 	cos,
 	cosh,
 	exp,
+	floor,
 	frexp,
 	hypot,
 	infinity,
@@ -124,6 +125,8 @@ fn Complex.is_infinite() Bool:
 
 // Returns `e` raised to this number.
 fn Complex.exp() Complex:
+	if special := exp_special(self): return special
+
 	radius := exp(self.re)
 
 	// A zero imaginary part stays zero where the radius overflows; `inf * sin(0)`
@@ -201,10 +204,40 @@ fn Complex.pow(exponent: Complex) Complex:
 
 		return Complex(re: infinity, im: 0.0)
 
+	// A small integer exponent multiplies out exactly, where log and exp would round:
+	// (-7.25i)^1 is -7.25i, not 4.4e-16-7.25i.
+	if (
+		exponent.im == 0.0
+		and exponent.re.abs() <= 100.0
+		and exponent.re == floor(exponent.re)
+	):
+		return integer_power(
+			self,
+			exponent.re.abs().truncate_to_int().get_or(0),
+			exponent.re < 0.0,
+		)
+
 	return self.log().multiply(exponent).exp()
+
+// Raises to a non-negative integer power by repeated squaring, then inverts for a
+// negative exponent.
+fn integer_power(base: Complex, count: Int, invert: Bool) Complex:
+	var result = Complex(re: 1.0, im: 0.0)
+	var factor = base
+	var remaining = count
+
+	while remaining > 0:
+		if remaining % 2 == 1: result = result.multiply(factor)
+		factor = factor.multiply(factor)
+		remaining /= 2
+
+	if invert: return Complex(re: 1.0, im: 0.0).divide(result)
+
+	return result
 
 // Returns the complex sine, `sin(a)cosh(b) + cos(a)sinh(b)i` for `a+bi`.
 fn Complex.sin() Complex:
+	if special := sin_special(self): return special
 	return Complex(
 		re: hyperbolic_product(sin(self.re), self.im, cosh(self.im)),
 		im: hyperbolic_product(cos(self.re), self.im, sinh(self.im)),
@@ -212,6 +245,7 @@ fn Complex.sin() Complex:
 
 // Returns the complex cosine, `cos(a)cosh(b) - sin(a)sinh(b)i` for `a+bi`.
 fn Complex.cos() Complex:
+	if special := cos_special(self): return special
 	return Complex(
 		re: hyperbolic_product(cos(self.re), self.im, cosh(self.im)),
 		im: -hyperbolic_product(sin(self.re), self.im, sinh(self.im)),
@@ -220,6 +254,8 @@ fn Complex.cos() Complex:
 // Returns the complex tangent, sine divided by cosine; poles give infinities or
 // NaN.
 fn Complex.tan() Complex:
+	if special := tan_special(self): return special
+
 	// Past |b| = 40 sine and cosine overflow into inf / inf; the quotient is
 	// `sign(b) * i` plus a real part below 1e-34.
 	if self.im.abs() > 40.0:
@@ -227,10 +263,12 @@ fn Complex.tan() Complex:
 			re: 2.0 * sin_double(self.re) * exp(-2.0 * self.im.abs()),
 			im: copy_sign(1.0, self.im),
 		)
+
 	return self.sin().divide(self.cos())
 
 // Returns the hyperbolic sine.
 fn Complex.sinh() Complex:
+	if special := sinh_special(self): return special
 	return Complex(
 		re: hyperbolic_product(cos(self.im), self.re, sinh(self.re)),
 		im: hyperbolic_product(sin(self.im), self.re, cosh(self.re)),
@@ -238,6 +276,7 @@ fn Complex.sinh() Complex:
 
 // Returns the hyperbolic cosine.
 fn Complex.cosh() Complex:
+	if special := cosh_special(self): return special
 	return Complex(
 		re: hyperbolic_product(cos(self.im), self.re, cosh(self.re)),
 		im: hyperbolic_product(sin(self.im), self.re, sinh(self.re)),
@@ -245,16 +284,21 @@ fn Complex.cosh() Complex:
 
 // Returns the hyperbolic tangent.
 fn Complex.tanh() Complex:
+	if special := tanh_special(self): return special
+
 	// Past |a| = 40 the quotient is `sign(a)` plus an imaginary part below 1e-34.
 	if self.re.abs() > 40.0:
 		return Complex(
 			re: copy_sign(1.0, self.re),
 			im: 2.0 * sin_double(self.im) * exp(-2.0 * self.re.abs()),
 		)
+
 	return self.sinh().divide(self.cosh())
 
 // Returns the principal inverse sine, `-i * log(i*z + sqrt(1 - z^2))`.
 fn Complex.asin() Complex:
+	if special := asin_special(self): return special
+
 	// Near the origin `log(iz + root)` is the log of a number close to 1 and loses the
 	// digits of z. Kahan's form has no such cancellation: with a = sqrt(1-z) and
 	// b = sqrt(1+z), the real part is atan2(x, Re(ab)) and the imaginary part is
@@ -297,6 +341,8 @@ fn Complex.asin() Complex:
 
 // Returns the principal inverse cosine, pi/2 minus the inverse sine.
 fn Complex.acos() Complex:
+	if special := acos_special(self): return special
+
 	// Kahan's form keeps a real part that is tiny next to pi/2, which the subtraction
 	// below would round away for a large real part: with a = sqrt(1-z) and
 	// b = sqrt(1+z), the real part is 2 atan2(Re a, Re b) and the imaginary part is
@@ -314,6 +360,8 @@ fn Complex.acos() Complex:
 
 // Returns the principal inverse tangent, `i/2 * (log(1 - iz) - log(1 + iz))`.
 fn Complex.atan() Complex:
+	if special := atan_special(self): return special
+
 	// `1 -/+ iz` is built part by part too: adding to `1+0i` would turn a -0 part into
 	// +0 and pick the wrong side of the logarithm's branch cut.
 	iz := Complex(re: -self.im, im: self.re)
@@ -371,6 +419,128 @@ export type PolarParts:
 	radius: Float
 	// The angle in radians, from -pi through pi.
 	theta: Float
+
+// The special-value rows of C99 Annex G for inputs with an infinite or NaN part. Each
+// returns `none` when the general formula applies. Where the standard leaves a sign or
+// a zero unspecified, the result matches CPython's `cmath`.
+fn is_infinite_part(value: Float) Bool:
+	return not value.is_finite() and not value.is_nan()
+
+fn is_zero_or_nan_part(value: Float) Bool:
+	return value == 0.0 or value.is_nan()
+
+fn exp_special(z: Complex) Complex?:
+	// exp(-inf + yi) is a zero, whatever the infinite or NaN phase.
+	if z.re == -infinity and not z.im.is_finite(): return Complex(re: 0.0, im: 0.0)
+	if z.re == infinity and z.im.is_nan(): return Complex(re: infinity, im: z.im)
+
+	return none
+
+fn sin_special(z: Complex) Complex?:
+	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
+	if z.re.is_nan() and (z.im == 0.0 or is_infinite_part(z.im)):
+		return Complex(re: z.re, im: z.im)
+
+	return none
+
+fn cos_special(z: Complex) Complex?:
+	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.im, im: 0.0)
+	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: 0.0)
+	if z.re.is_nan() and is_infinite_part(z.im): return Complex(re: infinity, im: z.re)
+
+	return none
+
+fn tan_special(z: Complex) Complex?:
+	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
+
+	// tan(x + inf i) is `sign(b) i` for any x, even an infinite or NaN one.
+	if not z.re.is_finite() and is_infinite_part(z.im):
+		return Complex(re: 0.0, im: copy_sign(1.0, z.im))
+
+	return none
+
+fn sinh_special(z: Complex) Complex?:
+	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
+	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: z.im)
+	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: infinity, im: z.im)
+
+	return none
+
+fn cosh_special(z: Complex) Complex?:
+	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.im, im: 0.0)
+	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: 0.0)
+	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: infinity, im: z.im)
+
+	return none
+
+fn tanh_special(z: Complex) Complex?:
+	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: z.im)
+
+	// tanh(inf + yi) is `sign(a)` for any y, even an infinite or NaN one.
+	if is_infinite_part(z.re) and not z.im.is_finite():
+		return Complex(re: copy_sign(1.0, z.re), im: 0.0)
+
+	return none
+
+fn asin_special(z: Complex) Complex?:
+	half_pi := 1.5707963267948966
+	if z.re.is_finite() and is_infinite_part(z.im): return Complex(
+		re: copy_sign(0.0, z.re),
+		im: z.im,
+	)
+	if is_infinite_part(z.re) and z.im.is_finite(): return Complex(
+		re: copy_sign(half_pi, z.re),
+		im: copy_sign(infinity, z.im),
+	)
+	if is_infinite_part(z.re) and is_infinite_part(z.im): return Complex(
+		re: copy_sign(half_pi / 2.0, z.re),
+		im: z.im,
+	)
+	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
+	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: z.im, im: -infinity)
+	if z.re.is_nan() and is_infinite_part(z.im): return Complex(re: z.re, im: z.im)
+
+	return none
+
+fn acos_special(z: Complex) Complex?:
+	half_pi := 1.5707963267948966
+	if z.re.is_finite() and is_infinite_part(z.im): return Complex(
+		re: half_pi,
+		im: -z.im,
+	)
+
+	if is_infinite_part(z.re) and z.im.is_finite():
+		real := if z.re > 0.0: 0.0 else: 2.0 * half_pi
+		return Complex(re: real, im: -copy_sign(infinity, z.im))
+
+	if is_infinite_part(z.re) and is_infinite_part(z.im):
+		real := if z.re > 0.0: half_pi / 2.0 else: 3.0 * half_pi / 2.0
+		return Complex(re: real, im: -z.im)
+
+	if z.re == 0.0 and z.im.is_nan(): return Complex(re: half_pi, im: z.im)
+	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: z.im, im: infinity)
+	if z.re.is_nan() and is_infinite_part(z.im): return Complex(re: z.re, im: -z.im)
+
+	return none
+
+fn atan_special(z: Complex) Complex?:
+	half_pi := 1.5707963267948966
+	if is_infinite_part(z.re) and not z.im.is_nan(): return Complex(
+		re: copy_sign(half_pi, z.re),
+		im: copy_sign(0.0, z.im),
+	)
+	if (z.re.is_finite() or z.re.is_nan()) and is_infinite_part(z.im):
+		return Complex(
+			re: if z.re.is_nan(): z.re else: copy_sign(half_pi, z.re),
+			im: copy_sign(0.0, z.im),
+		)
+	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(
+		re: copy_sign(half_pi, z.re),
+		im: 0.0,
+	)
+	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: z.im)
+
+	return none
 
 // Multiplies two factors where one may be an overflowed (infinite) trig or hyperbolic
 // value. An exact zero times such an infinity stays a signed zero, where plain `*`
