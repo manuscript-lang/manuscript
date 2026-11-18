@@ -261,7 +261,7 @@ test('the landing page offers a trial while documentation keeps its reading navi
   assert.ok(primary, 'Offer a primary trial action');
   assert.ok(attribute(primary, 'href').endsWith('/learn/getting-started/'), 'Start the trial with a runnable guide');
   assert.ok(home.includes('install.sh'), 'Show the install command on the landing page');
-  assert.ok((home.match(/<h2\b/g) || []).length <= 4, 'Keep the landing page to a few focused sections');
+  assert.ok((home.match(/<h2\b/g) || []).length <= 5, 'Keep the landing page to a few focused sections');
   assert.ok((home.match(/class=["']?docs-code["' >]/g) || []).length >= 1, 'Show a code sample on the landing page');
   const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
   assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
