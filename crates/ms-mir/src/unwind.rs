@@ -2184,15 +2184,43 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
         return slots;
     }
     let mut bad: BTreeSet<u32> = BTreeSet::new();
-    // A slot a closure captures by reference may hold its value across blocks (an early exit of
-    // a `?` takes it back out in another block); any other slot is used within one block.
+    // A slot a closure captures by reference, or one only `put`, `take`n and `load`ed (never
+    // handed to a call), may hold its value across blocks: an early exit of a `?` takes it back
+    // out in another block. A slot a call receives is used within one block.
+    let handed: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| {
+            matches!(
+                i.op,
+                Op::Call | Op::CallInd | Op::CallMethod | Op::CallRt | Op::Poll
+            )
+        })
+        .flat_map(|i| i.args.iter().map(|a| a.0))
+        .collect();
     let captured: BTreeSet<u32> = f
         .blocks
         .iter()
         .flat_map(|b| &b.insts)
         .filter(|i| i.op == Op::ClosureNew)
         .flat_map(|i| i.args.iter().map(|a| a.0))
+        .chain(slots.keys().copied().filter(|s| !handed.contains(s)))
         .collect();
+    let guarded: BTreeSet<u32> = {
+        let mut other: BTreeSet<u32> = BTreeSet::new();
+        let mut cond: BTreeSet<u32> = BTreeSet::new();
+        for i in f.blocks.iter().flat_map(|b| &b.insts) {
+            for (k, a) in i.args.iter().enumerate() {
+                if i.op == Op::DropIf && k == 1 {
+                    cond.insert(a.0);
+                } else {
+                    other.insert(a.0);
+                }
+            }
+        }
+        cond.difference(&other).copied().collect()
+    };
     // The slots holding a value when each block starts. Every path to a block must agree.
     let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
     entry[0] = Some(BTreeSet::new());
@@ -2206,7 +2234,11 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
                 let Some(&ty) = slots.get(&a.0) else { continue };
                 let ok = match (inst.op, inst.imm) {
                     (Op::Put, _) if k == 0 => full.insert(a.0) && f.ty(inst.args[1]) == ty,
-                    (Op::Take, _) => full.remove(&a.0),
+                    (Op::Take, _) => {
+                        // A take whose result only feeds `drop.if` runs after a move emptied
+                        // the slot, and drops nothing then.
+                        full.remove(&a.0) || inst.res.is_some_and(|r| guarded.contains(&r.0))
+                    }
                     (Op::Load, _) => full.contains(&a.0),
                     (Op::Call, Imm::Func(g)) => {
                         full.contains(&a.0)
