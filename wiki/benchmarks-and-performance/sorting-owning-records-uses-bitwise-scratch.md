@@ -4,4 +4,6 @@
 
 The merge buffer is freed right after the sort and before the clone, so the result reuses its block: 1M `Int`/`String`/`Float` records peaked at 127 MB with the buffer freed last and 96 MB now (Rust 92).
 
+`String` elements take the same path (`word_elem` accepts `STR`): 1M long strings sorted by `compare` went from 630 to 380 ms against Rust's 341 to 378.
+
 A benchmark with `String::from` per Rust record against Manuscript's static literals is not equal work: borrow the literal (`Cow::Borrowed`) in the Rust twin.

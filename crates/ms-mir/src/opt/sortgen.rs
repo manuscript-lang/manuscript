@@ -159,8 +159,10 @@ fn word_elem(m: &Module, thunk: FuncId, g: FuncId) -> Option<Ty> {
         && code.params[1].ty == elem
         && code.params[2].ty == elem
         && code.ret == Ty::INT;
-    let plain =
-        elem == Ty::INT || elem == Ty::FLOAT || matches!(m.types.kind(elem), TyKind::Type(_));
+    let plain = elem == Ty::INT
+        || elem == Ty::FLOAT
+        || elem == Ty::STR
+        || matches!(m.types.kind(elem), TyKind::Type(_));
     (shaped && plain).then_some(elem)
 }
 

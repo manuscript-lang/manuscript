@@ -52,4 +52,14 @@ Other programs measured, all level with Rust or better: 5M `Int?` list 82 vs 80 
 ## Not planned
 
 - Hello world is 546 KB stripped against Rust's 341 KB because about 220 KB is Rust `std` backtrace, DWARF reader and unwinder code that the default panic hook keeps reachable. Removing it needs `-Zbuild-std` with `panic_immediate_abort`, which is nightly only; the repository pins stable 1.99.1.
-- `sortstr` (1M strings sorted with `compare`) is 623 ms against Rust's 505 ms: a time gap in string comparison, not a memory one; left for a later round.
+
+## Change: `sorted` of a `List[String]` by a known comparator uses the generated sort
+
+The generated sort covered `Int`, `Float` and records but not `String` elements, so a string sort called its comparator through a pointer once per comparison (about 90 instructions per comparison with the call, tag decoding and `memcmp`). `String` now takes the same path as other owning elements.
+
+| 1M strings, `sorted` by `compare`, sort time ms (median of 3) | before | after | Rust `sort` |
+| --- | ---: | ---: | ---: |
+| 33-byte strings with a shared 32-byte prefix | 630 | 380 | 341 to 378 |
+| short (inline) strings | not measured | 149 | 304 to 380 |
+
+Peak memory is unchanged (143 MB against Rust 186). New test: `sorting strings longer than the inline size by compare leaves the original alone` in `sort-owning-records-by-comparator`.
