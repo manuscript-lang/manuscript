@@ -13,10 +13,15 @@ import (
 How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`;
 with `jitter` the wait is a random share of that, so many callers do not retry in step.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":["url: String"]} -->
 ```manuscript
+import RetryPolicy, retry from "@std/concurrency/resilience.ms"
+import fetch from "@std/net/fetch.ms"
+import milliseconds from "@std/time.ms"
+
 policy := RetryPolicy(attempts: 5, delay: milliseconds(50))
 body := retry(policy, fn attempt: fetch(url).wait())
+if body.is_error(): print("gave up")
 ```
 */
 export type RetryPolicy:
@@ -79,8 +84,11 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
 /*
 A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":["urls: List[String]"]} -->
 ```manuscript
+import rate_limiter from "@std/concurrency/resilience.ms"
+import fetch from "@std/net/fetch.ms"
+
 var limiter = rate_limiter(10, burst: 20)?
 for url in urls:
     limiter.acquire()
@@ -160,10 +168,15 @@ export enum CircuitError[E]:
 Stops calling something that keeps failing. After `threshold` failures in a row the circuit opens and calls fail at once with `Open`;
 after `cooldown` one call is let through, and its result closes the circuit (success) or opens it again (failure).
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":["request: String"]} -->
 ```manuscript
+import CircuitBreaker from "@std/concurrency/resilience.ms"
+import fetch from "@std/net/fetch.ms"
+import seconds from "@std/time.ms"
+
 var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
-reply := breaker.call(fn: send(request))
+reply := breaker.call(fn: fetch(request).wait())
+if reply.is_error(): print("circuit open or call failed")
 ```
 */
 export type CircuitBreaker:
@@ -207,9 +220,12 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // `work` returns a Result, that Result is an item in the returned list; inspect each
 // outcome. A `limit` below 1 is `EINVAL`.
 //
-// <!-- manuscript-example: {"mode":"fragment"} -->
+// <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 // ```manuscript
+// import map_concurrent from "@std/concurrency/resilience.ms"
+//
 // doubled := map_concurrent([1, 2, 3], 2, fn n: n * 2)?  // [2, 4, 6]
+// print(doubled.length())
 // ```
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
 	if limit < 1:
@@ -251,12 +267,15 @@ fn stripe_results[T, U](items: List[T], first: Int, step: Int, work: fn(T) U) Li
 /*
 A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":["events: List[String]"]} -->
 ```manuscript
+import Throttle from "@std/concurrency/resilience.ms"
+import milliseconds from "@std/time.ms"
+
 var spacing = Throttle(interval: milliseconds(200))
 for event in events:
     if spacing.allow():
-        redraw(event)
+        print(event)
 ```
 */
 export type Throttle:

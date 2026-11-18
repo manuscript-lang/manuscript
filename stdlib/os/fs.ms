@@ -7,12 +7,13 @@ Completion rule: an operation on a whole file's contents (`read_file`, `write_fi
 Text and bytes use one function: `write_file(path, "text")` and `write_file(path, bytes)` both type-check.
 Functions take at most three parameters; more settings travel in an `*Options` record.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import read_file, write_file from "@std/os/fs.ms"
 
 write_file("notes.txt", "hello").wait()?
 data := read_file("notes.txt").wait()?
+print(data.length())
 ```
 */
 import (
@@ -617,9 +618,12 @@ Returns entries matching the include patterns of `options`, sorted by path. `pat
 `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
 returns True. A pattern ending in `/` matches directories only, as in a shell. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import GlobOptions, glob from "@std/os/fs.ms"
+
 sources := glob(".", GlobOptions(patterns: ["*.ms"]))?
+print(sources.length())
 ```
 */
 // ms: effect std.fs.read
@@ -642,8 +646,10 @@ By default an existing destination returns EEXIST; set `replace` to overwrite it
 source and destination path and skips the entry when it returns False.
 Entry and byte limits apply cumulatively across the whole copy.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import CopyOptions, copy from "@std/os/fs.ms"
+
 copy("a.txt", "b.txt", CopyOptions(replace: true))?
 ```
 */
@@ -858,9 +864,12 @@ fn open_flags(mode: OpenMode, exclusive: Bool) String:
 Opens `path` in `mode` (default `Read`). `options.exclusive` makes creation fail with EEXIST when the file exists;
 `options.permissions` is applied on creation, subject to umask and OS policy.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-file := open("out.log", OpenMode.Append)?
+import OpenMode, open from "@std/os/fs.ms"
+
+var file = open("out.log", OpenMode.Append)?
+file.close()?
 ```
 */
 // ms: effect std.fs.read
@@ -1035,9 +1044,12 @@ With an interval it compares snapshots of the tree every `interval`, which must 
 `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts, and
 fails with EOVERFLOW the same way on every platform.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import WatchOptions, watch from "@std/os/fs.ms"
+
 var watcher = watch("src", recursive: true, options: WatchOptions(interval: 1.seconds()))?
+watcher.close()?
 ```
 */
 // ms: effect std.fs.read

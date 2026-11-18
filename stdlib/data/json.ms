@@ -42,11 +42,15 @@ on a mismatch. `get` and `get_index` borrow the selected part; keep the document
 unchanged while using it. `as_string`, `as_list` and `as_map` explicitly clone their payloads.
 Nested reads bind each level with `if value := ...`:
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":["doc: JsonValue"]} -->
 ```manuscript
-if user := doc.get("user"):
-    if name := user.get("name"):
-        return name.as_string().get_or("")
+import JsonValue from "@std/data/json.ms"
+
+fn user_name(doc: JsonValue) String:
+    if user := doc.get("user"):
+        if name := user.get("name"):
+            return name.as_string().get_or("")
+    return ""
 ```
 
 `get_in` reads a chain of object members in one call and borrows the result: `doc.get_in(["user", "name"])`.
@@ -266,14 +270,17 @@ containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bound
 indentation included; exceeding it returns `EOVERFLOW`. A negative bound or indent returns
 `EINVAL`.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
+import stringify from "@std/data/json.ms"
+
 type Request:
     model: String
     stream: Bool
     user: String?
 
 text := stringify(Request(model: "example", stream: true, user: none))?
+print(text)
 ```
 */
 export fn stringify[T: Data](

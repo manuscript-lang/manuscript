@@ -17,7 +17,7 @@ references resolve, so any other `&name;` is an error. The input is text: UTF-16
 encodings are the caller's to decode before parsing. Names keep their prefix as written
 (`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import parse from "@std/data/xml.ms"
 doc := parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")?

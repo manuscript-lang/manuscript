@@ -65,14 +65,18 @@ The result is the compact `header.claims.signature` form, ready for an `Authoriz
 `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
 Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns an Error with kind `EINVAL`.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":["secret: Bytes"]} -->
 ```manuscript
+import Bytes from "@std/bytes.ms"
+import sign_token, verify_token from "@std/data/jwt.ms"
+
 type Session:
     sub: String
     exp: Int
 
 token := sign_token(Session(sub: "42", exp: 1900000000), secret)?
 session := verify_token[Session](token, secret)?
+print(session.sub)
 ```
 */
 export fn sign_token[T: Data](

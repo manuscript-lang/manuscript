@@ -11,10 +11,10 @@ Conversions between text and values: booleans, integers in any base, and quoted 
 Scalar classification lives in `@std/unicode.ms`; whole-string operations such as `fields_by`,
 `trim_chars` and `title` are methods on String.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import quote from "@std/text.ms"
-quote("a\tb")                  // a double-quoted literal with the escape written out
+print(quote("a\tb"))           // a double-quoted literal with the escape written out
 ```
 */
 

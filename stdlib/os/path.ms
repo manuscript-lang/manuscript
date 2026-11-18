@@ -3,12 +3,13 @@ Lexical path text: no function here touches the filesystem.
 
 Every function exists twice: the module-level one follows the host's rules (backslash and drive roots on Windows, slash elsewhere), and `posix()` / `win32()` return the same operations for one chosen dialect, so a program can handle either spelling on any host.
 
-<!-- manuscript-example: {"mode":"fragment"} -->
+<!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import join, basename from "@std/os/path.ms"
 
 config := join(["/etc", "app", "main.toml"])
 name := basename(config)
+print(name)
 ```
 */
 import (
