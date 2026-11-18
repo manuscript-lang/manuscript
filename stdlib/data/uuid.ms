@@ -6,7 +6,7 @@ import (
 	random_bytes from "@std/random.ms",
 	now from "@std/time.ms",
 
-	draw_uuid from "@std/internal/random.ms",
+	draw_uuid, msstd_random_v7_next from "@std/internal/random.ms",
 )
 
 // The namespace for fully qualified domain names, for `uuid_v5`.
@@ -40,23 +40,32 @@ export fn uuid_v5(namespace: String, name: String) String!:
 	return ok(format_uuid(digest, 5))
 
 /*
-Creates a version-7 UUID: the current Unix time in milliseconds followed by random bits, in lowercase text.
+Creates a version-7 UUID: the current Unix time in milliseconds, a 12-bit sequence, then random bits, in lowercase text.
 Ids made later sort after ids made earlier as strings, which keeps database indexes and logs in creation order.
-Two ids made in the same millisecond are ordered randomly. Entropy failures return an `Error`.
+Ids made in the same millisecond, even by different tasks, are ordered by the sequence, which counts up from a random start; if the sequence fills up or the clock steps back, the timestamp field keeps counting forward instead. Entropy failures return an `Error`.
 */
 export fn uuid_v7() String!:
 	moment := now()
 	millis := moment.seconds * 1000 + moment.nanos / 1000000
 	noise := random_bytes(10)?
+	stamp := msstd_random_v7_next(
+		millis,
+		noise.get(0).to_int() * 256 + noise.get(1).to_int(),
+	)
+	time := shift_right_unsigned(stamp, 12)
+	sequence := bit_and(stamp, 4095)
 	var raw = BytesBuilder()
 	for place in 0..6:
 		raw.append(
 			bit_and(
-				shift_right_unsigned(millis, 8 * (5 - place)),
+				shift_right_unsigned(time, 8 * (5 - place)),
 				255,
 			).to_uint8().get_or(0)
 		)
-	raw.append_bytes(noise)
+	raw.append(shift_right_unsigned(sequence, 8).to_uint8().get_or(0))
+	raw.append(bit_and(sequence, 255).to_uint8().get_or(0))
+	for place in 2..10:
+		raw.append(noise.get(place))
 	return ok(format_uuid(raw.build(), 7))
 
 // Returns the version digit (1 through 8) of a UUID text, or none when `text` is not an

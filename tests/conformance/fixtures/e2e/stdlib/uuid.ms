@@ -68,6 +68,13 @@ test "uuid_v7 is a version-7 uuid that sorts by creation time":
 	second := (uuid_v7() | expect_ok?)
 	(first < second) | expect_true?
 
+test "uuid_v7 ids made back to back sort in creation order":
+	var previous = (uuid_v7() | expect_ok?)
+	for round in 0..2000:
+		next := (uuid_v7() | expect_ok?)
+		if not (previous < next): return fail(f"{next} did not sort after {previous}")
+		previous = next
+
 test "ulid has 26 Crockford characters and sorts by creation time":
 	first := (ulid() | expect_ok?)
 	first.length() | expect_equal(26)?

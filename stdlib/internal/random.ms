@@ -14,6 +14,11 @@ import (
 // The operating system's entropy: exactly `count` bytes, `count` from 0 through 16 MiB.
 export extern fn msstd_random_os_bytes(count: Int) Bytes!
 
+// The stamp `millis * 4096 + sequence` of the next version-7 UUID made at `millis`,
+// strictly greater than every earlier one. A new millisecond starts the sequence at
+// `seed` modulo 2048.
+export extern fn msstd_random_v7_next(millis: Int, seed: Int) Int
+
 export fn invalid_input() Error:
 	return Error("random: invalid input", kind: "EINVAL")
 
