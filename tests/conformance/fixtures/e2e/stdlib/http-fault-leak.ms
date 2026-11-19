@@ -99,17 +99,29 @@ test "a fetch cancelled while it waits for the response frees the cancellation e
 	for i in 0..20:
 		void fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 
-	before := (memory_usage() | expect_ok?).heap_used
+	// A leak grows the heap in every round; the pool and rings that settle while a
+	// loaded runner cancels fetches move it up or down by a few kilobytes in one round.
+	// So the check fails only when no round came back near where it started.
+	var least = 0
 
-	for i in 0..400:
-		timed_out := fetch(url).with(
-			options: PromiseOptions(timeout: 3.milliseconds())
-		).wait()
-		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
+	for round in 0..3:
+		before := (memory_usage() | expect_ok?).heap_used
 
-	// The error a cancelled read returns is dropped before the boundary jumps into the
-	// runtime's cancellation; keeping it leaked its text on every cancelled call.
-	grown := (memory_usage() | expect_ok?).heap_used - before
-	if grown > 512: return error(
-		Error(f"heap grew {grown} bytes over 400 fetches cancelled while reading")
+		for i in 0..150:
+			timed_out := fetch(url).with(
+				options: PromiseOptions(timeout: 3.milliseconds())
+			).wait()
+			if timed_out.is_ok(): return error(Error("a hanging handler answered"))
+
+		// The error a cancelled read returns is dropped before the boundary jumps into
+		// the runtime's cancellation; keeping it leaked its text on every cancelled
+		// call.
+		grown := (memory_usage() | expect_ok?).heap_used - before
+		if round == 0 or grown < least:
+			least = grown
+
+	if least > 512: return error(
+		Error(
+			f"heap grew at least {least} bytes in every round of 150 fetches cancelled while reading"
+		)
 	)

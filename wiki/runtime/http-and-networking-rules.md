@@ -81,3 +81,7 @@ Verified: `start_tls` and `accept_tls` (`@std/net/net.ms`) take the socket out o
 
 Apply when: adding a stream wrapper or changing connection close rules.
 Evidence: `start_tls upgrades a plain connection in place on both sides` in [tls.ms](../../tests/conformance/fixtures/e2e/stdlib/tls.ms).
+
+## Timing fixtures
+
+A fixture that sets a server timeout of a few hundred milliseconds must not let the process's first connection run under it: lazy start-up on a loaded Windows runner exceeded 200 ms, the idle connection closed before its request arrived, and `http-request-deadline` read an empty answer (#4492, evidence in the run's `slow answer:` line). Warm the path first. A heap check over cancelled calls compares rounds and fails only when every round grows (`http-fault-leak`, one Windows run grew 8976 bytes with no leak).
