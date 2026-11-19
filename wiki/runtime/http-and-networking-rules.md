@@ -81,3 +81,9 @@ Verified: `start_tls` and `accept_tls` (`@std/net/net.ms`) take the socket out o
 
 Apply when: adding a stream wrapper or changing connection close rules.
 Evidence: `start_tls upgrades a plain connection in place on both sides` in [tls.ms](../../tests/conformance/fixtures/e2e/stdlib/tls.ms).
+
+## Timing fixtures
+
+`http-request-deadline` failed on Windows runners with an empty answer (a clean close, no read error) in its first case only (#4492). It does not reproduce on Linux: the same fixture passes 40 of 40 on one pinned core under 24 busy loops, and even a 2 ms server timeout passes, so lazy start-up on Linux costs under 2 ms. The Windows cause is unproven; the fixture's failure output now carries connect, send and end times so the next failure shows where the 200 ms went. Do not paper over it with a warm-up request or a longer timeout: if a real server drops a first connection with no answer, that is a product bug.
+
+A heap check over cancelled calls compares rounds and fails only when every round grows (`http-fault-leak`, one Windows run grew 8976 bytes with no leak).
