@@ -21,4 +21,4 @@ fn main() Int:
 
 List `.filter/.map/.sum` are methods; similarly named stream steps are imported functions. Prefer these operations to bookkeeping loops.
 
-`String.slice(a, b)` returns a String (no Result); `List.slice(a, b)` returns a Result. Read a file's text with `read_file(path).wait()?.decode_utf8().ok_or(Error("not UTF-8"))?`: `read_file` returns a Promise of Bytes, and there is no `read_text`.
+`String.length()` counts UTF-8 bytes (`"é"` is 2); `scalar_length()` counts characters and `display_width()` (a Result) counts terminal columns, so pad and underline with those. `String.slice(a, b)` returns a String (no Result); `List.slice(a, b)` returns a Result. Read a file's text with `read_file(path).wait()?.decode_utf8().ok_or(Error("not UTF-8"))?`: `read_file` returns a Promise of Bytes, and there is no `read_text`.
