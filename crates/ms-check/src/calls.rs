@@ -1026,7 +1026,6 @@ mod argument_tests {
                             Argument {
                                 pos: Pos::new(index, 1, index + 1),
                                 name,
-                                mutable: false,
                                 value: Expr {
                                     id: NodeId(index),
                                     pos: Pos::default(),

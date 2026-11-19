@@ -16,22 +16,22 @@ fn mixed(var counter: Counter) List[Int]:
         value,
         counter.value,
         counter.value,
-        advance(var counter),
+        advance(counter),
         value,
         match present(2):
             number:
                 value = number
-                advance(var counter)
+                advance(counter)
             none: 0
         ,
         value,
         counter.value,
-        advance(var counter)
+        advance(counter)
     ]
 
 test "multiple captures survive later statement growth":
     var counter = Counter(0)
-    if mixed(var counter) != [1, 0, 0, 1, 1, 2, 2, 2, 3]:
+    if mixed(counter) != [1, 0, 0, 1, 1, 2, 2, 2, 3]:
         return panic("operand evaluation order changed")
     if counter.value != 3: return panic("effect count changed")
 
@@ -39,13 +39,13 @@ test "pending captures grow beyond the small buffer":
     var counter = Counter(0)
     values := [
         counter.value, counter.value, counter.value, counter.value, counter.value,
-        counter.value, counter.value, counter.value, counter.value, advance(var counter)
+        counter.value, counter.value, counter.value, counter.value, advance(counter)
     ]
     if values != [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]:
         return panic("earlier field reads changed")
 
     var copy = counter.clone()
-    separate := [copy.value, advance(var copy), copy.value]
+    separate := [copy.value, advance(copy), copy.value]
     if separate != [1, 2, 2]: return panic("copy lost its own mutations")
     if counter.value != 1: return panic("copy changed the original")
 

@@ -320,7 +320,7 @@ func (a *Asm) pass1(text string) {
 		if s == "" {
 			continue
 		}
-		var head, rest string
+		head, rest string
 		if k := strings.IndexAny(s, " \t"); k >= 0 {
 			head, rest = s[:k], strings.TrimSpace(s[k:])
 		} else {
@@ -636,9 +636,9 @@ type Trap struct{ msg string }
 func main() {
 	data, _ := io.ReadAll(os.Stdin)
 	text := strings.ReplaceAll(string(data), "\r\n", "\n")
-	var src, inp string
+	src, inp string
 	lines := strings.Split(text, "\n")
-	var srcLines, inLines []string
+	srcLines, inLines []string
 	seen := false
 	for _, l := range lines {
 		if !seen && l == "====" {

@@ -4,4 +4,4 @@ Decision (2026-11-19, Chinmay): a call passes `f(x)` for a parameter declared `v
 
 Kept: exclusive-borrow rules, overlap checks, and the requirement that the argument is a `var` variable or a field of one. A `var` receiver is unchanged (`fn var T.m`).
 
-Transition: the parser still accepts `f(var x)`. The checker ignores it, and lint `MSL136` warns with a fix (`ms lint --fix`); the migration of stdlib, docs and fixtures was done with that fix. Removing the syntax from the parser is the follow-up once no source needs it. Lints that count writes to a name read `ArgSlot.changed` (set from the callee's parameter), not the written marker.
+One rule (Chinmay, 2026-11-19: "remove the old code, no var at callsite needed"): `f(var x)` is a parse error whose fix deletes the `var `. A first step (#4610) accepted it with lint `MSL136`; that was removed along with `Argument.mutable`. Lints that count writes to a name read `ArgSlot.changed` (set from the callee's parameter), not the written marker.

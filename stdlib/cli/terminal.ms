@@ -413,7 +413,7 @@ fn var TerminalDecoder.decode(text: String) List[TerminalEvent]:
 		b := code_of(buf[i])
 
 		if self.pasting:
-			i = self.take_paste(buf, i, var out)
+			i = self.take_paste(buf, i, out)
 			continue
 
 		if self.discarding:

@@ -19,7 +19,7 @@ fn var Box.mixed() Int:
 
 fn main() Void:
     var b = Box(n: 1, xs: [1])
-    bump(var b)
+    bump(b)
 
     mixed := b.mixed()
     var m = Map[String, Int]()

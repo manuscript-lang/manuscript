@@ -124,7 +124,7 @@ fn var Router.route(
 ) Void!:
 	segments := parse_pattern(pattern.clone())?
 	return insert(
-		var self.routes,
+		self.routes,
 		Route(
 			method: method.to_string(),
 			pattern: pattern,
@@ -202,19 +202,19 @@ fn var Router.mount(prefix: String, routes: Router) Void!:
 	var mounted = routes
 	base := if prefix == "/": "" else: prefix.clone()
 	offset := self.groups.length()
-	var groups = drain(var mounted.groups)
+	var groups = drain(mounted.groups)
 	while not groups.is_empty():
 		self.groups.append(groups.pop().get())
 
 	own := self.groups.length()
-	self.groups.append(in_order(var mounted.middleware))
+	self.groups.append(in_order(mounted.middleware))
 
-	var sources = drain(var mounted.routes)
+	var sources = drain(mounted.routes)
 
 	while not sources.is_empty():
 		var route = sources.pop().get()
-		remount(var route, base, own, offset)?
-		insert(var self.routes, route)?
+		remount(route, base, own, offset)?
+		insert(self.routes, route)?
 
 // Adds middleware around every route and around the 404, 405 and OPTIONS answers.
 // It receives the exchange and a continuation that runs the rest of the chain with
@@ -234,7 +234,7 @@ fn Router.handler() fn(var HttpExchange) Void!:
 		self.routes,
 		self.middleware,
 		self.groups,
-		var exchange,
+		exchange,
 	)
 
 // Runs `request` through the router without a socket and returns the response it
@@ -256,7 +256,7 @@ fn Router.call(request: HttpRequest) HttpResponse!:
 	)
 	state := owner.slot
 	var exchange: HttpExchange = TestExchange(request: request.clone(), state: state)
-	ran := dispatch(self.routes, self.middleware, self.groups, var exchange)
+	ran := dispatch(self.routes, self.middleware, self.groups, exchange)
 	outcome := finished(state)
 	if ran.is_error(): return error(ran.err().clone())
 
@@ -302,8 +302,8 @@ fn drain[T](var from: List[T]) List[T]:
 
 // Empties `from` into a new list in the same order.
 fn in_order[T](var from: List[T]) List[T]:
-	var stack = drain(var from)
-	return drain(var stack)
+	var stack = drain(from)
+	return drain(stack)
 
 fn invalid_pattern(pattern: String) Error:
 	return Error(
@@ -428,7 +428,7 @@ fn capture(segments: List[Segment], parts: List[String]) List[String]?:
 			return values
 
 		if entry.index >= parts.length(): return none
-		if not accepts(entry.value, parts[entry.index], var values): return none
+		if not accepts(entry.value, parts[entry.index], values): return none
 
 	if parts.length() != segments.length(): return none
 
@@ -481,8 +481,8 @@ fn dispatch(
 	return chain(
 		middleware,
 		0,
-		var exchange,
-		fn(var last: HttpExchange): finish(routes, groups, target, var last)
+		exchange,
+		fn(var last: HttpExchange): finish(routes, groups, target, last)
 	)
 
 // Runs `middleware` from `at` on, then `last`.
@@ -492,10 +492,10 @@ fn chain(
 	var exchange: HttpExchange,
 	last: fn(var HttpExchange) Void!
 ) Void!:
-	if at >= middleware.length(): return last(var exchange)
+	if at >= middleware.length(): return last(exchange)
 	return middleware[at](
-		var exchange,
-		fn(var next: HttpExchange): chain(middleware, at + 1, var next, last)
+		exchange,
+		fn(var next: HttpExchange): chain(middleware, at + 1, next, last)
 	)
 
 // Runs the middleware groups `around` from `at` on, then `last`.
@@ -506,16 +506,16 @@ fn chain_groups(
 	var exchange: HttpExchange,
 	last: fn(var HttpExchange) Void!
 ) Void!:
-	if at >= around.length(): return last(var exchange)
+	if at >= around.length(): return last(exchange)
 	return chain(
 		groups[around[at]],
 		0,
-		var exchange,
+		exchange,
 		fn(var next: HttpExchange): chain_groups(
 			groups,
 			around,
 			at + 1,
-			var next,
+			next,
 			last,
 		)
 	)
@@ -536,23 +536,20 @@ fn finish(
 			groups,
 			route.around,
 			0,
-			var exchange,
-			fn(var last: HttpExchange): route.handler(
-				var last,
-				found.params,
-			)
+			exchange,
+			fn(var last: HttpExchange): route.handler(last, found.params)
 		)
 
 	if method == "OPTIONS" and exchange.path() == "*":
 		var server_wide = text(204, "")
 		server_wide.headers.append("Allow", allow_text(target.every))?
-		return reply(var exchange, server_wide)
+		return reply(exchange, server_wide)
 
-	if found.allow.is_empty(): return reply(var exchange, text(404, "not found\n"))
+	if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
 
 	var response = text(if method != "OPTIONS": 405 else: 204, "")
 	response.headers.append("Allow", allow_text(found.allow))?
-	return reply(var exchange, response)
+	return reply(exchange, response)
 
 // Methods with a route for the path, sorted and without repeats; GET adds HEAD, and
 // OPTIONS is always answered.
@@ -806,7 +803,7 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 // middleware read it, and added to the response as `X-Request-Id`.
 export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
 	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Void!): with_request_id(
-		var exchange,
+		exchange,
 		next,
 	)
 
@@ -822,7 +819,7 @@ fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Void!)
 	var extra = headers()
 	extra.append("X-Request-Id", id)?
 	exchange = new_tap(exchange, extra, request)
-	return next(var exchange)
+	return next(exchange)
 
 fn usable_id(id: String) Bool:
 	return (
@@ -855,7 +852,7 @@ export fn access_log(
 ) fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
 	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Void!): with_access_log(
 		logger,
-		var exchange,
+		exchange,
 		next,
 	)
 
@@ -873,7 +870,7 @@ fn with_access_log(
 	state := owner.slot
 	exchange = new_tap(exchange, headers(), request, state)
 
-	result := next(var exchange)
+	result := next(exchange)
 	sent := snapshot(state)
 	status := answered(sent.status, result.is_ok())
 	entry := AccessEntry(

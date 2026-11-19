@@ -2341,13 +2341,11 @@ impl<'a> Parser<'a> {
                 pos: index.pos,
                 name: None,
                 value: *index,
-                mutable: false,
             },
             Argument {
                 pos: value.pos,
                 name: None,
                 value,
-                mutable: false,
             },
         ];
         let call = self.mk(
@@ -2704,7 +2702,6 @@ impl<'a> Parser<'a> {
                 pos: value.pos,
                 name: None,
                 value,
-                mutable: false,
             })
             .collect();
         self.mk(
@@ -2789,7 +2786,6 @@ impl<'a> Parser<'a> {
                 pos: lhs.pos,
                 name: None,
                 value: lhs,
-                mutable: false,
             }];
             if self.take(Tok::LParen) {
                 args.extend(self.call_arguments()?);
@@ -3119,7 +3115,16 @@ impl<'a> Parser<'a> {
                     }
                     return self.fail(eq, format!("argument labels use a colon; write {n}: value"));
                 }
-                let mutable = self.take(Tok::Var);
+                if self.kind() == Tok::Var {
+                    let mut t = self.peek();
+                    t.end = self.ahead(1).pos;
+                    return self.fail_fix_range(
+                        t,
+                        t,
+                        "a call does not write `var`: the callee's parameter declares that it changes the argument; write the argument plainly",
+                        "",
+                    );
+                }
                 let value = self.expression(0)?;
                 if let ExprKind::Name(n) = &value.kind
                     && self.kind() == Tok::Arrow
@@ -3127,12 +3132,7 @@ impl<'a> Parser<'a> {
                     let a = self.peek();
                     return self.fail(a, format!("arrow closures are not supported; write 'fn {n_t}: {n_t} + 1', or 'fn({n_t}: Int) Int: {n_t} + 1' with explicit types", n_t = self.names.str(n)));
                 }
-                args.push(Argument {
-                    pos,
-                    name,
-                    value,
-                    mutable,
-                });
+                args.push(Argument { pos, name, value });
                 if !self.take(Tok::Comma) {
                     break;
                 }

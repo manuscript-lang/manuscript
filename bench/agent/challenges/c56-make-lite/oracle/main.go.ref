@@ -672,7 +672,7 @@ func (m *Make) parse(text string) {
 		}
 		targets := words(m.expand(t[:col], nil))
 		pre := m.expand(rest, nil)
-		var normal, oo []string
+		normal, oo []string
 		if k := strings.IndexByte(pre, '|'); k >= 0 {
 			normal = words(pre[:k])
 			oo = words(pre[k+1:])

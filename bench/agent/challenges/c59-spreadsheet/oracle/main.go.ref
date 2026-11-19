@@ -1690,7 +1690,7 @@ func main() {
 				if cmd == "print" && mode == "formulas" {
 					panic(Err{"usage: print [RANGE]"})
 				}
-				var c1, r1, c2, r2 int
+				c1, r1, c2, r2 int
 				if rng != "" {
 					c1, r1, c2, r2 = parseRange(rng)
 				} else {

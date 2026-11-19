@@ -165,10 +165,10 @@ export fn gen_c44() Void:
 			solve(mk(ex_a, ex_b, 1, "old.txt", "new.txt")),
 		)
 	]
-	big_a := doc(var rnd, 280)
-	big_b := edit(var rnd, big_a, 45)
-	small_a := doc(var rnd, 25)
-	small_b := edit(var rnd, small_a, 6)
+	big_a := doc(rnd, 280)
+	big_b := edit(rnd, big_a, 45)
+	small_a := doc(rnd, 25)
+	small_b := edit(rnd, small_a, 6)
 	odd_a := [
 		"", " ", "- dash", "+ plus", "@@ -1 +1 @@", "--- hdr", "  two  ", "tab\there"
 	]

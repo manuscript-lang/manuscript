@@ -48,24 +48,24 @@ fn moving_index(var rows: List[List[Int]]) Void:
 
 fn main() Void:
     var a = [[0], [0]]
-    early(var a, true)
-    early(var a, false)
+    early(a, true)
+    early(a, false)
 
     var b = [[0], [0], [0]]
-    in_loop(var b)
+    in_loop(b)
 
     var c = [[0], [0]]
-    _r1 := failing(var c, true)
-    _r2 := failing(var c, false)
+    _r1 := failing(c, true)
+    _r2 := failing(c, false)
     var d = [["a"], ["b"]]
-    generic(var d, "z")
+    generic(d, "z")
 
     var e = [[1], [2]]
-    generic(var e, 9)
+    generic(e, 9)
 
     var boxes = [Box(items: [], name: "p"), Box(items: [1], name: "q")]
-    nested(var boxes)
+    nested(boxes)
 
     var f = [[0], [0]]
-    moving_index(var f)
+    moving_index(f)
     print(f"{a}\n{b}\n{c}\n{d}\n{e}\n{boxes}\n{f}")

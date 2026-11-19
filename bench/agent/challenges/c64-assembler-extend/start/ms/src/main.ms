@@ -926,7 +926,7 @@ fn main() Void!:
 		bv.append(0)
 
 	if err == "":
-		r := asm.pass2(var av, var bv)
+		r := asm.pass2(av, bv)
 
 		if _u := r:
 			err = ""

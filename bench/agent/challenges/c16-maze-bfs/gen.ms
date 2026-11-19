@@ -82,12 +82,12 @@ fn maze(var rnd: Random, h: Int, w: Int, p: Float) String:
 
 export fn gen_c16() Void:
 	var rnd = seeded(16)
-	open_big := maze(var rnd, 60, 60, 0.3)
+	open_big := maze(rnd, 60, 60, 0.3)
 	examples := [
 		mk("basic", "S.#.....\n.##.###.\n....#...\n.####.#.\n......#E\n"),
 		mk("no-path", "S#E\n.#.\n.#.\n"),
 	]
-	dense := maze(var rnd, 50, 50, 0.38)
+	dense := maze(rnd, 50, 50, 0.38)
 	hidden := examples.concat(
 		[
 			mk("adjacent", "SE\n"),

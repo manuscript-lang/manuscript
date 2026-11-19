@@ -11,5 +11,5 @@ fn fill(var s: Sink) Void:
 
 fn main() Int:
     var items = Items(List[Int]())
-    fill(var items)  // error: would be converted to a temporary Sink
+    fill(items)  // error: would be converted to a temporary Sink
     return items.xs.length()

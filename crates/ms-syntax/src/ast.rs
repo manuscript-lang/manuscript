@@ -517,8 +517,6 @@ pub struct Argument {
     pub name: Option<Symbol>,
     /// Value.
     pub value: Expr,
-    /// Written `var value`: the callee may change the place passed.
-    pub mutable: bool,
 }
 
 /// A part of a text literal.

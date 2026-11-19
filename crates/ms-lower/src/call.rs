@@ -285,7 +285,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The owned local that every changed parameter of a call names a distinct field of
-    /// (`f(var self.a, var self.b)`), when there are several and each is `local.field`.
+    /// (`f(self.a, self.b)`), when there are several and each is `local.field`.
     /// The one changed parameter whose argument is a field or element place, when every other changed
     /// parameter is a plain local of another variable. That parameter changes in place (the callee
     /// takes the value out of its place and puts it back); the others move through their own slots.

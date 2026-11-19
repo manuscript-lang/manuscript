@@ -346,9 +346,9 @@ export fn embedded_tree(
 ) EmbeddedTree:
 	var kids = Map[String, List[String]]()
 	for key in indexes.keys():
-		index_child(var kids, key)
+		index_child(kids, key)
 	for key in directories.values():
-		if key != "": index_child(var kids, key)
+		if key != "": index_child(kids, key)
 	return EmbeddedTree(indexes, directories, kids, load)
 
 fn index_child(var kids: Map[String, List[String]], path: String) Void:
@@ -381,7 +381,7 @@ export fn walk(
 	start := clean(root)?
 	var found = List[WalkEntry]()
 	var pending = List[WalkEntry]()
-	push_children(tree, start, var pending)?
+	push_children(tree, start, pending)?
 
 	while not pending.is_empty():
 		top := pending.length() - 1
@@ -392,7 +392,7 @@ export fn walk(
 			Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 		)
 
-		if entry.directory: push_children(tree, entry.path, var pending)?
+		if entry.directory: push_children(tree, entry.path, pending)?
 
 	return ok(found)
 

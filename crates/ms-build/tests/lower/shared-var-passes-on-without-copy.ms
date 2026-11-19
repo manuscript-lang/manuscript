@@ -10,7 +10,7 @@ fn each(f: fn(Int) Void) Void:
 
 fn run() Int:
     var out: List[Int] = []
-    each(fn i: resize(var out, i))
+    each(fn i: resize(out, i))
     return out.length()
 
 export fn main() Int:

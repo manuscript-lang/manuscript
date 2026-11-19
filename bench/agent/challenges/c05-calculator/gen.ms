@@ -126,18 +126,18 @@ fn rexpr(var rnd: Random, d: Int) String:
 	if d == 0 or rnd.random() < 0.25: return f"{rnd.randint(0, 99)}"
 
 	r := rnd.random()
-	if r < 0.15: return "-" + rexpr(var rnd, d - 1)
-	if r < 0.3: return "(" + rexpr(var rnd, d - 1) + ")"
+	if r < 0.15: return "-" + rexpr(rnd, d - 1)
+	if r < 0.3: return "(" + rexpr(rnd, d - 1) + ")"
 
-	left := rexpr(var rnd, d - 1)
+	left := rexpr(rnd, d - 1)
 	op := rnd.choice([" + ", "-", " * ", "/", " - "])
-	return left + op + rexpr(var rnd, d - 1)
+	return left + op + rexpr(rnd, d - 1)
 
 export fn gen_c05() Void:
 	var rnd = seeded(5)
 	examples := [mk("basic", "1 + 2 * 3\n(1+2)*3\n10 / (5 - 5)\n2 +\n-7 / 2\n")]
 	var good = List[String]()
-	for _n in 0..400: good.append(rexpr(var rnd, 5))
+	for _n in 0..400: good.append(rexpr(rnd, 5))
 
 	syntax := [
 		"()", "1+", "+1", "(1", "1)", "1 2", "a", "1+*2", "2**3", "(", ")", "1 + (2",

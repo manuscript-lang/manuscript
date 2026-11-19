@@ -7,4 +7,4 @@ fn child(var c: List[String]) Int:
 
 export fn main() Int:
     var c = ["x"]
-    return child(var c) - 1
+    return child(c) - 1

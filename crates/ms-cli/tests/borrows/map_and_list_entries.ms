@@ -17,9 +17,9 @@ fn grow(var rows: List[List[Int]]) Void:
 
 fn main() Void:
     var cs = [Counter(count: 1, tags: [])]
-    n := bump(var cs)
+    n := bump(cs)
     var rows = [[1], [2]]
-    grow(var rows)
+    grow(rows)
 
     var m = Map[String, Counter]()
     m.add("a", Counter(count: 10, tags: []))

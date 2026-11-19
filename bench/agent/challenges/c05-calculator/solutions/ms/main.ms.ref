@@ -12,7 +12,7 @@ fn peek(var p: Parser) Int:
     return p.s.get_or(p.pos, 0)
 
 fn atom(var p: Parser) Int!:
-    c := peek(var p)
+    c := peek(p)
     if c >= 48 and c <= 57:
         var v = 0
         while p.pos < p.s.length() and p.s[p.pos] >= 48 and p.s[p.pos] <= 57:
@@ -21,22 +21,22 @@ fn atom(var p: Parser) Int!:
         return ok(v)
     if c != 40: return error(Error("syntax"))
     p.pos += 1
-    v := expr(var p)?
-    if peek(var p) != 41: return error(Error("syntax"))
+    v := expr(p)?
+    if peek(p) != 41: return error(Error("syntax"))
     p.pos += 1
     return ok(v)
 
 fn unary(var p: Parser) Int!:
-    if peek(var p) != 45: return atom(var p)
+    if peek(p) != 45: return atom(p)
     p.pos += 1
-    return ok(-(unary(var p)?))
+    return ok(-(unary(p)?))
 
 fn term(var p: Parser) Int!:
-    var v = unary(var p)?
-    while peek(var p) == 42 or peek(var p) == 47:
-        op := peek(var p)
+    var v = unary(p)?
+    while peek(p) == 42 or peek(p) == 47:
+        op := peek(p)
         p.pos += 1
-        r := unary(var p)?
+        r := unary(p)?
         if op == 42: v *= r
         else if r == 0:
             p.div_zero = true
@@ -45,18 +45,18 @@ fn term(var p: Parser) Int!:
     return ok(v)
 
 fn expr(var p: Parser) Int!:
-    var v = term(var p)?
-    while peek(var p) == 43 or peek(var p) == 45:
-        op := peek(var p)
+    var v = term(p)?
+    while peek(p) == 43 or peek(p) == 45:
+        op := peek(p)
         p.pos += 1
-        r := term(var p)?
+        r := term(p)?
         v += if op == 43: r else: -r
     return ok(v)
 
 fn evaluate(line: String) String:
     var p = Parser(line.scalar_values(), 0, false)
-    if v := expr(var p):
-        if peek(var p) != 0: return "error: syntax"
+    if v := expr(p):
+        if peek(p) != 0: return "error: syntax"
         return if p.div_zero: "error: division by zero" else: f"{v}"
     return "error: syntax"
 

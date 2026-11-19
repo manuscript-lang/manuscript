@@ -144,7 +144,7 @@ export fn gen_c14() Void:
 		),
 		mk("small", "lcs abc abc\nedit abc xyz\ncoins 0 7\nknap 0 1:1\n"),
 	]
-	big_strings := f"lcs {word(var rnd, 300, acgt)} {word(var rnd, 300, acgt)}\nedit {word(var rnd, 250, acgt)} {word(var rnd, 250, acgt)}\nedit {word(var rnd, 300, ab)} {word(var rnd, 10, ab)}\n"
+	big_strings := f"lcs {word(rnd, 300, acgt)} {word(rnd, 300, acgt)}\nedit {word(rnd, 250, acgt)} {word(rnd, 250, acgt)}\nedit {word(rnd, 300, ab)} {word(rnd, 10, ab)}\n"
 	hidden := examples.concat(
 		[
 			mk(

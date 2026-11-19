@@ -454,7 +454,7 @@ fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
 }
 
 #[test]
-fn callable_snippets_preserve_mutable_arguments() {
+fn callable_snippets_omit_var_for_mutable_arguments() {
     let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-mutable");
     let fixture = include_str!("completion/mutable-calls.ms");
@@ -465,10 +465,10 @@ fn callable_snippets_preserve_mutable_arguments() {
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         for (call, prefix, label, expected) in [
             (
-                "update(values: var values)",
+                "update(values: values)",
                 "upd",
                 "update",
-                "update(values: var ${1:values})$0",
+                "update(values: ${1:values})$0",
             ),
             (
                 "updater.adjust(values: values)",
@@ -477,22 +477,17 @@ fn callable_snippets_preserve_mutable_arguments() {
                 "adjust(values: ${1:values})$0",
             ),
             (
-                "updater.modify(var values)",
+                "updater.modify(values)",
                 "updater.mod",
                 "modify",
-                "modify(var ${1:values})$0",
+                "modify(${1:values})$0",
             ),
+            ("change(values)", "cha", "change", "change(${1:values})$0"),
             (
-                "change(var values)",
-                "cha",
-                "change",
-                "change(var ${1:values})$0",
-            ),
-            (
-                "update_generic[Int](values: var values, value: 2)",
+                "update_generic[Int](values: values, value: 2)",
                 "update_ge",
                 "update_generic",
-                "update_generic[${1:T}](values: var ${2:values}, value: ${3:value})$0",
+                "update_generic[${1:T}](values: ${2:values}, value: ${3:value})$0",
             ),
             (
                 "observe(values: values)",
@@ -565,7 +560,7 @@ fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
             } else {
                 fixture.to_string()
             }
-            .replace("update(values: var values)", "upd");
+            .replace("update(values: values)", "upd");
             let offset = source.rfind("upd").unwrap() + 3;
             let mut document = Document::new(workspace.uri("use.ms"), source);
             let item = completion_at(
@@ -586,7 +581,7 @@ fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
             assert_eq!(
                 insertion,
                 if snippets {
-                    "update(values: var ${1:values})$0"
+                    "update(values: ${1:values})$0"
                 } else {
                     "update"
                 }
@@ -628,7 +623,7 @@ fn argument_completion_and_signature_help_preserve_mutation() {
     for newline in ["\n", "\r\n"] {
         let fixture = fixture.replace('\n', newline);
         for snippets in [false, true] {
-            let source = fixture.replace("update(values: var values)", "update(val)");
+            let source = fixture.replace("update(values: values)", "update(val)");
             let offset = source.find("return update(val").unwrap() + "return update(val".len();
             let mut document = Document::new(workspace.uri("mutable.ms"), source);
             let item = completion_at(
@@ -649,9 +644,9 @@ fn argument_completion_and_signature_help_preserve_mutation() {
             assert_eq!(
                 insertion,
                 if snippets {
-                    "values: var ${1:values}"
+                    "values: ${1:values}"
                 } else {
-                    "values: var "
+                    "values: "
                 }
             );
             let insertion = if snippets {
@@ -703,11 +698,11 @@ fn mutable_positional_arguments_complete_local_bindings() {
     let fixture = include_str!("completion/mutable-calls.ms");
     for newline in ["\n", "\r\n"] {
         let fixture = fixture.replace('\n', newline);
-        for argument in ["var val", "var ", "values: var val"] {
+        for argument in ["val", "values: val"] {
             for snippets in [false, true] {
                 let prefix = format!("return update({argument}");
                 let source =
-                    fixture.replace("return update(values: var values)", &format!("{prefix})"));
+                    fixture.replace("return update(values: values)", &format!("{prefix})"));
                 let offset = source.find(&prefix).unwrap() + prefix.len();
                 let mut document = Document::new(workspace.uri("mutable.ms"), source);
                 let item = completion_at(
@@ -721,7 +716,14 @@ fn mutable_positional_arguments_complete_local_bindings() {
                 .unwrap()
                 .into_iter()
                 .map(|item| item.json())
-                .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("values"))
+                .find(|item| {
+                    item.get("label").and_then(|j| j.as_str()) == Some("values")
+                        && item
+                            .get("textEdit")
+                            .and_then(|e| e.get("newText"))
+                            .and_then(|j| j.as_str())
+                            == Some("values")
+                })
                 .expect("local values binding");
                 let edit = item.get("textEdit").unwrap();
                 let insertion = edit.get("newText").and_then(|j| j.as_str()).unwrap();

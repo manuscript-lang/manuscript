@@ -112,7 +112,7 @@ fn run_command(var w: Warehouse, line: String) String:
 	)
 	if arity == 0 and name != "order": return "error: unknown command"
 	if (if name == "order": t.length() < 3 else: t.length() != arity): return "error: usage"
-	if name == "order": return place_order(var w, t)
+	if name == "order": return place_order(w, t)
 	if name == "report": return report(w)
 
 	if name == "stock":
@@ -152,5 +152,5 @@ fn main() Void:
 	var w = Warehouse(Map[String, Int](), Map[String, Int](), Map[String, Order]())
 	if ls := stdin() | lines | collect(none):
 		for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(
-			run_command(var w, l)
+			run_command(w, l)
 		)

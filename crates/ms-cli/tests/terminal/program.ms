@@ -40,7 +40,7 @@ export fn main() Int:
 		var done = false
 
 		while not done:
-			next := next_event(var events, nanoseconds(5000000000))
+			next := next_event(events, nanoseconds(5000000000))
 
 			if maybe := next:
 				if e := maybe:

@@ -104,25 +104,6 @@ impl Scan<'_> {
         self.findings.push(found);
     }
 
-    /// `f(var x)`: the callee's signature already says it changes `x`.
-    fn argument_var(&mut self, args: &[Argument]) {
-        for a in args.iter().filter(|a| a.mutable) {
-            let end = a.value.start().offset as usize;
-            let Some(from) = end.checked_sub(4) else {
-                continue;
-            };
-            self.report(
-                "MSL136",
-                "Drop `var` from the argument: the callee's signature already says it changes it"
-                    .to_string(),
-                a.value.start(),
-                from,
-                end,
-                String::new(),
-            );
-        }
-    }
-
     /// `x.length() == 0` and, in a condition, `x.length() != 0` / `> 0`.
     fn emptiness(&mut self, e: &Expr, condition: bool) {
         match &e.kind {
@@ -208,7 +189,6 @@ impl Visitor for Scan<'_> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
         };
-        self.argument_var(args);
         let ExprKind::Member { left, name } = &callee.kind else {
             return;
         };
@@ -276,11 +256,10 @@ impl Visitor for Uses<'_> {
                     .info(e.id)
                     .and_then(|i| i.arguments.clone());
                 for (i, a) in args.iter().enumerate() {
-                    let changed = a.mutable
-                        || slots
-                            .as_ref()
-                            .and_then(|s| s.get(i))
-                            .is_some_and(|s| s.changed);
+                    let changed = slots
+                        .as_ref()
+                        .and_then(|s| s.get(i))
+                        .is_some_and(|s| s.changed);
                     if changed && matches!(&a.value.kind, ExprKind::Name(n) if *n == self.name) {
                         self.writes += 1;
                     }
@@ -687,15 +666,7 @@ impl Scan<'_> {
             .info(map.id)
             .and_then(|i| i.ty.as_ref())
             .is_some_and(|t| t.is(Builtin::Map));
-        let argument_var = |a: &Argument| {
-            a.mutable || self.expr_text(&a.value).is_some_and(|t| t.contains("var "))
-        };
-        if !is_map
-            || self.syms.str(iname) != "get"
-            || key.name.is_some()
-            || fallback.name.is_some()
-            || argument_var(key)
-            || argument_var(fallback)
+        if !is_map || self.syms.str(iname) != "get" || key.name.is_some() || fallback.name.is_some()
         {
             return;
         }
