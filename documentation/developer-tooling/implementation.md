@@ -300,6 +300,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL131 | warning | `print(call())` where the call returns a Result prints the wrapper (`ok(2)`), not the value. Write `call()?` in a function that returns a Result, or `if value := call():` |
 | MSL132 | warning | `xs.slice(a, b).get_or(fallback)` returns the fallback for any bad range, including an end past the length, with no error. Write `xs.slice(a, b)?`, or clamp the end with `min(end, xs.length())` first |
 | MSL133 | warning | `mid := (lo + hi) // 2` compiles as `(lo + hi)` because `//` starts a comment, so the number after it is ignored. Int `/` already truncates: write `(lo + hi) / 2` |
+| MSL134 | warning | `ys := xs.sort()` binds Void and `print(xs.reverse())` prints `void`: `sort` and `reverse` change the list in place and return nothing. Call them as statements, or use `sorted()` or `reversed()` for a new list |
 
 Whitespace warnings exclude text-literal payloads. Whitespace deletion fixes are withheld while lexical boundaries are invalid or incomplete.
 
