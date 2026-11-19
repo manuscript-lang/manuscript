@@ -69,7 +69,7 @@ domains:
       - "crates/ms-conform/**"
   - id: benchmarks-and-performance
     file: benchmarks-and-performance/index.md
-    topics: [performance benchmarks, agent benchmark, ns/op, profiling guide]
+    topics: [performance benchmarks, ns/op, profiling guide]
     paths:
       - "bench/perf/**"
       - "bench/agent/**"

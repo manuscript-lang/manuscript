@@ -4,7 +4,7 @@
 
 **The language for the agentic era.**
 
-[Get started](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Guide](documentation/guide/_index.md) · [Performance](bench/perf/README.md) · [Agent benchmark](bench/agent/README.md) · [Vision](VISION.md)
+[Get started](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Guide](documentation/guide/_index.md) · [Performance](bench/perf/README.md) · [Vision](VISION.md)
 
 <img src="website/static/images/screencast.gif" width="720" alt="A screencast of Manuscript: failure as values, ownership errors, promises, ms verify, the call graph and a native build, each with a short caption.">
 
@@ -14,7 +14,7 @@ Manuscript is a statically typed, natively compiled language. Every value has on
 
 That clarity matters more now that agents write much of our code. Every diagnostic names its cause and fix, so an agent can correct itself, and built-in diagrams and an interactive code map let a person review the result.
 
-The toolchain is tuned for agents: built-in commands verify, test, fuzz, benchmark and profile, and agent benchmarks and adversarial probing drive the language and compiler forward.
+The toolchain is tuned for agents: built-in commands verify, test, fuzz, benchmark and profile, and adversarial probing and agent feedback drive the language and compiler forward.
 
 A simple HTTP server:
 

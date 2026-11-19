@@ -15,5 +15,5 @@ Durable lessons for agents working on Manuscript. Read this page before implemen
 | [Repository maintenance](repository/index.md) | Cleanup, CI, releases, Pages, Windows targets |
 | [Standard-library design](stdlib-design/index.md) | Stdlib API shape, failure modes, naming, construction |
 | [Testing and conformance](testing-and-conformance/index.md) | Test layers, conformance corpus, fuzzing, fixtures |
-| [Benchmarks and performance](benchmarks-and-performance/index.md) | Perf and agent benchmarks, profiling |
+| [Benchmarks and performance](benchmarks-and-performance/index.md) | Perf benchmarks, profiling |
 | [LLVM Language Reference](llvm-langref/index.md) | Pinned copy of the LLVM LangRef (IR syntax, types, instructions, attributes, metadata, intrinsics) for direct LLVM emission |
