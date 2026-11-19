@@ -1653,6 +1653,12 @@ pub unsafe extern "C-unwind" fn msrt_cleanup_push(f: CleanupFn, arg: *mut u8) ->
     }
 }
 
+/// The height of the current task's cleanup stack.
+pub(crate) fn cleanup_height() -> usize {
+    // SAFETY: the cleanup stack belongs to this isolate and follows the current task.
+    unsafe { (*CLEANUPS.ptr()).len() }
+}
+
 /// Whether the current task has registered cleanups.
 #[inline]
 pub(crate) fn has_cleanups() -> bool {
@@ -1813,6 +1819,9 @@ pub extern "C-unwind" fn msrt_cleanup_unwind_to(base: usize) {
     }
     // A cleanup that closes through a park must not see the flag of the cancel it serves.
     let was = take_unwinding();
+    if was {
+        crate::promise::end_started_by_current(base);
+    }
     // SAFETY: single threaded access to the cleanup stack.
     while unsafe { (*CLEANUPS.ptr()).len() } > base && run_one_cleanup() {}
     if was {
@@ -1880,6 +1889,7 @@ pub extern "C-unwind" fn msrt_cancelled() -> ! {
     unsafe {
         *UNWIND_DROPS.ptr() = guard_active();
     }
+    crate::promise::end_started_by_current(guard_base());
     while run_one_cleanup() {}
     #[cfg(test)]
     {
@@ -2226,6 +2236,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                 // registered since entry belong to hold-outs that did not unwind them.
                 if take_unwinding() {
                     *UNWIND_DROPS.ptr() = guard_active();
+                    crate::promise::end_started_by_current(guard_base());
                     while run_one_cleanup() {}
                     *UNWIND_DROPS.ptr() = false;
                     guards_pop();

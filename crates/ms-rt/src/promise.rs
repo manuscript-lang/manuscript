@@ -107,6 +107,9 @@ struct Table {
     /// The task that started the work, whose frame the work reads its captures from, lent
     /// (`task::lend_current`) until the work's task has ended; else 0.
     creator: Vec<u64>,
+    /// The height of the creator's cleanup stack when the work started: a cancelled frame ends
+    /// the promises started at or above the height it began with.
+    started_at: Vec<usize>,
     /// `WANT_CANCEL`: cancel the work as soon as it has started.
     flags: Vec<u8>,
     /// The report of the fault that ended the promise.
@@ -171,6 +174,7 @@ impl Table {
             task: Vec::new(),
             queued: Vec::new(),
             creator: Vec::new(),
+            started_at: Vec::new(),
             flags: Vec::new(),
             report: Vec::new(),
             deadline: Vec::new(),
@@ -474,6 +478,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.task.push(0);
             t.queued.push(0);
             t.creator.push(0);
+            t.started_at.push(0);
             t.flags.push(0);
             t.report.push(Vec::new());
             t.deadline.push(i64::MAX);
@@ -499,6 +504,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     t.thread[i] = NOT_STARTED;
     t.task[i] = 0;
     t.creator[i] = 0;
+    t.started_at[i] = 0;
     t.flags[i] = 0;
     t.report[i] = Vec::new();
     t.deadline[i] = i64::MAX;
@@ -1433,6 +1439,42 @@ pub(crate) fn stop_on_owner(id: i64) {
     deliver(id, Event::Stop { id });
 }
 
+/// Ends every promise the running task started, at a cleanup-stack height of `base` or more, whose
+/// work still runs: cancels the work and joins it, keeping the slots for their closes. A
+/// cancelled frame calls it before its cleanups run (a promise its callers started registered its
+/// close at a lower height, so it is left to them). The
+/// work reads values the task owns (what it captured, and what those borrow), and the cleanups
+/// drop owners in an order that does not know which promise reads which, so no work may still run
+/// when they start.
+pub(crate) fn end_started_by_current(base: usize) {
+    // SAFETY: called on the runtime thread by the running task.
+    let me = unsafe { task::current_handle() };
+    let ids: Vec<i64> = {
+        let t = table();
+        (0..t.creator.len())
+            .filter(|&i| {
+                // Work that runs on this task's own stack (a deferred promise, or the one this
+                // task is the work of) ends when this task does: joining it would wait on
+                // itself.
+                let own_task = t.task[i] != 0 && t.task[i] != me;
+                t.creator[i] == me
+                    && t.closure[i] != 0
+                    && t.state[i] != State::Free
+                    && t.started_at[i] >= base
+                    && (own_task || t.queued[i] != 0)
+            })
+            .map(|i| {
+                ((sched::current() as i64) << 56)
+                    | (i64::from(t.generation[i]) << 32)
+                    | (i as i64 + 1)
+            })
+            .collect()
+    };
+    for id in ids {
+        msrt_promise_end(id);
+    }
+}
+
 /// Limits promise `id`: once `timeout_ns` has passed from now (negative: no time at all) and it
 /// has not finished, it is cancelled and a `wait` reports a timeout. A promise with no limit costs
 /// nothing; a second call replaces the first.
@@ -1569,6 +1611,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
     t.closure[i] = work as usize;
     // SAFETY: called on the runtime thread by the running task.
     t.creator[i] = unsafe { task::lend_current() };
+    t.started_at[i] = fault::cleanup_height();
     if mode == Mode::Here {
         t.flags[i] |= HERE;
     }
