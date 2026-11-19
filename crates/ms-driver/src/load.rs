@@ -811,7 +811,8 @@ mod tests {
                     .unwrap()
                     .into_diagnostic(&Arc::from("unused"), start());
                 assert_eq!(&*d.file, format!("{closing}.ms"));
-                assert!(d.message.contains(&format!("at {entry}.ms")));
+                let path = format!("{entry}.ms -> {closing}.ms -> {entry}.ms");
+                assert!(d.message.contains(&path), "{}", d.message);
                 assert!(loader.failed.is_empty());
             }
         });
