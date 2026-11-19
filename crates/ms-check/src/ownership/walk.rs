@@ -267,7 +267,6 @@ pub fn analyze(cx: &Context) -> Outcome {
         arm_payloads: Vec::new(),
         closed: HashSet::default(),
         close_completions: HashSet::default(),
-        close_receivers: HashSet::default(),
         borrow_receiver: false,
         borrow_params: Vec::new(),
         borrow_path: None,
@@ -363,9 +362,7 @@ pub fn analyze(cx: &Context) -> Outcome {
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     // A close runs on the owner's storage, which frees what it leaves: the callee does not
     // take the receiver, whatever its caller is told.
-    let closes = cx.c.func.method().is_some_and(|m| {
-        m.consuming && m.func.params.is_empty() && w.syms.str(m.func.name) == "close"
-    });
+    let closes = cx.classes.is_closer(&cx.c.func);
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| {
         if closes {
             ParamMode::Mutate
@@ -430,8 +427,6 @@ struct Walker<'a> {
     closed: HashSet<usize>,
     /// Completed explicit closes or whole-binding replacements, by expression and binding.
     close_completions: HashSet<(NodeId, usize)>,
-    /// Name expressions that are the receiver of a `close()` call, which consumes the binding.
-    close_receivers: HashSet<NodeId>,
     /// Sources of the returned references so far: the receiver, parameters by label, and the
     /// one field chain every path returns (`Some(None)` once two paths differ).
     borrow_receiver: bool,
@@ -525,14 +520,7 @@ impl Walker<'_> {
         let c = cx.c;
         let (params, mutating): (&[ms_syntax::ast::Param], bool) =
             match (c.func.method(), c.func.func()) {
-                // A close takes its receiver and may record the release in it, as a `var` one does.
-                (Some(m), _) => (
-                    &m.func.params,
-                    m.mutating
-                        || (m.consuming
-                            && m.func.params.is_empty()
-                            && self.syms.str(m.func.name) == "close"),
-                ),
+                (Some(m), _) => (&m.func.params, m.mutating),
                 (None, Some(f)) => (&f.params, false),
                 (None, None) => (&[], false),
             };
@@ -666,17 +654,14 @@ impl Walker<'_> {
                     b.ty.kind,
                     Kind::Type | Kind::Alternative | Kind::Native | Kind::Variable | Kind::Contract
                 );
-            // A close method's own receiver closes through its parts only: the close itself is
-            // what is running.
-            let own_close = self
-                .cx
-                .c
-                .self_binding
-                .as_ref()
-                .is_some_and(|s| s.uid == b.uid)
-                && self.cx.c.func.method().is_some_and(|m| {
-                    m.consuming && m.func.params.is_empty() && self.syms.str(m.func.name) == "close"
-                });
+            // A close's own receiver stays with its owner, which frees what the close leaves.
+            let own_close = self.cx.classes.is_closer(&self.cx.c.func)
+                && self
+                    .cx
+                    .c
+                    .self_binding
+                    .as_ref()
+                    .is_some_and(|s| s.uid == b.uid);
             if !tracked || own_close {
                 continue;
             }

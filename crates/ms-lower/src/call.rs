@@ -106,7 +106,7 @@ impl<'a> FnLower<'a> {
                 let out = self.method_call(e, &view, m);
                 self.consuming_close = None;
                 let out = out?;
-                if m.name().is_some_and(|n| self.syms.str(n) == "close")
+                if m.is_close_op(self.syms)
                     && !consumes
                     && let Some(recv) = self.receiver_expr(e)
                 {
@@ -1048,7 +1048,7 @@ impl<'a> FnLower<'a> {
 
     /// The checked type of the local that the `close()` call `e` consumes, if it does.
     fn closing_binding_type(&self, e: &Expr, m: &ct::MethodRef) -> Option<ct::Ty> {
-        if self.syms.str(m.name()?) != "close" {
+        if !m.is_close_op(self.syms) {
             return None;
         }
         let recv = self.receiver_expr(e)?;
@@ -1524,7 +1524,7 @@ impl<'a> FnLower<'a> {
             .as_ref()
             .and_then(|d| d.method())
             .is_some_and(|f| f.consuming)
-            && m.name().is_none_or(|n| self.syms.str(n) != "close");
+            && !m.is_close_op(self.syms);
         let r = if takes_self {
             self.hand_over(recv)
         } else {

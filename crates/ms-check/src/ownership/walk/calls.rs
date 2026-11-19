@@ -216,13 +216,13 @@ impl Walker<'_> {
             (ExprKind::Member { left, .. }, Resolution::Method(_)) => Some(&**left),
             _ => None,
         };
-        if let (ExprKind::Member { name, .. }, Some(r)) = (&member.kind, receiver_expr)
-            && self.syms.str(name) == "close"
+        let closing =
+            matches!(cx.m.resolution(e), Resolution::Method(m) if m.is_close_op(self.syms));
+        if let (true, Some(r)) = (closing, receiver_expr)
             && let Resolution::Local(b) = cx.m.resolution(r)
         {
             self.closed.insert(b.uid);
             self.close_completions.insert((e.id, b.uid));
-            self.close_receivers.insert(r.id);
         }
         // Argument markers: `var` exactly where the callee changes the argument.
         let param_names: Vec<Name> =
@@ -394,9 +394,7 @@ impl Walker<'_> {
                     "an assignment target must be a variable or a field path of one, like `xs[i]` or `p.items[i]`; a call result or literal is dropped after the store, so bind it to a var first",
                 );
             }
-            let closes = matches!(&callee.kind, ExprKind::Member { name, .. }
-                if self.syms.str(name) == "close");
-            self.receiver(r, mode, closes);
+            self.receiver(r, mode, closing);
             operands.push((Operand::Receiver(r), held, Vec::new()));
         } else {
             self.callees.insert(callee.id);
@@ -953,8 +951,7 @@ impl Walker<'_> {
     pub(super) fn receiver(&mut self, r: &Expr, mode: ParamMode, closes: bool) {
         match mode {
             ParamMode::Borrow => self.expr(r, Demand::Read),
-            // Closing a field of `self` from inside `self`'s own close works on the field in
-            // place: the field stays in `self`, and what the body leaves open closes after it.
+            // A field closes where it lies (see `is_part_closed_in_place`).
             ParamMode::Move if closes && self.is_part_closed_in_place(r) => {
                 self.expr(r, Demand::Read)
             }
@@ -994,9 +991,9 @@ impl Walker<'_> {
     }
 
     /// Whether `e` is a field of a value this function owns or may change, as in `conn.output.close()`
-    /// or `self.input.close()` inside a close. Closing a field works on it in place: the field stays
-    /// where it is, closed, and what is left open closes with its owner. Only a whole binding is
-    /// consumed by `close`.
+    /// or `self.input.close()` inside a close. Closing a field works on it where it lies: the field
+    /// stays in its holder, closed, and what is left open closes with its owner. Only a whole
+    /// binding is consumed by `close`.
     fn is_part_closed_in_place(&self, e: &Expr) -> bool {
         let ExprKind::Member { left, .. } = &e.kind else {
             return false;
@@ -1004,20 +1001,20 @@ impl Walker<'_> {
         let Resolution::Local(b) = self.cx.m.resolution(root_name(left)) else {
             return false;
         };
-        // A holder without a close of its own lets the field move out whole instead.
-        let in_own_close = self.cx.c.func.method().is_some_and(|m| {
-            m.consuming && m.func.params.is_empty() && self.syms.str(m.func.name) == "close"
-        }) && self
-            .cx
-            .c
-            .self_binding
-            .as_ref()
-            .is_some_and(|s| s.uid == b.uid);
+        // Inside a close, `self` is the owner's storage.
+        let in_own_close = self.cx.classes.is_closer(&self.cx.c.func)
+            && self
+                .cx
+                .c
+                .self_binding
+                .as_ref()
+                .is_some_and(|s| s.uid == b.uid);
         // A `var` method may close what its receiver holds in place, as a fixture hook does.
         let var_receiver = self
             .meta
             .get(&b.uid)
             .is_some_and(|m| m.is_receiver && m.perm == Perm::Mutable);
+        // A holder that closes itself cannot lose a part to a move, so its part closes in place.
         (in_own_close || var_receiver || self.cx.classes.closes_itself(&self.cx.m.ty(left)))
             && self.field_path(left).is_some()
             && self.meta.get(&b.uid).is_some_and(|m| {

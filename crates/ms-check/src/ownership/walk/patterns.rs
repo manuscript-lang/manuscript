@@ -11,8 +11,6 @@ impl Walker<'_> {
         }
     }
 
-    /// A change in place through a place expression (`var` argument,
-    /// mutating receiver, field assignment).
     /// Whether the parameter at `index` is declared `move`.
     fn moves_parameter(&self, index: Option<usize>) -> bool {
         let params = match (self.cx.c.func.method(), self.cx.c.func.func()) {
@@ -23,6 +21,8 @@ impl Walker<'_> {
         index.and_then(|i| params.get(i)).is_some_and(|p| p.moving)
     }
 
+    /// A change in place through a place expression (`var` argument,
+    /// mutating receiver, field assignment).
     pub(super) fn mutate(&mut self, pos: Pos, info: &PlaceInfo, what: &str) {
         let root = info.root.clone();
         let (perm, role, parameter, receiver) = {
@@ -53,6 +53,9 @@ impl Walker<'_> {
                         self.syms.str(root.name), self.syms.str(root.name), self.syms.str(root.name)
                     ),
                 );
+            }
+            // A `move` receiver is the callee's own, like a `move` parameter: it may change it.
+            Perm::Immutable if receiver && self.cx.c.func.method().is_some_and(|m| m.consuming) => {
             }
             Perm::Immutable if receiver => {
                 let message = format!(

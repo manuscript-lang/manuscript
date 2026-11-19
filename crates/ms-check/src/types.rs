@@ -897,9 +897,14 @@ impl Method {
             return true;
         }
         self.is_inherent(syms)
-            && self.name().is_some_and(|n| syms.str(n) == "close")
-            && self.ty.params.is_empty()
+            && self.is_close_op(syms)
             && is_close_result(syms, &self.ty.result_ty())
+    }
+
+    /// Whether the method is a close, whoever declares it (a type, or an interface operation such
+    /// as a stream's): a `close` with no parameters, whether or not it can fail.
+    pub fn is_close_op(&self, syms: ms_syntax::Names) -> bool {
+        self.name().is_some_and(|n| syms.str(n) == "close") && self.ty.params.is_empty()
     }
 
     /// Whether the method is a type's own `to_json() JsonValue`, which encodes the type as JSON
