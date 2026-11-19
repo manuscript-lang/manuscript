@@ -34,6 +34,12 @@ pub enum Fact {
     PartialMove = 1 << 9,
     /// A native read whose result borrows from held origins in its checked use position.
     BorrowedRead = 1 << 10,
+    /// A resource field of a mutable place moved out by a binding, refilled by the next
+    /// statement: lowering moves it without a copy and without a hole to close around.
+    FieldTake = 1 << 11,
+    /// The assignment that refills a `FieldTake`: the old value was moved out, so it is neither
+    /// closed nor dropped.
+    FieldRefill = 1 << 12,
 }
 
 /// Fact flags by module file, then by node id.

@@ -10,6 +10,7 @@ impl Walker<'_> {
         // Borrows the enclosing statement released at their last use stay held until that
         // statement ends: a closure body in an argument must not release them early.
         let outer = std::mem::take(&mut self.pending);
+        self.find_refills(body);
         for s in body {
             self.stmt(s);
             self.release_pending();
@@ -18,6 +19,47 @@ impl Walker<'_> {
         let ended: Vec<usize> = self.declared.drain(mark..).collect();
         self.promises_outliving(&ended);
         self.active.release(&ended, |_| true);
+    }
+
+    /// `part := holder.field` followed at once by `holder.field = value`: the field leaves its
+    /// holder for a moment and comes back before anything else can see the hole, so a `var`
+    /// holder (or a `var` receiver) may lend a resource field this way.
+    fn find_refills(&mut self, body: &[Stmt]) {
+        for pair in body.windows(2) {
+            let (
+                StmtKind::Bind { value, .. },
+                StmtKind::Assign {
+                    target: AssignTarget::Member(target),
+                    compound: None,
+                    ..
+                },
+            ) = (&pair[0].kind, &pair[1].kind)
+            else {
+                continue;
+            };
+            if !matches!(value.kind, ExprKind::Member { .. }) {
+                continue;
+            }
+            let (Some((taken, _)), Some((refilled, _))) = (self.place(value), self.place(target))
+            else {
+                continue;
+            };
+            let mutable = self
+                .meta
+                .get(&taken.root.uid)
+                .is_some_and(|m| m.perm == Perm::Mutable && m.lambda.is_none());
+            if mutable
+                && taken.through_ref.is_none()
+                && !self.captured.iter().any(|c| c.contains(&taken.root.uid))
+                && self.class_of(value) == Class::Resource
+                && self.cx.m.ty(value).kind != Kind::Variable
+                && taken.root.uid == refilled.root.uid
+                && taken.text == refilled.text
+            {
+                self.facts.field_takes.insert(value.id);
+                self.facts.field_refills.insert(target.id);
+            }
+        }
     }
 
     /// A promise kept by a binding that outlives the block must not read a local that ends with it.
@@ -243,6 +285,7 @@ impl Walker<'_> {
         // A scalar copies, `let` or `var`; any other binding of a place borrows it, shared for
         // `let` and exclusive for `var`.
         if class != Class::Copy
+            && !self.facts.field_takes.contains(&value.id)
             && let Some(origins) = self.projection_origins(value)
         {
             // Reading part of a value that stays where it is.

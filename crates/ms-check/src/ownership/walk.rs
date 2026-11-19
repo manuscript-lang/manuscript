@@ -533,11 +533,27 @@ impl Walker<'_> {
             self.declare(b, Role::Fixture, Perm::Mutable, None, false);
         }
         let mut positions = Positions(HashMap::default());
+        for d in params.iter().filter_map(|p| p.default.as_ref()) {
+            visit::walk_expr(&mut positions, d);
+        }
         match c.body() {
             Body::Block(body) => visit::walk_block(&mut positions, body),
             Body::Expr(e) => visit::walk_expr(&mut positions, e),
         }
         self.positions = positions.0;
+        // A default runs in the callee's frame, so what it binds is owned and closed there. Only
+        // those bindings' facts are kept: the default is checked in the caller, so its
+        // diagnostics and its effect on the parameters are not reported here.
+        let (reported, consumed, consumed_at) = (
+            self.diags.len(),
+            self.consumed.clone(),
+            self.consumed_at.clone(),
+        );
+        for d in params.iter().filter_map(|p| p.default.as_ref()) {
+            self.expr(d, Demand::Read);
+        }
+        self.diags.truncate(reported);
+        (self.consumed, self.consumed_at) = (consumed, consumed_at);
         match c.body() {
             Body::Block(body) => self.block(body),
             Body::Expr(e) => self.returned(e),

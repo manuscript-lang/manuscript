@@ -44,7 +44,7 @@ test "TCP loopback writes reads half close and EOF":
 	client.output.flush()?
 	expect_equal((within(var server.input, 2.seconds())?).get(), "hello".to_bytes())?
 	expect_equal(server.info.peer_address, client.info.local_address)?
-	client.output.close()?
+	client.output.end()?
 	expect_true((within(var server.input, 2.seconds())?).is_none())?
 
 test "a read cancelled by its timeout leaves the stream closable":
@@ -79,7 +79,7 @@ test "closing the input leaves the output open and closing both ends the connect
 	var server = listener.accept(2.seconds()).wait()?
 
 	// Closing only the input does not end the stream the peer reads.
-	client.input.close()?
+	client.input.end()?
 	client.output.write("still open".to_bytes())?
 	client.output.flush()?
 	expect_equal(
@@ -88,7 +88,7 @@ test "closing the input leaves the output open and closing both ends the connect
 	)?
 
 	// Closing the output too closes the socket: the peer sees the end of the stream.
-	client.output.close()?
+	client.output.end()?
 	expect_true((within(var server.input, 2.seconds())?).is_none())?
 
 test "host names resolve whatever their case":

@@ -23,8 +23,8 @@ fn make_fixture() ApiFixture:
         server: serve(address: "127.0.0.1:0", handler: buffered(handle)).get()
     )
 
-fn var ApiFixture.after_all() Void!:
-    void self.server.close()
+fn move ApiFixture.close() Void!:
+    return self.server.close()
 
 test "first request":
     response := expect_ok(

@@ -356,6 +356,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let out = self.mutator_call_inner(e, view, m, recv_expr, name);
         self.forgotten_entry = None;
+        self.closing_old = None;
         self.fault_deferred_close();
         out
     }
@@ -453,8 +454,13 @@ impl<'a> FnLower<'a> {
                 }
             }
             self.defer_close_failures();
-            self.close_discarded_entry(recv_expr, name, &args)?;
-            self.forgotten_entry = self.consumed_entry(recv_expr, name)?;
+            self.closing_old = self
+                .consumed_close(recv_expr, name)?
+                .filter(|_| name == "set");
+            if self.closing_old.is_none() {
+                self.close_discarded_entry(recv_expr, name, &args)?;
+                self.forgotten_entry = self.consumed_entry(recv_expr, name)?;
+            }
             if self.dead {
                 self.finish_place(recv_expr);
                 return Ok(self.dummy(MTy::VOID));
@@ -566,7 +572,10 @@ impl<'a> FnLower<'a> {
             unreachable!("resource list")
         };
         if name == "set" {
-            self.close_list_entry_value(&ty.args[0], Val { v: key, own: false }, &args[0])?;
+            self.closing_old = self.consumed_close(recv_expr, name)?;
+            if self.closing_old.is_none() {
+                self.close_list_entry_value(&ty.args[0], Val { v: key, own: false }, &args[0])?;
+            }
         }
         let index = if matches!(name, "append" | "prepend") {
             0
@@ -648,6 +657,48 @@ impl<'a> FnLower<'a> {
         match self.part_closer(held)? {
             Some(kind) if kind.consumes() => Ok(Some(self.mty(held)?)),
             _ => Ok(None),
+        }
+    }
+
+    /// The entry type `name` discards from `recv_expr` and the close that takes it, when the
+    /// close takes the entry.
+    fn consumed_close(
+        &mut self,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Option<(MTy, crate::close::CloseKind)>, Error> {
+        let ty = self.ety(recv_expr);
+        let held = if ty.is(Builtin::List) {
+            ty.args.first()
+        } else if name == "clear" {
+            return Ok(None);
+        } else {
+            ty.args.get(1)
+        };
+        let Some(held) = held else {
+            return Ok(None);
+        };
+        match self.part_closer(held)? {
+            Some(kind) if kind.consumes() => Ok(Some((self.mty(held)?, kind))),
+            _ => Ok(None),
+        }
+    }
+
+    /// Releases the entry `set` detached: a close that takes it closes it now, after the new
+    /// entry is in place; otherwise it is dropped, unless a close already took it.
+    pub(super) fn discard_replaced(&mut self, old: Value, elem: MTy) {
+        if let Some((ty, kind)) = self.closing_old.clone()
+            && ty == elem
+        {
+            let left = self.close_discarded_kind(&kind, old);
+            if let Some(left) = left {
+                self.drop_value(left);
+            }
+        } else if self.forgotten_entry == Some(elem) {
+            self.b
+                .emit(ms_mir::ir::Op::Forget, &[old], ms_mir::ir::Imm::None, None);
+        } else {
+            self.drop_value(old);
         }
     }
 
@@ -910,11 +961,8 @@ impl<'a> FnLower<'a> {
                 .b
                 .emit(Op::Take, &[at], Imm::Ty(elem), Some(elem))
                 .expect("take");
-            // An entry a close took is not dropped again.
-            if self.forgotten_entry != Some(elem) {
-                self.drop_value(old);
-            }
             self.b.emit(Op::Put, &[at, v], Imm::None, None);
+            self.discard_replaced(old, elem);
         } else {
             self.b.emit(Op::Store, &[at, v], Imm::None, None);
         }

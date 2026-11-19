@@ -15,7 +15,7 @@ type Wrap:
     room: Room
     extra: Door
 
-fn keep(d: Door) List[Door]:
+fn keep(move d: Door) List[Door]:
     var xs: List[Door] = []
     xs.append(d)
     return xs

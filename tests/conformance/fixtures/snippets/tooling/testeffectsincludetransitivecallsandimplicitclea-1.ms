@@ -13,15 +13,15 @@ fn move Resource.close() Void!:
 fn pure() Int:
     return 1
 
-fn direct(resource: Resource) Void:
+fn direct(move resource: Resource) Void:
     _item := resource
     return
 
-fn transitive(resource: Resource) Void:
+fn transitive(move resource: Resource) Void:
     direct(resource: resource)
 
-fn nested(resource: Resource) Void:
-    callback := fn(item: Resource) Void:
+fn nested(move resource: Resource) Void:
+    callback := fn(move item: Resource) Void:
         _held := item
         return
 

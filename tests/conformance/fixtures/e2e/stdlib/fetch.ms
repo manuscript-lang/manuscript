@@ -146,7 +146,7 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
 	var response = client.stream(url)?
 	expect_equal(read_to_end(var response.body)?, "0123456789".to_bytes())?
 	expect_equal(response.metadata.status, 200)?
-	response.body.close()?
+	response.body.end()?
 
 	again := client.fetch(url).wait()?
 	expect_equal(again.body.length(), 10)?

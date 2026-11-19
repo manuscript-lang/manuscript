@@ -100,9 +100,7 @@ impl<'a> FnLower<'a> {
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
                 self.call_value(e, &view)?
             }
-            Resolution::Method(m) => {
-                self.method_call(e, &view, m)?
-            }
+            Resolution::Method(m) => self.method_call(e, &view, m)?,
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),

@@ -920,8 +920,17 @@ impl<'a> FnLower<'a> {
         let cur = self.b.type_get(rid, idx, base);
         let (cur_own, moved) = self.take_projection(cur);
         let inner = if rest.is_empty() {
-            // The field's old value dies here: a resource in it closes first.
-            if let Some(cur_own) = self.close_discarded(first, cur_own)? {
+            // The field's old value dies here: a resource in it closes first. A field the
+            // statement before moved out is a hole: there is nothing to close or drop.
+            let refill = self.cx.fact(
+                self.hir.data.file,
+                first.id,
+                ms_check::api::ownership::Fact::FieldRefill,
+            );
+            if refill {
+                self.b
+                    .emit(Op::Forget, &[cur_own], ms_mir::ir::Imm::None, None);
+            } else if let Some(cur_own) = self.close_discarded(first, cur_own)? {
                 self.drop_value(cur_own);
             }
             new

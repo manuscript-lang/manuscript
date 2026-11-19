@@ -54,7 +54,7 @@ impl Walker<'_> {
         }
         let name = self.syms.str(b.name).to_string();
         let declared = if m.is_receiver {
-            format!("declare the method `fn move`")
+            "declare the method `fn move`".to_string()
         } else {
             format!("write `move {name}: <Type>` in the signature")
         };

@@ -613,6 +613,21 @@ impl<'a> FnLower<'a> {
             .position(|f| f.0 == name)
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
         let f = self.b.type_get(rid, idx, obj.v);
+        if self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::api::ownership::Fact::FieldTake,
+        ) {
+            // The field leaves its holder for one statement and is refilled at once: no hole
+            // is ever visible, so the value moves without a copy.
+            let fty = self.ty_of(f);
+            let o = if self.needs_drop(fty) {
+                self.b.move_out(f)
+            } else {
+                f
+            };
+            return Ok(Val { v: o, own: true });
+        }
         if let Some((uid, names)) = self.resource_move_of(e) {
             let o = self.moved_field(uid, &names, f)?;
             return Ok(Val { v: o, own: true });

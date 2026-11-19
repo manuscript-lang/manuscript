@@ -19,7 +19,7 @@ import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import lines from "@std/io/streams.ms"
 
-fn count_errors(input: ReadStream[Bytes]) Int!:
+fn count_errors(move input: ReadStream[Bytes]) Int!:
     var errors = 0
     for line in input | lines:       // each step may wait for the source
         if line.contains("ERROR"):
@@ -59,7 +59,7 @@ import ReadStream from "@std/io/io.ms"
 import from_bytes, lines, filter, map, collect from "@std/io/streams.ms"
 import expect_equal from "@std/test/test.ms"
 
-fn line_lengths(input: ReadStream[Bytes]) ReadStream[Int]:
+fn line_lengths(move input: ReadStream[Bytes]) ReadStream[Int]:
     return input | lines | filter(fn line: line != "") | map(fn line: line.length())
 
 test "measure lines":

@@ -100,12 +100,7 @@ impl<'a> FnLower<'a> {
         });
         if name == "set" {
             if let Some(old) = result {
-                // An entry a close took is not dropped again.
-                if self.forgotten_entry == Some(elem) {
-                    self.b.emit(ms_mir::ir::Op::Forget, &[old.v], ms_mir::ir::Imm::None, None);
-                } else {
-                    self.drop_value(old.v);
-                }
+                self.discard_replaced(old.v, elem);
             }
             return Ok(None);
         }
@@ -150,12 +145,7 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.b.list_set(old, r, v)
                 };
-                if self.forgotten_entry == Some(elem) {
-                    self.b
-                        .emit(Op::Forget, &[old_element], ms_mir::ir::Imm::None, None);
-                } else {
-                    self.drop_value(old_element);
-                }
+                self.discard_replaced(old_element, elem);
                 Ok((new, None))
             }
             "swap" => {

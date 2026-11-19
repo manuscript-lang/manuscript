@@ -88,6 +88,15 @@ fn move ReadStream[T].close() Void!:
 
 	return self.source.close()
 
+// Half-closes the stream: closes the source now and leaves the stream ended, so a
+// holder (a connection's input side) keeps its other parts. Later reads return `none`.
+fn var ReadStream[T].end() Void!:
+	self.closed = true
+	source := self.source
+	self.source = EndedSource[T]()
+
+	return source.close()
+
 // Internal: one read of `source` that waits at most `bound` in total.
 fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
 	var nanos = bound.to_nanoseconds()
@@ -132,6 +141,14 @@ fn var WriteStream[T].flush() Void!:
 // Closes the sink and drops it. A custom sink may wait while closing.
 fn move WriteStream[T].close() Void!:
 	return self.sink.close()
+
+// Half-closes the stream: closes the sink now and leaves the stream refusing writes, so
+// the holder (a connection's output side) keeps its other parts.
+fn var WriteStream[T].end() Void!:
+	sink := self.sink
+	self.sink = ClosedSink[T]()
+
+	return sink.close()
 
 // A sink that refuses every write: the one a closed `WriteStream` holds.
 type ClosedSink[T]:

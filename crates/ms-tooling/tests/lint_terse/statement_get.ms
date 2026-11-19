@@ -13,5 +13,5 @@ type Box:
 
 fn move Box.close() Void!: ok()
 
-fn shut(box: Box) Void:
+fn shut(move box: Box) Void:
     box.close().get_or(none)

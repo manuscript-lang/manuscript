@@ -258,7 +258,18 @@ fn captures_of(m: &Module, c: FuncId) -> (Vec<(Ty, i64)>, i64) {
 fn make_closure_drop(m: &mut Module, c: FuncId, framed: bool) -> FuncId {
     let (caps, _) = captures_of(m, c);
     let closers = m.funcs[c.index()].capture_closers.clone();
-    let needs: Vec<bool> = caps.iter().map(|(t, _)| m.needs_drop(*t)).collect();
+    // A capture whose close takes the value leaves nothing in its slot to drop.
+    let needs: Vec<bool> = caps
+        .iter()
+        .enumerate()
+        .map(|(k, (t, _))| {
+            m.needs_drop(*t)
+                && closers
+                    .iter()
+                    .find(|(i, _)| *i as usize == k)
+                    .is_none_or(|(_, close)| m.funcs[close.index()].slot_close.is_some())
+        })
+        .collect();
     let tails: Vec<Option<FuncId>> = (0..caps.len())
         .map(|k| {
             (closers.iter().any(|(i, _)| *i as usize == k)).then(|| make_closure_drop_from(m, c, k))
@@ -309,7 +320,19 @@ fn make_closure_drop(m: &mut Module, c: FuncId, framed: bool) -> FuncId {
 /// object. It does nothing otherwise.
 fn make_closure_drop_from(m: &mut Module, c: FuncId, k: usize) -> FuncId {
     let (caps, _) = captures_of(m, c);
-    let needs: Vec<bool> = caps.iter().map(|(t, _)| m.needs_drop(*t)).collect();
+    let closers = m.funcs[c.index()].capture_closers.clone();
+    // A capture whose close takes the value is gone when the close faults, and is not dropped.
+    let needs: Vec<bool> = caps
+        .iter()
+        .enumerate()
+        .map(|(j, (t, _))| {
+            m.needs_drop(*t)
+                && closers
+                    .iter()
+                    .find(|(i, _)| *i as usize == j)
+                    .is_none_or(|(_, close)| m.funcs[close.index()].slot_close.is_some())
+        })
+        .collect();
     let on_ext = rt_extern(m, "msrt_unwind_drops", &[], Ty::BOOL, false);
     let name = format!("{GLUE_PREFIX}mir.{}.closure_drop_from", m.funcs.len());
     let params = vec![Param {

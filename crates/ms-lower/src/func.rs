@@ -177,6 +177,10 @@ pub(crate) struct FnLower<'a> {
     /// While a mutator discards entries a close took by value: the entry type whose slots the
     /// mutator must not drop again (its descriptors own nothing).
     pub forgotten_entry: Option<MTy>,
+    /// While `set` replaces an entry whose close takes it: the entry type and its close. The
+    /// new entry goes in first and the detached old one closes after, so a fault inside that
+    /// close never leaves a dead entry in the list.
+    pub closing_old: Option<(MTy, crate::close::CloseKind)>,
     /// Type to build on return and the binding uids of the `var` parameters it carries.
     pub var_slots: Vec<VarSlot>,
     /// Some binding of the function closes a resource when its scope ends.
@@ -790,6 +794,7 @@ impl<'a> FnLower<'a> {
             closed_on_path: HashSet::default(),
             deferred_close: None,
             forgotten_entry: None,
+            closing_old: None,
             var_slots: Vec::new(),
             closing_fn: false,
             slotted: HashSet::default(),
@@ -2114,9 +2119,8 @@ impl<'a> FnLower<'a> {
                 continue;
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.holds(self.ty_of(v)) {
-                let in_closer = i == 0
-                    && c.self_binding.is_some()
-                    && self.cx.classes.is_closer(&c.func);
+                let in_closer =
+                    i == 0 && c.self_binding.is_some() && self.cx.classes.is_closer(&c.func);
                 self.bind_owned_param(b, v, in_closer)?;
                 continue;
             }
