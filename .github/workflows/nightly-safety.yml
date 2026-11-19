@@ -6,6 +6,7 @@ name: Nightly safety
 #   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
 #   drift-check   runs the corpus under LLVM and Cranelift and fails on any difference
 #   poison-check  runs the corpus under both backends with dead stack slots filled with a pattern
+#   ownership-fuzz  random move/borrow/closure programs, leak-counted, Debug vs Release
 #   view-matrix   generated view programs (trim, slice, split) with temporaries after them, poisoned, in Debug and Release
 #   stress-sched  runs the stdlib sweep under the scheduler stress mode
 #   bench-gate    `ms bench` on bench/perf/guards; fails when an allocation or copy count rose more than 3% over baseline.json
@@ -57,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check, poison-check, view-matrix, stress-sched, bench-gate]
+        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-env
