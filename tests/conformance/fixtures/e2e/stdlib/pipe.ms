@@ -192,3 +192,42 @@ test "a consumer that always finds a value queued still meets its timeout":
 		options: PromiseOptions(timeout: milliseconds(200))
 	)
 	expect_true(cons.wait().is_error())?
+
+type Join:
+	id: Int
+	out: WriteStream[String]
+
+// The owner holds each member's output end and pushes to all of them.
+fn room(var inbox: ReadStream[Join]) Void!:
+	var members: List[Join] = []
+
+	for join in inbox:
+		newcomer := join.id
+		members.append(join)
+		for i in 0..members.length():
+			members[i].out.write(f"{members[i].id} sees {newcomer}")?
+
+	return ok()
+
+fn join_room(p: Pipe[Join], id: Int, replies: Pipe[String]) Void!:
+	var cmds = p.writer()
+	cmds.write(Join(id, replies.writer()))?
+	return cmds.close()
+
+test "a pipe carries a writer by move, so its owner can push to the sender":
+	var cmds = pipe[Join](4)
+	var inbox = cmds.reader()
+	var gate = cmds.writer()
+	var first = pipe[String](4)
+	var firstIn = first.reader()
+	owner := promise(fn: room(var inbox))
+	join_room(cmds, 1, first)?
+	gate.close()?
+	owner.wait()?
+	expect_equal(drain_text(var firstIn)?, ["1 sees 1"])?
+
+fn drain_text(var input: ReadStream[String]) List[String]!:
+	var seen: List[String] = []
+	for item in input:
+		seen.append(item)
+	return ok(seen)
