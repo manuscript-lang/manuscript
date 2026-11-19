@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=documentation/learn/common-tasks.md:120
 import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 fn run() Result[Void, Error]:
     var input = lines(stdin())

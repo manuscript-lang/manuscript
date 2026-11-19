@@ -13,4 +13,4 @@ Constraints found while writing it:
 
 Apply when: adding resilience helpers, or moving them to another module.
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/resilience.ms`.
-Streams compose with backpressure in `@std/io/streams.ms`, so no Node-style `pipeline` was added.
+Streams compose with backpressure in `@std/io/steps.ms`, so no Node-style `pipeline` was added.

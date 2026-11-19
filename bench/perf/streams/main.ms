@@ -8,7 +8,7 @@ import (
 	from_list,
 	lines,
 	map,
-	take from "@std/io/streams.ms",
+	take from "@std/io/steps.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 

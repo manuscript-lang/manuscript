@@ -1,7 +1,8 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	collect, from_bytes, from_list, lines from "@std/io/streams.ms",
+	lines from "@std/io/steps.ms",
+	collect, from_bytes, from_list from "@std/io/streams.ms",
 	OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms",
 	expect_equal from "@std/test/test.ms",
 

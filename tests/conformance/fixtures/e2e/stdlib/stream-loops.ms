@@ -2,7 +2,8 @@
 // conform: phase=test
 import (
 	ReadStream, Source, WriteStream, pipe from "@std/io/io.ms",
-	collect, copy, from_list, map from "@std/io/streams.ms",
+	collect, copy, from_list from "@std/io/streams.ms",
+	map from "@std/io/steps.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

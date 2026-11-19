@@ -1,7 +1,8 @@
 import (
 	Bytes from "@std/bytes.ms",
 	ReadStream, Source from "@std/io/io.ms",
-	fold, from_bytes, from_list, lines, map from "@std/io/streams.ms",
+	lines, map from "@std/io/steps.ms",
+	fold, from_bytes, from_list from "@std/io/streams.ms",
 	keep, measure from "@std/test/bench.ms",
 )
 

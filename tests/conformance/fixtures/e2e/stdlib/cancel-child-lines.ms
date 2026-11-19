@@ -1,7 +1,8 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	collect, lines from "@std/io/streams.ms",
+	lines from "@std/io/steps.ms",
+	collect from "@std/io/streams.ms",
 	spawn from "@std/os/process.ms",
 	expect_equal from "@std/test/test.ms",
 )

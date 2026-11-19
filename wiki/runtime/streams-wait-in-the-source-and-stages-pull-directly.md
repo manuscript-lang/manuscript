@@ -8,9 +8,10 @@ Decision (Chinmay, 2026-11-06, superseding 2026-11-03): one stream type for memo
 - A failed read delivers no item. `take` preserves its remaining budget when its input returns an error, so a caller retrying `next` can still receive the requested items; decrementing before the read silently truncated retries. The [stage tests](../../tests/conformance/fixtures/e2e/stdlib/stream-filter-take-fold.ms) cover the last slot, repeated errors through `filter` and `map`, and no reads after the cap.
 - Closing a stream closes its source once and then replaces it with an empty one. The replacement matters: a native handle counted with `Rc` closes only when the source record is dropped, so a closed stream that kept its source kept the socket open.
 - Cancellation and time limits are not stream API: run the loop in a promise with `PromiseOptions`. There is no per-item timeout stage by decision.
+- Stream helpers are split by job (2026-11-19): `streams.ms` builds and drains (`from_list`, `from_bytes`, `fold`, `collect`, `read_all`, `copy`), `steps.ms` holds the `|` steps (`lines`, `map`, `filter`, `take`), `forward.ms` bridges a thread-bound stream to other threads. Put a new helper in the one that matches its job; the unknown-export diagnostic points callers to the right module.
 - Push codecs (JSON, CSV, SSE, base64, tar, compression) keep `Transform` and `through`; `step` and `finish` append to a `List[B]`.
 - Rejected: a promise per stage per item, `Promise[T]` items for waiting sources, `Iterator`-shaped stream with `Result` items, owner-and-view streams (the checker cannot hold a borrowed owner), interface `ReadStream` that owns resources (needs a `close` operation or a new ownership marker).
 
-Apply when: changing `stdlib/io/io.ms` or `streams.ms`, a `Source` or `Sink` implementation, or a loop over a stream.
+Apply when: changing `stdlib/io/io.ms`, `streams.ms`, `steps.ms` or `forward.ms`, a `Source` or `Sink` implementation, or a loop over a stream.
 Evidence: [proposal](../../proposals/stream-interface.md), [cancel fixture](../../tests/conformance/fixtures/e2e/stdlib/stream-cancel.ms), [loops fixture](../../tests/conformance/fixtures/e2e/stdlib/stream-loops.ms), [suite](../../bench/perf/streams/README.md).
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/stream-loops.ms tests/conformance/fixtures/e2e/stdlib/stream-cancel.ms`.

@@ -17,7 +17,7 @@ There is one stream type for memory and for waiting sources. A source that touch
 ```manuscript
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import lines from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 fn count_errors(move input: ReadStream[Bytes]) Int!:
     var errors = 0
@@ -50,13 +50,14 @@ fn dump(rows: List[String], var out: WriteStream[String]) Void!:
 
 ## Pipelines
 
-Each step in `@std/io/streams.ms` takes its input first and by move, so a pipeline is the `|` operator and a reusable pipeline is an ordinary function. A step pulls its input only inside its own `next`, so a slow consumer slows every step and the source, and nothing reads ahead:
+Each step in `@std/io/steps.ms` takes its input first and by move, so a pipeline is the `|` operator and a reusable pipeline is an ordinary function. A step pulls its input only inside its own `next`, so a slow consumer slows every step and the source, and nothing reads ahead:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import Bytes from "@std/bytes.ms"
 import ReadStream from "@std/io/io.ms"
-import from_bytes, lines, filter, map, collect from "@std/io/streams.ms"
+import from_bytes, collect from "@std/io/streams.ms"
+import lines, filter, map from "@std/io/steps.ms"
 import expect_equal from "@std/test/test.ms"
 
 fn line_lengths(move input: ReadStream[Bytes]) ReadStream[Int]:

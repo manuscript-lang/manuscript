@@ -1,5 +1,6 @@
 import stdin from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
+import collect from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 fn parse_num(s: String) Int?:
     if s.length() < 1 or s.length() > 6 or not s.scalar_values().all(fn c: c >= 48 and c <= 57): return none

@@ -10,7 +10,8 @@ Files, sockets and processes need closing, even when the function leaves early b
 <!-- manuscript-example: {"mode":"run","files":{"orders.csv":"id,customer,cents\n1,Sam,1250\n2,Ada,4000\n"},"stdout":"2 orders\n","cases":[{"files":{"orders.csv":""},"stdout":"","exit_code":1}]} -->
 ```manuscript {filename="count.ms"}
 import open from "@std/os/fs.ms"
-import lines, collect from "@std/io/streams.ms"
+import collect from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 fn count_orders(path: String) Int!:
     file := open(path)?

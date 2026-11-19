@@ -2,7 +2,8 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
-	collect, copy, from_bytes, from_list, map, read_all from "@std/io/streams.ms",
+	map from "@std/io/steps.ms",
+	collect, copy, from_bytes, from_list, read_all from "@std/io/streams.ms",
 	OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms",
 	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
 )

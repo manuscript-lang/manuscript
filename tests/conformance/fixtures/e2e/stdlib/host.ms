@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	lines from "@std/io/streams.ms",
+	lines from "@std/io/steps.ms",
 	arguments, environment, set_environment from "@std/os/env.ms",
 	CommandOutput,
 	RunOptions,

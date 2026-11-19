@@ -1,5 +1,6 @@
 import stdin from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
+import collect from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 import range_by from "@std/collections/collections.ms"
 
 fn pad2(n: Int) String: return if n < 10: f"0{n}" else: f"{n}"

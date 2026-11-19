@@ -2,8 +2,8 @@
 // conform: phase=test
 import (
 	promise from "@std/concurrency/promise.ms",
+	forward from "@std/io/forward.ms",
 	ReadStream, WriteStream, pipe from "@std/io/io.ms",
-	forward from "@std/io/streams.ms",
 	HttpExchange, HttpServerOptions from "@std/net/http.ms",
 	serve, web_socket from "@std/net/net.ms",
 	TlsOptions from "@std/net/tls.ms",
