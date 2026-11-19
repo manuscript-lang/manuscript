@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-19, checked at `ccb9d30fb`. Follows the `ms check --each` batching of check fixtures (`runner.rs: check_batch`).
+Implemented, 2026-11-19 (reviewed by an independent skeptical reviewer; changes taken), checked at `ccb9d30fb`. Follows the `ms check --each` batching of check fixtures (`runner.rs: check_batch`).
 
 ## Problem
 
@@ -19,7 +19,7 @@ Proposal, 2026-11-19, checked at `ccb9d30fb`. Follows the `ms check --each` batc
 
 ## Design
 
-- Eligible: a `Phase::Test` single-file fixture without args or stdin whose expectation is exit 0, all tests passed, no diagnostics, empty stderr, and a `stdout` that holds only `RUN`/`PASS` lines and the summary line (683 of the 714 single-file test fixtures, recomputed by the reviewer). A fixture that imports `@std/os/`, `@std/net/`, `@std/process`, `@std/concurrency` or `@std/time` (files, ports, processes, clocks and timing: state one process would share) runs alone, as do fixtures with a `// conform: timeout`. Others run alone as today.
+- Eligible: a `Phase::Test` single-file fixture without args or stdin whose expectation is exit 0, all tests passed, no diagnostics, empty stderr, and a `stdout` that holds only `RUN`/`PASS` lines and the summary line (683 of the 714 single-file test fixtures, recomputed by the reviewer). A fixture that imports `@std/os/`, `@std/net/`, `@std/process` or `@std/time` (files, ports, processes, clocks and timing: state one process would share) runs alone, as do fixtures with a `// conform: timeout`. Others run alone as today.
 - Not batched: `CONFORM_LEAKS` runs (a leak count belongs to one program) and `record`; both keep one fixture per process.
 - Batch: up to 12 eligible fixtures in id order (neighbours share modules: `yaml*`, `bigint*`), no two with the same file name (test names are `file.ms::test`). Each is materialized into its own work directory; one `ms test` takes all paths, with a timeout of the sum of the members', at most 300 s.
 - Slicing: names come back as `<member dir>/file.ms::test` (with `\` on Windows), so the slicer strips the directory and takes the tests of each member in order, renumbered from 0; `source_root` is the common parent in a batch and is set to `<DIR>`. The member's observation is rebuilt as the recorded shape: `exit_code`, a report with `repeat`, `format`, `source_root` as `<DIR>`, `tests`, a `summary` counted from those tests, `completed`, a `stdout` of their `RUN`/`PASS` lines plus `N tests, 0 failed`, `diagnostics`, the key `shape` and `stderr`.

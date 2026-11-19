@@ -360,6 +360,122 @@ pub fn observe_check_batch(ctx: &Ctx, fixtures: &[&Fixture]) -> Vec<Json> {
     observed
 }
 
+/// Observations of single-file test fixtures that passed cleanly, rebuilt from one `ms test` run
+/// of all of them: the compiler builds the test runner and the shared modules once. A slot is
+/// `None` when the batch did not run cleanly or its tests do not account for that fixture, and
+/// the caller observes that fixture alone.
+pub fn observe_test_batch(ctx: &Ctx, fixtures: &[&Fixture]) -> Vec<Option<Json>> {
+    let none = || vec![None; fixtures.len()];
+    let root = ctx
+        .scratch
+        .join(format!("b{}", COUNTER.fetch_add(1, Ordering::Relaxed)));
+    let _ = fs::remove_dir_all(&root);
+    let mut targets = Vec::new();
+    for (i, fx) in fixtures.iter().enumerate() {
+        match fx.materialize(&root.join(format!("w{i}"))) {
+            Ok(entry) => targets.push(format!("w{i}/{entry}")),
+            Err(_) => return none(),
+        }
+    }
+    let mut args: Vec<&str> = vec!["test"];
+    args.extend(targets.iter().map(String::as_str));
+    args.extend(["--json", "--build-type", &ctx.build_type]);
+    // A member that hangs fails its own run; the batch does not wait for every timeout.
+    let timeout = fixtures
+        .iter()
+        .map(|fx| ctx.timeout(fx))
+        .sum::<Duration>()
+        .min(Duration::from_secs(300).mul_f64(ctx.timeout_scale));
+    let out = ctx.invoke_within(timeout, &args, &root, b"");
+    let _ = fs::remove_dir_all(&root);
+    if out.code != 0 || out.timed_out || out.spawn_error.is_some() || !out.stderr_text().is_empty()
+    {
+        return none();
+    }
+    let mut report = parse_json_output(&out, &root);
+    strip_faults(&mut report);
+    let completed = report.get("completed").and_then(Json::as_bool) == Some(true);
+    let Some(tests) = report
+        .get("tests")
+        .and_then(Json::as_array)
+        .map(<[_]>::to_vec)
+    else {
+        return none();
+    };
+    if !completed {
+        return none();
+    }
+    let mut shape_keys = BTreeSet::new();
+    shape(&report, "", &mut shape_keys);
+    let shape_json = Json::Arr(shape_keys.into_iter().map(Json::Str).collect());
+    fixtures
+        .iter()
+        .enumerate()
+        .map(|(i, fx)| {
+            let prefix = format!("w{i}/{}::", fx.entry);
+            let mine: Vec<Json> = tests
+                .iter()
+                .filter_map(|t| {
+                    let name = t.get("name")?.as_str()?.replace('\\', "/");
+                    let rest = name.strip_prefix(&prefix)?.to_string();
+                    (t.get("status")?.as_str()? == "passed").then_some(rest)
+                })
+                .map(|rest| Json::str(format!("{}::{rest}", fx.entry)))
+                .collect();
+            let total = tests
+                .iter()
+                .filter(|t| {
+                    t.get("name")
+                        .and_then(Json::as_str)
+                        .is_some_and(|n| n.replace('\\', "/").starts_with(&prefix))
+                })
+                .count();
+            // A test that did not pass leaves the fixture to a run of its own.
+            if mine.is_empty() || mine.len() != total {
+                return None;
+            }
+            let mut stdout = String::new();
+            let mut listed = Vec::new();
+            for (k, name) in mine.iter().enumerate() {
+                let name = name.as_str().unwrap_or_default();
+                stdout.push_str(&format!("RUN {name}\nPASS {name}\n"));
+                listed.push(
+                    Json::object()
+                        .with("index", Json::int(k as i64))
+                        .with("name", Json::str(name))
+                        .with("status", Json::str("passed")),
+                );
+            }
+            let n = mine.len() as i64;
+            stdout.push_str(&format!("{n} tests, 0 failed\n"));
+            let summary = Json::object()
+                .with("available", Json::int(n))
+                .with("selected", Json::int(n))
+                .with("passed", Json::int(n))
+                .with("failed", Json::int(0))
+                .with("skipped", Json::int(0))
+                .with("not_run", Json::int(0));
+            let report = Json::object()
+                .with("repeat", Json::int(1))
+                .with("format", Json::int(1))
+                .with("source_root", Json::str("<DIR>"))
+                .with("tests", Json::Arr(listed))
+                .with("summary", summary)
+                .with("completed", Json::Bool(true))
+                .with("exit_code", Json::int(0))
+                .with("stdout", Json::str(stdout))
+                .with("diagnostics", Json::Arr(Vec::new()));
+            Some(
+                Json::object()
+                    .with("exit_code", Json::int(0))
+                    .with("report", report)
+                    .with("shape", shape_json.clone())
+                    .with("stderr", Json::str("")),
+            )
+        })
+        .collect()
+}
+
 /// True when a file under `dir` names a `../` path, which can reach outside the fixture.
 fn mentions_parent_path(dir: &Path) -> bool {
     let Ok(entries) = fs::read_dir(dir) else {

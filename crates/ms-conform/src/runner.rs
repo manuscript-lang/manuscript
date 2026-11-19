@@ -208,6 +208,103 @@ fn check_batch(ctx: &Ctx, batch: &[&Fixture], allow: &ExpectFail) -> Vec<Case> {
         .collect()
 }
 
+/// Fixtures of one `ms test` build: enough that the test runner and shared modules compile once
+/// for many, few enough that a mismatch reruns little.
+const TEST_BATCH: usize = 12;
+
+/// Imports that reach files, ports, processes or the clock, state one process would share
+/// between fixtures. A fixture that names one runs alone.
+const SHARED_STATE: [&str; 4] = ["@std/os/", "@std/net/", "@std/process", "@std/time"];
+
+/// True when `fx` is a single-file test fixture whose recorded outcome is a clean pass that one
+/// batched run can reproduce: every test passed, nothing on stderr, and a stdout of only the
+/// `RUN` and `PASS` lines and the summary.
+fn batchable(ctx: &Ctx, fx: &Fixture) -> bool {
+    if fx.phase != Phase::Test
+        || ctx.leaks
+        || !fx.args.is_empty()
+        || !fx.stdin.is_empty()
+        || fx.timeout_secs.is_some()
+    {
+        return false;
+    }
+    let crate::fixture::FixtureRoot::File(path) = &fx.root else {
+        return false;
+    };
+    let Ok(source) = fs::read_to_string(path) else {
+        return false;
+    };
+    if SHARED_STATE.iter().any(|name| source.contains(name)) {
+        return false;
+    }
+    let Ok(expected) = load_expected(fx) else {
+        return false;
+    };
+    let Some(report) = expected.get("report") else {
+        return false;
+    };
+    let count = |key: &str| {
+        report
+            .get("summary")
+            .and_then(|s| s.get(key))
+            .and_then(Json::as_i64)
+    };
+    expected.get("exit_code").and_then(Json::as_i64) == Some(0)
+        && count("failed") == Some(0)
+        && count("skipped") == Some(0)
+        && report
+            .get("diagnostics")
+            .and_then(Json::as_array)
+            .is_some_and(<[Json]>::is_empty)
+        && expected.get("stderr").and_then(Json::as_str) == Some("")
+        && report
+            .get("stdout")
+            .and_then(Json::as_str)
+            .is_some_and(|out| {
+                let lines: Vec<&str> = out.split('\n').collect();
+                lines.len() > 2
+                    && lines[..lines.len() - 2]
+                        .iter()
+                        .all(|l| l.starts_with("RUN ") || l.starts_with("PASS "))
+            })
+}
+
+/// Groups `eligible` fixture positions into batches whose entry file names differ (a test name
+/// is `file.ms::name`, so equal names could not be told apart).
+fn test_batches(fixtures: &[&Fixture], eligible: &[usize]) -> Vec<Vec<usize>> {
+    let mut batches: Vec<Vec<usize>> = Vec::new();
+    for &i in eligible {
+        let fits = |b: &Vec<usize>| {
+            b.len() < TEST_BATCH && b.iter().all(|&j| fixtures[j].entry != fixtures[i].entry)
+        };
+        match batches.iter_mut().find(|b| fits(b)) {
+            Some(b) => b.push(i),
+            None => batches.push(vec![i]),
+        }
+    }
+    batches
+}
+
+/// Cases of `batch`, which are all batchable test fixtures: one build, and a fixture whose
+/// rebuilt observation differs from its expectation is observed alone.
+fn test_batch(ctx: &Ctx, batch: &[&Fixture], allow: &ExpectFail) -> Vec<Case> {
+    let observed = observe::observe_test_batch(ctx, batch);
+    batch
+        .iter()
+        .zip(observed)
+        .map(|(fx, actual)| {
+            let started = std::time::Instant::now();
+            if let Some(actual) = actual {
+                let case = judge(fx, allow, started, |_| actual);
+                if matches!(case.outcome, Outcome::Pass | Outcome::UnexpectedPass) {
+                    return case;
+                }
+            }
+            check_one(ctx, fx, allow)
+        })
+        .collect()
+}
+
 /// Run all selected fixtures. `progress` prints one line per finished fixture to stderr.
 pub fn run_all(
     ctx: &Ctx,
@@ -223,20 +320,24 @@ pub fn run_all(
     // positions in `fixtures`.
     let mut items: Vec<Vec<usize>> = Vec::new();
     let mut checks: Vec<usize> = Vec::new();
+    let mut tests: Vec<usize> = Vec::new();
     for (i, fx) in fixtures.iter().enumerate() {
         if fx.phase == Phase::Check {
             checks.push(i);
+        } else if batchable(ctx, fx) {
+            tests.push(i);
         } else {
             items.push(vec![i]);
         }
     }
+    items.extend(test_batches(fixtures, &tests));
     // A batch is sized so every worker gets some, however few the check fixtures are.
     let size = checks.len().div_ceil(jobs.max(1)).clamp(1, CHECK_BATCH);
     // Longest first: a big program that starts last runs alone while the other workers idle.
     // Check batches are short and go at the end. Results return to `fixtures` order below.
     let mut weighted: Vec<(u64, Vec<usize>)> = items
         .into_iter()
-        .map(|at| (fixtures[at[0]].weight(), at))
+        .map(|at| (at.iter().map(|&i| fixtures[i].weight()).sum(), at))
         .collect();
     weighted.sort_by_key(|(weight, _)| std::cmp::Reverse(*weight));
     let mut items: Vec<Vec<usize>> = weighted.into_iter().map(|(_, at)| at).collect();
@@ -245,6 +346,9 @@ pub fn run_all(
         let cases: Vec<Case> = if fixtures[at[0]].phase == Phase::Check {
             let batch: Vec<&Fixture> = at.iter().map(|&i| fixtures[i]).collect();
             check_batch(ctx, &batch, allow)
+        } else if at.len() > 1 {
+            let batch: Vec<&Fixture> = at.iter().map(|&i| fixtures[i]).collect();
+            test_batch(ctx, &batch, allow)
         } else {
             vec![check_one(ctx, fixtures[at[0]], allow)]
         };
@@ -338,6 +442,27 @@ mod tests {
         assert!(e.contains("x/one"));
         assert!(e.contains("y/deep/two"));
         assert!(!e.contains("x/two"));
+    }
+
+    #[test]
+    fn test_batches_keep_entry_names_distinct_and_bounded() {
+        let mut all: Vec<Fixture> = (0..30)
+            .map(|i| fx(&format!("a/{i}"), &[], Phase::Test))
+            .collect();
+        for (i, f) in all.iter_mut().enumerate() {
+            f.entry = format!("{}.ms", i % 15);
+        }
+        let refs: Vec<&Fixture> = all.iter().collect();
+        let eligible: Vec<usize> = (0..refs.len()).collect();
+        let batches = test_batches(&refs, &eligible);
+        assert_eq!(batches.iter().map(Vec::len).sum::<usize>(), 30);
+        for batch in &batches {
+            assert!(batch.len() <= TEST_BATCH);
+            let mut names: Vec<_> = batch.iter().map(|&i| refs[i].entry.as_str()).collect();
+            names.sort_unstable();
+            names.dedup();
+            assert_eq!(names.len(), batch.len());
+        }
     }
 
     #[test]
