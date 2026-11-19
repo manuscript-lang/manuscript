@@ -65,3 +65,28 @@ fn a_directory_import_does_not_suggest_a_nonsense_file() {
         assert!(stderr.contains("./name.ms"), "{path}: {stderr}");
     }
 }
+
+#[test]
+fn a_missing_manifest_path_points_at_ms_toml() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-manifest-path-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("ms.toml"),
+        include_str!("import_hints/missing_source.toml"),
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(["check", "ms.toml"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(output.status.code(), Some(1), "{stderr}");
+    assert!(
+        stderr.contains("path does not exist: nosrc; this path comes from ms.toml"),
+        "{stderr}"
+    );
+    assert!(!stderr.contains("pass a .ms file"), "{stderr}");
+}

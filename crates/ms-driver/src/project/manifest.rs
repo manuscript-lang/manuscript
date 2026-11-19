@@ -281,6 +281,15 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                         .map_err(|e| fail.at(&location, format!("effects: {e}")))?;
                 }
                 _ => {
+                    // An unknown key is reported as unknown whatever its value's type.
+                    if section == "project"
+                        && !matches!(key.as_str(), "name" | "source" | "entry" | "version")
+                    {
+                        return Err(fail.at(
+                            &key_location,
+                            format!("unknown project key {key}; [project] accepts name, source, entry, version, and effects"),
+                        ));
+                    }
                     let value = text_value(&fail, &location, &key, value)?;
                     match section {
                         "project" => match key.as_str() {

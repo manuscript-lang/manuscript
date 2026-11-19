@@ -144,18 +144,15 @@ fn missing_argument_hint(
     } else {
         format!(" in call to {callee}")
     };
+    // A type parameter the other arguments do not fix yet prints as `_`, not `<invalid>`.
+    let ty = param.ty.display(syms).to_string().replace("<invalid>", "_");
     if param.positional {
-        return format!(
-            "{position}: {}{in_callee}; pass it positionally, without a label",
-            param.ty.display(syms)
-        );
+        return format!("{position}: {ty}{in_callee}; pass it positionally, without a label");
     }
     format!(
-        "{}: {}{in_callee}; add '{}: <{}>'",
+        "{}: {ty}{in_callee}; add '{}: <{ty}>'",
         syms.str(param.name),
-        param.ty.display(syms),
-        syms.str(param.name),
-        param.ty.display(syms)
+        syms.str(param.name)
     )
 }
 

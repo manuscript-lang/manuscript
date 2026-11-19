@@ -54,6 +54,11 @@ fn malformed_manifests() {
             "unknown project key",
         ),
         (
+            "unknown key with a number value",
+            format!("{m}retries = 3\n"),
+            "unknown project key retries",
+        ),
+        (
             "missing required key",
             m.replacen("name = \"sample\"\n", "", 1),
             "requires name and source",
