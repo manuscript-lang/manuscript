@@ -66,9 +66,8 @@ fn main() Void!:
 
 ## References
 
-- Why and how: [Coming from other languages](references/coming-from-other-languages.md) (habits to replace), [Mental model](references/mental-model.md), [Workflow](references/workflow.md), [Testing](references/testing.md), [Validation and habits](references/validation.md).
-- Copy from: [Idioms](references/idioms.md) (thirteen complete programs).
+- Habits and method: [Coming from other languages](references/coming-from-other-languages.md), [Mental model](references/mental-model.md), [Workflow](references/workflow.md), [Testing](references/testing.md), [Validation and habits](references/validation.md).
+- Copy from: [Idioms](references/idioms.md).
 - Names: [Standard calls](references/standard-calls.md), [Standard modules](references/standard-modules.md).
-- Language: [Program structure](references/program-structure.md), [Values and control](references/values-and-control.md), [Types and functions](references/types-and-functions.md), [Collections and pipelines](references/collections-and-pipelines.md), [Text and bytes](references/text-and-bytes.md).
-- Failure and ownership: [Errors and optionals](references/errors-and-optionals.md), [Ownership and cleanup](references/ownership-and-cleanup.md).
-- Systems: [Projects, ms.toml and packages](references/projects-and-packages.md), [Effects and concurrency](references/effects-and-concurrency.md), [Servers and state](references/servers-and-state.md).
+- Language: [Language](references/language.md), [Text and bytes](references/text-and-bytes.md), [Errors and optionals](references/errors-and-optionals.md), [Ownership and cleanup](references/ownership-and-cleanup.md).
+- Systems: [Projects and packages](references/projects-and-packages.md), [Effects and concurrency](references/effects-and-concurrency.md), [Servers and state](references/servers-and-state.md).

@@ -1,8 +1,6 @@
 # Errors and optionals
 
-`T?` is Optional[T]: values convert, `none` is absent. Extract with `if x := optional:` or `optional.get_or(default)`. Postfix `?` unwraps a Result or an Optional and leaves the function on error or absence (`return none`, or just return in a `Void` function), so `a?.field` is `(a?).field` and needs an Optional, `Void`, or Result return that matches the operand.
-
-`T!` is Result[T, Error]; `T!E` uses error type E. Return `ok(value)` or `error(reason)`. Error is a record: `Error("message", kind: "EINVAL")`; read `.message`.
+`T?` is Optional (`none` is absent; values convert, never write `some(x)`). `T!` is `Result[T, Error]`; `T!E` uses error type E. Return `ok(v)` or `error(Error("message", kind: "EINVAL"))`; `Error.kind` is `String?` (compare `e.kind.get_or("")`). A bare `return` in a `Void!` function means `ok`.
 
 <!-- complete: errors.ms -->
 ```manuscript
@@ -26,12 +24,8 @@ fn main() Int:
 	return 0
 ```
 
-`r?` extracts success or returns the error; the enclosing function must return a compatible Result. `if x := r:` handles success only. Add else for failure; there `.err()` yields the error directly, not Optional. Calling `.err()` on success faults.
-
-Optional `.map(f)` preserves Result returns as `(T!)?`; handle both layers. Never accidentally drop a Result. Panic and failed no-default `.get()` fault; they are not catchable Results.
-
-A custom error type is any enum: `enum LibraryError:` with cases such as `NotFound(id: Int)`; a function returns `Void!LibraryError`, fails with `return error(LibraryError.NotFound(id))` and succeeds with `return ok(void)`. `?` needs the same error type in the enclosing function, and a `test` block's error type is `Error`, so in a test check the outcome with `expect_true(r.is_ok())?` or `expect_true(r.is_error())?` (also `expect_error`, `expect_none`, `expect_contains` from `@std/test/test.ms`). `Error.kind` is `String?` and any string works as a kind (`"EINVAL"`, `"ENOENT"`, `"ETIMEDOUT"`, `"ECANCELED"`): compare with `e.kind.get_or("")`.
-
-`expect_error(r)` returns the cause, so write `cause := expect_error(r)?`. A `List[String]` error type cannot use `?` inside a test: convert with `.map_error(fn e: Error(e.join("; ")))` or check `.is_error()`.
-
-With a custom error enum, an Optional converts with `opt.ok_or(VmError.BadJump)?`. In `main` or a test (error type `Error`), translate first: `r.map_error(fn e: Error(describe(e)))?`; `r.err()` returns the enum case itself, handy for `expect_equal`.
+- `r?` extracts success or returns the error; the function must return a compatible Result. `?` on an Optional returns `none` (or just returns in a `Void` function). `a?.field` is `(a?).field`.
+- `if x := r:` handles success; its `else` sees `r.err()` (a fault on success). `.map` on an Optional keeps Result returns as `(T!)?`.
+- Never drop a Result: `_done := f(x)?` or `void f(x)`. Panic and `get()` without a default fault; they are not catchable.
+- A custom error is an enum: `Void!LibraryError`, `return error(LibraryError.NotFound(id))`. `?` needs the same error type in the caller. `opt.ok_or(MyErr.Bad)?` converts an Optional. `main` and tests use `Error`: translate with `r.map_error(fn e: Error(describe(e)))?`.
+- In tests: `cause := expect_error(r)?`, `expect_true(r.is_ok())?` (`@std/test/test.ms`). A `List[String]` error cannot use `?` in a test: `.map_error(fn e: Error(e.join("; ")))`.
