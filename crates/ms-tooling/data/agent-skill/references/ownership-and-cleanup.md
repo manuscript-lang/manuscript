@@ -27,6 +27,39 @@ fn main() Int:
 - A list parameter changes only as `var xs: List[Int]` called `add(var xs)`; otherwise copy to a `var` local.
 - An escaping closure or promise takes what it captures: clone first to keep your copy.
 
+## Changing what you are reading
+A binding to part of a value (`first := self.orders[0]`, `if v := m.get(k)`, a `for` or `match` payload) borrows the owner until its last use, so the owner cannot change meanwhile. Fix by giving the binding its own value with `.clone()`, by iterating a clone (`for o in self.orders.clone()`), or by finishing with the binding first. Distinct fields never conflict (`self.total` while iterating `self.orders`).
+
+<!-- complete: borrow-then-change.ms -->
+```manuscript
+type Order:
+	id: Int
+	qty: Int
+
+type Shop:
+	orders: List[Order]
+	total: Int
+
+fn var Shop.restock() Void:
+	for o in self.orders.clone():
+		self.orders.append(Order(o.id + 100, 1))
+
+fn var Shop.add_first_again() Void:
+	first := self.orders[0].clone()
+	self.orders.append(first)
+
+fn var Shop.sum() Void:
+	for o in self.orders:
+		self.total += o.qty
+
+fn main() Void:
+	var shop = Shop([Order(1, 2)], 0)
+	shop.restock()
+	shop.add_first_again()
+	shop.sum()
+	print(shop.total)
+```
+
 ## Closing
 A `fn move T.close() Void!` (or `Closeable` from `@std/core.ms`) closes at scope end on every exit, last declared first; holders (records, lists, maps, optionals) close their parts, and replacing or removing a part closes the old one. `x.close()` **consumes** `x`: a later use or second close is a use after move and scope end skips it. Call it only to handle its error (`file.close()?`). A scope-end close error becomes the function's error, or faults when there is nowhere to return it. Only an owner closes: take a `move` parameter. Resources are not `Clonable`. A factory returns an open resource by moving it. `xs.pop()` hands an element out.
 
