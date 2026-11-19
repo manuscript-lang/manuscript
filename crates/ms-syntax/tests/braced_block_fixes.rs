@@ -21,12 +21,12 @@ fn repair(source: &str) -> String {
 fn braced_blocks_repair_to_colon_blocks() {
     for (source, expected) in [
         (
-            "fn main() Void {\n    print(1)\n}\n",
-            "fn main() Void:\n    print(1)\n\n",
+            include_str!("braced_block_fixes/function.src"),
+            include_str!("braced_block_fixes/function.fixed"),
         ),
         (
-            "fn main() Void:\n    for i in 0..3 {\n        print(i)\n    }\n",
-            "fn main() Void:\n    for i in 0..3:\n        print(i)\n    \n",
+            include_str!("braced_block_fixes/loop.src"),
+            include_str!("braced_block_fixes/loop.fixed"),
         ),
     ] {
         for (source, expected) in [
