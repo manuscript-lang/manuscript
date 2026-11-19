@@ -57,7 +57,7 @@ The accept loop is a promise. Each accepted connection becomes a promise of its 
 The handler, the router and everything they capture are built once and only read by every thread, so a handler cannot change shared state. State that changes across requests lives in one owner promise that handlers write to through a `pipe`:
 
 - A pipe's reader ends as soon as no writer is open. The function that starts the owner keeps one `gate` writer open until the server has closed, and each handler calls `writer()` for its own end ([pipes](streams.md#pipes)).
-- A pipe carries clonable values, so a request that needs an answer from the owner cannot send a reply writer along. Let handlers read the owner's data from a file or another read-only source.
+- A pipe carries any value, so a request that needs an answer, or a client that wants pushes, sends the owner a record holding its own `WriteStream`. The owner keeps that writer and writes to it whenever it likes. Closing every writer it holds ends the clients' side.
 
 A fault in a handler ends only that request, and the connection answers 500. Request-scoped writes through `HttpExchange` (`send`, `send_headers`, `read`, `close`) are `var fn`, since an exchange belongs to one handler.
 

@@ -124,4 +124,6 @@ The promise owns the writer it captured and closes it when the producer returns,
 - `write` is a `var fn`, so two promises cannot share one writer; each takes its own. Make one `var` writer per producer before starting the promises: the promise takes it over and may pass it on or write to it, so any number of producers can feed one reader.
 - A hand-over between promises on different threads costs about 1 µs when the reader keeps catching up with the writer; between tasks of one thread it is a task switch. A thread that runs no promise and waits on nothing but other tasks starts the promise it creates itself, so a producer and the consumer waiting on it share a thread; give `PromiseOptions(placement: Placement.Here)` to keep a chatty pair together when the creator is busy, and the default placement runs stages that each do real work per value in parallel.
 
+- A pipe carries any value, including one that holds a writer, so a request can bring its own way back: a client sends the owner a record holding its `WriteStream`, and the owner keeps it and writes to it later. The write moves a value that cannot be cloned, so the sender cannot use it afterwards, and the owner closes the writer when it drops it.
+
 `json_reader[T]` and `json_writer[T]` give a typed view of a byte stream, for example to send newline-delimited JSON over a socket.

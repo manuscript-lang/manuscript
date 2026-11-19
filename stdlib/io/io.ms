@@ -370,7 +370,7 @@ fn move PipeSource[T].close() Void!:
 	self.id = 0
 
 // One writing end of a pipe; closing it releases that writer.
-type PipeSink[T: Clonable]:
+type PipeSink[T]:
 	id: Int
 	capacity: Int
 
@@ -392,14 +392,14 @@ fn move PipeSink[T].close() Void!:
 	self.id = 0
 
 // An in-memory stream of whole values, in order, with any number of writers and one
-// reader. A write hands the pipe a copy (`WriteStream.write` only borrows its
-// argument), so `T` must be `Clonable`; the copy then moves through by pointer.
+// reader. A write hands the pipe the value: a plain value is copied, and a resource
+// such as a `WriteStream` moves in, so a request can carry the way to answer it.
 //
 // `capacity` is the number of queued values above which a writer's `write` and `flush`
 // wait. The pipe itself is not a writer: the reader ends once every writer from
 // `writer()` has closed, so make the writers before reading. Closing the reader makes
 // later writes fail with `EBADF`.
-export opaque type Pipe[T: Clonable]:
+export opaque type Pipe[T]:
 	// The runtime pipe's id.
 	id: Int
 	// The queued values above which a write waits.
@@ -435,7 +435,7 @@ fn move Pipe[T].close() Void!:
 
 // Makes an in-memory pipe whose writers wait while more than `capacity` values are
 // queued.
-export fn pipe[T: Clonable](capacity: Int) Pipe[T]:
+export fn pipe[T](capacity: Int) Pipe[T]:
 	id := msrt_pipe_new(capacity)
 
 	// The runtime starts a pipe with one writer, which the Pipe value would hold;
