@@ -10,13 +10,11 @@
 
 </div>
 
-Manuscript is a statically typed, natively compiled language. Every value has one owner, so there is no garbage collector and no lifetime annotations. Agents now write much of our code, so the compiler checks ownership, types and effects, and every diagnostic names its cause and its fix. That lets an agent correct itself, and lets a person review the result through built-in diagrams and an interactive code map.
+Manuscript is a statically typed, natively compiled language. Every value has one owner, so there is no garbage collector and no lifetime annotations. The common footguns are gone, the syntax is token-efficient, and programs run close to C speed across all cores.
 
-Manuscript makes agent-generated code practical to work with. The common footguns are gone, and the syntax is token-efficient and readable at a glance, so agents get it right.
+That clarity matters more now that agents write much of our code. Every diagnostic names its cause and fix, so an agent can correct itself, and built-in diagrams and an interactive code map let a person review the result.
 
-Under the hood, the compiler enforces one owner per value with no GC. Programs run close to C speed and scale across all cores, and a simple effects system tracks what your code is allowed to do.
-
-The whole toolchain is tuned for agents. Errors tell you how to fix them, and built-in commands let you verify, test, fuzz, benchmark and profile. Agent benchmarks drive the evolution of the language and toolchain together, and adversarial probing of the compiler and standard library finds and fixes correctness and performance bugs.
+The toolchain is tuned for agents: built-in commands verify, test, fuzz, benchmark and profile, and agent benchmarks and adversarial probing drive the language and compiler forward.
 
 A simple HTTP server:
 
@@ -152,7 +150,7 @@ ms init hello
 
 ## Agent skill
 
-The skill ships separately from `ms`, so an agent machine needs no compiler. On Linux and macOS:
+A short guide that teaches a coding agent to write Manuscript. It installs on its own, without the compiler. On Linux and macOS:
 
 ```sh
 curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh
