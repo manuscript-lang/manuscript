@@ -640,7 +640,7 @@ fn parse_filter(
 	var p = Parser(cs: text.chars().clone())
 	p.advance()?
 
-	root := p.parse_or(st, var nodes, var refs)?
+	root := p.parse_or(st, nodes, refs)?
 	if p.kind != 7: return error(Error(f"query: unexpected token '{p.text}'"))
 
 	return ok(root)
@@ -650,28 +650,28 @@ fn add_node(var nodes: List[Node], n: Node) Int:
 	return nodes.length() - 1
 
 fn var Parser.parse_or(st: State, var nodes: List[Node], var refs: List[String]) Int!:
-	var left = self.parse_and(st, var nodes, var refs)?
+	var left = self.parse_and(st, nodes, refs)?
 
 	while self.kind == 3:
 		self.advance()?
 
-		right := self.parse_and(st, var nodes, var refs)?
-		left = add_node(var nodes, Node(kind: 2, a: left, b: right))
+		right := self.parse_and(st, nodes, refs)?
+		left = add_node(nodes, Node(kind: 2, a: left, b: right))
 
 	return ok(left)
 
 fn var Parser.parse_and(st: State, var nodes: List[Node], var refs: List[String]) Int!:
-	var left = self.parse_not(st, var nodes, var refs)?
+	var left = self.parse_not(st, nodes, refs)?
 
 	while true:
 		if self.kind == 2:
 			self.advance()?
 
-			right := self.parse_not(st, var nodes, var refs)?
-			left = add_node(var nodes, Node(kind: 1, a: left, b: right))
+			right := self.parse_not(st, nodes, refs)?
+			left = add_node(nodes, Node(kind: 1, a: left, b: right))
 		else if self.kind == 4 or self.kind == 0 or self.kind == 5:
-			right := self.parse_not(st, var nodes, var refs)?
-			left = add_node(var nodes, Node(kind: 1, a: left, b: right))
+			right := self.parse_not(st, nodes, refs)?
+			left = add_node(nodes, Node(kind: 1, a: left, b: right))
 		else:
 			break
 
@@ -681,13 +681,13 @@ fn var Parser.parse_not(st: State, var nodes: List[Node], var refs: List[String]
 	if self.kind == 4:
 		self.advance()?
 
-		child := self.parse_not(st, var nodes, var refs)?
-		return ok(add_node(var nodes, Node(kind: 3, a: child)))
+		child := self.parse_not(st, nodes, refs)?
+		return ok(add_node(nodes, Node(kind: 3, a: child)))
 
 	if self.kind == 0:
 		self.advance()?
 
-		e := self.parse_or(st, var nodes, var refs)?
+		e := self.parse_or(st, nodes, refs)?
 		if self.kind == 7: return error(Error("query: unexpected end of query"))
 		if self.kind != 1: return error(Error(f"query: unexpected token '{self.text}'"))
 
@@ -702,8 +702,8 @@ fn var Parser.parse_not(st: State, var nodes: List[Node], var refs: List[String]
 			self.op,
 			self.value.clone(),
 			self.quoted,
-			var nodes,
-			var refs,
+			nodes,
+			refs,
 		)?
 		self.advance()?
 		return ok(idx)
@@ -733,9 +733,9 @@ fn build_term(
 		if q.is_none(): return error(Error(f"query: unknown view '{value}'"))
 
 		qs := split_query(q.get_or(""))?
-		root := parse_filter(st, qs.filter, var nodes, var refs)?
+		root := parse_filter(st, qs.filter, nodes, refs)?
 		refs.append(value.clone())
-		return ok(add_node(var nodes, Node(kind: 4, a: root)))
+		return ok(add_node(nodes, Node(kind: 4, a: root)))
 
 	var alts = List[String]()
 
@@ -798,7 +798,7 @@ fn build_term(
 		else:
 			vals.append(v.lower())
 
-	return ok(add_node(var nodes, Node(kind: 0, field: fc, op: op, vals: vals)))
+	return ok(add_node(nodes, Node(kind: 0, field: fc, op: op, vals: vals)))
 
 fn cmp_int(a: Int, b: Int) Int:
 	if a < b: return -1
@@ -962,7 +962,7 @@ fn issue_line(st: State, iss: Issue) String:
 fn State.select(filter: String) List[Int]!:
 	var nodes = List[Node]()
 	var refs = List[String]()
-	root := parse_filter(self, filter, var nodes, var refs)?
+	root := parse_filter(self, filter, nodes, refs)?
 	var out = List[Int]()
 	for i in 0..self.issues.length():
 		if eval_node(self, nodes, root, self.issues[i]): out.append(i)
@@ -1044,7 +1044,7 @@ fn var State.do_edit(id: Int, toks: List[String]) String!:
 
 	var nf = copy_fields(self.issues[idx].f)
 	for t in toks:
-		apply_token(var nf, t)?
+		apply_token(nf, t)?
 	return ok(self.commit_edit(idx, nf))
 
 fn var State.do_label(id: Int, items: List[String]) String!:
@@ -1147,7 +1147,7 @@ fn var State.cmd_create(rest: String) String!:
 
 	var nf = Fields(title: first.clone(), reporter: self.actor.clone())
 	for i in 1..toks.length():
-		apply_token(var nf, toks[i])?
+		apply_token(nf, toks[i])?
 	self.clock += 1
 
 	id := self.next_id
@@ -1292,7 +1292,7 @@ fn view_refs(st: State, name: String, q: String) List[String]:
 	qs := split_query(q)
 
 	if s := qs:
-		r := parse_filter(st, s.filter, var nodes, var refs)
+		r := parse_filter(st, s.filter, nodes, refs)
 		if r.is_ok(): return refs
 
 	return refs
@@ -1375,7 +1375,7 @@ fn var State.cmd_view(rest: String) String!:
 		spec := split_query(query)?
 		var nodes = List[Node]()
 		var refs = List[String]()
-		_root := parse_filter(self, spec.filter, var nodes, var refs)?
+		_root := parse_filter(self, spec.filter, nodes, refs)?
 		if s := spec.sort:
 			_keys := parse_sort(s)?
 		if refs.contains(name) and self.views.get(name).is_some():
@@ -1647,7 +1647,7 @@ fn parse_workflow(block: List[String]) Wf!:
 				Error("workflow: initial state defined twice")
 			)
 
-			initial = reg(var states, name)
+			initial = reg(states, name)
 		else if line.starts_with("final:"):
 			for part in rest_after_hash_n(line, 6).split(","):
 				name := part.trim()
@@ -1655,7 +1655,7 @@ fn parse_workflow(block: List[String]) Wf!:
 					Error(f"workflow: bad state name '{name}'")
 				)
 
-				finals.append(reg(var states, name))
+				finals.append(reg(states, name))
 		else if line.contains("->"):
 			pos := line.index_of("->").get_or(0)
 			src := (line.slice(0, pos)?).trim()
@@ -1663,7 +1663,7 @@ fn parse_workflow(block: List[String]) Wf!:
 				Error(f"workflow: bad state name '{src}'")
 			)
 
-			si := reg(var states, src)
+			si := reg(states, src)
 			rest := line.slice(pos + 2, line.length())?
 
 			for entry in rest.split(","):
@@ -1695,7 +1695,7 @@ fn parse_workflow(block: List[String]) Wf!:
 
 						guards.append(g.clone())
 
-				di := reg(var states, ws[0])
+				di := reg(states, ws[0])
 				trans.append(Trans(si, di, guards))
 		else:
 			return error(Error(f"workflow: bad line '{line}'"))

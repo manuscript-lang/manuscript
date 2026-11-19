@@ -4,4 +4,4 @@ fn both(var a: List[Int], var b: List[Int]) Void:
 
 fn f() Void:
     var xs = [1]
-    both(var xs, var xs)  // error: overlaps
+    both(xs, xs)  // error: overlaps

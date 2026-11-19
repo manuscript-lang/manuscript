@@ -59,7 +59,7 @@ test "a room owner pushes each line to every connected websocket":
 	var room = pipe[Command](capacity: 16)
 	var inbox = room.reader()
 	var gate = room.writer()
-	owner := promise(fn: room_owner(var inbox))
+	owner := promise(fn: room_owner(inbox))
 
 	handler := fn(var exchange: HttpExchange) Void!:
 		socket := exchange.upgrade(
@@ -107,23 +107,23 @@ test "a room owner pushes each line to every connected websocket":
 	// Each client waits to hear its own line, which proves the room holds its output,
 	// before the next one speaks.
 	alice.output.write(WebSocketMessage("a".to_bytes(), WebSocketKind.Text))?
-	expect_equal(heard(var alice)?, "a")?
+	expect_equal(heard(alice)?, "a")?
 
 	var bob = web_socket(url: f"ws://{server.address()}/", options: client_options)?
 	bob.output.write(WebSocketMessage("b".to_bytes(), WebSocketKind.Text))?
-	expect_equal(heard(var bob)?, "b")?
-	expect_equal(heard(var alice)?, "b")?
+	expect_equal(heard(bob)?, "b")?
+	expect_equal(heard(alice)?, "b")?
 	alice.output.write(WebSocketMessage("hi".to_bytes(), WebSocketKind.Text))?
-	expect_equal(heard(var bob)?, "hi")?
-	expect_equal(heard(var alice)?, "hi")?
+	expect_equal(heard(bob)?, "hi")?
+	expect_equal(heard(alice)?, "hi")?
 
 	// A client that leaves is dropped on the next line; the room keeps serving the
 	// rest.
 	bob.close()?
 	alice.output.write(WebSocketMessage("one".to_bytes(), WebSocketKind.Text))?
-	expect_equal(heard(var alice)?, "one")?
+	expect_equal(heard(alice)?, "one")?
 	alice.output.write(WebSocketMessage("two".to_bytes(), WebSocketKind.Text))?
-	expect_equal(heard(var alice)?, "two")?
+	expect_equal(heard(alice)?, "two")?
 
 	// Once every client and the gate are closed, the owner ends and closes what it
 	// held.
@@ -133,5 +133,5 @@ test "a room owner pushes each line to every connected websocket":
 	owner.wait()?
 
 fn heard(var socket: WebSocket) String!:
-	message := (within(var socket.input, 3.seconds())?).get()
+	message := (within(socket.input, 3.seconds())?).get()
 	return ok(message.data.decode_utf8().get_or(""))

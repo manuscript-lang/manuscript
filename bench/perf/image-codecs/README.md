@@ -7,7 +7,7 @@
 
 ## 2026-11-16, `main` 724c8dda, Linux x86-64
 
-JPEG decode was quadratic in the image size. `jpeg_block(data, var bits, var comps[c], ...)` passes a
+JPEG decode was quadratic in the image size. `jpeg_block(data, bits, comps[c], ...)` passes a
 list element as `var` beside another `var` argument, and the lowering moved an element out of its
 place in place only when the call had exactly one `var` argument. With two it copied the whole
 `JpegComponent` (its coefficient list is the size of the image) into the callee and back for every

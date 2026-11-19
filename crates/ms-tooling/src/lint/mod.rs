@@ -38,7 +38,7 @@ impl Severity {
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
-    /// Stable rule code, `MSL001`..`MSL136`.
+    /// Stable rule code, `MSL001`..`MSL135`.
     pub code: &'static str,
     /// The rule's severity.
     pub severity: Severity,
@@ -270,12 +270,6 @@ pub const RULES: &[Rule] = &[
         family: "`to_string()` on Bytes",
         severity: Severity::Warning,
         repair: "`bytes.to_string()` renders `Bytes(104, 105)`; write `bytes.decode_utf8().ok_or(Error(\"not UTF-8\", kind: \"EBADMSG\"))?` for the text",
-    },
-    Rule {
-        code: "MSL136",
-        family: "var written at a call site",
-        severity: Severity::Warning,
-        repair: "write `f(x)`: the parameter's `var` says the callee changes it; `ms lint --fix` does it",
     },
 ];
 

@@ -15,5 +15,5 @@ fn advance(var plane: Plane, var total: Int, at: Int) Void:
 fn main() Void:
 	var planes = [Plane([0].repeated(8), 0), Plane([0].repeated(8), 0)]
 	var total = 0
-	advance(var planes[1], var total, 3)
+	advance(planes[1], total, 3)
 	print(f"{total} {planes[1].steps}")

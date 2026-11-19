@@ -279,7 +279,7 @@ impl ModuleHir {
                     pos: a.pos,
                     name: a.name.unwrap_or_else(|| n("")),
                     index: i,
-                    changed: a.mutable,
+                    changed: false,
                 }),
                 wrap_optional: facts
                     .info(a.value.id)

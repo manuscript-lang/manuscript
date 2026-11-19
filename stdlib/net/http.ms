@@ -492,7 +492,7 @@ fn response(move raw: RawResponse) StreamingResponse:
 // the server's options returns EOVERFLOW; `limit` also bounds it when given.
 export fn read_body(var exchange: HttpExchange, limit: Int? = none) Bytes!:
 	first := exchange.read()?
-	if head := first: return read_rest(var exchange, head, limit)
+	if head := first: return read_rest(exchange, head, limit)
 
 	return ok("".to_bytes())
 
@@ -512,7 +512,7 @@ fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
 			Error("HTTP: limit exceeded", kind: "EOVERFLOW")
 		)
 
-		return read_more(var exchange, [head, next], total, limit)
+		return read_more(exchange, [head, next], total, limit)
 
 	return ok(head)
 
@@ -571,13 +571,13 @@ export fn redirect(location: String, status: Int = 303) HttpResponse!:
 // Adapts a handler that maps a whole request to a whole response into an exchange
 // handler for `serve`. The request body is read in full first.
 export fn buffered(handler: fn(HttpRequest) HttpResponse) fn(var HttpExchange) Void!:
-	return fn(var exchange: HttpExchange): serve_buffered(handler, var exchange)
+	return fn(var exchange: HttpExchange): serve_buffered(handler, exchange)
 
 fn serve_buffered(
 	handler: fn(HttpRequest) HttpResponse,
 	var exchange: HttpExchange
 ) Void!:
-	body := read_body(var exchange)?
+	body := read_body(exchange)?
 	request := HttpRequest(
 		method: exchange.method(),
 		path: exchange.path(),
@@ -586,7 +586,7 @@ fn serve_buffered(
 		body: body,
 		protocol: exchange.protocol(),
 	)
-	return reply(var exchange, handler(request))
+	return reply(exchange, handler(request))
 
 // Switches the exchange's connection to a WebSocket; the rules of
 // `HttpExchange.upgrade` apply.

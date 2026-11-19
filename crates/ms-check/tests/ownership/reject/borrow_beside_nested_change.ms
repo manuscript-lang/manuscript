@@ -23,9 +23,9 @@ fn wrap(s: String) String:
     return s
 
 fn demo(var r: Row) Int:
-    a := two(label(r), mutate(var r))  // error: argument `mutate(..)` of `two` is moved or changed in place but overlaps argument `label(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
-    b := two(label(r), wrap(mutate(var r)))  // error: argument `wrap(..)` of `two` is moved or changed in place but overlaps argument `label(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
-    c := label(r) + mutate(var r)  // error: operand `mutate(..)` of `+` is moved or changed in place but overlaps operand `label(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
-    d := items_of(r)[idx(var r)].length()  // error: operand `idx(..)` of this index is moved or changed in place but overlaps operand `items_of(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
-    e := f"{label(r)} {mutate(var r)}"  // error: operand `mutate(..)` of this text is moved or changed in place but overlaps operand `label(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
+    a := two(label(r), mutate(r))  // error: argument `mutate(..)` of `two` is moved or changed in place but overlaps argument `label(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
+    b := two(label(r), wrap(mutate(r)))  // error: argument `wrap(..)` of `two` is moved or changed in place but overlaps argument `label(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
+    c := label(r) + mutate(r)  // error: operand `mutate(..)` of `+` is moved or changed in place but overlaps operand `label(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
+    d := items_of(r)[idx(r)].length()  // error: operand `idx(..)` of this index is moved or changed in place but overlaps operand `items_of(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
+    e := f"{label(r)} {mutate(r)}"  // error: operand `mutate(..)` of this text is moved or changed in place but overlaps operand `label(..)`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first
     return a.length() + b.length() + c.length() + d + e.length()

@@ -28,140 +28,136 @@ export fn gen_c67() Void:
 	for entry in c60_inputs():
 		name := entry.get("name").get_or(JsonValue.Null).as_string().get_or("")
 		stdin := entry.get("stdin").get_or(JsonValue.Null).as_string().get_or("")
-		add(var cs, f"kept-{name}", stdin)
+		add(cs, f"kept-{name}", stdin)
 
-	add(var cs, "block-basic", WF + "block 1 2\nblock #1 #3\nshow 1\nshow 2\nlog\n")
+	add(cs, "block-basic", WF + "block 1 2\nblock #1 #3\nshow 1\nshow 2\nlog\n")
 	add(
-		var cs,
+		cs,
 		"block-clock-and-updated",
 		WF + "block 1 2\nshow 1\nblock 1 2\nshow 1\nedit 3 title=\"C2\"\nshow 3\n",
 	)
 	add(
-		var cs,
+		cs,
 		"block-usage",
 		WF + "block\nblock 1\nblock 1 2 3\nunblock\nunblock 1\nunblock 1 2 3\n",
 	)
 	add(
-		var cs,
+		cs,
 		"block-id-errors",
 		WF
 		+ "block x 2\nblock 1 y\nblock 9 2\nblock 1 9\nblock 0 1\nblock 1 0\nblock x y\nblock 9 8\nunblock 9 1\nunblock 1 9\nunblock 0 1\n",
 	)
-	add(var cs, "block-self", WF + "block 1 1\nblock #2 2\nunblock 1 1\n")
-	add(var cs, "block-already", WF + "block 1 2\nblock 1 2\nblock 1 3\nlog\n")
+	add(cs, "block-self", WF + "block 1 1\nblock #2 2\nunblock 1 1\n")
+	add(cs, "block-already", WF + "block 1 2\nblock 1 2\nblock 1 3\nlog\n")
 	add(
-		var cs,
+		cs,
 		"block-cycle",
 		WF
 		+ "block 1 2\nblock 2 3\nblock 3 1\nblock 2 1\nblock 3 2\nblock 4 1\nblock 1 4\nshow 3\n",
 	)
 	add(
-		var cs,
+		cs,
 		"block-cycle-through-final",
 		WF + "block 1 2\nmove 2 wontfix\nblock 2 1\nblock 1 3\nblock 3 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"block-final-blocked",
 		WF + "move 1 done\nblock 1 2\nunblock 1 2\nblock 2 1\nshow 2\n",
 	)
 	add(
-		var cs,
+		cs,
 		"block-error-order",
 		WF + "move 1 done\nblock 1 1\nblock 1 2\nblock 1 1\nblock x 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"unblock-basic",
 		WF
 		+ "block 1 2\nblock 1 3\nunblock 1 2\nshow 1\nunblock 1 2\nunblock 1 3\nshow 1\nlog\n",
 	)
 	add(
-		var cs,
+		cs,
 		"unblock-final-allowed",
 		WF + "block 1 2\nmove 2 done\nmove 1 done\nunblock 1 2\nblock 1 3\nshow 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"move-blocked",
 		WF + "block 1 2\nblock 1 3\nmove 1 done\nmove 1 wontfix\nmove 1 doing\nshow 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"move-blocked-partial",
 		WF
 		+ "block 1 2\nblock 1 3\nblock 1 4\nmove 3 done\nmove 1 done\nmove 4 wontfix\nmove 2 done\nmove 1 done\nshow 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"move-guard-before-blockers",
 		WF
 		+ "block 1 2\nmove 1 doing\nmove 1 review\nmove 1 done\nassign 1 bob\nmove 1 review\nmove 1 done\nlabel 1 +x\nmove 1 done\n",
 	)
 	add(
-		var cs,
+		cs,
 		"move-nonfinal-unaffected",
 		WF
 		+ "block 1 2\nmove 1 doing\nmove 1 todo\nmove 1 doing comment started\nshow 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"move-transition-before-blockers",
 		WF + "block 3 1\nmove 3 nowhere\nmove 3 todo\nmove 3 review\nmove 3 done\n",
 	)
 	add(
-		var cs,
+		cs,
 		"blocker-deleted",
 		WF
 		+ "block 1 2\nblock 1 3\ndelete 2\nshow 1\nmove 1 done\ndelete 3\nshow 1\nmove 1 done\nlog\n",
 	)
 	add(
-		var cs,
+		cs,
 		"blocked-deleted",
 		WF + "block 1 2\ndelete 1\nshow 2\nunblock 1 2\nblock 1 2\n",
 	)
 	add(
-		var cs,
+		cs,
 		"blocker-closed-then-reopened-ids",
 		WF + "block 1 2\ndelete 2\ncreate E\nshow 1\nblock 1 5\nshow 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"bulk-move-blocked",
 		WF
 		+ "block 1 4\nblock 2 4\nbulk move done where state:todo\nshow 1\nshow 3\nshow 4\n",
 	)
 	add(
-		var cs,
+		cs,
 		"bulk-move-after-unblock",
 		WF + "block 1 4\nmove 4 done\nbulk move done where state:todo\nlist\n",
 	)
 	add(
-		var cs,
+		cs,
 		"show-blocked-by-order",
 		WF + "block 1 4\nblock 1 2\nblock 1 3\nshow 1\nunblock 1 2\nshow 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"block-with-comments-and-log",
 		WF + "comment 1 hi\nblock 1 2\ncomment 1 again\nshow 1\nlog\n",
 	)
 	add(
-		var cs,
+		cs,
 		"block-actor-in-log",
 		WF + "actor ann\nblock 1 2\nactor bob\nunblock 1 2\nlog\n",
 	)
 	add(
-		var cs,
+		cs,
 		"block-query-unaffected",
 		WF + "block 1 2\nlist is:open\nlist state:todo sort id\nreport\n",
 	)
-	add(
-		var cs,
-		"block-whitespace-words",
-		WF + "block   #1\t 2\nblock 1   3  \nshow 1\n",
-	)
-	add(var cs, "block-no-workflow", "block 1 2\nunblock 1 2\nshow 1\n")
+	add(cs, "block-whitespace-words", WF + "block   #1\t 2\nblock 1   3  \nshow 1\n")
+	add(cs, "block-no-workflow", "block 1 2\nunblock 1 2\nshow 1\n")
 
 	examples := [
 		cs.make(

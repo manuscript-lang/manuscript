@@ -120,11 +120,11 @@ export fn utf16_encode(text: String, little_endian: Bool = true) Bytes:
 
 	for scalar in text.scalar_values():
 		if scalar < 65536:
-			append_unit(var out, scalar, little_endian)
+			append_unit(out, scalar, little_endian)
 		else:
 			offset := scalar - 65536
-			append_unit(var out, 55296 + offset / 1024, little_endian)
-			append_unit(var out, 56320 + offset % 1024, little_endian)
+			append_unit(out, 55296 + offset / 1024, little_endian)
+			append_unit(out, 56320 + offset % 1024, little_endian)
 
 	return out.build()
 

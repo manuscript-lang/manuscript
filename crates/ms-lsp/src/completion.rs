@@ -105,9 +105,6 @@ pub fn callable_text(
         if t.params.len() != 1 {
             out.push_str(&format!("{}: ", syms.str(p.name)));
         }
-        if p.mutable {
-            out.push_str("var ");
-        }
         out.push_str(&format!("${{{at}:{}}}", syms.str(p.name)));
         at += 1;
         written += 1;
@@ -391,9 +388,6 @@ impl Completer<'_> {
             let mut insert = syms.str(param.name).to_string();
             if !self.c.argument_label {
                 insert.push_str(": ");
-            }
-            if !self.c.argument_label && param.mutable {
-                insert.push_str("var ");
             }
             if !self.c.argument_label && self.snippets {
                 insert.push_str(&format!("${{1:{}}}", syms.str(param.name)));

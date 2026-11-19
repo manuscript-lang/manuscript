@@ -312,7 +312,7 @@ export fn forward[T](move out: WriteStream[T], capacity: Int = 16) WriteStream[T
 	var mail = queue.reader()
 	inbox := queue.writer()
 	task := promise(
-		fn: pump(var mail, var out),
+		fn: pump(mail, out),
 		options: PromiseOptions(placement: Placement.Here)
 	)
 	return WriteStream[T](Forwarder[T](inbox, task))

@@ -26,60 +26,60 @@ export fn gen_c63() Void:
 	for entry in c13_inputs():
 		name := entry.get("name").get_or(JsonValue.Null).as_string().get_or("")
 		stdin := entry.get("stdin").get_or(JsonValue.Null).as_string().get_or("")
-		add(var cs, f"kept-{name}", stdin)
+		add(cs, f"kept-{name}", stdin)
 
 	setup := "stock A 100\nstock B 50\nprice A 250\nprice B 1999\n"
 	add(
-		var cs,
+		cs,
 		"return-basic",
 		setup + "order o1 A:12 B:2\nship o1\nreturn o1 A 5\nreturn o1 B 1\nreport\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-refund-rounding",
 		"stock A 10\nprice A 333\norder o1 A:3\nship o1\nreturn o1 A 1\nreturn o1 A 1\nreturn o1 A 1\nreport\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-discounted-line",
 		"stock A 50\nprice A 199\norder o1 A:10\nship o1\nreturn o1 A 1\nreturn o1 A 3\nreturn o1 A 6\nreturn o1 A 1\nreport\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-state-errors",
 		setup
 		+ "order o1 A:2\nreturn o1 A 1\nship o1\ncancel o1\nreturn o1 A 1\norder o2 A:2\ncancel o2\nreturn o2 A 1\nreturn o3 A 1\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-limit-errors",
 		setup
 		+ "order o1 A:4 B:1\nship o1\nreturn o1 A 5\nreturn o1 A 4\nreturn o1 A 1\nreturn o1 B 2\nreturn o1 B 1\nreturn o1 B 1\nreturn o1 C 1\nreport\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-syntax-errors",
 		setup
 		+ "order o1 A:4\nship o1\nreturn\nreturn o1\nreturn o1 A\nreturn o1 A 1 2\nreturn O1 A 1\nreturn o1 a 1\nreturn o1 A 0\nreturn o1 A 100001\nreturn o1 A x\nreturn o1 A 01\nreturn o1 A 1\nreturn nosuch a 1\nreport\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-restocks",
 		"stock A 10\nprice A 100\norder o1 A:10\nship o1\norder o2 A:1\nreturn o1 A 4\norder o2 A:4\nreport\nreturn o1 A 6\nreport\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-price-changed",
 		setup + "order o1 A:2\nship o1\nprice A 1\nreturn o1 A 1\nreport\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-two-orders-report",
 		setup
 		+ "order o1 A:1\norder o2 A:20 B:1\nship o1\nship o2\nreturn o2 A 7\nreturn o1 A 1\nreturn o2 B 1\nreport\n",
 	)
 	add(
-		var cs,
+		cs,
 		"return-free-item",
 		"stock A 5\norder o1 A:2\nship o1\nreturn o1 A 1\nreport\n",
 	)

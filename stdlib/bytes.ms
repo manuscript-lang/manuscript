@@ -276,56 +276,56 @@ fn var BytesBuilder.drain() Bytes: ...
 
 // Appends one signed byte.
 fn var BytesBuilder.append_int8(value: Int8) Void:
-	put_word(var self, value.to_int(), 1, true)
+	put_word(self, value.to_int(), 1, true)
 
 // Appends a signed 16-bit little-endian integer.
 fn var BytesBuilder.append_int16_le(value: Int16) Void:
-	put_word(var self, value.to_int(), 2, true)
+	put_word(self, value.to_int(), 2, true)
 
 // Appends an unsigned 16-bit little-endian integer.
 fn var BytesBuilder.append_uint16_le(value: UInt16) Void:
-	put_word(var self, value.to_int(), 2, true)
+	put_word(self, value.to_int(), 2, true)
 
 // Appends a signed 16-bit big-endian integer.
 fn var BytesBuilder.append_int16_be(value: Int16) Void:
-	put_word(var self, value.to_int(), 2, false)
+	put_word(self, value.to_int(), 2, false)
 
 // Appends an unsigned 16-bit big-endian integer.
 fn var BytesBuilder.append_uint16_be(value: UInt16) Void:
-	put_word(var self, value.to_int(), 2, false)
+	put_word(self, value.to_int(), 2, false)
 
 // Appends a signed 32-bit little-endian integer.
 fn var BytesBuilder.append_int32_le(value: Int32) Void:
-	put_word(var self, value.to_int(), 4, true)
+	put_word(self, value.to_int(), 4, true)
 
 // Appends an unsigned 32-bit little-endian integer.
 fn var BytesBuilder.append_uint32_le(value: UInt32) Void:
-	put_word(var self, value.to_int(), 4, true)
+	put_word(self, value.to_int(), 4, true)
 
 // Appends a signed 32-bit big-endian integer.
 fn var BytesBuilder.append_int32_be(value: Int32) Void:
-	put_word(var self, value.to_int(), 4, false)
+	put_word(self, value.to_int(), 4, false)
 
 // Appends an unsigned 32-bit big-endian integer.
 fn var BytesBuilder.append_uint32_be(value: UInt32) Void:
-	put_word(var self, value.to_int(), 4, false)
+	put_word(self, value.to_int(), 4, false)
 
 // Appends a signed 64-bit little-endian integer.
 fn var BytesBuilder.append_int64_le(value: Int) Void:
-	put_word(var self, value, 8, true)
+	put_word(self, value, 8, true)
 
 // Appends a signed 64-bit big-endian integer.
 fn var BytesBuilder.append_int64_be(value: Int) Void:
-	put_word(var self, value, 8, false)
+	put_word(self, value, 8, false)
 
 // Appends an unsigned 64-bit little-endian integer, including the full UInt64
 // range.
 fn var BytesBuilder.append_uint64_le(value: UInt64) Void:
-	put_uint64(var self, value, true)
+	put_uint64(self, value, true)
 
 // Appends an unsigned 64-bit big-endian integer, including the full UInt64 range.
 fn var BytesBuilder.append_uint64_be(value: UInt64) Void:
-	put_uint64(var self, value, false)
+	put_uint64(self, value, false)
 
 // Appends the shortest unsigned base-128 encoding, from one through ten bytes.
 fn var BytesBuilder.append_uvarint(value: UInt64) Void:
@@ -348,19 +348,19 @@ fn var BytesBuilder.append_varint(value: Int) Void:
 
 // Appends an IEEE 754 binary32 little-endian float.
 fn var BytesBuilder.append_float32_le(value: Float32) Void:
-	put_word(var self, msrt_float32_to_bits(value.to_float()), 4, true)
+	put_word(self, msrt_float32_to_bits(value.to_float()), 4, true)
 
 // Appends an IEEE 754 binary32 big-endian float.
 fn var BytesBuilder.append_float32_be(value: Float32) Void:
-	put_word(var self, msrt_float32_to_bits(value.to_float()), 4, false)
+	put_word(self, msrt_float32_to_bits(value.to_float()), 4, false)
 
 // Appends an IEEE 754 binary64 little-endian float.
 fn var BytesBuilder.append_float64_le(value: Float) Void:
-	put_word(var self, msrt_float_to_bits(value), 8, true)
+	put_word(self, msrt_float_to_bits(value), 8, true)
 
 // Appends an IEEE 754 binary64 big-endian float.
 fn var BytesBuilder.append_float64_be(value: Float) Void:
-	put_word(var self, msrt_float_to_bits(value), 8, false)
+	put_word(self, msrt_float_to_bits(value), 8, false)
 
 // A decoded variable-length integer and the absolute offset of the next byte.
 // Example: `first := data.uvarint(0)?; second := data.varint(first.next_offset)?`.
@@ -404,9 +404,9 @@ fn put_uint64(var out: BytesBuilder, value: UInt64, little: Bool) Void:
 	low := (value % 4294967296).to_int().get_or(0)
 
 	if little:
-		put_word(var out, low, 4, true)
-		put_word(var out, high, 4, true)
+		put_word(out, low, 4, true)
+		put_word(out, high, 4, true)
 		return
 
-	put_word(var out, high, 4, false)
-	put_word(var out, low, 4, false)
+	put_word(out, high, 4, false)
+	put_word(out, low, 4, false)

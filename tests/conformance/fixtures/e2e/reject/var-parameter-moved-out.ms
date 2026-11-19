@@ -7,5 +7,5 @@ fn rewrap(var xs: List[Int]) Void:
 
 export fn main() Int:
 	var xs = [1, 2, 3]
-	rewrap(var xs)
+	rewrap(xs)
 	return xs[0] - 1

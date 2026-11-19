@@ -144,9 +144,9 @@ type FixtureScope[F]:
 fn move FixtureScope[F].close() Void!:
 	if self.in_test:
 		self.in_test = false
-		self.after_each(var self.fixture)?
+		self.after_each(self.fixture)?
 
-	return self.after_all(var self.fixture)
+	return self.after_all(self.fixture)
 
 // Runs a file's tests on one fixture: `make` and `before_all` once, `before_each` and
 // `after_each` around each test, then `after_all`. A hook's error fails (or, kind ESKIP,
@@ -172,7 +172,7 @@ export fn run_fixture_file[F](
 	started := monotonic()
 	msrt_test_deadline(true)
 
-	setup := before_all(var scope.fixture)
+	setup := before_all(scope.fixture)
 
 	for position in 0..tests.length():
 		index := indices[position]
@@ -187,12 +187,12 @@ export fn run_fixture_file[F](
 		began := monotonic()
 		scope.in_test = true
 
-		var outcome = before_each(var scope.fixture)
+		var outcome = before_each(scope.fixture)
 		if not outcome.is_error():
-			outcome = tests[position](var scope.fixture)
+			outcome = tests[position](scope.fixture)
 		scope.in_test = false
 
-		teardown := scope.after_each(var scope.fixture)
+		teardown := scope.after_each(scope.fixture)
 		if teardown.is_error() and not outcome.is_error():
 			outcome = error(teardown.err().clone())
 		report(results, index, began, outcome)

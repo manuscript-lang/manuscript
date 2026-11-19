@@ -32,7 +32,7 @@ Intel Xeon @ 2.10 GHz, 4 vCPUs, release (LLVM). Medians of 7 alternating runs; a
 
 ## 2026-11-04: Linux x86_64, `Transform` writes to a `WriteStream`
 
-Same machine and method. `c9446bfc` is main; the second column has `Transform.step(value, var out)` in place of `feed(value) List[B]`.
+Same machine and method. `c9446bfc` is main; the second column has `Transform.step(value, out)` in place of `feed(value) List[B]`.
 
 | case | c9446bfc | step |
 | --- | ---: | ---: |

@@ -64,7 +64,7 @@ fn shared(var value: Marker) Int:
 
 fn shared_owner() Void:
 	var value = marker(5)
-	answer := shared(var value)
+	answer := shared(value)
 	print(f"shared {answer}")
 
 	_still_present := value.id

@@ -39,8 +39,8 @@ test "closed maps preserve lookup replacement and absence":
 test "closed map arguments retain written evaluation order":
     var visits: List[Int] = []
     var values = Map[Int, Int]()
-    values.add(value: effect(var visits, 20), key: effect(var visits, 2))
-    values.add(key: effect(var visits, 3), value: effect(var visits, 30))
+    values.add(value: effect(visits, 20), key: effect(visits, 2))
+    values.add(key: effect(visits, 3), value: effect(visits, 30))
     visits | expect_equal([20, 2, 3, 30])?
     values.get(2).get() | expect_equal(20)?
     values.get(3).get() | expect_equal(30)?

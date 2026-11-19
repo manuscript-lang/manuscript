@@ -7,5 +7,5 @@ fn bump(var s: String) Int:
 fn run(w: String) Map[String, Int]:
 	var m = Map[String, Int]()
 	var k = w.clone()
-	m[k] = bump(var k)
+	m[k] = bump(k)
 	return m

@@ -17,7 +17,7 @@ fn Updater.modify(var values: List[Int]) Int:
 
 fn direct() Int:
     var values = [1]
-    return update(values: var values)
+    return update(values: values)
 
 fn method() Int:
     var values = [1]
@@ -31,7 +31,7 @@ fn ordinary() Int:
 fn mutable_method() Int:
     var values = [1]
     updater := Updater(2)
-    return updater.modify(var values)
+    return updater.modify(values)
 
 fn push_one(var values: List[Int]) Int:
     values.append(1)
@@ -40,7 +40,7 @@ fn push_one(var values: List[Int]) Int:
 fn function_value() Int:
     var values = [1]
     change := push_one
-    return change(var values)
+    return change(values)
 
 export fn update_generic[T](var values: List[T], value: T) Int:
     values.append(value)
@@ -48,4 +48,4 @@ export fn update_generic[T](var values: List[T], value: T) Int:
 
 fn generic() Int:
     var values = [1]
-    return update_generic[Int](values: var values, value: 2)
+    return update_generic[Int](values: values, value: 2)

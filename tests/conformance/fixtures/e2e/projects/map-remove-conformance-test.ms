@@ -8,15 +8,15 @@ import label_map, label_direct, label_bound, label_generic from "./by_label.ms"
 
 test "Map removal keeps direct bound generic and defining-module key scopes":
     var first = id_map()
-    id_direct(var first, Key(1, "different"))
-    id_bound(var first, Key(2, "different"))
-    id_generic(var first, Key(3, "different"))
+    id_direct(first, Key(1, "different"))
+    id_bound(first, Key(2, "different"))
+    id_generic(first, Key(3, "different"))
     (first.is_empty()) | expect_true?
 
     var second = label_map()
-    label_direct(var second, Key(99, "one"))
-    label_bound(var second, Key(99, "two"))
-    label_generic(var second, Key(99, "three"))
+    label_direct(second, Key(99, "one"))
+    label_bound(second, Key(99, "two"))
+    label_generic(second, Key(99, "three"))
     (second.is_empty()) | expect_true?
 
     var returned_values = id_map()

@@ -139,8 +139,8 @@ fn rand_log(var rnd: Random, n: Int, bad: Float) String:
 	var ls = List[String]()
 
 	for i in 0..n:
-		l := good(var rnd, i)
-		ls.append(if rnd.random() < bad: mangle(var rnd, l) else: l)
+		l := good(rnd, i)
+		ls.append(if rnd.random() < bad: mangle(rnd, l) else: l)
 		if rnd.random() < 0.03: ls.append(rnd.choice(["", "   "]))
 
 	return ls.join("\n") + "\n"
@@ -157,9 +157,9 @@ export fn gen_c25() Void:
 	var p95 = ""
 	for i in 0..40: p95 += f"t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
 
-	small := rand_log(var rnd, 40, 0.1)
-	mid := rand_log(var rnd, 600, 0.2)
-	large := rand_log(var rnd, 5000, 0.05)
+	small := rand_log(rnd, 40, 0.1)
+	mid := rand_log(rnd, 600, 0.2)
+	large := rand_log(rnd, 5000, 0.05)
 	hidden := examples.concat(
 		[
 			mk("empty", ""),

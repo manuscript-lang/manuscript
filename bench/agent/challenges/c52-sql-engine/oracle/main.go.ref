@@ -796,7 +796,7 @@ func eval(e *Expr, row []Val, group [][]Val) Val {
 		v := eval(e.args[0], row, group)
 		lo := eval(e.args[1], row, group)
 		hi := eval(e.args[2], row, group)
-		var a, b Val
+		a, b Val
 		if v.k == KNull || lo.k == KNull {
 			a = null
 		} else {

@@ -3,4 +3,4 @@ fn fill(var xs: List[Int]) Void:
 
 fn f() Void:
     xs := [1]
-    fill(var xs)  // error: is an immutable binding
+    fill(xs)  // error: is an immutable binding

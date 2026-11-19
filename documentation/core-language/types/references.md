@@ -11,7 +11,7 @@ Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Void`, enums wi
 
 Everything else, including strings, types, lists and maps, has exactly one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Such a value is handed around by borrowing until you put it somewhere that must own it:
 
-- `b := a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` borrows exclusively, and so does passing `a` to a `var` parameter, so changes reach `a`. The call writes `f(a)` either way: the callee's signature says which, as it does for `move`.
+- `b := a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` borrows exclusively, and so does passing `a` to a `var` parameter, so changes reach `a`. The call writes `f(a)` either way (`f(var a)` is a parse error): the callee's signature says which, as it does for `move`.
 - Storing a value in a field or a collection, returning a new value, or binding it at its last use *moves* it. After a move the old name is dead and the new owner frees it.
 - `.clone()` is the only way to copy. Write it when you want an independent value that outlives or diverges from the original. Borrowing lets a function work with existing data without a deep copy.
 

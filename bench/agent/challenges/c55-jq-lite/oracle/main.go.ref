@@ -221,7 +221,7 @@ func cmpV(a, b V) int {
 	case *Obj:
 		y := b.(*Obj)
 		ka, kb := x.sortedKeys(), y.sortedKeys()
-		var ak, bk []V
+		ak, bk []V
 		for _, k := range ka {
 			ak = append(ak, k)
 		}
@@ -1505,7 +1505,7 @@ func eval(n *Node, env *Env, in Item, out Emit) bool {
 			})
 		})
 	case "slice":
-		var fromN, toN = n.kids[1], n.kids[2]
+		fromN, toN = n.kids[1], n.kids[2]
 		runIdx := func(f func(from, to V) bool) bool {
 			do := func(from V) bool {
 				if toN == nil {
