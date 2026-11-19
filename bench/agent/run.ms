@@ -48,6 +48,10 @@ type RunRecord:
 	grade: Grade
 	pass: Bool
 	model: String?
+	// `<language>`'s version command output, and a hash of the skill files in the workspace,
+	// so a result names the compiler and the teaching text it measured.
+	toolchain: String = ""
+	skill: String = ""
 
 type Options:
 	harness: String = "oracle"
@@ -142,7 +146,17 @@ fn run_one(
 		copy(sol, copied, CopyOptions(replace: true)).get()
 		g.llm_tokens = llm_tokens(sol)
 
+	toolchain := bash(lang.version, ws, 20, "").out.trim()
+	skill := bash(
+		"cat .claude/skills/manuscript/SKILL.md .claude/skills/manuscript/references/* 2>/dev/null | sha256sum | cut -c1-12",
+		ws,
+		20,
+		"",
+	).out.trim()
+
 	rec := RunRecord(
+		toolchain: toolchain,
+		skill: if skill == "e3b0c44298fc": "" else: skill,
 		run_id: run_id.clone(),
 		ts: now().unix_seconds(),
 		tag: tag.clone(),

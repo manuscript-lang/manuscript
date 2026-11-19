@@ -61,10 +61,13 @@ fn mean_text(values: List[Float], digits: Int) String:
 fn tokens_of(r: Run) Float:
 	return (r.usage.tokens_in + r.usage.tokens_cached + r.usage.tokens_out).to_float()
 
+// Cost to reach a pass is the headline: pass rate, then what a passing run needed (builds, turns,
+// tokens, wall time, cost) and what each pass cost including the failed runs. The first-build
+// columns come last because they mostly measure how much a model already knows the language.
 fn table(runs: List[Run], title: String, key: fn(Run) String) String:
 	var out = f"\n### {title}\n\n"
-	out += "| group | runs | pass (95% CI) | first build ok (95% CI) | first build after `--fix` (95% CI) | tokens (in+out+cache) | turns | wall s | cost $ |\n"
-	out += "|---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
+	out += "| group | runs | pass (95% CI) | builds per pass | turns per pass | tokens per pass (in+out+cache) | wall s per pass | cost $ per pass | cost $ per pass incl. failed runs | first build ok (95% CI) | first build after `--fix` (95% CI) |\n"
+	out += "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n"
 
 	for k in runs.map(key).distinct().sorted():
 		rs := runs.filter(fn r: key(r) == k)
@@ -77,9 +80,12 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
 		fixed_ok := built.filter(
 			fn r: r.first_build_ok or r.first_build_fixed_ok
 		).length()
-		out += f"| {k} | {n} | {rate(ok.length(), n)} | {rate(first_ok, built.length())} | {rate(fixed_ok, built.length())} "
-		out += f"| {mean_text(ok.map(tokens_of), 3)} | {mean_text(ok.map(fn r: r.usage.turns.to_float()), 3)} "
-		out += f"| {mean_text(ok.map(fn r: r.wall_s), 3)} | {mean_text(ok.map(fn r: r.usage.cost_usd), 3)} |\n"
+		spent := rs.map(fn r: r.usage.cost_usd).sum()
+		per_pass := if ok.is_empty(): "n/a" else: fmt_g(spent / ok.length().to_float(), 3)
+		out += f"| {k} | {n} | {rate(ok.length(), n)} | {mean_text(ok.map(fn r: r.builds.to_float()), 3)} "
+		out += f"| {mean_text(ok.map(fn r: r.usage.turns.to_float()), 3)} | {mean_text(ok.map(tokens_of), 3)} "
+		out += f"| {mean_text(ok.map(fn r: r.wall_s), 3)} | {mean_text(ok.map(fn r: r.usage.cost_usd), 3)} | {per_pass} "
+		out += f"| {rate(first_ok, built.length())} | {rate(fixed_ok, built.length())} |\n"
 
 	return out
 
