@@ -59,7 +59,7 @@ entry = "./src/main.ms"
 
 ## Packages
 
-A package is a library project in a git repository. Add one with `ms add <url> --version 1.2` (or `--tag v1`, or `--sha <40 hex digits>`); it writes the dependency into `ms.toml` and installs it. `ms remove @name` takes it out, `ms install` resolves everything and writes `ms.lock` (commit it), `ms install --update @name` picks the version again. `check`, `build`, `run`, `test` and `lint` never use the network.
+A package is a library project in a git repository. Add one with `ms add <url> --version 1.2` (or `--tag v1`, or `--sha <40 hex digits>`); it writes the dependency into `ms.toml` and installs it; add `--allow` to also write the effects the package declares into `[effects]` (without it `ms add` prints the line to add). `ms remove @name` takes it out, `ms install` resolves everything and writes `ms.lock` (commit it), `ms install --update @name` picks the version again. `check`, `build`, `run`, `test` and `lint` never use the network.
 
 <!-- manifest: package-user -->
 ```toml

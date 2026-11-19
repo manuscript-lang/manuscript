@@ -21,4 +21,6 @@ fn main() Int:
 
 List `.filter/.map/.sum` are methods; similarly named stream steps are imported functions. Prefer these operations to bookkeeping loops.
 
+`xs.get(i)` on a List is not Optional: it faults out of range, so use `xs.get_or(i, d)` or check `length()`. `Optional.get()` without a default is a lint error in `ms verify` even after `is_none()`; unwrap with `if v := o:` or `get_or`. `xs.slice(a, b)` is a Result that errors when `b` is past the end (no clamping), so skip a header with `xs.slice(1, xs.length()).get_or([])`. `m.filter`, `m.map` and `m.retain` take a key and a value parameter (`fn k, v: ...`).
+
 `String.slice(a, b)` returns a String (no Result); `List.slice(a, b)` returns a Result. Read a file's text with `read_file(path).wait()?.decode_utf8().ok_or(Error("not UTF-8"))?`: `read_file` returns a Promise of Bytes, and there is no `read_text`.

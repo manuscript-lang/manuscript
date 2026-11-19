@@ -457,7 +457,7 @@ fn main() Void!:
 
 ## 11. Files close themselves
 
-A value that owns a resource (a file, a socket) closes when its scope ends, on every path including `?` and `return error(...)`. There is no `close` to forget; bind it with `file := open(path)?` and read from `file.reader()?`.
+A value that owns a resource (a file, a socket) closes when its scope ends, on every path including `?` and `return error(...)`. Scope end does the closing (an explicit `close()` consumes the value, so use it only to handle a close error); bind it with `file := open(path)?` and read from `file.reader()?`.
 
 <!-- complete: idiom-count.ms -->
 ```manuscript

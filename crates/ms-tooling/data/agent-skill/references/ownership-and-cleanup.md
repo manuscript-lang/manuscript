@@ -27,7 +27,9 @@ Returning part of a parameter borrows it without a marker. Clone for an independ
 
 Mutable parameters require var at declaration and call: `add(var names, user)`. Mutable receiver methods use `fn var Type.name()` but calls remain `value.name()`. Do not mutably capture a collection in its own method's callback.
 
-Closeable closes at scope end unless moved. Declare `fn move Type.close() Void!` or implement Closeable. `x.close()` moves `x` like any `move` method: a later use or second close is a use after move, and scope end skips it. Only an owner closes: take a parameter with `move` to close it. Handle explicit close Results; scope-end failures propagate where supported or fault. Cleanup is deterministic, not GC; resource owners are not freely cloneable.
+Closeable closes at scope end unless moved. Declare `fn move Type.close() Void!` or implement Closeable (`@std/core.ms`). `x.close()` **consumes** `x` like any `move` method: a later use or a second close is a use after move, and scope end skips it. You rarely call it: bind the resource and let scope end close it on every exit, `?` and `return error(...)` included. Call it yourself only to handle its failure: `file.close()?` (or `void file.close()`). Only an owner closes: take a parameter with `move` to close it; a borrowed or `var` parameter cannot. A scope-end close error becomes the function's error (kept behind an error already returning); with nowhere to return it, it faults. Cleanup is deterministic, not GC; resources are not `Clonable`.
+
+A record, enum, Optional, List or Map that holds a resource is itself a resource: it moves, and when it ends the holder closes its parts (fields last-declared first, list elements last first). Replacing or removing a part closes the old one first. `xs.pop()` hands an element out to a binding that closes it. A factory returns an open resource by moving it to the caller. Give your own type a `fn move T.close() Void!` when it owns something that needs releasing; the compiler closes its parts after yours returns.
 
 ## Borrow errors and their fixes
 
