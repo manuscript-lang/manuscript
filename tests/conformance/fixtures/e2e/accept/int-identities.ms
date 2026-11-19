@@ -21,13 +21,13 @@ test "identities keep boundaries":
 
 test "identities keep operand effects":
     var log: List[Int] = []
-    ((touch(var log, 1) * 0 == 0)) | expect_true?
-    ((0 * touch(var log, 2) == 0)) | expect_true?
-    ((touch(var log, 3) * 1 == 3)) | expect_true?
-    ((1 * touch(var log, 4) == 4)) | expect_true?
-    ((touch(var log, 5) + 0 == 5)) | expect_true?
-    ((0 + touch(var log, 6) == 6)) | expect_true?
-    ((touch(var log, 7) - 0 == 7)) | expect_true?
-    ((touch(var log, 8) / 1 == 8)) | expect_true?
-    ((touch(var log, 9) % 1 == 0)) | expect_true?
+    ((touch(log, 1) * 0 == 0)) | expect_true?
+    ((0 * touch(log, 2) == 0)) | expect_true?
+    ((touch(log, 3) * 1 == 3)) | expect_true?
+    ((1 * touch(log, 4) == 4)) | expect_true?
+    ((touch(log, 5) + 0 == 5)) | expect_true?
+    ((0 + touch(log, 6) == 6)) | expect_true?
+    ((touch(log, 7) - 0 == 7)) | expect_true?
+    ((touch(log, 8) / 1 == 8)) | expect_true?
+    ((touch(log, 9) % 1 == 0)) | expect_true?
     log | expect_equal([1, 2, 3, 4, 5, 6, 7, 8, 9])?

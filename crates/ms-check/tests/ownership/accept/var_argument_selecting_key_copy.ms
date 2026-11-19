@@ -10,5 +10,5 @@ fn add(var value: Int, amount: Int) Void:
     value += amount
 
 fn demo(var values: Map[String, Int], var counts: List[Int], var key: String, var i: Int) Void:
-    add(var values[key.clone()], replace_key(var key))
-    add(var counts[i], bump(var i))
+    add(values[key.clone()], replace_key(key))
+    add(counts[i], bump(i))

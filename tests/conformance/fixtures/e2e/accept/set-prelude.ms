@@ -8,7 +8,7 @@ fn insert[T: Hashable](var values: Set[T], value: T) Void: values.add(value)
 test "set construction and methods need no import":
     var values: Set[Int] = Set()
     expect_false(not values.is_empty())?
-    insert(var values, 3)
+    insert(values, 3)
     values.add(1)
     values.add(3)
     values.add(2)

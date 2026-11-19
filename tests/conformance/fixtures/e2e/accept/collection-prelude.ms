@@ -69,7 +69,7 @@ test "map add retains optional wrapping and generic bound calls":
 	expect_equal(values[1].get(), 3)?
 	expect_equal(values[4].get(), 5)?
 
-	var generic = update[Int?, Int?](var values, 6, 7)
+	var generic = update[Int?, Int?](values, 6, 7)
 	generic.add(8, 9)
 	expect_false(generic[6].get() != 7 or generic[8].get() != 9)?
 

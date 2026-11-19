@@ -11,6 +11,6 @@ fn bump(var xs: List[Int], i: Int) Bool:
 
 test "list probe":
 	var xs = [1, 2]
-	expect_equal(bump(var xs, 1), true)?
-	expect_equal(bump(var xs, 2), false)?
-	expect_equal(bump(var xs, -1), false)?
+	expect_equal(bump(xs, 1), true)?
+	expect_equal(bump(xs, 2), false)?
+	expect_equal(bump(xs, -1), false)?

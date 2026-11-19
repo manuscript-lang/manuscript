@@ -27,7 +27,7 @@ fn step[T: Clonable](
 ) Void:
 	seen.append(value)
 	if visits.count == 0:
-		mutate(values: var values, mode: mode, fill: fill)
+		mutate(values: values, mode: mode, fill: fill)
 	visits.count += 1
 
 fn observe[T: Clonable](
@@ -45,9 +45,9 @@ fn observe[T: Clonable](
 			.clone()
 			.for_each(
 				fn(value: T): step(
-					var seen,
-					var visits,
-					var values,
+					seen,
+					visits,
+					values,
 					value.clone(),
 					mode,
 					fill.clone(),
@@ -56,7 +56,7 @@ fn observe[T: Clonable](
 		)
 	else:
 		for value in values.clone():
-			step(var seen, var visits, var values, value, mode, fill.clone())
+			step(seen, visits, values, value, mode, fill.clone())
 
 	visits.count | expect_equal(3)?
 	return ok(seen)
@@ -87,7 +87,7 @@ test "Int consumers see the full snapshot while the live list shrinks":
 			var values = [1, 2, 3]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [9])
-			seen := (observe(var values, mode, [9], callback)?)
+			seen := (observe(values, mode, [9], callback)?)
 			var total = 0
 			var wanted = 0
 			for value in seen: total += value
@@ -109,7 +109,7 @@ test "Float consumers see the full snapshot while the live list shrinks":
 			var values = [1.5, 2.5, 3.5]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [9.5])
-			seen := (observe(var values, mode, [9.5], callback)?)
+			seen := (observe(values, mode, [9.5], callback)?)
 			var total = 0.0
 			var wanted = 0.0
 			for value in seen: total += value
@@ -131,7 +131,7 @@ test "String consumers see the full snapshot while the live list shrinks":
 			var values = ["a", "bb", "ccc"]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), ["replacement"])
-			seen := (observe(var values, mode, ["replacement"], callback)?)
+			seen := (observe(values, mode, ["replacement"], callback)?)
 			var text = ""
 			for value in seen: text += value
 			(
@@ -155,7 +155,7 @@ test "record consumers keep independent copies after shrink":
 			var values = [Payload(1), Payload(2), last.clone()]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [Payload(9)])
-			seen := (observe(var values, mode, [Payload(9)], callback)?)
+			seen := (observe(values, mode, [Payload(9)], callback)?)
 			var total = 0
 			var wanted = 0
 			for value in seen: total += value.value
@@ -190,7 +190,7 @@ test "alternative consumers retain tags and payloads after shrink":
 			fill: List[Choice] := [label("replacement")]
 			var values = [first.clone(), second.clone(), last.clone()]
 			want := remaining(mode, values.clone(), fill.clone())
-			seen := (observe(var values, mode, fill, callback)?)
+			seen := (observe(values, mode, fill, callback)?)
 			snapshot := [first, second, last]
 			var total = 0
 			var wanted = 0
@@ -213,7 +213,7 @@ test "nested list consumers keep independent inner lists after shrink":
 			var values = [[1], [2], last.clone()]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [[9]])
-			seen := (observe(var values, mode, [[9]], callback)?)
+			seen := (observe(values, mode, [[9]], callback)?)
 			var total = 0
 			var wanted = 0
 			for value in seen: total += value.first().get()
@@ -291,7 +291,7 @@ test "interface view consumers dispatch after shrink":
 			var values = [Payload(1), Payload(2), last_record.clone()]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [Payload(9)])
-			seen := (observe(var values, mode, [Payload(9)], callback)?)
+			seen := (observe(values, mode, [Payload(9)], callback)?)
 			var total = 0
 			var wanted = 0
 			for value in seen: total += value.read()

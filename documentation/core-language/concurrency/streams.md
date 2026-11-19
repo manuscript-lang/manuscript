@@ -81,7 +81,7 @@ test "measure lines":
 
 To make your own stream, implement `Source[T]` (`next` may wait, `close` releases what it holds) and wrap it with `ReadStream(source)`; implement `Sink[T]` (`write`, `flush`, `close`) and wrap it with `WriteStream(sink)`. Closing the stream closes the source or sink once.
 
-To change a stream item by item with a step that may emit zero or more outputs, implement `Transform[A, B]` and apply it with `through`: `step(value, var out)` appends the output items one input completes, possibly none, to the `List[B]` `out`, and `finish(var out)` appends what was held back at the end. A step that fails drops what it appended, and the failure is the stream's next item.
+To change a stream item by item with a step that may emit zero or more outputs, implement `Transform[A, B]` and apply it with `through`: `step(value, out)` appends the output items one input completes, possibly none, to the `List[B]` `out`, and `finish(out)` appends what was held back at the end. A step that fails drops what it appended, and the failure is the stream's next item.
 
 ## Pipes
 
@@ -102,7 +102,7 @@ fn send_numbers(var out: WriteStream[Int]) Void!:
 test "sum values from a producer":
     var p = pipe[Int](capacity: 64)
     var out = p.writer()
-    producer := promise(fn: send_numbers(var out))
+    producer := promise(fn: send_numbers(out))
     var total = 0
     for n in p.reader():
         total += n

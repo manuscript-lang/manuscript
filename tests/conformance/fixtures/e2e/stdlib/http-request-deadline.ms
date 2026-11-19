@@ -33,13 +33,13 @@ fn fetch(address: String, path: String) String:
     if var conn = connect(address).wait():
         connected := monotonic().difference(began).to_milliseconds()
         _sent := send(
-            var conn, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+            conn, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
         sent_at := monotonic().difference(began).to_milliseconds()
 
         while true:
-            read := within(var conn.input, nanoseconds(5000000000))
+            read := within(conn.input, nanoseconds(5000000000))
             if read.is_error():
                 // A flake on a slow runner must say why the reply never arrived.
                 text = f"{text}[read failed: {read.err().kind} {read.err().message}]"

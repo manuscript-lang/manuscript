@@ -75,7 +75,7 @@ test "nested success preserves its domain and inferred errors remain exact":
 test "inference evaluates once in written order before defaults":
     var events = Events([])
     result := ordered(
-        second: record(var events, 2), first: record(var events, 1), var events
+        second: record(events, 2), first: record(events, 1), events
     )
     expect_equal(events.values, [2, 1, 3, 4])?
 

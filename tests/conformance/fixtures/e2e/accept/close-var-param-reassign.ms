@@ -24,10 +24,10 @@ type W:
 
 fn main() Void:
     var v = R("old")
-    replace(var v)
+    replace(v)
     print("after replace")
     replace_local()
 
     var w = W(R("field-old"))
-    replace_field(var w)
+    replace_field(w)
     print("end")

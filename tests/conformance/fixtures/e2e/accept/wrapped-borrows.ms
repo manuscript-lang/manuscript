@@ -20,7 +20,7 @@ fn relay(result: Row!Bad, var visits: List[Int]) Row!Bad:
 	return result
 
 fn tail(result: Row!Bad, var visits: List[Int]) String!Bad:
-	row := relay(result, var visits)?
+	row := relay(result, visits)?
 	return ok(row.name)
 
 fn make(n: Int) Row:
@@ -40,16 +40,16 @@ test "wrapped parts are references into their arguments":
 	k.get().tags.length() | expect_equal(1)?
 
 	good: Row!Bad := ok(make(2))
-	tail(good, var visits).get() | expect_equal("row-2-with-a-heap-allocated-name")?
+	tail(good, visits).get() | expect_equal("row-2-with-a-heap-allocated-name")?
 
 	bad: Row!Bad := error(Bad("a failure with a heap allocated reason"))
 	(
-		tail(bad, var visits).err().why | expect_equal(
+		tail(bad, visits).err().why | expect_equal(
 			"a failure with a heap allocated reason"
 		)?
 	)
 	(
-		tail(ok(make(3)), var visits).get() | expect_equal(
+		tail(ok(make(3)), visits).get() | expect_equal(
 			"row-3-with-a-heap-allocated-name"
 		)?
 	)

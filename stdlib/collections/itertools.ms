@@ -101,7 +101,7 @@ export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[Lis
 	var out: List[List[T]] = []
 	var used = [false].repeated(n)
 	var chosen: List[Int] = []
-	extend_permutations(values, k, var used, var chosen, var out)
+	extend_permutations(values, k, used, chosen, out)
 	return out
 
 fn extend_permutations[T: Clonable](
@@ -119,7 +119,7 @@ fn extend_permutations[T: Clonable](
 		if not used[i]:
 			used.set(i, true)
 			chosen.append(i)
-			extend_permutations(values, k, var used, var chosen, var out)
+			extend_permutations(values, k, used, chosen, out)
 			chosen.pop()
 			used.set(i, false)
 

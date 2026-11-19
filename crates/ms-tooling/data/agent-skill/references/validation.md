@@ -89,7 +89,7 @@ fn main() Void!:
 	void stack.pop()
 	for _i in 0..2:
 		var seen = Set[String]()
-		void bump(var seen, "a")
+		void bump(seen, "a")
 	parsed := "7".parse_int().ok_or(Error("bad number"))?
 	grid: List[List[Int]] := [[parsed]]
 	r: Int! := ok(3)

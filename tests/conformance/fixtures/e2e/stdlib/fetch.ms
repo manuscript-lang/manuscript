@@ -29,17 +29,17 @@ fn route(request: HttpRequest) HttpResponse:
 
 	if request.path == "/old":
 		var moved = headers()
-		try_append(var moved, "Location", "/echo")
+		try_append(moved, "Location", "/echo")
 		return HttpResponse(status: 302, headers: moved, body: "".to_bytes())
 
 	if request.path == "/chain":
 		var moved = headers()
-		try_append(var moved, "Location", "/preserve")
+		try_append(moved, "Location", "/preserve")
 		return HttpResponse(status: 302, headers: moved, body: "".to_bytes())
 
 	if request.path == "/preserve":
 		var moved = headers()
-		try_append(var moved, "Location", "/echo")
+		try_append(moved, "Location", "/echo")
 		return HttpResponse(status: 307, headers: moved, body: "".to_bytes())
 
 	if request.path == "/slow":
@@ -144,7 +144,7 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
 	client := fetcher()?
 	url := f"http://{server.address()}/big"
 	var response = client.stream(url)?
-	expect_equal(read_to_end(var response.body)?, "0123456789".to_bytes())?
+	expect_equal(read_to_end(response.body)?, "0123456789".to_bytes())?
 	expect_equal(response.metadata.status, 200)?
 	response.body.end()?
 

@@ -11,7 +11,7 @@ fn note(var dir: TemporaryDirectory, name: String = "note", text: String = "hi")
 
 test "an omitted default does not copy an earlier var resource argument":
 	var dir = temporary("manuscript-default-resource-")?
-	note(var dir)?
-	note(var dir, name: "other")?
-	note(var dir, "third", "text")?
+	note(dir)?
+	note(dir, name: "other")?
+	note(dir, "third", "text")?
 	expect_equal(dir.path().is_empty(), false)?

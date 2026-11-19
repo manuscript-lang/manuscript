@@ -49,7 +49,7 @@ test "a method value that changes its receiver borrows the variable":
 
 test "the variable is shared through calls and callbacks":
 	var xs = [1]
-	drain(var xs)
+	drain(xs)
 	each(xs.append)
 	expect_equal(xs, [1, 7, 8, 100])?
 

@@ -35,9 +35,9 @@ fn keys(var out: List[Int], node: Node?) Void:
 	if node.is_none(): return
 
 	n := node.get()
-	keys(var out, n.left)
+	keys(out, n.left)
 	out.append(n.key)
-	keys(var out, n.right)
+	keys(out, n.right)
 
 type Tag:
 	label: String
@@ -59,7 +59,7 @@ test "inserts through boxed optional fields":
 		root.insert(k)
 
 	var out: List[Int] = []
-	keys(var out, root)
+	keys(out, root)
 	expect_equal(out, [20, 30, 35, 40, 45, 50, 60, 70, 80])?
 	expect_equal(count(root), 9)?
 

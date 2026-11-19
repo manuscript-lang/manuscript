@@ -18,7 +18,7 @@ fn add(var names: List[String], user: User) Void:
 fn main() Int:
 	user := User("Ada")
 	var names = List[String]()
-	add(var names, user)
+	add(names, user)
 	if name(user) == "Ada" and names.get_or(0, "") == "Ada": return 0
 	return 1
 ```
@@ -48,7 +48,7 @@ fn has(items: List[String], want: String) Bool:
 
 Pieces of a value are borrows too: `line.split(" ")`, `s.slice(a, b)` and `xs[i]` borrow their source, so store them with `.clone()`: `out.append(line.split(" ").clone())`. A store `m[key] = v` takes `key` after `v` ran, so `v` may read it: `counts[key] = counts.get_or(key, 0) + 1`. Do not use `key` after the store; store `key.clone()` to keep it.
 
-Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A list parameter changes only if declared `var xs: List[Int]` and called `add(var xs)`; otherwise copy it into a `var` local first.
+Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A list parameter changes only if declared `var xs: List[Int]` and called `add(xs)`; otherwise copy it into a `var` local first.
 
 ## Trees and linked lists change through `fn var` methods
 
@@ -77,9 +77,9 @@ fn var Node.insert(key: Int) Void:
 
 fn keys(var out: List[Int], node: Node?) Void:
 	if n := node:
-		keys(var out, n.left)
+		keys(out, n.left)
 		out.append(n.key)
-		keys(var out, n.right)
+		keys(out, n.right)
 
 fn main() Int:
 	var root = Node(50, none, none)
@@ -87,7 +87,7 @@ fn main() Int:
 		root.insert(k)
 
 	var out = List[Int]()
-	keys(var out, root)
+	keys(out, root)
 	if out == [20, 30, 40, 50, 70]: return 0
 
 	return 1

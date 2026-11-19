@@ -39,12 +39,12 @@ fn request(method: HttpMethod, path: String) HttpRequest:
 	)
 
 fn say(label: String) fn(var HttpExchange, RouteParams) Void!:
-	return fn var exchange, params: reply(var exchange, text(200, label.clone()))
+	return fn var exchange, params: reply(exchange, text(200, label.clone()))
 
 fn show(var exchange: HttpExchange, params: RouteParams) Void!:
 	id := params.get_or("id", "-")
 	rest := params.get_or("rest", "-")
-	return reply(var exchange, text(200, f"{id}|{rest}"))
+	return reply(exchange, text(200, f"{id}|{rest}"))
 
 fn body_of(response: HttpResponse) String:
 	return response.body.decode_utf8().get_or("")
@@ -124,7 +124,7 @@ test "a streaming GET route answers HEAD, dropping the body writes":
 	)?
 	expect_equal(over_socket.metadata.status, 200)?
 
-	rest := read_to_end(var over_socket.body)?
+	rest := read_to_end(over_socket.body)?
 	expect_equal(rest.length(), 0)?
 
 test "the first matching route wins":
@@ -134,7 +134,7 @@ test "the first matching route wins":
 	expect_equal(body_of(r.call(get("/a/b"))?), "param")?
 
 fn head_reply(var exchange: HttpExchange, params: RouteParams) Void!:
-	return reply(var exchange, text(202, "head"))
+	return reply(exchange, text(202, "head"))
 
 test "explicit HEAD routes take precedence over GET fallback":
 	var r = Router()
@@ -159,7 +159,7 @@ test "invalid and duplicate patterns are rejected":
 	r.post("/a/:y", say("y")).get()
 
 fn tag(label: String) fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
-	return fn var exchange, next: tagged(label.clone(), var exchange, next)
+	return fn var exchange, next: tagged(label.clone(), exchange, next)
 
 fn tagged(
 	label: String,
@@ -168,12 +168,12 @@ fn tagged(
 ) Void!:
 	var seen = exchange.headers()
 	seen.append("X-Trail", label)?
-	with_request_headers(var exchange, seen)
-	return next(var exchange)
+	with_request_headers(exchange, seen)
+	return next(exchange)
 
 fn trail(var exchange: HttpExchange, params: RouteParams) Void!:
 	values := exchange.headers().get_all("X-Trail")
-	return reply(var exchange, text(200, values.join(">")))
+	return reply(exchange, text(200, values.join(">")))
 
 test "middleware wraps routes outermost first":
 	var r = Router()
@@ -188,7 +188,7 @@ test "middleware also wraps the 404 answer":
 	expect_equal((r.call(get("/missing"))?).status, 404)?
 
 fn refuse(var exchange: HttpExchange, next: fn(var HttpExchange) Void!) Void!:
-	return reply(var exchange, text(401, "no"))
+	return reply(exchange, text(401, "no"))
 
 test "middleware may answer without calling the rest":
 	var r = Router()
@@ -238,7 +238,7 @@ fn small_reads(var exchange: HttpExchange, params: RouteParams) Void!:
 	end := exchange.read(1)?
 	a := first.get_or(Bytes([])).decode_utf8().get_or("")
 	b := second.get_or(Bytes([])).decode_utf8().get_or("")
-	return reply(var exchange, text(200, f"{a}|{b}|{end.is_none()}"))
+	return reply(exchange, text(200, f"{a}|{b}|{end.is_none()}"))
 
 test "in-process reads retain the unread body after a bounded chunk":
 	var r = Router()
@@ -262,7 +262,7 @@ fn read_sizes(var exchange: HttpExchange, params: RouteParams) Void!:
 	end := exchange.read(limit)?
 	a := first.get_or(Bytes([])).length()
 	b := second.get_or(Bytes([])).length()
-	return reply(var exchange, text(200, f"{a}|{b}|{end.is_none()}"))
+	return reply(exchange, text(200, f"{a}|{b}|{end.is_none()}"))
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
 	var r = Router()
@@ -283,7 +283,7 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
 fn read_empty(var exchange: HttpExchange, params: RouteParams) Void!:
 	first := exchange.read()?
 	second := exchange.read()?
-	return reply(var exchange, text(200, f"{first.is_none()}|{second.is_none()}"))
+	return reply(exchange, text(200, f"{first.is_none()}|{second.is_none()}"))
 
 test "in-process reads report EOF immediately for an empty body":
 	var r = Router()
@@ -298,7 +298,7 @@ fn invalid_reads(var exchange: HttpExchange, params: RouteParams) Void!:
 			Error("wrong read error", kind: "EIO")
 		)
 
-	return small_reads(var exchange, params)
+	return small_reads(exchange, params)
 
 test "in-process reads reject nonpositive sizes without consuming input":
 	var r = Router()
@@ -326,7 +326,7 @@ test "the router serves over a socket":
 	)?
 	expect_equal(response.metadata.status, 200)?
 
-	body := read_to_end(var response.body)?
+	body := read_to_end(response.body)?
 	expect_equal(body.decode_utf8().get_or(""), "9|-")?
 
 	missing := client.request(
@@ -387,10 +387,10 @@ type Answer:
 	count: Int
 
 fn answer(var exchange: HttpExchange, params: RouteParams) Void!:
-	return reply(var exchange, json(201, Answer(name: "ok", count: 2))?)
+	return reply(exchange, json(201, Answer(name: "ok", count: 2))?)
 
 fn moved(var exchange: HttpExchange, params: RouteParams) Void!:
-	return reply(var exchange, redirect("/elsewhere")?)
+	return reply(exchange, redirect("/elsewhere")?)
 
 test "json and redirect build responses":
 	var r = Router()
@@ -408,7 +408,7 @@ test "json and redirect build responses":
 
 fn echo_id(var exchange: HttpExchange, params: RouteParams) Void!:
 	seen := exchange.headers().get_all("X-Request-Id")
-	return reply(var exchange, text(200, seen.join(",")))
+	return reply(exchange, text(200, seen.join(",")))
 
 fn id_of(response: HttpResponse) String:
 	return response.headers.get_all("X-Request-Id").join(",")

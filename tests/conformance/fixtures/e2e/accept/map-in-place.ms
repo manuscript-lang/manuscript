@@ -98,8 +98,8 @@ test "if var changes a map entry in place":
 
 	var orders = Map[String, Order]()
 	orders.add(key: "o1", value: Order(status: "placed", items: ["a"]))
-	expect_true(ship(var orders, "o1"))?
-	expect_equal(ship(var orders, "o9"), false)?
+	expect_true(ship(orders, "o1"))?
+	expect_equal(ship(orders, "o9"), false)?
 
 	o := orders["o1"]
 	expect_equal(o.status, "shipped")?

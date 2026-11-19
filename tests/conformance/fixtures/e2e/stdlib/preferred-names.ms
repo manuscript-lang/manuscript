@@ -94,9 +94,9 @@ test "set names mutate in place keep order and no-op membership":
 	items.add(1)
 	items.remove(3)
 	expect_false(items.values() != [2, 1] or copied.values() != [3, 1, 2])?
-	add_generic(var items, 4)
+	add_generic(items, 4)
 	items.remove(2)
-	remove_generic(var items, 1)
+	remove_generic(items, 1)
 	items.add(5)
 	expect_equal(items.values(), [4, 5])?
 

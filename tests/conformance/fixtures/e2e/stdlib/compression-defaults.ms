@@ -63,8 +63,8 @@ test "compression default preparation retains supplied argument order":
 	var log: List[String] = []
 	data := "data".to_bytes()
 	encoded := compress(
-		format: chosen(var log, CompressionFormat.Gzip),
-		data: supplied(var log, data.clone()),
+		format: chosen(log, CompressionFormat.Gzip),
+		data: supplied(log, data.clone()),
 	)?
 	expect_equal(log, ["format", "data"])?
 	expect_equal((decompress(encoded, CompressionFormat.Gzip)?), data)?

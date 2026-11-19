@@ -25,12 +25,12 @@ fn handle(request: HttpRequest) HttpResponse:
 	return HttpResponse(200, f"ok {request.path} done\n".to_bytes())
 
 fn warm(var conn: Connection) Bool!:
-	send(var conn, "GET /warm HTTP/1.1\r\nHost: t\r\n\r\n")?
+	send(conn, "GET /warm HTTP/1.1\r\nHost: t\r\n\r\n")?
 
 	var text = ""
 
 	while not text.ends_with("done\n"):
-		if chunk := recv(var conn, nanoseconds(10000000000)):
+		if chunk := recv(conn, nanoseconds(10000000000)):
 			if data := chunk:
 				text = f"{text}{data.decode_utf8().get_or("?")}"
 				continue
@@ -56,12 +56,12 @@ fn run() Bool!:
 	var e = connect(server.address()).wait()?
 	var f = connect(server.address()).wait()?
 	warmed := (
-		warm(var a)?
-		and warm(var b)?
-		and warm(var c)?
-		and warm(var d)?
-		and warm(var e)?
-		and warm(var f)?
+		warm(a)?
+		and warm(b)?
+		and warm(c)?
+		and warm(d)?
+		and warm(e)?
+		and warm(f)?
 	)
 
 	// Let the threads come to rest after the last answer.

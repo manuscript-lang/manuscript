@@ -33,7 +33,7 @@ fn dump(node: HtmlNode, var out: StringBuilder) Void:
 	match node:
 		Document(children):
 			out.append("D[")
-			for child in children: dump(child, var out)
+			for child in children: dump(child, out)
 			out.append("]")
 		Element(tag, namespace, attributes, children):
 			out.append(f"E{hx(tag)},{hx(namespace)}\{")
@@ -41,7 +41,7 @@ fn dump(node: HtmlNode, var out: StringBuilder) Void:
 				f"{hx(a.name)},{hx(a.namespace)},{hx(a.value)};"
 			)
 			out.append("}[")
-			for child in children: dump(child, var out)
+			for child in children: dump(child, out)
 			out.append("]")
 		Text(text): out.append(f"T{hx(text)};")
 		Comment(text): out.append(f"C{hx(text)};")
@@ -51,7 +51,7 @@ fn dump(node: HtmlNode, var out: StringBuilder) Void:
 fn render(result: HtmlNode!) String:
 	if value := result:
 		var sb = StringBuilder()
-		dump(value, var sb)
+		dump(value, sb)
 		return f"ok {sb.build()}"
 
 	if result.err().kind == "EOVERFLOW": return "err LimitExceeded"

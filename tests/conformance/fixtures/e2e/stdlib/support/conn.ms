@@ -19,7 +19,7 @@ export fn send_bytes(var connection: Connection, data: Bytes) Void!:
 // The next chunk, or none at the peer's end of stream; a read that waits longer than
 // `timeout` fails.
 export fn recv(var connection: Connection, timeout: Duration) Bytes?!:
-	return within(var connection.input, timeout)
+	return within(connection.input, timeout)
 
 // The next item of `input`; a wait longer than `timeout` fails and cancels the read.
 export fn within[T](var input: ReadStream[T], timeout: Duration) T?!:

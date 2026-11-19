@@ -29,7 +29,7 @@ export fn main() Int:
         var server = acquired
 
         if var conn = connect(server.address()).wait():
-            _sent := send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+            _sent := send(conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
             // Let the handler start, then leave without waiting for the response.
             void sleep(nanoseconds(100000000)).wait()

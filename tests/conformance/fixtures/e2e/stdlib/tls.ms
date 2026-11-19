@@ -142,7 +142,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
 		(
 			response.metadata.status != 200
 			or (
-				read_to_end(var response.body) | expect_ok?
+				read_to_end(response.body) | expect_ok?
 			) != "secure".to_bytes()
 		)
 	)?
@@ -202,11 +202,11 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 		| expect_ok?
 	)
 	expect_equal(response.metadata.protocol, "HTTP/2.0")?
-	expect_equal(read_to_end(var response.body)?, "HTTP/2.0".to_bytes())?
+	expect_equal(read_to_end(response.body)?, "HTTP/2.0".to_bytes())?
 
 fn answer_ping(move connection: Connection) Int:
-	ping := recv(var connection, 3.seconds())
-	pong := send(var connection, "pong")
+	ping := recv(connection, 3.seconds())
+	pong := send(connection, "pong")
 	void connection.close()
 	if ping.is_error() or pong.is_error(): return 0
 
@@ -240,8 +240,8 @@ test "raw TLS listeners and clients handshake and report negotiated details":
 	address := listener.address()
 	served := promise(fn: ok(serve_one_tls(listener)))
 	var client = connect(address.clone(), tls: client_tls, timeout: 3.seconds()).wait()?
-	send(var client, "ping")?
-	expect_equal((recv(var client, 3.seconds())?).get(), "pong".to_bytes())?
+	send(client, "ping")?
+	expect_equal((recv(client, 3.seconds())?).get(), "pong".to_bytes())?
 
 	info := client.info.tls_info()?
 	expect_false(info.version < 771)?
@@ -292,7 +292,7 @@ fn count_until_eof(listener: Listener) Int:
 	while reads < 100000:
 		reads += 1
 
-		chunk := recv(var connection, 5.seconds())
+		chunk := recv(connection, 5.seconds())
 		if chunk.is_error(): return -2
 		if chunk.get().is_none(): break
 
@@ -322,7 +322,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 	address := listener.address()
 	served := promise(fn: ok(count_until_eof(listener)))
 	var client = connect(address.clone(), tls: client_tls, timeout: 5.seconds()).wait()?
-	send(var client, "y".repeat(20000000))?
+	send(client, "y".repeat(20000000))?
 
 	// No read first: the server's post-handshake bytes must not reset the connection.
 	client.close()?
@@ -330,12 +330,12 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 
 fn starttls_server(listener: Listener, options: TlsOptions) Int:
 	var plain = listener.accept(3.seconds()).wait().get()
-	hello := recv(var plain, 3.seconds())
+	hello := recv(plain, 3.seconds())
 	if hello.is_error(): return 0
 	if hello.get().get_or(Bytes([])) != "STARTTLS".to_bytes(): return 0
-	if send(var plain, "OK").is_error(): return 0
+	if send(plain, "OK").is_error(): return 0
 
-	upgraded := accept_tls(var plain, options, 3.seconds())
+	upgraded := accept_tls(plain, options, 3.seconds())
 	if upgraded.is_error(): return 0
 
 	secure := upgraded.get()
@@ -352,23 +352,23 @@ test "start_tls upgrades a plain connection in place on both sides":
 	served := promise(fn: ok(starttls_server(listener, server_tls)))
 	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
 	expect_false(plain.info.tls_info().is_ok())?
-	send(var plain, "STARTTLS")?
-	expect_equal((recv(var plain, 3.seconds())?).get(), "OK".to_bytes())?
+	send(plain, "STARTTLS")?
+	expect_equal((recv(plain, 3.seconds())?).get(), "OK".to_bytes())?
 
-	var client = start_tls(var plain, client_tls, 3.seconds())?
+	var client = start_tls(plain, client_tls, 3.seconds())?
 	expect_equal(client.info.peer_address, address)?
 
 	info := client.info.tls_info()?
 	expect_false(info.version < 771)?
 	expect_false(not info.verified)?
-	send(var client, "ping")?
-	expect_equal((recv(var client, 3.seconds())?).get(), "pong".to_bytes())?
+	send(client, "ping")?
+	expect_equal((recv(client, 3.seconds())?).get(), "pong".to_bytes())?
 
 	// The plain value was consumed.
 	_late := expect_error(plain.output.write("late".to_bytes()))?
 
 	// A TLS connection cannot be upgraded again.
-	_again := expect_error(start_tls(var client, client_tls, 3.seconds()))?
+	_again := expect_error(start_tls(client, client_tls, 3.seconds()))?
 	client.close()?
 	expect_equal((wait_all([served])?)[0], 1)?
 
@@ -381,15 +381,11 @@ test "start_tls rejects an untrusted server and an empty server name":
 	address := listener.address()
 	served := promise(fn: ok(starttls_server(listener, server_tls)))
 	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
-	_unnamed := expect_error(start_tls(var plain, TlsOptions(), 3.seconds()))?
-	send(var plain, "STARTTLS")?
-	expect_equal((recv(var plain, 3.seconds())?).get(), "OK".to_bytes())?
+	_unnamed := expect_error(start_tls(plain, TlsOptions(), 3.seconds()))?
+	send(plain, "STARTTLS")?
+	expect_equal((recv(plain, 3.seconds())?).get(), "OK".to_bytes())?
 
 	_untrusted := expect_error(
-		start_tls(
-			var plain,
-			TlsOptions(server_name: "stdlib.test"),
-			3.seconds(),
-		)
+		start_tls(plain, TlsOptions(server_name: "stdlib.test"), 3.seconds())
 	)?
 	_served := wait_all([served])?

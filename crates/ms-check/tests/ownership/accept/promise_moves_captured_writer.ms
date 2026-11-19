@@ -9,7 +9,7 @@ fn f() Void!:
     var p = pipe[Int](4)
     var first = p.writer()
     var second = p.writer()
-    a := promise(fn: ok(produce(var first, 1)?))
-    b := promise(fn: ok(produce(var second, 2)?))
+    a := promise(fn: ok(produce(first, 1)?))
+    b := promise(fn: ok(produce(second, 2)?))
     a.wait()?
     b.wait()?

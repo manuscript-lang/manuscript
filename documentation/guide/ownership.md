@@ -25,11 +25,11 @@ fn archive(cart: Cart, var history: List[Cart]) Void:
 fn main() Void:
     var cart = Cart("Sam", ["pen", "ink"])
     print(summary(cart))
-    add_gift(var cart)
+    add_gift(cart)
     print(summary(cart))
 
     var history = List[Cart]()
-    archive(cart.clone(), var history)
+    archive(cart.clone(), history)
     cart.items.append("notebook")
     print(f"{summary(cart)}; archived: {history[0].items.length()}")
 ```
@@ -43,9 +43,9 @@ Sam has 4 items; archived: 3
 ## What to notice
 
 - `summary(cart)` only reads the cart. It borrows it, and `cart` is still yours afterwards.
-- `add_gift(var cart)` may change the cart, so you write `var` at the call as well as at the declaration. Mutation is visible at both ends.
+- `add_gift(cart)` may change the cart, because `add_gift` declares the parameter `var`. The call needs no marker; the signature (and `ms` hover) shows which functions change their arguments, as with `move`.
 - `archive` stores the cart in `history`. Storing moves the value, so the call passes `cart.clone()` and keeps the original.
-- `.clone()` is the only way to copy. Nothing copies a list, a type or a string behind your back, so scanning a change for `.clone()` and `var` shows you where data is duplicated or changed.
+- `.clone()` is the only way to copy. Nothing copies a list, a type or a string behind your back, so scanning a change for `.clone()` and `var` declarations shows you where data is duplicated or changed.
 
 ## What the compiler says
 
@@ -53,7 +53,7 @@ Leave out the `.clone()`:
 
 <!-- manuscript-example: {"mode":"error","contains":"moved here but used again","context":"type Cart:\n    owner: String\n    items: List[String]\n\nfn archive(cart: Cart, var history: List[Cart]) Void:\n    history.append(cart)","given":["cart: Cart","var history: List[Cart]"]} -->
 ```manuscript
-    archive(cart, var history)
+    archive(cart, history)
     print(cart.owner)
 ```
 

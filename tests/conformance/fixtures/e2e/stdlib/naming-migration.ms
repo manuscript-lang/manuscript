@@ -33,7 +33,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	values.add("a", 1)
 
 	var counter = Counter(0)
-	values.add_default("a", eager(var counter))
+	values.add_default("a", eager(counter))
 	expect_false(counter.calls != 1 or values.get("a") != 1)?
 	values.add("b", 2)
 	expect_equal(values.keys(), ["a", "b"])?

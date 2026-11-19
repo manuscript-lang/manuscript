@@ -10,7 +10,7 @@ fn stopped(var values: List[Int], extra: Int = failed_value()?) Int!:
 
 fn call_default() Int!:
 	var values = [1]
-	return stopped(var values)
+	return stopped(values)
 
 test "a failed default releases its earlier var copy":
 	expect_equal(call_default().is_error(), true)?
@@ -23,11 +23,11 @@ fn recursive(var values: List[Int], remaining: Int = default_count(values)?) Int
 	if remaining == 0: return ok(values.length())
 
 	values.append(2)
-	return recursive(var values)
+	return recursive(values)
 
 fn invoke() Int!:
 	var values = [1]
-	return recursive(var values, 1)
+	return recursive(values, 1)
 
 test "recursive omitted default retains caller var binding":
 	expect_equal(invoke().is_error(), true)?
@@ -36,10 +36,10 @@ fn grow(var values: List[Int]) Int:
 	values.append(9)
 	return values.length()
 
-fn changed(var values: List[Int], extra: Int = grow(var values)) Int:
+fn changed(var values: List[Int], extra: Int = grow(values)) Int:
 	return values.length() * 10 + extra
 
 test "a default that changes an earlier var keeps its change":
 	var values = [1]
-	expect_equal(changed(var values), 22)?
+	expect_equal(changed(values), 22)?
 	expect_equal(values.length(), 2)?

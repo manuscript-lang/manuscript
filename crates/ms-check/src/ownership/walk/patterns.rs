@@ -113,7 +113,7 @@ impl Walker<'_> {
             Perm::Immutable if parameter.is_some() && self.moves_parameter(parameter) => {}
             Perm::Immutable if parameter.is_some() => {
                 let message = format!(
-                    "cannot {what} `{text}`: parameter `{}` is not declared var; write `var {}: <Type>` in the signature and pass `var` at every call",
+                    "cannot {what} `{text}`: parameter `{}` is not declared var; write `var {}: <Type>` in the signature",
                     self.syms.str(root.name),
                     self.syms.str(root.name)
                 );

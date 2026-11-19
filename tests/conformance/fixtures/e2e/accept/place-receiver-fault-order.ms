@@ -25,7 +25,7 @@ fn index(var calls: Int) Int:
 
 fn argument_place() Void:
 	var grid: List[List[Int]] = []
-	bump_int(var grid[0][later()])
+	bump_int(grid[0][later()])
 
 fn assigned_place() Void:
 	var grid: List[List[Int]] = []
@@ -61,7 +61,7 @@ test "the receiver of a nested field assignment faults before a later index runs
 test "a changing source receiver selects its element once":
 	var calls = 0
 	var cells = [Cell(1)]
-	cells[index(var calls)].bump()
+	cells[index(calls)].bump()
 	expect_equal(calls, 1)?
 	expect_equal(cells[0].value, 2)?
 
@@ -82,7 +82,7 @@ fn resource_argument(var events: List[Int]) Door:
 test "a resource mutator selects its receiver once, before its arguments":
 	var events: List[Int] = []
 	var rows: List[List[Door]] = [[Door(0)]]
-	rows[at(var events)].set(0, resource_argument(var events))
+	rows[at(events)].set(0, resource_argument(events))
 	expect_equal(rows[0][0].id, 9)?
 	expect_equal(events, [1, 2])?
 
@@ -90,6 +90,6 @@ test "a map entry mutator selects its receiver once, before its arguments":
 	var events: List[Int] = []
 	var table: Map[String, List[Int]] = Map()
 	table.add("k", [1])
-	table["k"].set(at(var events), resource_argument(var events).id)
+	table["k"].set(at(events), resource_argument(events).id)
 	expect_equal(table["k"], [9])?
 	expect_equal(events, [1, 2])?

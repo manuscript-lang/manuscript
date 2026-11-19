@@ -224,63 +224,6 @@ impl Walker<'_> {
             self.closed.insert(b.uid);
             self.close_completions.insert((e.id, b.uid));
         }
-        // Argument markers: `var` exactly where the callee changes the argument.
-        let param_names: Vec<Name> =
-            cx.m.info(e)
-                .arguments
-                .clone()
-                .unwrap_or_default()
-                .iter()
-                .map(|s| s.name)
-                .collect();
-        for (i, a) in args.iter().enumerate() {
-            let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
-            let param = param_names.get(i).copied().unwrap_or_else(|| n("?"));
-            // A function type names its parameters by position (`_0`): say which argument.
-            let positional =
-                self.syms.str(param).strip_prefix('_').is_some_and(|rest| {
-                    !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit())
-                });
-            let which = if positional {
-                format!("argument {} of `{name}`", i + 1)
-            } else {
-                format!(
-                    "parameter `{param_t}` of `{name}`",
-                    param_t = self.syms.str(param)
-                )
-            };
-            match (mode, a.mutable) {
-                (ParamMode::Mutate, false) if positional => self.error_fix(
-                    a.value.pos,
-                    format!("{which} is var in its type `{}`, so the call must say so; write `var {}`", self.cx.m.ty(callee).display(self.syms), self.expr_text(&a.value)),
-                    insert_at(a.value.pos, "var "),
-                ),
-                (ParamMode::Mutate, false) => self.error_fix(
-                    a.value.pos,
-                    format!("{which} is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
-                    insert_at(a.value.pos, "var "),
-                ),
-                (ParamMode::Borrow | ParamMode::Move, true) if positional => self.error_fix(
-                    a.value.pos,
-                    format!("`{name}` does not change {}: its type is `{}`; remove `var` from the argument", which.trim_end_matches(&format!(" of `{name}`")), self.cx.m.ty(callee).display(self.syms)),
-                    DiagnosticFix {
-                        pos: back(a.value.pos, 4),
-                        end: a.value.pos,
-                        replacement: String::new(),
-                    },
-                ),
-                (ParamMode::Borrow | ParamMode::Move, true) => self.error_fix(
-                    a.value.pos,
-                    format!("`{name}` does not change its parameter `{param_t}`; remove `var` from the argument", param_t = self.syms.str(param)),
-                    DiagnosticFix {
-                        pos: back(a.value.pos, 4),
-                        end: a.value.pos,
-                        replacement: String::new(),
-                    },
-                ),
-                _ => {}
-            }
-        }
         // Evaluate in order. What an operand keeps hold of for the whole call
         // is checked against the others afterwards.
         let mut operands: Vec<Logged> = Vec::new();

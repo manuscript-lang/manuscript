@@ -33,13 +33,13 @@ fn record(var events: Events, value: Int) Int:
 test "reused inference preserves evaluation and argument conversions":
     var events = Events([])
     selected := first(
-        right: identity(identity(record(var events, value: 2))),
-        left: identity(identity(record(var events, value: 1)))
+        right: identity(identity(record(events, value: 2))),
+        left: identity(identity(record(events, value: 1)))
     )
     expect_equal(selected, 1)?
     expect_equal(events.values, [2, 1])?
 
-    wrapped := optional(value: identity(record(var events, value: 3)), fallback: 0)
+    wrapped := optional(value: identity(record(events, value: 3)), fallback: 0)
     expect_equal(wrapped, 3)?
     expect_equal(events.values, [2, 1, 3])?
 

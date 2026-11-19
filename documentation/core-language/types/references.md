@@ -11,7 +11,7 @@ Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Void`, enums wi
 
 Everything else, including strings, types, lists and maps, has exactly one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Such a value is handed around by borrowing until you put it somewhere that must own it:
 
-- `b := a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` and `f(var a)` borrow exclusively, so changes reach `a`.
+- `b := a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` borrows exclusively, and so does passing `a` to a `var` parameter, so changes reach `a`. The call writes `f(a)` either way: the callee's signature says which, as it does for `move`.
 - Storing a value in a field or a collection, returning a new value, or binding it at its last use *moves* it. After a move the old name is dead and the new owner frees it.
 - `.clone()` is the only way to copy. Write it when you want an independent value that outlives or diverges from the original. Borrowing lets a function work with existing data without a deep copy.
 
@@ -30,7 +30,7 @@ A borrow is a handle to a value that another binding owns. Until the borrow's la
 - A field owns its value. A type cannot hold a view of another variable.
 - A place that is changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow in the same call or scope.
   - Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint. Every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live.
-  - A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid.
+  - A read that finishes before the change starts, such as an `Int` argument `f(xs, xs[0])` where `f` takes `var xs`, stays valid.
   - A method's receiver and a function value held in a variable are read in place while the arguments run, so no argument (a `match` arm included) may reassign that variable. `f(match m: _: f = g; 1)` and `r.m(match m: _: r = other; 1)` are rejected; reassign before the call instead.
 
 <!-- manuscript-example: {"mode":"check"} -->
@@ -101,7 +101,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 `place[key] = value` is a call of the type's `set` (a Map's `add`). The checker takes the key at the store, after `value` has run, so `value` may read `key`: `counts[key] = counts.get_or(key, 0) + 1` and `sizes[k] = k.length()` are accepted.
 
-`value` may only read `key`; it cannot move or change it (`m[k] = bump(var k)` is rejected). After the store, `key` cannot be used unless it is a scalar or the store used a `.clone()` of it.
+`value` may only read `key`; it cannot move or change it (`m[k] = bump(k)` is rejected when `bump` takes `var k`). After the store, `key` cannot be used unless it is a scalar or the store used a `.clone()` of it.
 
 ## Data copies
 

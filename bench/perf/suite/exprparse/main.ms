@@ -28,9 +28,9 @@ fn gen(depth: Int, var x: Int, var out: StringBuilder) Void:
 
 	op := ["+", "-", "*", "%"][x / 3 % 4]
 	out.append("(")
-	gen(depth - 1, var x, var out)
+	gen(depth - 1, x, out)
 	out.append(f" {op} ")
-	gen(depth - 1, var x, var out)
+	gen(depth - 1, x, out)
 	out.append(")")
 
 fn tokenize(text: String) List[Tok]:
@@ -98,7 +98,7 @@ fn main() Void:
 
 	for i in 0..60000:
 		var sb = StringBuilder()
-		gen(9, var x, var sb)
+		gen(9, x, sb)
 
 		text := sb.build()
 		chars += text.length()

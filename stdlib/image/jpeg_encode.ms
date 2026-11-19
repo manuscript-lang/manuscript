@@ -208,7 +208,7 @@ fn put16_be(var out: BytesBuilder, value: Int) Void:
 fn jpeg_marker(var out: BytesBuilder, marker: Int, body: Bytes) Void:
 	out.append(byte(255))
 	out.append(byte(marker))
-	put16_be(var out, body.length() + 2)
+	put16_be(out, body.length() + 2)
 	out.append_bytes(body)
 
 fn jpeg_dht(
@@ -223,7 +223,7 @@ fn jpeg_dht(
 		body.append(byte(c))
 	for v in values:
 		body.append(byte(v))
-	jpeg_marker(var out, 196, body.build())
+	jpeg_marker(out, 196, body.build())
 
 // Scales a base quantization table for `quality` (1 through 100) with the libjpeg
 // formula, keeping each entry in 1 through 255.
@@ -346,25 +346,25 @@ export fn jpeg_encode(
 	var out = BytesBuilder()
 	out.append(byte(255))
 	out.append(byte(216))
-	jpeg_marker(var out, 224, Bytes([74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0]))
+	jpeg_marker(out, 224, Bytes([74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0]))
 
 	var table_bytes = BytesBuilder()
 	table_bytes.append(byte(0))
 	for q in q_luma:
 		table_bytes.append(byte(q))
-	jpeg_marker(var out, 219, table_bytes.build())
+	jpeg_marker(out, 219, table_bytes.build())
 
 	if color:
 		var chroma_table = BytesBuilder()
 		chroma_table.append(byte(1))
 		for q in q_chroma:
 			chroma_table.append(byte(q))
-		jpeg_marker(var out, 219, chroma_table.build())
+		jpeg_marker(out, 219, chroma_table.build())
 
 	var frame = BytesBuilder()
 	frame.append(byte(8))
-	put16_be(var frame, height)
-	put16_be(var frame, width)
+	put16_be(frame, height)
+	put16_be(frame, width)
 	frame.append(byte(if color: 3 else: 1))
 	frame.append(byte(1))
 	frame.append(byte(if sub: 34 else: 17))
@@ -378,18 +378,18 @@ export fn jpeg_encode(
 		frame.append(byte(17))
 		frame.append(byte(1))
 
-	jpeg_marker(var out, 192, frame.build())
-	jpeg_dht(var out, 0, jpeg_dc_luma_counts, jpeg_dc_values)
-	jpeg_dht(var out, 16, jpeg_ac_luma_counts, jpeg_ac_luma_values)
+	jpeg_marker(out, 192, frame.build())
+	jpeg_dht(out, 0, jpeg_dc_luma_counts, jpeg_dc_values)
+	jpeg_dht(out, 16, jpeg_ac_luma_counts, jpeg_ac_luma_values)
 
 	if color:
-		jpeg_dht(var out, 1, jpeg_dc_chroma_counts, jpeg_dc_values)
-		jpeg_dht(var out, 17, jpeg_ac_chroma_counts, jpeg_ac_chroma_values)
+		jpeg_dht(out, 1, jpeg_dc_chroma_counts, jpeg_dc_values)
+		jpeg_dht(out, 17, jpeg_ac_chroma_counts, jpeg_ac_chroma_values)
 
 	if restart_interval > 0:
 		var dri = BytesBuilder()
-		put16_be(var dri, restart_interval)
-		jpeg_marker(var out, 221, dri.build())
+		put16_be(dri, restart_interval)
+		jpeg_marker(out, 221, dri.build())
 
 	var scan = BytesBuilder()
 	scan.append(byte(if color: 3 else: 1))
@@ -405,7 +405,7 @@ export fn jpeg_encode(
 	scan.append(byte(0))
 	scan.append(byte(63))
 	scan.append(byte(0))
-	jpeg_marker(var out, 218, scan.build())
+	jpeg_marker(out, 218, scan.build())
 
 	dc_luma := jpeg_codes(jpeg_dc_luma_counts, jpeg_dc_values)
 	ac_luma := jpeg_codes(jpeg_ac_luma_counts, jpeg_ac_luma_values)
@@ -438,18 +438,18 @@ export fn jpeg_encode(
 						my * unit_size + by * 8,
 						q_luma,
 					)
-					jpeg_emit(var w, levels, p_y, dc_luma, ac_luma)
+					jpeg_emit(w, levels, p_y, dc_luma, ac_luma)
 					p_y = levels[0]
 
 			if color:
 				x0 := mx * 8
 				y0 := my * 8
 				lb := jpeg_forward(cb, cw, x0, y0, q_chroma)
-				jpeg_emit(var w, lb, p_cb, dc_chroma, ac_chroma)
+				jpeg_emit(w, lb, p_cb, dc_chroma, ac_chroma)
 				p_cb = lb[0]
 
 				lr := jpeg_forward(cr, cw, x0, y0, q_chroma)
-				jpeg_emit(var w, lr, p_cr, dc_chroma, ac_chroma)
+				jpeg_emit(w, lr, p_cr, dc_chroma, ac_chroma)
 				p_cr = lr[0]
 
 			mcu += 1

@@ -79,7 +79,7 @@ fn collatz(n: Int, var memo: Map[Int, Int]) Int:
 	if n == 1: return 0
 	if memo.contains(n): return memo[n]
 
-	r := 1 + collatz(if n % 2 == 0: n / 2 else: 3 * n + 1, var memo)
+	r := 1 + collatz(if n % 2 == 0: n / 2 else: 3 * n + 1, memo)
 	memo[n] = r
 	return r
 
@@ -87,7 +87,7 @@ fn x_memo() Int:
 	var memo: Map[Int, Int] = {}
 	var t = 0
 	for s in 1..300000:
-		t += collatz(s, var memo)
+		t += collatz(s, memo)
 	return t
 
 fn compose(f: fn(Int) Int, g: fn(Int) Int) fn(Int) Int:

@@ -17,7 +17,7 @@ fn shift(var from: List[FileHandle], var to: List[FileHandle]) Void:
 		to.append(value)
 
 fn var Pair.rebalance() Void:
-	shift(var self.front, var self.back)
+	shift(self.front, self.back)
 
 type Words:
 	a: List[String] = []
@@ -40,8 +40,8 @@ fn tally(
 		to.append(value)
 
 fn var Words.step() Void:
-	move_word(var self.a, var self.b)
-	tally(var self.a, var self.count, var self.c, self.b)
+	move_word(self.a, self.b)
+	tally(self.a, self.count, self.c, self.b)
 
 test "native handles move between two fields of self":
 	root := temporary("manuscript-var-fields-") | expect_ok?
@@ -59,8 +59,8 @@ test "native handles move between two fields of a local":
 	_written := write_file(path, "x").wait() | expect_ok?
 	var pair = Pair()
 	pair.front.append(open(path, OpenMode.Read) | expect_ok?)
-	shift(var pair.front, var pair.back)
-	shift(var pair.back, var pair.front)
+	shift(pair.front, pair.back)
+	shift(pair.back, pair.front)
 	(pair.front.length()) | expect_equal(1)?
 	(pair.back.length()) | expect_equal(0)?
 

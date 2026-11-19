@@ -47,7 +47,7 @@ test "list callbacks":
 
     var retained = List[fn() Int]()
     for value in items:
-        keep(list: var retained, value: value)
+        keep(list: retained, value: value)
 
     called := retained.map(fn(value: fn() Int) Int: value())
     expect_true(
@@ -68,6 +68,6 @@ test "list callbacks":
 
     var seen = List[Int]()
     for value in grown.clone():
-        seen.append(value: grow(list: var grown, value: value))
+        seen.append(value: grow(list: grown, value: value))
     expect_true((seen.length() == 2 and grown.length() == 4))?
     expect_true((nested(items: items).get(index: 2) == 7))?

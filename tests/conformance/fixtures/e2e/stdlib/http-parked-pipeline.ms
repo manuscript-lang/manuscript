@@ -24,17 +24,17 @@ fn handle(request: HttpRequest) HttpResponse:
 
 fn exchange(address: String) String:
     if var conn = connect(address).wait():
-        _first := send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+        _first := send(conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
         // The slow handler is parked by now; the second request arrives while it waits.
         void sleep(nanoseconds(50000000)).wait()
         _second := send(
-            var conn, "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+            conn, "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
 
         while true:
-            if chunk := within(var conn.input, nanoseconds(5000000000)):
+            if chunk := within(conn.input, nanoseconds(5000000000)):
                 if data := chunk:
                     text = f"{text}{data.decode_utf8().get_or("?")}"
                     continue

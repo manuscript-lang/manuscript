@@ -35,7 +35,7 @@ fn select(var output: WriteStream[String]) fn(Int, Int) Int:
 fn early(var output: WriteStream[String]) Int:
 	_outer := Resource(label: "outer", output: stdout())
 	_inner := Resource(label: "inner", output: stdout())
-	return report(output: var output, label: "return value", value: 5)
+	return report(output: output, label: "return value", value: 5)
 
 fn failure() Int!Error:
 	return error(Error("expected"))
@@ -53,21 +53,17 @@ fn exercise() Int!:
 	var chosen = stdout()
 	var second_out = stdout()
 	var first_out = stdout()
-	total := select(output: var chosen)(
-		report(output: var second_out, label: "second", value: 2),
-		report(output: var first_out, label: "first", value: 1),
+	total := select(output: chosen)(
+		report(output: second_out, label: "second", value: 2),
+		report(output: first_out, label: "first", value: 1),
 	)
 	total | expect_equal(3)?
 
 	var pair_second_out = stdout()
 	var pair_first_out = stdout()
 	pair := Pair(
-		second: report(
-			output: var pair_second_out,
-			label: "pair second",
-			value: 2,
-		),
-		first: report(output: var pair_first_out, label: "pair first", value: 1),
+		second: report(output: pair_second_out, label: "pair second", value: 2),
+		first: report(output: pair_first_out, label: "pair first", value: 1),
 	)
 	(pair.first + pair.second) | expect_equal(3)?
 
@@ -85,7 +81,7 @@ fn exercise() Int!:
 
 	var iterable_out = stdout()
 
-	for value in iterable(output: var iterable_out):
+	for value in iterable(output: iterable_out):
 		_resource := Resource(label: "break", output: stdout())
 		break
 
@@ -96,7 +92,7 @@ fn exercise() Int!:
 			_completed := void
 
 	var early_out = stdout()
-	early(output: var early_out) | expect_equal(5)?
+	early(output: early_out) | expect_equal(5)?
 	void stdout().write(value: "finished\n")
 	return ok(0)
 

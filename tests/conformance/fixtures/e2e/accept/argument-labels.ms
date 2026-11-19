@@ -44,11 +44,11 @@ fn next(var state: Counter) Int:
 	return value
 
 fn prepare_receiver(var state: Counter) Offset!:
-	next(var state) | expect_equal(0)?
+	next(state) | expect_equal(0)?
 	return ok(Offset(2))
 
 fn prepare_function(var state: Counter) (fn(Int) Int)!:
-	next(var state) | expect_equal(4)?
+	next(state) | expect_equal(4)?
 	return ok(increment)
 
 fn absent(value: Int?) Bool:
@@ -110,11 +110,11 @@ test "optional labels on methods and native functions":
 
 test "omitted labels preserve evaluation order":
 	var state = Counter(value: 0)
-	(prepare_receiver(var state)?).apply(next(var state)) | expect_equal(3)?
+	(prepare_receiver(state)?).apply(next(state)) | expect_equal(3)?
 	state.value | expect_equal(2)?
-	subtract(deduction: next(var state), amount: next(var state)) | expect_equal(1)?
+	subtract(deduction: next(state), amount: next(state)) | expect_equal(1)?
 	state.value | expect_equal(4)?
-	(prepare_function(var state)?)(next(var state)) | expect_equal(6)?
+	(prepare_function(state)?)(next(state)) | expect_equal(6)?
 	state.value | expect_equal(6)?
-	sum([next(var state), next(var state)]) | expect_equal(13)?
+	sum([next(state), next(state)]) | expect_equal(13)?
 	state.value | expect_equal(8)?

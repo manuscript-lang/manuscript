@@ -26,7 +26,7 @@ test "list members":
 	var xs = [1, 2, 3]
 	xs.set(index: -1, value: 9)
 	(xs.get(index: 2) == 9) | expect_true?
-	(replace_first(xs: var xs, value: 5).get(index: 0) == 5) | expect_true?
+	(replace_first(xs: xs, value: 5).get(index: 0) == 5) | expect_true?
 	(xs.contains(value: 9)) | expect_true?
 
 test "custom equality is kept for bound members":

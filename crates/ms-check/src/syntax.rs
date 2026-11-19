@@ -231,6 +231,8 @@ pub struct ArgSlot {
     pub name: Name,
     /// Written position among the call's arguments.
     pub index: usize,
+    /// The callee declares this parameter `var`, so the call changes the place passed.
+    pub changed: bool,
 }
 
 /// Checked facts of one expression.

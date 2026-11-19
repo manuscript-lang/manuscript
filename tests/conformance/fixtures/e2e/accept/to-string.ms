@@ -130,12 +130,12 @@ test "interpolation and bound conversion evaluate each receiver once":
 	var state = Counter(value: 1)
 	(
 		check(
-			value: f"{next(var state)}|{next(var state)}",
+			value: f"{next(state)}|{next(state)}",
 			expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)",
 		)?
 	)
 
-	convert := next(var state).to_string
+	convert := next(state).to_string
 	(check(value: convert(), expected: "Person(age: 3, name: Ada)")?)
 	(check(value: convert(), expected: "Person(age: 3, name: Ada)")?)
 	(check(value: state.value.to_string(), expected: "4")?)

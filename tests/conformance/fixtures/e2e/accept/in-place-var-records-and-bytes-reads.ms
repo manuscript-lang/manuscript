@@ -55,10 +55,10 @@ test "bytes reads index, wrap negative and use defaults":
 test "var record methods change fields in place":
 	var c = Cursor("abcd".to_bytes(), 0, 3, "first", [], false)
 	expect_equal(c.peek(), 97)?
-	expect_equal(fill(var c, 2), 97 + 98)?
+	expect_equal(fill(c, 2), 97 + 98)?
 	expect_equal(c.start, 2)?
 	expect_equal(c.seen, [0, 1])?
-	expect_equal(fill(var c, 5), 99)?
+	expect_equal(fill(c, 5), 99)?
 	expect_equal(c.done, true)?
 	expect_equal(c.peek(), 100)?
 	c.reset("again")
@@ -69,7 +69,7 @@ test "var record methods change fields in place":
 
 test "a var record parameter can be replaced whole":
 	var c = Cursor("xyz".to_bytes(), 0, 3, "orig", [5], false)
-	replace_whole(var c)
+	replace_whole(c)
 	expect_equal(c.label, "swapped")?
 	expect_equal(c.peek(), 98)?
 	expect_equal(c.seen.length(), 0)?

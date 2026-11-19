@@ -46,5 +46,5 @@ fn merge(var a: Bag, var b: Bag) Bag!:
 test "owned values moved across parks by value and by var":
 	var left = fill(3)?
 	var right = fill(4)?
-	merged := merge(var left, var right)?
+	merged := merge(left, right)?
 	expect_equal(merged.names.length(), 7)?

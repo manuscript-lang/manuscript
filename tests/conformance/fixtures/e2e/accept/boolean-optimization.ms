@@ -19,17 +19,17 @@ fn defaulted(flag: Bool = not (false or false)) Bool:
 
 test "boolean optimization preserves source evaluation order":
     var counter = Counter(0)
-    skipped_and := false and unexpected(var counter)
-    skipped_or := true or unexpected(var counter)
+    skipped_and := false and unexpected(counter)
+    skipped_or := true or unexpected(counter)
     (skipped_and or not skipped_or) | expect_false?
     (counter.calls != 0) | expect_false?
 
-    left_and := touch(var counter) and false
-    left_or := touch(var counter) or true
+    left_and := touch(counter) and false
+    left_or := touch(counter) or true
     (left_and or not left_or or counter.calls != 2) | expect_false?
 
-    right_and := (not false) and touch(var counter)
-    right_or := (not true) or touch(var counter)
+    right_and := (not false) and touch(counter)
+    right_or := (not true) or touch(counter)
     (not right_and or not right_or or counter.calls != 4) | expect_false?
 
     callback := fn: not (true and false)

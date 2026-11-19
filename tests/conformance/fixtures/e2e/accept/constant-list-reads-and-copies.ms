@@ -41,7 +41,7 @@ test "a copy is changed without changing the constant":
 	b.items[1] = 50
 	b.items[1] | expect_equal(50)?
 	var c = table
-	bump(var c)
+	bump(c)
 	c[0] | expect_equal(99)?
 	var d = [table, table]
 	d[1][0] = 0

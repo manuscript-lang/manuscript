@@ -272,7 +272,7 @@ fn after_pop(var items: List[Door]) Int:
 
 fn changed_length(log: String) Void:
 	var items = [Door(1, log.clone())]
-	items.set(value: Door(2, log), index: after_pop(var items))
+	items.set(value: Door(2, log), index: after_pop(items))
 
 test "final bounds use receiver after later operand mutation":
 	tmp := temporary("list-current-bounds-")?

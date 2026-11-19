@@ -32,7 +32,7 @@ fn fill[T: Clonable](var target: List[T], item: T) Void:
 test "a generic bound mutator stores clones independent of the caller":
 	var target: List[List[String]] = []
 	var item = [f"original-{1}"]
-	fill(var target, item)
+	fill(target, item)
 	item[0] = "changed"
 	expect_equal(target, [["original-1"], ["original-1"]])?
 	target[0][0] = "first"

@@ -4,4 +4,4 @@ fn both(var a: List[Int], var b: List[Int]) Void:
 
 fn f() Void:
     var xs = [[1], [2]]
-    both(var xs[0], var xs[1])
+    both(xs[0], xs[1])

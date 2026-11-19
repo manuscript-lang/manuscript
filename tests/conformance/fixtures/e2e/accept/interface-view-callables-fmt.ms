@@ -20,7 +20,7 @@ fn mark(var log: Log, event: String, value: Int) Int:
     return value
 
 fn prepare(var log: Log, value: Int) fn() Int:
-    mark(var log, "prepare;", 0)
+    mark(log, "prepare;", 0)
     return fn() Int:
         return value
 
@@ -47,7 +47,7 @@ fn DefaultReader.read() Int:
 
 test "nested view receiver prepares once and calls later":
     var log = Log("")
-    view: Read[Int] := Reader(prepare(var log, 7))
+    view: Read[Int] := Reader(prepare(log, 7))
     expect_equal(log.events, "prepare;")?
     expect_equal(view.read(), 7)?
 
@@ -57,7 +57,7 @@ test "constructor arguments retain written order and capture snapshots":
     snapshot := value
 
     view: Read[Int] := OrderedReader(
-        last: mark(var log, "last;", 3),
+        last: mark(log, "last;", 3),
         operation: (
             fn() Int:
                 nested := fn() Int: snapshot
@@ -66,7 +66,7 @@ test "constructor arguments retain written order and capture snapshots":
         match present(2):
             number:
                 value = 70
-                mark(var log, "first;", number)
+                mark(log, "first;", number)
             none: 0
     )
 
@@ -95,19 +95,19 @@ test "explicit nested views and bound methods retain generic dispatch":
 
 test "source constructors with callable defaults prepare once":
     var log = Log("")
-    view: Read[Int] := DefaultReader(mark(var log, "base;", 12))
+    view: Read[Int] := DefaultReader(mark(log, "base;", 12))
     expect_equal(log.events, "base;")?
     expect_equal(view.read(), 12)?
 
 test "match receiver side effects and callable body remain ordered":
     var log = Log("")
 
-    view: Read[Int] := match present(mark(var log, "select;", 1)):
+    view: Read[Int] := match present(mark(log, "select;", 1)):
         _value:
-            mark(var log, "chosen;", 0)
+            mark(log, "chosen;", 0)
             Reader(fn() Int: 9)
         none:
-            mark(var log, "wrong;", 0)
+            mark(log, "wrong;", 0)
             Reader(fn() Int: 0)
 
     expect_equal(log.events, "select;chosen;")?

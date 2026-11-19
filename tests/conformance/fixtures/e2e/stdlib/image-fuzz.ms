@@ -133,7 +133,7 @@ test "decoders never fault on mutated input":
 
 	for round in 0..300:
 		for index in 0..corpus.length():
-			var mutated = mutate(corpus[index], var rng)
+			var mutated = mutate(corpus[index], rng)
 			if mutated.starts_with(Bytes([137, 80, 78, 71])): mutated = fix_png_crcs(
 				mutated
 			)

@@ -41,8 +41,8 @@ test "? on an Optional gives the value, or leaves the function with none":
 
 test "? on an absent Optional returns early from a function returning nothing":
 	var present: List[Int] = []
-	mark(var present, make())
+	mark(present, make())
 	expect_equal(present, [1, 99])?
 	var absent: List[Int] = []
-	mark(var absent, none)
+	mark(absent, none)
 	expect_equal(absent, [])?

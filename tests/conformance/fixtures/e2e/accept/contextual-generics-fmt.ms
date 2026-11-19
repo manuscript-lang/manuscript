@@ -64,7 +64,7 @@ test "expected generic results preserve behavior and call order":
 
     var events = Events([])
     combined: Int? := combine(
-        var events, second: record(var events, 2), first: record(var events, 1)
+        events, second: record(events, 2), first: record(events, 1)
     )
     expect_false(not combined.is_none())?
     expect_equal(events.values, [2, 1, 3])?

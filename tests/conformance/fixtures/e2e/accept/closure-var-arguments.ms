@@ -11,13 +11,13 @@ fn bump(var values: List[Int]) Void:
 
 test "closure direct":
 	var values: List[Int] = []
-	callback := fn() List[Int]: singleton(var values)
+	callback := fn() List[Int]: singleton(values)
 	_r := callback()
 	values.length() | expect_equal(1)?
 
 test "closure unit":
 	var values: List[Int] = []
-	callback := fn() Void: bump(var values)
+	callback := fn() Void: bump(values)
 	callback()
 	values.length() | expect_equal(1)?
 
@@ -29,6 +29,6 @@ test "closure append":
 
 test "closure default passes a captured variable":
 	var values: List[Int] = []
-	callback := fn(value: List[Int] = singleton(var values)) Int: value.length()
+	callback := fn(value: List[Int] = singleton(values)) Int: value.length()
 	callback() | expect_equal(1)?
 	values.length() | expect_equal(1)?

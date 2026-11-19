@@ -36,7 +36,7 @@ fn returning_match() Bool:
 
 test "primitive equality captures operands once in order":
 	var counter = Counter()
-	expect_not_equal(mark(var counter, 1), mark(var counter, 2))?
+	expect_not_equal(mark(counter, 1), mark(counter, 2))?
 	expect_equal(counter.value, 12)?
 
 	var original = 1
@@ -47,8 +47,8 @@ test "primitive equality captures operands once in order":
 		none: 0
 	expect_false(not captured or original != 2)?
 
-	skipped := false and mark(var counter, 3) == 3
-	skipped_again := true or mark(var counter, 4) == 4
+	skipped := false and mark(counter, 3) == 3
+	skipped_again := true or mark(counter, 4) == 4
 	expect_false((skipped or not skipped_again or counter.value != 12))?
 	expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")?
 	expect_false(not generic(left: true, right: true))?

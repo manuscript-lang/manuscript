@@ -83,7 +83,7 @@ fn shared_default(var value: Marker) Void!:
 
 fn shared_owner(log: String) Void!:
 	var value = marker(7, log.clone())
-	shared_default(var value)?
+	shared_default(value)?
 	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "")?
 	expect_equal(value.status(), 10)?
 

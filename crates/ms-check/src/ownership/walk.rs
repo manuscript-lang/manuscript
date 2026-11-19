@@ -494,15 +494,6 @@ fn insert_at(pos: Pos, text: &str) -> DiagnosticFix {
     }
 }
 
-/// `pos` moved back by `n` bytes on its line.
-fn back(pos: Pos, n: u32) -> Pos {
-    Pos {
-        offset: pos.offset.saturating_sub(n),
-        line: pos.line,
-        column: pos.column.saturating_sub(n).max(1),
-    }
-}
-
 impl Walker<'_> {
     // ------------------------------------------------------------ setup
 

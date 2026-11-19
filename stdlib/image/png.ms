@@ -343,12 +343,12 @@ fn put_be32(var out: BytesBuilder, value: Int) Void:
 	out.append(byte(bit_and(value, 255)))
 
 fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Void:
-	put_be32(var out, body.length())
+	put_be32(out, body.length())
 
 	tag := kind.to_bytes()
 	out.append_bytes(tag)
 	out.append_bytes(body)
-	put_be32(var out, crc32(tag.concat(body)).to_int())
+	put_be32(out, crc32(tag.concat(body)).to_int())
 
 // The cost of a residual in the filter choice: its distance from zero modulo 256.
 fn residual_cost(residual: Int) Int:
@@ -432,7 +432,7 @@ fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
 		var out = List[Int](reserve: row.length() + 1)
 		out.append(filter)
 
-		cost := filter_with(row, prev, step, filter, var out)
+		cost := filter_with(row, prev, step, filter, out)
 
 		if best_cost < 0 or cost < best_cost:
 			best = out
@@ -466,8 +466,8 @@ export fn encode_png(width: Int, height: Int, channels: Int, pixels: List[UInt8]
 		prev = row
 
 	var header = BytesBuilder()
-	put_be32(var header, width)
-	put_be32(var header, height)
+	put_be32(header, width)
+	put_be32(header, height)
 	header.append(byte(8))
 	header.append(byte(color))
 	header.append(byte(0))
@@ -476,9 +476,9 @@ export fn encode_png(width: Int, height: Int, channels: Int, pixels: List[UInt8]
 
 	var out = BytesBuilder()
 	out.append_bytes(Bytes([137, 80, 78, 71, 13, 10, 26, 10]))
-	png_chunk(var out, "IHDR", header.build())
+	png_chunk(out, "IHDR", header.build())
 
 	packed := compress(raw.build(), CompressionFormat.Zlib)?
-	png_chunk(var out, "IDAT", packed)
-	png_chunk(var out, "IEND", Bytes([]))
+	png_chunk(out, "IDAT", packed)
+	png_chunk(out, "IEND", Bytes([]))
 	return ok(out.build())

@@ -61,10 +61,7 @@ test "indexing and generic applications coexist":
 	((items[0] != 10 or items[index] != 20 or items[-1] != 20)) | expect_false?
 	(items[indices[index]] != 20 or items[index - 1] != 10) | expect_false?
 	(items[counter.count] != 10 or [items.clone()][0][1] != 20) | expect_false?
-	(
-		(values(var counter)[(tick(var counter)?)] != 7 or counter.count != 2)
-		| expect_false?
-	)
+	((values(counter)[(tick(counter)?)] != 7 or counter.count != 2) | expect_false?)
 	identity[Int](items[0]) | expect_equal(10)?
 
 	callbacks: List[fn(Int) Int] := [identity[Int]]
@@ -223,7 +220,7 @@ fn returned_argument(var counter: Counter) Int!:
 				value: value
 				none: return ok(17)
 			,
-			second: (tick(var counter)?),
+			second: (tick(counter)?),
 		)
 	)
 
@@ -254,7 +251,7 @@ fn returned_loop(value: Int?) Int:
 
 test "expression exits preserve caller boundaries and evaluation order":
 	var counter = Counter(count: 0)
-	((returned_argument(var counter)?) != 17 or counter.count != 0) | expect_false?
+	((returned_argument(counter)?) != 17 or counter.count != 0) | expect_false?
 	propagated("3") | expect_equal(Result[Int, Error].ok(value: 3))?
 	propagated("no") | expect_equal(Result[Int, Error].error(cause: Error("missing")))?
 
@@ -307,7 +304,7 @@ fn observed_optional(var counter: Counter) Int?:
 test "match evaluates its input once and only the selected arm":
 	var counter = Counter(count: 0)
 
-	result := match observed_optional(var counter):
+	result := match observed_optional(counter):
 		value:
 			counter.count += 10
 			value + 1

@@ -715,8 +715,8 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 							base := (uy * comps[c].blocks_wide + ux) * 64
 							jpeg_block(
 								data,
-								var bits,
-								var comps[c],
+								bits,
+								comps[c],
 								base,
 								dc_tables[dc_ids[m]],
 								ac_tables[ac_ids[m]],
@@ -742,8 +742,8 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 									)
 									jpeg_block(
 										data,
-										var bits,
-										var comps[
+										bits,
+										comps[
 											c
 										],
 										base,
@@ -829,7 +829,7 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 				h_ratios[c],
 				v_ratios[c],
 				exacts[c],
-				var rows[c],
+				rows[c],
 			)
 
 		for x in 0..width:

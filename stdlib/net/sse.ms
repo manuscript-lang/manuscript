@@ -81,7 +81,7 @@ fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 		if byte == 10 and self.carriage and end == start:
 			self.carriage = false
 		else:
-			step := complete(var self, chunk, start, end, var events)
+			step := complete(self, chunk, start, end, events)
 			self.carriage = byte == 13
 
 			if step.is_error():
@@ -213,13 +213,13 @@ fn complete(
 		if exceeds(end - start, decoder.limits.max_line_bytes): return error(
 			Error("SSE limit exceeded", kind: "EOVERFLOW")
 		)
-		return end_line(var decoder, chunk, start, end, var events)
+		return end_line(decoder, chunk, start, end, events)
 
 	decoder.hold(chunk.slice(start, end).get())?
 
 	joined := decoder.line.drain()
 	decoder.line_bytes = 0
-	return end_line(var decoder, joined, 0, joined.length(), var events)
+	return end_line(decoder, joined, 0, joined.length(), events)
 
 fn end_line(
 	var decoder: Decoder,
@@ -235,7 +235,7 @@ fn end_line(
 		if bytes.slice(start, end).get().starts_with("\u{feff}".to_bytes()): from += 3
 
 	if from == end:
-		dispatch(var decoder, var events)
+		dispatch(decoder, events)
 		return ok()
 
 	line := bytes.decode_utf8_range(

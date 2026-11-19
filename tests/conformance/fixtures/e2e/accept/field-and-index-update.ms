@@ -25,18 +25,18 @@ fn main() Void:
     var reader = Reader(
         entries: [Map[String, Int](), Map[String, Int]()], names: ["a", "b"], depth: 0
     )
-    put(var reader, 1, "x", 5)
-    put(var reader, 1, "y", 6)
+    put(reader, 1, "x", 5)
+    put(reader, 1, "y", 6)
 
     var id = 0
     reader.entries[id].add("z", 7)
 
     var holder = Holder(reader: reader.clone())
-    grow(var holder, "c")
+    grow(holder, "c")
     holder.reader.entries[2].add("w", 8)
 
     var maps = [Map[String, Int](), Map[String, Int]()]
-    put_list(var maps, 1)
+    put_list(maps, 1)
 
     var total = 0
 

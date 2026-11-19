@@ -20,7 +20,7 @@ fn findings(source: &str) -> Vec<(String, String)> {
         .filter(|f| {
             [
                 "MSL118", "MSL119", "MSL120", "MSL121", "MSL122", "MSL126", "MSL127", "MSL128",
-                "MSL129",
+                "MSL129", "MSL136",
             ]
             .contains(&f.code)
         })
@@ -207,4 +207,14 @@ fn to_string_on_bytes_is_flagged() {
         .map(|f| f.pos.line)
         .collect();
     assert_eq!(lines, [3]);
+}
+
+#[test]
+fn a_written_var_at_a_call_is_dropped_and_a_plain_call_is_clean() {
+    let got = findings(include_str!("lint_terse/call_var.ms"));
+    assert_eq!(got.len(), 2, "{got:?}");
+    assert!(
+        got.iter()
+            .all(|(removed, with)| removed == "var " && with.is_empty())
+    );
 }

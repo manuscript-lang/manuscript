@@ -47,7 +47,7 @@ fn main() Void!:
     var queue = pipe[Int](capacity: 8)
     var jobs = queue.writer()
     var reader = queue.reader()
-    worker := promise(fn: work(var reader))
+    worker := promise(fn: work(reader))
     for job in [10, 20, 30]:
         jobs.write(job)?
     jobs.close()?

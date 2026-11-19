@@ -10,5 +10,5 @@ fn apply(var stock: Map[String, Int], items: List[Item]) Void:
 
 export fn main() Int:
     var stock = Map[String, Int]()
-    apply(var stock, [])
+    apply(stock, [])
     return 0

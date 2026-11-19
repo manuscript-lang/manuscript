@@ -59,6 +59,6 @@ fn main() Void:
 	maybe: Door? := Door(5)
 	print(f"map {maybe.map(fn d: d.id * 10).get_or(0)}")
 	var t: Taker = Counter(0)
-	print(f"interface {give(var t, Door(6))}")
+	print(f"interface {give(t, Door(6))}")
 	print(f"finished {finish(Door(7))}")
 	print(f"kept {kept.length()}")

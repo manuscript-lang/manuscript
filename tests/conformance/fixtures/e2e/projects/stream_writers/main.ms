@@ -39,7 +39,7 @@ fn run() Void!:
 	page := compile("{{ for p in points }}{{ p.x }}={{ p.label }}\n{{ end }}")?
 	data := to_data({"points": [Point(1, "one"), Point(2, "two")]})?
 	var out = stdout()
-	render_to(page, data, var out)?
+	render_to(page, data, out)?
 
 export fn main() Int:
 	result := run()

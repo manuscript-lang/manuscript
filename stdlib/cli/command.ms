@@ -412,7 +412,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 			cli_invalid_schema(f"flag help is reserved in {where}")
 		)
 
-		claim(var names, flag.name.clone(), f"flag {flag.name} in {where}")?
+		claim(names, flag.name.clone(), f"flag {flag.name} in {where}")?
 		if flag.short.is_empty(): continue
 		if flag.short.length() != 1 or flag.short == "h" or flag.short == "-":
 			return error(
@@ -421,7 +421,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 				)
 			)
 
-		claim(var shorts, flag.short.clone(), f"short -{flag.short} in {where}")?
+		claim(shorts, flag.short.clone(), f"short -{flag.short} in {where}")?
 
 	for flag in node.flags:
 		if text := flag.default:
@@ -472,7 +472,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 				)
 			)
 
-		claim(var words, child.name.clone(), f"command {child.name} in {where}")?
+		claim(words, child.name.clone(), f"command {child.name} in {where}")?
 
 	below := inherited.concat(persistent_flags(node.flags))
 	for child in node.children:
@@ -577,17 +577,17 @@ fn walk_from(
 				else:
 					var supplied = "true"
 					if at := cut: supplied = body.view(at + 1, body.length()).clone()
-					store(var values, chosen, supplied)?
+					store(values, chosen, supplied)?
 
 				continue
 
 			if at := cut:
-				store(var values, chosen, body.view(at + 1, body.length()).clone())?
+				store(values, chosen, body.view(at + 1, body.length()).clone())?
 				continue
 
 			if index >= argv.length(): return error(cli_missing_value(token))
 
-			store(var values, chosen, argv[index].clone())?
+			store(values, chosen, argv[index].clone())?
 			index += 1
 			continue
 
@@ -609,9 +609,9 @@ fn walk_from(
 	if not node.children.is_empty() and words.is_empty():
 		return ok(Parsed.Help(render_help(node, path, inherited)))
 
-	bind(node, words, var values, path)?
+	bind(node, words, values, path)?
 	for flag in inherited.concat(node.flags):
-		fill(var values, flag)?
+		fill(values, flag)?
 
 	fields := collect_fields(values, inherited.concat(node.flags), node.args)
 	return ok(Parsed.Run(Matches(values, path, fields)))
@@ -697,17 +697,14 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 	if not node.children.is_empty():
 		var commands = Table(columns: [Align.Left, Align.Left], indent: 2)
 		for child in node.children: help_row(
-			var commands,
+			commands,
 			[child.name.clone(), child.about.clone()],
 		)
 		out += f"\nCommands:\n{commands.render()}\n"
 
 	if not node.args.is_empty():
 		var arguments = Table(columns: [Align.Left, Align.Left], indent: 2)
-		for arg in node.args: help_row(
-			var arguments,
-			[arg.name.clone(), arg.help.clone()],
-		)
+		for arg in node.args: help_row(arguments, [arg.name.clone(), arg.help.clone()])
 		out += f"\nArguments:\n{arguments.render()}\n"
 
 	out += flag_section("Flags", node.flags.concat([help_flag()]))
@@ -732,7 +729,7 @@ fn flag_section(title: String, flags: List[Flag]) String:
 		var help = flag.help.clone()
 		if text := flag.default: help += f" (default {text})"
 		if flag.required: help += " (required)"
-		help_row(var table, [label, help])
+		help_row(table, [label, help])
 
 	return f"\n{title}:\n{table.render()}\n"
 

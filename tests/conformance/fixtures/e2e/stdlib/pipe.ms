@@ -22,7 +22,7 @@ test "a pipe delivers values in order and ends when every writer is closed":
 	out.write(3)?
 	out.close()?
 	p.close()?
-	expect_equal(drain(var input)?, [1, 2, 3])?
+	expect_equal(drain(input)?, [1, 2, 3])?
 
 test "each writer is its own end like dup: the reader ends after the last one closes":
 	var p = pipe[String](4)
@@ -96,7 +96,7 @@ test "a promise that owns a pipe writes to it through a writer of its own":
 	producer := promise(fn: produce(p, 5))
 	producer.wait()?
 	gate.close()?
-	expect_equal(drain(var input)?, [0, 1, 2, 3, 4])?
+	expect_equal(drain(input)?, [0, 1, 2, 3, 4])?
 
 fn produce(p: Pipe[Int], count: Int) Void!:
 	var out = p.writer()
@@ -115,10 +115,10 @@ test "several promises each move a writer of their own into a fan-in":
 	var second = p.writer()
 	var third = p.writer()
 	var input = p.reader()
-	a := promise(fn: ok(send_range(var first, 0)?))
-	b := promise(fn: ok(send_range(var second, 100)?))
-	c := promise(fn: ok(send_range(var third, 200)?))
-	var seen = drain(var input)?
+	a := promise(fn: ok(send_range(first, 0)?))
+	b := promise(fn: ok(send_range(second, 100)?))
+	c := promise(fn: ok(send_range(third, 200)?))
+	var seen = drain(input)?
 	seen.sort()
 	a.wait()?
 	b.wait()?
@@ -129,7 +129,7 @@ test "several promises each move a writer of their own into a fan-in":
 
 fn start_sender(p: Pipe[Int]) Promise[Void]:
 	var w = p.writer()
-	return promise(fn: send_range(var w, 0))
+	return promise(fn: send_range(w, 0))
 
 // The promise owns the writer from the capture on: the function that made it returning
 // does not close it.
@@ -139,7 +139,7 @@ test "a promise keeps the writer it captured after its maker returns":
 	var gate = p.writer()
 	sender := start_sender(p)
 	gate.close()?
-	expect_equal(drain(var input)?, [0, 1, 2, 3, 4])?
+	expect_equal(drain(input)?, [0, 1, 2, 3, 4])?
 	sender.wait()?
 
 fn send_many(var out: WriteStream[Int], from: Int, count: Int) Void!:
@@ -154,8 +154,8 @@ test "a reader takes queued values directly and still waits and ends in order":
 	var input = p.reader()
 	p.close()?
 
-	a := promise(fn: send_many(var first, 0, 5000))
-	b := promise(fn: send_many(var second, 5000, 5000))
+	a := promise(fn: send_many(first, 0, 5000))
+	b := promise(fn: send_many(second, 5000, 5000))
 	var total = 0
 	var count = 0
 
@@ -187,8 +187,8 @@ test "a consumer that always finds a value queued still meets its timeout":
 	var r = p.reader()
 	p.close()?
 
-	_prod := promise(fn: endless(var w))
-	cons := promise(fn: sum_mod(var r)).with(
+	_prod := promise(fn: endless(w))
+	cons := promise(fn: sum_mod(r)).with(
 		options: PromiseOptions(timeout: milliseconds(200))
 	)
 	expect_true(cons.wait().is_error())?
@@ -220,11 +220,11 @@ test "a pipe carries a writer by move, so its owner can push to the sender":
 	var gate = cmds.writer()
 	var first = pipe[String](4)
 	var firstIn = first.reader()
-	owner := promise(fn: room(var inbox))
+	owner := promise(fn: room(inbox))
 	join_room(cmds, 1, first)?
 	gate.close()?
 	owner.wait()?
-	expect_equal(drain_text(var firstIn)?, ["1 sees 1"])?
+	expect_equal(drain_text(firstIn)?, ["1 sees 1"])?
 
 fn drain_text(var input: ReadStream[String]) List[String]!:
 	var seen: List[String] = []

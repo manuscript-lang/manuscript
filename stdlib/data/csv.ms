@@ -420,7 +420,7 @@ fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
 	if decoded.is_none(): return invalid_text()
 
 	text := decoded.get_or("")
-	return write_rows(parse(text, self.options)?, var out)
+	return write_rows(parse(text, self.options)?, out)
 
 fn var CsvRows.finish(var out: List[List[String]]) Void!:
 	data := join(self.pending)
@@ -434,7 +434,7 @@ fn var CsvRows.finish(var out: List[List[String]]) Void!:
 	if decoded.is_none(): return invalid_text()
 
 	text := decoded.get_or("")
-	return write_rows(parse(text, self.options)?, var out)
+	return write_rows(parse(text, self.options)?, out)
 
 fn invalid_text() Void!:
 	return error(Error("CSV: invalid UTF-8", kind: "EBADMSG"))

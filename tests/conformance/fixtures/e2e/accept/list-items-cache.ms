@@ -35,7 +35,7 @@ test "a list that grows inside the loop is read through its current storage":
     while i < 6:
         seen += values.get(i % values.length())
         if i < 3:
-            grow(var values)
+            grow(values)
         i += 1
 
     expect_equal(values.length(), 6)?

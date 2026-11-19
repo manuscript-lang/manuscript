@@ -7,6 +7,6 @@ fn fill(var xs: List[Int]) Void:
 
 fn f() Int:
     var p = Pair(left: [0], right: [0])
-    fill(var p.left)
-    fill(var p.right)
+    fill(p.left)
+    fill(p.right)
     return p.left.length() + p.right.length()

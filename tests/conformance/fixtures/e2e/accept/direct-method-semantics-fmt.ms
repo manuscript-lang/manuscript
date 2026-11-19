@@ -58,7 +58,7 @@ fn tried(rect: Rect, limit: Int) Int!Error:
 
 fn order(rect: Rect, var log: List[String]) Int:
     log.append(value: "receiver")
-    return rect.scaled(by: id(log: var log))
+    return rect.scaled(by: id(log: log))
 
 fn id(var log: List[String]) Int:
     log.append(value: "argument")
@@ -82,5 +82,5 @@ test "direct methods":
         error(cause): (cause.message == "too big") | expect_true?
 
     var log = List[String]()
-    (order(rect: rect, log: var log) == 12) | expect_true?
+    (order(rect: rect, log: log) == 12) | expect_true?
     (log.join(separator: ",") == "receiver,argument") | expect_true?

@@ -15,7 +15,7 @@ fn shift(var p: Pt, dx: Int) Void:
     p.x += dx
 
 fn shift_at(var pts: List[Pt], i: Int, dx: Int) Void:
-    shift(var pts[i], dx)
+    shift(pts[i], dx)
 
 fn grow(var rows: List[Row], i: Int, j: Int) Void:
     rows[i].cells.append(j)
@@ -23,18 +23,18 @@ fn grow(var rows: List[Row], i: Int, j: Int) Void:
 
 test "a var argument rooted at an element with a variable index writes back":
     var pts = [Pt(0, 0), Pt(1, 1)]
-    shift_at(var pts, 1, 5)
+    shift_at(pts, 1, 5)
     expect_equal(pts[1].x, 6)?
     expect_equal(pts[0].x, 0)?
     for i in 0..2:
-        shift(var pts[i], 10)
+        shift(pts[i], 10)
     expect_equal(pts[0].x, 10)?
     expect_equal(pts[1].x, 16)?
 
 test "field assignment and mutators through a variable element index":
     var rows = [Row([1], Pt(0, 0)), Row([], Pt(5, 5))]
     for i in 0..2:
-        grow(var rows, i, i + 10)
+        grow(rows, i, i + 10)
     expect_equal(rows[0].cells, [1, 10])?
     expect_equal(rows[1].cells, [11])?
     expect_equal(rows[1].pt.y, 11)?

@@ -42,10 +42,10 @@ test "TCP loopback writes reads half close and EOF":
 	var server = listener.accept(2.seconds()).wait()?
 	client.output.write("hello".to_bytes())?
 	client.output.flush()?
-	expect_equal((within(var server.input, 2.seconds())?).get(), "hello".to_bytes())?
+	expect_equal((within(server.input, 2.seconds())?).get(), "hello".to_bytes())?
 	expect_equal(server.info.peer_address, client.info.local_address)?
 	client.output.end()?
-	expect_true((within(var server.input, 2.seconds())?).is_none())?
+	expect_true((within(server.input, 2.seconds())?).is_none())?
 
 test "a read cancelled by its timeout leaves the stream closable":
 	listener := listen("127.0.0.1:0")?
@@ -54,7 +54,7 @@ test "a read cancelled by its timeout leaves the stream closable":
 
 	// The peer is silent, so the limit cancels the read mid-park. The borrowed stream
 	// still belongs to the caller: closing it afterwards frees the socket once.
-	expect_true(within(var client.input, 50.milliseconds()).is_error())?
+	expect_true(within(client.input, 50.milliseconds()).is_error())?
 	client.close()?
 
 fn accept_all(listener: Listener) Void!:
@@ -82,14 +82,11 @@ test "closing the input leaves the output open and closing both ends the connect
 	client.input.end()?
 	client.output.write("still open".to_bytes())?
 	client.output.flush()?
-	expect_equal(
-		(within(var server.input, 2.seconds())?).get(),
-		"still open".to_bytes(),
-	)?
+	expect_equal((within(server.input, 2.seconds())?).get(), "still open".to_bytes())?
 
 	// Closing the output too closes the socket: the peer sees the end of the stream.
 	client.output.end()?
-	expect_true((within(var server.input, 2.seconds())?).is_none())?
+	expect_true((within(server.input, 2.seconds())?).is_none())?
 
 test "host names resolve whatever their case":
 	listener := listen("127.0.0.1:0")?
@@ -113,7 +110,7 @@ test "UDP loopback preserves datagram data and sender":
 	var sender = bind_datagram("127.0.0.1:0")?
 	sender.output.write(Datagram("packet".to_bytes(), receiver.address.clone()))?
 
-	packet := (within(var receiver.input, 2.seconds())?).get()
+	packet := (within(receiver.input, 2.seconds())?).get()
 	expect_false(
 		(packet.data != "packet".to_bytes() or packet.address != sender.address)
 	)?
@@ -179,7 +176,7 @@ test "a promise accepts on a listener it owns":
 // connection.
 fn accept_and_read(listener: Listener) Int:
 	var conn = listener.accept(2.seconds()).wait().get()
-	r := within(var conn.input, 2.seconds())
+	r := within(conn.input, 2.seconds())
 	if r.is_ok() and r.get().is_some(): return 1
 
 	return 0
@@ -197,7 +194,7 @@ test "a promise reads a connection it owns":
 // Answers one DNS query with a single MX record: preference 10, exchange
 // mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
-	query := (within(var served.input, 2.seconds())?).get()
+	query := (within(served.input, 2.seconds())?).get()
 	question := (query.data.slice(12, query.data.length())).get_or(Bytes([]))
 	header := Bytes(
 		[query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
@@ -234,7 +231,7 @@ test "resolve returns typed DNS records from the configured resolver":
 		)
 	)
 	var answering = server
-	answered := answer_mx(var answering)?
+	answered := answer_mx(answering)?
 	mx := asking.wait()?
 	expect_equal(mx.length(), 1)?
 	expect_equal(mx[0].kind.to_string(), "MX")?
@@ -250,7 +247,7 @@ test "an empty host listens on every interface, with or without IPv6":
 	var server = listener.accept(2.seconds()).wait()?
 	client.output.write("hi".to_bytes())?
 	client.output.flush()?
-	expect_equal((within(var server.input, 2.seconds())?).get(), "hi".to_bytes())?
+	expect_equal((within(server.input, 2.seconds())?).get(), "hi".to_bytes())?
 	listener.close()?
 
 	socket := bind_datagram(":0")?

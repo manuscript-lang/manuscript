@@ -65,7 +65,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	missing: Int? := none
 	(
 		(
-			require_value(counted(var counter), present).get() != 0
+			require_value(counted(counter), present).get() != 0
 			or counter.calls != 1
 		) | expect_false?
 	)

@@ -39,7 +39,7 @@ fn apply_environment(var settings: Settings) Void!:
 
 fn main() Void!:
     var settings = from_file("settings.json")?
-    apply_environment(var settings)?
+    apply_environment(settings)?
     print(f"listening on {settings.host}:{settings.port}, level {settings.level}")
 ```
 

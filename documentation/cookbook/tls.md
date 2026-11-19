@@ -37,7 +37,7 @@ fn read_text(path: String) String!:
     return bytes.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
 
 fn hello(var exchange: HttpExchange) Void!:
-    return reply(var exchange, text(200, "hello over TLS"))
+    return reply(exchange, text(200, "hello over TLS"))
 
 fn main() Void!:
     args := arguments()
