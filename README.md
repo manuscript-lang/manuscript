@@ -10,7 +10,7 @@
 
 </div>
 
-A statically typed, natively compiled language with single ownership: no garbage collector and no lifetime annotations. Agents now write much of the code, so the compiler checks ownership, types and effects, and every diagnostic names its cause and fix. An agent can correct itself, and a person can review the result through built-in diagrams and an interactive code map.
+Manuscript is a statically typed, natively compiled language. Every value has one owner, so there is no garbage collector and no lifetime annotations. Agents now write much of our code, so the compiler checks ownership, types and effects, and every diagnostic names its cause and its fix. That lets an agent correct itself, and lets a person review the result through built-in diagrams and an interactive code map.
 
 Manuscript makes agent-generated code practical to work with. The common footguns are gone, and the syntax is token-efficient and readable at a glance, so agents get it right.
 
