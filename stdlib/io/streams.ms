@@ -285,9 +285,10 @@ fn var Forwarder[T].flush() Void!:
 	return self.inbox.flush()
 
 fn move Forwarder[T].close() Void!:
-	self.inbox.close()?
-
-	_count := self.task.wait()?
+	// A copy that failed (the client left) was already reported to writers as EBADF, so
+	// closing is not a second failure.
+	_closed := self.inbox.close()
+	_copied := self.task.wait()
 	return ok()
 
 // Internal: moves every item of `mail` to `out`, then flushes it.
