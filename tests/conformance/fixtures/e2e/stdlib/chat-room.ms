@@ -59,7 +59,7 @@ test "a room owner pushes each line to every connected websocket":
 	var room = pipe[Command](capacity: 16)
 	var inbox = room.reader()
 	var gate = room.writer()
-	_owner := promise(fn: room_owner(var inbox))
+	owner := promise(fn: room_owner(var inbox))
 
 	handler := fn(var exchange: HttpExchange) Void!:
 		socket := exchange.upgrade(
@@ -116,7 +116,21 @@ test "a room owner pushes each line to every connected websocket":
 	alice.output.write(WebSocketMessage("hi".to_bytes(), WebSocketKind.Text))?
 	expect_equal(heard(var bob)?, "hi")?
 	expect_equal(heard(var alice)?, "hi")?
+
+	// A client that leaves is dropped on the next line; the room keeps serving the
+	// rest.
+	bob.close()?
+	alice.output.write(WebSocketMessage("one".to_bytes(), WebSocketKind.Text))?
+	expect_equal(heard(var alice)?, "one")?
+	alice.output.write(WebSocketMessage("two".to_bytes(), WebSocketKind.Text))?
+	expect_equal(heard(var alice)?, "two")?
+
+	// Once every client and the gate are closed, the owner ends and closes what it
+	// held.
+	alice.close()?
 	gate.close()?
+	server.close()?
+	owner.wait()?
 
 fn heard(var socket: WebSocket) String!:
 	message := (within(var socket.input, 3.seconds())?).get()
