@@ -73,3 +73,36 @@ fn unknown_text_boundaries_do_not_offer_whitespace_deletions() {
         assert!(findings.iter().all(|f| f.code != "MSL001"), "{findings:?}");
     }
 }
+
+#[test]
+fn a_number_comment_after_an_operand_reads_like_floor_division() {
+    let flagged = [
+        "mid := (lo + hi) // 2\n",
+        "mid := (lo + hi) //2\n",
+        "half := total // 2.0\n",
+        "half := size // 10\r\n",
+    ];
+    for source in flagged {
+        let findings = ms_tooling::lint::lint_source(&"a.ms".into(), source);
+        assert_eq!(findings.len(), 1, "{source:?}: {findings:?}");
+        assert_eq!(findings[0].code, "MSL133");
+        assert!(source[findings[0].pos.offset as usize..].starts_with("//"));
+    }
+    let quiet = [
+        "// 2 is the default\n",
+        "x := 1 // keep one\n",
+        "x := 1 // 2 is the default\n",
+        "x := f(a) //\n",
+        "x := \"a // 2\"\n",
+        "x := 4 // see below\n",
+        "x := 1 / 2\n",
+        "product := 1 + 2 * 3 // 7\n",
+    ];
+    for source in quiet {
+        let findings = ms_tooling::lint::lint_source(&"a.ms".into(), source);
+        assert!(
+            findings.iter().all(|f| f.code != "MSL133"),
+            "{source:?}: {findings:?}"
+        );
+    }
+}
