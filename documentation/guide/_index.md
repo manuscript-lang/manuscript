@@ -16,6 +16,6 @@ The guide teaches Manuscript through the small command-line programs a business 
 6. [Doing things at once](doing-things-at-once.md): reading several files together.
 7. [Organizing code](organizing-code.md): interfaces and generics for items that are priced differently.
 8. [Testing and shipping](testing-and-shipping.md): tests, a property test, and a release build.
-9. [Working with an agent](working-with-an-agent.md): the loop from first typo to reviewed change.
+9. [Working with an agent](working-with-an-agent.md): installing the skill, the agent's check loop, and reviewing its change.
 
 Run `ms` first if you have not: [Run your first program](../learn/getting-started.md). Each chapter ends with a link to the exact rules.
