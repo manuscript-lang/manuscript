@@ -152,7 +152,7 @@ ms init hello
 
 ## Agent skill
 
-The skill ships separately from `ms`, so an agent machine needs no compiler. On Linux and macOS:
+A short guide that teaches a coding agent to write Manuscript. It installs on its own, without the compiler. On Linux and macOS:
 
 ```sh
 curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh
