@@ -225,7 +225,7 @@ fn load_entries(
         overlay: &overlay,
         recover: editor.recover,
         graph: &mut graph,
-        active: HashSet::new(),
+        active: Vec::new(),
         loaded: HashMap::new(),
         failed: HashMap::new(),
         resolved: HashMap::new(),
@@ -502,7 +502,8 @@ struct Loader<'a> {
     overlay: &'a Overlay,
     recover: bool,
     graph: &'a mut Graph,
-    active: HashSet<String>,
+    // Import stack, so a cycle can name its whole path.
+    active: Vec<String>,
     loaded: HashMap<String, Name>,
     // Replay secondary parse diagnostics too, preserving their order and multiplicity.
     failed: HashMap<String, Failure>,
@@ -532,9 +533,15 @@ impl Loader<'_> {
     fn visit(&mut self, syms: ms_syntax::Names, canonical: &str) -> Result<Name, Failure> {
         let logical = self.config.logical(canonical).map_err(Failure::Error)?;
         let file: Arc<str> = Arc::from(logical.as_str());
-        if self.active.contains(canonical) {
+        if let Some(start) = self.active.iter().position(|a| a == canonical) {
+            let mut path: Vec<String> = Vec::new();
+            for step in &self.active[start..] {
+                path.push(self.config.logical(step).map_err(Failure::Error)?);
+            }
+            path.push(logical.clone());
+            let path = path.join(" -> ");
             return Err(Failure::Cycle(format!(
-                "cyclic module dependency at {logical}; modules cannot import each other in a loop, so move the shared declarations into a third module that both import"
+                "cyclic module dependency {path}; modules cannot import each other in a loop, so move the shared declarations into a third module that both import"
             )));
         }
         if let Some(key) = self.loaded.get(canonical) {
@@ -547,9 +554,9 @@ impl Loader<'_> {
             return Err(failure.clone());
         }
         self.add_input(canonical.to_string());
-        self.active.insert(canonical.to_string());
+        self.active.push(canonical.to_string());
         let result = self.load(syms, canonical, &file);
-        self.active.remove(canonical);
+        self.active.pop();
         if let Err(failure @ (Failure::Diagnostic(..) | Failure::Error(_))) = &result {
             self.failed.insert(canonical.to_string(), failure.clone());
         }
@@ -727,7 +734,7 @@ mod tests {
             overlay: &overlay,
             recover: false,
             graph: &mut graph,
-            active: HashSet::new(),
+            active: Vec::new(),
             loaded: HashMap::new(),
             failed: HashMap::new(),
             resolved: HashMap::new(),

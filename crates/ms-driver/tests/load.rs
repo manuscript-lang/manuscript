@@ -127,7 +127,7 @@ fn cycles_are_reported_at_the_closing_import() {
     assert!(
         issue
             .message
-            .starts_with("cyclic module dependency at a.ms;"),
+            .starts_with("cyclic module dependency a.ms -> b.ms -> a.ms;"),
         "{issue}"
     );
 }

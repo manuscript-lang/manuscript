@@ -22,31 +22,9 @@
       "stdout": "",
       "diagnostics": [
         {
-          "code": "MS3080",
+          "code": "MS3001",
           "phase": "type",
-          "message": "cannot infer type argument T for common_result; write common_result[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 92,
-            "column": 6,
-            "offset": 1881
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "'?' requires a Result or an Optional, found <invalid>; apply '?' to a value of type Result[T, E] or T?",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 92,
-            "column": 6,
-            "offset": 1881
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
+          "message": "expected Result[T, Error], found String; the argument must be a Result[T, Error], and the type variables are inferred from it",
           "position": {
             "file": "builtin-parity.ms",
             "line": 92,

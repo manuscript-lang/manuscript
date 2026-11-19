@@ -34,6 +34,15 @@ pub(crate) struct CallContext {
     pub conflict: bool,
 }
 
+/// A parameter type whose outer shape (`List[T]`) the argument cannot have, so the
+/// failure is a mismatch rather than two arguments disagreeing about a variable.
+fn shape_differs(pattern: &Ty, actual: &Ty, vars: &VarSet) -> bool {
+    !vars.contains(&pattern.id)
+        && !matches!(pattern.kind, Kind::Function | Kind::Contract)
+        && !matches!(actual.kind, Kind::Function | Kind::Contract)
+        && pattern.id != actual.id
+}
+
 pub(crate) const CONFLICTING_INFERENCE: &str = "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)";
 
 /// The function type a callback argument is checked against.
@@ -353,8 +362,24 @@ impl Checker {
             if self.callback_needs_result(arg, &pattern, &actual_ty) {
                 return;
             }
-            self.conflicted_arguments.insert(arg.value.id);
-            self.type_error(arg.pos, CONFLICTING_INFERENCE);
+            let shape = shape_differs(&pattern, &actual_ty, vars);
+            let note = if shape {
+                format!(
+                    "expected {pattern_t}, found {actual_t}; the argument must be a {pattern_t}, and the type variables are inferred from it",
+                    pattern_t = pattern.display(self.syms),
+                    actual_t = actual_ty.display(self.syms)
+                )
+            } else {
+                CONFLICTING_INFERENCE.to_string()
+            };
+            self.conflicted_arguments.insert(arg.value.id, note.clone());
+            if shape {
+                self.type_error_with_cause(arg.pos, Cause::Mismatch, note);
+                self.unknown_type = true;
+                self.label_mismatch = true;
+            } else {
+                self.type_error(arg.pos, note);
+            }
         }
     }
 

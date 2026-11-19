@@ -820,3 +820,36 @@ fn completion_recovers_incomplete_multiline_interpolation() {
         }
     }
 }
+
+/// The fix edits the declaration, not the flagged assignment, and is still offered
+/// when the editor asks only about the assignment's line.
+#[test]
+fn a_fix_elsewhere_is_offered_at_the_diagnostic() {
+    let syms = ms_syntax::Names::global();
+    let source = include_str!("editing_regressions/assign-immutable.ms");
+    let ws = Workspace::new("editing-actions");
+    let d = Document::new(ws.uri("main.ms"), source);
+    let checked = analyze(syms, &support::session(), &d, &Documents::new());
+    let at = Position {
+        line: 2,
+        character: 4,
+    };
+    let request = Range { start: at, end: at };
+    let found = editor_actions(
+        syms,
+        &d,
+        &checked,
+        &Tooling,
+        &Documents::new(),
+        request,
+        &["quickfix".to_string()],
+    );
+    let action = found
+        .iter()
+        .find(|a| title(a) == "Replace with `var total =`")
+        .expect("declaration fix");
+    assert_eq!(
+        apply(source, action),
+        source.replace("total := 1", "var total = 1")
+    );
+}
