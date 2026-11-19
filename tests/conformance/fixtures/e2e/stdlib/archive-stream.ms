@@ -124,7 +124,7 @@ fn sample() List[ArchiveEntry]:
 	]
 
 fn read_entries(
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	options: ArchiveOptions = ArchiveOptions(),
 ) List[ArchiveEntry]!:
 	var entries = tar_entries(input, options)

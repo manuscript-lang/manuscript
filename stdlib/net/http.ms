@@ -208,7 +208,7 @@ fn HttpClient.request_stream(
 	method: HttpMethod,
 	url: String,
 	headers: HttpHeaders,
-	body: ReadStream[Bytes],
+	move body: ReadStream[Bytes],
 	max_response_bytes: Int? = none,
 	timeout: Duration? = none,
 ) StreamingResponse!:
@@ -481,7 +481,7 @@ fn var ResponseSource.next() Bytes?!:
 fn move ResponseSource.close() Void!:
 	return self.raw.close()
 
-fn response(raw: RawResponse) StreamingResponse:
+fn response(move raw: RawResponse) StreamingResponse:
 	metadata := raw.metadata()
 	return StreamingResponse(
 		metadata: metadata,
@@ -516,7 +516,12 @@ fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
 
 	return ok(head)
 
-fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit: Int?) Bytes!:
+fn read_more(
+	var exchange: HttpExchange,
+	chunks: List[Bytes],
+	total: Int,
+	limit: Int?,
+) Bytes!:
 	var parts = chunks
 	var size = total
 

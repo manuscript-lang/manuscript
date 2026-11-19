@@ -496,16 +496,18 @@ impl<'a> FnLower<'a> {
                     .get(&b.uid)
                     .copied()
                     .map(|flag| self.b.use_var(flag));
-                let mut old = self.local_take(&l);
+                let mut old = Some(self.local_take(&l));
                 // A registered resource closes the value it replaces; the scope closes the new one.
                 if self.var_slots.iter().any(|v| v.uid == b.uid) {
                     // A `var` parameter holds the caller's value, which the caller closes at
                     // the end, but a value this assignment replaces is the callee's to close.
                     let ty = ms_check::api::types::sub(&b.ty, &self.subst);
-                    old = self.close_discarded_ty(&ty, old)?;
+                    old = self.close_discarded_ty(&ty, old.expect("held"))?;
                 }
                 self.refill_local(b.uid, &l, new);
-                if self.cx_needs_drop_ty(l.ty) {
+                if let Some(old) = old
+                    && self.cx_needs_drop_ty(l.ty)
+                {
                     match was_held {
                         Some(held) => {
                             self.b.emit(Op::DropIf, &[held, old], Imm::None, None);
@@ -918,9 +920,19 @@ impl<'a> FnLower<'a> {
         let cur = self.b.type_get(rid, idx, base);
         let (cur_own, moved) = self.take_projection(cur);
         let inner = if rest.is_empty() {
-            // The field's old value dies here: a resource in it closes first.
-            let cur_own = self.close_discarded(first, cur_own)?;
-            self.drop_value(cur_own);
+            // The field's old value dies here: a resource in it closes first. A field the
+            // statement before moved out is a hole: there is nothing to close or drop.
+            let refill = self.cx.fact(
+                self.hir.data.file,
+                first.id,
+                ms_check::api::ownership::Fact::FieldRefill,
+            );
+            if refill {
+                self.b
+                    .emit(Op::Forget, &[cur_own], ms_mir::ir::Imm::None, None);
+            } else if let Some(cur_own) = self.close_discarded(first, cur_own)? {
+                self.drop_value(cur_own);
+            }
             new
         } else {
             self.set_path(cur_own, true, rest, new)?

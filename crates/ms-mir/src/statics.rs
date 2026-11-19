@@ -52,6 +52,16 @@ pub fn descriptor(m: &Module, lay: &Layouts, key: Ty) -> DescPlan {
         return DescPlan::Runtime(name);
     }
     let mem = lay.mem(ty);
+    if scope == Ty::FORGOTTEN_SCOPE {
+        return DescPlan::Table(DescTable {
+            size: mem.size,
+            align: mem.align,
+            kind: KIND_POD,
+            inner: [None, None],
+            slot_glue: None,
+            eq_hash: None,
+        });
+    }
     let mut inner: [Option<Ty>; 2] = [None, None];
     let mut slot_glue = None;
     let kind = match m.types.kind(ty) {

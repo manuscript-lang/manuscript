@@ -13,7 +13,7 @@ fn var Journal.flush() Result[Void, Error]:
 type Holder:
     journal: Journal
 
-fn take(j: Journal) Holder:
+fn take(move j: Journal) Holder:
     return Holder(j)
 
 export fn kept_on_one_path(c: Bool) Int:

@@ -436,11 +436,13 @@ impl FnLower<'_> {
         let Some(b) = b else {
             let ty = self.ty_of(v);
             if self.holds(ty) {
-                let mut v = v;
+                let mut v = Some(v);
                 if let Some(kind) = self.part_closer_mir(ty)? {
-                    v = self.close_discarded_kind(&kind, v);
+                    v = self.close_discarded_kind(&kind, v.expect("held"));
                 }
-                self.drop_value(v);
+                if let Some(v) = v {
+                    self.drop_value(v);
+                }
             }
             return Ok(());
         };

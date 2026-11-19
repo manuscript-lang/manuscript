@@ -43,7 +43,7 @@ fn early(var output: WriteStream[String]) Int:
 fn failure() Int!Error:
 	return error(Error("expected"))
 
-fn propagate(output: WriteStream[String]) Int!Error:
+fn propagate(move output: WriteStream[String]) Int!Error:
 	_resource := Resource(label: "propagation", output: output)
 	number := failure()?
 	return ok(number)

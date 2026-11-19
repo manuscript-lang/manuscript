@@ -43,6 +43,20 @@ fn same_instance(a: &Ty, b: &Ty) -> bool {
             .all(|(a, b)| Rc::ptr_eq(a, b) || same(a, b))
 }
 
+/// Whether the interface `t` declares `move fn close()`: a value of it owns what it was made from.
+fn declares_owned_close(syms: ms_syntax::Names, t: &Ty) -> bool {
+    t.def.as_ref().is_some_and(|def| {
+        def.operations.borrow().iter().any(|op| {
+            syms.str(op.name) == "close"
+                && op
+                    .decl
+                    .as_ref()
+                    .and_then(|d| d.method())
+                    .is_some_and(|m| m.consuming)
+        })
+    })
+}
+
 /// How values of a type are passed around.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
@@ -215,7 +229,9 @@ impl Classifier {
             }
             // A `Closeable` value owns what it was made from and closes it. Other interfaces
             // with a `close` (a channel's transport) are handles their holders close explicitly.
-            Kind::Contract if t.is(Builtin::Closeable) => Class::Resource,
+            Kind::Contract if t.is(Builtin::Closeable) || declares_owned_close(syms, t) => {
+                Class::Resource
+            }
             Kind::Function | Kind::Contract => Class::Move,
             Kind::Native => self.native(syms, t, visiting),
             Kind::Type | Kind::Alternative => self.nominal(syms, t, visiting),

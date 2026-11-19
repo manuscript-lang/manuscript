@@ -17,7 +17,7 @@ fn ends_promptly(address: String, partial: String) Bool!:
     var conn = connect(address).wait()?
     conn.output.write(partial.to_bytes())?
     conn.output.flush()?
-    conn.output.close()?
+    conn.output.end()?
     next := conn.input.next(timeout: milliseconds(2000))
     if closed := next:
         return ok(closed.is_none())

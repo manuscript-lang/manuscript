@@ -39,7 +39,7 @@ fn move OneByte.close() Void!:
 
 // Returns `input` limited to one byte per read. This exposes code that assumes a read
 // fills its buffer.
-export fn one_byte(input: ReadStream[Bytes]) ReadStream[Bytes]:
+export fn one_byte(move input: ReadStream[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](OneByte(input, none))
 
 type FailAfter:
@@ -69,7 +69,7 @@ fn move FailAfter.close() Void!:
 // with `cause`, even if `input` has ended. Use it to check that a parser reports a
 // truncated or broken source instead of treating it as a clean end of input.
 export fn fail_after(
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	after: Int,
 	cause: Error,
 ) ReadStream[Bytes]:
@@ -104,7 +104,7 @@ fn move FailingSink.close() Void!:
 // the write that fits under the limit, and then fails that write and every later one
 // with `cause`. Use it to check error handling on a full disk or closed pipe.
 export fn fail_writer_after(
-	output: WriteStream[Bytes],
+	move output: WriteStream[Bytes],
 	after: Int,
 	cause: Error,
 ) WriteStream[Bytes]:

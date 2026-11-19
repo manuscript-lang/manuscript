@@ -478,17 +478,13 @@ pub(crate) fn mutated_locals(
 /// The parameters (receiver first) every source function changes: those it declares `var`. The
 /// checker rejects a change through any other parameter, so no body scan is needed (over the
 /// whole conformance corpus the earlier inference added nothing to this set).
-pub(crate) fn infer_mutated(
-    classes: &ms_check::api::ownership::Classifier,
-    callables: &HashMap<FnKey, Rc<Callable>>,
-) -> HashSet<ParamKey> {
+pub(crate) fn infer_mutated(callables: &HashMap<FnKey, Rc<Callable>>) -> HashSet<ParamKey> {
     let mut mutated = HashSet::default();
     for (key, c) in callables {
         let has_self = c.self_binding.is_some();
         // A `move` close takes its receiver, but the scope-end glue runs it on the owner's
         // storage like a `var` one: the owner frees what the close leaves.
-        let closes = classes.is_closer(&c.func);
-        if has_self && c.func.method().is_some_and(|m| m.mutating || closes) {
+        if has_self && c.func.method().is_some_and(|m| m.mutating) {
             mutated.insert((*key, 0));
         }
         let base = usize::from(has_self);

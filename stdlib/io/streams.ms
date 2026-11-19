@@ -107,7 +107,10 @@ fn move Lines.close() Void!:
 // Reads lines of text from a byte stream such as `stdin()`. It splits `input` at
 // `\n` and removes a trailing `\r`. A line longer than `max_bytes` returns
 // `EOVERFLOW`, and a line that is not valid UTF-8 returns `EBADMSG`.
-export fn lines(input: ReadStream[Bytes], max_bytes: Int? = none) ReadStream[String]:
+export fn lines(
+	move input: ReadStream[Bytes],
+	max_bytes: Int? = none,
+) ReadStream[String]:
 	return ReadStream[String](
 		Lines(input, "".to_bytes(), 0, false, [], 0, false, max_bytes)
 	)
@@ -170,7 +173,7 @@ fn move Mapped[T, U].close() Void!:
 
 // Returns a stream of `f` applied to each item of `input`. Closing it closes
 // `input`.
-export fn map[T, U](input: ReadStream[T], f: fn(T) U) ReadStream[U]:
+export fn map[T, U](move input: ReadStream[T], f: fn(T) U) ReadStream[U]:
 	return ReadStream[U](Mapped[T, U](input, f))
 
 type Filtered[T]:
@@ -191,7 +194,7 @@ fn move Filtered[T].close() Void!:
 
 // Returns a stream of the items of `input` for which `keep` is true, in order.
 // Closing it closes `input`.
-export fn filter[T](input: ReadStream[T], keep: fn(T) Bool) ReadStream[T]:
+export fn filter[T](move input: ReadStream[T], keep: fn(T) Bool) ReadStream[T]:
 	return ReadStream[T](Filtered[T](input, keep))
 
 // Internal: the first `left` items of another stream; it never pulls past them.
@@ -213,7 +216,7 @@ fn move Taker[T].close() Void!:
 // items are never read, so `take` can end an endless stream. A failed read does not
 // count as an item. A `count` of 0 or less gives an empty stream. Closing it closes
 // `input`.
-export fn take[T](input: ReadStream[T], count: Int) ReadStream[T]:
+export fn take[T](move input: ReadStream[T], count: Int) ReadStream[T]:
 	return ReadStream[T](Taker[T](input, count))
 
 // Combines the items of `input` in order into one value: `f` takes the value so far

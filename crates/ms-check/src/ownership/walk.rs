@@ -360,16 +360,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         w.facts.ret_ctors = std::mem::take(&mut w.ret_ctors).into_iter().collect();
     }
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
-    // A close runs on the owner's storage, which frees what it leaves: the callee does not
-    // take the receiver, whatever its caller is told.
-    let closes = cx.classes.is_closer(&cx.c.func);
-    w.facts.receiver = cx.c.self_binding.as_ref().map(|_| {
-        if closes {
-            ParamMode::Mutate
-        } else {
-            summary.receiver
-        }
-    });
+    w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
     Outcome {
         facts: w.facts,
         diagnostics: w.diags,
@@ -542,11 +533,27 @@ impl Walker<'_> {
             self.declare(b, Role::Fixture, Perm::Mutable, None, false);
         }
         let mut positions = Positions(HashMap::default());
+        for d in params.iter().filter_map(|p| p.default.as_ref()) {
+            visit::walk_expr(&mut positions, d);
+        }
         match c.body() {
             Body::Block(body) => visit::walk_block(&mut positions, body),
             Body::Expr(e) => visit::walk_expr(&mut positions, e),
         }
         self.positions = positions.0;
+        // A default runs in the callee's frame, so what it binds is owned and closed there. Only
+        // those bindings' facts are kept: the default is checked in the caller, so its
+        // diagnostics and its effect on the parameters are not reported here.
+        let (reported, consumed, consumed_at) = (
+            self.diags.len(),
+            self.consumed.clone(),
+            self.consumed_at.clone(),
+        );
+        for d in params.iter().filter_map(|p| p.default.as_ref()) {
+            self.expr(d, Demand::Read);
+        }
+        self.diags.truncate(reported);
+        (self.consumed, self.consumed_at) = (consumed, consumed_at);
         match c.body() {
             Body::Block(body) => self.block(body),
             Body::Expr(e) => self.returned(e),
@@ -654,15 +661,7 @@ impl Walker<'_> {
                     b.ty.kind,
                     Kind::Type | Kind::Alternative | Kind::Native | Kind::Variable | Kind::Contract
                 );
-            // A close's own receiver stays with its owner, which frees what the close leaves.
-            let own_close = self.cx.classes.is_closer(&self.cx.c.func)
-                && self
-                    .cx
-                    .c
-                    .self_binding
-                    .as_ref()
-                    .is_some_and(|s| s.uid == b.uid);
-            if !tracked || own_close {
+            if !tracked {
                 continue;
             }
             let moves: HashSet<NodeId> = self

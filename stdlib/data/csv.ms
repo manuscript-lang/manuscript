@@ -452,7 +452,7 @@ record; exceeding it fails the read with `EOVERFLOW`. A malformed record fails t
 `EBADMSG`, and invalid `options` with `EINVAL`. Closing the result closes `input`.
 */
 export fn csv_rows(
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	options: CsvOptions = CsvOptions(),
 	max_record_bytes: Int? = none,
 ) ReadStream[List[String]]:
@@ -564,7 +564,7 @@ options' line ending). Invalid `options` fail the first write with `EINVAL`. Wri
 `flush().wait()` uses that sink's completion condition; a pipe may retain up to its capacity of unread values. Closing the result closes `output`.
 */
 export fn csv_writer(
-	output: WriteStream[Bytes],
+	move output: WriteStream[Bytes],
 	options: CsvOptions = CsvOptions(),
 ) WriteStream[List[String]]:
 	return WriteStream[List[String]](CsvRowsSink(output: output, options: options))

@@ -21,7 +21,10 @@ use std::fmt::Write;
 /// Renders a type.
 pub fn ty_str(m: &Module, t: Ty) -> String {
     let mut s = String::new();
-    write_ty(m, t, &mut s);
+    write_ty(m, t.unscoped(), &mut s);
+    if t.scope() != 0 {
+        s.push_str(&format!("@{}", t.scope()));
+    }
     s
 }
 

@@ -61,3 +61,14 @@ fn private_use_payloads_do_not_exhaust_formatter_placeholders() {
         assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
     }
 }
+
+#[test]
+fn a_long_signature_wraps_its_parameters_when_the_first_has_a_modifier() {
+    let file: Arc<str> = Arc::from("signature.ms");
+    for source in [
+        include_str!("format_comments/move_signature.ms"),
+        include_str!("format_comments/var_signature.ms"),
+    ] {
+        assert_eq!(ms_syntax::format(&file, source).unwrap(), source);
+    }
+}

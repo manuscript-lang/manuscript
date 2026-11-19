@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "cannot move `item` out: this function type borrows its argument, and the resource `Resource` stays with its caller, which closes it; use `item` in place here, or declare the parameter `move` in the function type",
-        "position": {
-          "file": "testeffectsincludetransitivecallsandimplicitclea-1.ms",
-          "line": 25,
-          "column": 18,
-          "offset": 704
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/testeffectsincludetransitivecallsandimplicitclea-1.ms:25:18: type: cannot move `item` out: this function type borrows its argument, and the resource `Resource` stays with its caller, which closes it; use `item` in place here, or declare the parameter `move` in the function type\n    |\n 25 |         _held := item\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked testeffectsincludetransitivecallsandimplicitclea-1.ms\n",
+      "stderr": ""
     }
   }
 }

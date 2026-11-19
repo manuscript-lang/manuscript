@@ -158,9 +158,6 @@ pub(crate) struct FnLower<'a> {
     pub loops: Vec<LoopCtx>,
     /// The current position is unreachable.
     pub dead: bool,
-    /// The checked type of the binding a `close()` call being lowered consumes: what the close
-    /// leaves is closed through its parts and dropped, and the binding is not refilled.
-    pub consuming_close: Option<ct::Ty>,
     pub ret_ty: MTy,
     /// In a JSON decoder: the document, the node and the type name a failure reports.
     pub jnode: Option<(Value, Value, String)>,
@@ -177,6 +174,13 @@ pub(crate) struct FnLower<'a> {
     /// While a mutator discards entries: set by a failed close, which faults after the mutation
     /// removed the entry, so the unwind does not close it a second time.
     pub deferred_close: Option<ms_mir::builder::Var>,
+    /// While a mutator discards entries a close took by value: the entry type whose slots the
+    /// mutator must not drop again (its descriptors own nothing).
+    pub forgotten_entry: Option<MTy>,
+    /// While `set` replaces an entry whose close takes it: the entry type and its close. The
+    /// new entry goes in first and the detached old one closes after, so a fault inside that
+    /// close never leaves a dead entry in the list.
+    pub closing_old: Option<(MTy, crate::close::CloseKind)>,
     /// Type to build on return and the binding uids of the `var` parameters it carries.
     pub var_slots: Vec<VarSlot>,
     /// Some binding of the function closes a resource when its scope ends.
@@ -781,7 +785,6 @@ impl<'a> FnLower<'a> {
             var_cover: None,
             loops: Vec::new(),
             dead: false,
-            consuming_close: None,
             ret_ty,
             jnode: None,
             jwhy: None,
@@ -790,6 +793,8 @@ impl<'a> FnLower<'a> {
             prologue_done: false,
             closed_on_path: HashSet::default(),
             deferred_close: None,
+            forgotten_entry: None,
+            closing_old: None,
             var_slots: Vec::new(),
             closing_fn: false,
             slotted: HashSet::default(),
@@ -1186,7 +1191,14 @@ impl<'a> FnLower<'a> {
 
     /// Declares the local of `binding` holding `value`.
     /// Binds a parameter the caller handed over: the function owns it and drops it at scope end.
-    pub(crate) fn bind_owned_param(&mut self, b: &BindingRef, v: Value) -> Result<(), Error> {
+    /// A closer's own receiver (`in_closer`) closes through its parts only: its own close is
+    /// the function running.
+    pub(crate) fn bind_owned_param(
+        &mut self,
+        b: &BindingRef,
+        v: Value,
+        in_closer: bool,
+    ) -> Result<(), Error> {
         if self
             .cx
             .ownership
@@ -1200,7 +1212,14 @@ impl<'a> FnLower<'a> {
                 TyKind::Iface(iface) => self.iface_closer(iface).is_some(),
                 _ => true,
             };
-            if closable && let Some(kind) = self.closer_opt(cleanup.as_ref(), &b.ty)? {
+            let kind = if !closable {
+                None
+            } else if in_closer {
+                self.parts_closer(&b.ty)?
+            } else {
+                self.closer_opt(cleanup.as_ref(), &b.ty)?
+            };
+            if let Some(kind) = kind {
                 return self.bind_closing_kind(b, Val { v, own: true }, kind);
             }
         }
@@ -2100,7 +2119,9 @@ impl<'a> FnLower<'a> {
                 continue;
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.holds(self.ty_of(v)) {
-                self.bind_owned_param(b, v)?;
+                let in_closer =
+                    i == 0 && c.self_binding.is_some() && self.cx.classes.is_closer(&c.func);
+                self.bind_owned_param(b, v, in_closer)?;
                 continue;
             }
             let own_copy = mutated.contains(&b.uid) && self.needs_drop(self.ty_of(v));

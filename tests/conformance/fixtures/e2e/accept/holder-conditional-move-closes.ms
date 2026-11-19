@@ -67,7 +67,7 @@ test "a break closes the elements the loop never reached":
 	walk(log.clone(), 1)
 	logged(log.clone()) | expect_equal("1,2,3,")?
 
-fn wrap(door: Door, log: String) List[Door]:
+fn wrap(move door: Door, log: String) List[Door]:
 	var doors = [Door(9, log.clone())]
 	doors.append(door)
 	return doors

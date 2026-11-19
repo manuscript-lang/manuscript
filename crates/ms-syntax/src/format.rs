@@ -1217,13 +1217,30 @@ impl<'a> Layout<'a> {
 
     fn parameters(&mut self, params: &[Param]) {
         if let Some(first) = params.first()
-            && let Some(&g) = self.by_item.get(&first.pos.offset)
+            && let Some(&g) = self.by_item.get(&self.param_start(first))
         {
             self.groups[g].parameters = true;
             self.groups[g].items = true;
         }
         for p in params {
             self.typ(p.ty.as_ref());
+        }
+    }
+
+    /// Offset of the token that starts `p`: its `var` or `move` keyword when it has one,
+    /// else its name.
+    fn param_start(&self, p: &Param) -> u32 {
+        let keyword = if p.moving {
+            "move"
+        } else if p.mutable {
+            "var"
+        } else {
+            return p.pos.offset;
+        };
+        let before = self.src[..p.pos.offset as usize].trim_end();
+        match before.strip_suffix(keyword) {
+            Some(rest) => rest.len() as u32,
+            None => p.pos.offset,
         }
     }
 

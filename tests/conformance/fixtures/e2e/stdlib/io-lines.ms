@@ -10,7 +10,7 @@ import (
 	closed_reader, memory from "./support/streams.ms",
 )
 
-fn gather(input: ReadStream[Bytes], max_bytes: Int? = none) List[String]!:
+fn gather(move input: ReadStream[Bytes], max_bytes: Int? = none) List[String]!:
 	return collect(lines(input, max_bytes), none)
 
 test "an empty stream has no lines":

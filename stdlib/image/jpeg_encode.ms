@@ -211,7 +211,12 @@ fn jpeg_marker(var out: BytesBuilder, marker: Int, body: Bytes) Void:
 	put16_be(var out, body.length() + 2)
 	out.append_bytes(body)
 
-fn jpeg_dht(var out: BytesBuilder, class_id: Int, counts: List[Int], values: List[Int]) Void:
+fn jpeg_dht(
+	var out: BytesBuilder,
+	class_id: Int,
+	counts: List[Int],
+	values: List[Int],
+) Void:
 	var body = BytesBuilder()
 	body.append(byte(class_id))
 	for c in counts:

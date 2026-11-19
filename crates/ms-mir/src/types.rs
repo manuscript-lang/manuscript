@@ -188,6 +188,9 @@ impl Ty {
     pub const UINT64: Ty = Ty(14);
 
     const SCOPE_SHIFT: u32 = 20;
+    /// The scope of a descriptor for the slots of a type whose values were already taken out
+    /// of them (closed by value): same size and alignment, owns nothing.
+    pub const FORGOTTEN_SCOPE: u32 = (1 << (32 - Self::SCOPE_SHIFT)) - 1;
 
     /// The descriptor key of `self` under implementation scope `scope` (`0` is none). A scope
     /// picks which module's local `Equal` and `Hashable` implementations the descriptor's

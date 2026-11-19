@@ -25,7 +25,7 @@ fn logged(path: String) String:
 fn put(var slot: Slot, door: Door) Void:
 	slot.door = door
 
-fn stash(var doors: List[Door], door: Door) Void:
+fn stash(var doors: List[Door], move door: Door) Void:
 	doors.append(door)
 
 test "a temporary passed to a var-parameter function that keeps it closes once, later":

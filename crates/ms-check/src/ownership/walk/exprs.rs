@@ -753,7 +753,7 @@ impl Walker<'_> {
             self.error(
                 e.pos,
                 format!(
-                    "cannot move the resource `{0}` out of `{1}`: a resource cannot be cloned, and it leaves `{1}` only when `{1}` is a `let` or a parameter and no type on the path has a `close` of its own; use `{0}` in place, or move the whole `{1}`",
+                    "cannot move the resource `{0}` out of `{1}`: a resource cannot be cloned, and it leaves `{1}` only when `{1}` is a `let` or a parameter and no type on the path has a `close` of its own; use `{0}` in place, move the whole `{1}`, or take it with `part := {0}` and refill `{0} = ...` in the next statement",
                     info.text, self.syms.str(info.root.name)
                 ),
             );
@@ -769,18 +769,46 @@ impl Walker<'_> {
         self.read_place(e.pos, &info);
     }
 
+    /// A resource field moved out of a mutable place that the next statement refills. Anything
+    /// else about the holder is unchanged, so only the permission to change it is checked.
+    fn field_take(&mut self, e: &Expr, info: &PlaceInfo) -> bool {
+        let root = info.root.clone();
+        let mutable = self
+            .meta
+            .get(&root.uid)
+            .is_some_and(|m| m.perm == Perm::Mutable && m.lambda.is_none());
+        if !mutable
+            || info.through_ref.is_some()
+            || self.captured.iter().any(|c| c.contains(&root.uid))
+            || self.cx.m.ty(e).kind == Kind::Variable
+        {
+            self.facts.field_takes.remove(&e.id);
+            return false;
+        }
+        self.check_change(e.pos, &info.resolved, "move", &info.text, Some(root.uid));
+        self.mark_mutated(root.uid);
+        self.record(info.root_node, &root, Access::Borrow);
+        true
+    }
+
     /// A field of an owned local or parameter moves out at its last use (`return b.items`,
     /// `f(b.items)`): the place is dead until it is stored again, and the rest of the value is
     /// still the binding's. Returns whether the move is accepted; if not, the caller reports
     /// that only a whole variable can move.
     pub(super) fn partial_move(&mut self, e: &Expr, info: &PlaceInfo, class: Class) -> bool {
         let root = info.root.clone();
+        if class == Class::Resource && self.facts.field_takes.contains(&e.id) {
+            return self.field_take(e, info);
+        }
         let Some(meta) = self.meta.get(&root.uid) else {
             return false;
         };
         let role = meta.role;
+        // A `move` receiver is owned like a parameter: a field may leave it.
+        let owned_receiver =
+            meta.is_receiver && self.cx.c.func.method().is_some_and(|m| m.consuming);
         let owner = matches!(meta.perm, Perm::Immutable | Perm::Mutable)
-            && !meta.is_receiver
+            && (!meta.is_receiver || owned_receiver)
             && !matches!(meta.role, Role::Fixture)
             && !(meta.parameter.is_some() && meta.perm == Perm::Mutable)
             && meta.lambda.is_none();
@@ -801,17 +829,20 @@ impl Walker<'_> {
         // splits around the hole, and never a type parameter or a part of a closure capture.
         let resource = class == Class::Resource;
         if resource
-            && (!matches!(meta.role, Role::Let | Role::Parameter)
+            && (!(matches!(meta.role, Role::Let | Role::Parameter) || owned_receiver)
                 || meta.perm != Perm::Immutable
                 || self.cx.m.ty(e).kind == Kind::Variable)
         {
             return false;
         }
-        // A type that closes itself would close a type with a hole in it.
+        // A type that closes itself would close a type with a hole in it, except inside its own
+        // close, which is what runs on the whole value.
+        let in_closer = owned_receiver && self.cx.classes.is_closer(&self.cx.c.func);
         let mut at = e;
         while let ExprKind::Member { left, .. } = &at.kind {
             let holder = self.cx.m.ty(left);
-            if self.cx.classes.closes_itself(&holder) {
+            let own = in_closer && matches!(&left.kind, ExprKind::Name(_));
+            if self.cx.classes.closes_itself(&holder) && !own {
                 return false;
             }
             at = left;

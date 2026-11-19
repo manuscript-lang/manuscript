@@ -162,6 +162,10 @@ pub struct CallableOwnership {
     /// member expression. The value is still copied where it is consumed; the rest of the binding
     /// is cleaned up as before.
     pub partial_moves: HashMap<NodeId, Place>,
+    /// Member expressions that move a resource field out of a mutable place, and the assignments
+    /// that refill them at once.
+    pub field_takes: HashSet<NodeId>,
+    pub field_refills: HashSet<NodeId>,
     /// The part of `partial_moves` that are resources, by root binding: lowering moves these
     /// without copying and closes the rest of the binding around the hole.
     pub resource_moves: HashMap<usize, HashMap<NodeId, Vec<Name>>>,
@@ -516,6 +520,12 @@ impl OwnershipEngine {
             }
             for n in out.facts.partial_moves.keys() {
                 node_facts.set(file, *n, Fact::PartialMove);
+            }
+            for n in &out.facts.field_takes {
+                node_facts.set(file, *n, Fact::FieldTake);
+            }
+            for n in &out.facts.field_refills {
+                node_facts.set(file, *n, Fact::FieldRefill);
             }
             for n in &out.facts.ret_ctors {
                 node_facts.set(file, *n, Fact::RetCtor);

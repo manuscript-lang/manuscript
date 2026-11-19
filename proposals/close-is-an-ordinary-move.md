@@ -4,7 +4,7 @@
 
 - Problem: #4578 made `close` `fn move` but added name-keyed rules to the checker and lowering (`consuming && params.is_empty() && name == "close"` written four times, a close-only use-after-close message, close-only receiver permissions).
 - Change (this PR): a close follows the general `move` rules. Its one remaining difference, the in-place calling convention, is decided in one predicate, `Classifier::is_closer`, not by name tests scattered over the walk and call lowering.
-- Decision requested: whether to build the owned close ABI (stage 2) that removes the rest.
+- Stage 2 (built): the owned close ABI removes the rest, with a take-and-refill half close.
 
 ## Status
 
@@ -28,7 +28,7 @@ Stage 1 (this PR):
 - One predicate decides the in-place convention: `Classifier::is_closer(func)`, from the `move close` declarations. It drives the receiver mode, the scope-end skip of `self`, and `infer_mutated`. Call sites ask `Method::is_close_op`, the one definition of "a `close` with no parameters" (also interface operations such as a stream's).
 - Not removed: `field.close()` where the holder closes itself, is `self` in a close, or is a `var` receiver closes the field where it lies (`is_part_closed_in_place`), because a part cannot move out of a holder that closes itself or is not owned. This is a half close (`conn.output.close()`), not a move, and the parts close again at the end.
 
-Stage 2 (not built): closers take the value (`fn(move T)`): the scope-end thunk takes the value out of its slot and calls the close; the composite helpers (type, alternative, optional, list, map) take their parts out, close each by value and release the shell. This removes `is_closer`, `consuming_close`, the `takes_self` exception and, with a half-close API, `is_part_closed_in_place`.
+Stage 2 (built, 2026-11-19; Chinmay chose the take-and-refill half close): closers take the value (`fn(move T)`): the scope-end thunk takes the value out of its slot and calls the close; the composite helpers (type, alternative, optional, list, map) take their parts out, close each by value and release the shell. This removes `is_closer`, `consuming_close`, the `takes_self` exception and `is_part_closed_in_place`. `move` means ownership everywhere: a plain parameter the body closes needs `move`. The half close is a partial move of a resource field out of a mutable holder, refilled in the next statement (`Fact::FieldTake`, `FieldRefill`); `ReadStream.end()` and `WriteStream.end()` use it.
 
 ## Components touched
 
@@ -41,4 +41,4 @@ Stage 2 (not built): closers take the value (`fn(move T)`): the scope-end thunk 
 ## Alternatives
 
 - Do nothing: the diagnostics and rules name `close` in eight places.
-- Build stage 2 now: every part-closing helper in `close.rs` (about 1,750 lines), the cleanup-stack thunks, `elaborate.rs` and `unwind.rs` change together, and the half-close users need a new API first. A stage 1 PR keeps the language rules general at once.
+- Build stage 2 later (rejected, built now): every part-closing helper in `close.rs` (about 1,750 lines), the cleanup-stack thunks, `elaborate.rs` and `unwind.rs` change together, and the half-close users need a new API first. A stage 1 PR keeps the language rules general at once.

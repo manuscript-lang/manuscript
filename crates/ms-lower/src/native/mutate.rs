@@ -100,7 +100,7 @@ impl<'a> FnLower<'a> {
         });
         if name == "set" {
             if let Some(old) = result {
-                self.drop_value(old.v);
+                self.discard_replaced(old.v, elem);
             }
             return Ok(None);
         }
@@ -145,7 +145,7 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.b.list_set(old, r, v)
                 };
-                self.drop_value(old_element);
+                self.discard_replaced(old_element, elem);
                 Ok((new, None))
             }
             "swap" => {

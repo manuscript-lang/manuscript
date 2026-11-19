@@ -143,7 +143,7 @@ fn var Compressing.finish(var out: List[Bytes]) Void!:
 // window in memory. `level` defaults to 6 and must be 0 to 9; otherwise reads fail
 // with `EINVAL`. Closing the result closes `input`.
 export fn compressed(
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	format: CompressionFormat,
 	level: Int = 6,
 ) ReadStream[Bytes]:
@@ -182,7 +182,7 @@ fn var Decompressing.finish(var out: List[Bytes]) Void!:
 // the total output, and exceeding it fails with `EOVERFLOW`. Closing the result closes
 // `input`.
 export fn decompressed(
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	format: CompressionFormat,
 	max_bytes: Int? = none,
 ) ReadStream[Bytes]:
@@ -434,7 +434,7 @@ fn var TarEntries.finish(var out: List[ArchiveEntry]) Void!:
 // is complete but whose padding is short. Unlike a compression stream, a tar has no
 // trailer to check. Closing the result closes `input`.
 export fn tar_entries(
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	options: ArchiveOptions = ArchiveOptions(),
 ) ReadStream[ArchiveEntry]:
 	var zeros = BytesBuilder()

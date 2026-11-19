@@ -9,7 +9,7 @@ type Handle:
 fn move Handle.close() Void!:
 	print(f"close {self.id}")
 
-fn take(o: Handle?) Handle:
+fn take(move o: Handle?) Handle:
 	return o.get()
 
 fn first[T](value: T?) T:

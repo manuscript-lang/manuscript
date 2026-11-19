@@ -167,7 +167,7 @@ must be positive, otherwise the first read fails with `EINVAL`. Closing the resu
 */
 // ms: effect std.net.connect
 export fn sse_events(
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	limits: SseLimits = SseLimits(),
 ) ReadStream[SseEvent]:
 	var failure: Error? = none

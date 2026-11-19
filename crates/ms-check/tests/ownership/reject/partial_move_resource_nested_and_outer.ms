@@ -13,12 +13,12 @@ type Room:
 type Wrap:
     room: Room
 
-fn keep(d: Door) List[Door]:
+fn keep(move d: Door) List[Door]:
     var xs: List[Door] = []
     xs.append(d)
     return xs
 
-fn rooms(r: Room) List[Room]:
+fn rooms(move r: Room) List[Room]:
     var xs: List[Room] = []
     xs.append(r)
     return xs

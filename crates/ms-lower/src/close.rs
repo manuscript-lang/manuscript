@@ -20,6 +20,12 @@ pub(crate) enum CloseKind {
     Iface(IfaceId, u32),
     /// A source instance, which may hand `self` back through a slot.
     Func { fid: FuncId, writes_back: bool },
+    /// An interface value whose `close` is `move fn`: the entry takes the payload out of the box,
+    /// which the caller then frees.
+    IfaceOwned(IfaceId, u32),
+    /// A source `fn move close`, or the close of a holder of such parts: it takes the value, closes
+    /// what it holds and frees it, so nothing is left to drop.
+    Owned { fid: FuncId },
 }
 
 /// A complete owned resource held as a pending operand, including intact wrapper payloads.
@@ -34,7 +40,12 @@ pub(crate) struct ResourceTemp {
 impl CloseKind {
     /// Whether a value held in a variable can be closed as it is.
     pub(crate) fn in_value(&self) -> bool {
-        !self.writes_back()
+        !self.writes_back() && !self.consumes()
+    }
+
+    /// Whether the close takes the value: nothing is left for the owner to drop.
+    pub(crate) fn consumes(&self) -> bool {
+        matches!(self, CloseKind::IfaceOwned(..) | CloseKind::Owned { .. })
     }
 
     /// Whether the close changes the value it closes, so it needs the value's own storage.
@@ -110,7 +121,7 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
                 let mut failed = Vec::new();
                 for (j, ft, k) in parts {
                     let (v, r) = close_owned_result(b, &k, fields[j as usize], ft);
-                    fields[j as usize] = v;
+                    fields[j as usize] = v.expect("a part that takes its value closes by value");
                     failed.push(r);
                 }
                 let rebuilt = b.alt_new(a, c, &fields);
@@ -140,6 +151,7 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
             // The payload goes back before a failed close faults, so the place is never left
             // holding a hole for the cleanup that owns it.
             let (x, r) = close_owned_result(b, &k, x, inner);
+            let x = x.expect("a part that takes its value closes by value");
             let rebuilt = b.opt_some(x);
             b.emit(Op::Put, &[ptr, rebuilt], Imm::None, None);
             close_error_fault(b, r, None);
@@ -231,6 +243,207 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
     }
 }
 
+/// Whether closing the parts `shape` names takes them out of their holder.
+fn parts_take(shape: &Shape) -> bool {
+    match shape {
+        Shape::Type(_, parts) => parts.iter().any(|(_, _, k)| k.consumes()),
+        Shape::Alt(_, cases) => cases
+            .iter()
+            .any(|(_, parts)| parts.iter().any(|(_, _, k)| k.consumes())),
+        Shape::Opt(_, k) | Shape::List(_, k) | Shape::Map(.., k) => k.consumes(),
+    }
+}
+
+/// Closes the parts `shape` names in the owned holder `v`, by value: each part leaves the holder
+/// and is closed, and the rest of the holder drops. Ends the function (every path returns).
+fn emit_parts_owned(b: &mut FuncBuilder<'_>, v: Value, shape: Shape) {
+    match shape {
+        Shape::Type(r, parts) => {
+            let mut taken = Vec::new();
+            let mut mask = 0u32;
+            for (i, ft, k) in parts {
+                let f = b.type_get(r, i, v);
+                let o = if b.m.needs_drop(ft) {
+                    mask |= 1 << i;
+                    b.move_out(f)
+                } else {
+                    f
+                };
+                taken.push((o, ft, k));
+            }
+            if mask == 0 {
+                drop_left(b, Some(v));
+            } else {
+                b.emit(Op::TypeRelease, &[v], Imm::TypeMask(r, mask), None);
+            }
+            close_taken(b, taken);
+        }
+        Shape::Alt(a, cases) => {
+            let tag = b.alt_tag(v);
+            let rest = b.new_block();
+            let blocks: Vec<_> = cases.iter().map(|_| b.new_block()).collect();
+            let arms: Vec<(i64, _)> = cases
+                .iter()
+                .zip(&blocks)
+                .map(|((c, _), blk)| (*c as i64, *blk))
+                .collect();
+            b.switch(tag, &arms, rest);
+            for ((c, parts), blk) in cases.into_iter().zip(blocks) {
+                b.seal_block(blk);
+                b.switch_to(blk);
+                let n = b.m.alts[a.index()].cases[c as usize].fields.len();
+                let fields: Vec<Value> = (0..n as u32).map(|j| b.alt_take(a, c, j, v)).collect();
+                let mask = if n >= 32 { u32::MAX } else { (1u32 << n) - 1 };
+                b.alt_release(a, c, mask, v);
+                // The parts close in their own order (last declared first), the rest drops.
+                let mut taken = Vec::new();
+                for (j, ft, k) in &parts {
+                    taken.push((fields[*j as usize], *ft, k.clone()));
+                }
+                for (j, f) in fields.into_iter().enumerate() {
+                    if !parts.iter().any(|(p, _, _)| *p as usize == j) {
+                        drop_left(b, Some(f));
+                    }
+                }
+                close_taken(b, taken);
+            }
+            b.seal_block(rest);
+            b.switch_to(rest);
+            drop_left(b, Some(v));
+            let u = b.unit();
+            b.ret(Some(u));
+        }
+        Shape::Opt(inner, k) => {
+            let some = b.opt_is_some(v);
+            let (yes, no) = (b.new_block(), b.new_block());
+            b.br_if(some, yes, &[], no, &[]);
+            b.seal_block(yes);
+            b.seal_block(no);
+            b.switch_to(no);
+            drop_left(b, Some(v));
+            let u = b.unit();
+            b.ret(Some(u));
+            b.switch_to(yes);
+            let x = b.opt_unbox(v);
+            close_taken(b, vec![(x, inner, k)]);
+        }
+        Shape::List(elem, k) => {
+            // The list shrinks past each element as it is taken, so an unwind that drops the
+            // list while an element closes frees only the elements still in it.
+            let lt = b.ty(v);
+            let acc = b.declare_var(lt, Mode::Move);
+            b.def_var(acc, v);
+            let (header, body, exit) = (b.new_block(), b.new_block(), b.new_block());
+            b.br(header, &[]);
+            b.switch_to(header);
+            let cur = b.use_var(acc);
+            let n = b.list_len(cur);
+            let zero = b.iconst(0);
+            let more = b.icmp(Cc::Gt, n, zero);
+            b.br_if(more, body, &[], exit, &[]);
+            b.seal_block(body);
+            b.switch_to(body);
+            let cur = b.use_var(acc);
+            let n = b.list_len(cur);
+            let one = b.iconst(1);
+            let j = b.binop(Op::ISub, n, one);
+            let x = b.list_take(cur, j);
+            let rest = b.list_drop_last_taken(cur);
+            b.def_var(acc, rest);
+            let (left, r) = close_owned_result(b, &k, x, elem);
+            drop_left(b, left);
+            close_error_fault(b, r, None);
+            b.br(header, &[]);
+            b.seal_block(header);
+            b.seal_block(exit);
+            b.switch_to(exit);
+            let cur = b.use_var(acc);
+            let zero = b.iconst(0);
+            b.list_release(cur, zero);
+            let u = b.unit();
+            b.ret(Some(u));
+        }
+        Shape::Map(mt, kt, vt, ks, vs, k) => {
+            let count_fn = runtime_fn(b.m, "msrt_map_slot_count", &[mt], MTy::INT);
+            let n = b.call_rt(count_fn, &[v]);
+            let desc = |b: &mut FuncBuilder<'_>, t: MTy, scope: u32| {
+                b.emit(Op::TypeDesc, &[], Imm::Ty(t.scoped(scope)), Some(MTy::PTR))
+                    .expect("typedesc")
+            };
+            let (kd, vd) = (desc(b, kt, ks), desc(b, vt, vs));
+            let slot = |b: &mut FuncBuilder<'_>| {
+                b.emit(Op::Slot, &[], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+                    .expect("slot")
+            };
+            let (kp, vp) = (slot(b), slot(b));
+            let idx = b.declare_var(MTy::INT, Mode::Borrow);
+            b.def_var(idx, n);
+            let (header, probe, body, exit) =
+                (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+            b.br(header, &[]);
+            b.switch_to(header);
+            let i = b.use_var(idx);
+            let zero = b.iconst(0);
+            let more = b.icmp(Cc::Gt, i, zero);
+            b.br_if(more, probe, &[], exit, &[]);
+            b.seal_block(probe);
+            b.switch_to(probe);
+            let i = b.use_var(idx);
+            let one = b.iconst(1);
+            let j = b.binop(Op::ISub, i, one);
+            b.def_var(idx, j);
+            let entry_fn = runtime_fn(
+                b.m,
+                "msrt_map_entry_ptrs",
+                &[mt, MTy::PTR, MTy::PTR, MTy::INT, MTy::PTR, MTy::PTR],
+                MTy::BOOL,
+            );
+            let live = b.call_rt(entry_fn, &[v, kd, vd, j, kp, vp]);
+            b.br_if(live, body, &[], header, &[]);
+            b.seal_block(body);
+            b.switch_to(body);
+            let vaddr = b
+                .emit(Op::Load, &[vp], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+                .expect("load");
+            let x = b
+                .emit(Op::Take, &[vaddr], Imm::Ty(vt), Some(vt))
+                .expect("take");
+            let (left, r) = close_owned_result(b, &k, x, vt);
+            drop_left(b, left);
+            close_error_fault(b, r, None);
+            b.br(header, &[]);
+            b.seal_block(header);
+            b.seal_block(exit);
+            b.switch_to(exit);
+            // The values left with their closes: free the map and its keys only.
+            let drop_fn = runtime_fn(b.m, "msrt_map_drop", &[mt, MTy::PTR, MTy::PTR], MTy::VOID);
+            let none = b
+                .emit(Op::PtrNull, &[], Imm::None, Some(MTy::PTR))
+                .expect("null");
+            b.call_rt(drop_fn, &[v, kd, none]);
+            b.emit(Op::Forget, &[v], Imm::None, None);
+            let u = b.unit();
+            b.ret(Some(u));
+        }
+    }
+}
+
+/// Closes parts that left their holder, last first. Every part closes before the first failure
+/// faults; ends the function.
+fn close_taken(b: &mut FuncBuilder<'_>, taken: Vec<(Value, MTy, CloseKind)>) {
+    let mut failed = Vec::new();
+    for (x, ty, k) in taken {
+        let (left, r) = close_owned_result(b, &k, x, ty);
+        drop_left(b, left);
+        failed.push(r);
+    }
+    for r in failed {
+        close_error_fault(b, r, None);
+    }
+    let u = b.unit();
+    b.ret(Some(u));
+}
+
 /// A resource field of a binding with moved parts that has an owner of its own.
 struct SplitItem {
     path: Vec<u32>,
@@ -312,27 +525,48 @@ fn close_at_silent(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MT
     }
 }
 
-/// Closes the owned `v` of type `ty` and hands it back: what the close leaves behind is still
-/// the caller's to drop. A failed close faults.
-fn close_owned(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) -> Value {
+/// Closes the owned `v` of type `ty` and hands back what the close leaves behind, still the
+/// caller's to drop: nothing after a close that takes the value. A failed close faults.
+fn close_owned(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) -> Option<Value> {
     let (v, r) = close_owned_result(b, kind, v, ty);
     close_error_fault(b, r, None);
     v
 }
 
-/// Closes the owned `v`: the value after the close, and the close's result.
+/// Drops what a close left behind, if it left anything.
+fn drop_left(b: &mut FuncBuilder<'_>, left: Option<Value>) {
+    if let Some(v) = left
+        && b.m.needs_drop(b.ty(v))
+    {
+        b.emit(Op::Drop, &[v], Imm::None, None);
+    }
+}
+
+/// Closes the owned `v`: the value after the close (none when the close took it), and the
+/// close's result.
 fn close_owned_result(
     b: &mut FuncBuilder<'_>,
     kind: &CloseKind,
     v: Value,
     ty: MTy,
-) -> (Value, Value) {
+) -> (Option<Value>, Value) {
     match kind {
-        CloseKind::Iface(iface, k) => (v, b.call_method(*iface, *k, v, &[])),
+        CloseKind::Iface(iface, k) => (Some(v), b.call_method(*iface, *k, v, &[])),
+        CloseKind::IfaceOwned(iface, k) => {
+            let r = b.call_method(*iface, *k, v, &[]);
+            // The entry moved the payload out of the box: free the box and forget the value.
+            let data = b
+                .emit(Op::IfaceData, &[v], Imm::None, Some(MTy::PTR))
+                .expect("data");
+            b.emit(Op::Free, &[data], Imm::None, None);
+            b.emit(Op::Forget, &[v], Imm::None, None);
+            (None, r)
+        }
+        CloseKind::Owned { fid } => (None, b.call(*fid, &[v])),
         CloseKind::Func {
             fid,
             writes_back: false,
-        } => (v, b.call(*fid, &[v])),
+        } => (Some(v), b.call(*fid, &[v])),
         CloseKind::Func {
             writes_back: true, ..
         } => {
@@ -350,7 +584,7 @@ fn close_owned_result(
             let r = close_at_result(b, kind, slot, ty);
             let take = if droppable { Op::Take } else { Op::Load };
             let after = b.emit(take, &[slot], Imm::Ty(ty), Some(ty)).expect("take");
-            (after, r)
+            (Some(after), r)
         }
     }
 }
@@ -403,6 +637,13 @@ fn close_at_result(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MT
             fid,
             writes_back: true,
         } => b.call(*fid, &[ptr]),
+        // A close that takes the value takes it out of its place: nothing is left there.
+        CloseKind::Owned { .. } | CloseKind::IfaceOwned(..) => {
+            let v = b
+                .emit(Op::Take, &[ptr], Imm::Ty(ty), Some(ty))
+                .expect("take");
+            close_owned_result(b, kind, v, ty).1
+        }
         _ => {
             let v = b
                 .emit(Op::Load, &[ptr], Imm::Ty(ty), Some(ty))
@@ -410,6 +651,9 @@ fn close_at_result(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MT
             match kind {
                 CloseKind::Iface(iface, k) => b.call_method(*iface, *k, v, &[]),
                 CloseKind::Func { fid, .. } => b.call(*fid, &[v]),
+                CloseKind::Owned { .. } | CloseKind::IfaceOwned(..) => {
+                    unreachable!("a close that takes the value is handled above")
+                }
             }
         }
     }
@@ -508,19 +752,22 @@ impl FnLower<'_> {
     pub(crate) fn drop_temp(&mut self, v: Value) {
         if self.resource_temps.contains_key(&v) {
             let (v, kind) = self.take_resource_temp(v);
-            let v = self.close_discarded_kind(&kind, v);
-            self.drop_value(v);
+            if let Some(v) = self.close_discarded_kind(&kind, v) {
+                self.drop_value(v);
+            }
             return;
         }
-        let v = self.close_temp(v);
-        self.drop_value(v);
+        if let Some(v) = self.close_temp(v) {
+            self.drop_value(v);
+        }
     }
 
-    /// Closes an owned temporary that is a resource; the value after the close.
-    fn close_temp(&mut self, v: Value) -> Value {
+    /// Closes an owned temporary that is a resource; the value after the close, none when the
+    /// close took it.
+    fn close_temp(&mut self, v: Value) -> Option<Value> {
         let mt = self.b.ty(v);
         let Some(kind) = self.temp_closer(mt) else {
-            return v;
+            return Some(v);
         };
         self.close_discarded_kind(&kind, v)
     }
@@ -591,11 +838,34 @@ impl FnLower<'_> {
     ) -> CloseKind {
         debug_assert_eq!(self.b.m.types.kind(ty), &TyKind::Opt(inner));
         let key = HelperKey::CloseOptional(ty, kind.clone());
+        let by_value = kind.consumes();
+        let kind_of = |fid| {
+            if by_value {
+                CloseKind::Owned { fid }
+            } else {
+                CloseKind::Func {
+                    fid,
+                    writes_back: true,
+                }
+            }
+        };
         if let Some(fid) = self.cx.helpers.get(&key) {
-            return CloseKind::Func {
-                fid: *fid,
-                writes_back: true,
-            };
+            return kind_of(*fid);
+        }
+        if by_value {
+            // A close that takes its payload takes the optional with it.
+            let params = vec![Param {
+                ty,
+                mode: Mode::Move,
+            }];
+            let mut b = FuncBuilder::new(self.b.m, "close_optional", params, MTy::VOID);
+            b.func_mut().linkage = Linkage::Internal;
+            let v = b.params()[0];
+            emit_parts_owned(&mut b, v, Shape::Opt(inner, kind));
+            let func = b.into_func();
+            let fid = self.b.m.add_func(func);
+            self.cx.helpers.insert(key, fid);
+            return kind_of(fid);
         }
         let params = vec![Param {
             ty: MTy::PTR,
@@ -610,10 +880,7 @@ impl FnLower<'_> {
         let func = b.into_func();
         let fid = self.b.m.add_func(func);
         self.cx.helpers.insert(key, fid);
-        CloseKind::Func {
-            fid,
-            writes_back: true,
-        }
+        kind_of(fid)
     }
 
     /// Closes the value the local `l` holds, in place; the close's result.
@@ -623,7 +890,9 @@ impl FnLower<'_> {
         }
         let v = self.local_take(l);
         let (v, r) = close_owned_result(&mut self.b, kind, v, l.ty);
-        self.local_put(l, v);
+        if let Some(v) = v {
+            self.local_put(l, v);
+        }
         r
     }
 
@@ -637,8 +906,9 @@ impl FnLower<'_> {
     ) -> Result<(), Error> {
         if recv.own {
             let ty = self.b.ty(recv.v);
-            let v = close_owned(&mut self.b, kind, recv.v, ty);
-            self.drop_value(v);
+            if let Some(v) = close_owned(&mut self.b, kind, recv.v, ty) {
+                self.drop_value(v);
+            }
             return Ok(());
         }
         let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(recv_expr) else {
@@ -654,7 +924,7 @@ impl FnLower<'_> {
                 let ty = s.b.ty(v);
                 let (v, r) = close_owned_result(&mut s.b, &kind, v, ty);
                 close_error_fault(&mut s.b, r, None);
-                Ok(v)
+                v.ok_or_else(|| Error::new("a part of a collection cannot be closed by value"))
             });
         }
         let l = self.local(&b)?;
@@ -678,9 +948,11 @@ impl FnLower<'_> {
             .and_then(|ty| self.part_closer(&ty).ok().flatten());
         let v = match kind {
             Some(kind) => self.close_discarded_kind(&kind, x.v),
-            None => x.v,
+            None => Some(x.v),
         };
-        self.drop_value(v);
+        if let Some(v) = v {
+            self.drop_value(v);
+        }
     }
 
     /// Drops a discarded statement result, closing it first when it holds a resource nothing
@@ -689,9 +961,11 @@ impl FnLower<'_> {
     pub(crate) fn drop_unused(&mut self, v: Value, ty: &ct::Ty) {
         let v = match self.part_closer(ty) {
             Ok(Some(kind)) => self.close_discarded_kind(&kind, v),
-            _ => v,
+            _ => Some(v),
         };
-        self.drop_value(v);
+        if let Some(v) = v {
+            self.drop_value(v);
+        }
     }
 
     /// Binds `binding` to `x` and registers its close operation: a fault runs it through the
@@ -712,7 +986,7 @@ impl FnLower<'_> {
     /// [`Self::bind_closing`] with the close operation already chosen.
     /// The `Result` type a close function returns, when its close can fail.
     fn close_result_ty(&self, kind: &CloseKind) -> Option<MTy> {
-        let CloseKind::Func { fid, .. } = kind else {
+        let (CloseKind::Func { fid, .. } | CloseKind::Owned { fid }) = kind else {
             return None;
         };
         let r = self.b.m.funcs[fid.index()].ret;
@@ -879,10 +1153,15 @@ impl FnLower<'_> {
     fn raw_closable(&mut self, binding: &ct::BindingRef, kind: &CloseKind) -> bool {
         let uid = binding.uid;
         let unit_close = match kind {
-            CloseKind::Func { fid, .. } => self.b.m.funcs[fid.index()].ret == MTy::VOID,
-            CloseKind::Iface(..) => true,
+            CloseKind::Func { fid, .. } | CloseKind::Owned { fid } => {
+                self.b.m.funcs[fid.index()].ret == MTy::VOID
+            }
+            CloseKind::Iface(..) | CloseKind::IfaceOwned(..) => true,
         };
-        if !unit_close && !self.fallible_close_ok(kind, uid) {
+        // A default runs inline in its caller, which a failed close cannot return from: the
+        // close faults there instead.
+        let in_default = !self.default_frames.is_empty();
+        if !unit_close && !in_default && !self.fallible_close_ok(kind, uid) {
             return false;
         }
         let own = &self.cx.ownership;
@@ -935,6 +1214,7 @@ impl FnLower<'_> {
             .cloned();
         if binding.mutable
             || kind.writes_back()
+            || kind.consumes()
             || places.is_some()
             || self.cx.ownership.close_moves.contains_key(&binding.uid)
         {
@@ -965,7 +1245,7 @@ impl FnLower<'_> {
         {
             // The elaborate pass closes it where its scope ends, shielded, and drops what is left.
             let thunk = self.close_thunk(&kind, ty, true);
-            if self.close_result_ty(&kind).is_some() {
+            if self.close_result_ty(&kind).is_some() && self.default_frames.is_empty() {
                 self.fallible_slot_close(&kind, ty, thunk);
             }
             if let Some(scope) = self.scopes.last_mut() {
@@ -1099,7 +1379,7 @@ impl FnLower<'_> {
         let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
-        b.func_mut().slot_close = b.m.needs_drop(ty).then_some(ty);
+        b.func_mut().slot_close = (b.m.needs_drop(ty) && !kind.consumes()).then_some(ty);
         let v = b.params()[0];
         close_at_silent(&mut b, kind, v, ty);
         let u = b.unit();
@@ -1125,7 +1405,18 @@ impl FnLower<'_> {
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         let p = b.params()[0];
-        drop_rest(&mut b, p, ty, &mut Vec::new(), owned);
+        // Fields whose leaves pack differently inside the type than alone cannot be read through
+        // their address, so a flat set of moved fields releases the rest from the whole value.
+        let flat = owned.iter().all(|o| o.len() == 1 && o[0] < 32);
+        if let (true, TyKind::Type(r)) = (flat, b.m.types.kind(ty).clone()) {
+            let whole = b
+                .emit(Op::Take, &[p], Imm::Ty(ty), Some(ty))
+                .expect("holder");
+            let mask = owned.iter().fold(0u32, |m, o| m | 1 << o[0]);
+            b.emit(Op::TypeRelease, &[whole], Imm::TypeMask(r, mask), None);
+        } else {
+            drop_rest(&mut b, p, ty, &mut Vec::new(), owned);
+        }
         let u = b.unit();
         b.ret(Some(u));
         let f = b.into_func();
@@ -1147,6 +1438,10 @@ impl FnLower<'_> {
             .get(&(uid, names.to_vec()))
             .ok_or_else(|| Error::new("a moved field the binding does not track"))?;
         self.b.emit(Op::ScopeDisown, &[ptr], Imm::None, None);
+        // A resource with nothing to drop is a plain value: no copy to take over.
+        if !self.b.m.needs_drop(self.b.ty(field)) {
+            return Ok(field);
+        }
         Ok(self.b.move_out(field))
     }
 
@@ -1162,10 +1457,12 @@ impl FnLower<'_> {
         let ty = ct::sub(ty, &self.subst);
         let mt = self.mty(&ty)?;
         if let TyKind::Iface(iface) = self.b.m.types.kind(mt).clone() {
-            return self
-                .iface_closer(iface)
-                .map(Some)
-                .ok_or_else(|| Error::new("interface without close"));
+            return self.iface_closer(iface).map(Some).ok_or_else(|| {
+                Error::new(format!(
+                    "interface {ty_t} without close",
+                    ty_t = ty.display(self.syms)
+                ))
+            });
         }
         let own = match cleanup.cloned().or_else(|| self.closeable_method(&ty)) {
             Some(c) => Some(self.own_closer(&c, &ty)?),
@@ -1174,10 +1471,35 @@ impl FnLower<'_> {
         self.close_with_parts(&ty, own)
     }
 
+    /// The close of what a value of `ty` holds, without its own close operation.
+    pub(crate) fn parts_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
+        let ty = ct::sub(ty, &self.subst);
+        self.close_with_parts(&ty, None)
+    }
+
     /// The `close` entry of an interface value's vtable, if the interface declares one.
     pub(crate) fn iface_closer(&self, iface: IfaceId) -> Option<CloseKind> {
         let k = self.b.m.ifaces[iface.index()].close?;
-        Some(CloseKind::Iface(iface, k))
+        // A `move fn close` operation takes the value out of the interface value.
+        let takes = self
+            .cx
+            .contracts
+            .get(&iface)
+            .and_then(|t| t.def.as_ref())
+            .is_some_and(|def| {
+                def.operations.borrow().iter().any(|op| {
+                    self.syms.str(op.name) == "close"
+                        && op
+                            .decl
+                            .as_ref()
+                            .and_then(|d| d.method())
+                            .is_some_and(|m| m.consuming)
+                })
+            });
+        Some(match takes {
+            true => CloseKind::IfaceOwned(iface, k),
+            false => CloseKind::Iface(iface, k),
+        })
     }
 
     /// The close operation `cleanup` names for the concrete receiver `ty`.
@@ -1220,6 +1542,10 @@ impl FnLower<'_> {
             return Err(Error::new("cannot bind close receiver type"));
         }
         let fid = self.instance(&c, &subst)?;
+        // A `move` close takes the value: it closes what it holds and frees it.
+        if c.func.method().is_some_and(|m| m.consuming) {
+            return Ok(CloseKind::Owned { fid });
+        }
         let writes_back = self.cx.var_positions(&c).contains(&0);
         Ok(CloseKind::Func { fid, writes_back })
     }
@@ -1267,16 +1593,15 @@ impl FnLower<'_> {
 
     /// `own`, followed by the close of every resource `ty` holds, last declared first: the
     /// close of a type, alternative, `Optional`, `List` or `Map` is generated from its parts.
-    /// The close of only the resources `ty` holds, once its own `close` has run.
-    pub(crate) fn close_parts_kind(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
-        self.close_with_parts(ty, None)
-    }
-
     fn close_with_parts(
         &mut self,
         ty: &ct::Ty,
         own: Option<CloseKind>,
     ) -> Result<Option<CloseKind>, Error> {
+        // A close that takes the value closes what it holds itself.
+        if own.as_ref().is_some_and(CloseKind::consumes) {
+            return Ok(own);
+        }
         let mt = self.mty(ty)?;
         let key = HelperKey::CloseParts(self.cx.tys.intern(ty), own.is_some());
         // A type that holds itself (through a list or an optional) reaches its own closer
@@ -1285,14 +1610,16 @@ impl FnLower<'_> {
         let declared = matches!(kind, TyKind::Type(_) | TyKind::Alt(_));
         if declared {
             if let Some(f) = self.cx.helpers.get(&key) {
-                return Ok(Some(CloseKind::Func {
-                    fid: *f,
-                    writes_back: true,
-                }));
+                self.cx.recursed.insert(key);
+                return Ok(Some(self.parts_kind(*f)));
             }
+            // The stub has the signature of the helper it stands for: a holder that reaches a
+            // resource closing by value closes by value, itself included.
+            let by_value =
+                own.is_none() && self.consumes_deep(ty, &mut std::collections::HashSet::new())?;
             let ps = vec![Param {
-                ty: MTy::PTR,
-                mode: Mode::Borrow,
+                ty: if by_value { mt } else { MTy::PTR },
+                mode: if by_value { Mode::Move } else { Mode::Borrow },
             }];
             let mut stub = ms_mir::ir::Func::new("close_parts", ps, MTy::VOID);
             stub.linkage = Linkage::Internal;
@@ -1365,25 +1692,44 @@ impl FnLower<'_> {
         // The helper closes the holder in place, through its address: a part whose close
         // changes it is written back where it lives, with no copy of the holder.
         if !declared && let Some(f) = self.cx.helpers.get(&key) {
-            return Ok(Some(CloseKind::Func {
-                fid: *f,
-                writes_back: true,
-            }));
+            return Ok(Some(self.parts_kind(*f)));
+        }
+        // Parts that leave their holder when they close make the holder close by value too.
+        let by_value = parts_take(&shape);
+        if declared
+            && let Some(&stub) = self.cx.helpers.get(&key)
+            && (self.b.m.funcs[stub.index()].params[0].mode == Mode::Move) != by_value
+        {
+            return Err(Error::new(
+                "a type that holds itself closes by value in some of its parts only",
+            ));
         }
         let ps = vec![Param {
-            ty: MTy::PTR,
-            mode: Mode::Borrow,
+            ty: if by_value { mt } else { MTy::PTR },
+            mode: if by_value { Mode::Move } else { Mode::Borrow },
         }];
         let mut b = FuncBuilder::new(self.b.m, "close_parts", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         let p = b.params()[0];
-        if let Some(o) = &own {
-            close_at(&mut b, o, p, mt);
+        if by_value {
+            let p = match &own {
+                Some(o) => {
+                    let (left, r) = close_owned_result(&mut b, o, p, mt);
+                    close_error_fault(&mut b, r, None);
+                    left.expect("an own close that does not take the value")
+                }
+                None => p,
+            };
+            emit_parts_owned(&mut b, p, shape);
+        } else {
+            if let Some(o) = &own {
+                close_at(&mut b, o, p, mt);
+            }
+            emit_parts(&mut b, p, shape);
+            let u = b.unit();
+            b.ret(Some(u));
         }
-        emit_parts(&mut b, p, shape);
-        let u = b.unit();
-        b.ret(Some(u));
         let f = b.into_func();
         let fid = match self.cx.helpers.get(&key) {
             Some(&fid) if declared => {
@@ -1396,10 +1742,59 @@ impl FnLower<'_> {
                 fid
             }
         };
-        Ok(Some(CloseKind::Func {
-            fid,
-            writes_back: true,
-        }))
+        Ok(Some(self.parts_kind(fid)))
+    }
+
+    /// Whether `ty` holds, at any depth, a resource whose own close takes it.
+    fn consumes_deep(
+        &mut self,
+        ty: &ct::Ty,
+        seen: &mut std::collections::HashSet<ms_check::api::tytable::TyId>,
+    ) -> Result<bool, Error> {
+        if !seen.insert(self.cx.tys.intern(ty)) {
+            return Ok(false);
+        }
+        let mt = self.mty(ty)?;
+        if let TyKind::Iface(iface) = self.b.m.types.kind(mt).clone() {
+            return Ok(self.iface_closer(iface).is_some_and(|k| k.consumes()));
+        }
+        if let Some(m) = self.closeable_method(ty)
+            && self.own_closer(&m, ty)?.consumes()
+        {
+            return Ok(true);
+        }
+        let mut parts: Vec<ct::Ty> = Vec::new();
+        match self.b.m.types.kind(mt).clone() {
+            TyKind::Type(_) => parts.extend(ct::fields(ty).iter().map(|f| f.ty.clone())),
+            TyKind::Alt(_) => {
+                let s = ct::substitution(ty);
+                if let Some(def) = &ty.def {
+                    for case in def.cases.borrow().iter() {
+                        parts.extend(case.fields.iter().map(|f| ct::sub(&f.ty, &s)));
+                    }
+                }
+            }
+            TyKind::Opt(_) | TyKind::List(_) => parts.extend(ty.args.first().cloned()),
+            TyKind::Obj(Native::Map, _) => parts.extend(ty.args.get(1).cloned()),
+            _ => {}
+        }
+        for part in parts {
+            if self.consumes_deep(&part, seen)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// The close a `close_parts` helper is: by value when it takes its holder, else in place.
+    fn parts_kind(&self, fid: FuncId) -> CloseKind {
+        match self.b.m.funcs[fid.index()].params[0].mode {
+            Mode::Move => CloseKind::Owned { fid },
+            _ => CloseKind::Func {
+                fid,
+                writes_back: true,
+            },
+        }
     }
 
     /// The function the cleanup stack calls with the registered value.
@@ -1490,7 +1885,13 @@ impl FnLower<'_> {
         let l = b
             .emit(Op::Take, &[lp], Imm::Ty(list), Some(list))
             .expect("list");
-        b.list_release(l, next);
+        // Closes that took their elements leave none to drop past the cursor.
+        let from = if closer.is_some_and(CloseKind::consumes) {
+            b.list_len(l)
+        } else {
+            next
+        };
+        b.list_release(l, from);
         let u = b.unit();
         b.ret(Some(u));
         let f = b.into_func();
@@ -1516,6 +1917,9 @@ impl FnLower<'_> {
             HelperKey::CloseSilent(ty, kind.clone())
         } else {
             match kind {
+                CloseKind::Owned { .. } | CloseKind::IfaceOwned(..) => {
+                    HelperKey::CloseTake(kind.clone(), ty, in_slot)
+                }
                 CloseKind::Iface(i, k) => HelperKey::CloseIface {
                     iface: i.0,
                     k: *k,
@@ -1537,24 +1941,32 @@ impl FnLower<'_> {
             in_slot || !kind.writes_back(),
             "a close that changes the value closes it in memory"
         );
+        let consumes = kind.consumes();
         let ps = vec![Param {
             ty: if in_slot { MTy::PTR } else { ty },
-            mode: Mode::Borrow,
+            mode: if consumes && !in_slot {
+                Mode::Move
+            } else {
+                Mode::Borrow
+            },
         }];
         let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::VOID);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         let v = b.params()[0];
         if in_slot {
-            b.func_mut().slot_close = b.m.needs_drop(ty).then_some(ty);
+            // A close that takes the value leaves nothing in the slot to drop.
+            b.func_mut().slot_close = (b.m.needs_drop(ty) && !consumes).then_some(ty);
             if private {
                 let r = close_at_result(&mut b, kind, v, ty);
-                close_error_fault(&mut b, r, Some((v, ty)));
+                // A close that took the value leaves nothing in the slot to drop.
+                close_error_fault(&mut b, r, (!consumes).then_some((v, ty)));
             } else {
                 close_at_silent(&mut b, kind, v, ty);
             }
         } else {
-            let (_, r) = close_owned_result(&mut b, kind, v, ty);
+            let (left, r) = close_owned_result(&mut b, kind, v, ty);
+            drop_left(&mut b, left);
             if b.m.needs_drop(b.ty(r)) {
                 b.emit(Op::Drop, &[r], Imm::None, None);
             }
@@ -1610,41 +2022,37 @@ impl FnLower<'_> {
         }
     }
 
-    /// Types that the program called `close()` on the closing binding `recv` named.
-    pub(crate) fn note_explicit_close(&mut self, recv: &Expr) {
-        let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(recv) else {
-            return;
-        };
-        if self.dead {
-            return;
-        }
-        if let Some(raw) = self.raw_slots.get(&b.uid).cloned() {
-            self.mark_raw_closed(&raw, true);
-        }
-    }
-
     /// Closes the owned `v`, a value of the place `place` that the program is about to overwrite
     /// or discard, when it holds a resource: shielded like any other close. What the close
     /// leaves is returned for the caller to drop; a value with nothing to close adds no code.
-    pub(crate) fn close_discarded(&mut self, place: &Expr, v: Value) -> Result<Value, Error> {
+    pub(crate) fn close_discarded(
+        &mut self,
+        place: &Expr,
+        v: Value,
+    ) -> Result<Option<Value>, Error> {
         let ty = ct::sub(&self.hir.ty(place), &self.subst);
         self.close_discarded_ty(&ty, v)
     }
 
     /// [`Self::close_discarded`] for a value of checked type `ty`.
-    pub(crate) fn close_discarded_ty(&mut self, ty: &ct::Ty, v: Value) -> Result<Value, Error> {
+    pub(crate) fn close_discarded_ty(
+        &mut self,
+        ty: &ct::Ty,
+        v: Value,
+    ) -> Result<Option<Value>, Error> {
         let Some(kind) = self.part_closer(ty)? else {
-            return Ok(v);
+            return Ok(Some(v));
         };
         Ok(self.close_discarded_kind(&kind, v))
     }
 
-    /// Closes the owned `v` with `kind`, shielded like any other close; the value after it.
-    pub(crate) fn close_discarded_kind(&mut self, kind: &CloseKind, v: Value) -> Value {
+    /// Closes the owned `v` with `kind`, shielded like any other close; the value after it, or
+    /// none when the close took it.
+    pub(crate) fn close_discarded_kind(&mut self, kind: &CloseKind, v: Value) -> Option<Value> {
         let mt = self.ty_of(v);
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::VOID);
         let v = if kind.writes_back() && self.b.m.needs_drop(mt) {
-            self.close_owned_in_owned_slot(kind, v, mt)
+            Some(self.close_owned_in_owned_slot(kind, v, mt))
         } else {
             close_owned(&mut self.b, kind, v, mt)
         };
