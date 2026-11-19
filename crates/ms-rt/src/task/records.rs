@@ -268,6 +268,12 @@ pub(crate) unsafe fn lend_current() -> u64 {
     }
 }
 
+/// The handle of the running task, the `creator` of the promises it starts.
+pub(crate) unsafe fn current_handle() -> u64 {
+    // SAFETY: called on the runtime thread by the running task.
+    unsafe { (*ensure_init()).handle }
+}
+
 /// Returns a stack lent with [`lend_current`]; nothing to do when the task has ended since.
 pub(crate) unsafe fn return_lent(handle: u64) {
     let t = lookup(handle);
