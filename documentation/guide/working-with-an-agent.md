@@ -15,7 +15,13 @@ The skill is a short guide to writing Manuscript, with the language version it t
 curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh
 ```
 
-On Windows, run `irm https://manuscript-lang.github.io/manuscript/install-skill.ps1 | iex`. It writes `manuscript/SKILL.md` and its references into `.claude/skills` and `.agents/skills`, and never overwrites an existing skill. Install it before the agent starts, so the agent loads it on its own. Each release also attaches `manuscript-skill.tar.gz`; set `MS_VERSION` to the release you want to take that version of the skill.
+On Windows:
+
+```powershell
+irm https://manuscript-lang.github.io/manuscript/install-skill.ps1 | iex
+```
+
+It writes `manuscript/SKILL.md` and its references into `.claude/skills` and `.agents/skills`, and never overwrites an existing skill. Install it before the agent starts, so the agent loads it on its own. Each release also attaches `manuscript-skill.tar.gz`; set `MS_VERSION` to the release you want to take that version of the skill.
 
 ## The agent's loop
 

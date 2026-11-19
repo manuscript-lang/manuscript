@@ -10,7 +10,7 @@
 
 </div>
 
-A statically typed, natively compiled language with single ownership: no garbage collector and no lifetime annotations. Agents now write much of the code, so the compiler checks ownership, types and effects, and every diagnostic names its cause and fix. An agent can correct itself, and a person can review the result through built-in diagrams and an interactive code map.
+Manuscript is a statically typed, natively compiled language. Every value has one owner, so there is no garbage collector and no lifetime annotations. Agents now write much of our code, so the compiler checks ownership, types and effects, and every diagnostic names its cause and its fix. That lets an agent correct itself, and lets a person review the result through built-in diagrams and an interactive code map.
 
 Manuscript makes agent-generated code practical to work with. The common footguns are gone, and the syntax is token-efficient and readable at a glance, so agents get it right.
 
@@ -138,6 +138,18 @@ ms init hello
 
 Install `ms` with `curl -fsSL https://manuscript-lang.github.io/manuscript/install.sh | sh` (Windows: `irm https://manuscript-lang.github.io/manuscript/install.ps1 | iex`), or take an archive from the [releases page](https://github.com/manuscript-lang/manuscript/releases), then run the command above.
 
-Coding agents: install the Manuscript skill, which ships separately from `ms`, with `curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh` (Windows: `irm https://manuscript-lang.github.io/manuscript/install-skill.ps1 | iex`). Each release also attaches `manuscript-skill.tar.gz`, stamped with that release's version, so the skill matches its language version.
+Coding agents: install the Manuscript skill, which ships separately from `ms`.
+
+```sh
+curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh
+```
+
+On Windows:
+
+```powershell
+irm https://manuscript-lang.github.io/manuscript/install-skill.ps1 | iex
+```
+
+Each release also attaches `manuscript-skill.tar.gz`, stamped with that release's version, so the skill matches its language version.
 
 Everything here works today and is hardened with each release. The core syntax, ownership rules, `ms.toml` keys, `--json` shapes and diagnostic codes are frozen; other standard library names may change; see [what is frozen](documentation/core-language/stability.md).
