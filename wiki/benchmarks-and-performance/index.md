@@ -2,7 +2,7 @@
 
 # Benchmarks and performance
 
-Perf and agent benchmarks, profiling.
+Perf benchmarks, profiling.
 
 - [Binary search moves one select per step, and a captured comparator still gets the generated sort](binary-search-and-captured-comparators-must-not-branch-or-call.md): `binary_search` 270 to 31 ms per 2M searches (Rust 90); sorts by a capturing comparator 148 to 35 ms.
 - [A bound on `n - 1` also bounds `n`](a-bound-on-n-minus-one-also-bounds-n.md): range analysis narrows the operand of a checked constant add or subtract; a stencil's index wraps vanish (Cranelift 1,949M to 1,412M instructions, C 438M).

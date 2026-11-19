@@ -111,9 +111,9 @@ On a generated 122,000-line project (40 packages, cold build, 4 vCPUs), the same
 
 The numbers come from the [compile-time benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/compile-time/README.md), which generates the same program in each language and names the machine and command. The Rust version is one crate with 40 modules, the closest match for Go's 40 packages.
 
-## We measure it with agents
+## Agents pass as often
 
-The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md) gives agents the same challenges in TypeScript, Go, Rust and Manuscript and grades them on hidden tests. What goes wrong there decides what we build next. Every result names its revision and machine.
+On the same hidden-test challenges, agents write passing Manuscript programs as often as they write Go, Rust and TypeScript. What goes wrong in their runs decides what we build next.
 
 ## Where it stands
 
