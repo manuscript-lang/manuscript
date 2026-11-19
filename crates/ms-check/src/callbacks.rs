@@ -13,15 +13,21 @@ impl Checker {
     /// Checks a function expression against the context that expects it.
     pub(crate) fn callback(&mut self, e: &Expr, l: &Lambda, expected: Option<&Ty>) -> Info {
         let mut context = callback_context(expected);
-        if context
+        let mut miscounted = false;
+        if let Some(c) = context
             .as_ref()
-            .is_some_and(|c| c.params.len() != l.params.len())
+            .filter(|c| c.params.len() != l.params.len())
         {
+            let (want, found) = (c.params.len(), l.params.len());
             self.type_error(
                 e.pos,
-                "callback parameter count does not match its context; the callback takes exactly the parameters its context declares",
+                format!(
+                    "callback parameter count does not match its context; the context expects {want} {}, found {found}, so write exactly the parameters its context declares",
+                    crate::hints::plural(want, "parameter")
+                ),
             );
             context = None;
+            miscounted = true;
         }
         let mut params: Vec<Param> = Vec::with_capacity(l.params.len());
         let mut seen: HashSet<Name> = HashSet::default();
@@ -55,6 +61,9 @@ impl Checker {
                 .filter(|c| inference_type_known(&c.params[index].ty, &self.inference_variables))
             {
                 c.params[index].ty.clone()
+            } else if miscounted {
+                // The count error above already explains why nothing can be inferred.
+                invalid()
             } else {
                 self.type_error_with_cause(
                     param.pos,

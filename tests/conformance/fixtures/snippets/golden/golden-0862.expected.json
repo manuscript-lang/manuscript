@@ -9,7 +9,7 @@
       {
         "code": "MS1002",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
+        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4; a line inside brackets is indented by fours too, so do not align it with the opening bracket",
         "position": {
           "file": "golden-0862.ms",
           "line": 4,
@@ -26,13 +26,19 @@
           "line": 5,
           "column": 1,
           "offset": 67
+        },
+        "end": {
+          "file": "golden-0862.ms",
+          "line": 5,
+          "column": 2,
+          "offset": 68
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0862.ms:4:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n   |\n 4 |   a = 1\n   |   ^\n<DIR>/golden-0862.ms:5:1: parse: unmatched closing delimiter ')'; remove it or add the matching opener before it\n   |\n 5 | )\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0862.ms:4:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4; a line inside brackets is indented by fours too, so do not align it with the opening bracket\n   |\n 4 |   a = 1\n   |   ^\n<DIR>/golden-0862.ms:5:1: parse: unmatched closing delimiter ')'; remove it or add the matching opener before it\n   |\n 5 | )\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

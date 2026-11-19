@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "unknown standard module @std/faults.ms",
+        "message": "unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"",
         "position": {
           "file": "golden-1381.ms",
           "line": 4,
@@ -97,7 +97,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1381.ms:4:8: resolution: unknown standard module @std/faults.ms\n   |\n 4 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-1381.ms:7:28: type: unknown argument data; parameters of write: value\n   |\n 7 |     _out := stdout().write(data: \"PASS fake\\nstdout=a=b\\n\")\n   |                            ^\n<DIR>/golden-1381.ms:7:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 7 |     _out := stdout().write(data: \"PASS fake\\nstdout=a=b\\n\")\n   |                      ^\n<DIR>/golden-1381.ms:8:28: type: unknown argument data; parameters of write: value\n   |\n 8 |     _err := stderr().write(data: \"stderr=a=b\\n\")\n   |                            ^\n<DIR>/golden-1381.ms:8:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 8 |     _err := stderr().write(data: \"stderr=a=b\\n\")\n   |                      ^\n<DIR>/golden-1381.ms:11:12: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 11 |     return panic(message: \"distribution failure\")\n    |            ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1381.ms:4:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 4 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-1381.ms:7:28: type: unknown argument data; parameters of write: value\n   |\n 7 |     _out := stdout().write(data: \"PASS fake\\nstdout=a=b\\n\")\n   |                            ^\n<DIR>/golden-1381.ms:7:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 7 |     _out := stdout().write(data: \"PASS fake\\nstdout=a=b\\n\")\n   |                      ^\n<DIR>/golden-1381.ms:8:28: type: unknown argument data; parameters of write: value\n   |\n 8 |     _err := stderr().write(data: \"stderr=a=b\\n\")\n   |                            ^\n<DIR>/golden-1381.ms:8:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 8 |     _err := stderr().write(data: \"stderr=a=b\\n\")\n   |                      ^\n<DIR>/golden-1381.ms:11:12: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 11 |     return panic(message: \"distribution failure\")\n    |            ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

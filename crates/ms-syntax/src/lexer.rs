@@ -558,8 +558,13 @@ impl Scanner<'_> {
                 continue;
             }
             if !self.virtual_paren && !leading.is_multiple_of(4) {
+                let inside = if self.delimiters.is_empty() {
+                    ""
+                } else {
+                    "; a line inside brackets is indented by fours too, so do not align it with the opening bracket"
+                };
                 return self.fail(format!(
-                    "indentation must be a multiple of four spaces, found {}; use {} or {}",
+                    "indentation must be a multiple of four spaces, found {}; use {} or {}{inside}",
                     leading,
                     leading / 4 * 4,
                     leading / 4 * 4 + 4
@@ -817,10 +822,15 @@ impl Scanner<'_> {
                         return self.fail("interpolation closes the virtual parenthesis");
                     }
                     if self.delimiters.is_empty() {
-                        return self.fail(format!(
-                            "unmatched closing delimiter '{}'; remove it or add the matching opener before it",
-                            b as char
-                        ));
+                        // A lone `}` left behind by a braced block is removed by the fix.
+                        let fix = (b == b'}' && self.trailing_semicolon()).then_some("");
+                        return self.fail_char(
+                            format!(
+                                "unmatched closing delimiter '{}'; remove it or add the matching opener before it",
+                                b as char
+                            ),
+                            fix,
+                        );
                     }
                     if self.levels.len() > 1
                         && self.delimiters.len() <= top_depth

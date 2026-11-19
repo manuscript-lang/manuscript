@@ -15,6 +15,12 @@
           "line": 3,
           "column": 1,
           "offset": 53
+        },
+        "end": {
+          "file": "golden-0957.ms",
+          "line": 3,
+          "column": 2,
+          "offset": 54
         }
       },
       {

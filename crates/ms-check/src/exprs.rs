@@ -8,6 +8,7 @@ use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::Cause;
 use ms_syntax::ast::*;
+use ms_syntax::{DiagnosticFix, Pos};
 use std::rc::Rc;
 
 fn decimal_valid(text: &str) -> bool {
@@ -226,7 +227,9 @@ impl Checker {
                     .diagnostics
                     .iter()
                     .any(|d| d.cause.is_inference() && d.pos.line == e.pos.line);
+            // A function whose parameters are invalid already has its own diagnostic.
             if !actual.is_invalid()
+                && !(actual.kind == Kind::Function && invalid_ty(&actual))
                 && !exp.is_invalid()
                 && !inference_reported
                 && !compatible(&Some(actual.clone()), exp)
@@ -765,6 +768,31 @@ impl Checker {
                 // A call that used to wait now returns a promise: `read(p).length()` is `read(p).wait().length()`.
                 msg.push_str("; a Promise has `wait()` and `done()`: call `wait()` first");
                 let fix = suggestions::append_call(&self.m().source, left, "wait()");
+                self.res_error_with_fix(e.pos, msg, fix);
+            } else if rt.is(Builtin::Result) && self.syms.str(name) == "wait" {
+                // An operation that returns its Result directly has nothing to wait for.
+                msg.push_str(
+                    "; this call returns its Result directly, not a Promise, so drop `.wait()`",
+                );
+                let len = self.syms.str(name).len();
+                let after = (e.pos.offset as usize) + len;
+                let fix = self
+                    .m()
+                    .source
+                    .get(after..)
+                    .is_some_and(|rest| rest.starts_with("()"))
+                    .then(|| {
+                        let end = Pos::new(
+                            e.pos.offset + len as u32 + 2,
+                            e.pos.line,
+                            e.pos.column + len as u32 + 2,
+                        );
+                        DiagnosticFix {
+                            pos: left.end,
+                            end,
+                            replacement: String::new(),
+                        }
+                    });
                 self.res_error_with_fix(e.pos, msg, fix);
             } else {
                 let cause = Cause::UnknownMember {
