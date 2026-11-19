@@ -648,8 +648,9 @@ b0:
 
 #[test]
 fn covers_a_separate_value_while_an_owner_has_a_hole() {
-    // The owner `%s` has a field moved out across the parking call, so it is not covered; the
-    // unrelated string `%h2` and the moved-out list `%m` the call holds are.
+    // The owner `%s` has a field moved out across the parking call, so only its other fields are
+    // covered (`drop_rest`); the unrelated string `%h2` and the moved-out list `%m` the call
+    // holds are covered whole.
     let body = r#"
 type Src { items: list<int>, label: str }
 
@@ -675,7 +676,12 @@ b0:
     assert!(changed, "{}", print_module(&m));
     assert_eq!(
         count(&m, "main", Op::CleanupPush),
-        2,
+        3,
+        "{}",
+        print_module(&m)
+    );
+    assert!(
+        print_module(&m).contains("cleanup.push @unwind.drop_rest %3"),
         "{}",
         print_module(&m)
     );
