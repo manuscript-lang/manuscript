@@ -33,6 +33,7 @@ Each row is a shape agents wrote that fails; the right column compiles.
 | `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
 | `(lo + hi) // 2` (the `//` starts a comment, so the `2` is silently dropped) | `(lo + hi) / 2`: Int `/` already truncates |
 | `ys := xs.sort()`, `print(xs.reverse())` (both return nothing and change `xs` in place) | `xs.sort()` as a statement, or `ys := xs.sorted()`, `xs.reversed()` |
+| `bytes.to_string()` (renders `Bytes(104, 105)`) | `bytes.decode_utf8().ok_or(Error("not UTF-8"))?` |
 | `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
 | `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |

@@ -187,3 +187,24 @@ fn a_void_call_that_is_bound_or_printed_is_flagged() {
         .collect();
     assert_eq!(lines, [3, 4]);
 }
+
+#[test]
+fn to_string_on_bytes_is_flagged() {
+    let source = include_str!("lint_terse/bytes_text.ms");
+    let syms = ms_syntax::Names::global();
+    let file: Arc<str> = Arc::from("lint.ms");
+    let module = ms_syntax::parser::parse(&file, source).expect("parses");
+    let program = ms_check::check(
+        syms,
+        vec![ms_check::load_module(syms, &module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    );
+    assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
+    let lines: Vec<u32> = lint_program(syms, &program)
+        .into_iter()
+        .filter(|f| f.code == "MSL135")
+        .map(|f| f.pos.line)
+        .collect();
+    assert_eq!(lines, [3]);
+}
