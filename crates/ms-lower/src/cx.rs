@@ -511,7 +511,8 @@ impl Cx {
             }
             mods.insert(m.data.file, Rc::new(m));
         }
-        let mutated = crate::mutation::infer_mutated(syms, &callables);
+        let classes = ms_check::api::ownership::Classifier::new(program);
+        let mutated = crate::mutation::infer_mutated(&classes, &callables);
         let native_ops = crate::nativetype::NativeOps::new(syms, program, &callables);
         let extended = program
             .methods
@@ -546,7 +547,7 @@ impl Cx {
             fixtures: program.test_fixtures.clone(),
             ownership: program.ownership_shared.tables(&program.ownership),
             ownership_shared: program.ownership_shared.clone(),
-            classes: ms_check::api::ownership::Classifier::new(program),
+            classes,
         }
     }
 

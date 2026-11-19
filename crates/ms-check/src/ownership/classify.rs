@@ -2,6 +2,7 @@
 
 use crate::checker::Program;
 use crate::fxmap::HashSet;
+use crate::syntax::FuncRef;
 use crate::types::*;
 use std::rc::Rc;
 #[cfg(test)]
@@ -60,6 +61,8 @@ pub enum Class {
 /// Computes value classes from declarations and contained values, reusing exact siblings locally.
 pub struct Classifier {
     closeable: HashSet<Name>,
+    /// The declarations of the closing methods: the `close` of each `Closeable` type.
+    closers: Vec<FuncRef>,
     /// Natives that are plain words (`Decimal`), so a copy is a bit copy.
     copyable: HashSet<Name>,
     /// Natives whose infallible `clone` is implemented in source (`List`, `BigInt`); one declared
@@ -72,10 +75,16 @@ impl Classifier {
     pub fn new(p: &Program) -> Classifier {
         let syms = ms_syntax::Names::global();
         let mut closeable = HashSet::default();
+        let mut closers = Vec::new();
         let mut copyable = HashSet::default();
         let mut clonable = HashSet::default();
         let mut clone_name = None;
         for method in &p.methods {
+            // A `move` close: it takes its receiver, and runs on the owner's storage.
+            let consuming = |d: &FuncRef| d.method().is_some_and(|m| m.consuming);
+            if method.is_close_op(syms) {
+                closers.extend(method.decl.clone().filter(consuming));
+            }
             if method.contract.is_some() && method.closes(syms) {
                 closeable.insert(method.receiver.id);
             }
@@ -96,6 +105,7 @@ impl Classifier {
         }
         Classifier {
             closeable,
+            closers,
             copyable,
             clonable,
         }
@@ -176,6 +186,12 @@ impl Classifier {
     /// Whether `t` has a `Closeable` implementation of its own, which runs on the whole value.
     pub fn closes_itself(&self, t: &Ty) -> bool {
         self.closeable.contains(&t.id)
+    }
+
+    /// Whether `f` is the `close` of a `Closeable` type: it runs on the whole value, so inside it
+    /// a field may leave the value, which no other function may do to a type that closes itself.
+    pub fn is_closer(&self, f: &FuncRef) -> bool {
+        self.closers.iter().any(|c| c.same(f))
     }
 
     /// The class of values of `t`.
