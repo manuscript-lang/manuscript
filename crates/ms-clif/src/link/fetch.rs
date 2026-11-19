@@ -8,15 +8,56 @@ use std::sync::Arc;
 
 const MAX_REDIRECTS: usize = 5;
 
-/// The body of `url`, following redirects. `HTTPS_PROXY` (an `http://host:port` proxy) is honored.
+/// Tries a download this many times: a runner's DNS or network blip must not fail a build.
+const ATTEMPTS: u32 = 4;
+
+/// Why one attempt failed, and whether another attempt can help.
+enum Failure {
+    Retry(String),
+    Fatal(String),
+}
+
+/// The body of `url`, following redirects, retried with a growing pause when the connection fails or
+/// the server answers with an error that can pass (5xx, 429). `HTTPS_PROXY` (an `http://host:port`
+/// proxy) is honored.
 pub fn get(url: &str) -> Result<Vec<u8>, String> {
+    retrying(
+        ATTEMPTS,
+        |n| std::thread::sleep(std::time::Duration::from_secs(u64::from(n))),
+        || get_once(url),
+    )
+}
+
+/// Runs `attempt` until it succeeds, fails for good, or `attempts` runs are spent; `pause(n)` runs
+/// before attempt `n + 1`.
+fn retrying<T>(
+    attempts: u32,
+    mut pause: impl FnMut(u32),
+    mut attempt: impl FnMut() -> Result<T, Failure>,
+) -> Result<T, String> {
+    let mut n = 1;
+    loop {
+        match attempt() {
+            Ok(value) => return Ok(value),
+            Err(Failure::Fatal(e)) => return Err(e),
+            Err(Failure::Retry(e)) if n >= attempts => return Err(e),
+            Err(Failure::Retry(_)) => {
+                pause(n);
+                n += 1;
+            }
+        }
+    }
+}
+
+fn get_once(url: &str) -> Result<Vec<u8>, Failure> {
     let mut url = url.to_string();
     for _ in 0..=MAX_REDIRECTS {
-        let (status, location, body) = request(&url)?;
+        let (status, location, body) = request(&url).map_err(Failure::Retry)?;
         match status {
             200 => return Ok(body),
             301 | 302 | 303 | 307 | 308 => {
-                let to = location.ok_or("redirect without a Location")?;
+                let to =
+                    location.ok_or_else(|| Failure::Fatal("redirect without a Location".into()))?;
                 url = if to.starts_with("https://") {
                     to
                 } else {
@@ -24,10 +65,11 @@ pub fn get(url: &str) -> Result<Vec<u8>, String> {
                     format!("https://{host}{to}")
                 };
             }
-            other => return Err(format!("{url}: HTTP status {other}")),
+            429 | 500..=599 => return Err(Failure::Retry(format!("{url}: HTTP status {status}"))),
+            other => return Err(Failure::Fatal(format!("{url}: HTTP status {other}"))),
         }
     }
-    Err("too many redirects".into())
+    Err(Failure::Fatal("too many redirects".into()))
 }
 
 fn request(url: &str) -> Result<(u16, Option<String>, Vec<u8>), String> {
@@ -229,5 +271,54 @@ pub fn unpack_tools(archive: &[u8], wanted: &[String], dir: &Path) -> Result<(),
         Ok(())
     } else {
         Err("the archive does not hold every tool".into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_passing_failure_is_retried_until_it_works() {
+        let mut calls = 0;
+        let mut pauses = Vec::new();
+        let result = retrying(
+            4,
+            |n| pauses.push(n),
+            || {
+                calls += 1;
+                if calls < 3 {
+                    Err(Failure::Retry("dns".into()))
+                } else {
+                    Ok(calls)
+                }
+            },
+        );
+        assert_eq!(result, Ok(3));
+        assert_eq!(pauses, [1, 2]);
+    }
+
+    #[test]
+    fn a_lasting_failure_stops_at_once_and_a_passing_one_after_the_last_attempt() {
+        let mut calls = 0;
+        let fatal: Result<(), String> = retrying(
+            4,
+            |_| {},
+            || {
+                calls += 1;
+                Err(Failure::Fatal("404".into()))
+            },
+        );
+        assert_eq!((fatal, calls), (Err("404".to_string()), 1));
+        calls = 0;
+        let spent: Result<(), String> = retrying(
+            4,
+            |_| {},
+            || {
+                calls += 1;
+                Err(Failure::Retry("dns".into()))
+            },
+        );
+        assert_eq!((spent, calls), (Err("dns".to_string()), 4));
     }
 }
