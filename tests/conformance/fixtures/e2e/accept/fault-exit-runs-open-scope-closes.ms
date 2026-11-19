@@ -6,7 +6,7 @@ import stdout from "@std/io/io.ms"
 type Marker:
 	name: String
 
-fn var Marker.close() Void!:
+fn move Marker.close() Void!:
 	void stdout().write(f"closed {self.name}\n")
 
 fn main() Void:

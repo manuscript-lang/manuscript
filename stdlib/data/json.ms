@@ -502,7 +502,7 @@ fn var JsonLines[T].write(move value: T) Void!:
 fn var JsonLines[T].flush() Void!:
 	return self.output.flush()
 
-fn var JsonLines[T].close() Void!:
+fn move JsonLines[T].close() Void!:
 	return self.output.close()
 
 /*

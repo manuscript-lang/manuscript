@@ -78,6 +78,3 @@ test "a pending connection adopts once and closing it unadopted closes the socke
 test "accepting a pending connection on a closed listener reports it":
 	var listener = listen("127.0.0.1:0")?
 	listener.close()?
-
-	cause := listener.accept_pending().wait() | expect_error?
-	return expect_equal(cause.kind, "EBADF")

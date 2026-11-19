@@ -41,7 +41,6 @@ export fn main() Int:
 
             start := monotonic()
             void server.close()
-            void server.wait()
 
             close_ms := monotonic().difference(start).to_milliseconds()
             var text = ""

@@ -5,7 +5,7 @@ import Closeable from "@std/core.ms"
 type Res:
 	id: Int
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
 	return ok(void)
 
 fn use(i: Int) Int!:

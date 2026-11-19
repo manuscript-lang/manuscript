@@ -11,7 +11,7 @@ type Marker:
 	log: String
 	fail: Bool
 
-fn var Marker.close() Void!:
+fn move Marker.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 	if self.fail: return error(Error("cause close failed"))
 

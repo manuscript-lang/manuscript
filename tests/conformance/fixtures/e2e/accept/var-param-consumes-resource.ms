@@ -10,7 +10,7 @@ type Door:
 	id: Int
 	log: String
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
 type Slot:

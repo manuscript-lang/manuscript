@@ -34,7 +34,7 @@ type Chunks:
     at: Int = 0
     failure: String?
 
-fn var Chunks.close() Void!:
+fn move Chunks.close() Void!:
     return ok()
 
 fn var Chunks.next() Bytes?!:

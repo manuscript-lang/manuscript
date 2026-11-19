@@ -10,7 +10,7 @@ type Item:
 	id: Int
 	log: String
 
-fn var Item.close() Void!:
+fn move Item.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
 fn set_out(log: String) Void:

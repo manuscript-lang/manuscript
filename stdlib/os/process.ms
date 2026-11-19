@@ -131,7 +131,7 @@ export opaque type Subprocess:
 
 // Kills the process group, joins the child, kills leftover group members, and
 // closes all three streams. Idempotent; scope exit calls it.
-fn var Subprocess.close() Void!:
+fn move Subprocess.close() Void!:
 	msstd_process_subprocess_close(self.native)
 
 // The child's standard input as a WriteStream; writes block when the pipe is full.
@@ -251,7 +251,7 @@ fn var SignalSource.next() Int?!:
 	return ok(msstd_process_signal_next(self.signals)?)
 
 // Stops observing signals and wakes a pending read with EBADF.
-fn var SignalSource.close() Void!:
+fn move SignalSource.close() Void!:
 	msstd_process_signal_close(self.signals)
 
 // The names of an environment map, in the order of its values.

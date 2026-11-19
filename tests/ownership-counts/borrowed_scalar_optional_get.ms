@@ -8,7 +8,7 @@ import Closeable, print from "@std/core.ms"
 type Marker:
 	id: Int
 
-fn var Marker.close() Void!:
+fn move Marker.close() Void!:
 	print(f"close {self.id}")
 
 fn inspect(value: Marker?) Void:

@@ -1267,6 +1267,11 @@ impl FnLower<'_> {
 
     /// `own`, followed by the close of every resource `ty` holds, last declared first: the
     /// close of a type, alternative, `Optional`, `List` or `Map` is generated from its parts.
+    /// The close of only the resources `ty` holds, once its own `close` has run.
+    pub(crate) fn close_parts_kind(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
+        self.close_with_parts(ty, None)
+    }
+
     fn close_with_parts(
         &mut self,
         ty: &ct::Ty,

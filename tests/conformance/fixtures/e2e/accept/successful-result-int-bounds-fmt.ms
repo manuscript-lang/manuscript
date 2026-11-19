@@ -84,7 +84,7 @@ fn hidden_success() Int:
 type BoundedResultCleanup:
     visits: List[Int]
 
-fn var BoundedResultCleanup.close() Void!:
+fn move BoundedResultCleanup.close() Void!:
     self.visits.append(7)
 
 fn cleanup(visits: List[Int]) Int:

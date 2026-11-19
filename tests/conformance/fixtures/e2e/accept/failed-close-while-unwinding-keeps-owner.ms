@@ -15,7 +15,7 @@ type Item:
 	log: String
 	fail: Bool
 
-fn var Item.close() Void!:
+fn move Item.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 	if self.fail: return error(Error("close failed"))
 

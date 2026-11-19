@@ -27,7 +27,7 @@ Returning part of a parameter borrows it without a marker. Clone for an independ
 
 Mutable parameters require var at declaration and call: `add(var names, user)`. Mutable receiver methods use `fn var Type.name()` but calls remain `value.name()`. Do not mutably capture a collection in its own method's callback.
 
-Closeable closes at scope end unless moved. Declare `fn var Type.close() Void!` or implement Closeable. Handle explicit close Results; scope-end failures propagate where supported or fault. Cleanup is deterministic, not GC; resource owners are not freely cloneable.
+Closeable closes at scope end unless moved. Declare `fn move Type.close() Void!` or implement Closeable. `x.close()` consumes `x`: a later use or second close is a compile error, and scope end skips it. Only an owner closes: take a parameter with `move` to close it. Handle explicit close Results; scope-end failures propagate where supported or fault. Cleanup is deterministic, not GC; resource owners are not freely cloneable.
 
 ## Borrow errors and their fixes
 

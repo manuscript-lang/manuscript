@@ -12,7 +12,7 @@ type Door:
 	closed: Bool = false
 	fail: Bool = false
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?

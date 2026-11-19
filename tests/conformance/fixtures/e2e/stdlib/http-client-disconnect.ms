@@ -15,7 +15,7 @@ fn send(var conn: Connection, text: String) Void!:
 type Reporter:
     name: String
 
-fn var Reporter.close() Void!:
+fn move Reporter.close() Void!:
     _line := stdout().write(f"{self.name} cleanup ran\n")
 
 fn handle(request: HttpRequest) HttpResponse:

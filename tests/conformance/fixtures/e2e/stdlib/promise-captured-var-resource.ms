@@ -6,7 +6,7 @@ import promise from "@std/concurrency/promise.ms"
 type Door:
     names: List[String]
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
     print("closed")
 
 fn var Door.swing() Int:

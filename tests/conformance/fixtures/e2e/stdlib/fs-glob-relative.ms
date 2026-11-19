@@ -15,7 +15,7 @@ import (
 type RestoreDirectory:
 	path: String
 
-fn var RestoreDirectory.close() Void!:
+fn move RestoreDirectory.close() Void!:
 	return change_directory(self.path)
 
 fn matched_paths(root: String, options: GlobOptions) List[String]!:

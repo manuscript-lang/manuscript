@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 type AggregateResource:
     visits: List[Int]
 
-fn var AggregateResource.close() Void!:
+fn move AggregateResource.close() Void!:
     self.visits.append(1)
 
 interface AggregateCounter:

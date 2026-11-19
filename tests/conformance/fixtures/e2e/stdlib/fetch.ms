@@ -150,11 +150,3 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
 
 	again := client.fetch(url).wait()?
 	expect_equal(again.body.length(), 10)?
-
-test "a closed Fetcher returns Closed":
-	server := serve("127.0.0.1:0", buffered(route))?
-	var client = fetcher()?
-	client.close()?
-
-	sent := client.fetch(f"http://{server.address()}/big")
-	expect_equal(sent.wait().err().message, "HTTP: resource is closed")?

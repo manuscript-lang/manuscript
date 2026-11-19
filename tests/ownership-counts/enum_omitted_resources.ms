@@ -30,14 +30,14 @@ import Closeable from "@std/core.ms"
 type Token:
 	id: Int
 
-fn var Token.close() Void!:
+fn move Token.close() Void!:
 	print(f"close {self.id}")
 
 type NamedToken:
 	id: Int
 	name: String
 
-fn var NamedToken.close() Void!:
+fn move NamedToken.close() Void!:
 	print(f"close {self.id}")
 
 enum Choice:

@@ -3,7 +3,7 @@
 type Res:
     id: Int
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
     print(f"close {self.id}")
 
 type Job:

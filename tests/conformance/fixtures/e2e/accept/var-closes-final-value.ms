@@ -12,7 +12,7 @@ type Counter:
 	value: Int
 	log: String
 
-fn var Counter.close() Void!:
+fn move Counter.close() Void!:
 	void append_file(self.log, f"{self.value},").wait()
 
 fn logged(path: String) String:

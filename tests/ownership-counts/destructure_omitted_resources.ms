@@ -22,7 +22,7 @@ import (
 type Token:
 	id: Int
 
-fn var Token.close() Void!:
+fn move Token.close() Void!:
 	return stdout().write(f"close {self.id}\n")
 
 type Triple:
@@ -38,7 +38,7 @@ type NamedToken:
 	id: Int
 	name: String
 
-fn var NamedToken.close() Void!:
+fn move NamedToken.close() Void!:
 	return stdout().write(f"close {self.id}\n")
 
 type NamedTriple:

@@ -68,7 +68,7 @@ test "a changing source receiver selects its element once":
 type Door:
 	id: Int
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	return ok()
 
 fn at(var events: List[Int]) Int:

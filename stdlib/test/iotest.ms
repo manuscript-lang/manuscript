@@ -34,7 +34,7 @@ fn var OneByte.next() Bytes?!:
 	self.held = data.slice(1, data.length())?
 	return ok(data.slice(0, 1)?)
 
-fn var OneByte.close() Void!:
+fn move OneByte.close() Void!:
 	return self.input.close()
 
 // Returns `input` limited to one byte per read. This exposes code that assumes a read
@@ -62,7 +62,7 @@ fn var FailAfter.next() Bytes?!:
 
 	return ok(chunk)
 
-fn var FailAfter.close() Void!:
+fn move FailAfter.close() Void!:
 	return self.input.close()
 
 // Returns a stream that delivers `after` bytes of `input` and then fails every read
@@ -97,7 +97,7 @@ fn var FailingSink.write(move value: Bytes) Void!:
 fn var FailingSink.flush() Void!:
 	return self.output.flush()
 
-fn var FailingSink.close() Void!:
+fn move FailingSink.close() Void!:
 	return self.output.close()
 
 // Returns a writer that passes `after` bytes through to `output`, writes the part of

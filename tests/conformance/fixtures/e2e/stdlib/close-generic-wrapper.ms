@@ -7,7 +7,7 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
     print(f"closed {self.name}")
 
 type Wrap[T]:

@@ -20,7 +20,7 @@ fn var MemorySource.next() Bytes?!:
 	self.offset = end
 	return ok(chunk)
 
-fn var MemorySource.close() Void!:
+fn move MemorySource.close() Void!:
 	self.offset = self.data.length()
 
 fn source_text() String:

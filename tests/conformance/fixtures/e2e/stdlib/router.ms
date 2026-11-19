@@ -449,7 +449,7 @@ fn Sink.flush() Void!:
 fn Sink.duplicate() Transport!:
 	return ok(Sink(self.path.clone()))
 
-fn Sink.close() Void:
+fn move Sink.close() Void:
 	return
 
 fn logged(path: String) String:

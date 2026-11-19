@@ -141,7 +141,7 @@ type FixtureScope[F]:
 	after_all: fn(var F) Void!
 	in_test: Bool
 
-fn var FixtureScope[F].close() Void!:
+fn move FixtureScope[F].close() Void!:
 	if self.in_test:
 		self.in_test = false
 		self.after_each(var self.fixture)?

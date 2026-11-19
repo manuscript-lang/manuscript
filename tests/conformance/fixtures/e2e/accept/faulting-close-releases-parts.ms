@@ -15,7 +15,7 @@ type Holder:
 	label: String
 	breaks: Bool
 
-fn var Holder.close() Void!:
+fn move Holder.close() Void!:
 	void sleep(nanoseconds(1000)).wait()
 	if self.breaks:
 		panic("close fault")
@@ -34,7 +34,7 @@ type Door:
 	label: String
 	fail: Bool
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	void sleep(nanoseconds(1000)).wait()
 	if self.fail: panic("capture close panic")
 

@@ -7,7 +7,7 @@ type Resource:
 	label: String
 	output: WriteStream[String]
 
-fn var Resource.close() Void!:
+fn move Resource.close() Void!:
 	_ignored := self.output.write(f"close {self.label}\n")
 
 fn main() Void:

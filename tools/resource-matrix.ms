@@ -25,7 +25,7 @@ import Closeable, print from "@std/core.ms"
 type Marker:
     id: Int
 
-fn var Marker.close() Void!:
+fn move Marker.close() Void!:
     print(f"closed-{self.id}")
 
 fn saw(m: Marker) Void:

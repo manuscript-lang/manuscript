@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Door:
     id: Int
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
     return ok()
 
 fn dupe[T](xs: List[T]) Int:

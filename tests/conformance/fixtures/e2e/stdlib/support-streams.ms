@@ -16,7 +16,7 @@ type ClosedSource:
 fn var ClosedSource.next() Bytes?!:
     return error(Error("I/O: resource is closed", kind: "EBADF"))
 
-fn var ClosedSource.close() Void!:
+fn move ClosedSource.close() Void!:
     return ok()
 
 export fn closed_reader() ReadStream[Bytes]:

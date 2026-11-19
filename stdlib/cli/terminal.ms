@@ -512,7 +512,7 @@ fn var TerminalEvents.next() TerminalEvent?!:
 
 	return ok(none)
 
-fn var TerminalEvents.close() Void!:
+fn move TerminalEvents.close() Void!:
 	return ok()
 
 esc := "\u{1b}"
@@ -533,7 +533,7 @@ export type RawTerminal:
 	handle: RawHandle
 
 // Restores the terminal; closing again does nothing.
-fn var RawTerminal.close() Void!:
+fn move RawTerminal.close() Void!:
 	msstd_terminal_raw_terminal_close(self.handle.native)
 
 // Input events as a stream: keys, text and resizes, one per read. Waits honor

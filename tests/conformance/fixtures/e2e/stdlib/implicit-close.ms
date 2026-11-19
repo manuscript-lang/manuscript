@@ -11,7 +11,7 @@ type Resource:
 	id: Int
 
 // Close records itself by writing a marker file named after the resource.
-fn var Resource.close() Void!:
+fn move Resource.close() Void!:
 	void write_file(f"{self.dir}/{self.id}", "closed", true).wait()
 
 fn closed(dir: String, id: Int) Bool:
@@ -46,8 +46,9 @@ fn breaks_out(dir: String) Int:
 
 fn closes_by_hand_too(dir: String) Int:
 	var r = Resource(dir, 20)
+	id := r.id
 	void r.close()
-	return r.id
+	return id
 
 test "a resource nothing takes is closed when its scope ends":
 	temporary := temporary("manuscript-implicit-") | expect_ok?

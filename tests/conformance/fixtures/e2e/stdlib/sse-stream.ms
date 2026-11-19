@@ -23,7 +23,7 @@ fn var Chunks.next() Bytes?!:
 
 	return ok(none)
 
-fn var Chunks.close() Void!:
+fn move Chunks.close() Void!:
 	return ok()
 
 fn chunks(parts: List[Bytes]) ReadStream[Bytes]:

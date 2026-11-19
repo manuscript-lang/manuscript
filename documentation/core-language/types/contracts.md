@@ -80,7 +80,7 @@ fn main() Void:
 ```
 
 - A mismatch is not an error until the type is used as the interface; the diagnostic lists the first operation that is missing or differs.
-- A type with `fn var close() Void!` satisfies `Closeable` and is closed at scope end, so a type that is also a `Source` and a `Sink` closes once. Make such a `close` safe to call again when an owner also closes the value.
+- A type with `fn move close() Void!` satisfies `Closeable` and is closed at scope end, so a type that is also a `Source` and a `Sink` closes once.
 - `Comparable`, `Equal`, `Hashable`, `Stringable` and `JsonEncode` are met by an own `compare`, `equals`, `hash`, `to_string` or `to_json` of the exact signature.
   - A type or enum that meets `Stringable` uses that `to_string` as its text form in interpolation, `print`, and containers. A `to_string()` that does not return `String`, or a `to_string(prefix)` with parameters, is an ordinary method, and the type prints structurally.
   - The language calls these methods on values it only borrows, so such a method may not keep its receiver or argument by passing it on with `move`, storing it, or returning it. Keep a copy instead, such as `keep(self.clone())`.

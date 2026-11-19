@@ -98,7 +98,6 @@ import expect_equal from "@std/test/test.ms"
 fn send_numbers(var out: WriteStream[Int]) Void!:
     for n in [1, 2, 3]:
         out.write(n)?
-    return out.close()
 
 test "sum values from a producer":
     var p = pipe[Int](capacity: 64)
@@ -117,7 +116,7 @@ PASS pipe_test.ms::sum values from a producer
 1 tests, 0 failed
 ```
 
-The producer closes its writer after sending the values, allowing the reader's loop to finish. Waiting for the producer also checks its result.
+The promise owns the writer it captured and closes it when the producer returns, allowing the reader's loop to finish. Waiting for the producer also checks its result.
 
 - `writer()` returns a new writing end each time, like `dup` on a file descriptor. `reader()` returns the one reading end.
 - `capacity` is the level above which a writer's `write` and `flush` wait.

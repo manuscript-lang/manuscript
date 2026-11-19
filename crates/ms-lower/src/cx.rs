@@ -511,7 +511,7 @@ impl Cx {
             }
             mods.insert(m.data.file, Rc::new(m));
         }
-        let mutated = crate::mutation::infer_mutated(&callables);
+        let mutated = crate::mutation::infer_mutated(syms, &callables);
         let native_ops = crate::nativetype::NativeOps::new(syms, program, &callables);
         let extended = program
             .methods

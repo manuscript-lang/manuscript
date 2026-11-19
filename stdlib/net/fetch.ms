@@ -161,7 +161,7 @@ fn Fetcher.stream(
 
 // Cancels in-flight requests and drops pooled connections; later calls return
 // `EBADF`.
-fn var Fetcher.close() Void!:
+fn move Fetcher.close() Void!:
 	return self.client.close()
 
 // Reads the body to its end within the options' size limit, then closes it.

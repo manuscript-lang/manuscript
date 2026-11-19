@@ -14,7 +14,7 @@ type Resource:
 
 // Idempotent, as the Closeable contract requires: the block that ends early closes by
 // hand and the scope closes again.
-fn var Resource.close() Void!:
+fn move Resource.close() Void!:
 	if self.done: return ok()
 
 	self.done = true

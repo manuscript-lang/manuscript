@@ -555,7 +555,7 @@ fn var CsvRowsSink.write(move value: List[String]) Void!:
 fn var CsvRowsSink.flush() Void!:
 	return self.output.flush()
 
-fn var CsvRowsSink.close() Void!:
+fn move CsvRowsSink.close() Void!:
 	return self.output.close()
 
 /*

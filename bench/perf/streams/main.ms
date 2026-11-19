@@ -34,7 +34,7 @@ fn var ListSource.next() Int?!:
 	self.at += 1
 	return ok(v)
 
-fn var ListSource.close() Void!:
+fn move ListSource.close() Void!:
 	return ok()
 
 // `f` over another `Source`, called through the interface.
@@ -48,7 +48,7 @@ fn var MapSource.next() Int?!:
 
 	return ok(none)
 
-fn var MapSource.close() Void!:
+fn move MapSource.close() Void!:
 	return self.up.close()
 
 fn plain(xs: List[Int]) Int:

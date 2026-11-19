@@ -54,7 +54,6 @@ test "logger writes typed escaped records and protects metadata":
 	expect_equal((written(path)?), expected)?
 	logger.flush()?
 	logger.close()?
-	expect_true(logger.info("late").is_error())?
 
 test "non-object values are written under data":
 	directory := temporary("manuscript-log-")?
@@ -163,16 +162,6 @@ test "limits and unencodable values reject before writing":
 	expect_equal(unlimited.info("bad", bad), invalid_data)?
 	expect_equal((written(path)?), before)?
 
-test "closing a logger twice keeps reporting Closed":
-	directory := temporary("manuscript-log-")?
-	var logger = create(file_transport(f"{directory.path()}/out.ndjson")?)?
-	logger.close()?
-	logger.close()?
-
-	closed: Void! := error(Error("logging: resource is closed", kind: "EBADF"))
-	expect_equal(logger.info("closed"), closed)?
-	expect_equal(logger.flush(), closed)?
-
 test "file transport appends and flushes with scoped cleanup":
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/events.ndjson"
@@ -226,7 +215,7 @@ fn CaptureTransport.flush() Void!:
 fn CaptureTransport.duplicate() Transport!:
 	return ok(CaptureTransport(self.path.clone(), f"{self.suffix}.child"))
 
-fn CaptureTransport.close() Void:
+fn move CaptureTransport.close() Void:
 	_marked := write_file(f"{self.path}{self.suffix}", "closed", true).wait()
 
 test "source transports receive complete records and close through their contract":
@@ -320,7 +309,7 @@ fn Memory.flush() Void!:
 fn Memory.duplicate() Transport!:
 	return ok(Memory(self.path.clone()))
 
-fn Memory.close() Void:
+fn move Memory.close() Void:
 	return
 
 fn recorded(path: String) String:
@@ -404,7 +393,6 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
 	expect_true(read_file(f"{path}.3").wait().is_error())?
 	expect_true(current.contains("record number 11"))?
 	logger.close()?
-	expect_true(logger.info("late").is_error())?
 
 test "rotating transport rejects invalid sizes":
 	directory := temporary("manuscript-rotate-")?

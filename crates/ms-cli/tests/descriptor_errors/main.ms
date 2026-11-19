@@ -30,10 +30,6 @@ fn check_failed_writer(size: Int) Void!:
 
     closed := writer.close() | expect_error?
     expect_equal(closed.kind, "EIO")?
-    writer.close() | expect_ok?
-
-    after_close := writer.write("closed".to_bytes()) | expect_error?
-    expect_equal(after_close.kind, "EBADF")?
     return ok()
 
 fn check_healthy_writer() Void!:
@@ -63,7 +59,6 @@ fn check_failed_close() Void!:
 
     closed := writer.close() | expect_error?
     expect_equal(closed.kind, "EIO")?
-    writer.close() | expect_ok?
     return ok()
 
 fn check_writers() Void!:

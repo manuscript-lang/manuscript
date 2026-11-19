@@ -4,7 +4,7 @@ type Res:
 	id: Int
 	open: Bool = true
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
 	if self.open:
 		self.open = false
 		print(f"close {self.id}")

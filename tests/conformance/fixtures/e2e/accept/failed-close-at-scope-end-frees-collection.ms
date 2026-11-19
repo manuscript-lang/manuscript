@@ -11,7 +11,7 @@ type Item:
 	id: Int
 	label: String
 
-fn var Item.close() Void!:
+fn move Item.close() Void!:
 	return error(Error("close failed"))
 
 fn deque_at_scope_end() Void:

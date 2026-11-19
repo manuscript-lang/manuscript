@@ -92,7 +92,7 @@ fn var ConnectionSource.next() Bytes?!:
 	return msstd_net_connection_read(self.native, none, none)
 
 // Closes the socket when the output end is already closed.
-fn var ConnectionSource.close() Void!:
+fn move ConnectionSource.close() Void!:
 	msstd_net_connection_close_if_last(self.native)
 
 type ConnectionSink:
@@ -106,7 +106,7 @@ fn var ConnectionSink.flush() Void!:
 
 // Half-closes the connection so the peer sees the end of the stream; the socket
 // closes once the input is closed too.
-fn var ConnectionSink.close() Void!:
+fn move ConnectionSink.close() Void!:
 	void msstd_net_connection_shutdown_write(self.native)
 	msstd_net_connection_close_if_last(self.native)
 
@@ -143,7 +143,7 @@ export type Connection:
 	native: NativeConnection
 
 // Closes both streams, and with them the socket.
-fn var Connection.close() Void!:
+fn move Connection.close() Void!:
 	self.input.close()?
 	return self.output.close()
 
@@ -221,7 +221,7 @@ type DatagramSource:
 fn var DatagramSource.next() Datagram?!:
 	return ok(msstd_net_datagram_receive(self.native, none, none)?)
 
-fn var DatagramSource.close() Void!:
+fn move DatagramSource.close() Void!:
 	msstd_net_datagram_close_if_last(self.native)
 
 type DatagramSink:
@@ -235,7 +235,7 @@ fn var DatagramSink.write(move value: Datagram) Void!:
 fn var DatagramSink.flush() Void!:
 	return ok()
 
-fn var DatagramSink.close() Void!:
+fn move DatagramSink.close() Void!:
 	msstd_net_datagram_close_if_last(self.native)
 
 // A connectionless socket for sending and receiving datagrams. Closing it closes both
@@ -250,7 +250,7 @@ export type DatagramSocket:
 	address: String
 
 // Closes both streams, and with them the socket.
-fn var DatagramSocket.close() Void!:
+fn move DatagramSocket.close() Void!:
 	self.input.close()?
 	return self.output.close()
 
@@ -275,7 +275,7 @@ export opaque type Listener:
 
 // Stops accepting, interrupts a pending `accept`, and waits for it to stop.
 // Safe to call repeatedly; connections already accepted stay open.
-fn var Listener.close() Void!:
+fn move Listener.close() Void!:
 	msstd_net_listener_close(self.native)
 
 // Starts waiting for the next incoming connection and returns its promise. A
@@ -322,7 +322,7 @@ export opaque type PendingConnection:
 	raw: Int
 
 // Closes the socket unless it was adopted. Safe to call repeatedly.
-fn var PendingConnection.close() Void!:
+fn move PendingConnection.close() Void!:
 	if self.raw >= 0:
 		msstd_net_pending_release(self.raw)
 		self.raw = -1
@@ -712,7 +712,7 @@ fn workers_for(options: HttpServerOptions) Int:
 type ServingHandle:
 	serving: NativeServing
 
-fn var ServingHandle.close() Void!:
+fn move ServingHandle.close() Void!:
 	msstd_http_serving_release(self.serving)
 
 // One worker's HTTP engine, which owns its connections as poller registrations rather
@@ -720,7 +720,7 @@ fn var ServingHandle.close() Void!:
 type WorkerHandle:
 	worker: NativeWorker
 
-fn var WorkerHandle.close() Void!:
+fn move WorkerHandle.close() Void!:
 	msstd_http_worker_close(self.worker)
 
 // The accept loop's pipes and workers. Its close, which runs when the loop returns, is
@@ -730,7 +730,7 @@ type Accepting:
 	deals: List[WriteStream[Int]]
 	workers: List[Promise[Void]]
 
-fn var Accepting.close() Void!:
+fn move Accepting.close() Void!:
 	while not self.deals.is_empty():
 		if deal := self.deals.pop():
 			var closing = deal

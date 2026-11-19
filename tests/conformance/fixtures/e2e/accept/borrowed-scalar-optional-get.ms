@@ -8,7 +8,7 @@ import (
 type Marker:
 	id: Int
 
-fn var Marker.close() Void!: error(Error("scalar marker closed"))
+fn move Marker.close() Void!: error(Error("scalar marker closed"))
 
 fn inspect(value: Marker?) Void:
 	_id := value.get().id
@@ -48,7 +48,7 @@ test "owned scalar getter results still close their temporary":
 type HeapMarker:
 	text: String
 
-fn var HeapMarker.close() Void!: error(Error("heap marker closed"))
+fn move HeapMarker.close() Void!: error(Error("heap marker closed"))
 
 fn inspect_heap(value: HeapMarker?) Void:
 	_length := value.get().text.length()

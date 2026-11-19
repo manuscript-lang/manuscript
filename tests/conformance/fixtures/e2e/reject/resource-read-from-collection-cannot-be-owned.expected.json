@@ -14,7 +14,7 @@
           "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 16,
           "column": 20,
-          "offset": 474
+          "offset": 475
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 19,
           "column": 20,
-          "offset": 556
+          "offset": 557
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 24,
           "column": 26,
-          "offset": 673
+          "offset": 674
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 25,
           "column": 30,
-          "offset": 707
+          "offset": 708
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 27,
           "column": 32,
-          "offset": 770
+          "offset": 771
         }
       },
       {
@@ -69,7 +69,7 @@
           "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 33,
           "column": 22,
-          "offset": 1082
+          "offset": 1083
         }
       }
     ],

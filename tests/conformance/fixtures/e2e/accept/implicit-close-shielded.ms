@@ -22,7 +22,7 @@ type Holder:
 	breaks: Bool
 
 // Close records itself by writing a marker file named after the holder.
-fn var Holder.close() Void!:
+fn move Holder.close() Void!:
 	if self.pause:
 		void sleep(nanoseconds(5000000)).wait()
 	void write_file(f"{self.dir}/{self.id}", "closed", true).wait()

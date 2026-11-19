@@ -4,7 +4,7 @@ A `serve` handler runs on many threads and only reads what it captures, so it ca
 
 - The owner takes the reader (`var hits`) and loops until every writer has closed; it returns the final state with `wait()`.
 - Each handler call takes its own writer with `events.writer()`; a writer cannot be shared, and it is cheap.
-- Keep one `gate` writer open so the owner does not end early; close it after `server.wait()`.
+- Keep one `gate` writer open so the owner does not end early; close it after `server.close()`.
 - A pipe carries clonable values and has no reply channel. A handler therefore reports facts (a hit, an audit line, a job to run) and does not read the owner's live state. Data a handler must read lives in a read-only source (a file, or a value built before `serve`).
 
 <!-- complete: server-state.ms -->
@@ -39,7 +39,6 @@ test "handlers report to one owner":
 	void fetch(f"http://{server.address()}/a").wait()?
 	void fetch(f"http://{server.address()}/b").wait()?
 	server.close()?
-	server.wait()?
 	gate.close()?
 	counts := owner.wait()?
 	expect_equal(counts.get_or("/a", 0), 2)?

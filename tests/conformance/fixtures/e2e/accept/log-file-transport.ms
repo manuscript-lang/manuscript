@@ -61,11 +61,6 @@ test "limits, invalid levels, and closed transports are errors":
         Error("logging: invalid input", kind: "EINVAL")
     )?
     logger.close()?
-    logger.close()?
-
-    closed: Void! := error(Error("logging: resource is closed", kind: "EBADF"))
-    expect_equal(logger.info("x"), closed)?
-    expect_equal(logger.flush(), closed)?
     expect_equal(lines(path)?, line)?
 
 test "a missing directory is a filesystem error":

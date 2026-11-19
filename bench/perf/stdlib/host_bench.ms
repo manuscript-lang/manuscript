@@ -37,7 +37,7 @@ fn var Whole.next() Bytes?!:
 	self.done = true
 	return ok(self.data.clone())
 
-fn var Whole.close() Void!:
+fn move Whole.close() Void!:
 	return ok()
 
 fn count_events(data: Bytes) Int:

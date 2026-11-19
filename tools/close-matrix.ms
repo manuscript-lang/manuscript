@@ -30,7 +30,7 @@ type Marker:
     id: Int
     open: Bool
 
-fn var Marker.close() Void!:
+fn move Marker.close() Void!:
     if self.open:
         self.open = false
         print(f"closed-{self.id}")
@@ -348,12 +348,7 @@ fn constructs() List[Construct]:
 			"fn produce() @TY@!: return ok(@M1@)",
 			"p := promise(fn: produce())\n    void p.wait()",
 		),
-		only(
-			"explicit_close",
-			"bare",
-			"",
-			"var x = @M1@\n    x.close()?\n    x.close()?",
-		),
+		only("explicit_close", "bare", "", "var x = @M1@\n    x.close()?"),
 		only(
 			"explicit_close_reassign",
 			"bare",

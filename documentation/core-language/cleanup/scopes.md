@@ -40,11 +40,11 @@ A concrete type opts in through an implementation of the standard `Closeable` in
 
 A binding is closed unless something takes the resource from it. Returning it, passing it to a moving parameter, storing it, or capturing it in a closure that outlives the scope moves it to a new owner, which closes it instead. A resource acquired in a loop closes at the end of that iteration.
 
-To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `?` or `void`.
+To close earlier than the end of the scope, call `close()`. It consumes the binding: the scope end does not close it again, and the compiler rejects any later use of the name. Closing a file early is a common case; handle the `Result` with `?` or `void`.
 
 <!-- manuscript-example: {"mode":"fragment","context":"import open from \"@std/os/fs.ms\"\n\nfn slow_work(head: List[String]) Void:\n    return","given":["path: String"]} -->
 ```manuscript
-var file = open(path)?
+file := open(path)?
 head := file.read_lines(max_lines: 1)?
 void file.close()
 slow_work(head)
@@ -64,7 +64,7 @@ Flush before closing when you need the destination to catch up or need to handle
 ```manuscript
 import WriteStream from "@std/io/io.ms"
 
-fn finish(var output: WriteStream[String]) Void!:
+fn finish(move output: WriteStream[String]) Void!:
     output.flush()?
     return output.close()
 ```
@@ -76,7 +76,7 @@ fn finish(var output: WriteStream[String]) Void!:
 - **Standard output** is buffered. `stdout().flush()` writes the buffer and returns the first failed write (a full disk, a closed descriptor) as an error, and `write` returns it once it is known. A program that would exit 0 after losing output exits 1 with a message on standard error. A broken pipe is not an error. `print` has no result and reports nothing itself.
 - **A custom sink** supplies its own close behavior and may wait.
 
-The owner still performs its scope-end close, which is harmless because close is idempotent.
+The `close()` consumes the stream, so nothing closes it again.
 
 To confirm that your work succeeded, call the operation that reports it. `close()` returns a `Result`, and a failed scope-end close is returned or faults. Explicit commit, finish, and flush operations report expected errors with `Result`. A value that is not a resource, such as a `List[Int]` or a closure that captures none, adds no close behavior.
 
@@ -106,7 +106,7 @@ type Tracked:
     name: String
     closed: Bool = false
 
-fn var Tracked.close() Void!:
+fn move Tracked.close() Void!:
     if not self.closed:
         self.closed = true
         print(f"close {self.name}")

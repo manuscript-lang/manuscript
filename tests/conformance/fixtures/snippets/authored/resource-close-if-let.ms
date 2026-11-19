@@ -10,7 +10,7 @@ fn say(s: String) Void:
 type Res:
     name: String
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
     say(f"close {self.name}")
 
 fn maybe(name: String, present: Bool) Res?:

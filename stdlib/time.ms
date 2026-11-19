@@ -688,7 +688,7 @@ fn var TickSource.next() Instant?!:
 	self.due = current.shift(nanoseconds(period - elapsed % period))
 	return ok(tick)
 
-fn var TickSource.close() Void!:
+fn move TickSource.close() Void!:
 	return ok()
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or

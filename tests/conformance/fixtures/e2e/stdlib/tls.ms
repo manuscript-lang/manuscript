@@ -204,7 +204,7 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 	expect_equal(response.metadata.protocol, "HTTP/2.0")?
 	expect_equal(read_to_end(var response.body)?, "HTTP/2.0".to_bytes())?
 
-fn answer_ping(var connection: Connection) Int:
+fn answer_ping(move connection: Connection) Int:
 	ping := recv(var connection, 3.seconds())
 	pong := send(var connection, "pong")
 	void connection.close()
@@ -216,7 +216,7 @@ fn serve_one_tls(listener: Listener) Int:
 	match listener.accept(3.seconds()).wait():
 		ok(accepted):
 			var connection = accepted
-			return answer_ping(var connection)
+			return answer_ping(connection)
 		error(_): return 0
 
 test "raw TLS listeners and clients handshake and report negotiated details":
@@ -338,8 +338,8 @@ fn starttls_server(listener: Listener, options: TlsOptions) Int:
 	upgraded := accept_tls(var plain, options, 3.seconds())
 	if upgraded.is_error(): return 0
 
-	var secure = upgraded.get()
-	return answer_ping(var secure)
+	secure := upgraded.get()
+	return answer_ping(secure)
 
 test "start_tls upgrades a plain connection in place on both sides":
 	server_tls := TlsOptions(

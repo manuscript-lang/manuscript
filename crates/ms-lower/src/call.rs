@@ -101,8 +101,13 @@ impl<'a> FnLower<'a> {
                 self.call_value(e, &view)?
             }
             Resolution::Method(m) => {
-                let out = self.method_call(e, &view, m)?;
+                self.consuming_close = self.closing_binding_type(e, m);
+                let consumes = self.consuming_close.is_some();
+                let out = self.method_call(e, &view, m);
+                self.consuming_close = None;
+                let out = out?;
                 if m.name().is_some_and(|n| self.syms.str(n) == "close")
+                    && !consumes
                     && let Some(recv) = self.receiver_expr(e)
                 {
                     self.note_explicit_close(recv);
@@ -998,6 +1003,16 @@ impl<'a> FnLower<'a> {
                 self.b.emit(Op::ScopeDisown, &[slot], Imm::None, None);
             }
             let new = self.move_out(slot, ty);
+            if let (true, Some(ty)) = (p == 0, self.consuming_close.clone()) {
+                // The close consumed the binding: close what it left through its parts, drop
+                // it, and leave the name dead.
+                let new = match self.close_parts_kind(&ty)? {
+                    Some(kind) => self.close_discarded_kind(&kind, new),
+                    None => new,
+                };
+                self.drop_value(new);
+                continue;
+            }
             if let Some(uid) = moved {
                 // The value left the variable before the call; the result refills it.
                 let l = self.locals[&uid];
@@ -1030,6 +1045,23 @@ impl<'a> FnLower<'a> {
     }
 
     // ------------------------------------------------------------- methods
+
+    /// The checked type of the local that the `close()` call `e` consumes, if it does.
+    fn closing_binding_type(&self, e: &Expr, m: &ct::MethodRef) -> Option<ct::Ty> {
+        if self.syms.str(m.name()?) != "close" {
+            return None;
+        }
+        let recv = self.receiver_expr(e)?;
+        let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(recv) else {
+            return None;
+        };
+        self.cx
+            .ownership
+            .close_moves
+            .get(&b.uid)
+            .is_some_and(|n| n.contains(&recv.id))
+            .then(|| ct::sub(&self.hir.ty(recv), &self.subst))
+    }
 
     /// The receiver expression of a method call.
     pub fn receiver_expr<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
@@ -1485,11 +1517,14 @@ impl<'a> FnLower<'a> {
         }
         // A `move fn` operation takes the receiver: its implementation moves the payload out of
         // the interface value's box, and the caller frees the emptied box.
+        // A `close` is the exception: it runs on the value where it lives, like a `var` one, and
+        // whatever owns the value frees it afterwards.
         let takes_self = m
             .decl
             .as_ref()
             .and_then(|d| d.method())
-            .is_some_and(|f| f.consuming);
+            .is_some_and(|f| f.consuming)
+            && m.name().is_none_or(|n| self.syms.str(n) != "close");
         let r = if takes_self {
             self.hand_over(recv)
         } else {

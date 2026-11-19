@@ -18,7 +18,7 @@ fn var Counted.write(move value: Int) Void!:
 fn var Counted.flush() Void!:
 	return ok()
 
-fn var Counted.close() Void!:
+fn move Counted.close() Void!:
 	void append_file(self.log, "x").wait()
 
 fn closes(log: String) String:
