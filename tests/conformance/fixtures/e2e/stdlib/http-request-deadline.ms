@@ -29,11 +29,14 @@ fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, f"ok {request.path}\n".to_bytes())
 
 fn fetch(address: String, path: String) String:
+    began := monotonic()
     if var conn = connect(address).wait():
+        connected := monotonic().difference(began).to_milliseconds()
         _sent := send(
             var conn, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
+        sent_at := monotonic().difference(began).to_milliseconds()
 
         while true:
             read := within(var conn.input, nanoseconds(5000000000))
@@ -48,6 +51,7 @@ fn fetch(address: String, path: String) String:
 
             break
 
+        text = f"{text}\n[timing: connect {connected} ms, sent {sent_at} ms, ended {monotonic().difference(began).to_milliseconds()} ms]"
         void conn.close()
         return text
 
