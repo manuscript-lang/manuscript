@@ -85,9 +85,10 @@ export type Arg:
 	required: Bool = true
 	// Takes every remaining word as a list; only the last argument may be rest.
 	rest: Bool = false
-	// What the argument accepts: `String` (the default), `Int` or `Float`, which fill a
-	// field of that type and fail the run when the word does not parse. `Bool` and
-	// `List` are not positional kinds, and a `rest` argument is always `List[String]`.
+	// What the argument accepts: `String` (the default), `Int` or `Float`. An `Int` or
+	// `Float` argument fills a record field of that type and fails the run when the word
+	// does not parse. `Bool` and `List` are not positional kinds, and a `rest` argument
+	// is always `List[String]`.
 	kind: FlagKind = FlagKind.String
 
 /*
