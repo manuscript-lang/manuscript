@@ -130,15 +130,29 @@ ms profile ms.toml
 
 Property tests double as a fuzzer, benchmarks time each change, and the profiler gives source attribution, pprof and folded stacks.
 
-## Try it
+## Install
+
+On Linux and macOS:
+
+```sh
+curl -fsSL https://manuscript-lang.github.io/manuscript/install.sh | sh
+```
+
+On Windows:
+
+```powershell
+irm https://manuscript-lang.github.io/manuscript/install.ps1 | iex
+```
+
+Or take an archive from the [releases page](https://github.com/manuscript-lang/manuscript/releases). Then try it:
 
 ```sh
 ms init hello
 ```
 
-Install `ms` with `curl -fsSL https://manuscript-lang.github.io/manuscript/install.sh | sh` (Windows: `irm https://manuscript-lang.github.io/manuscript/install.ps1 | iex`), or take an archive from the [releases page](https://github.com/manuscript-lang/manuscript/releases), then run the command above.
+## Agent skill
 
-Coding agents: install the Manuscript skill, which ships separately from `ms`.
+The skill ships separately from `ms`, so an agent machine needs no compiler. On Linux and macOS:
 
 ```sh
 curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh
