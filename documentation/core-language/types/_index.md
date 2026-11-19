@@ -14,6 +14,7 @@ Use a type for named fields, an enum for a fixed set of cases, an interface for 
 | [Collections](collections.md) | Use mutable lists, maps, and sets with explicit deep copies. |
 | [Optional values](optionals.md) | Represent absence explicitly with T? and none. |
 | [Mutation and references](references.md) | Understand moves, borrows, reassignment, and deep copies. |
+| [Graphs and cycles](graphs-and-cycles.md) | Model graphs, parent links and cycles with indexes and handles. |
 | [Destructuring bindings](destructuring.md) | Unpack list positions and fields. |
 | [Interfaces and implementations](contracts.md) | Implement interfaces with concrete or generic blocks and pass concrete values where an interface is expected. |
 | [Equality and hashing](equality-and-hashing.md) | Understand value comparison and key eligibility. |
