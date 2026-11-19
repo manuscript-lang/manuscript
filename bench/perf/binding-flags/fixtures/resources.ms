@@ -42,7 +42,7 @@ fn main() Void:
 	var values = [1, 2]
 	count := borrowed(values)
 	var holder = Holder(values)
-	mutate(var holder)
+	mutate(holder)
 	print(f"{count} {holder.items.length()}")
 	conditional(true)
 	conditional(false)

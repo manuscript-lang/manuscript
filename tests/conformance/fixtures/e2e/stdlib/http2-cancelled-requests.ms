@@ -18,7 +18,7 @@ fn handler(var exchange: HttpExchange) Void!:
 		sleep(30.seconds()).wait()?
 		return ok()
 
-	return reply(var exchange, text(200, "ok"))
+	return reply(exchange, text(200, "ok"))
 
 test "requests cancelled on a shared HTTP/2 connection release their streams":
 	server_tls := TlsOptions(

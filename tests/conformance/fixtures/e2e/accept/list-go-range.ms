@@ -37,7 +37,7 @@ test "append growth does not change the iterated snapshot":
 
 		if index == 0:
 			values.append(4)
-			replace(var values, 9)
+			replace(values, 9)
 
 		index += 1
 

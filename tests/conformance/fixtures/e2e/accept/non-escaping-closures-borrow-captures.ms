@@ -35,7 +35,7 @@ fn each(f: fn(Int) Void) Void:
 
 fn collect() List[Int]:
 	var out: List[Int] = []
-	each(fn i: push(var out, i))
+	each(fn i: push(out, i))
 	return out
 
 fn make_reader() fn() Int:
@@ -90,7 +90,7 @@ fn store(var fs: List[fn() Int], f: fn() Int) Void:
 fn keep_user(text: String) Int:
 	var fs: List[fn() Int] = []
 	for p in text.split(",").clone():
-		store(var fs, fn() Int: return p.length())
+		store(fs, fn() Int: return p.length())
 
 	var t = 0
 	for f in fs:

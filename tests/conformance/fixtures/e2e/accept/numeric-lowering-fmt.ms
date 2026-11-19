@@ -15,7 +15,7 @@ fn identity[T](value: T) T:
 
 test "typed operands retain evaluation order and generic boundaries":
     var counter = Counter(0)
-    total := (step(var counter, 1) + step(var counter, 2) * step(var counter, 3))
+    total := (step(counter, 1) + step(counter, 2) * step(counter, 3))
     expect_false(total != 7 or counter.value != 123)?
 
     var value = identity(9)

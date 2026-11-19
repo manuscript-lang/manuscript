@@ -6,14 +6,14 @@ fn store(var fs: List[fn() Int], f: fn() Int) Void:
 	fs.append(f)
 
 fn relay(var fs: List[fn() Int], f: fn() Int) Void:
-	store(var fs, f)
+	store(fs, f)
 
 fn deep(var fs: List[fn() Int], f: fn() Int, n: Int) Void:
 	if n == 0:
-		relay(var fs, f)
+		relay(fs, f)
 		return
 
-	deep(var fs, f, n - 1)
+	deep(fs, f, n - 1)
 
 fn keep[T](var xs: List[T], x: T) Void:
 	xs.append(x)
@@ -27,19 +27,19 @@ fn sum(fs: List[fn() Int]) Int:
 fn d1(text: String) Int:
 	var fs: List[fn() Int] = []
 	for p in text.split(",").clone():
-		relay(var fs, fn() Int: return p.length())
+		relay(fs, fn() Int: return p.length())
 	return sum(fs)
 
 fn d2(text: String) Int:
 	var fs: List[fn() Int] = []
 	for p in text.split(",").clone():
-		deep(var fs, fn() Int: return p.length(), 3)
+		deep(fs, fn() Int: return p.length(), 3)
 	return sum(fs)
 
 fn d3(text: String) Int:
 	var fs: List[fn() Int] = []
 	for p in text.split(",").clone():
-		keep(var fs, fn() Int: return p.length())
+		keep(fs, fn() Int: return p.length())
 	return sum(fs)
 
 fn d4(text: String) Int:
@@ -50,7 +50,7 @@ fn d4(text: String) Int:
 		n := p.length()
 		at := i
 		g := fn() Int: return n + at
-		relay(var fs, g)
+		relay(fs, g)
 		i += 1
 
 	return sum(fs)
@@ -61,7 +61,7 @@ fn d5(text: String) Int:
 	for p in text.split(",").clone():
 		g := fn() Int: return p.length()
 		h := fn() Int: return g() + 1
-		relay(var fs, h)
+		relay(fs, h)
 
 	return sum(fs)
 

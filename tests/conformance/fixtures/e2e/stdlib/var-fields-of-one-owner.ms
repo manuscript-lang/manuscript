@@ -17,10 +17,10 @@ fn hand_over(var from: List[FileHandle], var to: List[FileHandle], var counts: L
 		counts.append(to.length())
 
 fn var Lanes.shift() Void:
-	hand_over(var self.left, var self.right, var self.counts)
+	hand_over(self.left, self.right, self.counts)
 
 fn var Lanes.shift_back() Void:
-	hand_over(var self.right, var self.left, var self.counts)
+	hand_over(self.right, self.left, self.counts)
 
 test "changed fields of one record keep their owners without copying":
 	tmp := temporary("var-fields-")?

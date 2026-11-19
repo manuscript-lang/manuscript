@@ -5,6 +5,6 @@ fn bump(var n: Int) Bool:
 export fn main() Void:
     var a = 1
     var y = a
-    if bump(var a):
+    if bump(a):
         y = 5
     print(f"{y} {a}")

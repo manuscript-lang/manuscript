@@ -225,8 +225,8 @@ test "filesystem default preparation retains written argument order":
 	var log: List[String] = []
 	(
 		write_file(
-			data: data_argument(var log),
-			path: argument(var log, "path", f"{temporary.path()}/ordered"),
+			data: data_argument(log),
+			path: argument(log, "path", f"{temporary.path()}/ordered"),
 		).wait() | expect_ok?
 	)
 	log | expect_equal(["data", "path"])?
@@ -235,12 +235,12 @@ test "filesystem default preparation retains written argument order":
 	(
 		copy(
 			argument(
-				var log,
+				log,
 				"source",
 				f"{temporary.path()}/ordered",
 			),
 			argument(
-				var log,
+				log,
 				"destination",
 				f"{temporary.path()}/copy",
 			),

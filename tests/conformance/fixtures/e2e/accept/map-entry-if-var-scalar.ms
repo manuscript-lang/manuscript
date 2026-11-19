@@ -12,7 +12,7 @@ fn bump(var counts: Map[String, Int], key: String) Void:
 fn main() Void:
     var m = Map[String, Int]()
     for w in ["a", "b", "a", "a"]:
-        bump(var m, w)
+        bump(m, w)
 
     var f = Map[String, Float]()
     f["x"] = 1.5

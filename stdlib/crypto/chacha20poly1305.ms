@@ -200,11 +200,11 @@ fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) 
 	one_time := block(key, 0, nonce)
 	var mac = BytesBuilder()
 	mac.append_bytes(associated_data)
-	pad16(var mac, associated_data.length())
+	pad16(mac, associated_data.length())
 	mac.append_bytes(ciphertext)
-	pad16(var mac, ciphertext.length())
-	put_le64(var mac, associated_data.length())
-	put_le64(var mac, ciphertext.length())
+	pad16(mac, ciphertext.length())
+	put_le64(mac, associated_data.length())
+	put_le64(mac, ciphertext.length())
 	return poly1305(one_time.slice(0, 32).get_or(Bytes([])), mac.build())
 
 // Encrypts and authenticates `plaintext` with ChaCha20-Poly1305 (RFC 8439), returning
@@ -301,14 +301,14 @@ fn keystream(initial: List[Int]) List[Int]:
 	var state = initial.clone()
 
 	for round in 0..10:
-		quarter(var state, 0, 4, 8, 12)
-		quarter(var state, 1, 5, 9, 13)
-		quarter(var state, 2, 6, 10, 14)
-		quarter(var state, 3, 7, 11, 15)
-		quarter(var state, 0, 5, 10, 15)
-		quarter(var state, 1, 6, 11, 12)
-		quarter(var state, 2, 7, 8, 13)
-		quarter(var state, 3, 4, 9, 14)
+		quarter(state, 0, 4, 8, 12)
+		quarter(state, 1, 5, 9, 13)
+		quarter(state, 2, 6, 10, 14)
+		quarter(state, 3, 7, 11, 15)
+		quarter(state, 0, 5, 10, 15)
+		quarter(state, 1, 6, 11, 12)
+		quarter(state, 2, 7, 8, 13)
+		quarter(state, 3, 4, 9, 14)
 
 	for index in 0..16:
 		state.set(index, bit_and(state[index] + initial[index], 4294967295))

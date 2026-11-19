@@ -36,8 +36,8 @@ test "a literal map answers lookups by key, the last duplicate wins":
 
 test "a literal map lookup evaluates its key once":
 	var calls = 0
-	expect_equal({1: 10, 2: 20}.get(bump(var calls, 2)).get_or(0), 20)?
-	expect_equal({1: 10, 2: 20}.contains(bump(var calls, 5)), false)?
+	expect_equal({1: 10, 2: 20}.get(bump(calls, 2)).get_or(0), 20)?
+	expect_equal({1: 10, 2: 20}.contains(bump(calls, 5)), false)?
 	expect_equal(calls, 2)?
 
 test "literal map values keep their type":

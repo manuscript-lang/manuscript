@@ -214,8 +214,8 @@ fn put16(var out: BytesBuilder, value: Int) Void:
 	out.append(byte(bit_and(shift_right_unsigned(value, 8), 255)))
 
 fn put32(var out: BytesBuilder, value: Int) Void:
-	put16(var out, bit_and(value, 65535))
-	put16(var out, bit_and(shift_right_unsigned(value, 16), 65535))
+	put16(out, bit_and(value, 65535))
+	put16(out, bit_and(shift_right_unsigned(value, 16), 65535))
 
 // Encodes pixels as a 24-bit BMP, or as a 32-bit BMP when `channels` is 2 or 4 (alpha).
 // Gray pixels are stored as RGB. A size past the BMP limits (2^31 - 1 per dimension, or
@@ -236,29 +236,29 @@ export fn encode_bmp(width: Int, height: Int, channels: Int, pixels: List[UInt8]
 	var out = BytesBuilder()
 	out.append(byte(66))
 	out.append(byte(77))
-	put32(var out, size)
-	put32(var out, 0)
-	put32(var out, 14 + header)
-	put32(var out, header)
-	put32(var out, width)
-	put32(var out, height)
-	put16(var out, 1)
-	put16(var out, bytes_per * 8)
-	put32(var out, if alpha: 3 else: 0)
-	put32(var out, row * height)
-	put32(var out, 2835)
-	put32(var out, 2835)
-	put32(var out, 0)
-	put32(var out, 0)
+	put32(out, size)
+	put32(out, 0)
+	put32(out, 14 + header)
+	put32(out, header)
+	put32(out, width)
+	put32(out, height)
+	put16(out, 1)
+	put16(out, bytes_per * 8)
+	put32(out, if alpha: 3 else: 0)
+	put32(out, row * height)
+	put32(out, 2835)
+	put32(out, 2835)
+	put32(out, 0)
+	put32(out, 0)
 
 	if alpha:
 		// Red, green, blue and alpha masks, then the color space and its unused fields.
-		put32(var out, 16711680)
-		put32(var out, 65280)
-		put32(var out, 255)
-		put32(var out, 4278190080)
+		put32(out, 16711680)
+		put32(out, 65280)
+		put32(out, 255)
+		put32(out, 4278190080)
 		for _field in 0..13:
-			put32(var out, 0)
+			put32(out, 0)
 
 	for y in 0..height:
 		sy := height - 1 - y

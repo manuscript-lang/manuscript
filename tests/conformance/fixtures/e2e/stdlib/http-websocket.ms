@@ -39,7 +39,7 @@ fn echo(var exchange: HttpExchange) Void!:
 		var socket = (
 			http_result(
 				upgrade(
-					var exchange,
+					exchange,
 					allowed_origins: [],
 					subprotocols: ["echo"],
 					max_message_bytes: 1024,
@@ -186,9 +186,9 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
 		f"GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
 		+ f"Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {key}\r\n{extra}\r\n"
 	)
-	send(var client, request)?
+	send(client, request)?
 
-	reply := (recv(var client, 2.seconds())?).get_or(Bytes([]))
+	reply := (recv(client, 2.seconds())?).get_or(Bytes([]))
 	return ok(reply.decode_utf8().get_or("").split("\r\n").first().get_or(""))
 
 test "WebSocket client options bound messages and reject bad values":
@@ -284,7 +284,7 @@ fn silent(var exchange: HttpExchange) Void!:
 	var _socket = (
 		http_result(
 			upgrade(
-				var exchange,
+				exchange,
 				allowed_origins: [],
 				subprotocols: [],
 				max_message_bytes: none,
@@ -296,7 +296,7 @@ fn silent(var exchange: HttpExchange) Void!:
 test "a WebSocket read cancelled by its timeout leaves the socket closable":
 	server := serve(address: "127.0.0.1:0", handler: silent) | expect_ok?
 	var socket = web_socket(f"ws://{server.address()}/") | expect_ok?
-	expect_true(within(var socket.input, 50.milliseconds()).is_error())?
+	expect_true(within(socket.input, 50.milliseconds()).is_error())?
 	socket.close() | expect_ok?
 
 test "a promise cancelled while it owns a WebSocket closes it without ending the program":

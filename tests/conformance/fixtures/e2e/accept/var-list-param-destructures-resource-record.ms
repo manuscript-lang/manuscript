@@ -22,10 +22,10 @@ fn moved(var from: List[Job], var to: List[Res]) Int:
 
 export fn main() Int:
     var a = [Job(Res(1))]
-    print(first(var a))
+    print(first(a))
     print(a.length())
     var b = [Job(Res(2)), Job(Res(3))]
     var c: List[Res] = []
-    print(moved(var b, var c))
+    print(moved(b, c))
     print(f"{b.length()} {c.length()}")
     return 0

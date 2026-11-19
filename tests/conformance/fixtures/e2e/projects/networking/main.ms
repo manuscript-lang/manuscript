@@ -15,7 +15,7 @@ import (
 fn echo(var exchange: HttpExchange) Void!:
 	if exchange.path() == "/ws":
 		var socket = upgrade(
-			var exchange,
+			exchange,
 			allowed_origins: [],
 			subprotocols: ["echo"],
 			max_message_bytes: 1024,

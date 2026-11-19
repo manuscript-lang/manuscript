@@ -7,6 +7,6 @@ fn fill(var xs: List[Int], count: Int) Void:
 
 fn f() Int:
     var xs = [0]
-    fill(var xs, 3)
-    fill(var xs, 2)
+    fill(xs, 3)
+    fill(xs, 2)
     return xs.length()

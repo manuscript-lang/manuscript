@@ -85,12 +85,12 @@ test "closed list reads preserve defaults and evaluation order":
 	var visits: List[Int] = []
 	(
 		values.get_or(
-			default: effect(var visits, 7),
-			index: effect(var visits, 0),
+			default: effect(visits, 7),
+			index: effect(visits, 0),
 		) | expect_equal(10)?
 	)
-	values.get_or(-1, effect(var visits, 8)) | expect_equal(20)?
-	values.get_or(3, effect(var visits, 9)) | expect_equal(9)?
+	values.get_or(-1, effect(visits, 8)) | expect_equal(20)?
+	values.get_or(3, effect(visits, 9)) | expect_equal(9)?
 	visits | expect_equal([7, 0, 8, 9])?
 
 test "recursive appends keep overflow checks":
@@ -164,7 +164,7 @@ fn singleton(var values: List[Int]) List[Int]:
 
 fn default_length() Int:
 	var values: List[Int] = []
-	callback := fn(value: List[Int] = singleton(var values)) Int: value.length()
+	callback := fn(value: List[Int] = singleton(values)) Int: value.length()
 	_ignored := callback()
 	return values.length()
 

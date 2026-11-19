@@ -77,7 +77,7 @@ fn bench_read_line() Void:
 	var more = true
 
 	while more:
-		if got_line(var input):
+		if got_line(input):
 			count += 1
 		else:
 			more = false

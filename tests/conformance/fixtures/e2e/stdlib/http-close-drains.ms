@@ -31,7 +31,7 @@ export fn main() Int:
         dir := temporary_directory("ms-http-close-drains-*").get_or("")
 
         if var conn = connect(server.address()).wait():
-            _sent := send(var conn, f"GET /slow HTTP/1.1\r\nHost: t\r\nX-Marker-Dir: {dir}\r\n\r\n")
+            _sent := send(conn, f"GET /slow HTTP/1.1\r\nHost: t\r\nX-Marker-Dir: {dir}\r\n\r\n")
 
             // Wait until the handler has started.
             var tries = 0
@@ -46,7 +46,7 @@ export fn main() Int:
             var text = ""
 
             while true:
-                if chunk := within(var conn.input, nanoseconds(5000000000)):
+                if chunk := within(conn.input, nanoseconds(5000000000)):
                     if data := chunk:
                         text = f"{text}{data.decode_utf8().get_or("?")}"
                         continue

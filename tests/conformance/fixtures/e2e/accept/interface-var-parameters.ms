@@ -33,15 +33,15 @@ type Holder:
 
 // The argument is a field of the receiver's owner: it changes in place.
 fn var Holder.run(value: Int) Void!:
-	return self.step.step(value, var self.acc)
+	return self.step.step(value, self.acc)
 
 test "a var parameter on an interface operation writes back to a local":
 	var acc = Acc([])
 	var d: Step = Doubler(0)
-	for i in 0..3: d.step(i, var acc)?
+	for i in 0..3: d.step(i, acc)?
 
 	var r: Step = Reader(0)
-	r.step(5, var acc)?
+	r.step(5, acc)?
 	expect_equal(acc.items, [0, 2, 4])?
 
 test "a var field argument writes back to its record":

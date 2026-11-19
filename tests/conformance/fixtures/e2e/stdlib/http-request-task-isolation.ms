@@ -23,8 +23,8 @@ fn route(request: HttpRequest) HttpResponse:
 
 fn get(address: String, path: String) String!:
 	var client = connect(address, timeout: 2.seconds()).wait()?
-	send(var client, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")?
-	reply := recv(var client, 3.seconds())?
+	send(client, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")?
+	reply := recv(client, 3.seconds())?
 	return ok(reply.get_or(Bytes([])).decode_utf8().get_or(""))
 
 test "a response over the limit fails its request and the server answers the next":
@@ -56,7 +56,7 @@ test "closing in the turn a request task was started ends it and returns":
 			) | expect_ok?
 		)
 		var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
-		send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n")?
+		send(client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n")?
 
 		// The request may or may not have reached a handler yet; close must not wait for it.
 		server.close() | expect_ok?

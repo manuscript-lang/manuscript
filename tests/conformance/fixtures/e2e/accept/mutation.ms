@@ -39,20 +39,20 @@ test "record fields mutate through methods views and var parameters":
 
 	increment := counter.increment
 	increment()
-	bump(var counter)
+	bump(counter)
 	expect_false(not (counter.val == 3 and copy.val == 0))?
 
 	var box = Box("old", counter.clone())
 	var copied = box.clone()
-	replace(var box, "new")
+	replace(box, "new")
 	copied.child.val = 9
 	expect_equal(box.value, "new")?
 	expect_equal(copied.value, "old")?
 	expect_equal(copied.child.val, 9)?
 
 	var log: List[Int] = []
-	var target = receiver(var log, counter.clone())
-	target.val = replacement(var log)
+	var target = receiver(log, counter.clone())
+	target.val = replacement(log)
 	expect_false(not (log == [1, 2] and target.val == 7 and counter.val == 3))?
 
 test "collection updates mutate in place and clone separates storage":

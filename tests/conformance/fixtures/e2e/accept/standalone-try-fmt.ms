@@ -23,12 +23,12 @@ fn operation(var state: State, fail: Bool) Void!Failure:
 fn exact(state: State, fail: Bool) String!Failure:
     resource := state
     var work = State(resource.calls, resource.marker.clone())
-    operation(var work, fail)?
+    operation(work, fail)?
     work.calls += 10
     return ok(f"done {work.calls}")
 
 fn widened(var state: State) Int!:
-    operation(var state, fail: true).map_error(
+    operation(state, fail: true).map_error(
         fn cause: Error("failed", details: {"code": cause.code.to_string()})
     )?
     return ok(0)
@@ -53,7 +53,7 @@ test "standalone propagates? and cleans up before returning":
 
 test "standalone converts? errors explicitly at Error boundaries":
     var state = State(0, "")
-    outcome := widened(var state)
+    outcome := widened(state)
     expect_false(outcome.is_ok())?
 
     cause := outcome.err()
@@ -64,7 +64,7 @@ test "standalone converts? errors explicitly at Error boundaries":
 test "standalone in? closure returns from that closure":
     callback := fn() Void!Failure:
         var inner = State(0, "")
-        if true: operation(var inner, fail: true)?
+        if true: operation(inner, fail: true)?
         return ok()
 
     outcome := callback()

@@ -10,7 +10,7 @@ fn reads(p: P) Void:
 
 fn apply(f: fn(var P) Void) Int:
 	var p = P(1)
-	f(var p)
+	f(p)
 	return p.n
 
 fn bump(var p: P) Void:
@@ -30,12 +30,12 @@ type Holder:
 
 fn run_int(f: fn(var Int) Void) Int:
 	var n = 3
-	f(var n)
+	f(n)
 	return n
 
 fn run_str(f: fn(var String) Void) String:
 	var s = "ab"
-	f(var s)
+	f(s)
 	return s
 
 fn make() fn(var Int) Void:

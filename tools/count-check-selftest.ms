@@ -45,10 +45,10 @@ fn main() Int:
 	compiler := tool_ms(root.clone())
 	var failures = List[String]()
 	failed := gate(root.clone(), compiler.clone(), "nonzero.ms")
-	expect(var failures, "a failing child must fail the gate", failed.code == 1, failed)
+	expect(failures, "a failing child must fail the gate", failed.code == 1, failed)
 	for profile in ["debug", "release"]:
 		expect(
-			var failures,
+			failures,
 			f"the {profile} run must report its exit status",
 			failed.output.contains(f"({profile}) exited 7"),
 			failed,
@@ -57,25 +57,25 @@ fn main() Int:
 	// The runtime is the real entry+stats one: complete cleanup must not hide the
 	// failure.
 	expect(
-		var failures,
+		failures,
 		"the failure must hold with zero live blocks",
 		failed.output.contains("ms-rt live blocks at exit: 0"),
 		failed,
 	)
 
 	passed := gate(root.clone(), compiler.clone(), "success.ms")
-	expect(var failures, "a clean fixture must pass", passed.code == 0, passed)
+	expect(failures, "a clean fixture must pass", passed.code == 0, passed)
 	expect(
-		var failures,
+		failures,
 		"the gate must count its expectations",
 		passed.output.contains("checked 2 expectations, 0 failing"),
 		passed,
 	)
 
 	rejected := gate(root.clone(), compiler.clone(), "rejected.ms")
-	expect(var failures, "a rejected fixture must fail", rejected.code == 1, rejected)
+	expect(failures, "a rejected fixture must fail", rejected.code == 1, rejected)
 	expect(
-		var failures,
+		failures,
 		"a rejected fixture reports its failed build, not a leak",
 		rejected.output.contains("exited 1") and rejected.output.contains(
 			"type:"
@@ -85,7 +85,7 @@ fn main() Int:
 
 	unavailable := gate(root.clone(), f"{root}/target/missing-ms", "success.ms")
 	expect(
-		var failures,
+		failures,
 		"a missing compiler must fail without a leak report",
 		unavailable.code == 1 and unavailable.output.contains(
 			"could not run"

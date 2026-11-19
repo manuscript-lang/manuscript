@@ -24,7 +24,7 @@ test "an element and a local are both passed as var":
 	_written := write_file(path, "x").wait() | expect_ok?
 	var holders = [Holder(), Holder()]
 	var count = 0
-	adopt(var holders[1], var count, open(path, OpenMode.Read) | expect_ok?)
+	adopt(holders[1], count, open(path, OpenMode.Read) | expect_ok?)
 	(holders[0].handles.length()) | expect_equal(0)?
 	(holders[1].handles.length()) | expect_equal(1)?
 	count | expect_equal(1)?
@@ -42,7 +42,7 @@ test "a large element changes in place with another var argument":
 	var planes = [Plane([0].repeated(1000), 0), Plane([0].repeated(1000), 0)]
 	var total = 0
 	for i in 0..2000:
-		advance(var planes[i % 2], var total, i % 1000)
+		advance(planes[i % 2], total, i % 1000)
 	planes[0].steps | expect_equal(1000)?
 	planes[1].steps | expect_equal(1000)?
 	total | expect_equal(3000)?

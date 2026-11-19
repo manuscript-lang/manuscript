@@ -159,7 +159,7 @@ test "bounded multiplication keeps its operator and operand effects":
 	product_sum() | expect_equal(0)?
 
 	var visits: List[Int] = []
-	(zero_effect(var visits) * 0) | expect_equal(0)?
+	(zero_effect(visits) * 0) | expect_equal(0)?
 	visits | expect_equal([1])?
 
 fn present[T](value: T) T?:

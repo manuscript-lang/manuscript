@@ -100,7 +100,7 @@ fn ordered(var visits: List[Int]) Int:
     var i = -1
 
     while i < 2:
-        if found := wrapped(argument(i, var visits)):
+        if found := wrapped(argument(i, visits)):
             sum += found
         i += 1
 
@@ -128,7 +128,7 @@ test "hidden successful returns in error construction keep checks":
 
 test "Result bounds preserve argument effects and cleanup":
     var visits: List[Int] = []
-    ordered(var visits) | expect_equal(3)?
+    ordered(visits) | expect_equal(3)?
     visits | expect_equal([-1, 0, 1])?
     cleanup(visits) | expect_equal(500498)?
 

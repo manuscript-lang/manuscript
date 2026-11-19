@@ -3,4 +3,4 @@ fn grow(var xs: List[Int], count: Int) Void:
 
 fn f() Void:
     var xs = [1]
-    grow(var xs, xs.length())
+    grow(xs, xs.length())

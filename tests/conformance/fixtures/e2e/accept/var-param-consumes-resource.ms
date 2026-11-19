@@ -32,7 +32,7 @@ test "a temporary passed to a var-parameter function that keeps it closes once, 
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	var slot = Slot(Door(1, log.clone()))
-	put(var slot, Door(2, log.clone()))
+	put(slot, Door(2, log.clone()))
 	logged(log.clone()) | expect_equal("1,")?
 	expect_equal(slot.door.id, 2)?
 
@@ -40,6 +40,6 @@ test "a list a var-parameter function appends a temporary to closes it with the 
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	var doors = List[Door]()
-	stash(var doors, Door(3, log.clone()))
+	stash(doors, Door(3, log.clone()))
 	logged(log.clone()) | expect_equal("")?
 	expect_equal(doors.length(), 1)?

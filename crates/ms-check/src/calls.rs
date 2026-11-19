@@ -71,7 +71,7 @@ fn bind_arguments<'a>(
             name,
             parameter,
             value: &a.value,
-            mutable: a.mutable,
+            changed: parameter.is_some_and(|i| params[i].mutable),
         });
     }
     resolved
@@ -94,6 +94,7 @@ fn slots(args: &[Arg]) -> Option<Vec<crate::syntax::ArgSlot>> {
                 pos: a.pos,
                 name: a.name,
                 index,
+                changed: a.changed,
             })
             .collect(),
     )
@@ -683,7 +684,7 @@ impl Checker {
                 }
             }
             if let (Some(want), Some(have)) = (&expected, &v.interface_source)
-                && arg.mutable
+                && arg.parameter.is_some_and(|i| params[i].mutable)
                 && want.kind == Kind::Contract
                 && have.kind != Kind::Contract
             {

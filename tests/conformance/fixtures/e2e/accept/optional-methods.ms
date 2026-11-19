@@ -37,7 +37,7 @@ test "Optional fallbacks distinguish eager and lazy evaluation":
 	present: Int? := 0
 	missing: Int? := none
 	var counter = Counter(0)
-	expect_equal(present.get_or(fallback(var counter)), 0)?
+	expect_equal(present.get_or(fallback(counter)), 0)?
 	expect_equal(counter.calls, 1)?
 
 	create := fn() Int?: 42

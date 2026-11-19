@@ -109,7 +109,7 @@ fn put(var reader: Reader, id: Int, key: String, node: Node) Void:
 
 fn put_array(var reader: Reader, id: Int, key: String, first: Int) Void:
 	reader.arrays.append([first])
-	put(var reader, id, key, Node.TableArray(reader.arrays.length() - 1))
+	put(reader, id, key, Node.TableArray(reader.arrays.length() - 1))
 
 // Byte values the parser tests.
 TAB := 9
@@ -227,14 +227,14 @@ fn quote_char(quote: Int) String:
 // Basic and literal strings, including multiline delimiters and escaped newline
 // folding.
 fn string_value(var reader: Reader, key: Bool) String!:
-	quote := advance(var reader)
+	quote := advance(reader)
 	var multiline = false
 
 	if (not key and peek(reader) == quote and ahead(reader, 1) == quote):
-		advance(var reader)
-		advance(var reader)
+		advance(reader)
+		advance(reader)
 		multiline = true
-		if peek(reader) == NEWLINE: advance(var reader)
+		if peek(reader) == NEWLINE: advance(reader)
 
 	// A single-line string without escapes is one slice of the document.
 	if not multiline:
@@ -261,7 +261,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
 	var run = cursor(reader)
 
 	while true:
-		c := advance(var reader)
+		c := advance(reader)
 		if c < 0: return error(invalid(reader, "unterminated string"))
 
 		if c == quote:
@@ -271,13 +271,13 @@ fn string_value(var reader: Reader, key: Bool) String!:
 
 			if peek(reader) == quote and ahead(reader, 1) == quote:
 				result.append(slice_text(reader, run, reader.pos - 1))
-				advance(var reader)
-				advance(var reader)
+				advance(reader)
+				advance(reader)
 
 				var extra = 0
 
 				while peek(reader) == quote and extra < 2:
-					advance(var reader)
+					advance(reader)
 					result.append(quote_char(quote))
 					extra += 1
 
@@ -299,8 +299,8 @@ fn string_value(var reader: Reader, key: Bool) String!:
 				or peek(reader) == NEWLINE
 			)
 		):
-			while peek(reader) == SPACE or peek(reader) == TAB: advance(var reader)
-			if advance(var reader) != NEWLINE: return error(
+			while peek(reader) == SPACE or peek(reader) == TAB: advance(reader)
+			if advance(reader) != NEWLINE: return error(
 				invalid(reader, "expected escaped newline")
 			)
 
@@ -308,11 +308,11 @@ fn string_value(var reader: Reader, key: Bool) String!:
 				peek(reader) == SPACE
 				or peek(reader) == TAB
 				or peek(reader) == NEWLINE
-			): advance(var reader)
+			): advance(reader)
 			run = reader.pos
 			continue
 
-		escaped := advance(var reader)
+		escaped := advance(reader)
 
 		if escaped == 98: result.append("\u{8}")
 		else if escaped == 116: result.append("\t")
@@ -328,7 +328,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
 			digits_start := cursor(reader)
 
 			while count > 0:
-				digit := advance(var reader)
+				digit := advance(reader)
 				if not hex_digit(digit):
 					return error(invalid(reader, "invalid Unicode escape"))
 
@@ -364,12 +364,12 @@ fn key_path(var reader: Reader) List[String]!:
 	var keys: List[String] = []
 
 	while true:
-		space(var reader, multiline: false)
+		space(reader, multiline: false)
 
 		var key = ""
 
 		if peek(reader) == DOUBLE_QUOTE or peek(reader) == SINGLE_QUOTE:
-			key = string_value(var reader, key: true)?
+			key = string_value(reader, key: true)?
 		else:
 			start := cursor(reader)
 			var end = start
@@ -380,10 +380,10 @@ fn key_path(var reader: Reader) List[String]!:
 			reader.pos = end
 
 		keys.append(key)
-		space(var reader, multiline: false)
+		space(reader, multiline: false)
 		if peek(reader) != DOT: return ok(keys)
 
-		advance(var reader)
+		advance(reader)
 
 fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int, Error]:
 	if flags(reader, parent).sealed: return error(
@@ -406,7 +406,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 
 				if dotted and not state.dotted:
 					state.dotted = true
-					store_flags(var reader, value, state)
+					store_flags(reader, value, state)
 
 				return ok(value)
 			TableArray(slot):
@@ -421,10 +421,10 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 				return error(invalid(reader, "table array is empty"))
 			_: return error(invalid(reader, "key is already a value"))
 
-	allocate(var reader)?
+	allocate(reader)?
 
-	created := new_table(var reader, explicit: false, dotted)
-	put(var reader, parent, key, Node.TableNode(created))
+	created := new_table(reader, explicit: false, dotted)
+	put(reader, parent, key, Node.TableNode(created))
 	return ok(created)
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
@@ -440,8 +440,8 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 				return ok()
 			_: return error(invalid(reader, "table array conflicts with value"))
 
-	allocate(var reader)?
-	put_array(var reader, parent, key, next)
+	allocate(reader)?
+	put_array(reader, parent, key, next)
 	return ok()
 
 fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
@@ -453,7 +453,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 
 	while index < keys.length() - 1:
 		current = child(
-			reader: var reader,
+			reader: reader,
 			parent: current,
 			key: (keys[index].clone()),
 			dotted: true,
@@ -461,7 +461,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 		index += 1
 
 	return assign_one(
-		reader: var reader,
+		reader: reader,
 		parent: current,
 		key: keys.last().get_or(""),
 		value: value,
@@ -487,7 +487,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
 // Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where
 // it was.
 fn simple_key(var reader: Reader) String?:
-	space(var reader, multiline: false)
+	space(reader, multiline: false)
 
 	start := cursor(reader)
 	var end = start
@@ -508,15 +508,15 @@ fn simple_key(var reader: Reader) String?:
 
 // Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
 fn key_value(var reader: Reader, table: Int, depth: Int) Void!:
-	if key := simple_key(var reader):
-		value := read_value(var reader, depth + 1)?
-		return assign_one(reader: var reader, parent: table, key: key, value: value)
+	if key := simple_key(reader):
+		value := read_value(reader, depth + 1)?
+		return assign_one(reader: reader, parent: table, key: key, value: value)
 
-	keys := key_path(var reader)?
-	if advance(var reader) != EQUALS: return error(invalid(reader, "expected equals"))
+	keys := key_path(reader)?
+	if advance(reader) != EQUALS: return error(invalid(reader, "expected equals"))
 
-	value := read_value(var reader, depth + keys.length())?
-	return assign(reader: var reader, parent: table, keys: keys, value: value)
+	value := read_value(reader, depth + keys.length())?
+	return assign(reader: reader, parent: table, keys: keys, value: value)
 
 fn seal(var reader: Reader, value: Node) Void:
 	match value:
@@ -525,13 +525,10 @@ fn seal(var reader: Reader, value: Node) Void:
 			if state.sealed: return
 
 			state.sealed = true
-			store_flags(var reader, id, state)
-			for entry in reader.entries[id].clone(): seal(
-				var reader,
-				entry.value.clone(),
-			)
+			store_flags(reader, id, state)
+			for entry in reader.entries[id].clone(): seal(reader, entry.value.clone())
 		ArrayNode(values):
-			for item in values: seal(var reader, item)
+			for item in values: seal(reader, item)
 		_: return
 
 fn digits(text: String, alphabet: String) Bool:
@@ -757,53 +754,53 @@ fn scalar_offset(reader: Reader, count: Int) Int:
 	return pos
 
 fn read_value(var reader: Reader, depth: Int) Node!:
-	allocate(var reader)?
+	allocate(reader)?
 	budget(reader, depth)?
-	space(var reader, multiline: false)
+	space(reader, multiline: false)
 
 	c := peek(reader)
 	if c == DOUBLE_QUOTE or c == SINGLE_QUOTE: return ok(
-		Node.Leaf(TomlValue.StringValue(string_value(var reader, key: false)?))
+		Node.Leaf(TomlValue.StringValue(string_value(reader, key: false)?))
 	)
 
 	if c == LEFT_BRACKET:
-		advance(var reader)
+		advance(reader)
 
 		var values: List[Node] = []
-		space(var reader, multiline: true)
+		space(reader, multiline: true)
 
 		while peek(reader) != RIGHT_BRACKET:
-			values.append(read_value(var reader, depth + 1)?)
-			space(var reader, multiline: true)
+			values.append(read_value(reader, depth + 1)?)
+			space(reader, multiline: true)
 			if peek(reader) == RIGHT_BRACKET: break
-			if advance(var reader) != COMMA: return error(
+			if advance(reader) != COMMA: return error(
 				invalid(reader, "expected array comma")
 			)
 
-			space(var reader, multiline: true)
+			space(reader, multiline: true)
 
-		advance(var reader)
+		advance(reader)
 		return ok(Node.ArrayNode(values))
 
 	if c == LEFT_BRACE:
-		advance(var reader)
+		advance(reader)
 
-		result := new_table(var reader, explicit: true, dotted: false)
-		space(var reader, multiline: false)
+		result := new_table(reader, explicit: true, dotted: false)
+		space(reader, multiline: false)
 
 		if peek(reader) != RIGHT_BRACE:
 			while true:
-				key_value(var reader, result, depth)?
-				space(var reader, multiline: false)
+				key_value(reader, result, depth)?
+				space(reader, multiline: false)
 				if peek(reader) == RIGHT_BRACE: break
-				if advance(var reader) != COMMA: return error(
+				if advance(reader) != COMMA: return error(
 					invalid(reader, "expected inline table comma")
 				)
 
-		advance(var reader)
+		advance(reader)
 
 		node := Node.TableNode(result)
-		seal(var reader, node.clone())
+		seal(reader, node.clone())
 		return ok(node)
 
 	start := cursor(reader)
@@ -888,20 +885,14 @@ fn materialize(
 						arrays,
 						entry.value,
 						(depth + 1),
-						var budget,
+						budget,
 					)?,
 				)
 			return ok(TomlValue.TableValue(entries))
 		ArrayNode(values):
 			var result: List[TomlValue] = []
 			for value in values: result.append(
-				materialize(
-					tables,
-					arrays,
-					value,
-					(depth + 1),
-					var budget,
-				)?
+				materialize(tables, arrays, value, (depth + 1), budget)?
 			)
 			return ok(TomlValue.ArrayValue(result))
 		TableArray(slot):
@@ -912,7 +903,7 @@ fn materialize(
 					arrays,
 					Node.TableNode(id),
 					(depth + 1),
-					var budget,
+					budget,
 				)?
 			)
 			return ok(TomlValue.ArrayValue(result))
@@ -953,29 +944,29 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 		reason := if reader.data.get(span.start) == 13: "bare carriage return" else: "invalid control character"
 		return error(toml_invalid(line: place[0], column: place[1], reason: reason))
 
-	allocate(var reader)?
+	allocate(reader)?
 
-	root := new_table(var reader, explicit: true, dotted: false)
+	root := new_table(reader, explicit: true, dotted: false)
 	var current = root
 	var current_depth = 1
 
 	while true:
-		space(var reader, multiline: true)
+		space(reader, multiline: true)
 		if peek(reader) < 0: break
 
 		if peek(reader) == LEFT_BRACKET:
-			advance(var reader)
+			advance(reader)
 
 			var array = false
 
 			if peek(reader) == LEFT_BRACKET:
-				advance(var reader)
+				advance(reader)
 				array = true
 
-			keys := key_path(var reader)?
+			keys := key_path(reader)?
 			if (
-				advance(var reader) != RIGHT_BRACKET
-				or (array and advance(var reader) != RIGHT_BRACKET)
+				advance(reader) != RIGHT_BRACKET
+				or (array and advance(reader) != RIGHT_BRACKET)
 			): return error(invalid(reader, "expected closing table bracket"))
 
 			var parent = root
@@ -983,7 +974,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 
 			while index < keys.length() - 1:
 				parent = child(
-					reader: var reader,
+					reader: reader,
 					parent: parent,
 					key: (keys[index].clone()),
 					dotted: false,
@@ -996,11 +987,11 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 			)
 
 			if array:
-				allocate(var reader)?
+				allocate(reader)?
 
-				next := new_table(var reader, explicit: true, dotted: false)
+				next := new_table(reader, explicit: true, dotted: false)
 				append_table(
-					reader: var reader,
+					reader: reader,
 					parent: parent,
 					key: key.clone(),
 					next: next,
@@ -1008,7 +999,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 				current = next
 			else:
 				current = child(
-					reader: var reader,
+					reader: reader,
 					parent: parent,
 					key: key.clone(),
 					dotted: false,
@@ -1020,18 +1011,18 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 				)
 
 				state.explicit = true
-				store_flags(var reader, current, state)
+				store_flags(reader, current, state)
 
 			current_depth = keys.length() + 1
 			if array: current_depth += 1
 			budget(reader, current_depth)?
 		else:
-			key_value(var reader, current, current_depth)?
+			key_value(reader, current, current_depth)?
 
-		space(var reader, multiline: false)
+		space(reader, multiline: false)
 		if peek(reader) == HASH:
-			while peek(reader) >= 0 and peek(reader) != NEWLINE: advance(var reader)
-		if peek(reader) >= 0 and advance(var reader) != NEWLINE: return error(
+			while peek(reader) >= 0 and peek(reader) != NEWLINE: advance(reader)
+		if peek(reader) >= 0 and advance(reader) != NEWLINE: return error(
 			invalid(reader, "unexpected trailing text")
 		)
 
@@ -1040,13 +1031,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 		max_values: reader.options.max_values,
 		values: 0,
 	)
-	return materialize(
-		reader.entries,
-		reader.arrays,
-		Node.TableNode(root),
-		1,
-		var budget,
-	)
+	return materialize(reader.entries, reader.arrays, Node.TableNode(root), 1, budget)
 
 type Writer:
 	out: StringBuilder
@@ -1139,10 +1124,10 @@ fn emit_one(
 	brackets: String,
 	table: Map[String, TomlValue],
 ) Void:
-	if brackets == "[[": emit_header(var writer, "[[".concat(dotted(path)).concat("]]"))
-	else: emit_header(var writer, "[".concat(dotted(path)).concat("]"))
+	if brackets == "[[": emit_header(writer, "[[".concat(dotted(path)).concat("]]"))
+	else: emit_header(writer, "[".concat(dotted(path)).concat("]"))
 
-	emit_table(var writer, path, table)
+	emit_table(writer, path, table)
 
 fn emit_table(
 	var writer: Writer,
@@ -1165,7 +1150,7 @@ fn emit_table(
 
 		match entry.value:
 			TableValue(table): emit_one(
-				writer: var writer,
+				writer: writer,
 				path: child,
 				brackets: "[",
 				table: table,
@@ -1173,7 +1158,7 @@ fn emit_table(
 			ArrayValue(elements):
 				if section_kind(entry.value) == 2:
 					for table in table_items(elements): emit_one(
-						writer: var writer,
+						writer: writer,
 						path: child,
 						brackets: "[[",
 						table: table,
@@ -1210,7 +1195,7 @@ export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
 	)
 
 	var writer = Writer(StringBuilder(), started: false)
-	emit_table(var writer, [], root)
+	emit_table(writer, [], root)
 
 	{out} := writer
 	text := out.build()

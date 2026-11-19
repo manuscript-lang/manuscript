@@ -18,7 +18,7 @@ test "primitive storage retains generic record Optional and independent copies":
     var record = Lists(values.clone())
     wrapped: List[Int]? := values.clone()
     for i in 0..4096:
-        append_value(var record.values, i)
+        append_value(record.values, i)
     values.append(17)
     expect_equal(values.length(), 3)?
     expect_equal(record.values.length(), 4098)?

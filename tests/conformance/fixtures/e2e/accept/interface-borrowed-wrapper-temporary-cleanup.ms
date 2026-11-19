@@ -129,7 +129,7 @@ test "interface resource var arguments preserve their owners":
 
 	reader: Observer := Reader(1)
 	var named = Resource(30, path.clone())
-	reader.change(var named)
+	reader.change(named)
 	expect_equal(named.id, 31)?
 	expect_equal(log_text(path)?, "")?
 
@@ -144,7 +144,7 @@ test "interface failed temporary close leaves older owner registered":
 
 fn named_var_fault(reader: Observer, path: String) Void:
 	var value = Resource(60, path.clone())
-	reader.fault_with_var(var value)
+	reader.fault_with_var(value)
 
 fn wrapped_result(path: String) Result[Resource, String]:
 	return ok(Resource(70, path.clone()))

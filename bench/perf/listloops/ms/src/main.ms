@@ -74,31 +74,31 @@ fn main() Void:
 	reps := 100000
 	var t = monotonic()
 	for _r in 0..reps:
-		k_fma(f1, f2, var fo, n)
+		k_fma(f1, f2, fo, n)
 	report("fma32", 2 * n, reps, monotonic().difference(t).to_nanoseconds())
 	t = monotonic()
 	for _r in 0..reps:
-		k_scale64(d1, var d2, n)
+		k_scale64(d1, d2, n)
 	report("scale64", n, reps, monotonic().difference(t).to_nanoseconds())
 	t = monotonic()
 	for _r in 0..reps:
-		k_intadd(i1, i2, var io, n)
+		k_intadd(i1, i2, io, n)
 	report("intadd", n, reps, monotonic().difference(t).to_nanoseconds())
 	t = monotonic()
 	for _r in 0..reps:
-		k_stencil(f1, var fo, n)
+		k_stencil(f1, fo, n)
 	report("stencil", n, reps, monotonic().difference(t).to_nanoseconds())
 	t = monotonic()
 	for _r in 0..reps:
-		k_base(f1, f2, var fo, 8, n)
+		k_base(f1, f2, fo, 8, n)
 	report("base", n, reps, monotonic().difference(t).to_nanoseconds())
 	t = monotonic()
 	for _r in 0..reps:
-		k_clamp(f1, var fo, n)
+		k_clamp(f1, fo, n)
 	report("clamp", n, reps, monotonic().difference(t).to_nanoseconds())
 	t = monotonic()
 	for _r in 0..reps:
-		k_conv(i1, var d2, n)
+		k_conv(i1, d2, n)
 	report("conv", n, reps, monotonic().difference(t).to_nanoseconds())
 	t = monotonic()
 

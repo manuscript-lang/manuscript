@@ -39,7 +39,7 @@ fn describe(text: String) String!Error:
     return ok(label)
 
 fn order(var log: List[String]) Int:
-    return trace(var log, "a") | add(trace(var log, "b")) | double
+    return trace(log, "a") | add(trace(log, "b")) | double
 
 fn trace(var log: List[String], name: String) Int:
     log.append(name)
@@ -69,7 +69,7 @@ test "leading dot after a step applies to its result":
 
 test "head is evaluated before step arguments":
     var log: List[String] = []
-    expect_equal(order(var log), 4)?
+    expect_equal(order(log), 4)?
     expect_false(log.get(0) != "a" or log.get(1) != "b")?
 
 test "dot steps call methods on the value":

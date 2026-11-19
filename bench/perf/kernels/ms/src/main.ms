@@ -462,7 +462,7 @@ fn main() Int:
 				Body(0.0, 0.0, 3.0, 0.0, 0.0, 1.0, 1.0),
 				Body(4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.5),
 			]
-			return (advance(var bodies, 200000) * 1000.0).truncate_to_int().get_or(0)
+			return (advance(bodies, 200000) * 1000.0).truncate_to_int().get_or(0)
 	)
 
 	timed("life_128x128_50", fn() Int: return life(50))

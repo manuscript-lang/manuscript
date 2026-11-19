@@ -18,7 +18,7 @@ import serve, web_socket from "@std/net/net.ms"
 import WebSocketKind, WebSocketMessage from "@std/net/websocket.ms"
 
 fn echo(var exchange: HttpExchange) Void!:
-    var socket = upgrade(var exchange)?
+    var socket = upgrade(exchange)?
     message := socket.input.next()?
     if message.is_none(): return ok()
     echoed := message.get()

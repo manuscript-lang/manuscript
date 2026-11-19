@@ -21,7 +21,7 @@ fn routed() fn(var HttpExchange) Void!:
 
 	return fn(var exchange: HttpExchange) Void!:
 		if exchange.path() == "/health": return exchange.send(200, headers(), "ok".to_bytes())
-		return inner(var exchange)
+		return inner(exchange)
 
 fn get(url: String) String!:
 	response := request(method: HttpMethod.Get, url: url) | expect_ok?

@@ -25,7 +25,7 @@ fn deps(var rng: SeededRandom, files: Int, p: Int, f: Int) List[Dep]:
 	for _n in 0..3:
 		if i == 0: break
 
-		low := if chance(var rng): (if i - 60 > 0: i - 60 else: 0) else: 0
+		low := if chance(rng): (if i - 60 > 0: i - 60 else: 0) else: 0
 		j := low + rng.int(0, i - low)
 		d := Dep(j / files, j % files)
 		if not found.any(fn e: e.pkg == d.pkg and e.file == d.file): found.append(d)
@@ -243,7 +243,7 @@ export fn generate(out: String, packages: Int, files: Int, fns: Int) Void:
 		var modrs = List[String]()
 
 		for f in 0..files:
-			d := deps(var rng, files, p, f)
+			d := deps(rng, files, p, f)
 			var m = List[String]()
 
 			for dep in d:

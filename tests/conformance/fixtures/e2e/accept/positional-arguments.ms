@@ -19,7 +19,7 @@ fn mark(var counter: Counter, value: Int) Int:
 	return value
 
 fn chosen(var counter: Counter) fn(Int, Int) Int:
-	mark(var counter, 1)
+	mark(counter, 1)
 	return subtract
 
 fn ordered(
@@ -138,15 +138,15 @@ test "methods native APIs function values and contextual labels":
 
 test "written order before omitted defaults and body":
 	var counter = Counter()
-	total := ordered(var counter, third: mark(var counter, 1), mark(var counter, 2))
+	total := ordered(counter, third: mark(counter, 1), mark(counter, 2))
 	expect_false(total != 7 or counter.value != 1245)?
 	counter.value = 0
 
-	reordered := first(right: mark(var counter, 2), mark(var counter, 1))
+	reordered := first(right: mark(counter, 2), mark(counter, 1))
 	expect_false(reordered != 1 or counter.value != 21)?
 	counter.value = 0
 
-	record := Record(second: mark(var counter, 2), mark(var counter, 1))
+	record := Record(second: mark(counter, 2), mark(counter, 1))
 	expect_false((record.first != 1 or record.second != 2 or counter.value != 21))?
 
 	var early = 7
@@ -168,7 +168,7 @@ test "written order before omitted defaults and body":
 
 test "callable expression precedes positional arguments":
 	var counter = Counter()
-	result := chosen(var counter)(mark(var counter, 2), mark(var counter, 3))
+	result := chosen(counter)(mark(counter, 2), mark(counter, 3))
 	expect_false(result != -1 or counter.value != 123)?
 
 test "a mutable callable value is called in place":

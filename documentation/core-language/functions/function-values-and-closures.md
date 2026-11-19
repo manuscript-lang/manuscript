@@ -59,11 +59,11 @@ An anonymous function may omit parameter types when context supplies them (argum
 
 ## Changing parameters
 
-A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Void` has type `fn(var List[Int]) Void`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way.
+A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Void` has type `fn(var List[Int]) Void`. A call through the value passes the argument plainly, exactly as a direct call does (the type says it is changed), and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way.
 
 `fn(List[Int]) Void` and `fn(var List[Int]) Void` are different types:
 
-- A function that only reads a parameter may be used where one that may change it is expected. `apply(fn(xs: List[Int]): void, var values)` is accepted, and the callee's `var` argument is passed to it as a plain read.
+- A function that only reads a parameter may be used where one that may change it is expected. `apply(fn(xs: List[Int]): void, values)` is accepted, and the callee's `var` argument is passed to it as a plain read.
 - The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
 
 A function that takes ownership of a parameter says so in its type: `fn keep(move item: Item) Int` has type `fn(move Item) Int`. A call through the value hands the argument over, so the caller's name is dead after it.
@@ -84,12 +84,12 @@ fn push_one(var values: List[Int]) Void:
     values.append(1)
 
 fn apply(change: fn(var List[Int]) Void, var values: List[Int]) Void:
-    change(var values)
+    change(values)
 
 fn changed() List[Int]:
     var values: List[Int] = []
-    apply(push_one, var values)
-    apply(fn(var xs: List[Int]): xs.append(2), var values)
+    apply(push_one, values)
+    apply(fn(var xs: List[Int]): xs.append(2), values)
     return values
 ```
 

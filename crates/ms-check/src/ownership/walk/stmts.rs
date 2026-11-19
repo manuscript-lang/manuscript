@@ -904,7 +904,7 @@ impl Walker<'_> {
             Perm::MutBorrowed if m.class == Class::Copy => {}
             Perm::Immutable if m.parameter.is_some() => self.error(
                 pos,
-                format!("cannot assign to parameter `{name_t}`: it is not declared var; write `var {name_t}: <Type>` in the signature and `var` at every call", name_t = self.syms.str(name)),
+                format!("cannot assign to parameter `{name_t}`: it is not declared var; write `var {name_t}: <Type>` in the signature", name_t = self.syms.str(name)),
             ),
             Perm::MutBorrowed => self.error(
                 pos,

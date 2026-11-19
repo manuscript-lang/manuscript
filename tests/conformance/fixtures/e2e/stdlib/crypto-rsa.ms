@@ -143,16 +143,16 @@ test "RSA native function values preserve argument order and borrowed bytes":
 	decrypt := rsa_decrypt
 	var calls: List[Int] = []
 	direct := rsa_sign(
-		data: marked(var calls, 1, data.clone()),
+		data: marked(calls, 1, data.clone()),
 		hash: HashAlgorithm.Sha256,
-		private_key: marked(var calls, 2, private.clone()),
+		private_key: marked(calls, 2, private.clone()),
 	)?
 	expect_equal(calls, [1, 2])?
 
 	signature := sign_message(
-		marked(var calls, 3, private.clone()),
+		marked(calls, 3, private.clone()),
 		HashAlgorithm.Sha256,
-		marked(var calls, 4, data.clone()),
+		marked(calls, 4, data.clone()),
 	)?
 	expect_equal(calls, [1, 2, 3, 4])?
 	expect_equal(signature, direct)?

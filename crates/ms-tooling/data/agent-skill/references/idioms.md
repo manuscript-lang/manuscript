@@ -143,7 +143,7 @@ fn main() Void:
 
 ## 4. One owner: borrow, change with `var`, clone to copy
 
-Reading a value (a plain argument, a comparison, a field read) borrows it. A function that changes its argument says `var` in the declaration and at the call (`add_gift(var cart)`), so changes are visible at both ends. Storing a value in a collection or record moves it; to keep the original, store `.clone()`. `.clone()` is the only copy, so scanning for it shows where data is duplicated.
+Reading a value (a plain argument, a comparison, a field read) borrows it. A function that changes its argument says `var` in its declaration (`fn add_gift(var cart: Cart)`); the call writes `add_gift(cart)`. Storing a value in a collection or record moves it; to keep the original, store `.clone()`. `.clone()` is the only copy, so scanning for it shows where data is duplicated.
 
 <!-- complete: idiom-cart.ms -->
 ```manuscript
@@ -163,9 +163,9 @@ fn archive(cart: Cart, var history: List[Cart]) Void:
 fn main() Void:
 	var cart = Cart("Sam", ["pen", "ink"])
 	print(summary(cart))
-	add_gift(var cart)
+	add_gift(cart)
 	var history = List[Cart]()
-	archive(cart.clone(), var history)
+	archive(cart.clone(), history)
 	cart.items.append("notebook")
 	print(f"{summary(cart)}; archived {history[0].items.length()}")
 ```
@@ -355,7 +355,7 @@ fn main() Void!:
 	var shop = Shop(Map[String, Int](), [])
 	text := stdin() | lines | collect(none)?
 	for line in text.filter(fn l: not l.is_empty()):
-		print(run_command(var shop, line))
+		print(run_command(shop, line))
 ```
 
 - `match` on a String works; the `_:` arm catches unknown commands.

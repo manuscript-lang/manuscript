@@ -561,6 +561,7 @@ fn order_arguments(module: &ModRef) {
                             pos: a.pos,
                             name: a.name.unwrap_or_else(|| n("")),
                             index,
+                            changed: a.mutable,
                         })
                         .collect(),
                 );

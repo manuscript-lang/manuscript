@@ -740,7 +740,7 @@ fn lint_fix_keeps_a_default_the_condition_can_change() {
     let dir = std::env::temp_dir().join(format!("ms-cli-lint-default-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    // `y := if bump(var a): 5 else: a` would read `a` after `bump` changed it.
+    // `y := if bump(a): 5 else: a` would read `a` after `bump` changed it.
     let source = include_str!("check_fix/default_changed_by_condition.ms");
     std::fs::write(dir.join("a.ms"), source).unwrap();
     let (status, text) = ms(&["lint", "a.ms", "--fix"], &dir);

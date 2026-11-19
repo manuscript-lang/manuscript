@@ -57,8 +57,8 @@ test "record defaults and explicit overrides":
 test "supplied fields precede defaults in field order":
     var log = Counter()
     ordered := Ordered(
-        counter: Counter(), third: mark(counter: var log, value: 1),
-        second: mark(counter: var log, value: 2)
+        counter: Counter(), third: mark(counter: log, value: 1),
+        second: mark(counter: log, value: 2)
     )
     (
         (

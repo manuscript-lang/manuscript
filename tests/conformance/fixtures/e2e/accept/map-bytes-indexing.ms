@@ -27,7 +27,7 @@ test "map index assignment keeps insertion position":
 
 test "map index with Int keys and String values":
 	var table: Map[Int, String] = {}
-	sizes(var table) | expect_equal(3)?
+	sizes(table) | expect_equal(3)?
 
 	var counts = {1: 10, 2: 20}
 	counts[2] *= 2

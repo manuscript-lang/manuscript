@@ -38,20 +38,20 @@ fn twice(var c: Counter) Void:
 fn wrapped(var c: Counter, next: fn(var Counter) Void) Void:
 	// The wrapper owns the counter it was handed and takes its place.
 	c = Wrap(inner: c, calls: 0)
-	next(var c)
+	next(c)
 
 fn rewrap(var xs: List[Int]) Void:
 	xs = [xs.length(), xs[0]]
 
 test "a var parameter of an interface type is wrapped in place":
 	var b: Counter = Box(n: 0)
-	twice(var b)
-	wrapped(var b, twice)
+	twice(b)
+	wrapped(b, twice)
 	b.count() | expect_equal(42)?
 
 test "the concrete receiver is recovered by a contract type match":
 	var b: Counter = Box(n: 0)
-	wrapped(var b, twice)
+	wrapped(b, twice)
 
 	match b:
 		Wrap(w): w.calls | expect_equal(2)?
@@ -59,5 +59,5 @@ test "the concrete receiver is recovered by a contract type match":
 
 test "a var parameter of a one-owner type is rebuilt from itself":
 	var xs = [7, 2, 3]
-	rewrap(var xs)
+	rewrap(xs)
 	xs | expect_equal([3, 7])?

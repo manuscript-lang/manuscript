@@ -86,7 +86,7 @@ fn XmlNode.children() List[XmlNode]:
 // Returns all descendant text joined in document order, without comments.
 fn XmlNode.text() String:
 	var out = StringBuilder()
-	collect_text(self, var out)
+	collect_text(self, out)
 	return out.build()
 
 // Returns the first direct child element named `name`, or none. The result is an
@@ -116,7 +116,7 @@ fn collect_text(node: XmlNode, var out: StringBuilder) Void:
 		XmlText(text): out.append(text)
 		XmlElement(_, _, children):
 			for child in children:
-				collect_text(child, var out)
+				collect_text(child, out)
 		_: return
 
 // A malformed-input error at scalar index `at`, with its line, column and reason.
@@ -871,7 +871,7 @@ export fn escape_attribute(text: String) String:
 // no children is self-closing.
 export fn stringify(node: XmlNode, indent: String = "") String:
 	var out = StringBuilder()
-	write(node, indent, 0, var out)
+	write(node, indent, 0, out)
 	return out.build()
 
 fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Void:
@@ -901,10 +901,10 @@ fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Void
 			if has_text or indent.is_empty():
 				out.append(">")
 				for child in children:
-					write(child, "", 0, var out)
+					write(child, "", 0, out)
 				out.append(f"</{name}>{newline}")
 			else:
 				out.append(f">{newline}")
 				for child in children:
-					write(child, indent, level + 1, var out)
+					write(child, indent, level + 1, out)
 				out.append(f"{pad}</{name}>{newline}")

@@ -11,21 +11,21 @@ fn generated(var rng: Rng, depth: Int) YamlValue:
 	var choices = 6
 	if depth > 2: choices = 4
 
-	kind := next(var rng, choices)
+	kind := next(rng, choices)
 	if kind == 0: return YamlValue.Null
-	if kind == 1: return YamlValue.BoolValue(next(var rng, 2) == 0)
-	if kind == 2: return YamlValue.NumberValue(f"{next(var rng, 2000) - 1000}")
-	if kind == 3: return YamlValue.StringValue(text(var rng))
+	if kind == 1: return YamlValue.BoolValue(next(rng, 2) == 0)
+	if kind == 2: return YamlValue.NumberValue(f"{next(rng, 2000) - 1000}")
+	if kind == 3: return YamlValue.StringValue(text(rng))
 
 	if kind == 4:
 		var items: List[YamlValue] = []
-		for item in 0..next(var rng, 4):
-			items.append(generated(var rng, depth + 1))
+		for item in 0..next(rng, 4):
+			items.append(generated(rng, depth + 1))
 		return YamlValue.ArrayValue(items)
 
 	var entries: Map[String, YamlValue] = {}
-	for item in 0..next(var rng, 4):
-		entries.add(text(var rng), generated(var rng, depth + 1))
+	for item in 0..next(rng, 4):
+		entries.add(text(rng), generated(rng, depth + 1))
 	return YamlValue.ObjectValue(entries)
 
 fn check_round_trip(seed: Int, original: YamlValue) Void!:
@@ -41,17 +41,17 @@ fn check_stable(seed: Int, mutated: String, first: YamlValue) Void!:
 test "YAML stringify then parse preserves generated documents":
 	for seed in 1..301:
 		var rng = Rng(seed)
-		check_round_trip(seed, generated(var rng, 0))?
+		check_round_trip(seed, generated(rng, 0))?
 
 test "YAML parse never faults on mutated documents and accepted input is stable":
 	var accepted = 0
 
 	for seed in 1..301:
 		var rng = Rng(seed)
-		rendered := generated(var rng, 0) | stringify?
+		rendered := generated(rng, 0) | stringify?
 
 		for round in 0..4:
-			mutated := mutate(var rng, rendered)
+			mutated := mutate(rng, rendered)
 
 			if first := parse(mutated):
 				accepted += 1

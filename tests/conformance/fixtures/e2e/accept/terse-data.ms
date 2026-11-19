@@ -49,7 +49,7 @@ test "map literals and positional identifier arguments":
 	expect_equal(values[key], value)?
 
 	var log: List[Int] = []
-	ordered := {mark(var log, 1): mark(var log, 2), mark(var log, 1): mark(var log, 3)}
+	ordered := {mark(log, 1): mark(log, 2), mark(log, 1): mark(log, 3)}
 	expect_false(log != [1, 2, 1, 3] or ordered[1] != 3)?
 
 	shared := {"x": values.clone()}

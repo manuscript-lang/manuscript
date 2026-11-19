@@ -75,7 +75,7 @@ test "a field moved out of a var parameter then returned":
 	var o = fresh("v")
 	o.touch("k")?
 
-	got := take_inner(var o)?
+	got := take_inner(o)?
 	expect_equal(got.tags.length(), 2)?
 
 fn swap(var a: Outer, var b: Outer) Void!:
@@ -92,5 +92,5 @@ test "two var parameters swapping fields across a park":
 	a.touch("1")?
 	b.touch("2")?
 	b.touch("3")?
-	swap(var a, var b)?
+	swap(a, b)?
 	expect_equal(a.inner.tags.length(), 2)?

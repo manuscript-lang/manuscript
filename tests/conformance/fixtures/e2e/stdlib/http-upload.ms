@@ -63,7 +63,7 @@ test "request_stream uploads each chunk of a ReadStream":
     )?
     expect_equal(response.metadata.status, 200)?
 
-    body := read_to_end(var response.body)?
+    body := read_to_end(response.body)?
     expect_equal(body, "alpha beta gamma".to_bytes())?
 
 test "request_stream reports a failing ReadStream":

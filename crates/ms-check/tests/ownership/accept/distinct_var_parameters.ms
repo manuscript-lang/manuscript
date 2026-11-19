@@ -5,5 +5,5 @@ fn both(var a: List[Int], var b: List[Int]) Void:
 fn f() Int:
     var xs = [1]
     var ys = [2]
-    both(var xs, var ys)
+    both(xs, ys)
     return xs.length() + ys.length()

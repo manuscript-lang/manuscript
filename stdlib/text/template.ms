@@ -810,13 +810,13 @@ fn var Run.each(
 ) Void!Error:
 	collection := self.eval(source, false)?
 	var keys: List[String] = []
-	var items = collection_items(collection, var keys)
+	var items = collection_items(collection, keys)
 	count := items.length() + keys.length()
 	if count == 0: return self.nodes(otherwise, depth + 1)
 
 	for i in 0..count:
 		var frame = Map[String, JsonValue]()
-		bind_row(var frame, collection, var items, first, second, keys, i)
+		bind_row(frame, collection, items, first, second, keys, i)
 		frame.add("loop", loop_info(i, count))
 		self.frames.append(frame)
 

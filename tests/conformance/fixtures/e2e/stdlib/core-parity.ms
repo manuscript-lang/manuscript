@@ -122,7 +122,7 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 	var counter = Counter(0)
 	success: Int!Counter := ok(0)
 	failure: Int!Counter := error(counter.clone())
-	expect_false(success.get_or(bump(var counter)) != 0 or counter.calls != 1)?
+	expect_false(success.get_or(bump(counter)) != 0 or counter.calls != 1)?
 
 	create := fn(cause: Counter) Int: 12
 	unexpected := fn(cause: Counter) Int: panic("fallback must stay lazy")
@@ -200,7 +200,7 @@ test "Map filter copies ordered membership and get_or never inserts":
 	expect_false(fallback.calls != 8 or values.contains("absent"))?
 	expect_false(
 		(
-			Map[String, Int]().get_or("absent", bump(var counter)) != 9
+			Map[String, Int]().get_or("absent", bump(counter)) != 9
 			or counter.calls != 1
 		)
 	)?

@@ -9,7 +9,7 @@ fn append_generic[T](var values: List[T?], value: T) Void:
 test "direct append preserves checked argument conversions":
     var values: List[Int?] = []
     values.append(7)
-    append_generic(var values, 8)
+    append_generic(values, 8)
     values.append(none)
     expect_false(values.get(0).get() != 7 or values.get(1).get() != 8)?
     expect_false(not values.get(2).is_none())?

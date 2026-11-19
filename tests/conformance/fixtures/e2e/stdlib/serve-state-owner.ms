@@ -24,7 +24,7 @@ test "handlers report to one owner":
 	var events = pipe[String](16)
 	var hits = events.reader()
 	var gate = events.writer()
-	owner := promise(fn: tally(var hits))
+	owner := promise(fn: tally(hits))
 	var server = serve("127.0.0.1:0", buffered(fn request: record(events, request.path)))?
 	void fetch(f"http://{server.address()}/a").wait()?
 	void fetch(f"http://{server.address()}/a").wait()?

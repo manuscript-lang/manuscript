@@ -126,7 +126,7 @@ test "stat_filesystem describes the filesystem under a path":
 // Reads events until one has `path` and `kind`, or `tries` events passed.
 fn saw(var events: ReadStream[FileEvent], path: String, kind: String, tries: Int) Bool!:
 	for attempt in 0..tries:
-		next := within(var events, 2.seconds())?
+		next := within(events, 2.seconds())?
 
 		if event := next:
 			if event.path == path and event.kind == kind: return ok(true)
@@ -144,12 +144,12 @@ test "polling and native watchers report a created file and close":
 		options: WatchOptions(interval: milliseconds(20)),
 	)?
 	write_file(path: f"{root}/a.txt", data: "x", replace: false).wait()?
-	expect_true(saw(var polling, join([root.clone(), "a.txt"]), "rename", 8)?)?
+	expect_true(saw(polling, join([root.clone(), "a.txt"]), "rename", 8)?)?
 	polling.close()?
 
 	var native = watch(path: root, recursive: false)?
 	write_file(path: f"{root}/b.txt", data: "y", replace: false).wait()?
-	expect_true(saw(var native, join([root.clone(), "b.txt"]), "rename", 8)?)?
+	expect_true(saw(native, join([root.clone(), "b.txt"]), "rename", 8)?)?
 
 test "native watcher max_entries counts the paths under the root":
 	t := temporary("ms-me-") | expect_ok?
@@ -208,6 +208,6 @@ test "recursive native watch sees a file in a new subdirectory":
 	var seen = false
 	for i in 0..8:
 		if not seen:
-			if e := within(var w, 2.seconds())?:
+			if e := within(w, 2.seconds())?:
 				if e.path == join([r.clone(), "d", "f"]): seen = true
 	expect_true(seen)?

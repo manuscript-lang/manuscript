@@ -11,12 +11,12 @@ Manuscript is small, explicit and value-oriented: records and enums hold data, f
 
 ## Compile on the first build
 
-Nearly every failed first build is an ownership or `var` slip. Extra `.clone()` and extra `var` always compile; a missing one does not. So write defensively:
+Nearly every failed first build is an ownership or `var` slip. Extra `.clone()` and extra `var` always compile; a missing one does not. (Call sites never write `var`.) So write defensively:
 
 1. **Every local is `var`** unless it is a constant you never touch. A `:=` binding cannot be reassigned, appended to or have a method that changes it called ("cannot assign immutable binding", "cannot change X"). A `var` that starts from anything but a fresh literal or a fresh result takes a clone: `var keys = m.keys().clone()`, `var items = self.items.clone()`, `var best = items[0].clone()`.
 2. **Clone every non-scalar you hand over.** Pass `.clone()` for each String, List, Map or record argument to `append`, `add`, `insert`, `set`, `prepend`, a record constructor, `m[k] = v`, a field assignment, a `return` of a parameter or field, and any function of yours that keeps it. Do it even at the last use and even for loop variables, `parts[i]`, `xs[i]`, `split` pieces and parameters: `out.append(w.clone())`, `Sale(parts[0].clone(), n)`, `counts.add(key.clone(), 1)`, `return self.name.clone()`. Int, Float and Bool never need it.
 3. **Never read a value after you handed it over without a clone.** "Moved here but used again" means the store took it: write `.clone()` there.
-4. **Mutation is declared.** A method that changes `self` is `fn var Type.m`; a function that changes a parameter takes `var p: T` and every call writes `f(var p)`. Extra `var` is harmless.
+4. **Mutation is declared.** A method that changes `self` is `fn var Type.m`; a function that changes a parameter takes `var p: T` and calls write `f(p)`. The argument must itself be a `var` (or a field of one).
 5. **Shapes.** Every `fn` has a result type (`Void` if none); an empty block is `void` (there is no `pass`); comments are `//`; `not x`, `==`, `else if c:` (no `is`, no `!`). `?` in a `T!` function needs a Result; for an Optional write `.ok_or(Error("..."))?`. A `T!` function returns `ok(v)` or `error(Error("..."))`.
 
 ```manuscript
@@ -33,7 +33,7 @@ fn tally(lines: List[String]) Map[String, Int]:
 
 - **Data:** a `type` for facts, an `enum` for states, `match` covering every case. Defaults and named arguments instead of builder code.
 - **Transformation:** a pipeline (`xs | .filter(f) | .map(g) | .sum()`) to derive values; a `for` loop to build a Map or change a `var`. A named function beats a one-use closure.
-- **Ownership:** reading borrows; changing needs `var` at the declaration and at the call; storing moves. `.clone()` is for a real second owner and costs time and memory: borrow, move at the last use, or keep an index first.
+- **Ownership:** reading borrows; changing needs `var` on the parameter (the call writes the argument plainly); storing moves. `.clone()` is for a real second owner and costs time and memory: borrow, move at the last use, or keep an index first.
 - **Short forms:** `print(x)`, not `stdout().write`. `0..n`, `[0].repeated(n)`, `.map`, `.filter`, `.any`, `.all`, `.sum()`, `xs.extend(ys)` instead of loops that build or accumulate. `x := if c: a else: b`, `m.get_or(k, d)`, `s.is_empty()`, `a.max(b)`, `for _round in` for an unused name, `"""` for multi-line text.
 - **Failure:** `T!` for what can fail, `return ok(v)` / `return error(Error("what"))` (not `return Error(...)`), `?` to propagate, and in a test `f()?` to read a Result, `.ok_or(Error("what and which input", kind: "EINVAL"))` to turn absence into an error. `T?` when absence is normal; unwrap with `if v := o:` or `.get_or(default)`. Do not write `call().get()` as a statement (it faults on error): use `call()?` (`main` may return `Void!`), or `void call()` to ignore the outcome.
 - **Waiting:** no `async`. A waiting call returns a Promise already running; start several, `wait_all` them. Streams are read with `for line in stream | lines`. Share state through one owner and a pipe.

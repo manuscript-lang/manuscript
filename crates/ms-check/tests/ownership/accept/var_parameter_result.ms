@@ -4,4 +4,4 @@ fn pushed(var xs: List[Int], v: Int) Int:
 
 fn f() Int:
     var xs = [0]
-    return pushed(var xs, 1) + pushed(var xs, 2)
+    return pushed(xs, 1) + pushed(xs, 2)

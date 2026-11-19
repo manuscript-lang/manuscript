@@ -104,6 +104,25 @@ impl Scan<'_> {
         self.findings.push(found);
     }
 
+    /// `f(var x)`: the callee's signature already says it changes `x`.
+    fn argument_var(&mut self, args: &[Argument]) {
+        for a in args.iter().filter(|a| a.mutable) {
+            let end = a.value.start().offset as usize;
+            let Some(from) = end.checked_sub(4) else {
+                continue;
+            };
+            self.report(
+                "MSL136",
+                "Drop `var` from the argument: the callee's signature already says it changes it"
+                    .to_string(),
+                a.value.start(),
+                from,
+                end,
+                String::new(),
+            );
+        }
+    }
+
     /// `x.length() == 0` and, in a condition, `x.length() != 0` / `> 0`.
     fn emptiness(&mut self, e: &Expr, condition: bool) {
         match &e.kind {
@@ -189,6 +208,7 @@ impl Visitor for Scan<'_> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
         };
+        self.argument_var(args);
         let ExprKind::Member { left, name } = &callee.kind else {
             return;
         };
@@ -227,13 +247,14 @@ fn name_pos(callee: &Expr) -> u32 {
 }
 
 /// How a name is used in a piece of the tree.
-struct Uses {
+struct Uses<'a> {
+    module: &'a ModuleData,
     name: Symbol,
     reads: usize,
     writes: usize,
 }
 
-impl Visitor for Uses {
+impl Visitor for Uses<'_> {
     fn stmt(&mut self, s: &Stmt) {
         if let StmtKind::Assign {
             target: AssignTarget::Name(n),
@@ -249,8 +270,18 @@ impl Visitor for Uses {
         match &e.kind {
             ExprKind::Name(n) if *n == self.name => self.reads += 1,
             ExprKind::Call { args, .. } => {
-                for a in args {
-                    if a.mutable && matches!(&a.value.kind, ExprKind::Name(n) if *n == self.name) {
+                let slots = self
+                    .module
+                    .facts()
+                    .info(e.id)
+                    .and_then(|i| i.arguments.clone());
+                for (i, a) in args.iter().enumerate() {
+                    let changed = a.mutable
+                        || slots
+                            .as_ref()
+                            .and_then(|s| s.get(i))
+                            .is_some_and(|s| s.changed);
+                    if changed && matches!(&a.value.kind, ExprKind::Name(n) if *n == self.name) {
                         self.writes += 1;
                     }
                 }
@@ -260,8 +291,9 @@ impl Visitor for Uses {
     }
 }
 
-fn uses_in(name: Symbol, stmts: &[Stmt]) -> Uses {
+fn uses_in<'a>(module: &'a ModuleData, name: Symbol, stmts: &[Stmt]) -> Uses<'a> {
     let mut uses = Uses {
+        module,
         name,
         reads: 0,
         writes: 0,
@@ -296,8 +328,9 @@ fn has_call(e: &Expr) -> bool {
     calls.0
 }
 
-fn expr_reads(name: Symbol, e: &Expr) -> usize {
+fn expr_reads(module: &ModuleData, name: Symbol, e: &Expr) -> usize {
     let mut uses = Uses {
+        module,
         name,
         reads: 0,
         writes: 0,
@@ -753,8 +786,9 @@ impl Scan<'_> {
                 .is_some_and(|b| b.mutable)
             && has_call(cond);
         let rest = &body[at + 2..];
-        let later = uses_in(*name, rest);
-        let in_cond = expr_reads(*name, cond) + expr_reads(*name, replacement);
+        let later = uses_in(self.module, *name, rest);
+        let in_cond =
+            expr_reads(self.module, *name, cond) + expr_reads(self.module, *name, replacement);
         if target != name || !simple || !scalar || moves || later.writes > 0 || in_cond > 0 {
             return;
         }
@@ -939,7 +973,7 @@ impl Scan<'_> {
             return;
         };
         if !plain_number(start, self.source()) || {
-            let between = uses_in(*name, &body[bind_at + 1..at]);
+            let between = uses_in(self.module, *name, &body[bind_at + 1..at]);
             between.reads + between.writes > 0
         } {
             return;
@@ -970,9 +1004,9 @@ impl Scan<'_> {
             return;
         }
         let invariant = plain_number(bound, self.source())
-            || matches!(&bound.kind, ExprKind::Name(n) if uses_in(*n, inner).writes == 0);
-        let inside = uses_in(*name, inner);
-        let after = uses_in(*name, &body[at + 1..]);
+            || matches!(&bound.kind, ExprKind::Name(n) if uses_in(self.module, *n, inner).writes == 0);
+        let inside = uses_in(self.module, *name, inner);
+        let after = uses_in(self.module, *name, &body[at + 1..]);
         let source = self.source();
         let while_at = body[at].pos.offset as usize;
         let bind_line = source[..first.pos.offset as usize]
@@ -1047,7 +1081,7 @@ impl Scan<'_> {
         else {
             return;
         };
-        let total = uses_in(*name, body).reads;
+        let total = uses_in(self.module, *name, body).reads;
         let indexed = self
             .span(s.pos.offset as usize, self.body_end(body))
             .map_or(0, |t| {

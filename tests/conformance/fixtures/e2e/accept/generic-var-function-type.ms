@@ -14,13 +14,13 @@ fn peek(value: Int) Int:
 test "an explicit generic argument can be a function type with a var parameter":
 	change := identity[fn(var Int) Void](increment)
 	var value = 1
-	change(var value)
+	change(value)
 	expect_equal(value, 2)?
 
 test "a var function type nests inside another generic argument":
 	boxed: List[fn(var Int) Void] := identity[List[fn(var Int) Void]]([increment])
 	var value = 1
-	boxed[0](var value)
+	boxed[0](value)
 	expect_equal(value, 2)?
 
 test "plain function types and indexed values still parse as before":
@@ -29,5 +29,5 @@ test "plain function types and indexed values still parse as before":
 	expect_equal(same(table[1]), 2)?
 
 	var inferred = 5
-	identity(increment)(var inferred)
+	identity(increment)(inferred)
 	expect_equal(inferred, 6)?

@@ -43,7 +43,7 @@ test "Optional get_or_else returns the payload and is lazy":
 	missing: Int? := none
 	var counter = Counter(0)
 	expect_equal(present.get_or_else(unexpected_int), 0)?
-	expect_equal(missing.get_or_else(fn: tick(var counter)), 7)?
+	expect_equal(missing.get_or_else(fn: tick(counter)), 7)?
 	expect_equal(counter.calls, 1)?
 
 	flag: Bool? := false

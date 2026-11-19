@@ -18,8 +18,8 @@ fn echo(request: HttpRequest) HttpResponse:
 	return text(201, f"{request.path}:{request.body.decode_utf8().get_or("")}")
 
 fn exchange_echo(var exchange: HttpExchange) Void!:
-	body := read_body(var exchange, 8)?
-	return reply(var exchange, text(200, f"{body.length()}"))
+	body := read_body(exchange, 8)?
+	return reply(exchange, text(200, f"{body.length()}"))
 
 test "buffered adapts a request-to-response handler":
 	server := serve("127.0.0.1:0", buffered(echo))?

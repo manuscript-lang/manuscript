@@ -13,21 +13,21 @@ fn replace_number(var key: Int) Int:
 test "a counter retains its explicitly cloned mutable key":
 	var values = {"long-dynamic-map-key-1": 1, "long-dynamic-map-key-2": 20}
 	var key = f"long-dynamic-map-key-{1}"
-	values.add(key.clone(), values.get_or(key, 0) + replace_text(var key))
+	values.add(key.clone(), values.get_or(key, 0) + replace_text(key))
 	expect_equal(values["long-dynamic-map-key-1"], 6)?
 	expect_equal(values["long-dynamic-map-key-2"], 20)?
 
 test "a commuted counter lookup can select a new mutable key":
 	var values = {1: 1, 2: 20}
 	var key = 1
-	values.add(key, replace_number(var key) + values.get_or(key, 0))
+	values.add(key, replace_number(key) + values.get_or(key, 0))
 	expect_equal(values[1], 25)?
 	expect_equal(values[2], 20)?
 
 test "a counter reads its old scalar key before the next operand":
 	var values = {1: 1, 2: 20}
 	var key = 1
-	values.add(key, values.get_or(key, 0) + replace_number(var key))
+	values.add(key, values.get_or(key, 0) + replace_number(key))
 	expect_equal(values[1], 6)?
 	expect_equal(values[2], 20)?
 
@@ -149,7 +149,7 @@ test "a moved native argument survives a later try without rereading its source"
 
 test "a later failing try leaves its map unchanged":
 	var values: Map[String, Int] = Map()
-	result := add_failed_value(var values, f"long-dynamic-map-key-{1}")
+	result := add_failed_value(values, f"long-dynamic-map-key-{1}")
 	expect_equal(result.is_error(), true)?
 	expect_equal(values.length(), 0)?
 

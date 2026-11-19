@@ -13,7 +13,7 @@ import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocke
 fn echo(var exchange: HttpExchange) Void!:
     if exchange.path() == "/ws":
         var socket = upgrade(
-            var exchange, allowed_origins: [], subprotocols: ["echo"],
+            exchange, allowed_origins: [], subprotocols: ["echo"],
             max_message_bytes: 1024
         )?
 

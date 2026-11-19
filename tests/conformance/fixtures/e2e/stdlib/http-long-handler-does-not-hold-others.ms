@@ -27,13 +27,13 @@ fn handle(request: HttpRequest) HttpResponse:
 	return HttpResponse(200, f"ok {request.path} done\n".to_bytes())
 
 fn ask(var conn: Connection, path: String) Void!:
-	return send(var conn, f"GET {path} HTTP/1.1\r\nHost: t\r\n\r\n")
+	return send(conn, f"GET {path} HTTP/1.1\r\nHost: t\r\n\r\n")
 
 fn answer(var conn: Connection) Bool:
 	var text = ""
 
 	while not text.ends_with("done\n"):
-		if chunk := recv(var conn, nanoseconds(10000000000)):
+		if chunk := recv(conn, nanoseconds(10000000000)):
 			if data := chunk:
 				text = f"{text}{data.decode_utf8().get_or("?")}"
 				continue
@@ -43,8 +43,8 @@ fn answer(var conn: Connection) Bool:
 	return text.starts_with("HTTP/1.1 200 OK")
 
 fn ask_two(var x: Connection, var y: Connection) Void!:
-	ask(var x, "/fast")?
-	return ask(var y, "/fast")
+	ask(x, "/fast")?
+	return ask(y, "/fast")
 
 // Holds the thread of `held` and answers whether the others were served meanwhile.
 // `pair` is the connection the server dealt to the same thread as `held`.
@@ -57,26 +57,20 @@ fn round(
 	var z: Connection,
 ) Bool!:
 	started := monotonic()
-	ask(var held, "/hold")?
-	ask(var pair, "/fast")?
-	ask_two(var w, var x)?
-	ask_two(var y, var z)?
+	ask(held, "/hold")?
+	ask(pair, "/fast")?
+	ask_two(w, x)?
+	ask_two(y, z)?
 
-	served := (
-		answer(var pair)
-		and answer(var w)
-		and answer(var x)
-		and answer(var y)
-		and answer(var z)
-	)
+	served := (answer(pair) and answer(w) and answer(x) and answer(y) and answer(z))
 	others_ms := monotonic().difference(started).to_milliseconds()
-	held_ok := answer(var held)
+	held_ok := answer(held)
 	held_ms := monotonic().difference(started).to_milliseconds()
 	return ok(served and held_ok and others_ms * 2 < held_ms)
 
 fn warm(var conn: Connection) Bool!:
-	ask(var conn, "/warm")?
-	return ok(answer(var conn))
+	ask(conn, "/warm")?
+	return ok(answer(conn))
 
 // Three workers are dealt six connections in turn, so each thread has two: a and d, b
 // and e, c and f.
@@ -93,16 +87,16 @@ fn run() Bool!:
 	var e = connect(server.address()).wait()?
 	var f = connect(server.address()).wait()?
 	warmed := (
-		warm(var a)?
-		and warm(var b)?
-		and warm(var c)?
-		and warm(var d)?
-		and warm(var e)?
-		and warm(var f)?
+		warm(a)?
+		and warm(b)?
+		and warm(c)?
+		and warm(d)?
+		and warm(e)?
+		and warm(f)?
 	)
-	first := round(var a, var d, var b, var c, var e, var f)?
-	second := round(var b, var e, var a, var c, var d, var f)?
-	third := round(var c, var f, var a, var b, var d, var e)?
+	first := round(a, d, b, c, e, f)?
+	second := round(b, e, a, c, d, f)?
+	third := round(c, f, a, b, d, e)?
 	void a.close()
 	void b.close()
 	void c.close()

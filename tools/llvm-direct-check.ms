@@ -168,9 +168,9 @@ fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
 		new_rows := parse_kernels(output(new)?)
 		if n == 0: names = old_rows.map(fn r: r[0].clone())
 		for r in old_rows:
-			keep_min(var best_old, r[0].clone(), r[1].parse_int().get_or(0))
+			keep_min(best_old, r[0].clone(), r[1].parse_int().get_or(0))
 		for r in new_rows:
-			keep_min(var best_new, r[0].clone(), r[1].parse_int().get_or(0))
+			keep_min(best_new, r[0].clone(), r[1].parse_int().get_or(0))
 
 	return ok(
 		names.map(
@@ -232,7 +232,7 @@ fn report(programs: List[String]) Int:
 
 	for source in programs:
 		kernels := source.contains("bench/perf")
-		result := report_program(source, kernels, var lines, var slow)
+		result := report_program(source, kernels, lines, slow)
 
 		if result.is_error():
 			note(f"{source}: {result.err().message}")

@@ -34,7 +34,7 @@ test "serve ends a connection that trickles its request head":
 		) | expect_ok?
 	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
-	send(var client, "GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ") | expect_ok?
+	send(client, "GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ") | expect_ok?
 
 	// One byte every 100 ms never completes the head; the budget still runs out.
 	var sent = 0
@@ -42,7 +42,7 @@ test "serve ends a connection that trickles its request head":
 	while sent < 30:
 		void sleep(100.milliseconds()).wait()
 
-		written := send(var client, "a")
+		written := send(client, "a")
 		if written.is_error(): break
 
 		sent += 1
@@ -51,7 +51,7 @@ test "serve ends a connection that trickles its request head":
 	// read may then see an error (a reset on macOS) instead of an end of stream.
 	if sent == 30: return error(Error("trickled request head was never cut off"))
 
-	if reply := recv(var client, 3.seconds()):
+	if reply := recv(client, 3.seconds()):
 		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error(f"incomplete request was served: {text}")
@@ -66,13 +66,13 @@ test "close cancels a handler that outlives the grace period":
 		) | expect_ok?
 	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
-	send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | expect_ok?
+	send(client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | expect_ok?
 	void sleep(100.milliseconds()).wait()
 	server.close()?
 
 	// An error here is the connection ending (a reset on macOS); only a served reply
 	// fails.
-	if reply := recv(var client, 5.seconds()):
+	if reply := recv(client, 5.seconds()):
 		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error("handler finished instead of being cancelled")
@@ -93,21 +93,21 @@ test "close cancels a handler parked on a request body and releases its stream":
 	// live block).
 	(
 		send(
-			var client,
+			client,
 			"POST / HTTP/1.1\r\nHost: t\r\nContent-Length: 100\r\n\r\nab",
 		) | expect_ok?
 	)
 	void sleep(100.milliseconds()).wait()
 	server.close()?
 
-	if reply := recv(var client, 5.seconds()):
+	if reply := recv(client, 5.seconds()):
 		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error("handler finished instead of being cancelled")
 		)
 
 fn expect_file_reply(var conn: Connection) Void!:
-	reply := recv(var conn, 10.seconds()) | expect_ok?
+	reply := recv(conn, 10.seconds()) | expect_ok?
 	text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 	if not text.starts_with("HTTP/1.1 200"): return error(
 		Error(f"file handler failed: {text}")
@@ -133,23 +133,23 @@ test "serve answers requests while handlers read and write files":
 	var b = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	(
 		send(
-			var a,
+			a,
 			"GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
 		) | expect_ok?
 	)
 	(
 		send(
-			var b,
+			b,
 			"GET /io?2 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
 		) | expect_ok?
 	)
-	expect_file_reply(var a)?
-	expect_file_reply(var b)?
+	expect_file_reply(a)?
+	expect_file_reply(b)?
 	server.close()?
 	dir.close()?
 
 fn oversized(var exchange: HttpExchange) Void!:
-	return reply(var exchange, text(200, "z".repeat(5000)))
+	return reply(exchange, text(200, "z".repeat(5000)))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":
 	server := (
@@ -162,12 +162,12 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	(
 		send(
-			var client,
+			client,
 			"GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
 		) | expect_ok?
 	)
 
-	reply_bytes := recv(var client, 3.seconds()) | expect_ok?
+	reply_bytes := recv(client, 3.seconds()) | expect_ok?
 	head := reply_bytes.get_or(Bytes([])).decode_utf8().get_or("")
 	if not head.starts_with("HTTP/1.1 500"): return error(
 		Error(f"expected a 500 reply, got: {head}")
@@ -175,9 +175,9 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
 
 fn raw_status(address: String, request: String) String!:
 	var client = connect(address, timeout: 2.seconds()).wait() | expect_ok?
-	send(var client, request) | expect_ok?
+	send(client, request) | expect_ok?
 
-	reply := recv(var client, 2.seconds()) | expect_ok?
+	reply := recv(client, 2.seconds()) | expect_ok?
 	text := reply.get_or(Bytes([])).decode_utf8().get_or("")
 	return ok(text.split("\r\n")[0].clone())
 

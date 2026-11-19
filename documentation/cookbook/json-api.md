@@ -31,14 +31,14 @@ type Total:
 
 fn greet(var exchange: HttpExchange, params: RouteParams) Void!:
     name := params.get_or("name", "world")
-    return reply(var exchange, json(200, Greeting(message: f"Hello, {name}!"))?)
+    return reply(exchange, json(200, Greeting(message: f"Hello, {name}!"))?)
 
 fn sum(var exchange: HttpExchange, params: RouteParams) Void!:
-    body := read_body(var exchange)?
+    body := read_body(exchange)?
     numbers := parse[Numbers](body.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?)
     if numbers.is_error():
-        return reply(var exchange, text(400, "expected a list named values"))
-    return reply(var exchange, json(200, Total(total: numbers.get().values.sum()))?)
+        return reply(exchange, text(400, "expected a list named values"))
+    return reply(exchange, json(200, Total(total: numbers.get().values.sum()))?)
 
 fn api() Router:
     var router = Router()

@@ -81,7 +81,7 @@ fn effect(var visits: List[Int]) Int:
 
 fn eager(var visits: List[Int]) Int:
     var cell = Cell(0)
-    cell.bump(effect(var visits))
+    cell.bump(effect(visits))
     return cell.total
 
 test "closed cell updates preserve each operation":
@@ -103,5 +103,5 @@ test "field resets keep ordinary overflow checks":
 
 test "record arguments execute exactly once before the update":
     var visits: List[Int] = []
-    eager(var visits) | expect_equal(1)?
+    eager(visits) | expect_equal(1)?
     visits | expect_equal([7])?

@@ -34,7 +34,7 @@ export fn main() Int:
 	{input: kept} := empty
 	out.append(kept)
 	print("param")
-	keep(Job(label: "c", input: Handle(5), spare: Handle(6), more: [Handle(7)]), var out)
+	keep(Job(label: "c", input: Handle(5), spare: Handle(6), more: [Handle(7)]), out)
 	print("return")
 	moved := take(Job(label: "d", input: Handle(8), spare: Handle(9), more: []))
 	print(f"end {out.length()} {moved.id}")
