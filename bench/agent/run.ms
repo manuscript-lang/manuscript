@@ -153,7 +153,6 @@ fn run_one(
 		20,
 		"",
 	).out.trim()
-
 	rec := RunRecord(
 		toolchain: toolchain,
 		skill: if skill == "e3b0c44298fc": "" else: skill,

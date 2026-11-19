@@ -66,12 +66,15 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 		write_text(f"{dest}/examples/{name}.out", c.stdout)
 
 	write_text(f"{dest}/TASK.md", ch.spec())
+
 	if not lang.setup.is_empty():
 		setup := bash(lang.setup, dest, 120, "")
 
-		// A workspace without its skill would measure an agent that was never taught the
-		// language, so a failed install stops the run instead of passing silently.
-		if setup.code != 0: panic(f"setup for {lang.name} failed (status {setup.code}): {setup.err}{setup.out}")
+		// A workspace without its skill would measure an agent that was never taught
+		// the language, so a failed install stops the run instead of passing silently.
+		if setup.code != 0: panic(
+			f"setup for {lang.name} failed (status {setup.code}): {setup.err}{setup.out}"
+		)
 
 	check := read_text(f"{root()}/check.sh.tmpl").replace(
 		"{build}",
