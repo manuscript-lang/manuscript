@@ -78,6 +78,8 @@ export type Lang:
 	// Shell command applying the language's machine-applicable fixes in place; empty
 	// when it has none.
 	fix: String
+	// Shell command that prints the toolchain's version.
+	version: String
 
 // The extension of the solution file, such as `.ms`.
 fn Lang.suffix() String:
@@ -162,6 +164,7 @@ export fn load_languages(ids: List[String]) List[Lang]:
 				field(d, "setup"),
 				field(d, "codes"),
 				field(d, "fix"),
+				field(d, "version"),
 			)
 		)
 
