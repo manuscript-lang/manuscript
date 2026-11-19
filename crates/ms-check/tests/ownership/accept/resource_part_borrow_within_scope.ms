@@ -7,7 +7,7 @@ type Holder:
     inner: Res
     all: List[Res]
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
     return ok()
 
 // Parts are closed at scope end; borrows of them used before then are fine.

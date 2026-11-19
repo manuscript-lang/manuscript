@@ -9,7 +9,7 @@ import (
 // call, is moved into the consumed parameter rather than copied.
 interface Gate:
 	var fn put(value: Int) Void!
-	var fn close() Void!
+	move fn close() Void!
 
 type Door:
 	unused: Bool = false
@@ -17,13 +17,13 @@ type Door:
 fn var Door.put(value: Int) Void!:
 	return ok()
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	return ok()
 
 type Holder:
 	gate: Gate
 
-fn var Holder.close() Void!:
+fn move Holder.close() Void!:
 	return self.gate.close()
 
 fn make() Holder!:

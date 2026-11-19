@@ -11,7 +11,7 @@ type Door:
 	name: String
 	log: String
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	append_file(self.log, "closed " + self.name + ";").wait()?
 
 fn size(door: Door) Int!:

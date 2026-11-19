@@ -3,7 +3,7 @@
 type Res:
 	name: String
 
-fn Res.close() Void!:
+fn move Res.close() Void!:
 	print(f"close {self.name}")
 	return ok(void)
 

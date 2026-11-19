@@ -13,6 +13,16 @@ impl Walker<'_> {
 
     /// A change in place through a place expression (`var` argument,
     /// mutating receiver, field assignment).
+    /// Whether the parameter at `index` is declared `move`.
+    fn moves_parameter(&self, index: Option<usize>) -> bool {
+        let params = match (self.cx.c.func.method(), self.cx.c.func.func()) {
+            (Some(m), _) => &m.func.params,
+            (None, Some(f)) => &f.params,
+            (None, None) => return false,
+        };
+        index.and_then(|i| params.get(i)).is_some_and(|p| p.moving)
+    }
+
     pub(super) fn mutate(&mut self, pos: Pos, info: &PlaceInfo, what: &str) {
         let root = info.root.clone();
         let (perm, role, parameter, receiver) = {
@@ -53,6 +63,8 @@ impl Walker<'_> {
                     None => self.error(pos, message),
                 }
             }
+            // A `move` parameter is the callee's own: it may change it, and the caller never sees.
+            Perm::Immutable if parameter.is_some() && self.moves_parameter(parameter) => {}
             Perm::Immutable if parameter.is_some() => {
                 let message = format!(
                     "cannot {what} `{text}`: parameter `{}` is not declared var; write `var {}: <Type>` in the signature and pass `var` at every call",

@@ -11,7 +11,7 @@ type TextOwner:
 	log: String
 	id: Int
 
-fn var TextOwner.close() Void!:
+fn move TextOwner.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 	self.text = "closed"
 

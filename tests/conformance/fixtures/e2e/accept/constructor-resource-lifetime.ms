@@ -14,7 +14,7 @@ type Token:
 	closed: Bool = false
 	fail: Bool = false
 
-fn var Token.close() Void!:
+fn move Token.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, f"close {self.id}\n").wait()?

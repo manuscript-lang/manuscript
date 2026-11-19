@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 type Gate:
     closes: Int
 
-fn var Gate.close() Void!:
+fn move Gate.close() Void!:
     self.closes += 1
     return error(Error("gate stuck"))
 

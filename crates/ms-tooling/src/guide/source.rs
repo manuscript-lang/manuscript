@@ -95,7 +95,7 @@ pub fn leading_comment(source: &str, offset: usize) -> String {
     let prefix = own_line.trim();
     // A receiver method's name follows its receiver: `fn Type.name`, `fn var Type[T].name`.
     let receiver_method = prefix.starts_with("fn ") && prefix.ends_with('.');
-    if !matches!(prefix, "" | "export" | "fn" | "var fn" | "case") && !receiver_method {
+    if !matches!(prefix, "" | "export" | "fn" | "var fn" | "move fn" | "case") && !receiver_method {
         return String::new();
     }
     let indent = ms_syntax::doc::indent_columns(own_line);

@@ -18,7 +18,7 @@ import watch_signals from "@std/os/process.ms"
 type Worker:
     name: String
 
-fn var Worker.close() Void!:
+fn move Worker.close() Void!:
     print(f"{self.name} stopped")
     return ok()
 

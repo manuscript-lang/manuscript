@@ -11,7 +11,7 @@ type Token:
 	log: String
 	id: Int
 
-fn var Token.close() Void!:
+fn move Token.close() Void!:
 	append_file(self.log, f"close {self.id}\n").wait()?
 
 type Tokens:
@@ -24,7 +24,7 @@ fn var Tokens.next() Token?!:
 
 	return ok(none)
 
-fn var Tokens.close() Void!:
+fn move Tokens.close() Void!:
 	return ok()
 
 type Forward[T]:

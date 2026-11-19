@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
     return ok()
 
 // fill, copy_within and merge store copies of what they are given.

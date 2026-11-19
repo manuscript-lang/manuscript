@@ -33,7 +33,7 @@ type Held[T]:
 	items: List[T]
 	held: Bool
 
-fn var Held[T].close() Void!:
+fn move Held[T].close() Void!:
 	if self.held:
 		self.held = false
 		if value := self.items.pop():
@@ -43,7 +43,7 @@ fn var Held[T].close() Void!:
 type SlotOwner:
 	slot: Int
 
-fn var SlotOwner.close() Void!:
+fn move SlotOwner.close() Void!:
 	release_slot(self.slot)
 	return ok()
 

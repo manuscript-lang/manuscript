@@ -12,7 +12,7 @@ import Closeable from "@std/core.ms"
 type Token:
 	id: Int
 
-fn var Token.close() Void!:
+fn move Token.close() Void!:
 	print(f"close {self.id}")
 
 type Wrapped:

@@ -106,7 +106,7 @@ Releases the resource. The compiler calls this on every scope exit, including
 returns, expected errors, faults and cancellation. A type whose release cannot fail
 returns `ok()`.
     */
-	var fn close() Void!
+	move fn close() Void!
 
 /*
 A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.

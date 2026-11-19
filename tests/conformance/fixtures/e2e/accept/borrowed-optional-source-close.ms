@@ -9,7 +9,7 @@ import (
 type Resource:
 	path: String
 
-fn var Resource.close() Void!:
+fn move Resource.close() Void!:
 	append_file(self.path, "closed,").wait()?
 
 fn observed(value: Resource?) Bool: value.is_some()

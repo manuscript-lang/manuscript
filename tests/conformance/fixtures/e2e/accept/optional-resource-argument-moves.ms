@@ -10,7 +10,7 @@ type Marker:
 	id: Int
 	path: String
 
-fn var Marker.close() Void!:
+fn move Marker.close() Void!:
 	append_file(self.path, f"{self.id},").wait()?
 	self.path = "closed"
 
@@ -19,7 +19,7 @@ type Held:
 	path: String
 	label: String
 
-fn var Held.close() Void!:
+fn move Held.close() Void!:
 	append_file(self.path, f"{self.id},").wait()?
 	self.path = "closed"
 

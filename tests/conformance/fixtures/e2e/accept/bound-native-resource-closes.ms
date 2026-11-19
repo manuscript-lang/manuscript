@@ -11,7 +11,7 @@ type Marker:
 	id: Int
 	log: String
 
-fn var Marker.close() Void!:
+fn move Marker.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
 fn failed(id: Int, log: String) Int!Marker:
@@ -53,7 +53,7 @@ type Tag:
 fn tag_log(id: Int) String!:
 	return ok(f"{ temporary_root()?}/ms-bound-native-tag-{id}")
 
-fn var Tag.close() Void!:
+fn move Tag.close() Void!:
 	append_file(tag_log(self.id)?, "closed,").wait()?
 
 fn borrowed_status(result: Int!Tag) Bool:

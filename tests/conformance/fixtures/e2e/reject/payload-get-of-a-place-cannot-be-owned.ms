@@ -7,7 +7,7 @@ type Handle:
 	id: Int
 	note: String
 
-fn var Handle.close() Void!:
+fn move Handle.close() Void!:
 	print("closed")
 
 type Slot[T]:

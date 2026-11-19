@@ -11,7 +11,7 @@ type Door:
 	log: String
 	swings: Int
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
 fn var Door.swing() Int:

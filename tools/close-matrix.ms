@@ -30,7 +30,7 @@ type Marker:
     id: Int
     open: Bool
 
-fn var Marker.close() Void!:
+fn move Marker.close() Void!:
     if self.open:
         self.open = false
         print(f"closed-{self.id}")
@@ -352,7 +352,7 @@ fn constructs() List[Construct]:
 			"explicit_close",
 			"bare",
 			"",
-			"var x = @M1@\n    x.close()?\n    x.close()?",
+			"var x = @M1@\n    x.close()?",
 		),
 		only(
 			"explicit_close_reassign",

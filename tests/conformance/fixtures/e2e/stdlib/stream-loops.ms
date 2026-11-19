@@ -23,7 +23,7 @@ fn var Counter.next() Int?!:
 	self.at += 1
 	return ok(self.at)
 
-fn var Counter.close() Void!:
+fn move Counter.close() Void!:
 	self.closes.write(self.at)?
 
 test "a loop that breaks hands the source back to its stream":
@@ -68,6 +68,7 @@ test "closing the stream inside its loop still closes the source once":
 	for x in s:
 		if x == 2:
 			s.close()?
+			break
 	expect_equal(closes.receive()?, 2)?
 
 test "stages pull directly and keep their results":

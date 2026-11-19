@@ -9,7 +9,7 @@ type Gate:
 	name: String
 	fails: Bool
 
-fn var Gate.close() Void!:
+fn move Gate.close() Void!:
 	if self.fails: return error(Error(f"close {self.name}"))
 
 fn use_gate(fails: Bool) Result[Int, Error]:

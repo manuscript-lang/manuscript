@@ -12,7 +12,7 @@ import (
 type Door:
 	name: String
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	stdout().write(f"close {self.name}\n").get()
 
 fn faulting() Void:

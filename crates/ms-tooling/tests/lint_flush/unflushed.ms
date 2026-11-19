@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Journal:
     lines: Int
 
-fn var Journal.close() Void!:
+fn move Journal.close() Void!:
     void self.lines
     return ok()
 

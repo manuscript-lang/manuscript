@@ -8,7 +8,7 @@ import Closeable, print from "@std/core.ms"
 type Door:
 	id: Int
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	print(f"close {self.id}")
 
 interface Taker:
@@ -23,7 +23,7 @@ fn var Counter.take(move door: Door) Int:
 	return self.seen
 
 interface Finisher:
-	var fn close() Void!
+	move fn close() Void!
 	move fn finish() Int
 
 // Takes the door out of the interface value and closes it at its end, once.

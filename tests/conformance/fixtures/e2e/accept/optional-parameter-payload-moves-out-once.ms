@@ -6,7 +6,7 @@ type Handle:
 	id: Int
 	note: String
 
-fn var Handle.close() Void!:
+fn move Handle.close() Void!:
 	print(f"close {self.id}")
 
 fn take(o: Handle?) Handle:

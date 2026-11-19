@@ -18,7 +18,7 @@ type SearchEnvironment:
 	path: String?
 	extensions: String?
 
-fn var SearchEnvironment.close() Void!:
+fn move SearchEnvironment.close() Void!:
 	set_environment("PATH", self.path.clone())?
 	set_environment("PATHEXT", self.extensions.clone())?
 	change_directory(self.directory)?

@@ -9,7 +9,7 @@ type Counted:
 fn var Counted.next() Int?:
 	return none
 
-fn var Counted.close() Void!:
+fn move Counted.close() Void!:
 	return ok()
 
 fn drain(s: Source[Int]) Int:

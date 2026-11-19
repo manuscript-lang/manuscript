@@ -97,7 +97,7 @@ export extern type Connection
 extern fn lib_connect(address: String) Connection
 extern fn lib_disconnect(connection: Connection) Void
 
-fn var Connection.close() Void!:
+fn move Connection.close() Void!:
     lib_disconnect(self)
 ```
 

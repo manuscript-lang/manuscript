@@ -7,7 +7,7 @@ import Closeable from "@std/core.ms"
 type Gate:
     id: Int
 
-fn var Gate.close() Void!:
+fn move Gate.close() Void!:
     print(f"closed {self.id}")
     return ok()
 

@@ -11,7 +11,7 @@ fn closer() Void:
 type Box:
     n: Int
 
-fn Box.close() Void!: ok()
+fn move Box.close() Void!: ok()
 
 fn shut(box: Box) Void:
     box.close().get_or(none)

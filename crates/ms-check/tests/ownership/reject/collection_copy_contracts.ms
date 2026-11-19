@@ -4,7 +4,7 @@ import filled, flatten from "@std/collections/collections.ms"
 type Token:
     id: Int
 
-fn var Token.close() Void!:
+fn move Token.close() Void!:
     return ok()
 
 fn Token.equals(other: Token) Bool:

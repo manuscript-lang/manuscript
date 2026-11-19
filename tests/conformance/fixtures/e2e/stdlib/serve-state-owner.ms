@@ -30,7 +30,6 @@ test "handlers report to one owner":
 	void fetch(f"http://{server.address()}/a").wait()?
 	void fetch(f"http://{server.address()}/b").wait()?
 	server.close()?
-	server.wait()?
 	gate.close()?
 	counts := owner.wait()?
 	expect_equal(counts.get_or("/a", 0), 2)?

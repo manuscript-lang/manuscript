@@ -7,7 +7,7 @@ import Queue from "@std/collections/queue.ms"
 type Resource:
     state: Queue[Int]
 
-fn Resource.close() Void!:
+fn move Resource.close() Void!:
     self.state.dequeue()
 
 fn pure() Int:

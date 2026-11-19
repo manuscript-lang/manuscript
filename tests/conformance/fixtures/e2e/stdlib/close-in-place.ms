@@ -15,7 +15,7 @@ type Latch:
 	id: Int
 	open: Bool
 
-fn var Latch.close() Void!:
+fn move Latch.close() Void!:
 	if self.open:
 		self.open = false
 		void append_file(self.log, f"{self.id},").wait()
@@ -101,7 +101,7 @@ fn destructured_list(log: String) Int:
 type Maker:
 	made: Int
 
-fn var Maker.close() Void!:
+fn move Maker.close() Void!:
 	return ok()
 
 fn var Maker.make(log: String, id: Int) Latch:

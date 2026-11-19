@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 type R:
     name: String
 
-fn var R.close() Void!:
+fn move R.close() Void!:
     print(f"close {self.name}")
 
 fn replace(var r: R) Void:

@@ -89,7 +89,7 @@ fn send(s: Sink, move item: Item) Int:
 ## Reassignment
 
 - A `:=` binding cannot be reassigned, and neither can a resource held in one.
-- Reassigning an owning `var` drops its previous value and closes any resources it held. Scope-end cleanup then closes its final value. Closing early is fine because `close()` is idempotent. See [scope-end cleanup](../cleanup/scopes.md).
+- Reassigning an owning `var` drops its previous value and closes any resources it held. Scope-end cleanup then closes its final value. Closing early with `close()` consumes the value, so scope end has nothing left to close. See [scope-end cleanup](../cleanup/scopes.md).
 - A live borrow prevents reassignment.
 - Every binding is initialized at declaration, and an outer `var` keeps its declared type.
 - Non-escaping closures borrow their captures. Escaping closures own them, so a function moves a parameter that an escaping closure captures; the caller passes `.clone()` to keep the value.
@@ -121,12 +121,12 @@ A borrow of a resource field keeps the holder available and prevents closing or 
 
 Owned values are dropped deterministically; there is no tracing garbage collector. Releasing a file, socket, or other external resource is separate. Use `close()`, or let the scope that owns the resource close it.
 
-A borrow keeps its owner available until the borrow ends, but it does not extend the lifetime of the external resource. Explicitly closing a resource leaves it closed for later operations. A borrow takes on no cleanup duty; an owning closure or promise does take on the duties of the resources it owns.
+A borrow keeps its owner available until the borrow ends, but it does not extend the lifetime of the external resource. `close()` takes the resource: the name is dead afterwards. A borrow takes on no cleanup duty; an owning closure or promise does take on the duties of the resources it owns.
 
 ## Returning a resource
 
 A factory returns an open resource by moving it to the caller. Returning a locally owned resource transfers its cleanup duty; the factory does not close the moved value on its way out. A resource left owned by a local binding closes when that scope ends. A borrow cannot escape a local owner that is about to close.
 
-Using a resource after an explicit close still returns its closed-state error. Moving a closed handle to a new owner does not reopen it.
+A use after `close()` is a compile error. A handle another owner still holds, such as a clone of a file handle, returns its closed-state error after it is closed.
 
 See [Closeable](../cleanup/closeable.md), [scope-end cleanup](../cleanup/scopes.md), and [closures](../functions/function-values-and-closures.md).

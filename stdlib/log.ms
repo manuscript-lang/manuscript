@@ -47,7 +47,7 @@ export interface Transport:
 	// child logger writes through one.
 	fn duplicate() Transport!
 	// Releases owned resources. Later writes return `EBADF`.
-	var fn close() Void
+	move fn close() Void
 
 // The number a level writes into the record's `level` field. Silent is a threshold that
 // no record reaches.
@@ -137,7 +137,7 @@ fn FileTransport.duplicate() Transport!:
 	if self.closed: return error(log_closed())
 	return ok(FileTransport(file: self.file.clone()?, closed: false))
 
-fn var FileTransport.close() Void:
+fn move FileTransport.close() Void:
 	if self.closed: return
 
 	self.closed = true
@@ -170,7 +170,7 @@ fn StdoutTransport.duplicate() Transport!:
 	if self.closed: return error(log_closed())
 	return ok(StdoutTransport(closed: false))
 
-fn var StdoutTransport.close() Void:
+fn move StdoutTransport.close() Void:
 	self.closed = true
 
 // A structured logger: level filtering, bound fields, and a pluggable `Transport`. The
@@ -292,7 +292,7 @@ fn Logger.flush() Void!:
 
 // Closes this logger's transport and consumes the logger. A scope that owns a
 // logger should close it on every exit. Children and the parent are not affected.
-fn var Logger.close() Void!:
+fn move Logger.close() Void!:
 	self.transport.close()
 
 // Settings for `create`: the minimum level (default Info), whether records carry a
@@ -375,7 +375,7 @@ fn RotatingTransport.duplicate() Transport!:
 		)
 	)
 
-fn var RotatingTransport.close() Void:
+fn move RotatingTransport.close() Void:
 	self.closed = true
 
 // Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to

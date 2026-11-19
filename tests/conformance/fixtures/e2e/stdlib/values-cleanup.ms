@@ -26,7 +26,7 @@ type Resource:
 
 // Resources own their state, so close records order through the filesystem:
 // resource 1 notes whether resource 2 had already closed.
-fn var Resource.close() Void!:
+fn move Resource.close() Void!:
 	inner_closed := read_file(f"{self.dir}/2").wait().is_ok()
 	void write_file(f"{self.dir}/{self.id}", f"{inner_closed}", true).wait()
 

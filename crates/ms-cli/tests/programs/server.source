@@ -18,7 +18,7 @@ fn say(text: String) Void:
 type WorkerCleanup:
     label: String
 
-fn var WorkerCleanup.close() Void!:
+fn move WorkerCleanup.close() Void!:
     say(f"{self.label} stopped\n")
     return ok()
 
@@ -27,7 +27,7 @@ type Server:
     client: Connection
     closed: Bool = false
 
-fn var Server.close() Void!:
+fn move Server.close() Void!:
     if self.closed:
         return ok()
 

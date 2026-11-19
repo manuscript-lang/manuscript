@@ -14,7 +14,7 @@ type Forward:
 fn var Forward.next() Int?!:
 	return self.input.next(timeout: milliseconds(self.limit))
 
-fn var Forward.close() Void!:
+fn move Forward.close() Void!:
 	return self.input.close()
 
 // Reads one value that is ready, then waits for a second that never comes.
@@ -26,7 +26,7 @@ fn var ReadyThenStall.next() Int?!:
 	self.reads += 1
 	return self.input.next(timeout: milliseconds(600))
 
-fn var ReadyThenStall.close() Void!:
+fn move ReadyThenStall.close() Void!:
 	return self.input.close()
 
 test "an outer deadline bounds a longer nested read":

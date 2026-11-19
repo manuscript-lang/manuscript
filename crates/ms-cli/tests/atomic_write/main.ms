@@ -24,7 +24,7 @@ fn FileHandle.sync() Void!:
 	print("sync")
 	if self.sync_error: return error(Error("sync", kind: "sync"))
 
-fn var FileHandle.close() Void!:
+fn move FileHandle.close() Void!:
 	if self.closed: return ok()
 
 	self.closed = true

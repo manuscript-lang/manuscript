@@ -50,7 +50,7 @@ type TailCleanup:
 	marker: String
 
 // Cleanup runs on a moved copy, so the marker file is the only way to observe it.
-fn var TailCleanup.close() Void!:
+fn move TailCleanup.close() Void!:
 	_written := write_file(self.marker, "closed", true).wait()
 
 fn tail_cleanup(result: Int!Error, var visits: List[Int], marker: String) Int!Error:

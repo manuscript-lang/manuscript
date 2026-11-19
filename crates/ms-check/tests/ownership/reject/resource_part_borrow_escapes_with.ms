@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
     return ok()
 
 // A value derived from the `with` resource cannot be stored where it outlives the block.

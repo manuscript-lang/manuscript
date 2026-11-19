@@ -20,7 +20,7 @@ enum Payload:
 type Res:
     n: Int
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
     return ok()
 
 type HoldsRes:

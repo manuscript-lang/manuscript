@@ -239,7 +239,7 @@ export opaque type FileHandle:
 
 // Closes the file, interrupts calls in progress, and waits for them to stop.
 // Safe to call repeatedly; later operations return EBADF.
-fn var FileHandle.close() Void!:
+fn move FileHandle.close() Void!:
 	return msstd_io_close(self.native)
 
 /*
@@ -383,7 +383,7 @@ type FileSource:
 fn var FileSource.next() Bytes?!:
 	return self.file.read(none)
 
-fn var FileSource.close() Void!:
+fn move FileSource.close() Void!:
 	return self.file.close()
 
 // Complete writes to a file; `flush` synchronizes it.
@@ -396,7 +396,7 @@ fn var FileSink.write(move value: Bytes) Void!:
 fn var FileSink.flush() Void!:
 	return self.file.sync()
 
-fn var FileSink.close() Void!:
+fn move FileSink.close() Void!:
 	return self.file.close()
 
 fn seek_origin(origin: Seek) Int:
@@ -415,7 +415,7 @@ export opaque type Directory:
 	native: NativeDirectory
 
 // Releases the directory handle. Safe to call repeatedly; later reads return EBADF.
-fn var Directory.close() Void!:
+fn move Directory.close() Void!:
 	msstd_fs_directory_close(self.native)
 
 // Returns the path this cursor was opened with.
@@ -465,7 +465,7 @@ fn var WatchSource.next() FileEvent?!:
 	return ok(none)
 
 // Stops the watcher and waits for its worker to stop.
-fn var WatchSource.close() Void!:
+fn move WatchSource.close() Void!:
 	msstd_fs_watch_close(self.watcher.native)
 
 fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
@@ -482,7 +482,7 @@ export opaque type TemporaryDirectory:
 
 // Removes the directory and everything inside it.
 // Safe to call repeatedly.
-fn var TemporaryDirectory.close() Void!:
+fn move TemporaryDirectory.close() Void!:
 	void msstd_fs_temporary_close(self.native)
 
 // Returns the absolute path of the directory, created under the host's temporary
@@ -708,7 +708,7 @@ export fn list(path: String, max_entries: Int? = none) List[DirectoryEntry]!:
 type WritePermit:
 	held: Bool
 
-fn var WritePermit.close() Void!:
+fn move WritePermit.close() Void!:
 	if self.held:
 		self.held = false
 		msstd_fs_release()

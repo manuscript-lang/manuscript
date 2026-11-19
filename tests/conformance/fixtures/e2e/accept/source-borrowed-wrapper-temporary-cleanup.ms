@@ -10,7 +10,7 @@ type Resource:
 	id: Int
 	path: String
 
-fn var Resource.close() Void!:
+fn move Resource.close() Void!:
 	append_file(self.path, f"{self.id},").wait()?
 	self.path = "closed"
 
@@ -136,7 +136,7 @@ test "nested whole transfers stay path local across branches and loops":
 type ScalarResource:
 	id: Int
 
-fn var ScalarResource.close() Void!: error(Error("scalar resource closed"))
+fn move ScalarResource.close() Void!: error(Error("scalar resource closed"))
 
 fn scalar_present() ScalarResource?: ScalarResource(1)
 
@@ -239,7 +239,7 @@ test "named borrowed arguments close in reverse acquisition order":
 type FaultyResource:
 	path: String
 
-fn var FaultyResource.close() Void!:
+fn move FaultyResource.close() Void!:
 	append_file(self.path, "98,").wait()?
 	self.path = "closed"
 	return error(Error("expected close failure"))

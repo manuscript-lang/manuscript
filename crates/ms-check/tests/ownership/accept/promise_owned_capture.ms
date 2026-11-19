@@ -4,7 +4,7 @@ import Closeable from "@std/core.ms"
 type Door:
     count: Int
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
     return ok()
 
 fn size(door: Door) Int!:

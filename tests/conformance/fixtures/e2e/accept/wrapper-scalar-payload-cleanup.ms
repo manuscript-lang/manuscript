@@ -8,7 +8,7 @@ import (
 type Marker:
 	id: Int
 
-fn var Marker.close() Void!: error(Error("scalar wrapper payload closed"))
+fn move Marker.close() Void!: error(Error("scalar wrapper payload closed"))
 
 fn present() Marker?: Marker(1)
 

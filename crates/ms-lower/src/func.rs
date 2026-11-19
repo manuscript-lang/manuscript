@@ -158,6 +158,9 @@ pub(crate) struct FnLower<'a> {
     pub loops: Vec<LoopCtx>,
     /// The current position is unreachable.
     pub dead: bool,
+    /// The checked type of the binding a `close()` call being lowered consumes: what the close
+    /// leaves is closed through its parts and dropped, and the binding is not refilled.
+    pub consuming_close: Option<ct::Ty>,
     pub ret_ty: MTy,
     /// In a JSON decoder: the document, the node and the type name a failure reports.
     pub jnode: Option<(Value, Value, String)>,
@@ -778,6 +781,7 @@ impl<'a> FnLower<'a> {
             var_cover: None,
             loops: Vec::new(),
             dead: false,
+            consuming_close: None,
             ret_ty,
             jnode: None,
             jwhy: None,

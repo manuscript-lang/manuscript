@@ -6,7 +6,7 @@ import expect_equal from "@std/test/test.ms"
 type Res:
 	name: String
 
-fn Res.close() Void!:
+fn move Res.close() Void!:
 	return ok(void)
 
 type Cell[T]:

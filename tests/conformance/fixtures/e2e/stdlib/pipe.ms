@@ -45,8 +45,7 @@ fn fill(p: Pipe[Int], count: Int) Void!:
 	var out = p.writer()
 	for i in 0..count:
 		out.write(i)?
-	out.flush()?
-	return out.close()
+	return out.flush()
 
 test "a write waits while the pipe holds more than its capacity, so the reader sets the pace":
 	var p = pipe[Int](1)
@@ -108,7 +107,7 @@ fn produce(p: Pipe[Int], count: Int) Void!:
 fn send_range(var out: WriteStream[Int], base: Int) Void!:
 	for i in 0..5:
 		out.write(base + i)?
-	return out.close()
+	return out.flush()
 
 test "several promises each move a writer of their own into a fan-in":
 	var p = pipe[Int](2)
@@ -146,8 +145,7 @@ test "a promise keeps the writer it captured after its maker returns":
 fn send_many(var out: WriteStream[Int], from: Int, count: Int) Void!:
 	for i in from..from + count:
 		out.write(i)?
-	out.flush()?
-	return out.close()
+	return out.flush()
 
 test "a reader takes queued values directly and still waits and ends in order":
 	var p = pipe[Int](8)

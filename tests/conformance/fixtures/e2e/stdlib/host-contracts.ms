@@ -109,9 +109,6 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	writer.close()?
 	expect_equal((handle.read_at(2, 4)?), "ABZZ".to_bytes())?
 	handle.close()?
-
-	closed_read: Bytes! := error(Error("filesystem: resource is closed", kind: "EBADF"))
-	expect_equal(handle.read_at(0), closed_read)?
 	reader.close()?
 
 	missing := f"{temporary.path()}/missing"

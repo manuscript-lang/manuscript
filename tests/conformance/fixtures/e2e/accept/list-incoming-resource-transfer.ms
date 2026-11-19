@@ -12,7 +12,7 @@ type Door:
 	closed: Bool = false
 	fail: Bool = false
 
-fn var Door.close() Void!:
+fn move Door.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?
@@ -171,7 +171,7 @@ type PanicDoor:
 	fail: Bool
 	closed: Bool = false
 
-fn var PanicDoor.close() Void!:
+fn move PanicDoor.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?
@@ -187,7 +187,7 @@ type Envelope:
 	callback: fn() Int
 	closed: Bool = false
 
-fn var Envelope.close() Void!:
+fn move Envelope.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?

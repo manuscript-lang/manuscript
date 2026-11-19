@@ -20,7 +20,7 @@ fn var Chunks.next() Bytes?!:
 	self.at = end
 	return ok(piece)
 
-fn var Chunks.close() Void!:
+fn move Chunks.close() Void!:
 	return ok()
 
 type Case:

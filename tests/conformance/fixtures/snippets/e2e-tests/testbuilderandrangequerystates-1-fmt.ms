@@ -7,5 +7,5 @@ import Closeable from "@std/core.ms"
 type Resource:
     visits: List[Int]
 
-fn var Resource.close() Void!:
+fn move Resource.close() Void!:
     self.visits.append(1)

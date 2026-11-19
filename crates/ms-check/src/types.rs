@@ -887,7 +887,7 @@ impl Method {
     }
 
     /// Whether the method releases its receiver: a `Closeable` implementation, or a type's own
-    /// `fn var Type.close() Void!`, which satisfies `Closeable` by shape.
+    /// `fn move Type.close() Void!`, which satisfies `Closeable` by shape.
     pub fn closes(&self, syms: ms_syntax::Names) -> bool {
         if self
             .contract

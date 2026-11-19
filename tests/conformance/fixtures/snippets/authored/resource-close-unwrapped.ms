@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-fn var Res.close() Void!:
+fn move Res.close() Void!:
     print(f"close {self.name}")
 
 fn make(name: String) Res!Error:

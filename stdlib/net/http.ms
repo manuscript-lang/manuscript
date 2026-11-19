@@ -158,7 +158,7 @@ export type HttpClient:
 
 // Cancels in-flight requests, closes open response bodies, and drops idle pooled
 // connections. Safe to call repeatedly; later requests return EBADF.
-fn var HttpClient.close() Void!:
+fn move HttpClient.close() Void!:
 	msstd_http_client_close(self.native)
 
 // Sends the request, with `body` as text or `Bytes`, and returns the response with its
@@ -381,8 +381,8 @@ export type HttpServer:
 
 // Stops accepting and asks every connection to finish: idle ones close at once,
 // requests in flight finish within `grace`, then the rest are cancelled. It returns
-// without waiting; `wait` or dropping the server joins. Safe to call repeatedly.
-fn var HttpServer.close() Void!:
+// once the server has stopped, and consumes the server.
+fn move HttpServer.close() Void!:
 	self.stopped = true
 	self.accepting.cancel()
 
@@ -444,7 +444,7 @@ export opaque type RawResponse:
 // Cancels the rest of the response and releases its connection. Safe to call
 // repeatedly; reads afterwards return EBADF. A fully read body lets the connection
 // be reused.
-fn var RawResponse.close() Void!:
+fn move RawResponse.close() Void!:
 	msstd_http_body_close(self.native)
 
 // Returns an independent copy of the response head (status and headers), including
@@ -469,7 +469,7 @@ export type StreamingResponse:
 	body: ReadStream[Bytes]
 
 // Closes the body, which cancels what is unread and releases the connection.
-fn var StreamingResponse.close() Void!:
+fn move StreamingResponse.close() Void!:
 	return self.body.close()
 
 type ResponseSource:
@@ -478,7 +478,7 @@ type ResponseSource:
 fn var ResponseSource.next() Bytes?!:
 	return msstd_http_body_read(self.raw.native, none)
 
-fn var ResponseSource.close() Void!:
+fn move ResponseSource.close() Void!:
 	return self.raw.close()
 
 fn response(raw: RawResponse) StreamingResponse:

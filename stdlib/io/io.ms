@@ -42,7 +42,7 @@ export interface Source[T]:
 	// stream and an error when the source fails.
 	var fn next() T?!
 	// Releases what the source owns; the stream calls it once, when it closes.
-	var fn close() Void!
+	move fn close() Void!
 
 // Receives written values and defines their buffering, when they count as flushed
 // and how the sink is cleaned up.
@@ -55,7 +55,7 @@ export interface Sink[T]:
 	var fn flush() Void!
 	// Called when the stream closes, to release what the sink owns. The sink decides
 	// how buffered work finishes, and may wait.
-	var fn close() Void!
+	move fn close() Void!
 
 // A stream of items. `for item in stream:` walks it, and a failed read returns its
 // error from the enclosing function, as `?` would. `next` waits inside the source, so
@@ -81,7 +81,7 @@ fn var ReadStream[T].next(timeout: Duration? = none) T?!:
 
 // Closes the source and drops it, so a socket or file it held is released now.
 // Later calls do nothing.
-fn var ReadStream[T].close() Void!:
+fn move ReadStream[T].close() Void!:
 	if self.closed: return ok()
 
 	self.closed = true
@@ -111,7 +111,7 @@ type EndedSource[T]:
 fn var EndedSource[T].next() T?!:
 	return ok(none)
 
-fn var EndedSource[T].close() Void!:
+fn move EndedSource[T].close() Void!:
 	return ok()
 
 // A stream that sends values out with `write`; `flush` waits until the destination
@@ -133,7 +133,7 @@ fn var WriteStream[T].flush() Void!:
 
 // Closes the sink and drops it; later calls do nothing and later writes fail with
 // `EBADF`. A custom sink may wait while closing.
-fn var WriteStream[T].close() Void!:
+fn move WriteStream[T].close() Void!:
 	result := self.sink.close()
 	self.sink = ClosedSink[T]()
 	return result
@@ -148,7 +148,7 @@ fn var ClosedSink[T].write(move value: T) Void!:
 fn var ClosedSink[T].flush() Void!:
 	return ok()
 
-fn var ClosedSink[T].close() Void!:
+fn move ClosedSink[T].close() Void!:
 	return ok()
 
 // ---- Descriptors and standard input --------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ fn var DescriptorSource.next() Bytes?!:
 	return ok(none)
 
 // Releases the descriptor without waiting.
-fn var DescriptorSource.close() Void!:
+fn move DescriptorSource.close() Void!:
 	if self.closed: return ok()
 
 	self.closed = true
@@ -219,7 +219,7 @@ fn var DescriptorSink.flush() Void!:
 // Waits until the queued bytes have been handed to the descriptor, then releases it.
 // The descriptor is released even when the wait fails or is cancelled, and that
 // failure is returned.
-fn var DescriptorSink.close() Void!:
+fn move DescriptorSink.close() Void!:
 	if self.closed: return ok()
 
 	self.closed = true
@@ -264,7 +264,7 @@ fn var StdoutText.write(move value: String) Void!:
 fn var StdoutText.flush() Void!:
 	return msstd_io_stdout_status(true)
 
-fn var StdoutText.close() Void!:
+fn move StdoutText.close() Void!:
 	return ok()
 
 type StdoutBytes:
@@ -277,7 +277,7 @@ fn var StdoutBytes.write(move value: Bytes) Void!:
 fn var StdoutBytes.flush() Void!:
 	return msstd_io_stdout_status(true)
 
-fn var StdoutBytes.close() Void!:
+fn move StdoutBytes.close() Void!:
 	return ok()
 
 // Standard error, as text or bytes.
@@ -290,7 +290,7 @@ fn var StderrText.write(move value: String) Void!:
 fn var StderrText.flush() Void!:
 	return ok()
 
-fn var StderrText.close() Void!:
+fn move StderrText.close() Void!:
 	return ok()
 
 type StderrBytes:
@@ -302,7 +302,7 @@ fn var StderrBytes.write(move value: Bytes) Void!:
 fn var StderrBytes.flush() Void!:
 	return ok()
 
-fn var StderrBytes.close() Void!:
+fn move StderrBytes.close() Void!:
 	return ok()
 
 // Standard output as text.
@@ -355,7 +355,7 @@ type PipeSource[T]:
 fn var PipeSource[T].next() T?!:
 	return pipe_next[T](self.id)
 
-fn var PipeSource[T].close() Void!:
+fn move PipeSource[T].close() Void!:
 	msrt_pipe_close_reader(self.id)
 	self.id = 0
 
@@ -375,7 +375,7 @@ fn var PipeSink[T].write(move value: T) Void!:
 fn var PipeSink[T].flush() Void!:
 	return adopt[Void](msrt_pipe_flush(self.id)).wait()
 
-fn var PipeSink[T].close() Void!:
+fn move PipeSink[T].close() Void!:
 	// Closing again releases nothing: an owner that closed the writer by hand is
 	// closed again at scope end.
 	msrt_pipe_close_writer(self.id)
@@ -419,7 +419,7 @@ fn Pipe[T].receive() T?!:
 	return pipe_next[T](self.id)
 
 // Releases the reading end if `reader()` was never called.
-fn var Pipe[T].close() Void!:
+fn move Pipe[T].close() Void!:
 	if not self.taken:
 		msrt_pipe_close_reader(self.id)
 
@@ -476,7 +476,7 @@ fn var Through[A, B].next() B?!:
 
 	return ok(none)
 
-fn var Through[A, B].close() Void!:
+fn move Through[A, B].close() Void!:
 	return self.input.close()
 
 // Returns a stream of `transform`'s output over `input`. Closing it closes `input`.

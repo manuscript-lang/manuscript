@@ -101,7 +101,7 @@ fn var Lines.next() String?!:
 		else:
 			self.ended = true
 
-fn var Lines.close() Void!:
+fn move Lines.close() Void!:
 	return self.input.close()
 
 // Reads lines of text from a byte stream such as `stdin()`. It splits `input` at
@@ -120,7 +120,7 @@ type ListSource[T]:
 fn var ListSource[T].next() T?!:
 	return ok(self.items.pop())
 
-fn var ListSource[T].close() Void!:
+fn move ListSource[T].close() Void!:
 	return ok()
 
 // Returns a stream that yields copies of the items of `items` in order and then ends.
@@ -147,7 +147,7 @@ fn var BytesSource.next() Bytes?!:
 	self.at = stop
 	return ok(piece)
 
-fn var BytesSource.close() Void!:
+fn move BytesSource.close() Void!:
 	return ok()
 
 // Returns a stream that yields `data` in chunks of at most `chunk_bytes` bytes and
@@ -165,7 +165,7 @@ fn var Mapped[T, U].next() U?!:
 
 	return ok(none)
 
-fn var Mapped[T, U].close() Void!:
+fn move Mapped[T, U].close() Void!:
 	return self.input.close()
 
 // Returns a stream of `f` applied to each item of `input`. Closing it closes
@@ -186,7 +186,7 @@ fn var Filtered[T].next() T?!:
 		else:
 			return ok(none)
 
-fn var Filtered[T].close() Void!:
+fn move Filtered[T].close() Void!:
 	return self.input.close()
 
 // Returns a stream of the items of `input` for which `keep` is true, in order.
@@ -206,7 +206,7 @@ fn var Taker[T].next() T?!:
 	self.left -= 1
 	return ok(item)
 
-fn var Taker[T].close() Void!:
+fn move Taker[T].close() Void!:
 	return self.input.close()
 
 // Returns a stream of at most the first `count` items of `input`, then the end. Later

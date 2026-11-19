@@ -164,7 +164,7 @@ fn var ScalarSource.next() String?!:
 	return ok(scalar)
 
 // Releases nothing; the bytes are owned by the source.
-fn var ScalarSource.close() Void!:
+fn move ScalarSource.close() Void!:
 	return ok()
 
 // Bytes in the scalar a lead byte starts.

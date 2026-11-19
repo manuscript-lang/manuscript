@@ -14,7 +14,7 @@ type Token:
 	log: String
 	closed: Bool = false
 
-fn var Token.close() Void!:
+fn move Token.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, f"close {self.id}\n").wait()?
@@ -31,7 +31,7 @@ fn var Tokens.next() Token?!:
 
 	return ok(none)
 
-fn var Tokens.close() Void!:
+fn move Tokens.close() Void!:
 	return ok()
 
 fn events(log: String) String:
@@ -93,6 +93,7 @@ fn walk(log: String, action: Int) Void!:
 
 		if action == 6:
 			input.close()?
+			break
 
 test "exhaustion and continue close each item after its body":
 	dir := temporary("resource-exhaust-") | expect_ok?
@@ -185,7 +186,7 @@ fn var OptionalTokens.next() Token??!:
 	inner: Token? := Token(1, self.log.clone())
 	return ok(inner)
 
-fn var OptionalTokens.close() Void!:
+fn move OptionalTokens.close() Void!:
 	return ok()
 
 fn optional_payload(log: String) Void!:
@@ -213,7 +214,7 @@ fn var ResultTokens.next() Result[Result[Token, Error]?, Error]:
 	inner: Token! := ok(Token(1, self.log.clone()))
 	return ok(inner)
 
-fn var ResultTokens.close() Void!:
+fn move ResultTokens.close() Void!:
 	return ok()
 
 fn result_payload(log: String) Void!:
@@ -267,7 +268,7 @@ fn var PendingTokens.next() Token?!:
 	void sleep(milliseconds(60000)).wait()
 	return ok(token)
 
-fn var PendingTokens.close() Void!:
+fn move PendingTokens.close() Void!:
 	return ok()
 
 fn next_cancelled(log: String) Void!:

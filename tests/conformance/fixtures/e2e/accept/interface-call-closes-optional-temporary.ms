@@ -10,7 +10,7 @@ type Resource:
 	id: Int
 	path: String
 
-fn var Resource.close() Void!:
+fn move Resource.close() Void!:
 	append_file(self.path, f"{self.id},").wait()?
 
 interface Observer:

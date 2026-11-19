@@ -102,7 +102,7 @@ fn Promise[T].done() Bool:
 
 // Dropping a promise ends it: unfinished work is cancelled and waited for, and a
 // result nobody took is dropped, which closes what it holds.
-fn var Promise[T].close() Void!:
+fn move Promise[T].close() Void!:
 	if msrt_promise_end(self.id):
 		leftover := msrt_promise_take[T](self.id)
 	msrt_promise_drop(self.id)
@@ -150,7 +150,7 @@ fn Cancel.cancel() Void:
 
 // Frees the switch. Promises made with its signals keep running, but the switch can no
 // longer cancel them.
-fn var Cancel.close() Void!:
+fn move Cancel.close() Void!:
 	msrt_cancel_free(self.id)
 
 // Returns a new switch that has not fired.
@@ -273,7 +273,7 @@ opaque type WaitSet:
 	// The runtime group.
 	id: Int
 
-fn var WaitSet.close() Void!:
+fn move WaitSet.close() Void!:
 	msrt_group_free(self.id)
 
 // Internal: the error `wait_all` reports when the run of the promise at `head` ended

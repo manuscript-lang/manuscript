@@ -20,7 +20,7 @@ fn var Echo.write(move value: Bytes) Void!:
 fn var Echo.flush() Void!:
 	return self.out.flush()
 
-fn var Echo.close() Void!:
+fn move Echo.close() Void!:
 	return ok()
 
 fn echo() WriteStream[Bytes]:

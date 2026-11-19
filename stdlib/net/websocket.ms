@@ -55,7 +55,7 @@ fn var WebSocketSource.next() WebSocketMessage?!:
 
 	return ok(none)
 
-fn var WebSocketSource.close() Void!:
+fn move WebSocketSource.close() Void!:
 	msstd_websocket_close_if_last(self.native)
 
 type WebSocketSink:
@@ -72,7 +72,7 @@ fn var WebSocketSink.write(move value: WebSocketMessage) Void!:
 fn var WebSocketSink.flush() Void!:
 	return ok()
 
-fn var WebSocketSink.close() Void!:
+fn move WebSocketSink.close() Void!:
 	msstd_websocket_close_if_last(self.native)
 
 /*
@@ -90,7 +90,7 @@ export type WebSocket:
 	subprotocol: String
 
 // Closes both streams, and with them the connection.
-fn var WebSocket.close() Void!:
+fn move WebSocket.close() Void!:
 	self.input.close()?
 	return self.output.close()
 

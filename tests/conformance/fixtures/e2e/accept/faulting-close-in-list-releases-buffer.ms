@@ -14,7 +14,7 @@ import (
 type Marker:
 	label: String
 
-fn var Marker.close() Void!: error(Error("marker closed"))
+fn move Marker.close() Void!: error(Error("marker closed"))
 
 fn list_under_fault(label: String) Void:
 	markers := [Marker(label)]
