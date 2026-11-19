@@ -11,4 +11,4 @@ fn keep[T: Hashable](var values: Set[T], value: T) Set[T]:
 fn use() Set[Int]:
     var values: Set[Int] = Set[Int]()
     var nested: List[Set[Int]] = [values]
-    return keep(var nested[0], 1)
+    return keep(nested[0], 1)

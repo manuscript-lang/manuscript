@@ -26,9 +26,9 @@ fn bump_at(var xs: List[C?], i: Int) Int?:
 
 fn elements() Void:
     var xs: List[C?] = [C(1), none]
-    show(bump_at(var xs, 0))
-    show(bump_at(var xs, 1))
-    show(bump_at(var xs, 0))
+    show(bump_at(xs, 0))
+    show(bump_at(xs, 1))
+    show(bump_at(xs, 0))
 
 fn loop() Void:
     for i in 0..2:

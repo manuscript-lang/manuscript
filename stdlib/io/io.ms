@@ -75,7 +75,7 @@ export type ReadStream[T]:
 // afterwards.
 fn var ReadStream[T].next(timeout: Duration? = none) T?!:
 	if self.closed: return ok(none)
-	if bound := timeout: return read_bounded(var self.source, bound)
+	if bound := timeout: return read_bounded(self.source, bound)
 
 	return self.source.next()
 
@@ -471,10 +471,10 @@ fn var Through[A, B].next() B?!:
 		var wrote: Void! = ok()
 
 		if value := step:
-			wrote = self.transform.step(value, var self.out)
+			wrote = self.transform.step(value, self.out)
 		else:
 			self.finished = true
-			wrote = self.transform.finish(var self.out)
+			wrote = self.transform.finish(self.out)
 
 		// A failed step's partial output is dropped, so the failure is the next
 		// item.

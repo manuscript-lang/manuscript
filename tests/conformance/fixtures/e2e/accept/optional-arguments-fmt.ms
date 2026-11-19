@@ -125,7 +125,7 @@ test "constructor fields and methods use optional arguments":
 
 test "wrapping evaluates arguments once in written order":
     var counter = Counter(0)
-    expect_equal(ordered(second: next(var counter), first: next(var counter)), 21)?
+    expect_equal(ordered(second: next(counter), first: next(counter)), 21)?
     expect_equal(counter.calls, 2)?
 
 test "queue capacity accepts a plain value or omission":

@@ -17,7 +17,7 @@ fn run(var reader: Reader) Int:
     while true:
         var key = ""
         while reader.pos < 3 and "abc".contains(peek(reader)):
-            key = key.concat(advance(var reader))
+            key = key.concat(advance(reader))
         if key == "": return 9
 
         count += 1
@@ -27,4 +27,4 @@ fn run(var reader: Reader) Int:
 
 export fn main() Int:
     var reader = Reader(pos: 0)
-    return run(var reader)
+    return run(reader)

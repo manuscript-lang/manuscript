@@ -126,7 +126,7 @@ fn facts_expose_moves_modes_and_drops() {
     use ms_check::api::ownership::{Access, ParamMode};
     run_on_big_stack(|| {
         let syms = ms_syntax::Names::global();
-        let source = "fn take(xs: List[Int]) List[Int]:\n    return xs\n\nfn grow(var xs: List[Int]) Void:\n    xs.append(1)\n\nfn f() Int:\n    var a = [1]\n    grow(var a)\n    b := take(a)\n    n := b.length()\n    a = [2]\n    return n + a.length()\n";
+        let source = "fn take(xs: List[Int]) List[Int]:\n    return xs\n\nfn grow(var xs: List[Int]) Void:\n    xs.append(1)\n\nfn f() Int:\n    var a = [1]\n    grow(a)\n    b := take(a)\n    n := b.length()\n    a = [2]\n    return n + a.length()\n";
         let file: Arc<str> = Arc::from("t.ms");
         let module = ms_syntax::parser::parse(&file, source).expect("parses");
         let program = ms_check::check(

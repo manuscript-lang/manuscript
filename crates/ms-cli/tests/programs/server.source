@@ -37,7 +37,7 @@ fn move Server.close() Void!:
 
     var farewell = self.client.output.write("farewell\n".to_bytes())
     if farewell.is_ok():
-        drained := flush_within(var self.client.output, 1.seconds())
+        drained := flush_within(self.client.output, 1.seconds())
         farewell = drained
 
     if farewell.is_error():

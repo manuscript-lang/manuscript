@@ -10,7 +10,7 @@ fn child(var c: Ch) Int:
 
 fn run(entry: fn(var Ch) Int) Int:
     var c = Ch(buf: [])
-    n := entry(var c) + entry(var c)
+    n := entry(c) + entry(c)
     return n + c.buf.length()
 
 export fn main() Int:

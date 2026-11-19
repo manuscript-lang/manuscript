@@ -32,7 +32,7 @@ fn main() Void:
     )
     var calls = 0
     void stdout().write(
-        f"{present.get_or(fallback(var calls))} {missing.get_or(fallback(var calls))} {success.get_or(fallback(var calls))} {failure.get_or(fallback(var calls))} {values.get_or(0, fallback(var calls))} {values.get_or(9, fallback(var calls))} {calls}\n"
+        f"{present.get_or(fallback(calls))} {missing.get_or(fallback(calls))} {success.get_or(fallback(calls))} {failure.get_or(fallback(calls))} {values.get_or(0, fallback(calls))} {values.get_or(9, fallback(calls))} {calls}\n"
     )
     no_text: String? := none
     text: String? := "fallback"

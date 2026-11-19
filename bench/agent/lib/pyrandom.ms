@@ -80,7 +80,7 @@ fn twist(var mt: List[Int]) Void:
 
 fn var Random.next_u32() Int:
 	if self.index >= N:
-		twist(var self.state)
+		twist(self.state)
 		self.index = 0
 
 	word := self.state[self.index]

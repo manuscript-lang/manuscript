@@ -8,5 +8,5 @@ export fn main() Int:
 
 	// A function value fills defaults in a thunk that cannot also pass a var parameter.
 	change := push
-	change(var values, 2)
+	change(values, 2)
 	return values.length() - 1

@@ -206,11 +206,11 @@ export fn gen_c36() Void:
 			"open a 20\nopen b 0\ndeposit a 10\nwithdraw a 25\nwithdraw a 10\ntransfer a b 3\nfreeze b\ndeposit b 1\nreport\n",
 		)
 	]
-	small := rand_script(var rnd, 60, ["a", "b", "c"])
+	small := rand_script(rnd, 60, ["a", "b", "c"])
 	var accounts = List[String]()
 	for i in 0..12: accounts.append(f"acct{i}")
 
-	large := rand_script(var rnd, 1500, accounts)
+	large := rand_script(rnd, 1500, accounts)
 	hidden := examples.concat(
 		[
 			mk("empty-report", "report\n"),

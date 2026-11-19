@@ -425,7 +425,7 @@ func (r *Repo) status() {
 		r.p("merging: %s", r.mergeBr)
 	}
 	h := r.headTree()
-	var staged, unstaged, conflicts, untracked []string
+	staged, unstaged, conflicts, untracked []string
 	for _, n := range sortedNames(h, r.index) {
 		if r.conflict[n] {
 			continue

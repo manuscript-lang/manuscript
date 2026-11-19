@@ -25,5 +25,5 @@ export fn main() Int:
 	b := doubled(a)
 	c := sorted_copy(b)
 	var d = c.clone()
-	e := rebuild(var d)
+	e := rebuild(d)
 	return e.length() - 1001

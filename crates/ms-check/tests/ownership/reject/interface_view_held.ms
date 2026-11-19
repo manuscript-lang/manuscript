@@ -26,7 +26,7 @@ fn store_call(var xs: List[Reportable], cause: Cause) Void:
     xs.append(first_error(cause))  // error: `first_error` returns a reference into `cause`, which this position would keep
 
 fn pass_on(var xs: List[Reportable], cause: Cause) Void:
-    keep(var xs, first_error(cause))  // error: `first_error` returns a reference into `cause`, which this position would keep
+    keep(xs, first_error(cause))  // error: `first_error` returns a reference into `cause`, which this position would keep
 
 fn caller_change() String:
     var c = Cause(1, "x")

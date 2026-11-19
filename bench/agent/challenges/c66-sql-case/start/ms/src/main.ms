@@ -790,7 +790,7 @@ fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Void!:
 			return error(err(f"wrong number of arguments to {opn}"))
 
 		for a in args:
-			resolve(var nodes, a, rc, true)?
+			resolve(nodes, a, rc, true)?
 		return
 
 	if kind == FUNC:
@@ -807,7 +807,7 @@ fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Void!:
 			return error(err(f"no such function: {opn}"))
 
 	for a in args:
-		resolve(var nodes, a, rc, in_agg)?
+		resolve(nodes, a, rc, in_agg)?
 
 // ---------- eval ----------
 fn type_error() Error: Error("type error")
@@ -1208,7 +1208,7 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 					tbl: c.tbl,
 				)
 			)
-		resolve(var st.nodes, jn.on, Rctx(cols: sc), false)?
+		resolve(st.nodes, jn.on, Rctx(cols: sc), false)?
 		j += 1
 
 	// stars
@@ -1250,12 +1250,12 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 	var gb = List[Int]()
 
 	for g in st.groupby:
-		resolve(var st.nodes, g, Rctx(cols: scope.clone()), false)?
+		resolve(st.nodes, g, Rctx(cols: scope.clone()), false)?
 		gb.append(st.nodes[g].col)
 
 	// where
 	if st.where >= 0:
-		resolve(var st.nodes, st.where, Rctx(cols: scope.clone()), false)?
+		resolve(st.nodes, st.where, Rctx(cols: scope.clone()), false)?
 
 	rc := Rctx(
 		cols: scope.clone(),
@@ -1264,9 +1264,9 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 		gb: gb.clone(),
 	)
 	for n in outn:
-		resolve(var st.nodes, n, rc, false)?
+		resolve(st.nodes, n, rc, false)?
 	if st.having >= 0:
-		resolve(var st.nodes, st.having, rc, false)?
+		resolve(st.nodes, st.having, rc, false)?
 
 	var ords = List[OrderSpec]()
 
@@ -1289,7 +1289,7 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 					oi += 1
 
 			if o.ref < 0:
-				resolve(var st.nodes, o.expr, rc, false)?
+				resolve(st.nodes, o.expr, rc, false)?
 
 		ords.append(o)
 
@@ -1501,7 +1501,7 @@ fn exec_insert(var db: Map[String, Table], var st: Stmt) String!:
 		var k = 0
 
 		for e in r:
-			resolve(var st.nodes, e, rc, false)?
+			resolve(st.nodes, e, rc, false)?
 
 			v := eval(st.nodes, e, List[Val](), empty)?
 			row[colmap[k]] = v
@@ -1535,9 +1535,9 @@ fn exec_update(var db: Map[String, Table], var st: Stmt) String!:
 
 	rc := Rctx(cols: table_scope(st.table, t), allow_agg: false)
 	for e in st.setexprs:
-		resolve(var st.nodes, e, rc, false)?
+		resolve(st.nodes, e, rc, false)?
 	if st.where >= 0:
-		resolve(var st.nodes, st.where, rc, false)?
+		resolve(st.nodes, st.where, rc, false)?
 
 	empty := List[List[Val]]()
 	var newrows = List[List[Val]]()
@@ -1576,7 +1576,7 @@ fn exec_delete(var db: Map[String, Table], var st: Stmt) String!:
 	t := get_table(db, st.table)?
 	rc := Rctx(cols: table_scope(st.table, t), allow_agg: false)
 	if st.where >= 0:
-		resolve(var st.nodes, st.where, rc, false)?
+		resolve(st.nodes, st.where, rc, false)?
 
 	empty := List[List[Val]]()
 	var newrows = List[List[Val]]()
@@ -1633,13 +1633,13 @@ fn run_chunk(var db: Map[String, Table], ch: Chunk) String!:
 
 	var p = Parser(toks: ch.toks.clone())
 	var st = p.parse_stmt()?
-	if st.kind == 0: return exec_create(var db, st)
-	if st.kind == 1: return exec_drop(var db, st)
-	if st.kind == 2: return exec_insert(var db, var st)
-	if st.kind == 3: return exec_update(var db, var st)
-	if st.kind == 4: return exec_delete(var db, var st)
+	if st.kind == 0: return exec_create(db, st)
+	if st.kind == 1: return exec_drop(db, st)
+	if st.kind == 2: return exec_insert(db, st)
+	if st.kind == 3: return exec_update(db, st)
+	if st.kind == 4: return exec_delete(db, st)
 
-	return exec_select(db, var st)
+	return exec_select(db, st)
 
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
@@ -1651,7 +1651,7 @@ fn main() Void!:
 	for ch in chunks:
 		if not ch.bad and ch.toks.length() == 1: continue
 
-		r := run_chunk(var db, ch)
+		r := run_chunk(db, ch)
 
 		if s := r:
 			print(s)

@@ -13,4 +13,4 @@ fn change(var values: List[Marker]) Int:
 
 export fn main() Int:
     var values = [Marker(1)]
-    return observe(values.first().get(), change(var values))  // error: overlaps argument
+    return observe(values.first().get(), change(values))  // error: overlaps argument

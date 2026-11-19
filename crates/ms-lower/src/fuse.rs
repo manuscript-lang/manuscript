@@ -100,7 +100,7 @@ impl FnLower<'_> {
                     && matches!(callee.kind, ExprKind::Name(_))
                     && args
                         .iter()
-                        .all(|a| a.name.is_none() && !a.mutable && self.reads(hir, &a.value, depth))
+                        .all(|a| a.name.is_none() && self.reads(hir, &a.value, depth))
                     && self.reading_function(hir, callee, args.len(), depth - 1)
             }
             _ => false,
@@ -204,7 +204,7 @@ impl FnLower<'_> {
             ExprKind::Name(_) => self.reading_function(&self.hir, &arg.value, 1, CALL_DEPTH),
             _ => false,
         };
-        if arg.name.is_some() || arg.mutable || !reading {
+        if arg.name.is_some() || !reading {
             return Ok(None);
         }
         let (rt, ot) = (self.emty(recv)?, self.emty(e)?);
@@ -266,7 +266,7 @@ impl FnLower<'_> {
         let ExprKind::Lambda(l) = &arg.value.kind else {
             return Ok(None);
         };
-        if arg.name.is_some() || arg.mutable || !self.simple_lambda(l) {
+        if arg.name.is_some() || !self.simple_lambda(l) {
             return Ok(None);
         }
         let ExprKind::Call { callee, args: none } = &recv_expr.kind else {
@@ -432,7 +432,7 @@ impl FnLower<'_> {
         let [arg] = args.as_slice() else {
             return Ok(None);
         };
-        if arg.name.is_some() || arg.mutable {
+        if arg.name.is_some() {
             return Ok(None);
         }
         let (lt, rt) = (self.emty(left)?, self.emty(&arg.value)?);

@@ -414,12 +414,12 @@ fn var TarEntries.step(move value: Bytes, var out: List[ArchiveEntry]) Void!:
 	if self.done: return ok()
 
 	self.buffer = self.buffer.concat(value)
-	return self.drain(var out, false)
+	return self.drain(out, false)
 
 fn var TarEntries.finish(var out: List[ArchiveEntry]) Void!:
 	if self.done: return ok()
 
-	self.drain(var out, true)?
+	self.drain(out, true)?
 	if self.done or self.buffer.is_empty(): return ok()
 
 	return error(Error("archive: truncated tar", kind: "EBADMSG"))

@@ -33,15 +33,15 @@ fn branch(var box: Box, take: Bool) Void:
 fn main() Void:
     var calls = 0
     var rows = [[1], [2]]
-    var first = rows[next(var calls)]
+    var first = rows[next(calls)]
     append := fn: first.append(9)
     append()
     append()
 
     void stdout().write(f"{calls} {rows}\n")
     var box = Box(count: 1, items: [[3], [4]])
-    branch(var box, false)
-    branch(var box, true)
+    branch(box, false)
+    branch(box, true)
 
     void stdout().write(f"{box.count}\n")
     var items = box.items
@@ -81,6 +81,6 @@ fn main() Void:
 
     void stdout().write(f"{boxes}\n")
     var target = rows[1]
-    invoke(fn: add(var target))
+    invoke(fn: add(target))
 
     void stdout().write(f"{rows}\n")

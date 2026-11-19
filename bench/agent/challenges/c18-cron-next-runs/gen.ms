@@ -228,11 +228,11 @@ fn rand_field(var rnd: Random, lo: Int, hi: Int) String:
 fn rand_line(var rnd: Random) String:
 	var fields = List[String]()
 	rs := ranges()
-	fields.append(rand_field(var rnd, 0, 59))
-	fields.append(rand_field(var rnd, 0, 23))
-	fields.append(rand_field(var rnd, 1, 31))
-	fields.append(rand_field(var rnd, 1, 12))
-	fields.append(rand_field(var rnd, 0, 6))
+	fields.append(rand_field(rnd, 0, 59))
+	fields.append(rand_field(rnd, 0, 23))
+	fields.append(rand_field(rnd, 1, 31))
+	fields.append(rand_field(rnd, 1, 12))
+	fields.append(rand_field(rnd, 0, 6))
 
 	var checked = List[String]()
 	for i in 0..5: checked.append(
@@ -254,7 +254,7 @@ export fn gen_c18() Void:
 		mk("weekdays", "2024-02-28T23:59 3 */15 9-17 * * 1-5\n"),
 	]
 	var random_lines = List[String]()
-	for _i in 0..40: random_lines.append(rand_line(var rnd))
+	for _i in 0..40: random_lines.append(rand_line(rnd))
 
 	hidden := examples.concat(
 		[

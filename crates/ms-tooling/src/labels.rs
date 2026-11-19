@@ -148,7 +148,6 @@ impl Visitor for Scan<'_> {
                     let label = syms.str(label);
                     if first_unsupplied(syms, &params, &seen) == Some(label)
                         && matches!(&arg.value.kind, ExprKind::Name(n) if syms.str(n) == label)
-                        && !arg.mutable
                         && arg.pos.offset < arg.value.pos.offset
                         && arg.value.pos.offset as usize <= self.source.len()
                     {

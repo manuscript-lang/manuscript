@@ -35,7 +35,7 @@ fn key(var calls: Int) String:
 fn main() Void:
     var calls = 0
     var rows = [[1], [2]]
-    var first = rows[next(var calls)]
+    var first = rows[next(calls)]
     append := first.append
     append(9)
     append(10)
@@ -68,7 +68,7 @@ fn main() Void:
     entries.add("key-1", [7])
     calls = 0
 
-    if var value = entries[key(var calls)]?:
+    if var value = entries[key(calls)]?:
         add := value.append
         add(8)
         add(9)

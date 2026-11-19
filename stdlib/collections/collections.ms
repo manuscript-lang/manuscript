@@ -432,9 +432,9 @@ fn var List[T].rotate(by: Int) Void:
 	shift := (by % size + size) % size
 	if shift == 0: return
 
-	reverse_span(var self, 0, shift)
-	reverse_span(var self, shift, size)
-	reverse_span(var self, 0, size)
+	reverse_span(self, 0, shift)
+	reverse_span(self, shift, size)
+	reverse_span(self, 0, size)
 
 // Reports whether the list is already in the order `compare` defines, meaning no
 // element sorts after its successor. Empty and one-element lists are sorted.

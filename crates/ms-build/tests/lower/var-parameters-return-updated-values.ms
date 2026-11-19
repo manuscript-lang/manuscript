@@ -16,5 +16,5 @@ export fn main() Int:
     var c = Counter(total: 1)
     a := c.bump(4)
     var l = [1]
-    add(var l, a)
+    add(l, a)
     return l.length()

@@ -28,173 +28,173 @@ export fn gen_c66() Void:
 	for entry in c52_inputs():
 		name := entry.get("name").get_or(JsonValue.Null).as_string().get_or("")
 		stdin := entry.get("stdin").get_or(JsonValue.Null).as_string().get_or("")
-		add(var cs, f"kept-{name}", stdin)
+		add(cs, f"kept-{name}", stdin)
 
 	add(
-		var cs,
+		cs,
 		"case-basic",
 		SETUP
 		+ "SELECT id, CASE WHEN n > 10 THEN 'big' WHEN n > 1 THEN 'mid' ELSE 'none' END AS k FROM t ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-no-else-null",
 		SETUP + "SELECT id, CASE WHEN n > 6 THEN n END AS v FROM t ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-header-name",
 		SETUP
 		+ "SELECT CASE WHEN n > 6 THEN 1 ELSE 0 END, CASE WHEN id = 1 THEN s END FROM t ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-first-true-wins",
 		SETUP
 		+ "SELECT id, CASE WHEN n > 1 THEN 'a' WHEN n > 5 THEN 'b' WHEN 1 = 1 THEN 'c' END AS v FROM t ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-null-condition",
 		SETUP
 		+ "SELECT id, CASE WHEN n THEN 1 ELSE 2 END FROM t;\nSELECT id, CASE WHEN n > 1 THEN 'x' ELSE 'y' END AS v FROM t ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-short-circuit",
 		SETUP
 		+ "SELECT id, CASE WHEN n IS NULL THEN 0 ELSE 100 / n END AS v FROM t ORDER BY id;\nSELECT CASE WHEN id = 1 THEN 1 ELSE 1 / 0 END FROM t WHERE id = 1;\nSELECT CASE WHEN id = 1 THEN 1 WHEN 1 / 0 = 1 THEN 2 END FROM t WHERE id = 1;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-evaluated-error",
 		SETUP + "SELECT CASE WHEN id = 2 THEN 1 / 0 ELSE id END FROM t;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-mixed-types",
 		SETUP
 		+ "SELECT id, CASE WHEN id < 3 THEN id ELSE s END AS v FROM t ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-non-boolean-condition",
 		SETUP
 		+ "SELECT CASE WHEN n THEN 1 END FROM t WHERE id = 1;\nSELECT CASE WHEN s THEN 1 END FROM t WHERE id = 1;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-where",
 		SETUP
 		+ "SELECT id FROM t WHERE CASE WHEN n IS NULL THEN 1 = 2 WHEN n > 6 THEN 1 = 1 ELSE 1 = 2 END ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-order-by",
 		SETUP
 		+ "SELECT id FROM t ORDER BY CASE WHEN g = 'y' THEN 0 ELSE 1 END, id DESC;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-group-by",
 		SETUP
 		+ "SELECT CASE WHEN n IS NULL THEN 'null' WHEN n > 6 THEN 'hi' ELSE 'lo' END AS b, COUNT(*) AS c FROM t GROUP BY CASE WHEN n IS NULL THEN 'null' WHEN n > 6 THEN 'hi' ELSE 'lo' END ORDER BY b;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-in-aggregate",
 		SETUP
 		+ "SELECT g, SUM(CASE WHEN n > 6 THEN 1 ELSE 0 END) AS hi, COUNT(CASE WHEN n IS NULL THEN 1 END) AS nulls FROM t GROUP BY g ORDER BY g;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-around-aggregate",
 		SETUP
 		+ "SELECT g, CASE WHEN COUNT(*) > 1 THEN 'many' ELSE 'one' END AS c FROM t GROUP BY g ORDER BY g;\nSELECT CASE WHEN COUNT(*) > 4 THEN SUM(n) ELSE 0 END FROM t;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-ungrouped-column",
 		SETUP + "SELECT g, CASE WHEN n > 1 THEN 1 ELSE 0 END FROM t GROUP BY g;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-having",
 		SETUP
 		+ "SELECT g FROM t GROUP BY g HAVING CASE WHEN COUNT(*) > 1 THEN SUM(n) > 5 ELSE 1 = 2 END ORDER BY g;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-update",
 		SETUP
 		+ "UPDATE t SET n = CASE WHEN n IS NULL THEN -1 WHEN n > 6 THEN n * 2 ELSE n END;\nSELECT id, n FROM t ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-insert",
 		SETUP
 		+ "INSERT INTO t VALUES (6, CASE WHEN 1 = 1 THEN 60 ELSE 0 END, CASE WHEN 1 = 2 THEN 'a' ELSE 'b' END, 'w');\nSELECT * FROM t WHERE id = 6;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-nested",
 		SETUP
 		+ "SELECT id, CASE WHEN n IS NULL THEN 'n' ELSE CASE WHEN n > 6 THEN 'hi' ELSE CASE WHEN n = 0 THEN 'zero' ELSE 'lo' END END END AS v FROM t ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-function-args",
 		SETUP
 		+ "SELECT UPPER(CASE WHEN id = 1 THEN s ELSE 'z' END), COALESCE(CASE WHEN n > 100 THEN 1 END, -1) FROM t WHERE id < 3 ORDER BY id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-join",
 		SETUP
 		+ "CREATE TABLE u (id INT PRIMARY KEY, w INT);\nINSERT INTO u VALUES (1, 10), (3, 30);\nSELECT t.id, CASE WHEN u.w IS NULL THEN 'no' ELSE 'yes' END AS m FROM t LEFT JOIN u ON t.id = u.id ORDER BY t.id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-keyword-case-insensitive",
 		SETUP
 		+ "select id, case when n > 6 then 'hi' else 'lo' end as v from t order by id;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-syntax-errors",
 		SETUP
 		+ "SELECT CASE END FROM t;\nSELECT CASE WHEN n > 1 THEN 1 FROM t;\nSELECT CASE WHEN n > 1 1 END FROM t;\nSELECT CASE n WHEN 1 THEN 2 END FROM t;\nSELECT CASE WHEN n > 1 THEN 1 ELSE END FROM t;\nSELECT CASE WHEN n > 1 THEN 1 ELSE 2 ELSE 3 END FROM t;\nSELECT CASE WHEN n > 1 THEN 1 END END FROM t;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-syntax-before-missing-table",
 		"SELECT CASE END FROM nope;\nSELECT CASE WHEN 1 = 1 THEN 1 END FROM nope;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-reserved-words",
 		"CREATE TABLE end (a INT);\nCREATE TABLE t (when INT);\nCREATE TABLE t (a INT, case INT);\nCREATE TABLE ok (a INT);\nSELECT a AS then FROM ok;\nSELECT a AS else FROM ok;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-in-select-star-order",
 		SETUP
 		+ "SELECT * FROM t ORDER BY CASE WHEN n IS NULL THEN 1 ELSE 0 END, n DESC;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-limit-offset",
 		SETUP
 		+ "SELECT id, CASE WHEN id % 2 = 0 THEN 'even' ELSE 'odd' END AS p FROM t ORDER BY id LIMIT 2 OFFSET 1;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-distinct",
 		SETUP
 		+ "SELECT DISTINCT CASE WHEN n > 6 THEN 'hi' ELSE 'lo' END AS v FROM t ORDER BY v;\n",
 	)
 	add(
-		var cs,
+		cs,
 		"case-bool-result",
 		SETUP + "SELECT CASE WHEN id = 1 THEN n > 1 ELSE 1 = 2 END FROM t;\n",
 	)
