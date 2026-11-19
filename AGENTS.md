@@ -37,7 +37,7 @@ Syntax changes usually need language-design, the compiler and tooling checklists
 
 - Manuscript is implemented in Rust in `crates/`, with Cranelift for debug builds and LLVM for Linux and macOS release builds; `crates/DESIGN.md` records the pipeline and ABI. Build it with `make build`, or `cargo xtask runtime` followed by `cargo build --release --locked -p ms-cli` (the build script embeds the runtime archive and panics without it); see the [Rust toolchain guide](documentation/contributing/rust-toolchain.md). The Go implementation was removed; its history is in git.
 - Standard-library declarations live in `stdlib/` (`*.ms`) and are embedded by `crates/ms-check/build.rs`. Conformance fixtures live in `tests/conformance/`; `.msversion` holds the release version.
-- Performance and agent evidence lives in `bench/perf/` and `bench/agent/`, each suite with its run script and a committed result page naming the revision and machine. A speed or agent claim in the README, website, or vision cites one of those pages; rerun the suite and add a dated section rather than editing old numbers.
+- Performance and agent evidence lives in `bench/perf/` and `bench/agent/`, each suite with its run script. `bench/perf/` commits dated result pages naming the revision and machine, and a speed claim in the README, website, or vision cites one of them; rerun the suite and add a dated section rather than editing old numbers. Agent-benchmark results are not committed and no document quotes them (first-build rates measure model familiarity, not language quality).
 
 ## Shared guidance and checks
 

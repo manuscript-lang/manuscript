@@ -35,7 +35,7 @@ Manuscript is in beta. The capabilities below describe current source; published
 - **One command for the development loop.** `ms` checks, formats, lints, tests, builds and profiles. Builds reuse cached or locally configured linking tools; see [build setup](documentation/developer-tooling/how-it-works.md#build-tools-and-local-setup).
 - **Feedback agents can act on.** Diagnostics read `cause; fix`, name the Manuscript spelling for habits from other languages, and carry machine-applicable repairs that `ms check --fix` applies. `--json` output from `check`, `lint`, `test`, `run`, `build` and `inspect` reports results and faults as data; `ms search_symbol`, `ms verify`, `ms review` and `ms diagram` give deterministic views of a program and of a change.
 - **Editor and profiling support.** A language server, a VS Code extension, and native sampling profiles with source attribution. Native builds emit DWARF line tables for source lookup.
-- **A measured loop.** The [agent benchmark](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript and Rust with hidden tests. The [October 22 run](bench/agent/results/summary-2026-10-22.md) passed 10 of 10 small challenges in Manuscript, with one trial per challenge; first-build success and source size relative to TypeScript remain targets for improvement.
+- **A measured loop.** The [agent benchmark](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript and Rust with hidden tests, and what goes wrong in those runs decides which diagnostics, standard-library names and guides we build next.
 
 Still ahead: a broader library ecosystem, external adapters, incremental frontend compilation, and the deployment story beyond a single binary.
 
