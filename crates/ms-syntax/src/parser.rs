@@ -1131,6 +1131,10 @@ impl<'a> Parser<'a> {
         }
         let t = if self.take(Tok::LParen) {
             let t = self.typ()?;
+            if self.kind() == Tok::Comma && self.speculative == 0 {
+                let c = self.peek();
+                return self.fail(c, "Manuscript has no tuples; declare a type with 'type Pair:' and named fields to return several values, or use a List when the items share one type");
+            }
             self.need(Tok::RParen)?;
             t
         } else {

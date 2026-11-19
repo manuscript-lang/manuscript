@@ -558,8 +558,13 @@ impl Scanner<'_> {
                 continue;
             }
             if !self.virtual_paren && !leading.is_multiple_of(4) {
+                let inside = if self.delimiters.is_empty() {
+                    ""
+                } else {
+                    "; a line inside brackets is indented by fours too, so do not align it with the opening bracket"
+                };
                 return self.fail(format!(
-                    "indentation must be a multiple of four spaces, found {}; use {} or {}",
+                    "indentation must be a multiple of four spaces, found {}; use {} or {}{inside}",
                     leading,
                     leading / 4 * 4,
                     leading / 4 * 4 + 4
