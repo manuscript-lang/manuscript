@@ -585,6 +585,15 @@ impl<'a> Parser<'a> {
             );
             return self.fail_fix(at, msg, ":");
         }
+        if matches!(t.kind, Tok::Comma | Tok::RParen) && self.speculative == 0 {
+            let name_t = self.text(name);
+            return self.fail(
+                name,
+                format!(
+                    "parameter '{name_t}' has no type; every parameter is written name: Type, e.g. {name_t}: Int"
+                ),
+            );
+        }
         self.need(Tok::Colon).map(|_| ())
     }
     fn newlines(&mut self) {
@@ -1463,6 +1472,16 @@ impl<'a> Parser<'a> {
                 return Ok(decl);
             }
             _ => {
+                if token.kind == Tok::Var && self.ahead(1).kind == Tok::Fn {
+                    // `var fn T.m()` is the receiver-changing method spelled in the wrong order.
+                    let fn_token = self.ahead(1);
+                    return self.fail_fix_range(
+                        token,
+                        fn_token,
+                        "a method that changes its receiver is written fn var Type.name(), with var after fn",
+                        "fn var",
+                    );
+                }
                 if let Some((msg, replacement)) = foreign_declaration(token, self.text(token)) {
                     if replacement.is_none()
                         && matches!(self.text(token), "const" | "val" | "final")
