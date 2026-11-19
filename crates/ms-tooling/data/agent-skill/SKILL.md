@@ -1,22 +1,29 @@
 ---
 name: manuscript
-description: Design, write, check, test, ship and revise Manuscript programs and projects. Use for .ms source, ms.toml, Manuscript APIs, ownership, errors, concurrency, tests and compiler diagnostics.
+description: Guide for an agent that knows other languages: design, write, check, test, ship and revise Manuscript (.ms) programs and projects, including ms.toml, ownership, errors, concurrency, tests and compiler diagnostics.
 ---
 
 # Write Manuscript
 
-Written for Manuscript {{MS_VERSION}}. Compare with `ms --version`; when they differ, download the skill of your compiler's release. Manuscript is in beta: what the stability page lists is frozen; everything else may change. Never carry habits over from another language: when unsure of a name or a shape, ask the tools (`ms search_symbol`, `ms check`) instead of guessing.
+Written for Manuscript {{MS_VERSION}}. Compare with `ms --version`; when they differ, download the skill of your compiler's release. Manuscript is in beta: what the stability page lists is frozen; everything else may change.
+
+You already know how to program, so this skill teaches only what is different. Your trained defaults from Go, Rust, TypeScript and Python are right about half the time here, and a wrong guess costs a compile loop. Three rules replace guessing: look up every name (`ms search_symbol <words>`), let the compiler correct shapes (`ms check --fix`), and read its message, which says `<cause>; <fix>`.
+
+## What carries over and what does not
+
+- **Carries over:** records and enums with exhaustive `match`, generics, interfaces by shape, closures, pipelines, tests beside code, a package manifest. Write them as you would.
+- **Does not:** exceptions, null, classes, inheritance, tuples, `async`, shared mutable state, a garbage collector, implicit copies, byte or character indexing of text. Do not reach for them; [Coming from other languages](references/coming-from-other-languages.md) maps each habit to its replacement.
 
 ## The model in six lines
 
 Read [Mental model](references/mental-model.md) once; every rule below follows from it.
 
-1. **Data is plain.** Records (`type`) and enums hold facts; functions and methods hold behavior. No classes, no inheritance, no null.
-2. **One owner.** Every String, collection and record has exactly one owner. Reading and passing borrow; storing or a last use moves; `.clone()` is the only copy. No refcount, no GC: values are released at scope end.
-3. **Failure is a value.** `T!` can fail, `T?` can be absent, and `?` hands either to your caller. Nothing is thrown. A fault (index out of range, `get()` on an error) ends the program or promise.
+1. **Data is plain.** Records (`type`) and enums hold facts; functions and methods hold behavior.
+2. **One owner.** Every String, collection and record has exactly one owner. Reading and passing borrow; storing or a last use moves; `.clone()` is the only copy. Values are released at scope end.
+3. **Failure is a value.** `T!` can fail, `T?` can be absent, and `?` hands either to your caller. A fault (index out of range, `get()` on an error) ends the program or promise.
 4. **Effects are visible.** A function is pure unless a `// ms: allow_effect` comment says what it reaches (console, files, network, clock). Pass capabilities in, not permissions up.
-5. **Waiting is a value.** No `async`. A call that waits returns a running `Promise`; collect it with `.wait()`. State is never shared: one owner, everyone else sends messages over a `pipe`.
-6. **The compiler is your reviewer.** Diagnostics read `<cause>; <fix>`. Add an enum case and let `ms check` list every `match` to update.
+5. **Waiting is a value.** A call that waits returns a running `Promise`; collect it with `.wait()`. State is never shared: one owner, everyone else sends messages over a `pipe`.
+6. **The compiler is your reviewer.** Add an enum case and let `ms check` list every `match` to update.
 
 ## Work in this loop
 
@@ -86,7 +93,7 @@ fn main() Void!:
 
 ## References
 
-- Why and how: [Teaching Manuscript](references/teaching.md) (explaining the language to a programmer), [Mental model](references/mental-model.md), [Workflow](references/workflow.md), [Testing](references/testing.md), [Validation and habits](references/validation.md).
+- Why and how: [Coming from other languages](references/coming-from-other-languages.md) (what to unlearn, how to explain the language), [Mental model](references/mental-model.md), [Workflow](references/workflow.md), [Testing](references/testing.md), [Validation and habits](references/validation.md).
 - Copy from: [Idioms](references/idioms.md) (thirteen complete programs).
 - Names: [Standard calls](references/standard-calls.md), [Standard modules](references/standard-modules.md).
 - Language: [Program structure](references/program-structure.md), [Values and control](references/values-and-control.md), [Types and functions](references/types-and-functions.md), [Collections and pipelines](references/collections-and-pipelines.md), [Text and bytes](references/text-and-bytes.md).

@@ -1,6 +1,6 @@
 # Mental model
 
-Manuscript has few ideas, applied everywhere. Learn them once and most compiler messages and API shapes become predictable. This page states each idea, what it forces in your code, and one program that uses all of them.
+You know these ideas from other languages in other forms; here they are fixed and applied everywhere, so there is little to memorize. Learn them once and most compiler messages and API shapes become predictable. This page states each idea, what it forces in your code, and one program that uses all of them.
 
 ## 1. Values, not objects
 
