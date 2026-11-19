@@ -184,6 +184,7 @@ impl Visitor for Scan<'_> {
         self.map_get_chain(e);
         self.slice_fallback(e);
         self.printed_void(e);
+        self.bytes_to_string(e);
         // `xs.get(i)` on a list held in a name or field is `xs[i]`.
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
@@ -514,6 +515,30 @@ impl Scan<'_> {
                 "this prints `void`: the call returns nothing, and sort() and reverse() change their receiver in place; call it as a statement, then print the list".to_string(),
                 self.file,
                 arg.pos,
+            ));
+        }
+    }
+
+    /// `bytes.to_string()` renders `Bytes(104, 105)`, not the text; `decode_utf8()` reads the text.
+    fn bytes_to_string(&mut self, e: &Expr) {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return;
+        };
+        let is_bytes = self
+            .module
+            .facts()
+            .info(left.id)
+            .and_then(|i| i.ty.as_ref())
+            .is_some_and(|t| t.is(Builtin::Bytes));
+        if args.is_empty() && self.syms.str(name) == "to_string" && is_bytes {
+            self.findings.push(finding(
+                "MSL135",
+                "`to_string()` on Bytes gives `Bytes(104, 105)`, not the text; `decode_utf8()` returns the text as a `String?`, so write `.decode_utf8().ok_or(Error(\"not UTF-8\", kind: \"EBADMSG\"))?`".to_string(),
+                self.file,
+                e.pos,
             ));
         }
     }

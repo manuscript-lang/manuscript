@@ -265,6 +265,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "call `xs.sort()` or `xs.reverse()` as a statement, or use `sorted()` or `reversed()` for a new list",
     },
+    Rule {
+        code: "MSL135",
+        family: "`to_string()` on Bytes",
+        severity: Severity::Warning,
+        repair: "`bytes.to_string()` renders `Bytes(104, 105)`; write `bytes.decode_utf8().ok_or(Error(\"not UTF-8\", kind: \"EBADMSG\"))?` for the text",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.
