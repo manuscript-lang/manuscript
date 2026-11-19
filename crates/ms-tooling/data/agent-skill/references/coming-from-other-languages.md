@@ -1,49 +1,31 @@
 # Coming from other languages
 
-You already program in Go, Rust, TypeScript or Python, and your first drafts will carry their habits. Manuscript shares ideas with each, so map what you know onto it, then drop what does not apply. Read this once before writing; when a compiler error surprises you, find its row here.
+Your first drafts will carry habits from Go, Rust, TypeScript or Python. Find the habit; use the replacement.
 
-## Map what you know
-
-| You know | In Manuscript |
+| Habit | Manuscript |
 | --- | --- |
-| Rust ownership | The same idea, simpler: one owner, borrow by default, `var` to change (written at the declaration and the call), `move` to take, `.clone()` to copy. There are no lifetime annotations; a function may return a borrow of its argument. |
-| Go structs and interfaces | `type` plus methods beside it; interfaces are satisfied by matching method shapes, with no `implements`. Errors are values, but `T!` and `?` replace `if err != nil`. |
-| TypeScript unions | `enum` with payload cases and an exhaustive `match`. No `null` or `undefined`: absence is `T?`. |
-| Python scripts | Same brevity (`print`, f-strings, pipelines), but every type is checked and every failure is a returned value. |
-| Exceptions | Do not reach for `try`/`throw`. A function returns `T!`, and the caller uses `?`. |
-| `async`/`await`, goroutines, threads | A call that waits returns a running `Promise`; `.wait()` collects it. No shared mutable state: one owner and a `pipe`. |
-| Classes and inheritance | A record, an enum, and an interface. Compose; do not extend. |
-| Generics `List<T>` | `List[T]` with brackets; bounds as `T: Clonable & Comparable`. |
+| Rust lifetimes, `&`, `&mut` | None to write: borrow by default, `var` to change (declaration and call), `move` to take, `.clone()` to copy. |
+| Go `if err != nil` | Return `T!`; call with `?`. |
+| Exceptions, `try`, `panic`, `unwrap` | `T!` and `?`. A fault is a bug, not control flow. |
+| `null`, `undefined`, `Option<T>` | `T?`; unwrap with `if v := o:`, `get_or(d)` or `?`. Never `some(x)`. |
+| Classes, inheritance | Record + enum + interface (met by method shape, no `implements`). |
+| Tuples | A small record. |
+| `async`/`await`, goroutines | A waiting call returns a `Promise`; `.wait()`. Shared state: one owner + `pipe`. |
+| `finally`, `defer`, `with` | None; resources close at scope end. |
+| `List<T>`, `!x`, `x == none` | `List[T]`, `not x`, `x.is_none()`. |
+| `xs.push`, `m.has`, `xs.len` | `xs.append`, `m.contains`, `xs.length()`. Look up: `ms search_symbol`. |
+| `text[i]`, char counts | None: `length()` counts bytes; use `chars()` or `slice` with byte offsets. Decode Bytes before printing. |
+| `"hello {name}"` | `f"hello {name}"`; plain `"..."` never interpolates. |
 
-## Do this, not that
+Before `.clone()`, try borrowing, moving at the last use, or keeping an index. Add an enum case rather than a flag field. Keep logic pure; wire effects in `main`.
 
-- **Ownership.** Passing and reading never copy. Before writing `.clone()`, ask whether borrowing, moving at the last use, or keeping an index works. When storing a borrowed value (a loop variable, a field, a parameter), `.clone()` at the store.
-- **Failure.** Return `T!` from anything that can fail and write `?` at each call. Turn an Optional into an error with `.ok_or(Error("what and which input"))`. Do not look for `panic`, `unwrap` or `try`; a fault is a bug, not control flow.
-- **Data.** Add a case to the `enum` instead of a flag field, then let `ms check` list every `match` to update. Use a record where you would use a tuple.
-- **Effects.** Keep the core pure and give it capabilities (interface values) from `main`. Allow effects with the narrowest `// ms: allow_effect` line.
-- **Waiting.** Start the promises, then `wait_all`. State that tasks share has one owner; tasks send it events through a `pipe`.
-- **Names.** Do not translate: `append` not `push`, `contains` not `has`, `length()` with parentheses. Run `ms search_symbol <words>` before using any API you have not seen in this skill.
-- **Text.** `length()` counts bytes and there is no `text[i]`. Decode Bytes before printing. Plain `"..."` never interpolates; use `f"..."`.
-- **Cleanup.** Never write a `finally`, `defer` or `with`. A file, socket or stream closes at scope end. `close()` consumes the value, so call it only to handle a close error.
-
-## Shape of a first program
-
-Model the data, write the signatures with their ownership and failure types, then the bodies, then `main` as a thin edge. Check after each step.
+To explain Manuscript to a person: one owner per value, failure as a value, plain data, visible effects, waiting without a keyword, a compiler that says how to fix errors. Short sentences; show only code you ran. Reasons: [Mental model](mental-model.md).
 
 ```manuscript
-type Task:
-	title: String
-	done: Bool = false
+fn first_even(xs: List[Int]) Int?:
+	return xs.find(fn x: x % 2 == 0)
 
-fn var Task.finish() Void:
-	self.done = true
-
-fn open_titles(tasks: List[Task]) List[String]:
-	return tasks | .filter(fn t: not t.done) | .map(fn t: t.title.clone())
+fn doubled(xs: List[Int]) Int!:
+	n := first_even(xs).ok_or(Error("no even number"))?
+	return ok(n * 2)
 ```
-
-`tasks` is read, so it is borrowed; `finish` mutates its receiver, so it is `fn var`; the titles are cloned because the new list owns them.
-
-## Explaining it to someone else
-
-When the user asks you to teach or explain Manuscript, lead with the same order as above, keep sentences short, and show only code you have run: one owner per value, failure as a value, plain data, visible effects, waiting without a keyword, and a compiler whose messages say how to fix the error. Point to [Mental model](mental-model.md) for the reasons and [Workflow](workflow.md) for a first project.
