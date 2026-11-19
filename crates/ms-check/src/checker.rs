@@ -295,7 +295,8 @@ pub struct Checker {
     pub(crate) in_declaration_checks: bool,
     pub(crate) label_mismatch: bool,
     /// Arguments whose generic-inference conflict is already reported, so the final argument check stays quiet.
-    pub(crate) conflicted_arguments: HashSet<ms_syntax::ast::NodeId>,
+    /// Arguments with a provisional inference note, replaced when the argument check explains them.
+    pub(crate) conflicted_arguments: HashMap<ms_syntax::ast::NodeId, String>,
     pub(crate) call_name: String,
     pub(crate) call_pos: Option<Pos>,
     /// Whether the call being checked is written `receiver.name(...)`.
@@ -396,7 +397,7 @@ impl Checker {
             reported_bounds: HashSet::default(),
             in_declaration_checks: false,
             label_mismatch: false,
-            conflicted_arguments: HashSet::default(),
+            conflicted_arguments: HashMap::default(),
             call_name: String::new(),
             call_pos: None,
             call_method: false,

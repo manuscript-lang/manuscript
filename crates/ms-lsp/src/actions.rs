@@ -271,13 +271,9 @@ pub fn editor_actions(
             start: text::position(&d.text, fix.pos.offset as usize),
             end: text::position(&d.text, fix.end.offset as usize),
         };
-        let start = text::position(&d.text, issue.pos.offset as usize);
-        let r = Range {
-            start,
-            end: issue.end.map_or(fix_range.end, |e| {
-                text::position(&d.text, e.offset as usize)
-            }),
-        };
+        // The range the diagnostic is published with, so the editor pairs the action with it
+        // even when the fix edits another place (an assignment's `x := ...` declaration).
+        let r = text::diagnostic_range(&d.text, issue.pos.offset as usize);
         if !eligible(r) {
             continue;
         }

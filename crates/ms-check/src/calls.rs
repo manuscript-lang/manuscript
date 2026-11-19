@@ -668,7 +668,7 @@ impl Checker {
             let checkpoint = self.p.diagnostics.len();
             let v = self.argument_expression(arg.value, expected.as_ref());
             self.mismatch_context = None;
-            if self.conflicted_arguments.remove(&arg.value.id) {
+            if let Some(note) = self.conflicted_arguments.remove(&arg.value.id) {
                 // The argument check names both types and may carry a fix; it replaces the generic conflict note.
                 let at = arg.pos;
                 let explained = self.p.diagnostics[checkpoint..]
@@ -677,7 +677,7 @@ impl Checker {
                 if explained
                     && let Some(i) = self.p.diagnostics[..checkpoint]
                         .iter()
-                        .rposition(|d| d.pos == at && d.message == CONFLICTING_INFERENCE)
+                        .rposition(|d| d.pos == at && d.message == note)
                 {
                     self.p.diagnostics.remove(i);
                 }
