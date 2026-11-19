@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `self.state`: this method does not change its receiver; declare it `var fn` to allow that",
+        "message": "cannot change `self.state`: this method does not change its receiver; write `fn var` in its declaration to allow that",
         "position": {
           "file": "testeffectsincludetransitivecallsandimplicitclea-1.ms",
           "line": 11,
@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testeffectsincludetransitivecallsandimplicitclea-1.ms:11:10: type: cannot change `self.state`: this method does not change its receiver; declare it `var fn` to allow that\n    |\n 11 |     self.state.dequeue()\n    |          ^\n<DIR>/testeffectsincludetransitivecallsandimplicitclea-1.ms:25:18: type: cannot move `item` out: this function type borrows its argument, and the resource `Resource` stays with its caller, which closes it; use `item` in place here, or declare the parameter `move` in the function type\n    |\n 25 |         _held := item\n    |                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testeffectsincludetransitivecallsandimplicitclea-1.ms:11:10: type: cannot change `self.state`: this method does not change its receiver; write `fn var` in its declaration to allow that\n    |\n 11 |     self.state.dequeue()\n    |          ^\n<DIR>/testeffectsincludetransitivecallsandimplicitclea-1.ms:25:18: type: cannot move `item` out: this function type borrows its argument, and the resource `Resource` stays with its caller, which closes it; use `item` in place here, or declare the parameter `move` in the function type\n    |\n 25 |         _held := item\n    |                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

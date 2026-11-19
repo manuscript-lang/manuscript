@@ -435,10 +435,22 @@ fn from_error(file: &Arc<str>, error: &ProjectError) -> Diagnostic {
                 location.line as u32,
                 location.column as u32,
             ),
-            explain_path_error(&manifest.cause, ""),
+            manifest_path_message(&manifest.cause),
         );
     }
     resolution(file, start(), explain_path_error(error, ""))
+}
+
+/// A path named in `ms.toml` that cannot be read: the fix is in the manifest, not the shell.
+fn manifest_path_message(cause: &ProjectError) -> String {
+    let message = explain_path_error(cause, "");
+    match message.split_once("; check the path, pass a .ms file") {
+        Some((head, _)) => format!(
+            "{}; this path comes from ms.toml, so create it or correct the value there",
+            head.replace("file not found:", "path does not exist:")
+        ),
+        None => message,
+    }
 }
 
 /// Turn raw filesystem failures into a cause and a fix. `import_path` is the

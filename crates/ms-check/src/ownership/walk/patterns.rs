@@ -46,7 +46,7 @@ impl Walker<'_> {
             }
             Perm::Immutable if receiver => {
                 let message = format!(
-                    "cannot {what} `{text}`: this method does not change its receiver; declare it `var fn` to allow that"
+                    "cannot {what} `{text}`: this method does not change its receiver; write `fn var` in its declaration to allow that"
                 );
                 match self.cx.c.func.method() {
                     Some(m) => self.error_fix(pos, message, insert_at(m.var_at, "var ")),
