@@ -1144,7 +1144,11 @@ fn emit_one(
 
 	emit_table(var writer, path, table)
 
-fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) Void:
+fn emit_table(
+	var writer: Writer,
+	path: List[String],
+	values: Map[String, TomlValue],
+) Void:
 	for entry in values.entries():
 		if section_kind(entry.value) == 0: writer.out.append(
 			(

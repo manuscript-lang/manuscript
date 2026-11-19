@@ -115,7 +115,7 @@ There is no shared mutable value. A value has one owner; a promise reads what it
 
 Fields and collection slots own their values. Moving a resource into one transfers the cleanup duty to the holder. At scope end, a holder closes the resources it owns, including nested parts. Its own `Closeable.close`, if present, runs before its parts. See [the close-order table](../cleanup/closeable.md#types-and-collections-close-what-they-hold).
 
-A borrow of a resource field keeps the holder available and prevents closing or changing it while that borrow is still used. Destructuring transfers only the fields that move out; omitted resource fields are still closed.
+A borrow of a resource field keeps the holder available and prevents closing or changing it while that borrow is still used. Destructuring transfers only the fields that move out; omitted resource fields are still closed. A resource field of a mutable holder moves out only when the next statement refills it (`part := holder.field`, then `holder.field = ...`); otherwise move the whole holder.
 
 ## Memory and open resources
 

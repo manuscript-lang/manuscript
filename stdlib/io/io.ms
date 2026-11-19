@@ -85,16 +85,15 @@ fn move ReadStream[T].close() Void!:
 	if self.closed: return ok()
 
 	self.closed = true
-
 	return self.source.close()
 
 // Half-closes the stream: closes the source now and leaves the stream ended, so a
 // holder (a connection's input side) keeps its other parts. Later reads return `none`.
 fn var ReadStream[T].end() Void!:
 	self.closed = true
+
 	source := self.source
 	self.source = EndedSource[T]()
-
 	return source.close()
 
 // Internal: one read of `source` that waits at most `bound` in total.
@@ -147,7 +146,6 @@ fn move WriteStream[T].close() Void!:
 fn var WriteStream[T].end() Void!:
 	sink := self.sink
 	self.sink = ClosedSink[T]()
-
 	return sink.close()
 
 // A sink that refuses every write: the one a closed `WriteStream` holds.
@@ -492,7 +490,10 @@ fn move Through[A, B].close() Void!:
 	return self.input.close()
 
 // Returns a stream of `transform`'s output over `input`. Closing it closes `input`.
-export fn through[A, B](move input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
+export fn through[A, B](
+	move input: ReadStream[A],
+	transform: Transform[A, B],
+) ReadStream[B]:
 	return ReadStream[B](Through[A, B](input, transform, [], false))
 
 // ---- Process streams -----------------------------------------------------------------------------------------------

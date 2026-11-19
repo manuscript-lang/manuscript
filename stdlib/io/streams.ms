@@ -107,7 +107,10 @@ fn move Lines.close() Void!:
 // Reads lines of text from a byte stream such as `stdin()`. It splits `input` at
 // `\n` and removes a trailing `\r`. A line longer than `max_bytes` returns
 // `EOVERFLOW`, and a line that is not valid UTF-8 returns `EBADMSG`.
-export fn lines(move input: ReadStream[Bytes], max_bytes: Int? = none) ReadStream[String]:
+export fn lines(
+	move input: ReadStream[Bytes],
+	max_bytes: Int? = none,
+) ReadStream[String]:
 	return ReadStream[String](
 		Lines(input, "".to_bytes(), 0, false, [], 0, false, max_bytes)
 	)

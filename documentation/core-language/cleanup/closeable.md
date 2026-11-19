@@ -51,7 +51,9 @@ A holder of values that are not resources adds no code: a `List[Int]`, or a type
 
 A similarly named method whose signature is not `fn move close() Void!` does not opt a concrete type into cleanup.
 
-`close` takes its receiver (`fn move`): the value is gone after the call, so the compiler rejects a later use or a second `close()` of the same binding, and the scope-end close does not run for a binding you closed. `close()` may suspend and finishes the object's release before returning. An implementation must coordinate access that is still in progress when `close()` runs. Inside a `close` body, `self` may be changed (record that you released), and closing a field of `self` works on the field in place. Only the owner can close: a value you only borrow (a plain or `var` parameter) cannot be closed, so take it with `move` when the function closes it.
+`close` takes its receiver (`fn move`): the value is gone after the call, so the compiler rejects a later use or a second `close()` of the same binding, and the scope-end close does not run for a binding you closed. `close()` may suspend and finishes the object's release before returning. An implementation must coordinate access that is still in progress when `close()` runs. Inside a `close` body, `self` may be changed (record that you released), and `self.field.close()` is a partial move like any other: a close body closes each resource field once, by value. Only the owner can close: a value you only borrow (a plain or `var` parameter) cannot be closed or passed to a `move` position, so take it with `move` when the function closes it.
+
+To close one part of a holder that stays in use (a connection's output side), take the part out and put a new one in the next statement: `part := conn.output` then `conn.output = ...`. Without the refill the checker rejects the take. A stream's `end()` is the standard half close: it closes the source or sink now and leaves the stream ended, so the holder keeps its other parts and closes them at the end.
 
 ## A close returns a Result
 
