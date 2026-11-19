@@ -28,7 +28,7 @@
 use crate::builder::FuncBuilder;
 use crate::ir::*;
 use crate::persist::{OwnerSet, PosMap};
-use crate::types::Ty;
+use crate::types::{Ty, TyKind, TypeId};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// Rewrites `m` so cancellation releases owned locals; returns whether anything changed.
@@ -74,6 +74,10 @@ pub fn run(m: &mut Module) -> bool {
         slot_droppers: HashMap::new(),
         raw_closers: HashMap::new(),
         raw_values: BTreeSet::new(),
+        holes: BTreeMap::new(),
+        partials: BTreeMap::new(),
+        proj: BTreeMap::new(),
+        partial_closers: HashMap::new(),
     };
     let mut changed = false;
     for fi in 0..count {
@@ -116,6 +120,15 @@ struct Cx {
     raw_closers: HashMap<Ty, FuncId>,
     /// The values of the function being rewritten that are raw slot copies.
     raw_values: BTreeSet<u32>,
+    /// The stand-in owner of an owner's other fields while one of them is moved out, by the
+    /// owner and the field: it is live exactly while the hole is open (see [`name_holes`]).
+    holes: BTreeMap<(u32, u32), u32>,
+    /// Per stand-in: the half-emptied owner, its type and the moved-out field.
+    partials: BTreeMap<u32, (u32, TypeId, u32)>,
+    /// The field projections of the function being rewritten, by result: owner and field.
+    proj: BTreeMap<u32, (u32, u32)>,
+    /// The cleanup that drops all but one field of an owner, per type and field.
+    partial_closers: HashMap<(Ty, u32), FuncId>,
 }
 
 pub fn starts_tasks(m: &Module) -> bool {
@@ -264,6 +277,108 @@ fn raw_closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
     let id = m.add_func(f);
     cx.raw_closers.insert(ty, id);
     id
+}
+
+/// The function that drops every field of its argument but `field` when a cancellation is
+/// unwinding: the field was moved out, and its new owner drops it.
+fn partial_closer(m: &mut Module, cx: &mut Cx, ty: Ty, r: TypeId, field: u32) -> FuncId {
+    if let Some(f) = cx.partial_closers.get(&(ty, field)) {
+        return *f;
+    }
+    let gate = m.add_extern(ExternDef {
+        name: "msrt_unwind_drops".into(),
+        params: Vec::new(),
+        ret: Ty::BOOL,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+        retains: false,
+        role: ExternRole::None,
+        leaf: true,
+        reads: false,
+    });
+    let mut b = FuncBuilder::new(
+        m,
+        "unwind.drop_rest",
+        vec![Param {
+            ty,
+            mode: Mode::Move,
+        }],
+        Ty::VOID,
+    );
+    b.func_mut().linkage = Linkage::Internal;
+    b.func_mut().unwind_only = true;
+    let v = b.params()[0];
+    let (run, skip) = (b.new_block(), b.new_block());
+    let on = b.call_rt(gate, &[]);
+    b.br_if(on, run, &[], skip, &[]);
+    b.switch_to(run);
+    b.emit(Op::TypeRelease, &[v], Imm::TypeMask(r, 1 << field), None);
+    let u = b.unit();
+    b.ret(Some(u));
+    b.switch_to(skip);
+    b.emit(Op::Forget, &[v], Imm::None, None);
+    let u = b.unit();
+    b.ret(Some(u));
+    let f = b.into_func();
+    let id = m.add_func(f);
+    cx.partial_closers.insert((ty, field), id);
+    id
+}
+
+/// Names the half-emptied owners of `f`: each move-out of a field of a struct value opens a hole
+/// in it, and a stand-in value (never defined) stands for the owner's other fields while the
+/// hole is open, so a cancellation inside the window drops them and leaves the moved field to
+/// its new owner. Returns whether anything was named.
+fn name_holes(m: &Module, cx: &mut Cx, f: &mut Func, in_slots: &BTreeSet<u32>) {
+    cx.holes.clear();
+    cx.partials.clear();
+    cx.proj.clear();
+    let mut found = Vec::new();
+    // The slot each value was taken from.
+    let mut taken_from: BTreeMap<u32, u32> = BTreeMap::new();
+    for blk in &f.blocks {
+        for (k, inst) in blk.insts.iter().enumerate() {
+            match (inst.op, inst.imm, inst.res, inst.args.first()) {
+                (Op::Take, _, Some(r), Some(a)) => {
+                    taken_from.insert(r.0, a.0);
+                }
+                (Op::TypeGet, Imm::Field(_, fk), Some(r), Some(a)) => {
+                    cx.proj.insert(r.0, (a.0, fk));
+                }
+                (Op::MoveOut, ..) => {
+                    let next = blk.insts.get(k + 1).map(|i| i.op);
+                    if next != Some(Op::TypeRelease)
+                        && let Some(&(base, fk)) = inst.args.first().and_then(|a| cx.proj.get(&a.0))
+                    {
+                        found.push((base, fk));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    for (base, fk) in found {
+        let ty = f.ty(Value(base));
+        let TyKind::Type(r) = m.types.kind(ty).clone() else {
+            continue;
+        };
+        // A value taken from a slot whose close is registered is dropped whole by that close, and
+        // one taken from a slot this function does not own (a closure's capture) by its owner.
+        let foreign = taken_from
+            .get(&base)
+            .is_some_and(|slot| !cx.cells.contains_key(slot));
+        if m.type_defs[r.index()].fields.len() > 32
+            || foreign
+            || in_slots.contains(&base)
+            || cx.holes.contains_key(&(base, fk))
+        {
+            continue;
+        }
+        let pseudo = f.new_value(ty);
+        cx.holes.insert((base, fk), pseudo.0);
+        cx.partials.insert(pseudo.0, (base, r, fk));
+    }
 }
 
 /// The function that drops its argument when a cancellation is unwinding.
@@ -895,6 +1010,16 @@ fn analyze(
                 .collect();
             for c in &consumed {
                 live.remove(*c);
+                // The owner is gone, and with it the stand-in for its other fields.
+                for (_, p) in cx.holes.range((*c, 0)..=(*c, u32::MAX)) {
+                    live.remove(*p);
+                }
+            }
+            if let (Op::TypeFill, Imm::Field(_, fk), Some(b)) =
+                (inst.op, inst.imm, inst.args.first())
+                && let Some(p) = cx.holes.get(&(b.0, fk))
+            {
+                live.remove(*p);
             }
             if inst.op == Op::Take
                 && inst
@@ -979,7 +1104,16 @@ fn analyze(
                 // The owner behind the moved-out projection.
                 let base = hole_base(&defs, inst);
                 match base {
-                    Some(b) => holed.push(b),
+                    Some(b) => {
+                        holed.push(b);
+                        // The owner's other fields stay covered while the hole is open.
+                        let named = inst.args.first().and_then(|a| cx.proj.get(&a.0));
+                        if let Some(p) = named.and_then(|(_, fk)| cx.holes.get(&(b, *fk)))
+                            && live.contains(b)
+                        {
+                            live.insert(*p);
+                        }
+                    }
                     None => unnamed = true,
                 }
                 reach = None;
@@ -1361,7 +1495,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
         .filter(|(k, _)| param_flag(&cx.owns, fi, *k))
         .map(|(_, p)| p.value.0)
         .collect();
-    let covered_takes = covered_slot_takes(m, f);
+    let covered_takes = covered_slot_takes(m, f, true);
     let mut owned_def = vec![false; f.values.len()];
     let mut from_slot: BTreeSet<u32> = BTreeSet::new();
     for b in &f.blocks {
@@ -1485,6 +1619,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func, fi: usize) -> bool {
         return false;
     }
     cx.raw_values = raw_slots(m, f);
+    name_holes(m, cx, f, &covered_slot_takes(m, f, false));
     let wrapped = wrap_with_closers(m, cx, f);
     let covered_shields = cover_shielded_slots(m, cx, f);
     let covered_closes = cover_inline_closes(m, cx, f);
@@ -1688,7 +1823,7 @@ impl Open {
 /// slot holds, and the slot still holds the same value while the call runs; registering a
 /// drop for the taken value as well would run first and free it before that close uses it.
 /// The coverage ends at the discard, where the value is owned again.
-fn covered_slot_takes(m: &Module, f: &Func) -> BTreeSet<u32> {
+fn covered_slot_takes(m: &Module, f: &Func, borrowed_only: bool) -> BTreeSet<u32> {
     let mut out = BTreeSet::new();
     let slot_push = |inst: &Inst| match (inst.op, inst.imm) {
         (Op::CleanupPush, Imm::Func(g)) if slot_close_value(m, g).is_some() => {
@@ -1760,7 +1895,7 @@ fn covered_slot_takes(m: &Module, f: &Func) -> BTreeSet<u32> {
             if inst.op == Op::Take
                 && let (Some(slot), Some(r)) = (inst.args.first(), inst.res)
                 && covered.contains(&slot.0)
-                && only_borrowed_until_put(m, f, r, *slot)
+                && (!borrowed_only || only_borrowed_until_put(m, f, r, *slot))
             {
                 out.insert(r.0);
             }
@@ -2147,6 +2282,19 @@ fn push_each(
     for v in values {
         let mut held = *v;
         let mut ty = f.ty(*v);
+        if let Some(&(base, r, fk)) = cx.partials.get(&v.0) {
+            let c = partial_closer(m, cx, ty, r, fk);
+            let h = f.new_value(Ty::INT);
+            out.push(Inst {
+                op: Op::CleanupPush,
+                args: vec![Value(base)],
+                imm: Imm::Func(c),
+                res: Some(h),
+                loc,
+            });
+            handles.push(h);
+            continue;
+        }
         if let Some(cell) = cx.cells.get(&v.0).copied() {
             // A cell registers a view of what its slot holds now.
             ty = cell;
@@ -2264,6 +2412,7 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func, params: &BTreeMap<u32, Ty>) -> BTre
                     | Op::IfaceNew
                     | Op::Clone
                     | Op::Call
+                    | Op::TypeFill
             )
         })
         .filter_map(|i| i.res.map(|r| r.0))
@@ -2503,6 +2652,14 @@ fn covered_slot_params(m: &Module) -> Vec<Vec<bool>> {
         .iter()
         .map(|f| vec![false; f.params.len()])
         .collect();
+    // A method table entry's slot parameters point into an interface value that whoever holds the
+    // value covers, and the callee only sees the slot as the interface call left it.
+    for g in m.vtables.iter().flat_map(|v| &v.methods) {
+        let f = &m.funcs[g.index()];
+        for (k, p) in f.params.iter().enumerate() {
+            covered[g.index()][k] = p.ty == Ty::PTR;
+        }
+    }
     let mut changed = true;
     while changed {
         changed = false;

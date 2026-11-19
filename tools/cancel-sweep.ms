@@ -10,10 +10,11 @@
 // too; the heap is compared on one scheduler thread (`MS_THREADS=1`), where it is
 // exact, since which threads served is timing. A live-block hit must reproduce: it is
 // re-run twice, and live counts the uncancelled run itself shows over five runs are not
-// hits. A cancel that ends the process (status 143) prints no counts and is not swept.
-// Arguments name the files to sweep (default: tests/conformance/fixtures/e2e/stdlib).
-// SWEEP_MAX_PARKS bounds the parks tried per test (default 64); MS names the ms to run
-// (default target/release/ms). Usage: ms run tools/cancel-sweep.ms [-- files]
+// hits. A cancel that ends the process (status 143) prints no counts and is not swept,
+// but one killed by a signal is a hit. Arguments name the files to sweep (default:
+// tests/conformance/fixtures/e2e/stdlib). SWEEP_MAX_PARKS bounds the parks tried per
+// test (default 64); MS names the ms to run (default target/release/ms). Usage: ms run
+// tools/cancel-sweep.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",
@@ -50,7 +51,19 @@ fn counted(text: String) List[Counted]:
 			parks = 0
 			heap = 0
 			failed = false
-		else if line.starts_with("FAIL "): failed = true
+		else if line.starts_with("FAIL "):
+			failed = true
+
+			// A crash prints no counts: report it as a run with no live count.
+			if line.contains("terminated by signal"): found.append(
+				Counted(
+					name: name.clone(),
+					parks: 0,
+					heap: 0,
+					live: -1,
+					failed: true,
+				)
+			)
 		else if line.starts_with("ms-rt parks: "):
 			parks = line.slice(13, line.length()).trim().parse_int().get_or(0)
 		else if line.starts_with("ms-rt rust heap at exit: blocks="):
@@ -200,6 +213,12 @@ fn sweep(
 			for k in 1..last + 1:
 				for hit in test_run(ms.clone(), file.clone(), base.name.clone(), k, 0):
 					lines.append("swept")
+
+					if hit.live < 0:
+						lines.append(
+							f"leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} crashed with a signal"
+						)
+						continue
 
 					var live = hit.live
 					var bad_live = not normal_live.contains(live)
