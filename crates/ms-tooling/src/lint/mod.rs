@@ -259,6 +259,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "`//` starts a comment, so the number after it is ignored; Int `/` already truncates, so write `a / 2`",
     },
+    Rule {
+        code: "MSL134",
+        family: "Void value bound or printed",
+        severity: Severity::Warning,
+        repair: "call `xs.sort()` or `xs.reverse()` as a statement, or use `sorted()` or `reversed()` for a new list",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.

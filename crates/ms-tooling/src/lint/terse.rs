@@ -169,6 +169,7 @@ impl Visitor for Scan<'_> {
                 self.statement_get(e);
                 self.printed_result(e);
             }
+            StmtKind::Bind { pattern, value, .. } => self.bound_void(pattern, value),
             _ => {}
         }
     }
@@ -182,6 +183,7 @@ impl Visitor for Scan<'_> {
         }
         self.map_get_chain(e);
         self.slice_fallback(e);
+        self.printed_void(e);
         // `xs.get(i)` on a list held in a name or field is `xs[i]`.
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
@@ -460,6 +462,58 @@ impl Scan<'_> {
                 "`slice(..).get_or(..)` returns the fallback for any bad range, including an end past the length; use `?` to report it, or clamp the end with `min(end, xs.length())` first".to_string(),
                 self.file,
                 e.pos,
+            ));
+        }
+    }
+
+    fn is_void_call(&self, e: &Expr) -> bool {
+        matches!(e.kind, ExprKind::Call { .. })
+            && self
+                .module
+                .facts()
+                .info(e.id)
+                .and_then(|i| i.ty.as_ref())
+                .is_some_and(|t| t.is(Builtin::Void))
+    }
+
+    /// `ys := xs.sort()` binds Void: `sort` and `reverse` change the receiver in place and return nothing.
+    fn bound_void(&mut self, pattern: &Pattern, value: &Expr) {
+        let PatternKind::Name(name) = &pattern.kind else {
+            return;
+        };
+        if self.syms.str(*name).starts_with('_') || !self.is_void_call(value) {
+            return;
+        }
+        self.findings.push(finding(
+            "MSL134",
+            format!(
+                "`{}` would hold Void: the call returns nothing, and sort() and reverse() change their receiver in place; call it as a statement, or use sorted() or reversed() for a new list",
+                self.syms.str(*name)
+            ),
+            self.file,
+            value.pos,
+        ));
+    }
+
+    /// `print(xs.sort())` and `f"{xs.reverse()}"` print `void` instead of the changed list.
+    fn printed_void(&mut self, e: &Expr) {
+        let printed = match &e.kind {
+            ExprKind::Call { callee, args } => match (&callee.kind, args.as_slice()) {
+                (ExprKind::Name(name), [arg]) if self.syms.str(*name) == "print" => {
+                    Some(&arg.value)
+                }
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(arg) = printed
+            && self.is_void_call(arg)
+        {
+            self.findings.push(finding(
+                "MSL134",
+                "this prints `void`: the call returns nothing, and sort() and reverse() change their receiver in place; call it as a statement, then print the list".to_string(),
+                self.file,
+                arg.pos,
             ));
         }
     }
