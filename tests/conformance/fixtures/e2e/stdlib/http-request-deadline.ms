@@ -36,10 +36,15 @@ fn fetch(address: String, path: String) String:
         var text = ""
 
         while true:
-            if chunk := within(var conn.input, nanoseconds(5000000000)):
-                if data := chunk:
-                    text = f"{text}{data.decode_utf8().get_or("?")}"
-                    continue
+            read := within(var conn.input, nanoseconds(5000000000))
+            if read.is_error():
+                // A flake on a slow runner must say why the reply never arrived.
+                text = f"{text}[read failed: {read.err().kind} {read.err().message}]"
+                break
+
+            if data := read.get():
+                text = f"{text}{data.decode_utf8().get_or("?")}"
+                continue
 
             break
 
