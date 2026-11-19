@@ -368,7 +368,11 @@ fn name_holes(m: &Module, cx: &mut Cx, f: &mut Func, in_slots: &BTreeSet<u32>) {
         let foreign = taken_from
             .get(&base)
             .is_some_and(|slot| !cx.cells.contains_key(slot));
-        if fk >= 32 || foreign || in_slots.contains(&base) || cx.holes.contains_key(&(base, fk)) {
+        if m.type_defs[r.index()].fields.len() > 32
+            || foreign
+            || in_slots.contains(&base)
+            || cx.holes.contains_key(&(base, fk))
+        {
             continue;
         }
         let pseudo = f.new_value(ty);
@@ -1006,6 +1010,10 @@ fn analyze(
                 .collect();
             for c in &consumed {
                 live.remove(*c);
+                // The owner is gone, and with it the stand-in for its other fields.
+                for (_, p) in cx.holes.range((*c, 0)..=(*c, u32::MAX)) {
+                    live.remove(*p);
+                }
             }
             if let (Op::TypeFill, Imm::Field(_, fk), Some(b)) =
                 (inst.op, inst.imm, inst.args.first())
