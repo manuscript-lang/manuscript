@@ -7,7 +7,8 @@ No async/await keywords. `promise` schedules a Result-returning callback; `.wait
 <!-- complete: concurrency.ms -->
 ```manuscript
 import promise from "@std/concurrency/promise.ms"
-import from_list, map, collect from "@std/io/streams.ms"
+import from_list, collect from "@std/io/streams.ms"
+import map from "@std/io/steps.ms"
 
 fn work() Int!: ok(21)
 
@@ -21,7 +22,7 @@ fn main() Void!:
 
 Import PromiseOptions from `"@std/concurrency/promise.ms"`; set `promise(..., options: PromiseOptions(timeout: duration))`, never a wait argument.
 
-`from_list`, `lines`, `map`, `collect`: `"@std/io/streams.ms"`. `pipe`: `"@std/io/io.ms"`. `pipe[T](capacity)` coordinates producers/consumers; keep mutable state with one owner.
+`from_list`, `collect`: `"@std/io/streams.ms"`. `lines`, `map`: `"@std/io/steps.ms"`. `pipe`: `"@std/io/io.ms"`. `pipe[T](capacity)` coordinates producers/consumers; keep mutable state with one owner.
 
 Stream `.next()` returns T?!: Result of Optional, none at EOF. `for item in stream:` extracts items and propagates errors; use a Result-returning function. Writes return Void! and wait when full. Transformations pull lazily; closing them closes their input. `collect(none)` is unlimited; bound potentially unbounded inputs.
 

@@ -1,6 +1,7 @@
 import (
 	stdin from "@std/io/io.ms",
-	collect, lines from "@std/io/streams.ms",
+	lines from "@std/io/steps.ms",
+	collect from "@std/io/streams.ms",
 )
 
 type Item:

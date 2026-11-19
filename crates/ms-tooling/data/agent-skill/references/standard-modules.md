@@ -58,7 +58,9 @@ import expect_equal from "@std/test/test.ms"
 - `@std/image/ppm.ms`: decode_ppm, encode_ppm
 - `@std/io/archive.ms`: ArchiveEntry, ArchiveFormat, ArchiveOptions, CompressOptions, CompressionFormat, NativeDecoder, NativeEncoder, compress, compressed, decompress, decompressed, pack, tar_entries, unpack
 - `@std/io/io.ms`: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, stderr_bytes, stdin, stdout, stdout_bytes, through
-- `@std/io/streams.ms`: collect, copy, filter, fold, forward, from_bytes, from_list, lines, map, read_all, take
+- `@std/io/streams.ms`: collect, copy, fold, from_bytes, from_list, read_all
+- `@std/io/steps.ms`: filter, lines, map, take
+- `@std/io/forward.ms`: forward
 - `@std/log.ms`: LogLevel, Logger, LoggerOptions, Transport, create, file_transport, handle_transport, rotating_file_transport, stdout_transport
 - `@std/math/big.ms`: BigFloat, BigRat, big_float_of_big_int, big_float_of_float, big_float_of_int, big_float_of_rat, max_big_float_precision, parse_big_float, parse_rat, rat, rat_of_big_int, rat_of_binary, rat_of_float, rat_of_int
 - `@std/math/complex.ms`: Complex, PolarParts, complex, complex_polar, imaginary_unit

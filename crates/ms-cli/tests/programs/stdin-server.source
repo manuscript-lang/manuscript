@@ -2,7 +2,7 @@
 // for input must not stop the server answering other requests.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
 import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 import serve from "@std/net/net.ms"
 
 fn handle(request: HttpRequest) HttpResponse:

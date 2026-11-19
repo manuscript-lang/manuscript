@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: a state-owning task cannot push to its clients, because a pipe carried only copyable values and connection streams may only be touched by their own thread (#4604, #4607).
-- Change: a pipe carries any value by move (merged, #4605), and `forward(out)` in `@std/io/streams.ms` makes any thread-bound stream writable from other threads.
+- Change: a pipe carries any value by move (merged, #4605), and `forward(out)` in `@std/io/forward.ms` makes any thread-bound stream writable from other threads.
 - Decision requested: approve `forward` as the general bridge, and keep connection handles on one thread.
 
 ## Status
@@ -42,7 +42,7 @@ cmds.write(Command.Join(forward(output)))?
 | Component | Change | Test |
 | --- | --- | --- |
 | `stdlib/io/io.ms` | no `Clonable` bound on `Pipe` (merged) | `e2e/stdlib/pipe.ms` |
-| `stdlib/io/streams.ms` | `forward` | `e2e/stdlib/chat-room.ms`: two websocket clients, owner pushes to both |
+| `stdlib/io/forward.ms` | `forward` | `e2e/stdlib/chat-room.ms`: two websocket clients, owner pushes to both |
 | docs, agent skill, wiki | pipes carry streams; use `forward` for connection ends | `make repo-check` |
 | `crates/ms-std-net` | unchanged | |
 

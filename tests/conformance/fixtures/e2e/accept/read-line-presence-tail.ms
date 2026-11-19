@@ -2,7 +2,8 @@
 // conform: phase=test
 import (
 	ReadStream from "@std/io/io.ms",
-	from_bytes, lines from "@std/io/streams.ms",
+	lines from "@std/io/steps.ms",
+	from_bytes from "@std/io/streams.ms",
 	OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms",
 	expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
 )

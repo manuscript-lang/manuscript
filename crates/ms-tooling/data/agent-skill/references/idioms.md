@@ -320,7 +320,8 @@ Read commands from stdin, keep the state in one record, and give each command a 
 <!-- complete: idiom-shop.ms -->
 ```manuscript
 import stdin from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
+import collect from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 type Shop:
 	stock: Map[String, Int]
@@ -411,7 +412,8 @@ Standard input, files and sockets are streams. `stdin() | lines | collect(none)?
 <!-- complete: idiom-words.ms -->
 ```manuscript
 import stdin from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
+import collect from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 fn word_counts(text: List[String]) Map[String, Int]:
 	var counts = Map[String, Int]()
@@ -462,7 +464,8 @@ A value that owns a resource (a file, a socket) closes when its scope ends, on e
 <!-- complete: idiom-count.ms -->
 ```manuscript
 import open from "@std/os/fs.ms"
-import lines, collect from "@std/io/streams.ms"
+import collect from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 fn count_orders(path: String) Int!:
 	file := open(path)?

@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=run
 import redirect_to_null, StdStream, stderr, stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 fn shown(text: String) Int:
     if stdout().write(text).is_error():

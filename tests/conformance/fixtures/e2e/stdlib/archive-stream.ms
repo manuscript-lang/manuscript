@@ -14,7 +14,7 @@ import (
 	tar_entries,
 	unpack from "@std/io/archive.ms",
 	ReadStream, Source from "@std/io/io.ms",
-	lines from "@std/io/streams.ms",
+	lines from "@std/io/steps.ms",
 	expect_equal, fail from "@std/test/test.ms",
 )
 

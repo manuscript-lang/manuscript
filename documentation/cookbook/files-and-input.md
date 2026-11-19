@@ -74,7 +74,7 @@ Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `next()` r
 <!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
 ```manuscript
 import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import lines from "@std/io/steps.ms"
 
 fn run() Result[Void, Error]:
     var input = lines(stdin())
