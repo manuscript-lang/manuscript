@@ -2052,11 +2052,21 @@ impl Checker {
             return;
         };
         let optional = self.syms.str(params[first].name).to_string();
+        let why = match &params[first].ty {
+            Some(ms_syntax::ast::TypeRef {
+                kind: ms_syntax::ast::TypeKind::Named { name, args },
+                ..
+            }) if self.syms.str(*name) == "Optional" && args.len() == 1 => {
+                " (a `T?` parameter or field defaults to none, so it counts as optional)"
+                    .to_string()
+            }
+            _ => String::new(),
+        };
         for p in params[first..].iter().filter(|p| p.default.is_none()) {
             self.type_error(
                 p.pos,
                 format!(
-                    "required {} follows optional {optional}; put optional parameters and fields last",
+                    "required {} follows optional {optional}{why}; put optional parameters and fields last",
                     self.syms.str(p.name)
                 ),
             );

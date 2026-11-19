@@ -5,7 +5,7 @@ weight = 11
 
 # Graphs and cycles
 
-If you expect shared pointers, weak references, or reference counting, Manuscript has none. A value has one owner and a field owns what it holds, so a value cannot point back at its owner. Trees and singly linked lists work as [recursive data](named-types.md#recursive-data). For cycles, parent links, doubly linked lists and graphs, keep the nodes in one `List` and link them by position, an `Int`. An `Int` copies freely, so a cycle is just numbers.
+If you expect shared pointers, weak references, or reference counting, Manuscript has none. A value has one owner and a field owns what it holds, so a value cannot point back at its owner. Trees and singly linked lists work as [recursive data](named-types.md#recursive-data), and a tree [grows through a `fn var` method](named-types.md#growing-a-tree). For cycles, parent links, doubly linked lists and graphs, keep the nodes in one `List` and link them by position, an `Int`. An `Int` copies freely, so a cycle is just numbers.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
