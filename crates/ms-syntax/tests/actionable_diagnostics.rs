@@ -79,3 +79,15 @@ fn removed_let_forms_name_the_replacement_and_fix_only_a_plain_name() {
     )
     .unwrap();
 }
+
+#[test]
+fn while_with_a_binding_names_the_loop_that_binds_each_value() {
+    let file = Arc::from("while.ms");
+    let source = "fn f(o: Int?) Void:\n    while v := o:\n        print(v)\n";
+    let error = ms_syntax::parser::parse(&file, source).unwrap_err();
+    assert_eq!(error.pos.line, 2);
+    assert!(error.message.contains("while takes a condition"), "{error}");
+    assert!(error.message.contains("'if name := value:'"), "{error}");
+    let repaired = "fn f(o: Int?) Void:\n    while true:\n        if v := o:\n            print(v)\n        else:\n            break\n";
+    ms_syntax::parser::parse(&file, repaired).unwrap();
+}

@@ -31,6 +31,7 @@ Each row is a shape agents wrote that fails; the right column compiles.
 | --- | --- |
 | `!x`, `a ?? b`, `try f()`, `x or return y` | `not x`, `a.get_or(b)`, `f()?`, `if v := x:` then use `v` |
 | `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
+| `(lo + hi) // 2` (the `//` starts a comment, so the `2` is silently dropped) | `(lo + hi) / 2`: Int `/` already truncates |
 | `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
 | `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |

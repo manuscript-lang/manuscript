@@ -253,6 +253,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "write `xs.slice(a, b)?`, or clamp the end with `min(end, xs.length())` before slicing",
     },
+    Rule {
+        code: "MSL133",
+        family: "`//` after an operand reads like floor division",
+        severity: Severity::Warning,
+        repair: "`//` starts a comment, so the number after it is ignored; Int `/` already truncates, so write `a / 2`",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.
@@ -260,8 +266,46 @@ pub fn explain(code: &str) -> Option<&'static Rule> {
     RULES.iter().find(|r| r.code.eq_ignore_ascii_case(code))
 }
 
-/// Lexical findings: trailing whitespace (`MSL001`) and a missing final
-/// newline (`MSL002`).
+/// Whether the `//` at byte `slash` of `line` ends an expression and holds only a number:
+/// `mid := (lo + hi) // 2`, a Python floor division that compiles as `(lo + hi)`.
+fn floor_division_shape(line: &str, slash: usize) -> bool {
+    let before = line[..slash].trim_end();
+    let operand_end = before
+        .chars()
+        .next_back()
+        .is_some_and(|c| c.is_ascii_alphanumeric() || matches!(c, ')' | ']' | '_'));
+    let comment = line[slash + 2..].trim().trim_end_matches([')', ']']);
+    // `total := 1 + 2 * 3 // 7` annotates a result: the expression is all literals.
+    let expression = before.rsplit(['=', ':']).next().unwrap_or(before);
+    let names_a_value = expression
+        .chars()
+        .any(|c| c.is_ascii_alphabetic() || c == '_');
+    operand_end
+        && names_a_value
+        && comment.starts_with(|c: char| c.is_ascii_digit())
+        && comment.bytes().all(|b| b.is_ascii_digit() || b == b'.')
+}
+
+/// Whether byte `at` of `source` is outside any text literal, by the lexer; an unlexable file reports false.
+fn outside_text(
+    tokens: &OnceCell<Option<Vec<ms_syntax::token::Token>>>,
+    file: &Arc<str>,
+    source: &str,
+    at: usize,
+) -> bool {
+    tokens
+        .get_or_init(|| ms_syntax::lexer::lex(file, source).ok().map(|l| l.tokens))
+        .as_ref()
+        .is_some_and(|tokens| {
+            let next = tokens.partition_point(|t| t.end.offset as usize <= at);
+            !tokens.get(next).is_some_and(|t| {
+                t.kind == ms_syntax::token::Tok::String && t.pos.offset as usize <= at
+            })
+        })
+}
+
+/// Lexical findings: trailing whitespace (`MSL001`), a missing final
+/// newline (`MSL002`) and a `//` that reads like floor division (`MSL133`).
 pub fn lint_source(file: &Arc<str>, source: &str) -> Vec<Finding> {
     let mut findings = Vec::new();
     // Lex only if a candidate exists. Unknown text boundaries must never yield
@@ -273,17 +317,7 @@ pub fn lint_source(file: &Arc<str>, source: &str) -> Vec<Finding> {
         let body = body.strip_suffix('\r').unwrap_or(body);
         let trimmed = body.trim_end_matches([' ', '\t']);
         let at = offset + trimmed.len();
-        let safe_whitespace = || {
-            tokens
-                .get_or_init(|| ms_syntax::lexer::lex(file, source).ok().map(|l| l.tokens))
-                .as_ref()
-                .is_some_and(|tokens| {
-                    let next = tokens.partition_point(|t| t.end.offset as usize <= at);
-                    !tokens.get(next).is_some_and(|t| {
-                        t.kind == ms_syntax::token::Tok::String && t.pos.offset as usize <= at
-                    })
-                })
-        };
+        let safe_whitespace = || outside_text(&tokens, file, source, at);
         if trimmed.len() != body.len() && safe_whitespace() {
             findings.push(finding(
                 "MSL001",
@@ -293,6 +327,21 @@ pub fn lint_source(file: &Arc<str>, source: &str) -> Vec<Finding> {
                     (offset + trimmed.len()) as u32,
                     line as u32 + 1,
                     trimmed.len() as u32 + 1,
+                ),
+            ));
+        }
+        if let Some(slash) = body.find("//")
+            && floor_division_shape(body, slash)
+            && outside_text(&tokens, file, source, offset + slash)
+        {
+            findings.push(finding(
+                "MSL133",
+                "`//` starts a comment, so everything after it is ignored; Int `/` already truncates, so write `a / 2` for a floor division",
+                file,
+                Pos::new(
+                    (offset + slash) as u32,
+                    line as u32 + 1,
+                    slash as u32 + 1,
                 ),
             ));
         }

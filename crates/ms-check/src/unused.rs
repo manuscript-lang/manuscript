@@ -1,6 +1,6 @@
 //! Local and match payload bindings that are never read. Names starting with `_` are exempt.
 
-use crate::fxmap::HashMap;
+use crate::fxmap::{HashMap, HashSet};
 use crate::syntax::ModuleData;
 use crate::types::BindingRef;
 use crate::{Diagnostic, Program};
@@ -16,11 +16,12 @@ pub(crate) fn check(syms: ms_syntax::Names, program: &Program) -> Vec<Diagnostic
         .iter()
         .filter(|m| !m.is_standard(syms) && m.recovered.is_empty() && m.omitted.is_empty())
     {
-        let reads = binding_reads(module);
+        let (reads, fed) = binding_reads(module);
         let mut scan = Scan {
             syms: ms_syntax::Names::global(),
             module,
             reads: &reads,
+            fed: &fed,
             found: &mut found,
         };
         for decl in &module.decls {
@@ -38,25 +39,29 @@ fn walk<V: Visitor>(module: &ModuleData, v: &mut V) {
 
 /// Reads of each binding by uid. A read inside the right-hand side of an
 /// assignment to the same binding (`total = total + 2`) only feeds that
-/// binding's next value, so it does not make the binding observable.
-fn binding_reads(module: &ModuleData) -> HashMap<usize, i64> {
+/// binding's next value, so it does not make the binding observable. The second
+/// result holds the bindings that had such a read, for the message.
+fn binding_reads(module: &ModuleData) -> (HashMap<usize, i64>, HashSet<usize>) {
     let mut reads: HashMap<usize, i64> = HashMap::default();
     for info in module.facts().exprs.iter().flatten() {
         if let Some(binding) = &info.binding {
             *reads.entry(binding.uid).or_default() += 1;
         }
     }
+    let mut fed = HashSet::default();
     let mut assigned = Assigned {
         module,
         reads: &mut reads,
+        fed: &mut fed,
     };
     walk(module, &mut assigned);
-    reads
+    (reads, fed)
 }
 
 struct Assigned<'a> {
     module: &'a ModuleData,
     reads: &'a mut HashMap<usize, i64>,
+    fed: &'a mut HashSet<usize>,
 }
 
 impl Visitor for Assigned<'_> {
@@ -68,6 +73,7 @@ impl Visitor for Assigned<'_> {
             module: self.module,
             target: target.uid,
             reads: self.reads,
+            fed: self.fed,
         };
         walk_expr(&mut discount, e);
     }
@@ -77,6 +83,7 @@ struct Discount<'a> {
     module: &'a ModuleData,
     target: usize,
     reads: &'a mut HashMap<usize, i64>,
+    fed: &'a mut HashSet<usize>,
 }
 
 impl Visitor for Discount<'_> {
@@ -89,6 +96,7 @@ impl Visitor for Discount<'_> {
             .is_some_and(|b| b.uid == self.target);
         if reads_target {
             *self.reads.entry(self.target).or_default() -= 1;
+            self.fed.insert(self.target);
         }
     }
 }
@@ -97,6 +105,7 @@ struct Scan<'a> {
     syms: ms_syntax::Names,
     module: &'a ModuleData,
     reads: &'a HashMap<usize, i64>,
+    fed: &'a HashSet<usize>,
     found: &'a mut Vec<Diagnostic>,
 }
 
@@ -113,10 +122,17 @@ impl Scan<'_> {
             file: std::sync::Arc::from(self.syms.str(self.module.file)),
             pos,
             phase: ms_syntax::Phase::Type,
-            message: format!(
-                "local binding {} is never read; remove it, use it, or name it with a leading '_' to ignore it",
-                self.syms.str(binding.name)
-            ),
+            message: if self.fed.contains(&binding.uid) {
+                format!(
+                    "local binding {} is never read: it is only read to compute its own next value, so nothing observes it; remove it, use it elsewhere, or name it with a leading '_' to ignore it",
+                    self.syms.str(binding.name)
+                )
+            } else {
+                format!(
+                    "local binding {} is never read; remove it, use it, or name it with a leading '_' to ignore it",
+                    self.syms.str(binding.name)
+                )
+            },
             end: None,
             fix: None,
         });

@@ -2185,6 +2185,10 @@ impl<'a> Parser<'a> {
             Tok::While => {
                 self.at += 1;
                 let cond = self.expression(0)?;
+                if self.kind() == Tok::ColonAssign {
+                    let t = self.peek();
+                    return self.fail(t, "while takes a condition, not a binding; to loop while a value is present write 'while true:', bind it inside with 'if name := value:', and leave with 'else: break'");
+                }
                 let body = self.suite()?;
                 StmtKind::While { cond, body }
             }

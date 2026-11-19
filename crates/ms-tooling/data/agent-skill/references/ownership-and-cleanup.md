@@ -49,3 +49,48 @@ fn has(items: List[String], want: String) Bool:
 Pieces of a value are borrows too: `line.split(" ")`, `s.slice(a, b)` and `xs[i]` borrow their source, so store them with `.clone()`: `out.append(line.split(" ").clone())`. A store `m[key] = v` takes `key` after `v` ran, so `v` may read it: `counts[key] = counts.get_or(key, 0) + 1`. Do not use `key` after the store; store `key.clone()` to keep it.
 
 Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A list parameter changes only if declared `var xs: List[Int]` and called `add(var xs)`; otherwise copy it into a `var` local first.
+
+## Trees and linked lists change through `fn var` methods
+
+A recursive type holds its child as `Node?`. An `Optional` payload cannot be mutably borrowed with `if var n = slot:` or `var n = slot.get()`, and a field cannot move out of its owner (`m.left = insert(m.left, k)` fails). Change a child in place with a `fn var` method and call it through the field with `?.`: the call does nothing when the child is absent. Walk with a plain function that borrows (`if n := node:`).
+
+A `T?` parameter defaults to `none`, so it must come after the required parameters: write `find(key: Int, node: Node?)`, not `find(node: Node?, key: Int)`.
+
+<!-- complete: bst-insert.ms -->
+```manuscript
+type Node:
+	key: Int
+	left: Node?
+	right: Node?
+
+fn var Node.insert(key: Int) Void:
+	if key < self.key:
+		if self.left.is_none():
+			self.left = Node(key, none, none)
+		else:
+			self.left?.insert(key)
+	else:
+		if self.right.is_none():
+			self.right = Node(key, none, none)
+		else:
+			self.right?.insert(key)
+
+fn keys(var out: List[Int], node: Node?) Void:
+	if n := node:
+		keys(var out, n.left)
+		out.append(n.key)
+		keys(var out, n.right)
+
+fn main() Int:
+	var root = Node(50, none, none)
+	for k in [30, 70, 20, 40]:
+		root.insert(k)
+
+	var out = List[Int]()
+	keys(var out, root)
+	if out == [20, 30, 40, 50, 70]: return 0
+
+	return 1
+```
+
+An empty tree is a `Node?` that is `none` (or an enum with an `Empty` case); give the owner a type with a `var root: Node?` and make its `insert` method create the first node.

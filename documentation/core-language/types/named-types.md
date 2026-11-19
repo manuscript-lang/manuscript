@@ -286,3 +286,41 @@ sum := total(numbers)
 - An alias may take type parameters, written like a generic type's: `type Pairs[A: Hashable, B] = List[Map[A, B]]`. Every parameter is supplied, or defaulted, where the alias is used. Bounds apply to the expansion.
 - An alias may name a type declared later in the module. A cycle (`type A = B` with `type B = A`) is rejected.
 - An exported alias must not expose a private type, as with any exported signature.
+
+## Growing a tree
+
+A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if n := node:`. A `T?` parameter defaults to `none`, so it comes after the required ones.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import panic from "@std/core.ms"
+
+type Branch:
+    key: Int
+    left: Branch?
+    right: Branch?
+
+fn var Branch.insert(key: Int) Void:
+    if key < self.key:
+        if self.left.is_none():
+            self.left = Branch(key, none, none)
+        else:
+            self.left?.insert(key)
+    else:
+        if self.right.is_none():
+            self.right = Branch(key, none, none)
+        else:
+            self.right?.insert(key)
+
+fn count(node: Branch?) Int:
+    if n := node:
+        return 1 + count(n.left) + count(n.right)
+    return 0
+
+test "a tree inserts through its children":
+    var root = Branch(50, none, none)
+    for key in [30, 70, 20, 40]:
+        root.insert(key)
+    if count(root) != 5:
+        panic("every key must be inserted")
+```

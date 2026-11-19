@@ -85,6 +85,11 @@ export type Arg:
 	required: Bool = true
 	// Takes every remaining word as a list; only the last argument may be rest.
 	rest: Bool = false
+	// What the argument accepts: `String` (the default), `Int` or `Float`. An `Int` or
+	// `Float` argument fills a record field of that type and fails the run when the word
+	// does not parse. `Bool` and `List` are not positional kinds, and a `rest` argument
+	// is always `List[String]`.
+	kind: FlagKind = FlagKind.String
 
 /*
 The values one invocation produced.
@@ -266,6 +271,7 @@ type its kind names:
 | `FlagKind.Int` | `Int` |
 | `FlagKind.Float` | `Float` |
 | `FlagKind.List`, and a `rest` argument | `List[String]` (absent is empty) |
+| `Arg` with `kind` `Int` or `Float` | `Int` or `Float` |
 | any other `Arg` | `String` |
 
 A flag with neither a default nor `required`, and an optional `Arg`, needs an `...?` field, which is `none`
@@ -329,7 +335,7 @@ fn collect_fields(
 		if arg.rest:
 			fields[field_name(arg.name)] = stringify(items.clone()).get()
 		else if not items.is_empty():
-			fields[field_name(arg.name)] = stringify(items[0].clone()).get()
+			fields[field_name(arg.name)] = literal(arg.kind, items[0].clone())
 
 	return fields
 
@@ -342,10 +348,10 @@ fn persistent_flags(flags: List[Flag]) List[Flag]:
 	return flags.filter(fn flag: flag.persistent)
 
 // Describes what a flag accepts, for errors.
-fn expected_text(flag: Flag) String:
-	if not flag.choices.is_empty(): return "one of " + flag.choices.join(", ")
+fn expected_text(kind: FlagKind, choices: List[String]) String:
+	if not choices.is_empty(): return "one of " + choices.join(", ")
 
-	match flag.kind:
+	match kind:
 		Bool: return "true or false"
 		Int: return "an integer"
 		Float: return "a number"
@@ -373,10 +379,10 @@ fn is_list(kind: FlagKind) Bool:
 		_: return false
 
 // Returns whether `value` fits the flag's kind and choices.
-fn fits(flag: Flag, value: String) Bool:
-	if not flag.choices.is_empty() and not flag.choices.contains(value): return false
+fn fits(kind: FlagKind, choices: List[String], value: String) Bool:
+	if not choices.is_empty() and not choices.contains(value): return false
 
-	match flag.kind:
+	match kind:
 		Bool: return value == "true" or value == "false"
 		Int: return value.parse_int().is_some()
 		Float:
@@ -419,7 +425,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 
 	for flag in node.flags:
 		if text := flag.default:
-			if not fits(flag, text):
+			if not fits(flag.kind, flag.choices, text):
 				return error(
 					cli_invalid_schema(
 						f"default {text} does not fit flag {flag.name}"
@@ -444,6 +450,12 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 			return error(
 				cli_invalid_schema(
 					f"required argument {arg.name} follows an optional one in {where}"
+				)
+			)
+		if is_bool(arg.kind) or is_list(arg.kind):
+			return error(
+				cli_invalid_schema(
+					f"argument {arg.name} in {where} must be String, Int or Float"
 				)
 			)
 
@@ -479,8 +491,15 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
 	Void,
 	Error,
 ]:
-	if not fits(flag, value):
-		return error(cli_invalid_value(flag.name.clone(), value, expected_text(flag)))
+	if not fits(flag.kind, flag.choices, value):
+		return error(
+			cli_invalid_value(
+				"flag",
+				flag.name.clone(),
+				value,
+				expected_text(flag.kind, flag.choices),
+			)
+		)
 
 	if is_list(flag.kind):
 		var items = values.get_or(flag.name, [])
@@ -622,6 +641,16 @@ fn bind(
 
 			continue
 
+		if not fits(arg.kind, [], words[next]):
+			return error(
+				cli_invalid_value(
+					"argument",
+					arg.name.clone(),
+					words[next].clone(),
+					expected_text(arg.kind, []),
+				)
+			)
+
 		values[arg.name.clone()] = [words[next].clone()]
 		next += 1
 
@@ -722,8 +751,8 @@ fn cli_unknown_command(name: String, path: String) Error:
 fn cli_missing_value(name: String) Error:
 	return Error(f"cli: flag {name} needs a value", kind: "EINVAL")
 
-fn cli_invalid_value(name: String, value: String, expected: String) Error:
-	return Error(f"cli: flag {name}: {value} is not {expected}", kind: "EINVAL")
+fn cli_invalid_value(what: String, name: String, value: String, expected: String) Error:
+	return Error(f"cli: {what} {name}: {value} is not {expected}", kind: "EINVAL")
 
 fn cli_missing_required(name: String) Error:
 	return Error(f"cli: missing required {name}", kind: "EINVAL")
