@@ -1294,12 +1294,7 @@ impl FnLower<'_> {
                 self.enter(yes);
                 next = Some(no);
             }
-            let own_text = words == "-";
-            let text = if own_text {
-                format!("{domain}: failed")
-            } else {
-                format!("{domain}: {words}")
-            };
+            let (own_text, text) = status_text(domain, words);
             let l = self.lit(k);
             let k = self.owned(l);
             self.b.def_var(kind, k);
@@ -1499,6 +1494,16 @@ impl FnLower<'_> {
     }
 }
 
+/// The message of a status row whose words are `words` in `domain`, and whether the native's own
+/// text is the whole message (words `-`; the text is then "domain: failed" when it said nothing).
+fn status_text(domain: &str, words: &str) -> (bool, String) {
+    if words == "-" {
+        (true, format!("{domain}: failed"))
+    } else {
+        (false, format!("{domain}: {words}"))
+    }
+}
+
 /// The rows of a status table: `(status, kind, words)`.
 pub(crate) type StatusRows = Vec<(i64, &'static str, &'static str)>;
 
@@ -1608,6 +1613,25 @@ fn domain_of(sym: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every row of every status table keeps the message the one-branch-per-row builder wrote:
+    /// "domain: words", the native's own text alone for `-`, and "domain: failed" without it.
+    #[test]
+    fn status_rows_keep_their_messages() {
+        assert!(!STATUS_ROWS.is_empty());
+        for &(n, kind, words) in STATUS_ROWS {
+            for domain in ["fs", "net", "runtime"] {
+                let (alone, text) = status_text(domain, words);
+                let old = if words == "-" {
+                    format!("{domain}: failed")
+                } else {
+                    format!("{domain}: {words}")
+                };
+                assert_eq!(text, old, "status {n} {kind}");
+                assert_eq!(alone, words == "-", "status {n} {kind}");
+            }
+        }
+    }
 
     /// Every `// ms: op=<mnemonic>` names a MIR instruction.
     #[test]
