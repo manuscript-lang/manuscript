@@ -77,7 +77,7 @@ fn skill_complete_examples_check() {
             examples += 1;
         }
     }
-    assert_eq!(examples, 21, "retain all complete skill examples");
+    assert_eq!(examples, 24, "retain all complete skill examples");
 }
 
 #[test]

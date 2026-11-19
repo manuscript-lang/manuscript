@@ -57,12 +57,28 @@ fn main() Void!:
 - Text: `"plain"` never interpolates, `f"n {n}"` does; `length()` counts **bytes**.
 - Absent from the language: `& | ^ << >>` (`bit_and`, `shift_left`... in `@std/math/math.ms`), `assert` (`expect_equal(...)?`), static methods (write `new_store()`), `some(x)`.
 
-## Compiler rules
+## First-build errors, most common first
 
-1. **`?` needs a matching return type:** a Result needs a Result function; an Optional needs an Optional or `Void` one. Never drop a Result: `_done := f(x)?` or `void f(x)`.
-2. **"Moved here but used again":** clone at the store, or borrow. Do not change `xs` while a binding borrows from it.
-3. **Names are exact** (`append`, `contains`, `length()`): [Standard calls](references/standard-calls.md).
-4. A bare `_` is no name (`_i`); `x.close()` consumes `x`, and scope end already closes.
+Measured on failed first builds. Write the right column the first time.
+
+| Error says | Cause | Write |
+| --- | --- | --- |
+| `moved here but used again` | a store or `move` parameter took it | `.clone()` at the store or call; or use it before the move |
+| `cannot change X while Y borrows it` | `y := x.part`, `if v := m.get(k)`, a `for` or `match` binding still in use | end the binding with `.clone()` (`it := self.items[i].clone()`), or finish with `y` before changing `x` |
+| `parameter X is not declared var` | mutated a plain parameter | `var x: T` in the signature **and** `f(var x)` at every call |
+| `cannot assign immutable binding` | `x := 0` then `x = 1` | `var x = 0` |
+| `standalone ? requires a Void success value` | `f(x)?` as a statement, f returns a value | `_done := f(x)?`, or `void f(x)` |
+| `unknown binding unit` | invented a unit value | the Void value is `void`: `return ok(void)` or bare `return` |
+| `?. needs an optional receiver` | `f()?.trim()` on a Result | `(f()?).trim()` or `v := f()?` |
+| `? on an Optional ... must return` | `?` on `T?` in a `T!` function | `.ok_or(Error("..."))?` |
+| `unknown member push / contains_key / keys on Set` | name from another language | `append`, `contains`, `values()`: `ms search_symbol` |
+| `if binding requires an Optional or Result` | `if v := xs[i]:` | `xs[i]` is a value; use `xs.get_or(i, d)` or `m.get(k)` |
+| `cannot move X out: it is borrowed` | stored a loop variable, parameter or field | `x.clone()` |
+| `expected end of inline statement, found else` | `if c: a else: b` as a statement | `if c:` and `else:` on their own indented lines |
+| `expected a name, found '_'`, `unexpected '#'` | habits | `_i`; `//` comments |
+| `unknown type Bytes` | missing import | `import Bytes from "@std/bytes.ms"` |
+
+A Result is never dropped; absent is `none`, never `some(x)`; `x.close()` consumes `x` and scope end already closes; names are exact ([Standard calls](references/standard-calls.md)).
 
 ## References
 

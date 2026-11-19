@@ -1,6 +1,6 @@
 # Idioms
 
-Eight complete programs that compile and run; copy the shape.
+Ten complete programs that compile and run; copy the shape.
 
 ## 1. Data: `type`, `enum`, flat `match`, pipelines
 
@@ -262,3 +262,93 @@ fn main() Void!:
 	print(f"{rows} rows")
 ```
 
+## 9. Change records you hold: index into the list, or take a clone out and put it back
+
+Edit in place with `self.orders[i].field = v`, or `for_each(fn var o: ...)`. For a Map, clone the value out, change the clone, `add` it back. Do not bind `o := self.orders[i]` and then change `self.orders` (that is the borrow error).
+
+<!-- complete: idiom-edit-records.ms -->
+```manuscript
+enum Status:
+	Open
+	Shipped
+
+type Order:
+	id: Int
+	qty: Int
+	status: Status = Status.Open
+
+type Shop:
+	orders: List[Order]
+	by_id: Map[Int, Order]
+
+fn var Shop.ship(id: Int) Bool:
+	for i in 0..self.orders.length():
+		if self.orders[i].id == id:
+			self.orders[i].status = Status.Shipped
+			return true
+
+	return false
+
+fn var Shop.ship_map(id: Int) Bool:
+	if found := self.by_id.get(id):
+		var order = found.clone()
+		order.status = Status.Shipped
+		self.by_id.add(id, order)
+		return true
+
+	return false
+
+fn var Shop.bump_all() Void:
+	self.orders.for_each(fn var o: o.qty += 1)
+
+fn main() Void:
+	var shop = Shop([Order(1, 2)], Map[Int, Order]())
+	print(shop.ship(1))
+	shop.bump_all()
+	print(shop.orders[0].qty)
+```
+
+## 10. Mutable state: a record, rules in `fn var` methods, a command loop
+
+Keep the state in one record, give each command a small `fn var` method that returns the reply, check input before changing anything, and call `run_command(var shop, line)`.
+
+<!-- complete: idiom-shop.ms -->
+```manuscript
+import stdin from "@std/io/io.ms"
+import lines, collect from "@std/io/streams.ms"
+
+type Shop:
+	stock: Map[String, Int]
+	log: List[String]
+
+fn var Shop.add(sku: String, qty: Int) String:
+	total := self.stock.get_or(sku, 0) + qty
+	self.stock.add(sku.clone(), total)
+	return f"ok {sku} stock={total}"
+
+fn var Shop.take(sku: String, qty: Int) String:
+	have := self.stock.get_or(sku, 0)
+	if qty > have:
+		return f"error: only {have} of {sku}"
+	self.stock.add(sku.clone(), have - qty)
+	return f"ok {sku} stock={have - qty}"
+
+fn run_command(var shop: Shop, line: String) String:
+	words := line.split(" ")
+	qty := words.get_or(2, "").parse_int()
+	if words.length() != 3 or qty.is_none():
+		return "error: usage: add|take <sku> <qty>"
+	match words[0]:
+		"add":
+			return shop.add(words[1], qty.get())
+		"take":
+			return shop.take(words[1], qty.get())
+		_:
+			return f"error: unknown command {words[0]}"
+
+fn main() Void!:
+	var shop = Shop(Map[String, Int](), [])
+	text := stdin() | lines | collect(none)?
+	for line in text.filter(fn l: not l.is_empty()):
+		print(run_command(var shop, line))
+```
