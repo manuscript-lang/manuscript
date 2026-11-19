@@ -86,7 +86,7 @@ fn main() Void!:
 
 ## References
 
-- Why and how: [Mental model](references/mental-model.md), [Workflow](references/workflow.md), [Testing](references/testing.md), [Validation and habits](references/validation.md).
+- Why and how: [Teaching Manuscript](references/teaching.md) (explaining the language to a programmer), [Mental model](references/mental-model.md), [Workflow](references/workflow.md), [Testing](references/testing.md), [Validation and habits](references/validation.md).
 - Copy from: [Idioms](references/idioms.md) (thirteen complete programs).
 - Names: [Standard calls](references/standard-calls.md), [Standard modules](references/standard-modules.md).
 - Language: [Program structure](references/program-structure.md), [Values and control](references/values-and-control.md), [Types and functions](references/types-and-functions.md), [Collections and pipelines](references/collections-and-pipelines.md), [Text and bytes](references/text-and-bytes.md).
