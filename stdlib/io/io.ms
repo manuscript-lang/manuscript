@@ -86,9 +86,7 @@ fn move ReadStream[T].close() Void!:
 
 	self.closed = true
 
-	result := self.source.close()
-	self.source = EndedSource[T]()
-	return result
+	return self.source.close()
 
 // Internal: one read of `source` that waits at most `bound` in total.
 fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
@@ -131,12 +129,9 @@ fn var WriteStream[T].write(value: T) Void!:
 fn var WriteStream[T].flush() Void!:
 	return self.sink.flush()
 
-// Closes the sink and drops it; later calls do nothing and later writes fail with
-// `EBADF`. A custom sink may wait while closing.
+// Closes the sink and drops it. A custom sink may wait while closing.
 fn move WriteStream[T].close() Void!:
-	result := self.sink.close()
-	self.sink = ClosedSink[T]()
-	return result
+	return self.sink.close()
 
 // A sink that refuses every write: the one a closed `WriteStream` holds.
 type ClosedSink[T]:
@@ -480,7 +475,7 @@ fn move Through[A, B].close() Void!:
 	return self.input.close()
 
 // Returns a stream of `transform`'s output over `input`. Closing it closes `input`.
-export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
+export fn through[A, B](move input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
 	return ReadStream[B](Through[A, B](input, transform, [], false))
 
 // ---- Process streams -----------------------------------------------------------------------------------------------

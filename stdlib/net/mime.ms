@@ -464,7 +464,7 @@ bounds one part's headers and body and fails the read with `EOVERFLOW`. A body t
 delimiter fails with `EBADMSG`. Closing the result closes `body`.
 */
 export fn multipart_parts(
-	body: ReadStream[Bytes],
+	move body: ReadStream[Bytes],
 	boundary: String,
 	max_part_bytes: Int?,
 ) ReadStream[Part]:

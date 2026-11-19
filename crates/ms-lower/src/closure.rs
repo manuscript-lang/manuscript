@@ -2002,7 +2002,7 @@ fn lower_lambda_body(
             fl.bind_local(b, x);
         } else if fl.owned_param(*v) && fl.holds(fl.ty_of(*v)) {
             // The function type passes this parameter owned: the lambda keeps or drops it.
-            fl.bind_owned_param(b, *v)?;
+            fl.bind_owned_param(b, *v, false)?;
         } else if mutated.contains(&b.uid) && fl.needs_drop(fl.ty_of(*v)) {
             // A parameter the body changes is the lambda's own copy.
             fl.bind_local(b, Val { v: *v, own: false });

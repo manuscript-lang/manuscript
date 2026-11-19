@@ -208,7 +208,7 @@ fn HttpClient.request_stream(
 	method: HttpMethod,
 	url: String,
 	headers: HttpHeaders,
-	body: ReadStream[Bytes],
+	move body: ReadStream[Bytes],
 	max_response_bytes: Int? = none,
 	timeout: Duration? = none,
 ) StreamingResponse!:
@@ -481,7 +481,7 @@ fn var ResponseSource.next() Bytes?!:
 fn move ResponseSource.close() Void!:
 	return self.raw.close()
 
-fn response(raw: RawResponse) StreamingResponse:
+fn response(move raw: RawResponse) StreamingResponse:
 	metadata := raw.metadata()
 	return StreamingResponse(
 		metadata: metadata,

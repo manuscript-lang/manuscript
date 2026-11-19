@@ -470,7 +470,7 @@ input fails the read with `EBADMSG`, and negative limits with `EINVAL`. Closing 
 `input`.
 */
 export fn json_reader[T: Data = JsonValue](
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	options: JsonOptions = JsonOptions(),
 ) ReadStream[T]:
 	failure := invalid_limits(options)
@@ -511,7 +511,7 @@ single line, and ends with a line feed. `max_bytes` bounds one encoded value and
 `EOVERFLOW`. Writes delegate to `output`'s sink, which may wait. `flush().wait()` uses its completion condition; a pipe may retain up to capacity unread values. Closing closes `output`.
 */
 export fn json_writer[T: Data](
-	output: WriteStream[Bytes],
+	move output: WriteStream[Bytes],
 	max_bytes: Int? = none,
 ) WriteStream[T]:
 	return WriteStream[T](JsonLines[T](output: output, max_bytes: max_bytes))

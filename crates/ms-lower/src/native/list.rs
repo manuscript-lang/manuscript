@@ -355,6 +355,7 @@ impl<'a> FnLower<'a> {
         name: &str,
     ) -> Result<Val, Error> {
         let out = self.mutator_call_inner(e, view, m, recv_expr, name);
+        self.forgotten_entry = None;
         self.fault_deferred_close();
         out
     }
@@ -453,6 +454,7 @@ impl<'a> FnLower<'a> {
             }
             self.defer_close_failures();
             self.close_discarded_entry(recv_expr, name, &args)?;
+            self.forgotten_entry = self.consumed_entry(recv_expr, name)?;
             if self.dead {
                 self.finish_place(recv_expr);
                 return Ok(self.dummy(MTy::VOID));
@@ -629,6 +631,26 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// The type of the entries `name` discards from `recv_expr` when closing one takes it: the
+    /// mutator must then leave them alone.
+    fn consumed_entry(&mut self, recv_expr: &Expr, name: &str) -> Result<Option<MTy>, Error> {
+        let ty = self.ety(recv_expr);
+        let held = if ty.is(Builtin::List) {
+            ty.args.first()
+        } else if name == "clear" {
+            return Ok(None);
+        } else {
+            ty.args.get(1)
+        };
+        let Some(held) = held else {
+            return Ok(None);
+        };
+        match self.part_closer(held)? {
+            Some(kind) if kind.consumes() => Ok(Some(self.mty(held)?)),
+            _ => Ok(None),
+        }
+    }
+
     /// Closes the entry `name` is about to discard from the place `recv_expr`.
     pub(super) fn close_discarded_entry(
         &mut self,
@@ -650,15 +672,21 @@ impl<'a> FnLower<'a> {
                 return Ok(());
             }
             if x.own {
-                let map = self.close_discarded_ty(&ty, x.v)?;
-                self.drop_value(map);
+                if let Some(map) = self.close_discarded_ty(&ty, x.v)? {
+                    self.drop_value(map);
+                }
                 return Ok(());
             }
             let Some(kind) = self.part_closer(&ty)? else {
                 return Ok(());
             };
             self.place_update_prepared(recv_expr, &mut |s, old| {
-                Ok(s.close_discarded_kind(&kind, old))
+                // A close that takes the map leaves an empty one in its place.
+                let mt = s.ty_of(old);
+                match s.close_discarded_kind(&kind, old) {
+                    Some(map) => Ok(map),
+                    None => s.map_new(mt),
+                }
             })?;
             return Ok(());
         }
@@ -882,7 +910,10 @@ impl<'a> FnLower<'a> {
                 .b
                 .emit(Op::Take, &[at], Imm::Ty(elem), Some(elem))
                 .expect("take");
-            self.drop_value(old);
+            // An entry a close took is not dropped again.
+            if self.forgotten_entry != Some(elem) {
+                self.drop_value(old);
+            }
             self.b.emit(Op::Put, &[at, v], Imm::None, None);
         } else {
             self.b.emit(Op::Store, &[at, v], Imm::None, None);

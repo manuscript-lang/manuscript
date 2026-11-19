@@ -394,7 +394,7 @@ impl Walker<'_> {
                     "an assignment target must be a variable or a field path of one, like `xs[i]` or `p.items[i]`; a call result or literal is dropped after the store, so bind it to a var first",
                 );
             }
-            self.receiver(r, mode, closing);
+            self.receiver(r, mode);
             operands.push((Operand::Receiver(r), held, Vec::new()));
         } else {
             self.callees.insert(callee.id);
@@ -948,14 +948,13 @@ impl Walker<'_> {
         self.check_overlap(pos, name, &operands);
     }
 
-    pub(super) fn receiver(&mut self, r: &Expr, mode: ParamMode, closes: bool) {
+    pub(super) fn receiver(&mut self, r: &Expr, mode: ParamMode) {
         match mode {
             ParamMode::Borrow => self.expr(r, Demand::Read),
-            // A field closes where it lies (see `is_part_closed_in_place`).
-            ParamMode::Move if closes && self.is_part_closed_in_place(r) => {
-                self.expr(r, Demand::Read)
+            ParamMode::Move => {
+                self.require_declared_move(r, "a `move` receiver");
+                self.expr(r, Demand::Move)
             }
-            ParamMode::Move => self.expr(r, Demand::Move),
             ParamMode::Mutate => {
                 if self.is_place(r) {
                     if let Some((info, _)) = self.place(r) {
@@ -988,38 +987,6 @@ impl Walker<'_> {
                 }
             }
         }
-    }
-
-    /// Whether `e` is a field of a value this function owns or may change, as in `conn.output.close()`
-    /// or `self.input.close()` inside a close. Closing a field works on it where it lies: the field
-    /// stays in its holder, closed, and what is left open closes with its owner. Only a whole
-    /// binding is consumed by `close`.
-    fn is_part_closed_in_place(&self, e: &Expr) -> bool {
-        let ExprKind::Member { left, .. } = &e.kind else {
-            return false;
-        };
-        let Resolution::Local(b) = self.cx.m.resolution(root_name(left)) else {
-            return false;
-        };
-        // Inside a close, `self` is the owner's storage.
-        let in_own_close = self.cx.classes.is_closer(&self.cx.c.func)
-            && self
-                .cx
-                .c
-                .self_binding
-                .as_ref()
-                .is_some_and(|s| s.uid == b.uid);
-        // A `var` method may close what its receiver holds in place, as a fixture hook does.
-        let var_receiver = self
-            .meta
-            .get(&b.uid)
-            .is_some_and(|m| m.is_receiver && m.perm == Perm::Mutable);
-        // A holder that closes itself cannot lose a part to a move, so its part closes in place.
-        (in_own_close || var_receiver || self.cx.classes.closes_itself(&self.cx.m.ty(left)))
-            && self.field_path(left).is_some()
-            && self.meta.get(&b.uid).is_some_and(|m| {
-                matches!(m.perm, Perm::Immutable | Perm::Mutable) && m.lambda.is_none()
-            })
     }
 
     /// The borrow-returning call a field, element or whole-value chain starts from: `id(a).items`
@@ -1097,6 +1064,7 @@ impl Walker<'_> {
             }
             ParamMode::Move => {
                 self.move_note = modes.consumed_by.get(index).copied().flatten();
+                self.require_declared_move(&a.value, "a `move` argument");
                 self.expr(&a.value, Demand::Move);
                 self.move_note = None;
             }
@@ -1161,12 +1129,4 @@ impl Walker<'_> {
             }
         }
     }
-}
-
-/// The name expression a chain of field accesses starts from.
-fn root_name(mut e: &Expr) -> &Expr {
-    while let ExprKind::Member { left, .. } = &e.kind {
-        e = left;
-    }
-    e
 }

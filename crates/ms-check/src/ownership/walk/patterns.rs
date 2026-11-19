@@ -21,6 +21,49 @@ impl Walker<'_> {
         index.and_then(|i| params.get(i)).is_some_and(|p| p.moving)
     }
 
+    /// A parameter handed on to a `move` position is the callee's to give: as a `var` argument
+    /// needs a `var` parameter, `what` needs a parameter declared `move` (a receiver, the
+    /// method `fn move`).
+    pub(super) fn require_declared_move(&mut self, e: &Expr, what: &str) {
+        let Resolution::Local(b) = self.cx.m.resolution(e) else {
+            return;
+        };
+        let Some(m) = self.meta.get(&b.uid) else {
+            return;
+        };
+        // A `var` parameter has its own, stronger message.
+        if m.perm != Perm::Immutable {
+            return;
+        }
+        if m.is_receiver {
+            if self.cx.c.func.method().is_some_and(|m| m.consuming) {
+                return;
+            }
+        } else {
+            let Some(i) = m.parameter else {
+                return;
+            };
+            if self.moves_parameter(Some(i)) {
+                return;
+            }
+        }
+        // Other values move or copy as the callee needs; a resource has one owner, so who owns
+        // it must be declared.
+        if self.cx.classes.class(self.syms, &b.ty) != Class::Resource {
+            return;
+        }
+        let name = self.syms.str(b.name).to_string();
+        let declared = if m.is_receiver {
+            format!("declare the method `fn move`")
+        } else {
+            format!("write `move {name}: <Type>` in the signature")
+        };
+        self.error(
+            e.pos,
+            format!("cannot pass `{name}` as {what}: it is not declared `move`, so the caller keeps it; {declared}"),
+        );
+    }
+
     /// A change in place through a place expression (`var` argument,
     /// mutating receiver, field assignment).
     pub(super) fn mutate(&mut self, pos: Pos, info: &PlaceInfo, what: &str) {

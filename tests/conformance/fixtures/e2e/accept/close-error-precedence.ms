@@ -185,7 +185,7 @@ fn consume(value: Failing) Int:
 	_values := [value]
 	return 1
 
-fn consumed_parameter(value: Failing, payload: String, take: Bool) String!:
+fn consumed_parameter(move value: Failing, payload: String, take: Bool) String!:
 	if take:
 		_number := consume(value)
 	return ok(payload)

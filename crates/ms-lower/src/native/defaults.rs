@@ -221,6 +221,17 @@ impl<'a> FnLower<'a> {
 
     /// The runtime descriptor of a type.
     pub fn type_desc(&mut self, t: MTy) -> Value {
+        if self.forgotten_entry == Some(t) {
+            return self
+                .b
+                .emit(
+                    ms_mir::ir::Op::TypeDesc,
+                    &[],
+                    ms_mir::ir::Imm::Ty(t.scoped(ms_mir::types::Ty::FORGOTTEN_SCOPE)),
+                    Some(MTy::PTR),
+                )
+                .expect("typedesc");
+        }
         let scope = self.glue_scope(t);
         self.cx.ensure_glue(self.b.m, t, scope);
         self.b

@@ -34,7 +34,7 @@ fn var Base64Encoding.finish(var out: List[String]) Void!:
 // with padding at the end. Set `url_safe: true` for the URL-safe alphabet. Closing the
 // result closes `input`.
 export fn base64_encoded(
-	input: ReadStream[Bytes],
+	move input: ReadStream[Bytes],
 	url_safe: Bool = false,
 ) ReadStream[String]:
 	return through[Bytes, String](
@@ -84,7 +84,7 @@ fn var Base64Decoding.finish(var out: List[Bytes]) Void!:
 // text that ends inside a group fails at the end of the stream. Closing the result
 // closes `input`.
 export fn base64_decoded(
-	input: ReadStream[String],
+	move input: ReadStream[String],
 	url_safe: Bool = false,
 ) ReadStream[Bytes]:
 	return through[String, Bytes](input, Base64Decoding(url_safe: url_safe, tail: ""))
@@ -100,7 +100,7 @@ fn var HexEncoding.finish(var out: List[String]) Void!:
 
 // Encodes a byte stream as lowercase hexadecimal text chunks. Closing the result closes
 // `input`.
-export fn hex_encoded(input: ReadStream[Bytes]) ReadStream[String]:
+export fn hex_encoded(move input: ReadStream[Bytes]) ReadStream[String]:
 	return through[Bytes, String](input, HexEncoding(0))
 
 // Decodes hexadecimal text in pairs, so a chunk boundary never splits a byte.
@@ -124,5 +124,5 @@ fn var HexDecoding.finish(var out: List[Bytes]) Void!:
 
 // Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside
 // a pair, fails the read with `EBADMSG`. Closing the result closes `input`.
-export fn hex_decoded(input: ReadStream[String]) ReadStream[Bytes]:
+export fn hex_decoded(move input: ReadStream[String]) ReadStream[Bytes]:
 	return through[String, Bytes](input, HexDecoding(tail: ""))

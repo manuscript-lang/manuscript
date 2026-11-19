@@ -14,7 +14,7 @@ type Holder:
 	handles: List[FileHandle] = []
 	label: String = ""
 
-fn adopt(var holder: Holder, var count: Int, handle: FileHandle) Void:
+fn adopt(var holder: Holder, var count: Int, move handle: FileHandle) Void:
 	holder.handles.append(handle)
 	count += 1
 

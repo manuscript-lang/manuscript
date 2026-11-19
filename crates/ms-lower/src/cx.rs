@@ -79,6 +79,8 @@ pub enum HelperKey {
     JsonTreeView(ms_check::api::tytable::TyId),
     CloseParts(ms_check::api::tytable::TyId, bool),
     CloseOptional(MTy, crate::close::CloseKind),
+    /// The thunk of a close that takes the value.
+    CloseTake(crate::close::CloseKind, MTy, bool),
     CloseIface {
         iface: u32,
         k: u32,
@@ -432,6 +434,8 @@ pub struct Cx {
     pub opaque_tys: Column<()>,
     /// Helper functions (formatting, equality, ...) by key.
     pub helpers: HashMap<HelperKey, FuncId>,
+    /// Part-closing helpers that were asked for again while they were being built.
+    pub recursed: ms_check::fxmap::HashSet<HelperKey>,
     /// The type a loop over an owned list keeps in memory (the list and the next index) by
     /// list type.
     pub list_cursors: HashMap<MTy, (ms_mir::types::TypeId, MTy)>,
@@ -511,8 +515,7 @@ impl Cx {
             }
             mods.insert(m.data.file, Rc::new(m));
         }
-        let classes = ms_check::api::ownership::Classifier::new(program);
-        let mutated = crate::mutation::infer_mutated(&classes, &callables);
+        let mutated = crate::mutation::infer_mutated(&callables);
         let native_ops = crate::nativetype::NativeOps::new(syms, program, &callables);
         let extended = program
             .methods
@@ -539,6 +542,7 @@ impl Cx {
             queue: Vec::new(),
             opaque_tys: Default::default(),
             helpers: HashMap::default(),
+            recursed: Default::default(),
             list_cursors: HashMap::default(),
             vtables: HashMap::default(),
             contracts: HashMap::default(),
@@ -547,7 +551,7 @@ impl Cx {
             fixtures: program.test_fixtures.clone(),
             ownership: program.ownership_shared.tables(&program.ownership),
             ownership_shared: program.ownership_shared.clone(),
-            classes,
+            classes: ms_check::api::ownership::Classifier::new(program),
         }
     }
 

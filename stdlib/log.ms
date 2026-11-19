@@ -307,7 +307,7 @@ export type LoggerOptions:
 
 // Creates a logger that owns `transport`, with the level, timestamp and record-size
 // settings in `options`.
-export fn create(transport: Transport, options: LoggerOptions = LoggerOptions()) Logger!:
+export fn create(move transport: Transport, options: LoggerOptions = LoggerOptions()) Logger!:
 	if max := options.max_bytes:
 		if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
 	return ok(
@@ -327,7 +327,7 @@ export fn stdout_transport() Transport:
 
 // Appends log records to an open file. The transport owns `file`; closing the transport
 // closes it.
-export fn handle_transport(file: FileHandle) Transport:
+export fn handle_transport(move file: FileHandle) Transport:
 	return FileTransport(file: file, closed: false)
 
 // Appends log records to a file at `path`.
