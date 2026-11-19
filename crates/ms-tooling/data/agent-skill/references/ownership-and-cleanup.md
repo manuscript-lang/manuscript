@@ -1,6 +1,8 @@
 # Ownership and cleanup
 
-Strings, collections, records and payload enums have one owner. Int/Float/Bool and payload-free enums copy. Reads and non-consuming arguments borrow; an owner cannot change while borrowed. Storing moves the value and kills the old name.
+Strings, collections and records have one owner; enums follow their payload. Int/Float/Bool and scalar-only enums copy. Binding/field/index reads and non-consuming arguments can borrow. An owner cannot change while borrowed.
+
+Storage in records/collections can move ownership, invalidating the old name. Clone only for an independent owner; copy borrowed fields before storing elsewhere.
 
 <!-- complete: ownership.ms -->
 ```manuscript
@@ -21,50 +23,38 @@ fn main() Int:
 	return 1
 ```
 
-- Returning part of a parameter borrows it, no marker. Clone for an independent owner. `:=` is deeply immutable.
-- Mutable parameters need `var` at declaration and call: `add(var names, user)`. `fn var Type.name()` is called plainly.
-- **Borrowed values need `.clone()` to store**: a loop variable, a parameter, a field, an element, `line.split(" ")`, `s.slice(a, b)`. `cannot move x out: it is borrowed` means `x.clone()`. A store `m[k] = v` takes `k` after `v` runs, so `counts[k] = counts.get_or(k, 0) + 1` works; do not use `k` afterwards unless cloned.
-- A list parameter changes only as `var xs: List[Int]` called `add(var xs)`; otherwise copy to a `var` local.
-- An escaping closure or promise takes what it captures: clone first to keep your copy.
+Returning part of a parameter borrows it without a marker. Clone for an independent return owner. `:=` is immutable, including contents; var can mutably borrow a collection field.
 
-## Changing what you are reading
-A binding to part of a value (`first := self.orders[0]`, `if v := m.get(k)`, a `for` or `match` payload) borrows the owner until its last use, so the owner cannot change meanwhile. Fix by giving the binding its own value with `.clone()`, by iterating a clone (`for o in self.orders.clone()`), or by finishing with the binding first. Distinct fields never conflict (`self.total` while iterating `self.orders`).
+Mutable parameters require var at declaration and call: `add(var names, user)`. Mutable receiver methods use `fn var Type.name()` but calls remain `value.name()`. Do not mutably capture a collection in its own method's callback.
 
-<!-- complete: borrow-then-change.ms -->
+Closeable closes at scope end unless moved. Declare `fn move Type.close() Void!` or implement Closeable. `x.close()` moves `x` like any `move` method: a later use or second close is a use after move, and scope end skips it. Only an owner closes: take a parameter with `move` to close it. Handle explicit close Results; scope-end failures propagate where supported or fault. Cleanup is deterministic, not GC; resource owners are not freely cloneable.
+
+## Borrow errors and their fixes
+
+A loop variable, a parameter and an element read are borrowed, so storing one needs `.clone()`; reading one needs nothing. The error `cannot move x out: it is borrowed` means write `x.clone()`, or use `x` only where it is read.
+
 ```manuscript
-type Order:
-	id: Int
-	qty: Int
+fn copy_all(items: List[String]) List[String]:
+	var out = List[String]()
+	for s in items:
+		out.append(s.clone())
+	return out
 
-type Shop:
-	orders: List[Order]
-	total: Int
-
-fn var Shop.restock() Void:
-	for o in self.orders.clone():
-		self.orders.append(Order(o.id + 100, 1))
-
-fn var Shop.add_first_again() Void:
-	first := self.orders[0].clone()
-	self.orders.append(first)
-
-fn var Shop.sum() Void:
-	for o in self.orders:
-		self.total += o.qty
-
-fn main() Void:
-	var shop = Shop([Order(1, 2)], 0)
-	shop.restock()
-	shop.add_first_again()
-	shop.sum()
-	print(shop.total)
+fn has(items: List[String], want: String) Bool:
+	for s in items:
+		if s == want: return true
+	return false
 ```
 
-## Closing
-A `fn move T.close() Void!` (or `Closeable` from `@std/core.ms`) closes at scope end on every exit, last declared first; holders (records, lists, maps, optionals) close their parts, and replacing or removing a part closes the old one. `x.close()` **consumes** `x`: a later use or second close is a use after move and scope end skips it. Call it only to handle its error (`file.close()?`). A scope-end close error becomes the function's error, or faults when there is nowhere to return it. Only an owner closes: take a `move` parameter. Resources are not `Clonable`. A factory returns an open resource by moving it. `xs.pop()` hands an element out.
+Pieces of a value are borrows too: `line.split(" ")`, `s.slice(a, b)` and `xs[i]` borrow their source, so store them with `.clone()`: `out.append(line.split(" ").clone())`. A store `m[key] = v` takes `key` after `v` ran, so `v` may read it: `counts[key] = counts.get_or(key, 0) + 1`. Do not use `key` after the store; store `key.clone()` to keep it.
 
-## Trees and linked lists
-A recursive type holds children as `Node?`. Change a child with a `fn var` method called through the field with `?.` (a no-op when absent); `m.left = insert(m.left, k)` and `if var n = slot:` fail. Walk with a borrowing function. A `T?` parameter defaults to `none`, so it comes after required ones.
+Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A list parameter changes only if declared `var xs: List[Int]` and called `add(var xs)`; otherwise copy it into a `var` local first.
+
+## Trees and linked lists change through `fn var` methods
+
+A recursive type holds its child as `Node?`. An `Optional` payload cannot be mutably borrowed with `if var n = slot:` or `var n = slot.get()`, and a field cannot move out of its owner (`m.left = insert(m.left, k)` fails). Change a child in place with a `fn var` method and call it through the field with `?.`: the call does nothing when the child is absent. Walk with a plain function that borrows (`if n := node:`).
+
+A `T?` parameter defaults to `none`, so it must come after the required parameters: write `find(key: Int, node: Node?)`, not `find(node: Node?, key: Int)`.
 
 <!-- complete: bst-insert.ms -->
 ```manuscript
@@ -102,3 +92,5 @@ fn main() Int:
 
 	return 1
 ```
+
+An empty tree is a `Node?` that is `none` (or an enum with an `Empty` case); give the owner a type with a `var root: Node?` and make its `insert` method create the first node.
