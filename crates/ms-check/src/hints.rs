@@ -647,11 +647,13 @@ impl Checker {
                 name_t = self.syms.str(name)
             );
         }
-        let hint = did_you_mean(self.syms.str(name), &self.value_names());
+        // A standard export with exactly this name is stronger evidence than a similar
+        // local spelling (`min` is not a typo for `main`).
+        let hint = import_hint(&self.session, self.syms.str(name));
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
-        let hint = import_hint(&self.session, self.syms.str(name));
+        let hint = did_you_mean(self.syms.str(name), &self.value_names());
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
@@ -1061,6 +1063,19 @@ impl Checker {
                     }
                 }
             }
+        }
+        // `import json from "@std/data/json.ms"`: the module's own name is not an export.
+        if path
+            .rsplit('/')
+            .next()
+            .map(|file| file.trim_end_matches(".ms"))
+            == Some(self.syms.str(item.name))
+            && !exports.is_empty()
+        {
+            return format!(
+                "{message}; {path} is that module, and namespace imports are unsupported, so import what it exports by name: {}",
+                list(&exports, 12)
+            );
         }
         let hint = did_you_mean(self.syms.str(item.name), &exports);
         if !hint.is_empty() {
