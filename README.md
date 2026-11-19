@@ -10,11 +10,11 @@
 
 </div>
 
-Manuscript is a statically typed, natively compiled language. Every value has one owner, so there is no garbage collector and no lifetime annotations. Agents now write much of our code, so the compiler checks types and effects too, and every diagnostic names its cause and its fix. That lets an agent correct itself, and lets a person review the result through built-in diagrams and an interactive code map.
+Manuscript is a statically typed, natively compiled language. Every value has one owner, so there is no garbage collector and no lifetime annotations. Agents now write much of our code, so the compiler checks types, ownership and effects, and every diagnostic names its cause and fix. An agent can correct itself, and a person can review the result through built-in diagrams and an interactive code map.
 
-The common footguns are gone, and the syntax is token-efficient and readable at a glance, so agents get it right. Programs run close to C speed and scale across all cores, and a simple effects system tracks what your code is allowed to do.
+The common footguns are gone, the syntax is token-efficient, and programs run close to C speed across all cores.
 
-The whole toolchain is tuned for agents. Built-in commands verify, test, fuzz, benchmark and profile. Agent benchmarks drive the evolution of the language and toolchain together, and adversarial probing of the compiler and standard library finds and fixes correctness and performance bugs.
+The toolchain is tuned for agents: built-in commands verify, test, fuzz, benchmark and profile, and agent benchmarks and adversarial probing drive the language and compiler forward.
 
 A simple HTTP server:
 
