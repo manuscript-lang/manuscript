@@ -1260,7 +1260,10 @@ impl FnLower<'_> {
     }
 
     /// The `Error` of the row of `table` that `code` names (the last row otherwise); `said` is the
-    /// text the native stored for a failure, when it has an `err` slot.
+    /// text the native stored for a failure, when it has an `err` slot. The chain of rows only picks
+    /// the row's strings (a few instructions per row); the error is built once after it, so the
+    /// function stays small however long the table is (a chain that built the error in every row was
+    /// 4,000 lines of LLVM IR, compiled again by every program that opens a file).
     pub(crate) fn status_chain(
         &mut self,
         er: ms_mir::types::TypeId,
@@ -1269,63 +1272,94 @@ impl FnLower<'_> {
         table: &[(i64, &'static str, &'static str)],
         domain: &str,
     ) -> Result<Value, Error> {
-        let (&(n, kind, words), rest) = table
-            .split_first()
-            .ok_or_else(|| Error::new("no error kind for a runtime status"))?;
-        let build = |s: &mut Self| -> Result<Value, Error> {
-            let text = if words == "-" {
-                match said {
-                    Some(said) => said,
-                    None => {
-                        let l = s.lit(&format!("{domain}: failed")).v;
-                        s.owned(Val { v: l, own: false })
-                    }
-                }
+        if table.is_empty() {
+            return Err(Error::new("no error kind for a runtime status"));
+        }
+        let kind = self.b.declare_var(MTy::STR, Mode::Move);
+        // The text when the native said nothing, or nothing worth adding.
+        let fallback = self.b.declare_var(MTy::STR, Mode::Move);
+        // What precedes the native's own text, and whether that text is the whole message (`-`).
+        let head = said.map(|_| self.b.declare_var(MTy::STR, Mode::Borrow));
+        let alone = said.map(|_| self.b.declare_var(MTy::BOOL, Mode::Borrow));
+        let join = self.b.new_block();
+        for (i, &(n, k, words)) in table.iter().enumerate() {
+            let mut next = None;
+            if i + 1 < table.len() {
+                let k = self.b.iconst(n);
+                let hit = self.b.icmp(Cc::Eq, code, k);
+                let (yes, no) = (self.b.new_block(), self.b.new_block());
+                self.b.br_if(hit, yes, &[], no, &[]);
+                self.b.seal_block(yes);
+                self.b.seal_block(no);
+                self.enter(yes);
+                next = Some(no);
+            }
+            let own_text = words == "-";
+            let text = if own_text {
+                format!("{domain}: failed")
             } else {
-                let fallback = format!("{domain}: {words}");
-                let literal = |s: &mut Self| {
-                    let l = s.lit(&fallback).v;
-                    s.owned(Val { v: l, own: false })
-                };
-                match said {
-                    // A native with an `err` slot may explain the failure (a position, a path):
-                    // its non-empty text follows the status words.
-                    Some(said) => {
+                format!("{domain}: {words}")
+            };
+            let l = self.lit(k);
+            let k = self.owned(l);
+            self.b.def_var(kind, k);
+            let l = self.lit(&text);
+            let t = self.owned(l);
+            self.b.def_var(fallback, t);
+            if let (Some(head), Some(alone)) = (head, alone) {
+                let h = self.b.str_lit(&format!("{text}: "));
+                self.b.def_var(head, h);
+                let a = self.b.bconst(own_text);
+                self.b.def_var(alone, a);
+            }
+            self.b.br(join, &[]);
+            if let Some(no) = next {
+                self.enter(no);
+            }
+        }
+        self.b.seal_block(join);
+        self.enter(join);
+        let kind = self.b.use_var(kind);
+        let fallback = self.b.use_var(fallback);
+        let text = match (said, head, alone) {
+            (Some(said), Some(head), Some(alone)) => {
+                let (head, alone) = (self.b.use_var(head), self.b.use_var(alone));
+                // A native with an `err` slot may explain the failure (a position, a path): its
+                // non-empty text follows the status words.
+                self.two_ways(
+                    alone,
+                    MTy::STR,
+                    &mut |s| {
+                        s.drop_value(fallback);
+                        Ok(Some(said))
+                    },
+                    &mut |s| {
                         let len = s.b.str_len(said);
                         let zero = s.b.iconst(0);
                         let has = s.b.icmp(Cc::Gt, len, zero);
-                        s.two_ways(
+                        let r = s.two_ways(
                             has,
                             MTy::STR,
                             &mut |s| {
-                                let head = s.b.str_lit(&format!("{fallback}: "));
                                 let both =
                                     s.call_runtime("msrt_string_concat", &[head, said], MTy::STR)?;
                                 s.drop_value(said);
+                                s.drop_value(fallback);
                                 Ok(Some(both))
                             },
                             &mut |s| {
                                 s.drop_value(said);
-                                Ok(Some(literal(s)))
+                                Ok(Some(fallback))
                             },
-                        )?
-                        .v
-                    }
-                    None => literal(s),
-                }
-            };
-            s.error_type(er, kind, text, None)
+                        )?;
+                        Ok(Some(r.v))
+                    },
+                )?
+                .v
+            }
+            _ => fallback,
         };
-        if rest.is_empty() {
-            return build(self);
-        }
-        let k = self.b.iconst(n);
-        let hit = self.b.icmp(Cc::Eq, code, k);
-        let ty = self.b.m.types.named(er);
-        let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
-            s.status_chain(er, code, said, rest, domain).map(Some)
-        })?;
-        Ok(r.v)
+        self.error_with_kind(er, kind, text, None)
     }
 
     /// An `Error` type: the owned `message`, the error code `kind` (such as `ENOENT`), and the
@@ -1337,12 +1371,23 @@ impl FnLower<'_> {
         message: Value,
         site: Option<Value>,
     ) -> Result<Value, Error> {
-        let fields = self.b.m.type_defs[er.index()].fields.clone();
         let code = self.b.str_lit(kind);
         let code = self.owned(Val {
             v: code,
             own: false,
         });
+        self.error_with_kind(er, code, message, site)
+    }
+
+    /// [`Self::error_type`] with the error code already an owned string value.
+    fn error_with_kind(
+        &mut self,
+        er: ms_mir::types::TypeId,
+        code: Value,
+        message: Value,
+        site: Option<Value>,
+    ) -> Result<Value, Error> {
+        let fields = self.b.m.type_defs[er.index()].fields.clone();
         let kind_value = self.b.opt_some(code);
         let mut details = self.map_new(fields[2].1)?;
         if let Some(site) = site {
