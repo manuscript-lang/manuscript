@@ -22,7 +22,7 @@ pub(crate) struct Args {
 
 /// A changed argument moved into a slot for a call: its position, the slot, the value's type and
 /// the variable it was taken from (refilled after the call), if any.
-pub(crate) type VarArgument = (usize, Value, MTy, Option<usize>);
+pub(crate) type VarArgument = (usize, Value, MTy, Option<usize>, bool);
 
 /// The variable whose fields a call changes, its value with those fields moved out, and per
 /// field: type, index, slot, type and whether the field was moved out (refilled afterwards).
@@ -626,7 +626,11 @@ impl<'a> FnLower<'a> {
             let a = if a.own && (!guarded || taking) {
                 self.unhold_temp(a.v);
                 let v = if self.resource_temps.contains_key(&a.v) {
-                    self.take_resource_temp(a.v).0
+                    let (v, kind) = self.take_resource_temp(a.v);
+                    if vars.contains(&i) {
+                        self.var_cover = Some(kind);
+                    }
+                    v
                 } else {
                     a.v
                 };
@@ -969,7 +973,16 @@ impl<'a> FnLower<'a> {
             .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(ty), Some(MTy::PTR))
             .expect("slot");
         self.move_into(slot, x);
-        slots_out.push((i, slot, ty, moved));
+        // A resource temporary stays registered for its close while the callee runs.
+        let covered = match self.var_cover.take() {
+            Some(kind) if a.own && self.b.m.needs_drop(ty) => {
+                let thunk = self.close_thunk(&kind, ty, true);
+                self.own_raw_value(slot, thunk.index() as u32 + 2);
+                true
+            }
+            _ => false,
+        };
+        slots_out.push((i, slot, ty, moved, covered));
         slot
     }
 
@@ -980,7 +993,10 @@ impl<'a> FnLower<'a> {
         slots_out: Vec<VarArgument>,
         place_of: impl Fn(usize) -> Option<Expr>,
     ) -> Result<(), Error> {
-        for (p, slot, ty, moved) in slots_out {
+        for (p, slot, ty, moved, covered) in slots_out {
+            if covered && !self.dead {
+                self.b.emit(Op::ScopeDisown, &[slot], Imm::None, None);
+            }
             let new = self.move_out(slot, ty);
             if let Some(uid) = moved {
                 // The value left the variable before the call; the result refills it.
@@ -1448,10 +1464,9 @@ impl<'a> FnLower<'a> {
                 }
                 let x = if x.own && self.resource_temps.contains_key(&x.v) {
                     self.unhold_temp(x.v);
-                    Val {
-                        v: self.take_resource_temp(x.v).0,
-                        own: true,
-                    }
+                    let (v, kind) = self.take_resource_temp(x.v);
+                    self.var_cover = Some(kind);
+                    Val { v, own: true }
                 } else {
                     x
                 };
