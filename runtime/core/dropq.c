@@ -59,6 +59,10 @@ void msrt_drop_leave(void) {
         msrt_free(item.block);
     }
     state.draining = false;
+    /* The worklist is empty and a thread may exit without another drop: free it so no block outlives the last one. */
+    msrt_free(state.pending);
+    state.pending = NULL;
+    state.capacity = 0;
 }
 
 void msdrop_reset(void) {

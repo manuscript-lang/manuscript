@@ -1,4 +1,4 @@
-// expect-debug: allocs=21 alloc_bytes=1054
+// expect-debug: allocs=24 alloc_bytes=1950
 // expect-release: allocs=21 alloc_bytes=1310
 // Reading list elements through `get` and cloning each; get_via_ref.ms lends them. The
 // floor for elision.

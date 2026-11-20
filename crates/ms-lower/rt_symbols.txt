@@ -453,18 +453,18 @@ msstd_bigint_subtract(handle a: *const ObjCell<Big>, handle other: *const ObjCel
 msstd_bigint_to_float(handle a: *const ObjCell<Big>) -> f64 @domain=big integer @leaf
 msstd_bigint_to_int(handle a: *const ObjCell<Big>, out: *mut i64) -> u8 @domain=big integer @leaf
 msstd_bigint_to_string_radix(handle a: *const ObjCell<Big>, radix: i64, out: *mut StrVal) @domain=big integer @leaf
-msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=network
-msstd_body_metadata(handle b: *const ObjCell<BodyH>, out: *mut MetadataWire) @domain=network
-msstd_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network
-msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network
+msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=HTTP
+msstd_body_metadata(handle b: *const ObjCell<BodyH>, out: *mut MetadataWire) @domain=HTTP
+msstd_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=HTTP
+msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=HTTP
 msstd_checksum_adler32_update(initial: i64, data: *const VecVal) -> i64
 msstd_checksum_crc32(data: *const VecVal) -> i64
 msstd_checksum_crc32_update(initial: i64, data: *const VecVal) -> i64
-msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=network
-msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network
-msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network
-msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=network
-msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @domain=network @handle
+msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=HTTP
+msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=HTTP
+msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=HTTP
+msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=HTTP
+msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @domain=HTTP @handle
 msstd_compress_compress(data: *const VecVal, format: *const StrVal, level: i64, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @domain=compression
 msstd_compress_decoder_end(handle decoder: *const ObjCell<DecoderObj>, out: *mut VecVal) -> u8 @domain=compression
 msstd_compress_decoder_new(name: *const StrVal, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<DecoderObj>) -> u8 @domain=compression
