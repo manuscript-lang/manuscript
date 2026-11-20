@@ -29,42 +29,46 @@
 
 #include <vector>
 #include <memory>
+#include <expected>
+#include <span>
+#include <string_view>
 
 #include "allocator.h"
+#include "errors.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
 struct RNode {
-  RNode();
-  RNode(const std::string_view &s, ssize_t index, ssize_t wildcard_index);
-  RNode(RNode &&) = default;
+  RNode() noexcept = default;
+  RNode(std::span<const char> s, ssize_t index, ssize_t wildcard_index);
+  RNode(RNode &&) noexcept = default;
   RNode(const RNode &) = delete;
-  RNode &operator=(RNode &&) = default;
+  RNode &operator=(RNode &&) noexcept = default;
   RNode &operator=(const RNode &) = delete;
 
   // Next RNode, sorted by s[0].
   std::vector<std::unique_ptr<RNode>> next;
   // Stores pointer to the string this node represents.  Not
   // NULL-terminated.
-  std::string_view s;
+  std::span<const char> s;
   // Index of pattern if match ends in this node.  Note that we don't
   // store duplicated pattern.
-  ssize_t index;
+  ssize_t index{-1};
   // Index of wildcard pattern if query includes this node as prefix
   // and it still has suffix to match.  Note that we don't store
   // duplicated pattern.
-  ssize_t wildcard_index;
+  ssize_t wildcard_index{-1};
 };
 
 class Router {
 public:
-  Router();
+  Router() noexcept = default;
   ~Router();
-  Router(Router &&) = default;
+  Router(Router &&) noexcept = default;
   Router(const Router &) = delete;
-  Router &operator=(Router &&) = default;
+  Router &operator=(Router &&) noexcept = default;
   Router &operator=(const Router &) = delete;
 
   // Adds route |pattern| with its |index|.  If same pattern has
@@ -72,38 +76,38 @@ public:
   // |wildcard| is true, |pattern| is considered as wildcard pattern,
   // and all paths which have the |pattern| as prefix and are strictly
   // longer than |pattern| match.  The wildcard pattern only works
-  // with match(const std::string_view&, const std::string_view&).
-  size_t add_route(const std::string_view &pattern, size_t index,
+  // with match(std::string_view, std::string_view).
+  size_t add_route(std::string_view pattern, size_t index,
                    bool wildcard = false);
-  // Returns the matched index of pattern.  -1 if there is no match.
-  ssize_t match(const std::string_view &host,
-                const std::string_view &path) const;
-  // Returns the matched index of pattern |s|.  -1 if there is no
-  // match.
-  ssize_t match(const std::string_view &s) const;
-  // Returns the matched index of pattern if a pattern is a suffix of
-  // |s|, otherwise -1.  If |*last_node| is not nullptr, it specifies
-  // the first node to start matching.  If it is nullptr, match will
-  // start from scratch.  When the match was found (the return value
-  // is not -1), |*nread| has the number of bytes matched in |s|, and
-  // |*last_node| has the last matched node.  One can continue to
-  // match the longer pattern using the returned |*last_node| to the
-  // another invocation of this function until it returns -1.
-  ssize_t match_prefix(size_t *nread, const RNode **last_node,
-                       const std::string_view &s) const;
-
-  void add_node(RNode *node, const std::string_view &pattern, ssize_t index,
-                ssize_t wildcard_index);
+  // Returns the matched index of pattern.
+  std::expected<size_t, Error> match(std::string_view host,
+                                     std::string_view path) const;
+  // Returns the matched index of pattern |s|.
+  std::expected<size_t, Error> match(std::string_view s) const;
+  // Returns the matched RNode and the unmatched part of the |s| if
+  // the matching pattern is a suffix of |s|.  If |start_node| is not
+  // nullptr, it specifies the first node to start matching.  If it is
+  // nullptr, match will start from scratch.  One can continue to
+  // match the longer pattern using the returned RNode as |start_node|
+  // to the another invocation of this function until it returns
+  // error.
+  std::expected<std::tuple<const RNode *, std::string_view>, Error>
+  match_prefix(const RNode *start_node, std::string_view s) const;
 
   void dump() const;
 
 private:
-  BlockAllocator balloc_;
+  void add_node(RNode *node, std::span<const char> pattern, ssize_t index,
+                ssize_t wildcard_index);
+  size_t add_route_internal(std::span<const char> pattern, size_t index,
+                            bool wildcard = false);
+
+  BlockAllocator balloc_{1024, 1024};
   // The root node of Patricia tree.  This is special node and its s
   // field is nulptr, and len field is 0.
-  RNode root_;
+  RNode root_{};
 };
 
 } // namespace shrpx
 
-#endif // SHRPX_ROUTER_H
+#endif // !defined(SHRPX_ROUTER_H)

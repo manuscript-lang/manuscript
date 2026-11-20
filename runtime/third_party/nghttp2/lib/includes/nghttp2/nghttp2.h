@@ -465,10 +465,10 @@ typedef enum {
   /**
    * Possible flooding by peer was detected in this HTTP/2 session.
    * Flooding is measured by how many PING and SETTINGS frames with
-   * ACK flag set are queued for transmission.  These frames are
-   * response for the peer initiated frames, and peer can cause memory
-   * exhaustion on server side to send these frames forever and does
-   * not read network.
+   * ACK flag set are queued for transmission, and the size of the
+   * outbound queue.  These frames are response for the peer initiated
+   * frames, and peer can cause memory exhaustion on server side to
+   * send these frames forever and does not read network.
    */
   NGHTTP2_ERR_FLOODED = -904,
   /**
@@ -664,12 +664,12 @@ typedef enum {
    * The ALTSVC frame, which is defined in `RFC 7383
    * <https://tools.ietf.org/html/rfc7838#section-4>`_.
    */
-  NGHTTP2_ALTSVC = 0x0a,
+  NGHTTP2_ALTSVC = 0x0A,
   /**
    * The ORIGIN frame, which is defined by `RFC 8336
    * <https://tools.ietf.org/html/rfc8336>`_.
    */
-  NGHTTP2_ORIGIN = 0x0c,
+  NGHTTP2_ORIGIN = 0x0C,
   /**
    * The PRIORITY_UPDATE frame, which is defined by :rfc:`9218`.
    */
@@ -756,7 +756,7 @@ typedef enum {
  *
  * .. warning::
  *
- *   Deprecated.  The initial max concurrent streams is 0xffffffffu.
+ *   Deprecated.  The initial max concurrent streams is 0xFFFFFFFFU.
  *
  * Default maximum number of incoming concurrent streams.  Use
  * `nghttp2_submit_settings()` with
@@ -818,19 +818,19 @@ typedef enum {
   /**
    * CONNECT_ERROR
    */
-  NGHTTP2_CONNECT_ERROR = 0x0a,
+  NGHTTP2_CONNECT_ERROR = 0x0A,
   /**
    * ENHANCE_YOUR_CALM
    */
-  NGHTTP2_ENHANCE_YOUR_CALM = 0x0b,
+  NGHTTP2_ENHANCE_YOUR_CALM = 0x0B,
   /**
    * INADEQUATE_SECURITY
    */
-  NGHTTP2_INADEQUATE_SECURITY = 0x0c,
+  NGHTTP2_INADEQUATE_SECURITY = 0x0C,
   /**
    * HTTP_1_1_REQUIRED
    */
-  NGHTTP2_HTTP_1_1_REQUIRED = 0x0d
+  NGHTTP2_HTTP_1_1_REQUIRED = 0x0D
 } nghttp2_error_code;
 
 /**
@@ -2039,18 +2039,19 @@ typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
 /**
  * @functypedef
  *
- * Callback function invoked when a invalid header name/value pair is
+ * Callback function invoked when an invalid header name/value pair is
  * received for the |frame|.
  *
  * The parameter and behaviour are similar to
  * :type:`nghttp2_on_header_callback`.  The difference is that this
- * callback is only invoked when a invalid header name/value pair is
- * received which is treated as stream error if this callback is not
- * set.  Only invalid regular header field are passed to this
- * callback.  In other words, invalid pseudo header field is not
- * passed to this callback.  Also header fields which includes upper
- * cased latter are also treated as error without passing them to this
- * callback.
+ * callback is only invoked when an invalid header name/value pair is
+ * received which is treated as stream error if this callback returns
+ * :enum:`nghttp2_error.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` and
+ * :type:`nghttp2_on_invalid_header_callback2` is not set.  Only
+ * invalid regular header field are passed to this callback.  In other
+ * words, invalid pseudo header field is not passed to this callback.
+ * Also header fields which includes upper cased latter are also
+ * treated as error without passing them to this callback.
  *
  * This callback is only considered if HTTP messaging validation is
  * turned on (which is on by default, see
@@ -2076,17 +2077,18 @@ typedef int (*nghttp2_on_invalid_header_callback)(
 /**
  * @functypedef
  *
- * Callback function invoked when a invalid header name/value pair is
+ * Callback function invoked when an invalid header name/value pair is
  * received for the |frame|.
  *
  * The parameter and behaviour are similar to
  * :type:`nghttp2_on_header_callback2`.  The difference is that this
- * callback is only invoked when a invalid header name/value pair is
- * received which is silently ignored if this callback is not set.
- * Only invalid regular header field are passed to this callback.  In
- * other words, invalid pseudo header field is not passed to this
- * callback.  Also header fields which includes upper cased latter are
- * also treated as error without passing them to this callback.
+ * callback is only invoked when an invalid header name/value pair is
+ * received which is silently ignored if neither this callback nor
+ * :type:`nghttp2_on_invalid_header_callback` is set.  Only invalid
+ * regular header field are passed to this callback.  In other words,
+ * invalid pseudo header field is not passed to this callback.  Also
+ * header fields which includes upper cased latter are also treated as
+ * error without passing them to this callback.
  *
  * This callback is only considered if HTTP messaging validation is
  * turned on (which is on by default, see
@@ -2445,6 +2447,15 @@ typedef int (*nghttp2_error_callback2)(nghttp2_session *session,
                                        int lib_error_code, const char *msg,
                                        size_t len, void *user_data);
 
+/**
+ * @functypedef
+ *
+ * Callback function invoked when unpredictable data of |destlen|
+ * bytes are needed.  The implementation must write unpredictable data
+ * of |destlen| bytes into the buffer pointed by |dest|.
+ */
+typedef void (*nghttp2_rand_callback)(uint8_t *dest, size_t destlen);
+
 struct nghttp2_session_callbacks;
 
 /**
@@ -2649,7 +2660,7 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_header_callback2(
 /**
  * @function
  *
- * Sets callback function invoked when a invalid header name/value
+ * Sets callback function invoked when an invalid header name/value
  * pair is received.  If both
  * `nghttp2_session_callbacks_set_on_invalid_header_callback()` and
  * `nghttp2_session_callbacks_set_on_invalid_header_callback2()` are
@@ -2662,7 +2673,7 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_invalid_header_callback(
 /**
  * @function
  *
- * Sets callback function invoked when a invalid header name/value
+ * Sets callback function invoked when an invalid header name/value
  * pair is received.
  */
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_invalid_header_callback2(
@@ -2832,6 +2843,18 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_error_callback(
  */
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_error_callback2(
   nghttp2_session_callbacks *cbs, nghttp2_error_callback2 error_callback2);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when unpredictable data is needed.
+ * Although this callback is optional due to the backward
+ * compatibility, it is recommended to specify it to harden the
+ * runtime behavior against suspicious activities of a remote
+ * endpoint.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_rand_callback(
+  nghttp2_session_callbacks *cbs, nghttp2_rand_callback rand_callback);
 
 /**
  * @functypedef
@@ -3217,6 +3240,38 @@ nghttp2_option_set_stream_reset_rate_limit(nghttp2_option *option,
  */
 NGHTTP2_EXTERN void nghttp2_option_set_max_continuations(nghttp2_option *option,
                                                          size_t val);
+
+/**
+ * @function
+ *
+ * This function sets the rate limit for the "glitches", the
+ * suspicious activities from a remote endpoint.  It is a token-bucket
+ * based rate limiter.  |burst| specifies the number of tokens that is
+ * initially available.  The maximum number of tokens is capped to
+ * this value.  |rate| specifies the number of tokens that are
+ * regenerated per second.  When a suspicious activity is detected,
+ * some amount of tokens are consumed.  If there is no token
+ * available, GOAWAY is sent to tear down the connection.  |burst| and
+ * |rate| default to 10000 and 330 respectively.
+ */
+NGHTTP2_EXTERN void nghttp2_option_set_glitch_rate_limit(nghttp2_option *option,
+                                                         uint64_t burst,
+                                                         uint64_t rate);
+
+/**
+ * @function
+ *
+ * This function sets the maximum number of frames allowed in the
+ * outbound queue.  The limit is checked after
+ * `nghttp2_session_mem_recv2()` and `nghttp2_session_recv()`.  The
+ * current queue size (excluding deferred DATA frames) can be obtained
+ * by `nghttp2_session_get_outbound_queue_size()`.  If it exceeds
+ * |val|, `nghttp2_session_mem_recv2()` and `nghttp2_session_recv()`
+ * return :enum:`nghttp2_error.NGHTTP2_ERR_FLOODED`.  The default
+ * value is 5000.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_max_outbound_queue_size(nghttp2_option *option, size_t val);
 
 /**
  * @function
@@ -4541,6 +4596,8 @@ NGHTTP2_EXTERN int32_t nghttp2_submit_request(
  *     reached.
  * :enum:`nghttp2_error.NGHTTP2_ERR_PROTO`
  *     The |session| is server session.
+ * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The required memory for |nva| of length |nvlen| is too large.
  *
  * .. warning::
  *
@@ -4684,7 +4741,8 @@ nghttp2_submit_response(nghttp2_session *session, int32_t stream_id,
  * :enum:`nghttp2_error.NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |stream_id| is 0.
+ *     The |stream_id| is 0; The required memory for |nva| of length
+ *     |nvlen| is too large.
  * :enum:`nghttp2_error.NGHTTP2_ERR_DATA_EXIST`
  *     DATA or HEADERS has been already submitted and not fully
  *     processed yet.  Normally, this does not happen, but when
@@ -4754,7 +4812,8 @@ nghttp2_submit_response2(nghttp2_session *session, int32_t stream_id,
  * :enum:`nghttp2_error.NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |stream_id| is 0.
+ *     The |stream_id| is 0; The required memory for |nva| of length
+ *     |nvlen| is too large.
  */
 NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
                                           int32_t stream_id,
@@ -4820,7 +4879,8 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  *     No stream ID is available because maximum stream ID was
  *     reached.
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |stream_id| is 0.
+ *     The |stream_id| is 0; The required memory for |nva| of length
+ *     |nvlen| is too large.
  * :enum:`nghttp2_error.NGHTTP2_ERR_DATA_EXIST`
  *     DATA or HEADERS has been already submitted and not fully
  *     processed yet.  This happens if stream denoted by |stream_id|
@@ -5047,8 +5107,8 @@ NGHTTP2_EXTERN int nghttp2_submit_rst_stream(nghttp2_session *session,
  * copies all the elements in the |iv|.
  *
  * While updating individual stream's local window size, if the window
- * size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
- * RST_STREAM is issued against such a stream.
+ * size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE, GOAWAY
+ * frame is submitted and the connection will be terminated.
  *
  * SETTINGS with :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK` is
  * automatically submitted by the library and application could not
@@ -5122,7 +5182,8 @@ NGHTTP2_EXTERN int nghttp2_submit_settings(nghttp2_session *session,
  *     reached.
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |stream_id| is 0; The |stream_id| does not designate stream
- *     that peer initiated.
+ *     that peer initiated; The required memory for |nva| of length
+ *     |nvlen| is too large.
  * :enum:`nghttp2_error.NGHTTP2_ERR_STREAM_CLOSED`
  *     The stream was already closed; or the |stream_id| is invalid.
  *

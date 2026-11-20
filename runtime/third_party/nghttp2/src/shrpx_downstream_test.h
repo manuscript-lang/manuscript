@@ -27,11 +27,11 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
 
-#include "munit.h"
+#include "munitxx.h"
 
 namespace shrpx {
 
@@ -47,4 +47,4 @@ munit_void_test_decl(test_downstream_find_affinity_cookie)
 
 } // namespace shrpx
 
-#endif // SHRPX_DOWNSTREAM_TEST_H
+#endif // !defined(SHRPX_DOWNSTREAM_TEST_H)

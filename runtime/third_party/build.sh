@@ -54,6 +54,8 @@ case "$triple" in
     cmake_flags="$cmake_flags -DCMAKE_OSX_ARCHITECTURES=$cmake_arch -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
     ssl_extra="" ;;
 *)
+    # Programs link no libgcc or compiler-rt, so atomics must be inline (outline atomics call __aarch64_ldadd8_* and friends).
+    case "$arch" in aarch64|arm64) export CFLAGS="${CFLAGS:-} -mno-outline-atomics" ;; esac
     case "$arch" in aarch64|arm64) ssl_target=linux-aarch64 ;; x86_64) ssl_target=linux-x86_64 ;; *) ssl_target=linux-generic64 ;; esac
     ssl_extra="" ;;
 esac
@@ -95,7 +97,7 @@ if [ ! -f "$out/lib/libz.a" ]; then
     build=$root/build/$triple/zlib
     zsrc=$vendor/zlib
     mkdir -p "$build"
-    for f in adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil; do "$cc" -O2 -fPIC -I"$zsrc" -c "$zsrc/$f.c" -o "$build/$f.o"; done
+    for f in adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil; do "$cc" -O2 -fPIC ${CFLAGS:-} -I"$zsrc" -c "$zsrc/$f.c" -o "$build/$f.o"; done
     ar rcs "$out/lib/libz.a" "$build"/*.o
     cp "$zsrc/zlib.h" "$zsrc/zconf.h" "$out/include/"
 fi
@@ -112,10 +114,10 @@ if [ ! -f "$out/lib/libcurl.a" ]; then
     # no extra libraries (psl, idn, ssh, brotli, zstd), no executable.
     build=$root/build/$triple/curl
     cmake -S "$vendor/curl" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
-        -DHTTP_ONLY=ON -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_ZLIB=ON -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF \
-        -DUSE_LIBIDN2=OFF -DCURL_DISABLE_LDAP=ON -DCURL_USE_GSSAPI=OFF -DENABLE_UNIX_SOCKETS=ON -DCURL_ENABLE_SSL=ON \
+        -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_FTP=ON -DCURL_DISABLE_GOPHER=ON -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON -DCURL_DISABLE_MQTT=ON -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_RTSP=ON -DCURL_DISABLE_SMB=ON -DCURL_DISABLE_SMTP=ON -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_TFTP=ON -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_ZLIB=ON -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF \
+        -DUSE_LIBIDN2=OFF -DCURL_USE_GSSAPI=OFF -DENABLE_UNIX_SOCKETS=ON -DCURL_ENABLE_SSL=ON \
         -DCMAKE_PREFIX_PATH="$out" -DOPENSSL_ROOT_DIR="$out" -DOPENSSL_USE_STATIC_LIBS=ON -DZLIB_ROOT="$out" \
-        -DNGHTTP2_INCLUDE_DIR="$out/include" -DNGHTTP2_LIBRARY="$out/lib/libnghttp2.a" -DCMAKE_USE_SCHANNEL=OFF >/dev/null
+        -DNGHTTP2_INCLUDE_DIR="$out/include" -DNGHTTP2_LIBRARY="$out/lib/libnghttp2.a" >/dev/null
     cmake --build "$build" -j "$jobs" >/dev/null
     cp "$build"/lib/libcurl.a "$out/lib/"
     mkdir -p "$out/include/curl"
