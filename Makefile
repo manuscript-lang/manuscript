@@ -301,7 +301,8 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" build tools/ms/views.ms -o target/c-tool/views
 	sh tools/ms/views-diff.sh target/release/ms-tooling-dev target/c-tool/views target/c-tool/views-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/review.ms -o target/c-tool/review
-	sh tools/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/report.ms -o target/c-tool/report
+	sh tools/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/report target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
 	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff

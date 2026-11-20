@@ -132,9 +132,9 @@ static void gone_round(void) {
         CHECK(ms_sys_net_connect_done(client) == MS_SYS_OK);
     }
     CHECK(ms_conn_shutdown_write(table, id, -1) == MS_NET_OK); /* the echo server reads the end and closes */
-    CHECK(ms_conn_wait_gone(table, id) == MS_NET_CLOSED);
+    CHECK(ms_conn_wait_gone(table, id, NULL) == MS_NET_CLOSED);
     CHECK(ms_conn_close_io(table, id) == MS_NET_OK);
-    CHECK(ms_conn_wait_gone(table, id) == MS_NET_CLOSED); /* a stale id */
+    CHECK(ms_conn_wait_gone(table, id, NULL) == MS_NET_CLOSED); /* a stale id */
     ms_conn_table_free(table);
     pthread_join(thread, NULL);
     ms_sys_net_close(server.listener);
