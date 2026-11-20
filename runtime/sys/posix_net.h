@@ -205,6 +205,14 @@ int ms_sys_net_read(MsSock s, void *buf, size_t n, size_t *done) {
     return r == 0 && n > 0 ? MS_SYS_EOF : MS_SYS_OK;
 }
 
+int ms_sys_net_peek(MsSock s, void *buf, size_t n, size_t *done) {
+    ssize_t r;
+    do r = recv((int)s, buf, n, MSG_PEEK); while (r < 0 && errno == EINTR);
+    if (r < 0) return again(errno) ? MS_SYS_AGAIN : MS_SYS_ERROR;
+    *done = (size_t)r;
+    return r == 0 && n > 0 ? MS_SYS_EOF : MS_SYS_OK;
+}
+
 int ms_sys_net_write(MsSock s, const void *buf, size_t n, size_t *done) {
     ssize_t r;
     do r = send((int)s, buf, n, MS_SEND_FLAGS); while (r < 0 && errno == EINTR);
