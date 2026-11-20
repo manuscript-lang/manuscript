@@ -4,10 +4,14 @@
 
 #include "../std/abi.h"
 
-uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeout, int64_t timeout, void **out, int64_t *reject, MsStr *err) {
+uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
     (void)conn; (void)head_limit; (void)has_timeout; (void)timeout; (void)out; (void)err;
-    *reject = 0;
     return STATUS_UNSUPPORTED;
+}
+
+int64_t msstd_xchg_reject_status(const void *conn) {
+    (void)conn;
+    return 0;
 }
 
 uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout, int64_t timeout, MsStr *err) {
@@ -15,9 +19,15 @@ uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout,
     return STATUS_UNSUPPORTED;
 }
 
-void msstd_xchg_head(const void *exchange, MsStr *method, MsStr *target, MsStr *protocol, void **headers) {
-    (void)exchange; (void)method; (void)target; (void)protocol;
-    *headers = NULL;
+void msstd_xchg_method(const void *exchange, MsStr *out) { (void)exchange; msrt_string_from_bytes(NULL, 0, out); }
+
+void msstd_xchg_target(const void *exchange, MsStr *out) { (void)exchange; msrt_string_from_bytes(NULL, 0, out); }
+
+void msstd_xchg_protocol(const void *exchange, MsStr *out) { (void)exchange; msrt_string_from_bytes(NULL, 0, out); }
+
+void *msstd_xchg_headers(const void *exchange) {
+    (void)exchange;
+    return NULL;
 }
 
 uint8_t msstd_xchg_read(const void *exchange, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err) {
@@ -44,6 +54,11 @@ uint8_t msstd_xchg_finish(const void *exchange, uint8_t has_timeout, int64_t tim
 uint8_t msstd_xchg_reset(const void *exchange, int64_t max, uint8_t has_timeout, int64_t timeout, MsStr *err) {
     (void)exchange; (void)max; (void)has_timeout; (void)timeout; (void)err;
     return STATUS_UNSUPPORTED;
+}
+
+void *msstd_xchg_share(const void *exchange) {
+    (void)exchange;
+    return NULL;
 }
 
 uint8_t msstd_xchg_take_conn(const void *exchange, void **out) {
