@@ -940,7 +940,9 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
     const MsTy ty = sym == MS_NONE ? MS_TY_NONE : b->c->syms.ty[sym];
-    if (!body_is_value_type(b, ty) || b->c->syms.decl[sym] != NULL) {
+    const bool primitive = body_is_value_type(b, ty) && b->c->syms.decl[sym] == NULL;
+    const bool declared = ty != MS_TY_NONE && body_is_own_nominal(b, ty) && body_is_admitted(b, ty);
+    if (!primitive && !declared) {
         return ms_body_unsupported(b);
     }
     b->facts->type_ref_ty[t->id] = ty;
@@ -1491,6 +1493,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->param_consumed = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->param_consumed, 0, nodes * sizeof *facts->param_consumed);
     facts->ret_borrowed = MS_NEW_N(arena, bool, nodes);
     memset(facts->ret_borrowed, 0, nodes * sizeof *facts->ret_borrowed);
     facts->const_use = MS_NEW_N(arena, bool, nodes);

@@ -47,5 +47,12 @@ fn from_text() String:
 	return identity("s")
 
 fn main() Int:
-	if from_records() > 0 and from_nested() > 0.0 and from_bools(false) and mixed(2) > 1.0 and from_floats() > 1.0 and from_text() == "s": return from_ints()
+	if (
+		from_records() > 0
+		and from_nested() > 0.0
+		and from_bools(false)
+		and mixed(2) > 1.0
+		and from_floats() > 1.0
+		and from_text() == "s"
+	): return from_ints()
 	return identity(0)
