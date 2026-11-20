@@ -682,6 +682,10 @@ fn build_archive(
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
     let plan = plan_c_runtime(root, triple)?;
+    if plan.has_std_source(root, "crypto.c") {
+        // `ms-native` then leaves the Rust `ms-std-crypto` out: `runtime/std/crypto*.c` define every `msstd_crypto_*`.
+        command.env("MS_C_CRYPTO", "1");
+    }
     if plan.has_reactor(root) {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
@@ -722,6 +726,12 @@ struct CRuntime {
 }
 
 impl CRuntime {
+    /// Whether `runtime/std/<name>` is part of the archive.
+    fn has_std_source(&self, root: &Path, name: &str) -> bool {
+        let wanted = root.join("runtime/std").join(name);
+        self.sources.contains(&wanted)
+    }
+
     /// Whether the libuv reactor (`runtime/io`) is part of the archive; `ms-rt` then leaves its mio poller out.
     fn has_reactor(&self, root: &Path) -> bool {
         let io = root.join("runtime/io");
@@ -879,6 +889,15 @@ fn plan_c_runtime(root: &Path, triple: Option<&str>) -> Result<CRuntime, String>
     let io = runtime.join("io");
     let reactor = std::env::var_os("MS_C_REACTOR").is_some();
     sources.retain(|s| (wired || libraries_of(s).is_empty()) && (reactor || !s.starts_with(&io)));
+    // The PCRE2 regex natives change the pattern dialect, so they join every target together (workstream W8):
+    // opt-in with `MS_C_REGEX=1` until Windows has the libraries too. Removal: delete this filter with `ms-std-regex`.
+    let regex = std::env::var_os("MS_C_REGEX").is_some();
+    sources.retain(|s| {
+        regex
+            || !s
+                .file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with("regex"))
+    });
     let mut names: Vec<&str> = sources.iter().flat_map(|s| libraries_of(s)).collect();
     names.sort_unstable();
     names.dedup();
@@ -934,7 +953,9 @@ fn add_c_runtime(
         let mut command = Command::new(&cc);
         command
             .args(["-c", "-O2", "-std=c11", "-fPIC", "-fno-stack-protector"])
-            .args(["-fno-strict-aliasing", "-Wall", "-Wextra", "-Werror"])
+            // A null check stays even where an attribute says the pointer is never null.
+            .args(["-fno-strict-aliasing", "-fno-delete-null-pointer-checks"])
+            .args(["-Wall", "-Wextra", "-Werror"])
             .arg("-I")
             .arg(runtime.join("include"))
             .arg("-I")
@@ -943,6 +964,11 @@ fn add_c_runtime(
             .arg("-o")
             .arg(&object)
             .arg(source);
+        // glibc and macOS check libc calls whose destination size is known (documentation/contributing/c-style.md).
+        // Level 2: its `__*_chk` entry points are all older than the glibc floor.
+        if !triple.is_some_and(|t| t.contains("windows") || t.contains("musl")) {
+            command.arg("-D_FORTIFY_SOURCE=2");
+        }
         // `musl-gcc` already targets musl, and llvm-mingw's clang wrapper mingw-w64 (Rust's `gnullvm` is not a
         // clang environment); a clang for another target needs it named.
         if let Some(t) = triple.filter(|t| !host && !t.contains("musl") && !t.contains("windows")) {

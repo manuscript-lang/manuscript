@@ -34,6 +34,9 @@ case "$triple" in
     aarch64*windows*) msys=${MS_MSYS2:-C:/msys64}/clangarm64 ;;
     *windows*) msys=${MS_MSYS2:-C:/msys64}/clang64 ;;
 esac
+native() { # a path in the form the target's tools take: Windows tools do not read Git Bash's /d/a/... paths
+    if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s\n' "$1"; fi
+}
 build() { MS_C_LIBS=$mode sh "$here/build.sh" ${triple:+"$triple"}; }
 archive() { case "$1" in pcre2) echo libpcre2-8.a ;; *) echo "lib$1.a" ;; esac; }
 config() { # pkg-config with a remedy when a package is missing
@@ -61,11 +64,11 @@ install)
     fi ;;
 dir) build ;;
 cflags)
-    out=$(build)
+    out=$(native "$(build)")
     if [ -n "$msys" ]; then echo "-I$out/include -idirafter $msys/include -DNGHTTP2_STATICLIB -DPCRE2_STATIC"
     elif [ "$mode" = system ]; then echo "-I$out/include $(config --cflags libuv libnghttp2 libssl libcrypto libpcre2-8 zlib)"; else echo "-I$out/include"; fi ;;
 libs)
-    out=$(build)
+    out=$(native "$(build)")
     flags=
     for name in "$@"; do
         if [ "$name" = llhttp ]; then flags="$flags $out/lib/libllhttp.a"
@@ -76,7 +79,7 @@ libs)
     case "$(uname -s)" in Linux) flags="$flags -lpthread -ldl -lm" ;; esac
     echo "${flags# }" ;;
 archives)
-    out=$(build)
+    out=$(native "$(build)")
     for name in "$@"; do
         if [ "$name" = llhttp ]; then echo "$out/lib/libllhttp.a"
         elif [ -n "$msys" ]; then file=$msys/lib/$(archive "$name"); [ -f "$file" ] || { echo "libs.sh: $file is missing; run: sh runtime/third_party/libs.sh install" >&2; exit 1; }; echo "$file"
