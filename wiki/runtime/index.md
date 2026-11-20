@@ -6,7 +6,7 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 
 - [Timed waits are a deadline with a meaning or an event, never a poll](timed-waits-are-deadlines-with-a-meaning-or-an-event.md): a repo-check guard counts sleeps and timed waits per file; done and still-polling lists with the event to use.
 - [The stealing watcher looks on a clock, by decision](the-stealing-watcher-looks-on-a-clock-by-decision.md): why kernel timers lost (numbers), what the watcher costs idle and busy, what would reopen it.
-- [The terminal keeps Rust to raw mode, text reads and writes; decoding lives in Manuscript](the-terminal-is-one-rust-core-with-per-os-backends-and-manuscript-escape-sequences.md): decoder, resize, escape sequences in `cli/terminal.ms`; the module sits in an import cycle, so no string or collections imports.
+- [The terminal's C core is libuv's uv_tty; decoding lives in Manuscript](the-terminal-is-one-rust-core-with-per-os-backends-and-manuscript-escape-sequences.md): decoder, resize, escape sequences in `cli/terminal.ms`; the module sits in an import cycle, so no string or collections imports.
 - [Image codecs are pure Manuscript and allocate only after validating the header](image-codecs-are-pure-manuscript-and-allocate-after-validating.md): `@std/image` PNG/JPEG/BMP/PPM with fuzzing; limits optional, sizes checked before allocation; pitfalls found.
 - [BigInt power estimates do not prove a result fits](bigint-power-estimates-do-not-prove-a-result-fits.md): a lower bit-length bound rejects some oversized powers, but the computed result still needs its exact size checked.
 - [Crypto runs on libcrypto, and the recorded Go oracle is the contract](crypto-runs-on-libcrypto-and-the-go-oracle-is-the-contract.md): symbols, per-module Rust/C selection, the Go-parity rules for keys and padding.
@@ -39,6 +39,7 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Cross-thread cancellation metadata must use atomic accesses](cross-thread-cancellation-metadata-must-use-atomic-accesses.md): a volatile read of `Hdr.shield` raced with the owning task's writes through `Cell<u32>`.
 - [Runtime state is reached through short-lived borrows](runtime-state-needs-short-lived-borrows-for-miri.md): a `&mut` to isolate state held across a call that fetches it again is undefined behavior under Stacked Borrows.
 - [CSV writer defaults can erase a single empty field](csv-writer-defaults-can-erase-a-single-empty-field.md): a naive CSV writer emits the same bare line ending for zero fields and one empty field, while a reader skips blank lines.
+- [A fault report is built in the raiser's frame and travels with its record](a-fault-report-is-built-in-the-raisers-frame-and-travels-with-its-record.md): `MsFaultFlight` on the raiser's stack, record carried with the message, frames point into the compiler's blob, nested faults become notes.
 - [Faults and test failures reach the CLI as a record](faults-and-test-failures-reach-the-cli-as-a-record.md): the runtime writes a structured record to `MS_FAULT_RECORD`; the CLI never parses fault text.
 - [Test helper rules](test-helper-rules.md): Test plans, fixtures, fault assertions and helpers that must not duplicate test blocks.
 - [Host API names do not establish units or write guarantees](host-api-names-do-not-establish-units-or-write-guarantees.md): host uptime and Clock…

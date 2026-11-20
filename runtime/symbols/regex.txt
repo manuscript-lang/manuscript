@@ -1,4 +1,4 @@
-# Defined in runtime/std/regex_abi.c, regex_text.c and regex_category.c.
+# Defined in runtime/std/regex_abi.c, and regex_text.c.
 msstd_regex_captures
 msstd_regex_captures_all
 msstd_regex_capture_all_spans
@@ -12,4 +12,3 @@ msstd_regex_named_capture_pairs
 msstd_regex_replace_all
 msstd_regex_replace_template
 msstd_regex_split
-msstd_unicode_in_category

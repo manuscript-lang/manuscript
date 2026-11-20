@@ -179,6 +179,11 @@ static bool needs_drop_in(const MirModule *m, MirTy ty, MirTy *seen, uint32_t *n
     }
 }
 
+bool mir_name_is(const MirModule *m, MsSym sym, const char *text) {
+    const MsStr name = ms_name(&m->names, sym);
+    return name.len == strlen(text) && memcmp(name.ptr, text, name.len) == 0;
+}
+
 bool mir_needs_drop(const MirModule *m, MirTy ty) {
     /* The recursion depth is bounded by the number of declarations. */
     uint32_t cap = m->ntype_defs + m->nalts + 1, n = 0;

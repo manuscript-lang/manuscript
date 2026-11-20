@@ -155,6 +155,39 @@ static MsTy body_name(MsBody *b, const MsExpr *e) {
     return b->facts->bindings.ty[binding];
 }
 
+/* A call of a function this module declares, by its plain name: arguments positional, one per
+ * parameter, each the parameter's type. The callee's own body is checked on its own; a callee the
+ * lowering cannot handle fails the callers there. */
+static MsTy body_call(MsBody *b, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    if (callee->kind != MS_E_NAME || ms_body_find_binding(b, callee->u.sym) != MS_NONE) {
+        return ms_body_unsupported(b);
+    }
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
+    const MsSyms *syms = &b->c->syms;
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
+        syms->decl[sym] == NULL || syms->nvars[sym] != 0 || syms->decl[sym]->kind != MS_D_FN ||
+        syms->decl[sym]->u.fn.external) {
+        return ms_body_unsupported(b);
+    }
+    const MsTy sig = syms->ty[sym];
+    const MsTyTable *tys = &b->c->tys;
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len) {
+        return ms_body_unsupported(b);
+    }
+    const MsTyParam *params = ms_ty_params(tys, sig);
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        const MsArg *arg = &e->u.call.args.ptr[i];
+        if (arg->has_name || params[i].flags != 0 || !body_is_value_type(b, params[i].ty) ||
+            ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
+            return ms_body_unsupported(b);
+        }
+    }
+    b->facts->call_callee[e->id] = sym;
+    const MsTy result = tys->result[sig];
+    return body_is_value_type(b, result) ? result : ms_body_unsupported(b);
+}
+
 static MsTy body_unary(MsBody *b, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
     const MsUnaryOp op = (MsUnaryOp)e->op;
@@ -274,8 +307,8 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA:
-    case MS_E_CALL: return ms_body_unsupported(b);
+    case MS_E_LAMBDA: return ms_body_unsupported(b);
+    case MS_E_CALL: ty = body_call(b, e); break;
     case MS_E_MATCH: ty = ms_body_match(b, e, expected); break;
     }
     if (ty == MS_TY_NONE) {
@@ -543,6 +576,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->call_callee, 0xff, nodes * sizeof *facts->call_callee);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);
