@@ -705,14 +705,14 @@ static MsTypeRef *mk_named_type(Parser *p, MsPos pos, MsSym name, MsTypeRefs arg
     return t;
 }
 
-static MsParam *mk_param(Parser *p, MsPos pos, MsSym name, MsTypeRef *ty, MsExpr *def, bool mutable_, bool moving) {
+static MsParam *mk_param(Parser *p, MsPos pos, MsSym name, MsTypeRef *ty, MsExpr *def, bool is_mutable, bool moving) {
     MsParam *m = NEW(p, MsParam);
     m->id = new_id(p);
     m->pos = pos;
     m->name = name;
     m->ty = ty;
     m->def = def;
-    m->mutable_ = mutable_;
+    m->is_mutable = is_mutable;
     m->moving = moving;
     return m;
 }
@@ -857,14 +857,14 @@ static MsTypeRef *typ_inner(Parser *p) {
             for (;;) {
                 /* `fn(var List[Int]) Void`: a parameter the function changes in place. */
                 bool moving = TAKE_MOVE(p, MS_T_Var, MS_T_Name, MS_T_Fn);
-                bool mutable_ = take(p, MS_T_Var);
-                if (moving && mutable_) {
+                bool is_mutable = take(p, MS_T_Var);
+                if (moving && is_mutable) {
                     FAIL(p, previous(p), "a parameter is either `move` (the callee takes it) or `var` (the callee changes it in place), not both");
                 }
                 MsTypeRef *ty = typ(p);
                 char nm[32];
                 snprintf(nm, sizeof nm, "_%u", count);
-                push_ptr(p, mk_param(p, ty->pos, intern(p, nm), ty, NULL, mutable_, moving));
+                push_ptr(p, mk_param(p, ty->pos, intern(p, nm), ty, NULL, is_mutable, moving));
                 count++;
                 if (!take(p, MS_T_Comma)) {
                     break;
@@ -986,8 +986,8 @@ static MsParams parameters(Parser *p, bool defaults, bool inferred) {
     size_t m = mark(p);
     for (;;) {
         bool moving = TAKE_MOVE(p, MS_T_Var, MS_T_Name);
-        bool mutable_ = take(p, MS_T_Var);
-        if (moving && mutable_) {
+        bool is_mutable = take(p, MS_T_Var);
+        if (moving && is_mutable) {
             FAIL(p, previous(p), "a parameter is either `move` (the callee takes it) or `var` (the callee changes it in place), not both");
         }
         MsToken name = need(p, MS_T_Name);
@@ -1012,7 +1012,7 @@ static MsParams parameters(Parser *p, bool defaults, bool inferred) {
         } else if (defaults && ty != NULL) {
             def = implicit_none(p, ty);
         }
-        push_ptr(p, mk_param(p, name.pos, sym(p, name), ty, def, mutable_, moving));
+        push_ptr(p, mk_param(p, name.pos, sym(p, name), ty, def, is_mutable, moving));
         if (!take(p, MS_T_Comma)) {
             break;
         }
@@ -1299,7 +1299,7 @@ static MsDecl *type_declaration(Parser *p, MsToken token) {
             if (kind(p) == MS_T_LParen) {
                 payload = parameters(p, false, false);
                 for (uint32_t i = 0; i < payload.len; i++) {
-                    if (payload.ptr[i]->mutable_) {
+                    if (payload.ptr[i]->is_mutable) {
                         FAIL(p, previous(p), "case payload fields cannot be 'var'; mutability belongs to the binding that holds the value");
                     }
                 }
@@ -1370,10 +1370,10 @@ static MsDecl *type_declaration(Parser *p, MsToken token) {
         d->u.iface.methods.len = count;
     } else if (token.kind == MS_T_Enum) {
         d = new_decl(p, token.pos, MS_D_ENUM);
-        d->u.enum_.name = name;
-        d->u.enum_.type_params = tps;
-        d->u.enum_.cases.ptr = (MsCase **)items;
-        d->u.enum_.cases.len = count;
+        d->u.enumeration.name = name;
+        d->u.enumeration.type_params = tps;
+        d->u.enumeration.cases.ptr = (MsCase **)items;
+        d->u.enumeration.cases.len = count;
     } else {
         d = new_decl(p, token.pos, MS_D_TYPE);
         d->u.type.name = name;
@@ -1526,7 +1526,7 @@ static MsDecl *declaration(Parser *p) {
         if (decl->kind == MS_D_TYPE) {
             decl->u.type.opaque = true;
         } else if (decl->kind == MS_D_ENUM) {
-            decl->u.enum_.opaque = true;
+            decl->u.enumeration.opaque = true;
         }
         return decl;
     }
@@ -1711,11 +1711,11 @@ static bool binding_ahead(const Parser *p) {
 
 /* A binding: `var pattern [: Type] = value` after `var`, or an immutable `name := value`,
  * `name: Type := value`, or `pattern := value`. */
-static MsStmt *binding(Parser *p, bool mutable_, const MsPos *group, MsPos pos) {
+static MsStmt *binding(Parser *p, bool is_mutable, const MsPos *group, MsPos pos) {
     MsPattern *pat = pattern(p);
     MsTypeRef *ty = NULL;
     bool named = pat->kind == MS_P_NAME;
-    if (mutable_) {
+    if (is_mutable) {
         if (named && take(p, MS_T_Colon)) {
             ty = typ(p);
         }
@@ -1733,7 +1733,7 @@ static MsStmt *binding(Parser *p, bool mutable_, const MsPos *group, MsPos pos) 
     MsStmt st = {0};
     st.pos = pos;
     st.kind = MS_S_BIND;
-    st.u.bind.mutable_ = mutable_;
+    st.u.bind.is_mutable = is_mutable;
     st.u.bind.pattern = pat;
     st.u.bind.ty = ty;
     st.u.bind.value = value;
@@ -1887,7 +1887,7 @@ static MsTypeRef *copy_type(Parser *p, const MsTypeRef *t) {
             m->name = q->name;
             m->ty = q->ty != NULL ? copy_type(p, q->ty) : NULL;
             m->def = q->def; /* the Rust clone keeps the same ids too */
-            m->mutable_ = q->mutable_;
+            m->is_mutable = q->is_mutable;
             m->moving = q->moving;
             c->params.ptr[i] = m;
         }
@@ -2195,7 +2195,7 @@ static MsStmt *statement(Parser *p, bool allow_value) {
     case MS_T_If: {
         p->at++;
         MsPattern *bind = NULL;
-        bool mutable_ = false;
+        bool is_mutable = false;
         MsTok k1 = (MsTok)ahead(p, 1).kind;
         if (kind(p) == MS_T_Name && text_is(p, peek(p), "let") &&
             (k1 == MS_T_Name || k1 == MS_T_Underscore || k1 == MS_T_LBracket || k1 == MS_T_LBrace)) {
@@ -2209,8 +2209,8 @@ static MsStmt *statement(Parser *p, bool allow_value) {
             fail(p, l, message);
         }
         if (kind(p) == MS_T_Var || ((kind(p) == MS_T_Name || kind(p) == MS_T_Underscore) && ahead(p, 1).kind == MS_T_ColonAssign)) {
-            mutable_ = kind(p) == MS_T_Var;
-            if (mutable_) {
+            is_mutable = kind(p) == MS_T_Var;
+            if (is_mutable) {
                 p->at++;
             }
             MsPattern *pat = pattern(p);
@@ -2221,7 +2221,7 @@ static MsStmt *statement(Parser *p, bool allow_value) {
                 FAIL(p, t, "an if binding unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if value := optional:'");
             }
             bind = pat;
-            need(p, mutable_ ? MS_T_Assign : MS_T_ColonAssign);
+            need(p, is_mutable ? MS_T_Assign : MS_T_ColonAssign);
         }
         MsExpr *cond = expression(p, 0);
         MsStmts body = suite(p);
@@ -2237,11 +2237,11 @@ static MsStmt *statement(Parser *p, bool allow_value) {
             }
         }
         st.kind = MS_S_IF;
-        st.u.if_.binding = bind;
-        st.u.if_.mutable_ = mutable_;
-        st.u.if_.cond = cond;
-        st.u.if_.body = body;
-        st.u.if_.else_body = else_body;
+        st.u.branch.binding = bind;
+        st.u.branch.is_mutable = is_mutable;
+        st.u.branch.cond = cond;
+        st.u.branch.body = body;
+        st.u.branch.else_body = else_body;
         return finish_stmt(p, &st);
     }
     case MS_T_While: {
@@ -2252,8 +2252,8 @@ static MsStmt *statement(Parser *p, bool allow_value) {
         }
         MsStmts body = suite(p);
         st.kind = MS_S_WHILE;
-        st.u.while_.cond = cond;
-        st.u.while_.body = body;
+        st.u.loop.cond = cond;
+        st.u.loop.body = body;
         return finish_stmt(p, &st);
     }
     case MS_T_For: {
@@ -2286,9 +2286,9 @@ static MsStmt *statement(Parser *p, bool allow_value) {
             body.len++;
         }
         st.kind = MS_S_FOR;
-        st.u.for_.name = name;
-        st.u.for_.iter = iter;
-        st.u.for_.body = body;
+        st.u.each.name = name;
+        st.u.each.iter = iter;
+        st.u.each.body = body;
         return finish_stmt(p, &st);
     }
     default:
@@ -3494,9 +3494,9 @@ static MsExpr *primary(Parser *p) {
                 /* `fn var exchange, next: ...`: a parameter the function changes in place;
                  * `fn move item: ...` takes ownership of it. */
                 bool moving = TAKE_MOVE(p, MS_T_Name);
-                bool mutable_ = take(p, MS_T_Var);
+                bool is_mutable = take(p, MS_T_Var);
                 MsToken name = next(p);
-                push_ptr(p, mk_param(p, name.pos, sym(p, name), NULL, NULL, mutable_, moving));
+                push_ptr(p, mk_param(p, name.pos, sym(p, name), NULL, NULL, is_mutable, moving));
                 count++;
                 if (!take(p, MS_T_Comma)) {
                     break;
@@ -3646,7 +3646,7 @@ static void module_(Parser *p, MsBuf *imports, MsBuf *decls) {
         if (exported && (d->kind == MS_D_IMPL || d->kind == MS_D_TEST)) {
             FAIL(p, export_tok, "only types, interfaces, and named functions can be exported; remove 'export' before this method, impl, test, or bench (a method is exported with its type)");
         }
-        d->export_ = exported;
+        d->is_exported = exported;
         ms_buf_put(decls, &d, sizeof d);
     }
 }

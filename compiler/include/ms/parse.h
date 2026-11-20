@@ -9,7 +9,7 @@
 
 /* Parses a whole file strictly: the first error aborts the parse, fills *diag and returns false.
  * Nodes and texts come from `arena`; names are interned in `names`. */
-bool ms_parse(MsArena *arena, MsNames *names, const char *src, size_t len, MsModule *out,
+bool ms_parse(MsArena *arena, MsNames *names, const char *src, size_t len, MsModule *module,
               MsDiag *diag);
 
 /* Parses a slice of a larger file whose first byte is at original offset base_offset on line
@@ -25,7 +25,7 @@ typedef struct MsDiagList {
 /* Editor recovery: the module of every declaration that parsed (or parsed after blanking invalid
  * statements) and the diagnostics of everything that did not. A file that parses strictly yields
  * the same module and no diagnostics. */
-void ms_parse_partial(MsArena *arena, MsNames *names, const char *src, size_t len, MsModule *out,
+void ms_parse_partial(MsArena *arena, MsNames *names, const char *src, size_t len, MsModule *module,
                       MsDiagList *diagnostics);
 
 #endif

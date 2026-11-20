@@ -12,13 +12,10 @@ typedef struct MsStmt MsStmt;
 typedef struct MsParam MsParam;
 typedef struct MsPattern MsPattern;
 
-#define MS_LIST(T, name)                                                                           \
-    typedef struct {                                                                               \
-        T **ptr;                                                                                   \
-        uint32_t len;                                                                              \
-    } name
-
-MS_LIST(MsTypeRef, MsTypeRefs);
+typedef struct {
+    MsTypeRef **ptr;
+    uint32_t len;
+} MsTypeRefs;
 
 typedef struct MsTypeParam {
     uint32_t id;
@@ -28,11 +25,26 @@ typedef struct MsTypeParam {
     MsTypeRef *def; /* default type argument, or NULL */
 } MsTypeParam;
 
-MS_LIST(MsParam, MsParams);
-MS_LIST(MsStmt, MsStmts);
-MS_LIST(MsExpr, MsExprs);
-MS_LIST(MsPattern, MsPatterns);
-MS_LIST(MsTypeParam, MsTypeParams);
+typedef struct {
+    MsParam **ptr;
+    uint32_t len;
+} MsParams;
+typedef struct {
+    MsStmt **ptr;
+    uint32_t len;
+} MsStmts;
+typedef struct {
+    MsExpr **ptr;
+    uint32_t len;
+} MsExprs;
+typedef struct {
+    MsPattern **ptr;
+    uint32_t len;
+} MsPatterns;
+typedef struct {
+    MsTypeParam **ptr;
+    uint32_t len;
+} MsTypeParams;
 
 /* ---- types ---- */
 
@@ -54,7 +66,7 @@ struct MsParam {
     MsSym name;
     MsTypeRef *ty; /* NULL only for lambda parameters with inferred types */
     MsExpr *def;   /* default value or NULL */
-    bool mutable_;
+    bool is_mutable;
     bool moving;
 };
 
@@ -196,7 +208,7 @@ struct MsStmt {
     uint8_t kind;
     union {
         struct {
-            bool mutable_;
+            bool is_mutable;
             MsPattern *pattern;
             MsTypeRef *ty;
             MsExpr *value;
@@ -214,19 +226,19 @@ struct MsStmt {
         MsExpr *expr; /* CALL; RETURN (NULL for a bare return) */
         struct {
             MsPattern *binding;
-            bool mutable_;
+            bool is_mutable;
             MsExpr *cond;
             MsStmts body, else_body;
-        } if_;
+        } branch;
         struct {
             MsExpr *cond;
             MsStmts body;
-        } while_;
+        } loop;
         struct {
             MsSym name;
             MsExpr *iter;
             MsStmts body;
-        } for_;
+        } each;
     } u;
 };
 
@@ -265,7 +277,7 @@ typedef enum MsDeclKind {
 typedef struct MsDecl {
     uint32_t id;
     MsPos pos;
-    bool export_;
+    bool is_exported;
     bool synthetic;
     uint8_t kind;
     union {
@@ -290,7 +302,7 @@ typedef struct MsDecl {
                 uint32_t len;
             } cases;
             bool opaque;
-        } enum_;
+        } enumeration;
         struct {
             MsSym name;
             MsTypeParams type_params;

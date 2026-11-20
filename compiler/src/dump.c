@@ -324,7 +324,7 @@ typedef struct {
     const char *kind;
     MsStr name;
     const char *compound;
-    bool mutable_;
+    bool is_mutable;
     bool has_group;
     MsPos group;
     const MsPattern *pattern;
@@ -343,7 +343,7 @@ static void d_stmt(D *d, const MsStmt *s) {
     switch (s->kind) {
     case MS_S_BIND:
         f.kind = "bind";
-        f.mutable_ = s->u.bind.mutable_;
+        f.is_mutable = s->u.bind.is_mutable;
         f.has_group = s->u.bind.has_group;
         f.group = s->u.bind.group;
         f.pattern = s->u.bind.pattern;
@@ -368,26 +368,26 @@ static void d_stmt(D *d, const MsStmt *s) {
     case MS_S_CONTINUE: f.kind = "continue"; break;
     case MS_S_IF:
         f.kind = "if";
-        f.mutable_ = s->u.if_.mutable_;
-        f.pattern = s->u.if_.binding;
-        f.value = s->u.if_.cond;
-        f.body = s->u.if_.body.ptr;
-        f.nbody = s->u.if_.body.len;
-        f.else_body = s->u.if_.else_body.ptr;
-        f.nelse = s->u.if_.else_body.len;
+        f.is_mutable = s->u.branch.is_mutable;
+        f.pattern = s->u.branch.binding;
+        f.value = s->u.branch.cond;
+        f.body = s->u.branch.body.ptr;
+        f.nbody = s->u.branch.body.len;
+        f.else_body = s->u.branch.else_body.ptr;
+        f.nelse = s->u.branch.else_body.len;
         break;
     case MS_S_WHILE:
         f.kind = "while";
-        f.value = s->u.while_.cond;
-        f.body = s->u.while_.body.ptr;
-        f.nbody = s->u.while_.body.len;
+        f.value = s->u.loop.cond;
+        f.body = s->u.loop.body.ptr;
+        f.nbody = s->u.loop.body.len;
         break;
     default:
         f.kind = "for";
-        f.name = ms_name(d->names, s->u.for_.name);
-        f.value = s->u.for_.iter;
-        f.body = s->u.for_.body.ptr;
-        f.nbody = s->u.for_.body.len;
+        f.name = ms_name(d->names, s->u.each.name);
+        f.value = s->u.each.iter;
+        f.body = s->u.each.body.ptr;
+        f.nbody = s->u.each.body.len;
         break;
     }
     d_w(d, "(stmt ");
@@ -398,7 +398,7 @@ static void d_stmt(D *d, const MsStmt *s) {
     d_q(d, f.name);
     d_w(d, " ");
     d_qc(d, f.compound);
-    d_w(d, f.mutable_ ? " true " : " false ");
+    d_w(d, f.is_mutable ? " true " : " false ");
     d_p(d, f.has_group ? f.group : (MsPos){0, 0, 0});
     d_w(d, " ");
     d_pattern(d, f.pattern);
@@ -436,7 +436,7 @@ typedef struct {
     MsPos pos;
     const char *kind;
     MsStr name;
-    bool export_, constant, synthetic;
+    bool is_exported, constant, synthetic;
     MsTypeParams tparams;
     MsParams fields;
     MsCase *const *cases;
@@ -456,7 +456,7 @@ static void decl_fields(D *d, const Df *f) {
     d_w(d, f->kind);
     d_w(d, " ");
     d_q(d, f->name);
-    d_w(d, f->export_ ? " true " : " false ");
+    d_w(d, f->is_exported ? " true " : " false ");
     d_w(d, f->constant ? "true " : "false ");
     d_p(d, (MsPos){0, 0, 0});
     d_w(d, f->synthetic ? " true " : " false ");
@@ -507,7 +507,7 @@ static void d_decl(D *d, const MsDecl *x, MsNames *scratch_names) {
     Df f;
     memset(&f, 0, sizeof f);
     f.pos = x->pos;
-    f.export_ = x->export_;
+    f.is_exported = x->is_exported;
     f.synthetic = x->synthetic;
     switch (x->kind) {
     case MS_D_FN:
@@ -549,10 +549,10 @@ static void d_decl(D *d, const MsDecl *x, MsNames *scratch_names) {
         break;
     case MS_D_ENUM:
         f.kind = "alternative";
-        f.name = ms_name(d->names, x->u.enum_.name);
-        f.tparams = x->u.enum_.type_params;
-        f.cases = x->u.enum_.cases.ptr;
-        f.ncases = x->u.enum_.cases.len;
+        f.name = ms_name(d->names, x->u.enumeration.name);
+        f.tparams = x->u.enumeration.type_params;
+        f.cases = x->u.enumeration.cases.ptr;
+        f.ncases = x->u.enumeration.cases.len;
         break;
     case MS_D_ALIAS:
         f.kind = "alias";
