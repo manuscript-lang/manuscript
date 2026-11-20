@@ -18,4 +18,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Status codes of fallible natives (crates/ms-rt-abi STATUS_*). */
+enum {
+    MS_STATUS_OK = 0,
+    MS_STATUS_INVALID_INPUT = 1,
+    MS_STATUS_OUT_OF_RANGE = 2,
+    MS_STATUS_LIMIT_EXCEEDED = 3
+};
+
 #endif

@@ -1114,6 +1114,18 @@ pub unsafe fn eq_map(
 // Exported operations
 // ---------------------------------------------------------------------------
 
+/// Order independent equality for the C descriptor code. Glue until `map.c` replaces this module.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msmap_eq(
+    a: *const MapVal,
+    b: *const MapVal,
+    kd: KeyDesc,
+    vd: ValDesc,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { eq_map(a, b, &*kd, opt(vd)) as u8 }
+}
+
 fn opt<'a>(p: *const TypeDesc) -> Option<&'a TypeDesc> {
     // SAFETY: descriptors are static read-only data (or null).
     unsafe { p.as_ref() }

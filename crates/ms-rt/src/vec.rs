@@ -190,14 +190,14 @@ fn relative(len: usize, index: i64) -> i64 {
 
 // ---- construction and lifetime ----
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_new"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_new(out: *mut VecVal) {
     // SAFETY: `out` is writable.
     unsafe { *out = EMPTY }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_with_capacity"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_with_capacity(d: ElemDesc, cap: i64, out: *mut VecVal) {
     // SAFETY: caller contract.
@@ -210,14 +210,14 @@ pub unsafe extern "C-unwind" fn msrt_list_with_capacity(d: ElemDesc, cap: i64, o
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_drop"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_drop(v: *mut VecVal, d: ElemDesc) {
     // SAFETY: caller contract.
     unsafe { drop_list(v, &*d) }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_copy"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_copy(v: *const VecVal, d: ElemDesc, out: *mut VecVal) {
     // SAFETY: caller contract.
@@ -230,7 +230,7 @@ pub unsafe extern "C-unwind" fn msrt_list_copy(v: *const VecVal, d: ElemDesc, ou
 ///
 /// # Safety
 /// `v` is a live list of `d`; `out` is uninitialised.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_shadow"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_shadow(v: *const VecVal, d: ElemDesc, out: *mut VecVal) {
     // SAFETY: caller contract.
@@ -255,7 +255,7 @@ pub unsafe extern "C-unwind" fn msrt_list_shadow(v: *const VecVal, d: ElemDesc, 
 ///
 /// # Safety
 /// `v` came from `msrt_list_shadow` and is not used again.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_free_raw"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_free_raw(v: *mut VecVal) {
     // SAFETY: caller contract.
@@ -266,7 +266,7 @@ pub unsafe extern "C-unwind" fn msrt_list_free_raw(v: *mut VecVal) {
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_push"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_push(v: *mut VecVal, d: ElemDesc, e: *const u8) {
     // SAFETY: caller contract.
@@ -274,7 +274,7 @@ pub unsafe extern "C-unwind" fn msrt_list_push(v: *mut VecVal, d: ElemDesc, e: *
 }
 
 /// Grows capacity for at least `extra` more elements.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_reserve"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_reserve(v: *mut VecVal, d: ElemDesc, extra: i64) {
     // SAFETY: caller contract.
@@ -285,7 +285,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reserve(v: *mut VecVal, d: ElemDesc, e
 
 /// Borrowed pointer to the element at a possibly negative index; `default` (borrowed, may be null)
 /// is returned when out of range.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_at"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_at(
     v: *const VecVal,
@@ -308,7 +308,7 @@ pub unsafe extern "C-unwind" fn msrt_list_at(
 }
 
 /// `get`: copies the element (or the default) into `out`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_get"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_get(
     v: *const VecVal,
@@ -325,7 +325,7 @@ pub unsafe extern "C-unwind" fn msrt_list_get(
 }
 
 /// `index_of`: present flag; index through `out`. `probe` is borrowed.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_index_of"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_index_of(
     v: *const VecVal,
@@ -369,7 +369,7 @@ fn find_int(items: &[i64], target: i64) -> Option<usize> {
     rest.iter().position(|&x| x == target).map(|j| base + j)
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_last_index_of"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
     v: *const VecVal,
@@ -390,7 +390,7 @@ pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_contains"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_contains(
     v: *const VecVal,
@@ -405,14 +405,14 @@ pub unsafe extern "C-unwind" fn msrt_list_contains(
 // ---- mutators ----
 
 /// Inserts `e` (consumed) at the front.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_prepend"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_prepend(v: *mut VecVal, d: ElemDesc, e: *const u8) {
     // SAFETY: caller contract.
     unsafe { msrt_list_insert(v, d, 0, e) }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_insert"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_insert(
     v: *mut VecVal,
@@ -446,7 +446,7 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(
 }
 
 /// `insert` of a lent element: the list stores its own copy, and the caller keeps `e`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_insert_copy"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
     v: *mut VecVal,
@@ -472,7 +472,7 @@ pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
 }
 
 /// Removes the last element into `out`; 0 when empty.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_pop"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
@@ -507,7 +507,7 @@ fn index_fault(operation: &str, len: usize, index: i64) -> ! {
 }
 
 /// Replaces the element at `index` with `e` (consumed); the old element is dropped.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_set"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_set(
     v: *mut VecVal,
@@ -529,7 +529,7 @@ pub unsafe extern "C-unwind" fn msrt_list_set(
 }
 
 /// Moves the element at `index` into `out` and stores `e` (consumed) in its place; nothing is copied or dropped.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_replace"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_replace(
     v: *mut VecVal,
@@ -552,7 +552,7 @@ pub unsafe extern "C-unwind" fn msrt_list_replace(
 }
 
 /// Exchanges the elements at `i` and `j` in place; nothing is copied or dropped.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_swap"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) {
     // SAFETY: caller contract.
@@ -595,7 +595,7 @@ unsafe fn swap_slots(a: *mut u8, b: *mut u8, size: usize) {
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_remove"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) {
     // SAFETY: caller contract.
@@ -617,7 +617,7 @@ pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: ElemDesc, in
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_reverse"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: ElemDesc) {
     // SAFETY: caller contract.
@@ -651,7 +651,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: ElemDesc) {
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_reversed"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_reversed(
     v: *const VecVal,
@@ -694,7 +694,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reversed(
 }
 
 /// `splice(start, delete_count, replacement)`; `replacement` is consumed (its buffer is freed).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_splice"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_splice(
     v: *mut VecVal,
@@ -750,7 +750,7 @@ fn check_slice(op: &str, len: usize, start: i64, end: i64) {
 }
 
 /// `fill(value, start, end)`; `value` is borrowed and copied into each slot.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_fill"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_fill(
     v: *mut VecVal,
@@ -771,7 +771,7 @@ pub unsafe extern "C-unwind" fn msrt_list_fill(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_copy_within"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_copy_within(
     v: *mut VecVal,
@@ -836,7 +836,7 @@ fn slice_bounds_message(start: i64, end: i64, len: usize) -> std::string::String
 }
 
 /// `slice(start, end)`: status protocol.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_slice"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_slice(
     v: *const VecVal,
@@ -868,7 +868,7 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
 /// `slice(start, end)` of a list the caller keeps unchanged while the result is used: the result
 /// borrows the elements in place (`cap == 0`, never freed or dropped), so nothing is copied.
 /// Status protocol and bounds as `msrt_list_slice`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_slice_view"), unsafe(no_mangle))]
 // ms: leaf shared_view_of=msrt_list_slice
 pub unsafe extern "C-unwind" fn msrt_list_slice_view(
     v: *const VecVal,
@@ -905,7 +905,7 @@ fn take_count(count: i64, len: usize) -> usize {
     (count.max(0) as usize).min(len)
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_take"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_take(
     v: *const VecVal,
@@ -928,7 +928,7 @@ pub unsafe extern "C-unwind" fn msrt_list_take(
 /// `chunks(size)` and `windows(size)`: lists of copies of `size` consecutive elements, starting
 /// every `step` elements. `short_last` keeps a final shorter piece (chunks); otherwise only full
 /// pieces are produced (windows). `od` describes the outer list's element (a list).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_pieces"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_pieces(
     v: *const VecVal,
@@ -977,7 +977,7 @@ pub unsafe extern "C-unwind" fn msrt_list_pieces(
 }
 
 /// `drop(count)` (named `drop_n` because `msrt_list_drop` releases a value).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_drop_n"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_drop_n(
     v: *const VecVal,
@@ -1001,7 +1001,7 @@ pub unsafe extern "C-unwind" fn msrt_list_drop_n(
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_concat"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_concat(
     a: *const VecVal,
@@ -1048,7 +1048,7 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
 ///
 /// # Safety
 /// `v` is a live list of `d`; `out` is uninitialised.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_repeat"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_repeat(
     v: *const VecVal,
@@ -1111,7 +1111,7 @@ unsafe fn extend_copy(v: &mut VecVal, d: &TypeDesc, other: &VecVal) {
 
 /// `List.extend`: appends copies of the elements of `other`, which stays unchanged. The checker
 /// rejects the receiver as the argument.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_extend"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_extend(
     v: *mut VecVal,
@@ -1124,7 +1124,7 @@ pub unsafe extern "C-unwind" fn msrt_list_extend(
 
 /// `distinct`: keeps the first of equal elements. The private result and set are released when an
 /// equality or hash callback exits (fault or cancellation) before the result is published.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_distinct"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_distinct(
     v: *const VecVal,
@@ -1171,7 +1171,7 @@ pub unsafe extern "C-unwind" fn msrt_list_distinct(
 }
 
 /// `keys()`: `[0, 1, ..., len-1]`.
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_keys"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_keys(v: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
@@ -1446,7 +1446,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted(
 
 // ---- generators ----
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_range"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_range(start: i64, end: i64, out: *mut VecVal) {
     // SAFETY: caller contract.
@@ -1472,7 +1472,7 @@ pub unsafe extern "C-unwind" fn msrt_list_range(start: i64, end: i64, out: *mut 
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_range_by"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_range_by(
     start: i64,
@@ -1526,7 +1526,7 @@ pub unsafe extern "C-unwind" fn msrt_list_range_by(
 }
 
 /// `to_set`: builds a set value from a list's elements (copies).
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_list_to_set"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_to_set(v: *const VecVal, d: ElemDesc, out: *mut MapVal) {
     // SAFETY: caller contract.
@@ -2236,7 +2236,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_hash_list"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: ElemDesc) -> i64 {
     // SAFETY: caller contract.

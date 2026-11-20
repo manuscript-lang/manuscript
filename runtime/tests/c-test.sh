@@ -9,7 +9,7 @@ mkdir -p "$out"
 flags="-std=gnu11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Iruntime/include"
 for t in runtime/tests/core_*.c; do
     name=$(basename "$t" .c)
-    cc $flags -DMS_ALLOC_STATS -Iruntime/core "$t" runtime/core/*.c runtime/sys/*.c runtime/tests/support/*.c \
+    cc $flags -DMS_ALLOC_STATS -Iruntime/core -Iruntime/tests/support "$t" runtime/core/*.c runtime/sys/*.c runtime/tests/support/*.c \
         -lm -lpthread -o "$out/$name"
     "$out/$name"
 done
