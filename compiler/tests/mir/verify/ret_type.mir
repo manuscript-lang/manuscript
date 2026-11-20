@@ -1,0 +1,7 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: bool = bconst true
+  ret %a
+}

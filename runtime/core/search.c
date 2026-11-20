@@ -309,9 +309,9 @@ size_t ms_count(const uint8_t *hay, size_t n, const uint8_t *needle, size_t m) {
     if (m == 0) {
         return 0;
     }
-    const MsNeedle prepared = ms_needle_for(ms_bytes(needle, m), n);
+    const MsNeedle prepared = ms_needle_for(ms_bytes_of(needle, m), n);
     while (n - pos >= m) {
-        size_t i = ms_needle_find(&prepared, ms_bytes(hay + pos, n - pos));
+        size_t i = ms_needle_find(&prepared, ms_bytes_of(hay + pos, n - pos));
         if (i == SIZE_MAX) {
             break;
         }

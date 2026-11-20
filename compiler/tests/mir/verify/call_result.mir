@@ -1,0 +1,13 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: int = iconst 1
+  %r: bool = call @g (%a)
+  %z: int = iconst 0
+  ret %z
+}
+fn @g(%x: int) -> int {
+b0:
+  ret %x
+}

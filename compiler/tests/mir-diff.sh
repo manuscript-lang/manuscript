@@ -40,14 +40,24 @@ mkdir -p "$out/fuzz"
 : > "$out/fuzz.txt"
 for f in "$out"/fuzz/*.mir; do
     rc=0
-    timeout 3 "$oracle" print "$f" > /dev/null 2>&1 || rc=$?
-    if [ "$rc" != 124 ]; then echo "$f" >> "$out/fuzz.txt"; fi
+    timeout 3 "$oracle" verify "$f" > "$out/one.txt" 2>&1 || rc=$?
+    if [ "$rc" != 124 ] && ! grep -q '^oracle-panic' "$out/one.txt"; then echo "$f" >> "$out/fuzz.txt"; fi
 done
 
 for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" print > "$out/print-$set.rust"
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" print > "$out/print-$set.c"
     check "print $set ($(grep -c '^===' "$out/print-$set.rust") files)" "$out/print-$set.rust" "$out/print-$set.c"
+done
+for set in files fuzz; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" analysis > "$out/analysis-$set.rust"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" analysis > "$out/analysis-$set.c"
+    check "analysis $set" "$out/analysis-$set.rust" "$out/analysis-$set.c"
+done
+for set in files fuzz; do
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" verify > "$out/verify-$set.rust"
+    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" verify > "$out/verify-$set.c"
+    check "verify $set" "$out/verify-$set.rust" "$out/verify-$set.c"
 done
 for set in files fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" boxing > "$out/boxing-$set.rust"
@@ -76,4 +86,16 @@ for set in files run-fuzz; do
     tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" run > "$out/run-$set.c"
     check "run $set" "$out/run-$set.rust" "$out/run-$set.c"
 done
+# The optimisation passes: both implementations run one pass on the same verified module.
+# MS_MIR_CORPUS names a folder of unoptimised modules (`ms emit` of the conformance fixtures) that
+# is checked as well.
+cp "$out/files.txt" "$out/opt-files.txt"
+if [ -n "${MS_MIR_CORPUS:-}" ]; then find "$MS_MIR_CORPUS" -name '*.mir' | sort >> "$out/opt-files.txt"; fi
+tr '\n' '\0' < "$out/opt-files.txt" | xargs -0 "$oracle" verified | tr '\n' '\0' > "$out/verified.0"
+for pass in bytetake strfuse loopslot optparam ifconv reserve; do
+    xargs -0 "$oracle" opt $pass < "$out/verified.0" > "$out/opt-$pass.rust"
+    xargs -0 "$out/dump" opt $pass < "$out/verified.0" > "$out/opt-$pass.c"
+    check "opt $pass ($(grep -c '^changed true' "$out/opt-$pass.rust") of $(grep -c '^===' "$out/opt-$pass.rust") changed)" "$out/opt-$pass.rust" "$out/opt-$pass.c"
+done
 exit $status
+

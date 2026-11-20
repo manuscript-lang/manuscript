@@ -1,0 +1,10 @@
+module "t"
+alt Res { ok(v: int), err(s: str) }
+fn @main() -> int {
+b0:
+  %a: int = iconst 1
+  %r: Res = alt.new Res.ok %a
+  %v: bool = alt.get Res.ok.v %r
+  %z: int = iconst 0
+  ret %z
+}

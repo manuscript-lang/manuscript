@@ -96,4 +96,17 @@ static inline const MsTyParam *ms_ty_params(const MsTyTable *t, MsTy ty) {
  * deep and wide in total, then `…`, as the Rust checker's display does. */
 void ms_ty_show(MsBuf *out, const MsNames *names, const MsTyTable *t, MsTy ty);
 
+/* Type variables bound to types: `vars[i]` is replaced by `args[i]`. A variable is matched by id,
+ * as the Rust checker's substitution does. */
+typedef struct MsTySubst {
+    const MsTy *vars;
+    const MsTy *args;
+    uint32_t count;
+} MsTySubst;
+
+/* `ty` with every bound variable replaced, through arguments, parameters and results; `ty` itself
+ * when nothing changes. New types are interned in `t`; `scratch` holds the temporary lists. The
+ * recursion is as deep as the type, which the checker keeps within MS_MAX_NESTING. */
+MsTy ms_ty_subst(MsTyTable *t, MsArena *scratch, MsTy ty, const MsTySubst *subst);
+
 #endif
