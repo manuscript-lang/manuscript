@@ -1,0 +1,27 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %big: int = iconst 300
+  %a: opt<uint8> = inarrow.opt %big
+  %fa: bool = opt.is_some %a
+  %small: int = iconst 200
+  %b: opt<uint8> = inarrow.opt %small
+  %fb: bool = opt.is_some %b
+  %f: float = fconst 1e30
+  %c: opt<int> = f2i.opt %f
+  %fc: bool = opt.is_some %c
+  %g: float = fconst 42.0
+  %d: opt<int> = f2i.opt %g
+  %fd: bool = opt.is_some %d
+  %ia: int = b2i %fa
+  %ib: int = b2i %fb
+  %ic: int = b2i %fc
+  %id: int = b2i %fd
+  %t: int = imul %ib, %ib
+  %u: int = iadd %t, %ia
+  %v: int = iadd %u, %ic
+  %w: int = iadd %v, %id
+  ret %w
+}

@@ -15,22 +15,42 @@ typedef struct LoCx {
     const MirGlue *glue;
     MirLayouts layouts;
     uint32_t string_clone, string_free; /* extern ids, MIR_NONE until first used */
+    uint32_t obj_clone, obj_drop;
 } LoCx;
 
-typedef enum LoKind { LO_PLAIN, LO_STR, LO_GLUE } LoKind;
+typedef enum LoKind { LO_PLAIN, LO_STR, LO_OBJ, LO_GLUE } LoKind;
+
+/* A value that is one pointer to a runtime object: a function (closure), an object other than a
+ * map or set, or an optional of one that is null when absent. */
+static bool lo_is_obj_like(LoCx *c, MirTy ty) {
+    const MirTyData *data = mir_ty_data(c->m, ty);
+    switch ((MirTyKind)data->kind) {
+    case MK_FN:
+        return true;
+    case MK_OBJ:
+        return !mir_name_is(c->m, data->name, "Map") && !mir_name_is(c->m, data->name, "Set");
+    case MK_OPT:
+        return mir_opt_is_nullable(&c->layouts, data->elem) && !mir_opt_is_boxed(c->m, data->elem);
+    default:
+        return false;
+    }
+}
 
 static LoKind lo_kind(LoCx *c, MirTy ty) {
     if (!mir_needs_drop(c->m, ty)) {
         return LO_PLAIN;
     }
-    return mir_is_str_like(&c->layouts, ty) ? LO_STR : LO_GLUE;
+    if (mir_is_str_like(&c->layouts, ty)) {
+        return LO_STR;
+    }
+    return lo_is_obj_like(c, ty) ? LO_OBJ : LO_GLUE;
 }
 
-static uint32_t lo_extern(LoCx *c, const char *name, MirTy ret) {
+static uint32_t lo_extern(LoCx *c, const char *name, MirTy param, MirTy ret) {
     MirExtern def = {.name = mir_name(c->m, name, strlen(name)), .nparams = 1, .ret = ret,
                      .fresh = ret != MIR_VOID, .leaf = true, .role = MR_NONE};
     def.params = MS_NEW_N(&c->m->arena, MirParam, 1);
-    def.params[0] = (MirParam){MIR_STR, MM_BORROW};
+    def.params[0] = (MirParam){param, MM_BORROW};
     return mir_add_extern(c->m, &def);
 }
 
@@ -92,9 +112,16 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         }
         if (kind == LO_STR) {
             if (c->string_clone == MIR_NONE) {
-                c->string_clone = lo_extern(c, "msrt_string_clone", MIR_STR);
+                c->string_clone = lo_extern(c, "msrt_string_clone", MIR_STR, MIR_STR);
             }
             lo_to_call_rt(inst, c->string_clone);
+            return false;
+        }
+        if (kind == LO_OBJ) {
+            if (c->obj_clone == MIR_NONE) {
+                c->obj_clone = lo_extern(c, "msrt_obj_clone", MIR_PTR, MIR_PTR);
+            }
+            lo_to_call_rt(inst, c->obj_clone);
             return false;
         }
         const uint32_t glue = mir_glue_find(c->glue, MG_CLONE, ty, 0, 0);
@@ -111,9 +138,16 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         }
         if (kind == LO_STR) {
             if (c->string_free == MIR_NONE) {
-                c->string_free = lo_extern(c, "msrt_string_free", MIR_VOID);
+                c->string_free = lo_extern(c, "msrt_string_free", MIR_STR, MIR_VOID);
             }
             lo_to_call_rt(inst, c->string_free);
+            return false;
+        }
+        if (kind == LO_OBJ) {
+            if (c->obj_drop == MIR_NONE) {
+                c->obj_drop = lo_extern(c, "msrt_obj_drop", MIR_PTR, MIR_VOID);
+            }
+            lo_to_call_rt(inst, c->obj_drop);
             return false;
         }
         const uint32_t glue = mir_glue_find(c->glue, MG_DROP, ty, 0, 0);
@@ -141,7 +175,8 @@ static void lo_function(LoCx *c, MirFunc *f) {
 }
 
 void mir_lower_ops(MirModule *m, const MirGlue *glue) {
-    LoCx c = {.m = m, .glue = glue, .string_clone = MIR_NONE, .string_free = MIR_NONE};
+    LoCx c = {.m = m, .glue = glue, .string_clone = MIR_NONE, .string_free = MIR_NONE,
+            .obj_clone = MIR_NONE, .obj_drop = MIR_NONE};
     mir_layouts_init(&c.layouts, m);
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         lo_function(&c, &m->funcs[i]);

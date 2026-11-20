@@ -12,14 +12,14 @@ import (
 INVENTORY := "documentation/contributing/dependency-licenses.json"
 NOTICE_ROOTS := ["website/themes/hugo-book", "skills"]
 // The licenses of the C libraries folded into the runtime archives.
-// `runtime/third_party/c-libs.lock` pins the versions of all but llhttp, which is
-// vendored. Programs carry their members, so their notices belong in the inventory.
-// Rows are `name license`.
+// `runtime/third_party/c-libs.lock` pins the versions of all but llhttp and yyjson,
+// which are vendored. Programs carry their members, so their notices belong in the
+// inventory. Rows are `name license`.
 C_LIBRARIES := [
 	"libuv MIT", "llhttp MIT", "nghttp2 MIT", "openssl Apache-2.0",
-	"pcre2 BSD-3-Clause", "zlib Zlib"
+	"pcre2 BSD-3-Clause", "yyjson MIT", "zlib Zlib"
 ]
-VENDORED_VERSIONS := ["llhttp 9.2.1"]
+VENDORED_VERSIONS := ["llhttp 9.2.1", "yyjson 0.10.0"]
 
 // `name\tversion\tlicense` rows of the C libraries, versions from the lock file; an error text
 // when one is missing.

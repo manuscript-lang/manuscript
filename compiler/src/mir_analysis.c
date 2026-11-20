@@ -544,3 +544,21 @@ void mir_func_compact_blocks(MirFunc *f) {
     f->nblocks = count;
     ms_arena_free(&arena);
 }
+
+void mir_narrow_range(const MirModule *m, MirTy from, MirTy to, int64_t *lo, int64_t *hi) {
+    *lo = INT64_MIN;
+    *hi = INT64_MAX;
+    switch ((MirTyKind)mir_ty_data(m, to)->kind) {
+    case MK_INT8: *lo = INT8_MIN; *hi = INT8_MAX; break;
+    case MK_INT16: *lo = INT16_MIN; *hi = INT16_MAX; break;
+    case MK_INT32: *lo = INT32_MIN; *hi = INT32_MAX; break;
+    case MK_UINT8: *lo = 0; *hi = UINT8_MAX; break;
+    case MK_UINT16: *lo = 0; *hi = UINT16_MAX; break;
+    case MK_UINT32: *lo = 0; *hi = UINT32_MAX; break;
+    case MK_UINT64: *lo = 0; break;
+    default: break;
+    }
+    if (mir_ty_data(m, from)->kind == MK_UINT64 && *lo < 0) {
+        *lo = 0;
+    }
+}
