@@ -50,29 +50,6 @@ MsStr ms_module_stem(MsStr file) {
 
 /* ---- declaration helpers ---- */
 
-static MsSym decl_name(const MsDecl *d) {
-    switch (d->kind) {
-    case MS_D_FN: return d->u.fn.name;
-    case MS_D_CONST: return d->u.konst.name;
-    case MS_D_TYPE: return d->u.type.name;
-    case MS_D_ENUM: return d->u.enumeration.name;
-    case MS_D_ALIAS: return d->u.alias.name;
-    case MS_D_INTERFACE: return d->u.iface.name;
-    default: return 0;
-    }
-}
-
-static uint32_t decl_nvars(const MsDecl *d) {
-    switch (d->kind) {
-    case MS_D_FN: return d->u.fn.type_params.len;
-    case MS_D_TYPE: return d->u.type.type_params.len;
-    case MS_D_ENUM: return d->u.enumeration.type_params.len;
-    case MS_D_ALIAS: return d->u.alias.type_params.len;
-    case MS_D_INTERFACE: return d->u.iface.type_params.len;
-    default: return 0;
-    }
-}
-
 static const MsTypeParams *decl_type_params(const MsDecl *d) {
     switch (d->kind) {
     case MS_D_FN: return &d->u.fn.type_params;
@@ -317,7 +294,7 @@ static void register_source_stubs(Loader *l, MsModId m, const MsModule *mod) {
         if (!nominal || !d->is_exported || (d->kind == MS_D_TYPE && d->u.type.external)) {
             continue;
         }
-        MsSym name = decl_name(d);
+        MsSym name = ms_decl_name(d);
         MsStr nm = ms_name(c->names, name);
         MsSym id = intern_fmt(l, "standard_%.*s_symbol_%.*s", (int)stem.len, stem.ptr, (int)nm.len, nm.ptr);
         const MsSymSpec spec = {.name = name,
@@ -326,7 +303,7 @@ static void register_source_stubs(Loader *l, MsModId m, const MsModule *mod) {
                                 .native = MS_NATIVE_SOURCE,
                                 .is_exported = true,
                                 .decl = d,
-                                .nvars = decl_nvars(d)};
+                                .nvars = ms_decl_nvars(d)};
         MsSymId s = ms_sym_add(c, m, &spec);
         if (s == MS_NONE) {
             continue;
@@ -397,10 +374,10 @@ static bool native_nominal_kind(const MsDecl *d, MsStr name, MsKind *kind) {
 /* A native function is `module/name`; a native type is `@std/Name`. */
 static MsSym native_binding(Loader *l, const MsDecl *d, MsStr stem, MsSym *id) {
     const MsCheck *c = l->c;
-    const MsStr name = ms_name(c->names, decl_name(d));
+    const MsStr name = ms_name(c->names, ms_decl_name(d));
     if (d->kind != MS_D_FN) {
         *id = intern_fmt(l, "@std/%.*s", (int)name.len, name.ptr);
-        return decl_name(d);
+        return ms_decl_name(d);
     }
     const MsSym binding = intern_fmt(l, "%.*s/%.*s", (int)stem.len, stem.ptr, (int)name.len, name.ptr);
     const MsStr text = ms_name(c->names, binding);
@@ -411,7 +388,7 @@ static MsSym native_binding(Loader *l, const MsDecl *d, MsStr stem, MsSym *id) {
 static bool register_native_decl(Loader *l, MsModId m, MsStr stem, const MsDecl *d) {
     MsCheck *c = l->c;
     const MsStr file = ms_name(c->names, c->mods[m].path);
-    const MsSym name = decl_name(d);
+    const MsSym name = ms_decl_name(d);
     const MsStr name_text = ms_name(c->names, name);
     MsSym id = 0;
     const MsSym native_name = native_binding(l, d, stem, &id);
@@ -422,7 +399,7 @@ static bool register_native_decl(Loader *l, MsModId m, MsStr stem, const MsDecl 
                             .native_name = native_name,
                             .is_exported = d->is_exported,
                             .decl = d,
-                            .nvars = decl_nvars(d)};
+                            .nvars = ms_decl_nvars(d)};
     const MsSymId sym = ms_sym_add(c, m, &spec);
     if (sym == MS_NONE) {
         return fail_at(l, "duplicate standard declaration", file, d->pos);

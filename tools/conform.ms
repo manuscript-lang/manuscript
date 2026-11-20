@@ -3,28 +3,18 @@
 // present. CONFORM_SHARD=i/n splits the run. CONFORM_FAST=1 builds every program with
 // Cranelift (the Debug backend, about 3x faster than LLVM) and still runs all four
 // phases: the quick local loop. CONFORM_LEAKS=1 also checks for leaked heap blocks.
-// Arguments after `--` go to `ms-conform run`. Usage: ms run tools/conform.ms [-- extra
-// ms-conform run arguments]
+// Arguments after `--` go to `conform-run.ms run`. Usage: ms run tools/conform.ms [--
+// extra conform-run.ms run arguments]
 import (
 	arguments from "@std/os/env.ms",
 	access, create_directory, read_file, write_file from "@std/os/fs.ms",
+	process_info from "@std/os/process.ms",
 
 	env, exe, host, run_program, use_stats_runtime from "./lib.ms",
 )
 
 fn main() Int:
 	var code = run_program("cargo", ["xtask", "runtime"])
-	if code != 0: return code
-
-	// Only the runner is built here: this tool runs on `target/debug/ms`, and Windows
-	// cannot replace an executable that is running (`make conform` and CI build
-	// `ms-cli` before they start the tool).
-	code = run_program(
-		"cargo",
-		[
-			"build", "--locked", "-q", "-p", "ms-conform", "--target-dir", "target"
-		],
-	)
 	if code != 0: return code
 
 	// CONFORM_LEAKS=1 links programs against the runtime that counts live heap blocks,
@@ -49,7 +39,8 @@ fn main() Int:
 		text += read_file(host_list).wait().get().decode_utf8().get_or("")
 	write_file(allow, text, replace: true).wait().get()
 
-	conform := f"target/debug/ms-conform{exe()}"
+	// The runner is a Manuscript program, started by the `ms` that started this tool.
+	runner := process_info().get().executable.clone()
 
 	// The quick loop tests the release-profile compiler `make build` just produced,
 	// which also checks faster than the debug one; nothing rebuilds it while the tool
@@ -63,7 +54,10 @@ fn main() Int:
 	skip_frontend := env("CONFORM_BACKEND_ONLY", "") != ""
 
 	if not skip_frontend:
-		code = run_program(conform, ["lint"])
+		code = run_program(
+			runner.clone(),
+			["run", "tools/conform-run.ms", "--", "lint"],
+		)
 		if code != 0: return code
 
 	extra := arguments()
@@ -80,6 +74,9 @@ fn main() Int:
 	phases := if backend_only: "run,test" else: "run,check,test"
 	main_run := [
 		"run",
+		"tools/conform-run.ms",
+		"--",
+		"run",
 		"--ms",
 		ms.clone(),
 		"--phase",
@@ -95,12 +92,15 @@ fn main() Int:
 		"--markdown",
 		".artifacts/conform.md",
 	]
-	code = run_program(conform, main_run.concat(extra.clone()))
+	code = run_program(runner.clone(), main_run.concat(extra.clone()))
 	if code != 0 or backend_only: return code
 
 	// Parsing and formatting do not depend on aliasing, so the parse phase replays
 	// every fixture.
 	parse_run := [
+		"run",
+		"tools/conform-run.ms",
+		"--",
 		"run",
 		"--ms",
 		ms.clone(),
@@ -115,4 +115,4 @@ fn main() Int:
 		"--markdown",
 		".artifacts/conform-parse.md",
 	]
-	return run_program(conform, parse_run.concat(extra))
+	return run_program(runner, parse_run.concat(extra))

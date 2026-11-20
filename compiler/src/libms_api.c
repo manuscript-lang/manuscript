@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/dump.h"
 #include "ms/libms.h"
 #include "ms/parse.h"
 
@@ -138,4 +139,30 @@ MsStatus ms_load_file(MsCompiler *c, const char *path, MsSource *out, MsDiag *di
     free(data);
     const char *kept_path = ms_arena_strndup(&c->arena, path, strlen(path));
     return ms_load_text(c, kept_path, text, length, out, diag);
+}
+
+char *ms_syntax_dump_text(const char *path, const char *text, size_t len, size_t *out_len) {
+    MsCompiler c;
+    ms_compiler_init(&c);
+    MsSource src;
+    MsDiag diag;
+    MsBuf buf = {0};
+    MsStatus st = ms_load_text(&c, path, text, len, &src, &diag);
+    char *result = NULL;
+    if (st == MS_ERR_SYNTAX) {
+        ms_dump_diag(&buf, &diag);
+    } else if (st == MS_OK) {
+        ms_dump_module(&buf, &c.names, &src.module);
+    }
+    if (st != MS_ERR_UTF8) {
+        result = malloc(buf.len + 1);
+        if (buf.len > 0) {
+            memcpy(result, buf.data, buf.len);
+        }
+        result[buf.len] = '\0';
+        *out_len = buf.len;
+    }
+    ms_buf_free(&buf);
+    ms_compiler_free(&c);
+    return result;
 }

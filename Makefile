@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -39,9 +39,19 @@ check: runtime
 fmt:
 	cargo fmt --all
 
-# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, Rust unsafe allow-list.
-repo-check:
-	cargo run --release --locked -q -p ms-repo-check
+# The libms entry points that Manuscript tools call with `extern fn` (compiler/tools/tool_shim.c).
+libms-tools: target/libms_tools.a
+
+target/libms_tools.a: compiler/src/*.c compiler/include/ms/*.h compiler/tools/tool_shim.c compiler/tools/tool_shim.h
+	mkdir -p target
+	$(CC) -O2 -c compiler/src/libms.c -Icompiler/include -Icompiler/src -Iruntime/include -o target/libms.o
+	$(CC) -O2 -c compiler/tools/tool_shim.c -Icrates/ms-rt-abi/include -o target/tool_shim.o
+	ar rcs $@ target/libms.o target/tool_shim.o
+
+# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, portability and
+# the other rules in tools/repo-check/, written in Manuscript over libms.
+repo-check: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a
 
 workflow-check:
 	node --test tests/workflows/*.test.cjs
@@ -75,8 +85,7 @@ llvm-report: build
 # Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
 # (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
 drift-check: build
-	cargo build --release --locked -q -p ms-conform
-	target/release/ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
+	$(MS) run tools/conform-run.ms -- diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
 
 # The corpus under both backends with every dead statement stack slot filled with a pattern (MS_POISON_SLOTS=1), so a
 # pointer that outlives its slot fails in every build, not only where the backend happens to reuse the slot.
@@ -139,11 +148,11 @@ ms-cli-check: build
 	$(MS) run tools/ms-cli-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
-licenses:
-	cargo run --release --locked -q -p ms-repo-check -- licenses
+licenses: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a -- licenses
 
-licenses-check:
-	cargo run --release --locked -q -p ms-repo-check -- licenses -check
+licenses-check: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a -- licenses -check
 
 # The book and API reference come from the Rust docgen (crates/ms-tooling).
 docs:
@@ -218,6 +227,8 @@ c-compiler-test:
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
+	sh compiler/tests/fixes-diff.sh
+	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
 	sh compiler/tests/qbe-run.sh
 
