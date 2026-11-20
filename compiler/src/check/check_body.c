@@ -704,18 +704,20 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
 /* `local.field` where the local holds a record this module declares and the field is a Copy
  * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
  * is not checked yet. */
-static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver);
+typedef enum { MEMBER_READ, MEMBER_RECEIVER, MEMBER_STORE } MemberUse;
 
-static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, false); }
+static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use);
+
+static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, MEMBER_READ); }
 
 /* A field is read as the receiver of another member when it is a record this module declares:
  * only the path matters, nothing is borrowed or moved out of the holder. */
-static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
+static MsTy body_member_of(MsBody *b, const MsExpr *e, MemberUse use) {
     const MsExpr *receiver = e->u.member.left;
     if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
         return ms_body_unsupported(b);
     }
-    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, true))
+    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, MEMBER_RECEIVER))
                                                       : ms_body_expr(b, receiver, MS_TY_NONE);
     if (record == MS_TY_NONE) {
         return MS_TY_NONE;
@@ -730,8 +732,8 @@ static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
             continue;
         }
         const MsTy field = def->fields[i].ty;
-        const bool path = as_receiver && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
-        if (!path && (!body_is_value_type(b, field) || field == b->string_ty)) {
+        const bool path = use == MEMBER_RECEIVER && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
+        if (!path && use != MEMBER_STORE && (!body_is_value_type(b, field) || field == b->string_ty)) {
             break; /* reading a String field borrows or moves it out of its holder */
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
@@ -1030,7 +1032,7 @@ static void body_assign_field(MsBody *b, const MsStmt *s) {
         (void)ms_body_unsupported(b);
         return;
     }
-    const MsTy field = ms_body_record(b, target->id, body_member(b, target));
+    const MsTy field = ms_body_record(b, target->id, body_member_of(b, target, MEMBER_STORE));
     if (field == MS_TY_NONE || ms_body_expr(b, s->u.assign.value, field) == MS_TY_NONE) {
         (void)ms_body_unsupported(b);
         return;
