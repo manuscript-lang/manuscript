@@ -408,7 +408,8 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
             mir_b_def_var(&lb->b, lb->var_of[bindings[i]], lb_load(lb, slots[i], ty));
         }
     }
-    return (LbVal){result, mir_b_ty(&lb->b, result) == MIR_STR}; // a String result is the caller's
+    const bool borrowed = lb->m->funcs[func].ret_borrowed; // a reference into the arguments
+    return (LbVal){result, mir_b_ty(&lb->b, result) == MIR_STR && !borrowed}; // else a String result is the caller's
 }
 
 static LbVal lb_expr(Lb *lb, const MsExpr *e) {
@@ -594,7 +595,7 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
         lscope_disown(&lb->scopes, v);
         return (LbVal){v, true};
     }
-    lb->ok = false; // a result borrowed from a parameter is `ret_borrowed`, a fact from the ownership walk
+    lb->ok = false; // an owned result that is no local: a copy the pass does not make yet
     return (LbVal){v, true};
 }
 
@@ -607,7 +608,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     if (!lb->ok) {
         return;
     }
-    if (mir_b_ty(&lb->b, value.v) == MIR_STR && !value.owned) {
+    if (mir_b_ty(&lb->b, value.v) == MIR_STR && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
     lscope_exit_to(&lb->scopes, 0);
@@ -867,6 +868,7 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     const MsStr name = ms_name(lb->c->names, fn->name);
     mir_b_init(&lb->b, lb->m, mir_name(lb->m, name.ptr, name.len), params, fn->params.len, ret);
     lb->b.f.loc = lb_loc(lb, d->pos);
+    lb->b.f.ret_borrowed = lb->facts->ret_borrowed[d->id]; // every result is a reference into the arguments
     lb_mark_noalias(lb, fn);
     MirValue *values = MS_NEW_N(&lb->m->arena, MirValue, fn->params.len + 1);
     mir_b_params(&lb->b, values, fn->params.len);
@@ -954,6 +956,7 @@ static uint32_t lb_add_stub(Lb *lb, const MsDecl *d, MsSymId sym) {
     const MsStr name = ms_name(lb->c->names, fn->name);
     MirFunc stub = {0};
     mir_func_init(lb->m, &stub, mir_name(lb->m, name.ptr, name.len), params, fn->params.len, ret);
+    stub.ret_borrowed = lb->facts->ret_borrowed[d->id]; // callers read it before the body is lowered
     return mir_add_func(lb->m, &stub);
 }
 
