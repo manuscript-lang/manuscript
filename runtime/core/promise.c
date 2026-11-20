@@ -525,6 +525,8 @@ static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
     return true;
 }
 
+void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closure); }
+
 void ms_promise_start(MsPromise id, MsObj *closure) {
     if (!queue_work(id, closure, 0)) {
         start_task(id, closure);

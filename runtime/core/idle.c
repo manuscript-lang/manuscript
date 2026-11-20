@@ -203,7 +203,7 @@ static void row_start(IdleRow *row) {
     request->inner = next;
     request->group = row->group;
     atomic_fetch_add(&row->group->inflight, 1);
-    ms_promise_start(id, &request->header);
+    ms_promise_start_here(id, &request->header);
     tidy_promise(id, row->group);
     msrt_obj_drop(subject); /* the closure holds its own handle on the connection */
 }

@@ -105,6 +105,8 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
 
 /* Runs `closure` (a function value, owned by the promise) as a task of this thread. Starting twice faults. */
 void ms_promise_start(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
+/* Runs `closure` as a task of this thread now, never queued for another isolate to take. */
+void ms_promise_start_here(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 /* Like start, but on the least loaded isolate (with one isolate, here). */
 /* Starts the work as a task of this thread, never queued for another isolate (I/O work whose handles are thread-bound). */
 void ms_promise_start_here(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
