@@ -10,7 +10,7 @@ seed=${HINTS_SEED:-1}
 
 rustc --edition 2021 -O -o "$out/hints_oracle" compiler/tests/hints_oracle.rs
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_hints_dump.c -o "$out/hints_dump"
+    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_hints_dump.c -o "$out/hints_dump" -lm
 
 "$out/hints_oracle" gen "$cases" "$seed" > "$out/hints.cases"
 "$out/hints_oracle" < "$out/hints.cases" > "$out/hints.rust"
