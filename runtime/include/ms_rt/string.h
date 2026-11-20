@@ -3,7 +3,6 @@
 #define MS_RT_STRING_H
 
 #include "ms_rt/base.h"
-#include "ms_rt/vec.h"
 
 /* A string value: two words (crates/ms-rt-abi StrVal). The top bits of `tagged` say what the bytes are:
  * 00 owned allocation at `ptr_word`, 01 inline (bytes start at the value's own address, length in

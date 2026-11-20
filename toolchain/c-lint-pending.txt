@@ -10,8 +10,6 @@ compiler/src/parse.c
 compiler/src/stdlib.c
 compiler/src/tables.c
 compiler/src/types.c
-runtime/core/alloc.c
-runtime/core/region.c
 runtime/fuzz/http1_fuzz.c
 runtime/fuzz/num_fuzz.c
 runtime/io/reactor.c
@@ -28,12 +26,9 @@ runtime/sys/glibc/compat.c
 runtime/sys/linux/net.c
 runtime/sys/mem.c
 runtime/tests/clibs_smoke.c
-runtime/tests/core_alloc.c
 runtime/tests/core_num.c
-runtime/tests/core_region.c
 runtime/tests/core_string.c
 runtime/tests/std_crypto.c
 runtime/tests/std_crypto_asym.c
 runtime/tests/std_regex.c
 runtime/tests/std_regex_abi.c
-runtime/tests/support/oom.c

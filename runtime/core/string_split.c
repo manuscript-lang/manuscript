@@ -10,7 +10,6 @@
 #include "ms_rt/safe.h"
 #include "ms_rt/strbuild.h"
 #include "ms_rt/utf8.h"
-#include "ms_rt/vec.h"
 
 /* Texts up to this many bytes split at a one-byte separator in one pass over their words: a record's fields
  * are a few bytes apart, where a search per piece costs more than the scan. */
