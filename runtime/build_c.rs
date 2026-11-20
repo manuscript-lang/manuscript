@@ -279,7 +279,6 @@ pub fn build_c_backend(root: &Path, work: &Path) -> Result<PathBuf, String> {
             "-DCMAKE_C_COMPILER_TARGET={}-pc-windows-msvc",
             std::env::consts::ARCH
         ));
-        configure.arg("-DCMAKE_AR=llvm-ar");
     }
     run(&mut configure, "cmake configure")?;
     run(
