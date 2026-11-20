@@ -1,3 +1,12 @@
+#ifdef __APPLE__
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/event.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 /* reactor.c: the scheduler's descriptor poller on libuv (see reactor.h).
  *
  * Owns one loop per scheduler thread. Each watched descriptor has a row: a uv_poll_t that exists only while the
@@ -255,6 +264,23 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
     const bool known = ms_sys_fd_get_nonblocking(fd, &was_nonblocking);
     const int error = uv_poll_init(&reactor->loop, &row->handle, fd);
     if (error != 0) {
+#ifdef __APPLE__
+        { /* DIAGNOSTIC, not for merge: which step of uv_poll_init refuses the descriptor. */
+            struct kevent change;
+            EV_SET(&change, fd, EVFILT_READ, EV_ADD, 0, 0, 0);
+            const int kq = kqueue();
+            const int k = kevent(kq, &change, 1, NULL, 0, NULL);
+            const int ke = errno;
+            int on = 1;
+            const int i = ioctl(fd, FIONBIO, &on);
+            const int ie = errno;
+            struct stat st;
+            (void)fstat(fd, &st);
+            fprintf(stderr, "io-diag fd=%d uv=%d kevent=%d/%d ioctl=%d/%d fl=%x mode=%o\n", fd, error, k, ke, i, ie,
+                    fcntl(fd, F_GETFL), (unsigned)st.st_mode);
+            close(kq);
+        }
+#endif
         row->next_free = reactor->free_rows;
         reactor->free_rows = row;
         /* A regular file or device never blocks; only a closed descriptor is a failure. */
