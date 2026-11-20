@@ -285,6 +285,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
 	"$(RELEASE_MS)" test tools/ms/install.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/project.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/workspace.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
