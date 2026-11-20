@@ -817,7 +817,7 @@ void msstd_process_subprocess_close(MsObj *object) {
     }
 }
 
-/* Waits for the exit, or STATUS_TIMEOUT when `timeout_ns` passes first (the child keeps running). */
+/* Waits for the exit, or STATUS_TIMED_OUT when `timeout_ns` passes first (the child keeps running). */
 uint8_t msstd_process_subprocess_wait(MsObj *object, uint8_t has_timeout, int64_t timeout_ns, int64_t *out, MsStr *err) {
     MsChild *child = (MsChild *)object;
     MsFsFail fail = {0};
@@ -848,7 +848,7 @@ uint8_t msstd_process_subprocess_wait(MsObj *object, uint8_t has_timeout, int64_
             return ms_fs_finish(&fail, err);
         }
         if (deadline >= 0 && left <= 0) {
-            ms_fs_fail_status(&fail, STATUS_TIMEOUT);
+            ms_fs_fail_status(&fail, STATUS_TIMED_OUT);
             return ms_fs_finish(&fail, err);
         }
     }
@@ -909,7 +909,7 @@ static uint8_t run_result(MsChild *child, MsCommandOut *out, MsFsFail *fail) {
     if (run->overflow) {
         ms_fs_fail_status(fail, STATUS_OUTPUT_LIMIT);
     } else if (run->timed_out) {
-        ms_fs_fail_status(fail, STATUS_TIMEOUT);
+        ms_fs_fail_status(fail, STATUS_TIMED_OUT);
     } else if (run->kept_open && child->code == 0) {
         ms_fs_fail_text(fail, output_kept_open);
     } else {

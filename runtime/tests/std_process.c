@@ -114,7 +114,7 @@ static void run_limits_and_timeouts_kill_the_group(void) {
     CHECK(run_sh(&big).status == STATUS_OUTPUT_LIMIT);
     const int64_t start = now_ms();
     RunSpec slow = {.script = "sleep 30 & sleep 30", .max_output = -1, .timeout_ns = 100000000};
-    CHECK(run_sh(&slow).status == STATUS_TIMEOUT);
+    CHECK(run_sh(&slow).status == STATUS_TIMED_OUT);
     CHECK(now_ms() - start < 5000);
     RunSpec background = {.script = "sleep 3 &", .max_output = -1, .timeout_ns = -1};
     CHECK(run_sh(&background).status == STATUS_FAILED);
@@ -158,7 +158,7 @@ static void subprocess_pipes_and_close(void) {
     MsObj *child = NULL;
     CHECK(spawn("cat", NULL, 0, modes, &child) == STATUS_OK);
     int64_t code = 0;
-    CHECK(wait_for(child, 20000000, &code) == STATUS_TIMEOUT);
+    CHECK(wait_for(child, 20000000, &code) == STATUS_TIMED_OUT);
     const int in = (int)msstd_process_subprocess_stream_id(child, 0);
     const int out = (int)msstd_process_subprocess_stream_id(child, 1);
     CHECK(in >= 0 && out >= 0);
