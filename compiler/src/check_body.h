@@ -16,7 +16,7 @@ typedef struct MsBody {
     MsLiteralFacts *literals;
     MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
     uint32_t lambda_floor;  /* bindings below this id belong to an enclosing function: captured */
-    const MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
+    MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
     bool has_close;         /* the module declares a method named `close` */
     MsTy result;
