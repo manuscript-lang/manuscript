@@ -60,6 +60,7 @@ pub mod sys;
 #[cfg(windows)]
 #[path = "sys_windows.rs"]
 pub mod sys;
+mod sys_c;
 pub mod task;
 pub mod tree;
 pub mod utf8;

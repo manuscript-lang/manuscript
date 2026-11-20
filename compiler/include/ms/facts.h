@@ -1,0 +1,101 @@
+/* What the checker records about a module, as flat columns the later passes and the tools read.
+ *
+ * Every column is an array of 32-bit ids, indexed by syntax node id (0 .. node_count of the
+ * module) or by a dense id of its own (binding, callable). No pointers, so a Manuscript tool can
+ * read a column as a `List[Int]` and a cache can write one as it is. MS_NONE marks "nothing
+ * recorded". Types are `MsTy` indices into `MsCheck.tys`; `ms_ty_show` turns one into the text
+ * the Rust checker prints (`<unknown>` included).
+ *
+ * This header is the plan: each pass fills its columns and adds a comparison line to
+ * compiler/tests/check-diff.sh before anything reads them. Status in the comment on each group. */
+#ifndef MS_FACTS_H
+#define MS_FACTS_H
+
+#include "ms/tables.h"
+
+/* ---- resolution (first) ---- */
+
+/* How a name, member or call expression resolved. */
+typedef enum MsResolution {
+    MS_RES_NONE,
+    MS_RES_BINDING, /* a local, parameter or pattern name: `ref` is a binding id */
+    MS_RES_SYMBOL,  /* a module-level declaration or import: `ref` is a symbol id */
+    MS_RES_FIELD,   /* a field of a type: `ref` is the field index */
+    MS_RES_CASE,    /* an enum case or payload pattern: `ref` is the case index */
+    MS_RES_METHOD,  /* a method or interface operation: `ref` is a method id */
+} MsResolution;
+
+/* ---- types (second) ---- */
+
+/* Bindings: one row per parameter, local, pattern name and `for` variable of a module. */
+typedef struct MsBindings {
+    MsSym *name;
+    MsTy *ty;
+    uint32_t *decl_node;  /* the syntax node that introduces it */
+    uint32_t *callable;   /* the function or lambda it belongs to */
+    uint8_t *flags;       /* MS_BIND_* */
+    uint8_t *role;        /* MsBindRole */
+    uint32_t count;
+} MsBindings;
+enum { MS_BIND_MUTABLE = 1, MS_BIND_MOVING = 2 };
+typedef enum MsBindRole {
+    MS_ROLE_PARAM, MS_ROLE_SELF, MS_ROLE_LET, MS_ROLE_VAR, MS_ROLE_PATTERN, MS_ROLE_LOOP,
+    MS_ROLE_ARM, MS_ROLE_LAMBDA_PARAM
+} MsBindRole;
+
+/* Methods and interface operations of a program (implementations first, in declaration order).
+ * A symbol's signature is its `ty` in `MsSyms`: a function type whose parameters carry the label,
+ * type and var/move flags (`ms_ty_params`) and whose result is `tys.result`. */
+typedef struct MsMethods {
+    MsSym *id;            /* `module/Receiver/Contract/name`, as the Rust checker names it */
+    MsTy *receiver;
+    MsTy *contract;       /* MS_TY_NONE for an inherent method */
+    MsTy *ty;             /* the signature, receiver not included */
+    const MsFunc **decl;  /* the declaration, or NULL for a native one */
+    MsNativeKind *native;
+    bool *inherent;
+    uint32_t count;
+} MsMethods;
+
+/* The per-module columns. */
+typedef struct MsFacts {
+    uint32_t node_count;
+    /* resolution */
+    uint8_t *res_kind;    /* by node id: MsResolution */
+    uint32_t *res_ref;    /* by node id: the id `res_kind` names */
+    /* types */
+    MsTy *expr_ty;        /* by expression node id */
+    MsTy *type_ref_ty;    /* by type-reference node id: what a written type means */
+    uint32_t *pattern_binding; /* by pattern node id: binding id, or MS_NONE */
+    uint32_t *arm_case;   /* by match-arm node id: the case index the arm matches */
+    /* calls, by call-expression node id */
+    uint32_t *call_callee;     /* symbol id of the called function, else MS_NONE */
+    uint32_t *call_method;     /* method id when the call is a method call, else MS_NONE */
+    MsTy *call_receiver;       /* the receiver's type for a method call */
+    MsTy *call_interface;      /* the interface a call dispatches through, else MS_TY_NONE */
+    uint32_t *call_type_args_at, *call_type_args_len; /* into `type_args` */
+    MsTy *type_args;
+    MsBindings bindings;
+    MsMethods *methods; /* the program's table, shared by every module */
+} MsFacts;
+
+/* ---- ownership (third, own thread) ---- */
+
+/* Per expression node: how the value is used. Filled by the ownership pass; same indexing. */
+typedef enum MsAccess { MS_ACC_NONE, MS_ACC_BORROW, MS_ACC_MOVE, MS_ACC_COPY, MS_ACC_CLONE } MsAccess;
+typedef struct MsOwnership {
+    uint8_t *access;      /* by expression node id: MsAccess */
+    uint32_t *flags;      /* by binding id: MS_OWN_* (implicit close, moved, ...) */
+} MsOwnership;
+
+/* ---- effects (third, own thread) ---- */
+
+/* Per callable symbol: the effect names it reaches, as indices into `names` (sorted, deduplicated
+ * ranges of `pool`). A violation row is a callable and the effect no `allow_effect` line permits. */
+typedef struct MsEffects {
+    MsSym *names;
+    uint32_t *start, *len; /* by symbol id, into pool */
+    uint32_t *pool;
+} MsEffects;
+
+#endif

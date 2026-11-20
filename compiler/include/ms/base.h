@@ -10,6 +10,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ms_rt/safe.h"
+
 /* ---- arena ---- */
 
 typedef struct MsChunk MsChunk;
@@ -31,7 +33,7 @@ typedef struct MsStr {
 
 char *ms_arena_strndup(MsArena *a, const char *s, size_t n); /* NUL-terminated copy */
 MsStr ms_arena_fmt(MsArena *a, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-MsStr ms_arena_vfmt(MsArena *a, const char *fmt, va_list ap);
+MsStr ms_arena_vfmt(MsArena *a, const char *fmt, va_list ap) __attribute__((format(printf, 2, 0)));
 
 /* ---- growable byte stack: the scratch space lists are built in before they are copied out ---- */
 
@@ -39,6 +41,23 @@ typedef struct MsBuf {
     char *data;
     size_t len, cap;
 } MsBuf;
+
+/* The stored bytes as an untyped pointer, for a vector of aligned elements: realloc storage is
+ * aligned for any element, which a typed cast from char * could not state. */
+static inline void *ms_buf_items(const MsBuf *b) {
+    return b->data;
+}
+
+/* A MsBuf used as a stack of T. */
+#define MS_VEC_LEN(b, T) ((b).len / sizeof(T))
+#define MS_VEC_AT(b, T, i) (((T *)ms_buf_items(&(b)))[i])
+#define MS_VEC_LAST(b, T) MS_VEC_AT(b, T, MS_VEC_LEN(b, T) - 1)
+#define MS_VEC_PUSH(b, T, v)                                                                       \
+    do {                                                                                           \
+        T push_value_ = (v);                                                                       \
+        ms_buf_put(&(b), &push_value_, sizeof(T));                                                 \
+    } while (0)
+#define MS_VEC_POP(b, T) ((b).len -= sizeof(T))
 
 void ms_buf_free(MsBuf *b);
 void *ms_buf_push(MsBuf *b, size_t n); /* appends n uninitialised bytes and returns them */
