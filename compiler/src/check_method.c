@@ -72,23 +72,37 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig) {
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty;
 }
 
-MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
-    const MsExpr *callee = e->u.call.callee;
-    const MsExpr *receiver = callee->u.member.left;
-    if (b->methods == NULL || receiver->kind != MS_E_NAME || e->u.call.args.len > 16) {
-        return ms_body_unsupported(b);
+/* The receiver's type and whether it is a mutable place: a binding declared `var`. Any other
+ * receiver expression is a temporary, which a mutating method cannot change. */
+static MsTy receiver_type(MsBody *b, const MsExpr *receiver, bool *mutable_place) {
+    *mutable_place = false;
+    if (receiver->kind != MS_E_NAME) {
+        return ms_body_expr(b, receiver, MS_TY_NONE);
     }
     const uint32_t binding = ms_body_find_binding(b, receiver->u.sym);
     if (binding == MS_NONE) {
+        return MS_TY_NONE;
+    }
+    *mutable_place = (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) != 0;
+    return ms_body_expr(b, receiver, b->facts->bindings.ty[binding]);
+}
+
+MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
+    const MsExpr *callee = e->u.call.callee;
+    if (b->methods == NULL || e->u.call.args.len > 16) {
         return ms_body_unsupported(b);
     }
-    const MsTy receiver_ty = b->facts->bindings.ty[binding];
+    bool mutable_place = false;
+    const MsTy receiver_ty = receiver_type(b, callee->u.member.left, &mutable_place);
+    if (receiver_ty == MS_TY_NONE) {
+        return ms_body_unsupported(b);
+    }
     Target target;
     const bool resolved = ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT
                               ? operation_of(b, receiver_ty, callee->u.member.name, &target)
                               : method_row(b, receiver_ty, callee->u.member.name, &target);
-    if (!resolved || target.consuming || (target.mutating && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) ||
-        ms_body_expr(b, receiver, receiver_ty) == MS_TY_NONE || !arguments_fit(b, e, target.sig)) {
+    if (!resolved || target.consuming || (target.mutating && !mutable_place) ||
+        !arguments_fit(b, e, target.sig)) {
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {

@@ -35,7 +35,7 @@ static bool body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
 }
 
-/* A `type` or `enum` this module declares without type parameters. */
+/* A `type`, `enum` or interface without type parameters. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
@@ -44,7 +44,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
         return false;
     }
     const MsSymId sym = def - 1;
-    return sym < b->c->syms.count && b->c->syms.module[sym] == b->module && b->c->syms.kind[sym] == MS_SYM_TYPE;
+    return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
 }
 
 /* A type whose values the pass can pass around: primitives, and the module's own nominal types
@@ -420,7 +420,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
         syms->decl[sym] == NULL || syms->nvars[sym] != 0 || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
@@ -442,7 +442,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
-    return body_is_value_type(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
+    return body_is_admitted(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
 }
 
 static MsTy body_unary(MsBody *b, const MsExpr *e) {
