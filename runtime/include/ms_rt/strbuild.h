@@ -28,18 +28,6 @@ static inline void ms_limit_fault(void) {
     msrt_fault(msg, sizeof msg - 1);
 }
 
-static inline uint64_t ms_load64(const uint8_t *p) {
-    uint64_t v;
-    __builtin_memcpy(&v, p, sizeof v);
-    return v;
-}
-
-static inline uint32_t ms_load32(const uint8_t *p) {
-    uint32_t v;
-    __builtin_memcpy(&v, p, sizeof v);
-    return v;
-}
-
 /* Copies n non-overlapping bytes; up to 16 go through overlapping word moves instead of a call into memcpy,
  * which costs more than the copy for the short pieces words and fields split into. */
 static inline void ms_copy_bytes(uint8_t *dst, const uint8_t *src, size_t n) {
@@ -188,13 +176,6 @@ static inline void ms_str_write(MsStr s, MsStr *out) {
     volatile uint64_t *const tag_word = &out->tagged;
     *pointer_word = s.ptr_word;
     *tag_word = s.tagged;
-}
-
-/* Frees the bytes of s when it is owned. */
-static inline void ms_str_release(const MsStr *s) {
-    if (s->tagged < MS_STR_INLINE) {
-        msrt_free(s->ptr_word);
-    }
 }
 
 #endif
