@@ -73,17 +73,15 @@ if [ ! -f "$out/lib/libnghttp2.a" ]; then
     mkdir -p "$out/include/nghttp2"
     cp "$vendor/nghttp2"/lib/includes/nghttp2/nghttp2.h "$build"/lib/includes/nghttp2/nghttp2ver.h "$out/include/nghttp2/"
 fi
-# OpenSSL's Configure needs a perl that produces Unix-like paths (not Strawberry or ActiveState Perl, which report MSWin32)
-# and has IPC::Cmd, which loads Locale::Maketext::Simple; perl 5.42 dropped that module from the core, so a copy of it is
-# vendored in runtime/third_party/perl-lib. The shell's perl is tried first, then MSYS2's (Windows).
-export PERL5LIB="$vendor/perl-lib${PERL5LIB:+:$PERL5LIB}"
+# OpenSSL's Configure needs a perl that produces Unix-like paths (not Strawberry or ActiveState Perl, which report MSWin32).
+# The shell's perl is tried first, then MSYS2's (Windows).
 msys=${MS_MSYS2:-C:/msys64}
 perl=
 for candidate in perl "$msys/usr/bin/perl"; do
-    if "$candidate" -MIPC::Cmd -e 'exit($^O eq "MSWin32")' >/dev/null 2>&1; then perl=$candidate; break; fi
+    if "$candidate" -e 'exit($^O eq "MSWin32")' >/dev/null 2>&1; then perl=$candidate; break; fi
 done
 if [ ! -f "$out/lib/libssl.a" ]; then
-    [ -n "$perl" ] || { echo "build.sh: no Unix-style perl with IPC::Cmd (OpenSSL's Configure needs one; on Windows install MSYS2's perl)" >&2; exit 1; }
+    [ -n "$perl" ] || { echo "build.sh: no Unix-style perl (OpenSSL's Configure needs one; on Windows install MSYS2's perl)" >&2; exit 1; }
     # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
     perl_dir=; case "$perl" in */*) perl_dir=$(dirname "$perl"): ;; esac
     build=$root/build/$triple/openssl

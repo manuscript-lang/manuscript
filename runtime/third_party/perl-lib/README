@@ -1,1 +1,0 @@
-Locale::Maketext::Simple 0.21 (MIT, Audrey Tang), vendored for OpenSSL's Configure: perl 5.42 dropped it from the core and IPC::Cmd needs it.
