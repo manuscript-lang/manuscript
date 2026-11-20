@@ -55,39 +55,22 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
 }
 
-/* Whether a value of the type may have a cleanup the pass does not record yet: it has a `close`
- * method, or holds a field or payload that does. Without a method table nothing is known. */
 static bool body_text_is(const MsBody *b, MsSym name, const char *text);
 
-static bool body_is_closeable(const MsBody *b, MsTy ty, uint32_t depth) {
+/* Whether `ty` is an interface a value of which owns what it was made from: `Closeable`, or one
+ * that declares `move fn close()` (the ownership classifier's `owned_close`). */
+static bool body_is_owned_closer(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
-    if (b->methods == NULL || depth > 4) {
-        return true;
-    }
-    const MsMethods *m = &b->methods->methods;
-    for (uint32_t i = 0; i < m->count; i++) {
-        if (m->receiver[i] == ty && m->decl[i] != NULL && body_text_is(b, m->decl[i]->name, "close")) {
-            return true;
-        }
-    }
-    const uint32_t def = tys->def[ty];
-    if (def == 0 || def - 1 >= b->c->defs_cap) {
+    if (ms_ty_kind(tys, ty) != MS_K_CONTRACT) {
         return false;
     }
-    const MsDef *d = &b->c->defs[def - 1];
-    for (uint32_t i = 0; i < d->nfields; i++) {
-        const MsTy field = d->fields[i].ty;
-        if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE && body_is_closeable(b, field, depth + 1)) {
-            return true;
-        }
+    if (ms_ty_is(tys, ty, MS_BI_CLOSEABLE) || tys->def[ty] == 0 || b->methods == NULL) {
+        return true;
     }
-    for (uint32_t k = 0; k < d->ncases; k++) {
-        for (uint32_t i = 0; i < d->cases[k].nfields; i++) {
-            const MsTy field = d->cases[k].fields[i].ty;
-            if (field != MS_TY_NONE && ms_ty_kind(tys, field) != MS_K_VARIABLE &&
-                body_is_closeable(b, field, depth + 1)) {
-                return true;
-            }
+    const MsOperations *ops = ms_interface_operations(b->methods, tys->def[ty] - 1);
+    for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
+        if (ops->items[i].decl->consuming && body_text_is(b, ops->items[i].name, "close")) {
+            return true;
         }
     }
     return false;
@@ -111,10 +94,11 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
 }
 
 /* A type whose values the pass can pass around: primitives, lists, function values and nominal
- * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
+ * types. A value that closes is classified a resource by the ownership pass; the lowering leaves
+ * it to the Rust lowering until it records the close. */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
-           (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
+           (body_is_own_nominal(b, ty) && !body_is_owned_closer(b, ty));
 }
 
 bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
