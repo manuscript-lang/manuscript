@@ -299,8 +299,8 @@ static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const
             dump_stmts(out, c, facts, &s->u.loop.body);
             break;
         case MS_S_ASSIGN: dump_expr(out, c, facts, s->u.assign.value); break;
-        case MS_S_FOR: // the range call itself is untyped; its bounds are
-            for (uint32_t i = 0; i < s->u.each.iter->u.call.args.len; i++) {
+        case MS_S_FOR: // the range call itself is untyped; its bounds are, and a list loop's iterable is not listed
+            for (uint32_t i = 0; !facts->each_list[s->id] && i < s->u.each.iter->u.call.args.len; i++) {
                 dump_expr(out, c, facts, s->u.each.iter->u.call.args.ptr[i].value);
             }
             dump_stmts(out, c, facts, &s->u.each.body);
@@ -330,7 +330,7 @@ static void dump_function_diags(MsBuf *out, const MsModuleRow *row, uint32_t ind
     }
 }
 
-void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
+void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m, const bool *declined) {
     const MsModuleRow *row = &c->mods[m];
     const MsFacts *facts = row->facts;
     for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
@@ -339,7 +339,8 @@ void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m) {
             continue;
         }
         const bool constant = d->kind == MS_D_CONST;
-        ms_buf_printf(out, "%s %u:%u\n", constant ? "const" : "fn", d->pos.line, d->pos.column);
+        ms_buf_printf(out, "%s %u:%u%s\n", constant ? "const" : "fn", d->pos.line, d->pos.column,
+                      declined != NULL && declined[d->id] ? " ownership-declined" : "");
         dump_function_diags(out, row, i);
         if (constant) {
             dump_expr(out, c, facts, d->u.konst.value);
