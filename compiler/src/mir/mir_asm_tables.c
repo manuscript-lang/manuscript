@@ -178,7 +178,7 @@ static void at_put_blob(MsBuf *out, const uint8_t *blob, size_t size, AtPatch *p
 }
 
 bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, size_t asm_len,
-                    const char *prefix, MsBuf *out, MsBuf *why) {
+                    const char *prefix, bool strip_lines, MsBuf *out, MsBuf *why) {
     AtMeta a = {0};
     mir_module_init(&a.m);
     at_meta_parse(&a, meta, meta_len);
@@ -198,8 +198,11 @@ bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, siz
             ms_buf_printf(out, ".Lmse%d:\n", cur);
             cur = -1;
         }
-        ms_buf_put(out, p, n);
-        ms_buf_putc(out, '\n');
+        const bool is_loc = cur >= 0 && at_loc_args(p, n, &l);
+        if (!(is_loc && strip_lines)) {
+            ms_buf_put(out, p, n);
+            ms_buf_putc(out, '\n');
+        }
         const size_t label = at_label_len(p, n);
         if (label > plen && memcmp(p, prefix, plen) == 0) {
             AtFunc *f = at_find(sorted, a.nfuncs, (MsStr){p + plen, (uint32_t)(label - plen)});
@@ -207,7 +210,7 @@ bool mir_asm_tables(const char *meta, size_t meta_len, const char *asm_text, siz
                 f->seen = true;
                 cur = (int)(f - a.funcs);
             }
-        } else if (cur >= 0 && at_loc_args(p, n, &l)) {
+        } else if (is_loc && l.line != 0) { /* line 0 is code LLVM made up: the range before it goes on */
             l.func = (uint32_t)cur;
             ms_buf_printf(out, ".Lmsl%zu:\n", locs.len / sizeof l);
             ms_buf_put(&locs, &l, sizeof l);

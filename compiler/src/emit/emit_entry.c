@@ -29,13 +29,14 @@ void mir_emit_entry_main(const MirModule *m, bool llvm, bool tables, MsBuf *out)
         return;
     }
     /* Without `tables` the argument is null and the runtime has no function or line names for traces;
-     * with them it is `ms_tables`, the block ms_asm_tables appends to the assembly (QBE only so far). */
+     * with them it is `ms_tables`, the block ms_asm_tables appends to the assembly. */
     if (llvm) {
-        ms_buf_puts(out,
-                    "declare i32 @msrt_start(ptr, ptr, i32, ptr)\n\n"
-                    "define i32 @main(i32 %argc, ptr %argv) {\n"
-                    "  %r = call i32 @msrt_start(ptr @\"" MIR_ENTRY_SYMBOL "\", ptr null, i32 %argc, ptr %argv)\n"
-                    "  ret i32 %r\n}\n");
+        ms_buf_printf(out,
+                      "%sdeclare i32 @msrt_start(ptr, ptr, i32, ptr)\n\n"
+                      "define i32 @main(i32 %%argc, ptr %%argv) {\n"
+                      "  %%r = call i32 @msrt_start(ptr @\"" MIR_ENTRY_SYMBOL "\", ptr %s, i32 %%argc, ptr %%argv)\n"
+                      "  ret i32 %%r\n}\n",
+                      tables ? "@ms_tables = external global i8\n" : "", tables ? "@ms_tables" : "null");
         return;
     }
     ms_buf_printf(out,
