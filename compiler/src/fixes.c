@@ -1,5 +1,6 @@
 /* Machine-applicable fixes (ms/fixes.h). */
 #include "ms/fixes.h"
+#include "ms_rt/chars.h"
 
 #include <string.h>
 
@@ -9,34 +10,25 @@ static MsStr fix_text_of(const char *s) {
     return (MsStr){s, (uint32_t)strlen(s)};
 }
 
-static bool fix_is_blank(char c) {
-    return c == ' ' || (c >= '\t' && c <= '\r');
-}
-
-static bool fix_is_word_byte(char c) {
-    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
-}
-
 static MsStr fix_trim_end_blank(MsStr s) {
-    while (s.len > 0 && fix_is_blank(s.ptr[s.len - 1])) {
+    while (s.len > 0 && ms_ascii_is_space((uint8_t)s.ptr[s.len - 1])) {
         s.len--;
     }
     return s;
 }
 
 static bool fix_text_ends_with(MsStr s, MsStr suffix) {
-    return s.len >= suffix.len && memcmp(s.ptr + s.len - suffix.len, suffix.ptr, suffix.len) == 0;
+    return ms_bytes_ends_with(ms_bytes_of((const uint8_t *)s.ptr, s.len), ms_bytes_of((const uint8_t *)suffix.ptr, suffix.len));
 }
 
 /* The offset of the first `needle` in `hay`. */
 static bool fix_text_find(MsStr hay, MsStr needle, uint32_t *at) {
-    for (uint32_t i = 0; i + needle.len <= hay.len; i++) {
-        if (memcmp(hay.ptr + i, needle.ptr, needle.len) == 0) {
-            *at = i;
-            return true;
-        }
+    size_t found = 0;
+    if (!ms_bytes_find(ms_bytes_of((const uint8_t *)hay.ptr, hay.len), ms_bytes_of((const uint8_t *)needle.ptr, needle.len), &found)) {
+        return false;
     }
-    return false;
+    *at = (uint32_t)found;
+    return true;
 }
 
 static MsStr fix_text_from(MsStr s, uint32_t from) {
@@ -206,7 +198,7 @@ bool ms_binding_to_var(MsArena *arena, MsStr source, MsPos decl, MsFix *out) {
         return false;
     }
     uint32_t name_len = 0;
-    while (name_len < rest.len && fix_is_word_byte(rest.ptr[name_len])) {
+    while (name_len < rest.len && ms_ascii_is_ident((uint8_t)rest.ptr[name_len])) {
         name_len++;
     }
     if (name_len == 0) {

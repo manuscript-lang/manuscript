@@ -159,4 +159,20 @@ static inline bool ms_bytes_equal(MsBytes a, MsBytes b) {
     return a.len == b.len && (a.len == 0 || __builtin_memcmp(a.ptr, b.ptr, a.len) == 0);
 }
 
+MS_NODISCARD static inline bool ms_bytes_ends_with(MsBytes bytes, MsBytes suffix) {
+    return bytes.len >= suffix.len && ms_bytes_equal(ms_bytes_of(bytes.ptr + (bytes.len - suffix.len), suffix.len), suffix);
+}
+
+/* The offset of the first occurrence of `needle` in `hay` (an empty needle matches at 0). A plain scan for the
+ * compiler and tools; the runtime's hot paths use ms_find in ms_rt/search.h. False when absent, `at` untouched. */
+MS_NODISCARD MS_NONNULL static inline bool ms_bytes_find(MsBytes hay, MsBytes needle, size_t *at) {
+    for (size_t i = 0; i + needle.len <= hay.len; i++) {
+        if (ms_bytes_equal(ms_bytes_of(hay.ptr + i, needle.len), needle)) {
+            *at = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 #endif
