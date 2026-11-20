@@ -1,5 +1,5 @@
 name: Native toolchain
-description: On Windows fetch the llvm-mingw that ms links programs with, and cache the lld and LLVM tools ms downloads on first use.
+description: Install the C libraries the runtime folds in, on Windows fetch the llvm-mingw that ms links programs with, and cache the lld and LLVM tools ms downloads on first use.
 
 inputs:
   os:
@@ -12,6 +12,12 @@ inputs:
 runs:
   using: composite
   steps:
+    # `cargo xtask runtime` folds libuv, OpenSSL and the other C libraries into the runtime archives; they come
+    # from the system packages through runtime/third_party/libs.sh (macOS and Windows join as their builds are proven).
+    - name: Install the C libraries
+      if: runner.os == 'Linux'
+      shell: bash
+      run: sh runtime/third_party/libs.sh install
     # `ms` downloads the pinned lld and LLVM tools into $XDG_CACHE_HOME/ms/{lld,llvm} on first use
     # (manuscript-lang/llvm-bundle, pinned by checksum in toolchain/lld.lock); restoring them keeps CI
     # off the network.
