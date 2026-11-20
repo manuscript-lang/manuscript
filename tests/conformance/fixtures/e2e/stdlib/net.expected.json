@@ -3,7 +3,7 @@
   "phase": "test",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "report": {
       "repeat": 1,
       "format": 1,
@@ -109,12 +109,12 @@
         "available": 19,
         "selected": 19,
         "passed": 19,
-        "failed": 1,
+        "failed": 0,
         "skipped": 0,
-        "not_run": 5
+        "not_run": 0
       },
       "completed": true,
-      "exit_code": 1,
+      "exit_code": 0,
       "stdout": "RUN net.ms::IP parsing CIDR normalization and containment\nPASS net.ms::IP parsing CIDR normalization and containment\nRUN net.ms::TCP loopback writes reads half close and EOF\nPASS net.ms::TCP loopback writes reads half close and EOF\nRUN net.ms::a read cancelled by its timeout leaves the stream closable\nPASS net.ms::a read cancelled by its timeout leaves the stream closable\nRUN net.ms::a promise that accepts on a listener runs where the listener lives\nPASS net.ms::a promise that accepts on a listener runs where the listener lives\nRUN net.ms::closing the input leaves the output open and closing both ends the connection\nPASS net.ms::closing the input leaves the output open and closing both ends the connection\nRUN net.ms::host names resolve whatever their case\nPASS net.ms::host names resolve whatever their case\nRUN net.ms::an empty Unix socket path is invalid input\nPASS net.ms::an empty Unix socket path is invalid input\nRUN net.ms::a Unix domain socket carries bytes both ways and a restricted network refuses it\nPASS net.ms::a Unix domain socket carries bytes both ways and a restricted network refuses it\nRUN net.ms::UDP loopback preserves datagram data and sender\nPASS net.ms::UDP loopback preserves datagram data and sender\nRUN net.ms::network restriction denies admission and close rejects acquisitions\nPASS net.ms::network restriction denies admission and close rejects acquisitions\nRUN net.ms::a restricted network binds and sends datagrams only where it allows\nPASS net.ms::a restricted network binds and sends datagrams only where it allows\nRUN net.ms::closing a network closes its datagram sockets and refuses new ones\nPASS net.ms::closing a network closes its datagram sockets and refuses new ones\nRUN net.ms::typed addresses preserve normalization and reject zones\nPASS net.ms::typed addresses preserve normalization and reject zones\nRUN net.ms::a promise accepts on a listener it owns\nPASS net.ms::a promise accepts on a listener it owns\nRUN net.ms::a promise reads a connection it owns\nPASS net.ms::a promise reads a connection it owns\nRUN net.ms::resolve returns typed DNS records from the configured resolver\nPASS net.ms::resolve returns typed DNS records from the configured resolver\nRUN net.ms::a PTR lookup asks for the reverse name of the address\nPASS net.ms::a PTR lookup asks for the reverse name of the address\nRUN net.ms::lookup answers literals and localhost, and enforces limits and policy\nPASS net.ms::lookup answers literals and localhost, and enforces limits and policy\nRUN net.ms::an empty host listens on every interface, with or without IPv6\nPASS net.ms::an empty host listens on every interface, with or without IPv6\n19 tests, 0 failed\n",
       "diagnostics": []
     },
@@ -136,7 +136,6 @@
       "summary.skipped",
       "tests",
       "tests[].duration_ns",
-      "tests[].failure",
       "tests[].index",
       "tests[].name",
       "tests[].status"
