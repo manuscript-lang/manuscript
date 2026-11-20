@@ -3,6 +3,8 @@
  * phis name. */
 #include "ms/emit_qbe.h"
 
+#include <stdlib.h>
+
 typedef struct QCx {
     const MirModule *m;
     const MirFunc *f;
@@ -42,108 +44,161 @@ static void qbe_label(QCx *c, uint32_t block, uint32_t part) {
 }
 
 static char qbe_vty(QCx *c, MirValue v) {
-    char b = qbe_base(c->f->values[v]);
-    return b ? b : 'l';
+    const char base = qbe_base(c->f->values[v]);
+    if (base == 0) {
+        return 'l';
+    }
+    return base;
 }
 
 static const char *qbe_cc(MirCc cc, bool is_unsigned, bool is_float) {
-    static const char *const sgn[] = {"eq", "ne", "slt", "sle", "sgt", "sge"};
-    static const char *const uns[] = {"eq", "ne", "ult", "ule", "ugt", "uge"};
-    static const char *const flt[] = {"eq", "ne", "lt", "le", "gt", "ge"};
-    return is_float ? flt[cc] : is_unsigned ? uns[cc] : sgn[cc];
+    static const char *const signed_names[] = {"eq", "ne", "slt", "sle", "sgt", "sge"};
+    static const char *const unsigned_names[] = {"eq", "ne", "ult", "ule", "ugt", "uge"};
+    static const char *const float_names[] = {"eq", "ne", "lt", "le", "gt", "ge"};
+    if (is_float) {
+        return float_names[cc];
+    }
+    if (is_unsigned) {
+        return unsigned_names[cc];
+    }
+    return signed_names[cc];
 }
 
-static bool qbe_inst(QCx *c, const MirInst *i, uint32_t block, uint32_t *part) {
-    MsBuf *o = c->out;
-    char t = i->res != MIR_NONE ? qbe_vty(c, i->res) : 0;
-    const MirValue *a = i->args;
-    const char *op = NULL;
-    switch ((MirOp)i->op) {
-    case MOP_IConst:
-        ms_buf_printf(o, "\t%%v%u =%c copy %lld\n", i->res, t, (long long)i->imm.i);
-        return true;
-    case MOP_BConst:
-        ms_buf_printf(o, "\t%%v%u =%c copy %u\n", i->res, t, i->imm.a ? 1u : 0u);
-        return true;
-    case MOP_FConst: /* the bits as an integer, then a cast: no decimal round trip */
-        ms_buf_printf(o, "\t%%v%u.b =l copy %lld\n\t%%v%u =d cast %%v%u.b\n", i->res,
-                      (long long)i->imm.i, i->res, i->res);
-        return true;
-    case MOP_IAdd: op = "add"; break;
-    case MOP_ISub: op = "sub"; break;
-    case MOP_IMul: op = "mul"; break;
-    case MOP_And: op = "and"; break;
-    case MOP_Or: op = "or"; break;
-    case MOP_Xor: op = "xor"; break;
-    case MOP_Shl: op = "shl"; break;
-    case MOP_Sshr: op = "sar"; break;
-    case MOP_Ushr: op = "shr"; break;
-    case MOP_FAdd: op = "add"; break;
-    case MOP_FSub: op = "sub"; break;
-    case MOP_FMul: op = "mul"; break;
-    case MOP_FDiv: op = "div"; break;
-    case MOP_SDiv: op = "div"; break;
-    case MOP_SRem: op = "rem"; break;
-    default: break;
-    }
-    if (op) {
-        ms_buf_printf(o, "\t%%v%u =%c %s %%v%u, %%v%u\n", i->res, t, op, a[0], a[1]);
-        return true;
-    }
-    switch ((MirOp)i->op) {
-    case MOP_Not:
-        ms_buf_printf(o, "\t%%v%u =%c xor %%v%u, 1\n", i->res, t, a[0]);
-        return true;
-    case MOP_FNeg:
-        ms_buf_printf(o, "\t%%v%u =d neg %%v%u\n", i->res, a[0]);
-        return true;
-    case MOP_I2F:
-        ms_buf_printf(o, "\t%%v%u =d sltof %%v%u\n", i->res, a[0]);
-        return true;
-    case MOP_B2I:
-        ms_buf_printf(o, "\t%%v%u =l extuw %%v%u\n", i->res, a[0]);
-        return true;
-    case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: {
-        bool f = i->op == MOP_FCmp;
-        ms_buf_printf(o, "\t%%v%u =w c%s%c %%v%u, %%v%u\n", i->res,
-                      qbe_cc((MirCc)i->imm.a, i->op == MOP_UICmp, f), f ? 'd' : qbe_vty(c, a[0]),
-                      a[0], a[1]);
-        return true;
-    }
-    case MOP_Call: {
-        const MirFunc *callee = &c->m->funcs[i->imm.a];
-        MsStr name = ms_name(&c->m->names, callee->name);
-        if (t) ms_buf_printf(o, "\t%%v%u =%c call ", i->res, t);
-        else ms_buf_puts(o, "\tcall ");
-        qbe_sym(o, name);
-        ms_buf_putc(o, '(');
-        for (uint32_t k = 0; k < i->nargs; k++) {
-            ms_buf_printf(o, "%s%c %%v%u", k ? ", " : "", qbe_vty(c, a[k]), a[k]);
+/* Operations that are one QBE instruction on their two operands, by opcode. */
+typedef struct QbeBinary {
+    MirOp op;
+    const char *mnemonic;
+} QbeBinary;
+
+static const QbeBinary qbe_binary[] = {
+    {MOP_IAdd, "add"}, {MOP_ISub, "sub"}, {MOP_IMul, "mul"}, {MOP_And, "and"},
+    {MOP_Or, "or"},    {MOP_Xor, "xor"},  {MOP_Shl, "shl"},  {MOP_Sshr, "sar"},
+    {MOP_Ushr, "shr"}, {MOP_FAdd, "add"}, {MOP_FSub, "sub"}, {MOP_FMul, "mul"},
+    {MOP_FDiv, "div"}, {MOP_SDiv, "div"}, {MOP_SRem, "rem"},
+};
+
+static const char *qbe_binary_mnemonic(MirOp op) {
+    for (size_t k = 0; k < sizeof qbe_binary / sizeof qbe_binary[0]; k++) {
+        if (qbe_binary[k].op == op) {
+            return qbe_binary[k].mnemonic;
         }
-        ms_buf_puts(o, ")\n");
-        return true;
     }
-    case MOP_IAddChk: case MOP_ISubChk: {
-        bool add = i->op == MOP_IAddChk;
-        uint32_t n = c->next++;
-        ms_buf_printf(o, "\t%%v%u =l %s %%v%u, %%v%u\n", i->res, add ? "add" : "sub", a[0], a[1]);
-        /* add overflows when both operands differ in sign from the result; sub when the operands
-         * differ in sign and the result differs from the first. */
-        ms_buf_printf(o, "\t%%o%ua =l xor %%v%u, %%v%u\n", n, a[0], i->res);
-        if (add) ms_buf_printf(o, "\t%%o%ub =l xor %%v%u, %%v%u\n", n, a[1], i->res);
-        else ms_buf_printf(o, "\t%%o%ub =l xor %%v%u, %%v%u\n", n, a[0], a[1]);
-        ms_buf_printf(o, "\t%%o%uc =l and %%o%ua, %%o%ub\n\t%%o%us =w csltl %%o%uc, 0\n", n, n, n,
-                      n, n);
-        (*part)++;
-        ms_buf_printf(o, "\tjnz %%o%us, @f%u, ", n, n);
-        qbe_label(c, block, *part);
-        ms_buf_printf(o, "\n@f%u\n\tcall $msrt_fault_int_overflow()\n\thlt\n", n);
-        qbe_label(c, block, *part);
-        ms_buf_putc(o, '\n');
-        return true;
+    return NULL;
+}
+
+static void qbe_call(QCx *c, const MirInst *inst) {
+    const MirFunc *callee = &c->m->funcs[inst->imm.a];
+    if (inst->res != MIR_NONE) {
+        ms_buf_printf(c->out, "\t%%v%u =%c call ", inst->res, qbe_vty(c, inst->res));
+    } else {
+        ms_buf_puts(c->out, "\tcall ");
     }
+    qbe_sym(c->out, ms_name(&c->m->names, callee->name));
+    ms_buf_putc(c->out, '(');
+    for (uint32_t k = 0; k < inst->nargs; k++) {
+        ms_buf_printf(c->out, "%s%c %%v%u", k ? ", " : "", qbe_vty(c, inst->args[k]),
+                      inst->args[k]);
+    }
+    ms_buf_puts(c->out, ")\n");
+}
+
+/* A checked add or subtract. add overflows when both operands differ in sign from the result; sub
+ * when the operands differ in sign and the result differs from the first. The check ends the
+ * current piece of the block: the fault is a block of its own and the rest continues in a new piece. */
+static void qbe_checked_arith(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+    MsBuf *o = c->out;
+    const MirValue *a = inst->args;
+    const bool add = inst->op == MOP_IAddChk;
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "\t%%v%u =l %s %%v%u, %%v%u\n", inst->res, add ? "add" : "sub", a[0], a[1]);
+    ms_buf_printf(o, "\t%%o%ua =l xor %%v%u, %%v%u\n", n, a[0], inst->res);
+    /* add: the second operand against the result; sub: the two operands against each other. */
+    const MirValue second = add ? a[1] : a[0];
+    const MirValue other = add ? inst->res : a[1];
+    ms_buf_printf(o, "\t%%o%ub =l xor %%v%u, %%v%u\n", n, second, other);
+    ms_buf_printf(o, "\t%%o%uc =l and %%o%ua, %%o%ub\n", n, n, n);
+    ms_buf_printf(o, "\t%%o%us =w csltl %%o%uc, 0\n", n, n);
+    (*part)++;
+    ms_buf_printf(o, "\tjnz %%o%us, @f%u, ", n, n);
+    qbe_label(c, block, *part);
+    ms_buf_printf(o, "\n@f%u\n\tcall $msrt_fault_int_overflow()\n\thlt\n", n);
+    qbe_label(c, block, *part);
+    ms_buf_putc(o, '\n');
+}
+
+static void qbe_compare(QCx *c, const MirInst *inst) {
+    const bool is_float = inst->op == MOP_FCmp;
+    char type = 'd';
+    if (!is_float) {
+        type = qbe_vty(c, inst->args[0]);
+    }
+    ms_buf_printf(c->out, "\t%%v%u =w c%s%c %%v%u, %%v%u\n", inst->res,
+                  qbe_cc((MirCc)inst->imm.a, inst->op == MOP_UICmp, is_float), type, inst->args[0],
+                  inst->args[1]);
+}
+
+/* A constant. The float's bits go through an integer and a cast, so no decimal text can round it. */
+static void qbe_constant(QCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const unsigned id = inst->res;
+    switch (inst->op) {
+    case MOP_FConst:
+        ms_buf_printf(o, "\t%%v%u.b =l copy %lld\n\t%%v%u =d cast %%v%u.b\n", id,
+                      (long long)inst->imm.i, id, id);
+        return;
+    case MOP_BConst:
+        ms_buf_printf(o, "\t%%v%u =w copy %u\n", id, inst->imm.a ? 1U : 0U);
+        return;
     default:
-        c->why = mir_op_info[i->op].name;
+        ms_buf_printf(o, "\t%%v%u =%c copy %lld\n", id, qbe_vty(c, inst->res),
+                      (long long)inst->imm.i);
+        return;
+    }
+}
+
+/* The one-operand operations and conversions, by the QBE instruction that does them. */
+static const char *qbe_unary_mnemonic(MirOp op) {
+    switch (op) {
+    case MOP_FNeg: return "neg";
+    case MOP_I2F: return "sltof";
+    case MOP_B2I: return "extuw";
+    default: return NULL;
+    }
+}
+
+static bool qbe_unary(QCx *c, const MirInst *inst) {
+    if (inst->op == MOP_Not) {
+        ms_buf_printf(c->out, "\t%%v%u =%c xor %%v%u, 1\n", inst->res, qbe_vty(c, inst->res),
+                      inst->args[0]);
+        return true;
+    }
+    const char *mnemonic = qbe_unary_mnemonic((MirOp)inst->op);
+    if (mnemonic == NULL) {
+        return false;
+    }
+    ms_buf_printf(c->out, "\t%%v%u =%c %s %%v%u\n", inst->res, qbe_vty(c, inst->res), mnemonic,
+                  inst->args[0]);
+    return true;
+}
+
+/* Writes one instruction; false, with the reason in `c->why`, when it is not covered yet. */
+static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+    const char *mnemonic = qbe_binary_mnemonic((MirOp)inst->op);
+    if (mnemonic != NULL) {
+        ms_buf_printf(c->out, "\t%%v%u =%c %s %%v%u, %%v%u\n", inst->res, qbe_vty(c, inst->res),
+                      mnemonic, inst->args[0], inst->args[1]);
+        return true;
+    }
+    if (qbe_unary(c, inst)) {
+        return true;
+    }
+    switch (inst->op) {
+    case MOP_IConst: case MOP_BConst: case MOP_FConst: qbe_constant(c, inst); return true;
+    case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: qbe_compare(c, inst); return true;
+    case MOP_Call: qbe_call(c, inst); return true;
+    case MOP_IAddChk: case MOP_ISubChk: qbe_checked_arith(c, inst, block, part); return true;
+    default:
+        c->why = mir_op_info[inst->op].name;
         return false;
     }
 }
@@ -180,71 +235,121 @@ static bool qbe_term(QCx *c, const MirTerm *t) {
 /* Whether every type in the function is one the emitter handles. */
 static bool qbe_types_ok(QCx *c) {
     const MirFunc *f = c->f;
-    if (f->ret != MIR_VOID && !qbe_base(f->ret)) return c->why = "result type", false;
+    if (f->ret != MIR_VOID && qbe_base(f->ret) == 0) {
+        c->why = "result type";
+        return false;
+    }
     for (uint32_t k = 0; k < f->nvalues; k++) {
-        if (f->values[k] != MIR_VOID && !qbe_base(f->values[k])) return c->why = "value type", false;
+        if (f->values[k] != MIR_VOID && qbe_base(f->values[k]) == 0) {
+            c->why = "value type";
+            return false;
+        }
     }
     return true;
 }
 
-static bool qbe_function(QCx *c, uint32_t index) {
+/* The phi of block parameter `index` of block `b`: one arm per predecessor edge that reaches it.
+ * `last` is the final piece of each block, which is the label an edge leaves from. */
+static bool qbe_phi(QCx *c, uint32_t b, uint32_t index, const uint32_t *last) {
+    const MirFunc *f = c->f;
+    const MirValue param = f->blocks[b].params[index].value;
+    ms_buf_printf(c->out, "\t%%v%u =%c phi", param, qbe_vty(c, param));
+    bool first = true;
+    for (uint32_t s = 0; s < f->nblocks; s++) {
+        const MirTerm *t = &f->blocks[s].term;
+        const MirTarget *edges[2] = {NULL, NULL};
+        if (t->kind == MT_BR) {
+            edges[0] = &t->a;
+        } else if (t->kind == MT_CONDBR) {
+            edges[0] = &t->a;
+            edges[1] = &t->b;
+        }
+        if (edges[1] != NULL && edges[0]->block == b && edges[1]->block == b && edges[0]->nargs > 0) {
+            c->why = "one block reaches a target twice with arguments";
+            return false;
+        }
+        for (size_t k = 0; k < 2; k++) {
+            if (edges[k] == NULL || edges[k]->block != b) {
+                continue;
+            }
+            ms_buf_printf(c->out, "%s ", first ? "" : ",");
+            qbe_label(c, s, last[s]);
+            ms_buf_printf(c->out, " %%v%u", edges[k]->args[index]);
+            first = false;
+        }
+    }
+    ms_buf_putc(c->out, '\n');
+    return true;
+}
+
+static bool qbe_block(QCx *c, uint32_t b, const uint32_t *last) {
+    const MirBlockData *block = &c->f->blocks[b];
+    ms_buf_printf(c->out, "@b%u\n", b);
+    for (uint32_t p = 0; b > 0 && p < block->nparams; p++) {
+        if (!qbe_phi(c, b, p, last)) {
+            return false;
+        }
+    }
+    uint32_t part = 0;
+    for (uint32_t k = 0; k < block->ninsts; k++) {
+        if (!qbe_inst(c, &block->insts[k], b, &part)) {
+            return false;
+        }
+    }
+    return qbe_term(c, &block->term);
+}
+
+static void qbe_header(QCx *c, uint32_t index) {
     const MirFunc *f = c->f;
     MsBuf *o = c->out;
-    if (!qbe_types_ok(c)) return false;
-    /* Pieces each block splits into: the last is what its successors' phis name. */
-    uint32_t *last = MS_NEW_N(&((MirModule *)c->m)->arena, uint32_t, f->nblocks ? f->nblocks : 1);
+    const bool exported = f->linkage == ML_EXPORT || c->m->entry == index;
+    ms_buf_printf(o, "%sfunction ", exported ? "export " : "");
+    if (f->ret != MIR_VOID) {
+        ms_buf_printf(o, "%c ", qbe_base(f->ret));
+    }
+    qbe_sym(o, ms_name(&c->m->names, f->name));
+    ms_buf_putc(o, '(');
+    for (uint32_t k = 0; k < f->nparams; k++) {
+        ms_buf_printf(o, "%s%c %%v%u", k ? ", " : "", qbe_base(f->params[k].ty),
+                      f->blocks[0].params[k].value);
+    }
+    ms_buf_puts(o, ") {\n");
+}
+
+/* Pieces each block splits into: its checked operations each end one, and the last piece is what
+ * the successors' phis name. Fills `last` with the count per block. */
+static void qbe_last_pieces(const MirFunc *f, uint32_t *last) {
     for (uint32_t b = 0; b < f->nblocks; b++) {
         last[b] = 0;
         for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
-            if (qbe_checked((MirOp)f->blocks[b].insts[k].op)) last[b]++;
-        }
-    }
-    bool export_ = f->linkage == ML_EXPORT || c->m->entry == index;
-    MsStr name = ms_name(&c->m->names, f->name);
-    ms_buf_printf(o, "%sfunction ", export_ ? "export " : "");
-    if (f->ret != MIR_VOID) ms_buf_printf(o, "%c ", qbe_base(f->ret));
-    qbe_sym(o, name);
-    ms_buf_putc(o, '(');
-    const MirBlockData *entry = &f->blocks[0];
-    for (uint32_t k = 0; k < f->nparams; k++) {
-        ms_buf_printf(o, "%s%c %%v%u", k ? ", " : "", qbe_base(f->params[k].ty),
-                      entry->params[k].value);
-    }
-    ms_buf_puts(o, ") {\n");
-    for (uint32_t b = 0; b < f->nblocks; b++) {
-        const MirBlockData *bd = &f->blocks[b];
-        ms_buf_printf(o, "@b%u\n", b);
-        for (uint32_t p = 0; b > 0 && p < bd->nparams; p++) {
-            MirValue pv = bd->params[p].value;
-            ms_buf_printf(o, "\t%%v%u =%c phi", pv, qbe_vty(c, pv));
-            bool first = true;
-            for (uint32_t s = 0; s < f->nblocks; s++) {
-                const MirTerm *t = &f->blocks[s].term;
-                const MirTarget *ts[3] = {NULL, NULL, NULL};
-                if (t->kind == MT_BR) ts[0] = &t->a;
-                else if (t->kind == MT_CONDBR) ts[0] = &t->a, ts[1] = &t->b;
-                if (ts[0] && ts[1] && ts[0]->block == b && ts[1]->block == b && ts[0]->nargs) {
-                    c->why = "one block reaches a target twice with arguments";
-                    return false;
-                }
-                for (int k = 0; k < 2; k++) {
-                    if (!ts[k] || ts[k]->block != b) continue;
-                    ms_buf_printf(o, "%s ", first ? "" : ",");
-                    qbe_label(c, s, last[s]);
-                    ms_buf_printf(o, " %%v%u", ts[k]->args[p]);
-                    first = false;
-                }
+            if (qbe_checked((MirOp)f->blocks[b].insts[k].op)) {
+                last[b]++;
             }
-            ms_buf_putc(o, '\n');
         }
-        uint32_t part = 0;
-        for (uint32_t k = 0; k < bd->ninsts; k++) {
-            if (!qbe_inst(c, &bd->insts[k], b, &part)) return false;
-        }
-        if (!qbe_term(c, &bd->term)) return false;
     }
-    ms_buf_puts(o, "}\n\n");
-    return true;
+}
+
+static bool qbe_function(QCx *c, uint32_t index) {
+    const MirFunc *f = c->f;
+    if (!qbe_types_ok(c)) {
+        return false;
+    }
+    uint32_t *last = calloc(f->nblocks, sizeof *last); /* owned, freed below */
+    if (last == NULL) {
+        c->why = "out of memory";
+        return false;
+    }
+    qbe_last_pieces(f, last);
+    qbe_header(c, index);
+    bool ok = true;
+    for (uint32_t b = 0; ok && b < f->nblocks; b++) {
+        ok = qbe_block(c, b, last);
+    }
+    free(last);
+    if (ok) {
+        ms_buf_puts(c->out, "}\n\n");
+    }
+    return ok;
 }
 
 bool mir_emit_qbe(const MirModule *m, MsBuf *out, MsBuf *why) {
