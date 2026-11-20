@@ -942,7 +942,7 @@ static bool body_assign_to_declaration(MsBody *b, const MsStmt *s) {
             return false;
         }
         const bool imported = syms->module[sym] != b->module;
-        const char *what = imported ? "imported " : "";
+        const char *what = NULL;
         const MsDeclKind kind = syms->decl[sym]->kind;
         if (kind == MS_D_CONST) {
             what = imported ? "imported constant" : "constant";
@@ -950,7 +950,8 @@ static bool body_assign_to_declaration(MsBody *b, const MsStmt *s) {
             what = imported ? "imported function" : "function";
         } else if (kind == MS_D_TYPE) {
             what = imported ? "imported type" : "type";
-        } else {
+        }
+        if (what == NULL) {
             return false;
         }
         const MsStr text = ms_name(b->c->names, name);
