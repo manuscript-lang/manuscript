@@ -11,7 +11,6 @@
 #include "ws_dial.h"
 #include "ws_natives.h"
 
-static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 uint8_t msstd_ws_connect(const void *conn, const MsStr *authority, const MsStr *target, const void *headers,
                          const MsVec *subprotocols, uint8_t compression, uint8_t has_max, int64_t max,
@@ -26,10 +25,10 @@ uint8_t msstd_ws_connect(const void *conn, const MsStr *authority, const MsStr *
         return ms_ws_finish(MS_WSS_NOMEM, NULL, err);
     }
     for (size_t i = 0; i < subprotocols->len; i++) {
-        protocols[i] = bytes_of_str(&names[i]);
+        protocols[i] = msrt_str_bytes(&names[i]);
     }
-    const MsWsDial dial = {.authority = bytes_of_str(authority),
-                           .target = bytes_of_str(target),
+    const MsWsDial dial = {.authority = msrt_str_bytes(authority),
+                           .target = msrt_str_bytes(target),
                            .protocols = protocols,
                            .protocol_count = subprotocols->len,
                            .headers = headers != NULL ? ms_headers_of(headers) : NULL,

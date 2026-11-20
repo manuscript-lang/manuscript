@@ -30,7 +30,7 @@ static uint8_t write_to(void *handle, MsBytes data, MsStr *err) {
 
 uint8_t msstd_io_write_bytes(void *handle, const MsVec *data, MsStr *err) { return write_to(handle, ms_bytes_of(data->ptr, data->len), err); }
 
-uint8_t msstd_io_write(void *handle, const MsStr *data, MsStr *err) { return write_to(handle, ms_fs_string_bytes(data), err); }
+uint8_t msstd_io_write(void *handle, const MsStr *data, MsStr *err) { return write_to(handle, msrt_str_bytes(data), err); }
 
 uint8_t msstd_io_close(void *handle, MsStr *err) {
     MsFsFail fail = {0};

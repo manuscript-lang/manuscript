@@ -46,15 +46,6 @@ static void add_file(const char *dir, const char *rel, const char *name) {
     files[nfiles++] = (MsStdFile){strdup(name), text, (size_t)n};
 }
 
-static bool only_std_imports(const MsModule *module) {
-    for (uint32_t i = 0; i < module->nimports; i++) {
-        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 /* Checks the bodies of module `id` against a fresh program: the library's method table, with the
  * bundled modules' and the imports' impls (ms_program_check_module). */
 static void check_bodies_with_methods(MsCheck *check, MsModId id, const char *text, size_t length) {
@@ -127,13 +118,13 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
         MsModId id = MS_NONE;
         MsStr project_text = {0};
         const char *check_text = text;
-        const bool project = project_mode && parsed && !only_std_imports(module) && bodies && !ownership && !effects && json_mode == 0 &&
+        const bool project = project_mode && parsed && !ms_module_only_std_imports(module) && bodies && !ownership && !effects && json_mode == 0 &&
                              add_project(check, names, paths[i], &id, &project_text);
         if (project) {
             check_text = project_text.ptr;
             n = (long)project_text.len;
         }
-        if ((parsed && only_std_imports(module) && !project_mode) || project) {
+        if ((parsed && ms_module_only_std_imports(module) && !project_mode) || project) {
             if (!project) {
                 id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
             }

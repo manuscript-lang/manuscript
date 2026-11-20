@@ -473,17 +473,6 @@ static bool copy_link(Copier *copier, MsBytes source, MsBytes destination, bool 
 
 /* ---- directories ---- */
 
-static bool ancestors_contain(const MsFsBuffer *ancestors, MsBytes canonical) {
-    size_t cursor = 0;
-    MsBytes name;
-    while (ms_fs_names_next(ancestors, &cursor, &name)) {
-        if (name.len == canonical.len && (name.len == 0 || memcmp(name.ptr, canonical.ptr, name.len) == 0)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static bool copy_entry(Copier *copier, MsBytes source, MsBytes destination, size_t depth);
 
 /* The children of `source`, each copied to the same name under `destination`. */
@@ -534,7 +523,7 @@ static bool copy_directory(Copier *copier, MsBytes source, MsBytes destination, 
     if (ok && !ms_fs_within_path(ms_fs_buffer_view(&canonical), ms_fs_buffer_view(&copier->destination), &within)) {
         ok = fail_memory(copier);
     }
-    if (ok && (within || ancestors_contain(&copier->ancestors, ms_fs_buffer_view(&canonical)))) {
+    if (ok && (within || ms_fs_names_contain(&copier->ancestors, ms_fs_buffer_view(&canonical)))) {
         ok = fail_status(copier, STATUS_INVALID_INPUT);
     }
     const size_t mark = copier->ancestors.length;
@@ -621,7 +610,7 @@ static bool copy_entry(Copier *copier, MsBytes source, MsBytes destination, size
 /* ---- the native ---- */
 
 static bool parse_clone(const MsStr *text, CloneMode *mode) {
-    const MsBytes bytes = ms_fs_string_bytes(text);
+    const MsBytes bytes = msrt_str_bytes(text);
     if (bytes.len == 4 && memcmp(bytes.ptr, "none", 4) == 0) {
         *mode = CLONE_NONE;
     } else if (bytes.len == 3 && memcmp(bytes.ptr, "try", 3) == 0) {
@@ -651,8 +640,8 @@ uint8_t msstd_fs_copy(const MsStr *source, const MsStr *destination, int64_t fla
         ms_fs_fail_status(&copier.fail, STATUS_INVALID_INPUT);
         return ms_fs_finish(&copier.fail, err);
     }
-    const MsBytes from = ms_fs_string_bytes(source);
-    const MsBytes to = ms_fs_string_bytes(destination);
+    const MsBytes from = msrt_str_bytes(source);
+    const MsBytes to = msrt_str_bytes(destination);
     const size_t handle = msrt_cleanup_push(copier_cleanup, (uint8_t *)&copier);
     if (check_destination(&copier, from, to)) {
         copy_entry(&copier, from, to, 0);

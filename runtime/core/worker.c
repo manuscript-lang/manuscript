@@ -30,7 +30,10 @@ void ms_workers_configure(const MsWorkerEnv *env) {
 }
 
 void ms_workers_set_limit(uint32_t limit) {
-    const uint32_t bounded = limit < 1 ? 1 : (limit > MS_MAX_ISOLATES ? MS_MAX_ISOLATES : limit);
+    uint32_t bounded = limit > MS_MAX_ISOLATES ? MS_MAX_ISOLATES : limit;
+    if (bounded < 1) {
+        bounded = 1;
+    }
     atomic_store(&limit_cache, bounded);
 }
 

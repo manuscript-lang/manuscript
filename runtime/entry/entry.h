@@ -18,8 +18,6 @@ void ms_process_run_exit_hooks(void);
 /* Standard output (runtime/core/stdout.c): writes out what the runtime buffered, and the OS code of the first failed
  * write (0 when none). Declared here, not through ms_sched.h, whose wait bits clash with core/task.h. */
 void ms_sched_flush_stdout(void);
-/* Writes what is buffered and frees the buffer (the end of the run, before the leak report); a later write buffers anew. */
-void ms_sched_release_stdout(void);
 int32_t ms_sched_stdout_error(void);
 
 /* The profiler (runtime/entry/profile.c): sampling the program's stack and allocations while it runs. */

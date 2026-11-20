@@ -130,16 +130,8 @@ MsTokenStatus ms_token_park_at(uint64_t id, int64_t at_ns, uint64_t *value, uint
     return MS_TOKEN_OK;
 }
 
-static int64_t token_deadline(int64_t timeout_ns) {
-    if (timeout_ns < 0) {
-        return MS_NO_DEADLINE;
-    }
-    const int64_t now = ms_sched_now();
-    return now > INT64_MAX - timeout_ns ? INT64_MAX : now + timeout_ns;
-}
-
 MsTokenStatus ms_token_park(uint64_t id, int64_t timeout_ns, uint64_t *value, uint32_t *result) {
-    return ms_token_park_at(id, token_deadline(timeout_ns), value, result);
+    return ms_token_park_at(id, ms_sched_deadline_after(timeout_ns), value, result);
 }
 
 void ms_token_post(uint64_t id, uint64_t value) {
