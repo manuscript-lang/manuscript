@@ -30,3 +30,5 @@ msrt_string_trim_end_view
 msrt_string_slice
 msrt_string_view
 msrt_string_append
+msrt_string_repeat
+msrt_string_reverse

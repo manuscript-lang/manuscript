@@ -324,6 +324,92 @@ void msrt_string_concat6(const MsStr *a, const MsStr *b, const MsStr *c, const M
     concat_parts(parts, MS_COUNT_OF(parts), out);
 }
 
+/* ---- Repeat and reverse ---- */
+
+/* Fills `destination` with whole copies of `pattern`: the first copy is written, then the filled part doubles. */
+static void fill_repeated(MsBytesMut destination, MsBytes pattern) {
+    MsBytesMut cursor = destination;
+    append_bytes(&cursor, pattern);
+    size_t filled = pattern.len;
+    while (filled < destination.len) {
+        size_t step = filled < destination.len - filled ? filled : destination.len - filled;
+        append_bytes(&cursor, ms_bytes(destination.ptr, step));
+        filled += step;
+    }
+}
+
+/* `String.repeat`: a count of zero or below, or empty text, gives empty text; output beyond the string limit
+ * faults like `concat`. */
+void msrt_string_repeat(const MsStr *s, int64_t count, MsStr *out) {
+    MsBytes text = str_bytes(s);
+    if (count <= 0 || text.len == 0) {
+        *out = make_empty();
+        return;
+    }
+    if ((uint64_t)count > MS_STR_MAX_BYTES / text.len) {
+        fault_limit();
+    }
+    OwnedBlock block = owned_block_new(text.len * (size_t)count);
+    fill_repeated(block.bytes, text);
+    *out = str_is_ascii(s) ? with_ascii_flag(block.str) : block.str;
+}
+
+/* Copies `text` into `destination` back to front, one byte at a time. */
+static void reverse_ascii(MsBytesMut destination, MsBytes text) {
+    for (size_t i = 0; i < text.len; i++) {
+        uint8_t byte = 0;
+        if (!ms_bytes_get(text, text.len - 1 - i, &byte)) {
+            fault_limit();
+        }
+        destination.ptr[i] = byte;
+    }
+}
+
+/* Copies the scalars of `text` into `destination` last first. A String is valid UTF-8, so a scalar is a lead byte
+ * and its continuation bytes and moves as it is, without decoding. */
+static void reverse_scalars(MsBytesMut destination, MsBytes text) {
+    MsBytesMut cursor = destination;
+    size_t end = text.len;
+    while (end > 0) {
+        size_t start = end - 1;
+        uint8_t byte = 0;
+        while (start > 0 && end - start < 4 && ms_bytes_get(text, start, &byte) && (byte & 0xC0) == 0x80) {
+            start--;
+        }
+        MsBytes scalar = {0};
+        if (!ms_bytes_slice(text, start, end, &scalar)) {
+            fault_limit();
+        }
+        append_bytes(&cursor, scalar);
+        end = start;
+    }
+}
+
+static void reverse_into(MsBytesMut destination, MsBytes text, bool ascii) {
+    if (ascii) {
+        reverse_ascii(destination, text);
+    } else {
+        reverse_scalars(destination, text);
+    }
+}
+
+/* The text reversed by scalars; up to 15 bytes are built in a buffer and become an inline or static string like
+ * any short result. */
+static MsStr reversed(const MsStr *s, bool ascii) {
+    MsBytes text = str_bytes(s);
+    uint8_t small[MS_STR_INLINE_MAX + 1] = {0};
+    if (text.len <= MS_STR_INLINE_MAX) {
+        MsBytesMut buffer = ms_bytes_mut(small, text.len);
+        reverse_into(buffer, text, ascii);
+        return from_bytes(ms_bytes(small, text.len));
+    }
+    OwnedBlock block = owned_block_new(text.len);
+    reverse_into(block.bytes, text, ascii);
+    return ascii ? with_ascii_flag(block.str) : block.str;
+}
+
+void msrt_string_reverse(const MsStr *s, MsStr *out) { *out = reversed(s, str_is_ascii(s)); }
+
 /* ---- Trimmed views ---- */
 
 /* The range of bytes left after trimming. */

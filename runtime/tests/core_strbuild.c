@@ -101,6 +101,36 @@ int main(void) {
     msrt_string_view(&s, 4, 4, &r);
     CHECK(is(&r, ""));
     drop(&s);
+    /* repeat and reverse */
+    {
+        MsStr unit = mk("ab");
+        MsStr repeated;
+        msrt_string_repeat(&unit, 0, &repeated);
+        CHECK(is(&repeated, ""));
+        msrt_string_repeat(&unit, 3, &repeated);
+        CHECK(is(&repeated, "ababab"));
+        drop(&repeated);
+        MsStr wide = mk("é-");
+        msrt_string_repeat(&wide, 9, &repeated);
+        CHECK(is(&repeated, "é-é-é-é-é-é-é-é-é-"));
+        drop(&repeated);
+        MsStr one = mk("x");
+        msrt_string_repeat(&one, 40, &repeated);
+        CHECK(ms_str_len(&repeated) == 40 && is(&repeated, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+        drop(&repeated);
+        const char *texts[] = {"", "a", "ab", "héllo", "abcdefghijklmnopqrstuvwxyz", "日本語のテキストと text 😀 mixed"};
+        const char *wants[] = {"", "a", "ba", "olléh", "zyxwvutsrqponmlkjihgfedcba", "dexim 😀 txet とトスキテの語本日"};
+        for (size_t i = 0; i < sizeof texts / sizeof *texts; i++) {
+            MsStr text = mk(texts[i]);
+            msrt_string_reverse(&text, &repeated);
+            CHECK(is(&repeated, wants[i]));
+            drop(&repeated);
+            drop(&text);
+        }
+        drop(&unit);
+        drop(&wide);
+        drop(&one);
+    }
     /* append grows an owned string in place and copies everything else */
     {
         MsStr acc = mk("a string longer than fifteen bytes");
