@@ -4,6 +4,7 @@
 //! archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it.
 //! `runtime --alloc-profile` also builds `libms_native_allocs.a`, the same runtime with allocation
 //! sampling for `ms profile --allocs`; release packaging asks for it, pull request CI does not.
+//! `runtime --stats` builds `libms_native_stats.a`, the counting runtime of the leak checks.
 //! `runtime --sched-stress` builds `libms_native_stress.a`, the runtime with the scheduler stress mode,
 //! which only `make stress-sched` embeds (in a separate `ms`).
 
@@ -21,6 +22,7 @@ fn main() -> ExitCode {
             match runtime(
                 flag.as_deref() == Some("--alloc-profile"),
                 flag.as_deref() == Some("--sched-stress"),
+                flag.as_deref() == Some("--stats"),
             ) {
                 Ok(archive) => {
                     println!("{}", archive.display());
@@ -47,7 +49,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: cargo xtask runtime [--alloc-profile | --sched-stress] | cargo xtask symbols [--check]"
+                "usage: cargo xtask runtime [--alloc-profile | --sched-stress | --stats] | cargo xtask symbols [--check]"
             );
             ExitCode::from(2)
         }
@@ -694,7 +696,7 @@ fn strip_paths(ty: &str) -> String {
 
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
 /// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
-fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
+fn runtime(alloc_profile: bool, sched_stress: bool, stats: bool) -> Result<PathBuf, String> {
     // Cargo can reuse this executable from another checkout when target directories are shared.
     // Its runtime environment names the active package; the compiled path may name the old one.
     let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
@@ -718,6 +720,16 @@ fn runtime(alloc_profile: bool, sched_stress: bool) -> Result<PathBuf, String> {
     // allocation-profiling and stress runtimes finish in about the time of the slowest.
     let mut jobs: Vec<(PathBuf, Option<String>, &str, &str)> =
         vec![(target.clone(), triple.clone(), "libms_native.a", "entry")];
+    if stats {
+        // The counting runtime of the leak checks: the allocator counts live blocks (MS_ALLOC_STATS) and the
+        // runtime prints them at exit.
+        jobs.push((
+            out.join("build-stats"),
+            triple.clone(),
+            "libms_native_stats.a",
+            "entry,ms-rt/stats",
+        ));
+    }
     if alloc_profile {
         // The feature changes the runtime, so sharing a directory would rebuild it whenever the
         // two archives alternate.
@@ -799,12 +811,7 @@ fn build_archive(
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    let plan = build_c_runtime(
-        root,
-        target,
-        triple,
-        std::env::var_os("MS_ALLOC_STATS").is_some(),
-    )?;
+    let plan = build_c_runtime(root, target, triple, features.contains("stats"))?;
     if plan.has_reactor() {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");
