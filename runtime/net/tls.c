@@ -2,6 +2,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <openssl/x509_vfy.h>
+#include <openssl/x509v3.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +31,22 @@ static X509 *first_cert(const char *pem, size_t n, STACK_OF(X509) *rest) {
     return first;
 }
 
+/* The certificate chain and private key this side presents; false when either is missing or they do not match. */
+static bool use_identity(SSL_CTX *ssl, const char *cert_pem, size_t cert_len, const char *key_pem, size_t key_len) {
+    STACK_OF(X509) *chain = sk_X509_new_null();
+    X509 *leaf = cert_pem ? first_cert(cert_pem, cert_len, chain) : NULL;
+    BIO *kb = key_pem ? BIO_new_mem_buf(key_pem, (int)key_len) : NULL;
+    EVP_PKEY *key = kb ? PEM_read_bio_PrivateKey(kb, NULL, NULL, NULL) : NULL;
+    bool ok = leaf && key && SSL_CTX_use_certificate(ssl, leaf) == 1 && SSL_CTX_use_PrivateKey(ssl, key) == 1 &&
+              SSL_CTX_check_private_key(ssl) == 1;
+    for (int i = 0; ok && i < sk_X509_num(chain); i++) ok = SSL_CTX_add_extra_chain_cert(ssl, X509_dup(sk_X509_value(chain, i))) == 1;
+    sk_X509_pop_free(chain, X509_free);
+    X509_free(leaf);
+    EVP_PKEY_free(key);
+    BIO_free(kb);
+    return ok;
+}
+
 MsTlsCtx *ms_tls_ctx_new(int server, const char *cert_pem, size_t cert_len, const char *key_pem, size_t key_len,
                            const char *ca_pem, size_t ca_len) {
     MsTlsCtx *ctx = calloc(1, sizeof *ctx);
@@ -42,18 +59,10 @@ MsTlsCtx *ms_tls_ctx_new(int server, const char *cert_pem, size_t cert_len, cons
     SSL_CTX_set_session_cache_mode(ctx->ssl, SSL_SESS_CACHE_OFF);
     SSL_CTX_set_options(ctx->ssl, SSL_OP_NO_TICKET | SSL_OP_NO_COMPRESSION | SSL_OP_NO_RENEGOTIATION);
     if (server) {
-        STACK_OF(X509) *chain = sk_X509_new_null();
-        X509 *leaf = cert_pem ? first_cert(cert_pem, cert_len, chain) : NULL;
-        BIO *kb = key_pem ? BIO_new_mem_buf(key_pem, (int)key_len) : NULL;
-        EVP_PKEY *key = kb ? PEM_read_bio_PrivateKey(kb, NULL, NULL, NULL) : NULL;
-        int ok = leaf && key && SSL_CTX_use_certificate(ctx->ssl, leaf) == 1 && SSL_CTX_use_PrivateKey(ctx->ssl, key) == 1 &&
-                 SSL_CTX_check_private_key(ctx->ssl) == 1;
-        for (int i = 0; ok && i < sk_X509_num(chain); i++) ok = SSL_CTX_add_extra_chain_cert(ctx->ssl, X509_dup(sk_X509_value(chain, i))) == 1;
-        sk_X509_pop_free(chain, X509_free);
-        X509_free(leaf); EVP_PKEY_free(key); BIO_free(kb);
-        if (!ok) goto fail;
+        if (!use_identity(ctx->ssl, cert_pem, cert_len, key_pem, key_len)) goto fail;
     } else {
         SSL_CTX_set_verify(ctx->ssl, SSL_VERIFY_PEER, NULL);
+        if (cert_pem && cert_len > 0 && !use_identity(ctx->ssl, cert_pem, cert_len, key_pem, key_len)) goto fail;
         if (ca_pem) {
             X509_STORE *store = SSL_CTX_get_cert_store(ctx->ssl);
             STACK_OF(X509) *cas = sk_X509_new_null();
@@ -70,6 +79,28 @@ fail:
     ERR_clear_error();
     ms_tls_ctx_free(ctx);
     return NULL;
+}
+
+int ms_tls_ctx_verify_clients(MsTlsCtx *ctx, const char *ca_pem, size_t ca_len, int require) {
+    if (!ctx->server) return -1;
+    X509_STORE *store = SSL_CTX_get_cert_store(ctx->ssl);
+    bool ok = true;
+    if (ca_pem != NULL && ca_len > 0) {
+        STACK_OF(X509) *cas = sk_X509_new_null();
+        X509 *first = first_cert(ca_pem, ca_len, cas);
+        ok = first != NULL && X509_STORE_add_cert(store, first) == 1;
+        for (int i = 0; ok && i < sk_X509_num(cas); i++) ok = X509_STORE_add_cert(store, sk_X509_value(cas, i)) == 1;
+        X509_free(first);
+        sk_X509_pop_free(cas, X509_free);
+    } else {
+        ok = SSL_CTX_set_default_verify_paths(ctx->ssl) == 1;
+    }
+    if (!ok) {
+        ERR_clear_error();
+        return -1;
+    }
+    SSL_CTX_set_verify(ctx->ssl, SSL_VERIFY_PEER | (require ? SSL_VERIFY_FAIL_IF_NO_PEER_CERT : 0), NULL);
+    return 0;
 }
 
 void ms_tls_ctx_free(MsTlsCtx *ctx) {
@@ -126,6 +157,12 @@ static bool set_server_name(SSL *ssl, const char *host) {
     const size_t length = strlen(host);
     if (length >= sizeof name) return false;
     memcpy(name, host, length + 1);
+    /* Names are matched against the subject alternative names only, never the common name. */
+    SSL_set_hostflags(ssl, X509_CHECK_FLAG_NEVER_CHECK_SUBJECT);
+    ASN1_OCTET_STRING *address = a2i_IPADDRESS(name);
+    const bool is_ip = address != NULL;
+    ASN1_OCTET_STRING_free(address);
+    if (is_ip) return X509_VERIFY_PARAM_set1_ip_asc(SSL_get0_param(ssl), name) == 1; /* no SNI for an address */
     return SSL_set_tlsext_host_name(ssl, name) == 1 && SSL_set1_host(ssl, name) == 1;
 }
 
@@ -224,6 +261,13 @@ static X509 *peer_at(const MsTls *t, size_t index, X509 **leaf) {
         return *leaf;
     }
     return chain != NULL && index - 1 < (size_t)sk_X509_num(chain) ? sk_X509_value(chain, (int)(index - 1)) : NULL;
+}
+
+uint8_t ms_tls_verified(const MsTls *t) {
+    X509 *leaf = SSL_get1_peer_certificate(t->ssl);
+    const bool verified = leaf != NULL && SSL_get_verify_result(t->ssl) == X509_V_OK;
+    X509_free(leaf);
+    return verified ? 1 : 0;
 }
 
 size_t ms_tls_peer_count(const MsTls *t) {

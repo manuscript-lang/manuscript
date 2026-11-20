@@ -1,0 +1,17 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %a: int = iconst 7
+  %b: int = iconst 35
+  %c: bool = icmp.lt %a, %b
+  br_if %c, b1(%a), b1(%b)
+b1(%x: int):
+  %d: bool = icmp.gt %a, %b
+  br_if %d, b2(%x), b2(%b)
+b2(%y: int):
+  %r: int = iadd.chk %x, %y
+  ret %r
+}

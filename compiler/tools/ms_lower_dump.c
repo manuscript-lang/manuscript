@@ -110,16 +110,9 @@ static bool lower_file(MsCheck *check, MsArena *syntax, MsNames *names, const ch
         }
         const MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
         check_bodies(check, id, text, length);
-        // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it
-        // handles; lowering keeps every function the body checker claimed.
-        MsFacts *facts = check->mods[id].facts;
-        if (facts != NULL) { // an inherent error leaves the module unchecked
-            const size_t claims = (size_t)facts->node_count + 1;
-            bool *claimed = malloc(claims * sizeof *claimed);
-            memcpy(claimed, facts->body_checked, claims * sizeof *claimed);
+        if (check->mods[id].facts != NULL) { // an inherent error leaves the module unchecked
+            // The ownership walk fills `ret_borrowed` and narrows `body_checked` to the functions it handles.
             ms_module_check_ownership(check, id);
-            memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
-            free(claimed);
         }
         MirModule mir;
         mir_module_init(&mir);

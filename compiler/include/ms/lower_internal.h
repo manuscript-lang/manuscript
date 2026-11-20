@@ -1,6 +1,7 @@
-/* Shared state of the body lowering (lower_body.c) and the files that lower one kind of value
- * for it (lower_record.c). `Lb` is the function being lowered; a file adds its own hook
- * (`lr_*` records) and lower_body.c calls it where it dispatches on the expression kind. */
+/* The state shared by the files of the body lowering (lower_body.c and the files it hands
+ * constructs to). The lowering is one translation unit (libms.c): helpers stay `static` in their
+ * file and are visible to the files included after it; a construct a later file lowers is
+ * declared here and called from lower_body.c. Prefix: `lb_`. */
 #ifndef MS_LOWER_INTERNAL_H
 #define MS_LOWER_INTERNAL_H
 
@@ -56,17 +57,7 @@ typedef struct Lb {
 
 #define LB_FAIL ((LbVal){MIR_NONE, false})
 
-static inline LbVal lb_unsupported(Lb *lb) {
-    lb->ok = false;
-    return LB_FAIL;
-}
-
-/* Shared helpers of lower_body.c. */
-MirTy lb_mir_ty(Lb *lb, MsTy ty);
-LbVal lb_expr(Lb *lb, const MsExpr *e);
-MirLoc lb_loc(const Lb *lb, MsPos pos);
-
-/* Records (lower_record.c). */
+/* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
 LbVal lr_field(Lb *lb, const MsExpr *e);

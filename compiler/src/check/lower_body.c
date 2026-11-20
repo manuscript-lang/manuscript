@@ -13,9 +13,15 @@
 #include "ms/constfold.h"
 #include "ms/facts.h"
 #include "ms/lower.h"
+#include "ms/lower_internal.h"
+#include "ms/lower_scope.h"
 #include "ms/mir_analysis.h"
+#include "ms/mir_builder.h"
 
-#include "lower_internal.h"
+static LbVal lb_unsupported(Lb *lb) {
+    lb->ok = false;
+    return LB_FAIL;
+}
 
 static MsTy lb_primitive(const MsCheck *c, const char *name) {
     const MsSymId sym = ms_map_get(&c->primitives, ms_intern_cstr(c->names, name));
@@ -23,7 +29,7 @@ static MsTy lb_primitive(const MsCheck *c, const char *name) {
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
-MirTy lb_mir_ty(Lb *lb, MsTy ty) {
+static MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     if (ty == lb->int_ty) {
         return MIR_INT;
     }
@@ -36,7 +42,7 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     return ty == lb->string_ty ? MIR_STR : lr_type(lb, ty);
 }
 
-MirLoc lb_loc(const Lb *lb, MsPos pos) {
+static MirLoc lb_loc(const Lb *lb, MsPos pos) {
     return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
 }
 
@@ -109,6 +115,7 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
 
 /* ---- operators ---- */
 
+static LbVal lb_expr(Lb *lb, const MsExpr *e);
 static LbVal lb_match(Lb *lb, const MsExpr *e);
 
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
@@ -377,7 +384,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, mir_b_ty(&lb->b, result) == MIR_STR && !borrowed}; // else a String result is the caller's
 }
 
-LbVal lb_expr(Lb *lb, const MsExpr *e) {
+static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};

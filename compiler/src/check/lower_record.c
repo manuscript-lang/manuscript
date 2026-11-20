@@ -3,7 +3,7 @@
  * `type`; `Name(field: value, ...)` is `type.new` and `value.field` is `type.get`. A record with a
  * field that owns something (a String, a list, another owner) is left to the Rust lowering until
  * the ownership side lands. */
-#include "lower_internal.h"
+#include "ms/lower_internal.h"
 
 /* The MIR type of record `ty`, declared on first use; MIR_NONE when it is not one this pass lowers. */
 MirTy lr_type(Lb *lb, MsTy ty) {
