@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct { uint8_t *data; size_t len, off; } body;
+typedef struct body { uint8_t *data; size_t len, off; struct body *prev, *next; } body;
 
 struct ms_h2 {
     nghttp2_session *session;
@@ -11,6 +11,7 @@ struct ms_h2 {
     ms_h2_field *fields; size_t nfields, fields_cap;
     ms_h2_event *events; size_t nevents, events_cap, next;
     size_t block_first;  /* first field of the header block being received */
+    body *bodies; /* every unsent body, so teardown frees streams that never closed */
     const uint8_t *pend; size_t pend_len; /* output nghttp2 handed out that did not fit the caller's buffer yet */
     int failed;
 };
@@ -98,10 +99,16 @@ static int on_data_chunk(nghttp2_session *s, uint8_t flags, int32_t stream, cons
     return 0;
 }
 
+static void drop(ms_h2 *h, body *b) {
+    if (b->prev) b->prev->next = b->next; else h->bodies = b->next;
+    if (b->next) b->next->prev = b->prev;
+    free(b->data); free(b);
+}
+
 static int on_stream_close(nghttp2_session *s, int32_t stream, uint32_t code, void *u) {
     ms_h2 *h = u;
     body *b = nghttp2_session_get_stream_user_data(s, stream);
-    if (b) { free(b->data); free(b); nghttp2_session_set_stream_user_data(s, stream, NULL); }
+    if (b) { drop(h, b); nghttp2_session_set_stream_user_data(s, stream, NULL); }
     ms_h2_event *e = push(h, MS_H2_CLOSED, stream);
     if (!e) return NGHTTP2_ERR_CALLBACK_FAILURE;
     e->error_code = code;
@@ -142,7 +149,8 @@ ms_h2 *ms_h2_new(int server, const ms_h2_limits *limits) {
 
 void ms_h2_free(ms_h2 *h) {
     if (!h) return;
-    nghttp2_session_del(h->session); /* closes live streams, which frees their bodies through on_stream_close */
+    nghttp2_session_del(h->session);
+    while (h->bodies) drop(h, h->bodies);
     free(h->arena); free(h->fields); free(h->events);
     free(h);
 }
@@ -196,36 +204,39 @@ static nghttp2_nv *convert(const ms_h2_nv *nv, size_t n) {
     return out;
 }
 
-static body *make_body(const void *data, size_t len) {
+static body *make_body(ms_h2 *h, const void *data, size_t len) {
     if (len == 0) return NULL;
     body *b = malloc(sizeof *b);
     if (!b) return NULL;
     b->data = malloc(len); b->len = len; b->off = 0;
     if (!b->data) { free(b); return NULL; }
     memcpy(b->data, data, len);
+    b->prev = NULL; b->next = h->bodies;
+    if (h->bodies) h->bodies->prev = b;
+    h->bodies = b;
     return b;
 }
 
 int32_t ms_h2_submit_request(ms_h2 *h, const ms_h2_nv *nv, size_t nnv, const void *data, size_t len) {
     nghttp2_nv *v = convert(nv, nnv);
-    body *b = make_body(data, len);
+    body *b = make_body(h, data, len);
     if (!v || (len && !b)) { free(v); return -1; }
     nghttp2_data_provider prov = {{.ptr = b}, read_body};
     int32_t id = nghttp2_submit_request(h->session, NULL, v, nnv, b ? &prov : NULL, b);
     free(v);
-    if (id < 0 && b) { free(b->data); free(b); }
+    if (id < 0 && b) drop(h, b);
     return id;
 }
 
 int ms_h2_submit_response(ms_h2 *h, int32_t stream, const ms_h2_nv *nv, size_t nnv, const void *data, size_t len) {
     nghttp2_nv *v = convert(nv, nnv);
-    body *b = make_body(data, len);
+    body *b = make_body(h, data, len);
     if (!v || (len && !b)) { free(v); return -1; }
     if (b) nghttp2_session_set_stream_user_data(h->session, stream, b);
     nghttp2_data_provider prov = {{.ptr = b}, read_body};
     int rc = nghttp2_submit_response(h->session, stream, v, nnv, b ? &prov : NULL);
     free(v);
-    if (rc && b) { nghttp2_session_set_stream_user_data(h->session, stream, NULL); free(b->data); free(b); }
+    if (rc && b) { nghttp2_session_set_stream_user_data(h->session, stream, NULL); drop(h, b); }
     return rc ? -1 : 0;
 }
 
