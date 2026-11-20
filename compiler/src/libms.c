@@ -77,6 +77,7 @@
 #include "opt/opt_pipeline.c"
 #include "syntax/hints.c"
 #include "syntax/constfold.c"
+#include "check/lower_scope.c"
 #include "check/lower_body.c"
 #include "syntax/walk.c"
 #include "check/ty_subst.c"
