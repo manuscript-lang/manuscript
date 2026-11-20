@@ -1,0 +1,8 @@
+module "t"
+alt Res { ok(v: int), err(s: str) }
+fn @main() -> int {
+b0:
+  %r: Res = alt.new Res.ok
+  %z: int = iconst 0
+  ret %z
+}

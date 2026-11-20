@@ -17,6 +17,8 @@
 #include "mir_interp.c"
 #include "mir_parse.c"
 #include "mir_analysis.c"
+#include "mir_verify_types.c"
+#include "mir_verify.c"
 #include "opt_bytetake.c"
 #include "opt_strfuse.c"
 #include "opt_loopslot.c"

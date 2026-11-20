@@ -1,0 +1,10 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %c: bool = bconst true
+  %l: list<int> = list.new %c
+  drop %l
+  %z: int = iconst 0
+  ret %z
+}

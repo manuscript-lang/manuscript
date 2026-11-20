@@ -1,0 +1,10 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: bool = bconst true
+  switch %a [0: l()] default l()
+l:
+  %z: int = iconst 0
+  ret %z
+}

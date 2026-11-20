@@ -1,0 +1,7 @@
+module "t"
+global @g: int
+fn @main() -> int {
+b0:
+  %a: int = global.get @g
+  ret %a
+}

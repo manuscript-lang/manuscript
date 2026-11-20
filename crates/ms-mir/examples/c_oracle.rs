@@ -13,6 +13,7 @@ use std::fmt::Write;
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut out = String::new();
+    std::panic::set_hook(Box::new(|_| {}));
     match args[0].as_str() {
         "ops" => {
             for op in Op::ALL {
@@ -32,6 +33,19 @@ fn main() {
                 );
             }
         }
+        "verify" => each_module(&args[1..], &mut out, |m, out| {
+            // A mutant can reach an index the verifier does not check: say so, and let the
+            // comparison skip the file.
+            match std::panic::catch_unwind(|| ms_mir::verify::verify_module(m)) {
+                Ok(Ok(())) => out.push_str("ok\n"),
+                Ok(Err(errs)) => {
+                    for e in errs {
+                        let _ = writeln!(out, "{e}");
+                    }
+                }
+                Err(_) => out.push_str("oracle-panic\n"),
+            }
+        }),
         "analysis" => each_module(&args[1..], &mut out, |m, out| {
             for f in &m.funcs {
                 analysis(m, f, out);
