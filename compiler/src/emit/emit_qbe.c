@@ -646,6 +646,26 @@ static bool qbe_call_rt(QCx *c, const MirInst *inst, uint32_t block, uint32_t in
     return ok;
 }
 
+/* `dbgloc <line>, <scope>` makes QBE write `.loc 1 <line> <scope>`: the fault tables are built from the
+ * assembly (compiler/tools/ms_asm_tables.c), which turns each into a code range. The scope is
+ * module-wide (0 is the function itself) and the column carries it. A fault block repeats the place of
+ * the operation it guards (QBE lays blocks out as it likes, and a trace names the faulting line from the
+ * return address of the fault call), and every block starts by writing its own place again. */
+static void qbe_dbg_here(QCx *c) {
+    if (c->loc.line != 0) {
+        ms_buf_printf(c->out, "\tdbgloc %u, %u\n", c->loc.line,
+                      c->loc.scope == 0 ? 0 : c->scope_base + c->loc.scope);
+    }
+}
+
+static void qbe_dbg(QCx *c, MirLoc loc) {
+    if (mir_loc_none(loc) || (loc.line == c->loc.line && loc.scope == c->loc.scope)) {
+        return;
+    }
+    c->loc = loc;
+    qbe_dbg_here(c);
+}
+
 /* Ends the current piece of the block with a branch on the flag `%o<n>s`: the fault `call` (its
  * text, such as `$msrt_fault_int_overflow()`) is a block of its own and the rest of the block
  * continues in a new piece. */
@@ -654,9 +674,12 @@ static void qbe_fault_branch(QCx *c, uint32_t n, const char *call, uint32_t bloc
     (*part)++;
     ms_buf_printf(o, "\tjnz %%o%us, @f%u, ", n, n);
     qbe_label(c, block, *part);
-    ms_buf_printf(o, "\n@f%u\n\tcall %s\n\thlt\n", n, call);
+    ms_buf_printf(o, "\n@f%u\n", n);
+    qbe_dbg_here(c);
+    ms_buf_printf(o, "\tcall %s\n\thlt\n", call);
     qbe_label(c, block, *part);
     ms_buf_putc(o, '\n');
+    qbe_dbg_here(c);
 }
 
 /* Writes `sum = a +/- b` and the flag `%o<n>s`: add overflows when both operands differ in sign
@@ -1313,20 +1336,10 @@ static bool qbe_entry(QCx *c) {
     return true;
 }
 
-/* `dbgloc <line>, <scope>` makes QBE write `.loc 1 <line> <scope>`: the fault tables are built from the
- * assembly (compiler/tools/ms_asm_tables.c), which turns each into a code range. The scope is
- * module-wide (0 is the function itself) and the column carries it. */
-static void qbe_dbg(QCx *c, MirLoc loc) {
-    if (mir_loc_none(loc) || (loc.line == c->loc.line && loc.scope == c->loc.scope)) {
-        return;
-    }
-    c->loc = loc;
-    ms_buf_printf(c->out, "\tdbgloc %u, %u\n", loc.line, loc.scope == 0 ? 0 : c->scope_base + loc.scope);
-}
-
 static bool qbe_block(QCx *c, uint32_t b, const uint32_t *last) {
     const MirBlockData *block = &c->f->blocks[b];
     ms_buf_printf(c->out, "@b%u\n", b);
+    c->loc = (MirLoc){0};
     if (b == 0 && !qbe_entry(c)) {
         return false;
     }
@@ -1461,7 +1474,7 @@ bool mir_emit_qbe_glued(MirModule *m, MirGlue *glue_in, MsBuf *out, MsBuf *why) 
     return ok;
 }
 
-void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, MsBuf *out) {
+void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfiles; i++) {
         ms_buf_printf(out, "F %.*s\n", (int)m->files[i].len, m->files[i].ptr);
     }
@@ -1470,7 +1483,7 @@ void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, MsBuf *out) {
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         const MirFunc *f = &m->funcs[i];
         const MsStr name = ms_name(&m->names, f->name);
-        const MsStr shown = ms_name(&m->names, display[i]);
+        const MsStr shown = i < ndisplay ? ms_name(&m->names, display[i]) : name; /* glue added by the emitter */
         sym.len = 0;
         qbe_sym(&sym, name);
         ms_buf_printf(out, "Y %.*s\t%d\t%u\t%.*s\n", (int)sym.len - 1, sym.data + 1,
