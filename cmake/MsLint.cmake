@@ -4,7 +4,7 @@
 #   cmake -S . -B target/cmake/lint -G Ninja && C_LINT_BASE=<ref> cmake --build target/cmake/lint --target c-lint
 file(STRINGS "${CMAKE_SOURCE_DIR}/toolchain/c-warnings.txt" _warnings)
 set(_lint_includes runtime/include runtime/core runtime/tests/support compiler/include compiler/src compiler/src crates/ms-rt-abi/include
-    runtime/tests runtime/third_party/llhttp/include runtime/third_party/yyjson/include)
+    runtime/tests runtime/third_party/llhttp/include runtime/third_party/mimalloc/include runtime/third_party/yyjson/include)
 set(_lint_flags "-std=c11 ${_warnings}")
 string(REPLACE ";" " " _lint_flags "${_lint_flags}")
 # -Wcomma is clang-only, so it is not in the shared list.

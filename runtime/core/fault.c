@@ -5,6 +5,7 @@
  * cleanup adds a note to the report in progress and runs the cleanups that are left, so one failing cleanup
  * does not stop the others.
  */
+#include "alloc.h"
 #include "array.h"
 #include "fault.h"
 #include "ms_rt/alloc.h"
