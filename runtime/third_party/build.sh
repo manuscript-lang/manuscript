@@ -79,10 +79,13 @@ if [ ! -f "$out/lib/libnghttp2.a" ]; then
     cp "$vendor/nghttp2"/lib/includes/nghttp2/nghttp2.h "$build"/lib/includes/nghttp2/nghttp2ver.h "$out/include/nghttp2/"
 fi
 # OpenSSL's Configure needs a perl that produces Unix-like paths (not Strawberry or ActiveState Perl, which report MSWin32).
-# The shell's perl is tried first, then MSYS2's (Windows).
+# The shell's perl is tried first, then MSYS2's (Windows tries MSYS2's first).
 msys=${MS_MSYS2:-C:/msys64}
 perl=
-for candidate in perl "$msys/usr/bin/perl"; do
+candidates="perl $msys/usr/bin/perl"
+# On Windows, MSYS2's perl and make go together: its perl records /d/a/... paths that only MSYS2's make resolves.
+case "$triple" in *windows*) candidates="$msys/usr/bin/perl perl" ;; esac
+for candidate in $candidates; do
     if "$candidate" -e 'exit($^O eq "MSWin32")' >/dev/null 2>&1; then perl=$candidate; break; fi
 done
 if [ ! -f "$out/lib/libssl.a" ]; then
