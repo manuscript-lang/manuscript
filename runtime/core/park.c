@@ -442,6 +442,8 @@ bool ms_park_drain_mail(MsSched *sched) {
             ms_sched_stop((uint8_t)mail->a);
             stopped = true;
             msrt_free(mail);
+        } else if (ms_isolate_mail_kind(mail->kind) != NULL) {
+            ms_isolate_mail_kind(mail->kind)->handle(mail);
         } else if (sched->hooks.mail != NULL) {
             sched->hooks.mail(mail);
         } else {
