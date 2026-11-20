@@ -157,7 +157,7 @@ static void use_foreign_promises(Cross *work) {
     expect(ms_promise_take(work->dep, &msrt_desc_int, (uint8_t *)&value), "foreign take");
     ms_promise_cancel(work->victim);
     expect(ms_promise_wait(work->victim, -1) == MS_PROMISE_CANCELLED, "foreign wait: cancelled");
-    const int64_t twice = value * 2;
+    int64_t twice = value * 2;
     ms_promise_put(work->id, (uint8_t *)&twice, &msrt_desc_int, false);
 }
 
