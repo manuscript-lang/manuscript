@@ -15,6 +15,7 @@ MsSched *ms_sched(void) {
         MsSched *const created = msrt_alloc_zeroed(sizeof *created);
         created->timer_limit = MIN_TIMER_LIMIT;
         created->kill_limit = MIN_TIMER_LIMIT;
+        created->external_limit = MIN_TIMER_LIMIT;
         thread_sched = created;
     }
     return thread_sched;
@@ -24,6 +25,15 @@ void ms_sched_set_hooks(const MsSchedHooks *hooks, const MsPollOps *poll) {
     MsSched *const sched = ms_sched();
     sched->hooks = *hooks;
     sched->poll = *poll;
+}
+
+uint32_t ms_sched_attach(MsWakeFn wake, void *argument) {
+    MsSched *const sched = ms_sched();
+    const uint32_t index = ms_isolate_register(wake, argument);
+    if (index != MS_NO_ISOLATE) {
+        sched->isolate = index;
+    }
+    return index;
 }
 
 int64_t ms_sched_now(void) { return ms_sys_monotonic_ns(); }
@@ -59,6 +69,12 @@ void ms_sched_teardown(void) {
     MsSched *const sched = thread_sched;
     if (sched == NULL) {
         return;
+    }
+    if (ms_isolate_self() != MS_NO_ISOLATE) {
+        ms_isolate_unregister(ms_isolate_self());
+    }
+    if (sched->hooks.teardown != NULL) {
+        sched->hooks.teardown();
     }
     for (size_t i = 0; i < sched->slot_count; i++) {
         if (sched->slots[i].task != NULL) {
