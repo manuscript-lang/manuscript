@@ -43,8 +43,8 @@ MirTy lr_type(Lb *lb, MsTy ty) {
 LbVal lr_construct(Lb *lb, const MsExpr *call) {
     const MirTy ty = lr_type(lb, lb->facts->expr_ty[call->id]);
     const uint32_t count = call->u.call.args.len;
-    if (ty == MIR_NONE) {
-        return lb_unsupported(lb);
+    if (ty == MIR_NONE || count != lb->m->type_defs[mir_ty_data(lb->m, ty)->id].nfields) {
+        return lb_unsupported(lb); // a field left to its default is not lowered yet
     }
     MirValue *values = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
     for (uint32_t i = 0; i < count && lb->ok; i++) {

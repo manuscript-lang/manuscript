@@ -117,6 +117,10 @@ static bool body_is_admitted(const MsBody *b, MsTy ty) {
            (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
 }
 
+bool ms_body_is_admitted(const MsBody *b, MsTy ty) {
+    return body_is_admitted(b, ty);
+}
+
 /* `Result[T, E]` whose success type the pass can hold (or `Void`); the error type is only ever
  * passed through by `?`, so any type is accepted for it. */
 bool ms_body_is_result(const MsBody *b, MsTy ty) {
@@ -531,12 +535,21 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
     const MsSyms *syms = &b->c->syms;
     const MsTy record = syms->ty[sym];
     const MsDef *def = ms_def(b->c, sym);
-    if (syms->module[sym] != b->module || syms->nvars[sym] != 0 || syms->decl[sym] == NULL ||
-        syms->decl[sym]->kind != MS_D_TYPE || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
-        !body_is_admitted(b, record) || def->nfields != e->u.call.args.len) {
+    const MsDecl *decl = syms->decl[sym];
+    const uint32_t nargs = e->u.call.args.len;
+    if (syms->nvars[sym] != 0 || decl == NULL || decl->kind != MS_D_TYPE || decl->u.type.external ||
+        (syms->module[sym] != b->module && decl->u.type.opaque) || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
+        !body_is_admitted(b, record) || nargs > def->nfields || def->nfields != decl->u.type.fields.len) {
         return ms_body_unsupported(b);
     }
     for (uint32_t i = 0; i < def->nfields; i++) {
+        if (i >= nargs) {
+            // A field left out takes its default.
+            if (decl->u.type.fields.ptr[i]->def == NULL) {
+                return ms_body_unsupported(b);
+            }
+            continue;
+        }
         const MsArg *arg = &e->u.call.args.ptr[i];
         const MsTy field = def->fields[i].ty;
         if ((arg->has_name && arg->name != def->fields[i].name) || def->fields[i].flags != 0 ||
