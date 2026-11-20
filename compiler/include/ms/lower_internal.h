@@ -47,6 +47,7 @@ typedef struct Lb {
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
     const MsDecl *decl;   /* the function being lowered */
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
+    MirTy *type_of;       /* by checker type: the record it lowered to, or MIR_NONE */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
@@ -55,5 +56,10 @@ typedef struct Lb {
 } Lb;
 
 #define LB_FAIL ((LbVal){MIR_NONE, false})
+
+/* Records (lower_record.c, included after lower_body.c). */
+MirTy lr_type(Lb *lb, MsTy ty);
+LbVal lr_construct(Lb *lb, const MsExpr *call);
+LbVal lr_field(Lb *lb, const MsExpr *e);
 
 #endif
