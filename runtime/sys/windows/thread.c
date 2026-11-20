@@ -1,11 +1,7 @@
 /* Threads and sleeping on Windows. */
 #include "ms_rt/sys.h"
+#include "winapi.h"
 
-__declspec(dllimport) void *__stdcall CreateThread(void *attrs, size_t stack, uint32_t(__stdcall *start)(void *), void *arg,
-                                                   uint32_t flags, uint32_t *id);
-__declspec(dllimport) uint32_t __stdcall WaitForSingleObject(void *h, uint32_t ms);
-__declspec(dllimport) int __stdcall CloseHandle(void *h);
-__declspec(dllimport) void __stdcall Sleep(uint32_t ms);
 extern void *malloc(size_t size);
 extern void free(void *p);
 
@@ -18,7 +14,7 @@ typedef struct MsThreadStart {
     void *argument;
 } MsThreadStart;
 
-static uint32_t __stdcall thread_trampoline(void *raw) {
+static uint32_t MS_WINAPI_CALLBACK thread_trampoline(void *raw) {
     const MsThreadStart start = *(const MsThreadStart *)raw;
     free(raw);
     start.function(start.argument);
@@ -33,16 +29,16 @@ uintptr_t ms_sys_thread_spawn(size_t stack, void (*start)(void *), void *arg) {
     }
     *block = (MsThreadStart){.function = start, .argument = arg};
     const uint32_t flags = stack == 0 ? 0 : STACK_SIZE_PARAM_IS_A_RESERVATION;
-    void *const handle = CreateThread(NULL, stack, thread_trampoline, block, flags, NULL);
-    if (handle == NULL) {
+    const uintptr_t handle = CreateThread(NULL, stack, thread_trampoline, block, flags, NULL);
+    if (handle == 0) {
         free(block);
     }
-    return (uintptr_t)handle;
+    return handle;
 }
 
 void ms_sys_thread_join(uintptr_t thread) {
-    WaitForSingleObject((void *)thread, INFINITE);
-    CloseHandle((void *)thread);
+    WaitForSingleObject(thread, INFINITE);
+    CloseHandle(thread);
 }
 
 void ms_sys_sleep_ms(uint32_t ms) { Sleep(ms); }

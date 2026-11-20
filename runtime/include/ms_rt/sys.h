@@ -43,8 +43,8 @@ int64_t ms_sys_monotonic_ns(void);
 
 /* Starts a thread running start(arg). stack 0 takes the default size, else it is the stack size in bytes.
  * Returns a handle for ms_sys_thread_join, or 0 on failure. */
-typedef void (*ms_sys_thread_fn)(void *);
-uintptr_t ms_sys_thread_spawn(size_t stack, ms_sys_thread_fn start, void *arg);
+typedef void (*MsSysThreadFn)(void *);
+uintptr_t ms_sys_thread_spawn(size_t stack, MsSysThreadFn start, void *arg);
 /* Waits for a thread started by ms_sys_thread_spawn and releases its handle. */
 void ms_sys_thread_join(uintptr_t thread);
 /* Blocks the calling thread for ms milliseconds. */

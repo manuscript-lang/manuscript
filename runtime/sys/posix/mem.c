@@ -11,7 +11,8 @@ extern int mprotect(void *addr, size_t len, int prot);
 #define PROT_READ 1
 #define PROT_WRITE 2
 #define MAP_PRIVATE 0x02
-#define MAP_FAILED ((void *)-1)
+/* mmap reports failure as (void *)-1; compared through the integer so no integer is turned into a pointer. */
+#define MS_MAP_FAILED_ADDRESS ((intptr_t)-1)
 
 #ifdef __APPLE__
 #define MAP_ANONYMOUS 0x1000
@@ -28,7 +29,7 @@ extern int mprotect(void *addr, size_t len, int prot);
 
 uint8_t *ms_sys_map_anon(size_t len) {
     void *const memory = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-    return memory == MAP_FAILED ? NULL : (uint8_t *)memory;
+    return (intptr_t)memory == MS_MAP_FAILED_ADDRESS ? NULL : memory;
 }
 
 /* macOS superpages exist only on Intel, are wired and cannot back a 256 GiB reservation; Apple Silicon
@@ -50,28 +51,29 @@ uint8_t *ms_sys_map_region(size_t len) {
     if (raw == NULL) {
         return NULL;
     }
-    const uintptr_t start = (uintptr_t)raw;
-    const uintptr_t base = (start + len - 1) / len * len;
-    const uintptr_t end = start + 2 * len;
-    if (base > start) {
-        munmap((void *)start, base - start);
+    const size_t misalignment = (uintptr_t)raw % len;
+    const size_t head = misalignment == 0 ? 0 : len - misalignment;
+    uint8_t *const region = raw + head;
+    const size_t tail = len - head; /* the reservation is 2 * len: head + len + tail */
+    if (head > 0) {
+        munmap(raw, head);
     }
-    if (end > base + len) {
-        munmap((void *)(base + len), end - base - len);
+    if (tail > 0) {
+        munmap(region + len, tail);
     }
 #ifdef MADV_NOHUGEPAGE
-    madvise((void *)base, len, MADV_NOHUGEPAGE);
+    madvise(region, len, MADV_NOHUGEPAGE);
 #endif
-    return (uint8_t *)base;
+    return region;
 }
 
-bool ms_sys_commit(uint8_t *p, size_t len) {
+bool ms_sys_commit(uint8_t *p, size_t len) { // NOLINT(readability-non-const-parameter): the Windows version writes through p
     (void)p;
     (void)len;
     return true;
 }
 
-bool ms_sys_commit_guard(uint8_t *p) {
+bool ms_sys_commit_guard(uint8_t *p) { // NOLINT(readability-non-const-parameter): the Windows version writes through p
     (void)p;
     return true;
 }

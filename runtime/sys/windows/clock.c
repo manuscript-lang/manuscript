@@ -1,15 +1,19 @@
+/* The monotonic clock on Windows. */
 #include "ms_rt/sys.h"
+#include "winapi.h"
 
-__declspec(dllimport) int __stdcall QueryPerformanceCounter(int64_t *v);
-__declspec(dllimport) int __stdcall QueryPerformanceFrequency(int64_t *v);
+#define MS_NANOSECONDS_PER_SECOND INT64_C(1000000000)
 
 int64_t ms_sys_monotonic_ns(void) {
-    int64_t freq = 0, now = 0;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&now);
-    if (freq < 1) {
-        freq = 1;
+    int64_t frequency = 0;
+    int64_t count = 0;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&count);
+    if (frequency < 1) {
+        frequency = 1; /* cannot happen on supported Windows versions */
     }
-    /* Split so now * 1e9 cannot overflow after long uptimes. */
-    return (now / freq) * 1000000000 + (now % freq) * 1000000000 / freq;
+    /* Whole seconds and the remainder separately, so count * 1e9 cannot overflow after long uptimes. */
+    const int64_t seconds = count / frequency;
+    const int64_t remainder = count % frequency;
+    return seconds * MS_NANOSECONDS_PER_SECOND + remainder * MS_NANOSECONDS_PER_SECOND / frequency;
 }

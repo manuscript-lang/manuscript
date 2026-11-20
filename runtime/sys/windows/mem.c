@@ -1,8 +1,6 @@
 /* Address-space reservations on Windows: reserve with MEM_RESERVE, commit ranges on demand. */
 #include "ms_rt/sys.h"
-
-__declspec(dllimport) void *__stdcall VirtualAlloc(void *addr, size_t len, uint32_t kind, uint32_t protect);
-__declspec(dllimport) int __stdcall VirtualFree(void *addr, size_t len, uint32_t kind);
+#include "winapi.h"
 
 #define MEM_COMMIT 0x1000
 #define MEM_RESERVE 0x2000
@@ -16,7 +14,7 @@ uint8_t *ms_sys_map_anon(size_t len) { return (uint8_t *)VirtualAlloc(NULL, len,
 
 /* No usable huge-page advice for a lazily committed reservation: MEM_LARGE_PAGES needs SeLockMemoryPrivilege
  * and cannot be demand-committed (error 1314 even for an administrator, #3710, #3646). */
-void ms_sys_prefer_huge_pages(uint8_t *p, size_t len) {
+void ms_sys_prefer_huge_pages(uint8_t *p, size_t len) { // NOLINT(readability-non-const-parameter): the posix version writes through p
     (void)p;
     (void)len;
 }
@@ -37,7 +35,7 @@ uint8_t *ms_sys_map_region(size_t len) {
     const size_t slots = REGION_WINDOW / len;
     for (size_t attempt = 0; attempt < slots; attempt++) {
         const size_t slot = next_region++ % slots;
-        void *const at = (void *)(REGION_BASE + slot * len);
+        void *const at = (void *)(REGION_BASE + slot * len); // NOLINT(performance-no-int-to-ptr): a fixed address window
         uint8_t *const region = VirtualAlloc(at, len, MEM_RESERVE, PAGE_NOACCESS);
         if (region != NULL) {
             return region;
@@ -47,7 +45,7 @@ uint8_t *ms_sys_map_region(size_t len) {
 }
 
 /* The bottom of a reserved stack stays uncommitted and an access to it faults. */
-bool ms_sys_guard(uint8_t *p, size_t len) {
+bool ms_sys_guard(uint8_t *p, size_t len) { // NOLINT(readability-non-const-parameter): the posix version writes through p
     (void)p;
     (void)len;
     return true;
