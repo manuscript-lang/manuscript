@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "check/check_body.h"
@@ -44,6 +45,7 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
 }
 
 static bool body_is_admitted(const MsBody *b, MsTy ty);
+static bool body_is_bindable(const MsBody *b, MsTy ty);
 
 /* A `type`, `enum` or interface the program declares, whose type arguments (if it has any) are
  * themselves admitted. */
@@ -62,12 +64,14 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     if (tys->nargs[ty] == 0) {
         return true;
     }
-    const MsDef *definition = ms_def(b->c, sym);
-    if (definition == NULL || definition->nvars < tys->nargs[ty]) {
+    uint32_t nvars = 0;
+    const MsTy *vars = ms_sym_vars(b->c, sym, &nvars);
+    if (vars == NULL || nvars < tys->nargs[ty]) {
         return false;
     }
     for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
-        if (!body_is_admitted(b, ms_ty_args(tys, ty)[i]) || ms_var_info(b->c, definition->vars[i])->nbounds != 0) {
+        const MsTy arg = ms_ty_args(tys, ty)[i];
+        if (arg == b->invalid_ty || !(arg == b->void_ty || body_is_bindable(b, arg)) || ms_var_info(b->c, vars[i])->nbounds != 0) {
             return false;
         }
     }
@@ -124,6 +128,10 @@ static bool body_is_bindable(const MsBody *b, MsTy ty) {
     return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
 }
 
+bool ms_body_is_bindable(const MsBody *b, MsTy ty) {
+    return body_is_bindable(b, ty);
+}
+
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
     return ty == b->int_ty || ty == b->float_ty;
 }
@@ -141,6 +149,47 @@ static bool body_has_invalid(const MsBody *b, MsTy ty) {
         }
     }
     return false;
+}
+
+/* The standard type a type declared by the standard library is: `Optional` declared in `@std/core.ms`
+ * is the built-in `@std/Optional` that `Int?` writes. A type of the program's own is never one. */
+MsBuiltin ms_body_standard_identity(const MsBody *b, MsTy ty) {
+    if (b->c->tys.builtin[ty] != MS_B_NONE) {
+        return (MsBuiltin)b->c->tys.builtin[ty];
+    }
+    const uint32_t def = b->c->tys.def[ty];
+    if (def == 0 || def - 1 >= b->c->syms.count) {
+        return MS_B_NONE;
+    }
+    const MsStr module = ms_name(b->c->names, b->c->mods[b->c->syms.module[def - 1]].path);
+    const MsStr name = ms_name(b->c->names, b->c->syms.name[def - 1]);
+    char id[128];
+    if (module.len < 5 || memcmp(module.ptr, "@std/", 5) != 0 ||
+        snprintf(id, sizeof id, "@std/%.*s", (int)name.len, name.ptr) >= (int)sizeof id) {
+        return MS_B_NONE;
+    }
+    return ms_builtin_from_id((MsStr){id, (uint32_t)strlen(id)});
+}
+
+/* Whether two types are the same type: equal, or the standard type declared by its module and the
+ * built-in the program writes (`List[Int]` as declared by collections.ms and as written), with the
+ * same arguments. */
+bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y) {
+    const MsTyTable *tys = &b->c->tys;
+    if (x == y) {
+        return true;
+    }
+    const MsBuiltin identity = ms_body_standard_identity(b, x);
+    if (x == MS_TY_NONE || y == MS_TY_NONE || identity == MS_B_NONE || identity != ms_body_standard_identity(b, y) ||
+        tys->nargs[x] != tys->nargs[y]) {
+        return false;
+    }
+    for (uint32_t i = 0; i < tys->nargs[x]; i++) {
+        if (!ms_body_same_type(b, ms_ty_args(tys, x)[i], ms_ty_args(tys, y)[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 /* A type that is only ever the same as itself: a primitive, or a type or enum, never an interface
@@ -491,8 +540,11 @@ static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
     return b->c->tys.result[syms->ty[sym]];
 }
 
-static MsTy body_name(MsBody *b, const MsExpr *e) {
+static MsTy body_name(MsBody *b, const MsExpr *e, MsTy expected) {
     const uint32_t binding = ms_body_find_binding(b, e->u.sym);
+    if (binding == MS_NONE && ms_body_is_case_of(b, expected, e->u.sym)) {
+        return ms_body_case_name(b, e, expected);
+    }
     if (binding == MS_NONE && !body_text_is(b, e->u.sym, "none")) {
         const MsSymId named = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
         if (named != MS_NONE && b->c->syms.kind[named] == MS_SYM_FN) {
@@ -537,7 +589,7 @@ static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
         const MsArg *arg = &e->u.call.args.ptr[i];
         const MsTy field = def->fields[i].ty;
         if ((arg->has_name && arg->name != def->fields[i].name) || def->fields[i].flags != 0 ||
-            !body_is_admitted(b, field) || ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
+            !body_is_bindable(b, field) || ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
     }
@@ -639,6 +691,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsSyms *syms = &b->c->syms;
     if (sym == MS_NONE && ms_body_is_builtin_case(b, callee->u.sym)) {
         return ms_body_builtin_call(b, e, expected);
+    }
+    if (sym == MS_NONE && ms_body_is_case_of(b, expected, callee->u.sym)) {
+        return ms_body_case_call(b, e, expected);
     }
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
@@ -881,9 +936,9 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
  * expectation. A type that is not the expected one is a diagnostic. */
 /* A value checked against an Optional: `none`, a value of the Optional's own type, or a value of
- * its payload type, which is wrapped in `some` (`some_wrap`). Only a number or a Bool is wrapped, and
- * anything else (a mismatch, which the Rust checker words, or a payload with a cleanup) is left to the
- * Rust checker. */
+ * its payload type, which is wrapped in `some` (`some_wrap`). Anything else (a mismatch, which the
+ * Rust checker words) is left to the Rust checker. A wrapped payload that owns something is a view
+ * of a borrowed value and a wrapper around a fresh one: the ownership pass keeps the fresh ones. */
 static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsTy payload = ms_ty_args(&b->c->tys, expected)[0];
     if (e->kind == MS_E_NAME && body_text_is(b, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
@@ -893,7 +948,7 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ty == MS_TY_NONE || ty == expected) {
         return ty;
     }
-    if (ty != payload || !(ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty)) {
+    if (ty != payload || !body_is_admitted(b, payload)) {
         return ms_body_unsupported(b);
     }
     b->facts->some_wrap[e->id] = true;
@@ -912,14 +967,14 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_BOOL: ty = b->bool_ty; break;
     case MS_E_VOID: ty = b->void_ty; break;
     case MS_E_TEXT: ty = body_text(b, e); break;
-    case MS_E_NAME: ty = body_name(b, e); break;
+    case MS_E_NAME: ty = body_name(b, e, expected); break;
     case MS_E_UNARY: ty = body_unary(b, e); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;
-    case MS_E_INDEX: ty = ms_body_index(b, e); break;
+    case MS_E_INDEX:
+    case MS_E_APPLY: ty = ms_body_index(b, e); break;
     case MS_E_LIST: ty = ms_body_list(b, e, expected); break;
     case MS_E_MAP: ty = ms_body_map(b, e, expected); break;
-    case MS_E_APPLY:
     case MS_E_PROBE: return ms_body_unsupported(b);
     case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
     case MS_E_CALL: ty = body_call(b, e, expected); break;
@@ -936,7 +991,7 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (expected == b->invalid_ty) {
         return ms_body_record(b, e->id, ty); // what was asked for is already reported
     }
-    if (expected != MS_TY_NONE && ty != expected) {
+    if (expected != MS_TY_NONE && !ms_body_same_type(b, ty, expected)) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
         if (context == NULL || !body_is_comparable(b, ty) || !body_is_comparable(b, expected)) {
@@ -951,10 +1006,35 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
 
 /* ---- statements ---- */
 
+/* `Name[A, B]` or `T?`: a generic type the module sees, applied to annotations; the application is
+ * kept only when a local can hold it (its arguments admitted and unbounded). */
+static MsTy body_applied_annotation(MsBody *b, const MsTypeRef *t) {
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
+    if (sym == MS_NONE || b->c->syms.kind[sym] != MS_SYM_TYPE || b->c->syms.ty[sym] == MS_TY_NONE ||
+        b->c->syms.nvars[sym] != t->args.len || t->args.len > 8) {
+        return ms_body_unsupported(b);
+    }
+    MsTy args[8];
+    for (uint32_t i = 0; i < t->args.len; i++) {
+        args[i] = ms_body_annotation(b, t->args.ptr[i]);
+        if (args[i] == MS_TY_NONE) {
+            return MS_TY_NONE;
+        }
+    }
+    const MsTy ty = ms_ty_apply(b->c, b->c->syms.ty[sym], args, t->args.len);
+    if (ty == MS_TY_NONE || !body_is_bindable(b, ty)) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->type_ref_ty[t->id] = ty;
+    return ty;
+}
+
 /* The primitive type a written annotation names, or MS_TY_NONE. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
-    if (t->kind == MS_TYPE_NAMED && t->args.len == 1) {
-        return ms_body_list_annotation(b, t);
+    if (t->kind == MS_TYPE_NAMED && t->args.len != 0) {
+        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, t->name);
+        const bool list = sym != MS_NONE && b->c->syms.ty[sym] != MS_TY_NONE && ms_ty_is(&b->c->tys, b->c->syms.ty[sym], MS_BI_LIST);
+        return list ? ms_body_list_annotation(b, t) : body_applied_annotation(b, t);
     }
     if (t->kind == MS_TYPE_NAMED && t->args.len == 2) {
         return ms_body_map_annotation(b, t);

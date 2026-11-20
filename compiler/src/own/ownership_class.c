@@ -20,6 +20,8 @@ struct MsClassifier {
     uint32_t known_capacity;
     MsNameMap closeable;   /* owned: type identities that close themselves */
     MsNameMap owned_close; /* owned: interface identities with a consuming close */
+    MsSym close_name;      /* the name of the operation `Closeable` declares, MS_NONE until looked up */
+    bool close_known;
 };
 
 /* One classification: the nominal types being classified (innermost last), and the outermost
@@ -37,6 +39,7 @@ MsClassifier *ms_classifier_new(MsCheck *check) {
         ms_oom();
     }
     classifier->check = check;
+    classifier->close_name = MS_NONE;
     return classifier;
 }
 
@@ -54,20 +57,36 @@ void ms_classifier_mark_closeable(MsClassifier *classifier, MsSym type_id) {
     (void)ms_map_add(&classifier->closeable, type_id, 1);
 }
 
-static bool row_named_close(const MsCheck *check, MsSym name) {
-    const MsStr text = ms_name(check->names, name);
-    return text.len == 5 && memcmp(text.ptr, "close", 5) == 0;
+/* The name of the one operation the `Closeable` interface declares: what closes a value is read from
+ * the declaration, not spelled here. MS_NONE when the table is not loaded. */
+static MsSym close_name(MsClassifier *classifier) {
+    if (classifier->close_known) {
+        return classifier->close_name;
+    }
+    const MsCheck *check = classifier->check;
+    const MsTyTable *tys = &check->tys;
+    for (MsSymId sym = 0; sym < check->syms.count && classifier->close_name == MS_NONE; sym++) {
+        const MsTy ty = check->syms.ty[sym];
+        const MsDecl *decl = check->syms.decl[sym];
+        if (ty != MS_TY_NONE && ms_ty_is(tys, ty, MS_BI_CLOSEABLE) && decl != NULL && decl->kind == MS_D_INTERFACE &&
+            decl->u.iface.methods.len == 1) {
+            classifier->close_name = decl->u.iface.methods.ptr[0]->func.name;
+        }
+    }
+    classifier->close_known = true;
+    return classifier->close_name;
 }
 
 /* `Method::closes`: a `Closeable` implementation, or a type's own `close()` that returns
  * `Void!`, which satisfies `Closeable` by shape. */
-static bool row_closes(const MsCheck *check, const MsMethods *rows, uint32_t i) {
+static bool row_closes(MsClassifier *classifier, const MsMethods *rows, uint32_t i) {
+    const MsCheck *check = classifier->check;
     const MsTyTable *tys = &check->tys;
     if (rows->contract[i] != MS_TY_NONE && ms_ty_is(tys, rows->contract[i], MS_BI_CLOSEABLE)) {
         return true;
     }
     const MsFunc *decl = rows->decl[i];
-    if (!rows->inherent[i] || decl == NULL || !row_named_close(check, decl->name) ||
+    if (!rows->inherent[i] || decl == NULL || decl->name != close_name(classifier) ||
         tys->nparams[rows->ty[i]] != 0) {
         return false;
     }
@@ -78,7 +97,7 @@ static bool row_closes(const MsCheck *check, const MsMethods *rows, uint32_t i) 
 
 void ms_classifier_mark_methods(MsClassifier *classifier, const MsMethods *rows) {
     for (uint32_t i = 0; rows != NULL && i < rows->count; i++) {
-        if (row_closes(classifier->check, rows, i)) {
+        if (row_closes(classifier, rows, i)) {
             ms_classifier_mark_closeable(classifier, classifier->check->tys.id[rows->receiver[i]]);
         }
     }
@@ -216,8 +235,7 @@ static bool declares_owned_close(const MsClassifier *classifier, MsTy type) {
                                   ? NULL
                                   : ms_interface_operations(check->methods, tys->def[type] - 1);
     for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
-        const MsStr name = ms_name(check->names, ops->items[i].name);
-        if (ops->items[i].decl->consuming && name.len == 5 && memcmp(name.ptr, "close", 5) == 0) {
+        if (ops->items[i].decl->consuming && ops->items[i].name == close_name((MsClassifier *)classifier)) {
             return true;
         }
     }

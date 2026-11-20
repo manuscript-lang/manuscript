@@ -1,4 +1,5 @@
 module "raw"
+close @close
 alt Msg { Pair(a: list<int>, b: list<int>), Empty }
 extern @msrt_print_int(int) -> void
 entry @main

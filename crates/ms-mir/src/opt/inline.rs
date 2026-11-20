@@ -1176,7 +1176,12 @@ fn strip_depth(m: &mut Module, early: bool) -> bool {
 /// Removes functions no root can reach and renumbers the rest.
 fn remove_dead(m: &mut Module) -> bool {
     let mut live = vec![false; m.funcs.len()];
-    let mut stack: Vec<usize> = m.entry.iter().map(|e| e.index()).collect();
+    let mut stack: Vec<usize> = m
+        .entry
+        .iter()
+        .chain(m.close.iter())
+        .map(|e| e.index())
+        .collect();
     stack.extend(
         m.funcs
             .iter()
@@ -1251,6 +1256,7 @@ fn remove_dead(m: &mut Module) -> bool {
         *hash = FuncId(map[hash.index()]);
     }
     m.entry = m.entry.map(|e| FuncId(map[e.index()]));
+    m.close = m.close.map(|e| FuncId(map[e.index()]));
     true
 }
 

@@ -501,9 +501,6 @@ uint8_t msstd_xchg_wait_gone(const void *handle, MsStr *err) {
         return ms_xchg_h2_wait_gone(exchange->h2, err);
     }
     const MsNetStatus status = ms_conn_wait_gone(table_of(exchange), id_of(exchange), &exchange->spent);
-    if (status == MS_NET_OK) { /* the connection was handed on: nothing to watch */
-        return STATUS_INVALID_INPUT;
-    }
     return status == MS_NET_RESET || status == MS_NET_CLOSED ? STATUS_OK : finish_status(exchange, status, err);
 }
 

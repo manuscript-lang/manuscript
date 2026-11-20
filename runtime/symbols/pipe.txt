@@ -1,1 +1,11 @@
-# ms_rt/pipe.h: defined in C as ms_pipe_*; the program symbols msrt_pipe_* move here when the C promise table serves programs.
+# Defined in runtime/core/pipe.c.
+msrt_pipe_new
+msrt_pipe_add_writer
+msrt_pipe_write
+msrt_pipe_read
+msrt_pipe_try
+msrt_pipe_ended
+msrt_pipe_brief_wait
+msrt_pipe_flush
+msrt_pipe_close_writer
+msrt_pipe_close_reader

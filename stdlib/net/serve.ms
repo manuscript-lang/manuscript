@@ -8,6 +8,7 @@ import (
 	promise,
 	set_options,
 	wait_any from "@std/concurrency/promise.ms",
+	stderr from "@std/io/io.ms",
 	ExchangeLimits,
 	NativeExchange,
 	finish_exchange,
@@ -409,6 +410,7 @@ fn serve_h2(
 	)
 	var requests: List[Promise[Void]] = []
 	var draining = false
+	var prune_at = PRUNE_AT
 
 	while true:
 		// Draining sends GOAWAY once; requests already started finish.
@@ -432,6 +434,10 @@ fn serve_h2(
 
 		if request := got.get():
 			requests.append(start_stream(request, msstd_handler_share(serving)))
+
+			if requests.length() >= prune_at:
+				requests = ended_removed(requests)
+				prune_at = PRUNE_AT.max(requests.length() * 2)
 		else:
 			break
 
@@ -440,6 +446,24 @@ fn serve_h2(
 			void request.wait()
 	void running.wait()
 	return ok()
+
+// How many requests a connection tracks before it drops the ones that have ended.
+PRUNE_AT := 64
+
+// Keeps the requests still running, so a long-lived connection holds a promise per live
+// request and not one per request served.
+fn ended_removed(requests: List[Promise[Void]]) List[Promise[Void]]:
+	var kept: List[Promise[Void]] = []
+	var pending = requests
+
+	while not pending.is_empty():
+		if request := pending.pop():
+			if request.done():
+				void request.wait()
+			else:
+				kept.append(request)
+
+	return kept
 
 fn start_stream(request: NativeExchange, serving: NativeHandler) Promise[Void]:
 	return promise(
@@ -486,6 +510,20 @@ fn call(
 	var exchange = opened.get()
 	handler(exchange)?
 	return ok(0)
+
+// The fault report up to the first frame of this server: the handler's own frames.
+fn handler_frames(report: String) String:
+	var kept = ""
+
+	for line in report.split("\n"):
+		if (
+			line.index_of("@std/").is_some()
+			or line.index_of("task started by").is_some()
+		): break
+
+		if not line.is_empty(): kept = kept + line + "\n"
+
+	return kept
 
 // Cancels the handler once the peer is gone from the exchange.
 fn watch(native: NativeExchange, stopper: Cancel) Void!:
@@ -538,6 +576,10 @@ fn run_handler(
 
 	if outcome.is_error():
 		kind := outcome.err().kind
+
+		// A handler that faulted answers 500; its report goes to the diagnostics.
+		if report := outcome.err().details.get("report"):
+			void stderr().write(f"HTTP stream handler fault: {handler_frames(report)}")
 
 		if kind == "ETIMEDOUT":
 			answer(native, 504)

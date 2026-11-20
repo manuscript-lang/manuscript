@@ -43,7 +43,8 @@ import expect_equal from "@std/test/test.ms"
 - `@std/data/pem.ms`: PemBlock, encode_all, encode_block, parse
 - `@std/data/quote.ms`: quote_text
 - `@std/data/semver.ms`: Version, parse
-- `@std/data/toml.ms`: TomlOptions, TomlValue, parse, stringify
+- `@std/data/toml.ms`: TomlLayout, TomlOptions, TomlStatement, TomlStatementKind, TomlValue, dotted, format_key, inline_value, layout, parse, stringify
+- `@std/data/toml_edit.ms`: TomlDocument, is_inline_table, parse_document, remove_key, set_key, to_string, value_at
 - `@std/data/utf8.ms`: Utf8Error, Utf8Scalar, decode_first, decode_last, is_valid
 - `@std/data/uuid.ms`: namespace_dns, namespace_oid, namespace_url, namespace_x500, uuid_v4, uuid_v5, uuid_v7, uuid_version
 - `@std/data/xml.ms`: XmlAttribute, XmlNode, escape_attribute, escape_text, parse, stringify
@@ -70,7 +71,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/net/dns.ms`: DnsConfig, dns_lookup, dns_resolve
 - `@std/net/exchange.ms`: ExchangeLimits, NativeExchange, RequestTarget, finish_exchange, open_exchange, parse_target
 - `@std/net/fetch.ms`: FetchBody, FetchOptions, FetchResponse, Fetcher, FetcherOptions, fetch, fetcher, json_body
-- `@std/net/http.ms`: ClientResponse, HttpClient, HttpClientOptions, HttpClientWire, HttpExchange, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpResponseMetadata, HttpServer, HttpServerOptions, NativeAdmission, NativeConnection, NativeH2Conn, NativeHandler, NativeHttpClient, NativeListener, NativeResponseBody, NativeTlsServer, RawResponse, StreamingResponse, buffered, headers, json, open_client, read_body, redirect, reply, send, text, upgrade
+- `@std/net/http.ms`: ClientResponse, HttpClient, HttpClientOptions, HttpClientWire, HttpExchange, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpResponseMetadata, HttpServer, HttpServerOptions, NativeAdmission, NativeConnection, NativeH2Conn, NativeHandler, NativeHttpClient, NativeListener, NativeResponseBody, NativeTlsServer, RawResponse, StreamingResponse, buffered, client_send, headers, json, open_client, read_body, redirect, reply, text, upgrade
 - `@std/net/ip.ms`: Cidr, DnsKind, DnsRecord, IpAddress, IpFamily, contains_ip, parse_cidr, parse_ip
 - `@std/net/mail.ms`: Address, Message, decode_words, parse_address, parse_address_list, parse_message
 - `@std/net/mime.ms`: HeaderField, Headers, MediaType, Part, encode_multipart, extension_for_media_type, form_part, format_media_type, media_type_for_extension, multipart_boundary, multipart_parts, parse_headers, parse_media_type, parse_multipart
