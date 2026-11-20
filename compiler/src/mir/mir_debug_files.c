@@ -15,8 +15,15 @@
 #define MS_STDLIB_SOURCE_DIR ""
 #endif
 
+/* The "e" (close on exec) mode letter is a glibc/BSD extension; the Windows C library rejects it. */
+#ifdef _WIN32
+#define MS_FOPEN_CLOEXEC_READ "rb"
+#else
+#define MS_FOPEN_CLOEXEC_READ "rbe"
+#endif
+
 static bool df_exists(const char *path) {
-    FILE *f = fopen(path, "rbe");
+    FILE *f = fopen(path, MS_FOPEN_CLOEXEC_READ);
     if (f == NULL) {
         return false;
     }
