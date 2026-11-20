@@ -269,7 +269,6 @@ static void body_return_statement(MsBody *b, const MsStmt *s) {
     (void)ms_body_expr(b, value, b->result);
 }
 
-bool ms_body_block(MsBody *b, const MsStmts *body);
 
 /* Checks a condition against `Bool`, then the branches; whether control can leave the statement. */
 static bool body_if_statement(MsBody *b, const MsStmt *s) {
