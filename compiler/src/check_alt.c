@@ -1,6 +1,6 @@
-/* `match` over an enum or `Optional` value in function bodies, and the enum types a parameter or
- * local may have. Handled: arms that name a case (bare, or qualified by the enum's own name) and
- * bind its payload, a `name:` arm for an `Optional`'s payload, a final `_`, one value per arm.
+/* `match` over an enum or `Optional` value in function bodies. Handled: arms that name a case (bare,
+ * or qualified by the enum's own name) that bind its payload, a `name:` arm for an `Optional`'s
+ * payload, a final `_`, one value per arm.
  * A diagnostic case (unknown, repeated or unreachable case, wrong payload count, missing case)
  * and every other construct leaves the function to the Rust checker. */
 #include <string.h>
@@ -47,7 +47,10 @@ static MsSym alt_case_name(const MsBody *b, const AltInfo *info, uint32_t index)
 }
 
 static uint32_t alt_case_fields(const AltInfo *info, uint32_t index) {
-    return info->optional ? (index == 0 ? 1 : 0) : info->def.cases[index].nfields;
+    if (info->optional) {
+        return index == 0 ? 1 : 0;
+    }
+    return info->def.cases[index].nfields;
 }
 
 /* The type of payload slot `slot` of case `index` at the scrutinee's type arguments. */
