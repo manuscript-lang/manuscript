@@ -1,5 +1,5 @@
 /* msstd_ws_connect (ws_connect.h): the argument and status mapping over ms_ws_dial. */
-#include "ws_connect.h"
+#include "ms_rt/net.h"
 
 #include <stdlib.h>
 
@@ -10,14 +10,13 @@
 #include "status.h"
 #include "ws_dial.h"
 #include "ws_natives.h"
-#include "ws_socket_natives.h"
 
 static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 uint8_t msstd_ws_connect(const void *conn, const MsStr *authority, const MsStr *target, const void *headers,
                          const MsVec *subprotocols, uint8_t compression, uint8_t has_max, int64_t max,
                          uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
-    ms_net_clear_text(err);
+    ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     if (has_max != 0 && max < 0) {
         return STATUS_INVALID_INPUT;
     }

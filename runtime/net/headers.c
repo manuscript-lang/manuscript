@@ -30,10 +30,13 @@ static void table_drop(MsObj *object) {
     msrt_free(table);
 }
 
+static MsObj *table_clone(MsObj *object);
+
 MsHeaders *ms_headers_new(void) {
     MsHeaders *table = msrt_alloc(sizeof *table);
     memset(table, 0, sizeof *table);
     table->header.drop = table_drop;
+    table->header.clone = table_clone; /* a copy of a record that holds headers is a deep copy */
     table->self = table;
     return table;
 }
@@ -162,6 +165,8 @@ void *msstd_headers_clone(const void *handle) {
     }
     return copy == NULL ? NULL : ms_headers_object(copy);
 }
+
+static MsObj *table_clone(MsObj *object) { return msstd_headers_clone(object); }
 
 uint8_t msstd_headers_append(const void *handle, const MsStr *name, const MsVec *value) {
     const MsBytes field = str_bytes(name);

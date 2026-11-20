@@ -1,89 +1,70 @@
 import (
 	Bytes from "@std/bytes.ms",
 	NativeExchange from "@std/net/exchange.ms",
+	HttpClientWire,
 	HttpExchange,
 	HttpHeaders,
 	HttpResponseMetadata,
 	HttpServerOptions,
+	NativeAdmission,
+	NativeConnection,
+	NativeH2Conn,
+	NativeHandler,
 	NativeHttpClient,
 	NativeResponseBody,
-	NativeServing,
-	NativeWorker,
-	NativeWorkerSpec,
+	NativeTlsServer,
 	RawResponse from "@std/net/http.ms",
 	Duration from "@std/time.ms",
 )
 
-export extern fn msstd_http_client_close(handle: NativeHttpClient) Void
+// The HTTP client natives (runtime/net/fetch.c).
+export extern fn msstd_client_new(options: HttpClientWire) NativeHttpClient!
 
-export extern fn msstd_http_client_share(handle: NativeHttpClient) NativeHttpClient
+// Another handle on the same client, for a promise that sends a request on it.
+export extern fn msstd_client_share(handle: NativeHttpClient) NativeHttpClient
 
-export extern fn msstd_http_client_request_bytes(
+// Ends the client's transfers and refuses later requests.
+export extern fn msstd_client_close(handle: NativeHttpClient) Void
+
+// Adds one level to the client's host and address filter; before the first request.
+export extern fn msstd_client_narrow(
+	handle: NativeHttpClient,
+	hosts: List[String],
+	cidrs: List[String],
+) Void!
+
+export extern fn msstd_client_fetch(
 	handle: NativeHttpClient,
 	method: String,
 	url: String,
 	headers: HttpHeaders,
 	body: Bytes,
-	max_response_bytes: Int?,
 	timeout: Duration?,
-) RawResponse!
+) NativeResponseBody!
 
-export extern fn msstd_http_serving_new(
-	address: String,
-	options: HttpServerOptions,
-	move handler: fn(var HttpExchange) Void!
-) NativeServing!
+export extern fn msstd_body_close(handle: NativeResponseBody) Void
 
-// Another handle on the same serving, for a connection promise to own.
-// What one worker needs from the serving, as plain data a worker promise owns.
-export extern fn msstd_http_serving_spec(serving: NativeServing) NativeWorkerSpec
+export extern fn msstd_body_metadata(handle: NativeResponseBody) HttpResponseMetadata
 
-export extern fn msstd_http_serving_address(serving: NativeServing) String
+export extern fn msstd_body_read(handle: NativeResponseBody, max_bytes: Int?) Bytes?!
 
-export extern fn msstd_http_serving_accept(serving: NativeServing) Int!
+export extern fn msstd_body_read_all(handle: NativeResponseBody, max_bytes: Int?) Bytes!
 
-// A worker engine on the calling thread; it adopts connections and serves them from the
-// poller.
-export extern fn msstd_http_serving_worker(spec: NativeWorkerSpec) NativeWorker!
-
-export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) Void
-
-// Drains the worker's connections and ends it.
-export extern fn msstd_http_worker_close(worker: NativeWorker) Void
-
-export extern fn msstd_http_serving_release(serving: NativeServing) Void
-
-export extern fn msstd_http_body_close(handle: NativeResponseBody) Void
-
-export extern fn msstd_http_body_metadata(
-	handle: NativeResponseBody
-) HttpResponseMetadata
-
-export extern fn msstd_http_body_read(
-	handle: NativeResponseBody,
-	max_bytes: Int?,
-) Bytes?!
-
-export extern fn msstd_http_body_read_all(handle: NativeResponseBody) Bytes!
-
-export extern fn msstd_http_headers_append(
+export extern fn msstd_headers_append(
 	headers: HttpHeaders,
 	name: String,
 	value: Bytes,
 ) Void!
 
-export extern fn msstd_http_headers_values(
-	value: HttpHeaders,
-	name: String,
-) List[Bytes]?
+export extern fn msstd_headers_values(value: HttpHeaders, name: String) List[Bytes]?
 
-export extern fn msstd_http_headers_names(value: HttpHeaders) List[String]
+export extern fn msstd_headers_names(value: HttpHeaders) List[String]
 
-export extern fn msstd_http_headers_remove(value: HttpHeaders, name: String) Bool
+export extern fn msstd_headers_remove(value: HttpHeaders, name: String) Bool
 
-export extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
+export extern fn msstd_headers_clone(value: HttpHeaders) HttpHeaders
 
-export extern fn msstd_http_headers_new() HttpHeaders
+export extern fn msstd_headers_new() HttpHeaders
 
 // Limits the scheduler threads the runtime starts to `n` (at least 1).
 export extern fn msrt_runtime_set_threads(n: Int) Void
@@ -131,3 +112,76 @@ export extern fn msstd_xchg_reset(
 	max_bytes: Int,
 	timeout: Duration?,
 ) Void!
+
+// Takes the connection out of the exchange once a 101 head is sent, for a WebSocket:
+// the bytes the runtime read ahead go with it. An exchange gives its connection up
+// once.
+export extern fn msstd_xchg_take_conn(x: NativeExchange) NativeConnection!
+
+// The accept side of one connection (runtime/include/ms_rt/xchg.h). `next` reads the
+// next request head of an HTTP/1 connection: none when the peer closed before sending a
+// byte, and an error otherwise (a refused head leaves the status to answer in
+// `reject_status`).
+export extern fn msstd_xchg_next(
+	connection: NativeConnection,
+	head_limit: Int,
+	timeout: Duration?,
+) NativeExchange?!
+
+export extern fn msstd_xchg_reject_status(connection: NativeConnection) Int
+
+export extern fn msstd_xchg_reject(
+	connection: NativeConnection,
+	status: Int,
+	timeout: Duration?,
+) Void!
+
+// Returns once the peer is gone from the exchange: it closed or half-closed an HTTP/1
+// connection, or reset the HTTP/2 stream. An error is this task's cancellation.
+export extern fn msstd_xchg_wait_gone(x: NativeExchange) Void!
+
+// HTTP/2 on an accepted connection. `open` starts it (0 limits mean defaults); one task
+// runs `run` for the life of the connection and another takes requests with `next`,
+// none once the connection is over. `drain` sends GOAWAY and lets requests in flight
+// finish.
+export extern fn msstd_h2_open(
+	connection: NativeConnection,
+	max_streams: Int,
+	max_header_list: Int,
+	stream_window: Int,
+	connection_window: Int,
+	idle: Duration?,
+) NativeH2Conn!
+
+export extern fn msstd_h2_run(h2: NativeH2Conn) Void!
+
+export extern fn msstd_h2_next(h2: NativeH2Conn, timeout: Duration?) NativeExchange?!
+
+export extern fn msstd_h2_drain(h2: NativeH2Conn) Void
+
+export extern fn msstd_h2_share(h2: NativeH2Conn) NativeH2Conn
+
+// The count of requests running at once, shared by every thread of one server.
+export extern fn msstd_admit_new(max: Int?) NativeAdmission
+
+export extern fn msstd_admit_share(admission: NativeAdmission) NativeAdmission
+
+// An error when the limit is reached; nothing is counted then.
+export extern fn msstd_admit_enter(admission: NativeAdmission) Void!
+
+export extern fn msstd_admit_leave(admission: NativeAdmission) Void
+
+// The handler of a server, shared by every thread. `run` serves one request: it takes
+// the exchange `call` hands it with `take` first and reports with `keep` whether the
+// connection can carry another request.
+export extern fn msstd_handler_new(move run: fn() Void) NativeHandler
+
+export extern fn msstd_handler_share(handler: NativeHandler) NativeHandler
+
+// Serves one request with the handler, in the calling task; true when the connection
+// can carry another.
+export extern fn msstd_handler_call(handler: NativeHandler, x: NativeExchange) Bool!
+
+export extern fn msstd_handler_take() NativeExchange
+
+export extern fn msstd_handler_keep(keep: Bool) Void
