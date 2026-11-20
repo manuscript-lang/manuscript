@@ -524,6 +524,8 @@ void ms_promise_start(MsPromise id, MsObj *closure) {
     }
 }
 
+void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closure); }
+
 void ms_promise_start_spread(MsPromise id, MsObj *closure) {
     if (!queue_work(id, closure, MS_WORKER_BEAT_NS)) {
         start_task(id, closure);
