@@ -286,7 +286,7 @@ static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const
             dump_expr(out, c, facts, s->u.loop.cond);
             dump_stmts(out, c, facts, &s->u.loop.body);
             break;
-        case MS_S_ASSIGN:
+        case MS_S_ASSIGN: dump_expr(out, c, facts, s->u.assign.value); break;
         case MS_S_BREAK:
         case MS_S_CONTINUE:
         case MS_S_FOR: break;
