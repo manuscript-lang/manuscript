@@ -6,6 +6,7 @@
  * of the wrapped result: it splits the block, and the last piece is the predecessor the
  * successors' phis name. */
 #include "ms/emit_qbe.h"
+#include "ms_rt/chars.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,8 +65,7 @@ static void qbe_sym(MsBuf *o, MsStr n) {
     ms_buf_putc(o, '$');
     for (uint32_t k = 0; k < n.len; k++) {
         unsigned char ch = (unsigned char)n.ptr[k];
-        bool plain = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') ||
-                     ch == '_' || ch == '.';
+        bool plain = ms_ascii_is_ident(ch) || ch == '.';
         if (plain) ms_buf_putc(o, (char)ch);
         else ms_buf_printf(o, ".x%02x", ch);
     }

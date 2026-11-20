@@ -9,19 +9,8 @@
 
 #include "hash.h"
 #include "ms_rt/alloc.h"
+#include "ms_rt/safe.h"
 #include "ms_rt/string.h"
-
-static inline uint64_t ms_load64(const uint8_t *p) {
-    uint64_t v;
-    __builtin_memcpy(&v, p, sizeof v);
-    return v;
-}
-
-static inline uint32_t ms_load32(const uint8_t *p) {
-    uint32_t v;
-    __builtin_memcpy(&v, p, sizeof v);
-    return v;
-}
 
 static inline uint64_t ms_hash_fold(uint64_t a, uint64_t b) {
     const unsigned __int128 product = (unsigned __int128)a * b;
@@ -83,13 +72,6 @@ static inline bool ms_str_bytes_equal(const MsStr *a, const MsStr *b) {
 
 static inline bool ms_str_equal(const MsStr *a, const MsStr *b) {
     return (a->ptr_word == b->ptr_word && a->tagged == b->tagged) || ms_str_bytes_equal(a, b);
-}
-
-/* Frees the allocation of an owned string; other strings own nothing. */
-static inline void ms_str_release(const MsStr *s) {
-    if ((s->tagged >> 62) == 0) {
-        msrt_free(s->ptr_word);
-    }
 }
 
 #endif

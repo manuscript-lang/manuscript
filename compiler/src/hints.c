@@ -2,21 +2,11 @@
  * crates/ms-check/src/hints.rs: the same suggestions, in the same order. */
 #include <stdlib.h>
 #include <string.h>
+#include "ms_rt/chars.h"
 
 #include "ms/hints.h"
 
 #define EMPTY_STR ((MsStr){"", 0})
-
-static bool is_upper(char c) {
-    return c >= 'A' && c <= 'Z';
-}
-
-static char to_lower(char c) {
-    if (!is_upper(c)) {
-        return c;
-    }
-    return (char)(c + ('a' - 'A'));
-}
 
 bool ms_str_equal(MsStr a, MsStr b) {
     return a.len == b.len && memcmp(a.ptr, b.ptr, a.len) == 0;
@@ -49,7 +39,7 @@ static MsStr str_from_buf(MsArena *arena, const MsBuf *b) {
 static MsStr lowercase(MsArena *arena, MsStr s) {
     char *lower = ms_alloc(arena, (size_t)s.len + 1, 1);
     for (uint32_t i = 0; i < s.len; i++) {
-        lower[i] = to_lower(s.ptr[i]);
+        lower[i] = (char)ms_ascii_to_lower((uint8_t)s.ptr[i]);
     }
     lower[s.len] = 0;
     return (MsStr){lower, s.len};
@@ -273,7 +263,7 @@ static size_t find_str(MsStr hay, MsStr needle) {
 
 bool ms_rename_module_path(MsArena *arena, MsStr source, MsPos from, MsStr old, MsStr new_path, MsFix *out) {
     size_t start = from.offset;
-    bool on_boundary = start == source.len || (start < source.len && (source.ptr[start] & 0xC0) != 0x80);
+    bool on_boundary = start == source.len || (start < source.len && !ms_utf8_is_continuation((uint8_t)source.ptr[start]));
     if (start > source.len || !on_boundary) {
         return false;
     }
@@ -343,17 +333,17 @@ static const Synonym member_synonyms[] = {
 static MsStr snake_case(MsArena *arena, MsStr name) {
     bool has_upper = false;
     for (uint32_t i = 0; i < name.len; i++) {
-        has_upper = has_upper || is_upper(name.ptr[i]);
+        has_upper = has_upper || ms_ascii_is_upper((uint8_t)name.ptr[i]);
     }
     if (!has_upper) {
         return EMPTY_STR;
     }
     MsBuf out = {0};
     for (uint32_t i = 0; i < name.len; i++) {
-        if (is_upper(name.ptr[i])) {
+        if (ms_ascii_is_upper((uint8_t)name.ptr[i])) {
             ms_buf_putc(&out, '_');
         }
-        ms_buf_putc(&out, to_lower(name.ptr[i]));
+        ms_buf_putc(&out, (char)ms_ascii_to_lower((uint8_t)name.ptr[i]));
     }
     MsStr result = str_from_buf(arena, &out);
     ms_buf_free(&out);

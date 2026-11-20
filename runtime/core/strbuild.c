@@ -10,6 +10,7 @@
 #include "ms_rt/safe.h"
 #include "ms_rt/string.h"
 #include "ms_rt/utf8.h"
+#include "ms_rt/chars.h"
 
 /* The fault entry point and the table of one-character ASCII strings (two bytes each, the second a NUL) are
  * still defined by the Rust runtime. */
@@ -386,7 +387,7 @@ static void reverse_scalars(MsBytesMut destination, MsBytes text) {
     while (end > 0) {
         size_t start = end - 1;
         uint8_t byte = 0;
-        while (start > 0 && end - start < 4 && ms_bytes_get(text, start, &byte) && (byte & 0xC0) == 0x80) {
+        while (start > 0 && end - start < 4 && ms_bytes_get(text, start, &byte) && ms_utf8_is_continuation(byte)) {
             start--;
         }
         MsBytes scalar = {0};
@@ -689,7 +690,7 @@ void msrt_string_pad_end(const MsStr *s, int64_t target, const MsStr *padding, M
 
 static bool is_boundary(MsBytes text, size_t index) {
     uint8_t byte = 0;
-    return index == text.len || (ms_bytes_get(text, index, &byte) && (byte & 0xC0) != 0x80);
+    return index == text.len || (ms_bytes_get(text, index, &byte) && !ms_utf8_is_continuation(byte));
 }
 
 /* A bound as an offset into `length` bytes: a negative bound counts back from the end. */
