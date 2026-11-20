@@ -1,7 +1,8 @@
-// Idle-connection server for the C rewrite baselines: main <port> <ws|tls> [cert.pem key.pem].
+// Idle-connection server for the C rewrite baselines: main <port> <ws|tls> [cert.pem
+// key.pem].
 // `ws` serves plain HTTP and, at /ws, upgrades to a WebSocket whose handler then waits for
-// messages (an idle connection is a parked handler). `tls` serves HTTPS with /health; the
-// handler returns, so the connection idles in the server's keep-alive state.
+// messages (an idle connection is a parked handler). `tls` serves HTTPS with /health;
+// the handler returns, so the connection idles in the server's keep-alive state.
 import (
 	HttpExchange,
 	HttpRequest,
@@ -32,8 +33,7 @@ fn health(request: HttpRequest) HttpResponse:
 	return HttpResponse(200, "ok\n".to_bytes())
 
 fn read_text(path: String) String:
-	if bytes := read_file(path).wait():
-		return bytes.decode_utf8().get_or("")
+	if bytes := read_file(path).wait(): return bytes.decode_utf8().get_or("")
 	return ""
 
 fn main() Int:
@@ -42,8 +42,10 @@ fn main() Int:
 
 	var options = HttpServerOptions(cores: 1)
 	var handler = ws_handler
+
 	if args.get(1) == "tls":
 		if args.length() != 4: return 2
+
 		options = HttpServerOptions(
 			cores: 1,
 			tls: TlsOptions(
@@ -53,7 +55,12 @@ fn main() Int:
 		)
 		handler = buffered(health)
 
-	if acquired := serve(address: f"127.0.0.1:{args.get(0)}", handler: handler, options: options):
+	if acquired := serve(
+		address: f"127.0.0.1:{args.get(0)}",
+		handler: handler,
+		options: options,
+	):
 		_ignored := acquired.wait()
 		return 0
+
 	return 1
