@@ -11,3 +11,4 @@ tests/conformance/fixtures/e2e/projects/*_suite/data/** -text
 
 # Vendored C libraries stay byte-exact (no line-ending conversion).
 runtime/third_party/** -text
+compiler/tests/prelude/crlf.ms -text

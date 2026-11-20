@@ -81,6 +81,9 @@ bool ms_program_check_module(MsCheck *c, MsModId module, MsStr text) {
     if (nerrors > 0) {
         return false;
     }
+    if (c->mods[module].text.len == 0) {
+        c->mods[module].text = text; // the exact-source fixes of name resolution read it
+    }
     ms_module_resolve_types(c, module);
     for (size_t i = 0; i < sizeof program_prelude / sizeof *program_prelude; i++) {
         program_add_bundled(c, (MsStr){program_prelude[i], (uint32_t)strlen(program_prelude[i])});

@@ -5,6 +5,7 @@
 
 #include "ms/check.h"
 #include "ms/import_hints.h"
+#include "ms/prelude_fix.h"
 
 enum { PRELUDE_NAME_COUNT = 13, CONSTRUCTOR_COUNT = 4 };
 
@@ -301,6 +302,28 @@ static MsSymId scope_import_target(MsCheck *c, const MsImport *item) {
     return found;
 }
 
+/* An import of a name every module already sees, with the exact-source edit that removes it (when the module's
+ * source is known: `ms_program_check_module` records it). */
+static void scope_report_redundant_import(MsCheck *c, MsModId module, const MsImport *item) {
+    const MsStr name = ms_name(c->names, item->name);
+    MsPos end = item->name_pos;
+    end.offset += name.len;
+    end.column += name.len;
+    MsCheckDiag diag = {.diag = {.pos = item->name_pos, .has_end = true, .end = end,
+                                 .message = ms_prelude_import_message(&c->arena, name)},
+                        .phase = MS_PHASE_RESOLUTION};
+    const MsModule *syntax = c->mods[module].syntax;
+    MsFix fix;
+    if (c->mods[module].text.len > 0 &&
+        ms_prelude_import_fix(&c->arena, c->mods[module].text, syntax->imports, syntax->nimports, item, &fix)) {
+        diag.diag.has_fix = true;
+        diag.diag.fix_pos = fix.pos;
+        diag.diag.fix_end = fix.end;
+        diag.diag.replacement = fix.replacement;
+    }
+    ms_report(c, module, &diag);
+}
+
 static void scope_report_failed_import(MsCheck *c, MsModId module, const MsImport *item, bool in_standard) {
     const uint32_t width = ms_name(c->names, item->name).len;
     MsPos end = item->name_pos;
@@ -377,6 +400,9 @@ static void scope_import_symbols(MsCheck *c, MsModId module) {
         if (found == MS_NONE || hidden || !(c->syms.is_exported[found] || host)) {
             scope_report_failed_import(c, module, item, in_standard);
             continue;
+        }
+        if (ms_is_prelude_symbol(c, found)) {
+            scope_report_redundant_import(c, module, item);
         }
         scope_add_symbol(c, module, item->name, found, item->name_pos);
     }
