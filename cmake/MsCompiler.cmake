@@ -64,7 +64,20 @@ endforeach()
 foreach(name types_test ownership_test recursion_test ty_algebra_test infer_test implements_test lower_scope_test project_path_test project_manifest_test project_load_test project_discover_test semver_test lock_test resolve_test graph_check_test install_test)
   ms_compiler_exe(${name} "${_c}/tests/${name}.c" WITH_LIBMS TEST)
 endforeach()
+ms_compiler_exe(std_embed_test "${_c}/tests/std_embed_test.c" $<TARGET_OBJECTS:ms_std_embed> WITH_LIBMS TEST INCLUDES "${_c}/tools")
 ms_compiler_exe(driver_test "${_c}/src/driver.c" "${_c}/tests/driver_test.c" WITH_LIBMS TEST)
+# The embedded standard library: std_embed_gen writes std_embed_data.inc from stdlib/, std_embed.c includes it. Only
+# the executables that load the library link ms_std_embed.
+ms_compiler_exe(std_embed_gen "${_c}/tools/std_embed_gen.c" WITH_LIBMS INCLUDES "${_c}/tools")
+file(GLOB_RECURSE _std_sources CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/stdlib/*.ms")
+set(_std_data "${CMAKE_BINARY_DIR}/compiler/std_embed_data.inc")
+add_custom_command(OUTPUT "${_std_data}" COMMAND std_embed_gen "${CMAKE_SOURCE_DIR}/stdlib" "${_std_data}"
+                   DEPENDS std_embed_gen ${_std_sources} VERBATIM)
+add_library(ms_std_embed OBJECT "${_c}/src/std_embed.c" "${_std_data}")
+target_include_directories(ms_std_embed PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include"
+                           "${CMAKE_BINARY_DIR}/compiler")
+target_compile_options(ms_std_embed PRIVATE -std=c11 -O1 -Wall -Wextra -Werror)
+
 # The thin `ms` in front of the Rust one.
 ms_compiler_exe(ms "${_c}/src/driver.c" "${_c}/tools/ms.c" WITH_LIBMS)
 
@@ -78,7 +91,7 @@ add_library(ms_tool STATIC "${_c}/src/libms.c" "${_c}/src/tool.c")
 target_include_directories(ms_tool PRIVATE "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include"
                            "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include" ${MS_LIB_crypto_INCLUDES})
 target_compile_options(ms_tool PRIVATE -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
-set_target_properties(ms_tool PROPERTIES OUTPUT_NAME mstool ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
+set_target_properties(ms_tool PROPERTIES POSITION_INDEPENDENT_CODE ON OUTPUT_NAME mstool ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
 
 # libms_tools.a: libms plus the shim Manuscript `extern fn` declarations call (compiler/tools/tool_shim.c, which
 # includes only ms_abi.h because its names collide with libms's). `make libms-tools` copies it to target/.
@@ -88,4 +101,4 @@ set_source_files_properties("${_c}/src/libms.c" PROPERTIES INCLUDE_DIRECTORIES
 set_source_files_properties("${_c}/tools/tool_shim.c" PROPERTIES INCLUDE_DIRECTORIES
                             "${CMAKE_SOURCE_DIR}/crates/ms-rt-abi/include")
 target_compile_options(ms_tools_shim PRIVATE -O2)
-set_target_properties(ms_tools_shim PROPERTIES OUTPUT_NAME ms_tools ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
+set_target_properties(ms_tools_shim PROPERTIES POSITION_INDEPENDENT_CODE ON OUTPUT_NAME ms_tools ARCHIVE_OUTPUT_DIRECTORY "${_bin}")
