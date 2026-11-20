@@ -39,3 +39,4 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Backends lower; the stack-depth protocol and layouts live in MIR](backends-only-lower-language-logic-lives-in-mir.md): `ms_mir::depth`, `stack.low`, one closure layout, why the grow path carries no location.
 - [Checks and list growth are MIR; the backends only lower](checks-and-list-growth-are-mir-the-backends-only-lower.md)
 - [The C front end is diffed against the Rust one, not rewritten from the docs](the-c-front-end-is-diffed-against-rust-not-reimplemented-from-the-docs.md): `make c-compiler-test` compares tokens (later trees) and diagnostics byte for byte on the corpus and on mutants.
+- [C MIR passes: shallow clones, unity build, unzeroed allocations](c-mir-passes-share-arrays-and-a-unity-build.md): what bit the port of the optimiser to C, and that it is not a perf target.
