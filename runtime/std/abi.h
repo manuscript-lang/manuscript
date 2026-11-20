@@ -57,6 +57,11 @@ extern const MsTypeDesc msrt_desc_int;
 extern const MsTypeDesc msrt_desc_string;
 extern const MsTypeDesc msrt_desc_bytes;
 
+/* A map value is built with msrt_map_new and msrt_map_add; add takes ownership of the key and the value slots. */
+typedef struct MsMap MsMap;
+void msrt_map_new(MsMap *out);
+void msrt_map_add(MsMap *map, const MsTypeDesc *key_desc, const MsTypeDesc *value_desc, uint8_t *key, uint8_t *value);
+
 /* The runtime's list functions: a descriptor says how an element is stored. Push takes ownership of the element. */
 void msrt_list_with_capacity(const MsTypeDesc *desc, int64_t cap, MsVec *out);
 void msrt_list_push(MsVec *v, const MsTypeDesc *desc, const void *elem);

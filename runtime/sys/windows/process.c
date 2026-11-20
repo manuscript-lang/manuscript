@@ -16,6 +16,11 @@ static size_t stored_length;
 
 static MsSysError unsupported(void) { return ms_sys_fs_error_of(MS_SYS_ERR_UNSUPPORTED); }
 
+int64_t ms_sys_process_identity(MsSysIdentity which) {
+    (void)which;
+    return -1; /* Windows has no user or group ids; Go reports -1 for each */
+}
+
 MsSysError ms_sys_process_umask(uint32_t mask, uint32_t *previous) {
     (void)mask;
     (void)previous;

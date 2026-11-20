@@ -21,6 +21,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ms_rt/base.h"
+
 /* Bits of the result of msrt_task_wait_fd and msrt_task_sleep, and of its `events` argument. */
 enum {
     MS_WAIT_READ = 1,
@@ -52,6 +54,11 @@ void ms_sched_flush_stdout(void);
 void msrt_process_on_exit(void (*hook)(void));
 /* Whether a bounded read of the running task has used its time (a wait loop must then fail with a timeout). */
 bool ms_sched_read_limit_passed(void);
+/* Runtime state that is still Rust-resident (ms-rt start.rs and obj.rs), with ms-sigs in the Rust ABI: the monotonic
+ * nanoseconds at which the runtime started (0 when not recorded), the program's arguments, and the seven counters. */
+int64_t msrt_start_nanos(void);
+void msrt_argv(MsVec *out);
+void msrt_counts(uint64_t *out);
 /* Marks the running task's stack as lent to another thread (true) or returned (false): while lent, the task keeps
  * its stack pages even when parked. Crates/ms-rt/src/task while the scheduler is Rust. */
 void ms_sched_task_pin(bool lend);

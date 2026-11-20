@@ -10,6 +10,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "ms_rt/map.h"
+#include "ms_rt/process.h"
 #include "ms_rt/string.h"
 #include "ms_rt/sys.h"
 #include "ms_sched.h"
@@ -136,3 +138,25 @@ uint32_t msrt_task_sleep(int64_t ns) {
 }
 
 void msrt_process_on_exit(void (*hook)(void)) { (void)hook; }
+
+/* Startup state and the counters the process-information natives read; the unit tests have no program. */
+int64_t msrt_start_nanos(void) { return 0; }
+
+void msrt_argv(MsVec *out) { *out = (MsVec){0}; }
+
+void msrt_counts(uint64_t *out) { memset(out, 0, 7 * sizeof *out); }
+
+void msrt_heap_stats(int64_t *out) {
+    out[0] = 0;
+    out[1] = 0;
+}
+
+void msrt_map_new(MsMap *out) { *out = (MsMap){0}; }
+
+void msrt_map_add(MsMap *map, const MsTypeDesc *key_desc, const MsTypeDesc *value_desc, uint8_t *key, uint8_t *value) {
+    (void)map;
+    (void)key_desc;
+    (void)value_desc;
+    (void)key;
+    (void)value;
+}

@@ -37,6 +37,25 @@ static void environment_round_trip(void) {
     msrt_string_free(&equals);
 }
 
+static void identity_memory_and_counts(void) {
+    MsProcessInfo info;
+    CHECK(RUN(msstd_process_info(&info, &err)) == STATUS_OK);
+    CHECK(info.pid > 0 && info.parent_pid >= 0);
+    CHECK(ms_str_len(&info.os) > 0 && ms_str_len(&info.architecture) > 0 && ms_str_len(&info.executable) > 0);
+    CHECK(info.uid >= 0 && info.effective_gid >= 0);
+    msrt_string_free(&info.executable);
+    msrt_string_free(&info.os);
+    msrt_string_free(&info.architecture);
+    MsProcessMemory memory;
+    CHECK(RUN(msstd_process_memory_usage(&memory, &err)) == STATUS_OK);
+    CHECK(memory.resident > 0 && memory.external >= 0);
+    MsProcessCounts counts;
+    CHECK(msstd_process_runtime_counts(&counts) == STATUS_OK);
+    int64_t elapsed = -1;
+    CHECK(msstd_process_elapsed(&elapsed) == STATUS_OK && elapsed >= 0);
+    CHECK(msstd_process_uptime() >= elapsed);
+}
+
 static void validation(void) {
     int64_t out = 0;
     CHECK(RUN(msstd_process_umask(01000, &out, &err)) == STATUS_INVALID_INPUT);
@@ -68,6 +87,7 @@ static void usage_and_directory(void) {
 
 int main(void) {
     environment_round_trip();
+    identity_memory_and_counts();
     validation();
     usage_and_directory();
     if (failures != 0) {

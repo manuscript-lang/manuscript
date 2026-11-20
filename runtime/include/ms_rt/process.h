@@ -85,4 +85,38 @@ uint8_t msstd_process_resource_usage(MsProcessResources *out, MsStr *err);
 /* ms-sig: msstd_process_cpu_usage(out: *mut CpuOut, err: ErrSlot) -> u8 @domain=process */
 uint8_t msstd_process_cpu_usage(MsProcessCpu *out, MsStr *err);
 
+typedef struct MsMap MsMap;
+
+/* The program's information, flattened (executable and arguments as the program was started). */
+typedef struct MsProcessInfo {
+    int64_t pid, parent_pid;
+    MsStr executable;
+    MsVec arguments;
+    MsStr os, architecture;
+    int64_t uid, gid, effective_uid, effective_gid;
+} MsProcessInfo;
+
+/* Heap and resident bytes: used, total, system, external, resident. */
+typedef struct MsProcessMemory {
+    int64_t heap_used, heap_total, heap_system, external, resident;
+} MsProcessMemory;
+
+/* The runtime's work counters. */
+typedef struct MsProcessCounts {
+    int64_t allocations, allocated_bytes, list_copies, list_copy_bytes, string_clones, string_clone_bytes, operations;
+} MsProcessCounts;
+
+/* ms-sig: msstd_process_uptime() -> i64 @domain=process */
+int64_t msstd_process_uptime(void);
+/* ms-sig: msstd_process_elapsed(out: *mut i64) -> u8 @domain=process */
+uint8_t msstd_process_elapsed(int64_t *out);
+/* ms-sig: msstd_process_info(out: *mut ProcessInfoOut, err: ErrSlot) -> u8 @domain=process */
+uint8_t msstd_process_info(MsProcessInfo *out, MsStr *err);
+/* ms-sig: msstd_process_memory_usage(out: *mut MemoryOut, err: ErrSlot) -> u8 @domain=process */
+uint8_t msstd_process_memory_usage(MsProcessMemory *out, MsStr *err);
+/* ms-sig: msstd_process_runtime_counts(out: *mut CountsOut) -> u8 @domain=process */
+uint8_t msstd_process_runtime_counts(MsProcessCounts *out);
+/* ms-sig: msstd_process_environment_map(out: *mut MapVal, err: ErrSlot) -> u8 @domain=process */
+uint8_t msstd_process_environment_map(MsMap *out, MsStr *err);
+
 #endif
