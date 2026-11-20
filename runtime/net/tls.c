@@ -126,7 +126,12 @@ static bool set_server_name(SSL *ssl, const char *host) {
     const size_t length = strlen(host);
     if (length >= sizeof name) return false;
     memcpy(name, host, length + 1);
+#if OPENSSL_VERSION_MAJOR >= 4
+    /* SSL_set1_host is deprecated in OpenSSL 4.0 (Windows takes MSYS2's current package). */
+    return SSL_set_tlsext_host_name(ssl, name) == 1 && SSL_set1_dnsname(ssl, name) == 1;
+#else
     return SSL_set_tlsext_host_name(ssl, name) == 1 && SSL_set1_host(ssl, name) == 1;
+#endif
 }
 
 MsTls *ms_tls_new(MsTlsCtx *ctx, const char *host) {

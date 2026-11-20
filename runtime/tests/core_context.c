@@ -28,6 +28,11 @@ static void child_entry(void) {
     }
 }
 
+#ifdef _WIN32
+#include <malloc.h>
+#define aligned_alloc(alignment, size) _aligned_malloc((size), (alignment))
+#endif
+
 static void test_switch(void) {
     uint8_t *const stack = aligned_alloc(16, STACK_BYTES);
     expect(stack != NULL, "stack allocated");

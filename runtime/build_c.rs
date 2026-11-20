@@ -100,29 +100,32 @@ fn libs_prefix(root: &Path, triple: Option<&str>) -> Result<Option<PathBuf>, Str
     Ok(Some(PathBuf::from(out)))
 }
 
-/// Configures and builds the C half of the runtime archive for `triple` (the host when `None`) in `work/cmake`
-/// and returns the objects to add to the archive. ccache is used when it is installed (`CMakeLists.txt`).
-pub fn build_c_runtime(
+/// Configures the CMake project for `triple` (the host when `None`) in `build`: the runtime, plus the unit tests when
+/// `tests`. ccache is used when it is installed (`CMakeLists.txt`).
+fn configure_c(
     root: &Path,
-    work: &Path,
+    build: &Path,
     triple: Option<&str>,
     stats: bool,
-) -> Result<CRuntime, String> {
-    let build = work.join("cmake");
+    tests: bool,
+) -> Result<(), String> {
     let arch = std::env::consts::ARCH;
     let mut configure = Command::new("cmake");
     configure
         .arg("-S")
         .arg(root)
         .arg("-B")
-        .arg(&build)
+        .arg(build)
         .args([
             "-G",
             "Ninja",
-            "-DMS_BUILD_TESTS=OFF",
             "-DMS_BUILD_COMPILER=OFF",
             "-DCMAKE_BUILD_TYPE=",
         ])
+        .arg(format!(
+            "-DMS_BUILD_TESTS={}",
+            if tests { "ON" } else { "OFF" }
+        ))
         .arg(format!(
             "-DMS_ALLOC_STATS={}",
             if stats { "ON" } else { "OFF" }
@@ -163,6 +166,19 @@ pub fn build_c_runtime(
         }
     }
     run(&mut configure, "cmake configure")?;
+    Ok(())
+}
+
+/// Configures and builds the C half of the runtime archive for `triple` (the host when `None`) in `work/cmake`
+/// and returns the objects to add to the archive.
+pub fn build_c_runtime(
+    root: &Path,
+    work: &Path,
+    triple: Option<&str>,
+    stats: bool,
+) -> Result<CRuntime, String> {
+    let build = work.join("cmake");
+    configure_c(root, &build, triple, stats, false)?;
     run(
         Command::new("cmake")
             .arg("--build")
@@ -184,4 +200,24 @@ pub fn build_c_runtime(
             .collect(),
         features: read("c-features.txt")?,
     })
+}
+
+/// Builds the C unit tests for `triple` (the host when `None`) in `work/cmake-tests` and runs them with ctest. The
+/// tests are the ones `make c-test` runs on Linux and macOS under the sanitizers; this is how Windows runs them,
+/// with the C compiler and libraries `build_c_runtime` uses.
+pub fn run_c_tests(root: &Path, work: &Path, triple: Option<&str>) -> Result<String, String> {
+    let build = work.join("cmake-tests");
+    configure_c(root, &build, triple, false, true)?;
+    run(
+        Command::new("cmake").arg("--build").arg(&build),
+        "cmake build",
+    )?;
+    run(
+        Command::new("ctest").arg("--test-dir").arg(&build).args([
+            "--output-on-failure",
+            "--timeout",
+            "120",
+        ]),
+        "ctest",
+    )
 }
