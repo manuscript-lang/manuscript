@@ -1,10 +1,9 @@
-//! `@std/os/path.ms` natives. Path text is Manuscript; the glob matcher stays native because
+//! The glob matcher behind `@std/os/path.ms` natives (now C: `runtime/std/path.c`), kept in Rust because
 //! `@std/os/fs.ms` walks directories with the same matcher.
 #![no_std]
 
 extern crate alloc;
 
-pub mod ffi;
 pub mod glob;
 
 use alloc::borrow::Cow;
