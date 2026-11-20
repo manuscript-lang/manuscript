@@ -29,6 +29,12 @@ set(MS_POSIX_ONLY_TESTS
     conn_io_test dial_test h2_serve_test net_natives_test
     io_completion io_reactor sys_net_test std_signals std_process_state sys_fault)
 
+# libcurl on macOS asks the system for proxy settings.
+set(_curl_extra "")
+if(APPLE)
+  set(_curl_extra "-framework CoreFoundation" "-framework SystemConfiguration")
+endif()
+
 # Objects of a folder's sources, compiled once for every test that links them.
 function(ms_test_objects name)
   add_library(${name} OBJECT ${ARGN})
@@ -211,7 +217,7 @@ ms_test(net_natives_test SOURCES "${_tests}/net_natives_test.c" "${_rt}/net/nati
         "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
         "${_rt}/sys/thread.c" "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_os_sources}
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_curl_INCLUDES}
-        LIBS ${MS_LIB_curl_LINK} ${MS_LIB_nghttp2_LINK} ${MS_LIB_z_LINK} ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} ${_pthread})
+        LIBS ${MS_LIB_curl_LINK} ${_curl_extra} ${MS_LIB_nghttp2_LINK} ${MS_LIB_z_LINK} ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} ${_pthread})
 ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_nghttp2_LINK})
 ms_test(h2_serve_test SOURCES "${_tests}/h2_serve_test.c" "${_rt}/net/h2_serve.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
