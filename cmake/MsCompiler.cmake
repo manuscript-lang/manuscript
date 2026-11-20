@@ -3,10 +3,20 @@
 # Manuscript tools link with `--link`. Executables land in <build>/compiler. Targets are named for the file:
 # `cmake --build <build> --target ms_syntax_dump`. Adding a tool `compiler/tools/ms_<name>.c` needs no edit here;
 # a unit test `compiler/tests/<name>_test.c` needs a line below.
+set(_c "${CMAKE_SOURCE_DIR}/compiler")
+
+# libms_backend.a: what the Rust `ms` links to run the C back end in process (crates/ms-build/build.rs,
+# compiler/include/ms/emit_program.h). No sanitizers, and no project loader, which needs POSIX: this is the one
+# target that builds for Windows too.
+add_library(ms_backend STATIC "${_c}/src/libms.c")
+target_include_directories(ms_backend PRIVATE "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/runtime/include")
+target_compile_definitions(ms_backend PRIVATE MS_LIBMS_NO_PROJECT)
+target_compile_options(ms_backend PRIVATE -O2 -Wall -Wextra -Werror -Wno-format-truncation -Wno-unknown-warning-option)
+set_target_properties(ms_backend PROPERTIES C_EXTENSIONS OFF ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/compiler")
+
 if(MS_WINDOWS)
   return()
 endif()
-set(_c "${CMAKE_SOURCE_DIR}/compiler")
 set(_cflags -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
 set(_clink "")
 if(MS_SANITIZE)

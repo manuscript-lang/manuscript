@@ -132,6 +132,10 @@
 #include "libms_api.c"
 #include "emit/emit_entry.c"
 #include "emit/emit_llvm.c"
+#include "emit/emit_program.c"
+/* The project loader needs POSIX; the back end library the Rust `ms` links on every platform leaves it out
+ * (cmake/MsCompiler.cmake, target ms_backend). */
+#ifndef MS_LIBMS_NO_PROJECT
 #include "project/path.c"
 #include "project/manifest.c"
 #include "project/discover.c"
@@ -141,3 +145,4 @@
 #include "project/lock.c"
 #include "project/solve.c"
 #include "project/graph_check.c"
+#endif
