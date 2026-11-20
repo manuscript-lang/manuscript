@@ -1,0 +1,36 @@
+module "t"
+file 0 "t.ms"
+type Big { a: int, b: int, c: int }
+entry @msmain
+
+fn @sum(%p: Big, %k: int) -> int {
+b0:
+  %a: int = type.get Big.a %p
+  %b: int = type.get Big.b %p
+  %c: int = type.get Big.c %p
+  %ab: int = iadd %a, %b
+  %abc: int = iadd %ab, %c
+  %r: int = iadd %abc, %k
+  ret %r
+}
+
+fn @grow(%p: Big) -> Big {
+b0:
+  %a: int = type.get Big.a %p
+  %b: int = type.get Big.b %p
+  %c: int = type.get Big.c %p
+  %q: Big = type.new Big %b, %c, %a
+  ret %q
+}
+
+fn @msmain() -> int {
+b0:
+  %a: int = iconst 1
+  %b: int = iconst 2
+  %c: int = iconst 3
+  %p: Big = type.new Big %a, %b, %c
+  %q: Big = call @grow(%p)
+  %k: int = iconst 10
+  %r: int = call @sum(%q, %k)
+  ret %r
+}

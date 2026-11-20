@@ -83,3 +83,5 @@ msrt_string_last_index_of
 msrt_string_scalar_at
 msrt_string_parse_float
 msrt_string_quote
+msrt_string_split_iter
+msrt_split_next

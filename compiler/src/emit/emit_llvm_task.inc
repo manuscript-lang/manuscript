@@ -1,6 +1,5 @@
-/* Stack and task operations for emit_llvm.c (included from it): the stack-limit tests of recursive
- * functions, the cancellation poll, and `undef`. The stack pointer masked to the region's size
- * finds the cell at the region's end (`ms/mir_stack_abi.h`). */
+/* Task operations for emit_llvm.c (included from it): the cancellation poll and `undef`. The stack
+ * pointer masked to the region's size finds the cell at the region's end (`MIR_STACK_REGION`). */
 
 /* Writes the address of the cell `back` bytes before the end of the running stack's region and
  * the stack pointer itself; their names go to `sp` and `cell`. */
@@ -16,25 +15,10 @@ static void ll_region_cell(LCx *c, uint32_t back, char *sp, char *cell, size_t c
     (void)snprintf(cell, cap, "%%d%u", n);
 }
 
-/* `stack.low`, `stack.near`: whether the stack pointer is below the segment's limit (plus the
- * headroom for `near`). */
-static void ll_stack_test(LCx *c, const MirInst *inst) {
-    char sp[24], cell[24];
-    ll_region_cell(c, MIR_STACK_CELL_LIMIT, sp, cell, sizeof sp);
-    const uint32_t n = c->next++;
-    ms_buf_printf(c->out, "  %%l%u = load i64, ptr %s\n", n, cell);
-    if (inst->op == MOP_StackNear) {
-        ms_buf_printf(c->out, "  %%m%u = add i64 %%l%u, %lld\n", n, n, (long long)inst->imm.i);
-        ms_buf_printf(c->out, "  %%v%u = icmp ult i64 %s, %%m%u\n", inst->res, sp, n);
-    } else {
-        ms_buf_printf(c->out, "  %%v%u = icmp ult i64 %s, %%l%u\n", inst->res, sp, n);
-    }
-}
-
 /* `poll`: faults when the running task's cancel flag is set. */
 static void ll_poll(LCx *c, uint32_t block, uint32_t *part) {
     char sp[24], cell[24], flag[24];
-    ll_region_cell(c, MIR_STACK_CELL_HDR, sp, cell, sizeof sp);
+    ll_region_cell(c, MIR_STACK_HDR_CELL, sp, cell, sizeof sp);
     const uint32_t n = c->next++;
     ms_buf_printf(c->out,
                   "  %%u%u = load i64, ptr %s\n  %%w%u = add i64 %%u%u, %d\n  %%x%u = inttoptr i64 %%w%u to ptr\n"
@@ -54,11 +38,10 @@ static void ll_undef(LCx *c, const MirInst *inst) {
     }
 }
 
-/* The stack, poll and undef operations; `*handled` says whether `inst` is one. */
+/* The poll and undef operations; `*handled` says whether `inst` is one. */
 static bool ll_task_op(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part, bool *handled) {
     *handled = true;
     switch ((MirOp)inst->op) {
-    case MOP_StackLow: case MOP_StackNear: ll_stack_test(c, inst); return true;
     case MOP_Poll: ll_poll(c, block, part); return true;
     case MOP_Undef: ll_undef(c, inst); return true;
     default:

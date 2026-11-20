@@ -1,0 +1,12 @@
+module "poll"
+extern @msrt_test_cancel()
+entry @msmain
+fn @msmain() -> int {
+b0:
+  poll
+  %u: int = undef
+  %c: void = call.rt @msrt_test_cancel ()
+  poll
+  %ok: int = iconst 1
+  ret %ok
+}
