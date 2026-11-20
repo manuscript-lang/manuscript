@@ -31,7 +31,7 @@ typedef struct MsStr {
 
 char *ms_arena_strndup(MsArena *a, const char *s, size_t n); /* NUL-terminated copy */
 MsStr ms_arena_fmt(MsArena *a, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-MsStr ms_arena_vfmt(MsArena *a, const char *fmt, va_list ap);
+MsStr ms_arena_vfmt(MsArena *a, const char *fmt, va_list ap) __attribute__((format(printf, 2, 0)));
 
 /* ---- growable byte stack: the scratch space lists are built in before they are copied out ---- */
 
