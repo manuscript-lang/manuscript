@@ -58,6 +58,10 @@ void ms_module_add_implementations(MsCheck *c, MsModId module, MsMethodTable *ta
 /* The variable `Self` stands for in the operations of the interface type `contract`. */
 MsTy ms_self_variable(MsCheck *c, MsTy contract);
 
+/* The method declaration behind each row of `m` that `module` wrote (by row; NULL for another
+ * module's rows and for properties no method carries). */
+const MsMethod **ms_method_rows(MsCheck *c, MsModId module, const MsMethods *m);
+
 /* The operations of the interface symbol `sym`, in declaration order; NULL when it has none. */
 const MsOperations *ms_interface_operations(const MsMethodTable *table, MsSymId sym);
 

@@ -168,6 +168,16 @@ static MsStr *ty_type_names(MsResolver *r, size_t *count) {
     return out;
 }
 
+/* Names other languages spell differently, with the advice that follows "unknown type X". */
+static const struct {
+    const char *names[5];
+    const char *advice;
+} ty_spelling_hints[] = {
+    {{"Callable", "Function", "Func", "Fn", NULL},
+     "; function types are written fn(Int) Int: parameter types in parentheses, then the result type"},
+    {{"Option", "Maybe", NULL}, "; an optional type is written T?, e.g. Int? or (fn(Int) Int)?"},
+};
+
 /* Explains an unknown type: where to import it from, or the spelling it was meant to have. */
 static MsStr ty_unknown_message(MsResolver *r, MsSym name_sym) {
     MsCheck *c = r->c;
@@ -177,16 +187,12 @@ static MsStr ty_unknown_message(MsResolver *r, MsSym name_sym) {
     if (import.len != 0) {
         return ms_arena_fmt(&c->arena, "%.*s%.*s", (int)message.len, message.ptr, (int)import.len, import.ptr);
     }
-    if (ty_is_text(name, "Callable") || ty_is_text(name, "Function") || ty_is_text(name, "Func") ||
-        ty_is_text(name, "Fn")) {
-        return ms_arena_fmt(&c->arena,
-                            "%.*s; function types are written fn(Int) Int: parameter types in parentheses, then the "
-                            "result type",
-                            (int)message.len, message.ptr);
-    }
-    if (ty_is_text(name, "Option") || ty_is_text(name, "Maybe")) {
-        return ms_arena_fmt(&c->arena, "%.*s; an optional type is written T?, e.g. Int? or (fn(Int) Int)?",
-                            (int)message.len, message.ptr);
+    for (size_t i = 0; i < sizeof ty_spelling_hints / sizeof *ty_spelling_hints; i++) {
+        for (size_t k = 0; ty_spelling_hints[i].names[k] != NULL; k++) {
+            if (ty_is_text(name, ty_spelling_hints[i].names[k])) {
+                return ms_arena_fmt(&c->arena, "%.*s%s", (int)message.len, message.ptr, ty_spelling_hints[i].advice);
+            }
+        }
     }
     const char *builtin = ms_type_alias(name);
     if (builtin != NULL) {
