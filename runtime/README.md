@@ -1,6 +1,6 @@
 # runtime
 
-The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). The third-party build and the C build (`runtime/core/num.c` so far) exist; `runtime/symbols/<module>.txt` lists the symbols defined in C, and [the wiki page](../wiki/runtime/a-runtime-symbol-moves-to-c-by-listing-it-in-c-symbols.md) says how a symbol moves.
+The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). The third-party build and the C build (`runtime/core/num.c`, the allocator `alloc.c` and regions `region.c` so far) exist; `runtime/symbols/<module>.txt` lists the symbols defined in C, and [the wiki page](../wiki/runtime/a-runtime-symbol-moves-to-c-by-listing-it-in-c-symbols.md) says how a symbol moves.
 
 ```
 runtime/
@@ -8,7 +8,7 @@ runtime/
   sys/           per-OS code: linux, darwin, windows (to come)
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
   io/            reactor on libuv (to come)
-  net/           http1 (llhttp), tls (OpenSSL) and ws frames done; http2 (nghttp2) to come
+  net/           http1 (llhttp), tls (OpenSSL), ws frames, h2 (nghttp2) and the connection rows done as tested units; wiring to come
   std/           natives per stdlib module (to come)
   third_party/   pinned dependencies and the one build for all of them
   tests/         smoke programs and unit tests (`make c-test`, under ASan and UBSan)
