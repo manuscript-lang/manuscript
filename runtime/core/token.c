@@ -104,6 +104,13 @@ MsTokenStatus ms_token_park_at(uint64_t id, int64_t at_ns, uint64_t *value, uint
     if (token->waiter != 0) {
         return MS_TOKEN_BUSY;
     }
+    /* A shielded cleanup is not cancelled, so a failure elsewhere does not end it either. */
+    const bool watched = task->watch != NULL && !ms_task_shielded(task) && sched->hooks.park_begin != NULL;
+    if (watched && sched->hooks.park_begin(id)) {
+        (void)sched->hooks.park_end();
+        *result = MS_WAIT_CANCELLED;
+        return MS_TOKEN_OK;
+    }
     token->waiter = task->handle;
     task->wait_token = id;
     task->wait_events = 0;
@@ -115,6 +122,9 @@ MsTokenStatus ms_token_park_at(uint64_t id, int64_t at_ns, uint64_t *value, uint
     token = token_find(sched, id);
     if (*result == 0 && (token == NULL || !take_post(token, value))) {
         return MS_TOKEN_NO_SUCH_TOKEN;
+    }
+    if (watched && sched->hooks.park_end()) {
+        *result = MS_WAIT_CANCELLED;
     }
     return MS_TOKEN_OK;
 }
