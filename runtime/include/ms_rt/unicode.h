@@ -6,6 +6,10 @@
 #include "ms_rt/base.h"
 #include "ms_rt/string.h"
 
+/* The columns the text takes in a terminal (ambiguous characters narrow); control characters and the line and paragraph
+ * separators are STATUS_INVALID_DATA. */
+/* ms-sig: msstd_unicode_display_width(text: *const StrVal, out: *mut i64) -> u8 @domain=unicode */
+uint8_t msstd_unicode_display_width(const MsStr *text, int64_t *out);
 /* Whether the scalar has the Unicode general category "P", "S" or "M"; any other category is false. */
 /* ms-sig: msstd_unicode_in_category(value: i64, category: *const StrVal) -> u8 @domain=regular expression @leaf */
 uint8_t msstd_unicode_in_category(int64_t value, const MsStr *category);
