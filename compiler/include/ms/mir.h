@@ -127,13 +127,13 @@ typedef struct MirInst {
     MirImm imm;
     MirValue res;    /* MIR_NONE when the op defines nothing */
     MirLoc loc;
-    const MirValue *args;
+    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     uint32_t nargs;
 } MirInst;
 
 typedef struct MirTarget {
     MirBlock block;
-    const MirValue *args;
+    MirValue *args;
     uint32_t nargs;
 } MirTarget;
 
@@ -145,7 +145,7 @@ typedef struct MirTerm {
     uint8_t kind;
     MirValue value;      /* CONDBR condition, SWITCH scrutinee, RET value (MIR_NONE for none) */
     MirTarget a, b;      /* BR: a. CONDBR: a then, b else. SWITCH: b is the default */
-    const MirCase *cases; /* SWITCH */
+    MirCase *cases; /* SWITCH */
     uint32_t ncases;
     uint8_t fault;       /* MirFault */
     uint32_t fault_str;  /* MF_MESSAGE: string id */

@@ -18,10 +18,10 @@ cflags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undef
 cc $cflags compiler/src/libms.c compiler/tools/ms_check_dump.c -o "$out/check-dump" -lm
 cc $cflags compiler/src/libms.c compiler/tests/types_test.c -o "$out/types-test" -lm
 cc $cflags compiler/src/libms.c compiler/tests/ownership_test.c -o "$out/ownership-test" -lm
-cc $cflags compiler/src/libms.c compiler/tools/ms_effect_dump.c -o "$out/effect-dump" -lm
-cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/effect_graph_gen.c -o "$out/effect-graph-gen"
+cc $cflags compiler/src/libms.c compiler/tests/recursion_test.c -o "$out/recursion-test" -lm
 "$out/ownership-test"
 "$out/types-test"
+"$out/recursion-test"
 
 status=0
 "$oracle" > "$out/tables.rust"
@@ -34,6 +34,8 @@ else
     status=1
 fi
 
+cc $cflags compiler/src/libms.c compiler/tools/ms_effect_dump.c -o "$out/effect-dump" -lm
+cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/effect_graph_gen.c -o "$out/effect-graph-gen"
 # Effect directives on every source file, then generated graphs, each compared with the Rust result.
 # The fixture is written here because the repository forbids carriage returns in stored files: it has CRLF
 # and CR-only line ends, non-breaking and em spaces, empty names and directives without a separator.
