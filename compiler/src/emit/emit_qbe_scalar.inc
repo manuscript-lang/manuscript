@@ -306,7 +306,7 @@ static uint32_t qbe_splits(const MirModule *m, const MirFunc *f, const MirInst *
     case MOP_NarrowChk:
         return qbe_narrow_extension((MirTyKind)mir_ty_data(m, f->values[inst->res])->kind) != NULL;
     default:
-        return 0;
+        return qbe_record_splits(m, f, inst);
     }
 }
 

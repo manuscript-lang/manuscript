@@ -16,6 +16,8 @@ void msrt_test_ints(List *out) {
     static int64_t values[3] = {10, 20, 30};
     out->ptr = (uint8_t *)values; out->len = 3; out->cap = 0;
 }
+void msrt_test_map(int64_t *out) { for (int64_t i = 0; i < 7; i++) { out[i] = i + 1; } }
+long msrt_test_mapsum(const int64_t *w) { long s = 0; for (int i = 0; i < 7; i++) { s += w[i]; } return s; }
 long msrt_test_slen(const Str *s) {
     if ((s->tagged >> 62) == 1) { return (long)((s->tagged >> 56) & 15); }
     return (long)(s->tagged & 0x7fffffff) + (s->ptr[0] == 'A' ? 0 : 100);
