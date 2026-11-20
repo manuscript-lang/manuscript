@@ -35,6 +35,7 @@ typedef struct MsConnExt {
     uint8_t broken;            /* an interrupted write left the ciphertext stream torn */
     uint8_t *unread;           /* owned: bytes a reader took ahead and gave back; ms_conn_read serves them first */
     size_t unread_length;
+    uint16_t refusal;          /* the status the HTTP/1 server refused the last request head with, 0 for none */
 } MsConnExt;
 
 /* Gives the row a TLS session (the row owns it from now on). */
@@ -48,6 +49,10 @@ MsTls *ms_conn_tls(MsConnTable *table, MsConnId id);
 /* Reads up to `capacity` plaintext bytes. On MS_NET_OK `*count` is 0 at the end of the stream. */
 MsNetStatus ms_conn_read(MsConnTable *table, MsConnId id, uint8_t *buffer, size_t capacity, int64_t deadline_ns,
                          size_t *count);
+/* The status a server's last request head on the row was refused with (0 when it was not): kept on the row so the loop
+ * that answers it needs no other state. */
+void ms_conn_set_refusal(MsConnTable *table, MsConnId id, uint16_t status);
+uint16_t ms_conn_refusal(MsConnTable *table, MsConnId id);
 /* Gives back bytes the caller read ahead of what it consumed, so the next ms_conn_read (whoever calls it) returns them
  * first. Later pushes go in front of earlier ones. MS_NET_FAILED when out of memory (nothing is kept). */
 MsNetStatus ms_conn_unread(MsConnTable *table, MsConnId id, const uint8_t *data, size_t length);

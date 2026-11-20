@@ -366,6 +366,8 @@ static void qbe_frame_slots(QCx *c) {
                               qbe_slot_bytes(c->layouts, (MirTy)inst->imm.a));
             } else if (inst->op == MOP_Call || inst->op == MOP_CallInd || inst->op == MOP_CallMethod) {
                 qbe_frame_call(c, inst, b, k);
+            } else if (inst->op == MOP_StrByte) {
+                ms_buf_printf(c->out, "\t%%y%u_%u =l alloc8 16\n", b, k);
             } else if (inst->op == MOP_CallRt) {
                 qbe_frame_rt_call(c, inst, b, k);
             } else if (inst->op == MOP_IfaceBorrow && c->borrowed != NULL && c->borrowed[inst->res]) {
@@ -585,6 +587,20 @@ static bool qbe_rt_argument(QCx *c, MsBuf *args, MirTy ty, MirValue value, const
     return true;
 }
 
+/* The extension that makes a runtime result of a narrow leaf whole: C leaves the bits above the
+ * returned byte, halfword or word undefined. Null for a full-width leaf. */
+static const char *qbe_rt_widening(MirLeaf leaf) {
+    switch (leaf) {
+    case MIR_LEAF_I8: case MIR_LEAF_U8: return "extub";
+    case MIR_LEAF_N8: return "extsb";
+    case MIR_LEAF_N16: return "extsh";
+    case MIR_LEAF_N32: return "extsw";
+    case MIR_LEAF_U16: return "extuh";
+    case MIR_LEAF_U32: return "extuw";
+    default: return NULL;
+    }
+}
+
 /* A call of a runtime function, which follows the C ABI of `ms-rt-abi`: scalars by value,
  * everything else by the address of a copy, and a result that is not a scalar through a trailing
  * output pointer. */
@@ -608,13 +624,20 @@ static bool qbe_call_rt(QCx *c, const MirInst *inst, uint32_t block, uint32_t in
         if (!direct) {
             ms_buf_printf(&args, "%sl %s", args.len > 0 ? ", " : "", area);
         }
-        if (direct && result.len == 1) {
+        const char *widen = direct && result.len == 1 ? qbe_rt_widening(result.ptr[0]) : NULL;
+        if (widen != NULL) {
+            ms_buf_printf(c->out, "\t%%v%ur =w call ", inst->res);
+        } else if (direct && result.len == 1) {
             ms_buf_printf(c->out, "\t%%v%u =%c call ", inst->res, qbe_leaf_type(result.ptr[0]));
         } else {
             ms_buf_puts(c->out, "\tcall ");
         }
         qbe_sym(c->out, ms_name(&c->m->names, def->name));
         ms_buf_printf(c->out, "(%.*s)\n", (int)args.len, args.data == NULL ? "" : args.data);
+        if (widen != NULL) {
+            ms_buf_printf(c->out, "\t%%v%u =%c %s %%v%ur\n", inst->res, qbe_leaf_type(result.ptr[0]),
+                          widen, inst->res);
+        }
         if (!direct && inst->res != MIR_NONE) {
             ok = qbe_load_leaves(c, inst->res, area);
         }
@@ -819,7 +842,12 @@ static void qbe_undef(QCx *c, const MirInst *inst) {
  * as a single nullable pointer. */
 static void qbe_opt_is_some(QCx *c, const MirInst *inst) {
     const MirValue x = inst->args[0];
-    if (qbe_leaves(c, c->f->values[x]).len == 1) {
+    if (mir_is_str_like(c->layouts, c->f->values[x])) {
+        /* A `String?` is its two string words; none is (0, the static tag). */
+        const uint32_t n = c->next++;
+        ms_buf_printf(c->out, "\t%%t%u =l xor %%v%u.1, %lld\n\t%%o%u =l or %%v%u, %%t%u\n\t%%v%u =w cnel %%o%u, 0\n",
+                      n, x, (long long)MIR_STR_STATIC, n, x, n, inst->res, n);
+    } else if (qbe_leaves(c, c->f->values[x]).len == 1) {
         ms_buf_printf(c->out, "\t%%v%u =w cnel %%v%u, 0\n", inst->res, x);
     } else {
         ms_buf_printf(c->out, "\t%%v%u =w copy %%v%u\n", inst->res, x);
@@ -833,18 +861,9 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
     case MOP_Slot: return true; /* allocated at the top of the entry block */
     case MOP_Load: case MOP_Take: return qbe_load(c, inst);
     case MOP_Store: case MOP_Put: return qbe_store(c, inst);
-    case MOP_TypeNew:
-        if (qbe_is_indirect_record(c, c->f->values[inst->res])) {
-            return qbe_indirect_new(c, inst);
-        }
-        qbe_record_new(c, inst);
-        return true;
-    case MOP_TypeGet:
-        return qbe_is_indirect_record(c, c->f->values[inst->args[0]]) ? qbe_indirect_get(c, inst)
-                                                                      : qbe_record_get(c, inst);
-    case MOP_TypeSet: case MOP_TypeFill:
-        return qbe_is_indirect_record(c, c->f->values[inst->args[0]]) ? qbe_indirect_set(c, inst)
-                                                                      : qbe_record_set(c, inst);
+    case MOP_TypeNew: qbe_record_new(c, inst); return true;
+    case MOP_TypeGet: return qbe_record_get(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill: return qbe_record_set(c, inst);
     case MOP_PtrField: return qbe_ptr_field(c, inst);
     default:
         *handled = false;
@@ -857,6 +876,7 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
 #include "emit_qbe_iface.inc"
 #include "emit_qbe_enum.inc"
 #include "emit_qbe_list.inc"
+#include "emit_qbe_str.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
@@ -894,9 +914,8 @@ static bool qbe_opt_some(QCx *c, const MirInst *inst) {
         (void)snprintf(base, sizeof base, "%%v%u", inst->res);
         return leaves.len == 0 || qbe_store_leaves(c, inst->args[0], base);
     }
-    const bool nullable = mir_opt_is_nullable(c->layouts, inner);
     uint32_t at = 0;
-    if (!nullable) {
+    if (mir_opt_has_flag(c->layouts, c->f->values[inst->res])) {
         ms_buf_printf(o, "\t%%v%u =w copy 1\n", inst->res);
         at = 1;
     }
@@ -916,7 +935,7 @@ static bool qbe_opt_get(QCx *c, const MirInst *inst) {
         (void)snprintf(base, sizeof base, "%%v%u", inst->args[0]);
         return qbe_load_leaves(c, inst->res, base);
     }
-    const uint32_t skip = mir_opt_is_nullable(c->layouts, inner) ? 0 : 1;
+    const uint32_t skip = mir_opt_has_flag(c->layouts, ty) ? 1 : 0;
     const uint32_t n = qbe_leaves(c, c->f->values[inst->res]).len;
     for (uint32_t k = 0; k < n; k++) {
         qbe_copy_leaf(c, inst->res, k, inst->args[0], skip + k);
@@ -933,17 +952,66 @@ static void qbe_elem_base(QCx *c, MirValue list, const char *index, uint32_t siz
     (void)snprintf(out, cap, "%%p%u", n);
 }
 
+/* The result takes the address and capacity of `from`; the caller writes the length. */
 static void qbe_copy_list(QCx *c, const MirInst *inst, MirValue from) {
-    for (uint32_t k = 0; k < 3; k++) {
-        qbe_copy_leaf(c, inst->res, k, from, k);
+    qbe_copy_leaf(c, inst->res, 0, from, 0);
+    qbe_copy_leaf(c, inst->res, MIR_LIST_CAP_LEAF, from, MIR_LIST_CAP_LEAF);
+}
+
+/* `list.new`: a block of `cap` elements, none for capacity 0 (the null pointer owns nothing). The
+ * allocation is a block of its own and the rest of the instruction continues in a new piece. */
+static bool qbe_list_new(QCx *c, const MirInst *inst, uint32_t size, uint32_t block, uint32_t *part) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "\t%%o%ub =l mul %%v%u, %u\n\t%%o%us =w cnel %%v%u, 0\n", n, inst->args[0],
+                  size > 0 ? size : 1, n, inst->args[0]);
+    ms_buf_printf(o, "\tjnz %%o%us, @n%u, @z%u\n@n%u\n\t%%o%up =l call $msrt_alloc(l %%o%ub)\n\tjmp ", n, n, n,
+                  n, n, n);
+    (*part)++;
+    qbe_label(c, block, *part);
+    ms_buf_printf(o, "\n@z%u\n\tjmp ", n);
+    qbe_label(c, block, *part);
+    ms_buf_putc(o, '\n');
+    qbe_label(c, block, *part);
+    ms_buf_printf(o, "\n\t%%v%u =l phi @n%u %%o%up, @z%u 0\n", inst->res, n, n, n);
+    ms_buf_printf(o, "\t%%v%u.%u =l copy 0\n", inst->res, MIR_LIST_LEN_LEAF);
+    qbe_copy_leaf(c, inst->res, MIR_LIST_CAP_LEAF, inst->args[0], 0);
+    return true;
+}
+
+/* `list.lit`: a block holding the operands, or the empty list for none. */
+static bool qbe_list_lit(QCx *c, const MirInst *inst, uint32_t size) {
+    MsBuf *o = c->out;
+    if (inst->nargs == 0) {
+        ms_buf_printf(o, "\t%%v%u =l copy 0\n\t%%v%u.1 =l copy 0\n\t%%v%u.2 =l copy 0\n", inst->res,
+                      inst->res, inst->res);
+        return true;
     }
+    ms_buf_printf(o, "\t%%v%u =l call $msrt_alloc(l %u)\n", inst->res, inst->nargs * (size > 0 ? size : 1));
+    char base[24];
+    for (uint32_t k = 0; k < inst->nargs; k++) {
+        const uint32_t n = c->next++;
+        ms_buf_printf(o, "\t%%p%u =l add %%v%u, %u\n", n, inst->res, k * size);
+        (void)snprintf(base, sizeof base, "%%p%u", n);
+        if (!qbe_store_leaves(c, inst->args[k], base)) {
+            return false;
+        }
+    }
+    ms_buf_printf(o, "\t%%v%u.1 =l copy %u\n\t%%v%u.2 =l copy %u\n", inst->res, inst->nargs, inst->res,
+                  inst->nargs);
+    return true;
 }
 
 /* The unchecked list operations: the index is in range or the length is known. Dropping an old
  * element is the job of `lower_ops`, which runs first. */
-static bool qbe_list_write_op(QCx *c, const MirInst *inst, bool *handled) {
+static bool qbe_list_write_op(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part, bool *handled) {
     *handled = true;
     char base[24], index[24];
+    if (inst->op == MOP_ListNew || inst->op == MOP_ListLit) {
+        const uint32_t elem_size = mir_list_elem_size(c->layouts, c->f->values[inst->res]);
+        return inst->op == MOP_ListNew ? qbe_list_new(c, inst, elem_size, block, part)
+                                       : qbe_list_lit(c, inst, elem_size);
+    }
     const bool is_list = inst->op == MOP_ListSetU ||
                          inst->op == MOP_ListFillU || inst->op == MOP_ListPushU || inst->op == MOP_ListGrow;
     const uint32_t size = is_list ? mir_list_elem_size(c->layouts, c->f->values[inst->args[0]]) : 0;
@@ -995,6 +1063,10 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
         return true;
     }
     bool handled = false;
+    const bool indirect_ok = qbe_indirect_op(c, inst, block, part, &handled);
+    if (handled) {
+        return indirect_ok;
+    }
     const bool ok = qbe_memory_inst(c, inst, &handled);
     if (handled) {
         return ok;
@@ -1007,13 +1079,17 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     if (handled) {
         return closure_ok;
     }
-    const bool write_ok = qbe_list_write_op(c, inst, &handled);
+    const bool write_ok = qbe_list_write_op(c, inst, block, part, &handled);
     if (handled) {
         return write_ok;
     }
     const bool iface_ok = qbe_iface_op(c, inst, block, index, &handled);
     if (handled) {
         return iface_ok;
+    }
+    const bool str_ok = qbe_str_op(c, inst, block, index, part, &handled);
+    if (handled) {
+        return str_ok;
     }
     const bool enum_ok = qbe_enum_op(c, inst, &handled);
     if (handled) {

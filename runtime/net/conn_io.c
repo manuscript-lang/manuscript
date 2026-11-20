@@ -285,6 +285,20 @@ MsNetStatus ms_conn_read(MsConnTable *table, MsConnId id, uint8_t *buffer, size_
                        : tls_read(row, tls, buffer, capacity, deadline_ns, count);
 }
 
+void ms_conn_set_refusal(MsConnTable *table, MsConnId id, uint16_t status) {
+    MsConn *row = usable(table, id);
+    MsConnExt *ext = row == NULL ? NULL : ext_ensure(row);
+    if (ext != NULL) {
+        ext->refusal = status;
+    }
+}
+
+uint16_t ms_conn_refusal(MsConnTable *table, MsConnId id) {
+    MsConn *row = usable(table, id);
+    const MsConnExt *ext = row == NULL ? NULL : row->ext;
+    return ext == NULL ? 0 : ext->refusal;
+}
+
 MsNetStatus ms_conn_unread(MsConnTable *table, MsConnId id, const uint8_t *data, size_t length) {
     MsConn *row = usable(table, id);
     if (row == NULL) {

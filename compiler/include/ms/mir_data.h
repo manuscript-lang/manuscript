@@ -68,6 +68,8 @@ typedef struct MirData {
     uint32_t *vtables;    /* symbol of each module vtable */
     MirUnit *units;       /* the unit blocks some function builds */
     uint32_t nunits, cunits;
+    uint32_t *blobs;      /* by blob id: the symbol holding the constant bytes, MIR_NONE when no function uses it */
+    uint32_t *list_consts; /* by constant list id: the symbol holding its elements, MIR_NONE when unused */
     uint32_t *strings;    /* by string id: the symbol holding a long literal's bytes, MIR_NONE for a short one or one no function uses */
     MirDescKey *keys;     /* every descriptor key seen, with its target */
     uint32_t nkeys, ckeys;

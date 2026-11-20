@@ -1,0 +1,18 @@
+module "t"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %s: str = str "hello"
+  %i: int = iconst 1
+  %b: int = str.byte %s, %i
+  %n: int = str.bytes %s
+  %a: int = str.ascii_len %s
+  %c: int = iconst 120
+  %d: str = str.ascii %c
+  %m: int = str.bytes %d
+  %r: int = iadd %b, %n
+  %r2: int = iadd %r, %a
+  %r3: int = iadd %r2, %m
+  ret %r3
+}

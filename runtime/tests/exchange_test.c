@@ -143,12 +143,13 @@ static void test_keep_alive_and_pipelining(void) {
     Case c;
     case_open(&c, "GET /a?x=1 HTTP/1.1\r\nHost: t\r\nX-Two: 1\r\nx-two: 2\r\n\r\nGET /b HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n");
     void *exchange = NULL;
-    int64_t reject = 7;
     MsStr err = text_of("");
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK && reject == 0);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     MsStr method, target, protocol;
-    void *headers = NULL;
-    msstd_xchg_head(exchange, &method, &target, &protocol, &headers);
+    msstd_xchg_method(exchange, &method);
+    msstd_xchg_target(exchange, &target);
+    msstd_xchg_protocol(exchange, &protocol);
+    void *headers = msstd_xchg_headers(exchange);
     CHECK(str_is(&method, "GET") && str_is(&target, "/a?x=1") && str_is(&protocol, "HTTP/1.1"));
     CHECK(headers != NULL && ms_headers_count(ms_headers_of(headers)) == 3);
     msrt_obj_drop(headers);
@@ -157,8 +158,9 @@ static void test_keep_alive_and_pipelining(void) {
     CHECK(answer(exchange, 200, "hello") == 1);
     msrt_obj_drop(exchange);
     /* the second request was read ahead and comes back from the row */
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
-    msstd_xchg_head(exchange, &method, &target, &protocol, &headers);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
+    msstd_xchg_target(exchange, &target);
+    headers = msstd_xchg_headers(exchange);
     CHECK(str_is(&target, "/b"));
     msrt_obj_drop(headers);
     CHECK(answer(exchange, 404, "no") == 0); /* the request said Connection: close */
@@ -173,9 +175,8 @@ static void test_bodies(void) {
     Case c;
     case_open(&c, "POST /p HTTP/1.1\r\nHost: t\r\nContent-Length: 11\r\n\r\nhello worldPOST /q HTTP/1.1\r\nHost: t\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\nX-T: 1\r\n\r\n");
     void *exchange = NULL;
-    int64_t reject = 0;
     MsStr err = text_of("");
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     MsVec piece = {0};
     CHECK(msstd_xchg_read(exchange, 1, 5, 1, 1000000000, &piece, &err) == STATUS_OK && vec_is(&piece, "hello"));
     msrt_free(piece.ptr);
@@ -185,7 +186,7 @@ static void test_bodies(void) {
     CHECK(answer(exchange, 200, "ok") == 1);
     msrt_obj_drop(exchange);
 
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     char all[64] = {0};
     size_t have = 0;
     for (;;) {
@@ -215,30 +216,31 @@ static void test_unread_body_and_reset(void) {
     Case c;
     case_open(&c, "POST /p HTTP/1.1\r\nHost: t\r\nContent-Length: 4\r\n\r\nabcdPOST /n HTTP/1.1\r\nHost: t\r\nContent-Length: 0\r\n\r\n");
     void *exchange = NULL;
-    int64_t reject = 0;
     MsStr err = text_of("");
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     CHECK(answer(exchange, 200, "x") == 0); /* the body was not read: the connection cannot be reused */
     msrt_obj_drop(exchange);
     ms_netconn_close(c.conn);
     (void)case_close(&c);
 
     case_open(&c, "POST /p HTTP/1.1\r\nHost: t\r\nContent-Length: 4\r\n\r\nabcdPOST /n HTTP/1.1\r\nHost: t\r\nContent-Length: 0\r\n\r\n");
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     CHECK(msstd_xchg_reset(exchange, 2, 1, 1000000000, &err) == STATUS_LIMIT_EXCEEDED);
     msrt_obj_drop(exchange);
     ms_netconn_close(c.conn);
     (void)case_close(&c);
 
     case_open(&c, "POST /p HTTP/1.1\r\nHost: t\r\nContent-Length: 4\r\n\r\nabcdPOST /n HTTP/1.1\r\nHost: t\r\nContent-Length: 0\r\n\r\n");
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     CHECK(msstd_xchg_reset(exchange, 100, 1, 1000000000, &err) == STATUS_OK);
     CHECK(answer(exchange, 200, "x") == 1);
     msrt_obj_drop(exchange);
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     MsStr method, target, protocol;
-    void *headers = NULL;
-    msstd_xchg_head(exchange, &method, &target, &protocol, &headers);
+    msstd_xchg_method(exchange, &method);
+    msstd_xchg_target(exchange, &target);
+    msstd_xchg_protocol(exchange, &protocol);
+    void *headers = msstd_xchg_headers(exchange);
     CHECK(str_is(&target, "/n"));
     msrt_obj_drop(headers);
     msrt_obj_drop(exchange);
@@ -248,16 +250,15 @@ static void test_unread_body_and_reset(void) {
 static void test_refusals(void) {
     Case c;
     void *exchange = NULL;
-    int64_t reject = 0;
     MsStr err = text_of("");
     case_open(&c, "GET / HTTP/9.9\r\n\r\n");
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_INVALID_DATA && reject == 400);
-    CHECK(msstd_xchg_reject(c.conn, reject, 0, 0, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_INVALID_DATA && msstd_xchg_reject_status(c.conn) == 400);
+    CHECK(msstd_xchg_reject(c.conn, msstd_xchg_reject_status(c.conn), 0, 0, &err) == STATUS_OK);
     const char *response = case_close(&c);
     CHECK(strstr(response, "HTTP/1.1 400 Bad Request\r\n") == response && strstr(response, "Connection: close\r\n"));
 
     case_open(&c, "GET /aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa HTTP/1.1\r\nHost: t\r\n\r\n");
-    CHECK(msstd_xchg_next(c.conn, 40, 1, 5000000000, &exchange, &reject, &err) == STATUS_INVALID_DATA && reject == 431);
+    CHECK(msstd_xchg_next(c.conn, 40, 1, 5000000000, &exchange, &err) == STATUS_INVALID_DATA && msstd_xchg_reject_status(c.conn) == 431);
     (void)case_close(&c);
 }
 
@@ -265,9 +266,8 @@ static void test_take_conn(void) {
     Case c;
     case_open(&c, "GET /ws HTTP/1.1\r\nHost: t\r\nUpgrade: websocket\r\n\r\nFRAME-BYTES");
     void *exchange = NULL;
-    int64_t reject = 0;
     MsStr err = text_of("");
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     void *taken = NULL;
     CHECK(msstd_xchg_take_conn(exchange, &taken) == STATUS_OK && taken != NULL);
     CHECK(msstd_xchg_take_conn(exchange, &taken) == STATUS_INVALID_INPUT); /* spent */
@@ -281,13 +281,26 @@ static void test_take_conn(void) {
     (void)case_close(&c);
 }
 
+static void test_share(void) {
+    Case c;
+    case_open(&c, "GET /s HTTP/1.1\r\nHost: t\r\n\r\n");
+    void *exchange = NULL;
+    MsStr err = text_of("");
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
+    void *other = msstd_xchg_share(exchange);
+    CHECK(other != NULL && other != exchange);
+    msrt_obj_drop(exchange); /* the handler's handle goes; the loop's still finishes the response */
+    CHECK(answer(other, 200, "s") == 1);
+    msrt_obj_drop(other);
+    CHECK(strstr(case_close(&c), "\r\n\r\ns") != NULL);
+}
+
 static void test_head_request_and_informational(void) {
     Case c;
     case_open(&c, "HEAD /h HTTP/1.1\r\nHost: t\r\n\r\n");
     void *exchange = NULL;
-    int64_t reject = 0;
     MsStr err = text_of("");
-    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &reject, &err) == STATUS_OK);
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
     CHECK(msstd_xchg_send_head(exchange, 100, NULL, 0, 0, 0, 0, &err) == STATUS_OK); /* informational, then the final */
     CHECK(msstd_xchg_send_head(exchange, 200, NULL, 1, 5, 0, 0, &err) == STATUS_OK);
     CHECK(msstd_xchg_send_head(exchange, 200, NULL, 1, 5, 0, 0, &err) == STATUS_INVALID_INPUT); /* one final head */
@@ -308,6 +321,7 @@ int main(void) {
     test_unread_body_and_reset();
     test_refusals();
     test_take_conn();
+    test_share();
     test_head_request_and_informational();
     if (!failed) printf("exchange ok\n");
     return failed;

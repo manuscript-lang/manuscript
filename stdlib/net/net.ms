@@ -20,7 +20,13 @@ import (
 	NativeWorker,
 	NativeWorkerSpec,
 	headers from "@std/net/http.ms",
-	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
+	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
+	Policy,
+	address_allowed,
+	host_allowed,
+	listen_allowed,
+	narrow,
+	unrestricted from "@std/net/policy.ms",
 	TlsInfo, TlsOptions from "@std/net/tls.ms",
 	WebSocket,
 	WebSocketOptions,
@@ -38,6 +44,12 @@ import (
 	msstd_http_serving_worker,
 	msstd_http_worker_adopt,
 	msstd_http_worker_close from "@std/internal/http.ms",
+	msstd_dgram_address,
+	msstd_dgram_bind,
+	msstd_dgram_close_if_last,
+	msstd_dgram_receive,
+	msstd_dgram_send,
+	msstd_dgram_share,
 	msstd_net_connection_accept_tls,
 	msstd_net_connection_adopt,
 	msstd_net_connection_alias,
@@ -51,19 +63,13 @@ import (
 	msstd_net_connection_start_tls,
 	msstd_net_connection_tls_info,
 	msstd_net_connection_write_bytes,
-	msstd_net_datagram_address,
-	msstd_net_datagram_close,
-	msstd_net_datagram_close_if_last,
-	msstd_net_datagram_receive,
-	msstd_net_datagram_send_bytes,
-	msstd_net_datagram_share,
 	msstd_net_listener_accept,
 	msstd_net_listener_accept_raw,
 	msstd_net_listener_address,
 	msstd_net_listener_close,
 	msstd_net_listener_share,
+	msstd_net_lookup,
 	msstd_net_network,
-	msstd_net_network_bind_datagram,
 	msstd_net_network_close,
 	msstd_net_network_connect,
 	msstd_net_network_connect_tls_config,
@@ -219,24 +225,26 @@ type DatagramSource:
 // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind
 // `EOVERFLOW` and is discarded.
 fn var DatagramSource.next() Datagram?!:
-	return ok(msstd_net_datagram_receive(self.native, none, none)?)
+	return ok(msstd_dgram_receive(self.native, none, none)?)
 
 fn move DatagramSource.close() Void!:
-	msstd_net_datagram_close_if_last(self.native)
+	msstd_dgram_close_if_last(self.native)
 
 type DatagramSink:
 	native: NativeDatagramSocket
+	policy: Policy
 
 // Sends `value.data` as one datagram to `value.address`, resolving a host name with
 // the network's resolver.
 fn var DatagramSink.write(move value: Datagram) Void!:
-	return msstd_net_datagram_send_bytes(self.native, value.data, value.address, none)
+	target := permitted_address(self.policy, value.address, none)?
+	return msstd_dgram_send(self.native, value.data, target, none)
 
 fn var DatagramSink.flush() Void!:
 	return ok()
 
 fn move DatagramSink.close() Void!:
-	msstd_net_datagram_close_if_last(self.native)
+	msstd_dgram_close_if_last(self.native)
 
 // A connectionless socket for sending and receiving datagrams. Closing it closes both
 // streams.
@@ -254,12 +262,12 @@ fn move DatagramSocket.close() Void!:
 	self.input.close()?
 	return self.output.close()
 
-fn datagram_socket(native: NativeDatagramSocket) DatagramSocket:
-	address := msstd_net_datagram_address(native)
-	other := msstd_net_datagram_share(native)
+fn datagram_socket(native: NativeDatagramSocket, policy: Policy) DatagramSocket:
+	address := msstd_dgram_address(native)
+	other := msstd_dgram_share(native)
 	return DatagramSocket(
 		input: ReadStream[Datagram](DatagramSource(native)),
-		output: WriteStream[Datagram](DatagramSink(other)),
+		output: WriteStream[Datagram](DatagramSink(other, policy)),
 		address: address,
 	)
 
@@ -336,6 +344,73 @@ fn var PendingConnection.adopt() Connection!:
 	self.raw = -1
 	return ok(connection(msstd_net_connection_adopt(raw)?))
 
+// A host and port split from `host:port` text.
+type HostPort:
+	host: String
+	port: Int
+
+fn split_host_port(address: String) HostPort?:
+	if parts := address.rsplit_once(":"):
+		port := parts.after.parse_int()
+		if not port.is_some() or port.get() < 0 or port.get() > 65535: return none
+
+		var host = parts.before.clone()
+
+		if host.starts_with("[") and host.ends_with("]"):
+			host = host.slice(1, -1)
+		else if host.contains(":"):
+			return none
+
+		return HostPort(host: host, port: port.get())
+
+	return none
+
+fn literal_address(host: String, port: Int) String:
+	if host.contains(":"): return "[" + host + "]:" + port.to_string()
+	return host + ":" + port.to_string()
+
+fn invalid_address() Error:
+	return Error("network: invalid input", kind: "EINVAL")
+
+fn denied() Error:
+	return Error("network: permission denied", kind: "EACCES")
+
+// The literal address a datagram may be sent to: the policy checks the host, a name is
+// resolved, and the first address the policy allows wins.
+fn permitted_address(policy: Policy, address: String, timeout: Duration?) String!:
+	found := split_host_port(address)
+	if not found.is_some(): return error(invalid_address())
+
+	target := found.get()
+	if not host_allowed(policy, target.host): return error(denied())
+
+	if parse_ip(target.host).is_ok():
+		if not address_allowed(policy, target.host): return error(denied())
+		return ok(literal_address(target.host, target.port))
+
+	for text in msstd_net_lookup(target.host, target.port, timeout)?:
+		ip := split_host_port(text)
+		if ip.is_some() and address_allowed(policy, ip.get().host): return ok(text)
+
+	return error(denied())
+
+// Binds a datagram socket: listening must be allowed, an empty host means every
+// interface (IPv6 where the host has it, else IPv4), and a name is resolved to its
+// first allowed address.
+fn bind_socket(policy: Policy, address: String) NativeDatagramSocket!:
+	found := split_host_port(address)
+	if not found.is_some(): return error(invalid_address())
+
+	target := found.get()
+	if not listen_allowed(policy, target.host): return error(denied())
+	if not target.host.is_empty():
+		return msstd_dgram_bind(permitted_address(policy, address, none)?)
+
+	wide := msstd_dgram_bind(literal_address("::", target.port))
+	if wide.is_ok(): return wide
+
+	return msstd_dgram_bind(literal_address("0.0.0.0", target.port))
+
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
 
@@ -345,12 +420,16 @@ export extern type NativeNetwork
 export opaque type Network:
 	// The runtime handle; it is released when the last reference to this network ends.
 	native: NativeNetwork
+	// The restrictions this network enforces in Manuscript; the runtime handle still
+	// enforces them for the operations that have not moved yet.
+	policy: Policy
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A
 // restricted network without listening permission, or an address outside its CIDRs,
 // returns EACCES.
 fn Network.bind_datagram(address: String) DatagramSocket!:
-	return ok(datagram_socket(msstd_net_network_bind_datagram(self.native, address)?))
+	native := bind_socket(self.policy, address)?
+	return ok(datagram_socket(native, self.policy.clone()))
 
 // Cancels in-flight calls and closes every connection, listener, socket, HTTP
 // client, and server this network opened, including those of derived networks. Safe
@@ -482,7 +561,9 @@ fn Network.restrict(
 	cidrs: List[String] = [],
 	allow_listen: Bool = false,
 ) Network!:
-	return msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)
+	policy := narrow(self.policy, hosts, cidrs, allow_listen)?
+	child := msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)?
+	return ok(Network(native: child, policy: policy))
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and
 // subprotocols in `options`. Handshake headers such as `Upgrade`, `Connection`,
@@ -516,7 +597,8 @@ fn Network.web_socket(
 // must be allowed by this network's restrictions, otherwise EACCES is returned. An
 // address that is not an IP literal with a port returns EINVAL.
 fn Network.with_resolver(address: String) Network!:
-	return msstd_net_network_with_resolver(self.native, address)
+	child := msstd_net_network_with_resolver(self.native, address)?
+	return ok(Network(native: child, policy: self.policy.clone()))
 
 /*
 Per-call settings of a buffered `request`: the headers to send, a bound on the response body, and a time budget.
@@ -541,7 +623,7 @@ export type DnsOptions:
 
 // The network of the current host.
 fn host_network() Network:
-	return Network(native: msstd_net_network())
+	return Network(native: msstd_net_network(), policy: unrestricted())
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted
 // network without listening permission, or an address outside its CIDRs, returns

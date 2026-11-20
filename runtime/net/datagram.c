@@ -9,7 +9,7 @@
 #include "../std/abi.h"
 #include "addr_text.h"
 #include "ms_rt/alloc.h"
-#include "datagram.h"
+#include "ms_rt/net.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_net.h"
 #include "ms_sched.h"
@@ -77,25 +77,6 @@ static bool enter(Core *core) {
 static void leave(Core *core) {
     atomic_fetch_sub(&core->busy, 1);
     release_if_idle(core);
-}
-
-/* Parks the task until the descriptor is ready or the deadline passes. */
-static MsNetStatus wait_for(const Core *core, uint32_t events, int64_t deadline_ns) {
-    int64_t timeout_ns = -1;
-    if (deadline_ns >= 0) {
-        timeout_ns = deadline_ns - ms_sys_monotonic_ns();
-        if (timeout_ns <= 0) {
-            return MS_NET_TIMEOUT;
-        }
-    }
-    const uint32_t got = msrt_task_wait_fd((int32_t)core->fd, events, timeout_ns);
-    if ((got & MS_WAIT_CANCELLED) != 0) {
-        return MS_NET_CANCELLED;
-    }
-    if ((got & MS_WAIT_TIMEOUT) != 0 && (got & (MS_WAIT_READ | MS_WAIT_WRITE | MS_WAIT_HUP)) == 0) {
-        return MS_NET_TIMEOUT;
-    }
-    return MS_NET_OK;
 }
 
 static void write_address(MsStr *out, const MsAddr *address) {
@@ -196,7 +177,7 @@ uint8_t msstd_dgram_receive(const void *handle, uint8_t has_max, int64_t max, ui
             code = ms_sys_net_error();
             break;
         }
-        status = wait_for(core, MS_WAIT_READ, deadline);
+        status = ms_net_wait_fd(core->fd, MS_WAIT_READ, deadline);
         if (status != MS_NET_OK) {
             break;
         }
@@ -242,7 +223,7 @@ uint8_t msstd_dgram_send(const void *handle, const MsVec *data, const MsStr *add
             code = ms_sys_net_error();
             break;
         }
-        status = wait_for(core, MS_WAIT_WRITE, deadline);
+        status = ms_net_wait_fd(core->fd, MS_WAIT_WRITE, deadline);
         if (status != MS_NET_OK) {
             break;
         }

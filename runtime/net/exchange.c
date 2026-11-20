@@ -12,6 +12,7 @@
  *
  * The exchange is owned by one task at a time: the handler's. It has no locks. */
 #include <llhttp.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -38,8 +39,7 @@ enum {
 };
 
 typedef struct MsExchange {
-    MsObj header;
-    struct MsExchange *self; /* the natives take a const handle and change the exchange through this */
+    atomic_uint handles; /* ExchH handles on this exchange; it ends with the last */
     MsObj *conn;      /* an alias handle on the connection (not a stream end) */
     uint8_t *head;    /* the request head, as read; the spans below are offsets into it */
     MsH1Field *fields;
@@ -63,8 +63,13 @@ typedef struct MsExchange {
     uint64_t remaining;     /* bytes of the declared length not written yet */
 } MsExchange;
 
-static void exchange_drop(MsObj *object) {
-    MsExchange *exchange = (MsExchange *)object;
+/* What the standard library holds (ExchH): a handle on the shared exchange state. */
+typedef struct ExchHandle {
+    MsObj header;
+    MsExchange *state;
+} ExchHandle;
+
+static void state_free(MsExchange *exchange) {
     if (exchange->conn != NULL) {
         msrt_obj_drop(exchange->conn);
     }
@@ -72,6 +77,23 @@ static void exchange_drop(MsObj *object) {
     free(exchange->fields);
     free(exchange->input);
     msrt_free(exchange);
+}
+
+static void handle_drop(MsObj *object) {
+    ExchHandle *handle = (ExchHandle *)object;
+    if (atomic_fetch_sub(&handle->state->handles, 1) == 1) {
+        state_free(handle->state);
+    }
+    msrt_free(handle);
+}
+
+/* A handle on `state`, which the caller has already counted. */
+static MsObj *handle_new(MsExchange *state) {
+    ExchHandle *handle = msrt_alloc(sizeof *handle);
+    handle->header.clone = NULL;
+    handle->header.drop = handle_drop;
+    handle->state = state;
+    return &handle->header;
 }
 
 /* The reason phrases of the registered status codes (RFC 9110), sorted: llhttp names statuses by enum, not by phrase. */
@@ -150,7 +172,7 @@ static const char *reason_of(unsigned status) {
     return "";
 }
 
-static MsExchange *exchange_of(const void *handle) { return ((const MsExchange *)handle)->self; }
+static MsExchange *exchange_of(const void *handle) { return ((const ExchHandle *)handle)->state; }
 
 static MsConnTable *table_of(const MsExchange *exchange) { return ms_netconn_table(ms_netconn_of(exchange->conn)); }
 static MsConnId id_of(const MsExchange *exchange) { return ms_netconn_id(ms_netconn_of(exchange->conn)); }
@@ -183,15 +205,14 @@ static bool buffer_room(uint8_t **buffer, size_t *capacity, size_t length, size_
 static MsExchange *exchange_new(const void *conn, const uint8_t *buffer, size_t length, const MsH1Request *request,
                                 const MsH1Reader *reader) {
     MsExchange *exchange = msrt_alloc_zeroed(sizeof *exchange);
-    exchange->self = exchange;
-    exchange->header.drop = exchange_drop;
+    atomic_init(&exchange->handles, 1);
     exchange->conn = ms_netconn_alias(conn);
     exchange->head = malloc(request->head_len);
     exchange->fields = malloc((request->nfields + 1) * sizeof *exchange->fields);
     const size_t rest = length - request->head_len;
     exchange->input = malloc(rest + 1);
     if (exchange->conn == NULL || exchange->head == NULL || exchange->fields == NULL || exchange->input == NULL) {
-        exchange_drop(&exchange->header);
+        state_free(exchange);
         return NULL;
     }
     memcpy(exchange->head, buffer, request->head_len);
@@ -213,8 +234,8 @@ static MsExchange *exchange_new(const void *conn, const uint8_t *buffer, size_t 
     return exchange;
 }
 
-uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeout, int64_t timeout, void **out, int64_t *reject, MsStr *err) {
-    *reject = 0;
+uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_conn_set_refusal(ms_netconn_table(ms_netconn_of(conn)), ms_netconn_id(ms_netconn_of(conn)), 0);
     const MsNetConn *core = ms_netconn_of(conn);
     MsConnTable *table = ms_netconn_table(core);
     const MsConnId id = ms_netconn_id(core);
@@ -247,7 +268,7 @@ uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeou
         const int parsed = ms_h1_parse_request_body(&reader, (const char *)buffer, length, limit, &request, FIELDS_MAX);
         if (parsed == MS_H1_BAD) {
             free(buffer);
-            *reject = request.status;
+            ms_conn_set_refusal(table, id, request.status);
             return STATUS_INVALID_DATA;
         }
         if (parsed == MS_H1_COMPLETE) {
@@ -259,8 +280,13 @@ uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeou
     if (exchange == NULL) {
         return ms_net_finish(MS_NET_FAILED, 0, err);
     }
-    *out = &exchange->header;
+    *out = handle_new(exchange);
     return STATUS_OK;
+}
+
+int64_t msstd_xchg_reject_status(const void *conn) {
+    const MsNetConn *core = ms_netconn_of(conn);
+    return ms_conn_refusal(ms_netconn_table(core), ms_netconn_id(core));
 }
 
 uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout, int64_t timeout, MsStr *err) {
@@ -281,13 +307,23 @@ uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout,
     return ms_net_finish(sent, ms_conn_error_code(ms_netconn_table(core), ms_netconn_id(core)), err);
 }
 
-void msstd_xchg_head(const void *handle, MsStr *method, MsStr *target, MsStr *protocol, void **headers) {
+void msstd_xchg_method(const void *handle, MsStr *out) {
+    const char *name = llhttp_method_name((llhttp_method_t)exchange_of(handle)->method);
+    msrt_string_from_bytes((const uint8_t *)name, strlen(name), out);
+}
+
+void msstd_xchg_target(const void *handle, MsStr *out) {
     const MsExchange *exchange = exchange_of(handle);
-    const char *name = llhttp_method_name((llhttp_method_t)exchange->method);
-    msrt_string_from_bytes((const uint8_t *)name, strlen(name), method);
-    msrt_string_from_bytes(exchange->head + exchange->target.off, exchange->target.len, target);
-    const char *version = exchange->minor == 0 ? "HTTP/1.0" : "HTTP/1.1";
-    msrt_string_from_bytes((const uint8_t *)version, strlen(version), protocol);
+    msrt_string_from_bytes(exchange->head + exchange->target.off, exchange->target.len, out);
+}
+
+void msstd_xchg_protocol(const void *handle, MsStr *out) {
+    const char *version = exchange_of(handle)->minor == 0 ? "HTTP/1.0" : "HTTP/1.1";
+    msrt_string_from_bytes((const uint8_t *)version, strlen(version), out);
+}
+
+void *msstd_xchg_headers(const void *handle) {
+    const MsExchange *exchange = exchange_of(handle);
     MsHeaders *table = ms_headers_new();
     for (uint32_t i = 0; table != NULL && i < exchange->field_count; i++) {
         const MsH1Field *field = &exchange->fields[i];
@@ -298,7 +334,13 @@ void msstd_xchg_head(const void *handle, MsStr *method, MsStr *target, MsStr *pr
             table = NULL;
         }
     }
-    *headers = table == NULL ? NULL : ms_headers_object(table);
+    return table == NULL ? NULL : ms_headers_object(table);
+}
+
+void *msstd_xchg_share(const void *handle) {
+    MsExchange *exchange = exchange_of(handle);
+    atomic_fetch_add(&exchange->handles, 1);
+    return handle_new(exchange);
 }
 
 /* ---- request body ---- */

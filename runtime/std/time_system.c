@@ -7,7 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <uv.h>
+
 #include "ms_rt/time.h"
+#include "ms_rt/utf8.h"
 
 enum {
     ZONE_NAME_MAX = 4096, /* longer TZ values and link targets are not zone names */
@@ -26,21 +29,41 @@ static const char *after_zoneinfo(const char *text, bool *found) {
     return last != NULL ? last + sizeof zoneinfo_marker - 1 : text;
 }
 
+/* `prefix` and `name` as a String; a name that is too long or not UTF-8 is not a zone name, so the answer is empty. */
 static void write_string(MsStr *out, const char *prefix, const char *name) {
     char text[ZONE_NAME_MAX + 16];
-    const int length = snprintf(text, sizeof text, "%s%s", prefix, name);
+    const size_t name_length = strlen(name);
+    if (name_length > ZONE_NAME_MAX || !ms_utf8_is_valid((const uint8_t *)name, name_length)) {
+        msrt_string_from_bytes((const uint8_t *)text, 0, out);
+        return;
+    }
+    const int length = snprintf(text, sizeof text, "%s%s", prefix, name); /* both fit: checked above */
     msrt_string_from_bytes((const uint8_t *)text, length > 0 ? (size_t)length : 0, out);
+}
+
+/* The zone a TZ setting names, read live (libuv sees what the process sets on every platform); false when TZ is unset. */
+static bool zone_from_environment(MsStr *out) {
+    char tz[ZONE_NAME_MAX + 1];
+    size_t size = sizeof tz;
+    const int code = uv_os_getenv("TZ", tz, &size);
+    if (code == UV_ENOENT) {
+        return false;
+    }
+    if (code != 0) { /* longer than any zone name */
+        write_string(out, "", "");
+        return true;
+    }
+    bool found = false;
+    const char *name = after_zoneinfo(tz[0] == ':' ? tz + 1 : tz, &found);
+    write_string(out, "tz:", name[0] == 0 ? "UTC" : name);
+    return true;
 }
 
 #ifdef _WIN32
 #include <windows.h>
 
 void msstd_time_system_zone(MsStr *out) {
-    const char *tz = getenv("TZ"); // NOLINT(concurrency-mt-unsafe): read once at startup of a zone lookup; nothing here sets the environment
-    if (tz != NULL) {
-        bool found = false;
-        const char *name = after_zoneinfo(tz[0] == ':' ? tz + 1 : tz, &found);
-        write_string(out, "tz:", name[0] == 0 ? "UTC" : name);
+    if (zone_from_environment(out)) {
         return;
     }
     DYNAMIC_TIME_ZONE_INFORMATION info;
@@ -61,11 +84,7 @@ uint8_t msstd_time_system_zone_file(MsVec *out) {
 #include <unistd.h>
 
 void msstd_time_system_zone(MsStr *out) {
-    const char *tz = getenv("TZ"); // NOLINT(concurrency-mt-unsafe): read once at startup of a zone lookup; nothing here sets the environment
-    if (tz != NULL) {
-        bool found = false;
-        const char *name = after_zoneinfo(tz[0] == ':' ? tz + 1 : tz, &found);
-        write_string(out, "tz:", name[0] == 0 ? "UTC" : name);
+    if (zone_from_environment(out)) {
         return;
     }
     char target[ZONE_NAME_MAX];

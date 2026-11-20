@@ -20,3 +20,15 @@ export ASAN_OPTIONS=detect_leaks=0
 "$bin/ms_asm_tables" "$out/lines.meta" "$out/lines.s" --prefix "$prefix" > "$out/lines.tables.s"
 cc "$out/lines.tables.s" compiler/tests/asm_tables_check.c -o "$out/lines"
 "$out/lines" && echo "ok   asm-tables lines"
+# The assembly LLVM writes for every platform the release builds target (ELF and Mach-O `.loc`, COFF `.cv_loc`,
+# indented directives, labels with comments) takes the tables and still assembles for that platform.
+printf 'F asm_tables_input.c\nY h\t0\t1\th\nY f\t0\t2\tf\n' > "$out/input.meta"
+for entry in x86_64-linux-gnu: aarch64-linux-gnu: x86_64-apple-macos:_ aarch64-apple-macos:_ \
+    x86_64-pc-windows-msvc: aarch64-pc-windows-msvc: x86_64-pc-windows-gnu:; do
+    triple=${entry%%:*}
+    pre=${entry#*:}
+    clang -S -g -O1 --target="$triple" compiler/tests/asm_tables_input.c -o "$out/input.s"
+    "$bin/ms_asm_tables" "$out/input.meta" "$out/input.s" --prefix "$pre" > "$out/input.tables.s"
+    clang -c --target="$triple" "$out/input.tables.s" -o "$out/input.o"
+    echo "ok   asm-tables $triple"
+done
