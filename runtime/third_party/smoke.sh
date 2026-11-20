@@ -11,3 +11,6 @@ exe=$repository/target/c-libs/clibs_smoke
 exe=$repository/target/c-libs/clibs_smoke_re2
 "$cxx" -std=c++17 -O1 -Wall -I"$out/include" "$repository/runtime/tests/clibs_smoke_re2.cc" "$out/lib/libre2.a" -Wl,--start-group $(ls "$out"/lib/libabsl_*.a) -Wl,--end-group -static-libstdc++ -static-libgcc -lpthread -o "$exe"
 "$exe"
+exe=$repository/target/c-libs/http1_test
+"$cc" -O1 -Wall -Wextra -I"$out/include" "$repository/runtime/tests/http1_test.c" "$repository/runtime/net/http1.c" "$out/lib/libllhttp.a" -o "$exe"
+"$exe"

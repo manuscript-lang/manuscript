@@ -1,0 +1,8 @@
+# Runtime symbols defined in C (runtime/core, runtime/sys, ...). Each is compiled out of the Rust runtime
+# when the archive is built by `cargo xtask runtime`; plain `cargo test` keeps the Rust definitions.
+# One symbol per line; declare it in runtime/include/ms_rt.h.
+msrt_float_compare
+msrt_int_compare
+msrt_uint_compare
+msrt_uint_to_float
+msrt_uint_to_float32
