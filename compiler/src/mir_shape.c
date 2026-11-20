@@ -445,7 +445,7 @@ static void sh_flags(MirLayouts *layouts, MirTy ty, bool pointers, MsBuf *out);
 
 static void sh_flag_run(MsBuf *out, bool value, uint32_t count) {
     for (uint32_t i = 0; i < count; i++) {
-        ms_buf_putc(out, value ? 1 : 0);
+        ms_buf_putc(out, value ? '\1' : '\0');
     }
 }
 

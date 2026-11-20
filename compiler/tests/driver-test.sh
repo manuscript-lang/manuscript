@@ -6,9 +6,9 @@ set -eu
 out=target/c-compiler
 mkdir -p "$out"
 cflags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Wno-format-truncation -Icompiler/include -Iruntime/include"
-cc $cflags compiler/src/libms.c compiler/src/driver.c compiler/tests/driver_test.c -o "$out/driver_test"
+cc $cflags compiler/src/libms.c compiler/src/driver.c compiler/tests/driver_test.c -o "$out/driver_test" -lm
 "$out/driver_test"
-cc $cflags compiler/src/libms.c compiler/src/driver.c compiler/tools/ms.c -o "$out/ms"
+cc $cflags compiler/src/libms.c compiler/src/driver.c compiler/tools/ms.c -o "$out/ms" -lm
 
 rust=${MS_RUST_CLI:-target/release/ms}
 [ -x "$rust" ] || { echo "driver-test: build the Rust ms first (make build) or set MS_RUST_CLI"; exit 1; }

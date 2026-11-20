@@ -3,6 +3,7 @@
 // This module is the C ABI boundary of the standard-library natives.
 #![allow(unsafe_code)]
 
+mod c_sched;
 pub mod pool;
 
 use core::fmt::{self, Write};
