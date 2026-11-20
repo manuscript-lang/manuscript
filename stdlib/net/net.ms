@@ -23,6 +23,7 @@ import (
 	open_client from "@std/net/http.ms",
 	start_server from "@std/net/serve.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
+	parse from "@std/net/url.ms",
 	Policy,
 	address_allowed,
 	host_allowed,
@@ -33,7 +34,6 @@ import (
 	TlsInfo, TlsOptions from "@std/net/tls.ms",
 	WebSocket,
 	WebSocketOptions,
-	WebSocketWire,
 	web_socket_from from "@std/net/websocket.ms",
 	Duration, Instant, Timestamp, monotonic, nanoseconds, sleep from "@std/time.ms",
 
@@ -67,7 +67,7 @@ import (
 	msstd_net_network,
 	msstd_net_network_close,
 	msstd_net_network_restrict,
-	msstd_net_network_web_socket,
+	msstd_ws_connect,
 	msstd_net_network_with_resolver,
 	msstd_scope_child,
 	msstd_scope_close,
@@ -495,6 +495,15 @@ fn Network.connect(
 	tls: TlsOptions? = none,
 	timeout: Duration? = none,
 ) Connection!:
+	return ok(connection(self.dial(address, tls, timeout)?))
+
+// Dials `address` through this network's policy and resolver and tracks the socket in
+// its scope; the runtime handle without the streams a `Connection` adds.
+fn Network.dial(
+	address: String,
+	tls: TlsOptions? = none,
+	timeout: Duration? = none,
+) NativeConnection!:
 	if not msstd_scope_open(self.scope): return error(closed_error())
 
 	found := split_host_port(address)
@@ -532,7 +541,7 @@ fn Network.connect(
 		native := dialed.get()
 		if not msstd_scope_track_conn(self.scope, native): return error(closed_error())
 
-		return ok(connection(native))
+		return ok(native)
 
 	return error(refused)
 
@@ -752,21 +761,56 @@ fn Network.web_socket(
 	url: String,
 	options: WebSocketOptions = WebSocketOptions(),
 ) WebSocket!:
-	subprotocols := options.subprotocols.clone()
-	wire := WebSocketWire(
-		max_message_bytes: options.max_message_bytes,
-		timeout: options.timeout,
-		tls: options.tls.clone(),
-		compression: options.compression,
-	)
+	started := monotonic()
+	parsed := parse(url)
+	if parsed.is_error(): return error(invalid_address())
+
+	target := parsed.get()
+	secure := target.scheme == "wss"
+	if target.scheme != "ws" and not secure: return error(invalid_address())
+
+	if target.host.is_empty(): return error(invalid_address())
+
+	if given := options.max_message_bytes:
+		if given <= 0: return error(invalid_address())
+
+	port := target.port.get_or(if secure: 443 else: 80)
+	var tls: TlsOptions? = none
+
+	if secure:
+		var secured = options.tls.clone()
+		secured.server_name = target.host.clone()
+		secured.alpn = ["http/1.1"]
+		tls = secured
+
+	dialed := self.dial(
+		literal_address(target.host, port),
+		tls: tls,
+		timeout: remaining(started, options.timeout.clone())?
+	)?
+	left := remaining(started, options.timeout.clone())?
+
+	var authority = target.host.clone()
+	if authority.contains(":"): authority = "[" + authority + "]"
+	if target.port.is_some(): authority = authority + ":" + port.to_string()
+
+	var path = target.path.clone()
+	if path.is_empty(): path = "/"
+
+	if query := target.query:
+		path = path + "?" + query
+
 	return ok(
 		web_socket_from(
-			msstd_net_network_web_socket(
-				self.native,
-				url,
+			msstd_ws_connect(
+				dialed,
+				authority,
+				path,
 				options.headers,
-				subprotocols,
-				wire,
+				options.subprotocols.clone(),
+				options.compression,
+				options.max_message_bytes,
+				left,
 			)?
 		)
 	)

@@ -12,7 +12,7 @@ import (
 	NativeNetwork,
 	NativeScope from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
-	NativeWebSocket, RawWebSocketMessage, WebSocketHandshake, WebSocketWire from "@std/net/websocket.ms",
+	NativeWebSocket, RawWebSocketMessage, WebSocketHandshake from "@std/net/websocket.ms",
 	Duration, Timestamp from "@std/time.ms",
 )
 
@@ -247,12 +247,16 @@ export extern fn msstd_net_network_restrict(
 	allow_listen: Bool,
 ) NativeNetwork!
 
-export extern fn msstd_net_network_web_socket(
-	net: NativeNetwork,
-	url: String,
+// The client side of the opening handshake on a dialed connection (runtime/net/ws_connect.h).
+export extern fn msstd_ws_connect(
+	connection: NativeConnection,
+	authority: String,
+	target: String,
 	headers: HttpHeaders,
 	subprotocols: List[String],
-	options: WebSocketWire,
+	compression: Bool,
+	max_message_bytes: Int?,
+	timeout: Duration?,
 ) NativeWebSocket!
 
 export extern fn msstd_net_network_with_resolver(

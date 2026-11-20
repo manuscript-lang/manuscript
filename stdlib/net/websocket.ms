@@ -132,14 +132,3 @@ export type WebSocketOptions:
 	// When True, offers per-message compression during the handshake; it applies only
 	// if the peer agrees.
 	compression: Bool = false
-
-// The part of `WebSocketOptions` the native handshake reads, in the native layout.
-export type WebSocketWire:
-	// The `tls` of the options.
-	tls: TlsOptions
-	// The `compression` of the options.
-	compression: Bool
-	// The `max_message_bytes` of the options.
-	max_message_bytes: Int?
-	// The `timeout` of the options.
-	timeout: Duration?
