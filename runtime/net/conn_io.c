@@ -199,6 +199,33 @@ static MsNetStatus pump_in(MsConn *row, MsTls *tls, int64_t deadline_ns, bool *e
     return MS_NET_OK;
 }
 
+enum { GONE_POLL_NS = 20000000 };
+
+MsNetStatus ms_conn_wait_gone(MsConnTable *table, MsConnId id) {
+    for (;;) {
+        MsConn *row = usable(table, id);
+        if (row == NULL) {
+            return MS_NET_CLOSED;
+        }
+        const MsNetStatus waited = wait_for(row, MS_WAIT_READ, -1);
+        if (waited != MS_NET_OK) {
+            return waited;
+        }
+        uint8_t probe;
+        size_t seen = 0;
+        const int result = ms_sys_net_peek(row->fd, &probe, 1, &seen);
+        if (result == MS_SYS_EOF) {
+            return MS_NET_CLOSED;
+        }
+        if (result == MS_SYS_ERROR) {
+            return MS_NET_RESET;
+        }
+        if (result == MS_SYS_OK && (msrt_task_sleep(GONE_POLL_NS) & MS_WAIT_CANCELLED) != 0) {
+            return MS_NET_CANCELLED;
+        }
+    }
+}
+
 MsNetStatus ms_conn_handshake(MsConnTable *table, MsConnId id, int64_t deadline_ns) {
     MsConn *row = usable(table, id);
     MsTls *tls = row == NULL ? NULL : tls_of(row);

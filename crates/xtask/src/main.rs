@@ -108,8 +108,12 @@ fn symbols(check: bool) -> Result<String, String> {
         return Err("collecting the native signatures failed".into());
     }
     let mut table = std::collections::BTreeMap::new();
-    let text =
-        std::fs::read_to_string(&recorded).map_err(|e| format!("{}: {e}", recorded.display()))?;
+    // No Rust crate declares natives once the last `ms-std-*` crate is gone, so no test writes the file.
+    let text = match std::fs::read_to_string(&recorded) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(format!("{}: {e}", recorded.display())),
+    };
     for line in text.lines().filter(|l| !l.is_empty()) {
         let name = line.split('(').next().unwrap_or(line).to_string();
         if let Some(old) = table.insert(name.clone(), line.to_string())
