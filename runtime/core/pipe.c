@@ -154,7 +154,7 @@ static void ring_clear(ItemRing *ring) {
 /* Pipes per chunk and chunks in the table: the table holds up to 16M pipes at once. */
 enum { PIPE_CHUNK = 256, PIPE_CHUNKS = 1 << 16, LINE = 128 };
 
-/* The gap in nanoseconds the reader leaves between looks at an empty queue; see ms_pipe_brief_wait. */
+/* The gap in nanoseconds the reader leaves between looks at an empty queue; see msrt_pipe_brief_wait. */
 enum { GAP_MIN = 100, GAP_MAX = 16000 };
 
 /* A run of values at a look means the writer streams. */
@@ -485,7 +485,7 @@ static void pipe_unread(int64_t pipe, void *block, const MsTypeDesc *desc) {
     }
 }
 
-int64_t ms_pipe_new(int64_t capacity) {
+int64_t msrt_pipe_new(int64_t capacity) {
     static atomic_bool hook_set;
     if (!atomic_exchange(&hook_set, true)) {
         ms_promise_set_unread(pipe_unread);
@@ -513,7 +513,7 @@ int64_t ms_pipe_new(int64_t capacity) {
     return id;
 }
 
-void ms_pipe_add_writer(int64_t pipe) {
+void msrt_pipe_add_writer(int64_t pipe) {
     PipeCell *cell = cell_lock(pipe);
     if (cell == NULL) {
         return;
@@ -528,7 +528,7 @@ static void finish_read(MsPromise reader, const PipeItem *item, int64_t pipe) {
     ms_promise_io_done_block(reader, item_into_block(item), item_desc(item), pipe);
 }
 
-int64_t ms_pipe_write(int64_t pipe, uint8_t *value, const MsTypeDesc *desc) {
+int64_t msrt_pipe_write(int64_t pipe, uint8_t *value, const MsTypeDesc *desc) {
     const PipeItem item = item_new(value, desc);
     PipeCell *cell = cell_lock(pipe);
     if (cell == NULL || !cell->reader_open) {
@@ -572,7 +572,7 @@ static bool reader_cancelled(MsPromise id, uintptr_t pipe, uint32_t bits) {
     return false;
 }
 
-int64_t ms_pipe_read(int64_t pipe) {
+int64_t msrt_pipe_read(int64_t pipe) {
     const MsPromise id = ms_promise_new();
     PipeCell *cell = cell_for(pipe);
     if (cell == NULL) {
@@ -617,7 +617,7 @@ int64_t ms_pipe_read(int64_t pipe) {
     return id;
 }
 
-uint8_t ms_pipe_try(int64_t pipe, const MsTypeDesc *desc, uint8_t *out) {
+uint8_t msrt_pipe_try(int64_t pipe, const MsTypeDesc *desc, uint8_t *out) {
     if (cancellation_point()) {
         return 0;
     }
@@ -655,7 +655,7 @@ uint8_t ms_pipe_try(int64_t pipe, const MsTypeDesc *desc, uint8_t *out) {
     return 1;
 }
 
-int64_t ms_pipe_ended(int64_t pipe) {
+int64_t msrt_pipe_ended(int64_t pipe) {
     PipeCell *cell = cell_for(pipe);
     if (cell == NULL) {
         return 1;
@@ -670,7 +670,7 @@ int64_t ms_pipe_ended(int64_t pipe) {
 
 /* No other thread can complete a pipe yet (see the file comment), so a reader never spins for a peer: it parks.
  * The look-and-spin of the Rust runtime returns with the multi-thread scheduler. */
-int64_t ms_pipe_brief_wait(int64_t pipe) {
+int64_t msrt_pipe_brief_wait(int64_t pipe) {
     PipeCell *cell = cell_for(pipe);
     if (cell == NULL) {
         return 1;
@@ -689,7 +689,7 @@ static bool flush_cancelled(MsPromise id, uintptr_t pipe, uint32_t bits) {
     return false;
 }
 
-int64_t ms_pipe_flush(int64_t pipe) {
+int64_t msrt_pipe_flush(int64_t pipe) {
     const MsPromise id = ms_promise_new();
     PipeCell *cell = cell_lock(pipe);
     bool waits = false;
@@ -717,7 +717,7 @@ int64_t ms_pipe_flush(int64_t pipe) {
     return id;
 }
 
-void ms_pipe_close_writer(int64_t pipe) {
+void msrt_pipe_close_writer(int64_t pipe) {
     PipeCell *cell = cell_lock(pipe);
     if (cell == NULL) {
         return;
@@ -735,7 +735,7 @@ void ms_pipe_close_writer(int64_t pipe) {
     }
 }
 
-void ms_pipe_close_reader(int64_t pipe) {
+void msrt_pipe_close_reader(int64_t pipe) {
     PipeCell *cell = cell_lock(pipe);
     if (cell == NULL) {
         return;

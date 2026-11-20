@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include "ms_rt/base.h"
+#include "ms_rt/safe.h"
 #include "ms_rt/string.h"
 
 typedef enum MsFaultKind {
