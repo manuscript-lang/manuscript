@@ -132,12 +132,13 @@ export type PromiseOptions:
 	cancel: Signal? = none
 	// When the owner ends the promise (by dropping it, or by unwinding past it after a
 	// cancellation), this signal's `Cancel` fires first and the work has `grace` to
-	// finish before it is cancelled. Use it for work that can wind down on notice, such as
-	// a server's connections. An explicit `cancel` skips the notice. Applying a signal to
-	// an existing promise replaces its previous one; none leaves it unchanged.
+	// finish before it is cancelled. Use it for work that can wind down on notice, such
+	// as a server's connections. An explicit `cancel` skips the notice. Applying a
+	// signal to an existing promise replaces its previous one; none leaves it
+	// unchanged.
 	drain: Signal? = none
-	// How long the work may take to finish after the `drain` notice; `none` waits without
-	// limit. It has no effect without `drain`.
+	// How long the work may take to finish after the `drain` notice; `none` waits
+	// without limit. It has no effect without `drain`.
 	grace: Duration? = none
 	// Which thread runs the work.
 	placement: Placement = Placement.Any

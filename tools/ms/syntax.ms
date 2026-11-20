@@ -81,12 +81,20 @@ extern fn ms_tool_tree_names(tree: Tree) List[String]
 
 extern fn ms_tool_node_kinds() List[String]
 
+extern fn ms_tool_keywords() List[String]
+
 fn node_width() Int: 12
 
 // The node kind names the C encoder uses ("Fn", "Bind", "Binary", ...), indexed by
 // `Syntax.kind`.
 export fn node_kinds() List[String]:
 	return ms_tool_node_kinds()
+
+// The reserved words, in alphabetical order.
+export fn keywords() List[String]:
+	var words = ms_tool_keywords()
+	words.sort()
+	return words
 
 // The index of the node kind named `name`, or -1.
 export fn node_kind(name: String) Int:

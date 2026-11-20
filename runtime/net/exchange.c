@@ -494,6 +494,16 @@ uint8_t msstd_xchg_reset(const void *handle, int64_t max, uint8_t has_timeout, i
     }
 }
 
+uint8_t msstd_xchg_wait_gone(const void *handle, MsStr *err) {
+    ms_net_clear_text(err);
+    MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        return ms_xchg_h2_wait_gone(exchange->h2, err);
+    }
+    const MsNetStatus status = ms_conn_wait_gone(table_of(exchange), id_of(exchange), &exchange->spent);
+    return status == MS_NET_RESET || status == MS_NET_CLOSED ? STATUS_OK : finish_status(exchange, status, err);
+}
+
 /* ---- response ---- */
 
 static bool field_is(const MsBytes name, const char *expected) {
@@ -512,7 +522,8 @@ static int build_head(char *dst, size_t cap, size_t *used, const MsExchange *exc
     for (size_t i = 0; i < count; i++) {
         MsBytes name, value;
         ms_headers_field(headers, i, &name, &value);
-        if (field_is(name, "content-length") || field_is(name, "transfer-encoding") || field_is(name, "connection")) {
+        /* A 101 head names the protocol it switches to (`Connection: Upgrade`); every other head lets the framing say it. */
+        if (field_is(name, "content-length") || field_is(name, "transfer-encoding") || (field_is(name, "connection") && status != 101)) {
             continue;
         }
         const int written = ms_h1_write_field(dst, cap, used, (const char *)name.ptr, name.len, (const char *)value.ptr, value.len);
@@ -537,7 +548,7 @@ static int build_head(char *dst, size_t cap, size_t *used, const MsExchange *exc
         written = ms_h1_write_field(dst, cap, used, "Connection", 10, keep ? "keep-alive" : "close", keep ? 10 : 5);
     }
     if (written != 0) {
-        return written;
+            return written;
     }
     (void)exchange;
     return ms_h1_write_head_end(dst, cap, used);
@@ -591,7 +602,7 @@ uint8_t msstd_xchg_send_head(const void *handle, int64_t status, const void *hea
         capacity *= 2;
     }
     if (built != 0) {
-        free(buffer);
+            free(buffer);
         return STATUS_INVALID_INPUT;
     }
     const MsNetStatus sent = ms_conn_write(table_of(exchange), id_of(exchange), buffer, used, ms_net_deadline_of(has_timeout, timeout));
