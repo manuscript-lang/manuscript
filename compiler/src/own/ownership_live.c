@@ -160,8 +160,9 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
             live_expr(w, e->u.call.args.ptr[0].value);
             return;
         }
-        if (w->facts->call_callee[e->id] == MS_NONE) {
-            w->supported = false; /* a method, an interface operation or a function value */
+        const bool operation = e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE;
+        if (w->facts->call_callee[e->id] == MS_NONE && !operation) {
+            w->supported = false; /* a method that names no operation, or a function value */
             return;
         }
         for (uint32_t i = e->u.call.args.len; i > 0; i--) {
