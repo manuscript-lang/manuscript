@@ -39,7 +39,7 @@ void json_buffer_free(JsonBuffer *buffer);
 /* The text of a string, key or number: borrowed from the scanner, valid until the sink returns. A string without
  * escapes is a span of the source (`source_offset` says where); a decoded one is scratch (`source_offset` is
  * JSON_DECODED). */
-enum { JSON_DECODED = SIZE_MAX };
+#define JSON_DECODED ((size_t)SIZE_MAX)
 typedef struct JsonText {
     MsBytes bytes;
     size_t source_offset;
