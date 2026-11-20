@@ -6,6 +6,7 @@ use ms_rt_abi::{
 
 // The moved symbols (runtime/symbols/num.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
+    pub fn msrt_numbers_parse_int(text: *const StrVal, radix: i64, out: *mut i64) -> u8;
     pub fn msrt_float_compare(a: f64, b: f64) -> i64;
     pub fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8;
     pub fn msrt_int_compare(a: i64, b: i64) -> i64;
@@ -123,61 +124,6 @@ pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
     } else {
         i64::try_from(acc).ok()
     }
-}
-
-/// `Numbers.parse_int`: Err carries the status code. Radix 0 reads a `0x`, `0o` or `0b` prefix (any case) after
-/// the sign and otherwise means 10.
-pub fn parse_int_radix(text: &[u8], radix: i64) -> Result<i64, u8> {
-    if radix != 0 && !(2..=36).contains(&radix) {
-        return Err(STATUS_INVALID_INPUT);
-    }
-    let (neg, digits) = match text.first() {
-        Some(b'+') => (false, &text[1..]),
-        Some(b'-') => (true, &text[1..]),
-        _ => (false, text),
-    };
-    let (radix, digits) = if radix != 0 {
-        (radix as u64, digits)
-    } else {
-        match digits {
-            [b'0', b'x' | b'X', rest @ ..] => (16, rest),
-            [b'0', b'o' | b'O', rest @ ..] => (8, rest),
-            [b'0', b'b' | b'B', rest @ ..] => (2, rest),
-            _ => (10, digits),
-        }
-    };
-    if digits.is_empty() {
-        return Err(STATUS_INVALID_DATA);
-    }
-    for &c in digits {
-        let d = match c {
-            b'0'..=b'9' => (c - b'0') as u64,
-            b'a'..=b'z' => (c - b'a') as u64 + 10,
-            b'A'..=b'Z' => (c - b'A') as u64 + 10,
-            _ => return Err(STATUS_INVALID_DATA),
-        };
-        if d >= radix {
-            return Err(STATUS_INVALID_DATA);
-        }
-    }
-    let mut acc: u128 = 0;
-    let limit: u128 = if neg { 1u128 << 63 } else { (1u128 << 63) - 1 };
-    for &c in digits {
-        let d = match c {
-            b'0'..=b'9' => (c - b'0') as u128,
-            b'a'..=b'z' => (c - b'a') as u128 + 10,
-            _ => (c - b'A') as u128 + 10,
-        };
-        acc = acc * radix as u128 + d;
-        if acc > limit {
-            return Err(STATUS_OUT_OF_RANGE);
-        }
-    }
-    Ok(if neg {
-        (acc as i128).wrapping_neg() as i64
-    } else {
-        acc as i64
-    })
 }
 
 /// `Numbers.parse_float` (decimal and exponent syntax only).
@@ -319,50 +265,6 @@ fn float_syntax(t: &[u8]) -> bool {
     i == t.len()
 }
 
-/// A positive finite binary64's shortest scientific form needs at most 17 digits, a decimal
-/// point, `e`, an exponent sign and three exponent digits: 23 bytes. Binary32 is smaller.
-#[derive(Default)]
-struct Scientific {
-    bytes: [u8; 32],
-    len: usize,
-}
-
-impl Scientific {
-    fn as_slice(&self) -> &[u8] {
-        &self.bytes[..self.len]
-    }
-}
-
-impl core::fmt::Write for Scientific {
-    fn write_str(&mut self, text: &str) -> core::fmt::Result {
-        let end = self.len + text.len();
-        let target = self.bytes.get_mut(self.len..end).ok_or(core::fmt::Error)?;
-        target.copy_from_slice(text.as_bytes());
-        self.len = end;
-        Ok(())
-    }
-}
-
-/// Shortest round-trip digits and decimal exponent of a finite positive `v`.
-fn shortest(v: f64) -> (Scientific, i32) {
-    let (digits, exp10) = crate::float_digits::shortest(v);
-    let mut s = Scientific::default();
-    let mut tmp = [0u8; 20];
-    let text = format_u64(digits, &mut tmp);
-    s.bytes[..text.len()].copy_from_slice(text);
-    s.len = text.len();
-    (s, exp10 + text.len() as i32 - 1)
-}
-
-/// The shortest round-trip digits of a finite positive `v` copied into `buf`, with the decimal
-/// exponent of the first digit.
-pub fn shortest_digits(v: f64, buf: &mut [u8; 24]) -> (usize, i32) {
-    let (digits, exp) = shortest(v);
-    let n = digits.len.min(buf.len());
-    buf[..n].copy_from_slice(&digits.as_slice()[..n]);
-    (n, exp)
-}
-
 /// The text of one float: a sign, at most 17 digits, up to 20 zeros or six leading zeros, a point,
 /// or `e`, a sign and three exponent digits all fit in 40 bytes.
 pub struct FloatText {
@@ -430,25 +332,6 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
 // ---------------------------------------------------------------------------
 // Exported natives: `@std/math` and the Int / Float receiver operations
 // ---------------------------------------------------------------------------
-
-/// `Numbers.parse_int(text, radix)`: status, with the value written to `out` only on success.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_numbers_parse_int(
-    text: *const StrVal,
-    radix: i64,
-    out: *mut i64,
-) -> u8 {
-    // SAFETY: the caller passes a live string and a writable out.
-    match parse_int_radix(unsafe { crate::string::bytes(text) }, radix) {
-        Ok(v) => {
-            // SAFETY: as above.
-            unsafe { *out = v };
-            STATUS_OK
-        }
-        Err(status) => status,
-    }
-}
 
 /// `Numbers.parse_float(text)`.
 #[unsafe(no_mangle)]
@@ -674,19 +557,6 @@ mod tests {
         }
         assert_eq!(parse_int_decimal(b"1_0"), None);
         assert_eq!(parse_int_decimal(b""), None);
-        assert_eq!(parse_int_radix(b"FF", 16), Ok(255));
-        assert_eq!(parse_int_radix(b"-8000000000000000", 16), Ok(i64::MIN));
-        assert_eq!(
-            parse_int_radix(b"8000000000000000", 16),
-            Err(STATUS_OUT_OF_RANGE)
-        );
-        assert_eq!(parse_int_radix(b"12", 2), Err(STATUS_INVALID_DATA));
-        assert_eq!(parse_int_radix(b"1", 1), Err(STATUS_INVALID_INPUT));
-        assert_eq!(parse_int_radix(b"-0x1f", 0), Ok(-31));
-        assert_eq!(parse_int_radix(b"0B101", 0), Ok(5));
-        assert_eq!(parse_int_radix(b"017", 0), Ok(17));
-        assert_eq!(parse_int_radix(b"0x", 0), Err(STATUS_INVALID_DATA));
-        assert_eq!(parse_int_radix(b"0x1f", 10), Err(STATUS_INVALID_DATA));
     }
 
     #[test]

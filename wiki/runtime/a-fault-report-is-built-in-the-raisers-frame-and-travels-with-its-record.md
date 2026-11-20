@@ -1,0 +1,12 @@
+[Wiki](../index.md) › [Runtime](index.md)
+
+# A fault report is built in the raiser's frame and travels with its record
+
+Decision (2026-11-20, C port of `fault.rs`): `ms_fault` in `runtime/core/fault.c` keeps the fault in progress in a `MsFaultFlight` on the raiser's own stack, reached from the task's `MsUnwind::flight`. Nothing is global, so two tasks can report at once. A fault raised by a cleanup finds the flight, adds a note, runs the cleanups that remain and finishes the same report: one failing cleanup does not stop the rest. The report leaves as an `MsFaultText` (text, then source frames, then `cleanup fault:` lines) that owns an `MsFaultDetail` (family, frames, started-by frames, notes), so the record travels with the message through the guard, the join and the process end. The Rust runtime matched the last record to a message by prefix in a global; that is gone.
+
+Frames are never copied: an `MsFrame` points into the compiler's string blob. `frames.c` resolves a return address with binary searches over the function, line and inlined-scope tables, collapses repeats, and keeps 32 frames. The linker can reorder functions (macOS arm64), so `ms_frames_install` copies and sorts tables that are out of address order. The walk follows saved frame pointers inside the task's stack segment and steps to the segment below through its chain cell. Windows cannot follow the register: `sys/windows/frames.c` unwinds the runtime's own frames with the system's data, then `ms_frames_scan_record` finds each generated frame's record by scanning (portable, so Linux tests cover it).
+
+Rules that bit: runtime C keeps frame pointers (`-fno-omit-frame-pointer`, also in the test flags) or the walk skips frames; reporting an out-of-memory fault must not allocate without a way out, so a refusal while reporting one ends the process through `ms_fault_fatal` (stack buffers, no allocation); a record that fits 1 KiB is encoded on the stack.
+
+Apply when: changing the fault report, the record, or the unwind state. The ABI names (`msrt_fault`, `msrt_cleanup_*`, `msrt_guard_call`) move to C with the task layer, not before: they share state with the Rust tasks until then.
+Evidence: [fault.c](../../runtime/core/fault.c), [frames.c](../../runtime/core/frames.c), [record encoder](../../runtime/core/fault_record.c), [test](../../runtime/tests/core_fault.c).
