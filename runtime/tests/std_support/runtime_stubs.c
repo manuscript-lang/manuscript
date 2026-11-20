@@ -60,3 +60,20 @@ const unsigned char msrt_desc_bytes[1];
 const unsigned char msrt_desc_string[1];
 int32_t ms_sched_stdout_error(void) { return 0; }
 void ms_sched_flush_stdout(void) {}
+
+/* Watchers park on a token the unit tests never wait for. */
+uint64_t msrt_token_new(uint32_t flags) {
+    (void)flags;
+    return 1;
+}
+void msrt_token_free(uint64_t token) { (void)token; }
+void msrt_token_post_remote(uint64_t token, uint64_t value) {
+    (void)token;
+    (void)value;
+}
+uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
+    (void)token;
+    (void)timeout_ns;
+    *value = 0;
+    return 0;
+}

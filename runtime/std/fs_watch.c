@@ -191,10 +191,10 @@ static void snapshot_diff(const Snapshot *before, const Snapshot *now, MsVec *ou
     msrt_list_with_capacity(&event_out_desc, 0, out);
     size_t i = 0;
     size_t j = 0;
-    while (i < before->count || j < now->count) {
-        const SnapEntry *old = i < before->count ? &before->items[i] : NULL;
-        const SnapEntry *fresh = j < now->count ? &now->items[j] : NULL;
-        const int order = old == NULL ? 1 : fresh == NULL ? -1 : entry_compare(old, fresh);
+    while (i < before->count && j < now->count) {
+        const SnapEntry *old = &before->items[i];
+        const SnapEntry *fresh = &now->items[j];
+        const int order = entry_compare(old, fresh);
         if (order < 0) {
             push_event_out(out, old->path, old->length, true);
             i++;
@@ -208,6 +208,12 @@ static void snapshot_diff(const Snapshot *before, const Snapshot *now, MsVec *ou
             i++;
             j++;
         }
+    }
+    for (; i < before->count; i++) {
+        push_event_out(out, before->items[i].path, before->items[i].length, true);
+    }
+    for (; j < now->count; j++) {
+        push_event_out(out, now->items[j].path, now->items[j].length, true);
     }
 }
 
@@ -233,34 +239,32 @@ struct WatchRow {
 typedef struct MsFsWatcher {
     MsObj header;
     uint64_t token;
-    bool polling;
-    bool recursive;
-    bool closed;
-    bool ended; /* the root is gone: the stream ends once the queue drains */
-    /* polling */
-    int64_t interval_ns;
-    int64_t max;
-    Snapshot before;
-    bool gone;
-    /* native */
+    int64_t interval_ns; /* polling */
+    int64_t max;         /* polling */
+    Snapshot before;     /* polling */
     uv_mutex_t lock;
-    bool lock_ready;
     WatchEvent *queue; /* owned ring */
     size_t head;
     size_t count;
     size_t capacity;
-    bool ignore_overflow;
-    uint8_t terminal; /* a failure for the next `next`; STATUS_OK while none */
-    char *terminal_text;
+    char *terminal_text; /* owned (malloc) */
     uv_loop_t loop;
-    bool loop_ready;
     uv_async_t stop;
-    bool stop_ready;
     uv_thread_t thread;
-    bool thread_started;
-    WatchRow *rows;
-    char *root;
+    WatchRow *rows; /* owned; only the watching thread touches it while it runs */
+    char *root;     /* owned (malloc) */
     size_t root_length;
+    uint8_t terminal; /* a failure for the next `next`; STATUS_OK while none */
+    bool polling;
+    bool recursive;
+    bool closed;
+    bool ended; /* the root is gone: the stream ends once the queue drains */
+    bool gone;  /* polling: the root vanished and was reported */
+    bool lock_ready;
+    bool ignore_overflow;
+    bool loop_ready;
+    bool stop_ready;
+    bool thread_started;
 } MsFsWatcher;
 
 static void watcher_lock(MsFsWatcher *watcher) { uv_mutex_lock(&watcher->lock); }

@@ -58,13 +58,13 @@ foreach(name sys_mem sys_thread)
   ms_test(${name} SOURCES "${_tests}/${name}.c" ${_posix_sources} LIBS Threads::Threads)
 endforeach()
 
-# std_*: all of runtime/std with the system PCRE2 and libcrypto.
+# std_*: all of runtime/std with the system PCRE2, libcrypto and libuv.
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
   ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c"
-          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES}
-          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} m Threads::Threads ${CMAKE_DL_LIBS})
+          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES}
+          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} m Threads::Threads ${CMAKE_DL_LIBS})
 endforeach()
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
