@@ -36,12 +36,13 @@ typedef struct Lb {
     const MsFacts *facts;
     MirModule *m;
     MirBuilder b;
-    MsTy int_ty, float_ty, bool_ty, string_ty;
+    MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
     /* By binding id: the value a `let` or parameter names, or the variable a `var` is. */
     MirValue *value_of;
     MirVar *var_of;
     uint32_t *func_of;    /* by symbol id: the module function a call reaches, or MIR_NONE */
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
+    const MsDecl *decl;   /* the function being lowered */
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     bool dead;            /* control cannot reach the current position */
@@ -109,6 +110,18 @@ static LbVal lb_text(Lb *lb, const MsExpr *e) {
 }
 
 /* ---- names ---- */
+
+/* A `var` parameter arrives as a pointer to the caller's variable. The body works on a copy held
+ * in an SSA variable: it is loaded on entry and stored back before every return (`noalias` says
+ * nothing else touches the memory meanwhile). */
+static MirValue lb_load(Lb *lb, MirValue slot, MirTy ty) {
+    return mir_b_emit(&lb->b, MOP_Load, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+}
+
+static void lb_store(Lb *lb, MirValue slot, MirValue value) {
+    const MirValue args[2] = {slot, value};
+    (void)mir_b_emit(&lb->b, MOP_Store, args, 2, (MirImm){0}, MIR_NONE);
+}
 
 static LbVal lb_name(Lb *lb, const MsExpr *e) {
     const MsFacts *facts = lb->facts;
@@ -273,6 +286,30 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
 
 /* A call of a module function the checker resolved; MIR_NONE-valued `func_of` means the callee
  * is not lowered, so neither is the caller. */
+/* A `var` argument: the caller's own `var` local or `var` parameter, passed by address. It lives
+ * in an SSA variable, so it goes through a fresh slot that the call may change and is read back
+ * into the variable afterwards (`*written` is that slot). */
+static MirValue lb_var_argument(Lb *lb, const MsExpr *arg, uint32_t *binding_out, MirValue *written) {
+    *written = MIR_NONE;
+    if (arg->kind != MS_E_NAME || lb->facts->res_kind[arg->id] != MS_RES_BINDING) {
+        lb->ok = false;
+        return MIR_NONE;
+    }
+    const uint32_t binding = lb->facts->res_ref[arg->id];
+    *binding_out = binding;
+    if (lb->var_of[binding] == MIR_NONE) {
+        lb->ok = false;
+        return MIR_NONE;
+    }
+    const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
+    const MirValue slot = mir_b_emit(&lb->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = ty}, MIR_PTR);
+    lb_store(lb, slot, mir_b_use_var(&lb->b, lb->var_of[binding]));
+    *written = slot;
+    return slot;
+}
+
+/* A call of a module function the checker resolved; a callee that is not lowered (no `func_of`)
+ * fails the caller with it. */
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
     const uint32_t func = callee == MS_NONE ? MIR_NONE : lb->func_of[callee];
@@ -280,15 +317,38 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
         return lb_unsupported(lb);
     }
     const uint32_t count = e->u.call.args.len;
+    const MsTyParam *params = ms_ty_params(&lb->c->tys, lb->c->syms.ty[callee]);
     MirValue *args = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
-    for (uint32_t i = 0; i < count; i++) {
-        const LbVal arg = lb_expr(lb, e->u.call.args.ptr[i].value);
-        if (!lb->ok || arg.owned) {
-            return lb_unsupported(lb); // an owned temporary needs a drop after the call
+    MirValue *slots = MS_NEW_N(&lb->b.scratch, MirValue, (size_t)count + 1);
+    uint32_t *bindings = MS_NEW_N(&lb->b.scratch, uint32_t, (size_t)count + 1);
+    // Values first, then the slots of the `var` arguments, in argument order each.
+    for (uint32_t i = 0; i < count && lb->ok; i++) {
+        slots[i] = MIR_NONE;
+        if ((params[i].flags & MS_PARAM_MOVE) != 0) {
+            return lb_unsupported(lb);
         }
-        args[i] = arg.v;
+        if ((params[i].flags & MS_PARAM_VAR) == 0) {
+            const LbVal value = lb_expr(lb, e->u.call.args.ptr[i].value);
+            lb->ok = lb->ok && !value.owned; // an owned temporary needs a drop after the call
+            args[i] = value.v;
+        }
     }
-    return (LbVal){mir_b_call(&lb->b, func, args, count), false};
+    for (uint32_t i = 0; i < count && lb->ok; i++) {
+        if ((params[i].flags & MS_PARAM_VAR) != 0) {
+            args[i] = lb_var_argument(lb, e->u.call.args.ptr[i].value, &bindings[i], &slots[i]);
+        }
+    }
+    if (!lb->ok) {
+        return LB_FAIL;
+    }
+    const MirValue result = mir_b_call(&lb->b, func, args, count);
+    for (uint32_t i = 0; i < count; i++) {
+        if (slots[i] != MIR_NONE) {
+            const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[bindings[i]]);
+            mir_b_def_var(&lb->b, lb->var_of[bindings[i]], lb_load(lb, slots[i], ty));
+        }
+    }
+    return (LbVal){result, false};
 }
 
 static LbVal lb_expr(Lb *lb, const MsExpr *e) {
@@ -441,9 +501,29 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     }
 }
 
+/* Stores each `var` parameter's current value through its pointer, before the function returns. */
+static void lb_write_back(Lb *lb) {
+    const MsFunc *fn = &lb->decl->u.fn;
+    for (uint32_t i = 0; i < fn->params.len; i++) {
+        if (fn->params.ptr[i]->is_mutable) {
+            const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
+            lb_store(lb, lb->value_of[binding], mir_b_use_var(&lb->b, lb->var_of[binding]));
+        }
+    }
+}
+
+/* Leaves a function that returns nothing. */
+static void lb_return_void(Lb *lb) {
+    const MirValue unit = mir_b_unit(&lb->b);
+    lb_write_back(lb);
+    lb_emit_plain(lb, MOP_DepthLeave);
+    mir_b_ret(&lb->b, unit);
+    lb->dead = true;
+}
+
 static void lb_return(Lb *lb, const MsStmt *s) {
     if (s->u.expr == NULL) {
-        lb->ok = false;
+        lb_return_void(lb);
         return;
     }
     const LbVal value = lb_expr(lb, s->u.expr);
@@ -454,6 +534,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
         lb->ok = false; // handing out a borrowed String copies it
         return;
     }
+    lb_write_back(lb);
     lb_emit_plain(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, value.v);
     lb->dead = true;
@@ -653,16 +734,37 @@ static void lb_statements(Lb *lb, const MsStmts *body) {
 static bool lb_signature(Lb *lb, const MsFunc *fn, MsSymId sym, MirParam *params, MirTy *ret) {
     const MsTy sig = lb->c->syms.ty[sym];
     const MsTyParam *sig_params = ms_ty_params(&lb->c->tys, sig);
-    *ret = lb_mir_ty(lb, lb->c->tys.result[sig]);
+    const MsTy result = lb->c->tys.result[sig];
+    *ret = result == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MirTy ty = lb_mir_ty(lb, sig_params[i].ty);
-        // `var` and `move` parameters need a pass-by-reference and a hand-over this pass does not lower yet.
-        if (ty == MIR_NONE || fn->params.ptr[i]->is_mutable || fn->params.ptr[i]->moving) {
+        // A `move` parameter needs a hand-over this pass does not lower yet.
+        if (ty == MIR_NONE || fn->params.ptr[i]->moving) {
             return false;
         }
-        params[i] = (MirParam){ty, MM_BORROW};
+        params[i] = (MirParam){fn->params.ptr[i]->is_mutable ? MIR_PTR : ty, MM_BORROW};
     }
     return *ret != MIR_NONE;
+}
+
+/* The indexes of the `var` parameters, which no other memory overlaps (the text form's `noalias`). */
+static void lb_mark_noalias(Lb *lb, const MsFunc *fn) {
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < fn->params.len; i++) {
+        count += fn->params.ptr[i]->is_mutable ? 1 : 0;
+    }
+    if (count == 0) {
+        return;
+    }
+    uint32_t *indexes = MS_NEW_N(&lb->m->arena, uint32_t, count);
+    uint32_t next = 0;
+    for (uint32_t i = 0; i < fn->params.len; i++) {
+        if (fn->params.ptr[i]->is_mutable) {
+            indexes[next++] = i;
+        }
+    }
+    lb->b.f.noalias = indexes;
+    lb->b.f.nnoalias = count;
 }
 
 /* Starts the function and binds its parameters; false when its signature is not handled. */
@@ -676,18 +778,29 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     const MsStr name = ms_name(lb->c->names, fn->name);
     mir_b_init(&lb->b, lb->m, mir_name(lb->m, name.ptr, name.len), params, fn->params.len, ret);
     lb->b.f.loc = lb_loc(d->pos);
+    lb_mark_noalias(lb, fn);
     MirValue *values = MS_NEW_N(&lb->m->arena, MirValue, fn->params.len + 1);
     mir_b_params(&lb->b, values, fn->params.len);
     for (uint32_t i = 0; i < fn->params.len; i++) {
-        lb->value_of[lb->binding_at[fn->params.ptr[i]->id]] = values[i];
+        const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
+        lb->value_of[binding] = values[i];
         lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
     }
     lb_emit_plain(lb, MOP_DepthEnter);
+    for (uint32_t i = 0; i < fn->params.len; i++) {
+        if (fn->params.ptr[i]->is_mutable) {
+            const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
+            const MirTy ty = lb_mir_ty(lb, lb->facts->bindings.ty[binding]);
+            lb->var_of[binding] = mir_b_declare_var(&lb->b, ty, MM_BORROW);
+            mir_b_def_var(&lb->b, lb->var_of[binding], lb_load(lb, values[i], ty));
+        }
+    }
     return true;
 }
 
 /* Lowers one checked function over its stub `slot` in the module; false when it is not handled. */
 static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
+    lb->decl = d;
     lb->ok = lb_begin(lb, d, sym);
     if (!lb->ok) {
         return false;
@@ -696,7 +809,10 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
     lb->loop = NULL;
     lb->stmt = NULL;
     lb_statements(lb, &d->u.fn.body);
-    lb->ok = lb->ok && lb->dead; // a path that ends without `return` is a Void function's
+    if (lb->ok && !lb->dead && lb->b.f.ret == MIR_VOID) {
+        lb_return_void(lb); // the end of a function that returns nothing
+    }
+    lb->ok = lb->ok && lb->dead;
     MirFunc f = {0};
     if (lb->ok) {
         mir_func_compact_blocks(&lb->b.f); // unreachable blocks go; the rest in reverse post-order
@@ -802,7 +918,8 @@ uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out) {
              .int_ty = lb_primitive(c, "Int"),
              .float_ty = lb_primitive(c, "Float"),
              .bool_ty = lb_primitive(c, "Bool"),
-             .string_ty = lb_primitive(c, "String")};
+             .string_ty = lb_primitive(c, "String"),
+             .void_ty = lb_primitive(c, "Void")};
     bool *failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *failed);
     lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
     uint32_t lowered = 0;

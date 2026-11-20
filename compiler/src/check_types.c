@@ -425,6 +425,13 @@ static MsTy ty_resolve_named(MsResolver *r, const MsTypeRef *t) {
     return result;
 }
 
+MsTy ms_ty_apply(MsCheck *c, MsTy base, const MsTy *args, uint32_t nargs) {
+    MsTyDesc desc = ty_desc_of(&c->tys, base);
+    desc.args = args;
+    desc.nargs = nargs;
+    return ms_ty_intern(&c->tys, &desc);
+}
+
 /* ---- function types, parameters ---- */
 
 MsTyParam *ms_resolve_params(MsResolver *r, const MsParams *params) {
