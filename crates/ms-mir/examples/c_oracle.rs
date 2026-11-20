@@ -359,10 +359,19 @@ fn run_pass(name: &str, m: &mut Module) -> bool {
         "copyelim" => opt::copyelim::run(m),
         "copytakes" => opt::copyelim::run_takes(m),
         "lastuse" => opt::lastuse::run(m),
+        "range" => opt::range::run(m),
         "simplify" => opt::simplify::run(m),
         "phis" => opt::simplify::run_phis(m),
         "inline" => opt::inline::run(m),
         "inlinesmall" => opt::inline::run_small(m),
+        "pipeline0" => {
+            opt::optimize(m, opt::Level::None, false);
+            true
+        }
+        "pipeline" => {
+            opt::optimize(m, opt::Level::Speed, false);
+            true
+        }
         _ => panic!("unknown pass {name}"),
     }
 }

@@ -6,6 +6,7 @@
 #![allow(unsafe_code)]
 
 pub mod addr;
+mod base64;
 pub mod bound;
 pub mod conn;
 pub mod dn;

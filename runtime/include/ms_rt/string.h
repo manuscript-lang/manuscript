@@ -178,6 +178,32 @@ void msrt_string_char_at(const MsStr *s, int64_t at, MsStr *out);
 void msrt_string_pad_start(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
 /* ms-sig: msrt_string_pad_end(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_pad_end(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
+/* ms-sig: msrt_string_chars(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_chars(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_lines(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_lines(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_fields(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_quote(s: *const StrVal, out: *mut StrVal) @domain=string @leaf */
+void msrt_string_quote(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 @domain=string @leaf */
+uint8_t msrt_string_parse_float(const MsStr *s, double *out);
+/* ms-sig: msrt_string_scalar_at(s: *const StrVal, offset: i64, has_default: HasRaw, default: i64) -> i64 @domain=string @leaf @pure */
+int64_t msrt_string_scalar_at(const MsStr *s, int64_t offset, uint8_t has_default, int64_t fallback);
+/* ms-sig: msrt_string_index_any(s: *const StrVal, set: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure */
+uint8_t msrt_string_index_any(const MsStr *s, const MsStr *set, int64_t *out);
+/* ms-sig: msrt_string_trim_chars(s: *const StrVal, set: *const StrVal, from_start: u8, from_end: u8, out: *mut StrVal) @domain=string @leaf */
+void msrt_string_trim_chars(const MsStr *s, const MsStr *set, uint8_t from_start, uint8_t from_end, MsStr *out);
+/* ms-sig: msrt_string_last_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf */
+uint8_t msrt_string_last_index_of(const MsStr *a, const MsStr *v, int64_t *out);
+/* ms-sig: msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_scalar_values(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_from_scalars(values: *const VecVal, out: *mut StrVal) -> u8 @domain=string @leaf */
+uint8_t msrt_string_from_scalars(const MsVec *values, MsStr *out);
+/* ms-sig: msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_to_bytes(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal) @borrows @domain=string @leaf @pure */
+void msrt_string_view_bytes(const MsStr *s, MsVec *out);
 /* ms-sig: msrt_string_slice(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 /* ms-sig: msrt_string_view(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @borrows @domain=string @leaf @pure */
@@ -196,5 +222,17 @@ void msrt_string_replace(const MsStr *s, const MsStr *old, const MsStr *replacem
 void msrt_string_replace_first(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
 /* ms-sig: msrt_string_replace_take(s: *mut StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_replace_take(MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+
+/* The text builder of the formatters (runtime/core/string_buffer.c): push strings, then finish into the result. */
+typedef struct MsStrBuf MsStrBuf;
+/* ms-sig: msrt_strbuf_new() -> *mut StrBuf @domain=string @leaf */
+MsStrBuf *msrt_strbuf_new(void);
+/* ms-sig: msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal) @domain=string @leaf */
+void msrt_strbuf_push(MsStrBuf *buffer, const MsStr *s);
+/* ms-sig: msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) @domain=string @leaf */
+void msrt_strbuf_finish(MsStrBuf *buffer, MsStr *out);
+
+/* ms-sig: msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure */
+uint8_t msrt_string_parse_int(const MsStr *s, int64_t *out);
 
 #endif

@@ -21,7 +21,7 @@ recorded here before it is committed.)_
   pointer and use the supplied builtin descriptor.
 - **v2.2 (stdlib natives, ABI_VERSION unchanged).** Standard-library natives that need no runtime state live in `ms-std-<module>`
   crates (rlibs linked into `libms_native.a` with `ms-rt`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
-  `ms-std-core` (`math`) exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
+  `@std/math` (now `runtime/std/stdmath.c`) exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (string `out`; a digit count out of range faults),
   `msrt_float_truncate_to_int` and `msrt_float_to_float32` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
 - **v2.7 (`ms-std-fs` watchers).** `msstd_fs_watch` (polling, snapshot comparison every interval) and `msstd_fs_watch_native` (inotify on Linux, kqueue plus snapshot comparison
@@ -390,7 +390,7 @@ Spawn is an `mmap` plus guard `mprotect` unless a pooled stack (32 kept) is avai
 
 `msrt_<module>_<name>`; modules: `mem`, `rc`, `fault`, `cleanup`, `int`, `float`,
 `bool`, `numbers`, `string`, `bytes`, `list`, `map`, `set`, `strbuilder`, `slot`,
-`eq`, `hash`, `io`, `process`, `profile`. Future crates (`ms-std-fs`, `ms-std-json`...)
+`eq`, `hash`, `io`, `process`, `profile`. Future crates (`ms-std-fs`...)
 use their own prefix and link only when imported; they depend on `ms-rt-abi` and call
 `msrt_*` for allocation and faults. The authoritative symbol list is the `#[no_mangle]`
 items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `stdlib/*.ms`

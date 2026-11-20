@@ -49,6 +49,9 @@ typedef struct MsResolver {
  * `<invalid>` without one. */
 MsTy ms_resolve_type(MsResolver *r, const MsTypeRef *t);
 
+/* The generic type `base` applied to `args`. */
+MsTy ms_ty_apply(MsCheck *c, MsTy base, const MsTy *args, uint32_t nargs);
+
 /* A parameter, field or payload list: the types resolved, duplicate names reported. */
 MsTyParam *ms_resolve_params(MsResolver *r, const MsParams *params);
 
@@ -87,5 +90,14 @@ MsSymId ms_decl_own_symbol(const MsCheck *c, MsModId module, const MsDecl *d);
  * for the others no fact is written. Fills `expr_ty`, `res_kind`/`res_ref`, `pattern_binding`,
  * `bindings` and `body_checked` of the module's facts for the checked ones. */
 void ms_module_check_bodies(MsCheck *c, MsModId module);
+/* The same with the program's method table (`ms_module_add_implementations` has run for every
+ * module that declares impls): method calls and interface calls are checked too. */
+struct MsMethodTable;
+void ms_module_check_bodies_with(MsCheck *c, MsModId module, struct MsMethodTable *methods);
+
+/* Reports the locals and match payloads of the checked functions that nothing reads (`unused.rs`).
+ * Like the Rust pass it reports only for a module with no other diagnostic, and it exempts names
+ * that begin with `_`. Call after ms_module_check_bodies (and the ownership pass). */
+void ms_module_check_unused(MsCheck *c, MsModId module);
 
 #endif

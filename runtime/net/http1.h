@@ -69,6 +69,9 @@ const MsH1Field *ms_h1_find_field(const char *base, const MsH1Field *fields, uin
 /* Whether the comma-separated `value` lists `token` (ASCII case-insensitive, blanks around a token ignored). */
 bool ms_h1_value_has_token(MsBytes value, MsBytes token);
 
+/* Whether `text` is a non-empty HTTP token: a field name or a method. */
+bool ms_h1_is_token(MsBytes text);
+
 /* The request line: method SP target SP HTTP/1.1 CRLF. A method that is not a token, or a target holding a space or
    a control byte, returns -2; nothing is written. */
 int ms_h1_write_request_line(char *dst, size_t cap, size_t *used, const char *method, size_t method_len,

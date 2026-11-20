@@ -122,15 +122,17 @@ fn tokenize(line: &str, lineno: usize) -> Result<Vec<Tok>, ParseError> {
             }
             let t: String = cs[start..i].iter().collect();
             let p: Vec<&str> = t.split(':').collect();
-            if p.len() != 3 {
-                return Err(err("location must be !file:line:col"));
+            if p.len() != 3 && p.len() != 4 {
+                return Err(err(
+                    "location must be !file:line:col or !file:line:col:scope",
+                ));
             }
             let n = |s: &str| s.parse::<u32>().map_err(|_| err("bad location"));
             out.push(Tok::Loc(Loc {
                 file: n(p[0])?,
                 line: n(p[1])?,
                 col: n(p[2])?,
-                scope: 0,
+                scope: if p.len() == 4 { n(p[3])? } else { 0 },
             }));
         } else if c == '-' && cs.get(i + 1) == Some(&'>') {
             out.push(Tok::Arrow);
@@ -258,6 +260,10 @@ struct FnHeader {
 }
 
 /// Parses the text format into a module.
+/// What a header names that may be defined later: `slot_result`, `close_exit` and the closers of
+/// `capture_closers`.
+type FuncRefs = (Option<String>, Option<(String, String)>, Vec<(u32, String)>);
+
 pub fn parse_module(src: &str) -> Result<Module, ParseError> {
     let mut m = Module::new("module");
     // Group lines into items.
@@ -305,11 +311,12 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         match c.ident()?.as_str() {
             "type" => {
                 let name = c.ident()?;
+                let indirect = c.eat_ident("indirect");
                 m.type_defs.push(TypeDef {
                     name,
                     fields: Vec::new(),
                     native: None,
-                    indirect: false,
+                    indirect,
                 });
             }
             "alt" => {
@@ -345,6 +352,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             "type" => {
                 let name = c.ident()?;
                 let id = m.type_by_name(&name).expect("registered");
+                c.eat_ident("indirect");
                 c.expect_p('{')?;
                 let mut fields = Vec::new();
                 while !c.eat_p('}') {
@@ -431,6 +439,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
     // Pass C: module, files, externs, globals, function headers.
     let mut entry_name = None;
     let mut vtable_items = Vec::new();
+    let mut glue_items = Vec::new();
     for (n, t) in &toks {
         let mut c = Cur {
             toks: t,
@@ -555,11 +564,13 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             }
             "entry" => entry_name = Some((c.at()?, *n)),
             "vtable" => vtable_items.push((*n, t.clone())),
+            "desc_glue" => glue_items.push((*n, t.clone())),
             "type" | "alt" | "iface" => {}
             o => return c.err(format!("unknown item '{o}'")),
         }
     }
     let mut headers = Vec::new();
+    let mut func_refs = Vec::new();
     for (n, line, body) in &fns {
         let toks = tokenize(line, *n)?;
         let mut c = Cur {
@@ -590,6 +601,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             Ty::VOID
         };
         let mut f = Func::new(&name, params, ret);
+        let mut refs: FuncRefs = (None, None, Vec::new());
         loop {
             match c.peek() {
                 Some(Tok::P('{')) => {
@@ -611,6 +623,50 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     "method" => f.kind = FuncKind::Method,
                     "sort_cmp" => f.sort = SortThunk::Generic,
                     "sort_cmp_for" => f.sort = SortThunk::Specialized,
+                    "explicit_cancel" => f.explicit_cancel = true,
+                    "ret_borrowed" => f.ret_borrowed = true,
+                    "ret_view" => f.ret_view = true,
+                    "scoped" => f.scoped = true,
+                    "keeps_scoped" => f.keeps_scoped = true,
+                    "unwind_only" => f.unwind_only = true,
+                    "raw_scratch" => f.raw_scratch = true,
+                    "slot_close" => {
+                        c.expect_p('(')?;
+                        f.slot_close = Some(parse_ty(&mut c, &mut m)?);
+                        c.expect_p(')')?;
+                    }
+                    "capture_closers" => {
+                        c.expect_p('(')?;
+                        while !c.eat_p(')') {
+                            let Ok(i) = c.num()?.parse::<u32>() else {
+                                return c.err("expected a capture index");
+                            };
+                            refs.2.push((i, c.at()?));
+                            c.eat_p(',');
+                        }
+                    }
+                    "noalias" => {
+                        c.expect_p('(')?;
+                        while !c.eat_p(')') {
+                            let Ok(n) = c.num()?.parse::<u32>() else {
+                                return c.err("expected a parameter index");
+                            };
+                            f.noalias.push(n);
+                            c.eat_p(',');
+                        }
+                    }
+                    "slot_result" => {
+                        c.expect_p('(')?;
+                        refs.0 = Some(c.at()?);
+                        c.expect_p(')')?;
+                    }
+                    "close_exit" => {
+                        c.expect_p('(')?;
+                        let a = c.at()?;
+                        c.expect_p(',')?;
+                        refs.1 = Some((a, c.at()?));
+                        c.expect_p(')')?;
+                    }
                     "inline" => {
                         c.expect_p('(')?;
                         f.inline = match c.ident()?.as_str() {
@@ -636,11 +692,33 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         if m.func_by_name(&name).is_some() {
             return c.err(format!("function @{name} defined twice"));
         }
-        m.add_func(f);
+        let id = m.add_func(f);
+        func_refs.push((id, refs));
         headers.push(FnHeader {
             names,
             body: body.clone(),
         });
+    }
+    // Helper functions a header names (`slot_result`, `close_exit`) may be defined later.
+    for (id, (slot, exit, closers)) in func_refs {
+        let find = |n: &str| {
+            m.func_by_name(n).ok_or_else(|| ParseError {
+                line: 0,
+                message: format!("unknown function @{n}"),
+            })
+        };
+        let slot = slot.map(|n| find(&n)).transpose()?;
+        let exit = exit
+            .map(|(a, b)| Ok::<_, ParseError>((find(&a)?, find(&b)?)))
+            .transpose()?;
+        let closers = closers
+            .into_iter()
+            .map(|(i, g)| Ok::<_, ParseError>((i, find(&g)?)))
+            .collect::<Result<_, _>>()?;
+        let f = &mut m.funcs[id.0 as usize];
+        f.slot_result = slot;
+        f.close_exit = exit;
+        f.capture_closers = closers;
     }
     // Vtables and entry need function ids.
     for (n, t) in vtable_items {
@@ -681,6 +759,25 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             methods,
             data_ty,
         });
+    }
+    for (n, t) in glue_items {
+        let mut c = Cur {
+            toks: &t,
+            pos: 0,
+            line: n,
+        };
+        c.ident()?;
+        let ty = parse_ty(&mut c, &mut m)?;
+        let find = |c: &mut Cur| -> Result<FuncId, ParseError> {
+            let f = c.at()?;
+            m.func_by_name(&f).ok_or_else(|| ParseError {
+                line: n,
+                message: format!("unknown function @{f}"),
+            })
+        };
+        let eq = find(&mut c)?;
+        let hash = find(&mut c)?;
+        m.desc_glue.push((ty, eq, hash));
     }
     if let Some((e, n)) = entry_name {
         m.entry = Some(m.func_by_name(&e).ok_or_else(|| ParseError {
@@ -837,6 +934,9 @@ fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError
             lines.push((*n, t));
         }
     }
+    // Trailing facts (`scope`, `name`, `exact`) are not instructions; they are read after the body.
+    let is_fact = |t: &[Tok]| matches!(t.first(), Some(Tok::Ident(s)) if matches!(s.as_str(), "scope" | "name" | "exact"));
+    let (facts, lines): (Vec<_>, Vec<_>) = lines.into_iter().partition(|(_, t)| is_fact(t));
     let is_label = |t: &[Tok]| {
         matches!(t.first(), Some(Tok::Ident(_)))
             && t.last() == Some(&Tok::P(':'))
@@ -909,6 +1009,62 @@ fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError
             line: line0,
             message: format!("block b{i} of @{} has no terminator", f.name),
         });
+    }
+    for (n, t) in &facts {
+        let mut c = Cur {
+            toks: t,
+            pos: 0,
+            line: *n,
+        };
+        match c.ident()?.as_str() {
+            "scope" => {
+                let name = c.string()?;
+                let num = |c: &mut Cur| -> Result<u32, ParseError> {
+                    c.num()?.parse().map_err(|_| ParseError {
+                        line: *n,
+                        message: "bad scope number".into(),
+                    })
+                };
+                let file = num(&mut c)?;
+                let parent = num(&mut c)?;
+                let call_line = num(&mut c)?;
+                f.scopes.push(Scope {
+                    name,
+                    file,
+                    parent,
+                    call_line,
+                });
+            }
+            "name" => {
+                let vn = c.val()?;
+                let name = c.string()?;
+                let param = match c.ident()?.as_str() {
+                    "param" => true,
+                    "local" => false,
+                    o => return c.err(format!("expected param or local, found {o}")),
+                };
+                let scope = c.num()?.parse().map_err(|_| ParseError {
+                    line: *n,
+                    message: "bad scope number".into(),
+                })?;
+                let Some(&value) = cx.vals.get(&vn) else {
+                    return c.err(format!("%{vn} is not defined in @{}", f.name));
+                };
+                f.names.push(NamedValue {
+                    value,
+                    name,
+                    param,
+                    scope,
+                });
+            }
+            _ => {
+                let vn = c.val()?;
+                let Some(&value) = cx.vals.get(&vn) else {
+                    return c.err(format!("%{vn} is not defined in @{}", f.name));
+                };
+                f.exact.insert(value);
+            }
+        }
     }
     // Every referenced value must be defined.
     for (name, v) in &cx.vals {

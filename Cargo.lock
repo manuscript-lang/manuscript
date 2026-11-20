@@ -429,18 +429,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "getrandom"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
-dependencies = [
- "cfg-if",
- "libc",
- "r-efi",
- "rand_core",
-]
-
-[[package]]
 name = "gimli"
 version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -713,17 +701,10 @@ version = "0.1.0"
 dependencies = [
  "ms-rt",
  "ms-rt-abi",
- "ms-std-archive",
  "ms-std-bigint",
- "ms-std-core",
  "ms-std-decimal",
- "ms-std-fs",
- "ms-std-json",
  "ms-std-net",
- "ms-std-process",
- "ms-std-system",
  "ms-std-table",
- "ms-std-terminal",
  "ms-std-time",
 ]
 
@@ -743,16 +724,6 @@ name = "ms-rt-abi"
 version = "0.1.0"
 
 [[package]]
-name = "ms-std-archive"
-version = "0.1.0"
-dependencies = [
- "miniz_oxide",
- "ms-inflate",
- "ms-rt",
- "ms-std-core",
-]
-
-[[package]]
 name = "ms-std-bigint"
 version = "0.1.0"
 dependencies = [
@@ -763,39 +734,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-core"
-version = "0.1.0"
-dependencies = [
- "getrandom 0.4.3",
- "libm",
- "ms-rt",
- "ms-rt-abi",
-]
-
-[[package]]
 name = "ms-std-decimal"
 version = "0.1.0"
 dependencies = [
  "ms-decimal",
  "ms-rt",
-]
-
-[[package]]
-name = "ms-std-fs"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ms-std-json"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
 ]
 
 [[package]]
@@ -809,7 +752,6 @@ dependencies = [
  "ms-inflate",
  "ms-rt",
  "ms-rt-abi",
- "ms-std-core",
  "psl",
  "ring",
  "rustix",
@@ -821,44 +763,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-process"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "ms-std-fs",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ms-std-system"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "ms-std-process",
- "rustix",
-]
-
-[[package]]
 name = "ms-std-table"
 version = "0.1.0"
 dependencies = [
  "ms-rt",
  "unicode-width",
-]
-
-[[package]]
-name = "ms-std-terminal"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "rustix",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1011,18 +920,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "r-efi"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
-
-[[package]]
-name = "rand_core"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
-
-[[package]]
 name = "regalloc2"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1073,7 +970,7 @@ checksum = "a4689e6c2294d81e88dc6261c768b63bc4fcdb852be6d1352498b114f61383b7"
 dependencies = [
  "cc",
  "cfg-if",
- "getrandom 0.2.17",
+ "getrandom",
  "libc",
  "untrusted",
  "windows-sys 0.52.0",

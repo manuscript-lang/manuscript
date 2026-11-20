@@ -241,6 +241,20 @@ static void print_analysis(const MirModule *m, const MirFunc *f, MsBuf *out) {
     ms_arena_free(&arena);
 }
 
+/* The whole pipeline at one level, verifying after every pass; a failure is printed in place of
+ * the module. */
+static bool run_pipeline(MirModule *m, MirOptLevel level) {
+    MsBuf error = {0};
+    if (!mir_optimize(m, level, true, &error)) {
+        fwrite(error.data, 1, error.len, stderr);
+    }
+    ms_buf_free(&error);
+    return true;
+}
+
+static bool pipeline_none(MirModule *m) { return run_pipeline(m, MIR_OPT_NONE); }
+static bool pipeline_speed(MirModule *m) { return run_pipeline(m, MIR_OPT_SPEED); }
+
 typedef struct Pass {
     const char *name;
     bool (*run)(MirModule *m);
@@ -258,10 +272,13 @@ static const Pass passes[] = {
     {"copyelim", mir_opt_copyelim},
     {"copytakes", mir_opt_copyelim_takes},
     {"lastuse", mir_opt_lastuse},
+    {"range", mir_opt_range},
     {"simplify", mir_opt_simplify},
     {"phis", mir_opt_simplify_phis},
     {"inline", mir_opt_inline},
     {"inlinesmall", mir_opt_inline_small},
+    {"pipeline0", pipeline_none},
+    {"pipeline", pipeline_speed},
 };
 
 /* Runs the named pass and prints whether it changed the module, then the module. */

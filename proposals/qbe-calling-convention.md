@@ -8,11 +8,11 @@
 
 ## Status
 
-Proposal, 2026-11-20, checked against `b9c83b5dd`. No independent review: the change is one component (`compiler/src/emit_qbe.c`) and copies a convention that already ships.
+Proposal, 2026-11-20, checked against `b9c83b5dd`. No independent review: the change is one component (`compiler/src/emit/emit_qbe.c`) and copies a convention that already ships.
 
 ## Problem
 
-- Verified (`compiler/src/emit_qbe.c`): the emitter handles only `Int`, `Bool` and `Float` values. A `String` is two leaves, a list three, an optional a flag and a payload.
+- Verified (`compiler/src/emit/emit_qbe.c`): the emitter handles only `Int`, `Bool` and `Float` values. A `String` is two leaves, a list three, an optional a flag and a payload.
 - Verified (`crates/ms-clif/src/cg.rs:328`): Cranelift signatures list every leaf as a parameter and as a return, which QBE cannot express for results.
 - Without one rule for parameters, results and calls into the runtime, each op that touches an aggregate would invent its own.
 
@@ -30,7 +30,7 @@ Proposal, 2026-11-20, checked against `b9c83b5dd`. No independent review: the ch
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `compiler/src/emit_qbe.c` | leaf temporaries, parameter and result rules, memory ops | `compiler/tests/qbe/*.mir` with expected exit status |
+| `compiler/src/emit/emit_qbe.c` | leaf temporaries, parameter and result rules, memory ops | `compiler/tests/qbe/*.mir` with expected exit status |
 | `compiler/include/ms/emit_qbe.h` | takes the layouts it needs | unchanged tests |
 
 ## Alternatives

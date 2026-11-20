@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 
 #include "ms/check.h"
+#include "ms/desugar.h"
+#include "ms/methods.h"
 #include "ms/dump.h"
 #include "ms/ownership.h"
 #include "ms/parse.h"
@@ -51,10 +53,29 @@ static bool only_std_imports(const MsModule *module) {
     return true;
 }
 
+/* Checks the bodies of module `id` with the program's method table: the inherent methods desugared
+ * to impls, the interface operations and the implementations resolved first, as the Rust checker
+ * does. A module with an inherent error is left unchecked. */
+static void check_bodies_with_methods(MsCheck *check, MsModId id, const char *text, size_t length) {
+    MsInherentError *errors = NULL;
+    uint32_t nerrors = 0;
+    ms_module_desugar(check, id, (MsStr){text, (uint32_t)length}, NULL, 0, &errors, &nerrors);
+    if (nerrors > 0) {
+        return;
+    }
+    ms_module_resolve_types(check, id);
+    MsMethodTable table;
+    ms_methods_init(&table);
+    ms_module_ensure_operations(check, id, &table);
+    ms_module_add_implementations(check, id, &table);
+    ms_module_check_bodies_with(check, id, &table);
+    ms_methods_free(&table);
+}
+
 /* Prints the name-resolution diagnostics of each file as `path:line:col: message`, the form
  * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
 static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
-                                    bool bodies, bool ownership) {
+                                    bool bodies, bool ownership, bool effects) {
     for (int i = 0; i < nfiles_in; i++) {
         FILE *f = fopen(paths[i], "rb");
         if (f == NULL) {
@@ -73,13 +94,35 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
             MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
             MsBuf dump = {0};
             if (bodies) {
-                ms_module_check_bodies(check, id);
+                check_bodies_with_methods(check, id, text, (size_t)n);
+                if (effects) {
+                    // The effect scan reads the facts of every function the body pass checked.
+                    ms_dump_module_effects(&dump, check, id);
+                    printf("%.*s", (int)dump.len, (const char *)dump.data);
+                    ms_buf_free(&dump);
+                    free(text);
+                    continue;
+                }
+                // The ownership walk narrows `body_checked` to the functions it handles. The body
+                // comparison keeps every claim but still sees the ownership diagnostics of the
+                // functions the walk handled, as the Rust diagnostics include them.
+                MsFacts *facts = check->mods[id].facts;
+                const size_t claims = facts == NULL ? 0 : (size_t)facts->node_count + 1;
+                const bool keep = !ownership && facts != NULL && facts->body_checked != NULL;
+                bool *claimed = keep ? malloc(claims * sizeof *claimed) : NULL;
+                if (claimed != NULL) {
+                    memcpy(claimed, facts->body_checked, claims * sizeof *claimed);
+                }
+                ms_module_check_ownership(check, id);
                 if (ownership) {
-                    // The ownership walk narrows `body_checked` to the functions it handles, so it
-                    // runs only for its own comparison; the body comparison sees every claim.
-                    ms_module_check_ownership(check, id);
+                    ms_module_check_unused(check, id);
                     ms_dump_module_ownership(&dump, check, id);
                 } else {
+                    if (claimed != NULL) {
+                        memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
+                    }
+                    free(claimed);
+                    ms_module_check_unused(check, id);
                     ms_dump_module_bodies(&dump, check, id);
                 }
                 printf("%.*s", (int)dump.len, (const char *)dump.data);
@@ -100,10 +143,11 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
 
 int main(int argc, char **argv) {
     const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
-    const bool bodies = ownership || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
+    const bool effects = argc >= 3 && strcmp(argv[2], "--effects") == 0;
+    const bool bodies = ownership || effects || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
     const bool scope = bodies || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
     if (argc != 2 && !scope) {
-        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership FILE...]\n", stderr);
+        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects FILE...]\n", stderr);
         return 2;
     }
     const char *root = argv[1];
@@ -153,7 +197,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (scope) {
-        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership);
+        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership, effects);
     } else {
         MsBuf out = {0};
         ms_dump_std_tables(&out, &check);
