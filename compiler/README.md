@@ -30,3 +30,7 @@ compiler/
 ## Driver and stages
 
 `libms.h` has one entry point and one row in the stage table (`ms_stage_impl`) per pipeline stage: parse, format, check, lower, emit, link, and the command's own tool logic. `driver.c` knows which stages each command needs. A command runs in C only when every stage it needs is in C; otherwise the whole command goes to the Rust `ms` (`$MS_RUST_CLI`, or `ms-rust` beside the executable), so the conformance corpus runs through the C `ms` from the first day and a command flips to C when its last stage lands. Stage data cannot cross between the two implementations, which is why the handover is per command. `MS_DRIVER_TRACE=1` prints the choice; `MS_STAGES=parse=rust` overrides a row for comparison runs. Porting a stage: add its entry point to `libms.h`, write it in `src/`, flip its row. `make c-driver-test` runs the unit tests and checks that `ms` in front of the Rust `ms` gives identical output and status.
+
+## Effects
+
+`effects.h` holds the two parts of the effect pass that need only source text and a reference graph: `effect_directives.c` reads `// ms: effect` and `// ms: allow_effect` lines and matches patterns, and `effect_reach.c` propagates declared effects through the graph and reports project callables that reach an effect no scope permits. `check-diff.sh` compares both with the Rust code (`c_oracle_effects.rs`) on every `.ms` file and on generated graphs (`effect_graph_gen.c`). Building the graph from checked code (the scan) comes when the typed-tree columns of `facts.h` exist.

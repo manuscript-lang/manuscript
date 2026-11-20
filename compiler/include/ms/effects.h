@@ -1,0 +1,105 @@
+/* Effects: what each callable may do, and which project callables reach an effect no scope permits.
+ *
+ * An effect is a name (`std.fs.read`). A callable declares effects with `// ms: effect NAME` lines
+ * above it; callers then see the declared names instead of what the body reaches. A callable is
+ * permitted effects with `// ms: allow_effect PATTERN` lines above it or in the file header. This
+ * file holds the two parts that need nothing but source text and a reference graph: reading those
+ * lines, and resolving the graph. Producing the graph from checked code is a later pass.
+ *
+ * Mirrors crates/ms-check/src/effect_directives.rs and effect_reach.rs. No global state. */
+#ifndef MS_EFFECTS_H
+#define MS_EFFECTS_H
+
+#include "ms/base.h"
+
+#define MS_NODISCARD __attribute__((warn_unused_result))
+
+/* ---- directives ---- */
+
+/* A list of names that may be absent: `present` is false when no line was written, which is
+ * different from a scope that was written and lists nothing. */
+typedef struct MsEffectScope {
+    const MsStr *names; /* borrowed from the arena the scope was read into */
+    uint32_t count;
+    bool present;
+} MsEffectScope;
+
+/* The directive lines of one comment block. */
+typedef struct MsDirectives {
+    MsEffectScope declared; /* `// ms: effect NAME`; `present` is unused */
+    MsEffectScope allow;    /* `// ms: allow_effect PATTERN` */
+} MsDirectives;
+
+/* The lines of one source file, for header and per-declaration lookups. */
+typedef struct MsSourceLines {
+    const MsStr *lines; /* split at '\n', trailing '\r' removed; borrowed from `source` and the arena */
+    uint32_t count;
+} MsSourceLines;
+
+/* Splits `source` into lines. The result borrows `source` and lives in `arena`. */
+MsSourceLines ms_lines_index(MsArena *arena, MsStr source);
+
+/* The file header: `//` lines at the top of the file, ended by a blank line. A comment block that
+ * runs straight into code belongs to that declaration, not to the file. */
+MsDirectives ms_lines_header(MsArena *arena, MsSourceLines lines);
+
+/* The `//` lines directly above the 1-based `line`, up to a blank or code line, nearest first. */
+MsDirectives ms_lines_above(MsArena *arena, MsSourceLines lines, uint32_t line);
+
+/* Whether `effect` matches `pattern`: `*` matches everything, `a.b.*` a prefix, `*.write` a last
+ * segment, and any other pattern only itself. */
+bool ms_effect_matches(MsStr pattern, MsStr effect);
+
+/* ---- reference graph ---- */
+
+typedef struct MsReachEdge {
+    uint32_t callee; /* the `id` of another node; an id no node has is ignored */
+    MsPos pos;       /* where the first reference to it is */
+} MsReachEdge;
+
+/* One callable and the callables it references: calls, function values, closure bodies. */
+typedef struct MsReachNode {
+    uint32_t id; /* unique among the nodes */
+    MsStr file;
+    MsStr label; /* `save`, or `Receiver.method` */
+    MsPos pos;
+    bool project; /* a project callable is checked; a library one only contributes effects */
+    bool entry;   /* `main` is the boundary: it may perform everything */
+    const MsStr *declared;
+    uint32_t ndeclared;
+    MsEffectScope allow_fn;   /* lines directly above the callable */
+    MsEffectScope allow_file; /* lines in the file header */
+    MsEffectScope cap;        /* a fetched package's manifest effects: nothing widens them */
+    const MsReachEdge *edges;
+    uint32_t nedges;
+} MsReachNode;
+
+/* The effects callers see for one node that has any, sorted by name. */
+typedef struct MsReachDeclared {
+    uint32_t node; /* index into the node array */
+    const MsStr *effects;
+    uint32_t count;
+} MsReachDeclared;
+
+/* A project callable that reaches an effect no scope permits. */
+typedef struct MsViolation {
+    MsStr file;
+    MsPos pos; /* the first reference in the callable that brings the effect in */
+    MsStr effect;
+    const uint32_t *path; /* node indices from the violating callable to the one that declares the effect */
+    uint32_t npath;
+} MsViolation;
+
+typedef struct MsReach {
+    const MsReachDeclared *declared; /* in node order */
+    uint32_t ndeclared;
+    const MsViolation *violations; /* in node order, then effect name order */
+    uint32_t nviolations;
+} MsReach;
+
+/* Resolves declared effects over `nodes` and reports unpermitted reach. The result lives in
+ * `arena`. Returns false, writing nothing, when two nodes share an id. */
+MS_NODISCARD bool ms_reach_resolve(MsArena *arena, const MsReachNode *nodes, uint32_t count,
+                                   MsReach *out);
+
+#endif
