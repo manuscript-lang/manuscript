@@ -2,7 +2,10 @@
  * value is a closure with no captures that forwards to it, and a lambda is a closure function
  * whose environment holds the outer locals it reads (copies of scalars only for now). The closure
  * function is added when the lambda is met and lowered after the function that made it. */
+#include <string.h>
+
 #include "ms/lower_internal.h"
+#include "ms/mir_analysis.h"
 #include "ms/walk.h"
 
 #define LB_MAX_FN_PARAMS 16
@@ -190,14 +193,14 @@ static bool lb_is_scalar(MirTy ty) {
 
 /* Adds the closure function with an empty body and queues it. Returns its index, or MIR_NONE. */
 static uint32_t lb_add_closure(Lb *lb, const MsExpr *e, const MirTyData *fn, const LbCaptures *found,
-                               const MirTy *cap_tys) {
+                               MirTy *cap_tys) {
     const MsStr outer = ms_name(&lb->m->names, lb->b.f.name);
     const MsStr name = ms_arena_fmt(&lb->m->arena, "%.*s.closure", (int)outer.len, outer.ptr);
     MirFunc stub = {0};
     mir_func_init(lb->m, &stub, lb_unique_name(lb, name), lb_closure_params(lb, fn), fn->nargs + 1,
                   fn->elem);
     stub.kind = MFK_CLOSURE;
-    stub.captures = (MirTy *)cap_tys;
+    stub.captures = cap_tys;
     stub.ncaptures = found->count;
     stub.keeps_scoped = lb->b.f.keeps_scoped; // a closure made inside what keeps scoped closures keeps them
     const uint32_t func = mir_add_func(lb->m, &stub);

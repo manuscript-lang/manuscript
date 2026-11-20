@@ -584,7 +584,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         }
         const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
         if ((arg->has_name && (arg->name != params[i].name || (params[i].flags & MS_PARAM_POSITIONAL) != 0)) ||
-            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || body_is_admitted(b, params[i].ty))) {
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || body_is_admitted(b, params[i].ty) || body_is_optional(b, params[i].ty))) {
             return false;
         }
         const MsStr name = ms_name(b->c->names, params[i].name);
@@ -606,6 +606,19 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
     return true;
 }
 
+/* `name[Int](args)`: a call of a generic function of the module with written type arguments. */
+static MsTy body_explicit_call(MsBody *b, const MsExpr *e) {
+    const MsExpr *apply = e->u.call.callee;
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, apply->u.apply.left->u.sym);
+    const MsSyms *syms = &b->c->syms;
+    const bool generic = sym != MS_NONE && syms->kind[sym] == MS_SYM_FN && syms->nvars[sym] != 0 &&
+                         syms->decl[sym] != NULL && syms->decl[sym]->kind == MS_D_FN;
+    if (!generic || ms_body_find_binding(b, apply->u.apply.left->u.sym) != MS_NONE) {
+        return ms_body_unsupported(b);
+    }
+    return ms_body_generic_call(b, e, sym, &apply->u.apply.types);
+}
+
 static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
@@ -614,6 +627,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     const uint32_t called = callee->kind == MS_E_NAME ? ms_body_find_binding(b, callee->u.sym) : MS_NONE;
     if (called != MS_NONE) {
         return ms_body_call_value(b, e, called);
+    }
+    if (callee->kind == MS_E_APPLY && callee->u.apply.left->kind == MS_E_NAME) {
+        return body_explicit_call(b, e);
     }
     if (callee->kind != MS_E_NAME) {
         return ms_body_unsupported(b);
@@ -636,7 +652,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
         return ms_body_unsupported(b);
     }
     if (syms->nvars[sym] != 0) {
-        return ms_body_generic_call(b, e, sym);
+        return ms_body_generic_call(b, e, sym, NULL);
     }
     const MsTy sig = syms->ty[sym];
     const MsTyTable *tys = &b->c->tys;
@@ -865,13 +881,32 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
 
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
  * expectation. A type that is not the expected one is a diagnostic. */
+/* A value checked against an Optional: `none`, a value of the Optional's own type, or a value of
+ * its payload type, which is wrapped in `some` (`some_wrap`). Only a number or a Bool is wrapped, and
+ * anything else (a mismatch, which the Rust checker words, or a payload with a cleanup) is left to the
+ * Rust checker. */
+static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
+    const MsTy payload = ms_ty_args(&b->c->tys, expected)[0];
+    if (e->kind == MS_E_NAME && body_text_is(b, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
+        return ms_body_record(b, e->id, expected);
+    }
+    const MsTy ty = ms_body_expr(b, e, MS_TY_NONE);
+    if (ty == MS_TY_NONE || ty == expected) {
+        return ty;
+    }
+    if (ty != payload || !(ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty)) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->some_wrap[e->id] = true;
+    return expected;
+}
+
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
     const char *context = b->context;
     b->context = NULL;
-    // A value checked against an Optional may be wrapped in `some`; that is not recorded yet.
     if (expected != MS_TY_NONE && ms_ty_is(&b->c->tys, expected, MS_BI_OPTIONAL)) {
-        return ms_body_unsupported(b);
+        return body_expr_optional(b, e, expected);
     }
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: ty = body_number(b, e); break;
@@ -1000,11 +1035,34 @@ static bool body_assign_to_declaration(MsBody *b, const MsStmt *s) {
     return true;
 }
 
+/* `local.a.b = value` where `local` is a `var` and the last field is a Copy primitive: the value
+ * is checked against the field's type and the statement records the local it changes. Stores into
+ * other places, and every diagnostic a store can have, are left to the Rust checker. */
+static void body_assign_field(MsBody *b, const MsStmt *s) {
+    const MsExpr *target = s->u.assign.target;
+    const MsExpr *root = target;
+    while (root->kind == MS_E_MEMBER) {
+        root = root->u.member.left;
+    }
+    const uint32_t binding = root->kind == MS_E_NAME ? ms_body_find_binding(b, root->u.sym) : MS_NONE;
+    if (target->kind != MS_E_MEMBER || binding == MS_NONE || binding < b->lambda_floor ||
+        (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    const MsTy field = ms_body_record(b, target->id, body_member(b, target));
+    if (field == MS_TY_NONE || ms_body_expr(b, s->u.assign.value, field) == MS_TY_NONE) {
+        (void)ms_body_unsupported(b);
+        return;
+    }
+    b->facts->field_store_root[s->id] = binding;
+}
+
 /* `name = value` and `name op= value` (the parser writes the second as `name = name op value`).
  * Reads of the name inside the value only feed its next value, so they do not count as reads. */
 static void body_assign_statement(MsBody *b, const MsStmt *s) {
     if (s->u.assign.member_target) {
-        (void)ms_body_unsupported(b);
+        body_assign_field(b, s);
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
@@ -1467,10 +1525,18 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
+    facts->call_type_args_at = MS_NEW_N(arena, uint32_t, nodes);
+    facts->call_type_args_len = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->call_type_args_at, 0, nodes * sizeof *facts->call_type_args_at);
+    memset(facts->call_type_args_len, 0, nodes * sizeof *facts->call_type_args_len);
     facts->lambda_first = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->each_list = MS_NEW_N(arena, bool, nodes);
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
+    facts->field_store_root = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->field_store_root, 0xff, nodes * sizeof *facts->field_store_root);
+    facts->some_wrap = MS_NEW_N(arena, bool, nodes);
+    memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);

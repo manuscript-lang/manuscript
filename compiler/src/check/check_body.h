@@ -55,7 +55,8 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty);
 bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
 /* A call of a generic function of the module (check_generic.c). */
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym);
+/* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */

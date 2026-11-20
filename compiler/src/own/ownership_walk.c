@@ -916,8 +916,25 @@ static bool own_arm_payloads(OwnWalk *w, const MsArm *arm, const Scrutinee *sour
 }
 
 /* `name = value`: the value is moved in, then the old one is replaced, which no borrow may read. */
+/* `var.field = value` into a plain field: the value is moved in and the variable changes in
+ * place. A variable some borrow reads, or that borrows itself, is left to Rust, which tells apart
+ * the fields a borrow reaches. */
+static void own_field_store(OwnWalk *w, const MsStmt *s, uint32_t root) {
+    own_expr(w, s->u.assign.value, DEMAND_MOVE);
+    own_release_pending(w);
+    bool shared = w->perm[root] != PERM_MUTABLE || own_holds_borrow(w, root);
+    for (uint32_t i = 0; i < w->active.len; i++) {
+        shared = shared || (w->active.items[i].holder != MS_NONE && w->active.items[i].origin == root);
+    }
+    w->supported = w->supported && !shared;
+}
+
 static void own_assign(OwnWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->assign_binding[s->id];
+    if (binding == MS_NONE && w->facts->field_store_root[s->id] != MS_NONE) {
+        own_field_store(w, s, w->facts->field_store_root[s->id]);
+        return;
+    }
     if (binding == MS_NONE || w->perm[binding] != PERM_MUTABLE) {
         w->supported = false; /* a field store or an assignment the checker rejects */
         return;
