@@ -43,10 +43,6 @@ void ms_sys_wake_drain(int read_fd) { (void)read_fd; }
 
 void ms_sys_wake_close(const int fds[2]) { (void)fds; }
 
-void ms_sys_sync_environ(void) {}
-
-char **ms_sys_swap_libc_environ(char **replacement) { return replacement; }
-
 /* A standard-input read blocks its thread until data or the end arrives, and a pipe read answers would-block
  * instead, so there is nothing to poll first. */
 bool ms_sys_fd_readable_now(int fd) {
