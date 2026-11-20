@@ -14,4 +14,9 @@ void ms_dump_diag(MsBuf *out, const MsDiag *d);
 /* The canonical tree dump of crates/ms-syntax/src/dump.rs. */
 void ms_dump_module(MsBuf *out, const MsNames *names, const MsModule *m);
 
+#include "ms/tables.h"
+
+/* The standard-library tables in the form crates/ms-check/examples/c_oracle.rs prints. */
+void ms_dump_std_tables(MsBuf *out, const MsCheck *c);
+
 #endif
