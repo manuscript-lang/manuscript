@@ -4,6 +4,7 @@
 #include "fake_rt.h"
 #include "../std/regex.h"
 #include "ms_rt/strbuild.h"
+#include "support/append.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -29,23 +30,21 @@ static void *compile(const char *pattern) {
 static void drop(void *handle) { ((MsObj *)handle)->drop(handle); }
 
 /* The strings of a list joined with '|', in `out`. */
-static void join(const MsVec *list, char *out) {
+static void join(const MsVec *list, char *out, size_t cap) {
     out[0] = 0;
     for (size_t i = 0; i < list->len; i++) {
         const MsStr *s = (const MsStr *)list->ptr + i;
-        if (i) strcat(out, "|");
-        strncat(out, (const char *)ms_str_data(s), ms_str_len(s));
+        msx_append(out, cap, "%s%.*s", i ? "|" : "", (int)ms_str_len(s), (const char *)ms_str_data(s));
     }
 }
 
 /* The rows of a list of lists, each joined with ',', the rows joined with ';'. */
-static void join_rows(const MsVec *rows, char *out) {
+static void join_rows(const MsVec *rows, char *out, size_t cap) {
     out[0] = 0;
     for (size_t r = 0; r < rows->len; r++) {
         char row[256];
-        join((const MsVec *)rows->ptr + r, row);
-        if (r) strcat(out, ";");
-        strcat(out, row);
+        join((const MsVec *)rows->ptr + r, row, sizeof row);
+        msx_append(out, cap, "%s%s", r ? ";" : "", row);
     }
 }
 
@@ -57,7 +56,7 @@ static int strings_are(const char *pattern, const char *input, uint8_t has, int6
     char got[512] = "";
     const int result = native(re, &text, has, max, &list);
     if (result == 0) {
-        join(&list, got);
+        join(&list, got, sizeof got);
         msrt_list_drop(&list, &msrt_desc_string);
     }
     drop(re);
@@ -85,7 +84,7 @@ static int rows_are(const char *pattern, const char *input, uint8_t has, int64_t
     char got[512] = "";
     const int result = msstd_regex_captures_all(re, &text, has, max, &rows);
     if (result == 0) {
-        join_rows(&rows, got);
+        join_rows(&rows, got, sizeof got);
         msrt_list_drop(&rows, &(MsTypeDesc){.size = sizeof(MsVec), .align = 8, .kind = MS_TYPE_KIND_LIST, .inner0 = &msrt_desc_string});
     }
     drop(re);
@@ -117,7 +116,7 @@ static void test_captures(void) {
     MsVec list = {0};
     char got[128];
     msstd_regex_captures(re, &text, &list);
-    join(&list, got);
+    join(&list, got, sizeof got);
     CHECK(strcmp(got, "b|") == 0 && list.len == 2);
     msrt_list_drop(&list, &msrt_desc_string);
     text = lit("zzz");
@@ -141,12 +140,12 @@ static void test_named_pairs(void) {
     MsVec list = {0};
     char got[128];
     msstd_regex_named_capture_pairs(re, &text, &list);
-    join(&list, got);
+    join(&list, got, sizeof got);
     CHECK(strcmp(got, "empty||last|e") == 0);
     msrt_list_drop(&list, &msrt_desc_string);
     text = lit("abcde");
     msstd_regex_named_capture_pairs(re, &text, &list);
-    join(&list, got);
+    join(&list, got, sizeof got);
     CHECK(strcmp(got, "first|b|empty|d|last|e") == 0);
     msrt_list_drop(&list, &msrt_desc_string);
     text = lit("xyz");
