@@ -125,9 +125,31 @@ static void print_result(const MsNames *names, const MsReachNode *nodes, const M
     }
 }
 
+typedef struct NodeList {
+    MsReachNode *items;
+    uint32_t count, cap;
+} NodeList;
+
+typedef struct EdgeList {
+    MsReachEdge *items;
+    uint32_t count, cap;
+} EdgeList;
+
+static void *grown(void *items, uint32_t count, uint32_t *cap, size_t size) {
+    if (count < *cap) {
+        return items;
+    }
+    *cap = *cap ? *cap * 2 : 64;
+    void *bigger = realloc(items, (size_t)*cap * size);
+    if (bigger == NULL) {
+        abort();
+    }
+    return bigger;
+}
+
 /* One line of graph text applied to the node list being built. */
-static void apply_line(MsArena *arena, MsNames *names, MsBuf *nodes, MsBuf *edges, Tokens *t) {
-    MsReachNode *node = nodes->len ? (MsReachNode *)(nodes->data + nodes->len - sizeof *node) : NULL;
+static void apply_line(MsArena *arena, MsNames *names, NodeList *nodes, EdgeList *edges, Tokens *t) {
+    MsReachNode *node = nodes->count ? &nodes->items[nodes->count - 1] : NULL;
     if (t->count == 0) {
         return;
     }
@@ -136,7 +158,8 @@ static void apply_line(MsArena *arena, MsNames *names, MsBuf *nodes, MsBuf *edge
                              .file = str_of(t->word[3]), .pos = pos_of(t->word + 4),
                              .project = strcmp(t->word[7], "project") == 0,
                              .entry = strcmp(t->word[8], "entry") == 0};
-        ms_buf_put(nodes, &fresh, sizeof fresh);
+        nodes->items = grown(nodes->items, nodes->count, &nodes->cap, sizeof *nodes->items);
+        nodes->items[nodes->count++] = fresh;
     } else if (strcmp(t->word[0], "declared") == 0) {
         MsEffectScope s = scope_of(arena, t);
         node->declared = s.names;
@@ -149,7 +172,8 @@ static void apply_line(MsArena *arena, MsNames *names, MsBuf *nodes, MsBuf *edge
         node->cap = scope_of(arena, t);
     } else if (strcmp(t->word[0], "edge") == 0) {
         MsReachEdge edge = {.callee = id_of(names, t->word[1]), .pos = pos_of(t->word + 2)};
-        ms_buf_put(edges, &edge, sizeof edge);
+        edges->items = grown(edges->items, edges->count, &edges->cap, sizeof *edges->items);
+        edges->items[edges->count++] = edge;
         node->nedges++;
     }
 }
@@ -171,8 +195,8 @@ static int graph_main(void) {
     MsArena arena = {0};
     MsNames names;
     ms_names_init(&names);
-    MsBuf nodes = {0};
-    MsBuf edges = {0};
+    NodeList nodes = {0};
+    EdgeList edges = {0};
     for (char *line = text, *next; line != NULL && *line != '\0'; line = next) {
         next = strchr(line, '\n');
         if (next != NULL) {
@@ -182,16 +206,15 @@ static int graph_main(void) {
         split_line(line, &t);
         apply_line(&arena, &names, &nodes, &edges, &t);
     }
-    uint32_t count = (uint32_t)(nodes.len / sizeof(MsReachNode));
-    attach_edges((MsReachNode *)nodes.data, count, (const MsReachEdge *)edges.data);
+    attach_edges(nodes.items, nodes.count, edges.items);
     MsReach reach = {0};
-    if (!ms_reach_resolve(&arena, (const MsReachNode *)nodes.data, count, &reach)) {
+    if (!ms_reach_resolve(&arena, nodes.items, nodes.count, &reach)) {
         fputs("duplicate node id\n", stderr);
         return 1;
     }
-    print_result(&names, (const MsReachNode *)nodes.data, &reach);
-    ms_buf_free(&nodes);
-    ms_buf_free(&edges);
+    print_result(&names, nodes.items, &reach);
+    free(nodes.items);
+    free(edges.items);
     ms_names_free(&names);
     ms_arena_free(&arena);
     free(text);

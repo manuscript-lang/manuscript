@@ -11,8 +11,7 @@
 #define MS_EFFECTS_H
 
 #include "ms/base.h"
-
-#define MS_NODISCARD __attribute__((warn_unused_result))
+#include "ms_rt/safe.h"
 
 /* ---- directives ---- */
 

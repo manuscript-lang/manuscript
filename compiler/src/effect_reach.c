@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "ms/effects.h"
-#include "ms/tables.h"
 
 #define NO_NODE UINT32_MAX
 
@@ -110,20 +109,57 @@ static uint32_t effect_slot(const EffectNames *effects, MsStr name) {
 
 /* ---- the graph in flat form ---- */
 
+typedef struct IdSlot {
+    uint32_t id, node;
+} IdSlot;
+
 typedef struct Graph {
     const MsReachNode *nodes;
     uint32_t count;
-    MsNameMap index;           /* node id -> node index */
+    IdSlot *slots;             /* node ids with their node index, sorted by id */
     uint32_t *caller_start;    /* CSR: callers of node c are callers[caller_start[c] .. caller_start[c + 1]] */
     uint32_t *callers;
     BitRows declared, inner, out;
 } Graph;
 
-static uint32_t node_of(const Graph *graph, uint32_t id) { return ms_map_get(&graph->index, id); }
+/* The node with this id, or NO_NODE. */
+static uint32_t node_of(const Graph *graph, uint32_t id) {
+    uint32_t low = 0;
+    uint32_t high = graph->count;
+    while (low < high) {
+        uint32_t middle = low + (high - low) / 2;
+        if (graph->slots[middle].id == id) {
+            return graph->slots[middle].node;
+        }
+        if (graph->slots[middle].id < id) {
+            low = middle + 1;
+        } else {
+            high = middle;
+        }
+    }
+    return NO_NODE;
+}
 
-static bool build_index(Graph *graph) {
+static int compare_slots(const void *a, const void *b) {
+    const IdSlot *x = a;
+    const IdSlot *y = b;
+    if (x->id == y->id) {
+        return 0;
+    }
+    return x->id < y->id ? -1 : 1;
+}
+
+/* Sorts the ids for lookup; false when two nodes share one. */
+static bool build_index(MsArena *arena, Graph *graph) {
+    graph->slots = MS_NEW_N(arena, IdSlot, graph->count);
     for (uint32_t i = 0; i < graph->count; i++) {
-        if (!ms_map_add(&graph->index, graph->nodes[i].id, i)) {
+        graph->slots[i] = (IdSlot){graph->nodes[i].id, i};
+    }
+    if (graph->count > 1) {
+        qsort(graph->slots, graph->count, sizeof *graph->slots, compare_slots);
+    }
+    for (uint32_t i = 1; i < graph->count; i++) {
+        if (graph->slots[i].id == graph->slots[i - 1].id) {
             return false;
         }
     }
@@ -137,7 +173,7 @@ static void build_callers(MsArena *arena, Graph *graph) {
     for (uint32_t i = 0; i < graph->count; i++) {
         for (uint32_t e = 0; e < graph->nodes[i].nedges; e++) {
             uint32_t callee = node_of(graph, graph->nodes[i].edges[e].callee);
-            if (callee != MS_NONE) {
+            if (callee != NO_NODE) {
                 start[callee + 1]++;
             }
         }
@@ -151,7 +187,7 @@ static void build_callers(MsArena *arena, Graph *graph) {
     for (uint32_t i = 0; i < graph->count; i++) {
         for (uint32_t e = 0; e < graph->nodes[i].nedges; e++) {
             uint32_t callee = node_of(graph, graph->nodes[i].edges[e].callee);
-            if (callee != MS_NONE) {
+            if (callee != NO_NODE) {
                 callers[fill[callee]++] = i;
             }
         }
@@ -261,7 +297,7 @@ static uint32_t step_candidates(const Graph *graph, Search *search, uint32_t at,
     uint32_t found = 0;
     for (uint32_t e = 0; e < node->nedges; e++) {
         uint32_t callee = node_of(graph, node->edges[e].callee);
-        bool usable = callee != MS_NONE && callee != start && bit_has(&graph->out, callee, bit) &&
+        bool usable = callee != NO_NODE && callee != start && bit_has(&graph->out, callee, bit) &&
                       search->seen[callee] != search->generation;
         if (usable) {
             search->step[found++] = (Candidate){callee};
@@ -362,7 +398,7 @@ static SharedPaths shared_paths_new(MsArena *arena, const Graph *graph, Search *
         shared.next[i] = NO_NODE;
         for (uint32_t e = 0; e < graph->nodes[i].nedges; e++) {
             uint32_t callee = node_of(graph, graph->nodes[i].edges[e].callee);
-            if (callee == MS_NONE || callee == i || distance[callee] == NO_NODE) {
+            if (callee == NO_NODE || callee == i || distance[callee] == NO_NODE) {
                 continue;
             }
             if (closer(graph, distance, callee, shared.next[i])) {
@@ -569,7 +605,7 @@ static void seed_declared(Resolver *r) {
 bool ms_reach_resolve(MsArena *arena, const MsReachNode *nodes, uint32_t count, MsReach *out) {
     MsArena scratch = {0};
     Resolver r = {.arena = &scratch, .results = arena, .graph = {.nodes = nodes, .count = count}};
-    bool ok = build_index(&r.graph);
+    bool ok = build_index(&scratch, &r.graph);
     MsReach result = {0};
     r.effects = collect_effect_names(&scratch, nodes, count);
     if (ok && r.effects.count != 0) {
@@ -589,7 +625,6 @@ bool ms_reach_resolve(MsArena *arena, const MsReachNode *nodes, uint32_t count, 
         collect_declared(&r, &result);
         collect_violations(&r, &result);
     }
-    ms_map_free(&r.graph.index);
     ms_arena_free(&scratch);
     if (ok) {
         *out = result;
