@@ -13,7 +13,7 @@
  * <name>` per function and `S <file> <parent> <call line> <name>` per inlined scope (tab separated;
  * file -1 when unknown; scopes numbered module wide, as the `dbgloc` lines are). */
 /* `display` is each function's source name, before `mir_name_symbols` made the symbols unique. */
-void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, MsBuf *out);
+void mir_qbe_tables_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, MsBuf *out);
 
 /* Writes `asm_text` with the labels added, followed by the tables, to `out`. `prefix` is what the
  * target puts before a symbol ("_" on Apple, else ""). Returns false with a reason in `why`. */

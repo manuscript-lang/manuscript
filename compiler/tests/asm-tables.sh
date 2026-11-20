@@ -20,6 +20,12 @@ export ASAN_OPTIONS=detect_leaks=0
 "$bin/ms_asm_tables" "$out/lines.meta" "$out/lines.s" --prefix "$prefix" > "$out/lines.tables.s"
 cc "$out/lines.tables.s" compiler/tests/asm_tables_check.c -o "$out/lines"
 "$out/lines" && echo "ok   asm-tables lines"
+# A fault call sits in a block QBE may lay out away from its operation: each one is preceded by a `.loc` of the
+# line that faults (4 and 5 in fault_line.mir), or the trace would name another line or none.
+"$bin/ms_mir_build" compiler/tests/asm-tables/fault_line.mir --opt none --no-verify > "$out/fault_line.ssa"
+"$bin/qbe" -t "$target" "$out/fault_line.ssa" > "$out/fault_line.s"
+lines=$(awk '/\.loc 1 /{line=$3} /msrt_fault_int_overflow/{print line}' "$out/fault_line.s" | sort | tr '\n' ' ')
+if [ "$lines" = "4 5 " ]; then echo "ok   asm-tables fault blocks"; else echo "FAIL asm-tables fault blocks: lines '$lines', want '4 5 '"; exit 1; fi
 # The assembly LLVM writes for every platform the release builds target (ELF and Mach-O `.loc`, COFF `.cv_loc`,
 # indented directives, labels with comments) takes the tables and still assembles for that platform.
 printf 'F asm_tables_input.c\nY h\t0\t1\th\nY f\t0\t2\tf\n' > "$out/input.meta"
