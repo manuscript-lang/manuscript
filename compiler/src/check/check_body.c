@@ -451,6 +451,30 @@ static MsTy body_name(MsBody *b, const MsExpr *e) {
 /* A call of a function this module declares, by its plain name: arguments positional, one per
  * parameter, each the parameter's type. The callee's own body is checked on its own; a callee the
  * lowering cannot handle fails the callers there. */
+/* `Type(field: value, ...)` for a record this module declares without type parameters: every
+ * field given once, in declaration order, named or positional, each of an admitted type. The
+ * call's callee is the type, which is how the effect scan sees a constructor. */
+static MsTy body_construct(MsBody *b, const MsExpr *e, MsSymId sym) {
+    const MsSyms *syms = &b->c->syms;
+    const MsTy record = syms->ty[sym];
+    const MsDef *def = ms_def(b->c, sym);
+    if (syms->module[sym] != b->module || syms->nvars[sym] != 0 || syms->decl[sym] == NULL ||
+        syms->decl[sym]->kind != MS_D_TYPE || ms_ty_kind(&b->c->tys, record) != MS_K_TYPE ||
+        !body_is_admitted(b, record) || def->nfields != e->u.call.args.len) {
+        return ms_body_unsupported(b);
+    }
+    for (uint32_t i = 0; i < def->nfields; i++) {
+        const MsArg *arg = &e->u.call.args.ptr[i];
+        const MsTy field = def->fields[i].ty;
+        if ((arg->has_name && arg->name != def->fields[i].name) || def->fields[i].flags != 0 ||
+            !body_is_admitted(b, field) || ms_body_expr(b, arg->value, field) == MS_TY_NONE) {
+            return ms_body_unsupported(b);
+        }
+    }
+    b->facts->call_callee[e->id] = sym;
+    return record;
+}
+
 static MsTy body_call(MsBody *b, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     if (callee->kind == MS_E_MEMBER) {
@@ -465,6 +489,9 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
+    if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
+        return body_construct(b, e, sym);
+    }
     if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
         syms->decl[sym] == NULL || syms->nvars[sym] != 0 || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
@@ -1080,6 +1107,47 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
     return true;
 }
 
+/* The types a public signature mentions, each once, depth first: `ty`, its arguments, its
+ * parameters, then its result. A type this module declares without `export` cannot be named by
+ * the callers, which is reported at the declaration. */
+typedef struct BodySeen {
+    MsTy ty[32];
+    uint32_t count;
+} BodySeen;
+
+static void body_expose(MsBody *b, MsTy ty, MsPos pos, BodySeen *seen) {
+    const MsTyTable *tys = &b->c->tys;
+    if (ty == MS_TY_NONE || seen->count == sizeof seen->ty / sizeof seen->ty[0]) {
+        return;
+    }
+    for (uint32_t i = 0; i < seen->count; i++) {
+        if (seen->ty[i] == ty) {
+            return;
+        }
+    }
+    seen->ty[seen->count++] = ty;
+    const MsSyms *syms = &b->c->syms;
+    const uint32_t def = tys->def[ty];
+    if (def != 0 && def - 1 < syms->count && syms->module[def - 1] == b->module && !syms->is_exported[def - 1]) {
+        const MsStr name = ms_name(b->c->names, syms->name[def - 1]);
+        const MsStr message = ms_arena_fmt(&b->c->arena,
+                                           "public signature exposes private type %.*s; add 'export' to its "
+                                           "declaration or keep the function private",
+                                           (int)name.len, name.ptr);
+        const MsCheckDiag diag = {.diag = {.pos = pos, .message = message}, .phase = MS_PHASE_TYPE};
+        MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
+    }
+    for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
+        body_expose(b, ms_ty_args(tys, ty)[i], pos, seen);
+    }
+    if (ms_ty_kind(tys, ty) == MS_K_FUNCTION) {
+        for (uint32_t i = 0; i < tys->nparams[ty]; i++) {
+            body_expose(b, ms_ty_params(tys, ty)[i].ty, pos, seen);
+        }
+        body_expose(b, tys->result[ty], pos, seen);
+    }
+}
+
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     const MsFunc *fn = &d->u.fn;
     const MsTy sig = b->c->syms.ty[sym];
@@ -1093,6 +1161,10 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     b->function = d->id;
     b->supported = true;
     b->result = b->c->tys.result[sig];
+    if (d->is_exported) {
+        BodySeen seen = {.count = 0};
+        body_expose(b, sig, d->pos, &seen);
+    }
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
         const uint8_t flags = (params[i].flags & MS_PARAM_VAR) != 0 ? MS_BIND_MUTABLE : 0;
