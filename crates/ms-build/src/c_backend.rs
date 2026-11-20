@@ -196,7 +196,11 @@ pub fn compile(
     checks: bool,
     build: &BuildOptions,
 ) -> Result<Vec<u8>, String> {
-    let dir = std::env::temp_dir().join(format!("ms-cbackend-{}", std::process::id()));
+    // One folder per build: a process may build several programs at once (the test runner does).
+    static BUILDS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let build_number = BUILDS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir =
+        std::env::temp_dir().join(format!("ms-cbackend-{}-{build_number}", std::process::id()));
     std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
     let result = compile_in(&dir, module, speed, checks, build);
     let _ = std::fs::remove_dir_all(&dir);
