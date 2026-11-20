@@ -29,6 +29,7 @@
 #include "hints.c"
 #include "constfold.c"
 #include "effects.c"
+#include "walk.c"
 #include "ty_subst.c"
 #include "recursion.c"
 #include "import_hints.c"
