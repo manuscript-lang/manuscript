@@ -297,7 +297,13 @@ fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
     let idom = ms_mir::verify::dominators(f, &rpo, &preds);
     let text: Vec<String> = idom
         .iter()
-        .map(|&d| if d == usize::MAX { "-".into() } else { d.to_string() })
+        .map(|&d| {
+            if d == usize::MAX {
+                "-".into()
+            } else {
+                d.to_string()
+            }
+        })
         .collect();
     let _ = writeln!(out, "idom {}", text.join(" "));
     for (bi, b) in f.blocks.iter().enumerate() {
@@ -309,7 +315,10 @@ fn analysis(m: &Module, f: &ms_mir::ir::Func, out: &mut String) {
                 .collect();
             let views = u8::from(m.result_views(f, inst));
             let owned = ms_mir::verify::indirect_owned(m, f, inst);
-            let _ = writeln!(out, "{bi}.{ii} res={res} views={views} owned={owned:x} args={modes}");
+            let _ = writeln!(
+                out,
+                "{bi}.{ii} res={res} views={views} owned={owned:x} args={modes}"
+            );
         }
     }
 }
