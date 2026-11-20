@@ -10,4 +10,6 @@ musl: the musl archive takes pinned builds (`MS_C_LIBS=pinned`, `CC=musl-gcc` fr
 
 CI: the install step is in `.github/actions/native-toolchain` (Linux so far), so every job that builds the runtime has the packages; the pinned musl libraries are cached on `build.sh key <musl triple>`; the runtime cache key hashes the C sources, `libs.sh`, `build.sh`, `c-libs.lock` and the runner image version.
 
+Parallel builds: `cargo xtask runtime` builds the glibc, musl and profiling archives side by side, and each asks `build.sh` for the same output folder. `build.sh` takes an `mkdir` lock (`<folder>.lock`); the others wait for `.complete`. Without it two runs wrote `include/llhttp.h` at once ("File exists", linux-arm64 CI).
+
 Apply when: adding a C source that uses a library, wiring a target, or changing how the archives are built. Evidence: `crates/xtask/src/main.rs`, `runtime/third_party/libs.sh`.
