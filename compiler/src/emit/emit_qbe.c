@@ -366,6 +366,8 @@ static void qbe_frame_slots(QCx *c) {
                               qbe_slot_bytes(c->layouts, (MirTy)inst->imm.a));
             } else if (inst->op == MOP_Call || inst->op == MOP_CallInd || inst->op == MOP_CallMethod) {
                 qbe_frame_call(c, inst, b, k);
+            } else if (inst->op == MOP_StrByte) {
+                ms_buf_printf(c->out, "\t%%y%u_%u =l alloc8 16\n", b, k);
             } else if (inst->op == MOP_CallRt) {
                 qbe_frame_rt_call(c, inst, b, k);
             } else if (inst->op == MOP_IfaceBorrow && c->borrowed != NULL && c->borrowed[inst->res]) {
@@ -874,6 +876,7 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
 #include "emit_qbe_iface.inc"
 #include "emit_qbe_enum.inc"
 #include "emit_qbe_list.inc"
+#include "emit_qbe_str.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
@@ -1083,6 +1086,10 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     const bool iface_ok = qbe_iface_op(c, inst, block, index, &handled);
     if (handled) {
         return iface_ok;
+    }
+    const bool str_ok = qbe_str_op(c, inst, block, index, part, &handled);
+    if (handled) {
+        return str_ok;
     }
     const bool enum_ok = qbe_enum_op(c, inst, &handled);
     if (handled) {
