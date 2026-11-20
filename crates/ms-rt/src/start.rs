@@ -248,11 +248,10 @@ mod os {
         install(sys::SIGPIPE, sys::SIG_IGN);
     }
 
-    extern "C" fn thread_main(_: *mut c_void) -> *mut c_void {
+    extern "C" fn thread_main(_: *mut c_void) {
         install_overflow_handler();
         // SAFETY: see `run_main`.
         unsafe { run_main() };
-        core::ptr::null_mut()
     }
 
     /// Runs `main` on a thread of its own and waits for it. The thread's stack only hosts the
@@ -260,13 +259,11 @@ mod os {
     pub unsafe fn run_on_big_stack() {
         // SAFETY: one-time setup before the thread exists.
         unsafe {
-            let mut attr = core::mem::zeroed::<sys::pthread_attr_buf>();
-            sys::pthread_attr_init(&mut attr);
-            let mut tid = 0usize;
-            if sys::pthread_create(&mut tid, &attr, thread_main, core::ptr::null_mut()) != 0 {
+            let thread = sys::thread_spawn(0, thread_main, core::ptr::null_mut());
+            if thread == 0 {
                 fault::fatal(b"cannot start the main thread");
             }
-            sys::pthread_join(tid, core::ptr::null_mut());
+            sys::thread_join(thread);
         }
     }
 }
@@ -287,14 +284,14 @@ mod os {
         1
     }
 
-    unsafe extern "system" fn grace_thread(_: *mut c_void) -> u32 {
+    extern "C" fn grace_thread(_: *mut c_void) {
         sys::sleep_ms(CLEANUP_GRACE_SECS * 1000);
         grace_expired()
     }
 
     pub fn arm_grace_timer() {
         // SAFETY: the thread only sleeps and then ends the process.
-        unsafe { sys::thread_spawn(0, grace_thread) };
+        unsafe { sys::thread_spawn(0, grace_thread, core::ptr::null_mut()) };
     }
 
     pub fn install_stop_handlers() {
@@ -302,21 +299,20 @@ mod os {
         unsafe { sys::set_ctrl_handler(ctrl_handler) };
     }
 
-    unsafe extern "system" fn thread_main(_: *mut c_void) -> u32 {
+    extern "C" fn thread_main(_: *mut c_void) {
         // SAFETY: see `run_main`.
         unsafe {
             crate::profile::attach_runtime_thread();
             run_main();
         }
-        0
     }
 
     /// Runs `main` on a thread of its own and waits for it.
     pub unsafe fn run_on_big_stack() {
         // SAFETY: one-time setup before the thread exists.
         unsafe {
-            let thread = sys::thread_spawn(0, thread_main);
-            if thread.is_null() {
+            let thread = sys::thread_spawn(0, thread_main, core::ptr::null_mut());
+            if thread == 0 {
                 fault::fatal(b"cannot start the main thread");
             }
             sys::thread_join(thread);

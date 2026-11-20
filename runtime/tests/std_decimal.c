@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include "fake_list.h"
-#include "fake_zone.h"
 #include "ms_rt/decimal.h"
 #include "ms_rt/runtime.h"
 
@@ -35,14 +34,14 @@ void msrt_fault(const void *message, size_t length) {
     printf("FAULT %.*s\n", (int)length, (const char *)message);
     exit(1);
 }
-void msrt_fault_kind(uint8_t kind, const void *message, size_t length) {
+void msfault_raise(uint8_t kind, const void *message, size_t length) {
     (void)message;
     (void)length;
     fault_code = kind;
     longjmp(fault_jump, 1);
 }
 void msrt_string_from_bytes(const uint8_t *bytes, size_t length, void *out) {
-    ms_str *const s = out;
+    MsStr *const s = out;
     uint8_t *const copy = malloc(length + 1);
     memcpy(copy, bytes, length);
     s->ptr_word = copy;
@@ -86,7 +85,7 @@ static void write_decimal(const MsDecimal *d, char *buffer, size_t size) {
     snprintf(buffer + at, size - at, ",%lld", (long long)d->exponent);
 }
 
-static char *owned_text(ms_str *s) {
+static char *owned_text(MsStr *s) {
     char *const copy = malloc(ms_str_len(s) + 1);
     memcpy(copy, ms_str_data(s), ms_str_len(s));
     copy[ms_str_len(s)] = 0;
@@ -166,7 +165,7 @@ static void run_case(char *line, char *fields[5]) {
         }
         write_decimal(&out, got, sizeof got);
     } else if (strcmp(op, "to_string") == 0) {
-        ms_str s;
+        MsStr s;
         msstd_decimal_to_string(&x, &s);
         char *const text = owned_text(&s);
         expect_text(line, text, want);
@@ -181,7 +180,7 @@ static void run_case(char *line, char *fields[5]) {
             const uint8_t status = msstd_decimal_round(&x, places, (HasRaw)has, mode, &out);
             status_text(status, &out, got, sizeof got);
         } else {
-            ms_str s;
+            MsStr s;
             const uint8_t status = msstd_decimal_to_fixed(&x, places, (HasRaw)has, mode, &s);
             if (status == 0) {
                 char *const text = owned_text(&s);
@@ -192,7 +191,7 @@ static void run_case(char *line, char *fields[5]) {
             snprintf(got, sizeof got, "ERR%u", status);
         }
     } else if (strcmp(op, "parse") == 0) {
-        ms_str source = {.ptr_word = (uint8_t *)fields[1], .tagged = strlen(a) | ((uint64_t)2 << 62)};
+        MsStr source = {.ptr_word = (uint8_t *)fields[1], .tagged = strlen(a) | ((uint64_t)2 << 62)};
         if (strcmp(a, "-empty-") == 0) {
             source.tagged = (uint64_t)2 << 62;
         }

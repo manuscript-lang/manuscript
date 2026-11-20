@@ -3,7 +3,8 @@ name = "ms-std-time"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Zone database seam for the C @std/time natives"
+description = "Manuscript standard-library natives for @std/time"
+autotests = false
 
 [lib]
 crate-type = ["rlib"]
@@ -11,8 +12,14 @@ crate-type = ["rlib"]
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
-jiff = { version = "0.2", default-features = false, features = ["std", "tz-system", "tzdb-bundle-always"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Time"] }
 
 [lints]
 workspace = true
 
+
+[[test]]
+name = "it"
+path = "tests/main.rs"

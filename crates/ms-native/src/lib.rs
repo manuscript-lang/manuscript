@@ -6,6 +6,7 @@
 extern crate ms_rt;
 extern crate ms_std_archive;
 extern crate ms_std_core;
+#[cfg(not(ms_c_crypto))]
 extern crate ms_std_crypto;
 extern crate ms_std_fs;
 extern crate ms_std_io;
@@ -18,7 +19,6 @@ extern crate ms_std_system;
 extern crate ms_std_table;
 extern crate ms_std_terminal;
 extern crate ms_std_time;
-extern crate ms_std_url;
 
 /// Rust-side allocations of the native standard library share the runtime's allocator.
 #[global_allocator]

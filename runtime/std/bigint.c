@@ -12,14 +12,14 @@
 #define MS_BIGINT_MAX_BITS ((int64_t)1 << 24)
 
 struct MsBigCell {
-    MsObject header;
+    MsObj header;
     MsBig value; /* owned */
 };
 
 /* ---- the object ---- */
 
-static MsObject *cell_clone_entry(MsObject *object);
-static void cell_drop_entry(MsObject *object);
+static MsObj *cell_clone_entry(MsObj *object);
+static void cell_drop_entry(MsObj *object);
 
 /* A new object that takes ownership of the limbs of `value`, which is left zero. */
 static MsBigCell *cell_new(MsBig *value) {
@@ -31,13 +31,13 @@ static MsBigCell *cell_new(MsBig *value) {
     return cell;
 }
 
-static MsObject *cell_clone_entry(MsObject *object) {
+static MsObj *cell_clone_entry(MsObj *object) {
     MsBig copy = MS_BIG_ZERO;
     ms_big_copy(&copy, &((const MsBigCell *)object)->value);
     return &cell_new(&copy)->header; /* the header is the first member, so this is the object's address */
 }
 
-static void cell_drop_entry(MsObject *object) {
+static void cell_drop_entry(MsObj *object) {
     ms_big_free(&((MsBigCell *)object)->value);
     msrt_free(object);
 }
@@ -74,7 +74,7 @@ MsBigCell *msstd_bigint_from_seconds_nanos(int64_t seconds, int64_t nanoseconds)
     return cell_new(&total);
 }
 
-uint8_t msstd_bigint_parse(const ms_str *text, int64_t radix, HasRaw has_max, int64_t max, MsBigCell **out) {
+uint8_t msstd_bigint_parse(const MsStr *text, int64_t radix, HasRaw has_max, int64_t max, MsBigCell **out) {
     const int64_t limit = has_max != 0 ? max : INT64_MAX;
     if (radix < (int64_t)MS_BIG_MIN_RADIX || radix > (int64_t)MS_BIG_MAX_RADIX || limit < 0) {
         return MS_STATUS_INVALID_INPUT;
@@ -225,7 +225,7 @@ uint8_t msstd_bigint_remainder(const MsBigCell *a, const MsBigCell *other, MsBig
 MsBigCell *msstd_bigint_quotient(const MsBigCell *a, const MsBigCell *other) {
     static const char message[] = "BigInt./: division by zero; right must be nonzero, found 0";
     if (ms_big_is_zero(&other->value)) {
-        msrt_fault_kind(MS_FAULT_DIVISION_BY_ZERO, message, sizeof message - 1);
+        msfault_raise(MS_FAULT_DIVISION_BY_ZERO, message, sizeof message - 1);
     }
     MsBig quotient = MS_BIG_ZERO;
     ms_big_divmod(&quotient, NULL, &a->value, &other->value);
@@ -236,7 +236,7 @@ MsBigCell *msstd_bigint_quotient(const MsBigCell *a, const MsBigCell *other) {
 MsBigCell *msstd_bigint_modulo(const MsBigCell *a, const MsBigCell *other) {
     static const char message[] = "BigInt.%: division by zero; right must be nonzero, found 0";
     if (ms_big_is_zero(&other->value)) {
-        msrt_fault_kind(MS_FAULT_DIVISION_BY_ZERO, message, sizeof message - 1);
+        msfault_raise(MS_FAULT_DIVISION_BY_ZERO, message, sizeof message - 1);
     }
     MsBig remainder = MS_BIG_ZERO;
     ms_big_divmod(NULL, &remainder, &a->value, &other->value);
@@ -326,7 +326,7 @@ double msstd_bigint_to_float(const MsBigCell *a) { return ms_big_to_double(&a->v
 /* Writes *out and returns 1 when the value fits an Int. */
 uint8_t msstd_bigint_to_int(const MsBigCell *a, int64_t *out) { return ms_big_to_i64(&a->value, out); }
 
-void msstd_bigint_to_string_radix(const MsBigCell *a, int64_t radix, ms_str *out) {
+void msstd_bigint_to_string_radix(const MsBigCell *a, int64_t radix, MsStr *out) {
     if (radix < (int64_t)MS_BIG_MIN_RADIX || radix > (int64_t)MS_BIG_MAX_RADIX) {
         char message[128];
         const int length = snprintf(message, sizeof message,

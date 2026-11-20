@@ -8,24 +8,24 @@ static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
 
 int main(void) {
-    ms_conn_table *t = ms_conn_table_new(3);
-    ms_conn_id a = ms_conn_open(t, 10, MS_CONN_HTTP1), b = ms_conn_open(t, 11, MS_CONN_WS), c3 = ms_conn_open(t, 12, MS_CONN_HTTP1);
+    MsConnTable *t = ms_conn_table_new(3);
+    MsConnId a = ms_conn_open(t, 10, MS_CONN_HTTP1), b = ms_conn_open(t, 11, MS_CONN_WS), c3 = ms_conn_open(t, 12, MS_CONN_HTTP1);
     CHECK(a && b && c3 && ms_conn_live(t) == 3);
     CHECK(ms_conn_open(t, 13, MS_CONN_HTTP1) == 0); /* full */
     CHECK(ms_conn_get(t, a)->fd == 10 && ms_conn_get(t, b)->proto == MS_CONN_WS);
     CHECK(ms_conn_close(t, b) == 0 && ms_conn_get(t, b) == NULL && ms_conn_close(t, b) == -1);
-    ms_conn_id b2 = ms_conn_open(t, 14, MS_CONN_WS); /* reuses the row with a new generation */
+    MsConnId b2 = ms_conn_open(t, 14, MS_CONN_WS); /* reuses the row with a new generation */
     CHECK(b2 && (uint32_t)b2 == (uint32_t)b && b2 != b && ms_conn_get(t, b) == NULL && ms_conn_get(t, b2)->fd == 14);
     CHECK(ms_conn_get(t, 0) == NULL && ms_conn_get(t, (uint64_t)99 << 32 | 7) == NULL);
     ms_conn_table_free(t);
 
     /* idle cost: a plain connection is its row and nothing on the heap */
-    printf("idle plain connection: %zu bytes of row, 0 heap\n", sizeof(ms_conn));
+    printf("idle plain connection: %zu bytes of row, 0 heap\n", sizeof(MsConn));
 
     t = ms_conn_table_new(4);
-    ms_conn_id id = ms_conn_open(t, 5, MS_CONN_HTTP1);
-    ms_conn *c = ms_conn_get(t, id);
-    ms_h1_field f[8]; ms_h1_request r; const uint8_t *base; size_t avail;
+    MsConnId id = ms_conn_open(t, 5, MS_CONN_HTTP1);
+    MsConn *c = ms_conn_get(t, id);
+    MsH1Field f[8]; MsH1Request r; const uint8_t *base; size_t avail;
     const char *wire = "GET /a HTTP/1.1\r\nHost: x\r\n\r\nGET /b HTTP/1.1\r\nHost: y\r\n\r\n";
     size_t total = strlen(wire), first = 28;
     CHECK(strlen("GET /a HTTP/1.1\r\nHost: x\r\n\r\n") == first);

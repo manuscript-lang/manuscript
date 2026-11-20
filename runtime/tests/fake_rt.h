@@ -15,7 +15,7 @@ void msrt_fault(const void *message, size_t length) {
     fprintf(stderr, "FAULT %.*s\n", (int)length, (const char *)message);
     exit(1);
 }
-void msrt_fault_kind(uint8_t kind, const void *message, size_t length) {
+void msfault_raise(uint8_t kind, const void *message, size_t length) {
     fprintf(stderr, "FAULT(%u) %.*s\n", kind, (int)length, (const char *)message);
     exit(1);
 }
@@ -27,6 +27,5 @@ void msrt_string_from_bytes(const uint8_t *bytes, size_t length, void *out) {
     s->tagged = length;
 }
 
-#include "fake_zone.h"
 
 #endif

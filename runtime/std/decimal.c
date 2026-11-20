@@ -260,7 +260,7 @@ MS_NORETURN static void overflow_fault(const char *operation, const MsDecimal *l
                                 "Decimal.%s: overflow; found left %s and right %s; rounded magnitude must be at "
                                 "most 9.999999999999999999999999999999999e6144 (34 significant digits)",
                                 operation, left_text, right_text);
-    msrt_fault_kind(MS_FAULT_OVERFLOW, message, length > 0 ? (size_t)length : 0);
+    msfault_raise(MS_FAULT_OVERFLOW, message, length > 0 ? (size_t)length : 0);
 }
 
 /* ---- arithmetic ---- */
@@ -325,7 +325,7 @@ void msstd_decimal_multiply(const MsDecimal *a, const MsDecimal *b, MsDecimal *o
 void msstd_decimal_divide(const MsDecimal *a, const MsDecimal *b, MsDecimal *out) {
     static const char zero_message[] = "Decimal./: division by zero; right must be nonzero, found 0";
     if (is_zero(b)) {
-        msrt_fault_kind(MS_FAULT_DIVISION_BY_ZERO, zero_message, sizeof zero_message - 1);
+        msfault_raise(MS_FAULT_DIVISION_BY_ZERO, zero_message, sizeof zero_message - 1);
     }
     if (is_zero(a)) {
         *out = pack(0, 0);
@@ -417,7 +417,7 @@ void msstd_decimal_from_int(int64_t n, MsDecimal *out) {
 
 void msstd_decimal_from_uint(int64_t n, MsDecimal *out) { *out = from_integer((uint64_t)n, false); }
 
-void msstd_decimal_to_string(const MsDecimal *a, ms_str *out) {
+void msstd_decimal_to_string(const MsDecimal *a, MsStr *out) {
     char text[MS_DECIMAL_RENDER_MAX + 1];
     const size_t length = render_into(a, text);
     msrt_string_from_bytes((const uint8_t *)text, length, out);
@@ -606,7 +606,7 @@ MS_NODISCARD static bool parse_literal(MsBytes text, MsDecimal *out) {
     return true;
 }
 
-uint8_t msstd_decimal_parse(const ms_str *text, MsDecimal *out) {
+uint8_t msstd_decimal_parse(const MsStr *text, MsDecimal *out) {
     MsDecimal parsed = {0};
     if (!parse_literal(ms_bytes(ms_str_data(text), ms_str_len(text)), &parsed)) {
         return MS_STATUS_INVALID_INPUT;
@@ -710,7 +710,7 @@ uint8_t msstd_decimal_round(const MsDecimal *value, int64_t places, HasRaw has_m
 }
 
 /* Plain notation with exactly `places` fractional digits, built from the digits of the scaled coefficient. */
-static void format_fixed(const MsBig *scaled, int64_t places, ms_str *out) {
+static void format_fixed(const MsBig *scaled, int64_t places, MsStr *out) {
     size_t count = 0;
     uint8_t *const digits = ms_big_digits_new(scaled, 10, &count);
     const size_t fraction = (size_t)places;
@@ -732,7 +732,7 @@ static void format_fixed(const MsBig *scaled, int64_t places, ms_str *out) {
     msrt_free(digits);
 }
 
-uint8_t msstd_decimal_to_fixed(const MsDecimal *value, int64_t digits, HasRaw has_mode, int64_t mode, ms_str *out) {
+uint8_t msstd_decimal_to_fixed(const MsDecimal *value, int64_t digits, HasRaw has_mode, int64_t mode, MsStr *out) {
     MsRounding rounding = MS_ROUND_HALF_EVEN;
     if (!rounding_of(has_mode, mode, &rounding) || digits < 0 || digits > 6176) {
         return MS_STATUS_INVALID_INPUT;

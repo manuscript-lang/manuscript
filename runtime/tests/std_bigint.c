@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "fake_list.h"
-#include "fake_zone.h"
 #include "ms_rt/bigint.h"
 #include "ms_rt/runtime.h"
 
@@ -30,13 +29,13 @@ void msrt_fault(const void *message, size_t length) {
     printf("FAULT %.*s\n", (int)length, (const char *)message);
     exit(1);
 }
-void msrt_fault_kind(uint8_t kind, const void *message, size_t length) {
+void msfault_raise(uint8_t kind, const void *message, size_t length) {
     printf("FAULT(%u) %.*s\n", kind, (int)length, (const char *)message);
     exit(1);
 }
 /* An owned string (tag bits 00): the allocation and the byte length. */
 void msrt_string_from_bytes(const uint8_t *bytes, size_t length, void *out) {
-    ms_str *const s = out;
+    MsStr *const s = out;
     uint8_t *const copy = malloc(length + 1);
     memcpy(copy, bytes, length);
     s->ptr_word = copy;
@@ -48,7 +47,7 @@ static const char digit_chars[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 static void drop(cell *c) {
     if (c != NULL) {
-        ((MsObject *)c)->drop((MsObject *)c);
+        ((MsObj *)c)->drop((MsObj *)c);
     }
 }
 
@@ -59,7 +58,7 @@ static cell *parse(const char *text, int64_t radix, int64_t max, int has_max, ui
     const size_t length = strlen(text);
     uint8_t *const copy = malloc(length + 1);
     memcpy(copy, text, length + 1);
-    const ms_str s = {.ptr_word = copy, .tagged = length | ((uint64_t)2 << 62)}; /* static: not freed with it */
+    const MsStr s = {.ptr_word = copy, .tagged = length | ((uint64_t)2 << 62)}; /* static: not freed with it */
     *status = msstd_bigint_parse(&s, radix, (HasRaw)has_max, max, &out);
     free(copy);
     return out;
@@ -74,7 +73,7 @@ static cell *big(const char *text) {
 
 /* The text of a value in a radix; the caller frees it. */
 static char *text_of(const cell *c, int64_t radix) {
-    ms_str s;
+    MsStr s;
     msstd_bigint_to_string_radix(c, radix, &s);
     char *copy = malloc(ms_str_len(&s) + 1);
     memcpy(copy, ms_str_data(&s), ms_str_len(&s));
@@ -297,7 +296,7 @@ static void run_table(const char *path) {
 }
 
 static void run_direct(void) {
-    cell *seven = big("7"), *copy = (cell *)((MsObject *)seven)->clone((MsObject *)seven);
+    cell *seven = big("7"), *copy = (cell *)((MsObj *)seven)->clone((MsObj *)seven);
     char *text = text_of(copy, 10);
     CHECK(strcmp(text, "7") == 0);
     free(text);
