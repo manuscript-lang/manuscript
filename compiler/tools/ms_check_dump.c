@@ -107,12 +107,14 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
                 }
                 ms_module_check_ownership(check, id);
                 if (ownership) {
+                    ms_module_check_unused(check, id);
                     ms_dump_module_ownership(&dump, check, id);
                 } else {
                     if (claimed != NULL) {
                         memcpy(facts->body_checked, claimed, claims * sizeof *claimed);
                     }
                     free(claimed);
+                    ms_module_check_unused(check, id);
                     ms_dump_module_bodies(&dump, check, id);
                 }
                 printf("%.*s", (int)dump.len, (const char *)dump.data);

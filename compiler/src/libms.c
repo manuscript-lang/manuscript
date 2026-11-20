@@ -92,6 +92,7 @@
 #include "check_body.c"
 #include "check_match.c"
 #include "check_alt.c"
+#include "check_unused.c"
 #include "check_method.c"
 #include "check_closure.c"
 #include "dump_check.c"
