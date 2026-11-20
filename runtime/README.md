@@ -1,6 +1,6 @@
 # runtime
 
-The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). The third-party build and the C build (`runtime/core/num.c` so far) exist; `runtime/symbols/<module>.txt` lists the symbols defined in C, and [the wiki page](../wiki/runtime/a-runtime-symbol-moves-to-c-by-listing-it-in-c-symbols.md) says how a symbol moves.
+The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt` and `ms-std-*` crates step by step. Plan and reasons: [proposals/c-runtime.md](../proposals/c-runtime.md). The third-party build and the C build (`runtime/core/num.c`, the allocator `alloc.c` and regions `region.c` so far) exist; `runtime/symbols/<module>.txt` lists the symbols defined in C, and [the wiki page](../wiki/runtime/a-runtime-symbol-moves-to-c-by-listing-it-in-c-symbols.md) says how a symbol moves.
 
 ```
 runtime/
