@@ -7,7 +7,8 @@ import (
 	NativeConnection,
 	NativeDatagramSocket,
 	NativeListener,
-	NativeNetwork from "@std/net/net.ms",
+	NativeNetwork,
+	NativeScope from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
 	NativeWebSocket, RawWebSocketMessage, WebSocketWire from "@std/net/websocket.ms",
 	Duration, Timestamp from "@std/time.ms",
@@ -84,6 +85,19 @@ export extern fn msstd_net_connection_write_bytes(
 	data: Bytes,
 	timeout: Duration?,
 ) Void!
+
+export extern fn msstd_scope_new() NativeScope
+
+export extern fn msstd_scope_child(scope: NativeScope) NativeScope
+
+export extern fn msstd_scope_open(scope: NativeScope) Bool
+
+export extern fn msstd_scope_close(scope: NativeScope) Void
+
+export extern fn msstd_scope_track_dgram(
+	scope: NativeScope,
+	socket: NativeDatagramSocket,
+) Bool
 
 export extern fn msstd_dgram_bind(address: String) NativeDatagramSocket!
 
