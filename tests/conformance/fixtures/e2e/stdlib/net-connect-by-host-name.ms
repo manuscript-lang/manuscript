@@ -1,8 +1,8 @@
 // conform: tags=stdlib-net,tier-io
 // conform: phase=run
 // conform: timeout=30
-// A connection to a host name resolves it through the event loop (libuv's getaddrinfo on every
-// platform) and then connects; the server sees the client and bytes cross.
+// A connection to a host name resolves it through the event loop (libuv's getaddrinfo
+// on every platform) and then connects; the server sees the client and bytes cross.
 import (
 	stdout from "@std/io/io.ms",
 	connect, listen from "@std/net/net.ms",
@@ -17,6 +17,7 @@ fn run() Bool!:
 	var client = connect(f"localhost:{port}", timeout: 5.seconds()).wait()?
 	var server = listener.accept(5.seconds()).wait()?
 	send(client, "ping")?
+
 	got := recv(server, 5.seconds())?
 	return ok(got.get().decode_utf8().get_or("") == "ping")
 
