@@ -29,19 +29,19 @@ msrt_fault(const uint8_t *msg, size_t len);
 
 /* ---- queue entries ---- */
 
-/* A queued value: a heap block holding it, or, for a plain scalar of at most a word (ENTRY_INLINE set in
- * `desc`), the value itself in `ptr`. Descriptors are 8-byte aligned, so the tag bit is free. */
+/* A queued value: a heap block holding it, or, for a plain scalar of at most a word, the value itself in the entry,
+ * which then costs no allocation and no cache line of its own to hand between threads. */
 typedef struct PipeItem {
     union {
-        void *block;    /* a heap block holding the value */
-        uint64_t word;  /* ENTRY_INLINE: the value itself */
+        void *block;   /* a heap block holding the value */
+        uint64_t word; /* a plain scalar of at most a word (item_fits_inline): the value itself */
     } value;
-    uintptr_t desc;
+    const MsTypeDesc *desc;
 } PipeItem;
 
 _Static_assert(sizeof(PipeItem) == 2 * sizeof(uintptr_t), "an entry is two words");
 
-enum { ENTRY_INLINE = 1, WORD_BYTES = sizeof(uintptr_t) };
+enum { WORD_BYTES = sizeof(uint64_t) };
 
 static bool item_fits_inline(const MsTypeDesc *desc) {
     const bool plain = desc->kind == MS_KIND_INT || desc->kind == MS_KIND_FLOAT || desc->kind == MS_KIND_BOOL ||
@@ -49,16 +49,15 @@ static bool item_fits_inline(const MsTypeDesc *desc) {
     return plain && desc->size <= WORD_BYTES;
 }
 
-static bool item_is_inline(const PipeItem *item) { return (item->desc & ENTRY_INLINE) != 0; }
+static bool item_is_inline(const PipeItem *item) { return item_fits_inline(item->desc); }
 
-static const MsTypeDesc *item_desc(const PipeItem *item) { return (const MsTypeDesc *)(item->desc & ~(uintptr_t)ENTRY_INLINE); }
+static const MsTypeDesc *item_desc(const PipeItem *item) { return item->desc; }
 
 /* The entry for the owned value at `value`, in a block unless it fits inline. */
 static PipeItem item_new(const uint8_t *value, const MsTypeDesc *desc) {
-    PipeItem item = {.value = {.word = 0}, .desc = (uintptr_t)desc};
+    PipeItem item = {.value = {.word = 0}, .desc = desc};
     if (item_fits_inline(desc)) {
         memcpy(&item.value.word, value, desc->size);
-        item.desc |= ENTRY_INLINE;
         return item;
     }
     const size_t size = desc->size > 0 ? desc->size : 1;
@@ -169,6 +168,7 @@ enum { CANCEL_POINT_MASK = 0xff };
 
 /* A pipe's parts sit on cache lines of their own, so a writer never invalidates a line the reader works on and two
  * busy pipes never share one. */
+// NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding): the padding is the point, each group owns its cache line
 typedef struct PipeCell {
     /* Guarded by `lock`. */
     MsSpin lock;
@@ -472,7 +472,7 @@ static bool cancellation_point(void) {
 
 /* A value read but never taken (its promise ended first) goes back to the front of its pipe. */
 static void pipe_unread(int64_t pipe, void *block, const MsTypeDesc *desc) {
-    const PipeItem item = {.value = {.block = block}, .desc = (uintptr_t)desc};
+    const PipeItem item = {.value = {.block = block}, .desc = desc};
     PipeCell *cell = cell_lock(pipe);
     if (cell == NULL || !cell->reader_open) {
         if (cell != NULL) {
@@ -554,7 +554,7 @@ int64_t ms_pipe_write(int64_t pipe, uint8_t *value, const MsTypeDesc *desc) {
         return status;
     }
     /* The reader was parked, so the queue held nothing else. */
-    PipeItem first = {.value = {.word = 0}, .desc = 0};
+    PipeItem first = {.value = {.word = 0}, .desc = NULL};
     const bool popped = ring_pop_front(&cell->queue, &first);
     publish_backlog(cell);
     cell_unlock(cell);
