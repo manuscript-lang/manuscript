@@ -55,7 +55,7 @@ static MsSym decl_name(const MsDecl *d) {
     case MS_D_FN: return d->u.fn.name;
     case MS_D_CONST: return d->u.konst.name;
     case MS_D_TYPE: return d->u.type.name;
-    case MS_D_ENUM: return d->u.enum_.name;
+    case MS_D_ENUM: return d->u.enumeration.name;
     case MS_D_ALIAS: return d->u.alias.name;
     case MS_D_INTERFACE: return d->u.iface.name;
     default: return 0;
@@ -66,7 +66,7 @@ static uint32_t decl_nvars(const MsDecl *d) {
     switch (d->kind) {
     case MS_D_FN: return d->u.fn.type_params.len;
     case MS_D_TYPE: return d->u.type.type_params.len;
-    case MS_D_ENUM: return d->u.enum_.type_params.len;
+    case MS_D_ENUM: return d->u.enumeration.type_params.len;
     case MS_D_ALIAS: return d->u.alias.type_params.len;
     case MS_D_INTERFACE: return d->u.iface.type_params.len;
     default: return 0;
@@ -77,7 +77,7 @@ static const MsTypeParams *decl_type_params(const MsDecl *d) {
     switch (d->kind) {
     case MS_D_FN: return &d->u.fn.type_params;
     case MS_D_TYPE: return &d->u.type.type_params;
-    case MS_D_ENUM: return &d->u.enum_.type_params;
+    case MS_D_ENUM: return &d->u.enumeration.type_params;
     case MS_D_ALIAS: return &d->u.alias.type_params;
     case MS_D_INTERFACE: return &d->u.iface.type_params;
     default: return NULL;
@@ -267,7 +267,7 @@ static bool register_extern_type(Loader *l, MsModId m, const MsDecl *d) {
         return sl_fail(l, "duplicate standard type %.*s", (int)ms_name(c->names, name).len,
                     ms_name(c->names, name).ptr);
     }
-    MsSymId s = ms_sym_add(c, m, name, id, MS_SYM_TYPE, MS_NATIVE_BUILTIN, name, d->export_, d, 0);
+    MsSymId s = ms_sym_add(c, m, name, id, MS_SYM_TYPE, MS_NATIVE_BUILTIN, name, d->is_exported, d, 0);
     if (s == MS_NONE) {
         return sl_fail(l, "duplicate standard declaration %.*s", (int)sl_at(l, file, d->pos).len, sl_at(l, file, d->pos).ptr);
     }
@@ -288,7 +288,7 @@ static void register_source_stubs(Loader *l, MsModId m, const MsModule *mod) {
     for (uint32_t i = 0; i < mod->ndecls; i++) {
         const MsDecl *d = mod->decls[i];
         bool nominal = d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
-        if (!nominal || !d->export_ || (d->kind == MS_D_TYPE && d->u.type.external)) {
+        if (!nominal || !d->is_exported || (d->kind == MS_D_TYPE && d->u.type.external)) {
             continue;
         }
         MsSym name = decl_name(d);
@@ -366,7 +366,7 @@ static bool register_module(Loader *l, MsModId m, const MsModule *mod) {
             MsStr nn = ms_name(c->names, native_name);
             id = intern_fmt(l, "@std/%.*s", (int)nn.len, nn.ptr);
         }
-        MsSymId s = ms_sym_add(c, m, name, id, sk, MS_NATIVE_BUILTIN, native_name, d->export_, d, decl_nvars(d));
+        MsSymId s = ms_sym_add(c, m, name, id, sk, MS_NATIVE_BUILTIN, native_name, d->is_exported, d, decl_nvars(d));
         if (s == MS_NONE) {
             MsStr p = sl_at(l, file, d->pos);
             return sl_fail(l, "duplicate standard declaration %.*s", (int)p.len, p.ptr);

@@ -295,6 +295,23 @@ fn abi_kind(text: &str) -> String {
         text.split(|c: char| !c.is_alphanumeric() && c != '_')
             .any(|t| t == w)
     };
+    // Role aliases of the runtime ABI (crates/ms-rt-abi): pointers and a presence byte.
+    for alias in [
+        "ElemDesc",
+        "KeyDesc",
+        "ValDesc",
+        "ValueDesc",
+        "CmpFn",
+        "MsCompareFn",
+        "ErrSlot",
+    ] {
+        if word(alias) {
+            return "ptr".into();
+        }
+    }
+    if word("HasRaw") {
+        return "u8".into();
+    }
     for (rust, c) in [
         ("i64", "int64_t"),
         ("u64", "uint64_t"),
@@ -1029,6 +1046,9 @@ fn add_c_runtime(
             .args(["-c", "-O2", "-std=c11", "-fPIC", "-fno-stack-protector"])
             // A null check stays even where an attribute says the pointer is never null.
             .args(["-fno-strict-aliasing", "-fno-delete-null-pointer-checks"])
+            // A fault walks frame pointers to name the program line that called into the runtime, and
+            // the Rust runtime is built with them (.cargo/config.toml), so C frames must keep theirs.
+            .arg("-fno-omit-frame-pointer")
             .args(["-Wall", "-Wextra", "-Werror"])
             .arg("-I")
             .arg(runtime.join("include"))
