@@ -296,7 +296,7 @@ static uint32_t qbe_slot_bytes(MirLayouts *layouts, MirTy ty) {
     return (size + 7U) / 8U * 8U;
 }
 
-static bool qbe_rt_direct(QCx *c, MirTy ty);
+static bool qbe_rt_direct(QCx *c, MirTy ty) { return mir_rt_direct(c->m, c->layouts, ty); }
 
 /* The frame slots one runtime call needs: a copy of each argument that does not pass directly,
  * and the result area when the result does not. */
@@ -378,30 +378,6 @@ static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
 }
 
 /* ---- runtime calls ---- */
-
-static bool qbe_name_is(const QCx *c, MsSym sym, const char *text) {
-    const MsStr name = ms_name(&c->m->names, sym);
-    return name.len == strlen(text) && memcmp(name.ptr, text, name.len) == 0;
-}
-
-/* Whether the runtime takes a value of `ty` as its scalar leaves: scalars, pointers, handles and
- * the small optionals of them. Anything else crosses as the address of a copy. */
-static bool qbe_rt_direct(QCx *c, MirTy ty) {
-    const MirTyData *data = mir_ty_data(c->m, ty);
-    switch ((MirTyKind)data->kind) {
-    case MK_VOID: case MK_BOOL: case MK_INT: case MK_INT8: case MK_INT16: case MK_INT32:
-    case MK_UINT8: case MK_UINT16: case MK_UINT32: case MK_UINT64: case MK_FLOAT:
-    case MK_FLOAT32: case MK_PTR: case MK_FN: case MK_IFACE:
-        return true;
-    case MK_OBJ:
-        return !qbe_name_is(c, data->name, "Map") && !qbe_name_is(c, data->name, "Set");
-    case MK_OPT:
-        return mir_opt_is_nullable(c->layouts, data->elem) || mir_is_scalar(c->m, data->elem);
-    case MK_STR: case MK_BYTES: case MK_TYPE: case MK_ALT: case MK_LIST:
-        return false;
-    }
-    return false;
-}
 
 /* Appends one argument of a runtime call: the leaves of `value` when `ty` passes directly, else
  * the address of a stack copy that is written first. `area` names the copy's frame slot. */
