@@ -49,6 +49,14 @@ export type Fact:
 	result_borrow: Bool
 	receiver: String
 	result: Slot?
+	// Read by tools/ms/review.ms; older fact files lack them.
+	label: String = ""
+	ty: String = ""
+	exported: Bool = false
+	reach: List[String] = []
+	permits: List[String] = []
+	first: Int = 0
+	last: Int = 0
 
 // One line of a view: a label and what hangs under it.
 export type Node:

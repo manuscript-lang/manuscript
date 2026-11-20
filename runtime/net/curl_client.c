@@ -33,9 +33,11 @@ struct MsCurlClient {
     MsNetFilter *filter;
     uint8_t *roots, *certificate, *key; /* owned copies of the PEM texts */
     char *unix_socket;   /* NUL-terminated path, or NULL for TCP */
+    char *resolver;      /* NUL-terminated DNS server, or NULL for the system's */
     size_t roots_length, certificate_length, key_length;
     long max_redirects;
     bool cookies, decompress;
+    MsCurlClient *next_dead; /* the driver's list of clients to free */
     atomic_bool started; /* a request has been made: the filter is fixed */
     /* guarded by the driver lock */
     bool closed;
@@ -50,9 +52,11 @@ struct MsCurlTransfer {
     MsCurlTransfer *live_next, **live_prev; /* the client's list of live transfers (live_prev is NULL when unlinked) */
     unsigned work;
     bool queued;
+    bool retired; /* its removal is running: nothing may be posted to it, for it is about to be freed */
     CURL *easy;
     MsCurlClient *client;
     struct curl_slist *fields;
+    struct curl_slist *resolve;
     char error[CURL_ERROR_SIZE];
     /* guarded by the driver lock from here */
     uint8_t *buffer;
@@ -74,6 +78,7 @@ static struct {
     CURLM *multi;
     MsSysThread *thread;
     MsCurlTransfer *work;
+    MsCurlClient *dead; /* released clients the driver frees: a share's connections belong to the driver's multi */
     bool stop;
 } driver;
 
@@ -89,6 +94,9 @@ static void wake_waiter(MsCurlTransfer *transfer) {
 
 /* Queues `work` for the driver and wakes it. The caller holds the lock. */
 static void post_work(MsCurlTransfer *transfer, unsigned work) {
+    if (transfer->retired) {
+        return;
+    }
     transfer->work |= work;
     if (!transfer->queued) {
         transfer->queued = true;
@@ -115,17 +123,6 @@ static void finish_head(MsCurlTransfer *transfer) {
     transfer->head.lines = ms_bytes_of((const uint8_t *)transfer->lines, transfer->lines_length);
     transfer->head_ready = true;
     wake_waiter(transfer);
-}
-
-/* The host of `location` resolved against the transfer's current URL, or false. */
-static bool redirect_host(MsCurlTransfer *transfer, const char *location, char **host) {
-    char *current = NULL;
-    CURLU *url = curl_url();
-    bool ok = url != NULL && curl_easy_getinfo(transfer->easy, CURLINFO_EFFECTIVE_URL, &current) == CURLE_OK && current != NULL &&
-              curl_url_set(url, CURLUPART_URL, current, 0) == CURLUE_OK && curl_url_set(url, CURLUPART_URL, location, 0) == CURLUE_OK &&
-              curl_url_get(url, CURLUPART_HOST, host, 0) == CURLUE_OK;
-    curl_url_cleanup(url);
-    return ok;
 }
 
 /* `host` without the brackets of an IPv6 literal. */
@@ -159,31 +156,6 @@ static size_t on_header(char *line, size_t size, size_t count, void *argument) {
         transfer->response_code = code;
         uv_mutex_unlock(&driver.lock);
         return length;
-    }
-    if (length > 2 && transfer->response_code >= 300 && transfer->response_code < 400 && starts_with_fold(line, length, "location:")) {
-        char *value = malloc(length + 1), *host = NULL;
-        size_t at = 9;
-        while (at < length && (line[at] == ' ' || line[at] == '\t')) {
-            at++;
-        }
-        size_t end = length;
-        while (end > at && (line[end - 1] == '\r' || line[end - 1] == '\n' || line[end - 1] == ' ')) {
-            end--;
-        }
-        bool denied = value == NULL; /* a target that cannot be checked is refused */
-        if (value != NULL) {
-            memcpy(value, line + at, end - at);
-            value[end - at] = 0;
-            denied = !redirect_host(transfer, value, &host) || !ms_net_filter_host_allowed(transfer->client->filter, bare_host(host));
-            curl_free(host);
-        }
-        free(value);
-        if (denied) {
-            uv_mutex_lock(&driver.lock);
-            transfer->fault = MS_CURL_FAULT_DENIED;
-            uv_mutex_unlock(&driver.lock);
-            return 0;
-        }
     }
     uv_mutex_lock(&driver.lock);
     if (!transfer->head_ready && length > 2 && transfer->lines_length + length <= (size_t)256 * 1024) { /* the blank line and trailers are not kept */
@@ -268,6 +240,8 @@ static void finish_transfer(MsCurlTransfer *transfer, CURLcode result) {
     uv_mutex_unlock(&driver.lock);
 }
 
+static void free_dead(void);
+
 static void destroy_transfer(MsCurlTransfer *transfer) {
     uv_mutex_lock(&driver.lock);
     if (transfer->live_prev != NULL) {
@@ -280,6 +254,7 @@ static void destroy_transfer(MsCurlTransfer *transfer) {
     uv_mutex_unlock(&driver.lock);
     curl_easy_cleanup(transfer->easy);
     curl_slist_free_all(transfer->fields);
+    curl_slist_free_all(transfer->resolve);
     ms_curl_client_release(transfer->client);
     free(transfer->buffer);
     free(transfer->lines);
@@ -300,8 +275,10 @@ static void run_work(void) {
         const unsigned work = transfer->work;
         transfer->work = 0;
         transfer->queued = false;
+        transfer->retired = (work & WORK_REMOVE) != 0;
         uv_mutex_unlock(&driver.lock);
-        if ((work & WORK_ADD) != 0 && curl_multi_add_handle(driver.multi, transfer->easy) != CURLM_OK) {
+        if ((work & WORK_ADD) != 0 && (curl_easy_setopt(transfer->easy, CURLOPT_SHARE, transfer->client->share) != CURLE_OK ||
+                                       curl_multi_add_handle(driver.multi, transfer->easy) != CURLM_OK)) {
             finish_transfer(transfer, CURLE_FAILED_INIT);
         }
         if ((work & WORK_UNPAUSE) != 0) {
@@ -335,11 +312,12 @@ static void driver_main(void *argument) {
     (void)argument;
     for (;;) {
         run_work();
+        free_dead();
         int running = 0;
         (void)curl_multi_perform(driver.multi, &running);
         collect_finished();
         uv_mutex_lock(&driver.lock);
-        const bool stop = driver.stop && driver.work == NULL;
+        const bool stop = driver.stop && driver.work == NULL && driver.dead == NULL;
         uv_mutex_unlock(&driver.lock);
         if (stop) {
             return;
@@ -379,6 +357,7 @@ void ms_curl_shutdown(void) {
     uv_mutex_unlock(&driver.lock);
     if (thread != NULL) {
         ms_sys_thread_join(thread);
+        free_dead();
         curl_multi_cleanup(driver.multi);
         curl_global_cleanup();
         uv_mutex_lock(&driver.lock);
@@ -417,6 +396,7 @@ MsCurlClient *ms_curl_client_new(const MsCurlClientOptions *options) {
     client->certificate_length = options->certificate_pem.len;
     client->key_length = options->private_key_pem.len;
     client->unix_socket = options->unix_socket.len == 0 ? NULL : terminated(options->unix_socket);
+    client->resolver = options->resolver.len == 0 ? NULL : terminated(options->resolver);
     client->share = curl_share_init();
     if (client->share != NULL) {
         (void)curl_share_setopt(client->share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
@@ -427,7 +407,7 @@ MsCurlClient *ms_curl_client_new(const MsCurlClientOptions *options) {
         }
     }
     if (client->filter == NULL || client->share == NULL || client->roots == NULL || client->certificate == NULL || client->key == NULL ||
-        (options->unix_socket.len != 0 && client->unix_socket == NULL)) {
+        (options->unix_socket.len != 0 && client->unix_socket == NULL) || (options->resolver.len != 0 && client->resolver == NULL)) {
         ms_curl_client_release(client);
         return NULL;
     }
@@ -436,10 +416,7 @@ MsCurlClient *ms_curl_client_new(const MsCurlClientOptions *options) {
 
 void ms_curl_client_retain(MsCurlClient *client) { atomic_fetch_add(&client->references, 1); }
 
-void ms_curl_client_release(MsCurlClient *client) {
-    if (client == NULL || atomic_fetch_sub(&client->references, 1) != 1) {
-        return;
-    }
+static void free_client(MsCurlClient *client) {
     if (client->share != NULL) {
         (void)curl_share_cleanup(client->share);
     }
@@ -448,7 +425,41 @@ void ms_curl_client_release(MsCurlClient *client) {
     free(client->certificate);
     free(client->key);
     free(client->unix_socket);
+    free(client->resolver);
     free(client);
+}
+
+/* Frees the clients released since the last pass. */
+static void free_dead(void) {
+    uv_mutex_lock(&driver.lock);
+    MsCurlClient *list = driver.dead;
+    driver.dead = NULL;
+    uv_mutex_unlock(&driver.lock);
+    while (list != NULL) {
+        MsCurlClient *client = list;
+        list = client->next_dead;
+        free_client(client);
+    }
+}
+
+/* The last reference frees the client. While the driver runs it does that: the share holds connections the driver's multi
+ * manages, and cleaning it up from another thread would race with the driver. */
+void ms_curl_client_release(MsCurlClient *client) {
+    if (client == NULL || atomic_fetch_sub(&client->references, 1) != 1) {
+        return;
+    }
+    uv_once(&driver_once, driver_init_lock);
+    uv_mutex_lock(&driver.lock);
+    const bool driven = driver.thread != NULL && !driver.stop;
+    if (driven) {
+        client->next_dead = driver.dead;
+        driver.dead = client;
+        (void)curl_multi_wakeup(driver.multi);
+    }
+    uv_mutex_unlock(&driver.lock);
+    if (!driven) {
+        free_client(client);
+    }
 }
 
 void ms_curl_client_close(MsCurlClient *client) {
@@ -456,7 +467,7 @@ void ms_curl_client_close(MsCurlClient *client) {
     uv_mutex_lock(&driver.lock);
     client->closed = true;
     for (MsCurlTransfer *transfer = client->live; transfer != NULL; transfer = transfer->live_next) {
-        if (transfer->closed) {
+        if (transfer->closed || transfer->retired) {
             continue;
         }
         transfer->closed = true;
@@ -469,6 +480,44 @@ void ms_curl_client_close(MsCurlClient *client) {
         wake_waiter(transfer);
     }
     uv_mutex_unlock(&driver.lock);
+}
+
+const char *ms_curl_client_resolver(const MsCurlClient *client) { return client->resolver; }
+
+long ms_curl_client_max_redirects(const MsCurlClient *client) { return client->max_redirects; }
+
+bool ms_curl_url_resolve(MsBytes base, MsBytes reference, char **out) {
+    char *base_text = terminated(base), *reference_text = terminated(reference), *found = NULL;
+    CURLU *handle = curl_url();
+    bool ok = base_text != NULL && reference_text != NULL && handle != NULL && curl_url_set(handle, CURLUPART_URL, base_text, 0) == CURLUE_OK &&
+              curl_url_set(handle, CURLUPART_URL, reference_text, 0) == CURLUE_OK && curl_url_get(handle, CURLUPART_URL, &found, 0) == CURLUE_OK;
+    *out = ok ? strdup(found) : NULL;
+    ok = *out != NULL;
+    curl_free(found);
+    curl_url_cleanup(handle);
+    free(base_text);
+    free(reference_text);
+    return ok;
+}
+
+bool ms_curl_url_target(MsBytes url, char *host, size_t capacity, uint16_t *port) {
+    char *text = terminated(url), *found = NULL, *service = NULL;
+    CURLU *handle = curl_url();
+    const bool ok = text != NULL && handle != NULL && curl_url_set(handle, CURLUPART_URL, text, 0) == CURLUE_OK &&
+                    curl_url_get(handle, CURLUPART_HOST, &found, 0) == CURLUE_OK &&
+                    curl_url_get(handle, CURLUPART_PORT, &service, CURLU_DEFAULT_PORT) == CURLUE_OK;
+    const MsBytes bare = ok ? bare_host(found) : ms_bytes_of(NULL, 0);
+    const bool fits = ok && bare.len < capacity;
+    if (fits) {
+        memcpy(host, bare.ptr, bare.len);
+        host[bare.len] = 0;
+        *port = (uint16_t)strtoul(service, NULL, 10);
+    }
+    curl_free(found);
+    curl_free(service);
+    curl_url_cleanup(handle);
+    free(text);
+    return fits;
 }
 
 bool ms_curl_client_started(const MsCurlClient *client) { return atomic_load(&client->started); }
@@ -570,20 +619,21 @@ static bool configure(MsCurlTransfer *transfer, const MsCurlRequest *request, co
     const struct curl_blob certificate = {client->certificate, client->certificate_length, CURL_BLOB_COPY};
     const struct curl_blob key = {client->key, client->key_length, CURL_BLOB_COPY};
     bool ok = curl_easy_setopt(easy, CURLOPT_URL, url) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_PRIVATE, transfer) == CURLE_OK &&
-              curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_SHARE, client->share) == CURLE_OK &&
-              curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, transfer->error) == CURLE_OK &&
+              curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, transfer->error) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, on_body) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_WRITEDATA, transfer) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, on_header) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_HEADERDATA, transfer) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https") == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_REDIR_PROTOCOLS_STR, "http,https") == CURLE_OK &&
-              curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, client->max_redirects > 0 ? 1L : 0L) == CURLE_OK &&
+              curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, 0L) == CURLE_OK /* the caller follows redirects */ &&
               curl_easy_setopt(easy, CURLOPT_MAXREDIRS, client->max_redirects) == CURLE_OK &&
               curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, milliseconds) == CURLE_OK && curl_easy_setopt(easy, CURLOPT_USERAGENT, "manuscript") == CURLE_OK &&
+              curl_easy_setopt(easy, CURLOPT_PATH_AS_IS, 1L) == CURLE_OK && /* the server sees the path as written */
               curl_easy_setopt(easy, CURLOPT_PROXY, "") == CURLE_OK; /* a proxy would resolve names itself and bypass the address filter */
     /* TCP sockets are opened by on_open_socket so the filter sees the address; a Unix socket has none to judge. */
     ok = ok && (client->unix_socket != NULL ? curl_easy_setopt(easy, CURLOPT_UNIX_SOCKET_PATH, client->unix_socket) == CURLE_OK
                                             : curl_easy_setopt(easy, CURLOPT_OPENSOCKETFUNCTION, on_open_socket) == CURLE_OK &&
                                                   curl_easy_setopt(easy, CURLOPT_OPENSOCKETDATA, transfer) == CURLE_OK);
+    ok = ok && (transfer->resolve == NULL || curl_easy_setopt(easy, CURLOPT_RESOLVE, transfer->resolve) == CURLE_OK);
     ok = ok && (!client->decompress || curl_easy_setopt(easy, CURLOPT_ACCEPT_ENCODING, "") == CURLE_OK);
     ok = ok && (!client->cookies || curl_easy_setopt(easy, CURLOPT_COOKIEFILE, "") == CURLE_OK);
     ok = ok && (client->roots_length == 0 || curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, &roots) == CURLE_OK);
@@ -662,7 +712,13 @@ MsNetStatus ms_curl_start(MsCurlClient *client, const MsCurlRequest *request, in
     transfer->buffer = malloc(BUFFER_BYTES);
     transfer->easy = curl_easy_init();
     transfer->fields = request_fields(request);
-    const bool ready = transfer->buffer != NULL && transfer->easy != NULL && (request->nfields == 0 || transfer->fields != NULL);
+    if (request->resolve.len > 0) {
+        char *entry = terminated(request->resolve);
+        transfer->resolve = entry == NULL ? NULL : curl_slist_append(NULL, entry);
+        free(entry);
+    }
+    const bool ready = transfer->buffer != NULL && transfer->easy != NULL && (request->nfields == 0 || transfer->fields != NULL) &&
+                       (request->resolve.len == 0 || transfer->resolve != NULL);
     const bool configured = ready && configure(transfer, request, url, deadline_ns, &custom);
     free(url);
     free(custom); /* curl copies the strings it is given */

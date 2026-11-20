@@ -176,15 +176,22 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_BINARY: live_binary(w, e); return;
     case MS_E_MEMBER: live_expr(w, e->u.member.left); return;
     case MS_E_INDEX:
-        live_expr(w, e->u.bin.right);
-        live_expr(w, e->u.bin.left);
+    case MS_E_APPLY: { /* `xs[i]` before name resolution said `xs` is a value */
+        const MsExpr *list = NULL;
+        const MsExpr *index = NULL;
+        if (!ms_expr_index(e, &list, &index)) {
+            w->supported = false;
+            return;
+        }
+        live_expr(w, index);
+        live_expr(w, list);
         return;
+    }
     case MS_E_LIST:
         for (uint32_t i = e->u.list.len; i > 0; i--) {
             live_expr(w, e->u.list.ptr[i - 1]);
         }
         return;
-    case MS_E_APPLY:
     case MS_E_PROBE:
     case MS_E_MAP: w->supported = false; return; /* collections are not modeled */
     case MS_E_LAMBDA: live_lambda(w, e); return;
