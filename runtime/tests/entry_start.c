@@ -27,12 +27,9 @@ static void expect(int condition, const char *what) {
     }
 }
 
-/* What the std layer and the profiler provide in a program. */
+/* What the std layer provides in a program. */
 void ms_sched_flush_stdout(void) { fflush(stdout); }
 int32_t ms_sched_stdout_error(void) { return 0; }
-void ms_profile_start(void) {}
-void ms_profile_attach_runtime_thread(void) {}
-void ms_profile_finish(void) {}
 
 static int hooks_run;
 static void count_hook(void) { hooks_run++; }

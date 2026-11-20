@@ -186,6 +186,9 @@ MsTask *ms_task_lookup(const MsSched *sched, MsTaskHandle handle);
 /* Makes `task` the running task's header a remote stop raises its cancel flag on (see ms_sched_stop_remote), then
  * applies a stop that arrived since the flag was last refreshed. */
 void ms_sched_publish(MsSched *sched, MsTask *task) MS_NONNULL;
+/* The stack window (low, high, chain) of the task the stop target runs, for the profiler's sampler on any thread or in
+ * a signal handler. False when no task is published. */
+bool ms_sched_sample_window(uintptr_t window[3]);
 /* The stop request aimed at this thread's scheduler (SIGINT, SIGTERM, a parent's cancel), 0 when none. */
 uint8_t ms_sched_stop_request(void);
 

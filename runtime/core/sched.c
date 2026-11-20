@@ -79,6 +79,24 @@ void ms_sched_clear_stop_target(void) {
     atomic_store(&stop_target, NULL);
 }
 
+bool ms_sched_sample_window(uintptr_t window[3]) {
+    const MsSched *const sched = atomic_load(&stop_target);
+    if (sched == NULL) {
+        return false;
+    }
+    const MsTaskHdr *const hdr = atomic_load(&sched->published_hdr);
+    if (hdr == NULL) {
+        return false;
+    }
+    /* The header is the first member of the task's unwind state. A sample racing a task switch reads a stale window,
+     * which at worst ends the walk early. */
+    const MsUnwind *const unwind = (const MsUnwind *)hdr;
+    window[0] = unwind->stack_low;
+    window[1] = unwind->stack_high;
+    window[2] = unwind->stack_chain;
+    return true;
+}
+
 void ms_sched_stop_remote(uint8_t signal) {
     MsSched *const sched = atomic_load(&stop_target);
     if (sched == NULL) {

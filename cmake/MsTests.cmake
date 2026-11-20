@@ -116,8 +116,7 @@ foreach(file ${_io_tests})
           LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 endforeach()
 
-# The process entry: core, the reactor, the stop thread and the entry sources, with the std layer's stdout and the
-# profiler stubbed by the test.
+# The process entry: core, the reactor, the stop thread and the entry sources, with the std layer's stdout stubbed by the test.
 file(GLOB _entry_sources CONFIGURE_DEPENDS "${_rt}/entry/*.c")
 file(GLOB _entry_tests CONFIGURE_DEPENDS "${_tests}/entry_*.c")
 foreach(file ${_entry_tests})
