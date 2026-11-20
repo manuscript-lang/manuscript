@@ -265,6 +265,20 @@ fn body_stmts(body: &[Stmt], out: &mut Vec<NodeId>) {
         match &s.kind {
             StmtKind::Bind { value, .. } => body_exprs(value, out),
             StmtKind::Return(Some(v)) | StmtKind::Call(v) => body_exprs(v, out),
+            StmtKind::If {
+                cond,
+                body,
+                else_body,
+                ..
+            } => {
+                body_exprs(cond, out);
+                body_stmts(body, out);
+                body_stmts(else_body, out);
+            }
+            StmtKind::While { cond, body } => {
+                body_exprs(cond, out);
+                body_stmts(body, out);
+            }
             _ => {}
         }
     }
