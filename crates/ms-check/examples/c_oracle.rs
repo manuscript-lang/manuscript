@@ -607,6 +607,19 @@ fn effect_edges(files: &[String]) {
                     .unwrap_or_else(|| syms.str(callee).to_string());
                 println!("edge {shown} {}:{}", pos.line, pos.column);
             }
+            let mut reach = program.declared_effects_of(symbol.id);
+            reach.sort();
+            if !reach.is_empty() {
+                println!("reach {}", reach.join(","));
+            }
+            let permits = program
+                .effect_permits
+                .get(&symbol.id)
+                .cloned()
+                .unwrap_or_default();
+            if !permits.is_empty() {
+                println!("permits {}", permits.join(","));
+            }
         }
     }
 }
