@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/mir_analysis.h"
 #include "ms/mir_layout.h"
 #include "ms/mir_pass.h"
 
