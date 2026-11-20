@@ -797,8 +797,11 @@ fn libs_sh(root: &Path, triple: Option<&str>, args: &[&str]) -> Result<Vec<Strin
 /// Whether the C libraries are wired for `triple`. Each target joins as its build is proven (workstream W0b);
 /// a source that needs a library the target lacks stays out of that archive and the Rust runtime serves it.
 fn c_libs_wired(triple: Option<&str>) -> bool {
-    std::env::consts::OS == "linux"
-        && triple.is_none_or(|t| t.ends_with("linux-gnu") || t.ends_with("linux-musl"))
+    match std::env::consts::OS {
+        "linux" => triple.is_none_or(|t| t.ends_with("linux-gnu") || t.ends_with("linux-musl")),
+        "macos" => true,
+        _ => false,
+    }
 }
 
 /// Folders of `runtime` that hold code for one platform only: the target's own is compiled, the rest are not.
