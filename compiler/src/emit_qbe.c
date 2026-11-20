@@ -10,7 +10,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "ms/mir_analysis.h"
 #include "ms/mir_layout.h"
 
 /* Values of at most this many bytes are passed as their leaves; larger ones are not supported yet. */
@@ -71,7 +73,9 @@ static void qbe_sym(MsBuf *o, MsStr n) {
     }
 }
 
-static bool qbe_checked(MirOp op) { return op == MOP_IAddChk || op == MOP_ISubChk; }
+static bool qbe_checked(MirOp op) {
+    return op == MOP_IAddChk || op == MOP_ISubChk || op == MOP_IMulChk;
+}
 
 static void qbe_label(QCx *c, uint32_t block, uint32_t part) {
     if (part == 0) ms_buf_printf(c->out, "@b%u", block);
@@ -292,6 +296,24 @@ static uint32_t qbe_slot_bytes(MirLayouts *layouts, MirTy ty) {
     return (size + 7U) / 8U * 8U;
 }
 
+static bool qbe_rt_direct(QCx *c, MirTy ty) { return mir_rt_direct(c->m, c->layouts, ty); }
+
+/* The frame slots one runtime call needs: a copy of each argument that does not pass directly,
+ * and the result area when the result does not. */
+static void qbe_frame_rt_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    const MirExtern *def = &c->m->externs[inst->imm.a];
+    for (uint32_t k = 0; k < inst->nargs; k++) {
+        if (!qbe_rt_direct(c, def->params[k].ty)) {
+            ms_buf_printf(c->out, "\t%%p%u_%u_%u =l alloc8 %u\n", block, index, k,
+                          qbe_slot_bytes(c->layouts, def->params[k].ty));
+        }
+    }
+    if (!qbe_rt_direct(c, def->ret)) {
+        ms_buf_printf(c->out, "\t%%r%u_%u =l alloc8 %u\n", block, index,
+                      qbe_slot_bytes(c->layouts, def->ret));
+    }
+}
+
 static void qbe_frame_slots(QCx *c) {
     for (uint32_t b = 0; b < c->f->nblocks; b++) {
         const MirBlockData *block = &c->f->blocks[b];
@@ -304,6 +326,8 @@ static void qbe_frame_slots(QCx *c) {
                        qbe_leaves(c, c->f->values[inst->res]).len > 1) {
                 ms_buf_printf(c->out, "\t%%r%u_%u =l alloc8 %u\n", b, k,
                               qbe_slot_bytes(c->layouts, c->f->values[inst->res]));
+            } else if (inst->op == MOP_CallRt) {
+                qbe_frame_rt_call(c, inst, b, k);
             }
         }
     }
@@ -353,9 +377,78 @@ static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     return qbe_load_leaves(c, inst->res, area);
 }
 
+/* ---- runtime calls ---- */
+
+/* Appends one argument of a runtime call: the leaves of `value` when `ty` passes directly, else
+ * the address of a stack copy that is written first. `area` names the copy's frame slot. */
+static bool qbe_rt_argument(QCx *c, MsBuf *args, MirTy ty, MirValue value, const char *area) {
+    const MirLeafSpan leaves = qbe_leaves(c, ty);
+    if (!qbe_rt_direct(c, ty)) {
+        if (!qbe_store_leaves(c, value, area)) {
+            return false;
+        }
+        ms_buf_printf(args, "%sl %s", args->len > 0 ? ", " : "", area);
+        return true;
+    }
+    for (uint32_t j = 0; j < leaves.len; j++) {
+        ms_buf_printf(args, "%s%c ", args->len > 0 ? ", " : "", qbe_leaf_type(leaves.ptr[j]));
+        qbe_name(args, value, j);
+    }
+    return true;
+}
+
+/* A call of a runtime function, which follows the C ABI of `ms-rt-abi`: scalars by value,
+ * everything else by the address of a copy, and a result that is not a scalar through a trailing
+ * output pointer. */
+static bool qbe_call_rt(QCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    const MirExtern *def = &c->m->externs[inst->imm.a];
+    MsBuf args = {0};
+    char area[40];
+    bool ok = true;
+    for (uint32_t k = 0; ok && k < inst->nargs; k++) {
+        (void)snprintf(area, sizeof area, "%%p%u_%u_%u", block, index, k);
+        ok = qbe_rt_argument(c, &args, def->params[k].ty, inst->args[k], area);
+    }
+    const MirLeafSpan result = qbe_leaves(c, def->ret);
+    const bool direct = qbe_rt_direct(c, def->ret);
+    if (ok && direct && result.len > 1) {
+        c->why = "runtime result of several scalars";
+        ok = false;
+    }
+    if (ok) {
+        (void)snprintf(area, sizeof area, "%%r%u_%u", block, index);
+        if (!direct) {
+            ms_buf_printf(&args, "%sl %s", args.len > 0 ? ", " : "", area);
+        }
+        if (direct && result.len == 1) {
+            ms_buf_printf(c->out, "\t%%v%u =%c call ", inst->res, qbe_leaf_type(result.ptr[0]));
+        } else {
+            ms_buf_puts(c->out, "\tcall ");
+        }
+        qbe_sym(c->out, ms_name(&c->m->names, def->name));
+        ms_buf_printf(c->out, "(%.*s)\n", (int)args.len, args.data == NULL ? "" : args.data);
+        if (!direct && inst->res != MIR_NONE) {
+            ok = qbe_load_leaves(c, inst->res, area);
+        }
+    }
+    ms_buf_free(&args);
+    return ok;
+}
+
+/* Ends the current piece of the block with a branch on the overflow flag `%o<n>s`: the fault is a
+ * block of its own and the rest of the block continues in a new piece. */
+static void qbe_overflow_branch(QCx *c, uint32_t n, uint32_t block, uint32_t *part) {
+    MsBuf *o = c->out;
+    (*part)++;
+    ms_buf_printf(o, "\tjnz %%o%us, @f%u, ", n, n);
+    qbe_label(c, block, *part);
+    ms_buf_printf(o, "\n@f%u\n\tcall $msrt_fault_int_overflow()\n\thlt\n", n);
+    qbe_label(c, block, *part);
+    ms_buf_putc(o, '\n');
+}
+
 /* A checked add or subtract. add overflows when both operands differ in sign from the result; sub
- * when the operands differ in sign and the result differs from the first. The check ends the
- * current piece of the block: the fault is a block of its own and the rest continues in a new piece. */
+ * when the operands differ in sign and the result differs from the first. */
 static void qbe_checked_arith(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
     MsBuf *o = c->out;
     const MirValue *a = inst->args;
@@ -369,12 +462,36 @@ static void qbe_checked_arith(QCx *c, const MirInst *inst, uint32_t block, uint3
     ms_buf_printf(o, "\t%%o%ub =l xor %%v%u, %%v%u\n", n, second, other);
     ms_buf_printf(o, "\t%%o%uc =l and %%o%ua, %%o%ub\n", n, n, n);
     ms_buf_printf(o, "\t%%o%us =w csltl %%o%uc, 0\n", n, n);
-    (*part)++;
-    ms_buf_printf(o, "\tjnz %%o%us, @f%u, ", n, n);
-    qbe_label(c, block, *part);
-    ms_buf_printf(o, "\n@f%u\n\tcall $msrt_fault_int_overflow()\n\thlt\n", n);
-    qbe_label(c, block, *part);
-    ms_buf_putc(o, '\n');
+    qbe_overflow_branch(c, n, block, part);
+}
+
+/* A checked multiply. QBE has no overflow flag and no high multiply, so the product is divided
+ * back: it overflowed when `product / a != b`. A zero or minus-one `a` would trap or lie in the
+ * division, so the divisor is replaced by 1 there; `a == 0` never overflows and `a == -1`
+ * overflows exactly when `b` is the minimum. All of it is straight-line code. */
+static void qbe_checked_mul(QCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+    MsBuf *o = c->out;
+    const MirValue a = inst->args[0];
+    const MirValue b = inst->args[1];
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "\t%%v%u =l mul %%v%u, %%v%u\n", inst->res, a, b);
+    ms_buf_printf(o, "\t%%o%ua =w ceql %%v%u, 0\n", n, a);
+    ms_buf_printf(o, "\t%%o%ub =w ceql %%v%u, -1\n", n, a);
+    ms_buf_printf(o, "\t%%o%uc =w or %%o%ua, %%o%ub\n", n, n, n);
+    ms_buf_printf(o, "\t%%o%ud =l extuw %%o%uc\n", n, n);
+    /* divisor = a when `a` is safe, else 1: a - (a - 1) * unsafe */
+    ms_buf_printf(o, "\t%%o%ue =l sub %%v%u, 1\n", n, a);
+    ms_buf_printf(o, "\t%%o%uf =l mul %%o%ue, %%o%ud\n", n, n, n);
+    ms_buf_printf(o, "\t%%o%ug =l sub %%v%u, %%o%uf\n", n, a, n);
+    ms_buf_printf(o, "\t%%o%uh =l div %%v%u, %%o%ug\n", n, inst->res, n);
+    ms_buf_printf(o, "\t%%o%ui =w cnel %%o%uh, %%v%u\n", n, n, b);
+    ms_buf_printf(o, "\t%%o%uj =w xor %%o%uc, 1\n", n, n);
+    ms_buf_printf(o, "\t%%o%uk =w and %%o%ui, %%o%uj\n", n, n, n);
+    ms_buf_printf(o, "\t%%o%ul =w ceql %%v%u, -1\n", n, a);
+    ms_buf_printf(o, "\t%%o%um =w ceql %%v%u, -9223372036854775808\n", n, b);
+    ms_buf_printf(o, "\t%%o%un =w and %%o%ul, %%o%um\n", n, n, n);
+    ms_buf_printf(o, "\t%%o%us =w or %%o%uk, %%o%un\n", n, n, n);
+    qbe_overflow_branch(c, n, block, part);
 }
 
 static void qbe_compare(QCx *c, const MirInst *inst) {
@@ -470,6 +587,8 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: qbe_compare(c, inst); return true;
     case MOP_Call: return qbe_call(c, inst, block, index);
     case MOP_IAddChk: case MOP_ISubChk: qbe_checked_arith(c, inst, block, part); return true;
+    case MOP_IMulChk: qbe_checked_mul(c, inst, block, part); return true;
+    case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     default:
         c->why = mir_op_info[inst->op].name;
         return false;

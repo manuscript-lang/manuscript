@@ -1,0 +1,11 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %a: int = iconst 4611686018427387904
+  %b: int = iconst 2
+  %r: int = imul.chk %a, %b
+  ret %r
+}

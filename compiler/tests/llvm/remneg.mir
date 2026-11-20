@@ -1,0 +1,17 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %a: int = iconst -9223372036854775808
+  %b: int = iconst -1
+  %c: int = srem.chk %a, %b
+  %d: int = iconst 7
+  %e: int = iconst 3
+  %f: int = srem.chk %d, %e
+  %g: int = iadd %c, %f
+  %h: int = iconst 4
+  %r: int = iadd %g, %h
+  ret %r
+}
