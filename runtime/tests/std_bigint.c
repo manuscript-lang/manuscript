@@ -307,6 +307,12 @@ static void run_direct(void) {
     drop(m);
     drop(a);
     drop(b);
+    /* The top octal digit of 127 spans bits past the last stored byte. */
+    cell *edge = big("127");
+    text = text_of(edge, 8);
+    CHECK(strcmp(text, "177") == 0);
+    free(text);
+    drop(edge);
 }
 
 int main(void) {

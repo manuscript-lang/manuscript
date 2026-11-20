@@ -621,7 +621,7 @@ static uint8_t *digits_by_bits(const BIGNUM *a, unsigned radix, size_t *length) 
     }
     const size_t bits = (size_t)BN_num_bits(a);
     const size_t count = bits == 0 ? 1 : (bits + bits_per_digit - 1) / bits_per_digit;
-    const size_t bytes = bits / BITS_PER_BYTE + 1;
+    const size_t bytes = (count * bits_per_digit) / BITS_PER_BYTE + 1; /* zero padded past the top digit */
     uint8_t *const magnitude = msrt_alloc(bytes);
     must(BN_bn2lebinpad(a, magnitude, (int)bytes) >= 0);
     uint8_t *const digits = msrt_alloc(count);
