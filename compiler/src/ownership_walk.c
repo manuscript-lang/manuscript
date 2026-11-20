@@ -910,13 +910,21 @@ static void own_statement(OwnWalk *w, const MsStmt *s) {
 
 /* ---- functions ---- */
 
+/* How a parameter is passed: 0 by value, 1 mutable, 2 moved. */
+static uint8_t param_mode_of(const MsParam *param) {
+    if (param->is_mutable) {
+        return 1;
+    }
+    return param->moving ? 2 : 0;
+}
+
 static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const uint32_t *by_node) {
     for (uint32_t i = 0; i < function->params.len; i++) {
         const uint32_t binding = by_node[function->params.ptr[i]->id];
         const MsParam *param = function->params.ptr[i];
         own_declare(w, binding, param->is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, true);
         w->param_index[binding] = i;
-        w->param_mode[binding] = param->is_mutable ? 1 : (param->moving ? 2 : 0);
+        w->param_mode[binding] = param_mode_of(param);
     }
 }
 
