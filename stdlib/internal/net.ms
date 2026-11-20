@@ -131,6 +131,11 @@ export extern fn msstd_scope_track_conn(
 	connection: NativeConnection,
 ) Bool
 
+export extern fn msstd_scope_track_client(
+	scope: NativeScope,
+	client: NativeHttpClient,
+) Bool
+
 export extern fn msstd_scope_track_listener(
 	scope: NativeScope,
 	listener: NativeListener,

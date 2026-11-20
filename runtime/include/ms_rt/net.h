@@ -185,6 +185,8 @@ void msstd_scope_close(const void *handle);
 uint8_t msstd_scope_track_conn(const void *handle, const void *connection);
 /* ms-sig: msstd_scope_track_listener(handle s: *const ObjCell<ScopeH>, handle listener: *const ObjCell<ListenerH>) -> u8 @domain=network */
 uint8_t msstd_scope_track_listener(const void *handle, const void *listener);
+/* ms-sig: msstd_scope_track_client(handle s: *const ObjCell<ScopeH>, handle client: *const ObjCell<ClientH>) -> u8 @domain=network */
+uint8_t msstd_scope_track_client(const void *handle, const void *client);
 /* ms-sig: msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network */
 uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
 

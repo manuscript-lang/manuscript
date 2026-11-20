@@ -84,6 +84,7 @@ import (
 	msstd_scope_new,
 	msstd_scope_open,
 	msstd_scope_share,
+	msstd_scope_track_client,
 	msstd_scope_track_conn,
 	msstd_scope_track_dgram,
 	msstd_scope_track_listener from "@std/internal/net.ms",
@@ -573,7 +574,14 @@ fn Network.connect_unix(path: String, timeout: Duration? = none) Connection!:
 // network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 fn Network.http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
-	return open_client(self.policy, options)
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
+	client := open_client(self.policy, options)?
+	if not msstd_scope_track_client(self.scope, client.native): return error(
+		closed_error()
+	)
+
+	return ok(client)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
 // A restricted network needs `allow_listen` and an IP-literal address inside its
@@ -682,6 +690,8 @@ fn Network.request(
 	body: Writable = "",
 	options: RequestOptions = RequestOptions(),
 ) ClientResponse!:
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
 	client := open_client(self.policy, HttpClientOptions(max_redirects: 0))?
 	outcome := buffered(
 		client,

@@ -60,6 +60,7 @@ msstd_scope_new
 msstd_scope_open
 msstd_scope_share
 msstd_scope_track_conn
+msstd_scope_track_client
 msstd_scope_track_dgram
 msstd_scope_track_listener
 msstd_tls_parse_certificates
