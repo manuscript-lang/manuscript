@@ -11,7 +11,6 @@ import (
 	create_directory, read_file, write_file from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
 
-	Finding from "./lint/finding.ms",
 	lint_source from "./lint/text.ms",
 )
 

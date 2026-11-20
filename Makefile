@@ -210,7 +210,12 @@ target/c-tool/libmstool.a: compiler/src/tool.c compiler/include/ms/tool.h $(wild
 	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Icrates/ms-rt-abi/include -c compiler/src/tool.c -o target/c-tool/tool.o
 	ar rcs $@ target/c-tool/tool.o
 
-# The Manuscript tools over libms: their tests, and the lexical lint against the Rust `ms lint` on mutated corpus copies.
+# The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); and the lexical lint against the Rust `ms lint` on mutated corpus copies.
 c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
+	cc -std=c11 -O1 -Wno-maybe-uninitialized -Icompiler/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o target/c-tool/ms_syntax_dump
+	git ls-files '*.ms' > target/c-tool/files.txt
+	target/c-tool/ms_syntax_dump ast $$(cat target/c-tool/files.txt) | sed -E 's/^(error [0-9]+:[0-9]+:[0-9]+) .*/\1/' > target/c-tool/ast.c.txt
+	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
+	cmp target/c-tool/ast.c.txt target/c-tool/ast.ms.txt
 	"$(RELEASE_MS)" run tools/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'stdlib/*.ms' | awk 'NR%4==0')
