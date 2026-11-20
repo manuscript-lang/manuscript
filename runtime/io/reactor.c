@@ -25,42 +25,6 @@ enum {
     NANOSECONDS_PER_MILLISECOND = 1000000,
 };
 
-
-/* DIAGNOSTIC (macOS kqueue investigation, not for merge): one line per reactor event on stderr when
- * MS_IO_TRACE is set. */
-extern long write(int fd, const void *buffer, unsigned long count);
-extern char *getenv(const char *name);
-static void trace(const char *tag, long a, long b, long c) {
-    if (getenv("MS_IO_TRACE") == NULL) {
-        return;
-    }
-    char line[160];
-    size_t length = 0;
-    for (const char *t = tag; *t != '\0' && length < 40; t++) {
-        line[length++] = *t;
-    }
-    const long values[3] = {a, b, c};
-    for (int v = 0; v < 3; v++) {
-        line[length++] = ' ';
-        long x = values[v];
-        if (x < 0) {
-            line[length++] = '-';
-            x = -x;
-        }
-        char digits[24];
-        int n = 0;
-        do {
-            digits[n++] = (char)('0' + x % 10);
-            x /= 10;
-        } while (x > 0);
-        while (n > 0) {
-            line[length++] = digits[--n];
-        }
-    }
-    line[length++] = '\n';
-    (void)write(2, line, (unsigned long)length);
-}
-
 typedef struct MsIoRow MsIoRow;
 
 struct MsIoRow {
@@ -164,7 +128,6 @@ static void on_poll(uv_poll_t *handle, int status, int events) {
         return; /* still armed: level-triggered, so the next pass reports it again */
     }
     const uint32_t bits = readiness_bits(status, events);
-    trace("io-poll fd/status/events", row->fd, status, events);
     row_stop(row);
     push_report(reactor, row, status, bits);
 }
@@ -291,7 +254,6 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
     bool was_nonblocking = true;
     const bool known = ms_sys_fd_get_nonblocking(fd, &was_nonblocking);
     const int error = uv_poll_init(&reactor->loop, &row->handle, fd);
-    trace("io-open fd/init-error/was-nonblocking", fd, error, was_nonblocking);
     if (error != 0) {
         row->next_free = reactor->free_rows;
         reactor->free_rows = row;
@@ -327,7 +289,6 @@ MsIoWatch ms_io_watch(int fd, uint32_t events) {
         reactor->rows[fd] = row;
     }
     row->keep = (events & MS_IO_BIT_KEEP) != 0;
-    trace("io-watch fd/events/interest", fd, events, interest_of(events));
     if (uv_poll_start(&row->handle, interest_of(events), on_poll) != 0) {
         row_discard(reactor, row);
         return MS_IO_WATCH_FAILED;
@@ -349,7 +310,6 @@ void ms_io_unwatch(int fd) {
     if (row == NULL) {
         return;
     }
-    trace("io-unwatch fd/keep/started", fd, row->keep, row->started);
     if (row->keep) {
         row_stop(row);
     } else {
@@ -419,7 +379,6 @@ bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *cou
         (void)uv_run(&reactor->loop, UV_RUN_ONCE);
     }
     *count = drain_events(reactor, out, capacity);
-    trace("io-wait timeout_ns/count/woken", timeout_ns, (long)*count, reactor->woken);
     return true;
 }
 

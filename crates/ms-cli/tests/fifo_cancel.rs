@@ -37,7 +37,6 @@ fn a_group_timeout_cancels_tasks_blocked_on_a_fifo() {
 
     let started = Instant::now();
     let mut child = Command::new(&binary)
-        .env("MS_IO_TRACE", "1")
         .arg(&fifo)
         .stdout(std::process::Stdio::piped())
         .spawn()
