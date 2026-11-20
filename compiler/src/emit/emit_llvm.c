@@ -1011,9 +1011,9 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
     }
 }
 
-#include "emit/emit_llvm_closure.inc"
-#include "emit/emit_llvm_iface.inc"
-#include "emit/emit_llvm_task.inc"
+#include "emit_llvm_closure.inc"
+#include "emit_llvm_iface.inc"
+#include "emit_llvm_task.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
