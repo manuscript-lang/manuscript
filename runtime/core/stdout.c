@@ -28,7 +28,7 @@ static struct {
     Bytes buffer;
 } out = {.lock = MS_SPIN_INIT};
 
-static atomic_int_fast32_t first_error; /* the code of the first write that failed; 0: none */
+static _Atomic int32_t first_error; /* the code of the first write that failed; 0: none */
 static atomic_int terminal_state;       /* 0 unknown, 1 pipe or file, 2 terminal */
 
 typedef struct Capture {
@@ -71,8 +71,8 @@ static void flush_locked(void) {
     }
     out.buffer.length = 0;
     if (error != 0 && !ms_sys_error_is_broken_pipe(error)) {
-        int_fast32_t none = 0;
-        atomic_compare_exchange_strong_explicit(&first_error, &none, error, memory_order_relaxed, memory_order_relaxed);
+        int32_t none = 0;
+        atomic_compare_exchange_strong_explicit(&first_error, &none, (int32_t)error, memory_order_relaxed, memory_order_relaxed);
     }
 }
 
