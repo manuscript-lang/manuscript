@@ -263,7 +263,10 @@ static const PNode *ps_union_in(MsArena *a, const PNode *x, const PNode *y) {
         is_x = is_x && out->kids[i] == x->kids[i];
         is_y = is_y && out->kids[i] == y->kids[i];
     }
-    return is_x ? x : is_y ? y : out;
+    if (is_x) {
+        return x;
+    }
+    return is_y ? y : out;
 }
 
 void owner_union(MsArena *a, OwnerSet *s, const OwnerSet *other) {
