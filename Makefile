@@ -42,7 +42,7 @@ fmt:
 # The libms entry points that Manuscript tools call with `extern fn` (compiler/tools/tool_shim.c).
 libms-tools: target/libms_tools.a
 
-target/libms_tools.a: compiler/src/*.c compiler/include/ms/*.h compiler/tools/tool_shim.c
+target/libms_tools.a: compiler/src/*.c compiler/include/ms/*.h compiler/tools/tool_shim.c compiler/tools/tool_shim.h
 	mkdir -p target
 	$(CC) -O2 -c compiler/src/libms.c -Icompiler/include -Icompiler/src -o target/libms.o
 	$(CC) -O2 -c compiler/tools/tool_shim.c -Icrates/ms-rt-abi/include -o target/tool_shim.o
