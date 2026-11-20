@@ -87,6 +87,12 @@ cut -d'|' -f1 "$out/bodies.c.keyed" | sort -u > "$out/bodies.keys"
 keyed "$out/bodies.rust" | awk -F'|' -v list="$out/bodies.keys" -v declined="$out/bodies.declined" '
     BEGIN { while ((getline line < list) > 0) keep[line] = 1; while ((getline line < declined) > 0) skip[line] = 1 }
     ($1 in keep) && !(($1 in skip) && $2 ~ /^diag /)' > "$out/bodies.rust.keyed"
+# A call of a function another module exports is claimed; a change that declines it drops hundreds of
+# functions, so one fixture pins it.
+if ! grep -q 'body_imported_call.ms 3:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a call of an imported function is no longer checked in C (compiler/tests/scope/body_imported_call.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else
@@ -94,6 +100,22 @@ else
     diff "$out/bodies.rust.keyed" "$out/bodies.c.keyed" | head -20 || true
     status=1
 fi
+
+# Project imports: an entry that imports project modules, checked through the C module graph
+# (`--project`) against the Rust checker given the same import map. Export errors print as
+# `import L:C: message`.
+for entry in compiler/tests/project/main.ms compiler/tests/project/uses.ms; do
+    name=$(basename "$entry" .ms)
+    "$oracle" --project "$entry" > "$out/project-$name.rust"
+    "$bin/ms_check_dump" stdlib --project "$entry" | sed 's/ ownership-declined$//' > "$out/project-$name.c"
+    if cmp -s "$out/project-$name.rust" "$out/project-$name.c" && [ -s "$out/project-$name.c" ]; then
+        echo "ok   project $name ($(grep -c '^import ' "$out/project-$name.c") import diagnostics)"
+    else
+        echo "FAIL project $name: first difference"
+        diff "$out/project-$name.rust" "$out/project-$name.c" | head -20 || true
+        status=1
+    fi
+done
 
 # Ownership: the diagnostics inside each function the C passes checked, against the Rust checker's,
 # on the ownership fixtures and the corpus. Only functions the C walk handles are compared.

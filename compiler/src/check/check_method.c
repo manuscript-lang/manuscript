@@ -167,15 +167,41 @@ static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     return b->c->tys.result[target.sig];
 }
 
+/* The operation `name` of the interfaces that bound the type variable `var`: its own, found in
+ * exactly one bound. `contract` is the bound it comes from. */
+static bool bound_operation(const MsBody *b, MsTy var, MsSym name, Target *out, MsTy *contract) {
+    const MsVarInfo *info = ms_var_info(b->c, var);
+    bool found = false;
+    for (uint32_t i = 0; info != NULL && i < info->nbounds; i++) {
+        Target candidate;
+        if (!operation_of(b, info->bounds[i], name, &candidate)) {
+            continue;
+        }
+        if (found) {
+            return false; /* two bounds offer it */
+        }
+        *out = candidate;
+        *contract = info->bounds[i];
+        found = true;
+    }
+    return found;
+}
+
 /* A method of `receiver_ty` (a type with impls) or an operation of an interface, called on the
  * receiver expression; `binding` is the local it names, or MS_NONE for a temporary, which a
  * mutating method may change. */
 static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uint32_t binding) {
     const MsExpr *callee = e->u.call.callee;
     Target target;
-    const bool resolved = ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT
-                              ? operation_of(b, receiver_ty, callee->u.member.name, &target)
-                              : method_row(b, receiver_ty, callee->u.member.name, &target);
+    MsTy dispatch = receiver_ty; /* the interface an operation is called through */
+    bool resolved;
+    if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_VARIABLE) {
+        resolved = bound_operation(b, receiver_ty, callee->u.member.name, &target, &dispatch);
+    } else if (ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT) {
+        resolved = operation_of(b, receiver_ty, callee->u.member.name, &target);
+    } else {
+        resolved = method_row(b, receiver_ty, callee->u.member.name, &target);
+    }
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||
         (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
@@ -183,7 +209,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {
-        b->facts->call_interface[e->id] = receiver_ty;
+        b->facts->call_interface[e->id] = dispatch;
     } else {
         b->facts->call_method[e->id] = target.method;
     }

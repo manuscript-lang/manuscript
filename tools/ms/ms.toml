@@ -2,3 +2,6 @@
 name = "ms-tools"
 source = "."
 entry = "lint.ms"
+
+[embed]
+"@data" = "./data"
