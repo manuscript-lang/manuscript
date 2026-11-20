@@ -75,6 +75,11 @@ endforeach()
 ms_test(staged_fault_abi SOURCES "${_tests}/staged_fault_abi.c" "${_rt}/staged/fault_abi.c" OBJECTS ms_test_core
         INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
 
+# The staged scheduler shims (runtime/staged/sched_shims.c) over the C scheduler and the libuv reactor's pool.
+ms_test(staged_sched_shims SOURCES "${_tests}/staged_sched_shims.c" "${_rt}/staged/sched_shims.c" ${_io_sources}
+        OBJECTS ms_test_core INCLUDES "${_rt}/staged" ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m
+        DEFINES MS_ALLOC_STATS)
+
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
 ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_posix_sources} LIBS)
@@ -88,7 +93,7 @@ file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
   ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c" "${_rt}/sys/posix/fd.c"
-          "${_rt}/sys/posix/ifindex.c" "${_rt}/sys/posix/process.c"
+          "${_rt}/sys/posix/ifindex.c" "${_rt}/sys/posix/process.c" "${_rt}/sys/posix/signal.c"
           INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()

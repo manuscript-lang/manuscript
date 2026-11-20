@@ -80,3 +80,4 @@ msrt_string_parse_int
 msrt_string_index_any
 msrt_string_trim_chars
 msrt_string_last_index_of
+msrt_string_scalar_at
