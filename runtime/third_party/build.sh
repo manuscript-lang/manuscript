@@ -10,7 +10,7 @@ repository=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 triple=${1:-host}
 [ "$triple" = key ] && triple=${2:-host}
 root=$repository/target/c-libs
-cc=${CC:-cc}
+cc=$(printf "%s" "${CC:-cc}" | tr "\\\\" "/") # forward slashes: sh drops the backslashes of a Windows path
 mode=pinned
 # One build for every dependency. The output folder is named by a hash of everything that decides its contents
 # (pins, this script, the triple), so a published archive and a CI cache keyed on `key` restore it whole and a change
@@ -99,13 +99,14 @@ for candidate in $candidates; do
 done
 if [ ! -f "$out/lib/libssl.a" ]; then
     [ -n "$perl" ] || { echo "build.sh: no Unix-style perl (OpenSSL's Configure needs one; on Windows install MSYS2's perl)" >&2; exit 1; }
+    # CC, AR and RANLIB go to Configure as arguments: it records them in the Makefile, where a variable in the environment was lost under MSYS2 and the build fell back to the first gcc on PATH (x64 objects in an arm64 archive).
     # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
     perl_dir=; ssl_make=make
     # MSYS2's perl records MSYS-style paths (/d/a/...) in configdata.pm, which only MSYS2's own make can resolve.
     case "$perl" in */*) perl_dir=$(dirname "$perl"):; [ -x "$(dirname "$perl")/make" ] && ssl_make=$(dirname "$perl")/make ;; esac
     build=$root/build/$triple/openssl
     rm -rf "$build"; mkdir -p "$build"
-    (cd "$build" && PATH="$perl_dir$PATH" CC="$cc" quiet "$perl" "$vendor/openssl/Configure" "$ssl_target" $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" \
+    (cd "$build" && PATH="$perl_dir$PATH" quiet "$perl" "$vendor/openssl/Configure" "$ssl_target" "CC=$cc" ${AR:+"AR=$AR"} ${RANLIB:+"RANLIB=$RANLIB"} $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" \
         && quiet "$ssl_make" -j "$jobs" build_libs && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$vendor/openssl"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi

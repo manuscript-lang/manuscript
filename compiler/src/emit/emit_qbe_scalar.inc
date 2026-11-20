@@ -2,8 +2,6 @@
  * flags, no count or rotate instructions and no high multiply, so those are written out from the
  * instructions it has; the libm functions stand in for the float rounding ops. */
 
-#define QBE_FAULT_RANGE "$msrt_fault_int_range()"
-
 /* The name of leaf `k` of value `v` in `buf`. */
 static void qbe_leaf_name(char *buf, size_t cap, MirValue v, uint32_t k) {
     if (k == 0) (void)snprintf(buf, cap, "%%v%u", v);
@@ -242,7 +240,7 @@ static void qbe_narrow_check(QCx *c, const MirInst *inst, uint32_t block, uint32
         const uint32_t n = c->next++;
         ms_buf_printf(c->out, "\t%%o%ue =l %s %%v%u\n\t%%o%us =w cnel %%o%ue, %%v%u\n", n, extension,
                       inst->args[0], n, n, inst->args[0]);
-        qbe_fault_branch(c, n, QBE_FAULT_OVERFLOW, block, part);
+        qbe_fault_branch(c, n, QBE_FAULT_RANGE, block, part);
     }
     ms_buf_printf(c->out, "\t%%v%u =l copy %%v%u\n", inst->res, inst->args[0]);
 }
@@ -296,7 +294,7 @@ static bool qbe_pointer_op(QCx *c, const MirInst *inst, bool *ok) {
 }
 
 /* How many times `inst` ends the current piece of its block with a fault branch. */
-static uint32_t qbe_splits(const MirModule *m, const MirFunc *f, const MirInst *inst) {
+static uint32_t qbe_splits_core(const MirModule *m, const MirFunc *f, const MirInst *inst) {
     switch ((MirOp)inst->op) {
     case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk: case MOP_IntOverflowIf:
     case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk: case MOP_Poll: case MOP_ListNew:
@@ -308,6 +306,11 @@ static uint32_t qbe_splits(const MirModule *m, const MirFunc *f, const MirInst *
     default:
         return qbe_record_splits(m, f, inst);
     }
+}
+
+static uint32_t qbe_splits(const MirModule *m, const MirFunc *f, const MirInst *inst) {
+    int64_t lo, hi;
+    return qbe_splits_core(m, f, inst) + (mir_sized_result_range(m, f, inst, &lo, &hi) ? 1 : 0);
 }
 
 /* The scalar, bit and pointer ops of this file; `*handled` is false for any other. */

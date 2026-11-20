@@ -71,6 +71,8 @@ void *msstd_client_share(const void *handle) {
     return client_handle(client);
 }
 
+void msstd_client_close(const void *handle) { ms_curl_client_close(client_of(handle)->client); }
+
 uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec *cidrs) {
     const MsStr *host_items = hosts->ptr, *cidr_items = cidrs->ptr;
     MsBytes *host_text = calloc(hosts->len == 0 ? 1 : hosts->len, sizeof *host_text);
