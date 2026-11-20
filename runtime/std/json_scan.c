@@ -114,20 +114,82 @@ static bool at_end(const Scanner *scanner) { return scanner->pos >= scanner->tex
 
 static uint8_t byte_at(const Scanner *scanner, size_t index) { return scanner->text.ptr[index]; }
 
-static void skip_space(Scanner *scanner) {
-    while (!at_end(scanner)) {
-        const uint8_t c = byte_at(scanner, scanner->pos);
-        if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+#define BYTES_LOW UINT64_C(0x0101010101010101)
+#define BYTES_HIGH UINT64_C(0x8080808080808080)
+
+/* The bytes of `word` that are zero have their high bit set in the result (exact for the lowest such byte, which is
+ * the one the scanners use). */
+static inline uint64_t zero_bytes(uint64_t word) { return (word - BYTES_LOW) & ~word & BYTES_HIGH; }
+
+/* How many of the first eight bytes of `word` (in memory order) are spaces: the bytes that differ from 0x20 get their
+ * high bit set exactly, so the lowest one is the end of the run. */
+static inline size_t space_run(uint64_t word) {
+    const uint64_t differ = word ^ (BYTES_LOW * ' ');
+    const uint64_t not_space = (((differ & ~BYTES_HIGH) + ~BYTES_HIGH) | differ) & BYTES_HIGH;
+    return not_space == 0 ? 8 : (size_t)__builtin_ctzll(not_space) / 8;
+}
+
+/* The whitespace between tokens: the newline of an indented document, then its run of spaces, up to eight at a
+ * time. */
+static void skip_space_run(Scanner *scanner) {
+    const uint8_t *text = scanner->text.ptr;
+    const size_t length = scanner->text.len;
+    size_t pos = scanner->pos;
+    for (;;) {
+        while (pos < length && (text[pos] == '\n' || text[pos] == '\r' || text[pos] == '\t')) {
+            pos++;
+        }
+        size_t run = 0;
+        do {
+            if (pos + 8 <= length) {
+                run = space_run(ms_load64(text + pos));
+            } else {
+                run = 0;
+                while (pos + run < length && text[pos + run] == ' ') {
+                    run++;
+                }
+            }
+            pos += run;
+        } while (run == 8);
+        if (pos >= length || (text[pos] != '\n' && text[pos] != '\r' && text[pos] != '\t')) {
+            break;
+        }
+    }
+    scanner->pos = pos;
+}
+
+/* Skips JSON whitespace. The two common cases stay inline: nothing to skip (a compact document), and the one space
+ * after a colon or a comma. */
+static inline void skip_space(Scanner *scanner) {
+    const size_t pos = scanner->pos;
+    const size_t length = scanner->text.len;
+    if (pos < length) {
+        const uint8_t c = scanner->text.ptr[pos];
+        if (c > ' ') {
             return;
         }
-        scanner->pos++;
+        if (c == ' ' && pos + 1 < length && scanner->text.ptr[pos + 1] > ' ') {
+            scanner->pos = pos + 1;
+            return;
+        }
     }
+    skip_space_run(scanner);
 }
 
 /* The first index at or after `from` of a byte a string must escape: a quote, a backslash or a control character.
- * False when there is none. */
+ * False when there is none. Eight bytes per step. */
 static bool find_special(MsBytes text, size_t from, size_t *at) {
-    for (size_t i = from; i < text.len; i++) {
+    size_t i = from;
+    for (; i + 8 <= text.len; i += 8) {
+        const uint64_t word = ms_load64(text.ptr + i);
+        const uint64_t control = (word - BYTES_LOW * 0x20) & ~word & BYTES_HIGH;
+        const uint64_t hit = control | zero_bytes(word ^ BYTES_LOW * '"') | zero_bytes(word ^ BYTES_LOW * '\\');
+        if (hit != 0) {
+            *at = i + (size_t)__builtin_ctzll(hit) / 8;
+            return true;
+        }
+    }
+    for (; i < text.len; i++) {
         const uint8_t c = text.ptr[i];
         if (c == '"' || c == '\\' || c < 0x20) {
             *at = i;
@@ -147,17 +209,36 @@ static bool literal(Scanner *scanner, const char *word) {
     return true;
 }
 
-/* Advances `pos` over ASCII digits; false when there were none. */
-static bool scan_digits(MsBytes text, size_t *pos) {
+/* How many of the first eight bytes of `word` (in memory order) are ASCII digits. A byte xor 0x30 is below ten exactly
+ * when it is a digit; adding 0x76 sets the high bit for ten or more, and the high bit of the xor itself covers bytes
+ * from 0x80. A carry can only corrupt bytes above the first non-digit, which is the one that decides. */
+static inline size_t digit_run(uint64_t word) {
+    const uint64_t shifted = word ^ (BYTES_LOW * 0x30);
+    const uint64_t not_digit = ((shifted + BYTES_LOW * 0x76) | shifted) & BYTES_HIGH;
+    return not_digit == 0 ? 8 : (size_t)__builtin_ctzll(not_digit) / 8;
+}
+
+/* Advances `pos` over ASCII digits, up to eight per step; false when there were none. */
+static inline MS_ALWAYS_INLINE bool scan_digits(MsBytes text, size_t *pos) {
     const size_t start = *pos;
-    while (*pos < text.len && ms_ascii_is_digit(text.ptr[*pos])) {
-        (*pos)++;
+    size_t i = start;
+    while (i + 8 <= text.len) {
+        const size_t run = digit_run(ms_load64(text.ptr + i));
+        i += run;
+        if (run < 8) {
+            *pos = i;
+            return i > start;
+        }
     }
-    return *pos > start;
+    while (i < text.len && ms_ascii_is_digit(text.ptr[i])) {
+        i++;
+    }
+    *pos = i;
+    return i > start;
 }
 
 /* Advances `pos` over one JSON number; false when the text there is not one. */
-static bool scan_number(MsBytes text, size_t *pos) {
+static inline MS_ALWAYS_INLINE bool scan_number(MsBytes text, size_t *pos) {
     if (*pos < text.len && text.ptr[*pos] == '-') {
         (*pos)++;
     }
@@ -350,7 +431,7 @@ static bool push_open(Scanner *scanner, uint8_t opener) {
 }
 
 /* What a scalar or empty container the scanner is at turns into: one sink call, or a failed scan. */
-static uint8_t scalar(Scanner *scanner, uint8_t c) {
+static inline MS_ALWAYS_INLINE uint8_t scalar(Scanner *scanner, uint8_t c) {
     JsonText text = {0};
     switch (c) {
     case 'n': return literal(scanner, "null") ? scanner->ops->null(scanner->sink) : MS_STATUS_INVALID_DATA;
@@ -446,13 +527,23 @@ static uint8_t scan_document(Scanner *scanner) {
         }
         const uint8_t c = byte_at(scanner, scanner->pos);
         uint8_t status = MS_STATUS_INVALID_DATA;
-        if (c == '[' || c == '{') {
+        switch (c) {
+        case '[':
+        case '{':
             status = open_container(scanner, c);
             if (status == JSON_MORE) {
                 continue;
             }
-        } else if (c == 'n' || c == 't' || c == 'f' || c == '"' || c == '-' || ms_ascii_is_digit(c)) {
+            break;
+        case 'n':
+        case 't':
+        case 'f':
+        case '"':
+        case '-':
+        case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
             status = scalar(scanner, c);
+            break;
+        default: break;
         }
         if (status != MS_STATUS_OK) {
             return status;

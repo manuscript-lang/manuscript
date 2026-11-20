@@ -32,6 +32,7 @@ typedef struct LCx {
     const MirGlue *glue; /* the glue functions, for the closure objects' entries */
     bool *framed;        /* per value of `f`: a closure object kept in the frame */
     bool *borrowed;      /* per value of `f`: an `iface.borrow` kept in the frame; NULL when none */
+    bool export_all;     /* every function gets an external symbol, for the tables unit to address */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -966,6 +967,60 @@ static void ll_opt_is_some(LCx *c, const MirInst *inst) {
 
 /* `conv`, `f32.round`, `narrow.chk`, the overflow flags and `int_overflow.if`; false when `inst`
  * is none of them. */
+/* ---- alternatives and optionals ---- */
+
+/* `alt.tag`: leaf 0, or the first word of the block a boxed alternative points to. */
+static void ll_alt_tag(LCx *c, const MirInst *inst) {
+    if (mir_shape(c->layouts, c->f->values[inst->args[0]])->alt == MIR_ALT_BOXED) {
+        char base[24];
+        ll_pointer(c, inst->args[0], base, sizeof base);
+        ms_buf_printf(c->out, "  %%v%u = load i64, ptr %s\n", inst->res, base);
+    } else {
+        ll_copy_leaf(c, inst->res, 0, inst->args[0], 0);
+    }
+}
+
+/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+ * payload itself, any other is the payload after a presence flag. */
+static bool ll_opt_some(LCx *c, const MirInst *inst) {
+    const MirTy inner = mir_ty_data(c->m, c->f->values[inst->res])->elem;
+    MsBuf *o = c->out;
+    if (mir_layouts_opt_boxed(c->layouts, inner)) {
+        const MirLeafSpan leaves = ll_leaves(c, inner);
+        const uint32_t size = mir_mem_layout(leaves.ptr, leaves.len, NULL).size;
+        ms_buf_printf(o, "  %%v%u = call i64 @\"msrt_alloc\"(i64 %u)\n", inst->res, size > 0 ? size : 1);
+        char base[24];
+        ll_pointer(c, inst->res, base, sizeof base);
+        return leaves.len == 0 || ll_leaves_at(c, inst->args[0], base, false);
+    }
+    uint32_t at = 0;
+    if (!mir_opt_is_nullable(c->layouts, inner)) {
+        ms_buf_printf(o, "  %%v%u = or i1 false, true\n", inst->res);
+        at = 1;
+    }
+    const uint32_t n = ll_leaves(c, c->f->values[inst->args[0]]).len;
+    for (uint32_t k = 0; k < n; k++) {
+        ll_copy_leaf(c, inst->res, at + k, inst->args[0], k);
+    }
+    return true;
+}
+
+/* `opt.get`: the payload of an optional known to hold one. */
+static bool ll_opt_get(LCx *c, const MirInst *inst) {
+    const MirTy inner = mir_ty_data(c->m, c->f->values[inst->args[0]])->elem;
+    if (mir_layouts_opt_boxed(c->layouts, inner)) {
+        char base[24];
+        ll_pointer(c, inst->args[0], base, sizeof base);
+        return ll_leaves_at(c, inst->res, base, true);
+    }
+    const uint32_t skip = mir_opt_is_nullable(c->layouts, inner) ? 0 : 1;
+    const uint32_t n = ll_leaves(c, c->f->values[inst->res]).len;
+    for (uint32_t k = 0; k < n; k++) {
+        ll_copy_leaf(c, inst->res, k, inst->args[0], skip + k);
+    }
+    return true;
+}
+
 static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
     char src[24];
     switch ((MirOp)inst->op) {
@@ -993,6 +1048,9 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
     case MOP_INarrowOpt: case MOP_F2IOpt:
         ll_opt_convert(c, inst);
         return true;
+    case MOP_AltTag: ll_alt_tag(c, inst); return true;
+    case MOP_OptSome: return ll_opt_some(c, inst);
+    case MOP_OptGet: return ll_opt_get(c, inst);
     case MOP_OptIsSome:
         ll_opt_is_some(c, inst);
         return true;
@@ -1281,7 +1339,7 @@ static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
 static void ll_header(LCx *c, uint32_t index) {
     const MirFunc *f = c->f;
     MsBuf *o = c->out;
-    const bool exported = f->linkage == ML_EXPORT || c->m->entry == index;
+    const bool exported = c->export_all || f->linkage == ML_EXPORT || c->m->entry == index;
     const MirLeafSpan result = ll_leaves(c, f->ret);
     ms_buf_printf(o, "define %s%s ", exported ? "" : "internal ", result.len == 1 ? ll_leaf_type(result.ptr[0]) : "void");
     ll_sym(o, ms_name(&c->m->names, f->name));
@@ -1504,12 +1562,13 @@ static void ll_define_data(const LCx *c) {
     }
 }
 
-bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why) {
+bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all,
+                        MsBuf *out, MsBuf *why) {
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
     bool ok = true;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL};
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all};
         if (ll_function(&c, i)) {
             continue;
         }
@@ -1517,7 +1576,7 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);
@@ -1527,3 +1586,9 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
     ms_buf_puts(out, ll_declarations);
     return ok;
 }
+
+bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why) {
+    return mir_emit_llvm_with(m, data, glue, false, out, why);
+}
+
+#include "emit_llvm_main.inc"

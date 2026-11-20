@@ -709,10 +709,93 @@ static void test_tree(void) {
     CHECK(tree_roundtrip(deep, deep_back, sizeof deep_back) == OK && strcmp(deep, deep_back) == 0);
 }
 
+/* The scanner reads eight bytes at a time for strings, spaces and digits, so every offset of a special byte, a run
+ * length and the end of the text relative to a word boundary has to give the same answer as a byte at a time. */
+static void test_word_boundaries(void) {
+    char text[256];
+    for (size_t pad = 0; pad < 40; pad++) {
+        /* A string of `pad` letters, then an escape, then letters again. */
+        char *out = text;
+        *out++ = '"';
+        memset(out, 'a', pad);
+        out += pad;
+        memcpy(out, "\\n\\u00e9bb\"", 11);
+        out += 11;
+        *out = '\0';
+        void *doc = NULL;
+        uint32_t root = 0;
+        CHECK(parse_plain(text, &doc, &root, NULL) == OK);
+        MsStr got = {0};
+        msstd_json_text(doc, root, &got);
+        CHECK(ms_str_len(&got) == pad + 1 + 2 + 2);
+        msrt_string_free(&got);
+        ((MsObj *)doc)->drop(doc);
+
+        /* A control character, a quote that ends the text, and a missing closing quote after `pad` letters. */
+        out = text;
+        *out++ = '"';
+        memset(out, 'a', pad);
+        out += pad;
+        *out++ = '\x01';
+        *out++ = '"';
+        *out = '\0';
+        CHECK(parse_plain(text, &doc, &root, NULL) == INVALID_DATA);
+        text[pad + 1] = '\0';
+        CHECK(parse_plain(text, &doc, &root, NULL) == INVALID_DATA);
+
+        /* Whitespace of `pad` bytes of every kind around a value, and at the very end of the text. */
+        const char kinds[] = {' ', '\n', '\t', '\r'};
+        for (size_t kind = 0; kind < 4; kind++) {
+            out = text;
+            *out++ = '[';
+            for (size_t i = 0; i < pad; i++) {
+                *out++ = i % 7 == 6 ? kinds[kind] : (kind == 0 ? ' ' : kinds[(kind + i) % 4]);
+            }
+            *out++ = '1';
+            for (size_t i = 0; i < pad; i++) {
+                *out++ = kinds[(kind + i) % 4];
+            }
+            *out++ = ']';
+            for (size_t i = 0; i < pad; i++) {
+                *out++ = ' ';
+            }
+            *out = '\0';
+            CHECK(parse_plain(text, &doc, &root, NULL) == OK);
+            CHECK(msstd_json_len(doc, root) == 1);
+            ((MsObj *)doc)->drop(doc);
+        }
+
+        /* A number of `pad` + 1 digits, with a fraction and an exponent of as many, at the end of the text. */
+        out = text;
+        memset(out, '7', pad + 1);
+        out += pad + 1;
+        *out = '\0';
+        CHECK(parse_plain(text, &doc, &root, NULL) == OK);
+        MsStr number = {0};
+        msstd_json_text(doc, root, &number);
+        CHECK(ms_str_len(&number) == pad + 1);
+        msrt_string_free(&number);
+        ((MsObj *)doc)->drop(doc);
+        *out++ = '.';
+        memset(out, '3', pad + 1);
+        out += pad + 1;
+        *out++ = 'e';
+        *out++ = '-';
+        memset(out, '1', pad + 1);
+        out += pad + 1;
+        *out = '\0';
+        CHECK(parse_plain(text, &doc, &root, NULL) == OK);
+        ((MsObj *)doc)->drop(doc);
+        out[-1] = '.'; /* the exponent ends in a dot: not a number */
+        CHECK(parse_plain(text, &doc, &root, NULL) == INVALID_DATA);
+    }
+}
+
 int main(void) {
     test_recorded_cases();
     test_error_text();
     test_error_slot_is_always_valid();
+    test_word_boundaries();
     test_document_accessors();
     test_scalars();
     test_writer();
