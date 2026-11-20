@@ -938,8 +938,9 @@ fn add_c_runtime(
             .arg("-o")
             .arg(&object)
             .arg(source);
-        // `musl-gcc` already targets musl; a clang for another target needs it named.
-        if let Some(t) = triple.filter(|t| !host && !t.contains("musl")) {
+        // `musl-gcc` already targets musl, and llvm-mingw's clang wrapper mingw-w64 (Rust's `gnullvm` is not a
+        // clang environment); a clang for another target needs it named.
+        if let Some(t) = triple.filter(|t| !host && !t.contains("musl") && !t.contains("windows")) {
             command.arg(format!("--target={t}"));
         }
         let status = command
