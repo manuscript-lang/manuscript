@@ -1233,8 +1233,8 @@ bool ms_promise_run_inline(MsPromise id) {
     if (row < 0 || table.hot[row].state != STATE_PENDING || (table.hot[row].flags & FLAG_DEFERRED) == 0) {
         return false;
     }
-    (void)run_deferred(id, NO_TIME, true);
-    return true;
+    /* False when another isolate took the work from the queue first: the caller must not read that as a run. */
+    return run_deferred(id, NO_TIME, true);
 }
 
 /* ---- waiting for any ---- */
