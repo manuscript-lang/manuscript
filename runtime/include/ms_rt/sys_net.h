@@ -55,6 +55,9 @@ int ms_sys_net_read(MsSock s, void *buf, size_t n, size_t *done);
 int ms_sys_net_write(MsSock s, const void *buf, size_t n, size_t *done);
 /* Like ms_sys_net_read but leaves the bytes queued: whether the peer has ended its side shows without consuming data. */
 int ms_sys_net_peek(MsSock s, void *buf, size_t n, size_t *done);
+/* Whether the peer has ended its side even when unread bytes are queued ahead of the end (peek sees only the bytes):
+ * 1 when it has, 0 when it has not or the system cannot tell (Windows has no such query). */
+int ms_sys_net_peer_ended(MsSock s);
 /* The socket's own and peer address. MS_SYS_ERROR for a Unix domain socket, which has no MsAddr. */
 int ms_sys_net_local_addr(MsSock s, MsAddr *out);
 int ms_sys_net_peer_addr(MsSock s, MsAddr *out);
