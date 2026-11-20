@@ -948,8 +948,9 @@ fn add_c_runtime(
         if !triple.is_some_and(|t| t.contains("windows") || t.contains("musl")) {
             command.arg("-D_FORTIFY_SOURCE=2");
         }
-        // `musl-gcc` already targets musl; a clang for another target needs it named.
-        if let Some(t) = triple.filter(|t| !host && !t.contains("musl")) {
+        // `musl-gcc` and the mingw clang wrappers already target their platform (clang-19 rejects the `gnullvm` triple
+        // that Rust names); a clang for another target needs it named.
+        if let Some(t) = triple.filter(|t| !host && !t.contains("musl") && !t.contains("windows")) {
             command.arg(format!("--target={t}"));
         }
         let status = command

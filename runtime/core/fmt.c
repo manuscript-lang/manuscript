@@ -37,7 +37,12 @@ static void sink_put(MsFmtSink *sink, MsBytes bytes) {
 }
 
 static void sink_put_byte(MsFmtSink *sink, uint8_t byte) {
-    sink_put(sink, ms_bytes(&byte, 1));
+    if (sink->overflowed || sink->length >= sink->buffer.len) {
+        sink->overflowed = true;
+        return;
+    }
+    sink->buffer.ptr[sink->length] = byte;
+    sink->length++;
 }
 
 static void sink_put_text(MsFmtSink *sink, const char *text) {
@@ -73,38 +78,82 @@ static const char decimal_pairs[] =
     "8081828384858687888990919293949596979899";
 _Static_assert(sizeof decimal_pairs == 201, "two digits for each of 0..99 and the terminator");
 
-typedef struct MsDecimal {
-    uint8_t bytes[MS_U64_DIGITS];
-} MsDecimal;
+static const uint64_t powers_of_ten[MS_U64_DIGITS] = {
+    UINT64_C(1),
+    UINT64_C(10),
+    UINT64_C(100),
+    UINT64_C(1000),
+    UINT64_C(10000),
+    UINT64_C(100000),
+    UINT64_C(1000000),
+    UINT64_C(10000000),
+    UINT64_C(100000000),
+    UINT64_C(1000000000),
+    UINT64_C(10000000000),
+    UINT64_C(100000000000),
+    UINT64_C(1000000000000),
+    UINT64_C(10000000000000),
+    UINT64_C(100000000000000),
+    UINT64_C(1000000000000000),
+    UINT64_C(10000000000000000),
+    UINT64_C(100000000000000000),
+    UINT64_C(1000000000000000000),
+    UINT64_C(10000000000000000000),
+};
 
-/* The decimal digits of `value`, as a view into the tail of `scratch`. Two digits at a time: a UInt64 has at
- * most 20, so `position` never goes below 0. */
-static MsBytes decimal_digits(uint64_t value, MsDecimal *scratch) {
-    size_t position = MS_U64_DIGITS;
-    while (value >= 100 && position > 2) {
+/* How many decimal digits `value` has, 1..=20. A value with `bits` significant bits has about bits * log10(2)
+ * digits; `estimate` is that rounded down, so it is the digit count minus one, or equal to it when the value is
+ * below 10^estimate (Hacker's Delight, "Integer Log"). `estimate` is at most 19 for 64 bits, inside the table. */
+static size_t decimal_length(uint64_t value) {
+    const uint64_t nonzero = value | 1; /* clz of 0 is undefined; 0 and 1 both have one digit, and the powers are even */
+    const unsigned bits = 64 - (unsigned)__builtin_clzll(nonzero);
+    const size_t estimate = ((size_t)bits * 1233) >> 12;
+    return estimate + (nonzero >= powers_of_ten[estimate] ? 1 : 0);
+}
+
+/* Writes the decimal digits of `value` at the start of `room`, two digits at a time from the end, and returns
+ * how many. The length is checked against the room once; `position` then stays inside it because it starts at the
+ * digit count and each step removes the digits it writes. */
+MS_NODISCARD static bool write_decimal(MsBytesMut room, uint64_t value, size_t *written) {
+    const size_t length = decimal_length(value);
+    if (room.ptr == NULL || length > room.len) {
+        return false;
+    }
+    size_t position = length;
+    while (value >= 100) {
         const size_t pair = (size_t)(value % 100) * 2;
         value /= 100;
         position -= 2;
-        scratch->bytes[position] = (uint8_t)decimal_pairs[pair];
-        scratch->bytes[position + 1] = (uint8_t)decimal_pairs[pair + 1];
+        room.ptr[position] = (uint8_t)decimal_pairs[pair];
+        room.ptr[position + 1] = (uint8_t)decimal_pairs[pair + 1];
     }
-    if (value >= 10 && position > 1) {
+    if (value >= 10) {
         const size_t pair = (size_t)value * 2;
-        position -= 2;
-        scratch->bytes[position] = (uint8_t)decimal_pairs[pair];
-        scratch->bytes[position + 1] = (uint8_t)decimal_pairs[pair + 1];
-    } else if (position > 0) {
-        position -= 1;
-        scratch->bytes[position] = (uint8_t)('0' + value);
+        room.ptr[0] = (uint8_t)decimal_pairs[pair];
+        room.ptr[1] = (uint8_t)decimal_pairs[pair + 1];
+    } else {
+        room.ptr[0] = (uint8_t)('0' + value);
     }
-    MsBytes digits = {0};
-    return ms_bytes_slice(ms_bytes(scratch->bytes, MS_U64_DIGITS), position, MS_U64_DIGITS, &digits) ? digits
-                                                                                                      : ms_bytes(NULL, 0);
+    *written = length;
+    return true;
+}
+
+/* The room left in the sink's buffer. */
+static MsBytesMut sink_room(const MsFmtSink *sink) {
+    MsBytesMut room = {0};
+    if (!ms_bytes_mut_slice(sink->buffer, sink->length, sink->buffer.len, &room)) {
+        return ms_bytes_mut(NULL, 0);
+    }
+    return room;
 }
 
 static void sink_put_unsigned(MsFmtSink *sink, uint64_t value) {
-    MsDecimal scratch = {0};
-    sink_put(sink, decimal_digits(value, &scratch));
+    size_t written = 0;
+    if (sink->overflowed || !write_decimal(sink_room(sink), value, &written)) {
+        sink->overflowed = true;
+        return;
+    }
+    sink->length += written; /* write_decimal stayed within the room */
 }
 
 static void sink_put_signed(MsFmtSink *sink, int64_t value) {
@@ -259,9 +308,8 @@ MS_NODISCARD static bool schubfach(MsBinaryValue value, uint64_t *digits, int *e
 }
 
 /* Decimal digits with the decimal exponent of the first one: 12.5 is "125" with exponent 1. A shortest form has at
- * most 17 digits and an integer 20; the precision forms keep up to MS_KEPT_CAPACITY. */
-#define MS_KEPT_CAPACITY 128
-#define MS_DIGITS_CAPACITY MS_KEPT_CAPACITY
+ * most 17 digits and an integer 20. */
+#define MS_DIGITS_CAPACITY 24
 
 typedef struct MsDigits {
     uint8_t text[MS_DIGITS_CAPACITY];
@@ -270,12 +318,9 @@ typedef struct MsDigits {
 } MsDigits;
 
 static MsDigits digits_of_unsigned(uint64_t value, int exponent_of_last_digit) {
-    MsDecimal scratch = {0};
-    const MsBytes text = decimal_digits(value, &scratch);
     MsDigits digits = {.text = {0}, .length = 0, .exponent = 0};
-    for (size_t i = 0; i < text.len && i < MS_DIGITS_CAPACITY; i++) {
-        digits.text[i] = text.ptr[i];
-        digits.length++;
+    if (!write_decimal(ms_bytes_mut(digits.text, MS_DIGITS_CAPACITY), value, &digits.length)) {
+        return digits; /* unreachable: a UInt64 has at most 20 digits */
     }
     /* `length` is at most 20, so the conversion is exact. */
     digits.exponent = exponent_of_last_digit + (int)digits.length - 1;
@@ -303,56 +348,60 @@ MS_NODISCARD static bool shortest_digits(uint64_t bits, MsFloatFormat format, Ms
 #define MS_PLAIN_EXPONENT_MIN (-6)
 #define MS_PLAIN_EXPONENT_MAX 20
 
-static void sink_put_slice(MsFmtSink *sink, const MsDigits *digits, size_t start, size_t end) {
+/* digits[start..end], or an overflow when the range is wrong (which no caller's arithmetic produces). */
+static void sink_put_slice(MsFmtSink *sink, MsBytes digits, size_t start, size_t end) {
     MsBytes piece = {0};
-    if (ms_bytes_slice(ms_bytes(digits->text, digits->length), start, end, &piece)) {
+    if (ms_bytes_slice(digits, start, end, &piece)) {
         sink_put(sink, piece);
     } else {
         sink->overflowed = true;
     }
 }
 
-static void sink_put_plain(MsFmtSink *sink, const MsDigits *digits) {
-    const int point = digits->exponent + 1; /* digits before the decimal point */
+/* Plain notation: the digits with the decimal point placed by `exponent`, the exponent of the first digit. */
+static void sink_put_plain(MsFmtSink *sink, MsBytes digits, int exponent) {
+    const int point = exponent + 1; /* digits before the decimal point */
     if (point <= 0) {
         sink_put_text(sink, "0.");
         sink_put_zeros(sink, (size_t)-point);
-        sink_put_slice(sink, digits, 0, digits->length);
-    } else if ((size_t)point >= digits->length) {
-        sink_put_slice(sink, digits, 0, digits->length);
-        sink_put_zeros(sink, (size_t)point - digits->length);
+        sink_put(sink, digits);
+    } else if ((size_t)point >= digits.len) {
+        sink_put(sink, digits);
+        sink_put_zeros(sink, (size_t)point - digits.len);
     } else {
         sink_put_slice(sink, digits, 0, (size_t)point);
         sink_put_byte(sink, '.');
-        sink_put_slice(sink, digits, (size_t)point, digits->length);
+        sink_put_slice(sink, digits, (size_t)point, digits.len);
     }
 }
 
-static void sink_put_scientific(MsFmtSink *sink, const MsDigits *digits) {
+static void sink_put_scientific(MsFmtSink *sink, MsBytes digits, int exponent) {
     sink_put_slice(sink, digits, 0, 1);
-    if (digits->length > 1) {
+    if (digits.len > 1) {
         sink_put_byte(sink, '.');
-        sink_put_slice(sink, digits, 1, digits->length);
+        sink_put_slice(sink, digits, 1, digits.len);
     }
     sink_put_byte(sink, 'e');
-    if (digits->exponent >= 0) {
+    if (exponent >= 0) {
         sink_put_byte(sink, '+');
     }
-    sink_put_signed(sink, digits->exponent);
+    sink_put_signed(sink, exponent);
 }
 
 /* The digits as the shortest float text, trailing zeros dropped first. */
-static void sink_put_decimal_text(MsFmtSink *sink, MsDigits digits, bool negative) {
-    while (digits.length > 1 && digits.text[digits.length - 1] == '0') {
-        digits.length--;
+static void sink_put_decimal_text(MsFmtSink *sink, const MsDigits *digits, bool negative) {
+    size_t length = digits->length;
+    while (length > 1 && digits->text[length - 1] == '0') {
+        length--;
     }
+    const MsBytes significant = ms_bytes(digits->text, length);
     if (negative) {
         sink_put_byte(sink, '-');
     }
-    if (digits.exponent >= MS_PLAIN_EXPONENT_MIN && digits.exponent <= MS_PLAIN_EXPONENT_MAX) {
-        sink_put_plain(sink, &digits);
+    if (digits->exponent >= MS_PLAIN_EXPONENT_MIN && digits->exponent <= MS_PLAIN_EXPONENT_MAX) {
+        sink_put_plain(sink, significant, digits->exponent);
     } else {
-        sink_put_scientific(sink, &digits);
+        sink_put_scientific(sink, significant, digits->exponent);
     }
 }
 
@@ -405,7 +454,7 @@ static bool sink_put_float(MsFmtSink *sink, double value) {
     if (!float_digits(negative ? -value : value, &digits)) {
         return false;
     }
-    sink_put_decimal_text(sink, digits, negative);
+    sink_put_decimal_text(sink, &digits, negative);
     return true;
 }
 
@@ -425,7 +474,7 @@ bool msrt_fmt_float32(double value, uint8_t *out, size_t capacity, size_t *lengt
     if (!shortest_digits(bits & 0x7fffffffu, binary32_format, &digits)) {
         return false;
     }
-    sink_put_decimal_text(&sink, digits, (bits >> 31) != 0);
+    sink_put_decimal_text(&sink, &digits, (bits >> 31) != 0);
     return sink_finish(&sink, length);
 }
 
@@ -436,7 +485,8 @@ bool msrt_fmt_float32(double value, uint8_t *out, size_t capacity, size_t *lengt
 /* c * 5^1074 is below 10^768; the limbs also hold c * 2^971. */
 #define MS_LIMB_CAPACITY 96
 #define MS_EXACT_DIGITS_CAPACITY ((size_t)MS_LIMB_CAPACITY * MS_LIMB_DIGITS)
-/* The most digits any precision form keeps is MS_KEPT_CAPACITY: 22 before the point and 100 after, plus a carry. */
+/* The most digits any precision form keeps: 22 before the point and 100 after, plus a carry. */
+#define MS_KEPT_CAPACITY 128
 #define MS_PRECISION_MAX 100
 
 /* A non-negative integer in base 10^9, least significant limb first. */
@@ -644,11 +694,10 @@ static bool sink_put_fixed_fast(MsFmtSink *sink, MsFixedRequest request) {
     }
     sink_put_unsigned(sink, scaled / scale);
     if (request.digits > 0) {
-        MsDecimal scratch = {0};
-        const MsBytes fraction = decimal_digits(scaled % scale, &scratch);
+        const uint64_t fraction = scaled % scale;
         sink_put_byte(sink, '.');
-        sink_put_zeros(sink, request.digits - fraction.len);
-        sink_put(sink, fraction);
+        sink_put_zeros(sink, request.digits - decimal_length(fraction));
+        sink_put_unsigned(sink, fraction);
     }
     return true;
 }
@@ -739,11 +788,7 @@ static bool sink_put_significant(MsFmtSink *sink, MsPrecisionValue value, MsPrec
     }
     const int exponent = kept.point;
     if (form == MS_FORM_PRECISION && exponent >= MS_PLAIN_EXPONENT_MIN && exponent < (int)digits) {
-        MsDigits plain = {.text = {0}, .length = kept.length, .exponent = exponent};
-        for (size_t i = 0; i < kept.length; i++) {
-            plain.text[i] = kept.text[i];
-        }
-        sink_put_plain(sink, &plain);
+        sink_put_plain(sink, ms_bytes(kept.text, kept.length), exponent);
         return true;
     }
     sink_put_byte(sink, kept.text[0]);
