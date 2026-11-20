@@ -19,20 +19,9 @@ case "$mode" in system|pinned) ;; *) echo "MS_C_LIBS must be system or pinned, n
 hash_input() { cat "$repository/runtime/third_party/c-libs.lock" "$repository/runtime/third_party/build.sh"; find "$repository/runtime/third_party/llhttp" "$repository/runtime/third_party/qbe" -type f | sort | xargs cat; printf '%s\n%s\n%s\n' "$triple" "$("$cc" --version | head -1)" "$mode"; }
 key=$(hash_input | if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -c1-16)
 if [ "${1:-}" = key ]; then echo "$key"; exit 0; fi
-final=$root/$triple-$mode-$key
-if [ -f "$final/.complete" ]; then echo "$final"; exit 0; fi
-# Concurrent runs (`cargo xtask runtime` builds several archives side by side) each build in a private folder
-# and the first to finish publishes it, so no run deletes or overwrites another's files.
-out=$final.$$
-work=$root/build/$triple.$$
-rm -rf "$out" "$work"
-finish() {
-    touch "$out/.complete"
-    rm -rf "$work"
-    if [ -d "$final" ]; then rm -rf "$out"; else mv "$out" "$final"; fi
-    echo "$final"
-    exit 0
-}
+out=$root/$triple-$mode-$key
+if [ -f "$out/.complete" ]; then echo "$out"; exit 0; fi
+rm -rf "$out"
 jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
 mkdir -p "$src" "$out/lib" "$out/include"
 sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
@@ -56,7 +45,7 @@ version_of() { awk -v n="$1" '$1==n {print $2}' "$repository/runtime/third_party
 cmake_flags="-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$cc -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
 
 if [ ! -f "$out/lib/libllhttp.a" ]; then
-    build=$work/llhttp
+    build=$root/build/$triple/llhttp
     mkdir -p "$build"
     for f in api http llhttp; do "$cc" -O2 -fPIC -I"$repository/runtime/third_party/llhttp/include" -c "$repository/runtime/third_party/llhttp/src/$f.c" -o "$build/$f.o"; done
     ar rcs "$out/lib/libllhttp.a" "$build"/*.o
@@ -68,16 +57,16 @@ if [ ! -f "$out/bin/qbe" ]; then
     q=$repository/runtime/third_party/qbe
     "$cc" -std=c99 -O2 -I"$q" "$q"/*.c "$q"/amd64/*.c "$q"/arm64/*.c "$q"/rv64/*.c -o "$out/bin/qbe"
 fi
-if [ "$mode" = system ]; then finish; fi
+if [ "$mode" = system ]; then touch "$out/.complete"; echo "$out"; exit 0; fi
 if [ ! -f "$out/lib/libuv.a" ]; then
-    build=$work/libuv
+    build=$root/build/$triple/libuv
     cmake -S "$src/libuv-$(version_of libuv)" -B "$build" $cmake_flags -DLIBUV_BUILD_SHARED=OFF -DLIBUV_BUILD_TESTS=OFF -DLIBUV_BUILD_BENCH=OFF >/dev/null
     cmake --build "$build" -j "$jobs" >/dev/null
     cp "$build"/libuv.a "$out/lib/"
     cp -R "$src/libuv-$(version_of libuv)/include/." "$out/include/"
 fi
 if [ ! -f "$out/lib/libnghttp2.a" ]; then
-    build=$work/nghttp2
+    build=$root/build/$triple/nghttp2
     cmake -S "$src/nghttp2-$(version_of nghttp2)" -B "$build" $cmake_flags -DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF >/dev/null
     cmake --build "$build" -j "$jobs" >/dev/null
     cp "$build"/lib/libnghttp2.a "$out/lib/"
@@ -86,7 +75,7 @@ if [ ! -f "$out/lib/libnghttp2.a" ]; then
 fi
 if [ ! -f "$out/lib/libssl.a" ]; then
     # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
-    build=$work/openssl
+    build=$root/build/$triple/openssl
     rm -rf "$build"; mkdir -p "$build"
     (cd "$build" && CC="$cc" perl "$src/openssl-$(version_of openssl)/Configure" no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
         && make -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
@@ -94,7 +83,7 @@ if [ ! -f "$out/lib/libssl.a" ]; then
 fi
 if [ ! -f "$out/lib/libz.a" ]; then
     # zlib: the in-memory deflate and inflate code only, compiled directly (no gz file layer, no build system).
-    build=$work/zlib
+    build=$root/build/$triple/zlib
     zsrc=$src/zlib-$(version_of zlib)
     mkdir -p "$build"
     for f in adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil; do "$cc" -O2 -fPIC -I"$zsrc" -c "$zsrc/$f.c" -o "$build/$f.o"; done
@@ -103,10 +92,11 @@ if [ ! -f "$out/lib/libz.a" ]; then
 fi
 if [ ! -f "$out/lib/libpcre2-8.a" ]; then
     # PCRE2, 8-bit library only, with its JIT. Plain C: no C++ runtime in programs.
-    build=$work/pcre2
+    build=$root/build/$triple/pcre2
     cmake -S "$src/pcre2-$(version_of pcre2)" -B "$build" $cmake_flags -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=OFF -DPCRE2_BUILD_PCRE2_32=OFF -DPCRE2_SUPPORT_JIT=ON -DPCRE2_SUPPORT_UNICODE=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_SUPPORT_LIBZ=OFF -DPCRE2_SUPPORT_LIBBZ2=OFF -DPCRE2_SUPPORT_LIBREADLINE=OFF >/dev/null
     cmake --build "$build" -j "$jobs" >/dev/null
     cp "$build/libpcre2-8.a" "$out/lib/"
     cp "$build/interface/pcre2.h" "$out/include/"
 fi
-finish
+touch "$out/.complete"
+echo "$out"
