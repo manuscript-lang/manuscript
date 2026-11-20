@@ -16,6 +16,8 @@
 #include "mir_interp_ops.c"
 #include "mir_interp.c"
 #include "mir_parse.c"
+#include "hints.c"
+#include "constfold.c"
 #include "types.c"
 #include "tables.c"
 #include "stdlib.c"
