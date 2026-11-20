@@ -218,8 +218,9 @@ c-compiler-test:
 # libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
 target/c-tool/libmstool.a: compiler/src/tool.c compiler/include/ms/tool.h $(wildcard compiler/src/*.c compiler/include/ms/*.h)
 	mkdir -p target/c-tool
+	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -c compiler/src/libms.c -o target/c-tool/libms.o
 	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Icrates/ms-rt-abi/include -c compiler/src/tool.c -o target/c-tool/tool.o
-	ar rcs $@ target/c-tool/tool.o
+	ar rcs $@ target/c-tool/libms.o target/c-tool/tool.o
 
 # The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; and `search_symbol` against the Rust one.
 c-tools-test: build target/c-tool/libmstool.a

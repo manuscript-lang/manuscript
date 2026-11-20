@@ -1,5 +1,4 @@
 /* The tool interface (include/ms/tool.h): flat tables for Manuscript programs. */
-#include "libms.c"
 #include <stdlib.h>
 #include <string.h>
 
@@ -158,7 +157,18 @@ static void put_none(Enc *e, int *kids) {
     KID(kids);
 }
 
-static void patch(Enc *e, size_t at, int kids) { ((int64_t *)e->out->data)[at * MS_TOOL_NODE_WIDTH + 11] = kids; }
+/* The node table is a byte buffer, so a field is moved with memcpy rather than a pointer cast. */
+static void field_store(MsBuf *table, size_t index, int64_t value) {
+    memcpy(table->data + index * sizeof value, &value, sizeof value);
+}
+
+static int64_t field_load(const MsBuf *table, size_t index) {
+    int64_t value;
+    memcpy(&value, table->data + index * sizeof value, sizeof value);
+    return value;
+}
+
+static void patch(Enc *e, size_t at, int kids) { field_store(e->out, at * MS_TOOL_NODE_WIDTH + 11, kids); }
 
 static size_t list_open(Enc *e, int *kids) {
     size_t at = rec(e, N_List, 0, NOPOS, NOPOS, 0, -1, -1);
@@ -262,6 +272,89 @@ static void enc_pattern(Enc *e, const MsPattern *p, int *kids) {
     }
 }
 
+/* Records the expression's own node and counts it as a child of the caller. */
+static size_t open_expr(Enc *e, const MsExpr *x, int kind, int flags, int64_t a, int64_t b, int *kids) {
+    const size_t at = rec(e, kind, x->id, x->pos, x->end, flags, a, b);
+    KID(kids);
+    return at;
+}
+
+static void enc_text(Enc *e, const MsExpr *x, int *kids) {
+    const size_t at = open_expr(e, x, N_Text, 0, -1, -1, kids);
+    int k = 0;
+    for (uint32_t i = 0; i < x->u.text.len; i++) {
+        const MsTextPart *part = &x->u.text.ptr[i];
+        const size_t part_at =
+            rec(e, N_TextPart, 0, NOPOS, NOPOS, part->expr ? 1 : 0, part->expr ? -1 : sym_of(e, part->lit), -1);
+        KID(&k);
+        int part_kids = 0;
+        if (part->expr) enc_expr(e, part->expr, &part_kids);
+        patch(e, part_at, part_kids);
+    }
+    patch(e, at, k);
+}
+
+static void enc_map(Enc *e, const MsExpr *x, int *kids) {
+    const size_t at = open_expr(e, x, N_Map, 0, -1, -1, kids);
+    int k = 0;
+    for (uint32_t i = 0; i < x->u.map.len; i++) {
+        const size_t entry_at = rec(e, N_MapEntry, 0, NOPOS, NOPOS, 0, -1, -1);
+        KID(&k);
+        int entry_kids = 0;
+        enc_expr(e, x->u.map.ptr[i].key, &entry_kids);
+        enc_expr(e, x->u.map.ptr[i].value, &entry_kids);
+        patch(e, entry_at, entry_kids);
+    }
+    patch(e, at, k);
+}
+
+static void enc_call(Enc *e, const MsExpr *x, int *kids) {
+    const size_t at = open_expr(e, x, N_Call, 0, -1, -1, kids);
+    int k = 0;
+    enc_expr(e, x->u.call.callee, &k);
+    const size_t list_at = list_open(e, &k);
+    int list_kids = 0;
+    for (uint32_t i = 0; i < x->u.call.args.len; i++) {
+        const MsArg *arg = &x->u.call.args.ptr[i];
+        const size_t arg_at =
+            rec(e, N_Arg, 0, arg->pos, NOPOS, arg->has_name ? 1 : 0, arg->has_name ? (int64_t)arg->name : -1, -1);
+        KID(&list_kids);
+        int arg_kids = 0;
+        enc_expr(e, arg->value, &arg_kids);
+        patch(e, arg_at, arg_kids);
+    }
+    patch(e, list_at, list_kids);
+    patch(e, at, k);
+}
+
+static void enc_arm(Enc *e, const MsArm *arm, int *kids) {
+    const size_t at = rec(e, N_Arm, arm->id, arm->pos, NOPOS, (arm->from_if ? 1 : 0) | (arm->bare ? 2 : 0), -1, -1);
+    KID(kids);
+    int k = 0;
+    enc_expr(e, arm->path, &k);
+    const size_t bindings_at = list_open(e, &k);
+    int binding_kids = 0;
+    for (uint32_t i = 0; i < arm->bindings.len; i++) {
+        rec(e, N_ArmBinding, 0, arm->bindings.ptr[i].pos, NOPOS, 0, arm->bindings.ptr[i].name, -1);
+        KID(&binding_kids);
+    }
+    patch(e, bindings_at, binding_kids);
+    enc_body(e, arm->body.ptr, arm->body.len, &k);
+    enc_expr(e, arm->value, &k);
+    patch(e, at, k);
+}
+
+static void enc_match(Enc *e, const MsExpr *x, int *kids) {
+    const size_t at = open_expr(e, x, N_Match, 0, -1, -1, kids);
+    int k = 0;
+    enc_expr(e, x->u.match.scrutinee, &k);
+    const size_t arms_at = list_open(e, &k);
+    int arm_kids = 0;
+    for (uint32_t i = 0; i < x->u.match.arms.len; i++) enc_arm(e, x->u.match.arms.ptr[i], &arm_kids);
+    patch(e, arms_at, arm_kids);
+    patch(e, at, k);
+}
+
 static void enc_expr(Enc *e, const MsExpr *x, int *kids) {
     if (x == NULL) {
         put_none(e, kids);
@@ -275,18 +368,7 @@ static void enc_expr(Enc *e, const MsExpr *x, int *kids) {
     case MS_E_BOOL: OPEN(N_Bool, x->u.flag ? 1 : 0, -1, -1); break;
     case MS_E_VOID: OPEN(N_Void, 0, -1, -1); break;
     case MS_E_NAME: OPEN(N_Name, 0, x->u.sym, -1); break;
-    case MS_E_TEXT:
-        OPEN(N_Text, 0, -1, -1);
-        for (uint32_t i = 0; i < x->u.text.len; i++) {
-            const MsTextPart *part = &x->u.text.ptr[i];
-            size_t pat = rec(e, N_TextPart, 0, NOPOS, NOPOS, part->expr ? 1 : 0, part->expr ? -1 : sym_of(e, part->lit), -1);
-            KID(&k);
-            int pk = 0;
-            if (part->expr) enc_expr(e, part->expr, &pk);
-            patch(e, pat, pk);
-        }
-        patch(e, at, k);
-        break;
+    case MS_E_TEXT: enc_text(e, x, kids); break;
     case MS_E_MEMBER:
         OPEN(N_Member, 0, x->u.member.name, -1);
         enc_expr(e, x->u.member.left, &k);
@@ -315,18 +397,7 @@ static void enc_expr(Enc *e, const MsExpr *x, int *kids) {
         for (uint32_t i = 0; i < x->u.list.len; i++) enc_expr(e, x->u.list.ptr[i], &k);
         patch(e, at, k);
         break;
-    case MS_E_MAP:
-        OPEN(N_Map, 0, -1, -1);
-        for (uint32_t i = 0; i < x->u.map.len; i++) {
-            size_t eat = rec(e, N_MapEntry, 0, NOPOS, NOPOS, 0, -1, -1);
-            KID(&k);
-            int ek = 0;
-            enc_expr(e, x->u.map.ptr[i].key, &ek);
-            enc_expr(e, x->u.map.ptr[i].value, &ek);
-            patch(e, eat, ek);
-        }
-        patch(e, at, k);
-        break;
+    case MS_E_MAP: enc_map(e, x, kids); break;
     case MS_E_UNARY:
         OPEN(N_Unary, x->op, -1, -1);
         enc_expr(e, x->u.bin.left, &k);
@@ -345,49 +416,8 @@ static void enc_expr(Enc *e, const MsExpr *x, int *kids) {
         enc_body(e, x->u.lambda.body.ptr, x->u.lambda.body.len, &k);
         patch(e, at, k);
         break;
-    case MS_E_CALL: {
-        OPEN(N_Call, 0, -1, -1);
-        enc_expr(e, x->u.call.callee, &k);
-        size_t lat = list_open(e, &k);
-        int lk = 0;
-        for (uint32_t i = 0; i < x->u.call.args.len; i++) {
-            const MsArg *a = &x->u.call.args.ptr[i];
-            size_t aat = rec(e, N_Arg, 0, a->pos, NOPOS, a->has_name ? 1 : 0, a->has_name ? (int64_t)a->name : -1, -1);
-            KID(&lk);
-            int ak = 0;
-            enc_expr(e, a->value, &ak);
-            patch(e, aat, ak);
-        }
-        patch(e, lat, lk);
-        patch(e, at, k);
-        break;
-    }
-    default: {
-        OPEN(N_Match, 0, -1, -1);
-        enc_expr(e, x->u.match.scrutinee, &k);
-        size_t lat = list_open(e, &k);
-        int lk = 0;
-        for (uint32_t i = 0; i < x->u.match.arms.len; i++) {
-            const MsArm *a = x->u.match.arms.ptr[i];
-            size_t aat = rec(e, N_Arm, a->id, a->pos, NOPOS, (a->from_if ? 1 : 0) | (a->bare ? 2 : 0), -1, -1);
-            KID(&lk);
-            int ak = 0;
-            enc_expr(e, a->path, &ak);
-            size_t bat = list_open(e, &ak);
-            int bk = 0;
-            for (uint32_t j = 0; j < a->bindings.len; j++) {
-                rec(e, N_ArmBinding, 0, a->bindings.ptr[j].pos, NOPOS, 0, a->bindings.ptr[j].name, -1);
-                KID(&bk);
-            }
-            patch(e, bat, bk);
-            enc_body(e, a->body.ptr, a->body.len, &ak);
-            enc_expr(e, a->value, &ak);
-            patch(e, aat, ak);
-        }
-        patch(e, lat, lk);
-        patch(e, at, k);
-        break;
-    }
+    case MS_E_CALL: enc_call(e, x, kids); break;
+    default: enc_match(e, x, kids); break;
     }
 #undef OPEN
 }
@@ -400,10 +430,10 @@ static void enc_stmt(Enc *e, const MsStmt *s, int *kids) {
     case MS_S_BIND:
         OPEN(N_Bind, (s->u.bind.mutable_ ? 1 : 0) | (s->u.bind.has_group ? 2 : 0), -1, -1);
         if (s->u.bind.has_group) {
-            int64_t *r = (int64_t *)e->out->data + at * MS_TOOL_NODE_WIDTH;
-            r[5] = s->u.bind.group.offset;
-            r[6] = s->u.bind.group.line;
-            r[7] = s->u.bind.group.column;
+            const size_t base = at * MS_TOOL_NODE_WIDTH;
+            field_store(e->out, base + 5, s->u.bind.group.offset);
+            field_store(e->out, base + 6, s->u.bind.group.line);
+            field_store(e->out, base + 7, s->u.bind.group.column);
         }
         enc_pattern(e, s->u.bind.pattern, &k);
         enc_type(e, s->u.bind.ty, &k);
@@ -589,9 +619,8 @@ int64_t ms_tool_tree_error_column(ms_object *tree) { Tree *t = ms_payload(tree);
 
 void ms_tool_tree_nodes(ms_object *tree, ms_list *out) {
     Tree *t = ms_payload(tree);
-    const int64_t *r = (const int64_t *)t->nodes.data;
-    size_t n = t->nodes.len / sizeof(int64_t);
-    for (size_t i = 0; i < n; i++) push_int(out, r[i]);
+    const size_t count = t->nodes.len / sizeof(int64_t);
+    for (size_t i = 0; i < count; i++) push_int(out, field_load(&t->nodes, i));
 }
 
 void ms_tool_tree_names(ms_object *tree, ms_list *out) {
