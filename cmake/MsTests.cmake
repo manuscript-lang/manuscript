@@ -98,8 +98,17 @@ foreach(file ${_std_tests})
           LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
+# The vendored yyjson the JSON scanner reads with, compiled like ms_test_llhttp.
+add_library(ms_test_yyjson OBJECT "${MS_YYJSON_DIR}/src/yyjson.c")
+target_include_directories(ms_test_yyjson PUBLIC "${MS_YYJSON_DIR}/include")
+target_compile_definitions(ms_test_yyjson PUBLIC ${MS_YYJSON_DEFINES})
+target_compile_options(ms_test_yyjson PRIVATE -O1 -g -w)
+if(MS_SANITIZE)
+  target_compile_options(ms_test_yyjson PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=undefined)
+endif()
+
 # The JSON test replays the recorded corpus against the natives over the real runtime/core.
-ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
+ms_test(json_test SOURCES "${_tests}/json_test.c" ${_json_sources} OBJECTS ms_test_core ms_test_yyjson INCLUDES "${MS_YYJSON_DIR}/include" LIBS m DEFINES MS_ALLOC_STATS)
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
 set(_llhttp "${CMAKE_SOURCE_DIR}/runtime/third_party/llhttp")
@@ -156,21 +165,23 @@ ms_test(dial_test SOURCES "${_tests}/dial_test.c" "${_rt}/net/dial.c" "${_rt}/ne
         "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
-ms_test(http1_exchange_test SOURCES "${_tests}/http1_exchange_test.c" "${_rt}/net/http1_exchange.c" "${_rt}/net/dial.c"
+ms_test(http1_exchange_test SOURCES "${_tests}/http1_exchange_test.c" "${_rt}/net/http1_exchange.c" "${_rt}/net/http_client.c" "${_rt}/net/dial.c"
         "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c"
         ${_io_sources} ${_posix_sources}
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
-ms_test(http2_exchange_test SOURCES "${_tests}/http2_exchange_test.c" "${_rt}/net/http2_exchange.c" "${_rt}/net/h2conn.c"
+ms_test(http2_exchange_test SOURCES "${_tests}/http2_exchange_test.c" "${_rt}/net/http2_exchange.c" "${_rt}/net/http_client.c" "${_rt}/net/h2conn.c"
         "${_rt}/net/h2.c" "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
         "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
         OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_nghttp2_LINK} ${CMAKE_DL_LIBS} pthread)
-ms_test(net_natives_test SOURCES "${_tests}/net_natives_test.c" "${_rt}/net/natives.c" "${_rt}/net/conn_object.c" "${_rt}/net/addr_text.c"
+ms_test(net_natives_test SOURCES "${_tests}/net_natives_test.c" "${_rt}/net/natives.c" "${_rt}/net/status.c" "${_rt}/net/fetch.c"
+        "${_rt}/net/headers.c" "${_rt}/net/http_client.c" "${_rt}/net/http1_exchange.c" "${_rt}/net/http2_exchange.c"
+        "${_rt}/net/h2conn.c" "${_rt}/net/h2.c" "${_rt}/net/conn_object.c" "${_rt}/net/addr_text.c"
         "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
         "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
-        OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES}
-        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
+        OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_nghttp2_INCLUDES}
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_nghttp2_LINK} ${CMAKE_DL_LIBS} pthread)
 ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_nghttp2_LINK})
 ms_test(h2_serve_test SOURCES "${_tests}/h2_serve_test.c" "${_rt}/net/h2_serve.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
