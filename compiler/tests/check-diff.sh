@@ -87,6 +87,12 @@ cut -d'|' -f1 "$out/bodies.c.keyed" | sort -u > "$out/bodies.keys"
 keyed "$out/bodies.rust" | awk -F'|' -v list="$out/bodies.keys" -v declined="$out/bodies.declined" '
     BEGIN { while ((getline line < list) > 0) keep[line] = 1; while ((getline line < declined) > 0) skip[line] = 1 }
     ($1 in keep) && !(($1 in skip) && $2 ~ /^diag /)' > "$out/bodies.rust.keyed"
+# A call of a function another module exports is claimed; a change that declines it drops hundreds of
+# functions, so one fixture pins it.
+if ! grep -q 'body_imported_call.ms 3:1$' "$out/bodies.keys"; then
+    echo "FAIL bodies: a call of an imported function is no longer checked in C (compiler/tests/scope/body_imported_call.ms)"
+    status=1
+fi
 if cmp -s "$out/bodies.rust.keyed" "$out/bodies.c.keyed" && [ -s "$out/bodies.c.keyed" ]; then
     echo "ok   bodies ($(wc -l < "$out/bodies.keys") functions, $(grep -c '|expr ' "$out/bodies.c.keyed") expressions)"
 else

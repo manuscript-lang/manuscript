@@ -2,8 +2,6 @@
 //! one real Manuscript program (`profile/spin.ms`, built once with the CLI), so they need no
 //! shell and run on every platform.
 
-// Links the msrt_* runtime symbols that the standard-library crates reference.
-use ms_rt as _;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 

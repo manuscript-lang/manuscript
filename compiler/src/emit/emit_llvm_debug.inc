@@ -56,7 +56,8 @@ static void ll_debug_finish(const LlDebug *d, MsBuf *out) {
     ms_buf_put(out, d->nodes.data, d->nodes.len);
 }
 
-/* Adds `, !dbg !<node>` to every instruction line written since `from`: the lines indented by two spaces. */
+/* Adds `, !dbg !<node>` to every instruction written since `from`: the lines indented by two spaces. A `switch`
+ * spans several lines (`... [`, its cases indented further, `]`), and the closing bracket line takes the metadata. */
 static void ll_debug_tag(MsBuf *out, size_t from, uint32_t node) {
     MsBuf tail = {0};
     ms_buf_put(&tail, out->data + from, out->len - from);
@@ -66,7 +67,8 @@ static void ll_debug_tag(MsBuf *out, size_t from, uint32_t node) {
         const char *eol = memchr(p, '\n', (size_t)(end - p));
         eol = eol != NULL ? eol : end;
         ms_buf_put(out, p, (size_t)(eol - p));
-        if (p < eol && p[0] == ' ') {
+        const bool instruction = eol - p > 2 && p[0] == ' ' && p[1] == ' ' && p[2] != ' ' && eol[-1] != '[';
+        if (instruction) {
             ms_buf_printf(out, ", !dbg !%u", node);
         }
         if (eol < end) {
