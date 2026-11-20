@@ -308,6 +308,10 @@ fn abi_kind(text: &str) -> String {
         "MsCompareFn",
         "JsonCtorFn",
         "JsonViewFn",
+        "RunDrop",
+        "MsDropRun",
+        "RunCopy",
+        "MsSlotCopyRun",
         "ErrSlot",
     ] {
         if word(alias) {

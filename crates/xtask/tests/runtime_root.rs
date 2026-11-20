@@ -20,12 +20,26 @@ fn runtime_uses_the_active_cargo_manifest_directory() {
     )
     .unwrap();
     std::fs::set_permissions(&cargo, std::fs::Permissions::from_mode(0o755)).unwrap();
+    // The C half is a CMake build of the real checkout; here `cmake` only leaves the two lists it reads back.
+    let cmake = root.join("cmake");
+    std::fs::write(
+        &cmake,
+        "#!/bin/sh\nif [ \"$1\" = --build ]; then mkdir -p \"$2\"; : > \"$2/c-objects.txt\"; : > \"$2/c-features.txt\"; fi\nexit 0\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&cmake, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let path = format!(
+        "{}:{}",
+        root.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
     let record = root.join("record");
     std::fs::create_dir_all(&record).unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_xtask"))
         .arg("runtime")
         .current_dir(&root)
         .env("CARGO", cargo)
+        .env("PATH", path)
         .env("CARGO_MANIFEST_DIR", &manifest)
         .env("XTASK_TEST_DIR", &record)
         .output()
