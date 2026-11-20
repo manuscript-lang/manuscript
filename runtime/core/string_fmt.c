@@ -39,7 +39,7 @@ static uint32_t checked_radix(int64_t radix) {
 
 void msrt_int_to_string(int64_t v, MsStr *out) {
     uint8_t buffer[MS_FMT_INTEGER_CAPACITY];
-    size_t length = msrt_fmt_i64_fixed(v, buffer);
+    size_t length = ms_fmt_i64_fixed(v, buffer);
     put_text((MsBytes){buffer, length}, out);
 }
 

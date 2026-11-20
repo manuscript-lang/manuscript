@@ -84,7 +84,7 @@ static bool is_ascii(const MsStr *s) {
 static inline MS_ALWAYS_INLINE void add_part(Join *join, size_t slot, bool as_int, size_t arg) {
     JoinPart *part = &join->parts[slot];
     if (as_int) {
-        size_t length = msrt_fmt_i64_fixed((int64_t)arg, join->digits[slot]);
+        size_t length = ms_fmt_i64_fixed((int64_t)arg, join->digits[slot]);
         *part = (JoinPart){.text = {join->digits[slot], length}, .string = NULL};
     } else {
         /* The argument is an address in an integer register; copying its bytes avoids an integer to pointer cast. */

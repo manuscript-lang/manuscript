@@ -171,7 +171,7 @@ bool msrt_fmt_u64(uint64_t value, uint8_t *out, size_t capacity, size_t *length)
     return sink_finish(&sink, length);
 }
 
-size_t msrt_fmt_i64_fixed(int64_t value, uint8_t out[static MS_FMT_INTEGER_CAPACITY]) {
+size_t ms_fmt_i64_fixed(int64_t value, uint8_t out[static MS_FMT_INTEGER_CAPACITY]) {
     const bool negative = value < 0;
     out[0] = '-'; /* overwritten by the first digit of a value that is not negative */
     /* The magnitude of INT64_MIN is 2^63, which only the unsigned negation represents. */

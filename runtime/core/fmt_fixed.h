@@ -7,6 +7,6 @@
 
 /* The decimal text of `value` written at the start of `out`, and its length. It needs no capacity check, since the
  * buffer holds the longest Int. */
-MS_NONNULL size_t msrt_fmt_i64_fixed(int64_t value, uint8_t out[static MS_FMT_INTEGER_CAPACITY]);
+MS_NONNULL size_t ms_fmt_i64_fixed(int64_t value, uint8_t out[static MS_FMT_INTEGER_CAPACITY]);
 
 #endif
