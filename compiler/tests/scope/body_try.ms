@@ -7,9 +7,9 @@ fn check(n: Int) Void!:
 
 fn guarded(n: Int) Void!:
 	check(n)?
+
 	value := halve(n)?
-	if value > 1:
-		return
+	if value > 1: return
 
 fn lost(n: Int) Void!:
 	halve(n)
