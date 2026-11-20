@@ -172,6 +172,10 @@ typedef struct MirFunc {
     uint32_t nparams;
     MirTy ret;
     bool ret_borrowed, ret_view;
+    /* Set by passes, not in the text form: a function made only to run while a cancellation
+     * unwinds; one that leaves a cancel by its own explicit exits; one whose lists are raw slot
+     * copies (they own no elements). */
+    bool unwind_only, explicit_cancel, raw_scratch;
     bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
     bool raw_scratch; /* a generated sort: its scratch lists hold slots as bits and own nothing (not in the text form) */
     uint8_t linkage, kind, inline_hint, sort;
