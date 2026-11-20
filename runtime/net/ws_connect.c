@@ -57,7 +57,7 @@ uint8_t msstd_ws_connect(const void *conn, const MsStr *authority, const MsStr *
                            .max_message_bytes = has_max != 0 ? (uint64_t)max : UINT64_MAX};
     MsWsSocket *session = NULL;
     const char *why = NULL;
-    const MsWsStatus status = ms_ws_dial((MsObj *)conn, &dial, ms_net_deadline_of(has_timeout, timeout), &session, &why);
+    const MsWsStatus status = ms_ws_dial((const MsObj *)conn, &dial, ms_net_deadline_of(has_timeout, timeout), &session, &why);
     free(protocols);
     if (status != MS_WSS_OK) {
         return finish(status, why, err);

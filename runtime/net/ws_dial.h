@@ -27,7 +27,7 @@ typedef struct MsWsDial {
  * not set (Host, Upgrade, Connection, Sec-WebSocket-*), a bad name, value or subprotocol. MS_WSS_FAILED: `*why` is a
  * static text, for a refused or malformed answer. MS_WSS_CLOSED, MS_WSS_TIMEOUT, MS_WSS_CANCELLED as in ws_socket.h.
  * The connection is not closed on failure; the caller closes it. */
-MS_NODISCARD MsWsStatus ms_ws_dial(MsObj *conn, const MsWsDial *dial, int64_t deadline_ns, MsWsSocket **out,
+MS_NODISCARD MsWsStatus ms_ws_dial(const MsObj *conn, const MsWsDial *dial, int64_t deadline_ns, MsWsSocket **out,
                                    const char **why);
 
 #endif
