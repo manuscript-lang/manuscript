@@ -16,3 +16,6 @@ exe=$repository/target/c-libs/clibs_smoke_pcre2
 exe=$repository/target/c-libs/http1_test
 "$cc" -O1 -Wall -Wextra -I"$out/include" "$repository/runtime/tests/http1_test.c" "$repository/runtime/net/http1.c" "$out/lib/libllhttp.a" -o "$exe"
 "$exe"
+exe=$repository/target/c-libs/tls_test
+"$cc" -O1 -Wall -Wextra -I"$out/include" "$repository/runtime/tests/tls_test.c" "$repository/runtime/net/tls.c" "$out/lib/libssl.a" "$out/lib/libcrypto.a" -lpthread -ldl -o "$exe"
+"$exe"
