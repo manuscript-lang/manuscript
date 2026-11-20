@@ -52,6 +52,7 @@
 #include "walk.c"
 #include "ty_subst.c"
 #include "ty_algebra.c"
+#include "infer.c"
 #include "recursion.c"
 #include "fixes.c"
 #include "prelude_fix.c"
