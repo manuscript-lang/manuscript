@@ -3,6 +3,7 @@
    connection handle, the end of a stream, share and close_if_last, addresses, TLS facts, and the refusals. The task
    waits are test doubles (there is no scheduler) and the runtime is the fake of fake_rt.h. */
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +56,10 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
     if (copy != NULL && len > 0) memcpy(copy, ptr, len);
     *out = (MsStr){.ptr_word = copy, .tagged = len};
 }
+void msrt_string_free(const MsStr *s) {
+    if (s->tagged < ((uint64_t)1 << 62)) msrt_free(s->ptr_word);
+}
+void msrt_string_clone(const MsStr *s, MsStr *out) { msrt_string_from_bytes((const uint8_t *)s->ptr_word, (size_t)s->tagged, out); }
 bool ms_sched_cancel_pending(void) { return false; }
 void ms_sched_cancel_return(void) {}
 
@@ -276,17 +281,22 @@ static MsStr listen_on_loopback(Server *server) {
 }
 
 /* A DNS server for the resolver test: every name has the address 127.0.0.1, and there are no IPv6 records. */
-typedef struct DnsServer { MsSock udp; int queries; } DnsServer;
+typedef struct DnsServer { MsSock udp; atomic_bool stop; } DnsServer;
 
 static void serve_dns(void *argument) {
     DnsServer *server = argument;
-    for (int served = 0; served < server->queries; served++) {
+    while (!atomic_load(&server->stop)) {
         uint8_t query[512], out[600];
         MsAddr from;
         size_t count = 0;
-        while (ms_sys_net_udp_recv(server->udp, query, sizeof query, &count, &from) == MS_SYS_AGAIN) {
+        const int received = ms_sys_net_udp_recv(server->udp, query, sizeof query, &count, &from);
+        if (received == MS_SYS_AGAIN) {
             PollFd p = {.fd = (PollHandle)server->udp, .events = POLLIN};
-            poll_sockets(&p, 1, 100);
+            poll_sockets(&p, 1, 50);
+            continue;
+        }
+        if (received != MS_SYS_OK) {
+            break;
         }
         size_t end = 12;
         while (end < count && query[end] != 0) end += (size_t)query[end] + 1;
@@ -636,9 +646,10 @@ int main(void) {
     server.context = NULL;
 
 
-    /* a client with its own resolver: the DNS server gives the address, and a redirect off the host is refused */
+    /* a client with its own resolver: the DNS server gives the address of each hop, and a redirect to a host the filter
+       refuses ends the request */
     {
-        DnsServer dns = {.queries = 4};
+        DnsServer dns = {0};
         MsAddr dns_bind = {4, {127, 0, 0, 1}, 0, 0}, dns_at;
         CHECK(ms_sys_net_udp_bind(&dns_bind, &dns.udp) == MS_SYS_OK && ms_sys_net_local_addr(dns.udp, &dns_at) == MS_SYS_OK);
         char dns_text[MS_NET_ADDR_TEXT_MAX];
@@ -655,9 +666,19 @@ int main(void) {
         MsNetHttpOptions pinned_options = http_options;
         pinned_options.resolver = str(dns_text);
         CHECK(msstd_client_new(&pinned_options, &client, &err) == STATUS_OK);
+        MsVec pinned_hosts;
+        msrt_list_with_capacity(&msrt_desc_string, 1, &pinned_hosts);
+        MsStr pinned_name = str("pinned.test");
+        msrt_list_push(&pinned_hosts, &msrt_desc_string, &pinned_name);
+        CHECK(msstd_client_narrow(client, &pinned_hosts, &no_cidrs) == STATUS_OK);
         char target[160];
         snprintf(target, sizeof target, "%s/a", named);
         MsStr target_text = str(target);
+        CHECK(msstd_client_fetch(client, &get, &target_text, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+        CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len > 0);
+        ((MsObj *)response)->drop(response);
+        snprintf(target, sizeof target, "%s/redir", named); /* followed here: the next hop is resolved again */
+        target_text = str(target);
         CHECK(msstd_client_fetch(client, &get, &target_text, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
         CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len > 0);
         ((MsObj *)response)->drop(response);
@@ -666,6 +687,7 @@ int main(void) {
         CHECK(msstd_client_fetch(client, &get, &target_text, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_PERMISSION_DENIED);
         ((MsObj *)client)->drop(client);
         ms_sys_thread_join(thread);
+        atomic_store(&dns.stop, true);
         ms_sys_thread_join(dns_thread);
         ms_sys_net_close(server.listener);
         ms_sys_net_close(dns.udp);
