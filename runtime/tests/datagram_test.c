@@ -56,6 +56,7 @@ int main(void) {
     MsNetDatagram got;
     CHECK(msstd_dgram_receive(b, 0, 0, 1, 2000000000, &got, &err) == STATUS_OK);
     CHECK(got.data.len == 5 && memcmp(got.data.ptr, "hello", 5) == 0);
+    msrt_free(got.data.ptr);
     MsStr from_a; msstd_dgram_address(a, &from_a);
     CHECK(msrt_str_len(&got.sender) == msrt_str_len(&from_a) && memcmp(msrt_str_data(&got.sender), msrt_str_data(&from_a), msrt_str_len(&from_a)) == 0);
 
@@ -69,6 +70,7 @@ int main(void) {
     CHECK(msstd_dgram_receive(b, 1, 4, 1, 2000000000, &got, &err) == STATUS_LIMIT_EXCEEDED);
     CHECK(msstd_dgram_send(a, &payload, &to_b, 0, 0, &err) == STATUS_OK);
     CHECK(msstd_dgram_receive(b, 1, 5, 1, 2000000000, &got, &err) == STATUS_OK && got.data.len == 5);
+    msrt_free(got.data.ptr);
     CHECK(msstd_dgram_receive(b, 1, 0, 0, 0, &got, &err) == STATUS_INVALID_INPUT);
     CHECK(msstd_dgram_receive(b, 1, 65536, 0, 0, &got, &err) == STATUS_INVALID_INPUT);
 
@@ -83,6 +85,7 @@ int main(void) {
     MsVec huge; msrt_write_bytes(&huge, big, 65536);
     free(big);
     CHECK(msstd_dgram_send(a, &huge, &to_b, 0, 0, &err) == STATUS_LIMIT_EXCEEDED);
+    msrt_free(huge.ptr);
 
     /* ends: the socket stays open until the last end closes; close ends all use */
     void *a2 = msstd_dgram_share(a);
@@ -95,6 +98,7 @@ int main(void) {
     MsStr closed; msstd_dgram_address(b, &closed);
     CHECK(msrt_str_len(&closed) == 0);
 
+    msrt_free(payload.ptr);
     ((MsObj *)a)->drop(a);
     ((MsObj *)a2)->drop(a2);
     ((MsObj *)b)->drop(b);
