@@ -1,11 +1,11 @@
-// The project an `ms.toml` describes, read by libms (`ms_tool_project`, compiler/include/ms/tool.h):
-// the one manifest reader, so a program that imports this module links `libmstool.a`. A
-// manifest the C reader does not cover is `Unsupported`; the caller hands the command to
-// the Rust `ms`.
+// The project an `ms.toml` describes, read by libms (`ms_tool_project`,
+// compiler/include/ms/tool.h): the one manifest reader, so a program that imports this
+// module links `libmstool.a`. A manifest the C reader does not cover is `Unsupported`;
+// the caller hands the command to the Rust `ms`.
 import (
 	create_directory, temporary, write_file from "@std/os/fs.ms",
 	join from "@std/os/path.ms",
-	expect_equal from "@std/test/test.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 // Status 1 of `ms_tool_project` is an error with the Rust text; status 2 is a manifest
@@ -25,7 +25,8 @@ export type Dependency:
 	// The tag, the commit or the requirement, as written.
 	reference: String
 
-// An `ms.toml`, every path canonical and every table in the order the C reader sorted it.
+// An `ms.toml`, every path canonical and every table in the order the C reader sorted
+// it.
 export type Project:
 	// The canonical directory holding the manifest.
 	root: String
@@ -34,7 +35,7 @@ export type Project:
 	// `[project] name`; empty for a workspace root that is not a project.
 	name: String
 	source: String
-	// Empty for a library.
+	// The entry file, canonical; empty for a library.
 	entry: String
 	// `[aliases]`: name to canonical path.
 	aliases: Map[String, String]
@@ -93,7 +94,10 @@ fn rows_to_project(rows: List[String]) Project:
 				reference: fields.get_or(4, ""),
 			)
 		)
-		else if kind == "allow": project.allowed.add(first, fields.slice(2, fields.length()).get_or([]))
+		else if kind == "allow": project.allowed.add(
+			first,
+			fields.slice(2, fields.length()).get_or([]),
+		)
 		else if kind == "effect": project.effects.append(first)
 		else if kind == "workspace": project.workspace = true
 		else if kind == "member": project.members.append(first)
@@ -110,13 +114,21 @@ test "a manifest reads into a project":
 	root := scratch.path()
 	create_directory(join([root.clone(), "src"]), true)?
 	write_file(join([root.clone(), "src/main.ms"]), "fn main() Int:\n\treturn 0\n").wait()?
-	text := "[project]\nname = \"demo\"\nsource = \"src\"\nentry = \"main.ms\"\nversion = \"1.2.3\"\n[dependencies]\n\"@pg\" = { url = \"https://example.com/pg\", tag = \"v1\" }\n"
+
+	text := "[project]\nname = \"demo\"\nsource = \"src\"\nentry = \"src/main.ms\"\nversion = \"1.2.3\"\n[dependencies]\n\"@pg\" = { url = \"https://example.com/pg\", tag = \"v1\" }\n"
 	manifest := join([root.clone(), "ms.toml"])
 	write_file(manifest.clone(), text).wait()?
 
-	project := read_project(manifest).get()
+	got := read_project(manifest)
+
+	if got.is_error():
+		match got.err():
+			Failed(message): expect_equal(message.clone(), "")?
+			Unsupported(message): expect_equal(message.clone(), "")?
+
+	project := got.get()
 	expect_equal(project.name, "demo")?
-	expect_equal(project.entry, "main.ms")?
+	expect_true(project.entry.ends_with("/src/main.ms"))?
 	expect_equal(project.version, "1.2.3")?
 	expect_equal(project.dependencies.length(), 1)?
 	expect_equal(project.dependencies[0].alias, "@pg")?

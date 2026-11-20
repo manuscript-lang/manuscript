@@ -75,7 +75,10 @@ static bool embed_walk(EmbedWalk *w, const char *directory, const char *relative
 }
 
 static char embed_lower(char c) {
-    return c >= 'A' && c <= 'Z' ? (char)(c - 'A' + 'a') : c;
+    if (c >= 'A' && c <= 'Z') {
+        return (char)(c - 'A' + 'a');
+    }
+    return c;
 }
 
 static bool embed_same_ignoring_case(const char *a, const char *b) {
@@ -111,7 +114,8 @@ static void embed_base64(MsBuf *out, const uint8_t *data, size_t length) {
         const size_t chunk = length - at < 3 ? length - at : 3;
         const uint32_t n = ((uint32_t)data[at] << 16) | (chunk > 1 ? (uint32_t)data[at + 1] << 8 : 0) | (chunk > 2 ? data[at + 2] : 0);
         for (size_t i = 0; i < 4; i++) {
-            ms_buf_putc(out, i <= chunk ? alphabet[(n >> (18 - 6 * i)) & 63] : '=');
+            const char digit = alphabet[(n >> (18 - 6 * i)) & 63];
+            ms_buf_putc(out, i <= chunk ? digit : '=');
         }
     }
 }
@@ -164,7 +168,7 @@ bool ms_embed_generate(MsArena *a, const char *name, const char *root, const cha
             } else if (length > EMBED_MAX_FILE) {
                 ms_project_error_message(err, ms_arena_fmt(a, "embedded %s is larger than %u MiB; keep large data outside the program", entry->path, (unsigned)(EMBED_MAX_FILE >> 20)).ptr);
                 ok = false;
-            } else if ((total += length) > EMBED_MAX_TOTAL) {
+            } else if (total + length > EMBED_MAX_TOTAL) {
                 ms_project_error_message(err, ms_arena_fmt(a, "embedded %s holds more than %u MiB; keep large data outside the program", name, (unsigned)(EMBED_MAX_TOTAL >> 20)).ptr);
                 ok = false;
             } else {
@@ -173,6 +177,7 @@ bool ms_embed_generate(MsArena *a, const char *name, const char *root, const cha
                 ms_buf_puts(&loads, "\")\n");
                 ms_buf_printf(&entries, "    indexes.add(%s, %u)\n", path, files);
                 files++;
+                total += length;
             }
         }
     }

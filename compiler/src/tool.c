@@ -142,8 +142,13 @@ uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *messa
 
 /* One row of `ms_tool_project`: its kind, then its fields, separated by tabs. */
 static void push_row(MsArena *a, ms_list *out, const char *kind, const char *first, const char *second) {
-    const char *row = first == NULL ? kind : second == NULL ? ms_arena_fmt(a, "%s\t%s", kind, first).ptr : ms_arena_fmt(a, "%s\t%s\t%s", kind, first, second).ptr;
-    push_text(out, row);
+    if (first == NULL) {
+        push_text(out, kind);
+    } else if (second == NULL) {
+        push_text(out, ms_arena_fmt(a, "%s\t%s", kind, first).ptr);
+    } else {
+        push_text(out, ms_arena_fmt(a, "%s\t%s\t%s", kind, first, second).ptr);
+    }
 }
 
 static void push_aliases(MsArena *a, ms_list *out, const char *kind, const MsAlias *aliases, uint32_t count) {
