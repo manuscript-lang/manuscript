@@ -60,6 +60,11 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> bool {
         "expand-nochecks" => ms_mir::expand::run(m, false),
         "expand_owned" => ms_mir::expand_owned::run(m),
         "cancel_edges" => ms_mir::cancel_edges::run(m),
+        "glue" => ms_mir::glue::run(m),
+        "glue_expand" => {
+            ms_mir::glue::run_and_expand(m);
+            true
+        }
         other => panic!("unknown pass {other}"),
     }
 }

@@ -29,6 +29,9 @@ MsRune ms_utf8_decode_last(const uint8_t *s, size_t n);
 /* Whether the scalar is Unicode White_Space. */
 bool ms_utf8_is_space(uint32_t c);
 
+/* The byte offset after moving `count` scalars forward from the start of the n bytes at s, or n when fewer remain. */
+size_t ms_utf8_offset_of(const uint8_t *s, size_t n, size_t count);
+
 /* Number of scalars in valid UTF-8 (an invalid byte still counts for the scalar it starts). */
 size_t ms_utf8_count(const uint8_t *s, size_t n);
 

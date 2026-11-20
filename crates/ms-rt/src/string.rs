@@ -605,6 +605,7 @@ pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const
 
 /// A search in an ASCII text of under [`MEDIUM_HAY`] bytes (a line, a record, a field) is a direct
 /// scan; every other search is the general one.
+#[cfg(not(ms_c = "msrt_string_index_of"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_index_of(
@@ -1596,6 +1597,7 @@ unsafe fn map_case_take(s: *mut StrVal, upper: bool, out: *mut StrVal) {
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_trim"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_trim(s: *const StrVal, out: *mut StrVal) {
@@ -1609,6 +1611,7 @@ unsafe fn msrt_string_trim_val(s: *const StrVal) -> StrVal {
     unsafe { trimmed(s, true, true) }
 }
 
+#[cfg(not(ms_c = "msrt_string_trim_start"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) {
@@ -1622,6 +1625,7 @@ unsafe fn msrt_string_trim_start_val(s: *const StrVal) -> StrVal {
     unsafe { trimmed(s, true, false) }
 }
 
+#[cfg(not(ms_c = "msrt_string_trim_end"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) {
@@ -1823,6 +1827,7 @@ unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
 ///
 /// # Safety
 /// `s` holds an owned string that the callee takes; `out` is writable.
+#[cfg(not(ms_c = "msrt_string_trim_take"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) {
@@ -1835,6 +1840,7 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_take(s: *mut StrVal, out: *mut 
 ///
 /// # Safety
 /// `s` holds an owned string that the callee takes; `out` is writable.
+#[cfg(not(ms_c = "msrt_string_trim_start_take"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) {
@@ -1847,6 +1853,7 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_start_take(s: *mut StrVal, out:
 ///
 /// # Safety
 /// `s` holds an owned string that the callee takes; `out` is writable.
+#[cfg(not(ms_c = "msrt_string_trim_end_take"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) {
@@ -2052,6 +2059,7 @@ unsafe fn pad(
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_pad_start"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_pad_start(
@@ -2064,6 +2072,7 @@ pub unsafe extern "C-unwind" fn msrt_string_pad_start(
     unsafe { pad(true, s, target, padding, out) }
 }
 
+#[cfg(not(ms_c = "msrt_string_pad_end"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_pad_end(
@@ -2255,6 +2264,7 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut Ve
 
 /// The character that starts at byte `at`, which `for c in text.chars()` reaches for a non-ASCII
 /// lead byte (or a stray byte, which reads as U+FFFD): an owned one-character string.
+#[cfg(not(ms_c = "msrt_string_char_at"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) {
