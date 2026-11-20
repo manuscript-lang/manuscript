@@ -615,7 +615,7 @@ static uint8_t *digits_by_division(const BIGNUM *a, unsigned radix, size_t *leng
 
 /* Digits of a power-of-two radix of the magnitude, least significant first, read straight from its bits. */
 static uint8_t *digits_by_bits(const BIGNUM *a, unsigned radix, size_t *length) {
-    unsigned bits_per_digit = 0;
+    unsigned bits_per_digit = 1; /* radix is at least 2 */
     while ((1u << bits_per_digit) < radix) {
         bits_per_digit++;
     }
