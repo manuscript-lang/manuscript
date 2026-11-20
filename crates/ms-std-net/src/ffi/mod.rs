@@ -99,6 +99,4 @@ handle_newtype! {
     HeadersH(Bound<crate::http::headers::Shared>): clone;
     /// A `WebSocket` handle.
     SocketH(Bound<std::rc::Rc<crate::ws::socket::Socket>>);
-    /// An `IpAddress` handle.
-    IpH(std::net::IpAddr);
 }

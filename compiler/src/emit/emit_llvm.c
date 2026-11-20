@@ -1,7 +1,7 @@
 /* MIR to LLVM IR text.
  *
  * A MIR value is a run of SSA registers, one per leaf (`%v7`, `%v7.1`, ...). The calling
- * convention is the one `emit_qbe.c` writes, so both backends link against the same runtime:
+ * convention is the runtime's:
  * parameters of at most 16 bytes travel as their leaves; a result of more than one leaf is written
  * through a hidden first parameter. Registers hold `i64`, `double` and `i1`; sized integers and
  * Float32 are widened in registers and narrowed only in memory. Checked arithmetic is the

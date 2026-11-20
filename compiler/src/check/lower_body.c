@@ -18,7 +18,7 @@
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 
-static LbVal lb_unsupported(Lb *lb) {
+LbVal lb_unsupported(Lb *lb) {
     lb->ok = false;
     return LB_FAIL;
 }
@@ -28,8 +28,14 @@ static MsTy lb_primitive(const MsCheck *c, const char *name) {
     return sym == MS_NONE ? MS_TY_NONE : c->syms.ty[sym];
 }
 
+/* A record, Optional or Result type. */
+static MirTy lb_mir_alt(Lb *lb, MsTy ty) {
+    const MirTy record = lr_type(lb, ty);
+    return record != MIR_NONE ? record : la_type(lb, ty);
+}
+
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
-static MirTy lb_mir_ty(Lb *lb, MsTy ty) {
+MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
         return lb_fn_ty(lb, ty);
     }
@@ -42,14 +48,14 @@ static MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     if (ty == lb->bool_ty) {
         return MIR_BOOL;
     }
-    return ty == lb->string_ty ? MIR_STR : lr_type(lb, ty);
+    return ty == lb->string_ty ? MIR_STR : lb_mir_alt(lb, ty);
 }
 
 static MirLoc lb_loc(const Lb *lb, MsPos pos) {
     return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
 }
 
-static void lb_emit_plain(Lb *lb, MirOp op) {
+void lb_emit_plain(Lb *lb, MirOp op) {
     (void)mir_b_emit(&lb->b, op, NULL, 0, (MirImm){0}, MIR_NONE);
 }
 
@@ -122,7 +128,7 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
         return lb_function_value(lb, e);
     }
     if (facts->res_kind[e->id] != MS_RES_BINDING) {
-        return lb_unsupported(lb);
+        return facts->res_kind[e->id] == MS_RES_NONE ? la_none(lb, e) : lb_unsupported(lb);
     }
     const uint32_t binding = facts->res_ref[e->id];
     if (lb->var_of[binding] != MIR_NONE) {
@@ -133,14 +139,13 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
 
 /* ---- operators ---- */
 
-static LbVal lb_expr(Lb *lb, const MsExpr *e);
 static LbVal lb_match(Lb *lb, const MsExpr *e);
 
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
     const MsUnaryOp op = (MsUnaryOp)e->op;
     if (op == MS_U_TRY) {
-        return lb_unsupported(lb); // an early return of the error is not lowered yet
+        return la_try(lb, e);
     }
     if (op == MS_U_NEG && operand->kind == MS_E_NUMBER) {
         return lb_number(lb, operand, true);
@@ -353,6 +358,9 @@ static MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
+    if (callee == MS_NONE && lb->facts->res_kind[e->u.call.callee->id] == MS_RES_CASE) {
+        return la_case(lb, e);
+    }
     if (callee == MS_NONE) {
         return lb_call_value(lb, e);
     }
@@ -406,7 +414,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, (result_ty == MIR_STR || lb_is_fn(lb, result_ty)) && !borrowed}; // else a String result is the caller's
 }
 
-static LbVal lb_expr(Lb *lb, const MsExpr *e) {
+LbVal lb_expr(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -500,7 +508,8 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     const LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
-    if (!lb->ok || result_ty == MIR_NONE || result_ty == MIR_STR || scrutinee_ty == MIR_STR ||
+    const bool aggregate = lb->ok && mir_ty_data(lb->m, scrutinee_ty)->kind >= MK_TYPE; // arms on a case: not lowered yet
+    if (!lb->ok || result_ty == MIR_NONE || result_ty == MIR_STR || scrutinee_ty == MIR_STR || aggregate ||
         lb_is_fn(lb, result_ty)) {
         return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
     }
@@ -574,7 +583,7 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
 }
 
 /* Stores each `var` parameter's current value through its pointer, before the function returns. */
-static void lb_write_back(Lb *lb) {
+void lb_write_back(Lb *lb) {
     if (lb->closure) {
         return; // a closure has no `var` parameters of its own
     }
@@ -589,7 +598,7 @@ static void lb_write_back(Lb *lb) {
 
 /* Hands the current value of every owned `var` String declared at `depth` or deeper to its scope,
  * before an exit leaves them. `except` is a value that leaves with the exit and is not dropped. */
-static void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
+void lb_own_vars(Lb *lb, uint32_t depth, MirValue except) {
     for (uint32_t i = lb->nvars; i > 0; i--) {
         const LbVarOwner *owner = &lb->vars[i - 1];
         if (owner->depth < depth) {
@@ -681,16 +690,26 @@ static uint32_t lb_scoped(Lb *lb, const MsStmts *body) {
 }
 
 /* Starts emitting into `block`, which some live edge reaches. */
-static void lb_enter(Lb *lb, MirBlock block) {
+void lb_enter(Lb *lb, MirBlock block) {
     mir_b_switch_to(&lb->b, block);
     lb->dead = false;
 }
 
+/* Names the payload an `if name := value` unwrapped. */
+static void lb_bind_payload(Lb *lb, const MsPattern *pattern, MirValue payload) {
+    lb->value_of[lb->facts->pattern_binding[pattern->id]] = payload;
+    lb_name_value(lb, payload, pattern->u.name, false);
+}
+
 /* `if cond: then else: else`; the else branch may be empty. */
 static void lb_if(Lb *lb, const MsStmt *s) {
-    const LbVal cond = lb_expr(lb, s->u.branch.cond);
+    LbVal cond = lb_expr(lb, s->u.branch.cond);
     if (!lb->ok) {
         return;
+    }
+    const MirValue subject = cond.v; // an `if name := value` unwraps it in the then-branch
+    if (s->u.branch.binding != NULL) {
+        cond.v = la_test(lb, subject);
     }
     const MirBlock then_block = mir_b_new_block(&lb->b);
     const MirBlock else_block = mir_b_new_block(&lb->b);
@@ -699,6 +718,9 @@ static void lb_if(Lb *lb, const MsStmt *s) {
     mir_b_seal_block(&lb->b, then_block);
     mir_b_seal_block(&lb->b, else_block);
     lb_enter(lb, then_block);
+    if (s->u.branch.binding != NULL) {
+        lb_bind_payload(lb, s->u.branch.binding, la_payload(lb, subject));
+    }
     (void)lb_scoped(lb, &s->u.branch.body);
     const bool then_live = !lb->dead;
     if (then_live) {

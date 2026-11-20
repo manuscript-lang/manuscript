@@ -5,6 +5,7 @@
 
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
+#include "watch.h"
 
 enum { SLOT_FREE = 0, SLOT_STARTING = 1, SLOT_LIVE = 2 };
 
@@ -134,7 +135,23 @@ bool ms_isolate_idle_enter(void) {
 void ms_isolate_idle_leave(void) {
     if (self_index < MS_MAX_ISOLATES) {
         atomic_store(&slots[self_index].sleeping, 0);
+        ms_watch_stir();
     }
+}
+
+uint64_t ms_isolate_resting(uint64_t *live) {
+    uint64_t resting = 0;
+    *live = 0;
+    for (uint32_t i = 0; i < MS_MAX_ISOLATES; i++) {
+        if (atomic_load(&slots[i].state) != SLOT_LIVE) {
+            continue;
+        }
+        *live |= UINT64_C(1) << i;
+        if (atomic_load(&slots[i].sleeping) != 0) {
+            resting |= UINT64_C(1) << i;
+        }
+    }
+    return resting;
 }
 
 void ms_token_post_remote(uint64_t token, uint64_t value) {

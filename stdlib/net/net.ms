@@ -21,6 +21,7 @@ import (
 	headers,
 	open_client from "@std/net/http.ms",
 	start_server from "@std/net/serve.ms",
+	dns_lookup, dns_resolve from "@std/net/dns.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy,
 	address_allowed,
@@ -65,8 +66,6 @@ import (
 	msstd_net_lookup,
 	msstd_net_network,
 	msstd_net_network_close,
-	msstd_net_network_lookup,
-	msstd_net_network_resolve,
 	msstd_net_network_restrict,
 	msstd_net_network_web_socket,
 	msstd_net_network_with_resolver,
@@ -446,11 +445,10 @@ export opaque type Network:
 	// The restrictions this network enforces in Manuscript; the runtime handle still
 	// enforces them for the operations that have not moved yet.
 	policy: Policy
+	// The DNS server (`ip:port`) that names resolve through; empty for the system resolver.
+	resolver: String
 	// The sockets and derived networks that `close` closes.
 	scope: NativeScope
-	// The DNS server (`ip:port`) HTTP clients resolve names through; empty for the
-	// system's.
-	resolver: String
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A
 // restricted network without listening permission, or an address outside its CIDRs,
@@ -665,12 +663,7 @@ More than `options.max_records` addresses returns EOVERFLOW, `options.timeout` b
 System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
 */
 fn Network.lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:
-	return msstd_net_network_lookup(
-		self.native,
-		name,
-		options.max_records,
-		options.timeout,
-	)
+	return dns_lookup(self.policy, self.resolver.clone(), name, options.max_records, options.timeout)
 
 // Performs one buffered HTTP request and returns the status, headers, and complete
 // body. Only `http` and `https` URLs without user info are accepted. Redirects are
@@ -713,8 +706,9 @@ fn Network.resolve_dns(
 	kind: DnsKind,
 	options: DnsOptions = DnsOptions(),
 ) List[DnsRecord]!:
-	return msstd_net_network_resolve(
-		self.native,
+	return dns_resolve(
+		self.policy,
+		self.resolver.clone(),
 		name,
 		kind,
 		options.max_records,
@@ -738,8 +732,8 @@ fn Network.restrict(
 		Network(
 			native: child,
 			policy: policy,
-			scope: msstd_scope_child(self.scope),
 			resolver: self.resolver.clone(),
+			scope: msstd_scope_child(self.scope),
 		)
 	)
 
@@ -780,8 +774,8 @@ fn Network.with_resolver(address: String) Network!:
 		Network(
 			native: child,
 			policy: self.policy.clone(),
+			resolver: address,
 			scope: msstd_scope_child(self.scope),
-			resolver: address.clone(),
 		)
 	)
 
@@ -821,8 +815,8 @@ fn host_network() Network:
 	return Network(
 		native: msstd_net_network(),
 		policy: unrestricted(),
-		scope: msstd_scope_new(),
 		resolver: "",
+		scope: msstd_scope_new(),
 	)
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted

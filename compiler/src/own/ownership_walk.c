@@ -626,6 +626,20 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+/* `Type(a, b)`: a record this module or another declares, built from its arguments. */
+static bool own_is_constructor(const OwnWalk *w, const MsExpr *e) {
+    const uint32_t sym = w->facts->call_callee[e->id];
+    const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
+    return e->u.call.callee->kind == MS_E_NAME && decl != NULL && decl->kind == MS_D_TYPE;
+}
+
+/* Every argument moves into the new record (a copy for a plain value); the record holds no borrow. */
+static void own_construct(OwnWalk *w, const MsExpr *e) {
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_MOVE);
+    }
+}
+
 /* A call of a function this module declares: each argument is read, since a parameter that is
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
@@ -644,6 +658,10 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_method[e->id] != MS_NONE && w->facts->methods != NULL) {
         own_method_call(w, e);
+        return;
+    }
+    if (own_is_constructor(w, e)) {
+        own_construct(w, e);
         return;
     }
     const OwnSummary *callee = own_callee(w, e);
@@ -744,7 +762,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
-    if (e->kind == MS_E_CALL) {
+    if (e->kind == MS_E_CALL && !own_is_constructor(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
         w->supported = w->supported && callee != NULL && !callee->returns_borrow;
     }
