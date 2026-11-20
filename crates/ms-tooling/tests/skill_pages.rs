@@ -6,7 +6,7 @@ pub fn files() -> &'static [(&'static str, &'static str)] {
     static FILES: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
         std::sync::OnceLock::new();
     FILES.get_or_init(|| {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("data/agent-skill");
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/ms/data/agent-skill");
         let mut names: Vec<String> = std::fs::read_dir(root.join("references"))
             .unwrap()
             .map(|entry| {
