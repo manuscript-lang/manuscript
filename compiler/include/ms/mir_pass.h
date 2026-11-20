@@ -37,4 +37,10 @@ void mir_exit_drops(MirModule *m);
  * blocks and unchecked operations. With `checks` off the bounds and none checks are left out. */
 bool mir_expand(MirModule *m, bool checks);
 
+/* expand_owned: the ownership shorthands (`alt.own`, `alt.unbox`, `alt.release`, `type.release`,
+ * `opt.unbox`, `opt.unwrap`) become plain loads, drops and frees, so backends lower only
+ * primitives. Run after unwind, the last pass that reads them. */
+bool mir_expand_owned_needed(const MirModule *m);
+bool mir_expand_owned(MirModule *m);
+
 #endif

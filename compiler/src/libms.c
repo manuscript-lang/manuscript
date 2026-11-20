@@ -19,6 +19,7 @@
 #include "mir_pass.c"
 #include "mir_exit_drops.c"
 #include "mir_expand.c"
+#include "mir_expand_owned.c"
 #include "mir_analysis.c"
 #include "opt_bytetake.c"
 #include "opt_strfuse.c"

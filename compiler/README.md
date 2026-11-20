@@ -37,7 +37,7 @@ Next: verifier, then the optimisation passes one at a time, each checked by runn
 
 ### MIR passes
 
-`include/ms/mir_pass.h` declares the ownership and expansion passes and their shared helpers (`src/mir_pass.c`); each pass is one file, `src/mir_<name>.c`: `exit_drops` and `expand` so far. A pass rewrites the module in place, builds what it adds in the module's arena and returns whether it changed anything. `mir-pass-diff.sh` runs every pass on the `.mir` files that parse and verify (the corpus and the mutants) in both implementations (`c_pass_oracle pass NAME`, `ms_mir_pass pass NAME`) and compares the printed module, a `changed` flag and the cold blocks byte for byte. To add a pass: write it, add its name to `run_pass` in both tools and to `PASSES` in `compiler/tests/mir-pass-diff.sh`.
+`include/ms/mir_pass.h` declares the ownership and expansion passes and their shared helpers (`src/mir_pass.c`); each pass is one file, `src/mir_<name>.c`: `exit_drops`, `expand` and `expand_owned` so far. A pass rewrites the module in place, builds what it adds in the module's arena and returns whether it changed anything. `mir-pass-diff.sh` runs every pass on the `.mir` files that parse and verify (the corpus and the mutants) in both implementations (`c_pass_oracle pass NAME`, `ms_mir_pass pass NAME`) and compares the printed module, a `changed` flag and the cold blocks byte for byte. To add a pass: write it, add its name to `run_pass` in both tools and to `PASSES` in `compiler/tests/mir-pass-diff.sh`.
 
 ## The checker tables
 
