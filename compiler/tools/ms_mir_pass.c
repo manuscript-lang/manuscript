@@ -5,26 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "read_file.h"
 
 #include "ms/mir.h"
 #include "ms/mir_pass.h"
-
-static bool read_file(const char *path, char **data, size_t *len) {
-    FILE *f = fopen(path, "rb");
-    if (f == NULL) return false;
-    size_t cap = 4096, n = 0;
-    char *buf = malloc(cap);
-    for (;;) {
-        n += fread(buf + n, 1, cap - n, f);
-        if (n < cap) break;
-        cap *= 2;
-        buf = realloc(buf, cap);
-    }
-    fclose(f);
-    *data = buf;
-    *len = n;
-    return true;
-}
 
 /* Runs the pass `name` on `m`; false when the name is unknown. */
 static bool run_pass(const char *name, MirModule *m, bool *changed) {
@@ -39,6 +23,13 @@ static bool run_pass(const char *name, MirModule *m, bool *changed) {
         *changed = mir_expand_owned(m);
     } else if (strcmp(name, "cancel_edges") == 0) {
         *changed = mir_cancel_edges(m);
+    } else if (strcmp(name, "glue") == 0) {
+        MirGlue g = {0};
+        *changed = mir_glue(m, &g);
+    } else if (strcmp(name, "glue_expand") == 0) {
+        MirGlue g = {0};
+        mir_glue_run_and_expand(m, &g);
+        *changed = true;
     } else {
         return false;
     }
@@ -75,7 +66,8 @@ int main(int argc, char **argv) {
     for (int i = 3; i < argc; i++) {
         char *src;
         size_t len;
-        if (!read_file(argv[i], &src, &len)) {
+        src = read_whole_file(argv[i], &len);
+        if (src == NULL) {
             fprintf(stderr, "cannot read %s\n", argv[i]);
             return 1;
         }

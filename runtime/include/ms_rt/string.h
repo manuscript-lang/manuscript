@@ -4,6 +4,7 @@
 
 /* ms: domain string */
 
+#include "ms_rt/alloc.h"
 #include "ms_rt/base.h"
 
 /* A string value: two words (crates/ms-rt-abi StrVal). The top bits of `tagged` say what the bytes are:
@@ -58,6 +59,14 @@ int64_t msrt_string_scalar_step(const MsStr *s, int64_t at);
 int64_t msrt_string_scalar_at_byte(const MsStr *s, int64_t at);
 uint8_t msrt_string_starts_with(const MsStr *a, const MsStr *v);
 uint8_t msrt_string_ends_with(const MsStr *a, const MsStr *v);
+
+/* Frees the allocation of an owned string; other strings own nothing. */
+static inline void ms_str_release(const MsStr *s) {
+    if ((s->tagged >> MS_STR_TAG_SHIFT) == 0) {
+        msrt_free(s->ptr_word);
+    }
+}
+
 
 /* `to_string` of one value, and `to_string_radix` (a radix outside 2..=36 faults); runtime/core/string_fmt.c. */
 /* ms-sig: msrt_int_to_string(v: i64, out: *mut StrVal) @leaf */
@@ -116,6 +125,16 @@ void msrt_string_concat6(const MsStr *a, const MsStr *b, const MsStr *c, const M
 void msrt_string_trim_view(const MsStr *s, MsStr *out);
 void msrt_string_trim_start_view(const MsStr *s, MsStr *out);
 void msrt_string_trim_end_view(const MsStr *s, MsStr *out);
+void msrt_string_trim(const MsStr *s, MsStr *out);
+void msrt_string_trim_start(const MsStr *s, MsStr *out);
+void msrt_string_trim_end(const MsStr *s, MsStr *out);
+void msrt_string_trim_take(MsStr *s, MsStr *out);
+void msrt_string_trim_start_take(MsStr *s, MsStr *out);
+void msrt_string_trim_end_take(MsStr *s, MsStr *out);
+uint8_t msrt_string_index_of(const MsStr *a, const MsStr *v, int64_t *out);
+void msrt_string_char_at(const MsStr *s, int64_t at, MsStr *out);
+void msrt_string_pad_start(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
+void msrt_string_pad_end(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 void msrt_string_view(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 void msrt_string_split(const MsStr *s, const MsStr *sep, MsVec *out);
