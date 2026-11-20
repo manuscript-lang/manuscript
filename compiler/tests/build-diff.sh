@@ -11,8 +11,16 @@ limit=${1:-0}
 profile=${MS_BUILD_DIFF_PROFILE:-Debug}
 flags=${MS_BUILD_DIFF_FLAGS:-}
 ms=${MS:-target/release/ms}
-sh compiler/tests/cbuild.sh ms_mir_build ms_asm_tables > /dev/null
-bin=$(pwd)/target/cmake/test/compiler
+# MS_C_TOOLS: a folder that already holds ms_mir_build and ms_asm_tables (the platform CI builds them without the
+# sanitizers); else they are built here with the sanitizers on.
+if [ -n "${MS_C_TOOLS:-}" ]; then
+    bin=$MS_C_TOOLS
+else
+    sh compiler/tests/cbuild.sh ms_mir_build ms_asm_tables > /dev/null
+    bin=$(pwd)/target/cmake/test/compiler
+fi
+exe=
+case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) exe=.exe ;; esac
 out=target/c-compiler/build-diff
 rm -rf "$out"
 mkdir -p "$out"
@@ -22,14 +30,14 @@ grep -rl "^// conform: .*phase=run" tests/conformance/fixtures --include=*.ms | 
 pass=0 same=0 diff=0 cfail=0 rfail=0
 while read -r src; do
     id=$(echo "$src" | tr '/' '_')
-    "$ms" build $flags --build-type $profile "$src" -o "$out/$id.rust" > "$out/$id.rust.log" 2>&1 || { rfail=$((rfail + 1)); continue; }
-    if ! MS_BACKEND=c "$ms" build $flags --build-type $profile "$src" -o "$out/$id.c" > "$out/$id.c.log" 2>&1; then
+    "$ms" build $flags --build-type $profile "$src" -o "$out/$id.rust$exe" > "$out/$id.rust.log" 2>&1 || { rfail=$((rfail + 1)); continue; }
+    if ! MS_BACKEND=c "$ms" build $flags --build-type $profile "$src" -o "$out/$id.c$exe" > "$out/$id.c.log" 2>&1; then
         cfail=$((cfail + 1))
         echo "cfail $src"
         continue
     fi
-    "$out/$id.rust" > "$out/$id.rust.out" 2>&1 < /dev/null; r=$?
-    "$out/$id.c" > "$out/$id.c.out" 2>&1 < /dev/null; c=$?
+    "$out/$id.rust$exe" > "$out/$id.rust.out" 2>&1 < /dev/null; r=$?
+    "$out/$id.c$exe" > "$out/$id.c.out" 2>&1 < /dev/null; c=$?
     if [ "$r" = "$c" ] && cmp -s "$out/$id.rust.out" "$out/$id.c.out"; then
         same=$((same + 1)); echo "same  $src"
     else
