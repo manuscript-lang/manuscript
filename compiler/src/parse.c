@@ -178,7 +178,7 @@ static void *finish(Parser *p, size_t m, uint32_t *len, size_t size, size_t alig
     *len = (uint32_t)(bytes / size);
     void *out = ms_alloc(p->arena, bytes ? bytes : 1, align);
     if (bytes != 0) {
-        memcpy(out, (char *)p->scratch->data + m, bytes);
+        memcpy(out, p->scratch->data + m, bytes);
     }
     p->scratch->len = m;
     return out;
@@ -280,17 +280,16 @@ static MsStr need_hint(Parser *p, const char *kd, MsToken found) {
 
 /* ---- failures ---- */
 
-MS_NODISCARD static bool fail(Parser *p, MsToken t, MsStr message) {
+static void fail(Parser *p, MsToken t, MsStr message) {
     MsDiag *d = parse_diag(p, t.pos, message);
     if (t.end.line > 0) {
         d->has_end = true;
         d->end = t.end;
     }
-    return false;
 }
 
 /* Fails on `first` with a replacement of the range first.pos..last.end. */
-MS_NODISCARD static bool fail_fix_range(Parser *p, MsToken first, MsToken last, MsStr message, MsStr replacement) {
+static void fail_fix_range(Parser *p, MsToken first, MsToken last, MsStr message, MsStr replacement) {
     MsDiag *d = parse_diag(p, first.pos, message);
     if (last.end.line > 0) {
         d->has_end = true;
@@ -300,10 +299,10 @@ MS_NODISCARD static bool fail_fix_range(Parser *p, MsToken first, MsToken last, 
         d->fix_end = last.end;
         d->replacement = replacement;
     }
-    return false;
 }
-MS_NODISCARD static bool fail_fix(Parser *p, MsToken t, MsStr message, MsStr replacement) {
-    return fail_fix_range(p, t, t, message, replacement);
+
+static void fail_fix(Parser *p, MsToken t, MsStr message, MsStr replacement) {
+    fail_fix_range(p, t, t, message, replacement);
 }
 
 static bool joins_word(uint8_t b) {
@@ -312,7 +311,7 @@ static bool joins_word(uint8_t b) {
 
 /* A symbolic operator can touch either operand; its word replacement needs separation wherever it
  * would otherwise join an identifier or number. */
-MS_NODISCARD static bool fail_word_operator(Parser *p, MsToken first, MsToken last, MsStr message, const char *word) {
+static void fail_word_operator(Parser *p, MsToken first, MsToken last, MsStr message, const char *word) {
     MsBuf b = {0};
     if (first.lo > 0 && joins_word((uint8_t)p->src[first.lo - 1])) {
         ms_buf_putc(&b, ' ');
@@ -323,13 +322,13 @@ MS_NODISCARD static bool fail_word_operator(Parser *p, MsToken first, MsToken la
     }
     MsStr r = {ms_arena_strndup(p->arena, b.data, b.len), (uint32_t)b.len};
     ms_buf_free(&b);
-    return fail_fix_range(p, first, last, message, r);
+    fail_fix_range(p, first, last, message, r);
 }
 
-MS_NODISCARD static bool and_and(Parser *p, MsToken first) {
+static void and_and(Parser *p, MsToken first) {
     MsToken n = ahead(p, 1);
     MsToken last = (n.kind == MS_T_Amp && n.pos.offset == first.end.offset) ? n : first;
-    return fail_word_operator(p, first, last, LIT("'&&' is not an operator; write 'and' for logical and"), "and");
+    fail_word_operator(p, first, last, LIT("'&&' is not an operator; write 'and' for logical and"), "and");
 }
 
 MS_NODISCARD static bool need_token(Parser *p, MsTok k, MsToken *out) {
@@ -363,7 +362,8 @@ MS_NODISCARD static bool need_token(Parser *p, MsTok k, MsToken *out) {
     MsStr hint = need_hint(p, ms_tok_str(k), t);
     MsStr dk = describe_kind(p, k);
     MsStr dt = describe(p, t);
-    return fail(p, t, fmt(p, "expected %.*s, found %.*s%.*s", STR(dk), STR(dt), STR(hint)));
+    fail(p, t, fmt(p, "expected %.*s, found %.*s%.*s", STR(dk), STR(dt), STR(hint)));
+    return false;
 }
 
 MS_NODISCARD static bool need(Parser *p, MsTok k) {
@@ -380,7 +380,8 @@ MS_NODISCARD static bool need_from(Parser *p) {
     }
     MsStr dt = describe(p, t);
     MsStr hint = need_hint(p, "from", t);
-    return fail(p, t, fmt(p, "expected 'from', found %.*s%.*s", STR(dt), STR(hint)));
+    fail(p, t, fmt(p, "expected 'from', found %.*s%.*s", STR(dt), STR(hint)));
+    return false;
 }
 
 /* A legacy `case` prefix, including the spaces before a following name on the same line. */
@@ -405,7 +406,8 @@ static void newlines(Parser *p) {
 MS_NODISCARD static bool link(Parser *p, size_t *links) {
     (*links)++;
     if (*links > MS_MAX_CHAIN) {
-        return fail(p, peek(p), fmt(p, "expression chain exceeds %d operators or accesses; split it into named parts", MS_MAX_CHAIN));
+        fail(p, peek(p), fmt(p, "expression chain exceeds %d operators or accesses; split it into named parts", MS_MAX_CHAIN));
+        return false;
     }
     return true;
 }
@@ -418,7 +420,8 @@ MS_NODISCARD static bool enter(Parser *p) {
         if (p->speculative > 0) {
             return false;
         }
-        return fail(p, peek(p), fmt(p, "nesting exceeds %d levels; split the expression, type, or block into named parts", MS_MAX_NESTING));
+        fail(p, peek(p), fmt(p, "nesting exceeds %d levels; split the expression, type, or block into named parts", MS_MAX_NESTING));
+        return false;
     }
     return true;
 }
@@ -434,8 +437,9 @@ MS_NODISCARD static bool end(Parser *p) {
         MsToken t = peek(p);
         MsStr dt = describe(p, t);
         const char *is = (t.kind == MS_T_Name && text_is(p, t, "is")) ? IS_HINT : "";
-        return fail(p, t, fmt(p, "expected end of inline statement, found %.*s; an inline body holds one simple statement; for more statements or an `else`, put the body on indented lines and start `else:` on its own line at the `if`'s indentation%s",
+        fail(p, t, fmt(p, "expected end of inline statement, found %.*s; an inline body holds one simple statement; for more statements or an `else`, put the body on indented lines and start `else:` on its own line at the `if`'s indentation%s",
               STR(dt), is));
+        return false;
     }
     if (take(p, MS_T_Newline)) {
         newlines(p);
@@ -446,13 +450,16 @@ MS_NODISCARD static bool end(Parser *p) {
     }
     MsToken t = peek(p);
     if (p->block_lambda && t.kind == MS_T_Comma) {
-        return fail(p, t, LIT("a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses"));
+        fail(p, t, LIT("a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses"));
+        return false;
     }
     if (t.kind == MS_T_Amp) {
-        return and_and(p, t);
+        and_and(p, t);
+        return false;
     }
     if (t.kind == MS_T_Arrow || (t.kind == MS_T_Assign && ahead(p, 1).kind == MS_T_Gt)) {
-        return fail(p, t, LIT("there is no arrow function; anonymous functions are written fn x: x + 1"));
+        fail(p, t, LIT("there is no arrow function; anonymous functions are written fn x: x + 1"));
+        return false;
     }
     bool prev_new = p->at > 0 && text_is(p, previous(p), "new");
     MsStr prev_word = p->at > 0 ? text(p, previous(p)) : LIT("");
@@ -479,7 +486,8 @@ MS_NODISCARD static bool end(Parser *p) {
         hint = "; put one statement per line, and join operands with an operator or a comma inside brackets";
     }
     MsStr dt = describe(p, t);
-    return fail(p, t, fmt(p, "expected end of statement, found %.*s%s", STR(dt), hint));
+    fail(p, t, fmt(p, "expected end of statement, found %.*s%s", STR(dt), hint));
+    return false;
 }
 
 /* ---- tables ---- */
@@ -508,21 +516,21 @@ static uint64_t *compute_type_brackets(MsArena *a, const MsToken *tokens, size_t
         MsTok k = (MsTok)tokens[at].kind;
         if (k == MS_T_LBracket) {
             Open o = {at, true};
-            ms_buf_put(&open, &o, sizeof o);
+            MS_VEC_PUSH(open, Open, o);
         } else if (k == MS_T_RBracket) {
             if (open.len != 0) {
-                Open o = ((Open *)open.data)[open.len / sizeof(Open) - 1];
-                open.len -= sizeof(Open);
+                Open o = MS_VEC_LAST(open, Open);
+                MS_VEC_POP(open, Open);
                 if (o.ok) {
                     bits[o.at / 64] |= (uint64_t)1 << (o.at % 64);
                 }
                 if (open.len != 0) {
-                    ((Open *)open.data)[open.len / sizeof(Open) - 1].ok &= o.ok;
+                    MS_VEC_LAST(open, Open).ok &= o.ok;
                 }
             }
         } else if (!type_token(k)) {
             if (open.len != 0) {
-                ((Open *)open.data)[open.len / sizeof(Open) - 1].ok = false;
+                MS_VEC_LAST(open, Open).ok = false;
             }
         }
     }
@@ -647,6 +655,44 @@ MS_NODISCARD static bool statement_suite(Parser *p, bool expression, bool fn_bod
 MS_NODISCARD static bool pattern(Parser *p, MsPattern **out);
 MS_NODISCARD static bool postfix(Parser *p, MsExpr *e, MsExpr **out);
 MS_NODISCARD static bool primary(Parser *p, MsExpr **out);
+MS_NODISCARD static bool named_type(Parser *p, MsTypeRef **out);
+MS_NODISCARD static bool binding(Parser *p, bool is_mutable, const MsPos *group, MsPos pos, MsStmt **out);
+
+/* Parses one element and pushes it on the open scratch list. */
+MS_NODISCARD static bool push_typ(Parser *p) {
+    MsTypeRef *element = NULL;
+    if (!typ(p, &element)) return false;
+    push_ptr(p, element);
+    return true;
+}
+
+MS_NODISCARD static bool push_named_type(Parser *p) {
+    MsTypeRef *element = NULL;
+    if (!named_type(p, &element)) return false;
+    push_ptr(p, element);
+    return true;
+}
+
+MS_NODISCARD static bool push_pattern(Parser *p) {
+    MsPattern *element = NULL;
+    if (!pattern(p, &element)) return false;
+    push_ptr(p, element);
+    return true;
+}
+
+MS_NODISCARD static bool push_expression(Parser *p, int min) {
+    MsExpr *element = NULL;
+    if (!expression(p, min, &element)) return false;
+    push_ptr(p, element);
+    return true;
+}
+
+MS_NODISCARD static bool push_binding(Parser *p, bool is_mutable, const MsPos *group, MsPos pos) {
+    MsStmt *element = NULL;
+    if (!binding(p, is_mutable, group, pos, &element)) return false;
+    push_ptr(p, element);
+    return true;
+}
 static MsExpr *clone_chain(Parser *p, const MsExpr *e);
 
 /* ---- node construction ---- */
@@ -721,16 +767,18 @@ MS_NODISCARD static bool named_type(Parser *p, MsTypeRef **out) {
             MsStr t = text(p, part);
             ms_buf_put(p->bytes, t.ptr, t.len);
         }
-        full = ms_intern(p->names, (char *)p->bytes->data + bm, p->bytes->len - bm);
+        full = ms_intern(p->names, p->bytes->data + bm, p->bytes->len - bm);
         p->bytes->len = bm;
     }
     MsTypeRefs args = {NULL, 0};
     MsStr full_s = ms_name(p->names, full);
     if (kind(p) == MS_T_LBracket && p->speculative == 0 && str_is(full_s, "Callable")) {
-        return fail(p, peek(p), fmt(p, "there is no %.*s[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type", STR(full_s)));
+        fail(p, peek(p), fmt(p, "there is no %.*s[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type", STR(full_s)));
+        return false;
     }
     if (kind(p) == MS_T_LBracket && p->speculative == 0 && str_is(full_s, "Optional")) {
-        return fail(p, peek(p), LIT("there is no Optional[T] spelling; write T? instead, e.g. Int? or (fn(Int) Int)?"));
+        fail(p, peek(p), LIT("there is no Optional[T] spelling; write T? instead, e.g. Int? or (fn(Int) Int)?"));
+        return false;
     }
     if (take(p, MS_T_LBracket)) {
         if (p->speculative > 0 && !type_bracket(p, p->at - 1)) {
@@ -740,7 +788,8 @@ MS_NODISCARD static bool named_type(Parser *p, MsTypeRef **out) {
     }
     MsToken lt = peek(p);
     if (lt.kind == MS_T_Lt && p->speculative == 0 && lt.pos.offset == previous(p).end.offset && args.len == 0) {
-        return fail(p, lt, fmt(p, "type arguments use square brackets, not angle brackets; write %.*s[T] instead of %.*s<T>", STR(full_s), STR(full_s)));
+        fail(p, lt, fmt(p, "type arguments use square brackets, not angle brackets; write %.*s[T] instead of %.*s<T>", STR(full_s), STR(full_s)));
+        return false;
     }
     *out = mk_named_type(p, name.pos, full, args);
     return true;
@@ -749,9 +798,7 @@ MS_NODISCARD static bool named_type(Parser *p, MsTypeRef **out) {
 MS_NODISCARD static bool type_args(Parser *p, MsTypeRefs *out) {
     size_t m = mark(p);
     for (;;) {
-        MsTypeRef *element = NULL;
-        if (!typ(p, &element)) return false;
-        push_ptr(p, element);
+        if (!push_typ(p)) return false;
         if (!take(p, MS_T_Comma)) {
             break;
         }
@@ -770,16 +817,19 @@ MS_NODISCARD static bool type_args(Parser *p, MsTypeRefs *out) {
 MS_NODISCARD static bool result_type(Parser *p, MsTypeRef **out) {
     MsToken t = peek(p);
     if (t.kind == MS_T_Arrow) {
-        return fail_fix(p, t, LIT("result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void:"), LIT(""));
+        fail_fix(p, t, LIT("result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void:"), LIT(""));
+        return false;
     }
     if (t.kind == MS_T_LBrace) {
-        return fail(p, t, LIT("blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Void: (Void when it returns nothing), and remove the closing '}'"));
+        fail(p, t, LIT("blocks are not braced and every fn declares its result type: write the result type, then ':' and an indented body, e.g. fn f() Void: (Void when it returns nothing), and remove the closing '}'"));
+        return false;
     }
     if (t.kind == MS_T_Colon || t.kind == MS_T_Newline) {
         if (p->speculative > 0) {
             return false;
         }
-        return fail(p, t, LIT("every fn declares its result type after the parameter list, e.g. fn f() Void:"));
+        fail(p, t, LIT("every fn declares its result type after the parameter list, e.g. fn f() Void:"));
+        return false;
     }
     return typ(p, out);
 }
@@ -853,7 +903,8 @@ MS_NODISCARD static bool typ_inner(Parser *p, MsTypeRef **out) {
                 bool moving = TAKE_MOVE(p, MS_T_Var, MS_T_Name, MS_T_Fn);
                 bool is_mutable = take(p, MS_T_Var);
                 if (moving && is_mutable) {
-                    return fail(p, previous(p), LIT("a parameter is either `move` (the callee takes it) or `var` (the callee changes it in place), not both"));
+                    fail(p, previous(p), LIT("a parameter is either `move` (the callee takes it) or `var` (the callee changes it in place), not both"));
+                    return false;
                 }
                 MsTypeRef *ty = NULL;
                 if (!typ(p, &ty)) return false;
@@ -886,7 +937,8 @@ MS_NODISCARD static bool typ_inner(Parser *p, MsTypeRef **out) {
     if (take(p, MS_T_LParen)) {
         if (!typ(p, &t)) return false;
         if (kind(p) == MS_T_Comma && p->speculative == 0) {
-            return fail(p, peek(p), LIT("Manuscript has no tuples; declare a type with 'type Pair:' and named fields to return several values, or use a List when the items share one type"));
+            fail(p, peek(p), LIT("Manuscript has no tuples; declare a type with 'type Pair:' and named fields to return several values, or use a List when the items share one type"));
+            return false;
         }
         if (!need(p, MS_T_RParen)) return false;
     } else {
@@ -929,17 +981,14 @@ MS_NODISCARD static bool type_params(Parser *p, MsTypeParams *out) {
         MsTypeRef *def = NULL;
         if (take(p, MS_T_Colon)) {
             size_t bm = mark(p);
-            MsTypeRef *element = NULL;
-            if (!named_type(p, &element)) return false;
-            push_ptr(p, element);
+            if (!push_named_type(p)) return false;
             while (take(p, MS_T_Amp)) {
-                MsTypeRef *element = NULL;
-                if (!named_type(p, &element)) return false;
-                push_ptr(p, element);
+                if (!push_named_type(p)) return false;
             }
             FINISH_PTRS(p, bm, bounds);
             if (kind(p) == MS_T_Plus || kind(p) == MS_T_And) {
-                return fail_fix(p, peek(p), LIT("combine bounds with '&', as in T: Comparable & Clonable"), LIT("&"));
+                fail_fix(p, peek(p), LIT("combine bounds with '&', as in T: Comparable & Clonable"), LIT("&"));
+                return false;
             }
         }
         if (take(p, MS_T_Assign)) {
@@ -974,11 +1023,13 @@ MS_NODISCARD static bool need_name_colon(Parser *p, MsToken name) {
         at.pos = name.end;
         at.end = name.end;
         MsStr n = text(p, name);
-        return fail_fix(p, at, fmt(p, "expected ':' between '%.*s' and its type; parameters and fields are written name: Type", STR(n)), LIT(":"));
+        fail_fix(p, at, fmt(p, "expected ':' between '%.*s' and its type; parameters and fields are written name: Type", STR(n)), LIT(":"));
+        return false;
     }
     if ((t.kind == MS_T_Comma || t.kind == MS_T_RParen) && p->speculative == 0) {
         MsStr n = text(p, name);
-        return fail(p, name, fmt(p, "parameter '%.*s' has no type; every parameter is written name: Type, e.g. %.*s: Int", STR(n), STR(n)));
+        fail(p, name, fmt(p, "parameter '%.*s' has no type; every parameter is written name: Type, e.g. %.*s: Int", STR(n), STR(n)));
+        return false;
     }
     if (!need(p, MS_T_Colon)) return false;
     return true;
@@ -996,7 +1047,8 @@ MS_NODISCARD static bool parameters(Parser *p, bool defaults, bool inferred, MsP
         bool moving = TAKE_MOVE(p, MS_T_Var, MS_T_Name);
         bool is_mutable = take(p, MS_T_Var);
         if (moving && is_mutable) {
-            return fail(p, previous(p), LIT("a parameter is either `move` (the callee takes it) or `var` (the callee changes it in place), not both"));
+            fail(p, previous(p), LIT("a parameter is either `move` (the callee takes it) or `var` (the callee changes it in place), not both"));
+            return false;
         }
         MsToken name = {0};
         if (!need_token(p, MS_T_Name, &name)) return false;
@@ -1007,7 +1059,8 @@ MS_NODISCARD static bool parameters(Parser *p, bool defaults, bool inferred, MsP
                 MsToken t = peek(p);
                 MsStr n = text(p, name);
                 MsStr rep = fmt(p, "var %.*s:", STR(n));
-                return fail_fix_range(p, name, t, fmt(p, "'var' goes before the parameter name, not its type; write var %.*s: Type", STR(n)), rep);
+                fail_fix_range(p, name, t, fmt(p, "'var' goes before the parameter name, not its type; write var %.*s: Type", STR(n)), rep);
+                return false;
             }
             if (!typ(p, &ty)) return false;
         } else if (!inferred || kind(p) == MS_T_Name) {
@@ -1015,7 +1068,8 @@ MS_NODISCARD static bool parameters(Parser *p, bool defaults, bool inferred, MsP
         }
         if (take(p, MS_T_Assign)) {
             if (!defaults) {
-                return fail(p, previous(p), LIT("function types and case payloads cannot have defaults; put the default on a named function parameter or a type field instead"));
+                fail(p, previous(p), LIT("function types and case payloads cannot have defaults; put the default on a named function parameter or a type field instead"));
+                return false;
             }
             if (!expression(p, 0, &def)) return false;
         } else if (defaults && ty != NULL) {
@@ -1072,7 +1126,8 @@ MS_NODISCARD static bool method_signature(Parser *p, MsToken name, bool generics
 MS_NODISCARD static bool single_line(Parser *p, MsToken token, const char *what) {
     MsStr full = text(p, token);
     if ((full.len >= 3 && memcmp(full.ptr, "\"\"\"", 3) == 0) || (full.len >= 4 && memcmp(full.ptr, "r\"\"\"", 4) == 0)) {
-        return fail(p, token, fmt(p, "%s are one-line text; write them with a single pair of quotes", what));
+        fail(p, token, fmt(p, "%s are one-line text; write them with a single pair of quotes", what));
+        return false;
     }
     return true;
 }
@@ -1127,12 +1182,14 @@ MS_NODISCARD static bool test_block(Parser *p, bool bench, MsDecl *d) {
     if (!single_line(p, name, bench ? "bench names" : "test names")) return false;
     TextParts parts = {0};
     if (!text_parts_of(p, name, &parts)) return false;
-    MsStr text_;
-    if (!plain_text(parts, &text_)) {
+    MsStr plain;
+    if (!plain_text(parts, &plain)) {
         if (bench) {
-            return fail(p, name, LIT("bench names cannot interpolate; use plain text, e.g. bench \"sums a list\":"));
+            fail(p, name, LIT("bench names cannot interpolate; use plain text, e.g. bench \"sums a list\":"));
+            return false;
         }
-        return fail(p, name, LIT("test names cannot interpolate; use plain text, e.g. test \"adds numbers\":"));
+        fail(p, name, LIT("test names cannot interpolate; use plain text, e.g. test \"adds numbers\":"));
+        return false;
     }
     int64_t per = 1;
     if (bench && kind(p) == MS_T_Name && text_is(p, peek(p), "per")) {
@@ -1140,13 +1197,14 @@ MS_NODISCARD static bool test_block(Parser *p, bool bench, MsDecl *d) {
         MsToken count = {0};
         if (!need_token(p, MS_T_Number, &count)) return false;
         if (!parse_positive_i64(text(p, count), &per)) {
-            return fail(p, count, LIT("'per' takes a positive whole number of operations, e.g. bench \"sums a list\" per 1000:"));
+            fail(p, count, LIT("'per' takes a positive whole number of operations, e.g. bench \"sums a list\" per 1000:"));
+            return false;
         }
     }
     MsStmts body = {0};
     if (!suite(p, &body)) return false;
     d->kind = MS_D_TEST;
-    d->u.test.name = text_;
+    d->u.test.name = plain;
     d->u.test.body = body;
     d->u.test.bench = bench;
     d->u.test.per = per;
@@ -1221,7 +1279,8 @@ MS_NODISCARD static bool constant_value(Parser *p, MsPos *init_pos, MsExpr **out
 /* Consumes the `:=` of an immutable binding. A leftover `=` after a type annotation gets a fix-it. */
 MS_NODISCARD static bool need_immutable_bind(Parser *p) {
     if (kind(p) == MS_T_Assign) {
-        return fail_fix(p, peek(p), LIT("an immutable binding uses ':=' after its type: write 'x: Type := value'; '=' binds only after 'var'"), LIT(":="));
+        fail_fix(p, peek(p), LIT("an immutable binding uses ':=' after its type: write 'x: Type := value'; '=' binds only after 'var'"), LIT(":="));
+        return false;
     }
     if (!need(p, MS_T_ColonAssign)) return false;
     return true;
@@ -1251,13 +1310,9 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
     if (!type_params(p, &tps)) return false;
     if (token.kind == MS_T_Type && take(p, MS_T_Assign)) {
         size_t m = mark(p);
-        MsTypeRef *element = NULL;
-        if (!typ(p, &element)) return false;
-        push_ptr(p, element);
+        if (!push_typ(p)) return false;
         while (take(p, MS_T_Pipe)) {
-            MsTypeRef *element = NULL;
-            if (!typ(p, &element)) return false;
-            push_ptr(p, element);
+            if (!push_typ(p)) return false;
         }
         MsTypeRefs targets;
         FINISH_PTRS(p, m, targets);
@@ -1288,11 +1343,13 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
         return true;
     }
     if (token.kind == MS_T_Enum && kind(p) == MS_T_Ellipsis) {
-        return fail(p, peek(p), LIT("an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field: Type)'"));
+        fail(p, peek(p), LIT("an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field: Type)'"));
+        return false;
     }
     if (!need(p, MS_T_Newline)) return false;
     if (token.kind == MS_T_Enum && kind(p) != MS_T_Indent) {
-        return fail(p, peek(p), LIT("an enum must declare at least one variant; indent 'Name' or 'Name(field: Type)' under the header"));
+        fail(p, peek(p), LIT("an enum must declare at least one variant; indent 'Name' or 'Name(field: Type)' under the header"));
+        return false;
     }
     if (!need(p, MS_T_Indent)) return false;
     /* Only one of fields, cases and methods is ever collected for a given declaration kind. */
@@ -1308,19 +1365,23 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
              (kind(p) == MS_T_Name &&
               (ahead(p, 1).kind == MS_T_LParen || ahead(p, 1).kind == MS_T_Newline ||
                ahead(p, 1).kind == MS_T_Dedent || ahead(p, 1).kind == MS_T_Eof)))) {
-            return fail(p, token, LIT("a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes"));
+            fail(p, token, LIT("a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes"));
+            return false;
         }
         if (token.kind == MS_T_Enum) {
             if (legacy_case_prefix(p, &prefix)) {
-                return fail(p, prefix, LIT("enum variants do not use 'case'; remove the prefix and write 'Name' or 'Name(field: Type)'"));
+                fail(p, prefix, LIT("enum variants do not use 'case'; remove the prefix and write 'Name' or 'Name(field: Type)'"));
+                return false;
             }
             if (kind(p) != MS_T_Name) {
-                return fail(p, peek(p), LIT("an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"));
+                fail(p, peek(p), LIT("an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"));
+                return false;
             }
         }
         bool move_fn = kind(p) == MS_T_Name && text_is(p, peek(p), "move") && ahead(p, 1).kind == MS_T_Fn;
         if (token.kind == MS_T_Interface && !move_fn && kind(p) != MS_T_Fn && kind(p) != MS_T_Var) {
-            return fail(p, peek(p), LIT("an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' block"));
+            fail(p, peek(p), LIT("an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' block"));
+            return false;
         }
         if (token.kind == MS_T_Enum) {
             MsToken cname = {0};
@@ -1330,19 +1391,23 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
                 if (!parameters(p, false, false, &payload)) return false;
                 for (uint32_t i = 0; i < payload.len; i++) {
                     if (payload.ptr[i]->is_mutable) {
-                        return fail(p, previous(p), LIT("case payload fields cannot be 'var'; mutability belongs to the binding that holds the value"));
+                        fail(p, previous(p), LIT("case payload fields cannot be 'var'; mutability belongs to the binding that holds the value"));
+                        return false;
                     }
                 }
                 if (payload.len == 0) {
                     MsStr n = text(p, cname);
-                    return fail(p, cname, fmt(p, "payloadless variants omit parentheses; write '%.*s' instead of '%.*s()'", STR(n), STR(n)));
+                    fail(p, cname, fmt(p, "payloadless variants omit parentheses; write '%.*s' instead of '%.*s()'", STR(n), STR(n)));
+                    return false;
                 }
             }
             if (kind(p) == MS_T_Colon) {
-                return fail(p, peek(p), LIT("enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"));
+                fail(p, peek(p), LIT("enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for type fields, and put methods in an 'impl' block"));
+                return false;
             }
             if (kind(p) == MS_T_Assign) {
-                return fail(p, peek(p), LIT("enum variants cannot have defaults; write 'Name' or 'Name(field: Type)' and supply payload values when constructing a variant"));
+                fail(p, peek(p), LIT("enum variants cannot have defaults; write 'Name' or 'Name(field: Type)' and supply payload values when constructing a variant"));
+                return false;
             }
             MsCase *c = NEW(p, MsCase);
             c->id = new_id(p);
@@ -1363,7 +1428,8 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
                 MsStr nt = ms_name(p->names, name);
                 MsStr msg = fmt(p, "a type declares only fields; write its methods after it as 'fn %.*s%.*s.name(...)'", STR(nt), (int)names.len, names.data ? (const char *)names.data : "");
                 ms_buf_free(&names);
-                return fail(p, previous(p), msg);
+                fail(p, previous(p), msg);
+                return false;
             }
             MsToken mname = {0};
             if (!need_token(p, MS_T_Name, &mname)) return false;
@@ -1392,10 +1458,12 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
     uint32_t count;
     void **items = finish(p, m, &count, sizeof(void *), _Alignof(void *));
     if (token.kind == MS_T_Interface && count == 0) {
-        return fail(p, token, LIT("declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation"));
+        fail(p, token, LIT("declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation"));
+        return false;
     }
     if (token.kind == MS_T_Enum && count == 0) {
-        return fail(p, token, LIT("an enum must declare at least one variant; add 'Name' or 'Name(field: Type)'"));
+        fail(p, token, LIT("an enum must declare at least one variant; add 'Name' or 'Name(field: Type)'"));
+        return false;
     }
     MsDecl *d;
     if (token.kind == MS_T_Interface) {
@@ -1431,7 +1499,8 @@ MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
         bool consuming = TAKE_MOVE(p, MS_T_Var, MS_T_Name);
         bool mutating = take(p, MS_T_Var);
         if (consuming && mutating) {
-            return fail(p, previous(p), LIT("a method either takes its receiver with `move` or changes it with `var`, not both"));
+            fail(p, previous(p), LIT("a method either takes its receiver with `move` or changes it with `var`, not both"));
+            return false;
         }
         MsToken receiver_name = {0};
         if (!need_token(p, MS_T_Name, &receiver_name)) return false;
@@ -1471,7 +1540,8 @@ MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
     if (k == MS_T_Fn) {
         p->at++;
         if (kind(p) == MS_T_Var && ahead(p, 1).kind == MS_T_Name) {
-            return fail(p, peek(p), LIT("'fn var' marks a method that changes its receiver, as in 'fn var Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter instead: 'fn add(var counter: Counter, n: Int) Void:'"));
+            fail(p, peek(p), LIT("'fn var' marks a method that changes its receiver, as in 'fn var Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter instead: 'fn add(var counter: Counter, n: Int) Void:'"));
+            return false;
         }
         MsToken name = {0};
         if (!need_token(p, MS_T_Name, &name)) return false;
@@ -1500,7 +1570,8 @@ MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
         MsTypeParams tps = {0};
         if (!type_params(p, &tps)) return false;
         if (kind(p) == MS_T_Colon) {
-            return fail(p, peek(p), LIT("an extern type has no body; remove the ':'"));
+            fail(p, peek(p), LIT("an extern type has no body; remove the ':'"));
+            return false;
         }
         if (!end(p)) return false;
         d = new_decl(p, token.pos, MS_D_TYPE);
@@ -1522,7 +1593,8 @@ MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
         MsTypeRef *result = NULL;
         if (!result_type(p, &result)) return false;
         if (kind(p) == MS_T_Colon) {
-            return fail(p, peek(p), LIT("an extern fn has no body; remove the ':'"));
+            fail(p, peek(p), LIT("an extern fn has no body; remove the ':'"));
+            return false;
         }
         if (!end(p)) return false;
         d = new_decl(p, token.pos, MS_D_FN);
@@ -1573,7 +1645,8 @@ MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
         return true;
     }
     if (k == MS_T_Impl) {
-        return fail(p, token, LIT(IMPL_REMOVED));
+        fail(p, token, LIT(IMPL_REMOVED));
+        return false;
     }
     if (k == MS_T_Type || k == MS_T_Enum || k == MS_T_Interface) {
         return type_declaration(p, token, out);
@@ -1594,7 +1667,8 @@ MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
     }
     if (k == MS_T_Var && ahead(p, 1).kind == MS_T_Fn) {
         /* `var fn T.m()` is the receiver-changing method spelled in the wrong order. */
-        return fail_fix_range(p, token, ahead(p, 1), LIT("a method that changes its receiver is written fn var Type.name(), with var after fn"), LIT("fn var"));
+        fail_fix_range(p, token, ahead(p, 1), LIT("a method that changes its receiver is written fn var Type.name(), with var after fn"), LIT("fn var"));
+        return false;
     }
     MsStr fmsg;
     const char *freplacement;
@@ -1604,16 +1678,20 @@ MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
             MsToken first, last;
             MsStr rep;
             if (constant_fix(p, token, &first, &last, &rep)) {
-                return fail_fix_range(p, first, last, fmsg, rep);
+                fail_fix_range(p, first, last, fmsg, rep);
+                return false;
             }
         }
         if (freplacement != NULL) {
-            return fail_fix(p, token, fmsg, (MsStr){freplacement, (uint32_t)strlen(freplacement)});
+            fail_fix(p, token, fmsg, (MsStr){freplacement, (uint32_t)strlen(freplacement)});
+            return false;
         }
-        return fail(p, token, fmsg);
+        fail(p, token, fmsg);
+        return false;
     }
     if (k == MS_T_Export) {
-        return fail_fix(p, token, LIT("'export' appears twice; write it once before the declaration"), LIT(""));
+        fail_fix(p, token, LIT("'export' appears twice; write it once before the declaration"), LIT(""));
+        return false;
     }
     if (k == MS_T_Name && text_is(p, token, "opaque")) {
         const char *advice;
@@ -1625,10 +1703,12 @@ MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
             adv = LIT("'opaque' applies only to a type or enum; write 'opaque type Name:' or 'opaque enum Name:', optionally after 'export'");
         }
         (void)advice;
-        return fail(p, token, fmt(p, "misplaced 'opaque'; %.*s", STR(adv)));
+        fail(p, token, fmt(p, "misplaced 'opaque'; %.*s", STR(adv)));
+        return false;
     }
     MsStr dt = describe(p, token);
-    return fail(p, token, fmt(p, "expected a module declaration or import, found %.*s; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn", STR(dt)));
+    fail(p, token, fmt(p, "expected a module declaration or import, found %.*s; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn", STR(dt)));
+    return false;
 }
 
 /* ---- patterns ---- */
@@ -1644,7 +1724,8 @@ static MsPattern *new_pattern(Parser *p, MsPos pos, MsPatternKind k) {
 MS_NODISCARD static bool pattern_inner(Parser *p, MsPattern **out) {
     MsToken t = peek(p);
     if (t.kind == MS_T_Void) {
-        return fail(p, t, LIT("void is a reserved value keyword, not a binding name; choose another name such as code_unit, and use void for the Void value"));
+        fail(p, t, LIT("void is a reserved value keyword, not a binding name; choose another name such as code_unit, and use void for the Void value"));
+        return false;
     }
     if (take(p, MS_T_Name)) {
         MsPattern *pt = new_pattern(p, t.pos, MS_P_NAME);
@@ -1664,9 +1745,7 @@ MS_NODISCARD static bool pattern_inner(Parser *p, MsPattern **out) {
         if (!take(p, MS_T_RBracket)) {
             size_t m = mark(p);
             for (;;) {
-                MsPattern *element = NULL;
-                if (!pattern(p, &element)) return false;
-                push_ptr(p, element);
+                if (!push_pattern(p)) return false;
                 if (!take(p, MS_T_Comma)) {
                     break;
                 }
@@ -1714,7 +1793,8 @@ MS_NODISCARD static bool pattern_inner(Parser *p, MsPattern **out) {
         return true;
     }
     MsStr dt = describe(p, t);
-    return fail(p, t, fmt(p, "expected a binding name, list pattern, or type pattern, found %.*s; write a name, [a, b], or {x, y}", STR(dt)));
+    fail(p, t, fmt(p, "expected a binding name, list pattern, or type pattern, found %.*s; write a name, [a, b], or {x, y}", STR(dt)));
+    return false;
 }
 
 MS_NODISCARD static bool pattern(Parser *p, MsPattern **out) {
@@ -1792,7 +1872,8 @@ MS_NODISCARD static bool binding(Parser *p, bool is_mutable, const MsPos *group,
             if (!typ(p, &ty)) return false;
         }
         if (kind(p) == MS_T_ColonAssign) {
-            return fail_fix(p, peek(p), LIT("'var' binds with '=': write 'var x = value'; ':=' declares an immutable binding"), LIT("="));
+            fail_fix(p, peek(p), LIT("'var' binds with '=': write 'var x = value'; ':=' declares an immutable binding"), LIT("="));
+            return false;
         }
         if (!need(p, MS_T_Assign)) return false;
     } else {
@@ -1828,11 +1909,13 @@ MS_NODISCARD static bool binding_group(Parser *p, MsToken keyword, MsStmts *out)
     }
     const char *kw = ms_tok_str((MsTok)keyword.kind);
     if (p->inline_statement) {
-        return fail(p, peek(p), fmt(p, "a binding group needs its own lines; put '%s (' on a line of its own with one binding per indented line, or write single '%s name = value' bindings", kw, kw));
+        fail(p, peek(p), fmt(p, "a binding group needs its own lines; put '%s (' on a line of its own with one binding per indented line, or write single '%s name = value' bindings", kw, kw));
+        return false;
     }
     if (!need(p, MS_T_LParen)) return false;
     if (kind(p) != MS_T_Newline) {
-        return fail(p, peek(p), fmt(p, "a binding group starts its entries on the next line; write '%s (' then one 'name = value' per indented line, or destructure with '%s [a, b] = value' or '%s {x, y} = value'", kw, kw, kw));
+        fail(p, peek(p), fmt(p, "a binding group starts its entries on the next line; write '%s (' then one 'name = value' per indented line, or destructure with '%s [a, b] = value' or '%s {x, y} = value'", kw, kw, kw));
+        return false;
     }
     next(p);
     size_t m = mark(p);
@@ -1842,21 +1925,22 @@ MS_NODISCARD static bool binding_group(Parser *p, MsToken keyword, MsStmts *out)
         MsToken t = peek(p);
         if (t.kind == MS_T_RParen) {
             if (t.pos.column != indent) {
-                return fail(p, t, fmt(p, "the closing ')' of a binding group aligns with its '%s' line, at column %u", kw, indent));
+                fail(p, t, fmt(p, "the closing ')' of a binding group aligns with its '%s' line, at column %u", kw, indent));
+                return false;
             }
             break;
         } else if (t.kind == MS_T_Eof) {
             if (!need(p, MS_T_RParen)) return false;
         } else if (t.pos.column != indent + 4) {
-            return fail(p, t, fmt(p, "binding group entries are indented four spaces past the '%s' line, to column %u", kw, indent + 4));
+            fail(p, t, fmt(p, "binding group entries are indented four spaces past the '%s' line, to column %u", kw, indent + 4));
+            return false;
         }
         MsPos epos = peek(p).pos;
-        MsStmt *element = NULL;
-        if (!binding(p, true, &keyword.pos, epos, &element)) return false;
-        push_ptr(p, element);
+        if (!push_binding(p, true, &keyword.pos, epos)) return false;
         count++;
         if (kind(p) == MS_T_Comma) {
-            return fail(p, peek(p), fmt(p, "a binding group holds one 'name = value' per line, not a comma list; to destructure write '%s [a, b] = value' or '%s {x, y} = value'", kw, kw));
+            fail(p, peek(p), fmt(p, "a binding group holds one 'name = value' per line, not a comma list; to destructure write '%s [a, b] = value' or '%s {x, y} = value'", kw, kw));
+            return false;
         }
         /* A block lambda value ends at its dedent, which also ends the line. */
         if (previous(p).kind != MS_T_Dedent) {
@@ -1864,7 +1948,8 @@ MS_NODISCARD static bool binding_group(Parser *p, MsToken keyword, MsStmts *out)
         }
     }
     if (count == 0) {
-        return fail(p, peek(p), LIT("a binding group cannot be empty; add 'name = value' lines or remove the group"));
+        fail(p, peek(p), LIT("a binding group cannot be empty; add 'name = value' lines or remove the group"));
+        return false;
     }
     if (!need(p, MS_T_RParen)) return false;
     if (!end(p)) return false;
@@ -2040,7 +2125,8 @@ MS_NODISCARD static bool assign_target(Parser *p, MsToken start, MsExpr *e, MsSt
         st->u.assign.target = e;
         return true;
     }
-    return fail(p, start, LIT("assignment requires a local binding name or type field; the left side of '=' must be a name or a.field; to change a collection element, write xs[index] = value on a List or m[key] = value on a Map"));
+    fail(p, start, LIT("assignment requires a local binding name or type field; the left side of '=' must be a name or a.field; to change a collection element, write xs[index] = value on a List or m[key] = value on a Map"));
+    return false;
 }
 
 static bool compound_assignment(const Parser *p) {
@@ -2131,62 +2217,81 @@ MS_NODISCARD static bool expression_statement(Parser *p, MsToken t, bool allow_v
                 MsStr n = ms_name(p->names, e->u.sym);
 #define IS(s) str_is(n, s)
                 if (IS("assert")) {
-                    return fail(p, t, LIT("there is no 'assert': in a test block write 'expect_equal(actual, expected)?' or 'expect_true(condition)?', imported from \"@std/test/test.ms\""));
+                    fail(p, t, LIT("there is no 'assert': in a test block write 'expect_equal(actual, expected)?' or 'expect_true(condition)?', imported from \"@std/test/test.ms\""));
+                    return false;
                 }
                 if (IS("pass")) {
-                    return fail_fix(p, t, LIT("'pass' is not a keyword; write 'void' for an empty block or match arm"), LIT("void"));
+                    fail_fix(p, t, LIT("'pass' is not a keyword; write 'void' for an empty block or match arm"), LIT("void"));
+                    return false;
                 }
                 if (IS("const") || IS("val") || IS("final")) {
-                    return fail(p, t, fmt(p, "'%.*s' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", STR(n)));
+                    fail(p, t, fmt(p, "'%.*s' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", STR(n)));
+                    return false;
                 }
                 if (IS("throw") || IS("raise") || IS("catch")) {
-                    return fail(p, t, fmt(p, "'%.*s' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", STR(n)));
+                    fail(p, t, fmt(p, "'%.*s' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", STR(n)));
+                    return false;
                 }
                 if (IS("elseif")) {
-                    return fail(p, t, LIT("'elseif' is not a keyword; write 'else if <condition>:' for a further branch"));
+                    fail(p, t, LIT("'elseif' is not a keyword; write 'else if <condition>:' for a further branch"));
+                    return false;
                 }
                 if (IS("elif")) {
-                    return fail(p, t, LIT("there is no 'elif': write 'else if <condition>:' for a further branch"));
+                    fail(p, t, LIT("there is no 'elif': write 'else if <condition>:' for a further branch"));
+                    return false;
                 }
                 if (IS("def")) {
-                    return fail(p, t, LIT("there is no 'def': declare a function with 'fn name(a: Int) Int:'"));
+                    fail(p, t, LIT("there is no 'def': declare a function with 'fn name(a: Int) Int:'"));
+                    return false;
                 }
                 if (IS("switch")) {
-                    return fail(p, t, LIT("'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"));
+                    fail(p, t, LIT("'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"));
+                    return false;
                 }
                 if (IS("except") || IS("finally")) {
-                    return fail(p, t, fmt(p, "'%.*s' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", STR(n)));
+                    fail(p, t, fmt(p, "'%.*s' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", STR(n)));
+                    return false;
                 }
                 if (IS("loop")) {
-                    return fail(p, t, LIT("'loop' is not a keyword; write 'while true:' and leave it with 'break'"));
+                    fail(p, t, LIT("'loop' is not a keyword; write 'while true:' and leave it with 'break'"));
+                    return false;
                 }
                 if (IS("foreach")) {
-                    return fail(p, t, LIT("'foreach' is not a keyword; write 'for item in items:'"));
+                    fail(p, t, LIT("'foreach' is not a keyword; write 'for item in items:'"));
+                    return false;
                 }
                 if (IS("class")) {
-                    return fail(p, t, LIT("'class' is not a keyword inside a fn; declare a type with 'type Name:' at module level"));
+                    fail(p, t, LIT("'class' is not a keyword inside a fn; declare a type with 'type Name:' at module level"));
+                    return false;
                 }
                 if (IS("del")) {
-                    return fail(p, t, LIT("'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"));
+                    fail(p, t, LIT("'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"));
+                    return false;
                 }
                 if (IS("global") || IS("nonlocal")) {
-                    return fail(p, t, fmt(p, "'%.*s' is not a keyword; a fn sees module constants directly, and mutable state lives in a 'var' or a field passed explicitly", STR(n)));
+                    fail(p, t, fmt(p, "'%.*s' is not a keyword; a fn sees module constants directly, and mutable state lives in a 'var' or a field passed explicitly", STR(n)));
+                    return false;
                 }
                 if (IS("yield")) {
-                    return fail(p, t, LIT("'yield' is not a keyword; there are no generators, so build a list and return it"));
+                    fail(p, t, LIT("'yield' is not a keyword; there are no generators, so build a list and return it"));
+                    return false;
                 }
                 if (IS("async") || IS("await")) {
-                    return fail(p, t, fmt(p, "'%.*s' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"", STR(n)));
+                    fail(p, t, fmt(p, "'%.*s' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"", STR(n)));
+                    return false;
                 }
                 if (IS("go")) {
-                    return fail(p, t, LIT("'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()"));
+                    fail(p, t, LIT("'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()"));
+                    return false;
                 }
 #undef IS
             }
             if (kind(p) == MS_T_Comma) {
-                return fail(p, t, LIT("a statement cannot start with a comma-separated list of names: write one binding per line ('a := f()'), or destructure one value with '[a, b] := value'"));
+                fail(p, t, LIT("a statement cannot start with a comma-separated list of names: write one binding per line ('a := f()'), or destructure one value with '[a, b] := value'"));
+                return false;
             }
-            return fail(p, t, LIT("only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"));
+            fail(p, t, LIT("only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"));
+            return false;
         }
         if (p->inline_return) {
             st->kind = MS_S_RETURN;
@@ -2235,7 +2340,8 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
         break;
     }
     if (t.kind == MS_T_Underscore && ahead(p, 1).kind == MS_T_ColonAssign) {
-        return fail_fix_range(p, t, ahead(p, 1), LIT("'_ := value' was removed; write 'void value' to run an expression and drop its result on purpose"), LIT("void"));
+        fail_fix_range(p, t, ahead(p, 1), LIT("'_ := value' was removed; write 'void value' to run an expression and drop its result on purpose"), LIT("void"));
+        return false;
     }
     if ((t.kind == MS_T_Name || t.kind == MS_T_Underscore || t.kind == MS_T_LBracket || t.kind == MS_T_LBrace) && binding_ahead(p)) {
         MsStmt *s = NULL;
@@ -2252,9 +2358,11 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
             MsToken name = ahead(p, 1), eq = ahead(p, 2);
             if (name.kind == MS_T_Name && eq.kind == MS_T_Assign) {
                 MsStr n = text(p, name);
-                return fail_fix_range(p, t, eq, message, fmt(p, "%.*s :=", STR(n)));
+                fail_fix_range(p, t, eq, message, fmt(p, "%.*s :=", STR(n)));
+                return false;
             }
-            return fail(p, t, message);
+            fail(p, t, message);
+            return false;
         }
     }
     switch (t.kind) {
@@ -2283,7 +2391,8 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
         MsToken name = {0};
         if (!need_token(p, MS_T_Name, &name)) return false;
         if (kind(p) == MS_T_LBracket) {
-            return fail(p, peek(p), LIT("a local fn cannot take type parameters; declare a generic function at module level"));
+            fail(p, peek(p), LIT("a local fn cannot take type parameters; declare a generic function at module level"));
+            return false;
         }
         MsParams params = {0};
         if (!parameters(p, true, false, &params)) return false;
@@ -2339,9 +2448,11 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
             MsToken name = ahead(p, 1), eq = ahead(p, 2);
             if (name.kind == MS_T_Name && eq.kind == MS_T_Assign) {
                 MsStr n = text(p, name);
-                return fail_fix_range(p, l, eq, message, fmt(p, "%.*s :=", STR(n)));
+                fail_fix_range(p, l, eq, message, fmt(p, "%.*s :=", STR(n)));
+                return false;
             }
-            return fail(p, l, message);
+            fail(p, l, message);
+            return false;
         }
         if (kind(p) == MS_T_Var || ((kind(p) == MS_T_Name || kind(p) == MS_T_Underscore) && ahead(p, 1).kind == MS_T_ColonAssign)) {
             is_mutable = kind(p) == MS_T_Var;
@@ -2351,10 +2462,12 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
             MsPattern *pat = NULL;
             if (!pattern(p, &pat)) return false;
             if (pat->kind != MS_P_NAME) {
-                return fail(p, t, LIT("an if binding takes one name; write 'if value := optional:' and destructure the value inside the branch"));
+                fail(p, t, LIT("an if binding takes one name; write 'if value := optional:' and destructure the value inside the branch"));
+                return false;
             }
             if (kind(p) == MS_T_LParen) {
-                return fail(p, t, LIT("an if binding unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if value := optional:'"));
+                fail(p, t, LIT("an if binding unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if value := optional:'"));
+                return false;
             }
             bind = pat;
             if (!need(p, is_mutable ? MS_T_Assign : MS_T_ColonAssign)) return false;
@@ -2388,7 +2501,8 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
         MsExpr *cond = NULL;
         if (!expression(p, 0, &cond)) return false;
         if (kind(p) == MS_T_ColonAssign) {
-            return fail(p, peek(p), LIT("while takes a condition, not a binding; to loop while a value is present write 'while true:', bind it inside with 'if name := value:', and leave with 'else: break'"));
+            fail(p, peek(p), LIT("while takes a condition, not a binding; to loop while a value is present write 'while true:', bind it inside with 'if name := value:', and leave with 'else: break'"));
+            return false;
         }
         MsStmts body = {0};
         if (!suite(p, &body)) return false;
@@ -2401,7 +2515,8 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
     case MS_T_For: {
         p->at++;
         if (kind(p) == MS_T_LParen) {
-            return fail(p, peek(p), LIT("for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count"));
+            fail(p, peek(p), LIT("for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count"));
+            return false;
         }
         MsSym name;
         MsPattern *pat = NULL;
@@ -2414,10 +2529,12 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
             name = sym(p, name_token);
         }
         if (kind(p) == MS_T_Name && text_is(p, peek(p), "of")) {
-            return fail(p, peek(p), LIT("for uses 'in', not 'of'; write 'for item in items:'"));
+            fail(p, peek(p), LIT("for uses 'in', not 'of'; write 'for item in items:'"));
+            return false;
         }
         if (kind(p) == MS_T_Comma) {
-            return fail(p, peek(p), LIT("for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'"));
+            fail(p, peek(p), LIT("for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'"));
+            return false;
         }
         if (!need(p, MS_T_In)) return false;
         MsExpr *iter = NULL;
@@ -2448,7 +2565,7 @@ MS_NODISCARD static bool statement(Parser *p, bool allow_value, MsStmt **out) {
 
 /* Parses `: body`. `expression` marks a lambda body (an inline body is its value); `fn_body`
  * marks a function or method body (inline returns, may be empty). */
-MS_NODISCARD static bool statement_suite_inner(Parser *p, bool expression_, bool fn_body, bool outer, bool outer_lambda, MsStmts *out) {
+MS_NODISCARD static bool statement_suite_inner(Parser *p, bool is_expression, bool fn_body, bool outer, bool outer_lambda, MsStmts *out) {
     if (!need(p, MS_T_Colon)) return false;
     MsStmts none = {NULL, 0};
     if (kind(p) == MS_T_Ellipsis && fn_body) {
@@ -2458,13 +2575,13 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool expression_, bool
         return true;
     }
     if (kind(p) != MS_T_Newline) {
-        if (kind(p) == MS_T_If && (expression_ || fn_body)) {
+        if (kind(p) == MS_T_If && (is_expression || fn_body)) {
             /* `fn x: if c: a else: b`: the body is the conditional expression. */
             size_t start = p->at;
             MsPos at_pos = peek(p).pos;
             Checkpoint checkpoint = checkpoint_take(p);
             MsExpr *value = NULL;
-            bool ok = expression(p, 0, &value) && (expression_ || end(p));
+            bool ok = expression(p, 0, &value) && (is_expression || end(p));
             if (!ok) {
                 checkpoint_restore(p, &checkpoint);
             }
@@ -2484,14 +2601,15 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool expression_, bool
         }
         if (kind(p) == MS_T_If || kind(p) == MS_T_While || kind(p) == MS_T_For) {
             MsToken t = peek(p);
-            return fail(p, t, fmt(p, "inline bodies require one simple statement; put '%s' on its own line in an indented block", ms_tok_str((MsTok)t.kind)));
+            fail(p, t, fmt(p, "inline bodies require one simple statement; put '%s' on its own line in an indented block", ms_tok_str((MsTok)t.kind)));
+            return false;
         }
         p->inline_statement = true;
-        p->inline_return = expression_ || fn_body;
+        p->inline_return = is_expression || fn_body;
         MsStmts body = {MS_NEW_N(p->arena, MsStmt *, 1), 1};
         if (!statement(p, false, &body.ptr[0])) return false;
         p->inline_statement = outer;
-        if (!expression_) {
+        if (!is_expression) {
             if (!end(p)) return false;
         }
         *out = body;
@@ -2499,7 +2617,7 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool expression_, bool
     }
     p->inline_statement = false;
     p->inline_return = false;
-    p->block_lambda = outer_lambda || expression_;
+    p->block_lambda = outer_lambda || is_expression;
     if (!need(p, MS_T_Newline)) return false;
     if (!need(p, MS_T_Indent)) return false;
     size_t m = mark(p);
@@ -2514,17 +2632,18 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool expression_, bool
     MsStmts body;
     FINISH_PTRS(p, m, body);
     if (body.len == 0) {
-        return fail(p, previous(p), LIT("suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration"));
+        fail(p, previous(p), LIT("suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration"));
+        return false;
     }
     *out = body;
     return true;
 }
 
-MS_NODISCARD static bool statement_suite(Parser *p, bool expression_, bool fn_body, MsStmts *out) {
+MS_NODISCARD static bool statement_suite(Parser *p, bool is_expression, bool fn_body, MsStmts *out) {
     if (!enter(p)) return false;
     bool outer = p->inline_statement, outer_return = p->inline_return, outer_lambda = p->block_lambda;
     MsStmts r = {0};
-    if (!statement_suite_inner(p, expression_, fn_body, outer, outer_lambda, &r)) return false;
+    if (!statement_suite_inner(p, is_expression, fn_body, outer, outer_lambda, &r)) return false;
     p->inline_statement = outer;
     p->inline_return = outer_return;
     p->block_lambda = outer_lambda;
@@ -2551,7 +2670,7 @@ static MsExpr *mk_unary(Parser *p, MsPos pos, MsUnaryOp op, MsExpr *operand) {
 
 /* Rejects prefix `try`. When the operand is one call or access chain, the fix rewrites
  * `try f(x)` to `f(x)?`. */
-MS_NODISCARD static bool fail_try(Parser *p, MsToken t) {
+static void fail_try(Parser *p, MsToken t) {
     p->at++;
     MsToken start = peek(p);
     Checkpoint checkpoint = checkpoint_take(p);
@@ -2583,16 +2702,15 @@ MS_NODISCARD static bool fail_try(Parser *p, MsToken t) {
         d->fix_end = last.end;
         d->replacement = replacement;
     }
-    return false;
 }
 
 /* `start..end` as the call `range(start, end)`; `..` names the standard `range`. */
-static MsExpr *range_call(Parser *p, MsExpr *start, MsExpr *end_) {
+static MsExpr *range_call(Parser *p, MsExpr *start, MsExpr *stop) {
     MsPos pos = start->pos;
     MsExpr *callee = mk_name(p, pos, intern(p, ".."));
     MsArg *args = MS_NEW_N(p->arena, MsArg, 2);
     args[0] = (MsArg){start->pos, false, 0, start};
-    args[1] = (MsArg){end_->pos, false, 0, end_};
+    args[1] = (MsArg){stop->pos, false, 0, stop};
     return mk_call(p, pos, callee, args, 2);
 }
 
@@ -2602,10 +2720,12 @@ MS_NODISCARD static bool pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
     if (kind(p) == MS_T_Pipe) {
         MsToken t = peek(p);
         MsToken first = previous(p);
-        return fail_word_operator(p, first, t, LIT("'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step"), "or");
+        fail_word_operator(p, first, t, LIT("'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step"), "or");
+        return false;
     }
     if (kind(p) == MS_T_Try) {
-        return fail(p, peek(p), LIT(TRY_REMOVED));
+        fail(p, peek(p), LIT(TRY_REMOVED));
+        return false;
     }
     MsExpr *step;
     if (kind(p) == MS_T_Dot) {
@@ -2618,7 +2738,8 @@ MS_NODISCARD static bool pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
                 hint = "; to continue a flow on the next line, end this line before '|' and start the next line with '|'";
             }
             MsStr dn = describe(p, name);
-            return fail(p, name, fmt(p, "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found %.*s%s", STR(dn), hint));
+            fail(p, name, fmt(p, "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found %.*s%s", STR(dn), hint));
+            return false;
         }
         p->at++;
         MsExpr *callee = mk_name(p, name.pos, sym(p, name));
@@ -2633,7 +2754,8 @@ MS_NODISCARD static bool pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
         }
         if (kind(p) == MS_T_LBracket) {
             MsStr n = text(p, name);
-            return fail(p, peek(p), fmt(p, "a pipe step cannot take type arguments; bind the instance to a name first, e.g. step := %.*s[Int], then write x | step", STR(n)));
+            fail(p, peek(p), fmt(p, "a pipe step cannot take type arguments; bind the instance to a name first, e.g. step := %.*s[Int], then write x | step", STR(n)));
+            return false;
         }
         Args rest = {NULL, 0};
         if (take(p, MS_T_LParen)) {
@@ -2658,7 +2780,8 @@ MS_NODISCARD static bool pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
 MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
     MsToken t = peek(p);
     if (t.kind == MS_T_Not && min > 3) {
-        return fail(p, t, LIT("not requires grouping at this operator position; wrap it in parentheses, e.g. a == (not b)"));
+        fail(p, t, LIT("not requires grouping at this operator position; wrap it in parentheses, e.g. a == (not b)"));
+        return false;
     }
     MsExpr *e;
     if (take(p, MS_T_Not)) {
@@ -2666,7 +2789,8 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
         if (!expression(p, PREFIX_OPERAND, &operand)) return false;
         e = mk_unary(p, t.pos, MS_U_NOT, operand);
     } else if (t.kind == MS_T_Try) {
-        return fail_try(p, t);
+        fail_try(p, t);
+        return false;
     } else if (t.kind == MS_T_Plus || t.kind == MS_T_Minus) {
         p->at++;
         MsUnaryOp op = t.kind == MS_T_Plus ? MS_U_PLUS : MS_U_NEG;
@@ -2684,7 +2808,8 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
             break;
         }
         if (op.kind == MS_T_Amp) {
-            return and_and(p, op);
+            and_and(p, op);
+            return false;
         }
         if (op.kind == MS_T_Pipe) {
             if (min > 0) {
@@ -2697,7 +2822,8 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
             }
             MsBinaryOp tmp;
             if (binary_op(kind(p), &tmp)) {
-                return fail(p, peek(p), LIT("a pipe has the lowest precedence; parenthesize it to use its result in an operator, e.g. (x | f) == y"));
+                fail(p, peek(p), LIT("a pipe has the lowest precedence; parenthesize it to use its result in an operator, e.g. (x | f) == y"));
+                return false;
             }
             continue;
         }
@@ -2709,7 +2835,8 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
             MsExpr *right = NULL;
             if (!expression(p, RANGE_LEVEL + 1, &right)) return false;
             if (kind(p) == MS_T_DotDot) {
-                return fail(p, peek(p), LIT("a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections/collections.ms\""));
+                fail(p, peek(p), LIT("a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections/collections.ms\""));
+                return false;
             }
             e = range_call(p, e, right);
             continue;
@@ -2726,10 +2853,12 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
             ahead(p, 1).kind == op.kind && ahead(p, 2).kind == MS_T_Newline) {
             const char *o = ms_tok_str((MsTok)op.kind);
             MsStr n = ms_name(p->names, e->u.sym);
-            return fail(p, op, fmt(p, "Manuscript has no '%s%s' operator; write '%.*s %s= 1'", o, o, STR(n), o));
+            fail(p, op, fmt(p, "Manuscript has no '%s%s' operator; write '%.*s %s= 1'", o, o, STR(n), o));
+            return false;
         }
         if (level == 4 && compared) {
-            return fail(p, op, LIT("comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c"));
+            fail(p, op, LIT("comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < c"));
+            return false;
         }
         p->at++;
         if (!link(p, &links)) return false;
@@ -2784,11 +2913,11 @@ MS_NODISCARD static bool case_path(Parser *p, MsExpr **out) {
 
 static MsPos text_pos(MsPos pos, MsStr full, size_t index, const MsBounds *bounds) {
     size_t last = (size_t)-1;
-    uint32_t newlines_ = 0;
+    uint32_t newline_count = 0;
     for (size_t i = 0; i < index; i++) {
         if (full.ptr[i] == '\n') {
             last = i;
-            newlines_++;
+            newline_count++;
         }
     }
     uint32_t offset = (uint32_t)(pos.offset + index);
@@ -2796,7 +2925,7 @@ static MsPos text_pos(MsPos pos, MsStr full, size_t index, const MsBounds *bound
     if (last == (size_t)-1) {
         position = (MsPos){offset, pos.line, (uint32_t)(pos.column + index)};
     } else {
-        position = (MsPos){offset, pos.line + newlines_, (uint32_t)(index - last)};
+        position = (MsPos){offset, pos.line + newline_count, (uint32_t)(index - last)};
     }
     return ms_bounds_restore_offset(bounds, pos, position);
 }
@@ -2840,7 +2969,7 @@ static MsStr dedent(Parser *p, MsStr content, size_t indent) {
             line_begin = true;
         }
     }
-    MsStr out = {ms_arena_strndup(p->arena, (char *)p->bytes->data + bm, p->bytes->len - bm), (uint32_t)(p->bytes->len - bm)};
+    MsStr out = {ms_arena_strndup(p->arena, p->bytes->data + bm, p->bytes->len - bm), (uint32_t)(p->bytes->len - bm)};
     p->bytes->len = bm;
     return out;
 }
@@ -2855,14 +2984,14 @@ static void flush_literal(Parser *p, size_t bm) {
 
 MS_NODISCARD static bool text_parts(Parser *p, MsToken token, MsStr raw, size_t quotes, bool interpolating, TextParts *out) {
     const uint8_t *rb = (const uint8_t *)raw.ptr;
-    size_t first, end_, indent;
+    size_t first, stop, indent;
     if (quotes >= 3) {
         MsStr content;
         multiline_body(raw, &content, &indent, &first);
-        end_ = first + content.len;
+        stop = first + content.len;
     } else {
         first = 0;
-        end_ = raw.len;
+        stop = raw.len;
         indent = 0;
     }
     size_t pm = mark(p);       /* parts, on the scratch stack */
@@ -2874,17 +3003,17 @@ MS_NODISCARD static bool text_parts(Parser *p, MsToken token, MsStr raw, size_t 
 #define FLUSH()                                                                                    \
     do {                                                                                           \
         if (p->bytes->len != bm) {                                                                 \
-            MsTextPart part = {{ms_arena_strndup(p->arena, (char *)p->bytes->data + bm, p->bytes->len - bm), \
+            MsTextPart part = {{ms_arena_strndup(p->arena, p->bytes->data + bm, p->bytes->len - bm), \
                                 (uint32_t)(p->bytes->len - bm)}, NULL};                            \
             push(p, &part, sizeof part);                                                           \
             p->bytes->len = bm;                                                                    \
         }                                                                                          \
     } while (0)
-    while (i < end_) {
+    while (i < stop) {
         if (line_start) {
             line_start = false;
             size_t skipped = 0;
-            while (skipped < indent && i < end_ && (rb[i] == ' ' || rb[i] == '\t')) {
+            while (skipped < indent && i < stop && (rb[i] == ' ' || rb[i] == '\t')) {
                 skipped++;
                 i++;
             }
@@ -3038,7 +3167,8 @@ MS_NODISCARD static bool nested_body(Parser *n, bool eof_by_need, MsExpr **out) 
     if (kind(n) != MS_T_Eof) {
         MsToken at = peek(n);
         MsStr found = describe(n, at);
-        return fail(n, at, fmt(n, "an interpolation holds one expression, found %.*s after it; close the brace after the expression, or bind the rest to a name first", STR(found)));
+        fail(n, at, fmt(n, "an interpolation holds one expression, found %.*s after it; close the brace after the expression, or bind the rest to a name first", STR(found)));
+        return false;
     }
     return true;
 }
@@ -3137,12 +3267,14 @@ MS_NODISCARD static bool if_expression(Parser *p, MsToken t, MsExpr **out) {
     if (!expression(p, 0, &cond)) return false;
     if (!need(p, MS_T_Colon)) return false;
     if (kind(p) == MS_T_Newline) {
-        return fail(p, peek(p), LIT("an if expression writes its branches on one line, 'if c: a else: b'; to run statements, use an if statement that assigns a 'var' or returns"));
+        fail(p, peek(p), LIT("an if expression writes its branches on one line, 'if c: a else: b'; to run statements, use an if statement that assigns a 'var' or returns"));
+        return false;
     }
     MsExpr *then = NULL;
     if (!expression(p, 0, &then)) return false;
     if (kind(p) != MS_T_Else) {
-        return fail(p, peek(p), LIT("an if expression needs an else branch; write 'if c: a else: b', or use an if statement when no value is needed"));
+        fail(p, peek(p), LIT("an if expression needs an else branch; write 'if c: a else: b', or use an if statement when no value is needed"));
+        return false;
     }
     MsToken else_token = peek(p);
     p->at++;
@@ -3243,13 +3375,15 @@ MS_NODISCARD static bool match_arms(Parser *p, MsToken header, MsExpr *m) {
         newlines(p);
         if (kind(p) == MS_T_Dedent) {
             if (narms == 0) {
-                return fail(p, header, LIT("match requires at least one arm; add a case pattern or '_' arm under the header"));
+                fail(p, header, LIT("match requires at least one arm; add a case pattern or '_' arm under the header"));
+                return false;
             }
             break;
         }
         MsToken prefix;
         if (legacy_case_prefix(p, &prefix)) {
-            return fail_fix(p, prefix, LIT("match arms use bare variant names, e.g. Paid(receipt): or Missing:; remove the legacy 'case' prefix"), LIT(""));
+            fail_fix(p, prefix, LIT("match arms use bare variant names, e.g. Paid(receipt): or Missing:; remove the legacy 'case' prefix"), LIT(""));
+            return false;
         }
         MsToken start = peek(p);
         MsTok k = (MsTok)start.kind;
@@ -3269,7 +3403,8 @@ MS_NODISCARD static bool match_arms(Parser *p, MsToken header, MsExpr *m) {
             if (!case_path(p, &written)) return false;
             if (written->kind == MS_E_NAME && str_is(ms_name(p->names, written->u.sym), "some") &&
                 kind(p) == MS_T_LParen && p->speculative == 0) {
-                return fail(p, peek(p), LIT("there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'"));
+                fail(p, peek(p), LIT("there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'"));
+                return false;
             }
             if (written->kind == MS_E_NAME && kind(p) != MS_T_LParen) {
                 MsStr n = ms_name(p->names, written->u.sym);
@@ -3294,7 +3429,8 @@ MS_NODISCARD static bool match_arms(Parser *p, MsToken header, MsExpr *m) {
                     MsArmBinding b = {sym(p, tok), tok.pos};
                     push(p, &b, sizeof b);
                     if (kind(p) == MS_T_LParen) {
-                        return fail(p, peek(p), LIT("patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper function"));
+                        fail(p, peek(p), LIT("patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper function"));
+                        return false;
                     }
                     if (!take(p, MS_T_Comma)) {
                         break;
@@ -3409,7 +3545,8 @@ MS_NODISCARD static bool bracket(Parser *p, MsExpr *left, MsExpr **out) {
     MsExpr *index = NULL;
     if (!expression(p, 0, &index)) return false;
     if (kind(p) == MS_T_Colon) {
-        return fail(p, peek(p), LIT("there is no slice syntax; call slice(start: 0, end: 2) on a List or String"));
+        fail(p, peek(p), LIT("there is no slice syntax; call slice(start: 0, end: 2) on a List or String"));
+        return false;
     }
     if (!need(p, MS_T_RBracket)) return false;
     MsPos pos = left->pos;
@@ -3429,7 +3566,8 @@ MS_NODISCARD static bool postfix(Parser *p, MsExpr *e, MsExpr **out) {
         if (take(p, MS_T_Dot)) {
             if (!link(p, &links)) return false;
             if (kind(p) == MS_T_Number) {
-                return fail(p, peek(p), LIT("a number has at most one decimal point and member access needs a name; write the number once, e.g. 1.2"));
+                fail(p, peek(p), LIT("a number has at most one decimal point and member access needs a name; write the number once, e.g. 1.2"));
+                return false;
             }
             MsToken name = {0};
             if (!need_token(p, MS_T_Name, &name)) return false;
@@ -3453,7 +3591,8 @@ MS_NODISCARD static bool postfix(Parser *p, MsExpr *e, MsExpr **out) {
             /* `call()?` is `try call()`; one per value keeps a line readable. */
             p->at++;
             if (kind(p) == MS_T_Question) {
-                return fail(p, peek(p), LIT("'?\?' is not an operator and '?' cannot repeat: unwrap an Optional with 'if x := v:' or give it a default with 'v.get(default)', or bind a Result to a name before the next '?'"));
+                fail(p, peek(p), LIT("'?\?' is not an operator and '?' cannot repeat: unwrap an Optional with 'if x := v:' or give it a default with 'v.get(default)', or bind a Result to a name before the next '?'"));
+                return false;
             }
             MsPos pos = e->pos;
             e = mk_unary(p, pos, MS_U_TRY, e);
@@ -3490,20 +3629,24 @@ MS_NODISCARD static bool call_arguments(Parser *p, Args *out) {
                 /* `x => x * 2`: a closure written with an arrow. */
                 MsToken nm = peek(p);
                 MsStr message = fmt(p, "there is no '=>' closure; write fn %.*s: body, with the parameter after fn and a colon before the body", STR(n));
-                return fail_fix_range(p, nm, gt, message, fmt(p, "fn %.*s:", STR(n)));
+                fail_fix_range(p, nm, gt, message, fmt(p, "fn %.*s:", STR(n)));
+                return false;
             }
-            return fail(p, eq, fmt(p, "argument labels use a colon; write %.*s: value", STR(n)));
+            fail(p, eq, fmt(p, "argument labels use a colon; write %.*s: value", STR(n)));
+            return false;
         }
         if (kind(p) == MS_T_Var) {
             MsToken t = peek(p);
             t.end = ahead(p, 1).pos;
-            return fail_fix_range(p, t, t, LIT("a call does not write `var`: the callee's parameter declares that it changes the argument; write the argument plainly"), LIT(""));
+            fail_fix_range(p, t, t, LIT("a call does not write `var`: the callee's parameter declares that it changes the argument; write the argument plainly"), LIT(""));
+            return false;
         }
         MsExpr *value = NULL;
         if (!expression(p, 0, &value)) return false;
         if (value->kind == MS_E_NAME && kind(p) == MS_T_Arrow) {
             MsStr n = ms_name(p->names, value->u.sym);
-            return fail(p, peek(p), fmt(p, "arrow closures are not supported; write 'fn %.*s: %.*s + 1', or 'fn(%.*s: Int) Int: %.*s + 1' with explicit types", STR(n), STR(n), STR(n), STR(n)));
+            fail(p, peek(p), fmt(p, "arrow closures are not supported; write 'fn %.*s: %.*s + 1', or 'fn(%.*s: Int) Int: %.*s + 1' with explicit types", STR(n), STR(n), STR(n), STR(n)));
+            return false;
         }
         MsArg a = {pos, has_name, name, value};
         push(p, &a, sizeof a);
@@ -3549,11 +3692,13 @@ MS_NODISCARD static bool primary(Parser *p, MsExpr **out) {
         break;
     case MS_T_LParen:
         if (kind(p) == MS_T_RParen) {
-            return fail(p, t, LIT("'()' is not a value; the Void value is written 'void'"));
+            fail(p, t, LIT("'()' is not a value; the Void value is written 'void'"));
+            return false;
         }
         if (!expression(p, 0, &e)) return false;
         if (kind(p) == MS_T_Comma) {
-            return fail(p, peek(p), LIT("Manuscript has no tuples; declare a type with 'type Pair:' and named fields, or use a List when the items share one type"));
+            fail(p, peek(p), LIT("Manuscript has no tuples; declare a type with 'type Pair:' and named fields, or use a List when the items share one type"));
+            return false;
         }
         if (!need(p, MS_T_RParen)) return false;
         break;
@@ -3562,9 +3707,7 @@ MS_NODISCARD static bool primary(Parser *p, MsExpr **out) {
         if (!take(p, MS_T_RBracket)) {
             size_t m = mark(p);
             for (;;) {
-                MsExpr *element = NULL;
-                if (!expression(p, 0, &element)) return false;
-                push_ptr(p, element);
+                if (!push_expression(p, 0)) return false;
                 if (!take(p, MS_T_Comma)) {
                     break;
                 }
@@ -3598,7 +3741,8 @@ MS_NODISCARD static bool primary(Parser *p, MsExpr **out) {
                 MsExpr *key = NULL;
                 if (!expression(p, 0, &key)) return false;
                 if (kind(p) == MS_T_Comma || kind(p) == MS_T_RBrace) {
-                    return fail(p, peek(p), LIT("a brace literal is a Map and needs 'key: value' entries; there is no set literal, so write Set[T]() and call add(value), or [a, b].to_set() from a List"));
+                    fail(p, peek(p), LIT("a brace literal is a Map and needs 'key: value' entries; there is no set literal, so write Set[T]() and call add(value), or [a, b].to_set() from a List"));
+                    return false;
                 }
                 if (!need(p, MS_T_Colon)) return false;
                 MsExpr *value = NULL;
@@ -3625,7 +3769,8 @@ MS_NODISCARD static bool primary(Parser *p, MsExpr **out) {
         if (kind(p) == MS_T_LParen) {
             if (!parameters(p, true, true, &params)) return false;
             if (kind(p) == MS_T_Arrow) {
-                return fail_fix(p, peek(p), LIT("result types follow the parameter list without an arrow; remove '->', e.g. fn (x: Int) Int: x + 1"), LIT(""));
+                fail_fix(p, peek(p), LIT("result types follow the parameter list without an arrow; remove '->', e.g. fn (x: Int) Int: x + 1"), LIT(""));
+                return false;
             }
             if (kind(p) != MS_T_Colon) {
                 if (!typ(p, &result)) return false;
@@ -3712,9 +3857,11 @@ MS_NODISCARD static bool primary(Parser *p, MsExpr **out) {
         bool reserved = t.kind == MS_T_Test || t.kind == MS_T_Type || t.kind == MS_T_Fixture;
         MsStr dt = describe(p, t);
         if (reserved) {
-            return fail(p, t, fmt(p, "expected an expression, found %.*s; '%.*s' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter", STR(dt), STR(word)));
+            fail(p, t, fmt(p, "expected an expression, found %.*s; '%.*s' is a reserved word and cannot be used as a name: pick another name for the variable, field or parameter", STR(dt), STR(word)));
+            return false;
         }
-        return fail(p, t, fmt(p, "expected an expression, found %.*s; %s", STR(dt), hint));
+        fail(p, t, fmt(p, "expected an expression, found %.*s; %s", STR(dt), hint));
+        return false;
     }
     }
     return postfix(p, e, out);
@@ -3730,7 +3877,8 @@ MS_NODISCARD static bool import_path(Parser *p, MsStr *out) {
     if (!text_parts_of(p, token, &parts)) return false;
     MsStr result;
     if (!plain_text(parts, &result)) {
-        return fail(p, token, LIT("import paths cannot interpolate; write the path as plain text without {…}"));
+        fail(p, token, LIT("import paths cannot interpolate; write the path as plain text without {…}"));
+        return false;
     }
     *out = result;
     return true;
@@ -3743,7 +3891,8 @@ MS_NODISCARD static bool import_names(Parser *p, bool wrapped, uint32_t *count, 
         if (!need_token(p, MS_T_Name, &n)) return false;
         push(p, &n, sizeof n);
         if (kind(p) == MS_T_Name && text_is(p, peek(p), "as")) {
-            return fail(p, peek(p), LIT("imports cannot be renamed with 'as'; import the name as the module declares it"));
+            fail(p, peek(p), LIT("imports cannot be renamed with 'as'; import the name as the module declares it"));
+            return false;
         }
         if (!take(p, MS_T_Comma) || (wrapped && kind(p) == MS_T_RParen)) {
             break;
@@ -3772,10 +3921,12 @@ static void push_imports(Parser *p, MsBuf *imports, MsPos pos, const MsToken *na
 MS_NODISCARD static bool import_statement(Parser *p, MsBuf *imports) {
     MsPos pos = previous(p).pos;
     if (kind(p) == MS_T_Star) {
-        return fail(p, peek(p), LIT("namespace and wildcard imports are unsupported; import individual exports with 'import Name, OtherName from \"./module.ms\"'"));
+        fail(p, peek(p), LIT("namespace and wildcard imports are unsupported; import individual exports with 'import Name, OtherName from \"./module.ms\"'"));
+        return false;
     }
     if (kind(p) == MS_T_LBrace) {
-        return fail(p, peek(p), LIT("imports take no braces; write 'import a, b from \"path.ms\"', or 'import (a, b) from \"path.ms\"' to wrap across lines"));
+        fail(p, peek(p), LIT("imports take no braces; write 'import a, b from \"path.ms\"', or 'import (a, b) from \"path.ms\"' to wrap across lines"));
+        return false;
     }
     bool wrapped = take(p, MS_T_LParen);
     for (;;) {
@@ -3806,7 +3957,7 @@ MS_NODISCARD static bool import_statement(Parser *p, MsBuf *imports) {
     return true;
 }
 
-MS_NODISCARD static bool module_(Parser *p, MsBuf *imports, MsBuf *decls) {
+MS_NODISCARD static bool parse_module(Parser *p, MsBuf *imports, MsBuf *decls) {
     while (kind(p) != MS_T_Eof) {
         newlines(p);
         if (kind(p) == MS_T_Eof) {
@@ -3817,17 +3968,19 @@ MS_NODISCARD static bool module_(Parser *p, MsBuf *imports, MsBuf *decls) {
             continue;
         }
         if (kind(p) == MS_T_Name && text_is(p, peek(p), "from") && ahead(p, 1).kind == MS_T_String) {
-            return fail(p, peek(p), LIT("imports read: import name, other from \"path.ms\""));
+            fail(p, peek(p), LIT("imports read: import name, other from \"path.ms\""));
+            return false;
         }
         MsToken export_tok = peek(p);
         bool exported = take(p, MS_T_Export);
         MsDecl *d = NULL;
         if (!declaration(p, &d)) return false;
         if (exported && (d->kind == MS_D_IMPL || d->kind == MS_D_TEST)) {
-            return fail(p, export_tok, LIT("only types, interfaces, and named functions can be exported; remove 'export' before this method, impl, test, or bench (a method is exported with its type)"));
+            fail(p, export_tok, LIT("only types, interfaces, and named functions can be exported; remove 'export' before this method, impl, test, or bench (a method is exported with its type)"));
+            return false;
         }
         d->is_exported = exported;
-        ms_buf_put(decls, &d, sizeof d);
+        MS_VEC_PUSH(*decls, MsDecl *, d);
     }
     return true;
 }
@@ -3858,7 +4011,7 @@ bool ms_parse_chunk(MsArena *arena, MsNames *names, const char *src, size_t len,
     p.bytes = &bytes;
     p.diag = diag;
     p.next_id = first_id;
-    bool ok = module_(&p, &imports, &decls);
+    bool ok = parse_module(&p, &imports, &decls);
     if (ok) {
         out->nimports = (uint32_t)(imports.len / sizeof(MsImport));
         out->imports = ms_alloc(arena, imports.len ? imports.len : 1, _Alignof(MsImport));

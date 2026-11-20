@@ -55,15 +55,6 @@ typedef struct Scanner {
     MsDiag *diag;
 } Scanner;
 
-#define VLEN(b, T) ((b).len / sizeof(T))
-#define VAT(b, T, i) (((T *)ms_buf_items(&(b)))[i])
-#define VLAST(b, T) VAT(b, T, VLEN(b, T) - 1)
-#define VPUSH(b, T, v)                                                                             \
-    do {                                                                                           \
-        T v_ = (v);                                                                                \
-        ms_buf_put(&(b), &v_, sizeof(T));                                                          \
-    } while (0)
-#define VPOP(b, T) ((b).len -= sizeof(T))
 
 static bool letter(uint8_t b) {
     return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_';
@@ -268,20 +259,20 @@ static bool bidi_control_at(const Scanner *s, size_t i) {
 
 static void emit(Scanner *s, MsTok kind, size_t lo, size_t hi, MsPos pos) {
     MsToken t = {pos, spos(s), (uint32_t)lo, (uint32_t)hi, (uint8_t)kind};
-    VPUSH(s->tokens, MsToken, t);
+    MS_VEC_PUSH(s->tokens, MsToken, t);
 }
 
 static void emit_layout(Scanner *s, MsTok kind) {
     MsPos p = spos(s);
     MsToken t = {p, p, (uint32_t)s->offset, (uint32_t)s->offset, (uint8_t)kind};
-    VPUSH(s->tokens, MsToken, t);
+    MS_VEC_PUSH(s->tokens, MsToken, t);
 }
 
 static size_t ntokens(const Scanner *s) {
-    return VLEN(s->tokens, MsToken);
+    return MS_VEC_LEN(s->tokens, MsToken);
 }
 static MsToken *tokat(const Scanner *s, size_t i) {
-    return &VAT(s->tokens, MsToken, i);
+    return &MS_VEC_AT(s->tokens, MsToken, i);
 }
 static int last_kind(const Scanner *s) {
     size_t n = ntokens(s);
@@ -351,7 +342,7 @@ MS_NODISCARD static bool skip_block_comment(Scanner *s) {
             advance(s);
             advance(s);
             MsRange r = {start, s->offset};
-            VPUSH(s->blocks, MsRange, r);
+            MS_VEC_PUSH(s->blocks, MsRange, r);
             break;
         }
         if (b == '/' && at(s, s->offset + 1) == '*') {
@@ -685,18 +676,18 @@ MS_NODISCARD static bool scan_interpolation(Scanner *s) {
     MsPos open = spos(s);
     open.column -= 1;
     open.offset -= 1;
-    if (VLEN(s->interpolations, MsPos) >= MAX_INTERPOLATION_DEPTH) {
+    if (MS_VEC_LEN(s->interpolations, MsPos) >= MAX_INTERPOLATION_DEPTH) {
         return fail_at_fmt(s, open,
                  "nesting exceeds %d levels; split the expression, type, or block into named parts",
                  MAX_INTERPOLATION_DEPTH);
     }
-    VPUSH(s->interpolations, MsPos, open);
+    MS_VEC_PUSH(s->interpolations, MsPos, open);
     if (!interpolation_body(s, open)) {
         return false;
     }
-    VPOP(s->interpolations, MsPos);
+    MS_VEC_POP(s->interpolations, MsPos);
     MsRange r = {start, s->boundary_origin + s->offset};
-    VPUSH(s->interps, MsRange, r);
+    MS_VEC_PUSH(s->interps, MsRange, r);
     return true;
 }
 
@@ -724,15 +715,15 @@ MS_NODISCARD static bool scan_string(Scanner *s, bool interpolating) {
     while (s->offset < n) {
         uint8_t b = advance(s);
         if (b == '"') {
-            if (VLEN(s->interpolations, MsPos) != 0) {
+            if (MS_VEC_LEN(s->interpolations, MsPos) != 0) {
                 MsRange r = {s->boundary_origin + start, s->boundary_origin + s->offset};
-                VPUSH(s->strings, MsRange, r);
+                MS_VEC_PUSH(s->strings, MsRange, r);
             }
             return true;
         }
         if (b == '\n') {
-            if (VLEN(s->interpolations, MsPos) != 0) {
-                MsPos brace = VLAST(s->interpolations, MsPos);
+            if (MS_VEC_LEN(s->interpolations, MsPos) != 0) {
+                MsPos brace = MS_VEC_LAST(s->interpolations, MsPos);
                 return fail_at_str(s, brace, LIT("unterminated interpolation; the quote after this '{' opens a nested text that never closes (" BRACE_HINT ")"));
             }
             return fail_at_str(s, opened, LIT("unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break"));
@@ -802,8 +793,8 @@ static bool blank_line(const uint8_t *line, size_t length) {
 static bool check_text_indentation(Scanner *s, const MsBuf *lines, size_t quote, size_t indent_len,
                                    size_t line_start) {
     const uint8_t *indent = s->src + line_start;
-    for (size_t k = 0; k < VLEN(*lines, LinePos); k++) {
-        LinePos line = VAT(*lines, LinePos, k);
+    for (size_t k = 0; k < MS_VEC_LEN(*lines, LinePos); k++) {
+        LinePos line = MS_VEC_AT(*lines, LinePos, k);
         const uint8_t *rest = s->src + line.at;
         size_t rest_len = s->n - line.at;
         const uint8_t *newline = memchr(rest, '\n', rest_len);
@@ -839,7 +830,7 @@ MS_NODISCARD static bool scan_multiline_body(Scanner *s, bool raw, bool interpol
         uint8_t b = advance(s);
         if (b == '\n') {
             line_start = s->offset;
-            VPUSH(*lines, LinePos, ((LinePos){line_start, spos(s)}));
+            MS_VEC_PUSH(*lines, LinePos, ((LinePos){line_start, spos(s)}));
         } else if (b == '"' && starts_with(s, s->offset, "\"\"")) {
             return finish_multiline(s, lines, line_start);
         } else if (b < 32 && b != '\t') {
@@ -867,7 +858,7 @@ MS_NODISCARD static bool scan_multiline_body(Scanner *s, bool raw, bool interpol
  * closing quotes start theirs, and every content line carries the closing line's indentation. */
 MS_NODISCARD static bool scan_multiline(Scanner *s, bool raw, bool interpolating) {
     MsPos opened = spos(s);
-    if (VLEN(s->interpolations, MsPos) != 0) {
+    if (MS_VEC_LEN(s->interpolations, MsPos) != 0) {
         return fail_str(s, LIT("multi-line text cannot appear inside an interpolation; bind it to a name first and interpolate the name"));
     }
     for (int i = 0; i < (raw ? 4 : 3); i++) {
@@ -1082,7 +1073,7 @@ typedef struct LineInfo {
 } LineInfo;
 
 static size_t open_delimiters(const Scanner *s) {
-    return VLEN(s->delimiters, char);
+    return MS_VEC_LEN(s->delimiters, char);
 }
 
 static char closer_of(char open) {
@@ -1174,7 +1165,7 @@ static bool fail_indent_width(Scanner *s, size_t leading) {
 /* The line after a ':' header: it opens the suite, or it is an empty declaration suite. */
 static bool resolve_pending_suite(Scanner *s, LineLayout *layout, size_t leading, bool *started) {
     if (leading == layout->header_indent + 4) {
-        VPUSH(s->levels, Level, ((Level){leading, layout->pending_depth}));
+        MS_VEC_PUSH(s->levels, Level, ((Level){leading, layout->pending_depth}));
         emit_layout(s, MS_T_Indent);
         *started = true;
     } else if (leading > layout->header_start && leading <= layout->header_indent) {
@@ -1205,15 +1196,15 @@ static bool fail_unexpected_indent(Scanner *s, size_t leading, size_t expected) 
 static bool align_to_level(Scanner *s, size_t leading) {
     /* A continuation line inside delimiters opened within a level does not close that level; only
      * suites opened inside the open delimiters can. */
-    while (VLEN(s->levels, Level) > 1) {
-        Level top = VLAST(s->levels, Level);
+    while (MS_VEC_LEN(s->levels, Level) > 1) {
+        Level top = MS_VEC_LAST(s->levels, Level);
         if (!(leading < top.indent && top.depth >= open_delimiters(s))) {
             break;
         }
-        VPOP(s->levels, Level);
+        MS_VEC_POP(s->levels, Level);
         emit_layout(s, MS_T_Dedent);
     }
-    Level top = VLAST(s->levels, Level);
+    Level top = MS_VEC_LAST(s->levels, Level);
     if (open_delimiters(s) != top.depth || leading == top.indent) {
         return true;
     }
@@ -1237,7 +1228,7 @@ static bool apply_layout(Scanner *s, LineLayout *layout, size_t leading) {
         layout->continuing = false;
         return true;
     }
-    if (open_delimiters(s) == VLAST(s->levels, Level).depth) {
+    if (open_delimiters(s) == MS_VEC_LAST(s->levels, Level).depth) {
         layout->statement_indent = leading;
     }
     bool started_suite = false;
@@ -1262,7 +1253,7 @@ static void scan_word(Scanner *s, MsPos pos) {
         kind = MS_T_Name;
     }
     if (kind == MS_T_Fn || kind == MS_T_Match) {
-        VPUSH(s->function_depths, size_t, open_delimiters(s));
+        MS_VEC_PUSH(s->function_depths, size_t, open_delimiters(s));
     }
     emit(s, kind, start, end, pos);
 }
@@ -1375,15 +1366,15 @@ static bool fail_unexpected_char(Scanner *s, uint8_t b) {
 }
 
 static void open_delimiter(Scanner *s, MsPos pos, uint8_t b) {
-    VPUSH(s->delimiters, char, (char)b);
-    VPUSH(s->opened, MsPos, pos);
+    MS_VEC_PUSH(s->delimiters, char, (char)b);
+    MS_VEC_PUSH(s->opened, MsPos, pos);
     if (b == '(' && last_kind(s) == MS_T_Var) {
-        VPUSH(s->groups, size_t, open_delimiters(s));
+        MS_VEC_PUSH(s->groups, size_t, open_delimiters(s));
     }
 }
 
 static bool close_delimiter(Scanner *s, const LineInfo *info, uint8_t b) {
-    if (s->virtual_paren && open_delimiters(s) == 1 && VAT(s->delimiters, char, 0) == '(' && b == ')') {
+    if (s->virtual_paren && open_delimiters(s) == 1 && MS_VEC_AT(s->delimiters, char, 0) == '(' && b == ')') {
         /* The physical wrapper would leave its own closing parenthesis unmatched; use that path
          * for its exact error. */
         return fail_str(s, LIT("interpolation closes the virtual parenthesis"));
@@ -1394,22 +1385,22 @@ static bool close_delimiter(Scanner *s, const LineInfo *info, uint8_t b) {
         MsStr message = ms_arena_fmt(s->arena, "unmatched closing delimiter '%c'; remove it or add the matching opener before it", b);
         return fail_char(s, message, fix);
     }
-    if (VLEN(s->levels, Level) > 1 && open_delimiters(s) <= info->top_depth && info->leading >= info->top_indent) {
+    if (MS_VEC_LEN(s->levels, Level) > 1 && open_delimiters(s) <= info->top_depth && info->leading >= info->top_indent) {
         return fail_str(s, LIT("an outer delimiter cannot close inside a function suite; close the bracket on the line where the function body ends, or dedent the body"));
     }
-    char open = VLAST(s->delimiters, char);
+    char open = MS_VEC_LAST(s->delimiters, char);
     if ((char)b != closer_of(open)) {
-        MsPos opener = VLAST(s->opened, MsPos);
+        MsPos opener = MS_VEC_LAST(s->opened, MsPos);
         return fail_fmt(s, "mismatched closing delimiter '%c'; the '%c' opened at line %u:%u needs '%c'",
                         b, open, opener.line, opener.column, closer_of(open));
     }
-    if (VLEN(s->groups, size_t) != 0 && VLAST(s->groups, size_t) == open_delimiters(s)) {
-        VPOP(s->groups, size_t);
+    if (MS_VEC_LEN(s->groups, size_t) != 0 && MS_VEC_LAST(s->groups, size_t) == open_delimiters(s)) {
+        MS_VEC_POP(s->groups, size_t);
     }
-    VPOP(s->delimiters, char);
-    VPOP(s->opened, MsPos);
-    while (VLEN(s->function_depths, size_t) != 0 && VLAST(s->function_depths, size_t) > open_delimiters(s)) {
-        VPOP(s->function_depths, size_t);
+    MS_VEC_POP(s->delimiters, char);
+    MS_VEC_POP(s->opened, MsPos);
+    while (MS_VEC_LEN(s->function_depths, size_t) != 0 && MS_VEC_LAST(s->function_depths, size_t) > open_delimiters(s)) {
+        MS_VEC_POP(s->function_depths, size_t);
     }
     return true;
 }
@@ -1485,8 +1476,8 @@ static bool scan_line_tokens(Scanner *s, const LineInfo *info) {
 /* ---- end of a line ---- */
 
 static bool function_open_at_depth(const Scanner *s) {
-    for (size_t i = 0; i < VLEN(s->function_depths, size_t); i++) {
-        if (VAT(s->function_depths, size_t, i) == open_delimiters(s)) {
+    for (size_t i = 0; i < MS_VEC_LEN(s->function_depths, size_t); i++) {
+        if (MS_VEC_AT(s->function_depths, size_t, i) == open_delimiters(s)) {
             return true;
         }
     }
@@ -1498,12 +1489,12 @@ static bool close_virtual_paren(Scanner *s) {
     if (!s->virtual_paren || s->offset != s->n) {
         return true;
     }
-    if (!(open_delimiters(s) == 1 && VAT(s->delimiters, char, 0) == '(')) {
+    if (!(open_delimiters(s) == 1 && MS_VEC_AT(s->delimiters, char, 0) == '(')) {
         /* The wrapper's closing parenthesis reports this error. */
         return fail_str(s, LIT("interpolation leaves a delimiter open"));
     }
-    VPOP(s->delimiters, char);
-    VPOP(s->opened, MsPos);
+    MS_VEC_POP(s->delimiters, char);
+    MS_VEC_POP(s->opened, MsPos);
     s->groups.len = 0;
     s->function_depths.len = 0;
     emit_layout(s, MS_T_RParen);
@@ -1530,7 +1521,7 @@ static void end_line(Scanner *s, LineLayout *layout, const LineInfo *info, size_
         } else {
             emit_layout(s, MS_T_Newline);
         }
-    } else if (VLEN(s->groups, size_t) != 0 && VLAST(s->groups, size_t) == open_delimiters(s)) {
+    } else if (MS_VEC_LEN(s->groups, size_t) != 0 && MS_VEC_LAST(s->groups, size_t) == open_delimiters(s)) {
         /* A `var (` group holds one binding per line, so its lines end like statements even
          * though a delimiter is open. */
         emit_layout(s, MS_T_Newline);
@@ -1538,8 +1529,8 @@ static void end_line(Scanner *s, LineLayout *layout, const LineInfo *info, size_
 }
 
 static bool fail_unterminated_delimiter(Scanner *s) {
-    char open = VLAST(s->delimiters, char);
-    MsPos opener = VLAST(s->opened, MsPos);
+    char open = MS_VEC_LAST(s->delimiters, char);
+    MsPos opener = MS_VEC_LAST(s->opened, MsPos);
     MsStr message = ms_arena_fmt(s->arena,
         "unterminated delimiter '%c' opened at line %u:%u; add the matching '%c' before the end of the file",
         open, opener.line, opener.column, closer_of(open));
@@ -1559,8 +1550,8 @@ static bool finish_input(Scanner *s, const LineLayout *layout) {
     if (open_delimiters(s) != 0) {
         return fail_unterminated_delimiter(s);
     }
-    while (VLEN(s->levels, Level) > 1) {
-        VPOP(s->levels, Level);
+    while (MS_VEC_LEN(s->levels, Level) > 1) {
+        MS_VEC_POP(s->levels, Level);
         emit_layout(s, MS_T_Dedent);
     }
     emit_layout(s, MS_T_Eof);
@@ -1591,7 +1582,7 @@ MS_NODISCARD static bool run(Scanner *s) {
         if (!apply_layout(s, &layout, leading)) {
             return false;
         }
-        Level top = VLAST(s->levels, Level);
+        Level top = MS_VEC_LAST(s->levels, Level);
         LineInfo info = {.leading = leading, .top_indent = top.indent, .top_depth = top.depth};
         if (ntokens(s) != 0 && last_kind(s) == MS_T_Dedent && open_delimiters(s) == top.depth) {
             emit_layout(s, MS_T_Newline);
@@ -1628,7 +1619,7 @@ static void scanner_init(Scanner *s, MsArena *arena, const char *text, size_t le
     s->column = 1;
     s->line_offsets = line_offsets;
     s->diag = diag;
-    VPUSH(s->levels, Level, ((Level){0, 0}));
+    MS_VEC_PUSH(s->levels, Level, ((Level){0, 0}));
 }
 
 static void scanner_free(Scanner *s) {
@@ -1702,7 +1693,7 @@ static const char *normalize(MsArena *a, const char *src, size_t len, size_t *ou
 
 static void sort_ranges(MsBuf *ranges) {
     if (ranges->len != 0) {
-        qsort(ranges->data, VLEN(*ranges, MsRange), sizeof(MsRange), range_cmp);
+        qsort(ranges->data, MS_VEC_LEN(*ranges, MsRange), sizeof(MsRange), range_cmp);
     }
 }
 
@@ -1714,11 +1705,11 @@ static void export_lexed(Scanner *s, uint32_t *offsets, MsLexed *out) {
     out->tokens = copy_out(s->arena, &s->tokens, _Alignof(MsToken));
     out->ntokens = ntokens(s);
     out->blocks = copy_out(s->arena, &s->blocks, _Alignof(MsRange));
-    out->nblocks = VLEN(s->blocks, MsRange);
+    out->nblocks = MS_VEC_LEN(s->blocks, MsRange);
     out->bounds.strings = copy_out(s->arena, &s->strings, _Alignof(MsRange));
-    out->bounds.nstrings = VLEN(s->strings, MsRange);
+    out->bounds.nstrings = MS_VEC_LEN(s->strings, MsRange);
     out->bounds.interps = copy_out(s->arena, &s->interps, _Alignof(MsRange));
-    out->bounds.ninterps = VLEN(s->interps, MsRange);
+    out->bounds.ninterps = MS_VEC_LEN(s->interps, MsRange);
     out->bounds.line_offsets = offsets;
     out->bounds.base_line = s->base_line;
 }
@@ -1774,8 +1765,8 @@ bool ms_lex_interpolation(MsArena *arena, const char *src, size_t len, size_t or
     s.cached = bounds;
     s.boundary_origin = origin;
     s.virtual_paren = true;
-    VPUSH(s.delimiters, char, '(');
-    VPUSH(s.opened, MsPos, ((MsPos){0, 1, 1}));
+    MS_VEC_PUSH(s.delimiters, char, '(');
+    MS_VEC_PUSH(s.opened, MsPos, ((MsPos){0, 1, 1}));
     if (!run(&s)) {
         scanner_free(&s);
         return false;

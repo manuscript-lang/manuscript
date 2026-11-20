@@ -48,6 +48,17 @@ static inline void *ms_buf_items(const MsBuf *b) {
     return b->data;
 }
 
+/* A MsBuf used as a stack of T. */
+#define MS_VEC_LEN(b, T) ((b).len / sizeof(T))
+#define MS_VEC_AT(b, T, i) (((T *)ms_buf_items(&(b)))[i])
+#define MS_VEC_LAST(b, T) MS_VEC_AT(b, T, MS_VEC_LEN(b, T) - 1)
+#define MS_VEC_PUSH(b, T, v)                                                                       \
+    do {                                                                                           \
+        T push_value_ = (v);                                                                       \
+        ms_buf_put(&(b), &push_value_, sizeof(T));                                                 \
+    } while (0)
+#define MS_VEC_POP(b, T) ((b).len -= sizeof(T))
+
 void ms_buf_free(MsBuf *b);
 void *ms_buf_push(MsBuf *b, size_t n); /* appends n uninitialised bytes and returns them */
 void ms_buf_put(MsBuf *b, const void *p, size_t n);
