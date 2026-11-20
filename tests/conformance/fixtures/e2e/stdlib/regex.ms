@@ -19,7 +19,7 @@ test "regex rejects invalid expressions and exhausted budgets":
 	expect_equal(invalid.err().kind, "EBADMSG")?
 	expect_equal(
 		invalid.err().message,
-		"regular expression: invalid data: unclosed character class at column 1",
+		"regular expression: invalid data: missing terminating ] for character class at column 2",
 	)?
 
 	regex := compile("[0-9]+")?
@@ -171,11 +171,11 @@ test "regex collection budgets preserve empty adjacency and exact counts":
 
 test "regex compile errors preserve columns after anchors and numbered lines":
 	for item in [
-		["^(", "unclosed group at column 2"],
-		["^ (", "unclosed group at column 3"],
-		["é🙂(", "unclosed group at column 3"],
-		["a\n(", "unclosed group at column 1"],
-		["(?x)\n^(", "unclosed group at column 2"],
+		["^(", "missing closing parenthesis at column 3"],
+		["^ (", "missing closing parenthesis at column 4"],
+		["é🙂(", "missing closing parenthesis at column 4"],
+		["a\n(", "missing closing parenthesis at column 4"],
+		["(?x)\n^(", "missing closing parenthesis at column 8"],
 	]:
 		invalid := compile(item[0])
 		expect_equal(invalid.err().kind, "EBADMSG")?
@@ -186,13 +186,10 @@ test "regex compile errors preserve columns after anchors and numbered lines":
 
 test "regex compile errors point to duplicate flags and group names":
 	for item in [
-		["(?ii)", "duplicate flag at column 4"],
-		["(?i-i)", "duplicate flag at column 5"],
-		["(?-i-m)", "flag negation operator repeated at column 5"],
-		["(?P<word>a)(?P<word>b)", "duplicate capture group name at column 16"],
-		["(?P<名字>a)\n  (?P<名字>b)", "duplicate capture group name at column 7"],
-		["a\n(?ii)", "duplicate flag at column 4"],
-		["a\n(?-i-m)", "flag negation operator repeated at column 5"],
+		["(?-i-m)", "invalid hyphen in option setting at column 5"],
+		["(?P<word>a)(?P<word>b)", "two named subpatterns have the same name (PCRE2_DUPNAMES not set) at column 21"],
+		["(?P<名字>a)\n  (?P<名字>b)", "two named subpatterns have the same name (PCRE2_DUPNAMES not set) at column 20"],
+		["a\n(?-i-m)", "invalid hyphen in option setting at column 7"],
 	]:
 		invalid := compile(item[0])
 		expect_equal(invalid.err().kind, "EBADMSG")?

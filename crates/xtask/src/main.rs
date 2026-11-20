@@ -796,10 +796,6 @@ fn build_archive(
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
     let plan = plan_c_runtime(root, triple)?;
-    if plan.has_std_source(root, "crypto.c") {
-        // `ms-native` then leaves the Rust `ms-std-crypto` out: `runtime/std/crypto*.c` define every `msstd_crypto_*`.
-        command.env("MS_C_CRYPTO", "1");
-    }
     if plan.has_reactor(root) {
         // `ms-rt` then leaves its mio poller out; `add_c_runtime` supplies `runtime/io` and libuv.
         command.env("MS_C_REACTOR", "1");

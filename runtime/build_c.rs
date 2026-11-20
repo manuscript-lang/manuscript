@@ -18,12 +18,6 @@ pub struct CRuntime {
 }
 
 impl CRuntime {
-    /// Whether `runtime/std/<name>` is part of the archive.
-    pub fn has_std_source(&self, root: &Path, name: &str) -> bool {
-        let wanted = root.join("runtime/std").join(name);
-        self.sources.contains(&wanted)
-    }
-
     /// Whether the libuv reactor (`runtime/io`) is part of the archive; `ms-rt` then leaves its mio poller out.
     pub fn has_reactor(&self, root: &Path) -> bool {
         let io = root.join("runtime/io");
@@ -184,15 +178,6 @@ pub fn plan_c_runtime(root: &Path, triple: Option<&str>) -> Result<CRuntime, Str
     let io = runtime.join("io");
     let reactor = platform.contains(&"glibc");
     sources.retain(|s| (wired || libraries_of(s).is_empty()) && (reactor || !s.starts_with(&io)));
-    // The PCRE2 regex natives change the pattern dialect, so they join every target together (workstream W8):
-    // opt-in with `MS_C_REGEX=1` until Windows has the libraries too. Removal: delete this filter with `ms-std-regex`.
-    let regex = std::env::var_os("MS_C_REGEX").is_some();
-    sources.retain(|s| {
-        regex
-            || !s
-                .file_name()
-                .is_some_and(|n| n.to_string_lossy().starts_with("regex"))
-    });
     let mut names: Vec<&str> = sources.iter().flat_map(|s| libraries_of(s)).collect();
     names.sort_unstable();
     names.dedup();

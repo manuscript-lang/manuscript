@@ -26,6 +26,18 @@ struct MsRegex {
 
 /* ---- pattern screening --------------------------------------------------------------------------------------- */
 
+static int is_hex(unsigned char c) { return (c >= '0' && c <= '9') || ((c | 0x20) >= 'a' && (c | 0x20) <= 'f'); }
+
+/* \x takes one or two hex digits, or hex digits in braces; PCRE2 alone would read \x+1 as a NUL then a quantifier. */
+static int hex_escape_ok(const unsigned char *p, size_t n, size_t i) {
+    if (i + 2 < n && p[i + 2] == '{') {
+        size_t j = i + 3;
+        while (j < n && is_hex(p[j])) j++;
+        return j > i + 3 && j < n && p[j] == '}';
+    }
+    return i + 2 < n && is_hex(p[i + 2]);
+}
+
 /* Returns the reason a pattern uses a feature outside the dialect, with its byte offset in *at, or NULL. Back-references
    written as \1 are found after compiling (PCRE2_INFO_BACKREFMAX); this scan finds the rest. */
 static const char *screen(const unsigned char *p, size_t n, size_t *at) {
@@ -44,6 +56,10 @@ static const char *screen(const unsigned char *p, size_t n, size_t *at) {
                 *at = i;
                 return "back-references and subroutine calls are not supported";
             }
+            if (d == 'x' && !hex_escape_ok(p, n, i)) {
+                *at = i;
+                return "invalid hexadecimal escape";
+            }
             i += 2;
         } else if (c == '[') {
             size_t j = i + 1;
@@ -51,6 +67,10 @@ static const char *screen(const unsigned char *p, size_t n, size_t *at) {
             if (j < n && p[j] == ']') j++;
             while (j < n && p[j] != ']') {
                 if (p[j] == '\\') {
+                    if (j + 1 < n && p[j + 1] == 'x' && !hex_escape_ok(p, n, j)) {
+                        *at = j;
+                        return "invalid hexadecimal escape";
+                    }
                     j += 2;
                 } else if (p[j] == '[' && j + 1 < n && (p[j + 1] == ':' || p[j + 1] == '.' || p[j + 1] == '=')) {
                     unsigned char q = p[j + 1];
