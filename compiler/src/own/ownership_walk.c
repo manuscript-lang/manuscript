@@ -84,7 +84,7 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand);
 static void own_lambda(OwnWalk *w, const MsExpr *e);
 
 /* Holders at or above this are not bindings: the hidden borrow a `for` loop keeps on its iterable. */
-enum { OWN_HIDDEN_HOLDER = 0xF0000000u };
+#define OWN_HIDDEN_HOLDER 0xF0000000u
 
 static MsStr own_name(const OwnWalk *w, uint32_t binding) {
     if (binding >= OWN_HIDDEN_HOLDER) {
