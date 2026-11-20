@@ -1030,7 +1030,7 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
         return false;
     }
     const MsTy result = tys->result[sig];
-    if (!body_is_admitted(b, result) && result != b->void_ty) {
+    if (!body_is_bindable(b, result) && result != b->void_ty) {
         return false;
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
