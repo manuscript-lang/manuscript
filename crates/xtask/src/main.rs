@@ -285,6 +285,10 @@ fn check_c_abi(
         declared.insert(name.to_string(), (params, ret));
     }
     for name in &listed {
+        // `mssys_*` functions are the runtime's own door to the OS (`ms_sys.h`), not natives programs call.
+        if name.starts_with("mssys_") {
+            continue;
+        }
         let Some((params, ret)) = declared.get(*name) else {
             return Err(format!(
                 "{name} is in runtime/c-symbols.txt but not declared in ms_rt.h"
@@ -673,7 +677,8 @@ fn build_archive(
 }
 
 /// Every C source of the runtime (`runtime/{sys,core,io,net,std}`; `third_party` and `tests` are not part of it).
-fn c_sources(dir: &Path, found: &mut Vec<PathBuf>) {
+/// `skip` names the one directory of `sys` that belongs to the other operating system family.
+fn c_sources(dir: &Path, skip: &str, found: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
@@ -681,8 +686,8 @@ fn c_sources(dir: &Path, found: &mut Vec<PathBuf>) {
         let path = entry.path();
         let name = entry.file_name();
         if path.is_dir() {
-            if name != "third_party" && name != "tests" {
-                c_sources(&path, found);
+            if name != "third_party" && name != "tests" && name != skip {
+                c_sources(&path, skip, found);
             }
         } else if path.extension().is_some_and(|e| e == "c") {
             found.push(path);
@@ -702,8 +707,14 @@ fn add_c_runtime(
     let runtime = root.join("runtime");
     let mut sources = Vec::new();
     // `io`, `net` and `std` join when their sources build for every target (libc headers, third-party includes).
+    // `sys/posix` serves Linux and macOS, `sys/windows` Windows.
+    let skip = if triple.is_some_and(|t| t.contains("windows")) {
+        "posix"
+    } else {
+        "windows"
+    };
     for layer in ["sys", "core"] {
-        c_sources(&runtime.join(layer), &mut sources);
+        c_sources(&runtime.join(layer), skip, &mut sources);
     }
     sources.sort();
     if sources.is_empty() {

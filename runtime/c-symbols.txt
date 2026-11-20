@@ -12,3 +12,12 @@ msrt_float32_from_bits
 msrt_float32_to_bits
 msrt_float_truncate_to_int
 msrt_float_to_float32
+mssys_map_anon
+mssys_prefer_huge_pages
+mssys_map_region
+mssys_commit
+mssys_commit_guard
+mssys_release
+mssys_guard
+mssys_unmap
+mssys_monotonic_ns

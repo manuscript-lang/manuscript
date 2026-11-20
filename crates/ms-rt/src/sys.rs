@@ -5,6 +5,10 @@ use core::ffi::{c_char, c_int, c_long, c_void};
 
 pub type size_t = usize;
 
+/// Functions `runtime/sys` defines in C (`runtime/c-symbols.txt`); empty unless `cargo xtask runtime` builds.
+#[allow(unused_imports)]
+pub use crate::sys_c::*;
+
 pub const STDIN: c_int = 0;
 pub const STDOUT: c_int = 1;
 pub const STDERR: c_int = 2;
@@ -262,6 +266,7 @@ pub fn env_var(name: &[u8]) -> Option<&'static [u8]> {
 }
 
 #[cfg(miri)]
+#[cfg(not(ms_c = "mssys_map_anon"))]
 pub fn map_anon(len: usize) -> *mut u8 {
     // Miri has no `mmap`; a zeroed heap block stands in so the allocator can be checked.
     let layout = core::alloc::Layout::from_size_align(len, 1 << 16).unwrap();
@@ -271,6 +276,7 @@ pub fn map_anon(len: usize) -> *mut u8 {
 
 /// Reserves `len` bytes of zeroed address space; [`commit`] makes ranges of it usable. Null on failure.
 #[cfg(not(miri))]
+#[cfg(not(ms_c = "mssys_map_anon"))]
 pub fn map_anon(len: usize) -> *mut u8 {
     // SAFETY: anonymous private mapping; failure is reported as MAP_FAILED.
     let p = unsafe {
@@ -299,6 +305,7 @@ pub fn map_anon(len: usize) -> *mut u8 {
 /// large pages (`MEM_LARGE_PAGES`) need the `SeLockMemoryPrivilege` right, which a normal user
 /// does not hold, and are not demand-committed. Both stay no-ops (#3710).
 #[cfg(all(target_os = "linux", not(miri)))]
+#[cfg(not(ms_c = "mssys_prefer_huge_pages"))]
 pub fn prefer_huge_pages(p: *mut u8, len: usize) {
     unsafe extern "C" {
         fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
@@ -309,10 +316,12 @@ pub fn prefer_huge_pages(p: *mut u8, len: usize) {
 }
 
 #[cfg(not(all(target_os = "linux", not(miri))))]
+#[cfg(not(ms_c = "mssys_prefer_huge_pages"))]
 pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
 
 /// Reserves `len` bytes of address space aligned to `len` (a power of two), holding stacks: no
 /// huge pages, so a touched stack page costs one page and not two megabytes. Null on failure.
+#[cfg(not(ms_c = "mssys_map_region"))]
 pub fn map_region(len: usize) -> *mut u8 {
     let raw = map_anon(2 * len);
     if raw.is_null() {
@@ -343,12 +352,14 @@ pub fn map_region(len: usize) -> *mut u8 {
 
 /// Makes `len` bytes at `p` (inside a [`map_anon`] mapping) usable. Unix maps everything readable
 /// and writable up front and the kernel commits pages on first touch.
+#[cfg(not(ms_c = "mssys_commit"))]
 pub fn commit(_p: *mut u8, _len: usize) -> bool {
     true
 }
 
 /// A guard page below a stack's committed pages: nothing to do on Unix, where the kernel
 /// commits any page of the mapping on first touch.
+#[cfg(not(ms_c = "mssys_commit_guard"))]
 pub fn commit_guard(_p: *mut u8) -> bool {
     true
 }
@@ -359,6 +370,7 @@ pub fn commit_guard(_p: *mut u8) -> bool {
 ///
 /// # Safety
 /// The range lies inside a live mapping and holds nothing in use.
+#[cfg(not(ms_c = "mssys_release"))]
 pub unsafe fn release(p: *mut u8, len: usize) {
     unsafe extern "C" {
         fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
@@ -381,6 +393,7 @@ pub unsafe fn release(p: *mut u8, len: usize) {
 ///
 /// # Safety
 /// The range lies inside a live mapping that nothing is using.
+#[cfg(not(ms_c = "mssys_guard"))]
 pub unsafe fn guard(p: *mut u8, len: usize) -> bool {
     #[cfg(target_os = "linux")]
     {
@@ -401,6 +414,7 @@ pub unsafe fn guard(p: *mut u8, len: usize) -> bool {
 ///
 /// # Safety
 /// The mapping is live and unused.
+#[cfg(not(ms_c = "mssys_unmap"))]
 pub unsafe fn unmap(p: *mut u8, len: usize) {
     unsafe extern "C" {
         fn munmap(addr: *mut c_void, len: size_t) -> c_int;
@@ -425,6 +439,7 @@ const CLOCK_MONOTONIC: c_int = 6;
 const CLOCK_MONOTONIC: c_int = 1;
 
 /// Monotonic clock in nanoseconds.
+#[cfg(not(ms_c = "mssys_monotonic_ns"))]
 pub fn monotonic_ns() -> i64 {
     let mut t = Timespec { sec: 0, nsec: 0 };
     // SAFETY: valid out pointer.

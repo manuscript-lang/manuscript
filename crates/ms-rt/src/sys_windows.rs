@@ -24,6 +24,10 @@ type HANDLE = *mut c_void;
 type BOOL = i32;
 type DWORD = u32;
 
+/// Functions `runtime/sys` defines in C (`runtime/c-symbols.txt`); empty unless `cargo xtask runtime` builds.
+#[allow(unused_imports)]
+pub use crate::sys_c::*;
+
 const MEM_COMMIT: DWORD = 0x1000;
 const MEM_RESERVE: DWORD = 0x2000;
 const MEM_DECOMMIT: DWORD = 0x4000;
@@ -326,6 +330,7 @@ pub fn env_var(name: &[u8]) -> Option<&'static [u8]> {
 }
 
 /// Reserves `len` bytes of address space; [`commit`] makes ranges of it usable. Null on failure.
+#[cfg(not(ms_c = "mssys_map_anon"))]
 pub fn map_anon(len: usize) -> *mut u8 {
     // SAFETY: a fresh reservation.
     unsafe { VirtualAlloc(core::ptr::null_mut(), len, MEM_RESERVE, PAGE_NOACCESS).cast() }
@@ -334,6 +339,7 @@ pub fn map_anon(len: usize) -> *mut u8 {
 /// Windows has no usable huge-page advice for the heap reservation (`MEM_LARGE_PAGES` needs
 /// `SeLockMemoryPrivilege` and cannot be demand-committed; a `windows-2025` runner, an administrator,
 /// still failed with error 1314); see `sys::prefer_huge_pages`, #3710 and #3646.
+#[cfg(not(ms_c = "mssys_prefer_huge_pages"))]
 pub fn prefer_huge_pages(_p: *mut u8, _len: usize) {}
 
 /// The window of address space stack regions are placed in: 64 TiB starting at 32 TiB, far above
@@ -353,6 +359,7 @@ static NEXT_REGION: core::sync::atomic::AtomicUsize = core::sync::atomic::Atomic
 /// counter and reserves exactly that range, so the kernel arbitrates and an occupied slot only
 /// moves the counter on. The counter wraps, so ranges released at teardown are found again;
 /// null only when every slot of the window is taken.
+#[cfg(not(ms_c = "mssys_map_region"))]
 pub fn map_region(len: usize) -> *mut u8 {
     use core::sync::atomic::Ordering::Relaxed;
     let slots = REGION_WINDOW / len;
@@ -372,6 +379,7 @@ pub fn map_region(len: usize) -> *mut u8 {
 ///
 /// # Safety
 /// The range lies inside a live reservation that nothing is using.
+#[cfg(not(ms_c = "mssys_guard"))]
 pub unsafe fn guard(_p: *mut u8, _len: usize) -> bool {
     true
 }
@@ -412,6 +420,7 @@ pub fn teb_stack() -> [usize; 3] {
 /// value, a later stack probe (`__chkstk`, for a frame over a page) would walk from there into
 /// the other stack's guard page, which the kernel reports as an unhandled guard-page violation
 /// (exit 0x80000001) because the address lies outside the thread's recorded stack.
+#[cfg(not(ms_c = "mssys_commit_guard"))]
 pub fn commit_guard(p: *mut u8) -> bool {
     const PAGE_GUARD: DWORD = 0x100;
     let limit = teb_stack()[1];
@@ -423,6 +432,7 @@ pub fn commit_guard(p: *mut u8) -> bool {
 }
 
 /// Writes the thread environment block's `StackLimit` field.
+#[cfg_attr(ms_c = "mssys_commit_guard", allow(dead_code))]
 fn set_stack_limit(limit: usize) {
     // SAFETY: a write of the current thread's TEB.
     unsafe {
@@ -434,6 +444,7 @@ fn set_stack_limit(limit: usize) {
 }
 
 /// Commits `len` bytes at `p` (inside a [`map_anon`] reservation) as zeroed read-write memory.
+#[cfg(not(ms_c = "mssys_commit"))]
 pub fn commit(p: *mut u8, len: usize) -> bool {
     // SAFETY: the range lies inside a reservation of this process.
     !unsafe { VirtualAlloc(p.cast(), len, MEM_COMMIT, PAGE_READWRITE) }.is_null()
@@ -443,6 +454,7 @@ pub fn commit(p: *mut u8, len: usize) -> bool {
 ///
 /// # Safety
 /// The range lies inside a live reservation and holds nothing in use.
+#[cfg(not(ms_c = "mssys_release"))]
 pub unsafe fn release(p: *mut u8, len: usize) {
     // SAFETY: forwarded; the caller guarantees the range.
     unsafe { VirtualFree(p.cast(), len, MEM_DECOMMIT) };
@@ -452,12 +464,14 @@ pub unsafe fn release(p: *mut u8, len: usize) {
 ///
 /// # Safety
 /// `p` is the start of a live reservation that nothing uses.
+#[cfg(not(ms_c = "mssys_unmap"))]
 pub unsafe fn unmap(p: *mut u8, _len: usize) {
     // SAFETY: releasing the whole reservation.
     unsafe { VirtualFree(p.cast(), 0, MEM_RELEASE) };
 }
 
 /// Monotonic clock in nanoseconds.
+#[cfg(not(ms_c = "mssys_monotonic_ns"))]
 pub fn monotonic_ns() -> i64 {
     let (mut freq, mut now) = (0i64, 0i64);
     // SAFETY: valid out pointers; both calls cannot fail on supported Windows versions.

@@ -5,7 +5,7 @@ The C runtime that compiled Manuscript programs link, replacing the Rust `ms-rt`
 ```
 runtime/
   include/       ms_rt.h, the ABI
-  sys/           per-OS code: linux, darwin, windows (to come)
+  sys/           the one door to the OS: posix (Linux, macOS) and windows; memory regions and the clock so far
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num.c so far)
   io/            reactor on libuv (to come)
   net/           http1 (llhttp) done; http2 (nghttp2), tls (OpenSSL), websocket to come
