@@ -845,6 +845,10 @@ MsSysFdKind ms_sys_fs_fd_kind(MsSysFd fd) {
     return S_ISREG(info.st_mode) ? MS_SYS_FD_FILE : MS_SYS_FD_OTHER;
 }
 
+bool ms_sys_fs_is_terminal(MsSysFd fd) { return isatty((int)fd) != 0; }
+
+bool ms_sys_error_is_broken_pipe(MsSysError error) { return error == EPIPE; }
+
 bool ms_sys_fs_is_output(MsSysFd fd) { return fd == 1 || fd == 2; }
 
 MsSysFd ms_sys_fs_standard(int32_t which) { return which; }

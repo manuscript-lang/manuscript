@@ -80,6 +80,10 @@ ms_test(staged_sched_shims SOURCES "${_tests}/staged_sched_shims.c" "${_rt}/stag
         OBJECTS ms_test_core INCLUDES "${_rt}/staged" ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} m
         DEFINES MS_ALLOC_STATS)
 
+# The staged standard output (runtime/staged/stdout.c) over the OS layer's file writes.
+ms_test(staged_stdout SOURCES "${_tests}/staged_stdout.c" "${_rt}/staged/stdout.c"
+        OBJECTS ms_test_core INCLUDES "${_rt}/staged" LIBS m DEFINES MS_ALLOC_STATS)
+
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
 # the sanitizers' own signal handlers would intercept.
 ms_test(sys_mem SOURCES "${_tests}/sys_mem.c" ${_posix_sources} LIBS)
