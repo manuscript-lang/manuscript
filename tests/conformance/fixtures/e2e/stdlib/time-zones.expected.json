@@ -36,6 +36,11 @@
         },
         {
           "index": 5,
+          "name": "time-zones.ms::the host zone resolves Local when TZ is unset",
+          "status": "passed"
+        },
+        {
+          "index": 6,
           "name": "time-zones.ms::a POSIX rule with a short daylight-saving interval resolves gaps and folds",
           "status": "passed"
         }
