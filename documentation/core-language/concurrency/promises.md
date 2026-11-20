@@ -67,7 +67,7 @@ stop.cancel()
 
 `done()` reports whether the work has finished, however it ended, and never waits.
 
-`wait_all(promises)` returns every result in order; the first error cancels the rest. `wait_first(promises)` returns the first result and cancels the others.
+`wait_all(promises)` returns every result in order; the first error cancels the rest. `wait_first(promises)` returns the first result and cancels the others. `wait_any(promises)` returns the position of the first promise to finish and cancels nothing, so a loop can handle that one with `wait` and call it again on the rest; remove a handled promise from the list first.
 
 ## Cancellation
 
