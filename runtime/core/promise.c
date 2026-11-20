@@ -1140,6 +1140,14 @@ MsPromiseProbe ms_promise_probe(MsPromise id) {
     return ended_without_value(state) ? MS_PROMISE_FAILED_PROBE : MS_PROMISE_DONE_PROBE;
 }
 
+bool ms_promise_completes_elsewhere(MsPromise id) {
+    if (is_foreign(id)) {
+        return true;
+    }
+    const ptrdiff_t row = row_of(id);
+    return row >= 0 && table.hot[row].state == STATE_PENDING && (table.hot[row].flags & FLAG_REMOTE_WAKE) != 0;
+}
+
 void ms_promise_set_grouped(MsPromise id, bool grouped) {
     const ptrdiff_t row = row_of(id);
     if (row < 0) {

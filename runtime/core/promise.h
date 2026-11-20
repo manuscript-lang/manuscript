@@ -86,6 +86,9 @@ typedef enum MsPromiseProbe {
     MS_PROMISE_FAILED_PROBE, /* finished without a value: an error, a fault or a cancel */
 } MsPromiseProbe;
 MsPromiseProbe ms_promise_probe(MsPromise id);
+/* Whether another thread or isolate may finish `id`: a waiter must then park on a remote token, or the scheduler
+ * reports a deadlock while the work runs elsewhere. */
+bool ms_promise_completes_elsewhere(MsPromise id);
 /* Marks a pending promise as a wait group member: ms_group_finished is called when it finishes. */
 void ms_promise_set_grouped(MsPromise id, bool grouped);
 /* Runs deferred work on the caller's stack, when `id` has some; true when it ran. */
