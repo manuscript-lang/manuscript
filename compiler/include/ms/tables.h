@@ -39,7 +39,7 @@ typedef struct MsSyms {
     MsModId *module;
     MsNativeKind *native;
     MsSym *native_name; /* the builtin or extern symbol, else 0 */
-    bool *export_;
+    bool *is_exported;
     const MsDecl **decl; /* NULL for a primitive */
     MsTy *ty;            /* MS_TY_NONE until resolved */
     uint32_t *nvars;     /* declared type variables */
@@ -51,7 +51,7 @@ typedef struct MsSyms {
 typedef struct MsModuleRow {
     MsSym path; /* `@std/core.ms`, or a user module's path */
     const MsModule *syntax;
-    MsNameMap scope; /* every symbol the module declares, by name; exported ones are those with export_ */
+    MsNameMap scope; /* every symbol the module declares, by name; exported ones are those with is_exported */
     bool source;       /* has implementation bodies: checked like user code, on first import */
     MsSymId *order;    /* the same symbols in declaration order */
     uint32_t norder;
@@ -71,10 +71,20 @@ void ms_check_init(MsCheck *c, MsNames *names);
 void ms_check_free(MsCheck *c);
 
 MsModId ms_module_add(MsCheck *c, MsSym path, const MsModule *syntax);
-/* Adds a symbol of `module`; exported ones also join the module's export map. Returns the new id,
- * or MS_NONE when the module already has a symbol of this name. */
-MsSymId ms_sym_add(MsCheck *c, MsModId module, MsSym name, MsSym id, MsSymKind kind,
-                   MsNativeKind native, MsSym native_name, bool export_, const MsDecl *decl,
-                   uint32_t nvars);
+/* What a symbol is declared with; the rest of its row starts empty. */
+typedef struct MsSymSpec {
+    MsSym name;
+    MsSym id;
+    MsSymKind kind;
+    MsNativeKind native;
+    MsSym native_name;
+    bool is_exported;
+    const MsDecl *decl; /* borrowed from the module's syntax, which outlives the tables */
+    uint32_t nvars;
+} MsSymSpec;
+
+/* Adds a symbol of `module`; exported ones are visible to importers. Returns the new id, or
+ * MS_NONE when the module already has a symbol of this name. */
+MsSymId ms_sym_add(MsCheck *c, MsModId module, const MsSymSpec *spec);
 
 #endif

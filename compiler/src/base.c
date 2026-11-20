@@ -14,7 +14,7 @@ struct MsChunk {
 #define MS_CHUNK_MIN (64 * 1024)
 #define MS_CHUNK_HEADER 16
 
-static void ms_oom(void) {
+_Noreturn void ms_oom(void) {
     fputs("ms: out of memory\n", stderr);
     abort();
 }
@@ -48,6 +48,28 @@ void ms_arena_free(MsArena *a) {
     }
     a->head = NULL;
     a->cur = a->end = NULL;
+}
+
+uint32_t ms_capacity_for(uint32_t current, uint32_t needed) {
+    uint32_t capacity = current != 0 ? current : 64;
+    while (capacity < needed) {
+        if (capacity > UINT32_MAX / 2) {
+            ms_oom();
+        }
+        capacity *= 2;
+    }
+    return capacity;
+}
+
+void *ms_array_resize(void *array, uint32_t capacity, size_t element_size) {
+    if (element_size != 0 && capacity > SIZE_MAX / element_size) {
+        ms_oom();
+    }
+    void *moved = realloc(array, (size_t)capacity * element_size);
+    if (moved == NULL) {
+        ms_oom();
+    }
+    return moved;
 }
 
 char *ms_arena_strndup(MsArena *a, const char *s, size_t n) {

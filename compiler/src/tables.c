@@ -1,76 +1,93 @@
-/* Name maps, symbol columns and the module list. */
+/* Name maps, symbol columns and the module list: the tables every checker pass reads. */
 #include <stdlib.h>
 #include <string.h>
 
 #include "ms/tables.h"
 
-/* ---- MsNameMap ---- */
+/* ---- MsNameMap: open addressing, linear probing, values stored as value + 1 ---- */
 
-void ms_map_free(MsNameMap *m) {
-    free(m->keys);
-    free(m->vals);
-    memset(m, 0, sizeof *m);
+void ms_map_free(MsNameMap *map) {
+    free(map->keys);
+    free(map->vals);
+    *map = (MsNameMap){0};
 }
 
-static uint32_t slot_of(const MsNameMap *m, MsSym key) {
-    uint32_t i = (uint32_t)(key * 2654435761u) & (m->cap - 1);
-    while (m->vals[i] != 0 && m->keys[i] != key) {
-        i = (i + 1) & (m->cap - 1);
+static uint32_t slot_of(const MsNameMap *map, MsSym key) {
+    uint32_t slot = (uint32_t)(key * 2654435761u) & (map->cap - 1);
+    while (map->vals[slot] != 0 && map->keys[slot] != key) {
+        slot = (slot + 1) & (map->cap - 1);
     }
-    return i;
+    return slot;
 }
 
-uint32_t ms_map_get(const MsNameMap *m, MsSym key) {
-    if (m->cap == 0) {
+uint32_t ms_map_get(const MsNameMap *map, MsSym key) {
+    if (map->cap == 0) {
         return MS_NONE;
     }
-    uint32_t i = slot_of(m, key);
-    return m->vals[i] == 0 ? MS_NONE : m->vals[i] - 1;
+    const uint32_t slot = slot_of(map, key);
+    return map->vals[slot] == 0 ? MS_NONE : map->vals[slot] - 1;
 }
 
-bool ms_map_add(MsNameMap *m, MsSym key, uint32_t val) {
-    if (m->cap == 0 || (size_t)(m->count + 1) * 2 > m->cap) {
-        MsNameMap old = *m;
-        uint32_t cap = old.cap ? old.cap * 2 : 16;
-        m->keys = calloc(cap, sizeof *m->keys);
-        m->vals = calloc(cap, sizeof *m->vals);
-        if (m->keys == NULL || m->vals == NULL) {
-            abort();
-        }
-        m->cap = cap;
-        for (uint32_t i = 0; i < old.cap; i++) {
-            if (old.vals[i] != 0) {
-                uint32_t s = slot_of(m, old.keys[i]);
-                m->keys[s] = old.keys[i];
-                m->vals[s] = old.vals[i];
-            }
-        }
-        free(old.keys);
-        free(old.vals);
+/* Doubles the slot count (16 at first) and re-inserts every entry. */
+static void map_grow(MsNameMap *map) {
+    const MsNameMap old = *map;
+    const uint32_t cap = old.cap != 0 ? old.cap * 2 : 16;
+    map->keys = calloc(cap, sizeof *map->keys);
+    map->vals = calloc(cap, sizeof *map->vals);
+    if (map->keys == NULL || map->vals == NULL) {
+        ms_oom();
     }
-    uint32_t i = slot_of(m, key);
-    if (m->vals[i] != 0) {
+    map->cap = cap;
+    for (uint32_t i = 0; i < old.cap; i++) {
+        if (old.vals[i] != 0) {
+            const uint32_t slot = slot_of(map, old.keys[i]);
+            map->keys[slot] = old.keys[i];
+            map->vals[slot] = old.vals[i];
+        }
+    }
+    free(old.keys);
+    free(old.vals);
+}
+
+bool ms_map_add(MsNameMap *map, MsSym key, uint32_t val) {
+    if (map->cap == 0 || (size_t)(map->count + 1) * 2 > map->cap) {
+        map_grow(map);
+    }
+    const uint32_t slot = slot_of(map, key);
+    if (map->vals[slot] != 0) {
         return false;
     }
-    m->keys[i] = key;
-    m->vals[i] = val + 1;
-    m->count++;
+    map->keys[slot] = key;
+    map->vals[slot] = val + 1;
+    map->count++;
     return true;
 }
 
 /* ---- MsCheck ---- */
 
 void ms_check_init(MsCheck *c, MsNames *names) {
-    memset(c, 0, sizeof *c);
+    *c = (MsCheck){0};
     c->names = names;
     ms_tys_init(&c->tys);
 }
 
+static void syms_free(MsSyms *syms) {
+    free(syms->name);
+    free(syms->id);
+    free(syms->kind);
+    free(syms->module);
+    free(syms->native);
+    free(syms->native_name);
+    free(syms->is_exported);
+    free(syms->decl);
+    free(syms->ty);
+    free(syms->nvars);
+    *syms = (MsSyms){0};
+}
+
 void ms_check_free(MsCheck *c) {
     ms_tys_free(&c->tys);
-    MsSyms *s = &c->syms;
-    free(s->name); free(s->id); free(s->kind); free(s->module); free(s->native);
-    free(s->native_name); free(s->export_); free(s->decl); free(s->ty); free(s->nvars);
+    syms_free(&c->syms);
     for (uint32_t i = 0; i < c->nmods; i++) {
         ms_map_free(&c->mods[i].scope);
         free(c->mods[i].order);
@@ -78,57 +95,58 @@ void ms_check_free(MsCheck *c) {
     free(c->mods);
     ms_map_free(&c->std_types);
     ms_arena_free(&c->arena);
-    memset(c, 0, sizeof *c);
+    *c = (MsCheck){0};
 }
 
 MsModId ms_module_add(MsCheck *c, MsSym path, const MsModule *syntax) {
     if (c->nmods == c->mods_cap) {
-        c->mods_cap = c->mods_cap ? c->mods_cap * 2 : 32;
-        c->mods = realloc(c->mods, c->mods_cap * sizeof *c->mods);
-        if (c->mods == NULL) {
-            abort();
-        }
+        c->mods_cap = ms_capacity_for(c->mods_cap, c->nmods + 1);
+        c->mods = ms_array_resize(c->mods, c->mods_cap, sizeof *c->mods);
     }
-    MsModuleRow *m = &c->mods[c->nmods];
-    memset(m, 0, sizeof *m);
-    m->path = path;
-    m->syntax = syntax;
+    c->mods[c->nmods] = (MsModuleRow){.path = path, .syntax = syntax};
     return c->nmods++;
 }
 
-#define COLUMN(field) s->field = realloc(s->field, c2 * sizeof *s->field); if (s->field == NULL) abort()
+/* Makes room for one more symbol in every column. */
+static void syms_reserve(MsSyms *syms) {
+    if (syms->count < syms->cap) {
+        return;
+    }
+    const uint32_t cap = ms_capacity_for(syms->cap, syms->count + 1);
+    syms->name = ms_array_resize(syms->name, cap, sizeof *syms->name);
+    syms->id = ms_array_resize(syms->id, cap, sizeof *syms->id);
+    syms->kind = ms_array_resize(syms->kind, cap, sizeof *syms->kind);
+    syms->module = ms_array_resize(syms->module, cap, sizeof *syms->module);
+    syms->native = ms_array_resize(syms->native, cap, sizeof *syms->native);
+    syms->native_name = ms_array_resize(syms->native_name, cap, sizeof *syms->native_name);
+    syms->is_exported = ms_array_resize(syms->is_exported, cap, sizeof *syms->is_exported);
+    syms->decl = ms_array_resize(syms->decl, cap, sizeof(const MsDecl *)); // NOLINT(bugprone-sizeof-expression): a column of declaration pointers
+    syms->ty = ms_array_resize(syms->ty, cap, sizeof *syms->ty);
+    syms->nvars = ms_array_resize(syms->nvars, cap, sizeof *syms->nvars);
+    syms->cap = cap;
+}
 
-MsSymId ms_sym_add(MsCheck *c, MsModId module, MsSym name, MsSym id, MsSymKind kind,
-                   MsNativeKind native, MsSym native_name, bool export_, const MsDecl *decl,
-                   uint32_t nvars) {
-    MsModuleRow *m = &c->mods[module];
-    MsSyms *s = &c->syms;
-    if (ms_map_get(&m->scope, name) != MS_NONE) {
+MsSymId ms_sym_add(MsCheck *c, MsModId module, const MsSymSpec *spec) {
+    MsModuleRow *row = &c->mods[module];
+    if (ms_map_get(&row->scope, spec->name) != MS_NONE) {
         return MS_NONE;
     }
-    if (s->count == s->cap) {
-        uint32_t c2 = s->cap ? s->cap * 2 : 256;
-        COLUMN(name); COLUMN(id); COLUMN(kind); COLUMN(module); COLUMN(native); COLUMN(native_name);
-        COLUMN(export_); COLUMN(decl); COLUMN(ty); COLUMN(nvars);
-        s->cap = c2;
-    }
-    MsSymId r = s->count++;
-    s->name[r] = name;
-    s->id[r] = id;
-    s->kind[r] = kind;
-    s->module[r] = module;
-    s->native[r] = native;
-    s->native_name[r] = native_name;
-    s->export_[r] = export_;
-    s->decl[r] = decl;
-    s->ty[r] = MS_TY_NONE;
-    s->nvars[r] = nvars;
-    /* The module's own scope lists every symbol, exported or not; `export_` says which are visible to importers. */
-    ms_map_add(&m->scope, name, r);
-    m->order = realloc(m->order, (m->norder + 1) * sizeof *m->order);
-    if (m->order == NULL) {
-        abort();
-    }
-    m->order[m->norder++] = r;
-    return r;
+    MsSyms *syms = &c->syms;
+    syms_reserve(syms);
+    const MsSymId id = syms->count++;
+    syms->name[id] = spec->name;
+    syms->id[id] = spec->id;
+    syms->kind[id] = spec->kind;
+    syms->module[id] = module;
+    syms->native[id] = spec->native;
+    syms->native_name[id] = spec->native_name;
+    syms->is_exported[id] = spec->is_exported;
+    syms->decl[id] = spec->decl;
+    syms->ty[id] = MS_TY_NONE;
+    syms->nvars[id] = spec->nvars;
+    /* The scope lists every symbol the module declares; `is_exported` says which importers see. */
+    (void)ms_map_add(&row->scope, spec->name, id);
+    row->order = ms_array_resize(row->order, row->norder + 1, sizeof *row->order);
+    row->order[row->norder++] = id;
+    return id;
 }

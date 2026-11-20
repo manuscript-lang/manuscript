@@ -7,11 +7,11 @@
 #include "ms/parse.h"
 #include "ms/stdlib.h"
 
-static const char *const EXTENSION_MODULES[] = {
+static const char *const extension_modules[] = {
     "core.ms", "collections/collections.ms", "bytes.ms", "collections/ordering.ms", "string.ms",
     "math/decimal.ms",
 };
-static const char *const PACKAGES[] = {"collections", "concurrency", "data", "io", "math", "net", "os"};
+static const char *const package_names[] = {"collections", "concurrency", "data", "io", "math", "net", "os"};
 
 static bool sl_str_is(MsStr s, const char *lit) {
     size_t n = strlen(lit);
@@ -38,8 +38,8 @@ MsStr ms_module_stem(MsStr file) {
     const char *slash = memchr(p.ptr, '/', p.len);
     if (slash != NULL) {
         size_t head = (size_t)(slash - p.ptr);
-        for (size_t i = 0; i < sizeof PACKAGES / sizeof *PACKAGES; i++) {
-            if (strlen(PACKAGES[i]) == head && memcmp(PACKAGES[i], p.ptr, head) == 0) {
+        for (size_t i = 0; i < sizeof package_names / sizeof *package_names; i++) {
+            if (strlen(package_names[i]) == head && memcmp(package_names[i], p.ptr, head) == 0) {
                 MsStr r = {slash + 1, (uint32_t)(p.len - head - 1)};
                 return r;
             }
@@ -190,8 +190,8 @@ static int by_name(const void *a, const void *b) {
 }
 
 static bool is_extension(const char *name) {
-    for (size_t i = 0; i < sizeof EXTENSION_MODULES / sizeof *EXTENSION_MODULES; i++) {
-        if (strcmp(EXTENSION_MODULES[i], name) == 0) {
+    for (size_t i = 0; i < sizeof extension_modules / sizeof *extension_modules; i++) {
+        if (strcmp(extension_modules[i], name) == 0) {
             return true;
         }
     }
@@ -243,6 +243,25 @@ static MsSym intern_fmt(Loader *l, const char *fmt, ...) {
 }
 
 /* The bare type of a nominal symbol: variables are filled in by `declare_identities`. */
+/* The kind of type a nominal declaration makes. */
+static bool is_nominal(const MsDecl *d) {
+    return d->kind == MS_D_TYPE || d->kind == MS_D_ENUM || d->kind == MS_D_INTERFACE;
+}
+
+static MsKind nominal_kind(const MsDecl *d) {
+    switch ((MsDeclKind)d->kind) {
+    case MS_D_ENUM: return MS_K_ALTERNATIVE;
+    case MS_D_INTERFACE: return MS_K_CONTRACT;
+    case MS_D_FN:
+    case MS_D_CONST:
+    case MS_D_TYPE:
+    case MS_D_ALIAS:
+    case MS_D_IMPL:
+    case MS_D_TEST: return MS_K_TYPE;
+    }
+    return MS_K_TYPE;
+}
+
 static MsTy nominal_type(Loader *l, MsSymId s, MsKind kind, MsBuiltin builtin) {
     MsCheck *c = l->c;
     MsTyDesc d = {0};
@@ -267,7 +286,14 @@ static bool register_extern_type(Loader *l, MsModId m, const MsDecl *d) {
         return sl_fail(l, "duplicate standard type %.*s", (int)ms_name(c->names, name).len,
                     ms_name(c->names, name).ptr);
     }
-    MsSymId s = ms_sym_add(c, m, name, id, MS_SYM_TYPE, MS_NATIVE_BUILTIN, name, d->export_, d, 0);
+    const MsSymSpec spec = {.name = name,
+                            .id = id,
+                            .kind = MS_SYM_TYPE,
+                            .native = MS_NATIVE_BUILTIN,
+                            .native_name = name,
+                            .is_exported = d->export_,
+                            .decl = d};
+    MsSymId s = ms_sym_add(c, m, &spec);
     if (s == MS_NONE) {
         return sl_fail(l, "duplicate standard declaration %.*s", (int)sl_at(l, file, d->pos).len, sl_at(l, file, d->pos).ptr);
     }
@@ -294,11 +320,18 @@ static void register_source_stubs(Loader *l, MsModId m, const MsModule *mod) {
         MsSym name = decl_name(d);
         MsStr nm = ms_name(c->names, name);
         MsSym id = intern_fmt(l, "standard_%.*s_symbol_%.*s", (int)stem.len, stem.ptr, (int)nm.len, nm.ptr);
-        MsSymId s = ms_sym_add(c, m, name, id, MS_SYM_TYPE, MS_NATIVE_SOURCE, 0, true, d, decl_nvars(d));
+        const MsSymSpec spec = {.name = name,
+                                .id = id,
+                                .kind = MS_SYM_TYPE,
+                                .native = MS_NATIVE_SOURCE,
+                                .is_exported = true,
+                                .decl = d,
+                                .nvars = decl_nvars(d)};
+        MsSymId s = ms_sym_add(c, m, &spec);
         if (s == MS_NONE) {
             continue;
         }
-        MsKind kind = d->kind == MS_D_ENUM ? MS_K_ALTERNATIVE : d->kind == MS_D_INTERFACE ? MS_K_CONTRACT : MS_K_TYPE;
+        const MsKind kind = nominal_kind(d);
         MsBuiltin b = ms_builtin_source(file, nm);
         MsTyDesc td = {0};
         td.name = name;
@@ -310,77 +343,124 @@ static void register_source_stubs(Loader *l, MsModId m, const MsModule *mod) {
     }
 }
 
-static bool register_module(Loader *l, MsModId m, const MsModule *mod) {
-    MsCheck *c = l->c;
-    MsStr file = ms_name(c->names, c->mods[m].path);
-    bool source = false;
-    for (uint32_t i = 0; i < mod->ndecls && !source; i++) {
-        source = has_implementation(mod->decls[i]);
-    }
-    if (source) {
-        c->mods[m].source = true;
-        for (uint32_t i = 0; i < mod->ndecls; i++) {
-            const MsDecl *d = mod->decls[i];
-            if (d->kind == MS_D_TYPE && d->u.type.external && !register_extern_type(l, m, d)) {
-                return false;
-            }
-        }
-        register_source_stubs(l, m, mod);
-        return true;
-    }
-    MsStr stem = ms_module_stem(file);
+/* A module with bodies is checked like user code; the loader registers only its `extern type`s and
+ * the exported types native modules may name. */
+static bool register_source_module(Loader *l, MsModId m, const MsModule *mod) {
+    l->c->mods[m].source = true;
     for (uint32_t i = 0; i < mod->ndecls; i++) {
         const MsDecl *d = mod->decls[i];
-        if (d->kind == MS_D_IMPL) {
-            for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
-                if (d->u.impl.methods.ptr[k]->func.body.len != 0) {
-                    MsStr p = sl_at(l, file, d->u.impl.methods.ptr[k]->pos);
-                    return sl_fail(l, "native implementations must not have bodies: %.*s", (int)p.len, p.ptr);
-                }
-            }
-            continue;
+        if (d->kind == MS_D_TYPE && d->u.type.external && !register_extern_type(l, m, d)) {
+            return false;
         }
-        if (d->kind == MS_D_TEST) {
-            MsStr p = sl_at(l, file, d->pos);
-            return sl_fail(l, "standard declarations cannot contain implementation bodies: %.*s", (int)p.len, p.ptr);
+    }
+    register_source_stubs(l, m, mod);
+    return true;
+}
+
+static bool fail_at(Loader *l, const char *what, MsStr file, MsPos pos) {
+    const MsStr where = sl_at(l, file, pos);
+    return sl_fail(l, "%s: %.*s", what, (int)where.len, where.ptr);
+}
+
+/* The Rust loader's rejection of a native declaration that carries a body. */
+static bool check_native_decl(Loader *l, MsStr file, const MsDecl *d) {
+    if (d->kind == MS_D_TEST) {
+        return fail_at(l, "standard declarations cannot contain implementation bodies", file, d->pos);
+    }
+    if (has_implementation(d)) {
+        return fail_at(l, "native declarations must not have bodies", file, d->pos);
+    }
+    return true;
+}
+
+/* An `impl` of a native module may declare operations but no bodies. */
+static bool check_native_impl(Loader *l, MsStr file, const MsDecl *d) {
+    const MsMethod *const *methods = (const MsMethod *const *)d->u.impl.methods.ptr;
+    for (uint32_t i = 0; i < d->u.impl.methods.len; i++) {
+        if (methods[i]->func.body.len != 0) {
+            return fail_at(l, "native implementations must not have bodies", file, methods[i]->pos);
         }
-        if (has_implementation(d)) {
-            MsStr p = sl_at(l, file, d->pos);
-            return sl_fail(l, "native declarations must not have bodies: %.*s", (int)p.len, p.ptr);
+    }
+    return true;
+}
+
+/* The kind of the nominal type a native declaration makes; false for a function, constant or alias. */
+static bool native_nominal_kind(const MsDecl *d, MsStr name, MsKind *kind) {
+    if (!is_nominal(d)) {
+        return false;
+    }
+    const bool external = d->kind == MS_D_TYPE && d->u.type.external;
+    *kind = (external || sl_str_is(name, "List")) ? MS_K_NATIVE : nominal_kind(d);
+    return true;
+}
+
+/* A native function is `module/name`; a native type is `@std/Name`. */
+static MsSym native_binding(Loader *l, const MsDecl *d, MsStr stem, MsSym *id) {
+    const MsCheck *c = l->c;
+    const MsStr name = ms_name(c->names, decl_name(d));
+    if (d->kind != MS_D_FN) {
+        *id = intern_fmt(l, "@std/%.*s", (int)name.len, name.ptr);
+        return decl_name(d);
+    }
+    const MsSym binding = intern_fmt(l, "%.*s/%.*s", (int)stem.len, stem.ptr, (int)name.len, name.ptr);
+    const MsStr text = ms_name(c->names, binding);
+    *id = intern_fmt(l, "@std/%.*s", (int)text.len, text.ptr);
+    return binding;
+}
+
+static bool register_native_decl(Loader *l, MsModId m, MsStr stem, const MsDecl *d) {
+    MsCheck *c = l->c;
+    const MsStr file = ms_name(c->names, c->mods[m].path);
+    const MsSym name = decl_name(d);
+    const MsStr name_text = ms_name(c->names, name);
+    MsSym id = 0;
+    const MsSym native_name = native_binding(l, d, stem, &id);
+    const MsSymSpec spec = {.name = name,
+                            .id = id,
+                            .kind = d->kind == MS_D_FN ? MS_SYM_FN : MS_SYM_TYPE,
+                            .native = MS_NATIVE_BUILTIN,
+                            .native_name = native_name,
+                            .is_exported = d->export_,
+                            .decl = d,
+                            .nvars = decl_nvars(d)};
+    const MsSymId sym = ms_sym_add(c, m, &spec);
+    if (sym == MS_NONE) {
+        return fail_at(l, "duplicate standard declaration", file, d->pos);
+    }
+    MsKind kind = MS_K_TYPE;
+    if (!native_nominal_kind(d, name_text, &kind)) {
+        return true;
+    }
+    if (ms_map_get(&c->std_types, name) != MS_NONE) {
+        return sl_fail(l, "duplicate standard type %.*s", (int)name_text.len, name_text.ptr);
+    }
+    c->syms.ty[sym] = nominal_type(l, sym, kind, ms_builtin_from_id(ms_name(c->names, id)));
+    (void)ms_map_add(&c->std_types, name, sym);
+    return true;
+}
+
+static bool module_has_implementation(const MsModule *mod) {
+    for (uint32_t i = 0; i < mod->ndecls; i++) {
+        if (has_implementation(mod->decls[i])) {
+            return true;
         }
-        MsSym name = decl_name(d);
-        MsStr nm = ms_name(c->names, name);
-        MsSymKind sk = d->kind == MS_D_FN ? MS_SYM_FN : MS_SYM_TYPE;
-        MsKind kind = MS_K_TYPE;
-        bool nominal = true;
-        switch (d->kind) {
-        case MS_D_TYPE: kind = MS_K_TYPE; break;
-        case MS_D_ENUM: kind = MS_K_ALTERNATIVE; break;
-        case MS_D_INTERFACE: kind = MS_K_CONTRACT; break;
-        default: nominal = false; break;
-        }
-        MsSym id = intern_fmt(l, "@std/%.*s", (int)nm.len, nm.ptr);
-        MsSym native_name = name;
-        if (sk == MS_SYM_FN) {
-            native_name = intern_fmt(l, "%.*s/%.*s", (int)stem.len, stem.ptr, (int)nm.len, nm.ptr);
-            MsStr nn = ms_name(c->names, native_name);
-            id = intern_fmt(l, "@std/%.*s", (int)nn.len, nn.ptr);
-        }
-        MsSymId s = ms_sym_add(c, m, name, id, sk, MS_NATIVE_BUILTIN, native_name, d->export_, d, decl_nvars(d));
-        if (s == MS_NONE) {
-            MsStr p = sl_at(l, file, d->pos);
-            return sl_fail(l, "duplicate standard declaration %.*s", (int)p.len, p.ptr);
-        }
-        if (nominal) {
-            bool external = d->kind == MS_D_TYPE && d->u.type.external;
-            if (external || sl_str_is(nm, "List")) {
-                kind = MS_K_NATIVE;
-            }
-            if (ms_map_get(&c->std_types, name) != MS_NONE) {
-                return sl_fail(l, "duplicate standard type %.*s", (int)nm.len, nm.ptr);
-            }
-            c->syms.ty[s] = nominal_type(l, s, kind, ms_builtin_from_id(ms_name(c->names, id)));
-            ms_map_add(&c->std_types, name, s);
+    }
+    return false;
+}
+
+static bool register_module(Loader *l, MsModId m, const MsModule *mod) {
+    if (module_has_implementation(mod)) {
+        return register_source_module(l, m, mod);
+    }
+    const MsCheck *c = l->c;
+    const MsStr file = ms_name(c->names, c->mods[m].path);
+    const MsStr stem = ms_module_stem(file);
+    for (uint32_t i = 0; i < mod->ndecls; i++) {
+        const MsDecl *d = mod->decls[i];
+        const bool ok = d->kind == MS_D_IMPL ? check_native_impl(l, file, d)
+                                              : check_native_decl(l, file, d) && register_native_decl(l, m, stem, d);
+        if (!ok) {
+            return false;
         }
     }
     return true;
@@ -420,8 +500,8 @@ static void declare_identities(Loader *l, MsModId m) {
 static MsModule *half(Loader *l, const MsModule *of, const MsDecl **decls, uint32_t n) {
     MsModule *m = MS_NEW(l->syn, MsModule);
     *m = *of;
-    m->decls = MS_NEW_N(l->syn, MsDecl *, n ? n : 1);
-    memcpy(m->decls, decls, n * sizeof *decls);
+    m->decls = MS_NEW_N(l->syn, MsDecl *, n ? n : 1); // NOLINT(bugprone-sizeof-expression): an array of declaration pointers
+    memcpy(m->decls, decls, n * sizeof *decls);   // NOLINT(bugprone-sizeof-expression): same array
     m->ndecls = n;
     return m;
 }
@@ -476,8 +556,9 @@ bool ms_std_load(MsCheck *c, MsArena *syn, const MsStdFile *in, uint32_t nfiles,
             continue;
         }
         if (is_mixed(&ld->mod)) {
-            const MsDecl **nat = malloc(sizeof *nat * (ld->mod.ndecls + 1));
-            const MsDecl **src = malloc(sizeof *src * (ld->mod.ndecls + 1));
+            const uint32_t room = ld->mod.ndecls + 1;
+            const MsDecl **nat = MS_NEW_N(syn, const MsDecl *, room); // NOLINT(bugprone-sizeof-expression): an array of declaration pointers
+            const MsDecl **src = MS_NEW_N(syn, const MsDecl *, room); // NOLINT(bugprone-sizeof-expression): same
             uint32_t nn = 0, ns = 0;
             for (uint32_t k = 0; k < ld->mod.ndecls; k++) {
                 const MsDecl *d = ld->mod.decls[k];
@@ -487,8 +568,6 @@ bool ms_std_load(MsCheck *c, MsArena *syn, const MsStdFile *in, uint32_t nfiles,
             }
             MsModule *nh = half(&l, &ld->mod, nat, nn);
             MsModule *sh = half(&l, &ld->mod, src, ns);
-            free(nat);
-            free(src);
             MsModId nm = ms_module_add(c, path, nh);
             ok = register_module(&l, nm, nh);
             if (ok) {

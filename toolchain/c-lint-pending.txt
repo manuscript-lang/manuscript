@@ -2,14 +2,10 @@ compiler/src/base.c
 compiler/src/driver.c
 compiler/src/dump.c
 compiler/src/dump_base.c
-compiler/src/dump_check.c
 compiler/src/lex.c
 compiler/src/libms.c
 compiler/src/libms_api.c
 compiler/src/parse.c
-compiler/src/stdlib.c
-compiler/src/tables.c
-compiler/src/types.c
 runtime/core/alloc.c
 runtime/core/region.c
 runtime/core/string.c
