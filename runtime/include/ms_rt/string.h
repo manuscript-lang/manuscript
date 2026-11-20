@@ -178,6 +178,20 @@ void msrt_string_char_at(const MsStr *s, int64_t at, MsStr *out);
 void msrt_string_pad_start(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
 /* ms-sig: msrt_string_pad_end(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_pad_end(const MsStr *s, int64_t target, const MsStr *padding, MsStr *out);
+/* ms-sig: msrt_string_chars(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_chars(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_lines(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_lines(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_fields(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_scalar_values(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_from_scalars(values: *const VecVal, out: *mut StrVal) -> u8 @domain=string @leaf */
+uint8_t msrt_string_from_scalars(const MsVec *values, MsStr *out);
+/* ms-sig: msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
+void msrt_string_to_bytes(const MsStr *s, MsVec *out);
+/* ms-sig: msrt_string_view_bytes(s: *const StrVal, out: *mut VecVal) @borrows @domain=string @leaf @pure */
+void msrt_string_view_bytes(const MsStr *s, MsVec *out);
 /* ms-sig: msrt_string_slice(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 /* ms-sig: msrt_string_view(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @borrows @domain=string @leaf @pure */
