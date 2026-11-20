@@ -3,6 +3,7 @@
 # Run from the repository root: `make c-compiler-test` runs this after syntax-diff.sh.
 #   tables  the bundled standard library as loaded into the symbol tables (crates/ms-check c_oracle)
 #   effect directives  the `// ms: effect` and `allow_effect` lines of every .ms file in the repository
+#   desugar  inherent impls rewritten, as project and bundled modules and with foreign types
 #   effect graph  reachability and violations over generated reference graphs (MS_EFFECT_GRAPHS, default 500)
 # The set of compared things grows with each checker pass the C side gains; a pass is not
 # "ported" until its line here passes.
@@ -10,9 +11,10 @@ set -eu
 out=target/c-compiler
 mkdir -p "$out"
 
-cargo build --release --locked -p ms-check --example c_oracle --example c_oracle_effects
+cargo build --release --locked -p ms-check --example c_oracle --example c_oracle_effects --example c_oracle_desugar
 oracle=target/release/examples/c_oracle
 effects_oracle=target/release/examples/c_oracle_effects
+desugar_oracle=target/release/examples/c_oracle_desugar
 
 cflags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Wno-format-truncation -Icompiler/include -Iruntime/include"
 cc $cflags compiler/src/libms.c compiler/tools/ms_check_dump.c -o "$out/check-dump" -lm
@@ -48,6 +50,32 @@ if cmp -s "$out/directives.rust" "$out/directives.c"; then
 else
     echo "FAIL effect directives: first difference"
     diff "$out/directives.rust" "$out/directives.c" | head -20 || true
+    status=1
+fi
+
+cc $cflags compiler/src/libms.c compiler/tools/ms_desugar_dump.c -o "$out/desugar-dump" -lm
+# The corpus: every source file that writes a method, a property marker or an impl, plus a fixture for
+# what no file does (a method on an interface, methods on types another module declares).
+printf 'type Remote[T]:\n\tvalue: T\n\nenum Mode:\n\tFast\n\tSlow\n' > "$out/desugar-foreign.ms"
+printf 'interface Shape:\n\tfn area() Int\n\nfn Shape.twice() Int:\n\treturn 2\n\nfn Remote[T].get() T:\n\treturn self.value\n\nfn Mode.label() String:\n\treturn "m"\n\nfn Remote.broken() Int:\n\treturn 1\n' > "$out/desugar-fixture.ms"
+xargs grep -lE '^(var )?fn (move )?[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?\.|^impl |^// ms: (data|clonable)' < "$out/sources.txt" > "$out/desugar-sources.txt"
+echo "$out/desugar-fixture.ms" >> "$out/desugar-sources.txt"
+desugar_status=0
+for mode in user std; do
+    xargs "$desugar_oracle" "$mode" < "$out/desugar-sources.txt" > "$out/desugar-$mode.rust"
+    xargs "$out/desugar-dump" "$mode" < "$out/desugar-sources.txt" > "$out/desugar-$mode.c"
+    cmp -s "$out/desugar-$mode.rust" "$out/desugar-$mode.c" || desugar_status=1
+done
+"$desugar_oracle" foreign "$out/desugar-foreign.ms" "$out/desugar-fixture.ms" > "$out/desugar-foreign.rust"
+"$out/desugar-dump" foreign "$out/desugar-foreign.ms" "$out/desugar-fixture.ms" > "$out/desugar-foreign.c"
+cmp -s "$out/desugar-foreign.rust" "$out/desugar-foreign.c" || desugar_status=1
+if [ "$desugar_status" -eq 0 ]; then
+    echo "ok   desugar ($(grep -c '^===' "$out/desugar-user.rust") files, $(grep -c '^inherent' "$out/desugar-user.rust") errors)"
+else
+    echo "FAIL desugar: first difference"
+    for part in user std foreign; do
+        diff "$out/desugar-$part.rust" "$out/desugar-$part.c" | cut -c1-200 | head -10 || true
+    done
     status=1
 fi
 

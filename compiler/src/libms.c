@@ -39,6 +39,8 @@
 #include "dump_check.c"
 #include "effect_directives.c"
 #include "effect_reach.c"
+#include "ast_copy.c"
+#include "desugar.c"
 #include "ownership_places.c"
 #include "ownership_bits.c"
 #include "libms_api.c"
