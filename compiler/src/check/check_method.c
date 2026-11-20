@@ -174,7 +174,9 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
-        if (arg->has_name || (params[i].flags & ~MS_PARAM_MOVE) != 0 || !ms_body_is_admitted(b, params[i].ty) ||
+        MsTy payload = MS_TY_NONE;
+        const bool optional = ms_body_optional_payload(b, params[i].ty, &payload);
+        if (arg->has_name || (params[i].flags & ~MS_PARAM_MOVE) != 0 || (!ms_body_is_admitted(b, params[i].ty) && !optional) ||
             ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return false;
         }
@@ -267,7 +269,7 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
         if (body_is_primitive(b, receiver_ty)) {
             return body_intrinsic_call(b, e, receiver_ty);
         }
-        return receiver_ty != MS_TY_NONE && ms_body_is_handle(b, receiver_ty) ? body_resolved_call(b, e, receiver_ty, MS_NONE)
+        return receiver_ty != MS_TY_NONE && (ms_body_is_handle(b, receiver_ty) || ms_body_is_list(b, receiver_ty)) ? body_resolved_call(b, e, receiver_ty, MS_NONE)
                                                                               : ms_body_unsupported(b);
     }
     return body_resolved_call(b, e, local_ty, binding);
