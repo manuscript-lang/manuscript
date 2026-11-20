@@ -1,0 +1,49 @@
+module "t"
+extern @msrt_promise_start(int) -> int spawns_task
+extern @msrt_task_pause(int) -> int
+entry @main
+
+fn @inner(%0: ptr, %1: ptr) -> int closure() noalias(1) {
+b0:
+  scope.begin 1 0
+  %2: str = take str %1
+  %3: int = iconst 5
+  %4: int = call.rt @msrt_task_pause (%3)
+  put %1, %2
+  scope.end 1 0
+  ret %4
+}
+
+fn @other(%0: ptr, %1: ptr) -> int closure() noalias(1) {
+b0:
+  scope.begin 1 0
+  %2: str = take str %1
+  %3: int = iconst 5
+  %4: int = call.rt @msrt_task_pause (%3)
+  put %1, %2
+  scope.end 1 0
+  ret %4
+}
+
+fn @outer(%0: ptr, %1: fn(ptr) -> int) -> int noalias(0) {
+b0:
+  scope.begin 1 0
+  %2: str = take str %0
+  %3: ptr = slot str
+  put %3, %2
+  %4: int = call.ind (%1, %3)
+  %5: str = take str %3
+  put %0, %5
+  scope.end 1 0
+  ret %4
+}
+
+fn @main() -> int {
+b0:
+  %0: fn(ptr) -> int = closure.new @inner
+  %1: fn(ptr) -> int = closure.new @other
+  drop %0
+  drop %1
+  %2: int = iconst 0
+  ret %2
+}

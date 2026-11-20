@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "ms/mir_analysis.h"
+#include "ms/mir_data.h"
 #include "ms/mir_layout.h"
 
 /* Values of at most this many bytes are passed as their leaves; larger ones are not supported yet. */
@@ -23,6 +24,7 @@ typedef struct QCx {
     const MirFunc *f;
     MsBuf *out;
     MirLayouts *layouts; /* borrowed from mir_emit_qbe */
+    const MirData *data; /* descriptors, vtables and globals, borrowed from mir_emit_qbe */
     uint32_t next;       /* counter for generated names */
     const char *why;
 } QCx;
@@ -72,6 +74,8 @@ static void qbe_sym(MsBuf *o, MsStr n) {
         else ms_buf_printf(o, ".x%02x", ch);
     }
 }
+
+static MsStr qbe_cstr(const char *text) { return (MsStr){text, (uint32_t)strlen(text)}; }
 
 static bool qbe_checked(MirOp op) {
     return op == MOP_IAddChk || op == MOP_ISubChk || op == MOP_IMulChk;
@@ -377,6 +381,91 @@ static bool qbe_call(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     return qbe_load_leaves(c, inst->res, area);
 }
 
+/* ---- static data ---- */
+
+/* The text of the address `to` names: a data symbol, a function, or a runtime symbol. */
+static void qbe_ref(const QCx *c, MsBuf *o, MirRef to) {
+    if (to.kind == MT_DATA) {
+        qbe_sym(o, qbe_cstr(c->data->syms[to.index].name));
+    } else if (to.kind == MT_FUNC) {
+        qbe_sym(o, ms_name(&c->m->names, c->m->funcs[to.index].name));
+    } else {
+        qbe_sym(o, qbe_cstr(to.runtime));
+    }
+}
+
+/* Writes the bytes `[from, to)` of `s` as one `b` field, or a `z` field when they are all zero. */
+static void qbe_data_bytes(MsBuf *o, const MirDataSym *s, uint32_t from, uint32_t to) {
+    bool zero = true;
+    for (uint32_t i = from; zero && s->bytes != NULL && i < to; i++) {
+        zero = s->bytes[i] == 0;
+    }
+    if (zero) {
+        ms_buf_printf(o, "z %u", to - from);
+        return;
+    }
+    ms_buf_puts(o, "b");
+    for (uint32_t i = from; i < to; i++) {
+        ms_buf_printf(o, " %u", s->bytes[i]);
+    }
+}
+
+/* One symbol: its bytes, with an `l` field at each relocation. The relocations are in offset order. */
+static void qbe_data_sym(const QCx *c, const MirDataSym *s) {
+    MsBuf *o = c->out;
+    ms_buf_puts(o, "data ");
+    qbe_sym(o, qbe_cstr(s->name));
+    ms_buf_printf(o, " = align %u {", s->align);
+    uint32_t at = 0;
+    const char *sep = " ";
+    for (uint32_t r = 0; r < s->nrelocs; r++) {
+        if (s->relocs[r].offset > at) {
+            ms_buf_puts(o, sep);
+            qbe_data_bytes(o, s, at, s->relocs[r].offset);
+            sep = ", ";
+        }
+        ms_buf_printf(o, "%sl ", sep);
+        qbe_ref(c, o, s->relocs[r].to);
+        sep = ", ";
+        at = s->relocs[r].offset + 8;
+    }
+    if (at < s->size || s->size == 0) {
+        ms_buf_puts(o, sep);
+        qbe_data_bytes(o, s, at, s->size);
+    }
+    ms_buf_puts(o, " }\n");
+}
+
+/* `typedesc`, `func.addr`: the address of a descriptor or a function. */
+static bool qbe_address_of(QCx *c, const MirInst *inst) {
+    MirRef to;
+    if (inst->op == MOP_TypeDesc) {
+        if (inst->imm.tag != MI_TY) {
+            c->why = "typedesc without a type";
+            return false;
+        }
+        to = mir_data_desc(c->data, inst->imm.a);
+    } else {
+        to = (MirRef){MT_FUNC, inst->imm.a, NULL};
+    }
+    ms_buf_printf(c->out, "\t%%v%u =l copy ", inst->res);
+    qbe_ref(c, c->out, to);
+    ms_buf_putc(c->out, '\n');
+    return true;
+}
+
+/* `global.get`, `global.set`: the leaves of the global's data symbol. */
+static bool qbe_global(QCx *c, const MirInst *inst) {
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "\t%%g%u =l copy ", n);
+    qbe_ref(c, c->out, (MirRef){MT_DATA, c->data->globals[inst->imm.a], NULL});
+    ms_buf_putc(c->out, '\n');
+    char base[24];
+    (void)snprintf(base, sizeof base, "%%g%u", n);
+    return inst->op == MOP_GlobalGet ? qbe_load_leaves(c, inst->res, base)
+                                     : qbe_store_leaves(c, inst->args[0], base);
+}
+
 /* ---- runtime calls ---- */
 
 /* Appends one argument of a runtime call: the leaves of `value` when `ty` passes directly, else
@@ -589,6 +678,8 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_IAddChk: case MOP_ISubChk: qbe_checked_arith(c, inst, block, part); return true;
     case MOP_IMulChk: qbe_checked_mul(c, inst, block, part); return true;
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
+    case MOP_TypeDesc: case MOP_FuncAddr: return qbe_address_of(c, inst);
+    case MOP_GlobalGet: case MOP_GlobalSet: return qbe_global(c, inst);
     default:
         c->why = mir_op_info[inst->op].name;
         return false;
@@ -793,12 +884,20 @@ static bool qbe_function(QCx *c, uint32_t index) {
     return ok;
 }
 
-bool mir_emit_qbe(const MirModule *m, MsBuf *out, MsBuf *why) {
+bool mir_emit_qbe(MirModule *m, MsBuf *out, MsBuf *why) {
+    MirGlue glue = {0};
+    mir_glue_run_and_expand(m, &glue);
+    MirData data;
+    mir_data_build(m, &glue, &data);
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
     bool ok = true;
+    for (uint32_t i = 0; i < data.nsyms; i++) {
+        const QCx c = {m, NULL, out, &layouts, &data, 0, NULL};
+        qbe_data_sym(&c, &data.syms[i]);
+    }
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        QCx c = {m, &m->funcs[i], out, &layouts, 0, NULL};
+        QCx c = {m, &m->funcs[i], out, &layouts, &data, 0, NULL};
         if (qbe_function(&c, i)) {
             continue;
         }

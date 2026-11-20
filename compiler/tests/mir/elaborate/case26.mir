@@ -1,0 +1,42 @@
+module "raw"
+alt Msg { Pair(a: list<int>, b: list<int>), Empty }
+extern @msrt_print_int(int) -> void
+entry @main
+
+fn @mk(%0: int) -> list<int> {
+b0:
+  %1: int = iconst 0
+  %2: list<int> = list.new %1
+  %3: list<int> = list.push %2, %0
+  ret %3
+}
+
+fn @close(%0: move list<int>) -> int {
+b0:
+  %1: int = iconst 0
+  %2: int = list.get %0, %1
+  %3: void = call.rt @msrt_print_int (%2)
+  drop %0
+  ret %2
+}
+
+fn @pm() -> int {
+b0:
+  %0: int = iconst 0
+  scope.begin 1 0
+  %1: list<int> = call @mk (%0)
+  %2: list<int> = call @mk (%0)
+  %3: Msg = alt.new Msg.Pair %1, %2
+  scope.own 1 0 %3
+  %4: list<int> = alt.take Msg.Pair.a %3
+  drop %4
+  %5: int = iconst 4
+  scope.end 1 0
+  ret %5
+}
+
+fn @main() -> int {
+b0:
+  %0: int = call @pm ()
+  ret %0
+}
