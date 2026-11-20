@@ -12,6 +12,25 @@ long __isoc23_strtol(const char *s, char **end, int base) { return strtol(s, end
 unsigned long strtoul(const char *, char **, int);
 unsigned long __isoc23_strtoul(const char *s, char **end, int base) { return strtoul(s, end, base); }
 
+/* The same for scanf: libuv's /proc parsers (uv_cpu_info, uv_uptime) call these two names when compiled against
+ * glibc 2.38 or newer. The prototypes are written out bound by assembler name so no header redirects vsscanf and vfscanf in turn. */
+int old_vsscanf(const char *, const char *, __builtin_va_list) __asm__("vsscanf");
+int old_vfscanf(void *, const char *, __builtin_va_list) __asm__("vfscanf");
+int __isoc23_sscanf(const char *s, const char *format, ...) {
+    __builtin_va_list args;
+    __builtin_va_start(args, format);
+    const int count = old_vsscanf(s, format, args);
+    __builtin_va_end(args);
+    return count;
+}
+int __isoc23_fscanf(void *file, const char *format, ...) {
+    __builtin_va_list args;
+    __builtin_va_start(args, format);
+    const int count = old_vfscanf(file, format, args);
+    __builtin_va_end(args);
+    return count;
+}
+
 /* glibc before 2.34 keeps `atexit` in libc_nonshared.a, which programs do not link. */
 int atexit(void (*function)(void)) { return __cxa_atexit((void (*)(void *))function, NULL, NULL); }
 
