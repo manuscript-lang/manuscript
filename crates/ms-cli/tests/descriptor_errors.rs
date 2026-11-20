@@ -14,7 +14,8 @@ fn descriptor_write_failures_reach_source_results() {
             .unwrap();
         assert!(
             output.status.success(),
-            "{profile}: {}{}",
+            "{profile}: {:?}: {}{}",
+            output.status,
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr),
         );
