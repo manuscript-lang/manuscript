@@ -110,6 +110,10 @@ struct Table {
     /// The height of the creator's cleanup stack when the work started: a cancelled frame ends
     /// the promises started at or above the height it began with.
     started_at: Vec<usize>,
+    /// The creator's list of started promises, newest first, as slots plus one (0 ends it): the
+    /// head lives in the creator's task record, so a cancelled frame visits only its own promises.
+    next_started: Vec<u32>,
+    prev_started: Vec<u32>,
     /// `WANT_CANCEL`: cancel the work as soon as it has started.
     flags: Vec<u8>,
     /// The report of the fault that ended the promise.
@@ -175,6 +179,8 @@ impl Table {
             queued: Vec::new(),
             creator: Vec::new(),
             started_at: Vec::new(),
+            next_started: Vec::new(),
+            prev_started: Vec::new(),
             flags: Vec::new(),
             report: Vec::new(),
             deadline: Vec::new(),
@@ -479,6 +485,8 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.queued.push(0);
             t.creator.push(0);
             t.started_at.push(0);
+            t.next_started.push(0);
+            t.prev_started.push(0);
             t.flags.push(0);
             t.report.push(Vec::new());
             t.deadline.push(i64::MAX);
@@ -505,6 +513,8 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     t.task[i] = 0;
     t.creator[i] = 0;
     t.started_at[i] = 0;
+    t.next_started[i] = 0;
+    t.prev_started[i] = 0;
     t.flags[i] = 0;
     t.report[i] = Vec::new();
     t.deadline[i] = i64::MAX;
@@ -712,6 +722,7 @@ fn apply(event: Event) {
             }
             let creator = core::mem::take(&mut t.creator[i]);
             if creator != 0 {
+                unlink_started(&mut t, i, creator);
                 // SAFETY: lent at start on this thread; a creator that has ended is skipped.
                 unsafe { task::return_lent(creator) };
             }
@@ -1439,6 +1450,43 @@ pub(crate) fn stop_on_owner(id: i64) {
     deliver(id, Event::Stop { id });
 }
 
+/// Pushes slot `i`, just started by the running task, on the front of its list.
+fn link_started(t: &mut Table, i: usize) {
+    let me = t.creator[i];
+    let old = task::swap_started_head(me, i as u32 + 1).unwrap_or(0);
+    t.next_started[i] = old;
+    t.prev_started[i] = 0;
+    if old != 0 {
+        t.prev_started[old as usize - 1] = i as u32 + 1;
+    }
+}
+
+/// Removes slot `i` from its creator's list when its work has ended. A creator that has ended
+/// took its list with it.
+fn unlink_started(t: &mut Table, i: usize, creator: u64) {
+    let (prev, next) = (t.prev_started[i], t.next_started[i]);
+    if prev != 0 {
+        t.next_started[prev as usize - 1] = next;
+    } else if task::started_head(creator) == i as u32 + 1 {
+        task::swap_started_head(creator, next);
+    }
+    if next != 0 {
+        t.prev_started[next as usize - 1] = prev;
+    }
+    t.next_started[i] = 0;
+    t.prev_started[i] = 0;
+}
+
+/// The slots of the promises task `creator` started and whose work has not ended, newest first.
+fn started_by(t: &Table, creator: u64) -> impl Iterator<Item = usize> {
+    let mut at = task::started_head(creator);
+    core::iter::from_fn(move || {
+        let i = (at as usize).checked_sub(1)?;
+        at = t.next_started[i];
+        Some(i)
+    })
+}
+
 /// Ends every promise the running task started, at a cleanup-stack height of `base` or more, whose
 /// work still runs: cancels the work and joins it, keeping the slots for their closes. A
 /// cancelled frame calls it before its cleanups run (a promise its callers started registered its
@@ -1451,14 +1499,13 @@ pub(crate) fn end_started_by_current(base: usize) {
     let me = unsafe { task::current_handle() };
     let ids: Vec<i64> = {
         let t = table();
-        (0..t.creator.len())
+        started_by(&t, me)
             .filter(|&i| {
                 // Work that runs on this task's own stack (a deferred promise, or the one this
                 // task is the work of) ends when this task does: joining it would wait on
                 // itself.
                 let own_task = t.task[i] != 0 && t.task[i] != me;
-                t.creator[i] == me
-                    && t.closure[i] != 0
+                t.closure[i] != 0
                     && t.state[i] != State::Free
                     && t.started_at[i] >= base
                     && (own_task || t.queued[i] != 0)
@@ -1612,6 +1659,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, mode: Mode) {
     // SAFETY: called on the runtime thread by the running task.
     t.creator[i] = unsafe { task::lend_current() };
     t.started_at[i] = fault::cleanup_height();
+    link_started(&mut t, i);
     if mode == Mode::Here {
         t.flags[i] |= HERE;
     }
@@ -2547,6 +2595,33 @@ mod tests {
         msrt_promise_drop(id);
         // SAFETY: as above.
         assert_eq!(unsafe { task::msrt_task_count() }, before);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_task_finds_the_promises_it_started_without_scanning_the_table() {
+        let _g = lock();
+        let ids: Vec<i64> = (0..5).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            start(id, hangs);
+        }
+        // SAFETY: called from a running task.
+        let me = unsafe { task::current_handle() };
+        let started = || started_by(&table(), me).count();
+        assert_eq!(started(), 5);
+        // Ending the newest, the oldest and one in the middle keeps the list linked.
+        for &k in &[4, 0, 2] {
+            msrt_promise_cancel(ids[k]);
+            assert_eq!(msrt_promise_wait(ids[k], -1), CANCELLED);
+            msrt_promise_drop(ids[k]);
+        }
+        assert_eq!(started(), 2);
+        end_started_by_current(0);
+        assert_eq!(started(), 0);
+        for &k in &[1, 3] {
+            msrt_promise_drop(ids[k]);
+        }
         task::teardown();
     }
 

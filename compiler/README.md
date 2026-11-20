@@ -4,10 +4,10 @@
 
 ```
 compiler/
-  include/ms/   public headers: base.h (arena, names, diagnostics), token.h, lex.h, ast.h, parse.h, dump.h
+  include/ms/   public headers: libms.h (entry points and the stage table), driver.h, base.h (arena, names, diagnostics), token.h, lex.h, ast.h, parse.h, dump.h
   src/          one file per stage; libms.c includes them all, and building that one file builds the library
-  tools/        ms_syntax_dump: prints tokens and trees for the comparison below
-  tests/        syntax-diff.sh, mutate.c
+  tools/        ms (the thin executable over the driver), ms_syntax_dump: prints tokens and trees for the comparison below
+  tests/        syntax-diff.sh, mutate.c, driver-test.sh
 ```
 
 ## Rules
@@ -30,3 +30,7 @@ compiler/
 `sh compiler/tests/mir-diff.sh` (part of `make c-compiler-test`) compares the opcode tables, then the canonical text of every `.mir` file in the repository and of mutated copies, byte for byte with the Rust printer (`crates/ms-mir/examples/c_oracle.rs`). On rejected input only the error line is compared. The C parser differs from the Rust one in three ways: error messages do not quote tokens, non-ASCII outside string literals is rejected, and a stray token in a function header is an error (the Rust parser loops on it, so such mutants are dropped from the comparison).
 
 Next: verifier, layout tables, then the optimisation passes one at a time, each checked by running both implementations on the same MIR text.
+
+## Driver and stages
+
+`libms.h` has one entry point and one row in the stage table (`ms_stage_impl`) per pipeline stage: parse, format, check, lower, emit, link, and the command's own tool logic. `driver.c` knows which stages each command needs. A command runs in C only when every stage it needs is in C; otherwise the whole command goes to the Rust `ms` (`$MS_RUST_CLI`, or `ms-rust` beside the executable), so the conformance corpus runs through the C `ms` from the first day and a command flips to C when its last stage lands. Stage data cannot cross between the two implementations, which is why the handover is per command. `MS_DRIVER_TRACE=1` prints the choice; `MS_STAGES=parse=rust` overrides a row for comparison runs. Porting a stage: add its entry point to `libms.h`, write it in `src/`, flip its row. `make c-driver-test` runs the unit tests and checks that `ms` in front of the Rust `ms` gives identical output and status.

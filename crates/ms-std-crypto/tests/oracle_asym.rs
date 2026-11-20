@@ -41,7 +41,7 @@ fn flag(b: bool) -> String {
 
 #[test]
 fn matches_oracle() {
-    let data = include_str!("oracle/crypto_asym.tsv");
+    let data = include_str!("../../../runtime/tests/oracle/crypto_asym.tsv");
     let mut keys: HashMap<String, (Vec<u8>, Vec<u8>)> = HashMap::new();
     let mut n = 0;
     for line in data.lines().filter(|l| !l.starts_with('#')) {

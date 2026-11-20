@@ -9,3 +9,4 @@
 #include "mir.c"
 #include "mir_print.c"
 #include "mir_parse.c"
+#include "libms_api.c"
