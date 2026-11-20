@@ -420,14 +420,14 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
-        if (arg->has_name || params[i].flags != 0 || !body_is_value_type(b, params[i].ty) ||
+        if (arg->has_name || (params[i].flags & MS_PARAM_POSITIONAL) != 0 || !body_is_value_type(b, params[i].ty) ||
             ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return ms_body_unsupported(b);
         }
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
-    return body_is_value_type(b, result) ? result : ms_body_unsupported(b);
+    return body_is_value_type(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
 }
 
 static MsTy body_unary(MsBody *b, const MsExpr *e) {
@@ -831,7 +831,7 @@ static bool body_run(MsBody *b, const MsStmts *body) {
             body_jump_statement(b, s);
             falls = false;
             break;
-        case MS_S_CALL:
+        case MS_S_CALL: (void)ms_body_expr(b, s->u.expr, MS_TY_NONE); break;
         case MS_S_FOR: (void)ms_body_unsupported(b); break;
         }
     }
@@ -923,7 +923,7 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MsParam *p = fn->params.ptr[i];
-        if (!body_default_is_none(b, p) || p->is_mutable || p->moving || !body_is_bindable(b, params[i].ty)) {
+        if (!body_default_is_none(b, p) || !body_is_bindable(b, params[i].ty)) {
             return false;
         }
     }
@@ -944,7 +944,8 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     b->result = b->c->tys.result[sig];
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
-        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, 0, MS_ROLE_PARAM);
+        const uint8_t flags = (params[i].flags & MS_PARAM_VAR) != 0 ? MS_BIND_MUTABLE : 0;
+        (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, flags, MS_ROLE_PARAM);
     }
     if (b->supported) {
         body_statements(b, &fn->body);
