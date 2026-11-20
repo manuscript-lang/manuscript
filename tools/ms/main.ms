@@ -15,7 +15,10 @@ import (
 	SpawnOptions, Stdio, spawn from "@std/os/process.ms",
 
 	Invocation, parse_invocation, requests_help, takes_value, validate from "./args.ms",
+	rust_cli from "./bridge.ms",
 	command_help, command_names, overview from "./help.ms",
+	run_init from "./init.ms",
+	run_profile from "./profile.ms",
 )
 
 fn out(text: String) Void:
@@ -146,7 +149,7 @@ fn run_help(args: List[String]) Int:
 // Hands the whole command to the Rust `ms`.
 fn delegate(args: List[String]) Int:
 	env := environment().get_or(Map[String, String]())
-	program := env.get_or("MS_RUST_CLI", "ms-rust")
+	program := rust_cli()
 
 	if env.contains("MS_CLI_PLAN"):
 		out(f"delegate {args.join(" ")}\n")
@@ -195,6 +198,8 @@ fn run_source_command(args: List[String], usage_text: String) Int:
 		err(checked.err().message + "\n")
 		return 2
 
+	if inv.command == "profile": return run_profile(inv)
+
 	return delegate(args)
 
 export fn run(given: List[String]) Int:
@@ -232,6 +237,7 @@ export fn run(given: List[String]) Int:
 		return 0
 
 	if args[0] == "help": return run_help(args.drop(1))
+	if args[0] == "init": return run_init(args.drop(1))
 	if is_source_command(args[0]): return run_source_command(args, usage_text)
 
 	return delegate(args)

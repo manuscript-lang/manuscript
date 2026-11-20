@@ -12,7 +12,7 @@ typedef struct MsTls MsTls;
 
 /* A context holds the certificates and policy shared by connections: TLS 1.2 and up, no session tickets or caches.
    A server context needs `cert_pem` (chain) and `key_pem`. A client context verifies the peer against `ca_pem`
-   when given, else against the system store. Returns NULL on failure. */
+   when given, else against the system store, and presents `cert_pem` and `key_pem` when both are given. Returns NULL on failure. */
 MsTlsCtx *ms_tls_ctx_new(int server, const char *cert_pem, size_t cert_len, const char *key_pem, size_t key_len,
                            const char *ca_pem, size_t ca_len);
 void ms_tls_ctx_free(MsTlsCtx *ctx);
@@ -21,6 +21,10 @@ enum { MS_TLS_ALPN_MAX = 64 };
 /* The application protocols a client offers or a server accepts, most preferred first, as names separated by commas
    ("h2,http/1.1"). Returns 0, or -1 for an empty name or a list over MS_TLS_ALPN_MAX bytes on the wire. */
 int ms_tls_ctx_set_alpn(MsTlsCtx *ctx, const char *names);
+
+/* Server context: asks clients for a certificate and verifies it against `ca_pem` (the system store when empty);
+   with `require` a client without one fails the handshake. Returns 0, or -1 for unusable roots or a client context. */
+int ms_tls_ctx_verify_clients(MsTlsCtx *ctx, const char *ca_pem, size_t ca_len, int require);
 
 /* One connection. A client passes the host name to verify and to send as the server name; a server passes NULL. */
 MsTls *ms_tls_new(MsTlsCtx *ctx, const char *host);
@@ -47,6 +51,8 @@ uint32_t ms_tls_cipher(const MsTls *t);
    or NULL for an index past the end. */
 size_t ms_tls_peer_count(const MsTls *t);
 uint8_t *ms_tls_peer_der(const MsTls *t, size_t index, size_t *length);
+/* 1 when the peer presented a certificate chain that verified. */
+uint8_t ms_tls_verified(const MsTls *t);
 /* Queues close_notify. */
 int ms_tls_shutdown(MsTls *t);
 /* The last error as text, empty when none. Valid until the next call on `t`. */

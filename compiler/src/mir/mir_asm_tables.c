@@ -97,8 +97,7 @@ static size_t at_label_len(const char *line, size_t n) {
 }
 
 static bool at_ends_function(const char *line, size_t n) {
-    static const char *const stops[] = {".size", ".type", ".text", ".data", ".section", ".globl", ".balign",
-                                        ".p2align", ".bss", ".cfi_endproc", ".def", ".seh_endproc"};
+    static const char *const stops[] = {".size", ".type", ".text", ".data", ".section", ".globl", ".bss", ".cfi_endproc", ".def", ".seh_endproc"};
     while (n > 0 && (line[0] == '\t' || line[0] == ' ')) { /* LLVM indents directives, QBE does not */
         line++;
         n--;

@@ -84,7 +84,11 @@ static bool read_name(MsBytes message, size_t at, char text[NAME_MAX_TEXT], size
         for (size_t i = 0; i < label; i++) {
             const uint8_t byte = message.ptr[at + 1 + i];
             const bool printable = byte > 0x20 && byte < 0x7F;
-            text[used++] = printable ? (char)byte : (char)0x3F; /* '?' */
+            text[used] = '?';
+            if (printable) {
+                text[used] = (char)byte;
+            }
+            used++;
         }
         text[used++] = '.';
         at += 1 + label;
