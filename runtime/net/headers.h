@@ -19,7 +19,7 @@ enum { MS_HEADERS_MAX_FIELDS = 1024, MS_HEADERS_MAX_BYTES = 1 << 20 };
 /* An empty table, a heap object the runtime drops; NULL when out of memory. */
 MsHeaders *ms_headers_new(void);
 /* The table behind a handle the runtime passes to a native. */
-static inline MsHeaders *ms_headers_of(const void *handle) { return (MsHeaders *)handle; }
+MsHeaders *ms_headers_of(const void *handle);
 static inline MsObj *ms_headers_object(MsHeaders *table) { return (MsObj *)table; }
 
 /* Adds `value` under `name`, after the values already there. False when the table is full (MS_HEADERS_MAX_FIELDS

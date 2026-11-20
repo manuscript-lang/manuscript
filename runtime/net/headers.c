@@ -16,6 +16,7 @@ typedef struct Field {
 
 struct MsHeaders {
     MsObj header; /* first: the handle the runtime holds */
+    MsHeaders *self; /* the handle's writable view: natives receive it as a const pointer */
     Field *fields;
     size_t count, capacity;
     uint8_t *bytes;
@@ -33,8 +34,11 @@ MsHeaders *ms_headers_new(void) {
     MsHeaders *table = msrt_alloc(sizeof *table);
     memset(table, 0, sizeof *table);
     table->header.drop = table_drop;
+    table->self = table;
     return table;
 }
+
+MsHeaders *ms_headers_of(const void *handle) { return ((const MsHeaders *)handle)->self; }
 
 static MsBytes name_of(const MsHeaders *table, const Field *field) { return ms_bytes_of(table->bytes + field->name, field->name_len); }
 static MsBytes value_of(const MsHeaders *table, const Field *field) { return ms_bytes_of(table->bytes + field->value, field->value_len); }

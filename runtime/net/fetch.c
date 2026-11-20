@@ -19,8 +19,10 @@ enum { READ_DEFAULT = 64 * 1024, READ_ALL_LIMIT = 1 << 30 };
 
 /* ---- the body object (BodyH) ---- */
 
-typedef struct BodyObject {
+typedef struct BodyObject BodyObject;
+struct BodyObject {
     MsObj header;
+    struct BodyObject *self; /* the writable view of the const handle the natives receive */
     MsObj *conn;           /* a handle on the connection's core, which the exchange needs open */
     MsHttpBody *exchange;  /* NULL once the body is closed */
     MsObj *headers;        /* the response's, kept for `metadata` after the close */
@@ -28,7 +30,9 @@ typedef struct BodyObject {
     const char *protocol;
     int64_t deadline_ns;   /* one deadline covers the head and the whole body */
     bool failed;           /* a read failed: the connection is not reusable */
-} BodyObject;
+};
+
+static BodyObject *body_of(const void *handle) { return ((const BodyObject *)handle)->self; }
 
 static void release(MsObj *object) {
     if (object != NULL && object->drop != NULL) {
@@ -77,7 +81,7 @@ static uint8_t body_read_some(BodyObject *body, uint8_t *buffer, size_t capacity
 }
 
 uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err) {
-    BodyObject *body = (BodyObject *)handle;
+    BodyObject *body = body_of(handle);
     if (has_max != 0 && max <= 0) {
         return STATUS_INVALID_INPUT;
     }
@@ -99,7 +103,7 @@ uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec 
 }
 
 uint8_t msstd_body_read_all(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err) {
-    BodyObject *body = (BodyObject *)handle;
+    BodyObject *body = body_of(handle);
     if (has_max != 0 && max < 0) {
         return STATUS_INVALID_INPUT;
     }
@@ -147,7 +151,7 @@ void msstd_body_metadata(const void *handle, MsNetBodyMetadata *out) {
     ms_net_write_text(&out->protocol, body->protocol);
 }
 
-void msstd_body_close(const void *handle) { body_end((BodyObject *)handle); }
+void msstd_body_close(const void *handle) { body_end(body_of(handle)); }
 
 /* ---- the request ---- */
 
@@ -244,7 +248,7 @@ static MsNetStatus run_exchange(MsNetConn *conn, bool http2, const MsHttpRequest
 }
 
 uint8_t msstd_http_fetch(const void *handle, const MsStr *method, const MsStr *authority, const MsStr *target,
-                         const void *headers, const MsVec *payload, uint8_t has_timeout, int64_t timeout, void **out,
+                         const void *headers, const MsVec *body, uint8_t has_timeout, int64_t timeout, void **out,
                          MsStr *err) {
     MsNetConn *conn = ms_netconn_of(handle);
     const bool http2 = negotiated_h2(ms_netconn_table(conn), ms_netconn_id(conn));
@@ -262,15 +266,15 @@ uint8_t msstd_http_fetch(const void *handle, const MsStr *method, const MsStr *a
     const MsHttpRequest request = {.method = str_bytes(method), .authority = str_bytes(authority), .target = str_bytes(target),
                                    .head = ms_bytes_of(block.bytes, block.length),
                                    .fields = block.fields, .nfields = (uint32_t)block.count,
-                                   .body = ms_bytes_of(payload->ptr, payload->len)};
+                                   .body = ms_bytes_of(body->ptr, body->len)};
     const int64_t deadline = ms_net_deadline_of(has_timeout, timeout);
     MsHttpResponse response;
     MsHttpBody *exchange = NULL;
     const MsNetStatus result = run_exchange(conn, http2, &request, deadline, &response, &exchange);
     block_free(&block);
     MsObj *received = result == MS_NET_OK ? response_headers(&response) : NULL;
-    BodyObject *body = received == NULL ? NULL : msrt_alloc_zeroed(sizeof *body);
-    if (body == NULL) {
+    BodyObject *object = received == NULL ? NULL : msrt_alloc_zeroed(sizeof *object);
+    if (object == NULL) {
         if (exchange != NULL) {
             exchange->close(exchange);
         }
@@ -280,13 +284,14 @@ uint8_t msstd_http_fetch(const void *handle, const MsStr *method, const MsStr *a
         return ms_net_finish(result == MS_NET_OK ? MS_NET_FAILED : result,
                              ms_conn_error_code(ms_netconn_table(conn), ms_netconn_id(conn)), err);
     }
-    body->header.drop = body_drop;
-    body->conn = ms_netconn_alias(handle);
-    body->exchange = exchange;
-    body->headers = received;
-    body->status = response.status;
-    body->protocol = http2 ? "HTTP/2.0" : "HTTP/1.1";
-    body->deadline_ns = deadline;
-    *out = &body->header;
+    object->header.drop = body_drop;
+    object->self = object;
+    object->conn = ms_netconn_alias(handle);
+    object->exchange = exchange;
+    object->headers = received;
+    object->status = response.status;
+    object->protocol = http2 ? "HTTP/2.0" : "HTTP/1.1";
+    object->deadline_ns = deadline;
+    *out = &object->header;
     return STATUS_OK;
 }
