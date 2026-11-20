@@ -43,16 +43,32 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE);
 }
 
-/* A `type`, `enum` or interface without type parameters. */
+static bool body_is_admitted(const MsBody *b, MsTy ty);
+
+/* A `type`, `enum` or interface the program declares, whose type arguments (if it has any) are
+ * themselves admitted. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
     const uint32_t def = tys->def[ty];
-    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || tys->nargs[ty] != 0 || def == 0) {
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || def == 0) {
         return false;
     }
     const MsSymId sym = def - 1;
-    return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
+    if (sym >= b->c->syms.count || b->c->syms.kind[sym] != MS_SYM_TYPE) {
+        return false;
+    }
+    // An argument that must meet a bound (`K: Hashable`) is checked against it by the Rust checker.
+    const MsDef *definition = tys->nargs[ty] == 0 ? NULL : ms_def(b->c, sym);
+    if (tys->nargs[ty] != 0 && (definition == NULL || definition->nvars < tys->nargs[ty])) {
+        return false;
+    }
+    for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
+        if (!body_is_admitted(b, ms_ty_args(tys, ty)[i]) || ms_var_info(b->c, definition->vars[i])->nbounds != 0) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static bool body_text_is(const MsBody *b, MsSym name, const char *text);
