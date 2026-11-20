@@ -34,9 +34,9 @@ struct iovec {
   void *iov_base; /* Pointer to data.  */
   size_t iov_len; /* Length of data.  */
 };
-#else // !_WIN32
+#else // !defined(_WIN32)
 #  include <sys/uio.h>
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 
 #include <cassert>
 #include <cstring>
@@ -60,10 +60,7 @@ namespace nghttp2 {
 
 template <size_t N> struct Memchunk {
   Memchunk(Memchunk *next_chunk)
-    : pos(std::ranges::begin(buf)),
-      last(pos),
-      knext(next_chunk),
-      next(nullptr) {}
+    : pos(std::ranges::begin(buf)), last(pos), knext(next_chunk) {}
   size_t len() const { return as_unsigned(last - pos); }
   size_t left() const {
     return static_cast<size_t>(std::ranges::end(buf) - last);
@@ -72,12 +69,12 @@ template <size_t N> struct Memchunk {
   std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
   Memchunk *knext;
-  Memchunk *next;
-  static const size_t size = N;
+  Memchunk *next{};
+  static constexpr size_t size = N;
 };
 
 template <typename T> struct Pool {
-  Pool() : pool(nullptr), freelist(nullptr), poolsize(0), freelistsize(0) {}
+  Pool() noexcept = default;
   ~Pool() { clear(); }
   T *get() {
     if (freelist) {
@@ -110,21 +107,14 @@ template <typename T> struct Pool {
     poolsize = 0;
   }
   using value_type = T;
-  T *pool;
-  T *freelist;
-  size_t poolsize;
-  size_t freelistsize;
+  T *pool{};
+  T *freelist{};
+  size_t poolsize{};
+  size_t freelistsize{};
 };
 
 template <typename Memchunk> struct Memchunks {
-  Memchunks(Pool<Memchunk> *pool)
-    : pool(pool),
-      head(nullptr),
-      tail(nullptr),
-      len(0),
-      mark(nullptr),
-      mark_pos(nullptr),
-      mark_offset(0) {}
+  Memchunks(Pool<Memchunk> *pool) : pool(pool) {}
   Memchunks(const Memchunks &) = delete;
   Memchunks(Memchunks &&other) noexcept
     : pool{other.pool}, // keep other.pool
@@ -172,7 +162,7 @@ template <typename Memchunk> struct Memchunks {
     *tail->last++ = as_unsigned(c);
     ++len;
   }
-  template <std::input_iterator I> void append(I first, I last) {
+  template <std::forward_iterator I> void append(I first, I last) {
     if (first == last) {
       return;
     }
@@ -181,14 +171,16 @@ template <typename Memchunk> struct Memchunks {
       head = tail = pool->get();
     }
 
+    auto inlen = static_cast<size_t>(std::ranges::distance(first, last));
+
     for (;;) {
-      auto n = std::min(static_cast<size_t>(std::ranges::distance(first, last)),
-                        tail->left());
+      auto n = std::min(inlen, tail->left());
       auto iores = std::ranges::copy_n(first, as_signed(n), tail->last);
       first = iores.in;
       tail->last = iores.out;
       len += n;
-      if (first == last) {
+      inlen -= n;
+      if (inlen == 0) {
         break;
       }
 
@@ -202,7 +194,7 @@ template <typename Memchunk> struct Memchunks {
     auto s = static_cast<const uint8_t *>(src);
     append(s, s + count);
   }
-  template <std::ranges::input_range R>
+  template <std::ranges::forward_range R>
   requires(!std::is_array_v<std::remove_cvref_t<R>>)
   void append(R &&r) {
     append(std::ranges::begin(r), std::ranges::end(r));
@@ -238,26 +230,25 @@ template <typename Memchunk> struct Memchunks {
     }
     return len;
   }
-  size_t remove(void *dest, size_t count) {
+  size_t remove(std::span<uint8_t> dest) {
     assert(mark == nullptr);
 
-    if (!tail || count == 0) {
+    if (!tail || dest.empty()) {
       return 0;
     }
 
-    auto first = static_cast<uint8_t *>(dest);
-    auto last = first + count;
-
+    auto destlen = dest.size();
     auto m = head;
 
     while (m) {
       auto next = m->next;
-      auto n = std::min(static_cast<size_t>(last - first), m->len());
+      auto n = std::min(dest.size(), m->len());
 
       assert(m->len());
-      auto iores = std::ranges::copy_n(m->pos, as_signed(n), first);
-      m->pos = iores.in;
-      first = iores.out;
+
+      m->pos =
+        std::ranges::copy_n(m->pos, as_signed(n), std::ranges::begin(dest)).in;
+      dest = dest.subspan(n);
       len -= n;
       if (m->len() > 0) {
         break;
@@ -270,7 +261,7 @@ template <typename Memchunk> struct Memchunks {
       tail = nullptr;
     }
 
-    return as_unsigned(first - static_cast<uint8_t *>(dest));
+    return destlen - dest.size();
   }
   size_t remove(Memchunks &dest, size_t count) {
     assert(mark == nullptr);
@@ -384,24 +375,24 @@ template <typename Memchunk> struct Memchunks {
     }
     return ndata - count;
   }
-  int riovec(struct iovec *iov, int iovcnt) const {
-    if (!head) {
-      return 0;
+  std::span<struct iovec> riovec(std::span<struct iovec> iov) const {
+    if (!head || iov.empty()) {
+      return {};
     }
     auto m = head;
-    int i;
-    for (i = 0; i < iovcnt && m; ++i, m = m->next) {
+    size_t i;
+    for (i = 0; i < iov.size() && m; ++i, m = m->next) {
       iov[i].iov_base = m->pos;
       iov[i].iov_len = m->len();
     }
-    return i;
+    return iov.first(i);
   }
-  int riovec_mark(struct iovec *iov, int iovcnt) {
-    if (!head || iovcnt == 0) {
-      return 0;
+  std::span<struct iovec> riovec_mark(std::span<struct iovec> iov) {
+    if (!head || iov.empty()) {
+      return {};
     }
 
-    int i = 0;
+    size_t i = 0;
     Memchunk *m;
     if (mark) {
       if (mark_pos != mark->last) {
@@ -418,7 +409,7 @@ template <typename Memchunk> struct Memchunks {
       m = head;
     }
 
-    for (; i < iovcnt && m; ++i, m = m->next) {
+    for (; i < iov.size() && m; ++i, m = m->next) {
       iov[i].iov_base = m->pos;
       iov[i].iov_len = m->len();
 
@@ -427,10 +418,17 @@ template <typename Memchunk> struct Memchunks {
       mark_offset += m->len();
     }
 
-    return i;
+    return iov.first(i);
   }
   size_t rleft() const { return len; }
   size_t rleft_mark() const { return len - mark_offset; }
+  std::span<const uint8_t> peek() const {
+    if (!head) {
+      return {};
+    }
+
+    return {head->pos, head->len()};
+  }
   void reset() {
     for (auto m = head; m;) {
       auto next = m->next;
@@ -444,36 +442,44 @@ template <typename Memchunk> struct Memchunks {
   }
 
   Pool<Memchunk> *pool;
-  Memchunk *head, *tail;
-  size_t len;
-  Memchunk *mark;
-  uint8_t *mark_pos;
-  size_t mark_offset;
+  Memchunk *head{}, *tail{};
+  size_t len{};
+  Memchunk *mark{};
+  uint8_t *mark_pos{};
+  size_t mark_offset{};
 };
 
 using Memchunk16K = Memchunk<16_k>;
 using MemchunkPool = Pool<Memchunk16K>;
 using DefaultMemchunks = Memchunks<Memchunk16K>;
 
-inline int limit_iovec(struct iovec *iov, int iovcnt, size_t max) {
+inline std::span<struct iovec> limit_iovec(std::span<struct iovec> iov,
+                                           size_t max) {
   if (max == 0) {
-    return 0;
+    return {};
   }
-  for (int i = 0; i < iovcnt; ++i) {
-    auto d = std::min(max, iov[i].iov_len);
-    iov[i].iov_len = d;
-    max -= d;
-    if (max == 0) {
-      return i + 1;
+
+  size_t i;
+  for (i = 0; i < iov.size(); ++i) {
+    auto &v = iov[i];
+
+    if (max <= v.iov_len) {
+      v.iov_len = max;
+      ++i;
+
+      break;
     }
+
+    max -= v.iov_len;
   }
-  return iovcnt;
+
+  return iov.first(i);
 }
 
 // MemchunkBuffer is similar to Buffer, but it uses pooled Memchunk
 // for its underlying buffer.
 template <typename Memchunk> struct MemchunkBuffer {
-  MemchunkBuffer(Pool<Memchunk> *pool) : pool(pool), chunk(nullptr) {}
+  MemchunkBuffer(Pool<Memchunk> *pool) : pool(pool) {}
   MemchunkBuffer(const MemchunkBuffer &) = delete;
   MemchunkBuffer(MemchunkBuffer &&other) noexcept
     : pool(other.pool), chunk(other.chunk) {
@@ -560,13 +566,16 @@ template <typename Memchunk> struct MemchunkBuffer {
   uint8_t *begin() { return std::ranges::begin(chunk->buf); }
   uint8_t &operator[](size_t n) { return chunk->buf[n]; }
   const uint8_t &operator[](size_t n) const { return chunk->buf[n]; }
+  // Returns the readable chunk of data.
+  std::span<const uint8_t> peek() const { return {chunk->pos, chunk->len()}; }
+  std::span<uint8_t> wbuffer() { return {chunk->last, chunk->left()}; }
 
   Pool<Memchunk> *pool;
-  Memchunk *chunk;
+  Memchunk *chunk{};
 };
 
 using DefaultMemchunkBuffer = MemchunkBuffer<Memchunk16K>;
 
 } // namespace nghttp2
 
-#endif // MEMCHUNK_H
+#endif // !defined(MEMCHUNK_H)

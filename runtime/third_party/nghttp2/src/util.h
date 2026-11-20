@@ -29,14 +29,14 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <getopt.h>
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 #ifdef __QNX__
 #  include <sys/time.h>
-#endif // __QNX__
+#endif // defined(__QNX__)
 
 #include <cmath>
 #include <cstring>
@@ -44,34 +44,35 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <sstream>
 #include <memory>
 #include <chrono>
+#include <fstream>
 #include <unordered_map>
 #include <random>
-#include <optional>
 #include <ranges>
 #include <bit>
+#include <expected>
 
 #ifdef HAVE_LIBEV
 #  include <ev.h>
-#endif // HAVE_LIBEV
+#endif // defined(HAVE_LIBEV)
 
 #include "urlparse.h"
 
 #include "template.h"
 #include "network.h"
 #include "allocator.h"
+#include "errors.h"
 
 using namespace std::literals;
 
 namespace nghttp2 {
 
-constexpr auto NGHTTP2_H2_ALPN = "\x2h2"sv;
-constexpr auto NGHTTP2_H2 = "h2"sv;
+inline constexpr auto NGHTTP2_H2_ALPN = "\x2h2"sv;
+inline constexpr auto NGHTTP2_H2 = "h2"sv;
 
-constexpr auto NGHTTP2_H1_1_ALPN = "\x8http/1.1"sv;
-constexpr auto NGHTTP2_H1_1 = "http/1.1"sv;
+inline constexpr auto NGHTTP2_H1_1_ALPN = "\x8http/1.1"sv;
+inline constexpr auto NGHTTP2_H1_1 = "http/1.1"sv;
 
 namespace util {
 
@@ -90,7 +91,7 @@ constexpr auto alpha_pred(size_t i) noexcept {
   return ('A' <= i && i <= 'Z') || ('a' <= i && i <= 'z');
 }
 
-constinit const auto is_alpha_tbl = pred_tbl_gen256(alpha_pred);
+inline constexpr auto is_alpha_tbl = pred_tbl_gen256(alpha_pred);
 
 constexpr bool is_alpha(char c) noexcept {
   return is_alpha_tbl[static_cast<uint8_t>(c)];
@@ -98,60 +99,56 @@ constexpr bool is_alpha(char c) noexcept {
 
 constexpr auto digit_pred(size_t i) noexcept { return '0' <= i && i <= '9'; }
 
-constinit const auto is_digit_tbl = pred_tbl_gen256(digit_pred);
+inline constexpr auto is_digit_tbl = pred_tbl_gen256(digit_pred);
 
 constexpr bool is_digit(char c) noexcept {
   return is_digit_tbl[static_cast<uint8_t>(c)];
 }
 
-constinit const auto is_hex_digit_tbl = pred_tbl_gen256([](auto i) {
+constexpr auto hex_digit_pred(size_t i) noexcept {
   return digit_pred(i) || ('A' <= i && i <= 'F') || ('a' <= i && i <= 'f');
-});
+}
+
+inline constexpr auto is_hex_digit_tbl = pred_tbl_gen256(hex_digit_pred);
 
 constexpr bool is_hex_digit(char c) noexcept {
   return is_hex_digit_tbl[static_cast<uint8_t>(c)];
 }
 
 // Returns true if a range [|first|, |last|) is hex string.
-template <std::input_iterator I> constexpr bool is_hex_string(I first, I last) {
-  if (std::ranges::distance(first, last) % 2) {
-    return false;
-  }
-
-  for (; first != last; ++first) {
-    if (!is_hex_digit(*first)) {
-      return false;
-    }
-  }
-
-  return true;
+template <std::forward_iterator I>
+constexpr bool is_hex_string(I first, I last) {
+  return !(std::ranges::distance(first, last) & 1) &&
+         std::ranges::all_of(first, last, is_hex_digit);
 }
 
 // Returns true if |r| is hex string.
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr bool is_hex_string(R &&r) {
   return is_hex_string(std::ranges::begin(r), std::ranges::end(r));
 }
 
-constinit const auto in_rfc3986_unreserved_chars_tbl =
-  pred_tbl_gen256([](size_t i) {
-    switch (i) {
-    case '-':
-    case '.':
-    case '_':
-    case '~':
-      return true;
-    }
+constexpr auto rfc3986_unreserved_chars_pred(size_t i) noexcept {
+  switch (i) {
+  case '-':
+  case '.':
+  case '_':
+  case '~':
+    return true;
+  }
 
-    return digit_pred(i) || alpha_pred(i);
-  });
+  return digit_pred(i) || alpha_pred(i);
+}
+
+inline constexpr auto in_rfc3986_unreserved_chars_tbl =
+  pred_tbl_gen256(rfc3986_unreserved_chars_pred);
 
 constexpr bool in_rfc3986_unreserved_chars(char c) noexcept {
   return in_rfc3986_unreserved_chars_tbl[static_cast<uint8_t>(c)];
 }
 
-constinit const auto in_rfc3986_sub_delims_tbl = pred_tbl_gen256([](size_t i) {
+constexpr auto rfc3986_sub_delims_pred(size_t i) noexcept {
   switch (i) {
   case '!':
   case '$':
@@ -168,7 +165,10 @@ constinit const auto in_rfc3986_sub_delims_tbl = pred_tbl_gen256([](size_t i) {
   }
 
   return false;
-});
+}
+
+inline constexpr auto in_rfc3986_sub_delims_tbl =
+  pred_tbl_gen256(rfc3986_sub_delims_pred);
 
 constexpr bool in_rfc3986_sub_delims(char c) noexcept {
   return in_rfc3986_sub_delims_tbl[static_cast<uint8_t>(c)];
@@ -197,14 +197,14 @@ constexpr auto token_pred(size_t i) noexcept {
   return digit_pred(i) || alpha_pred(i);
 }
 
-constinit const auto in_token_tbl = pred_tbl_gen256(token_pred);
+inline constexpr auto in_token_tbl = pred_tbl_gen256(token_pred);
 
 // Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
 constexpr bool in_token(char c) noexcept {
   return in_token_tbl[static_cast<uint8_t>(c)];
 }
 
-constinit const auto in_attr_char_tbl = pred_tbl_gen256([](size_t i) {
+constexpr auto attr_char_pred(size_t i) noexcept {
   switch (i) {
   case '*':
   case '\'':
@@ -213,13 +213,15 @@ constinit const auto in_attr_char_tbl = pred_tbl_gen256([](size_t i) {
   }
 
   return token_pred(i);
-});
+}
+
+inline constexpr auto in_attr_char_tbl = pred_tbl_gen256(attr_char_pred);
 
 constexpr bool in_attr_char(char c) noexcept {
   return in_attr_char_tbl[static_cast<uint8_t>(c)];
 }
 
-constinit const auto hex_to_uint_tbl = []() {
+inline constexpr auto hex_to_uint_tbl = [] {
   std::array<uint32_t, 256> tbl;
 
   std::ranges::fill(tbl, 256);
@@ -277,28 +279,28 @@ constexpr O percent_decode(I first, I last, O result) {
   return result;
 }
 
-template <std::input_iterator I>
+template <std::forward_iterator I>
 constexpr std::string percent_decode(I first, I last) {
   std::string result;
 
-  result.resize(as_unsigned(std::ranges::distance(first, last)));
-
-  auto p = percent_decode(std::move(first), std::move(last),
-                          std::ranges::begin(result));
-
-  result.resize(
-    as_unsigned(std::ranges::distance(std::ranges::begin(result), p)));
+  result.resize_and_overwrite(
+    as_unsigned(std::ranges::distance(first, last)),
+    [first = std::move(first), last = std::move(last)](auto p,
+                                                       auto len) mutable {
+      return std::ranges::distance(
+        p, percent_decode(std::move(first), std::move(last), p));
+    });
 
   return result;
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr std::string percent_decode(R &&r) {
   return percent_decode(std::ranges::begin(r), std::ranges::end(r));
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::string_view percent_decode(BlockAllocator &balloc, R &&r) {
   auto iov = make_byte_ref(balloc, std::ranges::size(r) + 1);
@@ -338,7 +340,7 @@ constexpr O quote_string(R &&r, O result) {
                       std::move(result));
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::string_view quote_string(BlockAllocator &balloc, R &&r) {
   auto cnt = std::ranges::count(r, '"');
@@ -375,18 +377,23 @@ constexpr size_t quote_stringlen(R &&r) {
   return n;
 }
 
-constinit const auto hexdigits = []() {
-  constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
+inline constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 
-  std::array<char, 512> tbl;
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+constexpr O format_hex_uint8(uint8_t b, O result) {
+#ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif // __GNUC__
+  *result++ = LOWER_XDIGITS[b >> 4];
+  *result++ = LOWER_XDIGITS[b & 0xF];
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif // __GNUC__
 
-  for (size_t i = 0; i < 256; ++i) {
-    tbl[i * 2] = LOWER_XDIGITS[static_cast<size_t>(i >> 4)];
-    tbl[i * 2 + 1] = LOWER_XDIGITS[static_cast<size_t>(i & 0xf)];
-  }
-
-  return tbl;
-}();
+  return result;
+}
 
 // Converts a range [|first|, |last|) in hex format, and stores the
 // result in another range, beginning at |result|.  It returns an
@@ -396,9 +403,7 @@ requires(std::indirectly_writable<O, char> &&
          sizeof(std::iter_value_t<I>) == sizeof(uint8_t))
 constexpr O format_hex(I first, I last, O result) {
   for (; first != last; ++first) {
-    result = std::ranges::copy_n(
-               hexdigits.data() + static_cast<uint8_t>(*first) * 2, 2, result)
-               .out;
+    result = format_hex_uint8(static_cast<uint8_t>(*first), result);
   }
 
   return result;
@@ -419,7 +424,7 @@ constexpr O format_hex(R &&r, O result) {
 // Converts |R| in hex format, and stores the result in a buffer
 // allocated by |balloc|.  It returns std::string_view that is backed by the
 // allocated buffer.  The returned string is NULL terminated.
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 std::string_view format_hex(BlockAllocator &balloc, R &&r) {
@@ -432,15 +437,16 @@ std::string_view format_hex(BlockAllocator &balloc, R &&r) {
 }
 
 // Converts |R| in hex format, and returns the result.
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 constexpr std::string format_hex(R &&r) {
   std::string res;
 
-  res.resize(as_unsigned(std::ranges::distance(r) * 2));
-
-  format_hex(std::forward<R>(r), std::ranges::begin(res));
+  res.resize_and_overwrite(as_unsigned(std::ranges::distance(r) * 2),
+                           [&r](auto p, auto len) {
+                             return std::ranges::distance(p, format_hex(r, p));
+                           });
 
   return res;
 }
@@ -449,7 +455,7 @@ template <std::unsigned_integral T, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 constexpr O format_hex(T n, O result) {
   if constexpr (sizeof(n) == 1) {
-    return std::ranges::copy_n(hexdigits.data() + n * 2, 2, result).out;
+    return format_hex_uint8(n, result);
   }
 
   if constexpr (std::endian::native == std::endian::little) {
@@ -457,38 +463,36 @@ constexpr O format_hex(T n, O result) {
     auto p = end + sizeof(n);
 
     for (; p != end; --p) {
-      result =
-        std::ranges::copy_n(hexdigits.data() + *(p - 1) * 2, 2, result).out;
+      result = format_hex_uint8(*(p - 1), result);
     }
   } else {
     auto p = reinterpret_cast<uint8_t *>(&n);
     auto end = p + sizeof(n);
 
     for (; p != end; ++p) {
-      result = std::ranges::copy_n(hexdigits.data() + *p * 2, 2, result).out;
+      result = format_hex_uint8(*p, result);
     }
   }
 
   return result;
 }
 
-constinit const auto upper_hexdigits = []() {
-  constexpr char UPPER_XDIGITS[] = "0123456789ABCDEF";
-
-  std::array<char, 512> tbl;
-
-  for (size_t i = 0; i < 256; ++i) {
-    tbl[i * 2] = UPPER_XDIGITS[static_cast<size_t>(i >> 4)];
-    tbl[i * 2 + 1] = UPPER_XDIGITS[static_cast<size_t>(i & 0xf)];
-  }
-
-  return tbl;
-}();
+inline constexpr char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
 template <std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-constexpr O format_upper_hex(uint8_t c, O result) {
-  return std::ranges::copy_n(upper_hexdigits.data() + c * 2, 2, result).out;
+constexpr O format_upper_hex_uint8(uint8_t b, O result) {
+#ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif // __GNUC__
+  *result++ = UPPER_XDIGITS[b >> 4];
+  *result++ = UPPER_XDIGITS[b & 0xF];
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif // __GNUC__
+
+  return result;
 }
 
 // decode_hex decodes hex string in a range [|first|, |last|), and
@@ -523,7 +527,7 @@ constexpr O decode_hex(R &&r, O result) {
 // the decoded byte string, which is not NULL terminated.  This
 // function assumes a range [|first|, |last|) is hex string, that is
 // is_hex_string(|first|, |last|) == true.
-template <std::input_iterator I>
+template <std::forward_iterator I>
 std::span<const uint8_t> decode_hex(BlockAllocator &balloc, I first, I last) {
   auto iov =
     make_byte_ref(balloc, as_unsigned(std::ranges::distance(first, last) / 2));
@@ -536,7 +540,7 @@ std::span<const uint8_t> decode_hex(BlockAllocator &balloc, I first, I last) {
 // decode_hex decodes hex string |r|, returns the decoded byte string,
 // which is not NULL terminated.  This function assumes |r| is hex
 // string, that is is_hex_string(r) == true.
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<const uint8_t> decode_hex(BlockAllocator &balloc, R &&r) {
   return decode_hex(balloc, std::ranges::begin(r), std::ranges::end(r));
@@ -552,13 +556,13 @@ constexpr O percent_encode_token(I first, I last, O result) noexcept {
   for (; first != last; ++first) {
     auto c = static_cast<uint8_t>(*first);
 
-    if (c != '%' && in_token(as_signed(c))) {
+    if (c != '%' && in_token(static_cast<char>(c))) {
       *result++ = static_cast<result_type>(c);
       continue;
     }
 
     *result++ = '%';
-    result = format_upper_hex(c, result);
+    result = format_upper_hex_uint8(c, result);
   }
 
   return result;
@@ -593,14 +597,9 @@ constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
   return n;
 }
 
-time_t parse_http_date(const std::string_view &s);
+std::expected<time_t, Error> parse_http_date(std::string_view s);
 
-// Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
-// 00:55:52 2015 GMT), which is specifically used by OpenSSL
-// ASN1_TIME_print().
-time_t parse_openssl_asn1_time_print(const std::string_view &s);
-
-constinit const auto upcase_tbl = []() {
+inline constexpr auto upcase_tbl = [] {
   std::array<char, 256> tbl;
 
   for (size_t i = 0; i < 256; ++i) {
@@ -618,32 +617,25 @@ constexpr char upcase(char c) noexcept {
   return upcase_tbl[static_cast<uint8_t>(c)];
 }
 
-static constexpr uint8_t lowcase_tbl[] = {
-  0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,
-  15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
-  30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43,  44,
-  45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,
-  60,  61,  62,  63,  64,  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
-  'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y',
-  'z', 91,  92,  93,  94,  95,  96,  97,  98,  99,  100, 101, 102, 103, 104,
-  105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119,
-  120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134,
-  135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149,
-  150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164,
-  165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179,
-  180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194,
-  195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209,
-  210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224,
-  225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
-  240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254,
-  255,
-};
+inline constexpr auto lowcase_tbl = [] {
+  std::array<char, 256> tbl;
+
+  for (size_t i = 0; i < 256; ++i) {
+    if ('A' <= i && i <= 'Z') {
+      tbl[i] = static_cast<char>(i - 'A' + 'a');
+    } else {
+      tbl[i] = static_cast<char>(i);
+    }
+  }
+
+  return tbl;
+}();
 
 constexpr char lowcase(char c) noexcept {
-  return static_cast<char>(lowcase_tbl[static_cast<uint8_t>(c)]);
+  return lowcase_tbl[static_cast<uint8_t>(c)];
 }
 
-template <std::ranges::input_range R1, std::ranges::input_range R2>
+template <std::ranges::forward_range R1, std::ranges::forward_range R2>
 constexpr bool starts_with(R1 &&s, R2 &&prefix) {
   auto prefixlen = std::ranges::distance(prefix);
   return std::ranges::distance(s) >= prefixlen &&
@@ -657,7 +649,7 @@ struct CaseCmp {
   }
 };
 
-template <std::ranges::input_range R1, std::ranges::input_range R2>
+template <std::ranges::forward_range R1, std::ranges::forward_range R2>
 constexpr bool istarts_with(R1 &&s, R2 &&prefix) {
   auto prefixlen = std::ranges::distance(prefix);
   return std::ranges::distance(s) >= prefixlen &&
@@ -665,7 +657,7 @@ constexpr bool istarts_with(R1 &&s, R2 &&prefix) {
                             std::forward<R2>(prefix), CaseCmp());
 }
 
-template <std::ranges::input_range R1, std::ranges::input_range R2>
+template <std::ranges::forward_range R1, std::ranges::forward_range R2>
 constexpr bool ends_with(R1 &&s, R2 &&suffix) {
   auto slen = std::ranges::distance(s);
   auto suffixlen = std::ranges::distance(suffix);
@@ -675,7 +667,7 @@ constexpr bool ends_with(R1 &&s, R2 &&suffix) {
            std::forward<R2>(suffix));
 }
 
-template <std::ranges::input_range R1, std::ranges::input_range R2>
+template <std::ranges::forward_range R1, std::ranges::forward_range R2>
 constexpr bool iends_with(R1 &&s, R2 &&suffix) {
   auto slen = std::ranges::distance(s);
   auto suffixlen = std::ranges::distance(suffix);
@@ -722,7 +714,7 @@ constexpr O tolower(R &&r, O result) {
 // Returns string representation of |n| with 2 fractional digits.
 std::string dtos(double n);
 
-constinit const auto count_digit_tbl = []() {
+inline constexpr auto count_digit_tbl = [] {
   std::array<uint64_t, std::numeric_limits<uint64_t>::digits10> tbl;
 
   uint64_t x = 1;
@@ -750,7 +742,7 @@ template <std::unsigned_integral T> constexpr size_t count_digit(T x) {
   return y + 1;
 }
 
-constinit const auto utos_digits = []() {
+inline constexpr auto utos_digits = [] {
   std::array<char, 200> a;
 
   for (size_t i = 0; i < 100; ++i) {
@@ -812,9 +804,9 @@ template <std::unsigned_integral T> constexpr std::string utos(T n) {
 
   std::string res;
 
-  res.resize(count_digit(n));
-
-  utos(n, std::ranges::begin(res));
+  res.resize_and_overwrite(count_digit(n), [n](auto p, auto len) {
+    return std::ranges::distance(p, utos(n, p));
+  });
 
   return res;
 }
@@ -893,11 +885,11 @@ struct CompactHexFormatter {
       assert(p != end);
 
       if (*(p - 1) < 16) {
-        *result++ = static_cast<result_type>(upper_hexdigits[*--p * 2 + 1]);
+        *result++ = static_cast<result_type>(UPPER_XDIGITS[(*--p) & 0xF]);
       }
 
       for (; p != end; --p) {
-        result = format_upper_hex(*(p - 1), result);
+        result = format_upper_hex_uint8(*(p - 1), result);
       }
     } else {
       auto p = reinterpret_cast<uint8_t *>(&n);
@@ -907,11 +899,11 @@ struct CompactHexFormatter {
         ;
 
       if (*p < 16) {
-        *result++ = static_cast<result_type>(upper_hexdigits[*p++ * 2 + 1]);
+        *result++ = static_cast<result_type>(UPPER_XDIGITS[(*p++) & 0xF]);
       }
 
       for (; p != end; ++p) {
-        result = format_upper_hex(*p, result);
+        result = format_upper_hex_uint8(*p, result);
       }
     }
 
@@ -927,8 +919,7 @@ O utox(T n, O result) {
 
 void to_token68(std::string &base64str);
 
-std::string_view to_base64(BlockAllocator &balloc,
-                           const std::string_view &token68str);
+std::string_view to_base64(BlockAllocator &balloc, std::string_view token68str);
 
 void show_candidates(const char *unkopt, const option *options);
 
@@ -941,7 +932,7 @@ bool fieldeq(const char *uri, const urlparse_url &u, urlparse_url_fields field,
              const char *t);
 
 bool fieldeq(const char *uri, const urlparse_url &u, urlparse_url_fields field,
-             const std::string_view &t);
+             std::string_view t);
 
 std::string_view get_uri_field(const char *uri, const urlparse_url &u,
                                urlparse_url_fields field);
@@ -950,9 +941,6 @@ uint16_t get_default_port(const char *uri, const urlparse_url &u);
 
 bool porteq(const char *uri1, const urlparse_url &u1, const char *uri2,
             const urlparse_url &u2);
-
-void write_uri_field(std::ostream &o, const char *uri, const urlparse_url &u,
-                     urlparse_url_fields field);
 
 bool numeric_host(const char *hostname);
 
@@ -969,12 +957,6 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 std::string to_numeric_addr(const Address *addr);
 
 std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen);
-
-// Sets |port| to |addr|.
-void set_port(Address &addr, uint16_t port);
-
-// Get port from |su|.
-uint16_t get_port(const sockaddr_union *su);
 
 // Returns true if |port| is prohibited as a QUIC client port.
 bool quic_prohibited_port(uint16_t port);
@@ -1003,7 +985,7 @@ int64_t to_time64(const timeval &tv);
 
 // Returns true if ALPN ID |proto| is supported HTTP/2 protocol
 // identifier.
-bool check_h2_is_selected(const std::string_view &proto);
+bool check_h2_is_selected(std::string_view proto);
 
 // Selects h2 protocol ALPN ID if one of supported h2 versions are
 // present in |in| of length inlen.  Returns true if h2 version is
@@ -1021,18 +1003,26 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
 // Parses delimited strings in |s| and returns the array of substring,
 // delimited by |delim|.  The any white spaces around substring are
 // treated as a part of substring.
-std::vector<std::string> parse_config_str_list(const std::string_view &s,
+std::vector<std::string> parse_config_str_list(std::string_view s,
                                                char delim = ',');
 
 // Parses delimited strings in |s| and returns Substrings in |s|
 // delimited by |delim|.  The any white spaces around substring are
-// treated as a part of substring.
-std::vector<std::string_view> split_str(const std::string_view &s, char delim);
+// treated as a part of substring if |delim| is not a white space.  If
+// |s| is an empty string, this function returns an empty vector.
+std::vector<std::string_view> split_str(std::string_view s, char delim);
+
+// Behaves like split_str, but this variant allocates new string using
+// |balloc|.  The each element of the returned container is a view
+// over the allocated string.
+std::vector<std::string_view> split_str(BlockAllocator &balloc,
+                                        std::string_view s, char delim);
 
 // Behaves like split_str, but this variant splits at most |n| - 1
-// times and returns at most |n| sub-strings.  If |n| is zero, it
-// falls back to split_str.
-std::vector<std::string_view> split_str(const std::string_view &s, char delim,
+// times and returns at most |n| sub-strings.  |n| must be greater
+// than zero.  If |s| is an empty string, this function returns an
+// empty vector.
+std::vector<std::string_view> split_str(std::string_view s, char delim,
                                         size_t n);
 
 // Writes given time |tp| in Common Log format (e.g.,
@@ -1040,19 +1030,19 @@ std::vector<std::string_view> split_str(const std::string_view &s, char delim,
 // must be at least 27 bytes, including terminal NULL byte.  This
 // function returns std::string_view wrapping the buffer pointed by |out|,
 // and this string is terminated by NULL.
-std::string_view
-format_common_log(char *out, const std::chrono::system_clock::time_point &tp);
+std::string_view format_common_log(char *out,
+                                   std::chrono::system_clock::time_point tp);
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
 // Works like above but with a given time zone.
-std::string_view
-format_common_log(char *out, const std::chrono::system_clock::time_point &tp,
-                  const std::chrono::time_zone *tz);
+std::string_view format_common_log(char *out,
+                                   std::chrono::system_clock::time_point tp,
+                                   const std::chrono::time_zone *tz);
 #endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
 
 // Returns given time |tp| in ISO 8601 format (e.g.,
 // 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00).
-std::string format_iso8601(const std::chrono::system_clock::time_point &tp);
+std::string format_iso8601(std::chrono::system_clock::time_point tp);
 
 // Writes given time |tp| in ISO 8601 format (e.g.,
 // 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00) in
@@ -1060,13 +1050,13 @@ std::string format_iso8601(const std::chrono::system_clock::time_point &tp);
 // including terminal NULL byte.  This function returns std::string_view
 // wrapping the buffer pointed by |out|, and this string is terminated
 // by NULL.
-std::string_view
-format_iso8601(char *out, const std::chrono::system_clock::time_point &tp);
+std::string_view format_iso8601(char *out,
+                                std::chrono::system_clock::time_point tp);
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
 // Works like above but with a given time zone.
 std::string_view format_iso8601(char *out,
-                                const std::chrono::system_clock::time_point &tp,
+                                std::chrono::system_clock::time_point tp,
                                 const std::chrono::time_zone *tz);
 #endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
 
@@ -1075,28 +1065,27 @@ std::string_view format_iso8601(char *out,
 // by |out|.  The buffer must be at least 25 bytes, including terminal
 // NULL byte.  This function returns std::string_view wrapping the buffer
 // pointed by |out|, and this string is terminated by NULL.
-std::string_view
-format_iso8601_basic(char *out,
-                     const std::chrono::system_clock::time_point &tp);
+std::string_view format_iso8601_basic(char *out,
+                                      std::chrono::system_clock::time_point tp);
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
 // Works like above but with a given time zone.
-std::string_view
-format_iso8601_basic(char *out, const std::chrono::system_clock::time_point &tp,
-                     const std::chrono::time_zone *tz);
+std::string_view format_iso8601_basic(char *out,
+                                      std::chrono::system_clock::time_point tp,
+                                      const std::chrono::time_zone *tz);
 #endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
 
 // Returns given time |tp| in HTTP Date format (e.g., Mon, 10 Oct 2016
 // 10:25:58 GMT)
-std::string format_http_date(const std::chrono::system_clock::time_point &tp);
+std::string format_http_date(std::chrono::system_clock::time_point tp);
 
 // Writes given time |tp| in HTTP Date format (e.g., Mon, 10 Oct 2016
 // 10:25:58 GMT) in buffer pointed by |out|.  The buffer must be at
 // least 30 bytes, including terminal NULL byte.  This function
 // returns std::string_view wrapping the buffer pointed by |out|, and this
 // string is terminated by NULL.
-std::string_view
-format_http_date(char *out, const std::chrono::system_clock::time_point &tp);
+std::string_view format_http_date(char *out,
+                                  std::chrono::system_clock::time_point tp);
 
 // Return the system precision of the template parameter |Clock| as
 // a nanosecond value of type |Rep|
@@ -1115,22 +1104,23 @@ Duration duration_from(ev_tstamp d) {
 template <typename Duration> ev_tstamp ev_tstamp_from(const Duration &d) {
   return std::chrono::duration<double>(d).count();
 }
-#endif // HAVE_LIBEV
+#endif // defined(HAVE_LIBEV)
 
 int make_socket_closeonexec(int fd);
 int make_socket_nonblocking(int fd);
 int make_socket_nodelay(int fd);
 
-int create_nonblock_socket(int family);
-int create_nonblock_udp_socket(int family);
+std::expected<int, Error> create_nonblock_socket(int family);
+std::expected<int, Error> create_nonblock_udp_socket(int family);
 
-int bind_any_addr_udp(int fd, int family);
+std::expected<void, Error> bind_any_addr_udp(int fd, int family);
 
 bool check_socket_connected(int fd);
 
 // Returns the error code (errno) by inspecting SO_ERROR of given
-// |fd|.  This function returns the error code if it succeeds, or -1.
-// Returning 0 means no error.
+// |fd|.  This function returns the error code if it succeeds.
+// Returning 0 means no error.  If getsockopt fails, this function
+// returns errno of its call.
 int get_socket_error(int fd);
 
 // Returns true if |host| is IPv6 numeric address (e.g., ::1)
@@ -1139,19 +1129,21 @@ bool ipv6_numeric_addr(const char *host);
 // Parses |s| as unsigned integer and returns the parsed integer.
 // Additionally, if |s| ends with 'k', 'm', 'g' and its upper case
 // characters, multiply the integer by 1024, 1024 * 1024 and 1024 *
-// 1024 respectively.  If there is an error, returns no value.
-std::optional<int64_t> parse_uint_with_unit(const std::string_view &s);
+// 1024 respectively.  The maximum value that this function can
+// recognize is std::numeric_limits<int64_t>::max().
+std::expected<uint64_t, Error> parse_uint_with_unit(std::string_view s);
 
-// Parses |s| as unsigned integer and returns the parsed integer..
-std::optional<int64_t> parse_uint(const std::string_view &s);
+// Parses |s| as unsigned integer and returns the parsed integer.  The
+// maximum value that this function can recognize is
+// std::numeric_limits<int64_t>::max().
+std::expected<uint64_t, Error> parse_uint(std::string_view s);
 
 // Parses |s| as unsigned integer and returns the parsed integer
 // casted to double.  If |s| ends with "s", the parsed value's unit is
 // a second.  If |s| ends with "ms", the unit is millisecond.
 // Similarly, it also supports 'm' and 'h' for minutes and hours
-// respectively.  If none of them are given, the unit is second.  This
-// function returns no value if error occurs.
-std::optional<double> parse_duration_with_unit(const std::string_view &s);
+// respectively.  If none of them are given, the unit is second.
+std::expected<double, Error> parse_duration_with_unit(std::string_view s);
 
 // Returns string representation of time duration |t|.  If t has
 // fractional part (at least more than or equal to 1e-3), |t| is
@@ -1163,25 +1155,25 @@ std::string duration_str(double t);
 // unit after the formatting.  The available units are s, ms and us.
 // The unit which is equal to or less than |t| is used and 2
 // fractional digits follow.
-std::string format_duration(const std::chrono::microseconds &u);
+std::string format_duration(std::chrono::microseconds u);
 
 // Just like above, but this takes |t| as seconds.
 std::string format_duration(double t);
 
 // The maximum buffer size including terminal NULL to store the result
 // of make_hostport.
-constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 + /* : */ 1 +
-                                /* port */ 5 + /* terminal NULL */ 1;
+inline constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 +
+                                       /* : */ 1 +
+                                       /* port */ 5 + /* terminal NULL */ 1;
 
 // Just like make_http_hostport(), but doesn't treat 80 and 443
 // specially.
-std::string_view make_hostport(BlockAllocator &balloc,
-                               const std::string_view &host, uint16_t port);
+std::string_view make_hostport(BlockAllocator &balloc, std::string_view host,
+                               uint16_t port);
 
 template <std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-std::string_view make_hostport(const std::string_view &host, uint16_t port,
-                               O result) {
+std::string_view make_hostport(std::string_view host, uint16_t port, O result) {
   auto ipv6 = ipv6_numeric_addr(host.data());
   auto p = result;
 
@@ -1208,12 +1200,11 @@ std::string_view make_hostport(const std::string_view &host, uint16_t port,
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
 // and "]".  If |port| is 80 or 443, port part is omitted.
 std::string_view make_http_hostport(BlockAllocator &balloc,
-                                    const std::string_view &host,
-                                    uint16_t port);
+                                    std::string_view host, uint16_t port);
 
 template <std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-std::string_view make_http_hostport(const std::string_view &host, uint16_t port,
+std::string_view make_http_hostport(std::string_view host, uint16_t port,
                                     O result) {
   if (port != 80 && port != 443) {
     return make_hostport(host, port, std::move(result));
@@ -1238,9 +1229,8 @@ std::string_view make_http_hostport(const std::string_view &host, uint16_t port,
 }
 
 // hexdump dumps |data| of length |datalen| in the format similar to
-// hexdump(1) with -C option.  This function returns 0 if it succeeds,
-// or -1.
-int hexdump(FILE *out, const void *data, size_t datalen);
+// hexdump(1) with -C option.
+std::expected<void, Error> hexdump(FILE *out, const void *data, size_t datalen);
 
 // Copies 2 byte unsigned integer |n| in host byte order to |buf| in
 // network byte order.
@@ -1263,10 +1253,9 @@ uint32_t get_uint32(const uint8_t *data);
 uint64_t get_uint64(const uint8_t *data);
 
 // Reads mime types file (see /etc/mime.types), and stores extension
-// -> MIME type map in |res|.  This function returns 0 if it succeeds,
-// or -1.
-int read_mime_types(std::unordered_map<std::string, std::string> &res,
-                    const char *filename);
+// -> MIME type map in |res|.
+std::expected<std::unordered_map<std::string, std::string>, Error>
+read_mime_types(const char *filename);
 
 // Fills random alpha and digit byte to the range [|first|, |last|).
 // Returns the one beyond the |last|.
@@ -1288,8 +1277,12 @@ template <std::input_or_output_iterator O, typename Generator>
 void random_bytes(O first, O last, Generator &&gen) {
   std::uniform_int_distribution<uint8_t> dis;
   std::ranges::generate(std::move(first), std::move(last),
-                        [&dis, &gen]() { return dis(gen); });
+                        [&dis, &gen] { return dis(gen); });
 }
+
+// Fills the buffer pointed by |data| of length |destlen| with the
+// secure random bytes.
+void secure_random(uint8_t *dest, size_t destlen);
 
 // Shuffles the range [|first|, |last|] by calling swap function
 // |swap| for each pair.  |swap| takes 2 iterators.  If |swap| is
@@ -1311,7 +1304,7 @@ void shuffle(I first, I last, Generator &&gen, Swap swap) {
   }
 }
 
-template <std::ranges::input_range R, typename Generator, typename Swap>
+template <std::ranges::random_access_range R, typename Generator, typename Swap>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 void shuffle(R &&r, Generator &&gen, Swap swap) {
   return shuffle(std::ranges::begin(r), std::ranges::end(r),
@@ -1321,41 +1314,53 @@ void shuffle(R &&r, Generator &&gen, Swap swap) {
 // Returns x**y
 double int_pow(double x, size_t y);
 
-uint32_t hash32(const std::string_view &s);
+uint32_t hash32(std::string_view s);
 
-// Computes SHA-256 of |s|, and stores it in |buf|.  This function
-// returns 0 if it succeeds, or -1.
-int sha256(uint8_t *buf, const std::string_view &s);
+// Computes SHA-256 of |s|, and stores it in |buf|.
+std::expected<void, Error> sha256(std::span<uint8_t, 32> dest,
+                                  std::span<const uint8_t> s);
 
-// Computes SHA-1 of |s|, and stores it in |buf|.  This function
-// returns 0 if it succeeds, or -1.
-int sha1(uint8_t *buf, const std::string_view &s);
+template <std::ranges::contiguous_range R>
+requires(std::ranges::sized_range<R> &&
+         !std::is_convertible_v<R, std::span<const uint8_t>>)
+std::expected<void, Error> sha256(std::span<uint8_t, 32> dest, R &&r) {
+  return sha256(dest, as_uint8_span(std::span{r}));
+}
 
-// Returns host from |hostport|.  If host cannot be found in
-// |hostport|, returns empty string.  The returned string might not be
+// Computes SHA-1 of |s|, and stores it in |buf|.
+std::expected<void, Error> sha1(std::span<uint8_t, 20> dest,
+                                std::span<const uint8_t> s);
+
+template <std::ranges::contiguous_range R>
+requires(std::ranges::sized_range<R> &&
+         !std::is_convertible_v<R, std::span<const uint8_t>>)
+std::expected<void, Error> sha1(std::span<uint8_t, 20> dest, R &&r) {
+  return sha1(dest, as_uint8_span(std::span{r}));
+}
+
+// Returns host from |hostport|.  The returned string might not be
 // NULL-terminated.
-std::string_view extract_host(const std::string_view &hostport);
+std::expected<std::string_view, Error> extract_host(std::string_view hostport);
 
 // split_hostport splits host and port in |hostport|.  Unlike
 // extract_host, square brackets enclosing host name is stripped.  If
 // port is not available, it returns empty string in the second
-// string.  The returned string might not be NULL-terminated.  On any
-// error, it returns a pair which has empty strings.
-std::pair<std::string_view, std::string_view>
-split_hostport(const std::string_view &hostport);
+// string.  The returned string might not be NULL-terminated.
+std::expected<std::pair<std::string_view, std::string_view>, Error>
+split_hostport(std::string_view hostport);
 
 // Returns new std::mt19937 object.
 std::mt19937 make_mt19937();
 
 // daemonize calls daemon(3).  If __APPLE__ is defined, it implements
 // daemon() using fork().
-int daemonize(int nochdir, int noclose);
+std::expected<void, Error> daemonize(int nochdir, int noclose);
 
 // Returns |s| from which trailing white spaces (SPC or HTAB) are
 // removed.  If any white spaces are removed, new string is allocated
 // by |balloc| and returned.  Otherwise, the copy of |s| is returned
 // without allocation.
-std::string_view rstrip(BlockAllocator &balloc, const std::string_view &s);
+std::string_view rstrip(BlockAllocator &balloc, std::string_view s);
 
 // contains returns true if |r| contains |value|.
 template <std::ranges::input_range R, typename T>
@@ -1371,18 +1376,22 @@ constexpr bool contains(I first, I last, const T &value) {
   return std::ranges::find(std::move(first), last, value) != last;
 }
 
+// stream_error returns true if |f| is in error state.  EOF is not
+// considered as an error.
+bool stream_error(const std::ifstream &f);
+
 #ifdef ENABLE_HTTP3
-int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
+std::expected<Address, Error> msghdr_get_local_addr(msghdr *msg, int family);
 
 uint8_t msghdr_get_ecn(msghdr *msg, int family);
 
 // msghdr_get_udp_gro returns UDP_GRO value from |msg|.  If UDP_GRO is
 // not found, or UDP_GRO is not supported, this function returns 0.
 size_t msghdr_get_udp_gro(msghdr *msg);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 } // namespace util
 
 } // namespace nghttp2
 
-#endif // UTIL_H
+#endif // !defined(UTIL_H)

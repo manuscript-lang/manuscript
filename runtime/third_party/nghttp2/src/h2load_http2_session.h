@@ -36,17 +36,17 @@ struct Client;
 class Http2Session : public Session {
 public:
   Http2Session(Client *client);
-  virtual ~Http2Session();
-  virtual void on_connect();
-  virtual int submit_request();
-  virtual int on_read(const uint8_t *data, size_t len);
-  virtual int on_write();
-  virtual void terminate();
-  virtual size_t max_concurrent_streams();
+  ~Http2Session() override;
+  void on_connect() override;
+  std::expected<void, Error> submit_request() override;
+  std::expected<void, Error> on_read(std::span<const uint8_t> data) override;
+  std::expected<void, Error> on_write() override;
+  void terminate() override;
+  size_t max_concurrent_streams() override;
 
 private:
   Client *client_;
-  nghttp2_session *session_;
+  nghttp2_session *session_{};
 };
 
 } // namespace h2load

@@ -57,6 +57,8 @@ Synopsis
         reached.
     :enum:`nghttp2_error.NGHTTP2_ERR_PROTO`
         The *session* is server session.
+    :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
+        The required memory for *nva* of length *nvlen* is too large.
     
     .. warning::
     

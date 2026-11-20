@@ -27,17 +27,14 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_hd.h"
 #include "nghttp2_buf.h"
 
 #define NGHTTP2_STREAM_ID_MASK ((1u << 31) - 1)
-#define NGHTTP2_PRI_GROUP_ID_MASK ((1u << 31) - 1)
-#define NGHTTP2_PRIORITY_MASK ((1u << 31) - 1)
 #define NGHTTP2_WINDOW_SIZE_INCREMENT_MASK ((1u << 31) - 1)
-#define NGHTTP2_SETTINGS_ID_MASK ((1 << 24) - 1)
 
 /* The number of bytes of frame header. */
 #define NGHTTP2_FRAME_HDLEN 9
@@ -600,6 +597,8 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_INVALID_ARGUMENT
+ *     The required memory for |nva| of length |nvlen| is too large.
  */
 int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
                           size_t nvlen, nghttp2_mem *mem);
@@ -634,4 +633,4 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
 void nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
                            size_t padlen, int framehd_only);
 
-#endif /* NGHTTP2_FRAME_H */
+#endif /* !defined(NGHTTP2_FRAME_H) */

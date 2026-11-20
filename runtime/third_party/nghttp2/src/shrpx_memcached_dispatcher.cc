@@ -33,7 +33,7 @@ namespace shrpx {
 
 MemcachedDispatcher::MemcachedDispatcher(const Address *addr,
                                          struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                                         const std::string_view &sni_name,
+                                         std::string_view sni_name,
                                          MemchunkPool *mcpool,
                                          std::mt19937 &gen)
   : loop_(loop),
@@ -42,12 +42,9 @@ MemcachedDispatcher::MemcachedDispatcher(const Address *addr,
 
 MemcachedDispatcher::~MemcachedDispatcher() {}
 
-int MemcachedDispatcher::add_request(std::unique_ptr<MemcachedRequest> req) {
-  if (mconn_->add_request(std::move(req)) != 0) {
-    return -1;
-  }
-
-  return 0;
+std::expected<void, Error>
+MemcachedDispatcher::add_request(std::unique_ptr<MemcachedRequest> req) {
+  return mconn_->add_request(std::move(req));
 }
 
 } // namespace shrpx
