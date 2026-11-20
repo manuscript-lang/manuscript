@@ -11,6 +11,7 @@
 #include "mir.c"
 #include "mir_print.c"
 #include "mir_parse.c"
+#include "hints.c"
 #include "types.c"
 #include "tables.c"
 #include "stdlib.c"
