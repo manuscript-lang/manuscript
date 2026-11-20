@@ -9,28 +9,34 @@ use std::io::Read as _;
 const ARCHIVE_GZ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_native.a.gz"));
 const TABLE: &str = include_str!("../../ms-lower/rt_symbols.txt");
 
-/// Exports the table cannot list: data symbols, assembly entry points and C-only natives, which have no Rust
-/// signature or one that differs per platform (the stack switches take the thread environment
-/// block fields on Windows).
-const UNLISTED: &[&str] = &[
-    "msrt_desc_int",
-    "msrt_desc_float",
-    "msrt_desc_float32",
-    "msrt_desc_bool",
-    "msrt_desc_string",
-    "msrt_desc_bytes",
-    "msrt_ascii_chars",
-    "msrt_guard_jump",
-    "msrt_task_tramp",
-    "msrt_ctx_switch",
-    "msrt_call_on_stack",
-    // Defined in C (runtime/net), with no Rust shim to record a signature from.
-    "msstd_dns_config",
-    "msstd_dns_query",
-    "msstd_ws_connect",
-    "msstd_ws_handshake",
-    "msstd_ws_serve",
-];
+/// Data exports, which have no signature to list: the `extern` variables the public headers declare
+/// (`extern const MsTypeDesc msrt_desc_int;`, `extern uint8_t msrt_ascii_chars[][2];`).
+fn data_exports() -> BTreeSet<String> {
+    let headers =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/include/ms_rt");
+    let mut names = BTreeSet::new();
+    for entry in std::fs::read_dir(headers).expect("runtime headers") {
+        let path = entry.expect("header").path();
+        if path.extension().is_none_or(|extension| extension != "h") {
+            continue;
+        }
+        let text = std::fs::read_to_string(&path).expect("read header");
+        for line in text.lines() {
+            let Some(declaration) = line.strip_prefix("extern ") else {
+                continue;
+            };
+            if declaration.contains('(') {
+                continue;
+            }
+            let name = declaration
+                .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .filter(|word| runtime_name(word))
+                .next_back();
+            names.extend(name.map(str::to_string));
+        }
+    }
+    names
+}
 
 /// Runtime prefixes the compiler calls; other exports (libc shims, Rust internals) are not catalogued.
 fn runtime_name(name: &str) -> bool {
@@ -68,8 +74,8 @@ fn catalogued() -> BTreeSet<String> {
         .lines()
         .filter(|l| runtime_name(l))
         .filter_map(|l| l.split('(').next())
-        .chain(UNLISTED.iter().copied())
         .map(str::to_string)
+        .chain(data_exports())
         .collect()
 }
 

@@ -199,8 +199,8 @@ test "float flags reject NaN and infinities":
 			(ratio.parse(["--ratio", text.clone()]) | expect_error?).message
 			| expect_equal(f"cli: flag ratio: {text} is not a number")?
 		)
-
 	void expect_ok(ratio.parse(["--ratio", "1e5"]))?
+
 	bad_default := Command(
 		name: "x",
 		flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")],
@@ -295,3 +295,26 @@ test "help rows without text carry no trailing spaces":
 	text | expect_contains("  file\n")?
 	for line in text.split("\n"):
 		line | expect_equal(line.trim_end())?
+
+test "help shows the description and the examples":
+	tool := Command(
+		name: "tool",
+		about: "A tool",
+		description: "Longer text.\nSecond line.",
+		examples: ["tool run a.ms", "tool run b.ms --fast"],
+		args: [Arg("file")],
+	)
+	text := tool.help() | expect_some?
+	text | expect_contains("A tool\n\nLonger text.\nSecond line.\n\nUsage:")?
+	text | expect_contains("\nExamples:\n  tool run a.ms\n  tool run b.ms --fast\n")?
+
+test "a passthrough command keeps the words after dashes out of its arguments":
+	tool := Command(name: "tool", args: [Arg("file")], passthrough: true)
+	parsed := (tool.parse(["a.ms", "--", "x", "--y"]) | expect_ok?)
+
+	match parsed:
+		Run(matches):
+			matches.string("file") | expect_equal("a.ms")?
+			matches.passthrough | expect_equal(["x", "--y"])?
+			(tool.help() | expect_some?) | expect_contains("[-- arguments...]")?
+		Help(_): return fail("help")

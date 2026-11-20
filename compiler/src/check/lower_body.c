@@ -110,7 +110,7 @@ void lb_drop(Lb *lb, MirValue v) {
 
 /* Whether a value of `ty` owns something its holder must release: a String, a function value or a
  * record holding a String. */
-static bool lb_owns(Lb *lb, MirTy ty) {
+bool lb_owns(Lb *lb, MirTy ty) {
     return ty != MIR_NONE && (ty == MIR_STR || lb_is_fn(lb, ty) || mir_needs_drop(lb->m, ty));
 }
 
@@ -431,7 +431,7 @@ static bool lb_names_owned(const Lb *lb, const MsExpr *e) {
  * fails the caller with it. */
 /* A `move` argument: an owned temporary is handed over as it is, an owned name moves out of its
  * scope, and anything else is copied. */
-static MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
+MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
     const LbVal value = lb_expr(lb, e);
     if (!lb->ok || value.owned) {
         return value.v;
@@ -844,8 +844,11 @@ static LbVal lb_hand_out(Lb *lb, const MsExpr *e, MirValue v) {
         lscope_disown(&lb->scopes, v);
         return (LbVal){v, true};
     }
-    lb->ok = false; // an owned result that is no local: a copy the pass does not make yet
-    return (LbVal){v, true};
+    if (e->kind == MS_E_NAME) {
+        lb->ok = false; // a borrowed parameter handed out as an owned result: left to Rust
+        return (LbVal){v, true};
+    }
+    return (LbVal){lb_copy(lb, v), true}; // a borrowed value that is no local: the caller gets a copy
 }
 
 static void lb_return(Lb *lb, const MsStmt *s) {

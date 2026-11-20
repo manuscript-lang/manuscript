@@ -1,0 +1,574 @@
+== help
+status 0
+Manuscript checks, builds, and runs .ms source and ms.toml projects.
+
+Start with:
+  ms init hello
+  ms check ms.toml
+  ms run ms.toml -- first second
+
+Inside a project directory, commands that take a target default to ./ms.toml:
+  ms run -- first second
+
+Bare ms prints this help and exits successfully.
+Long options that take values also accept --flag=value.
+Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
+Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
+MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.
+
+Usage:
+  ms <command> [flags]
+
+Commands:
+  check          Parse and type-check without executing
+  lint           Check source hygiene and semantic lint rules
+  build          Build a native executable
+  emit           Emit the lowered intermediate code as text
+  run            Build and run an application
+  test           Execute test blocks, including imported modules
+  bench          Run and time bench blocks, including imported modules
+  fmt            Format source files or a project
+  verify         Run check, fmt --check, lint, and test; one result
+  inspect        Emit checked source metadata as JSON
+  diagram        Emit a static call graph as ascii or Mermaid
+  review         Report where to look: project map, or the semantic effect of a diff
+  profile        Run with sampling profile capture: folded stacks, pprof, top report
+  init           Create a new project with a manifest, entry, test, .gitignore, and .gitattributes
+  install        Download the packages under [dependencies] and pin them in ms.lock
+  add            Add a git dependency to ms.toml and install it
+  remove         Remove a dependency from ms.toml and ms.lock
+  lsp            Serve the language server on stdin/stdout
+  search_symbol  Find a project or standard-library symbol: definition, type, uses
+  explain        Explain diagnostic codes and their usual repairs
+  version        Print the compiler version
+
+Flags:
+      --version  Print the compiler version
+  -h, --help     Show help
+--- stderr
+
+== help check
+status 0
+Parse and type-check without executing
+
+Parse, resolve imports, and type-check independent inputs without executing source.
+A project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.
+Standalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.
+Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
+
+Usage:
+  ms check [flags] <targets...>
+
+Arguments:
+  targets  Files, directories or ms.toml; each keeps its own import root
+
+Flags:
+      --json       Emit versioned JSON diagnostics instead of terminal messages
+      --with-text  With --json, also carry the terminal output as text.stdout and text.stderr
+      --each       With --json --with-text, report every input as its own result from one standard-library load
+      --watch      Recheck after each saved change to an input or loaded module (no --json)
+      --fix        Apply machine-applicable fixes in place, then report what remains (no --watch)
+  -h, --help       Show help
+
+Examples:
+  ms check main.ms --watch
+  ms check main.ms
+  ms check ms.toml --json
+  ms check src utilities.ms --json
+--- stderr
+
+== help nope
+status 2
+--- stderr
+cli: unknown command nope for ms
+Run 'ms --help' for usage.
+
+== help a b
+status 2
+--- stderr
+cli: unknown command a for ms
+Run 'ms --help' for usage.
+
+== nope
+status 2
+--- stderr
+unknown command: nope
+Commands: check, lint, build, emit, run, test, bench, fmt, verify, inspect, diagram, review, profile, init, install, add, remove, lsp, search_symbol, explain, version, help. Run 'ms --help' for details.
+
+== chek a.ms
+status 2
+--- stderr
+unknown command: chek
+Did you mean 'ms check'?
+Commands: check, lint, build, emit, run, test, bench, fmt, verify, inspect, diagram, review, profile, init, install, add, remove, lsp, search_symbol, explain, version, help. Run 'ms --help' for details.
+
+== --help
+status 0
+Manuscript checks, builds, and runs .ms source and ms.toml projects.
+
+Start with:
+  ms init hello
+  ms check ms.toml
+  ms run ms.toml -- first second
+
+Inside a project directory, commands that take a target default to ./ms.toml:
+  ms run -- first second
+
+Bare ms prints this help and exits successfully.
+Long options that take values also accept --flag=value.
+Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
+Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
+MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.
+
+Usage:
+  ms <command> [flags]
+
+Commands:
+  check          Parse and type-check without executing
+  lint           Check source hygiene and semantic lint rules
+  build          Build a native executable
+  emit           Emit the lowered intermediate code as text
+  run            Build and run an application
+  test           Execute test blocks, including imported modules
+  bench          Run and time bench blocks, including imported modules
+  fmt            Format source files or a project
+  verify         Run check, fmt --check, lint, and test; one result
+  inspect        Emit checked source metadata as JSON
+  diagram        Emit a static call graph as ascii or Mermaid
+  review         Report where to look: project map, or the semantic effect of a diff
+  profile        Run with sampling profile capture: folded stacks, pprof, top report
+  init           Create a new project with a manifest, entry, test, .gitignore, and .gitattributes
+  install        Download the packages under [dependencies] and pin them in ms.lock
+  add            Add a git dependency to ms.toml and install it
+  remove         Remove a dependency from ms.toml and ms.lock
+  lsp            Serve the language server on stdin/stdout
+  search_symbol  Find a project or standard-library symbol: definition, type, uses
+  explain        Explain diagnostic codes and their usual repairs
+  version        Print the compiler version
+
+Flags:
+      --version  Print the compiler version
+  -h, --help     Show help
+--- stderr
+
+== -h
+status 0
+Manuscript checks, builds, and runs .ms source and ms.toml projects.
+
+Start with:
+  ms init hello
+  ms check ms.toml
+  ms run ms.toml -- first second
+
+Inside a project directory, commands that take a target default to ./ms.toml:
+  ms run -- first second
+
+Bare ms prints this help and exits successfully.
+Long options that take values also accept --flag=value.
+Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
+Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
+MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.
+
+Usage:
+  ms <command> [flags]
+
+Commands:
+  check          Parse and type-check without executing
+  lint           Check source hygiene and semantic lint rules
+  build          Build a native executable
+  emit           Emit the lowered intermediate code as text
+  run            Build and run an application
+  test           Execute test blocks, including imported modules
+  bench          Run and time bench blocks, including imported modules
+  fmt            Format source files or a project
+  verify         Run check, fmt --check, lint, and test; one result
+  inspect        Emit checked source metadata as JSON
+  diagram        Emit a static call graph as ascii or Mermaid
+  review         Report where to look: project map, or the semantic effect of a diff
+  profile        Run with sampling profile capture: folded stacks, pprof, top report
+  init           Create a new project with a manifest, entry, test, .gitignore, and .gitattributes
+  install        Download the packages under [dependencies] and pin them in ms.lock
+  add            Add a git dependency to ms.toml and install it
+  remove         Remove a dependency from ms.toml and ms.lock
+  lsp            Serve the language server on stdin/stdout
+  search_symbol  Find a project or standard-library symbol: definition, type, uses
+  explain        Explain diagnostic codes and their usual repairs
+  version        Print the compiler version
+
+Flags:
+      --version  Print the compiler version
+  -h, --help     Show help
+--- stderr
+
+== check --help
+status 0
+Parse and type-check without executing
+
+Parse, resolve imports, and type-check independent inputs without executing source.
+A project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.
+Standalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.
+Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
+
+Usage:
+  ms check [flags] <targets...>
+
+Arguments:
+  targets  Files, directories or ms.toml; each keeps its own import root
+
+Flags:
+      --json       Emit versioned JSON diagnostics instead of terminal messages
+      --with-text  With --json, also carry the terminal output as text.stdout and text.stderr
+      --each       With --json --with-text, report every input as its own result from one standard-library load
+      --watch      Recheck after each saved change to an input or loaded module (no --json)
+      --fix        Apply machine-applicable fixes in place, then report what remains (no --watch)
+  -h, --help       Show help
+
+Examples:
+  ms check main.ms --watch
+  ms check main.ms
+  ms check ms.toml --json
+  ms check src utilities.ms --json
+--- stderr
+
+== check a.ms --bogus
+status 2
+--- stderr
+cli: unknown flag --bogus
+Run 'ms help check' for usage.
+
+== check a.ms --each
+status 2
+--- stderr
+--each requires --json --with-text without --watch or --fix; use ms check a.ms b.ms --json --with-text --each
+
+== check a.ms --fix --watch
+status 2
+--- stderr
+--fix cannot be combined with --watch; use ms check <file> --fix
+
+== check
+status 2
+--- stderr
+cli: missing required targets
+Run 'ms help check' for usage.
+
+== check a.ms --deny-warnings
+status 2
+--- stderr
+cli: unknown flag --deny-warnings
+Run 'ms help check' for usage.
+
+== build a.ms -o
+status 2
+--- stderr
+cli: flag -o needs a value
+Run 'ms help build' for usage.
+
+== build a.ms --build-type
+status 2
+--- stderr
+cli: flag --build-type needs a value
+Run 'ms help build' for usage.
+
+== build a.ms --build-type Fast
+status 2
+--- stderr
+unknown build type "Fast"; expected Debug, Release, or MinSizeRel
+
+== check a.ms --link x.a
+status 2
+--- stderr
+cli: unknown flag --link
+Run 'ms help check' for usage.
+
+== run a.ms x
+status 2
+--- stderr
+cli: unexpected argument x
+Run 'ms help run' for usage.
+
+== test a.ms --time 1s
+status 2
+--- stderr
+cli: unknown flag --time
+Run 'ms help test' for usage.
+
+== bench a.ms --runs 3
+status 2
+--- stderr
+cli: unknown flag --runs
+Run 'ms help bench' for usage.
+
+== test a.ms --runs 0
+status 2
+--- stderr
+invalid --runs; use a positive integer
+
+== test a.ms --seed x
+status 2
+--- stderr
+cli: flag seed: x is not an integer
+Run 'ms help test' for usage.
+
+== test a.ms --timeout 5x
+status 2
+--- stderr
+invalid --timeout "5x"; use a duration such as 30s or 2m, or 0 to disable
+
+== bench a.ms --time 1us
+status 2
+--- stderr
+invalid --time "1us"; use a duration of at least 1ms such as 200ms or 1s
+
+== bench a.ms --fuzz 0
+status 2
+--- stderr
+cli: unknown flag --fuzz
+Run 'ms help bench' for usage.
+
+== diagram a.ms --view bogus
+status 2
+--- stderr
+unknown --view "bogus" for ms diagram; use overview, calls, effects, errors, modules, flow, scope, tasks, types, ownership
+
+== diagram a.ms --depth 3
+status 2
+--- stderr
+--depth needs --view or --entity; run 'ms help diagram' for examples
+
+== diagram a.ms --format x
+status 2
+--- stderr
+unknown --format "x" for ms diagram; use ascii, mermaid, or html
+
+== diagram a.ms --format html --view flow
+status 2
+--- stderr
+--format html covers every view in one page; drop --view and --entity
+
+== diagram a.ms --json --format ascii
+status 2
+--- stderr
+--json and --format cannot be combined; --json emits the diagram tree
+
+== diagram a.ms --diff p
+status 2
+--- stderr
+--diff marks a scoped view; add --view or --entity, e.g. ms diagram ms.toml --view flow --entity save --diff change.patch
+
+== profile a.ms --top 0
+status 2
+--- stderr
+invalid --top; use a positive integer
+
+== profile a.ms -o d
+status 2
+--- stderr
+cli: unknown flag -o
+Run 'ms help profile' for usage.
+
+== build a.ms --out-dir d
+status 2
+--- stderr
+cli: unknown flag --out-dir
+Run 'ms help build' for usage.
+
+== build a.ms --top 5
+status 2
+--- stderr
+cli: unknown flag --top
+Run 'ms help build' for usage.
+
+== build a.ms --allocs
+status 2
+--- stderr
+cli: unknown flag --allocs
+Run 'ms help build' for usage.
+
+== build a.ms --format x
+status 2
+--- stderr
+cli: unknown flag --format
+Run 'ms help build' for usage.
+
+== build a.ms --view x
+status 2
+--- stderr
+cli: unknown flag --view
+Run 'ms help build' for usage.
+
+== build a.ms --watch
+status 2
+--- stderr
+cli: unknown flag --watch
+Run 'ms help build' for usage.
+
+== run a.ms --json --watch
+status 2
+--- stderr
+--json cannot be combined with --watch; remove --watch for one versioned result
+
+== check a.ms --check
+status 2
+--- stderr
+cli: unknown flag --check
+Run 'ms help check' for usage.
+
+== build a.ms --list
+status 2
+--- stderr
+cli: unknown flag --list
+Run 'ms help build' for usage.
+
+== version x
+status 2
+--- stderr
+cli: unexpected argument x
+Run 'ms help version' for usage.
+
+== init a b
+status 2
+--- stderr
+cli: unexpected argument b
+Run 'ms help init' for usage.
+
+== init -x
+status 2
+--- stderr
+cli: unknown flag -x
+Run 'ms help init' for usage.
+
+== init --lib --workspace
+status 2
+--- stderr
+unexpected init argument: --workspace; ms init takes --lib or --workspace (not both) and at most one directory, e.g. ms init --lib greeter
+
+== verify --bogus
+status 2
+--- stderr
+cli: unknown flag --bogus
+Run 'ms help verify' for usage.
+
+== verify a b
+status 2
+--- stderr
+cli: unexpected argument b
+Run 'ms help verify' for usage.
+
+== explain
+status 2
+--- stderr
+cli: missing required code
+Run 'ms help explain' for usage.
+
+== explain --json
+status 2
+--- stderr
+cli: missing required code
+Run 'ms help explain' for usage.
+
+== explain --help
+status 0
+Explain diagnostic codes and their usual repairs
+
+For diagnostic codes from ms check --json or ms lint --json (MS and MSL),
+print each code's rule family and usual repair. Apply the diagnostic's own
+fix field first when it has one.
+
+Usage:
+  ms explain [flags] <code...>
+
+Arguments:
+  code  A diagnostic code such as MS3060 or MSL110
+
+Flags:
+      --json  Emit versioned JSON
+  -h, --help  Show help
+
+Examples:
+  ms explain MS3060
+  ms explain MS2001 MS3050 --json
+--- stderr
+
+== explain a -h
+status 0
+Explain diagnostic codes and their usual repairs
+
+For diagnostic codes from ms check --json or ms lint --json (MS and MSL),
+print each code's rule family and usual repair. Apply the diagnostic's own
+fix field first when it has one.
+
+Usage:
+  ms explain [flags] <code...>
+
+Arguments:
+  code  A diagnostic code such as MS3060 or MSL110
+
+Flags:
+      --json  Emit versioned JSON
+  -h, --help  Show help
+
+Examples:
+  ms explain MS3060
+  ms explain MS2001 MS3050 --json
+--- stderr
+
+== fmt
+status 2
+--- stderr
+cli: missing required targets
+Run 'ms help fmt' for usage.
+
+== fmt --json tools/ms/explain.ms
+status 2
+--- stderr
+--json requires ms fmt --check; remove --json to format files in place
+
+== fmt --bogus tools/ms/explain.ms
+status 2
+--- stderr
+cli: unknown flag --bogus
+Run 'ms help fmt' for usage.
+
+== install --bogus
+status 2
+--- stderr
+cli: unknown flag --bogus
+Run 'ms help install' for usage.
+
+== install --update
+status 2
+--- stderr
+cli: flag --update needs a value
+Run 'ms help install' for usage.
+
+== add
+status 2
+--- stderr
+cli: missing required url
+Run 'ms help add' for usage.
+
+== add https://h/x.git --tag
+status 2
+--- stderr
+cli: flag --tag needs a value
+Run 'ms help add' for usage.
+
+== add https://h/x.git --bogus
+status 2
+--- stderr
+cli: unknown flag --bogus
+Run 'ms help add' for usage.
+
+== remove
+status 2
+--- stderr
+cli: missing required name
+Run 'ms help remove' for usage.
+
+== remove @a @b
+status 2
+--- stderr
+cli: unexpected argument @b
+Run 'ms help remove' for usage.
+

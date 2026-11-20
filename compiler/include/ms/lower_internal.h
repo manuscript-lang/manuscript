@@ -126,6 +126,8 @@ void lb_emit_plain(Lb *lb, MirOp op);
 void lb_enter(Lb *lb, MirBlock block);
 void lb_own_vars(Lb *lb, uint32_t depth, MirValue except);
 void lb_write_back(Lb *lb);
+bool lb_owns(Lb *lb, MirTy ty);                        /* whether a value of the type is dropped by its holder */
+MirValue lb_move_argument(Lb *lb, const MsExpr *e);    /* an argument for a `move` parameter */
 
 /* Lists of scalars (lower_list.c, included after lower_body.c). */
 MirTy lst_type(Lb *lb, MsTy ty);
