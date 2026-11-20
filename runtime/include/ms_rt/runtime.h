@@ -10,9 +10,6 @@
 #include "ms_rt/string.h"
 #include "ms_rt/strbuild.h" /* msrt_fault: raises a fault with a message and never returns */
 
-/* The status code of invalid data (base.h has the others). */
-enum { MS_STATUS_INVALID_DATA = 4 };
-
 /* The FaultKind codes of ms-rt-abi that natives raise. */
 typedef enum MsFaultKind {
     MS_FAULT_DIVISION_BY_ZERO = 4,
