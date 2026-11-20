@@ -32,9 +32,11 @@ pub mod cancel;
 pub mod desc;
 /// The drop worklist is C (`runtime/core/dropq.c`); the fault module resets it through this.
 pub mod dropq {
+    #[cfg(not(test))]
     unsafe extern "C" {
         fn msdrop_reset();
     }
+    #[cfg(not(test))]
     pub(crate) fn reset() {
         // SAFETY: the state belongs to the calling thread.
         unsafe { msdrop_reset() }
