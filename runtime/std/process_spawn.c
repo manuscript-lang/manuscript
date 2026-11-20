@@ -25,6 +25,7 @@
 #include "fs_support.h"
 #include "ms_rt/process.h"
 #include "ms_rt/stream.h"
+#include "ms_rt/sys.h"
 #include "ms_sched.h"
 
 #ifdef _WIN32
@@ -32,6 +33,7 @@
 #else
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/resource.h>
 #include <unistd.h>
 #endif
 
@@ -230,7 +232,7 @@ typedef struct MsChild {
     uv_timer_t sampler;
     uv_thread_t thread;
     Collected *run; /* NULL for a `spawn` */
-    uint64_t token;
+    uint64_t token; /* the token a waiting task parks on (0: none); one per park, see child_arm */
     int64_t pid;
     int64_t code; /* once exited */
     int64_t max_resident;
@@ -244,6 +246,32 @@ typedef struct MsChild {
 
 static void child_lock(MsChild *child) { uv_mutex_lock(&child->lock); }
 static void child_unlock(MsChild *child) { uv_mutex_unlock(&child->lock); }
+
+/* A remote token counts as a pending wake-up only until its first post, so a task that parks again needs a new one:
+ * arm before reading the state, park only while the state says to, then disarm. */
+static uint64_t child_arm(MsChild *child) {
+    const uint64_t token = msrt_token_new(1);
+    child_lock(child);
+    child->token = token;
+    child_unlock(child);
+    return token;
+}
+
+static void child_disarm(MsChild *child, uint64_t token) {
+    child_lock(child);
+    child->token = 0;
+    child_unlock(child);
+    msrt_token_free(token);
+}
+
+/* Wakes the waiting task, if any (any thread). */
+static void child_wake(MsChild *child) {
+    child_lock(child);
+    if (child->token != 0) {
+        msrt_token_post_remote(child->token, 1);
+    }
+    child_unlock(child);
+}
 
 /* ---- signals ---- */
 
@@ -277,6 +305,22 @@ static void child_kill_group(MsChild *child) {
 }
 
 /* ---- the peak resident set size ---- */
+
+#ifndef _WIN32
+/* The largest resident set of any child this process has reaped, in bytes: an upper bound for a child that exited
+ * before it could be sampled. */
+static int64_t reaped_children_peak(void) {
+    struct rusage usage;
+    if (getrusage(RUSAGE_CHILDREN, &usage) != 0) {
+        return 0;
+    }
+#ifdef __APPLE__
+    return (int64_t)usage.ru_maxrss; /* bytes */
+#else
+    return (int64_t)usage.ru_maxrss * 1024; /* kilobytes */
+#endif
+}
+#endif
 
 static int64_t resident_peak(const MsChild *child) {
 #if defined(__linux__)
@@ -368,7 +412,7 @@ static void child_progress(MsChild *child) {
             run_progress(child);
         }
     }
-    msrt_token_post_remote(child->token, 1);
+    child_wake(child);
 }
 
 static void on_delay(uv_timer_t *timer) {
@@ -387,6 +431,10 @@ static void on_exit(uv_process_t *process, int64_t status, int term_signal) {
     PROCESS_MEMORY_COUNTERS counters = {.cb = sizeof counters};
     if (GetProcessMemoryInfo(process->process_handle, &counters, sizeof counters)) {
         child->max_resident = (int64_t)counters.PeakWorkingSetSize;
+    }
+#else
+    if (child->max_resident == 0) {
+        child->max_resident = reaped_children_peak();
     }
 #endif
     child_unlock(child);
@@ -483,7 +531,7 @@ static void child_thread(void *argument) {
     child_lock(child);
     child->finished = true;
     child_unlock(child);
-    msrt_token_post_remote(child->token, 1);
+    child_wake(child);
 }
 
 /* The status of a failed start: a missing program or directory, a file that cannot run, or the host's text. */
@@ -522,6 +570,23 @@ static void descriptor_close(int fd) {
     }
 }
 
+static uv_once_t environment_once = UV_ONCE_INIT;
+static uv_mutex_t environment_lock;
+
+static void environment_init(void) { uv_mutex_init(&environment_lock); }
+
+/* `uv_spawn`, with the C library's environment pointing at the child's while libuv forks: the forked child sets only
+ * the program's copy of environ, and execvp reads the library's (see ms_sys_swap_libc_environ). */
+static int spawn_with_environment(MsChild *child, const uv_process_options_t *options) {
+    uv_once(&environment_once, environment_init);
+    uv_mutex_lock(&environment_lock);
+    char **previous = ms_sys_swap_libc_environ(options->env);
+    const int error = uv_spawn(&child->loop, &child->process, options);
+    (void)ms_sys_swap_libc_environ(previous);
+    uv_mutex_unlock(&environment_lock);
+    return error;
+}
+
 /* Starts the process with the given modes; on success the parent ends of its pipes are in `parent` (-1 for a stream
  * that is not piped). The loop is initialised and the process spawned, but the loop thread is not started. */
 static bool child_spawn(MsChild *child, const Command *command, const int64_t modes[STREAM_COUNT], int parent[STREAM_COUNT],
@@ -553,7 +618,7 @@ static bool child_spawn(MsChild *child, const Command *command, const int64_t mo
                                         .flags = UV_PROCESS_DETACHED,
                                         .stdio_count = STREAM_COUNT,
                                         .stdio = stdio};
-        error = uv_spawn(&child->loop, &child->process, &options);
+        error = spawn_with_environment(child, &options);
         if (error != 0) {
             uv_close((uv_handle_t *)&child->process, NULL); /* initialised by the failed start */
             start_failure(fail, error, command->program);
@@ -592,7 +657,6 @@ static MsChild *child_new(Collected *run) {
         return NULL;
     }
     child->loop_ready = true;
-    child->token = msrt_token_new(1);
     return child;
 }
 
@@ -641,7 +705,6 @@ static void child_free(MsObj *object) {
         uv_loop_close(&child->loop);
     }
     uv_mutex_destroy(&child->lock);
-    msrt_token_free(child->token);
 #ifdef _WIN32
     if (child->job != NULL) {
         CloseHandle(child->job);
@@ -651,6 +714,36 @@ static void child_free(MsObj *object) {
 }
 
 /* ---- spawn ---- */
+
+/* Ends a native that starts a command. A command that could not be started is named: the program, or the working
+ * directory when that is what does not exist. Other failures (invalid input, a timeout, an output limit) are not about
+ * the program's name. */
+static uint8_t command_finish(MsFsFail *fail, const MsStr *program, const MsStr *cwd, MsStr *err) {
+    if (fail->status != STATUS_NOT_FOUND && fail->status != STATUS_PERMISSION_DENIED) {
+        return ms_fs_finish(fail, err);
+    }
+    char *directory = cwd != NULL ? copy_text(cwd) : NULL;
+    uv_fs_t request;
+    const bool missing_directory = directory != NULL && uv_fs_stat(NULL, &request, directory, NULL) != 0;
+    if (directory != NULL) {
+        uv_fs_req_cleanup(&request);
+    }
+    free(directory);
+    if (!missing_directory) {
+        return ms_fs_finish_at(fail, ms_fs_string_bytes(program), err);
+    }
+    const char prefix[] = "working directory ";
+    const size_t length = msrt_str_len(cwd);
+    uint8_t *detail = malloc(sizeof prefix - 1 + length);
+    if (detail == NULL) {
+        return ms_fs_finish(fail, err);
+    }
+    memcpy(detail, prefix, sizeof prefix - 1);
+    memcpy(detail + sizeof prefix - 1, msrt_str_data(cwd), length);
+    const uint8_t status = ms_fs_finish_at(fail, ms_bytes_of(detail, sizeof prefix - 1 + length), err);
+    free(detail);
+    return status;
+}
 
 uint8_t msstd_process_command_spawn(const MsStr *program, const MsVec *arguments, int64_t stdin_mode, int64_t stdout_mode,
                                     int64_t stderr_mode, uint8_t has_cwd, const MsStr *cwd, const MsVec *env_names,
@@ -678,8 +771,7 @@ uint8_t msstd_process_command_spawn(const MsStr *program, const MsVec *arguments
         child_free(&child->header);
     }
     command_free(&command);
-    const MsBytes name = ms_fs_string_bytes(program);
-    return ms_fs_finish_at(&fail, name, err);
+    return command_finish(&fail, program, has_cwd != 0 ? cwd : NULL, err);
 }
 
 /* The runtime stream-table id of a piped stream: the first call moves the descriptor into the table. */
@@ -735,25 +827,28 @@ uint8_t msstd_process_subprocess_wait(MsObj *object, uint8_t has_timeout, int64_
     }
     const int64_t deadline = has_timeout != 0 ? (int64_t)uv_hrtime() + timeout_ns : -1;
     for (;;) {
+        const uint64_t token = child_arm(child);
         child_lock(child);
         const bool exited = child->exited;
         const int64_t code = child->code;
         child_unlock(child);
+        const int64_t left = deadline >= 0 ? deadline - (int64_t)uv_hrtime() : -1;
+        uint32_t woke = 0;
+        if (!exited && (deadline < 0 || left > 0)) {
+            uint64_t value = 0;
+            woke = msrt_token_park(token, left, &value);
+        }
+        child_disarm(child, token);
         if (exited) {
             *out = code;
             return ms_fs_finish(&fail, err);
         }
-        int64_t left = -1;
-        if (deadline >= 0) {
-            left = deadline - (int64_t)uv_hrtime();
-            if (left <= 0) {
-                ms_fs_fail_status(&fail, STATUS_TIMEOUT);
-                return ms_fs_finish(&fail, err);
-            }
-        }
-        uint64_t value = 0;
-        if ((msrt_token_park(child->token, left, &value) & MS_WAIT_CANCELLED) != 0) {
+        if ((woke & MS_WAIT_CANCELLED) != 0) {
             ms_fs_fail_text(&fail, "cancelled");
+            return ms_fs_finish(&fail, err);
+        }
+        if (deadline >= 0 && left <= 0) {
+            ms_fs_fail_status(&fail, STATUS_TIMEOUT);
             return ms_fs_finish(&fail, err);
         }
     }
@@ -784,15 +879,21 @@ static Collected *collected_new(const MsVec *input, bool has_max, int64_t max, b
  * the group, and the delay after the exit closes pipes a background process still holds) and fails the call. */
 static bool run_wait(MsChild *child, MsFsFail *fail) {
     for (;;) {
+        const uint64_t token = child_arm(child);
         child_lock(child);
         const bool finished = child->finished;
         child_unlock(child);
+        uint32_t woke = 0;
+        if (!finished) {
+            uint64_t value = 0;
+            woke = msrt_token_park(token, -1, &value);
+        }
+        child_disarm(child, token);
         if (finished) {
             child_join(child);
             return true;
         }
-        uint64_t value = 0;
-        if ((msrt_token_park(child->token, -1, &value) & MS_WAIT_CANCELLED) != 0) {
+        if ((woke & MS_WAIT_CANCELLED) != 0) {
             child_kill_group(child);
             child_signal(child, true);
             child_join(child);
@@ -849,7 +950,7 @@ uint8_t msstd_process_command_run(const MsStr *program, const MsVec *arguments, 
         }
     }
     command_free(&command);
-    return ms_fs_finish_at(&fail, ms_fs_string_bytes(program), err);
+    return command_finish(&fail, program, has_cwd != 0 ? cwd : NULL, err);
 }
 
 /* ---- replace ---- */
