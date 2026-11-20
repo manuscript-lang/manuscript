@@ -42,16 +42,17 @@ static uint32_t ll_debug_location(LlDebug *d, uint32_t line, uint32_t column) {
 }
 
 /* The text of the module's debug metadata, after its functions. */
-static void ll_debug_finish(const LlDebug *d, MsBuf *out) {
+static void ll_debug_finish(const LlDebug *d, MsStr file, MsBuf *out) {
     ms_buf_printf(out,
                   "\n!llvm.dbg.cu = !{!%u}\n!llvm.module.flags = !{!%u}\n"
                   "!%u = distinct !DICompileUnit(language: DW_LANG_C99, file: !%u, producer: \"ms\", "
                   "isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly)\n"
-                  "!%u = !DIFile(filename: \"ms\", directory: \"\")\n"
+                  "!%u = !DIFile(filename: \"%.*s\", directory: \"\")\n"
                   "!%u = !{i32 2, !\"Debug Info Version\", i32 3}\n"
                   "!%u = !{}\n"
                   "!%u = !DISubroutineType(types: !%u)\n",
-                  LL_MD_CU, LL_MD_FLAGS, LL_MD_CU, LL_MD_FILE, LL_MD_FILE, LL_MD_FLAGS, LL_MD_NO_TYPES, LL_MD_TYPE,
+                  LL_MD_CU, LL_MD_FLAGS, LL_MD_CU, LL_MD_FILE, LL_MD_FILE, (int)file.len, file.ptr, LL_MD_FLAGS,
+                  LL_MD_NO_TYPES, LL_MD_TYPE,
                   LL_MD_NO_TYPES);
     ms_buf_put(out, d->nodes.data, d->nodes.len);
 }
