@@ -82,6 +82,10 @@ export extern fn msstd_process_signal_next(signals: NativeSignals) Int!
 
 export extern fn msstd_process_signal_close(signals: NativeSignals) Void
 
+export extern fn msstd_process_stop_hold() Void
+
+export extern fn msstd_process_stop_release() Void
+
 export extern fn msstd_system_get_priority(pid: Int) Int!
 
 export extern fn msstd_system_set_priority(pid: Int, priority: Int) Void!
