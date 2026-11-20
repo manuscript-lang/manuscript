@@ -155,9 +155,23 @@ fn host_triple() -> Result<String, String> {
 
 /// Assembly as an LLVM module that holds nothing else, which `llc` assembles: the pinned tools
 /// have no assembler of their own.
+///
+/// A COFF object carries one `@feat.00` symbol, which `llc` writes for every module. The assembly
+/// already defines it, and so would the wrapping module, so the copy in the assembly is left out.
 fn asm_module(asm: &[u8]) -> Vec<u8> {
+    const FEATURES: &[u8] = b"@feat.00";
+    let names_features = |line: &[u8]| line.windows(FEATURES.len()).any(|w| w == FEATURES);
     let mut module = Vec::with_capacity(asm.len() + asm.len() / 2);
+    let mut in_features_def = false;
     for line in asm.split(|&b| b == b'\n') {
+        if in_features_def {
+            in_features_def = !line.windows(6).any(|w| w == b".endef");
+            continue;
+        }
+        if names_features(line) {
+            in_features_def = line.trim_ascii_start().starts_with(b".def");
+            continue;
+        }
         module.extend_from_slice(b"module asm \"");
         for &byte in line {
             if (0x20..0x7f).contains(&byte) && byte != b'"' && byte != b'\\' {
@@ -282,6 +296,16 @@ fn compile_in(
 #[cfg(test)]
 mod tests {
     use super::asm_module;
+
+    #[test]
+    fn the_coff_feature_symbol_is_left_to_the_wrapping_module() {
+        let asm =
+            b"\t.def\t@feat.00;\n\t.scl\t3;\n\t.endef\n\t.globl\t@feat.00\n@feat.00 = 0\nmain:";
+        assert_eq!(
+            String::from_utf8(asm_module(asm)).unwrap(),
+            "module asm \"main:\"\n"
+        );
+    }
 
     #[test]
     fn assembly_is_quoted_line_by_line() {
