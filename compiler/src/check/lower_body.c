@@ -78,8 +78,8 @@ static MirTy lb_mir_ty(const Lb *lb, MsTy ty) {
     return ty == lb->string_ty ? MIR_STR : MIR_NONE;
 }
 
-static MirLoc lb_loc(MsPos pos) {
-    return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = 0};
+static MirLoc lb_loc(const Lb *lb, MsPos pos) {
+    return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
 }
 
 static void lb_emit_plain(Lb *lb, MirOp op) {
@@ -762,7 +762,7 @@ static void lb_for(Lb *lb, const MsStmt *s) {
 static void lb_statement(Lb *lb, const MsStmt *s) {
     const MsStmt *outer = lb->stmt;
     lb->stmt = s;
-    mir_b_set_loc(&lb->b, lb_loc(s->pos));
+    mir_b_set_loc(&lb->b, lb_loc(lb, s->pos));
     switch ((MsStmtKind)s->kind) {
     case MS_S_BIND: lb_bind(lb, s); break;
     case MS_S_RETURN: lb_return(lb, s); break;
@@ -776,7 +776,7 @@ static void lb_statement(Lb *lb, const MsStmt *s) {
     }
     lb->stmt = outer;
     if (outer != NULL) {
-        mir_b_set_loc(&lb->b, lb_loc(outer->pos));
+        mir_b_set_loc(&lb->b, lb_loc(lb, outer->pos));
     }
 }
 
@@ -836,7 +836,7 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     }
     const MsStr name = ms_name(lb->c->names, fn->name);
     mir_b_init(&lb->b, lb->m, mir_name(lb->m, name.ptr, name.len), params, fn->params.len, ret);
-    lb->b.f.loc = lb_loc(d->pos);
+    lb->b.f.loc = lb_loc(lb, d->pos);
     lb_mark_noalias(lb, fn);
     MirValue *values = MS_NEW_N(&lb->m->arena, MirValue, fn->params.len + 1);
     mir_b_params(&lb->b, values, fn->params.len);
