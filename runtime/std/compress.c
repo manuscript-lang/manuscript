@@ -373,3 +373,60 @@ uint8_t msstd_compress_decoder_push(void *handle, const MsVec *data, MsVec *out)
 uint8_t msstd_compress_decoder_end(void *handle, MsVec *out) {
     return decoder_step(handle, ms_bytes_of(NULL, 0), true, out);
 }
+
+/* ---- the resumable gunzip the Rust HTTP client calls --------------------------------------------------------------- */
+
+struct MsGunzip {
+    z_stream stream;
+    bool ended;   /* a member's trailer was read: the next input starts another member */
+};
+
+MsGunzip *ms_gunzip_new(void) {
+    MsGunzip *gunzip = msrt_alloc_zeroed(sizeof *gunzip);
+    if (inflateInit2(&gunzip->stream, window_bits(FORMAT_GZIP)) != Z_OK) {
+        msrt_free(gunzip);
+        return NULL;
+    }
+    return gunzip;
+}
+
+void ms_gunzip_free(MsGunzip *gunzip) {
+    if (gunzip != NULL) {
+        inflateEnd(&gunzip->stream);
+        msrt_free(gunzip);
+    }
+}
+
+uint8_t ms_gunzip_step(MsGunzip *gunzip, const uint8_t *in, size_t in_len, bool more, uint8_t *out, size_t out_cap,
+                              size_t *in_used, size_t *out_used) {
+    z_stream *stream = &gunzip->stream;
+    *in_used = 0;
+    *out_used = 0;
+    if (gunzip->ended) {
+        if (in_len == 0) { /* between members: finished once no more input can follow */
+            return more ? MS_GUNZIP_OK : MS_GUNZIP_DONE;
+        }
+        (void)inflateReset(stream);
+        gunzip->ended = false;
+    }
+    const uInt step_in = in_len > UINT_MAX ? UINT_MAX : (uInt)in_len;
+    const uInt step_out = out_cap > UINT_MAX ? UINT_MAX : (uInt)out_cap;
+    stream->next_in = in;
+    stream->avail_in = step_in;
+    stream->next_out = out;
+    stream->avail_out = step_out;
+    const int code = inflate(stream, Z_NO_FLUSH);
+    *in_used = step_in - stream->avail_in;
+    *out_used = step_out - stream->avail_out;
+    if (code == Z_STREAM_END) {
+        gunzip->ended = true;
+        return MS_GUNZIP_OK;
+    }
+    if (code != Z_OK && code != Z_BUF_ERROR) {
+        return MS_GUNZIP_INVALID;
+    }
+    if (stream->avail_out == 0 || *in_used < in_len) {
+        return MS_GUNZIP_OK; /* more room or the rest of the input is wanted */
+    }
+    return more ? MS_GUNZIP_OK : MS_GUNZIP_TRUNCATED;
+}

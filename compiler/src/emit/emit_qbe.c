@@ -846,6 +846,7 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
+    case MOP_ListLen: qbe_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;
     case MOP_StackLow: case MOP_StackNear: qbe_stack_check(c, inst); return true;
     case MOP_Poll: qbe_poll(c, block, part); return true;
     case MOP_Undef: qbe_undef(c, inst); return true;

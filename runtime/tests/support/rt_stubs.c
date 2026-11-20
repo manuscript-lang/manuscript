@@ -45,6 +45,8 @@ __attribute__((weak)) _Noreturn void msfault_raise(uint8_t kind, const uint8_t *
 }
 
 __attribute__((weak)) _Noreturn void msrt_fault(const uint8_t *msg, size_t len) { msfault_raise(0, msg, len); }
+__attribute__((weak)) _Noreturn void msrt_fault_div_zero(void) { msfault_raise(4, (const uint8_t *)"division by zero", 16); }
+__attribute__((weak)) _Noreturn void msrt_fault_rem_zero(void) { msfault_raise(4, (const uint8_t *)"remainder by zero", 17); }
 
 __attribute__((weak)) _Noreturn void msrt_index_fault(int64_t index, int64_t length) {
     char text[96];

@@ -18,7 +18,6 @@ typedef struct MsBody {
     uint32_t lambda_floor;  /* bindings below this id belong to an enclosing function: captured */
     MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
-    bool has_close;         /* the module declares a method named `close` */
     MsTy result;
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
     uint32_t function;      /* the declaration node of the function being checked */
