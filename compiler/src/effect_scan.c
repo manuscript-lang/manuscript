@@ -15,7 +15,7 @@ typedef struct ScanState {
     const MsFacts *facts;
     MsScanEdge *edges;
     uint32_t nedges, cap;
-    bool unknown, write;
+    bool unknown, write, partial;
 } ScanState;
 
 /* Whether `sym` is a callable node: a function, type or constant some loaded module declares. */
@@ -51,6 +51,10 @@ static void scan_edge(ScanState *s, MsSymId callee, MsPos pos) {
 static void scan_call(ScanState *s, const MsExpr *e) {
     const MsSyms *syms = &s->check->syms;
     const MsSymId callee = s->facts->call_callee[e->id];
+    if (s->facts->call_method[e->id] != MS_NONE || s->facts->call_interface[e->id] != MS_TY_NONE) {
+        s->partial = true;
+        return;
+    }
     if (callee == MS_NONE) {
         s->unknown = true;
         return;
@@ -99,5 +103,6 @@ MsScanNode ms_effect_scan_decl(MsArena *arena, const MsCheck *c, MsModId module,
     ScanState s = {.arena = arena, .check = c, .facts = c->mods[module].facts};
     const MsVisitor visitor = {.ctx = &s, .stmt = scan_stmt, .expr = scan_expr};
     ms_walk_decl(&visitor, d);
-    return (MsScanNode){.edges = s.edges, .nedges = s.nedges, .unknown = s.unknown, .write = s.write};
+    return (MsScanNode){.edges = s.edges, .nedges = s.nedges, .unknown = s.unknown, .write = s.write,
+                       .partial = s.partial};
 }

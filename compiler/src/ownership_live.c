@@ -147,7 +147,7 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA:
+    case MS_E_LAMBDA: return; /* the walk does not claim these; their payload is not a call's */
     case MS_E_CALL:
         for (uint32_t i = e->u.call.args.len; i > 0; i--) {
             live_expr(w, e->u.call.args.ptr[i - 1].value);

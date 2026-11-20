@@ -119,6 +119,7 @@ typedef struct MsScanNode {
     uint32_t nedges;
     bool unknown;
     bool write; /* assigns to a member */
+    bool partial; /* reaches a method or interface call, whose edge the scan does not record yet */
 } MsScanNode;
 
 /* Scans the declaration `d` (a function or constant) of `module`, whose body the checker checked.

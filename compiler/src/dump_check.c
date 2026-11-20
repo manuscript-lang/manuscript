@@ -367,6 +367,9 @@ void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m) {
             continue;
         }
         const MsScanNode node = ms_effect_scan_decl(&scratch, c, m, d);
+        if (node.partial) {
+            continue;
+        }
         ms_buf_printf(out, "%s %u:%u\n", d->kind == MS_D_CONST ? "const" : "fn", d->pos.line, d->pos.column);
         for (uint32_t k = 0; k < node.nedges; k++) {
             const MsStr name = ms_name(c->names, c->syms.name[node.edges[k].callee]);
