@@ -16,15 +16,6 @@ char ms_test_fault_message[256];
 uint8_t ms_test_fault_kind;
 size_t ms_test_cleanups;
 
-/* The table of one-character ASCII strings the Rust runtime defines (two bytes each, the second a NUL). */
-uint8_t msrt_ascii_chars[128][2];
-
-__attribute__((constructor)) static void init_ascii_chars(void) {
-    for (int i = 0; i < 128; i++) {
-        msrt_ascii_chars[i][0] = (uint8_t)i;
-    }
-}
-
 #define MAX_CLEANUPS 8
 static void (*cleanup_run[MAX_CLEANUPS])(uint8_t *);
 static uint8_t *cleanup_arg[MAX_CLEANUPS];

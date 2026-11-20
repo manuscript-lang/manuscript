@@ -475,7 +475,7 @@ void msrt_heap_release(void) {
     /* The list node comes from the system allocator, not from this heap. */
     Idle *node = ms_sys_malloc(sizeof(Idle));
     if (!node) {
-        msalloc_rust_oom(sizeof(Idle));
+        msalloc_oom(sizeof(Idle));
     }
     node->state = *s;
     *s = (State)STATE_INIT;
@@ -647,7 +647,7 @@ NOINLINE static void *alloc_large(State *s, size_t size) {
     }
     void *p = ms_sys_malloc(request);
     if (!p) {
-        msalloc_rust_oom(request);
+        msalloc_oom(request);
     }
     if (request > LARGE_MAX) {
         advise_huge(p, request);
@@ -887,7 +887,7 @@ void *msrt_realloc(void *p, size_t new_size) {
     if ((old > LARGE_MAX && new_size > LARGE_MAX) || uncached) {
         void *q = ms_sys_realloc(p, new_size);
         if (!q) {
-            msalloc_rust_oom(new_size);
+            msalloc_oom(new_size);
         }
         return q;
     }

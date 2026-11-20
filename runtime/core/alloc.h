@@ -34,7 +34,7 @@ bool msalloc_reserve(void *(*map)(size_t), void (*unmap)(void *, size_t), MsAllo
 
 /* Called when the system cannot give a block: reports out-of-memory and does not return. Defined by
  * the Rust runtime (crates/ms-rt/src/alloc.rs); a C test defines its own. */
-void msalloc_rust_oom(size_t bytes) __attribute__((noreturn));
+void msalloc_oom(size_t bytes) __attribute__((noreturn));
 
 /* Blocks the calling thread holds. Defined only when alloc.c is built with -DMS_ALLOC_STATS (the unit tests),
  * which also scribbles over freed blocks so a use after free shows up. */
