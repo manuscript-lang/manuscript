@@ -522,7 +522,8 @@ static int build_head(char *dst, size_t cap, size_t *used, const MsExchange *exc
     for (size_t i = 0; i < count; i++) {
         MsBytes name, value;
         ms_headers_field(headers, i, &name, &value);
-        if (field_is(name, "content-length") || field_is(name, "transfer-encoding") || field_is(name, "connection")) {
+        /* A 101 head names the protocol it switches to (`Connection: Upgrade`); every other head lets the framing say it. */
+        if (field_is(name, "content-length") || field_is(name, "transfer-encoding") || (field_is(name, "connection") && status != 101)) {
             continue;
         }
         const int written = ms_h1_write_field(dst, cap, used, (const char *)name.ptr, name.len, (const char *)value.ptr, value.len);

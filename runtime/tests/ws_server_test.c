@@ -79,8 +79,12 @@ static int64_t handshake(MsHeaders *fields, const char *method, const char *host
     MsStr method_text = str(method), host_text = str(host);
     MsVec allowed = list_of(origins, origin_count), server = list_of(protocols, protocol_count);
     *response = ms_headers_new();
-    int64_t status = 0;
-    CHECK(msstd_ws_handshake(&method_text, &host_text, tls ? 1 : 0, fields, &allowed, &server, *response, &status, chosen, why) == STATUS_OK);
+    MsNetWsHandshake answer = {0};
+    MsStr err = {0};
+    CHECK(msstd_ws_handshake(&method_text, &host_text, tls ? 1 : 0, fields, &allowed, &server, *response, &answer, &err) == STATUS_OK);
+    const int64_t status = answer.status;
+    *chosen = answer.subprotocol;
+    *why = answer.reason;
     msrt_list_drop(&allowed, &msrt_desc_string);
     msrt_list_drop(&server, &msrt_desc_string);
     ms_str_release(&method_text);
@@ -185,10 +189,10 @@ int main(void) {
     {
         MsHeaders *fields = request("Upgrade", "13", SAMPLE_KEY, NULL, NULL), *response = ms_headers_new();
         const char *bad[] = {"a b"};
-        MsStr method = str("GET"), host = str("h"), chosen, why;
+        MsStr method = str("GET"), host = str("h"), why;
         MsVec none = list_of(NULL, 0), protocols = list_of(bad, 1);
-        int64_t status = 0;
-        CHECK(msstd_ws_handshake(&method, &host, 0, fields, &none, &protocols, response, &status, &chosen, &why) == STATUS_INVALID_INPUT);
+        MsNetWsHandshake answer = {0};
+        CHECK(msstd_ws_handshake(&method, &host, 0, fields, &none, &protocols, response, &answer, &why) == STATUS_INVALID_INPUT);
         msrt_list_drop(&none, &msrt_desc_string);
         msrt_list_drop(&protocols, &msrt_desc_string);
         ms_str_release(&method);

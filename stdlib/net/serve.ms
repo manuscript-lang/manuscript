@@ -111,6 +111,7 @@ fn rules_of(options: HttpServerOptions) Rules!:
 				max_body_bytes: options.max_body_bytes,
 				max_response_bytes: options.max_response_bytes,
 				max_header_bytes: head,
+				secure: options.tls.clone().is_some(),
 			),
 			head_limit: head,
 			timeout: options.timeout.clone(),

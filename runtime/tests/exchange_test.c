@@ -274,6 +274,9 @@ static void test_take_conn(void) {
     void *exchange = NULL;
     MsStr err = text_of("");
     CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
+    MsObj *upgrade = headers_of("Connection", "Upgrade"); /* a 101 head keeps its Connection field */
+    CHECK(msstd_xchg_send_head(exchange, 101, upgrade, 0, 0, 0, 0, &err) == STATUS_OK);
+    msrt_obj_drop(upgrade);
     void *taken = NULL;
     CHECK(msstd_xchg_take_conn(exchange, &taken) == STATUS_OK && taken != NULL);
     CHECK(msstd_xchg_take_conn(exchange, &taken) == STATUS_INVALID_INPUT); /* spent */
@@ -284,7 +287,8 @@ static void test_take_conn(void) {
     CHECK(ms_conn_read(ms_netconn_table(core), ms_netconn_id(core), got, sizeof got, -1, &count) == MS_NET_OK);
     CHECK(count == 11 && memcmp(got, "FRAME-BYTES", 11) == 0);
     msrt_obj_drop(taken);
-    (void)case_close(&c);
+    const char *response = case_close(&c);
+    CHECK(strstr(response, "HTTP/1.1 101 ") != NULL && strstr(response, "Connection: Upgrade\r\n") != NULL);
 }
 
 static void test_share(void) {
