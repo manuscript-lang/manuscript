@@ -1489,225 +1489,257 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
     return true;
 }
 
-MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
-    MsToken token = peek(p);
-    MsDecl *d = NULL;
-    MsTok k = (MsTok)token.kind;
-    if (k == MS_T_Fn && receiver_method_ahead(p)) {
-        /* `fn [var] Type[T].name(...)`: one method of `Type`. */
-        p->at++;
-        bool consuming = TAKE_MOVE(p, MS_T_Var, MS_T_Name);
-        bool mutating = take(p, MS_T_Var);
-        if (consuming && mutating) {
-            fail(p, previous(p), LIT("a method either takes its receiver with `move` or changes it with `var`, not both"));
-            return false;
-        }
-        MsToken receiver_name = {0};
-        if (!need_token(p, MS_T_Name, &receiver_name)) return false;
-        bool bounded = kind(p) == MS_T_LBracket && ahead(p, 1).kind == MS_T_Name && ahead(p, 2).kind == MS_T_Colon;
-        MsTypeParams bounds = {NULL, 0};
-        MsTypeRefs args = {NULL, 0};
-        if (bounded) {
-            if (!type_params(p, &bounds)) return false;
-            args.ptr = MS_NEW_N(p->arena, MsTypeRef *, bounds.len ? bounds.len : 1);
-            args.len = bounds.len;
-            for (uint32_t i = 0; i < bounds.len; i++) {
-                MsTypeRefs none = {NULL, 0};
-                args.ptr[i] = mk_named_type(p, bounds.ptr[i]->pos, bounds.ptr[i]->name, none);
-            }
-        } else if (take(p, MS_T_LBracket)) {
-            if (!type_args(p, &args)) return false;
-        }
-        MsTypeRefs receiver_args = args;
-        MsTypeRef *receiver = mk_named_type(p, receiver_name.pos, sym(p, receiver_name), args);
-        if (!need(p, MS_T_Dot)) return false;
-        MsToken name = {0};
-        if (!need_token(p, MS_T_Name, &name)) return false;
-        MsMethod *method = NULL;
-        if (!method_signature(p, name, true, true, mutating, receiver_name.pos, &method)) return false;
-        method->consuming = consuming;
-        method->receiver_args = receiver_args;
-        d = new_decl(p, token.pos, MS_D_IMPL);
-        d->u.impl.receiver = receiver;
-        d->u.impl.bounds = bounds;
-        d->u.impl.methods.ptr = MS_NEW_N(p->arena, MsMethod *, 1);
-        d->u.impl.methods.ptr[0] = method;
-        d->u.impl.methods.len = 1;
-        /* The Rust parser allocates the declaration's id after the method's. */
-        *out = d;
-        return true;
+/* The type parameters that stand for the receiver's own arguments in `fn Type[T: Bound].m()`. */
+MS_NODISCARD static bool receiver_arguments(Parser *p, MsTypeParams *bounds, MsTypeRefs *args) {
+    bool bounded = kind(p) == MS_T_LBracket && ahead(p, 1).kind == MS_T_Name && ahead(p, 2).kind == MS_T_Colon;
+    if (!bounded) {
+        return !take(p, MS_T_LBracket) || type_args(p, args);
     }
-    if (k == MS_T_Fn) {
-        p->at++;
-        if (kind(p) == MS_T_Var && ahead(p, 1).kind == MS_T_Name) {
-            fail(p, peek(p), LIT("'fn var' marks a method that changes its receiver, as in 'fn var Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter instead: 'fn add(var counter: Counter, n: Int) Void:'"));
-            return false;
-        }
-        MsToken name = {0};
-        if (!need_token(p, MS_T_Name, &name)) return false;
-        MsTypeParams tps = {0};
-        if (!type_params(p, &tps)) return false;
-        MsParams params = {0};
-        if (!parameters(p, true, false, &params)) return false;
-        MsTypeRef *result = NULL;
-        if (!result_type(p, &result)) return false;
-        MsStmts body = {0};
-        if (!statement_suite(p, false, true, &body)) return false;
-        d = new_decl(p, token.pos, MS_D_FN);
-        d->u.fn.name = sym(p, name);
-        d->u.fn.type_params = tps;
-        d->u.fn.params = params;
-        d->u.fn.result = result;
-        d->u.fn.body = body;
-        *out = d;
-        return true;
+    if (!type_params(p, bounds)) return false;
+    args->ptr = MS_NEW_N(p->arena, MsTypeRef *, bounds->len ? bounds->len : 1);
+    args->len = bounds->len;
+    for (uint32_t i = 0; i < bounds->len; i++) {
+        MsTypeRefs none = {NULL, 0};
+        args->ptr[i] = mk_named_type(p, bounds->ptr[i]->pos, bounds->ptr[i]->name, none);
     }
-    if (k == MS_T_Extern && ahead(p, 1).kind == MS_T_Type) {
-        p->at += 2;
-        MsToken name_tok = {0};
-        if (!need_token(p, MS_T_Name, &name_tok)) return false;
-        MsSym name = sym(p, name_tok);
-        MsTypeParams tps = {0};
-        if (!type_params(p, &tps)) return false;
-        if (kind(p) == MS_T_Colon) {
-            fail(p, peek(p), LIT("an extern type has no body; remove the ':'"));
-            return false;
-        }
-        if (!end(p)) return false;
-        d = new_decl(p, token.pos, MS_D_TYPE);
-        d->u.type.name = name;
-        d->u.type.type_params = tps;
-        d->u.type.external = true;
-        *out = d;
-        return true;
-    }
-    if (k == MS_T_Extern) {
-        p->at++;
-        if (!need(p, MS_T_Fn)) return false;
-        MsToken name = {0};
-        if (!need_token(p, MS_T_Name, &name)) return false;
-        MsTypeParams tps = {0};
-        if (!type_params(p, &tps)) return false;
-        MsParams params = {0};
-        if (!parameters(p, true, false, &params)) return false;
-        MsTypeRef *result = NULL;
-        if (!result_type(p, &result)) return false;
-        if (kind(p) == MS_T_Colon) {
-            fail(p, peek(p), LIT("an extern fn has no body; remove the ':'"));
-            return false;
-        }
-        if (!end(p)) return false;
-        d = new_decl(p, token.pos, MS_D_FN);
-        d->u.fn.name = sym(p, name);
-        d->u.fn.type_params = tps;
-        d->u.fn.params = params;
-        d->u.fn.result = result;
-        d->u.fn.external = true;
-        *out = d;
-        return true;
-    }
-    if (k == MS_T_Name && (ahead(p, 1).kind == MS_T_ColonAssign || ahead(p, 1).kind == MS_T_Colon)) {
-        MsToken name = {0};
-        if (!need_token(p, MS_T_Name, &name)) return false;
-        MsTypeRef *ty = NULL;
-        if (take(p, MS_T_Colon)) {
-            if (!typ(p, &ty)) return false;
-        }
-        if (!need_immutable_bind(p)) return false;
-        MsPos init_pos;
-        MsExpr *value = NULL;
-        if (!constant_value(p, &init_pos, &value)) return false;
-        if (!end(p)) return false;
-        d = new_decl(p, token.pos, MS_D_CONST);
-        d->u.konst.name = sym(p, name);
-        d->u.konst.ty = ty;
-        d->u.konst.value = value;
-        d->u.konst.init_pos = init_pos;
-        *out = d;
-        return true;
-    }
-    if (k == MS_T_Test) {
-        p->at++;
-        MsDecl tmp = {0};
-        if (!test_block(p, false, &tmp)) return false;
-        d = new_decl(p, token.pos, MS_D_TEST);
-        d->u = tmp.u;
-        *out = d;
-        return true;
-    }
-    if (k == MS_T_Name && text_is(p, token, "bench") && ahead(p, 1).kind == MS_T_String) {
-        p->at++;
-        MsDecl tmp = {0};
-        if (!test_block(p, true, &tmp)) return false;
-        d = new_decl(p, token.pos, MS_D_TEST);
-        d->u = tmp.u;
-        *out = d;
-        return true;
-    }
-    if (k == MS_T_Impl) {
-        fail(p, token, LIT(IMPL_REMOVED));
+    return true;
+}
+
+/* `fn [var] Type[T].name(...)`: one method of `Type`. */
+MS_NODISCARD static bool method_declaration(Parser *p, MsToken token, MsDecl **out) {
+    p->at++;
+    bool consuming = TAKE_MOVE(p, MS_T_Var, MS_T_Name);
+    bool mutating = take(p, MS_T_Var);
+    if (consuming && mutating) {
+        fail(p, previous(p), LIT("a method either takes its receiver with `move` or changes it with `var`, not both"));
         return false;
     }
-    if (k == MS_T_Type || k == MS_T_Enum || k == MS_T_Interface) {
-        return type_declaration(p, token, out);
+    MsToken receiver_name = {0};
+    if (!need_token(p, MS_T_Name, &receiver_name)) return false;
+    MsTypeParams bounds = {NULL, 0};
+    MsTypeRefs args = {NULL, 0};
+    if (!receiver_arguments(p, &bounds, &args)) return false;
+    MsTypeRef *receiver = mk_named_type(p, receiver_name.pos, sym(p, receiver_name), args);
+    if (!need(p, MS_T_Dot)) return false;
+    MsToken name = {0};
+    if (!need_token(p, MS_T_Name, &name)) return false;
+    MsMethod *method = NULL;
+    if (!method_signature(p, name, true, true, mutating, receiver_name.pos, &method)) return false;
+    method->consuming = consuming;
+    method->receiver_args = args;
+    /* The Rust parser allocates the declaration's id after the method's. */
+    MsDecl *d = new_decl(p, token.pos, MS_D_IMPL);
+    d->u.impl.receiver = receiver;
+    d->u.impl.bounds = bounds;
+    d->u.impl.methods.ptr = MS_NEW_N(p->arena, MsMethod *, 1);
+    d->u.impl.methods.ptr[0] = method;
+    d->u.impl.methods.len = 1;
+    *out = d;
+    return true;
+}
+
+MS_NODISCARD static bool fn_declaration(Parser *p, MsToken token, MsDecl **out) {
+    p->at++;
+    if (kind(p) == MS_T_Var && ahead(p, 1).kind == MS_T_Name) {
+        fail(p, peek(p), LIT("'fn var' marks a method that changes its receiver, as in 'fn var Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter instead: 'fn add(var counter: Counter, n: Int) Void:'"));
+        return false;
     }
-    if (k == MS_T_Name && text_is(p, token, "opaque") && (ahead(p, 1).kind == MS_T_Type || ahead(p, 1).kind == MS_T_Enum)) {
-        p->at++;
-        MsToken nx = peek(p);
-        MsDecl *decl = NULL;
-        if (!type_declaration(p, nx, &decl)) return false;
-        decl->pos = token.pos;
-        if (decl->kind == MS_D_TYPE) {
-            decl->u.type.opaque = true;
-        } else if (decl->kind == MS_D_ENUM) {
-            decl->u.enumeration.opaque = true;
+    MsToken name = {0};
+    if (!need_token(p, MS_T_Name, &name)) return false;
+    MsTypeParams tps = {0};
+    if (!type_params(p, &tps)) return false;
+    MsParams params = {0};
+    if (!parameters(p, true, false, &params)) return false;
+    MsTypeRef *result = NULL;
+    if (!result_type(p, &result)) return false;
+    MsStmts body = {0};
+    if (!statement_suite(p, false, true, &body)) return false;
+    MsDecl *d = new_decl(p, token.pos, MS_D_FN);
+    d->u.fn.name = sym(p, name);
+    d->u.fn.type_params = tps;
+    d->u.fn.params = params;
+    d->u.fn.result = result;
+    d->u.fn.body = body;
+    *out = d;
+    return true;
+}
+
+MS_NODISCARD static bool extern_type_declaration(Parser *p, MsToken token, MsDecl **out) {
+    p->at += 2;
+    MsToken name_tok = {0};
+    if (!need_token(p, MS_T_Name, &name_tok)) return false;
+    MsSym name = sym(p, name_tok);
+    MsTypeParams tps = {0};
+    if (!type_params(p, &tps)) return false;
+    if (kind(p) == MS_T_Colon) {
+        fail(p, peek(p), LIT("an extern type has no body; remove the ':'"));
+        return false;
+    }
+    if (!end(p)) return false;
+    MsDecl *d = new_decl(p, token.pos, MS_D_TYPE);
+    d->u.type.name = name;
+    d->u.type.type_params = tps;
+    d->u.type.external = true;
+    *out = d;
+    return true;
+}
+
+MS_NODISCARD static bool extern_fn_declaration(Parser *p, MsToken token, MsDecl **out) {
+    p->at++;
+    if (!need(p, MS_T_Fn)) return false;
+    MsToken name = {0};
+    if (!need_token(p, MS_T_Name, &name)) return false;
+    MsTypeParams tps = {0};
+    if (!type_params(p, &tps)) return false;
+    MsParams params = {0};
+    if (!parameters(p, true, false, &params)) return false;
+    MsTypeRef *result = NULL;
+    if (!result_type(p, &result)) return false;
+    if (kind(p) == MS_T_Colon) {
+        fail(p, peek(p), LIT("an extern fn has no body; remove the ':'"));
+        return false;
+    }
+    if (!end(p)) return false;
+    MsDecl *d = new_decl(p, token.pos, MS_D_FN);
+    d->u.fn.name = sym(p, name);
+    d->u.fn.type_params = tps;
+    d->u.fn.params = params;
+    d->u.fn.result = result;
+    d->u.fn.external = true;
+    *out = d;
+    return true;
+}
+
+/* `NAME := value` or `NAME: Type := value` at module level. */
+MS_NODISCARD static bool constant_declaration(Parser *p, MsToken token, MsDecl **out) {
+    MsToken name = {0};
+    if (!need_token(p, MS_T_Name, &name)) return false;
+    MsTypeRef *ty = NULL;
+    if (take(p, MS_T_Colon)) {
+        if (!typ(p, &ty)) return false;
+    }
+    if (!need_immutable_bind(p)) return false;
+    MsPos init_pos = {0};
+    MsExpr *value = NULL;
+    if (!constant_value(p, &init_pos, &value)) return false;
+    if (!end(p)) return false;
+    MsDecl *d = new_decl(p, token.pos, MS_D_CONST);
+    d->u.konst.name = sym(p, name);
+    d->u.konst.ty = ty;
+    d->u.konst.value = value;
+    d->u.konst.init_pos = init_pos;
+    *out = d;
+    return true;
+}
+
+MS_NODISCARD static bool test_declaration(Parser *p, MsToken token, bool bench, MsDecl **out) {
+    p->at++;
+    MsDecl block = {0};
+    if (!test_block(p, bench, &block)) return false;
+    MsDecl *d = new_decl(p, token.pos, MS_D_TEST);
+    d->u = block.u;
+    *out = d;
+    return true;
+}
+
+/* `opaque type` and `opaque enum`: the declaration after the modifier, marked opaque. */
+MS_NODISCARD static bool opaque_declaration(Parser *p, MsToken token, MsDecl **out) {
+    p->at++;
+    MsDecl *decl = NULL;
+    if (!type_declaration(p, peek(p), &decl)) return false;
+    decl->pos = token.pos;
+    if (decl->kind == MS_D_TYPE) {
+        decl->u.type.opaque = true;
+    } else if (decl->kind == MS_D_ENUM) {
+        decl->u.enumeration.opaque = true;
+    }
+    *out = decl;
+    return true;
+}
+
+/* A declaration keyword from another language, with the rewrite when there is one. */
+static void report_foreign_declaration(Parser *p, MsToken token, MsStr message, const char *replacement) {
+    MsStr word = text(p, token);
+    if (replacement == NULL && (str_is(word, "const") || str_is(word, "val") || str_is(word, "final"))) {
+        MsToken first, last;
+        MsStr rewrite;
+        if (constant_fix(p, token, &first, &last, &rewrite)) {
+            fail_fix_range(p, first, last, message, rewrite);
+            return;
         }
-        *out = decl;
-        return true;
+    }
+    if (replacement != NULL) {
+        fail_fix(p, token, message, (MsStr){replacement, (uint32_t)strlen(replacement)});
+        return;
+    }
+    fail(p, token, message);
+}
+
+static void report_misplaced_opaque(Parser *p, MsToken token) {
+    MsStr advice = LIT("'opaque' applies only to a type or enum; write 'opaque type Name:' or 'opaque enum Name:', optionally after 'export'");
+    if (ahead(p, 1).kind == MS_T_Export) {
+        const char *kw = ahead(p, 2).kind == MS_T_Enum ? "enum" : "type";
+        advice = fmt(p, "write 'export opaque %s Name:', with export first", kw);
+    }
+    fail(p, token, fmt(p, "misplaced 'opaque'; %.*s", STR(advice)));
+}
+
+/* Reports why `token` cannot start a module declaration. */
+static void report_bad_declaration(Parser *p, MsToken token) {
+    MsTok k = (MsTok)token.kind;
+    if (k == MS_T_Impl) {
+        fail(p, token, LIT(IMPL_REMOVED));
+        return;
     }
     if (k == MS_T_Var && ahead(p, 1).kind == MS_T_Fn) {
         /* `var fn T.m()` is the receiver-changing method spelled in the wrong order. */
         fail_fix_range(p, token, ahead(p, 1), LIT("a method that changes its receiver is written fn var Type.name(), with var after fn"), LIT("fn var"));
-        return false;
+        return;
     }
-    MsStr fmsg;
-    const char *freplacement;
-    if (foreign_declaration(p, token, &fmsg, &freplacement)) {
-        MsStr tw = text(p, token);
-        if (freplacement == NULL && (str_is(tw, "const") || str_is(tw, "val") || str_is(tw, "final"))) {
-            MsToken first, last;
-            MsStr rep;
-            if (constant_fix(p, token, &first, &last, &rep)) {
-                fail_fix_range(p, first, last, fmsg, rep);
-                return false;
-            }
-        }
-        if (freplacement != NULL) {
-            fail_fix(p, token, fmsg, (MsStr){freplacement, (uint32_t)strlen(freplacement)});
-            return false;
-        }
-        fail(p, token, fmsg);
-        return false;
+    MsStr message;
+    const char *replacement;
+    if (foreign_declaration(p, token, &message, &replacement)) {
+        report_foreign_declaration(p, token, message, replacement);
+        return;
     }
     if (k == MS_T_Export) {
         fail_fix(p, token, LIT("'export' appears twice; write it once before the declaration"), LIT(""));
-        return false;
+        return;
     }
     if (k == MS_T_Name && text_is(p, token, "opaque")) {
-        const char *advice;
-        MsStr adv;
-        if (ahead(p, 1).kind == MS_T_Export) {
-            const char *kw = ahead(p, 2).kind == MS_T_Enum ? "enum" : "type";
-            adv = fmt(p, "write 'export opaque %s Name:', with export first", kw);
-        } else {
-            adv = LIT("'opaque' applies only to a type or enum; write 'opaque type Name:' or 'opaque enum Name:', optionally after 'export'");
-        }
-        (void)advice;
-        fail(p, token, fmt(p, "misplaced 'opaque'; %.*s", STR(adv)));
-        return false;
+        report_misplaced_opaque(p, token);
+        return;
     }
-    MsStr dt = describe(p, token);
-    fail(p, token, fmt(p, "expected a module declaration or import, found %.*s; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn", STR(dt)));
+    MsStr found = describe(p, token);
+    fail(p, token, fmt(p, "expected a module declaration or import, found %.*s; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn", STR(found)));
+}
+
+MS_NODISCARD static bool declaration(Parser *p, MsDecl **out) {
+    MsToken token = peek(p);
+    MsTok k = (MsTok)token.kind;
+    MsTok next_kind = (MsTok)ahead(p, 1).kind;
+    if (k == MS_T_Fn) {
+        return receiver_method_ahead(p) ? method_declaration(p, token, out) : fn_declaration(p, token, out);
+    }
+    if (k == MS_T_Extern) {
+        return next_kind == MS_T_Type ? extern_type_declaration(p, token, out) : extern_fn_declaration(p, token, out);
+    }
+    if (k == MS_T_Name && (next_kind == MS_T_ColonAssign || next_kind == MS_T_Colon)) {
+        return constant_declaration(p, token, out);
+    }
+    if (k == MS_T_Test) {
+        return test_declaration(p, token, false, out);
+    }
+    if (k == MS_T_Name && text_is(p, token, "bench") && next_kind == MS_T_String) {
+        return test_declaration(p, token, true, out);
+    }
+    if (k == MS_T_Type || k == MS_T_Enum || k == MS_T_Interface) {
+        return type_declaration(p, token, out);
+    }
+    if (k == MS_T_Name && text_is(p, token, "opaque") && (next_kind == MS_T_Type || next_kind == MS_T_Enum)) {
+        return opaque_declaration(p, token, out);
+    }
+    report_bad_declaration(p, token);
     return false;
 }
 
