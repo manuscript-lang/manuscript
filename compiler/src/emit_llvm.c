@@ -83,6 +83,7 @@ static uint32_t ll_pieces(MirOp op) {
     switch (op) {
     case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
     case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk:
+    case MOP_NarrowChk: case MOP_IntOverflowIf:
         return 1;
     case MOP_SDivChk:
         return 2;
@@ -676,6 +677,14 @@ static const char *ll_float_function(uint8_t op) {
     }
 }
 
+/* Rounds the double in `%v<src>` to the nearest float and back, into `%v<res>`: a Float32 lives in a
+ * double register. */
+static void ll_f32_round(LCx *c, MirValue res, const char *src) {
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "  %%r%u = fptrunc double %s to float\n  %%v%u = fpext float %%r%u to double\n", n, src,
+                  res, n);
+}
+
 /* The one-operand operations and conversions. */
 static bool ll_unary(LCx *c, const MirInst *inst) {
     MsBuf *o = c->out;
@@ -685,7 +694,17 @@ static bool ll_unary(LCx *c, const MirInst *inst) {
                       ll_vty(c, inst->res)[1] == '1' ? "true" : "1");
         return true;
     case MOP_FNeg: ms_buf_printf(o, "  %%v%u = fneg double %%v%u\n", inst->res, inst->args[0]); return true;
-    case MOP_I2F: ms_buf_printf(o, "  %%v%u = sitofp i64 %%v%u to double\n", inst->res, inst->args[0]); return true;
+    case MOP_I2F:
+        if (ll_leaves(c, c->f->values[inst->res]).ptr[0] == MIR_LEAF_F32) {
+            const uint32_t n = c->next++;
+            ms_buf_printf(o, "  %%i%u = sitofp i64 %%v%u to double\n", n, inst->args[0]);
+            char src[24];
+            (void)snprintf(src, sizeof src, "%%i%u", n);
+            ll_f32_round(c, inst->res, src);
+            return true;
+        }
+        ms_buf_printf(o, "  %%v%u = sitofp i64 %%v%u to double\n", inst->res, inst->args[0]);
+        return true;
     case MOP_B2I: ms_buf_printf(o, "  %%v%u = zext i1 %%v%u to i64\n", inst->res, inst->args[0]); return true;
     case MOP_INeg: ms_buf_printf(o, "  %%v%u = sub i64 0, %%v%u\n", inst->res, inst->args[0]); return true;
     case MOP_Clz: case MOP_Ctz:
@@ -716,6 +735,86 @@ static bool ll_memory_inst(LCx *c, const MirInst *inst, bool *handled) {
     default:
         *handled = false;
         return true;
+    }
+}
+
+/* ---- conversions and checks on sizes ---- */
+
+/* The width and signedness of the sized integer kinds `narrow.chk` checks against. */
+typedef struct LlNarrow {
+    MirTyKind kind;
+    uint8_t bits;
+    bool sign;
+} LlNarrow;
+
+static const LlNarrow ll_narrows[] = {
+    {MK_INT8, 8, true},   {MK_INT16, 16, true},   {MK_INT32, 32, true},
+    {MK_UINT8, 8, false}, {MK_UINT16, 16, false}, {MK_UINT32, 32, false},
+};
+
+/* `narrow.chk`: faults unless the value survives a round trip through the result's width. Other
+ * result types hold every `Int`. */
+static void ll_narrow_chk(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+    const MirTyKind kind = mir_ty_data(c->m, c->f->values[inst->res])->kind;
+    for (size_t k = 0; k < sizeof ll_narrows / sizeof ll_narrows[0]; k++) {
+        if (ll_narrows[k].kind != kind) {
+            continue;
+        }
+        const uint32_t n = c->next++;
+        const LlNarrow *w = &ll_narrows[k];
+        ms_buf_printf(c->out, "  %%n%u = trunc i64 %%v%u to i%u\n  %%e%u = %s i%u %%n%u to i64\n  %%z%u = icmp ne i64 %%e%u, %%v%u\n",
+                      n, inst->args[0], w->bits, n, w->sign ? "sext" : "zext", w->bits, n, n, n, inst->args[0]);
+        char flag[24];
+        (void)snprintf(flag, sizeof flag, "%%z%u", n);
+        ll_fault_if(c, block, part, flag, "msrt_fault_int_overflow", NULL, 0);
+        break;
+    }
+    ll_copy_leaf(c, inst->res, 0, inst->args[0], 0);
+}
+
+/* `iadd.overflow`, `imul.overflow`: whether the signed operation overflows. */
+static void ll_overflow_flag(LCx *c, const MirInst *inst) {
+    const char *op = inst->op == MOP_IAddOverflow ? "sadd" : "smul";
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "  %%x%u = call { i64, i1 } @llvm.%s.with.overflow.i64(i64 %%v%u, i64 %%v%u)\n  %%v%u = extractvalue { i64, i1 } %%x%u, 1\n",
+                  n, op, inst->args[0], inst->args[1], inst->res, n);
+}
+
+/* `conv`, `f32.round`, `narrow.chk`, the overflow flags and `int_overflow.if`; false when `inst`
+ * is none of them. */
+static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+    char src[24];
+    switch ((MirOp)inst->op) {
+    case MOP_F32Round:
+        (void)snprintf(src, sizeof src, "%%v%u", inst->args[0]);
+        ll_f32_round(c, inst->res, src);
+        return true;
+    case MOP_Conv: {
+        const MirLeafSpan out = ll_leaves(c, c->f->values[inst->res]);
+        const bool round = out.len == 1 && out.ptr[0] == MIR_LEAF_F32 &&
+                           ll_leaves(c, c->f->values[inst->args[0]]).ptr[0] == MIR_LEAF_F64;
+        (void)snprintf(src, sizeof src, "%%v%u", inst->args[0]);
+        if (round) {
+            ll_f32_round(c, inst->res, src);
+            return true;
+        }
+        for (uint32_t k = 0; k < out.len; k++) {
+            ll_copy_leaf(c, inst->res, k, inst->args[0], k);
+        }
+        return true;
+    }
+    case MOP_NarrowChk:
+        ll_narrow_chk(c, inst, block, part);
+        return true;
+    case MOP_IAddOverflow: case MOP_IMulOverflow:
+        ll_overflow_flag(c, inst);
+        return true;
+    case MOP_IntOverflowIf:
+        (void)snprintf(src, sizeof src, "%%v%u", inst->args[0]);
+        ll_fault_if(c, block, part, src, "msrt_fault_int_overflow", NULL, 0);
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -750,6 +849,9 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     case MOP_CallRt: return ll_call_rt(c, inst, block, index);
     case MOP_SDivChk: case MOP_SRemChk: ll_checked_div(c, inst, block, part); return true;
     default:
+        if (ll_convert(c, inst, block, part)) {
+            return true;
+        }
         c->why = mir_op_info[inst->op].name;
         return false;
     }
