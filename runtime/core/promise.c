@@ -591,9 +591,12 @@ static bool run_deferred(MsPromise id, int64_t deadline, bool guarded) {
         return false;
     }
     const size_t row = (size_t)found;
-    if ((table.hot[row].flags & FLAG_QUEUED) != 0 && !claim_queued(row)) {
+    /* Work taken back from the queue ends only its own promise when it faults, as it would on another isolate. */
+    const bool was_queued = (table.hot[row].flags & FLAG_QUEUED) != 0;
+    if (was_queued && !claim_queued(row)) {
         return false;
     }
+    guarded = guarded || was_queued;
     table.hot[row].flags &= (uint16_t)~FLAG_DEFERRED;
     MsObj *const closure = table.cold[row].closure;
     table.cold[row].closure = NULL;
