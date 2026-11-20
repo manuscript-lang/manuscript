@@ -4,6 +4,7 @@
 #ifndef MS_NET_TLS_H
 #define MS_NET_TLS_H
 #include <stddef.h>
+#include "ms_rt/safe.h"
 
 typedef struct MsTlsCtx MsTlsCtx;
 typedef struct MsTls MsTls;
@@ -14,6 +15,11 @@ typedef struct MsTls MsTls;
 MsTlsCtx *ms_tls_ctx_new(int server, const char *cert_pem, size_t cert_len, const char *key_pem, size_t key_len,
                            const char *ca_pem, size_t ca_len);
 void ms_tls_ctx_free(MsTlsCtx *ctx);
+
+enum { MS_TLS_ALPN_MAX = 64 };
+/* The application protocols a client offers or a server accepts, most preferred first, as names separated by commas
+   ("h2,http/1.1"). Returns 0, or -1 for an empty name or a list over MS_TLS_ALPN_MAX bytes on the wire. */
+int ms_tls_ctx_set_alpn(MsTlsCtx *ctx, const char *names);
 
 /* One connection. A client passes the host name to verify and to send as the server name; a server passes NULL. */
 MsTls *ms_tls_new(MsTlsCtx *ctx, const char *host);
@@ -30,6 +36,8 @@ int ms_tls_handshake(MsTls *t);
 /* Plaintext in or out. Return bytes (> 0), WANT_IO (0), ERROR or CLOSED (the peer sent close_notify). */
 long ms_tls_read(MsTls *t, void *buf, size_t n);
 long ms_tls_write(MsTls *t, const void *buf, size_t n);
+/* The protocol the handshake chose, empty when none; valid until the connection is freed. */
+MsBytes ms_tls_alpn(const MsTls *t);
 /* Queues close_notify. */
 int ms_tls_shutdown(MsTls *t);
 /* The last error as text, empty when none. Valid until the next call on `t`. */

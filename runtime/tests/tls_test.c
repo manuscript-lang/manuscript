@@ -70,6 +70,27 @@ int main(void) {
     CHECK(ms_tls_read(s, b, sizeof b) == MS_TLS_CLOSED);
     ms_tls_free(c); ms_tls_free(s);
 
+    /* ALPN: the server picks its first protocol the client offered; none when they share none */
+    MsTlsCtx *salpn = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
+    MsTlsCtx *calpn = ms_tls_ctx_new(0, NULL, 0, NULL, 0, CERT, sizeof CERT - 1);
+    CHECK(ms_tls_ctx_set_alpn(salpn, "h2,http/1.1") == 0 && ms_tls_ctx_set_alpn(calpn, "http/1.1,spdy/3") == 0);
+    CHECK(ms_tls_ctx_set_alpn(calpn, "a,,b") == -1);
+    CHECK(ms_tls_ctx_set_alpn(calpn, "http/1.1,spdy/3") == 0);
+    c = ms_tls_new(calpn, "localhost"); s = ms_tls_new(salpn, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE);
+    CHECK(ms_bytes_equal(ms_tls_alpn(c), ms_bytes_of((const uint8_t *)"http/1.1", 8)));
+    CHECK(ms_bytes_equal(ms_tls_alpn(s), ms_bytes_of((const uint8_t *)"http/1.1", 8)));
+    ms_tls_free(c); ms_tls_free(s);
+    CHECK(ms_tls_ctx_set_alpn(calpn, "h2") == 0);
+    c = ms_tls_new(calpn, "localhost"); s = ms_tls_new(salpn, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE && ms_tls_alpn(c).len == 2 && ms_tls_alpn(s).len == 2);
+    ms_tls_free(c); ms_tls_free(s);
+    CHECK(ms_tls_ctx_set_alpn(calpn, "spdy/3") == 0);
+    c = ms_tls_new(calpn, "localhost"); s = ms_tls_new(salpn, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE && ms_tls_alpn(c).len == 0 && ms_tls_alpn(s).len == 0);
+    ms_tls_free(c); ms_tls_free(s);
+    ms_tls_ctx_free(salpn); ms_tls_ctx_free(calpn);
+
     /* wrong host name */
     c = ms_tls_new(cctx, "example.invalid"); s = ms_tls_new(sctx, NULL);
     CHECK(handshake(c, s) == MS_TLS_ERROR && ms_tls_error(c)[0] != 0);
