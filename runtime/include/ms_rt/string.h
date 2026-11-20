@@ -2,6 +2,7 @@
 #ifndef MS_RT_STRING_H
 #define MS_RT_STRING_H
 
+#include "ms_rt/alloc.h"
 #include "ms_rt/base.h"
 
 /* A string value: two words (crates/ms-rt-abi StrVal). The top bits of `tagged` say what the bytes are:
@@ -56,6 +57,13 @@ int64_t msrt_string_scalar_step(const MsStr *s, int64_t at);
 int64_t msrt_string_scalar_at_byte(const MsStr *s, int64_t at);
 uint8_t msrt_string_starts_with(const MsStr *a, const MsStr *v);
 uint8_t msrt_string_ends_with(const MsStr *a, const MsStr *v);
+
+/* Frees the allocation of an owned string; other strings own nothing. */
+static inline void ms_str_release(const MsStr *s) {
+    if ((s->tagged >> MS_STR_TAG_SHIFT) == 0) {
+        msrt_free(s->ptr_word);
+    }
+}
 
 /* Builders (runtime/core/strbuild.c). */
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out);

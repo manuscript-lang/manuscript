@@ -68,6 +68,20 @@ Manuscript's rule holds in the C too: every allocation has one owner.
 - No initialiser that runs before `main`.
 - Layering is by directory: `sys` under `core` under `io` under `net` and `std`. System calls only in `runtime/sys`, libuv only in `runtime/io`, OpenSSL, llhttp and nghttp2 only in `runtime/net`, and each other library only in its own `runtime/std/<module>.c`.
 
+## Shared helpers: where to find what
+
+One copy of each helper, in `runtime/include/ms_rt/`, usable from `runtime/` and `compiler/` (the compiler core includes it with `-Iruntime/include`). Search here before writing a helper, and add to the matching header, never a local copy. Where libc or a library we already link (libuv, OpenSSL, PCRE2, zlib) provides the operation, call it; the helpers below exist only where libc cannot serve: freestanding runtime code, or locale-dependent `<ctype.h>`.
+
+| Need | Header | Names |
+| --- | --- | --- |
+| Checked sizes, spans, word loads, attributes | `safe.h` | `ms_size_add`, `ms_size_mul`, `MsBytes`, `ms_bytes_of`, `ms_load64`, `ms_load32` |
+| ASCII class and case (locale-free), hex digits, UTF-8 encode, continuation byte | `chars.h` | `ms_ascii_is_digit`, `ms_ascii_is_alpha`, `ms_ascii_is_ident`, `ms_ascii_is_hex`, `ms_ascii_to_lower`, `ms_ascii_equal_fold`, `ms_hex_digit_value`, `ms_utf8_encode`, `ms_utf8_is_continuation` |
+| UTF-8 decode, scalar count, Unicode white space | `utf8.h` | `ms_utf8_decode`, `ms_utf8_count`, `ms_utf8_is_space` |
+| Byte and substring search | `search.h` | `ms_find`, `ms_needle_find`, `ms_count` |
+| Number to text | `fmt.h` | `msrt_fmt_u64`, `msrt_fmt_i64`, `msrt_fmt_float` |
+| String values: build, copy, release | `string.h`, `strbuild.h` | `ms_str_release`, `ms_str_from_bytes`, `ms_copy_bytes` |
+| Whole file into memory (dump tools) | `compiler/tools/read_file.h` | `read_whole_file` |
+
 ## What the tools check
 
 | Tool | Where | What |
