@@ -22,7 +22,7 @@ enum {
     STATUS_CLOSED = 10,
     STATUS_FAILED = 11,
     STATUS_UNAVAILABLE = 12,
-    STATUS_TIMEOUT = 13,
+    STATUS_TIMED_OUT = 13, /* not STATUS_TIMEOUT: <winnt.h> defines that name as a macro */
     STATUS_NONE = 16,
     STATUS_BUSY = 17,
     STATUS_AUTHENTICATION_FAILED = 18
