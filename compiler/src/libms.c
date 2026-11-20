@@ -20,6 +20,7 @@
 #include "constfold.c"
 #include "ty_subst.c"
 #include "recursion.c"
+#include "import_hints.c"
 #include "types.c"
 #include "tables.c"
 #include "stdlib.c"

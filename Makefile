@@ -217,6 +217,7 @@ c-compiler-test:
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
+	sh compiler/tests/import-hints-diff.sh
 	sh compiler/tests/qbe-run.sh
 
 # The C driver: stage table and parse entry point, then the thin `ms` in front of the Rust `ms` (needs make build).
