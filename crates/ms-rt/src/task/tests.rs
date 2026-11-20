@@ -1366,3 +1366,28 @@ fn others_are_stalled_only_when_no_other_thread_can_wake_them() {
     }
     teardown();
 }
+
+#[test]
+fn packed_stack_runs_rebuild_the_words() {
+    use super::records::each_run;
+    let samples: [&[usize]; 7] = [
+        &[],
+        &[0, 0, 0],
+        &[1, 2, 3],
+        &[0, 0, 7, 0, 8, 0, 0, 0, 9, 0],
+        &[5, 0, 6],
+        &[0, 4, 0, 0, 0, 0],
+        &[0, 0, 0, 1],
+    ];
+    for words in samples {
+        let mut rebuilt = Vec::new();
+        let mut tokens = 0;
+        each_run(words, |zeros, data| {
+            tokens += 1;
+            rebuilt.extend(core::iter::repeat_n(0, zeros));
+            rebuilt.extend_from_slice(data);
+        });
+        assert_eq!(rebuilt, words);
+        assert!(tokens <= words.len() / 2 + 1, "{words:?}");
+    }
+}

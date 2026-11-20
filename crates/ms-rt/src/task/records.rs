@@ -103,7 +103,7 @@ pub(super) unsafe fn free_task(t: *mut Task) {
         s.slots[idx].task = null_mut();
         s.free_slots.push(idx);
         if !(*t).frozen.is_null() {
-            sys::free((*t).frozen.cast());
+            frozen_free((*t).frozen);
         }
         // A task's cleanup stack is small and short-lived; the next one starts with these.
         let spares = (*t).ctx.take_spares();
@@ -284,6 +284,96 @@ pub(crate) unsafe fn return_lent(handle: u64) {
     unsafe { (*t).pinned -= 1 };
 }
 
+/// A frozen stack is stored as runs: a token word (`zero_words << 32 | data_words`) followed by
+/// `data_words` words copied as they are. Frames hold many zeroed slots (empty strings, unused
+/// record fields), so a parked connection's copy is about half the stack's used bytes. A run of
+/// fewer than `MIN_ZERO_RUN` zero words stays inside the data run: a token costs one word.
+const MIN_ZERO_RUN: usize = 2;
+
+/// Calls `emit(zero_words, data)` for each run of `words`, in order.
+pub(super) fn each_run(words: &[usize], mut emit: impl FnMut(usize, &[usize])) {
+    let n = words.len();
+    let mut at = 0;
+    while at < n {
+        let zeros = words[at..].iter().take_while(|&&w| w == 0).count();
+        let start = at + zeros;
+        let mut end = start;
+        while end < n {
+            if words[end] != 0 {
+                end += 1;
+                continue;
+            }
+            let run = words[end..].iter().take_while(|&&w| w == 0).count();
+            if run >= MIN_ZERO_RUN || end + run == n {
+                break;
+            }
+            end += run;
+        }
+        emit(zeros, &words[start..end]);
+        at = end;
+    }
+}
+
+/// Frozen copies are carved from 64 KiB chunks, one word of header each, so a parked task costs
+/// what its packed stack needs and nothing more: the system allocator's per-block header and
+/// the holes its arenas keep between differently sized blocks cost about as much again. A chunk
+/// is `[live blocks, bytes used]` then blocks, and a block starts with its chunk's address.
+const CHUNK: usize = 64 << 10;
+const CHUNK_HEADER: usize = 2 * size_of::<usize>();
+
+/// A block of `words` words for a frozen copy; null never (out of memory is a fault).
+unsafe fn frozen_alloc(words: usize) -> *mut usize {
+    let need = (words + 1) * size_of::<usize>();
+    // SAFETY: the chunk is live while the scheduler holds it; blocks are carved past `used`.
+    unsafe {
+        if need > CHUNK / 4 {
+            // A big stack (a deep recursion) gets a chunk of its own.
+            let chunk = alloc::alloc(CHUNK_HEADER + need) as *mut usize;
+            chunk.write(1);
+            chunk.add(1).write(CHUNK_HEADER + need);
+            let block = chunk.add(2);
+            block.write(chunk as usize);
+            return block.add(1);
+        }
+        let mut s = sched();
+        let mut chunk = s.frozen_chunk as *mut usize;
+        if chunk.is_null() || chunk.add(1).read() + need > CHUNK {
+            if !chunk.is_null() && chunk.read() == 0 {
+                alloc::free(chunk as *mut u8);
+            }
+            chunk = alloc::alloc(CHUNK) as *mut usize;
+            chunk.write(0);
+            chunk.add(1).write(CHUNK_HEADER);
+            s.frozen_chunk = chunk as *mut u8;
+        }
+        let at = chunk.add(1).read();
+        chunk.add(1).write(at + need);
+        chunk.write(chunk.read() + 1);
+        let block = (chunk as *mut u8).add(at) as *mut usize;
+        block.write(chunk as usize);
+        block.add(1)
+    }
+}
+
+/// Gives a block of [`frozen_alloc`] back; its chunk goes when its last block does.
+unsafe fn frozen_free(copy: *mut u8) {
+    // SAFETY: `copy` came from `frozen_alloc` and is freed once.
+    unsafe {
+        let chunk = (copy as *mut usize).sub(1).read() as *mut usize;
+        let live = chunk.read() - 1;
+        chunk.write(live);
+        if live == 0 {
+            let s = sched();
+            if s.frozen_chunk as *mut usize == chunk {
+                // The chunk in use starts over empty.
+                chunk.add(1).write(CHUNK_HEADER);
+            } else {
+                alloc::free(chunk as *mut u8);
+            }
+        }
+    }
+}
+
 /// Copies the used part of `t`'s stack to the heap and gives all its pages back.
 pub(super) unsafe fn freeze(t: *mut Task) {
     // SAFETY: `t` is parked, so nothing runs on its stack; `sp` is its saved stack pointer.
@@ -291,14 +381,19 @@ pub(super) unsafe fn freeze(t: *mut Task) {
         let top = stack_top((*t).stack as usize, (*t).stack_len);
         let sp = (*t).sp;
         let len = top - sp;
+        let words = core::slice::from_raw_parts(sp as *const usize, len / size_of::<usize>());
+        let mut packed = 0;
+        each_run(words, |_, data| packed += 1 + data.len());
         // The system allocator sizes the copy exactly; the runtime's large classes round a
         // 3 KiB stack up to a 4 KiB block, which would give back nothing.
-        let copy = sys::malloc(len.max(1)) as *mut u8;
-        if copy.is_null() {
-            fault::out_of_memory(len.max(1));
-        }
-        core::ptr::copy_nonoverlapping(sp as *const u8, copy, len);
-        (*t).frozen = copy;
+        let copy = frozen_alloc(packed);
+        let mut out = copy;
+        each_run(words, |zeros, data| {
+            out.write(zeros << 32 | data.len());
+            core::ptr::copy_nonoverlapping(data.as_ptr(), out.add(1), data.len());
+            out = out.add(1 + data.len());
+        });
+        (*t).frozen = copy.cast();
         (*t).frozen_len = len;
         // The whole stack: pages below `sp` that deeper calls touched and left behind go too,
         // and the segments a deep recursion grew into, all unused on the home segment.
@@ -326,8 +421,19 @@ pub(super) unsafe fn thaw(t: *mut Task) {
         {
             (*t).teb[1] = page;
         }
-        core::ptr::copy_nonoverlapping((*t).frozen, sp as *mut u8, len);
-        sys::free((*t).frozen.cast());
+        // The page was committed fresh (zeroed), but a reused one may hold stale words: write zeros.
+        let mut at = (*t).frozen as *const usize;
+        let mut dst = sp as *mut usize;
+        let end = dst.add(len / size_of::<usize>());
+        while dst < end {
+            let token = at.read();
+            let (zeros, data) = (token >> 32, token & 0xffff_ffff);
+            core::ptr::write_bytes(dst, 0, zeros);
+            core::ptr::copy_nonoverlapping(at.add(1), dst.add(zeros), data);
+            dst = dst.add(zeros + data);
+            at = at.add(1 + data);
+        }
+        frozen_free((*t).frozen);
         (*t).frozen = null_mut();
         (*t).frozen_len = 0;
     }
