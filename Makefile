@@ -152,7 +152,7 @@ removed-check: build
 	$(MS) run tools/removed-check.ms
 
 # The Manuscript command-line front (tools/ms) against the Rust ms on the argument lines in tools/ms/cases.txt.
-ms-cli-check: build
+ms-cli-check: build target/c-tool/libmstool.a
 	$(MS) run tools/ms-cli-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
