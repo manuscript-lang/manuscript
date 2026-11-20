@@ -6,33 +6,69 @@
 #include "ms/libms.h"
 #include "ms/parse.h"
 
-static const char *const stage_names[MS_STAGE_COUNT] = {"parse", "format", "check", "lower",
-                                                        "emit",  "link",   "tool"};
-
-/* The one place that says which stages are ported. */
-static const MsImpl stage_table[MS_STAGE_COUNT] = {
-    [MS_STAGE_PARSE] = MS_IMPL_C,
+static const char *const stage_names[MS_STAGE_COUNT] = {
+    [MS_STAGE_PARSE] = "parse", [MS_STAGE_FORMAT] = "format", [MS_STAGE_CHECK] = "check",
+    [MS_STAGE_LOWER] = "lower", [MS_STAGE_EMIT] = "emit",     [MS_STAGE_LINK] = "link",
+    [MS_STAGE_TOOL] = "tool",
 };
 
 const char *ms_stage_name(MsStage stage) { return stage_names[stage]; }
 
-MsImpl ms_stage_impl(MsStage stage) {
-    /* MS_STAGES="parse=rust,check=c": a comma list of stage=impl. */
-    const char *name = ms_stage_name(stage);
-    size_t n = strlen(name);
-    const char *p = getenv("MS_STAGES");
-    while (p != NULL && *p != '\0') {
-        size_t item = strcspn(p, ",");
-        if (item > n + 1 && strncmp(p, name, n) == 0 && p[n] == '=') {
-            return item == n + 2 && p[n + 1] == 'c' ? MS_IMPL_C : MS_IMPL_RUST;
+/* The one place that says which stages are ported. */
+MsStageTable ms_stage_table_default(void) {
+    MsStageTable table = {.impl = {[MS_STAGE_PARSE] = MS_IMPL_C}};
+    return table;
+}
+
+/* Finds the stage named by the `length` bytes at `name`. */
+static bool find_stage(const char *name, size_t length, MsStage *out) {
+    for (int stage = 0; stage < MS_STAGE_COUNT; stage++) {
+        if (strlen(stage_names[stage]) == length && memcmp(stage_names[stage], name, length) == 0) {
+            *out = (MsStage)stage;
+            return true;
         }
-        p += item + (p[item] == ',');
     }
-    return stage_table[stage];
+    return false;
+}
+
+/* Parses one "stage=impl" item of `length` bytes. */
+static bool parse_override(const char *item, size_t length, MsStageTable *table) {
+    const char *equals = memchr(item, '=', length);
+    if (equals == NULL) {
+        return false;
+    }
+    const size_t name_length = (size_t)(equals - item);
+    const char *impl_name = equals + 1;
+    const size_t impl_length = length - name_length - 1;
+    MsStage stage = MS_STAGE_PARSE;
+    if (!find_stage(item, name_length, &stage)) {
+        return false;
+    }
+    if (impl_length == 1 && impl_name[0] == 'c') {
+        table->impl[stage] = MS_IMPL_C;
+    } else if (impl_length == 4 && memcmp(impl_name, "rust", 4) == 0) {
+        table->impl[stage] = MS_IMPL_RUST;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+bool ms_stage_table_override(MsStageTable *table, const char *spec) {
+    MsStageTable updated = *table;
+    while (*spec != '\0') {
+        const size_t length = strcspn(spec, ",");
+        if (!parse_override(spec, length, &updated)) {
+            return false;
+        }
+        spec += length + (spec[length] == ',' ? 1 : 0);
+    }
+    *table = updated;
+    return true;
 }
 
 void ms_compiler_init(MsCompiler *c) {
-    memset(&c->arena, 0, sizeof c->arena);
+    c->arena = (MsArena){0};
     ms_names_init(&c->names);
 }
 
@@ -52,28 +88,54 @@ MsStatus ms_load_text(MsCompiler *c, const char *path, const char *text, size_t 
     return ms_parse(&c->arena, &c->names, text, len, &out->module, diag) ? MS_OK : MS_ERR_SYNTAX;
 }
 
-MsStatus ms_load_file(MsCompiler *c, const char *path, MsSource *out, MsDiag *diag) {
-    FILE *f = fopen(path, "rb");
-    if (f == NULL) {
-        return MS_ERR_IO;
+/* Reads all of `file` into a malloc'd buffer (owned by the caller). False on a read error. */
+static bool read_all(FILE *file, char **data, size_t *length) {
+    size_t capacity = 4096;
+    size_t used = 0;
+    char *buffer = malloc(capacity);
+    if (buffer == NULL) {
+        abort();
     }
-    size_t cap = 4096, n = 0;
-    char *buf = malloc(cap);
     for (;;) {
-        n += fread(buf + n, 1, cap - n, f);
-        if (n < cap) {
+        used += fread(buffer + used, 1, capacity - used, file);
+        if (used < capacity) {
             break;
         }
-        cap *= 2;
-        buf = realloc(buf, cap);
+        size_t grown = 0;
+        if (!ms_size_mul(capacity, 2, &grown)) {
+            abort();
+        }
+        char *bigger = realloc(buffer, grown);
+        if (bigger == NULL) {
+            abort();
+        }
+        buffer = bigger;
+        capacity = grown;
     }
-    bool bad = ferror(f) != 0;
-    fclose(f);
-    if (bad) {
-        free(buf);
+    if (ferror(file) != 0) {
+        free(buffer);
+        return false;
+    }
+    *data = buffer;
+    *length = used;
+    return true;
+}
+
+MsStatus ms_load_file(MsCompiler *c, const char *path, MsSource *out, MsDiag *diag) {
+    // NOLINTNEXTLINE(android-cloexec-fopen): mode "e" is glibc only, and the compiler never forks while reading.
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) {
         return MS_ERR_IO;
     }
-    char *text = ms_arena_strndup(&c->arena, buf, n);
-    free(buf);
-    return ms_load_text(c, ms_arena_strndup(&c->arena, path, strlen(path)), text, n, out, diag);
+    char *data = NULL;
+    size_t length = 0;
+    const bool read_ok = read_all(file, &data, &length);
+    fclose(file);
+    if (!read_ok) {
+        return MS_ERR_IO;
+    }
+    const char *text = ms_arena_strndup(&c->arena, data, length);
+    free(data);
+    const char *kept_path = ms_arena_strndup(&c->arena, path, strlen(path));
+    return ms_load_text(c, kept_path, text, length, out, diag);
 }
