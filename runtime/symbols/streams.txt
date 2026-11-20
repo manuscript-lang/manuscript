@@ -1,1 +1,8 @@
-# ms_rt/streams.h: defined in C as ms_streams_*; the program symbols msrt_streams_* move here when the C promise table serves programs.
+# Defined in runtime/core/streams.c.
+msrt_streams_open
+msrt_streams_read
+msrt_streams_write
+msrt_streams_flush
+msrt_streams_buffered
+msrt_streams_error
+msrt_streams_close

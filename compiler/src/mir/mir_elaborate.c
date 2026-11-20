@@ -543,7 +543,7 @@ static bool el_run_all(MirModule *m, const ElCx *shared, MsBuf *error) {
 bool mir_elaborate_with(MirModule *m, bool cancel_exits, MsBuf *error) {
     ElCx shared = {.close = MIR_NONE, .discard = MIR_NONE, .cancel = MIR_NONE,
                    .shield_enter = MIR_NONE, .shield_exit = MIR_NONE};
-    shared.close = mir_func_by_name(m, mir_name(m, "close", 5));
+    shared.close = m->close;
     if (cancel_exits) {
         shared.all = el_cancel_new(m);
     }

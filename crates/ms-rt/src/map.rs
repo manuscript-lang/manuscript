@@ -137,16 +137,3 @@ unsafe extern "C-unwind" {
     pub fn msrt_set_is_superset_of(a: *const MapVal, b: *const MapVal, kd: KeyDesc) -> u8;
     pub fn msrt_set_is_disjoint_from(a: *const MapVal, b: *const MapVal, kd: KeyDesc) -> u8;
 }
-
-#[cfg(test)]
-pub(crate) fn empty() -> MapVal {
-    MapVal {
-        desc: core::ptr::null(),
-        slots: core::ptr::null_mut(),
-        index: core::ptr::null_mut(),
-        len: 0,
-        used: 0,
-        cap: 0,
-        mask: 0,
-    }
-}

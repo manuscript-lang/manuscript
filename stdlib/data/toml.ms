@@ -60,6 +60,43 @@ export type TomlOptions:
 	// materialization.
 	max_values: Int? = 1000000
 
+// What a top-level statement of a document is: a `[table]` header, a `[[table array]]`
+// header, or a `key = value` pair.
+export enum TomlStatementKind:
+	// A `[table]` header line.
+	Header
+	// A `[[table array]]` header line, which starts the next element of the array.
+	ArrayHeader
+	// A `key = value` line, with a dotted key or not; the value may span several lines.
+	Pair
+
+// Where one statement of a document sits, in byte offsets of `TomlLayout.text`. A
+// statement spans whole lines: from the start of the line it begins on to just after
+// the line break that ends it, so it covers a trailing comment and a value spread over
+// several lines. Blank and comment lines between statements belong to no statement.
+export type TomlStatement:
+	// Whether the statement is a header, an array header or a key and value.
+	kind: TomlStatementKind
+	// For a header, the table it names; for a pair, the table of the header it follows
+	// (empty before the first header).
+	table: List[String]
+	// For a pair, its key as written, one element per dotted part; empty for a header.
+	keys: List[String]
+	// Offset of the start of the line the statement begins on, indentation included.
+	start: Int
+	// Offset just after the line break that ends the statement, or the end of the text.
+	end: Int
+
+// A parsed document with the layout of its statements.
+export type TomlLayout:
+	// The document with every CRLF turned to LF; offsets refer to this text.
+	text: String
+	// The parsed document, the same value `parse` returns for the text.
+	value: TomlValue
+	// The top-level statements in document order; blank and comment lines are not
+	// listed.
+	statements: List[TomlStatement]
+
 // The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are
 // derived from it only when an error is reported.
 type Reader:
@@ -71,6 +108,9 @@ type Reader:
 	entries: List[Map[String, Node]]
 	// Table-array contents by slot: appending a table extends one list in place.
 	arrays: List[List[Int]]
+	// Whether to note where each top-level statement sits, for `layout`.
+	record: Bool
+	statements: List[TomlStatement]
 
 // Table flags. A table's entries live at the same index of `Reader.entries`.
 type Table:
@@ -506,17 +546,24 @@ fn simple_key(var reader: Reader) String?:
 	reader.pos = after + 1
 	return slice_text(reader, start, end)
 
-// Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
-fn key_value(var reader: Reader, table: Int, depth: Int) Void!:
+// Reads `keys = value` into the table, where `depth` is the nesting depth of the table,
+// and returns the keys as written.
+fn read_pair(var reader: Reader, table: Int, depth: Int) List[String]!:
 	if key := simple_key(reader):
 		value := read_value(reader, depth + 1)?
-		return assign_one(reader: reader, parent: table, key: key, value: value)
+		assign_one(reader: reader, parent: table, key: key.clone(), value: value)?
+		return ok([key])
 
 	keys := key_path(reader)?
 	if advance(reader) != EQUALS: return error(invalid(reader, "expected equals"))
 
 	value := read_value(reader, depth + keys.length())?
-	return assign(reader: reader, parent: table, keys: keys, value: value)
+	assign(reader: reader, parent: table, keys: keys.clone(), value: value)?
+	return ok(keys)
+
+fn key_value(var reader: Reader, table: Int, depth: Int) Void!:
+	_keys := read_pair(reader, table, depth)?
+	return ok()
 
 fn seal(var reader: Reader, value: Node) Void:
 	match value:
@@ -913,10 +960,13 @@ fn materialize(
 fn control_pattern() Regex:
 	return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
-// Parses a TOML document into a `TableValue`, which is empty for an empty document.
-// Invalid TOML returns an `Error` with kind `EBADMSG` that reports the source line and
-// column. A limit in `options` that the document exceeds returns `EOVERFLOW`.
-export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
+// The offset of the start of the line that holds `pos`.
+fn line_start(data: Bytes, pos: Int) Int:
+	var at = pos
+	while at > 0 and byte_at(data, at - 1) != NEWLINE: at -= 1
+	return at
+
+fn read_document(text: String, options: TomlOptions, record: Bool) TomlLayout!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
 		if value := limit:
 			if value < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
@@ -937,6 +987,8 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 		tables: [],
 		entries: [],
 		arrays: [],
+		record: record,
+		statements: [],
 	)
 
 	if span := control_pattern().find_span(normalized):
@@ -949,10 +1001,15 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	root := new_table(reader, explicit: true, dotted: false)
 	var current = root
 	var current_depth = 1
+	var current_keys: List[String] = []
 
 	while true:
 		space(reader, multiline: true)
 		if peek(reader) < 0: break
+
+		statement_start := line_start(reader.data, cursor(reader))
+		var kind = TomlStatementKind.Pair
+		var statement_keys: List[String] = []
 
 		if peek(reader) == LEFT_BRACKET:
 			advance(reader)
@@ -1016,8 +1073,10 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 			current_depth = keys.length() + 1
 			if array: current_depth += 1
 			budget(reader, current_depth)?
+			current_keys = keys.clone()
+			kind = if array: TomlStatementKind.ArrayHeader else: TomlStatementKind.Header
 		else:
-			key_value(reader, current, current_depth)?
+			statement_keys = read_pair(reader, current, current_depth)?
 
 		space(reader, multiline: false)
 		if peek(reader) == HASH:
@@ -1026,18 +1085,42 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 			invalid(reader, "unexpected trailing text")
 		)
 
+		if reader.record:
+			reader.statements.append(
+				TomlStatement(
+					kind: kind,
+					table: current_keys.clone(),
+					keys: statement_keys,
+					start: statement_start,
+					end: cursor(reader),
+				)
+			)
+
 	var budget = Budget(
 		max_depth: reader.options.max_depth,
 		max_values: reader.options.max_values,
 		values: 0,
 	)
-	return materialize(reader.entries, reader.arrays, Node.TableNode(root), 1, budget)
+	value := materialize(reader.entries, reader.arrays, Node.TableNode(root), 1, budget)?
+	return ok(TomlLayout(normalized, value, reader.statements))
+
+// Parses a TOML document into a `TableValue`, which is empty for an empty document.
+// Invalid TOML returns an `Error` with kind `EBADMSG` that reports the source line and
+// column. A limit in `options` that the document exceeds returns `EOVERFLOW`.
+export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
+	return ok(read_document(text, options, false)?.value)
+
+// Parses a TOML document like `parse` and also reports where each statement sits, so a
+// caller can edit the text and keep its comments and formatting.
+export fn layout(text: String, options: TomlOptions = TomlOptions()) TomlLayout!:
+	return read_document(text, options, true)
 
 type Writer:
 	out: StringBuilder
 	started: Bool
 
-fn format_key(key: String) String:
+// The TOML spelling of `key` as one key: bare when it can be, else quoted.
+export fn format_key(key: String) String:
 	var bare = key != ""
 	for c in key.chars():
 		if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
@@ -1059,7 +1142,9 @@ fn format_float(value: Float) String:
 
 	return text.concat(".0")
 
-fn inline_value(value: TomlValue) String:
+// `value` as it is written inline after `key =`: `{ url = "x", tag = "y" }` for a table,
+// `["a", "b"]` for an array.
+export fn inline_value(value: TomlValue) String:
 	match value:
 		StringValue(text): return quote_text(text, escape_c1: false)
 		IntValue(number): return number.to_string()
@@ -1091,7 +1176,8 @@ fn table_items(values: List[TomlValue]) List[Map[String, TomlValue]]:
 
 	return tables
 
-fn dotted(path: List[String]) String:
+// The TOML spelling of a table or dotted-key path: its parts joined by dots.
+export fn dotted(path: List[String]) String:
 	var parts: List[String] = []
 	for key in path: parts.append(format_key(key))
 	return parts.join(".")

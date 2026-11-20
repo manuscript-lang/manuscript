@@ -141,6 +141,15 @@ void ms_sched_teardown(void);
 /* Raises a stop request on this scheduler (a signal, a parent isolate): every waiting task that is not shielded
  * wakes with MS_WAIT_CANCELLED. Safe from any thread once the scheduler exists. */
 void ms_sched_stop(uint8_t signal);
+/* Makes the calling thread's scheduler the one ms_sched_stop_remote aims at (the main isolate's). Call it on that
+ * thread, once its first task exists; ms_sched_clear_stop_target before ms_sched_teardown. */
+void ms_sched_set_stop_target(void);
+void ms_sched_clear_stop_target(void);
+/* A stop request (`signal` is SIGINT's or SIGTERM's number) for the scheduler set with ms_sched_set_stop_target,
+ * from any thread, a signal watcher's included: raises the cancel flag of its running task unless shielded (a loop
+ * that never parks still stops), then wakes the scheduler so every parked task that is not shielded is cancelled.
+ * Does nothing while no target is set. */
+void ms_sched_stop_remote(uint8_t signal);
 /* Registers this thread's scheduler as an isolate (see isolate.h): its index goes into token ids, and mail for it
  * wakes the poller through `wake`. Returns the index, or MS_NO_ISOLATE. */
 uint32_t ms_sched_attach(MsWakeFn wake, void *argument);
@@ -187,6 +196,9 @@ bool ms_task_timed_out(void);
  * Returns the previous limit. */
 int64_t ms_task_read_limit(int64_t timeout_ns);
 void ms_task_read_limit_restore(int64_t previous);
+/* The test output capture the running task prints to (0: standard output). Tasks it spawns inherit it. */
+uint64_t ms_task_capture(void);
+void ms_task_set_capture(uint64_t capture);
 bool ms_task_read_limit_passed(void);
 /* Cancels the running task `limit_ns` from now (negative: never), or at an absolute time. Replaces an earlier
  * limit. */
@@ -216,6 +228,11 @@ void ms_task_unwind_others(void);
  * `*outcome` is how the task ended, as for ms_task_join. */
 MsTaskStatus ms_task_run_main(MsTaskEntry entry, void *arg, uint32_t flags, uint8_t *outcome, MsFaultText *message)
     MS_NONNULL_ARGS(1, 4, 5);
+
+/* Whether a fault at `address` is the running task overrunning its stack: the address lies just below the lowest
+ * address of the segment it runs on, within the reach a frame bigger than the guard can skip. Reads only, so the
+ * fault handler may call it on its alternate stack. */
+bool ms_task_stack_overflow_at(uintptr_t address);
 
 /* Runs `shim(block)` on the task's next stack segment: the recursion check of a cyclic function found the stack
  * pointer below the limit of the current one. The segment is a guarded slot kept until the task ends. */

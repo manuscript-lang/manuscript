@@ -1117,6 +1117,8 @@ pub struct Module {
     pub funcs: Vec<Func>,
     /// The program entry (`fn() -> Int`, the process exit code), if any.
     pub entry: Option<FuncId>,
+    /// The `fn(move T) -> int` that `scope.own` owners of kind 1 close with.
+    pub close: Option<FuncId>,
     /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
     /// descriptor of an aggregate type points to.
     pub desc_glue: Vec<(Ty, FuncId, FuncId)>,

@@ -31,6 +31,8 @@ typedef struct MsWorkerEnv {
 } MsWorkerEnv;
 
 void ms_workers_configure(const MsWorkerEnv *env) MS_NONNULL;
+/* Sets the most isolates the program starts (at least 1, at most MS_MAX_ISOLATES); those started keep running. */
+void ms_workers_set_limit(uint32_t limit);
 /* Isolates the program may use (1 until configured). */
 uint32_t ms_workers_limit(void);
 /* Work was queued: wakes a sleeping isolate, or starts a worker when none sleeps and the limit allows. */

@@ -1,4 +1,5 @@
-//! Manuscript native runtime.
+//! The C runtime (runtime/) is the Manuscript runtime. This crate is what remains for the Rust natives of
+//! `ms-std-net`: the ABI helpers of `ffi` and imports of the C scheduler. It goes away with `ms-std-net`.
 #![allow(clippy::missing_safety_doc)]
 // The runtime is the one place that owns raw memory for compiled code.
 #![allow(unsafe_code)]
@@ -7,71 +8,20 @@
 
 extern crate alloc as stdalloc;
 
-/// Assembly symbol name for a C-visible function (Mach-O prefixes an underscore).
-macro_rules! sym {
-    ($n:literal) => {
-        concat!(sym_prefix!(), $n)
-    };
-}
-#[cfg(target_vendor = "apple")]
-macro_rules! sym_prefix {
-    () => {
-        "_"
-    };
-}
-#[cfg(not(target_vendor = "apple"))]
-macro_rules! sym_prefix {
-    () => {
-        ""
-    };
-}
-
 pub mod alloc;
-pub mod cancel;
 pub mod desc;
-/// The drop worklist is C (`runtime/core/dropq.c`); the fault module resets it through this.
-#[cfg(not(test))]
-pub mod dropq {
-    unsafe extern "C" {
-        fn msdrop_reset();
-    }
-    /// Only the non-test `guard_exit` calls this, so unit tests do not compile it.
-    #[cfg(not(test))]
-    pub(crate) fn reset() {
-        // SAFETY: the state belongs to the calling thread.
-        unsafe { msdrop_reset() }
-    }
-}
 pub mod fault;
 pub mod ffi;
 pub mod global;
 pub mod glue;
-pub mod io;
 pub mod isolate;
 pub mod map;
 pub mod num;
 pub mod obj;
-pub mod pipe;
-pub mod poller;
-pub mod process;
-pub mod profile;
-pub mod promise;
 pub mod sched;
 pub mod start;
-pub mod streams;
 pub mod string;
-#[cfg(not(windows))]
 pub mod sys;
-#[cfg(windows)]
-#[path = "sys_windows.rs"]
-pub mod sys;
-mod sys_c;
 pub mod task;
 pub mod vec;
 pub mod watch;
-
-#[cfg(test)]
-mod model_tests;
-
-#[cfg(test)]
-mod testutil;

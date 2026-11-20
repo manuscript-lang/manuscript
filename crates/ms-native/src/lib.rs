@@ -7,6 +7,3 @@ extern crate ms_rt;
 /// Rust-side allocations of the native standard library share the runtime's allocator.
 #[global_allocator]
 static HEAP: ms_rt::alloc::StdHeap = ms_rt::alloc::StdHeap;
-
-#[cfg(all(feature = "entry", target_os = "linux", target_env = "gnu"))]
-mod entry;

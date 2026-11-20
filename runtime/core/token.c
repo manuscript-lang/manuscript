@@ -5,6 +5,7 @@
  */
 #include "array.h"
 #include "scheduler.h"
+#include "sweep.h"
 
 static MsToken *token_find(const MsSched *sched, uint64_t id) {
     const size_t index = (size_t)(id & 0xffffffffu);
@@ -97,7 +98,7 @@ MsTokenStatus ms_token_park_at(uint64_t id, int64_t at_ns, uint64_t *value, uint
     if (take_post(token, value)) {
         return MS_TOKEN_OK;
     }
-    if (ms_cancel_flag() != 0) {
+    if (ms_cancel_flag() != 0 || ms_sweep_cancel_here()) {
         *result = MS_WAIT_CANCELLED;
         return MS_TOKEN_OK;
     }
