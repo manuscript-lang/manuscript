@@ -177,7 +177,6 @@ typedef struct MirFunc {
      * copies (they own no elements). */
     bool unwind_only, explicit_cancel, raw_scratch;
     bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
-    bool raw_scratch; /* a generated sort: its scratch lists hold slots as bits and own nothing (not in the text form) */
     uint8_t linkage, kind, inline_hint, sort;
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;
