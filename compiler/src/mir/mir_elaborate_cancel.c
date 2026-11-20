@@ -294,7 +294,8 @@ uint32_t *el_callee_first(MsArena *a, const MirModule *m, const ElCancel *all) {
 
 /* The functions that keep their `var` slots, found by walking each one's sites under the current
  * assumption. Nothing is rewritten. */
-static bool ek_restores_once(ElCancel *all, MirModule *m, const uint32_t *order, const ElCx *shared) {
+static bool ek_restores_once(ElCancel *all, MirModule *m, const uint32_t *order, const ElCx *shared,
+                             MsArena *scratch) {
     bool changed = false;
     for (uint32_t k = 0; k < m->nfuncs; k++) {
         const uint32_t fi = order[k];
@@ -303,8 +304,7 @@ static bool ek_restores_once(ElCancel *all, MirModule *m, const uint32_t *order,
             continue;
         }
         ElCx cx = *shared;
-        MsArena arena = {0};
-        cx.ma = &arena;
+        cx.ma = scratch;
         cx.m = m;
         cx.fi = fi;
         cx.f = f;
@@ -313,12 +313,14 @@ static bool ek_restores_once(ElCancel *all, MirModule *m, const uint32_t *order,
         const bool ok = el_cancel_sites(all, m, f, &cx, &sites);
         changed = changed || all->restores[fi] != ok;
         all->restores[fi] = ok;
-        ms_arena_free(&arena);
+        ms_arena_reset(scratch);
     }
     return changed;
 }
 
 void el_settle_restores(ElCancel *all, MirModule *m, const uint32_t *order, const ElCx *shared) {
-    while (ek_restores_once(all, m, order, shared)) {
+    MsArena scratch = {0};
+    while (ek_restores_once(all, m, order, shared, &scratch)) {
     }
+    ms_arena_free(&scratch);
 }
