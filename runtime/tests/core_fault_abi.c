@@ -106,5 +106,6 @@ int main(void) {
     test_guard_and_cleanups();
     test_shields_and_unwinding();
     puts("core_fault_abi: ok");
+    ms_sched_teardown();
     return 0;
 }

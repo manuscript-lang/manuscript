@@ -17,7 +17,8 @@ endif()
 # Objects of a folder's sources, compiled once for every test that links them.
 function(ms_test_objects name)
   add_library(${name} OBJECT ${ARGN})
-  target_include_directories(${name} PRIVATE "${_rt}/include" "${_rt}/core" "${_rt}/std" "${_tests}/support")
+  target_include_directories(${name} PRIVATE "${_rt}/include" "${_rt}/core" "${_rt}/std" "${_tests}/support"
+                             "${MS_MIMALLOC_DIR}/include")
   target_compile_options(${name} PRIVATE ${_test_flags})
   set_target_properties(${name} PROPERTIES C_EXTENSIONS ON POSITION_INDEPENDENT_CODE OFF)
 endfunction()
@@ -39,9 +40,14 @@ function(ms_test name)
   target_compile_options(${name} PRIVATE ${_flags} ${T_FLAGS})
   target_compile_definitions(${name} PRIVATE ${T_DEFINES})
   target_link_options(${name} PRIVATE ${_flags})
-  target_link_libraries(${name} PRIVATE ${T_LIBS})
+  target_link_libraries(${name} PRIVATE ${T_LIBS} ms_mimalloc)
   set_target_properties(${name} PROPERTIES C_EXTENSIONS ON RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
   add_test(NAME ${name} COMMAND ${name} WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+  if(MS_SANITIZE AND NOT T_PLAIN)
+    # ASan does not know the scheduler's stack switches, so a libc call on a task stack can trip over stale poison;
+    # mimalloc's purge reads the clock on such a stack. Tests do not need freed memory returned to the OS.
+    set_tests_properties(${name} PROPERTIES ENVIRONMENT "MIMALLOC_PURGE_DELAY=-1")
+  endif()
 endfunction()
 
 file(GLOB _core_sources CONFIGURE_DEPENDS "${_rt}/core/*.c")
