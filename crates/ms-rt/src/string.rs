@@ -6,7 +6,6 @@
 //! indices and lengths count Unicode scalars; a string whose scalar count equals its byte length
 //! is ASCII, which every indexing operation exploits.
 //! ms: domain string
-#![cfg_attr(ms_c = "msrt_string_fmt2", allow(dead_code))]
 use crate::alloc;
 use crate::fault;
 use crate::obj;
@@ -1113,299 +1112,6 @@ pub unsafe extern "C-unwind" fn msrt_string_concat6(
 ) {
     // SAFETY: caller passes live strings and a writable `out`.
     unsafe { concat_parts(&[a, b, c, d, e, f]).write_to(out) }
-}
-
-/// Most parts one `msrt_string_fmtN` joins.
-const MAX_FMT: usize = 6;
-
-/// One digit buffer per part of a join; only the integer parts' are written.
-type Digits<const N: usize> = [core::mem::MaybeUninit<[u8; 20]>; N];
-
-/// The bytes of each part and their total length: part `k` is an `i64` written in decimal into
-/// `digits[k]` when bit `k` of `mask` is set, otherwise a `*const StrVal`.
-///
-/// # Safety
-/// Every part whose mask bit is clear is a live string.
-#[inline(always)]
-unsafe fn part_slices<const N: usize>(
-    mask: i64,
-    parts: [usize; N],
-    digits: &mut Digits<N>,
-) -> ([(*const u8, usize); N], usize) {
-    const { assert!(N <= MAX_FMT) };
-    let mut slices: [(*const u8, usize); N] = [(core::ptr::null(), 0); N];
-    let mut total = 0usize;
-    for (k, p) in parts.into_iter().enumerate() {
-        slices[k] = if (mask >> k) & 1 == 1 {
-            let d = crate::num::format_i64(p as i64, digits[k].write([0u8; 20]));
-            (d.as_ptr(), d.len())
-        } else {
-            // SAFETY: caller contract.
-            let s = unsafe { &*(p as *const StrVal) };
-            (s.data(), s.len())
-        };
-        total += slices[k].1;
-    }
-    (slices, total)
-}
-
-/// Copies each slice to `dst` in order.
-///
-/// # Safety
-/// `dst` has room for every slice, and none overlaps it.
-#[inline(always)]
-unsafe fn copy_slices(slices: &[(*const u8, usize)], mut dst: *mut u8) {
-    for &(ptr, len) in slices {
-        // SAFETY: caller contract.
-        unsafe {
-            core::ptr::copy_nonoverlapping(ptr, dst, len);
-            dst = dst.add(len);
-        }
-    }
-}
-
-/// Joins `parts` with one allocation: part `k` is an `i64` written in decimal when bit `k` of
-/// `mask` is set, otherwise a `*const StrVal`. `f"{name}={n}"` builds its text here without a
-/// temporary string for `n`.
-///
-/// # Safety
-/// Every part whose mask bit is clear is a live string.
-#[inline(always)]
-unsafe fn format_parts<const N: usize>(mask: i64, parts: [usize; N]) -> StrVal {
-    let mut digits: Digits<N> = [core::mem::MaybeUninit::uninit(); N];
-    // SAFETY: caller contract; a fresh string has room for `total` bytes.
-    unsafe {
-        let (slices, total) = part_slices(mask, parts, &mut digits);
-        joined(&[], &slices, total)
-    }
-}
-
-/// One new string holding `head` and then `slices`, `total` bytes in all.
-///
-/// # Safety
-/// Every slice is readable and `total` is their length with `head`'s.
-#[inline(always)]
-unsafe fn joined(head: &[u8], slices: &[(*const u8, usize)], total: usize) -> StrVal {
-    let mut buf = [0u8; 16];
-    let s = if total <= STR_INLINE_MAX {
-        None
-    } else {
-        Some(alloc_str(total))
-    };
-    let dst = match &s {
-        Some(s) => s.ptr_word,
-        None => buf.as_mut_ptr(),
-    };
-    // SAFETY: `dst` has room for `total` bytes and every slice is readable.
-    unsafe {
-        core::ptr::copy_nonoverlapping(head.as_ptr(), dst, head.len());
-        copy_slices(slices, dst.add(head.len()));
-    }
-    match s {
-        Some(s) => s,
-        // `buf` is zero past `total`.
-        None => StrVal::from_bits(u128::from_le_bytes(buf), total),
-    }
-}
-
-/// The join of `a` and `parts` that takes `a`: the parts are written straight onto an owned `a`,
-/// which grows as [`msrt_string_append`] grows it, so `s += f"{k}={n};"` in a loop builds no
-/// temporary string. `mask` is the mask of the join this replaces, with `a` as its part 0: bit
-/// `k + 1` set makes `parts[k]` an integer.
-///
-/// # Safety
-/// `a` is owned by the caller and dead after the call; every part whose mask bit is clear is a
-/// live string.
-#[inline(always)]
-unsafe fn append_parts<const N: usize>(a: *const StrVal, mask: i64, parts: [usize; N]) -> StrVal {
-    let mut digits: Digits<N> = [core::mem::MaybeUninit::uninit(); N];
-    // SAFETY: caller contract.
-    unsafe {
-        let (sa, la, mask) = (core::ptr::read(a), (*a).len(), mask >> 1);
-        let (slices, total) = part_slices(mask, parts, &mut digits);
-        let end = sa.ptr_word.wrapping_add(la).cast_const();
-        // A part that views `a`'s bytes would be read after they move.
-        let within = |&(p, _): &(*const u8, usize)| p >= sa.ptr_word.cast_const() && p <= end;
-        if !sa.owns() || la == 0 || slices.iter().any(within) {
-            let s = joined(bytes(a), &slices, la + total);
-            release(&sa);
-            return s;
-        }
-        if la + total > MAX_BYTES {
-            fault::fault(b"string: limit exceeded");
-        }
-        // Only a flagged `a` stays flagged, and only when every string part is ASCII.
-        let strings = (0..N).filter(|k| (mask >> k) & 1 == 0);
-        let ascii = sa.flagged_ascii()
-            && strings
-                .into_iter()
-                .all(|k| is_ascii(&*(parts[k] as *const StrVal)));
-        let need = la + total + 1;
-        let p = if alloc::usable_size(sa.ptr_word) >= need {
-            sa.ptr_word
-        } else {
-            alloc::realloc(sa.ptr_word, need + need / 2)
-        };
-        copy_slices(&slices, p.add(la));
-        *p.add(la + total) = 0;
-        let r = StrVal::owned(p, la + total);
-        if ascii { r.with_ascii() } else { r }
-    }
-}
-
-/// `f"{a}{b}"` where a part may be an integer: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt2"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b]).write_to(out) }
-}
-
-/// Three parts, any of them integers: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt3"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt3(
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b, c]).write_to(out) }
-}
-
-/// Four parts, any of them integers: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt4"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt4(
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b, c, d]).write_to(out) }
-}
-
-/// Five parts, any of them integers: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt5"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt5(
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    e: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b, c, d, e]).write_to(out) }
-}
-
-/// Six parts, any of them integers: see [`format_parts`].
-#[cfg(not(ms_c = "msrt_string_fmt6"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_fmt6(
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    e: usize,
-    f: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, [a, b, c, d, e, f]).write_to(out) }
-}
-
-/// The join of an owned `s` and one part, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt1"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt1(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a]).write_to(out) }
-}
-
-/// The join of an owned `s` and two parts, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt2"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt2(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    b: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a, b]).write_to(out) }
-}
-
-/// The join of an owned `s` and three parts, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt3"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt3(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a, b, c]).write_to(out) }
-}
-
-/// The join of an owned `s` and four parts, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt4"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt4(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a, b, c, d]).write_to(out) }
-}
-
-/// The join of an owned `s` and five parts, growing `s`: see [`append_parts`].
-#[cfg(not(ms_c = "msrt_string_append_fmt5"))]
-#[unsafe(no_mangle)]
-// ms: leaf fresh
-pub unsafe extern "C-unwind" fn msrt_string_append_fmt5(
-    s: *const StrVal,
-    mask: i64,
-    a: usize,
-    b: usize,
-    c: usize,
-    d: usize,
-    e: usize,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller gives up `s`, passes live strings and a writable `out`.
-    unsafe { append_parts(s, mask, [a, b, c, d, e]).write_to(out) }
 }
 
 /// A growable byte buffer the text formatters append to, so building a long text is linear.
@@ -3578,76 +3284,6 @@ unsafe fn normalize_kind(
 // Conversions to string (Int, Float, Bool)
 // ---------------------------------------------------------------------------
 
-#[cfg(not(ms_c = "msrt_int_to_string"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_int_to_string(v: i64, out: *mut StrVal) {
-    let mut tmp = [0u8; 20];
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_bytes(crate::num::format_i64(v, &mut tmp)).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_uint_to_string"))]
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_uint_to_string(v: i64, out: *mut StrVal) {
-    let mut tmp = [0u8; 20];
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_bytes(crate::num::format_u64(v as u64, &mut tmp)).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_uint_to_string_radix"))]
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
-    if !(2..=36).contains(&radix) {
-        fault::fault_fmt(format_args!(
-            "to_string_radix: radix must be between 2 and 36, found {radix}"
-        ));
-    }
-    let mut b = Vec::new();
-    crate::num::format_radix_u64(v as u64, radix as u32, &mut b);
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_buf(b).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_float32_to_string"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_float32_to_string(v: f64, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { from_bytes(crate::num::float32_text(v).as_slice()).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_float_to_string"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_float_to_string(v: f64, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_bytes(crate::num::float_text(v).as_slice()).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_bool_to_string"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_bool_to_string(v: u8, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_bytes(if v != 0 { b"true" } else { b"false" }).write_to(out) }
-}
-
-#[cfg(not(ms_c = "msrt_int_to_string_radix"))]
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
-    if !(2..=36).contains(&radix) {
-        fault::fault_fmt(format_args!(
-            "to_string_radix: radix must be between 2 and 36, found {radix}"
-        ));
-    }
-    let mut b = Vec::new();
-    crate::num::format_radix(v, radix as u32, &mut b);
-    // SAFETY: caller passes a writable `out`.
-    unsafe { from_buf(b).write_to(out) }
-}
-
 /// The double-quoted, escaped spelling of a string (as `%q` writes it).
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -3702,6 +3338,28 @@ pub fn count_copy(kind: usize, bytes: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The f-string joins are C (runtime/core/string_join.c); the unit tests link the C runtime.
+    unsafe extern "C-unwind" {
+        fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal);
+        fn msrt_string_fmt3(mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal);
+        fn msrt_string_append_fmt1(s: *const StrVal, mask: i64, a: usize, out: *mut StrVal);
+        fn msrt_string_append_fmt2(
+            s: *const StrVal,
+            mask: i64,
+            a: usize,
+            b: usize,
+            out: *mut StrVal,
+        );
+        fn msrt_string_append_fmt3(
+            s: *const StrVal,
+            mask: i64,
+            a: usize,
+            b: usize,
+            c: usize,
+            out: *mut StrVal,
+        );
+    }
 
     #[test]
     fn find_short_agrees_with_a_naive_search() {
