@@ -8,12 +8,19 @@ static int failures;
 #define CHECK(c) do { if (!(c)) { fprintf(stderr, "FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failures++; } } while (0)
 
 int main(void) {
-    CHECK(ms_stage_impl(MS_STAGE_PARSE) == MS_IMPL_C);
-    CHECK(ms_stage_impl(MS_STAGE_CHECK) == MS_IMPL_RUST);
+    MsStageTable table = ms_stage_table_default();
+    CHECK(table.impl[MS_STAGE_PARSE] == MS_IMPL_C);
+    CHECK(table.impl[MS_STAGE_CHECK] == MS_IMPL_RUST);
+    CHECK(ms_stage_table_override(&table, "parse=rust,check=c"));
+    CHECK(table.impl[MS_STAGE_PARSE] == MS_IMPL_RUST && table.impl[MS_STAGE_CHECK] == MS_IMPL_C);
+    CHECK(!ms_stage_table_override(&table, "parse=c,bogus=c"));
+    CHECK(table.impl[MS_STAGE_PARSE] == MS_IMPL_RUST); /* untouched by the failed override */
+    CHECK(!ms_stage_table_override(&table, "parse"));
+    table = ms_stage_table_default();
     CHECK(ms_command_stages("nonsense") == 0);
     CHECK(ms_command_stages("fmt") & (1u << MS_STAGE_FORMAT));
-    CHECK(!ms_command_in_c("fmt"));
-    CHECK(!ms_command_in_c("nonsense"));
+    CHECK(!ms_command_in_c(&table, "fmt"));
+    CHECK(!ms_command_in_c(&table, "nonsense"));
 
     MsCompiler c;
     ms_compiler_init(&c);

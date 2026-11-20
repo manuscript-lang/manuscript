@@ -11,6 +11,7 @@
 #include "ms_rt/safe.h"
 #include "ms_rt/desc.h"
 #include "ms_rt/map.h"
+#include "ms_rt/string.h"
 
 /* The family of a fault, which the structured fault record names (crates/ms-rt-abi FaultKind). */
 typedef enum MsFaultKind {
@@ -37,11 +38,5 @@ void msrt_cleanup_discard(size_t handle);
 
 MsObj *msrt_obj_clone(MsObj *object);
 void msrt_obj_drop(MsObj *object);
-
-/* Strings (ms_rt/string.h has equality and hash): copy and release, which the Rust runtime still defines. */
-void msrt_string_clone(const MsStr *s, MsStr *out);
-void msrt_string_free(const MsStr *s);
-void msrt_string_empty(MsStr *out);
-void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out);
 
 #endif

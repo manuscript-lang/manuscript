@@ -15,7 +15,7 @@ static void check(bool ok, int line, const char *text) {
 
 /* A static string over `text`. */
 static MsStr lit(const char *text) {
-    MsStr s = {(uint8_t *)text, strlen(text) | (UINT64_C(1) << 63)};
+    MsStr s = {.bytes = (const uint8_t *)text, .tagged = strlen(text) | (UINT64_C(1) << 63)};
     return s;
 }
 

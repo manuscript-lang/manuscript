@@ -1,6 +1,5 @@
 /* What the Rust runtime provides to runtime/core in a real build, stubbed for the C unit tests: faults that
- * jump back to the test, strings, objects, the cleanup stack and the map functions. The string stubs
- * implement just the layout the tests use (owned and inline strings are both a malloc copy here). */
+ * jump back to the test, the ASCII table, objects, the cleanup stack and the map functions. */
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,41 +57,6 @@ size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *arg) {
 }
 
 void msrt_cleanup_discard(size_t handle) { ms_test_cleanups = handle - 1; }
-
-/* A test string is always owned: the first word is a malloc'ed copy and the second its length (tag bits 00),
- * which msrt_string_eq and msrt_string_hash in core/string.c read like any owned string. */
-static void make_owned(const uint8_t *bytes, size_t len, MsStr *out) {
-    uint8_t *copy = malloc(len + 1);
-    memcpy(copy, bytes, len);
-    copy[len] = 0;
-    const uint64_t words[2] = {(uint64_t)(uintptr_t)copy, len};
-    memcpy(out, words, sizeof words);
-}
-
-static void owned_parts(const MsStr *s, const uint8_t **bytes, size_t *len) {
-    uint64_t words[2];
-    memcpy(words, s, sizeof words);
-    *bytes = (const uint8_t *)(uintptr_t)words[0];
-    *len = (size_t)words[1];
-}
-
-void msrt_string_clone(const MsStr *s, MsStr *out) {
-    const uint8_t *bytes = NULL;
-    size_t len = 0;
-    owned_parts(s, &bytes, &len);
-    make_owned(bytes, len, out);
-}
-
-void msrt_string_free(const MsStr *s) {
-    uint64_t words[2];
-    memcpy(words, s, sizeof words);
-    free((void *)(uintptr_t)words[0]);
-}
-
-/* The empty string owns nothing, like the static empty string of the real runtime. */
-void msrt_string_empty(MsStr *out) { memset(out, 0, 16); }
-
-void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) { make_owned(ptr, len, out); }
 
 MsObj *msrt_obj_clone(MsObj *object) { return object; }
 void msrt_obj_drop(MsObj *object) { (void)object; }

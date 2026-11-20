@@ -6,3 +6,4 @@
 - Lessons: libuv adds descriptors to epoll only inside `uv_run`, so a sleep that bypasses it (the sub-millisecond `ppoll`) must run one non-blocking pass first. A wake-up consumed by that pass must end the wait, or the scheduler sleeps with mail pending.
 - `uv_poll_init` makes the descriptor non-blocking; the reactor restores the owner's flags.
 - libuv must link against the glibc 2.28 floor: compile it with a header that sets `__GLIBC_USE_C2X_STRTOL` to 0 (see the lock script), or `sscanf` links as `__isoc23_sscanf`.
+- `ring.c` is the completion ring: libuv callbacks push `(row id, kind, result)` and the scheduler pops after `uv_run`; one fixed-capacity ring and one scratch read buffer per loop, so an idle connection owns neither. Wiring it into `reactor.c` (reads and writes complete into it instead of reporting readiness) is the event-loop thread's file.

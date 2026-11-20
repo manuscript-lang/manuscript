@@ -6,10 +6,10 @@
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
 
-static int parse(ms_ws_state *s, const uint8_t *b, size_t n, ms_ws_head *h, char *r) { return ms_ws_parse_head(s, b, n, h, r, 96); }
+static int parse(MsWsState *s, const uint8_t *b, size_t n, MsWsHead *h, char *r) { return ms_ws_parse_head(s, b, n, h, r, 96); }
 
 int main(void) {
-    ms_ws_head h; char r[96]; ms_ws_state srv = {1, 0, 0}, cli = {0, 0, 0};
+    MsWsHead h; char r[96]; MsWsState srv = {1, 0, 0}, cli = {0, 0, 0};
     /* RFC 6455 5.7: masked "Hello", unmasked "Hello" */
     const uint8_t masked[] = {0x81, 0x85, 0x37, 0xfa, 0x21, 0x3d, 0x7f, 0x9f, 0x4d, 0x51, 0x58};
     CHECK(parse(&srv, masked, sizeof masked, &h, r) == MS_WS_OK && h.fin && h.opcode == MS_WS_TEXT && h.masked);
@@ -51,7 +51,7 @@ int main(void) {
     CHECK(!cli.fragmenting);
 
     /* deflate: RSV1 only on data frames when negotiated */
-    ms_ws_state z = {0, 1, 0};
+    MsWsState z = {0, 1, 0};
     const uint8_t rsv1text[] = {0xc1, 0x00}, rsv1ping[] = {0xc9, 0x00};
     CHECK(parse(&z, rsv1text, 2, &h, r) == MS_WS_OK && h.compressed);
     CHECK(parse(&z, rsv1ping, 2, &h, r) == MS_WS_BAD);

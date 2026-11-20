@@ -1,0 +1,27 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+
+fn @sq(%x: int) -> int {
+b0:
+  %r: int = imul %x, %x
+  ret %r
+}
+
+fn @msmain() -> int {
+b0:
+  %z: int = iconst 0
+  %n: int = iconst 5
+  br b1(%z, %z)
+b1(%i: int, %acc: int):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, b2(), b3()
+b2:
+  %s: int = call @sq(%i)
+  %a: int = iadd.chk %acc, %s
+  %one: int = iconst 1
+  %j: int = iadd.chk %i, %one
+  br b1(%j, %a)
+b3:
+  ret %acc
+}
