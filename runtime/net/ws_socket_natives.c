@@ -61,7 +61,7 @@ uint8_t msstd_websocket_ping_bytes(const void *handle, const MsVec *data, MsStr 
 uint8_t msstd_websocket_ping(const void *handle, const MsStr *data, MsStr *err) {
     ms_net_clear_text(err);
     MsWsSocket *socket = ms_ws_handle_socket(handle);
-    const MsBytes bytes = ms_bytes_of((const uint8_t *)msrt_str_data(data), msrt_str_len(data));
+    const MsBytes bytes = msrt_str_bytes(data);
     return finish_session(socket, ms_ws_socket_ping(socket, bytes), err);
 }
 

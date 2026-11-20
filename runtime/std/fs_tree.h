@@ -28,6 +28,8 @@ MS_NODISCARD bool ms_fs_names_read(MsBytes directory, MsFsBuffer *names, MsFsFai
 MS_NODISCARD bool ms_fs_names_push(MsFsBuffer *names, MsBytes name);
 /* The name at `*cursor`, advancing it; false at the end. The name is a view into `names`. */
 bool ms_fs_names_next(const MsFsBuffer *names, size_t *cursor, MsBytes *name);
+/* Whether `names` holds exactly `name`. */
+bool ms_fs_names_contain(const MsFsBuffer *names, MsBytes name);
 
 /* ---- calling program code ---- */
 

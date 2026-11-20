@@ -162,8 +162,8 @@ uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t type, ui
                         MsVec *values, MsVec *numbers, MsStr *err) {
     ms_net_clear_text(err);
     MsAddr target;
-    const MsBytes name_bytes = ms_bytes_of((const uint8_t *)msrt_str_data(name), msrt_str_len(name));
-    if (!ms_net_addr_parse(ms_bytes_of((const uint8_t *)msrt_str_data(server), msrt_str_len(server)), &target) ||
+    const MsBytes name_bytes = msrt_str_bytes(name);
+    if (!ms_net_addr_parse(msrt_str_bytes(server), &target) ||
         !wanted_type(type)) {
         return STATUS_INVALID_INPUT;
     }

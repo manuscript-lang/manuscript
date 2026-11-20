@@ -12,14 +12,11 @@
 
 enum { LISTEN_BACKLOG = 1024 };
 
-static MsBytes bytes_of_str(const MsStr *text) {
-    return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text));
-}
 
 uint8_t msstd_net_listen(const MsStr *address, void **out, MsStr *err) {
     ms_net_clear_text(err);
     MsAddr target;
-    if (!ms_net_addr_parse(bytes_of_str(address), &target)) {
+    if (!ms_net_addr_parse(msrt_str_bytes(address), &target)) {
         return STATUS_INVALID_INPUT;
     }
     MsObj *handle = NULL;

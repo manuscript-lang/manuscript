@@ -151,7 +151,6 @@ bool ms_fs_same_file(const MsSysStat *a, const MsSysStat *b);
 void ms_fs_write_string(MsStr *out, const uint8_t *bytes, size_t length);
 void ms_fs_write_buffer_string(MsStr *out, const MsFsBuffer *buffer);
 
-static inline MsBytes ms_fs_string_bytes(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 /* An optional size limit: unset is unlimited, a negative one invalid. */
 MS_NODISCARD bool ms_fs_limit(uint8_t present, int64_t value, int64_t *out);

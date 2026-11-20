@@ -76,7 +76,7 @@ static void directory_open_now(MsBytes path, MsSysDir **dir, MsFsFail *fail) {
 
 uint8_t msstd_fs_directory_open(const MsStr *path, void **out, MsStr *err) {
     MsFsFail fail = {0};
-    const MsBytes bytes = ms_fs_string_bytes(path);
+    const MsBytes bytes = msrt_str_bytes(path);
     MsSysDir *dir = NULL;
     directory_open_now(bytes, &dir, &fail);
     if (!ms_fs_failed(&fail)) {
@@ -155,7 +155,7 @@ static void temporary_drop(MsObj *object) {
 uint8_t msstd_fs_temporary_open(const MsStr *prefix, void **out, MsStr *err) {
     MsFsFail fail = {0};
     MsFsBuffer path = {0};
-    if (ms_fs_make_temporary_directory(ms_fs_string_bytes(prefix), &path, &fail)) {
+    if (ms_fs_make_temporary_directory(msrt_str_bytes(prefix), &path, &fail)) {
         MsFsTemporary *handle = msrt_alloc(sizeof *handle);
         if (!text_keep(&handle->path, ms_fs_buffer_view(&path))) {
             msrt_free(handle);

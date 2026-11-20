@@ -9,6 +9,7 @@
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_fs.h"
 #include "ms_sched.h"
+#include "status.h"
 
 struct MsListener {
     MsSock socket;
@@ -37,22 +38,6 @@ static void listener_drop(MsObj *object) {
         free(listener->path);
     }
     msrt_free(listener);
-}
-
-/* The nanoseconds a park may take before `deadline_ns`: -1 for no deadline, 0 once it has passed. */
-static int64_t time_left(int64_t deadline_ns) {
-    if (deadline_ns < 0) {
-        return -1;
-    }
-    const int64_t left = deadline_ns - ms_sys_monotonic_ns();
-    return left > 0 ? left : 0;
-}
-
-static MsNetStatus wait_status(uint32_t result) {
-    if ((result & MS_WAIT_CANCELLED) != 0) {
-        return MS_NET_CANCELLED;
-    }
-    return (result & MS_WAIT_TIMEOUT) != 0 ? MS_NET_TIMEOUT : MS_NET_OK;
 }
 
 /* Wraps a listening socket (and the file it is bound to, if any) in the handle; takes ownership of both. */
@@ -130,7 +115,7 @@ MsNetStatus ms_listener_accept(MsListener *listener, int64_t deadline_ns, MsConn
             *out_id = id;
             return MS_NET_OK;
         }
-        const MsNetStatus waited = wait_status(msrt_task_wait_fd((int32_t)listener->socket, MS_WAIT_READ, time_left(deadline_ns)));
+        const MsNetStatus waited = ms_net_wait_status(msrt_task_wait_fd((int32_t)listener->socket, MS_WAIT_READ, ms_net_time_left(deadline_ns)));
         if (waited != MS_NET_OK) {
             return waited;
         }

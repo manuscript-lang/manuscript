@@ -21,7 +21,6 @@ static void release(MsObj *object) {
     }
 }
 
-static MsBytes str_bytes(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 /* ---- the client object (ClientH) ---- */
 
@@ -51,10 +50,10 @@ static MsObj *client_handle(MsCurlClient *client) {
 
 uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err) {
     ms_net_clear_text(err);
-    const MsCurlClientOptions settings = {.roots_pem = str_bytes(&options->roots_pem),
-                                          .certificate_pem = str_bytes(&options->certificate_pem),
-                                          .private_key_pem = str_bytes(&options->private_key_pem),
-                                          .unix_socket = str_bytes(&options->unix_socket),
+    const MsCurlClientOptions settings = {.roots_pem = msrt_str_bytes(&options->roots_pem),
+                                          .certificate_pem = msrt_str_bytes(&options->certificate_pem),
+                                          .private_key_pem = msrt_str_bytes(&options->private_key_pem),
+                                          .unix_socket = msrt_str_bytes(&options->unix_socket),
                                           .max_redirects = options->max_redirects,
                                           .cookies = options->cookies != 0,
                                           .decompress = options->decompress != 0};
@@ -84,10 +83,10 @@ uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec 
         return STATUS_FAILED;
     }
     for (size_t i = 0; i < hosts->len; i++) {
-        host_text[i] = str_bytes(&host_items[i]);
+        host_text[i] = msrt_str_bytes(&host_items[i]);
     }
     for (size_t i = 0; i < cidrs->len; i++) {
-        cidr_text[i] = str_bytes(&cidr_items[i]);
+        cidr_text[i] = msrt_str_bytes(&cidr_items[i]);
     }
     uint8_t status = STATUS_OK;
     if (ms_curl_client_started(client_of(handle)->client)) {
@@ -333,7 +332,7 @@ uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr 
         block_free(&block);
         return prepared;
     }
-    const MsCurlRequest request = {.method = str_bytes(method), .url = str_bytes(url), .head = ms_bytes_of(block.bytes, block.length),
+    const MsCurlRequest request = {.method = msrt_str_bytes(method), .url = msrt_str_bytes(url), .head = ms_bytes_of(block.bytes, block.length),
                                    .fields = block.fields, .nfields = (uint32_t)block.count, .body = ms_bytes_of(body->ptr, body->len)};
     const int64_t deadline = ms_net_deadline_of(has_timeout, timeout);
     MsCurlTransfer *transfer = NULL;
