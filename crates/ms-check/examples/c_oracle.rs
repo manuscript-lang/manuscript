@@ -424,7 +424,8 @@ fn project_facts(files: &[String]) {
     for path in files {
         let mut seen = Vec::new();
         let mut imports = Vec::new();
-        let Some(loaded) = load_project(std::path::Path::new(path), &mut seen, &mut imports, true) else {
+        let Some(loaded) = load_project(std::path::Path::new(path), &mut seen, &mut imports, true)
+        else {
             continue;
         };
         if seen.len() < 2 {
@@ -438,8 +439,18 @@ fn project_facts(files: &[String]) {
         }
         println!("== {path}");
         let modules: Vec<_> = seen.iter().map(|(_, m, _)| m.clone()).collect();
-        let program = ms_check::check_in(syms, &session, modules, map, ms_check::CheckOptions::default());
-        let module = &seen.iter().find(|(_, m, _)| m.file == loaded.file).expect("entry").2;
+        let program = ms_check::check_in(
+            syms,
+            &session,
+            modules,
+            map,
+            ms_check::CheckOptions::default(),
+        );
+        let module = &seen
+            .iter()
+            .find(|(_, m, _)| m.file == loaded.file)
+            .expect("entry")
+            .2;
         for d in &program.diagnostics {
             if &*d.file == "main.ms" && d.phase == ms_syntax::Phase::Resolution {
                 println!("import {}:{}: {}", d.pos.line, d.pos.column, d.message);
