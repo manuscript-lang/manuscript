@@ -5,3 +5,5 @@
 - A copy that fails is remembered across passes (`dead_insts`), so its callers fail like callers of any function the pass cannot lower. Only scalar arguments are handled; a type built from variables (`List[T]`) fails.
 - `lower-diff.sh` reads `@name.N` as `@name` and keys a function by name and signature: Rust takes bodies from a stack and C in declaration order, so the numbering differs and is not a property worth copying.
 - `return f(a)` where `f` returns a reference into `a` makes the caller return a reference into its own parameters (`own_returned_borrow_call`), so a generic that forwards a `T` to another generic is lowered. Unless every source is a non-`move` parameter, the function stays with Rust.
+- The checker accepts every type the body pass admits as a type argument (records, lists, function values), and `lb_ty` substitutes through composite types with `ms_ty_subst`. A copy whose types the lowering cannot yet handle (lists) dies and its callers stay with Rust.
+- Known divergence: `p := identity(record)` binds the call result in C, while Rust aliases the argument for a `ret_borrowed` callee. The fixtures avoid binding such a result.
