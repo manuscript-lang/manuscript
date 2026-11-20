@@ -12,6 +12,7 @@
 #include "array.h"
 #include "cancel.h"
 #include "group.h"
+#include "idle.h"
 #include "isolate.h"
 #include "promise_remote.h"
 #include "queue.h"
@@ -477,21 +478,25 @@ static void work_entry(void *argument) {
     ms_shield_exit();
 }
 
-static void start_task(MsPromise id, MsObj *closure) {
+static void start_task(MsPromise id, MsObj *closure, bool rooted) {
     const size_t row = row_or_fault(id);
     Cold *const cold = &table.cold[row];
     if (cold->closure != NULL || (table.hot[row].flags & FLAG_DEFERRED) != 0) {
         fail("promise: already started");
     }
     cold->closure = closure;
-    cold->creator = ms_task_current();
+    cold->creator = rooted ? 0 : ms_task_current();
     cold->started_at = ms_cleanup_base();
-    link_started(row);
+    if (!rooted) {
+        link_started(row);
+    }
     MsTaskStatus status = MS_TASK_OK;
     void *const argument = (void *)(uintptr_t)id; // NOLINT(performance-no-int-to-ptr): the id travels as the argument word
     const MsTaskHandle task = ms_task_spawn(work_entry, argument, MS_SPAWN_DETACHED, 0, &status);
     if (task == 0) {
-        unlink_started(row, cold->creator);
+        if (!rooted) {
+            unlink_started(row, cold->creator);
+        }
         cold->closure = NULL;
         cold->creator = 0;
         msrt_obj_drop(closure);
@@ -526,17 +531,21 @@ static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns, bool spread
     return true;
 }
 
-void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closure); }
+void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closure, false); }
+
+/* For work the runtime starts from the scheduler's own contexts, which run on whichever task last switched away: no task
+ * owns it, so it is on no task's list of started promises (a task that ends cancels the promises on its list). */
+void ms_promise_start_detached(MsPromise id, MsObj *closure) { start_task(id, closure, true); }
 
 void ms_promise_start(MsPromise id, MsObj *closure) {
     if (!queue_work(id, closure, 0, false)) {
-        start_task(id, closure);
+        start_task(id, closure, false);
     }
 }
 
 void ms_promise_start_spread(MsPromise id, MsObj *closure) {
     if (!queue_work(id, closure, MS_WORKER_BEAT_NS, true)) {
-        start_task(id, closure);
+        start_task(id, closure, false);
     }
 }
 
@@ -569,7 +578,7 @@ void ms_promise_start_idle(MsPromise id, MsObj *closure) {
     if (ms_task_count() <= 1) {
         ms_promise_defer(id, closure);
     } else {
-        start_task(id, closure);
+        start_task(id, closure, false);
     }
 }
 
@@ -716,6 +725,9 @@ static bool run_own(MsPromise id) {
 /* The scheduler is about to block: take the oldest queued work of this isolate (its owner is idle) or of another that
  * waited out the beat. */
 static bool idle_work(int64_t *wait_ns) {
+    if (ms_idle_turn()) {
+        return true;
+    }
     const uint32_t self = ms_sched()->isolate;
     const int64_t now = ms_sched_now();
     int64_t wait = -1;

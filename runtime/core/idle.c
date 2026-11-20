@@ -10,6 +10,7 @@
 #include "idle.h"
 
 #include <stdatomic.h>
+#include <string.h>
 
 #include "isolate.h"
 #include "ms_rt/alloc.h"
@@ -21,7 +22,7 @@
 #include "watch.h"
 
 enum { IDLE = 0, RUNNING = 1, CLOSED = 2 };
-enum { OP_TAKE = 1, OP_RELEASE = 2, OP_CLOSE = 3, OP_CANCEL = 4 };
+enum { OP_TAKE = 1, OP_CLOSE = 3, OP_CANCEL = 4 };
 enum { TAKE_BATCH = 64 };
 
 typedef struct IdleGroup {
@@ -203,7 +204,7 @@ static void row_start(IdleRow *row) {
     request->inner = next;
     request->group = row->group;
     atomic_fetch_add(&row->group->inflight, 1);
-    ms_promise_start_here(id, &request->header);
+    ms_promise_start_detached(id, &request->header);
     tidy_promise(id, row->group);
     msrt_obj_drop(subject); /* the closure holds its own handle on the connection */
 }
@@ -220,6 +221,21 @@ static void row_close(IdleRow *row) {
     msrt_obj_drop(subject);
     msrt_obj_drop(next);
 }
+
+/* Starting every ready row of one poll at once would turn them all into tasks of this thread, which then cannot move
+ * when the first request holds the thread. So one request starts per turn of the scheduler and the other ready rows
+ * wait here: still idle rows, which a resting thread can take. */
+typedef struct Waiting {
+    IdleRow *row; /* holds a reference */
+    uint32_t epoch;
+    int fd;       /* the descriptor this thread watched */
+} Waiting;
+
+static _Thread_local struct {
+    Waiting *items;
+    size_t count, capacity;
+    bool started; /* a request started since the scheduler last looked for work */
+} waiting;
 
 static bool on_event(MsPromise id, uintptr_t state, uint32_t bits);
 
@@ -251,25 +267,95 @@ static bool row_watch(IdleRow *row) {
     return true; /* `reg` may be gone already: a descriptor that is ready at once ran on_event inside the call */
 }
 
+/* What a thread that learned a row's event does with it. */
+typedef enum { CLAIM_MOVED, CLAIM_START, CLAIM_CLOSE, CLAIM_LOST } Claim;
+
+/* Decides, under the list lock so that no take comes between the look and the change, what this thread does with `row`
+ * whose registration of epoch `epoch` fired: start it, close it, or leave it (moved to another thread, or taken). */
+static Claim claim_row(IdleRow *row, uint32_t epoch, bool serve) {
+    lock();
+    Claim claim = CLAIM_MOVED;
+    if (row->owner == ms_isolate_self() && row->epoch == epoch) {
+        unsigned expected = IDLE;
+        const bool serving = serve && !atomic_load(&row->closing);
+        if (atomic_compare_exchange_strong(&row->state, &expected, serving ? RUNNING : CLOSED)) {
+            claim = serving ? CLAIM_START : CLAIM_CLOSE;
+        } else {
+            claim = CLAIM_LOST;
+        }
+    }
+    unlock();
+    return claim;
+}
+
+/* Keeps `row` idle until a turn can start it. False when there is no room to remember it. */
+static bool wait_for_turn(IdleRow *row, const Reg *reg) {
+    if (waiting.count == waiting.capacity) {
+        void *grown = waiting.items;
+        size_t capacity = waiting.capacity;
+        if (!ms_array_reserve(&grown, &capacity, waiting.count + 1, sizeof *waiting.items)) {
+            return false;
+        }
+        waiting.items = grown;
+        waiting.capacity = capacity;
+    }
+    atomic_fetch_add(&row->refs, 1);
+    waiting.items[waiting.count++] = (Waiting){row, reg->epoch, reg->fd};
+    return true;
+}
+
+/* Settles one waiting entry: starts its row, closes it, or finds it gone or moved. True when a request started. */
+static bool settle(Waiting entry) {
+    IdleRow *const row = entry.row;
+    const Claim claim = claim_row(row, entry.epoch, true);
+    bool started = false;
+    if (claim == CLAIM_MOVED) {
+        tidy_fd(row->ops, entry.fd); /* the row moved: this thread's descriptor is only a duplicate now */
+    } else if (claim == CLAIM_START) {
+        row_start(row);
+        started = true;
+    } else if (claim == CLAIM_CLOSE) {
+        row_close(row);
+    }
+    row_unref(row);
+    return started;
+}
+
+bool ms_idle_turn(void) {
+    waiting.started = false;
+    while (waiting.count > 0) {
+        /* the oldest first */
+        const Waiting entry = waiting.items[0];
+        memmove(waiting.items, waiting.items + 1, --waiting.count * sizeof *waiting.items);
+        if (settle(entry)) {
+            waiting.started = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 /* The registration's callback, once: READ or HUP when the descriptor is readable, TIMEOUT, or CANCELLED. */
 static bool on_event(MsPromise id, uintptr_t state, uint32_t bits) {
     Reg *const reg = (Reg *)state;
     IdleRow *const row = reg->row;
     lock();
-    const bool current = reg->epoch == row->epoch;
+    if (row->watching == id) {
+        row->watching = 0; /* this registration is over: a drain must not cancel an id that may name another promise */
+    }
     unlock();
-    const MsIdleOps *const ops = row->ops;
-    if (!current) {
-        tidy_fd(ops, reg->fd); /* the row moved: this thread's descriptor is only a duplicate now */
+    const bool serve = (bits & (MS_WAIT_READ | MS_WAIT_HUP)) != 0;
+    if (serve && waiting.started && wait_for_turn(row, reg)) {
+        /* kept idle until the scheduler looks for work */
     } else {
-        const bool serve = (bits & (MS_WAIT_READ | MS_WAIT_HUP)) != 0 && !atomic_load(&row->closing);
-        unsigned expected = IDLE;
-        if (atomic_compare_exchange_strong(&row->state, &expected, serve ? RUNNING : CLOSED)) {
-            if (serve) {
-                row_start(row);
-            } else {
-                row_close(row);
-            }
+        const Claim claim = claim_row(row, reg->epoch, serve);
+        if (claim == CLAIM_MOVED) {
+            tidy_fd(row->ops, reg->fd); /* the row moved: this thread's descriptor is only a duplicate now */
+        } else if (claim == CLAIM_START) {
+            waiting.started = true;
+            row_start(row);
+        } else if (claim == CLAIM_CLOSE) {
+            row_close(row);
         }
     }
     if (bits != MS_WAIT_CANCELLED) {
@@ -341,8 +427,8 @@ static void post(uint32_t target, uint64_t operation, uint64_t value, IdleRow *r
     }
 }
 
-/* This thread takes `row`, which another thread watches: a duplicate descriptor, a registration of its own, and a
- * release for the old registration's descriptor. Holds the mail's reference on `row` and drops it. */
+/* This thread takes `row`, which another thread watches: a duplicate descriptor and a registration of its own. The
+ * old registration ends by itself: it closes its descriptor when the peer acts or the idle time passes. Holds the mail's reference on `row` and drops it. */
 static void take(IdleRow *row) {
     const uint32_t self = ms_isolate_self();
     lock();
@@ -359,7 +445,6 @@ static void take(IdleRow *row) {
     lock();
     const bool taken = row->listed && row->epoch == epoch && atomic_load(&row->state) == IDLE &&
                        !atomic_load(&row->closing);
-    const MsPromise old_registration = row->watching;
     if (taken) {
         row->owner = self;
         row->epoch++;
@@ -374,9 +459,6 @@ static void take(IdleRow *row) {
         row->ops->release(copy);
         row_unref(row);
         return;
-    }
-    if (old_registration != 0) {
-        post(from, OP_RELEASE, (uint64_t)old_registration, NULL);
     }
     unsigned expected = IDLE;
     if (!row_watch(row) && atomic_compare_exchange_strong(&row->state, &expected, CLOSED)) {
@@ -400,8 +482,6 @@ static void idle_mail(MsMail *mail) {
     const uint32_t self = ms_isolate_self();
     if (operation == OP_TAKE) {
         take(row);
-    } else if (operation == OP_RELEASE) {
-        cancel_registration((MsPromise)mail->b);
     } else if (operation == OP_CANCEL) {
         for (size_t i = 0; i < tidy.promise_count; i++) {
             if (tidy.promises[i].group == (IdleGroup *)mail->b) {
@@ -515,6 +595,9 @@ void ms_idle_teardown(void) {
         if (count < TAKE_BATCH) {
             break;
         }
+    }
+    while (waiting.count > 0) {
+        row_unref(waiting.items[--waiting.count].row);
     }
     tidy_run();
 }
