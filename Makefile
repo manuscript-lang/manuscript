@@ -40,13 +40,10 @@ fmt:
 	cargo fmt --all
 
 # The libms entry points that Manuscript tools call with `extern fn` (compiler/tools/tool_shim.c).
-libms-tools: target/libms_tools.a
-
-target/libms_tools.a: compiler/src/*.c compiler/include/ms/*.h compiler/tools/tool_shim.c compiler/tools/tool_shim.h
-	mkdir -p target
-	$(CC) -O2 -c compiler/src/libms.c -Icompiler/include -Icompiler/src -Iruntime/include -o target/libms.o
-	$(CC) -O2 -c compiler/tools/tool_shim.c -Icrates/ms-rt-abi/include -o target/tool_shim.o
-	ar rcs $@ target/libms.o target/tool_shim.o
+libms-tools:
+	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
+	cmake --build target/cmake/tools --target ms_tools_shim
+	cp target/cmake/tools/compiler/libms_tools.a target/libms_tools.a
 
 # Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, portability and
 # the other rules in tools/repo-check/, written in Manuscript over libms.
@@ -243,16 +240,20 @@ c-compiler-test:
 	sh compiler/tests/qbe-run.sh
 
 # libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
-target/c-tool/libmstool.a: compiler/src/tool.c compiler/include/ms/tool.h $(wildcard compiler/src/*.c compiler/include/ms/*.h)
+.PHONY: FORCE
+FORCE:
+
+C_TOOL = target/cmake/tools/compiler
+target/c-tool/libmstool.a: FORCE
+	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
+	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump
 	mkdir -p target/c-tool
-	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Iruntime/include -c compiler/src/libms.c -o target/c-tool/libms.o
-	cc -std=c11 -O1 -g -Wall -Wextra -Werror -Icompiler/include -Iruntime/include -Icrates/ms-rt-abi/include -c compiler/src/tool.c -o target/c-tool/tool.o
-	ar rcs $@ target/c-tool/libms.o target/c-tool/tool.o
+	cp $(C_TOOL)/libmstool.a $@
+	cp $(C_TOOL)/ms_syntax_dump target/c-tool/ms_syntax_dump
 
 # The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; and `search_symbol` against the Rust one.
 c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
-	cc -std=c11 -O1 -Wno-maybe-uninitialized -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o target/c-tool/ms_syntax_dump
 	git ls-files '*.ms' > target/c-tool/files.txt
 	target/c-tool/ms_syntax_dump ast $$(cat target/c-tool/files.txt) | sed -E 's/^(error [0-9]+:[0-9]+:[0-9]+) .*/\1/' > target/c-tool/ast.c.txt
 	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt

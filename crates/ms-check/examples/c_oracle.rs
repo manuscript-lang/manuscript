@@ -266,6 +266,20 @@ fn body_stmts(body: &[Stmt], out: &mut Vec<NodeId>) {
         match &s.kind {
             StmtKind::Bind { value, .. } => body_exprs(value, out),
             StmtKind::Return(Some(v)) | StmtKind::Call(v) => body_exprs(v, out),
+            StmtKind::If {
+                cond,
+                body,
+                else_body,
+                ..
+            } => {
+                body_exprs(cond, out);
+                body_stmts(body, out);
+                body_stmts(else_body, out);
+            }
+            StmtKind::While { cond, body } => {
+                body_exprs(cond, out);
+                body_stmts(body, out);
+            }
             _ => {}
         }
     }
@@ -297,7 +311,7 @@ fn body_facts(files: &[String]) {
             ms_check::ImportMap::default(),
             ms_check::CheckOptions::default(),
         );
-        if program.symbols.get(&loaded.file).is_none() {
+        if !program.symbols.contains_key(&loaded.file) {
             println!("unchecked");
             continue;
         }
@@ -333,8 +347,52 @@ fn body_facts(files: &[String]) {
     }
 }
 
+/// `c_oracle --ownership FILE...`: per top-level function, every diagnostic inside it, one per line.
+fn ownership_diagnostics(files: &[String]) {
+    let syms = Names::global();
+    let session = Session::new();
+    session.ensure_standard();
+    for path in files {
+        let Ok(source) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        let file: std::sync::Arc<str> = "main.ms".into();
+        let Ok(module) = ms_syntax::parser::parse(&file, &source) else {
+            continue;
+        };
+        if module.imports.iter().any(|i| !i.path.starts_with("@std/")) {
+            continue;
+        }
+        println!("== {path}");
+        let loaded = ms_check::load_module(syms, &module);
+        let program = ms_check::check_in(
+            syms,
+            &session,
+            vec![loaded.clone()],
+            ms_check::ImportMap::default(),
+            ms_check::CheckOptions::default(),
+        );
+        for (i, d) in module.decls.iter().enumerate() {
+            if !matches!(&d.kind, DeclKind::Fn(f) if !f.external) {
+                continue;
+            }
+            let end = module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line);
+            println!("fn {}:{}", d.pos.line, d.pos.column);
+            for x in &program.diagnostics {
+                if x.pos.line >= d.pos.line && x.pos.line < end {
+                    println!("diag {}:{}: {}", x.pos.line, x.pos.column, x.message);
+                }
+            }
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--ownership") {
+        ownership_diagnostics(&args[1..]);
+        return;
+    }
     if args.first().is_some_and(|a| a == "--bodies") {
         body_facts(&args[1..]);
         return;

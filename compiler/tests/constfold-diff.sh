@@ -10,12 +10,12 @@ seed=${FOLD_SEED:-1}
 
 cargo build --release --locked -p ms-syntax --example c_fold_oracle
 oracle=target/release/examples/c_fold_oracle
-cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_constfold_dump.c -o "$out/constfold_dump" -lm
+sh compiler/tests/cbuild.sh ms_constfold_dump
+bin=target/cmake/test/compiler
 
 "$oracle" gen "$cases" "$seed" > "$out/constfold.cases"
 "$oracle" < "$out/constfold.cases" > "$out/constfold.rust"
-"$out/constfold_dump" < "$out/constfold.cases" > "$out/constfold.c.out"
+"$bin/ms_constfold_dump" < "$out/constfold.cases" > "$out/constfold.c.out"
 if cmp -s "$out/constfold.rust" "$out/constfold.c.out"; then
     echo "constfold: $(wc -l < "$out/constfold.cases") expressions identical"
 else

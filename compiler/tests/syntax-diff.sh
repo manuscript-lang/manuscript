@@ -12,14 +12,13 @@ seed=${MS_FUZZ_SEED:-1}
 cargo build --release --locked -p ms-syntax --example c_oracle
 oracle=target/release/examples/c_oracle
 
-cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o "$out/dump" -lm
-cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/mutate.c -o "$out/mutate"
+sh compiler/tests/cbuild.sh ms_syntax_dump mutate
+bin=target/cmake/test/compiler
 
 git ls-files '*.ms' > "$out/files.txt"
 rm -rf "$out/fuzz"
 mkdir -p "$out/fuzz"
-"$out/mutate" "$out/fuzz" "$fuzz" "$seed" "$out/files.txt"
+"$bin/mutate" "$out/fuzz" "$fuzz" "$seed" "$out/files.txt"
 ls "$out"/fuzz/*.ms > "$out/fuzz.txt"
 
 status=0
@@ -27,7 +26,7 @@ for mode in ${MS_MODES:-tokens ast codes partial ids}; do
     for set in files fuzz; do
         # xargs keeps the command line short and the oracle's per-process cost low.
         tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" "$mode" > "$out/$mode-$set.rust"
-        tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" "$mode" > "$out/$mode-$set.c"
+        tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_syntax_dump" "$mode" > "$out/$mode-$set.c"
         if cmp -s "$out/$mode-$set.rust" "$out/$mode-$set.c"; then
             echo "ok   $mode $set ($(grep -c '^===' "$out/$mode-$set.rust") files)"
         else
@@ -39,7 +38,7 @@ for mode in ${MS_MODES:-tokens ast codes partial ids}; do
 done
 # Codes of messages in every phase: the committed list of phase<TAB>message lines.
 "$oracle" codes compiler/tests/codes.txt | sed 1d > "$out/codes-list.rust"
-"$out/dump" codes compiler/tests/codes.txt | sed 1d > "$out/codes-list.c"
+"$bin/ms_syntax_dump" codes compiler/tests/codes.txt | sed 1d > "$out/codes-list.c"
 if cmp -s "$out/codes-list.rust" "$out/codes-list.c"; then
     echo "ok   codes list ($(wc -l < "$out/codes-list.rust") messages)"
 else

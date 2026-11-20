@@ -396,6 +396,11 @@ static MsTy ty_resolve_named(MsResolver *r, const MsTypeRef *t) {
         c->mods[r->module].unknown_type = true;
         return ty_invalid(c);
     }
+    if (ty_is_text(ty_text(c, name), "Self") && t->args.len == 0 && c->tys.nargs[base] != 0) {
+        /* `Self` in an implementation already carries the receiver's arguments. */
+        r->refs[t->id] = base;
+        return base;
+    }
     const MsTy *written = ty_resolve_all(r, &t->args);
     uint32_t nwritten = t->args.len;
     uint32_t arity = 0;
