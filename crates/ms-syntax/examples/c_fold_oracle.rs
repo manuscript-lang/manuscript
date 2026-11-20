@@ -8,7 +8,7 @@
 
 use ms_syntax::ast::*;
 use ms_syntax::parser::parse;
-use ms_syntax::{number, Names};
+use ms_syntax::{Names, number};
 use std::io::{BufRead, Write};
 use std::sync::Arc;
 
@@ -23,7 +23,9 @@ const RANGES: [(&str, i128, i128); 5] = [
 fn fold(e: &Expr, range: (i128, i128)) -> Option<i128> {
     let fits = |v: i128| (range.0..=range.1).contains(&v).then_some(v);
     match &e.kind {
-        ExprKind::Number(t) => number::canonical(Names::global().str(t)).parse::<i128>().ok(),
+        ExprKind::Number(t) => number::canonical(Names::global().str(t))
+            .parse::<i128>()
+            .ok(),
         ExprKind::Unary { op, operand } => fold(operand, range).and_then(|v| match op {
             UnaryOp::Neg => fits(-v),
             UnaryOp::Plus => Some(v),
@@ -44,9 +46,10 @@ fn literal_tree_fractional(e: &Expr) -> Option<bool> {
             let text = number::canonical(Names::global().str(t));
             (!number::is_decimal(&text)).then(|| number::is_fractional(&text))
         }
-        ExprKind::Unary { op: UnaryOp::Neg | UnaryOp::Plus, operand } => {
-            literal_tree_fractional(operand)
-        }
+        ExprKind::Unary {
+            op: UnaryOp::Neg | UnaryOp::Plus,
+            operand,
+        } => literal_tree_fractional(operand),
         ExprKind::Binary {
             op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem,
             left,
@@ -71,9 +74,16 @@ fn apply(op: BinaryOp, a: i128, b: i128) -> Option<i128> {
     }
 }
 
-fn constant_arithmetic(op: BinaryOp, left: &Expr, right: &Expr, ty: &str, range: (i128, i128)) -> String {
+fn constant_arithmetic(
+    op: BinaryOp,
+    left: &Expr,
+    right: &Expr,
+    ty: &str,
+    range: (i128, i128),
+) -> String {
     if matches!(op, BinaryOp::Div | BinaryOp::Rem) && fold(right, range) == Some(0) {
-        return "division by zero always faults; guard the divisor or use a nonzero constant".into();
+        return "division by zero always faults; guard the divisor or use a nonzero constant"
+            .into();
     }
     let (Some(a), Some(b)) = (fold(left, range), fold(right, range)) else {
         return String::new();
@@ -96,7 +106,9 @@ fn constant_index(left: &Expr, index: &Expr) -> String {
     };
     let len = items.len() as i128;
     if i >= len || i < -len {
-        return format!("index {i} is outside this list literal of {len} element(s) and always faults");
+        return format!(
+            "index {i} is outside this list literal of {len} element(s) and always faults"
+        );
     }
     String::new()
 }
@@ -166,12 +178,40 @@ impl Rng {
 }
 
 const NUMBERS: [&str; 34] = [
-    "0", "1", "2", "3", "7", "10", "100", "127", "128", "255", "256", "2147483647", "2147483648",
-    "9223372036854775807", "9223372036854775808", "18446744073709551615", "18446744073709551616",
-    "170141183460469231731687303715884105727", "170141183460469231731687303715884105728",
-    "1_000", "0xFF", "0b1010", "0xFFFF_FFFF_FFFF_FFFF", "0x1_0000_0000_0000_0000_0000",
-    "0xffffffffffffffffffffffffffffffff", "0x1ffffffffffffffffffffffffffffffff", "1.5", "2e3", "1d",
-    "1.5d", "3.0", "0xd", "0xe", "x",
+    "0",
+    "1",
+    "2",
+    "3",
+    "7",
+    "10",
+    "100",
+    "127",
+    "128",
+    "255",
+    "256",
+    "2147483647",
+    "2147483648",
+    "9223372036854775807",
+    "9223372036854775808",
+    "18446744073709551615",
+    "18446744073709551616",
+    "170141183460469231731687303715884105727",
+    "170141183460469231731687303715884105728",
+    "1_000",
+    "0xFF",
+    "0b1010",
+    "0xFFFF_FFFF_FFFF_FFFF",
+    "0x1_0000_0000_0000_0000_0000",
+    "0xffffffffffffffffffffffffffffffff",
+    "0x1ffffffffffffffffffffffffffffffff",
+    "1.5",
+    "2e3",
+    "1d",
+    "1.5d",
+    "3.0",
+    "0xd",
+    "0xe",
+    "x",
 ];
 
 fn expr(rng: &mut Rng, depth: u32) -> String {
@@ -180,7 +220,12 @@ fn expr(rng: &mut Rng, depth: u32) -> String {
         0..=2 => NUMBERS[rng.below(NUMBERS.len())].to_string(),
         3 => format!("-{}", expr(rng, depth - 1)),
         4 => format!("({})", expr(rng, depth - 1)),
-        5 => format!("[{}, {}][{}]", expr(rng, depth - 1), expr(rng, depth - 1), expr(rng, depth - 1)),
+        5 => format!(
+            "[{}, {}][{}]",
+            expr(rng, depth - 1),
+            expr(rng, depth - 1),
+            expr(rng, depth - 1)
+        ),
         _ => {
             let op = ["+", "-", "*", "/", "%", "+", "*", "-"][rng.below(8)];
             format!("{} {op} {}", expr(rng, depth - 1), expr(rng, depth - 1))
@@ -208,6 +253,6 @@ fn main() {
     let out = std::io::stdout();
     let mut out = out.lock();
     for line in stdin.lock().lines() {
-        write!(out, "{}---\n", answer(&line.unwrap())).unwrap();
+        writeln!(out, "{}---", answer(&line.unwrap())).unwrap();
     }
 }
