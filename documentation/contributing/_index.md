@@ -17,6 +17,7 @@ Build a local compiler with the [Rust toolchain guide](rust-toolchain.md#build-a
 
 - [Compiler internals](compiler/_index.md) explain parsing, checking, and lowering.
 - [Typed runtime conventions](runtime-conventions.md) describe the native runtime contract and how native operations are written.
+- [C style and safety](c-style.md) is the rule for every line of C in the runtime and the compiler core.
 - [Compiler conformance](compiler/conformance/_index.md) explains the semantic test plan.
 - [Rust toolchain](rust-toolchain.md) covers building the Rust `ms`, its checks and crates, and its platform behavior.
 - [Maintenance and compatibility](maintenance.md) covers pins, licenses, releases, and public contract changes.
