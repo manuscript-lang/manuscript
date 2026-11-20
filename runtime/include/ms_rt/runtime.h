@@ -14,6 +14,7 @@
 typedef enum MsFaultKind {
     MS_FAULT_DIVISION_BY_ZERO = 4,
     MS_FAULT_OVERFLOW = 5,
+    MS_FAULT_OUT_OF_MEMORY = 8,
 } MsFaultKind;
 
 /* A presence flag parameter (an `Optional` argument split in two): 0 or 1. */

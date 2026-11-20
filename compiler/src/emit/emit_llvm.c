@@ -84,9 +84,11 @@ static void ll_sym(MsBuf *o, MsStr n) {
     ms_buf_putc(o, '"');
 }
 
+static uint32_t ll_record_pieces(const MirModule *m, const MirFunc *f, const MirInst *inst);
+
 /* How many checks an operation makes, each of which ends a piece of its block. */
-static uint32_t ll_pieces(MirOp op) {
-    switch (op) {
+static uint32_t ll_pieces(const MirModule *m, const MirFunc *f, const MirInst *inst) {
+    switch ((MirOp)inst->op) {
     case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
     case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk:
     case MOP_NarrowChk: case MOP_IntOverflowIf: case MOP_Poll:
@@ -94,7 +96,7 @@ static uint32_t ll_pieces(MirOp op) {
     case MOP_SDivChk:
         return 2;
     default:
-        return 0;
+        return ll_record_pieces(m, f, inst);
     }
 }
 
@@ -617,6 +619,23 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
     return true;
 }
 
+/* The attribute that tells LLVM how a narrow C result is extended, and the instruction that widens it. */
+static const char *ll_ret_attribute(LlWiden widen) {
+    switch (widen) {
+    case LL_SEXT: return "signext ";
+    case LL_FPEXT: return "";
+    default: return "zeroext ";
+    }
+}
+
+static const char *ll_widen_op(LlWiden widen) {
+    switch (widen) {
+    case LL_SEXT: return "sext";
+    case LL_FPEXT: return "fpext";
+    default: return "zext";
+    }
+}
+
 /* A call of a runtime function, which follows the C ABI of the runtime: scalars by value,
  * everything else by the address of a copy, and a result that is not a scalar through a trailing
  * output pointer. */
@@ -640,13 +659,27 @@ static bool ll_call_rt(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
         if (!direct) {
             ms_buf_printf(&args, "%sptr %s", args.len > 0 ? ", " : "", area);
         }
-        if (direct && result.len == 1) {
-            ms_buf_printf(c->out, "  %%v%u = call %s ", inst->res, ll_leaf_type(result.ptr[0]));
+        const LlLeafKind *rk = direct && result.len == 1 ? ll_leaf_kind(result.ptr[0]) : NULL;
+        const bool narrow = rk != NULL && strcmp(rk->reg, rk->mem) != 0;
+        if (narrow) {
+            /* The C function returns the narrow type; the attribute makes LLVM trust or provide the high bits. */
+            ms_buf_printf(c->out, "  %%v%ur = call %s%s ", inst->res, ll_ret_attribute(rk->widen), rk->mem);
+        } else if (rk != NULL) {
+            ms_buf_printf(c->out, "  %%v%u = call %s ", inst->res, rk->reg);
         } else {
             ms_buf_puts(c->out, "  call void ");
         }
         ll_sym(c->out, ms_name(&c->m->names, def->name));
         ms_buf_printf(c->out, "(%.*s)\n", (int)args.len, args.data == NULL ? "" : args.data);
+        if (narrow) {
+            const char *op = ll_widen_op(rk->widen);
+            if (rk->widen == LL_BOOL) {
+                ms_buf_printf(c->out, "  %%v%u = trunc i8 %%v%ur to i1\n", inst->res, inst->res);
+            } else {
+                ms_buf_printf(c->out, "  %%v%u = %s %s %%v%ur to %s\n", inst->res, op, rk->mem, inst->res,
+                              rk->reg);
+            }
+        }
         if (!direct && inst->res != MIR_NONE) {
             ok = ll_leaves_at(c, inst->res, area, true);
         }
@@ -832,18 +865,9 @@ static bool ll_memory_inst(LCx *c, const MirInst *inst, bool *handled) {
     case MOP_Store: case MOP_Put: return ll_store(c, inst);
     case MOP_TypeDesc: return ll_typedesc(c, inst);
     case MOP_GlobalGet: case MOP_GlobalSet: return ll_global(c, inst);
-    case MOP_TypeNew:
-        if (ll_is_indirect_record(c, c->f->values[inst->res])) {
-            return ll_indirect_new(c, inst);
-        }
-        ll_record_new(c, inst);
-        return true;
-    case MOP_TypeGet:
-        return ll_is_indirect_record(c, c->f->values[inst->args[0]]) ? ll_indirect_get(c, inst)
-                                                                     : ll_record_get(c, inst);
-    case MOP_TypeSet: case MOP_TypeFill:
-        return ll_is_indirect_record(c, c->f->values[inst->args[0]]) ? ll_indirect_set(c, inst)
-                                                                     : ll_record_set(c, inst);
+    case MOP_TypeNew: ll_record_new(c, inst); return true;
+    case MOP_TypeGet: return ll_record_get(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill: return ll_record_set(c, inst);
     case MOP_PtrField: return ll_ptr_field(c, inst);
     default:
         *handled = false;
@@ -1043,7 +1067,7 @@ static bool ll_opt_some(LCx *c, const MirInst *inst) {
         return leaves.len == 0 || ll_leaves_at(c, inst->args[0], base, false);
     }
     uint32_t at = 0;
-    if (!mir_opt_is_nullable(c->layouts, inner) && !mir_is_str_like(c->layouts, c->f->values[inst->res])) {
+    if (mir_opt_has_flag(c->layouts, c->f->values[inst->res])) {
         ms_buf_printf(o, "  %%v%u = or i1 false, true\n", inst->res);
         at = 1;
     }
@@ -1062,7 +1086,7 @@ static bool ll_opt_get(LCx *c, const MirInst *inst) {
         ll_pointer(c, inst->args[0], base, sizeof base);
         return ll_leaves_at(c, inst->res, base, true);
     }
-    const uint32_t skip = (mir_opt_is_nullable(c->layouts, inner) || mir_is_str_like(c->layouts, c->f->values[inst->args[0]])) ? 0 : 1;
+    const uint32_t skip = mir_opt_has_flag(c->layouts, c->f->values[inst->args[0]]) ? 1 : 0;
     const uint32_t n = ll_leaves(c, c->f->values[inst->res]).len;
     for (uint32_t k = 0; k < n; k++) {
         ll_copy_leaf(c, inst->res, k, inst->args[0], skip + k);
@@ -1259,6 +1283,10 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
         return true;
     }
     bool handled = false;
+    const bool indirect_ok = ll_indirect_op(c, inst, block, part, &handled);
+    if (handled) {
+        return indirect_ok;
+    }
     const bool ok = ll_memory_inst(c, inst, &handled);
     if (handled) {
         return ok;
@@ -1553,11 +1581,11 @@ static void ll_header(LCx *c, uint32_t index) {
 
 /* Pieces each block splits into: its checked operations each end one, and the last piece is what
  * the successors' phis name. Fills `last` with the count per block. */
-static void ll_last_pieces(const MirFunc *f, uint32_t *last) {
+static void ll_last_pieces(const MirModule *m, const MirFunc *f, uint32_t *last) {
     for (uint32_t b = 0; b < f->nblocks; b++) {
         last[b] = 0;
         for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
-            last[b] += ll_pieces((MirOp)f->blocks[b].insts[k].op);
+            last[b] += ll_pieces(m, f, &f->blocks[b].insts[k]);
         }
     }
 }
@@ -1581,7 +1609,7 @@ static bool ll_function(LCx *c, uint32_t index) {
     mir_framed_closures(c->m, f, c->framed);
     MsArena scratch = {0};
     c->borrowed = mir_framed_iface_borrows(&scratch, c->m, f);
-    ll_last_pieces(f, last);
+    ll_last_pieces(c->m, f, last);
     ll_header(c, index);
     bool ok = true;
     for (uint32_t b = 0; ok && b < f->nblocks; b++) {

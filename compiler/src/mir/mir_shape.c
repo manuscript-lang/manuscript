@@ -128,6 +128,14 @@ static bool sh_is_map_or_set(const MirLayouts *layouts, const MirTyData *data) {
            (name.len == 3 && memcmp(name.ptr, "Set", 3) == 0);
 }
 
+bool mir_ty_is_map_or_set(const MirModule *module, MirTy ty) {
+    const MirTyData *data = mir_ty_data(module, ty);
+    if (data->kind != MK_OBJ) {
+        return false;
+    }
+    return mir_name_is(module, data->name, "Map") || mir_name_is(module, data->name, "Set");
+}
+
 bool mir_type_field_boxed(const MirLayouts *layouts, MirTy field_ty) {
     return sh_is_map_or_set(layouts, mir_ty_data(layouts->module, field_ty));
 }
@@ -426,14 +434,13 @@ MirLeafSpan mir_type_block(MirLayouts *layouts, uint32_t type_id) {
     return span;
 }
 
-bool mir_record_block(MirLayouts *layouts, MirTy ty, MirRecordBlock *out, bool *boxed_field) {
-    const MirTyData *data = mir_ty_data(layouts->module, ty);
-    *out = (MirRecordBlock){.def = &layouts->module->type_defs[data->id]};
-    *boxed_field = false;
-    out->leaves = mir_type_block(layouts, data->id);
+bool mir_record_block(MirLayouts *layouts, uint32_t type_id, MirRecordBlock *out) {
+    *out = (MirRecordBlock){.def = &layouts->module->type_defs[type_id]};
+    out->leaves = mir_type_block(layouts, type_id);
     out->offsets = calloc((size_t)out->leaves.len + 1, sizeof *out->offsets);
     out->starts = calloc((size_t)out->def->nfields + 1, sizeof *out->starts);
-    if (out->offsets == NULL || out->starts == NULL) {
+    out->boxed = calloc((size_t)out->def->nfields + 1, sizeof *out->boxed);
+    if (out->offsets == NULL || out->starts == NULL || out->boxed == NULL) {
         mir_record_block_free(out);
         return false;
     }
@@ -441,12 +448,8 @@ bool mir_record_block(MirLayouts *layouts, MirTy ty, MirRecordBlock *out, bool *
     uint32_t at = 0;
     for (uint32_t k = 0; k < out->def->nfields; k++) {
         out->starts[k] = at;
-        if (mir_type_field_boxed(layouts, out->def->fields[k].ty)) {
-            *boxed_field = true;
-            mir_record_block_free(out);
-            return false;
-        }
-        at += mir_leaves(layouts, out->def->fields[k].ty).len;
+        out->boxed[k] = mir_type_field_boxed(layouts, out->def->fields[k].ty);
+        at += out->boxed[k] ? 1 : mir_leaves(layouts, out->def->fields[k].ty).len;
     }
     return true;
 }
@@ -454,7 +457,14 @@ bool mir_record_block(MirLayouts *layouts, MirTy ty, MirRecordBlock *out, bool *
 void mir_record_block_free(MirRecordBlock *block) {
     free(block->offsets);
     free(block->starts);
+    free(block->boxed);
     *block = (MirRecordBlock){0};
+}
+
+bool mir_opt_has_flag(MirLayouts *layouts, MirTy opt) {
+    const MirTy inner = mir_ty_data(layouts->module, opt)->elem;
+    return !mir_layouts_opt_boxed(layouts, inner) && !mir_opt_is_nullable(layouts, inner) &&
+           !mir_is_str_like(layouts, opt);
 }
 
 bool mir_boxed_block_size(MirLayouts *layouts, MirTy ty, uint32_t *size) {

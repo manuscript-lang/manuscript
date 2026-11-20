@@ -6,7 +6,7 @@
 //! file, `changed N`, the module text, and the cold blocks of each function.
 
 use ms_mir::parse::parse_module;
-use ms_mir::print::print_module;
+use ms_mir::print::print_module_raw as print_module;
 use std::fmt::Write;
 
 fn main() {
