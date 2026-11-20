@@ -14,6 +14,7 @@
 #include "mir_shape.c"
 #include "mir_parse.c"
 #include "hints.c"
+#include "constfold.c"
 #include "types.c"
 #include "tables.c"
 #include "stdlib.c"
