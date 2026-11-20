@@ -27,6 +27,7 @@ MS_WINAPI uintptr_t CreateThread(void *attributes, size_t stack, WinThreadEntry 
 MS_WINAPI uint32_t WaitForSingleObject(uintptr_t handle, uint32_t milliseconds);
 MS_WINAPI int CloseHandle(uintptr_t handle);
 MS_WINAPI void Sleep(uint32_t milliseconds);
+MS_WINAPI int SwitchToThread(void);
 // NOLINTEND(readability-identifier-naming)
 
 #endif

@@ -1,0 +1,8 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: int = iconst 1
+  %n: int = str.len %a
+  ret %n
+}

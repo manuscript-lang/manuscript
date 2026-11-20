@@ -3,6 +3,7 @@
  * runtime/std. */
 #include <stdbool.h>
 #include <stddef.h>
+#include "ms_sched.h"
 
 bool ms_sched_pool_admit(size_t bytes, bool *cancelled) {
     (void)bytes;

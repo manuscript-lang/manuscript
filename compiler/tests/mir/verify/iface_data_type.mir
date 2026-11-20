@@ -1,0 +1,16 @@
+module "t"
+iface Area { area() -> int }
+vtable @v_int: Area for int { @area_int }
+fn @area_int(%self: ptr) -> int method {
+b0:
+  %r: int = iconst 99
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %x: bool = bconst true
+  %s: dyn Area = iface.new @v_int %x
+  drop %s
+  %z: int = iconst 0
+  ret %z
+}

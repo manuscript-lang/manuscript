@@ -1,0 +1,9 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: int = iconst 1
+  %b: bool = bconst true
+  %c: int = iadd %a, %b
+  ret %c
+}

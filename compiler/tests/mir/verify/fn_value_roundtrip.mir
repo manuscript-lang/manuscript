@@ -1,0 +1,9 @@
+module "t"
+fn @main() -> int {
+b0:
+  %a: int = iconst 1
+  %s: str = str "abc"
+  %n: int = str.len %s
+  %m: int = iadd %a, %n
+  ret %m
+}

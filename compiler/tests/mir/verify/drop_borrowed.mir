@@ -1,0 +1,9 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %a: str = str "x"
+  drop %a
+  %z: int = iconst 0
+  ret %z
+}

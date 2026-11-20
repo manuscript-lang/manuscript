@@ -158,6 +158,7 @@ typedef struct MirBlockData {
     uint32_t ninsts, cinsts;
     MirTerm term;
     MirLoc term_loc;
+    bool cold; /* laid out of line, branches to it unlikely (expand's fault and grow blocks); not in the text form */
 } MirBlockData;
 
 typedef enum MirLinkage { ML_INTERNAL, ML_EXPORT } MirLinkage;
@@ -171,6 +172,7 @@ typedef struct MirFunc {
     uint32_t nparams;
     MirTy ret;
     bool ret_borrowed, ret_view;
+    bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
     uint8_t linkage, kind, inline_hint, sort;
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;
@@ -325,6 +327,7 @@ void mir_func_init(MirModule *m, MirFunc *f, MsSym name, const MirParam *params,
                    MirTy ret);
 MirValue mir_new_value(MirModule *m, MirFunc *f, MirTy ty);
 MirBlock mir_new_block(MirModule *m, MirFunc *f);
+MirBlockData mir_block_empty(void); /* no parameters or instructions, ends in `unreachable` */
 static inline MirTy mir_value_ty(const MirFunc *f, MirValue v) { return f->values[v]; }
 
 /* Growable arrays in the module's arena: `*arr` has `*n` elements and room for `*cap`. */

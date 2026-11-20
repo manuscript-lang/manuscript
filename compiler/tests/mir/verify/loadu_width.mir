@@ -1,0 +1,8 @@
+module "t"
+
+fn @f() -> int {
+b0:
+  %p: ptr = ptr.null
+  %v: int = ptr.loadu 3 %p
+  ret %v
+}
