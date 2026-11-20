@@ -707,9 +707,7 @@ dependencies = [
  "ms-std-json",
  "ms-std-net",
  "ms-std-process",
- "ms-std-system",
  "ms-std-table",
- "ms-std-terminal",
  "ms-std-time",
 ]
 
@@ -797,33 +795,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-system"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "ms-std-process",
- "rustix",
-]
-
-[[package]]
 name = "ms-std-table"
 version = "0.1.0"
 dependencies = [
  "ms-rt",
  "unicode-width",
-]
-
-[[package]]
-name = "ms-std-terminal"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "rustix",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
