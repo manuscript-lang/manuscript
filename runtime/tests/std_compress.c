@@ -71,13 +71,30 @@ static size_t split_tabs(char *line, char **fields, size_t cap) {
     return n;
 }
 
+/* getline(3) is POSIX; Windows has no equivalent, so the replay reads lines with this. */
+static long read_line(char **line, size_t *capacity, FILE *file) {
+    size_t length = 0;
+    for (;;) {
+        if (length + 2 > *capacity) {
+            const size_t grown = *capacity == 0 ? 256 : *capacity * 2;
+            char *bigger = realloc(*line, grown);
+            if (bigger == NULL) return -1;
+            *line = bigger;
+            *capacity = grown;
+        }
+        if (fgets(*line + length, (int)(*capacity - length), file) == NULL) return length > 0 ? (long)length : -1;
+        length += strlen(*line + length);
+        if (length > 0 && (*line)[length - 1] == '\n') return (long)length;
+    }
+}
+
 static void replay_whole_buffer(void) {
     FILE *file = fopen("runtime/tests/oracle/compress.tsv", "r");
     CHECK(file != NULL);
     char *line = NULL;
     size_t line_cap = 0;
     int cases = 0;
-    while (file != NULL && getline(&line, &line_cap, file) > 0) {
+    while (file != NULL && read_line(&line, &line_cap, file) > 0) {
         line[strcspn(line, "\n")] = 0;
         if (line[0] == '#' || line[0] == 0) continue;
         char *f[8];
@@ -161,7 +178,7 @@ static void replay_chunked(void) {
     char *line = NULL;
     size_t line_cap = 0;
     int cases = 0;
-    while (file != NULL && getline(&line, &line_cap, file) > 0) {
+    while (file != NULL && read_line(&line, &line_cap, file) > 0) {
         line[strcspn(line, "\n")] = 0;
         if (line[0] == '#' || line[0] == 0) continue;
         char *f[12];

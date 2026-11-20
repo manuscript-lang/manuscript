@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/methods.h"
 #include "ms/ownership.h"
 
 enum { CLASS_MAX_NESTING = 64, CLASS_UNKNOWN = 0xff };
@@ -203,6 +204,26 @@ static MsClass nominal_class(MsClassifier *classifier, MsTy type, ClassWalk *wal
     return class;
 }
 
+/* `declares_owned_close`: the interface declares `move fn close()`, so a value of it owns what it
+ * was made from. */
+static bool declares_owned_close(const MsClassifier *classifier, MsTy type) {
+    const MsCheck *check = classifier->check;
+    const MsTyTable *tys = &check->tys;
+    if (is_marked(&classifier->owned_close, tys, type)) {
+        return true;
+    }
+    const MsOperations *ops = check->methods == NULL || tys->def[type] == 0
+                                  ? NULL
+                                  : ms_interface_operations(check->methods, tys->def[type] - 1);
+    for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
+        const MsStr name = ms_name(check->names, ops->items[i].name);
+        if (ops->items[i].decl->consuming && name.len == 5 && memcmp(name.ptr, "close", 5) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static MsClass compute_class(MsClassifier *classifier, MsTy type, ClassWalk *walk) {
     const MsTyTable *tys = &classifier->check->tys;
     switch (ms_ty_kind(tys, type)) {
@@ -214,7 +235,7 @@ static MsClass compute_class(MsClassifier *classifier, MsTy type, ClassWalk *wal
     case MS_K_VARIABLE:
         return variable_class(classifier, type);
     case MS_K_CONTRACT:
-        return ms_ty_is(tys, type, MS_BI_CLOSEABLE) || is_marked(&classifier->owned_close, tys, type)
+        return ms_ty_is(tys, type, MS_BI_CLOSEABLE) || declares_owned_close(classifier, type)
                    ? MS_CLASS_RESOURCE
                    : MS_CLASS_MOVE;
     case MS_K_FUNCTION:
