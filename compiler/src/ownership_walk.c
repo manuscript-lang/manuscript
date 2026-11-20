@@ -341,7 +341,8 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
     const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
-    if (decl == NULL || decl->kind != MS_D_FN) {
+    // Summaries are indexed by declaration node id, which only means something within one module.
+    if (decl == NULL || decl->kind != MS_D_FN || w->check->syms.module[sym] != w->module) {
         return NULL;
     }
     const OwnSummary *summary = &w->summaries[decl->id];
