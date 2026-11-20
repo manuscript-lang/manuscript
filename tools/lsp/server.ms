@@ -18,6 +18,7 @@ import (
 	object,
 	result_message,
 	string_at from "./rpc.ms",
+	document_symbols, folding_ranges from "./structure.ms",
 	Position, position_at, replace_range from "./text.ms",
 	filename, is_file from "./uri.ms",
 )
@@ -284,6 +285,14 @@ fn var Server.handle(body: String, backend: Backend) Outcome:
 	else if method == "textDocument/didChange": self.did_change(params)
 	else if method == "textDocument/didClose": self.did_close(params, out)
 	else if method == "textDocument/didSave": result = JsonValue.Null
+	else if method == "textDocument/documentSymbol":
+		document := self.documents.get(string_at(params, ["textDocument", "uri"]))
+		result = list([])
+		if document.is_some(): result = list(document_symbols(document.get().text))
+	else if method == "textDocument/foldingRange":
+		document := self.documents.get(string_at(params, ["textDocument", "uri"]))
+		result = JsonValue.Null
+		if document.is_some(): result = list(folding_ranges(document.get().text))
 	else if method == "textDocument/formatting":
 		uri := string_at(params, ["textDocument", "uri"])
 		document := self.documents.get(uri).map(
@@ -473,3 +482,37 @@ test "formatting a buffer that does not parse, or is not open, is an invalid-par
 		fake(),
 	)
 	expect_equal(closed.messages[0].contains("document is not open"), true)?
+
+test "the outline and folds answer for open documents and are empty or null otherwise":
+	var server = initialized_server()
+	server.handle(
+		"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\",\"version\":1,\"text\":\"fn main() Int:\\n\\treturn 1\\n\"}}}",
+		fake(),
+	)
+
+	symbols := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"textDocument/documentSymbol\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"}}}",
+		fake(),
+	)
+	expect_equal(symbols.messages[1].contains("\"name\":\"main\""), true)?
+
+	folds := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"textDocument/foldingRange\",\"params\":{\"textDocument\":{\"uri\":\"file:///a.ms\"}}}",
+		fake(),
+	)
+	expect_equal(
+		folds.messages[0],
+		"{\"jsonrpc\":\"2.0\",\"id\":9,\"result\":[{\"startLine\":0,\"endLine\":1,\"kind\":\"region\"}]}",
+	)?
+
+	closed := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"textDocument/documentSymbol\",\"params\":{\"textDocument\":{\"uri\":\"file:///none.ms\"}}}",
+		fake(),
+	)
+	expect_equal(closed.messages[0], "{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":[]}")?
+
+	unknown := server.handle(
+		"{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"textDocument/foldingRange\",\"params\":{\"textDocument\":{\"uri\":\"file:///none.ms\"}}}",
+		fake(),
+	)
+	expect_equal(unknown.messages[0], "{\"jsonrpc\":\"2.0\",\"id\":11,\"result\":null}")?

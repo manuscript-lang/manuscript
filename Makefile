@@ -190,7 +190,7 @@ dist-check: dist
 
 # The language server written in Manuscript (tools/lsp): its unit tests and a check of the entry point.
 lsp-test: build
-	"$(RELEASE_MS)" test tools/lsp/frame.ms tools/lsp/text.ms tools/lsp/uri.ms tools/lsp/server.ms tools/lsp/check.ms
+	"$(RELEASE_MS)" test tools/lsp/frame.ms tools/lsp/text.ms tools/lsp/uri.ms tools/lsp/structure.ms tools/lsp/server.ms tools/lsp/check.ms
 	"$(RELEASE_MS)" check tools/lsp/main.ms
 
 agent-bench-check: build

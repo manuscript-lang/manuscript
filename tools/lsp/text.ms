@@ -12,6 +12,13 @@ fn utf16_width(scalar: Int) Int:
 	if scalar >= 65536: return 2
 	return 1
 
+// The length of `text` in UTF-16 units.
+export fn utf16_length(text: String) Int:
+	var units = 0
+	for ch in text.chars():
+		units += utf16_width(ch.scalar_at(0))
+	return units
+
 // The byte offset where line `line` starts, or the text length past the last line.
 fn line_start(text: String, line: Int) Int:
 	var offset = 0
@@ -93,3 +100,6 @@ test "replace_range edits across lines":
 		),
 		"aXd\nef",
 	)?
+
+test "utf16_length counts surrogate pairs twice":
+	expect_equal(utf16_length("a😀é"), 4)?
