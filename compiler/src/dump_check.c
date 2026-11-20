@@ -249,6 +249,11 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
         dump_expr(out, c, facts, e->u.bin.left);
         dump_expr(out, c, facts, e->u.bin.right);
         break;
+    case MS_E_CALL:
+        for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+            dump_expr(out, c, facts, e->u.call.args.ptr[i].value);
+        }
+        break;
     case MS_E_MATCH:
         dump_expr(out, c, facts, e->u.match.scrutinee);
         for (uint32_t i = 0; i < e->u.match.arms.len; i++) {
@@ -268,8 +273,7 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
     case MS_E_PROBE:
     case MS_E_LIST:
     case MS_E_MAP:
-    case MS_E_LAMBDA:
-    case MS_E_CALL: break;
+    case MS_E_LAMBDA: break;
     }
 }
 

@@ -98,7 +98,12 @@ fn libs_prefix(root: &Path, triple: &str) -> Result<Option<PathBuf>, String> {
 
 /// Configures and builds the C half of the runtime archive for `triple` (the host when `None`) in `work/cmake`
 /// and returns the objects to add to the archive. ccache is used when it is installed (`CMakeLists.txt`).
-pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result<CRuntime, String> {
+pub fn build_c_runtime(
+    root: &Path,
+    work: &Path,
+    triple: Option<&str>,
+    stats: bool,
+) -> Result<CRuntime, String> {
     let build = work.join("cmake");
     let arch = std::env::consts::ARCH;
     let mut configure = Command::new("cmake");
@@ -114,6 +119,10 @@ pub fn build_c_runtime(root: &Path, work: &Path, triple: Option<&str>) -> Result
             "-DMS_BUILD_COMPILER=OFF",
             "-DCMAKE_BUILD_TYPE=",
         ])
+        .arg(format!(
+            "-DMS_ALLOC_STATS={}",
+            if stats { "ON" } else { "OFF" }
+        ))
         // The build is the same wherever it runs: the caller's flags do not reach it.
         .env_remove("CFLAGS")
         .env_remove("LDFLAGS");
