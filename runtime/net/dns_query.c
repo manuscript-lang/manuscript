@@ -8,7 +8,7 @@
 #include "../std/abi.h"
 #include "addr_text.h"
 #include "dns.h"
-#include "dns_query.h"
+#include "ms_rt/net.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_fs.h"
 #include "ms_rt/sys_net.h"
@@ -133,43 +133,64 @@ static MsNetStatus exchange_tcp(const MsAddr *server, const uint8_t *query, size
     return status;
 }
 
-/* Fills the native's lists from the records of one kind: the values, and three numbers a record (priority, weight,
- * port). */
-static void write_records(const MsDnsResponse *response, uint16_t type, MsVec *values, MsVec *numbers) {
-    msrt_list_with_capacity(&msrt_desc_string, (int64_t)response->count, values);
-    msrt_list_with_capacity(&msrt_desc_int, (int64_t)response->count * 3, numbers);
+/* DnsRecord at the layout the compiler gives the record. */
+typedef MsNetDnsRecord DnsRecord;
+
+static void record_drop(const uint8_t *slot) {
+    DnsRecord record;
+    memcpy(&record, slot, sizeof record);
+    msrt_string_free(&record.value);
+}
+
+static void record_copy(const uint8_t *source, uint8_t *destination) {
+    DnsRecord record;
+    memcpy(&record, source, sizeof record);
+    DnsRecord copy = record;
+    msrt_string_clone(&record.value, &copy.value);
+    memcpy(destination, &copy, sizeof copy);
+}
+
+static const MsTypeDesc record_desc = {
+    .size = sizeof(DnsRecord),
+    .align = _Alignof(DnsRecord),
+    .kind = MS_TYPE_KIND_CUSTOM,
+    .drop = record_drop,
+    .copy = record_copy,
+};
+
+/* The DNS type of a `DnsKind` case index (A, AAAA, CNAME, MX, NS, TXT, PTR, SRV), or 0 for an index out of range. */
+static uint16_t type_of_kind(int64_t kind) {
+    static const uint16_t types[] = {MS_DNS_A, MS_DNS_AAAA, MS_DNS_CNAME, MS_DNS_MX, MS_DNS_NS, MS_DNS_TXT, MS_DNS_PTR, MS_DNS_SRV};
+    return kind >= 0 && kind < (int64_t)(sizeof types / sizeof types[0]) ? types[kind] : 0;
+}
+
+/* Fills `out` with a `List[DnsRecord]` of the records of one kind. */
+static void write_records(const MsDnsResponse *response, uint16_t type, int64_t kind, MsVec *out) {
+    msrt_list_with_capacity(&record_desc, (int64_t)response->count, out);
     for (size_t i = 0; i < response->count; i++) {
-        const MsDnsRecord *record = &response->records[i];
-        if (record->type != type) {
+        const MsDnsRecord *found = &response->records[i];
+        if (found->type != type) {
             continue;
         }
-        MsStr text;
-        msrt_string_from_bytes((const uint8_t *)record->value, record->length, &text);
-        msrt_list_push(values, &msrt_desc_string, (const uint8_t *)&text);
-        const int64_t three[3] = {record->priority, record->weight, record->port};
-        for (size_t k = 0; k < 3; k++) {
-            msrt_list_push(numbers, &msrt_desc_int, (const uint8_t *)&three[k]);
-        }
+        DnsRecord record = {.kind = kind, .priority = found->priority, .weight = found->weight, .port = found->port};
+        msrt_string_from_bytes((const uint8_t *)found->value, found->length, &record.value);
+        msrt_list_push(out, &record_desc, (const uint8_t *)&record);
     }
 }
 
-static bool wanted_type(int64_t type) {
-    return type == MS_DNS_A || type == MS_DNS_AAAA || type == MS_DNS_CNAME || type == MS_DNS_MX || type == MS_DNS_NS ||
-           type == MS_DNS_PTR || type == MS_DNS_SRV || type == MS_DNS_TXT;
-}
-
-uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t type, uint8_t has_timeout, int64_t timeout,
-                        MsVec *values, MsVec *numbers, MsStr *err) {
+uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t kind, uint8_t has_timeout, int64_t timeout,
+                        MsVec *out, MsStr *err) {
+    const uint16_t type = type_of_kind(kind);
     ms_net_clear_text(err);
     MsAddr target;
     const MsBytes name_bytes = msrt_str_bytes(name);
     if (!ms_net_addr_parse(msrt_str_bytes(server), &target) ||
-        !wanted_type(type)) {
+        type == 0) {
         return STATUS_INVALID_INPUT;
     }
     const uint16_t id = (uint16_t)ms_sys_fs_random();
     uint8_t query[MS_DNS_QUERY_MAX];
-    const size_t length = ms_dns_build_query(query, id, name_bytes, (uint16_t)type);
+    const size_t length = ms_dns_build_query(query, id, name_bytes, type);
     if (length == 0) {
         return STATUS_INVALID_INPUT;
     }
@@ -209,10 +230,9 @@ uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t type, ui
         ms_net_write_text(err, text);
         result = STATUS_FAILED;
     } else {
-        write_records(&response, (uint16_t)type, values, numbers);
-        if (values->len == 0) { /* records of other kinds only */
-            msrt_list_drop(values, &msrt_desc_string);
-            msrt_list_drop(numbers, &msrt_desc_int);
+        write_records(&response, type, kind, out);
+        if (out->len == 0) { /* records of other kinds only */
+            msrt_list_drop(out, &record_desc);
             result = STATUS_NONE;
         }
     }
@@ -220,7 +240,7 @@ uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t type, ui
     return result;
 }
 
-uint8_t msstd_dns_config(MsVec *servers, MsVec *search, int64_t *ndots) {
+uint8_t msstd_dns_config(MsNetDnsConfig *out) {
     char *text = malloc(CONFIG_TEXT);
     MsDnsConfig *config = malloc(sizeof *config);
     if (text == NULL || config == NULL) {
@@ -230,23 +250,23 @@ uint8_t msstd_dns_config(MsVec *servers, MsVec *search, int64_t *ndots) {
     }
     const size_t length = ms_sys_net_dns_config(text, CONFIG_TEXT);
     ms_dns_config_parse(ms_bytes_of((const uint8_t *)text, length), config);
-    msrt_list_with_capacity(&msrt_desc_string, (int64_t)config->server_count, servers);
+    msrt_list_with_capacity(&msrt_desc_string, (int64_t)config->server_count, &out->servers);
     for (size_t i = 0; i < config->server_count; i++) {
         char address[MS_NET_ADDR_TEXT_MAX];
         size_t used = 0;
         MsStr item;
         if (ms_net_addr_format(&config->servers[i], address, sizeof address, &used)) {
             msrt_string_from_bytes((const uint8_t *)address, used, &item);
-            msrt_list_push(servers, &msrt_desc_string, (const uint8_t *)&item);
+            msrt_list_push(&out->servers, &msrt_desc_string, (const uint8_t *)&item);
         }
     }
-    msrt_list_with_capacity(&msrt_desc_string, (int64_t)config->search_count, search);
+    msrt_list_with_capacity(&msrt_desc_string, (int64_t)config->search_count, &out->search);
     for (size_t i = 0; i < config->search_count; i++) {
         MsStr item;
         msrt_string_from_bytes((const uint8_t *)config->search[i], strlen(config->search[i]), &item);
-        msrt_list_push(search, &msrt_desc_string, (const uint8_t *)&item);
+        msrt_list_push(&out->search, &msrt_desc_string, (const uint8_t *)&item);
     }
-    *ndots = config->ndots;
+    out->ndots = config->ndots;
     free(text);
     free(config);
     return STATUS_OK;

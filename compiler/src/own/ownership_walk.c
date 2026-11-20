@@ -626,6 +626,20 @@ static void own_method_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+/* `Type(a, b)`: a record this module or another declares, built from its arguments. */
+static bool own_is_constructor(const OwnWalk *w, const MsExpr *e) {
+    const uint32_t sym = w->facts->call_callee[e->id];
+    const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
+    return e->u.call.callee->kind == MS_E_NAME && decl != NULL && decl->kind == MS_D_TYPE;
+}
+
+/* Every argument moves into the new record (a copy for a plain value); the record holds no borrow. */
+static void own_construct(OwnWalk *w, const MsExpr *e) {
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_MOVE);
+    }
+}
+
 /* A call of a function this module declares: each argument is read, since a parameter that is
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
@@ -644,6 +658,10 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     }
     if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_method[e->id] != MS_NONE && w->facts->methods != NULL) {
         own_method_call(w, e);
+        return;
+    }
+    if (own_is_constructor(w, e)) {
+        own_construct(w, e);
         return;
     }
     const OwnSummary *callee = own_callee(w, e);
@@ -744,7 +762,7 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
-    if (e->kind == MS_E_CALL) {
+    if (e->kind == MS_E_CALL && !own_is_constructor(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
         w->supported = w->supported && callee != NULL && !callee->returns_borrow;
     }
@@ -898,8 +916,25 @@ static bool own_arm_payloads(OwnWalk *w, const MsArm *arm, const Scrutinee *sour
 }
 
 /* `name = value`: the value is moved in, then the old one is replaced, which no borrow may read. */
+/* `var.field = value` into a plain field: the value is moved in and the variable changes in
+ * place. A variable some borrow reads, or that borrows itself, is left to Rust, which tells apart
+ * the fields a borrow reaches. */
+static void own_field_store(OwnWalk *w, const MsStmt *s, uint32_t root) {
+    own_expr(w, s->u.assign.value, DEMAND_MOVE);
+    own_release_pending(w);
+    bool shared = w->perm[root] != PERM_MUTABLE || own_holds_borrow(w, root);
+    for (uint32_t i = 0; i < w->active.len; i++) {
+        shared = shared || (w->active.items[i].holder != MS_NONE && w->active.items[i].origin == root);
+    }
+    w->supported = w->supported && !shared;
+}
+
 static void own_assign(OwnWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->assign_binding[s->id];
+    if (binding == MS_NONE && w->facts->field_store_root[s->id] != MS_NONE) {
+        own_field_store(w, s, w->facts->field_store_root[s->id]);
+        return;
+    }
     if (binding == MS_NONE || w->perm[binding] != PERM_MUTABLE) {
         w->supported = false; /* a field store or an assignment the checker rejects */
         return;

@@ -53,3 +53,24 @@ fn heavy[T: Named](value: T, scale: Int) Int:
 
 fn missing[T: Named](value: T) Int:
 	return value.nothing()
+
+fn apply_to[A, B](value: A, transform: fn(A) B) B:
+	return transform(value)
+
+fn count_of[T](items: List[T]) Int:
+	return items.len()
+
+fn same_list[T](items: List[T]) List[T]:
+	return items
+
+fn explicit_int() Int:
+	return identity[Int](3)
+
+fn explicit_float() Float:
+	return identity[Float](3)
+
+fn explicit_first() Int:
+	return pair_first[Int, String](1, "x")
+
+fn explicit_mismatch() Int:
+	return identity[Int]("x")

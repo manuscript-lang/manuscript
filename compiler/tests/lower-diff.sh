@@ -26,13 +26,17 @@ target/release/examples/c_lower_oracle $lowered_files > "$out/lower.rust" 2>/dev
 # (`; divergent`); it is left out of the text comparison and the verifier checks it instead (the
 # dump tool exits non-zero when a lowered function fails to verify).
 # One line per function block: `file name|block with newlines as \n`, sorted by key.
+# The copies of a generic function are `name`, `name.1`, ... in the order a lowering made them, which
+# differs between the two (Rust takes bodies from a stack, C in declaration order). They are compared
+# by name and signature: `@name.N` is read as `@name`, and the key carries the parameter and result types.
 keyed() {
-    awk '
+    sed -E 's/(@[A-Za-z_][A-Za-z_0-9]*)\.[0-9]+/\1/g' "$1" | awk '
         /^=== / { file = $2; next }
         /^; divergent$/ { looped = 1; next }
-        /^fn @/ { name = $2; sub(/\(.*/, "", name); key = file " " name; body = ""; infn = 1 }
+        /^fn @/ { name = $2; sub(/\(.*/, "", name); sig = $0; sub(/^fn @[^(]*/, "", sig); sub(/ (ret_borrowed|ret_view|export|!).*$/, "", sig)
+                  key = file " " name " " sig; body = ""; infn = 1 }
         infn { body = body $0 "\\n" }
-        infn && /^}/ { if (!looped) print key "|" body; infn = 0; looped = 0 }' "$1" | sort
+        infn && /^}/ { if (!looped) print key "|" body; infn = 0; looped = 0 }' | sort
 }
 keyed "$out/lower.c" > "$out/lower.c.keyed"
 keyed "$out/lower.rust" > "$out/lower.rust.all"
@@ -59,7 +63,7 @@ fi
 "$dump" stdlib --run $lowered_files > "$out/run.c"
 "$dump" --run-mir "$out/lower.rust" > "$out/run.rust"
 # Each line keyed by file and function, then only the keys with as many lines on both sides.
-run_keyed() { awk '{ print $1 " " substr($2, 1, index($2, "(") - 1) "|" $0 }' "$1" | sort; }
+run_keyed() { sed -E 's/^([^ ]+ [A-Za-z_][A-Za-z_0-9]*)\.[0-9]+\(/\1(/' "$1" | awk '{ print $1 " " substr($2, 1, index($2, "(") - 1) "|" $0 }' | sort; }
 run_keyed "$out/run.c" > "$out/run.c.keyed"
 run_keyed "$out/run.rust" > "$out/run.rust.keyed"
 for side in c rust; do
