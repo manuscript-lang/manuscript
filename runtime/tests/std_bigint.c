@@ -376,7 +376,42 @@ static void run_round_trips(void) {
     }
 }
 
+/* Products of very different lengths take the lopsided Karatsuba path, whose scratch sizing once overflowed: with
+ * ASan the sweep checks the memory, and (a * b) / b == a with no remainder checks the value through the
+ * schoolbook division. */
+static void run_lopsided(void) {
+    uint64_t seed = 99991;
+    for (size_t b_limbs = 30; b_limbs <= 70; b_limbs += 3) {
+        for (size_t a_limbs = b_limbs; a_limbs <= 20 * b_limbs; a_limbs += 7 + a_limbs / 9) {
+            char *const a_text = malloc(a_limbs * 20 + 2);
+            char *const b_text = malloc(b_limbs * 20 + 2);
+            for (size_t i = 0; i < 2; i++) {
+                char *const text = i == 0 ? a_text : b_text;
+                const size_t digits = (i == 0 ? a_limbs : b_limbs) * 19;
+                for (size_t k = 0; k < digits; k++) {
+                    seed = seed * 6364136223846793005u + 1442695040888963407u;
+                    text[k] = (char)('0' + (k == 0 ? 1 + (seed >> 33) % 9 : (seed >> 33) % 10));
+                }
+                text[digits] = 0;
+            }
+            cell *const a = big(a_text);
+            cell *const b = big(b_text);
+            cell *const product = msstd_bigint_multiply(a, b);
+            cell *quotient = NULL;
+            CHECK(msstd_bigint_divide(product, b, &quotient) == 0);
+            CHECK(quotient != NULL && msstd_bigint_equal(quotient, a));
+            drop(quotient);
+            drop(product);
+            drop(a);
+            drop(b);
+            free(a_text);
+            free(b_text);
+        }
+    }
+}
+
 int main(void) {
+    run_lopsided();
     run_direct();
     run_squares();
     run_round_trips();

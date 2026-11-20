@@ -1,5 +1,7 @@
 /* Clocks for the @std/time natives: the wall clock and the process monotonic clock, for POSIX and Windows. */
+#ifndef __APPLE__ /* Apple hides CLOCK_UPTIME_RAW once _POSIX_C_SOURCE is set, and needs no macro for clock_gettime */
 #define _POSIX_C_SOURCE 200809L // NOLINT(cert-dcl37-c,cert-dcl51-cpp): clock_gettime under -std=c11
+#endif
 #include <stdatomic.h>
 
 #include "time_internal.h"
@@ -60,10 +62,13 @@ static int64_t monotonic_nanoseconds(void) {
 static _Atomic int64_t first_reading = INT64_MIN;
 
 int64_t ms_clock_monotonic_since_start(void) {
-    const int64_t now = monotonic_nanoseconds();
-    int64_t start = INT64_MIN;
-    if (atomic_compare_exchange_strong(&first_reading, &start, now)) {
-        return 0;
+    int64_t start = atomic_load(&first_reading);
+    if (start == INT64_MIN) {
+        int64_t first = monotonic_nanoseconds();
+        if (!atomic_compare_exchange_strong(&first_reading, &start, first)) {
+            first = start; /* another thread won; `start` now holds its reading */
+        }
+        start = first;
     }
-    return now - start;
+    return monotonic_nanoseconds() - start; /* read after the start is fixed, so never negative */
 }

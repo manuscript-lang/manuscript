@@ -73,7 +73,8 @@ static void buffer_append_padded(TextBuffer *buffer, int64_t number, size_t widt
 }
 
 static void buffer_to_string(TextBuffer *buffer, ms_str *out) {
-    msrt_string_from_bytes(buffer->ptr, buffer->len, out);
+    static const uint8_t empty[1] = {0}; /* an empty buffer has no allocation, but the callee wants a pointer */
+    msrt_string_from_bytes(buffer->ptr != NULL ? buffer->ptr : empty, buffer->len, out);
     msrt_free(buffer->ptr);
     *buffer = (TextBuffer){0};
 }

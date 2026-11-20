@@ -156,17 +156,30 @@ static void mul_basecase(MsLimb *r, const MsLimb *a, size_t a_len, const MsLimb 
     }
 }
 
-/* Scratch limbs mul_rec needs for operands of these lengths (a_len >= b_len). Recursion halves the longer
- * operand, so its depth is at most 64. */
+static size_t max_size(size_t a, size_t b) { return a > b ? a : b; }
+
+static size_t scratch_limbs(size_t a_len, size_t b_len);
+
+/* scratch_limbs for operands in either order, as mul_any takes them. */
+static size_t scratch_any(size_t x_len, size_t y_len) {
+    return x_len >= y_len ? scratch_limbs(x_len, y_len) : scratch_limbs(y_len, x_len);
+}
+
+/* Scratch limbs mul_rec needs for operands of these lengths (a_len >= b_len): the most any of the sub-products it
+ * makes needs, because the pieces of an odd length differ and may take different branches. Recursion halves the
+ * longer operand, so its depth is at most 64. */
 static size_t scratch_limbs(size_t a_len, size_t b_len) {
     if (b_len < MS_KARATSUBA_THRESHOLD) {
         return 0;
     }
     const size_t half = (a_len + 1) / 2;
     if (b_len <= half) {
-        return (a_len - half) + b_len + scratch_limbs(half, b_len);
+        const size_t pieces = max_size(scratch_any(half, b_len), scratch_any(a_len - half, b_len));
+        return (a_len - half) + b_len + pieces;
     }
-    return 4 * (half + 1) + scratch_limbs(half + 1, half + 1);
+    const size_t products = max_size(max_size(scratch_any(half, half), scratch_any(a_len - half, b_len - half)),
+                                     scratch_any(half + 1, half + 1));
+    return 4 * (half + 1) + products;
 }
 
 static void mul_rec(MsLimb *r, const MsLimb *a, size_t a_len, const MsLimb *b, size_t b_len, MsLimb *scratch);
