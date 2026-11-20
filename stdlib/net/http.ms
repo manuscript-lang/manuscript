@@ -12,7 +12,6 @@ import (
 	read_all from "@std/io/streams.ms",
 	Policy from "@std/net/policy.ms",
 	TlsOptions from "@std/net/tls.ms",
-	parse from "@std/net/url.ms",
 	NativeWebSocket, WebSocket, web_socket_from from "@std/net/websocket.ms",
 	Duration from "@std/time.ms",
 
@@ -240,11 +239,12 @@ export fn send(
 	if limit := timeout:
 		if limit.to_nanoseconds() < 0: return error(invalid_request())
 
-	target := parse(address)
-	if target.is_error(): return error(invalid_request())
-
-	scheme := target.get().scheme
-	if scheme != "http" and scheme != "https": return error(invalid_request())
+	// The engine parses the rest; a path with an invalid percent escape is still a
+	// request.
+	lower := address.lower()
+	if not lower.starts_with("http://") and not lower.starts_with("https://"): return error(
+		invalid_request()
+	)
 
 	started := msstd_client_fetch(native, method, address, headers, body, timeout)?
 	return ok(RawResponse(native: started, max: max_response_bytes))
