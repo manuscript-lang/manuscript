@@ -74,6 +74,7 @@ typedef struct Frame {
 
 typedef struct DocBuilder {
     JsonDoc *doc;
+    size_t source_length;  /* the source copy at the start of the text */
     uint32_t *pending;     /* owned: children of the open arrays, not yet in the pool */
     size_t pending_count;
     size_t pending_capacity;
@@ -120,20 +121,32 @@ static uint8_t add_leaf(DocBuilder *builder, JsonNode node) {
     return doc_node(builder->doc, node, &id) ? attach(builder, id) : MS_STATUS_LIMIT_EXCEEDED;
 }
 
+/* The span of `text` in the document's text: a span of the source copy, or the decoded bytes appended. */
+static bool text_span(DocBuilder *builder, JsonText text, uint32_t *offset) {
+    JsonBuffer *buffer = &builder->doc->text;
+    if (text.source_offset != JSON_DECODED) {
+        *offset = (uint32_t)text.source_offset;
+        return true;
+    }
+    if (buffer->length > UINT32_MAX || !json_buffer_append(buffer, text.bytes)) {
+        return false;
+    }
+    *offset = (uint32_t)(buffer->length - text.bytes.len);
+    return true;
+}
+
 static uint8_t doc_null(void *sink) { return add_leaf(sink, (JsonNode){.kind = KIND_NULL}); }
 
 static uint8_t doc_boolean(void *sink, bool value) {
     return add_leaf(sink, (JsonNode){.kind = KIND_BOOL, .first = value});
 }
 
-/* Whether the node and member fields (32 bits) can hold `text`. */
-static bool text_fits(JsonText text) { return text.offset <= UINT32_MAX && text.bytes.len <= UINT32_MAX; }
-
 static uint8_t doc_text(DocBuilder *builder, uint8_t kind, JsonText text) {
-    if (!text_fits(text)) {
+    uint32_t offset = 0;
+    if (!text_span(builder, text, &offset) || text.bytes.len > UINT32_MAX) {
         return MS_STATUS_LIMIT_EXCEEDED;
     }
-    return add_leaf(builder, (JsonNode){.kind = kind, .first = (uint32_t)text.offset, .count = (uint32_t)text.bytes.len});
+    return add_leaf(builder, (JsonNode){.kind = kind, .first = offset, .count = (uint32_t)text.bytes.len});
 }
 
 static uint8_t doc_number(void *sink, JsonText text) { return doc_text(sink, KIND_NUMBER, text); }
@@ -141,10 +154,11 @@ static uint8_t doc_string(void *sink, JsonText text) { return doc_text(sink, KIN
 
 static uint8_t doc_key(void *sink, JsonText text) {
     DocBuilder *builder = sink;
-    if (!text_fits(text)) {
+    uint32_t offset = 0;
+    if (!text_span(builder, text, &offset) || text.bytes.len > UINT32_MAX) {
         return MS_STATUS_LIMIT_EXCEEDED;
     }
-    const JsonMember member = {.key_offset = (uint32_t)text.offset, .key_length = (uint32_t)text.bytes.len};
+    const JsonMember member = {.key_offset = offset, .key_length = (uint32_t)text.bytes.len};
     return BUILDER_PUSH(builder, open_members, member) ? MS_STATUS_OK : MS_STATUS_LIMIT_EXCEEDED;
 }
 
@@ -152,6 +166,56 @@ static uint8_t doc_open(void *sink, bool is_array) {
     DocBuilder *builder = sink;
     const Frame frame = {.is_array = is_array, .start = is_array ? builder->pending_count : builder->open_members_count};
     return BUILDER_PUSH(builder, frames, frame) ? MS_STATUS_OK : MS_STATUS_LIMIT_EXCEEDED;
+}
+
+static bool key_equal(const JsonDoc *doc, const JsonMember *a, const JsonMember *b) {
+    return a->key_length == b->key_length &&
+           memcmp(doc->text.ptr + a->key_offset, doc->text.ptr + b->key_offset, a->key_length) == 0;
+}
+
+/* FNV-1a over the key's bytes. */
+static uint64_t key_hash(const JsonDoc *doc, const JsonMember *member) {
+    uint64_t hash = UINT64_C(0xcbf29ce484222325);
+    for (uint32_t i = 0; i < member->key_length; i++) {
+        hash = (hash ^ doc->text.ptr[member->key_offset + i]) * UINT64_C(0x100000001b3);
+    }
+    return hash;
+}
+
+/* Objects up to this many members detect a repeated key by pairwise comparison; larger ones hash their keys. */
+enum { LINEAR_KEYS = 12 };
+
+/* Whether two of the `count` members share a key. */
+static bool has_duplicate(const JsonDoc *doc, const JsonMember *members, size_t count) {
+    if (count <= LINEAR_KEYS) {
+        for (size_t i = 1; i < count; i++) {
+            for (size_t j = 0; j < i; j++) {
+                if (key_equal(doc, &members[i], &members[j])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    size_t size = 1;
+    while (size < count * 2) {
+        size *= 2;
+    }
+    uint32_t *table = msrt_alloc_zeroed(size * sizeof *table);
+    bool found = false;
+    for (size_t i = 0; i < count && !found; i++) {
+        size_t slot = (size_t)key_hash(doc, &members[i]) & (size - 1);
+        while (table[slot] != 0) {
+            if (key_equal(doc, &members[table[slot] - 1], &members[i])) {
+                found = true;
+                break;
+            }
+            slot = (slot + 1) & (size - 1);
+        }
+        table[slot] = (uint32_t)i + 1;
+    }
+    msrt_free(table);
+    return found;
 }
 
 /* Moves the closing container's children into the pools and adds its node. */
@@ -176,6 +240,9 @@ static uint8_t doc_close(void *sink, bool is_array) {
     } else {
         const size_t count = builder->open_members_count - frame.start;
         const JsonMember *members = builder->open_members + frame.start;
+        if (has_duplicate(doc, members, count)) {
+            return MS_STATUS_INVALID_DATA;
+        }
         if (!ms_array_reserve((void **)&doc->members, &doc->member_capacity, doc->member_count + count,
                               sizeof *doc->members)) {
             return MS_STATUS_LIMIT_EXCEEDED;
@@ -223,9 +290,11 @@ uint8_t msstd_json_parse(const MsStr *text, uint8_t has_max_bytes, int64_t max_b
     JsonDoc *doc = msrt_alloc_zeroed(sizeof *doc);
     doc->header.drop = doc_drop;
     doc->mismatch = msrt_alloc_zeroed(sizeof *doc->mismatch);
-    DocBuilder builder = {.doc = doc};
+    doc->text.limit = MS_STR_MAX_BYTES;
+    DocBuilder builder = {.doc = doc, .source_length = source.len};
     JsonStop stop = {0};
-    uint8_t status = json_scan(source, limits, &doc_ops, &builder, &stop, &doc->text);
+    uint8_t status = json_buffer_append(&doc->text, source) ? json_scan(source, limits, &doc_ops, &builder, &stop)
+                                                              : MS_STATUS_LIMIT_EXCEEDED;
     builder_free(&builder);
     if (status != MS_STATUS_OK) {
         if (status == MS_STATUS_INVALID_DATA && err != NULL) {

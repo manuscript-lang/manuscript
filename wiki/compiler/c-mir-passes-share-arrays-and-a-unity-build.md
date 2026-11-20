@@ -11,5 +11,5 @@ Verified (port of `crates/ms-mir/src/opt` to `compiler/src/opt_*.c`, 2026-11): e
 - Perf check (2026-11-20): the whole speed pipeline takes about 3 ms and 13 MB on the largest corpus module, so the optimiser is not a perf or memory target.
 
 Apply when: adding or changing a C MIR pass or a `MirFunc` field.
-Evidence: `compiler/tests/mir-diff.sh`, `compiler/src/opt_inline.c`, issue #4816.
+Evidence: `compiler/tests/mir-diff.sh`, `compiler/src/opt/opt_inline.c`, issue #4816.
 Verify: `mir-diff.sh` shows no FAIL.

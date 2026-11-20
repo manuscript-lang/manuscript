@@ -18,7 +18,7 @@ set(_bin "${CMAKE_BINARY_DIR}/compiler")
 # libms: compiler/src/libms.c includes every other source, so it is one object (static helpers must not share
 # names). Tests and tools link that object.
 add_library(ms_libms OBJECT "${_c}/src/libms.c")
-target_include_directories(ms_libms PUBLIC "${_c}/include" "${CMAKE_SOURCE_DIR}/runtime/include")
+target_include_directories(ms_libms PUBLIC "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/runtime/include")
 target_compile_options(ms_libms PRIVATE ${_cflags})
 set_target_properties(ms_libms PROPERTIES C_EXTENSIONS OFF)
 

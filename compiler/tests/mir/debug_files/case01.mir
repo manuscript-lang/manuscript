@@ -1,0 +1,11 @@
+module "t"
+file 0 "@std/bytes.ms"
+file 1 "@std/nope/missing.ms"
+file 2 "src/main.ms"
+entry @main
+
+fn @main() -> int {
+b0:
+  %0: int = iconst 0
+  ret %0
+}

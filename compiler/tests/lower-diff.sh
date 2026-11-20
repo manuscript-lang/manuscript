@@ -2,7 +2,7 @@
 # Compares the C lowering's MIR with the Rust lowering's, function by function.
 # Run from the repository root: `make c-compiler-test` runs this after check-diff.sh.
 # Rust lowers a whole program and keeps only what `main` reaches; C lowers the functions the
-# checker claims (compiler/src/check_body.c) and the pass supports (compiler/src/lower_body.c).
+# checker claims (compiler/src/check/check_body.c) and the pass supports (compiler/src/check/lower_body.c).
 # Each function is keyed by file and name, and only the keys both sides produced are compared; a
 # function C produced that Rust left out is unreachable from `main` and is not counted.
 set -eu
