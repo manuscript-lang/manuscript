@@ -1137,8 +1137,12 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
     ms_module_check_bodies_with(c, module, NULL);
 }
 
-void ms_module_check_bodies_with(MsCheck *c, MsModId module, const MsMethodTable *methods) {
+void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *methods) {
     ms_module_resolve_types(c, module);
+    const MsModId intrinsics = ms_map_get(&c->module_by_path, ms_intern_cstr(c->names, "@std/intrinsics.ms"));
+    if (methods != NULL && intrinsics != MS_NONE) {
+        ms_module_ensure_operations(c, intrinsics, methods); // what a primitive receiver offers
+    }
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
     // A module with a declaration-level diagnostic may have signatures the bodies would restate.
