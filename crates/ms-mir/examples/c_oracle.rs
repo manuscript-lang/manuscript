@@ -2,12 +2,12 @@
 //! parse error), so the C MIR in `compiler/` can be compared with it byte for byte
 //! (`make c-compiler-test`). Temporary tooling for the C rewrite: delete it with `ms-mir`.
 
-use ms_mir::ir::{Boxing, Op};
 use ms_mir::interp::Interp;
+use ms_mir::ir::{Boxing, Op};
 use ms_mir::layout::{AltRepr, Layouts, Leaf, mem_layout};
-use ms_mir::types::{AltId, Ty, TyKind};
 use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
+use ms_mir::types::{AltId, Ty, TyKind};
 use std::fmt::Write;
 
 fn main() {
@@ -101,7 +101,10 @@ fn main() {
 }
 
 fn leaf_list(leaves: &[Leaf]) -> String {
-    let names: Vec<String> = leaves.iter().map(|l| format!("{l:?}").to_lowercase()).collect();
+    let names: Vec<String> = leaves
+        .iter()
+        .map(|l| format!("{l:?}").to_lowercase())
+        .collect();
     names.join(",")
 }
 
@@ -208,7 +211,12 @@ fn run_module(m: &ms_mir::ir::Module, out: &mut String) {
         Err(f) => {
             let kind = format!("{:?}", f.kind);
             let kind = kind.split('(').next().unwrap_or("");
-            let _ = writeln!(out, "fault {kind} {} fuel={}", plain(&f.message), f.fuel_exhausted as u8);
+            let _ = writeln!(
+                out,
+                "fault {kind} {} fuel={}",
+                plain(&f.message),
+                f.fuel_exhausted as u8
+            );
             for s in &f.stack {
                 let _ = writeln!(out, "  at {s}");
             }
