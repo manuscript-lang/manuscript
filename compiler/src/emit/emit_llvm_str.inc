@@ -90,6 +90,40 @@ static void ll_bytes_push(LCx *c, const MirInst *inst, uint32_t block, uint32_t 
     ms_buf_puts(o, ":\n");
 }
 
+/* `bytes`, `list.const`, `list.const.view`: constant data. The view and the bytes borrow it (capacity
+ * 0, nothing frees them); `list.const` copies it into a fresh block. */
+static bool ll_const_data(LCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const uint32_t id = (uint32_t)inst->imm.i;
+    const bool bytes = inst->op == MOP_BytesLit;
+    const uint32_t n = bytes ? c->m->blobs[id].len : c->m->list_consts[id].n;
+    if (n == 0) {
+        ms_buf_printf(o, "  %%v%u = add i64 0, 0\n  %%v%u.1 = add i64 0, 0\n  %%v%u.2 = add i64 0, 0\n", inst->res,
+                      inst->res, inst->res);
+        return true;
+    }
+    const uint32_t sym = c->data == NULL ? MIR_NONE : (bytes ? c->data->blobs[id] : c->data->list_consts[id]);
+    if (sym == MIR_NONE) {
+        c->why = "constant data without a symbol";
+        return false;
+    }
+    const uint32_t t = c->next++;
+    ms_buf_printf(o, "  %%t%u = ptrtoint ptr ", t);
+    ll_data_name(o, c->data->syms[sym].name);
+    ms_buf_puts(o, " to i64\n");
+    if (inst->op == MOP_ListConst) {
+        const uint32_t size = n * mir_list_elem_size(c->layouts, c->f->values[inst->res]);
+        ms_buf_printf(o, "  %%v%u = call i64 @\"msrt_alloc\"(i64 %u)\n  %%d%u = inttoptr i64 %%v%u to ptr\n  %%s%u = inttoptr i64 %%t%u to ptr\n",
+                      inst->res, size, t, inst->res, t, t);
+        ms_buf_printf(o, "  call void @llvm.memcpy.p0.p0.i64(ptr %%d%u, ptr %%s%u, i64 %u, i1 false)\n", t, t, size);
+        ms_buf_printf(o, "  %%v%u.1 = add i64 0, %u\n  %%v%u.2 = add i64 0, %u\n", inst->res, n, inst->res, n);
+        return true;
+    }
+    ms_buf_printf(o, "  %%v%u = add i64 %%t%u, 0\n  %%v%u.1 = add i64 0, %u\n  %%v%u.2 = add i64 0, 0\n", inst->res, t,
+                  inst->res, n, inst->res);
+    return true;
+}
+
 /* The string operations here; `*handled` says whether `inst` is one. */
 static bool ll_str_op(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part, bool *handled) {
     *handled = true;
@@ -98,6 +132,8 @@ static bool ll_str_op(LCx *c, const MirInst *inst, uint32_t block, uint32_t inde
     case MOP_StrAsciiLen: ll_str_ascii_len(c, inst); return true;
     case MOP_StrAscii: ll_str_ascii(c, inst); return true;
     case MOP_StrByte: ll_str_byte(c, inst, block, index); return true;
+    case MOP_BytesLit: case MOP_ListConst: case MOP_ListConstView: return ll_const_data(c, inst);
+    case MOP_OptViewAt: case MOP_OptAddr: ll_copy_leaf(c, inst->res, 0, inst->args[0], 0); return true;
     case MOP_BytesPush: ll_bytes_push(c, inst, block, part); return true;
     default:
         *handled = false;

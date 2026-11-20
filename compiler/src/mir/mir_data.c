@@ -252,6 +252,65 @@ static void md_strings(MdCx *c) {
     }
 }
 
+/* The bytes of one constant list: each value in the width of the element's leaf, little-endian; a
+ * Float32 element holds the bits of a double that are narrowed. */
+static uint8_t *md_list_bytes(MirModule *m, MirLeaf leaf, const MirConsts *list, uint32_t *size) {
+    const uint32_t width = mir_leaf_size(leaf);
+    *size = width * list->n;
+    uint8_t *bytes = MS_NEW_N(&m->arena, uint8_t, *size ? *size : 1);
+    for (uint32_t i = 0; i < list->n; i++) {
+        uint64_t bits = (uint64_t)list->v[i];
+        if (leaf == MIR_LEAF_F32) {
+            double wide = 0;
+            memcpy(&wide, &bits, sizeof wide);
+            const float narrow = (float)wide;
+            uint32_t word = 0;
+            memcpy(&word, &narrow, sizeof word);
+            bits = word;
+        }
+        for (uint32_t b = 0; b < width; b++) {
+            bytes[(size_t)i * width + b] = (uint8_t)(bits >> (8 * b));
+        }
+    }
+    return bytes;
+}
+
+/* One symbol for each constant byte string and constant list a function uses. */
+static void md_consts(MdCx *c) {
+    MirModule *m = c->m;
+    c->d->blobs = MS_NEW_N(&m->arena, uint32_t, m->nblobs ? m->nblobs : 1);
+    c->d->list_consts = MS_NEW_N(&m->arena, uint32_t, m->nlist_consts ? m->nlist_consts : 1);
+    for (uint32_t i = 0; i < m->nblobs; i++) {
+        c->d->blobs[i] = MIR_NONE;
+    }
+    for (uint32_t i = 0; i < m->nlist_consts; i++) {
+        c->d->list_consts[i] = MIR_NONE;
+    }
+    for (uint32_t f = 0; f < m->nfuncs; f++) {
+        for (uint32_t b = 0; b < m->funcs[f].nblocks; b++) {
+            const MirBlockData *blk = &m->funcs[f].blocks[b];
+            for (uint32_t k = 0; k < blk->ninsts; k++) {
+                const MirInst *inst = &blk->insts[k];
+                const uint32_t id = (uint32_t)inst->imm.i;
+                if (inst->op == MOP_BytesLit && id < m->nblobs && c->d->blobs[id] == MIR_NONE &&
+                    m->blobs[id].len > 0) {
+                    MirDataSym s = {.name = md_name(c, "blob", id), .size = m->blobs[id].len, .align = 1,
+                                    .bytes = (const uint8_t *)m->blobs[id].ptr};
+                    c->d->blobs[id] = md_new_sym(c, &s);
+                } else if ((inst->op == MOP_ListConst || inst->op == MOP_ListConstView) &&
+                           id < m->nlist_consts && c->d->list_consts[id] == MIR_NONE &&
+                           m->list_consts[id].n > 0) {
+                    const MirLeafSpan leaves = mir_leaves(c->lay, mir_ty_data(m, m->funcs[f].values[inst->res])->elem);
+                    uint32_t size = 0;
+                    const uint8_t *bytes = md_list_bytes(m, leaves.ptr[0], &m->list_consts[id], &size);
+                    MirDataSym s = {.name = md_name(c, "list", id), .size = size, .align = 16, .bytes = bytes};
+                    c->d->list_consts[id] = md_new_sym(c, &s);
+                }
+            }
+        }
+    }
+}
+
 uint32_t mir_data_unit(const MirData *d, uint32_t alt, uint32_t case_index) {
     for (uint32_t i = 0; i < d->nunits; i++) {
         if (d->units[i].alt == alt && d->units[i].case_index == case_index) {
@@ -301,6 +360,7 @@ void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out) {
     md_globals(&c);
     md_vtables(&c);
     md_strings(&c);
+    md_consts(&c);
     md_units(&c);
     md_collect_descs(&c);
     mir_layouts_free(&lay);
