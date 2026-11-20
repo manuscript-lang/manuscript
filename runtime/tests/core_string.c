@@ -15,7 +15,7 @@ static void check(bool ok, int line, const char *text) {
 
 /* A static string over `text`. */
 static MsStr lit(const char *text) {
-    MsStr s = {(uint8_t *)text, strlen(text) | (UINT64_C(1) << 63)};
+    MsStr s = {.bytes = (const uint8_t *)text, .tagged = strlen(text) | (UINT64_C(1) << 63)};
     return s;
 }
 
@@ -93,7 +93,7 @@ int main(void) {
     /* Invalid sequences decode as U+FFFD with width 1, as in crates/ms-rt/src/utf8.rs. */
     const uint8_t bad[][4] = {{0xFF}, {0xC3}, {0xC0, 0x80}, {0xE0, 0x80, 0x80}, {0xED, 0xA0, 0x80}, {0xF4, 0x90, 0x80, 0x80}, {0xF0, 0x80, 0x80, 0x80}};
     for (size_t i = 0; i < sizeof bad / sizeof bad[0]; i++) {
-        ms_rune r = ms_utf8_decode(bad[i], bad[i][0] == 0xFF || bad[i][0] == 0xC3 ? 1 : (bad[i][0] == 0xC0 ? 2 : (bad[i][0] < 0xF0 ? 3 : 4)));
+        MsRune r = ms_utf8_decode(bad[i], bad[i][0] == 0xFF || bad[i][0] == 0xC3 ? 1 : (bad[i][0] == 0xC0 ? 2 : (bad[i][0] < 0xF0 ? 3 : 4)));
         CHECK(r.rune == MS_RUNE_ERROR && r.width == 1);
     }
     const uint8_t good[] = {0xED, 0x9F, 0xBF, 0xF4, 0x8F, 0xBF, 0xBF};
