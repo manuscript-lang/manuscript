@@ -7,7 +7,53 @@ use ms_check::api::types::{Native, SymKind};
 use ms_syntax::Names;
 use std::fmt::Write;
 
+/// The diagnostic families the C checker implements so far; the scope mode prints only these.
+const SCOPE_FAMILIES: [&str; 5] = [
+    "reuses a prelude",
+    "collides with another",
+    "duplicate or intrinsic name ",
+    "module does not export ",
+    "unknown standard module ",
+];
+
+/// `c_oracle --scope FILE...`: the name-resolution diagnostics of each file, one per line.
+fn scope_diagnostics(files: &[String]) {
+    let syms = Names::global();
+    let session = Session::new();
+    session.ensure_standard();
+    for path in files {
+        let Ok(source) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        let file: std::sync::Arc<str> = "main.ms".into();
+        let Ok(module) = ms_syntax::parser::parse(&file, &source) else {
+            continue;
+        };
+        if module.imports.iter().any(|i| !i.path.starts_with("@std/")) {
+            continue;
+        }
+        let program = ms_check::check_in(
+            syms,
+            &session,
+            vec![ms_check::load_module(syms, &module)],
+            ms_check::ImportMap::default(),
+            ms_check::CheckOptions::default(),
+        );
+        for d in &program.diagnostics {
+            let family = SCOPE_FAMILIES.iter().any(|f| d.message.contains(f));
+            if d.phase == ms_syntax::Phase::Resolution && family {
+                println!("{path}:{}:{}: {}", d.pos.line, d.pos.column, d.message);
+            }
+        }
+    }
+}
+
 fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--scope") {
+        scope_diagnostics(&args[1..]);
+        return;
+    }
     let syms = Names::global();
     let session = Session::new();
     session.ensure_standard();

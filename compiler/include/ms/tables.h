@@ -53,6 +53,12 @@ typedef struct MsModuleRow {
     const MsModule *syntax;
     MsNameMap scope; /* every symbol the module declares, by name; exported ones are those with is_exported */
     bool source;       /* has implementation bodies: checked like user code, on first import */
+    /* Name resolution (check_scope.c): everything the module's code can name at the top level --
+     * primitives, the prelude, imports and its own declarations -- and what that found wrong. */
+    MsNameMap names;
+    MsDiag *diags;
+    uint32_t ndiags, diags_cap;
+    bool declared;
     MsSymId *order;    /* the same symbols in declaration order */
     uint32_t norder;
 } MsModuleRow;
@@ -65,6 +71,8 @@ typedef struct MsCheck {
     MsModuleRow *mods;
     uint32_t nmods, mods_cap;
     MsNameMap std_types; /* standard type name -> symbol, as the world map of the Rust loader */
+    MsNameMap module_by_path; /* module path -> module id */
+    MsNameMap primitives;     /* primitive type name -> symbol; those symbols belong to no module */
 } MsCheck;
 
 void ms_check_init(MsCheck *c, MsNames *names);
@@ -86,5 +94,13 @@ typedef struct MsSymSpec {
 /* Adds a symbol of `module`; exported ones are visible to importers. Returns the new id, or
  * MS_NONE when the module already has a symbol of this name. */
 MsSymId ms_sym_add(MsCheck *c, MsModId module, const MsSymSpec *spec);
+
+/* Appends a symbol row without listing it in any scope. `module` is MS_NONE for a primitive type,
+ * which belongs to no module. */
+MsSymId ms_sym_new(MsCheck *c, MsModId module, const MsSymSpec *spec);
+
+/* The name a declaration binds (0 for an `impl` or a test) and how many type variables it declares. */
+MsSym ms_decl_name(const MsDecl *d);
+uint32_t ms_decl_nvars(const MsDecl *d);
 
 #endif

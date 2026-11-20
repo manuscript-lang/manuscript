@@ -2,6 +2,7 @@
 # Compares the C checker's tables with the Rust checker's, byte for byte, and runs the C unit tests.
 # Run from the repository root: `make c-compiler-test` runs this after syntax-diff.sh.
 #   tables  the bundled standard library as loaded into the symbol tables (crates/ms-check c_oracle)
+#   scope   the name-resolution diagnostics of every fixture that imports only `@std/` modules
 # The set of compared things grows with each checker pass the C side gains; a pass is not
 # "ported" until its line here passes.
 set -eu
@@ -28,6 +29,18 @@ if cmp -s "$out/tables.rust" "$out/tables.c"; then
 else
     echo "FAIL tables: first difference"
     diff "$out/tables.rust" "$out/tables.c" | head -20 || true
+    status=1
+fi
+# Name resolution: the diagnostics of the families the C pass implements, for the scope fixtures
+# and the whole conformance corpus. The files must produce some, or the comparison proves nothing.
+files=$(find compiler/tests/scope tests/conformance/fixtures -name '*.ms' | sort)
+"$oracle" --scope $files > "$out/scope.rust"
+"$out/check-dump" stdlib --scope $files > "$out/scope.c"
+if cmp -s "$out/scope.rust" "$out/scope.c" && [ -s "$out/scope.rust" ]; then
+    echo "ok   scope ($(wc -l < "$out/scope.rust") diagnostics)"
+else
+    echo "FAIL scope: first difference"
+    diff "$out/scope.rust" "$out/scope.c" | head -20 || true
     status=1
 fi
 exit $status
