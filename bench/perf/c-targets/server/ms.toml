@@ -1,0 +1,4 @@
+[project]
+name = "c-targets-server"
+source = "./src"
+entry = "./src/main.ms"
