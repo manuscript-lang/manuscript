@@ -5,6 +5,7 @@
 #   scope   the name-resolution diagnostics of every fixture that imports only `@std/` modules
 #   effect directives  the `// ms: effect` and `allow_effect` lines of every .ms file in the repository
 #   desugar  inherent impls rewritten, as project and bundled modules and with foreign types
+#   methods  the operations of interfaces, over every file that declares one
 #   effect graph  reachability and violations over generated reference graphs (MS_EFFECT_GRAPHS, default 500)
 # The set of compared things grows with each checker pass the C side gains; a pass is not
 # "ported" until its line here passes.
@@ -12,10 +13,11 @@ set -eu
 out=target/c-compiler
 mkdir -p "$out"
 
-cargo build --release --locked -p ms-check --example c_oracle --example c_oracle_effects --example c_oracle_desugar
+cargo build --release --locked -p ms-check --example c_oracle --example c_oracle_effects --example c_oracle_desugar --example c_oracle_methods
 oracle=target/release/examples/c_oracle
 effects_oracle=target/release/examples/c_oracle_effects
 desugar_oracle=target/release/examples/c_oracle_desugar
+methods_oracle=target/release/examples/c_oracle_methods
 
 cflags="-std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror -Wno-format-truncation -Icompiler/include -Iruntime/include"
 cc $cflags compiler/src/libms.c compiler/tools/ms_check_dump.c -o "$out/check-dump" -lm
@@ -102,6 +104,22 @@ else
     for part in user std foreign; do
         diff "$out/desugar-$part.rust" "$out/desugar-$part.c" | cut -c1-200 | head -10 || true
     done
+    status=1
+fi
+
+cc $cflags -Icompiler/tools compiler/src/libms.c compiler/tools/ms_methods_dump.c -o "$out/methods-dump" -lm
+# Every file that declares an interface, plus a fixture for what no file does: a repeated operation
+# and a type parameter that shadows one.
+printf 'interface Shape[T]:\n\tfn area() Int\n\tfn area() Int\n\tfn map[T]() T\n\tfn pair[U, U](other: Self) U\n\tfn nest(other: List[Self]) Int\n' > "$out/methods-fixture.ms"
+xargs grep -lE '^interface |^(var )?fn (move )?[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?\.' < "$out/sources.txt" > "$out/methods-sources.txt"
+echo "$out/methods-fixture.ms" >> "$out/methods-sources.txt"
+xargs "$methods_oracle" < "$out/methods-sources.txt" > "$out/methods.rust"
+xargs "$out/methods-dump" stdlib < "$out/methods-sources.txt" > "$out/methods.c"
+if cmp -s "$out/methods.rust" "$out/methods.c"; then
+    echo "ok   methods ($(grep -c '^==' "$out/methods.rust") files, $(grep -c '^op ' "$out/methods.rust") operations)"
+else
+    echo "FAIL methods: first difference"
+    diff "$out/methods.rust" "$out/methods.c" | cut -c1-200 | head -10 || true
     status=1
 fi
 
