@@ -104,6 +104,18 @@ static MsTy closure_declared(MsBody *b, const MsTypeRef *written, MsTy expected)
     return ty != MS_TY_NONE && (expected == MS_TY_NONE || expected == ty) ? ty : ms_body_unsupported(b);
 }
 
+/* The result a lambda writes: `Void` or any type a parameter may have. */
+static MsTy closure_result(MsBody *b, const MsTypeRef *written, MsTy expected) {
+    if (written != NULL && written->kind == MS_TYPE_NAMED && written->args.len == 0) {
+        const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, written->name);
+        if (sym != MS_NONE && b->c->syms.ty[sym] == b->void_ty && (expected == MS_TY_NONE || expected == b->void_ty)) {
+            b->facts->type_ref_ty[written->id] = b->void_ty;
+            return b->void_ty;
+        }
+    }
+    return closure_declared(b, written, expected);
+}
+
 static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, MsTy *result) {
     const MsTyTable *tys = &b->c->tys;
     const bool context = expected != MS_TY_NONE && ms_ty_kind(tys, expected) == MS_K_FUNCTION &&
@@ -120,7 +132,7 @@ static MsTy closure_signature(MsBody *b, const MsExpr *e, MsTy expected, MsTy *r
         }
         params[i] = (MsTyParam){.name = closure_slot_name(b, i), .ty = closure_declared(b, p->ty, from_context), .flags = MS_PARAM_POSITIONAL};
     }
-    *result = closure_declared(b, e->u.lambda.result, context ? tys->result[expected] : MS_TY_NONE);
+    *result = closure_result(b, e->u.lambda.result, context ? tys->result[expected] : MS_TY_NONE);
     if (!b->supported) {
         return MS_TY_NONE;
     }
