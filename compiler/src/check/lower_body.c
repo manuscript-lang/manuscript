@@ -458,9 +458,28 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     if (!lb->ok) {
         return LB_FAIL;
     }
-    const MirValue result = mir_b_call(&lb->b, func, args, count);
+    MirValue result = mir_b_call(&lb->b, func, args, count);
+    const uint8_t how = lb->m->funcs[func].ret_borrowed ? lb->facts->call_owned_borrow[e->id] : MS_OWNED_NONE;
+    bool owns_result = false;
+    if (how != MS_OWNED_NONE) {
+        // A borrowing callee over a temporary: the caller owns the result, which is the temporary itself
+        // when it came back whole and a copy taken before the temporary is dropped otherwise.
+        const uint32_t whole = lb->facts->call_owned_param[e->id];
+        const bool is_whole = how == MS_OWNED_WHOLE && whole < count;
+        if (is_whole) {
+            result = args[whole];
+            for (uint32_t i = 0; i < ntemps; i++) {
+                temps[i] = temps[i] == result ? MIR_NONE : temps[i];
+            }
+        } else {
+            result = lb_copy(lb, result);
+        }
+        owns_result = true;
+    }
     for (uint32_t i = 0; i < ntemps; i++) {
-        lb_drop(lb, temps[i]);
+        if (temps[i] != MIR_NONE) {
+            lb_drop(lb, temps[i]);
+        }
     }
     for (uint32_t i = 0; i < count; i++) {
         if (slots[i] != MIR_NONE) {
@@ -470,7 +489,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     }
     const bool borrowed = lb->m->funcs[func].ret_borrowed; // a reference into the arguments
     const MirTy result_ty = mir_b_ty(&lb->b, result);
-    return (LbVal){result, lb_owns(lb, result_ty) && !borrowed}; // else a String result is the caller's
+    return (LbVal){result, owns_result || (lb_owns(lb, result_ty) && !borrowed)}; // else a String result is the caller's
 }
 
 static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
