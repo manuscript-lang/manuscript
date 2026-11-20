@@ -436,7 +436,7 @@ fn check_c_abi(
     }
     for header in read_dir("runtime/include/ms_rt", "h")? {
         let module = header.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-        if !["base", "safe", "chars", "array"].contains(&module)
+        if !["base", "runtime", "safe", "chars", "array"].contains(&module)
             && !root.join(format!("runtime/symbols/{module}.txt")).exists()
         {
             return Err(format!(
@@ -489,6 +489,8 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
         let ret = ret.replace("MS_NORETURN", "").replace("MS_NODISCARD", "");
         let ret = if head.contains('*') {
             "ptr".to_string()
+        } else if ret.contains("MS_NORETURN") {
+            "!".to_string()
         } else {
             abi_kind(&ret)
         };

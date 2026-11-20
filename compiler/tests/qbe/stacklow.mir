@@ -1,0 +1,14 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+fn @msmain() -> int {
+b0:
+  %low: bool = stack.low
+  %near: bool = stack.near 4611686018427387904
+  %a: int = b2i %low
+  %b: int = b2i %near
+  %ten: int = iconst 10
+  %c: int = imul %b, %ten
+  %r: int = iadd %a, %c
+  ret %r
+}

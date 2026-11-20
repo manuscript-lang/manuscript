@@ -12,6 +12,7 @@
 #include "ms_rt/desc.h"
 #include "ms_rt/fault.h"
 #include "ms_rt/map.h"
+#include "ms_rt/obj.h"
 #include "ms_rt/string.h"
 
 /* The families of fault are ms_rt/fault.h's; core files that predate it keep their spellings. */
@@ -22,10 +23,5 @@
 /* Raises a fault of `kind` with the message `msg[0..len]`. */
 MS_NORETURN void msfault_raise(uint8_t kind, const uint8_t *msg, size_t len);
 /* The faults (msrt_fault and friends), cleanups and task_grow are ms_rt/fault.h and ms_rt/task.h. */
-
-/* Objects with a header (closures, handles). Null stays null. */
-
-MsObj *msrt_obj_clone(MsObj *object);
-void msrt_obj_drop(MsObj *object);
 
 #endif

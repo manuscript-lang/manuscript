@@ -19,24 +19,21 @@
 
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_fs.h"
+#include "refused.h"
 
 enum {
     EVENT_CAPACITY = 128, /* two events per ready descriptor; a callback needs room for both */
     EVENTS_PER_CALLBACK = 2,
     FIRST_TABLE_LENGTH = 64,
     NANOSECONDS_PER_MILLISECOND = 1000000,
-    POLLED_INTERVAL_MS = 5, /* how often a descriptor libuv refuses is checked */
 };
 
 typedef struct MsIoRow MsIoRow;
 
 struct MsIoRow {
-    union {
-        uv_poll_t poll;
-        uv_timer_t timer; /* a descriptor libuv refuses (a FIFO on macOS) is checked with poll(2) on this timer */
-    } handle;
-    bool polled;  /* the timer variant is live */
-    bool writes;  /* what the timer checks for */
+    uv_poll_t handle; /* unused when `polled` */
+    bool polled;  /* libuv refused the descriptor (a FIFO on macOS): the refused-descriptor thread watches it, no handle */
+    bool writes;  /* what that thread waits for */
     MsIoRow *next_free; /* owned; links the free list, meaningful only while the row is on it */
     int fd;
     bool started; /* the handle is polling */
@@ -46,6 +43,7 @@ struct MsIoRow {
 struct MsIoReactor {
     uv_loop_t loop;
     uv_async_t wake_handle;
+    MsIoRefused *refused; /* owned; watches the descriptors libuv refuses, started with the first */
     uv_timer_t timer; /* ends a blocking pass where the system cannot sleep with nanosecond resolution */
     bool wake_open;
     bool timer_open;
@@ -115,27 +113,29 @@ static void on_row_closed(uv_handle_t *handle) {
     reactor->free_rows = row;
 }
 
-static uv_handle_t *row_handle(MsIoRow *row) {
-    return row->polled ? (uv_handle_t *)&row->handle.timer : (uv_handle_t *)&row->handle.poll;
-}
-
-static void row_stop(MsIoRow *row) {
+static void row_stop(MsIoReactor *reactor, MsIoRow *row) {
     if (!row->started) {
         return;
     }
     if (row->polled) {
-        (void)uv_timer_stop(&row->handle.timer);
+        ms_io_refused_remove(reactor->refused, row->fd);
     } else {
-        (void)uv_poll_stop(&row->handle.poll);
+        (void)uv_poll_stop(&row->handle);
     }
     row->started = false;
 }
 
-/* Ends a row's handle. The row's memory joins the free list when libuv has finished closing it. */
+/* Ends a row's handle. The row's memory joins the free list when libuv has finished closing it; a row without a
+ * handle joins it now. */
 static void row_discard(MsIoReactor *reactor, MsIoRow *row) {
-    row_stop(row);
+    row_stop(reactor, row);
     reactor->rows[row->fd] = NULL;
-    uv_close(row_handle(row), on_row_closed);
+    if (row->polled) {
+        row->next_free = reactor->free_rows;
+        reactor->free_rows = row;
+        return;
+    }
+    uv_close((uv_handle_t *)&row->handle, on_row_closed);
 }
 
 /* The MS_IO_* bits of what libuv reported. An error counts as everything, hang-up included. */
@@ -168,19 +168,25 @@ static void push_report(MsIoReactor *reactor, const MsIoRow *row, int status, ui
     }
 }
 
-/* One check of a descriptor libuv refuses: reports it once poll(2) says it is ready. */
-static void on_polled(uv_timer_t *handle) {
-    MsIoRow *row = uv_handle_get_data((uv_handle_t *)handle);
-    MsIoReactor *reactor = reactor_of((const uv_handle_t *)handle);
-    bool ready = false;
+static MsIoRow *row_find(const MsIoReactor *reactor, int fd);
+
+/* The refused-descriptor thread found `fd` ready. A watch ended or replaced since then is stale and dropped. */
+static bool on_refused_ready(void *context, int fd) {
+    MsIoReactor *reactor = context;
+    MsIoRow *row = row_find(reactor, fd);
+    if (row == NULL || !row->polled || !row->started) {
+        return true;
+    }
     if (ms_io_ring_length(reactor->ring) + EVENTS_PER_CALLBACK > EVENT_CAPACITY) {
-        return; /* checked again on the next tick */
+        return false;
     }
-    if (!ms_sys_fd_ready(row->fd, row->writes, &ready) || !ready) {
-        return;
+    bool ready = true;
+    if (ms_sys_fd_ready(fd, row->writes, &ready) && !ready && ms_io_refused_add(reactor->refused, fd, row->writes)) {
+        return true; /* the descriptor was drained by someone else since: wait again */
     }
-    row_stop(row);
+    row->started = false; /* the thread dropped the watch when it reported */
     push_report(reactor, row, 0, row->writes ? MS_IO_BIT_WRITE : MS_IO_BIT_READ);
+    return true;
 }
 
 static void on_poll(uv_poll_t *handle, int status, int events) {
@@ -190,7 +196,7 @@ static void on_poll(uv_poll_t *handle, int status, int events) {
         return; /* still armed: level-triggered, so the next pass reports it again */
     }
     const uint32_t bits = readiness_bits(status, events);
-    row_stop(row);
+    row_stop(reactor, row);
     push_report(reactor, row, status, bits);
 }
 
@@ -202,6 +208,9 @@ static void reactor_destroy(MsIoReactor *reactor) {
         if (reactor->rows[index] != NULL) {
             row_discard(reactor, reactor->rows[index]);
         }
+    }
+    if (reactor->refused != NULL) {
+        ms_io_refused_close(reactor->refused);
     }
     if (reactor->wake_open) {
         uv_close((uv_handle_t *)&reactor->wake_handle, NULL);
@@ -328,9 +337,9 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
     bool was_nonblocking = true;
     const bool known = ms_sys_fd_get_nonblocking(fd, &was_nonblocking);
 #ifdef _WIN32
-    const int error = uv_poll_init_socket(&reactor->loop, &row->handle.poll, (uv_os_sock_t)fd); /* a Windows descriptor is a SOCKET */
+    const int error = uv_poll_init_socket(&reactor->loop, &row->handle, (uv_os_sock_t)fd); /* a Windows descriptor is a SOCKET */
 #else
-    const int error = uv_poll_init(&reactor->loop, &row->handle.poll, fd);
+    const int error = uv_poll_init(&reactor->loop, &row->handle, fd);
 #endif
     if (error != 0) {
         row->next_free = reactor->free_rows;
@@ -340,7 +349,7 @@ static MsIoWatch row_open(MsIoReactor *reactor, int fd, MsIoRow **row_out) {
     if (known && !was_nonblocking) {
         (void)ms_sys_fd_set_nonblocking(fd, false);
     }
-    uv_handle_set_data((uv_handle_t *)&row->handle.poll, row);
+    uv_handle_set_data((uv_handle_t *)&row->handle, row);
     *row_out = row;
     return MS_IO_WATCH_ARMED;
 }
@@ -353,8 +362,8 @@ static int interest_of(uint32_t events) {
 }
 
 /* A descriptor libuv refuses is a file, directory or device, which never blocks, or a named pipe, which kqueue cannot
- * watch reliably. Only a named pipe can wait: ready now (or unanswerable) is ready at once, anything else is
- * checked with poll(2) on a timer until it is. */
+ * watch reliably. Only a named pipe can wait: ready now (or unanswerable) is ready at once, anything else goes to the
+ * refused-descriptor thread (refused.c), which blocks in poll(2) until it is. */
 static MsIoWatch watch_refused(MsIoReactor *reactor, int fd, uint32_t events) {
     MsSysStat info;
     if (ms_sys_fs_fstat(fd, &info) != 0 || (info.mode & MS_SYS_S_IFMT) != MS_SYS_S_IFIFO) {
@@ -365,6 +374,12 @@ static MsIoWatch watch_refused(MsIoReactor *reactor, int fd, uint32_t events) {
     if (!ms_sys_fd_ready(fd, writes, &ready) || ready) {
         return MS_IO_WATCH_ALWAYS;
     }
+    if (reactor->refused == NULL) {
+        reactor->refused = ms_io_refused_open(&reactor->loop, on_refused_ready, reactor);
+        if (reactor->refused == NULL) {
+            return MS_IO_WATCH_FAILED;
+        }
+    }
     MsIoRow *row = reactor->rows[fd];
     if (row == NULL) {
         row = row_take(reactor);
@@ -372,13 +387,11 @@ static MsIoWatch watch_refused(MsIoReactor *reactor, int fd, uint32_t events) {
             return MS_IO_WATCH_FAILED;
         }
         *row = (MsIoRow){.fd = fd, .polled = true};
-        (void)uv_timer_init(&reactor->loop, &row->handle.timer);
-        uv_handle_set_data((uv_handle_t *)&row->handle.timer, row);
         reactor->rows[fd] = row;
     }
     row->writes = writes;
     row->keep = (events & MS_IO_BIT_KEEP) != 0;
-    if (uv_timer_start(&row->handle.timer, on_polled, POLLED_INTERVAL_MS, POLLED_INTERVAL_MS) != 0) {
+    if (!ms_io_refused_add(reactor->refused, fd, writes)) {
         row_discard(reactor, row);
         return MS_IO_WATCH_FAILED;
     }
@@ -411,7 +424,7 @@ MsIoWatch ms_io_watch(int fd, uint32_t events) {
         reactor->rows[fd] = row;
     }
     row->keep = (events & MS_IO_BIT_KEEP) != 0;
-    if (uv_poll_start(&row->handle.poll, interest_of(events), on_poll) != 0) {
+    if (uv_poll_start(&row->handle, interest_of(events), on_poll) != 0) {
         row_discard(reactor, row);
         return MS_IO_WATCH_FAILED;
     }
@@ -433,7 +446,7 @@ void ms_io_unwatch(int fd) {
         return;
     }
     if (row->keep) {
-        row_stop(row);
+        row_stop(reactor, row);
     } else {
         row_discard(reactor, row);
     }

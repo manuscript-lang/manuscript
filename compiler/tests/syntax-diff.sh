@@ -20,10 +20,19 @@ rm -rf "$out/fuzz"
 mkdir -p "$out/fuzz"
 "$bin/mutate" "$out/fuzz" "$fuzz" "$seed" "$out/files.txt"
 ls "$out"/fuzz/*.ms > "$out/fuzz.txt"
+# Re-laid-out copies of whole files: valid syntax the formatter has work to do on.
+rm -rf "$out/layout"
+mkdir -p "$out/layout"
+"$bin/mutate" "$out/layout" "$fuzz" "$seed" "$out/files.txt" layout
+ls "$out"/layout/*.ms > "$out/layout.txt"
 
 status=0
-for mode in ${MS_MODES:-tokens ast codes partial ids}; do
-    for set in files fuzz; do
+for mode in ${MS_MODES:-tokens ast codes partial ids format}; do
+    for set in files fuzz layout; do
+        # The layout set is for the formatter alone.
+        if [ "$set" = layout ] && [ "$mode" != format ]; then
+            continue
+        fi
         # xargs keeps the command line short and the oracle's per-process cost low.
         tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" "$mode" > "$out/$mode-$set.rust"
         tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$bin/ms_syntax_dump" "$mode" > "$out/$mode-$set.c"

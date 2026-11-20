@@ -5,3 +5,5 @@ msrt_slot_copy
 msrt_slot_eq
 msrt_slot_hash
 msrt_hash_combine
+msrt_hash_bytes
+msrt_hash_int
