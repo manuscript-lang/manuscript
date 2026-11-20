@@ -9,12 +9,6 @@ unsafe extern "C-unwind" {
     pub fn msrt_heap_stats(out: *mut i64);
 }
 
-/// Called by the C allocator when the system cannot give a block.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msalloc_rust_oom(bytes: usize) -> ! {
-    crate::fault::out_of_memory(bytes)
-}
-
 /// Allocates `size` bytes (16-byte aligned, uninitialised). Faults on exhaustion.
 #[inline]
 pub fn alloc(size: usize) -> *mut u8 {
