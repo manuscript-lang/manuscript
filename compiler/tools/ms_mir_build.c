@@ -1,4 +1,4 @@
-/* ms_mir_build FILE [--opt none|speed] [--no-checks] [--no-verify] [--tables-meta PATH] [--display-names PATH]
+/* ms_mir_build FILE [--opt none|speed] [--no-checks] [--count-ops] [--no-verify] [--tables-meta PATH] [--display-names PATH]
  *
  * The C back end as one step: reads the MIR text of a lowered, elaborated module (what `ms emit`
  * prints), runs the optimizer and the finishing passes (`mir_optimize`, `mir_pipeline_finish`) and
@@ -33,6 +33,8 @@ int main(int argc, char **argv) {
             tables_meta = argv[++i];
         } else if (strcmp(argv[i], "--display-names") == 0 && i + 1 < argc) {
             display_names = argv[++i];
+        } else if (strcmp(argv[i], "--count-ops") == 0) {
+            options.count_ops = true;
         } else if (strcmp(argv[i], "--no-checks") == 0) {
             options.checks = false;
         } else if (strcmp(argv[i], "--no-verify") == 0) {
