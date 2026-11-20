@@ -49,6 +49,8 @@ MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_index(MsBody *b, const MsExpr *e);
 /* Int, Float, Bool or String: what a binding or argument of the handled set may hold. */
 bool ms_body_is_primitive_value(const MsBody *b, MsTy ty);
+/* A primitive, or a type variable of the function being checked: a value that is passed around whole. */
+bool ms_body_is_plain_value(const MsBody *b, MsTy ty);
 /* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */
 bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);

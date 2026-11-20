@@ -95,8 +95,8 @@ static uint8_t upgrade(const void *handle, MsTlsCtx *context, const char *host, 
         ms_netconn_close(handle);
         return code;
     }
-    *out = ms_netconn_alias(handle);
-    return STATUS_OK;
+    *out = ms_netconn_take(handle);
+    return *out != NULL ? STATUS_OK : STATUS_FAILED;
 }
 
 uint8_t msstd_conn_start_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {

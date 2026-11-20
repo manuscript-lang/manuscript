@@ -11,11 +11,16 @@ import (
 	edit_distance from "@std/data/diff.ms",
 	stderr, stdout from "@std/io/io.ms",
 	arguments, environment from "@std/os/env.ms",
-	exists from "@std/os/fs.ms",
+	exists, read_file from "@std/os/fs.ms",
 	SpawnOptions, Stdio, spawn from "@std/os/process.ms",
 
 	Invocation, parse_invocation, requests_help, takes_value, validate from "./args.ms",
+	rust_cli from "./bridge.ms",
 	command_help, command_names, overview from "./help.ms",
+	run_init from "./init.ms",
+	run_profile from "./profile.ms",
+	run_bench, run_test from "./test/run.ms",
+	run_verify from "./verify.ms",
 )
 
 fn out(text: String) Void:
@@ -146,7 +151,7 @@ fn run_help(args: List[String]) Int:
 // Hands the whole command to the Rust `ms`.
 fn delegate(args: List[String]) Int:
 	env := environment().get_or(Map[String, String]())
-	program := env.get_or("MS_RUST_CLI", "ms-rust")
+	program := rust_cli()
 
 	if env.contains("MS_CLI_PLAN"):
 		out(f"delegate {args.join(" ")}\n")
@@ -174,6 +179,18 @@ fn is_source_command(command: String) Bool:
 		"profile"
 	].contains(command)
 
+// Whether the Manuscript front runs these tests: one target that is not a workspace
+// root, and no `--watch`. The rest go to the Rust command line.
+fn front_runs_tests(inv: Invocation) Bool:
+	if inv.watch or inv.targets.length() > 1 or inv.arguments.contains("--ops"): return false
+
+	if inv.filename.ends_with("ms.toml"):
+		manifest := read_file(inv.filename).wait()
+		if manifest.is_error(): return false
+		if manifest.get().decode_utf8().get_or("").contains("[workspace]"): return false
+
+	return true
+
 fn run_source_command(args: List[String], usage_text: String) Int:
 	if args.length() < 2:
 		err(
@@ -194,6 +211,10 @@ fn run_source_command(args: List[String], usage_text: String) Int:
 	if checked.is_error():
 		err(checked.err().message + "\n")
 		return 2
+
+	if inv.command == "profile": return run_profile(inv)
+	if inv.command == "test" and front_runs_tests(inv): return run_test(inv)
+	if inv.command == "bench" and front_runs_tests(inv): return run_bench(inv)
 
 	return delegate(args)
 
@@ -232,6 +253,8 @@ export fn run(given: List[String]) Int:
 		return 0
 
 	if args[0] == "help": return run_help(args.drop(1))
+	if args[0] == "init": return run_init(args.drop(1))
+	if args[0] == "verify": return run_verify(args.drop(1))
 	if is_source_command(args[0]): return run_source_command(args, usage_text)
 
 	return delegate(args)

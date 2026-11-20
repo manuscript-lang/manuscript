@@ -151,6 +151,10 @@ typedef struct MirGlue {
 
 /* The function made for `kind` of `ty` (and closure `a`, capture `b`), or MIR_NONE. */
 uint32_t mir_glue_find(const MirGlue *g, MirGlueKind kind, MirTy ty, uint32_t a, uint32_t b);
+/* Makes the function `(list, from)` behind `list.release` for list type `ty`: it drops the elements from index `from`
+ * (a negative one counts from the start) and frees the block of an owned list (capacity not 0). It holds `drop` ops
+ * that `lower_ops` still has to rewrite. */
+uint32_t mir_glue_list_release(MirModule *m, MirTy ty);
 
 /* Marks in `framed` (zeroed, one flag per value of `f`) the closure objects `f` keeps in its stack
  * frame: a closure that owns no resource, only dropped, called, or lent to calls that neither keep
