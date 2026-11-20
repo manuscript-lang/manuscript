@@ -459,12 +459,17 @@ static void ll_frame_slots(LCx *c) {
     }
 }
 
-/* Every leaf of every argument, in order, after the hidden result pointer when there is one. */
-static void ll_call_arguments(LCx *c, const MirInst *inst, const char *result_area) {
+/* Every leaf of every argument, in order, after the hidden result pointer when there is one and
+ * `lead` (a typed operand such as `i64 %v3`, or NULL) that a closure or method call passes first. */
+static void ll_call_arguments(LCx *c, const MirInst *inst, const char *result_area, const char *lead) {
     MsBuf *o = c->out;
     bool first = true;
     if (result_area != NULL) {
         ms_buf_printf(o, "ptr %s", result_area);
+        first = false;
+    }
+    if (lead != NULL) {
+        ms_buf_printf(o, "%s%s", first ? "" : ", ", lead);
         first = false;
     }
     for (uint32_t k = 0; k < inst->nargs; k++) {
@@ -480,7 +485,8 @@ static void ll_call_arguments(LCx *c, const MirInst *inst, const char *result_ar
 /* A call of `callee` (an LLVM function name, or the register holding a code pointer). A result of
  * more than one leaf comes back through a stack area that the call is given and that is read leaf
  * by leaf afterwards. */
-static bool ll_call_to(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, const char *callee) {
+static bool ll_call_to(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, const char *callee,
+                       const char *lead) {
     MsBuf *o = c->out;
     const uint32_t result_leaves =
         inst->res == MIR_NONE ? 0 : ll_leaves(c, c->f->values[inst->res]).len;
@@ -499,7 +505,7 @@ static bool ll_call_to(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
         ll_sym(o, ms_name(&c->m->names, c->m->funcs[inst->imm.a].name));
     }
     ms_buf_putc(o, '(');
-    ll_call_arguments(c, inst, result_leaves > 1 ? area : NULL);
+    ll_call_arguments(c, inst, result_leaves > 1 ? area : NULL, lead);
     ms_buf_puts(o, ")\n");
     if (result_leaves <= 1) {
         return true;
@@ -508,7 +514,7 @@ static bool ll_call_to(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
 }
 
 static bool ll_call(LCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
-    return ll_call_to(c, inst, block, index, NULL);
+    return ll_call_to(c, inst, block, index, NULL, NULL);
 }
 
 /* Appends one argument of a runtime call to `args`: the leaves of `value` when `ty` passes

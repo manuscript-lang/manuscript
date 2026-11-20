@@ -784,7 +784,9 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
         lb->value_of[binding] = values[i];
-        lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
+        if (!fn->params.ptr[i]->is_mutable) { // Rust names no `var` parameter: its value is a pointer
+            lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
+        }
     }
     lb_emit_plain(lb, MOP_DepthEnter);
     for (uint32_t i = 0; i < fn->params.len; i++) {
