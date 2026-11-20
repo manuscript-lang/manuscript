@@ -13,6 +13,7 @@
 #include "cancel.h"
 #include "group.h"
 #include "ms_rt/alloc.h"
+#include "ms_rt/obj.h"
 #include "scheduler.h"
 
 enum PromiseState {
@@ -87,9 +88,6 @@ static MsPromiseUnread unread_hook;
 void ms_promise_set_unread(MsPromiseUnread unread) { unread_hook = unread; }
 
 /* ---- rows ---- */
-
-/* The object module is still the Rust runtime's (rt_calls.h lists what it provides). */
-void msrt_obj_drop(MsObj *object);
 
 static void fail(const char *text) { ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT, text); }
 
