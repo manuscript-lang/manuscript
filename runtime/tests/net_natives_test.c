@@ -612,6 +612,23 @@ int main(void) {
     ((MsObj *)client)->drop(client);
     ms_sys_thread_join(thread);
     ms_sys_net_close(server.listener);
+
+    /* closing a client ends the body it has open and refuses later requests */
+    address = listen_on_loopback(&server);
+    host_port = (const char *)msrt_str_data(&address);
+    thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+    CHECK(thread != NULL);
+    CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
+    CHECK(msstd_client_fetch(client, &get, URL("/big"), table, &nobody, 1, 10 * SECOND, &response, &err) == STATUS_OK);
+    msstd_client_close(client);
+    msstd_client_close(client);
+    CHECK(msstd_body_read(response, 0, 0, &data, &err) == STATUS_CLOSED);
+    void *refused_response = NULL;
+    CHECK(msstd_client_fetch(client, &get, URL("/a"), table, &nobody, 1, 5 * SECOND, &refused_response, &err) == STATUS_CLOSED);
+    ((MsObj *)response)->drop(response);
+    ((MsObj *)client)->drop(client);
+    ms_sys_thread_join(thread);
+    ms_sys_net_close(server.listener);
     ((MsObj *)table)->drop(table);
     ms_curl_shutdown();
 #undef URL
@@ -649,6 +666,36 @@ int main(void) {
         ((MsObj *)client_end)->drop(client_end);
         ((MsObj *)server_end)->drop(server_end);
         ((MsObj *)socket_listener)->drop(socket_listener);
+    }
+
+    /* scopes: closing one closes what it tracked, in it and in its children, and refuses more */
+    {
+        MsStr any_port = str("127.0.0.1:0");
+        void *scope = msstd_scope_new();
+        void *inner = msstd_scope_child(scope);
+        void *tracked_listener = NULL;
+        CHECK(msstd_net_listen(&any_port, &tracked_listener, &err) == STATUS_OK);
+        void *shared_listener = msstd_listener_share(tracked_listener);
+        MsStr scope_address;
+        msstd_listener_address(tracked_listener, &scope_address);
+        void *client_end = NULL, *server_end = NULL;
+        MsStr empty_name = str("");
+        CHECK(msstd_net_dial(&scope_address, &empty_name, 0, NULL, 1, 5 * SECOND, &client_end, &err) == STATUS_OK);
+        CHECK(msstd_listener_accept(shared_listener, 1, 5 * SECOND, &server_end, &err) == STATUS_OK);
+        CHECK(msstd_scope_track_listener(scope, tracked_listener) == 1);
+        CHECK(msstd_scope_track_conn(inner, server_end) == 1);
+        msstd_scope_close(scope);
+        MsVec scoped_read;
+        CHECK(msstd_listener_accept(shared_listener, 1, SECOND / 20, &(void *){NULL}, &err) == STATUS_CLOSED);
+        CHECK(msstd_conn_read(server_end, 1, 4, 1, SECOND / 20, &scoped_read, &err) == STATUS_CLOSED);
+        CHECK(msstd_scope_track_conn(scope, client_end) == 0);
+        CHECK(msstd_conn_read(client_end, 1, 4, 1, SECOND / 20, &scoped_read, &err) == STATUS_CLOSED);
+        ((MsObj *)client_end)->drop(client_end);
+        ((MsObj *)server_end)->drop(server_end);
+        ((MsObj *)shared_listener)->drop(shared_listener);
+        ((MsObj *)tracked_listener)->drop(tracked_listener);
+        ((MsObj *)inner)->drop(inner);
+        ((MsObj *)scope)->drop(scope);
     }
 
     ms_tls_ctx_free(context);

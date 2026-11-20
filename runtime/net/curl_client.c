@@ -37,13 +37,17 @@ struct MsCurlClient {
     long max_redirects;
     bool cookies, decompress;
     atomic_bool started; /* a request has been made: the filter is fixed */
+    /* guarded by the driver lock */
+    bool closed;
+    MsCurlTransfer *live; /* the transfers not yet destroyed, newest first */
 };
 
 /* What the driver does for a transfer, set under the driver lock. */
-enum { WORK_ADD = 1, WORK_UNPAUSE = 2, WORK_REMOVE = 4 };
+enum { WORK_ADD = 1, WORK_UNPAUSE = 2, WORK_REMOVE = 4, WORK_DETACH = 8 };
 
 struct MsCurlTransfer {
     MsCurlTransfer *next_work; /* the driver's work list */
+    MsCurlTransfer *live_next, **live_prev; /* the client's list of live transfers (live_prev is NULL when unlinked) */
     unsigned work;
     bool queued;
     CURL *easy;
@@ -53,7 +57,7 @@ struct MsCurlTransfer {
     /* guarded by the driver lock from here */
     uint8_t *buffer;
     size_t start, length;
-    bool head_ready, done, paused;
+    bool head_ready, done, paused, closed; /* closed: the client was closed and ended this transfer */
     CURLcode result;
     uint64_t waiter; /* the token of the task parked on this transfer, or 0 */
     MsCurlFault fault;
@@ -209,6 +213,10 @@ static size_t on_body(char *data, size_t size, size_t count, void *argument) {
     MsCurlTransfer *transfer = argument;
     const size_t length = size * count;
     uv_mutex_lock(&driver.lock);
+    if (transfer->closed) {
+        uv_mutex_unlock(&driver.lock);
+        return 0; /* a short write aborts the transfer */
+    }
     if (!transfer->head_ready) {
         finish_head(transfer);
     }
@@ -247,6 +255,10 @@ static curl_socket_t on_open_socket(void *argument, curlsocktype purpose, struct
 
 static void finish_transfer(MsCurlTransfer *transfer, CURLcode result) {
     uv_mutex_lock(&driver.lock);
+    if (transfer->closed) { /* the client's close already ended it */
+        uv_mutex_unlock(&driver.lock);
+        return;
+    }
     transfer->done = true;
     transfer->result = result;
     if (!transfer->head_ready) {
@@ -257,6 +269,15 @@ static void finish_transfer(MsCurlTransfer *transfer, CURLcode result) {
 }
 
 static void destroy_transfer(MsCurlTransfer *transfer) {
+    uv_mutex_lock(&driver.lock);
+    if (transfer->live_prev != NULL) {
+        *transfer->live_prev = transfer->live_next;
+        if (transfer->live_next != NULL) {
+            transfer->live_next->live_prev = transfer->live_prev;
+        }
+        transfer->live_prev = NULL;
+    }
+    uv_mutex_unlock(&driver.lock);
     curl_easy_cleanup(transfer->easy);
     curl_slist_free_all(transfer->fields);
     ms_curl_client_release(transfer->client);
@@ -285,6 +306,9 @@ static void run_work(void) {
         }
         if ((work & WORK_UNPAUSE) != 0) {
             (void)curl_easy_pause(transfer->easy, CURLPAUSE_CONT);
+        }
+        if ((work & WORK_DETACH) != 0) {
+            (void)curl_multi_remove_handle(driver.multi, transfer->easy);
         }
         if ((work & WORK_REMOVE) != 0) {
             (void)curl_multi_remove_handle(driver.multi, transfer->easy); /* harmless when it is already out */
@@ -425,6 +449,26 @@ void ms_curl_client_release(MsCurlClient *client) {
     free(client->key);
     free(client->unix_socket);
     free(client);
+}
+
+void ms_curl_client_close(MsCurlClient *client) {
+    uv_once(&driver_once, driver_init_lock);
+    uv_mutex_lock(&driver.lock);
+    client->closed = true;
+    for (MsCurlTransfer *transfer = client->live; transfer != NULL; transfer = transfer->live_next) {
+        if (transfer->closed) {
+            continue;
+        }
+        transfer->closed = true;
+        if (!transfer->done) { /* the driver stops the transfer; readers see the close at once */
+            post_work(transfer, WORK_DETACH);
+        }
+        transfer->done = true;
+        transfer->head_ready = true;
+        transfer->length = 0;
+        wake_waiter(transfer);
+    }
+    uv_mutex_unlock(&driver.lock);
 }
 
 bool ms_curl_client_started(const MsCurlClient *client) { return atomic_load(&client->started); }
@@ -576,6 +620,9 @@ static MsNetStatus wait_ready(MsCurlTransfer *transfer, bool (*ready)(const MsCu
 static bool head_ready(const MsCurlTransfer *transfer) { return transfer->head_ready; }
 
 static MsNetStatus result_status(const MsCurlTransfer *transfer) {
+    if (transfer->closed) {
+        return MS_NET_CLOSED;
+    }
     if (transfer->result == CURLE_OK) {
         return MS_NET_OK;
     }
@@ -625,9 +672,20 @@ MsNetStatus ms_curl_start(MsCurlClient *client, const MsCurlRequest *request, in
         return MS_NET_FAILED;
     }
     uv_mutex_lock(&driver.lock);
+    if (client->closed) {
+        uv_mutex_unlock(&driver.lock);
+        destroy_transfer(transfer);
+        return MS_NET_CLOSED;
+    }
+    transfer->live_next = client->live;
+    transfer->live_prev = &client->live;
+    if (client->live != NULL) {
+        client->live->live_prev = &transfer->live_next;
+    }
+    client->live = transfer;
     post_work(transfer, WORK_ADD);
     MsNetStatus status = wait_ready(transfer, head_ready, deadline_ns);
-    if (status == MS_NET_OK && transfer->done && transfer->result != CURLE_OK && (transfer->head.status == 0 || transfer->fault != MS_CURL_FAULT_NONE)) {
+    if (status == MS_NET_OK && transfer->done && (transfer->closed || (transfer->result != CURLE_OK && (transfer->head.status == 0 || transfer->fault != MS_CURL_FAULT_NONE)))) {
         status = result_status(transfer);
         *fault = transfer->fault;
         remember_message(transfer);

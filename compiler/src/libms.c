@@ -113,6 +113,7 @@
 #include "check/impls.c"
 #include "check/implements.c"
 #include "check/dump_methods.c"
+#include "check/dump_facts.c"
 #include "own/ownership_places.c"
 #include "own/ownership_bits.c"
 #include "own/ownership_class.c"

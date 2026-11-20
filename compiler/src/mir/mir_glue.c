@@ -962,49 +962,61 @@ static uint32_t gl_drop_opt(const GlCx *cx) {
     return gl_finish(&b);
 }
 
-static uint32_t gl_drop_list(const GlCx *cx) {
+/* Drops the elements of an owned list from index `from` on and frees its block. A view (capacity 0) borrows its
+ * elements and owns no block: nothing to drop or free. `from` is the second parameter of the release function and
+ * the constant 0 of the drop function; a negative one counts from the start. */
+static uint32_t gl_list_end(const GlCx *cx, bool with_from) {
     MirModule *m = cx->m;
-    const MsSym name = cx->name;
-    const MirParam param = cx->param;
     const MirTy ty = cx->ty;
+    MirParam params[2] = {cx->param, {MIR_INT, MM_BORROW}};
     MirBuilder b;
     MirTy elem = gl_elem(m, ty, false);
     if (elem != MIR_NONE && !mir_needs_drop(m, elem)) {
         elem = MIR_NONE;
     }
-    mir_b_init(&b, m, name, &param, 1, MIR_VOID);
-    MirValue p;
-    mir_b_params(&b, &p, 1);
+    mir_b_init(&b, m, cx->name, params, with_from ? 2 : 1, MIR_VOID);
+    MirValue p[2];
+    mir_b_params(&b, p, with_from ? 2 : 1);
     const MirBlock owned = mir_b_new_block(&b), done = mir_b_new_block(&b);
-    /* A view (capacity 0) borrows its elements: nothing to drop or free. */
-    const MirValue cap = gl_val(&b, MOP_ListCap, &p, 1, (MirImm){0}, MIR_INT);
+    const MirValue cap = gl_val(&b, MOP_ListCap, p, 1, (MirImm){0}, MIR_INT);
     const MirValue zero = mir_b_iconst(&b, 0);
     const MirValue is_owned = mir_b_icmp(&b, MCC_NE, cap, zero);
     mir_b_br_if(&b, is_owned, owned, NULL, 0, done, NULL, 0);
     gl_switch_to(&b, owned);
     if (elem != MIR_NONE) {
-        const MirValue len = gl_list_len(&b, p);
+        const MirValue len = gl_list_len(&b, p[0]);
         const MirBlock head = mir_b_new_block(&b), body = mir_b_new_block(&b),
                        free_blk = mir_b_new_block(&b);
         const MirValue i = mir_b_add_block_param(&b, head, MIR_INT, MM_BORROW);
-        const MirValue start = mir_b_iconst(&b, 0);
+        const MirValue start = with_from ? mir_b_select(&b, mir_b_icmp(&b, MCC_LT, p[1], zero), zero, p[1])
+                                         : mir_b_iconst(&b, 0);
         mir_b_br(&b, head, &start, 1);
         gl_switch_to(&b, head);
         const MirValue more = mir_b_icmp(&b, MCC_LT, i, len);
         mir_b_br_if(&b, more, body, NULL, 0, free_blk, NULL, 0);
         gl_switch_to(&b, body);
-        const MirValue get_args[2] = {p, i};
+        const MirValue get_args[2] = {p[0], i};
         gl_drop(&b, gl_val(&b, MOP_ListGetU, get_args, 2, (MirImm){0}, elem));
         const MirValue one = mir_b_iconst(&b, 1);
         const MirValue next = mir_b_binop(&b, MOP_IAdd, i, one);
         mir_b_br(&b, head, &next, 1);
         gl_switch_to(&b, free_blk);
     }
-    gl_free(&b, p);
+    gl_free(&b, p[0]);
     mir_b_br(&b, done, NULL, 0);
     gl_switch_to(&b, done);
     mir_b_ret(&b, MIR_NONE);
     return gl_finish(&b);
+}
+
+static uint32_t gl_drop_list(const GlCx *cx) { return gl_list_end(cx, false); }
+
+/* The function `(list, from)` that `lower_ops` calls for `list.release`. Its drops of the elements are
+ * `drop` ops, which `lower_ops` rewrites to calls of the element's drop glue. */
+uint32_t mir_glue_list_release(MirModule *m, MirTy ty) {
+    const MirParam param = {ty, MM_MOVE};
+    const GlCx cx = {m, NULL, gl_func_name(m, m->nfuncs, "release"), param, ty, mir_ty_data(m, ty)};
+    return gl_list_end(&cx, true);
 }
 
 static uint32_t gl_drop_obj(const GlCx *cx) {

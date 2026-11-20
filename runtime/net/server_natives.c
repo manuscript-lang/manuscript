@@ -62,4 +62,6 @@ void msstd_listener_address(const void *handle, MsStr *out) {
     msrt_string_from_bytes((const uint8_t *)text, length, out);
 }
 
+void *msstd_listener_share(const void *handle) { return ms_listener_share(handle); }
+
 void msstd_listener_close(const void *handle) { ms_listener_close(ms_listener_of(handle)); }

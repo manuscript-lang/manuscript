@@ -706,12 +706,19 @@ static MsTy body_unary(MsBody *b, const MsExpr *e) {
 /* `local.field` where the local holds a record this module declares and the field is a Copy
  * primitive (Int, Float, Bool): the field's type. Anything else a member can be (a method, a case, a module path)
  * is not checked yet. */
-static MsTy body_member(MsBody *b, const MsExpr *e) {
+static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver);
+
+static MsTy body_member(MsBody *b, const MsExpr *e) { return body_member_of(b, e, false); }
+
+/* A field is read as the receiver of another member when it is a record this module declares:
+ * only the path matters, nothing is borrowed or moved out of the holder. */
+static MsTy body_member_of(MsBody *b, const MsExpr *e, bool as_receiver) {
     const MsExpr *receiver = e->u.member.left;
-    if (receiver->kind != MS_E_NAME) {
+    if (receiver->kind != MS_E_NAME && receiver->kind != MS_E_MEMBER) {
         return ms_body_unsupported(b);
     }
-    const MsTy record = ms_body_expr(b, receiver, MS_TY_NONE);
+    const MsTy record = receiver->kind == MS_E_MEMBER ? ms_body_record(b, receiver->id, body_member_of(b, receiver, true))
+                                                      : ms_body_expr(b, receiver, MS_TY_NONE);
     if (record == MS_TY_NONE) {
         return MS_TY_NONE;
     }
@@ -724,7 +731,9 @@ static MsTy body_member(MsBody *b, const MsExpr *e) {
         if (def->fields[i].name != e->u.member.name) {
             continue;
         }
-        if (!body_is_value_type(b, def->fields[i].ty) || def->fields[i].ty == b->string_ty) {
+        const MsTy field = def->fields[i].ty;
+        const bool path = as_receiver && ms_ty_kind(tys, field) == MS_K_TYPE && body_is_own_nominal(b, field);
+        if (!path && (!body_is_value_type(b, field) || field == b->string_ty)) {
             break; /* reading a String field borrows or moves it out of its holder */
         }
         b->facts->res_kind[e->id] = MS_RES_FIELD;
@@ -1145,25 +1154,40 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
 }
 
+/* `for name in xs` over a list of Int, Float or Bool: the element type. Elements that need
+ * cleanup (text, lists) are left to the Rust checker. */
+static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
+    const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
+    if (!ms_body_is_list(b, ty)) {
+        return false;
+    }
+    *element = ms_ty_args(&b->c->tys, ty)[0];
+    return body_is_value_type(b, *element) && *element != b->string_ty;
+}
+
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
  * loop variable is an immutable Int that lives for the body. */
 static bool body_for_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *iter = s->u.each.iter;
-    if (iter->kind != MS_E_CALL || iter->u.call.args.len != 2 || !body_is_range(b, iter->u.call.callee)) {
+    MsTy element = b->int_ty;
+    if (iter->kind == MS_E_CALL && iter->u.call.args.len == 2 && body_is_range(b, iter->u.call.callee)) {
+        for (uint32_t i = 0; i < 2; i++) {
+            const MsArg *bound = &iter->u.call.args.ptr[i];
+            if (bound->has_name || ms_body_expr(b, bound->value, b->int_ty) == MS_TY_NONE) {
+                (void)ms_body_unsupported(b);
+                return true;
+            }
+        }
+        // The call itself stays untyped: the standard library's signatures are not resolved here yet.
+        b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
+    } else if (body_for_list_element(b, iter, &element)) {
+        b->facts->each_list[s->id] = true;
+    } else {
         (void)ms_body_unsupported(b);
         return true;
     }
-    for (uint32_t i = 0; i < 2; i++) {
-        const MsArg *bound = &iter->u.call.args.ptr[i];
-        if (bound->has_name || ms_body_expr(b, bound->value, b->int_ty) == MS_TY_NONE) {
-            (void)ms_body_unsupported(b);
-            return true;
-        }
-    }
-    // The call itself stays untyped: the standard library's signatures are not resolved here yet.
-    b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
     const uint32_t scope_start = b->facts->bindings.count;
-    (void)ms_body_bind(b, s->u.each.name, b->int_ty, s->id, s->pos, 0, MS_ROLE_LOOP);
+    (void)ms_body_bind(b, s->u.each.name, element, s->id, s->pos, 0, MS_ROLE_LOOP);
     const uint32_t outer_breaks = b->breaks;
     b->breaks = 0;
     b->loop_depth++;
@@ -1439,6 +1463,10 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
     memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
+    facts->lambda_first = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
+    facts->each_list = MS_NEW_N(arena, bool, nodes);
+    memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);

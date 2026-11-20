@@ -780,6 +780,10 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
 /* `for name in a..b`: a counter from `a` while below `b` (both evaluated once, before the loop),
  * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
 static void lb_for(Lb *lb, const MsStmt *s) {
+    if (lb->facts->each_list[s->id]) {
+        lb->ok = false; // a list loop is not lowered yet
+        return;
+    }
     const MsExpr *range = s->u.each.iter;
     const LbVal start = lb_expr(lb, range->u.call.args.ptr[0].value);
     const LbVal end = lb->ok ? lb_expr(lb, range->u.call.args.ptr[1].value) : LB_FAIL;

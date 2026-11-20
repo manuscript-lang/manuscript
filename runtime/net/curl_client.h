@@ -41,6 +41,9 @@ void ms_curl_client_release(MsCurlClient *client);
 /* Narrows the client's filter (net_filter.h); false, changing nothing, for an invalid CIDR. Only before the first
  * request: the driver reads the filter without a lock, so the caller checks ms_curl_client_started first. */
 bool ms_curl_client_started(const MsCurlClient *client);
+/* Ends every transfer of the client (their reads and a request waiting for its head return MS_NET_CLOSED) and refuses
+ * later requests with MS_NET_CLOSED. Idempotent; the client's references are released as usual. */
+void ms_curl_client_close(MsCurlClient *client);
 bool ms_curl_client_narrow(MsCurlClient *client, const MsBytes *hosts, size_t host_count, const MsBytes *cidrs, size_t cidr_count);
 
 typedef struct MsCurlRequest {

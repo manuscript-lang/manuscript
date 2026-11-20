@@ -461,6 +461,7 @@ msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, 
 msstd_checksum_adler32_update(initial: i64, data: *const VecVal) -> i64
 msstd_checksum_crc32(data: *const VecVal) -> i64
 msstd_checksum_crc32_update(initial: i64, data: *const VecVal) -> i64
+msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=network
 msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network
 msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network
 msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=network
@@ -601,6 +602,11 @@ msstd_fs_watch_close(handle h: *mut ObjCell<Watcher>) @domain=filesystem
 msstd_fs_watch_native(path: *const StrVal, recursive: u8, has_max: HasRaw, max: i64, has_events: HasRaw, events: i64, overflow: *const StrVal, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8 @domain=filesystem
 msstd_fs_watch_next(handle h: *mut ObjCell<Watcher>, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem
 msstd_fs_write_file(path: *const StrVal, data: *const VecVal, replace: u8, err: ErrSlot) -> u8 @domain=filesystem
+msstd_h2_drain(handle h: *const ObjCell<H2ConnH>) @domain=HTTP
+msstd_h2_next(handle h: *const ObjCell<H2ConnH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ExchH>, err: ErrSlot) -> u8 @domain=HTTP
+msstd_h2_open(handle c: *const ObjCell<ConnH>, max_streams: i64, max_header_list: i64, stream_window: i64, connection_window: i64, has_idle: HasRaw, idle: i64, out: *mut *mut ObjCell<H2ConnH>, err: ErrSlot) -> u8 @domain=HTTP
+msstd_h2_run(handle h: *const ObjCell<H2ConnH>, err: ErrSlot) -> u8 @domain=HTTP
+msstd_h2_share(handle h: *const ObjCell<H2ConnH>) -> *mut ObjCell<H2ConnH> @domain=HTTP @handle
 msstd_headers_append(handle h: *const ObjCell<HeadersH>, name: *const StrVal, value: *const VecVal) -> u8 @domain=HTTP
 msstd_headers_clone(handle h: *const ObjCell<HeadersH>) -> *mut ObjCell<HeadersH> @domain=HTTP @handle
 msstd_headers_names(handle h: *const ObjCell<HeadersH>, out: *mut VecVal) @domain=HTTP
@@ -692,6 +698,7 @@ msstd_json_writer_new(has_max_bytes: HasRaw, max_bytes: i64, has_indent: HasRaw,
 msstd_listener_accept(handle l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network
 msstd_listener_address(handle l: *const ObjCell<ListenerH>, out: *mut StrVal) @domain=network
 msstd_listener_close(handle l: *const ObjCell<ListenerH>) @domain=network
+msstd_listener_share(handle l: *const ObjCell<ListenerH>) -> *mut ObjCell<ListenerH> @domain=network @handle
 msstd_math_acos(v: f64) -> f64 @domain=number @leaf
 msstd_math_acosh(v: f64) -> f64 @domain=number @leaf
 msstd_math_add_with_carry(left: u64, right: u64, carry: u8, out: *mut WordSumOut) @domain=number @leaf
@@ -760,12 +767,14 @@ msstd_net_datagram_receive(handle sock: *const ObjCell<DgramH>, has_max: HasRaw,
 msstd_net_datagram_send_bytes(handle sock: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8 @domain=network
 msstd_net_datagram_share(handle sock: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @handle @domain=network
 msstd_net_dial(address: *const StrVal, server_name: *const StrVal, has_tls: u8, tls: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network
+msstd_net_dial_unix(path: *const StrVal, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network
 msstd_net_dns_kind_text(kind: u8, out: *mut StrVal) @domain=network
 msstd_net_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, out: *mut StrVal) @domain=network
 msstd_net_ip_address_family(handle ip: *const ObjCell<IpH>) -> u8 @domain=network
 msstd_net_ip_address_text(handle ip: *const ObjCell<IpH>, out: *mut StrVal) @domain=network
 msstd_net_ip_family_text(family: u8, out: *mut StrVal) @domain=network
 msstd_net_listen(address: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8 @domain=network
+msstd_net_listen_unix(path: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8 @domain=network
 msstd_net_listener_accept(handle l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network
 msstd_net_listener_accept_raw(handle l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut i64, err: ErrSlot) -> u8 @domain=network
 msstd_net_listener_address(handle l: *const ObjCell<ListenerH>, out: *mut StrVal) @domain=network
@@ -848,7 +857,10 @@ msstd_scope_child(handle s: *const ObjCell<ScopeH>) -> *mut ObjCell<ScopeH> @dom
 msstd_scope_close(handle s: *const ObjCell<ScopeH>) @domain=network
 msstd_scope_new() -> *mut ObjCell<ScopeH> @domain=network @handle
 msstd_scope_open(handle s: *const ObjCell<ScopeH>) -> u8 @domain=network
+msstd_scope_share(handle s: *const ObjCell<ScopeH>) -> *mut ObjCell<ScopeH> @domain=network @handle
+msstd_scope_track_conn(handle s: *const ObjCell<ScopeH>, handle conn: *const ObjCell<ConnH>) -> u8 @domain=network
 msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network
+msstd_scope_track_listener(handle s: *const ObjCell<ScopeH>, handle listener: *const ObjCell<ListenerH>) -> u8 @domain=network
 msstd_system_cpus(out: *mut VecVal, err: ErrSlot) -> u8 @domain=system
 msstd_system_dev_null(out: *mut StrVal) @domain=system
 msstd_system_end_of_line(out: *mut StrVal) @domain=system

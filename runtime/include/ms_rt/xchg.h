@@ -81,4 +81,22 @@ void *msstd_xchg_share(const void *handle);
 /* ms-sig: msstd_xchg_take_conn(handle x: *const ObjCell<ExchH>, out: *mut *mut ObjCell<ConnH>) -> u8 @domain=HTTP */
 uint8_t msstd_xchg_take_conn(const void *handle, void **out);
 
+/* HTTP/2 connections (runtime/net/exchange_h2_natives.c over exchange_h2.c). After a handshake that chose h2 (see
+ * msstd_conn_alpn), `open` starts HTTP/2 on the connection (limits of 0 are the defaults, `idle` bounds a wait with
+ * no stream open). One task runs `run` for the life of the connection; another loops on `next`, which answers an
+ * exchange for each request (the same ExchH the msstd_xchg_* natives above work on, so a handler cannot tell h1 from
+ * h2) and STATUS_NONE once the connection is over. `drain` sends GOAWAY and lets requests in flight finish. */
+/* ms-sig: msstd_h2_open(handle c: *const ObjCell<ConnH>, max_streams: i64, max_header_list: i64, stream_window: i64, connection_window: i64, has_idle: HasRaw, idle: i64, out: *mut *mut ObjCell<H2ConnH>, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_h2_open(const void *conn, int64_t max_streams, int64_t max_header_list, int64_t stream_window, int64_t connection_window, uint8_t has_idle, int64_t idle, void **out, MsStr *err);
+/* ms-sig: msstd_h2_run(handle h: *const ObjCell<H2ConnH>, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_h2_run(const void *h2, MsStr *err);
+/* ms-sig: msstd_h2_next(handle h: *const ObjCell<H2ConnH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ExchH>, err: ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_h2_next(const void *h2, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* ms-sig: msstd_h2_drain(handle h: *const ObjCell<H2ConnH>) @domain=HTTP */
+void msstd_h2_drain(const void *h2);
+/* Another handle on the same connection, for the task that runs it. */
+/* ms-sig: msstd_h2_share(handle h: *const ObjCell<H2ConnH>) -> *mut ObjCell<H2ConnH> @handle @domain=HTTP */
+void *msstd_h2_share(const void *h2);
+
+
 #endif
