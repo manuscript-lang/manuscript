@@ -453,7 +453,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, (result_ty == MIR_STR || lb_is_fn(lb, result_ty)) && !borrowed}; // else a String result is the caller's
 }
 
-LbVal lb_expr(Lb *lb, const MsExpr *e) {
+static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -473,6 +473,20 @@ LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_MAP: break;
     }
     return lb_unsupported(lb);
+}
+
+/* `e`, wrapped in `some` where the checker found a payload used for an Optional. */
+LbVal lb_expr(Lb *lb, const MsExpr *e) {
+    const LbVal value = lb_expr_plain(lb, e);
+    if (!lb->ok || !lb->facts->some_wrap[e->id]) {
+        return value;
+    }
+    const MirTy payload = mir_b_ty(&lb->b, value.v);
+    if (value.owned || mir_needs_drop(lb->m, payload)) {
+        return lb_unsupported(lb);
+    }
+    const MirTy ty = mir_ty_opt(lb->m, payload);
+    return (LbVal){mir_b_emit(&lb->b, MOP_OptSome, &value.v, 1, (MirImm){0}, ty), false};
 }
 
 /* ---- match ---- */

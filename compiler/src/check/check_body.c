@@ -584,7 +584,7 @@ static bool body_arguments(MsBody *b, const MsExpr *call, const MsFunc *function
         }
         const bool handed = (params[i].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)) != 0;
         if ((arg->has_name && (arg->name != params[i].name || (params[i].flags & MS_PARAM_POSITIONAL) != 0)) ||
-            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || body_is_admitted(b, params[i].ty))) {
+            !(body_is_value_type(b, params[i].ty) || (!handed && ms_body_is_function_value(b, params[i].ty)) || body_is_admitted(b, params[i].ty) || body_is_optional(b, params[i].ty))) {
             return false;
         }
         const MsStr name = ms_name(b->c->names, params[i].name);
@@ -881,13 +881,32 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
 
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
  * expectation. A type that is not the expected one is a diagnostic. */
+/* A value checked against an Optional: `none`, a value of the Optional's own type, or a value of
+ * its payload type, which is wrapped in `some` (`some_wrap`). Only a number or a Bool is wrapped, and
+ * anything else (a mismatch, which the Rust checker words, or a payload with a cleanup) is left to the
+ * Rust checker. */
+static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
+    const MsTy payload = ms_ty_args(&b->c->tys, expected)[0];
+    if (e->kind == MS_E_NAME && body_text_is(b, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
+        return ms_body_record(b, e->id, expected);
+    }
+    const MsTy ty = ms_body_expr(b, e, MS_TY_NONE);
+    if (ty == MS_TY_NONE || ty == expected) {
+        return ty;
+    }
+    if (ty != payload || !(ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty)) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->some_wrap[e->id] = true;
+    return expected;
+}
+
 MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     MsTy ty = MS_TY_NONE;
     const char *context = b->context;
     b->context = NULL;
-    // A value checked against an Optional may be wrapped in `some`; that is not recorded yet.
     if (expected != MS_TY_NONE && ms_ty_is(&b->c->tys, expected, MS_BI_OPTIONAL)) {
-        return ms_body_unsupported(b);
+        return body_expr_optional(b, e, expected);
     }
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: ty = body_number(b, e); break;
@@ -1491,6 +1510,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
     facts->each_list = MS_NEW_N(arena, bool, nodes);
     memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
+    facts->some_wrap = MS_NEW_N(arena, bool, nodes);
+    memset(facts->some_wrap, 0, nodes * sizeof *facts->some_wrap);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);
