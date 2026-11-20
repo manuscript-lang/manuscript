@@ -8,6 +8,7 @@
 
 #include "ms/ast.h"
 #include "ms/base.h"
+#include "ms/semver.h"
 #include "ms/tables.h"
 
 typedef enum MsProjectErrorKind {
@@ -66,9 +67,30 @@ typedef struct MsAlias {
     MsPos key_pos, value_pos;
 } MsAlias;
 
-/* A read manifest. This reader covers `[project]` (name, source, entry) and `[aliases]`; a manifest that uses
- * anything else (version, effects, [embed], [dependencies], [effects], [workspace]) or is not valid TOML fails
- * with MS_PERR_UNSUPPORTED, so the caller can hand the command to the Rust driver. */
+/* ---- [dependencies] ---- */
+
+typedef enum MsDepKind { MS_DEP_TAG, MS_DEP_SHA, MS_DEP_VERSION } MsDepKind;
+
+/* One entry of `[dependencies]`: `alias = { url = ..., tag | sha | version = ... }`. */
+typedef struct MsDependency {
+    const char *alias;
+    const char *url;
+    MsDepKind kind;
+    const char *reference;       /* the tag or commit (TAG, SHA) */
+    MsRequirement requirement;   /* VERSION */
+} MsDependency;
+
+/* `[effects] @pg = ["std.net.*"]`: the effects the project allows a dependency. */
+typedef struct MsEffectRule {
+    const char *name;
+    const char *const *patterns;
+    uint32_t count;
+} MsEffectRule;
+
+/* A read manifest. `[project]`, `[aliases]`, `[embed]`, `[dependencies]` (inline tables), `[effects]` and
+ * `[workspace] members` are read; a manifest that uses another TOML form (dotted keys, `[dependencies.x]` tables,
+ * multi-line strings) or is not valid TOML fails with MS_PERR_UNSUPPORTED, so the caller can hand the command to the
+ * Rust driver. Every list below is sorted by name, as the Rust maps iterate. */
 typedef struct MsProject {
     const char *root;          /* canonical directory holding ms.toml */
     const char *file;          /* base name of the manifest, as diagnostics print it */
@@ -78,12 +100,44 @@ typedef struct MsProject {
     const char *configuration; /* the manifest text as read */
     MsAlias *aliases;          /* sorted by name */
     uint32_t alias_count;
+    MsAlias *embed;            /* [embed]: name and canonical directory */
+    uint32_t embed_count;
+    MsDependency *dependencies; /* [dependencies] with a url */
+    uint32_t dependency_count;
+    MsAlias *path_dependencies; /* [dependencies] written { path = "../member" }: canonical directory */
+    uint32_t path_dependency_count;
+    MsEffectRule *allowed_effects; /* [effects] */
+    uint32_t allowed_effect_count;
+    const char *const *effects; /* [project] effects */
+    uint32_t effect_count;
+    bool is_workspace;          /* a [workspace] table is present */
+    const char *const *members; /* its members, as written */
+    uint32_t member_count;
+    bool has_version;           /* [project] version */
+    MsVersion version;
     MsPos location;            /* the [project] header */
 } MsProject;
+
+/* One `[dependencies]` entry as `alias\turl\tkind\treference` (kind tag, sha or version; the reference is the tag, the
+ * commit or the requirement as written), the row ms_tool_dependencies returns. */
+const char *ms_project_dependency_row(MsArena *a, const MsDependency *d);
 
 /* The nearest ms.toml in `filename`'s directory or above, NULL when there is none. */
 const char *ms_project_find_manifest(MsArena *a, const char *filename);
 MS_NODISCARD bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProjectError *err);
+
+/* ---- discovery (project/discover.c) ---- */
+
+/* The test files (`test.ms`, `*_test.ms`, `bench.ms`, `*_bench.ms`) below the project root and, with `include_source`,
+ * every `.ms` file below its source directory, sorted and without duplicates. Hidden, `vendor` and `node_modules`
+ * directories and nested projects are skipped, and directory links are not followed. */
+MS_NODISCARD bool ms_project_discover(MsArena *a, const MsProject *project, bool include_source, const char ***paths,
+                                      uint32_t *count, MsProjectError *err);
+/* The files `ms fmt target` formats: `target` itself when it is a file, else the discovered modules of the directory or
+ * of the project the manifest names, with its entry, each confined to the project root. A workspace root, and a project
+ * with dependencies, fail as MS_PERR_UNSUPPORTED. */
+MS_NODISCARD bool ms_project_format_paths(MsArena *a, const char *target, const char ***paths, uint32_t *count,
+                                          MsProjectError *err);
 
 /* ---- imports (project/resolve.c) ---- */
 

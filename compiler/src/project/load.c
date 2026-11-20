@@ -452,6 +452,10 @@ bool ms_project_load(MsArena *a, MsNames *names, const char *filename, MsGraph *
             out->ndiagnostics = 1;
             return true;
         }
+        if (project.embed_count + project.dependency_count + project.path_dependency_count > 0 || project.is_workspace) {
+            ms_project_error_unsupported(err, "[embed], [dependencies] and [workspace] in the module graph");
+            return false;
+        }
         config = &project;
         root = project.root;
         if (is_manifest) {
