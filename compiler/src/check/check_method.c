@@ -7,6 +7,8 @@
  * `call_receiver`. */
 #include "check/check_body.h"
 
+#include <string.h>
+
 #include "ms/infer.h"
 
 typedef struct Target {
@@ -127,6 +129,24 @@ static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Targ
     return (own != NULL && intrinsic_in(b, own, name, out)) || intrinsic_in(b, "ValueOperations", name, out);
 }
 
+/* The natives whose result points into their receiver (`view`, `split`, `chars`, ...): the
+ * ownership walk does not follow those borrows yet, so a call of one leaves the function to the Rust
+ * checker. Mirrors `native_borrow` of the Rust checker, the one place a method name decides ownership. */
+static bool native_result_borrows(const MsBody *b, MsTy receiver, MsSym name, uint32_t nargs) {
+    static const struct {
+        const char *name;
+        uint32_t min_args, max_args;
+    } derived[] = {{"view", 2, 2}, {"view_bytes", 0, 0}, {"split", 1, 2}, {"lines", 0, 0}, {"chars", 0, 0}};
+    const MsStr text = ms_name(b->c->names, name);
+    for (size_t i = 0; i < sizeof derived / sizeof *derived; i++) {
+        if (strlen(derived[i].name) == text.len && memcmp(derived[i].name, text.ptr, text.len) == 0 &&
+            nargs >= derived[i].min_args && nargs <= derived[i].max_args) {
+            return receiver == b->string_ty;
+        }
+    }
+    return false;
+}
+
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
     return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
@@ -155,9 +175,9 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
 static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     const MsExpr *callee = e->u.call.callee;
     Target target;
-    // A String result may be a view of the receiver (`view`), which the ownership walk does not follow yet.
     if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
-        b->c->tys.result[target.sig] == b->string_ty || !arguments_fit(b, e, target.sig, false)) {
+        native_result_borrows(b, receiver_ty, callee->u.member.name, e->u.call.args.len) ||
+        !arguments_fit(b, e, target.sig, false)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_interface[e->id] = receiver_ty;
