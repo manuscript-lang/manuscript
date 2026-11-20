@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "rt_stubs.h"
+#include "../rt_stubs.h"
 
 uint8_t msrt_ascii_chars[128][2];
 jmp_buf *ms_test_fault;
