@@ -282,6 +282,10 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
         w->supported = false; /* a resource var parameter has its own message */
         return;
     }
+    if (w->class_of[binding] == MS_CLASS_RESOURCE && w->is_param[binding] && w->param_mode[binding] != 2) {
+        w->supported = false; /* a resource handed on by a parameter not declared `move` has its own message */
+        return;
+    }
     if (w->perm[binding] == PERM_BORROWED) {
         own_error_borrowed_move(w, e, binding);
     } else if (w->is_param[binding] && w->perm[binding] == PERM_MUTABLE) {
@@ -1274,6 +1278,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsLiveness live = ms_liveness_new(&scratch, facts);
     OwnWalk w = {.check = c, .module = module, .facts = facts, .live = &live,
                  .classifier = ms_classifier_new(c)};
+    ms_classifier_mark_methods(w.classifier, facts->methods);
     own_allocate(&w, &scratch);
     const uint32_t *by_node = own_bindings_by_node(facts, &scratch);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
