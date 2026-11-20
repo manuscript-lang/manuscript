@@ -1,0 +1,74 @@
+module "interp_ops"
+extern @msrt_print_int(int)
+extern @msrt_print_float(float)
+extern @msrt_print_bool(bool)
+extern @msrt_print_str(str)
+blob 0 "48656c6c6f"
+consts 0 [1, 2, 3]
+consts 1 [4607182418800017408, 4611686018427387904]
+global @counter: int
+entry @main
+fn @main() -> int {
+b0:
+  %hello: str = str "h\xe9llo"
+  %u1: void = call.rt @msrt_print_str (%hello)
+  %n: int = str.len %hello
+  %u2: void = call.rt @msrt_print_int (%n)
+  %nb: int = str.bytes %hello
+  %u3: void = call.rt @msrt_print_int (%nb)
+  %al: int = str.ascii_len %hello
+  %u4: void = call.rt @msrt_print_int (%al)
+  %zero: int = iconst 0
+  %b0: int = str.byte %hello, %zero
+  %u5: void = call.rt @msrt_print_int (%b0)
+  %eq: bool = str.eq_lit "h\xe9llo" %hello
+  %u6: void = call.rt @msrt_print_bool (%eq)
+  %c: int = iconst 233
+  %asc: str = str.ascii %c
+  %u7: void = call.rt @msrt_print_str (%asc)
+  %f1: float = fconst 1.5
+  %u8: void = call.rt @msrt_print_float (%f1)
+  %f2: float = fconst 100.0
+  %u9: void = call.rt @msrt_print_float (%f2)
+  %f3: float = fconst 0.00001
+  %u10: void = call.rt @msrt_print_float (%f3)
+  %f4: float = fconst 1e21
+  %u11: void = call.rt @msrt_print_float (%f4)
+  %f5: float = fconst -0.1
+  %u12: void = call.rt @msrt_print_float (%f5)
+  %zf: float = fconst 0.0
+  %nan: float = fdiv %zf, %zf
+  %u13: void = call.rt @msrt_print_float (%nan)
+  %big: int = iconst 9223372036854775807
+  %two: int = iconst 2
+  %hi: int = umulhi %big, %two
+  %u14: void = call.rt @msrt_print_int (%hi)
+  %m1: int = iconst -1
+  %r: int = rotl %big, %two
+  %u15: void = call.rt @msrt_print_int (%r)
+  %z: int = clz %two
+  %u16: void = call.rt @msrt_print_int (%z)
+  %o: opt<int> = f2i.opt %f1
+  %has: bool = opt.is_some %o
+  %u17: void = call.rt @msrt_print_bool (%has)
+  %v: int = opt.get %o
+  %u18: void = call.rt @msrt_print_int (%v)
+  %l: list<int> = list.const 0
+  %len: int = list.len %l
+  %u19: void = call.rt @msrt_print_int (%len)
+  %last: int = iconst -1
+  %e: int = list.get %l, %last
+  %u20: void = call.rt @msrt_print_int (%e)
+  global.set @counter %e
+  %g: int = global.get @counter
+  %t: bool = bconst true
+  %sel: int = select %t, %g, %zero
+  %u21: void = call.rt @msrt_print_int (%sel)
+  %cell: ptr = slot int
+  store %cell, %sel
+  %back: int = load int %cell
+  %u22: void = call.rt @msrt_print_int (%back)
+  %bytes: bytes = bytes 0
+  %w: int = iadd.chk %big, %two
+  ret %w
+}

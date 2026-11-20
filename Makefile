@@ -215,6 +215,8 @@ c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
 	sh compiler/tests/mir-diff.sh
 	sh compiler/tests/check-diff.sh
+	sh compiler/tests/hints-diff.sh
+	sh compiler/tests/constfold-diff.sh
 	sh compiler/tests/qbe-run.sh
 
 # libms with the tool entry points (compiler/include/ms/tool.h): the archive a Manuscript tool links with `--link`.
