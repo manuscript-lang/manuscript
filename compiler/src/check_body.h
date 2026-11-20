@@ -7,6 +7,7 @@
 #include "ms/check.h"
 #include "ms/constfold.h"
 #include "ms/facts.h"
+#include "ms/methods.h"
 
 typedef struct MsBody {
     MsCheck *c;
@@ -14,6 +15,7 @@ typedef struct MsBody {
     MsFacts *facts;
     MsLiteralFacts *literals;
     MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
+    const MsMethodTable *methods; /* the program's methods and interface operations; NULL when not built */
     bool has_close;         /* the module declares a method named `close` */
     MsTy result;
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
@@ -25,6 +27,8 @@ typedef struct MsBody {
     bool supported;         /* false once a construct outside the handled set is met */
 } MsBody;
 
+/* A call `receiver.name(args)` (check_method.c). */
+MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */
 MsTy ms_body_unsupported(MsBody *b);
 /* Records the type of expression node `node` and returns it. */

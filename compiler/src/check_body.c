@@ -38,7 +38,7 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
     const uint32_t def = tys->def[ty];
-    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE) || tys->nargs[ty] != 0 || def == 0) {
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || tys->nargs[ty] != 0 || def == 0) {
         return false;
     }
     const MsSymId sym = def - 1;
@@ -160,6 +160,9 @@ static MsTy body_name(MsBody *b, const MsExpr *e) {
  * lowering cannot handle fails the callers there. */
 static MsTy body_call(MsBody *b, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
+    if (callee->kind == MS_E_MEMBER) {
+        return ms_body_method_call(b, e);
+    }
     if (callee->kind != MS_E_NAME || ms_body_find_binding(b, callee->u.sym) != MS_NONE) {
         return ms_body_unsupported(b);
     }
@@ -578,6 +581,12 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->call_callee, 0xff, nodes * sizeof *facts->call_callee);
+    facts->call_method = MS_NEW_N(arena, uint32_t, nodes);
+    facts->call_receiver = MS_NEW_N(arena, MsTy, nodes);
+    facts->call_interface = MS_NEW_N(arena, MsTy, nodes);
+    memset(facts->call_method, 0xff, nodes * sizeof *facts->call_method);
+    memset(facts->call_receiver, 0, nodes * sizeof *facts->call_receiver);
+    memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);
@@ -639,6 +648,10 @@ static void body_check_constant(MsBody *b, const MsDecl *d) {
 }
 
 void ms_module_check_bodies(MsCheck *c, MsModId module) {
+    ms_module_check_bodies_with(c, module, NULL);
+}
+
+void ms_module_check_bodies_with(MsCheck *c, MsModId module, const MsMethodTable *methods) {
     ms_module_resolve_types(c, module);
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
@@ -654,6 +667,7 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
               .bool_ty = body_primitive(c, "Bool"),
               .string_ty = body_primitive(c, "String"),
               .void_ty = body_primitive(c, "Void"),
+              .methods = methods,
               .has_close = body_module_has_close(c, row->syntax)};
     body_allocate(&b, facts);
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
