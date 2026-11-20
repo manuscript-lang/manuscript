@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz
+.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -25,7 +25,7 @@ vscode-install: vscode-package
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
 verify: check repo-check workflow-check bench-check unit docs-check licenses-check
 
-verify-full: verify conform removed-check book-check dist-check
+verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
 # Builds the native runtime (ms-native) into target/ms-native; every build of ms-cli embeds it.
 runtime:
@@ -133,6 +133,10 @@ copy-check: build
 # Every removed or renamed spelling in tests/removed/ must fail `ms check` with an error that names its replacement.
 removed-check: build
 	$(MS) run tools/removed-check.ms
+
+# The Manuscript command-line front (tools/ms) against the Rust ms on the argument lines in tools/ms/cases.txt.
+ms-cli-check: build
+	$(MS) run tools/ms-cli-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
 licenses:
