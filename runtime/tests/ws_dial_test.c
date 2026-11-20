@@ -19,10 +19,9 @@ typedef int PollHandle;
 
 #include "../net/conn_object.h"
 #include "../net/ws.h"
-#include "../net/ws_connect.h"
 #include "../net/ws_dial.h"
 #include "../net/ws_natives.h"
-#include "../net/ws_socket_natives.h"
+#include "ms_rt/net.h"
 #include "../std/abi.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/sys.h"
