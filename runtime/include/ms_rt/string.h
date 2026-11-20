@@ -211,4 +211,16 @@ void msrt_string_replace_first(const MsStr *s, const MsStr *old, const MsStr *re
 /* ms-sig: msrt_string_replace_take(s: *mut StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_replace_take(MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
 
+/* The text builder of the formatters (runtime/core/string_buffer.c): push strings, then finish into the result. */
+typedef struct MsStrBuf MsStrBuf;
+/* ms-sig: msrt_strbuf_new() -> *mut StrBuf @domain=string @leaf */
+MsStrBuf *msrt_strbuf_new(void);
+/* ms-sig: msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal) @domain=string @leaf */
+void msrt_strbuf_push(MsStrBuf *buffer, const MsStr *s);
+/* ms-sig: msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) @domain=string @leaf */
+void msrt_strbuf_finish(MsStrBuf *buffer, MsStr *out);
+
+/* ms-sig: msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure */
+uint8_t msrt_string_parse_int(const MsStr *s, int64_t *out);
+
 #endif

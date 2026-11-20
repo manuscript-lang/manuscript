@@ -3,6 +3,7 @@
 #define MS_RT_NUM_H
 
 #include "ms_rt/base.h"
+#include "ms_rt/string.h"
 
 /* ms-sig: msrt_float_compare(a: f64, b: f64) -> i64 @domain=number @leaf */
 int64_t msrt_float_compare(double a, double b);
@@ -26,5 +27,8 @@ int64_t msrt_float32_to_bits(double value);
 uint8_t msrt_float_truncate_to_int(double v, int64_t *out);
 /* ms-sig: msrt_float_to_float32(v: f64, out: *mut f32) -> u8 @domain=number @leaf */
 uint8_t msrt_float_to_float32(double v, float *out);
+
+/* ms-sig: msrt_numbers_parse_int(text: *const StrVal, radix: i64, out: *mut i64) -> u8 @domain=number @leaf */
+uint8_t msrt_numbers_parse_int(const MsStr *text, int64_t radix, int64_t *out);
 
 #endif

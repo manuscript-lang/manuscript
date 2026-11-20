@@ -525,22 +525,6 @@ pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
     rest.iter().position(|&b| b == c).map(|p| at + p)
 }
 
-/// `String.parse_int()`: present flag, value through `out`.
-#[unsafe(no_mangle)]
-// ms: leaf pure domain=string
-pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 {
-    // SAFETY: caller passes a live string and a writable out.
-    unsafe {
-        match crate::num::parse_int_decimal(bytes(s)) {
-            Some(v) => {
-                *out = v;
-                1
-            }
-            None => 0,
-        }
-    }
-}
-
 /// `String.scalar_at(offset, default)`: an ASCII byte is its own scalar, one read; anything else
 /// is decoded or rejected by [`msrt_string_scalar_at_slow`].
 #[unsafe(no_mangle)]
@@ -698,51 +682,6 @@ pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
 // ---------------------------------------------------------------------------
 // Building
 // ---------------------------------------------------------------------------
-
-/// A growable byte buffer the text formatters append to, so building a long text is linear.
-pub struct StrBuf(Vec<u8>);
-
-/// Starts an empty string builder (finish it with [`msrt_strbuf_finish`]).
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C-unwind" fn msrt_strbuf_new() -> *mut StrBuf {
-    Box::into_raw(Box::new(StrBuf(Vec::new())))
-}
-
-/// Appends a string's bytes to the builder.
-///
-/// # Safety
-/// `buf` must come from `msrt_strbuf_new` and `s` must be live.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal) {
-    // SAFETY: the caller passes a live builder and string.
-    unsafe {
-        let text = bytes(s);
-        let out = &mut (*buf).0;
-        if out.len() + text.len() > MAX_BYTES {
-            fault::fault(b"string: limit exceeded");
-        }
-        out.extend_from_slice(text);
-    }
-}
-
-/// Consumes the builder and returns its text.
-///
-/// # Safety
-/// `buf` must come from `msrt_strbuf_new` and is not used afterwards.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_strbuf_finish_val(buf)).write_to(out) }
-}
-
-unsafe fn msrt_strbuf_finish_val(buf: *mut StrBuf) -> StrVal {
-    // SAFETY: the builder was boxed by `msrt_strbuf_new` and is consumed once.
-    let buf = unsafe { Box::from_raw(buf) };
-    from_bytes(&buf.0)
-}
 
 /// The string over the first `len` bytes of the owned allocation at `ptr`: the same allocation
 /// when it stays on the heap, an inline copy (freeing the buffer) when it fits inline.
