@@ -1,5 +1,5 @@
-/* The scheduler of a thread: creation, hooks, the stop request, the clock and teardown. See sched.h. */
-#include "sched.h"
+/* The scheduler of a thread: creation, hooks, the stop request, the clock and teardown. See scheduler.h. */
+#include "scheduler.h"
 
 #include "array.h"
 #include "ms_rt/sys.h"

@@ -4,7 +4,7 @@
  * state these functions see, with nothing to save or restore.
  */
 #include "array.h"
-#include "sched.h"
+#include "scheduler.h"
 
 enum { SIGNAL_INTERRUPT = 2 };
 

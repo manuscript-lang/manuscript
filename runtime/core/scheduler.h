@@ -1,4 +1,4 @@
-/* sched.h: the scheduler's records, shared by task.c, park.c, token.c and unwind.c. Internal to runtime/core:
+/* scheduler.h: the scheduler's records, shared by task.c, park.c, token.c and unwind.c. Internal to runtime/core:
  * nothing outside the scheduler includes it; the rest of the runtime uses task.h.
  *
  * One scheduler per thread (an isolate), reached through ms_sched(). Its state is plain tables indexed by small
@@ -11,8 +11,8 @@
  *   waiters[]     waiter nodes, doubly linked per descriptor         (32 bytes per task on a descriptor)
  *   tokens[]      one-shot park slots                                (32 bytes per token)
  */
-#ifndef MS_CORE_SCHED_H
-#define MS_CORE_SCHED_H
+#ifndef MS_CORE_SCHEDULER_H
+#define MS_CORE_SCHEDULER_H
 
 #include <stdatomic.h>
 

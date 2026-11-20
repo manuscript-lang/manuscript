@@ -12,7 +12,7 @@
 
 #include "ms_rt/alloc.h"
 #include "ms_rt/sys.h"
-#include "../core/sched.h"
+#include "../core/scheduler.h"
 
 static void expect(bool condition, const char *what) {
     if (!condition) {

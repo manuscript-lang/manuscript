@@ -1,8 +1,24 @@
 //! Compares the timestamp logic with Go's `time` package (`tests/golden/gen.go` writes the vectors).
-//! `MS_TIME_GOLDEN=<file>` runs a larger set instead of the committed one.
+//! `MS_TIME_GOLDEN=<file>` runs a larger set instead of the committed one. Only UTC and fixed offsets
+//! are checked here; the named-zone vectors run in `tests/conformance/fixtures/e2e/stdlib/time-zones.ms`.
+
+/// Seconds east of UTC for `UTC`, the empty name and `+hh:mm`; none for an IANA name.
+fn offset_of(zone: &str) -> Option<i64> {
+    if matches!(zone, "" | "UTC") {
+        return Some(0);
+    }
+    let (sign, rest) = match zone.split_at_checked(1)? {
+        ("+", rest) => (1, rest),
+        ("-", rest) => (-1, rest),
+        _ => return None,
+    };
+    let (hours, minutes) = rest.split_once(':')?;
+    Some(sign * (hours.parse::<i64>().ok()? * 3_600 + minutes.parse::<i64>().ok()? * 60))
+}
+
 // Links the msrt_* runtime symbols.
 use ms_rt as _;
-use ms_std_time::core_time::{Ts, calendar, from_calendar, to_string};
+use ms_std_time::core_time::{Ts, calendar, from_local, local_from_calendar, to_string};
 
 #[test]
 fn matches_oracle() {
@@ -22,7 +38,11 @@ fn matches_oracle() {
                     nanos: f[2].parse().unwrap(),
                 };
                 let zone = f.get(3).copied().unwrap_or("");
-                let c = calendar(ts, zone).unwrap();
+                let Some(offset) = offset_of(zone) else {
+                    continue;
+                };
+                let name = if zone.is_empty() { "UTC" } else { zone };
+                let c = calendar(ts, offset, name);
                 let v = c.civil;
                 format!(
                     "{} {} {} {} {} {} {} {} {} {} {}",
@@ -46,7 +66,11 @@ fn matches_oracle() {
             "from" => {
                 let n: Vec<i64> = f[1..8].iter().map(|v| v.parse().unwrap()).collect();
                 let zone = f.get(8).copied().unwrap_or("");
-                match from_calendar(n[0], n[1], n[2], n[3], n[4], n[5], n[6], zone) {
+                let Some(offset) = offset_of(zone) else {
+                    continue;
+                };
+                let local = local_from_calendar(n[0], n[1], n[2], n[3], n[4], n[5], n[6]);
+                match local.and_then(|local| from_local(local, n[6], offset)) {
                     Ok(t) => t.seconds.to_string(),
                     Err(_) => "ERR".to_string(),
                 }

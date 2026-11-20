@@ -4,7 +4,7 @@
  * generation is used up is retired instead of wrapping back to an id a stale holder might still have.
  */
 #include "array.h"
-#include "sched.h"
+#include "scheduler.h"
 
 static MsToken *token_find(const MsSched *sched, uint64_t id) {
     const size_t index = (size_t)(id & 0xffffffffu);

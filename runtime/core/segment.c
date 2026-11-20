@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "array.h"
-#include "sched.h"
+#include "scheduler.h"
 
 enum {
     CHAIN_CELL_WORDS = 4,

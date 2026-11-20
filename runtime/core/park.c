@@ -1,11 +1,11 @@
-/* Waiting: descriptors, timers, time limits, wake-ups and the idle path. See sched.h and task.h.
+/* Waiting: descriptors, timers, time limits, wake-ups and the idle path. See scheduler.h and task.h.
  *
  * A task parked on a descriptor is a node in that descriptor's list; the poller watches the union of what the
  * list's tasks ask for. A woken task unlinks its own node in constant time, and only the descriptor it waited
  * on is looked at again. Timers are a heap with lazy deletion (timers.h).
  */
 #include "array.h"
-#include "sched.h"
+#include "scheduler.h"
 
 enum {
     READY_BATCH = 64, /* descriptor events taken from the poller at once */

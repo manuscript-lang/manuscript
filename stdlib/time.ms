@@ -16,16 +16,22 @@ import (
 	msstd_time_duration_to_milliseconds,
 	msstd_time_duration_to_minutes,
 	msstd_time_duration_to_seconds,
-	msstd_time_from_calendar,
+	msstd_time_from_local,
 	msstd_time_instant_compare,
 	msstd_time_instant_difference,
 	msstd_time_instant_shift,
-	msstd_time_local_zone,
+	msstd_time_local_from_calendar,
 	msstd_time_parse_timestamp,
 	msstd_time_timestamp_calendar,
 	msstd_time_timestamp_format,
 	msstd_time_timestamp_to_string,
 	msstd_time_wall_clock_now from "@std/internal/time.ms",
+	Zone,
+	host_zone,
+	load_zone,
+	offset_for_local,
+	zone_at,
+	zone_name from "@std/internal/zone.ms",
 )
 
 // A span of elapsed time, counted in signed nanoseconds.
@@ -354,7 +360,9 @@ fn Timestamp.clamp(low: Timestamp, high: Timestamp) Timestamp:
 // IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`. An
 // unknown zone returns `EINVAL`.
 fn Timestamp.calendar(zone: String) Date!:
-	return msstd_time_timestamp_calendar(self, zone)
+	resolved := find_zone(zone)?
+	info := zone_at(resolved, self.seconds)
+	return ok(msstd_time_timestamp_calendar(self, info.offset, info.abbr))
 
 /*
 Formats this timestamp in a zone with a token pattern.
@@ -364,7 +372,9 @@ To include literal letters that spell a token, format the fields separately and 
 An unknown zone returns `EINVAL`.
 */
 fn Timestamp.format(pattern: String, zone: String) String!:
-	return msstd_time_timestamp_format(self, pattern, zone)
+	resolved := find_zone(zone)?
+	info := zone_at(resolved, self.seconds)
+	return ok(msstd_time_timestamp_format(self, pattern, info.offset, info.abbr))
 
 // Date and time fields of a timestamp in one time zone.
 export type Date:
@@ -591,7 +601,8 @@ export fn from_calendar(
 	nanosecond: Int,
 	zone: String,
 ) Timestamp!:
-	return msstd_time_from_calendar(
+	resolved := find_zone(zone)?
+	local := msstd_time_local_from_calendar(
 		year,
 		month,
 		day,
@@ -599,13 +610,13 @@ export fn from_calendar(
 		minute,
 		second,
 		nanosecond,
-		zone,
-	)
+	)?
+	return msstd_time_from_local(local, nanosecond, offset_for_local(resolved, local))
 
 // Returns the host's local time zone name, or `UTC` when it cannot be determined.
 // ms: effect std.system.read
 export fn local_zone() String:
-	return msstd_time_local_zone()
+	return zone_name(host_zone())
 
 // Starts a timer for the requested duration and returns its promise; `wait()` it to
 // pause the current task for at least that long. The timer has no task of its own, and
@@ -700,3 +711,7 @@ export fn ticker(period: Duration) ReadStream[Instant]:
 
 	due := monotonic().shift(period.clone())
 	return ReadStream[Instant](TickSource(period: period, due: due))
+
+// Resolves a zone name, or returns `EINVAL`.
+fn find_zone(zone: String) Zone!:
+	return load_zone(zone).ok_or(Error("time: invalid input", kind: "EINVAL"))

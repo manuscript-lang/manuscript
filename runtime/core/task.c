@@ -1,10 +1,10 @@
-/* Tasks: records and handles, spawning, switching, joining and cancelling. See task.h and sched.h.
+/* Tasks: records and handles, spawning, switching, joining and cancelling. See task.h and scheduler.h.
  *
  * A task runs on its own stack from a pool (stack.c). `ms_task_switch_away` is the one place a switch happens:
  * it first gives timers, descriptors and stop requests their turn (cheaply: a busy queue checks timers once
  * per round and polls once per POLL_EVERY switches), then runs the next ready task, or idles when none is.
  */
-#include "sched.h"
+#include "scheduler.h"
 
 #include "array.h"
 #include "context.h"
