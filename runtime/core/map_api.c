@@ -639,3 +639,30 @@ uint8_t msrt_set_is_disjoint_from(const MsMap *a, const MsMap *b, const MsTypeDe
     }
     return all_keys_have(a, ms_map_key_desc(a, kd), b, ms_map_key_desc(b, kd), false);
 }
+
+/* ---- JSON objects ---- */
+
+/* Fills the empty map `m` (no storage) from `n` string keys and values `stride` bytes apart, consuming them.
+ * Returns -1, or the index of the first repeated key: members before it are in the map, the caller keeps
+ * ownership of the rest. */
+int64_t msrt_map_fill_strings(MsMap *m, const MsTypeDesc *vd, MsStr *keys, uint8_t *vals, int64_t stride, int64_t n) {
+    m->desc = &msrt_desc_string;
+    if (n <= 0) {
+        return -1;
+    }
+    const MapLayout l = ms_map_layout(&msrt_desc_string, vd);
+    ms_map_reserve(m, &l, (size_t)n);
+    for (int64_t i = 0; i < n; i++) {
+        const uint8_t *key = (const uint8_t *)&keys[i];
+        const uint64_t hash = ms_map_hash(&ms_str_keys, NULL, key);
+        if (ms_map_find(&ms_str_keys, m, NULL, &l, key, hash) != MS_MAP_NO_ENTRY) {
+            return i;
+        }
+        uint8_t *entry = ms_map_next_entry(m, &l);
+        ms_map_store_hash(entry, hash);
+        ms_map_copy_slot(entry + l.key_offset, key, l.key_size);
+        ms_map_copy_slot(entry + l.value_offset, vals + i * stride, l.value_size);
+        ms_map_publish(m, hash);
+    }
+    return -1;
+}
