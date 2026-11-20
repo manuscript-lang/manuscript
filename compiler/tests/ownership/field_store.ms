@@ -29,3 +29,37 @@ fn written_only() Int:
 	var o = Outer(Inner(1), 2)
 	o.y = 4
 	return 0
+
+type Named:
+	name: String
+	n: Int
+
+fn replace_text() Int:
+	var v = Named("a", 1)
+	v.name = "b"
+	return v.n
+
+fn replace_record() Int:
+	var o = Outer(Inner(1), 2)
+	o.inner = Inner(7)
+	return o.inner.x
+
+fn move_in(var o: Outer, inner: Inner) Int:
+	o.inner = inner
+	return o.y
+
+fn param_not_var(o: Outer) Int:
+	o.y = 1
+	return o.y
+
+fn borrowed_disjoint() Int:
+	var o = Outer(Inner(1), 2)
+	r := o.inner
+	o.y = 3
+	return r.x
+
+fn borrowed_overlap() Int:
+	var o = Outer(Inner(1), 2)
+	r := o.inner
+	o.inner = Inner(4)
+	return r.x

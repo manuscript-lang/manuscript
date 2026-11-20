@@ -9,6 +9,12 @@ export type Finding:
 	offset: Int
 	line: Int
 	column: Int
+	// A machine-applicable edit that resolves the finding, applied by `ms lint --fix`:
+	// the byte range `fix_from..fix_to` becomes `fix_text`. `fix_from` is -1 when there
+	// is none.
+	fix_from: Int = -1
+	fix_to: Int = -1
+	fix_text: String = ""
 
 export fn finding(
 	code: String,
@@ -20,11 +26,26 @@ export fn finding(
 	column: Int,
 ) Finding:
 	return Finding(
-		code.clone(),
-		severity.clone(),
-		message.clone(),
-		file.clone(),
-		offset,
-		line,
-		column,
+		code: code.clone(),
+		severity: severity.clone(),
+		message: message.clone(),
+		file: file.clone(),
+		offset: offset,
+		line: line,
+		column: column,
+	)
+
+// `found` with the edit that fixes it: bytes `from..to` of the source become `text`.
+export fn with_fix(found: Finding, from: Int, to: Int, text: String) Finding:
+	return Finding(
+		code: found.code.clone(),
+		severity: found.severity.clone(),
+		message: found.message.clone(),
+		file: found.file.clone(),
+		offset: found.offset,
+		line: found.line,
+		column: found.column,
+		fix_from: from,
+		fix_to: to,
+		fix_text: text.clone(),
 	)
