@@ -1,0 +1,82 @@
+/* Name resolution of a module's top level: what its code can name before any body is read.
+ *
+ * `ms_module_declare` fills `MsModuleRow.names` with the primitives, the prelude, the module's
+ * imports and its own declarations, and appends to `MsModuleRow.diags` what is wrong with them
+ * (a declaration that reuses a prelude name, two imports of one name, an import the standard
+ * library cannot satisfy). The Rust checker's `begin_module`, `import_symbols` and
+ * `declare_symbols`. */
+#ifndef MS_CHECK_H
+#define MS_CHECK_H
+
+#include "ms/tables.h"
+
+/* The row of the module with this path, or MS_NONE. */
+MsModId ms_module_find(const MsCheck *c, MsSym path);
+
+/* Declares the module's names once; later calls do nothing. Imports of `@std/` modules declare
+ * the source module they read first. Imports of other modules are not resolved yet and leave no
+ * name behind. */
+void ms_module_declare(MsCheck *c, MsModId module);
+
+/* ---- declared types ---- */
+
+/* Appends a diagnostic to the module's list, unless the checker's suppression rules drop it. */
+void ms_report(MsCheck *c, MsModId module, const MsCheckDiag *diag);
+
+/* Whether `sym` is `print` or a prelude type: a declaration every module sees. */
+bool ms_is_prelude_symbol(const MsCheck *c, MsSymId sym);
+
+/* The type variables in scope while a written type resolves, innermost scope first. */
+typedef struct MsTypeScope {
+    const struct MsTypeScope *parent;
+    const MsSym *names;
+    const MsTy *types;
+    uint32_t len;
+} MsTypeScope;
+
+/* Resolves the written types of one module: a context that the resolution functions share. */
+typedef struct MsResolver {
+    MsCheck *c;
+    MsModId module;
+    const MsTypeScope *scope;
+    MsTy *refs; /* by node id: what each resolved type reference means */
+    bool allow_type_set;
+    MsSymId *aliases; /* the aliases being resolved, innermost last */
+    uint32_t naliases, aliases_cap;
+} MsResolver;
+
+/* What a written type means in the resolver's scope; `<invalid>` after a diagnostic. NULL is
+ * `<invalid>` without one. */
+MsTy ms_resolve_type(MsResolver *r, const MsTypeRef *t);
+
+/* A parameter, field or payload list: the types resolved, duplicate names reported. */
+MsTyParam *ms_resolve_params(MsResolver *r, const MsParams *params);
+
+/* The function type of a signature. */
+MsTy ms_resolve_signature(MsResolver *r, const MsParams *params, const MsTypeRef *result);
+
+/* The variables a type-parameter list declares for `owner`; duplicates and intrinsic names are
+ * reported. */
+MsTy *ms_declare_type_variables(MsResolver *r, MsSymId owner, const MsTypeParams *params);
+
+/* Resolves each default type argument (the earlier variables are in scope) and attaches it. */
+void ms_resolve_type_defaults(MsResolver *r, const MsTypeParams *params, const MsTy *vars);
+
+/* Resolves each bound and attaches the interfaces; the variables are in scope. */
+void ms_resolve_type_bounds(MsResolver *r, const MsTypeParams *params, const MsTy *vars);
+
+/* A scope holding exactly `vars`, allocated in the checker's arena. */
+const MsTypeScope *ms_variable_scope(MsCheck *c, const MsTy *vars, uint32_t count);
+
+/* The type an alias names, over its own variables; resolved once. */
+MsTy ms_alias_target(MsResolver *r, MsSymId alias);
+
+/* The variables a symbol declares. */
+const MsTy *ms_sym_vars(const MsCheck *c, MsSymId sym, uint32_t *count);
+
+/* Declares and resolves the module's top-level types: type variables with their defaults and
+ * bounds, nominal types, aliases, and the signatures, fields and cases of declarations. Constants
+ * and the operations of interfaces and implementations come with the passes that read bodies. */
+void ms_module_resolve_types(MsCheck *c, MsModId module);
+
+#endif

@@ -90,10 +90,19 @@ void ms_check_free(MsCheck *c) {
     syms_free(&c->syms);
     for (uint32_t i = 0; i < c->nmods; i++) {
         ms_map_free(&c->mods[i].scope);
+        ms_map_free(&c->mods[i].names);
+        free(c->mods[i].diags);
         free(c->mods[i].order);
     }
     free(c->mods);
     ms_map_free(&c->std_types);
+    ms_map_free(&c->module_by_path);
+    ms_map_free(&c->primitives);
+    free(c->defs);
+    for (uint32_t i = 0; i < c->var_info_cap; i++) {
+        free(c->var_info[i].bounds);
+    }
+    free(c->var_info);
     ms_arena_free(&c->arena);
     *c = (MsCheck){0};
 }
@@ -104,6 +113,7 @@ MsModId ms_module_add(MsCheck *c, MsSym path, const MsModule *syntax) {
         c->mods = ms_array_resize(c->mods, c->mods_cap, sizeof *c->mods);
     }
     c->mods[c->nmods] = (MsModuleRow){.path = path, .syntax = syntax};
+    (void)ms_map_add(&c->module_by_path, path, c->nmods);
     return c->nmods++;
 }
 
@@ -126,11 +136,7 @@ static void syms_reserve(MsSyms *syms) {
     syms->cap = cap;
 }
 
-MsSymId ms_sym_add(MsCheck *c, MsModId module, const MsSymSpec *spec) {
-    MsModuleRow *row = &c->mods[module];
-    if (ms_map_get(&row->scope, spec->name) != MS_NONE) {
-        return MS_NONE;
-    }
+MsSymId ms_sym_new(MsCheck *c, MsModId module, const MsSymSpec *spec) {
     MsSyms *syms = &c->syms;
     syms_reserve(syms);
     const MsSymId id = syms->count++;
@@ -144,9 +150,66 @@ MsSymId ms_sym_add(MsCheck *c, MsModId module, const MsSymSpec *spec) {
     syms->decl[id] = spec->decl;
     syms->ty[id] = MS_TY_NONE;
     syms->nvars[id] = spec->nvars;
+    return id;
+}
+
+MsSymId ms_sym_add(MsCheck *c, MsModId module, const MsSymSpec *spec) {
+    MsModuleRow *row = &c->mods[module];
+    if (ms_map_get(&row->scope, spec->name) != MS_NONE) {
+        return MS_NONE;
+    }
+    const MsSymId id = ms_sym_new(c, module, spec);
     /* The scope lists every symbol the module declares; `is_exported` says which importers see. */
     (void)ms_map_add(&row->scope, spec->name, id);
     row->order = ms_array_resize(row->order, row->norder + 1, sizeof *row->order);
     row->order[row->norder++] = id;
     return id;
+}
+
+MsSym ms_decl_name(const MsDecl *d) {
+    switch ((MsDeclKind)d->kind) {
+    case MS_D_FN: return d->u.fn.name;
+    case MS_D_CONST: return d->u.konst.name;
+    case MS_D_TYPE: return d->u.type.name;
+    case MS_D_ENUM: return d->u.enumeration.name;
+    case MS_D_ALIAS: return d->u.alias.name;
+    case MS_D_INTERFACE: return d->u.iface.name;
+    case MS_D_IMPL:
+    case MS_D_TEST: return 0;
+    }
+    return 0;
+}
+
+uint32_t ms_decl_nvars(const MsDecl *d) {
+    switch ((MsDeclKind)d->kind) {
+    case MS_D_FN: return d->u.fn.type_params.len;
+    case MS_D_TYPE: return d->u.type.type_params.len;
+    case MS_D_ENUM: return d->u.enumeration.type_params.len;
+    case MS_D_ALIAS: return d->u.alias.type_params.len;
+    case MS_D_INTERFACE: return d->u.iface.type_params.len;
+    case MS_D_CONST:
+    case MS_D_IMPL:
+    case MS_D_TEST: return 0;
+    }
+    return 0;
+}
+
+MsDef *ms_def(MsCheck *c, MsSymId sym) {
+    if (sym >= c->defs_cap) {
+        const uint32_t old = c->defs_cap;
+        c->defs_cap = ms_capacity_for(c->defs_cap, sym + 1);
+        c->defs = ms_array_resize(c->defs, c->defs_cap, sizeof *c->defs);
+        memset(c->defs + old, 0, (size_t)(c->defs_cap - old) * sizeof *c->defs);
+    }
+    return &c->defs[sym];
+}
+
+MsVarInfo *ms_var_info(MsCheck *c, MsTy ty) {
+    if (ty >= c->var_info_cap) {
+        const uint32_t old = c->var_info_cap;
+        c->var_info_cap = ms_capacity_for(c->var_info_cap, ty + 1);
+        c->var_info = ms_array_resize(c->var_info, c->var_info_cap, sizeof *c->var_info);
+        memset(c->var_info + old, 0, (size_t)(c->var_info_cap - old) * sizeof *c->var_info);
+    }
+    return &c->var_info[ty];
 }
