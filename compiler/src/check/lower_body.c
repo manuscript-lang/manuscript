@@ -64,7 +64,11 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     if (ty == lb->bool_ty) {
         return MIR_BOOL;
     }
-    return ty == lb->string_ty ? MIR_STR : lb_mir_alt(lb, ty);
+    if (ty == lb->string_ty) {
+        return MIR_STR;
+    }
+    const MirTy list = lst_type(lb, ty);
+    return list != MIR_NONE ? list : lb_mir_alt(lb, ty);
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
@@ -80,6 +84,11 @@ static void lb_depth(Lb *lb, MirOp op) {
     if (!lb->closure) {
         lb_emit_plain(lb, op);
     }
+}
+
+/* A value that is an object with one owner (a closure, a list): moved on, never copied. */
+static bool lb_is_object(const Lb *lb, MirTy ty) {
+    return lb_is_fn(lb, ty) || lb_is_list(lb, ty);
 }
 
 /* Releases an owned temporary once its last use is past. */
@@ -450,7 +459,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     }
     const bool borrowed = lb->m->funcs[func].ret_borrowed; // a reference into the arguments
     const MirTy result_ty = mir_b_ty(&lb->b, result);
-    return (LbVal){result, (result_ty == MIR_STR || lb_is_fn(lb, result_ty)) && !borrowed}; // else a String result is the caller's
+    return (LbVal){result, (result_ty == MIR_STR || lb_is_object(lb, result_ty)) && !borrowed}; // else a String result is the caller's
 }
 
 static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
@@ -465,11 +474,11 @@ static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_MATCH: return lb_match(lb, e);
     case MS_E_CALL: return lb_call(lb, e);
     case MS_E_MEMBER: return lr_field(lb, e);
+    case MS_E_INDEX: return lst_index(lb, e);
+    case MS_E_LIST: return lst_literal(lb, e);
     case MS_E_VOID:
     case MS_E_APPLY:
-    case MS_E_INDEX:
     case MS_E_PROBE:
-    case MS_E_LIST:
     case MS_E_MAP: break;
     }
     return lb_unsupported(lb);
@@ -563,7 +572,7 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
     const bool aggregate = lb->ok && mir_ty_data(lb->m, scrutinee_ty)->kind >= MK_TYPE; // arms on a case: not lowered yet
     if (!lb->ok || result_ty == MIR_NONE || result_ty == MIR_STR || scrutinee_ty == MIR_STR || aggregate ||
-        lb_is_fn(lb, result_ty)) {
+        lb_is_object(lb, result_ty) || lb_is_list(lb, scrutinee_ty)) {
         return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
     }
     const LbArms arms = lb_open_arms(lb, e);
@@ -604,12 +613,14 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     if (!lb->ok) {
         return;
     }
-    if (lb_is_fn(lb, lb_mir_ty(lb, ty)) && (!value.owned || s->u.bind.is_mutable)) {
-        lb->ok = false; // a function value is owned by the one local made from a lambda or a name
+    const MirTy local_ty = lb_mir_ty(lb, ty);
+    const bool object = lb_is_object(lb, local_ty);
+    if (object && (!value.owned || s->u.bind.is_mutable)) {
+        lb->ok = false; // a function value or a list is owned by the one local made from it
         return;
     }
-    if (lb_is_fn(lb, lb_mir_ty(lb, ty))) {
-        lscope_own(&lb->scopes, value.v, 0); // the closure is dropped where its scope ends
+    if (object) {
+        lscope_own(&lb->scopes, value.v, 0); // dropped where its scope ends
     }
     if (ty == lb->string_ty) {
         if (!value.owned) {
@@ -713,7 +724,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
         return;
     }
     const MirTy value_ty = mir_b_ty(&lb->b, value.v);
-    if ((value_ty == MIR_STR || lb_is_fn(lb, value_ty)) && !value.owned && !lb->b.f.ret_borrowed) {
+    if ((value_ty == MIR_STR || lb_is_object(lb, value_ty)) && !value.owned && !lb->b.f.ret_borrowed) {
         value = lb_hand_out(lb, s->u.expr, value.v);
     }
     const bool leaves_var = !lb->b.f.ret_borrowed && lb_names_var(lb, s->u.expr);
