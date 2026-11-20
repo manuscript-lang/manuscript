@@ -1,4 +1,4 @@
-/* Unit test of the staged fault ABI (runtime/staged/fault_abi.c): the faults generated code raises, the cleanup
+/* Unit test of the staged fault ABI (runtime/core/fault_abi.c): the faults generated code raises, the cleanup
  * stack, shields, the unwinding byte and msrt_guard_call, over the C fault path. Run under the sanitizers by
  * `make c-test`. */
 #include <stdio.h>
@@ -7,12 +7,12 @@
 #include <unistd.h>
 
 #include "ms_rt/sys.h"
-#include "../staged/fault_abi.h"
+#include "../core/fault_abi.h"
 #include "../core/scheduler.h"
 
 static void expect(bool condition, const char *what) {
     if (!condition) {
-        fprintf(stderr, "staged_fault_abi: failed: %s\n", what);
+        fprintf(stderr, "core_fault_abi: failed: %s\n", what);
         exit(1);
     }
 }
@@ -105,6 +105,6 @@ int main(void) {
     test_messages();
     test_guard_and_cleanups();
     test_shields_and_unwinding();
-    puts("staged_fault_abi: ok");
+    puts("core_fault_abi: ok");
     return 0;
 }

@@ -21,24 +21,9 @@
 
 /* Raises a fault of `kind` with the message `msg[0..len]`. */
 MS_NORETURN void msfault_raise(uint8_t kind, const uint8_t *msg, size_t len);
-/* Raises a generic fault. */
-MS_NORETURN void msrt_fault(const uint8_t *msg, size_t len);
-/* "index N out of range for length L; pass a default". */
-MS_NORETURN void msrt_index_fault(int64_t index, int64_t length);
-/* The fault of a list mutator given a bad index: operation 0 insert, 1 remove, 2 set, 3 swap, 4 replace. */
-MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t len);
-
-/* A cleanup runs when a fault or cancellation leaves the code between push and discard by a jump. */
-typedef void (*MsCleanupFn)(uint8_t *arg);
-size_t msrt_cleanup_push(MsCleanupFn run, uint8_t *arg);
-void msrt_cleanup_discard(size_t handle);
-/* Non-zero when a callback may leave through a guard or a registered cleanup (fault.rs). */
-uint8_t msrt_rollback_needed(void);
+/* The faults (msrt_fault and friends), cleanups and task_grow are ms_rt/fault.h and ms_rt/task.h. */
 
 /* Objects with a header (closures, handles). Null stays null. */
-
-/* Runs `shim(block)` on the running task's next stack segment (the task module). */
-void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block);
 
 MsObj *msrt_obj_clone(MsObj *object);
 void msrt_obj_drop(MsObj *object);

@@ -6,16 +6,11 @@
 
 #include "ms_rt/alloc.h"
 #include "ms_rt/safe.h"
+#include "ms_rt/fault.h"
 #include "ms_rt/string.h"
 
 /* The Rust runtime's table of one-byte ASCII strings: entry b is {b, 0}. */
 extern uint8_t msrt_ascii_chars[][2];
-/* Fault paths defined by the Rust runtime until the fault module moves; they end the program with a report.
- * The prototypes are split over two lines so the symbol check does not read them as C definitions. */
-MS_NORETURN void
-msrt_fault(const uint8_t *msg, size_t len);
-MS_NORETURN void
-msrt_index_fault(int64_t index, int64_t length);
 
 #define MS_STR_STATIC (UINT64_C(1) << 63)
 #define MS_STR_INLINE (UINT64_C(1) << 62)

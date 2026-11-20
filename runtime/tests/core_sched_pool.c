@@ -16,7 +16,7 @@
 
 static void expect(bool condition, const char *what) {
     if (!condition) {
-        fprintf(stderr, "staged_sched_pool: failed: %s\n", what);
+        fprintf(stderr, "core_sched_pool: failed: %s\n", what);
         exit(1);
     }
 }
@@ -152,6 +152,6 @@ int main(void) {
     uint8_t outcome = 1;
     MsFaultText text = {0};
     expect(ms_task_run_main(main_task, NULL, 0, &outcome, &text) == MS_TASK_OK && outcome == 0, "the main task ends");
-    puts("staged_sched_pool: ok");
+    puts("core_sched_pool: ok");
     return 0;
 }

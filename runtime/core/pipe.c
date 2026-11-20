@@ -23,9 +23,6 @@
 #include "spin.h"
 #include "unwind.h"
 
-/* The fault path of the Rust runtime until the fault module moves; it ends the program with a report. */
-MS_NORETURN void
-msrt_fault(const uint8_t *msg, size_t len);
 
 /* ---- queue entries ---- */
 

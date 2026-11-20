@@ -1,11 +1,11 @@
 /* The Windows half of ms_sched.h: overlapped named pipes and waitable kernel objects, over the reactor's
- * ms_io_pipe_* and ms_io_object_* (runtime/io/windows/platform.c). Staged with sched_shims.c; the flip replaces the
+ * ms_io_pipe_* and ms_io_object_* (runtime/io/windows/platform.c). Replaces the
  * Windows modules of crates/ms-rt/src/glue/mod.rs. A pipe call that cannot finish parks the task on the pipe's key
  * (the handle to read, the handle plus one to write, as the reactor documents), so no thread blocks. A pending stop
  * request ends a call with MS_PIPE_CANCELLED before it touches the pipe, and the park itself ends on it. */
 #ifdef _WIN32
 #include "ms_sched.h"
-#include "../io/reactor.h"
+#include "../reactor.h"
 
 enum { ERROR_INVALID_HANDLE_CODE = 6 };
 

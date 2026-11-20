@@ -1,5 +1,4 @@
-/* ms_rt/test.h: what the test runner (@std/internal/test_runner) calls (runtime/entry/test_support.c). The output
- * captures it also uses are declared with the standard output they redirect. Symbols are listed in
+/* ms_rt/test.h: what the test runner (@std/internal/test_runner) calls (runtime/entry/test_support.c). Symbols are listed in
  * runtime/symbols/test.txt. */
 #ifndef MS_RT_TEST_H
 #define MS_RT_TEST_H
@@ -20,5 +19,21 @@ void msrt_test_failure(const MsStr *message, const MsMap *details);
 
 /* ms-sig: msrt_test_capture_fault(id: i64, out: *mut StrVal) */
 void msrt_test_capture_fault(int64_t id, MsStr *out);
+
+/* The output captures of a test run (runtime/core/stdout.c): what the tasks of one test print is kept apart. */
+/* ms-sig: msrt_test_capture_new() -> i64 */
+int64_t msrt_test_capture_new(void);
+
+/* ms-sig: msrt_test_capture_set(id: i64) */
+void msrt_test_capture_set(int64_t id);
+
+/* ms-sig: msrt_test_capture_current() -> i64 */
+int64_t msrt_test_capture_current(void);
+
+/* ms-sig: msrt_test_capture_take(id: i64, out: *mut StrVal) */
+void msrt_test_capture_take(int64_t id, MsStr *out_text);
+
+/* ms-sig: msrt_test_capture_free(id: i64) */
+void msrt_test_capture_free(int64_t id);
 
 #endif

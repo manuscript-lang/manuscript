@@ -14,11 +14,6 @@
 #include "ms_rt/desc.h"
 #include "ms_rt/string.h"
 
-int msrt_start(MsMainFn main_fn, const void *tables, int argc, const char *const *argv);
-void msrt_args(MsList *out);
-void msrt_argv(MsList *out);
-void msrt_args_consume(void);
-void msrt_process_on_exit(void (*hook)(void));
 
 static void expect(int condition, const char *what) {
     if (!condition) {
@@ -28,8 +23,6 @@ static void expect(int condition, const char *what) {
 }
 
 /* What the std layer provides in a program. */
-void ms_sched_flush_stdout(void) { fflush(stdout); }
-int32_t ms_sched_stdout_error(void) { return 0; }
 
 static int hooks_run;
 static void count_hook(void) { hooks_run++; }
@@ -39,7 +32,7 @@ static int observed_argument_count;
 static int observed_argv_count;
 
 static int64_t main_with_arguments(void) {
-    MsList list = {0};
+    MsVec list = {0};
     msrt_args(&list);
     observed_argument_count = (int)list.len;
     msrt_argv(&list);

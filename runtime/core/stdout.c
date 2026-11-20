@@ -7,8 +7,11 @@
 
 #include "ms_sched.h"
 #include "spin.h"
+#include "task.h"
 #include "ms_rt/alloc.h"
 #include "ms_rt/array.h"
+#include "ms_rt/io.h"
+#include "ms_rt/test.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_fs.h"
 

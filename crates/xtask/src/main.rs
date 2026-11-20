@@ -287,7 +287,7 @@ fn parse_header_signatures(text: &str) -> Vec<(String, String, Vec<String>)> {
 /// The scalar kind of a Rust parameter type or a C declaration (`ptr` for any pointer), so the two spellings compare.
 fn abi_kind(text: &str) -> String {
     let text = text.trim();
-    if text.contains('*') {
+    if text.contains('*') || text.contains("fn(") {
         return "ptr".into();
     }
     // `repr(transparent)` ABI wrappers: the error slot is a pointer, the has-raw flag a byte.
@@ -315,6 +315,16 @@ fn abi_kind(text: &str) -> String {
         "JsonCtorFn",
         "JsonViewFn",
         "ErrSlot",
+        "CleanupFn",
+        "MsCleanupFn",
+        "Entry",
+        "MsAbiEntry",
+        "MainFn",
+        "MsMainFn",
+        "MsGuardFn",
+        "MsExitHook",
+        "ExitHook",
+        "MsGrowFn",
     ] {
         if word(alias) {
             return "ptr".into();
@@ -327,6 +337,7 @@ fn abi_kind(text: &str) -> String {
         ("i64", "int64_t"),
         ("u64", "uint64_t"),
         ("i32", "int32_t"),
+        ("i32", "int"),
         ("u32", "uint32_t"),
         ("u8", "uint8_t"),
         ("usize", "size_t"),
@@ -404,7 +415,7 @@ fn check_c_abi(
                 .filter(|p| !p.trim().is_empty())
                 .map(|p| abi_kind(p.split_once(':').map_or(p, |(_, t)| t)))
                 .collect();
-            let rust_ret = if rust_ret == "()" {
+            let rust_ret = if rust_ret == "()" || rust_ret == "!" {
                 "void".to_string()
             } else {
                 abi_kind(rust_ret)
@@ -475,10 +486,11 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
         if tail.trim() != ";" || !name.starts_with("msrt_") && !name.starts_with("msstd_") {
             continue;
         }
+        let ret = ret.replace("MS_NORETURN", "").replace("MS_NODISCARD", "");
         let ret = if head.contains('*') {
             "ptr".to_string()
         } else {
-            abi_kind(ret)
+            abi_kind(&ret)
         };
         let params: Vec<String> = params
             .split(',')

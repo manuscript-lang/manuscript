@@ -1,6 +1,6 @@
 /* The program ABI of promises, wait groups and cancel switches (ms_rt/promise.h) over the table in promise.c. Every
  * function is a thin conversion; the behavior is documented where it is implemented. */
-#include "promise_abi.h"
+#include "ms_rt/promise.h"
 
 #include "cancel.h"
 #include "group.h"
