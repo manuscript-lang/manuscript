@@ -56,3 +56,13 @@ msrt_string_view
 msrt_string_append
 msrt_string_repeat
 msrt_string_reverse
+msrt_string_trim
+msrt_string_trim_start
+msrt_string_trim_end
+msrt_string_trim_take
+msrt_string_trim_start_take
+msrt_string_trim_end_take
+msrt_string_index_of
+msrt_string_char_at
+msrt_string_pad_start
+msrt_string_pad_end
