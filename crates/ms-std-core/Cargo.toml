@@ -10,8 +10,6 @@ autotests = false
 crate-type = ["rlib"]
 
 [dependencies]
-getrandom = { version = "0.4", default-features = false, features = ["sys_rng"] }
-libm = { version = "0.2", default-features = false }
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
 

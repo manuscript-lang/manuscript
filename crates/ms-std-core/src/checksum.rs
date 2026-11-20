@@ -1,5 +1,5 @@
-//! CRC-32/ISO-HDLC for `@std/data/checksum.ms`.
-use ms_rt::ffi::native;
+//! CRC-32/ISO-HDLC and Adler-32, kept for ms-std-archive until it moves to zlib. The `@std/data/checksum.ms`
+//! natives are in runtime/std/checksum.c.
 
 const CRC_TABLE: [[u32; 256]; 8] = {
     let mut t = [[0u32; 256]; 8];
@@ -213,13 +213,6 @@ pub fn adler32_update(adler: u32, data: &[u8]) -> u32 {
     b << 16 | a
 }
 
-native! {
-    /// Borrows the complete byte slice.
-    fn msstd_checksum_crc32(data: &[u8]) -> i64 {
-        i64::from(crc32(data))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{crc32, crc32_update};
@@ -296,18 +289,6 @@ mod tests {
                 );
             }
         }
-    }
-}
-
-native! {
-    /// Resumes the finalized IEEE checksum. Source state is UInt32 and fits Int exactly.
-    fn msstd_checksum_crc32_update(initial: i64, data: &[u8]) -> i64 {
-        i64::from(crc32_update(initial as u32, data))
-    }
-
-    /// Resumes an Adler-32 checksum without retaining or copying any input bytes.
-    fn msstd_checksum_adler32_update(initial: i64, data: &[u8]) -> i64 {
-        i64::from(adler32_update(initial as u32, data))
     }
 }
 

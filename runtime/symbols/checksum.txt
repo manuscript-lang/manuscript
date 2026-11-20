@@ -1,0 +1,4 @@
+# Defined in runtime/std/checksum.c; the Rust natives of ms-std-core are deleted.
+msstd_checksum_adler32_update
+msstd_checksum_crc32
+msstd_checksum_crc32_update

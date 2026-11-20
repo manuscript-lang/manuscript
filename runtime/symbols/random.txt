@@ -1,0 +1,3 @@
+# Defined in runtime/std/random.c; the Rust natives of ms-std-core are deleted.
+msstd_random_os_bytes
+msstd_random_v7_next
