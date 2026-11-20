@@ -46,16 +46,16 @@
         }
       ],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN time-zones.ms::named zones match the Go time package\nPASS time-zones.ms::named zones match the Go time package\nRUN time-zones.ms::zone names are exact and unknown names are rejected\nPASS time-zones.ms::zone names are exact and unknown names are rejected\nRUN time-zones.ms::daylight-saving gaps and folds resolve to the earlier offset\nPASS time-zones.ms::daylight-saving gaps and folds resolve to the earlier offset\nRUN time-zones.ms::zones round trip across the supported range\nPASS time-zones.ms::zones round trip across the supported range\nRUN time-zones.ms::the TZ setting selects the local zone\nPASS time-zones.ms::the TZ setting selects the local zone\nRUN time-zones.ms::a POSIX rule with a short daylight-saving interval resolves gaps and folds\nPASS time-zones.ms::a POSIX rule with a short daylight-saving interval resolves gaps and folds\n6 tests, 0 failed\n",
+      "stdout": "RUN time-zones.ms::named zones match the Go time package\nPASS time-zones.ms::named zones match the Go time package\nRUN time-zones.ms::zone names are exact and unknown names are rejected\nPASS time-zones.ms::zone names are exact and unknown names are rejected\nRUN time-zones.ms::daylight-saving gaps and folds resolve to the earlier offset\nPASS time-zones.ms::daylight-saving gaps and folds resolve to the earlier offset\nRUN time-zones.ms::zones round trip across the supported range\nPASS time-zones.ms::zones round trip across the supported range\nRUN time-zones.ms::the TZ setting selects the local zone\nPASS time-zones.ms::the TZ setting selects the local zone\nRUN time-zones.ms::the host zone resolves Local when TZ is unset\nPASS time-zones.ms::the host zone resolves Local when TZ is unset\nRUN time-zones.ms::a POSIX rule with a short daylight-saving interval resolves gaps and folds\nPASS time-zones.ms::a POSIX rule with a short daylight-saving interval resolves gaps and folds\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
