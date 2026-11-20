@@ -113,4 +113,30 @@ void ms_tool_node_kinds(ms_list *out);
 /* The reserved words, in token order: `and` through `while`, without the `_` token. */
 void ms_tool_keywords(ms_list *out);
 
+/* ---- analysis (the language server) ---- */
+
+/* Checks `text` as a module of its own (`extern type Analysis` on the Manuscript side) (a program that imports a project module is status 2: not covered yet) and
+ * reports what the checker knows, keyed by the syntax-node ids of `ms_tool_tree_nodes` (`Syntax.id`), so a tool joins
+ * them to a tree of the same text. the rows hold three counts (nodes, bindings, symbols) and then the rows:
+ *   node, MS_TOOL_ANALYZE_NODE_WIDTH:     id, resolution (MsResolution), reference (binding, symbol, field, case or
+ *                                         method id, -1 for none), type of the expression, type of the written type,
+ *                                         symbol id of the function a call expression calls (-1 for none)
+ *   binding, MS_TOOL_ANALYZE_BINDING_WIDTH: name, type, declaring node id, line, column, offset, role (MsBindRole),
+ *                                         flags (1 mutable, 2 moving, 4 fed), reads
+ *   symbol, MS_TOOL_ANALYZE_SYMBOL_WIDTH: id, name, kind (0 type, 1 fn, 2 alias), module path, 1 when declared in this
+ *                                         text, 1 when exported, declaration node id (-1 for a primitive), offset, line,
+ *                                         column, type
+ * Every name, module path and type text is an index into the names (-1 for none); types print as source reads them.
+ */
+#define MS_TOOL_ANALYZE_NODE_WIDTH 6
+#define MS_TOOL_ANALYZE_BINDING_WIDTH 9
+#define MS_TOOL_ANALYZE_SYMBOL_WIDTH 11
+ms_object *ms_tool_analyze(const ms_str *text);
+/* 0 analysed, 1 syntax error, 2 not covered; the message of a status other than 0. */
+uint8_t ms_tool_analysis_status(ms_object *analysis);
+void ms_tool_analysis_message(ms_object *analysis, ms_str *out);
+/* The counts and rows described above, and the name and type texts they index. */
+void ms_tool_analysis_rows(ms_object *analysis, ms_list *out);
+void ms_tool_analysis_names(ms_object *analysis, ms_list *out);
+
 #endif
