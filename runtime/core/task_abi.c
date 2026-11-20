@@ -113,12 +113,14 @@ static uint32_t checked_park(MsTokenStatus status, uint32_t result) {
 
 uint32_t msrt_token_park_at(uint64_t id, int64_t at_ns, uint64_t *value) {
     uint32_t result = 0;
-    return checked_park(ms_token_park_at(id, at_ns, value, &result), result);
+    const MsTokenStatus status = ms_token_park_at(id, at_ns, value, &result);
+    return checked_park(status, result);
 }
 
 uint32_t msrt_token_park(uint64_t id, int64_t timeout_ns, uint64_t *value) {
     uint32_t result = 0;
-    return checked_park(ms_token_park(id, timeout_ns, value, &result), result);
+    const MsTokenStatus status = ms_token_park(id, timeout_ns, value, &result);
+    return checked_park(status, result);
 }
 
 void msrt_token_post(uint64_t id, uint64_t value) { ms_token_post(id, value); }
