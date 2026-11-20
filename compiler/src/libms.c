@@ -8,3 +8,4 @@
 #include "parse.c"
 #include "partial.c"
 #include "dump.c"
+#include "libms_api.c"
