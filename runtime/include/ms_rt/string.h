@@ -77,5 +77,12 @@ void msrt_string_trim_start_view(const MsStr *s, MsStr *out);
 void msrt_string_trim_end_view(const MsStr *s, MsStr *out);
 void msrt_string_slice(const MsStr *s, int64_t start, int64_t end, MsStr *out);
 void msrt_string_view(const MsStr *s, int64_t start, int64_t end, MsStr *out);
+void msrt_string_split(const MsStr *s, const MsStr *sep, MsVec *out);
+void msrt_string_split_view(const MsStr *s, const MsStr *sep, MsVec *out);
+void msrt_string_split_view_into(const MsStr *s, const MsStr *sep, MsStr *buf, MsVec *out);
+void msrt_string_split_first(const MsStr *s, const MsStr *sep, MsStr *out);
+void msrt_string_replace(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+void msrt_string_replace_first(const MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
+void msrt_string_replace_take(MsStr *s, const MsStr *old, const MsStr *replacement, MsStr *out);
 
 #endif

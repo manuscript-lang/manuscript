@@ -1,0 +1,23 @@
+module "strfuse"
+entry @main
+extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
+extern @msrt_string_join_masked(int, str, str) -> str fresh leaf string_join
+extern @msrt_string_join_plain(str, str, str) -> str fresh leaf string_join
+fn @main() -> int {
+b0:
+  %a: str = str "x"
+  %b: str = str "y"
+  %c: str = call.rt @msrt_string_concat (%a, %b)
+  %d: str = call.rt @msrt_string_concat (%c, %b)
+  drop %c
+  %m: int = iconst 3
+  %e: str = call.rt @msrt_string_join_masked (%m, %d, %b)
+  drop %d
+  %f: str = call.rt @msrt_string_join_plain (%e, %a, %b)
+  drop %e
+  %g: str = call.rt @msrt_string_concat (%f, %f)
+  drop %f
+  drop %g
+  %z: int = iconst 0
+  ret %z
+}

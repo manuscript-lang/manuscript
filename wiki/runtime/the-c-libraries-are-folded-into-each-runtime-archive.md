@@ -12,4 +12,6 @@ CI: the install step is in `.github/actions/native-toolchain` (Linux so far), so
 
 Parallel builds: `cargo xtask runtime` builds the glibc, musl and profiling archives side by side, and each asks `build.sh` for the same output folder. `build.sh` takes an `mkdir` lock (`<folder>.lock`); the others wait for `.complete`. Without it two runs wrote `include/llhttp.h` at once ("File exists", linux-arm64 CI).
 
+Tests: `crates/ms-rt/build.rs` includes `runtime/build_c.rs` (the same planner and compiler `cargo xtask runtime` uses; no `cc` crate) and, when `MS_C_RUNTIME` is unset on a Linux or macOS host, compiles the C into `libms_c.a` and links it into every test binary that links `ms-rt`. The Rust definitions stay (no `ms_c` cfgs), and it is an archive, so a symbol Rust still defines never pulls its C object in; delete the Rust body of a ported symbol and the C object defines it for tests. A member that defines both a deleted and a kept symbol would clash, so delete whole files. Windows hosts keep the Rust bodies for now: their tests build for MSVC and the C is built for mingw.
+
 Apply when: adding a C source that uses a library, wiring a target, or changing how the archives are built. Evidence: `crates/xtask/src/main.rs`, `runtime/third_party/libs.sh`.

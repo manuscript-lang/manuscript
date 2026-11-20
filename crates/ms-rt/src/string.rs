@@ -772,6 +772,7 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     clippy::large_enum_variant,
     reason = "lives on the stack for one call; boxing would allocate"
 )]
+#[cfg(not(ms_c = "msrt_string_split"))]
 enum Needle<'a> {
     Byte(u8),
     /// A needle of two or more bytes in a text shorter than [`MEDIUM_HAY`]: scanned directly, so no
@@ -780,6 +781,7 @@ enum Needle<'a> {
     Bytes(memchr::memmem::Finder<'a>),
 }
 
+#[cfg(not(ms_c = "msrt_string_split"))]
 impl<'a> Needle<'a> {
     fn new(needle: &'a [u8]) -> Self {
         match needle {
@@ -825,6 +827,7 @@ impl<'a> Needle<'a> {
 }
 
 /// Bytes scanned as words before a long haystack goes to a vector searcher (below [`SHORT_HAY`]).
+#[cfg(not(ms_c = "msrt_string_split"))]
 const NEAR: usize = 16;
 
 /// Haystacks shorter than this are scanned byte by byte: the vector searchers' setup costs more
@@ -1991,6 +1994,7 @@ unsafe fn fill_repeated(dst: *mut u8, pattern: &[u8], len: usize) {
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_replace"))]
 fn count_matches(text: &[u8], old: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
@@ -2066,6 +2070,7 @@ pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal
 }
 
 /// Replace the first `n` occurrences (n < 0 means all).
+#[cfg(not(ms_c = "msrt_string_replace"))]
 fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
     if old.is_empty() {
@@ -2107,6 +2112,7 @@ fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
 
 /// The result of replacing the first `matches` occurrences of a non-empty `old` (all of them if
 /// `matches` is the full count), written straight into one new string.
+#[cfg(not(ms_c = "msrt_string_replace"))]
 fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal {
     if matches == 0 {
         return from_bytes(text);
@@ -2139,6 +2145,7 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_replace_first"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_replace_first(
@@ -2187,6 +2194,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
 ///
 /// # Safety
 /// `s` is live and `old` is non-empty.
+#[cfg(not(ms_c = "msrt_string_replace"))]
 unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal {
     // SAFETY: caller passes a live string; the block holds `text.len() + 1` bytes and the loop writes
     // at most `text.len()` of them, since every replacement is no longer than the match it replaces.
@@ -2233,6 +2241,7 @@ unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal 
 }
 
 /// Replaces every nonoverlapping occurrence; output beyond the string limit faults like `concat`.
+#[cfg(not(ms_c = "msrt_string_replace"))]
 #[unsafe(no_mangle)]
 // ms: leaf fresh takes_self
 pub unsafe extern "C-unwind" fn msrt_string_replace(
@@ -2275,6 +2284,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
 /// # Safety
 /// `s` holds an owned string that the callee takes; `old`, `new` are live and distinct from `s`;
 /// `out` is writable.
+#[cfg(not(ms_c = "msrt_string_replace_take"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_replace_take(
@@ -2883,6 +2893,7 @@ fn find_newline(text: &[u8]) -> Option<usize> {
     memchr(b'\n', &text[SHORT_HAY..]).map(|at| at + SHORT_HAY)
 }
 
+#[cfg(not(ms_c = "msrt_string_split"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_split(
@@ -2896,6 +2907,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
 
 /// `let parts = text.split(separator)` where `text` outlives `parts` unchanged and nothing keeps
 /// `parts` or its pieces without copying them: the pieces are views of `text`.
+#[cfg(not(ms_c = "msrt_string_split_view"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_split_view(
@@ -2922,6 +2934,7 @@ const _: () = assert!(size_of::<FrameBuf<StrVal, 8>>() == SPLIT_BUF * size_of::<
 ///
 /// # Safety
 /// As `msrt_string_split_view`; `buf` outlives the list and its pieces.
+#[cfg(not(ms_c = "msrt_string_split_view_into"))]
 #[unsafe(no_mangle)]
 // ms: leaf view_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
@@ -2958,6 +2971,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view_into(
 /// `text.split(separator)[0]` where `text` outlives the piece: the first piece, a view of
 /// `text`, found without building the list. Faults like an index of an empty list when `text`
 /// is empty and `separator` is not.
+#[cfg(not(ms_c = "msrt_string_split_first"))]
 #[unsafe(no_mangle)]
 // ms: leaf first_of=msrt_string_split
 pub unsafe extern "C-unwind" fn msrt_string_split_first(
@@ -2987,6 +3001,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_first(
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_split"))]
 #[inline(always)]
 unsafe fn split_into(
     s: *const StrVal,
@@ -3047,6 +3062,7 @@ unsafe fn split_into(
 
 /// Texts up to this many bytes split at a one-byte separator in one pass over their words: a
 /// record's fields are a few bytes apart, where a search per piece costs more than the scan.
+#[cfg(not(ms_c = "msrt_string_split"))]
 const ONE_PASS_SPLIT: usize = 128;
 
 /// The pieces of `text` between bytes equal to `sep`, found by testing eight bytes at a time and taking
@@ -3054,6 +3070,7 @@ const ONE_PASS_SPLIT: usize = 128;
 ///
 /// # Safety
 /// `v` holds a list of `StrVal`s with room for its first piece.
+#[cfg(not(ms_c = "msrt_string_split"))]
 #[inline(always)]
 unsafe fn split_bytes_once<const STACK: bool>(
     text: &[u8],
@@ -3096,6 +3113,7 @@ unsafe fn split_bytes_once<const STACK: bool>(
 }
 
 /// `push_str`, or with `STACK` (the list is a caller's fixed buffer) `false` when it is full.
+#[cfg(not(ms_c = "msrt_string_split"))]
 #[inline(always)]
 unsafe fn put<const STACK: bool>(v: &mut VecVal, p: StrVal) -> bool {
     if STACK && v.len == v.cap {
