@@ -457,7 +457,8 @@ static void body_statements(MsBody *b, const MsStmts *body) {
     // A local nothing reads, unless named with a leading `_`, is a diagnostic.
     const MsBindings *bindings = &b->facts->bindings;
     for (uint32_t i = b->first_binding; b->supported && i < bindings->count; i++) {
-        const bool local = bindings->role[i] == MS_ROLE_LET || bindings->role[i] == MS_ROLE_VAR;
+        const bool local = bindings->role[i] == MS_ROLE_LET || bindings->role[i] == MS_ROLE_VAR ||
+                           bindings->role[i] == MS_ROLE_ARM;
         const MsStr name = ms_name(b->c->names, bindings->name[i]);
         const bool ignored = name.len != 0 && name.ptr[0] == '_';
         b->supported = !local || ignored || b->reads[i] != 0;
@@ -481,6 +482,11 @@ static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start) {
     b->facts->bindings.count = first_binding;
 }
 
+/* A parameter has no default, or the `none` of an `Optional` (which `T?` implies). */
+static bool body_default_is_none(const MsBody *b, const MsParam *p) {
+    return p->def == NULL || (p->def->kind == MS_E_NAME && body_text_is(b, p->def->u.sym, "none"));
+}
+
 static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig) {
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != fn->params.len || fn->type_params.len != 0) {
@@ -493,7 +499,7 @@ static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MsParam *p = fn->params.ptr[i];
-        if (p->def != NULL || p->is_mutable || p->moving || !body_is_bindable(b, params[i].ty)) {
+        if (!body_default_is_none(b, p) || p->is_mutable || p->moving || !body_is_bindable(b, params[i].ty)) {
             return false;
         }
     }
@@ -538,6 +544,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->res_kind = MS_NEW_N(arena, uint8_t, nodes);
     facts->res_ref = MS_NEW_N(arena, uint32_t, nodes);
     facts->pattern_binding = MS_NEW_N(arena, uint32_t, nodes);
+    facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
+    memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->call_callee, 0xff, nodes * sizeof *facts->call_callee);
