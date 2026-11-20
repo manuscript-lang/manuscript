@@ -108,7 +108,7 @@ static bool body_is_optional(const MsBody *b, MsTy ty) {
 
 /* What a parameter or a local can hold. */
 static bool body_is_bindable(const MsBody *b, MsTy ty) {
-    return body_is_admitted(b, ty) || body_is_optional(b, ty) || body_is_result(b, ty);
+    return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || body_is_result(b, ty);
 }
 
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
@@ -802,6 +802,9 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
         (void)ms_body_record(b, e->id, ty);
         return expected != MS_TY_NONE ? expected : ty;
     }
+    if (expected == b->invalid_ty) {
+        return ms_body_record(b, e->id, ty); // what was asked for is already reported
+    }
     if (expected != MS_TY_NONE && ty != expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
@@ -1220,8 +1223,26 @@ static void body_expose(MsBody *b, MsTy ty, MsPos pos, BodySeen *seen) {
     }
 }
 
+/* The fixture factory of a module with tests has a declaration check of its own (it must return
+ * a type that implements the test hooks), which this pass does not make. */
+static bool body_is_test_fixture(const MsBody *b, const MsFunc *fn) {
+    if (!body_text_is(b, fn->name, "make_fixture")) {
+        return false;
+    }
+    const MsModule *syntax = b->c->mods[b->module].syntax;
+    for (uint32_t i = 0; i < syntax->ndecls; i++) {
+        if (syntax->decls[i]->kind == MS_D_TEST) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     const MsFunc *fn = &d->u.fn;
+    if (body_is_test_fixture(b, fn)) {
+        return;
+    }
     const MsTy sig = b->c->syms.ty[sym];
     if (fn->external || b->c->syms.nvars[sym] != 0 || !body_signature_supported(b, fn, sig)) {
         return;
