@@ -123,3 +123,16 @@ test "URL keeps an empty query through parse, format and resolve":
 	base := parse("http://a/b/c/d;p?q")?
 	expect_equal(format(resolve(base, "?")?), ok("http://a/b/c/d;p?"))?
 	expect_equal(format(resolve(base, "")?), ok("http://a/b/c/d;p?q"))?
+
+test "URL resolves long parent walks and keeps empty segments":
+	base := parse("https://example.com/" + "segment/".repeat(8000) + "leaf")?
+	resolved := resolve(base, "../".repeat(8000))?
+	expect_equal((format(resolved)?), "https://example.com/")?
+	above := resolve(base, "../".repeat(8002) + "next")?
+	expect_equal((format(above)?), "https://example.com/next")?
+
+	deep := parse("http://h/a//b/leaf")?
+	expect_equal((format(resolve(deep, "../next")?)?), "http://h/a//next")?
+	expect_equal((format(resolve(deep, "../../next")?)?), "http://h/a/next")?
+	expect_equal((format(resolve(deep, "..")?)?), "http://h/a//")?
+	expect_equal((format(resolve(deep, "../%2e%2e/next")?)?), "http://h/a//%2e%2e/next")?

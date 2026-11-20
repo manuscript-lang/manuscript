@@ -3,8 +3,6 @@ import (
 	ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
 
 	ArchiveLimits,
-	msstd_archive_pack,
-	msstd_archive_unpack,
 	msstd_compress_compress,
 	msstd_compress_decoder_end,
 	msstd_compress_decoder_new,
@@ -13,6 +11,7 @@ import (
 	msstd_compress_encoder_end,
 	msstd_compress_encoder_new,
 	msstd_compress_encoder_push from "@std/internal/archive.ms",
+	pack_entries, unpack_entries from "@std/internal/archive_codec.ms",
 )
 
 // One file or directory in an archive. Paths use forward slashes.
@@ -43,11 +42,6 @@ export enum ArchiveFormat:
 	Zip  // ZIP files and directories.
 	Tar  // TAR files and directories.
 
-fn archive_format_name(format: ArchiveFormat) String:
-	match format:
-		Zip: return "zip"
-		Tar: return "tar"
-
 // Encodes `entries` as `format`. When `max_bytes` is supplied, it bounds the encoded
 // output.
 export fn pack(
@@ -55,7 +49,7 @@ export fn pack(
 	format: ArchiveFormat,
 	max_bytes: Int? = none,
 ) Bytes!:
-	return msstd_archive_pack(entries, archive_format_name(format), max_bytes)
+	return pack_entries(entries, format, max_bytes)
 
 // Decodes archive `data` in `format`, applying the entry and size limits in
 // `options`.
@@ -69,7 +63,7 @@ export fn unpack(
 		max_entry_bytes: options.max_entry_bytes,
 		max_total_bytes: options.max_bytes,
 	)
-	return msstd_archive_unpack(data, archive_format_name(format), limits)
+	return unpack_entries(data, format, limits)
 
 // A compression format. `Deflate` is raw DEFLATE without a wrapper.
 export enum CompressionFormat:
