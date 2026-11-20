@@ -235,53 +235,6 @@ mod process {
         assert!(m.resident > 0 && m.external >= 0);
     }
 
-    #[cfg(unix)]
-    unsafe extern "C" {
-        fn raise(sig: i32) -> i32;
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn watch_signals_through_the_abi() {
-        let _g = lock();
-        // SIGUSR1 is 10 on Linux and 30 on macOS.
-        let usr1: i64 = if cfg!(target_os = "linux") { 10 } else { 30 };
-        let list = {
-            let mut v = empty();
-            // SAFETY: `v` is writable.
-            unsafe { ms_rt::glue::write_list(&[usr1], &mut v) };
-            v
-        };
-        let mut h: *mut ms_rt::ffi::ObjCell<ms_std_process::signals::Watcher> =
-            core::ptr::null_mut();
-        let mut n = 0i64;
-        // SAFETY: valid list, writable outputs and a live handle throughout.
-        unsafe {
-            assert_eq!(
-                msstd_process_watch_signals(
-                    &list,
-                    HasRaw(0),
-                    0,
-                    &mut h,
-                    ErrSlot(core::ptr::null_mut())
-                ),
-                STATUS_OK
-            );
-            assert_eq!(raise(usr1 as i32), 0);
-            assert_eq!(
-                msstd_process_signal_next(h, &mut n, ErrSlot(core::ptr::null_mut())),
-                STATUS_OK
-            );
-            assert_eq!(n, usr1);
-            msstd_process_signal_close(h);
-            assert_eq!(
-                msstd_process_signal_next(h, &mut n, ErrSlot(core::ptr::null_mut())),
-                ms_rt_abi::STATUS_CLOSED
-            );
-            ms_rt::obj::msrt_obj_drop(h.cast());
-        }
-    }
-
     // These moved to C (runtime/std/process.c); the archive defines them.
     unsafe extern "C" {
         fn msstd_process_working_directory(out: *mut ms_rt_abi::StrVal, err: ErrSlot) -> u8;

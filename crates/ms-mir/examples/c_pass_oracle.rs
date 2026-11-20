@@ -44,6 +44,25 @@ fn main() {
                     out.push_str(&debug_types_dump(&m));
                     continue;
                 }
+                if pass == "copies" {
+                    for site in ms_mir::copies::object_copies(&m) {
+                        let _ = writeln!(out, "{site}");
+                    }
+                    continue;
+                }
+                if pass == "frames" {
+                    for f in &m.funcs {
+                        let sorted = |s: std::collections::HashSet<usize>| {
+                            let mut v: Vec<usize> = s.into_iter().collect();
+                            v.sort_unstable();
+                            v.iter().map(|i| format!(" {i}")).collect::<String>()
+                        };
+                        let iface = sorted(ms_mir::frames::framed_iface_borrows(&m, f));
+                        let closure = sorted(ms_mir::frames::framed_closure_objects(&m, f));
+                        let _ = writeln!(out, "{} iface:{iface} closure:{closure}", f.name);
+                    }
+                    continue;
+                }
                 out.push_str(&print_module(&m));
                 for f in &m.funcs {
                     let mut cold: Vec<u32> = f.cold.iter().map(|b| b.0).collect();
@@ -127,7 +146,11 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> Result<bool, String> {
         "cancel_edges" => ms_mir::cancel_edges::run(m),
         "depth" => ms_mir::depth::lower(m),
         "glue" => ms_mir::glue::run(m),
-        "debug_types" => true,
+        "debug_types" | "frames" | "copies" => true,
+        "count_ops" => {
+            ms_mir::count_ops::run(m);
+            true
+        }
         "finish" => {
             ms_mir::unwind::run(m);
             ms_mir::cancel_edges::run(m);
