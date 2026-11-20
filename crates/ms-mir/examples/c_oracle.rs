@@ -22,7 +22,11 @@ fn main() {
                     | (e.alloc as u8) << 4
                     | (e.io as u8) << 5;
                 let imm = i.imm as u8;
-                let _ = writeln!(out, "{} imm={imm} res={} fx={fx}", i.name, i.has_result as u8);
+                let _ = writeln!(
+                    out,
+                    "{} imm={imm} res={} fx={fx}",
+                    i.name, i.has_result as u8
+                );
             }
         }
         _ => {
