@@ -13,7 +13,6 @@
 #include "ws_natives.h"
 #include "ws_socket.h"
 
-static MsBytes bytes_of_str(const MsStr *text) { return ms_bytes_of((const uint8_t *)msrt_str_data(text), msrt_str_len(text)); }
 
 static char lower(char c) {
     if (c < 'A' || c > 'Z') {
@@ -79,7 +78,6 @@ static bool valid_key(MsBytes key) {
     return strchr("AQgw", key.ptr[21]) != NULL;
 }
 
-static bool equal_text(MsBytes a, MsBytes b) { return a.len == b.len && (a.len == 0 || memcmp(a.ptr, b.ptr, a.len) == 0); }
 
 static bool equal_text_nocase(MsBytes a, MsBytes b) {
     if (a.len != b.len) {
@@ -118,7 +116,7 @@ static bool origin_allowed(MsBytes origin, MsBytes host, bool tls, const MsVec *
     }
     const MsStr *items = allowed->ptr;
     for (size_t i = 0; i < allowed->len; i++) {
-        if (equal_text(origin, bytes_of_str(&items[i]))) {
+        if (ms_bytes_equal(origin, msrt_str_bytes(&items[i]))) {
             return true;
         }
     }
@@ -131,14 +129,14 @@ static bool origin_allowed(MsBytes origin, MsBytes host, bool tls, const MsVec *
 static MsBytes select_subprotocol(MsBytes offered, const MsVec *server) {
     const MsStr *items = server->ptr;
     for (size_t i = 0; i < server->len; i++) {
-        const MsBytes wanted = bytes_of_str(&items[i]);
+        const MsBytes wanted = msrt_str_bytes(&items[i]);
         size_t start = 0;
         for (size_t at = 0; at <= offered.len; at++) {
             if (at == offered.len || offered.ptr[at] == ',') {
                 size_t from = start, to = at;
                 while (from < to && (offered.ptr[from] == ' ' || offered.ptr[from] == '\t')) from++;
                 while (to > from && (offered.ptr[to - 1] == ' ' || offered.ptr[to - 1] == '\t')) to--;
-                if (equal_text(wanted, ms_bytes_of(offered.ptr + from, to - from))) {
+                if (ms_bytes_equal(wanted, ms_bytes_of(offered.ptr + from, to - from))) {
                     return wanted;
                 }
                 start = at + 1;
@@ -162,7 +160,7 @@ uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, 
     msrt_string_from_bytes(NULL, 0, &out->reason);
     const MsStr *protocols = subprotocols->ptr;
     for (size_t i = 0; i < subprotocols->len; i++) {
-        if (!ms_h1_is_token(bytes_of_str(&protocols[i]))) {
+        if (!ms_h1_is_token(msrt_str_bytes(&protocols[i]))) {
             return STATUS_INVALID_INPUT;
         }
     }
@@ -174,7 +172,7 @@ uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, 
     if (!field_has_token(fields, "Upgrade", "websocket")) {
         return refuse(400, "websocket: 'Upgrade' header lacks the 'websocket' token", out);
     }
-    if (!equal_text(bytes_of_str(method), ms_bytes_of((const uint8_t *)"GET", 3))) {
+    if (!ms_bytes_equal(msrt_str_bytes(method), ms_bytes_of((const uint8_t *)"GET", 3))) {
         return refuse(405, "websocket: upgrade method is not GET", out);
     }
     if (!field_has_token(fields, "Sec-WebSocket-Version", "13")) {
@@ -183,7 +181,7 @@ uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, 
     }
     MsBytes origin;
     (void)field_count(fields, "Origin", &origin);
-    if (!origin_allowed(origin, bytes_of_str(host), tls != 0, origins)) {
+    if (!origin_allowed(origin, msrt_str_bytes(host), tls != 0, origins)) {
         return refuse(403, "websocket: request origin not allowed", out);
     }
     MsBytes key;
@@ -219,7 +217,7 @@ uint8_t msstd_ws_serve(const void *conn, const MsStr *subprotocol, uint8_t has_m
     }
     const MsWsConfig config = {.max_message_bytes = has_max != 0 ? (uint64_t)max : UINT64_MAX,
                                .compress = false,
-                               .subprotocol = bytes_of_str(subprotocol)};
+                               .subprotocol = msrt_str_bytes(subprotocol)};
     MsObj *held = ms_netconn_alias(conn); /* the session owns its handle; the caller keeps theirs */
     MsWsSocket *session = held != NULL ? ms_ws_socket_new(held, MS_WS_ROLE_SERVER, &config) : NULL;
     if (session == NULL) {

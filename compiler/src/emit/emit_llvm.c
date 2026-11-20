@@ -41,6 +41,7 @@ typedef struct LCx {
     bool noinline;       /* `f` is glue at the top of a deep chain of glue calls */
     bool pure;           /* `f` reads and writes no memory, cannot fault and always returns */
     const char *tbaa;    /* `, !tbaa !N` for the list element access being written, or NULL */
+    uint32_t body_line;  /* the line of `f`'s first instruction that has one; 0 until looked up, UINT32_MAX for none */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -1239,7 +1240,9 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
 /* Writes the element address as a pointer and names it in `out`. */
 static void ll_elem_base(LCx *c, MirValue list, const char *index, uint32_t size, char *out, size_t cap) {
     const uint32_t n = c->next++;
-    ms_buf_printf(c->out, "  %%t%u = mul i64 %s, %u\n  %%a%u = add i64 %%v%u, %%t%u\n  %%p%u = inttoptr i64 %%a%u to ptr\n",
+    ms_buf_printf(c->out,
+                  "  %%t%u = mul i64 %s, %u\n  %%lb%u = inttoptr i64 %%v%u to ptr\n"
+                  "  %%p%u = getelementptr i8, ptr %%lb%u, i64 %%t%u\n",
                   n, index, size, n, list, n, n, n);
     (void)snprintf(out, cap, "%%p%u", n);
 }
@@ -1661,13 +1664,34 @@ static bool ll_entry(LCx *c) {
     return true;
 }
 
-/* Puts the source place `loc` (the function's own line when it has none) on the text written since `from`. */
+/* The line of the first instruction of `f` that has one of its own (not an inlined callee's), or the function's own
+ * line when none does. */
+static uint32_t ll_body_line(LCx *c) {
+    if (c->body_line == 0) {
+        c->body_line = UINT32_MAX;
+        for (uint32_t b = 0; c->body_line == UINT32_MAX && b < c->f->nblocks; b++) {
+            const MirBlockData *block = &c->f->blocks[b];
+            for (uint32_t k = 0; k < block->ninsts; k++) {
+                const MirLoc at = block->insts[k].loc;
+                if (!mir_loc_none(at) && at.line != 0 && at.scope == 0) {
+                    c->body_line = at.line;
+                    break;
+                }
+            }
+        }
+    }
+    return c->body_line == UINT32_MAX ? c->f->loc.line : c->body_line;
+}
+
+/* Puts the source place `loc` on the text written since `from`. An instruction with none (the stack check that
+ * `depth` puts first, which faults on an overflow) sits on the first line of the body, so a trace names the
+ * line the recursion is on and not the function's declaration. */
 static void ll_place(LCx *c, size_t from, MirLoc loc) {
     if (c->dbg == NULL) {
         return;
     }
     const bool known = !mir_loc_none(loc) && loc.line != 0;
-    const uint32_t line = known ? loc.line : c->f->loc.line;
+    const uint32_t line = known ? loc.line : ll_body_line(c);
     /* Scope 0 is the function itself; LLVM may inline it into another, so it gets a number of its own. */
     const uint32_t scope = known && loc.scope != 0 ? c->scope_base + loc.scope : c->body_scope;
     ll_debug_tag(c->out, from, ll_debug_location(c->dbg, line, scope));
@@ -2069,11 +2093,57 @@ static uint32_t ll_glue_depth(const MirModule *m, const bool *is_glue, uint32_t 
     return below;
 }
 
+/* The name tools show for the program's code: the file of its first function that has one, without the folders;
+ * "ms" when none has. */
+static MsStr ll_source_name(const MirModule *m) {
+    MsStr name = {"ms", 2};
+    uint32_t file = MIR_NONE;
+    for (uint32_t i = 0; i < m->nfuncs && file >= m->nfiles; i++) {
+        file = m->funcs[i].loc.file;
+    }
+    if (file >= m->nfiles) {
+        return name;
+    }
+    name = m->files[file];
+    for (uint32_t k = name.len; k > 0; k--) {
+        if (name.ptr[k - 1] == '/' || name.ptr[k - 1] == '\\') {
+            return (MsStr){name.ptr + k, name.len - k};
+        }
+    }
+    return name;
+}
+
+/* The LLVM target triple of the machine the emitter runs on, which is the one the program is built for. Without it
+ * a tool that reads the IR alone (`opt`, LLVM's own analyses) assumes a generic layout and sizes loops differently
+ * from the compiler. Windows executables link over the mingw-w64 CRT. */
+static const char *ll_host_triple(void) {
+#if defined(__x86_64__) || defined(_M_X64)
+#define LL_ARCH "x86_64"
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define LL_ARCH "aarch64"
+#else
+    return NULL;
+#endif
+#if defined(__linux__)
+    return LL_ARCH "-unknown-linux-gnu";
+#elif defined(__APPLE__)
+    return LL_ARCH "-apple-darwin";
+#elif defined(_WIN32)
+    return LL_ARCH "-w64-windows-gnu";
+#else
+    return NULL;
+#endif
+}
+
 static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all, bool places,
                     MsBuf *out, MsBuf *why) {
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
     bool ok = true;
+    const char *triple = ll_host_triple();
+    if (triple != NULL) {
+        ms_buf_printf(out, "target triple = \"%s\"\n", triple);
+    }
     LlDebug debug = {0};
     ll_debug_init(&debug);
     LlDebug *dbg = places ? &debug : NULL;
@@ -2095,11 +2165,11 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     for (uint32_t g = 0; glue != NULL && g < glue->n; g++) {
         is_glue[glue->v[g].func] = true;
     }
-    LCx module = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, 0, 0, false, false, NULL};
+    LCx module = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, 0, 0, false, false, NULL, 0};
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base,
                  total_scopes + i + 1, is_glue[i] && ll_glue_depth(m, is_glue, depth, i) >= 3,
-                 ll_pure_function(&module, purity, i), NULL};
+                 ll_pure_function(&module, purity, i), NULL, 0};
         scope_base += m->funcs[i].nscopes;
         if (ll_function(&c, i)) {
             continue;
@@ -2111,7 +2181,7 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     free(is_glue);
     free(depth);
     free(purity);
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0, false, false, NULL};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0, false, false, NULL, 0};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);
@@ -2124,7 +2194,7 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
                   "!%d = !{!\"ms.tbaa\"}\n!%d = !{!\"ms.scalar-elem\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n",
                   LL_TBAA_ROOT, LL_TBAA_SCALAR, LL_TBAA_ROOT, LL_TBAA_SCALAR_TAG, LL_TBAA_SCALAR, LL_TBAA_SCALAR);
     if (places) {
-        ll_debug_finish(&debug, out);
+        ll_debug_finish(&debug, ll_source_name(m), out);
     }
     ms_buf_free(&debug.nodes);
     return ok;

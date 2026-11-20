@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ms_rt/safe.h"
 #include "ms_rt/string.h"
 
 enum {
@@ -72,6 +73,8 @@ void msrt_map_drop(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd);
 
 static inline size_t msrt_str_len(const MsStr *s) { return ms_str_len(s); }
 static inline const char *msrt_str_data(const MsStr *s) { return (const char *)ms_str_data(s); }
+/* The bytes of a string, borrowed for as long as the string lives. */
+static inline MsBytes msrt_str_bytes(const MsStr *s) { return ms_bytes_of(ms_str_data(s), ms_str_len(s)); }
 
 /* A Bytes value written as the runtime does: an allocation of exactly len bytes, or null when empty. */
 static inline void msrt_write_bytes(MsVec *out, const void *data, size_t len) {

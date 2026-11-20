@@ -96,7 +96,7 @@ static void compact_compound(Compact *c, const MsStmt *s, const MsExpr *value) {
     for (size_t at = 0; at < head.len;) {
         uint32_t scalar;
         const size_t width = fmt_scalar_at(head, at, &scalar);
-        if (!fmt_is_space(scalar)) {
+        if (!ms_text_is_unicode_space(scalar)) {
             ms_buf_put(&squeezed, head.ptr + at, width);
         }
         at += width;

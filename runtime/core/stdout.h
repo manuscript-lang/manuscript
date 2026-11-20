@@ -10,5 +10,7 @@
 
 /* Appends `data` then `end` to the running task's capture, or to standard output, under one lock. */
 void ms_stdout_write(const uint8_t *data, size_t length, const uint8_t *end, size_t end_length);
+/* Writes what is buffered and frees the buffer (the end of the run, before the leak report); a later write buffers anew. */
+void ms_sched_release_stdout(void);
 
 #endif

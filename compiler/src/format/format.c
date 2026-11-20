@@ -670,7 +670,7 @@ static bool fmt_directive_key(Str body) {
     while (start < body.len) {
         uint32_t scalar;
         const size_t width = fmt_scalar_at(body, start, &scalar);
-        if (!fmt_is_space(scalar)) {
+        if (!ms_text_is_unicode_space(scalar)) {
             break;
         }
         start += width;
@@ -679,7 +679,7 @@ static bool fmt_directive_key(Str body) {
     while (end < body.len) {
         uint32_t scalar;
         const size_t width = fmt_scalar_at(body, end, &scalar);
-        if (fmt_is_space(scalar)) {
+        if (ms_text_is_unicode_space(scalar)) {
             break;
         }
         end += width;
@@ -722,7 +722,7 @@ static bool fmt_prose_comment(Str line, Str *body_out) {
             numbered = numbered && body.ptr[i] >= '0' && body.ptr[i] <= '9';
         }
     }
-    if (fmt_is_space(first) || listed || fmt_directive_key(body) || numbered) {
+    if (ms_text_is_unicode_space(first) || listed || fmt_directive_key(body) || numbered) {
         return false;
     }
     *body_out = body;
@@ -739,7 +739,7 @@ static void fmt_comment_words(Fmt *f, Str text, StrList *words) {
         while (at < text.len) {
             uint32_t scalar;
             const size_t width = fmt_scalar_at(text, at, &scalar);
-            if (!fmt_is_space(scalar)) {
+            if (!ms_text_is_unicode_space(scalar)) {
                 break;
             }
             at += width;
@@ -748,7 +748,7 @@ static void fmt_comment_words(Fmt *f, Str text, StrList *words) {
         while (end < text.len) {
             uint32_t scalar;
             const size_t width = fmt_scalar_at(text, end, &scalar);
-            if (fmt_is_space(scalar)) {
+            if (ms_text_is_unicode_space(scalar)) {
                 break;
             }
             end += width;
