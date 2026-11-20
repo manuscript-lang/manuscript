@@ -142,3 +142,18 @@ void ms_token_post_remote(uint64_t token, uint64_t value) {
         msrt_free(mail); /* the isolate is gone: nobody waits on the token */
     }
 }
+
+bool ms_isolate_wake_one(uint32_t except) {
+    for (uint32_t i = 0; i < MS_MAX_ISOLATES; i++) {
+        Slot *const slot = &slots[i];
+        if (i == except || atomic_load(&slot->state) != SLOT_LIVE || slot->wake == NULL) {
+            continue;
+        }
+        uint32_t expected = 1;
+        if (atomic_compare_exchange_strong(&slot->sleeping, &expected, 0)) {
+            slot->wake(slot->wake_argument);
+            return true;
+        }
+    }
+    return false;
+}
