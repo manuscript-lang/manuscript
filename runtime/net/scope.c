@@ -147,6 +147,23 @@ uint8_t msstd_scope_track_client(const void *handle, const void *client) {
     return track(handle, msstd_client_share(client), KIND_CLIENT);
 }
 
+uint8_t msstd_scope_untrack_client(const void *handle, const void *client) {
+    Scope *scope = scope_of(handle);
+    MsObj *found = NULL;
+    lock(scope);
+    for (size_t i = 0; i < scope->count && found == NULL; i++) {
+        if (scope->members[i].kind == KIND_CLIENT && ms_client_same(scope->members[i].handle, client)) {
+            found = scope->members[i].handle;
+            scope->members[i] = scope->members[--scope->count];
+        }
+    }
+    unlock(scope);
+    if (found != NULL) {
+        drop_handle(found);
+    }
+    return found != NULL;
+}
+
 uint8_t msstd_scope_track_listener(const void *handle, const void *listener) {
     return track(handle, ms_listener_share(listener), KIND_LISTENER);
 }

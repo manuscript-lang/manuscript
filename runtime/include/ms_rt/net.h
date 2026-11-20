@@ -93,6 +93,8 @@ typedef struct MsNetHttpOptions {
     MsStr roots_pem;          /* extra trusted roots; empty for the system's */
     MsStr certificate_pem;    /* a client certificate and its key, or empty */
     MsStr private_key_pem;
+    MsStr resolver;           /* "ip:port" of the DNS server that resolves this client's names, or empty for the system's; a
+                                 request's redirects then stay on its host */
     MsStr unix_socket;        /* a Unix domain socket path used for every connection instead of TCP, or empty; the URL still
                                  gives the Host header and scheme. Refused for a narrowed client. */
     int64_t max_redirects;    /* 0 follows none; negative takes 20 */
@@ -103,6 +105,8 @@ typedef struct MsNetHttpOptions {
 uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err);
 /* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=network */
 void *msstd_client_share(const void *handle);
+/* Whether two client handles are on the same client (runtime/net/scope.c). */
+bool ms_client_same(const void *a, const void *b);
 /* Ends the client's transfers (a body read or a request in progress returns STATUS_CLOSED) and refuses later requests
  * with STATUS_CLOSED. Safe to repeat. */
 /* ms-sig: msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=network */
@@ -187,6 +191,9 @@ uint8_t msstd_scope_track_conn(const void *handle, const void *connection);
 uint8_t msstd_scope_track_listener(const void *handle, const void *listener);
 /* ms-sig: msstd_scope_track_client(handle s: *const ObjCell<ScopeH>, handle client: *const ObjCell<ClientH>) -> u8 @domain=network */
 uint8_t msstd_scope_track_client(const void *handle, const void *client);
+/* Forgets a client the scope tracked, for one that ended before the network did; 1 when it was tracked. */
+/* ms-sig: msstd_scope_untrack_client(handle s: *const ObjCell<ScopeH>, handle client: *const ObjCell<ClientH>) -> u8 @domain=network */
+uint8_t msstd_scope_untrack_client(const void *handle, const void *client);
 /* ms-sig: msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network */
 uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
 
