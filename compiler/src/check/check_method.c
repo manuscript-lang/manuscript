@@ -7,24 +7,47 @@
  * `call_receiver`. */
 #include "check/check_body.h"
 
+#include "ms/infer.h"
+
 typedef struct Target {
     MsTy sig;             /* the signature, receiver not included */
     uint32_t method;      /* the method row, or MS_NONE for an interface operation */
     bool mutating, consuming;
 } Target;
 
+/* The signature of row `i` for `receiver`: the row's own when it has no type variables, else with
+ * the variables its receiver type binds (`WriteStream[T]` against `WriteStream[String]`) applied.
+ * MS_TY_NONE when the row does not fit or leaves a variable open. */
+static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver) {
+    const MsMethods *m = &b->methods->methods;
+    if (m->nvars[i] == 0) {
+        return m->receiver[i] == receiver ? m->ty[i] : MS_TY_NONE;
+    }
+    MsInfer in;
+    ms_infer_init(&in, b->c, &b->c->arena, m->vars + m->vars_at[i], m->nvars[i]);
+    uint32_t first = 0;
+    if (ms_infer_match(&in, m->receiver[i], receiver) != MS_MATCH_OK || ms_infer_defaults(&in, &first) != 0) {
+        return MS_TY_NONE;
+    }
+    return ms_infer_apply(&in, m->ty[i]);
+}
+
 /* The row of the impls that gives `receiver` a method `name`; false when none or ambiguous. */
 static bool method_row(const MsBody *b, MsTy receiver, MsSym name, Target *out) {
     const MsMethods *m = &b->methods->methods;
     bool found = false;
     for (uint32_t i = 0; i < m->count; i++) {
-        if (m->receiver[i] != receiver || m->decl[i] == NULL || m->decl[i]->name != name) {
+        if (m->decl[i] == NULL || m->decl[i]->name != name) {
             continue;
         }
-        if (found || m->nvars[i] != 0) {
+        const MsTy sig = row_signature(b, i, receiver);
+        if (sig == MS_TY_NONE) {
+            continue;
+        }
+        if (found) {
             return false;
         }
-        *out = (Target){.sig = m->ty[i],
+        *out = (Target){.sig = sig,
                         .method = i,
                         .mutating = (m->access[i] & MS_METHOD_MUTATING) != 0,
                         .consuming = (m->access[i] & MS_METHOD_CONSUMING) != 0};
@@ -90,7 +113,7 @@ static bool body_is_primitive(const MsBody *b, MsTy ty) {
     return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
 
-static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig) {
+static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len) {
         return false;
@@ -106,7 +129,8 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig) {
         }
     }
     const MsTy result = tys->result[sig];
-    return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty;
+    return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
+           (wide && (result == b->void_ty || ms_body_is_result(b, result)));
 }
 
 /* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
@@ -117,10 +141,34 @@ static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     Target target;
     // A String result may be a view of the receiver (`view`), which the ownership walk does not follow yet.
     if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
-        b->c->tys.result[target.sig] == b->string_ty || !arguments_fit(b, e, target.sig)) {
+        b->c->tys.result[target.sig] == b->string_ty || !arguments_fit(b, e, target.sig, false)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_interface[e->id] = receiver_ty;
+    b->facts->call_receiver[e->id] = receiver_ty;
+    return b->c->tys.result[target.sig];
+}
+
+/* A method of `receiver_ty` (a type with impls) or an operation of an interface, called on the
+ * receiver expression; `binding` is the local it names, or MS_NONE for a temporary, which a
+ * mutating method may change. */
+static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uint32_t binding) {
+    const MsExpr *callee = e->u.call.callee;
+    Target target;
+    const bool resolved = ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT
+                              ? operation_of(b, receiver_ty, callee->u.member.name, &target)
+                              : method_row(b, receiver_ty, callee->u.member.name, &target);
+    const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
+    if (!resolved || target.consuming || (target.mutating && immutable) ||
+        (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
+        !arguments_fit(b, e, target.sig, binding == MS_NONE)) {
+        return ms_body_unsupported(b);
+    }
+    if (target.method == MS_NONE) {
+        b->facts->call_interface[e->id] = receiver_ty;
+    } else {
+        b->facts->call_method[e->id] = target.method;
+    }
     b->facts->call_receiver[e->id] = receiver_ty;
     return b->c->tys.result[target.sig];
 }
@@ -139,22 +187,11 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
     Target row;
     if (binding == MS_NONE || (body_is_primitive(b, local_ty) && !method_row(b, local_ty, callee->u.member.name, &row))) {
         const MsTy receiver_ty = ms_body_expr(b, receiver, MS_TY_NONE);
-        return body_is_primitive(b, receiver_ty) ? body_intrinsic_call(b, e, receiver_ty) : ms_body_unsupported(b);
+        if (body_is_primitive(b, receiver_ty)) {
+            return body_intrinsic_call(b, e, receiver_ty);
+        }
+        return receiver_ty != MS_TY_NONE && ms_body_is_handle(b, receiver_ty) ? body_resolved_call(b, e, receiver_ty, MS_NONE)
+                                                                              : ms_body_unsupported(b);
     }
-    const MsTy receiver_ty = local_ty;
-    Target target;
-    const bool resolved = ms_ty_kind(&b->c->tys, receiver_ty) == MS_K_CONTRACT
-                              ? operation_of(b, receiver_ty, callee->u.member.name, &target)
-                              : method_row(b, receiver_ty, callee->u.member.name, &target);
-    if (!resolved || target.consuming || (target.mutating && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) ||
-        ms_body_expr(b, receiver, receiver_ty) == MS_TY_NONE || !arguments_fit(b, e, target.sig)) {
-        return ms_body_unsupported(b);
-    }
-    if (target.method == MS_NONE) {
-        b->facts->call_interface[e->id] = receiver_ty;
-    } else {
-        b->facts->call_method[e->id] = target.method;
-    }
-    b->facts->call_receiver[e->id] = receiver_ty;
-    return b->c->tys.result[target.sig];
+    return body_resolved_call(b, e, local_ty, binding);
 }
