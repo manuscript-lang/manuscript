@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "ms/check.h"
+#include "ms/methods.h"
 #include "ms/ownership.h"
 
 /* Who may change a binding (`Perm` in walk.rs). */
@@ -1232,19 +1233,27 @@ static void own_lambda(OwnWalk *w, const MsExpr *e) {
     w->owned_return = owned_at;
 }
 
-static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const uint32_t *by_node) {
+/* The receiver of a method is parameter 0: borrowed, or changed in place when the method is `var`. */
+static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const MsMethod *method, const uint32_t *by_node) {
+    const uint32_t shift = method != NULL ? 1 : 0;
+    if (method != NULL) {
+        const uint32_t self = by_node[method->id];
+        own_declare(w, self, method->mutating ? PERM_MUTABLE : PERM_IMMUTABLE, true);
+        w->param_index[self] = 0;
+        w->param_mode[self] = method->mutating ? 1 : 0;
+    }
     for (uint32_t i = 0; i < function->params.len; i++) {
         const uint32_t binding = by_node[function->params.ptr[i]->id];
         const MsParam *param = function->params.ptr[i];
         own_declare(w, binding, param->is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, true);
-        w->param_index[binding] = i;
+        w->param_index[binding] = i + shift;
         w->param_mode[binding] = 0;
         if (param->moving) w->param_mode[binding] = 2;
         if (param->is_mutable) w->param_mode[binding] = 1;
     }
 }
 
-static bool own_function(OwnWalk *w, const MsFunc *function, const uint32_t *by_node) {
+static bool own_function(OwnWalk *w, const MsFunc *function, const MsMethod *method, const uint32_t *by_node) {
     w->function = function;
     w->floor = 0;
     w->active.len = 0;
@@ -1257,7 +1266,7 @@ static bool own_function(OwnWalk *w, const MsFunc *function, const uint32_t *by_
     w->note_param = MS_NONE;
     w->supported = true;
     w->by_node = by_node;
-    own_declare_parameters(w, function, by_node);
+    own_declare_parameters(w, function, method, by_node);
     for (uint32_t i = 0; i < function->body.len && w->supported; i++) {
         own_statement(w, function->body.ptr[i]);
         own_release_pending(w);
@@ -1299,7 +1308,7 @@ static void own_allocate(OwnWalk *w, MsArena *arena) {
  * changed. */
 static bool own_summarize(OwnWalk *w, const MsDecl *d, const uint32_t *by_node) {
     OwnSummary *summary = &w->summaries[d->id];
-    const bool handled = own_function(w, &d->u.fn, by_node) && d->u.fn.params.len < 32;
+    const bool handled = own_function(w, &d->u.fn, NULL, by_node) && d->u.fn.params.len < 32;
     const bool returns_borrow = handled && w->has_borrowed_return && !w->has_owned_return;
     const uint32_t mask = returns_borrow ? w->borrowed_params : 0;
     const uint32_t consumed = handled ? w->consumed : 0;
@@ -1349,6 +1358,27 @@ static void own_summary_rounds(OwnWalk *w, const MsModuleRow *row, const uint32_
     w->quiet = false;
 }
 
+/* The impl methods of the module the checker claimed, walked once: nothing calls one through a summary,
+ * since the checker admits only scalar results for a method call. */
+static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
+    const MsFacts *facts = w->facts;
+    if (facts->methods == NULL) {
+        return;
+    }
+    const MsMethod **rows = ms_method_rows(w->check, w->module, facts->methods);
+    w->quiet = false;
+    for (uint32_t i = 0; i < facts->methods->count; i++) {
+        const MsMethod *method = rows[i];
+        if (method == NULL || !facts->body_checked[method->id]) {
+            continue;
+        }
+        const bool walked = ms_liveness_function(live, facts, &method->func) &&
+                            own_function(w, &method->func, method, by_node);
+        facts->body_checked[method->id] = walked;
+        facts->ret_borrowed[method->id] = walked && w->has_borrowed_return && !w->has_owned_return;
+    }
+}
+
 void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
@@ -1373,11 +1403,12 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
         if (d->kind == MS_D_FN && facts->body_checked[d->id]) {
-            facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, by_node);
+            facts->body_checked[d->id] = w.summaries[d->id].usable && own_function(&w, &d->u.fn, NULL, by_node);
             facts->ret_borrowed[d->id] = facts->body_checked[d->id] && w.summaries[d->id].returns_borrow;
             facts->param_consumed[d->id] = facts->body_checked[d->id] ? w.summaries[d->id].consumed : 0;
         }
     }
+    own_methods(&w, &live, by_node);
     free(w.active.items);
     free(w.declared);
     free(w.pending);

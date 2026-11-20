@@ -72,7 +72,11 @@ MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     if (ty == lb->bool_ty) {
         return MIR_BOOL;
     }
-    return ty == lb->string_ty ? MIR_STR : lb_mir_alt(lb, ty);
+    if (ty == lb->string_ty) {
+        return MIR_STR;
+    }
+    const MirTy list = lst_type(lb, ty);
+    return list != MIR_NONE ? list : lb_mir_alt(lb, ty);
 }
 
 MirLoc lb_loc(const Lb *lb, MsPos pos) {
@@ -130,6 +134,9 @@ static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
 
 /* A literal with no interpolation. */
 static LbVal lb_text(Lb *lb, const MsExpr *e) {
+    if (e->u.text.len > 1) {
+        return lt_text(lb, e); // an interpolation joins its pieces
+    }
     if (e->u.text.len != 1 || e->u.text.ptr[0].expr != NULL) {
         return lb_unsupported(lb);
     }
@@ -318,6 +325,9 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     if (op == MS_B_AND || op == MS_B_OR) {
         return lb_short_circuit(lb, e);
     }
+    if (op == MS_B_ADD && lb->facts->expr_ty[e->id] == lb->string_ty) {
+        return lt_text(lb, e); // a chain of string sums is one join
+    }
     const LbVal left = lb_expr(lb, e->u.bin.left);
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
     if (!lb->ok) {
@@ -504,11 +514,11 @@ static LbVal lb_expr_plain(Lb *lb, const MsExpr *e) {
     case MS_E_MATCH: return lb_match(lb, e);
     case MS_E_CALL: return lb_call(lb, e);
     case MS_E_MEMBER: return lr_field(lb, e);
+    case MS_E_INDEX: return lst_index(lb, e);
+    case MS_E_LIST: return lst_literal(lb, e);
     case MS_E_VOID:
     case MS_E_APPLY:
-    case MS_E_INDEX:
     case MS_E_PROBE:
-    case MS_E_LIST:
     case MS_E_MAP: break;
     }
     return lb_unsupported(lb);

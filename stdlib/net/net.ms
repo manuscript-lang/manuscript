@@ -8,6 +8,7 @@ import (
 	promise from "@std/concurrency/promise.ms",
 	Closeable, Writable from "@std/core.ms",
 	Pipe, ReadStream, Sink, Source, WriteStream, pipe from "@std/io/io.ms",
+	dns_lookup, dns_resolve from "@std/net/dns.ms",
 	ClientResponse,
 	HttpClient,
 	HttpClientOptions,
@@ -16,11 +17,10 @@ import (
 	HttpMethod,
 	HttpServer,
 	HttpServerOptions,
-	NativeServing,
-	NativeWorker,
-	NativeWorkerSpec,
-	headers from "@std/net/http.ms",
-	dns_lookup, dns_resolve from "@std/net/dns.ms",
+	NativeConnection,
+	NativeListener,
+	headers,
+	open_client from "@std/net/http.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy,
 	address_allowed,
@@ -29,23 +29,12 @@ import (
 	narrow,
 	unix_allowed,
 	unrestricted from "@std/net/policy.ms",
+	start_server from "@std/net/serve.ms",
 	TlsInfo, TlsOptions from "@std/net/tls.ms",
-	WebSocket,
-	WebSocketOptions,
-	WebSocketWire,
-	web_socket_from from "@std/net/websocket.ms",
+	parse from "@std/net/url.ms",
+	WebSocket, WebSocketOptions, web_socket_from from "@std/net/websocket.ms",
 	Duration, Instant, Timestamp, monotonic, nanoseconds, sleep from "@std/time.ms",
 
-	msrt_runtime_limit,
-	msrt_runtime_set_threads,
-	msstd_http_serving_accept,
-	msstd_http_serving_address,
-	msstd_http_serving_new,
-	msstd_http_serving_release,
-	msstd_http_serving_spec,
-	msstd_http_serving_worker,
-	msstd_http_worker_adopt,
-	msstd_http_worker_close from "@std/internal/http.ms",
 	msstd_conn_accept_tls,
 	msstd_conn_alias,
 	msstd_conn_close,
@@ -73,25 +62,18 @@ import (
 	msstd_net_listen,
 	msstd_net_listen_unix,
 	msstd_net_lookup,
-	msstd_net_network,
-	msstd_net_network_close,
-	msstd_net_network_http_client,
-	msstd_net_network_request_bytes,
-	msstd_net_network_restrict,
-	msstd_net_network_web_socket,
-	msstd_net_network_with_resolver,
 	msstd_scope_child,
 	msstd_scope_close,
 	msstd_scope_new,
 	msstd_scope_open,
 	msstd_scope_share,
+	msstd_scope_track_client,
 	msstd_scope_track_conn,
 	msstd_scope_track_dgram,
-	msstd_scope_track_listener from "@std/internal/net.ms",
+	msstd_scope_track_listener,
+	msstd_scope_untrack_client,
+	msstd_ws_connect from "@std/internal/net.ms",
 )
-
-// The runtime handle behind a `Connection`.
-export extern type NativeConnection
 
 type ConnectionSource:
 	native: NativeConnection
@@ -271,9 +253,6 @@ fn datagram_socket(native: NativeDatagramSocket, policy: Policy) DatagramSocket:
 		address: address,
 	)
 
-// The runtime handle behind a `Listener`.
-export extern type NativeListener
-
 // A listening socket that accepts incoming connections. Several tasks may call `accept`
 // on one listener (an accept pool); each incoming connection goes to exactly one of
 // them.
@@ -429,8 +408,20 @@ fn permitted_address(policy: Policy, address: String, timeout: Duration?) String
 
 	return error(denied())
 
-// The runtime handle behind a `Network`.
-export extern type NativeNetwork
+// Sends one request on `client` and reads the whole response.
+fn buffered(
+	client: HttpClient,
+	method: HttpMethod,
+	url: String,
+	headers: HttpHeaders,
+	body: Bytes,
+	max_bytes: Int?,
+	timeout: Duration?,
+) ClientResponse!:
+	raw := client.request_raw(method, url, headers, body, max_bytes, timeout)?
+	head := raw.metadata()
+	data := raw.read_all()?
+	return ok(ClientResponse(head: head, body: data))
 
 // What a `Network` closes: the sockets opened through it and the networks derived from
 // it.
@@ -440,12 +431,10 @@ export extern type NativeScope
 // and HTTP clients opened through it. The host network that the module-level functions
 // use is unrestricted; `restrict` derives a narrower one.
 export opaque type Network:
-	// The runtime handle; it is released when the last reference to this network ends.
-	native: NativeNetwork
-	// The restrictions this network enforces in Manuscript; the runtime handle still
-	// enforces them for the operations that have not moved yet.
+	// The host names and address ranges this network allows.
 	policy: Policy
-	// The DNS server (`ip:port`) that names resolve through; empty for the system resolver.
+	// The DNS server (`ip:port`) that names resolve through; empty for the system
+	// resolver.
 	resolver: String
 	// The sockets and derived networks that `close` closes.
 	scope: NativeScope
@@ -478,7 +467,6 @@ fn Network.bind_datagram(address: String) DatagramSocket!:
 // and faults.
 fn Network.close() Void:
 	msstd_scope_close(self.scope)
-	msstd_net_network_close(self.native)
 
 // Resolves `address` (`host:port`) and opens a TCP connection to the first
 // reachable permitted address, completing a TLS handshake with `tls` when given.
@@ -494,6 +482,12 @@ fn Network.connect(
 	tls: TlsOptions? = none,
 	timeout: Duration? = none,
 ) Connection!:
+	native := self.dial(address, tls, timeout)?
+	return ok(connection(native))
+
+// The tracked native connection behind `connect`; `web_socket` runs its handshake on
+// one.
+fn Network.dial(address: String, tls: TlsOptions?, timeout: Duration?) NativeConnection!:
 	if not msstd_scope_open(self.scope): return error(closed_error())
 
 	found := split_host_port(address)
@@ -531,7 +525,7 @@ fn Network.connect(
 		native := dialed.get()
 		if not msstd_scope_track_conn(self.scope, native): return error(closed_error())
 
-		return ok(connection(native))
+		return ok(native)
 
 	return error(refused)
 
@@ -559,7 +553,14 @@ fn Network.connect_unix(path: String, timeout: Duration? = none) Connection!:
 // network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 fn Network.http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
-	return msstd_net_network_http_client(self.native, options)
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
+	client := open_client(self.policy, options, self.resolver.clone())?
+	if not msstd_scope_track_client(self.scope, client.native): return error(
+		closed_error()
+	)
+
+	return ok(client)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
 // A restricted network needs `allow_listen` and an IP-literal address inside its
@@ -656,7 +657,13 @@ More than `options.max_records` addresses returns EOVERFLOW, `options.timeout` b
 System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
 */
 fn Network.lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:
-	return dns_lookup(self.policy, self.resolver.clone(), name, options.max_records, options.timeout)
+	return dns_lookup(
+		self.policy,
+		self.resolver.clone(),
+		name,
+		options.max_records,
+		options.timeout,
+	)
 
 // Performs one buffered HTTP request and returns the status, headers, and complete
 // body. Only `http` and `https` URLs without user info are accepted. Redirects are
@@ -668,15 +675,29 @@ fn Network.request(
 	body: Writable = "",
 	options: RequestOptions = RequestOptions(),
 ) ClientResponse!:
-	return msstd_net_network_request_bytes(
-		self.native,
-		method.to_string(),
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
+	client := open_client(
+		self.policy,
+		HttpClientOptions(max_redirects: 0),
+		self.resolver.clone(),
+	)?
+	if not msstd_scope_track_client(self.scope, client.native): return error(
+		closed_error()
+	)
+
+	outcome := buffered(
+		client,
+		method,
 		url,
-		options.headers,
+		options.headers.clone(),
 		body.as_bytes(),
 		options.max_bytes,
 		options.timeout,
 	)
+	_forgotten := msstd_scope_untrack_client(self.scope, client.native)
+	_closed := client.close()
+	return outcome
 
 // Looks up DNS records of one `kind` for `name`; each record carries that kind.
 // `options.max_records` and `options.timeout` apply as for `lookup`.
@@ -706,10 +727,10 @@ fn Network.restrict(
 	allow_listen: Bool = false,
 ) Network!:
 	policy := narrow(self.policy, hosts, cidrs, allow_listen)?
-	child := msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)?
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
 	return ok(
 		Network(
-			native: child,
 			policy: policy,
 			resolver: self.resolver.clone(),
 			scope: msstd_scope_child(self.scope),
@@ -724,34 +745,80 @@ fn Network.web_socket(
 	url: String,
 	options: WebSocketOptions = WebSocketOptions(),
 ) WebSocket!:
-	subprotocols := options.subprotocols.clone()
-	wire := WebSocketWire(
-		max_message_bytes: options.max_message_bytes,
-		timeout: options.timeout,
-		tls: options.tls.clone(),
-		compression: options.compression,
+	if given := options.max_message_bytes:
+		if given <= 0: return error(invalid_address())
+	if limit := options.timeout:
+		if limit.compare(nanoseconds(0)) < 0: return error(invalid_address())
+
+	// The URL parser knows http and https; the handshake itself is HTTP/1.1.
+	scheme := url.split_once(":")
+	if not scheme.is_some(): return error(invalid_address())
+
+	lead := scheme.get().before.lower()
+	secure := lead == "wss"
+	if lead != "ws" and not secure: return error(invalid_address())
+
+	parsed := parse(f"{if secure: "https" else: "http"}:{scheme.get().after}")?
+	if not host_allowed(self.policy, parsed.host): return error(denied())
+
+	var tls_options = options.tls.clone()
+	tls_options.alpn = ["http/1.1"]
+	if tls_options.server_name.is_empty(): tls_options.server_name = parsed.host.clone()
+
+	port := parsed.port.get_or(if secure: 443 else: 80)
+	authority := if parsed.host.contains(":"): f"[{parsed.host}]" else: parsed.host.clone()
+	var target = if parsed.path.is_empty(): "/" else: parsed.path.clone()
+	if query := parsed.query: target += f"?{query}"
+
+	var tls_arg: TlsOptions? = none
+	if secure: tls_arg = tls_options.clone()
+
+	started := monotonic()
+	native := self.dial(f"{authority}:{port}", tls_arg, options.timeout.clone())?
+	var shown = authority.clone()
+	if parsed.port.is_some(): shown += f":{port}"
+
+	left := remaining(started, options.timeout.clone())
+
+	if left.is_error():
+		msstd_conn_close(native)
+		return error(left.err())
+
+	socket := msstd_ws_connect(
+		native,
+		shown,
+		target,
+		options.headers,
+		options.subprotocols,
+		options.compression,
+		options.max_message_bytes,
+		left.get(),
 	)
-	return ok(
-		web_socket_from(
-			msstd_net_network_web_socket(
-				self.native,
-				url,
-				options.headers,
-				subprotocols,
-				wire,
-			)?
-		)
-	)
+
+	if socket.is_error():
+		msstd_conn_close(native)
+		if not msstd_scope_open(self.scope): return error(closed_error())
+
+		return error(socket.err())
+
+	return ok(web_socket_from(socket.get()))
 
 // Returns a derived network that resolves names through the DNS server at
 // `address`, an IP literal with port, instead of the system resolver. The address
 // must be allowed by this network's restrictions, otherwise EACCES is returned. An
 // address that is not an IP literal with a port returns EINVAL.
 fn Network.with_resolver(address: String) Network!:
-	child := msstd_net_network_with_resolver(self.native, address)?
+	found := split_host_port(address)
+	if not found.is_some(): return error(invalid_address())
+
+	target := found.get()
+	if parse_ip(target.host).is_error(): return error(invalid_address())
+	if not host_allowed(self.policy, target.host): return error(denied())
+	if not address_allowed(self.policy, target.host): return error(denied())
+	if not msstd_scope_open(self.scope): return error(closed_error())
+
 	return ok(
 		Network(
-			native: child,
 			policy: self.policy.clone(),
 			resolver: address,
 			scope: msstd_scope_child(self.scope),
@@ -791,12 +858,7 @@ fn remaining(started: Instant, timeout: Duration?) Duration?!:
 
 // The network of the current host.
 fn host_network() Network:
-	return Network(
-		native: msstd_net_network(),
-		policy: unrestricted(),
-		resolver: "",
-		scope: msstd_scope_new(),
-	)
+	return Network(policy: unrestricted(), resolver: "", scope: msstd_scope_new())
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted
 // network without listening permission, or an address outside its CIDRs, returns
@@ -943,119 +1005,7 @@ export fn serve(
 	handler: fn(var HttpExchange) Void!,
 	options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
-	if cores := options.cores:
-		if cores < 1: return error(Error("network: invalid input", kind: "EINVAL"))
-
-	serving := msstd_http_serving_new(address, options, handler)?
-	bound := msstd_http_serving_address(serving)
-	listening := ServingHandle(serving: serving)
-	if cores := options.cores:
-		msrt_runtime_set_threads(cores)
-
-	// The accept loop owns the listener; each worker owns a share of the options and
-	// handler and a pipe of accepted connections.
-	workers := workers_for(options)
-	accepting := promise(fn: accept_loop(listening, workers))
-	return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
-
-// The number of worker promises: `options.cores`, else one per core.
-fn workers_for(options: HttpServerOptions) Int:
-	return options.cores.get_or(msrt_runtime_limit())
-
-// The serving, which the accept loop owns and releases (and so closes the listener)
-// when it ends. Workers get a share of what they use, so the listener never leaves its
-// thread.
-type ServingHandle:
-	serving: NativeServing
-
-fn move ServingHandle.close() Void!:
-	msstd_http_serving_release(self.serving)
-
-// One worker's HTTP engine, which owns its connections as poller registrations rather
-// than as tasks. Closing it drains them.
-type WorkerHandle:
-	worker: NativeWorker
-
-fn move WorkerHandle.close() Void!:
-	msstd_http_worker_close(self.worker)
-
-// The accept loop's pipes and workers. Its close, which runs when the loop returns, is
-// cancelled or faults, ends the pipes so the workers drain side by side, then joins
-// them.
-type Accepting:
-	deals: List[WriteStream[Int]]
-	workers: List[Promise[Void]]
-
-fn move Accepting.close() Void!:
-	while not self.deals.is_empty():
-		if deal := self.deals.pop():
-			var closing = deal
-			void closing.close()
-
-	for worker in self.workers:
-		worker.cancel()
-	self.workers = []
-
-// Accepts until the listener fails, dealing each connection to the next worker. An
-// accept that fails for lack of descriptors or memory pauses briefly instead of ending
-// the server.
-fn accept_loop(listening: ServingHandle, count: Int) Void!:
-	var accepting = Accepting(deals: [], workers: [])
-	var i = 0
-
-	while i < count:
-		queue := pipe[Int](1024)
-		accepting.deals.append(queue.writer())
-
-		spec := msstd_http_serving_spec(listening.serving)
-		accepting.workers.append(start_worker(spec, queue))
-		i += 1
-
-	var next = 0
-
-	// The back-off, in nanoseconds, between accept attempts that failed for a reason no
-	// retry fixes (EMFILE, ENFILE, ENOBUFS, ENOMEM): 5 ms, doubling up to 1 s.
-	var pause = 5000000
-
-	while true:
-		accepted := msstd_http_serving_accept(listening.serving)
-
-		if accepted.is_error():
-			if accepted.err().kind == "EBADF": return ok()
-
-			// The runtime already retried the errors of a single connection. What is
-			// left (out of descriptors or memory) waits for something to close, longer
-			// each time.
-			void sleep(nanoseconds(pause)).wait()
-			pause = if pause < 500000000: pause * 2 else: 1000000000
-			continue
-
-		pause = 5000000
-		void accepting.deals[next].write(accepted.get())
-		next = (next + 1) % count
-
-// Starts one worker on the least loaded thread. A returned promise owns what it
-// captures, so the share of the serving and the pipe belong to the worker for as long
-// as it runs.
-fn start_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Promise[Void]:
-	return promise(
-		fn: serve_worker(spec, input),
-		options: PromiseOptions(placement: Placement.Spread)
-	)
-
-// Runs one worker on the thread the runtime placed this promise on: it adopts each
-// connection it is dealt, and the poller drives them from there.
-fn serve_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Void!:
-	engine := WorkerHandle(worker: msstd_http_serving_worker(spec)?)
-
-	while true:
-		item := input.receive()
-		if item.is_error(): break
-
-		if raw := item.get():
-			msstd_http_worker_adopt(engine.worker, raw)
-		else:
-			break
+	return start_server(address, handler, options)
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and
 // subprotocols in `options`. Handshake headers such as `Upgrade`, `Connection`, `Host`,
