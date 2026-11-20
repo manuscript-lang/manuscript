@@ -38,6 +38,7 @@ typedef struct LCx {
     LlDebug *dbg;        /* source places for the fault tables, or NULL */
     uint32_t scope_base; /* module-wide index of the first scope of `f` */
     uint32_t body_scope; /* the scope number of `f`'s own body: past the module's scopes, one per function */
+    bool noinline;       /* `f` is glue at the top of a deep chain of glue calls */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -427,14 +428,6 @@ static void ll_copy_leaf(LCx *c, MirValue dst, uint32_t out_index, MirValue src,
     ms_buf_puts(o, identity);
 }
 
-/* `msrt_free` of the block whose address is the word `value` (an LLVM value name). The argument is a
- * pointer: passed as an integer the block is hidden from LLVM, which may then move a read of it past
- * the free. */
-static void ll_free(LCx *c, const char *value) {
-    const uint32_t n = c->next++;
-    ms_buf_printf(c->out, "  %%fp%u = inttoptr i64 %s to ptr\n  call void @\"msrt_free\"(ptr %%fp%u)\n", n, value, n);
-}
-
 #include "emit_llvm_record.inc"
 
 /* `type.new`: the leaves of the fields in order. */
@@ -653,12 +646,9 @@ static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const 
         return true;
     }
     if (ty == MIR_PTR) {
-        /* An address is a word in registers; the function takes a `ptr`, so LLVM sees what the call can reach. */
-        const uint32_t n = c->next++;
-        ms_buf_printf(c->out, "  %%pa%u = inttoptr i64 ", n);
-        ll_name(c->out, value, 0);
-        ms_buf_puts(c->out, " to ptr\n");
-        ms_buf_printf(args, "%sptr %%pa%u", args->len > 0 ? ", " : "", n);
+        char address[32];
+        ll_pointer(c, value, address, sizeof address);
+        ms_buf_printf(args, "%sptr %s", args->len > 0 ? ", " : "", address);
         return true;
     }
     const MirLeafSpan leaves = ll_leaves(c, ty);
@@ -965,15 +955,15 @@ static bool ll_pointer_op(LCx *c, const MirInst *inst) {
     const int64_t width = inst->imm.tag == MI_INT ? inst->imm.i : 8;
     const char *type = ll_word_type(width);
     const bool word = type[1] == '6' && type[2] == '4';
-    char freed[24];
     switch ((MirOp)inst->op) {
     case MOP_Free:
         if (inst->imm.tag != MI_NONE) {
             c->why = "free of a collection field";
             return false;
         }
-        (void)snprintf(freed, sizeof freed, "%%v%u", inst->args[0]);
-        ll_free(c, freed);
+        char block[32];
+        ll_pointer(c, inst->args[0], block, sizeof block);
+        ms_buf_printf(o, "  call void @\"msrt_free\"(ptr %s)\n", block);
         return true;
     case MOP_PtrNull:
         ms_buf_printf(o, "  %%v%u = add i64 0, 0\n", inst->res);
@@ -1716,7 +1706,7 @@ static void ll_header(LCx *c, uint32_t index) {
             first = false;
         }
     }
-    ms_buf_puts(o, ") nounwind");
+    ms_buf_puts(o, c->noinline ? ") nounwind noinline" : ") nounwind");
     if (c->dbg != NULL) {
         ms_buf_printf(o, " !dbg !%u", ll_debug_subprogram(c->dbg, ms_name(&c->m->names, f->name), f->loc.line));
     }
@@ -1968,6 +1958,31 @@ static void ll_define_data(const LCx *c) {
     }
 }
 
+/* Glue calls glue per element-type level, so a deeply nested literal makes a chain. Inlining a chain nests one loop
+ * per level and makes the optimizer quadratic in the depth, so glue with three or more levels of glue below it stays
+ * out of line; shallow glue still inlines. `depth[i]` is 0 for unvisited, else 1 + the longest chain below `i`;
+ * a function on the current path counts as a leaf, which also ends cycles. */
+static uint32_t ll_glue_depth(const MirModule *m, const bool *is_glue, uint32_t *depth, uint32_t i) {
+    if (depth[i] != 0) {
+        return depth[i] - 1;
+    }
+    depth[i] = 1;
+    uint32_t below = 0;
+    const MirFunc *f = &m->funcs[i];
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            const MirInst *inst = &f->blocks[b].insts[k];
+            if (inst->op != MOP_Call || inst->imm.a == i || !is_glue[inst->imm.a]) {
+                continue;
+            }
+            const uint32_t d = 1 + ll_glue_depth(m, is_glue, depth, inst->imm.a);
+            below = d > below ? d : below;
+        }
+    }
+    depth[i] = below + 1;
+    return below;
+}
+
 static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all, bool places,
                     MsBuf *out, MsBuf *why) {
     MirLayouts layouts;
@@ -1980,9 +1995,21 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         total_scopes += m->funcs[i].nscopes;
     }
+    bool *is_glue = calloc(m->nfuncs ? m->nfuncs : 1, sizeof *is_glue);      /* owned, freed below */
+    uint32_t *depth = calloc(m->nfuncs ? m->nfuncs : 1, sizeof *depth);      /* owned, freed below */
+    if (is_glue == NULL || depth == NULL) {
+        free(is_glue);
+        free(depth);
+        mir_layouts_free(&layouts);
+        ms_buf_puts(why, "out of memory\n");
+        return false;
+    }
+    for (uint32_t g = 0; glue != NULL && g < glue->n; g++) {
+        is_glue[glue->v[g].func] = true;
+    }
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, dbg, scope_base,
-                 total_scopes + i + 1};
+                 total_scopes + i + 1, is_glue[i] && ll_glue_depth(m, is_glue, depth, i) >= 3};
         scope_base += m->funcs[i].nscopes;
         if (ll_function(&c, i)) {
             continue;
@@ -1991,7 +2018,9 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0};
+    free(is_glue);
+    free(depth);
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all, NULL, 0, 0, false};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);

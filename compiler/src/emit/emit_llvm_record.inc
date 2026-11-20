@@ -164,9 +164,7 @@ static bool ll_indirect_set(LCx *c, const MirInst *inst, uint32_t block, uint32_
         char cond[24];
         (void)snprintf(cond, sizeof cond, "%%g%ub", n);
         const LlIf s = ll_if_begin(c, cond, block, part);
-        char boxed[24];
-    (void)snprintf(boxed, sizeof boxed, "%%g%u", n);
-    ll_free(c, boxed);
+        ms_buf_printf(c->out, "  call void @\"msrt_free\"(i64 %%g%u)\n", n);
         ll_if_end(c, &s, block);
         const uint32_t h = ll_header_store(c, inst->args[1], block, part);
         ms_buf_printf(c->out, "  store i64 %%h%u, ptr %%a%u\n", h, slot);
@@ -193,9 +191,7 @@ static bool ll_free_field(LCx *c, const MirInst *inst, uint32_t block, uint32_t 
     char cond[24];
     (void)snprintf(cond, sizeof cond, "%%g%ub", n);
     const LlIf s = ll_if_begin(c, cond, block, part);
-    char boxed[24];
-    (void)snprintf(boxed, sizeof boxed, "%%g%u", n);
-    ll_free(c, boxed);
+    ms_buf_printf(c->out, "  call void @\"msrt_free\"(i64 %%g%u)\n", n);
     ll_if_end(c, &s, block);
     mir_record_block_free(&b);
     return true;

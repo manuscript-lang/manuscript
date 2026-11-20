@@ -10,3 +10,6 @@ uint32_t msrt_task_sleep(int64_t nanoseconds) {
     nanosleep(&span, NULL);
     return 0;
 }
+
+/* No task parks on a descriptor here, so there is nothing to forget. */
+void msrt_task_forget_fd(int32_t fd) { (void)fd; }
