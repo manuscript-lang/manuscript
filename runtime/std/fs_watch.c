@@ -265,6 +265,7 @@ typedef struct MsFsWatcher {
     bool loop_ready;
     bool stop_ready;
     bool thread_started;
+    bool ready; /* macOS: the event stream has seen the readiness file */
 } MsFsWatcher;
 
 static void watcher_lock(MsFsWatcher *watcher) { uv_mutex_lock(&watcher->lock); }
@@ -490,11 +491,33 @@ static bool event_path(const WatchRow *row, const char *filename, bool *self, Ms
     return ms_fs_path_join(row_bytes(row), ms_bytes_of((const uint8_t *)filename, strlen(filename)), out);
 }
 
+/* FSEvents (macOS) starts its stream after uv_fs_event_start returns, so a change made right after the watch is
+ * created can be missed. Creation therefore touches a file with this prefix until the stream reports it; the file is
+ * removed again and its events are never queued. */
+#ifdef __APPLE__
+static const char ready_prefix[] = ".ms-watch-ready-";
+static bool is_ready_file(const char *filename) {
+    return filename != NULL && strncmp(filename, ready_prefix, sizeof ready_prefix - 1) == 0;
+}
+#else
+static bool is_ready_file(const char *filename) {
+    (void)filename;
+    return false;
+}
+#endif
+
 static void watch_event(uv_fs_event_t *handle, const char *filename, int events, int status) {
     WatchRow *row = (WatchRow *)handle;
     MsFsWatcher *watcher = row->owner;
     if (status < 0) {
         set_terminal(watcher, STATUS_FAILED, uv_strerror(status));
+        return;
+    }
+    if (is_ready_file(filename)) {
+        watcher_lock(watcher);
+        watcher->ready = true;
+        watcher_unlock(watcher);
+        msrt_token_post_remote(watcher->token, 1);
         return;
     }
     MsFsBuffer full_buffer = {0};
@@ -660,6 +683,48 @@ static bool native_arguments_valid(MsBytes root, int64_t max, int64_t events, Ms
     return root.len != 0 && max > 0 && events > 0 && events <= MAX_EVENT_CAPACITY && overflow_known;
 }
 
+#ifdef __APPLE__
+enum { READY_TRIES = 50, READY_SLICE_NS = 100000000 };
+
+/* Waits until the event stream of a directory root is live (see is_ready_file). Best effort: a root that cannot be
+ * written to is watched without the guarantee. */
+static void native_wait_ready(MsFsWatcher *watcher, MsBytes root) {
+    MsSysStat stat;
+    if (ms_fs_stat_bytes(root, false, &stat) != 0 || !ms_fs_stat_is_directory(&stat)) {
+        return;
+    }
+    char name[64];
+    (void)snprintf(name, sizeof name, "%s%d-%p", ready_prefix, (int)uv_os_getpid(), (void *)watcher);
+    MsFsBuffer path = {0};
+    if (!ms_fs_path_join(root, ms_bytes_of((const uint8_t *)name, strlen(name)), &path) || !ms_fs_buffer_push(&path, 0)) {
+        ms_fs_buffer_free(&path);
+        return;
+    }
+    for (int attempt = 0; attempt < READY_TRIES; attempt++) {
+        uv_fs_t request;
+        const int file = uv_fs_open(NULL, &request, (const char *)path.data, UV_FS_O_CREAT | UV_FS_O_WRONLY, 0600, NULL);
+        uv_fs_req_cleanup(&request);
+        if (file < 0) {
+            break;
+        }
+        (void)uv_fs_close(NULL, &request, (uv_file)file, NULL);
+        uv_fs_req_cleanup(&request);
+        uint64_t value = 0;
+        const uint32_t result = msrt_token_park(watcher->token, READY_SLICE_NS, &value);
+        watcher_lock(watcher);
+        const bool ready = watcher->ready;
+        watcher_unlock(watcher);
+        if (ready || (result & MS_WAIT_CANCELLED) != 0) {
+            break;
+        }
+    }
+    uv_fs_t request;
+    (void)uv_fs_unlink(NULL, &request, (const char *)path.data, NULL);
+    uv_fs_req_cleanup(&request);
+    ms_fs_buffer_free(&path);
+}
+#endif
+
 /* Registers every handle and starts the thread. Failures leave `watcher` to be dropped by the caller. */
 static void native_start(MsFsWatcher *watcher, MsBytes root, MsFsFail *fail) {
     if (uv_loop_init(&watcher->loop) != 0) {
@@ -682,6 +747,9 @@ static void native_start(MsFsWatcher *watcher, MsBytes root, MsFsFail *fail) {
         return;
     }
     watcher->thread_started = true;
+#ifdef __APPLE__
+    native_wait_ready(watcher, root);
+#endif
 }
 
 uint8_t msstd_fs_watch_native(const MsStr *path, uint8_t recursive, uint8_t has_max, int64_t max, uint8_t has_events, int64_t events,
