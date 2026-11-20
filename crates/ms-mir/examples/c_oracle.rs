@@ -355,6 +355,7 @@ fn run_pass(name: &str, m: &mut Module) -> bool {
         "ifconv" => opt::ifconv::run(m),
         "reserve" => opt::reserve::run(m),
         "appendfast" => opt::appendfast::run(m),
+        "sortgen" => opt::sortgen::run(m),
         _ => panic!("unknown pass {name}"),
     }
 }

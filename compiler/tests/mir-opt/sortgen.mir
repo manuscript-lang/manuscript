@@ -1,0 +1,115 @@
+module "sortgen"
+entry @main
+extern @msrt_list_sorted(list<int>, ptr, ptr, fn(int, int) -> int) -> list<int> list_sorted
+extern @msrt_list_sorted_str(list<str>, ptr, ptr, fn(str, str) -> int) -> list<str> list_sorted
+fn @main() -> int {
+b0:
+  %0: int = iconst 3
+  %1: int = iconst 1
+  %2: int = iconst 2
+  %3: list<int> = list.lit %0, %1, %2
+  %4: ptr = typedesc int
+  %5: ptr = func.addr @sort.cmp.plain
+  %6: fn(int, int) -> int = closure.new @plain
+  %7: list<int> = call.rt @msrt_list_sorted (%3, %4, %5, %6)
+  drop %6
+  drop %3
+  %8: ptr = func.addr @sort.cmp.diff
+  %9: fn(int, int) -> int = closure.new @diff
+  %10: list<int> = call.rt @msrt_list_sorted (%7, %4, %8, %9)
+  drop %9
+  drop %7
+  %11: ptr = func.addr @sort.cmp.mod
+  %12: fn(int, int) -> int = closure.new @mod
+  %13: list<int> = call.rt @msrt_list_sorted (%10, %4, %11, %12)
+  drop %12
+  drop %10
+  %14: ptr = func.addr @sort.cmp.mod
+  %15: int = iconst 7
+  %16: fn(int, int) -> int = closure.new @modk %15
+  %17: list<int> = call.rt @msrt_list_sorted (%13, %4, %14, %16)
+  drop %16
+  drop %13
+  drop %17
+  %19: str = str "bb"
+  %20: str = str "a"
+  %26: str = clone %19
+  %27: str = clone %20
+  %21: list<str> = list.lit %26, %27
+  %22: ptr = typedesc str
+  %23: ptr = func.addr @sort.cmp.str
+  %24: fn(str, str) -> int = closure.new @bystr
+  %25: list<str> = call.rt @msrt_list_sorted_str (%21, %22, %23, %24)
+  drop %24
+  drop %25
+  drop %21
+  %18: int = iconst 0
+  ret %18
+}
+fn @sort.cmp.plain(%0: ptr, %1: ptr, %2: ptr) -> int sort_cmp_for {
+b0:
+  %3: int = load int %1
+  %4: int = load int %2
+  %5: int = call @plain (%0, %3, %4)
+  ret %5
+}
+fn @sort.cmp.diff(%0: ptr, %1: ptr, %2: ptr) -> int sort_cmp_for {
+b0:
+  %3: int = load int %1
+  %4: int = load int %2
+  %5: int = call @diff (%0, %3, %4)
+  ret %5
+}
+fn @sort.cmp.mod(%0: ptr, %1: ptr, %2: ptr) -> int sort_cmp_for {
+b0:
+  %3: int = load int %1
+  %4: int = load int %2
+  %5: int = call @mod (%0, %3, %4)
+  ret %5
+}
+fn @plain(%0: ptr, %1: int, %2: int) -> int closure() {
+b0:
+  %3: bool = icmp.lt %1, %2
+  %4: bool = icmp.gt %1, %2
+  %5: int = iconst -1
+  %6: int = iconst 1
+  %7: int = iconst 0
+  %8: int = select %4, %6, %7
+  %9: int = select %3, %5, %8
+  ret %9
+}
+fn @diff(%0: ptr, %1: int, %2: int) -> int closure() {
+b0:
+  %3: int = isub.chk %1, %2
+  ret %3
+}
+fn @mod(%0: ptr, %1: int, %2: int) -> int closure() {
+b0:
+  %3: int = iconst 3
+  %4: int = srem.chk %1, %3
+  %5: int = srem.chk %2, %3
+  %6: int = isub.chk %4, %5
+  ret %6
+}
+fn @modk(%0: ptr, %1: int, %2: int) -> int closure(int) {
+b0:
+  %3: int = iconst 5
+  %4: int = srem.chk %1, %3
+  %5: int = srem.chk %2, %3
+  %6: int = isub.chk %5, %4
+  ret %6
+}
+fn @sort.cmp.str(%0: ptr, %1: ptr, %2: ptr) -> int sort_cmp_for {
+b0:
+  %3: str = load str %1
+  %4: str = load str %2
+  %5: int = call @bystr (%0, %3, %4)
+  ret %5
+}
+fn @bystr(%0: ptr, %1: str, %2: str) -> int closure() {
+b0:
+  %3: int = str.len %1
+  %4: int = str.len %2
+  %5: int = isub.chk %3, %4
+  ret %5
+}

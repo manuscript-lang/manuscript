@@ -30,6 +30,8 @@
 #include "opt_reserve.c"
 #include "mir_builder.c"
 #include "opt_appendfast.c"
+#include "opt_sortgen_drift.c"
+#include "opt_sortgen.c"
 #include "hints.c"
 #include "constfold.c"
 #include "ty_subst.c"
