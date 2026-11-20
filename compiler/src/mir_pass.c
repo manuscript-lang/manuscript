@@ -19,11 +19,6 @@ uint32_t mir_extern_get(MirModule *m, const char *name, const MirTy *params, uin
     return mir_add_extern(m, &e);
 }
 
-static bool pass_name_is(const MirModule *m, MsSym sym, const char *text) {
-    MsStr s = ms_name(&m->names, sym);
-    return s.len == strlen(text) && memcmp(s.ptr, text, s.len) == 0;
-}
-
 static bool pass_plain_in(const MirModule *m, MirTy ty, MirTy *seen, uint32_t *nseen);
 
 static bool pass_plain_all(const MirModule *m, MirTy ty, const MirTy *tys, uint32_t n, MirTy *seen,
@@ -62,8 +57,8 @@ static bool pass_plain_in(const MirModule *m, MirTy ty, MirTy *seen, uint32_t *n
     case MK_IFACE:
         return false;
     case MK_OBJ:
-        if (!pass_name_is(m, d->name, "Map") && !pass_name_is(m, d->name, "Set") &&
-            !pass_name_is(m, d->name, "BigInt")) {
+        if (!mir_name_is(m, d->name, "Map") && !mir_name_is(m, d->name, "Set") &&
+            !mir_name_is(m, d->name, "BigInt")) {
             return false;
         }
         return pass_plain_all(m, ty, d->args, d->nargs, seen, nseen);

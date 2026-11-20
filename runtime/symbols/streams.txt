@@ -1,0 +1,1 @@
+# ms_rt/streams.h: defined in C as ms_streams_*; the program symbols msrt_streams_* move here when the C promise table serves programs.

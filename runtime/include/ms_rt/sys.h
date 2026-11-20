@@ -68,13 +68,24 @@ void ms_sys_sleep_ms(uint32_t ms);
 MS_NODISCARD bool ms_sys_fd_get_nonblocking(int fd, bool *on);
 /* Puts fd in or out of non-blocking mode; false when the system refuses (a best-effort restore may ignore it). */
 bool ms_sys_fd_set_nonblocking(int fd, bool on);
+/* Whether a read of fd would not block right now (data, the end or an error is there). Windows: always true. */
+bool ms_sys_fd_readable_now(int fd);
 /* Sleeps until fd is readable or timeout_ns pass, with nanosecond resolution; a signal or an error ends it early.
  * False where the system has no such wait (only Linux does), so the caller waits another way. */
 MS_NODISCARD bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns);
+/* Sets *ready to whether fd can be read (or written, when `writes`) without blocking, a hang-up or error counting as
+ * ready. False where the system cannot tell. Unix only; Windows reports false. */
+MS_NODISCARD bool ms_sys_fd_ready(int fd, bool writes, bool *ready);
 /* Makes the process's environ agree with the C library's own copy. A static library built without -fPIC makes the
  * linker copy environ into the program, and glibc fills only its own, so readers of the copy would see an empty
  * environment (issue #4647). Linux only; a no-op elsewhere. */
 void ms_sys_sync_environ(void);
+
+/* ---- network interfaces ---- */
+
+/* The system's numeric index of the interface called `name` (NUL-terminated), or 0 when it has none or the host
+ * keys interfaces another way (Windows, where libuv reports friendly names). */
+uint32_t ms_sys_interface_index(const char *name);
 
 /* ---- faults ---- */
 

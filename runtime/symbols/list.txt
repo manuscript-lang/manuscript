@@ -44,3 +44,5 @@ msrt_list_sort_ints
 msrt_list_sorted
 msrt_list_sorted_by_difference
 msrt_hash_list
+msrt_count_copy
+msrt_copy_counts

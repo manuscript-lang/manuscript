@@ -123,12 +123,12 @@ typedef struct MirParam { MirTy ty; uint8_t mode; } MirParam;
 typedef struct MirBlockParam { MirValue value; uint8_t mode; } MirBlockParam;
 
 typedef struct MirInst {
-    uint8_t op;      /* MirOp */
+    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     MirImm imm;
     MirValue res;    /* MIR_NONE when the op defines nothing */
-    MirLoc loc;
-    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     uint32_t nargs;
+    MirLoc loc;
+    uint8_t op;      /* MirOp */
 } MirInst;
 
 typedef struct MirTarget {
@@ -196,6 +196,12 @@ typedef struct MirFunc {
     bool has_slot_close;
     MirTy slot_close;
     bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
+    /* Set by the range pass, not in the text form: a bit set (`nexact` words) of the results of
+     * unchecked integer arithmetic it proved cannot wrap, which later analysis treats as exact.
+     * Values are never reused, so a bit stays true as the function is rewritten; the pass
+     * replaces the array instead of editing it, so a copy of the function may share it. */
+    uint64_t *exact;
+    uint32_t nexact;
     uint8_t linkage, kind, inline_hint, sort;
     MirTy *captures; /* MFK_CLOSURE */
     uint32_t ncaptures;
@@ -323,12 +329,16 @@ static inline const MirTyData *mir_ty_data(const MirModule *m, MirTy t) {
     return &m->types.kinds[t];
 }
 bool mir_needs_drop(const MirModule *m, MirTy t);
+/* Whether declaration name `sym` spells `text`. */
+bool mir_name_is(const MirModule *m, MsSym sym, const char *text);
 static inline bool mir_owns(uint64_t owned, uint32_t i) { return i < 64 && (owned >> i & 1); }
 
 /* Declarations; each returns the new id. Names are interned. */
 MsSym mir_name(MirModule *m, const char *s, size_t n);
 uint32_t mir_add_string(MirModule *m, const char *s, size_t n);
 uint32_t mir_add_func(MirModule *m, const MirFunc *f);
+/* Rebuilds the name index after functions were removed or moved. */
+void mir_funcs_reindex(MirModule *m);
 uint32_t mir_add_type(MirModule *m, MsSym name);
 uint32_t mir_add_alt(MirModule *m, MsSym name);
 uint32_t mir_add_iface(MirModule *m, MsSym name);
