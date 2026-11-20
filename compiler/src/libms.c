@@ -18,6 +18,8 @@
 #include "mir_parse.c"
 #include "hints.c"
 #include "constfold.c"
+#include "ty_subst.c"
+#include "recursion.c"
 #include "types.c"
 #include "tables.c"
 #include "stdlib.c"
