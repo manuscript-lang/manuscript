@@ -1,6 +1,6 @@
 /* The task and token ABI: the functions generated code and the natives call, over the scheduler in task.h. Each
  * turns a failure status into a fault with the message programs have always seen. */
-#include "task_abi.h"
+#include "ms_rt/task.h"
 
 #include "scheduler.h"
 
@@ -87,7 +87,7 @@ uint8_t msrt_task_join(uint64_t handle, MsStr *message) {
     return outcome;
 }
 
-void msrt_task_grow(void (*shim)(void *), void *block) {
+void msrt_task_grow(MsGrowFn shim, void *block) {
     if (ms_task_grow(shim, block) != MS_TASK_OK) {
         STACK_OVERFLOW(depth_message);
     }

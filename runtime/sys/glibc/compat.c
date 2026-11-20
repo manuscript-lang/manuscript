@@ -1,7 +1,7 @@
 /* Functions the C libraries of a current distribution call, which glibc 2.28 (the floor programs link
  * against) does not export. Each is defined in terms of an older export; the linker takes a definition only
- * when a folded library member references it. Compiled for glibc targets only (folder `glibc`). The `stat`
- * family is in crates/ms-native/src/entry.rs. */
+ * when a folded library member references it. Compiled for glibc targets only (folder `glibc`). The process entry and the
+ * `stat` family are in start.c. */
 #include <stddef.h>
 
 int __cxa_atexit(void (*)(void *), void *, void *);

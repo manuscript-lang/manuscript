@@ -141,6 +141,8 @@ MS_NODISCARD bool ms_sys_fault_handler_install(MsSysFaultFn on_fault);
 /* Writes `bytes` to standard error, all of it unless the system refuses; errors are ignored (nothing else can be
  * done with them). */
 void ms_sys_stderr_write(MsBytes bytes);
+/* A write to a closed pipe or socket must come back as an error (EPIPE), not end the process. Windows: nothing to do. */
+void ms_sys_ignore_broken_pipe(void);
 /* Ends the process at once with `status`: no handlers, no flushing, no cleanup of any kind. */
 MS_NORETURN void ms_sys_exit_now(int status);
 /* The id of this process, which a fault record carries so the CLI ignores a record a descendant left behind. */

@@ -23,8 +23,14 @@ static bool ll_list_op(LCx *c, const MirInst *inst, bool *handled) {
     char at[24];
     switch ((MirOp)inst->op) {
     case MOP_ListGetU: case MOP_ListTake:
-        ll_element_address(c, inst, ll_list_elem(c, c->f->values[inst->args[0]]), at, sizeof at);
-        return ll_leaves_at(c, inst->res, at, true);
+    {
+        const MirTy elem = ll_list_elem(c, c->f->values[inst->args[0]]);
+        ll_element_address(c, inst, elem, at, sizeof at);
+        c->tbaa = ll_elem_tbaa(c, elem);
+        const bool ok = ll_leaves_at(c, inst->res, at, true);
+        c->tbaa = NULL;
+        return ok;
+    }
     case MOP_ListAddrU:
         ll_element_address(c, inst, ll_list_elem(c, c->f->values[inst->args[0]]), at, sizeof at);
         ms_buf_printf(c->out, "  %%v%u = ptrtoint ptr %s to i64\n", inst->res, at);

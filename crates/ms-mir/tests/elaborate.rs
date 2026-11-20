@@ -8,6 +8,7 @@ use ms_mir::print::print_module;
 use ms_mir::verify::verify_module;
 
 const HEAD: &str = r#"module "raw"
+close @close
 alt Msg { Pair(a: list<int>, b: list<int>), Empty }
 extern @msrt_print_int(int)
 entry @main

@@ -1,6 +1,6 @@
 /* The program ABI of promises, wait groups and cancel switches (ms_rt/promise.h) over the table in promise.c. Every
  * function is a thin conversion; the behavior is documented where it is implemented. */
-#include "promise_abi.h"
+#include "ms_rt/promise.h"
 
 #include "cancel.h"
 #include "group.h"
@@ -60,7 +60,7 @@ int64_t msrt_promise_run_watched(int64_t id, int64_t group, const MsVec *ids, in
 
 int64_t msrt_promise_sleep(int64_t ns) { return ms_promise_sleep(ns); }
 void msrt_promise_start(int64_t id, MsObj *work) { ms_promise_start(id, work); }
-void msrt_promise_start_here(int64_t id, MsObj *work) { ms_promise_start(id, work); }
+void msrt_promise_start_here(int64_t id, MsObj *work) { ms_promise_start_here(id, work); }
 void msrt_promise_start_idle(int64_t id, MsObj *work) { ms_promise_start_idle(id, work); }
 void msrt_promise_start_spread(int64_t id, MsObj *work) { ms_promise_start_spread(id, work); }
 

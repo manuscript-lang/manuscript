@@ -23,8 +23,12 @@ uint8_t ms_net_finish(MsNetStatus status, int code, MsStr *err) {
     }
     switch (status) {
     case MS_NET_OK: return STATUS_OK;
-    case MS_NET_CLOSED: return STATUS_CLOSED;
-    case MS_NET_TIMEOUT: return STATUS_TIMED_OUT;
+    case MS_NET_CLOSED:
+        ms_net_write_text(err, "");
+        return STATUS_CLOSED;
+    case MS_NET_TIMEOUT:
+        ms_net_write_text(err, ""); /* the error carries a text slot, read whatever the status */
+        return STATUS_TIMED_OUT;
     case MS_NET_CANCELLED:
         ms_sched_cancel_return();
         return STATUS_OK;
@@ -55,6 +59,12 @@ int64_t ms_net_deadline_of(uint8_t has_timeout, int64_t timeout) {
 
 
 MsNetStatus ms_net_wait_fd(MsSock fd, uint32_t events, int64_t deadline_ns) {
+    /* Work a promise defers to its waiter runs on the waiter's stack, and only waits that look at the waiter's
+     * limit (a `with(timeout:)`) end by it: narrow the deadline to it. */
+    const int64_t waiter_at = ms_sched_defer_deadline();
+    if (waiter_at != INT64_MAX && (deadline_ns < 0 || waiter_at < deadline_ns)) {
+        deadline_ns = waiter_at;
+    }
     int64_t timeout_ns = -1;
     if (deadline_ns >= 0) {
         timeout_ns = deadline_ns - ms_sys_monotonic_ns();
