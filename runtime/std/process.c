@@ -12,10 +12,16 @@
 
 #include "ms_rt/alloc.h"
 #include "ms_rt/process.h"
+#include "ms_rt/obj.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_process.h"
 
 #include "fs_support.h"
+
+/* The start-up records of the startup code (crates/ms-rt/src/start.rs): the arguments the process was started with and
+ * the monotonic time it started at (0 before start). */
+void msrt_argv(MsVec *out);
+int64_t msrt_start_nanos(void);
 
 enum {
     MAX_ID = 2147483647,
@@ -43,12 +49,6 @@ static void fail_host(MsFsFail *fail, MsSysError error, const char *operation) {
 }
 
 static bool in_id_range(int64_t value) { return value >= 0 && value <= MAX_ID; }
-
-/* The runtime's start-up records (src/start.rs until startup moves to C): the arguments the process was started with,
- * the monotonic time it started at (0 before start) and its work counters. */
-void msrt_argv(MsVec *out);
-int64_t msrt_start_nanos(void);
-void msrt_counts(uint64_t *out);
 
 /* ---- working directory ---- */
 

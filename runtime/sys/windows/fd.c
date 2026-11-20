@@ -26,6 +26,23 @@ bool ms_sys_fd_ready(int fd, bool writes, bool *ready) {
     return false;
 }
 
+bool ms_sys_fd_wait_any(MsSysFdWait *entries, size_t count) {
+    (void)entries;
+    (void)count;
+    return false;
+}
+
+bool ms_sys_wake_open(int fds[2]) {
+    (void)fds;
+    return false;
+}
+
+void ms_sys_wake_send(int write_fd) { (void)write_fd; }
+
+void ms_sys_wake_drain(int read_fd) { (void)read_fd; }
+
+void ms_sys_wake_close(const int fds[2]) { (void)fds; }
+
 void ms_sys_sync_environ(void) {}
 
 char **ms_sys_swap_libc_environ(char **replacement) { return replacement; }

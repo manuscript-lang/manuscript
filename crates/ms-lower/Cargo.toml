@@ -9,7 +9,6 @@ description = "Manuscript HIR to MIR lowering: monomorphization and ownership el
 ms-check = { path = "../ms-check" }
 ms-mir = { path = "../ms-mir" }
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-decimal = { path = "../ms-decimal" }
 
 [lints]
 workspace = true
