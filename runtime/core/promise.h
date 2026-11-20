@@ -90,6 +90,8 @@ void ms_promise_defer(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 MsPromise ms_promise_sleep(int64_t ns);
 /* Completes with a unit value: a wait answers 0 and the take reads it as Void. */
 void ms_promise_io_done_unit(MsPromise id);
+/* Completes with no value: the end of a pipe or stream. A wait answers 0 and the take finds nothing. */
+void ms_promise_io_done(MsPromise id);
 /* Completes with an Int. */
 void ms_promise_io_done_int(MsPromise id, int64_t value);
 /* Completes with `block` (a heap block holding an owned value of `desc`, taken). `pipe` != 0 names the pipe that

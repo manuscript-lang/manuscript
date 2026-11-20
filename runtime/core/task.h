@@ -64,6 +64,12 @@ typedef struct MsSchedHooks {
     /* A task started with MS_SPAWN_FATAL faulted: the main isolate reports and exits the process; a worker records
      * the report and cancels itself, so this may return. May be NULL. */
     void (*task_fault)(const MsFaultText *message);
+    /* Timers of other tables (the promise table's sleeps and limits), armed with ms_sched_arm: whether the entry
+     * (id, deadline) still means something, and what to do when it is due. May be NULL together. */
+    bool (*timer_live)(uint64_t id, int64_t deadline);
+    void (*timer_fire)(uint64_t id, int64_t deadline);
+    /* Frees the other tables when the scheduler ends. May be NULL. */
+    void (*teardown)(void);
 } MsSchedHooks;
 
 /* Descriptor readiness, supplied by runtime/io (msio_*, one libuv loop per thread). The bits are MS_WAIT_*. */
@@ -113,6 +119,8 @@ void ms_sched_teardown(void);
 void ms_sched_stop(uint8_t signal);
 /* The monotonic clock the scheduler reads, in nanoseconds. */
 int64_t ms_sched_now(void);
+/* Arms an entry for the timer_live and timer_fire hooks; wakes the scheduler's idle wait in time. */
+void ms_sched_arm(uint64_t id, int64_t at_ns);
 
 /* ---- tasks ---- */
 
@@ -153,6 +161,14 @@ bool ms_task_read_limit_passed(void);
  * limit. */
 void ms_task_limit_current(int64_t limit_ns);
 void ms_task_limit_current_at(int64_t at_ns);
+
+/* The promise table keeps, per task, the head of the list of promises that task started (row + 1, 0 for none), so
+ * a cancelled frame visits only its own. A handle that no longer exists reads as 0 and ignores a swap. */
+uint32_t ms_task_started_head(MsTaskHandle handle);
+uint32_t ms_task_started_swap(MsTaskHandle handle, uint32_t head);
+/* The deadline a deferred promise run by the running task must end by (MS_NO_DEADLINE: none); set returns the old. */
+int64_t ms_task_defer_deadline(void);
+int64_t ms_task_set_defer_deadline(int64_t at_ns);
 
 /* Whether no other task could run while the current one blocks its thread (see task.c). */
 bool ms_task_others_stalled(void);

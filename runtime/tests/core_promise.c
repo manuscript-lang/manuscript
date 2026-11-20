@@ -1,0 +1,318 @@
+/* Unit test of the C promise table (runtime/core/promise.c) on the C scheduler: completion, errors, waits with
+ * timeouts, sleeps, limits, cancellation, faults, deferred work, I/O continuations and the cancel of a frame that
+ * started many promises. Run under the sanitizers by `make c-test`. */
+#include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "../core/promise.h"
+#include "../core/scheduler.h"
+#include "ms_rt/alloc.h"
+#include "ms_rt/sys.h"
+
+static void expect(bool condition, const char *what) {
+    if (!condition) {
+        fprintf(stderr, "core_promise: failed: %s\n", what);
+        exit(1);
+    }
+}
+
+/* ---- environment ---- */
+
+static int fake_watch(int fd, uint32_t events) {
+    (void)fd;
+    (void)events;
+    return MS_POLL_ARMED;
+}
+
+static void fake_fd(int fd) { (void)fd; }
+
+static long fake_wait(int64_t timeout_ns, MsPollReady *out, size_t capacity) {
+    (void)out;
+    (void)capacity;
+    if (timeout_ns != 0) {
+        const int ms = timeout_ns < 0 ? -1 : (int)((timeout_ns + 999999) / 1000000);
+        (void)poll(NULL, 0, ms);
+    }
+    return 0;
+}
+
+static void fake_fault(MsFaultKind kind, const char *message) {
+    (void)kind;
+    MsFaultText text = {.bytes = msrt_alloc(strlen(message) + 1), .length = strlen(message)};
+    memcpy(text.bytes, message, text.length + 1);
+    if (!ms_guard_leave(MS_GUARD_FAULT, text)) {
+        fprintf(stderr, "core_promise: fault with no guard: %s\n", message);
+        exit(1);
+    }
+    for (;;) {
+    }
+}
+
+static void fake_exit(int status) {
+    fprintf(stderr, "core_promise: unexpected process exit %d\n", status);
+    exit(1);
+}
+
+static void install(void) {
+    MsSchedHooks hooks = {.fault = fake_fault, .exit_process = fake_exit};
+    ms_promise_hooks(&hooks);
+    const MsPollOps poll_ops = {.watch = fake_watch, .unwatch = fake_fd, .forget = fake_fd, .wait = fake_wait};
+    ms_sched_set_hooks(&hooks, &poll_ops);
+}
+
+/* ---- closures ---- */
+
+typedef struct Work {
+    MsObj header;
+    void (*code)(struct Work *);
+    MsPromise id;
+    int64_t value;
+    int64_t sleep_ns;
+    bool fail;
+    bool fault;
+} Work;
+
+static size_t drops;
+
+static void work_drop(MsObj *object) {
+    drops++;
+    msrt_free(object);
+}
+
+static Work *make_work(MsPromise id, void (*code)(Work *)) {
+    Work *const work = msrt_alloc_zeroed(sizeof *work);
+    work->header.drop = work_drop;
+    work->code = code;
+    work->id = id;
+    return work;
+}
+
+static void put_value(Work *work) {
+    if (work->sleep_ns > 0) {
+        if (ms_task_sleep(work->sleep_ns) == MS_WAIT_CANCELLED) {
+            ms_cancelled();
+        }
+    }
+    if (work->fault) {
+        ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT, "boom");
+    }
+    ms_promise_put(work->id, (uint8_t *)&work->value, &msrt_desc_int, work->fail);
+}
+
+static void sleep_forever(Work *work) {
+    if (ms_task_sleep(work->sleep_ns) == MS_WAIT_CANCELLED) {
+        ms_cancelled();
+    }
+}
+
+static int64_t take_int(MsPromise id) {
+    int64_t value = -1;
+    expect(ms_promise_take(id, &msrt_desc_int, (uint8_t *)&value), "take");
+    return value;
+}
+
+/* ---- tests ---- */
+
+static void test_value(void) {
+    const MsPromise id = ms_promise_new();
+    Work *const work = make_work(id, put_value);
+    work->value = 42;
+    ms_promise_start(id, &work->header);
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_OK, "wait ok");
+    expect(take_int(id) == 42, "value");
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_CLOSED, "closed after take");
+    expect(ms_promise_done(id), "done");
+    ms_promise_drop(id);
+    expect(ms_promise_done(id), "a dropped id reads as done");
+}
+
+static void test_error_value(void) {
+    const MsPromise id = ms_promise_new();
+    Work *const work = make_work(id, put_value);
+    work->value = 7;
+    work->fail = true;
+    ms_promise_start(id, &work->header);
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_ERROR, "error code");
+    expect(take_int(id) == 7, "error value");
+    ms_promise_drop(id);
+}
+
+static void test_wait_timeout_cancels(void) {
+    const MsPromise id = ms_promise_new();
+    Work *const work = make_work(id, sleep_forever);
+    work->sleep_ns = 10LL * 1000 * 1000 * 1000;
+    ms_promise_start(id, &work->header);
+    expect(ms_promise_wait(id, 10 * 1000 * 1000) == MS_PROMISE_TIMEOUT, "wait times out");
+    expect(!ms_promise_end(id), "ended without a value");
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_CANCELLED, "then reads cancelled");
+    ms_promise_drop(id);
+}
+
+static void test_cancel(void) {
+    const size_t before = drops;
+    const MsPromise id = ms_promise_new();
+    Work *const work = make_work(id, sleep_forever);
+    work->sleep_ns = 10LL * 1000 * 1000 * 1000;
+    ms_promise_start(id, &work->header);
+    ms_task_yield();
+    ms_promise_cancel(id);
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_CANCELLED, "cancelled");
+    ms_promise_drop(id);
+    expect(drops == before + 1, "the closure was dropped once");
+}
+
+static void test_limit(void) {
+    const MsPromise id = ms_promise_new();
+    Work *const work = make_work(id, sleep_forever);
+    work->sleep_ns = 10LL * 1000 * 1000 * 1000;
+    ms_promise_start(id, &work->header);
+    ms_promise_limit(id, 15 * 1000 * 1000);
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_TIMEOUT, "the limit reports a timeout");
+    ms_promise_drop(id);
+}
+
+static void test_fault_report(void) {
+    const MsPromise id = ms_promise_new();
+    Work *const work = make_work(id, put_value);
+    work->fault = true;
+    ms_promise_start(id, &work->header);
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_FAILED, "failed");
+    const MsFaultText report = ms_promise_fault_report(id);
+    expect(report.length == 4 && memcmp(report.bytes, "boom", 4) == 0, "the report names the fault");
+    msrt_free(report.bytes);
+    ms_promise_drop(id);
+}
+
+static void test_sleep(void) {
+    const MsPromise slow = ms_promise_sleep(30 * 1000 * 1000);
+    const MsPromise fast = ms_promise_sleep(5 * 1000 * 1000);
+    expect(!ms_promise_done(fast), "not done at once");
+    expect(ms_promise_wait(fast, -1) == MS_PROMISE_OK, "fast sleep");
+    expect(!ms_promise_done(slow), "the slow one still sleeps");
+    expect(ms_promise_wait(slow, 1000) == MS_PROMISE_TIMEOUT || ms_promise_done(slow), "wait with a short limit");
+    expect(ms_promise_wait(slow, -1) == MS_PROMISE_OK, "slow sleep");
+    ms_promise_drop(fast);
+    ms_promise_drop(slow);
+}
+
+static void test_deferred(void) {
+    const MsPromise id = ms_promise_new();
+    Work *const work = make_work(id, put_value);
+    work->value = 5;
+    ms_promise_defer(id, &work->header);
+    expect(!ms_promise_done(id), "deferred work waits for a waiter");
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_OK, "the waiter runs it");
+    expect(take_int(id) == 5, "deferred value");
+    ms_promise_drop(id);
+
+    const size_t before = drops;
+    const MsPromise unused = ms_promise_new();
+    ms_promise_defer(unused, &make_work(unused, put_value)->header);
+    ms_promise_cancel(unused);
+    expect(drops == before + 1, "cancelling deferred work drops it unrun");
+    expect(ms_promise_wait(unused, -1) == MS_PROMISE_CANCELLED, "and reads cancelled");
+    ms_promise_drop(unused);
+}
+
+static size_t cancels_seen;
+static uintptr_t last_state;
+
+static bool io_retry(MsPromise id, uintptr_t state, uint32_t bits) {
+    (void)id;
+    last_state = state;
+    if (bits == MS_WAIT_CANCELLED) {
+        cancels_seen++;
+    }
+    return false;
+}
+
+static void test_io_continuation(void) {
+    const MsPromise id = ms_promise_new();
+    ms_promise_on_drop(id, io_retry, 99);
+    ms_promise_cancel(id);
+    expect(cancels_seen == 1 && last_state == 99, "the continuation hears the cancel");
+    expect(ms_promise_wait(id, -1) == MS_PROMISE_CANCELLED, "cancelled");
+    ms_promise_drop(id);
+    ms_promise_io_done_unit(id); /* a stale id: ignored */
+}
+
+static void test_stale_ids(void) {
+    const MsPromise first = ms_promise_new();
+    ms_promise_drop(first);
+    const MsPromise second = ms_promise_new();
+    expect(first != second, "a reused row has a new generation");
+    expect(ms_promise_done(first), "the stale id reads as done");
+    expect(!ms_promise_done(second), "the new one is pending");
+    ms_promise_io_done_int(second, 3);
+    expect(ms_promise_wait(second, -1) == MS_PROMISE_OK, "completed");
+    ms_promise_drop(second);
+}
+
+/* A frame that started many promises: cancelling it ends them all, linearly. */
+enum { MANY = 20000 };
+static MsPromise many_ids[MANY];
+
+static void starter(void *argument) {
+    (void)argument;
+    for (size_t i = 0; i < MANY; i++) {
+        many_ids[i] = ms_promise_new();
+        Work *const work = make_work(many_ids[i], sleep_forever);
+        work->sleep_ns = 100LL * 1000 * 1000 * 1000;
+        ms_promise_start(many_ids[i], &work->header);
+    }
+    for (;;) {
+        if (ms_task_sleep(100LL * 1000 * 1000 * 1000) == MS_WAIT_CANCELLED) {
+            ms_cancelled();
+        }
+    }
+}
+
+static void test_cancelled_frame_ends_its_promises(void) {
+    const size_t before = drops;
+    MsTaskStatus status = MS_TASK_OK;
+    const MsTaskHandle creator = ms_task_spawn(starter, NULL, 0, 0, &status);
+    expect(creator != 0, "spawn creator");
+    for (int i = 0; i < 3; i++) {
+        ms_task_yield();
+    }
+    const int64_t start = ms_sched_now();
+    ms_task_cancel(creator);
+    uint8_t outcome = 0;
+    MsFaultText text = {0};
+    expect(ms_task_join(creator, &outcome, &text) == MS_TASK_OK && outcome == 2, "creator cancelled");
+    const int64_t took_ms = (ms_sched_now() - start) / 1000000;
+    expect(drops == before + MANY, "every started closure was dropped");
+    for (size_t i = 0; i < MANY; i++) {
+        expect(ms_promise_wait(many_ids[i], -1) == MS_PROMISE_CANCELLED, "each promise ended cancelled");
+        ms_promise_drop(many_ids[i]);
+    }
+    printf("core_promise: cancelling a frame with %d started promises took %lld ms\n", MANY, (long long)took_ms);
+}
+
+static void entry(void *argument) {
+    (void)argument;
+    test_value();
+    test_error_value();
+    test_wait_timeout_cancels();
+    test_cancel();
+    test_limit();
+    test_fault_report();
+    test_sleep();
+    test_deferred();
+    test_io_continuation();
+    test_stale_ids();
+    test_cancelled_frame_ends_its_promises();
+}
+
+int main(void) {
+    msrt_heap_claim();
+    install();
+    uint8_t outcome = 9;
+    MsFaultText message = {0};
+    expect(ms_task_run_main(entry, NULL, 0, &outcome, &message) == MS_TASK_OK && outcome == 0, "main task runs");
+    ms_sched_teardown();
+    puts("core_promise: ok");
+    return 0;
+}

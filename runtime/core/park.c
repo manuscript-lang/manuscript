@@ -226,7 +226,29 @@ void ms_park_arm_kill(MsSched *sched, MsTask *task, int64_t at_ns) {
     }
 }
 
+static bool external_live(void *context, MsTimer timer) {
+    const MsSched *const sched = context;
+    return sched->hooks.timer_live(timer.handle, timer.deadline);
+}
+
+void ms_sched_arm(uint64_t id, int64_t at_ns) {
+    MsSched *const sched = ms_sched();
+    ms_timers_push(&sched->external, (MsTimer){.deadline = at_ns, .handle = id});
+    if (sched->external.length > sched->external_limit) {
+        ms_timers_retain(&sched->external, external_live, sched);
+        const size_t doubled = sched->external.length * 2;
+        sched->external_limit = doubled > MIN_TIMER_LIMIT ? doubled : MIN_TIMER_LIMIT;
+    }
+}
+
 void ms_park_expire(MsSched *sched, int64_t now) {
+    MsTimer entry = {0};
+    while (ms_timers_peek(&sched->external, &entry) && entry.deadline <= now) {
+        ms_timers_pop(&sched->external);
+        if (sched->hooks.timer_live(entry.handle, entry.deadline)) {
+            sched->hooks.timer_fire(entry.handle, entry.deadline);
+        }
+    }
     MsTimer due = {0};
     while (ms_timers_peek(&sched->kills, &due) && due.deadline <= now) {
         ms_timers_pop(&sched->kills);
@@ -326,6 +348,15 @@ static int64_t next_timeout(MsSched *sched, int64_t now) {
         timeout_ns = timeout_ns < 0 || until < timeout_ns ? until : timeout_ns;
         break;
     }
+    while (ms_timers_peek(&sched->external, &top)) {
+        if (!sched->hooks.timer_live(top.handle, top.deadline)) {
+            ms_timers_pop(&sched->external);
+            continue;
+        }
+        const int64_t until = top.deadline > now ? top.deadline - now : 0;
+        timeout_ns = timeout_ns < 0 || until < timeout_ns ? until : timeout_ns;
+        break;
+    }
     return timeout_ns;
 }
 
@@ -354,7 +385,7 @@ void ms_park_idle(MsSched *sched) {
         if (ms_sched_stop_request() != 0 && ms_park_cancel_all(sched)) {
             return;
         }
-        const bool timed = sched->timers.length != 0 || sched->kills.length != 0;
+        const bool timed = sched->timers.length != 0 || sched->kills.length != 0 || sched->external.length != 0;
         const int64_t now = timed ? ms_sched_now() : 0;
         if (timed) {
             ms_park_expire(sched, now);
@@ -418,6 +449,7 @@ void ms_task_forget_fd(int fd) { ms_sched()->poll.forget(fd); }
 void ms_park_free(MsSched *sched) {
     ms_timers_free(&sched->timers);
     ms_timers_free(&sched->kills);
+    ms_timers_free(&sched->external);
     msrt_free(sched->fd_queues);
     msrt_free(sched->waiters);
 }

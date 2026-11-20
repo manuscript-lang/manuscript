@@ -1,0 +1,726 @@
+/* The promise table of a thread. See promise.h.
+ *
+ * Rows are split in two arrays: the hot one holds what a wait and a wake touch (state, flags, generation, the
+ * waiter's token), the cold one everything else, so the scheduler's common paths read 16 bytes per promise. The
+ * promises a task started form a doubly linked list threaded through the cold rows by index, with its head in the
+ * task record, so a cancelled frame visits only its own promises and ending one is constant time.
+ */
+#include "promise.h"
+
+#include <string.h>
+
+#include "array.h"
+#include "ms_rt/alloc.h"
+#include "scheduler.h"
+
+enum PromiseState {
+    STATE_FREE = 0,
+    STATE_PENDING,
+    STATE_OK,
+    STATE_ERROR,
+    STATE_FAILED,
+    STATE_CANCELLED,
+    STATE_TAKEN,
+};
+
+enum {
+    FLAG_REMOTE_WAKE = 1, /* another thread completes this promise: a waiter's token must be remote */
+    FLAG_HELD = 2,        /* the result is stored, but the promise stays pending until its work's task ended */
+    FLAG_HELD_ERROR = 4,  /* the held result is the operation's own error */
+    FLAG_DEFERRED = 8,    /* no task: the first waiter runs the work on its own stack */
+    FLAG_TIMED_OUT = 16,  /* the limit passed and ended it: a wait reports a timeout, not a cancellation */
+    FLAG_STOPPED = 32,    /* stop asked the work to cancel; without a result it reads as cancelled */
+};
+
+#define GENERATION_MASK 0x7fffffffu
+#define NO_TIME INT64_MAX
+
+typedef struct Hot {
+    uint8_t state;
+    uint8_t flags;
+    uint32_t generation;
+    uint64_t token; /* the token a waiter parks on, or 0 */
+} Hot;
+
+typedef struct Cold {
+    uint8_t *result;            /* heap block holding an owned value of `desc`, or NULL */
+    const MsTypeDesc *desc;
+    MsObj *closure;             /* the work while its task may still run (or the deferred work), else NULL */
+    MsTaskHandle task;          /* the task running the work, else 0 */
+    MsTaskHandle creator;       /* the task that started the work, else 0 */
+    size_t started_at;          /* the creator's cleanup height when it started the work */
+    int64_t deadline;           /* when a sleep ends, or NO_TIME */
+    int64_t limit;              /* when the limit ends the promise, or NO_TIME */
+    MsPromiseRetry retry;       /* the continuation of an I/O promise */
+    uintptr_t retry_state;
+    int64_t pipe;               /* the pipe a result block came from, for the unread hook */
+    MsFaultText report;         /* the fault that ended the promise */
+    uint32_t next_started;      /* row + 1 of the creator's next older started promise, 0 ends the list */
+    uint32_t prev_started;
+} Cold;
+
+typedef struct Table {
+    Hot *hot;
+    Cold *cold;
+    size_t count;
+    size_t capacity;
+    uint32_t *free_rows;
+    size_t free_count;
+    size_t free_capacity;
+} Table;
+
+typedef struct MsClosure {
+    MsObj header;
+    void (*code)(struct MsClosure *);
+} MsClosure;
+
+static _Thread_local Table table; /* per-thread state, like the scheduler's */
+static MsPromiseUnread unread_hook;
+
+void ms_promise_set_unread(MsPromiseUnread unread) { unread_hook = unread; }
+
+/* ---- rows ---- */
+
+/* The object module is still the Rust runtime's (rt_calls.h lists what it provides). */
+void msrt_obj_drop(MsObj *object);
+
+static void fail(const char *text) { ms_sched()->hooks.fault(MS_FAULT_KIND_FAULT, text); }
+
+static void drop_closure(void *closure) { msrt_obj_drop(closure); }
+
+static MsPromise make_id(size_t row) { return (MsPromise)((int64_t)table.hot[row].generation << 32 | (int64_t)(row + 1)); }
+
+/* The row of `id`, or -1 for a stale, closed or foreign id. */
+static ptrdiff_t row_of(MsPromise id) {
+    const uint64_t low = (uint64_t)id & 0xffffffffu;
+    if (low == 0 || low > table.count) {
+        return -1;
+    }
+    const size_t row = (size_t)low - 1;
+    if (table.hot[row].state == STATE_FREE || (uint64_t)table.hot[row].generation != ((uint64_t)id >> 32)) {
+        return -1;
+    }
+    return (ptrdiff_t)row;
+}
+
+static size_t row_or_fault(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0) {
+        fail("promise: no such promise");
+    }
+    return (size_t)row;
+}
+
+static void release_result(size_t row) {
+    Cold *const cold = &table.cold[row];
+    if (cold->result != NULL) {
+        msrt_slot_drop(cold->desc, cold->result);
+        msrt_free(cold->result);
+    }
+    cold->result = NULL;
+    cold->desc = NULL;
+}
+
+static void reset_row(size_t row) {
+    table.cold[row] = (Cold){.deadline = NO_TIME, .limit = NO_TIME};
+    Hot *const hot = &table.hot[row];
+    hot->flags = 0;
+    hot->token = 0;
+}
+
+static bool grow_table(void) {
+    size_t capacity = table.capacity;
+    void *hot = table.hot;
+    if (!ms_array_reserve(&hot, &capacity, table.count + 1, sizeof *table.hot)) {
+        return false;
+    }
+    table.hot = hot;
+    capacity = table.capacity;
+    void *cold = table.cold;
+    if (!ms_array_reserve(&cold, &capacity, table.count + 1, sizeof *table.cold)) {
+        return false;
+    }
+    table.cold = cold;
+    table.capacity = capacity;
+    return true;
+}
+
+MsPromise ms_promise_new(void) {
+    size_t row = 0;
+    if (table.free_count != 0) {
+        row = table.free_rows[--table.free_count];
+    } else {
+        if (!grow_table()) {
+            fail("promise: out of memory");
+        }
+        row = table.count++;
+        table.hot[row] = (Hot){0};
+    }
+    Hot *const hot = &table.hot[row];
+    hot->generation = (hot->generation + 1) & GENERATION_MASK;
+    if (hot->generation == 0) {
+        hot->generation = 1;
+    }
+    hot->state = STATE_PENDING;
+    reset_row(row);
+    return make_id(row);
+}
+
+static void wake(size_t row) {
+    Hot *const hot = &table.hot[row];
+    const uint64_t token = hot->token;
+    hot->token = 0;
+    if (token != 0) {
+        ms_token_post(token, 1);
+    }
+}
+
+/* ---- completion ---- */
+
+static void drop_block(void *block, const MsTypeDesc *desc, int64_t pipe) {
+    if (pipe != 0 && unread_hook != NULL) {
+        unread_hook(pipe, block, desc);
+        return;
+    }
+    msrt_slot_drop(desc, block);
+    msrt_free(block);
+}
+
+/* Completes `row` with `block` unless it already finished; `block` is taken either way. */
+static void complete(size_t row, void *block, const MsTypeDesc *desc, bool failed, int64_t pipe) {
+    Hot *const hot = &table.hot[row];
+    Cold *const cold = &table.cold[row];
+    if (hot->state != STATE_PENDING || (hot->flags & FLAG_HELD) != 0) {
+        if (block != NULL) {
+            drop_block(block, desc, pipe);
+        }
+        return;
+    }
+    cold->result = block;
+    cold->desc = desc;
+    cold->pipe = pipe;
+    cold->retry = NULL;
+    if (cold->closure != NULL) {
+        /* The work's task is still ending: its owned resources close first. */
+        hot->flags |= (uint8_t)(FLAG_HELD | (failed ? FLAG_HELD_ERROR : 0));
+        return;
+    }
+    hot->state = failed ? STATE_ERROR : STATE_OK;
+    wake(row);
+}
+
+void ms_promise_put(MsPromise id, uint8_t *value, const MsTypeDesc *desc, bool failed) {
+    const ptrdiff_t row = row_of(id);
+    const size_t size = desc->size;
+    uint8_t *const block = msrt_alloc(size > 0 ? size : 1);
+    memcpy(block, value, size);
+    if (row < 0) {
+        drop_block(block, desc, 0);
+        return;
+    }
+    complete((size_t)row, block, desc, failed, 0);
+}
+
+void ms_promise_io_done_block(MsPromise id, void *block, const MsTypeDesc *desc, int64_t pipe) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0) {
+        drop_block(block, desc, pipe);
+        return;
+    }
+    complete((size_t)row, block, desc, false, pipe);
+}
+
+void ms_promise_io_done(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    if (row >= 0) {
+        complete((size_t)row, NULL, NULL, false, 0);
+    }
+}
+
+void ms_promise_io_done_int(MsPromise id, int64_t value) {
+    int64_t *const block = msrt_alloc(sizeof value);
+    *block = value;
+    ms_promise_io_done_block(id, block, &msrt_desc_int, 0);
+}
+
+void ms_promise_io_done_unit(MsPromise id) { ms_promise_io_done_int(id, 0); }
+
+bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0 || table.cold[row].result == NULL) {
+        return false;
+    }
+    Cold *const cold = &table.cold[row];
+    memcpy(out, cold->result, desc->size);
+    msrt_free(cold->result);
+    cold->result = NULL;
+    cold->desc = NULL;
+    table.hot[row].state = STATE_TAKEN;
+    return true;
+}
+
+void ms_promise_set_remote_wake(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    if (row >= 0) {
+        table.hot[row].flags |= FLAG_REMOTE_WAKE;
+    }
+}
+
+void ms_promise_on_drop(MsPromise id, MsPromiseRetry cancel, uintptr_t state) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0 || table.hot[row].state != STATE_PENDING) {
+        (void)cancel(id, state, MS_WAIT_CANCELLED);
+        return;
+    }
+    table.cold[row].retry = cancel;
+    table.cold[row].retry_state = state;
+}
+
+/* ---- the lists of started promises ---- */
+
+static void link_started(size_t row) {
+    Cold *const cold = &table.cold[row];
+    const uint32_t old = ms_task_started_swap(cold->creator, (uint32_t)row + 1);
+    cold->next_started = old;
+    cold->prev_started = 0;
+    if (old != 0) {
+        table.cold[old - 1].prev_started = (uint32_t)row + 1;
+    }
+}
+
+static void unlink_started(size_t row, MsTaskHandle creator) {
+    Cold *const cold = &table.cold[row];
+    const uint32_t prev = cold->prev_started;
+    const uint32_t next = cold->next_started;
+    if (prev != 0) {
+        table.cold[prev - 1].next_started = next;
+    } else if (ms_task_started_head(creator) == (uint32_t)row + 1) {
+        (void)ms_task_started_swap(creator, next);
+    }
+    if (next != 0) {
+        table.cold[next - 1].prev_started = prev;
+    }
+    cold->next_started = 0;
+    cold->prev_started = 0;
+}
+
+/* ---- the work's task ---- */
+
+static void run_closure(void *closure) { ((MsClosure *)closure)->code(closure); }
+
+/* The task of promise `id` ended with `status` (a MsGuardStatus); records how, drops the closure and wakes. */
+static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) {
+    const ptrdiff_t found = row_of(id);
+    if (found < 0) {
+        msrt_free(message.bytes);
+        return;
+    }
+    const size_t row = (size_t)found;
+    Hot *const hot = &table.hot[row];
+    Cold *const cold = &table.cold[row];
+    MsObj *const closure = cold->closure;
+    cold->closure = NULL;
+    msrt_obj_drop(closure);
+    if (cold->creator != 0) {
+        unlink_started(row, cold->creator);
+        cold->creator = 0;
+    }
+    cold->task = 0;
+    const bool interrupted = (hot->flags & (FLAG_TIMED_OUT | FLAG_STOPPED)) != 0;
+    if (hot->state == STATE_PENDING && (hot->flags & FLAG_HELD) != 0) {
+        /* A promise whose limit passed or that was cancelled reports that, not the error its work returned on the
+         * way out (a wait inside the work that finds its child cancelled returns an error before the work's own
+         * cancellation is seen, so the outcome would otherwise depend on timing). */
+        const bool error = (hot->flags & FLAG_HELD_ERROR) != 0;
+        if (error && interrupted) {
+            release_result(row);
+        }
+        hot->state = STATE_OK;
+        if (error) {
+            hot->state = interrupted ? STATE_CANCELLED : STATE_ERROR;
+        }
+        hot->flags &= (uint8_t) ~(FLAG_HELD | FLAG_HELD_ERROR);
+    } else if (hot->state == STATE_PENDING) {
+        if (status == MS_GUARD_FAULT) {
+            cold->report = message;
+            message = (MsFaultText){0};
+            hot->state = STATE_FAILED;
+        } else {
+            hot->state = status == MS_GUARD_CANCELLED || interrupted ? STATE_CANCELLED : STATE_FAILED;
+        }
+        if (hot->state == STATE_FAILED && cold->report.bytes == NULL) {
+            static const char text[] = "promise: the work ended without a result";
+            cold->report.bytes = msrt_alloc(sizeof text - 1);
+            memcpy(cold->report.bytes, text, sizeof text - 1);
+            cold->report.length = sizeof text - 1;
+        }
+    }
+    msrt_free(message.bytes);
+    wake(row);
+}
+
+static void work_entry(void *argument) {
+    const MsPromise id = (MsPromise)(uintptr_t)argument; // NOLINT(performance-no-int-to-ptr): the id travels as the argument word
+    const ptrdiff_t row = row_of(id);
+    if (row < 0 || table.cold[row].closure == NULL) {
+        return;
+    }
+    MsFaultText message = {0};
+    const MsGuardStatus status = ms_guard_call(run_closure, table.cold[row].closure, &message);
+    /* Ending drops the closure, which closes what it captured: like any implicit close it runs shielded, since a
+     * cancelled task would otherwise be cancelled again at its first park. */
+    ms_shield_enter();
+    work_ended(id, status, message);
+    ms_shield_exit();
+}
+
+static void start_task(MsPromise id, MsObj *closure) {
+    const size_t row = row_or_fault(id);
+    Cold *const cold = &table.cold[row];
+    if (cold->closure != NULL || (table.hot[row].flags & FLAG_DEFERRED) != 0) {
+        fail("promise: already started");
+    }
+    cold->closure = closure;
+    cold->creator = ms_task_current();
+    cold->started_at = ms_cleanup_base();
+    link_started(row);
+    MsTaskStatus status = MS_TASK_OK;
+    void *const argument = (void *)(uintptr_t)id; // NOLINT(performance-no-int-to-ptr): the id travels as the argument word
+    const MsTaskHandle task = ms_task_spawn(work_entry, argument, MS_SPAWN_DETACHED, 0, &status);
+    if (task == 0) {
+        unlink_started(row, cold->creator);
+        cold->closure = NULL;
+        cold->creator = 0;
+        msrt_obj_drop(closure);
+        fail("promise: cannot start the work: out of stacks");
+    }
+    table.cold[row].task = task;
+}
+
+void ms_promise_start(MsPromise id, MsObj *closure) { start_task(id, closure); }
+
+void ms_promise_defer(MsPromise id, MsObj *closure) {
+    const size_t row = row_or_fault(id);
+    table.hot[row].flags |= FLAG_DEFERRED;
+    table.cold[row].closure = closure;
+}
+
+void ms_promise_start_idle(MsPromise id, MsObj *closure) {
+    if (ms_task_count() <= 1) {
+        ms_promise_defer(id, closure);
+    } else {
+        start_task(id, closure);
+    }
+}
+
+/* Runs the deferred work of `id` on the caller's stack, ending by `deadline` (NO_TIME: no limit). */
+static bool run_deferred(MsPromise id, int64_t deadline) {
+    const ptrdiff_t found = row_of(id);
+    if (found < 0 || (table.hot[found].flags & FLAG_DEFERRED) == 0) {
+        return false;
+    }
+    const size_t row = (size_t)found;
+    table.hot[row].flags &= (uint8_t)~FLAG_DEFERRED;
+    MsObj *const closure = table.cold[row].closure;
+    table.cold[row].closure = NULL;
+    int64_t until = deadline;
+    if (table.cold[row].limit < until) {
+        until = table.cold[row].limit;
+    }
+    const int64_t inherited = ms_task_defer_deadline();
+    if (inherited < until) {
+        until = inherited;
+    }
+    const int64_t earlier = ms_task_set_defer_deadline(until);
+    const size_t handle = ms_cleanup_push(drop_closure, closure);
+    run_closure(closure);
+    ms_cleanup_discard(handle);
+    msrt_obj_drop(closure);
+    (void)ms_task_set_defer_deadline(earlier);
+    return true;
+}
+
+/* ---- stopping and ending ---- */
+
+/* Asks the work of `id` to stop at its next cancellation point. */
+static void request_cancel(size_t row) {
+    const Cold *const cold = &table.cold[row];
+    if (cold->closure != NULL && cold->task != 0) {
+        ms_task_cancel(cold->task);
+    }
+}
+
+static void stop(MsPromise id) {
+    const ptrdiff_t found = row_of(id);
+    if (found < 0 || table.hot[found].state != STATE_PENDING) {
+        return;
+    }
+    const size_t row = (size_t)found;
+    Hot *const hot = &table.hot[row];
+    Cold *const cold = &table.cold[row];
+    if (cold->closure != NULL && (hot->flags & FLAG_DEFERRED) == 0) {
+        hot->flags |= FLAG_STOPPED;
+        request_cancel(row);
+        return;
+    }
+    if ((hot->flags & FLAG_DEFERRED) != 0) {
+        hot->flags &= (uint8_t)~FLAG_DEFERRED;
+        MsObj *const closure = cold->closure;
+        cold->closure = NULL;
+        msrt_obj_drop(closure);
+    }
+    MsPromiseRetry retry = cold->retry;
+    cold->retry = NULL;
+    if (retry != NULL) {
+        (void)retry(id, cold->retry_state, MS_WAIT_CANCELLED);
+    }
+    const ptrdiff_t again = row_of(id);
+    if (again >= 0 && table.hot[again].state == STATE_PENDING) {
+        table.hot[again].state = STATE_CANCELLED;
+        wake((size_t)again);
+    }
+}
+
+void ms_promise_cancel(MsPromise id) { stop(id); }
+
+void ms_promise_limit(MsPromise id, int64_t timeout_ns) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0) {
+        return;
+    }
+    const int64_t at = ms_sched_now() + (timeout_ns > 0 ? timeout_ns : 0);
+    table.cold[row].limit = at;
+    ms_sched_arm((uint64_t)id, at);
+}
+
+/* Parks the caller until `id` wakes it, `at_ns` passes (negative: never) or a cancel arrives; returns the wake
+ * result (0 posted, MS_WAIT_TIMEOUT, MS_WAIT_CANCELLED). */
+static uint32_t park_on(MsPromise id, int64_t at_ns) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0) {
+        return 0;
+    }
+    const bool remote = (table.hot[row].flags & FLAG_REMOTE_WAKE) != 0;
+    const uint64_t token = ms_token_new(remote ? MS_TOKEN_REMOTE : 0);
+    if (token == 0) {
+        fail("promise: out of wait tokens");
+    }
+    table.hot[row].token = token;
+    uint64_t value = 0;
+    uint32_t result = 0;
+    const MsTokenStatus status = ms_token_park_at(token, at_ns, &value, &result);
+    const ptrdiff_t after = row_of(id);
+    if (after >= 0 && table.hot[after].token == token) {
+        table.hot[after].token = 0;
+    }
+    (void)ms_token_free(token);
+    return status == MS_TOKEN_OK ? result : 0;
+}
+
+bool ms_promise_end(MsPromise id) {
+    ptrdiff_t found = row_of(id);
+    if (found < 0) {
+        return false;
+    }
+    Hot *hot = &table.hot[found];
+    Cold *const cold = &table.cold[found];
+    if ((hot->flags & FLAG_DEFERRED) != 0) {
+        hot->flags &= (uint8_t)~FLAG_DEFERRED;
+        MsObj *const closure = cold->closure;
+        cold->closure = NULL;
+        msrt_obj_drop(closure);
+    }
+    if (hot->state == STATE_PENDING && cold->retry != NULL) {
+        MsPromiseRetry retry = cold->retry;
+        cold->retry = NULL;
+        (void)retry(id, cold->retry_state, MS_WAIT_CANCELLED);
+    }
+    if (table.cold[found].closure != NULL) {
+        if (table.hot[found].state == STATE_PENDING) {
+            request_cancel((size_t)found);
+        }
+        ms_shield_enter();
+        while ((found = row_of(id)) >= 0 && table.cold[found].closure != NULL) {
+            (void)park_on(id, -1);
+        }
+        ms_shield_exit();
+    }
+    found = row_of(id);
+    return found >= 0 && table.hot[found].state == STATE_OK && table.cold[found].result != NULL;
+}
+
+void ms_promise_drop(MsPromise id) {
+    (void)ms_promise_end(id);
+    const ptrdiff_t found = row_of(id);
+    if (found < 0) {
+        return;
+    }
+    const size_t row = (size_t)found;
+    release_result(row);
+    msrt_free(table.cold[row].report.bytes);
+    table.hot[row].state = STATE_FREE;
+    if (table.free_count == table.free_capacity) {
+        size_t capacity = table.free_capacity;
+        void *rows = table.free_rows;
+        if (!ms_array_reserve(&rows, &capacity, table.free_count + 1, sizeof *table.free_rows)) {
+            return;
+        }
+        table.free_rows = rows;
+        table.free_capacity = capacity;
+    }
+    table.free_rows[table.free_count++] = (uint32_t)row;
+}
+
+MsFaultText ms_promise_fault_report(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    MsFaultText copy = {0};
+    if (row < 0 || table.cold[row].report.bytes == NULL) {
+        return copy;
+    }
+    copy.bytes = msrt_alloc(table.cold[row].report.length);
+    copy.length = table.cold[row].report.length;
+    memcpy(copy.bytes, table.cold[row].report.bytes, copy.length);
+    return copy;
+}
+
+/* A cancelled frame ends the promises it started at or above its cleanup height `base`, newest first: the work
+ * borrows the frame's values, so it must end before they do. Work on this task's own stack (a deferred promise)
+ * ends with it, and joining it would wait on itself. */
+static ptrdiff_t next_to_end(MsTaskHandle me, size_t base) {
+    for (uint32_t at = ms_task_started_head(me); at != 0; at = table.cold[at - 1].next_started) {
+        const Cold *const cold = &table.cold[at - 1];
+        if (cold->closure != NULL && cold->task != 0 && cold->task != me && cold->started_at >= base) {
+            return (ptrdiff_t)at - 1;
+        }
+    }
+    return -1;
+}
+
+static void end_started(size_t base) {
+    const MsTaskHandle me = ms_task_current();
+    ptrdiff_t row = 0;
+    while ((row = next_to_end(me, base)) >= 0) {
+        (void)ms_promise_end(make_id((size_t)row));
+    }
+}
+
+/* ---- waiting ---- */
+
+static int64_t outcome(size_t row) {
+    const Hot *const hot = &table.hot[row];
+    switch (hot->state) {
+    case STATE_OK:
+        return MS_PROMISE_OK;
+    case STATE_ERROR:
+        return MS_PROMISE_ERROR;
+    case STATE_FAILED:
+        return MS_PROMISE_FAILED;
+    case STATE_CANCELLED:
+        return (hot->flags & FLAG_TIMED_OUT) != 0 ? MS_PROMISE_TIMEOUT : MS_PROMISE_CANCELLED;
+    case STATE_TAKEN:
+        return MS_PROMISE_CLOSED;
+    default:
+        return -1;
+    }
+}
+
+static int64_t earliest(int64_t a, int64_t b) { return a < b ? a : b; }
+
+int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
+    const size_t first = row_or_fault(id);
+    int64_t deadline = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
+    deadline = earliest(deadline, earliest(table.cold[first].limit, ms_task_defer_deadline()));
+    (void)run_deferred(id, deadline);
+    for (;;) {
+        const ptrdiff_t row = row_of(id);
+        if (row < 0) {
+            return MS_PROMISE_CLOSED;
+        }
+        const int64_t code = outcome((size_t)row);
+        if (code >= 0) {
+            return code;
+        }
+        const uint32_t woke = park_on(id, deadline == NO_TIME ? -1 : deadline);
+        if (woke == MS_WAIT_CANCELLED) {
+            (void)ms_promise_end(id);
+            ms_cancelled();
+        }
+        const ptrdiff_t after = row_of(id);
+        if (after < 0) {
+            return MS_PROMISE_CLOSED;
+        }
+        const int64_t done = outcome((size_t)after);
+        if (done >= 0) {
+            return done;
+        }
+        if (woke == MS_WAIT_TIMEOUT) {
+            request_cancel((size_t)after);
+            return MS_PROMISE_TIMEOUT;
+        }
+    }
+}
+
+bool ms_promise_done(MsPromise id) {
+    const ptrdiff_t row = row_of(id);
+    if (row < 0) {
+        return true;
+    }
+    if (table.hot[row].state == STATE_PENDING && table.cold[row].closure != NULL) {
+        /* A task that has not run yet gets its turn, so polling done makes progress. */
+        ms_task_yield();
+    }
+    const ptrdiff_t after = row_of(id);
+    return after < 0 || table.hot[after].state != STATE_PENDING;
+}
+
+/* ---- sleeps and limits ---- */
+
+MsPromise ms_promise_sleep(int64_t ns) {
+    const MsPromise id = ms_promise_new();
+    const size_t row = row_or_fault(id);
+    const int64_t at = ms_sched_now() + (ns > 0 ? ns : 0);
+    table.cold[row].deadline = at;
+    ms_sched_arm((uint64_t)id, at);
+    return id;
+}
+
+static bool timer_live(uint64_t id, int64_t deadline) {
+    const ptrdiff_t row = row_of((MsPromise)id);
+    return row >= 0 && table.hot[row].state == STATE_PENDING &&
+           (table.cold[row].deadline == deadline || table.cold[row].limit == deadline);
+}
+
+static void timer_fire(uint64_t id, int64_t deadline) {
+    const MsPromise promise = (MsPromise)id;
+    ptrdiff_t row = row_of(promise);
+    if (row >= 0 && table.cold[row].limit == deadline) {
+        table.hot[row].flags |= FLAG_TIMED_OUT;
+        table.cold[row].limit = NO_TIME;
+        stop(promise);
+        row = row_of(promise);
+    }
+    if (row >= 0 && table.hot[row].state == STATE_PENDING && table.cold[row].deadline == deadline) {
+        table.cold[row].deadline = NO_TIME;
+        ms_promise_io_done_unit(promise);
+    }
+}
+
+void ms_promises_teardown(void) {
+    for (size_t row = 0; row < table.count; row++) {
+        if (table.hot[row].state != STATE_FREE) {
+            release_result(row);
+            msrt_free(table.cold[row].report.bytes);
+        }
+    }
+    msrt_free(table.hot);
+    msrt_free(table.cold);
+    msrt_free(table.free_rows);
+    table = (Table){0};
+}
+
+void ms_promise_hooks(MsSchedHooks *hooks) {
+    hooks->end_started = end_started;
+    hooks->timer_live = timer_live;
+    hooks->timer_fire = timer_fire;
+    hooks->teardown = ms_promises_teardown;
+}

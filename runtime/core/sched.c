@@ -15,6 +15,7 @@ MsSched *ms_sched(void) {
         MsSched *const created = msrt_alloc_zeroed(sizeof *created);
         created->timer_limit = MIN_TIMER_LIMIT;
         created->kill_limit = MIN_TIMER_LIMIT;
+        created->external_limit = MIN_TIMER_LIMIT;
         thread_sched = created;
     }
     return thread_sched;
@@ -59,6 +60,9 @@ void ms_sched_teardown(void) {
     MsSched *const sched = thread_sched;
     if (sched == NULL) {
         return;
+    }
+    if (sched->hooks.teardown != NULL) {
+        sched->hooks.teardown();
     }
     for (size_t i = 0; i < sched->slot_count; i++) {
         if (sched->slots[i].task != NULL) {

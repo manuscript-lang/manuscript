@@ -205,7 +205,7 @@ static void service(MsSched *sched) {
     if (ms_sched_stop_request() != 0) {
         (void)ms_park_cancel_all(sched);
     }
-    if (sched->kills.length != 0 || sched->timers.length != 0) {
+    if (sched->kills.length != 0 || sched->timers.length != 0 || sched->external.length != 0) {
         /* Timers are checked once per round: a pass over the tasks that were ready when the last check ran. A
          * due timer therefore waits at most one round, as a task at the back of the queue does; a lone task
          * yielding to itself is a round of one and checks on every switch. */
@@ -569,4 +569,34 @@ MsTaskStatus ms_task_run_main(MsTaskEntry entry, void *arg, uint32_t flags, uint
     sched->waiting_roots--;
     ms_shield_exit();
     return status;
+}
+
+uint32_t ms_task_started_head(MsTaskHandle handle) {
+    const MsTask *const task = ms_task_lookup(ms_sched(), handle);
+    return task == NULL ? 0 : task->started_head;
+}
+
+uint32_t ms_task_started_swap(MsTaskHandle handle, uint32_t head) {
+    MsTask *const task = ms_task_lookup(ms_sched(), handle);
+    if (task == NULL) {
+        return 0;
+    }
+    const uint32_t previous = task->started_head;
+    task->started_head = head;
+    return previous;
+}
+
+int64_t ms_task_defer_deadline(void) {
+    const MsTask *const task = ms_sched()->current;
+    return task == NULL || task->defer_at == 0 ? MS_NO_DEADLINE : task->defer_at;
+}
+
+int64_t ms_task_set_defer_deadline(int64_t at_ns) {
+    MsTask *const task = ms_sched()->current;
+    if (task == NULL) {
+        return MS_NO_DEADLINE;
+    }
+    const int64_t previous = task->defer_at == 0 ? MS_NO_DEADLINE : task->defer_at;
+    task->defer_at = at_ns == MS_NO_DEADLINE ? 0 : at_ns;
+    return previous;
 }

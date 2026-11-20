@@ -68,4 +68,8 @@ size_t msrt_cleanup_push(void (*run)(uint8_t *), uint8_t *arg) {
 void msrt_cleanup_discard(size_t handle) { ms_test_cleanups = handle - 1; }
 
 MsObj *msrt_obj_clone(MsObj *object) { return object; }
-void msrt_obj_drop(MsObj *object) { (void)object; }
+void msrt_obj_drop(MsObj *object) {
+    if (object != NULL && object->drop != NULL) {
+        object->drop(object);
+    }
+}

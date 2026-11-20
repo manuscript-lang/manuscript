@@ -68,6 +68,8 @@ typedef struct MsTask {
     uint32_t wait_events;
     int32_t wait_fd;
     MsNode wait_node; /* this task's waiter node on wait_fd */
+    int64_t defer_at;       /* deadline of the deferred promise this task runs, 0 when none */
+    uint32_t started_head;  /* first promise this task started (row + 1), 0 for none */
     uint32_t segment; /* the segment the task runs on: 0 is the home slot, k is segments[k - 1] */
     uint8_t state;
     uint8_t outcome;
@@ -134,6 +136,8 @@ typedef struct MsSched {
 
     MsTimers timers; /* parks with a deadline */
     MsTimers kills;  /* tasks with a time limit */
+    MsTimers external; /* entries of other tables (promise sleeps and limits) */
+    size_t external_limit;
     size_t timer_limit;
     size_t kill_limit;
     size_t timer_round; /* switches left in the round that began at the last timer check */
