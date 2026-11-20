@@ -123,12 +123,12 @@ typedef struct MirParam { MirTy ty; uint8_t mode; } MirParam;
 typedef struct MirBlockParam { MirValue value; uint8_t mode; } MirBlockParam;
 
 typedef struct MirInst {
-    uint8_t op;      /* MirOp */
+    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     MirImm imm;
     MirValue res;    /* MIR_NONE when the op defines nothing */
-    MirLoc loc;
-    MirValue *args; /* owned by the module arena; passes edit it in place or replace it */
     uint32_t nargs;
+    MirLoc loc;
+    uint8_t op;      /* MirOp */
 } MirInst;
 
 typedef struct MirTarget {
@@ -321,6 +321,8 @@ static inline bool mir_owns(uint64_t owned, uint32_t i) { return i < 64 && (owne
 MsSym mir_name(MirModule *m, const char *s, size_t n);
 uint32_t mir_add_string(MirModule *m, const char *s, size_t n);
 uint32_t mir_add_func(MirModule *m, const MirFunc *f);
+/* Rebuilds the name index after functions were removed or moved. */
+void mir_funcs_reindex(MirModule *m);
 uint32_t mir_add_type(MirModule *m, MsSym name);
 uint32_t mir_add_alt(MirModule *m, MsSym name);
 uint32_t mir_add_iface(MirModule *m, MsSym name);

@@ -8,6 +8,7 @@ cmake_minimum_required(VERSION 3.20)
 #   MS_C_LIBS      system (pkg-config) or prefix (MS_LIBS_PREFIX holds include/ and lib/lib*.a: pinned builds, MSYS2).
 #   MS_SANITIZE    ON: AddressSanitizer and UBSan (the tests).
 #   MS_CCACHE      OFF: do not use ccache even when installed.
+#   MS_ALLOC_STATS ON: the counting allocator (leak checks and the Rust unit tests).
 # Files are found by glob (CONFIGURE_DEPENDS), so adding a .c file under runtime/ needs no edit here.
 project(manuscript C)
 
@@ -18,6 +19,7 @@ set(MS_LIBS_DEFINES "" CACHE STRING "Extra definitions for the libraries' header
 option(MS_LIBS_IDIRAFTER "Search MS_LIBS_PREFIX/include after the compiler's own (MSYS2)" OFF)
 option(MS_SANITIZE "Build the tests with AddressSanitizer and UBSan" OFF)
 option(MS_CCACHE "Use ccache when installed" ON)
+option(MS_ALLOC_STATS "Build the allocator as the counting runtime (live-block counts, scribbled frees)" OFF)
 option(MS_BUILD_RUNTIME "Configure the runtime archive and its libraries" ON)
 option(MS_BUILD_COMPILER "Configure the C compiler, its tools and tests (compiler/)" ON)
 option(MS_BUILD_TESTS "Build the C runtime tests" ON)
