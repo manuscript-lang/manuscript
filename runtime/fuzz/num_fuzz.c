@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "ms_rt.h"
+#include "ms_rt/num.h"
 
 #define REQUIRE(c) do { if (!(c)) abort(); } while (0)
 
