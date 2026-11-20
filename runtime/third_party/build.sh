@@ -85,11 +85,13 @@ done
 if [ ! -f "$out/lib/libssl.a" ]; then
     [ -n "$perl" ] || { echo "build.sh: no Unix-style perl (OpenSSL's Configure needs one; on Windows install MSYS2's perl)" >&2; exit 1; }
     # no-secure-memory: its mmap-locked heap needs kernel headers (<linux/mman.h>) that musl-gcc does not see, and we keep no keys in a locked heap.
-    perl_dir=; case "$perl" in */*) perl_dir=$(dirname "$perl"): ;; esac
+    perl_dir=; ssl_make=make
+    # MSYS2's perl records MSYS-style paths (/d/a/...) in configdata.pm, which only MSYS2's own make can resolve.
+    case "$perl" in */*) perl_dir=$(dirname "$perl"):; [ -x "$(dirname "$perl")/make" ] && ssl_make=$(dirname "$perl")/make ;; esac
     build=$root/build/$triple/openssl
     rm -rf "$build"; mkdir -p "$build"
     (cd "$build" && PATH="$perl_dir$PATH" CC="$cc" "$perl" "$vendor/openssl/Configure" "$ssl_target" $ssl_extra no-shared no-tests no-docs no-apps no-module no-legacy no-dso no-engine no-afalgeng no-comp no-ssl3 no-weak-ssl-ciphers no-secure-memory --libdir=lib --prefix="$build/install" >/dev/null \
-        && make -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
+        && "$ssl_make" -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$vendor/openssl"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
 if [ ! -f "$out/lib/libz.a" ]; then

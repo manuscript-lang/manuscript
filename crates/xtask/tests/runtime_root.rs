@@ -20,6 +20,9 @@ fn runtime_uses_the_active_cargo_manifest_directory() {
     )
     .unwrap();
     std::fs::set_permissions(&cargo, std::fs::Permissions::from_mode(0o755)).unwrap();
+    // The vendored libraries build through a script of the checkout; here it does nothing.
+    std::fs::create_dir_all(root.join("runtime/third_party")).unwrap();
+    std::fs::write(root.join("runtime/third_party/build.sh"), "exit 0\n").unwrap();
     // The C half is a CMake build of the real checkout; here `cmake` only leaves the two lists it reads back.
     let cmake = root.join("cmake");
     std::fs::write(

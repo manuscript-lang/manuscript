@@ -1,4 +1,5 @@
-// Records are built by naming the type; an exported function cannot expose a private type.
+// Records are built by naming the type; an exported function cannot expose a private
+// type.
 type Point:
 	x: Int
 	y: Int
