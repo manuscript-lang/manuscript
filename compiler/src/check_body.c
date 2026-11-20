@@ -997,6 +997,7 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     }
     if (b->supported) {
         b->facts->body_checked[d->id] = true;
+        b->facts->body_diagnosed[d->id] = MS_VEC_LEN(b->diags, MsCheckDiag) > diags_start;
         body_commit_diags(b, diags_start);
     } else {
         body_undo(b, first_binding, written_start, diags_start);
@@ -1017,6 +1018,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->body_diagnosed = MS_NEW_N(arena, bool, nodes);
+    memset(facts->body_diagnosed, 0, nodes * sizeof *facts->body_diagnosed);
     facts->const_use = MS_NEW_N(arena, bool, nodes);
     memset(facts->const_use, 0, nodes * sizeof *facts->const_use);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);

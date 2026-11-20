@@ -84,6 +84,7 @@ typedef struct MsFacts {
     MsTy *type_args;
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
     bool *body_checked;   /* by declaration node id: the function's body was checked */
+    bool *body_diagnosed; /* by declaration node id: that body has a diagnostic, so it is not lowered */
     MsBindings bindings;
     MsMethods *methods; /* the program's table, shared by every module */
 } MsFacts;

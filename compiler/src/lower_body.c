@@ -733,7 +733,8 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
     MsSymId *syms = MS_NEW_N(&lb->m->arena, MsSymId, (size_t)ndecls + 1);
     for (uint32_t i = 0; i < ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
-        const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i];
+        const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] &&
+                             !lb->facts->body_diagnosed[d->id] && !failed[i];
         syms[i] = checked ? ms_decl_own_symbol(lb->c, module, d) : MS_NONE;
         if (syms[i] != MS_NONE) {
             lb->func_of[syms[i]] = lb_add_stub(lb, d, syms[i]);
