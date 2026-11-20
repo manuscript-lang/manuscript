@@ -12,6 +12,8 @@ void msrt_list_push(void *v, const void *d, const void *e);
 void msrt_list_drop(void *v, const void *d);
 
 const unsigned char msrt_desc_int[1];
+void *msrt_alloc_zeroed(size_t n);
+void *msrt_alloc_zeroed(size_t n) { return calloc(1, n); }
 void msrt_list_with_capacity(const void *d, int64_t cap, void *vec) {
     fake_vec *const out = vec;
     (void)d;

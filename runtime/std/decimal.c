@@ -573,8 +573,8 @@ MS_NODISCARD static bool parse_literal(MsBytes text, MsDecimal *out) {
             marker = i;
         }
     }
-    const MsBytes mantissa_text = ms_bytes(text.ptr + start, marker - start);
-    const MsBytes exponent_text = marker == end ? ms_bytes((const uint8_t *)"0", 1) : ms_bytes(text.ptr + marker + 1, end - marker - 1);
+    const MsBytes mantissa_text = ms_bytes_of(text.ptr + start, marker - start);
+    const MsBytes exponent_text = marker == end ? ms_bytes_of((const uint8_t *)"0", 1) : ms_bytes_of(text.ptr + marker + 1, end - marker - 1);
     size_t sign = exponent_text.len > 0 && (exponent_text.ptr[0] == '-' || exponent_text.ptr[0] == '+') ? 1 : 0;
     MsMantissa m = {0};
     if (exponent_text.len == sign || mantissa_text.len == 0) {
@@ -608,7 +608,7 @@ MS_NODISCARD static bool parse_literal(MsBytes text, MsDecimal *out) {
 
 uint8_t msstd_decimal_parse(const MsStr *text, MsDecimal *out) {
     MsDecimal parsed = {0};
-    if (!parse_literal(ms_bytes(ms_str_data(text), ms_str_len(text)), &parsed)) {
+    if (!parse_literal(ms_bytes_of(ms_str_data(text), ms_str_len(text)), &parsed)) {
         return MS_STATUS_INVALID_INPUT;
     }
     *out = parsed;

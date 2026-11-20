@@ -42,8 +42,7 @@ void msfault_raise(uint8_t kind, const void *message, size_t length) {
     (void)kind;
     msrt_fault(message, length);
 }
-void msrt_string_from_bytes(const uint8_t *bytes, size_t length, void *out) {
-    MsStr *const s = out;
+void msrt_string_from_bytes(const uint8_t *bytes, size_t length, MsStr *s) {
     uint8_t *const copy = malloc(length + 1);
     memcpy(copy, bytes, length);
     s->ptr_word = copy;

@@ -2,6 +2,7 @@
 #ifndef MS_TEST_FAKE_RT_H
 #define MS_TEST_FAKE_RT_H
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,6 +33,24 @@ void msrt_list_push(MsVec *v, const void *d, const void *e) {
 void msrt_list_drop(MsVec *v, const void *d) {
     (void)d;
     free(v->ptr);
+}
+
+/* Faults end the test with the message; the real runtime records and unwinds. */
+void msrt_fault(const void *message, size_t length);
+void msrt_fault(const void *message, size_t length) {
+    fprintf(stderr, "FAULT %.*s\n", (int)length, (const char *)message);
+    exit(1);
+}
+void msfault_raise(uint8_t kind, const void *message, size_t length);
+void msfault_raise(uint8_t kind, const void *message, size_t length) {
+    fprintf(stderr, "FAULT(%u) %.*s\n", kind, (int)length, (const char *)message);
+    exit(1);
+}
+/* An owned string (tag bits 00): the allocation and the byte length. */
+void msrt_string_from_bytes(const uint8_t *bytes, size_t length, MsStr *out) {
+    out->ptr_word = malloc(length + 1);
+    memcpy(out->ptr_word, bytes, length);
+    out->tagged = length;
 }
 
 #endif

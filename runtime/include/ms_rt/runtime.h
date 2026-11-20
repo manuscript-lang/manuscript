@@ -4,8 +4,10 @@
 #ifndef MS_RT_RUNTIME_H
 #define MS_RT_RUNTIME_H
 
+#include "ms_rt/alloc.h"
 #include "ms_rt/base.h"
 #include "ms_rt/safe.h"
+#include "ms_rt/string.h"
 
 /* The status code of invalid data (base.h has the others). */
 enum { MS_STATUS_INVALID_DATA = 4 };
@@ -19,14 +21,9 @@ typedef enum MsFaultKind {
 /* A presence flag parameter (an `Optional` argument split in two): 0 or 1. */
 typedef uint8_t HasRaw;
 
-/* Memory from the runtime allocator; it faults when memory is exhausted, so the result is never null. */
-MS_RETURNS_NONNULL void *msrt_alloc(size_t size);
-void msrt_free(void *pointer);
 /* Raises a fault with this message; never returns. */
 MS_NORETURN void msrt_fault(const void *message, size_t length);
 /* The same for a fault of a family (an MsFaultKind). */
 MS_NORETURN void msfault_raise(uint8_t kind, const void *message, size_t length);
-/* Writes a new owned string holding a copy of the bytes (an MsStr, ms_rt/string.h) to *out. */
-void msrt_string_from_bytes(const uint8_t *bytes, size_t length, void *out);
 
 #endif

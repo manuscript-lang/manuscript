@@ -152,7 +152,7 @@ static bool fields_are_valid(const DateTimeFields *f) {
 
 /* RFC 3339 with an optional fraction of 1 to 9 digits and a `Z` or `+hh:mm` zone. */
 uint8_t msstd_time_parse_timestamp(const MsStr *text, MsTimestamp *out) {
-    const MsBytes bytes = ms_bytes(ms_str_data(text), ms_str_len(text));
+    const MsBytes bytes = ms_bytes_of(ms_str_data(text), ms_str_len(text));
     DateTimeFields f = {0};
     size_t at = DATE_TIME_LENGTH;
     int64_t nanos = 0;
@@ -213,7 +213,7 @@ static Date date_in_zone(const MsTimestamp *value, int64_t offset, const MsStr *
     }
     return (Date){.civil = ms_civil_of(local, value->nanos),
                   .offset = offset,
-                  .zone = ms_bytes(ms_str_data(zone), ms_str_len(zone))};
+                  .zone = ms_bytes_of(ms_str_data(zone), ms_str_len(zone))};
 }
 
 void msstd_time_timestamp_calendar(const MsTimestamp *value, int64_t offset, const MsStr *zone, MsCalendar *out) {
@@ -307,7 +307,7 @@ static Token token_at(MsBytes pattern, size_t at) {
 
 void msstd_time_timestamp_format(const MsTimestamp *value, const MsStr *pattern, int64_t offset, const MsStr *zone, MsStr *out) {
     const Date date = date_in_zone(value, offset, zone);
-    const MsBytes bytes = ms_bytes(ms_str_data(pattern), ms_str_len(pattern));
+    const MsBytes bytes = ms_bytes_of(ms_str_data(pattern), ms_str_len(pattern));
     TextBuffer buffer = {0};
     size_t at = 0;
     while (at < bytes.len) {

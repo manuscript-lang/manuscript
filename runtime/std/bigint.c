@@ -99,7 +99,7 @@ uint8_t msstd_bigint_parse(const MsStr *text, int64_t radix, HasRaw has_max, int
         }
     }
     MsBig value = MS_BIG_ZERO;
-    ms_big_parse_digits(&value, ms_bytes(bytes, length), (unsigned)radix);
+    ms_big_parse_digits(&value, ms_bytes_of(bytes, length), (unsigned)radix);
     value.negative = negative && value.len != 0;
     return cell_ok(&value, out);
 }
