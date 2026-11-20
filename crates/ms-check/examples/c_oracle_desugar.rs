@@ -10,7 +10,7 @@
 
 use ms_check::desugar_oracle::desugar_inherent_impls;
 use ms_syntax::Names;
-use ms_syntax::ast::{Decl, DeclKind, Module};
+use ms_syntax::ast::{Decl, DeclKind, Module, TypeKind};
 use ms_syntax::dump::{dump_module, quote};
 use ms_syntax::parser::parse;
 use std::fmt::Write;
@@ -30,6 +30,20 @@ fn ids(out: &mut String, d: &Decl) {
         let _ = write!(out, " {}", m.id.0);
     }
     out.push('\n');
+}
+
+/// What the C pass does not build: the interface synthesized for a type's own methods and the
+/// impl that carries it. The C pass keeps the written blocks, so only their methods are compared
+/// (see compiler/tests/check-divergences.txt).
+fn is_inherent(syms: Names, d: &Decl) -> bool {
+    match &d.kind {
+        DeclKind::Interface(i) => syms.str(i.name).ends_with("$methods"),
+        DeclKind::Impl(i) => matches!(
+            i.contract.as_ref().map(|c| &c.kind),
+            Some(TypeKind::Named { name, .. }) if syms.str(*name).ends_with("$methods")
+        ),
+        _ => false,
+    }
 }
 
 fn main() {
@@ -62,14 +76,28 @@ fn main() {
             continue;
         };
         let (decls, errors, node_count) = desugar_inherent_impls(syms, &module, &foreign);
+        let mut methods: Vec<String> = Vec::new();
+        for d in decls.iter().filter(|d| is_inherent(syms, d)) {
+            if let DeclKind::Impl(i) = &d.kind {
+                for m in &i.methods {
+                    methods.push(format!(
+                        "method {} {}:{}\n",
+                        syms.str(m.func.name),
+                        m.pos.line,
+                        m.pos.column
+                    ));
+                }
+            }
+        }
+        methods.sort();
         let desugared = Module {
-            decls,
+            decls: decls.into_iter().filter(|d| !is_inherent(syms, d)).collect(),
             node_count,
             ..module
         };
         out.push_str(&dump_module(syms, &desugared));
-        let _ = writeln!(out, "nodes {node_count}");
         desugared.decls.iter().for_each(|d| ids(&mut out, d));
+        methods.iter().for_each(|m| out.push_str(m));
         for e in &errors {
             let p = e.pos;
             let _ = writeln!(

@@ -30,12 +30,21 @@ fn show(syms: Names, t: &Ty) -> String {
     t.display(syms).to_string()
 }
 
-fn variables(syms: Names, vars: &[Ty]) -> String {
+/// `dedupe`: an inherent row repeats the bounds the interface and the impl both carried; the C
+/// checker states each once (see compiler/tests/check-divergences.txt).
+fn variables(syms: Names, vars: &[Ty], dedupe: bool) -> String {
     let each: Vec<String> = vars
         .iter()
         .map(|v| {
             let default = v.default_ty().map_or("-".to_string(), |t| show(syms, &t));
-            let bounds: Vec<String> = v.bounds().iter().map(|b| show(syms, b)).collect();
+            let mut bounds: Vec<String> = v.bounds().iter().map(|b| show(syms, b)).collect();
+            if dedupe {
+                let mut seen = Vec::new();
+                bounds.retain(|b| !seen.contains(b) && {
+                    seen.push(b.clone());
+                    true
+                });
+            }
             format!("{} default={default} bounds={}", syms.str(v.name), bounds.join(","))
         })
         .collect();
@@ -57,6 +66,11 @@ fn interface_operations(
             continue;
         }
         let name = d.name();
+        // The Rust checker gives each type's own methods a synthesized interface; the C checker
+        // attaches them to the type.
+        if syms.str(name).ends_with("$methods") {
+            continue;
+        }
         let Some(s) = names
             .borrow()
             .get(&name)
@@ -95,13 +109,14 @@ fn interface_operations(
                 syms.str(op.name),
                 show(syms, &op.ty),
                 labels.join(","),
-                variables(syms, &own)
+                variables(syms, &own, false)
             );
         }
     }
 }
 
 fn methods(out: &mut String, syms: Names, program: &ms_check::Program, module: &ms_check::ModRef) {
+    let mut rows = Vec::new();
     for m in program.methods.iter().filter(|m| m.module == module.file) {
         let labels: Vec<String> = m
             .ty
@@ -120,18 +135,25 @@ fn methods(out: &mut String, syms: Names, program: &ms_check::Program, module: &
             .decl
             .as_ref()
             .map_or("-".to_string(), |f| format!("{}:{}", f.pos().line, f.pos().column));
-        let _ = writeln!(
-            out,
-            "method {} for {}: {} params={} vars={} local={} inherent={} at={at}",
+        let inherent = m.is_inherent(syms);
+        let contract = match &m.contract {
+            Some(c) if !inherent => show(syms, c),
+            _ => "-".to_string(),
+        };
+        rows.push(format!(
+            "method {} for {}: {} params={} vars={} local={} inherent={inherent} at={at}\n",
             show(syms, &m.receiver),
-            m.contract.as_ref().map_or("-".to_string(), |c| show(syms, c)),
+            contract,
             show(syms, &m.ty),
             labels.join(","),
-            variables(syms, &m.variables),
+            variables(syms, &m.variables, inherent),
             m.local,
-            m.is_inherent(syms),
-        );
+        ));
     }
+    // A type's own methods are rows in declaration order in the C checker and in the order of
+    // their merged block here, so the lines are compared sorted.
+    rows.sort();
+    out.extend(rows);
 }
 
 fn main() {
@@ -159,7 +181,12 @@ fn main() {
             ms_check::CheckOptions::default(),
         );
         for d in &program.diagnostics {
-            if FAMILIES.iter().any(|f| d.message.contains(f)) {
+            // The synthesized interface of a type's own methods reports a repeat a second time.
+            let restated = d.message.starts_with("duplicate operation ")
+                && program.diagnostics.iter().any(|o| {
+                    o.pos == d.pos && o.message.starts_with("duplicate implementation operation ")
+                });
+            if !restated && FAMILIES.iter().any(|f| d.message.contains(f)) {
                 println!("{}:{}: {}", d.pos.line, d.pos.column, d.message);
             }
         }

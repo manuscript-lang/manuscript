@@ -56,16 +56,57 @@ static void print_ids(MsBuf *out, const MsDecl *decl) {
     ms_buf_putc(out, '\n');
 }
 
-static void print_result(MsBuf *out, const MsNames *names, const MsModule *parsed, const MsDesugared *result) {
+static bool is_inherent(const MsDecl *decl) { return decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL; }
+
+static int compare_lines(const void *a, const void *b) {
+    return strcmp(*(const char *const *)a, *(const char *const *)b);
+}
+
+/* One `method NAME LINE:COL` line for each method of the inherent blocks, sorted. */
+static void print_inherent_methods(MsBuf *out, MsNames *names, const MsDesugared *result) {
+    char **lines = NULL;
+    size_t count = 0;
+    for (uint32_t i = 0; i < result->ndecls; i++) {
+        if (!is_inherent(result->decls[i])) {
+            continue;
+        }
+        for (uint32_t k = 0; k < result->decls[i]->u.impl.methods.len; k++) {
+            const MsMethod *m = result->decls[i]->u.impl.methods.ptr[k];
+            const MsStr name = ms_name(names, m->func.name);
+            char line[512];
+            snprintf(line, sizeof line, "method %.*s %u:%u\n", (int)name.len, name.ptr, m->pos.line, m->pos.column);
+            lines = realloc(lines, (count + 1) * sizeof *lines);
+            lines[count] = malloc(strlen(line) + 1);
+            memcpy(lines[count++], line, strlen(line) + 1);
+        }
+    }
+    if (count > 1) {
+        qsort(lines, count, sizeof *lines, compare_lines);
+    }
+    for (size_t i = 0; i < count; i++) {
+        ms_buf_puts(out, lines[i]);
+        free(lines[i]);
+    }
+    free(lines);
+}
+
+static void print_result(MsBuf *out, MsNames *names, const MsModule *parsed, const MsDesugared *result) {
     MsModule desugared = *parsed;
-    desugared.decls = result->decls;
-    desugared.ndecls = result->ndecls;
+    MsDecl **kept = malloc((result->ndecls + 1) * sizeof *kept);
+    desugared.ndecls = 0;
+    for (uint32_t i = 0; i < result->ndecls; i++) {
+        if (!is_inherent(result->decls[i])) {
+            kept[desugared.ndecls++] = result->decls[i];
+        }
+    }
+    desugared.decls = kept;
     desugared.node_count = result->node_count;
     ms_dump_module(out, names, &desugared);
-    ms_buf_printf(out, "nodes %u\n", result->node_count);
-    for (uint32_t i = 0; i < result->ndecls; i++) {
-        print_ids(out, result->decls[i]);
+    for (uint32_t i = 0; i < desugared.ndecls; i++) {
+        print_ids(out, kept[i]);
     }
+    free(kept);
+    print_inherent_methods(out, names, result);
     for (uint32_t i = 0; i < result->nerrors; i++) {
         ms_buf_puts(out, "inherent ");
         ms_dump_pos(out, result->errors[i].pos);

@@ -168,51 +168,6 @@ static bool mentions_parameter(const MsTypeRef *t, MsTypeParams params) {
     return mentions_parameter(t->result, params);
 }
 
-/* A type parameter and the type argument a receiver writes for it. */
-typedef struct Binding {
-    MsSym name;
-    MsTypeRef *with;
-} Binding;
-
-static MsTypeRef *binding_for(const Binding *bindings, uint32_t count, MsSym name) {
-    for (uint32_t i = 0; i < count; i++) {
-        if (bindings[i].name == name) {
-            return bindings[i].with;
-        }
-    }
-    return NULL;
-}
-
-/* `t` with each named parameter replaced by the type argument written for it. Replaced nodes are
- * shared; the nodes above them are new, with the old ids. */
-static MsTypeRef *substitute_parameters(Desugar *d, const MsTypeRef *t, const Binding *bindings,
-                                        uint32_t count) {
-    MsTypeRef *copy = MS_NEW(d->arena, MsTypeRef);
-    *copy = *t;
-    if (t->kind == MS_TYPE_NAMED) {
-        MsTypeRef *with = t->args.len == 0 ? binding_for(bindings, count, t->name) : NULL;
-        if (with != NULL) {
-            return with;
-        }
-        copy->args.ptr = MS_NEW_N(d->arena, MsTypeRef *, t->args.len);
-        for (uint32_t i = 0; i < t->args.len; i++) {
-            copy->args.ptr[i] = substitute_parameters(d, t->args.ptr[i], bindings, count);
-        }
-        return copy;
-    }
-    copy->params.ptr = MS_NEW_N(d->arena, MsParam *, t->params.len);
-    for (uint32_t i = 0; i < t->params.len; i++) {
-        MsParam *param = MS_NEW(d->arena, MsParam);
-        *param = *t->params.ptr[i];
-        if (param->ty != NULL) {
-            param->ty = substitute_parameters(d, param->ty, bindings, count);
-        }
-        copy->params.ptr[i] = param;
-    }
-    copy->result = substitute_parameters(d, t->result, bindings, count);
-    return copy;
-}
-
 static MsTypeRef *new_named_type(Desugar *d, uint32_t id, MsPos pos, MsSym name, MsTypeRefs args) {
     MsTypeRef *t = MS_NEW(d->arena, MsTypeRef);
     *t = (MsTypeRef){.id = id, .pos = pos, .kind = MS_TYPE_NAMED, .name = name, .args = args};
@@ -442,35 +397,37 @@ static MsBuf marker_impls(Desugar *d, const MsDecl *decl) {
 
 /* ---- step 2: collect ---- */
 
-/* One output declaration. An inherent impl also carries the methods merged into it and its
- * receiver form, which `collect` fills in. */
-typedef struct Entry {
-    MsDecl *decl;
-    bool inherent;
-    bool plain;      /* the receiver repeats the type's parameters and writes no bounds */
-    MsSym type;      /* the receiver's type name */
-    MsStr form;      /* identifies the receiver form among the type's impls */
-    MsStr bounds;    /* the written bounds as text */
-    MsBuf methods;   /* MsMethod *, in merge order */
-} Entry;
+/* The output declarations and the receiver forms of the inherent impls among them. */
+typedef struct Collected {
+    MsBuf decls; /* MsDecl * */
+    MsBuf forms; /* Form */
+} Collected;
 
-static Entry *entry_at(MsBuf *entries, size_t at) { return &MS_VEC_AT(*entries, Entry, at); }
+/* The inherent impls of one type that share a receiver form: the plain `T[A]`, a bounded
+ * `T[A: Bound]`, or a specialized `T[Int]`. The declarations stay as written; the form only groups
+ * their methods for the checks that treat them as one block. */
+typedef struct Form {
+    bool plain;               /* the receiver repeats the type's parameters and writes no bounds */
+    MsSym type;               /* the receiver's type name */
+    MsStr key;                /* identifies the receiver form among the type's impls */
+    MsStr bounds;             /* the written bounds as text */
+    const MsTypeRef *receiver; /* the first block's receiver */
+    MsBuf methods;            /* MsMethod *, in declaration order */
+} Form;
 
-static void push_plain_entry(MsBuf *entries, MsDecl *decl) {
-    MS_VEC_PUSH(*entries, Entry, ((Entry){.decl = decl}));
-}
+static Form *form_at(MsBuf *forms, size_t at) { return &MS_VEC_AT(*forms, Form, at); }
 
-static void append_methods(Entry *entry, const MsDecl *impl) {
+static void append_methods(Form *form, const MsDecl *impl) {
     for (uint32_t i = 0; i < impl->u.impl.methods.len; i++) {
-        MS_VEC_PUSH(entry->methods, MsMethod *, impl->u.impl.methods.ptr[i]);
+        MS_VEC_PUSH(form->methods, MsMethod *, impl->u.impl.methods.ptr[i]);
     }
 }
 
-/* The position of the entry for this receiver form, or SIZE_MAX. */
-static size_t find_form(MsBuf *entries, MsSym type, MsStr form) {
-    for (size_t i = 0; i < MS_VEC_LEN(*entries, Entry); i++) {
-        const Entry *entry = entry_at(entries, i);
-        if (entry->inherent && entry->type == type && str_equal(entry->form, form)) {
+/* The position of the form for this receiver, or SIZE_MAX. */
+static size_t find_form(MsBuf *forms, MsSym type, MsStr key) {
+    for (size_t i = 0; i < MS_VEC_LEN(*forms, Form); i++) {
+        const Form *form = form_at(forms, i);
+        if (form->type == type && str_equal(form->key, key)) {
             return i;
         }
     }
@@ -506,39 +463,50 @@ static void report_receiver_arity(Desugar *d, const MsDecl *decl, MsSym type, Ms
     ms_buf_free(&message);
 }
 
-/* Adds an inherent impl of a declared type: merged into the entry for its receiver form, or the
- * first of a new form. Methods merge into one block per receiver form: the plain `T[A]`, a
- * bounded `T[A: Bound]`, or a specialized `T[Int]`. */
-static void collect_inherent(Desugar *d, MsBuf *entries, const MsDecl *decl, MsSym type, const TypeInfo *info) {
-    const MsTypeRef *receiver = decl->u.impl.receiver;
-    MsBuf bounds = {0};
-    put_bounds_key(d, &bounds, decl->u.impl.bounds);
-    bool plain = repeats_type_parameters(receiver, info->params) && decl->u.impl.bounds.len == 0;
-    MsBuf form = {0};
-    if (!plain) {
-        put_type_key(d, &form, receiver);
-        ms_buf_putc(&form, '|');
-        put_buf(&form, &bounds);
+/* The key of an inherent impl's receiver form: empty for the plain form. */
+static MsStr form_key(Desugar *d, const MsDecl *impl, MsTypeParams params, bool *plain, MsStr *bounds) {
+    const MsTypeRef *receiver = impl->u.impl.receiver;
+    MsBuf text = {0};
+    MsBuf written = {0};
+    put_bounds_key(d, &written, impl->u.impl.bounds);
+    *plain = repeats_type_parameters(receiver, params) && impl->u.impl.bounds.len == 0;
+    if (!*plain) {
+        put_type_key(d, &text, receiver);
+        ms_buf_putc(&text, '|');
+        put_buf(&text, &written);
     }
-    MsStr form_text = arena_copy(d->arena, &form);
-    size_t first = find_form(entries, type, form_text);
-    if (first != SIZE_MAX) {
-        append_methods(entry_at(entries, first), decl);
-    } else {
-        MsDecl *copy = MS_NEW(d->arena, MsDecl);
-        *copy = *decl;
-        Entry entry = {.decl = copy, .inherent = true, .plain = plain, .type = type, .form = form_text,
-                       .bounds = arena_copy(d->arena, &bounds)};
-        append_methods(&entry, decl);
-        MS_VEC_PUSH(*entries, Entry, entry);
-    }
-    ms_buf_free(&bounds);
-    ms_buf_free(&form);
+    *bounds = arena_copy(d->arena, &written);
+    const MsStr key = arena_copy(d->arena, &text);
+    ms_buf_free(&text);
+    ms_buf_free(&written);
+    return key;
 }
 
-static void collect_impl(Desugar *d, MsBuf *entries, const TypeTable *types, MsDecl *decl) {
+MsStr ms_inherent_form(MsArena *arena, MsNames *names, const MsDecl *impl, MsTypeParams params) {
+    Desugar d = {.arena = arena, .names = names};
+    bool plain = false;
+    MsStr bounds = {0};
+    return form_key(&d, impl, params, &plain, &bounds);
+}
+
+/* Records an inherent impl of a declared type in the form it belongs to. */
+static void collect_inherent(Desugar *d, MsBuf *forms, const MsDecl *decl, MsSym type, const TypeInfo *info) {
+    bool plain = false;
+    MsStr bounds = {0};
+    const MsStr key = form_key(d, decl, info->params, &plain, &bounds);
+    size_t at = find_form(forms, type, key);
+    if (at == SIZE_MAX) {
+        Form form = {.plain = plain, .type = type, .key = key, .bounds = bounds, .receiver = decl->u.impl.receiver};
+        MS_VEC_PUSH(*forms, Form, form);
+        at = MS_VEC_LEN(*forms, Form) - 1;
+    }
+    append_methods(form_at(forms, at), decl);
+}
+
+/* Keeps an impl unless its receiver is misused, which is reported. */
+static void collect_impl(Desugar *d, Collected *out, const TypeTable *types, MsDecl *decl) {
     if (decl->u.impl.contract != NULL) {
-        push_plain_entry(entries, decl);
+        MS_VEC_PUSH(out->decls, MsDecl *, decl);
         return;
     }
     MsSym type = type_name(d, decl->u.impl.receiver);
@@ -550,26 +518,27 @@ static void collect_impl(Desugar *d, MsBuf *entries, const TypeTable *types, MsD
     } else if (named_args(decl->u.impl.receiver).len != info->params.len) {
         report_receiver_arity(d, decl, type, info->params);
     } else {
-        collect_inherent(d, entries, decl, type, info);
+        collect_inherent(d, &out->forms, decl, type, info);
+        MS_VEC_PUSH(out->decls, MsDecl *, decl);
     }
 }
 
-static MsBuf collect(Desugar *d, const TypeTable *types, MsBuf *expanded) {
-    MsBuf entries = {0};
+static Collected collect(Desugar *d, const TypeTable *types, MsBuf *expanded) {
+    Collected out = {0};
     for (size_t i = 0; i < MS_VEC_LEN(*expanded, MsDecl *); i++) {
         MsDecl *decl = MS_VEC_AT(*expanded, MsDecl *, i);
         if (decl->kind == MS_D_IMPL) {
-            collect_impl(d, &entries, types, decl);
+            collect_impl(d, &out, types, decl);
             continue;
         }
-        push_plain_entry(&entries, decl);
+        MS_VEC_PUSH(out.decls, MsDecl *, decl);
         MsBuf markers = marker_impls(d, decl);
         for (size_t k = 0; k < MS_VEC_LEN(markers, MsDecl *); k++) {
-            push_plain_entry(&entries, MS_VEC_AT(markers, MsDecl *, k));
+            MS_VEC_PUSH(out.decls, MsDecl *, MS_VEC_AT(markers, MsDecl *, k));
         }
         ms_buf_free(&markers);
     }
-    return entries;
+    return out;
 }
 
 /* ---- step 3: overlapping receiver forms ---- */
@@ -597,9 +566,9 @@ static bool forms_overlap(Desugar *d, const MsTypeRef *a, const MsTypeRef *b, Ms
     return true;
 }
 
-static bool declares_method(const Entry *entry, MsSym name) {
-    for (size_t i = 0; i < MS_VEC_LEN(entry->methods, MsMethod *); i++) {
-        if (MS_VEC_AT(entry->methods, MsMethod *, i)->func.name == name) {
+static bool declares_method(const Form *form, MsSym name) {
+    for (size_t i = 0; i < MS_VEC_LEN(form->methods, MsMethod *); i++) {
+        if (MS_VEC_AT(form->methods, MsMethod *, i)->func.name == name) {
             return true;
         }
     }
@@ -619,20 +588,17 @@ static void report_overlap(Desugar *d, const MsMethod *method, MsSym type) {
 
 /* Two forms of one type under the same written bounds must not declare one method name. Each form
  * is compared with the later forms of its own group. */
-static void report_overlaps(Desugar *d, MsBuf *entries, const TypeTable *types) {
-    size_t count = MS_VEC_LEN(*entries, Entry);
+static void report_overlaps(Desugar *d, MsBuf *forms, const TypeTable *types) {
+    size_t count = MS_VEC_LEN(*forms, Form);
     for (size_t x = 0; x < count; x++) {
-        const Entry *a = entry_at(entries, x);
-        if (!a->inherent) {
-            continue;
-        }
+        const Form *a = form_at(forms, x);
         const TypeInfo *info = type_table_find(types, a->type);
         for (size_t y = x + 1; y < count; y++) {
-            const Entry *b = entry_at(entries, y);
-            if (!b->inherent || b->type != a->type || !str_equal(a->bounds, b->bounds)) {
+            const Form *b = form_at(forms, y);
+            if (b->type != a->type || !str_equal(a->bounds, b->bounds)) {
                 continue;
             }
-            if (!forms_overlap(d, a->decl->u.impl.receiver, b->decl->u.impl.receiver, info->params)) {
+            if (!forms_overlap(d, a->receiver, b->receiver, info->params)) {
                 continue;
             }
             for (size_t k = 0; k < MS_VEC_LEN(b->methods, MsMethod *); k++) {
@@ -645,204 +611,23 @@ static void report_overlaps(Desugar *d, MsBuf *entries, const TypeTable *types) 
     }
 }
 
-/* ---- step 4: the synthesized interfaces ---- */
-
-typedef struct Counter {
-    MsSym type;
-    uint32_t used;
-} Counter;
-
-/* The name of the interface for an impl: `Type$methods` for the plain form, `Type$N$methods` for
- * the Nth other form of that type. */
-static MsSym contract_name(Desugar *d, const Entry *entry, MsBuf *counters) {
-    MsBuf name = {0};
-    put_str(&name, sym_str(d, entry->type));
-    if (!entry->plain) {
-        Counter *counter = NULL;
-        for (size_t i = 0; i < MS_VEC_LEN(*counters, Counter) && counter == NULL; i++) {
-            counter = MS_VEC_AT(*counters, Counter, i).type == entry->type ? &MS_VEC_AT(*counters, Counter, i) : NULL;
-        }
-        if (counter == NULL) {
-            MS_VEC_PUSH(*counters, Counter, ((Counter){entry->type, 0}));
-            counter = &MS_VEC_LAST(*counters, Counter);
-        }
-        counter->used++;
-        ms_buf_printf(&name, "$%u", counter->used);
-    }
-    ms_buf_puts(&name, MS_INHERENT_SUFFIX);
-    MsSym sym = ms_intern(d->names, name.data, name.len);
-    ms_buf_free(&name);
-    return sym;
-}
-
-static const MsTypeParam *written_bounds(const MsDecl *impl, MsSym name) {
-    for (uint32_t i = 0; i < impl->u.impl.bounds.len; i++) {
-        if (impl->u.impl.bounds.ptr[i]->name == name) {
-            return impl->u.impl.bounds.ptr[i];
-        }
-    }
-    return NULL;
-}
-
-/* `param` as the interface declares it: a bound that names a specialized parameter reads as that
- * argument, and the bounds the impl wrote for it are added. */
-static MsTypeParam *interface_param(Desugar *d, const MsTypeParam *param, const MsDecl *impl,
-                                    const Binding *dropped, uint32_t ndropped) {
-    MsTypeParam *copy = MS_NEW(d->arena, MsTypeParam);
-    *copy = *param;
-    const MsTypeParam *written = written_bounds(impl, param->name);
-    uint32_t extra = written == NULL ? 0 : written->bounds.len;
-    copy->bounds.len = param->bounds.len + extra;
-    copy->bounds.ptr = MS_NEW_N(d->arena, MsTypeRef *, copy->bounds.len);
-    for (uint32_t i = 0; i < param->bounds.len; i++) {
-        copy->bounds.ptr[i] = substitute_parameters(d, param->bounds.ptr[i], dropped, ndropped);
-    }
-    for (uint32_t i = 0; i < extra; i++) {
-        copy->bounds.ptr[param->bounds.len + i] = written->bounds.ptr[i];
-    }
-    return copy;
-}
-
-/* The parameters the interface takes, and the receiver arguments they stand for. */
-typedef struct InterfaceShape {
-    MsBuf params; /* MsTypeParam * */
-    MsBuf args;   /* MsTypeRef * */
-} InterfaceShape;
-
-/* The receiver arguments that are not their own parameter: a specialized argument stays in the
- * receiver, and a bound that names it reads as that argument. */
-static MsBuf dropped_bindings(const Entry *entry, MsTypeParams params) {
-    MsBuf dropped = {0};
-    MsTypeRefs args = named_args(entry->decl->u.impl.receiver);
-    for (uint32_t i = 0; i < params.len && i < args.len; i++) {
-        if (!is_variable(args.ptr[i], params.ptr[i])) {
-            MS_VEC_PUSH(dropped, Binding, ((Binding){params.ptr[i]->name, args.ptr[i]}));
-        }
-    }
-    return dropped;
-}
-
-/* A type parameter written inside a larger argument (`Box[fn(Int) T]`) is still a variable of the
- * receiver form; it carries only the bounds written for it. */
-static void add_nested_parameters(Desugar *d, InterfaceShape *shape, const Entry *entry, MsTypeParams params) {
-    const MsDecl *impl = entry->decl;
-    MsTypeRefs args = named_args(impl->u.impl.receiver);
-    for (uint32_t i = 0; i < params.len; i++) {
-        bool direct = false;
-        bool nested = false;
-        for (size_t k = 0; k < MS_VEC_LEN(shape->params, MsTypeParam *); k++) {
-            direct = direct || MS_VEC_AT(shape->params, MsTypeParam *, k)->name == params.ptr[i]->name;
-        }
-        MsTypeParams only = {&params.ptr[i], 1};
-        for (uint32_t k = 0; k < args.len; k++) {
-            nested = nested || mentions_parameter(args.ptr[k], only);
-        }
-        if (direct || !nested) {
-            continue;
-        }
-        MsTypeParam *param = MS_NEW(d->arena, MsTypeParam);
-        *param = *params.ptr[i];
-        const MsTypeParam *written = written_bounds(impl, param->name);
-        param->bounds = written == NULL ? (MsTypeRefs){NULL, 0} : written->bounds;
-        MS_VEC_PUSH(shape->params, MsTypeParam *, param);
-        MS_VEC_PUSH(shape->args, MsTypeRef *, new_named_type(d, d->next_id, impl->pos, param->name, (MsTypeRefs){NULL, 0}));
-        d->next_id++;
-    }
-}
-
-static InterfaceShape interface_shape(Desugar *d, const Entry *entry, MsTypeParams params) {
-    InterfaceShape shape = {{0}, {0}};
-    MsBuf dropped = dropped_bindings(entry, params);
-    const Binding *bindings = ms_buf_items(&dropped);
-    uint32_t ndropped = (uint32_t)MS_VEC_LEN(dropped, Binding);
-    MsTypeRefs args = named_args(entry->decl->u.impl.receiver);
-    for (uint32_t i = 0; i < params.len && i < args.len; i++) {
-        if (entry->plain || is_variable(args.ptr[i], params.ptr[i])) {
-            MS_VEC_PUSH(shape.params, MsTypeParam *, interface_param(d, params.ptr[i], entry->decl, bindings, ndropped));
-            MS_VEC_PUSH(shape.args, MsTypeRef *, args.ptr[i]);
-        }
-    }
-    ms_buf_free(&dropped);
-    if (!entry->plain) {
-        add_nested_parameters(d, &shape, entry, params);
-    }
-    return shape;
-}
-
-/* A method's signature: the same declaration without a body or parameter defaults. */
-static MsMethod *signature_of(Desugar *d, const MsMethod *method) {
-    MsMethod *signature = MS_NEW(d->arena, MsMethod);
-    *signature = *method;
-    signature->func.body = (MsStmts){NULL, 0};
-    signature->func.params.ptr = MS_NEW_N(d->arena, MsParam *, method->func.params.len);
-    for (uint32_t i = 0; i < method->func.params.len; i++) {
-        MsParam *param = MS_NEW(d->arena, MsParam);
-        *param = *method->func.params.ptr[i];
-        param->def = NULL;
-        signature->func.params.ptr[i] = param;
-    }
-    return signature;
-}
-
-/* Appends the interface for `entry` and the impl, now naming it as its contract. */
-static void emit_inherent(Desugar *d, MsBuf *out, Entry *entry, const TypeTable *types, MsBuf *counters) {
-    MsDecl *impl = entry->decl;
-    const TypeInfo *info = type_table_find(types, entry->type);
-    InterfaceShape shape = interface_shape(d, entry, info->params);
-    MsSym name = contract_name(d, entry, counters);
-    MsDecl *interface = MS_NEW(d->arena, MsDecl);
-    *interface = (MsDecl){.id = d->next_id, .pos = impl->pos, .synthetic = true, .kind = MS_D_INTERFACE};
-    interface->u.iface.name = name;
-    interface->u.iface.type_params.len = (uint32_t)MS_VEC_LEN(shape.params, MsTypeParam *);
-    interface->u.iface.type_params.ptr = take_items(d->arena, &shape.params, _Alignof(MsTypeParam *));
-    interface->u.iface.methods.len = (uint32_t)MS_VEC_LEN(entry->methods, MsMethod *);
-    interface->u.iface.methods.ptr = MS_NEW_N(d->arena, MsMethod *, interface->u.iface.methods.len);
-    for (uint32_t i = 0; i < interface->u.iface.methods.len; i++) {
-        interface->u.iface.methods.ptr[i] = signature_of(d, MS_VEC_AT(entry->methods, MsMethod *, i));
-    }
-    MsTypeRefs args = {NULL, (uint32_t)MS_VEC_LEN(shape.args, MsTypeRef *)};
-    args.ptr = take_items(d->arena, &shape.args, _Alignof(MsTypeRef *));
-    impl->u.impl.contract = new_named_type(d, d->next_id + 1, impl->pos, name, args);
-    d->next_id += 2;
-    impl->u.impl.methods.len = interface->u.iface.methods.len;
-    impl->u.impl.methods.ptr = take_items(d->arena, &entry->methods, _Alignof(MsMethod *));
-    impl->synthetic = true;
-    MS_VEC_PUSH(*out, MsDecl *, interface);
-    MS_VEC_PUSH(*out, MsDecl *, impl);
-}
-
-static void emit_declarations(Desugar *d, MsBuf *entries, const TypeTable *types, MsDesugared *result) {
-    MsBuf out = {0};
-    MsBuf counters = {0};
-    for (size_t i = 0; i < MS_VEC_LEN(*entries, Entry); i++) {
-        Entry *entry = entry_at(entries, i);
-        if (entry->inherent) {
-            emit_inherent(d, &out, entry, types, &counters);
-        } else {
-            MS_VEC_PUSH(out, MsDecl *, entry->decl);
-        }
-    }
-    ms_buf_free(&counters);
-    result->ndecls = (uint32_t)MS_VEC_LEN(out, MsDecl *);
-    result->decls = take_items(d->arena, &out, _Alignof(MsDecl *));
-}
-
 void ms_desugar_inherent_impls(MsArena *arena, MsNames *names, const MsDesugarInput *in, MsDesugared *out) {
     Desugar d = {.arena = arena, .names = names, .next_id = in->module->node_count, .source = in->source};
     d.is_std = ms_text_starts_with(in->file, "@std/");
     TypeTable types = build_type_table(&d, in);
     MsBuf expanded = expand_set_receivers(&d, in->module);
-    MsBuf entries = collect(&d, &types, &expanded);
+    Collected collected = collect(&d, &types, &expanded);
     ms_buf_free(&expanded);
-    report_overlaps(&d, &entries, &types);
-    emit_declarations(&d, &entries, &types, out);
-    for (size_t i = 0; i < MS_VEC_LEN(entries, Entry); i++) {
-        ms_buf_free(&entry_at(&entries, i)->methods);
-    }
-    ms_buf_free(&entries);
-    type_table_free(&types);
+    report_overlaps(&d, &collected.forms, &types);
     out->nerrors = (uint32_t)MS_VEC_LEN(d.errors, MsInherentError);
     out->errors = take_items(arena, &d.errors, _Alignof(MsInherentError));
+    out->ndecls = (uint32_t)MS_VEC_LEN(collected.decls, MsDecl *);
+    out->decls = take_items(arena, &collected.decls, _Alignof(MsDecl *));
+    for (size_t i = 0; i < MS_VEC_LEN(collected.forms, Form); i++) {
+        ms_buf_free(&form_at(&collected.forms, i)->methods);
+    }
+    ms_buf_free(&collected.forms);
+    type_table_free(&types);
     out->node_count = d.next_id;
 }
 

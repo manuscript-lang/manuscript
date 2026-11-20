@@ -185,9 +185,7 @@ static MsOperation resolve_operation(MsResolver *r, const MsDecl *iface, MsSymId
     ms_resolve_type_defaults(r, &method->func.type_params, own);
     r->scope = with_own;
     const MsTy signature = ms_resolve_signature(r, &method->func.params, method->func.result);
-    /* An inherent `impl` is desugared to a synthesized interface that no interface value can
-     * reach, so `Self` may appear anywhere in its methods. */
-    if (!iface->synthetic && self_misplaced(&c->tys, signature)) {
+    if (self_misplaced(&c->tys, signature)) {
         report_type_error(r, method->pos,
                           ms_arena_fmt(&c->arena,
                                        "Self can only be a whole parameter or result type of an interface operation; "

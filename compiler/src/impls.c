@@ -14,8 +14,10 @@ typedef struct Impl {
     MsCheck *c;
     MsMethodTable *table;
     const MsDecl *decl;
+    uint32_t decl_index; /* the impl's place among the module's declarations */
+    bool quiet;          /* an earlier block of the same form already reported the receiver */
     MsTy receiver;
-    MsTy contract;
+    MsTy contract; /* MS_TY_NONE for an inherent impl */
     const MsTy *vars; /* the impl's type variables: the receiver's parameters it still uses */
     uint32_t nvars;
 } Impl;
@@ -33,6 +35,9 @@ static MsStr impl_show(MsCheck *c, MsTy ty) {
 }
 
 static void impl_type_error(const Impl *im, MsPos pos, MsStr message) {
+    if (im->quiet) {
+        return;
+    }
     const MsCheckDiag diag = {.diag = {.pos = pos, .message = message}, .phase = MS_PHASE_TYPE};
     ms_report(im->c, im->r->module, &diag);
 }
@@ -183,6 +188,9 @@ static void impl_keep_used_variables(Impl *im, const MsTy *declared, uint32_t co
  * bounds into this implementation. */
 static void impl_add_interface_bounds(const Impl *im) {
     MsCheck *c = im->c;
+    if (im->contract == MS_TY_NONE) {
+        return;
+    }
     const MsSymId symbol = impl_nominal_symbol(c, im->contract);
     uint32_t arity = 0;
     const MsTy *declared = symbol == MS_NONE ? NULL : ms_sym_vars(c, symbol, &arity);
@@ -216,6 +224,9 @@ typedef struct ImplOperations {
 static ImplOperations impl_contract_operations(Impl *im) {
     MsCheck *c = im->c;
     ImplOperations bound = {0};
+    if (im->contract == MS_TY_NONE) {
+        return bound;
+    }
     const MsSymId symbol = impl_nominal_symbol(c, im->contract);
     if (symbol == MS_NONE || c->tys.kind[im->contract] != MS_K_CONTRACT || c->syms.module[symbol] == MS_NONE) {
         return bound;
@@ -270,7 +281,7 @@ static void impl_grow_methods(MsMethods *m) {
     IMPL_GROW_COLUMN(m, receiver, cap);
     IMPL_GROW_COLUMN(m, contract, cap);
     IMPL_GROW_COLUMN(m, ty, cap);
-    IMPL_GROW_COLUMN(m, decl, cap);
+    m->decl = ms_array_resize(m->decl, cap, sizeof(const MsFunc *)); // NOLINT(bugprone-sizeof-expression): a column of declaration pointers
     IMPL_GROW_COLUMN(m, native, cap);
     IMPL_GROW_COLUMN(m, inherent, cap);
     IMPL_GROW_COLUMN(m, module, cap);
@@ -304,12 +315,7 @@ static bool impl_extends_elsewhere(const Impl *im) {
     return c->syms.module[nominal] != im->r->module && !extends_native;
 }
 
-static bool impl_has_inherent_contract(const MsCheck *c, MsTy contract) {
-    return contract != MS_TY_NONE && ms_text_ends_with(impl_text(c, c->tys.name[contract]), MS_INHERENT_SUFFIX);
-}
-
 static void impl_add_row(Impl *im, const ImplRow *row) {
-    MsCheck *c = im->c;
     MsMethods *m = &im->table->methods;
     impl_grow_methods(m);
     const uint32_t at = m->count++;
@@ -319,7 +325,7 @@ static void impl_add_row(Impl *im, const ImplRow *row) {
     m->ty[at] = row->ty;
     m->decl[at] = row->decl;
     m->native[at] = MS_NATIVE_SOURCE;
-    m->inherent[at] = impl_has_inherent_contract(c, row->contract);
+    m->inherent[at] = row->contract == MS_TY_NONE;
     m->module[at] = im->r->module;
     m->local[at] = impl_extends_elsewhere(im);
     m->pos[at] = row->pos;
@@ -333,7 +339,7 @@ static MsSym impl_row_id(const Impl *im, MsStr operation) {
     MsCheck *c = im->c;
     const MsStr path = impl_text(c, c->mods[im->r->module].path);
     const MsStr receiver = impl_text(c, c->tys.name[im->receiver]);
-    const MsStr contract = impl_text(c, c->tys.name[im->contract]);
+    const MsStr contract = im->contract == MS_TY_NONE ? (MsStr){"inherent", 8} : impl_text(c, c->tys.name[im->contract]);
     const MsStr id = ms_arena_fmt(&c->arena, "%.*s/%.*s/%.*s/%.*s", (int)path.len, path.ptr, (int)receiver.len,
                                   receiver.ptr, (int)contract.len, contract.ptr, (int)operation.len, operation.ptr);
     return ms_intern(c->names, id.ptr, id.len);
@@ -404,20 +410,79 @@ static bool impl_has_field(const Impl *im, MsSym name) {
     return false;
 }
 
+/* The type parameters of the nominal type the receiver names, or none. */
+static MsTypeParams impl_type_parameters(const MsCheck *c, const MsDecl *impl, MsModId module) {
+    const MsTypeRef *written = impl->u.impl.receiver;
+    const MsSymId symbol = written->kind == MS_TYPE_NAMED ? ms_map_get(&c->mods[module].names, written->name) : MS_NONE;
+    const MsDecl *d = symbol == MS_NONE ? NULL : c->syms.decl[symbol];
+    if (d == NULL) {
+        return (MsTypeParams){0};
+    }
+    if (d->kind == MS_D_TYPE) {
+        return d->u.type.type_params;
+    }
+    return d->kind == MS_D_ENUM ? d->u.enumeration.type_params : (MsTypeParams){0};
+}
+
+static bool impl_declares(const MsDecl *impl, uint32_t before, MsSym name) {
+    for (uint32_t k = 0; k < before; k++) {
+        if (impl->u.impl.methods.ptr[k]->func.name == name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Whether the earlier inherent impl `other` has the receiver form of this one: such blocks are one
+ * set of methods. */
+static bool impl_same_form(const Impl *im, MsArena *scratch, MsStr form, MsTypeParams params, const MsDecl *other) {
+    if (other->kind != MS_D_IMPL || other->u.impl.contract != NULL ||
+        other->u.impl.receiver->name != im->decl->u.impl.receiver->name) {
+        return false;
+    }
+    const MsStr other_form = ms_inherent_form(scratch, im->c->names, other, params);
+    return other_form.len == form.len && (form.len == 0 || memcmp(other_form.ptr, form.ptr, form.len) == 0);
+}
+
+/* The earlier inherent impls of the same receiver form: the first of them speaks for the others, as
+ * the blocks are one. Calls `visit` on each until it returns true. */
+static bool impl_any_earlier_block(const Impl *im, bool (*visit)(const MsDecl *, MsSym), MsSym name) {
+    const MsCheck *c = im->c;
+    const MsModule *syntax = c->mods[im->r->module].syntax;
+    const MsTypeParams params = impl_type_parameters(c, im->decl, im->r->module);
+    MsArena scratch = {0};
+    const MsStr form = ms_inherent_form(&scratch, c->names, im->decl, params);
+    bool found = false;
+    for (uint32_t i = 0; i < im->decl_index && !found; i++) {
+        found = impl_same_form(im, &scratch, form, params, syntax->decls[i]) && visit(syntax->decls[i], name);
+    }
+    ms_arena_free(&scratch);
+    return found;
+}
+
+static bool impl_visit_declares(const MsDecl *other, MsSym name) {
+    return impl_declares(other, other->u.impl.methods.len, name);
+}
+
+static bool impl_visit_any(const MsDecl *other, MsSym name) {
+    (void)other;
+    (void)name;
+    return true;
+}
+
 static void impl_check_method_names(const Impl *im, const MsMethod *method, uint32_t index) {
     MsCheck *c = im->c;
     const MsStr name = impl_text(c, method->func.name);
-    for (uint32_t k = 0; k < index; k++) {
-        if (im->decl->u.impl.methods.ptr[k]->func.name == method->func.name) {
-            impl_type_error(im, method->pos,
-                            ms_arena_fmt(&c->arena, "duplicate implementation operation %.*s; define each operation once per impl",
-                                         (int)name.len, name.ptr));
-            break;
-        }
+    const bool inherent = im->contract == MS_TY_NONE;
+    if (impl_declares(im->decl, index, method->func.name) ||
+        (inherent && impl_any_earlier_block(im, impl_visit_declares, method->func.name))) {
+        impl_type_error(im, method->pos,
+                        ms_arena_fmt(&c->arena, "duplicate implementation operation %.*s; define each operation once per impl",
+                                     (int)name.len, name.ptr));
     }
     /* An inherent method is reachable only as `value.name()`, which a field of the same name always
      * shadows; an interface operation stays reachable through a view. */
-    if (im->decl->synthetic && impl_has_field(im, method->func.name)) {
+    if (inherent && impl_has_field(im, method->func.name)) {
         const MsStr receiver = impl_show(c, im->receiver);
         impl_type_error(im, method->pos,
                         ms_arena_fmt(&c->arena,
@@ -493,7 +558,7 @@ static void impl_add_default_operations(Impl *im, const ImplOperations *ops) {
         for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
             written = written || d->u.impl.methods.ptr[k]->func.name == ops->ops[i].name;
         }
-        if (written || !ms_ty_is(&c->tys, im->contract, MS_BI_TESTHOOKS)) {
+        if (written || im->contract == MS_TY_NONE || !ms_ty_is(&c->tys, im->contract, MS_BI_TESTHOOKS)) {
             continue;
         }
         MsFunc *func = MS_NEW(&c->arena, MsFunc);
@@ -522,7 +587,10 @@ static bool impl_resolve_receiver(Impl *im) {
     }
     r->scope = ms_variable_scope(c, declared, count);
     im->receiver = ms_resolve_type(r, written);
-    if (impl_opaque_denied(im) || !impl_receiver_allowed(im)) {
+    im->quiet = im->decl->u.impl.contract == NULL && impl_any_earlier_block(im, impl_visit_any, 0);
+    const bool denied = impl_opaque_denied(im) || !impl_receiver_allowed(im);
+    im->quiet = false;
+    if (denied) {
         return false;
     }
     impl_keep_used_variables(im, declared, count);
@@ -530,9 +598,73 @@ static bool impl_resolve_receiver(Impl *im) {
     return true;
 }
 
+/* A bound the type already declares for the variable stays once. */
+static void impl_drop_repeated_bounds(MsVarInfo *info) {
+    uint32_t kept = 0;
+    for (uint32_t i = 0; i < info->nbounds; i++) {
+        bool seen = false;
+        for (uint32_t k = 0; k < kept; k++) {
+            seen = seen || info->bounds[k] == info->bounds[i];
+        }
+        if (!seen) {
+            info->bounds[kept++] = info->bounds[i];
+        }
+    }
+    info->nbounds = kept;
+}
+
+/* The bounds an inherent impl writes (`fn Box[T: Equal]`) apply to the receiver's variables of those
+ * names. */
+static void impl_add_written_bounds(Impl *im) {
+    const MsTypeParams written = im->decl->u.impl.bounds;
+    MsCheck *c = im->c;
+    MsTy *vars = MS_NEW_N(&c->arena, MsTy, written.len);
+    for (uint32_t i = 0; i < written.len; i++) {
+        vars[i] = MS_TY_NONE;
+        for (const MsTypeScope *s = im->r->scope; s != NULL && vars[i] == MS_TY_NONE; s = s->parent) {
+            for (uint32_t k = 0; k < s->len; k++) {
+                if (s->names[k] == written.ptr[i]->name) {
+                    vars[i] = s->types[k];
+                }
+            }
+        }
+    }
+    MsTypeParams known = {.ptr = MS_NEW_N(&c->arena, MsTypeParam *, written.len)};
+    MsTy *known_vars = MS_NEW_N(&c->arena, MsTy, written.len);
+    for (uint32_t i = 0; i < written.len; i++) {
+        if (vars[i] != MS_TY_NONE) {
+            known.ptr[known.len] = written.ptr[i];
+            known_vars[known.len++] = vars[i];
+        }
+    }
+    ms_resolve_type_bounds(im->r, &known, known_vars);
+    for (uint32_t i = 0; i < known.len; i++) {
+        impl_drop_repeated_bounds(ms_var_info(c, known_vars[i]));
+    }
+}
+
+static void impl_add_methods(Impl *im, const ImplOperations *ops) {
+    MsResolver *r = im->r;
+    r->scope = impl_scope_with(im->c, r->scope, ms_intern_cstr(im->c->names, "Self"), &im->receiver);
+    for (uint32_t i = 0; i < im->decl->u.impl.methods.len; i++) {
+        impl_add_method(im, ops, i);
+    }
+}
+
+static void impl_add_inherent(Impl *im) {
+    im->contract = MS_TY_NONE;
+    impl_add_written_bounds(im);
+    const ImplOperations none = {0};
+    impl_add_methods(im, &none);
+}
+
 static void impl_add_implementation(Impl *im) {
     MsResolver *r = im->r;
     if (!impl_resolve_receiver(im)) {
+        return;
+    }
+    if (im->decl->u.impl.contract == NULL) {
+        impl_add_inherent(im);
         return;
     }
     im->contract = ms_resolve_type(r, im->decl->u.impl.contract);
@@ -542,10 +674,7 @@ static void impl_add_implementation(Impl *im) {
     }
     impl_add_interface_bounds(im);
     const ImplOperations ops = impl_contract_operations(im);
-    r->scope = impl_scope_with(im->c, r->scope, ms_intern_cstr(im->c->names, "Self"), &im->receiver);
-    for (uint32_t i = 0; i < im->decl->u.impl.methods.len; i++) {
-        impl_add_method(im, &ops, i);
-    }
+    impl_add_methods(im, &ops);
     if (ops.count == 0 && im->decl->u.impl.methods.len == 0 && im->c->tys.kind[im->contract] == MS_K_CONTRACT) {
         impl_add_property_row(im);
     }
@@ -559,7 +688,7 @@ void ms_module_add_implementations(MsCheck *c, MsModId module, MsMethodTable *ta
         if (syntax->decls[i]->kind != MS_D_IMPL) {
             continue;
         }
-        Impl im = {.r = &resolver, .c = c, .table = table, .decl = syntax->decls[i]};
+        Impl im = {.r = &resolver, .c = c, .table = table, .decl = syntax->decls[i], .decl_index = i};
         resolver.scope = NULL;
         impl_add_implementation(&im);
     }

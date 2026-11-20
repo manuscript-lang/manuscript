@@ -1,25 +1,22 @@
-/* Inherent-impl desugaring: the pass that runs on a parsed module before its declarations are
- * entered in the checker tables.
+/* Module preparation that runs on a parsed module before its declarations are entered in the
+ * checker tables.
  *
- * Each `impl Type:` block (a `fn Type.name()` method group) becomes `impl Type$methods for Type:`
- * with a synthesized interface carrying the same signatures, so a type's own methods follow the
- * ordinary implementation rules. Blocks for one receiver form merge into the first. Property
- * markers (`// ms: data`) above a bundled type become body-less `Data` or `Clonable` impls, and an
- * `impl` whose receiver names a set alias (`type Ordered = Int | Float`) becomes one impl per
- * member, each with fresh node ids.
+ * An `impl Type:` block (a `fn Type.name()` method group) stays as written: its methods attach to
+ * the type directly, with no synthesized interface and no merge. The pass reports the misuse of
+ * such a block (unknown or interface receiver, wrong receiver arity, overlapping receiver forms),
+ * turns property markers (`// ms: data`) above a bundled type into body-less `Data` or `Clonable`
+ * impls, and expands an `impl` whose receiver names a set alias (`type Ordered = Int | Float`)
+ * into one impl per member, each with fresh node ids.
  *
- * Mirrors `desugar_inherent_impls` in crates/ms-check/src/passes.rs. The input tree is not
- * changed: the result shares its nodes except for the ones it had to build. */
+ * Mirrors `desugar_inherent_impls` in crates/ms-check/src/passes.rs apart from the interface and
+ * merge steps (see compiler/tests/check-divergences.txt). The input tree is not changed: the
+ * result shares its nodes except for the ones it had to build. */
 #ifndef MS_DESUGAR_H
 #define MS_DESUGAR_H
 
 #include "ms/ast.h"
 #include "ms/base.h"
 #include "ms/tables.h"
-
-/* The suffix of the interface synthesized for a type's own methods (`Type$methods`), which keeps
- * it from colliding with a declared name. Identity is the `synthetic` flag of the impl. */
-#define MS_INHERENT_SUFFIX "$methods"
 
 /* What the pass reads. */
 typedef struct MsDesugarInput {
@@ -44,9 +41,13 @@ typedef struct MsDesugared {
     uint32_t node_count; /* node ids are 0..node_count; the pass allocated the ones past the input's */
 } MsDesugared;
 
-/* Desugars `in->module`. Every node and text of the result lives in `arena`; `names` gains the
- * names of the generated interfaces. */
+/* Desugars `in->module`. Every node and text of the result lives in `arena`. */
 void ms_desugar_inherent_impls(MsArena *arena, MsNames *names, const MsDesugarInput *in, MsDesugared *out);
+
+/* The receiver form of the inherent impl `impl` of a type declared with `params`: empty for the
+ * plain `T[A]`, else the written receiver and bounds. Blocks with equal forms declare one set of
+ * methods. */
+MsStr ms_inherent_form(MsArena *arena, MsNames *names, const MsDecl *impl, MsTypeParams params);
 
 /* Desugars the module row `module` of `c`: its syntax becomes a module with the desugared
  * declarations, allocated in `c->arena`, and its inherent errors are returned through `errors`
