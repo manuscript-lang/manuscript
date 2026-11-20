@@ -13,6 +13,7 @@
 struct MsListener {
     MsSock socket;
     atomic_bool closed;
+    atomic_uint handles; /* handles on the listener; the last drop closes the descriptor */
     char *path; /* a Unix domain listener's file, removed when the handle drops; NULL for TCP */
 };
 
@@ -24,14 +25,18 @@ typedef struct ListenerHandle {
 
 static void listener_drop(MsObj *object) {
     ListenerHandle *handle = (ListenerHandle *)object;
-    ms_sys_net_close(handle->listener->socket);
-    if (handle->listener->path != NULL) {
-        const MsSysError removed = ms_sys_fs_unlink(handle->listener->path); /* nothing to do when it is gone */
-        (void)removed;
-        free(handle->listener->path);
-    }
-    msrt_free(handle->listener);
+    MsListener *listener = handle->listener;
     msrt_free(handle);
+    if (atomic_fetch_sub(&listener->handles, 1) != 1) {
+        return;
+    }
+    ms_sys_net_close(listener->socket);
+    if (listener->path != NULL) {
+        const MsSysError removed = ms_sys_fs_unlink(listener->path); /* nothing to do when it is gone */
+        (void)removed;
+        free(listener->path);
+    }
+    msrt_free(listener);
 }
 
 /* The nanoseconds a park may take before `deadline_ns`: -1 for no deadline, 0 once it has passed. */
@@ -51,17 +56,25 @@ static MsNetStatus wait_status(uint32_t result) {
 }
 
 /* Wraps a listening socket (and the file it is bound to, if any) in the handle; takes ownership of both. */
-static MsObj *listener_new(MsSock socket, char *path) {
-    MsListener *listener = msrt_alloc_zeroed(sizeof *listener);
+static MsObj *handle_on(MsListener *listener) {
     ListenerHandle *handle = msrt_alloc_zeroed(sizeof *handle);
-    listener->socket = socket;
-    listener->path = path;
-    atomic_init(&listener->closed, false);
+    atomic_fetch_add(&listener->handles, 1);
     handle->header.clone = NULL;
     handle->header.drop = listener_drop;
     handle->listener = listener;
     return &handle->header;
 }
+
+static MsObj *listener_new(MsSock socket, char *path) {
+    MsListener *listener = msrt_alloc_zeroed(sizeof *listener);
+    listener->socket = socket;
+    listener->path = path;
+    atomic_init(&listener->closed, false);
+    atomic_init(&listener->handles, 0);
+    return handle_on(listener);
+}
+
+MsObj *ms_listener_share(const void *handle) { return handle_on(((const ListenerHandle *)handle)->listener); }
 
 MsNetStatus ms_listener_open(const MsAddr *address, int backlog, MsObj **out, int *error_code) {
     MsSock socket = MS_SOCK_INVALID;

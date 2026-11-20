@@ -39,6 +39,10 @@ bool ms_body_is_primitive_value(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty);
 }
 
+bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
+    return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE);
+}
+
 /* A `type`, `enum` or interface without type parameters. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
@@ -109,7 +113,7 @@ bool ms_body_is_handle(const MsBody *b, MsTy ty) {
 /* A type whose values the pass can pass around: primitives, lists, function values and nominal
  * types that cannot need a cleanup (a value that closes gets one the pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
+    return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
            (body_is_own_nominal(b, ty) && !body_is_closeable(b, ty, 0));
 }
 
@@ -622,7 +626,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e, MsTy expected) {
     if (sym != MS_NONE && syms->kind[sym] == MS_SYM_TYPE) {
         return body_construct(b, e, sym);
     }
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
         syms->decl[sym] == NULL || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
@@ -1150,25 +1154,40 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
 }
 
+/* `for name in xs` over a list of Int, Float or Bool: the element type. Elements that need
+ * cleanup (text, lists) are left to the Rust checker. */
+static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
+    const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
+    if (!ms_body_is_list(b, ty)) {
+        return false;
+    }
+    *element = ms_ty_args(&b->c->tys, ty)[0];
+    return body_is_value_type(b, *element) && *element != b->string_ty;
+}
+
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
  * loop variable is an immutable Int that lives for the body. */
 static bool body_for_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *iter = s->u.each.iter;
-    if (iter->kind != MS_E_CALL || iter->u.call.args.len != 2 || !body_is_range(b, iter->u.call.callee)) {
+    MsTy element = b->int_ty;
+    if (iter->kind == MS_E_CALL && iter->u.call.args.len == 2 && body_is_range(b, iter->u.call.callee)) {
+        for (uint32_t i = 0; i < 2; i++) {
+            const MsArg *bound = &iter->u.call.args.ptr[i];
+            if (bound->has_name || ms_body_expr(b, bound->value, b->int_ty) == MS_TY_NONE) {
+                (void)ms_body_unsupported(b);
+                return true;
+            }
+        }
+        // The call itself stays untyped: the standard library's signatures are not resolved here yet.
+        b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
+    } else if (body_for_list_element(b, iter, &element)) {
+        b->facts->each_list[s->id] = true;
+    } else {
         (void)ms_body_unsupported(b);
         return true;
     }
-    for (uint32_t i = 0; i < 2; i++) {
-        const MsArg *bound = &iter->u.call.args.ptr[i];
-        if (bound->has_name || ms_body_expr(b, bound->value, b->int_ty) == MS_TY_NONE) {
-            (void)ms_body_unsupported(b);
-            return true;
-        }
-    }
-    // The call itself stays untyped: the standard library's signatures are not resolved here yet.
-    b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
     const uint32_t scope_start = b->facts->bindings.count;
-    (void)ms_body_bind(b, s->u.each.name, b->int_ty, s->id, s->pos, 0, MS_ROLE_LOOP);
+    (void)ms_body_bind(b, s->u.each.name, element, s->id, s->pos, 0, MS_ROLE_LOOP);
     const uint32_t outer_breaks = b->breaks;
     b->breaks = 0;
     b->loop_depth++;
@@ -1297,12 +1316,27 @@ static bool body_default_fits(const MsBody *b, const MsParam *p, MsTy ty) {
 
 static bool body_signature_supported(const MsBody *b, const MsFunc *fn, MsTy sig) {
     const MsTyTable *tys = &b->c->tys;
-    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != fn->params.len || fn->type_params.len != 0) {
+    if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != fn->params.len) {
         return false;
     }
     const MsTy result = tys->result[sig];
     if (!body_is_bindable(b, result) && result != b->void_ty) {
         return false;
+    }
+    // Defaults of type parameters and a required parameter after a defaulted one are declaration
+    // diagnostics of the Rust checker, which reports them with the function.
+    for (uint32_t i = 0; i < fn->type_params.len; i++) {
+        if (fn->type_params.ptr[i]->def != NULL) {
+            return false;
+        }
+    }
+    bool defaulted = false;
+    for (uint32_t i = 0; i < fn->params.len; i++) {
+        if (fn->params.ptr[i]->def != NULL) {
+            defaulted = true;
+        } else if (defaulted) {
+            return false;
+        }
     }
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < fn->params.len; i++) {
@@ -1375,7 +1409,7 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
         return;
     }
     const MsTy sig = b->c->syms.ty[sym];
-    if (fn->external || b->c->syms.nvars[sym] != 0 || !body_signature_supported(b, fn, sig)) {
+    if (fn->external || !body_signature_supported(b, fn, sig)) {
         return;
     }
     const uint32_t first_binding = b->facts->bindings.count;
@@ -1431,6 +1465,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
     facts->lambda_first = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
+    facts->each_list = MS_NEW_N(arena, bool, nodes);
+    memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);

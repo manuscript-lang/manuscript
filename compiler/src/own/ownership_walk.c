@@ -366,7 +366,12 @@ static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
         return NULL;
     }
     if (w->check->syms.module[sym] != w->module) {
-        return NULL; /* another module's declaration ids index another module's tables */
+        // Another module's function: its declaration id indexes that module's tables, not these.
+        // Its parameters borrow unless declared `var` or `move`, and a result that copies holds no
+        // borrow. A reference result is not modeled.
+        static const OwnSummary foreign = {.usable = true};
+        const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
+        return copied ? &foreign : NULL;
     }
     const OwnSummary *summary = &w->summaries[decl->id];
     return summary->usable ? summary : NULL;
@@ -941,6 +946,10 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
 
 /* `for i in a..b`: the bounds are read once; the counter is a fresh copied binding per iteration. */
 static void own_for(OwnWalk *w, const MsStmt *s) {
+    if (w->facts->each_list[s->id]) {
+        w->supported = false; /* iterating a list borrows it for the loop: not modelled yet */
+        return;
+    }
     const MsExpr *range = s->u.each.iter;
     own_expr(w, range->u.call.args.ptr[0].value, DEMAND_READ);
     own_expr(w, range->u.call.args.ptr[1].value, DEMAND_READ);

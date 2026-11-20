@@ -29,7 +29,7 @@ static MsTy lb_primitive(const MsCheck *c, const char *name) {
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
-static MirTy lb_mir_ty(const Lb *lb, MsTy ty) {
+static MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     if (ty == lb->int_ty) {
         return MIR_INT;
     }
@@ -39,7 +39,7 @@ static MirTy lb_mir_ty(const Lb *lb, MsTy ty) {
     if (ty == lb->bool_ty) {
         return MIR_BOOL;
     }
-    return ty == lb->string_ty ? MIR_STR : MIR_NONE;
+    return ty == lb->string_ty ? MIR_STR : lr_type(lb, ty);
 }
 
 static MirLoc lb_loc(const Lb *lb, MsPos pos) {
@@ -335,6 +335,9 @@ static MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
+    if (callee != MS_NONE && lb->c->syms.kind[callee] == MS_SYM_TYPE) {
+        return lr_construct(lb, e);
+    }
     const uint32_t func = callee == MS_NONE ? MIR_NONE : lb->func_of[callee];
     const uint32_t count = e->u.call.args.len;
     if (func == MIR_NONE || count != lb->c->tys.nparams[lb->c->syms.ty[callee]]) {
@@ -391,8 +394,8 @@ static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_BINARY: return lb_binary(lb, e);
     case MS_E_MATCH: return lb_match(lb, e);
     case MS_E_CALL: return lb_call(lb, e);
+    case MS_E_MEMBER: return lr_field(lb, e);
     case MS_E_VOID:
-    case MS_E_MEMBER:
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
@@ -780,6 +783,10 @@ static void lb_assign(Lb *lb, const MsStmt *s) {
 /* `for name in a..b`: a counter from `a` while below `b` (both evaluated once, before the loop),
  * stepped by one after the body or a `continue`. The loop variable is the counter's current value. */
 static void lb_for(Lb *lb, const MsStmt *s) {
+    if (lb->facts->each_list[s->id]) {
+        lb->ok = false; // a list loop is not lowered yet
+        return;
+    }
     const MsExpr *range = s->u.each.iter;
     const LbVal start = lb_expr(lb, range->u.call.args.ptr[0].value);
     const LbVal end = lb->ok ? lb_expr(lb, range->u.call.args.ptr[1].value) : LB_FAIL;
@@ -972,6 +979,8 @@ static void lb_index_bindings(Lb *lb, MsArena *arena) {
     for (uint32_t i = 0; i < bindings->count; i++) {
         lb->binding_at[bindings->decl_node[i]] = i;
     }
+    lb->type_of = MS_NEW_N(arena, MirTy, lb->c->tys.count + 1);
+    memset(lb->type_of, 0xff, (lb->c->tys.count + 1) * sizeof *lb->type_of);
     lb->value_of = MS_NEW_N(arena, MirValue, bindings->count + 1);
     lb->var_of = MS_NEW_N(arena, MirVar, bindings->count + 1);
     memset(lb->var_of, 0xff, (bindings->count + 1) * sizeof *lb->var_of);
@@ -1020,6 +1029,9 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
         const MsDecl *d = row->syntax->decls[i];
         const bool checked = d->kind == MS_D_FN && lb->facts->body_checked[d->id] && !failed[i] && !lb_has_diagnostic(row, i);
         syms[i] = checked ? ms_decl_own_symbol(lb->c, module, d) : MS_NONE;
+        if (syms[i] != MS_NONE && lb->c->syms.nvars[syms[i]] != 0) {
+            syms[i] = MS_NONE; // a generic function is checked here but not lowered: it needs one copy per type argument
+        }
         if (syms[i] != MS_NONE) {
             lb->func_of[syms[i]] = lb_add_stub(lb, d, syms[i]);
         }

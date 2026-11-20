@@ -32,4 +32,7 @@ void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m);
 /* `fn L:C` and the `edge NAME L:C` lines of each checked function and constant, as `c_oracle --effects`. */
 void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m);
 
+/* The module's fact model as JSON (see compiler/src/check/dump_facts.c). */
+void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m);
+
 #endif
