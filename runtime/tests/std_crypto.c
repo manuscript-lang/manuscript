@@ -1,6 +1,8 @@
 /* Replays runtime/tests/oracle/crypto.tsv (recorded from Go's crypto packages) against runtime/std/crypto.c. */
 #include <stdio.h>
 
+#include "append.h"
+
 #include "ms_rt/crypto.h"
 #include "fake_rt.h"
 
@@ -22,11 +24,9 @@ static vec from_hex(const char *tok) {
     return v;
 }
 
-static void put_hex(char *dst, const vec *v) {
-    char *p = dst + strlen(dst);
-    *p++ = 'x';
-    for (size_t i = 0; i < v->len; i++) p += sprintf(p, "%02x", ((uint8_t *)v->ptr)[i]);
-    *p = 0;
+static void put_hex(char *dst, size_t cap, const vec *v) {
+    msx_append(dst, cap, "x");
+    msx_append_hex(dst, cap, v->ptr, v->len);
 }
 
 static const char *status_name(int st) {
@@ -40,23 +40,20 @@ static const char *status_name(int st) {
 }
 
 /* ok <hex> or err <name>; results over 1 KiB are recorded as their length and SHA-256. */
-static void result(char *dst, int st, vec *out) {
+static void result(char *dst, size_t cap, int st, vec *out) {
     if (st) {
-        sprintf(dst + strlen(dst), "err %s", status_name(st));
+        msx_append(dst, cap, "err %s", status_name(st));
         return;
     }
-    strcat(dst, "ok ");
+    msx_append(dst, cap, "ok ");
     if (out->len > 1024) {
         vec d = {NULL, 0, 0}, one = {out->ptr, out->len, out->len};
-        char tmp[16] = "";
         msstd_crypto_digest(3, &one, &d);
-        sprintf(tmp, "x#%zu:", out->len);
-        strcat(dst, tmp);
-        put_hex(dst + strlen(dst), &d);
-        memmove(dst + strlen(dst) - 2 * d.len - 1, dst + strlen(dst) - 2 * d.len, 2 * d.len + 1); /* drop the extra x */
+        msx_append(dst, cap, "x#%zu:", out->len);
+        msx_append_hex(dst, cap, d.ptr, d.len);
         free(d.ptr);
     } else {
-        put_hex(dst, out);
+        put_hex(dst, cap, out);
     }
 }
 
@@ -75,13 +72,18 @@ int main(void) {
         if (line[0] == '#' || !line[0]) continue;
         char *field[16];
         int nf = 0, arrow = -1;
-        for (char *p = strtok(line, "\t"); p && nf < 16; p = strtok(NULL, "\t")) {
-            if (!strcmp(p, "=>")) arrow = nf;
-            field[nf++] = p;
+        for (char *p = line; *p && nf < 16;) { /* tab-separated fields */
+            p += strspn(p, "\t");
+            if (!*p) break;
+            char *start = p;
+            p += strcspn(p, "\t");
+            if (*p) *p++ = 0;
+            if (!strcmp(start, "=>")) arrow = nf;
+            field[nf++] = start;
         }
         want[0] = 0;
-        for (int i = arrow + 1; i < nf; i++) strcat(strcat(want, i > arrow + 1 ? "\t" : ""), field[i]);
-        if (arrow == nf - 1) strcat(want, ""); /* an empty result: the oracle writes nothing after the arrow */
+        for (int i = arrow + 1; i < nf; i++) msx_append(want, sizeof want, "%s%s", i > arrow + 1 ? "\t" : "", field[i]);
+        if (arrow == nf - 1) msx_append(want, sizeof want, "%s", ""); /* an empty result: the oracle writes nothing after the arrow */
         char **a = field + 1;
         got[0] = 0;
         const char *kind = field[0];
@@ -91,13 +93,13 @@ int main(void) {
         if (!strcmp(kind, "digest")) {
             vec d = from_hex(a[1]);
             msstd_crypto_digest(alg, &d, &out);
-            put_hex(got, &out);
+            put_hex(got, sizeof got, &out);
             free(d.ptr);
         } else if (!strcmp(kind, "hmac")) {
             vec k = from_hex(a[1]), d = from_hex(a[2]);
             st = msstd_crypto_hmac(alg, &k, &d, &out);
-            strcat(got, "ok ");
-            put_hex(got, &out);
+            msx_append(got, sizeof got, "%s", "ok ");
+            put_hex(got, sizeof got, &out);
             free(k.ptr), free(d.ptr);
         } else if (!strcmp(kind, "pbkdf2") || !strcmp(kind, "hkdf")) {
             vec p = from_hex(a[1]), s = from_hex(a[2]);
@@ -108,7 +110,7 @@ int main(void) {
                 st = msstd_crypto_hkdf(alg, &p, &s, &info, strtoll(a[4], NULL, 10), &out);
                 free(info.ptr);
             }
-            result(got, st, &out);
+            result(got, sizeof got, st, &out);
             free(p.ptr), free(s.ptr);
         } else if (!strcmp(kind, "hasher")) {
             vec d1 = from_hex(a[2]), d2 = from_hex(a[3]), key = a[1][0] == '-' ? (vec){0} : from_hex(a[1]);
@@ -118,18 +120,18 @@ int main(void) {
             vec r1 = {0}, r2 = {0};
             msstd_crypto_hasher_finish(h, &r1);
             msstd_crypto_hasher_finish(h, &r2);
-            put_hex(got, &r1);
-            strcat(got, "\t");
-            put_hex(got, &r2);
+            put_hex(got, sizeof got, &r1);
+            msx_append(got, sizeof got, "%s", "\t");
+            put_hex(got, sizeof got, &r2);
             ((MsObj *)h)->drop(h);
             free(d1.ptr), free(d2.ptr), free(key.ptr), free(r1.ptr), free(r2.ptr);
         } else if (!strcmp(kind, "cteq")) {
             vec l = from_hex(a[0]), r = from_hex(a[1]);
-            strcat(got, msstd_crypto_constant_time_equal(&l, &r) ? "1" : "0");
+            msx_append(got, sizeof got, "%s", msstd_crypto_constant_time_equal(&l, &r) ? "1" : "0");
             free(l.ptr), free(r.ptr);
         } else if (!strcmp(kind, "verify")) {
             vec k = from_hex(a[0]), d = from_hex(a[1]), s = from_hex(a[2]);
-            strcat(got, msstd_crypto_verify(&k, &d, &s) ? "1" : "0");
+            msx_append(got, sizeof got, "%s", msstd_crypto_verify(&k, &d, &s) ? "1" : "0");
             free(k.ptr), free(d.ptr), free(s.ptr);
         } else {
             vec x = from_hex(a[0]), y = nf - arrow > 3 || !strcmp(kind, "pubkey") ? (vec){0} : (vec){0};
@@ -149,7 +151,7 @@ int main(void) {
                                                : msstd_crypto_aes_cbc_decrypt(&x, &iv, &d, &out);
                 free(iv.ptr), free(d.ptr);
             }
-            result(got, st, &out);
+            result(got, sizeof got, st, &out);
             free(x.ptr), free(y.ptr);
         }
         free(out.ptr);

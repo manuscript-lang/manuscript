@@ -2,6 +2,8 @@
    operations (ECDSA, PSS, OAEP) are checked for success or failure only. */
 #include <stdio.h>
 
+#include "append.h"
+
 #include "ms_rt/crypto.h"
 #include "fake_rt.h"
 
@@ -21,11 +23,9 @@ static vec from_hex(const char *tok) {
     v.len = v.cap = n;
     return v;
 }
-static void put_hex(char *dst, const vec *v) {
-    char *p = dst + strlen(dst);
-    *p++ = 'x';
-    for (size_t i = 0; i < v->len; i++) p += sprintf(p, "%02x", ((uint8_t *)v->ptr)[i]);
-    *p = 0;
+static void put_hex(char *dst, size_t cap, const vec *v) {
+    msx_append(dst, cap, "x");
+    msx_append_hex(dst, cap, v->ptr, v->len);
 }
 static const char *status_name(int st) {
     switch (st) {
@@ -36,21 +36,20 @@ static const char *status_name(int st) {
     }
 }
 /* ok <hex> (over 1 KiB: x#length:sha256) or err <name> */
-static void result(char *dst, int st, vec *out) {
+static void result(char *dst, size_t cap, int st, vec *out) {
     if (st) {
-        sprintf(dst + strlen(dst), "err %s", status_name(st));
+        msx_append(dst, cap, "err %s", status_name(st));
         return;
     }
-    strcat(dst, "ok ");
+    msx_append(dst, cap, "ok ");
     if (out->len > 1024) {
         vec d = {0};
         msstd_crypto_digest(3, out, &d);
-        sprintf(dst + strlen(dst), "x#%zu:", out->len);
-        char *p = dst + strlen(dst);
-        for (size_t i = 0; i < d.len; i++) p += sprintf(p, "%02x", ((uint8_t *)d.ptr)[i]);
+        msx_append(dst, cap, "x#%zu:", out->len);
+        msx_append_hex(dst, cap, d.ptr, d.len);
         free(d.ptr);
     } else {
-        put_hex(dst, out);
+        put_hex(dst, cap, out);
     }
 }
 
@@ -80,9 +79,14 @@ int main(void) {
         char *field[16];
         int nf = 0, arrow = -1;
         /* fields may be empty ("x" is the empty value, so none are), split on tabs */
-        for (char *p = strtok(line, "\t"); p && nf < 16; p = strtok(NULL, "\t")) {
-            if (!strcmp(p, "=>")) arrow = nf;
-            field[nf++] = p;
+        for (char *p = line; *p && nf < 16;) { /* tab-separated fields */
+            p += strspn(p, "\t");
+            if (!*p) break;
+            char *start = p;
+            p += strcspn(p, "\t");
+            if (*p) *p++ = 0;
+            if (!strcmp(start, "=>")) arrow = nf;
+            field[nf++] = start;
         }
         const char *kind = field[0];
         char **a = field + 1;
@@ -102,7 +106,7 @@ int main(void) {
         }
         want[0] = 0;
         if (arrow >= 0)
-            for (int i = arrow + 1; i < nf; i++) strcat(strcat(want, i > arrow + 1 ? "\t" : ""), field[i]);
+            for (int i = arrow + 1; i < nf; i++) msx_append(want, sizeof want, "%s%s", i > arrow + 1 ? "\t" : "", field[i]);
         got[0] = 0;
         vec out = {0};
         int st = 0;
@@ -115,18 +119,17 @@ int main(void) {
                 out = (vec){0};
             }
             if (!strncmp(want, "ok ", 3)) {
-                if (st) strcpy(got, "failed");
-                else strcpy(got, want);
+                msx_append(got, sizeof got, "%s", st ? "failed" : want);
             } else {
-                result(got, st, &out);
+                result(got, sizeof got, st, &out);
             }
         } else if (!strcmp(kind, "pub")) {
             st = msstd_crypto_public_key_der(&key_named(a[0])->priv, &out);
-            result(got, st, &out);
+            result(got, sizeof got, st, &out);
         } else if (!strcmp(kind, "ecsign")) {
             vec d = from_hex(a[2]);
             st = msstd_crypto_ecdsa_sign(&key_named(a[0])->priv, alg, &d, &out);
-            strcat(got, st ? "0" : "1");
+            msx_append(got, sizeof got, "%s", st ? "0" : "1");
             free(d.ptr);
         } else if (!strcmp(kind, "ecverify") || !strcmp(kind, "rsaverify") || !strcmp(kind, "pssverify")) {
             vec d = from_hex(a[2]), s = from_hex(a[3]);
@@ -134,28 +137,28 @@ int main(void) {
             int ok = kind[0] == 'e' ? msstd_crypto_ecdsa_verify(k, alg, &d, &s)
                      : kind[0] == 'r' ? msstd_crypto_rsa_verify(k, alg, &d, &s)
                                       : msstd_crypto_rsa_verify_pss(k, alg, &d, &s);
-            strcat(got, ok ? "1" : "0");
+            msx_append(got, sizeof got, "%s", ok ? "1" : "0");
             free(d.ptr);
             free(s.ptr);
         } else if (!strcmp(kind, "ecdh")) {
             st = msstd_crypto_ecdh_shared_secret(&key_named(a[0])->priv, &key_named(a[1])->pub, &out);
-            result(got, st, &out);
+            result(got, sizeof got, st, &out);
         } else if (!strcmp(kind, "rsasign")) {
             vec d = from_hex(a[2]);
             st = msstd_crypto_rsa_sign(&key_named(a[0])->priv, alg, &d, &out);
-            result(got, st, &out);
+            result(got, sizeof got, st, &out);
             free(d.ptr);
         } else if (!strcmp(kind, "rsaenc")) {
             const size_t m_len = (size_t)strtoll(a[2], NULL, 10);
             vec m = {malloc(m_len + 1), m_len, 0};
             memset(m.ptr, 7, m.len);
             st = msstd_crypto_rsa_encrypt(&key_named(a[0])->pub, alg, &m, &out);
-            strcat(got, st ? "0" : "1");
+            msx_append(got, sizeof got, "%s", st ? "0" : "1");
             free(m.ptr);
         } else if (!strcmp(kind, "rsadec")) {
             vec c = from_hex(a[2]);
             st = msstd_crypto_rsa_decrypt(&key_named(a[0])->priv, alg, &c, &out);
-            result(got, st, &out);
+            result(got, sizeof got, st, &out);
             free(c.ptr);
         } else {
             printf("unknown case %s\n", kind);
