@@ -400,7 +400,7 @@ static void newlines(Parser *p) {
     }
 }
 
-MS_NODISCARD static bool link(Parser *p, size_t *links) {
+MS_NODISCARD static bool parse_link(Parser *p, size_t *links) {
     (*links)++;
     if (*links > MS_MAX_CHAIN) {
         fail(p, peek(p), fmt(p, "expression chain exceeds %d operators or accesses; split it into named parts", MS_MAX_CHAIN));
@@ -2858,7 +2858,7 @@ static MsExpr *range_call(Parser *p, MsExpr *start, MsExpr *stop) {
 }
 
 /* Parses one `| step` after `lhs` and desugars it to the ordinary expression the step names. */
-MS_NODISCARD static bool pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
+MS_NODISCARD static bool parse_pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
     p->at++;
     if (kind(p) == MS_T_Pipe) {
         MsToken t = peek(p);
@@ -2889,7 +2889,7 @@ MS_NODISCARD static bool pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
         size_t links = 0;
         /* A '.' on a later line continues the flow and applies to the step's result. */
         while (kind(p) == MS_T_Dot && peek(p).pos.line == p->tokens[p->at - 1].pos.line) {
-            if (!link(p, &links)) return false;
+            if (!parse_link(p, &links)) return false;
             p->at++;
             MsToken member = {0};
             if (!need_token(p, MS_T_Name, &member)) return false;
@@ -2949,8 +2949,8 @@ MS_NODISCARD static bool leading_operand(Parser *p, int min, MsExpr **out) {
 
 /* `e | step`, then a member access or call chain on the result. */
 MS_NODISCARD static bool pipe_operator(Parser *p, MsExpr **e, size_t *links) {
-    if (!link(p, links)) return false;
-    if (!pipe(p, *e, e)) return false;
+    if (!parse_link(p, links)) return false;
+    if (!parse_pipe(p, *e, e)) return false;
     if (kind(p) == MS_T_Dot) {
         if (!postfix(p, *e, e)) return false;
     }
@@ -3022,7 +3022,7 @@ MS_NODISCARD static bool expression_inner(Parser *p, int min, MsExpr **out) {
             return false;
         }
         p->at++;
-        if (!link(p, &links)) return false;
+        if (!parse_link(p, &links)) return false;
         MsExpr *right = NULL;
         if (!expression(p, level + 1, &right)) return false;
         MsExpr *b = mk(p, op.pos, MS_E_BINARY);
@@ -3059,7 +3059,7 @@ MS_NODISCARD static bool case_path(Parser *p, MsExpr **out) {
     }
     size_t links = 0;
     while (take(p, MS_T_Dot)) {
-        if (!link(p, &links)) return false;
+        if (!parse_link(p, &links)) return false;
         MsToken name = {0};
         if (!need_token(p, MS_T_Name, &name)) return false;
         e = mk_member(p, name.pos, e, sym(p, name));
@@ -3757,7 +3757,7 @@ MS_NODISCARD static bool postfix(Parser *p, MsExpr *e, MsExpr **out) {
     for (;;) {
         MsExpr *l, *ix;
         if (take(p, MS_T_Dot)) {
-            if (!link(p, &links)) return false;
+            if (!parse_link(p, &links)) return false;
             if (kind(p) == MS_T_Number) {
                 fail(p, peek(p), LIT("a number has at most one decimal point and member access needs a name; write the number once, e.g. 1.2"));
                 return false;
@@ -3766,10 +3766,10 @@ MS_NODISCARD static bool postfix(Parser *p, MsExpr *e, MsExpr **out) {
             if (!need_token(p, MS_T_Name, &name)) return false;
             e = mk_member(p, name.pos, e, sym(p, name));
         } else if (take(p, MS_T_LBracket)) {
-            if (!link(p, &links)) return false;
+            if (!parse_link(p, &links)) return false;
             if (!bracket(p, e, &e)) return false;
         } else if (take(p, MS_T_LParen)) {
-            if (!link(p, &links)) return false;
+            if (!parse_link(p, &links)) return false;
             MsPos pos = e->pos;
             Args args = {0};
             if (!call_arguments(p, &args)) return false;

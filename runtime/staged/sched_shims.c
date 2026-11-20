@@ -11,4 +11,8 @@
 
 bool ms_sched_cancel_pending(void) { return ms_cancel_flag() != 0; }
 
+void ms_sched_stop_hold(void) { ms_stop_shield_enter(); }
+
+void ms_sched_stop_release(void) { ms_stop_shield_exit(); }
+
 bool ms_sched_read_limit_passed(void) { return ms_task_read_limit_passed(); }

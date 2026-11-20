@@ -254,7 +254,7 @@ pub fn build_executable(
         crate::c_backend::compile(
             module,
             level == Level::Speed,
-            llvm.is_some(),
+            true, // the C pipeline emits LLVM for Debug and Release
             options.checks,
         )
         .map(|object| vec![object])

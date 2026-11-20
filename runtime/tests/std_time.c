@@ -1,5 +1,6 @@
 /* The @std/time natives. The calendar records come from Go's time package (oracle/time_golden.txt); for UTC and fixed
  * offsets; the conformance fixtures cover IANA zones. Direct checks cover faults, parsing limits and formatting. */
+#define _POSIX_C_SOURCE 200809L
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
