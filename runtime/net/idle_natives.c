@@ -28,7 +28,12 @@ static int conn_duplicate(int fd) {
     return ms_sys_net_duplicate(fd, &copy) == MS_SYS_OK ? (int)copy : -1;
 }
 
-static void conn_release(int fd) { ms_sys_net_close(fd); }
+/* The descriptor was watched by this thread's reactor: forget it before it closes, or libuv keeps a handle for a closed one
+ * and the next socket to get the number is never reported ready. */
+static void conn_release(int fd) {
+    msrt_task_forget_fd(fd);
+    ms_sys_net_close(fd);
+}
 
 static void conn_close(void *subject) { ms_netconn_close(subject); }
 
