@@ -44,3 +44,4 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [The C lowering holds statement temporaries and reads `xs[i]` as an index](the-c-lowering-holds-statement-temporaries-and-reads-name-indexes.md): `ms_expr_index`, `lb_hold_temp` and `lst_for` follow the Rust lowering.
 - [C MIR passes: shallow clones, unity build, unzeroed allocations](c-mir-passes-share-arrays-and-a-unity-build.md): what bit the port of the optimiser to C, and that it is not a perf target.
 - [The C ownership classifier learns closeable types from method rows](c-checker-learns-closeable-types-from-method-rows.md): why the checker refused every type that closes, what the walk and lowering still decline.
+- [Native types are declared `extern type`, never recognised by name](native-types-are-declared-extern-not-recognised-by-name.md): `List` is `extern type List[T]:` with its constructor field; scope binds a native module's type to the loader's symbol, not a twin.

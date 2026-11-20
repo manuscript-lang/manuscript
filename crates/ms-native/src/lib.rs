@@ -4,9 +4,8 @@
 //! single archive, because a second Rust staticlib would repeat the Rust runtime's own symbols.
 extern crate ms_rt;
 
+mod heap;
+
 /// Rust-side allocations of the native standard library share the runtime's allocator.
 #[global_allocator]
-static HEAP: ms_rt::alloc::StdHeap = ms_rt::alloc::StdHeap;
-
-#[cfg(all(feature = "entry", target_os = "linux", target_env = "gnu"))]
-mod entry;
+static HEAP: heap::StdHeap = heap::StdHeap;

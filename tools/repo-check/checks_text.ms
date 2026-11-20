@@ -162,7 +162,7 @@ export fn extern_names(text: String) List[String]:
 // Only listed Rust locations may use `unsafe` or lift the workspace `unsafe_code` lint.
 UNSAFE_ALLOWED := [
 	"crates/ms-rt/", "crates/ms-std-", "crates/ms-rt-abi/",
-	"crates/ms-native/src/entry.rs", "crates/ms-native/tests/std_natives.rs",
+	"crates/ms-native/src/heap.rs", "crates/ms-native/tests/std_natives.rs",
 	"crates/ms-cli/src/process.rs", "crates/ms-syntax/src/symbol.rs",
 	"crates/ms-lsp/src/server.rs", "crates/ms-cli/tests/shutdown_windows.rs",
 	"crates/ms-cli/tests/terminal.rs", "bench/perf/binding-flags/main.rs",

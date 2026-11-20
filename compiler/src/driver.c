@@ -50,6 +50,12 @@ static const struct {
 
 /* `ms check FILE.ms [--json]`: the one target and optional --json; anything else is a handover. */
 int ms_cmd_check(int argc, char **argv) {
+#ifdef _WIN32
+    /* The project loader is POSIX only for now (libms.c): the Rust command checks. */
+    (void)argc;
+    (void)argv;
+    return MS_CMD_HANDOVER;
+#else
     const char *target = NULL;
     bool json = false;
     for (int i = 1; i < argc; i++) {
@@ -81,6 +87,7 @@ int ms_cmd_check(int argc, char **argv) {
     ms_buf_free(&out);
     ms_buf_free(&err);
     return status == MS_CHECK_HANDOVER ? MS_CMD_HANDOVER : status;
+#endif
 }
 
 /* Commands whose own logic (the TOOL stage) is in C: they run when the other stages they need are. */

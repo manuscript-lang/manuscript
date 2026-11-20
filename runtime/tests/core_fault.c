@@ -511,5 +511,6 @@ int main(void) {
     run_child(child_test_record, MS_EXIT_TEST_FAILURE, "", MS_FAULT_KIND_TEST_FAILURE, "expected 1");
     ms_frames_release();
     puts("core_fault: ok");
+    ms_sched_teardown();
     return 0;
 }
