@@ -3,6 +3,9 @@
    non-blocking mode, see end of file, a refused connection, and the address round trip. */
 #include <stdio.h>
 #include <string.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <time.h>
 #include "ms_rt/sys_net.h"
 
@@ -78,6 +81,20 @@ int main(void) {
         CHECK(got == MS_SYS_OK);
         ms_sys_net_close(da); ms_sys_net_close(dc); ms_sys_net_close(d);
     }
+    /* resolver addresses: IPv4 and IPv6 sockaddrs read back, a short or foreign one refused */
+    struct sockaddr_in raw4 = {0};
+    raw4.sin_family = AF_INET; raw4.sin_port = htons(8080); raw4.sin_addr.s_addr = htonl(0x7f000001);
+    MsAddr parsed;
+    CHECK(ms_sys_net_addr_from_raw(&raw4, sizeof raw4, &parsed) == 0 && parsed.family == 4 && parsed.port == 8080);
+    CHECK(parsed.ip[0] == 127 && parsed.ip[3] == 1);
+    struct sockaddr_in6 raw6 = {0};
+    raw6.sin6_family = AF_INET6; raw6.sin6_port = htons(443); raw6.sin6_addr.s6_addr[15] = 1; raw6.sin6_scope_id = 3;
+    CHECK(ms_sys_net_addr_from_raw(&raw6, sizeof raw6, &parsed) == 0 && parsed.family == 6 && parsed.port == 443);
+    CHECK(parsed.ip[15] == 1 && parsed.scope == 3);
+    CHECK(ms_sys_net_addr_from_raw(&raw6, sizeof raw4, &parsed) == -1); /* an IPv6 address cut short */
+    raw4.sin_family = AF_UNIX;
+    CHECK(ms_sys_net_addr_from_raw(&raw4, sizeof raw4, &parsed) == -1);
+    CHECK(ms_sys_net_addr_from_raw(&raw4, 1, &parsed) == -1);
     if (!failed) printf("sys net ok\n");
     return failed;
 }

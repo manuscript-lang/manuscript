@@ -136,4 +136,17 @@ void ms_io_addresses_free(MsIoAddresses *addresses);
 /* Takes the oldest queued completion into `*event`; false when there is none. */
 MS_NODISCARD MS_NONNULL bool ms_io_completion(MsIoEvent *event);
 
+/* A completion sink takes each completion as it is collected: ms_io_wait hands every queued completion to the
+ * calling thread's sink, on that thread and after libuv has returned, so ms_io_completion then finds none. The
+ * scheduler installs one that posts the result to the token named by the id, which wakes the task parked on it
+ * (see ms_sched_post_completion in runtime/core). With no sink, completions queue for ms_io_completion. */
+typedef void (*MsIoCompletionSink)(uint64_t id, int32_t result, uint32_t kind);
+void ms_io_set_completion_sink(MsIoCompletionSink sink);
+
+/* Gives up on a resolution the caller will not wait for (the park timed out or was cancelled) before its completion
+ * was collected. libuv is asked to cancel it and the record is released once it ends, so the caller must not use
+ * `addresses` afterwards and must not call ms_io_addresses_free. After the completion has been collected, use
+ * ms_io_addresses_free instead. */
+void ms_io_addresses_abandon(MsIoAddresses *addresses);
+
 #endif
