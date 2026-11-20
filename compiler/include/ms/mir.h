@@ -293,6 +293,13 @@ typedef struct MirExtern {
 typedef struct MirConsts { int64_t *v; uint32_t n; } MirConsts;
 typedef struct MirGlobal { MsSym name; MirTy ty; } MirGlobal;
 
+/* The equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) the descriptor of an
+ * aggregate type points to. */
+typedef struct MirDescGlue {
+    MirTy ty;
+    uint32_t eq, hash; /* function ids */
+} MirDescGlue;
+
 typedef struct MirVtable {
     MsSym name;
     uint32_t iface;
@@ -320,6 +327,8 @@ typedef struct MirModule {
     uint32_t nifaces, cifaces;
     MirVtable *vtables;
     uint32_t nvtables, cvtables;
+    MirDescGlue *desc_glue;
+    uint32_t ndesc_glue, cdesc_glue;
     MsStr *blobs;
     uint32_t nblobs, cblobs;
     MirConsts *list_consts;
@@ -335,6 +344,8 @@ typedef struct MirModule {
 } MirModule;
 
 void mir_module_init(MirModule *m);
+/* Records the equality and hash functions the descriptor of aggregate `ty` points to. */
+void mir_add_desc_glue(MirModule *m, MirTy ty, uint32_t eq, uint32_t hash);
 void mir_module_free(MirModule *m);
 
 /* Type table. */

@@ -21,7 +21,7 @@ typedef struct MsBody {
     bool has_close;         /* the module declares a method named `close` */
     MsTy result;
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
-    uint32_t *reads;        /* by binding id: how many times its value is read */
+    uint32_t function;      /* the declaration node of the function being checked */
     bool *closed;           /* by binding id: its block ended, so the name is free again */
     uint32_t loop_depth;    /* loops around the statement being checked */
     uint32_t breaks;        /* `break`s seen for the innermost loop */
@@ -56,7 +56,7 @@ bool ms_body_block(MsBody *b, const MsStmts *body);
  * closes the scope: the shape of a `match` arm. The value's type, or MS_TY_NONE after giving up. */
 MsTy ms_body_block_value(MsBody *b, const MsStmts *body, const MsExpr *value, MsTy expected);
 /* Binds a name in the current scope; MS_NONE (and gives up) when the name is already visible. */
-uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, uint8_t flags, MsBindRole role);
+uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, MsPos pos, uint8_t flags, MsBindRole role);
 /* The visible binding of `name`, or MS_NONE. */
 uint32_t ms_body_find_binding(const MsBody *b, MsSym name);
 /* A `match` over an enum or `Optional` scrutinee of type `ty` (check_alt.c). */

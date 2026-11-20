@@ -547,6 +547,9 @@ bool mir_b_into_func(MirBuilder *b, MirFunc *out) {
             }
         }
     }
+    for (uint32_t i = 0; i < b->f.nnames; i++) {
+        b->f.names[i].value = resolve(b, b->f.names[i].value);
+    }
     const bool ok = !b->failed;
     *out = b->f;
     ms_arena_free(&b->scratch);

@@ -1,7 +1,7 @@
 /* A fixed-size text buffer for messages. See text.h. */
 #include "text.h"
 
-#define DECIMAL_DIGITS_MAX 20
+#include "ms_rt/fmt.h"
 
 static void add_bytes(MsText *text, const char *bytes, size_t count) {
     const size_t room = MS_TEXT_CAPACITY - text->len;
@@ -15,19 +15,11 @@ void ms_text_add(MsText *text, const char *literal) {
 }
 
 void ms_text_add_i64(MsText *text, int64_t value) {
-    char digits[DECIMAL_DIGITS_MAX];
-    size_t start = DECIMAL_DIGITS_MAX;
-    /* Negate in unsigned arithmetic so that INT64_MIN has a magnitude. */
-    uint64_t magnitude = value < 0 ? (uint64_t)0 - (uint64_t)value : (uint64_t)value;
-    do {
-        start--;
-        digits[start] = (char)('0' + magnitude % 10);
-        magnitude /= 10;
-    } while (magnitude != 0);
-    if (value < 0) {
-        add_bytes(text, "-", 1);
+    uint8_t digits[MS_FMT_INTEGER_CAPACITY];
+    size_t count = 0;
+    if (msrt_fmt_i64(value, digits, sizeof digits, &count)) {
+        add_bytes(text, (const char *)digits, count);
     }
-    add_bytes(text, digits + start, DECIMAL_DIGITS_MAX - start);
 }
 
 void ms_text_fault(const MsText *text, MsFaultKind kind) {

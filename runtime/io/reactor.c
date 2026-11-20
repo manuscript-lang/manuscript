@@ -18,6 +18,7 @@
 #include <uv.h>
 
 #include "ms_rt/sys.h"
+#include "ms_rt/sys_fs.h"
 
 enum {
     EVENT_CAPACITY = 128, /* two events per ready descriptor; a callback needs room for both */
@@ -351,10 +352,14 @@ static int interest_of(uint32_t events) {
     return (reads ? UV_READABLE | UV_DISCONNECT : 0) | (writes ? UV_WRITABLE : 0);
 }
 
-/* A descriptor libuv refuses is a regular file, which never blocks, or a named pipe, which kqueue cannot watch
- * reliably. poll(2) tells them apart: ready now (or unanswerable) is ready at once, anything else is checked on a
- * timer until it is. */
+/* A descriptor libuv refuses is a file, directory or device, which never blocks, or a named pipe, which kqueue cannot
+ * watch reliably. Only a named pipe can wait: ready now (or unanswerable) is ready at once, anything else is
+ * checked with poll(2) on a timer until it is. */
 static MsIoWatch watch_refused(MsIoReactor *reactor, int fd, uint32_t events) {
+    MsSysStat info;
+    if (ms_sys_fs_fstat(fd, &info) != 0 || (info.mode & MS_SYS_S_IFMT) != MS_SYS_S_IFIFO) {
+        return MS_IO_WATCH_ALWAYS; /* a file, directory or device never blocks */
+    }
     const bool writes = (events & MS_IO_BIT_WRITE) != 0 && (events & MS_IO_BIT_READ) == 0;
     bool ready = true;
     if (!ms_sys_fd_ready(fd, writes, &ready) || ready) {
