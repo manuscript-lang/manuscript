@@ -75,7 +75,7 @@ typedef struct MsVarInfo {
 
 /* ---- diagnostics ---- */
 
-typedef enum MsPhase { MS_PHASE_RESOLUTION, MS_PHASE_TYPE } MsPhase;
+typedef enum MsPhase { MS_PHASE_RESOLUTION, MS_PHASE_TYPE, MS_PHASE_OWNERSHIP } MsPhase;
 
 /* A checker diagnostic: the position and message, the phase that reports it, and, for an unknown
  * name, the name (which later suggestions read). */

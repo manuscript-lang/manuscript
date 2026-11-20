@@ -81,8 +81,12 @@ typedef struct Tokens {
 
 static void split_line(char *line, Tokens *t) {
     t->count = 0;
-    for (char *p = strtok(line, " \t\r"); p != NULL && t->count < 16; p = strtok(NULL, " \t\r")) {
+    for (char *p = line; *p != 0 && t->count < 16;) {
+        p += strspn(p, " \t\r");
+        if (*p == 0) break;
         t->word[t->count++] = p;
+        p += strcspn(p, " \t\r");
+        if (*p != 0) *p++ = 0;
     }
 }
 
