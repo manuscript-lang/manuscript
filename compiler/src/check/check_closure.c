@@ -11,7 +11,7 @@
 #include "check/check_body.h"
 
 static bool closure_primitive(const MsBody *b, MsTy ty) {
-    return ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty;
+    return ms_body_is_plain_value(b, ty);
 }
 
 bool ms_body_is_function_value(const MsBody *b, MsTy ty) {
