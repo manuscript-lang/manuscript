@@ -9,8 +9,15 @@ typedef struct Str {
     uint64_t tagged;
 } Str;
 
+typedef struct List {
+    uint8_t *ptr;
+    uint64_t len;
+    uint64_t cap;
+} List;
+
 long msrt_test_add(long a, long b);
 void msrt_test_str(long n, Str *out);
+void msrt_test_list(long n, List *out);
 long msrt_test_len(const Str *s);
 void msrt_string_clone(const Str *s, Str *out);
 void msrt_string_free(const Str *s);
