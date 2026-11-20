@@ -15,6 +15,7 @@ typedef struct {
     uint8_t method;      /* llhttp method code */
     uint8_t minor;       /* 0 or 1 */
     uint16_t status;     /* when BAD: the status to answer */
+    uint8_t keep_alive;  /* the connection can carry another request once this one is answered */
     uint32_t nfields;
     uint32_t head_len;   /* bytes of the head, blank line included */
     MsSpan target;
@@ -46,6 +47,16 @@ enum { MS_H1_READER_BYTES = 128 };
 typedef struct {
     _Alignas(8) unsigned char opaque[MS_H1_READER_BYTES];
 } MsH1Reader;
+
+/* Like ms_h1_parse_request, and on COMPLETE starts `reader` on the request's body, so ms_h1_read_body returns it with
+   the chunked or length framing removed. A request with neither a length nor chunked framing has no body: the first
+   ms_h1_read_body call answers DONE, even with no bytes. */
+int ms_h1_parse_request_body(MsH1Reader *reader, const char *buf, size_t len, size_t head_limit, MsH1Request *out,
+                             uint32_t field_cap);
+
+/* Call after copying or moving a reader that ms_h1_parse_request_body or ms_h1_parse_response started: the parser
+   keeps a pointer to its state, which must follow the copy. */
+void ms_h1_reader_moved(MsH1Reader *reader);
 
 /* Parses one response head from buf[0..len) and starts `reader` on its body. PARTIAL: keep the bytes and call again
    with more (the reader restarts each time). `head_request` is set when the request was HEAD. A 1xx head is
