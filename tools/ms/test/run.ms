@@ -346,6 +346,10 @@ fn build_tests(
 	if structured: args.append("--json")
 
 	var env = Map[String, String]()
+	if inv.command == "test" and inv.targets.length() > 1:
+		env.add("MS_BUILD_EXTRA", inv.targets.drop(1).join("\n"))
+	if inv.command == "bench" and inv.arguments.contains("--ops"):
+		env.add("MS_BUILD_COUNT_OPS", "1")
 	env.add("MS_BUILD_TARGET", if inv.command == "bench": "benches" else: "tests")
 
 	finished := run(rust_cli(), args, RunOptions(env: env)).wait()
@@ -403,6 +407,11 @@ fn run_command(inv: Invocation, bench: Bool) Int:
 
 	// Calibration and every sample count against the limit.
 	if bench and not options.timeout_set: options.timeout = seconds(600)
+
+	// The counter slows the program, so run once: the count does not need more.
+	if bench and options.ops:
+		if options.bench_iterations.is_none(): options.bench_iterations = 1
+		if options.bench_samples.is_none(): options.bench_samples = 1
 
 	var out = Out(captured: structured)
 	scratch := temporary(if bench: "manuscript-bench-" else: "manuscript-test-")

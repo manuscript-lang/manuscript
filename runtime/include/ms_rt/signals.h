@@ -17,4 +17,11 @@ uint8_t msstd_process_signal_next(MsObj *object, int64_t *out, MsStr *err);
 /* ms-sig: msstd_process_signal_close(handle h: *mut ObjCell<Watcher>) @domain=process */
 void msstd_process_signal_close(MsObj *object);
 
+/* Holds SIGINT and SIGTERM back from the calling task until the matching release (`hold_stop` in @std/os/process.ms),
+ * so it can forward them and keep waiting. Holds nest. */
+/* ms-sig: msstd_process_stop_hold() @domain=process @leaf */
+void msstd_process_stop_hold(void);
+/* ms-sig: msstd_process_stop_release() @domain=process @leaf */
+void msstd_process_stop_release(void);
+
 #endif
