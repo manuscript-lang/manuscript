@@ -58,14 +58,28 @@ fn take(data: Bytes, at: Int) Taken!:
 
 	return ok(Taken(data.decode_utf8_range(at + 4, end).get_or(""), end))
 
+// A record as the process wrote it: the fault, whether it is a failed expectation, and
+// where that expectation was built.
+export type Written:
+	fault: Fault
+	test_failure: Bool
+	site: String = ""
+	has_site: Bool = false
+
 // The fault a record describes; none when `data` is not a record of this version.
 export fn decode(data: Bytes) Fault?:
+	written := decode_written(data)
+	if written.is_none(): return none
+
+	return written.get().fault.clone()
+
+export fn decode_written(data: Bytes) Written?:
 	parsed := decode_checked(data)
 	if parsed.is_error(): return none
 
 	return parsed.get()
 
-fn decode_checked(data: Bytes) Fault!:
+fn decode_checked(data: Bytes) Written!:
 	if data.length() < 11: return error(Error("short record"))
 	if data.decode_utf8_range(0, 4).get_or("") != "MSFR" or data.get(4) != 1:
 		return error(Error("not a record"))
@@ -97,7 +111,7 @@ fn decode_checked(data: Bytes) Fault!:
 		at = one.next
 		cleanup_faults.append(one.text)
 
-	return ok(
+	var written = Written(
 		Fault(
 			kind_name(code),
 			exit_status(code),
@@ -105,8 +119,16 @@ fn decode_checked(data: Bytes) Fault!:
 			trace,
 			flags % 2 == 1,
 			cleanup_faults,
-		)
+		),
+		code == 7,
 	)
+
+	if flags >= 2 and flags % 4 >= 2:
+		site := take(data, at)?
+		written.site = site.text
+		written.has_site = true
+
+	return ok(written)
 
 // A fault with only the text the program printed, for an exit without a record.
 export fn from_text(message: String) Fault?:

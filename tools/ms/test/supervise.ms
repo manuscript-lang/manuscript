@@ -9,6 +9,7 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	Promise, promise, wait_any from "@std/concurrency/promise.ms",
+	JsonValue from "@std/data/json.ms",
 	ReadStream from "@std/io/io.ms",
 	read_file, stat, temporary, watch from "@std/os/fs.ms",
 	dirname, join from "@std/os/path.ms",
@@ -32,6 +33,8 @@ export type Outcome:
 	nanos: Int = 0
 	fault: Fault? = none
 	printed: Bytes = "".to_bytes()
+	// The statistics a bench measured.
+	stats: JsonValue? = none
 
 // What one run of the executable reported.
 export type Together:

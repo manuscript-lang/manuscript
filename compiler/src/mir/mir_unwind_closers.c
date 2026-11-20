@@ -60,6 +60,33 @@ uint32_t uw_raw_closer(UwCx *cx, MirTy ty) {
     return (uint32_t)id;
 }
 
+/* The function that frees the box of an interface value while an unwind runs, leaving the payload
+ * to the method that took it. */
+uint32_t uw_box_closer(UwCx *cx, MirTy ty) {
+    uint64_t id = 0;
+    if (uh_get(&cx->box_closers, ty, &id)) {
+        return (uint32_t)id;
+    }
+    const uint32_t gate = uw_gate(cx);
+    MirBuilder b;
+    uw_start(cx, &b, "unwind.free_box", ty, MM_MOVE, true);
+    MirValue v = uw_param0(&b);
+    const MirBlock run = mir_b_new_block(&b), skip = mir_b_new_block(&b);
+    MirValue on = mir_b_call_rt(&b, gate, NULL, 0);
+    mir_b_br_if(&b, on, run, NULL, 0, skip, NULL, 0);
+    mir_b_switch_to(&b, run);
+    MirValue data = mir_b_emit(&b, MOP_IfaceData, &v, 1, mir_imm_none(), MIR_PTR);
+    (void)mir_b_emit(&b, MOP_Free, &data, 1, mir_imm_none(), MIR_NONE);
+    (void)mir_b_emit(&b, MOP_Forget, &v, 1, mir_imm_none(), MIR_NONE);
+    uw_ret_unit(&b);
+    mir_b_switch_to(&b, skip);
+    (void)mir_b_emit(&b, MOP_Forget, &v, 1, mir_imm_none(), MIR_NONE);
+    uw_ret_unit(&b);
+    id = uw_finish(&b);
+    (void)uh_put(&cx->pass, &cx->box_closers, ty, id);
+    return (uint32_t)id;
+}
+
 /* The function that drops every field of its argument but `field` when a cancellation is
  * unwinding: the field was moved out, and its new owner drops it. */
 uint32_t uw_partial_closer(UwCx *cx, MirTy ty, uint32_t r, uint32_t field) {

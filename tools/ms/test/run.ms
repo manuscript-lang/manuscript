@@ -16,13 +16,15 @@ import (
 	dirname, join, resolve from "@std/os/path.ms",
 	RunOptions, run from "@std/os/process.ms",
 	expect_equal from "@std/test/test.ms",
-	Duration, monotonic, nanoseconds from "@std/time.ms",
+	Duration, monotonic, nanoseconds, seconds from "@std/time.ms",
 
 	Invocation from "../args.ms",
 	rust_cli from "../bridge.ms",
 	errno_text from "../errno.ms",
 	flag, list_of, number, object, render_document, text, with from "../json_out.ms",
+	Measured, baseline_regressions, describe_stats, run_one from "./bench.ms",
 	Fault, decode, fault_json, from_text, is_fault_status from "./fault.ms",
+	debug_duration from "./format.ms",
 	TestOptions, parse_test_options from "./options.ms",
 	file_numbers, select, shuffled from "./plan.ms",
 	Outcome, Together, run_together from "./supervise.ms",
@@ -54,9 +56,12 @@ type Case:
 	// The `file:line:column` site of a failed expectation.
 	site: String = ""
 	fault: Fault? = none
+	stats: JsonValue? = none
 	nanos: Int = 0
 
 type Document:
+	// A bench run: the cases are listed under `benches`.
+	bench: Bool = false
 	listed: Bool = false
 	repeat: Int = 0
 	shuffle_seed: Int? = none
@@ -121,6 +126,7 @@ fn document_json(document: Document) JsonValue:
 			)
 
 		if fault := each.fault: item = with(item, "fault", fault_json(fault))
+		if stats := each.stats: item = with(item, "stats", stats.clone())
 		items.append(item)
 
 	finished := (
@@ -139,7 +145,7 @@ fn document_json(document: Document) JsonValue:
 	summary = with(summary, "duration_ns", number(document.nanos))
 	out = with(out, "format", number(1))
 	out = with(out, "source_root", text(document.source_root))
-	out = with(out, "tests", list_of(items))
+	out = with(out, if document.bench: "benches" else: "tests", list_of(items))
 	out = with(out, "summary", summary)
 	out = with(out, "completed", flag(document.completed))
 	out = with(out, "exit_code", number(document.exit_code))
@@ -154,24 +160,6 @@ fn document_json(document: Document) JsonValue:
 		out = with(out, "stdout_base64", text(base64_encode(document.stdout)))
 
 	return with(out, "diagnostics", list_of(document.diagnostics.clone()))
-
-// A duration the way Rust's `{:?}` prints it: `60s`, `1.5s`, `250ms`.
-export fn debug_duration(total: Int) String:
-	scales := [1000000000, 1000000, 1000, 1]
-	names := ["s", "ms", "µs", "ns"]
-
-	for at in 0..scales.length():
-		scale := scales[at]
-		if total < scale and scale > 1: continue
-
-		whole := total / scale
-		fraction := total % scale
-		if fraction == 0: return f"{whole}{names[at]}"
-
-		digits := f"{fraction}".pad_start(f"{scale}".length() - 1, "0")
-		return f"{whole}.{digits.trim_end_chars("0")}{names[at]}"
-
-	return f"{total}ns"
 
 // How a test's outcome reads in the `RUN`/`FAIL` block.
 fn failed_outcome(message: String) Outcome:
@@ -337,7 +325,7 @@ fn finish_document(var document: Document, status: Int, var out: Out) Int:
 	stdout().write(render_document(document_json(document))).get()
 	return status
 
-// Builds the tests into `executable`; the listing is `<executable>.tests`.
+// Builds the tests (or benches) into `executable`; the listing is `<executable>.tests`.
 fn build_tests(
 	inv: Invocation,
 	executable: String,
@@ -358,7 +346,11 @@ fn build_tests(
 	if structured: args.append("--json")
 
 	var env = Map[String, String]()
-	env.add("MS_BUILD_TARGET", "tests")
+	if inv.command == "test" and inv.targets.length() > 1:
+		env.add("MS_BUILD_EXTRA", inv.targets.drop(1).join("\n"))
+	if inv.command == "bench" and inv.arguments.contains("--ops"):
+		env.add("MS_BUILD_COUNT_OPS", "1")
+	env.add("MS_BUILD_TARGET", if inv.command == "bench": "benches" else: "tests")
 
 	finished := run(rust_cli(), args, RunOptions(env: env)).wait()
 	if finished.is_error():
@@ -397,17 +389,32 @@ fn lines_of(data: Bytes) List[String]:
 	return out
 
 export fn run_test(inv: Invocation) Int:
+	return run_command(inv, false)
+
+export fn run_bench(inv: Invocation) Int:
+	return run_command(inv, true)
+
+fn run_command(inv: Invocation, bench: Bool) Int:
 	parsed := parse_test_options(inv.arguments)
 
 	if parsed.is_error():
 		complain(parsed.err())
 		return 2
 
-	options := parsed.get()
+	var options = parsed.get()
 	structured := inv.structured
-	var document = Document()
+	var document = Document(bench: bench)
+
+	// Calibration and every sample count against the limit.
+	if bench and not options.timeout_set: options.timeout = seconds(600)
+
+	// The counter slows the program, so run once: the count does not need more.
+	if bench and options.ops:
+		if options.bench_iterations.is_none(): options.bench_iterations = 1
+		if options.bench_samples.is_none(): options.bench_samples = 1
+
 	var out = Out(captured: structured)
-	scratch := temporary("manuscript-test-")
+	scratch := temporary(if bench: "manuscript-bench-" else: "manuscript-test-")
 	if scratch.is_error():
 		return build_failed(errno_text(scratch.err()), document, structured, out)
 
@@ -443,6 +450,7 @@ export fn run_test(inv: Invocation) Int:
 	absolute := resolve(cwd.get_or("."), [working.clone()])
 	return run_selected(
 		inv,
+		bench,
 		options,
 		executable,
 		absolute.get_or(working),
@@ -453,6 +461,7 @@ export fn run_test(inv: Invocation) Int:
 
 fn run_selected(
 	inv: Invocation,
+	bench: Bool,
 	options: TestOptions,
 	executable: String,
 	working: String,
@@ -461,11 +470,13 @@ fn run_selected(
 	var out: Out,
 ) Int:
 	structured := inv.structured
+	noun := if bench: "bench" else: "test"
+	nouns := if bench: "benches" else: "tests"
 	total := available.length()
 	picked := select(available, options)
 
 	if not picked.unknown.is_empty():
-		message := f"unknown test {quoted(picked.unknown)}; use --list to find full module::name identities"
+		message := f"unknown {noun} {quoted(picked.unknown)}; use --list to find full module::name identities"
 		complain(message)
 		if not structured: return 1
 
@@ -496,7 +507,7 @@ fn run_selected(
 
 	if plan.is_empty() and filtered:
 		out.line(
-			f"no tests match selection ({total} tests available); use --list to find full module::name identities"
+			f"no {nouns} match selection ({total} {nouns} available); use --list to find full module::name identities"
 		)
 		document.completed = true
 		document.reason = "no_match"
@@ -518,7 +529,7 @@ fn run_selected(
 	var reason = ""
 	var together = Map[Int, List[Outcome]]()
 
-	if not plan.is_empty():
+	if not plan.is_empty() and not bench:
 		files := file_numbers(available)
 		together = run_all(
 			executable.clone(),
@@ -551,8 +562,12 @@ fn run_selected(
 
 		var queue = together.get_or(index, [])
 		var outcome = failed_outcome("the test reported no result")
+		began := monotonic()
 
-		if not queue.is_empty():
+		if bench:
+			outcome = run_one(executable.clone(), working.clone(), options, index)
+			outcome.nanos = monotonic().difference(began).to_nanoseconds()
+		else if not queue.is_empty():
 			outcome = queue[0].clone()
 			together.add(index, queue.drop(1))
 
@@ -564,6 +579,11 @@ fn run_selected(
 		if outcome.kind == "passed":
 			out.line(f"PASS {name}")
 			each.status = "passed"
+		else if outcome.kind == "measured":
+			stats := outcome.stats.get()
+			out.line(f"BENCH {name}: {describe_stats(stats)}")
+			each.status = "passed"
+			each.stats = stats.clone()
 		else if outcome.kind == "not_run":
 			out.line(f"NOT RUN {name}: {outcome.message}")
 			each.failure = outcome.message.clone()
@@ -585,7 +605,12 @@ fn run_selected(
 			reason = "fail_fast"
 			break
 
-	if plan.is_empty():
+	if plan.is_empty() and bench:
+		out.line(
+			"no bench blocks found: add bench blocks to bench.ms or *_bench.ms files in the project, or pass a .ms file"
+		)
+		reason = "no_benches"
+	else if plan.is_empty():
 		out.line(
 			"no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file"
 		)
@@ -593,7 +618,7 @@ fn run_selected(
 
 	skipped := count(document, "skipped")
 	not_run := count(document, "not_run")
-	var summary = f"{plan.length() - not_run} tests, {failed} failed"
+	var summary = f"{plan.length() - not_run} {nouns}, {failed} failed"
 	if skipped > 0: summary += f", {skipped} skipped"
 	if not_run > 0: summary += f", {not_run} not run"
 	out.line(summary)
@@ -601,7 +626,25 @@ fn run_selected(
 	document.reason = reason
 	document.nanos = monotonic().difference(started).to_nanoseconds()
 
-	status := if failed > 0: 1 else: 0
+	var status = if failed > 0: 1 else: 0
+
+	if bench and status == 0:
+		var measured = List[Measured]()
+		for each in document.cases:
+			if stats := each.stats: measured.append(
+				Measured(each.name.clone(), stats.clone())
+			)
+
+		var lines = List[String]()
+		held := baseline_regressions(options, measured, lines)
+		for line in lines: out.line(line)
+
+		if held.is_error():
+			complain(held.err().message)
+			status = 2
+		else if held.get():
+			status = 1
+
 	if structured: return finish_document(document, status, out)
 
 	return status
@@ -609,11 +652,3 @@ fn run_selected(
 // `value` as Rust's `{:?}` prints a string.
 fn quoted(value: String) String:
 	return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-test "durations print the way the Rust command line prints them":
-	expect_equal(debug_duration(60000000000), "60s")?
-	expect_equal(debug_duration(1500000000), "1.5s")?
-	expect_equal(debug_duration(250000000), "250ms")?
-	expect_equal(debug_duration(2000000), "2ms")?
-	expect_equal(debug_duration(1500), "1.5µs")?
-	expect_equal(debug_duration(7), "7ns")?

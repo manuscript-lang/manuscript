@@ -99,6 +99,9 @@ typedef struct MsModuleRow {
     MsNameMap names;
     MsCheckDiag *diags;
     uint32_t ndiags, diags_cap;
+    MsStr text;           /* a bundled module's source (the caller keeps it alive), else empty */
+    bool impls_added;     /* its impls are in the program's method table */
+    const MsModId *import_targets; /* by import index: the project module it names, MS_NONE for the standard library */
     bool declared;
     bool unknown_type; /* an unknown type was reported: later `<invalid>` messages only restate it */
     struct MsFacts *facts; /* the columns the checker fills for the module; NULL until it runs */
@@ -120,6 +123,8 @@ typedef struct MsCheck {
     uint32_t defs_cap;
     MsVarInfo *var_info;      /* by type id, for type variables; grown on demand */
     uint32_t var_info_cap;
+    struct MsMethodTable *methods; /* the program's method table (program.h); NULL until a module is checked */
+    bool std_desugared;            /* every bundled module's inherent methods are desugared (ms_program_check_module) */
 } MsCheck;
 
 void ms_check_init(MsCheck *c, MsNames *names);

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 143,
+    "stdout": "child exited 0\nread signal some(15)\n",
+    "stderr": ""
+  }
+}
