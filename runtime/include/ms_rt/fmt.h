@@ -20,6 +20,8 @@
 
 /* Decimal. */
 MS_NODISCARD bool msrt_fmt_u64(uint64_t value, uint8_t *out, size_t capacity, size_t *length);
+/* The same text into a buffer that always has room, and its length: for the callers that have one. */
+size_t msrt_fmt_i64_fixed(int64_t value, uint8_t out[static MS_FMT_INTEGER_CAPACITY]);
 MS_NODISCARD bool msrt_fmt_i64(int64_t value, uint8_t *out, size_t capacity, size_t *length);
 /* Lowercase digits in radix 2..=36 of the magnitude, with a leading '-' when `negative` is set. */
 MS_NODISCARD bool msrt_fmt_radix(uint64_t magnitude, uint32_t radix, uint8_t negative, uint8_t *out, size_t capacity, size_t *length);
