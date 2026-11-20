@@ -25,11 +25,24 @@ static void unused_report(MsCheck *c, MsModId module, uint32_t binding) {
     ms_report(c, module, &diag);
 }
 
+/* Whether every function and constant of the module has been checked. The Rust checker reports
+ * unread bindings only for a program without errors, and an unchecked function may have some. */
+static bool unused_all_checked(const MsModuleRow *row) {
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        const bool callable = (d->kind == MS_D_FN && !d->u.fn.external) || d->kind == MS_D_CONST;
+        if (callable && !d->synthetic && !row->facts->body_checked[d->id]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void ms_module_check_unused(MsCheck *c, MsModId module) {
     const MsModuleRow *row = &c->mods[module];
     const MsFacts *facts = row->facts;
     // Unfinished code (a buffer with a parse error) has bindings it has not read yet.
-    if (facts == NULL || facts->body_checked == NULL || row->ndiags != 0) {
+    if (facts == NULL || facts->body_checked == NULL || row->ndiags != 0 || !unused_all_checked(row)) {
         return;
     }
     const MsBindings *bindings = &facts->bindings;
