@@ -11,6 +11,10 @@ set(_c "${CMAKE_SOURCE_DIR}/compiler")
 add_library(ms_backend STATIC "${_c}/src/libms.c")
 target_include_directories(ms_backend PRIVATE "${_c}/include" "${_c}/src" "${CMAKE_SOURCE_DIR}/runtime/include")
 target_compile_definitions(ms_backend PRIVATE MS_LIBMS_NO_PROJECT)
+if(MS_WINDOWS)
+  # The Microsoft C library marks fopen and friends deprecated in favour of its own _s functions.
+  target_compile_definitions(ms_backend PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
 target_compile_options(ms_backend PRIVATE -O2 -Wall -Wextra -Werror -Wno-format-truncation -Wno-unknown-warning-option)
 set_target_properties(ms_backend PROPERTIES C_EXTENSIONS OFF ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/compiler")
 
