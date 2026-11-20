@@ -8,12 +8,31 @@
 //! ms: domain string
 use crate::alloc;
 use crate::fault;
-use crate::obj;
-use crate::utf8;
+
+/// A scalar decoded by `ms_utf8_decode_multi` and the bytes it took (runtime/core/utf8.c).
+#[repr(C)]
+struct Rune {
+    rune: u32,
+    width: u32,
+}
+
+unsafe extern "C-unwind" {
+    fn ms_utf8_count(s: *const u8, n: usize) -> usize;
+    fn ms_utf8_decode_multi(s: *const u8, n: usize) -> Rune;
+}
+
+/// The scalar at the start of the non-empty `s` and its width; an invalid byte is U+FFFD of width 1.
+fn utf8_decode(s: &[u8]) -> (u32, usize) {
+    if s[0] < 0x80 {
+        return (u32::from(s[0]), 1);
+    }
+    // SAFETY: `s` is a live slice of `s.len() > 0` bytes.
+    let r = unsafe { ms_utf8_decode_multi(s.as_ptr(), s.len()) };
+    (r.rune, r.width as usize)
+}
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    FrameBuf, HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STR_INLINE_MAX,
-    StrVal, VecVal,
+    HasRaw, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STR_INLINE_MAX, StrVal, VecVal,
 };
 
 // The moved symbols (runtime/symbols/string.txt) are defined by the C runtime; Rust callers and tests reach them here.
@@ -448,7 +467,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
         if known_ascii(s) {
             return (*s).len();
         }
-        utf8::count(bytes(s))
+        ms_utf8_count(bytes(s).as_ptr(), (*s).len())
     }
 }
 
@@ -927,174 +946,6 @@ pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal
 // Lists produced from strings (List[String] = VecVal of 8-byte string pointers)
 // ---------------------------------------------------------------------------
 
-/// Room for the pieces of a split that is read in place: the list borrows it.
-const SPLIT_BUF: usize = 8;
-const _: () = assert!(size_of::<FrameBuf<StrVal, 8>>() == SPLIT_BUF * size_of::<StrVal>());
-
-/// The state of `for piece in text.split(separator)` that does not build the list.
-///
-/// The piece handed to the loop is owned by the iterator and lent to the body, which copies it
-/// to keep it; the iterator rewrites it in place for the next one.
-#[repr(C)]
-pub struct SplitIter {
-    hdr: Obj,
-    /// Borrowed from the loop's operands, which outlive the iterator.
-    src: StrVal,
-    sep: StrVal,
-    /// The current piece (a shared static for short ones), or [`NO_STR`] before the first.
-    cur: StrVal,
-    /// Byte capacity of `cur` when it is a private allocation, else 0.
-    cap: usize,
-    pos: usize,
-    done: bool,
-}
-
-unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
-    // SAFETY: `o` is a dead iterator that owns one reference to each string it holds.
-    unsafe {
-        let it = o as *mut SplitIter;
-        release_opt(&(*it).cur);
-        alloc::free(o as *mut u8);
-    }
-}
-
-/// Starts a split loop.
-#[unsafe(no_mangle)]
-// ms: leaf iter_of=msrt_string_split
-pub unsafe extern "C-unwind" fn msrt_string_split_iter(
-    s: *const StrVal,
-    sep: *const StrVal,
-) -> *mut SplitIter {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        let it = obj::new_obj(core::mem::size_of::<SplitIter>(), None, split_iter_drop)
-            as *mut SplitIter;
-        // The loop keeps both strings alive until it ends, so the iterator only borrows them.
-        (*it).src = (*s).alias();
-        (*it).sep = (*sep).alias();
-        (*it).cur = NO_STR;
-        (*it).cap = 0;
-        (*it).pos = 0;
-        (*it).done = false;
-        it
-    }
-}
-
-/// Makes the next piece current and writes a borrow of it to `out` (the iterator owns the bytes
-/// until the next call); returns 0 when the pieces are used up.
-#[unsafe(no_mangle)]
-// ms: leaf domain=split
-pub unsafe extern "C-unwind" fn msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 {
-    // SAFETY: caller passes a live iterator and a writable `out`.
-    unsafe {
-        match split_next(it) {
-            Some(value) => {
-                value.write_to(out);
-                1
-            }
-            None => 0,
-        }
-    }
-}
-
-unsafe fn split_next(it: *mut SplitIter) -> Option<StrVal> {
-    // SAFETY: `it` is a live iterator.
-    unsafe {
-        let st = &mut *it;
-        if st.done {
-            return None;
-        }
-        let (text, sepb) = (bytes(&st.src), bytes(&st.sep));
-        let piece: &[u8] = if sepb.is_empty() {
-            // Split after each scalar.
-            if st.pos >= text.len() {
-                st.done = true;
-                return None;
-            }
-            let w = utf8::decode(&text[st.pos..]).1;
-            let p = &text[st.pos..st.pos + w];
-            st.pos += w;
-            p
-        } else {
-            let at = if let [c] = sepb {
-                memchr(*c, &text[st.pos..])
-            } else {
-                find(&text[st.pos..], sepb)
-            };
-            match at {
-                Some(n) => {
-                    let p = &text[st.pos..st.pos + n];
-                    st.pos += n + sepb.len();
-                    p
-                }
-                None => {
-                    st.done = true;
-                    &text[st.pos..]
-                }
-            }
-        };
-        set_piece(st, piece);
-        Some(st.cur.alias())
-    }
-}
-
-/// Copies `n` bytes; short copies avoid the call to `memcpy`.
-///
-/// # Safety
-/// The ranges must be valid for `n` bytes and must not overlap.
-#[inline(always)]
-unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
-    // SAFETY: each branch reads and writes only inside the `n` bytes.
-    unsafe {
-        if (8..=16).contains(&n) {
-            let head = (src as *const u64).read_unaligned();
-            let tail = (src.add(n - 8) as *const u64).read_unaligned();
-            (dst as *mut u64).write_unaligned(head);
-            (dst.add(n - 8) as *mut u64).write_unaligned(tail);
-        } else if (4..8).contains(&n) {
-            let head = (src as *const u32).read_unaligned();
-            let tail = (src.add(n - 4) as *const u32).read_unaligned();
-            (dst as *mut u32).write_unaligned(head);
-            (dst.add(n - 4) as *mut u32).write_unaligned(tail);
-        } else if n > 16 || n == 0 {
-            core::ptr::copy_nonoverlapping(src, dst, n);
-        } else {
-            for i in 0..n {
-                *dst.add(i) = *src.add(i);
-            }
-        }
-    }
-}
-
-/// Stores `piece` as the iterator's current string.
-unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
-    // SAFETY: `st.cur` is [`NO_STR`] or a live string this iterator holds a reference to.
-    unsafe {
-        if piece.len() <= 1 && piece.first().is_none_or(|&b| b < 0x80) {
-            // Empty and one-byte ASCII pieces are shared statics.
-            release_opt(&st.cur);
-            st.cap = 0;
-            st.cur = from_bytes(piece);
-            return;
-        }
-        if st.cap >= piece.len() && !st.cur.ptr_word.is_null() && st.cur.owns() {
-            // The loop only borrows the piece: rewrite it in place.
-            st.cur.tagged = piece.len();
-            copy_short(piece.as_ptr(), st.cur.ptr_word, piece.len());
-            *st.cur.ptr_word.add(piece.len()) = 0;
-            return;
-        }
-        release_opt(&st.cur);
-        let cap = piece.len().max(24);
-        let mut fresh = alloc_str(cap);
-        fresh.tagged = piece.len();
-        copy_short(piece.as_ptr(), fresh.ptr_word, piece.len());
-        *fresh.ptr_word.add(piece.len()) = 0;
-        st.cur = fresh;
-        st.cap = cap;
-    }
-}
-
 /// Normalization forms by the spelling `String.normalize` takes.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -1196,7 +1047,7 @@ unsafe fn normalize_kind(
             chars.clear();
             let mut i = start;
             while i < end {
-                let (c, w) = utf8::decode(&text[i..end]);
+                let (c, w) = utf8_decode(&text[i..end]);
                 chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
                 i += w;
             }

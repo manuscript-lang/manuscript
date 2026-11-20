@@ -4,12 +4,9 @@
 use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::bound::Bound;
 use crate::error::{Status as _, TlsErr};
-use crate::tls::{self, TlsOptions};
-#[cfg(test)]
-use ms_rt::ffi::HasRaw;
+use crate::tls::TlsOptions;
 use ms_rt::ffi::{
-    Bytes, BytesVec, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, StringList, TypeList,
-    abi_type, native,
+    BytesVec, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, StringList, abi_type, native,
 };
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 
@@ -74,27 +71,6 @@ abi_type! {
     }
 }
 
-abi_type! {
-    /// A `Timestamp` at the layout the compiler gives the native time type.
-    #[derive(Clone, Copy)]
-    pub struct Timestamp {
-        pub seconds: i64,
-        pub nanos: i64,
-    }
-}
-
-abi_type! {
-    /// `CertificateInfo` at its natural layout.
-    pub struct CertificateType {
-        pub subject: Str,
-        pub issuer: Str,
-        pub dns_names: StringList,
-        pub not_before: Timestamp,
-        pub not_after: Timestamp,
-        pub der: Bytes,
-    }
-}
-
 native! {
     /// `Network.connect_tls_config(address, options, timeout)`.
     fn msstd_net_network_connect_tls_config(
@@ -138,42 +114,6 @@ native! {
         })
     }
 
-    /// `parse_certificates(pem, max)`: the certificates as a `List[CertificateInfo]`.
-    // ms: domain=TLS
-    fn msstd_tls_parse_certificates(
-        pem: &str,
-        has_max: Has,
-        max: i64,
-    ) -> Result<TypeList<CertificateType>, StatusCode> {
-        let list = tls::parse_certificates(pem, opt(*has_max, max)).map_err(|e| StatusCode(e.code()))?;
-        Ok(TypeList::new(list.iter().map(|c| CertificateType {
-            subject: Str::new(&c.subject),
-            issuer: Str::new(&c.issuer),
-            dns_names: StringList::new(c.dns_names.iter()),
-            not_before: Timestamp {
-                seconds: c.not_before.0,
-                nanos: i64::from(c.not_before.1),
-            },
-            not_after: Timestamp {
-                seconds: c.not_after.0,
-                nanos: i64::from(c.not_after.1),
-            },
-            der: Bytes::new(&c.der),
-        })))
-    }
-
-    /// `verify_certificates(chain, roots, server_name, now)`.
-    // ms: domain=TLS
-    fn msstd_tls_verify_certificates(
-        chain: &str,
-        roots: &str,
-        server_name: &str,
-        now: &Timestamp,
-    ) -> Result<(), StatusCode> {
-        tls::verify_certificates(chain, roots, server_name, now.seconds)
-            .map_err(|e| StatusCode(e.code()))
-    }
-
     /// `TlsError.message()` for a status.
     fn msstd_tls_error_message(status: u8) -> String {
         match status {
@@ -183,55 +123,6 @@ native! {
             _ => TlsErr::AuthenticationFailed,
         }
         .message()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ms_rt::ffi::new_string;
-    use ms_rt_abi::{STATUS_AUTHENTICATION_FAILED, StrVal};
-
-    fn s(text: &str) -> *const StrVal {
-        Box::leak(Box::new(new_string(text)))
-    }
-
-    #[test]
-    fn certificate_helpers_through_the_abi() {
-        let pem = include_str!("../../testdata/stdlib.test.crt.pem");
-        // SAFETY: every pointer is a live runtime object created in this test.
-        unsafe {
-            let mut certs = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
-            assert_eq!(
-                msstd_tls_parse_certificates(s(pem), HasRaw(0), 0, certs.as_mut_ptr()),
-                0
-            );
-            let certs = certs.assume_init();
-            assert_eq!(certs.len, 1);
-            let first = &*certs.ptr.cast::<CertificateType>();
-            assert_eq!(first.not_after.seconds, 4_102_444_800);
-            let mut limited = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
-            assert_eq!(
-                msstd_tls_parse_certificates(s(pem), HasRaw(1), 0, limited.as_mut_ptr()),
-                3
-            );
-            let now = Timestamp {
-                seconds: 1_700_000_000,
-                nanos: 0,
-            };
-            assert_eq!(
-                msstd_tls_verify_certificates(s(pem), s(pem), s("stdlib.test"), &now),
-                0
-            );
-            assert_eq!(
-                msstd_tls_verify_certificates(s(pem), s(pem), s("nope.test"), &now),
-                STATUS_AUTHENTICATION_FAILED
-            );
-            let m = ms_rt::ffi::take_string(|o| {
-                msstd_tls_error_message(STATUS_AUTHENTICATION_FAILED, o)
-            });
-            assert_eq!(m, "TLS: authentication failed");
-        }
     }
 }
 
