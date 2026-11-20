@@ -18,17 +18,25 @@ MirTy lr_type(Lb *lb, MsTy ty) {
     if (lb->type_of[ty] != MIR_NONE) {
         return lb->type_of[ty];
     }
+    // A record that reaches itself through a field (`next: Node?`) is not lowered: the type being
+    // declared is marked while its fields are, so the cycle ends at the second visit.
+    if (lb->declaring[ty]) {
+        return MIR_NONE;
+    }
     const MsDef *def = &lb->c->defs[sym];
     MirField *fields = MS_NEW_N(&lb->m->arena, MirField, (size_t)def->nfields + 1);
+    lb->declaring[ty] = true;
     for (uint32_t i = 0; i < def->nfields; i++) {
         const MirTy field = lb_mir_ty(lb, def->fields[i].ty);
         if (field == MIR_NONE || (field != MIR_STR && mir_needs_drop(lb->m, field))) { // a String field only
+            lb->declaring[ty] = false;
             return MIR_NONE;
         }
         fields[i] = (MirField){mir_name(lb->m, ms_name(lb->c->names, def->fields[i].name).ptr,
                                         ms_name(lb->c->names, def->fields[i].name).len),
                                field};
     }
+    lb->declaring[ty] = false;
     MsBuf text = {0};
     ms_ty_show(&text, lb->c->names, tys, ty);
     const uint32_t id = mir_add_type(lb->m, mir_name(lb->m, text.data, text.len));

@@ -53,6 +53,25 @@ typedef struct LbJob {
     uint32_t ncaps;
 } LbJob;
 
+/* A function or method being lowered: its syntax, the node its facts hang on, its signature, and
+ * the receiver a method takes as parameter 0. */
+typedef struct LbCallable {
+    const MsFunc *fn;
+    uint32_t node;  /* the declaration (or method) node: `param_consumed`, `ret_borrowed` */
+    MsPos pos;
+    MsSym name;     /* the MIR name, with the receiver's for a method */
+    MsTy sig;       /* the signature, receiver not included */
+    MsTy self_ty;   /* MS_TY_NONE for a function */
+    bool mutating;  /* the receiver is a `var` one */
+} LbCallable;
+
+/* An impl method the module wrote: its row, where it starts, and the source lines it owns. */
+typedef struct LbMethodRow {
+    const MsMethod *method; /* NULL for a row no method of this module carries */
+    MsPos owner_pos;        /* where the impl declaration starts: the method's location in MIR */
+    uint32_t first_line, end_line;
+} LbMethodRow;
+
 typedef struct Lb {
     MsClassifier *classifier; /* classes of types: a value that closes is left to the Rust lowering */
     const MsCheck *c;
@@ -71,7 +90,9 @@ typedef struct Lb {
     uint32_t njobs, cjobs;
     bool closure;         /* lowering a closure body: no call depth, no `var` parameters */
     uint32_t *binding_at; /* by node id: the binding that node introduces, or MS_NONE */
-    const MsDecl *decl;   /* the function being lowered */
+    LbCallable cur;       /* the function or method being lowered */
+    uint32_t *method_func; /* by method row: the module function a method call reaches, or MIR_NONE */
+    struct LbMethodRow *rows; /* by method row: the syntax of an impl method (method NULL for others) */
     /* The instance being lowered or stubbed: its function's variables and what they stand for. */
     const MsTy *sub_vars, *sub_args;
     uint32_t nsub;
@@ -83,6 +104,7 @@ typedef struct Lb {
     uint32_t ndead_insts, cdead_insts;
     const MsStmt *stmt;   /* the statement being lowered: every instruction in it reports its position */
     MirTy *type_of;       /* by checker type: the record it lowered to, or MIR_NONE */
+    bool *declaring;      /* by checker type: a record whose fields are being lowered */
     LbLoop *loop;         /* the innermost loop around the statement, or NULL */
     struct LbVarOwner *vars; /* the owned `var` Strings in scope, innermost last */
     uint32_t nvars, cvars;
@@ -97,6 +119,21 @@ void lb_return_void(Lb *lb);
 void lb_drop(Lb *lb, MirValue v);  /* releases an owned temporary */
 MirLoc lb_loc(const Lb *lb, MsPos pos);
 void lb_reset_state(Lb *lb);
+
+/* Helpers of lower_body.c that lower_record.c and lower_method.c call. */
+bool lb_owns(Lb *lb, MirTy ty);
+MirValue lb_move_argument(Lb *lb, const MsExpr *e);
+bool lb_lines_have_diagnostic(const MsModuleRow *row, uint32_t first, uint32_t end);
+uint32_t lb_add_stub(Lb *lb, const LbCallable *c); /* a function with the signature and no body; MIR_NONE when not handled */
+bool lb_function(Lb *lb, const LbCallable *c, uint32_t slot); /* lowers it over its stub; false when not handled */
+/* A call of module function `func` of signature `sig`; `receiver` is the method receiver, else NULL. */
+LbVal lb_call_func(Lb *lb, const MsExpr *e, uint32_t func, MsTy sig, const MsExpr *receiver, bool mutating);
+
+/* lower_method.c: methods of impls. */
+LbVal lm_call(Lb *lb, const MsExpr *e, uint32_t row);
+uint32_t lm_prepare(Lb *lb, MsModId module);                              /* the method rows; their count */
+void lm_stubs(Lb *lb, MsModId module, uint32_t nrows, const bool *failed); /* a stub for each method to lower */
+bool lm_lower(Lb *lb, uint32_t nrows, bool *failed, uint32_t *lowered);   /* true when one did not lower */
 
 /* lower_closure.c: function values and lambdas. */
 MirTy lb_fn_ty(Lb *lb, MsTy ty);

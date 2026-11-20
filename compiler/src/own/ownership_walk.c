@@ -1365,7 +1365,7 @@ static void own_methods(OwnWalk *w, MsLiveness *live, const uint32_t *by_node) {
     if (facts->methods == NULL) {
         return;
     }
-    const MsMethod **rows = ms_method_rows(w->check, w->module, facts->methods);
+    const MsMethod **rows = ms_method_rows(w->check, w->module, facts->methods, NULL);
     w->quiet = false;
     for (uint32_t i = 0; i < facts->methods->count; i++) {
         const MsMethod *method = rows[i];

@@ -1,11 +1,17 @@
 /* The syntax node behind each method row: impl rows are appended in declaration order, one per
  * written method (and a few after an impl for properties it leaves to its interface), so one pass
- * over the module's impls with a cursor over the rows pairs them. */
+ * over the module's impls with a cursor over the rows pairs them. `owners`, when given, receives
+ * the impl each row's method is written in (both arrays hold `m->count + 1` entries). */
+#include <string.h>
+
 #include "ms/methods.h"
 
-const MsMethod **ms_method_rows(MsCheck *c, MsModId module, const MsMethods *m) {
+const MsMethod **ms_method_rows(MsCheck *c, MsModId module, const MsMethods *m, const MsDecl **owners) {
     const MsMethod **rows = MS_NEW_N(&c->arena, const MsMethod *, (size_t)m->count + 1);
     memset(rows, 0, ((size_t)m->count + 1) * sizeof *rows);
+    if (owners != NULL) {
+        memset(owners, 0, ((size_t)m->count + 1) * sizeof *owners);
+    }
     const MsModule *syntax = c->mods[module].syntax;
     uint32_t cursor = 0;
     for (uint32_t i = 0; i < syntax->ndecls; i++) {
@@ -21,6 +27,9 @@ const MsMethod **ms_method_rows(MsCheck *c, MsModId module, const MsMethods *m) 
             }
             if (at < m->count) {
                 rows[at] = method;
+                if (owners != NULL) {
+                    owners[at] = d;
+                }
                 cursor = at + 1;
             }
         }
