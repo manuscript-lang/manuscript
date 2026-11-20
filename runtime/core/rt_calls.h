@@ -22,10 +22,15 @@
 
 /* Raises a fault of `kind` with the message `msg[0..len]`. */
 MS_NORETURN void msfault_raise(uint8_t kind, const uint8_t *msg, size_t len);
+/* Division and remainder by zero (a fault of the division family). */
+MS_NORETURN void msrt_fault_div_zero(void);
+MS_NORETURN void msrt_fault_rem_zero(void);
+#ifndef MS_RT_STRBUILD_H /* ms_rt/strbuild.h declares the same two */
 /* Raises a generic fault. */
 MS_NORETURN void msrt_fault(const uint8_t *msg, size_t len);
 /* "index N out of range for length L; pass a default". */
 MS_NORETURN void msrt_index_fault(int64_t index, int64_t length);
+#endif
 /* The fault of a list mutator given a bad index: operation 0 insert, 1 remove, 2 set, 3 swap, 4 replace. */
 MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t len);
 
