@@ -101,6 +101,22 @@ else
     status=1
 fi
 
+# Project imports: an entry that imports project modules, checked through the C module graph
+# (`--project`) against the Rust checker given the same import map. Export errors print as
+# `import L:C: message`.
+for entry in compiler/tests/project/main.ms compiler/tests/project/uses.ms; do
+    name=$(basename "$entry" .ms)
+    "$oracle" --project "$entry" > "$out/project-$name.rust"
+    "$bin/ms_check_dump" stdlib --project "$entry" | sed 's/ ownership-declined$//' > "$out/project-$name.c"
+    if cmp -s "$out/project-$name.rust" "$out/project-$name.c" && [ -s "$out/project-$name.c" ]; then
+        echo "ok   project $name ($(grep -c '^import ' "$out/project-$name.c") import diagnostics)"
+    else
+        echo "FAIL project $name: first difference"
+        diff "$out/project-$name.rust" "$out/project-$name.c" | head -20 || true
+        status=1
+    fi
+done
+
 # Ownership: the diagnostics inside each function the C passes checked, against the Rust checker's,
 # on the ownership fixtures and the corpus. Only functions the C walk handles are compared.
 ownership_files=$(find compiler/tests/ownership compiler/tests/scope tests/conformance/fixtures -name '*.ms' | sort)
