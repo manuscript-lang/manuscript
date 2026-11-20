@@ -9,8 +9,13 @@ fn main() {
     let list = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"))
         .join("../../runtime/c-symbols.txt");
     println!("cargo::rerun-if-changed={}", list.display());
+    println!("cargo::rerun-if-env-changed=MS_C_REACTOR");
     if std::env::var_os("MS_C_RUNTIME").is_none() {
         return;
+    }
+    // The libuv reactor replaces the mio poller on this build (`cargo xtask runtime` with `MS_C_LIBS`).
+    if std::env::var_os("MS_C_REACTOR").is_some() {
+        println!("cargo::rustc-cfg=ms_c=\"msio_open\"");
     }
     let text = std::fs::read_to_string(&list).expect("read runtime/c-symbols.txt");
     for symbol in text
