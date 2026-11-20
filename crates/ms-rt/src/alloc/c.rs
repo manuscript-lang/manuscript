@@ -1,9 +1,6 @@
 //! Binding to the C allocator (`runtime/core/alloc.c`), which the archive builds link. Every function
 //! of the Rust allocator's interface forwards to its `msrt_*` symbol, so the rest of the runtime is
 //! unchanged and one allocator serves programs, the runtime and Rust's global allocator.
-#[cfg(feature = "alloc-profile")]
-use core::ffi::c_void;
-
 unsafe extern "C-unwind" {
     pub fn msrt_alloc(size: usize) -> *mut u8;
     pub fn msrt_alloc_zeroed(size: usize) -> *mut u8;
@@ -29,8 +26,6 @@ unsafe extern "C-unwind" {
     #[cfg(all(test, not(feature = "stats")))]
     fn msalloc_live_blocks() -> i64;
     fn msrt_heap_requested(out: *mut u64);
-    #[cfg(feature = "alloc-profile")]
-    fn msrt_heap_sample_every(period: i64, hook: *mut c_void);
 }
 
 /// Called by the C allocator when the system cannot give a block.
@@ -161,52 +156,4 @@ pub fn requested() -> [u64; 2] {
     // SAFETY: two writable words.
     unsafe { msrt_heap_requested(out.as_mut_ptr()) };
     out
-}
-
-/// Starts allocation sampling on the calling thread: every `period`th allocation is a sample.
-///
-/// A runtime built without the `alloc-profile` feature takes no samples.
-pub fn sample_every(period: i64) {
-    #[cfg(feature = "alloc-profile")]
-    {
-        extern "C-unwind" fn hook(size: usize) -> i64 {
-            crate::profile::alloc_sample(size)
-        }
-        // SAFETY: `hook` has the sampler signature the C allocator calls.
-        unsafe { msrt_heap_sample_every(period, hook as *mut c_void) };
-    }
-    #[cfg(not(feature = "alloc-profile"))]
-    let _ = period;
-}
-
-/// Starts the `requested` counters over: called as the program's `main` begins, so the counts a gate reads
-/// cover the program and not the runtime's own start-up records, which differ by platform.
-#[cfg(feature = "stats")]
-pub fn reset_requested() {
-    // SAFETY: no preconditions.
-    unsafe { msrt_heap_requested_reset() }
-}
-
-/// Live blocks of the whole process (the counting runtime).
-#[cfg(feature = "stats")]
-pub fn live_blocks() -> isize {
-    // SAFETY: no preconditions.
-    unsafe { msrt_heap_live_total() as isize }
-}
-
-/// Live blocks of the calling thread's heap (unit tests, which the C archive counts).
-#[cfg(all(test, not(feature = "stats")))]
-pub fn live_blocks() -> isize {
-    // SAFETY: no preconditions.
-    unsafe { msalloc_live_blocks() as isize }
-}
-
-/// `(block size, live count)` for each size class with a nonzero count; the size is 0 for large blocks.
-#[cfg(feature = "stats")]
-pub fn live_by_size() -> Vec<(usize, isize)> {
-    let mut sizes = [0usize; 128];
-    let mut counts = [0i64; 128];
-    // SAFETY: both arrays hold `capacity` entries.
-    let n = unsafe { msrt_heap_live_by_size(sizes.as_mut_ptr(), counts.as_mut_ptr(), sizes.len()) };
-    (0..n).map(|i| (sizes[i], counts[i] as isize)).collect()
 }
