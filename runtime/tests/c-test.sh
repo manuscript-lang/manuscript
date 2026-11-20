@@ -13,12 +13,17 @@ for t in runtime/tests/core_*.c; do
         -lm -lpthread -o "$out/$name"
     "$out/$name"
 done
-# The OS layer: runtime/sys/posix (the Windows layer is covered by the conformance corpus on Windows).
-for t in runtime/tests/sys_mem.c runtime/tests/sys_thread.c; do
-    name=$(basename "$t" .c)
-    cc $flags "$t" runtime/sys/posix/*.c -lpthread -o "$out/$name"
-    "$out/$name"
-done
+# The OS layer: runtime/sys (thread.c is portable over libuv) and runtime/sys/posix; the Windows layer is covered by the
+# conformance corpus on Windows.
+cc $flags runtime/tests/sys_mem.c runtime/sys/posix/*.c -lpthread -o "$out/sys_mem"
+"$out/sys_mem"
+# shellcheck disable=SC2046
+cc $flags $(sh runtime/third_party/libs.sh cflags) runtime/tests/sys_thread.c runtime/sys/*.c runtime/sys/posix/*.c $(sh runtime/third_party/libs.sh libs uv) -lpthread -o "$out/sys_thread"
+"$out/sys_thread"
+# The fault test runs without sanitizers, which install signal handlers of their own.
+# shellcheck disable=SC2046
+cc -std=gnu11 -O0 -g -Wall -Wextra -Werror -Iruntime/include $(sh runtime/third_party/libs.sh cflags) runtime/tests/sys_fault.c runtime/sys/*.c runtime/sys/posix/*.c $(sh runtime/third_party/libs.sh libs uv) -lpthread -o "$out/sys_fault"
+"$out/sys_fault"
 for t in runtime/tests/std_*.c; do
     name=$(basename "$t" .c)
     # shellcheck disable=SC2046
