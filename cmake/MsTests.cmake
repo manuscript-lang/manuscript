@@ -145,12 +145,15 @@ ms_test(http1_exchange_test SOURCES "${_tests}/http1_exchange_test.c" "${_rt}/ne
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
 ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_nghttp2_LINK})
+ms_test(h2conn_test SOURCES "${_tests}/h2conn_test.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
+        INCLUDES ${MS_LIB_nghttp2_INCLUDES} LIBS ${MS_LIB_nghttp2_LINK})
 
 # Fuzz harnesses (runtime/fuzz/*_fuzz.c): built always, run by `make c-fuzz` over runtime/fuzz/corpus/<name>
 # (the driver takes -n <inputs> -s <seed> <files>; MS_FUZZER=libfuzzer builds coverage-guided ones instead).
 set(MS_FUZZER "driver" CACHE STRING "driver, or libfuzzer (clang with the libFuzzer runtime)")
 set(_fuzz_deps_http1 "${_rt}/net/http1.c")
 set(_fuzz_deps_num "${_rt}/core/num.c")
+set(_fuzz_deps_h2conn "${_rt}/net/h2conn.c" "${_rt}/net/h2.c")
 file(GLOB _fuzzers CONFIGURE_DEPENDS "${_rt}/fuzz/*_fuzz.c")
 foreach(file ${_fuzzers})
   get_filename_component(name "${file}" NAME_WE)
@@ -159,16 +162,21 @@ foreach(file ${_fuzzers})
     message(FATAL_ERROR "runtime/fuzz/${name}.c has no dependency list in cmake/MsTests.cmake")
   endif()
   set(_objects "")
+  set(_fuzz_libs m)
+  set(_fuzz_includes "${_llhttp}/include")
   if(short STREQUAL "http1")
     set(_objects ms_test_llhttp)
+  elseif(short STREQUAL "h2conn")
+    set(_fuzz_libs ${MS_LIB_nghttp2_LINK} m)
+    set(_fuzz_includes ${MS_LIB_nghttp2_INCLUDES})
   endif()
   if(MS_FUZZER STREQUAL "libfuzzer")
-    ms_test(${name} SOURCES "${file}" ${_fuzz_deps_${short}} OBJECTS ${_objects} INCLUDES "${_llhttp}/include"
-            LIBS m FLAGS -fsanitize=fuzzer-no-link)
+    ms_test(${name} SOURCES "${file}" ${_fuzz_deps_${short}} OBJECTS ${_objects} INCLUDES ${_fuzz_includes}
+            LIBS ${_fuzz_libs} FLAGS -fsanitize=fuzzer-no-link)
     target_link_options(${name} PRIVATE -fsanitize=fuzzer)
   else()
     ms_test(${name} SOURCES "${file}" "${_rt}/fuzz/driver.c" ${_fuzz_deps_${short}} OBJECTS ${_objects}
-            INCLUDES "${_llhttp}/include" LIBS m)
+            INCLUDES ${_fuzz_includes} LIBS ${_fuzz_libs})
   endif()
   set_property(TEST ${name} PROPERTY DISABLED TRUE)
 endforeach()
