@@ -3,7 +3,6 @@
 use ms_lsp::analysis::{Document, Documents};
 use ms_lsp::editor::{context_at, query_editor};
 use ms_lsp::text::Position;
-use ms_rt as _;
 use std::rc::Rc;
 
 use crate::support;
