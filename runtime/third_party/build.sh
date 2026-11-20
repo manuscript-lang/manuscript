@@ -74,6 +74,15 @@ if [ ! -f "$out/lib/libssl.a" ]; then
         && make -j "$jobs" build_libs >/dev/null && cp libssl.a libcrypto.a "$out/lib/" && mkdir -p "$out/include/openssl" \
         && cp "$src/openssl-$(version_of openssl)"/include/openssl/*.h include/openssl/*.h "$out/include/openssl/")
 fi
+if [ ! -f "$out/lib/libz.a" ]; then
+    # zlib: the in-memory deflate and inflate code only, compiled directly (no gz file layer, no build system).
+    build=$root/build/$triple/zlib
+    zsrc=$src/zlib-$(version_of zlib)
+    mkdir -p "$build"
+    for f in adler32 compress crc32 deflate infback inffast inflate inftrees trees uncompr zutil; do "$cc" -O2 -fPIC -I"$zsrc" -c "$zsrc/$f.c" -o "$build/$f.o"; done
+    ar rcs "$out/lib/libz.a" "$build"/*.o
+    cp "$zsrc/zlib.h" "$zsrc/zconf.h" "$out/include/"
+fi
 if [ ! -f "$out/lib/libpcre2-8.a" ]; then
     # PCRE2, 8-bit library only, with its JIT. Plain C: no C++ runtime in programs.
     build=$root/build/$triple/pcre2

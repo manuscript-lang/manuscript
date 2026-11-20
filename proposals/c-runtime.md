@@ -36,7 +36,7 @@ runtime/
 - Signatures are written once in `ms_rt.h`; a generator reads the header for the lowering table and fails when a symbol named by `stdlib/*.ms` is missing from the archive or an exported one is unused.
 - Tasks, promises and connections are rows in struct-of-arrays tables, addressed by a 32-bit index with generation and state in the upper bits.
 - An idle connection is a table row and a `uv_tcp_t`; a task attaches only while a handler runs. How a handler waits is a language question with its own proposal.
-- libcrypto replaces `ring`, `rustls`, the RustCrypto crates, `p256`, `p384`, `p521`, `rsa`, `ed25519-dalek` and `x25519-dalek`. PCRE2 (plain C, 8-bit library, JIT) replaces `regex`; RE2 was dropped because it and Abseil were the only C++ a program would link. PCRE2 backtracks, so every match runs with a `pcre2_match_context` that sets the match limit, the depth limit and the heap limit, and reports an error at a limit instead of hanging; a pattern's own `(*LIMIT_...)` can only lower them (checked by `clibs_smoke_pcre2.c`). The JIT has its own stack and ignores the depth and heap limits, so its stack size is capped too.
+- libcrypto replaces `ring`, `rustls`, the RustCrypto crates, `p256`, `p384`, `p521`, `rsa`, `ed25519-dalek` and `x25519-dalek`. zlib replaces `flate2` and `miniz_oxide` (approved 2026-11-20). PCRE2 (plain C, 8-bit library, JIT) replaces `regex`; RE2 was dropped because it and Abseil were the only C++ a program would link. PCRE2 backtracks, so every match runs with a `pcre2_match_context` that sets the match limit, the depth limit and the heap limit, and reports an error at a limit instead of hanging; a pattern's own `(*LIMIT_...)` can only lower them (checked by `clibs_smoke_pcre2.c`). The JIT has its own stack and ignores the depth and heap limits, so its stack size is capped too.
 - Third-party build: `runtime/third_party/build.sh [triple]` builds everything into `target/c-libs/<triple>-<key>/`; the key hashes the pins, the script, vendored sources, the triple and the compiler versions.
 - The Rust runtime stays buildable and selected per symbol until the C runtime passes the conformance corpus on all six platforms; it is then deleted in one PR.
 
@@ -71,6 +71,5 @@ The task-free connection design is measured on its own, in Rust or C, so its gai
 
 ## Open questions
 
-- Compression: `flate2` and `miniz_oxide` need a C replacement; zlib would be a new dependency and needs approval. Recommendation: zlib.
 - Time zones: bundled IANA data read by Manuscript code, not a C library. Recommendation: yes.
 - Regex dialect: PCRE2 accepts backreferences and lookaround, which `regex` rejects today. Recommendation: keep rejecting them at first so no program's behaviour changes, and decide on widening separately.
