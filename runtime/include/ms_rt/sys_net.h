@@ -29,6 +29,11 @@ enum {
 /* A new non-blocking TCP socket of the family of `addr`, not bound or connected. For a library that connects the
  * socket itself (libcurl's open-socket callback). */
 int ms_sys_net_tcp_socket(const MsAddr *addr, MsSock *out);
+/* A listening Unix domain socket bound to the NUL-terminated `path` (an existing file there is an error, as for bind;
+ * a path longer than the system's limit fails with its error code). The caller removes the file when it closes. */
+int ms_sys_net_unix_listen(const char *path, int backlog, MsSock *out);
+/* A connected Unix domain stream socket to `path`. The connect itself may block while the listener's queue is full. */
+int ms_sys_net_unix_connect(const char *path, MsSock *out);
 /* A listening socket on `addr` (port 0 picks one; read it back with ms_sys_net_local_addr). */
 int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out);
 /* Starts a connection: OK when connected at once, INPROGRESS otherwise. */
@@ -48,6 +53,7 @@ int ms_sys_net_accept(MsSock listener, MsSock *out, MsAddr *peer);
 /* One read or write; the byte count goes to *done. A read of 0 bytes returns EOF. Writes never raise SIGPIPE. */
 int ms_sys_net_read(MsSock s, void *buf, size_t n, size_t *done);
 int ms_sys_net_write(MsSock s, const void *buf, size_t n, size_t *done);
+/* The socket's own and peer address. MS_SYS_ERROR for a Unix domain socket, which has no MsAddr. */
 int ms_sys_net_local_addr(MsSock s, MsAddr *out);
 int ms_sys_net_peer_addr(MsSock s, MsAddr *out);
 /* Half-closes the write side (how = 1) or both (how = 2). */

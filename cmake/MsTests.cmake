@@ -26,7 +26,7 @@ endif()
 # is written, and its name leaves this list. Nothing else is skipped.
 set(MS_POSIX_ONLY_TESTS
     core_alloc core_fault core_isolate core_pipe core_promise core_streams core_task staged_sched_pool staged_sched_shims
-    conn_io_test dial_test h2_serve_test net_natives_test
+    conn_io_test dial_test h2_serve_test net_natives_test unix_test
     io_completion io_reactor sys_net_test std_signals std_process_state sys_fault)
 
 # libcurl on macOS asks the system for proxy settings.
@@ -240,6 +240,11 @@ ms_test(datagram_test SOURCES "${_tests}/datagram_test.c" "${_rt}/net/datagram.c
 ms_test(dns_test SOURCES "${_tests}/dns_test.c" "${_rt}/net/dns.c" "${_rt}/net/dns_query.c" "${_rt}/net/status.c"
         "${_rt}/net/addr_text.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
         "${_rt}/sys/${_platform}/net.c" OBJECTS ms_test_core ms_test_llhttp
+        INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES}
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS} ${_pthread} m)
+ms_test(unix_test SOURCES "${_tests}/unix_test.c" "${_rt}/net/unix.c" "${_rt}/net/listener.c" "${_rt}/net/server_natives.c"
+        "${_rt}/net/status.c" "${_rt}/net/conn_object.c" "${_rt}/net/addr_text.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c"
+        "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c" OBJECTS ms_test_core ms_test_llhttp
         INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES}
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS} ${_pthread} m)
 ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LIB_nghttp2_INCLUDES}
