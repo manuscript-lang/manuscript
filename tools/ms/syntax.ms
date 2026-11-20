@@ -82,6 +82,8 @@ extern fn ms_tool_tree_names(tree: Tree) List[String]
 extern fn ms_tool_node_kinds() List[String]
 extern fn ms_tool_keywords() List[String]
 
+extern fn ms_tool_keywords() List[String]
+
 fn node_width() Int: 12
 
 // The node kind names the C encoder uses ("Fn", "Bind", "Binary", ...), indexed by
