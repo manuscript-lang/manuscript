@@ -3,11 +3,13 @@
 //   ms run tools/ms/facts_diff.ms -- RUST.json C.json
 //
 // The entity keys, kinds and lines must be equal. Then each field in FIELDS is
-// compared; a field joins FIELDS when the C checker's column for it exists. Not
-// compared yet, and printed empty by the C writer: calls, external, effects, error,
-// scopes, result_ownership, passing modes, refs, `move` receivers (checker facts),
-// imports and flows. The process fails when anything differs, and the output counts the
-// entities and fields compared so a silent skip shows.
+// compared; a field joins FIELDS when the C checker's column for it exists. effects,
+// reach and permits are compared only for entities the C checker marks effects_known.
+// Not compared yet, and printed empty by the C writer: calls (the effect scan misses
+// implicit close calls), external, error, scopes, result_ownership, passing modes,
+// refs, `move` receivers (checker facts), imports and flows. The process fails when
+// anything differs, and the output counts the entities and fields compared so a silent
+// skip shows.
 import (
 	parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
@@ -17,7 +19,9 @@ import (
 	Fact, Facts, Slot from "./views.ms",
 )
 
-FIELDS := ["name", "slots", "result", "receiver", "tries"]
+FIELDS := [
+	"name", "slots", "result", "receiver", "tries", "effects", "reach", "permits"
+]
 
 fn slot_text(s: Slot) String: f"{s.name}:{s.ty}:{s.exclusive}"
 
@@ -36,6 +40,12 @@ fn field_diff(field: String, want: Fact, got: Fact) String:
 	// `move` versus `borrow` needs the checker's moving-parameter facts; only `var` is syntax.
 	if field == "receiver" and (want.receiver == "var") != (got.receiver == "var"): return f"receiver {want.receiver} != {got.receiver}"
 	if field == "tries" and want.tries != got.tries: return f"tries {want.tries} != {got.tries}"
+	if not got.effects_known: return ""
+
+	// The C checker leaves these empty when it cannot see all of what the entity calls.
+	if field == "effects" and want.effects != got.effects: return f"effects {want.effects} != {got.effects}"
+	if field == "reach" and want.reach != got.reach: return f"reach {want.reach} != {got.reach}"
+	if field == "permits" and want.permits != got.permits: return f"permits {want.permits} != {got.permits}"
 
 	return ""
 
