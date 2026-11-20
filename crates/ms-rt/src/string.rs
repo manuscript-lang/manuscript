@@ -193,84 +193,6 @@ pub unsafe fn bytes_eq(a: *const StrVal, b: *const StrVal) -> bool {
     }
 }
 
-/// Deterministic 64-bit hash of bytes. Up to [`STR_INLINE_MAX`] bytes are the two words an inline
-/// string holds (zero past the length), folded in turn with the length as the seed, which is what
-/// the compiler's inline map probe computes from an inline key. Longer text takes eight bytes per
-/// multiply-fold step, with the tail read as one overlapping word, then a final avalanche. Hashes
-/// are lookup aids, not stable identifiers.
-#[inline]
-pub fn hash_bytes(b: &[u8]) -> u64 {
-    const K0: u64 = 0x9e37_79b9_7f4a_7c15;
-    const K1: u64 = 0xff51_afd7_ed55_8ccd;
-    #[inline(always)]
-    fn fold(a: u64, b: u64) -> u64 {
-        let m = u128::from(a) * u128::from(b);
-        (m as u64) ^ ((m >> 64) as u64)
-    }
-    #[inline(always)]
-    fn word(b: &[u8], at: usize) -> u64 {
-        let mut w = [0u8; 8];
-        w.copy_from_slice(&b[at..at + 8]);
-        u64::from_le_bytes(w)
-    }
-    let n = b.len();
-    let mut h = K0 ^ (n as u64).wrapping_mul(K1);
-    if n <= STR_INLINE_MAX {
-        return hash_inline(n, StrVal::inline(b).inline_bits());
-    }
-    let mut i = 0;
-    while i + 8 <= n {
-        h = fold(h ^ word(b, i), K1);
-        i += 8;
-    }
-    // Sixteen bytes or more: the last eight bytes, overlapping the words already folded in.
-    let tail = word(b, n - 8);
-    fold(h ^ tail, K0)
-}
-
-/// The hash of a string of `n <= STR_INLINE_MAX` bytes whose little-endian bits are `bits`.
-#[inline(always)]
-fn hash_inline(n: usize, bits: u128) -> u64 {
-    const K0: u64 = 0x9e37_79b9_7f4a_7c15;
-    const K1: u64 = 0xff51_afd7_ed55_8ccd;
-    #[inline(always)]
-    fn fold(a: u64, b: u64) -> u64 {
-        let m = u128::from(a) * u128::from(b);
-        (m as u64) ^ ((m >> 64) as u64)
-    }
-    let h = K0 ^ (n as u64).wrapping_mul(K1);
-    fold(fold(h ^ bits as u64, K1) ^ (bits >> 64) as u64, K0)
-}
-
-/// `hash_bytes` of the string `s`; an inline string is hashed from its words as they are.
-///
-/// # Safety
-/// `s` must be a live string.
-#[inline(always)]
-pub unsafe fn hash_str(s: *const StrVal) -> u64 {
-    // SAFETY: caller contract.
-    unsafe {
-        if (*s).is_inline() {
-            return hash_inline((*s).len(), (*s).inline_bits());
-        }
-        hash_bytes(bytes(s))
-    }
-}
-
-/// Hash of an `Int` key: one widening multiply folded to 64 bits.
-#[inline(always)]
-pub fn hash_int(x: u64) -> u64 {
-    let m = u128::from(x ^ 0x9e37_79b9_7f4a_7c15) * 0xff51_afd7_ed55_8ccd;
-    (m as u64) ^ ((m >> 64) as u64)
-}
-
-#[inline]
-pub fn mix(mut h: u64) -> u64 {
-    h ^= h >> 32;
-    h = h.wrapping_mul(0x9e37_79b9_7f4a_7c15);
-    h ^ (h >> 29)
-}
-
 /// Native allocation ceiling for built strings.
 pub const MAX_BYTES: usize = 1 << 30;
 
@@ -452,19 +374,6 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
         }
         ms_utf8_count(bytes(s).as_ptr(), (*s).len())
     }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf domain=map
-pub extern "C-unwind" fn msrt_hash_int(v: i64) -> i64 {
-    mix(v as u64 ^ 0x9e37_79b9) as i64
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf domain=map
-pub unsafe extern "C-unwind" fn msrt_hash_bytes(p: *const u8, len: usize) -> i64 {
-    // SAFETY: caller passes a readable range.
-    hash_bytes(unsafe { core::slice::from_raw_parts(p, len) }) as i64
 }
 
 /// `find` for a short haystack and a non-empty needle.
@@ -1116,49 +1025,6 @@ mod tests {
                 longer.push(b'z');
                 assert!(!equal(&a, &from_bytes(&longer)));
             }
-        }
-    }
-
-    #[test]
-    fn hash_vectors_match_the_c_runtime() {
-        // The same vectors are asserted by runtime/tests/core_string.c.
-        let vectors: [(&str, i64); 6] = [
-            ("", 5637604647281345049),
-            ("a", -4589632175014895841),
-            ("hello", -2768413155067229152),
-            ("123456789012345", 1963792452095667305),
-            ("1234567890123456", 6017223085291776624),
-            (
-                "The quick brown fox jumps over the lazy dog",
-                5716930301217669884,
-            ),
-        ];
-        for (text, hash) in vectors {
-            assert_eq!(hash_bytes(text.as_bytes()) as i64, hash, "{text:?}");
-        }
-    }
-
-    #[test]
-    fn hash_bytes_separates_lengths_and_contents() {
-        let mut seen = std::collections::HashSet::new();
-        for len in 0..40usize {
-            for fill in [0u8, b'a', 0xff]
-                .into_iter()
-                .take(if len == 0 { 1 } else { 3 })
-            {
-                let v = std::vec![fill; len];
-                assert_eq!(hash_bytes(&v), hash_bytes(&v.clone()));
-                assert!(
-                    seen.insert(hash_bytes(&v)),
-                    "collision at len {len} fill {fill}"
-                );
-            }
-        }
-        for at in 0..24usize {
-            let mut a = std::vec![b'x'; 24];
-            let b = a.clone();
-            a[at] = b'y';
-            assert_ne!(hash_bytes(&a), hash_bytes(&b), "byte {at} ignored");
         }
     }
 
