@@ -227,7 +227,7 @@ runs:
         CONFORM_LEAKS: '1'
         CONFORM_BACKEND_ONLY: ${{ env.PR == 'true' && '1' || '' }}
       shell: bash
-      run: target/debug/ms run tools/conform.ms
+      run: MS=target/debug/ms target/debug/ms run tools/conform.ms
     # A pull request that touches no LLVM-related code runs the whole corpus once, built by Cranelift.
     - name: Conformance corpus (Cranelift, every phase)
       if: env.CONFORM == 'true' && env.LLVM != 'true'
@@ -235,13 +235,13 @@ runs:
         MS_BACKEND: cranelift
         CONFORM_ALL_PHASES: '1'
       shell: bash
-      run: target/debug/ms run tools/conform.ms
+      run: MS=target/debug/ms target/debug/ms run tools/conform.ms
     - name: Conformance corpus (Cranelift)
       if: env.CRANELIFT == 'true'
       env:
         MS_BACKEND: cranelift
       shell: bash
-      run: target/debug/ms run tools/conform.ms
+      run: MS=target/debug/ms target/debug/ms run tools/conform.ms
     # `ms run` and `ms test` build at Debug by default, which skips MIR optimization and so runs other MIR
     # passes than the Release builds above (#4357). Main and scheduled runs replay the run and test phases
     # that way on every platform; a pull request replays one quarter of them on the Linux legs.
@@ -252,7 +252,7 @@ runs:
         CONFORM_BUILD_TYPE: Debug
         CONFORM_SHARD: ${{ env.PR == 'true' && '0/4' || '0/1' }}
       shell: bash
-      run: target/debug/ms run tools/conform.ms
+      run: MS=target/debug/ms target/debug/ms run tools/conform.ms
     # The dev profile turns Cranelift's own debug assertions off for speed (Cargo.toml). Main, scheduled and manual
     # runs build `ms` once more with them on and replay the Cranelift run and test phases, so an assertion
     # that fires on the IR we generate is still caught.
