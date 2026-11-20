@@ -14,4 +14,4 @@ Base `6d566840` (Rust, `unicode-normalization` crate and std case mapping) again
 | cjk | 986 → 328 | 881 → 284 | 1263 → 206 | 1044 → 752 | 1298 → 739 | 1070 → 773 |
 | marks | 627 → 508 | 528 → 512 | 909 → 872 | 778 → 106 | 918 → 865 | 810 → 106 |
 
-Slower: Latin NFD and NFKD (about 1.3x), where every accented letter is a one-scalar segment written through the buffer. Open for a later pass.
+Follow-up, same day: ASCII runs are written in one piece and scalars are encoded in place. Latin NFD 1552 → 684 and NFKD 1640 → 690 (faster than the Rust 1208 and 1155); Greek NFD 802 → 665; CJK NFD 752 → 576. The other cases are within noise.
