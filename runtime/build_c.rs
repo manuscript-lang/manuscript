@@ -173,6 +173,10 @@ fn configure_c(
             configure.arg(format!("-DCMAKE_C_COMPILER_TARGET={arch}-pc-windows-msvc"));
         }
     }
+    if triple.is_none() && cfg!(windows) {
+        // A Windows host's unit-test build has no pinned libraries yet; zlib is compiled from the vendored sources.
+        configure.arg("-DMS_LIBS_ONLY=z");
+    }
     if let Some(prefix) = libs_prefix(root, triple)? {
         configure.arg("-DMS_C_LIBS=prefix");
         configure.arg(format!("-DMS_LIBS_PREFIX={}", prefix.display()));

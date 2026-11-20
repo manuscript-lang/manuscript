@@ -101,5 +101,7 @@ void ms_tool_tree_nodes(ms_object *tree, ms_list *out);
 void ms_tool_tree_names(ms_object *tree, ms_list *out);
 /* The node kind names, indexed by the `kind` column. */
 void ms_tool_node_kinds(ms_list *out);
+/* The reserved words, in token order: `and` through `while`, without the `_` token. */
+void ms_tool_keywords(ms_list *out);
 
 #endif
