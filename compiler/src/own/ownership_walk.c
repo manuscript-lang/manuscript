@@ -751,6 +751,27 @@ static bool own_is_self_call(const OwnWalk *w, const MsExpr *e) {
     return sym != MS_NONE && w->check->syms.decl[sym] != NULL && &w->check->syms.decl[sym]->u.fn == w->function;
 }
 
+/* `return f(a)` where `f` returns a reference into `a`: this function hands back a reference into
+ * its own parameters when every source is one, and is left to Rust otherwise. */
+static void own_returned_borrow_call(OwnWalk *w, const MsExpr *e) {
+    uint32_t origins[4];
+    uint32_t count = 0;
+    if (!own_call_origins(w, e, origins, &count) || count == 0) {
+        w->supported = false;
+        return;
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        if (!w->is_param[origins[i]] || w->param_mode[origins[i]] == 2) { /* a `move` parameter is owned */
+            w->supported = false;
+            return;
+        }
+        w->borrowed_params |= 1u << w->param_index[origins[i]];
+    }
+    w->borrowed_return = w->has_borrowed_return ? w->borrowed_return : e->pos;
+    w->has_borrowed_return = true;
+    own_expr(w, e, DEMAND_READ);
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -764,7 +785,12 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
     }
     if (e->kind == MS_E_CALL && !own_is_constructor(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
-        w->supported = w->supported && callee != NULL && !callee->returns_borrow;
+        if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
+            w->supported = false;
+        } else if (callee->returns_borrow) {
+            own_returned_borrow_call(w, e);
+            return;
+        }
     }
     if (e->kind == MS_E_CALL && own_is_self_call(w, e)) {
         own_expr(w, e, DEMAND_MOVE); /* returns whatever this function returns: neither kind of return */
