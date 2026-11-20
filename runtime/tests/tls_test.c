@@ -72,6 +72,24 @@ int main(void) {
     ms_tls_free(c); ms_tls_free(s);
     ms_tls_ctx_free(salpn); ms_tls_ctx_free(calpn);
 
+    /* mutual TLS: a server that requires client certificates, a client that presents one, and one that does not */
+    MsTlsCtx *mserver = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
+    MsTlsCtx *mclient = ms_tls_ctx_new(0, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, CERT, sizeof CERT - 1);
+    CHECK(mserver && mclient && ms_tls_ctx_verify_clients(mserver, CERT, sizeof CERT - 1, 1) == 0);
+    CHECK(ms_tls_ctx_verify_clients(cctx, CERT, sizeof CERT - 1, 1) == -1); /* a client context has no clients */
+    c = ms_tls_new(mclient, "localhost"); s = ms_tls_new(mserver, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE && ms_tls_verified(s) == 1 && ms_tls_verified(c) == 1);
+    ms_tls_free(c); ms_tls_free(s);
+    c = ms_tls_new(cctx, "localhost"); s = ms_tls_new(mserver, NULL);
+    CHECK(handshake(c, s) != MS_TLS_DONE);
+    ms_tls_free(c); ms_tls_free(s);
+    MsTlsCtx *optional = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
+    CHECK(optional && ms_tls_ctx_verify_clients(optional, CERT, sizeof CERT - 1, 0) == 0);
+    c = ms_tls_new(cctx, "localhost"); s = ms_tls_new(optional, NULL);
+    CHECK(handshake(c, s) == MS_TLS_DONE && ms_tls_verified(s) == 0); /* none offered, none required */
+    ms_tls_free(c); ms_tls_free(s);
+    ms_tls_ctx_free(mserver); ms_tls_ctx_free(mclient); ms_tls_ctx_free(optional);
+
     /* wrong host name */
     c = ms_tls_new(cctx, "example.invalid"); s = ms_tls_new(sctx, NULL);
     CHECK(handshake(c, s) == MS_TLS_ERROR && ms_tls_error(c)[0] != 0);

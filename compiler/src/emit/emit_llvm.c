@@ -87,17 +87,22 @@ static void ll_sym(MsBuf *o, MsStr n) {
 static uint32_t ll_record_pieces(const MirModule *m, const MirFunc *f, const MirInst *inst);
 
 /* How many checks an operation makes, each of which ends a piece of its block. */
-static uint32_t ll_pieces(const MirModule *m, const MirFunc *f, const MirInst *inst) {
+static uint32_t ll_pieces_core(const MirModule *m, const MirFunc *f, const MirInst *inst) {
     switch ((MirOp)inst->op) {
     case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
     case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk:
-    case MOP_NarrowChk: case MOP_IntOverflowIf: case MOP_Poll:
+    case MOP_NarrowChk: case MOP_IntOverflowIf: case MOP_Poll: case MOP_ListNew:
         return 1;
     case MOP_SDivChk:
         return 2;
     default:
         return ll_record_pieces(m, f, inst);
     }
+}
+
+static uint32_t ll_pieces(const MirModule *m, const MirFunc *f, const MirInst *inst) {
+    int64_t lo, hi;
+    return ll_pieces_core(m, f, inst) + (mir_sized_result_range(m, f, inst, &lo, &hi) ? 1 : 0);
 }
 
 static void ll_label(LCx *c, uint32_t block, uint32_t part) {
@@ -747,7 +752,9 @@ static void ll_checked_arith(LCx *c, const MirInst *inst, const LlOverflow *kind
     char flag[24];
     (void)snprintf(flag, sizeof flag, "%%o%u", n);
     ms_buf_printf(o, "  %s = extractvalue { i64, i1 } %%x%u, 1\n", flag, n);
-    ll_fault_if(c, block, part, flag, kind->fault, NULL, 0);
+    int64_t lo, hi;
+    const bool sized = mir_sized_result_range(c->m, c->f, inst, &lo, &hi);
+    ll_fault_if(c, block, part, flag, sized ? "msrt_fault_int_range" : kind->fault, NULL, 0);
 }
 
 /* `sdiv.chk` faults on a zero divisor and on the one quotient that does not fit, `Int.min / -1`;
@@ -968,7 +975,7 @@ static void ll_narrow_chk(LCx *c, const MirInst *inst, uint32_t block, uint32_t 
                       n, inst->args[0], w->bits, n, w->sign ? "sext" : "zext", w->bits, n, n, n, inst->args[0]);
         char flag[24];
         (void)snprintf(flag, sizeof flag, "%%z%u", n);
-        ll_fault_if(c, block, part, flag, "msrt_fault_int_overflow", NULL, 0);
+        ll_fault_if(c, block, part, flag, "msrt_fault_int_range", NULL, 0);
         break;
     }
     ll_copy_leaf(c, inst->res, 0, inst->args[0], 0);
@@ -1031,7 +1038,8 @@ static void ll_opt_is_some(LCx *c, const MirInst *inst) {
         const uint32_t n = c->next++;
         ms_buf_printf(c->out, "  %%t%u = xor i64 %%v%u.1, %lld\n  %%o%u = or i64 %%v%u, %%t%u\n  %%v%u = icmp ne i64 %%o%u, 0\n",
                       n, x, (long long)MIR_STR_STATIC, n, x, n, inst->res, n);
-    } else if (ll_leaves(c, c->f->values[x]).len == 1) {
+    } else if (ll_leaves(c, c->f->values[x]).len == 1 &&
+               strcmp(ll_leaf_type(ll_leaves(c, c->f->values[x]).ptr[0]), "i64") == 0) {
         ms_buf_printf(c->out, "  %%v%u = icmp ne i64 %%v%u, 0\n", inst->res, x);
     } else {
         ll_copy_leaf(c, inst->res, 0, x, 0);
@@ -1234,6 +1242,7 @@ static bool ll_list_write_op(LCx *c, const MirInst *inst, uint32_t block, uint32
         (void)snprintf(index, sizeof index, "%%v%u", inst->args[1]);
         ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
         ll_copy_list(c, inst, inst->args[0]);
+        ll_copy_leaf(c, inst->res, MIR_LIST_LEN_LEAF, inst->args[0], MIR_LIST_LEN_LEAF);
         return ll_leaves_at(c, inst->args[2], base, false);
     case MOP_ListPushU:
         (void)snprintf(index, sizeof index, "%%v%u.%u", inst->args[0], MIR_LIST_LEN_LEAF);
@@ -1265,7 +1274,7 @@ static bool ll_list_write_op(LCx *c, const MirInst *inst, uint32_t block, uint32
     }
 }
 
-static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
+static bool ll_inst_core(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
     const LlBinary *binary = ll_find_binary((MirOp)inst->op);
     if (binary != NULL) {
         ll_binary_inst(c, inst, binary);
@@ -1336,6 +1345,24 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
         c->why = mir_op_info[inst->op].name;
         return false;
     }
+}
+
+/* A checked operation on a sized integer also faults when its result leaves the type's range. */
+static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
+    if (!ll_inst_core(c, inst, block, index, part)) {
+        return false;
+    }
+    int64_t lo, hi;
+    if (!mir_sized_result_range(c->m, c->f, inst, &lo, &hi)) {
+        return true;
+    }
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "  %%l%ua = icmp slt i64 %%v%u, %lld\n  %%l%ub = icmp sgt i64 %%v%u, %lld\n  %%l%us = or i1 %%l%ua, %%l%ub\n",
+                  n, inst->res, (long long)lo, n, inst->res, (long long)hi, n, n, n);
+    char bad[24];
+    (void)snprintf(bad, sizeof bad, "%%l%us", n);
+    ll_fault_if(c, block, part, bad, "msrt_fault_int_range", NULL, 0);
+    return true;
 }
 
 /* `ret`: nothing, the one leaf, or the leaves written through the hidden result pointer. */

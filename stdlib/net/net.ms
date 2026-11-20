@@ -84,7 +84,12 @@ import (
 	msstd_net_network_restrict,
 	msstd_net_network_web_socket,
 	msstd_net_network_with_resolver,
-	msstd_net_pending_release from "@std/internal/net.ms",
+	msstd_net_pending_release,
+	msstd_scope_child,
+	msstd_scope_close,
+	msstd_scope_new,
+	msstd_scope_open,
+	msstd_scope_track_dgram from "@std/internal/net.ms",
 )
 
 // The runtime handle behind a `Connection`.
@@ -414,6 +419,10 @@ fn bind_socket(policy: Policy, address: String) NativeDatagramSocket!:
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
 
+// What a `Network` closes: the sockets opened through it and the networks derived from
+// it.
+export extern type NativeScope
+
 // A set of network permissions and a resolver for the connections, listeners, sockets,
 // and HTTP clients opened through it. The host network that the module-level functions
 // use is unrestricted; `restrict` derives a narrower one.
@@ -423,12 +432,20 @@ export opaque type Network:
 	// The restrictions this network enforces in Manuscript; the runtime handle still
 	// enforces them for the operations that have not moved yet.
 	policy: Policy
+	// The sockets and derived networks that `close` closes.
+	scope: NativeScope
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A
 // restricted network without listening permission, or an address outside its CIDRs,
 // returns EACCES.
 fn Network.bind_datagram(address: String) DatagramSocket!:
+	if not msstd_scope_open(self.scope):
+		return error(Error("network: resource is closed", kind: "EBADF"))
+
 	native := bind_socket(self.policy, address)?
+	if not msstd_scope_track_dgram(self.scope, native):
+		return error(Error("network: resource is closed", kind: "EBADF"))
+
 	return ok(datagram_socket(native, self.policy.clone()))
 
 // Cancels in-flight calls and closes every connection, listener, socket, HTTP
@@ -436,6 +453,7 @@ fn Network.bind_datagram(address: String) DatagramSocket!:
 // to call repeatedly. A request handler of a server on this network cannot close it
 // and faults.
 fn Network.close() Void:
+	msstd_scope_close(self.scope)
 	msstd_net_network_close(self.native)
 
 // Resolves `address` (`host:port`) and opens a TCP connection to the first
@@ -563,7 +581,13 @@ fn Network.restrict(
 ) Network!:
 	policy := narrow(self.policy, hosts, cidrs, allow_listen)?
 	child := msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)?
-	return ok(Network(native: child, policy: policy))
+	return ok(
+		Network(
+			native: child,
+			policy: policy,
+			scope: msstd_scope_child(self.scope),
+		)
+	)
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and
 // subprotocols in `options`. Handshake headers such as `Upgrade`, `Connection`,
@@ -598,7 +622,13 @@ fn Network.web_socket(
 // address that is not an IP literal with a port returns EINVAL.
 fn Network.with_resolver(address: String) Network!:
 	child := msstd_net_network_with_resolver(self.native, address)?
-	return ok(Network(native: child, policy: self.policy.clone()))
+	return ok(
+		Network(
+			native: child,
+			policy: self.policy.clone(),
+			scope: msstd_scope_child(self.scope),
+		)
+	)
 
 /*
 Per-call settings of a buffered `request`: the headers to send, a bound on the response body, and a time budget.
@@ -623,7 +653,11 @@ export type DnsOptions:
 
 // The network of the current host.
 fn host_network() Network:
-	return Network(native: msstd_net_network(), policy: unrestricted())
+	return Network(
+		native: msstd_net_network(),
+		policy: unrestricted(),
+		scope: msstd_scope_new(),
+	)
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted
 // network without listening permission, or an address outside its CIDRs, returns
