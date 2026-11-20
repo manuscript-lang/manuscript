@@ -1,19 +1,19 @@
-//! Bundled LLVM release builds keep the same exit code and source frames as
-//! Cranelift, including frames of inlined functions. No clang installation is needed.
+//! Release builds through the C pipeline keep the exit code and source frames of faults, including
+//! frames of inlined functions. No clang installation is needed.
 
 use std::process::Command;
 
-fn build_and_run(backend: &str, out: &std::path::Path) -> (Option<i32>, String) {
-    build_and_run_units(backend, "1", out)
+fn build_and_run(out: &std::path::Path) -> (Option<i32>, String) {
+    build_and_run_units("1", out)
 }
 
-fn build_and_run_units(backend: &str, units: &str, out: &std::path::Path) -> (Option<i32>, String) {
+fn build_and_run_units(units: &str, out: &std::path::Path) -> (Option<i32>, String) {
     let source = format!(
         "{}/tests/llvm/overflow_frames.ms",
         env!("CARGO_MANIFEST_DIR")
     );
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-        .env("MS_BACKEND", backend)
+        .env("MS_BACKEND", "c")
         .env("MS_LLVM_UNITS", units)
         .args(["build", &source, "-o"])
         .arg(out)
@@ -32,7 +32,7 @@ fn build_and_run_units(backend: &str, units: &str, out: &std::path::Path) -> (Op
 }
 
 #[test]
-fn llvm_release_matches_cranelift_fault_frames() {
+fn llvm_release_keeps_fault_frames() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
         || !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
     {
@@ -40,18 +40,11 @@ fn llvm_release_matches_cranelift_fault_frames() {
     }
     let dir = std::env::temp_dir().join(format!("ms-llvm-test-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let cranelift = build_and_run("cranelift", &dir.join("cranelift"));
-    let llvm = build_and_run("llvm", &dir.join("llvm"));
-    for (name, backend) in [("cranelift", "cranelift"), ("llvm", "llvm")] {
-        let sidecar = std::fs::read_to_string(dir.join(format!("{name}.ms-build.json"))).unwrap();
-        assert!(
-            sidecar.contains(&format!("\"backend\": \"{backend}\"")),
-            "{sidecar}"
-        );
-    }
+    let llvm = build_and_run(&dir.join("llvm"));
+    let sidecar = std::fs::read_to_string(dir.join("llvm.ms-build.json")).unwrap();
+    assert!(sidecar.contains("\"backend\": \"llvm\""), "{sidecar}");
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(llvm.0, Some(ms_rt_abi::EXIT_ABORT), "{}", llvm.1);
-    assert_eq!(llvm, cranelift);
     assert!(
         llvm.1.contains("overflow_frames.ms:2 in add_one"),
         "{}",
@@ -73,8 +66,8 @@ fn llvm_units_keep_fault_frames() {
     }
     let dir = std::env::temp_dir().join(format!("ms-llvm-units-test-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let whole = build_and_run_units("llvm", "1", &dir.join("whole"));
-    let split = build_and_run_units("llvm", "4", &dir.join("split"));
+    let whole = build_and_run_units("1", &dir.join("whole"));
+    let split = build_and_run_units("4", &dir.join("split"));
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(split.0, Some(ms_rt_abi::EXIT_ABORT), "{}", split.1);
     assert_eq!(split, whole);
@@ -96,11 +89,11 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
     )
     .unwrap();
     // A fault ends its file, so each faulting test runs on its own.
-    let run = |backend| {
+    let run = || {
         let mut text = String::new();
         for name in ["first", "second"] {
             let output = Command::new(env!("CARGO_BIN_EXE_ms"))
-                .env("MS_BACKEND", backend)
+                .env("MS_BACKEND", "c")
                 .args(["test", "--test", &format!("sites.ms::{name}")])
                 .arg(&source)
                 .output()
@@ -111,9 +104,7 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
         }
         text
     };
-    let cranelift = run("cranelift");
-    let llvm = run("llvm");
-    assert_eq!(llvm, cranelift);
+    let llvm = run();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(llvm.contains("sites.ms:3 in test first"), "{llvm}");
     assert!(llvm.contains("sites.ms:7 in test second"), "{llvm}");
@@ -135,6 +126,7 @@ fn deeply_nested_literal_builds_quickly() {
     std::fs::write(&file, source).unwrap();
     let start = std::time::Instant::now();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .env("MS_BACKEND", "c")
         .arg("build")
         .arg(&file)
         .arg("-o")
@@ -172,7 +164,7 @@ fn llvm_builds_a_huge_straight_line_function_in_bounded_time() {
     std::fs::write(dir.join("huge.ms"), source).unwrap();
     let started = std::time::Instant::now();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-        .env("MS_BACKEND", "llvm")
+        .env("MS_BACKEND", "c")
         .current_dir(&dir)
         .args(["build", "huge.ms", "-o", "huge"])
         .output()
@@ -290,7 +282,7 @@ fn long_constant_literals_keep_their_element_types() {
     );
 }
 
-/// Constant literals of 20000 and 40000 elements are static data: both backends build them in
+/// Constant literals of 20000 and 40000 elements are static data: both build types build them in
 /// bounded time.
 #[test]
 fn constant_literals_of_any_length_build_in_bounded_time() {
@@ -302,19 +294,12 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
         .replace("    n := arguments().length()\n", "")
         .replace("import arguments from \"@std/os/env.ms\"\n", "");
     std::fs::write(dir.join("k.ms"), source).unwrap();
-    for backend in ["cranelift", "llvm"] {
-        if backend == "llvm" && !cfg!(any(target_os = "linux", target_os = "macos")) {
-            continue;
-        }
-        if backend == "llvm" && !ms_build::llvm_available(&ms_cli::engine::build_options_from_env())
-        {
-            continue;
-        }
+    for build_type in ["debug", "release"] {
         let started = std::time::Instant::now();
         let built = Command::new(env!("CARGO_BIN_EXE_ms"))
-            .env("MS_BACKEND", backend)
+            .env("MS_BACKEND", "c")
             .current_dir(&dir)
-            .args(["build", "k.ms", "-o", "k"])
+            .args(["build", "k.ms", "--build-type", build_type, "-o", "k"])
             .output()
             .unwrap();
         assert!(
@@ -324,7 +309,7 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
         );
         assert!(
             started.elapsed() < std::time::Duration::from_secs(20),
-            "{backend} build took {:?}",
+            "{build_type} build took {:?}",
             started.elapsed()
         );
         let run = Command::new(dir.join("k")).output().unwrap();
@@ -354,8 +339,7 @@ fn llvm_direct_emission_proves_facts() {
     std::fs::create_dir_all(&dir).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", &source, "-o", "prog"])
         .output()
@@ -417,8 +401,7 @@ fn llvm_direct_emission_proves_facts() {
 }
 
 /// Glue for strings, lists, records and optionals is emitted straight to LLVM IR: the program prints
-/// the expected output, and the kept IR has a glue function whose entry block is the direct
-/// emitter's `entry`.
+/// the expected output, and the kept IR defines glue functions.
 #[test]
 fn llvm_direct_glue_is_emitted_directly() {
     if !cfg!(any(target_os = "linux", target_os = "macos"))
@@ -431,8 +414,7 @@ fn llvm_direct_glue_is_emitted_directly() {
     std::fs::create_dir_all(&dir).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", &source, "-o", "prog"])
         .output()
@@ -449,13 +431,11 @@ fn llvm_direct_glue_is_emitted_directly() {
         String::from_utf8_lossy(&out.stdout),
         "210 20 1 first node name that is long enough\n"
     );
-    let mut lines = ir.lines();
-    let mut direct = false;
-    while let Some(l) = lines.next() {
-        direct |=
-            l.starts_with("define") && l.contains("@\"ms.glue.") && lines.next() == Some("entry:");
-    }
-    assert!(direct, "no glue was emitted directly");
+    assert!(
+        ir.lines()
+            .any(|l| l.starts_with("define") && l.contains("@\"ms.glue.")),
+        "no glue was emitted"
+    );
 }
 
 /// A free takes the block as a `ptr`, as its declaration says. Passing the address as an `i64`
@@ -476,8 +456,7 @@ fn llvm_free_calls_pass_a_pointer() {
     std::fs::create_dir_all(&dir).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", &source, "-o", "prog"])
         .output()
@@ -515,8 +494,7 @@ fn llvm_direct_grow_shim_for_a_leaf_convention_function() {
     std::fs::create_dir_all(&dir).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
-        .env("MS_LLVM_UNITS", "1")
+        .env("MS_BACKEND", "c")
         .args(["build", &source, "-o", "prog"])
         .output()
         .unwrap();

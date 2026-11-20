@@ -19,7 +19,7 @@ fn element_wise_list_loops_are_vectorized() {
     std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", "k.ms", "-o", "k"])
         .output()
@@ -76,7 +76,7 @@ fn vectorized_function_reports_fault_frames() {
     .unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
+        .env("MS_BACKEND", "c")
         .args(["build", "fault.ms", "-o", "fault"])
         .output()
         .unwrap();
@@ -105,7 +105,7 @@ fn vectorize_off_keeps_loops_scalar() {
     std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .env("MS_VECTORIZE", "off")
         .args(["build", "k.ms", "-o", "k"])
@@ -132,7 +132,7 @@ fn release_builds_emit_no_per_cpu_copies() {
     std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", "k.ms", "-o", "k"])
         .output()
@@ -165,7 +165,7 @@ fn element_wise_list_loops_use_neon() {
     std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(&dir)
-        .env("MS_BACKEND", "llvm")
+        .env("MS_BACKEND", "c")
         .env("MS_KEEP_LL", "1")
         .args(["build", "k.ms", "-o", "k"])
         .output()
