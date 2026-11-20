@@ -20,6 +20,7 @@
 #include "ms_rt/pipe.h"
 #include "ms_rt/sys.h"
 #include "promise.h"
+#include "scheduler.h"
 #include "spin.h"
 #include "unwind.h"
 
@@ -461,7 +462,11 @@ static bool cancellation_point(void) {
     if (ms_cancel_flag() == 0) {
         return false;
     }
-    ms_cancel_deliver();
+    if (ms_sched()->cancel_edges) {
+        ms_cancel_deliver(); /* the caller's compiled code leaves on the `unwinding` byte */
+    } else {
+        ms_cancelled(); /* a program without cancel edges is left by a jump */
+    }
     return true;
 }
 
