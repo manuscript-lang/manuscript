@@ -18,7 +18,7 @@
 #include "ms/mir_analysis.h"
 #include "ms/mir_builder.h"
 
-static LbVal lb_unsupported(Lb *lb) {
+LbVal lb_unsupported(Lb *lb) {
     lb->ok = false;
     return LB_FAIL;
 }
@@ -29,7 +29,7 @@ static MsTy lb_primitive(const MsCheck *c, const char *name) {
 }
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
-static MirTy lb_mir_ty(Lb *lb, MsTy ty) {
+MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
         return lb_fn_ty(lb, ty);
     }
@@ -45,7 +45,7 @@ static MirTy lb_mir_ty(Lb *lb, MsTy ty) {
     return ty == lb->string_ty ? MIR_STR : lr_type(lb, ty);
 }
 
-static MirLoc lb_loc(const Lb *lb, MsPos pos) {
+MirLoc lb_loc(const Lb *lb, MsPos pos) {
     return (MirLoc){.file = 0, .line = pos.line, .col = pos.column, .scope = lb->b.loc.scope};
 }
 
@@ -61,7 +61,7 @@ static void lb_depth(Lb *lb, MirOp op) {
 }
 
 /* Releases an owned temporary once its last use is past. */
-static void lb_drop(Lb *lb, MirValue v) {
+void lb_drop(Lb *lb, MirValue v) {
     const MirLoc loc = lb->b.loc;
     if (lb_is_fn(lb, mir_b_ty(&lb->b, v))) {
         lb->b.loc = MIR_LOC_NONE; // the text form prints no position on a closure's release
@@ -133,7 +133,6 @@ static LbVal lb_name(Lb *lb, const MsExpr *e) {
 
 /* ---- operators ---- */
 
-static LbVal lb_expr(Lb *lb, const MsExpr *e);
 static LbVal lb_match(Lb *lb, const MsExpr *e);
 
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
@@ -405,7 +404,7 @@ static LbVal lb_call(Lb *lb, const MsExpr *e) {
     return (LbVal){result, mir_b_ty(&lb->b, result) == MIR_STR && !borrowed}; // else a String result is the caller's
 }
 
-static LbVal lb_expr(Lb *lb, const MsExpr *e) {
+LbVal lb_expr(Lb *lb, const MsExpr *e) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER: return lb_number(lb, e, false);
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
@@ -617,7 +616,7 @@ static bool lb_names_var(const Lb *lb, const MsExpr *e) {
 }
 
 /* Leaves a function that returns nothing. */
-static void lb_return_void(Lb *lb) {
+void lb_return_void(Lb *lb) {
     const MirValue unit = mir_b_unit(&lb->b);
     lb_own_vars(lb, 0, MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);
@@ -661,7 +660,6 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     lb->dead = true;
 }
 
-static void lb_statements(Lb *lb, const MsStmts *body);
 
 /* Lowers `body` in its own ownership scope, whose end is where control falls out of it. Returns
  * the scope's depth. */
@@ -882,7 +880,7 @@ static void lb_statement(Lb *lb, const MsStmt *s) {
     }
 }
 
-static void lb_statements(Lb *lb, const MsStmts *body) {
+void lb_statements(Lb *lb, const MsStmts *body) {
     for (uint32_t i = 0; i < body->len && lb->ok && !lb->dead; i++) {
         lb_statement(lb, body->ptr[i]);
     }
@@ -966,7 +964,7 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
 }
 
 /* The state of a body about to be lowered: its builder is started and `lb->decl` is set. */
-static void lb_reset_state(Lb *lb) {
+void lb_reset_state(Lb *lb) {
     lb->dead = false;
     lb->loop = NULL;
     lb->stmt = NULL;
