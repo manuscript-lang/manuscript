@@ -234,11 +234,11 @@ static void ll_load_leaf(LCx *c, MirLeaf leaf, MirValue dst, uint32_t index, uin
     if (kind->widen == LL_SAME) {
         ms_buf_puts(o, "  ");
         ll_name(o, dst, index);
-        ms_buf_printf(o, " = load %s, ptr %%a%u\n", kind->mem, address);
+        ms_buf_printf(o, " = load %s, ptr %%a%u%s\n", kind->mem, address, c->tbaa ? c->tbaa : "");
         return;
     }
     const uint32_t n = c->next++;
-    ms_buf_printf(o, "  %%l%u = load %s, ptr %%a%u\n  ", n, kind->mem, address);
+    ms_buf_printf(o, "  %%l%u = load %s, ptr %%a%u%s\n  ", n, kind->mem, address, c->tbaa ? c->tbaa : "");
     ll_name(o, dst, index);
     switch (kind->widen) {
     case LL_SEXT: ms_buf_printf(o, " = sext %s %%l%u to i64\n", kind->mem, n); break;
@@ -255,7 +255,7 @@ static void ll_store_leaf(LCx *c, MirLeaf leaf, MirValue src, uint32_t index, ui
     if (kind->widen == LL_SAME) {
         ms_buf_printf(o, "  store %s ", kind->mem);
         ll_name(o, src, index);
-        ms_buf_printf(o, ", ptr %%a%u\n", address);
+        ms_buf_printf(o, ", ptr %%a%u%s\n", address, c->tbaa ? c->tbaa : "");
         return;
     }
     const uint32_t n = c->next++;
@@ -266,7 +266,8 @@ static void ll_store_leaf(LCx *c, MirLeaf leaf, MirValue src, uint32_t index, ui
     default: ms_buf_printf(o, "trunc i64 "); break;
     }
     ll_name(o, src, index);
-    ms_buf_printf(o, " to %s\n  store %s %%t%u, ptr %%a%u\n", kind->mem, kind->mem, n, address);
+    ms_buf_printf(o, " to %s\n  store %s %%t%u, ptr %%a%u%s\n", kind->mem, kind->mem, n, address,
+                  c->tbaa ? c->tbaa : "");
 }
 
 /* Reads (`load`) or writes the leaves of `value` at the address in `base`. */
@@ -294,6 +295,22 @@ static void ll_pointer(LCx *c, MirValue value, char *name, size_t cap) {
     const uint32_t n = c->next++;
     ms_buf_printf(c->out, "  %%p%u = inttoptr i64 %%v%u to ptr\n", n, value);
     (void)snprintf(name, cap, "%%p%u", n);
+}
+
+/* The alias class of the elements of a list of scalars. A buffer holds one element type, so a scalar element never
+ * lies where a list or string header does; only element accesses carry it, since a header field is also read through
+ * borrowed pointers that carry no tag. The nodes are written once at the end of the module (`ll_tbaa_nodes`). */
+#define LL_TBAA_ROOT 900000
+#define LL_TBAA_SCALAR 900001
+#define LL_TBAA_SCALAR_TAG 900002
+static const char *ll_elem_tbaa(const LCx *c, MirTy elem) {
+    switch (mir_ty_data(c->m, elem)->kind) {
+    case MK_BOOL: case MK_INT: case MK_FLOAT: case MK_INT8: case MK_INT16: case MK_INT32: case MK_FLOAT32:
+    case MK_UINT8: case MK_UINT16: case MK_UINT32: case MK_UINT64:
+        return ", !tbaa !900002";
+    default:
+        return NULL;
+    }
 }
 
 /* ---- static data ---- */
@@ -1270,6 +1287,14 @@ static bool ll_list_lit(LCx *c, const MirInst *inst, uint32_t size) {
     return true;
 }
 
+/* Writes `element` at `base`, an element address of `list`, tagged with the alias class of its elements. */
+static bool ll_store_element(LCx *c, MirValue list, MirValue element, const char *base) {
+    c->tbaa = ll_elem_tbaa(c, ll_list_elem(c, c->f->values[list]));
+    const bool ok = ll_leaves_at(c, element, base, false);
+    c->tbaa = NULL;
+    return ok;
+}
+
 /* The unchecked list operations: the index is in range or the length is known. Dropping an old
  * element is the job of `lower_ops`, which runs first. */
 static bool ll_list_write_op(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part, bool *handled) {
@@ -1290,14 +1315,14 @@ static bool ll_list_write_op(LCx *c, const MirInst *inst, uint32_t block, uint32
         ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
         ll_copy_list(c, inst, inst->args[0]);
         ll_copy_leaf(c, inst->res, MIR_LIST_LEN_LEAF, inst->args[0], MIR_LIST_LEN_LEAF);
-        return ll_leaves_at(c, inst->args[2], base, false);
+        return ll_store_element(c, inst->args[0], inst->args[2], base);
     case MOP_ListPushU:
         (void)snprintf(index, sizeof index, "%%v%u.%u", inst->args[0], MIR_LIST_LEN_LEAF);
         ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
         ll_copy_list(c, inst, inst->args[0]);
         ms_buf_printf(o, "  %%v%u.%u = add i64 %%v%u.%u, 1\n", inst->res, MIR_LIST_LEN_LEAF,
                       inst->args[0], MIR_LIST_LEN_LEAF);
-        return ll_leaves_at(c, inst->args[1], base, false);
+        return ll_store_element(c, inst->args[0], inst->args[1], base);
     case MOP_ListDropLast:
         ll_copy_list(c, inst, inst->args[0]);
         ms_buf_printf(o, "  %%v%u.%u = sub i64 %%v%u.%u, 1\n", inst->res, MIR_LIST_LEN_LEAF,
@@ -1687,7 +1712,10 @@ static void ll_header(LCx *c, uint32_t index) {
         const MirValue param = f->blocks[0].params[k].value;
         const MirLeafSpan leaves = ll_leaves(c, f->params[k].ty);
         if (ll_indirect(c, f->params[k].ty)) {
-            ms_buf_printf(o, "%sptr %%in%u", first ? "" : ", ", param);
+            /* The entry block loads the leaves and nothing else touches the address: a caller's copy that is only
+             * read, not kept, and one the callee owns for its whole life. */
+            ms_buf_printf(o, "%sptr nonnull readonly nocapture align 8 dereferenceable(%u) %%in%u", first ? "" : ", ",
+                          ll_slot_bytes(c->layouts, f->params[k].ty), param);
             first = false;
             continue;
         }
@@ -1981,6 +2009,9 @@ static bool ll_emit(const MirModule *m, const MirData *data, const MirGlue *glue
     mir_layouts_free(&layouts);
     ll_declare_faults(&externs);
     ms_buf_puts(out, ll_declarations);
+    ms_buf_printf(out,
+                  "!%d = !{!\"ms.tbaa\"}\n!%d = !{!\"ms.scalar-elem\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n",
+                  LL_TBAA_ROOT, LL_TBAA_SCALAR, LL_TBAA_ROOT, LL_TBAA_SCALAR_TAG, LL_TBAA_SCALAR, LL_TBAA_SCALAR);
     if (places) {
         ll_debug_finish(&debug, out);
     }
