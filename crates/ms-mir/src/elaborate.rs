@@ -84,11 +84,7 @@ pub fn run(m: &mut Module) -> Result<(), String> {
 pub fn run_with(m: &mut Module, cancel_exits: bool) -> Result<(), String> {
     let cancel_exits =
         (cancel_exits && crate::unwind::starts_tasks(m)).then(|| crate::cancel_exit::context(m));
-    let close = m
-        .funcs
-        .iter()
-        .position(|f| f.name == "close")
-        .map(|i| FuncId(i as u32));
+    let close = m.close;
     if !m.funcs.iter().any(is_raw) {
         return Ok(());
     }

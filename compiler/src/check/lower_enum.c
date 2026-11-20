@@ -14,7 +14,7 @@ MirTy le_type(Lb *lb, MsTy ty) {
     if (sym >= lb->c->defs_cap || lb->c->syms.kind[sym] != MS_SYM_TYPE || lb->c->defs[sym].ncases == 0) {
         return MIR_NONE;
     }
-    if (lb->type_of[ty] != MIR_NONE && lb->type_of[ty] != LR_BUSY) {
+    if (lb->type_of[ty] != MIR_NONE) {
         return lb->type_of[ty];
     }
     const MsDef *def = &lb->c->defs[sym];

@@ -4,7 +4,6 @@
 //! descriptor. Mutators change the receiver in place and return nothing;
 //! element arguments of stores are consumed (ownership moves into the list).
 //! ms: domain collection
-use crate::alloc;
 use ms_rt_abi::*;
 
 // Defined in C (runtime/core); declared here for the Rust code that still calls them.
@@ -157,30 +156,5 @@ pub unsafe fn drop_list(v: *mut VecVal, d: &TypeDesc) {
     unsafe { msrt_list_drop(v, d) }
 }
 
-const EMPTY: VecVal = VecVal {
-    ptr: core::ptr::null_mut(),
-    len: 0,
-    cap: 0,
-};
-
 /// Comparator thunk: `env` is the closure, `a` and `b` point at element slots.
 pub type CmpFn = unsafe extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64;
-
-// ---- Bytes ----
-
-pub(crate) unsafe fn bytes_from(data: &[u8], out: *mut VecVal) {
-    // SAFETY: `out` is writable.
-    unsafe {
-        if data.is_empty() {
-            *out = EMPTY;
-            return;
-        }
-        let p = alloc::alloc(data.len());
-        core::ptr::copy_nonoverlapping(data.as_ptr(), p, data.len());
-        *out = VecVal {
-            ptr: p,
-            len: data.len(),
-            cap: data.len(),
-        };
-    }
-}

@@ -440,6 +440,9 @@ fn print_module_text(m: &Module) -> String {
     if let Some(e) = m.entry {
         let _ = writeln!(o, "entry @{}", func_label(m, e.index()));
     }
+    if let Some(c) = m.close {
+        let _ = writeln!(o, "close @{}", func_label(m, c.index()));
+    }
     for f in &m.funcs {
         o.push('\n');
         o.push_str(&print_func(m, f));

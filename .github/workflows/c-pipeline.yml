@@ -42,14 +42,14 @@ jobs:
         with:
           os: ${{ matrix.leg.os }}
           arch: ${{ matrix.leg.arch }}
-      - name: Build ms and its runtime
-        run: |
-          cargo xtask runtime
-          cargo build --release --locked -p ms-cli
       - name: Build the C tools
         run: |
           cmake -S . -B target/cmake/platform -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build target/cmake/platform --target ms_mir_build ms_asm_tables
+      - name: Build ms and its runtime
+        run: |
+          cargo xtask runtime
+          cargo build --release --locked -p ms-cli
       - name: Hello through the C pipeline
         run: |
           printf 'import stdout from "@std/io/io.ms"\n\nexport fn main() Int:\n    _w := stdout().write("hello\\n")\n    return 0\n' > hello.ms

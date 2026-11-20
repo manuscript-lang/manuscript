@@ -1,0 +1,9 @@
+msrt_test_deadline
+msrt_test_record
+msrt_test_failure
+msrt_test_capture_fault
+msrt_test_capture_new
+msrt_test_capture_set
+msrt_test_capture_current
+msrt_test_capture_take
+msrt_test_capture_free

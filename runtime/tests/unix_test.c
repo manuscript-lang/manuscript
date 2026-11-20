@@ -33,7 +33,8 @@ typedef int PollHandle;
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
 
-bool ms_sched_cancel_pending(void) { return false; }
+__attribute__((weak)) bool ms_sched_cancel_pending(void) { return false; }
+__attribute__((weak)) int64_t ms_sched_defer_deadline(void) { return INT64_MAX; }
 void ms_sched_cancel_return(void) {}
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {

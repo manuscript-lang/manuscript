@@ -453,6 +453,11 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         mp_sym(m, o, m->funcs[m->entry].name);
         ms_buf_putc(o, '\n');
     }
+    if (m->close != MIR_NONE) {
+        ms_buf_puts(o, "close @");
+        mp_sym(m, o, m->funcs[m->close].name);
+        ms_buf_putc(o, '\n');
+    }
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         ms_buf_putc(o, '\n');
         mir_print_func(m, &m->funcs[i], o);
