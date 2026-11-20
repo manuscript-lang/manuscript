@@ -881,9 +881,9 @@ static void body_report_mismatch(MsBody *b, const MsExpr *e, MsTy actual, MsTy e
 /* The type of `e` where `expected` is the type the context wants, or MS_TY_NONE for no
  * expectation. A type that is not the expected one is a diagnostic. */
 /* A value checked against an Optional: `none`, a value of the Optional's own type, or a value of
- * its payload type, which is wrapped in `some` (`some_wrap`). Only a number or a Bool is wrapped, and
- * anything else (a mismatch, which the Rust checker words, or a payload with a cleanup) is left to the
- * Rust checker. */
+ * its payload type, which is wrapped in `some` (`some_wrap`). Anything else (a mismatch, which the
+ * Rust checker words) is left to the Rust checker. A wrapped payload that owns something is a view
+ * of a borrowed value and a wrapper around a fresh one: the ownership pass keeps the fresh ones. */
 static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     const MsTy payload = ms_ty_args(&b->c->tys, expected)[0];
     if (e->kind == MS_E_NAME && body_text_is(b, e->u.sym, "none") && ms_body_find_binding(b, e->u.sym) == MS_NONE) {
@@ -893,7 +893,7 @@ static MsTy body_expr_optional(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ty == MS_TY_NONE || ty == expected) {
         return ty;
     }
-    if (ty != payload || !(ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty)) {
+    if (ty != payload || !body_is_admitted(b, payload)) {
         return ms_body_unsupported(b);
     }
     b->facts->some_wrap[e->id] = true;
