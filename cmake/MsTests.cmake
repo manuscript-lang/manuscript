@@ -7,7 +7,8 @@ endif()
 set(_tests "${CMAKE_SOURCE_DIR}/runtime/tests")
 set(_rt "${CMAKE_SOURCE_DIR}/runtime")
 
-set(_test_flags -O1 -g -Wall -Wextra -Werror)
+# Frame pointers, as in every runtime build: the fault report walks them.
+set(_test_flags -O1 -g -Wall -Wextra -Werror -fno-omit-frame-pointer)
 set(_plain_flags -O0 -g -Wall -Wextra -Werror)
 if(MS_SANITIZE)
   list(APPEND _test_flags -fsanitize=address,undefined -fno-sanitize-recover=undefined)
@@ -51,12 +52,19 @@ file(GLOB _std_support CONFIGURE_DEPENDS "${_tests}/std_support/*.c")
 file(GLOB _io_sources CONFIGURE_DEPENDS "${_rt}/io/*.c")
 
 # core_*: all of runtime/core and runtime/sys/posix, the allocator's live-block counts on.
+# task_abi.c is linked by core_task_abi alone: the other tests stub the task ABI and run without a scheduler.
+set(_task_abi "${_rt}/core/task_abi.c")
+list(REMOVE_ITEM _core_sources "${_task_abi}")
 ms_test_objects(ms_test_core ${_core_sources} ${_posix_sources} ${_support_sources})
 target_compile_definitions(ms_test_core PRIVATE MS_ALLOC_STATS)
 file(GLOB _core_tests CONFIGURE_DEPENDS "${_tests}/core_*.c")
 foreach(file ${_core_tests})
   get_filename_component(name "${file}" NAME_WE)
-  ms_test(${name} SOURCES "${file}" OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
+  set(_extra "")
+  if(name STREQUAL "core_task_abi")
+    set(_extra "${_task_abi}")
+  endif()
+  ms_test(${name} SOURCES "${file}" ${_extra} OBJECTS ms_test_core LIBS m DEFINES MS_ALLOC_STATS)
 endforeach()
 
 # The OS layer: runtime/sys/posix and the portable thread.c over libuv. The fault test overflows a thread's stack, which
@@ -67,13 +75,14 @@ ms_test(sys_thread SOURCES "${_tests}/sys_thread.c" "${_rt}/sys/thread.c" ${_pos
 ms_test(sys_fault SOURCES "${_tests}/sys_fault.c" "${_rt}/sys/thread.c" ${_posix_sources} PLAIN
         INCLUDES ${MS_LIB_uv_INCLUDES} LIBS ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS})
 
-# std_*: all of runtime/std with the system PCRE2, libcrypto and libuv.
+# std_*: all of runtime/std with the system PCRE2, libcrypto, libuv and zlib.
 file(GLOB _std_tests CONFIGURE_DEPENDS "${_tests}/std_*.c")
 foreach(file ${_std_tests})
   get_filename_component(name "${file}" NAME_WE)
   ms_test(${name} SOURCES "${file}" ${_std_sources} ${_std_support} "${_rt}/sys/posix/fs.c" "${_rt}/sys/posix/clock.c" "${_rt}/sys/posix/fd.c"
-          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES}
-          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} m ${CMAKE_DL_LIBS})
+          "${_rt}/sys/posix/ifindex.c"
+          INCLUDES ${MS_LIB_pcre2_INCLUDES} ${MS_LIB_crypto_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_z_INCLUDES}
+          LIBS ${MS_LIB_pcre2_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_z_LINK} m ${CMAKE_DL_LIBS})
 endforeach()
 
 # The HTTP/1 test links the vendored llhttp sources (the same ones the runtime archive compiles).
@@ -117,16 +126,40 @@ ms_test(tls_test SOURCES "${_tests}/tls_test.c" "${_rt}/net/tls.c" INCLUDES ${MS
         LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
 ms_test(ws_test SOURCES "${_tests}/ws_test.c" "${_rt}/net/ws.c" INCLUDES ${MS_LIB_crypto_INCLUDES}
         LIBS ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
+ms_test(ws_client_test SOURCES "${_tests}/ws_client_test.c" "${_rt}/net/ws_client.c" "${_rt}/net/ws.c" "${_rt}/net/http1.c"
+        OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_crypto_INCLUDES}
+        LIBS ${MS_LIB_crypto_LINK} ${CMAKE_DL_LIBS})
 ms_test(conn_test SOURCES "${_tests}/conn_test.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" OBJECTS ms_test_llhttp
         INCLUDES "${_llhttp}/include")
+ms_test(conn_io_test SOURCES "${_tests}/conn_io_test.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c"
+        "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c" "${_rt}/sys/posix/clock.c" OBJECTS ms_test_llhttp
+        INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK}
+        ${CMAKE_DL_LIBS} pthread)
+ms_test(dial_test SOURCES "${_tests}/dial_test.c" "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c"
+        "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
+        OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES}
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
+ms_test(http1_exchange_test SOURCES "${_tests}/http1_exchange_test.c" "${_rt}/net/http1_exchange.c" "${_rt}/net/dial.c"
+        "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c" "${_rt}/sys/${_platform}/net.c"
+        ${_io_sources} ${_posix_sources}
+        OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES}
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${CMAKE_DL_LIBS} pthread)
+ms_test(http2_exchange_test SOURCES "${_tests}/http2_exchange_test.c" "${_rt}/net/http2_exchange.c" "${_rt}/net/h2conn.c"
+        "${_rt}/net/h2.c" "${_rt}/net/dial.c" "${_rt}/net/conn_io.c" "${_rt}/net/conn.c" "${_rt}/net/http1.c" "${_rt}/net/tls.c"
+        "${_rt}/sys/${_platform}/net.c" ${_io_sources} ${_posix_sources}
+        OBJECTS ms_test_llhttp INCLUDES "${_llhttp}/include" ${MS_LIB_ssl_INCLUDES} ${MS_LIB_uv_INCLUDES} ${MS_LIB_nghttp2_INCLUDES}
+        LIBS ${MS_LIB_ssl_LINK} ${MS_LIB_crypto_LINK} ${MS_LIB_uv_LINK} ${MS_LIB_nghttp2_LINK} ${CMAKE_DL_LIBS} pthread)
 ms_test(h2_test SOURCES "${_tests}/h2_test.c" "${_rt}/net/h2.c" INCLUDES ${MS_LIB_nghttp2_INCLUDES}
         LIBS ${MS_LIB_nghttp2_LINK})
+ms_test(h2conn_test SOURCES "${_tests}/h2conn_test.c" "${_rt}/net/h2conn.c" "${_rt}/net/h2.c"
+        INCLUDES ${MS_LIB_nghttp2_INCLUDES} LIBS ${MS_LIB_nghttp2_LINK})
 
 # Fuzz harnesses (runtime/fuzz/*_fuzz.c): built always, run by `make c-fuzz` over runtime/fuzz/corpus/<name>
 # (the driver takes -n <inputs> -s <seed> <files>; MS_FUZZER=libfuzzer builds coverage-guided ones instead).
 set(MS_FUZZER "driver" CACHE STRING "driver, or libfuzzer (clang with the libFuzzer runtime)")
 set(_fuzz_deps_http1 "${_rt}/net/http1.c")
 set(_fuzz_deps_num "${_rt}/core/num.c")
+set(_fuzz_deps_h2conn "${_rt}/net/h2conn.c" "${_rt}/net/h2.c")
 file(GLOB _fuzzers CONFIGURE_DEPENDS "${_rt}/fuzz/*_fuzz.c")
 foreach(file ${_fuzzers})
   get_filename_component(name "${file}" NAME_WE)
@@ -135,16 +168,21 @@ foreach(file ${_fuzzers})
     message(FATAL_ERROR "runtime/fuzz/${name}.c has no dependency list in cmake/MsTests.cmake")
   endif()
   set(_objects "")
+  set(_fuzz_libs m)
+  set(_fuzz_includes "${_llhttp}/include")
   if(short STREQUAL "http1")
     set(_objects ms_test_llhttp)
+  elseif(short STREQUAL "h2conn")
+    set(_fuzz_libs ${MS_LIB_nghttp2_LINK} m)
+    set(_fuzz_includes ${MS_LIB_nghttp2_INCLUDES})
   endif()
   if(MS_FUZZER STREQUAL "libfuzzer")
-    ms_test(${name} SOURCES "${file}" ${_fuzz_deps_${short}} OBJECTS ${_objects} INCLUDES "${_llhttp}/include"
-            LIBS m FLAGS -fsanitize=fuzzer-no-link)
+    ms_test(${name} SOURCES "${file}" ${_fuzz_deps_${short}} OBJECTS ${_objects} INCLUDES ${_fuzz_includes}
+            LIBS ${_fuzz_libs} FLAGS -fsanitize=fuzzer-no-link)
     target_link_options(${name} PRIVATE -fsanitize=fuzzer)
   else()
     ms_test(${name} SOURCES "${file}" "${_rt}/fuzz/driver.c" ${_fuzz_deps_${short}} OBJECTS ${_objects}
-            INCLUDES "${_llhttp}/include" LIBS m)
+            INCLUDES ${_fuzz_includes} LIBS ${_fuzz_libs})
   endif()
   set_property(TEST ${name} PROPERTY DISABLED TRUE)
 endforeach()

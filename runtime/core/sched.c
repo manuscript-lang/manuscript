@@ -38,6 +38,11 @@ uint32_t ms_sched_attach(MsWakeFn wake, void *argument) {
 
 int64_t ms_sched_now(void) { return ms_sys_monotonic_ns(); }
 
+void ms_sched_post_completion(uint64_t id, int32_t result, uint32_t kind) {
+    (void)kind;
+    ms_token_post(id, (uint64_t)(int64_t)result); /* the result sign-extends; the taker casts it back to int32_t */
+}
+
 uint8_t ms_sched_stop_request(void) {
     return thread_sched == NULL ? 0 : atomic_load_explicit(&thread_sched->stop_request, memory_order_relaxed);
 }
@@ -61,7 +66,7 @@ void ms_task_destroy(MsSched *sched, MsTask *task) {
     }
     msrt_free(task->unwind.hdr.cleanups);
     msrt_free(task->unwind.guards);
-    msrt_free(task->message.bytes);
+    ms_fault_text_free(&task->message);
     msrt_free(task);
 }
 

@@ -23,7 +23,8 @@ enum {
     MS_STATUS_OK = 0,
     MS_STATUS_INVALID_INPUT = 1,
     MS_STATUS_OUT_OF_RANGE = 2,
-    MS_STATUS_LIMIT_EXCEEDED = 3
+    MS_STATUS_LIMIT_EXCEEDED = 3,
+    MS_STATUS_INVALID_DATA = 4
 };
 
 /* A list or Bytes value: three words (crates/ms-rt-abi VecVal). An empty Bytes has a null `ptr`. */

@@ -560,6 +560,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         }
     }
     let mut headers = Vec::new();
+    let mut func_refs = Vec::new();
     for (n, line, body) in &fns {
         let toks = tokenize(line, *n)?;
         let mut c = Cur {
@@ -590,6 +591,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             Ty::VOID
         };
         let mut f = Func::new(&name, params, ret);
+        let mut refs: (Option<String>, Option<(String, String)>) = (None, None);
         loop {
             match c.peek() {
                 Some(Tok::P('{')) => {
@@ -611,6 +613,29 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     "method" => f.kind = FuncKind::Method,
                     "sort_cmp" => f.sort = SortThunk::Generic,
                     "sort_cmp_for" => f.sort = SortThunk::Specialized,
+                    "explicit_cancel" => f.explicit_cancel = true,
+                    "noalias" => {
+                        c.expect_p('(')?;
+                        while !c.eat_p(')') {
+                            let Ok(n) = c.num()?.parse::<u32>() else {
+                                return c.err("expected a parameter index");
+                            };
+                            f.noalias.push(n);
+                            c.eat_p(',');
+                        }
+                    }
+                    "slot_result" => {
+                        c.expect_p('(')?;
+                        refs.0 = Some(c.at()?);
+                        c.expect_p(')')?;
+                    }
+                    "close_exit" => {
+                        c.expect_p('(')?;
+                        let a = c.at()?;
+                        c.expect_p(',')?;
+                        refs.1 = Some((a, c.at()?));
+                        c.expect_p(')')?;
+                    }
                     "inline" => {
                         c.expect_p('(')?;
                         f.inline = match c.ident()?.as_str() {
@@ -636,11 +661,28 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         if m.func_by_name(&name).is_some() {
             return c.err(format!("function @{name} defined twice"));
         }
-        m.add_func(f);
+        let id = m.add_func(f);
+        func_refs.push((id, refs));
         headers.push(FnHeader {
             names,
             body: body.clone(),
         });
+    }
+    // Helper functions a header names (`slot_result`, `close_exit`) may be defined later.
+    for (id, (slot, exit)) in func_refs {
+        let find = |n: &str| {
+            m.func_by_name(n).ok_or_else(|| ParseError {
+                line: 0,
+                message: format!("unknown function @{n}"),
+            })
+        };
+        let slot = slot.map(|n| find(&n)).transpose()?;
+        let exit = exit
+            .map(|(a, b)| Ok::<_, ParseError>((find(&a)?, find(&b)?)))
+            .transpose()?;
+        let f = &mut m.funcs[id.0 as usize];
+        f.slot_result = slot;
+        f.close_exit = exit;
     }
     // Vtables and entry need function ids.
     for (n, t) in vtable_items {

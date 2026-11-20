@@ -218,13 +218,7 @@ static UwTable uw_pointer_params(MsArena *a, const MirModule *m) {
 /* An empty function with this one's signature. A pass that takes a function out of the module to
  * rewrite it leaves this behind, so a recursive call still reads which arguments the callee
  * consumes and whether its result borrows. */
-static MirFunc uw_stand_in(MirModule *m, const MirFunc *f) {
-    MirFunc s;
-    mir_func_init(m, &s, 0, f->params, f->nparams, f->ret);
-    s.ret_borrowed = f->ret_borrowed;
-    s.ret_view = f->ret_view;
-    return s;
-}
+static MirFunc uw_stand_in(MirModule *m, const MirFunc *f) { return mir_func_stand_in(m, f); }
 
 bool mir_unwind(MirModule *m) {
     if (!mir_starts_tasks(m)) {

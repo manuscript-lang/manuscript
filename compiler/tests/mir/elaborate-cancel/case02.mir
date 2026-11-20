@@ -1,0 +1,15 @@
+module "t"
+extern @msrt_task_pause(int) -> int
+entry @main
+
+fn @main() -> int {
+b0:
+  scope.begin 1 0
+  %0: str = str "held"
+  %1: str = clone %0
+  scope.own 1 0 %1
+  %2: int = iconst 5
+  %3: int = call.rt @msrt_task_pause (%2)
+  scope.end 1 0
+  ret %3
+}

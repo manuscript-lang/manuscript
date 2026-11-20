@@ -16,3 +16,6 @@ msrt_heap_shared_put
 msrt_heap_stats
 msrt_heap_requested
 msrt_heap_sample_every
+msrt_heap_requested_reset
+msrt_heap_live_total
+msrt_heap_live_by_size

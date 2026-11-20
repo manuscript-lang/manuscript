@@ -44,12 +44,16 @@ typedef struct OwnWalk {
     uint32_t *pending;  /* holders whose borrows end with the statement */
     uint32_t npending, pending_cap;
     uint32_t pending_base; /* the pending holders below it belong to an enclosing statement */
+    MsPos borrowed_return, owned_return; /* the first return of each kind in the function */
+    bool has_borrowed_return, has_owned_return;
     uint32_t *declared; /* bindings in scope, innermost last */
     uint32_t ndeclared, declared_cap;
     bool supported;
 } OwnWalk;
 
 typedef enum Demand { DEMAND_READ, DEMAND_MOVE } Demand;
+
+static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning);
 
 static MsStr own_name(const OwnWalk *w, uint32_t binding) {
     return ms_name(w->check->names, w->facts->bindings.name[binding]);
@@ -221,13 +225,18 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
             }
         }
         return;
-    case MS_E_NAME: own_use_local(w, e, demand); return;
+    case MS_E_NAME:
+        // A module constant reads no local.
+        if (w->facts->res_kind[e->id] == MS_RES_BINDING) {
+            own_use_local(w, e, demand);
+        }
+        return;
     case MS_E_UNARY: own_expr(w, e->u.bin.left, DEMAND_READ); return;
     case MS_E_BINARY:
         own_expr(w, e->u.bin.left, DEMAND_READ);
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
-    case MS_E_MEMBER:
+    case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
@@ -235,7 +244,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
     case MS_E_MAP:
     case MS_E_LAMBDA:
     case MS_E_CALL:
-    case MS_E_MATCH: w->supported = false; return;
+    case MS_E_MATCH: own_match(w, e, demand, false); return;
     }
 }
 
@@ -282,16 +291,32 @@ static bool own_returns_parameter_borrow(const OwnWalk *w, const MsExpr *e) {
     return w->is_param[own_resolve(w, binding)];
 }
 
-static void own_return(OwnWalk *w, const MsStmt *s) {
-    const MsExpr *e = s->u.expr;
-    if (e == NULL) {
+/* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
+ * match hands back the value of the arm it takes. */
+static void own_returned(OwnWalk *w, const MsExpr *e) {
+    if (e->kind == MS_E_MATCH) {
+        own_match(w, e, DEMAND_MOVE, true);
         return;
     }
-    if (ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_MOVE && own_returns_parameter_borrow(w, e)) {
+    if (ms_classify(w->classifier, w->facts->expr_ty[e->id]) != MS_CLASS_MOVE) {
+        own_expr(w, e, DEMAND_MOVE);
+        return;
+    }
+    if (own_returns_parameter_borrow(w, e)) {
+        w->borrowed_return = w->has_borrowed_return ? w->borrowed_return : e->pos;
+        w->has_borrowed_return = true;
         own_expr(w, e, DEMAND_READ);
         return;
     }
+    w->owned_return = w->has_owned_return ? w->owned_return : e->pos;
+    w->has_owned_return = true;
     own_expr(w, e, DEMAND_MOVE);
+}
+
+static void own_return(OwnWalk *w, const MsStmt *s) {
+    if (s->u.expr != NULL) {
+        own_returned(w, s->u.expr);
+    }
 }
 
 /* ---- blocks and branches ---- */
@@ -331,16 +356,8 @@ static void own_join(OwnWalk *w, BorrowSet first) {
     free(second.items);
 }
 
-/* A block's bindings end with it, and so do the borrows they hold. */
-static void own_block(OwnWalk *w, const MsStmts *body) {
-    const uint32_t mark = w->ndeclared;
-    const uint32_t outer_base = w->pending_base;
-    w->pending_base = w->npending;
-    for (uint32_t i = 0; i < body->len && w->supported; i++) {
-        own_statement(w, body->ptr[i]);
-        own_release_pending(w);
-    }
-    w->pending_base = outer_base;
+/* The bindings declared since `mark` end, and so do the borrows they hold. */
+static void own_end_scope(OwnWalk *w, uint32_t mark) {
     for (uint32_t i = 0; i < w->active.len; i++) {
         Borrow *b = &w->active.items[i];
         for (uint32_t k = mark; b->holder != MS_NONE && k < w->ndeclared; k++) {
@@ -350,6 +367,31 @@ static void own_block(OwnWalk *w, const MsStmts *body) {
         }
     }
     w->ndeclared = mark;
+}
+
+/* The statements of a block, then its final value (a match arm's) in the same scope. */
+static void own_block_value(OwnWalk *w, const MsStmts *body, const MsExpr *value, Demand demand, bool returning) {
+    const uint32_t mark = w->ndeclared;
+    const uint32_t outer_base = w->pending_base;
+    w->pending_base = w->npending;
+    for (uint32_t i = 0; i < body->len && w->supported; i++) {
+        own_statement(w, body->ptr[i]);
+        own_release_pending(w);
+    }
+    if (value != NULL && w->supported) {
+        if (returning) {
+            own_returned(w, value);
+        } else {
+            own_expr(w, value, demand);
+        }
+        own_release_pending(w);
+    }
+    w->pending_base = outer_base;
+    own_end_scope(w, mark);
+}
+
+static void own_block(OwnWalk *w, const MsStmts *body) {
+    own_block_value(w, body, NULL, DEMAND_READ, false);
 }
 
 /* `name = value`: the value is moved in, then the old one is replaced, which no borrow may read. */
@@ -387,6 +429,75 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
     own_join(w, entry);
 }
 
+/* ---- match ---- */
+
+/* Declares the arm's payload bindings; false when one is not a plain copied value. */
+static bool own_arm_payloads(OwnWalk *w, const MsArm *arm) {
+    for (uint32_t k = 0; k < w->live->arm_count[arm->id]; k++) {
+        const uint32_t binding = w->live->arm_first[arm->id] + k;
+        own_declare(w, binding, PERM_IMMUTABLE, false);
+        if (w->class_of[binding] != MS_CLASS_COPY) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* The scrutinee is read where it is, or moved out at its last use when it is an owned local. */
+static void own_scrutinee(OwnWalk *w, const MsExpr *e) {
+    const bool name = e->kind == MS_E_NAME && w->facts->res_kind[e->id] == MS_RES_BINDING;
+    if (!name) {
+        own_expr(w, e, DEMAND_MOVE);
+        return;
+    }
+    const uint32_t binding = w->facts->res_ref[e->id];
+    const bool owned = w->perm[binding] != PERM_BORROWED && !w->is_param[binding];
+    own_expr(w, e, owned && own_is_last(w, e) ? DEMAND_MOVE : DEMAND_READ);
+}
+
+/* One arm: its payloads, body and value share a scope. */
+static void own_arm(OwnWalk *w, const MsArm *arm, Demand demand, bool returning) {
+    const uint32_t mark = w->ndeclared;
+    if (!own_arm_payloads(w, arm)) {
+        w->supported = false;
+        return;
+    }
+    own_block_value(w, &arm->body, arm->value, demand, returning);
+    own_end_scope(w, mark);
+}
+
+/* Whether every arm yields a name: the match is then a reference to one of them, not a value. */
+static bool own_arms_are_names(const OwnWalk *w, const MsExpr *e) {
+    for (uint32_t i = 0; i < e->u.match.arms.len; i++) {
+        const MsExpr *value = e->u.match.arms.ptr[i]->value;
+        if (value == NULL || value->kind != MS_E_NAME || w->facts->res_kind[value->id] != MS_RES_BINDING) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning) {
+    const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
+    const bool borrowed = !returning && demand != DEMAND_MOVE && !copied && own_arms_are_names(w, e);
+    /* Arms that are not all references produce a value, so a place among them moves. */
+    const Demand arm_demand = !borrowed && demand == DEMAND_READ ? DEMAND_MOVE : demand;
+    own_scrutinee(w, e->u.match.scrutinee);
+    own_release_pending(w);
+    BorrowSet entry = own_set_copy(&w->active);
+    BorrowSet joined = {0};
+    for (uint32_t i = 0; i < e->u.match.arms.len && w->supported; i++) {
+        free(w->active.items);
+        w->active = own_set_copy(&entry);
+        own_arm(w, e->u.match.arms.ptr[i], arm_demand, returning);
+        own_join(w, joined);
+        joined = w->active;
+        w->active = (BorrowSet){0};
+    }
+    w->active = joined;
+    own_join(w, entry);
+}
+
 static void own_statement(OwnWalk *w, const MsStmt *s) {
     switch ((MsStmtKind)s->kind) {
     case MS_S_BIND: own_bind(w, s); return;
@@ -416,11 +527,19 @@ static bool own_function(OwnWalk *w, const MsFunc *function, const uint32_t *by_
     w->npending = 0;
     w->pending_base = 0;
     w->ndeclared = 0;
+    w->has_borrowed_return = w->has_owned_return = false;
     w->supported = true;
     own_declare_parameters(w, function, by_node);
     for (uint32_t i = 0; i < function->body.len && w->supported; i++) {
         own_statement(w, function->body.ptr[i]);
         own_release_pending(w);
+    }
+    if (w->supported && w->has_borrowed_return && w->has_owned_return) {
+        own_error(w, w->owned_return,
+                  ms_arena_fmt(&w->check->arena,
+                               "this function returns a reference into its arguments at %u:%u but a new value here; "
+                               "return `.clone()` of the part there, or build a new value on every path",
+                               w->borrowed_return.line, w->borrowed_return.column));
     }
     return w->supported;
 }
@@ -450,7 +569,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         return;
     }
     MsArena scratch = {0};
-    MsLiveness live = ms_liveness_new(&scratch, facts->node_count);
+    MsLiveness live = ms_liveness_new(&scratch, facts);
     OwnWalk w = {.check = c, .module = module, .facts = facts, .live = &live,
                  .classifier = ms_classifier_new(c)};
     own_allocate(&w, &scratch);

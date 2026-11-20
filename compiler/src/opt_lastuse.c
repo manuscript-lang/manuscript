@@ -282,11 +282,6 @@ static void lu_apply(LuCtx *x) {
 
 /* ---- classification ---- */
 
-static bool lu_name_is(const MirModule *m, MsSym sym, const char *text) {
-    const MsStr s = ms_name(&m->names, sym);
-    return s.len == strlen(text) && memcmp(s.ptr, text, s.len) == 0;
-}
-
 /* Whether dropping a value of `t` only frees memory. `seen` holds every type and alternative
  * already entered (stamped with `gen`): revisiting one counts as plain, so each is classified once. */
 static bool lu_plain(const MirModule *m, MirTy t, uint32_t *seen, uint32_t gen) {
@@ -301,7 +296,7 @@ static bool lu_plain(const MirModule *m, MirTy t, uint32_t *seen, uint32_t gen) 
     case MK_LIST: case MK_OPT:
         return lu_plain(m, d->elem, seen, gen);
     case MK_OBJ: {
-        if (!lu_name_is(m, d->name, "Map") && !lu_name_is(m, d->name, "Set")) {
+        if (!mir_name_is(m, d->name, "Map") && !mir_name_is(m, d->name, "Set")) {
             return false;
         }
         for (uint32_t i = 0; i < d->nargs; i++) {
