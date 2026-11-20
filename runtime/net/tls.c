@@ -163,7 +163,12 @@ static bool set_server_name(SSL *ssl, const char *host) {
     const bool is_ip = address != NULL;
     ASN1_OCTET_STRING_free(address);
     if (is_ip) return X509_VERIFY_PARAM_set1_ip_asc(SSL_get0_param(ssl), name) == 1; /* no SNI for an address */
+#if OPENSSL_VERSION_MAJOR >= 4
+    /* SSL_set1_host is deprecated in OpenSSL 4.0 (Windows takes MSYS2's current package). */
+    return SSL_set_tlsext_host_name(ssl, name) == 1 && SSL_set1_dnsname(ssl, name) == 1;
+#else
     return SSL_set_tlsext_host_name(ssl, name) == 1 && SSL_set1_host(ssl, name) == 1;
+#endif
 }
 
 MsTls *ms_tls_new(MsTlsCtx *ctx, const char *host) {

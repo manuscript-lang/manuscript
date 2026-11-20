@@ -69,8 +69,9 @@ status=0
 # strcat and strcpy overrun, strtok keeps hidden state, gets cannot be used safely, and Apple's libc deprecates sprintf, so a
 # macOS build fails on it. Use snprintf, memcpy with a checked size, or ms_rt/safe.h (tests: tests/support/append.h).
 banned='(^|[^[:alnum:]_.>])(sprintf|vsprintf|strcpy|stpcpy|strcat|strtok|gets|tmpnam|mktemp)[[:space:]]*\('
+# Every system's sources count, including the ones this system does not compile.
 # shellcheck disable=SC2086
-if hits=$(grep -nHE "$banned" $files $(find runtime/include runtime/core runtime/net runtime/std runtime/sys runtime/io runtime/tests compiler/include compiler/src -name '*.h' 2> /dev/null) | grep -vE ':[0-9]+:[[:space:]]*(/?\*|//)'); then
+if hits=$(grep -nHE "$banned" $(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2> /dev/null) $(find runtime/include runtime/core runtime/net runtime/std runtime/sys runtime/io runtime/tests compiler/include compiler/src -name '*.h' 2> /dev/null) | grep -vE ':[0-9]+:[[:space:]]*(/?\*|//)'); then
     echo "$hits" >&2
     echo "c-lint: sprintf, strcpy, strcat, strtok and the like are banned; use snprintf or a bounded copy" >&2
     status=1

@@ -16,6 +16,7 @@ msrt_promise_end
 msrt_promise_fault_report
 msrt_promise_finished
 msrt_promise_limit
+msrt_promise_drain
 msrt_promise_new
 msrt_promise_on_cancel
 msrt_promise_put

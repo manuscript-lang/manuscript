@@ -18,8 +18,8 @@ typedef int PollHandle;
 #endif
 
 #include "../net/dns.h"
-#include "../net/dns_query.h"
 #include "../std/abi.h"
+#include "ms_rt/net.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_net.h"
 #include "ms_sched.h"
@@ -40,17 +40,21 @@ uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
 
 #define LITERAL(text) ms_bytes_of((const uint8_t *)(text), sizeof(text) - 1)
 
-static void drop_lists(MsVec *values, MsVec *numbers) {
-    msrt_list_drop(values, &msrt_desc_string);
-    msrt_list_drop(numbers, &msrt_desc_int);
+static void drop_records(MsVec *records) {
+    const MsNetDnsRecord *items = records->ptr;
+    for (size_t i = 0; i < records->len; i++) {
+        MsStr value = items[i].value;
+        msrt_string_free(&value);
+    }
+    msrt_free(records->ptr);
 }
 
 static MsStr str(const char *s) { MsStr out; msrt_string_from_bytes((const uint8_t *)s, strlen(s), &out); return out; }
-static bool is_str(const MsVec *list, size_t i, const char *want) {
-    const MsStr *items = list->ptr;
-    return i < list->len && msrt_str_len(&items[i]) == strlen(want) && memcmp(msrt_str_data(&items[i]), want, strlen(want)) == 0;
+static bool is_record(const MsVec *list, size_t i, int64_t kind, const char *want) {
+    const MsNetDnsRecord *items = list->ptr;
+    return i < list->len && items[i].kind == kind && msrt_str_len(&items[i].value) == strlen(want) &&
+           memcmp(msrt_str_data(&items[i].value), want, strlen(want)) == 0;
 }
-static int64_t number(const MsVec *list, size_t i) { return ((const int64_t *)list->ptr)[i]; }
 
 /* ---- a fake server ---- */
 
@@ -193,25 +197,25 @@ int main(void) {
         MsSysThread *thread = ms_sys_thread_spawn(1 << 20, serve, &server);
         CHECK(thread != NULL);
         const MsStr at = server_text(server.udp), name = str("test.");
-        MsVec values, numbers;
+        MsVec found;
         MsStr err = str("");
-        CHECK(msstd_dns_query(&at, &name, MS_DNS_A, 1, 3000000000, &values, &numbers, &err) == STATUS_OK && is_str(&values, 0, "127.0.0.1"));
-        drop_lists(&values, &numbers);
-        CHECK(msstd_dns_query(&at, &name, MS_DNS_AAAA, 1, 3000000000, &values, &numbers, &err) == STATUS_OK && is_str(&values, 0, "::1"));
-        drop_lists(&values, &numbers);
-        CHECK(msstd_dns_query(&at, &name, MS_DNS_MX, 1, 3000000000, &values, &numbers, &err) == STATUS_OK && is_str(&values, 0, "mail.test.") && number(&numbers, 0) == 10);
-        drop_lists(&values, &numbers);
-        CHECK(msstd_dns_query(&at, &name, MS_DNS_SRV, 1, 3000000000, &values, &numbers, &err) == STATUS_OK && is_str(&values, 0, "service.test.") &&
-              number(&numbers, 0) == 1 && number(&numbers, 1) == 2 && number(&numbers, 2) == 443);
-        drop_lists(&values, &numbers);
-        CHECK(msstd_dns_query(&at, &name, MS_DNS_NS, 1, 3000000000, &values, &numbers, &err) == STATUS_OK && is_str(&values, 0, "ns.test."));
-        drop_lists(&values, &numbers);
-        CHECK(msstd_dns_query(&at, &name, MS_DNS_CNAME, 1, 3000000000, &values, &numbers, &err) == STATUS_OK && is_str(&values, 0, "ns.test."));
-        drop_lists(&values, &numbers);
-        CHECK(msstd_dns_query(&at, &name, MS_DNS_PTR, 1, 3000000000, &values, &numbers, &err) == STATUS_OK && is_str(&values, 0, "ns.test."));
-        drop_lists(&values, &numbers);
-        CHECK(msstd_dns_query(&at, &name, MS_DNS_TXT, 1, 3000000000, &values, &numbers, &err) == STATUS_OK && is_str(&values, 0, "hello w")); /* truncated over UDP, whole over TCP */
-        drop_lists(&values, &numbers);
+        CHECK(msstd_dns_query(&at, &name, 0, 1, 3000000000, &found, &err) == STATUS_OK && is_record(&found, 0, 0, "127.0.0.1"));
+        drop_records(&found);
+        CHECK(msstd_dns_query(&at, &name, 1, 1, 3000000000, &found, &err) == STATUS_OK && is_record(&found, 0, 1, "::1"));
+        drop_records(&found);
+        CHECK(msstd_dns_query(&at, &name, 3, 1, 3000000000, &found, &err) == STATUS_OK && is_record(&found, 0, 3, "mail.test.") && found.len == 1 && ((const MsNetDnsRecord *)found.ptr)[0].priority == 10);
+        drop_records(&found);
+        CHECK(msstd_dns_query(&at, &name, 7, 1, 3000000000, &found, &err) == STATUS_OK && is_record(&found, 0, 7, "service.test.") &&
+              ((const MsNetDnsRecord *)found.ptr)[0].priority == 1 && ((const MsNetDnsRecord *)found.ptr)[0].weight == 2 && ((const MsNetDnsRecord *)found.ptr)[0].port == 443);
+        drop_records(&found);
+        CHECK(msstd_dns_query(&at, &name, 4, 1, 3000000000, &found, &err) == STATUS_OK && is_record(&found, 0, 4, "ns.test."));
+        drop_records(&found);
+        CHECK(msstd_dns_query(&at, &name, 2, 1, 3000000000, &found, &err) == STATUS_OK && is_record(&found, 0, 2, "ns.test."));
+        drop_records(&found);
+        CHECK(msstd_dns_query(&at, &name, 6, 1, 3000000000, &found, &err) == STATUS_OK && is_record(&found, 0, 6, "ns.test."));
+        drop_records(&found);
+        CHECK(msstd_dns_query(&at, &name, 5, 1, 3000000000, &found, &err) == STATUS_OK && is_record(&found, 0, 5, "hello w")); /* truncated over UDP, whole over TCP */
+        drop_records(&found);
         ms_sys_thread_join(thread);
         ms_sys_net_close(server.udp);
         ms_sys_net_close(server.tcp);
@@ -220,22 +224,21 @@ int main(void) {
         MsAddr silent_at; MsSock silent;
         CHECK(ms_sys_net_udp_bind(&loopback, &silent) == MS_SYS_OK && ms_sys_net_local_addr(silent, &silent_at) == MS_SYS_OK);
         const MsStr silent_text = server_text(silent), bad = str("not-an-address");
-        CHECK(msstd_dns_query(&silent_text, &name, MS_DNS_A, 1, 100000000, &values, &numbers, &err) == STATUS_TIMED_OUT);
-        CHECK(msstd_dns_query(&bad, &name, MS_DNS_A, 0, 0, &values, &numbers, &err) == STATUS_INVALID_INPUT);
-        CHECK(msstd_dns_query(&at, &name, 99, 0, 0, &values, &numbers, &err) == STATUS_INVALID_INPUT);
+        CHECK(msstd_dns_query(&silent_text, &name, 0, 1, 100000000, &found, &err) == STATUS_TIMED_OUT);
+        CHECK(msstd_dns_query(&bad, &name, 0, 0, 0, &found, &err) == STATUS_INVALID_INPUT);
+        CHECK(msstd_dns_query(&at, &name, 99, 0, 0, &found, &err) == STATUS_INVALID_INPUT);
         const MsStr hole = str("a..b");
-        CHECK(msstd_dns_query(&at, &hole, MS_DNS_A, 0, 0, &values, &numbers, &err) == STATUS_INVALID_INPUT);
+        CHECK(msstd_dns_query(&at, &hole, 0, 0, 0, &found, &err) == STATUS_INVALID_INPUT);
         ms_sys_net_close(silent);
         ms_str_release(&at); ms_str_release(&name); ms_str_release(&err); ms_str_release(&silent_text); ms_str_release(&bad); ms_str_release(&hole);
     }
 
     /* the host's configuration always names a server */
     {
-        MsVec servers, search;
-        int64_t ndots = 0;
-        CHECK(msstd_dns_config(&servers, &search, &ndots) == STATUS_OK && servers.len >= 1 && ndots >= 0);
-        msrt_list_drop(&servers, &msrt_desc_string);
-        msrt_list_drop(&search, &msrt_desc_string);
+        MsNetDnsConfig host;
+        CHECK(msstd_dns_config(&host) == STATUS_OK && host.servers.len >= 1 && host.ndots >= 0);
+        msrt_list_drop(&host.servers, &msrt_desc_string);
+        msrt_list_drop(&host.search, &msrt_desc_string);
     }
 
     if (!failed) printf("dns ok\n");

@@ -2,6 +2,7 @@
  * CPU, and the handler reads the program counter and frame pointer from the interrupted context. */
 #ifdef __APPLE__
 #define _DARWIN_C_SOURCE
+#define _XOPEN_SOURCE 700 /* <ucontext.h> is an error without it */
 #else
 #define _GNU_SOURCE /* REG_RIP and the machine context of ucontext_t */
 #endif

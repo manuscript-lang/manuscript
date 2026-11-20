@@ -46,6 +46,8 @@ void msrt_promise_fault_report(int64_t id, MsStr *out);
 int64_t msrt_promise_finished(void);
 /* ms-sig: msrt_promise_limit(id: i64, timeout_ns: i64) @domain=promise */
 void msrt_promise_limit(int64_t id, int64_t timeout_ns);
+/* ms-sig: msrt_promise_drain(id: i64, drain: i64, grace_ns: i64) @domain=promise */
+void msrt_promise_drain(int64_t id, int64_t drain, int64_t grace_ns);
 /* ms-sig: msrt_promise_new() -> i64 @domain=promise */
 int64_t msrt_promise_new(void);
 /* ms-sig: msrt_promise_on_cancel(id: i64, cancel: i64) @domain=promise */

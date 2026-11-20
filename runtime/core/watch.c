@@ -56,6 +56,8 @@ void ms_watch_stir(void) {
     }
 }
 
+bool ms_watch_asleep(void) { return atomic_load(&asleep); }
+
 bool ms_watch_held_up(MsWatchLook look, uint64_t resting, uint32_t isolate) {
     if (isolate >= MS_MAX_ISOLATES || (resting >> isolate & 1) != 0) {
         return false;

@@ -13,6 +13,6 @@
 /* Lowers the functions of `module` the pass supports into `out` (initialised with
  * mir_module_init; the caller frees it). Returns how many functions were added. The checker must
  * have run `ms_module_check_bodies` on the module. */
-uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out);
+uint32_t ms_lower_module(MsCheck *c, MsModId module, MirModule *out);
 
 #endif

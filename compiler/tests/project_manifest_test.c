@@ -152,11 +152,65 @@ static void test_unsupported(void) {
     expect_unsupported("duplicate key", MANIFEST "name = \"other\"\n");
     expect_unsupported("missing value", "[project]\nname\n");
     expect_unsupported("bare word", "[project]\nname = sample\n");
-    expect_unsupported("version", MANIFEST "version = \"1.0.0\"\n");
-    expect_unsupported("embed", MANIFEST "[embed]\n\"@assets\" = \"src\"\n");
-    expect_unsupported("dependencies", MANIFEST "[dependencies]\n");
+    expect_unsupported("dependency table", MANIFEST "[dependencies.pg]\nurl = \"x\"\n");
+    expect_unsupported("nested inline table", MANIFEST "[dependencies]\n\"@pg\" = { a = { b = \"c\" } }\n");
+    expect_unsupported("trailing comma in inline table", MANIFEST "[dependencies]\n\"@pg\" = { path = \"src\", }\n");
     expect_unsupported("array", MANIFEST "[aliases]\n\"@a\" = [\"x\"]\n");
     expect_unsupported("name as number", "[project]\nname = 3\nsource = \"src\"\n");
+}
+
+#define URL "https://github.com/acme/pg.git"
+#define SHA "0123456789abcdef0123456789abcdef01234567"
+
+static void test_packages(void) {
+    MsProject p;
+    MsProjectError err = {0};
+    const char *text;
+    const char *source = MANIFEST "version = \"1.2.3\"\neffects = [\"std.fs.read\", # c\n  \"std.net.*\",\n]\n"
+                         "[workspace]\nmembers = [\"app\", \"libs/*\"]\n"
+                         "[embed]\n\"@assets\" = \"src\"\n"
+                         "[dependencies]\n\"@zed\" = { url = \"" URL "\", tag = \"v1.0.0\" }\n\"@pg\" = { url = \"" URL "\", version = \"^1.2\" }\n"
+                         "\"@sha\" = { url = \"file:///tmp/r\", sha = \"" SHA "\" }\n\"@local\" = { path = \"src\" }\n"
+                         "[effects]\n\"@pg\" = [\"std.net.*\"]\n";
+    CHECK(read_manifest(source, &p, &err, &text));
+    CHECK(p.has_version && p.version.major == 1 && p.version.minor == 2 && p.version.patch == 3);
+    CHECK(p.effect_count == 2 && strcmp(p.effects[1], "std.net.*") == 0);
+    CHECK(p.is_workspace && p.member_count == 2 && strcmp(p.members[1], "libs/*") == 0);
+    CHECK(p.embed_count == 1 && strcmp(p.embed[0].target, p.source) == 0);
+    CHECK(p.dependency_count == 3 && strcmp(p.dependencies[0].alias, "@pg") == 0 && p.dependencies[0].kind == MS_DEP_VERSION);
+    CHECK(strcmp(p.dependencies[1].alias, "@sha") == 0 && p.dependencies[1].kind == MS_DEP_SHA && strcmp(p.dependencies[1].reference, SHA) == 0);
+    CHECK(strcmp(p.dependencies[2].alias, "@zed") == 0 && p.dependencies[2].kind == MS_DEP_TAG && strcmp(p.dependencies[2].reference, "v1.0.0") == 0);
+    CHECK(strcmp(ms_project_dependency_row(&arena, &p.dependencies[0]), "@pg\t" URL "\tversion\t^1.2") == 0);
+    CHECK(strcmp(ms_project_dependency_row(&arena, &p.dependencies[2]), "@zed\t" URL "\ttag\tv1.0.0") == 0);
+    CHECK(p.path_dependency_count == 1 && strcmp(p.path_dependencies[0].target, p.source) == 0);
+    CHECK(p.allowed_effect_count == 1 && strcmp(p.allowed_effects[0].name, "@pg") == 0 && p.allowed_effects[0].count == 1);
+
+    CHECK(read_manifest("[workspace]\nmembers = [\"app\"]\n", &p, &err, &text) && p.is_workspace && p.name[0] == 0);
+    expect_error("workspace root with project tables", "[workspace]\nmembers = [\"app\"]\n[aliases]\n\"@a\" = \"src\"\n",
+                 "ms.toml:4:1: a workspace root without [project] holds only [workspace]; move [aliases] into a member");
+    expect_error("workspace key", "[workspace]\nmember = []\n", "ms.toml:2:1: unknown workspace key member; [workspace] accepts members");
+    expect_error("members shape", "[workspace]\nmembers = \"app\"\n", "members: members are a list of strings: [\"app\", \"libs/*\"]");
+    expect_error("member listed twice", "[workspace]\nmembers = [\"a\", \"a\"]\n", "members: member a is listed twice; remove one");
+    expect_error("effect with space", MANIFEST "effects = [\"std net\"]\n", "effects: invalid effect \"std net\"; write one pattern per string, such as \"std.net.*\"");
+    expect_error("bad version", MANIFEST "version = \"1.0\"\n", "ms.toml:5:11: version:");
+    expect_error("package name", MANIFEST "[dependencies]\npg = { path = \"src\" }\n", "ms.toml:6:1: invalid or reserved package name pg;");
+    expect_error("dependency not a table", MANIFEST "[dependencies]\n\"@pg\" = \"x\"\n", "dependency @pg: a dependency is a table; write { url =");
+    expect_error("unknown dependency field", MANIFEST "[dependencies]\n\"@pg\" = { url = \"" URL "\", branch = \"main\" }\n",
+                 "dependency @pg: unknown field branch; a dependency has url and one of version, tag or sha, or only path");
+    expect_error("number field", MANIFEST "[dependencies]\n\"@pg\" = { url = 3 }\n", "dependency @pg: url must be a string;");
+    expect_error("missing url", MANIFEST "[dependencies]\n\"@pg\" = { tag = \"v1\" }\n", "dependency @pg: url is missing;");
+    expect_error("two sources", MANIFEST "[dependencies]\n\"@pg\" = { url = \"" URL "\", tag = \"v1\", sha = \"" SHA "\" }\n", "dependency @pg: name exactly one of version, tag and sha;");
+    expect_error("short sha", MANIFEST "[dependencies]\n\"@pg\" = { url = \"" URL "\", sha = \"abc\" }\n", "dependency @pg: sha must be the full 40-digit lowercase commit");
+    expect_error("ssh url", MANIFEST "[dependencies]\n\"@pg\" = { url = \"git@github.com:a/b.git\", tag = \"v1\" }\n", "dependency @pg: dependency URL \"git@github.com:a/b.git\" must start with https://");
+    expect_error("path with url", MANIFEST "[dependencies]\n\"@pg\" = { path = \"src\", url = \"" URL "\" }\n", "dependency @pg: a path dependency has only path = \"../member\"");
+    expect_error("path missing", MANIFEST "[dependencies]\n\"@pg\" = { path = \"nope\" }\n", "dependency @pg: path \"nope\" cannot be resolved:");
+    expect_error("dependency and alias", MANIFEST "[aliases]\n\"@pg\" = \"src\"\n[dependencies]\n\"@pg\" = { path = \"src\" }\n",
+                 "ms.toml:8:1: @pg is declared in [dependencies] and also as an alias or embed;");
+    expect_error("effects without dependency", MANIFEST "[effects]\n\"@pg\" = [\"std.net.*\"]\n", "ms.toml:6:1: [effects] names @pg, which is not under [dependencies];");
+    expect_error("embed and alias", MANIFEST "[aliases]\n\"@a\" = \"src\"\n[embed]\n\"@a\" = \"src\"\n", "ms.toml:8:1: @a is declared in both [aliases] and [embed];");
+    expect_error("embed not a directory", MANIFEST "[embed]\n\"@a\" = \"src/main.ms\"\n", "embed @a must name an existing directory;");
+    expect_error("embed to alias", MANIFEST "[embed]\n\"@a\" = \"@b\"\n", "ms.toml:6:8: invalid embed target @b;");
+    expect_error("control before alias check", MANIFEST "[aliases]\nbad = \"s\\u0001\"\n", "manifest value for bad contains a NUL or control character");
 }
 
 static void test_imports(void) {
@@ -211,6 +265,7 @@ int main(void) {
     test_read();
     test_errors();
     test_unsupported();
+    test_packages();
     test_imports();
     test_quote();
     remove_tree();

@@ -79,7 +79,9 @@ list(REMOVE_DUPLICATES _used_libs)
 set(_features "")
 foreach(source ${_selected})
   get_filename_component(_name "${source}" NAME)
-  if(source MATCHES "/runtime/io/")
+  # reactor.c defines the ms_io_* entry points; the files beside it (ring, refused) need no library and stay
+  # selected on a target without libuv, which has no reactor.
+  if(source MATCHES "/runtime/io/reactor\\.c$")
     list(APPEND _features reactor)
   endif()
 endforeach()
