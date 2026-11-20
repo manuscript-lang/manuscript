@@ -1,8 +1,4 @@
-compiler/src/dump_check.c
 compiler/src/libms.c
-compiler/src/stdlib.c
-compiler/src/tables.c
-compiler/src/types.c
 runtime/fuzz/http1_fuzz.c
 runtime/fuzz/num_fuzz.c
 runtime/io/reactor.c
