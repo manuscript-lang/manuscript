@@ -1,4 +1,4 @@
-# Defined in runtime/std/crypto.c and crypto_asym.c; the Rust ms-std-crypto definitions are dropped where this list is selected.
+# Defined in runtime/std/crypto.c and crypto_asym.c.
 msstd_crypto_aes_cbc_decrypt
 msstd_crypto_aes_cbc_encrypt
 msstd_crypto_aes_ctr

@@ -4,7 +4,7 @@
 
 Verified (2026-11-20, Linux glibc and musl x86-64, OpenSSL 3.0 API): `runtime/std/crypto.c` (digests, HMAC, PBKDF2, HKDF, streaming hashers, AES-GCM, AES-CTR, AES-CBC, Ed25519) and `crypto_asym.c` (ECDSA, ECDH, X25519, RSA with PKCS#1 v1.5, PSS and OAEP) define every `msstd_crypto_*` symbol (`runtime/symbols/crypto.txt`, `ms_rt/crypto.h`). `runtime/tests/std_crypto*.c` replay `runtime/tests/oracle/crypto.tsv` and `crypto_asym.tsv` (4,322 cases recorded from Go) under ASan and UBSan in `make c-test`.
 
-Selection is per module: `cargo xtask runtime` sets `MS_C_CRYPTO` when `runtime/std/crypto.c` is in the planned sources, and `crates/ms-native/build.rs` turns that into `cfg(ms_c_crypto)`, which leaves `extern crate ms_std_crypto` out of the archive. Targets without the libraries keep the Rust crate until their wiring lands (then delete `crates/ms-std-crypto`).
+The Rust crates `ms-std-crypto` and `ms-std-regex` are deleted: every target takes the C natives, so there is no per-module selection left.
 
 Go parity that OpenSSL does not give for free, each found by the oracle: only the first DER element of a key is read; an EC private key is read from the scalar alone and the public point is recomputed (an embedded one is ignored, but the curve OIDs must name P-256, P-384 or P-521); a public EC or RSA key must re-encode to the same DER; an RSA private key must pass `EVP_PKEY_check` and re-encode identically; an RSA public key must pass `EVP_PKEY_public_check` (even moduli fail at use); X25519 and Ed25519 keys have one fixed DER shape; an all-zero X25519 secret is refused; AES-CBC bad padding is one error (`AuthenticationFailed`) for every bad case.
 
