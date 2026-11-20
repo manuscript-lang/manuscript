@@ -234,6 +234,21 @@ fn func_label(m: &Module, index: usize) -> String {
     })
 }
 
+/// The names a trace shows for functions whose printed name differs from their own (a name with
+/// spaces, such as a test's, is sanitized; a duplicate gets `.N`): one `printed<TAB>name` line each,
+/// in the order [`print_module_unique`] prints them.
+pub fn display_names(m: &Module) -> String {
+    let renamed = find_renamed(m);
+    let mut o = String::new();
+    for (i, f) in m.funcs.iter().enumerate() {
+        let printed = renamed.get(&i).cloned().unwrap_or_else(|| f.name.clone());
+        if printed != f.name {
+            let _ = writeln!(o, "{printed}\t{}", f.name);
+        }
+    }
+    o
+}
+
 /// Renders a module as canonical text.
 pub fn print_module(m: &Module) -> String {
     print_module_with(m, false)
