@@ -779,7 +779,6 @@ static bool body_if_statement(MsBody *b, const MsStmt *s) {
     return then_falls || else_falls;
 }
 
-static void body_close_scope(MsBody *b, uint32_t scope_start);
 
 /* Whether `callee` names the standard library's `range`. */
 static bool body_is_range(const MsBody *b, const MsExpr *callee) {
