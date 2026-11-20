@@ -124,6 +124,36 @@ static void qbe_bytes_push(QCx *c, const MirInst *inst, uint32_t block, uint32_t
     ms_buf_putc(o, '\n');
 }
 
+/* `bytes`, `list.const`, `list.const.view`: constant data. The view and the bytes borrow it (capacity
+ * 0, nothing frees them); `list.const` copies it into a fresh block. */
+static bool qbe_const_data(QCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const uint32_t id = (uint32_t)inst->imm.i;
+    const bool bytes = inst->op == MOP_BytesLit;
+    const uint32_t n = bytes ? c->m->blobs[id].len : c->m->list_consts[id].n;
+    if (n == 0) {
+        ms_buf_printf(o, "\t%%v%u =l copy 0\n\t%%v%u.1 =l copy 0\n\t%%v%u.2 =l copy 0\n", inst->res, inst->res,
+                      inst->res);
+        return true;
+    }
+    const uint32_t sym = bytes ? c->data->blobs[id] : c->data->list_consts[id];
+    if (c->data == NULL || sym == MIR_NONE) {
+        c->why = "constant data without a symbol";
+        return false;
+    }
+    if (inst->op == MOP_ListConst) {
+        const uint32_t size = n * mir_list_elem_size(c->layouts, c->f->values[inst->res]);
+        ms_buf_printf(o, "\t%%v%u =l call $msrt_alloc(l %u)\n\tcall $memcpy(l %%v%u, l ", inst->res, size, inst->res);
+        qbe_ref(c, o, (MirRef){.kind = MT_DATA, .index = sym});
+        ms_buf_printf(o, ", l %u)\n\t%%v%u.1 =l copy %u\n\t%%v%u.2 =l copy %u\n", size, inst->res, n, inst->res, n);
+        return true;
+    }
+    ms_buf_printf(o, "\t%%v%u =l copy ", inst->res);
+    qbe_ref(c, o, (MirRef){.kind = MT_DATA, .index = sym});
+    ms_buf_printf(o, "\n\t%%v%u.1 =l copy %u\n\t%%v%u.2 =l copy 0\n", inst->res, n, inst->res);
+    return true;
+}
+
 /* The string operations here; `*handled` says whether `inst` is one. */
 static bool qbe_str_op(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part, bool *handled) {
     *handled = true;
@@ -132,6 +162,8 @@ static bool qbe_str_op(QCx *c, const MirInst *inst, uint32_t block, uint32_t ind
     case MOP_StrAsciiLen: qbe_str_ascii_len(c, inst); return true;
     case MOP_StrAscii: qbe_str_ascii(c, inst); return true;
     case MOP_StrByte: qbe_str_byte(c, inst, block, index); return true;
+    case MOP_BytesLit: case MOP_ListConst: case MOP_ListConstView: return qbe_const_data(c, inst);
+    case MOP_OptViewAt: case MOP_OptAddr: qbe_copy_leaf(c, inst->res, 0, inst->args[0], 0); return true;
     case MOP_BytesPush: qbe_bytes_push(c, inst, block, part); return true;
     default:
         *handled = false;
