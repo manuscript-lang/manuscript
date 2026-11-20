@@ -28,7 +28,6 @@ macro_rules! sym_prefix {
 
 pub mod alloc;
 pub mod bits;
-pub mod cabi;
 pub mod cancel;
 pub mod desc;
 pub mod dropq;

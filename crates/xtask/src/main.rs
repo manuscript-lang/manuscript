@@ -367,7 +367,8 @@ fn check_c_abi(
                 return Err(format!("{name} is listed in two runtime/symbols files"));
             }
             // `ms_sys_*` is the runtime's own door to the OS (ms_rt/sys.h): not natives, so no recorded signature.
-            if name.starts_with("ms_sys_") {
+            // `ms_*_v1` is the versioned C ABI of user extern shims (ms_rt/cabi.h), declared in ms_abi.h.
+            if name.starts_with("ms_sys_") || name.ends_with("_v1") {
                 continue;
             }
             let Some((params, ret)) = declared.get(*name) else {
