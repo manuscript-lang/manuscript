@@ -25,8 +25,8 @@ export fn entity_index(name: String) Int:
 	return -1
 
 // The sorted names and their texts are balanced `if` trees over the index: a `match`
-// this large is a linear chain, and a lookup bisects, so each lookup stays at about 11
-// tests.
+// this large is far slower, and a lookup bisects, so each lookup stays at about 11 tests.
+// Workaround for issue #4635; replace the trees with a flat `match` once it is fixed.
 fn entity_name(index: Int) String:
 	if index < 1115:
 		if index < 557:
