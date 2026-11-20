@@ -35,6 +35,10 @@ fn reply(var conn: Connection, status: String, extra: String, body: String) Void
 		f"HTTP/1.1 {status}\r\nContent-Length: {body.length()}\r\n{extra}\r\n{body}",
 	)
 
+fn if_typed(head: String) String:
+	if head.lower().contains("content-type:"): return "typed"
+	return "plain"
+
 // Serves requests on one connection until the client leaves.
 fn serve_one(var conn: Connection) Void!:
 	while true:
@@ -45,6 +49,10 @@ fn serve_one(var conn: Connection) Void!:
 				reply(conn, "200 OK", "X-Seen: yes\r\n", "hi")?
 			else if text.starts_with("GET /old "):
 				reply(conn, "302 Found", "Location: /hello\r\n", "")?
+			else if text.starts_with("POST /moved "):
+				reply(conn, "302 Found", "Location: /ct\r\n", "")?
+			else if text.starts_with("GET /ct "):
+				reply(conn, "200 OK", "", if_typed(text))?
 			else if text.starts_with("POST /echo "):
 				reply(conn, "200 OK", "", "posted")?
 			else:
@@ -77,6 +85,12 @@ fn run(base: String) Void!:
 		FetchOptions(method: HttpMethod.Post, body: FetchBody.Text("data")),
 	).wait()?
 	show("post", posted.text().get_or("?"))
+
+	moved := fetch(
+		f"{base}/moved",
+		FetchOptions(method: HttpMethod.Post, body: FetchBody.Text("data")),
+	).wait()?
+	show("moved", moved.text().get_or("?"))
 
 	buffered := request(HttpMethod.Get, f"{base}/hello")?
 	show("request", f"{buffered.head.status} {buffered.body.length()}")
@@ -113,7 +127,7 @@ export fn main() Int:
 		)
 
 		// One connection for each request that reaches the server.
-		for turn in 0..6:
+		for turn in 0..7:
 			if var conn = listener.accept().wait():
 				_served := serve_one(conn)
 				void conn.close()

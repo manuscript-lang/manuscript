@@ -31,6 +31,8 @@ typedef enum MsBuiltin {
     MS_BI_TASKGROUP, MS_BI_TESTHOOKS
 } MsBuiltin;
 
+size_t ms_primitive_count(void);              /* the primitive types, the one list every pass reads */
+const char *ms_primitive_name(size_t index);  /* `Bool`, `Int`, ...: in the order a scope declares them */
 MsBuiltin ms_builtin_primitive(MsStr name);       /* `Int`, `String`, ...; MS_B_NONE otherwise */
 MsBuiltin ms_builtin_from_id(MsStr id);           /* `@std/List`, ...; MS_B_NONE otherwise */
 MsBuiltin ms_builtin_source(MsStr module, MsStr name); /* `@std/time.ms` + `Duration`, ... */

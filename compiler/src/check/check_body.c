@@ -43,16 +43,35 @@ bool ms_body_is_plain_value(const MsBody *b, MsTy ty) {
     return body_is_value_type(b, ty) || (ty != MS_TY_NONE && ms_ty_kind(&b->c->tys, ty) == MS_K_VARIABLE);
 }
 
-/* A `type`, `enum` or interface without type parameters. */
+static bool body_is_admitted(const MsBody *b, MsTy ty);
+
+/* A `type`, `enum` or interface the program declares, whose type arguments (if it has any) are
+ * themselves admitted. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
     const uint32_t def = tys->def[ty];
-    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || tys->nargs[ty] != 0 || def == 0) {
+    if ((kind != MS_K_TYPE && kind != MS_K_ALTERNATIVE && kind != MS_K_CONTRACT) || def == 0) {
         return false;
     }
     const MsSymId sym = def - 1;
-    return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
+    if (sym >= b->c->syms.count || b->c->syms.kind[sym] != MS_SYM_TYPE) {
+        return false;
+    }
+    // An argument that must meet a bound (`K: Hashable`) is checked against it by the Rust checker.
+    if (tys->nargs[ty] == 0) {
+        return true;
+    }
+    const MsDef *definition = ms_def(b->c, sym);
+    if (definition == NULL || definition->nvars < tys->nargs[ty]) {
+        return false;
+    }
+    for (uint32_t i = 0; i < tys->nargs[ty]; i++) {
+        if (!body_is_admitted(b, ms_ty_args(tys, ty)[i]) || ms_var_info(b->c, definition->vars[i])->nbounds != 0) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static bool body_text_is(const MsBody *b, MsSym name, const char *text);
@@ -1447,12 +1466,16 @@ static bool body_is_test_fixture(const MsBody *b, const MsFunc *fn) {
     return false;
 }
 
-static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
-    const MsFunc *fn = &d->u.fn;
-    if (body_is_test_fixture(b, fn)) {
-        return;
-    }
-    const MsTy sig = b->c->syms.ty[sym];
+/* The receiver of a method: `self`, of the receiver's type, borrowed unless the method is `var`. */
+typedef struct BodySelf {
+    MsTy ty;
+    bool mutating;
+} BodySelf;
+
+/* Checks one function or method body; `node` is the declaration node that `body_checked` and the
+ * bindings' `callable` name. */
+static void body_check_callable(MsBody *b, uint32_t node, MsPos pos, bool exported, const MsFunc *fn, MsTy sig,
+                                const BodySelf *self) {
     if (fn->external || !body_signature_supported(b, fn, sig)) {
         return;
     }
@@ -1460,12 +1483,16 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
     const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
     b->first_binding = first_binding;
-    b->function = d->id;
+    b->function = node;
     b->supported = true;
     b->result = b->c->tys.result[sig];
-    if (d->is_exported) {
+    if (exported) {
         BodySeen seen = {.count = 0};
-        body_expose(b, sig, d->pos, &seen);
+        body_expose(b, sig, pos, &seen);
+    }
+    if (self != NULL) {
+        (void)ms_body_bind(b, ms_intern_cstr(b->c->names, "self"), self->ty, node, pos,
+                           self->mutating ? MS_BIND_MUTABLE : 0, MS_ROLE_SELF);
     }
     const MsTyParam *params = ms_ty_params(&b->c->tys, sig);
     for (uint32_t i = 0; i < fn->params.len && b->supported; i++) {
@@ -1473,13 +1500,58 @@ static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
         (void)ms_body_bind(b, params[i].name, params[i].ty, fn->params.ptr[i]->id, fn->params.ptr[i]->pos, flags, MS_ROLE_PARAM);
     }
     if (b->supported) {
-        body_statements(b, &fn->body, d->pos);
+        body_statements(b, &fn->body, pos);
     }
     if (b->supported) {
-        b->facts->body_checked[d->id] = true;
+        b->facts->body_checked[node] = true;
         body_commit_diags(b, diags_start);
     } else {
         body_undo(b, first_binding, written_start, diags_start);
+    }
+}
+
+static void body_check_function(MsBody *b, const MsDecl *d, MsSymId sym) {
+    if (!body_is_test_fixture(b, &d->u.fn)) {
+        body_check_callable(b, d->id, d->pos, d->is_exported, &d->u.fn, b->c->syms.ty[sym], NULL);
+    }
+}
+
+/* The methods an impl of this module writes, each against its row of the method table: `self` of
+ * the receiver's type, then the parameters of the row's signature. A method that moves its
+ * receiver, a generic impl or method, and a receiver the pass cannot hold stay with the Rust checker. */
+static void body_check_methods(MsBody *b) {
+    if (b->methods == NULL) {
+        return;
+    }
+    const MsMethods *m = &b->methods->methods;
+    const MsMethod **rows = ms_method_rows(b->c, b->module, m);
+    for (uint32_t i = 0; i < m->count; i++) {
+        const MsMethod *method = rows[i];
+        if (method == NULL || m->nvars[i] != 0 || (m->access[i] & MS_METHOD_CONSUMING) != 0 ||
+            !body_is_admitted(b, m->receiver[i])) {
+            continue;
+        }
+        // A method written once for a set of receivers is expanded into one copy per member, all
+        // at the same position: the original is the one Rust checks, so the copies are left to it.
+        bool shared = false;
+        for (uint32_t k = 0; k < m->count; k++) {
+            shared = shared || (k != i && rows[k] != NULL && rows[k]->pos.offset == method->pos.offset);
+        }
+        if (shared) {
+            continue;
+        }
+        // A diagnostic already reported at the method's name is a declaration problem the Rust
+        // checker words and places; the body stays with it.
+        const MsModuleRow *row = &b->c->mods[b->module];
+        bool reported = false;
+        for (uint32_t k = 0; k < row->ndiags; k++) {
+            reported = reported || row->diags[k].diag.pos.offset == method->pos.offset;
+        }
+        if (reported) {
+            continue;
+        }
+        const BodySelf self = {.ty = m->receiver[i], .mutating = (m->access[i] & MS_METHOD_MUTATING) != 0};
+        body_check_callable(b, method->id, method->pos, false, &method->func, m->ty[i], &self);
     }
 }
 
@@ -1674,6 +1746,7 @@ void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *meth
             }
         }
     }
+    body_check_methods(&b);
     ms_buf_free(&b.written);
     ms_buf_free(&b.diags);
 }
