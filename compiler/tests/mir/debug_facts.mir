@@ -1,0 +1,42 @@
+module "main"
+file 0 "a.ms"
+file 1 "b.ms"
+type Pair indirect { x: int, y: int }
+desc_glue Pair @eq_stub @hash_stub
+entry @main
+
+fn @main() -> int export !0:1:1 {
+b0:
+  %0: int = iconst 1 !0:2:3
+  %1: int = call @eq_hash_stub () !0:3:3:1
+  %2: int = iadd %0, %1 !0:4:3:1
+  ret %2 !0:5:3
+  scope "inlined fn" 1 0 3
+  name %0 "x" local 0
+  name %1 "y" local 1
+  exact %2
+}
+
+fn @eq_hash_stub() -> int {
+b0:
+  %0: int = iconst 7
+  ret %0
+}
+
+fn @hash_stub(%0: ptr) -> int {
+b0:
+  %1: int = iconst 3
+  ret %1
+}
+
+fn @eq_stub(%0: ptr, %1: ptr) -> bool {
+b0:
+  %2: bool = bconst true
+  ret %2
+}
+
+fn @flags(%0: ptr) -> int ret_borrowed ret_view scoped keeps_scoped unwind_only raw_scratch slot_close(Pair) capture_closers(0 @hash_stub) {
+b0:
+  %1: int = iconst 1
+  ret %1
+}
