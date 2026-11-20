@@ -1,0 +1,35 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+
+fn @msmain() -> int {
+b0:
+  %big: int = iconst 9223372036854775807
+  %two: int = iconst 2
+  %hi: int = umulhi %big, %two
+  %r: int = rotl %big, %two
+  %z: int = clz %two
+  %t: int = ctz %two
+  %p: int = popcnt %big
+  %n: int = ineg %two
+  %f: float = fconst 16.0
+  %s: float = fsqrt %f
+  %c1: int = iadd %hi, %t
+  %c2: int = iadd %c1, %z
+  %c3: int = iadd %c2, %p
+  %c4: int = iadd %c3, %n
+  %c5: int = iadd %c4, %p
+  %a: float = fconst 4.0
+  %same: bool = fcmp.eq %s, %a
+  %yes: int = iconst 1000
+  %no: int = iconst 0
+  %pick: int = select %same, %yes, %no
+  %k: int = iadd %c5, %pick
+  %m: int = iconst 255
+  %o: int = and %k, %m
+  %q: int = iconst 1
+  %rr: int = rotr %q, %q
+  %rs: int = ushr %rr, %m
+  %out: int = iadd %o, %rs
+  ret %out
+}
