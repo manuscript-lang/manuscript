@@ -1,6 +1,5 @@
 //! Int and Float formatting and parsing with shortest round-trip output.
 //! ms: domain number
-// The Rust formatting bodies are compiled out of the archive once the C kernels are linked (runtime/core/fmt.c).
 use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
 };
@@ -8,22 +7,17 @@ use ms_rt_abi::{
 // The moved symbols (runtime/symbols/num.txt) are defined by the C runtime; Rust callers and tests reach them here.
 unsafe extern "C-unwind" {
     pub fn msrt_float_compare(a: f64, b: f64) -> i64;
+    pub fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8;
     pub fn msrt_int_compare(a: i64, b: i64) -> i64;
     pub fn msrt_uint_compare(a: i64, b: i64) -> i64;
     pub fn msrt_uint_to_float(v: i64) -> f64;
     pub fn msrt_uint_to_float32(v: i64) -> f64;
-    pub fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8;
 }
 
-// The formatting kernels live in runtime/core/fmt.c. `cargo xtask runtime` links them (the symbols are listed in
-// runtime/symbols/fmt.txt) and the helpers below call them; plain `cargo test` keeps the Rust bodies.
+// The formatting kernels live in runtime/core/fmt.c; the helpers below call them.
 unsafe extern "C-unwind" {
     fn msrt_fmt_u64(value: u64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
-}
-unsafe extern "C-unwind" {
     fn msrt_fmt_i64(value: i64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
-}
-unsafe extern "C-unwind" {
     fn msrt_fmt_radix(
         magnitude: u64,
         radix: u32,
@@ -32,14 +26,8 @@ unsafe extern "C-unwind" {
         capacity: usize,
         length: *mut usize,
     ) -> bool;
-}
-unsafe extern "C-unwind" {
     fn msrt_fmt_float(value: f64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
-}
-unsafe extern "C-unwind" {
     fn msrt_fmt_float32(value: f64, out: *mut u8, capacity: usize, length: *mut usize) -> bool;
-}
-unsafe extern "C-unwind" {
     fn msrt_fmt_float_precision(
         value: f64,
         format: u8,
@@ -64,13 +52,11 @@ fn written(buffer: &mut [u8], call: impl FnOnce(*mut u8, usize, *mut usize) -> b
 
 /// Formats `v` in decimal into `tmp`, returning the used tail.
 pub fn format_i64(v: i64, tmp: &mut [u8; 20]) -> &[u8] {
-    {
-        // SAFETY: `written` passes the buffer's own pointer and length.
-        let n = written(tmp, |out, capacity, length| unsafe {
-            msrt_fmt_i64(v, out, capacity, length)
-        });
-        &tmp[..n]
-    }
+    // SAFETY: `written` passes the buffer's own pointer and length.
+    let n = written(tmp, |out, capacity, length| unsafe {
+        msrt_fmt_i64(v, out, capacity, length)
+    });
+    &tmp[..n]
 }
 
 /// Appends `v` in decimal.
@@ -80,21 +66,19 @@ pub fn push_i64(out: &mut Vec<u8>, v: i64) {
 
 /// Lowercase radix formatting (`radix` in 2..=36).
 pub fn format_radix(v: i64, radix: u32, out: &mut Vec<u8>) {
-    {
-        let mut tmp = [0u8; 65];
-        // SAFETY: `written` passes the buffer's own pointer and length.
-        let n = written(&mut tmp, |out, capacity, length| unsafe {
-            msrt_fmt_radix(
-                v.unsigned_abs(),
-                radix,
-                u8::from(v < 0),
-                out,
-                capacity,
-                length,
-            )
-        });
-        out.extend_from_slice(&tmp[..n])
-    }
+    let mut tmp = [0u8; 65];
+    // SAFETY: `written` passes the buffer's own pointer and length.
+    let n = written(&mut tmp, |out, capacity, length| unsafe {
+        msrt_fmt_radix(
+            v.unsigned_abs(),
+            radix,
+            u8::from(v < 0),
+            out,
+            capacity,
+            length,
+        )
+    });
+    out.extend_from_slice(&tmp[..n]);
 }
 
 /// `String.parse_int`: optional sign, ASCII digits only; overflow is `None`.
@@ -406,26 +390,22 @@ pub fn float_to_string(v: f64) -> Vec<u8> {
 
 /// `Float.to_string` without an allocation.
 pub fn float_text(v: f64) -> FloatText {
-    {
-        let mut out = FloatText::new();
-        // SAFETY: `written` passes the buffer's own pointer and length.
-        out.len = written(&mut out.bytes, |bytes, capacity, length| unsafe {
-            msrt_fmt_float(v, bytes, capacity, length)
-        });
-        out
-    }
+    let mut out = FloatText::new();
+    // SAFETY: `written` passes the buffer's own pointer and length.
+    out.len = written(&mut out.bytes, |bytes, capacity, length| unsafe {
+        msrt_fmt_float(v, bytes, capacity, length)
+    });
+    out
 }
 
 /// `Float32.to_string`: the shortest digits that round-trip through binary32.
 pub fn float32_text(v: f64) -> FloatText {
-    {
-        let mut out = FloatText::new();
-        // SAFETY: as in `float_text`.
-        out.len = written(&mut out.bytes, |bytes, capacity, length| unsafe {
-            msrt_fmt_float32(v, bytes, capacity, length)
-        });
-        out
-    }
+    let mut out = FloatText::new();
+    // SAFETY: as in `float_text`.
+    out.len = written(&mut out.bytes, |bytes, capacity, length| unsafe {
+        msrt_fmt_float32(v, bytes, capacity, length)
+    });
+    out
 }
 
 /// `Float32.to_string` as a vector.
@@ -439,14 +419,12 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
     if digits < minimum || digits > 100 {
         return None;
     }
-    {
-        let mut buf = [0u8; 160];
-        // SAFETY: `written` passes the buffer's own pointer and length.
-        let n = written(&mut buf, |out, capacity, length| unsafe {
-            msrt_fmt_float_precision(v, format, digits, out, capacity, length)
-        });
-        Some(buf[..n].to_vec())
-    }
+    let mut buf = [0u8; 160];
+    // SAFETY: `written` passes the buffer's own pointer and length.
+    let n = written(&mut buf, |out, capacity, length| unsafe {
+        msrt_fmt_float_precision(v, format, digits, out, capacity, length)
+    });
+    Some(buf[..n].to_vec())
 }
 
 // ---------------------------------------------------------------------------
@@ -565,25 +543,21 @@ pub extern "C-unwind" fn msrt_uint_rem(a: i64, b: i64) -> i64 {
 
 /// `UInt64` in decimal digits.
 pub fn format_u64(v: u64, tmp: &mut [u8; 20]) -> &[u8] {
-    {
-        // SAFETY: `written` passes the buffer's own pointer and length.
-        let n = written(tmp, |out, capacity, length| unsafe {
-            msrt_fmt_u64(v, out, capacity, length)
-        });
-        &tmp[..n]
-    }
+    // SAFETY: `written` passes the buffer's own pointer and length.
+    let n = written(tmp, |out, capacity, length| unsafe {
+        msrt_fmt_u64(v, out, capacity, length)
+    });
+    &tmp[..n]
 }
 
 /// `UInt64.to_string_radix`.
 pub fn format_radix_u64(v: u64, radix: u32, out: &mut Vec<u8>) {
-    {
-        let mut tmp = [0u8; 65];
-        // SAFETY: `written` passes the buffer's own pointer and length.
-        let n = written(&mut tmp, |out, capacity, length| unsafe {
-            msrt_fmt_radix(v, radix, 0, out, capacity, length)
-        });
-        out.extend_from_slice(&tmp[..n])
-    }
+    let mut tmp = [0u8; 65];
+    // SAFETY: `written` passes the buffer's own pointer and length.
+    let n = written(&mut tmp, |out, capacity, length| unsafe {
+        msrt_fmt_radix(v, radix, 0, out, capacity, length)
+    });
+    out.extend_from_slice(&tmp[..n]);
 }
 
 #[cfg(test)]
@@ -596,6 +570,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_unsafe)]
     fn uint64_helpers() {
         // SAFETY: the C numeric natives take and return plain values.
         unsafe {
@@ -614,6 +589,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_unsafe)]
     fn uint64_to_float32_rounds_once() {
         // SAFETY: the C numeric natives take and return plain values.
         unsafe {

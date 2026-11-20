@@ -20,6 +20,8 @@ static inline bool ms_ascii_is_alnum(uint8_t b) { return ms_ascii_is_alpha(b) ||
 static inline bool ms_ascii_is_ident_start(uint8_t b) { return ms_ascii_is_alpha(b) || b == '_'; }
 /* An ASCII letter, digit or underscore: any byte of an identifier. */
 static inline bool ms_ascii_is_ident(uint8_t b) { return ms_ascii_is_alnum(b) || b == '_'; }
+/* Blank as C's isspace in the C locale: space, \t, \n, \v, \f, \r. */
+static inline bool ms_ascii_is_space(uint8_t b) { return b == ' ' || (b >= '\t' && b <= '\r'); }
 static inline bool ms_ascii_is_hex(uint8_t b) {
     return ms_ascii_is_digit(b) || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F');
 }

@@ -6,7 +6,6 @@
 //! indices and lengths count Unicode scalars; a string whose scalar count equals its byte length
 //! is ASCII, which every indexing operation exploits.
 //! ms: domain string
-#![cfg_attr(ms_c = "msrt_string_fmt2", allow(dead_code))]
 use crate::alloc;
 use crate::fault;
 use crate::obj;
@@ -1882,6 +1881,28 @@ pub fn count_copy(kind: usize, bytes: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The f-string joins are C (runtime/core/string_join.c); the unit tests link the C runtime.
+    unsafe extern "C-unwind" {
+        fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal);
+        fn msrt_string_fmt3(mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal);
+        fn msrt_string_append_fmt1(s: *const StrVal, mask: i64, a: usize, out: *mut StrVal);
+        fn msrt_string_append_fmt2(
+            s: *const StrVal,
+            mask: i64,
+            a: usize,
+            b: usize,
+            out: *mut StrVal,
+        );
+        fn msrt_string_append_fmt3(
+            s: *const StrVal,
+            mask: i64,
+            a: usize,
+            b: usize,
+            c: usize,
+            out: *mut StrVal,
+        );
+    }
 
     #[test]
     fn find_short_agrees_with_a_naive_search() {
