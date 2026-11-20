@@ -1698,6 +1698,7 @@ static const char ll_declarations[] =
     "declare void @msrt_fault_depth() cold noreturn nounwind\n"
     "declare i64 @llvm.fptosi.sat.i64.f64(double)\n"
     "declare ptr @llvm.frameaddress.p0(i32)\n"
+    "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)\n"
     "@msrt_ascii_chars = external global [0 x i8]\n"
     "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n"

@@ -1431,7 +1431,24 @@ static bool fd_ready(uint64_t id, uint32_t bits) {
     return true;
 }
 
+static void drop_queued_work(void *work) { msrt_obj_drop((MsObj *)__builtin_assume_aligned(work, _Alignof(MsObj))); }
+
+/* Mail nobody will read: frees the result block or fault text it carries. Pipe credit no longer matters. */
+static void discard_mail(MsMail *mail) {
+    if (mail->kind != MS_MAIL_PROMISE) {
+        return;
+    }
+    const uint32_t op = (uint32_t)(mail->a & 0xffu);
+    if (op == MAIL_DONE && mail->p != NULL) {
+        msrt_slot_drop((const MsTypeDesc *)mail->q, mail->p);
+        msrt_free(mail->p);
+    } else if (op == MAIL_ENDED) {
+        msrt_free(mail->p);
+    }
+}
+
 void ms_promises_teardown(void) {
+    ms_queue_release(ms_sched()->isolate, drop_queued_work); /* work no thief took; stolen work belongs to the thief */
     ms_groups_teardown();
     ms_cancel_teardown();
     for (size_t row = 0; row < table.count; row++) {
@@ -1457,4 +1474,5 @@ void ms_promise_hooks(MsSchedHooks *hooks) {
     hooks->pending = work_pending;
     ms_group_hooks(hooks);
     hooks->teardown = ms_promises_teardown;
+    hooks->discard_mail = discard_mail;
 }

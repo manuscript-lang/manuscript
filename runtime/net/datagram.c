@@ -9,7 +9,7 @@
 #include "../std/abi.h"
 #include "addr_text.h"
 #include "ms_rt/alloc.h"
-#include "datagram.h"
+#include "ms_rt/net.h"
 #include "ms_rt/sys.h"
 #include "ms_rt/sys_net.h"
 #include "ms_sched.h"
