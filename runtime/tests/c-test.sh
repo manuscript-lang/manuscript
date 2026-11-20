@@ -14,6 +14,6 @@ done
 for t in runtime/tests/std_*.c; do
     name=$(basename "$t" .c)
     # shellcheck disable=SC2046
-    cc $flags $(pkg-config --cflags libpcre2-8 libcrypto) "$t" runtime/std/*.c $(pkg-config --libs libpcre2-8 libcrypto) -lm -o "$out/$name"
+    cc $flags $(pkg-config --cflags libpcre2-8 libcrypto) "$t" runtime/std/*.c $(sh runtime/third_party/libs.sh libs pcre2 crypto) -lm -o "$out/$name"
     "$out/$name"
 done
