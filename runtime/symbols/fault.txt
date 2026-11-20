@@ -1,0 +1,2 @@
+# Symbols of ms_rt/fault.h defined in C: none yet. The header holds the fault families and exit statuses; the faults
+# generated code raises (msrt_fault and friends) move with the task layer.
