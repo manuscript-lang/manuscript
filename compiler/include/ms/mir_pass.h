@@ -68,6 +68,10 @@ bool mir_unwind(MirModule *m);
  * False with `error` set to `function: message` when a function's ownership cannot be expressed. */
 bool mir_elaborate(MirModule *m, MsBuf *error);
 
+/* The same, and with `cancel_exits` a function of a task program that parks also gets explicit
+ * cancel exits when its owners allow them (port of cancel_exit.rs). */
+bool mir_elaborate_with(MirModule *m, bool cancel_exits, MsBuf *error);
+
 /* cancel_edges: after every call that can park, test the task's `unwinding` byte and leave the
  * function through one cancel exit that runs the registered cleanups. Only on modules that start
  * tasks; the caller decides whether edges are switched on (`MS_CANCEL_EDGES`). */

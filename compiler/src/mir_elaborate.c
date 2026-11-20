@@ -223,7 +223,7 @@ static void el_tag_params(ElCx *cx) {
     }
 }
 
-static void el_tags(ElCx *cx) {
+void el_tags(ElCx *cx) {
     const MirFunc *f = cx->f;
     cx->tag_scope = MS_NEW_N(cx->ma, int64_t, f->nvalues + 1);
     cx->tag_kind = MS_NEW_N(cx->ma, int64_t, f->nvalues + 1);
@@ -429,6 +429,9 @@ static bool el_states(ElCx *cx, const MirBlock *order, uint32_t norder, ElState 
 bool el_function(ElCx *cx, MirModule *m, MirFunc *f) {
     cx->f = f;
     el_tags(cx);
+    if (cx->all != NULL && !f->explicit_cancel) {
+        el_cancel_convert(cx->all, m, f, cx);
+    }
     MirBlock *order;
     const uint32_t norder = mir_rpo(cx->ma, f, &order);
     ElState *entry = MS_NEW_N(cx->ma, ElState, f->nblocks + 1);
@@ -467,6 +470,7 @@ static bool el_run_one(MirModule *m, uint32_t fi, const ElCx *shared, MsBuf *err
     MsArena arena = {0};
     cx.ma = &arena;
     cx.m = m;
+    cx.fi = fi;
     /* The function is out of the module while it is rewritten; a stand-in with its signature stays,
      * so a recursive call still reads which arguments the callee consumes. */
     MirFunc f = m->funcs[fi];
@@ -480,41 +484,83 @@ static bool el_run_one(MirModule *m, uint32_t fi, const ElCx *shared, MsBuf *err
     return ok;
 }
 
-bool mir_elaborate(MirModule *m, MsBuf *error) {
-    ElCx shared = {.close = MIR_NONE, .discard = MIR_NONE, .cancel = MIR_NONE,
-                   .shield_enter = MIR_NONE, .shield_exit = MIR_NONE};
-    shared.close = mir_func_by_name(m, mir_name(m, "close", 5));
-    bool any_raw = false, closes = false;
+/* Declares the runtime entries scope closing calls. */
+static void el_declare_runtime(MirModule *m, ElCx *shared) {
+    const MirTy one = MIR_INT;
+    shared->discard = mir_extern_get(m, EL_DISCARD, &one, 1, MIR_VOID, true, MR_CLEANUP_DISCARD);
+    shared->cancel = mir_extern_get(m, EL_CANCEL, &one, 1, MIR_VOID, true, MR_NONE);
+    shared->shield_enter = mir_extern_get(m, EL_SHIELD_ENTER, NULL, 0, MIR_VOID, true, MR_SHIELD_ENTER);
+    shared->shield_exit = mir_extern_get(m, EL_SHIELD_EXIT, NULL, 0, MIR_VOID, true, MR_SHIELD_EXIT);
+}
+
+/* Whether any Raw function closes by hand, and whether any is Raw at all. */
+static bool el_scan(const MirModule *m, bool *closes) {
+    bool any_raw = false;
     for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
         const MirFunc *f = &m->funcs[fi];
-        any_raw = any_raw || el_is_raw(f);
-        for (uint32_t b = 0; el_is_raw(f) && b < f->nblocks; b++) {
+        const bool raw = el_is_raw(f);
+        any_raw = any_raw || raw;
+        for (uint32_t b = 0; raw && b < f->nblocks; b++) {
             for (uint32_t i = 0; i < f->blocks[b].ninsts; i++) {
                 const MirInst *inst = &f->blocks[b].insts[i];
-                closes = closes || (inst->op == MOP_ScopeOwn && inst->imm.b >= 1);
+                *closes = *closes || (inst->op == MOP_ScopeOwn && inst->imm.b >= 1);
             }
         }
     }
-    if (!any_raw) {
-        return true;
-    }
-    if (closes) {
-        const MirTy one = MIR_INT;
-        shared.discard = mir_extern_get(m, EL_DISCARD, &one, 1, MIR_VOID, true, MR_CLEANUP_DISCARD);
-        shared.cancel = mir_extern_get(m, EL_CANCEL, &one, 1, MIR_VOID, true, MR_NONE);
-        shared.shield_enter = mir_extern_get(m, EL_SHIELD_ENTER, NULL, 0, MIR_VOID, true, MR_SHIELD_ENTER);
-        shared.shield_exit = mir_extern_get(m, EL_SHIELD_EXIT, NULL, 0, MIR_VOID, true, MR_SHIELD_EXIT);
-    }
+    return any_raw;
+}
+
+/* Runs the pass over every function that needs it, callee first when cancel exits are built. */
+static bool el_run_all(MirModule *m, const ElCx *shared, MsBuf *error) {
+    const ElCancel *all = shared->all;
+    MsArena arena = {0};
+    const uint32_t *order = el_callee_first(&arena, m, all);
     const uint32_t nfuncs = m->nfuncs;
-    for (uint32_t fi = 0; fi < nfuncs; fi++) {
-        if (el_is_raw(&m->funcs[fi]) && !el_run_one(m, fi, &shared, error)) {
-            return false;
+    bool ok = true;
+    if (all != NULL) {
+        el_settle_restores(shared->all, m, order, shared);
+    }
+    for (uint32_t k = 0; k < nfuncs && ok; k++) {
+        const uint32_t fi = order[k];
+        /* A function with `var` slots gets cancel exits even without owners of its own. */
+        const bool slots = all != NULL && m->funcs[fi].nnoalias > 0;
+        if (!el_is_raw(&m->funcs[fi]) && !slots) {
+            continue;
+        }
+        const bool restores = all != NULL && all->restores[fi];
+        ok = el_run_one(m, fi, shared, error);
+        if (ok && slots && all->restores[fi] != restores) {
+            const MirFunc *f = &m->funcs[fi];
+            el_report(m, f, "cancel exits disagree with the restore set", error);
+            ok = false;
         }
     }
-    /* The helper references are consumed: later passes renumber functions. */
-    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
-        m->funcs[fi].has_slot_result = false;
-        m->funcs[fi].has_close_exit = false;
-    }
-    return true;
+    ms_arena_free(&arena);
+    return ok;
 }
+
+bool mir_elaborate_with(MirModule *m, bool cancel_exits, MsBuf *error) {
+    ElCx shared = {.close = MIR_NONE, .discard = MIR_NONE, .cancel = MIR_NONE,
+                   .shield_enter = MIR_NONE, .shield_exit = MIR_NONE};
+    shared.close = mir_func_by_name(m, mir_name(m, "close", 5));
+    if (cancel_exits) {
+        shared.all = el_cancel_new(m);
+    }
+    bool closes = false;
+    bool ok = true;
+    if (el_scan(m, &closes)) {
+        if (closes) {
+            el_declare_runtime(m, &shared);
+        }
+        ok = el_run_all(m, &shared, error);
+        /* The helper references are consumed: later passes renumber functions. */
+        for (uint32_t fi = 0; ok && fi < m->nfuncs; fi++) {
+            m->funcs[fi].has_slot_result = false;
+            m->funcs[fi].has_close_exit = false;
+        }
+    }
+    el_cancel_free(shared.all);
+    return ok;
+}
+
+bool mir_elaborate(MirModule *m, MsBuf *error) { return mir_elaborate_with(m, false, error); }

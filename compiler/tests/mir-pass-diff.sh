@@ -9,7 +9,7 @@ out=target/c-compiler/mir-pass
 mkdir -p "$out"
 fuzz=${MS_MIR_FUZZ:-600}
 seed=${MS_FUZZ_SEED:-1}
-PASSES=${MS_MIR_PASSES:-"exit_drops expand expand-nochecks expand_owned unwind cancel_edges glue glue_expand elaborate"}
+PASSES=${MS_MIR_PASSES:-"exit_drops expand expand-nochecks expand_owned unwind cancel_edges glue glue_expand elaborate elaborate-cancel"}
 
 cargo build --release --locked -p ms-mir --example c_pass_oracle
 oracle=target/release/examples/c_pass_oracle
@@ -37,6 +37,17 @@ for set in files fuzz; do
         if [ "$pass" = elaborate ] && [ "$set" = files ]; then
             { cat "$list"; git ls-files 'compiler/tests/mir/elaborate/*.mir'; } | sort -u > "$out/elaborate-list.txt"
             list="$out/elaborate-list.txt"
+        fi
+        if [ "$pass" = elaborate-cancel ] && [ "$set" = files ]; then
+            # The elaborate fixtures, made task programs, and the task fixtures themselves.
+            mkdir -p "$out/task"
+            { cat "$list"; git ls-files 'compiler/tests/mir/elaborate-cancel/*.mir'; } | sort -u > "$out/cancel-list.txt"
+            for f in $(git ls-files 'compiler/tests/mir/elaborate/*.mir'); do
+                t="$out/task/$(basename "$f")"
+                { head -1 "$f"; echo 'extern @msrt_promise_start(int) -> int spawns_task'; tail -n +2 "$f"; } > "$t"
+                echo "$t" >> "$out/cancel-list.txt"
+            done
+            list="$out/cancel-list.txt"
         fi
         tr '\n' '\0' < "$list" | xargs -0 "$oracle" pass "$pass" > "$out/$pass-$set.rust"
         tr '\n' '\0' < "$list" | xargs -0 "$bin/ms_mir_pass" pass "$pass" > "$out/$pass-$set.c"

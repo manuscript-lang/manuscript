@@ -26,6 +26,8 @@ static bool run_pass(const char *name, MirModule *m, bool *changed, MsBuf *failu
         *changed = mir_unwind(m);
     } else if (strcmp(name, "elaborate") == 0) {
         mir_elaborate(m, failure);
+    } else if (strcmp(name, "elaborate-cancel") == 0) {
+        mir_elaborate_with(m, true, failure);
     } else if (strcmp(name, "cancel_edges") == 0) {
         *changed = mir_cancel_edges(m);
     } else if (strcmp(name, "glue") == 0) {

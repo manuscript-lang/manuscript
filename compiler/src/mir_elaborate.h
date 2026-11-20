@@ -62,6 +62,8 @@ typedef struct ElCx {
     uint32_t discard, cancel, shield_enter, shield_exit; /* extern ids or MIR_NONE */
     UwHash disown_moves;    /* flagged owners a `scope.disown` ahead of the consuming op moves */
     UwHash cancel_blocks;   /* the blocks of the function's cancel exits */
+    struct ElCancel *all;   /* what cancel exits read about the module, or NULL when none are built */
+    uint32_t fi;            /* the function being walked */
     ElPart *parts;          /* interned partial-move states, id EL_PLAIN_KINDS + index */
     uint32_t nparts, cparts;
     char err[192];
@@ -154,5 +156,91 @@ bool em_cleanup_one(ElEm *em, uint32_t *at, MirValue v, ElSt s, MirValue *outcom
 
 /* The pass over one function; `f` is out of the module and the module holds its stand-in. */
 bool el_function(ElCx *cx, MirModule *m, MirFunc *f);
+void el_tags(ElCx *cx);
+
+/* ---- cancel exits (mir_elaborate_cancel.c, _sites.c, _convert.c) ----
+ *
+ * Port of cancel_exit.rs. After every call that can park, a Raw function of a task program tests
+ * the task's `unwinding` byte and leaves through a block built like an early `return`:
+ *
+ *     r = call f(..); u = call.rt msrt_unwinding(); c = ne u, 0; condbr c, leave, next
+ *     leave: call.rt msrt_unwinding_pause(); forget r; drop <untagged live owners>;
+ *            scope.end S_n; ..; scope.end S_1; br tail
+ *     tail:  call.rt msrt_unwinding_resume(); call.rt msrt_cleanup_truncate(base); %z = undef; ret %z
+ *
+ * Elaboration then turns the `scope.end` markers into the drops and closes the move state calls
+ * for. A function converts only when every owned value live at a park is a scope owner or plainly
+ * droppable; the others keep the hybrid exit. */
+
+/* A closure type and a function a `closure.new` of that type makes callable, in first-seen order. */
+typedef struct ElTarget { MirTy ty; uint32_t seq, func; } ElTarget;
+
+typedef struct ElCancel {
+    MsArena arena;
+    uint32_t nfuncs;
+    bool *parks;
+    UwTable safe;    /* per function and parameter: a slot pointer it only borrows */
+    /* Per function: converted (or free of parks), so its cancel exits leave every `var` slot
+     * parameter as the normal exit would. Starts true for every function with such a parameter and
+     * is lowered until it holds, so a cycle of callers and callees is proved together. */
+    bool *restores;
+    uint32_t unwinding, base, truncate, pause, resume; /* the runtime entries the exits call */
+    ElTarget *closures;
+    uint32_t nclosures;
+} ElCancel;
+
+/* The context for a module that starts tasks, or NULL when it does not. */
+ElCancel *el_cancel_new(MirModule *m);
+void el_cancel_free(ElCancel *all);
+
+/* The functions in the order their conversion runs: a callee before its callers (a cycle is cut
+ * where it is first met), so `restores` is known when a caller asks. Natural order without `all`. */
+uint32_t *el_callee_first(MsArena *a, const MirModule *m, const ElCancel *all);
+
+/* Whether call `inst` leaves the slot at argument `k` as its normal return would: a function whose
+ * exits restore its `var` slots, or a closure call whose possible targets all do. */
+bool el_restoring_callee(const ElCancel *all, const MirModule *m, const MirFunc *f,
+                         const MirInst *inst, uint32_t k);
+
+/* Lowers `restores` until each function that keeps it can build its exits under the others'. */
+void el_settle_restores(ElCancel *all, MirModule *m, const uint32_t *order, const ElCx *shared);
+
+/* Sorted sets of ids and plain vectors of them, in an arena. */
+typedef struct ElIds { uint32_t *v; uint32_t n, cap; } ElIds;
+bool el_ids_has(const ElIds *s, uint32_t x);
+void el_ids_add(MsArena *a, ElIds *s, uint32_t x);
+void el_ids_del(ElIds *s, uint32_t x);
+ElIds el_ids_clone(MsArena *a, const ElIds *s);
+void el_ids_push(MsArena *a, ElIds *s, uint32_t x);
+bool el_ids_contains(const ElIds *s, uint32_t x);
+void el_ids_remove_all(ElIds *s, uint32_t x);
+
+typedef struct ElPair { MirValue a, b; MirTy ty; } ElPair;
+typedef struct ElRefill {
+    MirValue slot, whole, part_slot;
+    MirTy part_ty, whole_ty;
+    MirInst fill; /* the `type.fill` the normal path runs, copied for the exit */
+} ElRefill;
+
+/* A parking call, with what is live and which scopes are open right after it. */
+typedef struct ElSite {
+    uint32_t block, inst;
+    MirValue *explicit_drops; uint32_t nexplicit; /* live owned values no open scope releases */
+    uint32_t *scopes; uint32_t nscopes;
+    ElPair *putback; uint32_t nputback;     /* (slot, value): a taken value goes back */
+    ElRefill *refills; uint32_t nrefills;   /* a part moved out is taken back, filled in, put back */
+    ElPair *returns; uint32_t nreturns;     /* (var slot, local slot, type) */
+    ElPair *slot_drops; uint32_t nslot_drops; /* (local slot, type): taken out and dropped */
+} ElSite;
+
+typedef struct ElSites { ElSite *v; uint32_t n, cap; } ElSites;
+
+/* The parking calls of `f` in block order; false when a value live at one has no rule. */
+bool el_cancel_sites(const ElCancel *all, const MirModule *m, const MirFunc *f, ElCx *cx,
+                     ElSites *out);
+
+/* Adds the cancel exits to `f`; `cx->cancel_blocks` gets the leave blocks. Does nothing when the
+ * function stays hybrid. */
+void el_cancel_convert(ElCancel *all, MirModule *m, MirFunc *f, ElCx *cx);
 
 #endif

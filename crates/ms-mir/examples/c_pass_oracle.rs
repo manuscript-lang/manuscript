@@ -60,6 +60,9 @@ fn run_pass(name: &str, m: &mut ms_mir::ir::Module) -> Result<bool, String> {
     if name == "elaborate" {
         return ms_mir::elaborate::run(m).map(|()| true);
     }
+    if name == "elaborate-cancel" {
+        return ms_mir::elaborate::run_with(m, true).map(|()| true);
+    }
     Ok(match name {
         "exit_drops" => {
             ms_mir::exit_drops::run(m);
