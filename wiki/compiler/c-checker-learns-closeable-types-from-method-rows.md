@@ -24,3 +24,10 @@ refused all such types.
   resource by `lb_mir_ty`, so every construction goes through `lb_mir_ty`, not `lr_type`.
 - A field of an owned temporary is declined: Rust holds the temporary until the statement ends,
   C drops call temporaries right after the call.
+
+- The closing operation's name is read from the `Closeable` declaration (`close_name`), never
+  spelled in C.
+- `some`/`ok`/`error` around a value that owns something wrap only a fresh value (concatenation,
+  text, record built here); a borrowed one stays an `opt.view`, which the ownership pass does not
+  decide yet, so the walk declines (`own_check_wrap`). `none` handed out is `opt.none_owned`.
+- Taking an owned payload out (`if v := opt`, `?`) is still declined.

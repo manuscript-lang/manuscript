@@ -25,8 +25,8 @@ MirTy lb_fn_ty(Lb *lb, MsTy ty) {
     if (count > LB_MAX_FN_PARAMS) {
         return MIR_NONE;
     }
-    const bool scalar = result == lb->int_ty || result == lb->float_ty || result == lb->bool_ty;
-    if (!scalar && result != lb->void_ty) {
+    const bool value = result == lb->int_ty || result == lb->float_ty || result == lb->bool_ty || result == lb->string_ty;
+    if (!value && result != lb->void_ty) {
         return MIR_NONE;
     }
     MirTy mir_params[LB_MAX_FN_PARAMS];
@@ -36,7 +36,7 @@ MirTy lb_fn_ty(Lb *lb, MsTy ty) {
             return MIR_NONE;
         }
     }
-    return mir_ty_fn(lb->m, mir_params, count, scalar ? lb_mir_ty(lb, result) : MIR_VOID, 0);
+    return mir_ty_fn(lb->m, mir_params, count, value ? lb_mir_ty(lb, result) : MIR_VOID, 0);
 }
 
 /* A name no function of the module has: `base`, else `base.1`, `base.2`, ... (what the Rust text
@@ -81,7 +81,12 @@ static uint32_t lb_thunk(Lb *lb, uint32_t func) {
     MirValue *values = MS_NEW_N(&b.scratch, MirValue, (size_t)count + 1);
     mir_b_params(&b, values, count + 1);
     const MirValue result = mir_b_call(&b, func, values + 1, count);
-    mir_b_ret(&b, ret == MIR_VOID ? mir_b_unit(&b) : result);
+    if (ret == MIR_STR && callee->ret_borrowed) { // the caller of a function value owns its String result
+        const MirImm one = {.tag = MI_INT, .i = 1};
+        mir_b_ret(&b, mir_b_emit(&b, MOP_Clone, &result, 1, one, ret));
+    } else {
+        mir_b_ret(&b, ret == MIR_VOID ? mir_b_unit(&b) : result);
+    }
     MirFunc f = {0};
     if (!mir_b_into_func(&b, &f)) {
         return MIR_NONE;
@@ -94,7 +99,7 @@ LbVal lb_function_value(Lb *lb, const MsExpr *e) {
     const uint32_t sym = lb->facts->res_ref[e->id];
     const uint32_t func = sym < lb->c->syms.count ? lb->func_of[sym] : MIR_NONE;
     const MirTy fty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
-    if (func == MIR_NONE || !lb_is_fn(lb, fty) || lb->m->funcs[func].ret_borrowed) {
+    if (func == MIR_NONE || !lb_is_fn(lb, fty)) {
         return lb_unsupported(lb);
     }
     if (lb->thunk_of[sym] == MIR_NONE) {
@@ -141,7 +146,7 @@ LbVal lb_call_value(Lb *lb, const MsExpr *e) {
     for (uint32_t i = 0; i < ntemps; i++) {
         lb_drop(lb, temps[i]);
     }
-    return (LbVal){result, false};
+    return (LbVal){result, ret == MIR_STR}; // a String result is the caller's
 }
 
 /* ---- lambdas ---- */
