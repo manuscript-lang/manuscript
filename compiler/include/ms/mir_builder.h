@@ -73,6 +73,13 @@ MS_NODISCARD bool mir_b_finish(MirBuilder *b, uint32_t *id);
 static inline MirFunc *mir_b_func(MirBuilder *b) { return &b->f; }
 static inline MirTy mir_b_ty(const MirBuilder *b, MirValue v) { return mir_value_ty(&b->f, v); }
 static inline MirBlock mir_b_current(const MirBuilder *b) { return b->cur; }
+/* Opens a debugger scope for code that runs in another function's frame but is emitted here (a
+ * default argument): fault traces show `name` called from `call_line`. Every position set after
+ * it carries the scope (`MirLoc.scope`). Returns the scope to give `mir_b_close_scope`. */
+uint32_t mir_b_open_scope(MirBuilder *b, MsSym name, uint32_t file, uint32_t call_line);
+/* Returns to the scope `mir_b_open_scope` returned. */
+void mir_b_close_scope(MirBuilder *b, uint32_t outer);
+
 static inline void mir_b_set_loc(MirBuilder *b, MirLoc loc) { b->loc = loc; }
 static inline void mir_b_switch_to(MirBuilder *b, MirBlock block) { b->cur = block; }
 /* The entry block's parameter values: `n` of them are written to `out`. */
