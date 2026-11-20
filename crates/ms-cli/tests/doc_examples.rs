@@ -321,9 +321,9 @@ fn verify_one(n: usize, example: &Example, dir: &Path) -> Vec<String> {
         return failures;
     }
     if example.spec.contains("\"mode\":\"test\"") {
-        let (code, _, err) = ms(&["test", path, "--build-type", "Debug"], "", None);
+        let (code, out, err) = ms(&["test", path, "--build-type", "Debug"], "", None);
         if code != Some(0) {
-            failures.push(format!("{name}: ms test failed\n{err}"));
+            failures.push(format!("{name}: ms test failed\n{out}\n{err}"));
         }
         return failures;
     }

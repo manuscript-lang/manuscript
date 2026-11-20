@@ -137,7 +137,7 @@ static MsWsStatus read_answer(MsNetConn *conn, int64_t deadline_ns, uint8_t **bu
     }
 }
 
-MsWsStatus ms_ws_dial(MsObj *conn, const MsWsDial *dial, int64_t deadline_ns, MsWsSocket **out, const char **why) {
+MsWsStatus ms_ws_dial(const MsObj *conn, const MsWsDial *dial, int64_t deadline_ns, MsWsSocket **out, const char **why) {
     MsNetConn *const core = ms_netconn_of(conn);
     char key[MS_WS_KEY_LEN + 1];
     *why = "connection closed before the exchange completed";
