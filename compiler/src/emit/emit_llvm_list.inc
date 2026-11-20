@@ -1,5 +1,5 @@
-/* Unchecked list element access for emit_llvm.c (included from it); the layout is the one described
- * in emit_qbe_list.inc. */
+/* Unchecked list element access for emit_llvm.c (included from it); the layout is the one the
+ * runtime uses (runtime/include/ms_rt). */
 
 /* The element type of the list or bytes value `list_ty`. */
 static MirTy ll_list_elem(const LCx *c, MirTy list_ty) {

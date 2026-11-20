@@ -8,7 +8,6 @@
 #include "../std/abi.h"
 #include "addr_text.h"
 #include "curl_client.h"
-#include "dns_query.h"
 #include "headers.h"
 #include "http1.h"
 #include "ms_rt/alloc.h"
@@ -368,23 +367,22 @@ static uint8_t resolve_entry(const MsCurlClient *client, MsBytes url, int64_t de
     MsStr server, name;
     msrt_string_from_bytes((const uint8_t *)resolver, strlen(resolver), &server);
     msrt_string_from_bytes((const uint8_t *)host, strlen(host), &name);
-    const int64_t kinds[] = {1, 28}; /* A, AAAA */
+    const int64_t kinds[] = {0, 1}; /* the DnsKind case indices of A and AAAA */
     for (size_t i = 0; i < 2 && status == STATUS_OK; i++) {
         const int64_t left = deadline < 0 ? 0 : deadline - ms_sys_monotonic_ns();
-        MsVec values, numbers;
-        msrt_list_with_capacity(&msrt_desc_string, 0, &values);
-        msrt_list_with_capacity(&msrt_desc_int, 0, &numbers);
-        const uint8_t found = msstd_dns_query(&server, &name, kinds[i], deadline >= 0, left > 0 ? left : 1, &values, &numbers, err);
+        MsVec records = {0};
+        const uint8_t found = msstd_dns_query(&server, &name, kinds[i], deadline >= 0, left > 0 ? left : 1, &records, err);
         if (found == STATUS_OK) {
-            const MsStr *items = values.ptr;
-            for (size_t k = 0; k < values.len; k++) {
-                add_address(&list, &length, &items[k]);
+            const MsNetDnsRecord *items = records.ptr;
+            for (size_t k = 0; k < records.len; k++) {
+                add_address(&list, &length, &items[k].value);
+                MsStr value = items[k].value;
+                msrt_string_free(&value);
             }
+            msrt_free(records.ptr);
         } else if (found != STATUS_NONE) {
             status = found;
         }
-        msrt_list_drop(&values, &msrt_desc_string);
-        msrt_list_drop(&numbers, &msrt_desc_int);
     }
     ms_str_release(&server);
     ms_str_release(&name);

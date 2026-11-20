@@ -1,4 +1,4 @@
-# Defined in runtime/net/natives.c; the Rust ms-std-net definitions of the same operations are deleted with that crate.
+# Defined in runtime/net/natives.c.
 msstd_body_close
 msstd_body_metadata
 msstd_body_read
@@ -32,21 +32,31 @@ msstd_dgram_close_if_last
 msstd_dgram_receive
 msstd_dgram_send
 msstd_dgram_share
+msstd_dns_config
+msstd_dns_query
 msstd_headers_append
 msstd_headers_clone
 msstd_headers_names
 msstd_headers_new
 msstd_headers_remove
 msstd_headers_values
+msstd_json_dec_cidr
+msstd_json_dec_ip
 msstd_listener_accept
 msstd_listener_address
 msstd_listener_close
 msstd_listener_share
+msstd_net_cidr_text
+msstd_net_contains_ip
 msstd_net_dial
 msstd_net_dial_unix
+msstd_net_ip_address_family
+msstd_net_ip_address_text
 msstd_net_listen
 msstd_net_listen_unix
 msstd_net_lookup
+msstd_net_parse_cidr
+msstd_net_parse_ip
 msstd_scope_child
 msstd_scope_close
 msstd_scope_new

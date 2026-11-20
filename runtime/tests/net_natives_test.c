@@ -55,6 +55,8 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
     if (copy != NULL && len > 0) memcpy(copy, ptr, len);
     *out = (MsStr){.ptr_word = copy, .tagged = len};
 }
+void msrt_string_clone(const MsStr *s, MsStr *out) { msrt_string_from_bytes((const uint8_t *)s->ptr_word, (size_t)s->tagged, out); }
+void msrt_string_free(const MsStr *s) { msrt_free((void *)s->ptr_word); }
 bool ms_sched_cancel_pending(void) { return false; }
 void ms_sched_cancel_return(void) {}
 

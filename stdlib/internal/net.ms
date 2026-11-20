@@ -5,10 +5,10 @@ import (
 	NativeHttpClient,
 	NativeListener,
 	NativeTlsServer from "@std/net/http.ms",
+	DnsConfig from "@std/net/dns.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	Datagram,
 	NativeDatagramSocket,
-	NativeNetwork,
 	NativeScope from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
 	NativeWebSocket, RawWebSocketMessage from "@std/net/websocket.ms",
@@ -27,13 +27,23 @@ export extern fn msstd_net_parse_cidr(text: String) Cidr!
 
 export extern fn msstd_net_parse_ip(text: String) IpAddress!
 
-export extern fn msstd_net_network() NativeNetwork
-
 export extern fn msstd_net_lookup(
 	host: String,
 	port: Int,
 	timeout: Duration?,
 ) List[String]!
+
+// The records of one kind that the DNS server at `server` (`ip:port`) holds for `name`;
+// none when the name has none of that kind.
+export extern fn msstd_dns_query(
+	server: String,
+	name: String,
+	kind: DnsKind,
+	timeout: Duration?,
+) List[DnsRecord]?!
+
+// The host's resolver settings.
+export extern fn msstd_dns_config() DnsConfig!
 
 export extern fn msstd_tls_parse_certificates(
 	pem: String,
@@ -204,29 +214,6 @@ export extern fn msstd_websocket_send_bytes(
 
 export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
 
-export extern fn msstd_net_network_close(net: NativeNetwork) Void
-
-export extern fn msstd_net_network_lookup(
-	net: NativeNetwork,
-	name: String,
-	max_records: Int?,
-	timeout: Duration?,
-) List[String]!
-
-export extern fn msstd_net_network_resolve(
-	net: NativeNetwork,
-	name: String,
-	kind: DnsKind,
-	max_records: Int?,
-	timeout: Duration?,
-) List[DnsRecord]!
-
-export extern fn msstd_net_network_restrict(
-	net: NativeNetwork,
-	hosts: List[String],
-	cidrs: List[String],
-	allow_listen: Bool,
-) NativeNetwork!
 
 export extern fn msstd_ws_connect(
 	conn: NativeConnection,
@@ -239,7 +226,3 @@ export extern fn msstd_ws_connect(
 	timeout: Duration?,
 ) NativeWebSocket!
 
-export extern fn msstd_net_network_with_resolver(
-	net: NativeNetwork,
-	address: String,
-) NativeNetwork!
