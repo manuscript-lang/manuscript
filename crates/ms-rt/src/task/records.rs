@@ -322,7 +322,7 @@ const CHUNK: usize = 64 << 10;
 const CHUNK_HEADER: usize = 2 * size_of::<usize>();
 
 /// A block of `words` words for a frozen copy; null never (out of memory is a fault).
-unsafe fn frozen_alloc(words: usize) -> *mut usize {
+pub(super) unsafe fn frozen_alloc(words: usize) -> *mut usize {
     let need = (words + 1) * size_of::<usize>();
     // SAFETY: the chunk is live while the scheduler holds it; blocks are carved past `used`.
     unsafe {
@@ -356,7 +356,7 @@ unsafe fn frozen_alloc(words: usize) -> *mut usize {
 }
 
 /// Gives a block of [`frozen_alloc`] back; its chunk goes when its last block does.
-unsafe fn frozen_free(copy: *mut u8) {
+pub(super) unsafe fn frozen_free(copy: *mut u8) {
     // SAFETY: `copy` came from `frozen_alloc` and is freed once.
     unsafe {
         let chunk = (copy as *mut usize).sub(1).read() as *mut usize;
@@ -370,6 +370,31 @@ unsafe fn frozen_free(copy: *mut u8) {
             } else {
                 alloc::free(chunk as *mut u8);
             }
+        }
+    }
+}
+
+/// Gives back what the scheduler keeps of frozen copies: the chunk in use (kept empty for the
+/// next copy) and the copy of a task that is still parked, as the isolate ends.
+pub(super) unsafe fn frozen_teardown(t: *mut Task) {
+    // SAFETY: the caller runs after the last switch; `t` is a live record or null.
+    unsafe {
+        if !t.is_null() && !(*t).frozen.is_null() {
+            frozen_free((*t).frozen);
+            (*t).frozen = null_mut();
+        }
+    }
+}
+
+/// Frees the chunk new copies are carved from, once no copy is left in it.
+pub(super) unsafe fn frozen_chunk_release() {
+    let mut s = sched();
+    // SAFETY: the chunk is live while the scheduler holds it; an empty one has no block in use.
+    unsafe {
+        let chunk = s.frozen_chunk as *mut usize;
+        if !chunk.is_null() && chunk.read() == 0 {
+            alloc::free(chunk as *mut u8);
+            s.frozen_chunk = null_mut();
         }
     }
 }

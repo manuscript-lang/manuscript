@@ -259,10 +259,12 @@ pub fn teardown() {
                 if !base.is_null() {
                     release_stack(base as usize, (*t).stack_len);
                 }
+                frozen_teardown(t);
                 core::ptr::drop_in_place(t);
                 alloc::free(t as *mut u8);
             }
         }
+        frozen_chunk_release();
         if s.epfd >= 0 {
             crate::poller::close(s.epfd);
         }
