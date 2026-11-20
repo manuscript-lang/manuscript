@@ -86,6 +86,15 @@ MsTls *ms_conn_tls(MsConnTable *table, MsConnId id) {
     return row == NULL ? NULL : tls_of(row);
 }
 
+bool ms_conn_buffered(MsConnTable *table, MsConnId id) {
+    const MsConn *row = ms_conn_get(table, id);
+    const MsConnExt *ext = row == NULL ? NULL : row->ext;
+    if (ext == NULL) {
+        return false;
+    }
+    return ext->unread_length > 0 || (ext->tls != NULL && ms_tls_pending(ext->tls) != 0);
+}
+
 int ms_conn_error_code(MsConnTable *table, MsConnId id) {
     const MsConn *row = ms_conn_get(table, id);
     const MsConnExt *ext = row == NULL ? NULL : row->ext;

@@ -30,3 +30,8 @@ msstd_h2_drain
 msstd_h2_share
 msstd_ws_handshake
 msstd_ws_serve
+msstd_idle_drain
+msstd_idle_group
+msstd_idle_park
+msstd_idle_cancel
+msstd_idle_inflight
