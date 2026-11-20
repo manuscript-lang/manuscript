@@ -517,6 +517,26 @@ static bool qbe_address_of(QCx *c, const MirInst *inst) {
     return true;
 }
 
+/* `str`: a short literal is two constant words; a long one is the address of its bytes and a tag. */
+static bool qbe_str_lit(QCx *c, const MirInst *inst) {
+    const MirModule *m = c->m;
+    bool is_static = false;
+    uint64_t lo = 0, hi = 0;
+    mir_str_lit_words(m->strings.text[inst->imm.a], m->strings.len[inst->imm.a], &is_static, &lo, &hi);
+    if (!is_static) {
+        ms_buf_printf(c->out, "\t%%v%u =l copy %lld\n", inst->res, (long long)lo);
+    } else if (c->data == NULL || c->data->strings[inst->imm.a] == MIR_NONE) {
+        c->why = "str without static data";
+        return false;
+    } else {
+        ms_buf_printf(c->out, "\t%%v%u =l copy ", inst->res);
+        qbe_ref(c, c->out, (MirRef){MT_DATA, c->data->strings[inst->imm.a], NULL});
+        ms_buf_putc(c->out, '\n');
+    }
+    ms_buf_printf(c->out, "\t%%v%u.1 =l copy %lld\n", inst->res, (long long)hi);
+    return true;
+}
+
 /* `global.get`, `global.set`: the leaves of the global's data symbol. */
 static bool qbe_global(QCx *c, const MirInst *inst) {
     const uint32_t n = c->next++;
@@ -914,11 +934,13 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_OptGet: return qbe_opt_get(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
     case MOP_ListLen: qbe_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;
+    case MOP_ListCap: qbe_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_CAP_LEAF); return true;
     case MOP_StackLow: case MOP_StackNear: qbe_stack_check(c, inst); return true;
     case MOP_Poll: qbe_poll(c, block, part); return true;
     case MOP_Undef: qbe_undef(c, inst); return true;
     case MOP_TypeDesc: case MOP_FuncAddr: return qbe_address_of(c, inst);
     case MOP_GlobalGet: case MOP_GlobalSet: return qbe_global(c, inst);
+    case MOP_StrLit: return qbe_str_lit(c, inst);
     default:
         c->why = mir_op_info[inst->op].name;
         return false;

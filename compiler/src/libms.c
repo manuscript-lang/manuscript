@@ -120,5 +120,6 @@
 #include "format/format_layout.c"
 #include "format/format.c"
 #include "libms_api.c"
+#include "emit/emit_entry.c"
 #include "emit/emit_qbe.c"
 #include "emit/emit_llvm.c"

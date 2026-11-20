@@ -1,5 +1,5 @@
 /* lower_ops: rewrites the ownership ops a backend would otherwise write itself (`clone`, `drop`,
- * `move.out`, `forget`) into plain calls and copies, so every emitter prints scalars, memory, calls
+ * `move.out`, `forget`, and `str.len`, a runtime call that counts scalars) into plain calls and copies, so every emitter prints scalars, memory, calls
  * and data only (proposals/lower-ops-to-runtime-calls.md, stage 1).
  *
  * A value that needs no drop is its own clone, so its uses are renamed to the operand. A string is
@@ -17,6 +17,7 @@ typedef struct LoCx {
     MirLayouts layouts;
     uint32_t string_clone, string_free; /* extern ids, MIR_NONE until first used */
     uint32_t obj_clone, obj_drop;
+    uint32_t string_length; /* msrt_string_scalar_length */
 } LoCx;
 
 typedef enum LoKind { LO_PLAIN, LO_STR, LO_OBJ, LO_GLUE } LoKind;
@@ -160,6 +161,12 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         }
         return false;
     }
+    case MOP_StrLen:
+        if (c->string_length == MIR_NONE) {
+            c->string_length = lo_extern(c, "msrt_string_scalar_length", MIR_STR, MIR_INT);
+        }
+        lo_to_call_rt(inst, c->string_length);
+        return false;
     default:
         return false;
     }
@@ -221,7 +228,7 @@ static void lo_function(LoCx *c, MirFunc *f) {
 
 void mir_lower_ops(MirModule *m, const MirGlue *glue) {
     LoCx c = {.m = m, .glue = glue, .string_clone = MIR_NONE, .string_free = MIR_NONE,
-            .obj_clone = MIR_NONE, .obj_drop = MIR_NONE};
+            .obj_clone = MIR_NONE, .obj_drop = MIR_NONE, .string_length = MIR_NONE};
     mir_layouts_init(&c.layouts, m);
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         lo_function(&c, &m->funcs[i]);
