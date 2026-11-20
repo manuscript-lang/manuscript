@@ -638,6 +638,40 @@ static bool qbe_unary(QCx *c, const MirInst *inst) {
     return true;
 }
 
+/* `inarrow.opt`, `f2i.opt`: the optional is [fits, value]. The value leaf is the integer register
+ * itself (or the saturating conversion of the float), which only means something when it fits. */
+static bool qbe_opt_convert(QCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    const MirValue x = inst->args[0];
+    if (inst->op == MOP_INarrowOpt) {
+        const MirTyData *res = mir_ty_data(c->m, c->f->values[inst->res]);
+        int64_t lo, hi;
+        mir_narrow_range(c->m, c->f->values[x], res->elem, &lo, &hi);
+        ms_buf_printf(o, "\t%%o%ua =w csgel %%v%u, %lld\n\t%%o%ub =w cslel %%v%u, %lld\n", n, x,
+                      (long long)lo, n, x, (long long)hi);
+        ms_buf_printf(o, "\t%%v%u =w and %%o%ua, %%o%ub\n\t%%v%u.1 =l copy %%v%u\n", inst->res, n, n,
+                      inst->res, x);
+        return true;
+    }
+    ms_buf_printf(o, "\t%%o%ua =w cged %%v%u, d_-9223372036854775808\n", n, x);
+    ms_buf_printf(o, "\t%%o%ub =w cltd %%v%u, d_9223372036854775808\n", n, x);
+    ms_buf_printf(o, "\t%%v%u =w and %%o%ua, %%o%ub\n\t%%v%u.1 =l dtosi %%v%u\n", inst->res, n, n,
+                  inst->res, x);
+    return true;
+}
+
+/* `opt.is_some`: the flag leaf of an optional held as [flag, value], or a non-null test of one held
+ * as a single nullable pointer. */
+static void qbe_opt_is_some(QCx *c, const MirInst *inst) {
+    const MirValue x = inst->args[0];
+    if (qbe_leaves(c, c->f->values[x]).len == 1) {
+        ms_buf_printf(c->out, "\t%%v%u =w cnel %%v%u, 0\n", inst->res, x);
+    } else {
+        ms_buf_printf(c->out, "\t%%v%u =w copy %%v%u\n", inst->res, x);
+    }
+}
+
 /* The instructions that read and write memory and build records; false when `c->why` is set. */
 static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
     *handled = true;
@@ -678,6 +712,8 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_IAddChk: case MOP_ISubChk: qbe_checked_arith(c, inst, block, part); return true;
     case MOP_IMulChk: qbe_checked_mul(c, inst, block, part); return true;
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
+    case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
+    case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
     case MOP_TypeDesc: case MOP_FuncAddr: return qbe_address_of(c, inst);
     case MOP_GlobalGet: case MOP_GlobalSet: return qbe_global(c, inst);
     default:

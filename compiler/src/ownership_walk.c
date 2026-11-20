@@ -348,7 +348,8 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
 static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
     const uint32_t sym = w->facts->call_callee[e->id];
     const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
-    if (decl == NULL || decl->kind != MS_D_FN) {
+    // Summaries are indexed by declaration node id, which only means something within one module.
+    if (decl == NULL || decl->kind != MS_D_FN || w->check->syms.module[sym] != w->module) {
         return NULL;
     }
     const OwnSummary *summary = &w->summaries[decl->id];
@@ -941,7 +942,10 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const uin
         const MsParam *param = function->params.ptr[i];
         own_declare(w, binding, param->is_mutable ? PERM_MUTABLE : PERM_IMMUTABLE, true);
         w->param_index[binding] = i;
-        w->param_mode[binding] = param->is_mutable ? 1 : (param->moving ? 2 : 0);
+        w->param_mode[binding] = param->is_mutable ? 1 : 0;
+        if (param->moving && !param->is_mutable) {
+            w->param_mode[binding] = 2;
+        }
     }
 }
 

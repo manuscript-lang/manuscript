@@ -11,6 +11,7 @@ b0:
   %c: fn(int) -> int = call @make (%k)
   %x: int = iconst 12
   %r: int = call.ind (%c, %x)
+  drop %c
   ret %r
 }
 fn @addk(%env: ptr, %x: int) -> int closure(int) {

@@ -245,26 +245,27 @@ static MpTok mpa_lex_location(MpLexer *lx) {
     while (mpa_lex_more(lx) && (ms_ascii_is_digit((uint8_t)lx->text[lx->position]) || lx->text[lx->position] == ':')) {
         lx->position++;
     }
-    uint32_t fields[3] = {0};
+    uint32_t fields[4] = {0};
     size_t count = 0;
     size_t field_start = start;
     for (size_t k = start; k <= lx->position; k++) {
         if (k != lx->position && lx->text[k] != ':') {
             continue;
         }
-        if (count < 3 && !mpa_parse_u32(lx->text + field_start, k - field_start, &fields[count])) {
-            mpa_perr(lx->p, lx->line, count == 2 ? "bad location" : "location must be !file:line:col");
+        if (count < 4 && !mpa_parse_u32(lx->text + field_start, k - field_start, &fields[count])) {
+            mpa_perr(lx->p, lx->line, count >= 2 ? "bad location" : "location must be !file:line:col");
         }
         count++;
         field_start = k + 1;
     }
-    if (count != 3) {
-        mpa_perr(lx->p, lx->line, "location must be !file:line:col");
+    if (count != 3 && count != 4) {
+        mpa_perr(lx->p, lx->line, "location must be !file:line:col or !file:line:col:scope");
     }
     MpTok token = {.k = MPT_LOC};
     token.loc.file = fields[0];
     token.loc.line = fields[1];
     token.loc.col = fields[2];
+    token.loc.scope = count == 4 ? fields[3] : 0;
     return token;
 }
 
@@ -1101,6 +1102,12 @@ static bool mpa_is_label(const MpTok *t, uint32_t n) {
     return n > 0 && t[0].k == MPT_IDENT && t[n - 1].k == MPT_P && t[n - 1].ch == ':' && !mpa_tok_is(&t[0], "switch");
 }
 
+/* A trailing fact line: `scope`, `name` or `exact` (no instruction is called that). */
+static bool mpa_is_fact(const MpTok *t, uint32_t n) {
+    return n > 0 && t[0].k == MPT_IDENT &&
+           (mpa_tok_is(&t[0], "scope") || mpa_tok_is(&t[0], "name") || mpa_tok_is(&t[0], "exact"));
+}
+
 typedef struct MpBodyLine {
     uint32_t no;
     MpTok *t;
@@ -1143,7 +1150,7 @@ static void mpa_declare_blocks(MpParser *p, MirFunc *f, const MpBodyLine *lines,
     bool first = true;
     for (uint32_t i = 0; i < count; i++) {
         if (!mpa_is_label(lines[i].t, lines[i].nt)) {
-            if (first) {
+            if (first && !mpa_is_fact(lines[i].t, lines[i].nt)) {
                 mpa_perr(p, lines[i].no, "function body must start with a block label");
             }
             continue;
@@ -1186,6 +1193,50 @@ static MirBlock mpa_parse_label(MpCur *c, MirFunc *f) {
         mpa_c_eat_p(c, ',');
     }
     return block;
+}
+
+/* `scope "name" file parent call_line`, `name %v "text" param|local scope` and `exact %v`. */
+static void mpa_parse_fact(MpCur *c, MirFunc *f) {
+    MpParser *p = c->p;
+    MirModule *m = p->m;
+    const MpTok keyword = mpa_c_ident(c);
+    if (mpa_tok_is(&keyword, "scope")) {
+        const MpTok name = mpa_c_string(c);
+        MirScope scope = {.name = mir_name(m, name.s, name.n)};
+        scope.file = mpa_imm_u32(c, "scope number");
+        scope.parent = mpa_imm_u32(c, "scope number");
+        scope.call_line = mpa_imm_u32(c, "scope number");
+        MIR_PUSH(m, f->scopes, f->nscopes, f->cscopes, MirScope, scope);
+        return;
+    }
+    const MpTok value_name = mpa_c_val(c);
+    const uint32_t value = mpa_vname_lookup(p, ms_intern(&p->vnames, value_name.s, value_name.n));
+    if (value == MIR_NONE || value >= p->cdefined || !p->defined[value]) {
+        mpa_perr(p, c->line, "%%%.*s is not defined", (int)value_name.n, value_name.s);
+    }
+    if (mpa_tok_is(&keyword, "exact")) {
+        const uint32_t words = (f->nvalues + 63) / 64;
+        if (f->nexact < words) {
+            uint64_t *grown = MS_NEW_N(&m->arena, uint64_t, words);
+            memset(grown, 0, (size_t)words * sizeof *grown);
+            if (f->nexact != 0) {
+                memcpy(grown, f->exact, (size_t)f->nexact * sizeof *grown);
+            }
+            f->exact = grown;
+            f->nexact = words;
+        }
+        f->exact[value >> 6] |= UINT64_C(1) << (value & 63);
+        return;
+    }
+    const MpTok text = mpa_c_string(c);
+    const MpTok kind = mpa_c_ident(c);
+    if (!mpa_tok_is(&kind, "param") && !mpa_tok_is(&kind, "local")) {
+        mpa_perr(p, c->line, "expected param or local, found %.*s", (int)kind.n, kind.s);
+    }
+    MirNamedValue named = {.value = value, .name = mir_name(m, text.s, text.n),
+                           .param = mpa_tok_is(&kind, "param")};
+    named.scope = mpa_imm_u32(c, "scope number");
+    MIR_PUSH(m, f->names, f->nnames, f->cnames, MirNamedValue, named);
 }
 
 /* Every block must end in a terminator and every value used must be defined. */
@@ -1234,10 +1285,19 @@ static void mpa_parse_body(MpParser *p, uint32_t id, const MpFnSrc *src, const M
             current = mpa_parse_label(&c, f);
             continue;
         }
+        if (mpa_is_fact(c.t, c.n)) {
+            continue; /* read once every value is defined */
+        }
         if (p->terminated[current]) {
             mpa_perr(p, c.line, "instruction after the block terminator");
         }
         mpa_parse_line(&c, f, current);
+    }
+    for (uint32_t i = 0; i < line_count; i++) {
+        if (mpa_is_fact(lines[i].t, lines[i].nt)) {
+            MpCur c = {p, lines[i].t, lines[i].nt, 0, lines[i].no};
+            mpa_parse_fact(&c, f);
+        }
     }
     mpa_check_complete(p, f, line0);
     free(p->terminated);
@@ -1269,6 +1329,8 @@ typedef struct MpFnRefs {
     uint32_t id;
     bool has_slot, has_exit;
     MpTok slot, exit[2];
+    MpTok *closers; /* capture index and function name, alternating */
+    uint32_t nclosers, cclosers;
 } MpFnRefs;
 
 typedef struct MpUnit {
@@ -1352,7 +1414,8 @@ static void mpa_declare_names(MpParser *p, const MpUnit *unit) {
         }
         MsSym name = mpa_tsym(&c, mpa_c_ident(&c));
         if (mpa_tok_is(&keyword, "type")) {
-            mir_add_type(p->m, name);
+            const uint32_t id = mir_add_type(p->m, name);
+            p->m->type_defs[id].indirect = mpa_c_eat_ident(&c, "indirect");
         } else if (mpa_tok_is(&keyword, "alt")) {
             mir_add_alt(p->m, name);
         } else {
@@ -1370,6 +1433,7 @@ static MirField mpa_parse_field(MpCur *c) {
 static void mpa_define_type(MpCur *c) {
     MirModule *m = c->p->m;
     uint32_t id = mir_type_by_name(m, mpa_tsym(c, mpa_c_ident(c)));
+    (void)mpa_c_eat_ident(c, "indirect"); /* read by the first pass */
     mpa_c_expect_p(c, '{');
     MirField *fields = NULL;
     uint32_t used = 0, capacity = 0;
@@ -1614,7 +1678,8 @@ static void mpa_declare_items(MpParser *p, MpUnit *unit) {
             unit->entry_name = mpa_c_at(&c);
             unit->entry_line = unit->items[i].no;
             unit->has_entry = true;
-        } else if (!mpa_tok_is(&keyword, "vtable") && !mpa_tok_is(&keyword, "type") &&
+        } else if (!mpa_tok_is(&keyword, "vtable") && !mpa_tok_is(&keyword, "desc_glue") &&
+                   !mpa_tok_is(&keyword, "type") &&
                    !mpa_tok_is(&keyword, "alt") && !mpa_tok_is(&keyword, "iface")) {
             mpa_perr(p, c.line, "unknown item '%.*s'", (int)keyword.n, keyword.s);
         }
@@ -1648,6 +1713,32 @@ static void mpa_function_attribute(MpCur *c, MirModule *m, MirFunc *f, MpFnRefs 
         mpa_c_expect_p(c, ',');
         refs->exit[1] = mpa_c_at(c);
         mpa_c_expect_p(c, ')');
+    } else if (mpa_tok_is(&attribute, "ret_borrowed")) {
+        f->ret_borrowed = true;
+    } else if (mpa_tok_is(&attribute, "ret_view")) {
+        f->ret_view = true;
+    } else if (mpa_tok_is(&attribute, "scoped")) {
+        f->scoped = true;
+    } else if (mpa_tok_is(&attribute, "keeps_scoped")) {
+        f->keeps_scoped = true;
+    } else if (mpa_tok_is(&attribute, "unwind_only")) {
+        f->unwind_only = true;
+    } else if (mpa_tok_is(&attribute, "raw_scratch")) {
+        f->raw_scratch = true;
+    } else if (mpa_tok_is(&attribute, "slot_close")) {
+        mpa_c_expect_p(c, '(');
+        f->has_slot_close = true;
+        f->slot_close = mpa_parse_ty(c);
+        mpa_c_expect_p(c, ')');
+    } else if (mpa_tok_is(&attribute, "capture_closers")) {
+        mpa_c_expect_p(c, '(');
+        while (!mpa_c_eat_p(c, ')')) {
+            const MpTok index = mpa_c_num(c);
+            const MpTok func = mpa_c_at(c);
+            MIR_PUSH(m, refs->closers, refs->nclosers, refs->cclosers, MpTok, index);
+            MIR_PUSH(m, refs->closers, refs->nclosers, refs->cclosers, MpTok, func);
+            mpa_c_eat_p(c, ',');
+        }
     } else if (mpa_tok_is(&attribute, "method")) {
         f->kind = MFK_METHOD;
     } else if (mpa_tok_is(&attribute, "sort_cmp")) {
@@ -1760,13 +1851,27 @@ static void mpa_define_vtable(MpCur *c, uint32_t line) {
     mir_add_vtable(m, &vtable);
 }
 
-/* Vtables and the entry point name functions, so they come after the headers. */
+/* The function a header attribute names. */
+static uint32_t mpa_named_function(MpParser *p, uint32_t line, MpTok name) {
+    uint32_t id = mir_func_by_name(p->m, mir_name(p->m, name.s, name.n));
+    if (id == MIR_NONE) {
+        mpa_perr(p, line, "unknown function @%.*s", (int)name.n, name.s);
+    }
+    return id;
+}
+
+/* Vtables, descriptor glue and the entry point name functions, so they come after the headers. */
 static void mpa_define_vtables_and_entry(MpParser *p, const MpUnit *unit) {
     for (uint32_t i = 0; i < unit->item_count; i++) {
         MpCur c = mpa_item_cursor(p, &unit->items[i]);
         MpTok keyword = mpa_c_ident(&c);
         if (mpa_tok_is(&keyword, "vtable")) {
             mpa_define_vtable(&c, unit->items[i].no);
+        } else if (mpa_tok_is(&keyword, "desc_glue")) {
+            const MirTy ty = mpa_parse_ty(&c);
+            const uint32_t eq = mpa_named_function(p, unit->items[i].no, mpa_c_at(&c));
+            const uint32_t hash = mpa_named_function(p, unit->items[i].no, mpa_c_at(&c));
+            mir_add_desc_glue(p->m, ty, eq, hash);
         }
     }
     if (!unit->has_entry) {
@@ -1779,15 +1884,6 @@ static void mpa_define_vtables_and_entry(MpParser *p, const MpUnit *unit) {
                  unit->entry_name.s);
     }
     p->m->entry = entry;
-}
-
-/* The function a header attribute names. */
-static uint32_t mpa_named_function(MpParser *p, uint32_t line, MpTok name) {
-    uint32_t id = mir_func_by_name(p->m, mir_name(p->m, name.s, name.n));
-    if (id == MIR_NONE) {
-        mpa_perr(p, line, "unknown function @%.*s", (int)name.n, name.s);
-    }
-    return id;
 }
 
 /* `slot_result` and `close_exit` name functions defined anywhere in the module. */
@@ -1804,6 +1900,16 @@ static void mpa_resolve_function_refs(MpParser *p, const MpUnit *unit) {
             f->has_close_exit = true;
             f->close_exit[0] = mpa_named_function(p, line, refs->exit[0]);
             f->close_exit[1] = mpa_named_function(p, line, refs->exit[1]);
+        }
+        uint32_t closer_capacity = 0;
+        for (uint32_t k = 0; k + 1 < refs->nclosers; k += 2) {
+            MirCaptureCloser closer = {0};
+            if (!mpa_parse_u32(refs->closers[k].s, refs->closers[k].n, &closer.capture)) {
+                mpa_perr(p, line, "expected a capture index");
+            }
+            closer.func = mpa_named_function(p, line, refs->closers[k + 1]);
+            MIR_PUSH(p->m, f->capture_closers, f->ncapture_closers, closer_capacity,
+                     MirCaptureCloser, closer);
         }
     }
 }

@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/mir_analysis.h"
 #include "ms/mir_layout.h"
 #include "ms/mir_pass.h"
 
@@ -30,6 +31,7 @@ typedef struct LCx {
     const MirData *data; /* the module's static data; NULL when it has none */
     const MirGlue *glue; /* the glue functions, for the closure objects' entries */
     bool *framed;        /* per value of `f`: a closure object kept in the frame */
+    bool *borrowed;      /* per value of `f`: an `iface.borrow` kept in the frame; NULL when none */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -451,6 +453,9 @@ static void ll_frame_slots(LCx *c) {
             } else if (inst->op == MOP_ClosureNew && c->framed[inst->res]) {
                 ms_buf_printf(c->out, "  %%o%u_%u = alloca [%u x i8], align 16\n", b, k,
                               mir_closure_layout(c->layouts, &c->m->funcs[inst->imm.a]).size);
+            } else if (inst->op == MOP_IfaceBorrow && c->borrowed != NULL && c->borrowed[inst->res]) {
+                ms_buf_printf(c->out, "  %%i%u_%u = alloca [%u x i8], align 8\n", b, k,
+                              ll_slot_bytes(c->layouts, c->f->values[inst->args[0]]));
             } else if (inst->op == MOP_CallRt) {
                 ll_frame_rt_call(c, inst, b, k);
             }
@@ -459,14 +464,18 @@ static void ll_frame_slots(LCx *c) {
 }
 
 /* Every leaf of every argument, in order, after the hidden result pointer when there is one. */
-static void ll_call_arguments(LCx *c, const MirInst *inst, const char *result_area) {
+static void ll_call_arguments(LCx *c, const MirInst *inst, const char *result_area, const char *lead) {
     MsBuf *o = c->out;
     bool first = true;
     if (result_area != NULL) {
         ms_buf_printf(o, "ptr %s", result_area);
         first = false;
     }
-    for (uint32_t k = 0; k < inst->nargs; k++) {
+    if (lead != NULL) {
+        ms_buf_printf(o, "%s%s", first ? "" : ", ", lead);
+        first = false;
+    }
+    for (uint32_t k = lead != NULL ? 1 : 0; k < inst->nargs; k++) {
         const MirLeafSpan leaves = ll_leaves(c, c->f->values[inst->args[k]]);
         for (uint32_t j = 0; j < leaves.len; j++) {
             ms_buf_printf(o, "%s%s ", first ? "" : ", ", ll_leaf_type(leaves.ptr[j]));
@@ -479,7 +488,8 @@ static void ll_call_arguments(LCx *c, const MirInst *inst, const char *result_ar
 /* A call of `callee` (an LLVM function name, or the register holding a code pointer). A result of
  * more than one leaf comes back through a stack area that the call is given and that is read leaf
  * by leaf afterwards. */
-static bool ll_call_to(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, const char *callee) {
+static bool ll_call_to(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, const char *callee,
+                       const char *lead) {
     MsBuf *o = c->out;
     const uint32_t result_leaves =
         inst->res == MIR_NONE ? 0 : ll_leaves(c, c->f->values[inst->res]).len;
@@ -498,7 +508,7 @@ static bool ll_call_to(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
         ll_sym(o, ms_name(&c->m->names, c->m->funcs[inst->imm.a].name));
     }
     ms_buf_putc(o, '(');
-    ll_call_arguments(c, inst, result_leaves > 1 ? area : NULL);
+    ll_call_arguments(c, inst, result_leaves > 1 ? area : NULL, lead);
     ms_buf_puts(o, ")\n");
     if (result_leaves <= 1) {
         return true;
@@ -507,7 +517,7 @@ static bool ll_call_to(LCx *c, const MirInst *inst, uint32_t block, uint32_t ind
 }
 
 static bool ll_call(LCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
-    return ll_call_to(c, inst, block, index, NULL);
+    return ll_call_to(c, inst, block, index, NULL, NULL);
 }
 
 /* Appends one argument of a runtime call to `args`: the leaves of `value` when `ty` passes
@@ -859,6 +869,39 @@ static void ll_overflow_flag(LCx *c, const MirInst *inst) {
                   n, op, inst->args[0], inst->args[1], inst->res, n);
 }
 
+/* `inarrow.opt`, `f2i.opt`: the optional is [fits, value]. The value leaf is the integer register
+ * itself (or the saturating conversion of the float), which only means something when it fits. */
+static void ll_opt_convert(LCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    const MirValue x = inst->args[0];
+    if (inst->op == MOP_INarrowOpt) {
+        const MirTyData *res = mir_ty_data(c->m, c->f->values[inst->res]);
+        int64_t lo, hi;
+        mir_narrow_range(c->m, c->f->values[x], res->elem, &lo, &hi);
+        ms_buf_printf(o, "  %%o%ua = icmp sge i64 %%v%u, %lld\n  %%o%ub = icmp sle i64 %%v%u, %lld\n", n, x,
+                      (long long)lo, n, x, (long long)hi);
+        ms_buf_printf(o, "  %%v%u = and i1 %%o%ua, %%o%ub\n", inst->res, n, n);
+        ll_copy_leaf(c, inst->res, 1, x, 0);
+        return;
+    }
+    ms_buf_printf(o, "  %%o%ua = fcmp oge double %%v%u, -9223372036854775808.0\n", n, x);
+    ms_buf_printf(o, "  %%o%ub = fcmp olt double %%v%u, 9223372036854775808.0\n", n, x);
+    ms_buf_printf(o, "  %%v%u = and i1 %%o%ua, %%o%ub\n", inst->res, n, n);
+    ms_buf_printf(o, "  %%v%u.1 = call i64 @llvm.fptosi.sat.i64.f64(double %%v%u)\n", inst->res, x);
+}
+
+/* `opt.is_some`: the flag leaf of an optional held as [flag, value], or a non-null test of one held
+ * as a single nullable pointer. */
+static void ll_opt_is_some(LCx *c, const MirInst *inst) {
+    const MirValue x = inst->args[0];
+    if (ll_leaves(c, c->f->values[x]).len == 1) {
+        ms_buf_printf(c->out, "  %%v%u = icmp ne i64 %%v%u, 0\n", inst->res, x);
+    } else {
+        ll_copy_leaf(c, inst->res, 0, x, 0);
+    }
+}
+
 /* `conv`, `f32.round`, `narrow.chk`, the overflow flags and `int_overflow.if`; false when `inst`
  * is none of them. */
 static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
@@ -885,6 +928,12 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
     case MOP_NarrowChk:
         ll_narrow_chk(c, inst, block, part);
         return true;
+    case MOP_INarrowOpt: case MOP_F2IOpt:
+        ll_opt_convert(c, inst);
+        return true;
+    case MOP_OptIsSome:
+        ll_opt_is_some(c, inst);
+        return true;
     case MOP_IAddOverflow: case MOP_IMulOverflow:
         ll_overflow_flag(c, inst);
         return true;
@@ -898,6 +947,7 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
 }
 
 #include "emit_llvm_closure.inc"
+#include "emit_llvm_iface.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
@@ -926,6 +976,10 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     const bool closure_ok = ll_closure_op(c, inst, block, index, &handled);
     if (handled) {
         return closure_ok;
+    }
+    const bool iface_ok = ll_iface_op(c, inst, block, index, &handled);
+    if (handled) {
+        return iface_ok;
     }
     switch (inst->op) {
     case MOP_IConst: case MOP_BConst: case MOP_FConst: ll_constant(c, inst); return true;
@@ -1194,6 +1248,8 @@ static bool ll_function(LCx *c, uint32_t index) {
         return false;
     }
     mir_framed_closures(c->m, f, c->framed);
+    MsArena scratch = {0};
+    c->borrowed = mir_framed_iface_borrows(&scratch, c->m, f);
     ll_last_pieces(f, last);
     ll_header(c, index);
     bool ok = true;
@@ -1203,6 +1259,8 @@ static bool ll_function(LCx *c, uint32_t index) {
     free(last);
     free(c->framed);
     c->framed = NULL;
+    c->borrowed = NULL;
+    ms_arena_free(&scratch);
     if (ok) {
         ms_buf_puts(c->out, "}\n\n");
     }
@@ -1273,6 +1331,7 @@ static const char ll_declarations[] =
     "declare void @msrt_fault_unwrap_none() cold noreturn nounwind\n"
     "declare void @msrt_cancelled() cold noreturn nounwind\n"
     "declare void @msrt_fault_depth() cold noreturn nounwind\n"
+    "declare i64 @llvm.fptosi.sat.i64.f64(double)\n"
     "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n"
     "declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)\n"
@@ -1361,7 +1420,7 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
     mir_layouts_init(&layouts, m);
     bool ok = true;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL};
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL};
         if (ll_function(&c, i)) {
             continue;
         }
@@ -1369,7 +1428,7 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);

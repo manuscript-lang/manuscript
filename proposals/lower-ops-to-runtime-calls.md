@@ -24,7 +24,9 @@ Proposal, 2026-11-20, checked against `origin/main` at `72a07024f`. The coordina
 - Stage 1 rewrites only to forms that need no block split:
   - `clone`, `drop`, `drop.if` of plain data: the operand or nothing. `move.out`, `forget`: the operand or nothing.
   - `clone` of a string: `call.rt @msrt_string_clone(&s, &out)`; `drop` of a string: `call.rt @msrt_string_free(&s)`. The runtime tests the tag, so the pass writes no branch. Other types: a call of the glue function from `mir_glue_find`.
+  - `clone`, `drop` of a function, an object other than a map or set, or a nullable-pointer optional: `call.rt @msrt_obj_clone` / `@msrt_obj_drop` on the one pointer.
   - `str.len`: shifts and masks on the tag word.
+  - `inarrow.opt`, `f2i.opt`, `opt.is_some` are scalar compares on the `[flag, value]` leaves, printed by each emitter from `mir_narrow_range`; they need no pass.
 - Later stages, each its own PR once the pass can split a block: `list.*`, `alt.*`, `opt.*`. Ops that move ownership (`alt.take`, `alt.unbox`, `opt.unbox`, `list.set`) must say what happens to the old value's drop before they land; stage 1 leaves them unsupported.
 - Literals: `str` of 15 bytes or fewer is two constant words; longer names a read-only data symbol (bytes plus NUL). Not in stage 1: `mir_data` has no string symbols yet.
 - `emit_qbe.c` rejects any op it cannot print, naming it, so a missed family is a clear error. Values over 16 bytes remain unsupported in QBE until a later stage.
