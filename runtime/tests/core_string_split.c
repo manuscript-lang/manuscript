@@ -48,7 +48,7 @@ static MsStr make(const uint8_t *p, size_t n, int kind, uint8_t **mem) {
         *mem = malloc(n + 1);
         memcpy(*mem, p, n);
         (*mem)[n] = 0;
-        return (MsStr){*mem, MS_STR_VIEW | n};
+        return (MsStr){.bytes = *mem, .tagged = MS_STR_VIEW | n};
     }
     return ms_str_heap_copy(p, n); /* owned, whatever its length */
 }
