@@ -1150,25 +1150,40 @@ static bool body_while_statement(MsBody *b, const MsStmt *s) {
     return broke || !(cond->kind == MS_E_BOOL && cond->u.flag);
 }
 
+/* `for name in xs` over a list of Int, Float or Bool: the element type. Elements that need
+ * cleanup (text, lists) are left to the Rust checker. */
+static bool body_for_list_element(MsBody *b, const MsExpr *iter, MsTy *element) {
+    const MsTy ty = ms_body_expr(b, iter, MS_TY_NONE);
+    if (!ms_body_is_list(b, ty)) {
+        return false;
+    }
+    *element = ms_ty_args(&b->c->tys, ty)[0];
+    return body_is_value_type(b, *element) && *element != b->string_ty;
+}
+
 /* `for name in a..b` over Int bounds: the parser writes the range as a call of `range`. The
  * loop variable is an immutable Int that lives for the body. */
 static bool body_for_statement(MsBody *b, const MsStmt *s) {
     const MsExpr *iter = s->u.each.iter;
-    if (iter->kind != MS_E_CALL || iter->u.call.args.len != 2 || !body_is_range(b, iter->u.call.callee)) {
+    MsTy element = b->int_ty;
+    if (iter->kind == MS_E_CALL && iter->u.call.args.len == 2 && body_is_range(b, iter->u.call.callee)) {
+        for (uint32_t i = 0; i < 2; i++) {
+            const MsArg *bound = &iter->u.call.args.ptr[i];
+            if (bound->has_name || ms_body_expr(b, bound->value, b->int_ty) == MS_TY_NONE) {
+                (void)ms_body_unsupported(b);
+                return true;
+            }
+        }
+        // The call itself stays untyped: the standard library's signatures are not resolved here yet.
+        b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
+    } else if (body_for_list_element(b, iter, &element)) {
+        b->facts->each_list[s->id] = true;
+    } else {
         (void)ms_body_unsupported(b);
         return true;
     }
-    for (uint32_t i = 0; i < 2; i++) {
-        const MsArg *bound = &iter->u.call.args.ptr[i];
-        if (bound->has_name || ms_body_expr(b, bound->value, b->int_ty) == MS_TY_NONE) {
-            (void)ms_body_unsupported(b);
-            return true;
-        }
-    }
-    // The call itself stays untyped: the standard library's signatures are not resolved here yet.
-    b->facts->call_callee[iter->id] = ms_map_get(&b->c->mods[b->module].names, iter->u.call.callee->u.sym);
     const uint32_t scope_start = b->facts->bindings.count;
-    (void)ms_body_bind(b, s->u.each.name, b->int_ty, s->id, s->pos, 0, MS_ROLE_LOOP);
+    (void)ms_body_bind(b, s->u.each.name, element, s->id, s->pos, 0, MS_ROLE_LOOP);
     const uint32_t outer_breaks = b->breaks;
     b->breaks = 0;
     b->loop_depth++;
@@ -1431,6 +1446,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     memset(facts->call_interface, 0, nodes * sizeof *facts->call_interface);
     facts->lambda_first = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->lambda_first, 0xff, nodes * sizeof *facts->lambda_first);
+    facts->each_list = MS_NEW_N(arena, bool, nodes);
+    memset(facts->each_list, 0, nodes * sizeof *facts->each_list);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->assign_binding, 0xff, nodes * sizeof *facts->assign_binding);
     memset(facts->expr_ty, 0, nodes * sizeof *facts->expr_ty);

@@ -398,6 +398,8 @@ static void ext_release(MsConnExt *ext) {
     free(ext);
 }
 
+enum { DRAIN_ROUNDS = 16 };
+
 MsNetStatus ms_conn_close_io(MsConnTable *table, MsConnId id) {
     MsConn *row = ms_conn_get(table, id);
     if (row == NULL) {
@@ -412,6 +414,14 @@ MsNetStatus ms_conn_close_io(MsConnTable *table, MsConnId id) {
         size_t done = 0;
         if (produced > 0) {
             (void)ms_sys_net_write(row->fd, chunk, (size_t)produced, &done);
+        }
+    }
+    /* Closing a socket that still holds unread bytes resets the connection and the peer loses what it was sent, so end
+     * our side first and take what has already arrived. */
+    if (ms_sys_net_shutdown(row->fd, 1) == MS_SYS_OK) {
+        uint8_t unread[PUMP_BYTES];
+        size_t got = 1;
+        for (int rounds = 0; rounds < DRAIN_ROUNDS && got > 0 && ms_sys_net_read(row->fd, unread, sizeof unread, &got) == MS_SYS_OK; rounds++) {
         }
     }
     ext_release(row->ext);

@@ -17,14 +17,14 @@ MsTlsCtx *ms_tls_ctx_new(int server, const char *cert_pem, size_t cert_len, cons
                            const char *ca_pem, size_t ca_len);
 void ms_tls_ctx_free(MsTlsCtx *ctx);
 
+/* Makes a server context ask clients for a certificate and verify it against `ca_pem` (the system store when NULL).
+   With `require` a client without one fails the handshake; otherwise it may go without. Returns 0, or -1. */
+int ms_tls_ctx_verify_clients(MsTlsCtx *ctx, const char *ca_pem, size_t ca_len, int require);
+
 enum { MS_TLS_ALPN_MAX = 64 };
 /* The application protocols a client offers or a server accepts, most preferred first, as names separated by commas
    ("h2,http/1.1"). Returns 0, or -1 for an empty name or a list over MS_TLS_ALPN_MAX bytes on the wire. */
 int ms_tls_ctx_set_alpn(MsTlsCtx *ctx, const char *names);
-
-/* Server context: asks clients for a certificate and verifies it against `ca_pem` (the system store when empty);
-   with `require` a client without one fails the handshake. Returns 0, or -1 for unusable roots or a client context. */
-int ms_tls_ctx_verify_clients(MsTlsCtx *ctx, const char *ca_pem, size_t ca_len, int require);
 
 /* One connection. A client passes the host name to verify and to send as the server name; a server passes NULL. */
 MsTls *ms_tls_new(MsTlsCtx *ctx, const char *host);
