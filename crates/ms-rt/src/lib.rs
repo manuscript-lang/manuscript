@@ -32,6 +32,7 @@ pub mod cabi;
 pub mod cancel;
 pub mod desc;
 /// The drop worklist is C (`runtime/core/dropq.c`); the fault module resets it through this.
+#[cfg(not(test))]
 pub mod dropq {
     unsafe extern "C" {
         fn msdrop_reset();
