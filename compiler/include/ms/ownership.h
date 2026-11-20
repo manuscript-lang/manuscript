@@ -7,6 +7,7 @@
 #include "ms_rt/safe.h"
 
 #include "ms/base.h"
+#include "ms/facts.h"
 #include "ms/tables.h"
 #include "ms/types.h"
 
@@ -89,5 +90,33 @@ void ms_classifier_mark_closeable(MsClassifier *classifier, MsSym type_id) MS_NO
 void ms_classifier_mark_owned_close(MsClassifier *classifier, MsSym interface_id) MS_NONNULL;
 
 MsClass ms_classify(MsClassifier *classifier, MsTy type) MS_NONNULL;
+
+/* ---- liveness: which use of a binding is its last ---- */
+
+typedef enum MsUseState {
+    MS_USE_NONE,  /* not a recorded use */
+    MS_USE_LATER, /* the binding is used again on some path */
+    MS_USE_LAST   /* no later use of the binding can run */
+} MsUseState;
+
+/* By expression node id. `next` is the earliest later use of the same binding, for diagnostics. */
+typedef struct MsLiveness {
+    uint8_t *state; /* MsUseState */
+    uint32_t *next; /* node id, or MS_NONE */
+    MsPos *pos;     /* where the use is written */
+} MsLiveness;
+
+MsLiveness ms_liveness_new(MsArena *arena, uint32_t node_count);
+
+/* Fills the liveness of one function body by a backward walk (`live.rs`). Returns false, leaving
+ * the function unanalysed, for a statement or expression the walk does not handle yet. */
+bool ms_liveness_function(MsLiveness *live, const MsFacts *facts, const MsFunc *function, MsArena *scratch);
+
+/* ---- the pass ---- */
+
+/* Runs the ownership rules over every function whose body the checker accepted, reporting what
+ * the Rust pass reports. A function with a construct the pass does not handle yet is handed back
+ * to the Rust checker: its `body_checked` flag is cleared. Call after ms_module_check_bodies. */
+void ms_module_check_ownership(MsCheck *c, MsModId module);
 
 #endif
