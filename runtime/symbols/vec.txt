@@ -1,0 +1,1 @@
+# Runtime symbols of ms_rt/vec.h defined in C; none (header only).

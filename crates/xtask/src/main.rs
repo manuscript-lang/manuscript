@@ -295,8 +295,8 @@ fn check_c_abi(
                     )
                 })
                 .ok_or_else(|| format!("{name}: unreadable signature `{line}`"))?;
-            let rust_params: Vec<String> = rust_params
-                .split(',')
+            let rust_params: Vec<String> = split_top_level(rust_params)
+                .into_iter()
                 .filter(|p| !p.trim().is_empty())
                 .map(|p| abi_kind(p.split_once(':').map_or(p, |(_, t)| t)))
                 .collect();
@@ -331,6 +331,24 @@ fn check_c_abi(
 }
 
 /// The `msrt_*`/`msstd_*` prototypes of a module header as `name -> (parameter kinds, result kind)`.
+/// Splits a parameter list at the commas outside angle brackets (`FrameBuf<StrVal, 8>` is one parameter).
+fn split_top_level(params: &str) -> Vec<&str> {
+    let (mut parts, mut depth, mut start) = (Vec::new(), 0usize, 0);
+    for (i, c) in params.char_indices() {
+        match c {
+            '<' => depth += 1,
+            '>' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => {
+                parts.push(&params[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(&params[start..]);
+    parts
+}
+
 fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>, String)> {
     let mut declared = std::collections::BTreeMap::new();
     for line in header.lines() {

@@ -13,3 +13,10 @@ msrt_string_scalar_at_byte
 msrt_string_contains
 msrt_string_contains_multi
 msrt_string_count
+msrt_string_split
+msrt_string_split_view
+msrt_string_split_view_into
+msrt_string_split_first
+msrt_string_replace
+msrt_string_replace_first
+msrt_string_replace_take

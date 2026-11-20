@@ -3,6 +3,7 @@
 #define MS_RT_STRING_H
 
 #include "ms_rt/base.h"
+#include "ms_rt/vec.h"
 
 /* A string value: two words (crates/ms-rt-abi StrVal). The top bits of `tagged` say what the bytes are:
  * 00 owned allocation at `ptr_word`, 01 inline (bytes start at the value's own address, length in
@@ -42,5 +43,13 @@ int64_t msrt_string_scalar_step(const ms_str *s, int64_t at);
 int64_t msrt_string_scalar_at_byte(const ms_str *s, int64_t at);
 uint8_t msrt_string_starts_with(const ms_str *a, const ms_str *v);
 uint8_t msrt_string_ends_with(const ms_str *a, const ms_str *v);
+
+void msrt_string_split(const ms_str *s, const ms_str *sep, ms_vec *out);
+void msrt_string_split_view(const ms_str *s, const ms_str *sep, ms_vec *out);
+void msrt_string_split_view_into(const ms_str *s, const ms_str *sep, ms_str *buf, ms_vec *out);
+void msrt_string_split_first(const ms_str *s, const ms_str *sep, ms_str *out);
+void msrt_string_replace(const ms_str *s, const ms_str *old, const ms_str *new_, ms_str *out);
+void msrt_string_replace_first(const ms_str *s, const ms_str *old, const ms_str *new_, ms_str *out);
+void msrt_string_replace_take(ms_str *s, const ms_str *old, const ms_str *new_, ms_str *out);
 
 #endif
