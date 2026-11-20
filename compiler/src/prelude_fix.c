@@ -1,5 +1,6 @@
 /* Redundant prelude import fixes (ms/prelude_fix.h). */
 #include "ms/prelude_fix.h"
+#include "ms_rt/chars.h"
 
 #include <string.h>
 
@@ -12,13 +13,9 @@ typedef struct PfTokens {
 
 /* ---- text helpers ---- */
 
-static bool pf_is_blank(char c) {
-    return c == ' ' || (c >= '\t' && c <= '\r');
-}
-
 static bool pf_is_all_blank(MsStr s) {
     for (uint32_t i = 0; i < s.len; i++) {
-        if (!pf_is_blank(s.ptr[i])) {
+        if (!ms_ascii_is_space((uint8_t)s.ptr[i])) {
             return false;
         }
     }
@@ -26,13 +23,8 @@ static bool pf_is_all_blank(MsStr s) {
 }
 
 static bool pf_has(MsStr s, const char *needle) {
-    size_t n = strlen(needle);
-    for (size_t i = 0; i + n <= s.len; i++) {
-        if (memcmp(s.ptr + i, needle, n) == 0) {
-            return true;
-        }
-    }
-    return false;
+    size_t found = 0;
+    return ms_bytes_find(ms_bytes_of((const uint8_t *)s.ptr, s.len), ms_bytes_of((const uint8_t *)needle, strlen(needle)), &found);
 }
 
 /* The first `\n` at or after `from`, or the source length. */

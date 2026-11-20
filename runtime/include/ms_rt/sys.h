@@ -48,14 +48,15 @@ size_t ms_sys_malloc_size(void *ptr);
 /* Monotonic clock in nanoseconds. */
 int64_t ms_sys_monotonic_ns(void);
 
-/* sys/{posix,windows}/thread.c */
+/* sys/thread.c (libuv) and sys/{posix,windows}/yield.c */
 
 /* Starts a thread running start(arg). stack 0 takes the default size, else it is the stack size in bytes.
- * Returns a handle for ms_sys_thread_join, or 0 on failure. */
+ * Returns a handle for ms_sys_thread_join, or NULL on failure. */
 typedef void (*MsSysThreadFn)(void *);
-MS_NODISCARD uintptr_t ms_sys_thread_spawn(size_t stack, MsSysThreadFn start, void *arg);
+typedef struct MsSysThread MsSysThread;
+MS_NODISCARD MsSysThread *ms_sys_thread_spawn(size_t stack, MsSysThreadFn start, void *arg);
 /* Waits for a thread started by ms_sys_thread_spawn and releases its handle. */
-void ms_sys_thread_join(uintptr_t thread);
+void ms_sys_thread_join(MsSysThread *thread);
 /* Lets another thread run: the wait of a spin lock. */
 void ms_sys_yield(void);
 /* Blocks the calling thread for ms milliseconds. */
@@ -74,5 +75,16 @@ MS_NODISCARD bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns);
  * linker copy environ into the program, and glibc fills only its own, so readers of the copy would see an empty
  * environment (issue #4647). Linux only; a no-op elsewhere. */
 void ms_sys_sync_environ(void);
+
+/* ---- faults ---- */
+
+/* Called on the faulting thread, on its alternate stack, with the address the faulting access touched. It
+ * ends the process for a fault it owns (a stack overflow) and returns for any other, which then crashes as it
+ * would have without a handler. */
+typedef void (*MsSysFaultFn)(uintptr_t address);
+/* Gives the calling thread an alternate signal stack and routes the process's memory-access faults (SIGSEGV,
+ * SIGBUS) to on_fault, so a stack overflow can be reported by name; call it on each thread that may overflow.
+ * The alternate stack lives as long as the process. Linux and macOS only: Windows reports false. */
+MS_NODISCARD bool ms_sys_fault_handler_install(MsSysFaultFn on_fault);
 
 #endif

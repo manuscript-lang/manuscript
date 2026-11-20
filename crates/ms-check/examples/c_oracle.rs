@@ -257,6 +257,15 @@ fn body_exprs(e: &Expr, out: &mut Vec<NodeId>) {
             body_exprs(left, out);
             body_exprs(right, out);
         }
+        ExprKind::Match { scrutinee, arms } => {
+            body_exprs(scrutinee, out);
+            for arm in arms {
+                body_exprs(&arm.path, out);
+                if let Some(value) = &arm.value {
+                    body_exprs(value, out);
+                }
+            }
+        }
         _ => {}
     }
 }
