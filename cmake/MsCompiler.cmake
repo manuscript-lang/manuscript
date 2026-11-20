@@ -8,6 +8,8 @@ set(_cflags -std=c11 -O1 -g -Wall -Wextra -Werror -Wno-format-truncation)
 set(_clink "")
 if(MS_WINDOWS)
   list(APPEND _cflags -D_CRT_SECURE_NO_WARNINGS)
+  # __int128 division (constfold, range analysis) calls __divti3 and __modti3, which MSVC libraries lack.
+  list(APPEND _clink -rtlib=compiler-rt)
 endif()
 if(MS_SANITIZE)
   list(APPEND _cflags -fsanitize=address,undefined -fno-sanitize-recover=undefined)
