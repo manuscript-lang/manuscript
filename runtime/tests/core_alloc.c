@@ -1,13 +1,15 @@
 /* Unit tests for runtime/core/alloc.c, ported from crates/ms-rt/src/alloc.rs; `make c-test` builds them
  * with ASan, UBSan and -DMS_ALLOC_STATS (live-block counts, freed blocks scribbled). */
 #include <pthread.h>
+#include <sched.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "alloc.h"
+#include "../core/alloc.h"
 #include "ms_sys.h"
 
 static void check(bool ok, int line, const char *text) {
@@ -219,27 +221,34 @@ static void a_released_heap_is_adopted_with_its_blocks(void) {
     pthread_join(t, 0);
 }
 
-static pthread_barrier_t gate;
+enum { MANY_HEAPS = 300 };
+static atomic_int arrived;
+static atomic_int freed;
+
+/* Waits until `counter` reaches `target`: every thread holds its heap while the others claim theirs. */
+static void wait_for(atomic_int *counter, int target) {
+    atomic_fetch_add(counter, 1);
+    while (atomic_load(counter) < target) {
+        sched_yield();
+    }
+}
 
 static void *thread_many_heaps(void *arg) {
     (void)arg;
     msrt_heap_claim();
     void *p = msrt_alloc(100);
     CHECK(msrt_heap_has());
-    pthread_barrier_wait(&gate);
+    wait_for(&arrived, MANY_HEAPS);
     msrt_free(p);
-    pthread_barrier_wait(&gate);
+    wait_for(&freed, MANY_HEAPS);
     msrt_heap_release();
     return 0;
 }
 
 static void more_than_256_heaps_exist_at_once(void) {
-    enum { N = 300 };
-    pthread_t t[N];
-    pthread_barrier_init(&gate, 0, N);
-    for (int i = 0; i < N; i++) pthread_create(&t[i], 0, thread_many_heaps, 0);
-    for (int i = 0; i < N; i++) pthread_join(t[i], 0);
-    pthread_barrier_destroy(&gate);
+    pthread_t t[MANY_HEAPS];
+    for (int i = 0; i < MANY_HEAPS; i++) pthread_create(&t[i], 0, thread_many_heaps, 0);
+    for (int i = 0; i < MANY_HEAPS; i++) pthread_join(t[i], 0);
 }
 
 /* The shared large-block lists and the idle-heap list sit behind a spin lock that yields: many more threads
@@ -363,7 +372,7 @@ static void a_refused_reservation_is_halved_until_it_fits(void) {
     for (unsigned shrink = 0; shrink <= 10; shrink += shrink == 0 ? 3 : 7) {
         map_limit = grow >> shrink;
         mapped_n = 0;
-        msalloc_region r;
+        MsAllocRegion r;
         CHECK(msalloc_reserve(limited_map, limited_unmap, &r));
         unsigned kept = shrink == 0 ? 0 : (shrink + 2 < 10 ? shrink + 2 : 10);
         CHECK(r.pages_len == pages >> kept);
@@ -371,22 +380,24 @@ static void a_refused_reservation_is_halved_until_it_fits(void) {
         CHECK(mapped_n == 3); /* only the accepted mappings stay */
         for (size_t i = 0; i < mapped_n; i++) mssys_unmap(mapped[i].p, mapped[i].len);
     }
-    msalloc_region r;
+    MsAllocRegion r;
     CHECK(!msalloc_reserve(refuse_map, never_unmap, &r));
 }
 
+static int sampler_calls;
+
+static int64_t count_sample(size_t size) {
+    (void)size;
+    sampler_calls++;
+    return 10;
+}
+
 static void sampling_calls_the_hook_every_period(void) {
-    static int calls;
-    calls = 0;
-    int64_t hook(size_t size) {
-        (void)size;
-        calls++;
-        return 10;
-    }
-    msrt_heap_sample_every(10, (void *)hook);
+    sampler_calls = 0;
+    msrt_heap_sample_every(10, (void *)count_sample);
     for (int i = 0; i < 100; i++) msrt_free(msrt_alloc(32));
-    CHECK(calls == 10);
-    msrt_heap_sample_every(INT64_MAX / 2, (void *)hook);
+    CHECK(sampler_calls == 10);
+    msrt_heap_sample_every(INT64_MAX / 2, (void *)count_sample);
 }
 
 static void requested_counts_allocations(void) {

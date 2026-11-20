@@ -21,17 +21,17 @@ const fn builtin(size: u32, align: u32, kind: u32) -> TypeDesc {
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_drop"), unsafe(no_mangle))]
 pub static msrt_desc_int: TypeDesc = builtin(8, 8, KIND_INT);
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_drop"), unsafe(no_mangle))]
 pub static msrt_desc_float: TypeDesc = builtin(8, 8, KIND_FLOAT);
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_drop"), unsafe(no_mangle))]
 pub static msrt_desc_float32: TypeDesc = builtin(4, 4, KIND_FLOAT);
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_drop"), unsafe(no_mangle))]
 pub static msrt_desc_bool: TypeDesc = builtin(1, 1, KIND_BOOL);
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_drop"), unsafe(no_mangle))]
 pub static msrt_desc_string: TypeDesc = builtin(ms_rt_abi::STR_SIZE as u32, 8, KIND_STRING);
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_drop"), unsafe(no_mangle))]
 pub static msrt_desc_bytes: TypeDesc = builtin(24, 8, KIND_BYTES);
 
 /// True when a value of this type owns nothing and copies bitwise.
@@ -315,35 +315,35 @@ pub unsafe fn slot_hash(d: &TypeDesc, slot: *const u8) -> u64 {
 
 // ---- exported generic helpers ----
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_drop"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_slot_drop(d: *const TypeDesc, slot: *mut u8) {
     // SAFETY: caller contract.
     unsafe { slot_drop(&*d, slot) }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_copy"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_slot_copy(d: *const TypeDesc, src: *const u8, dst: *mut u8) {
     // SAFETY: caller contract.
     unsafe { slot_copy(&*d, src, dst) }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_eq"), unsafe(no_mangle))]
 // ms: leaf domain=slot
 pub unsafe extern "C-unwind" fn msrt_slot_eq(d: *const TypeDesc, a: *const u8, b: *const u8) -> u8 {
     // SAFETY: caller contract.
     unsafe { slot_eq(&*d, a, b) as u8 }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_slot_hash"), unsafe(no_mangle))]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64 {
     // SAFETY: caller contract.
     unsafe { slot_hash(&*d, slot) as i64 }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(ms_c = "msrt_hash_combine"), unsafe(no_mangle))]
 // ms: leaf
 pub extern "C-unwind" fn msrt_hash_combine(a: i64, b: i64) -> i64 {
     string::mix((a as u64).rotate_left(5) ^ b as u64) as i64

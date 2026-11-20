@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ms/diag.h"
 #include "ms/dump.h"
 #include "ms/lex.h"
 #ifndef MS_NO_PARSER
@@ -33,12 +34,41 @@ static bool read_file(const char *path, char **data, size_t *len) {
     return true;
 }
 
+static void print_code(MsBuf *out, const char *phase, MsStr message) {
+    const char *code = ms_code_for(phase, message);
+    const MsSubcode *kind = ms_subcode_for(code, message);
+    ms_buf_printf(out, "%s %s\n", code, kind ? kind->info.code : "-");
+}
+
+/* Lines of "phase<TAB>message". */
+static void print_message_codes(MsBuf *out, const char *src, size_t len) {
+    size_t at = 0;
+    while (at < len) {
+        size_t end = at;
+        while (end < len && src[end] != '\n') {
+            end++;
+        }
+        size_t tab = at;
+        while (tab < end && src[tab] != '\t') {
+            tab++;
+        }
+        char phase[32] = {0};
+        size_t pn = tab - at < sizeof phase - 1 ? tab - at : sizeof phase - 1;
+        memcpy(phase, src + at, pn);
+        size_t m = tab < end ? tab + 1 : end;
+        print_code(out, phase, (MsStr){src + m, (uint32_t)(end - m)});
+        at = end + 1;
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) {
         fputs("usage: ms_syntax_dump tokens|ast FILE...\n", stderr);
         return 2;
     }
     bool tokens = strcmp(argv[1], "tokens") == 0;
+    bool codes = strcmp(argv[1], "codes") == 0;
+    bool partial = strcmp(argv[1], "partial") == 0;
     MsBuf out = {0};
     for (int i = 2; i < argc; i++) {
         char *src;
@@ -55,7 +85,32 @@ int main(int argc, char **argv) {
         }
         MsArena arena = {0};
         MsDiag diag;
-        if (tokens) {
+        if (codes) {
+            size_t n = strlen(argv[i]);
+            if (n > 4 && strcmp(argv[i] + n - 4, ".txt") == 0) {
+                print_message_codes(&out, src, len);
+            } else {
+                MsNames names;
+                ms_names_init(&names);
+                MsModule mod;
+                if (!ms_parse(&arena, &names, src, len, &mod, &diag)) {
+                    print_code(&out, "parse", diag.message);
+                }
+                ms_names_free(&names);
+            }
+        } else if (partial) {
+            MsNames names;
+            ms_names_init(&names);
+            MsModule mod;
+            MsDiagList list;
+            ms_parse_partial(&arena, &names, src, len, &mod, &list);
+            ms_dump_module(&out, &names, &mod);
+            ms_buf_printf(&out, "nodes %u\n", mod.node_count);
+            for (uint32_t k = 0; k < list.len; k++) {
+                ms_dump_diag(&out, &list.items[k]);
+            }
+            ms_names_free(&names);
+        } else if (tokens) {
             MsLexed lexed;
             if (!ms_lex(&arena, src, len, &lexed, &diag)) {
                 ms_dump_diag(&out, &diag);

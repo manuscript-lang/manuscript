@@ -13,7 +13,7 @@ cargo build --release --locked -p ms-syntax --example c_oracle
 oracle=target/release/examples/c_oracle
 
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o "$out/dump"
+    -Icompiler/include -Iruntime/include compiler/src/libms.c compiler/tools/ms_syntax_dump.c -o "$out/dump"
 cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/mutate.c -o "$out/mutate"
 
 git ls-files '*.ms' > "$out/files.txt"
@@ -23,7 +23,7 @@ mkdir -p "$out/fuzz"
 ls "$out"/fuzz/*.ms > "$out/fuzz.txt"
 
 status=0
-for mode in ${MS_MODES:-tokens ast}; do
+for mode in ${MS_MODES:-tokens ast codes partial}; do
     for set in files fuzz; do
         # xargs keeps the command line short and the oracle's per-process cost low.
         tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" "$mode" > "$out/$mode-$set.rust"
@@ -37,4 +37,14 @@ for mode in ${MS_MODES:-tokens ast}; do
         fi
     done
 done
+# Codes of messages in every phase: the committed list of phase<TAB>message lines.
+"$oracle" codes compiler/tests/codes.txt | sed 1d > "$out/codes-list.rust"
+"$out/dump" codes compiler/tests/codes.txt | sed 1d > "$out/codes-list.c"
+if cmp -s "$out/codes-list.rust" "$out/codes-list.c"; then
+    echo "ok   codes list ($(wc -l < "$out/codes-list.rust") messages)"
+else
+    echo "FAIL codes list: first difference"
+    diff "$out/codes-list.rust" "$out/codes-list.c" | head -20 || true
+    status=1
+fi
 exit $status
