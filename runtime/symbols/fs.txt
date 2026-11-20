@@ -48,4 +48,8 @@ msstd_fs_temporary_open
 msstd_fs_temporary_path
 msstd_fs_temporary_root
 msstd_fs_truncate
+msstd_fs_watch
+msstd_fs_watch_close
+msstd_fs_watch_native
+msstd_fs_watch_next
 msstd_fs_write_file

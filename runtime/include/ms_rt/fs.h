@@ -165,4 +165,15 @@ uint8_t msstd_fs_file_set_times(void *handle, const MsFsTimestamp *accessed, con
 /* ms-sig: msstd_fs_file_read_lines(handle h: *mut ObjCell<Stream>, max_bytes: i64, max_lines: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
 uint8_t msstd_fs_file_read_lines(void *handle, int64_t max_bytes, int64_t max_lines, MsVec *out, MsStr *err);
 
+/* Watchers: a native one on libuv's file-event handles, a polling one that compares snapshots. A wait returns the
+ * List[FileEvent]; STATUS_NONE once the watched root is gone, STATUS_CLOSED after close. */
+/* ms-sig: msstd_fs_watch(path: *const StrVal, recursive: u8, interval_ns: i64, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_watch(const MsStr *path, uint8_t recursive, int64_t interval_ns, uint8_t has_max, int64_t max, void **out, MsStr *err);
+/* ms-sig: msstd_fs_watch_close(handle h: *mut ObjCell<Watcher>) @domain=filesystem */
+void msstd_fs_watch_close(void *handle);
+/* ms-sig: msstd_fs_watch_native(path: *const StrVal, recursive: u8, has_max: HasRaw, max: i64, has_events: HasRaw, events: i64, overflow: *const StrVal, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_watch_native(const MsStr *path, uint8_t recursive, uint8_t has_max, int64_t max, uint8_t has_events, int64_t events, const MsStr *overflow, void **out, MsStr *err);
+/* ms-sig: msstd_fs_watch_next(handle h: *mut ObjCell<Watcher>, out: *mut VecVal, err: ErrSlot) -> u8 @domain=filesystem */
+uint8_t msstd_fs_watch_next(void *handle, MsVec *out, MsStr *err);
+
 #endif
