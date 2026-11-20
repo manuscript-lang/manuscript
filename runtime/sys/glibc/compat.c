@@ -7,40 +7,17 @@
 int __cxa_atexit(void (*)(void *), void *, void *);
 
 /* glibc 2.38 headers compile the strtol and scanf families under C23 (and under _GNU_SOURCE, which libuv defines) to
- * these names. They differ from the older functions only in accepting a 0b prefix; the libraries never rely on it.
+ * `__isoc23_*` names. They differ from the older functions only in accepting a 0b prefix, which the libraries never rely
+ * on. The old functions are bound by assembler name, so no header redirects them back here.
  * toolchain/check-glibc-archives.sh fails the library build when one more such name appears. */
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-long __isoc23_strtol(const char *s, char **end, int base) { return strtol(s, end, base); }
-unsigned long __isoc23_strtoul(const char *s, char **end, int base) { return strtoul(s, end, base); }
-long long __isoc23_strtoll(const char *s, char **end, int base) { return strtoll(s, end, base); }
-unsigned long long __isoc23_strtoull(const char *s, char **end, int base) { return strtoull(s, end, base); }
-int __isoc23_vsscanf(const char *s, const char *format, va_list ap) { return vsscanf(s, format, ap); }
-int __isoc23_vfscanf(FILE *f, const char *format, va_list ap) { return vfscanf(f, format, ap); }
-int __isoc23_vscanf(const char *format, va_list ap) { return vscanf(format, ap); }
-int __isoc23_sscanf(const char *s, const char *format, ...) {
-    va_list ap;
-    va_start(ap, format);
-    int n = vsscanf(s, format, ap);
-    va_end(ap);
-    return n;
-}
-int __isoc23_fscanf(FILE *f, const char *format, ...) {
-    va_list ap;
-    va_start(ap, format);
-    int n = vfscanf(f, format, ap);
-    va_end(ap);
-    return n;
-}
-int __isoc23_scanf(const char *format, ...) {
-    va_list ap;
-    va_start(ap, format);
-    int n = vscanf(format, ap);
-    va_end(ap);
-    return n;
-}
+long old_strtol(const char *, char **, int) __asm__("strtol");
+unsigned long old_strtoul(const char *, char **, int) __asm__("strtoul");
+long long old_strtoll(const char *, char **, int) __asm__("strtoll");
+unsigned long long old_strtoull(const char *, char **, int) __asm__("strtoull");
+long __isoc23_strtol(const char *s, char **end, int base) { return old_strtol(s, end, base); }
+unsigned long __isoc23_strtoul(const char *s, char **end, int base) { return old_strtoul(s, end, base); }
+long long __isoc23_strtoll(const char *s, char **end, int base) { return old_strtoll(s, end, base); }
+unsigned long long __isoc23_strtoull(const char *s, char **end, int base) { return old_strtoull(s, end, base); }
 
 /* glibc before 2.34 keeps `atexit` in libc_nonshared.a, which programs do not link. */
 int atexit(void (*function)(void)) { return __cxa_atexit((void (*)(void *))function, NULL, NULL); }
