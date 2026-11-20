@@ -19,6 +19,8 @@ typedef struct MsBody {
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
     uint32_t *reads;        /* by binding id: how many times its value is read */
     bool *closed;           /* by binding id: its block ended, so the name is free again */
+    uint32_t loop_depth;    /* loops around the statement being checked */
+    uint32_t breaks;        /* `break`s seen for the innermost loop */
     MsBuf written;          /* expression ids whose type this function wrote, to undo them */
     bool supported;         /* false once a construct outside the handled set is met */
 } MsBody;
@@ -40,6 +42,8 @@ MsTy ms_body_block_value(MsBody *b, const MsStmts *body, const MsExpr *value, Ms
 uint32_t ms_body_bind(MsBody *b, MsSym name, MsTy ty, uint32_t node, uint8_t flags, MsBindRole role);
 /* The visible binding of `name`, or MS_NONE. */
 uint32_t ms_body_find_binding(const MsBody *b, MsSym name);
+/* A `match` over an enum or `Optional` scrutinee of type `ty` (check_alt.c). */
+MsTy ms_body_match_alternative(MsBody *b, const MsExpr *e, MsTy expected, MsTy ty);
 /* A `match` expression (check_match.c). */
 MsTy ms_body_match(MsBody *b, const MsExpr *e, MsTy expected);
 
