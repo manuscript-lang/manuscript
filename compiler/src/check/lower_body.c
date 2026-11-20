@@ -134,6 +134,9 @@ static LbVal lb_number(Lb *lb, const MsExpr *e, bool negate) {
 
 /* A literal with no interpolation. */
 static LbVal lb_text(Lb *lb, const MsExpr *e) {
+    if (e->u.text.len > 1) {
+        return lt_text(lb, e); // an interpolation joins its pieces
+    }
     if (e->u.text.len != 1 || e->u.text.ptr[0].expr != NULL) {
         return lb_unsupported(lb);
     }
@@ -321,6 +324,9 @@ static LbVal lb_binary(Lb *lb, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     if (op == MS_B_AND || op == MS_B_OR) {
         return lb_short_circuit(lb, e);
+    }
+    if (op == MS_B_ADD && lb->facts->expr_ty[e->id] == lb->string_ty) {
+        return lt_text(lb, e); // a chain of string sums is one join
     }
     const LbVal left = lb_expr(lb, e->u.bin.left);
     const LbVal right = lb->ok ? lb_expr(lb, e->u.bin.right) : LB_FAIL;
