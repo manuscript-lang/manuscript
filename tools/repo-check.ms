@@ -26,6 +26,10 @@ import (
 	timed_waits,
 	unsafe_boundary from "./repo-check/checks_text.ms",
 	licenses from "./repo-check/licenses.ms",
+	skill_manifests,
+	skill_mistakes,
+	skill_pages,
+	skill_server_state from "./repo-check/skill.ms",
 	skipped from "./repo-check/util.ms",
 )
 
@@ -120,10 +124,14 @@ fn main() Int:
 	issues.extend(thread_affinity(files))
 	issues.extend(cancel_jumps(files))
 	issues.extend(timed_waits(files))
+	issues.extend(skill_pages())
+	issues.extend(skill_server_state())
+	issues.extend(skill_mistakes())
+	issues.extend(skill_manifests())
 
 	if issues.is_empty():
 		print(
-			"Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, cancel by return, and timed waits agree."
+			"Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, stream names, impl adjacency, internal externs, optional defaults, crate layering, checker stage layering, thread affinity, cancel by return, timed waits, and the agent skill agree."
 		)
 		return 0
 
