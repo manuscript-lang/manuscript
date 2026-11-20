@@ -862,8 +862,10 @@ static bool target_is_directory(const WCHAR *link_path, const WCHAR *target) {
     WCHAR joined[2 * MAX_PATH];
     const bool absolute = target[0] == L'\\' || (target[0] != L'\0' && target[1] == L':');
     if (absolute) {
-        (void)wcsncpy(joined, target, MS_COUNT_OF(joined) - 1);
-        joined[MS_COUNT_OF(joined) - 1] = L'\0';
+        const size_t length = wcslen(target);
+        const size_t kept = length < MS_COUNT_OF(joined) ? length : MS_COUNT_OF(joined) - 1;
+        memcpy(joined, target, kept * sizeof *joined);
+        joined[kept] = L'\0';
     } else {
         const WCHAR *slash = wcsrchr(link_path, L'\\');
         const size_t prefix = slash != NULL ? (size_t)(slash - link_path) + 1 : 0;
@@ -871,7 +873,7 @@ static bool target_is_directory(const WCHAR *link_path, const WCHAR *target) {
             return false;
         }
         memcpy(joined, link_path, prefix * sizeof *joined);
-        wcscpy(joined + prefix, target);
+        memcpy(joined + prefix, target, (wcslen(target) + 1) * sizeof *joined);
     }
     const DWORD attributes = GetFileAttributesW(joined);
     return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -937,11 +939,11 @@ typedef struct MsReparseBuffer {
     };
 } MsReparseBuffer;
 
-enum {
-    MS_REPARSE_TAG_MOUNT_POINT = 0xA0000003u,
-    MS_REPARSE_TAG_SYMLINK = 0xA000000Cu,
-    MS_REPARSE_BUFFER_SIZE = 16 * 1024
-};
+/* Tags beyond INT_MAX are not enum constants (those are int), so they compare unsigned with `tag`. */
+#define MS_REPARSE_TAG_MOUNT_POINT 0xA0000003UL
+#define MS_REPARSE_TAG_SYMLINK 0xA000000CUL
+
+enum { MS_REPARSE_BUFFER_SIZE = 16 * 1024 };
 
 /* The target text inside a reparse buffer, in UTF-16 units. */
 typedef struct ReparseTarget {
