@@ -5,6 +5,7 @@
 //! ms-tooling-dev lint FILE...
 //! ms-tooling-dev inspect FILE
 //! ms-tooling-dev facts FILE                 the fact model as JSON, the input of tools/ms/views.ms
+//! ms-tooling-dev nodes FILE                 `ID KIND` per typed expression, the oracle of `ms_check_dump --nodes`
 //! ms-tooling-dev view FILE VIEW ENTITY DEPTH FORMAT   one `ms diagram` view (ascii, mermaid, json)
 //! ms-tooling-dev skill-calls update         rewrite the standard-call table in the agent skill
 //! ```
@@ -35,6 +36,7 @@ fn run(syms: ms_syntax::Names) -> i32 {
         "lint" => lint(syms, files),
         "inspect" => inspect(syms, files),
         "facts" => facts_json(syms, files),
+        "nodes" => nodes(syms, files),
         "view" => view(syms, files),
         "skill-calls" => skill_calls(files),
         other => {
@@ -315,5 +317,56 @@ fn view(syms: ms_syntax::Names, args: &[String]) -> i32 {
             .unwrap_or_else(|| tree.ascii()),
     };
     print!("{text}");
+    0
+}
+
+struct KindScan<'a> {
+    module: &'a ms_check::ModuleData,
+    out: Vec<(u32, &'static str)>,
+}
+
+impl ms_syntax::visit::Visitor for KindScan<'_> {
+    fn expr(&mut self, e: &ms_syntax::ast::Expr) {
+        use ms_check::api::types::Builtin as B;
+        let Some(ty) = self.module.facts().info(e.id).and_then(|i| i.ty.clone()) else {
+            return;
+        };
+        let kinds = [
+            (B::Optional, "Optional"),
+            (B::Result, "Result"),
+            (B::List, "List"),
+            (B::Map, "Map"),
+            (B::Set, "Set"),
+            (B::Bytes, "Bytes"),
+            (B::Int, "Int"),
+            (B::Float, "Float"),
+            (B::Bool, "Bool"),
+            (B::Void, "Void"),
+            (B::Promise, "Promise"),
+        ];
+        let kind = if ty.is_string() {
+            "String"
+        } else {
+            kinds.iter().find(|(b, _)| ty.is(*b)).map_or("Other", |(_, n)| n)
+        };
+        self.out.push((e.id.0, kind));
+    }
+}
+
+/// `nodes FILE`: `ID KIND` for each expression the Rust checker typed, sorted by id.
+fn nodes(syms: ms_syntax::Names, files: &[String]) -> i32 {
+    let Some(program) = files.first().and_then(|f| checked(syms, f)) else {
+        return 1;
+    };
+    for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
+        let mut scan = KindScan { module, out: Vec::new() };
+        for decl in &module.decls {
+            ms_syntax::visit::walk_decl(&mut scan, decl.decl());
+        }
+        scan.out.sort();
+        for (id, kind) in scan.out {
+            println!("{id} {kind}");
+        }
+    }
     0
 }
