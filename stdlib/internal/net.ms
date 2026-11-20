@@ -1,7 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
-	HttpHeaders, NativeHttpClient from "@std/net/http.ms",
 	DnsConfig from "@std/net/dns.ms",
+	HttpHeaders, NativeHttpClient from "@std/net/http.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	Datagram,
 	NativeConnection,
@@ -201,9 +201,6 @@ export extern fn msstd_websocket_send_bytes(
 export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
 
 export extern fn msstd_net_network_close(net: NativeNetwork) Void
-
-
-
 
 export extern fn msstd_net_network_restrict(
 	net: NativeNetwork,

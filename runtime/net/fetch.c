@@ -8,7 +8,6 @@
 #include "../std/abi.h"
 #include "addr_text.h"
 #include "curl_client.h"
-#include "dns_query.h"
 #include "headers.h"
 #include "http1.h"
 #include "ms_rt/alloc.h"
@@ -354,6 +353,29 @@ static void add_address(char **list, size_t *length, const MsStr *address) {
                                 (int)msrt_str_len(address), msrt_str_data(address), v6 ? "]" : "");
 }
 
+static void record_drop(const uint8_t *slot) {
+    MsNetDnsRecord record;
+    memcpy(&record, slot, sizeof record);
+    msrt_string_free(&record.value);
+}
+
+static void record_copy(const uint8_t *source, uint8_t *destination) {
+    MsNetDnsRecord record;
+    memcpy(&record, source, sizeof record);
+    MsNetDnsRecord copy = record;
+    msrt_string_clone(&record.value, &copy.value);
+    memcpy(destination, &copy, sizeof copy);
+}
+
+/* How a `List[DnsRecord]` from `msstd_dns_query` is dropped. */
+static const MsTypeDesc record_desc = {
+    .size = sizeof(MsNetDnsRecord),
+    .align = _Alignof(MsNetDnsRecord),
+    .kind = MS_TYPE_KIND_CUSTOM,
+    .drop = record_drop,
+    .copy = record_copy,
+};
+
 /* With a client that has its own resolver, "host:port:address,..." for the URL's host from that server; *entry stays NULL
  * for the system's resolver and for an IP literal. */
 static uint8_t resolve_entry(const MsCurlClient *client, MsBytes url, int64_t deadline, char **entry, MsStr *err) {
@@ -378,23 +400,21 @@ static uint8_t resolve_entry(const MsCurlClient *client, MsBytes url, int64_t de
     MsStr server, name;
     msrt_string_from_bytes((const uint8_t *)resolver, strlen(resolver), &server);
     msrt_string_from_bytes((const uint8_t *)host, strlen(host), &name);
-    const int64_t kinds[] = {1, 28}; /* A, AAAA */
+    const int64_t kinds[] = {0, 1}; /* DnsKind.A, DnsKind.AAAA */
     for (size_t i = 0; i < 2 && status == STATUS_OK; i++) {
         const int64_t left = deadline < 0 ? 0 : deadline - ms_sys_monotonic_ns();
-        MsVec values, numbers;
-        msrt_list_with_capacity(&msrt_desc_string, 0, &values);
-        msrt_list_with_capacity(&msrt_desc_int, 0, &numbers);
-        const uint8_t found = msstd_dns_query(&server, &name, kinds[i], deadline >= 0, left > 0 ? left : 1, &values, &numbers, err);
+        MsVec records;
+        msrt_list_with_capacity(&record_desc, 0, &records);
+        const uint8_t found = msstd_dns_query(&server, &name, kinds[i], deadline >= 0, left > 0 ? left : 1, &records, err);
         if (found == STATUS_OK) {
-            const MsStr *items = values.ptr;
-            for (size_t k = 0; k < values.len; k++) {
-                add_address(&list, &length, &items[k]);
+            const MsNetDnsRecord *items = records.ptr;
+            for (size_t k = 0; k < records.len; k++) {
+                add_address(&list, &length, &items[k].value);
             }
         } else if (found != STATUS_NONE) {
             status = found;
         }
-        msrt_list_drop(&values, &msrt_desc_string);
-        msrt_list_drop(&numbers, &msrt_desc_int);
+        msrt_list_drop(&records, &record_desc);
     }
     ms_str_release(&server);
     ms_str_release(&name);
