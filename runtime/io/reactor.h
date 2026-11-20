@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #include "ms_rt/safe.h"
+#include "ring.h"
 
 /* Interest and readiness bits; they equal the WAIT_* constants of the scheduler. */
 enum {
@@ -68,5 +69,39 @@ void ms_io_forget(int fd);
  * ready to out[0..capacity). *count is how many. False when the calling thread has no reactor. A wake-up ends
  * the wait with *count possibly 0, so the caller looks for work again. */
 MS_NODISCARD MS_NONNULL bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *count);
+
+/* Completions: work that finishes elsewhere reports through the completion ring, never through a callback into
+ * the scheduler. Each is submitted with the caller's 64-bit id and ends as one MsIoEvent, which the scheduler
+ * collects with ms_io_completion after ms_io_wait returns (a completion ends the wait). At most
+ * MS_IO_MAX_COMPLETIONS are outstanding per reactor, submitted or waiting to be collected; a submission past that
+ * returns false and the caller retries after collecting. */
+enum { MS_IO_MAX_COMPLETIONS = 64 };
+
+/* Runs work(argument) on libuv's thread pool, where it may block. The completion is MS_IO_WORK with the id and
+ * the return value as the result. `argument` must stay valid until the completion is collected. */
+typedef int32_t (*MsIoWorkFn)(void *argument);
+MS_NODISCARD bool ms_io_work(MsIoWorkFn work, void *argument, uint64_t id);
+
+/* Resolved addresses of one host. */
+typedef struct MsIoAddresses MsIoAddresses;
+typedef struct {
+    int32_t family;     /* AF_INET or AF_INET6 */
+    uint32_t length;    /* bytes used in `socket_address` */
+    uint8_t socket_address[128]; /* a sockaddr, ready for connect or bind */
+} MsIoAddress;
+
+/* Starts resolving `host` and `service` (a port number or name) for stream sockets, with the answer queued as
+ * MS_IO_RESOLVE and the id. `*out` is set at once and stays unusable until that completion is collected; the
+ * caller then reads it and releases it with ms_io_addresses_free, whatever the result. Nothing is allocated when
+ * this returns false. */
+MS_NODISCARD MS_NONNULL bool ms_io_resolve(const char *host, const char *service, uint64_t id, MsIoAddresses **out);
+/* How many addresses a completed resolution found; 0 after an error. */
+size_t ms_io_addresses_count(const MsIoAddresses *addresses);
+/* Copies the address at `index` into `*out`; false past the end. */
+MS_NODISCARD MS_NONNULL bool ms_io_addresses_at(const MsIoAddresses *addresses, size_t index, MsIoAddress *out);
+void ms_io_addresses_free(MsIoAddresses *addresses);
+
+/* Takes the oldest queued completion into `*event`; false when there is none. */
+MS_NODISCARD MS_NONNULL bool ms_io_completion(MsIoEvent *event);
 
 #endif

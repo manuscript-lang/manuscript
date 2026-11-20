@@ -18,6 +18,7 @@ cat > "$out/rt.c" <<'C'
 #include <stdlib.h>
 extern long msmain(void);
 void msrt_fault_int_overflow(void) { exit(134); }
+long msrt_test_add(long a, long b) { return a + b; }
 int main(void) { return (int)msmain(); }
 C
 status=0

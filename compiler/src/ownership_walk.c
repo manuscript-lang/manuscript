@@ -24,6 +24,11 @@ typedef struct Borrow {
     const char *why;
 } Borrow;
 
+typedef struct BorrowSet {
+    Borrow *items;
+    uint32_t len, cap;
+} BorrowSet;
+
 typedef struct OwnWalk {
     MsCheck *check;
     MsModId module;
@@ -35,10 +40,12 @@ typedef struct OwnWalk {
     uint8_t *class_of;  /* by binding id: MsClass */
     uint32_t *origin;   /* by binding id: what a borrowed binding borrows from, else MS_NONE */
     bool *is_param;     /* by binding id */
-    Borrow *borrows;    /* live borrows in push order; a released one has holder MS_NONE */
-    uint32_t nborrows, borrows_cap;
+    BorrowSet active;   /* live borrows in push order; a released one has holder MS_NONE */
     uint32_t *pending;  /* holders whose borrows end with the statement */
     uint32_t npending, pending_cap;
+    uint32_t pending_base; /* the pending holders below it belong to an enclosing statement */
+    uint32_t *declared; /* bindings in scope, innermost last */
+    uint32_t ndeclared, declared_cap;
     bool supported;
 } OwnWalk;
 
@@ -64,6 +71,11 @@ static void own_error(OwnWalk *w, MsPos pos, MsStr message) {
 /* ---- bindings and borrows ---- */
 
 static void own_declare(OwnWalk *w, uint32_t binding, Perm perm, bool parameter) {
+    if (w->ndeclared == w->declared_cap) {
+        w->declared_cap = ms_capacity_for(w->declared_cap, w->ndeclared + 1);
+        w->declared = ms_array_resize(w->declared, w->declared_cap, sizeof *w->declared);
+    }
+    w->declared[w->ndeclared++] = binding;
     w->perm[binding] = (uint8_t)perm;
     w->class_of[binding] = (uint8_t)ms_classify(w->classifier, w->facts->bindings.ty[binding]);
     w->origin[binding] = MS_NONE;
@@ -77,11 +89,12 @@ static uint32_t own_resolve(const OwnWalk *w, uint32_t binding) {
 }
 
 static void own_push_borrow(OwnWalk *w, const Borrow *borrow) {
-    if (w->nborrows == w->borrows_cap) {
-        w->borrows_cap = ms_capacity_for(w->borrows_cap, w->nborrows + 1);
-        w->borrows = ms_array_resize(w->borrows, w->borrows_cap, sizeof *w->borrows);
+    BorrowSet *set = &w->active;
+    if (set->len == set->cap) {
+        set->cap = ms_capacity_for(set->cap, set->len + 1);
+        set->items = ms_array_resize(set->items, set->cap, sizeof *set->items);
     }
-    w->borrows[w->nborrows++] = *borrow;
+    set->items[set->len++] = *borrow;
 }
 
 static void own_declare_borrow(OwnWalk *w, uint32_t binding, uint32_t origin, MsPos pos, const char *why) {
@@ -92,8 +105,8 @@ static void own_declare_borrow(OwnWalk *w, uint32_t binding, uint32_t origin, Ms
 }
 
 static bool own_holds_borrow(const OwnWalk *w, uint32_t holder) {
-    for (uint32_t i = 0; i < w->nborrows; i++) {
-        if (w->borrows[i].holder == holder) {
+    for (uint32_t i = 0; i < w->active.len; i++) {
+        if (w->active.items[i].holder == holder) {
             return true;
         }
     }
@@ -102,14 +115,14 @@ static bool own_holds_borrow(const OwnWalk *w, uint32_t holder) {
 
 /* The borrows of the holders that finished their last use end with the statement. */
 static void own_release_pending(OwnWalk *w) {
-    for (uint32_t k = 0; k < w->npending; k++) {
-        for (uint32_t i = 0; i < w->nborrows; i++) {
-            if (w->borrows[i].holder == w->pending[k]) {
-                w->borrows[i].holder = MS_NONE;
+    for (uint32_t k = w->pending_base; k < w->npending; k++) {
+        for (uint32_t i = 0; i < w->active.len; i++) {
+            if (w->active.items[i].holder == w->pending[k]) {
+                w->active.items[i].holder = MS_NONE;
             }
         }
     }
-    w->npending = 0;
+    w->npending = w->pending_base;
 }
 
 static void own_queue_release(OwnWalk *w, uint32_t holder) {
@@ -125,8 +138,8 @@ static void own_queue_release(OwnWalk *w, uint32_t holder) {
 /* A move of `binding` while some live borrow reads from it. */
 static void own_check_move(OwnWalk *w, MsPos pos, uint32_t binding) {
     const uint32_t root = own_resolve(w, binding);
-    for (uint32_t i = 0; i < w->nborrows; i++) {
-        const Borrow *b = &w->borrows[i];
+    for (uint32_t i = 0; i < w->active.len; i++) {
+        const Borrow *b = &w->active.items[i];
         if (b->holder == MS_NONE || b->origin != root || b->holder == binding) {
             continue;
         }
@@ -281,16 +294,97 @@ static void own_return(OwnWalk *w, const MsStmt *s) {
     own_expr(w, e, DEMAND_MOVE);
 }
 
+/* ---- blocks and branches ---- */
+
+static void own_statement(OwnWalk *w, const MsStmt *s);
+
+static bool own_set_holds(const BorrowSet *set, uint32_t holder) {
+    for (uint32_t i = 0; i < set->len; i++) {
+        if (set->items[i].holder == holder) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static BorrowSet own_set_copy(const BorrowSet *set) {
+    BorrowSet copy = {0};
+    if (set->len != 0) {
+        copy.cap = ms_capacity_for(0, set->len);
+        copy.items = ms_array_resize(NULL, copy.cap, sizeof *copy.items);
+        memcpy(copy.items, set->items, sizeof *copy.items * set->len);
+        copy.len = set->len;
+    }
+    return copy;
+}
+
+/* The state after two paths: all of `first`, then the live borrows of the current set whose
+ * holder `first` does not hold. Takes `first`; the current set is dropped. */
+static void own_join(OwnWalk *w, BorrowSet first) {
+    BorrowSet second = w->active;
+    w->active = first;
+    for (uint32_t i = 0; i < second.len; i++) {
+        if (second.items[i].holder != MS_NONE && !own_set_holds(&first, second.items[i].holder)) {
+            own_push_borrow(w, &second.items[i]);
+        }
+    }
+    free(second.items);
+}
+
+/* A block's bindings end with it, and so do the borrows they hold. */
+static void own_block(OwnWalk *w, const MsStmts *body) {
+    const uint32_t mark = w->ndeclared;
+    const uint32_t outer_base = w->pending_base;
+    w->pending_base = w->npending;
+    for (uint32_t i = 0; i < body->len && w->supported; i++) {
+        own_statement(w, body->ptr[i]);
+        own_release_pending(w);
+    }
+    w->pending_base = outer_base;
+    for (uint32_t i = 0; i < w->active.len; i++) {
+        Borrow *b = &w->active.items[i];
+        for (uint32_t k = mark; b->holder != MS_NONE && k < w->ndeclared; k++) {
+            if (w->declared[k] == b->holder) {
+                b->holder = MS_NONE;
+            }
+        }
+    }
+    w->ndeclared = mark;
+}
+
+static void own_if(OwnWalk *w, const MsStmt *s) {
+    if (s->u.branch.binding != NULL) {
+        w->supported = false;
+        return;
+    }
+    own_expr(w, s->u.branch.cond, DEMAND_READ);
+    own_release_pending(w);
+    BorrowSet entry = own_set_copy(&w->active);
+    own_block(w, &s->u.branch.body);
+    BorrowSet then_state = w->active;
+    w->active = entry;
+    own_block(w, &s->u.branch.else_body);
+    own_join(w, then_state);
+}
+
+static void own_while(OwnWalk *w, const MsStmt *s) {
+    own_expr(w, s->u.loop.cond, DEMAND_READ);
+    own_release_pending(w);
+    BorrowSet entry = own_set_copy(&w->active);
+    own_block(w, &s->u.loop.body);
+    own_join(w, entry);
+}
+
 static void own_statement(OwnWalk *w, const MsStmt *s) {
     switch ((MsStmtKind)s->kind) {
     case MS_S_BIND: own_bind(w, s); return;
     case MS_S_RETURN: own_return(w, s); return;
+    case MS_S_IF: own_if(w, s); return;
+    case MS_S_WHILE: own_while(w, s); return;
     case MS_S_ASSIGN:
     case MS_S_CALL:
     case MS_S_BREAK:
     case MS_S_CONTINUE:
-    case MS_S_IF:
-    case MS_S_WHILE:
     case MS_S_FOR: w->supported = false; return;
     }
 }
@@ -306,8 +400,10 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const uin
 
 static bool own_function(OwnWalk *w, const MsFunc *function, const uint32_t *by_node) {
     w->function = function;
-    w->nborrows = 0;
+    w->active.len = 0;
     w->npending = 0;
+    w->pending_base = 0;
+    w->ndeclared = 0;
     w->supported = true;
     own_declare_parameters(w, function, by_node);
     for (uint32_t i = 0; i < function->body.len && w->supported; i++) {
@@ -352,10 +448,11 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
         if (d->kind != MS_D_FN || !facts->body_checked[d->id]) {
             continue;
         }
-        const bool handled = ms_liveness_function(&live, facts, &d->u.fn, &scratch) && own_function(&w, &d->u.fn, by_node);
+        const bool handled = ms_liveness_function(&live, facts, &d->u.fn) && own_function(&w, &d->u.fn, by_node);
         facts->body_checked[d->id] = handled;
     }
-    free(w.borrows);
+    free(w.active.items);
+    free(w.declared);
     free(w.pending);
     ms_classifier_free(w.classifier);
     ms_arena_free(&scratch);
