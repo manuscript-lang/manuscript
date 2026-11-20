@@ -67,6 +67,7 @@ typedef struct OwnWalk {
     MsPos note_at;
     MsPos borrowed_return, owned_return; /* the first return of each kind in the function */
     bool has_borrowed_return, has_owned_return;
+    uint32_t hidden;    /* hidden `for` holders handed out so far */
     uint32_t *declared; /* bindings in scope, innermost last */
     uint32_t ndeclared, declared_cap;
     bool supported;
@@ -79,7 +80,13 @@ static void own_match(OwnWalk *w, const MsExpr *e, Demand demand, bool returning
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand);
 static void own_lambda(OwnWalk *w, const MsExpr *e);
 
+/* Holders at or above this are not bindings: the hidden borrow a `for` loop keeps on its iterable. */
+enum { OWN_HIDDEN_HOLDER = 0xF0000000u };
+
 static MsStr own_name(const OwnWalk *w, uint32_t binding) {
+    if (binding >= OWN_HIDDEN_HOLDER) {
+        return (MsStr){.ptr = "for", .len = 3};
+    }
     return ms_name(w->check->names, w->facts->bindings.name[binding]);
 }
 
@@ -179,12 +186,18 @@ static void own_check_change(OwnWalk *w, MsPos pos, uint32_t binding, const char
         }
         const MsStr holder = own_name(w, b->holder);
         const MsStr shown = own_name(w, binding);
+        const MsStr remedy =
+            b->holder >= OWN_HIDDEN_HOLDER
+                ? ms_arena_fmt(&w->check->arena, "iterate over a clone instead by appending `.clone()` to the loop's "
+                                                 "iterable expression")
+                : ms_arena_fmt(&w->check->arena, "or give `%.*s` its own value by ending its initializer with `.clone()`",
+                               (int)holder.len, holder.ptr);
         own_error(w, pos,
                   ms_arena_fmt(&w->check->arena,
                                "cannot %s `%.*s` while `%.*s` borrows it (%s, at %u:%u); finish using `%.*s` before "
-                               "this, or give `%.*s` its own value by ending its initializer with `.clone()`",
+                               "this, %.*s",
                                what, (int)shown.len, shown.ptr, (int)holder.len, holder.ptr, b->why, b->pos.line,
-                               b->pos.column, (int)holder.len, holder.ptr, (int)holder.len, holder.ptr));
+                               b->pos.column, (int)holder.len, holder.ptr, (int)remedy.len, remedy.ptr));
         return;
     }
 }
@@ -366,7 +379,13 @@ static const OwnSummary *own_callee(const OwnWalk *w, const MsExpr *e) {
         return NULL;
     }
     if (w->check->syms.module[sym] != w->module) {
-        return NULL; /* another module's declaration ids index another module's tables */
+        // Another module's function: its declaration id indexes that module's tables, not these.
+        // Its parameters borrow unless declared `var` or `move`, and a result that copies holds no
+        // borrow. A native (extern or built-in) function returns a new value; a function with a
+        // body in another module has a summary this walk does not compute, so only a copy is safe.
+        static const OwnSummary foreign = {.usable = true};
+        const bool copied = ms_classify(w->classifier, w->facts->expr_ty[e->id]) == MS_CLASS_COPY;
+        return copied || w->check->syms.native[sym] != MS_NATIVE_SOURCE ? &foreign : NULL;
     }
     const OwnSummary *summary = &w->summaries[decl->id];
     return summary->usable ? summary : NULL;
@@ -500,6 +519,22 @@ static bool own_arguments_overlap(const OwnWalk *w, const MsExpr *call, uint32_t
     return false;
 }
 
+/* A resource parameter handed to a `move` position must itself be declared `move`: a resource has
+ * one owner, so who owns it is declared. */
+static void own_require_declared_move(OwnWalk *w, const MsExpr *arg) {
+    const uint32_t binding = own_argument_local(w, arg);
+    if (binding == MS_NONE || !w->is_param[binding] || w->perm[binding] != PERM_IMMUTABLE ||
+        w->param_mode[binding] == 2 || w->class_of[binding] != MS_CLASS_RESOURCE) {
+        return;
+    }
+    const MsStr name = own_name(w, binding);
+    own_error(w, arg->pos,
+              ms_arena_fmt(&w->check->arena,
+                           "cannot pass `%.*s` as a `move` argument: it is not declared `move`, so the caller keeps it; "
+                           "write `move %.*s: <Type>` in the signature",
+                           (int)name.len, name.ptr, (int)name.len, name.ptr));
+}
+
 /* A `var` argument names a variable that may change: its permission, then any borrow that reads it. */
 static void own_mutate(OwnWalk *w, const MsExpr *arg, uint32_t binding) {
     const MsStr name = own_name(w, binding);
@@ -563,6 +598,7 @@ static void own_arguments(OwnWalk *w, const MsExpr *call, const OwnSummary *call
                                    "the value to a var first"));
             own_expr(w, arg, DEMAND_READ);
         } else if (param->moving || (callee->consumed >> i & 1u) != 0) {
+            own_require_declared_move(w, arg);
             w->note_param = callee->consumed_at != NULL && (callee->consumed >> i & 1u) != 0 ? param->name : MS_NONE;
             w->note_at = w->note_param == MS_NONE ? w->note_at : callee->consumed_at[i];
             own_expr(w, arg, DEMAND_MOVE);
@@ -582,6 +618,45 @@ static void own_intrinsic_call(OwnWalk *w, const MsExpr *e) {
     }
 }
 
+/* A method of a type, called on a local or a temporary: a method that changes its receiver changes
+ * the local in place, and no argument may read it; the others borrow it. The checker admitted only
+ * arguments and results of scalars, so nothing returned holds a borrow. */
+static void own_method_call(OwnWalk *w, const MsExpr *e) {
+    const MsExpr *receiver = e->u.call.callee->u.member.left;
+    const bool mutating = (w->facts->methods->access[w->facts->call_method[e->id]] & MS_METHOD_MUTATING) != 0;
+    const uint32_t binding = own_argument_local(w, receiver);
+    if (mutating) {
+        bool overlaps = binding == MS_NONE;
+        for (uint32_t i = 0; i < e->u.call.args.len && !overlaps; i++) {
+            overlaps = own_mentions(w, e->u.call.args.ptr[i].value, binding);
+        }
+        if (overlaps) {
+            w->supported = false;
+            return;
+        }
+        own_mutate(w, receiver, binding);
+    } else {
+        own_expr(w, receiver, DEMAND_READ);
+    }
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_READ);
+    }
+}
+
+/* `Type(a, b)`: a record this module or another declares, built from its arguments. */
+static bool own_is_constructor(const OwnWalk *w, const MsExpr *e) {
+    const uint32_t sym = w->facts->call_callee[e->id];
+    const MsDecl *decl = sym == MS_NONE ? NULL : w->check->syms.decl[sym];
+    return e->u.call.callee->kind == MS_E_NAME && decl != NULL && decl->kind == MS_D_TYPE;
+}
+
+/* Every argument moves into the new record (a copy for a plain value); the record holds no borrow. */
+static void own_construct(OwnWalk *w, const MsExpr *e) {
+    for (uint32_t i = 0; i < e->u.call.args.len; i++) {
+        own_expr(w, e->u.call.args.ptr[i].value, DEMAND_MOVE);
+    }
+}
+
 /* A call of a function this module declares: each argument is read, since a parameter that is
  * not `var` or `move` only borrows. A reference result may not be kept where it would own. */
 static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
@@ -596,6 +671,14 @@ static void own_call(OwnWalk *w, const MsExpr *e, Demand demand) {
     if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE &&
         ms_ty_kind(&w->check->tys, w->facts->call_receiver[e->id]) != MS_K_CONTRACT) {
         own_intrinsic_call(w, e);
+        return;
+    }
+    if (e->u.call.callee->kind == MS_E_MEMBER && w->facts->call_method[e->id] != MS_NONE && w->facts->methods != NULL) {
+        own_method_call(w, e);
+        return;
+    }
+    if (own_is_constructor(w, e)) {
+        own_construct(w, e);
         return;
     }
     const OwnSummary *callee = own_callee(w, e);
@@ -685,6 +768,27 @@ static bool own_is_self_call(const OwnWalk *w, const MsExpr *e) {
     return sym != MS_NONE && w->check->syms.decl[sym] != NULL && &w->check->syms.decl[sym]->u.fn == w->function;
 }
 
+/* `return f(a)` where `f` returns a reference into `a`: this function hands back a reference into
+ * its own parameters when every source is one, and is left to Rust otherwise. */
+static void own_returned_borrow_call(OwnWalk *w, const MsExpr *e) {
+    uint32_t origins[4];
+    uint32_t count = 0;
+    if (!own_call_origins(w, e, origins, &count) || count == 0) {
+        w->supported = false;
+        return;
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        if (!w->is_param[origins[i]] || w->param_mode[origins[i]] == 2) { /* a `move` parameter is owned */
+            w->supported = false;
+            return;
+        }
+        w->borrowed_params |= 1u << w->param_index[origins[i]];
+    }
+    w->borrowed_return = w->has_borrowed_return ? w->borrowed_return : e->pos;
+    w->has_borrowed_return = true;
+    own_expr(w, e, DEMAND_READ);
+}
+
 /* A value handed back to the caller: a parameter's borrow is read, anything else moves out. A
  * match hands back the value of the arm it takes. */
 static void own_returned(OwnWalk *w, const MsExpr *e) {
@@ -696,9 +800,14 @@ static void own_returned(OwnWalk *w, const MsExpr *e) {
         own_expr(w, e, DEMAND_MOVE);
         return;
     }
-    if (e->kind == MS_E_CALL) {
+    if (e->kind == MS_E_CALL && !own_is_constructor(w, e)) {
         const OwnSummary *callee = own_callee(w, e);
-        w->supported = w->supported && callee != NULL && !callee->returns_borrow;
+        if (callee == NULL || (callee->returns_borrow && own_is_self_call(w, e))) {
+            w->supported = false;
+        } else if (callee->returns_borrow) {
+            own_returned_borrow_call(w, e);
+            return;
+        }
     }
     if (e->kind == MS_E_CALL && own_is_self_call(w, e)) {
         own_expr(w, e, DEMAND_MOVE); /* returns whatever this function returns: neither kind of return */
@@ -850,8 +959,25 @@ static bool own_arm_payloads(OwnWalk *w, const MsArm *arm, const Scrutinee *sour
 }
 
 /* `name = value`: the value is moved in, then the old one is replaced, which no borrow may read. */
+/* `var.field = value` into a plain field: the value is moved in and the variable changes in
+ * place. A variable some borrow reads, or that borrows itself, is left to Rust, which tells apart
+ * the fields a borrow reaches. */
+static void own_field_store(OwnWalk *w, const MsStmt *s, uint32_t root) {
+    own_expr(w, s->u.assign.value, DEMAND_MOVE);
+    own_release_pending(w);
+    bool shared = w->perm[root] != PERM_MUTABLE || own_holds_borrow(w, root);
+    for (uint32_t i = 0; i < w->active.len; i++) {
+        shared = shared || (w->active.items[i].holder != MS_NONE && w->active.items[i].origin == root);
+    }
+    w->supported = w->supported && !shared;
+}
+
 static void own_assign(OwnWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->assign_binding[s->id];
+    if (binding == MS_NONE && w->facts->field_store_root[s->id] != MS_NONE) {
+        own_field_store(w, s, w->facts->field_store_root[s->id]);
+        return;
+    }
     if (binding == MS_NONE || w->perm[binding] != PERM_MUTABLE) {
         w->supported = false; /* a field store or an assignment the checker rejects */
         return;
@@ -911,7 +1037,36 @@ static void own_while(OwnWalk *w, const MsStmt *s) {
 }
 
 /* `for i in a..b`: the bounds are read once; the counter is a fresh copied binding per iteration. */
+/* `for name in xs` over a list of copies: the loop variable is a plain value, and the list stays
+ * unchanged for the whole loop, which a hidden borrow on it says. */
+static void own_for_list(OwnWalk *w, const MsStmt *s) {
+    const uint32_t mark = w->ndeclared;
+    const MsExpr *iter = s->u.each.iter;
+    const Scrutinee source = own_scrutinee(w, iter);
+    own_release_pending(w);
+    const uint32_t hidden = OWN_HIDDEN_HOLDER + w->hidden++;
+    if (!source.owned) {
+        const Borrow loop = {hidden, source.origin, iter->pos, "the loop is iterating it"};
+        own_push_borrow(w, &loop);
+    }
+    const uint32_t variable = w->by_node[s->id];
+    if (variable == MS_NONE) {
+        w->supported = false;
+        return;
+    }
+    own_declare(w, variable, PERM_IMMUTABLE, false);
+    BorrowSet entry = own_set_copy(&w->active);
+    own_block(w, &s->u.each.body);
+    own_join(w, entry);
+    own_release_holder(&w->active, hidden);
+    own_end_scope(w, mark);
+}
+
 static void own_for(OwnWalk *w, const MsStmt *s) {
+    if (w->facts->each_list[s->id]) {
+        own_for_list(w, s);
+        return;
+    }
     const MsExpr *range = s->u.each.iter;
     own_expr(w, range->u.call.args.ptr[0].value, DEMAND_READ);
     own_expr(w, range->u.call.args.ptr[1].value, DEMAND_READ);
@@ -1136,6 +1291,7 @@ void ms_module_check_ownership(MsCheck *c, MsModId module) {
     MsLiveness live = ms_liveness_new(&scratch, facts);
     OwnWalk w = {.check = c, .module = module, .facts = facts, .live = &live,
                  .classifier = ms_classifier_new(c)};
+    ms_classifier_mark_methods(w.classifier, facts->methods);
     own_allocate(&w, &scratch);
     const uint32_t *by_node = own_bindings_by_node(facts, &scratch);
     for (uint32_t i = 0; i < row->syntax->ndecls; i++) {

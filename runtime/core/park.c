@@ -8,6 +8,7 @@
 #include "ms_rt/alloc.h"
 #include "scheduler.h"
 #include "sweep.h"
+#include "watch.h"
 
 enum {
     READY_BATCH = 64, /* descriptor events taken from the poller at once */
@@ -364,6 +365,7 @@ static void deliver(MsSched *sched, int fd, uint32_t bits) {
 void ms_park_poll(MsSched *sched, int64_t timeout_ns) {
     MsPollReady ready[READY_BATCH];
     const long count = sched->poll.wait(timeout_ns, ready, MS_COUNT_OF(ready));
+    ms_watch_turn();
     for (long i = 0; i < count; i++) {
         if (ready[i].fd < sched->fd_queue_count) {
             deliver(sched, (int)ready[i].fd, ready[i].bits);

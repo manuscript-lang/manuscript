@@ -102,7 +102,8 @@ static bool ll_const_data(LCx *c, const MirInst *inst) {
                       inst->res, inst->res);
         return true;
     }
-    const uint32_t sym = c->data == NULL ? MIR_NONE : (bytes ? c->data->blobs[id] : c->data->list_consts[id]);
+    uint32_t sym = MIR_NONE;
+    if (c->data != NULL) sym = bytes ? c->data->blobs[id] : c->data->list_consts[id];
     if (sym == MIR_NONE) {
         c->why = "constant data without a symbol";
         return false;
@@ -113,9 +114,9 @@ static bool ll_const_data(LCx *c, const MirInst *inst) {
     ms_buf_puts(o, " to i64\n");
     if (inst->op == MOP_ListConst) {
         const uint32_t size = n * mir_list_elem_size(c->layouts, c->f->values[inst->res]);
-        ms_buf_printf(o, "  %%v%u = call i64 @\"msrt_alloc\"(i64 %u)\n  %%d%u = inttoptr i64 %%v%u to ptr\n  %%s%u = inttoptr i64 %%t%u to ptr\n",
+        ms_buf_printf(o, "  %%v%u = call i64 @\"msrt_alloc\"(i64 %u)\n  %%d%u = inttoptr i64 %%v%u to ptr\n  %%cs%u = inttoptr i64 %%t%u to ptr\n",
                       inst->res, size, t, inst->res, t, t);
-        ms_buf_printf(o, "  call void @llvm.memcpy.p0.p0.i64(ptr %%d%u, ptr %%s%u, i64 %u, i1 false)\n", t, t, size);
+        ms_buf_printf(o, "  call void @llvm.memcpy.p0.p0.i64(ptr %%d%u, ptr %%cs%u, i64 %u, i1 false)\n", t, t, size);
         ms_buf_printf(o, "  %%v%u.1 = add i64 0, %u\n  %%v%u.2 = add i64 0, %u\n", inst->res, n, inst->res, n);
         return true;
     }

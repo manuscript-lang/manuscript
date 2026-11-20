@@ -28,6 +28,23 @@ void ms_tool_lex_blocks(const ms_str *text, ms_list *out);
 void ms_tool_token_kinds(ms_list *out);
 
 
+/* Formats `text` (the source formatter, include/ms/format.h) into `out`. Status 0 is success; status 1
+ * is the first syntax error: `code_out` holds its byte offset and `message_out` holds
+ * "<code>\t<line>\t<column>\t<message>" (the stable diagnostic code, 1-based line and byte column).
+ * Invalid UTF-8 reports offset 0 at line 1, column 1. */
+uint8_t ms_tool_format(const ms_str *text, ms_str *out, int64_t *code_out, ms_str *message_out);
+
+/* The `[dependencies]` of an ms.toml as rows `alias\turl\tkind\treference` (kind tag, sha or version; the reference is
+ * the tag, the commit or the requirement), sorted by alias; path dependencies are left out. Status 0 is success;
+ * status 1 is an error with the Rust driver's text in `message_out`; status 2 means the C reader does not cover the
+ * manifest (the caller falls back to `ms`'s Rust reader), with what is missing in `message_out`. */
+uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *message_out);
+
+/* The files `ms fmt` formats for `target` (ms_project_format_paths): the file itself, or the modules of a directory or
+ * of the project an ms.toml names, in order. Status 0 is success; 1 is an error with the Rust driver's text in
+ * `message_out`; 2 means the C reader does not cover the target (a workspace root, a project with dependencies). */
+uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out);
+
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still

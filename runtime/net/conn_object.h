@@ -29,6 +29,10 @@ MsObj *ms_netconn_alias(const void *handle);
 void ms_netconn_close(const void *handle);
 /* Ends one stream end; closes the row when none is left. */
 void ms_netconn_close_if_last(const void *handle);
+/* Moves the row to a new core and returns its first handle (NULL when out of memory, nothing moved). The old core is
+ * closed without closing the row: its handles give MS_NET_CLOSED from here on. The caller guarantees no call is using
+ * the row. */
+MsObj *ms_netconn_take(const void *handle);
 /* Whether the row has been closed. */
 bool ms_netconn_closed(const MsNetConn *conn);
 

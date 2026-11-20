@@ -41,6 +41,11 @@ void msrt_token_post_remote(uint64_t token, uint64_t value);
 
 /* Whether a stop request (SIGINT or SIGTERM) is pending for the running task. */
 bool ms_sched_cancel_pending(void);
+/* Holds stop requests (SIGINT and SIGTERM) back from the running task until the matching release, so it can
+ * forward them and keep waiting; a cancel aimed at the task itself still applies. Holds nest, and a request that
+ * arrived meanwhile applies at the last release. */
+void ms_sched_stop_hold(void);
+void ms_sched_stop_release(void);
 /* Delivers the pending cancel by return; see the rules above. */
 void ms_sched_cancel_return(void);
 /* The OS code of the first failed write to standard output (0 when none), and a flush of the runtime's buffered

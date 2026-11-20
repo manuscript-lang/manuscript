@@ -79,6 +79,8 @@ typedef struct Cold {
     uint32_t events;            /* what that wait asks for */
     MsFaultText report;         /* the fault that ended the promise */
     int64_t cancel;             /* the cancel switch the promise listens to, or 0 */
+    int64_t drain;              /* the switch fired before the work is cancelled by its owner's end, or 0 */
+    int64_t grace;              /* how long the work has after that notice (negative: no limit) */
     uint32_t next_started;      /* row + 1 of the creator's next older started promise, 0 ends the list */
     uint32_t prev_started;
     uint32_t runner;            /* the isolate that took the work (FLAG_REMOTE), once it said so */
@@ -886,6 +888,18 @@ void ms_promise_on_cancel(MsPromise id, int64_t cancel) {
     }
 }
 
+void ms_promise_drain(MsPromise id, int64_t drain, int64_t grace_ns) {
+    if (is_foreign(id)) {
+        ms_remote_drain(id, drain, grace_ns);
+        return;
+    }
+    const ptrdiff_t row = row_of(id);
+    if (row >= 0) {
+        table.cold[row].drain = drain;
+        table.cold[row].grace = grace_ns;
+    }
+}
+
 void ms_promise_limit(MsPromise id, int64_t timeout_ns) {
     if (is_foreign(id)) {
         ms_remote_limit(id, timeout_ns);
@@ -924,6 +938,23 @@ static uint32_t park_on(MsPromise id, int64_t at_ns) {
     return status == MS_TOKEN_OK ? result : 0;
 }
 
+/* Ends the work of a pending promise: a promise with a drain switch is told first and cancelled only when its grace
+ * runs out; any other is cancelled now. */
+static void give_notice(MsPromise id, size_t row) {
+    Cold *const cold = &table.cold[row];
+    const int64_t drain = cold->drain;
+    if (drain == 0) {
+        request_cancel(row);
+        return;
+    }
+    cold->drain = 0;
+    const int64_t now = ms_sched_now();
+    if (cold->grace >= 0 && (cold->limit == NO_TIME || cold->grace < cold->limit - now)) {
+        ms_promise_limit(id, cold->grace);
+    }
+    ms_cancel_fire(drain);
+}
+
 bool ms_promise_end(MsPromise id) {
     if (is_foreign(id)) {
         return ms_remote_end(id);
@@ -957,7 +988,7 @@ bool ms_promise_end(MsPromise id) {
     }
     if (table.cold[found].closure != NULL || (table.hot[found].flags & FLAG_REMOTE) != 0) {
         if (table.hot[found].state == STATE_PENDING) {
-            request_cancel((size_t)found);
+            give_notice(id, (size_t)found);
         }
         ms_shield_enter();
         while ((found = row_of(id)) >= 0 &&

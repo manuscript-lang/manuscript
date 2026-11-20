@@ -14,6 +14,7 @@ import (
 	connect_unix,
 	listen,
 	listen_unix,
+	lookup,
 	resolve_dns,
 	restrict,
 	with_resolver from "@std/net/net.ms",
@@ -103,6 +104,30 @@ test "an empty Unix socket path is invalid input":
 	expect_equal(
 		expect_error(connect_unix("", timeout: 1.seconds()).wait())?,
 		Error("network: invalid input", kind: "EINVAL"),
+	)?
+
+test "a Unix domain socket carries bytes both ways and a restricted network refuses it":
+	probe := listen("127.0.0.1:0")?
+	port := probe.address().rsplit_once(":").get().after
+	path := f"ms-net-unix-{port}.sock"
+	listener := listen_unix(path)?
+	expect_equal(listener.address(), path)?
+
+	var client = connect_unix(path, timeout: 2.seconds()).wait()?
+	var server = listener.accept(2.seconds()).wait()?
+	client.output.write("ping".to_bytes())?
+	expect_equal((within(server.input, 2.seconds())?).get(), "ping".to_bytes())?
+	server.output.write("pong".to_bytes())?
+	expect_equal((within(client.input, 2.seconds())?).get(), "pong".to_bytes())?
+
+	sealed := restrict([], ["127.0.0.0/8"], allow_listen: true)?
+	expect_equal(
+		expect_error(sealed.connect_unix(path))?,
+		Error("network: permission denied", kind: "EACCES"),
+	)?
+	expect_equal(
+		expect_error(sealed.listen_unix(path))?,
+		Error("network: permission denied", kind: "EACCES"),
 	)?
 
 test "UDP loopback preserves datagram data and sender":
@@ -273,6 +298,62 @@ test "resolve returns typed DNS records from the configured resolver":
 	expect_equal(mx[0].priority, 10)?
 	expect_equal(mx[0].value, "mail.example.test.")?
 	expect_equal(answered, 1)?
+
+// The question a PTR lookup of `address` sends to a resolver that never answers.
+fn reverse_question(address: String) Bytes!:
+	server := bind_datagram("127.0.0.1:0")?
+	derived := with_resolver(server.address.clone())?
+	asking := promise(
+		fn: derived.resolve_dns(address, DnsKind.PTR, DnsOptions(timeout: 1.seconds()))
+	)
+	var listening = server
+	query := (within(listening.input, 2.seconds())?).get()
+	void expect_error(asking.wait())?
+	return ok(query.data.slice(12, query.data.length()).get_or(Bytes([])))
+
+test "a PTR lookup asks for the reverse name of the address":
+	v4 := reverse_question("1.2.3.4")?
+	expect_equal(
+		v4,
+		Bytes(
+			[
+				1, 52, 1, 51, 1, 50, 1, 49, 7, 105, 110, 45, 97, 100, 100, 114, 4, 97, 114,
+				112, 97, 0, 0, 12, 0, 1
+			]
+		),
+	)?
+
+	v6 := reverse_question("2001:db8::1")?
+	expect_equal(v6.length(), 78)?
+	expect_equal(v6.get(0), 1)?
+	expect_equal(v6.get(1), 49)?
+
+test "lookup answers literals and localhost, and enforces limits and policy":
+	expect_equal(lookup("127.0.0.1")?, ["127.0.0.1"])?
+	expect_equal(
+		expect_error(lookup("127.0.0.1", DnsOptions(max_records: 0)))?,
+		Error("network: limit exceeded", kind: "EOVERFLOW"),
+	)?
+	expect_equal(
+		expect_error(lookup("127.0.0.1", DnsOptions(max_records: -1)))?,
+		Error("network: invalid input", kind: "EINVAL"),
+	)?
+	expect_equal(
+		expect_error(lookup("127.0.0.1", DnsOptions(timeout: (-1).seconds())))?,
+		Error("network: invalid input", kind: "EINVAL"),
+	)?
+	nothing := restrict([])?
+	expect_equal(
+		expect_error(nothing.lookup("localhost"))?,
+		Error("network: permission denied", kind: "EACCES"),
+	)?
+	shouted := lookup("LocalHost", DnsOptions(timeout: 2.seconds()))?
+	expect_equal(shouted, lookup("localhost", DnsOptions(timeout: 2.seconds()))?)?
+	expect_true(shouted.contains("127.0.0.1"))?
+	expect_equal(
+		expect_error(resolve_dns("1.2.3.4", DnsKind.A, DnsOptions(max_records: 0)))?,
+		Error("network: limit exceeded", kind: "EOVERFLOW"),
+	)?
 
 test "an empty host listens on every interface, with or without IPv6":
 	var listener = listen(":0")?

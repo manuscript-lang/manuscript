@@ -18,6 +18,7 @@
 
 #include "../std/abi.h"
 #include "conn_object.h"
+#include "exchange_h2.h"
 #include "headers.h"
 #include "http1.h"
 #include "ms_rt/alloc.h"
@@ -40,6 +41,7 @@ enum {
 
 typedef struct MsExchange {
     atomic_uint handles; /* ExchH handles on this exchange; it ends with the last */
+    MsXchgH2 *h2;     /* set for a request on an HTTP/2 stream: every call goes to exchange_h2.c */
     MsObj *conn;      /* an alias handle on the connection (not a stream end) */
     uint8_t *head;    /* the request head, as read; the spans below are offsets into it */
     MsH1Field *fields;
@@ -70,6 +72,9 @@ typedef struct ExchHandle {
 } ExchHandle;
 
 static void state_free(MsExchange *exchange) {
+    if (exchange->h2 != NULL) {
+        ms_xchg_h2_drop(exchange->h2);
+    }
     if (exchange->conn != NULL) {
         msrt_obj_drop(exchange->conn);
     }
@@ -174,6 +179,17 @@ static const char *reason_of(unsigned status) {
 
 static MsExchange *exchange_of(const void *handle) { return ((const ExchHandle *)handle)->state; }
 
+MsObj *ms_exchange_from_h2(MsXchgH2 *request) {
+    MsExchange *exchange = msrt_alloc_zeroed(sizeof *exchange);
+    if (exchange == NULL) {
+        return NULL;
+    }
+    atomic_init(&exchange->handles, 1);
+    exchange->h2 = request;
+    return handle_new(exchange);
+}
+
+
 static MsConnTable *table_of(const MsExchange *exchange) { return ms_netconn_table(ms_netconn_of(exchange->conn)); }
 static MsConnId id_of(const MsExchange *exchange) { return ms_netconn_id(ms_netconn_of(exchange->conn)); }
 
@@ -235,6 +251,7 @@ static MsExchange *exchange_new(const void *conn, const uint8_t *buffer, size_t 
 }
 
 uint8_t msstd_xchg_next(const void *conn, int64_t head_limit, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     ms_conn_set_refusal(ms_netconn_table(ms_netconn_of(conn)), ms_netconn_id(ms_netconn_of(conn)), 0);
     const MsNetConn *core = ms_netconn_of(conn);
     MsConnTable *table = ms_netconn_table(core);
@@ -290,6 +307,7 @@ int64_t msstd_xchg_reject_status(const void *conn) {
 }
 
 uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     if (status < 400 || status > 599) {
         return STATUS_INVALID_INPUT;
     }
@@ -308,22 +326,41 @@ uint8_t msstd_xchg_reject(const void *conn, int64_t status, uint8_t has_timeout,
 }
 
 void msstd_xchg_method(const void *handle, MsStr *out) {
+    if (exchange_of(handle)->h2 != NULL) {
+        const MsBytes text = (ms_xchg_h2_method(exchange_of(handle)->h2));
+        msrt_string_from_bytes(text.ptr, text.len, out);
+        return;
+    }
     const char *name = llhttp_method_name((llhttp_method_t)exchange_of(handle)->method);
     msrt_string_from_bytes((const uint8_t *)name, strlen(name), out);
 }
 
 void msstd_xchg_target(const void *handle, MsStr *out) {
     const MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        const MsBytes text = (ms_xchg_h2_target(exchange->h2));
+        msrt_string_from_bytes(text.ptr, text.len, out);
+        return;
+    }
     msrt_string_from_bytes(exchange->head + exchange->target.off, exchange->target.len, out);
 }
 
 void msstd_xchg_protocol(const void *handle, MsStr *out) {
+    if (exchange_of(handle)->h2 != NULL) {
+        const MsBytes text = (ms_xchg_h2_protocol(exchange_of(handle)->h2));
+        msrt_string_from_bytes(text.ptr, text.len, out);
+        return;
+    }
     const char *version = exchange_of(handle)->minor == 0 ? "HTTP/1.0" : "HTTP/1.1";
     msrt_string_from_bytes((const uint8_t *)version, strlen(version), out);
 }
 
 void *msstd_xchg_headers(const void *handle) {
     const MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        MsHeaders *table = ms_xchg_h2_headers(exchange->h2);
+        return table == NULL ? NULL : ms_headers_object(table);
+    }
     MsHeaders *table = ms_headers_new();
     for (uint32_t i = 0; table != NULL && i < exchange->field_count; i++) {
         const MsH1Field *field = &exchange->fields[i];
@@ -407,7 +444,11 @@ static uint8_t read_piece(MsExchange *exchange, size_t capacity, int64_t deadlin
 }
 
 uint8_t msstd_xchg_read(const void *handle, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, MsVec *out, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        return ms_xchg_h2_read(exchange->h2, has_max, max, has_timeout, timeout, out, err);
+    }
     if (has_max != 0 && max < 0) {
         return STATUS_INVALID_INPUT;
     }
@@ -427,7 +468,11 @@ uint8_t msstd_xchg_read(const void *handle, uint8_t has_max, int64_t max, uint8_
 }
 
 uint8_t msstd_xchg_reset(const void *handle, int64_t max, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        return ms_xchg_h2_reset(exchange->h2, max, has_timeout, timeout, err);
+    }
     if (exchange->spent) {
         return STATUS_INVALID_INPUT;
     }
@@ -512,7 +557,11 @@ static bool headers_ask_close(const MsHeaders *headers) {
 }
 
 uint8_t msstd_xchg_send_head(const void *handle, int64_t status, const void *headers_handle, uint8_t has_length, int64_t length, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        return ms_xchg_h2_send_head(exchange->h2, status, headers_handle == NULL ? NULL : ms_headers_of(headers_handle), has_length, length, err);
+    }
     if (exchange->spent || exchange->head_sent || status < 100 || status > 999 || (has_length != 0 && length < 0)) {
         return STATUS_INVALID_INPUT;
     }
@@ -563,7 +612,11 @@ uint8_t msstd_xchg_send_head(const void *handle, int64_t status, const void *hea
 }
 
 uint8_t msstd_xchg_write(const void *handle, const MsVec *data, uint8_t has_timeout, int64_t timeout, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        return ms_xchg_h2_write(exchange->h2, ms_bytes_of(data->ptr, data->len), has_timeout, timeout, err);
+    }
     if (exchange->spent || !exchange->head_sent) {
         return STATUS_INVALID_INPUT;
     }
@@ -610,7 +663,11 @@ static MsNetStatus unread_input(MsExchange *exchange) {
 }
 
 uint8_t msstd_xchg_finish(const void *handle, uint8_t has_timeout, int64_t timeout, uint8_t *keep, MsStr *err) {
+    ms_net_clear_text(err);
     MsExchange *exchange = exchange_of(handle);
+    if (exchange->h2 != NULL) {
+        return ms_xchg_h2_finish(exchange->h2, has_timeout, timeout, keep, err);
+    }
     *keep = 0;
     if (exchange->spent || !exchange->head_sent) {
         return STATUS_INVALID_INPUT;
@@ -642,7 +699,7 @@ uint8_t msstd_xchg_finish(const void *handle, uint8_t has_timeout, int64_t timeo
 
 uint8_t msstd_xchg_take_conn(const void *handle, void **out) {
     MsExchange *exchange = exchange_of(handle);
-    if (exchange->spent || exchange->head_sent) {
+    if (exchange->h2 != NULL || exchange->spent || exchange->head_sent) { /* an upgrade is HTTP/1 only */
         return STATUS_INVALID_INPUT;
     }
     if (unread_input(exchange) != MS_NET_OK) {

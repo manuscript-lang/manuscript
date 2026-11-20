@@ -18,6 +18,9 @@ void ms_net_write_text(MsStr *out, const char *text) {
 /* Maps a connection status to the runtime's. A cancelled wait ends the native through the scheduler; the caller has
  * released everything it holds before this runs. */
 uint8_t ms_net_finish(MsNetStatus status, int code, MsStr *err) {
+    if (err != NULL && status != MS_NET_OK) {
+        msrt_string_from_bytes(NULL, 0, err); /* the caller reads the text whatever the status */
+    }
     switch (status) {
     case MS_NET_OK: return STATUS_OK;
     case MS_NET_CLOSED:

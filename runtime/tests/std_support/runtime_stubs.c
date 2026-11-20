@@ -95,6 +95,8 @@ uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
 
 bool ms_sched_cancel_pending(void) { return false; }
 void ms_sched_cancel_return(void) {}
+void ms_sched_stop_hold(void) {}
+void ms_sched_stop_release(void) {}
 bool ms_sched_read_limit_passed(void) { return false; }
 bool ms_sched_on_pool_thread(void) { return false; }
 bool ms_sched_pool_alone(void) { return true; }

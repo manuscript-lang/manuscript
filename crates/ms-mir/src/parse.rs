@@ -367,6 +367,13 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
             "alt" => {
                 let name = c.ident()?;
                 let id = m.alt_by_name(&name).expect("registered");
+                if c.eat_ident("borrowed") {
+                    let mask = c.num()?;
+                    m.alts[id.index()].borrowed = match mask.parse() {
+                        Ok(mask) => mask,
+                        Err(_) => return c.err(format!("bad borrowed mask {mask}")),
+                    };
+                }
                 c.expect_p('{')?;
                 let mut cases = Vec::new();
                 while !c.eat_p('}') {

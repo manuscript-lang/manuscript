@@ -1,38 +1,21 @@
 //! Natives for `@std/net/net.ms`.
 //! ms: domain network
 
-use super::tls::TlsOptionsWire;
-use super::{ConnH, DgramH, IpH, ListenerH, NetH, opt, report};
+use super::{ConnH, DgramH, ListenerH, NetH, opt, report};
 use crate::bound::Bound;
-use crate::error::{NetErr, Status as _};
-use crate::ip::{Cidr, ip_text, normalize};
-use crate::net::{DnsKind, root};
+use crate::error::NetErr;
+use crate::ip::normalize;
+use crate::net::root;
 #[cfg(test)]
 use ms_rt::ffi::ErrSlot;
 #[cfg(test)]
 use ms_rt::ffi::HasRaw;
-use ms_rt::ffi::{
-    Bytes, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, TypeList, abi_handle, abi_type,
-    native,
-};
+use ms_rt::ffi::{Bytes, ErrOut, Has, ObjRef, Object, Out, StatusCode, Str, abi_type, native};
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
     STATUS_PERMISSION_DENIED, STATUS_TIMEOUT, STATUS_UNSUPPORTED,
 };
 use std::net::IpAddr;
-
-abi_handle!(Cidr);
-
-abi_type! {
-    /// One resolved DNS record as compiled code lays out `DnsRecord`.
-    pub struct DnsRecordWire {
-        pub kind: i64,
-        pub value: Str,
-        pub priority: i64,
-        pub weight: i64,
-        pub port: i64,
-    }
-}
 
 abi_type! {
     /// A received datagram: the payload and the sender's address.
@@ -43,65 +26,6 @@ abi_type! {
 }
 
 native! {
-    // ----------------------------------------------------------------- IP values
-
-    /// `parse_ip(text) -> Result[IpAddress, NetworkError]`.
-    fn msstd_net_parse_ip(text: &str, out: Out<Object<IpH>>, err: ErrOut) -> Result<(), StatusCode> {
-        out.write(Object(IpH(report(crate::ip::parse_ip(text), &err)?)));
-        Ok(())
-    }
-
-    /// `parse_cidr(text) -> Result[Cidr, NetworkError]`.
-    fn msstd_net_parse_cidr(text: &str, out: Out<Object<Cidr>>, err: ErrOut) -> Result<(), StatusCode> {
-        out.write(Object(report(Cidr::parse(text), &err)?));
-        Ok(())
-    }
-
-    /// `@std/data/json.ms` reading an `IpAddress` from its string form; the error text is dropped.
-    // ms: leaf domain=JSON
-    fn msstd_json_dec_ip(text: &str, out: Out<Object<IpH>>) -> Result<(), StatusCode> {
-        out.write(Object(IpH(crate::ip::parse_ip(text).map_err(|_| StatusCode(1))?)));
-        Ok(())
-    }
-
-    /// `@std/data/json.ms` reading a `Cidr` from its string form; the error text is dropped.
-    // ms: leaf domain=JSON
-    fn msstd_json_dec_cidr(text: &str, out: Out<Object<Cidr>>) -> Result<(), StatusCode> {
-        out.write(Object(Cidr::parse(text).map_err(|_| StatusCode(1))?));
-        Ok(())
-    }
-
-    /// `contains_ip(cidr, address) -> Result[Bool, NetworkError]`.
-    fn msstd_net_contains_ip(cidr: ObjRef<Cidr>, ip: ObjRef<IpH>, out: Out<bool>) -> Result<(), StatusCode> {
-        out.write(cidr.contains(&ip));
-        Ok(())
-    }
-
-    /// `IpAddress.text()`.
-    fn msstd_net_ip_address_text(ip: ObjRef<IpH>) -> String {
-        ip_text(&ip)
-    }
-
-    /// `IpAddress.family()`: the `IpFamily` case index (`IPv4` = 0, `IPv6` = 1).
-    fn msstd_net_ip_address_family(ip: ObjRef<IpH>) -> u8 {
-        u8::from(ip.is_ipv6())
-    }
-
-    /// `Cidr.text()`.
-    fn msstd_net_cidr_text(cidr: ObjRef<Cidr>) -> String {
-        cidr.text()
-    }
-
-    /// `IpFamily.text()` for a case index.
-    fn msstd_net_ip_family_text(family: u8) -> &'static str {
-        if family == 0 { "IPv4" } else { "IPv6" }
-    }
-
-    /// `DnsKind.text()` for a case index.
-    fn msstd_net_dns_kind_text(kind: u8) -> &'static str {
-        DnsKind::from_index(kind).map_or("", DnsKind::text)
-    }
-
     /// `NetworkError.message()` for a status and the `Failed` text (nullable).
     fn msstd_net_error_message(status: u8, has_failed: Has, failed: &str) -> String {
         let e = match status {
@@ -218,51 +142,6 @@ native! {
         Ok(())
     }
 
-    /// `Network.lookup(name, max, timeout)`.
-    fn msstd_net_network_lookup(
-        net: ObjRef<NetH>,
-        name: &str,
-        has_max: Has,
-        max: i64,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Vec<String>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let names = net.lookup(name, opt(*has_max, max), opt(*has_timeout, timeout));
-        out.write(report(names, &err)?);
-        Ok(())
-    }
-
-    /// `Network.resolve(name, kind, max, timeout)`.
-    fn msstd_net_network_resolve(
-        net: ObjRef<NetH>,
-        name: &str,
-        kind: i64,
-        has_max: Has,
-        max: i64,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<TypeList<DnsRecordWire>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let Some(kind) = u8::try_from(kind).ok().and_then(DnsKind::from_index) else {
-            return Err(StatusCode(NetErr::InvalidInput.code()));
-        };
-        let list = net
-            .0
-            .resolve(name, kind, opt(*has_max, max), opt(*has_timeout, timeout));
-        let list = report(list, &err)?;
-        out.write(TypeList::new(list.iter().map(|rec| DnsRecordWire {
-            kind: i64::from(DnsKind::index(rec.kind)),
-            value: Str::new(&rec.value),
-            priority: rec.priority,
-            weight: rec.weight,
-            port: rec.port,
-        })));
-        Ok(())
-    }
-
     // ---------------------------------------------------------------- Connection
 
     /// `Connection.close()`.
@@ -284,34 +163,6 @@ native! {
     /// Closes the connection when `c` is its last open end; an end that closes first leaves it open for the other.
     fn msstd_net_connection_close_if_last(c: ObjRef<ConnH>) -> () {
         c.close_end();
-    }
-
-    /// `start_tls(connection, options, timeout)`: the TLS connection that replaces `c`.
-    fn msstd_net_connection_start_tls(
-        c: ObjRef<ConnH>,
-        opts: &TlsOptionsWire,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let upgraded = c.start_tls(&opts.to_options(), opt(*has_timeout, timeout));
-        out.write(Object(ConnH(Bound::new(report(upgraded, &err)?))));
-        Ok(())
-    }
-
-    /// `accept_tls(connection, options, timeout)`: the TLS connection that replaces `c`.
-    fn msstd_net_connection_accept_tls(
-        c: ObjRef<ConnH>,
-        opts: &TlsOptionsWire,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let upgraded = c.accept_tls(&opts.to_options(), opt(*has_timeout, timeout));
-        out.write(Object(ConnH(Bound::new(report(upgraded, &err)?))));
-        Ok(())
     }
 
     /// `Connection.local_address()`.
@@ -477,10 +328,7 @@ fn _normalize(ip: IpAddr) -> IpAddr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ms_rt::ffi::{
-        bytes_ref, new_string, read_string_list, str_ref, str_release, take_string,
-        write_string_list,
-    };
+    use ms_rt::ffi::{bytes_ref, new_string, str_ref, str_release, take_string, write_string_list};
     use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_DATA, STATUS_PERMISSION_DENIED, StrVal, VecVal};
     use std::mem::MaybeUninit;
     use std::ptr::null_mut;
@@ -511,36 +359,9 @@ mod tests {
     }
 
     #[test]
-    fn ip_values_cross_the_abi() {
-        // SAFETY: every pointer below is a live runtime object created in this test.
+    fn error_messages_cross_the_abi() {
+        // SAFETY: the strings are fresh and released by the helpers.
         unsafe {
-            let mut ip = null_mut();
-            let mut cidr = null_mut();
-            let mut err = no_str();
-            assert_eq!(
-                msstd_net_parse_ip(s("::ffff:192.0.2.1"), &mut ip, ErrSlot(&mut err)),
-                0
-            );
-            assert_eq!(
-                take_string(|o| msstd_net_ip_address_text(ip, o)),
-                "192.0.2.1"
-            );
-            assert_eq!(msstd_net_ip_address_family(ip), 0);
-            assert_eq!(
-                msstd_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, ErrSlot(&mut err)),
-                0
-            );
-            assert_eq!(
-                take_string(|o| msstd_net_cidr_text(cidr, o)),
-                "192.0.2.0/24"
-            );
-            let mut yes = 0;
-            assert_eq!(msstd_net_contains_ip(cidr, ip, &mut yes), 0);
-            assert_eq!(yes, 1);
-            assert_eq!(
-                msstd_net_parse_ip(s("fe80::1%eth0"), &mut ip, ErrSlot(&mut err)),
-                STATUS_INVALID_DATA
-            );
             assert_eq!(
                 take_string(|o| msstd_net_error_message(STATUS_INVALID_DATA, HasRaw(0), s(""), o)),
                 "network: invalid data"
@@ -549,8 +370,6 @@ mod tests {
                 take_string(|o| msstd_net_error_message(STATUS_FAILED, HasRaw(1), s("boom"), o)),
                 "boom"
             );
-            assert_eq!(take_string(|o| msstd_net_dns_kind_text(3, o)), "MX");
-            assert_eq!(take_string(|o| msstd_net_ip_family_text(1, o)), "IPv6");
         }
     }
 
@@ -659,7 +478,7 @@ mod tests {
     }
 
     #[test]
-    fn restrict_and_resolve_through_the_abi() {
+    fn restrict_through_the_abi() {
         // SAFETY: every pointer below is a live runtime object created in this test.
         unsafe {
             let net = msstd_net_network();
@@ -685,40 +504,6 @@ mod tests {
                 msstd_net_network_listen(child, s("127.0.0.1:0"), &mut l, ErrSlot(&mut err)),
                 STATUS_PERMISSION_DENIED
             );
-            let mut out = MaybeUninit::<VecVal>::uninit();
-            assert_eq!(
-                msstd_net_network_lookup(
-                    net,
-                    s("127.0.0.1"),
-                    ms_rt_abi::HasRaw(0),
-                    0,
-                    ms_rt_abi::HasRaw(0),
-                    0,
-                    out.as_mut_ptr(),
-                    ErrSlot(&mut err)
-                ),
-                0
-            );
-            assert_eq!(read_string_list(out.as_ptr()), vec!["127.0.0.1"]);
-            let mut records = MaybeUninit::<VecVal>::uninit();
-            assert_eq!(
-                msstd_net_network_resolve(
-                    net,
-                    s("127.0.0.1"),
-                    0,
-                    ms_rt_abi::HasRaw(0),
-                    0,
-                    ms_rt_abi::HasRaw(0),
-                    0,
-                    records.as_mut_ptr(),
-                    ErrSlot(&mut err)
-                ),
-                0
-            );
-            let records = records.assume_init();
-            assert_eq!(records.len, 1);
-            let record = &*(records.ptr as *const DnsRecordWire);
-            assert_eq!(take(record.value.as_ptr().read()), "127.0.0.1");
             ms_rt::obj::msrt_obj_drop(child.cast());
             ms_rt::obj::msrt_obj_drop(net.cast());
         }

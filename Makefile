@@ -152,7 +152,7 @@ removed-check: build
 	$(MS) run tools/removed-check.ms
 
 # The Manuscript command-line front (tools/ms) against the Rust ms on the argument lines in tools/ms/cases.txt.
-ms-cli-check: build
+ms-cli-check: build target/c-tool/libmstool.a
 	$(MS) run tools/ms-cli-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
@@ -243,6 +243,7 @@ c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
 	sh compiler/tests/mir-diff.sh
 	sh compiler/tests/mir-pass-diff.sh
+	sh compiler/tests/mir-pass-frozen.sh
 	sh compiler/tests/check-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
@@ -250,7 +251,7 @@ c-compiler-test:
 	sh compiler/tests/fixes-diff.sh
 	sh compiler/tests/prelude-fix-diff.sh
 	sh compiler/tests/import-hints-diff.sh
-	sh compiler/tests/qbe-run.sh
+	sh compiler/tests/run-run.sh
 	sh compiler/tests/asm-tables.sh
 	sh compiler/tests/llvm-run.sh
 	sh compiler/tests/llvm-main-run.sh
@@ -263,14 +264,16 @@ FORCE:
 C_TOOL = target/cmake/tools/compiler
 target/c-tool/libmstool.a: FORCE
 	cmake -S . -B target/cmake/tools -G Ninja -DMS_BUILD_RUNTIME=OFF
-	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump
+	cmake --build target/cmake/tools --target ms_tool ms_syntax_dump ms_check_dump
 	mkdir -p target/c-tool
 	cp $(C_TOOL)/libmstool.a $@
 	cp $(C_TOOL)/ms_syntax_dump target/c-tool/ms_syntax_dump
 
-# The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; `search_symbol` against the Rust one; and the `ms diagram` views against the Rust views.
+# The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; `search_symbol` against the Rust one; the `ms diagram` views and call graph against the Rust ones; and the C checker's fact dump against the Rust facts.
 c-tools-test: build target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
 	git ls-files '*.ms' > target/c-tool/files.txt
 	target/c-tool/ms_syntax_dump ast $$(cat target/c-tool/files.txt) | sed -E 's/^(error [0-9]+:[0-9]+:[0-9]+) .*/\1/' > target/c-tool/ast.c.txt
 	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
@@ -290,6 +293,10 @@ c-tools-test: build target/c-tool/libmstool.a
 	cargo build -q --release --locked -p ms-tooling --bin ms-tooling-dev
 	"$(RELEASE_MS)" build tools/ms/views.ms -o target/c-tool/views
 	sh tools/ms/views-diff.sh target/release/ms-tooling-dev target/c-tool/views target/c-tool/views-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
+	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff
+	sh compiler/tests/facts-diff.sh $(C_TOOL)/ms_check_dump target/release/ms-tooling-dev target/c-tool/facts_diff target/c-tool/facts-work $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' | awk 'NR%8==0')
 	"$(RELEASE_MS)" run tools/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'stdlib/*.ms' | awk 'NR%4==0')
 
 # The C driver: stage table and parse entry point, then the thin `ms` in front of a stand-in for the Rust `ms` (no Rust build needed).

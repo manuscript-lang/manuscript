@@ -15,15 +15,16 @@ fn main() {
     // MSVC too (clang `--target=<arch>-pc-windows-msvc`), unlike the runtime archive, which targets mingw.
     let native = std::env::var("TARGET").ok() == std::env::var("HOST").ok();
     let test_c = !archive_build && native;
-    if test_c {
-        link_c_runtime(&root);
+    if test_c && link_c_runtime(&root) {
+        // The tests run on the same reactor as the runtime archive.
+        println!("cargo::rustc-cfg=ms_c=\"ms_io_open\"");
     }
 }
 
 /// Compiles `runtime/**/*.c` for the host and links it into this crate's test binaries as `libms_c.a`, not bundled
 /// (a bundled copy would land in `libms_native.a` beside the objects `cargo xtask runtime` adds) (an archive:
 /// the linker takes an object only for a symbol nothing else defines).
-fn link_c_runtime(root: &std::path::Path) {
+fn link_c_runtime(root: &std::path::Path) -> bool {
     for dir in ["include", "sys", "core", "io", "net", "std"] {
         println!(
             "cargo::rerun-if-changed={}",
@@ -36,9 +37,8 @@ fn link_c_runtime(root: &std::path::Path) {
     );
     println!("cargo::rerun-if-changed={}", root.join("cmake").display());
     let out = std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
-    let plan =
-        build_c::build_c_runtime(root, &out, None, true, false).expect("build the C runtime");
-    let objects = plan.objects;
+    let plan = build_c::build_c_runtime(root, &out, None, true, false).expect("build the C runtime");
+    let objects = &plan.objects;
     let archive = out.join(if cfg!(windows) {
         "ms_c.lib"
     } else {
@@ -49,10 +49,11 @@ fn link_c_runtime(root: &std::path::Path) {
     let status = std::process::Command::new(&ar)
         .arg("rcs")
         .arg(&archive)
-        .args(&objects)
+        .args(objects)
         .status()
         .expect("run ar");
     assert!(status.success(), "ar failed");
     println!("cargo::rustc-link-search=native={}", out.display());
     println!("cargo::rustc-link-lib=static:-bundle=ms_c");
+    plan.has_reactor()
 }
