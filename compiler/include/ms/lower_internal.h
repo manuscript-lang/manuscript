@@ -129,6 +129,7 @@ MirTy lst_type(Lb *lb, MsTy ty);
 bool lb_is_list(const Lb *lb, MirTy ty);
 LbVal lst_literal(Lb *lb, const MsExpr *e);
 LbVal lst_index(Lb *lb, const MsExpr *e);
+void lst_for(Lb *lb, const MsStmt *s);
 
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
