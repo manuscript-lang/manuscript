@@ -1,0 +1,29 @@
+# Frees runner capacity: when a pull request closes (merged or not), cancel every run still queued or in progress for
+# its branch. The CI/CD workflow's own concurrency group cancels a superseded push, but not the runs of a pull request
+# that merged while they waited.
+name: Cancel closed pull request runs
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Cancel the runs of the closed branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          for status in queued in_progress; do
+            gh run list --repo "$REPO" --branch "$BRANCH" --status "$status" --event pull_request --limit 100 \
+              --json databaseId --jq '.[].databaseId' |
+              while read -r id; do gh run cancel "$id" --repo "$REPO" || true; done
+          done
