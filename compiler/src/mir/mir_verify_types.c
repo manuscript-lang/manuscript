@@ -424,6 +424,28 @@ static const char *mvt_alt_ctor(const MvtCx *c) {
                     "alt.view cannot borrow a boxed alternative");
 }
 
+/* An alternative's name without the `$N` the printer adds to tell same-named declarations apart
+ * (a borrowing variant has its ordinary alternative's name). */
+static MsStr mvt_base_name(const MvtCx *c, MsSym s) {
+    MsStr n = ms_name(&c->m->names, s);
+    size_t end = n.len;
+    while (end > 0 && n.ptr[end - 1] >= '0' && n.ptr[end - 1] <= '9') {
+        end--;
+    }
+    if (end > 0 && end < n.len && n.ptr[end - 1] == '$') {
+        n.len = (uint32_t)(end - 1);
+    }
+    return n;
+}
+
+static bool mvt_same_alt_name(const MvtCx *c, MsSym a, MsSym b) {
+    if (a == b) {
+        return true;
+    }
+    const MsStr x = mvt_base_name(c, a), y = mvt_base_name(c, b);
+    return x.len == y.len && memcmp(x.ptr, y.ptr, x.len) == 0;
+}
+
 /* alt.plain and alt.own read a borrowing variant as the ordinary alternative of the same cases. */
 static bool mvt_plain_of(const MvtCx *c) {
     const MirTyData *from = mvt_data(c, mvt_t(c, 0));
@@ -433,7 +455,7 @@ static bool mvt_plain_of(const MvtCx *c) {
     }
     const MirAltDef *dx = &c->m->alts[from->id];
     const MirAltDef *dy = &c->m->alts[to->id];
-    if (dx->borrowed == 0 || dy->borrowed != 0 || dx->name != dy->name || dx->ncases != dy->ncases) {
+    if (dx->borrowed == 0 || dy->borrowed != 0 || !mvt_same_alt_name(c, dx->name, dy->name) || dx->ncases != dy->ncases) {
         return false;
     }
     for (uint32_t i = 0; i < dx->ncases; i++) {

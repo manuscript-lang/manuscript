@@ -211,6 +211,11 @@ static void live_statement(LiveWalk *w, const MsStmt *s);
 /* The store ends the old value's life; the value runs first, so it may read the old one. */
 static void live_assign(LiveWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->assign_binding[s->id];
+    if (binding == MS_NONE && w->facts->field_store_root[s->id] != MS_NONE) {
+        live_expr(w, s->u.assign.target); /* the store uses the variable but keeps it alive */
+        live_expr(w, s->u.assign.value);
+        return;
+    }
     if (binding == MS_NONE) {
         w->supported = false;
         return;

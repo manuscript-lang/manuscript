@@ -87,10 +87,14 @@ typedef struct MsFacts {
     MsTy *call_interface;      /* the interface a call dispatches through, else MS_TY_NONE */
     uint32_t *call_type_args_at, *call_type_args_len; /* into `type_args` */
     MsTy *type_args;
+    uint32_t ntype_args, ctype_args; /* used and allocated entries of `type_args` */
     uint32_t *lambda_first;   /* by lambda node id: the first binding of its parameters and body; the ones below are captured */
     uint32_t *assign_binding; /* by assignment statement node id: the binding it writes, else MS_NONE */
+    uint32_t *field_store_root; /* by assignment statement node id: the `var` a field store changes, else MS_NONE */
     bool *each_list;  /* by `for` statement node id: it iterates a list, not a range */
+    bool *some_wrap;  /* by expression node id: a value of the payload type used where an Optional is expected, so it is wrapped in `some` */
     bool *body_checked;   /* by declaration node id: the function's body was checked */
+    uint32_t *param_consumed; /* by declaration node id: bit i is set when the function moves its plain parameter i, so callers hand it over (ownership pass) */
     bool *ret_borrowed;   /* by declaration node id: every result is a reference into the arguments (ownership pass) */
     MsBindings bindings;
     MsMethods *methods; /* the program's table, shared by every module */

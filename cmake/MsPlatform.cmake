@@ -48,6 +48,9 @@ if(_triple MATCHES "linux-(gnu|musl)$" OR _triple MATCHES "apple"
 else()
   set(MS_LIBS_WIRED OFF)
 endif()
+# A target whose libraries are not all wired can still have some (a Windows MSVC host builds zlib for its unit
+# tests): -DMS_LIBS_ONLY="z" names them, and the sources that need any other library stay out.
+set(MS_LIBS_ONLY "" CACHE STRING "Libraries available on a target whose libraries are not all wired")
 
 # Flags every runtime and test source gets (documentation/contributing/c-style.md has the warnings).
 set(MS_C_FLAGS -fno-stack-protector
