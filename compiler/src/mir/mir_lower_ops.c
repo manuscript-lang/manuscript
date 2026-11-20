@@ -1,10 +1,11 @@
 /* lower_ops: rewrites the ownership ops a backend would otherwise write itself (`clone`, `drop`,
- * `move.out`, `forget`) into plain calls and copies, so every emitter prints scalars, memory, calls
+ * `move.out`, `forget`, and `str.len`, a runtime call that counts scalars) into plain calls and copies, so every emitter prints scalars, memory, calls
  * and data only (proposals/lower-ops-to-runtime-calls.md, stage 1).
  *
  * A value that needs no drop is its own clone, so its uses are renamed to the operand. A string is
  * cloned and freed by the runtime, which tests the tag itself, so no block is split. Any other
- * owned type calls its glue function. Runs last, after every pass that reads the ownership ops. */
+ * owned type calls its glue function. `opt.none_owned` becomes `opt.none`. Runs last, after every
+ * pass that reads the ownership ops. */
 #include <string.h>
 
 #include "ms/mir_layout.h"
@@ -16,6 +17,7 @@ typedef struct LoCx {
     MirLayouts layouts;
     uint32_t string_clone, string_free; /* extern ids, MIR_NONE until first used */
     uint32_t obj_clone, obj_drop;
+    uint32_t string_length; /* msrt_string_scalar_length */
 } LoCx;
 
 typedef enum LoKind { LO_PLAIN, LO_STR, LO_OBJ, LO_GLUE } LoKind;
@@ -103,6 +105,9 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         return true;
     case MOP_Forget:
         return true;
+    case MOP_OptNoneOwned: /* ownership-only distinction (the optimiser reads it); emitters see opt.none */
+        inst->op = MOP_OptNone;
+        return false;
     case MOP_Clone: {
         const MirTy ty = f->values[inst->args[0]];
         const LoKind kind = lo_kind(c, ty);
@@ -156,12 +161,59 @@ static bool lo_inst(LoCx *c, MirFunc *f, MirInst *inst) {
         }
         return false;
     }
+    case MOP_StrLen:
+        if (c->string_length == MIR_NONE) {
+            c->string_length = lo_extern(c, "msrt_string_scalar_length", MIR_STR, MIR_INT);
+        }
+        lo_to_call_rt(inst, c->string_length);
+        return false;
     default:
         return false;
     }
 }
 
+/* `drop.if flag v` ends its block with a branch on `flag` to a block that drops `v` and on to a
+ * block holding the rest, so the drop that remains is a plain `drop`. Blocks the split makes are
+ * visited too, for a second `drop.if`. */
+static void lo_split_drop_ifs(MirModule *m, MirFunc *f) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            if (f->blocks[b].insts[k].op != MOP_DropIf) {
+                continue;
+            }
+            const MirInst held = f->blocks[b].insts[k];
+            const uint32_t nrest = f->blocks[b].ninsts - (k + 1);
+            MirInst *rest = MS_NEW_N(&m->arena, MirInst, nrest ? nrest : 1);
+            if (nrest > 0) {
+                memcpy(rest, &f->blocks[b].insts[k + 1], sizeof(MirInst) * nrest);
+            }
+            const MirTerm term = f->blocks[b].term;
+            const MirLoc term_loc = f->blocks[b].term_loc;
+            f->blocks[b].ninsts = k;
+            const MirBlock drop = mir_new_block(m, f);
+            const MirBlock next = mir_new_block(m, f);
+            const MirValue victim = held.args[1];
+            MirInst *only = MS_NEW_N(&m->arena, MirInst, 1);
+            *only = mir_inst(MOP_Drop, mir_imm_none(), MIR_NONE, held.loc,
+                             mir_args_copy(m, &victim, 1), 1);
+            f->blocks[drop].insts = only;
+            f->blocks[drop].ninsts = f->blocks[drop].cinsts = 1;
+            f->blocks[drop].term = (MirTerm){.kind = MT_BR, .value = MIR_NONE, .a = {.block = next}};
+            f->blocks[drop].term_loc = held.loc;
+            f->blocks[next].insts = rest;
+            f->blocks[next].ninsts = f->blocks[next].cinsts = nrest;
+            f->blocks[next].term = term;
+            f->blocks[next].term_loc = term_loc;
+            f->blocks[b].term = (MirTerm){.kind = MT_CONDBR, .value = held.args[0],
+                                          .a = {.block = drop}, .b = {.block = next}};
+            f->blocks[b].term_loc = held.loc;
+            break;
+        }
+    }
+}
+
 static void lo_function(LoCx *c, MirFunc *f) {
+    lo_split_drop_ifs(c->m, f);
     for (uint32_t b = 0; b < f->nblocks; b++) {
         MirBlockData *blk = &f->blocks[b];
         uint32_t kept = 0;
@@ -176,7 +228,7 @@ static void lo_function(LoCx *c, MirFunc *f) {
 
 void mir_lower_ops(MirModule *m, const MirGlue *glue) {
     LoCx c = {.m = m, .glue = glue, .string_clone = MIR_NONE, .string_free = MIR_NONE,
-            .obj_clone = MIR_NONE, .obj_drop = MIR_NONE};
+            .obj_clone = MIR_NONE, .obj_drop = MIR_NONE, .string_length = MIR_NONE};
     mir_layouts_init(&c.layouts, m);
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         lo_function(&c, &m->funcs[i]);

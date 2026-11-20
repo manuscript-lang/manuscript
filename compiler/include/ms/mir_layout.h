@@ -140,8 +140,16 @@ typedef struct MirClosureLayout {
 #define MIR_STACK_HDR_CELL 16
 #define MIR_HDR_CANCEL 8
 
+/* The tag bits of a string's second word (runtime/include/ms_rt/string.h) and the longest inline string. */
+#define MIR_STR_STATIC ((uint64_t)1 << 63)
+#define MIR_STR_INLINE ((uint64_t)1 << 62)
+#define MIR_STR_ASCII ((uint64_t)1 << 61)
+#define MIR_STR_INLINE_SHIFT 56
+#define MIR_STR_INLINE_MAX 15
+
 /* A list or bytes value is three leaves: the element address, the length and the capacity. */
 #define MIR_LIST_LEN_LEAF 1
+#define MIR_LIST_CAP_LEAF 2
 #define MIR_MAP_WORDS 7
 /* A type with more leaves than this is a failure, not a layout. */
 #define MIR_LAYOUT_MAX_LEAVES (1u << 20)

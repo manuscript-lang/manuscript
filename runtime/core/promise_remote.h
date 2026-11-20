@@ -24,6 +24,13 @@ bool ms_remote_end(MsPromise id);
 void ms_remote_drop(MsPromise id);
 MsFaultText ms_remote_fault_report(MsPromise id);
 MsPromiseProbe ms_remote_probe(MsPromise id);
+void ms_remote_on_cancel(MsPromise id, int64_t cancel);
+void ms_remote_set_grouped(MsPromise id, bool grouped);
+/* Runs a deferred promise of the owner now; answers whether it ran. */
+bool ms_remote_run_inline(MsPromise id);
+/* Asks the owner to post `token` (a MS_TOKEN_REMOTE token of this isolate) when `id` finishes; false when the
+ * owner is gone. */
+bool ms_remote_watch_post(MsPromise id, uint64_t token);
 
 /* Owner side: runs the Ask of `mail` (taken) as a task of this isolate, and answers a Watch. */
 void ms_remote_serve(MsMail *mail);
