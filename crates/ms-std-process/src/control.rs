@@ -274,6 +274,8 @@ pub fn set_environment(name: &[u8], value: Option<&[u8]>) -> Res<()> {
             None => std::env::remove_var(&key),
         }
     }
+    // The C library may have moved its environment; programs read this program's copy.
+    ms_rt::start::sync_environ();
     Ok(())
 }
 

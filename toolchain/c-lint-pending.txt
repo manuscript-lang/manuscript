@@ -1,15 +1,6 @@
 compiler/src/libms.c
 runtime/fuzz/http1_fuzz.c
 runtime/fuzz/num_fuzz.c
-runtime/io/reactor.c
-runtime/std/crypto.c
-runtime/std/crypto_asym.c
-runtime/std/regex.c
-runtime/std/regex_abi.c
 runtime/sys/glibc/compat.c
 runtime/sys/mem.c
 runtime/tests/clibs_smoke.c
-runtime/tests/std_crypto.c
-runtime/tests/std_crypto_asym.c
-runtime/tests/std_regex.c
-runtime/tests/std_regex_abi.c

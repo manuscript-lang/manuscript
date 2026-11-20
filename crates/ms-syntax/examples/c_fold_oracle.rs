@@ -253,6 +253,6 @@ fn main() {
     let out = std::io::stdout();
     let mut out = out.lock();
     for line in stdin.lock().lines() {
-        write!(out, "{}---\n", answer(&line.unwrap())).unwrap();
+        writeln!(out, "{}---", answer(&line.unwrap())).unwrap();
     }
 }
