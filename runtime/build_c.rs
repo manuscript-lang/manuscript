@@ -225,7 +225,10 @@ pub fn run_c_tests(root: &Path, work: &Path, triple: Option<&str>) -> Result<Str
     configure_c(root, &build, triple, false, true)?;
     run(
         // `-k 0` keeps going past a failing file, so one run reports every compile error, not the first.
-        Command::new("cmake").arg("--build").arg(&build).args(["--", "-k", "0"]),
+        Command::new("cmake")
+            .arg("--build")
+            .arg(&build)
+            .args(["--", "-k", "0"]),
         "cmake build",
     )?;
     run(
