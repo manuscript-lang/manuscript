@@ -10,6 +10,11 @@ typedef struct MsStdFile {
     size_t len;
 } MsStdFile;
 
+/* qsort order for MsStdFile rows: by name. */
+static inline int ms_std_file_by_name(const void *a, const void *b) {
+    return strcmp(((const MsStdFile *)a)->name, ((const MsStdFile *)b)->name);
+}
+
 /* Parses every file (syntax and texts live in `syntax`), splits files that mix native operations
  * with bodies into a native half and a `+source` half, registers the native declarations and the
  * exported types of source modules, and declares every native type's variables. Modules appear in

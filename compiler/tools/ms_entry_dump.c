@@ -11,15 +11,6 @@
 #include "ms/stdlib.h"
 #include "std_files.h"
 
-static bool only_std_imports(const MsModule *module) {
-    for (uint32_t i = 0; i < module->nimports; i++) {
-        if (module->imports[i].path.len < 5 || memcmp(module->imports[i].path.ptr, "@std/", 5) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static void dump_file(MsCheck *check, MsArena *syntax, MsNames *names, const char *path) {
     size_t length = 0;
     char *text = read_whole_file(path, &length);
@@ -28,7 +19,7 @@ static void dump_file(MsCheck *check, MsArena *syntax, MsNames *names, const cha
     }
     MsModule *module = MS_NEW(syntax, MsModule);
     MsDiag diag;
-    if (ms_parse(syntax, names, text, length, module, &diag) && only_std_imports(module)) {
+    if (ms_parse(syntax, names, text, length, module, &diag) && ms_module_only_std_imports(module)) {
         MsModId id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
         ms_module_resolve_types(check, id);
         MsCheckDiag entry;
