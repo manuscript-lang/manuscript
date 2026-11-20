@@ -24,4 +24,5 @@ runs:
           ~/.cargo/registry/cache
           ~/.cargo/git/db
           ${{ runner.temp }}/sccache
+          ${{ runner.temp }}/ccache
         key: ${{ inputs.primary-key }}

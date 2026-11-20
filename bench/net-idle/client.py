@@ -1,11 +1,15 @@
 """Opens N idle connections to bench/net-idle/server.c and reports the server's memory per connection.
 
-Usage: client.py <port> <server pid> <connections> <ws|http>
+Usage: client.py <port> <server pid> <connections> <ws|http> [tls]
 First checks one connection works (an HTTP hello, or a WebSocket echo), then opens the rest and leaves them idle.
 """
-import base64, os, socket, struct, sys, time
+import socket, ssl, sys, time
 
 port, pid, count, mode = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+use_tls = len(sys.argv) > 5 and sys.argv[5] == "tls"
+context = ssl.create_default_context()
+context.check_hostname = False
+context.verify_mode = ssl.CERT_NONE
 GET = b"GET / HTTP/1.1\r\nHost: x\r\n\r\n"
 UPGRADE = (b"GET / HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n")
@@ -20,6 +24,8 @@ def status(key):
 
 def connect():
     sock = socket.create_connection(("127.0.0.1", port))
+    if use_tls:
+        sock = context.wrap_socket(sock)
     sock.sendall(UPGRADE if mode == "ws" else GET)
     reply = sock.recv(1024)
     want = b"101" if mode == "ws" else b"hello"
@@ -47,4 +53,4 @@ rss0, pte0 = status("VmRSS:"), status("VmPTE:")
 socks = [connect() for _ in range(count)]
 time.sleep(3)
 rss1, pte1 = status("VmRSS:"), status("VmPTE:")
-print(f"{mode} n={count}: {(rss1 - rss0) * 1024 / count:.0f} B rss + {(pte1 - pte0) * 1024 / count:.0f} B page table per idle connection")
+print(f"{mode}{'+tls' if use_tls else ''} n={count}: {(rss1 - rss0) * 1024 / count:.0f} B rss + {(pte1 - pte0) * 1024 / count:.0f} B page table per idle connection")

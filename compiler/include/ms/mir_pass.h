@@ -59,4 +59,41 @@ bool mir_expand_owned(MirModule *m);
  * tasks; the caller decides whether edges are switched on (`MS_CANCEL_EDGES`). */
 bool mir_cancel_edges(MirModule *m);
 
+/* ---- glue ---- */
+
+/* The kinds of generated helper functions a backend calls instead of writing its own. */
+typedef enum MirGlueKind {
+    MG_DROP, MG_CLONE, MG_CLOSURE_DROP, MG_CLOSURE_DROP_FRAMED, MG_CLOSURE_DROP_FROM,
+    MG_CLOSURE_CLONE, MG_BLOCK_DROP, MG_BLOCK_CLONE, MG_SLOT_DROP, MG_SLOT_COPY
+} MirGlueKind;
+
+/* One made function: `ty` is the type it works on (MIR_VOID for the closure kinds, which carry
+ * the closure function in `a` and, for `closure_drop_from`, the capture in `b`). */
+typedef struct MirGlueEntry {
+    uint8_t kind;
+    uint32_t a, b;
+    MirTy ty;
+    uint32_t func;
+} MirGlueEntry;
+
+/* Everything the glue passes made, which backends look up by kind and type (`Module::drop_glue`,
+ * `clone_glue`, `addr_glue`, `glue_bodies`). Lives in the module's arena. */
+typedef struct MirGlue {
+    MirGlueEntry *v;
+    uint32_t n, cap;
+    uint32_t *bodies; /* the bodies the deep-recursion wrappers call */
+    uint32_t nbodies, cbodies;
+} MirGlue;
+
+/* The function made for `kind` of `ty` (and closure `a`, capture `b`), or MIR_NONE. */
+uint32_t mir_glue_find(const MirGlue *g, MirGlueKind kind, MirTy ty, uint32_t a, uint32_t b);
+
+/* glue: makes the drop and clone function of every type whose drop is a walk of its fields, the
+ * slot and block functions descriptors and interfaces point at, and the closure object
+ * functions. Returns whether anything was made. */
+bool mir_glue(MirModule *m, MirGlue *g);
+
+/* glue plus expand_owned, repeated until nothing new is wanted. The last step before backends. */
+void mir_glue_run_and_expand(MirModule *m, MirGlue *g);
+
 #endif

@@ -229,7 +229,10 @@ fn scope_diagnostics(files: &[String]) {
                 && declared.positions.contains(&(d.pos.line, d.pos.column));
             if scope && d.phase == ms_syntax::Phase::Resolution
                 || typed
-                    && matches!(d.phase, ms_syntax::Phase::Resolution | ms_syntax::Phase::Type)
+                    && matches!(
+                        d.phase,
+                        ms_syntax::Phase::Resolution | ms_syntax::Phase::Type
+                    )
             {
                 println!("{}:{}: {}", d.pos.line, d.pos.column, d.message);
             }
