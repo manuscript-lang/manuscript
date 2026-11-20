@@ -14,6 +14,7 @@ typedef struct MsBody {
     MsFacts *facts;
     MsLiteralFacts *literals;
     MsTy int_ty, float_ty, bool_ty, string_ty, void_ty;
+    MsTy invalid_ty;        /* the type of an expression that already drew a diagnostic */
     bool has_close;         /* the module declares a method named `close` */
     MsTy result;
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */

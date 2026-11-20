@@ -80,6 +80,10 @@ MS_NODISCARD bool ms_sys_fd_ready(int fd, bool writes, bool *ready);
  * linker copy environ into the program, and glibc fills only its own, so readers of the copy would see an empty
  * environment (issue #4647). Linux only; a no-op elsewhere. */
 void ms_sys_sync_environ(void);
+/* Points the C library's own environment, which execvp reads, at `replacement` and returns the previous one. A child
+ * that libuv forks sets only the program's copy of environ (see above), so `uv_spawn` with an environment needs this
+ * around the call, under a lock. Linux only; elsewhere it returns `replacement` and changes nothing. */
+char **ms_sys_swap_libc_environ(char **replacement);
 
 /* ---- network interfaces ---- */
 

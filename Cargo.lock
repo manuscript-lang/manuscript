@@ -704,7 +704,6 @@ dependencies = [
  "ms-std-bigint",
  "ms-std-decimal",
  "ms-std-fs",
- "ms-std-json",
  "ms-std-net",
  "ms-std-process",
  "ms-std-table",
@@ -752,14 +751,6 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ms-std-json"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
 ]
 
 [[package]]

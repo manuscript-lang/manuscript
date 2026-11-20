@@ -274,6 +274,38 @@ static bool body_constant_fault(MsBody *b, const MsExpr *e) {
     return fault.len != 0;
 }
 
+static MsStr body_show(MsBody *b, MsTy ty);
+
+/* What to do about operands of two different primitive types: Int with Float, or text with a
+ * number for `*`, have their own hint. */
+static const char *body_operand_hint(const MsBody *b, MsBinaryOp op, MsTy left, MsTy right) {
+    const bool mixed = (left == b->int_ty && right == b->float_ty) || (left == b->float_ty && right == b->int_ty);
+    if (mixed) {
+        return "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)";
+    }
+    const bool repeat = (left == b->string_ty && right == b->int_ty) || (left == b->int_ty && right == b->string_ty);
+    if (repeat && op == MS_B_MUL) {
+        return "to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)";
+    }
+    return "convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert "
+           "between Int and Float)";
+}
+
+/* Operands of two primitive types that differ: reported at the operator, and the whole is
+ * invalid (a comparison is still Bool), which silences whatever uses it. */
+static MsTy body_report_operands(MsBody *b, const MsExpr *e, MsTy left, MsTy right) {
+    const MsBinaryOp op = (MsBinaryOp)e->op;
+    const MsStr l = body_show(b, left);
+    const MsStr r = body_show(b, right);
+    const MsStr message = ms_arena_fmt(
+        &b->c->arena, "operator operands require the same independently known type, found %.*s %s %.*s; %s", (int)l.len,
+        l.ptr, ms_binary_str(op), (int)r.len, r.ptr, body_operand_hint(b, op, left, right));
+    const MsCheckDiag diag = {.diag = {.pos = e->pos, .message = message}, .phase = MS_PHASE_TYPE};
+    MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
+    const bool comparison = op == MS_B_EQ || op == MS_B_NE || body_is_ordering(op);
+    return comparison ? b->bool_ty : b->invalid_ty;
+}
+
 static MsTy body_binary(MsBody *b, const MsExpr *e) {
     const MsBinaryOp op = (MsBinaryOp)e->op;
     const MsTy left = ms_body_expr(b, e->u.bin.left, MS_TY_NONE);
@@ -281,8 +313,16 @@ static MsTy body_binary(MsBody *b, const MsExpr *e) {
     if (right == MS_TY_NONE) {
         return MS_TY_NONE;
     }
+    const bool comparison = op == MS_B_EQ || op == MS_B_NE || body_is_ordering(op);
+    if (left == b->invalid_ty || right == b->invalid_ty) {
+        // An operand already reported its own error; this one does not restate it.
+        return comparison || op == MS_B_AND || op == MS_B_OR ? b->bool_ty : b->invalid_ty;
+    }
     if (op == MS_B_AND || op == MS_B_OR) {
         return left == b->bool_ty && right == b->bool_ty ? b->bool_ty : ms_body_unsupported(b);
+    }
+    if (left != right && body_is_value_type(b, left) && body_is_value_type(b, right)) {
+        return body_report_operands(b, e, left, right);
     }
     if (left != right || !body_is_value_type(b, left)) {
         return ms_body_unsupported(b);
@@ -374,6 +414,11 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     if (ty == MS_TY_NONE) {
         return ty;
     }
+    if (ty == b->invalid_ty) {
+        // Already reported where it went wrong; nothing built on it is.
+        (void)ms_body_record(b, e->id, ty);
+        return expected != MS_TY_NONE ? expected : ty;
+    }
     if (expected != MS_TY_NONE && ty != expected) {
         // A value of the wrong primitive type is reported where the statement asked for it; the
         // statement goes on as if it had the expected type, as the Rust checker does.
@@ -438,9 +483,18 @@ static void body_assign_statement(MsBody *b, const MsStmt *s) {
         return;
     }
     const uint32_t binding = ms_body_find_binding(b, s->u.assign.name);
-    if (binding == MS_NONE || (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+    if (binding == MS_NONE) {
         (void)ms_body_unsupported(b);
         return;
+    }
+    if ((b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0) {
+        const MsStr name = ms_name(b->c->names, s->u.assign.name);
+        const MsStr message = ms_arena_fmt(&b->c->arena,
+                                           "cannot assign immutable binding %.*s; declare it with 'var %.*s = ...' "
+                                           "instead of '%.*s := ...'",
+                                           (int)name.len, name.ptr, (int)name.len, name.ptr, (int)name.len, name.ptr);
+        const MsCheckDiag diag = {.diag = {.pos = s->pos, .message = message}, .phase = MS_PHASE_TYPE};
+        MS_VEC_PUSH(b->diags, MsCheckDiag, diag);
     }
     const uint32_t reads_before = b->reads[binding];
     (void)ms_body_expr(b, s->u.assign.value, b->facts->bindings.ty[binding]);
@@ -716,6 +770,12 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     bindings->count = 0;
 }
 
+static MsTy body_invalid(MsCheck *c) {
+    const MsSym name = ms_intern_cstr(c->names, "<invalid>");
+    const MsTyDesc desc = {.name = name, .id = name, .kind = MS_K_INVALID};
+    return ms_ty_intern(&c->tys, &desc);
+}
+
 /* Whether the module declares a method called `close`, inside an `impl` or as `fn Type.close`. */
 static bool body_module_has_close(const MsCheck *c, const MsModule *syntax) {
     for (uint32_t i = 0; i < syntax->ndecls; i++) {
@@ -802,6 +862,7 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
               .bool_ty = body_primitive(c, "Bool"),
               .string_ty = body_primitive(c, "String"),
               .void_ty = body_primitive(c, "Void"),
+              .invalid_ty = body_invalid(c),
               .has_close = body_module_has_close(c, row->syntax)};
     body_allocate(&b, facts);
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
