@@ -821,7 +821,7 @@ fn build_archive(
     let built = release.join("libms_native.a");
     let archive = out.join(name);
     std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
-    add_c_runtime(root, target, triple, &plan, &archive)?;
+    add_c_runtime(root, triple, &plan, &archive)?;
     strip_debug(&archive);
     Ok(archive)
 }
@@ -829,7 +829,6 @@ fn build_archive(
 /// Adds the C objects the CMake build made for `triple`, and every member of the libraries they use, to `archive`.
 fn add_c_runtime(
     root: &Path,
-    target: &Path,
     triple: Option<&str>,
     plan: &CRuntime,
     archive: &Path,
@@ -840,10 +839,11 @@ fn add_c_runtime(
     }
     let ar = archiver(root, triple);
     let mut command = Command::new(&ar);
+    let mut response = None;
     command.arg("rcs").arg(archive);
     if cfg!(windows) {
         // The folded library members overflow Windows' 32 KiB command line; llvm-ar reads a response file.
-        let list = target.join("c-objects/members.rsp");
+        let list = archive.with_extension("rsp");
         let names: Vec<String> = files
             .iter()
             .map(|f| f.to_string_lossy().replace('\\', "/"))
@@ -851,12 +851,16 @@ fn add_c_runtime(
         std::fs::write(&list, names.join("\n"))
             .map_err(|e| format!("write {}: {e}", list.display()))?;
         command.arg(format!("@{}", list.display()));
+        response = Some(list);
     } else {
         command.args(files);
     }
     let status = command
         .status()
         .map_err(|e| format!("run {}: {e}", ar.display()))?;
+    if let Some(list) = response {
+        let _ = std::fs::remove_file(list);
+    }
     if !status.success() {
         return Err(format!(
             "adding the C objects to {} failed",
