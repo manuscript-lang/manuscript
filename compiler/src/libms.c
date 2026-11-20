@@ -14,3 +14,4 @@
 #include "stdlib.c"
 #include "dump_check.c"
 #include "libms_api.c"
+#include "emit_qbe.c"
