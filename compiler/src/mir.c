@@ -188,7 +188,7 @@ void mir_module_init(MirModule *m) {
         MK_VOID, MK_BOOL, MK_INT, MK_FLOAT, MK_STR, MK_BYTES, MK_PTR, MK_INT8, MK_INT16, MK_INT32,
         MK_FLOAT32, MK_UINT8, MK_UINT16, MK_UINT32, MK_UINT64};
     for (int i = 0; i < MIR_BUILTIN_TYPES; i++) {
-        MirTyData d = {.kind = builtin[i]};
+        MirTyData d = {.kind = (uint8_t)builtin[i]};
         mir_ty_intern(m, &d);
     }
 }

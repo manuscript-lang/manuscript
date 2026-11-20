@@ -14,7 +14,7 @@ static void mp_sym(const MirModule *m, MsBuf *o, MsSym s) {
 
 static void mp_ty(const MirModule *m, MirTy t, MsBuf *o) {
     const MirTyData *d = mir_ty_data(m, t);
-    switch (d->kind) {
+    switch ((MirTyKind)d->kind) {
     case MK_VOID: ms_buf_puts(o, "void"); break;
     case MK_BOOL: ms_buf_puts(o, "bool"); break;
     case MK_INT: ms_buf_puts(o, "int"); break;
@@ -103,6 +103,68 @@ static void mp_quote(MsBuf *o, const char *s, size_t n) {
     ms_buf_putc(o, '"');
 }
 
+/* The shortest decimal digits that read back as `v` (positive, finite): `digits` holds them
+ * without a point, and the value is d.ddd times ten to the `exponent`. */
+typedef struct ShortestDigits {
+    char digits[24];
+    size_t count;
+    long exponent;
+} ShortestDigits;
+
+static ShortestDigits mp_shortest_digits(double v) {
+    char text[64] = {0};
+    for (int precision = 0; precision < 17; precision++) {
+        snprintf(text, sizeof text, "%.*e", precision, v);
+        if (strtod(text, NULL) == v) {
+            break;
+        }
+    }
+    /* text is d[.ddd]e[+-]XX */
+    ShortestDigits out = {.digits = {0}};
+    const char *exponent_mark = strchr(text, 'e');
+    for (const char *c = text; c < exponent_mark; c++) {
+        if (*c != '.') {
+            out.digits[out.count++] = *c;
+        }
+    }
+    out.exponent = strtol(exponent_mark + 1, NULL, 10);
+    return out;
+}
+
+static void mp_f64_exponential(MsBuf *o, const ShortestDigits *d) {
+    ms_buf_putc(o, d->digits[0]);
+    if (d->count > 1) {
+        ms_buf_putc(o, '.');
+        ms_buf_put(o, d->digits + 1, d->count - 1);
+    }
+    ms_buf_printf(o, "e%ld", d->exponent);
+}
+
+static void mp_f64_decimal(MsBuf *o, const ShortestDigits *d) {
+    if (d->exponent < 0) {
+        ms_buf_puts(o, "0.");
+        for (long i = 0; i < -d->exponent - 1; i++) {
+            ms_buf_putc(o, '0');
+        }
+        ms_buf_put(o, d->digits, d->count);
+        return;
+    }
+    size_t integer_digits = (size_t)d->exponent + 1;
+    for (size_t i = 0; i < integer_digits; i++) {
+        char digit = '0';
+        if (i < d->count) {
+            digit = d->digits[i];
+        }
+        ms_buf_putc(o, digit);
+    }
+    ms_buf_putc(o, '.');
+    if (d->count > integer_digits) {
+        ms_buf_put(o, d->digits + integer_digits, d->count - integer_digits);
+    } else {
+        ms_buf_putc(o, '0');
+    }
+}
+
 /* Rust's `{:?}` of a finite f64: the shortest digits that read back, exponent form below 1e-4
  * and from 1e16, and always a fractional part otherwise. */
 static void mp_f64(MsBuf *o, double v) {
@@ -114,46 +176,11 @@ static void mp_f64(MsBuf *o, double v) {
         ms_buf_puts(o, "0.0");
         return;
     }
-    char buf[64];
-    for (int p = 0; p < 17; p++) {
-        snprintf(buf, sizeof buf, "%.*e", p, v);
-        if (strtod(buf, NULL) == v) {
-            break;
-        }
-    }
-    /* buf is d[.ddd]e[+-]XX */
-    char digits[24];
-    int nd = 0;
-    char *e = strchr(buf, 'e');
-    for (char *c = buf; c < e; c++) {
-        if (*c != '.') {
-            digits[nd++] = *c;
-        }
-    }
-    int exp = atoi(e + 1);
+    ShortestDigits d = mp_shortest_digits(v);
     if (v >= 1e16 || v < 1e-4) {
-        ms_buf_putc(o, digits[0]);
-        if (nd > 1) {
-            ms_buf_putc(o, '.');
-            ms_buf_put(o, digits + 1, (size_t)nd - 1);
-        }
-        ms_buf_printf(o, "e%d", exp);
-    } else if (exp >= 0) {
-        for (int i = 0; i <= exp; i++) {
-            ms_buf_putc(o, i < nd ? digits[i] : '0');
-        }
-        ms_buf_putc(o, '.');
-        if (nd > exp + 1) {
-            ms_buf_put(o, digits + exp + 1, (size_t)(nd - exp - 1));
-        } else {
-            ms_buf_putc(o, '0');
-        }
+        mp_f64_exponential(o, &d);
     } else {
-        ms_buf_puts(o, "0.");
-        for (int i = 0; i < -exp - 1; i++) {
-            ms_buf_putc(o, '0');
-        }
-        ms_buf_put(o, digits, (size_t)nd);
+        mp_f64_decimal(o, &d);
     }
 }
 
@@ -194,16 +221,15 @@ static const char *mp_std_name(uint8_t std) {
     }
 }
 
-void mir_print_module(const MirModule *m, MsBuf *o) {
-    ms_buf_puts(o, "module ");
-    MsStr mn = ms_name(&m->names, m->name);
-    mp_quote(o, mn.ptr, mn.len);
-    ms_buf_putc(o, '\n');
+static void mp_files(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->nfiles; i++) {
         ms_buf_printf(o, "file %u ", i);
         mp_quote(o, m->files[i].ptr, m->files[i].len);
         ms_buf_putc(o, '\n');
     }
+}
+
+static void mp_blobs(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->nblobs; i++) {
         ms_buf_printf(o, "blob %u \"", i);
         for (uint32_t k = 0; k < m->blobs[i].len; k++) {
@@ -211,6 +237,9 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         }
         ms_buf_puts(o, "\"\n");
     }
+}
+
+static void mp_consts(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->nlist_consts; i++) {
         ms_buf_printf(o, "consts %u [", i);
         for (uint32_t k = 0; k < m->list_consts[i].n; k++) {
@@ -218,6 +247,9 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         }
         ms_buf_puts(o, "]\n");
     }
+}
+
+static void mp_type_defs(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->ntype_defs; i++) {
         const MirTypeDef *r = &m->type_defs[i];
         ms_buf_puts(o, "type ");
@@ -233,6 +265,9 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         }
         ms_buf_puts(o, " }\n");
     }
+}
+
+static void mp_alts(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->nalts; i++) {
         const MirAltDef *a = &m->alts[i];
         ms_buf_puts(o, "alt ");
@@ -263,6 +298,9 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         }
         ms_buf_putc(o, '\n');
     }
+}
+
+static void mp_ifaces(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->nifaces; i++) {
         const MirIfaceDef *d = &m->ifaces[i];
         ms_buf_puts(o, "iface ");
@@ -291,6 +329,9 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         }
         ms_buf_putc(o, '\n');
     }
+}
+
+static void mp_externs(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->nexterns; i++) {
         const MirExtern *e = &m->externs[i];
         ms_buf_puts(o, "extern @");
@@ -316,6 +357,9 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         }
         ms_buf_putc(o, '\n');
     }
+}
+
+static void mp_globals(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->nglobals; i++) {
         ms_buf_puts(o, "global @");
         mp_sym(m, o, m->globals[i].name);
@@ -323,6 +367,9 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         mir_print_ty(m, m->globals[i].ty, o);
         ms_buf_putc(o, '\n');
     }
+}
+
+static void mp_vtables(const MirModule *m, MsBuf *o) {
     for (uint32_t i = 0; i < m->nvtables; i++) {
         const MirVtable *v = &m->vtables[i];
         ms_buf_puts(o, "vtable @");
@@ -338,6 +385,22 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
         }
         ms_buf_puts(o, " }\n");
     }
+}
+
+void mir_print_module(const MirModule *m, MsBuf *o) {
+    ms_buf_puts(o, "module ");
+    MsStr module_name = ms_name(&m->names, m->name);
+    mp_quote(o, module_name.ptr, module_name.len);
+    ms_buf_putc(o, '\n');
+    mp_files(m, o);
+    mp_blobs(m, o);
+    mp_consts(m, o);
+    mp_type_defs(m, o);
+    mp_alts(m, o);
+    mp_ifaces(m, o);
+    mp_externs(m, o);
+    mp_globals(m, o);
+    mp_vtables(m, o);
     if (m->entry != MIR_NONE) {
         ms_buf_puts(o, "entry @");
         mp_sym(m, o, m->funcs[m->entry].name);
@@ -423,8 +486,104 @@ static void mp_term(const PrintCx *cx, MsBuf *o, const MirTerm *t) {
     }
 }
 
+static void mp_sym_pair(const MirModule *m, MsBuf *o, MsSym first, MsSym second) {
+    mp_sym(m, o, first);
+    ms_buf_putc(o, '.');
+    mp_sym(m, o, second);
+}
+
+/* Prints the masked fields of a case or type, each preceded by a dot. */
+static void mp_masked_fields(const MirModule *m, MsBuf *o, const MirField *fields, uint32_t count,
+                             uint32_t mask) {
+    for (uint32_t k = 0; k < count && k < 32; k++) {
+        if (mask >> k & 1) {
+            ms_buf_putc(o, '.');
+            mp_sym(m, o, fields[k].name);
+        }
+    }
+}
+
+/* Immediates that name a declaration or a field of one. */
+static void mp_imm_declared(const MirModule *m, MsBuf *o, const MirImm *im) {
+    switch ((MirImmTag)im->tag) {
+    case MI_FUNC: ms_buf_putc(o, '@'); mp_sym(m, o, m->funcs[im->a].name); break;
+    case MI_EXT: ms_buf_putc(o, '@'); mp_sym(m, o, m->externs[im->a].name); break;
+    case MI_TYPE: mp_sym(m, o, m->type_defs[im->a].name); break;
+    case MI_FIELD:
+        mp_sym_pair(m, o, m->type_defs[im->a].name, m->type_defs[im->a].fields[im->b].name);
+        break;
+    case MI_CASE:
+        mp_sym_pair(m, o, m->alts[im->a].name, m->alts[im->a].cases[im->b].name);
+        break;
+    case MI_ALTFIELD: {
+        const MirCaseDef *c = &m->alts[im->a].cases[im->b];
+        mp_sym_pair(m, o, m->alts[im->a].name, c->name);
+        ms_buf_putc(o, '.');
+        mp_sym(m, o, c->fields[im->c].name);
+        break;
+    }
+    case MI_ALTMASK: {
+        const MirCaseDef *c = &m->alts[im->a].cases[im->b];
+        mp_sym_pair(m, o, m->alts[im->a].name, c->name);
+        mp_masked_fields(m, o, c->fields, c->nfields, im->c);
+        break;
+    }
+    case MI_TYPEMASK: {
+        const MirTypeDef *d = &m->type_defs[im->a];
+        mp_sym(m, o, d->name);
+        mp_masked_fields(m, o, d->fields, d->nfields, im->b);
+        break;
+    }
+    case MI_VTABLE: ms_buf_putc(o, '@'); mp_sym(m, o, m->vtables[im->a].name); break;
+    case MI_GLOBAL: ms_buf_putc(o, '@'); mp_sym(m, o, m->globals[im->a].name); break;
+    case MI_METHOD:
+        mp_sym_pair(m, o, m->ifaces[im->a].name, m->ifaces[im->a].methods[im->b].name);
+        break;
+    case MI_NONE: case MI_INT: case MI_FLOAT: case MI_BOOL: case MI_STR: case MI_TY: case MI_CC:
+    case MI_IDX: case MI_SCOPE:
+        break;
+    }
+}
+
+/* The text after the mnemonic for an immediate (a comparison condition is part of the mnemonic). */
+static void mp_imm(const MirModule *m, MsBuf *o, const MirImm *im) {
+    switch ((MirImmTag)im->tag) {
+    case MI_INT: ms_buf_printf(o, "%lld", (long long)im->i); break;
+    case MI_FLOAT: {
+        uint64_t bits = (uint64_t)im->i;
+        double v = 0;
+        memcpy(&v, &bits, sizeof v);
+        if (isfinite(v)) {
+            mp_f64(o, v);
+        } else {
+            ms_buf_printf(o, "0x%016llx", (unsigned long long)bits);
+        }
+        break;
+    }
+    case MI_BOOL: ms_buf_puts(o, im->a ? "true" : "false"); break;
+    case MI_STR: {
+        MsStr s = ms_name(&m->strings, im->a);
+        mp_quote(o, s.ptr, s.len);
+        break;
+    }
+    case MI_TY: mir_print_ty(m, im->a, o); break;
+    case MI_IDX: ms_buf_printf(o, "%u", im->a); break;
+    case MI_SCOPE: ms_buf_printf(o, "%u %u", im->a, im->b); break;
+    case MI_NONE: case MI_CC: break;
+    default: mp_imm_declared(m, o, im); break;
+    }
+}
+
+static void mp_value_list(const PrintCx *cx, MsBuf *o, const MirValue *values, uint32_t count) {
+    for (uint32_t i = 0; i < count; i++) {
+        if (i) {
+            ms_buf_puts(o, ", ");
+        }
+        mp_val(cx, o, values[i]);
+    }
+}
+
 static void mp_inst(const PrintCx *cx, MsBuf *o, const MirInst *in) {
-    const MirModule *m = cx->m;
     const MirImm *im = &in->imm;
     ms_buf_puts(o, mir_op_info[in->op].name);
     if (im->tag == MI_CC) {
@@ -432,101 +591,15 @@ static void mp_inst(const PrintCx *cx, MsBuf *o, const MirInst *in) {
         ms_buf_puts(o, mir_cc_name[im->a]);
     } else if (im->tag != MI_NONE) {
         ms_buf_putc(o, ' ');
-        switch (im->tag) {
-        case MI_INT: ms_buf_printf(o, "%lld", (long long)im->i); break;
-        case MI_FLOAT: {
-            double v;
-            uint64_t bits = (uint64_t)im->i;
-            memcpy(&v, &bits, sizeof v);
-            if (isfinite(v)) {
-                mp_f64(o, v);
-            } else {
-                ms_buf_printf(o, "0x%016llx", (unsigned long long)bits);
-            }
-            break;
-        }
-        case MI_BOOL: ms_buf_puts(o, im->a ? "true" : "false"); break;
-        case MI_STR: {
-            MsStr s = ms_name(&m->strings, im->a);
-            mp_quote(o, s.ptr, s.len);
-            break;
-        }
-        case MI_FUNC: ms_buf_putc(o, '@'); mp_sym(m, o, m->funcs[im->a].name); break;
-        case MI_EXT: ms_buf_putc(o, '@'); mp_sym(m, o, m->externs[im->a].name); break;
-        case MI_TY: mir_print_ty(m, im->a, o); break;
-        case MI_TYPE: mp_sym(m, o, m->type_defs[im->a].name); break;
-        case MI_FIELD:
-            mp_sym(m, o, m->type_defs[im->a].name);
-            ms_buf_putc(o, '.');
-            mp_sym(m, o, m->type_defs[im->a].fields[im->b].name);
-            break;
-        case MI_CASE:
-            mp_sym(m, o, m->alts[im->a].name);
-            ms_buf_putc(o, '.');
-            mp_sym(m, o, m->alts[im->a].cases[im->b].name);
-            break;
-        case MI_ALTFIELD: {
-            const MirCaseDef *c = &m->alts[im->a].cases[im->b];
-            mp_sym(m, o, m->alts[im->a].name);
-            ms_buf_putc(o, '.');
-            mp_sym(m, o, c->name);
-            ms_buf_putc(o, '.');
-            mp_sym(m, o, c->fields[im->c].name);
-            break;
-        }
-        case MI_ALTMASK: {
-            const MirCaseDef *c = &m->alts[im->a].cases[im->b];
-            mp_sym(m, o, m->alts[im->a].name);
-            ms_buf_putc(o, '.');
-            mp_sym(m, o, c->name);
-            for (uint32_t k = 0; k < c->nfields; k++) {
-                if (k < 32 && (im->c >> k & 1)) {
-                    ms_buf_putc(o, '.');
-                    mp_sym(m, o, c->fields[k].name);
-                }
-            }
-            break;
-        }
-        case MI_TYPEMASK: {
-            const MirTypeDef *d = &m->type_defs[im->a];
-            mp_sym(m, o, d->name);
-            for (uint32_t k = 0; k < d->nfields; k++) {
-                if (k < 32 && (im->b >> k & 1)) {
-                    ms_buf_putc(o, '.');
-                    mp_sym(m, o, d->fields[k].name);
-                }
-            }
-            break;
-        }
-        case MI_VTABLE: ms_buf_putc(o, '@'); mp_sym(m, o, m->vtables[im->a].name); break;
-        case MI_GLOBAL: ms_buf_putc(o, '@'); mp_sym(m, o, m->globals[im->a].name); break;
-        case MI_METHOD:
-            mp_sym(m, o, m->ifaces[im->a].name);
-            ms_buf_putc(o, '.');
-            mp_sym(m, o, m->ifaces[im->a].methods[im->b].name);
-            break;
-        case MI_IDX: ms_buf_printf(o, "%u", im->a); break;
-        case MI_SCOPE: ms_buf_printf(o, "%u %u", im->a, im->b); break;
-        default: break;
-        }
+        mp_imm(cx->m, o, im);
     }
-    if (mir_op_is_call(in->op)) {
+    if (mir_op_is_call((MirOp)in->op)) {
         ms_buf_puts(o, " (");
-        for (uint32_t i = 0; i < in->nargs; i++) {
-            if (i) {
-                ms_buf_puts(o, ", ");
-            }
-            mp_val(cx, o, in->args[i]);
-        }
+        mp_value_list(cx, o, in->args, in->nargs);
         ms_buf_putc(o, ')');
     } else if (in->nargs > 0) {
         ms_buf_putc(o, ' ');
-        for (uint32_t i = 0; i < in->nargs; i++) {
-            if (i) {
-                ms_buf_puts(o, ", ");
-            }
-            mp_val(cx, o, in->args[i]);
-        }
+        mp_value_list(cx, o, in->args, in->nargs);
     }
 }
 
@@ -536,43 +609,28 @@ static void mp_loc(MsBuf *o, MirLoc l) {
     }
 }
 
-void mir_print_func(const MirModule *m, const MirFunc *f, MsBuf *o) {
-    PrintCx cx = {m, f, malloc(sizeof(uint32_t) * (f->nvalues ? f->nvalues : 1))};
-    memset(cx.names, 0xff, sizeof(uint32_t) * f->nvalues);
+/* Numbers values densely in the order they are defined. */
+static void mp_number_values(PrintCx *cx) {
+    const MirFunc *f = cx->f;
     uint32_t next = 0;
     for (uint32_t b = 0; b < f->nblocks; b++) {
-        const MirBlockData *bd = &f->blocks[b];
-        for (uint32_t i = 0; i < bd->nparams; i++) {
-            if (cx.names[bd->params[i].value] == MIR_NONE) {
-                cx.names[bd->params[i].value] = next++;
+        const MirBlockData *block = &f->blocks[b];
+        for (uint32_t i = 0; i < block->nparams; i++) {
+            uint32_t *name = &cx->names[block->params[i].value];
+            if (*name == MIR_NONE) {
+                *name = next++;
             }
         }
-        for (uint32_t i = 0; i < bd->ninsts; i++) {
-            MirValue r = bd->insts[i].res;
-            if (r != MIR_NONE && cx.names[r] == MIR_NONE) {
-                cx.names[r] = next++;
+        for (uint32_t i = 0; i < block->ninsts; i++) {
+            MirValue result = block->insts[i].res;
+            if (result != MIR_NONE && cx->names[result] == MIR_NONE) {
+                cx->names[result] = next++;
             }
         }
     }
-    ms_buf_puts(o, "fn @");
-    mp_sym(m, o, f->name);
-    ms_buf_putc(o, '(');
-    for (uint32_t i = 0; i < f->nparams; i++) {
-        if (i) {
-            ms_buf_puts(o, ", ");
-        }
-        mp_val(&cx, o, f->blocks[0].params[i].value);
-        ms_buf_puts(o, ": ");
-        ms_buf_puts(o, mp_mode_prefix(m, f->params[i].ty, f->params[i].mode));
-        mir_print_ty(m, f->params[i].ty, o);
-    }
-    ms_buf_puts(o, ") -> ");
-    mir_print_ty(m, f->ret, o);
-    if (f->linkage == ML_EXPORT) {
-        ms_buf_puts(o, " export");
-    }
-    if (f->inline_hint == MINL_ALWAYS) ms_buf_puts(o, " inline(always)");
-    if (f->inline_hint == MINL_NEVER) ms_buf_puts(o, " inline(never)");
+}
+
+static void mp_func_kind(const MirModule *m, const MirFunc *f, MsBuf *o) {
     if (f->kind == MFK_METHOD) {
         ms_buf_puts(o, " method");
     } else if (f->kind == MFK_CLOSURE) {
@@ -587,43 +645,88 @@ void mir_print_func(const MirModule *m, const MirFunc *f, MsBuf *o) {
     }
     if (f->sort == MSORT_GENERIC) ms_buf_puts(o, " sort_cmp");
     if (f->sort == MSORT_SPECIALIZED) ms_buf_puts(o, " sort_cmp_for");
+}
+
+static void mp_func_header(const PrintCx *cx, MsBuf *o) {
+    const MirModule *m = cx->m;
+    const MirFunc *f = cx->f;
+    ms_buf_puts(o, "fn @");
+    mp_sym(m, o, f->name);
+    ms_buf_putc(o, '(');
+    for (uint32_t i = 0; i < f->nparams; i++) {
+        if (i) {
+            ms_buf_puts(o, ", ");
+        }
+        mp_val(cx, o, f->blocks[0].params[i].value);
+        ms_buf_puts(o, ": ");
+        ms_buf_puts(o, mp_mode_prefix(m, f->params[i].ty, f->params[i].mode));
+        mir_print_ty(m, f->params[i].ty, o);
+    }
+    ms_buf_puts(o, ") -> ");
+    mir_print_ty(m, f->ret, o);
+    if (f->linkage == ML_EXPORT) {
+        ms_buf_puts(o, " export");
+    }
+    if (f->inline_hint == MINL_ALWAYS) ms_buf_puts(o, " inline(always)");
+    if (f->inline_hint == MINL_NEVER) ms_buf_puts(o, " inline(never)");
+    mp_func_kind(m, f, o);
     mp_loc(o, f->loc);
     ms_buf_puts(o, " {\n");
-    for (uint32_t bi = 0; bi < f->nblocks; bi++) {
-        const MirBlockData *b = &f->blocks[bi];
-        if (bi == 0) {
-            ms_buf_puts(o, "b0:\n");
-        } else {
-            ms_buf_printf(o, "b%u(", bi);
-            for (uint32_t i = 0; i < b->nparams; i++) {
-                MirTy ty = f->values[b->params[i].value];
-                if (i) {
-                    ms_buf_puts(o, ", ");
-                }
-                mp_val(&cx, o, b->params[i].value);
-                ms_buf_puts(o, ": ");
-                ms_buf_puts(o, mp_mode_prefix(m, ty, b->params[i].mode));
-                mir_print_ty(m, ty, o);
-            }
-            ms_buf_puts(o, "):\n");
+}
+
+static void mp_block_label(const PrintCx *cx, MsBuf *o, uint32_t index) {
+    const MirBlockData *block = &cx->f->blocks[index];
+    if (index == 0) {
+        ms_buf_puts(o, "b0:\n");
+        return;
+    }
+    ms_buf_printf(o, "b%u(", index);
+    for (uint32_t i = 0; i < block->nparams; i++) {
+        MirTy ty = cx->f->values[block->params[i].value];
+        if (i) {
+            ms_buf_puts(o, ", ");
         }
-        for (uint32_t i = 0; i < b->ninsts; i++) {
-            const MirInst *in = &b->insts[i];
-            ms_buf_puts(o, "  ");
-            if (in->res != MIR_NONE) {
-                mp_val(&cx, o, in->res);
-                ms_buf_puts(o, ": ");
-                mir_print_ty(m, f->values[in->res], o);
-                ms_buf_puts(o, " = ");
-            }
-            mp_inst(&cx, o, in);
-            mp_loc(o, in->loc);
-            ms_buf_putc(o, '\n');
-        }
+        mp_val(cx, o, block->params[i].value);
+        ms_buf_puts(o, ": ");
+        ms_buf_puts(o, mp_mode_prefix(cx->m, ty, block->params[i].mode));
+        mir_print_ty(cx->m, ty, o);
+    }
+    ms_buf_puts(o, "):\n");
+}
+
+static void mp_block(const PrintCx *cx, MsBuf *o, uint32_t index) {
+    const MirBlockData *block = &cx->f->blocks[index];
+    mp_block_label(cx, o, index);
+    for (uint32_t i = 0; i < block->ninsts; i++) {
+        const MirInst *in = &block->insts[i];
         ms_buf_puts(o, "  ");
-        mp_term(&cx, o, &b->term);
-        mp_loc(o, b->term_loc);
+        if (in->res != MIR_NONE) {
+            mp_val(cx, o, in->res);
+            ms_buf_puts(o, ": ");
+            mir_print_ty(cx->m, cx->f->values[in->res], o);
+            ms_buf_puts(o, " = ");
+        }
+        mp_inst(cx, o, in);
+        mp_loc(o, in->loc);
         ms_buf_putc(o, '\n');
+    }
+    ms_buf_puts(o, "  ");
+    mp_term(cx, o, &block->term);
+    mp_loc(o, block->term_loc);
+    ms_buf_putc(o, '\n');
+}
+
+void mir_print_func(const MirModule *m, const MirFunc *f, MsBuf *o) {
+    size_t count = f->nvalues ? f->nvalues : 1;
+    PrintCx cx = {m, f, malloc(sizeof(uint32_t) * count)};
+    if (cx.names == NULL) {
+        abort(); /* out of memory, as everywhere in libms */
+    }
+    memset(cx.names, 0xff, sizeof(uint32_t) * count);
+    mp_number_values(&cx);
+    mp_func_header(&cx, o);
+    for (uint32_t i = 0; i < f->nblocks; i++) {
+        mp_block(&cx, o, i);
     }
     ms_buf_puts(o, "}\n");
     free(cx.names);

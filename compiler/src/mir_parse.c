@@ -138,152 +138,212 @@ static int mpa_hexval(char c) {
     return isdigit((unsigned char)c) ? c - '0' : isxdigit((unsigned char)c) ? tolower(c) - 'a' + 10 : -1;
 }
 
-static MpTok *mpa_tokenize(MpParser *p, const char *s, size_t n, uint32_t no, uint32_t *count) {
-    MpTok *out = NULL;
-    uint32_t nt = 0, ct = 0;
-    size_t i = 0;
-#define EMIT(T) MIR_PUSH(p->m, out, nt, ct, MpTok, (T))
-    while (i < n) {
-        unsigned char c = (unsigned char)s[i];
-        if (mpa_ws_char(c)) {
-            i++;
-        } else if (c == ';') {
+/* A line being tokenized: `text[position]` is the next character. */
+typedef struct MpLexer {
+    MpParser *p;
+    const char *text;
+    size_t length;
+    size_t position;
+    uint32_t line;
+} MpLexer;
+
+static bool mpa_lex_more(const MpLexer *lx) { return lx->position < lx->length; }
+static char mpa_lex_at(const MpLexer *lx, size_t ahead) {
+    size_t index = lx->position + ahead;
+    if (index >= lx->length) {
+        return '\0';
+    }
+    return lx->text[index];
+}
+
+/* The value of the two characters after `\x`: Rust reads two chars and parses them as hex, which also
+ * takes "+h". Returns -1 when they are not a byte. */
+static int mpa_hex_escape(const MpLexer *lx) {
+    char high = mpa_lex_at(lx, 0);
+    char low = mpa_lex_at(lx, 1);
+    if (lx->position + 2 > lx->length || mpa_hexval(low) < 0) {
+        return -1;
+    }
+    if (mpa_hexval(high) >= 0) {
+        return mpa_hexval(high) * 16 + mpa_hexval(low);
+    }
+    return high == '+' ? mpa_hexval(low) : -1;
+}
+
+/* Reads one escape after a backslash into `out`. */
+static void mpa_lex_escape(MpLexer *lx, MsBuf *out) {
+    if (!mpa_lex_more(lx)) {
+        ms_buf_free(out);
+        mpa_perr(lx->p, lx->line, "bad escape");
+    }
+    char escape = lx->text[lx->position++];
+    switch (escape) {
+    case 'n': ms_buf_putc(out, '\n'); return;
+    case 't': ms_buf_putc(out, '\t'); return;
+    case 'r': ms_buf_putc(out, '\r'); return;
+    case '"': ms_buf_putc(out, '"'); return;
+    case '\\': ms_buf_putc(out, '\\'); return;
+    case 'x': {
+        int byte = mpa_hex_escape(lx);
+        if (byte < 0) {
+            ms_buf_free(out);
+            mpa_perr(lx->p, lx->line, "bad \\x escape");
+        }
+        lx->position += 2;
+        ms_utf8_put(out, (uint32_t)byte);
+        return;
+    }
+    default:
+        ms_buf_free(out);
+        mpa_perr(lx->p, lx->line, "unknown escape");
+    }
+}
+
+/* A string literal; the opening quote is already consumed. */
+static MpTok mpa_lex_string(MpLexer *lx) {
+    MsBuf bytes = {0};
+    for (;;) {
+        if (!mpa_lex_more(lx)) {
+            ms_buf_free(&bytes);
+            mpa_perr(lx->p, lx->line, "unterminated string");
+        }
+        char c = lx->text[lx->position++];
+        if (c == '"') {
             break;
-        } else if (c == '"') {
-            i++;
-            MsBuf b = {0};
-            for (;;) {
-                if (i >= n) {
-                    ms_buf_free(&b);
-                    mpa_perr(p, no, "unterminated string");
-                }
-                unsigned char d = (unsigned char)s[i++];
-                if (d == '"') {
-                    break;
-                }
-                if (d != '\\') {
-                    ms_buf_putc(&b, (char)d);
-                    continue;
-                }
-                if (i >= n) {
-                    ms_buf_free(&b);
-                    mpa_perr(p, no, "bad escape");
-                }
-                char e = s[i++];
-                switch (e) {
-                case 'n': ms_buf_putc(&b, '\n'); break;
-                case 't': ms_buf_putc(&b, '\t'); break;
-                case 'r': ms_buf_putc(&b, '\r'); break;
-                case '"': ms_buf_putc(&b, '"'); break;
-                case '\\': ms_buf_putc(&b, '\\'); break;
-                case 'x': {
-                    /* Rust reads two chars and parses them as hex, which also takes "+h". */
-                    int v = -1;
-                    if (i + 2 <= n) {
-                        if (mpa_hexval(s[i]) >= 0 && mpa_hexval(s[i + 1]) >= 0) {
-                            v = mpa_hexval(s[i]) * 16 + mpa_hexval(s[i + 1]);
-                        } else if (s[i] == '+' && mpa_hexval(s[i + 1]) >= 0) {
-                            v = mpa_hexval(s[i + 1]);
-                        }
-                    }
-                    if (v < 0) {
-                        ms_buf_free(&b);
-                        mpa_perr(p, no, "bad \\x escape");
-                    }
-                    i += 2;
-                    ms_utf8_put(&b, (uint32_t)v);
-                    break;
-                }
-                default:
-                    ms_buf_free(&b);
-                    mpa_perr(p, no, "unknown escape");
-                }
-            }
-            MpTok t = {.k = MPT_STR, .s = ms_arena_strndup(&p->m->arena, b.data ? b.data : "", b.len),
-                     .n = (uint32_t)b.len};
-            ms_buf_free(&b);
-            EMIT(t);
-        } else if (c == '%' || c == '@') {
-            size_t start = ++i;
-            while (i < n && mpa_ident_char((unsigned char)s[i])) {
-                i++;
-            }
-            if (i == start) {
-                mpa_perr(p, no, "empty name");
-            }
-            MpTok t = {.k = c == '%' ? MPT_VAL : MPT_AT, .s = s + start, .n = (uint32_t)(i - start)};
-            EMIT(t);
-        } else if (c == '!') {
-            i++;
-            size_t start = i;
-            while (i < n && (isdigit((unsigned char)s[i]) || s[i] == ':')) {
-                i++;
-            }
-            const char *part[3];
-            size_t plen[3];
-            int np = 0;
-            size_t ps = start;
-            for (size_t k = start; k <= i; k++) {
-                if (k == i || s[k] == ':') {
-                    if (np < 3) {
-                        part[np] = s + ps;
-                        plen[np] = k - ps;
-                    }
-                    np++;
-                    ps = k + 1;
-                }
-            }
-            if (np != 3) {
-                mpa_perr(p, no, "location must be !file:line:col");
-            }
-            MpTok t = {.k = MPT_LOC};
-            if (!mpa_parse_u32(part[0], plen[0], &t.loc.file) || !mpa_parse_u32(part[1], plen[1], &t.loc.line) ||
-                !mpa_parse_u32(part[2], plen[2], &t.loc.col)) {
-                mpa_perr(p, no, "bad location");
-            }
-            EMIT(t);
-        } else if (c == '-' && i + 1 < n && s[i + 1] == '>') {
-            MpTok t = {.k = MPT_ARROW};
-            EMIT(t);
-            i += 2;
-        } else if (isdigit(c) || (c == '-' && i + 1 < n && isdigit((unsigned char)s[i + 1]))) {
-            size_t start = i++;
-            if (c == '0' && i < n && s[i] == 'x') {
-                i++;
-                while (i < n && isxdigit((unsigned char)s[i])) {
-                    i++;
-                }
-            } else {
-                while (i < n) {
-                    char d = s[i];
-                    bool exp_sign = (d == '+' || d == '-') && (s[i - 1] == 'e' || s[i - 1] == 'E');
-                    if (isdigit((unsigned char)d) || d == '.' || d == 'e' || d == 'E' || exp_sign) {
-                        i++;
-                    } else {
-                        break;
-                    }
-                }
-            }
-            MpTok t = {.k = MPT_NUM, .s = s + start, .n = (uint32_t)(i - start)};
-            EMIT(t);
-        } else if (isalpha(c) || c == '_') {
-            size_t start = i;
-            while (i < n && mpa_ident_char((unsigned char)s[i])) {
-                i++;
-            }
-            MpTok t = {.k = MPT_IDENT, .s = s + start, .n = (uint32_t)(i - start)};
-            EMIT(t);
-        } else if (c != 0 && strchr("(){}<>[],:=", c) != NULL) {
-            MpTok t = {.k = MPT_P, .ch = (char)c};
-            EMIT(t);
-            i++;
+        }
+        if (c == '\\') {
+            mpa_lex_escape(lx, &bytes);
         } else {
-            mpa_perr(p, no, "unexpected character");
+            ms_buf_putc(&bytes, c);
         }
     }
-#undef EMIT
-    *count = nt;
-    return out;
+    const char *copy = ms_arena_strndup(&lx->p->m->arena, bytes.data ? bytes.data : "", bytes.len);
+    MpTok token = {.k = MPT_STR, .s = copy, .n = (uint32_t)bytes.len};
+    ms_buf_free(&bytes);
+    return token;
+}
+
+/* `%name` or `@name`; the sigil is at the current position. */
+static MpTok mpa_lex_name(MpLexer *lx) {
+    char sigil = lx->text[lx->position++];
+    size_t start = lx->position;
+    while (mpa_lex_more(lx) && mpa_ident_char((unsigned char)lx->text[lx->position])) {
+        lx->position++;
+    }
+    if (lx->position == start) {
+        mpa_perr(lx->p, lx->line, "empty name");
+    }
+    return (MpTok){.k = sigil == '%' ? MPT_VAL : MPT_AT, .s = lx->text + start,
+                   .n = (uint32_t)(lx->position - start)};
+}
+
+/* `!file:line:col`; the bang is at the current position. */
+static MpTok mpa_lex_location(MpLexer *lx) {
+    size_t start = ++lx->position;
+    while (mpa_lex_more(lx) && (isdigit((unsigned char)lx->text[lx->position]) || lx->text[lx->position] == ':')) {
+        lx->position++;
+    }
+    uint32_t fields[3] = {0};
+    size_t count = 0;
+    size_t field_start = start;
+    for (size_t k = start; k <= lx->position; k++) {
+        if (k != lx->position && lx->text[k] != ':') {
+            continue;
+        }
+        if (count < 3 && !mpa_parse_u32(lx->text + field_start, k - field_start, &fields[count])) {
+            mpa_perr(lx->p, lx->line, count == 2 ? "bad location" : "location must be !file:line:col");
+        }
+        count++;
+        field_start = k + 1;
+    }
+    if (count != 3) {
+        mpa_perr(lx->p, lx->line, "location must be !file:line:col");
+    }
+    MpTok token = {.k = MPT_LOC};
+    token.loc.file = fields[0];
+    token.loc.line = fields[1];
+    token.loc.col = fields[2];
+    return token;
+}
+
+static MpTok mpa_lex_number(MpLexer *lx) {
+    size_t start = lx->position++;
+    if (lx->text[start] == '0' && mpa_lex_at(lx, 0) == 'x') {
+        lx->position++;
+        while (mpa_lex_more(lx) && isxdigit((unsigned char)lx->text[lx->position])) {
+            lx->position++;
+        }
+    } else {
+        while (mpa_lex_more(lx)) {
+            char c = lx->text[lx->position];
+            char before = lx->text[lx->position - 1];
+            bool exponent_sign = (c == '+' || c == '-') && (before == 'e' || before == 'E');
+            if (!isdigit((unsigned char)c) && c != '.' && c != 'e' && c != 'E' && !exponent_sign) {
+                break;
+            }
+            lx->position++;
+        }
+    }
+    return (MpTok){.k = MPT_NUM, .s = lx->text + start, .n = (uint32_t)(lx->position - start)};
+}
+
+static MpTok mpa_lex_identifier(MpLexer *lx) {
+    size_t start = lx->position;
+    while (mpa_lex_more(lx) && mpa_ident_char((unsigned char)lx->text[lx->position])) {
+        lx->position++;
+    }
+    return (MpTok){.k = MPT_IDENT, .s = lx->text + start, .n = (uint32_t)(lx->position - start)};
+}
+
+/* The token at the current position (not whitespace, not a comment). */
+static MpTok mpa_lex_token(MpLexer *lx) {
+    unsigned char c = (unsigned char)lx->text[lx->position];
+    unsigned char next = (unsigned char)mpa_lex_at(lx, 1);
+    if (c == '"') {
+        lx->position++;
+        return mpa_lex_string(lx);
+    }
+    if (c == '%' || c == '@') {
+        return mpa_lex_name(lx);
+    }
+    if (c == '!') {
+        return mpa_lex_location(lx);
+    }
+    if (c == '-' && next == '>') {
+        lx->position += 2;
+        return (MpTok){.k = MPT_ARROW};
+    }
+    if (isdigit(c) || (c == '-' && isdigit(next))) {
+        return mpa_lex_number(lx);
+    }
+    if (isalpha(c) || c == '_') {
+        return mpa_lex_identifier(lx);
+    }
+    if (c != 0 && strchr("(){}<>[],:=", c) != NULL) {
+        lx->position++;
+        return (MpTok){.k = MPT_P, .ch = (char)c};
+    }
+    mpa_perr(lx->p, lx->line, "unexpected character");
+}
+
+static MpTok *mpa_tokenize(MpParser *p, const char *s, size_t n, uint32_t no, uint32_t *count) {
+    MpLexer lx = {p, s, n, 0, no};
+    MpTok *tokens = NULL;
+    uint32_t used = 0, capacity = 0;
+    while (mpa_lex_more(&lx)) {
+        unsigned char c = (unsigned char)s[lx.position];
+        if (mpa_ws_char(c)) {
+            lx.position++;
+            continue;
+        }
+        if (c == ';') {
+            break;
+        }
+        MpTok token = mpa_lex_token(&lx);
+        MIR_PUSH(p->m, tokens, used, capacity, MpTok, token);
+    }
+    *count = used;
+    return tokens;
 }
 
 /* ---- cursor ---- */
@@ -435,6 +495,15 @@ static uint8_t mpa_parse_std(MpCur *c) {
 
 /* ---- function bodies ---- */
 
+/* realloc that aborts on failure, as every libms allocation does. */
+static void *mpa_realloc(void *memory, size_t size) {
+    void *grown = realloc(memory, size);
+    if (grown == NULL) {
+        abort();
+    }
+    return grown;
+}
+
 static uint32_t mpa_vname_lookup(MpParser *p, MsSym s) {
     return s < p->nval_cap && p->val_gen[s] == p->gen ? p->val_of[s] : MIR_NONE;
 }
@@ -447,8 +516,8 @@ static void mpa_grow_names(uint32_t **of, uint32_t **gen, uint32_t *cap, uint32_
     while (ncap <= need) {
         ncap *= 2;
     }
-    *of = realloc(*of, sizeof(uint32_t) * ncap);
-    *gen = realloc(*gen, sizeof(uint32_t) * ncap);
+    *of = mpa_realloc(*of, sizeof(uint32_t) * ncap);
+    *gen = mpa_realloc(*gen, sizeof(uint32_t) * ncap);
     for (uint32_t i = *cap; i < ncap; i++) {
         (*gen)[i] = 0;
     }
@@ -473,7 +542,7 @@ static MirValue mpa_define(MpCur *c, MirFunc *f, MpTok name, MirTy ty) {
     MirValue v = mpa_value_of(p, f, name);
     if (p->cdefined < f->nvalues) {
         uint32_t ncap = f->nvalues * 2;
-        p->defined = realloc(p->defined, ncap);
+        p->defined = mpa_realloc(p->defined, ncap);
         memset(p->defined + p->cdefined, 0, ncap - p->cdefined);
         p->cdefined = ncap;
     }
@@ -525,7 +594,6 @@ static uint32_t mpa_imm_u32(MpCur *c, const char *what) {
     return v;
 }
 
-static MpTok mpa_c_name(MpCur *c) { return mpa_c_ident(c); }
 
 /* Splits `s` at its dots into at most `max` parts; returns the count (counting all dots). */
 static int mpa_split_dots(MpTok t, const char **part, size_t *len, int max) {
@@ -543,6 +611,11 @@ static int mpa_split_dots(MpTok t, const char **part, size_t *len, int max) {
     }
     return np;
 }
+
+typedef struct MpSlice {
+    const char *ptr;
+    size_t len;
+} MpSlice;
 
 static uint32_t mpa_find_field(const MirModule *m, const MirField *fs, uint32_t n, const char *s,
                            size_t len) {
@@ -567,359 +640,459 @@ static uint32_t mpa_find_case(const MirModule *m, const MirAltDef *a, const char
 
 static MsSym mpa_psym(MpCur *c, const char *s, size_t n) { return mir_name(c->p->m, s, n); }
 
-static MirImm mpa_parse_imm(MpCur *c, MirOp op, int cc, const char *mn, size_t mnlen) {
-    MirModule *m = c->p->m;
-    MirImm im = {.tag = MI_NONE};
-    switch (mir_op_info[op].imm) {
-    case MIR_K_NONE:
-        if (op == MOP_Clone && mpa_c_peek_kind(c, MPT_NUM)) {
-            im.tag = MI_INT;
-            im.i = mpa_imm_int(c);
+/* An identifier split at its dots (`Alt.Case.field`). */
+typedef struct MpPath {
+    MpTok token;
+    const char *part[64];
+    size_t length[64];
+    int count; /* every dot counts, even past the 64 parts kept */
+} MpPath;
+
+static MpPath mpa_read_path(MpCur *c) {
+    MpPath path = {.token = mpa_c_ident(c)};
+    path.count = mpa_split_dots(path.token, path.part, path.length, 64);
+    return path;
+}
+
+static int mpa_path_parts(const MpPath *path) { return path->count < 64 ? path->count : 64; }
+
+static MpSlice mpa_path_slice(const MpPath *path, int index) {
+    return (MpSlice){path->part[index], path->length[index]};
+}
+
+static uint32_t mpa_path_type(MpCur *c, const MpPath *path) {
+    MpSlice name = mpa_path_slice(path, 0);
+    uint32_t type = mir_type_by_name(c->p->m, mpa_psym(c, name.ptr, name.len));
+    if (type == MIR_NONE) {
+        mpa_perr(c->p, c->line, "unknown type %.*s", (int)name.len, name.ptr);
+    }
+    return type;
+}
+
+static uint32_t mpa_path_alt(MpCur *c, const MpPath *path) {
+    MpSlice name = mpa_path_slice(path, 0);
+    uint32_t alt = mir_alt_by_name(c->p->m, mpa_psym(c, name.ptr, name.len));
+    if (alt == MIR_NONE) {
+        mpa_perr(c->p, c->line, "unknown alternative %.*s", (int)name.len, name.ptr);
+    }
+    return alt;
+}
+
+static uint32_t mpa_path_case(MpCur *c, const MpPath *path, uint32_t alt) {
+    MpSlice name = mpa_path_slice(path, 1);
+    uint32_t index = mpa_find_case(c->p->m, &c->p->m->alts[alt], name.ptr, name.len);
+    if (index == MIR_NONE) {
+        mpa_perr(c->p, c->line, "unknown case %.*s", (int)path->token.n, path->token.s);
+    }
+    return index;
+}
+
+/* The bit set of the fields named by parts `first` onwards. */
+static uint32_t mpa_path_field_mask(MpCur *c, const MpPath *path, int first, const MirField *fields,
+                                    uint32_t field_count) {
+    uint32_t mask = 0;
+    for (int k = first; k < mpa_path_parts(path); k++) {
+        MpSlice name = mpa_path_slice(path, k);
+        uint32_t index = mpa_find_field(c->p->m, fields, field_count, name.ptr, name.len);
+        if (index == MIR_NONE) {
+            mpa_perr(c->p, c->line, "unknown field %.*s", (int)path->token.n, path->token.s);
         }
-        break;
-    case MIR_K_CC:
-        if (cc < 0) {
-            mpa_perr(c->p, c->line, "%.*s needs a condition such as %.*s.eq", (int)mnlen, mn, (int)mnlen, mn);
+        mask |= 1u << index;
+    }
+    return mask;
+}
+
+static uint32_t mpa_path_field(MpCur *c, const MpPath *path, int part, const MirField *fields,
+                               uint32_t field_count) {
+    MpSlice name = mpa_path_slice(path, part);
+    uint32_t index = mpa_find_field(c->p->m, fields, field_count, name.ptr, name.len);
+    if (index == MIR_NONE) {
+        mpa_perr(c->p, c->line, "unknown field %.*s", (int)path->token.n, path->token.s);
+    }
+    return index;
+}
+
+static MirImm mpa_imm_type_field(MpCur *c) {
+    MpPath path = mpa_read_path(c);
+    if (path.count != 2) {
+        mpa_perr(c->p, c->line, "expected Type.field");
+    }
+    uint32_t type = mpa_path_type(c, &path);
+    const MirTypeDef *def = &c->p->m->type_defs[type];
+    uint32_t field = mpa_path_field(c, &path, 1, def->fields, def->nfields);
+    return (MirImm){.tag = MI_FIELD, .a = type, .b = field};
+}
+
+static MirImm mpa_imm_alt_case(MpCur *c) {
+    MpPath path = mpa_read_path(c);
+    if (path.count != 2) {
+        mpa_perr(c->p, c->line, "expected Alt.Case");
+    }
+    uint32_t alt = mpa_path_alt(c, &path);
+    return (MirImm){.tag = MI_CASE, .a = alt, .b = mpa_path_case(c, &path, alt)};
+}
+
+static MirImm mpa_imm_alt_field(MpCur *c) {
+    MpPath path = mpa_read_path(c);
+    if (path.count != 3) {
+        mpa_perr(c->p, c->line, "expected Alt.Case.field");
+    }
+    uint32_t alt = mpa_path_alt(c, &path);
+    uint32_t index = mpa_path_case(c, &path, alt);
+    const MirCaseDef *def = &c->p->m->alts[alt].cases[index];
+    uint32_t field = mpa_path_field(c, &path, 2, def->fields, def->nfields);
+    return (MirImm){.tag = MI_ALTFIELD, .a = alt, .b = index, .c = field};
+}
+
+static MirImm mpa_imm_alt_mask(MpCur *c) {
+    MpPath path = mpa_read_path(c);
+    if (path.count < 2) {
+        mpa_perr(c->p, c->line, "expected Alt.Case.field...");
+    }
+    uint32_t alt = mpa_path_alt(c, &path);
+    uint32_t index = mpa_path_case(c, &path, alt);
+    const MirCaseDef *def = &c->p->m->alts[alt].cases[index];
+    uint32_t mask = mpa_path_field_mask(c, &path, 2, def->fields, def->nfields);
+    return (MirImm){.tag = MI_ALTMASK, .a = alt, .b = index, .c = mask};
+}
+
+static MirImm mpa_imm_type_mask(MpCur *c) {
+    MpPath path = mpa_read_path(c);
+    uint32_t type = mpa_path_type(c, &path);
+    const MirTypeDef *def = &c->p->m->type_defs[type];
+    uint32_t mask = mpa_path_field_mask(c, &path, 1, def->fields, def->nfields);
+    return (MirImm){.tag = MI_TYPEMASK, .a = type, .b = mask};
+}
+
+static MirImm mpa_imm_method(MpCur *c) {
+    MpPath path = mpa_read_path(c);
+    if (path.count < 2) {
+        mpa_perr(c->p, c->line, "expected Interface.method");
+    }
+    MpSlice iface_name = mpa_path_slice(&path, 0);
+    MpSlice method_name = {path.part[1], path.token.n - iface_name.len - 1};
+    uint32_t iface = mir_iface_by_name(c->p->m, mpa_psym(c, iface_name.ptr, iface_name.len));
+    if (iface == MIR_NONE) {
+        mpa_perr(c->p, c->line, "unknown interface %.*s", (int)iface_name.len, iface_name.ptr);
+    }
+    const MirIfaceDef *def = &c->p->m->ifaces[iface];
+    for (uint32_t k = 0; k < def->nmethods; k++) {
+        MsStr name = ms_name(&c->p->m->names, def->methods[k].name);
+        if (name.len == method_name.len && memcmp(name.ptr, method_name.ptr, name.len) == 0) {
+            return (MirImm){.tag = MI_METHOD, .a = iface, .b = k};
         }
-        im.tag = MI_CC;
-        im.a = (uint32_t)cc;
-        break;
-    case MIR_K_INT:
-        im.tag = MI_INT;
-        im.i = mpa_imm_int(c);
-        break;
-    case MIR_K_FLOAT: {
-        MpTok s = mpa_c_num(c);
-        im.tag = MI_FLOAT;
-        if (s.n >= 2 && s.s[0] == '0' && s.s[1] == 'x') {
-            uint64_t bits;
-            if (!mpa_parse_hex_u64(s.s + 2, s.n - 2, &bits)) {
-                mpa_perr(c->p, c->line, "bad float bits %.*s", (int)s.n, s.s);
-            }
-            im.i = (int64_t)bits;
-        } else {
-            char buf[128];
-            char *end;
-            if (s.n >= sizeof buf) {
-                mpa_perr(c->p, c->line, "bad float %.*s", (int)s.n, s.s);
-            }
-            memcpy(buf, s.s, s.n);
-            buf[s.n] = 0;
-            errno = 0;
-            double v = strtod(buf, &end);
-            if (*end != 0) {
-                mpa_perr(c->p, c->line, "bad float %.*s", (int)s.n, s.s);
-            }
-            uint64_t bits;
-            memcpy(&bits, &v, sizeof bits);
-            im.i = (int64_t)bits;
+    }
+    mpa_perr(c->p, c->line, "unknown method %.*s", (int)path.token.n, path.token.s);
+}
+
+/* `@name` resolved against one of the module's declaration tables. */
+static MirImm mpa_imm_at(MpCur *c, uint8_t tag, uint32_t (*lookup)(const MirModule *, MsSym),
+                         const char *what) {
+    MpTok name = mpa_c_at(c);
+    uint32_t id = lookup(c->p->m, mpa_tsym(c, name));
+    if (id == MIR_NONE) {
+        mpa_perr(c->p, c->line, "unknown %s @%.*s", what, (int)name.n, name.s);
+    }
+    return (MirImm){.tag = tag, .a = id};
+}
+
+static MirImm mpa_imm_float(MpCur *c) {
+    MpTok text = mpa_c_num(c);
+    MirImm im = {.tag = MI_FLOAT};
+    if (text.n >= 2 && text.s[0] == '0' && text.s[1] == 'x') {
+        uint64_t bits = 0;
+        if (!mpa_parse_hex_u64(text.s + 2, text.n - 2, &bits)) {
+            mpa_perr(c->p, c->line, "bad float bits %.*s", (int)text.n, text.s);
         }
-        break;
+        im.i = (int64_t)bits;
+        return im;
     }
-    case MIR_K_BOOL: {
-        MpTok b = mpa_c_ident(c);
-        im.tag = MI_BOOL;
-        if (mpa_tok_is(&b, "true")) {
-            im.a = 1;
-        } else if (!mpa_tok_is(&b, "false")) {
-            mpa_perr(c->p, c->line, "expected true or false, found %.*s", (int)b.n, b.s);
-        }
-        break;
+    char buffer[128];
+    if (text.n >= sizeof buffer) {
+        mpa_perr(c->p, c->line, "bad float %.*s", (int)text.n, text.s);
     }
-    case MIR_K_STR: {
-        MpTok s = mpa_c_string(c);
-        im.tag = MI_STR;
-        im.a = mir_add_string(m, s.s, s.n);
-        break;
+    memcpy(buffer, text.s, text.n);
+    buffer[text.n] = 0;
+    char *end = buffer;
+    double value = strtod(buffer, &end);
+    if (*end != 0) {
+        mpa_perr(c->p, c->line, "bad float %.*s", (int)text.n, text.s);
     }
-    case MIR_K_FUNC: {
-        MpTok n = mpa_c_at(c);
-        im.tag = MI_FUNC;
-        im.a = mir_func_by_name(m, mpa_tsym(c, n));
-        if (im.a == MIR_NONE) mpa_perr(c->p, c->line, "unknown function @%.*s", (int)n.n, n.s);
-        break;
-    }
-    case MIR_K_EXT: {
-        MpTok n = mpa_c_at(c);
-        im.tag = MI_EXT;
-        im.a = mir_extern_by_name(m, mpa_tsym(c, n));
-        if (im.a == MIR_NONE) mpa_perr(c->p, c->line, "unknown extern @%.*s", (int)n.n, n.s);
-        break;
-    }
-    case MIR_K_VTABLE: {
-        MpTok n = mpa_c_at(c);
-        im.tag = MI_VTABLE;
-        im.a = mir_vtable_by_name(m, mpa_tsym(c, n));
-        if (im.a == MIR_NONE) mpa_perr(c->p, c->line, "unknown vtable @%.*s", (int)n.n, n.s);
-        break;
-    }
-    case MIR_K_GLOBAL: {
-        MpTok n = mpa_c_at(c);
-        im.tag = MI_GLOBAL;
-        im.a = mir_global_by_name(m, mpa_tsym(c, n));
-        if (im.a == MIR_NONE) mpa_perr(c->p, c->line, "unknown global @%.*s", (int)n.n, n.s);
-        break;
-    }
-    case MIR_K_TY:
-        im.tag = MI_TY;
-        im.a = mpa_parse_ty(c);
-        break;
-    case MIR_K_SCOPE:
-        im.tag = MI_SCOPE;
-        im.a = mpa_imm_u32(c, "scope number");
-        im.b = mpa_imm_u32(c, "scope number");
-        break;
-    case MIR_K_IDX:
-        im.tag = MI_IDX;
-        im.a = mpa_imm_u32(c, "index");
-        break;
-    case MIR_K_TYPE: {
-        MpTok n = mpa_c_name(c);
-        im.tag = MI_TYPE;
-        im.a = mir_type_by_name(m, mpa_tsym(c, n));
-        if (im.a == MIR_NONE) mpa_perr(c->p, c->line, "unknown type %.*s", (int)n.n, n.s);
-        break;
-    }
-    case MIR_K_FIELD: {
-        MpTok n = mpa_c_name(c);
-        const char *part[2];
-        size_t len[2];
-        const char *dot = memchr(n.s, '.', n.n);
-        if (dot == NULL) mpa_perr(c->p, c->line, "expected Type.field");
-        part[0] = n.s; len[0] = (size_t)(dot - n.s);
-        part[1] = dot + 1; len[1] = n.n - len[0] - 1;
-        uint32_t t = mir_type_by_name(m, mpa_psym(c, part[0], len[0]));
-        if (t == MIR_NONE) mpa_perr(c->p, c->line, "unknown type %.*s", (int)len[0], part[0]);
-        uint32_t fi = mpa_find_field(m, m->type_defs[t].fields, m->type_defs[t].nfields, part[1], len[1]);
-        if (fi == MIR_NONE) mpa_perr(c->p, c->line, "unknown field %.*s", (int)n.n, n.s);
-        im.tag = MI_FIELD; im.a = t; im.b = fi;
-        break;
-    }
-    case MIR_K_CASE: {
-        MpTok n = mpa_c_name(c);
-        const char *dot = memchr(n.s, '.', n.n);
-        if (dot == NULL) mpa_perr(c->p, c->line, "expected Alt.Case");
-        size_t l0 = (size_t)(dot - n.s);
-        uint32_t a = mir_alt_by_name(m, mpa_psym(c, n.s, l0));
-        if (a == MIR_NONE) mpa_perr(c->p, c->line, "unknown alternative %.*s", (int)l0, n.s);
-        uint32_t ci = mpa_find_case(m, &m->alts[a], dot + 1, n.n - l0 - 1);
-        if (ci == MIR_NONE) mpa_perr(c->p, c->line, "unknown case %.*s", (int)n.n, n.s);
-        im.tag = MI_CASE; im.a = a; im.b = ci;
-        break;
-    }
-    case MIR_K_ALTFIELD:
-    case MIR_K_ALTMASK: {
-        bool mask = mir_op_info[op].imm == MIR_K_ALTMASK;
-        MpTok n = mpa_c_name(c);
-        const char *part[64];
-        size_t len[64];
-        int np = mpa_split_dots(n, part, len, 64);
-        if (mask ? np < 2 : np != 3) {
-            mpa_perr(c->p, c->line, mask ? "expected Alt.Case.field..." : "expected Alt.Case.field");
-        }
-        uint32_t a = mir_alt_by_name(m, mpa_psym(c, part[0], len[0]));
-        if (a == MIR_NONE) mpa_perr(c->p, c->line, "unknown alternative %.*s", (int)len[0], part[0]);
-        uint32_t ci = mpa_find_case(m, &m->alts[a], part[1], len[1]);
-        if (ci == MIR_NONE) mpa_perr(c->p, c->line, "unknown case %.*s", (int)n.n, n.s);
-        const MirCaseDef *cd = &m->alts[a].cases[ci];
-        uint32_t bits = 0;
-        for (int k = 2; k < np && k < 64; k++) {
-            uint32_t fi = mpa_find_field(m, cd->fields, cd->nfields, part[k], len[k]);
-            if (fi == MIR_NONE) mpa_perr(c->p, c->line, "unknown field %.*s", (int)n.n, n.s);
-            bits |= 1u << fi;
-            im.c = bits;
-        }
-        im.tag = mask ? MI_ALTMASK : MI_ALTFIELD;
-        im.a = a; im.b = ci;
-        if (!mask) {
-            im.c = mpa_find_field(m, cd->fields, cd->nfields, part[2], len[2]);
-        } else {
-            im.c = bits;
-        }
-        break;
-    }
-    case MIR_K_TYPEMASK: {
-        MpTok n = mpa_c_name(c);
-        const char *part[64];
-        size_t len[64];
-        int np = mpa_split_dots(n, part, len, 64);
-        uint32_t t = mir_type_by_name(m, mpa_psym(c, part[0], len[0]));
-        if (t == MIR_NONE) mpa_perr(c->p, c->line, "unknown type %.*s", (int)len[0], part[0]);
-        uint32_t bits = 0;
-        for (int k = 1; k < np && k < 64; k++) {
-            uint32_t fi = mpa_find_field(m, m->type_defs[t].fields, m->type_defs[t].nfields, part[k], len[k]);
-            if (fi == MIR_NONE) mpa_perr(c->p, c->line, "unknown field %.*s", (int)n.n, n.s);
-            bits |= 1u << fi;
-        }
-        im.tag = MI_TYPEMASK; im.a = t; im.b = bits;
-        break;
-    }
-    case MIR_K_METHOD: {
-        MpTok n = mpa_c_name(c);
-        const char *dot = memchr(n.s, '.', n.n);
-        if (dot == NULL) mpa_perr(c->p, c->line, "expected Interface.method");
-        size_t l0 = (size_t)(dot - n.s), l1 = n.n - l0 - 1;
-        uint32_t i = mir_iface_by_name(m, mpa_psym(c, n.s, l0));
-        if (i == MIR_NONE) mpa_perr(c->p, c->line, "unknown interface %.*s", (int)l0, n.s);
-        const MirIfaceDef *d = &m->ifaces[i];
-        uint32_t mi = MIR_NONE;
-        for (uint32_t k = 0; k < d->nmethods; k++) {
-            MsStr nm = ms_name(&m->names, d->methods[k].name);
-            if (nm.len == l1 && memcmp(nm.ptr, dot + 1, l1) == 0) {
-                mi = k;
-                break;
-            }
-        }
-        if (mi == MIR_NONE) mpa_perr(c->p, c->line, "unknown method %.*s", (int)n.n, n.s);
-        im.tag = MI_METHOD; im.a = i; im.b = mi;
-        break;
-    }
-    }
+    uint64_t bits = 0;
+    memcpy(&bits, &value, sizeof bits);
+    im.i = (int64_t)bits;
     return im;
 }
 
-static void mpa_parse_line(MpCur *c, MirFunc *f, MirBlock b) {
-    MpParser *p = c->p;
-    MirModule *m = p->m;
-    bool has_res = false;
-    MpTok res_name = {0};
-    MirTy res_ty = 0;
-    if (mpa_c_peek_kind(c, MPT_VAL)) {
-        res_name = mpa_c_val(c);
+static MirImm mpa_imm_bool(MpCur *c) {
+    MpTok word = mpa_c_ident(c);
+    if (!mpa_tok_is(&word, "true") && !mpa_tok_is(&word, "false")) {
+        mpa_perr(c->p, c->line, "expected true or false, found %.*s", (int)word.n, word.s);
+    }
+    return (MirImm){.tag = MI_BOOL, .a = mpa_tok_is(&word, "true") ? 1u : 0u};
+}
+
+static MirImm mpa_imm_type_name(MpCur *c) {
+    MpTok name = mpa_c_ident(c);
+    uint32_t type = mir_type_by_name(c->p->m, mpa_tsym(c, name));
+    if (type == MIR_NONE) {
+        mpa_perr(c->p, c->line, "unknown type %.*s", (int)name.n, name.s);
+    }
+    return (MirImm){.tag = MI_TYPE, .a = type};
+}
+
+/* The immediates that need no declaration lookup. `cc` is the comparison suffix of the mnemonic,
+ * or -1 when it had none. */
+static MirImm mpa_parse_imm_plain(MpCur *c, MirOp op, int cc, MpTok mnemonic) {
+    switch ((MirImmKind)mir_op_info[op].imm) {
+    case MIR_K_NONE:
+        if (op == MOP_Clone && mpa_c_peek_kind(c, MPT_NUM)) {
+            return (MirImm){.tag = MI_INT, .i = mpa_imm_int(c)};
+        }
+        return (MirImm){.tag = MI_NONE};
+    case MIR_K_CC:
+        if (cc < 0) {
+            mpa_perr(c->p, c->line, "%.*s needs a condition such as %.*s.eq", (int)mnemonic.n,
+                     mnemonic.s, (int)mnemonic.n, mnemonic.s);
+        }
+        return (MirImm){.tag = MI_CC, .a = (uint32_t)cc};
+    case MIR_K_INT: return (MirImm){.tag = MI_INT, .i = mpa_imm_int(c)};
+    case MIR_K_FLOAT: return mpa_imm_float(c);
+    case MIR_K_BOOL: return mpa_imm_bool(c);
+    case MIR_K_STR: {
+        MpTok text = mpa_c_string(c);
+        return (MirImm){.tag = MI_STR, .a = mir_add_string(c->p->m, text.s, text.n)};
+    }
+    case MIR_K_TY: return (MirImm){.tag = MI_TY, .a = mpa_parse_ty(c)};
+    case MIR_K_SCOPE: {
+        uint32_t first = mpa_imm_u32(c, "scope number");
+        return (MirImm){.tag = MI_SCOPE, .a = first, .b = mpa_imm_u32(c, "scope number")};
+    }
+    case MIR_K_IDX: return (MirImm){.tag = MI_IDX, .a = mpa_imm_u32(c, "index")};
+    default: break;
+    }
+    return (MirImm){.tag = MI_NONE};
+}
+
+static MirImm mpa_parse_imm(MpCur *c, MirOp op, int cc, MpTok mnemonic) {
+    switch ((MirImmKind)mir_op_info[op].imm) {
+    case MIR_K_FUNC: return mpa_imm_at(c, MI_FUNC, mir_func_by_name, "function");
+    case MIR_K_EXT: return mpa_imm_at(c, MI_EXT, mir_extern_by_name, "extern");
+    case MIR_K_VTABLE: return mpa_imm_at(c, MI_VTABLE, mir_vtable_by_name, "vtable");
+    case MIR_K_GLOBAL: return mpa_imm_at(c, MI_GLOBAL, mir_global_by_name, "global");
+    case MIR_K_TYPE: return mpa_imm_type_name(c);
+    case MIR_K_FIELD: return mpa_imm_type_field(c);
+    case MIR_K_CASE: return mpa_imm_alt_case(c);
+    case MIR_K_ALTFIELD: return mpa_imm_alt_field(c);
+    case MIR_K_ALTMASK: return mpa_imm_alt_mask(c);
+    case MIR_K_TYPEMASK: return mpa_imm_type_mask(c);
+    case MIR_K_METHOD: return mpa_imm_method(c);
+    case MIR_K_NONE: case MIR_K_INT: case MIR_K_FLOAT: case MIR_K_BOOL: case MIR_K_STR:
+    case MIR_K_TY: case MIR_K_CC: case MIR_K_IDX: case MIR_K_SCOPE:
+        break;
+    }
+    return mpa_parse_imm_plain(c, op, cc, mnemonic);
+}
+
+static MirTerm mpa_term_switch(MpCur *c, MirFunc *f) {
+    MirTerm term = {.kind = MT_SWITCH};
+    term.value = mpa_value_of(c->p, f, mpa_c_val(c));
+    mpa_c_expect_p(c, '[');
+    MirCase *cases = NULL;
+    uint32_t used = 0, capacity = 0;
+    while (!mpa_c_eat_p(c, ']')) {
+        MpTok key = mpa_c_num(c);
+        int64_t constant = 0;
+        if (!mpa_parse_i64(key.s, key.n, &constant)) {
+            mpa_perr(c->p, c->line, "bad switch constant");
+        }
         mpa_c_expect_p(c, ':');
-        res_ty = mpa_parse_ty(c);
-        mpa_c_expect_p(c, '=');
-        has_res = true;
+        MirCase entry = {constant, mpa_parse_target(c, f)};
+        MIR_PUSH(c->p->m, cases, used, capacity, MirCase, entry);
+        mpa_c_eat_p(c, ',');
     }
-    MpTok mn = mpa_c_ident(c);
-    MirTerm term = {.kind = 255, .value = MIR_NONE};
-    if (mpa_tok_is(&mn, "br")) {
-        term.kind = MT_BR;
-        term.a = mpa_parse_target(c, f);
-    } else if (mpa_tok_is(&mn, "br_if")) {
-        term.kind = MT_CONDBR;
-        MpTok cn = mpa_c_val(c);
-        term.value = mpa_value_of(p, f, cn);
-        mpa_c_expect_p(c, ',');
-        term.a = mpa_parse_target(c, f);
-        mpa_c_expect_p(c, ',');
-        term.b = mpa_parse_target(c, f);
-    } else if (mpa_tok_is(&mn, "switch")) {
-        term.kind = MT_SWITCH;
-        MpTok vn = mpa_c_val(c);
-        term.value = mpa_value_of(p, f, vn);
-        mpa_c_expect_p(c, '[');
-        MirCase *cases = NULL;
-        uint32_t n = 0, cap = 0;
-        while (!mpa_c_eat_p(c, ']')) {
-            MpTok k = mpa_c_num(c);
-            int64_t kv;
-            if (!mpa_parse_i64(k.s, k.n, &kv)) mpa_perr(p, c->line, "bad switch constant");
-            mpa_c_expect_p(c, ':');
-            MirCase cs = {kv, mpa_parse_target(c, f)};
-            MIR_PUSH(m, cases, n, cap, MirCase, cs);
-            mpa_c_eat_p(c, ',');
+    if (!mpa_c_eat_ident(c, "default")) {
+        mpa_perr(c->p, c->line, "expected 'default'");
+    }
+    term.b = mpa_parse_target(c, f);
+    term.cases = cases;
+    term.ncases = used;
+    return term;
+}
+
+static MirTerm mpa_term_fault(MpCur *c) {
+    static const char *const kind_names[] = {"int_overflow", "div_by_zero", "index_out_of_range",
+                                             "none_unwrap", "cancelled", "call_depth",
+                                             "unreachable_code"};
+    MirTerm term = {.kind = MT_FAULT, .value = MIR_NONE};
+    const MpTok *token = mpa_c_peek(c);
+    if (token == NULL || (token->k != MPT_STR && token->k != MPT_IDENT)) {
+        mpa_perr(c->p, c->line, "expected fault kind");
+    }
+    c->pos++;
+    if (token->k == MPT_STR) {
+        term.fault = MF_MESSAGE;
+        term.fault_str = mir_add_string(c->p->m, token->s, token->n);
+        return term;
+    }
+    for (size_t i = 0; i < sizeof kind_names / sizeof kind_names[0]; i++) {
+        if (mpa_tok_is(token, kind_names[i])) {
+            term.fault = (uint8_t)i;
+            return term;
         }
-        if (!mpa_c_eat_ident(c, "default")) mpa_perr(p, c->line, "expected 'default'");
-        term.b = mpa_parse_target(c, f);
-        term.cases = cases;
-        term.ncases = n;
-    } else if (mpa_tok_is(&mn, "ret")) {
-        term.kind = MT_RET;
+    }
+    mpa_perr(c->p, c->line, "unknown fault kind %.*s", (int)token->n, token->s);
+}
+
+/* The terminator named by `mnemonic`; false when it names an instruction instead. */
+static bool mpa_parse_terminator(MpCur *c, MirFunc *f, MpTok mnemonic, MirTerm *term) {
+    *term = (MirTerm){.value = MIR_NONE};
+    if (mpa_tok_is(&mnemonic, "br")) {
+        term->kind = MT_BR;
+        term->a = mpa_parse_target(c, f);
+    } else if (mpa_tok_is(&mnemonic, "br_if")) {
+        term->kind = MT_CONDBR;
+        term->value = mpa_value_of(c->p, f, mpa_c_val(c));
+        mpa_c_expect_p(c, ',');
+        term->a = mpa_parse_target(c, f);
+        mpa_c_expect_p(c, ',');
+        term->b = mpa_parse_target(c, f);
+    } else if (mpa_tok_is(&mnemonic, "switch")) {
+        *term = mpa_term_switch(c, f);
+    } else if (mpa_tok_is(&mnemonic, "ret")) {
+        term->kind = MT_RET;
         if (mpa_c_peek_kind(c, MPT_VAL)) {
-            MpTok vn = mpa_c_val(c);
-            term.value = mpa_value_of(p, f, vn);
+            term->value = mpa_value_of(c->p, f, mpa_c_val(c));
         }
-    } else if (mpa_tok_is(&mn, "unreachable")) {
-        term.kind = MT_UNREACHABLE;
-    } else if (mpa_tok_is(&mn, "fault")) {
-        term.kind = MT_FAULT;
-        const MpTok *t = mpa_c_peek(c);
-        if (t == NULL) mpa_perr(p, c->line, "expected fault kind");
-        c->pos++;
-        if (t->k == MPT_STR) {
-            term.fault = MF_MESSAGE;
-            term.fault_str = mir_add_string(m, t->s, t->n);
-        } else if (t->k == MPT_IDENT) {
-            static const char *const names[] = {"int_overflow", "div_by_zero", "index_out_of_range",
-                                                "none_unwrap", "cancelled", "call_depth",
-                                                "unreachable_code"};
-            int k = -1;
-            for (int i = 0; i < 7; i++) {
-                if (mpa_tok_is(t, names[i])) k = i;
-            }
-            if (k < 0) mpa_perr(p, c->line, "unknown fault kind %.*s", (int)t->n, t->s);
-            term.fault = (uint8_t)k;
-        } else {
-            mpa_perr(p, c->line, "expected fault kind");
+    } else if (mpa_tok_is(&mnemonic, "unreachable")) {
+        term->kind = MT_UNREACHABLE;
+    } else if (mpa_tok_is(&mnemonic, "fault")) {
+        *term = mpa_term_fault(c);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+static MirLoc mpa_optional_location(MpCur *c) {
+    if (!mpa_c_peek_kind(c, MPT_LOC)) {
+        return MIR_LOC_NONE;
+    }
+    MirLoc location = mpa_c_peek(c)->loc;
+    c->pos++;
+    return location;
+}
+
+/* The comparison suffix of a mnemonic such as `icmp.lt`, or -1. */
+static int mpa_condition_suffix(const char *text, size_t length) {
+    for (int i = 0; i < 6; i++) {
+        if (strlen(mir_cc_name[i]) == length && memcmp(mir_cc_name[i], text, length) == 0) {
+            return i;
         }
     }
-    if (term.kind != 255) {
-        if (has_res) mpa_perr(p, c->line, "terminators have no result");
-        MirLoc loc = MIR_LOC_NONE;
-        if (mpa_c_peek_kind(c, MPT_LOC)) {
-            loc = mpa_c_peek(c)->loc;
-            c->pos++;
+    return -1;
+}
+
+/* The opcode a mnemonic names, with the condition of `icmp.lt` and its kin in `*cc` (else -1). */
+static MirOp mpa_resolve_op(const MpCur *c, MpTok mnemonic, int *cc) {
+    *cc = -1;
+    int op = mir_op_from_name(mnemonic.s, mnemonic.n);
+    if (op >= 0) {
+        return (MirOp)op;
+    }
+    size_t dot = mnemonic.n;
+    while (dot > 0 && mnemonic.s[dot - 1] != '.') {
+        dot--;
+    }
+    if (dot > 0) {
+        int head = mir_op_from_name(mnemonic.s, dot - 1);
+        *cc = mpa_condition_suffix(mnemonic.s + dot, mnemonic.n - dot);
+        if ((head == MOP_ICmp || head == MOP_UICmp || head == MOP_FCmp) && *cc >= 0) {
+            return (MirOp)head;
         }
-        if (!mpa_c_done(c)) mpa_perr(p, c->line, "unexpected tokens after terminator");
-        f->blocks[b].term = term;
-        f->blocks[b].term_loc = loc;
-        p->terminated[b] = 1;
+    }
+    mpa_perr(c->p, c->line, "unknown instruction '%.*s'", (int)mnemonic.n, mnemonic.s);
+}
+
+typedef struct MpResult {
+    bool present;
+    MpTok name;
+    MirTy type;
+} MpResult;
+
+static MpResult mpa_parse_result(MpCur *c) {
+    MpResult result = {0};
+    if (!mpa_c_peek_kind(c, MPT_VAL)) {
+        return result;
+    }
+    result.present = true;
+    result.name = mpa_c_val(c);
+    mpa_c_expect_p(c, ':');
+    result.type = mpa_parse_ty(c);
+    mpa_c_expect_p(c, '=');
+    return result;
+}
+
+static void mpa_parse_instruction(MpCur *c, MirFunc *f, MirBlock b, MpTok mnemonic,
+                                  const MpResult *result) {
+    MirModule *m = c->p->m;
+    int cc = -1;
+    MirOp op = mpa_resolve_op(c, mnemonic, &cc);
+    if ((bool)mir_op_info[op].has_result != result->present) {
+        if (mir_op_info[op].has_result) {
+            mpa_perr(c->p, c->line, "%.*s needs a result: %%v: type = %.*s ...", (int)mnemonic.n,
+                     mnemonic.s, (int)mnemonic.n, mnemonic.s);
+        }
+        mpa_perr(c->p, c->line, "%.*s has no result", (int)mnemonic.n, mnemonic.s);
+    }
+    MirInst inst = {.op = (uint8_t)op, .res = MIR_NONE};
+    inst.imm = mpa_parse_imm(c, op, cc, mnemonic);
+    bool parenthesized = mir_op_is_call(op);
+    if (parenthesized) {
+        mpa_c_expect_p(c, '(');
+    }
+    uint32_t capacity = 0;
+    MirValue *args = NULL;
+    while (mpa_c_peek_kind(c, MPT_VAL)) {
+        MirValue arg = mpa_value_of(c->p, f, mpa_c_val(c));
+        MIR_PUSH(m, args, inst.nargs, capacity, MirValue, arg);
+        if (!mpa_c_eat_p(c, ',')) {
+            break;
+        }
+    }
+    inst.args = args;
+    if (parenthesized) {
+        mpa_c_expect_p(c, ')');
+    }
+    inst.loc = mpa_optional_location(c);
+    if (!mpa_c_done(c)) {
+        mpa_perr(c->p, c->line, "unexpected token after instruction");
+    }
+    if (result->present) {
+        inst.res = mpa_define(c, f, result->name, result->type);
+    }
+    MirBlockData *block = &f->blocks[b];
+    MIR_PUSH(m, block->insts, block->ninsts, block->cinsts, MirInst, inst);
+}
+
+static void mpa_parse_line(MpCur *c, MirFunc *f, MirBlock b) {
+    MpResult result = mpa_parse_result(c);
+    MpTok mnemonic = mpa_c_ident(c);
+    MirTerm term;
+    if (!mpa_parse_terminator(c, f, mnemonic, &term)) {
+        mpa_parse_instruction(c, f, b, mnemonic, &result);
         return;
     }
-    /* Instructions. */
-    int op = mir_op_from_name(mn.s, mn.n);
-    int cc = -1;
-    if (op < 0) {
-        const char *dot = NULL;
-        for (uint32_t i = mn.n; i > 0; i--) {
-            if (mn.s[i - 1] == '.') {
-                dot = mn.s + i - 1;
-                break;
-            }
-        }
-        if (dot == NULL) mpa_perr(p, c->line, "unknown instruction '%.*s'", (int)mn.n, mn.s);
-        int head = mir_op_from_name(mn.s, (size_t)(dot - mn.s));
-        size_t tl = mn.n - (size_t)(dot - mn.s) - 1;
-        for (int i = 0; i < 6; i++) {
-            if (strlen(mir_cc_name[i]) == tl && memcmp(mir_cc_name[i], dot + 1, tl) == 0) cc = i;
-        }
-        if (!(head == MOP_ICmp || head == MOP_UICmp || head == MOP_FCmp) || cc < 0) {
-            mpa_perr(p, c->line, "unknown instruction '%.*s'", (int)mn.n, mn.s);
-        }
-        op = head;
+    if (result.present) {
+        mpa_perr(c->p, c->line, "terminators have no result");
     }
-    const MirOpInfo *info = &mir_op_info[op];
-    if ((bool)info->has_result != has_res) {
-        if (info->has_result) {
-            mpa_perr(p, c->line, "%.*s needs a result: %%v: type = %.*s ...", (int)mn.n, mn.s, (int)mn.n, mn.s);
-        }
-        mpa_perr(p, c->line, "%.*s has no result", (int)mn.n, mn.s);
+    MirLoc location = mpa_optional_location(c);
+    if (!mpa_c_done(c)) {
+        mpa_perr(c->p, c->line, "unexpected tokens after terminator");
     }
-    MirImm imm = mpa_parse_imm(c, (MirOp)op, cc, mn.s, mn.n);
-    MirValue *args = NULL;
-    uint32_t nargs = 0, cargs = 0;
-    bool parens = mir_op_is_call((MirOp)op);
-    if (parens) mpa_c_expect_p(c, '(');
-    while (mpa_c_peek_kind(c, MPT_VAL)) {
-        MpTok vn = mpa_c_val(c);
-        MirValue x = mpa_value_of(p, f, vn);
-        MIR_PUSH(m, args, nargs, cargs, MirValue, x);
-        if (!mpa_c_eat_p(c, ',')) break;
-    }
-    if (parens) mpa_c_expect_p(c, ')');
-    MirLoc loc = MIR_LOC_NONE;
-    if (mpa_c_peek_kind(c, MPT_LOC)) {
-        loc = mpa_c_peek(c)->loc;
-        c->pos++;
-    }
-    if (!mpa_c_done(c)) mpa_perr(p, c->line, "unexpected token after instruction");
-    MirInst in = {.op = (uint8_t)op, .imm = imm, .res = MIR_NONE, .loc = loc, .args = args, .nargs = nargs};
-    if (has_res) {
-        in.res = mpa_define(c, f, res_name, res_ty);
-    }
-    MirBlockData *bd = &f->blocks[b];
-    MIR_PUSH(m, bd->insts, bd->ninsts, bd->cinsts, MirInst, in);
+    f->blocks[b].term = term;
+    f->blocks[b].term_loc = location;
+    c->p->terminated[b] = 1;
 }
 
 static bool mpa_is_label(const MpTok *t, uint32_t n) {
@@ -932,104 +1105,139 @@ typedef struct MpBodyLine {
     uint32_t nt;
 } MpBodyLine;
 
-static void mpa_parse_body(MpParser *p, uint32_t id, const MpFnSrc *src, const MpTok *pnames, uint32_t npn) {
-    MirModule *m = p->m;
-    MirFunc *f = &m->funcs[id];
-    p->gen++;
-    uint32_t line0 = src->nbody ? src->body[0].no : 0;
-    if (p->cdefined < f->nvalues * 2 + 8) {
-        p->cdefined = f->nvalues * 2 + 8;
-        p->defined = realloc(p->defined, p->cdefined);
-    }
-    memset(p->defined, 0, p->cdefined);
-    for (uint32_t i = 0; i < npn; i++) {
-        MsSym s = ms_intern(&p->vnames, pnames[i].s, pnames[i].n);
-        if (mpa_vname_lookup(p, s) != MIR_NONE) {
-            mpa_perr(p, line0, "parameter %%%.*s defined twice", (int)pnames[i].n, pnames[i].s);
+/* The function's parameters are the entry block's; their names go in the value table. */
+static void mpa_declare_params(MpParser *p, MirFunc *f, const MpTok *names, uint32_t count,
+                               uint32_t line0) {
+    for (uint32_t i = 0; i < count; i++) {
+        MsSym sym = ms_intern(&p->vnames, names[i].s, names[i].n);
+        if (mpa_vname_lookup(p, sym) != MIR_NONE) {
+            mpa_perr(p, line0, "parameter %%%.*s defined twice", (int)names[i].n, names[i].s);
         }
-        mpa_grow_names(&p->val_of, &p->val_gen, &p->nval_cap, s);
-        MirValue v = f->blocks[0].params[i].value;
-        p->val_of[s] = v;
-        p->val_gen[s] = p->gen;
-        p->defined[v] = 1;
+        mpa_grow_names(&p->val_of, &p->val_gen, &p->nval_cap, sym);
+        MirValue value = f->blocks[0].params[i].value;
+        p->val_of[sym] = value;
+        p->val_gen[sym] = p->gen;
+        p->defined[value] = 1;
     }
+}
+
+/* Tokenizes the body lines, dropping the ones that are empty or only a comment. */
+static MpBodyLine *mpa_tokenize_body(MpParser *p, const MpFnSrc *src, uint32_t *count) {
     MpBodyLine *lines = NULL;
-    uint32_t nl = 0, cl = 0;
+    uint32_t used = 0, capacity = 0;
     for (uint32_t i = 0; i < src->nbody; i++) {
-        uint32_t nt;
-        MpTok *t = mpa_tokenize(p, src->body[i].s, src->body[i].n, src->body[i].no, &nt);
-        if (nt > 0) {
-            MpBodyLine bl = {src->body[i].no, t, nt};
-            MIR_PUSH(m, lines, nl, cl, MpBodyLine, bl);
+        MpBodyLine line = {.no = src->body[i].no};
+        line.t = mpa_tokenize(p, src->body[i].s, src->body[i].n, line.no, &line.nt);
+        if (line.nt > 0) {
+            MIR_PUSH(p->m, lines, used, capacity, MpBodyLine, line);
         }
     }
+    *count = used;
+    return lines;
+}
+
+/* Creates a block for every label, so a branch may name a block that comes later. */
+static void mpa_declare_blocks(MpParser *p, MirFunc *f, const MpBodyLine *lines, uint32_t count) {
     bool first = true;
-    for (uint32_t i = 0; i < nl; i++) {
-        if (mpa_is_label(lines[i].t, lines[i].nt)) {
-            MpTok name = lines[i].t[0];
-            MsSym s = ms_intern(&p->bnames, name.s, name.n);
+    for (uint32_t i = 0; i < count; i++) {
+        if (!mpa_is_label(lines[i].t, lines[i].nt)) {
             if (first) {
-                mpa_grow_names(&p->blk_of, &p->blk_gen, &p->nblk_cap, s);
-                p->blk_of[s] = 0;
-                p->blk_gen[s] = p->gen;
-                first = false;
-            } else {
-                if (s < p->nblk_cap && p->blk_gen[s] == p->gen) {
-                    mpa_perr(p, lines[i].no, "block %.*s defined twice", (int)name.n, name.s);
-                }
-                mpa_grow_names(&p->blk_of, &p->blk_gen, &p->nblk_cap, s);
-                p->blk_of[s] = mir_new_block(m, f);
-                p->blk_gen[s] = p->gen;
+                mpa_perr(p, lines[i].no, "function body must start with a block label");
             }
-        } else if (first) {
-            mpa_perr(p, lines[i].no, "function body must start with a block label");
-        }
-    }
-    p->terminated = calloc(f->nblocks + 1, 1);
-    MirBlock cur = MIR_NONE;
-    for (uint32_t i = 0; i < nl; i++) {
-        MpCur c = {p, lines[i].t, lines[i].nt, 0, lines[i].no};
-        if (mpa_is_label(c.t, c.n)) {
-            MpTok name = mpa_c_ident(&c);
-            MsSym s = ms_intern(&p->bnames, name.s, name.n);
-            MirBlock b = p->blk_of[s];
-            if (b != 0 && mpa_c_eat_p(&c, '(')) {
-                while (!mpa_c_eat_p(&c, ')')) {
-                    MpTok vn = mpa_c_val(&c);
-                    mpa_c_expect_p(&c, ':');
-                    bool own = mpa_c_eat_ident(&c, "move");
-                    MirTy ty = mpa_parse_ty(&c);
-                    MirValue v = mpa_define(&c, f, vn, ty);
-                    MirBlockData *bd = &f->blocks[b];
-                    MirBlockParam bp = {v, own ? MM_MOVE : MM_BORROW};
-                    MIR_PUSH(m, bd->params, bd->nparams, bd->cparams, MirBlockParam, bp);
-                    mpa_c_eat_p(&c, ',');
-                }
-            } else if (b == 0 && mpa_c_eat_p(&c, '(')) {
-                mpa_perr(p, c.line, "the entry block takes the function parameters");
-            }
-            cur = b;
             continue;
         }
-        if (p->terminated[cur]) mpa_perr(p, c.line, "instruction after the block terminator");
-        mpa_parse_line(&c, f, cur);
+        MpTok name = lines[i].t[0];
+        MsSym sym = ms_intern(&p->bnames, name.s, name.n);
+        bool taken = sym < p->nblk_cap && p->blk_gen[sym] == p->gen;
+        if (taken && !first) {
+            mpa_perr(p, lines[i].no, "block %.*s defined twice", (int)name.n, name.s);
+        }
+        mpa_grow_names(&p->blk_of, &p->blk_gen, &p->nblk_cap, sym);
+        p->blk_of[sym] = first ? 0 : mir_new_block(p->m, f);
+        p->blk_gen[sym] = p->gen;
+        first = false;
     }
+}
+
+/* A label line, `name:` or `name(%v: type, ...):`; returns the block it opens. */
+static MirBlock mpa_parse_label(MpCur *c, MirFunc *f) {
+    MpParser *p = c->p;
+    MpTok name = mpa_c_ident(c);
+    MirBlock block = p->blk_of[ms_intern(&p->bnames, name.s, name.n)];
+    if (block == 0) {
+        if (mpa_c_eat_p(c, '(')) {
+            mpa_perr(p, c->line, "the entry block takes the function parameters");
+        }
+        return block;
+    }
+    if (!mpa_c_eat_p(c, '(')) {
+        return block;
+    }
+    MirBlockData *data = &f->blocks[block];
+    while (!mpa_c_eat_p(c, ')')) {
+        MpTok value_name = mpa_c_val(c);
+        mpa_c_expect_p(c, ':');
+        bool owned = mpa_c_eat_ident(c, "move");
+        MirTy type = mpa_parse_ty(c);
+        MirBlockParam param = {mpa_define(c, f, value_name, type), owned ? MM_MOVE : MM_BORROW};
+        MIR_PUSH(p->m, data->params, data->nparams, data->cparams, MirBlockParam, param);
+        mpa_c_eat_p(c, ',');
+    }
+    return block;
+}
+
+/* Every block must end in a terminator and every value used must be defined. */
+static void mpa_check_complete(MpParser *p, const MirFunc *f, uint32_t line0) {
+    MsStr function = ms_name(&p->m->names, f->name);
     for (uint32_t i = 0; i < f->nblocks; i++) {
         if (!p->terminated[i]) {
-            MsStr fn = ms_name(&m->names, f->name);
-            mpa_perr(p, line0, "block b%u of @%.*s has no terminator", i, (int)fn.len, fn.ptr);
+            mpa_perr(p, line0, "block b%u of @%.*s has no terminator", i,
+                     (int)function.len, function.ptr);
         }
     }
-    for (uint32_t s = 0; s < p->nval_cap; s++) {
-        if (p->val_gen[s] == p->gen) {
-            uint32_t v = p->val_of[s];
-            if (v >= p->cdefined || !p->defined[v]) {
-                MsStr vn = ms_name(&p->vnames, s), fn = ms_name(&m->names, f->name);
-                mpa_perr(p, line0, "%%%.*s is used but never defined in @%.*s", (int)vn.len, vn.ptr,
-                     (int)fn.len, fn.ptr);
-            }
+    for (uint32_t sym = 0; sym < p->nval_cap; sym++) {
+        if (p->val_gen[sym] != p->gen) {
+            continue;
+        }
+        uint32_t value = p->val_of[sym];
+        if (value >= p->cdefined || !p->defined[value]) {
+            MsStr name = ms_name(&p->vnames, sym);
+            mpa_perr(p, line0, "%%%.*s is used but never defined in @%.*s", (int)name.len,
+                     name.ptr, (int)function.len, function.ptr);
         }
     }
+}
+
+static void mpa_parse_body(MpParser *p, uint32_t id, const MpFnSrc *src, const MpTok *param_names,
+                           uint32_t param_count) {
+    MirFunc *f = &p->m->funcs[id];
+    p->gen++;
+    uint32_t line0 = src->nbody ? src->body[0].no : 0;
+    uint32_t needed = f->nvalues * 2 + 8;
+    if (p->cdefined < needed) {
+        p->defined = mpa_realloc(p->defined, needed);
+        p->cdefined = needed;
+    }
+    memset(p->defined, 0, p->cdefined);
+    mpa_declare_params(p, f, param_names, param_count, line0);
+    uint32_t line_count = 0;
+    const MpBodyLine *lines = mpa_tokenize_body(p, src, &line_count);
+    mpa_declare_blocks(p, f, lines, line_count);
+    p->terminated = mpa_realloc(NULL, f->nblocks + 1);
+    memset(p->terminated, 0, f->nblocks + 1);
+    MirBlock current = MIR_NONE;
+    for (uint32_t i = 0; i < line_count; i++) {
+        MpCur c = {p, lines[i].t, lines[i].nt, 0, lines[i].no};
+        if (mpa_is_label(c.t, c.n)) {
+            current = mpa_parse_label(&c, f);
+            continue;
+        }
+        if (p->terminated[current]) {
+            mpa_perr(p, c.line, "instruction after the block terminator");
+        }
+        mpa_parse_line(&c, f, current);
+    }
+    mpa_check_complete(p, f, line0);
     free(p->terminated);
     p->terminated = NULL;
 }
@@ -1052,357 +1260,508 @@ static bool mpa_line_starts(MpLine l, const char *pre) {
     return l.n >= n && memcmp(l.s, pre, n) == 0;
 }
 
+/* Everything the parser reads from the text: item lines, and function sources. */
+typedef struct MpUnit {
+    MpItem *items;
+    uint32_t item_count, item_capacity;
+    MpFnSrc *fns;
+    uint32_t fn_count, fn_capacity;
+    MpTok **param_names; /* by function */
+    uint32_t *param_counts;
+    bool has_entry;
+    MpTok entry_name;
+    uint32_t entry_line;
+} MpUnit;
+
+/* Reads the next line of `src` from `*pos`, without its line ending. */
+static MpLine mpa_next_line(const char *src, size_t len, size_t *pos, uint32_t *number) {
+    size_t start = *pos;
+    const char *newline = memchr(src + start, '\n', len - start);
+    size_t end = newline != NULL ? (size_t)(newline - src) : len;
+    *pos = newline != NULL ? end + 1 : len;
+    if (end > start && src[end - 1] == '\r') {
+        end--;
+    }
+    (*number)++;
+    return (MpLine){*number, src + start, (uint32_t)(end - start)};
+}
+
+/* A function's body: the lines up to one holding only `}`. */
+static MpFnSrc mpa_read_function(MpParser *p, MpLine header, const char *src, size_t len,
+                                 size_t *pos, uint32_t *number) {
+    MpFnSrc fn = {.header = header};
+    while (*pos < len) {
+        MpLine raw = mpa_next_line(src, len, pos, number);
+        MpLine trimmed = mpa_trim_line(raw.s, raw.n);
+        if (trimmed.n == 1 && trimmed.s[0] == '}') {
+            return fn;
+        }
+        MIR_PUSH(p->m, fn.body, fn.nbody, fn.cbody, MpLine, raw);
+    }
+    mpa_perr(p, header.no, "function body is not closed with '}'");
+}
+
+/* Groups lines into items (one line each) and functions (a header and a body). */
+static void mpa_split_lines(MpParser *p, const char *src, size_t len, MpUnit *unit) {
+    size_t pos = 0;
+    uint32_t number = 0;
+    while (pos < len) {
+        MpLine raw = mpa_next_line(src, len, &pos, &number);
+        MpLine line = mpa_trim_line(raw.s, raw.n);
+        line.no = raw.no;
+        if (line.n == 0 || line.s[0] == ';') {
+            continue;
+        }
+        if (mpa_line_starts(line, "fn ")) {
+            MpFnSrc fn = mpa_read_function(p, line, src, len, &pos, &number);
+            MIR_PUSH(p->m, unit->fns, unit->fn_count, unit->fn_capacity, MpFnSrc, fn);
+        } else {
+            MpItem item = {.no = line.no, .s = line.s, .n = line.n};
+            MIR_PUSH(p->m, unit->items, unit->item_count, unit->item_capacity, MpItem, item);
+        }
+    }
+    for (uint32_t i = 0; i < unit->item_count; i++) {
+        MpItem *item = &unit->items[i];
+        item->t = mpa_tokenize(p, item->s, item->n, item->no, &item->nt);
+    }
+}
+
+static MpCur mpa_item_cursor(MpParser *p, const MpItem *item) {
+    return (MpCur){p, item->t, item->nt, 0, item->no};
+}
+
+/* Pass A: the names of types, alternatives and interfaces, so declarations may refer to each other. */
+static void mpa_declare_names(MpParser *p, const MpUnit *unit) {
+    for (uint32_t i = 0; i < unit->item_count; i++) {
+        MpCur c = mpa_item_cursor(p, &unit->items[i]);
+        MpTok keyword = mpa_c_ident(&c);
+        if (!mpa_tok_is(&keyword, "type") && !mpa_tok_is(&keyword, "alt") &&
+            !mpa_tok_is(&keyword, "iface")) {
+            continue;
+        }
+        MsSym name = mpa_tsym(&c, mpa_c_ident(&c));
+        if (mpa_tok_is(&keyword, "type")) {
+            mir_add_type(p->m, name);
+        } else if (mpa_tok_is(&keyword, "alt")) {
+            mir_add_alt(p->m, name);
+        } else {
+            mir_add_iface(p->m, name);
+        }
+    }
+}
+
+static MirField mpa_parse_field(MpCur *c) {
+    MpTok name = mpa_c_ident(c);
+    mpa_c_expect_p(c, ':');
+    return (MirField){mpa_tsym(c, name), mpa_parse_ty(c)};
+}
+
+static void mpa_define_type(MpCur *c) {
+    MirModule *m = c->p->m;
+    uint32_t id = mir_type_by_name(m, mpa_tsym(c, mpa_c_ident(c)));
+    mpa_c_expect_p(c, '{');
+    MirField *fields = NULL;
+    uint32_t used = 0, capacity = 0;
+    while (!mpa_c_eat_p(c, '}')) {
+        MirField field = mpa_parse_field(c);
+        MIR_PUSH(m, fields, used, capacity, MirField, field);
+        mpa_c_eat_p(c, ',');
+    }
+    m->type_defs[id].fields = fields;
+    m->type_defs[id].nfields = used;
+}
+
+static MirCaseDef mpa_parse_case(MpCur *c) {
+    MirCaseDef def = {.name = mpa_tsym(c, mpa_c_ident(c))};
+    uint32_t capacity = 0;
+    if (mpa_c_eat_p(c, '(')) {
+        while (!mpa_c_eat_p(c, ')')) {
+            MirField field = mpa_parse_field(c);
+            MIR_PUSH(c->p->m, def.fields, def.nfields, capacity, MirField, field);
+            mpa_c_eat_p(c, ',');
+        }
+    }
+    return def;
+}
+
+static void mpa_define_alt(MpCur *c) {
+    MirModule *m = c->p->m;
+    uint32_t id = mir_alt_by_name(m, mpa_tsym(c, mpa_c_ident(c)));
+    mpa_c_expect_p(c, '{');
+    MirCaseDef *cases = NULL;
+    uint32_t used = 0, capacity = 0;
+    while (!mpa_c_eat_p(c, '}')) {
+        MirCaseDef def = mpa_parse_case(c);
+        MIR_PUSH(m, cases, used, capacity, MirCaseDef, def);
+        mpa_c_eat_p(c, ',');
+    }
+    m->alts[id].cases = cases;
+    m->alts[id].ncases = used;
+    m->alts[id].std = mpa_parse_std(c);
+}
+
+static MirMethodSig mpa_parse_method_sig(MpCur *c) {
+    MirMethodSig sig = {.name = mpa_tsym(c, mpa_c_ident(c)), .ret = MIR_VOID};
+    uint32_t capacity = 0;
+    mpa_c_expect_p(c, '(');
+    while (!mpa_c_eat_p(c, ')')) {
+        if (mpa_c_eat_ident(c, "move") && sig.nparams < 64) {
+            sig.owned |= 1ull << sig.nparams;
+        }
+        MirTy param = mpa_parse_ty(c);
+        MIR_PUSH(c->p->m, sig.params, sig.nparams, capacity, MirTy, param);
+        mpa_c_eat_p(c, ',');
+    }
+    if (mpa_c_peek_kind(c, MPT_ARROW)) {
+        c->pos++;
+        sig.ret = mpa_parse_ty(c);
+    }
+    return sig;
+}
+
+static void mpa_define_iface(MpCur *c) {
+    MirModule *m = c->p->m;
+    uint32_t id = mir_iface_by_name(m, mpa_tsym(c, mpa_c_ident(c)));
+    mpa_c_expect_p(c, '{');
+    MirMethodSig *methods = NULL;
+    uint32_t used = 0, capacity = 0;
+    while (!mpa_c_eat_p(c, '}')) {
+        MirMethodSig sig = mpa_parse_method_sig(c);
+        MIR_PUSH(m, methods, used, capacity, MirMethodSig, sig);
+        mpa_c_eat_p(c, ',');
+    }
+    MsSym close = mir_name(m, "close", 5);
+    m->ifaces[id].close = MIR_NONE;
+    for (uint32_t k = 0; k < used && m->ifaces[id].close == MIR_NONE; k++) {
+        if (methods[k].name == close) {
+            m->ifaces[id].close = k;
+        }
+    }
+    m->ifaces[id].methods = methods;
+    m->ifaces[id].nmethods = used;
+    m->ifaces[id].std = mpa_parse_std(c);
+}
+
+/* Pass B: the bodies of type, alternative and interface declarations. */
+static void mpa_define_declarations(MpParser *p, const MpUnit *unit) {
+    for (uint32_t i = 0; i < unit->item_count; i++) {
+        MpCur c = mpa_item_cursor(p, &unit->items[i]);
+        MpTok keyword = mpa_c_ident(&c);
+        if (mpa_tok_is(&keyword, "type")) {
+            mpa_define_type(&c);
+        } else if (mpa_tok_is(&keyword, "alt")) {
+            mpa_define_alt(&c);
+        } else if (mpa_tok_is(&keyword, "iface")) {
+            mpa_define_iface(&c);
+        }
+    }
+}
+
+static void mpa_item_file(MpCur *c) {
+    MirModule *m = c->p->m;
+    MpTok index_text = mpa_c_num(c);
+    int64_t index = 0;
+    if (!mpa_parse_i64(index_text.s, index_text.n, &index) || index < 0) {
+        mpa_perr(c->p, c->line, "bad file index");
+    }
+    MpTok path = mpa_c_string(c);
+    if ((uint64_t)index != m->nfiles) {
+        mpa_perr(c->p, c->line, "files must be numbered consecutively from 0");
+    }
+    MsStr copy = {ms_arena_strndup(&m->arena, path.s, path.n), path.n};
+    MIR_PUSH(m, m->files, m->nfiles, m->cfiles, MsStr, copy);
+}
+
+/* The index of a `blob` or `consts` item, which must be the next one. */
+static void mpa_item_numbered(MpCur *c, const char *what, uint32_t expected) {
+    MpTok index_text = mpa_c_num(c);
+    int64_t index = 0;
+    if (!mpa_parse_i64(index_text.s, index_text.n, &index) || index < 0) {
+        mpa_perr(c->p, c->line, "bad %s index", what);
+    }
+    if ((uint64_t)index != expected) {
+        mpa_perr(c->p, c->line, "%s entries must be numbered consecutively from 0", what);
+    }
+}
+
+static void mpa_item_blob(MpCur *c) {
+    MirModule *m = c->p->m;
+    mpa_item_numbered(c, "blob", m->nblobs);
+    MpTok hex = mpa_c_string(c);
+    const char *failure = "blob payload must be an even number of hex digits";
+    if (hex.n % 2 != 0) {
+        mpa_perr(c->p, c->line, "%s", failure);
+    }
+    char *bytes = ms_alloc(&m->arena, hex.n / 2 + 1, 1);
+    for (uint32_t k = 0; k < hex.n; k += 2) {
+        int high = mpa_hexval(hex.s[k]);
+        int low = mpa_hexval(hex.s[k + 1]);
+        if (high < 0 || low < 0) {
+            mpa_perr(c->p, c->line, "%s", failure);
+        }
+        bytes[k / 2] = (char)(high * 16 + low);
+    }
+    MsStr blob = {bytes, hex.n / 2};
+    MIR_PUSH(m, m->blobs, m->nblobs, m->cblobs, MsStr, blob);
+}
+
+static void mpa_item_consts(MpCur *c) {
+    MirModule *m = c->p->m;
+    mpa_item_numbered(c, "consts", m->nlist_consts);
+    mpa_c_expect_p(c, '[');
+    MirConsts list = {0};
+    uint32_t capacity = 0;
+    while (!mpa_c_eat_p(c, ']')) {
+        MpTok text = mpa_c_num(c);
+        int64_t value = 0;
+        if (!mpa_parse_i64(text.s, text.n, &value)) {
+            mpa_perr(c->p, c->line, "bad consts element");
+        }
+        MIR_PUSH(m, list.v, list.n, capacity, int64_t, value);
+        mpa_c_eat_p(c, ',');
+    }
+    MIR_PUSH(m, m->list_consts, m->nlist_consts, m->clist_consts, MirConsts, list);
+}
+
+static void mpa_extern_attribute(MpCur *c, MirExtern *e) {
+    MpTok attribute = mpa_c_ident(c);
+    if (mpa_tok_is(&attribute, "noreturn")) {
+        e->noreturn = true;
+    } else if (mpa_tok_is(&attribute, "pure")) {
+        e->pure = true;
+    } else if (mpa_tok_is(&attribute, "fresh")) {
+        e->fresh = true;
+    } else if (mpa_tok_is(&attribute, "leaf")) {
+        e->leaf = true;
+    } else if (mpa_tok_is(&attribute, "reads")) {
+        e->reads = true;
+    } else if (mpa_tok_is(&attribute, "retains")) {
+        e->retains = true;
+    } else {
+        int role = mir_role_from_name(attribute.s, attribute.n);
+        if (role == MR_NONE) {
+            mpa_perr(c->p, c->line, "unknown extern attribute %.*s", (int)attribute.n, attribute.s);
+        }
+        e->role = (uint8_t)role;
+    }
+}
+
 static MirParam mpa_parse_param(MpCur *c) {
-    bool own = mpa_c_eat_ident(c, "move");
-    MirTy ty = mpa_parse_ty(c);
-    return (MirParam){ty, own ? MM_MOVE : MM_BORROW};
+    bool owned = mpa_c_eat_ident(c, "move");
+    MirTy type = mpa_parse_ty(c);
+    return (MirParam){type, owned ? MM_MOVE : MM_BORROW};
+}
+
+static void mpa_item_extern(MpCur *c) {
+    MirExtern e = {.name = mpa_tsym(c, mpa_c_at(c)), .ret = MIR_VOID};
+    uint32_t capacity = 0;
+    mpa_c_expect_p(c, '(');
+    while (!mpa_c_eat_p(c, ')')) {
+        MirParam param = mpa_parse_param(c);
+        MIR_PUSH(c->p->m, e.params, e.nparams, capacity, MirParam, param);
+        mpa_c_eat_p(c, ',');
+    }
+    if (mpa_c_peek_kind(c, MPT_ARROW)) {
+        c->pos++;
+        e.ret = mpa_parse_ty(c);
+    }
+    while (!mpa_c_done(c)) {
+        mpa_extern_attribute(c, &e);
+    }
+    mir_add_extern(c->p->m, &e);
+}
+
+static void mpa_item_module(MpCur *c) {
+    const MpTok *name = mpa_c_peek(c);
+    if (name == NULL || (name->k != MPT_STR && name->k != MPT_IDENT)) {
+        mpa_perr(c->p, c->line, "expected module name");
+    }
+    c->pos++;
+    c->p->m->name = mir_name(c->p->m, name->s, name->n);
+}
+
+/* Pass C: module, files, constants, externs, globals and the entry name. */
+static void mpa_declare_items(MpParser *p, MpUnit *unit) {
+    for (uint32_t i = 0; i < unit->item_count; i++) {
+        MpCur c = mpa_item_cursor(p, &unit->items[i]);
+        MpTok keyword = mpa_c_ident(&c);
+        if (mpa_tok_is(&keyword, "module")) {
+            mpa_item_module(&c);
+        } else if (mpa_tok_is(&keyword, "file")) {
+            mpa_item_file(&c);
+        } else if (mpa_tok_is(&keyword, "blob")) {
+            mpa_item_blob(&c);
+        } else if (mpa_tok_is(&keyword, "consts")) {
+            mpa_item_consts(&c);
+        } else if (mpa_tok_is(&keyword, "extern")) {
+            mpa_item_extern(&c);
+        } else if (mpa_tok_is(&keyword, "global")) {
+            MsSym name = mpa_tsym(&c, mpa_c_at(&c));
+            mpa_c_expect_p(&c, ':');
+            mir_add_global(p->m, name, mpa_parse_ty(&c));
+        } else if (mpa_tok_is(&keyword, "entry")) {
+            unit->entry_name = mpa_c_at(&c);
+            unit->entry_line = unit->items[i].no;
+            unit->has_entry = true;
+        } else if (!mpa_tok_is(&keyword, "vtable") && !mpa_tok_is(&keyword, "type") &&
+                   !mpa_tok_is(&keyword, "alt") && !mpa_tok_is(&keyword, "iface")) {
+            mpa_perr(p, c.line, "unknown item '%.*s'", (int)keyword.n, keyword.s);
+        }
+    }
+}
+
+/* One attribute of a function header, after `fn @name(...) -> type`. */
+static void mpa_function_attribute(MpCur *c, MirModule *m, MirFunc *f) {
+    MpTok attribute = mpa_c_ident(c);
+    if (mpa_tok_is(&attribute, "export")) {
+        f->linkage = ML_EXPORT;
+    } else if (mpa_tok_is(&attribute, "method")) {
+        f->kind = MFK_METHOD;
+    } else if (mpa_tok_is(&attribute, "sort_cmp")) {
+        f->sort = MSORT_GENERIC;
+    } else if (mpa_tok_is(&attribute, "sort_cmp_for")) {
+        f->sort = MSORT_SPECIALIZED;
+    } else if (mpa_tok_is(&attribute, "inline")) {
+        mpa_c_expect_p(c, '(');
+        MpTok hint = mpa_c_ident(c);
+        if (!mpa_tok_is(&hint, "always") && !mpa_tok_is(&hint, "never")) {
+            mpa_perr(c->p, c->line, "unknown inline hint %.*s", (int)hint.n, hint.s);
+        }
+        f->inline_hint = mpa_tok_is(&hint, "always") ? MINL_ALWAYS : MINL_NEVER;
+        mpa_c_expect_p(c, ')');
+    } else if (mpa_tok_is(&attribute, "closure")) {
+        uint32_t capacity = 0;
+        mpa_c_expect_p(c, '(');
+        while (!mpa_c_eat_p(c, ')')) {
+            MirTy type = mpa_parse_ty(c);
+            MIR_PUSH(m, f->captures, f->ncaptures, capacity, MirTy, type);
+            mpa_c_eat_p(c, ',');
+        }
+        f->kind = MFK_CLOSURE;
+    } else {
+        mpa_perr(c->p, c->line, "unknown function attribute %.*s", (int)attribute.n, attribute.s);
+    }
+}
+
+/* The attributes and position between the result type and the opening brace. */
+static void mpa_function_attributes(MpCur *c, MirFunc *f) {
+    for (;;) {
+        if (mpa_c_eat_p(c, '{')) {
+            return;
+        }
+        if (mpa_c_peek_kind(c, MPT_LOC)) {
+            f->loc = mpa_c_peek(c)->loc;
+            c->pos++;
+        } else if (mpa_c_peek_kind(c, MPT_IDENT)) {
+            mpa_function_attribute(c, c->p->m, f);
+        } else if (mpa_c_peek(c) == NULL) {
+            mpa_perr(c->p, c->line, "expected '{'");
+        } else {
+            mpa_perr(c->p, c->line, "unexpected token in function header");
+        }
+    }
+}
+
+/* Declares one function from its header; its parameter names go to `unit` for the body pass. */
+static void mpa_declare_function(MpParser *p, MpUnit *unit, uint32_t index) {
+    MirModule *m = p->m;
+    const MpFnSrc *src = &unit->fns[index];
+    uint32_t token_count = 0;
+    MpTok *tokens = mpa_tokenize(p, src->header.s, src->header.n, src->header.no, &token_count);
+    MpCur c = {p, tokens, token_count, 0, src->header.no};
+    mpa_c_ident(&c); /* fn */
+    MsSym name = mpa_tsym(&c, mpa_c_at(&c));
+    mpa_c_expect_p(&c, '(');
+    MirParam *params = NULL;
+    MpTok *names = NULL;
+    uint32_t param_count = 0, param_capacity = 0, name_count = 0, name_capacity = 0;
+    while (!mpa_c_eat_p(&c, ')')) {
+        MpTok value_name = mpa_c_val(&c);
+        MIR_PUSH(m, names, name_count, name_capacity, MpTok, value_name);
+        mpa_c_expect_p(&c, ':');
+        MirParam param = mpa_parse_param(&c);
+        MIR_PUSH(m, params, param_count, param_capacity, MirParam, param);
+        mpa_c_eat_p(&c, ',');
+    }
+    MirTy ret = MIR_VOID;
+    if (mpa_c_peek_kind(&c, MPT_ARROW)) {
+        c.pos++;
+        ret = mpa_parse_ty(&c);
+    }
+    MirFunc f;
+    mir_func_init(m, &f, name, params, param_count, ret);
+    mpa_function_attributes(&c, &f);
+    if (mir_func_by_name(m, name) != MIR_NONE) {
+        MsStr text = ms_name(&m->names, name);
+        mpa_perr(p, c.line, "function @%.*s defined twice", (int)text.len, text.ptr);
+    }
+    mir_add_func(m, &f);
+    unit->param_names[index] = names;
+    unit->param_counts[index] = name_count;
+}
+
+static void mpa_define_vtable(MpCur *c, uint32_t line) {
+    MirModule *m = c->p->m;
+    MirVtable vtable = {.name = mpa_tsym(c, mpa_c_at(c))};
+    mpa_c_expect_p(c, ':');
+    MpTok iface_name = mpa_c_ident(c);
+    vtable.iface = mir_iface_by_name(m, mpa_tsym(c, iface_name));
+    if (vtable.iface == MIR_NONE) {
+        mpa_perr(c->p, line, "unknown interface %.*s", (int)iface_name.n, iface_name.s);
+    }
+    if (!mpa_c_eat_ident(c, "for")) {
+        mpa_perr(c->p, c->line, "expected 'for'");
+    }
+    vtable.data_ty = mpa_parse_ty(c);
+    mpa_c_expect_p(c, '{');
+    uint32_t capacity = 0;
+    while (!mpa_c_eat_p(c, '}')) {
+        MpTok method_name = mpa_c_at(c);
+        uint32_t method = mir_func_by_name(m, mpa_tsym(c, method_name));
+        if (method == MIR_NONE) {
+            mpa_perr(c->p, line, "unknown function @%.*s", (int)method_name.n, method_name.s);
+        }
+        MIR_PUSH(m, vtable.methods, vtable.nmethods, capacity, uint32_t, method);
+        mpa_c_eat_p(c, ',');
+    }
+    mir_add_vtable(m, &vtable);
+}
+
+/* Vtables and the entry point name functions, so they come after the headers. */
+static void mpa_define_vtables_and_entry(MpParser *p, const MpUnit *unit) {
+    for (uint32_t i = 0; i < unit->item_count; i++) {
+        MpCur c = mpa_item_cursor(p, &unit->items[i]);
+        MpTok keyword = mpa_c_ident(&c);
+        if (mpa_tok_is(&keyword, "vtable")) {
+            mpa_define_vtable(&c, unit->items[i].no);
+        }
+    }
+    if (!unit->has_entry) {
+        return;
+    }
+    MsSym name = mir_name(p->m, unit->entry_name.s, unit->entry_name.n);
+    uint32_t entry = mir_func_by_name(p->m, name);
+    if (entry == MIR_NONE) {
+        mpa_perr(p, unit->entry_line, "unknown entry function @%.*s", (int)unit->entry_name.n,
+                 unit->entry_name.s);
+    }
+    p->m->entry = entry;
 }
 
 static void mpa_parse_all(MpParser *p, const char *src, size_t len) {
-    MirModule *m = p->m;
-    MpItem *items = NULL;
-    uint32_t nitems = 0, citems = 0;
-    MpFnSrc *fns = NULL;
-    uint32_t nfns = 0, cfns = 0;
-    /* Group lines into items. */
-    size_t pos = 0;
-    uint32_t no = 0;
-    while (pos < len) {
-        size_t s0 = pos;
-        const char *nl = memchr(src + pos, '\n', len - pos);
-        size_t end = nl ? (size_t)(nl - src) : len;
-        pos = nl ? end + 1 : len;
-        size_t le = end;
-        if (le > s0 && src[le - 1] == '\r') le--;
-        no++;
-        MpLine line = mpa_trim_line(src + s0, le - s0);
-        line.no = no;
-        if (line.n == 0 || line.s[0] == ';') continue;
-        if (mpa_line_starts(line, "fn ")) {
-            MpFnSrc fs = {.header = line};
-            bool closed = false;
-            while (pos < len) {
-                size_t b0 = pos;
-                const char *bnl = memchr(src + pos, '\n', len - pos);
-                size_t bend = bnl ? (size_t)(bnl - src) : len;
-                pos = bnl ? bend + 1 : len;
-                size_t ble = bend;
-                if (ble > b0 && src[ble - 1] == '\r') ble--;
-                no++;
-                MpLine tl = mpa_trim_line(src + b0, ble - b0);
-                if (tl.n == 1 && tl.s[0] == '}') {
-                    closed = true;
-                    break;
-                }
-                MpLine bl = {no, src + b0, (uint32_t)(ble - b0)};
-                MIR_PUSH(m, fs.body, fs.nbody, fs.cbody, MpLine, bl);
-            }
-            if (!closed) mpa_perr(p, line.no, "function body is not closed with '}'");
-            MIR_PUSH(m, fns, nfns, cfns, MpFnSrc, fs);
-        } else {
-            MpItem it = {.no = line.no, .s = line.s, .n = line.n};
-            MIR_PUSH(m, items, nitems, citems, MpItem, it);
-        }
+    MpUnit unit = {0};
+    mpa_split_lines(p, src, len, &unit);
+    mpa_declare_names(p, &unit);
+    mpa_define_declarations(p, &unit);
+    mpa_declare_items(p, &unit);
+    unit.param_names = MS_NEW_N(&p->m->arena, MpTok *, unit.fn_count + 1);
+    unit.param_counts = MS_NEW_N(&p->m->arena, uint32_t, unit.fn_count + 1);
+    for (uint32_t i = 0; i < unit.fn_count; i++) {
+        mpa_declare_function(p, &unit, i);
     }
-    for (uint32_t i = 0; i < nitems; i++) {
-        items[i].t = mpa_tokenize(p, items[i].s, items[i].n, items[i].no, &items[i].nt);
-    }
-    /* Pass A: names of types, alternatives and interfaces. */
-    for (uint32_t i = 0; i < nitems; i++) {
-        MpCur c = {p, items[i].t, items[i].nt, 0, items[i].no};
-        MpTok kw = mpa_c_ident(&c);
-        if (mpa_tok_is(&kw, "type")) {
-            mir_add_type(m, mpa_tsym(&c, mpa_c_ident(&c)));
-        } else if (mpa_tok_is(&kw, "alt")) {
-            mir_add_alt(m, mpa_tsym(&c, mpa_c_ident(&c)));
-        } else if (mpa_tok_is(&kw, "iface")) {
-            mir_add_iface(m, mpa_tsym(&c, mpa_c_ident(&c)));
-        }
-    }
-    /* Pass B: bodies of type declarations. */
-    for (uint32_t i = 0; i < nitems; i++) {
-        MpCur c = {p, items[i].t, items[i].nt, 0, items[i].no};
-        MpTok kw = mpa_c_ident(&c);
-        if (mpa_tok_is(&kw, "type")) {
-            uint32_t id = mir_type_by_name(m, mpa_tsym(&c, mpa_c_ident(&c)));
-            mpa_c_expect_p(&c, '{');
-            MirField *fields = NULL;
-            uint32_t n = 0, cap = 0;
-            while (!mpa_c_eat_p(&c, '}')) {
-                MpTok fname = mpa_c_ident(&c);
-                mpa_c_expect_p(&c, ':');
-                MirField fd = {mpa_tsym(&c, fname), mpa_parse_ty(&c)};
-                MIR_PUSH(m, fields, n, cap, MirField, fd);
-                mpa_c_eat_p(&c, ',');
-            }
-            m->type_defs[id].fields = fields;
-            m->type_defs[id].nfields = n;
-        } else if (mpa_tok_is(&kw, "alt")) {
-            uint32_t id = mir_alt_by_name(m, mpa_tsym(&c, mpa_c_ident(&c)));
-            mpa_c_expect_p(&c, '{');
-            MirCaseDef *cases = NULL;
-            uint32_t n = 0, cap = 0;
-            while (!mpa_c_eat_p(&c, '}')) {
-                MirCaseDef cd = {.name = mpa_tsym(&c, mpa_c_ident(&c))};
-                uint32_t nf = 0, cf = 0;
-                if (mpa_c_eat_p(&c, '(')) {
-                    while (!mpa_c_eat_p(&c, ')')) {
-                        MpTok fname = mpa_c_ident(&c);
-                        mpa_c_expect_p(&c, ':');
-                        MirField fd = {mpa_tsym(&c, fname), mpa_parse_ty(&c)};
-                        MIR_PUSH(m, cd.fields, nf, cf, MirField, fd);
-                        mpa_c_eat_p(&c, ',');
-                    }
-                }
-                cd.nfields = nf;
-                MIR_PUSH(m, cases, n, cap, MirCaseDef, cd);
-                mpa_c_eat_p(&c, ',');
-            }
-            m->alts[id].cases = cases;
-            m->alts[id].ncases = n;
-            m->alts[id].std = mpa_parse_std(&c);
-        } else if (mpa_tok_is(&kw, "iface")) {
-            uint32_t id = mir_iface_by_name(m, mpa_tsym(&c, mpa_c_ident(&c)));
-            mpa_c_expect_p(&c, '{');
-            MirMethodSig *ms = NULL;
-            uint32_t n = 0, cap = 0;
-            while (!mpa_c_eat_p(&c, '}')) {
-                MirMethodSig s = {.name = mpa_tsym(&c, mpa_c_ident(&c)), .ret = MIR_VOID};
-                uint32_t np = 0, cp = 0;
-                mpa_c_expect_p(&c, '(');
-                while (!mpa_c_eat_p(&c, ')')) {
-                    if (mpa_c_eat_ident(&c, "move") && np < 64) s.owned |= 1ull << np;
-                    MirTy t = mpa_parse_ty(&c);
-                    MIR_PUSH(m, s.params, np, cp, MirTy, t);
-                    mpa_c_eat_p(&c, ',');
-                }
-                s.nparams = np;
-                if (mpa_c_peek_kind(&c, MPT_ARROW)) {
-                    c.pos++;
-                    s.ret = mpa_parse_ty(&c);
-                }
-                MIR_PUSH(m, ms, n, cap, MirMethodSig, s);
-                mpa_c_eat_p(&c, ',');
-            }
-            m->ifaces[id].close = MIR_NONE;
-            MsSym close = mir_name(m, "close", 5);
-            for (uint32_t k = 0; k < n; k++) {
-                if (ms[k].name == close) {
-                    m->ifaces[id].close = k;
-                    break;
-                }
-            }
-            m->ifaces[id].methods = ms;
-            m->ifaces[id].nmethods = n;
-            m->ifaces[id].std = mpa_parse_std(&c);
-        }
-    }
-    /* Pass C: module, files, externs, globals, entry. */
-    uint32_t entry_line = 0;
-    MpTok entry_tok = {0};
-    bool has_entry = false;
-    for (uint32_t i = 0; i < nitems; i++) {
-        MpCur c = {p, items[i].t, items[i].nt, 0, items[i].no};
-        MpTok kw = mpa_c_ident(&c);
-        if (mpa_tok_is(&kw, "module")) {
-            const MpTok *t = mpa_c_peek(&c);
-            if (t == NULL || (t->k != MPT_STR && t->k != MPT_IDENT)) mpa_perr(p, c.line, "expected module name");
-            c.pos++;
-            m->name = mir_name(m, t->s, t->n);
-        } else if (mpa_tok_is(&kw, "file")) {
-            MpTok idx = mpa_c_num(&c);
-            int64_t v;
-            if (idx.s[0] == '-' || !mpa_parse_i64(idx.s, idx.n, &v)) mpa_perr(p, c.line, "bad file index");
-            MpTok path = mpa_c_string(&c);
-            if ((uint64_t)v != m->nfiles) mpa_perr(p, c.line, "files must be numbered consecutively from 0");
-            MsStr s = {ms_arena_strndup(&m->arena, path.s, path.n), path.n};
-            MIR_PUSH(m, m->files, m->nfiles, m->cfiles, MsStr, s);
-        } else if (mpa_tok_is(&kw, "blob") || mpa_tok_is(&kw, "consts")) {
-            bool blob = mpa_tok_is(&kw, "blob");
-            MpTok idx = mpa_c_num(&c);
-            int64_t v;
-            if (idx.s[0] == '-' || !mpa_parse_i64(idx.s, idx.n, &v)) mpa_perr(p, c.line, "bad %s index", blob ? "blob" : "consts");
-            uint32_t have = blob ? m->nblobs : m->nlist_consts;
-            if ((uint64_t)v != have) {
-                mpa_perr(p, c.line, "%s entries must be numbered consecutively from 0", blob ? "blob" : "consts");
-            }
-            if (blob) {
-                MpTok hex = mpa_c_string(&c);
-                if (hex.n % 2 != 0) mpa_perr(p, c.line, "blob payload must be an even number of hex digits");
-                char *bytes = ms_alloc(&m->arena, hex.n / 2 + 1, 1);
-                for (uint32_t k = 0; k < hex.n; k += 2) {
-                    int h = mpa_hexval(hex.s[k]), l = mpa_hexval(hex.s[k + 1]);
-                    if (h < 0 || l < 0) mpa_perr(p, c.line, "blob payload must be an even number of hex digits");
-                    bytes[k / 2] = (char)(h * 16 + l);
-                }
-                MsStr b = {bytes, hex.n / 2};
-                MIR_PUSH(m, m->blobs, m->nblobs, m->cblobs, MsStr, b);
-            } else {
-                mpa_c_expect_p(&c, '[');
-                int64_t *vals = NULL;
-                uint32_t n = 0, cap = 0;
-                while (!mpa_c_eat_p(&c, ']')) {
-                    MpTok e = mpa_c_num(&c);
-                    int64_t x;
-                    if (!mpa_parse_i64(e.s, e.n, &x)) mpa_perr(p, c.line, "bad consts element");
-                    MIR_PUSH(m, vals, n, cap, int64_t, x);
-                    mpa_c_eat_p(&c, ',');
-                }
-                MirConsts k = {vals, n};
-                MIR_PUSH(m, m->list_consts, m->nlist_consts, m->clist_consts, MirConsts, k);
-            }
-        } else if (mpa_tok_is(&kw, "extern")) {
-            MirExtern e = {.name = mpa_tsym(&c, mpa_c_at(&c)), .ret = MIR_VOID};
-            uint32_t np = 0, cp = 0;
-            mpa_c_expect_p(&c, '(');
-            while (!mpa_c_eat_p(&c, ')')) {
-                MirParam pr = mpa_parse_param(&c);
-                MIR_PUSH(m, e.params, np, cp, MirParam, pr);
-                mpa_c_eat_p(&c, ',');
-            }
-            e.nparams = np;
-            if (mpa_c_peek_kind(&c, MPT_ARROW)) {
-                c.pos++;
-                e.ret = mpa_parse_ty(&c);
-            }
-            while (!mpa_c_done(&c)) {
-                MpTok a = mpa_c_ident(&c);
-                if (mpa_tok_is(&a, "noreturn")) e.noreturn = true;
-                else if (mpa_tok_is(&a, "pure")) e.pure = true;
-                else if (mpa_tok_is(&a, "fresh")) e.fresh = true;
-                else if (mpa_tok_is(&a, "leaf")) e.leaf = true;
-                else if (mpa_tok_is(&a, "reads")) e.reads = true;
-                else if (mpa_tok_is(&a, "retains")) e.retains = true;
-                else {
-                    int r = mir_role_from_name(a.s, a.n);
-                    if (r == MR_NONE) mpa_perr(p, c.line, "unknown extern attribute %.*s", (int)a.n, a.s);
-                    e.role = (uint8_t)r;
-                }
-            }
-            mir_add_extern(m, &e);
-        } else if (mpa_tok_is(&kw, "global")) {
-            MsSym name = mpa_tsym(&c, mpa_c_at(&c));
-            mpa_c_expect_p(&c, ':');
-            mir_add_global(m, name, mpa_parse_ty(&c));
-        } else if (mpa_tok_is(&kw, "entry")) {
-            entry_tok = mpa_c_at(&c);
-            entry_line = items[i].no;
-            has_entry = true;
-        } else if (mpa_tok_is(&kw, "vtable") || mpa_tok_is(&kw, "type") || mpa_tok_is(&kw, "alt") || mpa_tok_is(&kw, "iface")) {
-        } else {
-            mpa_perr(p, c.line, "unknown item '%.*s'", (int)kw.n, kw.s);
-        }
-    }
-    /* Function headers. */
-    MpTok **pnames = MS_NEW_N(&m->arena, MpTok *, nfns + 1);
-    uint32_t *npn = MS_NEW_N(&m->arena, uint32_t, nfns + 1);
-    for (uint32_t i = 0; i < nfns; i++) {
-        uint32_t nt;
-        MpTok *toks = mpa_tokenize(p, fns[i].header.s, fns[i].header.n, fns[i].header.no, &nt);
-        MpCur c = {p, toks, nt, 0, fns[i].header.no};
-        mpa_c_ident(&c); /* fn */
-        MsSym name = mpa_tsym(&c, mpa_c_at(&c));
-        mpa_c_expect_p(&c, '(');
-        MirParam *params = NULL;
-        MpTok *names = NULL;
-        uint32_t np = 0, cp = 0, nn = 0, cn = 0;
-        while (!mpa_c_eat_p(&c, ')')) {
-            MpTok vn = mpa_c_val(&c);
-            MIR_PUSH(m, names, nn, cn, MpTok, vn);
-            mpa_c_expect_p(&c, ':');
-            MirParam pr = mpa_parse_param(&c);
-            MIR_PUSH(m, params, np, cp, MirParam, pr);
-            mpa_c_eat_p(&c, ',');
-        }
-        MirTy ret = MIR_VOID;
-        if (mpa_c_peek_kind(&c, MPT_ARROW)) {
-            c.pos++;
-            ret = mpa_parse_ty(&c);
-        }
-        MirFunc f;
-        mir_func_init(m, &f, name, params, np, ret);
-        for (;;) {
-            if (mpa_c_peek_p(&c, '{')) {
-                c.pos++;
-                break;
-            }
-            if (mpa_c_peek_kind(&c, MPT_LOC)) {
-                f.loc = mpa_c_peek(&c)->loc;
-                c.pos++;
-            }
-            if (mpa_c_peek(&c) == NULL) mpa_perr(p, c.line, "expected '{'");
-            if (mpa_c_peek_kind(&c, MPT_IDENT)) {
-                MpTok a = mpa_c_ident(&c);
-                if (mpa_tok_is(&a, "export")) f.linkage = ML_EXPORT;
-                else if (mpa_tok_is(&a, "method")) f.kind = MFK_METHOD;
-                else if (mpa_tok_is(&a, "sort_cmp")) f.sort = MSORT_GENERIC;
-                else if (mpa_tok_is(&a, "sort_cmp_for")) f.sort = MSORT_SPECIALIZED;
-                else if (mpa_tok_is(&a, "inline")) {
-                    mpa_c_expect_p(&c, '(');
-                    MpTok h = mpa_c_ident(&c);
-                    if (mpa_tok_is(&h, "always")) f.inline_hint = MINL_ALWAYS;
-                    else if (mpa_tok_is(&h, "never")) f.inline_hint = MINL_NEVER;
-                    else mpa_perr(p, c.line, "unknown inline hint %.*s", (int)h.n, h.s);
-                    mpa_c_expect_p(&c, ')');
-                } else if (mpa_tok_is(&a, "closure")) {
-                    mpa_c_expect_p(&c, '(');
-                    uint32_t nc = 0, cc = 0;
-                    while (!mpa_c_eat_p(&c, ')')) {
-                        MirTy t = mpa_parse_ty(&c);
-                        MIR_PUSH(m, f.captures, nc, cc, MirTy, t);
-                        mpa_c_eat_p(&c, ',');
-                    }
-                    f.ncaptures = nc;
-                    f.kind = MFK_CLOSURE;
-                } else {
-                    mpa_perr(p, c.line, "unknown function attribute %.*s", (int)a.n, a.s);
-                }
-            } else if (!mpa_c_peek_kind(&c, MPT_LOC) && !mpa_c_peek_p(&c, '{')) {
-                mpa_perr(p, c.line, "unexpected token in function header");
-            }
-        }
-        if (mir_func_by_name(m, name) != MIR_NONE) {
-            MsStr fn = ms_name(&m->names, name);
-            mpa_perr(p, c.line, "function @%.*s defined twice", (int)fn.len, fn.ptr);
-        }
-        mir_add_func(m, &f);
-        pnames[i] = names;
-        npn[i] = nn;
-    }
-    /* Vtables and entry need function ids. */
-    for (uint32_t i = 0; i < nitems; i++) {
-        MpCur c = {p, items[i].t, items[i].nt, 0, items[i].no};
-        MpTok kw = mpa_c_ident(&c);
-        if (!mpa_tok_is(&kw, "vtable")) continue;
-        MirVtable v = {0};
-        v.name = mpa_tsym(&c, mpa_c_at(&c));
-        mpa_c_expect_p(&c, ':');
-        MpTok in = mpa_c_ident(&c);
-        uint32_t iface = mir_iface_by_name(m, mpa_tsym(&c, in));
-        if (iface == MIR_NONE) mpa_perr(p, items[i].no, "unknown interface %.*s", (int)in.n, in.s);
-        v.iface = iface;
-        if (!mpa_c_eat_ident(&c, "for")) mpa_perr(p, c.line, "expected 'for'");
-        v.data_ty = mpa_parse_ty(&c);
-        mpa_c_expect_p(&c, '{');
-        uint32_t n = 0, cap = 0;
-        while (!mpa_c_eat_p(&c, '}')) {
-            MpTok fn = mpa_c_at(&c);
-            uint32_t f = mir_func_by_name(m, mpa_tsym(&c, fn));
-            if (f == MIR_NONE) mpa_perr(p, items[i].no, "unknown function @%.*s", (int)fn.n, fn.s);
-            MIR_PUSH(m, v.methods, n, cap, uint32_t, f);
-            mpa_c_eat_p(&c, ',');
-        }
-        v.nmethods = n;
-        mir_add_vtable(m, &v);
-    }
-    if (has_entry) {
-        uint32_t f = mir_func_by_name(m, mpa_tsym(&(MpCur){p, NULL, 0, 0, 0}, entry_tok));
-        if (f == MIR_NONE) mpa_perr(p, entry_line, "unknown entry function @%.*s", (int)entry_tok.n, entry_tok.s);
-        m->entry = f;
-    }
-    /* Bodies. */
-    for (uint32_t i = 0; i < nfns; i++) {
-        mpa_parse_body(p, i, &fns[i], pnames[i], npn[i]);
+    mpa_define_vtables_and_entry(p, &unit);
+    for (uint32_t i = 0; i < unit.fn_count; i++) {
+        mpa_parse_body(p, i, &unit.fns[i], unit.param_names[i], unit.param_counts[i]);
     }
 }
 
