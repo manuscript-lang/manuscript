@@ -221,11 +221,11 @@ stdlib-bench: build
 # The C build: one CMake project (CMakeLists.txt, cmake/) for the runtime archive, its tests and the fuzz harnesses,
 # generated with Ninja; ccache is used when installed. `c-configure` and `c-build` make target/cmake/test (sanitizers on).
 C_BUILD ?= target/cmake/test
-# The system C libraries the CMake builds find with pkg-config; a fresh machine gets them installed (libs.sh knows apt,
-# Homebrew, apk and the Windows package managers).
+# The system C libraries the CMake builds find with pkg-config. Nothing is installed here: a missing one stops the
+# build with the command that installs it.
 .PHONY: c-deps c-configure c-build
 c-deps:
-	@pkg-config --exists libuv libnghttp2 libssl libcrypto libpcre2-8 zlib libcurl 2>/dev/null || sh runtime/third_party/libs.sh install
+	@pkg-config --exists libuv libnghttp2 libssl libcrypto libpcre2-8 zlib libcurl 2>/dev/null || { echo "make: the C libraries are not all installed (pkg-config). Install them with: sh runtime/third_party/libs.sh install" >&2; exit 1; }
 
 c-configure: c-deps
 	cmake -S . -B $(C_BUILD) -G Ninja -DMS_SANITIZE=ON
