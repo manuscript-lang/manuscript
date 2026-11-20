@@ -53,6 +53,8 @@ MsTy ms_body_index(MsBody *b, const MsExpr *e);
 bool ms_body_is_primitive_value(const MsBody *b, MsTy ty);
 /* A type whose values the pass can pass around (see body_is_admitted). */
 bool ms_body_is_admitted(const MsBody *b, MsTy ty);
+/* What a local can hold: an admitted type, an Optional or a Result of one. */
+bool ms_body_is_bindable(const MsBody *b, MsTy ty);
 /* A primitive, or a type variable of the function being checked: a value that is passed around whole. */
 bool ms_body_is_plain_value(const MsBody *b, MsTy ty);
 /* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */

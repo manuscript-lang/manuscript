@@ -168,7 +168,7 @@ static bool body_is_primitive(const MsBody *b, MsTy ty) {
     return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
 
-static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
+static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig) {
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len) {
         return false;
@@ -183,7 +183,7 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
     }
     const MsTy result = tys->result[sig];
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
-           result == b->void_ty || ms_body_is_admitted(b, result) || (wide && ms_body_is_result(b, result));
+           result == b->void_ty || ms_body_is_bindable(b, result);
 }
 
 /* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
@@ -194,7 +194,7 @@ static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     Target target;
     if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
         native_result_borrows(b, receiver_ty, callee->u.member.name, e->u.call.args.len) ||
-        !arguments_fit(b, e, target.sig, false)) {
+        !arguments_fit(b, e, target.sig)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_interface[e->id] = receiver_ty;
@@ -240,7 +240,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||
         (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
-        !arguments_fit(b, e, target.sig, binding == MS_NONE)) {
+        !arguments_fit(b, e, target.sig)) {
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {

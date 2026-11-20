@@ -125,6 +125,10 @@ static bool body_is_bindable(const MsBody *b, MsTy ty) {
     return ty == b->invalid_ty || body_is_admitted(b, ty) || body_is_optional(b, ty) || ms_body_is_result(b, ty);
 }
 
+bool ms_body_is_bindable(const MsBody *b, MsTy ty) {
+    return body_is_bindable(b, ty);
+}
+
 static bool body_is_numeric(const MsBody *b, MsTy ty) {
     return ty == b->int_ty || ty == b->float_ty;
 }
