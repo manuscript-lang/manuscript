@@ -951,6 +951,16 @@ void msrt_heap_requested(uint64_t *out) {
     out[1] = st.requested[1] + atomic_load_explicit(&released[1], memory_order_relaxed);
 }
 
+void ms_heap_requested_thread(uint64_t *out) {
+    out[0] = st.requested[0];
+    out[1] = st.requested[1];
+}
+
+void ms_heap_requested_restore(const uint64_t *saved) {
+    st.requested[0] = saved[0];
+    st.requested[1] = saved[1];
+}
+
 /* Starts the counters over: the program's main begins, so the counts a gate reads cover the program and not the
  * runtime's own start-up records (the main task and its stack region), which differ by platform. */
 void msrt_heap_requested_reset(void) {

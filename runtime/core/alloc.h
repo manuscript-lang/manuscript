@@ -40,4 +40,9 @@ void msalloc_oom(size_t bytes) __attribute__((noreturn));
  * which also scribbles over freed blocks so a use after free shows up. */
 int64_t msalloc_live_blocks(void);
 
+/* The calling thread's own requested counters, and putting them back: the runtime's bookkeeping after main returns
+ * (stack pool, slot lists) is not the program's allocation and stays out of the counting report. */
+void ms_heap_requested_thread(uint64_t *out);
+void ms_heap_requested_restore(const uint64_t *saved);
+
 #endif

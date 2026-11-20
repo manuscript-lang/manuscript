@@ -15,6 +15,7 @@
 
 #include <uv.h>
 
+#include "../core/alloc.h"
 #include "../core/cancel.h"
 #include "../core/fault.h"
 #include "../core/frames.h"
@@ -131,12 +132,19 @@ static void wake_reactor(void *argument) { ms_io_wake(argument); }
 
 /* ---- main ---- */
 
+#ifdef MS_ALLOC_STATS
+static uint64_t program_requested[2]; /* this thread's allocation counts when main returned */
+#endif
+
 static void main_task(void *argument) {
     (void)argument;
 #ifdef MS_ALLOC_STATS
     msrt_heap_requested_reset();
 #endif
     const int64_t value = main_function();
+#ifdef MS_ALLOC_STATS
+    ms_heap_requested_thread(program_requested);
+#endif
     if (ms_cancel_flag() != 0) {
         ms_cancelled(); /* the main task's own boundary: nothing above it takes an exit */
     }
@@ -312,6 +320,7 @@ static void runtime_thread(void *argument) {
     ms_io_close(true);
     ms_sched_release_stdout();
 #ifdef MS_ALLOC_STATS
+    ms_heap_requested_restore(program_requested);
     report_leaks();
 #endif
     msrt_heap_release();

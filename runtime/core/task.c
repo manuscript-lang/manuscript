@@ -93,6 +93,7 @@ MsTask *ms_task_running(void) {
     if (sched->current == NULL) {
         MsTask *const task = new_task(sched);
         task->state = MS_STATE_RUNNING;
+        task->flags |= MS_TASK_FLAG_THREAD;
         sched->current = task;
         sched->main_task = task;
         ms_sched_publish(sched, task);
@@ -545,7 +546,8 @@ static size_t collect_live(const MsSched *sched, MsTaskHandle **handles) {
     void *items = NULL;
     for (size_t i = 0; i < sched->slot_count; i++) {
         const MsTask *const task = sched->slots[i].task;
-        if (task == NULL || task == sched->current || task == sched->main_task || task->state == MS_STATE_DONE) {
+        if (task == NULL || task == sched->current || task == sched->main_task ||
+            (task->flags & MS_TASK_FLAG_THREAD) != 0 || task->state == MS_STATE_DONE) {
             continue;
         }
         if (!ms_array_reserve(&items, &capacity, count + 1, sizeof **handles)) {

@@ -1,4 +1,6 @@
 /* The scheduler of a thread: creation, hooks, the stop request, the clock and teardown. See scheduler.h. */
+#include <stdlib.h>
+
 #include "scheduler.h"
 
 #include "array.h"
@@ -133,9 +135,9 @@ void ms_task_destroy(MsSched *sched, MsTask *task) {
         msrt_free(task->extra->segment_teb);
         msrt_free(task->extra);
     }
-    msrt_free(task->unwind.hdr.cleanups);
-    msrt_free(task->unwind.guards);
-    msrt_free(task->unwind.eq_pairs);
+    free(task->unwind.hdr.cleanups);
+    free(task->unwind.guards);
+    free(task->unwind.eq_pairs);
     ms_fault_text_free(&task->message);
     msrt_free(task);
 }

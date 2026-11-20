@@ -78,7 +78,7 @@ bool ms_unwinding(void) { return atomic_load_explicit(&running()->hdr.unwinding,
 size_t ms_cleanup_push(MsCleanupFn function, uint8_t *argument) { // NOLINT(readability-non-const-parameter): the cleanup writes it
     MsTaskHdr *const hdr = &running()->hdr;
     void *items = hdr->cleanups;
-    if (!ms_array_reserve(&items, &hdr->cleanup_capacity, hdr->cleanup_length + 1, sizeof *hdr->cleanups)) {
+    if (!ms_array_reserve_system(&items, &hdr->cleanup_capacity, hdr->cleanup_length + 1, sizeof *hdr->cleanups)) {
         return hdr->cleanup_length;
     }
     hdr->cleanups = items;
@@ -204,7 +204,7 @@ bool ms_guard_open(void) { return running()->guard_length > 0; }
 static void guards_push(MsUnwind *unwind, MsGuardFrame frame) {
     size_t capacity = unwind->guard_capacity;
     void *frames = unwind->guards;
-    if (!ms_array_reserve(&frames, &capacity, (size_t)unwind->guard_length + 1, sizeof *unwind->guards)) {
+    if (!ms_array_reserve_system(&frames, &capacity, (size_t)unwind->guard_length + 1, sizeof *unwind->guards)) {
         return;
     }
     unwind->guards = frames;

@@ -31,6 +31,7 @@ enum {
     MS_TASK_FLAG_DETACHED = 1,
     MS_TASK_FLAG_FATAL = 2,
     MS_TASK_FLAG_TIMED_OUT = 4,
+    MS_TASK_FLAG_THREAD = 8, /* the record of the thread's own flow of control, not a task anything can cancel */
 };
 
 /* Slot of the waiter list nodes: index + 1, 0 ends a list. */

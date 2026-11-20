@@ -4,6 +4,7 @@
 #include "stdout.h"
 
 #include <stdatomic.h>
+#include <stdlib.h>
 
 #include "ms_sched.h"
 #include "spin.h"
@@ -16,6 +17,8 @@
 #include "ms_rt/sys_fs.h"
 
 enum { BUFFER_LIMIT = 64 * 1024, STDOUT_FD = 1 };
+
+enum { OUTPUT_MIN = 4096 };
 
 typedef struct Bytes {
     uint8_t *items;
@@ -49,9 +52,22 @@ static void bytes_append(Bytes *bytes, const uint8_t *data, size_t length) {
         return;
     }
     size_t needed = 0;
-    if (!ms_size_add(bytes->length, length, &needed) ||
-        !ms_array_reserve((void **)&bytes->items, &bytes->capacity, needed, 1)) {
+    if (!ms_size_add(bytes->length, length, &needed)) {
         return; /* the request overflows the address space: cannot happen */
+    }
+    if (needed > bytes->capacity) {
+        /* The system's allocator: the output buffer is the runtime's, not a block of the program the counting runtime
+         * reports. */
+        size_t capacity = bytes->capacity < OUTPUT_MIN ? OUTPUT_MIN : bytes->capacity;
+        while (capacity < needed) {
+            capacity *= 2;
+        }
+        uint8_t *const grown = realloc(bytes->items, capacity);
+        if (grown == NULL) {
+            return;
+        }
+        bytes->items = grown;
+        bytes->capacity = capacity;
     }
     __builtin_memcpy(bytes->items + bytes->length, data, length);
     bytes->length = needed;
@@ -87,7 +103,7 @@ void ms_sched_flush_stdout(void) {
 void ms_sched_release_stdout(void) {
     ms_spin_lock(&out.lock);
     flush_locked();
-    msrt_free(out.buffer.items);
+    free(out.buffer.items);
     out.buffer = (Bytes){0};
     ms_spin_unlock(&out.lock);
 }
@@ -182,7 +198,7 @@ void msrt_test_capture_take(int64_t id, MsStr *out_text) {
     }
     ms_spin_unlock(&captures.lock);
     msrt_string_from_bytes(taken, length, out_text);
-    msrt_free(taken);
+    free(taken);
 }
 
 /* Ends capture `id`; later output of its tasks goes to standard output. */
@@ -190,7 +206,7 @@ void msrt_test_capture_free(int64_t id) {
     ms_spin_lock(&captures.lock);
     for (size_t i = 0; i < captures.length; i++) {
         if (captures.items[i].id == (uint64_t)id) {
-            msrt_free(captures.items[i].text.items);
+            free(captures.items[i].text.items);
             captures.items[i] = captures.items[--captures.length];
             break;
         }

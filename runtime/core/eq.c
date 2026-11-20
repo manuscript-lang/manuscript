@@ -23,7 +23,7 @@ uint8_t msrt_eq_enter(const uint8_t *a, const uint8_t *b) {
         ms_fault(MS_FAULT_KIND_FAULT, ms_bytes_of((const uint8_t *)message, sizeof message - 1));
     }
     void *items = unwind->eq_pairs;
-    if (!ms_array_reserve(&items, &unwind->eq_capacity, unwind->eq_length + 1, sizeof unwind->eq_pairs[0])) {
+    if (!ms_array_reserve_system(&items, &unwind->eq_capacity, unwind->eq_length + 1, sizeof unwind->eq_pairs[0])) {
         return 1; /* out of memory: the allocator already faulted */
     }
     unwind->eq_pairs = items;
