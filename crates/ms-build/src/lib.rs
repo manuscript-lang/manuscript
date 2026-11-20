@@ -9,6 +9,7 @@
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 #[cfg(test)]
 use ms_rt as _;
+pub mod c_backend;
 pub mod llvm;
 pub use llvm::available as llvm_available;
 pub mod lower;
