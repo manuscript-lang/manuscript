@@ -60,3 +60,8 @@ Manuscript tools call libms through `compiler/tools/tool_shim.c`: `extern fn` de
 ## Driver and stages
 
 `libms.h` has one entry point and one row in the stage table (`ms_stage_impl`) per pipeline stage: parse, format, check, lower, emit, link, and the command's own tool logic. `driver.c` knows which stages each command needs. A command runs in C only when every stage it needs is in C; otherwise the whole command goes to the Rust `ms` (`$MS_RUST_CLI`, or `ms-rust` beside the executable), so the conformance corpus runs through the C `ms` from the first day and a command flips to C when its last stage lands. Stage data cannot cross between the two implementations, which is why the handover is per command. `MS_DRIVER_TRACE=1` prints the choice; `MS_STAGES=parse=rust` overrides a row for comparison runs. Porting a stage: add its entry point to `libms.h`, write it in `src/`, flip its row. `make c-driver-test` runs the unit tests and checks that `ms` in front of the Rust `ms` gives identical output and status.
+
+## Ownership
+
+`include/ms/ownership.h` and `src/ownership_*.c` are the C port of `crates/ms-check/src/ownership`: places and binding sets, value classes (`ownership_class.c`), liveness (`ownership_live.c`) and the walk that reports moves and borrows (`ownership_walk.c`). `ms_module_check_ownership` runs after `ms_module_check_bodies` and handles the functions whose bodies the checker accepted; a function with a construct the walk does not know yet has its `body_checked` flag cleared and stays with the Rust checker. `check-diff.sh` compares the diagnostics inside every handled function with the Rust checker's (`c_oracle --ownership`) on `compiler/tests/ownership` and the corpus; the set of handled constructs grows with the checker's.
+
