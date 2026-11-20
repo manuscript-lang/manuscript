@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
+.PHONY: lsp-test rebuild libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check ms-cli-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz c-tools-test
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -23,7 +23,7 @@ vscode-install: vscode-package
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
-verify: check repo-check workflow-check bench-check unit docs-check licenses-check
+verify: check repo-check workflow-check bench-check lsp-test unit docs-check licenses-check
 
 verify-full: verify conform removed-check ms-cli-check book-check dist-check
 
@@ -188,6 +188,11 @@ dist: build
 dist-check: dist
 	$(MS) run tools/dist-check.ms
 
+# The language server written in Manuscript (tools/lsp): its unit tests and a check of the entry point.
+lsp-test: build
+	"$(RELEASE_MS)" test tools/lsp/frame.ms tools/lsp/text.ms tools/lsp/uri.ms tools/lsp/structure.ms tools/lsp/server.ms tools/lsp/check.ms
+	"$(RELEASE_MS)" check tools/lsp/main.ms
+
 agent-bench-check: build
 	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
 	"$(RELEASE_MS)" test bench/agent/core_test.ms
@@ -245,6 +250,8 @@ c-compiler-test:
 	sh compiler/tests/mir-pass-diff.sh
 	sh compiler/tests/mir-pass-frozen.sh
 	sh compiler/tests/check-diff.sh
+	sh compiler/tests/diag-render-diff.sh
+	sh compiler/tests/entry-diff.sh
 	sh compiler/tests/lower-diff.sh
 	sh compiler/tests/hints-diff.sh
 	sh compiler/tests/constfold-diff.sh
@@ -271,9 +278,23 @@ target/c-tool/libmstool.a: FORCE
 
 # The Manuscript tools over libms: their tests; the syntax tree read in Manuscript against the C dump over every .ms file (so the table is complete); the lexical lint against the Rust `ms lint` on mutated corpus copies; the docs generator and description inventory against `ms-docgen`; `search_symbol` against the Rust one; the `ms diagram` views and call graph against the Rust ones; and the C checker's fact dump against the Rust facts.
 c-tools-test: build target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/diff.ms
+	"$(RELEASE_MS)" test tools/ms/mark.ms
+	"$(RELEASE_MS)" test tools/ms/html.ms
+	"$(RELEASE_MS)" test tools/ms/manifest_edit.ms
+	"$(RELEASE_MS)" test tools/ms/cli.ms
+	"$(RELEASE_MS)" test tools/ms/toml_edit_test.ms
+	"$(RELEASE_MS)" test tools/ms/install.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/text.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/matches.ms --link target/c-tool/libmstool.a
 	"$(RELEASE_MS)" test tools/ms/lint/terse.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/imports.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/flow.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/facts.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/typed.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/skill_calls.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/fixes.ms --link target/c-tool/libmstool.a
+	"$(RELEASE_MS)" test tools/ms/lint/interpolation.ms --link target/c-tool/libmstool.a
 	git ls-files '*.ms' > target/c-tool/files.txt
 	target/c-tool/ms_syntax_dump ast $$(cat target/c-tool/files.txt) | sed -E 's/^(error [0-9]+:[0-9]+:[0-9]+) .*/\1/' > target/c-tool/ast.c.txt
 	"$(RELEASE_MS)" run tools/ms/syntax_dump.ms --link target/c-tool/libmstool.a -- @target/c-tool/files.txt > target/c-tool/ast.ms.txt
@@ -285,7 +306,7 @@ c-tools-test: build target/c-tool/libmstool.a
 	diff -r target/c-tool/docs.rust/documentation target/c-tool/docs.ms/documentation
 	cmp target/c-tool/static.rust/stdlib.md target/c-tool/docs.ms/website/static/stdlib.md
 	cmp target/c-tool/static.rust/stdlib.json target/c-tool/docs.ms/website/static/stdlib.json
-	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json crates/ms-tooling/data/description_backlog.json target/c-tool/coverage.ms.json
+	"$(RELEASE_MS)" run tools/ms/doc_inventory.ms -- target/c-tool/model.json tools/ms/data/description_backlog.json target/c-tool/coverage.ms.json
 	cmp target/c-tool/coverage.rust.json target/c-tool/coverage.ms.json
 	"$(RELEASE_MS)" test tools/ms/doc_inventory.ms
 	"$(RELEASE_MS)" build tools/ms/search.ms -o target/c-tool/search
@@ -293,10 +314,16 @@ c-tools-test: build target/c-tool/libmstool.a
 	cargo build -q --release --locked -p ms-tooling --bin ms-tooling-dev
 	"$(RELEASE_MS)" build tools/ms/views.ms -o target/c-tool/views
 	sh tools/ms/views-diff.sh target/release/ms-tooling-dev target/c-tool/views target/c-tool/views-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/review.ms -o target/c-tool/review
+	"$(RELEASE_MS)" build tools/ms/report.ms -o target/c-tool/report
+	sh tools/ms/review-diff.sh target/release/ms-tooling-dev target/c-tool/review target/c-tool/report target/c-tool/review-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
+	"$(RELEASE_MS)" build tools/ms/html.ms -o target/c-tool/html
+	sh tools/ms/html-diff.sh target/release/ms-tooling-dev target/c-tool/html target/c-tool/html-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/inspect.ms -o target/c-tool/inspect
 	sh tools/ms/inspect-diff.sh "$(RELEASE_MS)" target/c-tool/inspect target/c-tool/inspect-work tests/conformance/fixtures/e2e/accept/close-error-precedence.ms tests/conformance/fixtures/e2e/stdlib/log.ms tests/conformance/fixtures/e2e/stdlib/xml.ms
 	"$(RELEASE_MS)" build tools/ms/facts_diff.ms -o target/c-tool/facts_diff
 	sh compiler/tests/facts-diff.sh $(C_TOOL)/ms_check_dump target/release/ms-tooling-dev target/c-tool/facts_diff target/c-tool/facts-work $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' | awk 'NR%8==0')
+	sh compiler/tests/nodes-diff.sh $(C_TOOL)/ms_check_dump target/release/ms-tooling-dev target/c-tool/nodes-work $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' | awk 'NR%8==0')
 	"$(RELEASE_MS)" run tools/ms/lint_diff.ms --link target/c-tool/libmstool.a -- "$(RELEASE_MS)" target/c-tool/work 3 $$(git ls-files 'tests/conformance/fixtures/e2e/accept/*.ms' 'examples/*.ms' 'stdlib/*.ms' | awk 'NR%4==0')
 
 # The C driver: stage table and parse entry point, then the thin `ms` in front of a stand-in for the Rust `ms` (no Rust build needed).

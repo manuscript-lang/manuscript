@@ -6,11 +6,7 @@
 #include "ms/check.h"
 #include "ms/import_hints.h"
 
-enum { PRIMITIVE_COUNT = 16, PRELUDE_NAME_COUNT = 13, CONSTRUCTOR_COUNT = 4 };
-
-static const char *const scope_primitives[PRIMITIVE_COUNT] = {
-    "Bool",  "Int",    "Float",  "Int8",   "Int16",   "Int32",   "Int64",   "UInt8",
-    "UInt16", "UInt32", "UInt64", "Float32", "Float64", "String", "Void", "Never"};
+enum { PRELUDE_NAME_COUNT = 13, CONSTRUCTOR_COUNT = 4 };
 
 /* Types every module sees without an import (`STANDARD_PRELUDE_NAMES`). */
 static const char *const scope_prelude_names[PRELUDE_NAME_COUNT] = {
@@ -187,8 +183,8 @@ static void scope_declare_primitives(MsCheck *c) {
     if (c->primitives.count != 0) {
         return;
     }
-    for (size_t i = 0; i < PRIMITIVE_COUNT; i++) {
-        const char *written = scope_primitives[i];
+    for (size_t i = 0; i < ms_primitive_count(); i++) {
+        const char *written = ms_primitive_name(i);
         /* `Int64` and `Float64` are the default widths: the same type as `Int` and `Float`. */
         const char *identity = written;
         if (strcmp(written, "Int64") == 0) {
@@ -234,7 +230,7 @@ static void scope_add_prelude(MsCheck *c, MsModId module) {
     for (size_t i = 0; i < PRELUDE_NAME_COUNT; i++) {
         const MsSym name = ms_intern_cstr(c->names, scope_prelude_names[i]);
         const MsSymId symbol = ms_map_get(&c->std_types, name);
-        if (symbol == MS_NONE || scope_same_file(c, c->syms.module[symbol], module) || scope_imports_name(syntax, name)) {
+        if (symbol == MS_NONE || c->syms.module[symbol] == module || scope_imports_name(syntax, name)) {
             continue;
         }
         (void)ms_map_add(names, name, symbol);
@@ -243,8 +239,8 @@ static void scope_add_prelude(MsCheck *c, MsModId module) {
 
 static void scope_begin_module(MsCheck *c, MsModId module) {
     scope_declare_primitives(c);
-    for (size_t i = 0; i < PRIMITIVE_COUNT; i++) {
-        const MsSym name = ms_intern_cstr(c->names, scope_primitives[i]);
+    for (size_t i = 0; i < ms_primitive_count(); i++) {
+        const MsSym name = ms_intern_cstr(c->names, ms_primitive_name(i));
         (void)ms_map_add(&c->mods[module].names, name, ms_map_get(&c->primitives, name));
     }
     scope_add_prelude(c, module);
@@ -409,14 +405,11 @@ static bool scope_is_nominal_decl(const MsDecl *d) {
 /* A symbol the loader registered for this very declaration (an `extern type` or an exported
  * type of a bundled source module), or MS_NONE. */
 static MsSymId scope_registered_symbol(const MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {
-    if (!c->mods[module].source) {
-        return MS_NONE;
+    MsSymId found = c->mods[module].source ? ms_map_get(&c->mods[module].scope, name) : MS_NONE;
+    if (found == MS_NONE) {
+        found = ms_map_get(&c->std_types, name); // a native module's type is registered by the loader
     }
-    const MsSymId found = ms_map_get(&c->mods[module].scope, name);
-    if (found != MS_NONE && c->syms.decl[found] == d) {
-        return found;
-    }
-    return MS_NONE;
+    return found != MS_NONE && c->syms.decl[found] == d ? found : MS_NONE;
 }
 
 static MsSymId scope_declare_one(MsCheck *c, MsModId module, const MsDecl *d, MsSym name) {

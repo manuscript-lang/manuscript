@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "ms/dump.h"
+#include "ms/facts.h"
 #include "ms/walk.h"
 
 typedef struct FactsRow {
@@ -423,4 +424,37 @@ void ms_dump_module_facts(MsBuf *out, const MsCheck *c, MsModId m) {
     }
     ms_buf_free(&rows);
     ms_buf_free(&file);
+}
+
+/* The builtin kinds the typed lint rules ask about; any other type is "Other". */
+static const char *nodes_kind(const MsTyTable *tys, MsTy ty) {
+    switch (ms_ty_builtin(tys, ty)) {
+    case MS_BI_OPTIONAL: return "Optional";
+    case MS_BI_RESULT: return "Result";
+    case MS_BI_LIST: return "List";
+    case MS_BI_MAP: return "Map";
+    case MS_BI_SET: return "Set";
+    case MS_BI_BYTES: return "Bytes";
+    case MS_BI_INT: return "Int";
+    case MS_BI_FLOAT: return "Float";
+    case MS_BI_BOOL: return "Bool";
+    case MS_BI_STRING: return "String";
+    case MS_BI_VOID: return "Void";
+    case MS_BI_PROMISE: return "Promise";
+    default: return "Other";
+    }
+}
+
+void ms_dump_module_nodes(MsBuf *out, const MsCheck *c, MsModId m) {
+    const MsFacts *facts = c->mods[m].facts;
+    ms_buf_puts(out, "{\"nodes\": [");
+    const char *sep = "";
+    for (uint32_t id = 0; facts != NULL && id <= facts->node_count; id++) {
+        if (facts->expr_ty[id] == MS_TY_NONE) {
+            continue;
+        }
+        ms_buf_printf(out, "%s{\"id\": %u, \"kind\": \"%s\"}", sep, id, nodes_kind(&c->tys, facts->expr_ty[id]));
+        sep = ", ";
+    }
+    ms_buf_puts(out, "]}\n");
 }

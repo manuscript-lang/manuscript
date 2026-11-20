@@ -1,6 +1,6 @@
 /* Stands in for the runtime in compiler/tests/asm-tables.sh: the tables of compiler/tests/asm-tables/inlined.s, where
  * LLVM inlined `inner` (lines 10 and up) into `outer` (line 1). The range at line 11 must name a scope for `inner`
- * whose parent is the function itself, and the range at line 3 must stay the function's own. Exit 0 when they hold. */
+ * whose parent is the function itself and whose call line is the last line of the function before it (3), and the range at line 3 must stay the function's own. Exit 0 when they hold. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -29,7 +29,7 @@ int msrt_start(void *entry, const Tables *t, int argc, char **argv) {
     const Scope *s = &t->scopes[0];
     bad |= t->lines[0].line != 3 || t->line_scopes[0] != 0;
     bad |= t->lines[1].line != 11 || t->line_scopes[1] != 1;
-    bad |= strcmp(t->strings + s->name_offset, "inner") != 0 || s->parent != 0 || s->call_line != 0;
+    bad |= strcmp(t->strings + s->name_offset, "inner") != 0 || s->parent != 0 || s->call_line != 3;
     if (bad) {
         fputs("FAIL: the inlined callee's range does not name its own scope\n", stderr);
     }

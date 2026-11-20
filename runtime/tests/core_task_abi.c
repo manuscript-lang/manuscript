@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "../core/scheduler.h"
-#include "../core/task_abi.h"
+#include "ms_rt/task.h"
 
 static void expect(bool condition, const char *what) {
     if (!condition) {

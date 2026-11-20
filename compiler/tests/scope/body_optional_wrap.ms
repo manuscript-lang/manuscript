@@ -1,11 +1,11 @@
 fn wrap(x: Int) Int?:
-    return x
+	return x
 
 fn nothing() Int?:
-    return none
+	return none
 
 fn take(v: Int?) Int:
-    return 3
+	return 3
 
 fn main() Int:
-    return take(5) + take(none) + take(wrap(2)) + take(nothing())
+	return take(5) + take(none) + take(wrap(2)) + take(nothing())

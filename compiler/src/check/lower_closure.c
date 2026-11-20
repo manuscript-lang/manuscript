@@ -2,13 +2,16 @@
  * value is a closure with no captures that forwards to it, and a lambda is a closure function
  * whose environment holds the outer locals it reads (copies of scalars only for now). The closure
  * function is added when the lambda is met and lowered after the function that made it. */
+#include <string.h>
+
 #include "ms/lower_internal.h"
+#include "ms/mir_analysis.h"
 #include "ms/walk.h"
 
 #define LB_MAX_FN_PARAMS 16
 #define LB_MAX_CAPTURES 32
 
-bool lb_is_fn(Lb *lb, MirTy ty) {
+bool lb_is_fn(const Lb *lb, MirTy ty) {
     return ty != MIR_NONE && mir_ty_data(lb->m, mir_ty_unscoped(ty))->kind == MK_FN;
 }
 
@@ -22,8 +25,8 @@ MirTy lb_fn_ty(Lb *lb, MsTy ty) {
     if (count > LB_MAX_FN_PARAMS) {
         return MIR_NONE;
     }
-    const bool scalar = result == lb->int_ty || result == lb->float_ty || result == lb->bool_ty;
-    if (!scalar && result != lb->void_ty) {
+    const bool value = result == lb->int_ty || result == lb->float_ty || result == lb->bool_ty || result == lb->string_ty;
+    if (!value && result != lb->void_ty) {
         return MIR_NONE;
     }
     MirTy mir_params[LB_MAX_FN_PARAMS];
@@ -33,7 +36,7 @@ MirTy lb_fn_ty(Lb *lb, MsTy ty) {
             return MIR_NONE;
         }
     }
-    return mir_ty_fn(lb->m, mir_params, count, scalar ? lb_mir_ty(lb, result) : MIR_VOID, 0);
+    return mir_ty_fn(lb->m, mir_params, count, value ? lb_mir_ty(lb, result) : MIR_VOID, 0);
 }
 
 /* A name no function of the module has: `base`, else `base.1`, `base.2`, ... (what the Rust text
@@ -78,7 +81,12 @@ static uint32_t lb_thunk(Lb *lb, uint32_t func) {
     MirValue *values = MS_NEW_N(&b.scratch, MirValue, (size_t)count + 1);
     mir_b_params(&b, values, count + 1);
     const MirValue result = mir_b_call(&b, func, values + 1, count);
-    mir_b_ret(&b, ret == MIR_VOID ? mir_b_unit(&b) : result);
+    if (ret == MIR_STR && callee->ret_borrowed) { // the caller of a function value owns its String result
+        const MirImm one = {.tag = MI_INT, .i = 1};
+        mir_b_ret(&b, mir_b_emit(&b, MOP_Clone, &result, 1, one, ret));
+    } else {
+        mir_b_ret(&b, ret == MIR_VOID ? mir_b_unit(&b) : result);
+    }
     MirFunc f = {0};
     if (!mir_b_into_func(&b, &f)) {
         return MIR_NONE;
@@ -91,7 +99,7 @@ LbVal lb_function_value(Lb *lb, const MsExpr *e) {
     const uint32_t sym = lb->facts->res_ref[e->id];
     const uint32_t func = sym < lb->c->syms.count ? lb->func_of[sym] : MIR_NONE;
     const MirTy fty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
-    if (func == MIR_NONE || !lb_is_fn(lb, fty) || lb->m->funcs[func].ret_borrowed) {
+    if (func == MIR_NONE || !lb_is_fn(lb, fty)) {
         return lb_unsupported(lb);
     }
     if (lb->thunk_of[sym] == MIR_NONE) {
@@ -138,7 +146,7 @@ LbVal lb_call_value(Lb *lb, const MsExpr *e) {
     for (uint32_t i = 0; i < ntemps; i++) {
         lb_drop(lb, temps[i]);
     }
-    return (LbVal){result, false};
+    return (LbVal){result, ret == MIR_STR}; // a String result is the caller's
 }
 
 /* ---- lambdas ---- */
@@ -190,14 +198,14 @@ static bool lb_is_scalar(MirTy ty) {
 
 /* Adds the closure function with an empty body and queues it. Returns its index, or MIR_NONE. */
 static uint32_t lb_add_closure(Lb *lb, const MsExpr *e, const MirTyData *fn, const LbCaptures *found,
-                               const MirTy *cap_tys) {
+                               MirTy *cap_tys) {
     const MsStr outer = ms_name(&lb->m->names, lb->b.f.name);
     const MsStr name = ms_arena_fmt(&lb->m->arena, "%.*s.closure", (int)outer.len, outer.ptr);
     MirFunc stub = {0};
     mir_func_init(lb->m, &stub, lb_unique_name(lb, name), lb_closure_params(lb, fn), fn->nargs + 1,
                   fn->elem);
     stub.kind = MFK_CLOSURE;
-    stub.captures = (MirTy *)cap_tys;
+    stub.captures = cap_tys;
     stub.ncaptures = found->count;
     stub.keeps_scoped = lb->b.f.keeps_scoped; // a closure made inside what keeps scoped closures keeps them
     const uint32_t func = mir_add_func(lb->m, &stub);

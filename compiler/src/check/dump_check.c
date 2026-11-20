@@ -311,22 +311,61 @@ static void dump_stmts(MsBuf *out, const MsCheck *c, const MsFacts *facts, const
     }
 }
 
-/* The declaration's diagnostics: those of the module on lines from its own to the next
- * declaration's, as the Rust oracle attributes them. */
-static bool dump_in_function(const MsModuleRow *row, uint32_t index, const MsDiag *diag) {
-    const uint32_t first = row->syntax->decls[index]->pos.line;
-    const uint32_t end = index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
-    return diag->pos.line >= first && diag->pos.line < end;
-}
-
-/* The diagnostics inside declaration `index`, one `diag L:C: message` line each. */
-static void dump_function_diags(MsBuf *out, const MsModuleRow *row, uint32_t index) {
+/* The diagnostics on lines `first` up to (not including) `end`, one `diag L:C: message` line each:
+ * a function owns the lines from its own to the next declaration's, as the Rust oracle attributes
+ * them. */
+static void dump_function_diags(MsBuf *out, const MsModuleRow *row, uint32_t first, uint32_t end) {
     for (uint32_t k = 0; k < row->ndiags; k++) {
         const MsDiag *diag = &row->diags[k].diag;
-        if (dump_in_function(row, index, diag)) {
+        if (diag->pos.line >= first && diag->pos.line < end) {
             ms_buf_printf(out, "diag %u:%u: %.*s\n", diag->pos.line, diag->pos.column, (int)diag->message.len,
                           diag->message.ptr);
         }
+    }
+}
+
+static uint32_t dump_decl_end(const MsModuleRow *row, uint32_t index) {
+    return index + 1 < row->syntax->ndecls ? row->syntax->decls[index + 1]->pos.line : UINT32_MAX;
+}
+
+/* Calls `visit` for each method an impl of the module wrote, with the lines it owns: from its name to
+ * the next method of the impl, or the next declaration. */
+typedef void (*DumpMethodFn)(void *state, const MsMethod *method, uint32_t first, uint32_t end);
+
+static void dump_each_method(const MsModuleRow *row, DumpMethodFn visit, void *state) {
+    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+        const MsDecl *d = row->syntax->decls[i];
+        if (d->kind != MS_D_IMPL) {
+            continue;
+        }
+        for (uint32_t k = 0; k < d->u.impl.methods.len; k++) {
+            const MsMethod *method = d->u.impl.methods.ptr[k];
+            const uint32_t end = k + 1 < d->u.impl.methods.len ? d->u.impl.methods.ptr[k + 1]->pos.line
+                                                                : dump_decl_end(row, i);
+            visit(state, method, method->pos.line, end);
+        }
+    }
+}
+
+typedef struct DumpBodies {
+    MsBuf *out;
+    const MsCheck *c;
+    const MsFacts *facts;
+    const MsModuleRow *row;
+    const bool *declined;
+    bool ownership;
+} DumpBodies;
+
+static void dump_method_body(void *state, const MsMethod *method, uint32_t first, uint32_t end) {
+    const DumpBodies *d = state;
+    if (!d->facts->body_checked[method->id]) {
+        return;
+    }
+    ms_buf_printf(d->out, "fn %u:%u%s\n", method->pos.line, method->pos.column,
+                  !d->ownership && d->declined != NULL && d->declined[method->id] ? " ownership-declined" : "");
+    dump_function_diags(d->out, d->row, first, end);
+    if (!d->ownership) {
+        dump_stmts(d->out, d->c, d->facts, &method->func.body);
     }
 }
 
@@ -341,12 +380,16 @@ void ms_dump_module_bodies(MsBuf *out, const MsCheck *c, MsModId m, const bool *
         const bool constant = d->kind == MS_D_CONST;
         ms_buf_printf(out, "%s %u:%u%s\n", constant ? "const" : "fn", d->pos.line, d->pos.column,
                       declined != NULL && declined[d->id] ? " ownership-declined" : "");
-        dump_function_diags(out, row, i);
+        dump_function_diags(out, row, d->pos.line, dump_decl_end(row, i));
         if (constant) {
             dump_expr(out, c, facts, d->u.konst.value);
         } else {
             dump_stmts(out, c, facts, &d->u.fn.body);
         }
+    }
+    if (facts != NULL && facts->body_checked != NULL) {
+        DumpBodies state = {.out = out, .c = c, .facts = facts, .row = row, .declined = declined};
+        dump_each_method(row, dump_method_body, &state);
     }
 }
 
@@ -359,29 +402,53 @@ void ms_dump_module_ownership(MsBuf *out, const MsCheck *c, MsModId m) {
             continue;
         }
         ms_buf_printf(out, "fn %u:%u\n", d->pos.line, d->pos.column);
-        dump_function_diags(out, row, i);
+        dump_function_diags(out, row, d->pos.line, dump_decl_end(row, i));
+    }
+    if (facts != NULL && facts->body_checked != NULL) {
+        DumpBodies state = {.out = out, .c = c, .facts = facts, .row = row, .ownership = true};
+        dump_each_method(row, dump_method_body, &state);
     }
 }
 
-void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m) {
+/* `word a,b,c`, the names sorted by the caller; nothing for an empty list. */
+static void dump_names(MsBuf *out, const char *word, const MsStr *names, uint32_t count) {
+    if (count == 0) {
+        return;
+    }
+    ms_buf_printf(out, "%s ", word);
+    for (uint32_t k = 0; k < count; k++) {
+        ms_buf_printf(out, "%s%.*s", k == 0 ? "" : ",", (int)names[k].len, names[k].ptr);
+    }
+    ms_buf_printf(out, "\n");
+}
+
+void ms_dump_module_effects(MsBuf *out, const MsCheck *c, MsModId m, MsStr text) {
     const MsModuleRow *row = &c->mods[m];
     const MsFacts *facts = row->facts;
     MsArena scratch = {0};
+    uint32_t nrows = 0;
+    const MsEntityEffects *rows = ms_effect_facts(&scratch, c, m, text, &nrows);
     for (uint32_t i = 0; facts != NULL && facts->body_checked != NULL && i < row->syntax->ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
         if ((d->kind != MS_D_FN && d->kind != MS_D_CONST) || !facts->body_checked[d->id]) {
             continue;
         }
-        const MsScanNode node = ms_effect_scan_decl(&scratch, c, m, d);
-        if (node.partial) {
-            continue;
+        const MsEntityEffects *facts_row = NULL;
+        for (uint32_t r = 0; r < nrows; r++) {
+            facts_row = rows[r].decl == d ? &rows[r] : facts_row;
         }
+        if (facts_row == NULL || facts_row->partial) {
+            continue; // what it reaches is not fully visible yet: not claimed
+        }
+        const MsScanNode node = ms_effect_scan_decl(&scratch, c, m, d);
         ms_buf_printf(out, "%s %u:%u\n", d->kind == MS_D_CONST ? "const" : "fn", d->pos.line, d->pos.column);
         for (uint32_t k = 0; k < node.nedges; k++) {
             const MsStr name = ms_name(c->names, c->syms.name[node.edges[k].callee]);
             ms_buf_printf(out, "edge %.*s %u:%u\n", (int)name.len, name.ptr, node.edges[k].pos.line,
                           node.edges[k].pos.column);
         }
+        dump_names(out, "reach", facts_row->effects, facts_row->neffects);
+        dump_names(out, "permits", facts_row->permits, facts_row->npermits);
     }
     ms_arena_free(&scratch);
 }

@@ -10,6 +10,7 @@
 
 #include "ms/lock.h"
 #include "ms/project.h"
+#include "ms/resolve.h"
 
 enum { MAX_LINE = 65535 };
 
@@ -938,7 +939,7 @@ static bool manifest_finish(Builder *b) {
     return manifest_check_declared(b);
 }
 
-static const char *manifest_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
+const char *ms_project_read_file(MsArena *a, const char *path, size_t *length, MsProjectError *err) {
     FILE *f = fopen(path, "rbe");
     if (f == NULL) {
         ms_project_error_path(err, a, "open", path, errno);
@@ -976,7 +977,7 @@ bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProject
     *out = (MsProject){.root = root, .file = ms_path_base(a, absolute), .name = "", .source = "", .entry = ""};
     out->location = (MsPos){.line = 1, .column = 1};
     size_t length = 0;
-    out->configuration = manifest_read_file(a, absolute, &length, err);
+    out->configuration = ms_project_read_file(a, absolute, &length, err);
     if (out->configuration == NULL) {
         return false;
     }
@@ -1024,6 +1025,11 @@ bool ms_project_read(MsArena *a, const char *manifest, MsProject *out, MsProject
     ms_buf_free(&b.effects);
     ms_buf_free(&b.assignments);
     return ok;
+}
+
+const char *ms_project_dependency_row(MsArena *a, const MsDependency *d) {
+    static const char *const kinds[] = {"tag", "sha", "version"};
+    return ms_arena_fmt(a, "%s\t%s\t%s\t%s", d->alias, d->url, kinds[d->kind], d->kind == MS_DEP_VERSION ? ms_dependency_describe(a, d) : d->reference).ptr;
 }
 
 const char *ms_project_find_manifest(MsArena *a, const char *filename) {

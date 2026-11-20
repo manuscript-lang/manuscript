@@ -13,7 +13,7 @@
 enum { LISTEN_BACKLOG = 1024 };
 
 uint8_t msstd_net_dial_unix(const MsStr *path, void **out, MsStr *err) {
-    ms_net_clear_text(err);
+    ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     const size_t length = msrt_str_len(path);
     const char *text = msrt_str_data(path);
     if (length == 0 || memchr(text, 0, length) != NULL) {
@@ -46,7 +46,7 @@ uint8_t msstd_net_dial_unix(const MsStr *path, void **out, MsStr *err) {
 }
 
 uint8_t msstd_net_listen_unix(const MsStr *path, void **out, MsStr *err) {
-    ms_net_clear_text(err);
+    ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     const size_t length = msrt_str_len(path);
     if (length == 0 || memchr(msrt_str_data(path), 0, length) != NULL) {
         return STATUS_INVALID_INPUT;

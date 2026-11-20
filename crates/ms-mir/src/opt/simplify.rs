@@ -794,6 +794,11 @@ fn float_and_optional_rule(f: &mut Func, env: &mut Env, inst: &Inst) -> Act {
                     Op::FMul => p * q,
                     _ => p / q,
                 };
+                let r = if inst.res.is_some_and(|x| f.ty(x) == Ty::FLOAT32) {
+                    (r as f32) as f64
+                } else {
+                    r
+                };
                 Act::Const(K::F(r.to_bits()))
             }
             _ => Act::Keep,
@@ -808,6 +813,11 @@ fn float_and_optional_rule(f: &mut Func, env: &mut Env, inst: &Inst) -> Act {
                     Op::FCeil => p.ceil(),
                     Op::FTrunc => p.trunc(),
                     _ => p.abs(),
+                };
+                let r = if inst.res.is_some_and(|x| f.ty(x) == Ty::FLOAT32) {
+                    (r as f32) as f64
+                } else {
+                    r
                 };
                 Act::Const(K::F(r.to_bits()))
             }

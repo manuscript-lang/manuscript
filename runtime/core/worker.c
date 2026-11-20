@@ -6,6 +6,7 @@
 #include "ms_rt/alloc.h"
 #include "ms_rt/sys.h"
 #include "scheduler.h"
+#include "sweep.h"
 
 enum { WORKER_STACK = 0 };
 
@@ -28,6 +29,11 @@ void ms_workers_configure(const MsWorkerEnv *env) {
     atomic_store(&limit_cache, env->limit < 1 ? 1 : env->limit);
 }
 
+void ms_workers_set_limit(uint32_t limit) {
+    const uint32_t bounded = limit < 1 ? 1 : (limit > MS_MAX_ISOLATES ? MS_MAX_ISOLATES : limit);
+    atomic_store(&limit_cache, bounded);
+}
+
 uint32_t ms_workers_limit(void) { return atomic_load_explicit(&limit_cache, memory_order_relaxed); }
 
 /* The worker's only task: it waits for the stop request while the scheduler's idle hook runs promises. */
@@ -36,7 +42,13 @@ static void root_entry(void *argument) {
     const uint64_t token = ms_token_new(0);
     uint64_t value = 0;
     uint32_t result = 0;
-    while (token != 0 && ms_token_park(token, -1, &value, &result) == MS_TOKEN_OK && result != MS_WAIT_CANCELLED) {
+    for (;;) {
+        ms_sweep_internal(true); /* the scheduler's own wait, not an await point of the program */
+        const MsTokenStatus status = token != 0 ? ms_token_park(token, -1, &value, &result) : MS_TOKEN_NO_SUCH_TOKEN;
+        ms_sweep_internal(false);
+        if (status != MS_TOKEN_OK || result == MS_WAIT_CANCELLED) {
+            break;
+        }
         /* woken by nothing: wait again */
     }
 }

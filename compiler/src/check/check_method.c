@@ -7,6 +7,10 @@
  * `call_receiver`. */
 #include "check/check_body.h"
 
+#include <stdio.h>
+#include <string.h>
+
+#include "ms/implements.h"
 #include "ms/infer.h"
 
 typedef struct Target {
@@ -20,14 +24,32 @@ typedef struct Target {
  * native built-in: they are one type when the name and the arguments agree. */
 static bool row_receiver_fits(const MsBody *b, MsInfer *in, MsTy pattern, MsTy actual) {
     const MsTyTable *tys = &b->c->tys;
-    const bool same_native = ms_ty_kind(tys, actual) == MS_K_NATIVE && ms_ty_kind(tys, pattern) == MS_K_TYPE &&
-                             tys->name[pattern] == tys->name[actual] && tys->nargs[pattern] == tys->nargs[actual];
+    // The standard type as the program writes it (`List[Int]`, `Int?`) is the one its module declares
+    // (`List[T]`, `Optional[T]`) when both have the same standard identity (`@std/Optional`).
+    const MsBuiltin declared = ms_body_standard_identity(b, pattern);
+    const bool same_native = declared != MS_B_NONE && declared == ms_body_standard_identity(b, actual) &&
+                             tys->id[pattern] != tys->id[actual] && tys->nargs[pattern] == tys->nargs[actual];
     if (!same_native) {
         return ms_infer_match(in, pattern, actual) == MS_MATCH_OK;
     }
     for (uint32_t i = 0; i < tys->nargs[pattern]; i++) {
         if (ms_infer_match(in, ms_ty_args(tys, pattern)[i], ms_ty_args(tys, actual)[i]) != MS_MATCH_OK) {
             return false;
+        }
+    }
+    return true;
+}
+
+/* Whether each variable the match bound meets the interfaces that bound it (`T: Numeric`); a bound
+ * the tables cannot answer counts as unmet, which leaves the call to the Rust checker. */
+static bool row_bounds_met(const MsBody *b, MsInfer *in) {
+    for (uint32_t i = 0; i < in->nvars; i++) {
+        const MsVarInfo *info = ms_var_info(b->c, in->vars[i]);
+        for (uint32_t k = 0; k < info->nbounds; k++) {
+            const MsTy contract = ms_infer_apply(in, info->bounds[k]);
+            if (in->bound[i] == MS_TY_NONE || ms_implements(b->c, b->methods, in->bound[i], contract) != MS_FIT_YES) {
+                return false;
+            }
         }
     }
     return true;
@@ -44,7 +66,8 @@ static MsTy row_signature(const MsBody *b, uint32_t i, MsTy receiver) {
     MsInfer in;
     ms_infer_init(&in, b->c, &b->c->arena, m->vars + m->vars_at[i], m->nvars[i]);
     uint32_t first = 0;
-    if (!row_receiver_fits(b, &in, m->receiver[i], receiver) || ms_infer_defaults(&in, &first) != 0) {
+    if (!row_receiver_fits(b, &in, m->receiver[i], receiver) || ms_infer_defaults(&in, &first) != 0 ||
+        !row_bounds_met(b, &in)) {
         return MS_TY_NONE;
     }
     return ms_infer_apply(&in, m->ty[i]);
@@ -95,8 +118,9 @@ static bool operation_of(const MsBody *b, MsTy contract, MsSym name, Target *out
 }
 
 /* The operation `name` of the interface `iface_name` of `@std/intrinsics.ms`: what a primitive
- * receiver offers beyond the methods of impls. Only operations without type variables. */
-static bool intrinsic_in(const MsBody *b, const char *iface_name, MsSym name, Target *out) {
+ * receiver offers beyond the methods of impls. An interface over the receiver type (`CloneOperations[T]`)
+ * is applied to `receiver`; operations with type variables of their own are left out. */
+static bool intrinsic_in(const MsBody *b, const char *iface_name, MsTy receiver, MsSym name, Target *out) {
     MsCheck *c = b->c;
     const uint32_t module = ms_map_get(&c->module_by_path, ms_intern_cstr(c->names, "@std/intrinsics.ms"));
     if (module == MS_NONE) {
@@ -106,10 +130,21 @@ static bool intrinsic_in(const MsBody *b, const char *iface_name, MsSym name, Ta
     const MsOperations *ops = sym == MS_NONE ? NULL : ms_interface_operations(b->methods, sym);
     for (uint32_t i = 0; ops != NULL && i < ops->count; i++) {
         const MsOperation *op = &ops->items[i];
-        if (op->name == name) {
-            *out = (Target){.sig = op->ty, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
-            return op->nvars == 0;
+        if (op->name != name || op->nvars != 0) {
+            continue;
         }
+        MsTy sig = op->ty;
+        const MsDef *definition = ms_def(c, sym);
+        if (definition != NULL && definition->nvars != 0) {
+            MsInfer in;
+            ms_infer_init(&in, c, &c->arena, definition->vars, definition->nvars);
+            if (definition->nvars != 1 || !ms_infer_give(&in, &receiver, 1)) {
+                return false;
+            }
+            sig = ms_infer_apply(&in, sig);
+        }
+        *out = (Target){.sig = sig, .method = MS_NONE, .mutating = op->decl->mutating, .consuming = op->decl->consuming};
+        return true;
     }
     return false;
 }
@@ -124,14 +159,33 @@ static bool intrinsic_operation(const MsBody *b, MsTy receiver, MsSym name, Targ
     } else if (receiver == b->float_ty) {
         own = "FloatOperations";
     }
-    return (own != NULL && intrinsic_in(b, own, name, out)) || intrinsic_in(b, "ValueOperations", name, out);
+    return (own != NULL && intrinsic_in(b, own, receiver, name, out)) ||
+           intrinsic_in(b, "ValueOperations", receiver, name, out) || intrinsic_in(b, "CloneOperations", receiver, name, out);
+}
+
+/* The natives whose result points into their receiver (`view`, `split`, `chars`, ...): the
+ * ownership walk does not follow those borrows yet, so a call of one leaves the function to the Rust
+ * checker. Mirrors `native_borrow` of the Rust checker, the one place a method name decides ownership. */
+static bool native_result_borrows(const MsBody *b, MsTy receiver, MsSym name, uint32_t nargs) {
+    static const struct {
+        const char *name;
+        uint32_t min_args, max_args;
+    } derived[] = {{"view", 2, 2}, {"view_bytes", 0, 0}, {"split", 1, 2}, {"lines", 0, 0}, {"chars", 0, 0}};
+    const MsStr text = ms_name(b->c->names, name);
+    for (size_t i = 0; i < sizeof derived / sizeof *derived; i++) {
+        if (strlen(derived[i].name) == text.len && memcmp(derived[i].name, text.ptr, text.len) == 0 &&
+            nargs >= derived[i].min_args && nargs <= derived[i].max_args) {
+            return receiver == b->string_ty;
+        }
+    }
+    return false;
 }
 
 static bool body_is_primitive(const MsBody *b, MsTy ty) {
     return ty == b->string_ty || ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty;
 }
 
-static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
+static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig) {
     const MsTyTable *tys = &b->c->tys;
     if (ms_ty_kind(tys, sig) != MS_K_FUNCTION || tys->nparams[sig] != e->u.call.args.len) {
         return false;
@@ -139,16 +193,16 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
     const MsTyParam *params = ms_ty_params(tys, sig);
     for (uint32_t i = 0; i < e->u.call.args.len; i++) {
         const MsArg *arg = &e->u.call.args.ptr[i];
-        const bool primitive = params[i].ty == b->int_ty || params[i].ty == b->float_ty ||
-                               params[i].ty == b->bool_ty || params[i].ty == b->string_ty;
-        if (arg->has_name || params[i].flags != 0 || !primitive ||
+        MsTy payload = MS_TY_NONE;
+        const bool optional = ms_body_optional_payload(b, params[i].ty, &payload);
+        if (arg->has_name || (params[i].flags & ~MS_PARAM_MOVE) != 0 || (!ms_body_is_admitted(b, params[i].ty) && !optional) ||
             ms_body_expr(b, arg->value, params[i].ty) == MS_TY_NONE) {
             return false;
         }
     }
     const MsTy result = tys->result[sig];
     return result == b->int_ty || result == b->float_ty || result == b->bool_ty || result == b->string_ty ||
-           (wide && (result == b->void_ty || ms_body_is_result(b, result)));
+           result == b->void_ty || ms_body_is_bindable(b, result);
 }
 
 /* `receiver.name(args)` on a primitive receiver of any shape (a local, a literal, another call):
@@ -157,9 +211,9 @@ static bool arguments_fit(MsBody *b, const MsExpr *e, MsTy sig, bool wide) {
 static MsTy body_intrinsic_call(MsBody *b, const MsExpr *e, MsTy receiver_ty) {
     const MsExpr *callee = e->u.call.callee;
     Target target;
-    // A String result may be a view of the receiver (`view`), which the ownership walk does not follow yet.
     if (!intrinsic_operation(b, receiver_ty, callee->u.member.name, &target) || target.consuming || target.mutating ||
-        b->c->tys.result[target.sig] == b->string_ty || !arguments_fit(b, e, target.sig, false)) {
+        native_result_borrows(b, receiver_ty, callee->u.member.name, e->u.call.args.len) ||
+        !arguments_fit(b, e, target.sig)) {
         return ms_body_unsupported(b);
     }
     b->facts->call_interface[e->id] = receiver_ty;
@@ -205,7 +259,7 @@ static MsTy body_resolved_call(MsBody *b, const MsExpr *e, MsTy receiver_ty, uin
     const bool immutable = binding != MS_NONE && (b->facts->bindings.flags[binding] & MS_BIND_MUTABLE) == 0;
     if (!resolved || target.consuming || (target.mutating && immutable) ||
         (binding != MS_NONE && ms_body_expr(b, callee->u.member.left, receiver_ty) == MS_TY_NONE) ||
-        !arguments_fit(b, e, target.sig, binding == MS_NONE)) {
+        !arguments_fit(b, e, target.sig)) {
         return ms_body_unsupported(b);
     }
     if (target.method == MS_NONE) {
@@ -234,8 +288,9 @@ MsTy ms_body_method_call(MsBody *b, const MsExpr *e) {
         if (body_is_primitive(b, receiver_ty)) {
             return body_intrinsic_call(b, e, receiver_ty);
         }
-        return receiver_ty != MS_TY_NONE && ms_body_is_handle(b, receiver_ty) ? body_resolved_call(b, e, receiver_ty, MS_NONE)
-                                                                              : ms_body_unsupported(b);
+        return receiver_ty != MS_TY_NONE && (ms_body_is_handle(b, receiver_ty) || ms_body_is_bindable(b, receiver_ty))
+                   ? body_resolved_call(b, e, receiver_ty, MS_NONE)
+                   : ms_body_unsupported(b);
     }
     return body_resolved_call(b, e, local_ty, binding);
 }

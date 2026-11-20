@@ -93,21 +93,25 @@ typedef struct MsNetHttpOptions {
     MsStr roots_pem;          /* extra trusted roots; empty for the system's */
     MsStr certificate_pem;    /* a client certificate and its key, or empty */
     MsStr private_key_pem;
+    MsStr resolver;           /* "ip:port" of the DNS server that resolves this client's names, or empty for the system's;
+                                 redirects are then followed by the client natives, resolving each new host through it */
     MsStr unix_socket;        /* a Unix domain socket path used for every connection instead of TCP, or empty; the URL still
                                  gives the Host header and scheme. Refused for a narrowed client. */
     int64_t max_redirects;    /* 0 follows none; negative takes 20 */
     uint8_t cookies;          /* keep cookies across this client's requests */
     uint8_t decompress;       /* ask for gzip and deflate and decode them */
 } MsNetHttpOptions;
-/* ms-sig: msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=network */
+/* ms-sig: msstd_client_new(options: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err);
-/* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=network */
+/* ms-sig: msstd_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle @domain=HTTP */
 void *msstd_client_share(const void *handle);
+/* Whether two client handles are on the same client (runtime/net/scope.c). */
+bool ms_client_same(const void *a, const void *b);
 /* Ends the client's transfers (a body read or a request in progress returns STATUS_CLOSED) and refuses later requests
  * with STATUS_CLOSED. Safe to repeat. */
-/* ms-sig: msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=network */
+/* ms-sig: msstd_client_close(handle c: *const ObjCell<ClientH>) @domain=HTTP */
 void msstd_client_close(const void *handle);
-/* ms-sig: msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=network */
+/* ms-sig: msstd_client_narrow(handle c: *const ObjCell<ClientH>, hosts: *const VecVal, cidrs: *const VecVal) -> u8 @domain=HTTP */
 uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec *cidrs);
 
 /* One request: the response head in the body object, the body streamed by `msstd_body_read`. `url` is absolute
@@ -116,7 +120,7 @@ uint8_t msstd_client_narrow(const void *handle, const MsVec *hosts, const MsVec 
  * Transfer-Encoding are written by the client and refused as caller fields. The timeout covers the whole exchange,
  * body reads included. Redirects, cookies and decompression follow the client's options; the version is chosen by
  * ALPN. */
-/* ms-sig: msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=network */
+/* ms-sig: msstd_client_fetch(handle c: *const ObjCell<ClientH>, method: *const StrVal, url: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_client_fetch(const void *handle, const MsStr *method, const MsStr *url, const void *headers, const MsVec *body, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
 
 /* BodyMetadata flattened: the status, a copy of the response headers and the protocol ("HTTP/1.1" or "HTTP/2.0").
@@ -131,13 +135,13 @@ typedef struct MsNetBodyMetadata {
  * `read_all` returns the rest, STATUS_LIMIT_EXCEEDED when it passes `max`. The bytes are the message body with the
  * transfer framing removed (and the content-encoding decoded when the client decompresses). Closing a body that was
  * read to its end returns the connection to the client's pool; any other close drops it. */
-/* ms-sig: msstd_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
+/* ms-sig: msstd_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_body_read(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
-/* ms-sig: msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
+/* ms-sig: msstd_body_read_all(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_body_read_all(const void *handle, uint8_t has_max, int64_t max, MsVec *out, MsStr *err);
-/* ms-sig: msstd_body_metadata(handle b: *const ObjCell<BodyH>, out: *mut MetadataWire) @domain=network */
+/* ms-sig: msstd_body_metadata(handle b: *const ObjCell<BodyH>, out: *mut MetadataWire) @domain=HTTP */
 void msstd_body_metadata(const void *handle, MsNetBodyMetadata *out);
-/* ms-sig: msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=network */
+/* ms-sig: msstd_body_close(handle b: *const ObjCell<BodyH>) @domain=HTTP */
 void msstd_body_close(const void *handle);
 
 /* Datagram sockets (DgramH): a UDP socket bound to a literal address. Addresses are text, "1.2.3.4:80"; a name is
@@ -185,6 +189,11 @@ void msstd_scope_close(const void *handle);
 uint8_t msstd_scope_track_conn(const void *handle, const void *connection);
 /* ms-sig: msstd_scope_track_listener(handle s: *const ObjCell<ScopeH>, handle listener: *const ObjCell<ListenerH>) -> u8 @domain=network */
 uint8_t msstd_scope_track_listener(const void *handle, const void *listener);
+/* ms-sig: msstd_scope_track_client(handle s: *const ObjCell<ScopeH>, handle client: *const ObjCell<ClientH>) -> u8 @domain=network */
+uint8_t msstd_scope_track_client(const void *handle, const void *client);
+/* Forgets a client the scope tracked, for one that ended before the network did; 1 when it was tracked. */
+/* ms-sig: msstd_scope_untrack_client(handle s: *const ObjCell<ScopeH>, handle client: *const ObjCell<ClientH>) -> u8 @domain=network */
+uint8_t msstd_scope_untrack_client(const void *handle, const void *client);
 /* ms-sig: msstd_scope_track_dgram(handle s: *const ObjCell<ScopeH>, handle socket: *const ObjCell<DgramH>) -> u8 @domain=network */
 uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
 
@@ -198,6 +207,14 @@ uint8_t msstd_scope_track_dgram(const void *handle, const void *socket);
 uint8_t msstd_conn_start_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
 /* ms-sig: msstd_conn_accept_tls(handle c: *const ObjCell<ConnH>, options: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_conn_accept_tls(const void *handle, const MsNetTlsOptions *options, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+/* A server context built once and shared by every connection a listener accepts, so the certificate is parsed once
+ * (STATUS_INVALID_INPUT for unusable options). `accept_tls_with` is accept_tls on such a context. */
+/* ms-sig: msstd_tls_server_new(options: *const TlsOptionsWire, out: *mut *mut ObjCell<TlsServerH>) -> u8 @domain=network */
+uint8_t msstd_tls_server_new(const MsNetTlsOptions *options, void **out);
+/* ms-sig: msstd_tls_server_share(handle s: *const ObjCell<TlsServerH>) -> *mut ObjCell<TlsServerH> @handle @domain=network */
+void *msstd_tls_server_share(const void *handle);
+/* ms-sig: msstd_conn_accept_tls_with(handle c: *const ObjCell<ConnH>, handle server: *const ObjCell<TlsServerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_conn_accept_tls_with(const void *handle, const void *server, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
 /* The application protocol the handshake chose ("h2", "http/1.1"), empty for none or a plain connection. */
 /* ms-sig: msstd_conn_alpn(handle c: *const ObjCell<ConnH>, out: *mut StrVal) @domain=network */
 void msstd_conn_alpn(const void *handle, MsStr *out);
@@ -294,5 +311,39 @@ uint8_t msstd_net_listen_unix(const MsStr *path, void **out, MsStr *err);
 void *msstd_listener_share(const void *handle);
 /* ms-sig: msstd_listener_close(handle l: *const ObjCell<ListenerH>) @domain=network */
 void msstd_listener_close(const void *handle);
+
+/* ---- WebSocket sessions (SocketH) ---- */
+
+/* Runs the WebSocket handshake on `conn`, a ConnH the caller dialed and checked against its policy (TLS included),
+ * and gives the SocketH in *out. `headers` is a HeadersH or NULL; `subprotocols` a list of Str to offer. The handle
+ * holds its own alias of the connection; the caller keeps theirs. A field the caller may not set (Host, Upgrade,
+ * Connection, Sec-WebSocket-*) is STATUS_INVALID_INPUT; a refused or malformed answer is STATUS_FAILED with the reason
+ * in `err`. `max` limits one message (default none). */
+/* ms-sig: msstd_ws_connect(handle conn: *const ObjCell<ConnH>, authority: *const StrVal, target: *const StrVal, handle headers: *const ObjCell<HeadersH>, subprotocols: *const VecVal, compression: u8, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<SocketH>, err: ErrSlot) -> u8 @domain=network */
+uint8_t msstd_ws_connect(const void *conn, const MsStr *authority, const MsStr *target, const void *headers, const MsVec *subprotocols, uint8_t compression, uint8_t has_max, int64_t max, uint8_t has_timeout, int64_t timeout, void **out, MsStr *err);
+
+/* One received message at its natural layout: the payload, then 1 for a text frame. */
+typedef struct MsNetWsMessage {
+    MsVec data;
+    uint8_t text;
+} MsNetWsMessage;
+
+/* ms-sig: msstd_websocket_close(handle s: *const ObjCell<SocketH>) @domain=WebSocket */
+void msstd_websocket_close(const void *handle);
+/* ms-sig: msstd_websocket_share(handle s: *const ObjCell<SocketH>) -> *mut ObjCell<SocketH> @handle @domain=WebSocket */
+void *msstd_websocket_share(const void *handle);
+/* ms-sig: msstd_websocket_close_if_last(handle s: *const ObjCell<SocketH>) @domain=WebSocket */
+void msstd_websocket_close_if_last(const void *handle);
+/* ms-sig: msstd_websocket_subprotocol(handle s: *const ObjCell<SocketH>, out: *mut StrVal) @domain=WebSocket */
+void msstd_websocket_subprotocol(const void *handle, MsStr *out);
+/* ms-sig: msstd_websocket_ping(handle s: *const ObjCell<SocketH>, data: *const StrVal, err: ErrSlot) -> u8 @domain=WebSocket */
+uint8_t msstd_websocket_ping(const void *handle, const MsStr *data, MsStr *err);
+/* ms-sig: msstd_websocket_ping_bytes(handle s: *const ObjCell<SocketH>, data: *const VecVal, err: ErrSlot) -> u8 @domain=WebSocket */
+uint8_t msstd_websocket_ping_bytes(const void *handle, const MsVec *data, MsStr *err);
+/* ms-sig: msstd_websocket_send_bytes(handle s: *const ObjCell<SocketH>, data: *const VecVal, text: u8, err: ErrSlot) -> u8 @domain=WebSocket */
+uint8_t msstd_websocket_send_bytes(const void *handle, const MsVec *data, uint8_t text, MsStr *err);
+/* The next message; STATUS_NONE (nothing written) when the peer closed normally. */
+/* ms-sig: msstd_websocket_receive(handle s: *const ObjCell<SocketH>, out: *mut WebSocketMessageType, err: ErrSlot) -> u8 @domain=WebSocket */
+uint8_t msstd_websocket_receive(const void *handle, MsNetWsMessage *out, MsStr *err);
 
 #endif

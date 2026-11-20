@@ -296,7 +296,7 @@ static bool lu_plain(const MirModule *m, MirTy t, uint32_t *seen, uint32_t gen) 
     case MK_LIST: case MK_OPT:
         return lu_plain(m, d->elem, seen, gen);
     case MK_OBJ: {
-        if (!mir_name_is(m, d->name, "Map") && !mir_name_is(m, d->name, "Set")) {
+        if (d->obj_class != MIR_OBJ_COLLECTION) {
             return false;
         }
         for (uint32_t i = 0; i < d->nargs; i++) {

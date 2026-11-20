@@ -160,7 +160,6 @@ pub enum HelperKey {
     TostringThunk(MTy, bool),
     MsFn(MTy),
     WalkThunk(MTy, bool),
-    ServeThunk(MTy),
 }
 
 /// Identity of a generated interface implementation table.

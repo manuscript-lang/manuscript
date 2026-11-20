@@ -4,11 +4,13 @@
 #endif
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include "ms/project.h"
+#include "ms_rt/sys_fs.h"
 
 /* ---- errors ---- */
 
@@ -387,4 +389,42 @@ bool ms_path_eval_symlinks(MsArena *a, const char *input, const char **out, MsPr
     ms_buf_free(&w.path);
     ms_buf_free(&w.dest);
     return ok;
+}
+
+/* ---- directories ---- */
+
+static int path_name_order(const void *left, const void *right) {
+    return strcmp(*(const char *const *)left, *(const char *const *)right);
+}
+
+bool ms_path_list_dir(MsArena *a, const char *dir, const char *open_op, const char *const **names, uint32_t *count, MsProjectError *err) {
+    MsSysDir *handle;
+    MsSysError failure = ms_sys_fs_dir_open(dir, &handle);
+    if (failure != 0) {
+        ms_project_error_path(err, a, open_op, dir, failure);
+        return false;
+    }
+    MsBuf found = {0};
+    MsSysDirEntry entry;
+    bool more = true;
+    while (more && (failure = ms_sys_fs_dir_read(handle, &entry, &more)) == 0 && more) {
+        MS_VEC_PUSH(found, const char *, ms_arena_strndup(a, entry.name, entry.name_length));
+    }
+    ms_sys_fs_dir_close(handle);
+    if (failure != 0) {
+        ms_buf_free(&found);
+        ms_project_error_path(err, a, "readdirent", dir, failure);
+        return false;
+    }
+    *count = (uint32_t)MS_VEC_LEN(found, const char *);
+    const char **sorted = MS_NEW_N(a, const char *, *count + 1);
+    for (uint32_t i = 0; i < *count; i++) {
+        sorted[i] = MS_VEC_AT(found, const char *, i);
+    }
+    ms_buf_free(&found);
+    if (*count > 1) {
+        qsort(sorted, *count, sizeof(const char *), path_name_order);
+    }
+    *names = sorted;
+    return true;
 }

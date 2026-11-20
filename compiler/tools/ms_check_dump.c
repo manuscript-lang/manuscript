@@ -99,8 +99,16 @@ static bool add_project(MsCheck *check, MsNames *names, const char *path, MsModI
  * `c_oracle --scope` prints. Files that fail to parse or import project modules print nothing. */
 static bool project_mode;
 
+/* 1 for --facts, 2 for --nodes: the modes that print one JSON document per file. */
+static int json_mode_of(const char *flag) {
+    if (strcmp(flag, "--facts") == 0) {
+        return 1;
+    }
+    return strcmp(flag, "--nodes") == 0 ? 2 : 0;
+}
+
 static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *names, int nfiles_in, char **paths,
-                                    bool bodies, bool ownership, bool effects, bool facts_json) {
+                                    bool bodies, bool ownership, bool effects, int json_mode) {
     for (int i = 0; i < nfiles_in; i++) {
         FILE *f = fopen(paths[i], "rb");
         if (f == NULL) {
@@ -119,7 +127,7 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
         MsModId id = MS_NONE;
         MsStr project_text = {0};
         const char *check_text = text;
-        const bool project = project_mode && parsed && !only_std_imports(module) && bodies && !ownership && !effects && !facts_json &&
+        const bool project = project_mode && parsed && !only_std_imports(module) && bodies && !ownership && !effects && json_mode == 0 &&
                              add_project(check, names, paths[i], &id, &project_text);
         if (project) {
             check_text = project_text.ptr;
@@ -130,8 +138,13 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
                 id = ms_module_add(check, ms_intern_cstr(names, "main.ms"), module);
             }
             MsBuf dump = {0};
-            if (facts_json) {
-                ms_dump_module_facts(&dump, check, id);
+            if (json_mode != 0) {
+                if (json_mode == 1) {
+                    ms_dump_module_facts(&dump, check, id);
+                } else {
+                    check_bodies_with_methods(check, id, check_text, (size_t)n);
+                    ms_dump_module_nodes(&dump, check, id);
+                }
                 printf("%.*s", (int)dump.len, (const char *)dump.data);
                 ms_buf_free(&dump);
                 free(owned);
@@ -149,7 +162,7 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
                 }
                 if (effects) {
                     // The effect scan reads the facts of every function the body pass checked.
-                    ms_dump_module_effects(&dump, check, id);
+                    ms_dump_module_effects(&dump, check, id, (MsStr){check_text, (uint32_t)n});
                     printf("%.*s", (int)dump.len, (const char *)dump.data);
                     ms_buf_free(&dump);
                     free(owned);
@@ -203,12 +216,12 @@ static void print_scope_diagnostics(MsCheck *check, MsArena *syntax, MsNames *na
 int main(int argc, char **argv) {
     const bool ownership = argc >= 3 && strcmp(argv[2], "--ownership") == 0;
     const bool effects = argc >= 3 && strcmp(argv[2], "--effects") == 0;
-    const bool facts_json = argc >= 3 && strcmp(argv[2], "--facts") == 0;
+    const int json_mode = json_mode_of(argc >= 3 ? argv[2] : "");
     project_mode = argc >= 3 && strcmp(argv[2], "--project") == 0;
     const bool bodies = ownership || effects || project_mode || (argc >= 3 && strcmp(argv[2], "--bodies") == 0);
-    const bool scope = bodies || facts_json || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
+    const bool scope = bodies || json_mode != 0 || (argc >= 3 && strcmp(argv[2], "--scope") == 0);
     if (argc != 2 && !scope) {
-        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects|--facts FILE...]\n", stderr);
+        fputs("usage: ms_check_dump STDLIB_DIR [--scope|--bodies|--ownership|--effects|--facts|--nodes FILE...]\n", stderr);
         return 2;
     }
     const char *root = argv[1];
@@ -258,7 +271,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (scope) {
-        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership, effects, facts_json);
+        print_scope_diagnostics(&check, &syntax, &names, argc - 3, argv + 3, bodies, ownership, effects, json_mode);
     } else {
         MsBuf out = {0};
         ms_dump_std_tables(&out, &check);

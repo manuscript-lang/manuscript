@@ -23,11 +23,11 @@ static void md_plan_shape(const MirModule *m, MirLayouts *lay, MirTy ty, const M
     if (d->kind == MK_LIST) {
         p->kind = MIR_DESC_LIST;
         p->inner[0] = d->elem;
-    } else if (d->kind == MK_OBJ && mir_name_is(m, d->name, "Map")) {
+    } else if (d->kind == MK_OBJ && d->obj_class == MIR_OBJ_COLLECTION && d->nargs > 1) { /* keys and values */
         p->kind = MIR_DESC_MAP;
         p->inner[0] = d->nargs > 0 ? d->args[0] : MIR_NONE;
         p->inner[1] = d->nargs > 1 ? d->args[1] : MIR_NONE;
-    } else if (d->kind == MK_OBJ && mir_name_is(m, d->name, "Set")) {
+    } else if (d->kind == MK_OBJ && d->obj_class == MIR_OBJ_COLLECTION) { /* keys only */
         p->kind = MIR_DESC_SET;
         p->inner[0] = d->nargs > 0 ? d->args[0] : MIR_NONE;
     } else if (d->kind == MK_OBJ || d->kind == MK_FN ||

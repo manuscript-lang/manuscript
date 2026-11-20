@@ -9,6 +9,7 @@ cmake_minimum_required(VERSION 3.20)
 #   MS_SANITIZE    ON: AddressSanitizer and UBSan (the tests).
 #   MS_CCACHE      OFF: do not use ccache even when installed.
 #   MS_ALLOC_STATS ON: the counting allocator (leak checks and the Rust unit tests).
+#   MS_PROCESS_ENTRY ON: the archive programs link carries the glibc _start and the stat wrappers (glibc targets).
 # Files are found by glob (CONFIGURE_DEPENDS), so adding a .c file under runtime/ needs no edit here.
 project(manuscript C)
 
@@ -20,6 +21,7 @@ option(MS_LIBS_IDIRAFTER "Search MS_LIBS_PREFIX/include after the compiler's own
 option(MS_SANITIZE "Build the tests with AddressSanitizer and UBSan" OFF)
 option(MS_CCACHE "Use ccache when installed" ON)
 option(MS_ALLOC_STATS "Build the allocator as the counting runtime (live-block counts, scribbled frees)" OFF)
+option(MS_PROCESS_ENTRY "Add the glibc process entry (_start, stat) to the runtime archive: programs link no crt1.o" OFF)
 option(MS_BUILD_RUNTIME "Configure the runtime archive and its libraries" ON)
 option(MS_BUILD_COMPILER "Configure the C compiler, its tools and tests (compiler/)" ON)
 option(MS_BUILD_TESTS "Build the C runtime tests" ON)
@@ -37,6 +39,8 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(cmake/MsPlatform.cmake)
+# The allocator of the runtime and of the compiler tools, so a build without the runtime has it too.
+include(cmake/MsMimalloc.cmake)
 if(MS_BUILD_RUNTIME)
   include(cmake/MsLibs.cmake)
   include(cmake/MsRuntime.cmake)

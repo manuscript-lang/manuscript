@@ -55,6 +55,8 @@ uint8_t ms_xchg_h2_send_head(MsXchgH2 *x, int64_t status, const MsHeaders *heade
 uint8_t ms_xchg_h2_write(MsXchgH2 *x, MsBytes data, uint8_t has_timeout, int64_t timeout, MsStr *err);
 uint8_t ms_xchg_h2_finish(MsXchgH2 *x, uint8_t has_timeout, int64_t timeout, uint8_t *keep, MsStr *err);
 uint8_t ms_xchg_h2_reset(MsXchgH2 *x, int64_t max, uint8_t has_timeout, int64_t timeout, MsStr *err);
+/* Parks until the stream is reset or the connection ends (OK), or the task is cancelled. */
+uint8_t ms_xchg_h2_wait_gone(MsXchgH2 *x, MsStr *err);
 /* Ends the exchange; a stream not finished is reset (CANCEL). Safe after finish. */
 void ms_xchg_h2_drop(MsXchgH2 *x);
 

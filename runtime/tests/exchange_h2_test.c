@@ -21,6 +21,8 @@
 #include "ms_sched.h"
 #include "../net/status.h"
 
+void ms_sched_cancel_return(void) {}
+
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
 #define S(x) x, sizeof x - 1
@@ -74,6 +76,7 @@ const MsTypeDesc msrt_desc_bytes, msrt_desc_string;
 void msrt_list_with_capacity(const MsTypeDesc *d, int64_t cap, MsVec *out) { (void)d; (void)cap; *out = (MsVec){0}; }
 void msrt_list_push(MsVec *v, const MsTypeDesc *d, const void *elem) { (void)v; (void)d; (void)elem; }
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) { (void)ptr; (void)len; memset(out, 0, sizeof *out); }
+void ms_net_write_text(MsStr *out, const char *text) { (void)text; if (out != NULL) memset(out, 0, sizeof *out); }
 uint8_t ms_net_finish(MsNetStatus status, int code, MsStr *err) {
     (void)code; (void)err;
     switch (status) {

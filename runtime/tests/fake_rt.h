@@ -86,6 +86,8 @@ void msrt_list_drop(MsVec *v, const MsTypeDesc *d) {
             MsVec inner;
             memcpy(&inner, slot, sizeof inner);
             msrt_list_drop(&inner, d->inner0);
+        } else if (d->kind == MS_TYPE_KIND_CUSTOM && d->drop != NULL) {
+            d->drop(slot);
         } else if (d->kind == MS_TYPE_KIND_STRING) {
             MsStr string;
             memcpy(&string, slot, sizeof string);

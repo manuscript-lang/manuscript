@@ -132,7 +132,11 @@ static void dialect_cases(void) {
     CHECK(matches(1, "a\\*.ms", "a/b.ms") == 1);
     CHECK(matches(0, "a/*.ms", "a\\b.ms") == 0);
     CHECK(matches(0, "é?", "éx") == 1);
+    #ifdef _WIN32
+    CHECK(msstd_path_host_windows() == 1);
+#else
     CHECK(msstd_path_host_windows() == 0);
+#endif
 }
 
 int main(void) {

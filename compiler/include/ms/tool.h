@@ -34,6 +34,26 @@ void ms_tool_token_kinds(ms_list *out);
  * Invalid UTF-8 reports offset 0 at line 1, column 1. */
 uint8_t ms_tool_format(const ms_str *text, ms_str *out, int64_t *code_out, ms_str *message_out);
 
+/* The `[dependencies]` of an ms.toml as rows `alias\turl\tkind\treference` (kind tag, sha or version; the reference is
+ * the tag, the commit or the requirement), sorted by alias; path dependencies are left out. Status 0 is success;
+ * status 1 is an error with the Rust driver's text in `message_out`; status 2 means the C reader does not cover the
+ * manifest (the caller falls back to `ms`'s Rust reader), with what is missing in `message_out`. */
+uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *message_out);
+
+/* The files `ms fmt` formats for `target` (ms_project_format_paths): the file itself, or the modules of a directory or
+ * of the project an ms.toml names, in order. Status 0 is success; 1 is an error with the Rust driver's text in
+ * `message_out`; 2 means the C reader does not cover the target (a workspace root, a project with dependencies). */
+uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out);
+
+/* Resolves and fetches the dependencies of the project whose ms.toml is `manifest` (ms_install in ms/packages.h) and
+ * writes ms.lock when it changed; `update` names the repositories to re-pick, `locked` fails instead of changing
+ * ms.lock and `frozen` leaves it alone. Rows, in copy-id order, are `name\tspec\trevision\tstate\teffects`: the
+ * alias that reaches the copy (else its id), `url#reference`, the full commit, `fetched`, `cached` (downloaded, but
+ * the cache held the content) or `kept` (the locked copy was intact in the cache), and `[project] effects` joined by
+ * spaces (`none` without any). Status 0 is success; 1 is an error with the Rust text in `message_out`; 2 means the C
+ * reader does not cover the project (a workspace, a manifest form it lacks). */
+uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out);
+
 /* ---- syntax trees ---- */
 
 /* A parsed module, kept in C. `extern type Tree` on the Manuscript side. A parse that fails still
@@ -90,5 +110,7 @@ void ms_tool_tree_nodes(ms_object *tree, ms_list *out);
 void ms_tool_tree_names(ms_object *tree, ms_list *out);
 /* The node kind names, indexed by the `kind` column. */
 void ms_tool_node_kinds(ms_list *out);
+/* The reserved words, in token order: `and` through `while`, without the `_` token. */
+void ms_tool_keywords(ms_list *out);
 
 #endif

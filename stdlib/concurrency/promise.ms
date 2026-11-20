@@ -14,6 +14,7 @@ import (
 	msrt_promise_cancel,
 	msrt_promise_defer,
 	msrt_promise_done,
+	msrt_promise_drain,
 	msrt_promise_drop,
 	msrt_promise_end,
 	msrt_promise_fault_report,
@@ -129,6 +130,16 @@ export type PromiseOptions:
 	// `ECANCELED`. Applying a signal to an existing promise replaces its previous
 	// signal; none leaves it unchanged.
 	cancel: Signal? = none
+	// When the owner ends the promise (by dropping it, or by unwinding past it after a
+	// cancellation), this signal's `Cancel` fires first and the work has `grace` to
+	// finish before it is cancelled. Use it for work that can wind down on notice, such
+	// as a server's connections. An explicit `cancel` skips the notice. Applying a
+	// signal to an existing promise replaces its previous one; none leaves it
+	// unchanged.
+	drain: Signal? = none
+	// How long the work may take to finish after the `drain` notice; `none` waits
+	// without limit. It has no effect without `drain`.
+	grace: Duration? = none
 	// Which thread runs the work.
 	placement: Placement = Placement.Any
 
@@ -199,6 +210,8 @@ fn limit(id: Int, options: PromiseOptions) Void:
 		msrt_promise_limit(id, nanos(options.timeout))
 	if signal := options.cancel:
 		msrt_promise_on_cancel(id, signal.id)
+	if signal := options.drain:
+		msrt_promise_drain(id, signal.id, nanos(options.grace))
 
 // Applies `options` to a promise in place, for an owner that keeps the promise (such
 // as a server's accept loop). The timeout counts from now, and a provided cancel

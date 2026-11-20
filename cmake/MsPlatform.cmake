@@ -48,6 +48,9 @@ if(_triple MATCHES "linux-(gnu|musl)$" OR _triple MATCHES "apple"
 else()
   set(MS_LIBS_WIRED OFF)
 endif()
+# A target whose libraries are not all wired can still have some (a Windows MSVC host builds zlib for its unit
+# tests): -DMS_LIBS_ONLY="z" names them, and the sources that need any other library stay out.
+set(MS_LIBS_ONLY "" CACHE STRING "Libraries available on a target whose libraries are not all wired")
 
 # A Windows host's own build (MS_TRIPLE empty) targets MSVC: only libuv is built (from the vendored sources, by
 # cmake/MsLibs.cmake), so the reactor serves the unit tests of the Rust crates; the other libraries stay out.

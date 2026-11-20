@@ -132,9 +132,6 @@ typedef struct {
 
 int ppoll(PollEntry *entries, unsigned long count, const PollTime *timeout, const void *signal_mask);
 
-extern char **environ;
-extern char **__environ; // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming): glibc's own copy of environ
-
 enum { POLL_READABLE = 1, NANOSECONDS_PER_SECOND = 1000000000 };
 
 bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
@@ -148,16 +145,6 @@ bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
     return true;
 }
 
-void ms_sys_sync_environ(void) {
-    environ = __environ;
-}
-
-char **ms_sys_swap_libc_environ(char **replacement) {
-    char **previous = __environ;
-    __environ = replacement;
-    return previous;
-}
-
 #else
 
 bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
@@ -166,8 +153,5 @@ bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns) {
     return false;
 }
 
-void ms_sys_sync_environ(void) {}
-
-char **ms_sys_swap_libc_environ(char **replacement) { return replacement; }
 
 #endif

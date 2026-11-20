@@ -20,14 +20,15 @@
 static int failed;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
 
-bool ms_sched_cancel_pending(void) { return false; }
-void ms_sched_cancel_return(void) {}
+__attribute__((weak)) bool ms_sched_cancel_pending(void) { return false; }
+__attribute__((weak)) int64_t ms_sched_defer_deadline(void) { return INT64_MAX; }
+__attribute__((weak)) void ms_sched_cancel_return(void) {}
 
 /* The HTTP/2 exchange the natives also dispatch to parks on tokens; HTTP/1 never does. */
 uint64_t msrt_token_new(uint32_t flags) { (void)flags; return 1; }
 uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) { (void)token; (void)timeout_ns; *value = 0; return MS_WAIT_CANCELLED; }
 void msrt_token_free(uint64_t token) { (void)token; }
-void msrt_token_post_remote(uint64_t token, uint64_t value) { (void)token; (void)value; }
+__attribute__((weak)) void msrt_token_post_remote(uint64_t token, uint64_t value) { (void)token; (void)value; }
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
     struct pollfd p = {.fd = fd, .events = (short)((events & MS_WAIT_READ ? POLLIN : 0) | (events & MS_WAIT_WRITE ? POLLOUT : 0))};
@@ -42,6 +43,7 @@ uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
 typedef struct Client {
     uint16_t port;
     const char *request;
+    int hang_up; /* close after sending, without reading the answer */
     char response[8192];
     size_t length;
 } Client;
@@ -71,6 +73,10 @@ static void *client_run(void *argument) {
         if (r != MS_SYS_OK) break;
         sent += wrote;
     }
+    if (client->hang_up) {
+        ms_sys_net_close(socket);
+        return NULL;
+    }
     for (;;) {
         size_t got = 0;
         r = ms_sys_net_read(socket, client->response + client->length, sizeof client->response - 1 - client->length, &got);
@@ -91,13 +97,14 @@ typedef struct Case {
 } Case;
 
 /* Starts the client and accepts its connection as a ConnH. */
-static void case_open(Case *c, const char *request) {
+static void case_open_with(Case *c, const char *request, int hang_up) {
     MsAddr loopback = {4, {127, 0, 0, 1}, 0, 0}, bound;
     memset(c, 0, sizeof *c);
     CHECK(ms_sys_net_tcp_listen(&loopback, 4, &c->listener) == MS_SYS_OK);
     CHECK(ms_sys_net_local_addr(c->listener, &bound) == MS_SYS_OK);
     c->client.port = bound.port;
     c->client.request = request;
+    c->client.hang_up = hang_up;
     CHECK(pthread_create(&c->thread, NULL, client_run, &c->client) == 0);
     MsSock socket = MS_SOCK_INVALID;
     for (;;) {
@@ -108,6 +115,8 @@ static void case_open(Case *c, const char *request) {
     c->table = ms_conn_table_new(2);
     c->conn = ms_netconn_new(c->table, ms_conn_open(c->table, (int)socket, MS_CONN_HTTP1));
 }
+
+static void case_open(Case *c, const char *request) { case_open_with(c, request, 0); }
 
 /* Closes the server side, waits for the client and answers what it read. */
 static const char *case_close(Case *c) {
@@ -274,6 +283,9 @@ static void test_take_conn(void) {
     void *exchange = NULL;
     MsStr err = text_of("");
     CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
+    MsObj *upgrade = headers_of("Connection", "Upgrade"); /* a 101 head keeps its Connection field */
+    CHECK(msstd_xchg_send_head(exchange, 101, upgrade, 0, 0, 0, 0, &err) == STATUS_OK);
+    msrt_obj_drop(upgrade);
     void *taken = NULL;
     CHECK(msstd_xchg_take_conn(exchange, &taken) == STATUS_OK && taken != NULL);
     CHECK(msstd_xchg_take_conn(exchange, &taken) == STATUS_INVALID_INPUT); /* spent */
@@ -284,7 +296,8 @@ static void test_take_conn(void) {
     CHECK(ms_conn_read(ms_netconn_table(core), ms_netconn_id(core), got, sizeof got, -1, &count) == MS_NET_OK);
     CHECK(count == 11 && memcmp(got, "FRAME-BYTES", 11) == 0);
     msrt_obj_drop(taken);
-    (void)case_close(&c);
+    const char *response = case_close(&c);
+    CHECK(strstr(response, "HTTP/1.1 101 ") != NULL && strstr(response, "Connection: Upgrade\r\n") != NULL);
 }
 
 static void test_share(void) {
@@ -299,6 +312,19 @@ static void test_share(void) {
     CHECK(answer(other, 200, "s") == 1);
     msrt_obj_drop(other);
     CHECK(strstr(case_close(&c), "\r\n\r\ns") != NULL);
+}
+
+/* wait_gone returns once the client has hung up, and again at once for a connection that is already gone. */
+static void test_wait_gone(void) {
+    Case c;
+    case_open_with(&c, "GET /g HTTP/1.1\r\nHost: t\r\n\r\n", 1);
+    void *exchange = NULL;
+    MsStr err = text_of("");
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
+    CHECK(msstd_xchg_wait_gone(exchange, &err) == STATUS_OK);
+    CHECK(msstd_xchg_wait_gone(exchange, &err) == STATUS_OK);
+    msrt_obj_drop(exchange);
+    (void)case_close(&c);
 }
 
 static void test_head_request_and_informational(void) {
@@ -328,6 +354,7 @@ int main(void) {
     test_refusals();
     test_take_conn();
     test_share();
+    test_wait_gone();
     test_head_request_and_informational();
     if (!failed) printf("exchange ok\n");
     return failed;

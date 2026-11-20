@@ -577,23 +577,6 @@ static void descriptor_close(int fd) {
     }
 }
 
-static uv_once_t environment_once = UV_ONCE_INIT;
-static uv_mutex_t environment_lock;
-
-static void environment_init(void) { uv_mutex_init(&environment_lock); }
-
-/* `uv_spawn`, with the C library's environment pointing at the child's while libuv forks: the forked child sets only
- * the program's copy of environ, and execvp reads the library's (see ms_sys_swap_libc_environ). */
-static int spawn_with_environment(MsChild *child, const uv_process_options_t *options) {
-    uv_once(&environment_once, environment_init);
-    uv_mutex_lock(&environment_lock);
-    char **previous = ms_sys_swap_libc_environ(options->env);
-    const int error = uv_spawn(&child->loop, &child->process, options);
-    (void)ms_sys_swap_libc_environ(previous);
-    uv_mutex_unlock(&environment_lock);
-    return error;
-}
-
 /* Starts the process with the given modes; on success the parent ends of its pipes are in `parent` (-1 for a stream
  * that is not piped). The loop is initialised and the process spawned, but the loop thread is not started. */
 static bool child_spawn(MsChild *child, const Command *command, const int64_t modes[STREAM_COUNT], int parent[STREAM_COUNT],
@@ -625,7 +608,7 @@ static bool child_spawn(MsChild *child, const Command *command, const int64_t mo
                                         .flags = UV_PROCESS_DETACHED,
                                         .stdio_count = STREAM_COUNT,
                                         .stdio = stdio};
-        error = spawn_with_environment(child, &options);
+        error = uv_spawn(&child->loop, &child->process, &options);
         if (error != 0) {
             uv_close((uv_handle_t *)&child->process, NULL); /* initialised by the failed start */
             start_failure(fail, error, command->program);

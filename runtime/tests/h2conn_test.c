@@ -33,6 +33,17 @@ static int take(MsH2Conn *c, int type, int32_t stream, MsH2ConnEvent *out) {
     return 0;
 }
 
+
+typedef struct UserSeen { int streams; int32_t id; uint64_t handler, watcher; } UserSeen;
+
+static void note_user(void *context, int32_t stream, const uint64_t *user) {
+    UserSeen *seen = context;
+    seen->streams++;
+    seen->id = stream;
+    seen->handler = user[0];
+    seen->watcher = user[1];
+}
+
 static void exchange(void) {
     MsH2Limits lim = {100, 0, 65535, 65535};
     MsH2Conn *srv = ms_h2conn_new(1, &lim), *cli = ms_h2conn_new(0, &lim);
@@ -84,6 +95,14 @@ static void exchange(void) {
 
     *ms_h2conn_user(cli, id) = 77;
     CHECK(*ms_h2conn_user(cli, id) == 77 && ms_h2conn_user(cli, 99) == NULL);
+    /* the watcher's word is a second one: it starts at 0, is not the handler's, and for_each shows both */
+    CHECK(ms_h2conn_watch(cli, 99) == NULL && ms_h2conn_watch(cli, id) != NULL && ms_h2conn_watch(cli, id) != ms_h2conn_user(cli, id));
+    CHECK(*ms_h2conn_watch(cli, id) == 0);
+    *ms_h2conn_watch(cli, id) = 99;
+    CHECK(*ms_h2conn_user(cli, id) == 77 && *ms_h2conn_watch(cli, id) == 99);
+    UserSeen seen = {0};
+    ms_h2conn_for_each(cli, note_user, &seen);
+    CHECK(seen.streams == 1 && seen.id == id && seen.handler == 77 && seen.watcher == 99);
     ms_h2conn_release(cli, id, 0);
     ms_h2conn_release(srv, id, 0);
     settle(cli, srv);

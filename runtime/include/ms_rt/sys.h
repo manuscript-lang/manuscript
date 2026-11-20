@@ -117,14 +117,6 @@ void ms_sys_wake_send(int write_fd);
 void ms_sys_wake_drain(int read_fd);
 /* Closes both ends. */
 void ms_sys_wake_close(const int fds[2]);
-/* Makes the process's environ agree with the C library's own copy. A static library built without -fPIC makes the
- * linker copy environ into the program, and glibc fills only its own, so readers of the copy would see an empty
- * environment (issue #4647). Linux only; a no-op elsewhere. */
-void ms_sys_sync_environ(void);
-/* Points the C library's own environment, which execvp reads, at `replacement` and returns the previous one. A child
- * that libuv forks sets only the program's copy of environ (see above), so `uv_spawn` with an environment needs this
- * around the call, under a lock. Linux only; elsewhere it returns `replacement` and changes nothing. */
-char **ms_sys_swap_libc_environ(char **replacement);
 
 /* ---- network interfaces ---- */
 
@@ -149,6 +141,8 @@ MS_NODISCARD bool ms_sys_fault_handler_install(MsSysFaultFn on_fault);
 /* Writes `bytes` to standard error, all of it unless the system refuses; errors are ignored (nothing else can be
  * done with them). */
 void ms_sys_stderr_write(MsBytes bytes);
+/* A write to a closed pipe or socket must come back as an error (EPIPE), not end the process. Windows: nothing to do. */
+void ms_sys_ignore_broken_pipe(void);
 /* Ends the process at once with `status`: no handlers, no flushing, no cleanup of any kind. */
 MS_NORETURN void ms_sys_exit_now(int status);
 /* The id of this process, which a fault record carries so the CLI ignores a record a descendant left behind. */

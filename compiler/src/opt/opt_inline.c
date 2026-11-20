@@ -774,6 +774,9 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
     if (m->entry != MIR_NONE) {
         il_push_root(stack, &n, m->entry);
     }
+    if (m->close != MIR_NONE) {
+        il_push_root(stack, &n, m->close);
+    }
     for (uint32_t i = 0; i < m->nfuncs; i++) {
         if (m->funcs[i].linkage == ML_EXPORT) {
             il_push_root(stack, &n, i);
@@ -836,6 +839,7 @@ static void il_renumber(MirModule *m, const uint32_t *map) {
         m->desc_glue[g].hash = map[m->desc_glue[g].hash];
     }
     m->entry = m->entry == MIR_NONE ? MIR_NONE : map[m->entry];
+    m->close = m->close == MIR_NONE ? MIR_NONE : map[m->close];
 }
 
 /* Moves the live functions down in order, `map` taking each old id to its new one. */

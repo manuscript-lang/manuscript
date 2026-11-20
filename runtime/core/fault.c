@@ -279,6 +279,20 @@ size_t ms_fault_capture_frames(uintptr_t *out, size_t capacity) {
                              window_of(&ms_task_running()->unwind), out, capacity);
 }
 
+/* The frames a task was started from begin inside the standard library's `promise`; the report names where the
+ * program started it, so those leading frames are left out. */
+static void drop_library_frames(MsFrameList *list) {
+    size_t skip = 0;
+    while (skip < list->count && __builtin_strncmp(list->frames[skip].file, "@std/", 5) == 0) {
+        skip++;
+    }
+    if (skip == 0) {
+        return;
+    }
+    list->count -= skip;
+    __builtin_memmove(list->frames, list->frames + skip, list->count * sizeof list->frames[0]);
+}
+
 void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, size_t count) {
     if (text->detail == NULL) {
         text->detail = msrt_alloc_zeroed(sizeof *text->detail);
@@ -287,6 +301,7 @@ void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, si
     }
     MsFrameList *const started = &text->detail->started;
     ms_frames_describe(addresses, count, started);
+    drop_library_frames(started);
     if (started->count == 0) {
         return;
     }
@@ -296,3 +311,6 @@ void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, si
     text->bytes = grown.items;
     text->length = grown.length;
 }
+
+/* The allocator's out-of-memory hook (alloc.h): the full fault path. Weak so a unit test can supply its own. */
+__attribute__((weak)) void msalloc_oom(size_t bytes) { ms_fault_out_of_memory(bytes); }

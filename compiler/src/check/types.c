@@ -22,14 +22,21 @@ typedef struct {
     MsBuiltin b;
 } NameTag;
 
+/* The primitive types in the order a module's scope declares them. */
 static const NameTag primitive_names[] = {
-    {"Int", MS_BI_INT},       {"Int8", MS_BI_INT8},     {"Int16", MS_BI_INT16},
-    {"Int32", MS_BI_INT32},   {"Int64", MS_BI_INT64},   {"UInt8", MS_BI_UINT8},
-    {"UInt16", MS_BI_UINT16}, {"UInt32", MS_BI_UINT32}, {"UInt64", MS_BI_UINT64},
-    {"Float", MS_BI_FLOAT},   {"Float32", MS_BI_FLOAT32}, {"Float64", MS_BI_FLOAT64},
-    {"Bool", MS_BI_BOOL},     {"String", MS_BI_STRING}, {"Void", MS_BI_VOID},
-    {"Never", MS_BI_NEVER},
+    {"Bool", MS_BI_BOOL},     {"Int", MS_BI_INT},       {"Float", MS_BI_FLOAT},   {"Int8", MS_BI_INT8},
+    {"Int16", MS_BI_INT16},   {"Int32", MS_BI_INT32},   {"Int64", MS_BI_INT64},   {"UInt8", MS_BI_UINT8},
+    {"UInt16", MS_BI_UINT16}, {"UInt32", MS_BI_UINT32}, {"UInt64", MS_BI_UINT64}, {"Float32", MS_BI_FLOAT32},
+    {"Float64", MS_BI_FLOAT64}, {"String", MS_BI_STRING}, {"Void", MS_BI_VOID},   {"Never", MS_BI_NEVER},
 };
+
+size_t ms_primitive_count(void) {
+    return sizeof primitive_names / sizeof *primitive_names;
+}
+
+const char *ms_primitive_name(size_t index) {
+    return primitive_names[index].name;
+}
 
 static const NameTag standard_names[] = {
     {"Optional", MS_BI_OPTIONAL},   {"Result", MS_BI_RESULT},     {"List", MS_BI_LIST},

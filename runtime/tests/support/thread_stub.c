@@ -35,6 +35,11 @@ void ms_sys_thread_join(MsSysThread *thread) {
     msrt_free(thread);
 }
 
+void ms_sys_sleep_ms(uint32_t ms) {
+    const struct timespec delay = {.tv_sec = (time_t)(ms / 1000), .tv_nsec = (long)(ms % 1000) * 1000000L};
+    (void)nanosleep(&delay, NULL);
+}
+
 struct MsSysSignal {
     pthread_mutex_t lock;
     pthread_cond_t cond;

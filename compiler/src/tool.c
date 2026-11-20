@@ -5,7 +5,9 @@
 #include "ms/diag.h"
 #include "ms/format.h"
 #include "ms/lex.h"
+#include "ms/packages.h"
 #include "ms/parse.h"
+#include "ms/project.h"
 #include "ms/tool.h"
 
 static void push_int(ms_list *out, int64_t v) {
@@ -109,6 +111,89 @@ void ms_tool_token_kinds(ms_list *out) {
         value.as.buf.len = strlen(s);
         ms_list_push(out, &value);
     }
+}
+
+static void push_text(ms_list *out, const char *text) {
+    ms_value value;
+    memset(&value, 0, sizeof value);
+    value.kind = MS_STRING;
+    value.as.buf.data = (const uint8_t *)text;
+    value.as.buf.len = strlen(text);
+    ms_list_push(out, &value);
+}
+
+uint8_t ms_tool_dependencies(const ms_str *manifest, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest));
+    MsProject project;
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_project_read(&arena, path, &project, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    }
+    for (uint32_t i = 0; status == 0 && i < project.dependency_count; i++) {
+        push_text(out, ms_project_dependency_row(&arena, &project.dependencies[i]));
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
+uint8_t ms_tool_discover(const ms_str *target, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const char *path = ms_arena_strndup(&arena, (const char *)ms_str_data(target), ms_str_len(target));
+    const char **files = NULL;
+    uint32_t count = 0;
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_project_format_paths(&arena, path, &files, &count, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    }
+    for (uint32_t i = 0; status == 0 && i < count; i++) {
+        push_text(out, files[i]);
+    }
+    ms_arena_free(&arena);
+    return status;
+}
+
+static const char *install_state_name(MsInstallState state) {
+    switch (state) {
+    case MS_INSTALL_FETCHED: return "fetched";
+    case MS_INSTALL_CACHED: return "cached";
+    case MS_INSTALL_KEPT: return "kept";
+    }
+    return "";
+}
+
+uint8_t ms_tool_install(const ms_str *manifest, const ms_list *update, uint8_t locked, uint8_t frozen, ms_list *out, ms_str *message_out) {
+    MsArena arena = {0};
+    const size_t update_count = ms_list_len(update);
+    const char **names = MS_NEW_N(&arena, const char *, update_count + 1);
+    for (size_t i = 0; i < update_count; i++) {
+        ms_value value = ms_list_get(update, i);
+        names[i] = ms_arena_strndup(&arena, (const char *)value.as.buf.data, value.as.buf.len);
+        ms_value_free(&value);
+    }
+    const MsInstallOptions options = {.manifest = ms_arena_strndup(&arena, (const char *)ms_str_data(manifest), ms_str_len(manifest)),
+                                      .update = names, .update_count = (uint32_t)update_count, .locked = locked != 0, .frozen = frozen != 0};
+    MsInstallReport report = {0};
+    MsProjectError error = {0};
+    uint8_t status = 0;
+    if (!ms_install(&arena, &options, &report, &error)) {
+        const char *text = ms_project_error_text(&arena, &error);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        status = ms_project_error_is_unsupported(&error) ? 2 : 1;
+    }
+    for (uint32_t i = 0; status == 0 && i < report.count; i++) {
+        const MsInstalledCopy *c = &report.copies[i];
+        push_text(out, ms_arena_fmt(&arena, "%s\t%s\t%s\t%s\t%s", c->name, c->copy.entry.spec, c->copy.entry.revision,
+                                   install_state_name(c->state), c->effects).ptr);
+    }
+    ms_arena_free(&arena);
+    return status;
 }
 
 /* ---- syntax trees ---- */
@@ -678,6 +763,18 @@ void ms_tool_node_kinds(ms_list *out) {
         value.kind = MS_STRING;
         value.as.buf.data = (const uint8_t *)node_kind_names[i];
         value.as.buf.len = strlen(node_kind_names[i]);
+        ms_list_push(out, &value);
+    }
+}
+
+void ms_tool_keywords(ms_list *out) {
+    for (int kind = MS_T_And; kind <= MS_T_While; kind++) {
+        const char *word = ms_tok_str((MsTok)kind);
+        ms_value value;
+        memset(&value, 0, sizeof value);
+        value.kind = MS_STRING;
+        value.as.buf.data = (const uint8_t *)word;
+        value.as.buf.len = strlen(word);
         ms_list_push(out, &value);
     }
 }

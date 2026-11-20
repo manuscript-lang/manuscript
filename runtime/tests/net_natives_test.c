@@ -3,6 +3,7 @@
    connection handle, the end of a stream, share and close_if_last, addresses, TLS facts, and the refusals. The task
    waits are test doubles (there is no scheduler) and the runtime is the fake of fake_rt.h. */
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,6 +49,7 @@ typedef int PollHandle;
 #include "support/test_cert.h"
 
 static int failed;
+static const int64_t SECOND = 1000000000;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); failed = 1; } } while (0)
 
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
@@ -55,7 +57,12 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
     if (copy != NULL && len > 0) memcpy(copy, ptr, len);
     *out = (MsStr){.ptr_word = copy, .tagged = len};
 }
+void msrt_string_free(const MsStr *s) {
+    if (s->tagged < ((uint64_t)1 << 62)) msrt_free(s->ptr_word);
+}
+void msrt_string_clone(const MsStr *s, MsStr *out) { msrt_string_from_bytes((const uint8_t *)s->ptr_word, (size_t)s->tagged, out); }
 bool ms_sched_cancel_pending(void) { return false; }
+__attribute__((weak)) int64_t ms_sched_defer_deadline(void) { return INT64_MAX; }
 void ms_sched_cancel_return(void) {}
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
@@ -275,7 +282,74 @@ static MsStr listen_on_loopback(Server *server) {
     return str(text);
 }
 
-static const int64_t SECOND = 1000000000;
+/* A TLS server built on the natives: it accepts one connection as a ConnH, upgrades it with a shared server context
+   (or with the options, when `server` is null), echoes five bytes and closes. */
+typedef struct TlsServe { MsSock listener; void *server; const MsNetTlsOptions *options; uint8_t status; } TlsServe;
+
+static void serve_tls_natives(void *argument) {
+    TlsServe *serve = argument;
+    MsSock socket = MS_SOCK_INVALID;
+    for (;;) {
+        if (ms_sys_net_accept(serve->listener, &socket, NULL) == MS_SYS_OK) break;
+        PollFd p = {.fd = (PollHandle)serve->listener, .events = POLLIN};
+        poll_sockets(&p, 1, 100);
+    }
+    MsConnTable *table = ms_conn_table_new(2);
+    MsObj *plain = ms_netconn_new(table, ms_conn_open(table, (int)socket, MS_CONN_HTTP1));
+    MsStr err;
+    void *secure = NULL;
+    serve->status = serve->server != NULL ? msstd_conn_accept_tls_with(plain, serve->server, 1, 5 * SECOND, &secure, &err)
+                                           : msstd_conn_accept_tls(plain, serve->options, 1, 5 * SECOND, &secure, &err);
+    if (serve->status == STATUS_OK) {
+        MsVec got;
+        if (msstd_conn_read(secure, 1, 5, 1, 5 * SECOND, &got, &err) == STATUS_OK) {
+            (void)msstd_conn_write_bytes(secure, &got, 1, 5 * SECOND, &err);
+        }
+        msstd_conn_close(secure);
+        ((MsObj *)secure)->drop(secure);
+    }
+    msstd_conn_close(plain);
+    ((MsObj *)plain)->drop(plain);
+}
+
+/* A DNS server for the resolver test: every name has the address 127.0.0.1, and there are no IPv6 records. */
+typedef struct DnsServer { MsSock udp; atomic_bool stop; } DnsServer;
+
+static void serve_dns(void *argument) {
+    DnsServer *server = argument;
+    while (!atomic_load(&server->stop)) {
+        uint8_t query[512], out[600];
+        MsAddr from;
+        size_t count = 0;
+        const int received = ms_sys_net_udp_recv(server->udp, query, sizeof query, &count, &from);
+        if (received == MS_SYS_AGAIN) {
+            PollFd p = {.fd = (PollHandle)server->udp, .events = POLLIN};
+            poll_sockets(&p, 1, 50);
+            continue;
+        }
+        if (received != MS_SYS_OK) {
+            break;
+        }
+        size_t end = 12;
+        while (end < count && query[end] != 0) end += (size_t)query[end] + 1;
+        end += 5;
+        const bool wants_a = query[end - 3] == 1;
+        memcpy(out, query, end);
+        out[2] = 0x81;
+        out[3] = 0x80;
+        out[6] = 0;
+        out[7] = wants_a ? 1 : 0;
+        size_t length = end;
+        if (wants_a) {
+            static const uint8_t record[] = {0xC0, 0x0C, 0, 1, 0, 1, 0, 0, 0, 30, 0, 4, 127, 0, 0, 1};
+            memcpy(out + length, record, sizeof record);
+            length += sizeof record;
+        }
+        size_t sent = 0;
+        (void)ms_sys_net_udp_send(server->udp, out, length, &from, &sent);
+    }
+}
+
 
 int main(void) {
     CHECK(uv_mutex_init(&post_lock) == 0);
@@ -388,6 +462,34 @@ int main(void) {
     MsNetTlsOptions nameless = options;
     nameless.server_name = str("");
     CHECK(msstd_net_dial(&address, &no_name, 1, &nameless, 1, 5 * SECOND, &conn, &err) == STATUS_INVALID_INPUT);
+
+    /* server contexts: one context serves every connection of a listener and ends with its last handle; the options
+       form of accept builds a context for one connection */
+    MsNetTlsOptions server_options = {.server_name = str(""), .roots_pem = str(""), .certificate_pem = str(CERT), .private_key_pem = str(KEY)};
+    MsNetTlsOptions no_key = server_options;
+    no_key.private_key_pem = str("");
+    void *tls_server = NULL;
+    CHECK(msstd_tls_server_new(&no_key, &tls_server) == STATUS_INVALID_INPUT && tls_server == NULL);
+    CHECK(msstd_tls_server_new(&server_options, &tls_server) == STATUS_OK && tls_server != NULL);
+    void *tls_server_copy = msstd_tls_server_share(tls_server);
+    ((MsObj *)tls_server)->drop(tls_server); /* the context outlives the handle that made it */
+    for (int round = 0; round < 2; round++) {
+        TlsServe tls_serve = {.server = round == 0 ? tls_server_copy : NULL, .options = &server_options};
+        MsStr tls_address = listen_on_loopback(&server);
+        tls_serve.listener = server.listener;
+        thread = ms_sys_thread_spawn(1 << 20, serve_tls_natives, &tls_serve);
+        CHECK(thread != NULL);
+        MsNetTlsOptions client_options = {.server_name = str("localhost"), .roots_pem = str(CERT), .certificate_pem = str(""), .private_key_pem = str("")};
+        CHECK(msstd_net_dial(&tls_address, &no_name, 1, &client_options, 1, 5 * SECOND, &conn, &err) == STATUS_OK);
+        CHECK(msstd_conn_write_bytes(conn, &hello, 1, 5 * SECOND, &err) == STATUS_OK);
+        CHECK(msstd_conn_read(conn, 1, 5, 1, 5 * SECOND, &got, &err) == STATUS_OK && got.len == 5 && memcmp(got.ptr, "hello", 5) == 0);
+        msstd_conn_close(conn);
+        ((MsObj *)conn)->drop(conn);
+        ms_sys_thread_join(thread);
+        CHECK(tls_serve.status == STATUS_OK);
+        ms_sys_net_close(server.listener);
+    }
+    ((MsObj *)tls_server_copy)->drop(tls_server_copy);
 
     /* header tables: names fold case and keep their first spelling, values keep their order */
     void *table = msstd_headers_new();
@@ -601,6 +703,54 @@ int main(void) {
     ms_sys_net_close(server.listener);
     ms_tls_ctx_free(https_context);
     server.context = NULL;
+
+
+    /* a client with its own resolver: the DNS server gives the address of each hop, and a redirect to a host the filter
+       refuses ends the request */
+    {
+        DnsServer dns = {0};
+        MsAddr dns_bind = {4, {127, 0, 0, 1}, 0, 0}, dns_at;
+        CHECK(ms_sys_net_udp_bind(&dns_bind, &dns.udp) == MS_SYS_OK && ms_sys_net_local_addr(dns.udp, &dns_at) == MS_SYS_OK);
+        char dns_text[MS_NET_ADDR_TEXT_MAX];
+        size_t dns_length = 0;
+        CHECK(ms_net_addr_format(&dns_at, dns_text, sizeof dns_text, &dns_length));
+        MsSysThread *dns_thread = ms_sys_thread_spawn(1 << 20, serve_dns, &dns);
+        CHECK(dns_thread != NULL);
+        address = listen_on_loopback(&server);
+        const char *port = strrchr((const char *)msrt_str_data(&address), ':');
+        char named[128];
+        snprintf(named, sizeof named, "http://pinned.test%s", port);
+        thread = ms_sys_thread_spawn(1 << 20, serve_http, &server);
+        CHECK(thread != NULL);
+        MsNetHttpOptions pinned_options = http_options;
+        pinned_options.resolver = str(dns_text);
+        CHECK(msstd_client_new(&pinned_options, &client, &err) == STATUS_OK);
+        MsVec pinned_hosts;
+        msrt_list_with_capacity(&msrt_desc_string, 1, &pinned_hosts);
+        MsStr pinned_name = str("pinned.test");
+        msrt_list_push(&pinned_hosts, &msrt_desc_string, &pinned_name);
+        CHECK(msstd_client_narrow(client, &pinned_hosts, &no_cidrs) == STATUS_OK);
+        char target[160];
+        snprintf(target, sizeof target, "%s/a", named);
+        MsStr target_text = str(target);
+        CHECK(msstd_client_fetch(client, &get, &target_text, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+        CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len > 0);
+        ((MsObj *)response)->drop(response);
+        snprintf(target, sizeof target, "%s/redir", named); /* followed here: the next hop is resolved again */
+        target_text = str(target);
+        CHECK(msstd_client_fetch(client, &get, &target_text, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+        CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len > 0);
+        ((MsObj *)response)->drop(response);
+        snprintf(target, sizeof target, "%s/hop", named);
+        target_text = str(target);
+        CHECK(msstd_client_fetch(client, &get, &target_text, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_PERMISSION_DENIED);
+        ((MsObj *)client)->drop(client);
+        ms_sys_thread_join(thread);
+        atomic_store(&dns.stop, true);
+        ms_sys_thread_join(dns_thread);
+        ms_sys_net_close(server.listener);
+        ms_sys_net_close(dns.udp);
+    }
 
     /* a deadline covers the wait for the response */
     address = listen_on_loopback(&server);

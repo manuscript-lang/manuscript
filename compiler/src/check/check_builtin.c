@@ -1,5 +1,5 @@
 /* The built-in cases of `Result` and `Optional` called like functions: `ok(v)` and `error(e)` where
- * the context expects a `Result[T, E]`, whose payload is a primitive value checked against T or E,
+ * the context expects a `Result[T, E]`, whose payload is a value of an admitted type checked against T or E,
  * and `some(v)`, which is always an error (a plain value converts where an Optional is expected).
  * With no expected Result, a payload that is not a primitive, or a call that is not one positional
  * argument, the function is left to the Rust checker. Records only the type: no function is
@@ -29,7 +29,7 @@ MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected) {
     }
     const bool success = builtin_is(b, callee->u.sym, "ok");
     const MsTy payload = ms_ty_args(tys, expected)[success ? 0 : 1];
-    if (!ms_body_is_primitive_value(b, payload) ||
+    if (!ms_body_is_admitted(b, payload) ||
         ms_body_expr(b, e->u.call.args.ptr[0].value, payload) == MS_TY_NONE) {
         return ms_body_unsupported(b);
     }

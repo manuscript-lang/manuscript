@@ -29,6 +29,9 @@ typedef struct MsCurlClientOptions {
     MsBytes private_key_pem;
     MsBytes unix_socket;       /* a Unix domain socket every connection uses instead of TCP, or empty; refused (DENIED) once the
                                   filter is narrowed, since the filter cannot judge a path */
+    MsBytes resolver;          /* "ip:port" of the DNS server the caller resolves names with, or empty for the system's; the
+                                  caller passes each request's addresses in `resolve`, and a redirect may only stay on the
+                                  request's host, since the engine cannot resolve another */
     int64_t max_redirects;     /* 0 follows none; negative takes 20 */
     bool cookies;              /* keep cookies for this client's requests */
     bool decompress;           /* ask for gzip and deflate and decode them */
@@ -53,7 +56,17 @@ typedef struct MsCurlRequest {
     const MsH1Field *fields;
     uint32_t nfields;
     MsBytes body;
+    MsBytes resolve;            /* "host:port:address[,address]" for curl's resolve list, or empty to let curl resolve */
 } MsCurlRequest;
+
+/* The resolver text the client was made with, NUL-terminated, or NULL. */
+const char *ms_curl_client_resolver(const MsCurlClient *client);
+/* The most redirects the client follows. */
+long ms_curl_client_max_redirects(const MsCurlClient *client);
+/* `reference` resolved against `base` as a URL, in memory from malloc (*out); false when either does not parse. */
+bool ms_curl_url_resolve(MsBytes base, MsBytes reference, char **out);
+/* The host (without brackets) and port of an http or https URL; false when it cannot be parsed. */
+bool ms_curl_url_target(MsBytes url, char *host, size_t capacity, uint16_t *port);
 
 /* Why a transfer ended badly, beyond its MsNetStatus. */
 typedef enum MsCurlFault { MS_CURL_FAULT_NONE = 0, MS_CURL_FAULT_DENIED, MS_CURL_FAULT_BAD_REQUEST } MsCurlFault;

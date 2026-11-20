@@ -21,19 +21,5 @@ crates/ms-clif/src/link/lld/tests.rs 2 test: channel deadline of a hung link, no
 crates/ms-clif/tests/native.rs 1 test: lets time pass
 crates/ms-lsp/tests/supervise.rs 1 test: lets time pass
 crates/ms-mir/tests/unwind.rs 1 test: lets time pass
-crates/ms-rt/src/fault.rs 1 test: proves a publication stays blocked while a reader is inside
-crates/ms-rt/src/glue/mod.rs 2 the task sleep API itself and its docs
-crates/ms-rt/src/glue/pool.rs 3 test: a job that takes time on a pool thread; the exit reaper waits a moment for abandoned jobs
-crates/ms-rt/src/promise.rs 16 the sleep promise API and tests of it; test jobs that take time
-crates/ms-rt/src/sched.rs 1 test: `warm` waits for threads to come to rest
-crates/ms-rt/src/task/api.rs 1 the task sleep API
-crates/ms-rt/src/task/tests.rs 12 test: tasks that sleep on purpose
-crates/ms-rt/src/watch.rs 2 the watcher thread, removed by the event-driven waits change
-crates/ms-std-net/src/http/client.rs 10 test: lets time pass for a server or a deadline
-crates/ms-std-net/src/http/client_h2_tests.rs 5 test: lets time pass for a server or a deadline
-crates/ms-std-net/src/http/server.rs 9 test: lets time pass for a server or a deadline
-crates/ms-std-net/src/http/server/h2serve/tests.rs 2 test: a deadline on an event the test waits for, and a poll for a finished client
-crates/ms-std-net/src/rt.rs 2 the runtime sleep binding
-crates/ms-std-net/src/wait.rs 4 the sleep API and a deadline test
 crates/ms-tooling/tests/lint_tasks.rs 1 test: lets time pass
-crates/ms-std-net/src/http/server/steal.rs 1 test: lets time pass
+crates/ms-rt/src/task.rs 1 the task sleep binding

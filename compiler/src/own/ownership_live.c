@@ -127,7 +127,8 @@ static void live_match(LiveWalk *w, const MsExpr *e) {
 static void live_call(LiveWalk *w, const MsExpr *e) {
     const MsExpr *callee = e->u.call.callee;
     const bool through_local = callee->kind == MS_E_NAME && w->facts->res_kind[callee->id] == MS_RES_BINDING;
-    const bool operation = callee->kind == MS_E_MEMBER && w->facts->call_interface[e->id] != MS_TY_NONE;
+    const bool operation = callee->kind == MS_E_MEMBER &&
+                           (w->facts->call_interface[e->id] != MS_TY_NONE || w->facts->call_method[e->id] != MS_NONE);
     if (w->facts->call_callee[e->id] == MS_NONE && !through_local && !operation) {
         w->supported = false; /* a method row or anything else the walk does not follow */
         return;
@@ -176,15 +177,22 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_BINARY: live_binary(w, e); return;
     case MS_E_MEMBER: live_expr(w, e->u.member.left); return;
     case MS_E_INDEX:
-        live_expr(w, e->u.bin.right);
-        live_expr(w, e->u.bin.left);
+    case MS_E_APPLY: { /* `xs[i]` before name resolution said `xs` is a value */
+        const MsExpr *list = NULL;
+        const MsExpr *index = NULL;
+        if (!ms_expr_index(e, &list, &index)) {
+            w->supported = false;
+            return;
+        }
+        live_expr(w, index);
+        live_expr(w, list);
         return;
+    }
     case MS_E_LIST:
         for (uint32_t i = e->u.list.len; i > 0; i--) {
             live_expr(w, e->u.list.ptr[i - 1]);
         }
         return;
-    case MS_E_APPLY:
     case MS_E_PROBE:
     case MS_E_MAP: w->supported = false; return; /* collections are not modeled */
     case MS_E_LAMBDA: live_lambda(w, e); return;
@@ -211,6 +219,11 @@ static void live_statement(LiveWalk *w, const MsStmt *s);
 /* The store ends the old value's life; the value runs first, so it may read the old one. */
 static void live_assign(LiveWalk *w, const MsStmt *s) {
     const uint32_t binding = w->facts->assign_binding[s->id];
+    if (binding == MS_NONE && w->facts->field_store_root[s->id] != MS_NONE) {
+        live_expr(w, s->u.assign.target); /* the store uses the variable but keeps it alive */
+        live_expr(w, s->u.assign.value);
+        return;
+    }
     if (binding == MS_NONE) {
         w->supported = false;
         return;

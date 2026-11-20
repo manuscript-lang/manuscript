@@ -31,14 +31,14 @@ static void wake(uint64_t token) {
 static void wake_stream(void *context, int32_t stream, const uint64_t *user) {
     (void)context;
     (void)stream;
-    wake(*user);
+    wake(user[0]);
+    wake(user[1]);
 }
 
 static void wake_all(MsH2Serve *serve) { ms_h2conn_for_each(serve->h2, wake_stream, NULL); }
 
 /* Parks a handler on its stream's token until an event wakes it or the deadline passes. */
-static MsNetStatus park(MsH2Serve *serve, int32_t stream, int64_t deadline_ns) {
-    uint64_t *user = ms_h2conn_user(serve->h2, stream);
+static MsNetStatus park_on(uint64_t *user, int64_t deadline_ns) {
     if (user == NULL) {
         return MS_NET_CLOSED;
     }
@@ -61,6 +61,10 @@ static MsNetStatus park(MsH2Serve *serve, int32_t stream, int64_t deadline_ns) {
         return MS_NET_CANCELLED;
     }
     return (result & MS_WAIT_TIMEOUT) != 0 ? MS_NET_TIMEOUT : MS_NET_OK;
+}
+
+static MsNetStatus park(MsH2Serve *serve, int32_t stream, int64_t deadline_ns) {
+    return park_on(ms_h2conn_user(serve->h2, stream), deadline_ns);
 }
 
 /* ---- the connection ---- */
@@ -99,8 +103,12 @@ static void dispatch(MsH2Serve *serve) {
             serve->hooks.on_request(serve->hooks.context, serve, event.stream);
         } else if (event.type != MS_H2C_GOAWAY) { /* readable, writable or reset: the stream's handler may go on */
             uint64_t *user = ms_h2conn_user(serve->h2, event.stream);
+            uint64_t *watch = ms_h2conn_watch(serve->h2, event.stream);
             if (user != NULL) {
                 wake(*user);
+            }
+            if (watch != NULL) {
+                wake(*watch);
             }
         }
     }
@@ -261,6 +269,21 @@ MsNetStatus ms_h2_stream_write(MsH2Serve *serve, int32_t stream, const uint8_t *
     }
 }
 
+MsNetStatus ms_h2_stream_wait_gone(MsH2Serve *serve, int32_t stream) {
+    for (;;) {
+        if ((ms_h2conn_state(serve->h2, stream) & MS_H2S_RESET) != 0) {
+            return MS_NET_RESET;
+        }
+        if (serve->closed != 0) {
+            return MS_NET_CLOSED;
+        }
+        const MsNetStatus waited = park_on(ms_h2conn_watch(serve->h2, stream), -1);
+        if (waited != MS_NET_OK) {
+            return waited;
+        }
+    }
+}
+
 MsNetStatus ms_h2_stream_trailers_send(MsH2Serve *serve, int32_t stream, const MsH2Nv *nv, size_t nnv) {
     return sent(serve, ms_h2conn_trailers_send(serve->h2, stream, nv, nnv));
 }
@@ -271,9 +294,14 @@ MsNetStatus ms_h2_stream_reset(MsH2Serve *serve, int32_t stream, uint32_t code) 
 
 void ms_h2_serve_release(MsH2Serve *serve, int32_t stream, uint32_t code) {
     uint64_t *user = ms_h2conn_user(serve->h2, stream);
+    uint64_t *watch = ms_h2conn_watch(serve->h2, stream);
     if (user != NULL && *user != 0) {
         msrt_token_free(*user);
         *user = 0;
+    }
+    if (watch != NULL && *watch != 0) {
+        msrt_token_free(*watch);
+        *watch = 0;
     }
     ms_h2conn_release(serve->h2, stream, code);
     flush(serve);

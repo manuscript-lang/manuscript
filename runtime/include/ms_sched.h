@@ -33,6 +33,8 @@ enum {
 /* Parks the running task until fd is ready for events or the timeout in nanoseconds passes (negative: none). */
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns);
 uint32_t msrt_task_sleep(int64_t ns);
+/* Ends the poller registration on fd; call it before closing a descriptor a task may still be parked on. */
+void msrt_task_forget_fd(int32_t fd);
 /* Tokens: a wake-up a task parks on and any thread may post. Flag 1 makes a token any thread may post. */
 uint64_t msrt_token_new(uint32_t flags);
 uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value);
@@ -60,6 +62,10 @@ bool ms_sched_read_limit_passed(void);
 /* Marks the running task's stack as lent to another thread (true) or returned (false): while lent, the task keeps
  * its stack pages even when parked. Crates/ms-rt/src/task while the scheduler is Rust. */
 void ms_sched_task_pin(bool lend);
+/* The absolute deadline (monotonic clock, nanoseconds) of the wait or promise limit whose deferred work runs on the
+ * running task's stack, or INT64_MAX. A park inside such work ends by it (see ms_net_wait_fd). */
+int64_t ms_sched_defer_deadline(void);
+
 /* The number of live tasks, and whether every task but the running one is stalled (parked on something no
  * running task will wake). */
 size_t msrt_task_count(void);

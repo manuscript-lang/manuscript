@@ -18,7 +18,7 @@ typedef struct {
     unsigned state;      /* MS_H2S_* */
     unsigned flags;      /* F_* */
     uint32_t reset_code;
-    uint64_t user;
+    uint64_t user[2];        /* the handler's word and the gone watcher's word */
     MsH2Head head, trailers;
     MsH2Block head_block, trailer_block;
     uint8_t *body;           /* owned: queued bytes body[off..len) */
@@ -364,13 +364,18 @@ uint32_t ms_h2conn_reset_code(const MsH2Conn *c, int32_t stream) {
 
 void ms_h2conn_for_each(MsH2Conn *c, void (*fn)(void *context, int32_t stream, const uint64_t *user), void *context) {
     for (uint32_t i = 0; i < c->cap; i++) {
-        if (c->streams[i].id != 0) fn(context, c->streams[i].id, &c->streams[i].user);
+        if (c->streams[i].id != 0) fn(context, c->streams[i].id, c->streams[i].user);
     }
 }
 
 uint64_t *ms_h2conn_user(MsH2Conn *c, int32_t stream) {
     MsH2Stream *s = find(c, stream);
-    return s != NULL ? &s->user : NULL;
+    return s != NULL ? &s->user[0] : NULL;
+}
+
+uint64_t *ms_h2conn_watch(MsH2Conn *c, int32_t stream) {
+    MsH2Stream *s = find(c, stream);
+    return s != NULL ? &s->user[1] : NULL;
 }
 
 int32_t ms_h2conn_open(MsH2Conn *c, const MsH2Nv *nv, size_t nnv, int has_body) {

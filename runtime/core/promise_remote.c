@@ -20,6 +20,7 @@ typedef enum AskOp {
     ASK_ON_CANCEL,
     ASK_GROUPED,
     ASK_RUN,
+    ASK_DRAIN,
 } AskOp;
 
 /* One question. The asker owns it and keeps it alive until the reply token is posted. */
@@ -27,6 +28,7 @@ typedef struct Ask {
     MsPromise id;
     AskOp op;
     int64_t argument;
+    int64_t extra; /* a second argument: the grace of ASK_DRAIN */
     const MsTypeDesc *desc;
     uint8_t *out;
     int64_t answer;
@@ -88,6 +90,11 @@ void ms_remote_set_grouped(MsPromise id, bool grouped) { (void)simple(id, ASK_GR
 
 bool ms_remote_run_inline(MsPromise id) { return simple(id, ASK_RUN, 0, 0) != 0; }
 
+void ms_remote_drain(MsPromise id, int64_t drain, int64_t grace_ns) {
+    Ask ask = {.id = id, .op = ASK_DRAIN, .argument = drain, .extra = grace_ns};
+    (void)ask_owner(&ask);
+}
+
 bool ms_remote_watch_post(MsPromise id, uint64_t token) {
     MsMail *const mail = msrt_alloc(sizeof *mail);
     *mail = (MsMail){.kind = MS_MAIL_PROMISE, .a = MS_MAIL_WATCH, .b = (uint64_t)id, .c = token};
@@ -120,12 +127,8 @@ int64_t ms_remote_wait(MsPromise id, int64_t timeout_ns) {
         if (code >= 0) {
             return code;
         }
-        const uint32_t owner = (uint32_t)((uint64_t)id >> 56);
         const uint64_t token = ms_token_new(MS_TOKEN_REMOTE);
-        MsMail *const mail = msrt_alloc(sizeof *mail);
-        *mail = (MsMail){.kind = MS_MAIL_PROMISE, .a = MS_MAIL_WATCH, .b = (uint64_t)id, .c = token};
-        if (token == 0 || !ms_isolate_post(owner, mail)) {
-            msrt_free(mail);
+        if (token == 0 || !ms_remote_watch_post(id, token)) {
             (void)ms_token_free(token);
             return MS_PROMISE_CLOSED;
         }
@@ -183,6 +186,9 @@ static void answer(Ask *ask) {
         break;
     case ASK_RUN:
         ask->answer = ms_promise_run_inline(ask->id) ? 1 : 0;
+        break;
+    case ASK_DRAIN:
+        ms_promise_drain(ask->id, ask->argument, ask->extra);
         break;
     }
 }

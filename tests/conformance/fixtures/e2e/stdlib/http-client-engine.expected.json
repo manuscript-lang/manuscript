@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "status: 200\nbody: hi\nheader: yes\nredirect: 200 hi\npost: posted\nmoved: plain\nrequest: 200 2\nrestricted: EACCES\nloopback: 200\nclosed: EBADF\nlimit: EOVERFLOW\nscheme: EINVAL\nresult: ok\n",
+    "stderr": ""
+  }
+}

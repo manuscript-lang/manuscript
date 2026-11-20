@@ -2,7 +2,6 @@
 
 use crate::common;
 
-
 use std::cell::Cell;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};

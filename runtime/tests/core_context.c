@@ -28,6 +28,14 @@ static void child_entry(void) {
     }
 }
 
+#ifdef _WIN32
+#include <malloc.h>
+#define aligned_alloc(alignment, size) _aligned_malloc((size), (alignment))
+#define aligned_free(pointer) _aligned_free(pointer)
+#else
+#define aligned_free(pointer) free(pointer)
+#endif
+
 static void test_switch(void) {
     uint8_t *const stack = aligned_alloc(16, STACK_BYTES);
     expect(stack != NULL, "stack allocated");
@@ -38,7 +46,7 @@ static void test_switch(void) {
         ms_ctx_switch(&main_sp, child_sp, teb);
         expect(counter == round, "the child ran once per switch");
     }
-    free(stack);
+    aligned_free(stack);
 }
 
 static uintptr_t sp_inside;
@@ -58,7 +66,7 @@ static void test_call_on_stack(void) {
     ms_ctx_call_on_stack((uintptr_t)stack + STACK_BYTES, record_stack_pointer, &value, &save, teb);
     expect(value == 42, "the function ran");
     expect(sp_inside >= (uintptr_t)stack && sp_inside < (uintptr_t)stack + STACK_BYTES, "it ran on the new stack");
-    free(stack);
+    aligned_free(stack);
 }
 
 static uintptr_t jump_slot;

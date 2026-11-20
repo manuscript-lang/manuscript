@@ -516,6 +516,12 @@ static SfAct sf_comparison_rule(SfEnv *e, MirInstVec *out, const MirInst *inst) 
     }
 }
 
+/* A Float32 result is the nearest binary32 value, as the machine instruction computes it. */
+static SfAct sf_const_float_of(const SfEnv *e, const MirInst *inst, double r) {
+    const bool narrow = inst->res != MIR_NONE && e->f->values[inst->res] == MIR_FLOAT32;
+    return sf_const_float(narrow ? (double)(float)r : r);
+}
+
 static SfAct sf_float_rule(const SfEnv *e, const MirInst *inst) {
     double p = 0, q = 0;
     switch ((MirOp)inst->op) {
@@ -531,7 +537,7 @@ static SfAct sf_float_rule(const SfEnv *e, const MirInst *inst) {
         } else if (inst->op == MOP_FMul) {
             r = p * q;
         }
-        return sf_const_float(r);
+        return sf_const_float_of(e, inst, r);
     }
     default: {
         if (!sf_cf(e, inst->args[0], &p)) {
@@ -549,7 +555,7 @@ static SfAct sf_float_rule(const SfEnv *e, const MirInst *inst) {
         } else if (inst->op == MOP_FTrunc) {
             r = trunc(p);
         }
-        return sf_const_float(r);
+        return sf_const_float_of(e, inst, r);
     }
     }
 }

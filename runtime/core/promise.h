@@ -67,6 +67,10 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns);
 /* Makes the promise listen to the cancel switch `cancel`: when it fires the promise is cancelled. Call it once the work
  * has started. Replaces an earlier switch. */
 void ms_promise_on_cancel(MsPromise id, int64_t cancel);
+/* Gives the promise a notice and a grace for its end: when its owner ends it (ms_promise_end, drop, unwinding), the
+ * switch `drain` fires first and the work has `grace_ns` (negative: no limit) to finish before it is cancelled. An
+ * explicit ms_promise_cancel skips the notice. */
+void ms_promise_drain(MsPromise id, int64_t drain, int64_t grace_ns);
 /* Cancels the promise if unfinished, without waiting. */
 void ms_promise_cancel(MsPromise id);
 /* Ends the promise's limit `timeout_ns` from now: it is cancelled and a wait reports a timeout. */
@@ -86,6 +90,9 @@ typedef enum MsPromiseProbe {
     MS_PROMISE_FAILED_PROBE, /* finished without a value: an error, a fault or a cancel */
 } MsPromiseProbe;
 MsPromiseProbe ms_promise_probe(MsPromise id);
+/* Whether another thread or isolate may finish `id`: a waiter must then park on a remote token, or the scheduler
+ * reports a deadlock while the work runs elsewhere. */
+bool ms_promise_completes_elsewhere(MsPromise id);
 /* Marks a pending promise as a wait group member: ms_group_finished is called when it finishes. */
 void ms_promise_set_grouped(MsPromise id, bool grouped);
 /* Runs deferred work on the caller's stack, when `id` has some; true when it ran. */
@@ -99,6 +106,8 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
 /* Runs `closure` (a function value, owned by the promise) as a task of this thread. Starting twice faults. */
 void ms_promise_start(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 /* Like start, but on the least loaded isolate (with one isolate, here). */
+/* Starts the work as a task of this thread, never queued for another isolate (I/O work whose handles are thread-bound). */
+void ms_promise_start_here(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 void ms_promise_start_spread(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 /* Like start, but with no other task running the work waits for its waiter (runs on the waiter's stack). */
 void ms_promise_start_idle(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);

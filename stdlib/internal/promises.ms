@@ -39,6 +39,12 @@ export extern fn msrt_promise_cancel(id: Int) Void
 // cancelled. Call it once the work has started.
 export extern fn msrt_promise_on_cancel(id: Int, cancel: Int) Void
 
+// Gives the promise a notice and a grace for its end: when its owner ends it (drop or
+// unwind, not `msrt_promise_cancel`) the switch `drain` fires first, and the work has
+// `grace_ns` (negative: no limit) to finish before it is cancelled. Call it once the work
+// has started.
+export extern fn msrt_promise_drain(id: Int, drain: Int, grace_ns: Int) Void
+
 // A new cancel switch that has not fired, as an id.
 export extern fn msrt_cancel_new() Int
 

@@ -199,6 +199,40 @@ static MsNetStatus pump_in(MsConn *row, MsTls *tls, int64_t deadline_ns, bool *e
     return MS_NET_OK;
 }
 
+enum { GONE_POLL_NS = 20000000 };
+
+MsNetStatus ms_conn_wait_gone(MsConnTable *table, MsConnId id, const uint8_t *handed_on) {
+    for (;;) {
+        MsConn *row = usable(table, id);
+        if (row == NULL) {
+            return MS_NET_CLOSED;
+        }
+        const MsNetStatus waited = wait_for(row, MS_WAIT_READ, -1);
+        if (waited != MS_NET_OK) {
+            return waited;
+        }
+        uint8_t probe;
+        size_t seen = 0;
+        const int result = ms_sys_net_peek(row->fd, &probe, 1, &seen);
+        if (result == MS_SYS_EOF) {
+            return MS_NET_CLOSED;
+        }
+        if (result == MS_SYS_ERROR) {
+            return MS_NET_RESET;
+        }
+        if (result == MS_SYS_OK) {
+            /* Queued bytes hide a FIN behind them; once another owner took the reads (an upgrade) the system is asked
+             * whether the peer ended its side. */
+            if (handed_on != NULL && __atomic_load_n(handed_on, __ATOMIC_ACQUIRE) != 0 && ms_sys_net_peer_ended(row->fd) != 0) {
+                return MS_NET_CLOSED;
+            }
+            if ((msrt_task_sleep(GONE_POLL_NS) & MS_WAIT_CANCELLED) != 0) {
+                return MS_NET_CANCELLED;
+            }
+        }
+    }
+}
+
 MsNetStatus ms_conn_handshake(MsConnTable *table, MsConnId id, int64_t deadline_ns) {
     MsConn *row = usable(table, id);
     MsTls *tls = row == NULL ? NULL : tls_of(row);
@@ -426,6 +460,7 @@ MsNetStatus ms_conn_close_io(MsConnTable *table, MsConnId id) {
     }
     ext_release(row->ext);
     row->ext = NULL;
+    msrt_task_forget_fd(row->fd); /* a task still parked on the descriptor would otherwise leave libuv watching a closed one */
     ms_sys_net_close(row->fd);
     return ms_conn_close(table, id) == 0 ? MS_NET_OK : MS_NET_CLOSED;
 }

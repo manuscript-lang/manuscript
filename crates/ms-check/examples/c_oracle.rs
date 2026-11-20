@@ -306,6 +306,25 @@ fn body_stmts(body: &[Stmt], out: &mut Vec<NodeId>) {
 
 /// `c_oracle --bodies FILE...`: per top-level function, whether the checker reported anything
 /// inside it and the type of each expression of its body.
+/// Each method an impl of `module` writes, with the lines it owns: from its name to the next
+/// method of the impl, or to the next declaration.
+fn module_methods(module: &ms_syntax::ast::Module) -> Vec<(&ms_syntax::ast::Method, u32, u32)> {
+    let mut out = Vec::new();
+    for (i, d) in module.decls.iter().enumerate() {
+        let DeclKind::Impl(im) = &d.kind else {
+            continue;
+        };
+        for (k, m) in im.methods.iter().enumerate() {
+            let end = im.methods.get(k + 1).map_or_else(
+                || module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line),
+                |n| n.pos.line,
+            );
+            out.push((m, m.pos.line, end));
+        }
+    }
+    out
+}
+
 fn body_facts(files: &[String]) {
     let syms = Names::global();
     let session = Session::new();
@@ -364,6 +383,26 @@ fn print_body_facts(
         println!("{word} {}:{}", d.pos.line, d.pos.column);
         for x in &program.diagnostics {
             if x.pos.line >= d.pos.line && x.pos.line < end {
+                println!("diag {}:{}: {}", x.pos.line, x.pos.column, x.message);
+            }
+        }
+        for id in ids.drain(..) {
+            let ty = facts
+                .info(id)
+                .and_then(|i| i.ty.as_ref())
+                .map_or("-".to_string(), |t| show(syms, t));
+            println!("expr {} {ty}", id.index());
+        }
+    }
+    for (m, first, end) in module_methods(module) {
+        if m.func.external {
+            continue;
+        }
+        let mut ids = Vec::new();
+        body_stmts(&m.func.body, &mut ids);
+        println!("fn {}:{}", m.pos.line, m.pos.column);
+        for x in &program.diagnostics {
+            if x.pos.line >= first && x.pos.line < end {
                 println!("diag {}:{}: {}", x.pos.line, x.pos.column, x.message);
             }
         }
@@ -497,6 +536,17 @@ fn ownership_diagnostics(files: &[String]) {
                 }
             }
         }
+        for (m, first, end) in module_methods(&module) {
+            if m.func.external {
+                continue;
+            }
+            println!("fn {}:{}", m.pos.line, m.pos.column);
+            for x in &program.diagnostics {
+                if x.pos.line >= first && x.pos.line < end {
+                    println!("diag {}:{}: {}", x.pos.line, x.pos.column, x.message);
+                }
+            }
+        }
     }
 }
 
@@ -556,6 +606,19 @@ fn effect_edges(files: &[String]) {
                     .cloned()
                     .unwrap_or_else(|| syms.str(callee).to_string());
                 println!("edge {shown} {}:{}", pos.line, pos.column);
+            }
+            let mut reach = program.declared_effects_of(symbol.id);
+            reach.sort();
+            if !reach.is_empty() {
+                println!("reach {}", reach.join(","));
+            }
+            let permits = program
+                .effect_permits
+                .get(&symbol.id)
+                .cloned()
+                .unwrap_or_default();
+            if !permits.is_empty() {
+                println!("permits {}", permits.join(","));
             }
         }
     }

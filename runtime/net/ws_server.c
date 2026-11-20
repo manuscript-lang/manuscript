@@ -148,15 +148,18 @@ static MsBytes select_subprotocol(MsBytes offered, const MsVec *server) {
     return ms_bytes_of(NULL, 0);
 }
 
-static uint8_t refuse(int64_t answer, const char *text, int64_t *status, MsStr *err) {
-    *status = answer;
-    ms_net_write_text(err, text);
+static uint8_t refuse(int64_t answer, const char *text, MsNetWsHandshake *out) {
+    out->status = answer;
+    ms_net_write_text(&out->reason, text);
     return STATUS_OK;
 }
 
 uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, const void *request, const MsVec *origins,
-                           const MsVec *subprotocols, const void *response, int64_t *status, MsStr *subprotocol, MsStr *err) {
+                           const MsVec *subprotocols, const void *response, MsNetWsHandshake *out, MsStr *err) {
     ms_net_clear_text(err);
+    out->status = 0; /* the record is uninitialized stack: every field is valid whatever the answer */
+    msrt_string_from_bytes(NULL, 0, &out->subprotocol);
+    msrt_string_from_bytes(NULL, 0, &out->reason);
     const MsStr *protocols = subprotocols->ptr;
     for (size_t i = 0; i < subprotocols->len; i++) {
         if (!ms_h1_is_token(bytes_of_str(&protocols[i]))) {
@@ -166,27 +169,27 @@ uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, 
     const MsHeaders *fields = ms_headers_of(request);
     MsBytes value;
     if (!field_has_token(fields, "Connection", "upgrade")) {
-        return refuse(400, "websocket: 'Connection' header lacks the 'upgrade' token", status, err);
+        return refuse(400, "websocket: 'Connection' header lacks the 'upgrade' token", out);
     }
     if (!field_has_token(fields, "Upgrade", "websocket")) {
-        return refuse(400, "websocket: 'Upgrade' header lacks the 'websocket' token", status, err);
+        return refuse(400, "websocket: 'Upgrade' header lacks the 'websocket' token", out);
     }
     if (!equal_text(bytes_of_str(method), ms_bytes_of((const uint8_t *)"GET", 3))) {
-        return refuse(405, "websocket: upgrade method is not GET", status, err);
+        return refuse(405, "websocket: upgrade method is not GET", out);
     }
     if (!field_has_token(fields, "Sec-WebSocket-Version", "13")) {
         const bool present = field_count(fields, "Sec-WebSocket-Version", &value) > 0;
-        return refuse(present ? 426 : 400, "websocket: 'Sec-WebSocket-Version' header must include 13", status, err);
+        return refuse(present ? 426 : 400, "websocket: 'Sec-WebSocket-Version' header must include 13", out);
     }
     MsBytes origin;
     (void)field_count(fields, "Origin", &origin);
     if (!origin_allowed(origin, bytes_of_str(host), tls != 0, origins)) {
-        return refuse(403, "websocket: request origin not allowed", status, err);
+        return refuse(403, "websocket: request origin not allowed", out);
     }
     MsBytes key;
     const size_t keys = field_count(fields, "Sec-WebSocket-Key", &key);
     if (keys != 1 || !valid_key(key)) { /* the field must appear once, or two parsers could read two keys */
-        return refuse(400, "websocket: 'Sec-WebSocket-Key' header must be the Base64 text of 16 bytes", status, err);
+        return refuse(400, "websocket: 'Sec-WebSocket-Key' header must be the Base64 text of 16 bytes", out);
     }
     char accept[29];
     if (ms_ws_accept_key((const char *)key.ptr, key.len, accept) != 0) {
@@ -196,21 +199,21 @@ uint8_t msstd_ws_handshake(const MsStr *method, const MsStr *host, uint8_t tls, 
     (void)field_count(fields, "Sec-WebSocket-Protocol", &offered);
     const MsBytes chosen = select_subprotocol(offered, subprotocols);
 
-    MsHeaders *out = ms_headers_of(response);
-    const bool added = ms_headers_add_canonical(out, ms_bytes_of((const uint8_t *)"Upgrade", 7), ms_bytes_of((const uint8_t *)"websocket", 9)) &&
-                       ms_headers_add_canonical(out, ms_bytes_of((const uint8_t *)"Connection", 10), ms_bytes_of((const uint8_t *)"Upgrade", 7)) &&
-                       ms_headers_add_canonical(out, ms_bytes_of((const uint8_t *)"Sec-WebSocket-Accept", 20), ms_bytes_of((const uint8_t *)accept, strlen(accept))) &&
-                       (chosen.len == 0 || ms_headers_add_canonical(out, ms_bytes_of((const uint8_t *)"Sec-WebSocket-Protocol", 22), chosen));
+    MsHeaders *fields_out = ms_headers_of(response);
+    const bool added = ms_headers_add_canonical(fields_out, ms_bytes_of((const uint8_t *)"Upgrade", 7), ms_bytes_of((const uint8_t *)"websocket", 9)) &&
+                       ms_headers_add_canonical(fields_out, ms_bytes_of((const uint8_t *)"Connection", 10), ms_bytes_of((const uint8_t *)"Upgrade", 7)) &&
+                       ms_headers_add_canonical(fields_out, ms_bytes_of((const uint8_t *)"Sec-WebSocket-Accept", 20), ms_bytes_of((const uint8_t *)accept, strlen(accept))) &&
+                       (chosen.len == 0 || ms_headers_add_canonical(fields_out, ms_bytes_of((const uint8_t *)"Sec-WebSocket-Protocol", 22), chosen));
     if (!added) {
         return STATUS_LIMIT_EXCEEDED;
     }
-    *status = 101;
-    msrt_string_from_bytes(chosen.ptr, chosen.len, subprotocol);
+    out->status = 101;
+    msrt_string_from_bytes(chosen.ptr, chosen.len, &out->subprotocol);
     return STATUS_OK;
 }
 
 uint8_t msstd_ws_serve(const void *conn, const MsStr *subprotocol, uint8_t has_max, int64_t max, void **out, MsStr *err) {
-    ms_net_clear_text(err);
+    ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     if (has_max != 0 && max <= 0) {
         return STATUS_INVALID_INPUT;
     }

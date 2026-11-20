@@ -36,7 +36,7 @@ fn scan(
 			out.append(
 				finding(
 					"MSL107",
-					"warning",
+					"error",
 					NESTED,
 					file,
 					tree.offset[at],

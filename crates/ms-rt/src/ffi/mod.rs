@@ -80,7 +80,7 @@ pub fn fault(msg: &str) -> ! {
 }
 
 /// Raises a runtime fault of a specific family with `msg`; never returns.
-pub fn fault_kind(kind: crate::glue::FaultKind, msg: &str) -> ! {
+pub fn fault_kind(kind: crate::fault::FaultKind, msg: &str) -> ! {
     crate::fault::fault_kind(kind, msg.as_bytes())
 }
 
@@ -358,74 +358,4 @@ fn strip_paths(ty: &str) -> String {
     }
     out.push_str(&word);
     out
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use core::sync::atomic::{AtomicBool, Ordering};
-
-    /// The runtime allocator is single threaded: tests that allocate take turns.
-    static BUSY: AtomicBool = AtomicBool::new(false);
-
-    struct Turn;
-
-    impl Turn {
-        fn take() -> Turn {
-            while BUSY
-                .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-                .is_err()
-            {
-                core::hint::spin_loop();
-            }
-            Turn
-        }
-    }
-
-    impl Drop for Turn {
-        fn drop(&mut self) {
-            BUSY.store(false, Ordering::Release);
-        }
-    }
-
-    #[test]
-    fn strings_and_bytes_roundtrip() {
-        let _turn = Turn::take();
-        let s = new_string("héllo");
-        // SAFETY: `s` is a fresh live string.
-        assert_eq!(unsafe { str_ref(&s) }, "héllo");
-        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
-        // SAFETY: `v` is writable; the value is dropped at the end.
-        unsafe {
-            write_bytes(v.as_mut_ptr(), b"abc");
-            assert_eq!(bytes_ref(v.as_ptr()), b"abc");
-            crate::vec::msrt_bytes_drop(v.as_mut_ptr());
-            write_bytes(v.as_mut_ptr(), b"");
-            assert_eq!(bytes_ref(v.as_ptr()), b"");
-        }
-    }
-
-    #[test]
-    fn string_matrix_roundtrip() {
-        let _turn = Turn::take();
-        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
-        // SAFETY: `v` is writable; every read borrows the live value.
-        unsafe {
-            write_string_matrix(v.as_mut_ptr(), std::vec![std::vec!["a", "b"], std::vec![]]);
-            assert_eq!(
-                read_string_matrix(v.as_ptr()),
-                std::vec![std::vec!["a", "b"], std::vec![]]
-            );
-            crate::vec::msrt_list_drop(v.as_mut_ptr(), &DESC_LIST_STRING);
-        }
-    }
-
-    #[test]
-    fn status_codes() {
-        assert_eq!(status_of(&Ok::<(), Fail>(())), STATUS_OK);
-        assert_eq!(Fail::LimitExceeded.status(), STATUS_LIMIT_EXCEEDED);
-        assert_eq!(opt(0, 5), None);
-        assert_eq!(opt(1, 5), Some(5));
-    }
 }

@@ -42,20 +42,35 @@ MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t);
 /* Lists (check_list.c): whether `ty` is a `List` of admitted elements, a `List[...]` annotation,
  * a list literal and an index expression. */
 bool ms_body_is_list(const MsBody *b, MsTy ty);
+MsBuiltin ms_body_standard_identity(const MsBody *b, MsTy ty);
+bool ms_body_same_type(const MsBody *b, MsTy x, MsTy y);
 bool ms_body_is_handle(const MsBody *b, MsTy ty);
 bool ms_body_is_result(const MsBody *b, MsTy ty);
 MsTy ms_body_list_annotation(MsBody *b, const MsTypeRef *t);
 MsTy ms_body_list(MsBody *b, const MsExpr *e, MsTy expected);
+/* Maps (check_map.c): whether `ty` is a `Map` of an admitted key and value, a `Map[K, V]` annotation, a literal. */
+bool ms_body_is_map(const MsBody *b, MsTy ty);
+MsTy ms_body_map_annotation(MsBody *b, const MsTypeRef *t);
+MsTy ms_body_map(MsBody *b, const MsExpr *e, MsTy expected);
 MsTy ms_body_index(MsBody *b, const MsExpr *e);
 /* Int, Float, Bool or String: what a binding or argument of the handled set may hold. */
 bool ms_body_is_primitive_value(const MsBody *b, MsTy ty);
+/* A type whose values the pass can pass around (see body_is_admitted). */
+bool ms_body_is_admitted(const MsBody *b, MsTy ty);
+/* What a local can hold: an admitted type, an Optional or a Result of one. */
+bool ms_body_is_bindable(const MsBody *b, MsTy ty);
 /* A primitive, or a type variable of the function being checked: a value that is passed around whole. */
 bool ms_body_is_plain_value(const MsBody *b, MsTy ty);
 /* `ok(v)`, `error(e)` and `some(v)`, the built-in cases of Result and Optional (check_builtin.c). */
 bool ms_body_is_builtin_case(const MsBody *b, MsSym name);
 MsTy ms_body_builtin_call(MsBody *b, const MsExpr *e, MsTy expected);
+/* An enum case called like a function where the context expects its enum (check_alt.c). */
+bool ms_body_is_case_of(const MsBody *b, MsTy expected, MsSym name);
+MsTy ms_body_case_call(MsBody *b, const MsExpr *e, MsTy expected);
+MsTy ms_body_case_name(MsBody *b, const MsExpr *e, MsTy expected);
 /* A call of a generic function of the module (check_generic.c). */
-MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym);
+/* `written` is the explicit type arguments of `f[Int](x)`, or NULL. */
+MsTy ms_body_generic_call(MsBody *b, const MsExpr *e, MsSymId sym, const MsTypeRefs *written);
 /* A call `receiver.name(args)' (check_method.c). */
 MsTy ms_body_method_call(MsBody *b, const MsExpr *e);
 /* Gives up on the function; the caller returns MS_TY_NONE up the tree. */

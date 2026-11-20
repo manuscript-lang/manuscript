@@ -1,16 +1,17 @@
 import (
 	Bytes from "@std/bytes.ms",
-	ClientResponse, HttpClient, HttpClientOptions, HttpHeaders from "@std/net/http.ms",
 	DnsConfig from "@std/net/dns.ms",
-	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
-	Datagram,
+	HttpHeaders,
 	NativeConnection,
-	NativeDatagramSocket,
+	NativeHttpClient,
 	NativeListener,
-	NativeNetwork,
-	NativeScope from "@std/net/net.ms",
+	NativeTlsServer from "@std/net/http.ms",
+	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
+	Datagram, NativeDatagramSocket, NativeScope from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
-	NativeWebSocket, RawWebSocketMessage, WebSocketWire from "@std/net/websocket.ms",
+	NativeWebSocket,
+	RawWebSocketMessage,
+	WebSocketHandshake from "@std/net/websocket.ms",
 	Duration, Timestamp from "@std/time.ms",
 )
 
@@ -25,8 +26,6 @@ export extern fn msstd_net_contains_ip(cidr: Cidr, address: IpAddress) Bool!
 export extern fn msstd_net_parse_cidr(text: String) Cidr!
 
 export extern fn msstd_net_parse_ip(text: String) IpAddress!
-
-export extern fn msstd_net_network() NativeNetwork
 
 export extern fn msstd_net_lookup(
 	host: String,
@@ -90,6 +89,21 @@ export extern fn msstd_conn_accept_tls(
 	timeout: Duration?,
 ) NativeConnection!
 
+// The application protocol the handshake chose, such as `h2`; empty for none.
+export extern fn msstd_conn_alpn(handle: NativeConnection) String
+
+// A server TLS context built once, so each accepted connection reuses the parsed
+// certificate: `accept_tls_with` is `accept_tls` on it.
+export extern fn msstd_tls_server_new(options: TlsOptions) NativeTlsServer!
+
+export extern fn msstd_tls_server_share(server: NativeTlsServer) NativeTlsServer
+
+export extern fn msstd_conn_accept_tls_with(
+	handle: NativeConnection,
+	server: NativeTlsServer,
+	timeout: Duration?,
+) NativeConnection!
+
 export extern fn msstd_conn_tls_info(handle: NativeConnection) TlsInfo?
 
 export extern fn msstd_conn_write_bytes(
@@ -131,6 +145,16 @@ export extern fn msstd_scope_track_conn(
 	connection: NativeConnection,
 ) Bool
 
+export extern fn msstd_scope_track_client(
+	scope: NativeScope,
+	client: NativeHttpClient,
+) Bool
+
+export extern fn msstd_scope_untrack_client(
+	scope: NativeScope,
+	client: NativeHttpClient,
+) Bool
+
 export extern fn msstd_scope_track_listener(
 	scope: NativeScope,
 	listener: NativeListener,
@@ -170,6 +194,26 @@ export extern fn msstd_dgram_send(
 	timeout: Duration?,
 ) Void!
 
+// The server side of the opening handshake (runtime/include/ms_rt/xchg.h): checks the
+// request and, when it is acceptable, fills `response` with the fields of the 101 head.
+// An upgrade the request does not ask for comes back as a refusal status, not an error.
+export extern fn msstd_ws_handshake(
+	method: String,
+	host: String,
+	tls: Bool,
+	request: HttpHeaders,
+	origins: List[String],
+	subprotocols: List[String],
+	response: HttpHeaders,
+) WebSocketHandshake!
+
+// The session over a connection taken from an exchange after its 101 head was sent.
+export extern fn msstd_ws_serve(
+	connection: NativeConnection,
+	subprotocol: String,
+	max_message_bytes: Int?,
+) NativeWebSocket!
+
 export extern fn msstd_websocket_close(handle: NativeWebSocket) Void
 
 export extern fn msstd_websocket_share(handle: NativeWebSocket) NativeWebSocket
@@ -190,40 +234,13 @@ export extern fn msstd_websocket_send_bytes(
 
 export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
 
-export extern fn msstd_net_network_close(net: NativeNetwork) Void
-
-export extern fn msstd_net_network_http_client(
-	net: NativeNetwork,
-	options: HttpClientOptions,
-) HttpClient!
-
-
-export extern fn msstd_net_network_request_bytes(
-	net: NativeNetwork,
-	method: String,
-	url: String,
-	headers: HttpHeaders,
-	body: Bytes,
-	max_response_bytes: Int?,
-	timeout: Duration?,
-) ClientResponse!
-
-export extern fn msstd_net_network_restrict(
-	net: NativeNetwork,
-	hosts: List[String],
-	cidrs: List[String],
-	allow_listen: Bool,
-) NativeNetwork!
-
-export extern fn msstd_net_network_web_socket(
-	net: NativeNetwork,
-	url: String,
+export extern fn msstd_ws_connect(
+	conn: NativeConnection,
+	authority: String,
+	target: String,
 	headers: HttpHeaders,
 	subprotocols: List[String],
-	options: WebSocketWire,
+	compression: Bool,
+	max_message_bytes: Int?,
+	timeout: Duration?,
 ) NativeWebSocket!
-
-export extern fn msstd_net_network_with_resolver(
-	net: NativeNetwork,
-	address: String,
-) NativeNetwork!

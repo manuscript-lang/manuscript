@@ -7,6 +7,7 @@
 
 #include "ms_rt/desc.h"
 #include "ms_rt/alloc.h"
+#include "ms_rt/task.h"
 #include "rt_calls.h"
 #include "rt_stubs.h"
 
@@ -14,15 +15,6 @@ jmp_buf *ms_test_fault;
 char ms_test_fault_message[256];
 uint8_t ms_test_fault_kind;
 size_t ms_test_cleanups;
-
-/* The table of one-character ASCII strings the Rust runtime defines (two bytes each, the second a NUL). */
-uint8_t msrt_ascii_chars[128][2];
-
-__attribute__((constructor)) static void init_ascii_chars(void) {
-    for (int i = 0; i < 128; i++) {
-        msrt_ascii_chars[i][0] = (uint8_t)i;
-    }
-}
 
 #define MAX_CLEANUPS 8
 static void (*cleanup_run[MAX_CLEANUPS])(uint8_t *);
@@ -73,4 +65,4 @@ __attribute__((weak)) void msrt_cleanup_discard(size_t handle) { ms_test_cleanup
 __attribute__((weak)) uint8_t msrt_rollback_needed(void) { return 1; }
 
 /* Weak: core_task_abi links the real one (runtime/core/task_abi.c), every other core test runs without a scheduler. */
-__attribute__((weak)) void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block) { shim(block); }
+__attribute__((weak)) void msrt_task_grow(MsGrowFn shim, void *block) { shim(block); }
