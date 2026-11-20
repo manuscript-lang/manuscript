@@ -204,3 +204,4 @@ c-fuzz:
 c-compiler-test:
 	sh compiler/tests/syntax-diff.sh
 	sh compiler/tests/mir-diff.sh
+	sh compiler/tests/qbe-run.sh
