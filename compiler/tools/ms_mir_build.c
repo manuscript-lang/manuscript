@@ -24,9 +24,9 @@ static int fail(const char *what, const MsBuf *text) {
 }
 
 /* The description of the functions and scopes that ms_asm_tables needs to build the fault tables. */
-static bool write_meta(const MirModule *m, const MsSym *display, const char *path) {
+static bool write_meta(const MirModule *m, const MsSym *display, uint32_t ndisplay, const char *path) {
     MsBuf meta = {0};
-    mir_qbe_tables_meta(m, display, &meta);
+    mir_qbe_tables_meta(m, display, ndisplay, &meta);
     FILE *f = fopen(path, "wb");
     const bool ok = f != NULL && fwrite(meta.data, 1, meta.len, f) == meta.len && fclose(f) == 0;
     if (!ok) {
@@ -90,8 +90,9 @@ int main(int argc, char **argv) {
     }
     MsBuf out = {0}, why = {0};
     bool ok;
-    MsSym *display = MS_NEW_N(&m.arena, MsSym, (size_t)m.nfuncs + 1); // names the fault tables show
-    for (uint32_t i = 0; i < m.nfuncs; i++) {
+    const uint32_t ndisplay = m.nfuncs; // the emitter may add glue after this
+    MsSym *display = MS_NEW_N(&m.arena, MsSym, (size_t)ndisplay + 1); // names the fault tables show
+    for (uint32_t i = 0; i < ndisplay; i++) {
         display[i] = m.funcs[i].name;
     }
     mir_name_symbols(&m);
@@ -107,7 +108,7 @@ int main(int argc, char **argv) {
         return fail("the C back end cannot write:\n", &why);
     }
     mir_emit_entry_main(&m, llvm, tables_meta != NULL && !llvm, &out);
-    if (tables_meta != NULL && !llvm && !write_meta(&m, display, tables_meta)) {
+    if (tables_meta != NULL && !llvm && !write_meta(&m, display, ndisplay, tables_meta)) {
         return 1;
     }
     fwrite(out.data, 1, out.len, stdout);
