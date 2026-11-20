@@ -11,6 +11,18 @@ Linux only; the tasks are portable.
 ms run bench/perf/tasks/main.ms -- 1000000 sleep
 ```
 
+## 2026-11-20: cancel linear again (#4638)
+
+Machine as below, release `ms`, `sleep` mode. A cancelled frame ended its promises with a scan of
+the whole promise table, so cancelling N parked tasks was quadratic (100k: 42 s). Each task now
+keeps a list of the promises it started, and the frame visits only those.
+
+| Tasks | Cancel before | Cancel after |
+| --- | --- | --- |
+| 10k | 0.45 s | 24 ms |
+| 30k | 3.5 s | 85 ms |
+| 100k | 42 s | 272 ms |
+
 ## 2026-11-04: 512 KiB slots in 256 MiB regions, idle hibernation
 
 Revision: the change that introduced this page, on `1e1b2d4a`. Machine: Intel Xeon 2.80 GHz,

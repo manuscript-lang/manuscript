@@ -63,19 +63,24 @@
           "index": 10,
           "name": "html.ms::unescape maps the HTML5 nGt and nLt references to two scalars",
           "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "html.ms::unescape resolves legacy prefixes and the longest entity names",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 11,
-        "selected": 11,
-        "passed": 11,
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN html.ms::HTML escaping preserves Unicode and escapes all markup characters\nPASS html.ms::HTML escaping preserves Unicode and escapes all markup characters\nRUN html.ms::HTML parses nested elements attributes entities and comments\nPASS html.ms::HTML parses nested elements attributes entities and comments\nRUN html.ms::HTML recovers unclosed tags and inserts document and table structure\nPASS html.ms::HTML recovers unclosed tags and inserts document and table structure\nRUN html.ms::HTML preserves doctypes foreign namespaces and raw script text\nPASS html.ms::HTML preserves doctypes foreign namespaces and raw script text\nRUN html.ms::HTML honors optional byte depth and node limits\nPASS html.ms::HTML honors optional byte depth and node limits\nRUN html.ms::HTML depth limit stops deeply nested input without quadratic work\nPASS html.ms::HTML depth limit stops deeply nested input without quadratic work\nRUN html.ms::HTML parse applies default limits and none lifts them\nPASS html.ms::HTML parse applies default limits and none lifts them\nRUN html.ms::unescape maps overflowing numeric references to U+FFFD instead of wrapping\nPASS html.ms::unescape maps overflowing numeric references to U+FFFD instead of wrapping\nRUN html.ms::unescape decodes one-digit numeric references without a semicolon\nPASS html.ms::unescape decodes one-digit numeric references without a semicolon\nRUN html.ms::unescape keeps references without digits literal\nPASS html.ms::unescape keeps references without digits literal\nRUN html.ms::unescape maps the HTML5 nGt and nLt references to two scalars\nPASS html.ms::unescape maps the HTML5 nGt and nLt references to two scalars\n11 tests, 0 failed\n",
+      "stdout": "RUN html.ms::HTML escaping preserves Unicode and escapes all markup characters\nPASS html.ms::HTML escaping preserves Unicode and escapes all markup characters\nRUN html.ms::HTML parses nested elements attributes entities and comments\nPASS html.ms::HTML parses nested elements attributes entities and comments\nRUN html.ms::HTML recovers unclosed tags and inserts document and table structure\nPASS html.ms::HTML recovers unclosed tags and inserts document and table structure\nRUN html.ms::HTML preserves doctypes foreign namespaces and raw script text\nPASS html.ms::HTML preserves doctypes foreign namespaces and raw script text\nRUN html.ms::HTML honors optional byte depth and node limits\nPASS html.ms::HTML honors optional byte depth and node limits\nRUN html.ms::HTML depth limit stops deeply nested input without quadratic work\nPASS html.ms::HTML depth limit stops deeply nested input without quadratic work\nRUN html.ms::HTML parse applies default limits and none lifts them\nPASS html.ms::HTML parse applies default limits and none lifts them\nRUN html.ms::unescape maps overflowing numeric references to U+FFFD instead of wrapping\nPASS html.ms::unescape maps overflowing numeric references to U+FFFD instead of wrapping\nRUN html.ms::unescape decodes one-digit numeric references without a semicolon\nPASS html.ms::unescape decodes one-digit numeric references without a semicolon\nRUN html.ms::unescape keeps references without digits literal\nPASS html.ms::unescape keeps references without digits literal\nRUN html.ms::unescape maps the HTML5 nGt and nLt references to two scalars\nPASS html.ms::unescape maps the HTML5 nGt and nLt references to two scalars\nRUN html.ms::unescape resolves legacy prefixes and the longest entity names\nPASS html.ms::unescape resolves legacy prefixes and the longest entity names\n12 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
