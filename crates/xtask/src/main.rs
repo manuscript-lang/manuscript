@@ -929,7 +929,9 @@ fn add_c_runtime(
         let mut command = Command::new(&cc);
         command
             .args(["-c", "-O2", "-std=c11", "-fPIC", "-fno-stack-protector"])
-            .args(["-fno-strict-aliasing", "-Wall", "-Wextra", "-Werror"])
+            // A null check stays even where an attribute says the pointer is never null.
+            .args(["-fno-strict-aliasing", "-fno-delete-null-pointer-checks"])
+            .args(["-Wall", "-Wextra", "-Werror"])
             .arg("-I")
             .arg(runtime.join("include"))
             .arg("-I")
@@ -938,6 +940,11 @@ fn add_c_runtime(
             .arg("-o")
             .arg(&object)
             .arg(source);
+        // glibc and macOS check libc calls whose destination size is known (documentation/contributing/c-style.md).
+        // Level 2: its `__*_chk` entry points are all older than the glibc floor.
+        if !triple.is_some_and(|t| t.contains("windows") || t.contains("musl")) {
+            command.arg("-D_FORTIFY_SOURCE=2");
+        }
         // `musl-gcc` already targets musl; a clang for another target needs it named.
         if let Some(t) = triple.filter(|t| !host && !t.contains("musl")) {
             command.arg(format!("--target={t}"));

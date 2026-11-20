@@ -8,7 +8,7 @@ runtime/
   sys/           per-OS code: linux, darwin, windows (to come)
   core/          alloc, task, sched, fault, string, vec, map, promise, pipe (num, string, utf8, fmt so far)
   io/            reactor on libuv (to come)
-  net/           http1 (llhttp), tls (OpenSSL) and ws frames done; http2 (nghttp2) to come
+  net/           http1 (llhttp), tls (OpenSSL), ws frames, h2 (nghttp2) and the connection rows done as tested units; wiring to come
   std/           natives per stdlib module (to come)
   third_party/   pinned dependencies and the one build for all of them
   tests/         smoke programs and unit tests (`make c-test`, under ASan and UBSan)
@@ -39,3 +39,7 @@ Libraries come from the system packages first (Chinmay, 2026-11-20); our own pin
 | QBE | 1.3 (vendored, unmodified) | debug code generator, built to `bin/qbe` | MIT |
 
 Versions and SHA-256 sums are in `third_party/c-libs.lock`. Chinmay approved libuv, nghttp2, llhttp, OpenSSL, QBE, PCRE2 and zlib on 2026-11-20 (PCRE2 replaced RE2 the same day, to keep C++ out of programs); any other library needs his approval.
+
+## Style and safety
+
+Every C file follows [C style and safety](../documentation/contributing/c-style.md). `make c-lint` checks it; `ms_rt/safe.h` holds the checked sizes, spans and attribute macros.
