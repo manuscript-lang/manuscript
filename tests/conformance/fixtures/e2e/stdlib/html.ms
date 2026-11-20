@@ -200,3 +200,12 @@ test "unescape maps the HTML5 nGt and nLt references to two scalars":
 	expect_equal(unescape("&nGt;"), "\u{226b}\u{20d2}")?
 	expect_equal(unescape("&nLt;"), "\u{226a}\u{20d2}")?
 	expect_equal(unescape("&nGtv;"), "\u{226b}\u{338}")?
+
+test "unescape resolves legacy prefixes and the longest entity names":
+	expect_equal(unescape("&notit;"), "\u{ac}it;")?
+	expect_equal(unescape("&notin;"), "\u{2209}")?
+	expect_equal(unescape("&copyx"), "\u{a9}x")?
+	expect_equal(unescape("&CounterClockwiseContourIntegral;"), "\u{2233}")?
+	expect_equal(unescape("&bogus;&amp"), "&bogus;&")?
+	expect_equal(unescape("&acE;"), "\u{223e}\u{333}")?
+	expect_equal(unescape("&#128;&#xD800;&#0;&#99999999999;"), "\u{20ac}\u{fffd}\u{fffd}\u{fffd}")?

@@ -438,6 +438,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     }
 }
 
+#[cfg(not(ms_c = "msrt_string_starts_with"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 {
@@ -445,6 +446,7 @@ pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: *const StrVal, v: *co
     unsafe { bytes(a).starts_with(bytes(v)) as u8 }
 }
 
+#[cfg(not(ms_c = "msrt_string_ends_with"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8 {
@@ -452,6 +454,7 @@ pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *cons
     unsafe { bytes(a).ends_with(bytes(v)) as u8 }
 }
 
+#[cfg(not(ms_c = "msrt_string_compare"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=map
 pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64 {
@@ -473,6 +476,7 @@ pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrVal, b: *const 
 
 /// Hash of a string's bytes (equal strings hash equally).
 ///
+#[cfg(not(ms_c = "msrt_string_hash"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=map
 pub unsafe extern "C-unwind" fn msrt_string_hash(s: *const StrVal) -> i64 {
@@ -563,6 +567,7 @@ pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
 }
 
 /// A one-byte needle in a short text is a short scan; every other search is the general one.
+#[cfg(not(ms_c = "msrt_string_contains"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 {
@@ -648,6 +653,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 ///
 /// The compiler decides most comparisons inline (the backends decide it from the words; `str.eq_lit`) and calls this
 /// for two distinct blocks of one length.
+#[cfg(not(ms_c = "msrt_string_eq"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8 {
@@ -656,6 +662,7 @@ pub unsafe extern "C-unwind" fn msrt_string_eq(a: *const StrVal, b: *const StrVa
 }
 
 /// `is_empty()` for a bound method value; direct calls read the length inline (`str.bytes`).
+#[cfg(not(ms_c = "msrt_string_is_empty"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
@@ -664,6 +671,7 @@ pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
 }
 
 /// `length()` for a bound method value: the byte length. Direct calls read it inline (`str.bytes`).
+#[cfg(not(ms_c = "msrt_string_length"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
@@ -672,6 +680,7 @@ pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
 }
 
 /// `scalar_length()`: the scalar count, also the `str.len` operation and bound method values.
+#[cfg(not(ms_c = "msrt_string_scalar_length"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i64 {
@@ -840,6 +849,7 @@ pub unsafe fn msrt_string_contains_long(a: *const StrVal, v: *const StrVal) -> u
 
 /// `contains` where the caller knows the needle has two or more bytes (a literal): the general
 /// search without the one-byte checks.
+#[cfg(not(ms_c = "msrt_string_contains_multi"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_contains_multi(
@@ -851,6 +861,7 @@ pub unsafe extern "C-unwind" fn msrt_string_contains_multi(
 }
 
 /// Non-overlapping occurrences of `v` in `a`; an empty `v` counts the scalars plus one.
+#[cfg(not(ms_c = "msrt_string_count"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_count(a: *const StrVal, v: *const StrVal) -> i64 {
@@ -2555,6 +2566,7 @@ unsafe fn msrt_string_char_at_val(s: *const StrVal, at: i64) -> StrVal {
 }
 
 /// Byte width of the character that starts at byte `at`.
+#[cfg(not(ms_c = "msrt_string_char_width"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrVal, at: i64) -> i64 {
@@ -2564,6 +2576,7 @@ pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrVal, at: i64
 
 /// The scalar value and byte width of the character at byte `at` in one decode, as
 /// `scalar << 3 | width`, for the scalar loops that need both.
+#[cfg(not(ms_c = "msrt_string_scalar_step"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_scalar_step(s: *const StrVal, at: i64) -> i64 {
@@ -2575,6 +2588,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_step(s: *const StrVal, at: i6
 }
 
 /// The Unicode scalar value of the character that starts at byte `at`.
+#[cfg(not(ms_c = "msrt_string_scalar_at_byte"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 {
@@ -4113,6 +4127,25 @@ mod tests {
                 longer.push(b'z');
                 assert!(!equal(&a, &from_bytes(&longer)));
             }
+        }
+    }
+
+    #[test]
+    fn hash_vectors_match_the_c_runtime() {
+        // The same vectors are asserted by runtime/tests/core_string.c.
+        let vectors: [(&str, i64); 6] = [
+            ("", 5637604647281345049),
+            ("a", -4589632175014895841),
+            ("hello", -2768413155067229152),
+            ("123456789012345", 1963792452095667305),
+            ("1234567890123456", 6017223085291776624),
+            (
+                "The quick brown fox jumps over the lazy dog",
+                5716930301217669884,
+            ),
+        ];
+        for (text, hash) in vectors {
+            assert_eq!(hash_bytes(text.as_bytes()) as i64, hash, "{text:?}");
         }
     }
 

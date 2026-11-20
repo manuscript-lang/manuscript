@@ -1,10 +1,10 @@
 import (
 	Bytes from "@std/bytes.ms",
+	min from "@std/math/math.ms",
+	from_scalars from "@std/string.ms",
 	StringBuilder from "@std/string_builder.ms",
 
-	msstd_html_decode,
-	msstd_html_escape,
-	msstd_html_unescape from "@std/internal/html.ms",
+	entity_index, entity_text from "@std/internal/html_entity.ms",
 )
 
 /*
@@ -79,13 +79,219 @@ export enum HtmlNode:
 
 // Escapes text for insertion into an HTML text or quoted attribute context.
 export fn escape(text: String) String:
-	return msstd_html_escape(text)
+	return escape_text(text)
 
 // Decodes HTML5 named and numeric character references in text context, once. A
 // recognized reference may omit its semicolon; unrecognized text stays literal. Invalid
 // numeric references become U+FFFD. It does not parse markup or normalize text.
 export fn unescape(text: String) String:
-	return msstd_html_unescape(text)
+	return decode_references(text, false, true)
+
+// ---- character references ----
+
+// Windows-1252 replacements for numeric references 0x80 through 0x9F.
+fn windows_1252(code: Int) Int:
+	match code:
+		128: return 0x20AC
+		130: return 0x201A
+		131: return 0x0192
+		132: return 0x201E
+		133: return 0x2026
+		134: return 0x2020
+		135: return 0x2021
+		136: return 0x02C6
+		137: return 0x2030
+		138: return 0x0160
+		139: return 0x2039
+		140: return 0x0152
+		142: return 0x017D
+		145: return 0x2018
+		146: return 0x2019
+		147: return 0x201C
+		148: return 0x201D
+		149: return 0x2022
+		150: return 0x2013
+		151: return 0x2014
+		152: return 0x02DC
+		153: return 0x2122
+		154: return 0x0161
+		155: return 0x203A
+		156: return 0x0153
+		158: return 0x017E
+		159: return 0x0178
+		_: return code
+
+// The value of an ASCII digit in `radix` (10 or 16), or -1.
+fn digit_in(b: Int, radix: Int) Int:
+	if b >= 48 and b <= 57: return b - 48
+
+	if radix == 16:
+		if b >= 97 and b <= 102: return b - 87
+		if b >= 65 and b <= 70: return b - 55
+
+	return -1
+
+fn is_ascii_alphanumeric(b: Int) Bool:
+	return (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122)
+
+fn append_scalar(var out: StringBuilder, scalar: Int) Void:
+	out.append(from_scalars([scalar]).get_or("\u{FFFD}"))
+
+// The longest reference name without a `;` is 6 bytes.
+LONGEST_WITHOUT_SEMICOLON := 6
+
+// Decodes the reference at `bytes[at]`, which is `&`, appending its replacement, or the
+// bytes it consumed unchanged, to `out`. Returns the number of bytes consumed.
+fn decode_reference(
+	text: String,
+	bytes: Bytes,
+	at: Int,
+	attribute: Bool,
+	var out: StringBuilder,
+) Int:
+	end := bytes.length()
+
+	if at + 1 >= end:
+		out.append("&")
+		return 1
+
+	var i = at + 1
+
+	if bytes.get(i).to_int() == 35:
+		i += 1
+
+		var radix = 10
+		c := bytes.get_or(i, 0).to_int()
+
+		if c == 120 or c == 88:
+			radix = 16
+			i += 1
+
+		digits_start := i
+
+		// Saturate above U+10FFFF so a long digit run maps to U+FFFD, never wraps.
+		var x = 0
+
+		while i < end:
+			d := digit_in(bytes.get(i).to_int(), radix)
+			if d < 0: break
+
+			x = min(x * radix + d, 0x110000)
+			i += 1
+
+		terminated := i < end and bytes.get(i).to_int() == 59
+
+		// A digitless `&#x;` decodes to U+FFFD for the tokenizer; every other digitless
+		// reference stays literal.
+		if i == digits_start and not (radix == 16 and terminated):
+			out.append("&")
+			return 1
+
+		if terminated: i += 1
+
+		var r = x
+
+		if x >= 128 and x <= 159:
+			r = windows_1252(x)
+		else if x == 0 or (x >= 0xD800 and x <= 0xDFFF) or x > 0x10FFFF:
+			r = 0xFFFD
+
+		append_scalar(out, r)
+		return i - at
+
+	start := i
+
+	while i < end:
+		c := bytes.get(i).to_int()
+		i += 1
+		if is_ascii_alphanumeric(c): continue
+
+		if c != 59: i -= 1
+		break
+
+	literal := text.view(at, i)
+	name := text.view(start, i)
+
+	if name.is_empty():
+		out.append(literal)
+		return i - at
+
+	has_semicolon := bytes.get(i - 1).to_int() == 59
+
+	if attribute and not has_semicolon and i < end and bytes.get(i).to_int() == 61:
+		out.append(literal)
+		return i - at
+
+	found := entity_index(name)
+
+	if found >= 0:
+		out.append(entity_text(found))
+		return i - at
+
+	if not attribute:
+		var j = min(name.length() - 1, LONGEST_WITHOUT_SEMICOLON)
+
+		while j >= 2:
+			prefix := entity_index(name.view(0, j))
+
+			if prefix >= 0:
+				out.append(entity_text(prefix))
+				return j + 1
+
+			j -= 1
+
+	out.append(literal)
+	return i - at
+
+// Decodes the character references in `text`. `attribute` selects the attribute-value
+// rules. `public` is for `unescape`, which keeps a digitless `&#x;` literal as HTML5
+// specifies.
+fn decode_references(text: String, attribute: Bool, public: Bool) String:
+	first := text.index_of("&")
+	if first.is_none(): return text.clone()
+
+	bytes := text.view_bytes()
+	var out = StringBuilder()
+	var i = 0
+	var next = first
+
+	while i < bytes.length():
+		if next.is_none():
+			out.append(text.view(i, bytes.length()))
+			break
+
+		at := next.get_or(0)
+		out.append(text.view(i, at))
+
+		if (
+			public
+			and at + 3 < bytes.length()
+			and bytes.get(at + 1).to_int() == 35
+			and (
+				bytes.get(at + 2).to_int() == 120
+				or bytes.get(at + 2).to_int() == 88
+			)
+			and bytes.get(at + 3).to_int() == 59
+		):
+			out.append(text.view(at, at + 4))
+			i = at + 4
+		else:
+			i = at + decode_reference(text, bytes, at, attribute, out)
+
+		next = text.view(i, bytes.length()).index_of("&")
+		if next.is_some(): next = next.get_or(0) + i
+
+	return out.build()
+
+// Escapes `<`, `>`, `&`, `'` and `"`, with one native pass per character present.
+fn escape_text(text: String) String:
+	var out = text.clone()
+	if out.contains("&"): out = out.replace("&", "&amp;")
+	if out.contains("<"): out = out.replace("<", "&lt;")
+	if out.contains(">"): out = out.replace(">", "&gt;")
+	if out.contains("'"): out = out.replace("'", "&#39;")
+	if out.contains("\""): out = out.replace("\"", "&#34;")
+	return out
 
 // ---- parser state ----
 
@@ -1005,7 +1211,7 @@ fn var Parser.token_text() String:
 	if (self.convert_nul or self.tt == T_COMMENT) and s.contains("\u{0}"):
 		s = s.replace("\u{0}", "\u{FFFD}")
 	if not self.text_is_raw and s.contains("&"):
-		s = msstd_html_decode(s, false)
+		s = decode_references(s, false, false)
 	return s
 
 // Fills the current token fields from the tokenizer's last token.
@@ -1036,7 +1242,7 @@ fn var Parser.load_token() Void:
 				self.attr_ve[i],
 			).get_or("")
 		)
-		if value.contains("&"): value = msstd_html_decode(value, true)
+		if value.contains("&"): value = decode_references(value, true, false)
 
 		if i < self.tok_keys.length():
 			self.tok_keys[i] = key

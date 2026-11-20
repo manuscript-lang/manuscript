@@ -110,6 +110,7 @@ pub unsafe fn drop_slow(o: *mut Obj) {
 ///
 /// # Safety
 /// `out` must point to two writable `i64`.
+#[cfg(not(ms_c = "msrt_heap_stats"))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
     let [used, in_use] = crate::alloc::heap_stats();
@@ -157,24 +158,37 @@ pub unsafe extern "C-unwind" fn msrt_counts(out: *mut u64) {
     }
 }
 
+// With the C allocator the four symbols below are defined in runtime/core/alloc.c; the runtime reaches
+// them under their old names.
+#[cfg(ms_c = "msrt_alloc")]
+pub use crate::alloc::msrt_alloc;
+#[cfg(ms_c = "msrt_free")]
+pub use crate::alloc::msrt_free;
+#[cfg(ms_c = "msrt_heap_stats")]
+pub use crate::alloc::msrt_heap_stats;
+
+#[cfg(not(ms_c = "msrt_alloc"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_alloc(size: usize) -> *mut u8 {
     alloc::alloc(size)
 }
 
+#[cfg(not(ms_c = "msrt_alloc_zeroed"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_alloc_zeroed(size: usize) -> *mut u8 {
     alloc::alloc_zeroed(size)
 }
 
+#[cfg(not(ms_c = "msrt_realloc"))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_realloc(p: *mut u8, size: usize) -> *mut u8 {
     // SAFETY: forwarded contract.
     unsafe { alloc::realloc(p, size) }
 }
 
+#[cfg(not(ms_c = "msrt_free"))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_free(p: *mut u8) {
     // SAFETY: forwarded contract.
