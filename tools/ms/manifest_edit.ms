@@ -127,7 +127,7 @@ export fn allow_effects(text: String, name: String, effects: List[String]) Strin
 	require_table(document, "effects", false)?
 
 	var allowed = List[TomlValue]()
-	for effect in effects: allowed.append(text_value(effect))
+	for effect in effects.clone(): allowed.append(text_value(effect))
 
 	edited := set_key(document, ["effects"], name, TomlValue.ArrayValue(allowed))?
 	return ok(to_string(edited))
