@@ -1762,7 +1762,11 @@ pub extern "C" fn msrt_unwind_drops() -> u8 {
 // ms: leaf
 pub extern "C" fn msrt_rollback_needed() -> u8 {
     // SAFETY: the current task's header stays live for this call.
-    let guarded = unsafe { (*msrt_isolate_hdr()).guarded.load(core::sync::atomic::Ordering::Relaxed) };
+    let guarded = unsafe {
+        (*msrt_isolate_hdr())
+            .guarded
+            .load(core::sync::atomic::Ordering::Relaxed)
+    };
     u8::from(guarded != 0 || has_cleanups())
 }
 

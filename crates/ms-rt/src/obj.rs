@@ -141,7 +141,7 @@ pub extern "C" fn msrt_ops_add(n: i64) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_counts(out: *mut u64) {
     let [allocations, bytes] = alloc::requested();
-        let copies = crate::string::copy_counts();
+    let copies = crate::string::copy_counts();
     let all = [
         allocations,
         bytes,
