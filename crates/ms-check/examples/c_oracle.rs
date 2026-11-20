@@ -261,7 +261,7 @@ fn body_exprs(e: &Expr, out: &mut Vec<NodeId>) {
         ExprKind::Match { scrutinee, arms } => {
             body_exprs(scrutinee, out);
             for arm in arms {
-                body_exprs(&arm.path, out);
+                out.push(arm.path.id); // a pattern: its parts are not expressions
                 if let Some(value) = &arm.value {
                     body_exprs(value, out);
                 }

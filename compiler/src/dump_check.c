@@ -219,7 +219,10 @@ void ms_dump_module_types(MsBuf *out, const MsCheck *c, MsModId m) {
 
 /* ---- function bodies ---- */
 
-static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsExpr *e) {
+static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsExpr *e);
+
+/* The line of one expression: its node id and the type the checker gave it. */
+static void dump_expr_line(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsExpr *e) {
     ms_buf_printf(out, "expr %u ", e->id);
     // A node the checker never typed (the `_` of a match arm) is `-`.
     if (facts->expr_ty[e->id] == MS_TY_NONE) {
@@ -228,6 +231,10 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
         ms_ty_show(out, c->names, &c->tys, facts->expr_ty[e->id]);
     }
     ms_buf_putc(out, '\n');
+}
+
+static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const MsExpr *e) {
+    dump_expr_line(out, c, facts, e);
     switch ((MsExprKind)e->kind) {
     case MS_E_TEXT:
         for (uint32_t i = 0; i < e->u.text.len; i++) {
@@ -246,7 +253,7 @@ static void dump_expr(MsBuf *out, const MsCheck *c, const MsFacts *facts, const 
         dump_expr(out, c, facts, e->u.match.scrutinee);
         for (uint32_t i = 0; i < e->u.match.arms.len; i++) {
             const MsArm *arm = e->u.match.arms.ptr[i];
-            dump_expr(out, c, facts, arm->path);
+            dump_expr_line(out, c, facts, arm->path); /* a pattern: its parts are not expressions */
             if (arm->value != NULL) {
                 dump_expr(out, c, facts, arm->value);
             }
