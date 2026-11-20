@@ -36,7 +36,7 @@ MsHeaders *ms_headers_new(void) {
     MsHeaders *table = msrt_alloc(sizeof *table);
     memset(table, 0, sizeof *table);
     table->header.drop = table_drop;
-    table->header.clone = table_clone;
+    table->header.clone = table_clone; /* a copy of a record that holds headers is a deep copy */
     table->self = table;
     return table;
 }

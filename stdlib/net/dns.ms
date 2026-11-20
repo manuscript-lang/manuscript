@@ -2,13 +2,14 @@ import (
 	DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy, host_allowed from "@std/net/policy.ms",
 	Deadline, Duration, deadline_after from "@std/time.ms",
+
 	msstd_dns_config, msstd_dns_query, msstd_net_lookup from "@std/internal/net.ms",
 )
 
 // Name resolution for a `Network`: the system resolver, or one DNS server, with the
-// host's search list and `ndots` for names that are not absolute. The runtime answers one
-// query to one server; the order of servers and candidate names, the limits and the policy
-// checks live here.
+// host's search list and `ndots` for names that are not absolute. The runtime answers
+// one query to one server; the order of servers and candidate names, the limits and the
+// policy checks live here.
 
 // The host's resolver settings, as `msstd_dns_config` reports them.
 export type DnsConfig:
@@ -36,6 +37,7 @@ fn budget(timeout: Duration?) Deadline?!:
 	if limit := timeout:
 		if limit.to_nanoseconds() < 0: return error(invalid())
 		return ok(deadline_after(limit))
+
 	return ok(none)
 
 fn time_left(deadline: Deadline?) Duration?:
@@ -56,8 +58,8 @@ fn over_limit(count: Int, max_records: Int?) Bool:
 	if limit := max_records: return count > limit
 	return false
 
-// Names to try for `name`: an absolute name is exact; the others follow the search list,
-// as written first when they have at least `ndots` dots.
+// Names to try for `name`: an absolute name is exact; the others follow the search
+// list, as written first when they have at least `ndots` dots.
 fn candidates(name: String, config: DnsConfig) List[String]:
 	if name.ends_with("."): return [name.clone()]
 
@@ -77,6 +79,7 @@ fn candidates(name: String, config: DnsConfig) List[String]:
 fn v6_digits(text: String) String:
 	var head: List[String] = []
 	var tail: List[String] = []
+
 	if parts := text.split_once("::"):
 		if not parts.before.is_empty(): head = parts.before.split(":").clone()
 		if not parts.after.is_empty(): tail = parts.after.split(":").clone()
@@ -92,6 +95,7 @@ fn v6_digits(text: String) String:
 // The reverse-lookup name of an address (`4.3.2.1.in-addr.arpa.`).
 fn reverse_name(address: IpAddress) String:
 	text := address.to_string()
+
 	if not text.contains(":"):
 		var octets = text.split(".").clone()
 		octets.reverse()
@@ -113,21 +117,35 @@ fn query_servers(
 	deadline: Deadline?,
 ) List[DnsRecord]!:
 	var last = cannot_resolve(original)
+
 	for name in names:
 		var answered = false
+
 		for server in servers:
 			if answered: continue
 
-			found := msstd_dns_query(server.clone(), name.clone(), kind, time_left(deadline))
+			found := msstd_dns_query(
+				server.clone(),
+				name.clone(),
+				kind,
+				time_left(deadline),
+			)
+
 			if found.is_error():
 				failure := found.err()
-				if failure.kind == "ETIMEDOUT" and expired(deadline): return error(failure)
+				if failure.kind == "ETIMEDOUT" and expired(deadline): return error(
+					failure
+				)
+
 				last = failure
 				continue
 
 			if records := found.get(): return ok(records)
+
 			answered = true
+
 		if answered: last = cannot_resolve(original)
+
 	return error(last)
 
 // `localhost` and every name under it name the loopback interface (RFC 6761), so they
@@ -140,6 +158,7 @@ fn is_localhost(name: String) Bool:
 fn canonical(text: String) String?:
 	parsed := parse_ip(text)
 	if parsed.is_error(): return none
+
 	return parsed.get().to_string()
 
 // Whether an address text is in the family: 4 or 6, or 0 for either.
@@ -170,8 +189,10 @@ fn server_addresses(
 
 	for kind in kinds:
 		answer := query_servers([server.clone()], names, kind, name, deadline)
+
 		if answer.is_error():
 			if answer.err().kind == "ETIMEDOUT": return error(answer.err())
+
 			last = answer.err()
 			continue
 
@@ -179,6 +200,7 @@ fn server_addresses(
 			if text := canonical(record.value): found.append(text)
 
 	if found.is_empty(): return error(last)
+
 	return ok(found)
 
 // The addresses of `name`: through `resolver` (an `ip:port` DNS server) when it is not
@@ -189,27 +211,36 @@ fn addresses(
 	family: Int,
 	deadline: Deadline?,
 ) List[String]!:
-	if not resolver.is_empty(): return server_addresses(resolver, name, family, deadline)
+	if not resolver.is_empty(): return server_addresses(
+		resolver,
+		name,
+		family,
+		deadline,
+	)
 
 	// A literal and `localhost` need no lookup, so they need no wait either.
 	if literal := canonical(name): return ok(unique([literal], family))
 	if is_localhost(name): return ok(unique(["127.0.0.1", "::1"], family))
 
-	// The system resolver matches host names exactly on some platforms, so ask in lower case.
+	// The system resolver matches host names exactly on some platforms, so ask in lower
+	// case.
 	found := msstd_net_lookup(name.lower(), 0, time_left(deadline))
+
 	if found.is_error():
 		if found.err().kind == "EIO": return error(cannot_resolve(name))
 		return error(found.err())
 
 	var texts: List[String] = []
+
 	for entry in found.get():
 		if parts := entry.rsplit_once(":"):
 			host := parts.before.cut_prefix("[").get_or(parts.before)
 			if text := canonical(host.cut_suffix("]").get_or(host)): texts.append(text)
+
 	return ok(unique(texts, family))
 
-// Resolves a host name to the text of its IPv4 and IPv6 addresses: an IP literal answers
-// as written, and more than `max_records` addresses is EOVERFLOW.
+// Resolves a host name to the text of its IPv4 and IPv6 addresses: an IP literal
+// answers as written, and more than `max_records` addresses is EOVERFLOW.
 export fn dns_lookup(
 	policy: Policy,
 	resolver: String,
@@ -222,12 +253,14 @@ export fn dns_lookup(
 	if not host_allowed(policy, name): return error(denied())
 
 	var found: List[String] = [name.clone()]
+
 	if parse_ip(name).is_error():
 		found = addresses(resolver, name, 0, deadline)?
 		if found.is_empty(): return error(cannot_resolve(name))
 
 	if over_limit(found.length(), limit):
 		return error(Error("network: limit exceeded", kind: "EOVERFLOW"))
+
 	return ok(found)
 
 // Looks up the records of one `kind` for `name`; address kinds follow `dns_lookup`, and
@@ -246,23 +279,38 @@ export fn dns_resolve(
 	if not host_allowed(policy, name): return error(denied())
 
 	var records: List[DnsRecord] = []
+
 	if kind == DnsKind.A or kind == DnsKind.AAAA:
 		var family = 4
 		if kind == DnsKind.AAAA: family = 6
 		for text in addresses(resolver, name, family, deadline)?:
-			records.append(DnsRecord(kind: kind, value: text, priority: 0, weight: 0, port: 0))
+			records.append(
+				DnsRecord(
+					kind: kind,
+					value: text,
+					priority: 0,
+					weight: 0,
+					port: 0,
+				)
+			)
 	else:
 		config := msstd_dns_config()?
 		var servers = config.servers.clone()
 		if not resolver.is_empty(): servers = [resolver]
 
 		var names = candidates(name, config)
+
 		if kind == DnsKind.PTR:
 			address := parse_ip(name)
-			if address.is_error(): return error(Error("unrecognized address", kind: "EIO"))
+			if address.is_error(): return error(
+				Error("unrecognized address", kind: "EIO")
+			)
+
 			names = [reverse_name(address.get())]
+
 		records = query_servers(servers, names, kind, name, deadline)?
 
 	if over_limit(records.length(), limit):
 		return error(Error("network: limit exceeded", kind: "EOVERFLOW"))
+
 	return ok(records)

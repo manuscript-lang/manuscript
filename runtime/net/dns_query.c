@@ -150,7 +150,7 @@ static void record_copy(const uint8_t *source, uint8_t *destination) {
     memcpy(destination, &copy, sizeof copy);
 }
 
-const MsTypeDesc ms_net_dns_record_desc = {
+static const MsTypeDesc record_desc = {
     .size = sizeof(DnsRecord),
     .align = _Alignof(DnsRecord),
     .kind = MS_TYPE_KIND_CUSTOM,
@@ -166,7 +166,7 @@ static uint16_t type_of_kind(int64_t kind) {
 
 /* Fills `out` with a `List[DnsRecord]` of the records of one kind. */
 static void write_records(const MsDnsResponse *response, uint16_t type, int64_t kind, MsVec *out) {
-    msrt_list_with_capacity(&ms_net_dns_record_desc, (int64_t)response->count, out);
+    msrt_list_with_capacity(&record_desc, (int64_t)response->count, out);
     for (size_t i = 0; i < response->count; i++) {
         const MsDnsRecord *found = &response->records[i];
         if (found->type != type) {
@@ -174,7 +174,7 @@ static void write_records(const MsDnsResponse *response, uint16_t type, int64_t 
         }
         DnsRecord record = {.kind = kind, .priority = found->priority, .weight = found->weight, .port = found->port};
         msrt_string_from_bytes((const uint8_t *)found->value, found->length, &record.value);
-        msrt_list_push(out, &ms_net_dns_record_desc, (const uint8_t *)&record);
+        msrt_list_push(out, &record_desc, (const uint8_t *)&record);
     }
 }
 
@@ -232,7 +232,7 @@ uint8_t msstd_dns_query(const MsStr *server, const MsStr *name, int64_t kind, ui
     } else {
         write_records(&response, type, kind, out);
         if (out->len == 0) { /* records of other kinds only */
-            msrt_list_drop(out, &ms_net_dns_record_desc);
+            msrt_list_drop(out, &record_desc);
             result = STATUS_NONE;
         }
     }

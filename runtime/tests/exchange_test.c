@@ -42,6 +42,7 @@ uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
 typedef struct Client {
     uint16_t port;
     const char *request;
+    int hang_up; /* close after sending, without reading the answer */
     char response[8192];
     size_t length;
 } Client;
@@ -71,6 +72,10 @@ static void *client_run(void *argument) {
         if (r != MS_SYS_OK) break;
         sent += wrote;
     }
+    if (client->hang_up) {
+        ms_sys_net_close(socket);
+        return NULL;
+    }
     for (;;) {
         size_t got = 0;
         r = ms_sys_net_read(socket, client->response + client->length, sizeof client->response - 1 - client->length, &got);
@@ -91,13 +96,14 @@ typedef struct Case {
 } Case;
 
 /* Starts the client and accepts its connection as a ConnH. */
-static void case_open(Case *c, const char *request) {
+static void case_open_with(Case *c, const char *request, int hang_up) {
     MsAddr loopback = {4, {127, 0, 0, 1}, 0, 0}, bound;
     memset(c, 0, sizeof *c);
     CHECK(ms_sys_net_tcp_listen(&loopback, 4, &c->listener) == MS_SYS_OK);
     CHECK(ms_sys_net_local_addr(c->listener, &bound) == MS_SYS_OK);
     c->client.port = bound.port;
     c->client.request = request;
+    c->client.hang_up = hang_up;
     CHECK(pthread_create(&c->thread, NULL, client_run, &c->client) == 0);
     MsSock socket = MS_SOCK_INVALID;
     for (;;) {
@@ -108,6 +114,8 @@ static void case_open(Case *c, const char *request) {
     c->table = ms_conn_table_new(2);
     c->conn = ms_netconn_new(c->table, ms_conn_open(c->table, (int)socket, MS_CONN_HTTP1));
 }
+
+static void case_open(Case *c, const char *request) { case_open_with(c, request, 0); }
 
 /* Closes the server side, waits for the client and answers what it read. */
 static const char *case_close(Case *c) {
@@ -301,6 +309,19 @@ static void test_share(void) {
     CHECK(strstr(case_close(&c), "\r\n\r\ns") != NULL);
 }
 
+/* wait_gone returns once the client has hung up, and again at once for a connection that is already gone. */
+static void test_wait_gone(void) {
+    Case c;
+    case_open_with(&c, "GET /g HTTP/1.1\r\nHost: t\r\n\r\n", 1);
+    void *exchange = NULL;
+    MsStr err = text_of("");
+    CHECK(msstd_xchg_next(c.conn, 0, 1, 5000000000, &exchange, &err) == STATUS_OK);
+    CHECK(msstd_xchg_wait_gone(exchange, &err) == STATUS_OK);
+    CHECK(msstd_xchg_wait_gone(exchange, &err) == STATUS_OK);
+    msrt_obj_drop(exchange);
+    (void)case_close(&c);
+}
+
 static void test_head_request_and_informational(void) {
     Case c;
     case_open(&c, "HEAD /h HTTP/1.1\r\nHost: t\r\n\r\n");
@@ -328,6 +349,7 @@ int main(void) {
     test_refusals();
     test_take_conn();
     test_share();
+    test_wait_gone();
     test_head_request_and_informational();
     if (!failed) printf("exchange ok\n");
     return failed;

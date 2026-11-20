@@ -8,6 +8,7 @@ import (
 	promise from "@std/concurrency/promise.ms",
 	Closeable, Writable from "@std/core.ms",
 	Pipe, ReadStream, Sink, Source, WriteStream, pipe from "@std/io/io.ms",
+	dns_lookup, dns_resolve from "@std/net/dns.ms",
 	ClientResponse,
 	HttpClient,
 	HttpClientOptions,
@@ -21,7 +22,6 @@ import (
 	headers,
 	open_client from "@std/net/http.ms",
 	start_server from "@std/net/serve.ms",
-	dns_lookup, dns_resolve from "@std/net/dns.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress, parse_ip from "@std/net/ip.ms",
 	Policy,
 	address_allowed,
@@ -435,7 +435,8 @@ export extern type NativeScope
 export opaque type Network:
 	// The host names and address ranges this network allows.
 	policy: Policy
-	// The DNS server (`ip:port`) that names resolve through; empty for the system resolver.
+	// The DNS server (`ip:port`) that names resolve through; empty for the system
+	// resolver.
 	resolver: String
 	// The sockets and derived networks that `close` closes.
 	scope: NativeScope
@@ -661,7 +662,13 @@ More than `options.max_records` addresses returns EOVERFLOW, `options.timeout` b
 System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
 */
 fn Network.lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:
-	return dns_lookup(self.policy, self.resolver.clone(), name, options.max_records, options.timeout)
+	return dns_lookup(
+		self.policy,
+		self.resolver.clone(),
+		name,
+		options.max_records,
+		options.timeout,
+	)
 
 // Performs one buffered HTTP request and returns the status, headers, and complete
 // body. Only `http` and `https` URLs without user info are accepted. Redirects are
