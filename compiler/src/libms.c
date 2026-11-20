@@ -41,6 +41,8 @@
 #include "tables.c"
 #include "stdlib.c"
 #include "dump_check.c"
+#include "effect_directives.c"
+#include "effect_reach.c"
 #include "ownership_places.c"
 #include "ownership_bits.c"
 #include "libms_api.c"
