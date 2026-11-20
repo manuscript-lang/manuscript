@@ -35,6 +35,11 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# `-std=c11` and a file's own `_XOPEN_SOURCE` hide macOS functions outside the standard namespace (mkdtemp, ...). Linux
+# gets them from glibc's default feature set; macOS needs the full namespace asked for.
+if(APPLE)
+  add_compile_definitions(_DARWIN_C_SOURCE)
+endif()
 
 include(cmake/MsPlatform.cmake)
 if(MS_BUILD_RUNTIME)
