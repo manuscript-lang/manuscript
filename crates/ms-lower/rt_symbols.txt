@@ -802,6 +802,7 @@ msstd_process_stop_release() @domain=process @leaf
 msstd_process_subprocess_close(handle h: *mut ObjCell<Child>) @domain=process
 msstd_process_subprocess_kill(handle h: *mut ObjCell<Child>) @domain=process
 msstd_process_subprocess_max_resident(handle h: *const ObjCell<Child>) -> i64 @domain=process
+msstd_process_subprocess_pid(handle h: *const ObjCell<Child>) -> i64 @domain=process
 msstd_process_subprocess_stream_id(handle h: *mut ObjCell<Child>, which: i64) -> i64 @domain=process
 msstd_process_subprocess_terminate(handle h: *mut ObjCell<Child>) @domain=process
 msstd_process_subprocess_wait(handle h: *mut ObjCell<Child>, has_timeout: HasRaw, timeout_ns: i64, out: *mut i64, err: ErrSlot) -> u8 @domain=process

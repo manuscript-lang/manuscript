@@ -54,6 +54,7 @@ static MsObj *client_handle(MsCurlClient *client) {
 }
 
 uint8_t msstd_client_new(const MsNetHttpOptions *options, void **out, MsStr *err) {
+    ms_net_clear_text(err);
     const MsCurlClientOptions settings = {.roots_pem = str_bytes(&options->roots_pem),
                                           .certificate_pem = str_bytes(&options->certificate_pem),
                                           .private_key_pem = str_bytes(&options->private_key_pem),

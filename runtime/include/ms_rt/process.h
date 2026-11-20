@@ -33,6 +33,8 @@ void msstd_process_subprocess_close(MsObj *object);
 void msstd_process_subprocess_kill(MsObj *object);
 /* ms-sig: msstd_process_subprocess_max_resident(handle h: *const ObjCell<Child>) -> i64 @domain=process */
 int64_t msstd_process_subprocess_max_resident(MsObj *object);
+/* ms-sig: msstd_process_subprocess_pid(handle h: *const ObjCell<Child>) -> i64 @domain=process */
+int64_t msstd_process_subprocess_pid(MsObj *object);
 /* ms-sig: msstd_process_subprocess_stream_id(handle h: *mut ObjCell<Child>, which: i64) -> i64 @domain=process */
 int64_t msstd_process_subprocess_stream_id(MsObj *object, int64_t which);
 /* ms-sig: msstd_process_subprocess_terminate(handle h: *mut ObjCell<Child>) @domain=process */

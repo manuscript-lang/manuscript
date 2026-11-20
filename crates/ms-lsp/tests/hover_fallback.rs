@@ -3,7 +3,6 @@
 
 use ms_lsp::analysis::{Document, Options, compile_source};
 use ms_lsp::{nav, text, uri};
-use ms_rt as _;
 
 #[test]
 fn fallback_hover_preserves_literal_operator_and_empty_ranges() {
