@@ -6,4 +6,8 @@
 #include "dump_base.c"
 #include "parse.c"
 #include "dump.c"
+#include "types.c"
+#include "tables.c"
+#include "stdlib.c"
+#include "dump_check.c"
 #include "libms_api.c"
