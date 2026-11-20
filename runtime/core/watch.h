@@ -37,6 +37,8 @@ void ms_watch_turn(void);
 void ms_watch_stir(void);
 /* Whether `isolate`, found busy at `look`, has neither turned nor left its rest since before the previous look. */
 bool ms_watch_held_up(MsWatchLook look, uint64_t resting, uint32_t isolate);
+/* Whether the watcher sleeps until an isolate leaves its rest (for tests and diagnostics). */
+bool ms_watch_asleep(void);
 /* Ends the watcher and waits for it; a later add_hook starts a new one. */
 void ms_watch_stop(void);
 
