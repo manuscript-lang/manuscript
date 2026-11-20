@@ -343,16 +343,12 @@ fn body_facts(files: &[String]) {
                 _ => continue,
             };
             let end = module.decls.get(i + 1).map_or(u32::MAX, |n| n.pos.line);
-            let dirty = program
-                .diagnostics
-                .iter()
-                .any(|x| x.pos.line >= d.pos.line && x.pos.line < end);
-            println!(
-                "{word} {}:{} {}",
-                d.pos.line,
-                d.pos.column,
-                if dirty { "dirty" } else { "clean" }
-            );
+            println!("{word} {}:{}", d.pos.line, d.pos.column);
+            for x in &program.diagnostics {
+                if x.pos.line >= d.pos.line && x.pos.line < end {
+                    println!("diag {}:{}: {}", x.pos.line, x.pos.column, x.message);
+                }
+            }
             for id in ids.drain(..) {
                 let ty = facts
                     .info(id)

@@ -247,7 +247,12 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
             }
         }
         return;
-    case MS_E_NAME: own_use_local(w, e, demand); return;
+    case MS_E_NAME:
+        // A module constant reads no local.
+        if (w->facts->res_kind[e->id] == MS_RES_BINDING) {
+            own_use_local(w, e, demand);
+        }
+        return;
     case MS_E_UNARY: own_expr(w, e->u.bin.left, DEMAND_READ); return;
     case MS_E_BINARY:
         own_expr(w, e->u.bin.left, DEMAND_READ);

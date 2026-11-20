@@ -31,7 +31,7 @@ uint8_t msrt_promise_end(int64_t id) { return ms_promise_end(id) ? 1 : 0; }
 void msrt_promise_fault_report(int64_t id, MsStr *out) {
     MsFaultText report = ms_promise_fault_report(id);
     *out = ms_str_from_bytes(report.bytes, report.length);
-    msrt_free(report.bytes);
+    ms_fault_text_free(&report);
 }
 
 int64_t msrt_promise_finished(void) {
