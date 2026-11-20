@@ -17,6 +17,7 @@ typedef struct MsBody {
     bool has_close;         /* the module declares a method named `close` */
     MsTy result;
     uint32_t first_binding; /* the bindings from here on belong to the function being checked */
+    uint32_t *reads;        /* by binding id: how many times its value is read */
     bool *closed;           /* by binding id: its block ended, so the name is free again */
     uint32_t loop_depth;    /* loops around the statement being checked */
     uint32_t breaks;        /* `break`s seen for the innermost loop */

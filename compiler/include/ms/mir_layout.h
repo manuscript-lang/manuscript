@@ -181,4 +181,8 @@ bool mir_opt_is_nullable(MirLayouts *layouts, MirTy inner);
 /* Whether values of `ty` have the string layout: `String`, and `String?`. */
 bool mir_is_str_like(const MirLayouts *layouts, MirTy ty);
 
+/* Whether the runtime takes a value of `ty` as its scalar leaves (the C ABI of the runtime): scalars,
+ * pointers, handles and the small optionals of them. Anything else crosses as the address of a copy. */
+bool mir_rt_direct(const MirModule *m, MirLayouts *layouts, MirTy ty);
+
 #endif

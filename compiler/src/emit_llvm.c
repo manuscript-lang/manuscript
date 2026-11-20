@@ -76,7 +76,18 @@ static void ll_sym(MsBuf *o, MsStr n) {
     ms_buf_putc(o, '"');
 }
 
-static bool ll_checked(MirOp op) { return op == MOP_IAddChk || op == MOP_ISubChk; }
+/* How many checks an operation makes, each of which ends a piece of its block. */
+static uint32_t ll_pieces(MirOp op) {
+    switch (op) {
+    case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
+    case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk: case MOP_SRemChk:
+        return 1;
+    case MOP_SDivChk:
+        return 2;
+    default:
+        return 0;
+    }
+}
 
 static void ll_label(LCx *c, uint32_t block, uint32_t part) {
     if (part == 0) ms_buf_printf(c->out, "b%u", block);
@@ -128,6 +139,31 @@ static const LlBinary *ll_find_binary(MirOp op) {
         }
     }
     return NULL;
+}
+
+/* Rotates are funnel shifts of a value with itself; the high half of an unsigned product is a
+ * 128-bit multiply. Neither has a one-instruction form. */
+static bool ll_wide_inst(LCx *c, const MirInst *inst) {
+    MsBuf *o = c->out;
+    const MirValue *a = inst->args;
+    const uint32_t n = c->next++;
+    switch ((MirOp)inst->op) {
+    case MOP_Rotl: case MOP_Rotr:
+        ms_buf_printf(o, "  %%v%u = call i64 @llvm.%s.i64(i64 %%v%u, i64 %%v%u, i64 %%v%u)\n", inst->res,
+                      inst->op == MOP_Rotl ? "fshl" : "fshr", a[0], a[0], a[1]);
+        return true;
+    case MOP_UMulHi:
+        ms_buf_printf(o, "  %%w%ua = zext i64 %%v%u to i128\n  %%w%ub = zext i64 %%v%u to i128\n", n, a[0], n, a[1]);
+        ms_buf_printf(o, "  %%w%uc = mul i128 %%w%ua, %%w%ub\n  %%w%ud = lshr i128 %%w%uc, 64\n", n, n, n, n, n);
+        ms_buf_printf(o, "  %%v%u = trunc i128 %%w%ud to i64\n", inst->res, n);
+        return true;
+    case MOP_Select:
+        ms_buf_printf(o, "  %%v%u = select i1 %%v%u, %s %%v%u, %s %%v%u\n", inst->res, a[0],
+                      ll_vty(c, inst->res), a[1], ll_vty(c, inst->res), a[2]);
+        return true;
+    default:
+        return false;
+    }
 }
 
 static void ll_binary_inst(LCx *c, const MirInst *inst, const LlBinary *b) {
@@ -318,6 +354,24 @@ static uint32_t ll_slot_bytes(MirLayouts *layouts, MirTy ty) {
     return (size + 7U) / 8U * 8U;
 }
 
+static bool ll_rt_direct(LCx *c, MirTy ty) { return mir_rt_direct(c->m, c->layouts, ty); }
+
+/* The frame slots one runtime call needs: a copy of each argument that does not pass directly,
+ * and the result area when the result does not. */
+static void ll_frame_rt_call(LCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    const MirExtern *def = &c->m->externs[inst->imm.a];
+    for (uint32_t k = 0; k < inst->nargs; k++) {
+        if (!ll_rt_direct(c, def->params[k].ty)) {
+            ms_buf_printf(c->out, "  %%p%u_%u_%u = alloca [%u x i8], align 8\n", block, index, k,
+                          ll_slot_bytes(c->layouts, def->params[k].ty));
+        }
+    }
+    if (!ll_rt_direct(c, def->ret)) {
+        ms_buf_printf(c->out, "  %%r%u_%u = alloca [%u x i8], align 8\n", block, index,
+                      ll_slot_bytes(c->layouts, def->ret));
+    }
+}
+
 static void ll_frame_slots(LCx *c) {
     for (uint32_t b = 0; b < c->f->nblocks; b++) {
         const MirBlockData *block = &c->f->blocks[b];
@@ -330,6 +384,8 @@ static void ll_frame_slots(LCx *c) {
                        ll_leaves(c, c->f->values[inst->res]).len > 1) {
                 ms_buf_printf(c->out, "  %%r%u_%u = alloca [%u x i8], align 8\n", b, k,
                               ll_slot_bytes(c->layouts, c->f->values[inst->res]));
+            } else if (inst->op == MOP_CallRt) {
+                ll_frame_rt_call(c, inst, b, k);
             }
         }
     }
@@ -379,22 +435,150 @@ static bool ll_call(LCx *c, const MirInst *inst, uint32_t block, uint32_t index)
     return ll_leaves_at(c, inst->res, area, true);
 }
 
-/* A checked add or subtract: the `with.overflow` intrinsic. The check ends the current piece of
- * the block: the fault is a block of its own and the rest continues in a new piece. */
-static void ll_checked_arith(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+/* Appends one argument of a runtime call to `args`: the leaves of `value` when `ty` passes
+ * directly, else the address of a stack copy that is written first. `area` names the copy. */
+static bool ll_rt_argument(LCx *c, MsBuf *args, MirTy ty, MirValue value, const char *area) {
+    if (!ll_rt_direct(c, ty)) {
+        if (!ll_leaves_at(c, value, area, false)) {
+            return false;
+        }
+        ms_buf_printf(args, "%sptr %s", args->len > 0 ? ", " : "", area);
+        return true;
+    }
+    const MirLeafSpan leaves = ll_leaves(c, ty);
+    for (uint32_t j = 0; j < leaves.len; j++) {
+        ms_buf_printf(args, "%s%s ", args->len > 0 ? ", " : "", ll_leaf_type(leaves.ptr[j]));
+        ll_name(args, value, j);
+    }
+    return true;
+}
+
+/* A call of a runtime function, which follows the C ABI of the runtime: scalars by value,
+ * everything else by the address of a copy, and a result that is not a scalar through a trailing
+ * output pointer. */
+static bool ll_call_rt(LCx *c, const MirInst *inst, uint32_t block, uint32_t index) {
+    const MirExtern *def = &c->m->externs[inst->imm.a];
+    MsBuf args = {0};
+    char area[40];
+    bool ok = true;
+    for (uint32_t k = 0; ok && k < inst->nargs; k++) {
+        (void)snprintf(area, sizeof area, "%%p%u_%u_%u", block, index, k);
+        ok = ll_rt_argument(c, &args, def->params[k].ty, inst->args[k], area);
+    }
+    const MirLeafSpan result = ll_leaves(c, def->ret);
+    const bool direct = ll_rt_direct(c, def->ret);
+    if (ok && direct && result.len > 1) {
+        c->why = "runtime result of several scalars";
+        ok = false;
+    }
+    if (ok) {
+        (void)snprintf(area, sizeof area, "%%r%u_%u", block, index);
+        if (!direct) {
+            ms_buf_printf(&args, "%sptr %s", args.len > 0 ? ", " : "", area);
+        }
+        if (direct && result.len == 1) {
+            ms_buf_printf(c->out, "  %%v%u = call %s ", inst->res, ll_leaf_type(result.ptr[0]));
+        } else {
+            ms_buf_puts(c->out, "  call void ");
+        }
+        ll_sym(c->out, ms_name(&c->m->names, def->name));
+        ms_buf_printf(c->out, "(%.*s)\n", (int)args.len, args.data == NULL ? "" : args.data);
+        if (!direct && inst->res != MIR_NONE) {
+            ok = ll_leaves_at(c, inst->res, area, true);
+        }
+    }
+    ms_buf_free(&args);
+    return ok;
+}
+
+/* Ends the current piece of a block with a check: when `cond` holds the program calls the fault
+ * function `fault` (with `nargs` leaves of `args`, all `i64`) and does not return; otherwise it
+ * continues in a new piece. */
+static void ll_fault_if(LCx *c, uint32_t block, uint32_t *part, const char *cond, const char *fault,
+                        const MirValue *args, uint32_t nargs) {
+    MsBuf *o = c->out;
+    const uint32_t n = c->next++;
+    (*part)++;
+    ms_buf_printf(o, "  br i1 %s, label %%f%u, label %%", cond, n);
+    ll_label(c, block, *part);
+    ms_buf_printf(o, "\nf%u:\n  call void @%s(", n, fault);
+    for (uint32_t k = 0; k < nargs; k++) {
+        ms_buf_printf(o, "%si64 %%v%u", k == 0 ? "" : ", ", args[k]);
+    }
+    ms_buf_puts(o, ")\n  unreachable\n");
+    ll_label(c, block, *part);
+    ms_buf_puts(o, ":\n");
+}
+
+/* The operations that are an `llvm.<prefix>.with.overflow` intrinsic: the result is the first
+ * member of the pair and the second says whether it overflowed. Signed overflow faults as
+ * overflow, unsigned as out of range. */
+typedef struct LlOverflow {
+    const char *intrinsic;
+    const char *fault;
+    MirOp op;
+} LlOverflow;
+
+static const LlOverflow ll_overflow[] = {
+    {"sadd", "msrt_fault_int_overflow", MOP_IAddChk}, {"ssub", "msrt_fault_int_overflow", MOP_ISubChk},
+    {"smul", "msrt_fault_int_overflow", MOP_IMulChk}, {"ssub", "msrt_fault_int_overflow", MOP_INegChk},
+    {"uadd", "msrt_fault_int_range", MOP_UAddChk},    {"usub", "msrt_fault_int_range", MOP_USubChk},
+    {"umul", "msrt_fault_int_range", MOP_UMulChk},
+};
+
+static const LlOverflow *ll_find_overflow(MirOp op) {
+    for (size_t k = 0; k < sizeof ll_overflow / sizeof ll_overflow[0]; k++) {
+        if (ll_overflow[k].op == op) {
+            return &ll_overflow[k];
+        }
+    }
+    return NULL;
+}
+
+/* A checked add, subtract, multiply or negation. */
+static void ll_checked_arith(LCx *c, const MirInst *inst, const LlOverflow *kind, uint32_t block,
+                             uint32_t *part) {
     MsBuf *o = c->out;
     const MirValue *a = inst->args;
     const uint32_t n = c->next++;
-    ms_buf_printf(o, "  %%x%u = call { i64, i1 } @llvm.%s.with.overflow.i64(i64 %%v%u, i64 %%v%u)\n", n,
-                  inst->op == MOP_IAddChk ? "sadd" : "ssub", a[0], a[1]);
+    const bool negate = inst->op == MOP_INegChk;
+    ms_buf_printf(o, "  %%x%u = call { i64, i1 } @llvm.%s.with.overflow.i64(i64 ", n, kind->intrinsic);
+    if (negate) ms_buf_puts(o, "0, i64 ");
+    else ms_buf_printf(o, "%%v%u, i64 ", a[0]);
+    ms_buf_printf(o, "%%v%u)\n", negate ? a[0] : a[1]);
     ms_buf_printf(o, "  %%v%u = extractvalue { i64, i1 } %%x%u, 0\n", inst->res, n);
-    ms_buf_printf(o, "  %%o%u = extractvalue { i64, i1 } %%x%u, 1\n", n, n);
-    (*part)++;
-    ms_buf_printf(o, "  br i1 %%o%u, label %%f%u, label %%", n, n);
-    ll_label(c, block, *part);
-    ms_buf_printf(o, "\nf%u:\n  call void @msrt_fault_int_overflow()\n  unreachable\n", n);
-    ll_label(c, block, *part);
-    ms_buf_puts(o, ":\n");
+    char flag[24];
+    (void)snprintf(flag, sizeof flag, "%%o%u", n);
+    ms_buf_printf(o, "  %s = extractvalue { i64, i1 } %%x%u, 1\n", flag, n);
+    ll_fault_if(c, block, part, flag, kind->fault, NULL, 0);
+}
+
+/* `sdiv.chk` faults on a zero divisor and on the one quotient that does not fit, `Int.min / -1`;
+ * `srem.chk` faults on a zero divisor and answers 0 for a divisor of -1 (the remainder is
+ * defined there, but the instruction is not). */
+static void ll_checked_div(LCx *c, const MirInst *inst, uint32_t block, uint32_t *part) {
+    MsBuf *o = c->out;
+    const MirValue *a = inst->args;
+    const bool div = inst->op == MOP_SDivChk;
+    const uint32_t n = c->next++;
+    ms_buf_printf(o, "  %%z%u = icmp eq i64 %%v%u, 0\n", n, a[1]);
+    char zero[24];
+    (void)snprintf(zero, sizeof zero, "%%z%u", n);
+    ll_fault_if(c, block, part, zero, div ? "msrt_fault_div_zero" : "msrt_fault_rem_zero", NULL, 0);
+    if (div) {
+        ms_buf_printf(o, "  %%m%u = icmp eq i64 %%v%u, -1\n  %%n%u = icmp eq i64 %%v%u, %lld\n", n, a[1], n,
+                      a[0], (long long)INT64_MIN);
+        ms_buf_printf(o, "  %%b%u = and i1 %%m%u, %%n%u\n", n, n, n);
+        char both[24];
+        (void)snprintf(both, sizeof both, "%%b%u", n);
+        ll_fault_if(c, block, part, both, "msrt_fault_div_overflow", a, 2);
+        ms_buf_printf(o, "  %%v%u = sdiv i64 %%v%u, %%v%u\n", inst->res, a[0], a[1]);
+        return;
+    }
+    ms_buf_printf(o, "  %%m%u = icmp eq i64 %%v%u, -1\n  %%d%u = select i1 %%m%u, i64 1, i64 %%v%u\n", n,
+                  a[1], n, n, a[1]);
+    ms_buf_printf(o, "  %%r%u = srem i64 %%v%u, %%d%u\n  %%v%u = select i1 %%m%u, i64 0, i64 %%r%u\n", n,
+                  a[0], n, inst->res, n, n);
 }
 
 static void ll_compare(LCx *c, const MirInst *inst) {
@@ -422,6 +606,16 @@ static void ll_constant(LCx *c, const MirInst *inst) {
     }
 }
 
+static const char *ll_float_function(uint8_t op) {
+    switch (op) {
+    case MOP_FSqrt: return "sqrt";
+    case MOP_FAbs: return "fabs";
+    case MOP_FFloor: return "floor";
+    case MOP_FCeil: return "ceil";
+    default: return "trunc";
+    }
+}
+
 /* The one-operand operations and conversions. */
 static bool ll_unary(LCx *c, const MirInst *inst) {
     MsBuf *o = c->out;
@@ -433,6 +627,16 @@ static bool ll_unary(LCx *c, const MirInst *inst) {
     case MOP_FNeg: ms_buf_printf(o, "  %%v%u = fneg double %%v%u\n", inst->res, inst->args[0]); return true;
     case MOP_I2F: ms_buf_printf(o, "  %%v%u = sitofp i64 %%v%u to double\n", inst->res, inst->args[0]); return true;
     case MOP_B2I: ms_buf_printf(o, "  %%v%u = zext i1 %%v%u to i64\n", inst->res, inst->args[0]); return true;
+    case MOP_INeg: ms_buf_printf(o, "  %%v%u = sub i64 0, %%v%u\n", inst->res, inst->args[0]); return true;
+    case MOP_Clz: case MOP_Ctz:
+        ms_buf_printf(o, "  %%v%u = call i64 @llvm.%s.i64(i64 %%v%u, i1 false)\n", inst->res,
+                      inst->op == MOP_Clz ? "ctlz" : "cttz", inst->args[0]);
+        return true;
+    case MOP_Popcnt: ms_buf_printf(o, "  %%v%u = call i64 @llvm.ctpop.i64(i64 %%v%u)\n", inst->res, inst->args[0]); return true;
+    case MOP_FSqrt: case MOP_FAbs: case MOP_FFloor: case MOP_FCeil: case MOP_FTrunc:
+        ms_buf_printf(o, "  %%v%u = call double @llvm.%s.f64(double %%v%u)\n", inst->res,
+                      ll_float_function(inst->op), inst->args[0]);
+        return true;
     default: return false;
     }
 }
@@ -464,6 +668,14 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     if (ll_unary(c, inst)) {
         return true;
     }
+    if (ll_wide_inst(c, inst)) {
+        return true;
+    }
+    const LlOverflow *overflow = ll_find_overflow((MirOp)inst->op);
+    if (overflow != NULL) {
+        ll_checked_arith(c, inst, overflow, block, part);
+        return true;
+    }
     bool handled = false;
     const bool ok = ll_memory_inst(c, inst, &handled);
     if (handled) {
@@ -473,7 +685,8 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     case MOP_IConst: case MOP_BConst: case MOP_FConst: ll_constant(c, inst); return true;
     case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: ll_compare(c, inst); return true;
     case MOP_Call: return ll_call(c, inst, block, index);
-    case MOP_IAddChk: case MOP_ISubChk: ll_checked_arith(c, inst, block, part); return true;
+    case MOP_CallRt: return ll_call_rt(c, inst, block, index);
+    case MOP_SDivChk: case MOP_SRemChk: ll_checked_div(c, inst, block, part); return true;
     default:
         c->why = mir_op_info[inst->op].name;
         return false;
@@ -655,9 +868,7 @@ static void ll_last_pieces(const MirFunc *f, uint32_t *last) {
     for (uint32_t b = 0; b < f->nblocks; b++) {
         last[b] = 0;
         for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
-            if (ll_checked((MirOp)f->blocks[b].insts[k].op)) {
-                last[b]++;
-            }
+            last[b] += ll_pieces((MirOp)f->blocks[b].insts[k].op);
         }
     }
 }
@@ -685,6 +896,62 @@ static bool ll_function(LCx *c, uint32_t index) {
     return ok;
 }
 
+/* One `declare` per runtime function the module lists, in the signature `ll_call_rt` calls it with.
+ * A function that never returns says so, so the code after a call of it is unreachable. */
+static void ll_declare_externs(LCx *c) {
+    MsBuf *o = c->out;
+    for (uint32_t e = 0; e < c->m->nexterns; e++) {
+        const MirExtern *def = &c->m->externs[e];
+        const MirLeafSpan result = ll_leaves(c, def->ret);
+        const bool direct = ll_rt_direct(c, def->ret);
+        ms_buf_printf(o, "declare %s ", direct && result.len == 1 ? ll_leaf_type(result.ptr[0]) : "void");
+        ll_sym(o, ms_name(&c->m->names, def->name));
+        ms_buf_putc(o, '(');
+        bool first = true;
+        for (uint32_t k = 0; k < def->nparams; k++) {
+            const MirLeafSpan leaves = ll_leaves(c, def->params[k].ty);
+            if (!ll_rt_direct(c, def->params[k].ty)) {
+                ms_buf_printf(o, "%sptr", first ? "" : ", ");
+                first = false;
+                continue;
+            }
+            for (uint32_t j = 0; j < leaves.len; j++) {
+                ms_buf_printf(o, "%s%s", first ? "" : ", ", ll_leaf_type(leaves.ptr[j]));
+                first = false;
+            }
+        }
+        if (!direct) {
+            ms_buf_printf(o, "%sptr", first ? "" : ", ");
+        }
+        ms_buf_printf(o, ")%s\n", def->noreturn ? " noreturn" : "");
+    }
+}
+
+/* What the code above may call, declared once at the end of the module: the runtime's fault
+ * functions (which never return) and the LLVM intrinsics. An unused declaration costs nothing. */
+static const char ll_declarations[] =
+    "declare void @msrt_fault_int_overflow() cold noreturn nounwind\n"
+    "declare void @msrt_fault_int_range() cold noreturn nounwind\n"
+    "declare void @msrt_fault_div_zero() cold noreturn nounwind\n"
+    "declare void @msrt_fault_rem_zero() cold noreturn nounwind\n"
+    "declare void @msrt_fault_div_overflow(i64, i64) cold noreturn nounwind\n"
+    "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n"
+    "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n"
+    "declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)\n"
+    "declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64)\n"
+    "declare { i64, i1 } @llvm.usub.with.overflow.i64(i64, i64)\n"
+    "declare { i64, i1 } @llvm.umul.with.overflow.i64(i64, i64)\n"
+    "declare i64 @llvm.fshl.i64(i64, i64, i64)\n"
+    "declare i64 @llvm.fshr.i64(i64, i64, i64)\n"
+    "declare i64 @llvm.ctlz.i64(i64, i1)\n"
+    "declare i64 @llvm.cttz.i64(i64, i1)\n"
+    "declare i64 @llvm.ctpop.i64(i64)\n"
+    "declare double @llvm.sqrt.f64(double)\n"
+    "declare double @llvm.fabs.f64(double)\n"
+    "declare double @llvm.floor.f64(double)\n"
+    "declare double @llvm.ceil.f64(double)\n"
+    "declare double @llvm.trunc.f64(double)\n";
+
 bool mir_emit_llvm(const MirModule *m, MsBuf *out, MsBuf *why) {
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
@@ -698,9 +965,9 @@ bool mir_emit_llvm(const MirModule *m, MsBuf *out, MsBuf *why) {
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
+    LCx externs = {m, NULL, out, &layouts, 0, NULL};
+    ll_declare_externs(&externs);
     mir_layouts_free(&layouts);
-    ms_buf_puts(out, "declare void @msrt_fault_int_overflow() cold noreturn nounwind\n");
-    ms_buf_puts(out, "declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)\n");
-    ms_buf_puts(out, "declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)\n");
+    ms_buf_puts(out, ll_declarations);
     return ok;
 }
