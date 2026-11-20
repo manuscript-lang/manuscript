@@ -36,4 +36,13 @@ bool mir_opt_appendfast(MirModule *m); /* `string_append` on an owned string wit
 bool mir_opt_inline(MirModule *m);
 bool mir_opt_inline_small(MirModule *m);
 
+/* ---- the pipeline (opt_pipeline.c) ---- */
+
+typedef enum MirOptLevel { MIR_OPT_NONE, MIR_OPT_SPEED } MirOptLevel;
+
+/* Runs the passes for `level`. With `verify` the module is re-verified after every pass; the first
+ * failure stops the run, writes the pass name, the errors and the module to `error` and returns
+ * false. */
+MS_NODISCARD bool mir_optimize(MirModule *m, MirOptLevel level, bool verify, MsBuf *error);
+
 #endif
