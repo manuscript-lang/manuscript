@@ -29,16 +29,19 @@ export fn with(members: JsonValue, key: String, value: JsonValue) JsonValue:
 			return JsonValue.ObjectValue(next)
 		_: return members.clone()
 
+fn html_safe(encoded: String) String:
+	return encoded.replace("<", "\\u003c").replace(">", "\\u003e").replace(
+		"&",
+		"\\u0026",
+	).replace("\u{2028}", "\\u2028").replace("\u{2029}", "\\u2029")
+
 // The text of `value`.
 export fn render_document(value: JsonValue) String:
-	encoded := stringify(value, StringifyOptions(indent: 2)).get_or("")
-	return (
-		encoded.replace("<", "\\u003c").replace(">", "\\u003e").replace(
-			"&",
-			"\\u0026",
-		).replace("\u{2028}", "\\u2028").replace("\u{2029}", "\\u2029")
-		+ "\n"
-	)
+	return html_safe(stringify(value, StringifyOptions(indent: 2)).get_or("")) + "\n"
+
+// The single-line text of `value`, without spaces, safe inside an HTML script element.
+export fn render_compact(value: JsonValue) String:
+	return html_safe(stringify(value, StringifyOptions()).get_or(""))
 
 test "markup characters are escaped":
 	text := render_document(JsonValue.StringValue("a<b>&c\u{8}\u{c}\u{7f}"))
