@@ -1259,25 +1259,43 @@ static MsTy body_invalid(MsCheck *c) {
 }
 
 
-/* Whether a constant's initializer is literals, text and operators alone: a call, a name or a
- * member in it is another rule's concern (a constant may name only other constants). */
-static bool body_is_constant_expression(const MsExpr *e) {
+/* How far a constant's initializer is from literals and operators. */
+typedef enum BodyConstant { BODY_CONSTANT_OK, BODY_CONSTANT_REJECTED, BODY_CONSTANT_UNSURE } BodyConstant;
+
+/* Walks an initializer in the order Rust does and stops at the first part that is not a literal
+ * or an operator: a call, an index or a lambda is rejected at `*at`; a name, member or collection
+ * is not classified here. */
+static BodyConstant body_constant_kind(const MsExpr *e, const MsExpr **at) {
     switch ((MsExprKind)e->kind) {
     case MS_E_NUMBER:
     case MS_E_BOOL:
-    case MS_E_VOID: return true;
+    case MS_E_VOID: return BODY_CONSTANT_OK;
     case MS_E_TEXT:
         for (uint32_t i = 0; i < e->u.text.len; i++) {
             const MsExpr *part = e->u.text.ptr[i].expr;
-            if (part != NULL && !body_is_constant_expression(part)) {
-                return false;
+            const BodyConstant kind = part == NULL ? BODY_CONSTANT_OK : body_constant_kind(part, at);
+            if (kind != BODY_CONSTANT_OK) {
+                return kind;
             }
         }
-        return true;
-    case MS_E_UNARY: return body_is_constant_expression(e->u.bin.left);
-    case MS_E_BINARY: return body_is_constant_expression(e->u.bin.left) && body_is_constant_expression(e->u.bin.right);
-    default: return false;
+        return BODY_CONSTANT_OK;
+    case MS_E_UNARY: return body_constant_kind(e->u.bin.left, at);
+    case MS_E_BINARY: {
+        const BodyConstant left = body_constant_kind(e->u.bin.left, at);
+        return left != BODY_CONSTANT_OK ? left : body_constant_kind(e->u.bin.right, at);
     }
+    case MS_E_NAME:
+    case MS_E_MEMBER:
+    case MS_E_LIST:
+    case MS_E_MAP: return BODY_CONSTANT_UNSURE;
+    case MS_E_APPLY:
+    case MS_E_INDEX:
+    case MS_E_PROBE:
+    case MS_E_LAMBDA:
+    case MS_E_CALL:
+    case MS_E_MATCH: *at = e; return BODY_CONSTANT_REJECTED;
+    }
+    return BODY_CONSTANT_UNSURE;
 }
 
 /* A module constant `NAME := value` (or `NAME: Type := value`) whose initializer is literals and
@@ -1293,9 +1311,20 @@ static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     if (d->u.konst.ty != NULL) {
         expected = ms_body_annotation(b, d->u.konst.ty);
     }
-    const bool literal = body_is_constant_expression(d->u.konst.value);
-    const MsTy ty = b->supported && literal ? ms_body_expr(b, d->u.konst.value, expected) : MS_TY_NONE;
-    if (b->supported && literal && body_is_value_type(b, ty)) {
+    const MsExpr *rejected = NULL;
+    const BodyConstant kind = body_constant_kind(d->u.konst.value, &rejected);
+    const bool literal = kind == BODY_CONSTANT_OK;
+    MsTy ty = MS_TY_NONE;
+    if (b->supported && kind == BODY_CONSTANT_REJECTED) {
+        // Rust reports the first part and types the constant `<invalid>`, which silences its uses.
+        body_report(b, rejected->pos,
+                    ms_arena_fmt(&b->c->arena, "a constant takes literals, operators, collections, and other constants; "
+                                                   "compute this value in a function"));
+        ty = b->invalid_ty;
+    } else if (b->supported && literal) {
+        ty = ms_body_expr(b, d->u.konst.value, expected);
+    }
+    if (b->supported && (literal || kind == BODY_CONSTANT_REJECTED) && (ty == b->invalid_ty || body_is_value_type(b, ty))) {
         b->facts->body_checked[d->id] = true;
         body_commit_diags(b, diags_start);
         // Like the Rust checker's, the constant's symbol is a function of no parameters.
