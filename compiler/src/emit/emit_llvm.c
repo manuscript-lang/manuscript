@@ -398,6 +398,8 @@ static void ll_copy_leaf(LCx *c, MirValue dst, uint32_t out_index, MirValue src,
     ms_buf_puts(o, identity);
 }
 
+#include "emit_llvm_record.inc"
+
 /* `type.new`: the leaves of the fields in order. */
 static void ll_record_new(LCx *c, const MirInst *inst) {
     uint32_t at = 0;
@@ -828,9 +830,18 @@ static bool ll_memory_inst(LCx *c, const MirInst *inst, bool *handled) {
     case MOP_Store: case MOP_Put: return ll_store(c, inst);
     case MOP_TypeDesc: return ll_typedesc(c, inst);
     case MOP_GlobalGet: case MOP_GlobalSet: return ll_global(c, inst);
-    case MOP_TypeNew: ll_record_new(c, inst); return true;
-    case MOP_TypeGet: return ll_record_get(c, inst);
-    case MOP_TypeSet: case MOP_TypeFill: return ll_record_set(c, inst);
+    case MOP_TypeNew:
+        if (ll_is_indirect_record(c, c->f->values[inst->res])) {
+            return ll_indirect_new(c, inst);
+        }
+        ll_record_new(c, inst);
+        return true;
+    case MOP_TypeGet:
+        return ll_is_indirect_record(c, c->f->values[inst->args[0]]) ? ll_indirect_get(c, inst)
+                                                                     : ll_record_get(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill:
+        return ll_is_indirect_record(c, c->f->values[inst->args[0]]) ? ll_indirect_set(c, inst)
+                                                                     : ll_record_set(c, inst);
     case MOP_PtrField: return ll_ptr_field(c, inst);
     default:
         *handled = false;
@@ -1011,7 +1022,7 @@ static void ll_alt_tag(LCx *c, const MirInst *inst) {
     }
 }
 
-/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+/* `opt.some`, `opt.view` (the same leaves; the view borrows its payload): a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
  * payload itself, any other is the payload after a presence flag. */
 static bool ll_opt_some(LCx *c, const MirInst *inst) {
     const MirTy inner = mir_ty_data(c->m, c->f->values[inst->res])->elem;
@@ -1080,7 +1091,7 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
         ll_opt_convert(c, inst);
         return true;
     case MOP_AltTag: ll_alt_tag(c, inst); return true;
-    case MOP_OptSome: return ll_opt_some(c, inst);
+    case MOP_OptSome: case MOP_OptView: return ll_opt_some(c, inst);
     case MOP_OptGet: return ll_opt_get(c, inst);
     case MOP_OptIsSome:
         ll_opt_is_some(c, inst);
@@ -1102,10 +1113,73 @@ static bool ll_convert(LCx *c, const MirInst *inst, uint32_t block, uint32_t *pa
 
 #include "emit_llvm_closure.inc"
 #include "emit_llvm_iface.inc"
+#include "emit_llvm_enum.inc"
+#include "emit_llvm_list.inc"
 #include "emit_llvm_task.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
+/* ---- list element access ---- */
+
+/* Writes the element address as a pointer and names it in `out`. */
+static void ll_elem_base(LCx *c, MirValue list, const char *index, uint32_t size, char *out, size_t cap) {
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "  %%t%u = mul i64 %s, %u\n  %%a%u = add i64 %%v%u, %%t%u\n  %%p%u = inttoptr i64 %%a%u to ptr\n",
+                  n, index, size, n, list, n, n, n);
+    (void)snprintf(out, cap, "%%p%u", n);
+}
+
+static void ll_copy_list(LCx *c, const MirInst *inst, MirValue from) {
+    for (uint32_t k = 0; k < 3; k++) {
+        ll_copy_leaf(c, inst->res, k, from, k);
+    }
+}
+
+/* The unchecked list operations: the index is in range or the length is known. Dropping an old
+ * element is the job of `lower_ops`, which runs first. */
+static bool ll_list_write_op(LCx *c, const MirInst *inst, bool *handled) {
+    *handled = true;
+    char base[24], index[24];
+    const bool is_list = inst->op == MOP_ListSetU ||
+                         inst->op == MOP_ListFillU || inst->op == MOP_ListPushU || inst->op == MOP_ListGrow;
+    const uint32_t size = is_list ? mir_list_elem_size(c->layouts, c->f->values[inst->args[0]]) : 0;
+    MsBuf *o = c->out;
+    switch ((MirOp)inst->op) {
+    case MOP_ListSetU: case MOP_ListFillU:
+        (void)snprintf(index, sizeof index, "%%v%u", inst->args[1]);
+        ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
+        ll_copy_list(c, inst, inst->args[0]);
+        return ll_leaves_at(c, inst->args[2], base, false);
+    case MOP_ListPushU:
+        (void)snprintf(index, sizeof index, "%%v%u.%u", inst->args[0], MIR_LIST_LEN_LEAF);
+        ll_elem_base(c, inst->args[0], index, size, base, sizeof base);
+        ll_copy_list(c, inst, inst->args[0]);
+        ms_buf_printf(o, "  %%v%u.%u = add i64 %%v%u.%u, 1\n", inst->res, MIR_LIST_LEN_LEAF,
+                      inst->args[0], MIR_LIST_LEN_LEAF);
+        return ll_leaves_at(c, inst->args[1], base, false);
+    case MOP_ListDropLast:
+        ll_copy_list(c, inst, inst->args[0]);
+        ms_buf_printf(o, "  %%v%u.%u = sub i64 %%v%u.%u, 1\n", inst->res, MIR_LIST_LEN_LEAF,
+                      inst->args[0], MIR_LIST_LEN_LEAF);
+        return true;
+    case MOP_ListGrow: {
+        /* A block of capacity 0 is a view or empty: it is never resized, a fresh block is made. */
+        const uint32_t n = c->next++;
+        ms_buf_printf(o,
+                      "  %%t%u = icmp eq i64 %%v%u.%u, 0\n  %%q%u = select i1 %%t%u, i64 0, i64 %%v%u\n"
+                      "  %%b%u = mul i64 %%v%u, %u\n  %%v%u = call i64 @\"msrt_realloc\"(i64 %%q%u, i64 %%b%u)\n",
+                      n, inst->args[0], MIR_LIST_CAP_LEAF, n, n, inst->args[0], n, inst->args[1],
+                      size > 0 ? size : 1, inst->res, n, n);
+        ll_copy_leaf(c, inst->res, MIR_LIST_LEN_LEAF, inst->args[0], MIR_LIST_LEN_LEAF);
+        ll_copy_leaf(c, inst->res, MIR_LIST_CAP_LEAF, inst->args[1], 0);
+        return true;
+    }
+    default:
+        *handled = false;
+        return true;
+    }
+}
+
 static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
     const LlBinary *binary = ll_find_binary((MirOp)inst->op);
     if (binary != NULL) {
@@ -1132,9 +1206,21 @@ static bool ll_inst(LCx *c, const MirInst *inst, uint32_t block, uint32_t index,
     if (handled) {
         return closure_ok;
     }
+    const bool write_ok = ll_list_write_op(c, inst, &handled);
+    if (handled) {
+        return write_ok;
+    }
     const bool iface_ok = ll_iface_op(c, inst, block, index, &handled);
     if (handled) {
         return iface_ok;
+    }
+    const bool enum_ok = ll_enum_op(c, inst, &handled);
+    if (handled) {
+        return enum_ok;
+    }
+    const bool list_ok = ll_list_op(c, inst, &handled);
+    if (handled) {
+        return list_ok;
     }
     const bool task_ok = ll_task_op(c, inst, block, part, &handled);
     if (handled) {
@@ -1463,8 +1549,14 @@ static void ll_declare_heap(const LCx *c) {
     if (ll_extern_named(c, "msrt_alloc") == MIR_NONE) {
         ms_buf_puts(c->out, "declare i64 @\"msrt_alloc\"(i64)\n");
     }
+    if (ll_extern_named(c, "msrt_realloc") == MIR_NONE) {
+        ms_buf_puts(c->out, "declare i64 @\"msrt_realloc\"(i64, i64)\n");
+    }
     if (ll_extern_named(c, "msrt_free") == MIR_NONE) {
         ms_buf_puts(c->out, "declare void @\"msrt_free\"(i64)\n");
+    }
+    if (ll_extern_named(c, "msrt_string_free") == MIR_NONE) {
+        ms_buf_puts(c->out, "declare void @\"msrt_string_free\"(ptr)\n");
     }
 }
 

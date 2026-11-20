@@ -308,6 +308,63 @@ static void lo_fault_messages(LoCx *c, MirFunc *f) {
     }
 }
 
+/* `list.set.u` and `list.droplast` drop the element they overwrite or remove. The emitters only
+ * write memory, so the old element is read and dropped first and the op becomes its plain form
+ * (`list.fill.u`, `list.droplast 1`). */
+static void lo_list_drops(LoCx *c, MirFunc *f) {
+    for (uint32_t b = 0; b < f->nblocks; b++) {
+        uint32_t extra = 0;
+        for (uint32_t k = 0; k < f->blocks[b].ninsts; k++) {
+            const MirInst *inst = &f->blocks[b].insts[k];
+            extra += (inst->op == MOP_ListSetU || inst->op == MOP_ListDropLast) ? 5 : 0;
+        }
+        if (extra == 0) {
+            continue;
+        }
+        const uint32_t before = f->blocks[b].ninsts;
+        MirInst *out = MS_NEW_N(&c->m->arena, MirInst, before + extra);
+        uint32_t n = 0;
+        for (uint32_t k = 0; k < before; k++) {
+            MirInst inst = f->blocks[b].insts[k];
+            const bool set = inst.op == MOP_ListSetU;
+            const bool last = inst.op == MOP_ListDropLast && !(inst.imm.tag == MI_INT && inst.imm.i == 1);
+            const MirTy list = (set || last) ? f->values[inst.args[0]] : MIR_NONE;
+            const MirTy elem = (set || last) ? mir_ty_data(c->m, list)->elem : MIR_NONE;
+            if ((!set && !last) || !mir_needs_drop(c->m, elem)) {
+                if (set) {
+                    inst.op = MOP_ListFillU;
+                }
+                out[n++] = inst;
+                continue;
+            }
+            MirValue at = inst.args[1];
+            if (last) {
+                const MirValue len = mir_new_value(c->m, f, MIR_INT);
+                const MirValue one = mir_new_value(c->m, f, MIR_INT);
+                at = mir_new_value(c->m, f, MIR_INT);
+                MirValue arg = inst.args[0];
+                MirValue pair[2] = {len, one};
+                out[n++] = mir_inst(MOP_ListLen, mir_imm_none(), len, inst.loc, mir_args_copy(c->m, &arg, 1), 1);
+                out[n++] = mir_inst(MOP_IConst, (MirImm){.tag = MI_INT, .i = 1}, one, inst.loc, NULL, 0);
+                out[n++] = mir_inst(MOP_ISub, mir_imm_none(), at, inst.loc, mir_args_copy(c->m, pair, 2), 2);
+            }
+            const MirValue old = mir_new_value(c->m, f, elem);
+            MirValue get[2] = {inst.args[0], at};
+            out[n++] = mir_inst(MOP_ListGetU, mir_imm_none(), old, inst.loc, mir_args_copy(c->m, get, 2), 2);
+            MirValue victim = old;
+            out[n++] = mir_inst(MOP_Drop, mir_imm_none(), MIR_NONE, inst.loc, mir_args_copy(c->m, &victim, 1), 1);
+            if (set) {
+                inst.op = MOP_ListFillU;
+            } else {
+                inst.imm = (MirImm){.tag = MI_INT, .i = 1};
+            }
+            out[n++] = inst;
+        }
+        f->blocks[b].insts = out;
+        f->blocks[b].ninsts = f->blocks[b].cinsts = n;
+    }
+}
+
 /* `drop.if flag v` ends its block with a branch on `flag` to a block that drops `v` and on to a
  * block holding the rest, so the drop that remains is a plain `drop`. Blocks the split makes are
  * visited too, for a second `drop.if`. */
@@ -349,6 +406,7 @@ static void lo_split_drop_ifs(MirModule *m, MirFunc *f) {
 }
 
 static void lo_function(LoCx *c, MirFunc *f) {
+    lo_list_drops(c, f);
     lo_split_drop_ifs(c->m, f);
     lo_expand_cleanups(c, f);
     lo_fault_messages(c, f);

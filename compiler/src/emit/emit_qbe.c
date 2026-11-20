@@ -248,6 +248,8 @@ static void qbe_copy_leaf(QCx *c, MirValue dst, uint32_t out_index, MirValue src
     ms_buf_putc(o, '\n');
 }
 
+#include "emit_qbe_record.inc"
+
 /* `type.new`: the leaves of the fields in order. */
 static void qbe_record_new(QCx *c, const MirInst *inst) {
     uint32_t at = 0;
@@ -828,9 +830,18 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
     case MOP_Slot: return true; /* allocated at the top of the entry block */
     case MOP_Load: case MOP_Take: return qbe_load(c, inst);
     case MOP_Store: case MOP_Put: return qbe_store(c, inst);
-    case MOP_TypeNew: qbe_record_new(c, inst); return true;
-    case MOP_TypeGet: return qbe_record_get(c, inst);
-    case MOP_TypeSet: case MOP_TypeFill: return qbe_record_set(c, inst);
+    case MOP_TypeNew:
+        if (qbe_is_indirect_record(c, c->f->values[inst->res])) {
+            return qbe_indirect_new(c, inst);
+        }
+        qbe_record_new(c, inst);
+        return true;
+    case MOP_TypeGet:
+        return qbe_is_indirect_record(c, c->f->values[inst->args[0]]) ? qbe_indirect_get(c, inst)
+                                                                      : qbe_record_get(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill:
+        return qbe_is_indirect_record(c, c->f->values[inst->args[0]]) ? qbe_indirect_set(c, inst)
+                                                                      : qbe_record_set(c, inst);
     case MOP_PtrField: return qbe_ptr_field(c, inst);
     default:
         *handled = false;
@@ -841,6 +852,8 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
 #include "emit_qbe_scalar.inc"
 #include "emit_qbe_closure.inc"
 #include "emit_qbe_iface.inc"
+#include "emit_qbe_enum.inc"
+#include "emit_qbe_list.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
@@ -865,7 +878,7 @@ static MirTy qbe_opt_inner(const QCx *c, MirTy opt) {
     return mir_ty_data(c->m, opt)->elem;
 }
 
-/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+/* `opt.some`, `opt.view` (the same leaves; the view borrows its payload): a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
  * payload itself, any other is the payload after a presence flag. */
 static bool qbe_opt_some(QCx *c, const MirInst *inst) {
     const MirTy inner = qbe_opt_inner(c, c->f->values[inst->res]);
@@ -908,6 +921,66 @@ static bool qbe_opt_get(QCx *c, const MirInst *inst) {
     return true;
 }
 
+/* ---- list element access ---- */
+
+/* Writes `%p<n> = list pointer + index * size` and names it in `out`. */
+static void qbe_elem_base(QCx *c, MirValue list, const char *index, uint32_t size, char *out, size_t cap) {
+    const uint32_t n = c->next++;
+    ms_buf_printf(c->out, "\t%%t%u =l mul %s, %u\n\t%%p%u =l add %%v%u, %%t%u\n", n, index, size, n, list, n);
+    (void)snprintf(out, cap, "%%p%u", n);
+}
+
+static void qbe_copy_list(QCx *c, const MirInst *inst, MirValue from) {
+    for (uint32_t k = 0; k < 3; k++) {
+        qbe_copy_leaf(c, inst->res, k, from, k);
+    }
+}
+
+/* The unchecked list operations: the index is in range or the length is known. Dropping an old
+ * element is the job of `lower_ops`, which runs first. */
+static bool qbe_list_write_op(QCx *c, const MirInst *inst, bool *handled) {
+    *handled = true;
+    char base[24], index[24];
+    const bool is_list = inst->op == MOP_ListSetU ||
+                         inst->op == MOP_ListFillU || inst->op == MOP_ListPushU || inst->op == MOP_ListGrow;
+    const uint32_t size = is_list ? mir_list_elem_size(c->layouts, c->f->values[inst->args[0]]) : 0;
+    switch ((MirOp)inst->op) {
+    case MOP_ListSetU: case MOP_ListFillU:
+        (void)snprintf(index, sizeof index, "%%v%u", inst->args[1]);
+        qbe_elem_base(c, inst->args[0], index, size, base, sizeof base);
+        qbe_copy_list(c, inst, inst->args[0]);
+        return qbe_store_leaves(c, inst->args[2], base);
+    case MOP_ListPushU:
+        (void)snprintf(index, sizeof index, "%%v%u.%u", inst->args[0], MIR_LIST_LEN_LEAF);
+        qbe_elem_base(c, inst->args[0], index, size, base, sizeof base);
+        qbe_copy_list(c, inst, inst->args[0]);
+        ms_buf_printf(c->out, "\t%%v%u.%u =l add %%v%u.%u, 1\n", inst->res, MIR_LIST_LEN_LEAF,
+                      inst->args[0], MIR_LIST_LEN_LEAF);
+        return qbe_store_leaves(c, inst->args[1], base);
+    case MOP_ListDropLast:
+        qbe_copy_list(c, inst, inst->args[0]);
+        ms_buf_printf(c->out, "\t%%v%u.%u =l sub %%v%u.%u, 1\n", inst->res, MIR_LIST_LEN_LEAF,
+                      inst->args[0], MIR_LIST_LEN_LEAF);
+        return true;
+    case MOP_ListGrow: {
+        /* A block of capacity 0 is a view or empty: it is never resized, a fresh block is made. */
+        const uint32_t n = c->next++;
+        ms_buf_printf(c->out,
+                      "\t%%t%u =w ceql %%v%u.%u, 0\n\t%%e%u =l extuw %%t%u\n\t%%m%u =l sub %%e%u, 1\n"
+                      "\t%%q%u =l and %%v%u, %%m%u\n\t%%b%u =l mul %%v%u, %u\n"
+                      "\t%%v%u =l call $msrt_realloc(l %%q%u, l %%b%u)\n",
+                      n, inst->args[0], MIR_LIST_CAP_LEAF, n, n, n, n, n, inst->args[0], n, n,
+                      inst->args[1], size > 0 ? size : 1, inst->res, n, n);
+        qbe_copy_leaf(c, inst->res, MIR_LIST_LEN_LEAF, inst->args[0], MIR_LIST_LEN_LEAF);
+        qbe_copy_leaf(c, inst->res, MIR_LIST_CAP_LEAF, inst->args[1], 0);
+        return true;
+    }
+    default:
+        *handled = false;
+        return true;
+    }
+}
+
 static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *part) {
     const char *mnemonic = qbe_binary_mnemonic((MirOp)inst->op);
     if (mnemonic != NULL) {
@@ -931,9 +1004,21 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     if (handled) {
         return closure_ok;
     }
+    const bool write_ok = qbe_list_write_op(c, inst, &handled);
+    if (handled) {
+        return write_ok;
+    }
     const bool iface_ok = qbe_iface_op(c, inst, block, index, &handled);
     if (handled) {
         return iface_ok;
+    }
+    const bool enum_ok = qbe_enum_op(c, inst, &handled);
+    if (handled) {
+        return enum_ok;
+    }
+    const bool list_ok = qbe_list_op(c, inst, &handled);
+    if (handled) {
+        return list_ok;
     }
     switch (inst->op) {
     case MOP_IConst: case MOP_BConst: case MOP_FConst: qbe_constant(c, inst); return true;
@@ -942,7 +1027,7 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
     case MOP_AltTag: qbe_alt_tag(c, inst); return true;
-    case MOP_OptSome: return qbe_opt_some(c, inst);
+    case MOP_OptSome: case MOP_OptView: return qbe_opt_some(c, inst);
     case MOP_OptGet: return qbe_opt_get(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
     case MOP_ListLen: qbe_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;

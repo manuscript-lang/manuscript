@@ -4,6 +4,8 @@
  * With no expected Result, a payload that is not a primitive, or a call that is not one positional
  * argument, the function is left to the Rust checker. Records only the type: no function is
  * called, so `call_callee` stays unset and the callee name resolves to a case (0 for ok, 1 for error). */
+#include <string.h>
+
 #include "check_body.h"
 
 static bool builtin_is(const MsBody *b, MsSym name, const char *text) {

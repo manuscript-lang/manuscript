@@ -252,6 +252,47 @@ static void md_strings(MdCx *c) {
     }
 }
 
+uint32_t mir_data_unit(const MirData *d, uint32_t alt, uint32_t case_index) {
+    for (uint32_t i = 0; i < d->nunits; i++) {
+        if (d->units[i].alt == alt && d->units[i].case_index == case_index) {
+            return d->units[i].sym;
+        }
+    }
+    return MIR_NONE;
+}
+
+/* A payloadless case of a boxed alternative is one static block, so building it allocates nothing. */
+static void md_unit(MdCx *c, const MirFunc *f, const MirInst *inst) {
+    const uint32_t alt = inst->imm.a, case_index = inst->imm.b;
+    const MirAltDef *def = &c->m->alts[alt];
+    uint32_t size = 0;
+    if (def->cases[case_index].nfields != 0 || mir_data_unit(c->d, alt, case_index) != MIR_NONE ||
+        !mir_boxed_block_size(c->lay, f->values[inst->res], &size)) {
+        return;
+    }
+    size = size < 8 ? 8 : size;
+    uint8_t *bytes = MS_NEW_N(&c->m->arena, uint8_t, size);
+    md_put_word(bytes, case_index);
+    MirDataSym s = {.name = ms_arena_fmt(&c->m->arena, "ms.unit.%u.%u", alt, case_index).ptr,
+                    .size = size, .align = 8, .bytes = bytes};
+    const MirUnit unit = {alt, case_index, md_new_sym(c, &s)};
+    MIR_PUSH(c->m, c->d->units, c->d->nunits, c->d->cunits, MirUnit, unit);
+}
+
+static void md_units(MdCx *c) {
+    for (uint32_t f = 0; f < c->m->nfuncs; f++) {
+        const MirFunc *fn = &c->m->funcs[f];
+        for (uint32_t b = 0; b < fn->nblocks; b++) {
+            for (uint32_t k = 0; k < fn->blocks[b].ninsts; k++) {
+                const MirInst *inst = &fn->blocks[b].insts[k];
+                if (inst->op == MOP_AltNew || inst->op == MOP_AltView) {
+                    md_unit(c, fn, inst);
+                }
+            }
+        }
+    }
+}
+
 void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out) {
     MirLayouts lay;
     mir_layouts_init(&lay, m);
@@ -260,6 +301,7 @@ void mir_data_build(MirModule *m, const MirGlue *glue, MirData *out) {
     md_globals(&c);
     md_vtables(&c);
     md_strings(&c);
+    md_units(&c);
     md_collect_descs(&c);
     mir_layouts_free(&lay);
 }

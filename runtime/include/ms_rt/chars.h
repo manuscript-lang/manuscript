@@ -85,4 +85,30 @@ static inline size_t ms_utf8_encode(uint32_t scalar, uint8_t out[4]) {
     return 4;
 }
 
+/* Decodes the scalar at the start of the n > 0 bytes at `s`, which hold well-formed UTF-8 (a string value), and
+ * stores its width in `width`. A truncated sequence stops at the end of the bytes rather than reading past it. */
+static inline uint32_t ms_utf8_decode_valid(const uint8_t *s, size_t n, size_t *width) {
+    const uint8_t lead = s[0];
+    size_t length = 1;
+    uint32_t scalar = lead;
+    if (lead >= 0xF0) {
+        length = 4;
+        scalar = lead & 0x07u;
+    } else if (lead >= 0xE0) {
+        length = 3;
+        scalar = lead & 0x0Fu;
+    } else if (lead >= 0xC0) {
+        length = 2;
+        scalar = lead & 0x1Fu;
+    }
+    if (length > n) {
+        length = n;
+    }
+    for (size_t i = 1; i < length; i++) {
+        scalar = (scalar << 6) | (s[i] & 0x3Fu);
+    }
+    *width = length;
+    return scalar;
+}
+
 #endif
