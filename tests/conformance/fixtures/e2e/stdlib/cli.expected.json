@@ -68,19 +68,29 @@
           "index": 11,
           "name": "cli.ms::help rows without text carry no trailing spaces",
           "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "cli.ms::help shows the description and the examples",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "cli.ms::a passthrough command keeps the words after dashes out of its arguments",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 12,
-        "selected": 12,
-        "passed": 12,
+        "available": 14,
+        "selected": 14,
+        "passed": 14,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN cli.ms::nested command resolves path and typed options\nPASS cli.ms::nested command resolves path and typed options\nRUN cli.ms::run rejects paths outside this command root\nPASS cli.ms::run rejects paths outside this command root\nRUN cli.ms::flags take values in every spelling and persistent flags work on both sides\nPASS cli.ms::flags take values in every spelling and persistent flags work on both sides\nRUN cli.ms::optional and rest arguments\nPASS cli.ms::optional and rest arguments\nRUN cli.ms::usage errors name the problem\nPASS cli.ms::usage errors name the problem\nRUN cli.ms::help is generated for groups, leaves and the help word\nPASS cli.ms::help is generated for groups, leaves and the help word\nRUN cli.ms::float flags reject NaN and infinities\nPASS cli.ms::float flags reject NaN and infinities\nRUN cli.ms::schema mistakes are reported before parsing\nPASS cli.ms::schema mistakes are reported before parsing\nRUN cli.ms::handlers receive the decoded options record\nPASS cli.ms::handlers receive the decoded options record\nRUN cli.ms::optional, rest and dashed names decode into record fields\nPASS cli.ms::optional, rest and dashed names decode into record fields\nRUN cli.ms::a record that does not match the schema is reported when the handler runs\nPASS cli.ms::a record that does not match the schema is reported when the handler runs\nRUN cli.ms::help rows without text carry no trailing spaces\nPASS cli.ms::help rows without text carry no trailing spaces\n12 tests, 0 failed\n",
+      "stdout": "RUN cli.ms::nested command resolves path and typed options\nPASS cli.ms::nested command resolves path and typed options\nRUN cli.ms::run rejects paths outside this command root\nPASS cli.ms::run rejects paths outside this command root\nRUN cli.ms::flags take values in every spelling and persistent flags work on both sides\nPASS cli.ms::flags take values in every spelling and persistent flags work on both sides\nRUN cli.ms::optional and rest arguments\nPASS cli.ms::optional and rest arguments\nRUN cli.ms::usage errors name the problem\nPASS cli.ms::usage errors name the problem\nRUN cli.ms::help is generated for groups, leaves and the help word\nPASS cli.ms::help is generated for groups, leaves and the help word\nRUN cli.ms::float flags reject NaN and infinities\nPASS cli.ms::float flags reject NaN and infinities\nRUN cli.ms::schema mistakes are reported before parsing\nPASS cli.ms::schema mistakes are reported before parsing\nRUN cli.ms::handlers receive the decoded options record\nPASS cli.ms::handlers receive the decoded options record\nRUN cli.ms::optional, rest and dashed names decode into record fields\nPASS cli.ms::optional, rest and dashed names decode into record fields\nRUN cli.ms::a record that does not match the schema is reported when the handler runs\nPASS cli.ms::a record that does not match the schema is reported when the handler runs\nRUN cli.ms::help rows without text carry no trailing spaces\nPASS cli.ms::help rows without text carry no trailing spaces\nRUN cli.ms::help shows the description and the examples\nPASS cli.ms::help shows the description and the examples\nRUN cli.ms::a passthrough command keeps the words after dashes out of its arguments\nPASS cli.ms::a passthrough command keeps the words after dashes out of its arguments\n14 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

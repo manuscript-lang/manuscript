@@ -105,6 +105,8 @@ export type Matches:
 	// The JSON literal for each supplied value by field name (dashes in names become
 	// underscores); decoded by `command`.
 	fields: Map[String, String] = Map[String, String]()
+	// The words after `--` when the command is `passthrough`; empty otherwise.
+	passthrough: List[String] = []
 
 // Returns the text of a flag or argument.
 fn Matches.string(name: String) String:
@@ -152,6 +154,13 @@ export type Command:
 	name: String
 	// One line shown in help.
 	about: String = ""
+	// Longer text shown after `about` in this command's help; may span lines.
+	description: String = ""
+	// Example invocations listed at the end of this command's help, one per entry.
+	examples: List[String] = []
+	// Words after `--` are not bound to `args`; they are kept in `Matches.passthrough`,
+	// for a command that forwards them to a program.
+	passthrough: Bool = false
 	// Flags declared here; persistent ones also apply below.
 	flags: List[Flag] = []
 	// Positional arguments in order.
@@ -535,6 +544,7 @@ fn walk_from(
 ) Parsed!:
 	var values = given
 	var words: List[String] = []
+	var forwarded: List[String] = []
 	var literal = false
 	var index = start
 
@@ -543,7 +553,9 @@ fn walk_from(
 		index += 1
 
 		if literal:
-			words.append(token)
+			if node.passthrough: forwarded.append(token)
+			else: words.append(token)
+
 			continue
 
 		if token == "--":
@@ -614,7 +626,7 @@ fn walk_from(
 		fill(values, flag)?
 
 	fields := collect_fields(values, inherited.concat(node.flags), node.args)
-	return ok(Parsed.Run(Matches(values, path, fields)))
+	return ok(Parsed.Run(Matches(values, path, fields, forwarded)))
 
 // Assigns positional words to the node's arguments.
 fn bind(
@@ -683,6 +695,7 @@ fn fill(var values: Map[String, List[String]], flag: Flag) Void!:
 fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 	var out = ""
 	if not node.about.is_empty(): out += f"{node.about}\n\n"
+	if not node.description.is_empty(): out += f"{node.description}\n\n"
 
 	var usage = "  " + path.join(" ")
 	if not node.children.is_empty(): usage += " <command>"
@@ -692,6 +705,7 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 		label := arg.name + (if arg.rest: "..." else: "")
 		usage += if arg.required: f" <{label}>" else: f" [{label}]"
 
+	if node.passthrough: usage += " [-- arguments...]"
 	out += f"Usage:\n{usage}\n"
 
 	if not node.children.is_empty():
@@ -709,6 +723,8 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 
 	out += flag_section("Flags", node.flags.concat([help_flag()]))
 	out += flag_section("Global Flags", inherited)
+	if not node.examples.is_empty():
+		out += "\nExamples:\n" + node.examples.map(fn line: f"  {line}\n").join("")
 	return out
 
 // The built-in help flag, shown but handled by the parser.
