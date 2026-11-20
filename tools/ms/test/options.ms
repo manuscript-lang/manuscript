@@ -29,6 +29,18 @@ export type TestOptions:
 	// Per-property time budget (`MS_TEST_FUZZ_MS`); properties then run until it
 	// expires.
 	fuzz: Duration? = none
+	// Target duration of one sample (`--time`).
+	bench_time: Duration? = none
+	// Timed samples per bench (`--samples`).
+	bench_samples: Int? = none
+	// Fixed iterations per sample (`--iterations`); calibrated when unset.
+	bench_iterations: Int? = none
+	// A saved `ms bench --json` result whose work counters this run is held to.
+	baseline: String = ""
+	// The percentage a work counter may rise over the baseline (`--fail-over`).
+	fail_over: Float? = none
+	// Count MIR operations (`--ops`).
+	ops: Bool = false
 	// Arguments for the programs under test.
 	program: List[String] = []
 
@@ -72,6 +84,30 @@ fn apply(var options: TestOptions, name: String, value: String) Result[Bool, Str
 		if budget.nanos <= 0: return error(message)
 
 		options.fuzz = budget
+	else if name == "--time":
+		message := f"invalid --time {quoted(value)}; use a duration of at least 1ms such as 200ms or 1s"
+		budget := duration_of(value, message)?
+		if budget.nanos < 1000000: return error(message)
+
+		options.bench_time = budget
+	else if name == "--samples":
+		options.bench_samples = positive(
+			value,
+			"invalid --samples; use a positive integer",
+		)?
+	else if name == "--iterations":
+		options.bench_iterations = positive(
+			value,
+			"invalid --iterations; use a positive integer",
+		)?
+	else if name == "--baseline":
+		options.baseline = value.clone()
+	else if name == "--fail-over":
+		message := "invalid --fail-over; use a percentage such as 3 or 3%"
+		bound := value.trim_end_chars("%").parse_float()
+		if bound.is_none() or bound.get() < 0.0: return error(message)
+
+		options.fail_over = bound.get()
 	else if name == "--timeout":
 		options.timeout_set = true
 
@@ -105,7 +141,7 @@ export fn parse_test_options(args: List[String]) Result[TestOptions, String]:
 		else if arg == "--fail-fast":
 			options.fail_fast = true
 		else if arg == "--ops":
-			at += 0
+			options.ops = true
 		else:
 			pair := arg.split_once("=")
 			if pair.is_none(): break

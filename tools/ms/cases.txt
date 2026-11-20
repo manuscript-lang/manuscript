@@ -64,3 +64,12 @@ init -x
 init --lib --workspace
 verify --bogus
 verify a b
+explain
+explain MS1000
+explain ms1000 MSL001
+explain MS2001.1 --json
+explain --json MSL001 nope MS1000
+explain nope
+explain --json
+explain --help
+explain a -h
