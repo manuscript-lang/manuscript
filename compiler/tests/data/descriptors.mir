@@ -1,0 +1,22 @@
+module "descriptors"
+type Plain { a: int, b: str }
+type Pair { x: int, y: int }
+iface Area { area() -> int }
+vtable @v_int: Area for int { @area_int }
+global @counter: int
+global @pair: Pair
+entry @main
+fn @area_int(%self: ptr) -> int method {
+b0:
+  %r: int = iconst 12
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %d0: ptr = typedesc int
+  %d1: ptr = typedesc list<Plain>
+  %d2: ptr = typedesc Pair
+  %d3: ptr = typedesc list<list<int>>
+  %r: int = iconst 0
+  ret %r
+}
