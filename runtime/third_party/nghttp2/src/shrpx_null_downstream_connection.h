@@ -35,29 +35,35 @@ namespace shrpx {
 class NullDownstreamConnection : public DownstreamConnection {
 public:
   NullDownstreamConnection(const std::shared_ptr<DownstreamAddrGroup> &group);
-  virtual ~NullDownstreamConnection();
-  virtual int attach_downstream(Downstream *downstream);
-  virtual void detach_downstream(Downstream *downstream);
+  ~NullDownstreamConnection() override;
+  std::expected<void, Error> attach_downstream(Downstream *downstream) override;
+  std::expected<void, Error> detach_downstream(Downstream *downstream) override;
 
-  virtual int push_request_headers();
-  virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen);
-  virtual int end_upload_data();
+  std::expected<void, Error> push_request_headers() override { return {}; }
+  std::expected<void, Error>
+  push_upload_data_chunk(std::span<const uint8_t> data) override {
+    return {};
+  }
+  std::expected<void, Error> end_upload_data() override { return {}; }
 
-  virtual void pause_read(IOCtrlReason reason);
-  virtual int resume_read(IOCtrlReason reason, size_t consumed);
-  virtual void force_resume_read();
+  void pause_read(IOCtrlReason reason) override;
+  std::expected<void, Error> resume_read(IOCtrlReason reason,
+                                         size_t consumed) override {
+    return {};
+  }
+  void force_resume_read() override;
 
-  virtual int on_read();
-  virtual int on_write();
+  std::expected<void, Error> on_read() override { return {}; }
+  std::expected<void, Error> on_write() override { return {}; }
 
-  virtual void on_upstream_change(Upstream *upstream);
+  void on_upstream_change(Upstream *upstream) override;
 
   // true if this object is poolable.
-  virtual bool poolable() const;
+  bool poolable() const override;
 
-  virtual const std::shared_ptr<DownstreamAddrGroup> &
-  get_downstream_addr_group() const;
-  virtual DownstreamAddr *get_addr() const;
+  const std::shared_ptr<DownstreamAddrGroup> &
+  get_downstream_addr_group() const override;
+  DownstreamAddr *get_addr() const override;
 
 private:
   std::shared_ptr<DownstreamAddrGroup> group_;
@@ -65,4 +71,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_NULL_DOWNSTREAM_CONNECTION_H
+#endif // !defined(SHRPX_NULL_DOWNSTREAM_CONNECTION_H)

@@ -214,7 +214,9 @@ static void mp_f64(MsBuf *o, double v) {
 }
 
 static const char *mp_mode_prefix(const MirModule *m, MirTy ty, uint8_t mode) {
-    return mode == MM_MOVE && mir_needs_drop(m, ty) ? "move " : "";
+    (void)m;
+    (void)ty;
+    return mode == MM_MOVE ? "move " : "";
 }
 
 static const char *const mp_role_names[] = {

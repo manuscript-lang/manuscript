@@ -792,7 +792,20 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
     Ok(m)
 }
 
+/// A type, then the implementation scope the printer appends as `@N` (digits only, so a function
+/// name that follows a type is not taken for one).
 fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
+    let base = parse_ty_base(c, m)?;
+    if let Some(Tok::At(s)) = c.peek()
+        && let Ok(scope) = s.parse::<u32>()
+    {
+        c.next();
+        return Ok(base.unscoped().scoped(scope));
+    }
+    Ok(base)
+}
+
+fn parse_ty_base(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
     let name = c.ident()?;
     Ok(match name.as_str() {
         "void" => Ty::VOID,

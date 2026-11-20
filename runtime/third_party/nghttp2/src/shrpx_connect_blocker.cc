@@ -31,8 +31,8 @@ namespace shrpx {
 namespace {
 void connect_blocker_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto connect_blocker = static_cast<ConnectBlocker *>(w->data);
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Unblock";
+  if (log_enabled(INFO)) {
+    Log{INFO} << "Unblock";
   }
 
   connect_blocker->call_unblock_func();
@@ -45,9 +45,7 @@ ConnectBlocker::ConnectBlocker(std::mt19937 &gen, struct ev_loop *loop,
   : gen_(gen),
     block_func_(std::move(block_func)),
     unblock_func_(std::move(unblock_func)),
-    loop_(loop),
-    fail_count_(0),
-    offline_(false) {
+    loop_(loop) {
   ev_timer_init(&timer_, connect_blocker_cb, 0., 0.);
   timer_.data = this;
 }
@@ -66,11 +64,9 @@ void ConnectBlocker::on_success() {
 
 // Use the similar backoff algorithm described in
 // https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
-namespace {
 constexpr size_t MAX_BACKOFF_EXP = 10;
 constexpr auto MULTIPLIER = 1.6;
 constexpr auto JITTER = 0.2;
-} // namespace
 
 void ConnectBlocker::on_failure() {
   if (ev_is_active(&timer_)) {
@@ -91,7 +87,7 @@ void ConnectBlocker::on_failure() {
   auto backoff =
     std::min(downstreamconf.timeout.max_backoff, base_backoff + dist(gen_));
 
-  LOG(WARN) << "Could not connect " << fail_count_
+  Log{WARN} << "Could not connect " << fail_count_
             << " times in a row; sleep for " << backoff << " seconds";
 
   ev_timer_set(&timer_, backoff, 0.);

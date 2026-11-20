@@ -26,14 +26,16 @@
 
 #include <netinet/udp.h>
 
-#include <iostream>
+#include <print>
 
-#ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                  \
+  defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  include <ngtcp2/ngtcp2_crypto_quictls.h>
-#endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+       // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #  include <ngtcp2/ngtcp2_crypto_boringssl.h>
-#endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#endif // defined(HAVE_LIBNGTCP2_CRYPTO_BORINGSSL)
 
 #include "ssl_compat.h"
 
@@ -41,10 +43,10 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/err.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/err.h>
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "h2load_http3_session.h"
 
@@ -54,7 +56,7 @@ namespace {
 int handshake_completed(ngtcp2_conn *conn, void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  if (c->quic_handshake_completed() != 0) {
+  if (!c->quic_handshake_completed()) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -62,14 +64,16 @@ int handshake_completed(ngtcp2_conn *conn, void *user_data) {
 }
 } // namespace
 
-int Client::quic_handshake_completed() { return connection_made(); }
+std::expected<void, Error> Client::quic_handshake_completed() {
+  return connection_made();
+}
 
 namespace {
 int recv_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
                      uint64_t offset, const uint8_t *data, size_t datalen,
                      void *user_data, void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
-  if (c->quic_recv_stream_data(flags, stream_id, data, datalen) != 0) {
+  if (!c->quic_recv_stream_data(flags, stream_id, {data, datalen})) {
     // TODO Better to do this gracefully rather than
     // NGTCP2_ERR_CALLBACK_FAILURE.  Perhaps, call
     // ngtcp2_conn_write_application_close() ?
@@ -79,23 +83,25 @@ int recv_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 }
 } // namespace
 
-int Client::quic_recv_stream_data(uint32_t flags, int64_t stream_id,
-                                  const uint8_t *data, size_t datalen) {
+std::expected<void, Error>
+Client::quic_recv_stream_data(uint32_t flags, int64_t stream_id,
+                              std::span<const uint8_t> data) {
   if (worker->current_phase == Phase::MAIN_DURATION) {
-    worker->stats.bytes_total += datalen;
+    worker->stats.bytes_total += data.size();
   }
 
   auto s = static_cast<Http3Session *>(session.get());
-  auto nconsumed = s->read_stream(flags, stream_id, data, datalen);
-  if (nconsumed == -1) {
-    return -1;
+  auto maybe_consumed = s->read_stream(flags, stream_id, data);
+  if (!maybe_consumed) {
+    return std::unexpected{maybe_consumed.error()};
   }
 
-  ngtcp2_conn_extend_max_stream_offset(quic.conn, stream_id,
-                                       static_cast<uint64_t>(nconsumed));
-  ngtcp2_conn_extend_max_offset(quic.conn, static_cast<uint64_t>(nconsumed));
+  auto nconsumed = *maybe_consumed;
 
-  return 0;
+  ngtcp2_conn_extend_max_stream_offset(quic.conn, stream_id, nconsumed);
+  ngtcp2_conn_extend_max_offset(quic.conn, nconsumed);
+
+  return {};
 }
 
 namespace {
@@ -103,19 +109,17 @@ int acked_stream_data_offset(ngtcp2_conn *conn, int64_t stream_id,
                              uint64_t offset, uint64_t datalen, void *user_data,
                              void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
-  if (c->quic_acked_stream_data_offset(stream_id, datalen) != 0) {
+  if (!c->quic_acked_stream_data_offset(stream_id, datalen)) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
 } // namespace
 
-int Client::quic_acked_stream_data_offset(int64_t stream_id, size_t datalen) {
+std::expected<void, Error>
+Client::quic_acked_stream_data_offset(int64_t stream_id, size_t datalen) {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->add_ack_offset(stream_id, datalen) != 0) {
-    return -1;
-  }
-  return 0;
+  return s->add_ack_offset(stream_id, datalen);
 }
 
 namespace {
@@ -128,19 +132,17 @@ int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
     app_error_code = NGHTTP3_H3_NO_ERROR;
   }
 
-  if (c->quic_stream_close(stream_id, app_error_code) != 0) {
+  if (!c->quic_stream_close(stream_id, app_error_code)) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
 } // namespace
 
-int Client::quic_stream_close(int64_t stream_id, uint64_t app_error_code) {
+std::expected<void, Error> Client::quic_stream_close(int64_t stream_id,
+                                                     uint64_t app_error_code) {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->close_stream(stream_id, app_error_code) != 0) {
-    return -1;
-  }
-  return 0;
+  return s->close_stream(stream_id, app_error_code);
 }
 
 namespace {
@@ -148,19 +150,17 @@ int stream_reset(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
                  uint64_t app_error_code, void *user_data,
                  void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
-  if (c->quic_stream_reset(stream_id, app_error_code) != 0) {
+  if (!c->quic_stream_reset(stream_id, app_error_code)) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
 } // namespace
 
-int Client::quic_stream_reset(int64_t stream_id, uint64_t app_error_code) {
+std::expected<void, Error> Client::quic_stream_reset(int64_t stream_id,
+                                                     uint64_t app_error_code) {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->shutdown_stream_read(stream_id) != 0) {
-    return -1;
-  }
-  return 0;
+  return s->shutdown_stream_read(stream_id);
 }
 
 namespace {
@@ -168,20 +168,17 @@ int stream_stop_sending(ngtcp2_conn *conn, int64_t stream_id,
                         uint64_t app_error_code, void *user_data,
                         void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
-  if (c->quic_stream_stop_sending(stream_id, app_error_code) != 0) {
+  if (!c->quic_stream_stop_sending(stream_id, app_error_code)) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
 } // namespace
 
-int Client::quic_stream_stop_sending(int64_t stream_id,
-                                     uint64_t app_error_code) {
+std::expected<void, Error>
+Client::quic_stream_stop_sending(int64_t stream_id, uint64_t app_error_code) {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->shutdown_stream_read(stream_id) != 0) {
-    return -1;
-  }
-  return 0;
+  return s->shutdown_stream_read(stream_id);
 }
 
 namespace {
@@ -189,7 +186,7 @@ int extend_max_local_streams_bidi(ngtcp2_conn *conn, uint64_t max_streams,
                                   void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  if (c->quic_extend_max_local_streams() != 0) {
+  if (!c->quic_extend_max_local_streams()) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -197,12 +194,9 @@ int extend_max_local_streams_bidi(ngtcp2_conn *conn, uint64_t max_streams,
 }
 } // namespace
 
-int Client::quic_extend_max_local_streams() {
+std::expected<void, Error> Client::quic_extend_max_local_streams() {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->extend_max_local_streams() != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
-  }
-  return 0;
+  return s->extend_max_local_streams();
 }
 
 namespace {
@@ -211,7 +205,7 @@ int extend_max_stream_data(ngtcp2_conn *conn, int64_t stream_id,
                            void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  if (c->quic_extend_max_stream_data(stream_id) != 0) {
+  if (!c->quic_extend_max_stream_data(stream_id)) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -219,17 +213,16 @@ int extend_max_stream_data(ngtcp2_conn *conn, int64_t stream_id,
 }
 } // namespace
 
-int Client::quic_extend_max_stream_data(int64_t stream_id) {
+std::expected<void, Error>
+Client::quic_extend_max_stream_data(int64_t stream_id) {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->unblock_stream(stream_id) != 0) {
-    return -1;
-  }
-  return 0;
+  return s->unblock_stream(stream_id);
 }
 
 namespace {
-int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
-                          size_t cidlen, void *user_data) {
+int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
+                          ngtcp2_stateless_reset_token *token, size_t cidlen,
+                          void *user_data) {
   if (RAND_bytes(cid->data,
                  static_cast<nghttp2_ssl_rand_length_type>(cidlen)) != 1) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -237,7 +230,7 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
 
   cid->datalen = cidlen;
 
-  if (RAND_bytes(token, NGTCP2_STATELESS_RESET_TOKENLEN) != 1) {
+  if (RAND_bytes(token->data, sizeof(token->data)) != 1) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -246,27 +239,26 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
 } // namespace
 
 namespace {
-void debug_log_printf(void *user_data, const char *fmt, ...) {
-  va_list ap;
+void debug_log_write(void *user_data, char *msg, size_t len) {
+  msg[len] = '\n';
 
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-
-  fprintf(stderr, "\n");
+  while (write(fileno(stderr), msg, len + 1) == -1 && errno == EINTR)
+    ;
 }
 } // namespace
 
 namespace {
-int generate_cid(ngtcp2_cid &dest) {
+std::expected<ngtcp2_cid, Error> generate_cid() {
+  ngtcp2_cid dest;
+
   dest.datalen = 8;
 
   if (RAND_bytes(dest.data, static_cast<nghttp2_ssl_rand_length_type>(
                               dest.datalen)) != 1) {
-    return -1;
+    return std::unexpected{Error::CRYPTO};
   }
 
-  return 0;
+  return dest;
 }
 } // namespace
 
@@ -313,7 +305,7 @@ int recv_rx_key(ngtcp2_conn *conn, ngtcp2_encryption_level level,
 
   auto c = static_cast<Client *>(user_data);
 
-  if (c->quic_make_http3_session() != 0) {
+  if (!c->quic_make_http3_session()) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -321,14 +313,14 @@ int recv_rx_key(ngtcp2_conn *conn, ngtcp2_encryption_level level,
 }
 } // namespace
 
-int Client::quic_make_http3_session() {
+std::expected<void, Error> Client::quic_make_http3_session() {
   auto s = std::make_unique<Http3Session>(this);
-  if (s->init_conn() == -1) {
-    return -1;
+  if (auto rv = s->init_conn(); !rv) {
+    return rv;
   }
   session = std::move(s);
 
-  return 0;
+  return {};
 }
 
 namespace {
@@ -338,9 +330,13 @@ ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref) {
 }
 } // namespace
 
-int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
-                      const sockaddr *remote_addr, socklen_t remote_addrlen) {
+std::expected<void, Error> Client::quic_init(const sockaddr *local_addr,
+                                             socklen_t local_addrlen,
+                                             const sockaddr *remote_addr,
+                                             socklen_t remote_addrlen) {
   int rv;
+
+  auto config = worker->config;
 
   if (!ssl) {
     ssl = SSL_new(worker->ssl_ctx);
@@ -352,78 +348,67 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     SSL_set_connect_state(ssl);
 #if OPENSSL_3_5_0_API
     if (ngtcp2_crypto_ossl_configure_client_session(ssl) != 0) {
-      std::cerr << "ngtcp2_crypto_ossl_configure_client_session failed"
-                << std::endl;
-      return -1;
+      std::println(stderr,
+                   "ngtcp2_crypto_ossl_configure_client_session failed");
+      return std::unexpected{Error::QUIC};
     }
 
     rv = ngtcp2_crypto_ossl_ctx_new(&quic.ossl_ctx, ssl);
     if (rv != 0) {
-      std::cerr << "ngtcp2_crypto_ossl_ctx_new failed with error code " << rv
-                << std::endl;
-      return -1;
+      std::println(stderr,
+                   "ngtcp2_crypto_ossl_ctx_new failed with error code {}", rv);
+      return std::unexpected{Error::QUIC};
     }
 #else  // !OPENSSL_3_5_0_API
     SSL_set_quic_use_legacy_codepoint(ssl, 0);
 #endif // !OPENSSL_3_5_0_API
+
+    if (config->tls_session && !SSL_set_session(ssl, config->tls_session)) {
+      std::println(stderr, "Could not set TLS session");
+    }
+
+    if (!config->tls_session_file.empty()) {
+      SSL_set_ex_data(ssl, 1, worker);
+    }
   }
 
-  auto callbacks = ngtcp2_callbacks{
-    ngtcp2_crypto_client_initial_cb,
-    nullptr, // recv_client_initial
-    ngtcp2_crypto_recv_crypto_data_cb,
-    h2load::handshake_completed,
-    nullptr, // recv_version_negotiation
-    ngtcp2_crypto_encrypt_cb,
-    ngtcp2_crypto_decrypt_cb,
-    ngtcp2_crypto_hp_mask_cb,
-    h2load::recv_stream_data,
-    h2load::acked_stream_data_offset,
-    nullptr, // stream_open
-    h2load::stream_close,
-    nullptr, // recv_stateless_reset
-    ngtcp2_crypto_recv_retry_cb,
-    h2load::extend_max_local_streams_bidi,
-    nullptr, // extend_max_local_streams_uni
-    h2load::rand,
-    get_new_connection_id,
-    nullptr, // remove_connection_id
-    ngtcp2_crypto_update_key_cb,
-    nullptr, // path_validation
-    nullptr, // select_preferred_addr
-    h2load::stream_reset,
-    nullptr, // extend_max_remote_streams_bidi
-    nullptr, // extend_max_remote_streams_uni
-    h2load::extend_max_stream_data,
-    nullptr, // dcid_status
-    nullptr, // handshake_confirmed
-    nullptr, // recv_new_token
-    ngtcp2_crypto_delete_crypto_aead_ctx_cb,
-    ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
-    nullptr, // recv_datagram
-    nullptr, // ack_datagram
-    nullptr, // lost_datagram
-    ngtcp2_crypto_get_path_challenge_data_cb,
-    h2load::stream_stop_sending,
-    nullptr, // version_negotiation
-    h2load::recv_rx_key,
-    nullptr, // recv_tx_key
+  static constexpr auto callbacks = ngtcp2_callbacks{
+    .client_initial = ngtcp2_crypto_client_initial_cb,
+    .recv_crypto_data = ngtcp2_crypto_recv_crypto_data_cb,
+    .handshake_completed = h2load::handshake_completed,
+    .encrypt = ngtcp2_crypto_encrypt_cb,
+    .decrypt = ngtcp2_crypto_decrypt_cb,
+    .hp_mask = ngtcp2_crypto_hp_mask_cb,
+    .recv_stream_data = h2load::recv_stream_data,
+    .acked_stream_data_offset = h2load::acked_stream_data_offset,
+    .stream_close = h2load::stream_close,
+    .recv_retry = ngtcp2_crypto_recv_retry_cb,
+    .extend_max_local_streams_bidi = h2load::extend_max_local_streams_bidi,
+    .rand = h2load::rand,
+    .update_key = ngtcp2_crypto_update_key_cb,
+    .stream_reset = h2load::stream_reset,
+    .extend_max_stream_data = h2load::extend_max_stream_data,
+    .delete_crypto_aead_ctx = ngtcp2_crypto_delete_crypto_aead_ctx_cb,
+    .delete_crypto_cipher_ctx = ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
+    .stream_stop_sending = h2load::stream_stop_sending,
+    .recv_rx_key = h2load::recv_rx_key,
+    .get_new_connection_id2 = get_new_connection_id,
+    .get_path_challenge_data2 = ngtcp2_crypto_get_path_challenge_data2_cb,
   };
 
-  ngtcp2_cid scid, dcid;
-  if (generate_cid(scid) != 0) {
-    return -1;
+  auto maybe_scid = generate_cid();
+  if (!maybe_scid) {
+    return std::unexpected{maybe_scid.error()};
   }
-  if (generate_cid(dcid) != 0) {
-    return -1;
+  auto maybe_dcid = generate_cid();
+  if (!maybe_dcid) {
+    return std::unexpected{maybe_dcid.error()};
   }
-
-  auto config = worker->config;
 
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
   if (config->verbose) {
-    settings.log_printf = debug_log_printf;
+    settings.log_write = debug_log_write;
   }
   settings.initial_ts = quic_timestamp();
   settings.rand_ctx.native_handle = &worker->randgen;
@@ -437,8 +422,8 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     path += ".sqlog";
     quic.qlog_file = fopen(path.c_str(), "w");
     if (quic.qlog_file == nullptr) {
-      std::cerr << "Failed to open a qlog file: " << path << std::endl;
-      return -1;
+      std::println(stderr, "Failed to open a qlog file: {}", path);
+      return std::unexpected{Error::LIBC};
     }
     settings.qlog_write = qlog_write_cb;
   }
@@ -471,18 +456,11 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
 
   assert(config->alpn_list.size());
 
-  uint32_t quic_version;
-
-  if (config->alpn_list[0] == NGHTTP3_ALPN_H3) {
-    quic_version = NGTCP2_PROTO_VER_V1;
-  } else {
-    quic_version = NGTCP2_PROTO_VER_MIN;
-  }
-
-  rv = ngtcp2_conn_client_new(&quic.conn, &dcid, &scid, &path, quic_version,
-                              &callbacks, &settings, &params, nullptr, this);
+  rv = ngtcp2_conn_client_new(&quic.conn, &*maybe_dcid, &*maybe_scid, &path,
+                              NGTCP2_PROTO_VER_V1, &callbacks, &settings,
+                              &params, nullptr, this);
   if (rv != 0) {
-    return -1;
+    return std::unexpected{Error::QUIC};
   }
 
 #if OPENSSL_3_5_0_API
@@ -491,10 +469,22 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   ngtcp2_conn_set_tls_native_handle(quic.conn, ssl);
 #endif // !OPENSSL_3_5_0_API
 
-  return 0;
+  return {};
 }
 
 void Client::quic_free() {
+  if (quic.conn) {
+    ngtcp2_conn_info ci;
+
+    ngtcp2_conn_get_conn_info2(quic.conn, &ci);
+
+    cstat.min_rtt = std::chrono::nanoseconds(ci.min_rtt);
+    cstat.smoothed_rtt = std::chrono::nanoseconds(ci.smoothed_rtt);
+    cstat.pkt_sent = ci.pkt_sent;
+    cstat.pkt_recv = ci.pkt_recv;
+    cstat.pkt_lost = ci.pkt_lost;
+  }
+
 #if OPENSSL_3_5_0_API
   ngtcp2_crypto_ossl_ctx_del(quic.ossl_ctx);
 #endif // OPENSSL_3_5_0_API
@@ -528,26 +518,10 @@ void Client::quic_close_connection() {
             as_unsigned(nwrite));
 }
 
-int Client::quic_write_client_handshake(ngtcp2_encryption_level level,
-                                        const uint8_t *data, size_t datalen) {
-  int rv;
-
-  assert(level < 2);
-
-  rv = ngtcp2_conn_submit_crypto_data(quic.conn, level, data, datalen);
-  if (rv != 0) {
-    std::cerr << "ngtcp2_conn_submit_crypto_data: " << ngtcp2_strerror(rv)
-              << std::endl;
-    return -1;
-  }
-
-  return 0;
-}
-
 void quic_pkt_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto c = static_cast<Client *>(w->data);
 
-  if (c->quic_pkt_timeout() != 0) {
+  if (!c->quic_pkt_timeout()) {
     c->fail();
     c->worker->free_client(c);
     delete c;
@@ -555,21 +529,23 @@ void quic_pkt_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   }
 }
 
-int Client::quic_pkt_timeout() {
+std::expected<void, Error> Client::quic_pkt_timeout() {
   int rv;
   auto now = quic_timestamp();
 
   rv = ngtcp2_conn_handle_expiry(quic.conn, now);
   if (rv != 0) {
     ngtcp2_ccerr_set_liberr(&quic.last_error, rv, nullptr, 0);
-    return -1;
+    return std::unexpected{Error::QUIC};
   }
 
-  return write_quic();
+  signal_write();
+
+  return {};
 }
 
 void Client::quic_restart_pkt_timer() {
-  auto expiry = ngtcp2_conn_get_expiry(quic.conn);
+  auto expiry = ngtcp2_conn_get_expiry2(quic.conn);
   auto now = quic_timestamp();
   auto t =
     expiry > now ? static_cast<ev_tstamp>(expiry - now) / NGTCP2_SECONDS : 1e-9;
@@ -577,34 +553,36 @@ void Client::quic_restart_pkt_timer() {
   ev_timer_again(worker->loop, &quic.pkt_timer);
 }
 
-int Client::read_quic() {
+std::expected<void, Error> Client::read_quic() {
   std::array<uint8_t, 64_k> buf;
-  sockaddr_union su;
+  sockaddr_storage ss;
   int rv;
   size_t pktcnt = 0;
-  ngtcp2_pkt_info pi{};
+  ngtcp2_pkt_info pi;
 
-  iovec msg_iov;
-  msg_iov.iov_base = buf.data();
-  msg_iov.iov_len = buf.size();
-
-  msghdr msg{};
-  msg.msg_name = &su;
-  msg.msg_iov = &msg_iov;
-  msg.msg_iovlen = 1;
+  iovec msg_iov{
+    .iov_base = buf.data(),
+    .iov_len = buf.size(),
+  };
 
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(int))];
-  msg.msg_control = msg_ctrl;
+
+  msghdr msg{
+    .msg_name = &ss,
+    .msg_iov = &msg_iov,
+    .msg_iovlen = 1,
+    .msg_control = msg_ctrl,
+  };
 
   auto ts = quic_timestamp();
 
   for (;;) {
-    msg.msg_namelen = sizeof(su);
+    msg.msg_namelen = sizeof(ss);
     msg.msg_controllen = sizeof(msg_ctrl);
 
     auto nread = recvmsg(fd, &msg, 0);
     if (nread == -1) {
-      return 0;
+      return {};
     }
 
     auto gso_size = util::msghdr_get_udp_gro(&msg);
@@ -614,21 +592,24 @@ int Client::read_quic() {
 
     assert(quic.conn);
 
+    size_t num_pkts;
+
     if (gso_size) {
-      worker->stats.udp_dgram_recv +=
-        (as_unsigned(nread) + gso_size - 1) / gso_size;
+      num_pkts = (as_unsigned(nread) + gso_size - 1) / gso_size;
     } else {
-      ++worker->stats.udp_dgram_recv;
+      num_pkts = 1;
     }
 
+    worker->stats.udp_dgram_recv += num_pkts;
+    worker->sample_gro_stat(GROStat{
+      .num_pkts = num_pkts,
+    });
+
     auto path = ngtcp2_path{
-      {
-        &local_addr.su.sa,
-        local_addr.len,
-      },
-      {
-        &su.sa,
-        msg.msg_namelen,
+      .local{as_ngtcp2_addr(local_addr)},
+      .remote{
+        .addr = reinterpret_cast<sockaddr *>(&ss),
+        .addrlen = msg.msg_namelen,
       },
     };
 
@@ -644,14 +625,14 @@ int Client::read_quic() {
         if (!quic.last_error.error_code) {
           if (rv == NGTCP2_ERR_CRYPTO) {
             ngtcp2_ccerr_set_tls_alert(&quic.last_error,
-                                       ngtcp2_conn_get_tls_alert(quic.conn),
+                                       ngtcp2_conn_get_tls_alert2(quic.conn),
                                        nullptr, 0);
           } else {
             ngtcp2_ccerr_set_liberr(&quic.last_error, rv, nullptr, 0);
           }
         }
 
-        return -1;
+        return std::unexpected{Error::QUIC};
       }
 
       nread -= datalen;
@@ -667,201 +648,161 @@ int Client::read_quic() {
     }
   }
 
-  return 0;
+  return {};
 }
 
-int Client::write_quic() {
-  int rv;
+namespace {
+ngtcp2_ssize write_pkt(ngtcp2_conn *conn, ngtcp2_path *path,
+                       ngtcp2_pkt_info *pi, uint8_t *dest, size_t destlen,
+                       ngtcp2_tstamp ts, void *user_data) {
+  auto c = static_cast<Client *>(user_data);
 
-  ev_io_stop(worker->loop, &wev);
+  return c->write_quic_pkt(path, pi, {dest, destlen}, ts);
+}
+} // namespace
 
-  if (quic.close_requested) {
-    return -1;
-  }
-
-  if (quic.tx.send_blocked) {
-    rv = send_blocked_packet();
-    if (rv != 0) {
-      return -1;
-    }
-
-    if (quic.tx.send_blocked) {
-      return 0;
-    }
-  }
-
+ngtcp2_ssize Client::write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
+                                    std::span<uint8_t> dest, ngtcp2_tstamp ts) {
   std::array<nghttp3_vec, 16> vec;
-  auto max_udp_payload_size =
-    ngtcp2_conn_get_max_tx_udp_payload_size(quic.conn);
-  auto path_max_udp_payload_size =
-    ngtcp2_conn_get_path_max_tx_udp_payload_size(quic.conn);
-  auto txbuf = std::span{quic.tx.data.get(),
-                         std::max(ngtcp2_conn_get_send_quantum(quic.conn),
-                                  path_max_udp_payload_size)};
-  auto buf = txbuf;
-  ngtcp2_path_storage ps;
-  size_t gso_size = 0;
-  auto pkt = std::span<const uint8_t>{};
-  auto extra_pkt = std::span<const uint8_t>{};
-
-  ngtcp2_path_storage_zero(&ps);
-
   auto s = static_cast<Http3Session *>(session.get());
-  auto ts = quic_timestamp();
 
   for (;;) {
-    int64_t stream_id = -1;
-    int fin = 0;
-    ssize_t sveccnt = 0;
+    Http3Session::WriteResult wres;
 
-    if (session && ngtcp2_conn_get_max_data_left(quic.conn)) {
-      sveccnt = s->write_stream(stream_id, fin, vec.data(), vec.size());
-      if (sveccnt == -1) {
-        return -1;
+    if (session && ngtcp2_conn_get_max_data_left2(quic.conn)) {
+      auto maybe_wres = s->write_stream(vec);
+      if (!maybe_wres) {
+        return NGTCP2_ERR_CALLBACK_FAILURE;
       }
+
+      wres = *maybe_wres;
     }
 
     ngtcp2_ssize ndatalen;
-    auto v = vec.data();
-    auto vcnt = static_cast<size_t>(sveccnt);
 
-    uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
-    if (fin) {
+    uint32_t flags =
+      NGTCP2_WRITE_STREAM_FLAG_MORE | NGTCP2_WRITE_STREAM_FLAG_PADDING;
+    if (wres.fin) {
       flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
     }
 
-    auto buflen = buf.size() >= max_udp_payload_size
-                    ? max_udp_payload_size
-                    : path_max_udp_payload_size;
     auto nwrite = ngtcp2_conn_writev_stream(
-      quic.conn, &ps.path, nullptr, buf.data(), buflen, &ndatalen, flags,
-      stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
+      quic.conn, path, nullptr, dest.data(), dest.size(), &ndatalen, flags,
+      wres.stream_id, reinterpret_cast<const ngtcp2_vec *>(wres.data.data()),
+      wres.data.size(), ts);
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
         assert(ndatalen == -1);
-        s->block_stream(stream_id);
+        s->block_stream(wres.stream_id);
         continue;
       case NGTCP2_ERR_STREAM_SHUT_WR:
         assert(ndatalen == -1);
-        s->shutdown_stream_write(stream_id);
+        s->shutdown_stream_write(wres.stream_id);
         continue;
       case NGTCP2_ERR_WRITE_MORE:
         assert(ndatalen >= 0);
-        if (s->add_write_offset(stream_id, as_unsigned(ndatalen)) != 0) {
-          return -1;
+        if (!s->add_write_offset(wres.stream_id, as_unsigned(ndatalen))) {
+          return NGTCP2_ERR_CALLBACK_FAILURE;
         }
         continue;
       }
 
       ngtcp2_ccerr_set_liberr(&quic.last_error, static_cast<int>(nwrite),
                               nullptr, 0);
-      return -1;
-    } else if (ndatalen >= 0 &&
-               s->add_write_offset(stream_id, as_unsigned(ndatalen)) != 0) {
-      return -1;
+
+      return NGTCP2_ERR_CALLBACK_FAILURE;
     }
 
-    quic_restart_pkt_timer();
-
-    if (nwrite == 0) {
-      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
-      if (pkt.empty()) {
-        return 0;
-      }
-
-      break;
+    if (ndatalen >= 0 &&
+        !s->add_write_offset(wres.stream_id, as_unsigned(ndatalen))) {
+      return NGTCP2_ERR_CALLBACK_FAILURE;
     }
 
-    auto last_pkt_pos = std::ranges::begin(buf);
-
-    buf = buf.subspan(as_unsigned(nwrite));
-
-    if (last_pkt_pos == std::ranges::begin(txbuf)) {
-      gso_size = as_unsigned(nwrite);
-    } else if (static_cast<size_t>(nwrite) > gso_size ||
-               (gso_size > path_max_udp_payload_size &&
-                static_cast<size_t>(nwrite) != gso_size)) {
-      pkt = std::span{std::ranges::begin(txbuf), last_pkt_pos};
-      extra_pkt = std::span{last_pkt_pos, std::ranges::begin(buf)};
-      break;
-    }
-
-    // Assume that the path does not change.
-    if (buf.size() < path_max_udp_payload_size ||
-        static_cast<size_t>(nwrite) < gso_size) {
-      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
-      break;
-    }
+    return nwrite;
   }
-
-  if (write_udp_or_blocked(ps.path, pkt, gso_size) != 0) {
-    if (!extra_pkt.empty()) {
-      on_send_blocked(ps.path.remote, extra_pkt, extra_pkt.size());
-    }
-  } else if (!extra_pkt.empty()) {
-    write_udp_or_blocked(ps.path, extra_pkt, extra_pkt.size());
-  }
-
-  ngtcp2_conn_update_pkt_tx_time(quic.conn, ts);
-
-  return 0;
 }
 
-int Client::write_udp_or_blocked(const ngtcp2_path &path,
-                                 std::span<const uint8_t> data,
-                                 size_t gso_size) {
+std::expected<void, Error> Client::write_quic() {
+  ev_io_stop(worker->loop, &wev);
+
+  if (quic.close_requested) {
+    return std::unexpected{Error::DONE};
+  }
+
+  if (quic.tx.send_blocked) {
+    send_blocked_packet();
+
+    if (quic.tx.send_blocked) {
+      return {};
+    }
+  }
+
+  auto txbuf = std::span{quic.tx.data.get(), QUIC_TX_DATALEN};
+  ngtcp2_path_storage ps;
+  size_t gso_size = 0;
+
+  ngtcp2_path_storage_zero(&ps);
+
+  auto nwrite = ngtcp2_conn_write_aggregate_pkt(
+    quic.conn, &ps.path, nullptr, txbuf.data(), txbuf.size(), &gso_size,
+    h2load::write_pkt, quic_timestamp());
+  if (nwrite < 0) {
+    return std::unexpected{Error::QUIC};
+  }
+
+  quic_restart_pkt_timer();
+
+  if (nwrite == 0) {
+    return {};
+  }
+
+  write_udp_or_blocked(ps.path, txbuf.first(static_cast<size_t>(nwrite)),
+                       gso_size);
+
+  return {};
+}
+
+void Client::write_udp_or_blocked(const ngtcp2_path &path,
+                                  std::span<const uint8_t> data,
+                                  size_t gso_size) {
   auto rest = write_udp(path.remote.addr, path.remote.addrlen, data, gso_size);
   if (!rest.empty()) {
     on_send_blocked(path.remote, data, gso_size);
-
-    return -1;
   }
-
-  return 0;
 }
 
 void Client::on_send_blocked(const ngtcp2_addr &remote_addr,
                              std::span<const uint8_t> data, size_t gso_size) {
-  assert(quic.tx.num_blocked || !quic.tx.send_blocked);
-  assert(quic.tx.num_blocked < 2);
+  assert(!quic.tx.send_blocked);
 
   quic.tx.send_blocked = true;
 
-  auto &p = quic.tx.blocked[quic.tx.num_blocked++];
+  auto &p = quic.tx.blocked;
 
-  memcpy(&p.remote_addr.su, remote_addr.addr, remote_addr.addrlen);
-
-  p.remote_addr.len = remote_addr.addrlen;
+  p.remote_addr.set(remote_addr.addr);
   p.data = data;
   p.gso_size = gso_size;
 
   signal_write();
 }
 
-int Client::send_blocked_packet() {
+void Client::send_blocked_packet() {
   assert(quic.tx.send_blocked);
 
-  for (; quic.tx.num_blocked_sent < quic.tx.num_blocked;
-       ++quic.tx.num_blocked_sent) {
-    auto &p = quic.tx.blocked[quic.tx.num_blocked_sent];
+  auto &p = quic.tx.blocked;
 
-    auto rest =
-      write_udp(&p.remote_addr.su.sa, p.remote_addr.len, p.data, p.gso_size);
-    if (!rest.empty()) {
-      p.data = rest;
+  auto rest = write_udp(p.remote_addr.as_sockaddr(), p.remote_addr.size(),
+                        p.data, p.gso_size);
+  if (!rest.empty()) {
+    p.data = rest;
 
-      signal_write();
+    signal_write();
 
-      return 0;
-    }
+    return;
   }
 
   quic.tx.send_blocked = false;
-  quic.tx.num_blocked = 0;
-  quic.tx.num_blocked_sent = 0;
-
-  return 0;
 }
 
 } // namespace h2load

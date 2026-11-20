@@ -23,22 +23,10 @@ HTTP/2.  Now we are updating our code to implement `RFC 9113
 The nghttp2 code base was forked from the spdylay
 (https://github.com/tatsuhiro-t/spdylay) project.
 
-Public Test Server
-------------------
-
-The following endpoints are available to try out our nghttp2
-implementation.
-
-* https://nghttp2.org/ (TLS + ALPN and HTTP/3)
-
-  This endpoint supports ``h2`` and ``http/1.1`` via ALPN and requires
-  TLSv1.2 for HTTP/2 connection.
-
-  It also supports HTTP/3.
-
-* http://nghttp2.org/ (HTTP Upgrade and HTTP/2 Direct)
-
-  ``h2c`` and ``http/1.1``.
+The new `nghttp2 version 2 <https://github.com/nghttp2/nghttp2-v2>`_
+(nghttp2-v2) development has begun.  It is a rewrite of nghttp2
+version 1 (this repository), aiming for better performance, security,
+and API ergonomics.
 
 Requirements
 ------------
@@ -126,9 +114,9 @@ following libraries are required:
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1w+quic>`_; or
   wolfSSL; or LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  9295969e1dad2c31d0d99481734c1c68dcbc6403); or OpenSSL >= 3.5.0
-* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.12.0
-* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.1.0
+  ed9209cff8b5a2fbc6c10050f29b3355048bda85); or OpenSSL >= 3.5.0
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.23.0
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.17.0
 
 Use ``--enable-http3`` configure option to enable HTTP/3 feature for
 h2load and nghttpx.
@@ -149,8 +137,8 @@ executable.
 
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code,
-C++20 compliant compiler is required.  At least g++ >= 12 and
-clang++ >= 18 are known to work.
+C++23 compliant compiler is required.  At least g++ >= 14 and clang++
+>= 19 are known to work.
 
 .. note::
 
@@ -340,7 +328,7 @@ Build aws-lc:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.52.0 https://github.com/aws/aws-lc
+   $ git clone --depth 1 -b v5.12.0 https://github.com/aws/aws-lc
    $ cd aws-lc
    $ cmake -B build -DDISABLE_GO=ON --install-prefix=$PWD/opt
    $ make -j$(nproc) -C build
@@ -351,7 +339,7 @@ Build nghttp3:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.9.0 https://github.com/ngtcp2/nghttp3
+   $ git clone --depth 1 -b v1.19.0 https://github.com/ngtcp2/nghttp3
    $ cd nghttp3
    $ git submodule update --init --depth 1
    $ autoreconf -i
@@ -364,7 +352,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.12.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v1.26.0 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ git submodule update --init --depth 1
    $ autoreconf -i
@@ -380,7 +368,7 @@ from source:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.5.1 https://github.com/libbpf/libbpf
+   $ git clone --depth 1 -b v1.8.0 https://github.com/libbpf/libbpf
    $ cd libbpf
    $ PREFIX=$PWD/build make -C src install
    $ cd ..
@@ -394,7 +382,7 @@ Build nghttp2:
    $ git submodule update --init
    $ autoreconf -i
    $ ./configure --with-mruby --enable-http3 --with-libbpf \
-         CC=clang-18 CXX=clang++-18 \
+         CC=clang-19 CXX=clang++-19 \
          PKG_CONFIG_PATH="$PWD/../aws-lc/opt/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
          LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../aws-lc/opt/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
    $ make -j$(nproc)
@@ -974,12 +962,12 @@ threads to avoid saturating a single core on client side.
    servers.
 
 If the experimental HTTP/3 is enabled, h2load can send requests to
-HTTP/3 server.  To do this, specify ``h3`` to ``--alpn-list`` option
-like so:
+HTTP/3 server.  To do this, use ``--h3`` option (or ``--alpn-list=h3``
+option) like so:
 
 .. code-block:: text
 
-    $ h2load --alpn-list h3 https://127.0.0.1:4433
+    $ h2load --h3 https://127.0.0.1:4433
 
 For nghttp2 v1.58 or earlier, use ``--npn-list`` instead of
 ``--alpn-list``.

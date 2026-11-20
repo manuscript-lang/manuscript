@@ -34,71 +34,33 @@
 #include <chrono>
 #include <algorithm>
 #include <ranges>
+#include <source_location>
+#include <expected>
+#include <charconv>
+#include <concepts>
 
 #include "shrpx_log_config.h"
 #include "tls.h"
 #include "template.h"
 #include "util.h"
+#include "errors.h"
 
 using namespace nghttp2;
 
 #define ENABLE_LOG 1
-
-#define LOG_ENABLED(SEVERITY) (ENABLE_LOG && shrpx::Log::log_enabled(SEVERITY))
-
-#ifdef __FILE_NAME__
-#  define NGHTTP2_FILE_NAME __FILE_NAME__
-#else // !__FILE_NAME__
-#  define NGHTTP2_FILE_NAME __FILE__
-#endif // !__FILE_NAME__
-
-#define LOG(SEVERITY) shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)
-
-// Listener log
-#define LLOG(SEVERITY, LISTEN)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[LISTEN:" << LISTEN << "] ")
-
-// Worker log
-#define WLOG(SEVERITY, WORKER)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[WORKER:" << WORKER << "] ")
-
-// ClientHandler log
-#define CLOG(SEVERITY, CLIENT_HANDLER)                                         \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[CLIENT_HANDLER:" << CLIENT_HANDLER << "] ")
-
-// Upstream log
-#define ULOG(SEVERITY, UPSTREAM)                                               \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[UPSTREAM:" << UPSTREAM << "] ")
-
-// Downstream log
-#define DLOG(SEVERITY, DOWNSTREAM)                                             \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[DOWNSTREAM:" << DOWNSTREAM << "] ")
-
-// Downstream connection log
-#define DCLOG(SEVERITY, DCONN)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[DCONN:" << DCONN << "] ")
-
-// Downstream HTTP2 session log
-#define SSLOG(SEVERITY, HTTP2)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[DHTTP2:" << HTTP2 << "] ")
-
-// Memcached connection log
-#define MCLOG(SEVERITY, MCONN)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[MCONN:" << MCONN << "] ")
 
 namespace shrpx {
 
 class Downstream;
 struct DownstreamAddr;
 struct LoggingConfig;
+class ConnectionHandler;
+class Worker;
+class ClientHandler;
+class Upstream;
+class DownstreamConnection;
+class Http2Session;
+class MemcachedConnection;
 
 enum SeverityLevel { INFO, NOTICE, WARN, ERROR, FATAL };
 
@@ -106,10 +68,56 @@ using LogBuffer = std::array<uint8_t, 4_k>;
 
 class Log {
 public:
-  Log(int severity, const char *filename, int linenum);
+  Log(int severity,
+      const std::source_location loc = std::source_location::current());
+  Log(SeverityLevel severity, const ConnectionHandler *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    // TODO: This should be CONNECTION_HANDLER.
+    *this << "[LISTEN:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const Worker *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[WORKER:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const ClientHandler *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[CLIENT_HANDLER:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const Upstream *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[UPSTREAM:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const Downstream *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[DOWNSTREAM:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const DownstreamConnection *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[DCONN:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const Http2Session *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[DHTTP2:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const MemcachedConnection *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[MCONN:" << obj << "] ";
+  }
+  Log(const Log &) = delete;
+  Log(Log &&) = delete;
   ~Log();
+  Log &operator=(const Log &) = delete;
+  Log &operator=(Log &&) = delete;
   Log &operator<<(const std::string &s);
-  Log &operator<<(const std::string_view &s);
+  Log &operator<<(std::string_view s);
   Log &operator<<(const char *s);
   Log &operator<<(const ImmutableString &s);
   template <std::signed_integral T> Log &operator<<(T n) {
@@ -159,9 +167,27 @@ public:
 
     return *this;
   }
-  Log &operator<<(float n) { return *this << static_cast<double>(n); }
-  Log &operator<<(double n);
-  Log &operator<<(long double n);
+  template <std::floating_point T> Log &operator<<(T n) {
+    if (full_) {
+      return *this;
+    }
+
+    auto left = wleft();
+    auto first = reinterpret_cast<char *>(last_);
+
+    auto rv =
+      std::to_chars(first, first + left, n, std::chars_format::fixed, 9);
+    if (rv.ec != std::errc{}) {
+      full_ = true;
+      return *this;
+    }
+
+    last_ = reinterpret_cast<uint8_t *>(rv.ptr);
+
+    update_full();
+
+    return *this;
+  }
   Log &operator<<(bool n);
   Log &operator<<(const void *p);
   template <typename T> Log &operator<<(const std::shared_ptr<T> &ptr) {
@@ -171,7 +197,7 @@ public:
     func(*this);
     return *this;
   }
-  template <std::ranges::input_range R>
+  template <std::ranges::forward_range R>
   requires(!std::is_array_v<std::remove_cvref_t<R>>)
   void write_seq(R &&r) {
     if (full_) {
@@ -200,9 +226,9 @@ public:
     update_full();
   }
   static void set_severity_level(int severity);
-  // Returns the severity level by |name|.  Returns -1 if |name| is
-  // unknown.
-  static int get_severity_level_by_name(const std::string_view &name);
+  // Returns the severity level by |name|.
+  static std::expected<int, Error>
+  get_severity_level_by_name(std::string_view name);
   static bool log_enabled(int severity) { return severity >= severity_thres_; }
 
   enum {
@@ -224,20 +250,29 @@ private:
   uint8_t *end_;
   uint8_t *last_;
   std::string_view filename_;
-  uint32_t flags_;
+  uint32_t flags_{};
   int severity_;
-  int linenum_;
-  bool full_;
+  uint32_t linenum_;
+  bool full_{};
   static int severity_thres_;
 };
+
+inline auto log_enabled(SeverityLevel severity) {
+  return ENABLE_LOG && Log::log_enabled(severity);
+}
 
 namespace log {
 void hex(Log &log);
 void dec(Log &log);
 } // namespace log
 
-#define TTY_HTTP_HD (log_config()->errorlog_tty ? "\033[1;34m" : "")
-#define TTY_RST (log_config()->errorlog_tty ? "\033[0m" : "")
+[[nodiscard]] inline auto tty_http_hd() {
+  return log_config()->errorlog_tty ? "\033[1;34m"sv : ""sv;
+}
+
+[[nodiscard]] inline auto tty_rst() {
+  return log_config()->errorlog_tty ? "\033[0m"sv : ""sv;
+}
 
 enum class LogFragmentType {
   NONE,
@@ -269,6 +304,7 @@ enum class LogFragmentType {
   TLS_CLIENT_ISSUER_NAME,
   TLS_CLIENT_SERIAL,
   TLS_CLIENT_SUBJECT_NAME,
+  TLS_ECH_ACCEPTED,
   BACKEND_HOST,
   BACKEND_PORT,
   METHOD,
@@ -290,7 +326,7 @@ struct LogSpec {
   std::string_view alpn;
   std::string_view sni;
   SSL *ssl;
-  std::chrono::high_resolution_clock::time_point request_end_time;
+  std::chrono::steady_clock::time_point request_end_time;
   std::string_view remote_port;
   uint16_t server_port;
   pid_t pid;
@@ -299,7 +335,7 @@ struct LogSpec {
 void upstream_accesslog(const std::vector<LogFragment> &lf,
                         const LogSpec &lgsp);
 
-int reopen_log_files(const LoggingConfig &loggingconf);
+std::expected<void, Error> reopen_log_files(const LoggingConfig &loggingconf);
 
 // Logs message when process whose pid is |pid| and exist status is
 // |rstatus| exited.  The |msg| is prepended to the log message.
@@ -322,9 +358,9 @@ void close_log_file(int &fd);
 
 // Opens |path| with O_APPEND enabled.  If file does not exist, it is
 // created first.  This function returns file descriptor referring the
-// opened file if it succeeds, or -1.
-int open_log_file(const char *path);
+// opened file if it succeeds.
+std::expected<int, Error> open_log_file(const char *path);
 
 } // namespace shrpx
 
-#endif // SHRPX_LOG_H
+#endif // !defined(SHRPX_LOG_H)

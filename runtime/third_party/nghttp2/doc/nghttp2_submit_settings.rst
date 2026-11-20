@@ -21,8 +21,8 @@ Synopsis
     copies all the elements in the *iv*.
     
     While updating individual stream's local window size, if the window
-    size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
-    RST_STREAM is issued against such a stream.
+    size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE, GOAWAY
+    frame is submitted and the connection will be terminated.
     
     SETTINGS with :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK` is
     automatically submitted by the library and application could not

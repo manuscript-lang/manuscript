@@ -32,6 +32,7 @@ typedef struct LCx {
     const MirGlue *glue; /* the glue functions, for the closure objects' entries */
     bool *framed;        /* per value of `f`: a closure object kept in the frame */
     bool *borrowed;      /* per value of `f`: an `iface.borrow` kept in the frame; NULL when none */
+    bool export_all;     /* every function gets an external symbol, for the tables unit to address */
 } LCx;
 
 /* What LLVM needs to know about each kind of leaf, indexed by `MirLeaf`: the register type, the
@@ -1338,7 +1339,7 @@ static bool ll_block(LCx *c, uint32_t b, const uint32_t *last) {
 static void ll_header(LCx *c, uint32_t index) {
     const MirFunc *f = c->f;
     MsBuf *o = c->out;
-    const bool exported = f->linkage == ML_EXPORT || c->m->entry == index;
+    const bool exported = c->export_all || f->linkage == ML_EXPORT || c->m->entry == index;
     const MirLeafSpan result = ll_leaves(c, f->ret);
     ms_buf_printf(o, "define %s%s ", exported ? "" : "internal ", result.len == 1 ? ll_leaf_type(result.ptr[0]) : "void");
     ll_sym(o, ms_name(&c->m->names, f->name));
@@ -1561,12 +1562,13 @@ static void ll_define_data(const LCx *c) {
     }
 }
 
-bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why) {
+bool mir_emit_llvm_with(const MirModule *m, const MirData *data, const MirGlue *glue, bool export_all,
+                        MsBuf *out, MsBuf *why) {
     MirLayouts layouts;
     mir_layouts_init(&layouts, m);
     bool ok = true;
     for (uint32_t i = 0; i < m->nfuncs; i++) {
-        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL};
+        LCx c = {m, &m->funcs[i], out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all};
         if (ll_function(&c, i)) {
             continue;
         }
@@ -1574,7 +1576,7 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
         ms_buf_printf(why, "%.*s: %s\n", (int)name.len, name.ptr, c.why ? c.why : "unsupported");
         ok = false;
     }
-    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL};
+    LCx externs = {m, NULL, out, &layouts, 0, NULL, data, glue, NULL, NULL, export_all};
     ll_declare_externs(&externs);
     if (data != NULL) {
         ll_define_data(&externs);
@@ -1584,3 +1586,9 @@ bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue,
     ms_buf_puts(out, ll_declarations);
     return ok;
 }
+
+bool mir_emit_llvm(const MirModule *m, const MirData *data, const MirGlue *glue, MsBuf *out, MsBuf *why) {
+    return mir_emit_llvm_with(m, data, glue, false, out, why);
+}
+
+#include "emit_llvm_main.inc"

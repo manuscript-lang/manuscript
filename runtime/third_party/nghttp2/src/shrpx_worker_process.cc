@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <grp.h>
@@ -40,9 +40,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
@@ -73,7 +73,7 @@ namespace {
 void drop_privileges(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 ) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
@@ -83,7 +83,7 @@ void drop_privileges(
     if (nb) {
       neverbleed_setuidgid(nb, config->user.data(), 1);
     }
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
     if (initgroups(config->user.data(),
 #ifndef __APPLE__
@@ -93,24 +93,24 @@ void drop_privileges(
 #endif // defined(__APPLE__)
                    ) != 0) {
       auto error = errno;
-      LOG(FATAL) << "Could not change supplementary groups: "
+      Log{FATAL} << "Could not change supplementary groups: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
     if (setgid(config->gid) != 0) {
       auto error = errno;
-      LOG(FATAL) << "Could not change gid: "
+      Log{FATAL} << "Could not change gid: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
     if (setuid(config->uid) != 0) {
       auto error = errno;
-      LOG(FATAL) << "Could not change uid: "
+      Log{FATAL} << "Could not change uid: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
     if (setuid(0) != -1) {
-      LOG(FATAL) << "Still have root privileges?";
+      Log{FATAL} << "Still have root privileges?";
       exit(EXIT_FAILURE);
     }
   }
@@ -123,7 +123,7 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
     return;
   }
 
-  LOG(NOTICE) << "Graceful shutdown signal received";
+  Log{NOTICE} << "Graceful shutdown signal received";
 
   conn_handler->set_graceful_shutdown(true);
   conn_handler->graceful_shutdown_worker();
@@ -143,7 +143,7 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
 
 namespace {
 void reopen_log(ConnectionHandler *conn_handler) {
-  LOG(NOTICE) << "Reopening log files: worker process (thread main)";
+  Log{NOTICE} << "Reopening log files: worker process (thread main)";
 
   auto config = get_config();
   auto &loggingconf = config->logging;
@@ -164,13 +164,20 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
     ;
   if (nread == -1) {
     auto error = errno;
-    LOG(ERROR) << "Failed to read data from ipc channel: errno=" << error;
+    Log{ERROR} << "Failed to read data from ipc channel: errno=" << error;
+
+    if (error == ECONNRESET) {
+      Log{FATAL}
+        << "IPC socket connection was reset.  Perform immediate shutdown.";
+      nghttp2_Exit(EXIT_FAILURE);
+    }
+
     return;
   }
 
   if (nread == 0) {
     // IPC socket closed.  Perform immediate shutdown.
-    LOG(FATAL) << "IPC socket is closed.  Perform immediate shutdown.";
+    Log{FATAL} << "IPC socket is closed.  Perform immediate shutdown.";
     nghttp2_Exit(EXIT_FAILURE);
   }
 
@@ -192,36 +199,36 @@ namespace {
 void quic_ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
 
-  if (conn_handler->quic_ipc_read() != 0) {
-    LOG(ERROR) << "Failed to read data from QUIC IPC channel";
+  if (!conn_handler->quic_ipc_read()) {
+    Log{ERROR} << "Failed to read data from QUIC IPC channel";
 
     return;
   }
 }
 } // namespace
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 namespace {
-int generate_ticket_key(TicketKey &ticket_key) {
+std::expected<void, Error> generate_ticket_key(TicketKey &ticket_key) {
   ticket_key.cipher = get_config()->tls.ticket.cipher;
-  ticket_key.hmac = EVP_sha256();
+  ticket_key.hmac = nghttp2::tls::sha256();
   ticket_key.hmac_keylen = static_cast<size_t>(EVP_MD_size(ticket_key.hmac));
 
   assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
          ticket_key.data.enc_key.size());
   assert(ticket_key.hmac_keylen <= ticket_key.data.hmac_key.size());
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
+  if (log_enabled(INFO)) {
+    Log{INFO} << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
               << ", hmac_keylen=" << ticket_key.hmac_keylen;
   }
 
   if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_key.data),
                  sizeof(ticket_key.data)) == 0) {
-    return -1;
+    return std::unexpected{Error::CRYPTO};
   }
 
-  return 0;
+  return {};
 }
 } // namespace
 
@@ -231,7 +238,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   const auto &old_ticket_keys = conn_handler->get_ticket_keys();
 
   auto ticket_keys = std::make_shared<TicketKeys>();
-  LOG(NOTICE) << "Renew new ticket keys";
+  Log{NOTICE} << "Renew new ticket keys";
 
   // If old_ticket_keys is not empty, it should contain at least 2
   // keys: one for encryption, and last one for the next encryption
@@ -263,23 +270,23 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
   auto &new_key = ticket_keys->keys[0];
 
-  if (generate_ticket_key(new_key) != 0) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "failed to generate ticket key";
+  if (!generate_ticket_key(new_key)) {
+    if (log_enabled(INFO)) {
+      Log{INFO} << "failed to generate ticket key";
     }
     conn_handler->set_ticket_keys(nullptr);
     conn_handler->set_ticket_keys_to_worker(nullptr);
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "ticket keys generation done";
+  if (log_enabled(INFO)) {
+    Log{INFO} << "ticket keys generation done";
     assert(ticket_keys->keys.size() >= 1);
-    LOG(INFO) << 0 << " enc+dec: "
+    Log{INFO} << 0 << " enc+dec: "
               << util::format_hex(ticket_keys->keys[0].data.name);
     for (size_t i = 1; i < ticket_keys->keys.size(); ++i) {
       auto &key = ticket_keys->keys[i];
-      LOG(INFO) << i << " dec: " << util::format_hex(key.data.name);
+      Log{INFO} << i << " dec: " << util::format_hex(key.data.name);
     }
   }
 
@@ -314,7 +321,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
 
     auto &value = res.value;
     if (value.size() < 4) {
-      LOG(WARN) << "Memcached: tls ticket key value is too small: got "
+      Log{WARN} << "Memcached: tls ticket key value is too small: got "
                 << value.size();
       conn_handler->on_tls_ticket_key_not_found(w);
       return;
@@ -323,7 +330,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
     auto version = util::get_uint32(p);
     // Currently supported version is 1.
     if (version != 1) {
-      LOG(WARN) << "Memcached: tls ticket key version: want 1, got " << version;
+      Log{WARN} << "Memcached: tls ticket key version: want 1, got " << version;
       conn_handler->on_tls_ticket_key_not_found(w);
       return;
     }
@@ -336,11 +343,11 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
     size_t expectedlen;
     size_t enc_keylen;
     size_t hmac_keylen;
-    if (ticketconf.cipher == EVP_aes_128_cbc()) {
+    if (ticketconf.cipher == nghttp2::tls::aes_128_cbc()) {
       expectedlen = 48;
       enc_keylen = 16;
       hmac_keylen = 16;
-    } else if (ticketconf.cipher == EVP_aes_256_cbc()) {
+    } else if (ticketconf.cipher == nghttp2::tls::aes_256_cbc()) {
       expectedlen = 80;
       enc_keylen = 32;
       hmac_keylen = 32;
@@ -352,27 +359,27 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
 
     for (; p != end;) {
       if (end - p < 2) {
-        LOG(WARN) << "Memcached: tls ticket key data is too small";
+        Log{WARN} << "Memcached: tls ticket key data is too small";
         conn_handler->on_tls_ticket_key_not_found(w);
         return;
       }
       auto len = util::get_uint16(p);
       p += 2;
       if (len != expectedlen) {
-        LOG(WARN) << "Memcached: wrong tls ticket key size: want "
+        Log{WARN} << "Memcached: wrong tls ticket key size: want "
                   << expectedlen << ", got " << len;
         conn_handler->on_tls_ticket_key_not_found(w);
         return;
       }
       if (p + len > end) {
-        LOG(WARN) << "Memcached: too short tls ticket key payload: want " << len
+        Log{WARN} << "Memcached: too short tls ticket key payload: want " << len
                   << ", got " << (end - p);
         conn_handler->on_tls_ticket_key_not_found(w);
         return;
       }
       auto key = TicketKey();
       key.cipher = ticketconf.cipher;
-      key.hmac = EVP_sha256();
+      key.hmac = nghttp2::tls::sha256();
       key.hmac_keylen = hmac_keylen;
 
       p = std::ranges::copy_n(p, key.data.name.size(),
@@ -393,11 +400,11 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
     conn_handler->on_tls_ticket_key_get_success(ticket_keys, w);
   };
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Memcached: tls ticket key get request sent";
+  if (log_enabled(INFO)) {
+    Log{INFO} << "Memcached: tls ticket key get request sent";
   }
 
-  dispatcher->add_request(std::move(req));
+  (void)dispatcher->add_request(std::move(req));
 }
 
 } // namespace
@@ -409,15 +416,15 @@ void nb_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
   ev_child_stop(loop, w);
 
-  LOG(FATAL) << "neverbleed process exited; aborting now";
+  Log{FATAL} << "neverbleed process exited; aborting now";
 
   nghttp2_Exit(EXIT_FAILURE);
 }
 } // namespace
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
 namespace {
-int send_ready_event(int ready_ipc_fd) {
+std::expected<void, Error> send_ready_event(int ready_ipc_fd) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto pid = getpid();
   ssize_t nwrite;
@@ -429,32 +436,33 @@ int send_ready_event(int ready_ipc_fd) {
   if (nwrite < 0) {
     auto error = errno;
 
-    LOG(ERROR) << "Writing PID to ready IPC channel failed: "
+    Log{ERROR} << "Writing PID to ready IPC channel failed: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
-    return -1;
+    return std::unexpected{Error::SYSCALL};
   }
 
-  return 0;
+  return {};
 }
 } // namespace
 
-int worker_process_event_loop(WorkerProcessConfig *wpconf) {
+std::expected<void, Error>
+worker_process_event_loop(WorkerProcessConfig *wpconf) {
   int rv;
   std::array<char, STRERROR_BUFSIZE> errbuf;
   (void)errbuf;
 
   auto config = get_config();
 
-  if (reopen_log_files(config->logging) != 0) {
-    LOG(FATAL) << "Failed to open log file";
-    return -1;
+  if (auto rv = reopen_log_files(config->logging); !rv) {
+    Log{FATAL} << "Failed to open log file";
+    return rv;
   }
 
   rv = ares_library_init(ARES_LIB_INIT_ALL);
   if (rv != 0) {
-    LOG(FATAL) << "ares_library_init failed: " << ares_strerror(rv);
-    return -1;
+    Log{FATAL} << "ares_library_init failed: " << ares_strerror(rv);
+    return std::unexpected{Error::DNS};
   }
 
   auto loop = EV_DEFAULT;
@@ -465,30 +473,30 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   std::array<char, NEVERBLEED_ERRBUF_SIZE> nb_errbuf;
   auto nb = std::make_unique<neverbleed_t>();
   if (neverbleed_init(nb.get(), nb_errbuf.data()) != 0) {
-    LOG(FATAL) << "neverbleed_init failed: " << nb_errbuf.data();
-    return -1;
+    Log{FATAL} << "neverbleed_init failed: " << nb_errbuf.data();
+    return std::unexpected{Error::CRYPTO};
   }
 
-  LOG(NOTICE) << "neverbleed process [" << nb->daemon_pid << "] spawned";
+  Log{NOTICE} << "neverbleed process [" << nb->daemon_pid << "] spawned";
 
   ev_child nb_childev;
 
   ev_child_init(&nb_childev, nb_child_cb, nb->daemon_pid, 0);
   nb_childev.data = nullptr;
   ev_child_start(loop, &nb_childev);
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
   auto conn_handler = std::make_unique<ConnectionHandler>(loop, gen);
 
 #ifdef HAVE_NEVERBLEED
   conn_handler->set_neverbleed(nb.get());
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
 #ifdef ENABLE_HTTP3
   conn_handler->set_quic_ipc_fd(wpconf->quic_ipc_fd);
   conn_handler->set_quic_lingering_worker_processes(
     wpconf->quic_lingering_worker_processes);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   MemchunkPool mcpool;
 
@@ -518,7 +526,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
       bool auto_tls_ticket_key = true;
       if (!ticketconf.files.empty()) {
         if (!ticketconf.cipher_given) {
-          LOG(WARN)
+          Log{WARN}
             << "It is strongly recommended to specify "
                "--tls-ticket-key-cipher=aes-128-cbc (or "
                "tls-ticket-key-cipher=aes-128-cbc in configuration file) "
@@ -527,9 +535,9 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
                "becomes aes-256-cbc";
         }
         auto ticket_keys = read_tls_ticket_key_file(
-          ticketconf.files, ticketconf.cipher, EVP_sha256());
+          ticketconf.files, ticketconf.cipher, nghttp2::tls::sha256());
         if (!ticket_keys) {
-          LOG(WARN) << "Use internal session ticket key generator";
+          Log{WARN} << "Use internal session ticket key generator";
         } else {
           conn_handler->set_ticket_keys(std::move(ticket_keys));
           auto_tls_ticket_key = false;
@@ -550,17 +558,19 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #ifdef ENABLE_HTTP3
   auto &quicconf = config->quic;
 
-  std::shared_ptr<QUICKeyingMaterials> qkms;
+  std::unique_ptr<QUICKeyingMaterials> qkms;
 
   if (!quicconf.upstream.secret_file.empty()) {
-    qkms = read_quic_secret_file(quicconf.upstream.secret_file);
-    if (!qkms) {
-      LOG(WARN) << "Use QUIC keying materials generated internally";
+    auto maybe_qkms = read_quic_secret_file(quicconf.upstream.secret_file);
+    if (!maybe_qkms) {
+      Log{WARN} << "Use QUIC keying materials generated internally";
+    } else {
+      qkms = std::move(*maybe_qkms);
     }
   }
 
   if (!qkms) {
-    qkms = std::make_shared<QUICKeyingMaterials>();
+    qkms = std::make_unique<QUICKeyingMaterials>();
     qkms->keying_materials.resize(1);
 
     auto &qkm = qkms->keying_materials.front();
@@ -568,49 +578,27 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     if (RAND_bytes(qkm.reserved.data(),
                    static_cast<nghttp2_ssl_rand_length_type>(
                      qkm.reserved.size())) != 1) {
-      LOG(ERROR) << "Failed to generate QUIC secret reserved data";
-      return -1;
+      Log{ERROR} << "Failed to generate QUIC secret reserved data";
+      return std::unexpected{Error::CRYPTO};
     }
 
     if (RAND_bytes(qkm.secret.data(), static_cast<nghttp2_ssl_rand_length_type>(
                                         qkm.secret.size())) != 1) {
-      LOG(ERROR) << "Failed to generate QUIC secret";
-      return -1;
+      Log{ERROR} << "Failed to generate QUIC secret";
+      return std::unexpected{Error::CRYPTO};
     }
 
     if (RAND_bytes(qkm.salt.data(), static_cast<nghttp2_ssl_rand_length_type>(
                                       qkm.salt.size())) != 1) {
-      LOG(ERROR) << "Failed to generate QUIC salt";
-      return -1;
+      Log{ERROR} << "Failed to generate QUIC salt";
+      return std::unexpected{Error::CRYPTO};
     }
   }
 
   for (auto &qkm : qkms->keying_materials) {
-    if (generate_quic_connection_id_encryption_key(qkm.cid_encryption_key,
-                                                   qkm.secret, qkm.salt) != 0) {
-      LOG(ERROR) << "Failed to generate QUIC Connection ID encryption key";
-      return -1;
+    if (auto rv = qkm.init_ciphers(); !rv) {
+      return rv;
     }
-
-    qkm.cid_encryption_ctx = EVP_CIPHER_CTX_new();
-    if (!EVP_EncryptInit_ex(qkm.cid_encryption_ctx, EVP_aes_128_ecb(), nullptr,
-                            qkm.cid_encryption_key.data(), nullptr)) {
-      LOG(ERROR)
-        << "Failed to initialize QUIC Connection ID encryption context";
-      return -1;
-    }
-
-    EVP_CIPHER_CTX_set_padding(qkm.cid_encryption_ctx, 0);
-
-    qkm.cid_decryption_ctx = EVP_CIPHER_CTX_new();
-    if (!EVP_DecryptInit_ex(qkm.cid_decryption_ctx, EVP_aes_128_ecb(), nullptr,
-                            qkm.cid_encryption_key.data(), nullptr)) {
-      LOG(ERROR)
-        << "Failed to initialize QUIC Connection ID decryption context";
-      return -1;
-    }
-
-    EVP_CIPHER_CTX_set_padding(qkm.cid_decryption_ctx, 0);
   }
 
   conn_handler->set_quic_keying_materials(std::move(qkms));
@@ -618,12 +606,11 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   conn_handler->set_worker_ids(wpconf->worker_ids);
   conn_handler->set_quic_lingering_worker_processes(
     wpconf->quic_lingering_worker_processes);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   if (config->single_thread) {
-    rv = conn_handler->create_single_worker();
-    if (rv != 0) {
-      return -1;
+    if (auto rv = conn_handler->create_single_worker(); !rv) {
+      return rv;
     }
   } else {
 #ifndef NOTHREADS
@@ -633,25 +620,24 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
     rv = pthread_sigmask(SIG_BLOCK, &set, nullptr);
     if (rv != 0) {
-      LOG(ERROR) << "Blocking SIGCHLD failed: "
+      Log{ERROR} << "Blocking SIGCHLD failed: "
                  << xsi_strerror(rv, errbuf.data(), errbuf.size());
-      return -1;
+      return std::unexpected{Error::LIBC};
     }
-#endif // !NOTHREADS
+#endif // !defined(NOTHREADS)
 
-    rv = conn_handler->create_worker_thread(config->num_worker);
-    if (rv != 0) {
-      return -1;
+    if (auto rv = conn_handler->create_worker_thread(config->num_worker); !rv) {
+      return rv;
     }
 
 #ifndef NOTHREADS
     rv = pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
     if (rv != 0) {
-      LOG(ERROR) << "Unblocking SIGCHLD failed: "
+      Log{ERROR} << "Unblocking SIGCHLD failed: "
                  << xsi_strerror(rv, errbuf.data(), errbuf.size());
-      return -1;
+      return std::unexpected{Error::LIBC};
     }
-#endif // !NOTHREADS
+#endif // !defined(NOTHREADS)
   }
 
   // UNIX domain sockets are copied in AcceptHandler.  No need to keep
@@ -669,7 +655,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   drop_privileges(
 #ifdef HAVE_NEVERBLEED
     nb.get()
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
   );
 
   ev_io ipcev;
@@ -682,14 +668,14 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_io_init(&quic_ipcev, quic_ipc_readcb, wpconf->quic_ipc_fd, EV_READ);
   quic_ipcev.data = conn_handler.get();
   ev_io_start(loop, &quic_ipcev);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Entering event loop";
+  if (log_enabled(INFO)) {
+    Log{INFO} << "Entering event loop";
   }
 
-  if (send_ready_event(wpconf->ready_ipc_fd) != 0) {
-    return -1;
+  if (auto rv = send_ready_event(wpconf->ready_ipc_fd); !rv) {
+    return rv;
   }
 
   ev_run(loop, 0);
@@ -705,22 +691,22 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   rv = kill(nb->daemon_pid, SIGTERM);
   if (rv != 0) {
     auto error = errno;
-    LOG(ERROR) << "Could not send signal to neverbleed daemon: errno=" << error;
+    Log{ERROR} << "Could not send signal to neverbleed daemon: errno=" << error;
   }
 
   while ((rv = waitpid(nb->daemon_pid, nullptr, 0)) == -1 && errno == EINTR)
     ;
   if (rv == -1) {
     auto error = errno;
-    LOG(ERROR) << "Error occurred while we were waiting for the completion "
+    Log{ERROR} << "Error occurred while we were waiting for the completion "
                   "of neverbleed process: errno="
                << error;
   }
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
   ares_library_cleanup();
 
-  return 0;
+  return {};
 }
 
 } // namespace shrpx
