@@ -10,6 +10,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "../../std/abi.h"
+#include "ms_rt/process.h"
 #include "ms_rt/string.h"
 #include "ms_rt/sys.h"
 #include "ms_sched.h"
@@ -24,6 +26,63 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsStr *out) {
 
 void msrt_string_clone(const MsStr *s, MsStr *out) { msrt_string_from_bytes(ms_str_data(s), ms_str_len(s), out); }
 void msrt_string_free(const MsStr *s) { free(s->ptr_word); }
+
+/* The start-up records: a test program records no start time and was given no arguments. */
+int64_t msrt_start_nanos(void) { return 0; }
+void msrt_counts(uint64_t *out) { memset(out, 0, 7 * sizeof *out); }
+void msrt_argv(MsVec *out) { *out = (MsVec){0}; }
+
+void msrt_heap_stats(int64_t *out) { out[0] = out[1] = 0; }
+
+/* A map of Strings to Strings as a list of pairs, for the one map a std native builds (the environment); the real
+ * map is runtime/core/map.c, which these tests do not link. Only the first word of the map value is used, as a count. */
+enum { STUB_MAP_LIMIT = 8192, STUB_MAP_BYTES = 56 };
+typedef struct StubEntry {
+    MsStr key, value;
+} StubEntry;
+static StubEntry stub_entries[STUB_MAP_LIMIT];
+
+void msrt_map_new(MsMap *out) { memset(out, 0, STUB_MAP_BYTES); }
+
+void msrt_map_add(MsMap *map, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *value) {
+    (void)kd;
+    (void)vd;
+    size_t count = 0;
+    memcpy(&count, map, sizeof count);
+    memcpy(&stub_entries[count].key, key, sizeof(MsStr));
+    memcpy(&stub_entries[count].value, value, sizeof(MsStr));
+    count++;
+    memcpy(map, &count, sizeof count);
+}
+
+const uint8_t *msrt_map_get_ptr(const MsMap *map, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key) {
+    (void)kd;
+    (void)vd;
+    MsStr wanted;
+    memcpy(&wanted, key, sizeof wanted);
+    size_t count = 0;
+    memcpy(&count, map, sizeof count);
+    for (size_t i = 0; i < count; i++) {
+        if (ms_str_len(&stub_entries[i].key) == ms_str_len(&wanted) &&
+            memcmp(ms_str_data(&stub_entries[i].key), ms_str_data(&wanted), ms_str_len(&wanted)) == 0) {
+            return (const uint8_t *)&stub_entries[i].value;
+        }
+    }
+    return NULL;
+}
+
+void msrt_map_drop(MsMap *map, const MsTypeDesc *kd, const MsTypeDesc *vd) {
+    (void)kd;
+    (void)vd;
+    size_t count = 0;
+    memcpy(&count, map, sizeof count);
+    for (size_t i = 0; i < count; i++) {
+        free(stub_entries[i].key.ptr_word);
+        free(stub_entries[i].value.ptr_word);
+    }
+    count = 0;
+    memcpy(map, &count, sizeof count);
+}
 
 uint32_t msrt_task_wait_fd(int32_t fd, uint32_t events, int64_t timeout_ns) {
     (void)fd;

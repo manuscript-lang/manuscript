@@ -429,6 +429,7 @@ static void abandon_wait(MsSched *sched) {
 bool ms_park_drain_mail(MsSched *sched) {
     MsMail *mail = ms_isolate_take();
     const size_t before = sched->ready_length;
+    bool stopped = false;
     while (mail != NULL) {
         MsMail *const next = mail->next;
         if (mail->kind == MS_MAIL_TOKEN) {
@@ -436,6 +437,7 @@ bool ms_park_drain_mail(MsSched *sched) {
             msrt_free(mail);
         } else if (mail->kind == MS_MAIL_STOP) {
             ms_sched_stop((uint8_t)mail->a);
+            stopped = true;
             msrt_free(mail);
         } else if (sched->hooks.mail != NULL) {
             sched->hooks.mail(mail);
@@ -444,7 +446,7 @@ bool ms_park_drain_mail(MsSched *sched) {
         }
         mail = next;
     }
-    return sched->ready_length != before;
+    return stopped || sched->ready_length != before; /* a stop request is acted on by the idle loop's next turn */
 }
 
 void ms_park_idle(MsSched *sched) {
@@ -464,8 +466,17 @@ void ms_park_idle(MsSched *sched) {
         if (ms_isolate_has_mail() && ms_park_drain_mail(sched)) {
             return;
         }
-        const int64_t timeout_ns = timed ? next_timeout(sched, now) : -1;
-        if (timeout_ns < 0 && sched->fd_waiting == 0 && sched->remote_tokens == 0) {
+        int64_t timeout_ns = timed ? next_timeout(sched, now) : -1;
+        if (sched->hooks.idle != NULL) {
+            int64_t wait_ns = -1;
+            if (sched->hooks.idle(&wait_ns)) {
+                return;
+            }
+            if (wait_ns >= 0 && (timeout_ns < 0 || wait_ns < timeout_ns)) {
+                timeout_ns = wait_ns;
+            }
+        }
+        if (timeout_ns < 0 && sched->fd_waiting == 0 && sched->remote_tokens == 0 && !sched->hooks.service) {
             abandon_wait(sched);
             sched->hooks.fault(MS_FAULT_KIND_DEADLOCK, deadlock_message);
         }
@@ -475,6 +486,10 @@ void ms_park_idle(MsSched *sched) {
         }
         if (!ms_isolate_idle_enter()) {
             continue; /* mail arrived since the look above */
+        }
+        if (sched->hooks.pending != NULL && sched->hooks.pending()) {
+            ms_isolate_idle_leave();
+            continue; /* work was queued after the look above, and its pusher saw us awake */
         }
         ms_park_poll(sched, timeout_ns);
         ms_isolate_idle_leave();

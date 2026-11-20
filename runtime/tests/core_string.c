@@ -33,7 +33,7 @@ static MsStr inl(const char *text) {
 }
 
 int main(void) {
-    /* The vectors of hash_vectors_match_the_c_runtime in crates/ms-rt/src/string.rs. */
+    /* The vectors core_hash.c also asserts for msrt_hash_bytes. */
     struct { const char *text; int64_t hash; } vectors[] = {
         {"", 5637604647281345049LL},
         {"a", -4589632175014895841LL},

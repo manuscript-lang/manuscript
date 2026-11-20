@@ -10,6 +10,7 @@
 #include "ms/mir.h"
 #include "ms/mir_debug.h"
 #include "ms/mir_pass.h"
+#include "ms/mir_tables.h"
 
 /* Runs the pass `name` on `m`; false when the name is unknown. */
 /* A pass that can fail leaves its message in `failure`. */
@@ -39,7 +40,7 @@ static bool run_pass(const char *name, MirModule *m, bool *changed, MsBuf *failu
         (void)mir_pipeline_finish(m, &o, &g, failure);
     } else if (strcmp(name, "count_ops") == 0) {
         mir_count_ops(m);
-    } else if (strcmp(name, "copies") == 0 || strcmp(name, "frames") == 0) {
+    } else if (strcmp(name, "copies") == 0 || strcmp(name, "slots") == 0 || strcmp(name, "tables") == 0 || strcmp(name, "debug_files") == 0 || strcmp(name, "frames") == 0) {
         /* Not a rewrite: main prints the framed values of each function. */
     } else if (strcmp(name, "debug_types") == 0) {
         /* Not a rewrite: main prints the description instead of the module. */
@@ -107,6 +108,73 @@ static void print_debug_types(const MirModule *m, MsBuf *out) {
     mir_debug_types_free(&t);
 }
 
+/* The fault tables of a module whose functions each have one code range per instruction, 4 bytes
+ * apart: the blob in hex, then the pointers and the pc entries. */
+static void print_tables(const MirModule *m, MsBuf *out) {
+    MsArena arena = {0};
+    MirFuncTable *funcs = MS_NEW_N(&arena, MirFuncTable, m->nfuncs ? m->nfuncs : 1);
+    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
+        const MirFunc *f = &m->funcs[fi];
+        MirCodeRange *ranges = MS_NEW_N(&arena, MirCodeRange, 1);
+        uint32_t n = 0, cap = 0, off = 0;
+        for (uint32_t bi = 0; bi < f->nblocks; bi++) {
+            for (uint32_t k = 0; k < f->blocks[bi].ninsts; k++, off += 4) {
+                const MirLoc l = f->blocks[bi].insts[k].loc;
+                if (n == cap) {
+                    MirCodeRange *grown = MS_NEW_N(&arena, MirCodeRange, cap = cap ? cap * 2 : 8);
+                    memcpy(grown, ranges, sizeof *ranges * n);
+                    ranges = grown;
+                }
+                ranges[n++] = (MirCodeRange){off, l.file, l.line, l.scope};
+            }
+        }
+        funcs[fi] = (MirFuncTable){ms_name(&m->names, f->name), f->loc.file, f->loc.line, off + 1,
+                                   ranges, n};
+    }
+    uint32_t nscopes = 0;
+    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
+        nscopes += m->funcs[fi].nscopes;
+    }
+    MirScope *scopes = MS_NEW_N(&arena, MirScope, nscopes ? nscopes : 1);
+    for (uint32_t fi = 0, at = 0; fi < m->nfuncs; fi++) {
+        const MirFunc *f = &m->funcs[fi];
+        for (uint32_t k = 0; k < f->nscopes; k++) {
+            scopes[at++] = f->scopes[k];
+        }
+    }
+    MirTables t;
+    mir_fault_tables(&arena, m, funcs, m->nfuncs, scopes, nscopes, &t);
+    for (size_t i = 0; i < t.size; i++) {
+        ms_buf_printf(out, "%02x", t.blob[i]);
+    }
+    ms_buf_putc(out, '\n');
+    for (int i = 0; i < 5; i++) {
+        ms_buf_printf(out, "ptr %zu %zu\n", t.pointers[i].at, t.pointers[i].to);
+    }
+    for (size_t i = 0; i < t.npcs; i++) {
+        ms_buf_printf(out, "pc %zu %zu %u\n", t.pcs[i].at, t.pcs[i].func, t.pcs[i].off);
+    }
+    ms_arena_free(&arena);
+}
+
+/* Per function, `func: %slot=block ...` for the confined slots. */
+static void print_slots(const MirModule *m, MsBuf *out) {
+    for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
+        const MirFunc *f = &m->funcs[fi];
+        MsArena arena = {0};
+        const MirBlock *confined = mir_confined_slots(&arena, m, f);
+        const MsStr name = ms_name(&m->names, f->name);
+        ms_buf_printf(out, "%.*s:", (int)name.len, name.ptr);
+        for (uint32_t v = 0; confined != NULL && v < f->nvalues; v++) {
+            if (confined[v] != MIR_NONE) {
+                ms_buf_printf(out, " %%%u=%u", v, confined[v]);
+            }
+        }
+        ms_buf_putc(out, '\n');
+        ms_arena_free(&arena);
+    }
+}
+
 /* Per function, the values frames.rs frames. */
 static void print_frames(const MirModule *m, MsBuf *out) {
     for (uint32_t fi = 0; fi < m->nfuncs; fi++) {
@@ -163,6 +231,18 @@ int main(int argc, char **argv) {
             ms_buf_printf(&out, "changed %d\n", changed ? 1 : 0);
             if (strcmp(argv[2], "debug_types") == 0) {
                 print_debug_types(&m, &out);
+            } else if (strcmp(argv[2], "debug_files") == 0) {
+                MsArena names = {0};
+                const char *stdlib_dir = getenv("MS_STDLIB_DIR"); // NOLINT(concurrency-mt-unsafe)
+                for (uint32_t fk = 0; fk < m.nfiles; fk++) {
+                    const MsStr n = mir_debug_file_name(&names, m.files[fk], stdlib_dir);
+                    ms_buf_printf(&out, "%.*s\n", (int)n.len, n.ptr);
+                }
+                ms_arena_free(&names);
+            } else if (strcmp(argv[2], "tables") == 0) {
+                print_tables(&m, &out);
+            } else if (strcmp(argv[2], "slots") == 0) {
+                print_slots(&m, &out);
             } else if (strcmp(argv[2], "copies") == 0) {
                 mir_object_copies(&m, &out);
             } else if (strcmp(argv[2], "frames") == 0) {

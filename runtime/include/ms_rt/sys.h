@@ -76,6 +76,25 @@ MS_NODISCARD bool ms_sys_fd_wait_readable(int fd, int64_t timeout_ns);
 /* Sets *ready to whether fd can be read (or written, when `writes`) without blocking, a hang-up or error counting as
  * ready. False where the system cannot tell. Unix only; Windows reports false. */
 MS_NODISCARD bool ms_sys_fd_ready(int fd, bool writes, bool *ready);
+/* A descriptor of ms_sys_fd_wait_any. The layout is that of poll(2)'s entry on every Unix this runs on. */
+typedef struct MsSysFdWait {
+    int fd;
+    int16_t wants; /* MS_SYS_WAIT_READ or MS_SYS_WAIT_WRITE */
+    int16_t got;   /* set by the wait: nonzero when the descriptor is ready, has hung up or has failed */
+} MsSysFdWait;
+enum { MS_SYS_WAIT_READ = 1, MS_SYS_WAIT_WRITE = 4 };
+/* Blocks until at least one of the `count` descriptors is ready and marks every ready one (`got`); a signal ends it
+ * early with none marked. False when the system cannot wait (Windows). */
+MS_NODISCARD bool ms_sys_fd_wait_any(MsSysFdWait *entries, size_t count);
+/* A pipe that ends a ms_sys_fd_wait_any from another thread: wait on fds[0], signal through fds[1]. Both ends are
+ * non-blocking and close-on-exec. False when the system has none (Windows). */
+MS_NODISCARD bool ms_sys_wake_open(int fds[2]);
+/* Makes fds[0] readable; a full pipe already is. */
+void ms_sys_wake_send(int write_fd);
+/* Empties the pipe so the next wait blocks again. */
+void ms_sys_wake_drain(int read_fd);
+/* Closes both ends. */
+void ms_sys_wake_close(const int fds[2]);
 /* Makes the process's environ agree with the C library's own copy. A static library built without -fPIC makes the
  * linker copy environ into the program, and glibc fills only its own, so readers of the copy would see an empty
  * environment (issue #4647). Linux only; a no-op elsewhere. */

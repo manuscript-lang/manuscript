@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compares compiler/src/hints.c with the Rust helpers it ports (compiler/tests/hints_oracle.rs holds
+# Compares compiler/src/syntax/hints.c with the Rust helpers it ports (compiler/tests/hints_oracle.rs holds
 # them verbatim) on random queries. Run from the repository root. HINTS_CASES and HINTS_SEED size and
 # seed the run.
 set -eu

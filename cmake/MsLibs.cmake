@@ -1,21 +1,23 @@
-# The C libraries the runtime links: libuv, llhttp, nghttp2, OpenSSL, PCRE2, zlib.
-# llhttp and yyjson are vendored and compiled here. The others come from pkg-config (MS_C_LIBS=system) or from the folder
+# The C libraries the runtime links: libuv, llhttp, nghttp2, OpenSSL, PCRE2, zlib, libcurl.
+# llhttp is vendored and compiled here. The others come from pkg-config (MS_C_LIBS=system) or from the folder
 # MS_LIBS_PREFIX (pinned builds of runtime/third_party/build.sh, the MSYS2 packages on Windows).
 # Each library gets MS_LIB_<NAME>_INCLUDES (a list), MS_LIB_<NAME>_ARCHIVES (static archives, folded into the
 # runtime archive) and MS_LIB_<NAME>_LINK (what a test links).
-set(MS_LIB_NAMES uv nghttp2 ssl crypto pcre2 z)
+set(MS_LIB_NAMES uv nghttp2 ssl crypto pcre2 z curl)
 set(_pkg_uv libuv)
 set(_pkg_nghttp2 libnghttp2)
 set(_pkg_ssl libssl)
 set(_pkg_crypto libcrypto)
 set(_pkg_pcre2 libpcre2-8)
 set(_pkg_z zlib)
+set(_pkg_curl libcurl)
 set(_archive_uv libuv.a)
 set(_archive_nghttp2 libnghttp2.a)
 set(_archive_ssl libssl.a)
 set(_archive_crypto libcrypto.a)
 set(_archive_pcre2 libpcre2-8.a)
 set(_archive_z libz.a)
+set(_archive_curl libcurl.a)
 
 set(MS_LIBS_AVAILABLE ON)
 if(NOT MS_LIBS_WIRED)
@@ -79,11 +81,3 @@ add_library(ms_llhttp STATIC "${MS_LLHTTP_DIR}/src/api.c" "${MS_LLHTTP_DIR}/src/
                              "${MS_LLHTTP_DIR}/src/llhttp.c")
 target_include_directories(ms_llhttp PUBLIC "${MS_LLHTTP_DIR}/include")
 target_compile_options(ms_llhttp PRIVATE -O2 -w ${MS_C_FLAGS})
-
-# yyjson: one vendored source, the JSON reader only (no writer, utils or non-standard syntax).
-set(MS_YYJSON_DIR "${CMAKE_SOURCE_DIR}/runtime/third_party/yyjson")
-set(MS_YYJSON_DEFINES YYJSON_DISABLE_WRITER=1 YYJSON_DISABLE_UTILS=1 YYJSON_DISABLE_NON_STANDARD=1)
-add_library(ms_yyjson STATIC "${MS_YYJSON_DIR}/src/yyjson.c")
-target_include_directories(ms_yyjson PUBLIC "${MS_YYJSON_DIR}/include")
-target_compile_definitions(ms_yyjson PUBLIC ${MS_YYJSON_DEFINES})
-target_compile_options(ms_yyjson PRIVATE -O2 -w ${MS_C_FLAGS})
