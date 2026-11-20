@@ -3,12 +3,12 @@
 ## Summary
 
 - Problem: the Rust runtime (`ms-rt`, 42k lines, and the `ms-std-*` natives, 64k) costs more memory per parked task and per idle connection than wanted, reaches programs only as calls, and its layout (one crate per stdlib module, signatures scraped from Rust) has no layering reason.
-- Change: a C runtime in `runtime/` with one ABI header, a layered layout, flat tables instead of heap nodes, and libuv, llhttp, nghttp2, OpenSSL and RE2 in place of the Rust crates that do those jobs today.
+- Change: a C runtime in `runtime/` with one ABI header, a layered layout, flat tables instead of heap nodes, and libuv, llhttp, nghttp2, OpenSSL and PCRE2 in place of the Rust crates that do those jobs today.
 - Decision: direction set by Chinmay (below). This PR ships stage 0 only: the folder and the one build of the third-party libraries.
 
 ## Status
 
-Approved direction, 2026-11-20, checked against `660429d4`. Chinmay: "lets revive the effort of rewriting the backend to c"; "for networking stack lets use nodejs libs libuv, nghttp, llhttp, with openssl"; "lets use re2 for regex"; no Rust left for regex, time zones or archives; "one single build for all dependencies and later we can cache it". Skeptical review (2026-11-20): build with changes; stage 0 may ship. Applied: stale inlining figures and the bitcode step removed, the frame breakdown marked as unverified, a park-path measurement added before stage 2 (the reviewer asked for a stop condition; Chinmay's direction is that the C port is not conditional), the libuv fit and platform items made stage 1 work instead of open questions.
+Approved direction, 2026-11-20, checked against `660429d4`. Chinmay: "lets revive the effort of rewriting the backend to c"; "for networking stack lets use nodejs libs libuv, nghttp, llhttp, with openssl"; "lets use re2 for regex", then "is re2 the only c++ dependency we have? if yes lets use pcre"; no Rust left for regex, time zones or archives; "one single build for all dependencies and later we can cache it". Skeptical review (2026-11-20): build with changes; stage 0 may ship. Applied: stale inlining figures and the bitcode step removed, the frame breakdown marked as unverified, a park-path measurement added before stage 2 (the reviewer asked for a stop condition; Chinmay's direction is that the C port is not conditional), the libuv fit and platform items made stage 1 work instead of open questions.
 
 ## Problem
 
@@ -36,7 +36,7 @@ runtime/
 - Signatures are written once in `ms_rt.h`; a generator reads the header for the lowering table and fails when a symbol named by `stdlib/*.ms` is missing from the archive or an exported one is unused.
 - Tasks, promises and connections are rows in struct-of-arrays tables, addressed by a 32-bit index with generation and state in the upper bits.
 - An idle connection is a table row and a `uv_tcp_t`; a task attaches only while a handler runs. How a handler waits is a language question with its own proposal.
-- libcrypto replaces `ring`, `rustls`, the RustCrypto crates, `p256`, `p384`, `p521`, `rsa`, `ed25519-dalek` and `x25519-dalek`. RE2 replaces `regex`; it is C++17 and brings Abseil, so the archive links the C++ runtime statically.
+- libcrypto replaces `ring`, `rustls`, the RustCrypto crates, `p256`, `p384`, `p521`, `rsa`, `ed25519-dalek` and `x25519-dalek`. PCRE2 (plain C, 8-bit library, JIT) replaces `regex`; RE2 was dropped because it and Abseil were the only C++ a program would link. PCRE2 backtracks, so every match runs under a match limit and reports an error at the limit instead of hanging.
 - Third-party build: `runtime/third_party/build.sh [triple]` builds everything into `target/c-libs/<triple>-<key>/`; the key hashes the pins, the script, vendored sources, the triple and the compiler versions.
 - The Rust runtime stays buildable and selected per symbol until the C runtime passes the conformance corpus on all six platforms; it is then deleted in one PR.
 
@@ -55,16 +55,17 @@ runtime/
 - Do nothing: 7.1 KB per idle connection is under Node's 11 KB, and the task-free design could be built in Rust. Rejected by direction; it keeps the opaque runtime and the Rust frame sizes.
 - Port only the park path: proves the frame saving cheaply but leaves two runtimes for good.
 - Hand-written TLS, HTTP/2 and regex in C: months of security-critical work for no measured gain over the chosen libraries.
-- BearSSL or mbedTLS, PCRE2: smaller, but not what Node ships, and PCRE2 backtracks.
+- BearSSL or mbedTLS: smaller, but not what Node ships.
+- RE2: linear time, but C++17 with Abseil; it would be the only C++ in a linked program.
 
 ## Stages
 
 0. Folder, pins, one third-party build, smoke programs (this PR): smoke passes on Linux; macOS and Windows by CI dispatch.
-1. `ms_rt.h`, the xtask build, generators, per-symbol selection: `make verify` unchanged, six platforms green. Settled here, with a written note each: static C++ runtime under the glibc 2.28 floor, libc++ for musl, OpenSSL's Configure under llvm-mingw on both Windows architectures, the system trust store, and size and start-up budgets for a program that uses no TLS or regex.
+1. `ms_rt.h`, the xtask build, generators, per-symbol selection: `make verify` unchanged, six platforms green. Settled here, with a written note each: OpenSSL's Configure under llvm-mingw on both Windows architectures, the system trust store, and size and start-up budgets for a program that uses no TLS or regex.
 1a. Measurement, not a gate: port the park path (wait, switch, socket wait) and record stack bytes per parked task against the Rust runtime on the same design, so the gain from C is reported apart from the gain from design changes. The port continues either way (Chinmay, 2026-11-20: "moving to c is essential"; design changes come in addition).
 2. `sys` and `core`: conformance on both runtimes; instructions per call against checked C.
 3. `io` on libuv, then `net`, after a design note on the fit: one loop per scheduler thread, `uv_poll_t` or streams, how a handle moves between threads (`sched::Pin::touch` today), and how the asynchronous `uv_close` meets a guard jump. Tasks and http-tail benchmarks no slower; memory per idle connection against 7.1 KB, with TLS measured separately (an OpenSSL `SSL` with buffers can cost 20 to 40 KB).
-4. `std/*`, RE2, time zones, archives; C unit tests under ASan and UBSan and fuzzing of the parsers in the nightly job, outside the PR budget; delete the Rust runtime.
+4. `std/*`, PCRE2, time zones, archives; C unit tests under ASan and UBSan and fuzzing of the parsers in the nightly job, outside the PR budget; delete the Rust runtime.
 
 The task-free connection design is measured on its own, in Rust or C, so its gain is not counted as C's.
 
@@ -72,4 +73,4 @@ The task-free connection design is measured on its own, in Rust or C, so its gai
 
 - Compression: `flate2` and `miniz_oxide` need a C replacement; zlib would be a new dependency and needs approval. Recommendation: zlib.
 - Time zones: bundled IANA data read by Manuscript code, not a C library. Recommendation: yes.
-- `--static` (musl) builds need a C++ runtime for RE2. Recommendation: build libc++ for musl in the dependency build, or drop RE2's Abseil-heavy paths if measurement says it is cheap.
+- Regex dialect: PCRE2 accepts backreferences and lookaround, which `regex` rejects today. Recommendation: keep rejecting them at first so no program's behaviour changes, and decide on widening separately.

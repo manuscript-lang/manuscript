@@ -18,7 +18,7 @@ Layering: `sys` < `core` < `io` < `net` and `std`. `core` never includes libuv.
 
 ## Third-party libraries
 
-`sh runtime/third_party/build.sh [triple]` builds every dependency in one go into `target/c-libs/<triple>-<key>/{lib,include}`. `build.sh key [triple]` prints the key, a hash of the pins, the script, the vendored llhttp, the triple and the compiler versions: cache the folder on that key and any change rebuilds all of it. `sh runtime/third_party/smoke.sh` builds and runs the smoke programs in `runtime/tests`. Building needs a C and C++17 compiler, make, cmake and perl; using `ms` needs none of them.
+`sh runtime/third_party/build.sh [triple]` builds every dependency in one go into `target/c-libs/<triple>-<key>/{lib,include}`. `build.sh key [triple]` prints the key, a hash of the pins, the script, the vendored llhttp, the triple and the compiler versions: cache the folder on that key and any change rebuilds all of it. `sh runtime/third_party/smoke.sh` builds and runs the smoke programs in `runtime/tests`. Building needs a C compiler, make, cmake and perl; using `ms` needs none of them.
 
 | Library | Version | Use | License |
 | --- | --- | --- | --- |
@@ -26,8 +26,7 @@ Layering: `sys` < `core` < `io` < `net` and `std`. `core` never includes libuv.
 | llhttp | 9.2.1 (vendored) | HTTP/1 parsing | MIT |
 | nghttp2 | 1.66.0 | HTTP/2 | MIT |
 | OpenSSL | 3.5.4 | TLS and crypto | Apache-2.0 |
-| RE2 | 20240702 | regex (linear time, no backreferences) | BSD-3-Clause |
-| Abseil | 20240722.0 | RE2 dependency | Apache-2.0 |
+| PCRE2 | 10.47 | regex (8-bit library, JIT; a match limit bounds backtracking) | BSD-3-Clause |
 | QBE | 1.3 (vendored, unmodified) | debug code generator, built to `bin/qbe` | MIT |
 
-Versions and SHA-256 sums are in `third_party/c-libs.lock`. Chinmay approved libuv, nghttp2, llhttp, OpenSSL and RE2 on 2026-11-20; any other library needs his approval.
+Versions and SHA-256 sums are in `third_party/c-libs.lock`. Chinmay approved libuv, nghttp2, llhttp, OpenSSL, QBE and PCRE2 on 2026-11-20 (PCRE2 replaced RE2 the same day, to keep C++ out of programs); any other library needs his approval.
