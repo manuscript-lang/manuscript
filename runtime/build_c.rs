@@ -97,7 +97,22 @@ fn libs_prefix(root: &Path, triple: Option<&str>) -> Result<Option<PathBuf>, Str
             .env("CC", compiler),
         "build.sh",
     )?;
-    Ok(Some(PathBuf::from(out)))
+    Ok(Some(PathBuf::from(native_path(&out))))
+}
+
+/// build.sh runs under MSYS2 and prints its prefix as an MSYS path (`/d/a/x`); the CMake and the compiler it drives
+/// are native Windows programs that read `D:/a/x`. Other hosts print a native path already.
+fn native_path(path: &str) -> String {
+    let bytes = path.as_bytes();
+    let msys_drive = cfg!(windows)
+        && bytes.len() >= 3
+        && bytes[0] == b'/'
+        && bytes[1].is_ascii_alphabetic()
+        && bytes[2] == b'/';
+    if !msys_drive {
+        return path.to_string();
+    }
+    format!("{}:{}", bytes[1].to_ascii_uppercase() as char, &path[2..])
 }
 
 /// Configures the CMake project for `triple` (the host when `None`) in `build`: the runtime, plus the unit tests when
