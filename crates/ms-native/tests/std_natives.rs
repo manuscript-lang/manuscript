@@ -432,6 +432,22 @@ mod process {
         }
     }
 
+    // These moved to C (runtime/std/process.c); the archive defines them.
+    unsafe extern "C" {
+        fn msstd_process_working_directory(out: *mut ms_rt_abi::StrVal, err: ErrSlot) -> u8;
+        fn msstd_process_set_environment(
+            name: *const ms_rt_abi::StrVal,
+            has_value: HasRaw,
+            value: *const ms_rt_abi::StrVal,
+            err: ErrSlot,
+        ) -> u8;
+        fn msstd_process_environment(
+            names: *mut ms_rt_abi::VecVal,
+            values: *mut ms_rt_abi::VecVal,
+            err: ErrSlot,
+        ) -> u8;
+    }
+
     #[test]
     fn control_through_the_abi() {
         let _g = lock();
