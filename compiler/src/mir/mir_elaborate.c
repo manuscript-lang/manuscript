@@ -465,10 +465,10 @@ static void el_report(const MirModule *m, const MirFunc *f, const char *message,
     ms_buf_printf(error, "%.*s: %s", (int)name.len, name.ptr, message);
 }
 
-static bool el_run_one(MirModule *m, uint32_t fi, const ElCx *shared, MsBuf *error) {
+/* `scratch` holds what the rewrite of one function needs and is reset on return. */
+static bool el_run_one(MirModule *m, uint32_t fi, const ElCx *shared, MsArena *scratch, MsBuf *error) {
     ElCx cx = *shared;
-    MsArena arena = {0};
-    cx.ma = &arena;
+    cx.ma = scratch;
     cx.m = m;
     cx.fi = fi;
     /* The function is out of the module while it is rewritten; a stand-in with its signature stays,
@@ -480,7 +480,7 @@ static bool el_run_one(MirModule *m, uint32_t fi, const ElCx *shared, MsBuf *err
     if (!ok) {
         el_report(m, &f, cx.err, error);
     }
-    ms_arena_free(&arena);
+    ms_arena_reset(scratch);
     return ok;
 }
 
@@ -513,7 +513,7 @@ static bool el_scan(const MirModule *m, bool *closes) {
 /* Runs the pass over every function that needs it, callee first when cancel exits are built. */
 static bool el_run_all(MirModule *m, const ElCx *shared, MsBuf *error) {
     const ElCancel *all = shared->all;
-    MsArena arena = {0};
+    MsArena arena = {0}, scratch = {0};
     const uint32_t *order = el_callee_first(&arena, m, all);
     const uint32_t nfuncs = m->nfuncs;
     bool ok = true;
@@ -528,7 +528,7 @@ static bool el_run_all(MirModule *m, const ElCx *shared, MsBuf *error) {
             continue;
         }
         const bool restores = all != NULL && all->restores[fi];
-        ok = el_run_one(m, fi, shared, error);
+        ok = el_run_one(m, fi, shared, &scratch, error);
         if (ok && slots && all->restores[fi] != restores) {
             const MirFunc *f = &m->funcs[fi];
             el_report(m, f, "cancel exits disagree with the restore set", error);
@@ -536,6 +536,7 @@ static bool el_run_all(MirModule *m, const ElCx *shared, MsBuf *error) {
         }
     }
     ms_arena_free(&arena);
+    ms_arena_free(&scratch);
     return ok;
 }
 

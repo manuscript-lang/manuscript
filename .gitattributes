@@ -8,3 +8,6 @@ tests/conformance/** text eol=lf
 * text=auto eol=lf
 # Vendored published-suite data keeps its exact bytes, including CR line endings.
 tests/conformance/fixtures/e2e/projects/*_suite/data/** -text
+
+# Vendored C libraries stay byte-exact (no line-ending conversion).
+runtime/third_party/** -text

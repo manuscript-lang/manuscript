@@ -477,6 +477,8 @@ fn c_prototypes(header: &str) -> std::collections::BTreeMap<String, (Vec<String>
         }
         let ret = if head.contains('*') {
             "ptr".to_string()
+        } else if ret.contains("MS_NORETURN") {
+            "!".to_string()
         } else {
             abi_kind(ret)
         };

@@ -143,6 +143,9 @@ static LbVal lb_match(Lb *lb, const MsExpr *e);
 static LbVal lb_unary(Lb *lb, const MsExpr *e) {
     const MsExpr *operand = e->u.bin.left;
     const MsUnaryOp op = (MsUnaryOp)e->op;
+    if (op == MS_U_TRY) {
+        return lb_unsupported(lb); // an early return of the error is not lowered yet
+    }
     if (op == MS_U_NEG && operand->kind == MS_E_NUMBER) {
         return lb_number(lb, operand, true);
     }
