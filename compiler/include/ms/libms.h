@@ -63,4 +63,9 @@ MsStatus ms_load_file(MsCompiler *c, const char *path, MsSource *out, MsDiag *di
 MsStatus ms_load_text(MsCompiler *c, const char *path, const char *text, size_t len,
                       MsSource *out, MsDiag *diag);
 
+/* The canonical syntax-tree dump of `text` (compiler/tools/ms_syntax_dump `ast`, without the file
+ * header), or the one-line "error ..." diagnostic when it does not parse. NULL when the text is
+ * not valid UTF-8. Tools read this form; free the result with free(). */
+char *ms_syntax_dump_text(const char *path, const char *text, size_t len, size_t *out_len);
+
 #endif

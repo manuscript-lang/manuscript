@@ -53,7 +53,7 @@ domains:
       - ".github/workflows/**"
       - "documentation/developer-tooling/implementation.md"
       - "documentation/contributing/**"
-      - "crates/ms-repo-check/**"
+      - "tools/repo-check/**"
       - "Cargo.toml"
       - "Makefile"
   - id: stdlib-design

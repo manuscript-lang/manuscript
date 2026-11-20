@@ -26,3 +26,7 @@ compiler/
 ## Driver and stages
 
 `libms.h` has one entry point and one row in the stage table (`ms_stage_impl`) per pipeline stage: parse, format, check, lower, emit, link, and the command's own tool logic. `driver.c` knows which stages each command needs. A command runs in C only when every stage it needs is in C; otherwise the whole command goes to the Rust `ms` (`$MS_RUST_CLI`, or `ms-rust` beside the executable), so the conformance corpus runs through the C `ms` from the first day and a command flips to C when its last stage lands. Stage data cannot cross between the two implementations, which is why the handover is per command. `MS_DRIVER_TRACE=1` prints the choice; `MS_STAGES=parse=rust` overrides a row for comparison runs. Porting a stage: add its entry point to `libms.h`, write it in `src/`, flip its row. `make c-driver-test` runs the unit tests and checks that `ms` in front of the Rust `ms` gives identical output and status.
+
+## Tools over libms
+
+Manuscript tools call libms through `compiler/tools/tool_shim.c`: `extern fn` declarations (`tools/repo-check/libms.ms`) and `make libms-tools`, which builds `target/libms_tools.a`; run a tool with `ms run tool.ms --link target/libms_tools.a`. The first entry point is `ms_tool_syntax_dump`, the canonical tree dump of `ms_syntax_dump ast` as a string. The shim includes only `ms_abi.h` because its names collide with libms's.

@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz
+.PHONY: libms-tools bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench c-test c-compiler-test c-driver-test vscode-package vscode-install c-fuzz
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -39,9 +39,19 @@ check: runtime
 fmt:
 	cargo fmt --all
 
-# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, Rust unsafe allow-list.
-repo-check:
-	cargo run --release --locked -q -p ms-repo-check
+# The libms entry points that Manuscript tools call with `extern fn` (compiler/tools/tool_shim.c).
+libms-tools: target/libms_tools.a
+
+target/libms_tools.a: compiler/src/*.c compiler/include/ms/*.h compiler/tools/tool_shim.c
+	mkdir -p target
+	$(CC) -O2 -c compiler/src/libms.c -Icompiler/include -Icompiler/src -o target/libms.o
+	$(CC) -O2 -c compiler/tools/tool_shim.c -Icrates/ms-rt-abi/include -o target/tool_shim.o
+	ar rcs $@ target/libms.o target/tool_shim.o
+
+# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, portability and
+# the other rules in tools/repo-check/, written in Manuscript over libms.
+repo-check: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a
 
 workflow-check:
 	node --test tests/workflows/*.test.cjs
@@ -135,11 +145,11 @@ removed-check: build
 	$(MS) run tools/removed-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
-licenses:
-	cargo run --release --locked -q -p ms-repo-check -- licenses
+licenses: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a -- licenses
 
-licenses-check:
-	cargo run --release --locked -q -p ms-repo-check -- licenses -check
+licenses-check: build libms-tools
+	$(MS) run tools/repo-check.ms --link target/libms_tools.a -- licenses -check
 
 # The book and API reference come from the Rust docgen (crates/ms-tooling).
 docs:

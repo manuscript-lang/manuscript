@@ -16,7 +16,6 @@ default-members = [
     "crates/ms-lsp",
     "crates/ms-mir",
     "crates/ms-mir-llvm",
-    "crates/ms-repo-check",
     "crates/ms-rt",
     "crates/ms-rt-abi",
     "crates/ms-syntax",
