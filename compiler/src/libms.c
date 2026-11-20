@@ -83,6 +83,7 @@
 #include "check/lower_scope.c"
 #include "check/lower_body.c"
 #include "check/lower_record.c"
+#include "check/lower_closure.c"
 #include "syntax/walk.c"
 #include "check/ty_subst.c"
 #include "check/ty_algebra.c"

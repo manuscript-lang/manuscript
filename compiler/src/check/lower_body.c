@@ -30,6 +30,9 @@ static MsTy lb_primitive(const MsCheck *c, const char *name) {
 
 /* The MIR type of a checker type this pass handles, or MIR_NONE. */
 static MirTy lb_mir_ty(Lb *lb, MsTy ty) {
+    if (ms_ty_kind(&lb->c->tys, ty) == MS_K_FUNCTION) {
+        return lb_fn_ty(lb, ty);
+    }
     if (ty == lb->int_ty) {
         return MIR_INT;
     }
@@ -50,9 +53,21 @@ static void lb_emit_plain(Lb *lb, MirOp op) {
     (void)mir_b_emit(&lb->b, op, NULL, 0, (MirImm){0}, MIR_NONE);
 }
 
+/* `depth.enter` and `depth.leave` bracket a function; a closure body has neither. */
+static void lb_depth(Lb *lb, MirOp op) {
+    if (!lb->closure) {
+        lb_emit_plain(lb, op);
+    }
+}
+
 /* Releases an owned temporary once its last use is past. */
 static void lb_drop(Lb *lb, MirValue v) {
+    const MirLoc loc = lb->b.loc;
+    if (lb_is_fn(lb, mir_b_ty(&lb->b, v))) {
+        lb->b.loc = MIR_LOC_NONE; // the text form prints no position on a closure's release
+    }
     (void)mir_b_emit(&lb->b, MOP_Drop, &v, 1, (MirImm){0}, MIR_NONE);
+    lb->b.loc = loc;
 }
 
 /* Copies a borrowed String into a value the caller owns. */
@@ -103,6 +118,9 @@ static void lb_store(Lb *lb, MirValue slot, MirValue value) {
 
 static LbVal lb_name(Lb *lb, const MsExpr *e) {
     const MsFacts *facts = lb->facts;
+    if (facts->res_kind[e->id] == MS_RES_SYMBOL) {
+        return lb_function_value(lb, e);
+    }
     if (facts->res_kind[e->id] != MS_RES_BINDING) {
         return lb_unsupported(lb);
     }
@@ -335,10 +353,13 @@ static MirValue lb_move_argument(Lb *lb, const MsExpr *e) {
 
 static LbVal lb_call(Lb *lb, const MsExpr *e) {
     const uint32_t callee = lb->facts->call_callee[e->id];
-    if (callee != MS_NONE && lb->c->syms.kind[callee] == MS_SYM_TYPE) {
+    if (callee == MS_NONE) {
+        return lb_call_value(lb, e);
+    }
+    if (lb->c->syms.kind[callee] == MS_SYM_TYPE) {
         return lr_construct(lb, e);
     }
-    const uint32_t func = callee == MS_NONE ? MIR_NONE : lb->func_of[callee];
+    const uint32_t func = lb->func_of[callee];
     const uint32_t count = e->u.call.args.len;
     if (func == MIR_NONE || count != lb->c->tys.nparams[lb->c->syms.ty[callee]]) {
         return lb_unsupported(lb);
@@ -390,6 +411,7 @@ static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_BOOL: return (LbVal){mir_b_bconst(&lb->b, e->u.flag), false};
     case MS_E_TEXT: return lb_text(lb, e);
     case MS_E_NAME: return lb_name(lb, e);
+    case MS_E_LAMBDA: return lb_lambda(lb, e);
     case MS_E_UNARY: return lb_unary(lb, e);
     case MS_E_BINARY: return lb_binary(lb, e);
     case MS_E_MATCH: return lb_match(lb, e);
@@ -400,8 +422,7 @@ static LbVal lb_expr(Lb *lb, const MsExpr *e) {
     case MS_E_INDEX:
     case MS_E_PROBE:
     case MS_E_LIST:
-    case MS_E_MAP:
-    case MS_E_LAMBDA: break;
+    case MS_E_MAP: break;
     }
     return lb_unsupported(lb);
 }
@@ -478,7 +499,8 @@ static LbVal lb_match(Lb *lb, const MsExpr *e) {
     const MirTy result_ty = lb_mir_ty(lb, lb->facts->expr_ty[e->id]);
     const LbVal scrutinee = lb_expr(lb, e->u.match.scrutinee);
     const MirTy scrutinee_ty = lb->ok ? mir_b_ty(&lb->b, scrutinee.v) : MIR_NONE;
-    if (!lb->ok || result_ty == MIR_NONE || result_ty == MIR_STR || scrutinee_ty == MIR_STR) {
+    if (!lb->ok || result_ty == MIR_NONE || result_ty == MIR_STR || scrutinee_ty == MIR_STR ||
+        lb_is_fn(lb, result_ty)) {
         return lb_unsupported(lb); // a String result or scrutinee is owned: ownership comes later
     }
     const LbArms arms = lb_open_arms(lb, e);
@@ -519,6 +541,13 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
     if (!lb->ok) {
         return;
     }
+    if (lb_is_fn(lb, lb_mir_ty(lb, ty)) && (!value.owned || s->u.bind.is_mutable)) {
+        lb->ok = false; // a function value is owned by the one local made from a lambda or a name
+        return;
+    }
+    if (lb_is_fn(lb, lb_mir_ty(lb, ty))) {
+        lscope_own(&lb->scopes, value.v, 0); // the closure is dropped where its scope ends
+    }
     if (ty == lb->string_ty) {
         if (!value.owned) {
             value = (LbVal){lb_copy(lb, value.v), true}; // a borrowed String is copied into the local
@@ -545,6 +574,9 @@ static void lb_bind(Lb *lb, const MsStmt *s) {
 
 /* Stores each `var` parameter's current value through its pointer, before the function returns. */
 static void lb_write_back(Lb *lb) {
+    if (lb->closure) {
+        return; // a closure has no `var` parameters of its own
+    }
     const MsFunc *fn = &lb->decl->u.fn;
     for (uint32_t i = 0; i < fn->params.len; i++) {
         if (fn->params.ptr[i]->is_mutable) {
@@ -590,7 +622,7 @@ static void lb_return_void(Lb *lb) {
     lb_own_vars(lb, 0, MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);
     lb_write_back(lb);
-    lb_emit_plain(lb, MOP_DepthLeave);
+    lb_depth(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, unit);
     lb->dead = true;
 }
@@ -624,7 +656,7 @@ static void lb_return(Lb *lb, const MsStmt *s) {
     lb_own_vars(lb, 0, leaves_var ? value.v : MIR_NONE);
     lscope_exit_to(&lb->scopes, 0);
     lb_write_back(lb);
-    lb_emit_plain(lb, MOP_DepthLeave);
+    lb_depth(lb, MOP_DepthLeave);
     mir_b_ret(&lb->b, value.v);
     lb->dead = true;
 }
@@ -865,10 +897,13 @@ static bool lb_signature(Lb *lb, const MsFunc *fn, MsSymId sym, MirParam *params
     const MsTyParam *sig_params = ms_ty_params(&lb->c->tys, sig);
     const MsTy result = lb->c->tys.result[sig];
     *ret = result == lb->void_ty ? MIR_VOID : lb_mir_ty(lb, result);
+    if (lb_is_fn(lb, *ret)) {
+        return false; // a function value that leaves its function is not handled yet
+    }
     for (uint32_t i = 0; i < fn->params.len; i++) {
         const MirTy ty = lb_mir_ty(lb, sig_params[i].ty);
         const bool moving = fn->params.ptr[i]->moving;
-        if (ty == MIR_NONE || (moving && ty != MIR_STR)) { // only a String is handed over so far
+        if (ty == MIR_NONE || (moving && ty != MIR_STR) || (fn->params.ptr[i]->is_mutable && lb_is_fn(lb, ty))) { // only a String is handed over so far
             return false;
         }
         params[i] = (MirParam){fn->params.ptr[i]->is_mutable ? MIR_PTR : ty, moving ? MM_MOVE : MM_BORROW};
@@ -918,7 +953,7 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
             lb_name_value(lb, values[i], fn->params.ptr[i]->name, true);
         }
     }
-    lb_emit_plain(lb, MOP_DepthEnter);
+    lb_depth(lb, MOP_DepthEnter);
     for (uint32_t i = 0; i < fn->params.len; i++) {
         if (fn->params.ptr[i]->is_mutable) {
             const uint32_t binding = lb->binding_at[fn->params.ptr[i]->id];
@@ -930,20 +965,28 @@ static bool lb_begin(Lb *lb, const MsDecl *d, MsSymId sym) {
     return true;
 }
 
-/* Lowers one checked function over its stub `slot` in the module; false when it is not handled. */
-static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
-    lb->decl = d;
-    lb->ok = lb_begin(lb, d, sym);
-    if (!lb->ok) {
-        return false;
-    }
+/* The state of a body about to be lowered: its builder is started and `lb->decl` is set. */
+static void lb_reset_state(Lb *lb) {
     lb->dead = false;
     lb->loop = NULL;
     lb->stmt = NULL;
     lscope_init(&lb->scopes, &lb->b);
     lb->vars = NULL; // the arena they live in is freed between passes
     lb->nvars = lb->cvars = 0;
-    (void)lscope_push(&lb->scopes); // the function's own scope: depth 0
+    (void)lscope_push(&lb->scopes); // the body's own scope: depth 0
+}
+
+/* Lowers one checked function over its stub `slot` in the module; false when it is not handled. */
+static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
+    lb->decl = d;
+    lb->closure = false;
+    lb->jobs = NULL; // the arena they live in is freed between passes
+    lb->njobs = lb->cjobs = 0;
+    lb->ok = lb_begin(lb, d, sym);
+    if (!lb->ok) {
+        return false;
+    }
+    lb_reset_state(lb);
     for (uint32_t i = 0; i < d->u.fn.params.len; i++) {
         if (d->u.fn.params.ptr[i]->moving) { // the function owns what it was handed
             lscope_own(&lb->scopes, lb->value_of[lb->binding_at[d->u.fn.params.ptr[i]->id]], 0);
@@ -968,7 +1011,7 @@ static bool lb_function(Lb *lb, const MsDecl *d, MsSymId sym, uint32_t slot) {
     if (lb->ok && built) {
         lb->m->funcs[slot] = f;
     }
-    return lb->ok && built;
+    return lb_closures(lb, lb->ok && built); // the lambdas it made are lowered after it
 }
 
 static void lb_index_bindings(Lb *lb, MsArena *arena) {
@@ -1024,6 +1067,7 @@ static bool lb_pass(Lb *lb, MsModId module, bool *failed, uint32_t *lowered) {
     const MsModuleRow *row = &lb->c->mods[module];
     const uint32_t ndecls = row->syntax->ndecls;
     memset(lb->func_of, 0xff, (size_t)lb->c->syms.count * sizeof *lb->func_of);
+    memset(lb->thunk_of, 0xff, (size_t)lb->c->syms.count * sizeof *lb->thunk_of);
     MsSymId *syms = MS_NEW_N(&lb->m->arena, MsSymId, (size_t)ndecls + 1);
     for (uint32_t i = 0; i < ndecls; i++) {
         const MsDecl *d = row->syntax->decls[i];
@@ -1070,8 +1114,9 @@ uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out) {
              .void_ty = lb_primitive(c, "Void")};
     bool *failed = calloc((size_t)row->syntax->ndecls + 1, sizeof *failed);
     lb.func_of = calloc((size_t)c->syms.count + 1, sizeof *lb.func_of);
+    lb.thunk_of = calloc((size_t)c->syms.count + 1, sizeof *lb.thunk_of);
     uint32_t lowered = 0;
-    while (failed != NULL && lb.func_of != NULL) {
+    while (failed != NULL && lb.func_of != NULL && lb.thunk_of != NULL) {
         mir_module_free(out);
         mir_module_init(out);
         lb_index_bindings(&lb, &out->arena);
@@ -1080,6 +1125,7 @@ uint32_t ms_lower_module(const MsCheck *c, MsModId module, MirModule *out) {
         }
     }
     free(lb.func_of);
+    free(lb.thunk_of);
     free(failed);
     return lowered;
 }
