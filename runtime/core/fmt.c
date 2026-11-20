@@ -394,7 +394,7 @@ static void sink_put_decimal_text(MsFmtSink *sink, const MsDigits *digits, bool 
     while (length > 1 && digits->text[length - 1] == '0') {
         length--;
     }
-    const MsBytes significant = ms_bytes(digits->text, length);
+    const MsBytes significant = ms_bytes_of(digits->text, length);
     if (negative) {
         sink_put_byte(sink, '-');
     }
@@ -788,7 +788,7 @@ static bool sink_put_significant(MsFmtSink *sink, MsPrecisionValue value, MsPrec
     }
     const int exponent = kept.point;
     if (form == MS_FORM_PRECISION && exponent >= MS_PLAIN_EXPONENT_MIN && exponent < (int)digits) {
-        sink_put_plain(sink, ms_bytes(kept.text, kept.length), exponent);
+        sink_put_plain(sink, ms_bytes_of(kept.text, kept.length), exponent);
         return true;
     }
     sink_put_byte(sink, kept.text[0]);
