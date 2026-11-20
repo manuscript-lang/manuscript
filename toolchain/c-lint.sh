@@ -15,7 +15,7 @@ out=target/c-lint
 rm -rf "$out"; mkdir -p "$out"
 warnings=$(tr '\n' ' ' < toolchain/c-warnings.txt)
 # -Wcomma is clang-only, so it is not in the shared list.
-flags="-std=c11 $warnings -Wcomma -Iruntime/include -Iruntime/core -Iruntime/tests/support -Icompiler/include -Icrates/ms-rt-abi/include -Iruntime/tests $(sh runtime/third_party/libs.sh cflags)"
+flags="-std=c11 $warnings -Wcomma -Iruntime/include -Iruntime/core -Iruntime/tests/support -Icompiler/include -Icrates/ms-rt-abi/include -Iruntime/tests -Iruntime/third_party/llhttp/include $(pkg-config --cflags libuv libnghttp2 libssl libcrypto libpcre2-8 zlib)"
 # A source under runtime/sys/<os>/ compiles only on that system, so the others are left to that system's build.
 case "$(uname -s)" in Darwin) other='/sys/(linux|glibc|windows)/' ;; *) other='/sys/(darwin|windows)/' ;; esac
 files=$(find runtime/sys runtime/core runtime/io runtime/net runtime/std runtime/tests runtime/fuzz compiler/src compiler/tests compiler/tools -name '*.c' 2>/dev/null | grep -Ev "$other" | sort)

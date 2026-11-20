@@ -35,6 +35,17 @@ static bool run_pass(const char *name, MirModule *m, bool *changed) {
         *changed = mir_expand(m, true);
     } else if (strcmp(name, "expand-nochecks") == 0) {
         *changed = mir_expand(m, false);
+    } else if (strcmp(name, "expand_owned") == 0) {
+        *changed = mir_expand_owned(m);
+    } else if (strcmp(name, "cancel_edges") == 0) {
+        *changed = mir_cancel_edges(m);
+    } else if (strcmp(name, "glue") == 0) {
+        MirGlue g = {0};
+        *changed = mir_glue(m, &g);
+    } else if (strcmp(name, "glue_expand") == 0) {
+        MirGlue g = {0};
+        mir_glue_run_and_expand(m, &g);
+        *changed = true;
     } else {
         return false;
     }

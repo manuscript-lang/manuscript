@@ -2,7 +2,7 @@
 
 # Native handles built on Rc are thread-bound and fault elsewhere
 
-Decision (2026-11-08, #3047): `promise(fn:)` may run on any scheduler thread, so an `Rc`/`RefCell` handle used there races. `ms_std_net::bound::Bound` wraps the handle's `Rc` and faults naming the cause when another thread dereferences it; `PromiseOptions(placement: Placement.Here)` keeps work on the creating thread. `make repo-check` bans new `Rc`, `Weak` or `RefCell` lines in `crates/ms-std-*/src` and ratchets the remaining ones in `crates/ms-repo-check/thread-affinity-allowed.txt`; lower an entry in the change that removes the use.
+Decision (2026-11-08, #3047): `promise(fn:)` may run on any scheduler thread, so an `Rc`/`RefCell` handle used there races. `ms_std_net::bound::Bound` wraps the handle's `Rc` and faults naming the cause when another thread dereferences it; `PromiseOptions(placement: Placement.Here)` keeps work on the creating thread. `make repo-check` bans new `Rc`, `Weak` or `RefCell` lines in `crates/ms-std-*/src` and ratchets the remaining ones in `crates/tools/repo-check/thread-affinity-allowed.txt`; lower an entry in the change that removes the use.
 
 Apply when: adding a native handle, or moving one to `Arc`/atomics (then drop its `Bound`).
 Evidence: `tests/conformance/fixtures/e2e/stdlib/net-thread-bound.ms`; plan in `proposals/thread-affinity.md`.
