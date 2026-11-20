@@ -135,8 +135,8 @@ static void own_queue_release(OwnWalk *w, uint32_t holder) {
 
 /* ---- diagnostics ---- */
 
-/* A move of `binding` while some live borrow reads from it. */
-static void own_check_move(OwnWalk *w, MsPos pos, uint32_t binding) {
+/* A change (`what`: "move" or "reassign") of `binding` while some live borrow reads from it. */
+static void own_check_change(OwnWalk *w, MsPos pos, uint32_t binding, const char *what) {
     const uint32_t root = own_resolve(w, binding);
     for (uint32_t i = 0; i < w->active.len; i++) {
         const Borrow *b = &w->active.items[i];
@@ -147,9 +147,9 @@ static void own_check_move(OwnWalk *w, MsPos pos, uint32_t binding) {
         const MsStr shown = own_name(w, binding);
         own_error(w, pos,
                   ms_arena_fmt(&w->check->arena,
-                               "cannot move `%.*s` while `%.*s` borrows it (%s, at %u:%u); finish using `%.*s` before "
+                               "cannot %s `%.*s` while `%.*s` borrows it (%s, at %u:%u); finish using `%.*s` before "
                                "this, or give `%.*s` its own value by ending its initializer with `.clone()`",
-                               (int)shown.len, shown.ptr, (int)holder.len, holder.ptr, b->why, b->pos.line,
+                               what, (int)shown.len, shown.ptr, (int)holder.len, holder.ptr, b->why, b->pos.line,
                                b->pos.column, (int)holder.len, holder.ptr, (int)holder.len, holder.ptr));
         return;
     }
@@ -195,7 +195,7 @@ static void own_move_out(OwnWalk *w, const MsExpr *e, uint32_t binding) {
         own_error_used_again(w, e, binding);
     }
     if (w->perm[binding] != PERM_BORROWED) {
-        own_check_move(w, e->pos, binding);
+        own_check_change(w, e->pos, binding, "move");
     }
     own_record(w, e, binding);
 }
@@ -227,7 +227,7 @@ static void own_expr(OwnWalk *w, const MsExpr *e, Demand demand) {
         own_expr(w, e->u.bin.left, DEMAND_READ);
         own_expr(w, e->u.bin.right, DEMAND_READ);
         return;
-    case MS_E_MEMBER:
+    case MS_E_MEMBER: own_expr(w, e->u.member.left, DEMAND_READ); return; /* a copied field reads its holder */
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
@@ -352,6 +352,18 @@ static void own_block(OwnWalk *w, const MsStmts *body) {
     w->ndeclared = mark;
 }
 
+/* `name = value`: the value is moved in, then the old one is replaced, which no borrow may read. */
+static void own_assign(OwnWalk *w, const MsStmt *s) {
+    const uint32_t binding = w->facts->assign_binding[s->id];
+    if (binding == MS_NONE || w->perm[binding] != PERM_MUTABLE) {
+        w->supported = false; /* a field store or an assignment the checker rejects */
+        return;
+    }
+    own_expr(w, s->u.assign.value, DEMAND_MOVE);
+    own_release_pending(w);
+    own_check_change(w, s->pos, binding, "reassign");
+}
+
 static void own_if(OwnWalk *w, const MsStmt *s) {
     if (s->u.branch.binding != NULL) {
         w->supported = false;
@@ -383,7 +395,7 @@ static void own_statement(OwnWalk *w, const MsStmt *s) {
     case MS_S_WHILE: own_while(w, s); return;
     case MS_S_BREAK:
     case MS_S_CONTINUE: return; /* the loop's join covers what the jump skips */
-    case MS_S_ASSIGN:
+    case MS_S_ASSIGN: own_assign(w, s); return;
     case MS_S_CALL:
     case MS_S_FOR: w->supported = false; return;
     }

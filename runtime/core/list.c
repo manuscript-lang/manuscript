@@ -14,6 +14,8 @@
 #include "slot.h"
 #include "text.h"
 
+#include <stdatomic.h>
+
 #define FIRST_CAPACITY 4
 #define FIRST_BYTE_CAPACITY 32
 #define INLINE_COPY_BYTES 64
@@ -118,11 +120,40 @@ static void copy_range(const MsTypeDesc *d, const uint8_t *src, uint8_t *dst, si
     }
 }
 
+/* The counting runtime (MS_ALLOC_STATS) tallies deep copies: [list copies, list bytes, string clones, string
+ * bytes]. The exit report and `ms test --counts` read them through msrt_copy_counts. */
+#ifdef MS_ALLOC_STATS
+static _Atomic uint64_t copy_counts[4];
+
+void msrt_count_copy(int64_t kind, uint64_t bytes) {
+    atomic_fetch_add_explicit(&copy_counts[kind * 2], 1, memory_order_relaxed);
+    atomic_fetch_add_explicit(&copy_counts[kind * 2 + 1], bytes, memory_order_relaxed);
+}
+
+void msrt_copy_counts(uint64_t *out) {
+    for (size_t i = 0; i < 4; i++) {
+        out[i] = atomic_load_explicit(&copy_counts[i], memory_order_relaxed);
+    }
+}
+#else
+void msrt_count_copy(int64_t kind, uint64_t bytes) {
+    (void)kind;
+    (void)bytes;
+}
+
+void msrt_copy_counts(uint64_t *out) {
+    for (size_t i = 0; i < 4; i++) {
+        out[i] = 0;
+    }
+}
+#endif
+
 void ms_list_clone(const MsList *src, const MsTypeDesc *d, MsList *out) {
     if (src->len == 0) {
         *out = empty_list;
         return;
     }
+    msrt_count_copy(0, (uint64_t)src->len * d->size);
     uint8_t *buffer = msrt_alloc(buffer_bytes(src->len, d->size));
     copy_range(d, src->ptr, buffer, src->len);
     *out = (MsList){.ptr = buffer, .len = src->len, .cap = src->len};

@@ -90,7 +90,7 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
         return;
     case MS_E_UNARY: live_expr(w, e->u.bin.left); return;
     case MS_E_BINARY: live_binary(w, e); return;
-    case MS_E_MEMBER:
+    case MS_E_MEMBER: live_expr(w, e->u.member.left); return;
     case MS_E_APPLY:
     case MS_E_INDEX:
     case MS_E_PROBE:
@@ -120,6 +120,17 @@ static void live_define(LiveWalk *w, const MsPattern *pattern) {
 }
 
 static void live_statement(LiveWalk *w, const MsStmt *s);
+
+/* The store ends the old value's life; the value runs first, so it may read the old one. */
+static void live_assign(LiveWalk *w, const MsStmt *s) {
+    const uint32_t binding = w->facts->assign_binding[s->id];
+    if (binding == MS_NONE) {
+        w->supported = false;
+        return;
+    }
+    w->later[binding] = MS_NONE;
+    live_expr(w, s->u.assign.value);
+}
 
 /* A jump continues from the state at its loop's exit or head. */
 static void live_jump(LiveWalk *w, const MsStmt *s) {
@@ -190,7 +201,7 @@ static void live_statement(LiveWalk *w, const MsStmt *s) {
     case MS_S_WHILE: live_while(w, s); return;
     case MS_S_BREAK:
     case MS_S_CONTINUE: live_jump(w, s); return;
-    case MS_S_ASSIGN:
+    case MS_S_ASSIGN: live_assign(w, s); return;
     case MS_S_CALL:
     case MS_S_FOR: w->supported = false; return;
     }
