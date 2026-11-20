@@ -29,7 +29,8 @@ static bool ip_host_fault(void *context, MsBuf *out, const MirVal *args, uint32_
         ip_show(&text, args[0]);
     }
     MsArena *arena = context;
-    *error = ms_arena_fmt(arena, "%.*s", (int)text.len, text.data == NULL ? "" : text.data);
+    *error = (MsStr){.ptr = ms_arena_strndup(arena, text.data == NULL ? "" : text.data, text.len),
+                     .len = (uint32_t)text.len};
     ms_buf_free(&text);
     return false;
 }
@@ -76,7 +77,7 @@ void mir_interp_register(MirInterp *interp, const char *name, MirHostFn fn, void
         }
     }
     if (interp->nhosts == interp->chosts) {
-        uint32_t grown = interp->chosts == 0 ? 16 : interp->chosts * 2;
+        uint32_t grown = ip_grow_cap(interp->chosts, 16);
         interp->hosts = ip_regrow(interp->hosts, sizeof(IpHost) * interp->chosts, sizeof(IpHost) * grown);
         interp->chosts = grown;
     }
@@ -174,7 +175,7 @@ static IpFlow ip_enter(MirInterp *it, IpFrames *frames, uint32_t callee, MirVal 
         return ip_internal(it, "bad call: wrong function or argument count");
     }
     if (frames->count == frames->capacity) {
-        uint32_t grown = frames->capacity == 0 ? 16 : frames->capacity * 2;
+        uint32_t grown = ip_grow_cap(frames->capacity, 16);
         frames->frames = ip_regrow(frames->frames, sizeof(IpFrame) * frames->capacity, sizeof(IpFrame) * grown);
         frames->capacity = grown;
     }
@@ -245,18 +246,21 @@ static void ip_release_frames(const MirModule *module, IpFrames *frames) {
 
 /* ---- running ---- */
 
-static const char *ip_fault_text(const MirInterp *it, const MirTerm *term, MirFault kind) {
-    switch (kind) {
-    case MF_INT_OVERFLOW: return "integer overflow";
-    case MF_DIV_BY_ZERO: return "division by zero";
-    case MF_INDEX_OUT_OF_RANGE: return "index out of range";
-    case MF_NONE_UNWRAP: return "unwrap of none";
-    case MF_CANCELLED: return "cancelled";
-    case MF_CALL_DEPTH: return ip_depth_message();
-    case MF_UNREACHABLE: return "unreachable code reached";
-    case MF_MESSAGE: return ms_name(&it->module->strings, term->fault_str).ptr;
+static MsStr ip_fault_text(const MirInterp *it, const MirTerm *term, MirFault kind) {
+    if (kind == MF_MESSAGE) {
+        return ms_name(&it->module->strings, term->fault_str);
     }
-    return "fault";
+    const char *fixed = kind == MF_CALL_DEPTH ? ip_depth_message() : "fault";
+    switch (kind) {
+    case MF_INT_OVERFLOW: fixed = "integer overflow"; break;
+    case MF_DIV_BY_ZERO: fixed = "division by zero"; break;
+    case MF_INDEX_OUT_OF_RANGE: fixed = "index out of range"; break;
+    case MF_NONE_UNWRAP: fixed = "unwrap of none"; break;
+    case MF_CANCELLED: fixed = "cancelled"; break;
+    case MF_UNREACHABLE: fixed = "unreachable code reached"; break;
+    case MF_CALL_DEPTH: case MF_MESSAGE: break;
+    }
+    return (MsStr){.ptr = fixed, .len = (uint32_t)strlen(fixed)};
 }
 
 static IpFlow ip_return(MirInterp *it, IpFrames *frames, const MirFunc *func, MirVal *result) {
@@ -305,7 +309,7 @@ static IpFlow ip_terminate(MirInterp *it, IpFrames *frames, const MirFunc *func,
     case MT_RET:
         return ip_return(it, frames, func, result);
     case MT_FAULT:
-        return ip_raise(it, term->fault, "%s", ip_fault_text(it, term, (MirFault)term->fault));
+        return ip_raise_text(it, (MirFault)term->fault, ip_fault_text(it, term, (MirFault)term->fault));
     case MT_UNREACHABLE:
         return ip_raise(it, MF_UNREACHABLE, "unreachable code reached");
     case MT_BR:
@@ -333,6 +337,10 @@ static IpFlow ip_instruct(MirInterp *it, IpFrames *frames, const MirFunc *func,
         return flow;
     }
     if (frames->count >= MIR_INTERP_MAX_FRAMES) {
+        for (uint32_t i = 0; i < it->ncall_args; i++) {
+            mir_val_release(&it->call_args[i]);
+        }
+        it->ncall_args = 0;
         return ip_raise(it, MF_CALL_DEPTH, "%s", ip_depth_message());
     }
     return ip_enter(it, frames, it->callee, it->call_args, it->ncall_args, inst->res);
@@ -405,7 +413,7 @@ static uint32_t ip_run_cleanups(MirInterp *it, MsStr **messages) {
             continue;
         }
         if (count == capacity) {
-            capacity = capacity == 0 ? 4 : capacity * 2;
+            capacity = ip_grow_cap(capacity, 4);
             MsStr *grown = MS_NEW_N(&it->arena, MsStr, capacity);
             if (count > 0) memcpy(grown, *messages, sizeof(MsStr) * count);
             *messages = grown;
@@ -435,7 +443,7 @@ static void ip_finish(MirInterp *it, IpFrames *frames) {
 
 bool ip_exec(MirInterp *it, uint32_t entry, MirVal *args, uint32_t nargs, MirVal *result) {
     IpFrames frames = {0};
-    if (it->exec_depth >= 64) {
+    if (it->exec_depth >= IP_MAX_EXEC_DEPTH) {
         for (uint32_t i = 0; i < nargs; i++) mir_val_release(&args[i]);
         (void)ip_internal(it, "cleanup actions nest too deeply");
         ip_finish(it, &frames);
