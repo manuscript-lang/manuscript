@@ -10,7 +10,7 @@ repository=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 triple=${1:-host}
 [ "$triple" = key ] && triple=${2:-host}
 root=$repository/target/c-libs
-cc=${CC:-cc}
+cc=$(printf "%s" "${CC:-cc}" | tr "\\\\" "/") # forward slashes: sh drops the backslashes of a Windows path
 mode=pinned
 # One build for every dependency. The output folder is named by a hash of everything that decides its contents
 # (pins, this script, the triple), so a published archive and a CI cache keyed on `key` restore it whole and a change
