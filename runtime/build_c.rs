@@ -218,7 +218,30 @@ pub fn build_c_runtime(
     })
 }
 
-<<<<<<< HEAD
+/// Builds the C unit tests for `triple` (the host when `None`) in `work/cmake-tests` and runs them with ctest. The
+/// tests are the ones `make c-test` runs on Linux and macOS under the sanitizers; this is how Windows runs them,
+/// with the C compiler and libraries `build_c_runtime` uses.
+pub fn run_c_tests(root: &Path, work: &Path, triple: Option<&str>) -> Result<String, String> {
+    let build = work.join("cmake-tests");
+    configure_c(root, &build, triple, false, true)?;
+    run(
+        // `-k 0` keeps going past a failing file, so one run reports every compile error, not the first.
+        Command::new("cmake")
+            .arg("--build")
+            .arg(&build)
+            .args(["--", "-k", "0"]),
+        "cmake build",
+    )?;
+    run(
+        Command::new("ctest").arg("--test-dir").arg(&build).args([
+            "--output-on-failure",
+            "--timeout",
+            "120",
+        ]),
+        "ctest",
+    )
+}
+
 /// Builds `libms_backend.a` (the C back end, `compiler/include/ms/emit_program.h`) for this host in `work/cmake`
 /// and returns the folder holding it. A Windows host builds it for MSVC, the target of the Rust `ms` there.
 pub fn build_c_backend(root: &Path, work: &Path) -> Result<PathBuf, String> {
@@ -256,28 +279,4 @@ pub fn build_c_backend(root: &Path, work: &Path) -> Result<PathBuf, String> {
         "cmake build",
     )?;
     Ok(build.join("compiler"))
-=======
-/// Builds the C unit tests for `triple` (the host when `None`) in `work/cmake-tests` and runs them with ctest. The
-/// tests are the ones `make c-test` runs on Linux and macOS under the sanitizers; this is how Windows runs them,
-/// with the C compiler and libraries `build_c_runtime` uses.
-pub fn run_c_tests(root: &Path, work: &Path, triple: Option<&str>) -> Result<String, String> {
-    let build = work.join("cmake-tests");
-    configure_c(root, &build, triple, false, true)?;
-    run(
-        // `-k 0` keeps going past a failing file, so one run reports every compile error, not the first.
-        Command::new("cmake")
-            .arg("--build")
-            .arg(&build)
-            .args(["--", "-k", "0"]),
-        "cmake build",
-    )?;
-    run(
-        Command::new("ctest").arg("--test-dir").arg(&build).args([
-            "--output-on-failure",
-            "--timeout",
-            "120",
-        ]),
-        "ctest",
-    )
->>>>>>> origin/main
 }

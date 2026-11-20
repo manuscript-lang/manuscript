@@ -27,8 +27,11 @@ typedef struct MsBackendOptions {
 } MsBackendOptions;
 
 /* Optimizes and finishes the module `mir` describes and writes it as LLVM IR. `name` is what a parse
- * error calls the text. */
+ * error calls the text. `shown` (`shown_len` bytes, may be empty) holds `printed<TAB>name` lines: a
+ * function whose name in the text is `printed` shows `name` in a fault trace (the text form sanitizes a
+ * test's name and numbers duplicates). */
 MS_NODISCARD MS_NONNULL bool ms_backend_ir(const char *mir, size_t mir_len, const char *name,
+                                           const char *shown, size_t shown_len,
                                            const MsBackendOptions *options, MsBackendText *ir,
                                            MsBackendText *meta, MsBackendText *why);
 

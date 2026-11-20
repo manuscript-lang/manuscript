@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ms/emit_entry.h"
 #include "ms/emit_llvm.h"
@@ -20,9 +21,46 @@ static MsBackendText be_take(MsBuf *buf) {
     return text;
 }
 
+static bool be_name_is(const MirModule *m, MsSym sym, MsBytes text) {
+    const MsStr own = ms_name(&m->names, sym);
+    return own.len == text.len && memcmp(own.ptr, text.ptr, text.len) == 0;
+}
+
+/* Gives every function and inlined scope whose name in the text is `printed` the name `shown`. */
+static void be_show_as(MirModule *m, MsSym *display, uint32_t ndisplay, MsBytes printed, MsSym shown) {
+    for (uint32_t i = 0; i < m->nfuncs; i++) {
+        if (i < ndisplay && be_name_is(m, m->funcs[i].name, printed)) {
+            display[i] = shown;
+        }
+        for (uint32_t k = 0; k < m->funcs[i].nscopes; k++) { /* an inlined callee names its scope */
+            if (be_name_is(m, m->funcs[i].scopes[k].name, printed)) {
+                m->funcs[i].scopes[k].name = shown;
+            }
+        }
+    }
+}
+
+/* Applies the `printed<TAB>name` lines of `shown` to the names the fault tables show. */
+static void be_apply_shown(MirModule *m, MsSym *display, uint32_t ndisplay, MsBytes shown) {
+    size_t start = 0;
+    while (start < shown.len) {
+        const uint8_t *newline = memchr(shown.ptr + start, '\n', shown.len - start);
+        const size_t end = newline != NULL ? (size_t)(newline - shown.ptr) : shown.len;
+        const uint8_t *tab = memchr(shown.ptr + start, '\t', end - start);
+        if (tab != NULL) {
+            const size_t split = (size_t)(tab - shown.ptr);
+            const MsBytes printed = ms_bytes_of(shown.ptr + start, split - start);
+            const MsSym name = mir_name(m, (const char *)shown.ptr + split + 1, end - split - 1);
+            be_show_as(m, display, ndisplay, printed, name);
+        }
+        start = end + 1;
+    }
+}
+
 /* The passes and the emitter over a parsed module. The IR goes to `ir`, the tables meta to `meta`
  * when asked for, and the reason for a failure to `why`. */
-static bool be_emit(MirModule *m, const MsBackendOptions *options, MsBuf *ir, MsBuf *meta, MsBuf *why) {
+static bool be_emit(MirModule *m, MsBytes shown, const MsBackendOptions *options, MsBuf *ir, MsBuf *meta,
+                    MsBuf *why) {
     if (!mir_optimize(m, options->speed ? MIR_OPT_SPEED : MIR_OPT_NONE, options->verify, why)) {
         return false;
     }
@@ -38,6 +76,7 @@ static bool be_emit(MirModule *m, const MsBackendOptions *options, MsBuf *ir, Ms
     for (uint32_t i = 0; i < ndisplay; i++) {
         display[i] = m->funcs[i].name;
     }
+    be_apply_shown(m, display, ndisplay, shown);
     mir_name_symbols(m);
     mir_lower_ops(m, &glue);
     MirData data;
@@ -58,8 +97,8 @@ static bool be_emit(MirModule *m, const MsBackendOptions *options, MsBuf *ir, Ms
     return true;
 }
 
-bool ms_backend_ir(const char *mir, size_t mir_len, const char *name, const MsBackendOptions *options,
-                   MsBackendText *ir, MsBackendText *meta, MsBackendText *why) {
+bool ms_backend_ir(const char *mir, size_t mir_len, const char *name, const char *shown, size_t shown_len,
+                   const MsBackendOptions *options, MsBackendText *ir, MsBackendText *meta, MsBackendText *why) {
     MirModule m;
     mir_module_init(&m);
     MsBuf ir_buf = {0}, meta_buf = {0}, why_buf = {0};
@@ -69,7 +108,7 @@ bool ms_backend_ir(const char *mir, size_t mir_len, const char *name, const MsBa
     if (!ok) {
         ms_buf_printf(&why_buf, "%s:%u: %.*s", name, line, (int)message.len, message.ptr);
     } else {
-        ok = be_emit(&m, options, &ir_buf, &meta_buf, &why_buf);
+        ok = be_emit(&m, ms_bytes_of((const uint8_t *)shown, shown_len), options, &ir_buf, &meta_buf, &why_buf);
     }
     mir_module_free(&m);
     if (!ok) {
