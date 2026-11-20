@@ -18,6 +18,15 @@ use crate::types::{Ty, TyKind};
 use std::collections::HashMap;
 use std::fmt::Write;
 
+/// A location as `file:line:col`, with `:scope` when it belongs to an inlined callee.
+fn loc_str(l: Loc) -> String {
+    if l.scope == 0 {
+        l.to_string()
+    } else {
+        format!("{l}:{}", l.scope)
+    }
+}
+
 /// Renders a type.
 pub fn ty_str(m: &Module, t: Ty) -> String {
     let mut s = String::new();
@@ -122,8 +131,52 @@ fn mode_prefix(m: &Module, ty: Ty, mode: Mode) -> &'static str {
     }
 }
 
+thread_local! {
+    /// The printed names of functions whose own name another function already has (a program's
+    /// `main` and the exported entry wrapper `main`): the later one gets `.1`, `.2`, ... so every
+    /// reference in the text names one function and the text parses back. Empty almost always.
+    static RENAMED: std::cell::RefCell<HashMap<usize, String>> = std::cell::RefCell::new(HashMap::new());
+}
+
+fn find_renamed(m: &Module) -> HashMap<usize, String> {
+    let mut seen: HashMap<&str, usize> = HashMap::new();
+    let mut taken: std::collections::HashSet<&str> =
+        m.funcs.iter().map(|f| f.name.as_str()).collect();
+    let mut renamed = HashMap::new();
+    for (i, f) in m.funcs.iter().enumerate() {
+        let count = seen.entry(f.name.as_str()).or_insert(0);
+        *count += 1;
+        if *count > 1 {
+            let mut k = *count - 1;
+            let mut name = format!("{}.{k}", f.name);
+            while taken.contains(name.as_str()) {
+                k += 1;
+                name = format!("{}.{k}", f.name);
+            }
+            renamed.insert(i, name);
+        }
+    }
+    taken.clear();
+    renamed
+}
+
+/// The name function `index` is printed under.
+fn func_label(m: &Module, index: usize) -> String {
+    RENAMED.with(|r| match r.borrow().get(&index) {
+        Some(name) => name.clone(),
+        None => m.funcs[index].name.clone(),
+    })
+}
+
 /// Renders a module as canonical text.
 pub fn print_module(m: &Module) -> String {
+    RENAMED.with(|r| *r.borrow_mut() = find_renamed(m));
+    let text = print_module_text(m);
+    RENAMED.with(|r| r.borrow_mut().clear());
+    text
+}
+
+fn print_module_text(m: &Module) -> String {
     let mut o = String::new();
     let _ = writeln!(o, "module {}", quote(&m.name));
     for (i, f) in m.files.iter().enumerate() {
@@ -143,7 +196,8 @@ pub fn print_module(m: &Module) -> String {
             .iter()
             .map(|(n, t)| format!("{n}: {}", ty_str(m, *t)))
             .collect();
-        let _ = writeln!(o, "type {} {{ {} }}", r.name, fields.join(", "));
+        let indirect = if r.indirect { " indirect" } else { "" };
+        let _ = writeln!(o, "type {}{indirect} {{ {} }}", r.name, fields.join(", "));
     }
     for a in &m.alts {
         let cases: Vec<String> = a
@@ -233,7 +287,7 @@ pub fn print_module(m: &Module) -> String {
         let ms: Vec<String> = v
             .methods
             .iter()
-            .map(|f| format!("@{}", m.funcs[f.index()].name))
+            .map(|f| format!("@{}", func_label(m, f.index())))
             .collect();
         let _ = writeln!(
             o,
@@ -244,14 +298,32 @@ pub fn print_module(m: &Module) -> String {
             ms.join(", ")
         );
     }
+    for &(ty, eq, hash) in &m.desc_glue {
+        let _ = writeln!(
+            o,
+            "desc_glue {} @{} @{}",
+            ty_str(m, ty),
+            m.funcs[eq.index()].name,
+            m.funcs[hash.index()].name
+        );
+    }
     if let Some(e) = m.entry {
-        let _ = writeln!(o, "entry @{}", m.funcs[e.index()].name);
+        let _ = writeln!(o, "entry @{}", func_label(m, e.index()));
     }
     for f in &m.funcs {
         o.push('\n');
         o.push_str(&print_func(m, f));
     }
     o
+}
+
+/// The printed name of `f`, which is a function of `m`.
+fn func_label_of(m: &Module, f: &Func) -> String {
+    let renamed = RENAMED.with(|r| !r.borrow().is_empty());
+    if renamed && let Some(i) = m.funcs.iter().position(|g| std::ptr::eq(g, f)) {
+        return func_label(m, i);
+    }
+    f.name.clone()
 }
 
 /// Renders one function.
@@ -292,7 +364,7 @@ pub fn print_func(m: &Module, f: &Func) -> String {
     let _ = write!(
         o,
         "fn @{}({}) -> {}",
-        f.name,
+        func_label_of(m, f),
         ps.join(", "),
         ty_str(m, f.ret)
     );
@@ -325,17 +397,42 @@ pub fn print_func(m: &Module, f: &Func) -> String {
         let _ = write!(o, " noalias({})", ns.join(", "));
     }
     if let Some(s) = f.slot_result {
-        let _ = write!(o, " slot_result(@{})", m.funcs[s.0 as usize].name);
+        let _ = write!(o, " slot_result(@{})", func_label(m, s.0 as usize));
     }
     if let Some((a, b)) = f.close_exit {
         let _ = write!(
             o,
             " close_exit(@{}, @{})",
-            m.funcs[a.0 as usize].name, m.funcs[b.0 as usize].name
+            func_label(m, a.0 as usize),
+            func_label(m, b.0 as usize)
         );
     }
+    for (set, word) in [
+        (f.ret_borrowed, "ret_borrowed"),
+        (f.ret_view, "ret_view"),
+        (f.scoped, "scoped"),
+        (f.keeps_scoped, "keeps_scoped"),
+        (f.unwind_only, "unwind_only"),
+        (f.raw_scratch, "raw_scratch"),
+    ] {
+        if set {
+            o.push(' ');
+            o.push_str(word);
+        }
+    }
+    if let Some(t) = f.slot_close {
+        let _ = write!(o, " slot_close({})", ty_str(m, t));
+    }
+    if !f.capture_closers.is_empty() {
+        let cs: Vec<String> = f
+            .capture_closers
+            .iter()
+            .map(|(i, g)| format!("{i} @{}", m.funcs[g.0 as usize].name))
+            .collect();
+        let _ = write!(o, " capture_closers({})", cs.join(", "));
+    }
     if !f.loc.is_none() {
-        let _ = write!(o, " !{}", f.loc);
+        let _ = write!(o, " !{}", loc_str(f.loc));
     }
     o.push_str(" {\n");
     for (bi, b) in f.blocks.iter().enumerate() {
@@ -363,16 +460,48 @@ pub fn print_func(m: &Module, f: &Func) -> String {
             }
             o.push_str(&print_inst(m, i, &n));
             if !i.loc.is_none() {
-                let _ = write!(o, " !{}", i.loc);
+                let _ = write!(o, " !{}", loc_str(i.loc));
             }
             o.push('\n');
         }
         o.push_str("  ");
         o.push_str(&print_term(m, &b.term, &n));
         if !b.term_loc.is_none() {
-            let _ = write!(o, " !{}", b.term_loc);
+            let _ = write!(o, " !{}", loc_str(b.term_loc));
         }
         o.push('\n');
+    }
+    // Debugger and range facts, only when a function has them: the inlined scopes, the named
+    // values and the results proved exact, in that order.
+    for sc in &f.scopes {
+        let _ = writeln!(
+            o,
+            "  scope {} {} {} {}",
+            quote(&sc.name),
+            sc.file,
+            sc.parent,
+            sc.call_line
+        );
+    }
+    for nv in &f.names {
+        if let Some(&i) = names.get(&nv.value) {
+            let _ = writeln!(
+                o,
+                "  name %{i} {} {} {}",
+                quote(&nv.name),
+                if nv.param { "param" } else { "local" },
+                nv.scope
+            );
+        }
+    }
+    let mut exact: Vec<usize> = f
+        .exact
+        .iter()
+        .filter_map(|v| names.get(v).copied())
+        .collect();
+    exact.sort_unstable();
+    for i in exact {
+        let _ = writeln!(o, "  exact %{i}");
     }
     o.push_str("}\n");
     o
@@ -394,7 +523,7 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
         }
         Imm::Bool(b) => b.to_string(),
         Imm::Str(id) => quote(&m.strings[id.index()]),
-        Imm::Func(f) => format!("@{}", m.funcs[f.index()].name),
+        Imm::Func(f) => format!("@{}", func_label(m, f.index())),
         Imm::Ext(e) => format!("@{}", m.externs[e.index()].name),
         Imm::Ty(t) => ty_str(m, t),
         Imm::Type(r) => m.type_defs[r.index()].name.clone(),

@@ -292,6 +292,13 @@ fn body_stmts(body: &[Stmt], out: &mut Vec<NodeId>) {
                 body_exprs(cond, out);
                 body_stmts(body, out);
             }
+            StmtKind::For { iter, body, .. } => {
+                // The C checker leaves the range call untyped; its bounds are compared.
+                if let ExprKind::Call { args, .. } = &iter.kind {
+                    args.iter().for_each(|a| body_exprs(&a.value, out));
+                }
+                body_stmts(body, out);
+            }
             _ => {}
         }
     }
@@ -400,8 +407,73 @@ fn ownership_diagnostics(files: &[String]) {
     }
 }
 
+/// `c_oracle --effects FILE...`: per top-level function and constant, the callables its body
+/// references (first reference of each, in source order).
+fn effect_edges(files: &[String]) {
+    let syms = Names::global();
+    let session = Session::new();
+    session.ensure_standard();
+    for path in files {
+        let Ok(source) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        let file: std::sync::Arc<str> = "main.ms".into();
+        let Ok(module) = ms_syntax::parser::parse(&file, &source) else {
+            continue;
+        };
+        if module.imports.iter().any(|i| !i.path.starts_with("@std/")) {
+            continue;
+        }
+        println!("== {path}");
+        let loaded = ms_check::load_module(syms, &module);
+        let program = ms_check::check_in(
+            syms,
+            &session,
+            vec![loaded.clone()],
+            ms_check::ImportMap::default(),
+            ms_check::CheckOptions::default(),
+        );
+        // The effect scan runs only on a program the checker accepts.
+        let Some(names) = program
+            .symbols
+            .get(&loaded.file)
+            .filter(|_| program.diagnostics.is_empty())
+        else {
+            println!("unchecked");
+            continue;
+        };
+        let by_id: std::collections::HashMap<_, _> = names
+            .borrow()
+            .iter()
+            .map(|(name, symbol)| (symbol.id, syms.str(*name).to_string()))
+            .collect();
+        for d in &loaded.decls {
+            let word = match &d.decl().kind {
+                DeclKind::Fn(f) if !f.external => "fn",
+                DeclKind::Const(_) => "const",
+                _ => continue,
+            };
+            let Some(symbol) = names.borrow().get(&d.name()).cloned() else {
+                continue;
+            };
+            println!("{word} {}:{}", d.decl().pos.line, d.decl().pos.column);
+            for (callee, pos) in program.effect_edges_of(symbol.id) {
+                let shown = by_id
+                    .get(&callee)
+                    .cloned()
+                    .unwrap_or_else(|| syms.str(callee).to_string());
+                println!("edge {shown} {}:{}", pos.line, pos.column);
+            }
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--effects") {
+        effect_edges(&args[1..]);
+        return;
+    }
     if args.first().is_some_and(|a| a == "--ownership") {
         ownership_diagnostics(&args[1..]);
         return;

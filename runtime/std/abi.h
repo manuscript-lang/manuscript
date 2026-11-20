@@ -62,6 +62,14 @@ void msrt_list_with_capacity(const MsTypeDesc *desc, int64_t cap, MsVec *out);
 void msrt_list_push(MsVec *v, const MsTypeDesc *desc, const void *elem);
 void msrt_list_drop(MsVec *v, const MsTypeDesc *desc);
 
+/* A map is built through its functions and handed over whole: natives never read its slots (runtime/core/map.c).
+ * `add` takes ownership of the key and the value slot. */
+typedef struct MsMap MsMap;
+void msrt_map_new(MsMap *out);
+void msrt_map_add(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *val);
+const uint8_t *msrt_map_get_ptr(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
+void msrt_map_drop(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd);
+
 static inline size_t msrt_str_len(const MsStr *s) { return ms_str_len(s); }
 static inline const char *msrt_str_data(const MsStr *s) { return (const char *)ms_str_data(s); }
 

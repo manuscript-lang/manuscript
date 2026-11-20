@@ -3,12 +3,15 @@
 
 #include <stdatomic.h>
 
+#include "h2conn.h"
 #include "ms_rt/alloc.h"
 
 struct MsNetConn {
     atomic_uint handles; /* handles that refer to the core */
     atomic_uint ends;    /* stream ends still open */
     atomic_bool closed;
+    atomic_bool exchanging; /* an exchange is open on the row */
+    MsH2Conn *h2;           /* the HTTP/2 session, made by the first exchange that needs it */
     MsConnTable *table;
     MsConnId id;
 };
@@ -26,6 +29,7 @@ static void core_release(MsNetConn *conn) {
         (void)ms_conn_close_io(conn->table, conn->id);
     }
     ms_conn_table_free(conn->table);
+    ms_h2conn_free(conn->h2);
     msrt_free(conn);
 }
 
@@ -45,10 +49,11 @@ static MsObj *handle_new(MsNetConn *conn) {
 }
 
 MsObj *ms_netconn_new(MsConnTable *table, MsConnId id) {
-    MsNetConn *conn = msrt_alloc(sizeof *conn);
+    MsNetConn *conn = msrt_alloc_zeroed(sizeof *conn);
     atomic_init(&conn->handles, 1);
     atomic_init(&conn->ends, 1);
     atomic_init(&conn->closed, false);
+    atomic_init(&conn->exchanging, false);
     conn->table = table;
     conn->id = id;
     return handle_new(conn);
@@ -82,4 +87,14 @@ void ms_netconn_close_if_last(const void *handle) {
     if (atomic_fetch_sub(&conn->ends, 1) == 1) {
         ms_netconn_close(handle);
     }
+}
+
+bool ms_netconn_begin_exchange(MsNetConn *conn) { return !atomic_exchange(&conn->exchanging, true); }
+void ms_netconn_end_exchange(MsNetConn *conn) { atomic_store(&conn->exchanging, false); }
+
+MsH2Conn *ms_netconn_h2(MsNetConn *conn) {
+    if (conn->h2 == NULL) {
+        conn->h2 = ms_h2conn_new(0, NULL);
+    }
+    return conn->h2;
 }

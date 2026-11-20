@@ -5,7 +5,6 @@
 //! own symbols. A new `ms-std-*` crate joins the archive by being listed in `Cargo.toml` and below.
 extern crate ms_rt;
 extern crate ms_std_net;
-extern crate ms_std_process;
 extern crate ms_std_table;
 
 /// Rust-side allocations of the native standard library share the runtime's allocator.

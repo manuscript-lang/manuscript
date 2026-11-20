@@ -1,4 +1,8 @@
 # Defined in runtime/net/natives.c; the Rust ms-std-net definitions of the same operations are deleted with that crate.
+msstd_body_close
+msstd_body_metadata
+msstd_body_read
+msstd_body_read_all
 msstd_conn_alias
 msstd_conn_close
 msstd_conn_close_if_last
@@ -9,5 +13,14 @@ msstd_conn_share
 msstd_conn_shutdown_write
 msstd_conn_tls_info
 msstd_conn_write_bytes
+msstd_headers_append
+msstd_headers_clone
+msstd_headers_names
+msstd_headers_new
+msstd_headers_remove
+msstd_headers_values
+msstd_http_fetch
 msstd_net_dial
 msstd_net_lookup
+msstd_tls_parse_certificates
+msstd_tls_verify_certificates

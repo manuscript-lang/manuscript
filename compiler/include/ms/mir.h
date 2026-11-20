@@ -193,7 +193,7 @@ typedef struct MirFunc {
     uint32_t nparams;
     MirTy ret;
     bool ret_borrowed, ret_view;
-    /* Set by passes, not in the text form: a function made only to run while a cancellation
+    /* Set by passes: a function made only to run while a cancellation
      * unwinds; one whose lists are raw slot copies (they own no elements). */
     bool unwind_only, raw_scratch;
     /* In the text form: a function that leaves a cancel by its own explicit exits; the indexes
@@ -207,7 +207,7 @@ typedef struct MirFunc {
     uint32_t slot_result;
     bool has_close_exit;
     uint32_t close_exit[2];
-    /* Set by lowering, not in the text form: a closure function whose environment owns
+    /* Set by lowering: a closure function whose environment owns
      * resources lists the capture index and the function that closes it; a cleanup thunk that
      * closes a value in place names the type of that value. */
     MirCaptureCloser *capture_closers;
@@ -215,7 +215,7 @@ typedef struct MirFunc {
     bool has_slot_close;
     MirTy slot_close;
     bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
-    /* Set by the range pass, not in the text form: a bit set (`nexact` words) of the results of
+    /* Set by the range pass (`exact` lines in the text form): a bit set (`nexact` words) of the results of
      * unchecked integer arithmetic it proved cannot wrap, which later analysis treats as exact.
      * Values are never reused, so a bit stays true as the function is rewritten; the pass
      * replaces the array instead of editing it, so a copy of the function may share it. */
@@ -243,7 +243,7 @@ typedef struct MirTypeDef {
     MsSym name;
     MirField *fields;
     uint32_t nfields;
-    bool indirect; /* one pointer to a heap block (not in the text form: lowering sets it) */
+    bool indirect; /* one pointer to a heap block (`type Name indirect` in the text form) */
 } MirTypeDef;
 
 typedef enum MirStd { MSTD_NONE, MSTD_RESULT, MSTD_COMPARABLE, MSTD_EQUAL } MirStd;
@@ -293,6 +293,13 @@ typedef struct MirExtern {
 typedef struct MirConsts { int64_t *v; uint32_t n; } MirConsts;
 typedef struct MirGlobal { MsSym name; MirTy ty; } MirGlobal;
 
+/* The equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) the descriptor of an
+ * aggregate type points to. */
+typedef struct MirDescGlue {
+    MirTy ty;
+    uint32_t eq, hash; /* function ids */
+} MirDescGlue;
+
 typedef struct MirVtable {
     MsSym name;
     uint32_t iface;
@@ -320,6 +327,8 @@ typedef struct MirModule {
     uint32_t nifaces, cifaces;
     MirVtable *vtables;
     uint32_t nvtables, cvtables;
+    MirDescGlue *desc_glue;
+    uint32_t ndesc_glue, cdesc_glue;
     MsStr *blobs;
     uint32_t nblobs, cblobs;
     MirConsts *list_consts;
@@ -335,6 +344,8 @@ typedef struct MirModule {
 } MirModule;
 
 void mir_module_init(MirModule *m);
+/* Records the equality and hash functions the descriptor of aggregate `ty` points to. */
+void mir_add_desc_glue(MirModule *m, MirTy ty, uint32_t eq, uint32_t hash);
 void mir_module_free(MirModule *m);
 
 /* Type table. */

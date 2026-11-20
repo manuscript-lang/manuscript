@@ -693,7 +693,6 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "ms-std-net",
- "ms-std-process",
  "ms-std-table",
 ]
 
@@ -731,16 +730,6 @@ dependencies = [
  "socket2",
  "windows-sys 0.61.2",
  "x509-parser",
-]
-
-[[package]]
-name = "ms-std-process"
-version = "0.1.0"
-dependencies = [
- "libc",
- "ms-rt",
- "ms-rt-abi",
- "windows-sys 0.61.2",
 ]
 
 [[package]]

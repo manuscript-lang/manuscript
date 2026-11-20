@@ -15,7 +15,6 @@ doctest = false
 [dependencies]
 ms-rt = { path = "../ms-rt" }
 ms-std-net = { path = "../ms-std-net" }
-ms-std-process = { path = "../ms-std-process" }
 ms-std-table = { path = "../ms-std-table" }
 
 [features]

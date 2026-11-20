@@ -33,19 +33,14 @@ runs:
         key: ms-native-${{ github.event_name == 'pull_request' && 'pr' || 'allocs' }}-${{ inputs.os }}-${{ inputs.arch }}-${{ env.ImageVersion }}-${{ steps.hash.outputs.value }}
         restore-keys: |
           ms-native-allocs-${{ inputs.os }}-${{ inputs.arch }}-${{ env.ImageVersion }}-${{ steps.hash.outputs.value }}
-    # The musl archive folds in pinned builds of the C libraries made with musl-gcc (system packages are glibc's);
-    # they take about 90 s, so they are cached on the build script's own key (pins, script, compiler, triple).
-    - name: Key the pinned musl C libraries
-      id: musl-libs
-      if: steps.runtime.outputs.cache-matched-key == '' && runner.os == 'Linux'
-      shell: bash
-      run: echo "key=$(CC=musl-gcc MS_C_LIBS=pinned sh runtime/third_party/build.sh key "$(uname -m)-unknown-linux-musl")" >> "$GITHUB_OUTPUT"
-    - name: Restore the pinned musl C libraries
-      if: steps.runtime.outputs.cache-matched-key == '' && runner.os == 'Linux'
+    # The archives fold in our builds of the vendored C libraries (runtime/third_party/build.sh); they take one to
+    # three minutes per target, so they are cached on the pins and the build script (the key names the target).
+    - name: Restore the C libraries
+      if: steps.runtime.outputs.cache-matched-key == ''
       uses: actions/cache@v6
       with:
-        path: target/c-libs/*-unknown-linux-musl-pinned-*
-        key: c-libs-musl-${{ inputs.arch }}-${{ steps.musl-libs.outputs.key }}
+        path: target/c-libs/*-pinned-*
+        key: c-libs-${{ inputs.os }}-${{ inputs.arch }}-${{ env.ImageVersion }}-${{ hashFiles('runtime/third_party/build.sh', 'runtime/third_party/c-libs.lock') }}
     - name: Build the native runtime
       if: steps.runtime.outputs.cache-matched-key == ''
       shell: bash
