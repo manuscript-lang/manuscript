@@ -8,10 +8,15 @@ import Cidr, IpAddress, contains_ip, parse_cidr, parse_ip from "@std/net/ip.ms"
 // One `restrict` call: the host names and CIDR ranges it allows, and whether it permits
 // listening.
 export type Level:
+	// The folded host names this level allows.
 	hosts: List[String]
+	// The canonical CIDR texts this level allows; hosts that are IP literals and
+	// resolved addresses must fall inside one of them.
 	prefixes: List[String]
+	// Whether this level permits listening.
 	listen: Bool
 
+// Reports whether this level allows a folded host name or literal address.
 fn Level.allows_host(name: String) Bool:
 	var allowed = self.hosts.contains(name)
 	parsed := parse_ip(name)
@@ -20,6 +25,8 @@ fn Level.allows_host(name: String) Bool:
 			if in_prefix(prefix, parsed.get()): allowed = true
 	return allowed
 
+// Reports whether this level allows a resolved address: inside a prefix, or any address
+// when only host names were given.
 fn Level.allows_address(address: IpAddress) Bool:
 	var allowed = self.prefixes.is_empty() and not self.hosts.is_empty()
 	for prefix in self.prefixes:
@@ -29,6 +36,7 @@ fn Level.allows_address(address: IpAddress) Bool:
 // The restrictions of a derived network. A request must pass every level, so a derived
 // network can only narrow its parent.
 export type Policy:
+	// The restrictions, outermost first; empty means unrestricted.
 	levels: List[Level]
 
 // Returns the policy that allows everything.

@@ -248,6 +248,8 @@ static void qbe_copy_leaf(QCx *c, MirValue dst, uint32_t out_index, MirValue src
     ms_buf_putc(o, '\n');
 }
 
+#include "emit_qbe_record.inc"
+
 /* `type.new`: the leaves of the fields in order. */
 static void qbe_record_new(QCx *c, const MirInst *inst) {
     uint32_t at = 0;
@@ -828,9 +830,18 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
     case MOP_Slot: return true; /* allocated at the top of the entry block */
     case MOP_Load: case MOP_Take: return qbe_load(c, inst);
     case MOP_Store: case MOP_Put: return qbe_store(c, inst);
-    case MOP_TypeNew: qbe_record_new(c, inst); return true;
-    case MOP_TypeGet: return qbe_record_get(c, inst);
-    case MOP_TypeSet: case MOP_TypeFill: return qbe_record_set(c, inst);
+    case MOP_TypeNew:
+        if (qbe_is_indirect_record(c, c->f->values[inst->res])) {
+            return qbe_indirect_new(c, inst);
+        }
+        qbe_record_new(c, inst);
+        return true;
+    case MOP_TypeGet:
+        return qbe_is_indirect_record(c, c->f->values[inst->args[0]]) ? qbe_indirect_get(c, inst)
+                                                                      : qbe_record_get(c, inst);
+    case MOP_TypeSet: case MOP_TypeFill:
+        return qbe_is_indirect_record(c, c->f->values[inst->args[0]]) ? qbe_indirect_set(c, inst)
+                                                                      : qbe_record_set(c, inst);
     case MOP_PtrField: return qbe_ptr_field(c, inst);
     default:
         *handled = false;
@@ -841,6 +852,8 @@ static bool qbe_memory_inst(QCx *c, const MirInst *inst, bool *handled) {
 #include "emit_qbe_scalar.inc"
 #include "emit_qbe_closure.inc"
 #include "emit_qbe_iface.inc"
+#include "emit_qbe_enum.inc"
+#include "emit_qbe_list.inc"
 
 /* Writes instruction `index` of block `block`; false, with the reason in `c->why`, when it is not
  * covered yet. */
@@ -865,7 +878,7 @@ static MirTy qbe_opt_inner(const QCx *c, MirTy opt) {
     return mir_ty_data(c->m, opt)->elem;
 }
 
-/* `opt.some`: a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
+/* `opt.some`, `opt.view` (the same leaves; the view borrows its payload): a boxed optional is a pointer to a heap copy of the payload, a nullable one is the
  * payload itself, any other is the payload after a presence flag. */
 static bool qbe_opt_some(QCx *c, const MirInst *inst) {
     const MirTy inner = qbe_opt_inner(c, c->f->values[inst->res]);
@@ -1008,6 +1021,14 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     if (handled) {
         return iface_ok;
     }
+    const bool enum_ok = qbe_enum_op(c, inst, &handled);
+    if (handled) {
+        return enum_ok;
+    }
+    const bool list_ok = qbe_list_op(c, inst, &handled);
+    if (handled) {
+        return list_ok;
+    }
     switch (inst->op) {
     case MOP_IConst: case MOP_BConst: case MOP_FConst: qbe_constant(c, inst); return true;
     case MOP_ICmp: case MOP_UICmp: case MOP_FCmp: qbe_compare(c, inst); return true;
@@ -1015,7 +1036,7 @@ static bool qbe_inst(QCx *c, const MirInst *inst, uint32_t block, uint32_t index
     case MOP_CallRt: return qbe_call_rt(c, inst, block, index);
     case MOP_INarrowOpt: case MOP_F2IOpt: return qbe_opt_convert(c, inst);
     case MOP_AltTag: qbe_alt_tag(c, inst); return true;
-    case MOP_OptSome: return qbe_opt_some(c, inst);
+    case MOP_OptSome: case MOP_OptView: return qbe_opt_some(c, inst);
     case MOP_OptGet: return qbe_opt_get(c, inst);
     case MOP_OptIsSome: qbe_opt_is_some(c, inst); return true;
     case MOP_ListLen: qbe_copy_leaf(c, inst->res, 0, inst->args[0], MIR_LIST_LEN_LEAF); return true;
