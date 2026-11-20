@@ -1,0 +1,12 @@
+module "t"
+file 0 "t.ms"
+entry @msmain
+extern @msrt_test_list(int) -> list<int>
+
+fn @msmain() -> int {
+b0:
+  %n: int = iconst 5
+  %l: list<int> = call.rt @msrt_test_list (%n)
+  %len: int = list.len %l
+  ret %len
+}
