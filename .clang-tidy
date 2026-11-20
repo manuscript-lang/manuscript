@@ -47,8 +47,12 @@ CheckOptions:
     value: CamelCase
   - key: readability-identifier-naming.TypedefCase
     value: CamelCase
+  # ms_str, ms_vec and ms_obj are the runtime ABI's value types, named as the program ABI and the Rust ms-rt-abi
+  # crate record them; renaming them would touch every native.
+  - key: readability-identifier-naming.StructIgnoredRegexp
+    value: '^ms_(str|vec|obj)$'
   - key: readability-identifier-naming.TypedefIgnoredRegexp
-    value: '.*_t$'
+    value: '(.*_t|ms_(str|vec|obj))$'
   - key: readability-identifier-naming.FunctionCase
     value: lower_case
   - key: readability-identifier-naming.FunctionIgnoredRegexp

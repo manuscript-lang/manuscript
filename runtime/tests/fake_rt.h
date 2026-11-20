@@ -5,25 +5,32 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct { int64_t *ptr; size_t len, cap; } fake_vec;
+#include "../std/abi.h"
 
 const unsigned char msrt_desc_int[1];
 void *msrt_alloc(size_t n) { return malloc(n); }
 void msrt_free(void *p) { free(p); }
-void msrt_list_with_capacity(const void *d, int64_t cap, fake_vec *out) {
+
+void msrt_list_with_capacity(const void *d, int64_t cap, ms_vec *out) {
     (void)d;
-    out->ptr = cap ? malloc((size_t)cap * 8) : NULL;
+    out->ptr = cap ? malloc((size_t)cap * sizeof(int64_t)) : NULL;
     out->len = 0;
     out->cap = (size_t)cap;
 }
-void msrt_list_push(fake_vec *v, const void *d, const void *e) {
+
+void msrt_list_push(ms_vec *v, const void *d, const void *e) {
     (void)d;
     if (v->len == v->cap) {
         v->cap = v->cap ? v->cap * 2 : 4;
-        v->ptr = realloc(v->ptr, v->cap * 8);
+        v->ptr = realloc(v->ptr, v->cap * sizeof(int64_t));
     }
-    memcpy(v->ptr + v->len++, e, 8);
+    memcpy((int64_t *)v->ptr + v->len, e, sizeof(int64_t));
+    v->len++;
 }
-void msrt_list_drop(fake_vec *v, const void *d) { (void)d; free(v->ptr); }
+
+void msrt_list_drop(ms_vec *v, const void *d) {
+    (void)d;
+    free(v->ptr);
+}
 
 #endif

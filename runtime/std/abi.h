@@ -8,10 +8,6 @@
 
 #include "ms_rt/string.h"
 
-typedef ms_str msrt_str;
-typedef ms_vec msrt_vec;
-typedef ms_obj msrt_obj;
-
 enum {
     STATUS_OK = 0,
     STATUS_INVALID_INPUT = 1,
@@ -22,14 +18,20 @@ enum {
     STATUS_AUTHENTICATION_FAILED = 18
 };
 
-extern void *msrt_alloc(size_t size);
-extern void msrt_free(void *p);
+#include "ms_rt/alloc.h"
 
-static inline size_t msrt_str_len(const msrt_str *s) { return ms_str_len(s); }
-static inline const char *msrt_str_data(const msrt_str *s) { return (const char *)ms_str_data(s); }
+/* The runtime's list functions (compiler-emitted descriptors say how an element is stored); msrt_desc_int is the
+   descriptor of List[Int]. */
+extern const unsigned char msrt_desc_int[];
+void msrt_list_with_capacity(const void *desc, int64_t cap, ms_vec *out);
+void msrt_list_push(ms_vec *v, const void *desc, const void *elem);
+void msrt_list_drop(ms_vec *v, const void *desc);
+
+static inline size_t msrt_str_len(const ms_str *s) { return ms_str_len(s); }
+static inline const char *msrt_str_data(const ms_str *s) { return (const char *)ms_str_data(s); }
 
 /* A Bytes value written as the runtime does: an allocation of exactly len bytes, or null when empty. */
-static inline void msrt_write_bytes(msrt_vec *out, const void *data, size_t len) {
+static inline void msrt_write_bytes(ms_vec *out, const void *data, size_t len) {
     if (len == 0) {
         out->ptr = NULL;
         out->len = out->cap = 0;

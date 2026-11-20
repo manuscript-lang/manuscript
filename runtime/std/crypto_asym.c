@@ -18,9 +18,9 @@
 #include "abi.h"
 #include "ms_rt/crypto.h"
 
-typedef enum { K_NONE, K_P256, K_P384, K_P521, K_X25519, K_ED25519, K_RSA } kind;
+typedef enum { K_NONE, K_P256, K_P384, K_P521, K_X25519, K_ED25519, K_RSA } MsKeyKind;
 
-static const uint8_t *bytes_of(const msrt_vec *v) { return v->ptr ? v->ptr : (const uint8_t *)""; }
+static const uint8_t *bytes_of(const ms_vec *v) { return v->ptr ? v->ptr : (const uint8_t *)""; }
 
 static const EVP_MD *md_of(int64_t index) {
     switch (index) {
@@ -37,13 +37,13 @@ static const EVP_MD *md_of(int64_t index) {
     }
 }
 
-static int digest_of(const EVP_MD *md, const msrt_vec *data, uint8_t *out, unsigned *n) {
+static int digest_of(const EVP_MD *md, const ms_vec *data, uint8_t *out, unsigned *n) {
     return EVP_Digest(bytes_of(data), data->len, out, n, md, NULL);
 }
 
 /* ---- fixed-shape curve25519 keys ----------------------------------------------------------------------------- */
 
-static const uint8_t X25519_OID[3] = {0x2b, 0x65, 0x6e}, ED25519_OID[3] = {0x2b, 0x65, 0x70};
+static const uint8_t x25519_oid[3] = {0x2b, 0x65, 0x6e}, ed25519_oid[3] = {0x2b, 0x65, 0x70};
 
 static void pkcs8_25519(const uint8_t oid[3], const uint8_t key[32], uint8_t out[48]) {
     static const uint8_t head[9] = {0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03};
@@ -57,7 +57,9 @@ static void spki_25519(const uint8_t oid[3], const uint8_t key[32], uint8_t out[
     static const uint8_t head[9] = {0x30, 0x2a, 0x30, 0x05, 0x06, 0x03};
     memcpy(out, head, 6);
     memcpy(out + 6, oid, 3);
-    out[9] = 0x03, out[10] = 0x21, out[11] = 0x00;
+    out[9] = 0x03;
+    out[10] = 0x21;
+    out[11] = 0x00;
     memcpy(out + 12, key, 32);
 }
 
@@ -68,7 +70,8 @@ static size_t first_element(const uint8_t *der, size_t n) {
     if (n < 2 || der[0] != 0x30) return 0;
     size_t len, hdr;
     if (der[1] < 0x80) {
-        len = der[1], hdr = 2;
+        len = der[1];
+        hdr = 2;
     } else {
         size_t k = der[1] & 0x7f;
         if (k < 1 || k > 4 || n < 2 + k) return 0;
@@ -79,9 +82,9 @@ static size_t first_element(const uint8_t *der, size_t n) {
     return len <= n - hdr ? hdr + len : 0;
 }
 
-static kind ec_kind(const EVP_PKEY *key) {
+static MsKeyKind ec_kind(EVP_PKEY *key) {
     char name[32];
-    if (EVP_PKEY_get_group_name((EVP_PKEY *)key, name, sizeof name, NULL) != 1) return K_NONE;
+    if (EVP_PKEY_get_group_name(key, name, sizeof name, NULL) != 1) return K_NONE;
     if (!strcmp(name, "prime256v1")) return K_P256;
     if (!strcmp(name, "secp384r1")) return K_P384;
     if (!strcmp(name, "secp521r1")) return K_P521;
@@ -94,22 +97,138 @@ static int der_equal(unsigned char *got, int n, const uint8_t *der, size_t len) 
     return same;
 }
 
+/* The supported curves: OpenSSL's group name and our kind, or NULL and K_NONE for any other curve. */
+static const char *curve_name(int curve) {
+    switch (curve) {
+    case NID_X9_62_prime256v1: return "P-256";
+    case NID_secp384r1: return "P-384";
+    case NID_secp521r1: return "P-521";
+    default: return NULL;
+    }
+}
+
+static MsKeyKind curve_kind(int curve) {
+    switch (curve) {
+    case NID_X9_62_prime256v1: return K_P256;
+    case NID_secp384r1: return K_P384;
+    case NID_secp521r1: return K_P521;
+    default: return K_NONE;
+    }
+}
+
+/* The key pair for scalar d on the curve; the public point is d*G, computed here because fromdata does not derive it. */
+static EVP_PKEY *ec_pair_from_scalar(const BIGNUM *d, int curve, const char *name) {
+    EVP_PKEY *key = NULL;
+    OSSL_PARAM_BLD *bld = OSSL_PARAM_BLD_new();
+    OSSL_PARAM *params = NULL;
+    EC_GROUP *group = EC_GROUP_new_by_curve_name(curve);
+    EC_POINT *point = group ? EC_POINT_new(group) : NULL;
+    uint8_t pub[133];
+    size_t pub_len = 0;
+    if (point && EC_POINT_mul(group, point, d, NULL, NULL, NULL) == 1) {
+        pub_len = EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED, pub, sizeof pub, NULL);
+    }
+    if (bld && pub_len && OSSL_PARAM_BLD_push_utf8_string(bld, OSSL_PKEY_PARAM_GROUP_NAME, name, 0) &&
+        OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PRIV_KEY, d) &&
+        OSSL_PARAM_BLD_push_octet_string(bld, OSSL_PKEY_PARAM_PUB_KEY, pub, pub_len)) {
+        params = OSSL_PARAM_BLD_to_param(bld);
+    }
+    EC_POINT_free(point);
+    EC_GROUP_free(group);
+    EVP_PKEY_CTX *fromdata = params ? EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL) : NULL;
+    if (!fromdata || EVP_PKEY_fromdata_init(fromdata) != 1 ||
+        EVP_PKEY_fromdata(fromdata, &key, EVP_PKEY_KEYPAIR, params) != 1) {
+        key = NULL;
+    }
+    EVP_PKEY_CTX_free(fromdata);
+    OSSL_PARAM_free(params);
+    OSSL_PARAM_BLD_free(bld);
+    return key;
+}
+
+/* The scalar of an ECPrivateKey ::= SEQUENCE { version INTEGER (1), privateKey OCTET STRING, ... }, or NULL.
+   Go reads the scalar alone; an embedded public key is ignored. */
+static BIGNUM *ec_private_scalar(const uint8_t *inner, int inner_len) {
+    if (first_element(inner, (size_t)inner_len) != (size_t)inner_len) return NULL;
+    const uint8_t *q = inner;
+    long seq_len = 0;
+    int tag = 0;
+    int cls = 0;
+    if (ASN1_get_object(&q, &seq_len, &tag, &cls, inner_len) != V_ASN1_CONSTRUCTED || tag != V_ASN1_SEQUENCE) {
+        return NULL;
+    }
+    const uint8_t *end = q + seq_len;
+    long version_len = 0;
+    if (ASN1_get_object(&q, &version_len, &tag, &cls, (long)(end - q)) != 0 || tag != V_ASN1_INTEGER ||
+        version_len != 1 || q[0] != 1) {
+        return NULL;
+    }
+    q += version_len;
+    long scalar_len = 0;
+    if (ASN1_get_object(&q, &scalar_len, &tag, &cls, (long)(end - q)) != 0 || tag != V_ASN1_OCTET_STRING ||
+        scalar_len <= 0 || scalar_len > 66) {
+        return NULL;
+    }
+    return BN_bin2bn(q, (int)scalar_len, NULL);
+}
+
+/* An EC private key from the PKCS#8 payload: the curve must be a supported one and the scalar in 1..n-1. */
+static EVP_PKEY *parse_ec_private(const uint8_t *inner, int inner_len, int curve, MsKeyKind *which) {
+    const char *name = curve_name(curve);
+    BIGNUM *scalar = name ? ec_private_scalar(inner, inner_len) : NULL;
+    EVP_PKEY *key = scalar ? ec_pair_from_scalar(scalar, curve, name) : NULL;
+    BN_clear_free(scalar);
+    if (key) {
+        EVP_PKEY_CTX *check = EVP_PKEY_CTX_new(key, NULL);
+        const bool valid = check && EVP_PKEY_private_check(check) == 1;
+        EVP_PKEY_CTX_free(check);
+        if (!valid) {
+            EVP_PKEY_free(key);
+            key = NULL;
+        }
+    }
+    *which = key ? curve_kind(curve) : K_NONE;
+    return key;
+}
+
+/* Go validates an RSA key and its CRT values; a re-encode catches altered values. */
+static bool rsa_private_valid(EVP_PKEY *key, const uint8_t *der, size_t len) {
+    EVP_PKEY_CTX *check = EVP_PKEY_CTX_new(key, NULL);
+    const bool valid = check && EVP_PKEY_check(check) == 1;
+    EVP_PKEY_CTX_free(check);
+    PKCS8_PRIV_KEY_INFO *again = valid ? EVP_PKEY2PKCS8(key) : NULL;
+    unsigned char *enc = NULL;
+    const int n = again ? i2d_PKCS8_PRIV_KEY_INFO(again, &enc) : -1;
+    PKCS8_PRIV_KEY_INFO_free(again);
+    return der_equal(enc, n, der, len);
+}
+
+/* The exact 48-byte curve25519 PKCS#8 encodings Go accepts: the key behind the 16-byte prefix. */
+static EVP_PKEY *parse_private_25519(const uint8_t *der, MsKeyKind *which) {
+    const uint8_t zero[32] = {0};
+    uint8_t want[48];
+    pkcs8_25519(x25519_oid, zero, want);
+    if (memcmp(der, want, 16) == 0) {
+        *which = K_X25519;
+        return EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, der + 16, 32);
+    }
+    pkcs8_25519(ed25519_oid, zero, want);
+    if (memcmp(der, want, 16) == 0) {
+        *which = K_ED25519;
+        return EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL, der + 16, 32);
+    }
+    return NULL;
+}
+
 /* A PKCS#8 private key; *which says what it is. NULL when it is none of the supported kinds or fails Go's checks. */
-static EVP_PKEY *parse_private(const msrt_vec *v, kind *which) {
+static EVP_PKEY *parse_private(const ms_vec *v, MsKeyKind *which) {
     *which = K_NONE;
-    size_t len = first_element(bytes_of(v), v->len);
+    const size_t len = first_element(bytes_of(v), v->len);
     if (!len) return NULL;
     const uint8_t *der = v->ptr;
     if (len == 48) {
-        uint8_t want[48], zero[32] = {0};
-        for (int i = 0; i < 2; i++) {
-            const uint8_t *oid = i ? ED25519_OID : X25519_OID;
-            pkcs8_25519(oid, zero, want);
-            if (memcmp(der, want, 16) == 0) {
-                *which = i ? K_ED25519 : K_X25519;
-                return EVP_PKEY_new_raw_private_key(i ? EVP_PKEY_ED25519 : EVP_PKEY_X25519, NULL, der + 16, 32);
-            }
-        }
+        EVP_PKEY *key = parse_private_25519(der, which);
+        if (key) return key;
     }
     const uint8_t *p = der;
     PKCS8_PRIV_KEY_INFO *info = d2i_PKCS8_PRIV_KEY_INFO(NULL, &p, (long)len);
@@ -123,84 +242,21 @@ static EVP_PKEY *parse_private(const msrt_vec *v, kind *which) {
     const X509_ALGOR *alg = NULL;
     const uint8_t *inner = NULL;
     int inner_len = 0;
-    EVP_PKEY *key = NULL;
     if (!PKCS8_pkey_get0(&alg_oid, &inner, &inner_len, &alg, info)) {
         PKCS8_PRIV_KEY_INFO_free(info);
         return NULL;
     }
     X509_ALGOR_get0(&alg_oid, &param_type, &param, alg);
     if (OBJ_obj2nid(alg_oid) == NID_X9_62_id_ecPublicKey) {
-        /* Go reads the scalar alone and derives the public key; an embedded one is ignored, but the curve
-           identifiers must name a supported curve. */
-        int curve = param_type == V_ASN1_OBJECT ? OBJ_obj2nid(param) : NID_undef;
-        const char *name = curve == NID_X9_62_prime256v1 ? "P-256" : curve == NID_secp384r1 ? "P-384" : curve == NID_secp521r1 ? "P-521" : NULL;
-        *which = curve == NID_X9_62_prime256v1 ? K_P256 : curve == NID_secp384r1 ? K_P384 : curve == NID_secp521r1 ? K_P521 : K_NONE;
-        /* ECPrivateKey ::= SEQUENCE { version INTEGER (1), privateKey OCTET STRING, ... } */
-        const uint8_t *q = inner;
-        size_t ilen = first_element(inner, (size_t)inner_len);
-        if (name && ilen == (size_t)inner_len) {
-            long seq_len = 0;
-            int tag = 0, cls = 0;
-            if (ASN1_get_object(&q, &seq_len, &tag, &cls, inner_len) == V_ASN1_CONSTRUCTED && tag == V_ASN1_SEQUENCE) {
-                const uint8_t *end = q + seq_len;
-                long l1 = 0, l2 = 0;
-                int ok = ASN1_get_object(&q, &l1, &tag, &cls, (long)(end - q)) == 0 && tag == V_ASN1_INTEGER && l1 == 1 && q[0] == 1;
-                q += ok ? l1 : 0;
-                ok = ok && ASN1_get_object(&q, &l2, &tag, &cls, (long)(end - q)) == 0 && tag == V_ASN1_OCTET_STRING && l2 > 0 && l2 <= 66;
-                BIGNUM *d = ok ? BN_bin2bn(q, (int)l2, NULL) : NULL;
-                if (d) {
-                    OSSL_PARAM_BLD *bld = OSSL_PARAM_BLD_new();
-                    OSSL_PARAM *params = NULL;
-                    /* the public point is d*G, computed here because fromdata does not derive it */
-                    EC_GROUP *group = EC_GROUP_new_by_curve_name(curve);
-                    EC_POINT *point = group ? EC_POINT_new(group) : NULL;
-                    uint8_t pub[133];
-                    size_t pub_len = 0;
-                    if (point && EC_POINT_mul(group, point, d, NULL, NULL, NULL) == 1)
-                        pub_len = EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED, pub, sizeof pub, NULL);
-                    if (bld && pub_len && OSSL_PARAM_BLD_push_utf8_string(bld, OSSL_PKEY_PARAM_GROUP_NAME, name, 0) &&
-                        OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PRIV_KEY, d) &&
-                        OSSL_PARAM_BLD_push_octet_string(bld, OSSL_PKEY_PARAM_PUB_KEY, pub, pub_len))
-                        params = OSSL_PARAM_BLD_to_param(bld);
-                    EC_POINT_free(point);
-                    EC_GROUP_free(group);
-                    EVP_PKEY_CTX *fc = params ? EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL) : NULL;
-                    if (!fc || EVP_PKEY_fromdata_init(fc) != 1 || EVP_PKEY_fromdata(fc, &key, EVP_PKEY_KEYPAIR, params) != 1)
-                        key = NULL;
-                    EVP_PKEY_CTX_free(fc);
-                    OSSL_PARAM_free(params);
-                    OSSL_PARAM_BLD_free(bld);
-                    BN_clear_free(d);
-                }
-            }
-        }
-        if (key) { /* the scalar must be in 1..n-1 */
-            EVP_PKEY_CTX *check = EVP_PKEY_CTX_new(key, NULL);
-            int valid = check && EVP_PKEY_private_check(check) == 1;
-            EVP_PKEY_CTX_free(check);
-            if (!valid) {
-                EVP_PKEY_free(key);
-                key = NULL;
-            }
-        }
-        if (!key) *which = K_NONE;
+        const int curve = param_type == V_ASN1_OBJECT ? OBJ_obj2nid(param) : NID_undef;
+        EVP_PKEY *key = parse_ec_private(inner, inner_len, curve, which);
         PKCS8_PRIV_KEY_INFO_free(info);
         return key;
     }
-    key = EVP_PKCS82PKEY(info);
+    EVP_PKEY *key = EVP_PKCS82PKEY(info);
     PKCS8_PRIV_KEY_INFO_free(info);
     if (!key) return NULL;
-    if (EVP_PKEY_get_base_id(key) == EVP_PKEY_RSA) {
-        /* Go validates the key and its CRT values; a re-encode catches altered values. */
-        EVP_PKEY_CTX *check = EVP_PKEY_CTX_new(key, NULL);
-        int valid = check && EVP_PKEY_check(check) == 1;
-        EVP_PKEY_CTX_free(check);
-        PKCS8_PRIV_KEY_INFO *again = valid ? EVP_PKEY2PKCS8(key) : NULL;
-        unsigned char *enc = NULL;
-        int n = again ? i2d_PKCS8_PRIV_KEY_INFO(again, &enc) : -1;
-        PKCS8_PRIV_KEY_INFO_free(again);
-        if (der_equal(enc, n, der, len)) *which = K_RSA;
-    }
+    if (EVP_PKEY_get_base_id(key) == EVP_PKEY_RSA && rsa_private_valid(key, der, len)) *which = K_RSA;
     if (*which == K_NONE) {
         EVP_PKEY_free(key);
         return NULL;
@@ -208,13 +264,13 @@ static EVP_PKEY *parse_private(const msrt_vec *v, kind *which) {
     return key;
 }
 
-static EVP_PKEY *parse_public(const msrt_vec *v, kind *which) {
+static EVP_PKEY *parse_public(const ms_vec *v, MsKeyKind *which) {
     *which = K_NONE;
     const uint8_t *der = bytes_of(v);
     if (v->len == 44) {
         uint8_t want[44], zero[32] = {0};
         for (int i = 0; i < 2; i++) {
-            spki_25519(i ? ED25519_OID : X25519_OID, zero, want);
+            spki_25519(i ? ed25519_oid : x25519_oid, zero, want);
             if (memcmp(der, want, 12) == 0) {
                 *which = i ? K_ED25519 : K_X25519;
                 return EVP_PKEY_new_raw_public_key(i ? EVP_PKEY_ED25519 : EVP_PKEY_X25519, NULL, der + 12, 32);
@@ -240,18 +296,18 @@ static EVP_PKEY *parse_public(const msrt_vec *v, kind *which) {
     return key;
 }
 
-static void put(msrt_vec *out, unsigned char *der, int n) {
+static void put(ms_vec *out, unsigned char *der, int n) {
     msrt_write_bytes(out, der, n > 0 ? (size_t)n : 0);
     OPENSSL_free(der);
 }
 
 /* ---- keys ---------------------------------------------------------------------------------------------------- */
 
-uint8_t msstd_crypto_ecdsa_generate(int64_t curve, msrt_vec *out) {
+uint8_t msstd_crypto_ecdsa_generate(int64_t curve, ms_vec *out) {
     if (curve == 3) {
         uint8_t k[32], der[48];
         if (RAND_bytes(k, sizeof k) != 1) return STATUS_INVALID_INPUT;
-        pkcs8_25519(X25519_OID, k, der);
+        pkcs8_25519(x25519_oid, k, der);
         msrt_write_bytes(out, der, sizeof der);
         OPENSSL_cleanse(k, sizeof k);
         OPENSSL_cleanse(der, sizeof der);
@@ -271,7 +327,7 @@ uint8_t msstd_crypto_ecdsa_generate(int64_t curve, msrt_vec *out) {
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_rsa_generate(int64_t bits, msrt_vec *out) {
+uint8_t msstd_crypto_rsa_generate(int64_t bits, ms_vec *out) {
     if (bits < 2048 || bits > 8192) return STATUS_INVALID_INPUT;
     EVP_PKEY *key = EVP_PKEY_Q_keygen(NULL, NULL, "RSA", (size_t)bits);
     PKCS8_PRIV_KEY_INFO *info = key ? EVP_PKEY2PKCS8(key) : NULL;
@@ -285,8 +341,8 @@ uint8_t msstd_crypto_rsa_generate(int64_t bits, msrt_vec *out) {
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_public_key_der(const msrt_vec *private_key, msrt_vec *out) {
-    kind which;
+uint8_t msstd_crypto_public_key_der(const ms_vec *private_key, ms_vec *out) {
+    MsKeyKind which;
     EVP_PKEY *key = parse_private(private_key, &which);
     if (!key) return STATUS_INVALID_INPUT;
     if (which == K_X25519 || which == K_ED25519) {
@@ -295,7 +351,7 @@ uint8_t msstd_crypto_public_key_der(const msrt_vec *private_key, msrt_vec *out) 
         int ok = EVP_PKEY_get_raw_public_key(key, pub, &n) == 1;
         EVP_PKEY_free(key);
         if (!ok) return STATUS_INVALID_INPUT;
-        spki_25519(which == K_X25519 ? X25519_OID : ED25519_OID, pub, der);
+        spki_25519(which == K_X25519 ? x25519_oid : ed25519_oid, pub, der);
         msrt_write_bytes(out, der, sizeof der);
         return STATUS_OK;
     }
@@ -309,10 +365,10 @@ uint8_t msstd_crypto_public_key_der(const msrt_vec *private_key, msrt_vec *out) 
 
 /* ---- ECDSA and ECDH ------------------------------------------------------------------------------------------ */
 
-uint8_t msstd_crypto_ecdsa_sign(const msrt_vec *private_key, int64_t alg, const msrt_vec *data, msrt_vec *out) {
+uint8_t msstd_crypto_ecdsa_sign(const ms_vec *private_key, int64_t alg, const ms_vec *data, ms_vec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
-    kind which;
+    MsKeyKind which;
     EVP_PKEY *key = parse_private(private_key, &which);
     if (!key || (which != K_P256 && which != K_P384 && which != K_P521)) {
         EVP_PKEY_free(key);
@@ -331,9 +387,9 @@ uint8_t msstd_crypto_ecdsa_sign(const msrt_vec *private_key, int64_t alg, const 
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_ecdsa_verify(const msrt_vec *public_key, int64_t alg, const msrt_vec *data, const msrt_vec *signature) {
+uint8_t msstd_crypto_ecdsa_verify(const ms_vec *public_key, int64_t alg, const ms_vec *data, const ms_vec *signature) {
     const EVP_MD *md = md_of(alg);
-    kind which;
+    MsKeyKind which;
     EVP_PKEY *key = md ? parse_public(public_key, &which) : NULL;
     if (!key || (which != K_P256 && which != K_P384 && which != K_P521)) {
         EVP_PKEY_free(key);
@@ -349,8 +405,8 @@ uint8_t msstd_crypto_ecdsa_verify(const msrt_vec *public_key, int64_t alg, const
     return (uint8_t)ok;
 }
 
-uint8_t msstd_crypto_ecdh_shared_secret(const msrt_vec *private_key, const msrt_vec *peer, msrt_vec *out) {
-    kind mine, theirs;
+uint8_t msstd_crypto_ecdh_shared_secret(const ms_vec *private_key, const ms_vec *peer, ms_vec *out) {
+    MsKeyKind mine, theirs;
     EVP_PKEY *a = parse_private(private_key, &mine), *b = parse_public(peer, &theirs);
     uint8_t secret[66];
     size_t n = sizeof secret;
@@ -377,8 +433,8 @@ uint8_t msstd_crypto_ecdh_shared_secret(const msrt_vec *private_key, const msrt_
 
 /* ---- RSA ----------------------------------------------------------------------------------------------------- */
 
-static EVP_PKEY *rsa_private(const msrt_vec *v) {
-    kind which;
+static EVP_PKEY *rsa_private(const ms_vec *v) {
+    MsKeyKind which;
     EVP_PKEY *key = parse_private(v, &which);
     if (key && which != K_RSA) {
         EVP_PKEY_free(key);
@@ -387,8 +443,8 @@ static EVP_PKEY *rsa_private(const msrt_vec *v) {
     return key;
 }
 
-static EVP_PKEY *rsa_public(const msrt_vec *v) {
-    kind which;
+static EVP_PKEY *rsa_public(const ms_vec *v) {
+    MsKeyKind which;
     EVP_PKEY *key = parse_public(v, &which);
     EVP_PKEY_CTX *check = key && which == K_RSA ? EVP_PKEY_CTX_new(key, NULL) : NULL;
     int valid = check && EVP_PKEY_public_check(check) == 1;
@@ -401,7 +457,7 @@ static EVP_PKEY *rsa_public(const msrt_vec *v) {
 }
 
 /* padding: 0 PKCS#1 v1.5, 1 PSS with a digest-sized salt. Signs the digest of data. */
-static uint8_t rsa_sign_with(const msrt_vec *private_key, int64_t alg, const msrt_vec *data, int pss, msrt_vec *out) {
+static uint8_t rsa_sign_with(const ms_vec *private_key, int64_t alg, const ms_vec *data, int pss, ms_vec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     EVP_PKEY *key = rsa_private(private_key);
@@ -428,7 +484,7 @@ static uint8_t rsa_sign_with(const msrt_vec *private_key, int64_t alg, const msr
     return STATUS_OK;
 }
 
-static uint8_t rsa_verify_with(const msrt_vec *public_key, int64_t alg, const msrt_vec *data, const msrt_vec *signature,
+static uint8_t rsa_verify_with(const ms_vec *public_key, int64_t alg, const ms_vec *data, const ms_vec *signature,
                                int pss) {
     const EVP_MD *md = md_of(alg);
     EVP_PKEY *key = md ? rsa_public(public_key) : NULL;
@@ -447,16 +503,16 @@ static uint8_t rsa_verify_with(const msrt_vec *public_key, int64_t alg, const ms
     return (uint8_t)ok;
 }
 
-uint8_t msstd_crypto_rsa_sign(const msrt_vec *k, int64_t alg, const msrt_vec *data, msrt_vec *out) {
+uint8_t msstd_crypto_rsa_sign(const ms_vec *k, int64_t alg, const ms_vec *data, ms_vec *out) {
     return rsa_sign_with(k, alg, data, 0, out);
 }
-uint8_t msstd_crypto_rsa_sign_pss(const msrt_vec *k, int64_t alg, const msrt_vec *data, msrt_vec *out) {
+uint8_t msstd_crypto_rsa_sign_pss(const ms_vec *k, int64_t alg, const ms_vec *data, ms_vec *out) {
     return rsa_sign_with(k, alg, data, 1, out);
 }
-uint8_t msstd_crypto_rsa_verify(const msrt_vec *k, int64_t alg, const msrt_vec *data, const msrt_vec *sig) {
+uint8_t msstd_crypto_rsa_verify(const ms_vec *k, int64_t alg, const ms_vec *data, const ms_vec *sig) {
     return rsa_verify_with(k, alg, data, sig, 0);
 }
-uint8_t msstd_crypto_rsa_verify_pss(const msrt_vec *k, int64_t alg, const msrt_vec *data, const msrt_vec *sig) {
+uint8_t msstd_crypto_rsa_verify_pss(const ms_vec *k, int64_t alg, const ms_vec *data, const ms_vec *sig) {
     return rsa_verify_with(k, alg, data, sig, 1);
 }
 
@@ -474,7 +530,7 @@ static EVP_PKEY_CTX *oaep_ctx(EVP_PKEY *key, const EVP_MD *md, int encrypt) {
     return ctx;
 }
 
-uint8_t msstd_crypto_rsa_encrypt(const msrt_vec *public_key, int64_t alg, const msrt_vec *message, msrt_vec *out) {
+uint8_t msstd_crypto_rsa_encrypt(const ms_vec *public_key, int64_t alg, const ms_vec *message, ms_vec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     EVP_PKEY *key = rsa_public(public_key);
@@ -494,7 +550,7 @@ uint8_t msstd_crypto_rsa_encrypt(const msrt_vec *public_key, int64_t alg, const 
     return STATUS_OK;
 }
 
-uint8_t msstd_crypto_rsa_decrypt(const msrt_vec *private_key, int64_t alg, const msrt_vec *ciphertext, msrt_vec *out) {
+uint8_t msstd_crypto_rsa_decrypt(const ms_vec *private_key, int64_t alg, const ms_vec *ciphertext, ms_vec *out) {
     const EVP_MD *md = md_of(alg);
     if (!md) return STATUS_UNSUPPORTED;
     EVP_PKEY *key = rsa_private(private_key);
