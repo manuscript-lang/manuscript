@@ -26,6 +26,9 @@ void msrt_test_str(long n, Str *out) { out->ptr = calloc((size_t)n + 1, 1); out-
 long msrt_test_len(const Str *s) { return (long)s->tagged; }
 void msrt_string_clone(const Str *s, Str *out) { out->ptr = malloc(s->tagged + 1); memcpy(out->ptr, s->ptr, s->tagged + 1); out->tagged = s->tagged; }
 void msrt_string_free(const Str *s) { free(s->ptr); }
+void *msrt_test_fn(void) { return malloc(8); }
+void *msrt_obj_clone(void *o) { return o; }
+void msrt_obj_drop(void *o) { (void)o; }
 int main(void) { return (int)msmain(); }
 C
 status=0

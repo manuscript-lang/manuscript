@@ -178,7 +178,7 @@ test "malformed and bounded inputs return errors":
     failure3 := parse(text: "{\"a\":1,\"a\":2}", options: limits)
     (
         failure3.err().message | expect_equal(
-            "JSON: invalid data: line 1, column 8: duplicate object key"
+            "JSON: invalid data: line 1, column 14: duplicate object key"
         )?
     )
 

@@ -283,7 +283,7 @@ static void mp_type_defs(const MirModule *m, MsBuf *o) {
         const MirTypeDef *r = &m->type_defs[i];
         ms_buf_puts(o, "type ");
         mp_sym(m, o, r->name);
-        ms_buf_puts(o, " { ");
+        ms_buf_puts(o, r->indirect ? " indirect { " : " { ");
         for (uint32_t k = 0; k < r->nfields; k++) {
             if (k) {
                 ms_buf_puts(o, ", ");
@@ -416,6 +416,18 @@ static void mp_vtables(const MirModule *m, MsBuf *o) {
     }
 }
 
+static void mp_desc_glue(const MirModule *m, MsBuf *o) {
+    for (uint32_t i = 0; i < m->ndesc_glue; i++) {
+        ms_buf_puts(o, "desc_glue ");
+        mir_print_ty(m, m->desc_glue[i].ty, o);
+        ms_buf_puts(o, " @");
+        mp_sym(m, o, m->funcs[m->desc_glue[i].eq].name);
+        ms_buf_puts(o, " @");
+        mp_sym(m, o, m->funcs[m->desc_glue[i].hash].name);
+        ms_buf_putc(o, '\n');
+    }
+}
+
 void mir_print_module(const MirModule *m, MsBuf *o) {
     ms_buf_puts(o, "module ");
     MsStr module_name = ms_name(&m->names, m->name);
@@ -430,6 +442,7 @@ void mir_print_module(const MirModule *m, MsBuf *o) {
     mp_externs(m, o);
     mp_globals(m, o);
     mp_vtables(m, o);
+    mp_desc_glue(m, o);
     if (m->entry != MIR_NONE) {
         ms_buf_puts(o, "entry @");
         mp_sym(m, o, m->funcs[m->entry].name);
@@ -635,6 +648,9 @@ static void mp_inst(const PrintCx *cx, MsBuf *o, const MirInst *in) {
 static void mp_loc(MsBuf *o, MirLoc l) {
     if (!mir_loc_none(l)) {
         ms_buf_printf(o, " !%u:%u:%u", l.file, l.line, l.col);
+        if (l.scope != 0) {
+            ms_buf_printf(o, ":%u", l.scope);
+        }
     }
 }
 
@@ -692,6 +708,25 @@ static void mp_func_kind(const MirModule *m, const MirFunc *f, MsBuf *o) {
         mp_sym(m, o, m->funcs[f->close_exit[0]].name);
         ms_buf_puts(o, ", @");
         mp_sym(m, o, m->funcs[f->close_exit[1]].name);
+        ms_buf_putc(o, ')');
+    }
+    if (f->ret_borrowed) ms_buf_puts(o, " ret_borrowed");
+    if (f->ret_view) ms_buf_puts(o, " ret_view");
+    if (f->scoped) ms_buf_puts(o, " scoped");
+    if (f->keeps_scoped) ms_buf_puts(o, " keeps_scoped");
+    if (f->unwind_only) ms_buf_puts(o, " unwind_only");
+    if (f->raw_scratch) ms_buf_puts(o, " raw_scratch");
+    if (f->has_slot_close) {
+        ms_buf_puts(o, " slot_close(");
+        mir_print_ty(m, f->slot_close, o);
+        ms_buf_putc(o, ')');
+    }
+    if (f->ncapture_closers > 0) {
+        ms_buf_puts(o, " capture_closers(");
+        for (uint32_t i = 0; i < f->ncapture_closers; i++) {
+            ms_buf_printf(o, i ? ", %u @" : "%u @", f->capture_closers[i].capture);
+            mp_sym(m, o, m->funcs[f->capture_closers[i].func].name);
+        }
         ms_buf_putc(o, ')');
     }
 }
@@ -765,6 +800,49 @@ static void mp_block(const PrintCx *cx, MsBuf *o, uint32_t index) {
     ms_buf_putc(o, '\n');
 }
 
+/* Inlined scopes, named values and values proved exact, after the blocks, only when present. */
+static void mp_facts(const PrintCx *cx, MsBuf *o) {
+    const MirFunc *f = cx->f;
+    const MirModule *m = cx->m;
+    for (uint32_t i = 0; i < f->nscopes; i++) {
+        const MsStr name = ms_name(&m->names, f->scopes[i].name);
+        ms_buf_puts(o, "  scope ");
+        mp_quote(o, name.ptr, name.len);
+        ms_buf_printf(o, " %u %u %u\n", f->scopes[i].file, f->scopes[i].parent, f->scopes[i].call_line);
+    }
+    for (uint32_t i = 0; i < f->nnames; i++) {
+        const MirNamedValue *n = &f->names[i];
+        if (n->value >= f->nvalues || cx->names[n->value] == MIR_NONE) {
+            continue; /* its value no longer exists */
+        }
+        const MsStr name = ms_name(&m->names, n->name);
+        ms_buf_printf(o, "  name %%%u ", cx->names[n->value]);
+        mp_quote(o, name.ptr, name.len);
+        ms_buf_printf(o, " %s %u\n", n->param ? "param" : "local", n->scope);
+    }
+    if (f->nexact == 0) {
+        return;
+    }
+    /* In printed-number order, which is not the value order after a pass moved values. */
+    uint32_t *by_number = malloc(sizeof(uint32_t) * (f->nvalues ? f->nvalues : 1));
+    if (by_number == NULL) {
+        abort();
+    }
+    memset(by_number, 0xff, sizeof(uint32_t) * (f->nvalues ? f->nvalues : 1));
+    for (uint32_t v = 0; v < f->nvalues; v++) {
+        if (cx->names[v] != MIR_NONE) {
+            by_number[cx->names[v]] = v;
+        }
+    }
+    for (uint32_t k = 0; k < f->nvalues; k++) {
+        const uint32_t v = by_number[k];
+        if (v != MIR_NONE && (v >> 6) < f->nexact && ((f->exact[v >> 6] >> (v & 63)) & 1) != 0) {
+            ms_buf_printf(o, "  exact %%%u\n", k);
+        }
+    }
+    free(by_number);
+}
+
 void mir_print_func(const MirModule *m, const MirFunc *f, MsBuf *o) {
     size_t count = f->nvalues ? f->nvalues : 1;
     PrintCx cx = {m, f, malloc(sizeof(uint32_t) * count)};
@@ -777,6 +855,7 @@ void mir_print_func(const MirModule *m, const MirFunc *f, MsBuf *o) {
     for (uint32_t i = 0; i < f->nblocks; i++) {
         mp_block(&cx, o, i);
     }
+    mp_facts(&cx, o);
     ms_buf_puts(o, "}\n");
     free(cx.names);
 }

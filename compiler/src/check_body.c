@@ -35,7 +35,7 @@ static bool body_is_value_type(const MsBody *b, MsTy ty) {
     return ty != MS_TY_NONE && (ty == b->int_ty || ty == b->float_ty || ty == b->bool_ty || ty == b->string_ty);
 }
 
-/* A `type` or `enum` this module declares without type parameters. */
+/* A `type`, `enum` or interface without type parameters. */
 static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
     const MsTyTable *tys = &b->c->tys;
     const MsKind kind = ms_ty_kind(tys, ty);
@@ -44,14 +44,14 @@ static bool body_is_own_nominal(const MsBody *b, MsTy ty) {
         return false;
     }
     const MsSymId sym = def - 1;
-    return sym < b->c->syms.count && b->c->syms.module[sym] == b->module && b->c->syms.kind[sym] == MS_SYM_TYPE;
+    return sym < b->c->syms.count && b->c->syms.kind[sym] == MS_SYM_TYPE;
 }
 
 /* A type whose values the pass can pass around: primitives, and the module's own nominal types
  * when nothing in the module could make them closeable (a value that closes gets a cleanup the
  * pass does not record yet). */
 static bool body_is_admitted(const MsBody *b, MsTy ty) {
-    return body_is_value_type(b, ty) || ms_body_is_function_value(b, ty) ||
+    return body_is_value_type(b, ty) || ms_body_is_list(b, ty) || ms_body_is_function_value(b, ty) ||
            (!b->has_close && body_is_own_nominal(b, ty));
 }
 
@@ -420,7 +420,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, callee->u.sym);
     const MsSyms *syms = &b->c->syms;
-    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN || syms->module[sym] != b->module ||
+    if (sym == MS_NONE || syms->kind[sym] != MS_SYM_FN ||
         syms->decl[sym] == NULL || syms->nvars[sym] != 0 || syms->decl[sym]->kind != MS_D_FN ||
         syms->decl[sym]->u.fn.external) {
         return ms_body_unsupported(b);
@@ -442,7 +442,7 @@ static MsTy body_call(MsBody *b, const MsExpr *e) {
     }
     b->facts->call_callee[e->id] = sym;
     const MsTy result = tys->result[sig];
-    return body_is_value_type(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
+    return body_is_admitted(b, result) || result == b->void_ty ? result : ms_body_unsupported(b);
 }
 
 static MsTy body_unary(MsBody *b, const MsExpr *e) {
@@ -640,10 +640,10 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
     case MS_E_UNARY: ty = body_unary(b, e); break;
     case MS_E_BINARY: ty = body_binary(b, e); break;
     case MS_E_MEMBER: ty = body_member(b, e); break;
+    case MS_E_INDEX: ty = ms_body_index(b, e); break;
+    case MS_E_LIST: ty = ms_body_list(b, e, expected); break;
     case MS_E_APPLY:
-    case MS_E_INDEX:
     case MS_E_PROBE:
-    case MS_E_LIST:
     case MS_E_MAP: return ms_body_unsupported(b);
     case MS_E_LAMBDA: ty = ms_body_lambda(b, e, expected); break;
     case MS_E_CALL: ty = body_call(b, e); break;
@@ -674,6 +674,9 @@ MsTy ms_body_expr(MsBody *b, const MsExpr *e, MsTy expected) {
 
 /* The primitive type a written annotation names, or MS_TY_NONE. */
 MsTy ms_body_annotation(MsBody *b, const MsTypeRef *t) {
+    if (t->kind == MS_TYPE_NAMED && t->args.len == 1) {
+        return ms_body_list_annotation(b, t);
+    }
     if (t->kind != MS_TYPE_NAMED || t->args.len != 0) {
         return ms_body_unsupported(b);
     }
@@ -1137,8 +1140,12 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
     ms_module_check_bodies_with(c, module, NULL);
 }
 
-void ms_module_check_bodies_with(MsCheck *c, MsModId module, const MsMethodTable *methods) {
+void ms_module_check_bodies_with(MsCheck *c, MsModId module, MsMethodTable *methods) {
     ms_module_resolve_types(c, module);
+    const MsModId intrinsics = ms_map_get(&c->module_by_path, ms_intern_cstr(c->names, "@std/intrinsics.ms"));
+    if (methods != NULL && intrinsics != MS_NONE) {
+        ms_module_ensure_operations(c, intrinsics, methods); // what a primitive receiver offers
+    }
     MsModuleRow *row = &c->mods[module];
     MsFacts *facts = row->facts;
     // A module with a declaration-level diagnostic may have signatures the bodies would restate.

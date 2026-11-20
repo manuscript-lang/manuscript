@@ -751,7 +751,7 @@ pub struct Func {
     pub close_exit: Option<(FuncId, FuncId)>,
     /// Source names of values for a debugger: a parameter, later a local. Keyed by value, so a
     /// pass that moves or removes parameters leaves the others named; an entry whose value no
-    /// longer exists is ignored. Not part of the text format, and no pass reads it: the code
+    /// longer exists is ignored. In the text format as `name` lines, and no pass reads it: the code
     /// generators show the value under its name while it is alive.
     pub names: Vec<NamedValue>,
     /// Blocks laid out of line because control rarely enters them: the fault a check branches

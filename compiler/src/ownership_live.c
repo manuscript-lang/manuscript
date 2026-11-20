@@ -142,15 +142,25 @@ static void live_expr(LiveWalk *w, const MsExpr *e) {
     case MS_E_UNARY: live_expr(w, e->u.bin.left); return;
     case MS_E_BINARY: live_binary(w, e); return;
     case MS_E_MEMBER: live_expr(w, e->u.member.left); return;
-    case MS_E_APPLY:
     case MS_E_INDEX:
-    case MS_E_PROBE:
+        live_expr(w, e->u.bin.right);
+        live_expr(w, e->u.bin.left);
+        return;
     case MS_E_LIST:
+        for (uint32_t i = e->u.list.len; i > 0; i--) {
+            live_expr(w, e->u.list.ptr[i - 1]);
+        }
+        return;
+    case MS_E_APPLY:
+    case MS_E_PROBE:
     case MS_E_MAP:
     case MS_E_LAMBDA: w->supported = false; return;
     case MS_E_CALL:
         for (uint32_t i = e->u.call.args.len; i > 0; i--) {
             live_expr(w, e->u.call.args.ptr[i - 1].value);
+        }
+        if (e->u.call.callee->kind == MS_E_MEMBER) {
+            live_expr(w, e->u.call.callee->u.member.left); // the receiver is evaluated first
         }
         return;
     case MS_E_MATCH: live_match(w, e); return;
