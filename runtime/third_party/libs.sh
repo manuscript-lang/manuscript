@@ -20,6 +20,14 @@ package() { # library name -> pkg-config package
         pcre2) echo libpcre2-8 ;; z) echo zlib ;; *) echo "libs.sh: unknown library $1" >&2; exit 1 ;;
     esac
 }
+# Homebrew keeps OpenSSL and zlib out of the default pkg-config path (keg-only formulae).
+if [ "$(uname -s)" = Darwin ] && command -v brew >/dev/null 2>&1; then
+    for keg in openssl@3 zlib; do
+        prefix=$(brew --prefix "$keg" 2>/dev/null) || continue
+        PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+    done
+    export PKG_CONFIG_PATH
+fi
 triple=${MS_C_TRIPLE:-}
 msys=
 case "$triple" in

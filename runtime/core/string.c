@@ -2,6 +2,7 @@
  * hash is bit-identical to `hash_bytes` there, because the Rust maps and the compiler's inline map
  * probe still compute it themselves. */
 #include "ms_rt/string.h"
+#include "ms_rt/search.h"
 #include "ms_rt/utf8.h"
 
 #define K0 UINT64_C(0x9e3779b97f4a7c15)
@@ -169,3 +170,19 @@ int64_t msrt_string_scalar_step(const ms_str *s, int64_t at) {
 
 /* The Unicode scalar value of the character that starts at byte `at`. */
 int64_t msrt_string_scalar_at_byte(const ms_str *s, int64_t at) { return rune_at(s, at).rune; }
+
+uint8_t msrt_string_contains(const ms_str *a, const ms_str *v) {
+    return ms_find(ms_str_data(a), ms_str_len(a), ms_str_data(v), ms_str_len(v)) != SIZE_MAX;
+}
+
+/* contains where the caller knows the needle has two or more bytes (a literal). */
+uint8_t msrt_string_contains_multi(const ms_str *a, const ms_str *v) { return msrt_string_contains(a, v); }
+
+/* Non-overlapping occurrences of v in a; an empty v counts the scalars plus one. */
+int64_t msrt_string_count(const ms_str *a, const ms_str *v) {
+    size_t m = ms_str_len(v);
+    if (m == 0) {
+        return msrt_string_scalar_length(a) + 1;
+    }
+    return (int64_t)ms_count(ms_str_data(a), ms_str_len(a), ms_str_data(v), m);
+}

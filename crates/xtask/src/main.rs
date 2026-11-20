@@ -804,6 +804,7 @@ fn c_libs_wired(triple: Option<&str>) -> bool {
     match std::env::consts::OS {
         "linux" => triple.is_none_or(|t| t.ends_with("linux-gnu") || t.ends_with("linux-musl")),
         "windows" => triple.is_some_and(|t| t.ends_with("windows-gnullvm")),
+        "macos" => true,
         _ => false,
     }
 }

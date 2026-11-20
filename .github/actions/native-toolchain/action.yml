@@ -13,9 +13,9 @@ runs:
   using: composite
   steps:
     # `cargo xtask runtime` folds libuv, OpenSSL and the other C libraries into the runtime archives; they come
-    # from the system packages through runtime/third_party/libs.sh (macOS and Windows join as their builds are proven).
+    # from the system packages through runtime/third_party/libs.sh (Windows takes MSYS2 packages, below).
     - name: Install the C libraries
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' || runner.os == 'macOS'
       shell: bash
       run: sh runtime/third_party/libs.sh install
     # `ms` downloads the pinned lld and LLVM tools into $XDG_CACHE_HOME/ms/{lld,llvm} on first use
