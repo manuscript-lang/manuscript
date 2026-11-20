@@ -20,6 +20,7 @@
 #include "mir_exit_drops.c"
 #include "mir_expand.c"
 #include "mir_expand_owned.c"
+#include "mir_cancel_edges.c"
 #include "mir_analysis.c"
 #include "mir_verify_types.c"
 #include "mir_verify.c"
