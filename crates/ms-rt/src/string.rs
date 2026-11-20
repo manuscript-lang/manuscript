@@ -567,6 +567,7 @@ pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
 }
 
 /// A one-byte needle in a short text is a short scan; every other search is the general one.
+#[cfg(not(ms_c = "msrt_string_contains"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 {
@@ -848,6 +849,7 @@ pub unsafe fn msrt_string_contains_long(a: *const StrVal, v: *const StrVal) -> u
 
 /// `contains` where the caller knows the needle has two or more bytes (a literal): the general
 /// search without the one-byte checks.
+#[cfg(not(ms_c = "msrt_string_contains_multi"))]
 #[unsafe(no_mangle)]
 // ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_contains_multi(
@@ -859,6 +861,7 @@ pub unsafe extern "C-unwind" fn msrt_string_contains_multi(
 }
 
 /// Non-overlapping occurrences of `v` in `a`; an empty `v` counts the scalars plus one.
+#[cfg(not(ms_c = "msrt_string_count"))]
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_count(a: *const StrVal, v: *const StrVal) -> i64 {
