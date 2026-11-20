@@ -6,7 +6,6 @@
 //! rules of the MIR verifier, and standard-library natives become runtime
 //! calls (`ms-rt`) or small MIR sequences.
 
-
 mod alias;
 mod borrow_shape;
 mod bound_alias;

@@ -87,6 +87,8 @@ void ms_classifier_free(MsClassifier *classifier);
 void ms_classifier_mark_closeable(MsClassifier *classifier, MsSym type_id) MS_NONNULL;
 /* Declares that the interface with this identity has a consuming `close`, so its values own what
  * they were made from. */
+/* Marks the receiver of every method row that closes it (`Method::closes`). */
+void ms_classifier_mark_methods(MsClassifier *classifier, const MsMethods *rows);
 void ms_classifier_mark_owned_close(MsClassifier *classifier, MsSym interface_id) MS_NONNULL;
 
 MsClass ms_classify(MsClassifier *classifier, MsTy type) MS_NONNULL;

@@ -42,7 +42,8 @@ static void wait_until(bool (*done)(void), const char *what) {
 }
 
 static bool was_held_up(void) { return atomic_load(&held_up_seen); }
-static bool called_more(void) { return atomic_load(&calls) >= 3; }
+static bool epoch_moved(void) { return ms_watch_epoch() >= 40; }
+static bool watcher_asleep(void) { return ms_watch_asleep(); }
 
 static unsigned mark;
 static bool calls_grew(void) { return atomic_load(&calls) > mark; }
@@ -56,27 +57,28 @@ int main(void) {
     /* Busy and never turning: held up within a few looks. */
     wait_until(was_held_up, "a busy isolate that does not turn is held up");
 
-    /* Turning at each look keeps it from being held up. */
-    atomic_store(&held_up_seen, false);
-    const unsigned before = atomic_load(&calls);
-    while (atomic_load(&calls) < before + 20) {
-        ms_watch_turn();
-        usleep(50);
-    }
-    expect(!atomic_load(&held_up_seen), "an isolate that turns is not held up");
+    /* The held-up test on a frozen clock: stop the watcher so the epoch no longer moves, then look at crafted looks. */
+    wait_until(epoch_moved, "the clock advances");
+    ms_watch_stop();
+    const uint64_t now = ms_watch_epoch();
+    ms_watch_turn(); /* seen = now */
+    expect(!ms_watch_held_up((MsWatchLook){.now = now + 20, .last = now}, 0, watched),
+           "an isolate that turned at the last look is not held up");
+    expect(ms_watch_held_up((MsWatchLook){.now = now + 40, .last = now + 20}, 0, watched),
+           "an isolate that has not turned for a whole interval is held up");
+    expect(!ms_watch_held_up((MsWatchLook){.now = now + 40, .last = now + 20}, UINT64_C(1) << watched, watched),
+           "a resting isolate is never held up");
 
-    /* Resting: never held up, and the watcher goes to sleep after its quiet looks. */
+    /* Restart; resting isolates let the watcher sleep, and leaving the rest wakes it. */
+    expect(ms_watch_add_hook(hook), "restart");
     expect(ms_isolate_idle_enter(), "idle enter");
-    wait_until(called_more, "the hook runs while the watcher is awake");
-    usleep(120000);
-    mark = atomic_load(&calls);
-    usleep(30000);
-    expect(atomic_load(&calls) == mark, "the watcher sleeps when every isolate rests");
-    expect(!atomic_load(&held_up_seen), "a resting isolate is not held up");
+    wait_until(watcher_asleep, "the watcher sleeps when every isolate rests");
 
     /* Leaving the rest wakes it. */
+    mark = atomic_load(&calls);
     ms_isolate_idle_leave();
     wait_until(calls_grew, "leaving the rest wakes the watcher");
+    expect(!ms_watch_asleep() || atomic_load(&calls) > mark, "the watcher is awake");
 
     ms_watch_stop();
     ms_isolate_unregister(watched, NULL);

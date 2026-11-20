@@ -117,14 +117,6 @@ void ms_sys_wake_send(int write_fd);
 void ms_sys_wake_drain(int read_fd);
 /* Closes both ends. */
 void ms_sys_wake_close(const int fds[2]);
-/* Makes the process's environ agree with the C library's own copy. A static library built without -fPIC makes the
- * linker copy environ into the program, and glibc fills only its own, so readers of the copy would see an empty
- * environment (issue #4647). Linux only; a no-op elsewhere. */
-void ms_sys_sync_environ(void);
-/* Points the C library's own environment, which execvp reads, at `replacement` and returns the previous one. A child
- * that libuv forks sets only the program's copy of environ (see above), so `uv_spawn` with an environment needs this
- * around the call, under a lock. Linux only; elsewhere it returns `replacement` and changes nothing. */
-char **ms_sys_swap_libc_environ(char **replacement);
 
 /* ---- network interfaces ---- */
 
