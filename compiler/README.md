@@ -31,6 +31,8 @@ compiler/
 
 `sh compiler/tests/mir-diff.sh` (part of `make c-compiler-test`) compares the opcode tables, then the canonical text of every `.mir` file in the repository and of mutated copies, byte for byte with the Rust printer (`crates/ms-mir/examples/c_oracle.rs`). On rejected input only the error line is compared. The C parser differs from the Rust one in three ways: error messages do not quote tokens, non-ASCII outside string literals is rejected, and a stray token in a function header is an error (the Rust parser loops on it, so such mutants are dropped from the comparison).
 
+`include/ms/mir_analysis.h` and `src/mir_analysis.c` hold what every pass and the verifier read: operand and result ownership modes, terminator targets, predecessors, reverse post-order, dominators, value sets and block editing. The comparison also runs the Rust `analysis` mode and compares these facts per function.
+
 Next: verifier, layout tables, then the optimisation passes one at a time, each checked by running both implementations on the same MIR text.
 
 ## The checker tables

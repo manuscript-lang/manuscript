@@ -14,7 +14,7 @@ cargo build --release --locked -p ms-mir --example c_oracle
 oracle=target/release/examples/c_oracle
 
 cc -std=c11 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -Wall -Wextra -Werror \
-    -Icompiler/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -o "$out/dump"
+    -Icompiler/include compiler/src/libms.c compiler/tools/ms_mir_dump.c -Iruntime/include -o "$out/dump"
 cc -std=c11 -O1 -Wall -Wextra -Werror compiler/tests/mutate.c -o "$out/mutate"
 
 status=0
@@ -45,8 +45,10 @@ for f in "$out"/fuzz/*.mir; do
 done
 
 for set in files fuzz; do
-    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" print > "$out/print-$set.rust"
-    tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" print > "$out/print-$set.c"
-    check "print $set ($(grep -c '^===' "$out/print-$set.rust") files)" "$out/print-$set.rust" "$out/print-$set.c"
+    for mode in print analysis; do
+        tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$oracle" $mode > "$out/$mode-$set.rust"
+        tr '\n' '\0' < "$out/$set.txt" | xargs -0 "$out/dump" $mode > "$out/$mode-$set.c"
+        check "$mode $set ($(grep -c '^===' "$out/$mode-$set.rust") files)" "$out/$mode-$set.rust" "$out/$mode-$set.c"
+    done
 done
 exit $status
