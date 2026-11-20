@@ -421,7 +421,7 @@ static bool manifest_read_document(const Reader *r, size_t at, MsBuf *entries) {
 
 /* ---- validation ---- */
 
-bool ms_manifest_valid_alias(const char *key) {
+static bool manifest_valid_alias(const char *key) {
     if (key[0] != '@' || key[1] == 0) {
         return false;
     }
@@ -471,7 +471,7 @@ static bool manifest_control(const Reader *r, const Entry *e) {
 }
 
 static bool manifest_valid_name(const char *key) {
-    return ms_manifest_valid_alias(key) && strcmp(key, "@std") != 0;
+    return manifest_valid_alias(key) && strcmp(key, "@std") != 0;
 }
 
 static bool manifest_add_alias(Builder *b, const Entry *e) {
@@ -481,7 +481,7 @@ static bool manifest_add_alias(Builder *b, const Entry *e) {
     }
     if (!manifest_valid_name(e->name)) {
         const char *hint = "";
-        if (strcmp(e->name, "std") != 0 && ms_manifest_valid_alias(ms_arena_fmt(r->arena, "@%s", e->name).ptr)) {
+        if (strcmp(e->name, "std") != 0 && manifest_valid_alias(ms_arena_fmt(r->arena, "@%s", e->name).ptr)) {
             hint = ms_arena_fmt(r->arena, " (did you mean @%s?)", e->name).ptr;
         }
         return manifest_fail_at(r, e->key_pos, ms_arena_fmt(r->arena, "invalid or reserved alias %s%s; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias", e->name, hint).ptr);

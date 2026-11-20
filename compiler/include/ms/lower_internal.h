@@ -135,6 +135,9 @@ LbVal lst_method(Lb *lb, const MsExpr *e);
 /* Strings built from pieces (lower_text.c, included after lower_body.c). */
 LbVal lt_text(Lb *lb, const MsExpr *e);
 
+/* User enums (lower_enum.c, included after lower_body.c). */
+MirTy le_type(Lb *lb, MsTy ty);
+
 /* Records (lower_record.c, included after lower_body.c). */
 MirTy lr_type(Lb *lb, MsTy ty);
 LbVal lr_construct(Lb *lb, const MsExpr *call);
@@ -143,6 +146,7 @@ LbVal lr_field(Lb *lb, const MsExpr *e);
 /* Optional and Result (lower_alt.c, included after lower_body.c). */
 MirTy la_type(Lb *lb, MsTy ty);
 LbVal la_none(Lb *lb, const MsExpr *e);
+LbVal la_nullary(Lb *lb, const MsExpr *e);
 LbVal la_none_owned(Lb *lb, const MsExpr *e);
 LbVal la_case(Lb *lb, const MsExpr *call);
 MirValue la_test(Lb *lb, MirValue subject);
