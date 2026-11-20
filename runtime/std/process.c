@@ -44,12 +44,6 @@ static void fail_host(MsFsFail *fail, MsSysError error, const char *operation) {
 
 static bool in_id_range(int64_t value) { return value >= 0 && value <= MAX_ID; }
 
-/* The runtime's start-up records (src/start.rs until startup moves to C): the arguments the process was started with,
- * the monotonic time it started at (0 before start) and its work counters. */
-void msrt_argv(MsVec *out);
-int64_t msrt_start_nanos(void);
-void msrt_counts(uint64_t *out);
-
 /* ---- working directory ---- */
 
 uint8_t msstd_process_working_directory(MsStr *out, MsStr *err) {

@@ -21,7 +21,7 @@
     "; there is no 'is' operator: write '==' to compare values, or 'match value:' to test which "  \
     "alternative a value is"
 #define HIDDEN_ITEM "for item"
-#define INDEX_SET "[]="
+#define INDEX_SET MS_INDEX_SET
 /* Binding power of the operand of a prefix `not` or `try`. */
 #define PREFIX_OPERAND 3
 /* Precedence of `..`: above comparisons, below `+` and `-`. */
@@ -2086,6 +2086,10 @@ static bool plain_chain(const MsExpr *e) {
             return e->kind == MS_E_NAME;
         }
     }
+}
+
+bool ms_plain_index_target(const MsExpr *left, const MsExpr *index) {
+    return plain_chain(left) && plain_index(index);
 }
 
 /* The receiver and index of `left[index]`, however the bracket was parsed. */
