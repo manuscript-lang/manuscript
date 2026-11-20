@@ -2,7 +2,6 @@
 //! ms: domain HTTP
 
 use super::handler::Program;
-use super::http_client::{chunk, limit};
 use super::tls::tls_options;
 use super::{ExchH, HeadersH, ServingH, SpecH, WorkerH, opt, report};
 use crate::bound::Bound;
@@ -322,6 +321,28 @@ native! {
     /// `HttpExchange.write(data: Bytes)`.
     fn msstd_http_exchange_write_bytes(x: ObjRef<ExchH>, data: &[u8], err: ErrOut) -> Result<(), StatusCode> {
         report(x.write(data), &err)
+    }
+}
+
+/// A read result as a status: `STATUS_NONE` at the end of the stream, else the chunk through `out`.
+fn chunk<E: crate::error::Status>(
+    r: Result<Option<Vec<u8>>, E>,
+    out: Out<Vec<u8>>,
+    err: &ErrOut,
+) -> Result<(), StatusCode> {
+    match report(r, err)? {
+        Some(data) => out.write(data),
+        None => return Err(StatusCode(ms_rt_abi::STATUS_NONE)),
+    }
+    Ok(())
+}
+
+/// A negative limit is invalid; `None` is unlimited.
+fn limit(v: Option<i64>) -> Result<Option<u64>, ()> {
+    match v {
+        Some(n) if n < 0 => Err(()),
+        Some(n) => Ok(Some(n as u64)),
+        None => Ok(None),
     }
 }
 

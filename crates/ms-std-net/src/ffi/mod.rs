@@ -11,7 +11,6 @@
 //!   pointers.
 
 pub mod handler;
-pub mod http_client;
 pub mod http_server;
 pub mod net;
 pub mod tls;
@@ -106,10 +105,6 @@ handle_newtype! {
     SpecH(std::sync::Arc<crate::ffi::http_server::Shared>);
     /// The server of one `serve` worker thread.
     WorkerH(Bound<std::rc::Rc<crate::http::server::Server>>);
-    /// An `HttpClient` handle.
-    ClientH(Bound<std::rc::Rc<crate::http::client::Client>>);
-    /// An `HttpResponseBody` handle.
-    BodyH(Bound<std::rc::Rc<crate::http::client::ResponseBody>>);
     /// An `HttpExchange` handle.
     ExchH(Bound<std::rc::Rc<crate::http::exchange::Exchange>>);
     /// A `WebSocket` handle.

@@ -1,6 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
-	ClientResponse, HttpClient, HttpClientOptions, HttpHeaders from "@std/net/http.ms",
+	HttpHeaders from "@std/net/http.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	Datagram,
 	NativeConnection,
@@ -179,10 +179,6 @@ export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
 
 export extern fn msstd_net_network_close(net: NativeNetwork) Void
 
-export extern fn msstd_net_network_http_client(
-	net: NativeNetwork,
-	options: HttpClientOptions,
-) HttpClient!
 
 export extern fn msstd_net_network_lookup(
 	net: NativeNetwork,
@@ -190,16 +186,6 @@ export extern fn msstd_net_network_lookup(
 	max_records: Int?,
 	timeout: Duration?,
 ) List[String]!
-
-export extern fn msstd_net_network_request_bytes(
-	net: NativeNetwork,
-	method: String,
-	url: String,
-	headers: HttpHeaders,
-	body: Bytes,
-	max_response_bytes: Int?,
-	timeout: Duration?,
-) ClientResponse!
 
 export extern fn msstd_net_network_resolve(
 	net: NativeNetwork,

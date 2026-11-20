@@ -9,22 +9,26 @@ import (
 	stringify from "@std/data/json.ms",
 	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
 	read_all from "@std/io/streams.ms",
+	Policy from "@std/net/policy.ms",
 	TlsOptions from "@std/net/tls.ms",
+	parse from "@std/net/url.ms",
 	NativeWebSocket, WebSocket, web_socket_from from "@std/net/websocket.ms",
 	Duration from "@std/time.ms",
 
-	msstd_http_body_close,
-	msstd_http_body_metadata,
-	msstd_http_body_read,
-	msstd_http_body_read_all,
-	msstd_http_client_close,
-	msstd_http_client_request_bytes,
-	msstd_http_headers_append,
-	msstd_http_headers_clone,
-	msstd_http_headers_names,
-	msstd_http_headers_new,
-	msstd_http_headers_remove,
-	msstd_http_headers_values from "@std/internal/http.ms",
+	msstd_body_close,
+	msstd_body_metadata,
+	msstd_body_read,
+	msstd_body_read_all,
+	msstd_client_close,
+	msstd_client_fetch,
+	msstd_client_narrow,
+	msstd_client_new,
+	msstd_headers_append,
+	msstd_headers_clone,
+	msstd_headers_names,
+	msstd_headers_new,
+	msstd_headers_remove,
+	msstd_headers_values from "@std/internal/http.ms",
 )
 
 /*
@@ -37,11 +41,11 @@ export extern type HttpHeaders
 // Appends a String value under a valid HTTP name; an invalid name returns EINVAL.
 // Requests and responses validate field values and framing again when they are sent.
 fn var HttpHeaders.append(name: String, value: String) Void!:
-	return msstd_http_headers_append(self, name, value.to_bytes())
+	return msstd_headers_append(self, name, value.to_bytes())
 
 // Appends raw bytes, for the rare field whose value is not UTF-8 text.
 fn var HttpHeaders.append_bytes(name: String, value: Bytes) Void!:
-	return msstd_http_headers_append(self, name, value)
+	return msstd_headers_append(self, name, value)
 
 // Returns the first value as text, or none for an absent name. A value that is not
 // valid UTF-8 is skipped; read it with get_all_bytes.
@@ -52,7 +56,7 @@ fn HttpHeaders.get(name: String) String?:
 // A received value that is not valid UTF-8 is left out; read it with get_all_bytes.
 fn HttpHeaders.get_all(name: String) List[String]:
 	var out: List[String] = []
-	raw := msstd_http_headers_values(self, name)
+	raw := msstd_headers_values(self, name)
 	if found := raw:
 		for item in found:
 			if text := item.decode_utf8(): out.append(text)
@@ -61,28 +65,28 @@ fn HttpHeaders.get_all(name: String) List[String]:
 // Returns the raw bytes of every value as an owned list, or none for an absent
 // name.
 fn HttpHeaders.get_all_bytes(name: String) List[Bytes]?:
-	return msstd_http_headers_values(self, name)
+	return msstd_headers_values(self, name)
 
 // Reports whether the name has any value, whatever its encoding.
 fn HttpHeaders.contains(name: String) Bool:
-	return msstd_http_headers_values(self, name).is_some()
+	return msstd_headers_values(self, name).is_some()
 
 // Returns the names in insertion order, each as spelled when first inserted.
 fn HttpHeaders.names() List[String]:
-	return msstd_http_headers_names(self)
+	return msstd_headers_names(self)
 
 // Removes a name and its values; an absent name changes nothing. Previously returned
 // value lists remain unchanged.
 fn var HttpHeaders.remove(name: String) Void:
-	msstd_http_headers_remove(self, name)
+	msstd_headers_remove(self, name)
 
 // Copies every name and value into independent headers.
 fn HttpHeaders.clone() HttpHeaders:
-	return msstd_http_headers_clone(self)
+	return msstd_headers_clone(self)
 
 // Creates empty mutable headers. No header values are joined or comma-combined.
 export fn headers() HttpHeaders:
-	return msstd_http_headers_new()
+	return msstd_headers_new()
 
 // Response status and headers shared by buffered and streaming response access.
 export type HttpResponseMetadata:
@@ -159,7 +163,7 @@ export type HttpClient:
 // Cancels in-flight requests, closes open response bodies, and drops idle pooled
 // connections. Safe to call repeatedly; later requests return EBADF.
 fn move HttpClient.close() Void!:
-	msstd_http_client_close(self.native)
+	msstd_client_close(self.native)
 
 // Sends the request, with `body` as text or `Bytes`, and returns the response with its
 // body as a stream. `max_response_bytes` bounds the body (none sets no limit) and
@@ -192,7 +196,7 @@ fn HttpClient.request_raw(
 	max_response_bytes: Int? = none,
 	timeout: Duration? = none,
 ) RawResponse!:
-	return msstd_http_client_request_bytes(
+	return send(
 		self.native,
 		method.to_string(),
 		url,
@@ -214,6 +218,84 @@ fn HttpClient.request_stream(
 ) StreamingResponse!:
 	data := read_all(body, none)?
 	return self.request(method, url, headers, data, max_response_bytes, timeout)
+
+fn invalid_request() Error:
+	return Error("HTTP: invalid input", kind: "EINVAL")
+
+// Sends one request on the client behind `native`. A negative limit or timeout, a URL
+// that is not `http` or `https` without user info, and a method or header the client
+// cannot send return EINVAL.
+export fn send(
+	native: NativeHttpClient,
+	method: String,
+	address: String,
+	headers: HttpHeaders,
+	body: Bytes,
+	max_response_bytes: Int?,
+	timeout: Duration?,
+) RawResponse!:
+	if cap := max_response_bytes:
+		if cap < 0: return error(invalid_request())
+	if limit := timeout:
+		if limit.to_nanoseconds() < 0: return error(invalid_request())
+
+	target := parse(address)
+	if target.is_error(): return error(invalid_request())
+
+	scheme := target.get().scheme
+	if scheme != "http" and scheme != "https": return error(invalid_request())
+
+	started := msstd_client_fetch(native, method, address, headers, body, timeout)?
+	return ok(RawResponse(native: started, max: max_response_bytes))
+
+// What `msstd_client_new` reads, field for field.
+export type HttpClientWire:
+	roots_pem: String
+	certificate_pem: String
+	private_key_pem: String
+	unix_socket: String
+	max_redirects: Int
+	cookies: Bool
+	decompress: Bool
+
+// Creates a client for `options` that obeys every level of `policy`: its hosts and
+// resolved addresses, and each redirect target. Negative limits and a Unix socket on a
+// restricted network are refused.
+export fn open_client(
+	policy: Policy,
+	options: HttpClientOptions = HttpClientOptions(),
+) HttpClient!:
+	if limit := options.max_idle_connections:
+		if limit < 0: return error(invalid_request())
+	if limit := options.max_header_bytes:
+		if limit <= 0: return error(invalid_request())
+	if limit := options.idle_timeout:
+		if limit.to_nanoseconds() < 0: return error(invalid_request())
+
+	var redirects = 1000000000
+
+	if limit := options.max_redirects:
+		if limit < 0: return error(invalid_request())
+
+		redirects = limit
+
+	if not options.unix_socket.is_empty() and not policy.levels.is_empty():
+		return error(Error("HTTP: permission denied", kind: "EACCES"))
+
+	native := msstd_client_new(
+		HttpClientWire(
+			roots_pem: options.tls.roots_pem.clone(),
+			certificate_pem: options.tls.certificate_pem.clone(),
+			private_key_pem: options.tls.private_key_pem.clone(),
+			unix_socket: options.unix_socket.clone(),
+			max_redirects: redirects,
+			cookies: options.cookies,
+			decompress: options.decompress,
+		)
+	)?
+	for level in policy.levels:
+		msstd_client_narrow(native, level.hosts.clone(), level.prefixes.clone())?
+	return ok(HttpClient(native: native))
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
@@ -238,6 +320,9 @@ export type HttpClientOptions:
 	// public-suffix boundaries; when False (the default), no cookies are stored or sent
 	// automatically.
 	cookies: Bool = false
+	// A Unix domain socket every connection uses instead of TCP; the URL still gives
+	// the Host header and scheme. A restricted network refuses it. Empty uses TCP.
+	unix_socket: String = ""
 	// TLS trust and client-certificate settings for `https` requests. The host name is
 	// taken from each URL, so `server_name` is ignored.
 	tls: TlsOptions = TlsOptions(
@@ -440,23 +525,25 @@ export extern type NativeResponseBody
 export opaque type RawResponse:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeResponseBody
+	// The most body bytes the request accepts; none sets no limit.
+	max: Int?
 
 // Cancels the rest of the response and releases its connection. Safe to call
 // repeatedly; reads afterwards return EBADF. A fully read body lets the connection
 // be reused.
 fn move RawResponse.close() Void!:
-	msstd_http_body_close(self.native)
+	msstd_body_close(self.native)
 
 // Returns an independent copy of the response head (status and headers), including
 // after close.
 fn RawResponse.metadata() HttpResponseMetadata:
-	return msstd_http_body_metadata(self.native)
+	return msstd_body_metadata(self.native)
 
 // Reads the rest of the body into one value, bounded by the request's
 // `max_response_bytes`. A plain HTTP/1.1 body of known length arrives straight into
 // the result without intermediate copies.
 fn RawResponse.read_all() Bytes!:
-	return msstd_http_body_read_all(self.native)
+	return msstd_body_read_all(self.native, self.max)
 
 // A client response: the head and the body as a stream. Closing or dropping the body
 // cancels the rest of the response and releases its connection; a fully read body lets
@@ -474,9 +561,21 @@ fn move StreamingResponse.close() Void!:
 
 type ResponseSource:
 	raw: RawResponse
+	// The body bytes returned so far, against the request's limit.
+	total: Int = 0
 
 fn var ResponseSource.next() Bytes?!:
-	return msstd_http_body_read(self.raw.native, none)
+	chunk := msstd_body_read(self.raw.native, none)?
+
+	if data := chunk:
+		self.total += data.length()
+		if over_limit(self.total, self.raw.max): return error(
+			Error("HTTP: limit exceeded", kind: "EOVERFLOW")
+		)
+
+		return ok(data)
+
+	return ok(none)
 
 fn move ResponseSource.close() Void!:
 	return self.raw.close()

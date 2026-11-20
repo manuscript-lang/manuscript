@@ -37,6 +37,7 @@ static uint8_t finish(MsWsStatus status, const char *why, MsStr *err) {
 uint8_t msstd_ws_connect(const void *conn, const MsStr *authority, const MsStr *target, const void *headers,
                          const MsVec *subprotocols, uint8_t compression, uint8_t has_max, int64_t max,
                          uint8_t has_timeout, int64_t timeout, void **out, MsStr *err) {
+    ms_net_clear_text(err); /* the caller reads the slot for every failure status; only STATUS_FAILED sets text */
     if (has_max != 0 && max < 0) {
         return STATUS_INVALID_INPUT;
     }
