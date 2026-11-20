@@ -144,8 +144,27 @@ static MsTy body_text(MsBody *b, const MsExpr *e) {
     return b->string_ty;
 }
 
+/* A read of a module constant this pass has checked: a call of no arguments, typed as the
+ * constant's initializer. */
+static MsTy body_constant_use(MsBody *b, const MsExpr *e) {
+    const MsSymId sym = ms_map_get(&b->c->mods[b->module].names, e->u.sym);
+    const MsSyms *syms = &b->c->syms;
+    if (sym == MS_NONE || syms->module[sym] != b->module || syms->decl[sym] == NULL ||
+        syms->decl[sym]->kind != MS_D_CONST || syms->ty[sym] == MS_TY_NONE) {
+        return ms_body_unsupported(b);
+    }
+    b->facts->res_kind[e->id] = MS_RES_SYMBOL;
+    b->facts->res_ref[e->id] = sym;
+    b->facts->call_callee[e->id] = sym;
+    b->facts->const_use[e->id] = true;
+    return b->c->tys.result[syms->ty[sym]];
+}
+
 static MsTy body_name(MsBody *b, const MsExpr *e) {
     const uint32_t binding = ms_body_find_binding(b, e->u.sym);
+    if (binding == MS_NONE && !body_text_is(b, e->u.sym, "none")) {
+        return body_constant_use(b, e);
+    }
     if (binding == MS_NONE || body_text_is(b, e->u.sym, "none")) {
         return ms_body_unsupported(b);
     }
@@ -572,6 +591,8 @@ static void body_undo(MsBody *b, uint32_t first_binding, size_t written_start, s
         b->facts->expr_ty[ids[i]] = MS_TY_NONE;
         b->facts->res_kind[ids[i]] = MS_RES_NONE;
         b->facts->res_ref[ids[i]] = MS_NONE;
+        b->facts->call_callee[ids[i]] = MS_NONE;
+        b->facts->const_use[ids[i]] = false;
     }
     b->written.len = written_start * sizeof(uint32_t);
     b->diags.len = diags_start * sizeof(MsCheckDiag);
@@ -643,6 +664,8 @@ static void body_allocate(MsBody *b, MsFacts *facts) {
     facts->arm_case = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->arm_case, 0xff, nodes * sizeof *facts->arm_case);
     facts->body_checked = MS_NEW_N(arena, bool, nodes);
+    facts->const_use = MS_NEW_N(arena, bool, nodes);
+    memset(facts->const_use, 0, nodes * sizeof *facts->const_use);
     facts->call_callee = MS_NEW_N(arena, uint32_t, nodes);
     memset(facts->call_callee, 0xff, nodes * sizeof *facts->call_callee);
     facts->assign_binding = MS_NEW_N(arena, uint32_t, nodes);
@@ -709,7 +732,7 @@ static bool body_is_constant_expression(const MsExpr *e) {
 
 /* A module constant `NAME := value` (or `NAME: Type := value`) whose initializer is literals and
  * operators. The Rust checker types it as a function of no parameters, in a scope of its own. */
-static void body_check_constant(MsBody *b, const MsDecl *d) {
+static void body_check_constant(MsBody *b, const MsDecl *d, MsSymId sym) {
     const uint32_t first_binding = b->facts->bindings.count;
     const size_t written_start = MS_VEC_LEN(b->written, uint32_t);
     const size_t diags_start = MS_VEC_LEN(b->diags, MsCheckDiag);
@@ -724,6 +747,10 @@ static void body_check_constant(MsBody *b, const MsDecl *d) {
     if (b->supported && literal && body_is_value_type(b, ty)) {
         b->facts->body_checked[d->id] = true;
         body_commit_diags(b, diags_start);
+        // Like the Rust checker's, the constant's symbol is a function of no parameters.
+        const MsSym fn = ms_intern_cstr(b->c->names, "fn");
+        const MsTyDesc desc = {.name = fn, .id = fn, .kind = MS_K_FUNCTION, .result = ty};
+        b->c->syms.ty[sym] = ms_ty_intern(&b->c->tys, &desc);
     } else {
         body_undo(b, first_binding, written_start, diags_start);
     }
@@ -748,17 +775,20 @@ void ms_module_check_bodies(MsCheck *c, MsModId module) {
               .has_close = body_module_has_close(c, row->syntax)};
     body_allocate(&b, facts);
     b.literals = ms_literal_facts_new(&c->arena, c->names, facts->node_count);
-    for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
-        const MsDecl *d = row->syntax->decls[i];
-        const bool checkable = (d->kind == MS_D_FN || d->kind == MS_D_CONST) && !d->synthetic;
-        const MsSymId sym = checkable ? ms_decl_own_symbol(c, module, d) : MS_NONE;
-        if (sym == MS_NONE) {
-            continue;
-        }
-        if (d->kind == MS_D_FN) {
-            body_check_function(&b, d, sym);
-        } else {
-            body_check_constant(&b, d);
+    // Constants first: a function reads them wherever they are declared.
+    for (uint32_t pass = 0; pass < 2; pass++) {
+        const MsDeclKind kind = pass == 0 ? MS_D_CONST : MS_D_FN;
+        for (uint32_t i = 0; i < row->syntax->ndecls; i++) {
+            const MsDecl *d = row->syntax->decls[i];
+            const MsSymId sym = d->kind == kind && !d->synthetic ? ms_decl_own_symbol(c, module, d) : MS_NONE;
+            if (sym == MS_NONE) {
+                continue;
+            }
+            if (kind == MS_D_FN) {
+                body_check_function(&b, d, sym);
+            } else {
+                body_check_constant(&b, d, sym);
+            }
         }
     }
     ms_buf_free(&b.written);
