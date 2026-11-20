@@ -52,7 +52,6 @@ typedef struct OwnWalk {
     bool *is_param;     /* by binding id */
     uint32_t *param_index; /* by binding id: the parameter's position, else MS_NONE */
     OwnSummary *summaries; /* by declaration node id */
-    const uint32_t *by_node; /* the binding each introducing node made */
     uint32_t floor;     /* inside a lambda: the bindings below it are captured, and must be copies */
     uint32_t borrowed_params;
     uint32_t consumed;  /* parameters this walk moved */
@@ -1024,7 +1023,6 @@ static void own_declare_parameters(OwnWalk *w, const MsFunc *function, const uin
 
 static bool own_function(OwnWalk *w, const MsFunc *function, const uint32_t *by_node) {
     w->function = function;
-    w->by_node = by_node;
     w->floor = 0;
     w->active.len = 0;
     w->npending = 0;
