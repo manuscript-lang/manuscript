@@ -6,6 +6,10 @@
 #include <ws2tcpip.h>
 #include <string.h>
 
+#ifndef SIO_UDP_CONNRESET
+#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12) /* mswsock.h */
+#endif
+
 static volatile LONG started; /* 0 not yet, 1 started, -1 failed */
 
 static int startup(void) {
@@ -93,6 +97,50 @@ int ms_sys_net_tcp_listen(const MsAddr *addr, int backlog, MsSock *out) {
     }
     if (bind(s, (SOCKADDR *)&ss, len) != 0 || listen(s, backlog) != 0) return fail_close(s);
     *out = (MsSock)s;
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_udp_bind(const MsAddr *addr, MsSock *out) {
+    if (startup()) return MS_SYS_ERROR;
+    SOCKET s = WSASocketW(addr->family == 4 ? AF_INET : AF_INET6, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, WSA_FLAG_NO_HANDLE_INHERIT);
+    if (s == INVALID_SOCKET) return MS_SYS_ERROR;
+    if (prepare(s) < 0) return fail_close(s);
+    BOOL reset = FALSE; /* a datagram to a closed port must not make the next receive fail (WSAECONNRESET) */
+    DWORD returned = 0;
+    WSAIoctl(s, SIO_UDP_CONNRESET, &reset, sizeof reset, NULL, 0, &returned, NULL, NULL);
+    if (addr->family == 6) {
+        DWORD off = 0;
+        setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&off, sizeof off);
+    }
+    SOCKADDR_STORAGE ss;
+    int len = to_sockaddr(addr, &ss);
+    if (bind(s, (SOCKADDR *)&ss, len) != 0) return fail_close(s);
+    *out = (MsSock)s;
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_udp_recv(MsSock s, void *buf, size_t n, size_t *done, MsAddr *from) {
+    SOCKADDR_STORAGE ss;
+    int len = (int)sizeof ss;
+    int want = n > 0x40000000 ? 0x40000000 : (int)n;
+    int r = recvfrom((SOCKET)s, (char *)buf, want, 0, (SOCKADDR *)&ss, &len);
+    if (r == SOCKET_ERROR) {
+        const int e = WSAGetLastError();
+        if (e == WSAEMSGSIZE) return MS_SYS_TOO_BIG;
+        return would_block(e) ? MS_SYS_AGAIN : MS_SYS_ERROR;
+    }
+    *done = (size_t)r;
+    if (from) from_sockaddr(&ss, from);
+    return MS_SYS_OK;
+}
+
+int ms_sys_net_udp_send(MsSock s, const void *buf, size_t n, const MsAddr *to, size_t *done) {
+    SOCKADDR_STORAGE ss;
+    int len = to_sockaddr(to, &ss);
+    int want = n > 0x40000000 ? 0x40000000 : (int)n;
+    int r = sendto((SOCKET)s, (const char *)buf, want, 0, (SOCKADDR *)&ss, len);
+    if (r == SOCKET_ERROR) return would_block(WSAGetLastError()) ? MS_SYS_AGAIN : MS_SYS_ERROR;
+    *done = (size_t)r;
     return MS_SYS_OK;
 }
 
