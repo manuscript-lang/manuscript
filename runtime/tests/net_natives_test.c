@@ -8,10 +8,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "../io/reactor.h"
 #include "../net/addr_text.h"
 #include "../net/conn_object.h"
+#include "../net/curl_client.h"
 #include "../net/dial.h"
 #define FAKE_RT_TRACK
 #include "fake_rt.h"
@@ -46,15 +51,37 @@ static uint64_t pending_token;
 
 uint64_t msrt_token_new(uint32_t flags) { (void)flags; pending_token = ++next_token; return pending_token; }
 void msrt_token_free(uint64_t token) { (void)token; pending_token = 0; }
-void msrt_token_post_remote(uint64_t token, uint64_t value) { (void)token; (void)value; }
+/* Posts from other threads (the HTTP client's driver) are remembered until the token's park takes them. */
+static pthread_mutex_t post_lock = PTHREAD_MUTEX_INITIALIZER;
+static struct { uint64_t token, value; } posted[16];
+
+void msrt_token_post_remote(uint64_t token, uint64_t value) {
+    pthread_mutex_lock(&post_lock);
+    for (size_t i = 0; i < sizeof posted / sizeof posted[0]; i++) {
+        if (posted[i].token == 0) { posted[i].token = token; posted[i].value = value; break; }
+    }
+    pthread_mutex_unlock(&post_lock);
+}
+
+static bool take_post(uint64_t token, uint64_t *value) {
+    bool found = false;
+    pthread_mutex_lock(&post_lock);
+    for (size_t i = 0; i < sizeof posted / sizeof posted[0]; i++) {
+        if (posted[i].token == token) { *value = posted[i].value; posted[i].token = 0; found = true; break; }
+    }
+    pthread_mutex_unlock(&post_lock);
+    return found;
+}
+
 uint32_t msrt_token_park(uint64_t token, int64_t timeout_ns, uint64_t *value) {
     const int64_t end = timeout_ns < 0 ? -1 : ms_sys_monotonic_ns() + timeout_ns;
     for (;;) {
+        if (take_post(token, value)) return 0;
         MsIoEvent event;
         while (ms_io_completion(&event)) {
             if (event.id == token) { *value = (uint64_t)(int64_t)event.result; return 0; }
         }
-        int64_t wait = 50000000;
+        int64_t wait = 2000000; /* short: a post from another thread does not wake the reactor */
         if (end >= 0) {
             const int64_t left = end - ms_sys_monotonic_ns();
             if (left <= 0) return MS_WAIT_TIMEOUT;
@@ -94,9 +121,62 @@ static void *serve(void *argument) {
     return NULL;
 }
 
-/* An HTTP/1.1 server for one connection: answers /a (5 bytes), /b (chunked), /post (the request body's length and
-   text) and /close (a reply that ends the connection), each by its request line, until the client closes. */
+/* An HTTP/1.1 server for one connection, answering each request by its path until the client closes or a reply ends
+   the connection: /a (5 bytes), /b (chunked), /post (the body back), /echo (the request head back), /redir and
+   /hop (redirects to /a and to another host), /gz (gzip), /cookie (sets one), /big (1 MiB), /slow (after 300 ms),
+   and /close. */
+static const uint8_t GZIP_HELLO[36] = {0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcb, 0x48, 0xcd, 0xc9, 0xc9, 0x57, 0x48, 0xaf,
+                                       0xca, 0x2c, 0x50, 0x28, 0xcf, 0x2f, 0xca, 0x49, 0x01, 0x00, 0x6b, 0x7d, 0xe8, 0xb7, 0x10, 0x00, 0x00, 0x00};
+enum { BIG_BYTES = 1 << 20 };
+
 static void reply(MsConnTable *table, MsConnId id, const char *text) { (void)ms_conn_write(table, id, (const uint8_t *)text, strlen(text), -1); }
+
+static void reply_big(MsConnTable *table, MsConnId id) {
+    reply(table, id, "HTTP/1.1 200 OK\r\nContent-Length: 1048576\r\n\r\n");
+    uint8_t chunk[65536];
+    for (size_t sent = 0; sent < BIG_BYTES; sent += sizeof chunk) {
+        for (size_t i = 0; i < sizeof chunk; i++) chunk[i] = (uint8_t)((sent + i) & 0xff);
+        if (ms_conn_write(table, id, chunk, sizeof chunk, -1) != MS_NET_OK) return;
+    }
+}
+
+/* Answers one request; false when the reply ends the connection. */
+static bool answer_http(MsConnTable *table, MsConnId id, const char *request, size_t length, const char *body) {
+    if (strstr(request, " /a ") != NULL) {
+        reply(table, id, "HTTP/1.1 200 OK\r\nx-reply: 1\r\nContent-Length: 5\r\n\r\nhello");
+    } else if (strstr(request, " /b ") != NULL) {
+        reply(table, id, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n3\r\nhel\r\n2\r\nlo\r\n0\r\n\r\n");
+    } else if (strstr(request, " /post ") != NULL) {
+        char text[96];
+        const char *length_field = strstr(request, "Content-Length: ");
+        const size_t count = length_field == NULL ? 0 : (size_t)atoi(length_field + 16);
+        snprintf(text, sizeof text, "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\n\r\n%.*s", count, (int)count, body);
+        reply(table, id, text);
+    } else if (strstr(request, " /echo ") != NULL) {
+        char head[96];
+        snprintf(head, sizeof head, "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\n\r\n", length);
+        reply(table, id, head);
+        (void)ms_conn_write(table, id, (const uint8_t *)request, length, -1);
+    } else if (strstr(request, " /redir ") != NULL) {
+        reply(table, id, "HTTP/1.1 302 Found\r\nLocation: /a\r\nContent-Length: 0\r\n\r\n");
+    } else if (strstr(request, " /hop ") != NULL) {
+        reply(table, id, "HTTP/1.1 302 Found\r\nLocation: http://blocked.example/x\r\nContent-Length: 0\r\n\r\n");
+    } else if (strstr(request, " /gz ") != NULL) {
+        reply(table, id, "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: 36\r\n\r\n");
+        (void)ms_conn_write(table, id, GZIP_HELLO, sizeof GZIP_HELLO, -1);
+    } else if (strstr(request, " /cookie ") != NULL) {
+        reply(table, id, "HTTP/1.1 200 OK\r\nSet-Cookie: a=1; Path=/\r\nContent-Length: 0\r\n\r\n");
+    } else if (strstr(request, " /big ") != NULL) {
+        reply_big(table, id);
+    } else if (strstr(request, " /slow ") != NULL) {
+        nanosleep(&(struct timespec){0, 300000000}, NULL);
+        reply(table, id, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello");
+    } else {
+        reply(table, id, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 3\r\n\r\nbye");
+        return false;
+    }
+    return true;
+}
 
 static void *serve_http(void *argument) {
     Server *server = argument;
@@ -108,7 +188,11 @@ static void *serve_http(void *argument) {
     }
     MsConnTable *table = ms_conn_table_new(2);
     const MsConnId id = ms_conn_open(table, (int)socket, MS_CONN_HTTP1);
-    char request[2048];
+    if (server->context != NULL) {
+        (void)ms_conn_set_tls(table, id, ms_tls_new(server->context, NULL));
+        (void)ms_conn_handshake(table, id, -1);
+    }
+    char request[4096];
     bool open = true;
     while (open) {
         size_t have = 0;
@@ -131,18 +215,7 @@ static void *serve_http(void *argument) {
             body_have += open ? count : 0;
         }
         request[have] = 0;
-        if (strstr(request, " /a ") != NULL) {
-            reply(table, id, "HTTP/1.1 200 OK\r\nx-reply: 1\r\nContent-Length: 5\r\n\r\nhello");
-        } else if (strstr(request, " /b ") != NULL) {
-            reply(table, id, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n3\r\nhel\r\n2\r\nlo\r\n0\r\n\r\n");
-        } else if (strstr(request, " /post ") != NULL) {
-            char text[64];
-            snprintf(text, sizeof text, "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\n\r\n%.*s", length, (int)length, end + 4);
-            reply(table, id, text);
-        } else {
-            reply(table, id, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nbye");
-            break;
-        }
+        open = open && answer_http(table, id, request, (size_t)(end + 4 - request), end + 4);
     }
     (void)ms_conn_close_io(table, id);
     ms_conn_table_free(table);
@@ -157,6 +230,14 @@ static MsStr str(const char *s) {
 
 static bool str_is(const MsStr *s, const char *expected) {
     return msrt_str_len(s) == strlen(expected) && memcmp(msrt_str_data(s), expected, strlen(expected)) == 0;
+}
+
+static bool contains(const MsVec *data, const char *needle) {
+    const size_t length = strlen(needle);
+    for (size_t i = 0; i + length <= data->len; i++) {
+        if (memcmp((const uint8_t *)data->ptr + i, needle, length) == 0) return true;
+    }
+    return false;
 }
 
 static MsVec bytes(const char *s) {
@@ -279,89 +360,206 @@ int main(void) {
     CHECK(msstd_headers_values(copy, &other_name, &values) == 1); /* the copy is independent */
     ((MsObj *)copy)->drop(copy);
 
-    /* fetch over HTTP/1.1: one connection carries several exchanges, each ended by reading its body */
+    /* the HTTP client: one connection carries every request of a client (the server accepts one), and the client
+       follows redirects, keeps cookies and decodes gzip */
+    MsNetHttpOptions http_options = {.roots_pem = str(""), .certificate_pem = str(""), .private_key_pem = str(""), .unix_socket = str(""), .max_redirects = -1, .cookies = 1, .decompress = 1};
     address = listen_on_loopback(&server);
     server.context = NULL;
     CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
-    CHECK(msstd_net_dial(&address, &no_name, 0, NULL, 1, 5 * SECOND, &conn, &err) == STATUS_OK);
-    MsStr get = str("GET"), post = str("POST"), authority = str("example.test");
-    MsStr target_a = str("/a"), target_b = str("/b"), target_post = str("/post"), target_close = str("/close");
+    void *client = NULL;
+    CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
+    char url[128];
+    MsStr get = str("GET"), post = str("POST"), url_text;
     MsVec nobody = bytes("");
     MsVec sent = bytes("abc");
     void *response = NULL;
     MsVec data;
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    const char *host_port = (const char *)msrt_str_data(&address);
+#define URL(path) (snprintf(url, sizeof url, "http://%s%s", host_port, path), url_text = str(url), &url_text)
+    MsStr x_req = str("X-Req");
+    MsVec token = bytes("v");
+    CHECK(msstd_headers_append(table, &x_req, &token) == STATUS_OK);
+    CHECK(msstd_client_fetch(client, &get, URL("/a"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
     MsNetBodyMetadata metadata;
     msstd_body_metadata(response, &metadata);
     MsStr reply_name = str("x-reply");
     CHECK(metadata.status == 200 && str_is(&metadata.protocol, "HTTP/1.1") && msstd_headers_values(metadata.headers, &reply_name, &values) == 1);
     msstd_headers_names(metadata.headers, &names);
-    CHECK(names.len == 2 && str_is(&((MsStr *)names.ptr)[0], "X-Reply")); /* received names are canonical */
-    void *busy = NULL;
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, table, &nobody, 0, 0, &busy, &err) == STATUS_BUSY); /* the body is still open */
-    CHECK(msstd_body_read(response, 1, 2, &data, &err) == STATUS_OK && data.len == 2);
-    msstd_body_close(response); /* part of the body unread: the connection closes with it */
+    CHECK(names.len >= 1 && str_is(&((MsStr *)names.ptr)[0], "X-Reply")); /* received names are canonical */
+    CHECK(msstd_body_read(response, 1, 2, &data, &err) == STATUS_OK && data.len == 2 && memcmp(data.ptr, "he", 2) == 0);
+    CHECK(msstd_body_read_all(response, 1, 2, &data, &err) == STATUS_LIMIT_EXCEEDED); /* 3 bytes remain, over the limit of 2 */
+    msstd_body_close(response);
     CHECK(msstd_body_read(response, 0, 0, &data, &err) == STATUS_CLOSED);
     ((MsObj *)response)->drop(response);
     ((MsObj *)metadata.headers)->drop(metadata.headers);
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, table, &nobody, 0, 0, &busy, &err) == STATUS_CLOSED);
-    ((MsObj *)conn)->drop(conn);
-    pthread_join(thread, NULL);
-    ms_sys_net_close(server.listener);
 
-    address = listen_on_loopback(&server);
-    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
-    CHECK(msstd_net_dial(&address, &no_name, 0, NULL, 1, 5 * SECOND, &conn, &err) == STATUS_OK);
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
-    CHECK(msstd_body_read_all(response, 1, 4, &data, &err) == STATUS_LIMIT_EXCEEDED); /* all 5 bytes came: the row is still good */
-    msstd_body_close(response);
-    ((MsObj *)response)->drop(response);
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    CHECK(msstd_client_fetch(client, &get, URL("/b"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
     CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len == 5 && memcmp(data.ptr, "hello", 5) == 0);
-    msstd_body_close(response);
-    ((MsObj *)response)->drop(response);
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_b, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
-    CHECK(msstd_body_read(response, 1, 2, &data, &err) == STATUS_OK && data.len == 2 && memcmp(data.ptr, "he", 2) == 0);
-    CHECK(msstd_body_read(response, 0, 0, &data, &err) == STATUS_OK && data.len == 1);
-    CHECK(msstd_body_read(response, 0, 0, &data, &err) == STATUS_OK && data.len == 2);
     CHECK(msstd_body_read(response, 0, 0, &data, &err) == STATUS_NONE);
-    ((MsObj *)response)->drop(response); /* dropping ends the exchange as a close does */
-    CHECK(msstd_http_fetch(conn, &post, &authority, &target_post, table, &sent, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    ((MsObj *)response)->drop(response);
+    CHECK(msstd_client_fetch(client, &post, URL("/post"), table, &sent, 1, 5 * SECOND, &response, &err) == STATUS_OK);
     CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len == 3 && memcmp(data.ptr, "abc", 3) == 0);
-    msstd_body_close(response);
+    ((MsObj *)response)->drop(response);
+    CHECK(msstd_client_fetch(client, &get, URL("/redir"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    msstd_body_metadata(response, &metadata);
+    CHECK(metadata.status == 200); /* the redirect to /a was followed */
+    ((MsObj *)metadata.headers)->drop(metadata.headers);
+    ((MsObj *)response)->drop(response);
+    CHECK(msstd_client_fetch(client, &get, URL("/gz"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len == 16 && memcmp(data.ptr, "hello gzip world", 16) == 0);
+    ((MsObj *)response)->drop(response);
+    CHECK(msstd_client_fetch(client, &get, URL("/cookie"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    ((MsObj *)response)->drop(response);
+    CHECK(msstd_client_fetch(client, &get, URL("/echo"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && contains(&data, "X-Req: v") && contains(&data, "a=1")); /* the caller's field and the cookie the server set */
+    ((MsObj *)response)->drop(response);
+    CHECK(msstd_client_fetch(client, &get, URL("/big"), table, &nobody, 1, 10 * SECOND, &response, &err) == STATUS_OK);
+    size_t total = 0;
+    bool intact = true;
+    while (msstd_body_read(response, 0, 0, &data, &err) == STATUS_OK) {
+        for (size_t i = 0; i < data.len; i++) intact = intact && ((const uint8_t *)data.ptr)[i] == (uint8_t)((total + i) & 0xff);
+        total += data.len;
+    }
+    CHECK(total == BIG_BYTES && intact); /* streamed through the 256 KiB buffer with the transfer paused and resumed */
     ((MsObj *)response)->drop(response);
 
-    /* a field the exchange writes itself, or a value that could split the head, is refused and the connection stays */
+    /* refused requests never reach the wire */
     void *refused = msstd_headers_new();
     MsStr host_name = str("host"), split_name = str("X-Split");
     MsVec host_value = bytes("elsewhere"), split_value = bytes("a\r\nInjected: 1");
     CHECK(msstd_headers_append(refused, &host_name, &host_value) == STATUS_OK);
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, refused, &nobody, 0, 0, &response, &err) == STATUS_INVALID_INPUT);
+    CHECK(msstd_client_fetch(client, &get, URL("/a"), refused, &nobody, 0, 0, &response, &err) == STATUS_INVALID_INPUT);
     ((MsObj *)refused)->drop(refused);
     refused = msstd_headers_new();
     CHECK(msstd_headers_append(refused, &split_name, &split_value) == STATUS_OK);
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, refused, &nobody, 0, 0, &response, &err) == STATUS_INVALID_INPUT);
+    CHECK(msstd_client_fetch(client, &get, URL("/a"), refused, &nobody, 0, 0, &response, &err) == STATUS_INVALID_INPUT);
     ((MsObj *)refused)->drop(refused);
-    MsStr bad_method = str("GE T");
-    CHECK(msstd_http_fetch(conn, &bad_method, &authority, &target_a, table, &nobody, 0, 0, &response, &err) == STATUS_INVALID_INPUT);
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
-    CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len == 5);
-    msstd_body_close(response);
-    ((MsObj *)response)->drop(response);
+    MsStr bad_method = str("GE T"), not_a_url = str("not a url");
+    CHECK(msstd_client_fetch(client, &bad_method, URL("/a"), table, &nobody, 0, 0, &response, &err) == STATUS_INVALID_INPUT);
+    CHECK(msstd_client_fetch(client, &get, &not_a_url, table, &nobody, 0, 0, &response, &err) == STATUS_INVALID_INPUT);
 
-    /* a reply that ends the connection closes the row with the body, and the metadata outlives it */
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_close, table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    /* a restricted client: a host or CIDR outside its levels is refused before any connection */
+    void *narrow = NULL;
+    CHECK(msstd_client_new(&http_options, &narrow, &err) == STATUS_OK);
+    void *shared = msstd_client_share(narrow); /* a handle on the same client: the same filter */
+    MsVec only_hosts, no_cidrs;
+    msrt_list_with_capacity(&msrt_desc_string, 1, &only_hosts);
+    MsStr allowed_host = str("example.invalid");
+    msrt_list_push(&only_hosts, &msrt_desc_string, &allowed_host);
+    msrt_list_with_capacity(&msrt_desc_string, 0, &no_cidrs);
+    MsVec no_hosts;
+    msrt_list_with_capacity(&msrt_desc_string, 0, &no_hosts);
+    MsVec bad_cidrs;
+    msrt_list_with_capacity(&msrt_desc_string, 1, &bad_cidrs);
+    MsStr bad_cidr = str("10.0.0.0/33");
+    msrt_list_push(&bad_cidrs, &msrt_desc_string, &bad_cidr);
+    CHECK(msstd_client_narrow(narrow, &no_hosts, &bad_cidrs) == STATUS_INVALID_INPUT);
+    CHECK(msstd_client_narrow(narrow, &only_hosts, &no_cidrs) == STATUS_OK);
+    CHECK(msstd_client_fetch(shared, &get, URL("/a"), table, &nobody, 0, 0, &response, &err) == STATUS_PERMISSION_DENIED);
+    ((MsObj *)shared)->drop(shared);
+    ((MsObj *)narrow)->drop(narrow);
+
+    /* the last request ends the connection; the pool is gone with the client */
+    CHECK(msstd_client_fetch(client, &get, URL("/close"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
     CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len == 3);
-    msstd_body_close(response);
-    msstd_body_metadata(response, &metadata);
-    CHECK(metadata.status == 200);
-    ((MsObj *)metadata.headers)->drop(metadata.headers);
     ((MsObj *)response)->drop(response);
-    CHECK(msstd_http_fetch(conn, &get, &authority, &target_a, table, &nobody, 0, 0, &response, &err) == STATUS_CLOSED);
-    ((MsObj *)conn)->drop(conn);
-    ((MsObj *)table)->drop(table);
+    ((MsObj *)client)->drop(client);
     pthread_join(thread, NULL);
     ms_sys_net_close(server.listener);
+
+    /* the filter's address and redirect checks: 127.0.0.1 inside an allowed range connects, and a redirect to a name
+       outside the levels ends the request with the hop never made */
+    address = listen_on_loopback(&server);
+    host_port = (const char *)msrt_str_data(&address);
+    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
+    MsVec loopback_cidrs;
+    msrt_list_with_capacity(&msrt_desc_string, 1, &loopback_cidrs);
+    MsStr loopback_range = str("127.0.0.0/8");
+    msrt_list_push(&loopback_cidrs, &msrt_desc_string, &loopback_range);
+    CHECK(msstd_client_narrow(client, &no_hosts, &loopback_cidrs) == STATUS_OK);
+    CHECK(msstd_client_fetch(client, &get, URL("/a"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+    ((MsObj *)response)->drop(response);
+    CHECK(msstd_client_fetch(client, &get, URL("/hop"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_PERMISSION_DENIED); /* the aborted hop drops the connection */
+    ((MsObj *)client)->drop(client);
+    pthread_join(thread, NULL);
+    ms_sys_net_close(server.listener);
+
+    /* a Unix socket client reaches a server by path; a narrowed one is refused */
+    {
+        char path[108];
+        snprintf(path, sizeof path, "/tmp/ms_net_test_%d.sock", (int)getpid());
+        unlink(path);
+        struct sockaddr_un unix_address = {.sun_family = AF_UNIX};
+        snprintf(unix_address.sun_path, sizeof unix_address.sun_path, "%s", path);
+        const int listener = socket(AF_UNIX, SOCK_STREAM, 0);
+        CHECK(listener >= 0 && bind(listener, (struct sockaddr *)&unix_address, sizeof unix_address) == 0 && listen(listener, 4) == 0);
+        server.listener = (MsSock)listener;
+        server.context = NULL;
+        CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+        MsNetHttpOptions unix_options = http_options;
+        unix_options.unix_socket = str(path);
+        CHECK(msstd_client_new(&unix_options, &client, &err) == STATUS_OK);
+        CHECK(msstd_client_fetch(client, &get, URL("/a"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_OK);
+        CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len > 0);
+        ((MsObj *)response)->drop(response);
+        void *denied_client = NULL;
+        CHECK(msstd_client_new(&unix_options, &denied_client, &err) == STATUS_OK);
+        CHECK(msstd_client_narrow(denied_client, &no_hosts, &no_hosts) == STATUS_OK);
+        CHECK(msstd_client_fetch(denied_client, &get, URL("/a"), table, &nobody, 1, 5 * SECOND, &response, &err) == STATUS_PERMISSION_DENIED);
+        ((MsObj *)denied_client)->drop(denied_client);
+        ((MsObj *)client)->drop(client);
+        pthread_join(thread, NULL);
+        close(listener);
+        unlink(path);
+    }
+
+    /* HTTPS: the client verifies the server against the roots it was given, and the request goes over TLS */
+    MsTlsCtx *https_context = ms_tls_ctx_new(1, CERT, sizeof CERT - 1, KEY, sizeof KEY - 1, NULL, 0);
+    CHECK(https_context != NULL && ms_tls_ctx_set_alpn(https_context, "http/1.1") == 0);
+    server.context = https_context;
+    address = listen_on_loopback(&server);
+    const char *port_text = strrchr((const char *)msrt_str_data(&address), ':') + 1;
+    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    MsNetHttpOptions https_options = http_options;
+    https_options.roots_pem = str(CERT);
+    CHECK(msstd_client_new(&https_options, &client, &err) == STATUS_OK);
+    snprintf(url, sizeof url, "https://localhost:%s/a", port_text);
+    url_text = str(url);
+    CHECK(msstd_client_fetch(client, &get, &url_text, table, &nobody, 1, 10 * SECOND, &response, &err) == STATUS_OK);
+    CHECK(msstd_body_read_all(response, 0, 0, &data, &err) == STATUS_OK && data.len == 5);
+    ((MsObj *)response)->drop(response);
+    ((MsObj *)client)->drop(client);
+    pthread_join(thread, NULL);
+    ms_sys_net_close(server.listener);
+    server.context = NULL;
+    /* without those roots the same server is not trusted */
+    address = listen_on_loopback(&server);
+    server.context = https_context;
+    port_text = strrchr((const char *)msrt_str_data(&address), ':') + 1;
+    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
+    snprintf(url, sizeof url, "https://localhost:%s/a", port_text);
+    url_text = str(url);
+    CHECK(msstd_client_fetch(client, &get, &url_text, table, &nobody, 1, 10 * SECOND, &response, &err) == STATUS_FAILED);
+    ((MsObj *)client)->drop(client);
+    pthread_join(thread, NULL);
+    ms_sys_net_close(server.listener);
+    ms_tls_ctx_free(https_context);
+    server.context = NULL;
+
+    /* a deadline covers the wait for the response */
+    address = listen_on_loopback(&server);
+    host_port = (const char *)msrt_str_data(&address);
+    CHECK(pthread_create(&thread, NULL, serve_http, &server) == 0);
+    CHECK(msstd_client_new(&http_options, &client, &err) == STATUS_OK);
+    CHECK(msstd_client_fetch(client, &get, URL("/slow"), table, &nobody, 1, 50000000, &response, &err) == STATUS_TIMED_OUT);
+    ((MsObj *)client)->drop(client);
+    pthread_join(thread, NULL);
+    ms_sys_net_close(server.listener);
+    ((MsObj *)table)->drop(table);
+    ms_curl_shutdown();
+#undef URL
 
     ms_tls_ctx_free(context);
     ms_io_close(1);

@@ -49,6 +49,9 @@ typedef struct MsResolver {
  * `<invalid>` without one. */
 MsTy ms_resolve_type(MsResolver *r, const MsTypeRef *t);
 
+/* The generic type `base` applied to `args`. */
+MsTy ms_ty_apply(MsCheck *c, MsTy base, const MsTy *args, uint32_t nargs);
+
 /* A parameter, field or payload list: the types resolved, duplicate names reported. */
 MsTyParam *ms_resolve_params(MsResolver *r, const MsParams *params);
 

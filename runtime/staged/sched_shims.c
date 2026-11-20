@@ -2,10 +2,9 @@
  * fault_abi.c: nothing builds this directory into the archive until the flip replaces
  * crates/ms-rt/src/glue/c_sched.rs.
  *
- * The blocking pool of ms_sched.h is runtime/std/pool.c (libuv threads, every platform). It calls the program-ABI
- * msrt_token_new / msrt_token_park / msrt_token_free / msrt_token_post_remote, msrt_task_count,
- * msrt_task_others_stalled and ms_sched_task_pin, which the flip defines over ms_token_* / ms_task_* (the Rust
- * glue defines them today). Standard output is stdout.c; the Windows pipe and waitable-object calls are not here. */
+ * The blocking pool of ms_sched.h is runtime/std/pool.c (libuv threads, every platform). It calls msrt_token_*,
+ * msrt_task_count and msrt_task_others_stalled from runtime/core/task_abi.c, and msrt_token_post_remote and
+ * ms_sched_task_pin from sched_calls.c (staged_sched_pool tests the whole). Standard output is stdout.c; the Windows pipe and waitable-object calls are not here. */
 #include "ms_sched.h"
 #include "task.h"
 #include "unwind.h"

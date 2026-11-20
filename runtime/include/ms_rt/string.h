@@ -184,6 +184,12 @@ void msrt_string_chars(const MsStr *s, MsVec *out);
 void msrt_string_lines(const MsStr *s, MsVec *out);
 /* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_fields(const MsStr *s, MsVec *out);
+/* The state of a split loop (runtime/core/string_split_iter.c). */
+typedef struct MsSplitIter MsSplitIter;
+/* ms-sig: msrt_string_split_iter(s: *const StrVal, sep: *const StrVal) -> *mut SplitIter @domain=string @iter_of=msrt_string_split @leaf */
+MsSplitIter *msrt_string_split_iter(const MsStr *s, const MsStr *sep);
+/* ms-sig: msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 @domain=split @leaf */
+uint8_t msrt_split_next(MsSplitIter *iter, MsStr *out);
 /* ms-sig: msrt_string_quote(s: *const StrVal, out: *mut StrVal) @domain=string @leaf */
 void msrt_string_quote(const MsStr *s, MsStr *out);
 /* ms-sig: msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 @domain=string @leaf */
@@ -234,5 +240,22 @@ void msrt_strbuf_finish(MsStrBuf *buffer, MsStr *out);
 
 /* ms-sig: msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 @domain=string @leaf @pure */
 uint8_t msrt_string_parse_int(const MsStr *s, int64_t *out);
+
+/* Case mapping and normalization (runtime/core/string_case.c, string_normalize.c, on the tables of ucd.h). `_take` maps
+ * a string that dies at the call, ASCII text in place. `normalize` takes the form's spelling (NFC, NFD, NFKC, NFKD;
+ * anything else is STATUS_INVALID_INPUT), `normalize_kind` its case index (0 to 3); a negative `max` is
+ * STATUS_INVALID_INPUT and a result longer than `max` bytes STATUS_LIMIT_EXCEEDED. */
+/* ms-sig: msrt_string_upper(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
+void msrt_string_upper(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_lower(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
+void msrt_string_lower(const MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf */
+void msrt_string_upper_take(MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf */
+void msrt_string_lower_take(MsStr *s, MsStr *out);
+/* ms-sig: msrt_string_normalize(s: *const StrVal, form: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=string @leaf */
+uint8_t msrt_string_normalize(const MsStr *s, const MsStr *form, uint8_t has_max, int64_t max, MsStr *out);
+/* ms-sig: msrt_string_normalize_kind(s: *const StrVal, kind: i64, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @domain=string @leaf */
+uint8_t msrt_string_normalize_kind(const MsStr *s, int64_t kind, uint8_t has_max, int64_t max, MsStr *out);
 
 #endif

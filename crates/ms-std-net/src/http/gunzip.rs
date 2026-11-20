@@ -1,9 +1,8 @@
-//! Gzip (RFC 1952) framing for buffered response bodies over the shared inflater: the header, the
-//! CRC-32 and length trailer, and concatenated members. A call reports how many input bytes it
-//! consumed, and the caller offers the rest again with the next chunk.
+//! Gzip (RFC 1952) decoding of buffered response bodies over concatenated members, on zlib through the C runtime
+//! (`ms_gunzip_*` in `runtime/std/compress.c`). A call reports how many input bytes it consumed, and the caller
+//! offers the rest again with the next chunk.
 
-use crc32fast::Hasher;
-use ms_inflate::Inflater;
+use std::ffi::c_void;
 
 /// Why decoding stopped for good.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -16,37 +15,35 @@ pub enum Fail {
     Limit,
 }
 
-impl From<ms_inflate::Fail> for Fail {
-    fn from(f: ms_inflate::Fail) -> Fail {
-        match f {
-            ms_inflate::Fail::Invalid => Fail::Invalid,
-            ms_inflate::Fail::Truncated => Fail::Truncated,
-            ms_inflate::Fail::Limit => Fail::Limit,
-        }
-    }
+const OK: u8 = 0;
+const DONE: u8 = 1;
+const TRUNCATED: u8 = 3;
+
+unsafe extern "C" {
+    fn ms_gunzip_new() -> *mut c_void;
+    fn ms_gunzip_free(g: *mut c_void);
+    fn ms_gunzip_step(
+        g: *mut c_void,
+        input: *const u8,
+        in_len: usize,
+        more: bool,
+        out: *mut u8,
+        out_cap: usize,
+        in_used: *mut usize,
+        out_used: *mut usize,
+    ) -> u8;
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Phase {
-    /// At a member boundary, before the gzip header.
-    Header,
-    /// Inside a member's deflate stream.
-    Body,
-    /// After the deflate stream, before the 8-byte trailer.
-    Trailer,
-}
+/// The room reserved in the output before each step.
+const CHUNK: usize = 64 * 1024;
 
 /// A resumable gzip decoder over concatenated members.
 pub struct Gunzip {
-    phase: Phase,
-    inflater: Inflater,
-    crc: Hasher,
-    /// Output length when the current member began.
-    base: usize,
-    /// Output length up to which `crc` has been updated.
-    crc_done: usize,
-    members: usize,
+    handle: *mut c_void,
 }
+
+// SAFETY: the handle is owned by this value alone, and the C code keeps no thread-local state.
+unsafe impl Send for Gunzip {}
 
 impl Default for Gunzip {
     fn default() -> Self {
@@ -54,16 +51,19 @@ impl Default for Gunzip {
     }
 }
 
+impl Drop for Gunzip {
+    fn drop(&mut self) {
+        // SAFETY: `handle` came from `ms_gunzip_new` and is freed once.
+        unsafe { ms_gunzip_free(self.handle) }
+    }
+}
+
 impl Gunzip {
     pub fn new() -> Gunzip {
-        Gunzip {
-            phase: Phase::Header,
-            inflater: Inflater::new(0),
-            crc: Hasher::new(),
-            base: 0,
-            crc_done: 0,
-            members: 0,
-        }
+        // SAFETY: no arguments; null (out of memory in zlib) is checked.
+        let handle = unsafe { ms_gunzip_new() };
+        assert!(!handle.is_null(), "inflateInit2 failed");
+        Gunzip { handle }
     }
 
     /// Decodes `input`, appending to `out`, which must only grow between calls. `more` says whether
@@ -78,104 +78,43 @@ impl Gunzip {
         limit: usize,
     ) -> Result<(usize, bool), Fail> {
         let mut pos = 0;
-        // Input ran out at `pos`: wait for more, or fail when none can come.
-        let need = |pos: usize| {
-            if more {
-                Ok((pos, false))
-            } else {
-                Err(Fail::Truncated)
-            }
-        };
         loop {
-            match self.phase {
-                Phase::Header => {
-                    let rest = &input[pos..];
-                    if rest.is_empty() && !more && self.members > 0 {
-                        return Ok((pos, true));
-                    }
-                    match gzip_header(rest)? {
-                        None => return need(pos),
-                        Some(n) => pos += n,
-                    }
-                    self.base = out.len();
-                    self.crc_done = out.len();
-                    self.crc = Hasher::new();
-                    self.inflater = Inflater::new(out.len());
-                    self.phase = Phase::Body;
-                }
-                Phase::Body => {
-                    let result = self.inflater.push(&input[pos..], more, out, limit);
-                    let (used, done) = result?;
-                    pos += used;
-                    self.flush_crc(out);
-                    if !done {
-                        return Ok((pos, false));
-                    }
-                    self.phase = Phase::Trailer;
-                }
-                Phase::Trailer => {
-                    let rest = &input[pos..];
-                    if rest.len() < 8 {
-                        return need(pos);
-                    }
-                    let crc = u32::from_le_bytes([rest[0], rest[1], rest[2], rest[3]]);
-                    let size = u32::from_le_bytes([rest[4], rest[5], rest[6], rest[7]]);
-                    let made = (out.len() - self.base) as u32;
-                    if crc != self.crc.clone().finalize() || size != made {
-                        return Err(Fail::Invalid);
-                    }
-                    pos += 8;
-                    self.members += 1;
-                    self.phase = Phase::Header;
-                }
+            // One byte past the limit proves it was passed.
+            let room = limit.saturating_sub(out.len()).saturating_add(1);
+            out.reserve(room.min(CHUNK));
+            let spare = out.spare_capacity_mut();
+            let cap = spare.len().min(room);
+            let (mut used, mut made) = (0usize, 0usize);
+            let rest = &input[pos..];
+            // SAFETY: `rest` and the first `cap` spare bytes are valid; the step writes at most `cap` bytes
+            // and reports how many it initialised.
+            let status = unsafe {
+                ms_gunzip_step(
+                    self.handle,
+                    rest.as_ptr(),
+                    rest.len(),
+                    more,
+                    spare.as_mut_ptr().cast(),
+                    cap,
+                    &mut used,
+                    &mut made,
+                )
+            };
+            // SAFETY: the step initialised `made` bytes of the spare capacity.
+            unsafe { out.set_len(out.len() + made) };
+            pos += used;
+            if out.len() > limit {
+                return Err(Fail::Limit);
+            }
+            match status {
+                OK if used == 0 && made == 0 => return Ok((pos, false)),
+                OK => {}
+                DONE => return Ok((pos, true)),
+                TRUNCATED => return Err(Fail::Truncated),
+                _ => return Err(Fail::Invalid),
             }
         }
     }
-
-    fn flush_crc(&mut self, out: &[u8]) {
-        if out.len() > self.crc_done {
-            self.crc.update(&out[self.crc_done..]);
-            self.crc_done = out.len();
-        }
-    }
-}
-
-/// Length of the gzip header at the start of `rest`, or `Need` when it is cut short.
-fn gzip_header(rest: &[u8]) -> Result<Option<usize>, Fail> {
-    if rest.len() < 10 {
-        // Even a short prefix must look like a header.
-        let magic = [0x1f, 0x8b, 8];
-        if rest.iter().zip(magic).any(|(a, b)| *a != b) {
-            return Err(Fail::Invalid);
-        }
-        return Ok(None);
-    }
-    if rest[0] != 0x1f || rest[1] != 0x8b || rest[2] != 8 || rest[3] & 0xe0 != 0 {
-        return Err(Fail::Invalid);
-    }
-    let flags = rest[3];
-    let mut at = 10;
-    if flags & 4 != 0 {
-        let Some(len) = rest.get(at..at + 2) else {
-            return Ok(None);
-        };
-        at += 2 + u16::from_le_bytes([len[0], len[1]]) as usize;
-    }
-    for flag in [8u8, 16] {
-        if flags & flag != 0 {
-            let Some(end) = rest.get(at..).and_then(|r| r.iter().position(|&b| b == 0)) else {
-                return Ok(None);
-            };
-            at += end + 1;
-        }
-    }
-    if flags & 2 != 0 {
-        at += 2;
-    }
-    if rest.len() < at {
-        return Ok(None);
-    }
-    Ok(Some(at))
 }
 
 #[cfg(test)]

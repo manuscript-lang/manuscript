@@ -27,7 +27,6 @@ macro_rules! sym_prefix {
 }
 
 pub mod alloc;
-pub mod bits;
 pub mod cancel;
 pub mod desc;
 /// The drop worklist is C (`runtime/core/dropq.c`); the fault module resets it through this.
@@ -70,7 +69,6 @@ pub mod sys;
 pub mod sys;
 mod sys_c;
 pub mod task;
-pub mod utf8;
 pub mod vec;
 pub mod watch;
 
