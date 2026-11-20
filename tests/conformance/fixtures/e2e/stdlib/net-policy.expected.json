@@ -11,41 +11,36 @@
       "tests": [
         {
           "index": 0,
-          "name": "net-redirect.ms::redirect statuses pick the follow-up method",
+          "name": "net-policy.ms::hosts and prefixes",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "net-redirect.ms::redirect limits",
+          "name": "net-policy.ms::a child only narrows its parent",
           "status": "passed"
         },
         {
           "index": 2,
-          "name": "net-redirect.ms::subdomains and ip literals",
+          "name": "net-policy.ms::listening needs permission at every level",
           "status": "passed"
         },
         {
           "index": 3,
-          "name": "net-redirect.ms::referer",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "net-redirect.ms::headers that must not follow a redirect",
+          "name": "net-policy.ms::an invalid range is an error",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 5,
-        "selected": 5,
-        "passed": 5,
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN net-redirect.ms::redirect statuses pick the follow-up method\nPASS net-redirect.ms::redirect statuses pick the follow-up method\nRUN net-redirect.ms::redirect limits\nPASS net-redirect.ms::redirect limits\nRUN net-redirect.ms::subdomains and ip literals\nPASS net-redirect.ms::subdomains and ip literals\nRUN net-redirect.ms::referer\nPASS net-redirect.ms::referer\nRUN net-redirect.ms::headers that must not follow a redirect\nPASS net-redirect.ms::headers that must not follow a redirect\n5 tests, 0 failed\n",
+      "stdout": "RUN net-policy.ms::hosts and prefixes\nPASS net-policy.ms::hosts and prefixes\nRUN net-policy.ms::a child only narrows its parent\nPASS net-policy.ms::a child only narrows its parent\nRUN net-policy.ms::listening needs permission at every level\nPASS net-policy.ms::listening needs permission at every level\nRUN net-policy.ms::an invalid range is an error\nPASS net-policy.ms::an invalid range is an error\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
