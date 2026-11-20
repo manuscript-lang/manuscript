@@ -39,3 +39,7 @@ Libraries come from the system packages first (Chinmay, 2026-11-20); our own pin
 | QBE | 1.3 (vendored, unmodified) | debug code generator, built to `bin/qbe` | MIT |
 
 Versions and SHA-256 sums are in `third_party/c-libs.lock`. Chinmay approved libuv, nghttp2, llhttp, OpenSSL, QBE, PCRE2 and zlib on 2026-11-20 (PCRE2 replaced RE2 the same day, to keep C++ out of programs); any other library needs his approval.
+
+## Style and safety
+
+Every C file follows [C style and safety](../documentation/contributing/c-style.md). `make c-lint` checks it; `ms_rt/safe.h` holds the checked sizes, spans and attribute macros.
